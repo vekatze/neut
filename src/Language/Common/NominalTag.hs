@@ -1,6 +1,7 @@
 module Language.Common.NominalTag
   ( NominalTag (..),
     nominalTagToText,
+    isTermTag,
   )
 where
 
@@ -28,3 +29,15 @@ nominalTagToText tag =
       "alias"
     Data ->
       "data"
+
+isTermTag :: NominalTag -> Bool
+isTermTag tag =
+  case tag of
+    Define ->
+      True
+    Inline ->
+      True
+    Alias ->
+      False
+    Data ->
+      False

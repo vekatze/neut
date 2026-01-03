@@ -152,9 +152,11 @@ resolveConstructorMaybe dd gn = do
 interpretGlobalName :: H.Handle -> Hint -> DD.DefiniteDescription -> GN.GlobalName -> App WT.WeakTerm
 interpretGlobalName h m dd gn = do
   case gn of
-    GN.TopLevelFunc argNum isConstLike isMacro -> do
+    GN.TopLevelFuncTerm argNum isConstLike isMacro -> do
       ensureTopLevelStage m h dd isMacro
       return $ interpretTopLevelFunc m dd argNum isConstLike
+    GN.TopLevelFuncType {} -> do
+      raiseError m $ "`" <> DD.reify dd <> "` is a type name and cannot appear in term position"
     GN.Data argNum _ isConstLike ->
       return $ interpretTopLevelFunc m dd argNum isConstLike
     GN.DataIntro dataArgNum consArgNum _ isConstLike -> do
@@ -177,7 +179,9 @@ interpretGlobalTypeName m dd gn = do
   case gn of
     GN.PrimType primNum ->
       return $ m :< WT.PrimType primNum
-    GN.TopLevelFunc argNum isConstLike _ -> do
+    GN.TopLevelFuncTerm {} -> do
+      raiseError m $ "`" <> DD.reify dd <> "` is a term name and cannot appear in type position"
+    GN.TopLevelFuncType argNum isConstLike _ -> do
       let attr = AttrVG.Attr {..}
       return $ m :< WT.TVarGlobal attr dd
     GN.Data argNum _ isConstLike -> do

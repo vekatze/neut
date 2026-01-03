@@ -80,7 +80,10 @@ registerGeist h tag RT.RawGeist {..} = do
   ensureGeistFreshness h loc name'
   ensureDefFreshness h loc name' (Just tag) isConstLike
   liftIO $ insertToGeistMap h name' loc isConstLike
-  liftIO $ insertToNameMap h name' loc (Just tag) $ GN.TopLevelFunc argNum isConstLike False
+  liftIO $ insertToNameMap h name' loc (Just tag) $ do
+    if isTermTag tag
+      then GN.TopLevelFuncTerm argNum isConstLike False
+      else GN.TopLevelFuncType argNum isConstLike False
 
 lookup :: Handle -> Hint.Hint -> DD.DefiniteDescription -> App (Maybe (Hint, GN.GlobalName))
 lookup h m name = do
@@ -201,7 +204,7 @@ _getGlobalNames stmt = do
     PostRawStmtNominal {} -> do
       []
     PostRawStmtDefineResource _ m (name, _) _ _ _ _ -> do
-      [(name, (m, Just Alias, GN.TopLevelFunc AN.zero True False))]
+      [(name, (m, Just Alias, GN.TopLevelFuncType AN.zero True False))]
     PostRawStmtForeign {} ->
       []
 
@@ -220,7 +223,7 @@ getGlobalNamesFromDefTerm stmtKind geist = do
   case stmtKindTermToNominalTag stmtKind of
     Just tag -> do
       let isMacro = stmtKindTermIsMacro stmtKind
-      [(name, (m, Just tag, GN.TopLevelFunc allArgNum isConstLike isMacro))]
+      [(name, (m, Just tag, GN.TopLevelFuncTerm allArgNum isConstLike isMacro))]
     Nothing ->
       []
 
@@ -239,7 +242,7 @@ getGlobalNamesFromDefType stmtKind geist = do
   let mTag = stmtKindTypeToNominalTag stmtKind
   case stmtKind of
     SK.Alias ->
-      [(name, (m, mTag, GN.TopLevelFunc allArgNum isConstLike False))]
+      [(name, (m, mTag, GN.TopLevelFuncType allArgNum isConstLike False))]
     SK.Data dataName dataArgs consInfoList -> do
       let dataArgNum = AN.fromInt $ length dataArgs
       let consNameArrowList = map (toConsNameArrow dataArgNum) consInfoList
@@ -257,14 +260,14 @@ _getGlobalNames' stmt = do
       let allArgNum = AN.fromInt $ length $ impArgs ++ defaultBinders ++ expArgs
       let mTag = stmtKindTermToNominalTag stmtKind
       let isMacro = stmtKindTermIsMacro stmtKind
-      [(name, (m, mTag, GN.TopLevelFunc allArgNum isConstLike isMacro))]
+      [(name, (m, mTag, GN.TopLevelFuncTerm allArgNum isConstLike isMacro))]
     StmtDefineType isConstLike stmtKind (SavedHint m) name impArgs defaultArgs expArgs _ _ -> do
       let defaultBinders = map fst defaultArgs
       let allArgNum = AN.fromInt $ length $ impArgs ++ defaultBinders ++ expArgs
       let mTag = stmtKindTypeToNominalTag stmtKind
       case stmtKind of
         SK.Alias ->
-          [(name, (m, mTag, GN.TopLevelFunc allArgNum isConstLike False))]
+          [(name, (m, mTag, GN.TopLevelFuncType allArgNum isConstLike False))]
         SK.Data dataName dataArgs consInfoList -> do
           let dataArgNum = AN.fromInt $ length dataArgs
           let consNameArrowList = map (toConsNameArrow dataArgNum) consInfoList
