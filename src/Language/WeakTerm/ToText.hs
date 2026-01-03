@@ -37,9 +37,10 @@ toText term =
     _ :< WT.PiIntro attr impArgs defaultArgs expArgs e -> do
       case attr of
         AttrL.Attr {lamKind = LK.Fix opacity (_, x, codType)} ->
-          (case opacity of
-            O.Opaque -> "define "
-            O.Clear -> "macro ")
+          ( case opacity of
+              O.Opaque -> "define "
+              O.Clear -> "inline "
+          )
             <> showVariable x
             <> showImpArgs impArgs defaultArgs
             <> inParen (showDomArgList expArgs)
