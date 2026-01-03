@@ -157,8 +157,8 @@ interpretGlobalName h m dd gn = do
       return $ interpretTopLevelFunc m dd argNum isConstLike
     GN.TopLevelFuncType {} -> do
       raiseError m $ "`" <> DD.reify dd <> "` is a type name and cannot appear in term position"
-    GN.Data argNum _ isConstLike ->
-      return $ interpretTopLevelFunc m dd argNum isConstLike
+    GN.Data {} ->
+      raiseError m $ "`" <> DD.reify dd <> "` is a type name and cannot appear in term position"
     GN.DataIntro dataArgNum consArgNum _ isConstLike -> do
       let argNum = AN.add dataArgNum consArgNum
       let attr = AttrVG.Attr {..}
@@ -177,8 +177,6 @@ interpretGlobalName h m dd gn = do
 interpretGlobalTypeName :: Hint -> DD.DefiniteDescription -> GN.GlobalName -> App WT.WeakType
 interpretGlobalTypeName m dd gn = do
   case gn of
-    GN.PrimType primNum ->
-      return $ m :< WT.PrimType primNum
     GN.TopLevelFuncTerm {} -> do
       raiseError m $ "`" <> DD.reify dd <> "` is a term name and cannot appear in type position"
     GN.TopLevelFuncType argNum isConstLike _ -> do
@@ -189,6 +187,8 @@ interpretGlobalTypeName m dd gn = do
       return $ m :< WT.TVarGlobal attr dd
     GN.DataIntro {} ->
       raiseError m $ "`" <> DD.reify dd <> "` is a constructor and cannot appear in type position"
+    GN.PrimType primNum ->
+      return $ m :< WT.PrimType primNum
     GN.PrimOp {} ->
       raiseError m $ "`" <> DD.reify dd <> "` is not a type"
     GN.Rule {} ->
