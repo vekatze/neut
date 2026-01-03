@@ -15,6 +15,7 @@ import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.IO.Class
 import Data.Bifunctor
 import Data.Bitraversable (bimapM)
+import Data.IntMap qualified as IntMap
 import Data.List (unzip5, zip5)
 import Data.Set qualified as S
 import Data.Text qualified as T
@@ -32,14 +33,15 @@ import Kernel.Elaborate.Internal.Handle.Constraint qualified as Constraint
 import Kernel.Elaborate.Internal.Handle.Def qualified as Definition
 import Kernel.Elaborate.Internal.Handle.Elaborate
 import Kernel.Elaborate.Internal.Handle.Hole qualified as Hole
-import Kernel.Elaborate.Internal.Handle.TypeDef qualified as TypeDef
 import Kernel.Elaborate.Internal.Handle.LocalLogs qualified as LocalLogs
+import Kernel.Elaborate.Internal.Handle.TypeDef qualified as TypeDef
 import Kernel.Elaborate.Internal.Handle.WeakDecl qualified as WeakDecl
 import Kernel.Elaborate.Internal.Handle.WeakDef qualified as WeakDef
 import Kernel.Elaborate.Internal.Handle.WeakType qualified as WeakType
 import Kernel.Elaborate.Internal.Handle.WeakTypeDef qualified as WeakTypeDef
 import Kernel.Elaborate.Internal.Infer qualified as Infer
 import Kernel.Elaborate.Internal.Unify qualified as Unify
+import Kernel.Elaborate.TypeHoleSubst qualified as THS
 import Language.Common.Annotation qualified as AN
 import Language.Common.Attr.Data qualified as AttrD
 import Language.Common.Attr.DataIntro qualified as AttrDI
@@ -71,6 +73,7 @@ import Language.Term.PrimValue qualified as PV
 import Language.Term.Stmt
 import Language.Term.Term qualified as TM
 import Language.Term.Weaken
+import Language.WeakTerm.Subst qualified as Subst
 import Language.WeakTerm.ToText
 import Language.WeakTerm.WeakPrimValue qualified as WPV
 import Language.WeakTerm.WeakStmt
@@ -335,7 +338,7 @@ elaborate' h term = do
       tree' <- elaborateDecisionTree h [rootElem] m m tree
       when (DT.isUnreachable tree') $ do
         forM_ ts' $ \t -> do
-          t' <- reduceType h (weakenType t) >>= elaborateType h
+          t' <- reduceWeakType h (weakenType t) >>= elaborateType h
           switchSpec <- getSwitchSpec m t'
           case switchSpec of
             LiteralSwitch -> do
@@ -367,7 +370,7 @@ elaborate' h term = do
       elaborate' h e
     m :< WT.Let opacity (mx, x, t) e1 e2 -> do
       e1' <- elaborate' h e1
-      t' <- reduceType h t >>= elaborateType h
+      t' <- reduceWeakType h t >>= elaborateType h
       e2' <- elaborate' h e2
       return $ m :< TM.Let (WT.reifyOpacity opacity) (mx, x, t') e1' e2'
     m :< WT.LetType (mx, x) e1 e2 -> do
@@ -528,7 +531,7 @@ strictify h t@(mt :< _) =
 
 strictify' :: Handle -> Hint -> WT.WeakType -> App BLT.BaseLowType
 strictify' h m t = do
-  t' <- reduceType h t >>= elaborateType h
+  t' <- reduceWeakType h t >>= elaborateType h
   case t' of
     _ :< TM.PrimType (PT.Int size) ->
       return $ BLT.PrimNum $ BPT.Int $ BPT.Explicit size
@@ -549,7 +552,7 @@ strictify' h m t = do
 
 strictifyDecimalType :: Handle -> Hint -> Integer -> WT.WeakType -> App (Either FloatSize IntSize, TM.Type)
 strictifyDecimalType h m x t = do
-  t' <- reduceType h t >>= elaborateType h
+  t' <- reduceWeakType h t >>= elaborateType h
   case t' of
     _ :< TM.PrimType (PT.Int size) ->
       return (Right size, t')
@@ -568,7 +571,7 @@ strictifyDecimalType h m x t = do
 
 strictifyFloatType :: Handle -> Hint -> Double -> WT.WeakType -> App (FloatSize, TM.Type)
 strictifyFloatType h m x t = do
-  t' <- reduceType h t >>= elaborateType h
+  t' <- reduceWeakType h t >>= elaborateType h
   case t' of
     _ :< TM.PrimType (PT.Float size) ->
       return (size, t')
@@ -687,7 +690,7 @@ elaborateDecisionTree h ctx mOrig m tree =
     DT.Unreachable ->
       return DT.Unreachable
     DT.Switch (cursor, cursorType) (fallbackClause, clauseList) -> do
-      cursorType' <- reduceType h cursorType >>= elaborateType h
+      cursorType' <- reduceWeakType h cursorType >>= elaborateType h
       switchSpec <- getSwitchSpec m cursorType'
       case switchSpec of
         LiteralSwitch -> do
@@ -791,6 +794,36 @@ getSwitchSpec m cursorType = do
       raiseError m $
         "This term is expected to be an ADT value or a literal, but found:\n"
           <> toTextType (weakenType cursorType)
+
+reduceWeakType :: Handle -> WT.WeakType -> App WT.WeakType
+reduceWeakType h t = do
+  t' <- reduceType h t
+  case t' of
+    m :< WT.TypeHole holeID args -> do
+      holeSubst <- liftIO $ Hole.getTypeSubst (holeHandle h)
+      case THS.lookup holeID holeSubst of
+        Nothing ->
+          raiseError m $ "Could not instantiate the hole here: " <> T.pack (show holeID)
+        Just (xs, body)
+          | length xs == length args -> do
+              let sub = IntMap.fromList $ zip (map Ident.toInt xs) (map Right args)
+              body' <- liftIO $ Subst.substTypeWith sub body
+              reduceWeakType h body'
+          | otherwise ->
+              raiseError m "Arity mismatch"
+    _ :< WT.TyApp (_ :< WT.TVarGlobal _ name) args -> do
+      mDef <- liftIO $ WeakTypeDef.lookup' (weakTypeDefHandle h) name
+      case mDef of
+        Just def
+          | length args == length (WeakTypeDef.typeDefBinders def) -> do
+              let varList = map (\(_, x, _) -> Ident.toInt x) (WeakTypeDef.typeDefBinders def)
+              let sub = IntMap.fromList $ zip varList (map Right args)
+              body' <- liftIO $ Subst.substTypeWith sub (WeakTypeDef.typeDefBody def)
+              reduceWeakType h body'
+        _ ->
+          return t'
+    _ ->
+      return t'
 
 elaborateAttrData ::
   Handle ->
