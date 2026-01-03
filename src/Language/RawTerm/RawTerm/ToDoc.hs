@@ -437,7 +437,7 @@ decodeTypeDef nameDecoder keyword c def = do
     D.join
       [ D.text keyword,
         D.text " ",
-        decGeist nameDecoder $ RT.typeGeist def,
+        decTypeGeist nameDecoder $ RT.typeGeist def,
         D.text " ",
         decodeBlock (RT.typeLeadingComment def, (typeToDoc $ RT.typeBody def, RT.typeTrailingComment def))
       ]
@@ -579,32 +579,54 @@ decGeist
         cod = (c4, cod),
         isConstLike
       }
-    ) =
+    ) = do
     let (cDefault, cExp) =
           if SE.isEmpty defaultArgs
             then ([], c1)
             else (c1, [])
-        defaultParams =
-          attachComment cDefault $ decodeDefaultParams defaultArgs
-        expParams =
-          attachComment (cExp ++ c2) $ decodeExpParams isConstLike expArgs
-     in case cod of
-          _ :< RT.TypeHole {} ->
-            PI.arrange
-              [ PI.inject $ attachComment c0 $ nameDecoder name,
-                PI.inject $ decodeImpParams impArgs,
-                PI.inject defaultParams,
-                PI.inject expParams
-              ]
-          _ ->
-            PI.arrange
-              [ PI.inject $ attachComment c0 $ nameDecoder name,
-                PI.inject $ decodeImpParams impArgs,
-                PI.inject defaultParams,
-                PI.inject expParams,
-                PI.horizontal $ attachComment c3 $ D.text ":",
-                PI.inject $ attachComment c4 $ typeToDoc cod
-              ]
+    let defaultParams = attachComment cDefault $ decodeDefaultParams defaultArgs
+    let expParams = attachComment (cExp ++ c2) $ decodeExpParams isConstLike expArgs
+    case cod of
+      _ :< RT.TypeHole {} ->
+        PI.arrange
+          [ PI.inject $ attachComment c0 $ nameDecoder name,
+            PI.inject $ decodeImpParams impArgs,
+            PI.inject defaultParams,
+            PI.inject expParams
+          ]
+      _ ->
+        PI.arrange
+          [ PI.inject $ attachComment c0 $ nameDecoder name,
+            PI.inject $ decodeImpParams impArgs,
+            PI.inject defaultParams,
+            PI.inject expParams,
+            PI.horizontal $ attachComment c3 $ D.text ":",
+            PI.inject $ attachComment c4 $ typeToDoc cod
+          ]
+
+decTypeGeist :: (a -> D.Doc) -> RT.RawGeist a -> D.Doc
+decTypeGeist
+  nameDecoder
+  ( RT.RawGeist
+      { name = (name, c0),
+        impArgs = (impArgs, c1),
+        defaultArgs = (defaultArgs, c2),
+        expArgs = (expArgs, c3),
+        isConstLike
+      }
+    ) = do
+    let (cDefault, cExp) =
+          if SE.isEmpty defaultArgs
+            then ([], c1)
+            else (c1, [])
+    let defaultParams = attachComment cDefault $ decodeDefaultParams defaultArgs
+    let expParams = attachComment (cExp ++ c2) $ decodeExpParams isConstLike expArgs
+    PI.arrange
+      [ PI.inject $ attachComment c0 $ nameDecoder name,
+        PI.inject $ decodeImpParams impArgs,
+        PI.inject defaultParams,
+        PI.inject $ attachComment c3 expParams
+      ]
 
 decodeImpParams :: SE.Series RT.RawImpVar -> D.Doc
 decodeImpParams impParams =
