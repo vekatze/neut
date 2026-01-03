@@ -12,6 +12,7 @@ import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.Foreign qualified as F
 import Language.Common.Geist qualified as G
 import Language.Common.IsConstLike
+import Language.Common.NominalTag
 import Language.Common.RuleKind (RuleKind)
 import Language.Common.StmtKind qualified as SK
 import Language.WeakTerm.WeakTerm qualified as WT
@@ -48,7 +49,7 @@ data WeakStmt
       WT.WeakType
       WT.WeakType
   | WeakStmtVariadic RuleKind Hint DD.DefiniteDescription
-  | WeakStmtNominal Hint [G.Geist WT.WeakType WT.WeakTerm]
+  | WeakStmtNominal Hint [(NominalTag, G.Geist WT.WeakType WT.WeakTerm)]
   | WeakStmtForeign [WT.WeakForeign]
 
 getWeakStmtName :: [WeakStmt] -> [(Hint, DD.DefiniteDescription)]

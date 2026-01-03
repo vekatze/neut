@@ -9,7 +9,6 @@ import App.Run (forP, forP_)
 import CodeParser.Parser (runParser)
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
-import Data.Bifunctor (Bifunctor (first))
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
 import Kernel.Common.Cache (Cache)
@@ -33,6 +32,7 @@ import Language.Common.ArgNum qualified as AN
 import Language.Common.BaseName qualified as BN
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.Ident.Reify
+import Language.Common.NominalTag qualified as NT
 import Language.Common.StmtKind qualified as SK
 import Language.RawTerm.RawStmt
 import Language.RawTerm.RawTerm qualified as RT
@@ -120,7 +120,7 @@ postprocess' h stmt = do
       let name' = Locator.attachCurrentLocator h name
       defineVariadic kind m name' (leaf, leafType) (node, nodeType) (root, rootType) loc
     RawStmtNominal c m geistList -> do
-      let geistList' = fmap (first (liftGeist h)) geistList
+      let geistList' = fmap (\(tag, geist, endLoc) -> (tag, liftGeist h geist, endLoc)) geistList
       [PostRawStmtNominal c m geistList']
     RawStmtForeign m foreignList -> do
       [PostRawStmtForeign m foreignList]
@@ -166,7 +166,7 @@ registerTopLevelNames h source cacheOrContent = do
       liftIO $ saveTopLevelNames h source nameArrowList
       forM_ stmtList $ registerKeyArg h
 
-saveTopLevelNames :: Handle -> Source.Source -> [(DD.DefiniteDescription, (Hint, GN.GlobalName))] -> IO ()
+saveTopLevelNames :: Handle -> Source.Source -> [(DD.DefiniteDescription, (Hint, Maybe NT.NominalTag, GN.GlobalName))] -> IO ()
 saveTopLevelNames h source nameArrowList = do
   let nameMap = Map.fromList nameArrowList
   GlobalNameMap.insert (globalNameMapHandle h) (Source.sourceFilePath source) nameMap
@@ -222,9 +222,9 @@ registerKeyArg' h stmt = do
     StmtForeign {} ->
       return ()
 
-registerOptDataInfo :: Handle -> [(DD.DefiniteDescription, (Hint, GN.GlobalName))] -> IO ()
+registerOptDataInfo :: Handle -> [(DD.DefiniteDescription, (Hint, Maybe NT.NominalTag, GN.GlobalName))] -> IO ()
 registerOptDataInfo h nameArrowList = do
-  forM_ nameArrowList $ \(dd, (_, gn)) -> do
+  forM_ nameArrowList $ \(dd, (_, _, gn)) -> do
     case gn of
       GN.Data dataArgNum consNameArrowList _ -> do
         registerAsUnaryIfNecessary h dd consNameArrowList

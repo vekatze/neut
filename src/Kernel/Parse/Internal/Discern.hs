@@ -165,9 +165,10 @@ discernStmt h stmt = do
         TopCandidate {loc = metaLocation m, dd = dd, kind = Function}
       return [WeakStmtVariadic kind m dd]
     PostRawStmtNominal _ m geistList -> do
-      geistList' <- forM (SE.extract geistList) $ \(geist, endLoc) -> do
-        NameMap.registerGeist (H.nameMapHandle h) geist
-        discernGeist h endLoc geist
+      geistList' <- forM (SE.extract geistList) $ \(tag, geist, endLoc) -> do
+        NameMap.registerGeist (H.nameMapHandle h) tag geist
+        geist' <- discernGeist h endLoc geist
+        return (tag, geist')
       return [WeakStmtNominal m geistList']
     PostRawStmtForeign _ foreignList -> do
       let foreignList' = SE.extract foreignList

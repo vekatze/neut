@@ -7,6 +7,7 @@ where
 import App.Run (raiseError)
 import CodeParser.GetInfo
 import CodeParser.Parser
+import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.Trans
 import Data.Text qualified as T
@@ -15,6 +16,7 @@ import Language.Common.BaseName qualified as BN
 import Language.Common.ExternalName qualified as EN
 import Language.Common.ForeignCodType qualified as F
 import Language.Common.LocalLocator qualified as LL
+import Language.Common.NominalTag
 import Language.Common.RuleKind
 import Language.Common.StmtKind qualified as SK
 import Language.RawTerm.CreateHole qualified as RT
@@ -169,11 +171,52 @@ parseNominal :: Handle -> Parser (RawStmt, C)
 parseNominal h = do
   c1 <- keyword "nominal"
   m <- getCurrentHint
-  (geists, c) <- seriesBrace $ do
-    (geist, c) <- parseGeist h baseName
-    loc <- getCurrentLoc
-    return ((geist, loc), c)
+  (geists, c) <- seriesBrace $ parseNominalEntry h
   return (RawStmtNominal c1 m geists, c)
+
+parseNominalEntry :: Handle -> Parser ((NominalTag, RT.RawGeist BN.BaseName, Loc), C)
+parseNominalEntry h =
+  choice
+    [ do
+        cTag <- keyword "define"
+        (geist, cGeist) <- parseGeist h baseName
+        loc <- getCurrentLoc
+        return ((Define, geist, loc), cTag ++ cGeist),
+      do
+        cTag <- keyword "inline"
+        (geist, cGeist) <- parseGeist h baseName
+        loc <- getCurrentLoc
+        return ((Inline, geist, loc), cTag ++ cGeist),
+      do
+        cTag <- keyword "alias"
+        (geist, cGeist) <- parseAliasGeist h baseName
+        loc <- getCurrentLoc
+        return ((Alias, geist, loc), cTag ++ cGeist),
+      do
+        cTag <- keyword "data"
+        (geist, cGeist) <- parseNominalData h
+        loc <- getCurrentLoc
+        return ((Data, geist, loc), cTag ++ cGeist)
+    ]
+
+parseNominalData :: Handle -> Parser (RT.RawGeist BN.BaseName, C)
+parseNominalData h = do
+  m <- getCurrentHint
+  (name, c1) <- baseName
+  argsOrNone <- parseDataArgs h
+  let expArgs = maybe RT.emptyArgs id argsOrNone
+  let isConstLike = maybe True (const False) argsOrNone
+  let geist =
+        RT.RawGeist
+          { loc = m,
+            name = (name, c1),
+            isConstLike = isConstLike,
+            impArgs = RT.emptyImpArgs,
+            defaultArgs = RT.emptyDefaultArgs,
+            expArgs = expArgs,
+            cod = ([], m :< RT.Tau)
+          }
+  return (geist, [])
 
 parseDataArgs :: Handle -> Parser (Maybe (RT.Args RT.RawType))
 parseDataArgs h = do

@@ -176,7 +176,7 @@ elaborateStmt h stmt = do
     WeakStmtVariadic kind m dd -> do
       return ([StmtVariadic kind (SavedHint m) dd], [])
     WeakStmtNominal _ geistList -> do
-      mapM_ (elaborateGeist h) geistList
+      mapM_ (elaborateGeist h . snd) geistList
       return ([], [])
     WeakStmtForeign foreignList -> do
       foreignList' <- forM foreignList $ \(F.Foreign m externalName domList cod) -> do

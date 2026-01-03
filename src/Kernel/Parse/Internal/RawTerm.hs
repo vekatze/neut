@@ -10,6 +10,7 @@ module Kernel.Parse.Internal.RawTerm
     parseDef,
     parseAliasDef,
     parseGeist,
+    parseAliasGeist,
     parseDefInfoCod,
     typeWithoutIdent,
     parseImplicitParams,

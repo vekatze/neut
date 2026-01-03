@@ -10,6 +10,7 @@ module Language.RawTerm.RawTerm.ToDoc
     decodeDef,
     decodeTypeDef,
     decGeist,
+    decTypeGeist,
     attachComment,
   )
 where

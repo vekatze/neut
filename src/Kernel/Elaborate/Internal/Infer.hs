@@ -101,7 +101,9 @@ inferStmt h stmt =
     WeakStmtVariadic kind m dd -> do
       return $ WeakStmtVariadic kind m dd
     WeakStmtNominal m geistList -> do
-      geistList' <- mapM (inferGeist h) geistList
+      geistList' <- forM geistList $ \(tag, geist) -> do
+        geist' <- inferGeist h geist
+        return (tag, geist')
       return $ WeakStmtNominal m geistList'
     WeakStmtForeign foreignList ->
       return $ WeakStmtForeign foreignList

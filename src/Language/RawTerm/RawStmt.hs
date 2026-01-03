@@ -25,6 +25,7 @@ import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.ExternalName qualified as EN
 import Language.Common.ForeignCodType qualified as F
 import Language.Common.LocalLocator qualified as LL
+import Language.Common.NominalTag
 import Language.Common.RuleKind
 import Language.Common.StmtKind qualified as SK
 import Language.RawTerm.RawBinder
@@ -85,7 +86,7 @@ data BaseRawStmt name
       (C, RT.RawTerm, RT.RawType)
       C
       Loc
-  | RawStmtNominal C Hint (SE.Series (RT.RawGeist name, Loc))
+  | RawStmtNominal C Hint (SE.Series (NominalTag, RT.RawGeist name, Loc))
   | RawStmtForeign C (SE.Series RawForeignItem)
 
 type RawStmt =
@@ -118,7 +119,7 @@ data PostRawStmt
       RuleKind
       Hint
       DD.DefiniteDescription
-  | PostRawStmtNominal C Hint (SE.Series (RT.RawGeist DD.DefiniteDescription, Loc))
+  | PostRawStmtNominal C Hint (SE.Series (NominalTag, RT.RawGeist DD.DefiniteDescription, Loc))
   | PostRawStmtForeign C (SE.Series RawForeignItem)
 
 getPostRawStmtName :: PostRawStmt -> [(Hint, DD.DefiniteDescription)]

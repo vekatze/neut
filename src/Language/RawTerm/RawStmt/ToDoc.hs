@@ -7,6 +7,7 @@ import Language.Common.BaseName qualified as BN
 import Language.Common.ExternalName qualified as EN
 import Language.Common.ForeignCodType qualified as FCT
 import Language.Common.LocalLocator qualified as LL
+import Language.Common.NominalTag
 import Language.Common.RuleKind (ruleKindToKeyword)
 import Language.Common.StmtKind qualified as SK
 import Language.Common.UnusedGlobalLocators (UnusedGlobalLocators, isUsedGL)
@@ -241,7 +242,7 @@ decStmt stmt =
       attachStmtComment c $
         D.join
           [ D.text "nominal ",
-            SE.decode $ fmap (decTopGeist . fst) geistList
+            SE.decode $ fmap decNominalGeist geistList
           ]
     RawStmtForeign c foreignList -> do
       let foreignList' = SE.decode $ fmap decForeignItem foreignList
@@ -275,9 +276,22 @@ decConsInfo (RawConsInfo {name = consName, expArgs}) = do
   let consName' = D.text (BN.reify consName)
   D.join [consName', RT.decodeArgsMaybe expArgs]
 
-decTopGeist :: RT.TopGeist -> D.Doc
-decTopGeist = do
-  RT.decGeist (D.text . BN.reify)
+decNominalGeist :: (NominalTag, RT.RawGeist BN.BaseName, Loc) -> D.Doc
+decNominalGeist (tag, geist, _) = do
+  let keyword = nominalTagToText tag
+  let geistDoc = case tag of
+        Define ->
+          RT.decGeist (D.text . BN.reify) geist
+        Inline ->
+          RT.decGeist (D.text . BN.reify) geist
+        Alias ->
+          RT.decTypeGeist (D.text . BN.reify) geist
+        Data ->
+          RT.decTypeGeist (D.text . BN.reify) geist
+  PI.arrange
+    [ PI.horizontal $ D.text keyword,
+      PI.inject geistDoc
+    ]
 
 attachStmtComment :: C -> D.Doc -> D.Doc
 attachStmtComment c doc =
