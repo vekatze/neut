@@ -12,6 +12,7 @@ import GHC.Generics (Generic)
 data NominalTag
   = Define
   | Inline
+  | Macro
   | Alias
   | Data
   deriving (Eq, Ord, Show, Generic)
@@ -25,6 +26,8 @@ nominalTagToText tag =
       "define"
     Inline ->
       "inline"
+    Macro ->
+      "macro"
     Alias ->
       "alias"
     Data ->
@@ -36,6 +39,8 @@ isTermTag tag =
     Define ->
       True
     Inline ->
+      True
+    Macro ->
       True
     Alias ->
       False

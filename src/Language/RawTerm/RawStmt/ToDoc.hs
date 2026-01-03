@@ -284,6 +284,8 @@ decNominalGeist (tag, geist, _) = do
           RT.decGeist (D.text . BN.reify) geist
         Inline ->
           RT.decGeist (D.text . BN.reify) geist
+        Macro ->
+          RT.decGeist (D.text . BN.reify) geist
         Alias ->
           RT.decTypeGeist (D.text . BN.reify) geist
         Data ->

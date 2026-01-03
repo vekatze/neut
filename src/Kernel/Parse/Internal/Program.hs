@@ -188,6 +188,11 @@ parseNominalEntry h =
         loc <- getCurrentLoc
         return ((Inline, geist, loc), cTag ++ cGeist),
       do
+        cTag <- keyword "macro"
+        (geist, cGeist) <- parseGeist h baseName
+        loc <- getCurrentLoc
+        return ((Macro, geist, loc), cTag ++ cGeist),
+      do
         cTag <- keyword "alias"
         (geist, cGeist) <- parseAliasGeist h baseName
         loc <- getCurrentLoc
