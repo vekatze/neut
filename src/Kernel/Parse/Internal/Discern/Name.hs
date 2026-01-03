@@ -155,9 +155,8 @@ interpretGlobalName h m dd gn = do
     GN.TopLevelFuncTerm argNum isConstLike isMacro -> do
       ensureTopLevelStage m h dd isMacro
       return $ interpretTopLevelFunc m dd argNum isConstLike
-    GN.TopLevelFuncType argNum isConstLike isMacro -> do
-      ensureTopLevelStage m h dd isMacro
-      return $ interpretTopLevelFunc m dd argNum isConstLike
+    GN.TopLevelFuncType {} -> do
+      raiseError m $ "`" <> DD.reify dd <> "` is a type name and cannot appear in term position"
     GN.Data argNum _ isConstLike ->
       return $ interpretTopLevelFunc m dd argNum isConstLike
     GN.DataIntro dataArgNum consArgNum _ isConstLike -> do

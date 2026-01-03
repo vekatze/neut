@@ -299,10 +299,6 @@ discern h term =
                   raiseLayerError m (H.currentLayer h) layer
                 (_, False) ->
                   raiseStageError m (H.currentStage h) stage
-          | Just (mDef, name', _, _) <- lookup s (H.typeNameEnv h) -> do
-              liftIO $ Unused.deleteVariable (H.unusedHandle h) name'
-              liftIO $ Tag.insertLocalVar (H.tagHandle h) m name' mDef
-              return $ m :< WT.Var name'
         _ -> do
           (dd, (_, gn)) <- resolveName h m name
           interpretGlobalName h m dd gn
