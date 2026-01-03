@@ -154,7 +154,7 @@ interpretGlobalName h m dd gn = do
   case gn of
     GN.TopLevelFuncTerm argNum isConstLike isMacro -> do
       ensureTopLevelStage m h dd isMacro
-      return $ interpretTopLevelFunc m dd argNum isConstLike
+      return $ interpretTopLevelFuncTerm m dd argNum isConstLike
     GN.TopLevelFuncType {} -> do
       raiseError m $ "`" <> DD.reify dd <> "` is a type name and cannot appear in term position"
     GN.Data {} ->
@@ -180,11 +180,9 @@ interpretGlobalTypeName m dd gn = do
     GN.TopLevelFuncTerm {} -> do
       raiseError m $ "`" <> DD.reify dd <> "` is a term name and cannot appear in type position"
     GN.TopLevelFuncType argNum isConstLike _ -> do
-      let attr = AttrVG.Attr {..}
-      return $ m :< WT.TVarGlobal attr dd
-    GN.Data argNum _ isConstLike -> do
-      let attr = AttrVG.Attr {..}
-      return $ m :< WT.TVarGlobal attr dd
+      return $ interpretTopLevelFuncType m dd argNum isConstLike
+    GN.Data argNum _ isConstLike ->
+      return $ interpretTopLevelFuncType m dd argNum isConstLike
     GN.DataIntro {} ->
       raiseError m $ "`" <> DD.reify dd <> "` is a constructor and cannot appear in type position"
     GN.PrimType primNum ->
@@ -202,17 +200,29 @@ interpretRuleName m dd gn = do
     _ -> do
       raiseError m $ "`" <> DD.reify dd <> "` is not a macro"
 
-interpretTopLevelFunc ::
+interpretTopLevelFuncTerm ::
   Hint ->
   DD.DefiniteDescription ->
   AN.ArgNum ->
   IsConstLike ->
   WT.WeakTerm
-interpretTopLevelFunc m dd argNum isConstLike = do
+interpretTopLevelFuncTerm m dd argNum isConstLike = do
   let attr = AttrVG.Attr {..}
   if isConstLike
     then m :< WT.PiElim False (m :< WT.VarGlobal attr dd) ImpArgs.Unspecified DefaultArgs.Unspecified []
     else m :< WT.VarGlobal attr dd
+
+interpretTopLevelFuncType ::
+  Hint ->
+  DD.DefiniteDescription ->
+  AN.ArgNum ->
+  IsConstLike ->
+  WT.WeakType
+interpretTopLevelFuncType m dd argNum isConstLike = do
+  let attr = AttrVG.Attr {..}
+  if isConstLike
+    then m :< WT.TyApp (m :< WT.TVarGlobal attr dd) []
+    else m :< WT.TVarGlobal attr dd
 
 ensureTopLevelStage :: Hint -> H.Handle -> DD.DefiniteDescription -> Bool -> App ()
 ensureTopLevelStage m h dd isMacro =

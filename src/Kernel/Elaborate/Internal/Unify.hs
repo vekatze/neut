@@ -11,6 +11,8 @@ import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.IO.Class
+import Data.Bifunctor (second)
+import Data.HashMap.Strict qualified as Map
 import Data.IntMap qualified as IntMap
 import Data.List (partition)
 import Data.Set qualified as S
@@ -18,10 +20,12 @@ import Data.Text qualified as T
 import Kernel.Common.Handle.Global.Type qualified as Type
 import Kernel.Elaborate.Constraint (SuspendedConstraint)
 import Kernel.Elaborate.Constraint qualified as C
-import Kernel.Elaborate.TypeHoleSubst qualified as THS
 import Kernel.Elaborate.Internal.Handle.Constraint qualified as Constraint
 import Kernel.Elaborate.Internal.Handle.Elaborate
 import Kernel.Elaborate.Internal.Handle.Hole qualified as Hole
+import Kernel.Elaborate.Internal.Handle.WeakTypeDef qualified as WeakTypeDef
+import Kernel.Elaborate.Stuck qualified as Stuck
+import Kernel.Elaborate.TypeHoleSubst qualified as THS
 import Language.Common.Attr.Data qualified as AttrD
 import Language.Common.Binder
 import Language.Common.CreateSymbol qualified as Gensym
@@ -34,6 +38,7 @@ import Language.Common.PrimType qualified as PT
 import Language.WeakTerm.Eq qualified as WT
 import Language.WeakTerm.FreeVars
 import Language.WeakTerm.Holes
+import Language.WeakTerm.Subst (substTypeWith)
 import Language.WeakTerm.ToText (toTextType)
 import Language.WeakTerm.WeakTerm qualified as WT
 import Logger.Hint
@@ -136,30 +141,19 @@ simplify h susList constraintList =
       detectPossibleInfiniteLoop h orig
       expected' <- reduceType h expected
       actual' <- reduceType h actual
-      sub <- liftIO $ Hole.getTypeSubst (holeHandle h)
-      expected'' <- if THS.fillableType expected' sub then fillType h sub expected' else return expected'
-      actual'' <- if THS.fillableType actual' sub then fillType h sub actual' else return actual'
-      if WT.eqType expected'' actual''
+      if WT.eqType expected' actual'
         then simplify h susList cs
         else do
-          case (expected'', actual'') of
-            (holeTerm@(_ :< WT.TypeHole hole args), t) ->
-              resolveTypeHole h susList holeTerm hole args t cs
-            (t, holeTerm@(_ :< WT.TypeHole hole args)) ->
-              resolveTypeHole h susList holeTerm hole args t cs
-            (m1 :< WT.Pi pk1 impArgs1 defaultArgs1 expArgs1 cod1, m2 :< WT.Pi pk2 impArgs2 defaultArgs2 expArgs2 cod2)
-              | pk1 == pk2,
-                length impArgs1 == length impArgs2,
-                length defaultArgs1 == length defaultArgs2,
+          case (expected', actual') of
+            (m1 :< WT.Pi _ impArgs1 defaultArgs1 expArgs1 cod1, m2 :< WT.Pi _ impArgs2 defaultArgs2 expArgs2 cod2)
+              | Just (impBinders, impConstraints) <- createDefaultConstraints impArgs1 defaultArgs1 impArgs2 defaultArgs2,
                 length expArgs1 == length expArgs2 -> do
                   codBinder1 <- liftIO $ asWeakBinder h m1 cod1
                   codBinder2 <- liftIO $ asWeakBinder h m2 cod2
-                  cs' <- liftIO $ simplifyBinder h orig (impArgs1 ++ map fst defaultArgs1 ++ expArgs1 ++ [codBinder1]) (impArgs2 ++ map fst defaultArgs2 ++ expArgs2 ++ [codBinder2])
-                  simplify h susList $ cs' ++ cs
-            (_ :< WT.TyApp t1 args1, _ :< WT.TyApp t2 args2)
-              | length args1 == length args2 -> do
-                  let cs' = map (,orig) (C.Eq t1 t2 : zipWith C.Eq args1 args2)
-                  simplify h susList $ cs' ++ cs
+                  let (impBinders1, impBinders2) = unzip impBinders
+                  let impEqs' = map (,orig) impConstraints
+                  cs' <- liftIO $ simplifyBinder h orig (impBinders1 ++ expArgs1 ++ [codBinder1]) (impBinders2 ++ expArgs2 ++ [codBinder2])
+                  simplify h susList $ cs' ++ impEqs' ++ cs
             (_ :< WT.Data _ name1 es1, _ :< WT.Data _ name2 es2)
               | name1 == name2,
                 length es1 == length es2 -> do
@@ -171,49 +165,153 @@ simplify h susList constraintList =
               simplify h susList $ (C.Eq t1 t2, orig) : cs
             (_ :< WT.Code t1, _ :< WT.Code t2) ->
               simplify h susList $ (C.Eq t1 t2, orig) : cs
-            (_ :< WT.PrimType pt1, _ :< WT.PrimType pt2)
-              | pt1 == pt2 ->
-                  simplify h susList cs
-            (_ :< WT.Tau, _ :< WT.Tau) ->
-              simplify h susList cs
-            (_ :< WT.TVar x1, _ :< WT.TVar x2)
-              | x1 == x2 ->
-                  simplify h susList cs
-            (_ :< WT.TVarGlobal _ x1, _ :< WT.TVarGlobal _ x2)
-              | x1 == x2 ->
-                  simplify h susList cs
-            (_ :< WT.Void, _ :< WT.Void) ->
-              simplify h susList cs
-            (_ :< WT.Resource _ id1 _ _ _ _, _ :< WT.Resource _ id2 _ _ _ _)
-              | id1 == id2 ->
-                  simplify h susList cs
-            _ -> do
-              let fmvs = S.union (holesType expected'') (holesType actual'')
-              let uc = C.SuspendedConstraint (fmvs, headConstraint)
-              simplify h (uc : susList) cs
+            (t1, t2) -> do
+              sub <- liftIO $ Hole.getTypeSubst (holeHandle h)
+              let fvs1 = freeVarsType t1
+              let fvs2 = freeVarsType t2
+              let fmvs1 = holesType t1
+              let fmvs2 = holesType t2
+              case (lookupAnyType (S.toList fmvs1) sub, lookupAnyType (S.toList fmvs2) sub) of
+                (Just (hole1, (xs1, body1)), Just (hole2, (xs2, body2))) -> do
+                  let s1 = THS.singleton hole1 xs1 body1
+                  let s2 = THS.singleton hole2 xs2 body2
+                  t1' <- fillType h s1 t1
+                  t2' <- fillType h s2 t2
+                  simplify h susList $ (C.Eq t1' t2', orig) : cs
+                (Just (hole1, (xs1, body1)), Nothing) -> do
+                  let s1 = THS.singleton hole1 xs1 body1
+                  t1' <- fillType h s1 t1
+                  simplify h susList $ (C.Eq t1' t2, orig) : cs
+                (Nothing, Just (hole2, (xs2, body2))) -> do
+                  let s2 = THS.singleton hole2 xs2 body2
+                  t2' <- fillType h s2 t2
+                  simplify h susList $ (C.Eq t1 t2', orig) : cs
+                (Nothing, Nothing) -> do
+                  let fmvs = S.union fmvs1 fmvs2
+                  defMap <- liftIO $ WeakTypeDef.read' (weakTypeDefHandle h)
+                  case (Stuck.asStuckedType t1, Stuck.asStuckedType t2) of
+                    (Just (Stuck.Hole hole1 ies1, _ :< Stuck.Base), _)
+                      | Just xss1 <- mapM asIdentType ies1,
+                        Just argSet1 <- toLinearIdentSet xss1,
+                        hole1 `S.notMember` fmvs2,
+                        fvs2 `S.isSubsetOf` argSet1 ->
+                          resolveHole h susList hole1 xss1 t2 cs
+                    (_, Just (Stuck.Hole hole2 ies2, _ :< Stuck.Base))
+                      | Just xss2 <- mapM asIdentType ies2,
+                        Just argSet2 <- toLinearIdentSet xss2,
+                        hole2 `S.notMember` fmvs1,
+                        fvs1 `S.isSubsetOf` argSet2 ->
+                          resolveHole h susList hole2 xss2 t1 cs
+                    (Just (Stuck.VarLocal x1, ctx1), Just (Stuck.VarLocal x2, ctx2))
+                      | x1 == x2,
+                        Just pairList <- Stuck.asPairList ctx1 ctx2 ->
+                          simplify h susList $ map (,orig) pairList ++ cs
+                    (Just (Stuck.VarGlobal g1, ctx1), Just (Stuck.VarGlobal g2, ctx2))
+                      | g1 == g2,
+                        Nothing <- Map.lookup g1 defMap,
+                        Just pairList <- Stuck.asPairList ctx1 ctx2 ->
+                          simplify h susList $ map (,orig) pairList ++ cs
+                      | g1 == g2,
+                        Just lam <- Map.lookup g1 defMap -> do
+                          let h' = increment h
+                          mt1' <- liftIO $ Stuck.resume lam ctx1
+                          mt2' <- liftIO $ Stuck.resume lam ctx2
+                          case (mt1', mt2') of
+                            (Just t1', Just t2') -> do
+                              simplify h' susList $ (C.Eq t1' t2', orig) : cs
+                            _ ->
+                              simplify h (C.SuspendedConstraint (fmvs, headConstraint) : susList) cs
+                      | Just lam1 <- Map.lookup g1 defMap,
+                        Just lam2 <- Map.lookup g2 defMap -> do
+                          let h' = increment h
+                          mt1' <- liftIO $ Stuck.resume lam1 ctx1
+                          mt2' <- liftIO $ Stuck.resume lam2 ctx2
+                          case (mt1', mt2') of
+                            (Just t1', Just t2') -> do
+                              simplify h' susList $ (C.Eq t1' t2', orig) : cs
+                            _ ->
+                              simplify h (C.SuspendedConstraint (fmvs, headConstraint) : susList) cs
+                    (Just (Stuck.VarGlobal g1, ctx1), _)
+                      | Just lam <- Map.lookup g1 defMap -> do
+                          -- liftIO $ putStrLn $ "found: " <> show g1
+                          let h' = increment h
+                          mt1' <- liftIO $ Stuck.resume lam ctx1
+                          case mt1' of
+                            Just t1' -> do
+                              -- liftIO $ putStrLn "stuck-success"
+                              simplify h' susList $ (C.Eq t1' t2, orig) : cs
+                            Nothing -> do
+                              -- liftIO $ putStrLn "stuck-fail"
+                              simplify h (C.SuspendedConstraint (fmvs, headConstraint) : susList) cs
+                    (_, Just (Stuck.VarGlobal g2, ctx2))
+                      | Just lam <- Map.lookup g2 defMap -> do
+                          -- liftIO $ putStrLn $ "found: " <> show g2
+                          let h' = increment h
+                          mt2' <- liftIO $ Stuck.resume lam ctx2
+                          case mt2' of
+                            Just t2' -> do
+                              -- liftIO $ putStrLn "stuck-success (2)"
+                              simplify h' susList $ (C.Eq t1 t2', orig) : cs
+                            Nothing -> do
+                              -- liftIO $ putStrLn "stuck-fail (2)"
+                              simplify h (C.SuspendedConstraint (fmvs, headConstraint) : susList) cs
+                    _ -> do
+                      when (S.null fmvs) $ do
+                        let describe ty =
+                              case ty of
+                                _ :< WT.Tau ->
+                                  "Tau"
+                                _ :< WT.TVar {} ->
+                                  "TVar"
+                                _ :< WT.TVarGlobal _ _ ->
+                                  "TVarGlobal"
+                                _ :< WT.TyApp {} ->
+                                  "TyApp"
+                                _ :< WT.Pi {} ->
+                                  "Pi"
+                                _ :< WT.Data {} ->
+                                  "Data"
+                                _ :< WT.Box {} ->
+                                  "Box"
+                                _ :< WT.BoxNoema {} ->
+                                  "BoxNoema"
+                                _ :< WT.Code {} ->
+                                  "Code"
+                                _ :< WT.PrimType {} ->
+                                  "PrimType"
+                                _ :< WT.Void ->
+                                  "Void"
+                                _ :< WT.Resource {} ->
+                                  "Resource"
+                                _ :< WT.TypeHole {} ->
+                                  "TypeHole"
+                        liftIO $
+                          putStrLn $
+                            showFilePos (WT.metaOfType t1)
+                              <> " eq-suspend(no-holes): "
+                              <> describe t1
+                              <> " vs "
+                              <> describe t2
+                              <> " | "
+                              <> T.unpack (toTextType t1)
+                              <> " vs "
+                              <> T.unpack (toTextType t2)
+                      simplify h (C.SuspendedConstraint (fmvs, headConstraint) : susList) cs
 
-resolveTypeHole ::
+{-# INLINE resolveHole #-}
+resolveHole ::
   Handle ->
   [SuspendedConstraint] ->
-  WT.WeakType ->
   HID.HoleID ->
-  [WT.WeakType] ->
+  [Ident] ->
   WT.WeakType ->
   [(C.Constraint, C.Constraint)] ->
   App [SuspendedConstraint]
-resolveTypeHole h susList holeTerm hole args t cs = do
-  case (mapM asIdentType args, hole `S.notMember` holesType t) of
-    (Just xs, True)
-      | Just argSet <- toLinearIdentSet xs,
-        freeVarsType t `S.isSubsetOf` argSet -> do
-          liftIO $ Hole.insertTypeSubst (holeHandle h) hole xs t
-          let (susList1, susList2) = partition (\(C.SuspendedConstraint (hs, _)) -> S.member hole hs) susList
-          let susList1' = map (\(C.SuspendedConstraint (_, c)) -> c) susList1
-          simplify h susList2 $ reverse susList1' ++ cs
-    _ -> do
-      let fmvs = S.union (holesType holeTerm) (holesType t)
-      let uc = C.SuspendedConstraint (fmvs, (C.Eq holeTerm t, C.Eq holeTerm t))
-      simplify h (uc : susList) cs
+resolveHole h susList hole1 xs e2' cs = do
+  liftIO $ Hole.insertTypeSubst (holeHandle h) hole1 xs e2'
+  let (susList1, susList2) = partition (\(C.SuspendedConstraint (hs, _)) -> S.member hole1 hs) susList
+  let susList1' = map (\(C.SuspendedConstraint (_, c)) -> c) susList1
+  simplify h susList2 $ reverse susList1' ++ cs
 
 simplifyBinder ::
   Handle ->
@@ -234,7 +332,7 @@ simplifyBinder' ::
 simplifyBinder' h orig sub args1 args2 =
   case (args1, args2) of
     ((m1, x1, t1) : xts1, (_, x2, t2) : xts2) -> do
-      let t2' = substType sub t2
+      t2' <- substTypeWith sub t2
       let sub' = IntMap.insert (Ident.toInt x2) (Right (m1 :< WT.TVar x1)) sub
       rest <- simplifyBinder' h orig sub' xts1 xts2
       return $ (C.Eq t1 t2', orig) : rest
@@ -292,7 +390,9 @@ simplifyActual h m dataNameSet t orig = do
           then return []
           else mapM (getConsArgTypes h m . (\(name, _, _) -> name)) consNameList
       constraintsFromDataConsArgs <- fmap concat $ forM dataConsArgsList $ \dataConsArgs -> do
-        return $ map (\(_, _, consArg) -> C.SuspendedConstraint (holesType consArg, (C.Actual consArg, orig))) dataConsArgs
+        dataConsArgs' <- liftIO $ substConsArgs IntMap.empty dataConsArgs
+        fmap concat $ forM dataConsArgs' $ \(_, _, consArg) -> do
+          simplifyActual h m dataNameSet' consArg orig
       return $ constraintsFromDataArgs ++ constraintsFromDataConsArgs
     _ :< WT.Box t'' -> do
       simplifyActual h m dataNameSet t'' orig
@@ -362,47 +462,54 @@ lookupAnyType is sub =
         _ ->
           lookupAnyType js sub
 
-substType :: WT.SubstWeakType -> WT.WeakType -> WT.WeakType
-substType sub ty =
-  case ty of
-    m :< WT.TVar x
-      | Just varOrType <- IntMap.lookup (Ident.toInt x) sub ->
-          case varOrType of
-            Left x' ->
-              m :< WT.TVar x'
-            Right t ->
-              t
-      | otherwise ->
-          ty
-    _ :< WT.Tau ->
-      ty
-    _ :< WT.TVarGlobal {} ->
-      ty
-    m :< WT.TyApp t args ->
-      m :< WT.TyApp (substType sub t) (map (substType sub) args)
-    m :< WT.Pi piKind impArgs defaultArgs expArgs t ->
-      let impArgs' = map (substTypeBinder sub) impArgs
-          expArgs' = map (substTypeBinder sub) expArgs
-          bound = map (\(_, x, _) -> Ident.toInt x) (impArgs ++ map fst defaultArgs ++ expArgs)
-          sub' = foldr IntMap.delete sub bound
-       in m :< WT.Pi piKind impArgs' defaultArgs expArgs' (substType sub' t)
-    m :< WT.Data attr name es ->
-      m :< WT.Data attr name (map (substType sub) es)
-    m :< WT.Box t ->
-      m :< WT.Box (substType sub t)
-    m :< WT.BoxNoema t ->
-      m :< WT.BoxNoema (substType sub t)
-    m :< WT.Code t ->
-      m :< WT.Code (substType sub t)
-    _ :< WT.PrimType {} ->
-      ty
-    _ :< WT.Void ->
-      ty
-    m :< WT.Resource dd resourceID unitType discarder copier typeTag ->
-      m :< WT.Resource dd resourceID (substType sub unitType) discarder copier typeTag
-    m :< WT.TypeHole hole es ->
-      m :< WT.TypeHole hole (map (substType sub) es)
+substConsArgs :: WT.SubstWeakType -> [BinderF WT.WeakType] -> IO [BinderF WT.WeakType]
+substConsArgs sub consArgs =
+  case consArgs of
+    [] ->
+      return []
+    (m, x, t) : rest -> do
+      t' <- substTypeWith sub t
+      let opaque = m :< WT.Tau -- allow `a` in `Cons(a: type, x: a)`
+      let sub' = IntMap.insert (Ident.toInt x) (Right opaque) sub
+      rest' <- substConsArgs sub' rest
+      return $ (m, x, t') : rest'
 
-substTypeBinder :: WT.SubstWeakType -> BinderF WT.WeakType -> BinderF WT.WeakType
-substTypeBinder sub (m, x, t) =
-  (m, x, substType sub t)
+createDefaultConstraints ::
+  [BinderF WT.WeakType] ->
+  [(BinderF WT.WeakType, WT.WeakTerm)] ->
+  [BinderF WT.WeakType] ->
+  [(BinderF WT.WeakType, WT.WeakTerm)] ->
+  Maybe ([(BinderF WT.WeakType, BinderF WT.WeakType)], [C.Constraint])
+createDefaultConstraints impArgs1 defaultArgs1 impArgs2 defaultArgs2 = do
+  let params1 = map (,Nothing) impArgs1 ++ map (second Just) defaultArgs1
+  let params2 = map (,Nothing) impArgs2 ++ map (second Just) defaultArgs2
+  createDefaultConstraints' params1 params2
+
+createDefaultConstraints' ::
+  [(BinderF WT.WeakType, Maybe WT.WeakTerm)] ->
+  [(BinderF WT.WeakType, Maybe WT.WeakTerm)] ->
+  Maybe ([(BinderF WT.WeakType, BinderF WT.WeakType)], [C.Constraint])
+createDefaultConstraints' params1 params2 = do
+  case (params1, params2) of
+    ([], []) ->
+      Just ([], [])
+    (_ : _, []) ->
+      Nothing
+    ([], _ : _) ->
+      Nothing
+    ((binder1, me1) : rest1, (binder2, me2) : rest2) -> do
+      case (me1, me2) of
+        (Nothing, Nothing) -> do
+          (binders, cs) <- createDefaultConstraints' rest1 rest2
+          return ((binder1, binder2) : binders, cs)
+        (Just _, Nothing) ->
+          Nothing
+        (Nothing, Just _) ->
+          Nothing
+        (Just _, Just _) -> do
+          (binders, cs) <- createDefaultConstraints' rest1 rest2
+          return ((binder1, binder2) : binders, cs)
+
+increment :: Handle -> Handle
+increment h = do
+  h {currentStep = currentStep h + 1}

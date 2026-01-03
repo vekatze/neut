@@ -4,7 +4,6 @@ module Language.Common.StmtKind
     StmtKindTerm,
     StmtKindType,
     toOpacityTerm,
-    toOpacityType,
     toLowOpacityTerm,
     toLowOpacityType,
     isMacroStmtKind,
@@ -59,14 +58,6 @@ toOpacityTerm stmtKind =
     Main _ ->
       O.Opaque
     DataIntro {} ->
-      O.Clear
-
-toOpacityType :: BaseStmtKindType name x -> O.Opacity
-toOpacityType stmtKind =
-  case stmtKind of
-    Alias ->
-      O.Clear
-    Data {} ->
       O.Clear
 
 toLowOpacityTerm :: BaseStmtKindTerm name x t -> O.Opacity

@@ -31,16 +31,16 @@ import Kernel.Common.Handle.Global.Platform qualified as Platform
 import Kernel.Common.Handle.Global.Type qualified as Type
 import Kernel.Common.Module (Module (moduleInlineLimit))
 import Kernel.Common.Source
-import Kernel.Elaborate.TypeHoleSubst qualified as THS
 import Kernel.Elaborate.Internal.Handle.Constraint qualified as Constraint
 import Kernel.Elaborate.Internal.Handle.Def qualified as Definition
 import Kernel.Elaborate.Internal.Handle.Hole qualified as Hole
 import Kernel.Elaborate.Internal.Handle.LocalLogs qualified as LocalLogs
 import Kernel.Elaborate.Internal.Handle.WeakDecl qualified as WeakDecl
 import Kernel.Elaborate.Internal.Handle.WeakDef qualified as WeakDef
-import Kernel.Elaborate.Internal.Handle.WeakTypeDef qualified as WeakTypeDef
 import Kernel.Elaborate.Internal.Handle.WeakType qualified as WeakType
+import Kernel.Elaborate.Internal.Handle.WeakTypeDef qualified as WeakTypeDef
 import Kernel.Elaborate.Internal.WeakTerm.Fill qualified as Fill
+import Kernel.Elaborate.TypeHoleSubst qualified as THS
 import Language.Common.Attr.Data qualified as AttrD
 import Language.Common.Binder
 import Language.Common.DefiniteDescription qualified as DD
@@ -100,7 +100,7 @@ reduce h e = do
 reduceType :: Handle -> WT.WeakType -> App WT.WeakType
 reduceType h t = do
   reduceHandle <- liftIO $ Reduce.new (substHandle h) (WT.metaOfType t) (inlineLimit h)
-  Reduce.reduceType reduceHandle t >>= expandTypeDefs h
+  Reduce.reduceType reduceHandle t
 
 fill :: Handle -> THS.TypeHoleSubst -> WT.WeakTerm -> App WT.WeakTerm
 fill h sub e = do

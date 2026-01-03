@@ -9,9 +9,9 @@ import Language.Common.Attr.DataIntro qualified as AttrDI
 import Language.Common.Attr.Lam qualified as AttrL
 import Language.Common.Binder
 import Language.Common.DecisionTree qualified as DT
+import Language.Common.DefaultArgs qualified as DefaultArgs
 import Language.Common.ForeignCodType qualified as FCT
 import Language.Common.HoleID
-import Language.Common.DefaultArgs qualified as DefaultArgs
 import Language.Common.ImpArgs qualified as ImpArgs
 import Language.Common.LowMagic qualified as LM
 import Language.Common.Magic qualified as M
@@ -108,7 +108,7 @@ holesType ty =
     _ :< WT.Void ->
       S.empty
     _ :< WT.Resource _ _ unitType discarder copier typeTag -> do
-      S.unions $ [holesType unitType, holes discarder, holes copier, holes typeTag]
+      S.unions [holesType unitType, holes discarder, holes copier, holes typeTag]
     _ :< WT.TypeHole h es ->
       S.insert h $ S.unions $ map holesType es
 

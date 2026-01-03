@@ -13,7 +13,7 @@ import Language.Common.HoleID qualified as HID
 import Language.Common.Ident
 import Language.WeakTerm.WeakTerm qualified as WT
 
-data Handle = Handle
+newtype Handle = Handle
   { typeHoleSubstRef :: IORef THS.TypeHoleSubst
   }
 

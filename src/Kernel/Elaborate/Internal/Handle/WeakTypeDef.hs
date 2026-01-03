@@ -8,12 +8,10 @@ module Kernel.Elaborate.Internal.Handle.WeakTypeDef
   )
 where
 
-import Control.Monad (when)
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Language.Common.Binder
 import Language.Common.DefiniteDescription qualified as DD
-import Language.Common.Opacity qualified as O
 import Language.WeakTerm.WeakTerm qualified as WT
 import Prelude hiding (lookup, read)
 
@@ -31,11 +29,10 @@ new = do
   typeDefMapRef <- newIORef Map.empty
   return $ Handle {..}
 
-insert' :: Handle -> O.Opacity -> DD.DefiniteDescription -> [BinderF WT.WeakType] -> WT.WeakType -> IO ()
-insert' h opacity name binders body =
-  when (opacity == O.Clear) $
-    modifyIORef' (typeDefMapRef h) $
-      Map.insert name (TypeDef {typeDefBinders = binders, typeDefBody = body})
+insert' :: Handle -> DD.DefiniteDescription -> [BinderF WT.WeakType] -> WT.WeakType -> IO ()
+insert' h name binders body = do
+  modifyIORef' (typeDefMapRef h) $
+    Map.insert name (TypeDef {typeDefBinders = binders, typeDefBody = body})
 
 lookup' :: Handle -> DD.DefiniteDescription -> IO (Maybe TypeDef)
 lookup' h name = do

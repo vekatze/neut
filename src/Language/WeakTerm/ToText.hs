@@ -33,7 +33,7 @@ toText term =
     _ :< WT.Var x ->
       showVariable x
     _ :< WT.VarGlobal _ x ->
-      showGlobalVariable x
+      "GLOBAL" <> showGlobalVariable x
     _ :< WT.PiIntro attr impArgs defaultArgs expArgs e -> do
       case attr of
         AttrL.Attr {lamKind = LK.Fix opacity (_, x, codType)} ->
@@ -69,8 +69,8 @@ toText term =
       "exact " <> toText e
     _ :< WT.DataIntro (AttrDI.Attr {..}) consName _ consArgs -> do
       if isConstLike
-        then showGlobalVariable consName
-        else showApp (showGlobalVariable consName) (map toText consArgs)
+        then "data-constlike: " <> showGlobalVariable consName
+        else "data:" <> showApp (showGlobalVariable consName) (map toText consArgs)
     _ :< WT.DataElim isNoetic xets tree -> do
       if isNoetic
         then "case " <> showMatchArgs xets <> " " <> inBrace (showDecisionTree tree)
@@ -121,21 +121,21 @@ toTextType ty =
     _ :< WT.TVar x ->
       showVariable x
     _ :< WT.TVarGlobal _ x ->
-      showGlobalVariable x
+      "GLOBAL" <> showGlobalVariable x
     _ :< WT.TyApp t args ->
       showApp (toTextType t) (map toTextType args)
     _ :< WT.Pi piKind impArgs defaultArgs expArgs cod -> do
       case piKind of
         PK.Normal isConstLike ->
           if isConstLike
-            then showImpArgsForAll impArgs defaultArgs <> toTextType cod
+            then "pi-constlike: " <> showImpArgsForAll impArgs defaultArgs <> toTextType cod
             else showImpArgs impArgs defaultArgs <> inParen (showDomArgList expArgs) <> " -> " <> toTextType cod
         PK.DataIntro _ -> do
-          showImpArgsForAll impArgs defaultArgs <> toTextType cod
+          "pi-data-intro" <> showImpArgsForAll impArgs defaultArgs <> toTextType cod
     _ :< WT.Data (AttrD.Attr {..}) name es -> do
       if isConstLike
-        then showGlobalVariable name
-        else showApp (showGlobalVariable name) (map toTextType es)
+        then "DATA" <> showGlobalVariable name
+        else "DATA" <> showApp (showGlobalVariable name) (map toTextType es)
     _ :< WT.Box t ->
       "meta " <> toTextType t
     _ :< WT.BoxNoema t ->

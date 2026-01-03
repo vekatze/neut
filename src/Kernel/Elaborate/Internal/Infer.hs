@@ -94,7 +94,6 @@ inferStmt h stmt =
       (expArgs', h''') <- inferBinder' h'' expArgs
       codType' <- inferType h''' codType
       body' <- inferType h''' body
-      checkIsTypeType h''' m codType'
       liftIO $ insertType h''' x $ m :< WT.Pi (PK.Normal isConstLike) impArgs' defaultArgs' expArgs' codType'
       stmtKind' <- inferStmtKindType h''' stmtKind
       return $ WeakStmtDefineType isConstLike stmtKind' m x impArgs' defaultArgs' expArgs' codType' body'
@@ -689,11 +688,11 @@ inferClause h cursorType decisionCase =
       let attr = AttrVG.Attr {..}
       let dataArgs' = ImpArgs.FullySpecified $ map fst typedDataArgs'
       consTerm@(_, consType) <- infer h $ m :< WT.PiElim False (m :< WT.VarGlobal attr consDD) dataArgs' (DefaultArgs.FullySpecified []) []
-      let impConsArgs = ImpArgs.FullySpecified []
-      let expConsArgs = map (\(mx, x, t) -> (mx :< WT.Var x, t)) consArgs'
       if isConstLike
         then liftIO $ Constraint.insert (constraintHandle h) cursorType consType
         else do
+          let impConsArgs = ImpArgs.FullySpecified []
+          let expConsArgs = map (\(mx, x, t) -> (mx :< WT.Var x, t)) consArgs'
           (_, tPat) <- inferPiElim h m consTerm impConsArgs (DefaultArgs.FullySpecified []) expConsArgs
           liftIO $ Constraint.insert (constraintHandle h) cursorType tPat
       (cont', tCont) <- inferDecisionTree m h cont

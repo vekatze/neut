@@ -3,18 +3,23 @@ module Kernel.Elaborate.Stuck
     EvalCtx,
     EvalCtxF (..),
     Stuck,
-    asStuckedTerm,
+    asStuckedType,
     resume,
     asPairList,
   )
 where
 
+import App.App (App)
 import Control.Comonad.Cofree
+import Control.Monad.IO.Class (MonadIO (liftIO))
+import Data.IntMap qualified as IntMap
 import Kernel.Elaborate.Constraint qualified as C
+import Kernel.Elaborate.Internal.Handle.WeakTypeDef (TypeDef (..))
 import Language.Common.DefiniteDescription qualified as DD
-import Language.Common.DefaultArgs qualified as DefaultArgs
+import Language.Common.HoleID qualified as HID
 import Language.Common.Ident
-import Language.Common.ImpArgs qualified as ImpArgs
+import Language.Common.Ident.Reify qualified as Ident
+import Language.WeakTerm.Subst (substTypeWith)
 import Language.WeakTerm.WeakPrimValue qualified as WPV
 import Language.WeakTerm.WeakTerm qualified as WT
 import Logger.Hint
@@ -22,60 +27,58 @@ import Logger.Hint
 data EvalBase
   = VarLocal Ident
   | VarGlobal DD.DefiniteDescription
+  | Hole HID.HoleID [WT.WeakType]
   | Prim (WPV.WeakPrimValue WT.WeakType)
 
 type EvalCtx = Cofree EvalCtxF Hint
 
 data EvalCtxF a
   = Base
-  | PiElim a (ImpArgs.ImpArgs WT.WeakType) (DefaultArgs.DefaultArgs WT.WeakTerm) [WT.WeakTerm]
+  | App a [WT.WeakType]
 
 type Stuck = (EvalBase, EvalCtx)
 
-asStuckedTerm :: WT.WeakTerm -> Maybe Stuck
-asStuckedTerm term =
+asStuckedType :: WT.WeakType -> Maybe Stuck
+asStuckedType term =
   case term of
-    m :< WT.Var x ->
+    m :< WT.TVar x ->
       Just (VarLocal x, m :< Base)
-    m :< WT.VarGlobal _ g ->
+    m :< WT.TVarGlobal _ g ->
       Just (VarGlobal g, m :< Base)
-    m :< WT.Prim prim ->
-      Just (Prim prim, m :< Base)
-    m :< WT.PiElim False e impArgs defaultArgs expArgs -> do
-      (base, ctx) <- asStuckedTerm e
-      return (base, m :< PiElim ctx impArgs defaultArgs expArgs)
+    m :< WT.TypeHole h es ->
+      Just (Hole h es, m :< Base)
+    m :< WT.TyApp e args -> do
+      (base, ctx) <- asStuckedType e
+      return (base, m :< App ctx args)
     _ ->
       Nothing
 
-resume :: WT.WeakTerm -> EvalCtx -> WT.WeakTerm
-resume e ctx =
-  case ctx of
-    _ :< Base ->
-      e
-    m :< PiElim ctx' impArgs defaultArgs expArgs ->
-      m :< WT.PiElim False (resume e ctx') impArgs defaultArgs expArgs -- inferred pi-elims are explicit
+resume :: TypeDef -> EvalCtx -> IO (Maybe WT.WeakType)
+resume typeDef ctx = do
+  let TypeDef {typeDefBinders, typeDefBody} = typeDef
+  case (typeDefBinders, ctx) of
+    ([], _ :< Base) ->
+      return $ Just typeDefBody
+    (params, _ :< App ctx' args)
+      | length params == length args -> do
+          mInner <- resume (TypeDef [] typeDefBody) ctx'
+          case mInner of
+            Just inner -> do
+              let sub = IntMap.fromList $ zipWith (\(_, x, _) t -> (Ident.toInt x, Right t)) params args
+              Just <$> substTypeWith sub inner
+            Nothing ->
+              return Nothing
+    _ ->
+      return Nothing
 
 asPairList :: EvalCtx -> EvalCtx -> Maybe [C.Constraint]
 asPairList ctx1 ctx2 =
   case (ctx1, ctx2) of
     (_ :< Base, _ :< Base) ->
       Just []
-    (_ :< PiElim ctx1' impArgs1 _ expArgs1, _ :< PiElim ctx2' impArgs2 _ expArgs2)
-      | ImpArgs.Unspecified <- impArgs1,
-        ImpArgs.FullySpecified _ <- impArgs2 ->
-          Nothing
-      | ImpArgs.FullySpecified _ <- impArgs1,
-        ImpArgs.Unspecified <- impArgs2 ->
-          Nothing
-      | length expArgs1 /= length expArgs2 ->
-          Nothing
-      | ImpArgs.FullySpecified impArgs1' <- impArgs1,
-        ImpArgs.FullySpecified impArgs2' <- impArgs2 -> do
+    (_ :< App ctx1' args1, _ :< App ctx2' args2)
+      | length args1 == length args2 -> do
           pairList <- asPairList ctx1' ctx2'
-          return $ zipWith C.Eq impArgs1' impArgs2' ++ pairList
-      | ImpArgs.Unspecified <- impArgs1,
-        ImpArgs.Unspecified <- impArgs2 -> do
-          pairList <- asPairList ctx1' ctx2'
-          return pairList
+          return $ zipWith C.Eq args1 args2 ++ pairList
     _ ->
       Nothing

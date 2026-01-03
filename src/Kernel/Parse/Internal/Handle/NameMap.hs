@@ -258,9 +258,12 @@ _getGlobalNames' stmt = do
     StmtDefine isConstLike stmtKind (SavedHint m) name impArgs defaultArgs expArgs _ _ -> do
       let defaultBinders = map fst defaultArgs
       let allArgNum = AN.fromInt $ length $ impArgs ++ defaultBinders ++ expArgs
-      let mTag = stmtKindTermToNominalTag stmtKind
-      let isMacro = stmtKindTermIsMacro stmtKind
-      [(name, (m, mTag, GN.TopLevelFuncTerm allArgNum isConstLike isMacro))]
+      case stmtKindTermToNominalTag stmtKind of
+        Just tag -> do
+          let isMacro = stmtKindTermIsMacro stmtKind
+          [(name, (m, Just tag, GN.TopLevelFuncTerm allArgNum isConstLike isMacro))]
+        Nothing ->
+          []
     StmtDefineType isConstLike stmtKind (SavedHint m) name impArgs defaultArgs expArgs _ _ -> do
       let defaultBinders = map fst defaultArgs
       let allArgNum = AN.fromInt $ length $ impArgs ++ defaultBinders ++ expArgs
