@@ -20,6 +20,7 @@ import Data.List (find)
 import Data.Text qualified as T
 import Gensym.Gensym qualified as Gensym
 import Gensym.Handle qualified as GensymHandle
+import Kernel.Elaborate.Internal.Handle.TypeDef qualified as TypeDef
 import Language.Common.Attr.Data qualified as AttrD
 import Language.Common.Attr.DataIntro qualified as AttrDI
 import Language.Common.Attr.Lam qualified as AttrL
@@ -56,6 +57,9 @@ data DefInfo = DefInfo
 type DefMap =
   Map.HashMap DD.DefiniteDescription DefInfo
 
+type TypeDefMap =
+  TypeDef.TypeDefMap
+
 data GuardEntry = GuardEntry
   { guardFunction :: DD.DefiniteDescription,
     guardTypeArgs :: [TM.Type],
@@ -66,6 +70,7 @@ data Handle = Handle
   { substHandle :: Subst.Handle,
     refreshHandle :: Refresh.Handle,
     dmap :: DefMap,
+    typeDefMap :: TypeDefMap,
     inlineLimit :: Int,
     currentStepRef :: IORef Int,
     location :: Hint,
@@ -73,8 +78,8 @@ data Handle = Handle
     gensymHandle :: GensymHandle.Handle
   }
 
-new :: GensymHandle.Handle -> DefMap -> Hint -> Int -> IO Handle
-new gensymHandle dmap location inlineLimit = do
+new :: GensymHandle.Handle -> DefMap -> TypeDefMap -> Hint -> Int -> IO Handle
+new gensymHandle dmap typeDefMap location inlineLimit = do
   let substHandle = Subst.new gensymHandle
   let refreshHandle = Refresh.new gensymHandle
   currentStepRef <- liftIO $ newIORef 0
@@ -343,9 +348,20 @@ inlineType' h ty =
     _ :< TM.TVarGlobal {} ->
       return ty
     m :< TM.TyApp t args -> do
-      t' <- inlineType' h t
-      args' <- mapM (inlineType' h) args
-      return $ m :< TM.TyApp t' args'
+      case t of
+        _ :< TM.TVarGlobal _ dd
+          | Just typeDefInfo <- Map.lookup dd (typeDefMap h),
+            TypeDef.TypeDefInfo {TypeDef.typeDefBinders = binders, TypeDef.typeDefBody = body} <- typeDefInfo,
+            length binders == length args -> do
+              args' <- mapM (inlineType' h) args
+              let binderIds = map (\(_, x, _) -> x) binders
+              let subType = IntMap.fromList $ zip (map Ident.toInt binderIds) (map Right args')
+              body' <- liftIO $ Subst.substTypeWith subType body
+              inlineType' h body'
+        _ -> do
+          t' <- inlineType' h t
+          args' <- mapM (inlineType' h) args
+          return $ m :< TM.TyApp t' args'
     m :< TM.Pi piKind impArgs defaultArgs expArgs cod -> do
       impArgs' <- mapM (inlineTypeBinder h) impArgs
       defaultArgs' <- mapM (bimapM (inlineTypeBinder h) (inline' h)) defaultArgs

@@ -32,6 +32,7 @@ import Kernel.Elaborate.Internal.Handle.Constraint qualified as Constraint
 import Kernel.Elaborate.Internal.Handle.Def qualified as Definition
 import Kernel.Elaborate.Internal.Handle.Elaborate
 import Kernel.Elaborate.Internal.Handle.Hole qualified as Hole
+import Kernel.Elaborate.Internal.Handle.TypeDef qualified as TypeDef
 import Kernel.Elaborate.Internal.Handle.LocalLogs qualified as LocalLogs
 import Kernel.Elaborate.Internal.Handle.WeakDecl qualified as WeakDecl
 import Kernel.Elaborate.Internal.Handle.WeakDef qualified as WeakDef
@@ -239,8 +240,10 @@ insertStmt h stmt = do
           liftIO $ Type.insert' (typeHandle h) f $ weakenType $ m :< TM.Pi (PK.Normal isConstLike) impArgs defaultArgs expArgs t
       let isInlineFlag = SK.isInlineStmtKind stmtKind
       liftIO $ Definition.insert' (defHandle h) (SK.toOpacityTerm stmtKind) f (impArgs ++ map fst defaultArgs ++ expArgs) e t isInlineFlag
-    StmtDefineType isConstLike _stmtKind (SavedHint m) f impArgs defaultArgs expArgs t _body -> do
+    StmtDefineType isConstLike _stmtKind (SavedHint m) f impArgs defaultArgs expArgs t body -> do
       liftIO $ Type.insert' (typeHandle h) f $ weakenType $ m :< TM.Pi (PK.Normal isConstLike) impArgs defaultArgs expArgs t
+      let allBinders = impArgs ++ map fst defaultArgs ++ expArgs
+      liftIO $ TypeDef.insert' (typeDefHandle h) f allBinders body
     StmtVariadic {} ->
       return ()
     StmtForeign _ -> do
@@ -588,7 +591,8 @@ elaborateWeakBinder h (m, x, t) = do
 inlineType :: Handle -> Hint -> TM.Type -> App TM.Type
 inlineType h m t = do
   dmap <- liftIO $ Definition.get' (defHandle h)
-  inlineHandle <- liftIO $ Inline.new (gensymHandle h) dmap m (inlineLimit h)
+  typeDefMap <- liftIO $ TypeDef.get' (typeDefHandle h)
+  inlineHandle <- liftIO $ Inline.new (gensymHandle h) dmap typeDefMap m (inlineLimit h)
   Inline.inlineType inlineHandle t
 
 elaborateLet :: Handle -> (BinderF WT.WeakType, WT.WeakTerm) -> App (BinderF TM.Type, TM.Term)

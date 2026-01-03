@@ -34,6 +34,7 @@ import Kernel.Common.Source
 import Kernel.Elaborate.Internal.Handle.Constraint qualified as Constraint
 import Kernel.Elaborate.Internal.Handle.Def qualified as Definition
 import Kernel.Elaborate.Internal.Handle.Hole qualified as Hole
+import Kernel.Elaborate.Internal.Handle.TypeDef qualified as TypeDef
 import Kernel.Elaborate.Internal.Handle.LocalLogs qualified as LocalLogs
 import Kernel.Elaborate.Internal.Handle.WeakDecl qualified as WeakDecl
 import Kernel.Elaborate.Internal.Handle.WeakDef qualified as WeakDef
@@ -64,6 +65,7 @@ data Handle = Handle
     typeHandle :: Type.Handle,
     weakDeclHandle :: WeakDecl.Handle,
     defHandle :: Definition.Handle,
+    typeDefHandle :: TypeDef.Handle,
     gensymHandle :: Gensym.Handle,
     keyArgHandle :: KeyArg.Handle,
     localLogsHandle :: LocalLogs.Handle,
@@ -87,6 +89,7 @@ new globalHandle@(Global.Handle {..}) (Local.Handle {..}) currentSource = do
   constraintHandle <- Constraint.new
   holeHandle <- Hole.new
   weakTypeDefHandle <- WeakTypeDef.new
+  typeDefHandle <- TypeDef.new
   weakTypeHandle <- WeakType.new
   let varEnv = []
   let currentStep = 0
@@ -119,13 +122,15 @@ fillType h sub t = do
 inline :: Handle -> Hint -> TM.Term -> App TM.Term
 inline h m e = do
   dmap <- liftIO $ Definition.get' (defHandle h)
-  inlineHandle <- liftIO $ Inline.new (gensymHandle h) dmap m (inlineLimit h)
+  typeDefMap <- liftIO $ TypeDef.get' (typeDefHandle h)
+  inlineHandle <- liftIO $ Inline.new (gensymHandle h) dmap typeDefMap m (inlineLimit h)
   Inline.inline inlineHandle e
 
 inlineBinder :: Handle -> BinderF TM.Type -> App (BinderF TM.Type)
 inlineBinder h (m, x, t) = do
   dmap <- liftIO $ Definition.get' (defHandle h)
-  inlineHandle <- liftIO $ Inline.new (gensymHandle h) dmap m (inlineLimit h)
+  typeDefMap <- liftIO $ TypeDef.get' (typeDefHandle h)
+  inlineHandle <- liftIO $ Inline.new (gensymHandle h) dmap typeDefMap m (inlineLimit h)
   t' <- Inline.inlineType inlineHandle t
   return (m, x, t')
 
