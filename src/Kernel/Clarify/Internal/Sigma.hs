@@ -226,7 +226,7 @@ storeAtOffset h argVar size index comp = do
       C.UpElim True tmpVarName comp $
         C.Primitive $
           C.Magic $
-            LM.Store BLT.Pointer BLT.Pointer tmpVar pointerVar
+            LM.Store BLT.Pointer (C.SigmaIntro []) tmpVar pointerVar
 
 -- lam z.
 --   let-without-free (x1, ..., xn) := z;

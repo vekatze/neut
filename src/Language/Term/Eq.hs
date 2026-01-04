@@ -180,7 +180,7 @@ eqTermMagic magic1 magic2 =
         (LM.Cast from1 to1 val1, LM.Cast from2 to2 val2) ->
           eqType from1 from2 && eqType to1 to2 && eqTerm val1 val2
         (LM.Store lt1 unit1 val1 ptr1, LM.Store lt2 unit2 val2 ptr2) ->
-          lt1 == lt2 && unit1 == unit2 && eqTerm val1 val2 && eqTerm ptr1 ptr2
+          lt1 == lt2 && eqType unit1 unit2 && eqTerm val1 val2 && eqTerm ptr1 ptr2
         (LM.Load lt1 ptr1, LM.Load lt2 ptr2) ->
           lt1 == lt2 && eqTerm ptr1 ptr2
         (LM.Alloca lt1 size1, LM.Alloca lt2 size2) ->

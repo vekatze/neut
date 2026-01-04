@@ -9,7 +9,7 @@ import Language.Common.ForeignCodType qualified as FCT
 -- lt: lowtype, ty: type expression, a: term
 data LowMagic lt ty a
   = Cast ty ty a -- Cast fromType toType value
-  | Store lt lt a a -- Store valueType unitType value pointer
+  | Store lt ty a a -- Store valueType unitType value pointer
   | Load lt a -- Load valueType pointer
   | Alloca lt a -- Alloca elemType size
   | External [lt] (FCT.ForeignCodType lt) EN.ExternalName [a] [(a, lt)]

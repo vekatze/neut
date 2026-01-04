@@ -147,7 +147,7 @@ weakenMagic m magic = do
             LM.Cast from to value ->
               LM.Cast (weakenType from) (weakenType to) (weaken value)
             LM.Store t unit value pointer ->
-              LM.Store (WT.fromBaseLowType m t) (WT.fromBaseLowType m unit) (weaken value) (weaken pointer)
+              LM.Store (WT.fromBaseLowType m t) (weakenType unit) (weaken value) (weaken pointer)
             LM.Load t pointer ->
               LM.Load (WT.fromBaseLowType m t) (weaken pointer)
             LM.Alloca t size ->

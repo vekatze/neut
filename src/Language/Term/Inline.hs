@@ -164,6 +164,7 @@ inline' h term = do
                       inline' h $ bind (zip expBinders' termArgs) (m :< body')
             (_ :< TM.VarGlobal _ dd)
               | Just defInfo <- Map.lookup dd dmap -> do
+                  liftIO $ putStrLn $ "expand: " <> T.unpack (DD.reify dd)
                   let DefInfo {defBinders = xts, defBody = body, codType, isInline} = defInfo
                   if isInline
                     then do
@@ -353,6 +354,7 @@ inlineType' h ty =
           | Just typeDefInfo <- Map.lookup dd (typeDefMap h),
             TypeDef.TypeDefInfo {TypeDef.typeDefBinders = binders, TypeDef.typeDefBody = body} <- typeDefInfo,
             length binders == length args -> do
+              liftIO $ putStrLn $ "expand (type): " <> T.unpack (DD.reify dd)
               args' <- mapM (inlineType' h) args
               let binderIds = map (\(_, x, _) -> x) binders
               let subType = IntMap.fromList $ zip (map Ident.toInt binderIds) (map Right args')
@@ -370,8 +372,7 @@ inlineType' h ty =
       return $ m :< TM.Pi piKind impArgs' defaultArgs' expArgs' cod'
     m :< TM.Data attr name es -> do
       es' <- mapM (inlineType' h) es
-      attr' <- inlineAttrData h attr
-      return $ m :< TM.Data attr' name es'
+      return $ m :< TM.Data attr name es'
     m :< TM.Box t -> do
       t' <- inlineType' h t
       return $ m :< TM.Box t'

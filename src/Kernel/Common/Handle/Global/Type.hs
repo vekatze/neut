@@ -29,7 +29,6 @@ new = do
 
 insert' :: Handle -> DD.DefiniteDescription -> WeakType -> IO ()
 insert' h k v = do
-  putStrLn $ "insert: " <> T.unpack (DD.reify k)
   modifyIORef' (_typeEnvRef h) $ Map.insert k v
 
 lookup' :: Handle -> Hint -> DD.DefiniteDescription -> App WeakType
