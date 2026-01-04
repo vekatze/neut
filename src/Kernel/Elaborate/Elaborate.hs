@@ -108,12 +108,9 @@ analyzeStmtList h stmtList = do
 
 synthesizeStmtList :: Handle -> Target -> [L.Log] -> [WeakStmt] -> App [Stmt]
 synthesizeStmtList h t logs stmtList = do
-  -- mapM_ viewStmt stmtList
-  -- liftIO $ putStrLn "synthesize-before"
+  -- mapM_ (liftIO . viewStmt) stmtList
   liftIO (Constraint.get (constraintHandle h)) >>= Unify.unify h >>= liftIO . Hole.setTypeSubst (holeHandle h)
-  -- liftIO $ putStrLn "synthesize-after"
   (stmtList', affineErrorList) <- bimap concat concat . unzip <$> mapM (elaborateStmt h) stmtList
-  -- liftIO $ putStrLn "synthesize-after2"
   unless (null affineErrorList) $ do
     throwError $ E.MakeError affineErrorList
   -- mapM_ (liftIO . viewStmt . weakenStmt) stmtList'
@@ -133,93 +130,61 @@ elaborateStmt :: Handle -> WeakStmt -> App ([Stmt], [L.Log])
 elaborateStmt h stmt = do
   case stmt of
     WeakStmtDefineTerm isConstLike stmtKind m x impArgs defaultArgs expArgs codType e -> do
-      -- liftIO $ putStrLn $ "define-term: " <> T.unpack (DD.reify x)
       stmtKind' <- elaborateStmtKindTerm h stmtKind
-      -- liftIO $ putStrLn "elab1"
-      -- sub <- liftIO $ Hole.getTypeSubst (holeHandle h)
-      -- -- liftIO $ putStrLn $ "target: " <> T.unpack (toText e)
-      -- liftIO $ T.putStrLn $ THS.toText sub
       e' <- elaborate' h e
-      -- liftIO $ putStrLn "elab2"
       impArgs' <- mapM (elaborateWeakBinder h) impArgs
-      -- liftIO $ putStrLn "elab3"
       defaultArgs' <- forM defaultArgs $ \(binder, value) -> do
         binder' <- elaborateWeakBinder h binder
         value' <- elaborate' h value
         return (binder', value')
-      -- liftIO $ putStrLn "elab4"
       expArgs' <- mapM (elaborateWeakBinder h) expArgs
-      -- liftIO $ putStrLn "elab5"
       codType' <- elaborateType h codType
-      -- liftIO $ putStrLn "elab6"
       let dummyAttr = AttrL.Attr {lamKind = LK.Normal Nothing codType', identity = 0}
       remarks <- do
         affHandle <- liftIO $ EnsureAffinity.new h
         EnsureAffinity.ensureAffinity affHandle $ m :< TM.PiIntro dummyAttr impArgs' defaultArgs' expArgs' e'
-      -- liftIO $ putStrLn "inline-before"
       e'' <- inline h m e'
-      -- liftIO $ putStrLn "inline-after"
       impArgs'' <- mapM (inlineBinder h) impArgs'
-      -- liftIO $ putStrLn "inline-after2"
       defaultArgs'' <- forM defaultArgs' $ \(binder, value) -> do
         binder' <- inlineBinder h binder
         value' <- inline h m value
         return (binder', value')
-      -- liftIO $ putStrLn "inline-after3"
       expArgs'' <- mapM (inlineBinder h) expArgs'
-      -- liftIO $ putStrLn "inline-after4"
       codType'' <- inlineType h m codType'
-      -- liftIO $ putStrLn "inline-after5"
       when isConstLike $ do
         unless (TM.isValue e'') $ do
           raiseError m "Could not reduce the body of this definition into a constant"
       EnsureTemplateResolved.ensureTemplateResolved h m e''
-      -- liftIO $ putStrLn "template-resolved"
       let result = StmtDefine isConstLike stmtKind' (SavedHint m) x impArgs'' defaultArgs'' expArgs'' codType'' e''
       insertStmt h result
-      -- liftIO $ putStrLn "ok"
       return ([result], remarks)
     WeakStmtDefineType isConstLike stmtKind m x impArgs defaultArgs expArgs codType body -> do
-      -- liftIO $ putStrLn "define-type"
       stmtKind' <- elaborateStmtKindType h stmtKind
-      -- liftIO $ putStrLn "elab"
       impArgs' <- mapM (elaborateWeakBinder h) impArgs
-      -- liftIO $ putStrLn "elab2"
       defaultArgs' <- forM defaultArgs $ \(binder, value) -> do
         binder' <- elaborateWeakBinder h binder
         value' <- elaborate' h value
         return (binder', value')
-      -- liftIO $ putStrLn "elab3"
       expArgs' <- mapM (elaborateWeakBinder h) expArgs
-      -- liftIO $ putStrLn "elab4"
       codType' <- elaborateType h codType
-      -- liftIO $ putStrLn "elab5"
       body' <- elaborateType h body
-      -- liftIO $ putStrLn "elab6"
       impArgs'' <- mapM (inlineBinder h) impArgs'
-      -- liftIO $ putStrLn "inline"
       defaultArgs'' <- forM defaultArgs' $ \(binder, value) -> do
         binder' <- inlineBinder h binder
         value' <- inline h m value
         return (binder', value')
-      -- liftIO $ putStrLn "inline2"
       expArgs'' <- mapM (inlineBinder h) expArgs'
-      -- liftIO $ putStrLn "inline3"
       codType'' <- inlineType h m codType'
-      -- liftIO $ putStrLn "inline4"
       body'' <- inlineType h m body'
       let result = StmtDefineType isConstLike stmtKind' (SavedHint m) x impArgs'' defaultArgs'' expArgs'' codType'' body''
       insertStmt h result
       return ([result], [])
     WeakStmtVariadic kind m dd -> do
-      -- liftIO $ putStrLn "variadic"
       return ([StmtVariadic kind (SavedHint m) dd], [])
     WeakStmtNominal _ geistList -> do
-      -- liftIO $ putStrLn "nominal"
       mapM_ (elaborateGeist h . snd) geistList
       return ([], [])
     WeakStmtForeign foreignList -> do
-      -- liftIO $ putStrLn "foreign"
       foreignList' <- forM foreignList $ \(F.Foreign m externalName domList cod) -> do
         domList' <- mapM (strictify h) domList
         cod' <- mapM (strictify h) cod
@@ -867,8 +832,8 @@ elaborateAttrDataIntro h attr = do
 -- viewStmt :: WeakStmt -> IO ()
 -- viewStmt stmt = do
 --   case stmt of
---     WeakStmtDefine _ _ m x impArgs expArgs codType e -> do
+--     WeakStmtDefineTerm _ _ m x impArgs defArgs expArgs codType e -> do
 --       let attr = AttrL.Attr {lamKind = LK.Normal Nothing codType, identity = 0}
---       putStrLn $ T.unpack $ DD.reify x <> "\n" <> toText (m :< WT.Pi (PK.Normal False) impArgs expArgs codType) <> "\n" <> toText (m :< WT.PiIntro attr impArgs expArgs e)
+--       putStrLn $ T.unpack $ DD.reify x <> "\n" <> toTextType (m :< WT.Pi (PK.Normal False) impArgs defArgs expArgs codType) <> "\n" <> toText (m :< WT.PiIntro attr impArgs defArgs expArgs e)
 --     _ ->
 --       return ()

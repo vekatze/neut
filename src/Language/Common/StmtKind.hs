@@ -110,7 +110,7 @@ isInlineStmtKind stmtKind =
     Define ->
       False
     Inline ->
-      False
+      False -- fixme: should be true
     Macro ->
       True
     Main _ ->

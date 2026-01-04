@@ -16,6 +16,7 @@ import Language.Common.ForeignCodType qualified as FCT
 import Language.Common.HoleID qualified as HID
 import Language.Common.Ident
 import Language.Common.Ident.Reify qualified as Ident
+import Language.Common.ImpArgs qualified as ImpArgs
 import Language.Common.LamKind qualified as LK
 import Language.Common.LowMagic qualified as LM
 import Language.Common.Magic qualified as M
@@ -58,13 +59,16 @@ toText term =
             <> toTextType codType
             <> " "
             <> inBrace (toText e)
-    _ :< WT.PiElim _ e _ _ expArgs -> do
+    _ :< WT.PiElim _ e impArgs _ expArgs -> do
+      let impArgsText = case impArgs of
+            ImpArgs.Unspecified -> ""
+            ImpArgs.FullySpecified ts -> inAngleBracket (T.intercalate ", " (map toTextType ts))
       case e of
         _ :< WT.VarGlobal attr _
           | AttrVG.isConstLike attr ->
-              "<CONST>" <> toText e
-        _ -> do
-          showApp (toText e) (map toText expArgs)
+              "<CONST>" <> toText e <> impArgsText
+        _ ->
+          toText e <> impArgsText <> inParen (T.intercalate ", " (map toText expArgs))
     _ :< WT.PiElimExact e -> do
       "exact " <> toText e
     _ :< WT.DataIntro (AttrDI.Attr {..}) consName _ consArgs -> do
@@ -76,8 +80,8 @@ toText term =
         then "case " <> showMatchArgs xets <> " " <> inBrace (showDecisionTree tree)
         else "match " <> showMatchArgs xets <> " " <> inBrace (showDecisionTree tree)
     _ :< WT.BoxIntro letSeq t -> do
-      let ks = map (\((_, x, _), _) -> x) letSeq
-      "box " <> T.intercalate ", " (map Ident.toText ks) <> inBrace (toText t)
+      let kes = map (\((_, x, _), e) -> (x, e)) letSeq
+      "box " <> T.intercalate ", " (map (\(k, e) -> inParen $ Ident.toText' k <> ", " <> toText e) kes) <> inBrace (toText t)
     _ :< WT.BoxIntroLift e ->
       "lift " <> inBrace (toText e)
     _ :< WT.BoxElim castSeq (_, x, t) e1 _ e2 -> do
@@ -240,7 +244,7 @@ showVariable :: Ident -> T.Text
 showVariable x =
   if isHole x
     then "_"
-    else Ident.toText x
+    else Ident.toText' x
 
 showGlobalVariable :: DD.DefiniteDescription -> T.Text
 showGlobalVariable =

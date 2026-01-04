@@ -6,7 +6,6 @@ module Language.Term.Term
     TypeEnv,
     insTypeEnv,
     isValue,
-    isTypeValue,
     fromLetSeq,
     fromLetSeqOpaque,
     metaOfType,
@@ -21,6 +20,7 @@ import Language.Common.Attr.Data qualified as AttrD
 import Language.Common.Attr.DataIntro qualified as AttrDI
 import Language.Common.Attr.Lam qualified as AttrL
 import Language.Common.Attr.VarGlobal qualified as AttrVG
+import Language.Common.BaseLowType qualified as BLT
 import Language.Common.Binder
 import Language.Common.DecisionTree qualified as DT
 import Language.Common.DefiniteDescription qualified as DD
@@ -32,7 +32,6 @@ import Language.Common.Noema qualified as N
 import Language.Common.Opacity qualified as O
 import Language.Common.PiKind (PiKind)
 import Language.Common.PrimType qualified as PT
-import Language.Common.BaseLowType qualified as BLT
 import Language.Term.PrimValue qualified as PV
 import Logger.Hint
 
@@ -99,34 +98,6 @@ insTypeEnv xts tenv =
     (_, x, t) : rest ->
       insTypeEnv rest $ IntMap.insert (toInt x) t tenv
 
-isTypeValue :: Type -> Bool
-isTypeValue ty =
-  case ty of
-    _ :< Tau ->
-      True
-    _ :< TVar {} ->
-      True
-    _ :< TVarGlobal {} ->
-      True
-    _ :< TyApp t args ->
-      isTypeValue t && all isTypeValue args
-    _ :< Pi {} ->
-      True
-    _ :< Data _ _ args ->
-      all isTypeValue args
-    _ :< Box {} ->
-      True
-    _ :< BoxNoema {} ->
-      True
-    _ :< Code {} ->
-      True
-    _ :< PrimType {} ->
-      True
-    _ :< Void ->
-      True
-    _ :< Resource {} ->
-      True
-
 isValue :: Term -> Bool
 isValue term =
   case term of
@@ -136,8 +107,8 @@ isValue term =
       True
     _ :< PiIntro {} ->
       True
-    _ :< DataIntro _ _ dataArgs consArgs ->
-      all isTypeValue dataArgs && all isValue consArgs
+    _ :< DataIntro _ _ _ consArgs ->
+      all isValue consArgs
     _ :< CodeIntro {} ->
       True
     _ :< Prim {} ->

@@ -56,7 +56,6 @@ import Language.Common.StmtKind qualified as SK
 import Language.LowComp.DeclarationName qualified as DN
 import Language.WeakTerm.CreateHole qualified as WT
 import Language.WeakTerm.Subst (SubstEntry (..))
-
 import Language.WeakTerm.Subst qualified as Subst
 import Language.WeakTerm.ToText (toTextType)
 import Language.WeakTerm.WeakPrimValue qualified as WPV
@@ -74,7 +73,7 @@ inferStmt h stmt =
       (defaultArgs', h'') <- inferImpBinderWithDefaults h' defaultArgs
       (expArgs', h''') <- inferBinder' h'' expArgs
       codType' <- inferType h''' codType
-      when (SK.isInlineStmtKind stmtKind) $
+      when (SK.isMacroStmtKind stmtKind) $
         forM_ (impArgs' ++ map fst defaultArgs') $ \(mx, _, t) ->
           checkIsTypeType h''' mx t
       case stmtKind of

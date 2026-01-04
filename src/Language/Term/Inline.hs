@@ -137,58 +137,53 @@ inline' h term = do
         else do
           let Handle {dmap} = h
           case e' of
-            (_ :< TM.PiIntro (AttrL.Attr {lamKind}) impArgsBinder defaultArgsBinder expArgsBinder body)
-              | length impArgsBinder == length impArgs',
-                expBinders <- map fst defaultArgsBinder ++ expArgsBinder,
-                length expBinders == length expArgs',
+            (_ :< TM.PiIntro (AttrL.Attr {lamKind}) impBinders defBinders expBinders body)
+              | length impBinders == length impArgs',
+                expParams <- map fst defBinders ++ expBinders,
+                length expParams == length expArgs',
                 canReduceByLamKind lamKind -> do
-                  let selfSub = selfSubstForLamKind lamKind e'
-                  let impBinders = impArgsBinder
-                  let typeArgs = impArgs'
-                  let termArgs = expArgs'
-                  let typeArgVals = all TM.isTypeValue typeArgs
-                  let termArgVals = all TM.isValue termArgs
+                  let subSelf = selfSubstForLamKind lamKind e'
                   let impIds = map (\(_, x, _) -> x) impBinders
-                  let subType = IntMap.fromList $ zip (map Ident.toInt impIds) (map Subst.Type typeArgs)
-                  if typeArgVals && termArgVals
+                  let expIds = map (\(_, x, _) -> x) expParams
+                  let subType = IntMap.fromList $ zip (map Ident.toInt impIds) (map Subst.Type impArgs')
+                  let subTerm = IntMap.fromList $ zip (map Ident.toInt expIds) (map Subst.Term expArgs')
+                  if all TM.isValue expArgs'
                     then do
-                      let expIds = map (\(_, x, _) -> x) expBinders
-                      let expSub = IntMap.fromList $ zip (map Ident.toInt expIds) (map Subst.Term termArgs)
-                      let sub = IntMap.unions [expSub, selfSub, subType]
+                      let sub = IntMap.unions [subSelf, subType, subTerm]
                       _ :< body' <- liftIO $ Subst.subst (substHandle h) sub body
                       inline' h $ m :< body'
                     else do
-                      let sub = IntMap.union selfSub subType
-                      bodyTypeSub <- liftIO $ Subst.subst (substHandle h) sub body
-                      (expBinders', _ :< body') <- liftIO $ Subst.subst' (substHandle h) IntMap.empty expBinders bodyTypeSub
-                      inline' h $ bind (zip expBinders' termArgs) (m :< body')
+                      let sub = IntMap.unions [subSelf, subType]
+                      (expParams', _ :< body') <- liftIO $ Subst.subst' (substHandle h) sub expParams body
+                      body'' <- liftIO $ Refresh.refresh (refreshHandle h) $ m :< body'
+                      inline' h $ bind (zip expParams' expArgs') body''
             (_ :< TM.VarGlobal _ dd)
               | Just defInfo <- Map.lookup dd dmap -> do
                   let DefInfo {defBinders = xts, defBody = body, codType, isInline} = defInfo
+                  let impArgNum = length impArgs'
+                  let (impParams, expParams) = splitAt impArgNum xts
+                  let impIds = map (\(_, x, _) -> x) impParams
+                  let expIds = map (\(_, x, _) -> x) expParams
+                  let subType = IntMap.fromList $ zip (map Ident.toInt impIds) (map Subst.Type impArgs')
+                  let subTerm = IntMap.fromList $ zip (map Ident.toInt expIds) (map Subst.Term expArgs')
+                  let sub = IntMap.union subTerm subType
                   if isInline
                     then do
-                      let impArgNum = length impArgs'
-                      let (impBinders, expBinders) = splitAt impArgNum xts
-                      let typeArgs = impArgs'
-                      let termArgs = expArgs'
-                      mSelf <- lookupGuard h dd typeArgs
+                      mSelf <- lookupGuard h dd impArgs'
                       case mSelf of
-                        Just selfTerm ->
-                          return $ m :< TM.PiElim False selfTerm [] termArgs
+                        Just selfTerm -> do
+                          return $ m :< TM.PiElim False selfTerm [] expArgs'
                         Nothing -> do
                           selfIdent <- liftIO $ CreateSymbol.newIdentFromText (gensymHandle h) $ "knot-" <> DD.localLocator dd
-                          let impIds = map (\(_, x, _) -> x) impBinders
-                          let subType = IntMap.fromList $ zip (map Ident.toInt impIds) (map Subst.Type typeArgs)
-                          bodyTypeSub <- liftIO $ Subst.subst (substHandle h) subType body
-                          (expBinders', body') <- liftIO $ Subst.subst' (substHandle h) IntMap.empty expBinders bodyTypeSub
+                          (expBinders', body') <- liftIO $ Subst.subst' (substHandle h) subType expParams body
                           codTypeSub <- liftIO $ Subst.substType (substHandle h) subType codType
-                          let expIdPairs = zip expBinders expBinders'
+                          let expIdPairs = zip expParams expBinders'
                           let subRename =
                                 IntMap.fromList $
                                   map (\((_, x, _), (_, x', _)) -> (Ident.toInt x, Subst.Var x')) expIdPairs
                           codType' <- liftIO $ Subst.substType (substHandle h) subRename codTypeSub
                           let selfType = m :< TM.Pi PK.normal [] [] expBinders' codType'
-                          pushGuard h dd typeArgs (m :< TM.Var selfIdent)
+                          pushGuard h dd impArgs' (m :< TM.Var selfIdent)
                           body'' <- liftIO $ Refresh.refresh (refreshHandle h) body'
                           body''' <- inline' h body''
                           popGuard h
@@ -196,29 +191,17 @@ inline' h term = do
                           let attr = AttrL.Attr {lamKind = LK.Fix O.Opaque (m, selfIdent, selfType), identity}
                           let fun = m :< TM.PiIntro attr [] [] expBinders' body'''
                           let fixVal = m :< TM.PiElim False fun [] []
-                          return $ m :< TM.PiElim False fixVal [] termArgs
+                          return $ m :< TM.PiElim False fixVal [] expArgs'
                     else do
-                      let impArgNum = length impArgs'
-                      let (impBinders, expBinders) = splitAt impArgNum xts
-                      let typeArgs = impArgs'
-                      let termArgs = expArgs'
-                      let typeArgVals = all TM.isTypeValue typeArgs
-                      let termArgVals = all TM.isValue termArgs
-                      let impIds = map (\(_, x, _) -> x) impBinders
-                      let subType = IntMap.fromList $ zip (map Ident.toInt impIds) (map Subst.Type typeArgs)
-                      if typeArgVals && termArgVals
+                      if all TM.isValue expArgs'
                         then do
-                          let expIds = map (\(_, x, _) -> x) expBinders
-                          let expSub = IntMap.fromList $ zip (map Ident.toInt expIds) (map Subst.Term termArgs)
-                          let sub = IntMap.union expSub subType
                           _ :< body' <- liftIO $ Subst.subst (substHandle h) sub body
                           body'' <- liftIO $ Refresh.refresh (refreshHandle h) $ m :< body'
                           inline' h body''
                         else do
-                          bodyTypeSub <- liftIO $ Subst.subst (substHandle h) subType body
-                          (expBinders', _ :< body') <- liftIO $ Subst.subst' (substHandle h) IntMap.empty expBinders bodyTypeSub
+                          (expParams', _ :< body') <- liftIO $ Subst.subst' (substHandle h) subType expParams body
                           body'' <- liftIO $ Refresh.refresh (refreshHandle h) $ m :< body'
-                          inline' h $ bind (zip expBinders' termArgs) body''
+                          inline' h $ bind (zip expParams' expArgs') body''
             (_ :< TM.Prim (PV.Op op)) -> do
               case ConstantFold.evaluatePrimOp m op expArgs' of
                 Just result -> do
