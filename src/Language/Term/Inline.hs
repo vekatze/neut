@@ -149,16 +149,17 @@ inline' h term = do
                   let typeArgVals = all TM.isTypeValue typeArgs
                   let termArgVals = all TM.isValue termArgs
                   let impIds = map (\(_, x, _) -> x) impBinders
-                  let subType = IntMap.fromList $ zip (map Ident.toInt impIds) (map Right typeArgs)
+                  let subType = IntMap.fromList $ zip (map Ident.toInt impIds) (map Subst.Type typeArgs)
                   if typeArgVals && termArgVals
                     then do
                       let expIds = map (\(_, x, _) -> x) expBinders
-                      let expSub = IntMap.fromList $ zip (map Ident.toInt expIds) (map Right termArgs)
-                      let subTerm = IntMap.union expSub selfSub
-                      _ :< body' <- liftIO $ Subst.substWithType (substHandle h) subTerm subType body
+                      let expSub = IntMap.fromList $ zip (map Ident.toInt expIds) (map Subst.Term termArgs)
+                      let sub = IntMap.unions [expSub, selfSub, subType]
+                      _ :< body' <- liftIO $ Subst.subst (substHandle h) sub body
                       inline' h $ m :< body'
                     else do
-                      bodyTypeSub <- liftIO $ Subst.substWithType (substHandle h) selfSub subType body
+                      let sub = IntMap.union selfSub subType
+                      bodyTypeSub <- liftIO $ Subst.subst (substHandle h) sub body
                       (expBinders', _ :< body') <- liftIO $ Subst.subst' (substHandle h) IntMap.empty expBinders bodyTypeSub
                       inline' h $ bind (zip expBinders' termArgs) (m :< body')
             (_ :< TM.VarGlobal _ dd)
@@ -177,14 +178,14 @@ inline' h term = do
                         Nothing -> do
                           selfIdent <- liftIO $ CreateSymbol.newIdentFromText (gensymHandle h) $ "knot-" <> DD.localLocator dd
                           let impIds = map (\(_, x, _) -> x) impBinders
-                          let subType = IntMap.fromList $ zip (map Ident.toInt impIds) (map Right typeArgs)
-                          bodyTypeSub <- liftIO $ Subst.substWithType (substHandle h) IntMap.empty subType body
+                          let subType = IntMap.fromList $ zip (map Ident.toInt impIds) (map Subst.Type typeArgs)
+                          bodyTypeSub <- liftIO $ Subst.subst (substHandle h) subType body
                           (expBinders', body') <- liftIO $ Subst.subst' (substHandle h) IntMap.empty expBinders bodyTypeSub
-                          codTypeSub <- liftIO $ Subst.substTypeWith subType codType
+                          codTypeSub <- liftIO $ Subst.substType (substHandle h) subType codType
                           let expIdPairs = zip expBinders expBinders'
                           let subRename =
                                 IntMap.fromList $
-                                  map (\((_, x, _), (_, x', _)) -> (Ident.toInt x, Left x')) expIdPairs
+                                  map (\((_, x, _), (_, x', _)) -> (Ident.toInt x, Subst.Var x')) expIdPairs
                           codType' <- liftIO $ Subst.substType (substHandle h) subRename codTypeSub
                           let selfType = m :< TM.Pi PK.normal [] [] expBinders' codType'
                           pushGuard h dd typeArgs (m :< TM.Var selfIdent)
@@ -204,16 +205,17 @@ inline' h term = do
                       let typeArgVals = all TM.isTypeValue typeArgs
                       let termArgVals = all TM.isValue termArgs
                       let impIds = map (\(_, x, _) -> x) impBinders
-                      let subType = IntMap.fromList $ zip (map Ident.toInt impIds) (map Right typeArgs)
+                      let subType = IntMap.fromList $ zip (map Ident.toInt impIds) (map Subst.Type typeArgs)
                       if typeArgVals && termArgVals
                         then do
                           let expIds = map (\(_, x, _) -> x) expBinders
-                          let subTerm = IntMap.fromList $ zip (map Ident.toInt expIds) (map Right termArgs)
-                          _ :< body' <- liftIO $ Subst.substWithType (substHandle h) subTerm subType body
+                          let expSub = IntMap.fromList $ zip (map Ident.toInt expIds) (map Subst.Term termArgs)
+                          let sub = IntMap.union expSub subType
+                          _ :< body' <- liftIO $ Subst.subst (substHandle h) sub body
                           body'' <- liftIO $ Refresh.refresh (refreshHandle h) $ m :< body'
                           inline' h body''
                         else do
-                          bodyTypeSub <- liftIO $ Subst.substWithType (substHandle h) IntMap.empty subType body
+                          bodyTypeSub <- liftIO $ Subst.subst (substHandle h) subType body
                           (expBinders', _ :< body') <- liftIO $ Subst.subst' (substHandle h) IntMap.empty expBinders bodyTypeSub
                           body'' <- liftIO $ Refresh.refresh (refreshHandle h) $ m :< body'
                           inline' h $ bind (zip expBinders' termArgs) body''
@@ -242,7 +244,7 @@ inline' h term = do
         else do
           case decisionTree of
             DT.Leaf _ letSeq e -> do
-              let sub = IntMap.fromList $ zip (map Ident.toInt os) (map Right es')
+              let sub = IntMap.fromList $ zip (map Ident.toInt os) (map Subst.Term es')
               liftIO (Subst.subst (substHandle h) sub (TM.fromLetSeq letSeq e)) >>= inline' h
             DT.Unreachable ->
               return $ m :< TM.DataElim isNoetic oets' DT.Unreachable
@@ -251,11 +253,11 @@ inline' h term = do
                 Just (e@(_ :< TM.DataIntro (AttrDI.Attr {..}) _ _ consArgs), oets'') -> do
                   let (newBaseCursorList, cont) = findClause discriminant fallbackTree caseList
                   let newCursorList = zipWith (\(o, t) arg -> (o, arg, t)) newBaseCursorList consArgs
-                  let subst = Subst.subst (substHandle h) (IntMap.singleton (Ident.toInt cursor) (Right e))
+                  let subst = Subst.subst (substHandle h) (IntMap.singleton (Ident.toInt cursor) (Subst.Term e))
                   liftIO (subst $ m :< TM.DataElim isNoetic (oets'' ++ newCursorList) cont) >>= inline' h
                 Just (e, oets'')
                   | Just literal <- asLiteralTerm e -> do
-                      let subst = Subst.subst (substHandle h) (IntMap.singleton (Ident.toInt cursor) (Right e))
+                      let subst = Subst.subst (substHandle h) (IntMap.singleton (Ident.toInt cursor) (Subst.Term e))
                       case findLiteralClause literal caseList of
                         Just cont -> do
                           liftIO (subst $ m :< TM.DataElim isNoetic oets'' cont) >>= inline' h
@@ -292,7 +294,7 @@ inline' h term = do
       case opacity of
         O.Clear
           | TM.isValue e1' -> do
-              let sub = IntMap.singleton (Ident.toInt x) (Right e1')
+              let sub = IntMap.singleton (Ident.toInt x) (Subst.Term e1')
               liftIO (Subst.subst (substHandle h) sub e2) >>= inline' h
         _ -> do
           mxt' <- inlineTypeBinder h mxt
@@ -354,8 +356,8 @@ inlineType' h ty =
             length binders == length args -> do
               args' <- mapM (inlineType' h) args
               let binderIds = map (\(_, x, _) -> x) binders
-              let subType = IntMap.fromList $ zip (map Ident.toInt binderIds) (map Right args')
-              body' <- liftIO $ Subst.substTypeWith subType body
+              let subType = IntMap.fromList $ zip (map Ident.toInt binderIds) (map Subst.Type args')
+              body' <- liftIO $ Subst.substType (substHandle h) subType body
               inlineType' h body'
         _ -> do
           t' <- inlineType' h t
@@ -600,10 +602,10 @@ canReduceByLamKind lamKind =
     _ ->
       False
 
-selfSubstForLamKind :: LK.LamKindF a -> TM.Term -> IntMap.IntMap (Either Ident TM.Term)
+selfSubstForLamKind :: LK.LamKindF a -> TM.Term -> Subst.Subst
 selfSubstForLamKind lamKind selfTerm =
   case lamKind of
     LK.Fix O.Clear (_, selfIdent, _) ->
-      IntMap.singleton (Ident.toInt selfIdent) (Right selfTerm)
+      IntMap.singleton (Ident.toInt selfIdent) (Subst.Term selfTerm)
     _ ->
       IntMap.empty
