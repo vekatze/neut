@@ -650,12 +650,9 @@ decodeImpParams impParams =
 
 decodeImpVar :: RawBinder RawType -> D.Doc
 decodeImpVar (m, x, c1, c2, t) = do
-  let t' = typeToDoc t
   if isHole x
-    then attachComment (c1 ++ c2) t'
-    else do
-      let x' = D.text x
-      paramToDoc' (m, x', c1, c2, t')
+    then attachComment (c1 ++ c2) (typeToDoc t)
+    else paramToDoc (m, D.text x, c1, c2, t)
 
 decodeDefaultParams :: SE.Series (RawBinder RawType, RawTerm) -> D.Doc
 decodeDefaultParams defaultParams =
