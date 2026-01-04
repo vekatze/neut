@@ -33,7 +33,7 @@ toText term =
     _ :< WT.Var x ->
       showVariable x
     _ :< WT.VarGlobal _ x ->
-      "GLOBAL" <> showGlobalVariable x
+      "<GLOBAL>" <> showGlobalVariable x
     _ :< WT.PiIntro attr impArgs defaultArgs expArgs e -> do
       case attr of
         AttrL.Attr {lamKind = LK.Fix opacity (_, x, codType)} ->
@@ -62,7 +62,7 @@ toText term =
       case e of
         _ :< WT.VarGlobal attr _
           | AttrVG.isConstLike attr ->
-              toText e
+              "<CONST>" <> toText e
         _ -> do
           showApp (toText e) (map toText expArgs)
     _ :< WT.PiElimExact e -> do
@@ -183,8 +183,8 @@ showImpDomArg (_, x, _) =
   showVariable x
 
 showDefaultDomArg :: (BinderF WT.WeakType, WT.WeakTerm) -> T.Text
-showDefaultDomArg ((_, x, _), defaultValue) =
-  showVariable x <> " := " <> toText defaultValue
+showDefaultDomArg ((_, x, t), defaultValue) =
+  showVariable x <> ": " <> toTextType t <> " := " <> toText defaultValue
 
 showDataImpArgWithDefault :: (BinderF WT.WeakType, Maybe WT.WeakTerm) -> T.Text
 showDataImpArgWithDefault ((_, x, t), maybeDefault) = do

@@ -12,6 +12,7 @@ import Control.Monad
 import Control.Monad.IO.Class
 import Data.Bitraversable (bimapM)
 import Data.IntMap qualified as IntMap
+import Data.Text qualified as T
 import Kernel.Elaborate.TypeHoleSubst qualified as THS
 import Language.Common.Annotation qualified as AN
 import Language.Common.Attr.Data qualified as AttrD
@@ -19,15 +20,16 @@ import Language.Common.Attr.DataIntro qualified as AttrDI
 import Language.Common.Attr.Lam qualified as AttrL
 import Language.Common.Binder
 import Language.Common.DecisionTree qualified as DT
-import Language.Common.Ident.Reify qualified as Ident
 import Language.Common.DefaultArgs qualified as DefaultArgs
+import Language.Common.ForeignCodType qualified as FCT
+import Language.Common.Ident.Reify qualified as Ident
 import Language.Common.ImpArgs qualified as ImpArgs
 import Language.Common.LamKind qualified as LK
 import Language.Common.LowMagic qualified as LM
 import Language.Common.Magic qualified as M
-import Language.Common.ForeignCodType qualified as FCT
 import Language.WeakTerm.Reduce qualified as Reduce
 import Language.WeakTerm.Subst qualified as Subst
+import Language.WeakTerm.ToText qualified as WT
 import Language.WeakTerm.WeakTerm qualified as WT
 import Prelude hiding (lookup)
 
@@ -178,7 +180,8 @@ fillType h holeSubst ty =
               let sub = IntMap.fromList $ zip varList (map Right es')
               liftIO (substType sub body) >>= Reduce.reduceType (reduceHandle h)
           | otherwise -> do
-              error $ "Rule.WeakTerm.Fill (assertion failure; arity mismatch)\n" ++ show xs ++ "\nhole id = " ++ show i
+              let tyText = WT.toTextType ty
+              error $ "Rule.WeakTerm.Fill (assertion failure; arity mismatch)\nhole = ?M" ++ show i ++ "(" ++ show xs ++ ")\nhole id = " ++ show i ++ "\ninput: " <> T.unpack tyText
         Nothing ->
           return $ m :< WT.TypeHole i es'
 

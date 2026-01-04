@@ -567,6 +567,43 @@ inferQuoteSeq h letSeq castDirection = do
         liftIO $ Constraint.insert (constraintHandle h) (m1 :< WT.BoxNoema tInner) tOuter
   return (zip xts' es')
 
+inferArgsTypes ::
+  Handle ->
+  Subst.SubstType ->
+  Hint ->
+  [(WT.WeakType, WT.WeakType)] ->
+  [BinderF WT.WeakType] ->
+  App Subst.SubstType
+inferArgsTypes h sub m args params =
+  case (args, params) of
+    ([], []) ->
+      return sub
+    ((ty, tyKind) : rest, (_, x, paramKind) : xts) -> do
+      paramKind' <- liftIO $ Subst.substTypeWith sub paramKind
+      liftIO $ Constraint.insert (constraintHandle h) paramKind' tyKind
+      inferArgsTypes h (IntMap.insert (Ident.toInt x) (Right ty) sub) m rest xts
+    _ ->
+      raiseError m "Invalid argument passed to inferArgsTypes"
+
+inferArgsTerms ::
+  Handle ->
+  Subst.SubstType ->
+  Hint ->
+  [(WT.WeakTerm, WT.WeakType)] ->
+  [BinderF WT.WeakType] ->
+  WT.WeakType ->
+  App WT.WeakType
+inferArgsTerms h sub m args params cod =
+  case (args, params) of
+    ([], []) ->
+      liftIO $ Subst.substTypeWith sub cod
+    ((_, argType) : rest, (_, _, paramType) : xts) -> do
+      paramType' <- liftIO $ Subst.substTypeWith sub paramType
+      liftIO $ Constraint.insert (constraintHandle h) paramType' argType
+      inferArgsTerms h sub m rest xts cod
+    _ ->
+      raiseError m "Invalid argument passed to inferArgsTerms"
+
 inferPiElim ::
   Handle ->
   Hint ->
@@ -578,7 +615,7 @@ inferPiElim ::
 inferPiElim h m (e, t) impArgs defaultArgsSpec expArgs = do
   t' <- resolveType h t
   case t' of
-    _ :< WT.Pi _ impArgsParam defaultParams expParams cod ->
+    _ :< WT.Pi _ impArgsParam defaultParams expParams cod -> do
       inferCore False impArgsParam defaultParams expParams cod
     _ :< WT.BoxNoema (_ :< WT.Pi _ impArgsParam defaultParams expParams cod) ->
       inferCore True impArgsParam defaultParams expParams cod
@@ -586,41 +623,40 @@ inferPiElim h m (e, t) impArgs defaultArgsSpec expArgs = do
       raiseError m $ "Expected a function type, but got: " <> toTextType t'
   where
     inferCore isNoetic impArgsParam defaultParams expParams cod = do
-      let impParamIds = map (\(_, x, _) -> x) impArgsParam
-      impArgs' <- case impArgs of
+      ensureArityCorrectness h e (length expParams) (length expArgs)
+      impArgsTyped <- case impArgs of
         ImpArgs.Unspecified ->
-          mapM (const $ liftIO $ newTypeHole h m (varEnv h)) impArgsParam
+          mapM (createImpArgFromParam h m) impArgsParam
         ImpArgs.FullySpecified impArgs' -> do
           ensureImplicitArityCorrectness h e (length impArgsParam) (length impArgs')
-          mapM (inferType h) impArgs'
-      let subType = IntMap.fromList $ zip (map Ident.toInt impParamIds) (map Right impArgs')
-      expArgs' <- forM expArgs $ \(argTerm, argType) -> do
-        argTerm' <- substTypeInTerm subType argTerm
-        argType' <- liftIO $ Subst.substTypeWith subType argType
-        return (argTerm', argType')
-      ensureArityCorrectness h e (length expParams) (length expArgs)
-      expParams' <- mapM (substTypeBinder subType) expParams
-      forM_ (zip expParams' (map snd expArgs')) $ \((_, _, tParam), tArg) ->
-        liftIO $ Constraint.insert (constraintHandle h) tParam tArg
-      defaultOverrides <- resolveDefaultOverrides h e (length defaultParams) defaultArgsSpec
-      defaultArgs' <- forM (zip defaultParams defaultOverrides) $ \((binder, defaultValue), mOverride) -> do
-        binder' <- substTypeBinder subType binder
-        defaultValue' <- substTypeInTerm subType defaultValue
-        (defaultValue'', defaultType) <- infer h defaultValue'
-        let (_, _, tParam) = binder'
-        liftIO $ Constraint.insert (constraintHandle h) tParam defaultType
+          mapM (inferTypeWithKind h) impArgs'
+      subType <- inferArgsTypes h IntMap.empty m impArgsTyped impArgsParam
+      defaultArgsOverrides <- resolveDefaultOverrides h e (length defaultParams) defaultArgsSpec
+      defaultArgsTyped <- forM (zip defaultParams defaultArgsOverrides) $ \((_, defaultValue), mOverride) -> do
         case mOverride of
-          Nothing ->
-            return (binder', defaultValue'')
-          Just (overrideTerm, overrideType) -> do
-            overrideTerm' <- substTypeInTerm subType overrideTerm
-            overrideType' <- liftIO $ Subst.substTypeWith subType overrideType
-            liftIO $ Constraint.insert (constraintHandle h) tParam overrideType'
-            return (binder', overrideTerm')
-      cod' <- liftIO $ Subst.substTypeWith subType cod
-      let expArgs'' = map fst expArgs'
-      let defaultArgs'' = DefaultArgs.FullySpecified (map snd defaultArgs')
-      return (m :< WT.PiElim isNoetic e (ImpArgs.FullySpecified impArgs') defaultArgs'' expArgs'', cod')
+          Just override -> do
+            return override
+          Nothing -> do
+            (out, tDef) <- infer h defaultValue
+            return (out, tDef)
+      defaultParams' <- mapM (\(binder, _) -> substTypeBinder subType binder) defaultParams
+      forM_ (zip defaultParams' (map snd defaultArgsTyped)) $ \((_, _, tParam), tArg) -> do
+        tParam' <- inferType h tParam
+        liftIO $ Constraint.insert (constraintHandle h) tParam' tArg
+      cod' <- inferArgsTerms h subType m expArgs expParams cod
+      let impArgs' = map fst impArgsTyped
+      let defaultArgs' = map fst defaultArgsTyped
+      return (m :< WT.PiElim isNoetic e (ImpArgs.FullySpecified impArgs') (DefaultArgs.FullySpecified defaultArgs') expArgs', cod')
+    expArgs' = map fst expArgs
+
+createImpArgFromParam ::
+  Handle ->
+  Hint ->
+  BinderF WT.WeakType ->
+  App (WT.WeakType, WT.WeakType)
+createImpArgFromParam h m (_, _, _paramKind) = do
+  (holeType, holeKind) <- liftIO $ newTypedHole h m (varEnv h)
+  return (holeType, holeKind) -- fixme: constrain paramKind
 
 resolveDefaultOverrides ::
   Handle ->
@@ -641,8 +677,20 @@ resolveDefaultOverrides h function expected defaultArgs =
 
 newTypeHole :: Handle -> Hint -> BoundVarEnv -> IO WT.WeakType
 newTypeHole h m varEnv = do
+  fst <$> newTypedHole h m varEnv
+
+-- let holeArgs = map (\(mx, x, _) -> mx :< WT.TVar x) varEnv
+-- WT.createTypeHole (gensymHandle h) m holeArgs
+
+newTypedHole :: Handle -> Hint -> BoundVarEnv -> IO (WT.WeakType, WT.WeakType)
+newTypedHole h m varEnv = do
+  i <- HID.HoleID <$> Gensym.newCount (gensymHandle h)
+  j <- HID.HoleID <$> Gensym.newCount (gensymHandle h)
   let holeArgs = map (\(mx, x, _) -> mx :< WT.TVar x) varEnv
-  WT.createTypeHole (gensymHandle h) m holeArgs
+  let holeType = m :< WT.TypeHole i holeArgs
+  let holeKind = m :< WT.TypeHole j holeArgs
+  Hole.insert (holeHandle h) (HID.reify i) holeType holeKind
+  return (holeType, holeKind)
 
 data CastDirection
   = FromNoema
