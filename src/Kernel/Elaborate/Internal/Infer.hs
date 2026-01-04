@@ -57,6 +57,7 @@ import Language.LowComp.DeclarationName qualified as DN
 import Language.WeakTerm.CreateHole qualified as WT
 import Language.WeakTerm.Subst qualified as Subst
 import Language.WeakTerm.ToText (toTextType)
+import Language.WeakTerm.ToText qualified as WT
 import Language.WeakTerm.WeakPrimValue qualified as WPV
 import Language.WeakTerm.WeakStmt
 import Language.WeakTerm.WeakTerm qualified as WT
@@ -234,7 +235,7 @@ infer h term =
         _ ->
           raiseError m $ "Expected a function type, but got: " <> toTextType t'
     m :< WT.DataIntro attr@(AttrDI.Attr {..}) consName dataArgs consArgs -> do
-      dataArgs' <- mapM (inferType h) dataArgs
+      (dataArgs', _) <- mapAndUnzipM (inferTypeWithKind h) dataArgs
       (consArgs', _) <- mapAndUnzipM (infer h) consArgs
       consNameList' <- forM consNameList $ \(cn, binders, cl) -> do
         binders' <- inferBinder'' h binders
@@ -425,13 +426,13 @@ inferTypeWithKind h ty =
       let argKinds = map snd argsWithKinds
       k' <- resolveType h k
       case k' of
-        _ :< WT.Pi _ impArgs defaultArgs expArgs cod -> do
-          let impParamIds = map (\(_, x, _) -> x) impArgs
-          impArgs' <- mapM (const $ liftIO $ newTypeHole h m (varEnv h)) impArgs
-          let subType = IntMap.fromList $ zip (map Ident.toInt impParamIds) (map Right impArgs')
-          expArgs' <- mapM (substTypeBinder subType) expArgs
-          ensureTypeArityCorrectness m (length expArgs') (length args')
-          forM_ (zip expArgs' argKinds) $ \((_, _, tParam), tArg) ->
+        _ :< WT.Pi _ impParams defaultArgs expParams cod -> do
+          let impParamIds = map (\(_, x, _) -> x) impParams
+          impParams' <- mapM (const $ liftIO $ newTypeHole h m (varEnv h)) impParams
+          let subType = IntMap.fromList $ zip (map Ident.toInt impParamIds) (map Right impParams')
+          expParams' <- mapM (substTypeBinder subType) expParams
+          ensureTypeArityCorrectness m (length expParams') (length args')
+          forM_ (zip expParams' argKinds) $ \((_, _, tParam), tArg) ->
             liftIO $ Constraint.insert (constraintHandle h) tParam tArg
           forM_ defaultArgs $ \(binder, defaultValue) -> do
             binder' <- substTypeBinder subType binder
@@ -446,11 +447,11 @@ inferTypeWithKind h ty =
     m :< WT.Pi piKind impArgs defaultArgs expArgs t -> do
       (impArgs', h') <- inferImpBinder h impArgs
       (defaultArgs', h'') <- inferImpBinderWithDefaults h' defaultArgs
-      (expArgs', _) <- inferBinder' h'' expArgs
-      t' <- inferType h'' t
+      (expArgs', h''') <- inferBinder' h'' expArgs
+      t' <- inferType h''' t
       return (m :< WT.Pi piKind impArgs' defaultArgs' expArgs' t', m :< WT.Tau)
     m :< WT.Data attr name es -> do
-      es' <- mapM (inferType h) es
+      (es', _) <- mapAndUnzipM (inferTypeWithKind h) es
       attr' <- inferAttrData h attr
       return (m :< WT.Data attr' name es', m :< WT.Tau)
     m :< WT.Box t -> do
