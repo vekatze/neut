@@ -130,15 +130,15 @@ toDoc term =
         [ PI.horizontal $ attachComment c1 $ D.text "splice",
           PI.inject $ toDoc $ m :< Brace c2 (e, c3)
         ]
-    _ :< TauIntro c (c1, (ty, c2)) -> do
-      D.join
-        [ attachComment c $ D.text "magic term-type",
-          SE.decode $ SE.fromListWithComment (Just SE.Paren) SE.Comma [(c1, (typeToDoc ty, c2))]
+    _ :< TauIntro c1 (c2, (ty, c3)) -> do
+      PI.arrange
+        [ PI.horizontal $ attachComment c1 $ D.text "veil",
+          PI.inject $ decodeBrace' False c2 (typeToDoc ty) c3
         ]
     _ :< TauElim c1 (_, x, c2) c3 e1 c4 _ c5 e2 _ -> do
       D.join
         [ PI.arrange
-            [ PI.beforeBareSeries $ D.text "let-type",
+            [ PI.beforeBareSeries $ D.text "letveil",
               PI.bareSeries $ attachComment (c1 ++ c2) $ D.text x
             ],
           PI.arrange

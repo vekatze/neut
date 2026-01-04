@@ -77,7 +77,7 @@ rawExpr h = do
           rawTermBoxElim h m variant c
         Nothing ->
           case headSymbol of
-            "let-type" ->
+            "letveil" ->
               rawTermTauElim h m c
             "pin" ->
               rawTermPin h m c
@@ -165,6 +165,8 @@ rawTerm' h m headSymbol c = do
       rawTermCodeIntro h m c
     "splice" -> do
       rawTermCodeElim h m c
+    "veil" -> do
+      rawTermTauIntro h m c
     "assert" -> do
       rawTermAssert h m c
     "detach" -> do
@@ -317,7 +319,7 @@ rawTermPin h m c1 = do
 
 rawTermTauElim :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermTauElim h m c1 = do
-  ((mx, x), c2) <- rawTermNoeticVar h
+  ((mx, x), c2) <- var h
   c3 <- delimiter "="
   (e1, c4) <- rawTerm h
   loc <- getCurrentLoc
@@ -568,7 +570,6 @@ rawTermMagic h m c = do
       rawTermMagicGetTypeTag h m c,
       rawTermMagicGetConsSize h m c,
       rawTermMagicGetConstructorArgTypes h m c,
-      rawTermMagicTermType h m c,
       rawTermMagicCompileError h m c
     ]
 
@@ -684,12 +685,6 @@ rawTermMagicGetConstructorArgTypes h m c = do
     c3 <- delimiter ","
     index <- rawTerm h
     return $ \c1 c2 -> m :< RT.Magic c (RT.GetConstructorArgTypes c1 (c2, typeExpr) c3 (c3, index))
-
-rawTermMagicTermType :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
-rawTermMagicTermType h m c = do
-  rawTermMagicBase "term-type" $ do
-    ty <- rawType h
-    return $ \_ c2 -> m :< RT.TauIntro c (c2, ty)
 
 rawTermMagicCompileError :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermMagicCompileError _h m c = do
@@ -854,6 +849,11 @@ rawTermCodeIntro :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermCodeIntro h m c1 = do
   (c2, (e, c)) <- betweenBrace $ rawExpr h
   return (m :< RT.CodeIntro c1 c2 e, c)
+
+rawTermTauIntro :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
+rawTermTauIntro h m c1 = do
+  (c2, (e, c)) <- betweenBrace $ rawType h
+  return (m :< RT.TauIntro c1 (c2, e), c)
 
 rawTermCodeElim :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermCodeElim h m c1 = do
