@@ -38,7 +38,7 @@ import Language.Common.PrimType qualified as PT
 import Language.WeakTerm.Eq qualified as WT
 import Language.WeakTerm.FreeVars
 import Language.WeakTerm.Holes
-import Language.WeakTerm.Subst (SubstEntry (..), Subst)
+import Language.WeakTerm.Subst (Subst, SubstEntry (..))
 import Language.WeakTerm.Subst qualified as Subst
 import Language.WeakTerm.ToText (toTextType)
 import Language.WeakTerm.WeakTerm qualified as WT
