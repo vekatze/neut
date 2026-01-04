@@ -135,6 +135,19 @@ toDoc term =
         [ attachComment c $ D.text "magic term-type",
           SE.decode $ SE.fromListWithComment (Just SE.Paren) SE.Comma [(c1, (typeToDoc ty, c2))]
         ]
+    _ :< TauElim c1 (_, x, c2) c3 e1 c4 _ c5 e2 _ -> do
+      D.join
+        [ PI.arrange
+            [ PI.beforeBareSeries $ D.text "let-type",
+              PI.bareSeries $ attachComment (c1 ++ c2) $ D.text x
+            ],
+          PI.arrange
+            [ PI.beforeBareSeries $ attachComment [] $ D.text "=",
+              decodeLetBody c3 e1 c4
+            ],
+          D.line,
+          attachComment c5 $ toDoc e2
+        ]
     _ :< Embody e ->
       D.join [D.text "*", toDoc e]
     _ :< Let letKind c1 mxt c2 c3 e c4 _ c5 cont _ -> do
@@ -173,19 +186,6 @@ toDoc term =
               ++ decodeNoeticVarList noeticVarList,
           PI.arrange
             [ PI.beforeBareSeries $ D.text "=",
-              decodeLetBody c3 e1 c4
-            ],
-          D.line,
-          attachComment c5 $ toDoc e2
-        ]
-    _ :< LetType c1 (_, x, c2) c3 e1 c4 _ c5 e2 _ -> do
-      D.join
-        [ PI.arrange
-            [ PI.beforeBareSeries $ D.text "let-type",
-              PI.bareSeries $ attachComment (c1 ++ c2) $ D.text x
-            ],
-          PI.arrange
-            [ PI.beforeBareSeries $ attachComment [] $ D.text "=",
               decodeLetBody c3 e1 c4
             ],
           D.line,

@@ -102,11 +102,11 @@ data RawTermF a
   | CodeIntro C C (a, C)
   | CodeElim C C (a, C)
   | TauIntro C (EL RawType)
+  | TauElim C (Hint, RawIdent, C) C a C Loc C a Loc
   | Embody a
   | Let LetKind C (PatParam RawType) C C a C Loc C a Loc
   | LetOn LetKind C (PatParam RawType) C (SE.Series (Hint, RawIdent)) C a C Loc C a Loc
   | Pin C (RawBinder RawType) C (SE.Series (Hint, RawIdent)) C a C Loc C a Loc
-  | LetType C (Hint, RawIdent, C) C a C Loc C a Loc
   | StaticText RawType T.Text
   | RuneIntro a R.Rune
   | Magic C RawMagic -- (magic kind arg-1 ... arg-n)

@@ -102,6 +102,8 @@ toText term =
       "splice " <> inBrace (toText e)
     _ :< WT.TauIntro ty ->
       "magic term-type" <> inParen (toTextType ty)
+    _ :< WT.TauElim (_, x) e1 e2 ->
+      "let-type " <> showVariable x <> " = " <> toText e1 <> "; " <> toText e2
     _ :< WT.Actual e ->
       "ACTUAL(" <> toText e <> ")"
     _ :< WT.Let opacity (_, x, t) e1 e2 -> do
@@ -110,8 +112,6 @@ toText term =
           "tie " <> showVariable x <> ": " <> toTextType t <> " = " <> toText e1 <> "; " <> toText e2
         _ ->
           "let " <> showVariable x <> ": " <> toTextType t <> " = " <> toText e1 <> "; " <> toText e2
-    _ :< WT.LetType (_, x) e1 e2 ->
-      "let-type " <> showVariable x <> " = " <> toText e1 <> "; " <> toText e2
     _ :< WT.Prim primValue ->
       showPrimValue primValue
     _ :< WT.Magic magic -> do

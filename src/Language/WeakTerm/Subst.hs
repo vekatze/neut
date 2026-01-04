@@ -135,6 +135,12 @@ subst h sub term =
     m :< WT.TauIntro ty -> do
       ty' <- substType h sub ty
       return $ m :< WT.TauIntro ty'
+    m :< WT.TauElim (mx, x) e1 e2 -> do
+      e1' <- subst h sub e1
+      x' <- liftIO $ Gensym.newIdentFromIdent (gensymHandle h) x
+      let sub' = IntMap.insert (Ident.toInt x) (Var x') sub
+      e2' <- subst h sub' e2
+      return $ m :< WT.TauElim (mx, x') e1' e2'
     m :< WT.Actual e -> do
       e' <- subst h sub e
       return $ m :< WT.Actual e'
@@ -142,12 +148,6 @@ subst h sub term =
       e1' <- subst h sub e1
       (mxt', _, e2') <- subst'' h sub mxt [] e2
       return $ m :< WT.Let opacity mxt' e1' e2'
-    m :< WT.LetType (mx, x) e1 e2 -> do
-      e1' <- subst h sub e1
-      x' <- liftIO $ Gensym.newIdentFromIdent (gensymHandle h) x
-      let sub' = IntMap.insert (Ident.toInt x) (Var x') sub
-      e2' <- subst h sub' e2
-      return $ m :< WT.LetType (mx, x') e1' e2'
     m :< WT.Prim prim -> do
       prim' <- mapM (substType h sub) prim
       return $ m :< WT.Prim prim'

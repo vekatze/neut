@@ -91,14 +91,14 @@ refresh h term =
     m :< TM.TauIntro ty -> do
       ty' <- refreshType h ty
       return $ m :< TM.TauIntro ty'
+    m :< TM.TauElim mx e1 e2 -> do
+      e1' <- refresh h e1
+      e2' <- refresh h e2
+      return $ m :< TM.TauElim mx e1' e2'
     m :< TM.Let opacity mxt e1 e2 -> do
       e1' <- refresh h e1
       ([mxt'], e2') <- refresh' h [mxt] e2
       return $ m :< TM.Let opacity mxt' e1' e2'
-    m :< TM.LetType mx e1 e2 -> do
-      e1' <- refresh h e1
-      e2' <- refresh h e2
-      return $ m :< TM.LetType mx e1' e2'
     _ :< TM.Prim _ ->
       return term
     m :< TM.Magic der -> do
@@ -146,9 +146,13 @@ refreshLowMagic h lowMagic =
       return $ LM.Alloca t size'
     LM.External domList cod extFunName args varArgs -> do
       args' <- mapM (refresh h) args
-      varArgs' <- mapM (\(arg, typ) -> do
-        arg' <- refresh h arg
-        return (arg', typ)) varArgs
+      varArgs' <-
+        mapM
+          ( \(arg, typ) -> do
+              arg' <- refresh h arg
+              return (arg', typ)
+          )
+          varArgs
       return $ LM.External domList cod extFunName args' varArgs'
     LM.Global name t ->
       return $ LM.Global name t
@@ -343,19 +347,35 @@ refreshDefaultArgs h binderList =
 refreshAttrData :: Handle -> AttrD.Attr name (BinderF TM.Type) -> IO (AttrD.Attr name (BinderF TM.Type))
 refreshAttrData h attr = do
   let consNameList = AttrD.consNameList attr
-  consNameList' <- mapM (\(cn, binders, cl) -> do
-    binders' <- mapM (\(mx, x, t) -> do
-      t' <- refreshType h t
-      return (mx, x, t')) binders
-    return (cn, binders', cl)) consNameList
+  consNameList' <-
+    mapM
+      ( \(cn, binders, cl) -> do
+          binders' <-
+            mapM
+              ( \(mx, x, t) -> do
+                  t' <- refreshType h t
+                  return (mx, x, t')
+              )
+              binders
+          return (cn, binders', cl)
+      )
+      consNameList
   return $ attr {AttrD.consNameList = consNameList'}
 
 refreshAttrDataIntro :: Handle -> AttrDI.Attr name (BinderF TM.Type) -> IO (AttrDI.Attr name (BinderF TM.Type))
 refreshAttrDataIntro h attr = do
   let consNameList = AttrDI.consNameList attr
-  consNameList' <- mapM (\(cn, binders, cl) -> do
-    binders' <- mapM (\(mx, x, t) -> do
-      t' <- refreshType h t
-      return (mx, x, t')) binders
-    return (cn, binders', cl)) consNameList
+  consNameList' <-
+    mapM
+      ( \(cn, binders, cl) -> do
+          binders' <-
+            mapM
+              ( \(mx, x, t) -> do
+                  t' <- refreshType h t
+                  return (mx, x, t')
+              )
+              binders
+          return (cn, binders', cl)
+      )
+      consNameList
   return $ attr {AttrDI.consNameList = consNameList'}

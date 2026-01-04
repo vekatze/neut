@@ -78,11 +78,11 @@ ensureTemplateResolved h m term =
       ensureTemplateResolved h m e
     _ :< TM.TauIntro ty ->
       ensureTemplateResolvedType h m ty
-    _ :< TM.Let _ (_, _, t) e1 e2 -> do
-      ensureTemplateResolvedType h m t
+    _ :< TM.TauElim _ e1 e2 -> do
       ensureTemplateResolved h m e1
       ensureTemplateResolved h m e2
-    _ :< TM.LetType _ e1 e2 -> do
+    _ :< TM.Let _ (_, _, t) e1 e2 -> do
+      ensureTemplateResolvedType h m t
       ensureTemplateResolved h m e1
       ensureTemplateResolved h m e2
     _ :< TM.Prim prim ->

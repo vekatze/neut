@@ -5,8 +5,8 @@ import Data.Maybe
 import Data.Set qualified as S
 import Language.Common.Attr.Data qualified as AttrD
 import Language.Common.Attr.DataIntro qualified as AttrDI
-import Language.Common.BaseLowType qualified as BLT
 import Language.Common.Attr.Lam qualified as AttrL
+import Language.Common.BaseLowType qualified as BLT
 import Language.Common.Binder
 import Language.Common.DecisionTree qualified as DT
 import Language.Common.Ident
@@ -55,12 +55,12 @@ freeVarsWithHints term =
       freeVarsWithHints e
     _ :< TM.TauIntro ty ->
       freeVarsWithHintsType ty
+    _ :< TM.TauElim (m, x) e1 e2 ->
+      S.union (freeVarsWithHints e1) (S.delete (m, x) (freeVarsWithHints e2))
     _ :< TM.Let _ mxt e1 e2 -> do
       let set1 = freeVarsWithHints e1
       let set2 = freeVarsWithHintsBinderType [mxt] (freeVarsWithHints e2)
       S.union set1 set2
-    _ :< TM.LetType (m, x) e1 e2 ->
-      S.union (freeVarsWithHints e1) (S.delete (m, x) (freeVarsWithHints e2))
     _ :< TM.Prim prim ->
       case prim of
         PV.StaticText t _ ->

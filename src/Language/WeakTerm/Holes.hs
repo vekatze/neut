@@ -61,14 +61,14 @@ holes term =
       holes e
     _ :< WT.TauIntro ty ->
       holesType ty
+    _ :< WT.TauElim _ e1 e2 ->
+      S.union (holes e1) (holes e2)
     _ :< WT.Actual e ->
       holes e
     _ :< WT.Let _ mxt e1 e2 -> do
       let set1 = holes e1
       let set2 = holesBindersType [mxt] (holes e2)
       S.union set1 set2
-    _ :< WT.LetType _ e1 e2 ->
-      S.union (holes e1) (holes e2)
     _ :< WT.Prim prim ->
       foldMap holesType prim
     _ :< WT.Magic der ->

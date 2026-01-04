@@ -275,6 +275,10 @@ inline' h term = do
     m :< TM.TauIntro ty -> do
       ty' <- inlineType' h ty
       return $ m :< TM.TauIntro ty'
+    m :< TM.TauElim (mx, x) e1 e2 -> do
+      e1' <- inline' h e1
+      e2' <- inline' h e2
+      return $ m :< TM.TauElim (mx, x) e1' e2'
     m :< TM.Let opacity mxt@(_, x, _) e1 e2 -> do
       e1' <- inline' h e1
       case opacity of
@@ -286,10 +290,6 @@ inline' h term = do
           mxt' <- inlineTypeBinder h mxt
           e2' <- inline' h e2
           return $ m :< TM.Let opacity mxt' e1' e2'
-    m :< TM.LetType (mx, x) e1 e2 -> do
-      e1' <- inline' h e1
-      e2' <- inline' h e2
-      return $ m :< TM.LetType (mx, x) e1' e2'
     m :< TM.Prim prim -> do
       case prim of
         PV.Int intType size value -> do

@@ -37,7 +37,6 @@ import Language.Term.FreeVarsWithHints (freeVarsWithHints)
 import Language.Term.Term qualified as TM
 import Language.Term.Weaken (weakenType)
 import Language.WeakTerm.Subst (SubstEntry (..))
-
 import Language.WeakTerm.Subst qualified as Subst
 import Language.WeakTerm.ToText qualified as WT
 import Language.WeakTerm.WeakTerm qualified as WT
@@ -184,12 +183,12 @@ analyze h term = do
       analyze h e
     _ :< TM.TauIntro ty -> do
       analyzeType h ty
-    _ :< TM.Let _ mxt e1 e2 -> do
+    _ :< TM.TauElim (mx, x) e1 e2 -> do
+      let mxt = (mx, x, mx :< TM.Tau)
       (cs1, h') <- analyzeLet h [(mxt, e1)]
       cs2 <- analyze h' e2
       return $ cs1 ++ cs2
-    _ :< TM.LetType (mx, x) e1 e2 -> do
-      let mxt = (mx, x, mx :< TM.Tau)
+    _ :< TM.Let _ mxt e1 e2 -> do
       (cs1, h') <- analyzeLet h [(mxt, e1)]
       cs2 <- analyze h' e2
       return $ cs1 ++ cs2

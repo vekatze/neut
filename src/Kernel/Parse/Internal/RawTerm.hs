@@ -77,10 +77,10 @@ rawExpr h = do
           rawTermBoxElim h m variant c
         Nothing ->
           case headSymbol of
+            "let-type" ->
+              rawTermTauElim h m c
             "pin" ->
               rawTermPin h m c
-            "let-type" ->
-              rawTermLetType h m c
             _ -> do
               e1 <- rawTerm' h m headSymbol c
               choice
@@ -315,8 +315,8 @@ rawTermPin h m c1 = do
   endLoc <- getCurrentLoc
   return (m :< RT.Pin c1 (mx, x, c2, c3, t) c4 noeticVarList c5 e1 c6 loc c7 e2 endLoc, c)
 
-rawTermLetType :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
-rawTermLetType h m c1 = do
+rawTermTauElim :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
+rawTermTauElim h m c1 = do
   ((mx, x), c2) <- rawTermNoeticVar h
   c3 <- delimiter "="
   (e1, c4) <- rawTerm h
@@ -324,7 +324,7 @@ rawTermLetType h m c1 = do
   c5 <- delimiter ";"
   (e2, c) <- rawExpr h
   endLoc <- getCurrentLoc
-  return (m :< RT.LetType c1 (mx, x, c2) c3 e1 c4 loc c5 e2 endLoc, c)
+  return (m :< RT.TauElim c1 (mx, x, c2) c3 e1 c4 loc c5 e2 endLoc, c)
 
 rawTermLetVarAscription :: Handle -> Hint -> Parser (C, (RT.RawType, C))
 rawTermLetVarAscription h m = do

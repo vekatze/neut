@@ -109,6 +109,10 @@ fill h typeSubst term =
     m :< WT.TauIntro ty -> do
       ty' <- fillType h typeSubst ty
       return $ m :< WT.TauIntro ty'
+    m :< WT.TauElim mx e1 e2 -> do
+      e1' <- fill h typeSubst e1
+      e2' <- fill h typeSubst e2
+      return $ m :< WT.TauElim mx e1' e2'
     m :< WT.Actual e -> do
       e' <- fill h typeSubst e
       return $ m :< WT.Actual e'
@@ -116,10 +120,6 @@ fill h typeSubst term =
       e1' <- fill h typeSubst e1
       (mxt', _, e2') <- fill'' h typeSubst mxt [] e2
       return $ m :< WT.Let opacity mxt' e1' e2'
-    m :< WT.LetType mx e1 e2 -> do
-      e1' <- fill h typeSubst e1
-      e2' <- fill h typeSubst e2
-      return $ m :< WT.LetType mx e1' e2'
     m :< WT.Prim prim -> do
       prim' <- mapM (fillType h typeSubst) prim
       return $ m :< WT.Prim prim'
@@ -472,4 +472,3 @@ fillLowMagic h holeSubst lowMagic =
       arg1' <- fill h holeSubst arg1
       arg2' <- fill h holeSubst arg2
       return $ LM.CallType func' arg1' arg2'
-

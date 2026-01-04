@@ -343,14 +343,14 @@ clarifyTerm h tenv term =
       liftIO $ callClosure h False e' []
     _ :< TM.TauIntro ty -> do
       clarifyType h tenv ty
+    m :< TM.TauElim (mx, x) e1 e2 -> do
+      clarifyTerm h tenv $ m :< TM.Let O.Clear (mx, x, mx :< TM.Tau) e1 e2
     _ :< TM.Let opacity mxt@(_, x, _) e1 e2 -> do
       e2' <- clarifyTerm h (TM.insTypeEnv [mxt] tenv) e2
       mxts' <- dropFst <$> clarifyBinder h tenv [mxt]
       e2'' <- liftIO $ Linearize.linearize (linearizeHandle h) mxts' e2'
       e1' <- clarifyTerm h tenv e1
       return $ Utility.bindLetWithReducibility (not $ isOpaque opacity) [(x, e1')] e2''
-    m :< TM.LetType (mx, x) e1 e2 -> do
-      clarifyTerm h tenv $ m :< TM.Let O.Clear (mx, x, mx :< TM.Tau) e1 e2
     m :< TM.Prim primValue ->
       case primValue of
         PV.Int _ size l ->

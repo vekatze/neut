@@ -12,13 +12,13 @@ import Control.Comonad.Cofree
 import Data.Bifunctor
 import Data.List qualified as List
 import Language.Common.Attr.Lam qualified as AttrL
-import Language.Common.Binder
 import Language.Common.BaseLowType qualified as BLT
+import Language.Common.Binder
 import Language.Common.DecisionTree qualified as DT
+import Language.Common.DefaultArgs qualified as DefaultArgs
 import Language.Common.Foreign qualified as F
 import Language.Common.Ident
 import Language.Common.ImpArgs qualified as ImpArgs
-import Language.Common.DefaultArgs qualified as DefaultArgs
 import Language.Common.LamKind qualified as LK
 import Language.Common.LowMagic qualified as LM
 import Language.Common.Magic qualified as M
@@ -100,10 +100,10 @@ weaken term =
       m :< WT.CodeElim (weaken e)
     m :< TM.TauIntro ty ->
       m :< WT.TauIntro (weakenType ty)
+    m :< TM.TauElim mx e1 e2 ->
+      m :< WT.TauElim mx (weaken e1) (weaken e2)
     m :< TM.Let opacity mxt e1 e2 ->
       m :< WT.Let (reflectOpacity opacity) (weakenTypeBinder mxt) (weaken e1) (weaken e2)
-    m :< TM.LetType mx e1 e2 ->
-      m :< WT.LetType mx (weaken e1) (weaken e2)
     m :< TM.Prim prim ->
       m :< WT.Prim (weakenPrimValue prim)
     m :< TM.Magic magic -> do

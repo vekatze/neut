@@ -192,6 +192,10 @@ reduce' h term = do
     m :< WT.TauIntro ty -> do
       ty' <- reduceType h ty
       return $ m :< WT.TauIntro ty'
+    m :< WT.TauElim (mx, x) e1 e2 -> do
+      e1' <- reduce' h e1
+      e2' <- reduce' h e2
+      return $ m :< WT.TauElim (mx, x) e1' e2'
     m :< WT.Actual e -> do
       e' <- reduce' h e
       return $ m :< WT.Actual e'
@@ -205,10 +209,6 @@ reduce' h term = do
         _ -> do
           e2' <- reduce' h e2
           return $ m :< WT.Let opacity mxt e1' e2'
-    m :< WT.LetType (mx, x) e1 e2 -> do
-      e1' <- reduce' h e1
-      e2' <- reduce' h e2
-      return $ m :< WT.LetType (mx, x) e1' e2'
     m :< WT.Magic (M.WeakMagic magic) -> do
       magic' <- reduceMagic h magic
       return $ m :< WT.Magic (M.WeakMagic magic')
