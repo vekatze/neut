@@ -16,8 +16,6 @@ import Language.Common.StmtKind
 import Language.Term.Term qualified as TM
 import Logger.Hint (SavedHint)
 
--- | Compress a full term (with Hint annotation) to a compressed term (with () annotation)
--- Note: Types inside TermF are already TM.Type (with Hint), only the term annotation changes
 compress :: TM.Term -> Cofree TM.TermF ()
 compress term =
   case term of
@@ -31,11 +29,11 @@ compress term =
       () :< TM.PiElim b (compress e) impArgs (map compress expArgs)
     _ :< TM.DataIntro attr consName dataArgs consArgs ->
       () :< TM.DataIntro attr consName dataArgs (map compress consArgs)
-    _ :< TM.DataElim isNoetic oets tree ->
+    _ :< TM.DataElim isNoetic oets tree -> do
       let (os, es, ts) = unzip3 oets
-          es' = map compress es
-          tree' = compressDecisionTree tree
-       in () :< TM.DataElim isNoetic (zip3 os es' ts) tree'
+      let es' = map compress es
+      let tree' = compressDecisionTree tree
+      () :< TM.DataElim isNoetic (zip3 os es' ts) tree'
     _ :< TM.BoxIntro letSeq e ->
       () :< TM.BoxIntro (map compressLet letSeq) (compress e)
     _ :< TM.BoxElim castSeq mxt e1 uncastSeq e2 ->
