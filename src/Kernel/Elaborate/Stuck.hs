@@ -20,7 +20,8 @@ import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.HoleID qualified as HID
 import Language.Common.Ident
 import Language.Common.Ident.Reify qualified as Ident
-import Language.WeakTerm.Subst (substTypeWith)
+import Language.WeakTerm.Subst (SubstEntry (..))
+import Language.WeakTerm.Subst qualified as Subst
 import Language.WeakTerm.ToText qualified as ToText
 import Language.WeakTerm.WeakPrimValue qualified as WPV
 import Language.WeakTerm.WeakTerm qualified as WT
@@ -55,19 +56,19 @@ asStuckedType term =
     _ ->
       Nothing
 
-resume :: TypeDef -> EvalCtx -> IO (Maybe WT.WeakType)
-resume typeDef ctx = do
+resume :: Subst.Handle -> TypeDef -> EvalCtx -> IO (Maybe WT.WeakType)
+resume substHandle typeDef ctx = do
   let TypeDef {typeDefBinders, typeDefBody} = typeDef
   case (typeDefBinders, ctx) of
     ([], _ :< Base) ->
       return $ Just typeDefBody
     (params, _ :< App ctx' args)
       | length params == length args -> do
-          mInner <- resume (TypeDef [] typeDefBody) ctx'
+          mInner <- resume substHandle (TypeDef [] typeDefBody) ctx'
           case mInner of
             Just inner -> do
-              let sub = IntMap.fromList $ zipWith (\(_, x, _) t -> (Ident.toInt x, Right t)) params args
-              Just <$> substTypeWith sub inner
+              let sub = IntMap.fromList $ zipWith (\(_, x, _) t -> (Ident.toInt x, Type t)) params args
+              Just <$> Subst.substType substHandle sub inner
             Nothing ->
               return Nothing
     _ ->

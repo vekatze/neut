@@ -30,6 +30,7 @@ import Language.Common.ImpArgs qualified as ImpArgs
 import Language.Common.LamKind qualified as LK
 import Language.Common.LowMagic qualified as LM
 import Language.Common.Magic qualified as M
+import Language.WeakTerm.Subst (SubstEntry (..))
 import Language.WeakTerm.Subst qualified as Subst
 import Language.WeakTerm.WeakPrimValue qualified as WPV
 import Language.WeakTerm.WeakTerm qualified as WT
@@ -89,7 +90,7 @@ reduce' h term = do
                 xts <- map fst defaultParams ++ expParams,
                 length xts == length expArgs' -> do
                   let xs = map (\(_, x, _) -> Ident.toInt x) xts
-                  let subTerm = IntMap.fromList $ zip xs (map Right expArgs')
+                  let subTerm = IntMap.fromList $ zip xs (map Term expArgs')
                   liftIO (Subst.subst (substHandle h) subTerm body) >>= reduce' h
             (_ :< WT.PiIntro AttrL.Attr {lamKind = LK.Normal {}} impParams defaultParams expParams body)
               | ImpArgs.FullySpecified impArgs'' <- impArgs',
@@ -97,12 +98,12 @@ reduce' h term = do
                 xts <- map fst defaultParams ++ expParams,
                 length xts == length expArgs' -> do
                   let impIds = map (\(_, x, _) -> Ident.toInt x) impParams
-                  let subType = IntMap.fromList $ zip impIds (map Right impArgs'')
+                  let subType = IntMap.fromList $ zip impIds (map Type impArgs'')
                   let xs = map (\(_, x, _) -> Ident.toInt x) xts
-                  let subTerm = IntMap.fromList $ zip xs (map Right expArgs')
-                  body' <- liftIO $ Subst.subst (substHandle h) subTerm body
-                  body'' <- liftIO $ Subst.substTypeInTerm subType body'
-                  reduce' h body''
+                  let subTerm = IntMap.fromList $ zip xs (map Term expArgs')
+                  let sub = subType <> subTerm
+                  body' <- liftIO $ Subst.subst (substHandle h) sub body
+                  reduce' h body'
             (_ :< WT.Prim (WPV.Op op))
               | ImpArgs.Unspecified <- impArgs',
                 Just (op', cod) <- WPV.reflectFloatUnaryOp op,
@@ -152,7 +153,7 @@ reduce' h term = do
         else do
           case decisionTree of
             DT.Leaf _ letSeq e -> do
-              let sub = IntMap.fromList $ zip (map Ident.toInt os) (map Right es')
+              let sub = IntMap.fromList $ zip (map Ident.toInt os) (map Term es')
               liftIO (Subst.subst (substHandle h) sub (WT.fromLetSeq letSeq e)) >>= reduce' h
             DT.Unreachable ->
               return $ m :< WT.DataElim isNoetic oets' DT.Unreachable
@@ -161,7 +162,7 @@ reduce' h term = do
                 Just (e@(_ :< WT.DataIntro (AttrDI.Attr {..}) _ _ consArgs), oets'')
                   | (newBaseCursorList, cont) <- findClause discriminant fallbackTree caseList -> do
                       let newCursorList = zipWith (\(o, t) arg -> (o, arg, t)) newBaseCursorList consArgs
-                      let sub = IntMap.singleton (Ident.toInt cursor) (Right e)
+                      let sub = IntMap.singleton (Ident.toInt cursor) (Term e)
                       cont' <- liftIO $ Subst.substDecisionTree (substHandle h) sub cont
                       reduce' h $ m :< WT.DataElim isNoetic (oets'' ++ newCursorList) cont'
                 _ -> do
@@ -196,7 +197,7 @@ reduce' h term = do
       case opacity of
         WT.Clear -> do
           detectPossibleInfiniteLoop h
-          let sub = IntMap.fromList [(Ident.toInt x, Right e1')]
+          let sub = IntMap.fromList [(Ident.toInt x, Term e1')]
           liftIO (Subst.subst (substHandle h) sub e2) >>= reduce' h
         _ -> do
           e2' <- reduce' h e2

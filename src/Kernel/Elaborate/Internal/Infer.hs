@@ -55,6 +55,8 @@ import Language.Common.PrimType qualified as PT
 import Language.Common.StmtKind qualified as SK
 import Language.LowComp.DeclarationName qualified as DN
 import Language.WeakTerm.CreateHole qualified as WT
+import Language.WeakTerm.Subst (SubstEntry (..))
+
 import Language.WeakTerm.Subst qualified as Subst
 import Language.WeakTerm.ToText (toTextType)
 import Language.WeakTerm.WeakPrimValue qualified as WPV
@@ -221,13 +223,13 @@ infer h term =
         _ :< WT.Pi _ impArgs defaultArgs expArgs codType -> do
           impArgs' <- mapM (const $ liftIO $ newTypeHole h m (varEnv h)) impArgs
           let impIds = map (\(_, x, _) -> x) impArgs
-          let subType = IntMap.fromList $ zip (map Ident.toInt impIds) (map Right impArgs')
+          let subType = IntMap.fromList $ zip (map Ident.toInt impIds) (map Type impArgs')
           defaultArgs' <- forM defaultArgs $ \(binder, defaultValue) -> do
-            binder' <- substTypeBinder subType binder
-            defaultValue' <- substTypeInTerm subType defaultValue
+            binder' <- substTypeBinder h subType binder
+            defaultValue' <- liftIO $ Subst.subst (substHandle h) subType defaultValue
             return (binder', defaultValue')
-          expArgs' <- mapM (substTypeBinder subType) expArgs
-          codType' <- liftIO $ Subst.substTypeWith subType codType
+          expArgs' <- mapM (substTypeBinder h subType) expArgs
+          codType' <- liftIO $ Subst.substType (substHandle h) subType codType
           let expArgs'' = map snd defaultArgs' ++ map (\(mx, x, _) -> mx :< WT.Var x) expArgs'
           lamID <- liftIO $ Gensym.newCount (gensymHandle h)
           infer h $ m :< WT.PiIntro (AttrL.normal lamID codType') [] [] expArgs' (m :< WT.PiElim False e' (ImpArgs.FullySpecified impArgs') DefaultArgs.Unspecified expArgs'')
@@ -428,18 +430,18 @@ inferTypeWithKind h ty =
         _ :< WT.Pi _ impParams defaultArgs expParams cod -> do
           let impParamIds = map (\(_, x, _) -> x) impParams
           impParams' <- mapM (const $ liftIO $ newTypeHole h m (varEnv h)) impParams
-          let subType = IntMap.fromList $ zip (map Ident.toInt impParamIds) (map Right impParams')
-          expParams' <- mapM (substTypeBinder subType) expParams
+          let subType = IntMap.fromList $ zip (map Ident.toInt impParamIds) (map Type impParams')
+          expParams' <- mapM (substTypeBinder h subType) expParams
           ensureTypeArityCorrectness m (length expParams') (length args')
           forM_ (zip expParams' argKinds) $ \((_, _, tParam), tArg) ->
             liftIO $ Constraint.insert (constraintHandle h) tParam tArg
           forM_ defaultArgs $ \(binder, defaultValue) -> do
-            binder' <- substTypeBinder subType binder
-            defaultValue' <- substTypeInTerm subType defaultValue
+            binder' <- substTypeBinder h subType binder
+            defaultValue' <- liftIO $ Subst.subst (substHandle h) subType defaultValue
             (_, defaultType) <- infer h defaultValue'
             let (_, _, tParam) = binder'
             liftIO $ Constraint.insert (constraintHandle h) tParam defaultType
-          cod' <- liftIO $ Subst.substTypeWith subType cod
+          cod' <- liftIO $ Subst.substType (substHandle h) subType cod
           return (m :< WT.TyApp t' args', cod')
         _ ->
           raiseError m $ "Expected a function type, but got: " <> toTextType k'
@@ -569,25 +571,25 @@ inferQuoteSeq h letSeq castDirection = do
 
 inferArgsTypes ::
   Handle ->
-  Subst.SubstType ->
+  Subst.Subst ->
   Hint ->
   [(WT.WeakType, WT.WeakType)] ->
   [BinderF WT.WeakType] ->
-  App Subst.SubstType
+  App Subst.Subst
 inferArgsTypes h sub m args params =
   case (args, params) of
     ([], []) ->
       return sub
     ((ty, tyKind) : rest, (_, x, paramKind) : xts) -> do
-      paramKind' <- liftIO $ Subst.substTypeWith sub paramKind
+      paramKind' <- liftIO $ Subst.substType (substHandle h) sub paramKind
       liftIO $ Constraint.insert (constraintHandle h) paramKind' tyKind
-      inferArgsTypes h (IntMap.insert (Ident.toInt x) (Right ty) sub) m rest xts
+      inferArgsTypes h (IntMap.insert (Ident.toInt x) (Type ty) sub) m rest xts
     _ ->
       raiseError m "Invalid argument passed to inferArgsTypes"
 
 inferArgsTerms ::
   Handle ->
-  Subst.SubstType ->
+  Subst.Subst ->
   Hint ->
   [(WT.WeakTerm, WT.WeakType)] ->
   [BinderF WT.WeakType] ->
@@ -596,9 +598,9 @@ inferArgsTerms ::
 inferArgsTerms h sub m args params cod =
   case (args, params) of
     ([], []) ->
-      liftIO $ Subst.substTypeWith sub cod
+      liftIO $ Subst.substType (substHandle h) sub cod
     ((_, argType) : rest, (_, _, paramType) : xts) -> do
-      paramType' <- liftIO $ Subst.substTypeWith sub paramType
+      paramType' <- liftIO $ Subst.substType (substHandle h) sub paramType
       liftIO $ Constraint.insert (constraintHandle h) paramType' argType
       inferArgsTerms h sub m rest xts cod
     _ ->
@@ -639,7 +641,7 @@ inferPiElim h m (e, t) impArgs defaultArgsSpec expArgs = do
           Nothing -> do
             (out, tDef) <- infer h defaultValue
             return (out, tDef)
-      defaultParams' <- mapM (\(binder, _) -> substTypeBinder subType binder) defaultParams
+      defaultParams' <- mapM (\(binder, _) -> substTypeBinder h subType binder) defaultParams
       forM_ (zip defaultParams' (map snd defaultArgsTyped)) $ \((_, _, tParam), tArg) -> do
         tParam' <- inferType h tParam
         liftIO $ Constraint.insert (constraintHandle h) tParam' tArg
@@ -794,8 +796,8 @@ reduceWeakType' h holeSubst t = do
           return t'
         Just (xs, body)
           | length xs == length args -> do
-              let sub = IntMap.fromList $ zip (map Ident.toInt xs) (map Right args)
-              body' <- liftIO $ Subst.substTypeWith sub body
+              let sub = IntMap.fromList $ zip (map Ident.toInt xs) (map Type args)
+              body' <- liftIO $ Subst.substType (substHandle h) sub body
               reduceWeakType' h holeSubst body'
           | otherwise ->
               raiseError m "Arity mismatch"
@@ -805,8 +807,8 @@ reduceWeakType' h holeSubst t = do
         Just def
           | length args == length (WeakTypeDef.typeDefBinders def) -> do
               let varList = map (\(_, x, _) -> Ident.toInt x) (WeakTypeDef.typeDefBinders def)
-              let sub = IntMap.fromList $ zip varList (map Right args)
-              body' <- liftIO $ Subst.substTypeWith sub (WeakTypeDef.typeDefBody def)
+              let sub = IntMap.fromList $ zip varList (map Type args)
+              body' <- liftIO $ Subst.substType (substHandle h) sub (WeakTypeDef.typeDefBody def)
               reduceWeakType' h holeSubst body'
         _ ->
           return t'
@@ -916,11 +918,7 @@ checkIsTypeType h m t = do
   let tau = m :< WT.Tau
   liftIO $ Constraint.insert (constraintHandle h) tau t
 
-substTypeBinder :: Subst.SubstType -> BinderF WT.WeakType -> App (BinderF WT.WeakType)
-substTypeBinder sub (mx, x, t) = do
-  t' <- liftIO $ Subst.substTypeWith sub t
+substTypeBinder :: Handle -> Subst.Subst -> BinderF WT.WeakType -> App (BinderF WT.WeakType)
+substTypeBinder h sub (mx, x, t) = do
+  t' <- liftIO $ Subst.substType (substHandle h) sub t
   return (mx, x, t')
-
-substTypeInTerm :: Subst.SubstType -> WT.WeakTerm -> App WT.WeakTerm
-substTypeInTerm sub term =
-  liftIO $ Subst.substTypeInTerm sub term

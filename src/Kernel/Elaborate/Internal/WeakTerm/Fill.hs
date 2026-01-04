@@ -28,6 +28,7 @@ import Language.Common.LamKind qualified as LK
 import Language.Common.LowMagic qualified as LM
 import Language.Common.Magic qualified as M
 import Language.WeakTerm.Reduce qualified as Reduce
+import Language.WeakTerm.Subst (SubstEntry (..))
 import Language.WeakTerm.Subst qualified as Subst
 import Language.WeakTerm.ToText qualified as WT
 import Language.WeakTerm.WeakTerm qualified as WT
@@ -177,8 +178,8 @@ fillType h holeSubst ty =
         Just (xs, body)
           | length xs == length es' -> do
               let varList = map Ident.toInt xs
-              let sub = IntMap.fromList $ zip varList (map Right es')
-              liftIO (substType sub body) >>= Reduce.reduceType (reduceHandle h)
+              let sub = IntMap.fromList $ zip varList (map Type es')
+              liftIO (Subst.substType (substHandle h) sub body) >>= Reduce.reduceType (reduceHandle h)
           | otherwise -> do
               let tyText = WT.toTextType ty
               error $ "Rule.WeakTerm.Fill (assertion failure; arity mismatch)\nhole = ?M" ++ show i ++ "(" ++ show xs ++ ")\nhole id = " ++ show i ++ "\ninput: " <> T.unpack tyText
@@ -472,58 +473,3 @@ fillLowMagic h holeSubst lowMagic =
       ty' <- fillType h holeSubst ty
       return $ LM.TermType ty'
 
-substType :: WT.SubstWeakType -> WT.WeakType -> IO WT.WeakType
-substType sub ty =
-  case ty of
-    m :< WT.TVar x
-      | Just varOrType <- IntMap.lookup (Ident.toInt x) sub ->
-          case varOrType of
-            Left x' ->
-              return $ m :< WT.TVar x'
-            Right t ->
-              return t
-      | otherwise ->
-          return ty
-    _ :< WT.Tau ->
-      return ty
-    _ :< WT.TVarGlobal {} ->
-      return ty
-    m :< WT.TyApp t args -> do
-      t' <- substType sub t
-      args' <- mapM (substType sub) args
-      return $ m :< WT.TyApp t' args'
-    m :< WT.Pi piKind impArgs defaultArgs expArgs t -> do
-      impArgs' <- mapM (substTypeBinder sub) impArgs
-      expArgs' <- mapM (substTypeBinder sub) expArgs
-      let bound =
-            map (\(_, x, _) -> Ident.toInt x) (impArgs ++ map fst defaultArgs ++ expArgs)
-      let sub' = foldr IntMap.delete sub bound
-      t' <- substType sub' t
-      return $ m :< WT.Pi piKind impArgs' defaultArgs expArgs' t'
-    m :< WT.Data attr name es -> do
-      es' <- mapM (substType sub) es
-      return $ m :< WT.Data attr name es'
-    m :< WT.Box t -> do
-      t' <- substType sub t
-      return $ m :< WT.Box t'
-    m :< WT.BoxNoema t -> do
-      t' <- substType sub t
-      return $ m :< WT.BoxNoema t'
-    m :< WT.Code t -> do
-      t' <- substType sub t
-      return $ m :< WT.Code t'
-    _ :< WT.PrimType {} ->
-      return ty
-    _ :< WT.Void ->
-      return ty
-    m :< WT.Resource dd resourceID unitType discarder copier typeTag -> do
-      unitType' <- substType sub unitType
-      return $ m :< WT.Resource dd resourceID unitType' discarder copier typeTag
-    m :< WT.TypeHole hole es -> do
-      es' <- mapM (substType sub) es
-      return $ m :< WT.TypeHole hole es'
-
-substTypeBinder :: WT.SubstWeakType -> BinderF WT.WeakType -> IO (BinderF WT.WeakType)
-substTypeBinder sub (m, x, t) = do
-  t' <- substType sub t
-  return (m, x, t')

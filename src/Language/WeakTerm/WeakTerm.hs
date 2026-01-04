@@ -3,8 +3,6 @@ module Language.WeakTerm.WeakTerm
     WeakTermF (..),
     WeakType,
     WeakTypeF (..),
-    SubstWeakTerm,
-    SubstWeakType,
     LetOpacity (..),
     WeakForeign,
     reifyOpacity,
@@ -22,7 +20,6 @@ module Language.WeakTerm.WeakTerm
 where
 
 import Control.Comonad.Cofree
-import Data.IntMap qualified as IntMap
 import Language.Common.Annotation qualified as AN
 import Language.Common.Attr.Data qualified as AttrD
 import Language.Common.Attr.DataIntro qualified as AttrDI
@@ -33,8 +30,8 @@ import Language.Common.BasePrimType qualified as BPT
 import Language.Common.Binder
 import Language.Common.DataSize (DataSize)
 import Language.Common.DecisionTree qualified as DT
-import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.DefaultArgs qualified as DefaultArgs
+import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.Foreign
 import Language.Common.HoleID
 import Language.Common.Ident
@@ -90,12 +87,6 @@ data WeakTermF a
   | Prim (WPV.WeakPrimValue WeakType)
   | Magic (WeakMagic WeakType WeakType a)
   | Annotation LogLevel (AN.Annotation WeakType) a
-
-type SubstWeakTerm =
-  IntMap.IntMap (Either Ident WeakTerm)
-
-type SubstWeakType =
-  IntMap.IntMap (Either Ident WeakType)
 
 data LetOpacity
   = Opaque

@@ -74,6 +74,7 @@ import Language.Term.PrimValue qualified as PV
 import Language.Term.Stmt
 import Language.Term.Term qualified as TM
 import Language.Term.Weaken
+import Language.WeakTerm.Subst (SubstEntry (..))
 import Language.WeakTerm.Subst qualified as Subst
 import Language.WeakTerm.ToText
 import Language.WeakTerm.WeakPrimValue qualified as WPV
@@ -811,8 +812,8 @@ reduceWeakType h t = do
         Just def
           | length args == length (WeakTypeDef.typeDefBinders def) -> do
               let varList = map (\(_, x, _) -> Ident.toInt x) (WeakTypeDef.typeDefBinders def)
-              let sub = IntMap.fromList $ zip varList (map Right args)
-              body' <- liftIO $ Subst.substTypeWith sub (WeakTypeDef.typeDefBody def)
+              let sub = IntMap.fromList $ zip varList (map Type args)
+              body' <- liftIO $ Subst.substType (substHandle h) sub (WeakTypeDef.typeDefBody def)
               reduceWeakType h body'
         _ ->
           return t'
@@ -832,8 +833,8 @@ fillHole h m holeID es = do
       raiseError m $ "Could not instantiate the hole here: " <> T.pack (show holeID)
     Just (xs, e)
       | length xs == length es -> do
-          let s = IntMap.fromList $ zip (map Ident.toInt xs) (map Right es)
-          liftIO $ Subst.substTypeWith s e
+          let s = IntMap.fromList $ zip (map Ident.toInt xs) (map Type es)
+          liftIO $ Subst.substType (substHandle h) s e
       | otherwise ->
           raiseError m "Arity mismatch"
 

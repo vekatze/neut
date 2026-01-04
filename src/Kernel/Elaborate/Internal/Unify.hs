@@ -38,7 +38,8 @@ import Language.Common.PrimType qualified as PT
 import Language.WeakTerm.Eq qualified as WT
 import Language.WeakTerm.FreeVars
 import Language.WeakTerm.Holes
-import Language.WeakTerm.Subst (substTypeWith)
+import Language.WeakTerm.Subst (SubstEntry (..), Subst)
+import Language.WeakTerm.Subst qualified as Subst
 import Language.WeakTerm.ToText (toTextType)
 import Language.WeakTerm.WeakTerm qualified as WT
 import Logger.Hint
@@ -216,8 +217,8 @@ simplify h susList constraintList =
                       | g1 == g2,
                         Just lam <- Map.lookup g1 defMap -> do
                           let h' = increment h
-                          mt1' <- liftIO $ Stuck.resume lam ctx1
-                          mt2' <- liftIO $ Stuck.resume lam ctx2
+                          mt1' <- liftIO $ Stuck.resume (substHandle h) lam ctx1
+                          mt2' <- liftIO $ Stuck.resume (substHandle h) lam ctx2
                           case (mt1', mt2') of
                             (Just t1', Just t2') -> do
                               simplify h' susList $ (C.Eq t1' t2', orig) : cs
@@ -226,8 +227,8 @@ simplify h susList constraintList =
                       | Just lam1 <- Map.lookup g1 defMap,
                         Just lam2 <- Map.lookup g2 defMap -> do
                           let h' = increment h
-                          mt1' <- liftIO $ Stuck.resume lam1 ctx1
-                          mt2' <- liftIO $ Stuck.resume lam2 ctx2
+                          mt1' <- liftIO $ Stuck.resume (substHandle h) lam1 ctx1
+                          mt2' <- liftIO $ Stuck.resume (substHandle h) lam2 ctx2
                           case (mt1', mt2') of
                             (Just t1', Just t2') -> do
                               simplify h' susList $ (C.Eq t1' t2', orig) : cs
@@ -236,7 +237,7 @@ simplify h susList constraintList =
                     (Just (Stuck.VarGlobal g1, ctx1), _)
                       | Just lam <- Map.lookup g1 defMap -> do
                           let h' = increment h
-                          mt1' <- liftIO $ Stuck.resume lam ctx1
+                          mt1' <- liftIO $ Stuck.resume (substHandle h) lam ctx1
                           case mt1' of
                             Just t1' -> do
                               simplify h' susList $ (C.Eq t1' t2, orig) : cs
@@ -245,7 +246,7 @@ simplify h susList constraintList =
                     (_, Just (Stuck.VarGlobal g2, ctx2))
                       | Just lam <- Map.lookup g2 defMap -> do
                           let h' = increment h
-                          mt2' <- liftIO $ Stuck.resume lam ctx2
+                          mt2' <- liftIO $ Stuck.resume (substHandle h) lam ctx2
                           case mt2' of
                             Just t2' -> do
                               simplify h' susList $ (C.Eq t1 t2', orig) : cs
@@ -281,15 +282,15 @@ simplifyBinder h orig =
 simplifyBinder' ::
   Handle ->
   C.Constraint ->
-  WT.SubstWeakType ->
+  Subst ->
   [BinderF WT.WeakType] ->
   [BinderF WT.WeakType] ->
   IO [(C.Constraint, C.Constraint)]
 simplifyBinder' h orig sub args1 args2 =
   case (args1, args2) of
     ((m1, x1, t1) : xts1, (_, x2, t2) : xts2) -> do
-      t2' <- substTypeWith sub t2
-      let sub' = IntMap.insert (Ident.toInt x2) (Right (m1 :< WT.TVar x1)) sub
+      t2' <- Subst.substType (substHandle h) sub t2
+      let sub' = IntMap.insert (Ident.toInt x2) (Type (m1 :< WT.TVar x1)) sub
       rest <- simplifyBinder' h orig sub' xts1 xts2
       return $ (C.Eq t1 t2', orig) : rest
     _ ->
@@ -346,7 +347,7 @@ simplifyActual h m dataNameSet t orig = do
           then return []
           else mapM (getConsArgTypes h m . (\(name, _, _) -> name)) consNameList
       constraintsFromDataConsArgs <- fmap concat $ forM dataConsArgsList $ \dataConsArgs -> do
-        dataConsArgs' <- liftIO $ substConsArgs IntMap.empty dataConsArgs
+        dataConsArgs' <- liftIO $ substConsArgs h IntMap.empty dataConsArgs
         fmap concat $ forM dataConsArgs' $ \(_, _, consArg) -> do
           simplifyActual h m dataNameSet' consArg orig
       return $ constraintsFromDataArgs ++ constraintsFromDataConsArgs
@@ -372,7 +373,7 @@ simplifyActual h m dataNameSet t orig = do
             Just (Stuck.VarGlobal dd, evalCtx)
               | Just lam <- Map.lookup dd defMap -> do
                   let h' = increment h
-                  mt'' <- liftIO $ Stuck.resume lam evalCtx
+                  mt'' <- liftIO $ Stuck.resume (substHandle h) lam evalCtx
                   case mt'' of
                     Just t'' -> do
                       simplifyActual h' m dataNameSet t'' orig
@@ -421,7 +422,7 @@ simplifyInteger h m t orig = do
             Just (Stuck.VarGlobal dd, evalCtx)
               | Just lam <- Map.lookup dd defMap -> do
                   let h' = increment h
-                  mt'' <- liftIO $ Stuck.resume lam evalCtx
+                  mt'' <- liftIO $ Stuck.resume (substHandle h) lam evalCtx
                   case mt'' of
                     Just t'' -> do
                       simplifyInteger h' m t'' orig
@@ -442,16 +443,16 @@ lookupAnyType is sub =
         _ ->
           lookupAnyType js sub
 
-substConsArgs :: WT.SubstWeakType -> [BinderF WT.WeakType] -> IO [BinderF WT.WeakType]
-substConsArgs sub consArgs =
+substConsArgs :: Handle -> Subst -> [BinderF WT.WeakType] -> IO [BinderF WT.WeakType]
+substConsArgs h sub consArgs =
   case consArgs of
     [] ->
       return []
     (m, x, t) : rest -> do
-      t' <- substTypeWith sub t
+      t' <- Subst.substType (substHandle h) sub t
       let opaque = m :< WT.Tau -- allow `a` in `Cons(a: type, x: a)`
-      let sub' = IntMap.insert (Ident.toInt x) (Right opaque) sub
-      rest' <- substConsArgs sub' rest
+      let sub' = IntMap.insert (Ident.toInt x) (Type opaque) sub
+      rest' <- substConsArgs h sub' rest
       return $ (m, x, t') : rest'
 
 createDefaultConstraints ::

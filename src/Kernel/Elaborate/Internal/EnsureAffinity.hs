@@ -36,6 +36,8 @@ import Language.Common.PiKind qualified as PK
 import Language.Term.FreeVarsWithHints (freeVarsWithHints)
 import Language.Term.Term qualified as TM
 import Language.Term.Weaken (weakenType)
+import Language.WeakTerm.Subst (SubstEntry (..))
+
 import Language.WeakTerm.Subst qualified as Subst
 import Language.WeakTerm.ToText qualified as WT
 import Language.WeakTerm.WeakTerm qualified as WT
@@ -418,7 +420,7 @@ simplifyAffine h dataNameSet (t, orig@(m :< _)) = do
       case Stuck.asStuckedType t' of
         Just (Stuck.VarGlobal dd, evalCtx)
           | Just lam <- Map.lookup dd defMap -> do
-              mt'' <- liftIO $ Stuck.resume lam evalCtx
+              mt'' <- liftIO $ Stuck.resume (Elaborate.substHandle (elaborateHandle h)) lam evalCtx
               case mt'' of
                 Just t'' -> do
                   simplifyAffine h dataNameSet (t'', orig)
@@ -427,15 +429,15 @@ simplifyAffine h dataNameSet (t, orig@(m :< _)) = do
         _ -> do
           return [AffineConstraintError orig]
 
-substConsArgs :: Handle -> Subst.SubstType -> [BinderF WT.WeakType] -> App [BinderF WT.WeakType]
+substConsArgs :: Handle -> Subst.Subst -> [BinderF WT.WeakType] -> App [BinderF WT.WeakType]
 substConsArgs h sub consArgs =
   case consArgs of
     [] ->
       return []
     (m, x, t) : rest -> do
-      t' <- liftIO $ Subst.substTypeWith sub t
+      t' <- liftIO $ Subst.substType (Elaborate.substHandle (elaborateHandle h)) sub t
       let opaque = m :< WT.Tau -- allow `a` in `Cons(a: type, x: a)`
-      let sub' = IntMap.insert (toInt x) (Right opaque) sub
+      let sub' = IntMap.insert (toInt x) (Type opaque) sub
       rest' <- substConsArgs h sub' rest
       return $ (m, x, t') : rest'
 
