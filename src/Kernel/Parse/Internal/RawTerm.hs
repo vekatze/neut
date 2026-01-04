@@ -14,7 +14,6 @@ module Kernel.Parse.Internal.RawTerm
     parseDefInfoCod,
     typeWithoutIdent,
     parseImplicitParams,
-    parseImplicitParamsMaybe,
     parseDefaultParams,
     keyword,
     baseName,
@@ -485,15 +484,6 @@ parseDefaultParams h =
         (s, c) <- seriesBracket $ preBinderWithDefault h
         return (s, c),
       return (SE.emptySeries (Just SE.Bracket) SE.Comma, [])
-    ]
-
-parseImplicitParamsMaybe :: Handle -> Parser (Maybe (SE.Series (RawBinder RT.RawType)), C)
-parseImplicitParamsMaybe h =
-  choice
-    [ do
-        (s, c) <- seriesAngle $ parseImplicitParam h
-        return (Just s, c),
-      return (Nothing, [])
     ]
 
 parseImplicitArgsMaybe :: Handle -> Parser (Maybe (SE.Series RT.RawType), C)

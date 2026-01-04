@@ -3,7 +3,6 @@ module Language.WeakTerm.WeakStmt
     WeakStmtKindTerm,
     WeakStmtKindType,
     WeakForeign,
-    getWeakStmtName,
   )
 where
 
@@ -51,21 +50,3 @@ data WeakStmt
   | WeakStmtVariadic RuleKind Hint DD.DefiniteDescription
   | WeakStmtNominal Hint [(NominalTag, G.Geist WT.WeakType WT.WeakTerm)]
   | WeakStmtForeign [WT.WeakForeign]
-
-getWeakStmtName :: [WeakStmt] -> [(Hint, DD.DefiniteDescription)]
-getWeakStmtName =
-  concatMap getWeakStmtName'
-
-getWeakStmtName' :: WeakStmt -> [(Hint, DD.DefiniteDescription)]
-getWeakStmtName' stmt =
-  case stmt of
-    WeakStmtDefineTerm _ _ m name _ _ _ _ _ ->
-      [(m, name)]
-    WeakStmtDefineType _ _ m name _ _ _ _ _ ->
-      [(m, name)]
-    WeakStmtVariadic _ m name ->
-      [(m, name)]
-    WeakStmtNominal {} ->
-      []
-    WeakStmtForeign {} ->
-      []

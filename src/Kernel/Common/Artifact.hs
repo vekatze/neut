@@ -1,6 +1,5 @@
 module Kernel.Common.Artifact
   ( ArtifactTime (..),
-    empty,
     inject,
   )
 where
@@ -13,14 +12,6 @@ data ArtifactTime = ArtifactTime
     objectTime :: Maybe UTCTime
   }
   deriving (Show, Ord, Eq)
-
-empty :: ArtifactTime
-empty =
-  ArtifactTime
-    { cacheTime = Nothing,
-      llvmTime = Nothing,
-      objectTime = Nothing
-    }
 
 inject :: UTCTime -> ArtifactTime
 inject t =

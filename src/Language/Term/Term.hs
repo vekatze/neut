@@ -8,7 +8,6 @@ module Language.Term.Term
     isValue,
     fromLetSeq,
     fromLetSeqOpaque,
-    metaOfType,
   )
 where
 
@@ -118,10 +117,6 @@ isValue term =
       True
     _ ->
       False
-
-metaOfType :: Type -> Hint
-metaOfType (m :< _) =
-  m
 
 fromLetSeq :: [(BinderF Type, Term)] -> Term -> Term
 fromLetSeq xts cont =

@@ -3,8 +3,6 @@ module Kernel.Elaborate.Internal.Handle.WeakDef
     new,
     DefMap,
     insert',
-    read',
-    lookup',
   )
 where
 
@@ -52,12 +50,3 @@ insert' h opacity m name impArgs defaultArgs expArgs codType e =
     i <- Gensym.newCount (gensymHandle h)
     modifyIORef' (weakDefMapRef h) $
       Map.insert name (m :< WT.PiIntro (AttrL.normal' (Just $ DD.localLocator name) i codType) impArgs defaultArgs expArgs e)
-
-read' :: Handle -> IO DefMap
-read' h =
-  readIORef (weakDefMapRef h)
-
-lookup' :: Handle -> DD.DefiniteDescription -> IO (Maybe WeakTerm)
-lookup' h name = do
-  weakDefMap <- readIORef (weakDefMapRef h)
-  return $ Map.lookup name weakDefMap

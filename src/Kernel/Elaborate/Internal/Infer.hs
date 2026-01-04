@@ -439,8 +439,8 @@ inferTypeWithKind h ty =
             (_, defaultType) <- infer h defaultValue'
             let (_, _, tParam) = binder'
             liftIO $ Constraint.insert (constraintHandle h) tParam defaultType
-          cod' <- liftIO $ Subst.substType (substHandle h) subType cod
-          return (m :< WT.TyApp t' args', cod')
+          _ :< cod' <- liftIO $ Subst.substType (substHandle h) subType cod
+          return (m :< WT.TyApp t' args', m :< cod')
         _ ->
           raiseError m $ "Expected a function type, but got: " <> toTextType k'
     m :< WT.Pi piKind impArgs defaultArgs expArgs t -> do
@@ -744,7 +744,6 @@ inferClause h cursorType decisionCase =
       let m = mCons
       let (dataTermList, _) = unzip dataArgs
       typedDataArgs' <- mapM (inferTypeWithKind h) dataTermList
-      -- let typedDataArgs' = zip dataTermList' dataTypes
       (consArgs', _) <- inferBinder' h consArgs
       let argNum = AN.fromInt $ length dataArgs + length consArgs
       let attr = AttrVG.Attr {..}

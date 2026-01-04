@@ -11,7 +11,6 @@ module Language.RawTerm.RawStmt
     RawConsInfo (..),
     RawImport (..),
     RawImportItem (..),
-    getPostRawStmtName,
     compareImportItem,
     isImportEmpty,
     mergeImportList,
@@ -128,26 +127,6 @@ data PostRawStmt
       DD.DefiniteDescription
   | PostRawStmtNominal C Hint (SE.Series (NominalTag, RT.RawGeist DD.DefiniteDescription, Loc))
   | PostRawStmtForeign C (SE.Series RawForeignItem)
-
-getPostRawStmtName :: PostRawStmt -> [(Hint, DD.DefiniteDescription)]
-getPostRawStmtName stmt =
-  case stmt of
-    PostRawStmtDefineTerm _ _ def -> do
-      let m = RT.loc $ RT.geist def
-      let name = fst $ RT.name $ RT.geist def
-      [(m, name)]
-    PostRawStmtDefineType _ _ def -> do
-      let m = RT.loc $ RT.typeGeist def
-      let name = fst $ RT.name $ RT.typeGeist def
-      [(m, name)]
-    PostRawStmtDefineResource _ m (name, _) _ _ _ _ ->
-      [(m, name)]
-    PostRawStmtVariadic _ m name ->
-      [(m, name)]
-    PostRawStmtNominal {} ->
-      []
-    PostRawStmtForeign {} ->
-      []
 
 data RawImportItem
   = RawImportItem Hint (T.Text, C) (SE.Series (Hint, LL.LocalLocator))

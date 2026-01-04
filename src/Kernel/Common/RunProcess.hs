@@ -8,7 +8,6 @@ module Kernel.Common.RunProcess
     run00,
     run01,
     run10,
-    run11,
   )
 where
 
@@ -134,22 +133,6 @@ run10 h spec input = do
         (Just stdIn, Just stdErr) -> do
           sendInput stdIn input
           receiveOutput spec processHandle stdErr $ return ()
-
-run11 :: Handle -> Spec -> Input -> IO (Either ErrorText Output)
-run11 h spec input = do
-  reportCommand h spec
-  P.withCreateProcess (fromSpec spec) {P.std_in = P.CreatePipe, P.std_out = P.CreatePipe, P.std_err = P.CreatePipe} $
-    \mStdIn mStdOut mErrorHandler processHandle -> do
-      case (mStdIn, mStdOut, mErrorHandler) of
-        (Nothing, _, _) ->
-          return $ Left stdinError
-        (_, Nothing, _) ->
-          return $ Left stdoutError
-        (_, _, Nothing) ->
-          return $ Left stderrError
-        (Just stdIn, Just stdOut, Just stdErr) -> do
-          sendInput stdIn input
-          receiveOutput spec processHandle stdErr $ B.hGetContents stdOut
 
 sendInput :: GHC.Handle -> Input -> IO ()
 sendInput h input = do

@@ -1,7 +1,6 @@
 module Language.Common.DefiniteDescription
   ( DefiniteDescription (..),
     new,
-    moduleID,
     localLocator,
     globalLocator,
     getLocatorPair,
@@ -109,15 +108,6 @@ getRootDD dd = do
   MakeDefiniteDescription
     { reify = reify dd <> "#" <> BN.reify BN.root
     }
-
-moduleID :: DefiniteDescription -> T.Text
-moduleID dd = do
-  let nameList = T.splitOn nsSep (reify dd)
-  case nameList of
-    headElem : _ ->
-      headElem
-    _ ->
-      error "Rule.DefiniteDescription.moduleID"
 
 unconsDD :: DefiniteDescription -> (MID.ModuleID, T.Text)
 unconsDD dd = do

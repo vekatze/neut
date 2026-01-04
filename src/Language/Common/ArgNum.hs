@@ -5,7 +5,6 @@ module Language.Common.ArgNum
     reify,
     argNumS4,
     add,
-    succ,
   )
 where
 
@@ -34,7 +33,3 @@ argNumS4 =
 add :: ArgNum -> ArgNum -> ArgNum
 add (MakeArgNum i1) (MakeArgNum i2) =
   MakeArgNum (i1 + i2)
-
-succ :: ArgNum -> ArgNum
-succ (MakeArgNum x) =
-  MakeArgNum (x + 1)

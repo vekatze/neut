@@ -6,10 +6,8 @@ module Ens.Ens
     FullEns,
     put,
     conservativeUpdate,
-    strip,
     hasKey,
     toInt,
-    toFloat,
     toBool,
     toString,
     toList,
@@ -20,7 +18,6 @@ module Ens.Ens
     emptyDict,
     ensPath,
     merge,
-    nubEnsList,
     inject,
     dictFromList,
     dictFromList',
@@ -33,7 +30,7 @@ import App.Error
 import Control.Comonad.Cofree
 import Control.Monad
 import Data.Bifunctor
-import Data.List (find, nubBy)
+import Data.List (find)
 import Data.Text qualified as T
 import Ens.EnsType qualified as ET
 import Logger.Hint
@@ -108,10 +105,6 @@ access' k defaultValue ens@(m :< _) = do
     Nothing ->
       return $ m :< defaultValue
 
-strip :: (C, (Ens, C)) -> Ens
-strip (_, (ens, _)) =
-  ens
-
 put :: T.Text -> Ens -> Ens -> Either Error Ens
 put k v ens = do
   (m, dict) <- toDictionary ens
@@ -151,14 +144,6 @@ toInt ens@(m :< _) =
       return s
     _ ->
       raiseTypeError m ET.Int (typeOf ens)
-
-toFloat :: Ens -> Either Error Double
-toFloat ens@(m :< _) =
-  case ens of
-    _ :< Float s ->
-      return s
-    _ ->
-      raiseTypeError m ET.Float (typeOf ens)
 
 toBool :: Ens -> Either Error (Hint, Bool)
 toBool ens@(m :< _) =
@@ -255,10 +240,6 @@ merge ens1 ens2 =
       return $ m :< Dictionary (s1 {SE.elems = kvs1' ++ kvs2'})
     (m :< _, _) ->
       raiseTypeError m (typeOf ens1) (typeOf ens2)
-
-nubEnsList :: [(Ens, C)] -> [(Ens, C)]
-nubEnsList ensList = do
-  nubBy (\(e1, _) (e2, _) -> EqEns e1 == EqEns e2) ensList
 
 inject :: Ens -> FullEns
 inject ens =

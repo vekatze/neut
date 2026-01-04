@@ -1,9 +1,7 @@
 module Kernel.Elaborate.Internal.Handle.Elaborate
   ( Handle (..),
     new,
-    reduce,
     reduceType,
-    fill,
     fillType,
     inline,
     inlineBinder,
@@ -85,22 +83,10 @@ new globalHandle@(Global.Handle {..}) (Local.Handle {..}) currentSource = do
   let currentStep = 0
   return $ Handle {..}
 
-reduce :: Handle -> WT.WeakTerm -> App WT.WeakTerm
-reduce h e = do
-  reduceHandle <- liftIO $ Reduce.new (substHandle h) (WT.metaOf e) (inlineLimit h)
-  Reduce.reduce reduceHandle e
-
 reduceType :: Handle -> WT.WeakType -> App WT.WeakType
 reduceType h t = do
   reduceHandle <- liftIO $ Reduce.new (substHandle h) (WT.metaOfType t) (inlineLimit h)
   Reduce.reduceType reduceHandle t
-
-fill :: Handle -> THS.TypeHoleSubst -> WT.WeakTerm -> App WT.WeakTerm
-fill h sub e = do
-  reduceHandle <- liftIO $ Reduce.new (substHandle h) (WT.metaOf e) (inlineLimit h)
-  let substHandle = Subst.new (Global.gensymHandle (globalHandle h))
-  let fillHandle = Fill.new substHandle reduceHandle
-  Fill.fill fillHandle sub e
 
 fillType :: Handle -> THS.TypeHoleSubst -> WT.WeakType -> App WT.WeakType
 fillType h sub t = do

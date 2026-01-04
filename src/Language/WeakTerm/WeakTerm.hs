@@ -8,7 +8,6 @@ module Language.WeakTerm.WeakTerm
     reifyOpacity,
     reflectOpacity,
     intTypeBySize,
-    metaOf,
     metaOfType,
     fromLetSeq,
     fromBaseLowType,
@@ -47,7 +46,6 @@ import Language.WeakTerm.WeakPrimValue qualified as WPV
 import Logger.Hint
 import Logger.LogLevel
 
--- Type representation
 type WeakType = Cofree WeakTypeF Hint
 
 data WeakTypeF a
@@ -65,7 +63,6 @@ data WeakTypeF a
   | Resource DD.DefiniteDescription Int WeakType WeakTerm WeakTerm WeakTerm
   | TypeHole HoleID [WeakType]
 
--- Term representation
 type WeakTerm = Cofree WeakTermF Hint
 
 data WeakTermF a
@@ -116,10 +113,6 @@ reflectOpacity opacity =
 intTypeBySize :: Hint -> DataSize -> WeakType
 intTypeBySize m size =
   m :< PrimType (PT.Int $ dataSizeToIntSize size)
-
-metaOf :: WeakTerm -> Hint
-metaOf (m :< _) =
-  m
 
 metaOfType :: WeakType -> Hint
 metaOfType (m :< _) =

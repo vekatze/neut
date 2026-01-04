@@ -6,7 +6,6 @@ module Language.Common.DecisionTree
     getConstructors,
     isUnreachable,
     findCase,
-    getCont,
   )
 where
 
@@ -78,11 +77,3 @@ findCase consDisc decisionCase =
       if consDisc == disc
         then return (map (\(_, x, t) -> (x, t)) consArgs, cont)
         else Nothing
-
-getCont :: Case t a -> DecisionTree t a
-getCont c =
-  case c of
-    ConsCase (ConsCaseRecord {..}) ->
-      cont
-    LiteralCase _ _ cont ->
-      cont

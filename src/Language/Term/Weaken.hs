@@ -1,7 +1,6 @@
 module Language.Term.Weaken
   ( weaken,
     weakenType,
-    weakenBinder,
     weakenTypeBinder,
     weakenStmt,
     weakenDecisionTree,
@@ -173,10 +172,6 @@ weakenMagic m magic = do
       M.WeakMagic $ M.GetConstructorArgTypes sgl (weakenType listExpr) (weakenType typeExpr) (weaken index)
     M.CompileError msg ->
       M.WeakMagic $ M.CompileError msg
-
-weakenBinder :: (Hint, Ident, TM.Term) -> (Hint, Ident, WT.WeakTerm)
-weakenBinder (m, x, t) =
-  (m, x, weaken t)
 
 weakenTypeBinder :: (Hint, Ident, TM.Type) -> (Hint, Ident, WT.WeakType)
 weakenTypeBinder (m, x, t) =
