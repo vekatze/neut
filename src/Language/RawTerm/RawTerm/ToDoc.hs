@@ -642,15 +642,20 @@ decTypeGeist
         PI.inject $ attachComment c3 expParams
       ]
 
-decodeImpParams :: SE.Series RT.RawImpVar -> D.Doc
+decodeImpParams :: SE.Series (RawBinder RawType) -> D.Doc
 decodeImpParams impParams =
   if SE.isEmpty impParams
     then D.Nil
     else SE.decode $ fmap decodeImpVar impParams
 
-decodeImpVar :: RT.RawImpVar -> D.Doc
-decodeImpVar (_, x, c) = do
-  attachComment c $ D.text x
+decodeImpVar :: RawBinder RawType -> D.Doc
+decodeImpVar (m, x, c1, c2, t) = do
+  let t' = typeToDoc t
+  if isHole x
+    then attachComment (c1 ++ c2) t'
+    else do
+      let x' = D.text x
+      paramToDoc' (m, x', c1, c2, t')
 
 decodeDefaultParams :: SE.Series (RawBinder RawType, RawTerm) -> D.Doc
 decodeDefaultParams defaultParams =

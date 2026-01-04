@@ -467,7 +467,7 @@ parseAliasGeist h nameParser = do
   let cod = m :< RT.Tau
   return (RT.RawGeist {loc, name = (name', c1), isConstLike, impArgs, defaultArgs, expArgs, cod = ([], cod)}, [])
 
-parseImplicitParams :: Handle -> Parser (SE.Series RT.RawImpVar, C)
+parseImplicitParams :: Handle -> Parser (SE.Series (RawBinder RT.RawType), C)
 parseImplicitParams h =
   choice
     [ do
@@ -485,7 +485,7 @@ parseDefaultParams h =
       return (SE.emptySeries (Just SE.Bracket) SE.Comma, [])
     ]
 
-parseImplicitParamsMaybe :: Handle -> Parser (Maybe (SE.Series RT.RawImpVar), C)
+parseImplicitParamsMaybe :: Handle -> Parser (Maybe (SE.Series (RawBinder RT.RawType)), C)
 parseImplicitParamsMaybe h =
   choice
     [ do
@@ -503,10 +503,18 @@ parseImplicitArgsMaybe h =
       return (Nothing, [])
     ]
 
-parseImplicitParam :: Handle -> Parser (RT.RawImpVar, C)
+parseImplicitParam :: Handle -> Parser (RawBinder RT.RawType, C)
 parseImplicitParam h = do
-  ((m, x), c) <- var h
-  return ((m, x, c), [])
+  ((m, x), varC) <- var h
+  choice
+    [ do
+        c1 <- delimiter ":"
+        (a, c2) <- rawType h
+        return ((m, x, varC, c1, a), c2),
+      do
+        hole <- liftIO $ RT.createTypeHole (gensymHandle h) m
+        return ((m, x, varC, [], hole), [])
+    ]
 
 ensureArgumentLinearity :: S.Set RawIdent -> [(Hint, RawIdent)] -> App ()
 ensureArgumentLinearity foundVarSet vs =

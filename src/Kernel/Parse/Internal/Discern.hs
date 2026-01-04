@@ -1002,21 +1002,21 @@ discernIdent mUse h x =
 
 discernImpArgs ::
   H.Handle ->
-  [RT.RawImpVar] ->
+  [RawBinder RT.RawType] ->
   Loc ->
   App ([BinderF WT.WeakType], H.Handle)
 discernImpArgs h binder endLoc =
   case binder of
     [] -> do
       return ([], h)
-    (mx, x, _) : xts -> do
-      t <- liftIO $ WT.createTypeHole (H.gensymHandle h) mx []
+    (mx, x, _, _, t) : xts -> do
+      t' <- discernType h t
       x' <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) x
       h' <- liftIO $ H.extendType' h mx x' VDK.Normal
       (xts', h'') <- discernImpArgs h' xts endLoc
-      liftIO $ Tag.insertBinder (H.tagHandle h'') (mx, x', t)
+      liftIO $ Tag.insertBinder (H.tagHandle h'') (mx, x', t')
       liftIO $ SymLoc.insert (H.symLocHandle h'') x' (metaLocation mx) endLoc
-      return ((mx, x', t) : xts', h'')
+      return ((mx, x', t') : xts', h'')
 
 discernBinder ::
   H.Handle ->

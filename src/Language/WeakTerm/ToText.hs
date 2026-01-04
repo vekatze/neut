@@ -225,8 +225,8 @@ showTypeArgs args =
       s1 <> " " <> s2
 
 showDomArg :: BinderF WT.WeakType -> T.Text
-showDomArg (_, x, t) =
-  showVariable x <> ": " <> toTextType t
+showDomArg (_, _, t) =
+  toTextType t
 
 showDomArgList :: [BinderF WT.WeakType] -> T.Text
 showDomArgList mxts =
