@@ -194,8 +194,11 @@ decStmt stmt =
           RT.decodeDef (RT.nameToDoc . N.Var) "define" c (fmap BN.reify def)
         _ ->
           RT.decodeDef (RT.nameToDoc . N.Var) "define" c (fmap BN.reify def)
-    RawStmtDefineType c def -> do
-      RT.decodeTypeDef (RT.nameToDoc . N.Var) "alias" c (fmap BN.reify def)
+    RawStmtDefineType c aliasKind def -> do
+      let keyword = case aliasKind of
+            TransparentAlias -> "alias"
+            OpaqueAlias -> "alias-opaque"
+      RT.decodeTypeDef (RT.nameToDoc . N.Var) keyword c (fmap BN.reify def)
     RawStmtDefineData c1 _ (dataName, c2) argsOrNone consInfo _ -> do
       attachStmtComment (c1 ++ c2) $
         D.join
@@ -287,6 +290,8 @@ decNominalGeist (tag, geist, _) = do
         Macro ->
           RT.decGeist (D.text . BN.reify) geist
         Alias ->
+          RT.decTypeGeist (D.text . BN.reify) geist
+        AliasOpaque ->
           RT.decTypeGeist (D.text . BN.reify) geist
         Data ->
           RT.decTypeGeist (D.text . BN.reify) geist

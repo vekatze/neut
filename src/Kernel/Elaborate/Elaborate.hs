@@ -132,7 +132,7 @@ elaborateStmt :: Handle -> WeakStmt -> App ([Stmt], [L.Log])
 elaborateStmt h stmt = do
   case stmt of
     WeakStmtDefineTerm isConstLike stmtKind m x impArgs defaultArgs expArgs codType e -> do
-      liftIO $ putStrLn "define-term"
+      liftIO $ putStrLn $ "define-term: " <> T.unpack (DD.reify x)
       stmtKind' <- elaborateStmtKindTerm h stmtKind
       liftIO $ putStrLn "elab1"
       -- sub <- liftIO $ Hole.getTypeSubst (holeHandle h)
@@ -248,10 +248,10 @@ insertStmt h stmt = do
           liftIO $ Type.insert' (typeHandle h) f $ weakenType $ m :< TM.Pi (PK.Normal isConstLike) impArgs defaultArgs expArgs t
       let isInlineFlag = SK.isInlineStmtKind stmtKind
       liftIO $ Definition.insert' (defHandle h) (SK.toOpacityTerm stmtKind) f (impArgs ++ map fst defaultArgs ++ expArgs) e t isInlineFlag
-    StmtDefineType isConstLike _stmtKind (SavedHint m) f impArgs defaultArgs expArgs t body -> do
+    StmtDefineType isConstLike stmtKind (SavedHint m) f impArgs defaultArgs expArgs t body -> do
       liftIO $ Type.insert' (typeHandle h) f $ weakenType $ m :< TM.Pi (PK.Normal isConstLike) impArgs defaultArgs expArgs t
       let allBinders = impArgs ++ map fst defaultArgs ++ expArgs
-      liftIO $ TypeDef.insert' (typeDefHandle h) f allBinders body
+      liftIO $ TypeDef.insert' (typeDefHandle h) (SK.toOpacityType stmtKind) f allBinders body
     StmtVariadic {} ->
       return ()
     StmtForeign _ -> do
@@ -264,9 +264,9 @@ insertWeakStmt h stmt = do
   case stmt of
     WeakStmtDefineTerm _ stmtKind m f impArgs defaultArgs expArgs codType e -> do
       liftIO $ WeakDef.insert' (weakDefHandle h) (SK.toOpacityTerm stmtKind) m f impArgs defaultArgs expArgs codType e
-    WeakStmtDefineType _ _ _ f impArgs defaultArgs expArgs _ body -> do
+    WeakStmtDefineType _ stmtKind _ f impArgs defaultArgs expArgs _ body -> do
       let binders = impArgs ++ map fst defaultArgs ++ expArgs
-      liftIO $ WeakTypeDef.insert' (weakTypeDefHandle h) f binders body
+      liftIO $ WeakTypeDef.insert' (weakTypeDefHandle h) (SK.toOpacityType stmtKind) f binders body
     WeakStmtNominal {} -> do
       return ()
     WeakStmtVariadic {} -> do
@@ -297,6 +297,8 @@ elaborateStmtKindType h stmtKind =
   case stmtKind of
     SK.Alias ->
       return SK.Alias
+    SK.AliasOpaque ->
+      return SK.AliasOpaque
     SK.Data dataName dataArgs consInfoList -> do
       dataArgs' <- mapM (elaborateWeakBinder h) dataArgs
       let (ms, consNameList, constLikeList, consArgsList, discriminantList) = unzip5 consInfoList

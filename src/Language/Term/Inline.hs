@@ -353,7 +353,7 @@ inlineType' h ty =
           | Just typeDefInfo <- Map.lookup dd (typeDefMap h),
             TypeDef.TypeDefInfo {TypeDef.typeDefBinders = binders, TypeDef.typeDefBody = body} <- typeDefInfo,
             length binders == length args -> do
-              liftIO $ putStrLn $ "expand (type): " <> T.unpack (DD.reify dd)
+              -- liftIO $ putStrLn $ "expand (type): " <> T.unpack (DD.reify dd)
               args' <- mapM (inlineType' h) args
               let binderIds = map (\(_, x, _) -> x) binders
               let subType = IntMap.fromList $ zip (map Ident.toInt binderIds) (map Right args')

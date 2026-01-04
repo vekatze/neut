@@ -143,6 +143,8 @@ extendStmtKindType stmtKind =
   case stmtKind of
     Alias ->
       Alias
+    AliasOpaque ->
+      AliasOpaque
     Data name args consInfoList ->
       Data name (map extendBinder args) (map extendConsInfo consInfoList)
 

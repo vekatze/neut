@@ -266,6 +266,8 @@ weakenStmtKindType stmtKind =
   case stmtKind of
     Alias ->
       Alias
+    AliasOpaque ->
+      AliasOpaque
     Data dataName dataArgs consInfoList -> do
       let dataArgs' = map weakenTypeBinder dataArgs
       let (hintList, consNameList, constLikeList, consArgsList, discriminantList) = List.unzip5 consInfoList

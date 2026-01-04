@@ -231,6 +231,8 @@ discernStmtKindType h stmtKind _m =
   case stmtKind of
     SK.Alias ->
       return SK.Alias
+    SK.AliasOpaque ->
+      return SK.AliasOpaque
     SK.Data dataName dataArgs consInfoList -> do
       (dataArgs', h') <- discernTypeBinder' h dataArgs
       let (locList, consNameList, isConstLikeList, consArgsList, discriminantList) = List.unzip5 consInfoList
@@ -264,6 +266,8 @@ toCandidateKindType :: SK.StmtKindType a -> CandidateKind
 toCandidateKindType stmtKind =
   case stmtKind of
     SK.Alias ->
+      Function
+    SK.AliasOpaque ->
       Function
     SK.Data {} ->
       Function

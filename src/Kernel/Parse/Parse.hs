@@ -106,9 +106,12 @@ postprocess' h stmt = do
       let geist' = liftGeist h geist
       let stmtKind' = liftStmtKindTerm h stmtKind
       [PostRawStmtDefineTerm c stmtKind' (rawDef {RT.geist = geist'})]
-    RawStmtDefineType c rawDef@(RT.RawTypeDef {typeGeist}) -> do
+    RawStmtDefineType c aliasKind rawDef@(RT.RawTypeDef {typeGeist}) -> do
       let geist' = liftGeist h typeGeist
-      [PostRawStmtDefineType c SK.Alias (rawDef {RT.typeGeist = geist'})]
+      let stmtKind = case aliasKind of
+            TransparentAlias -> SK.Alias
+            OpaqueAlias -> SK.AliasOpaque
+      [PostRawStmtDefineType c stmtKind (rawDef {RT.typeGeist = geist'})]
     RawStmtDefineData _ m (name, _) args consInfo loc -> do
       let name' = Locator.attachCurrentLocator h name
       let consInfo' = fmap (liftRawCons h) consInfo

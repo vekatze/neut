@@ -243,6 +243,8 @@ getGlobalNamesFromDefType stmtKind geist = do
   case stmtKind of
     SK.Alias ->
       [(name, (m, mTag, GN.TopLevelFuncType allArgNum isConstLike False))]
+    SK.AliasOpaque ->
+      [(name, (m, mTag, GN.TopLevelFuncType allArgNum isConstLike False))]
     SK.Data dataName dataArgs consInfoList -> do
       let dataArgNum = AN.fromInt $ length dataArgs
       let consNameArrowList = map (toConsNameArrow dataArgNum) consInfoList
@@ -270,6 +272,8 @@ _getGlobalNames' stmt = do
       let mTag = stmtKindTypeToNominalTag stmtKind
       case stmtKind of
         SK.Alias ->
+          [(name, (m, mTag, GN.TopLevelFuncType allArgNum isConstLike False))]
+        SK.AliasOpaque ->
           [(name, (m, mTag, GN.TopLevelFuncType allArgNum isConstLike False))]
         SK.Data dataName dataArgs consInfoList -> do
           let dataArgNum = AN.fromInt $ length dataArgs
@@ -323,5 +327,7 @@ stmtKindTypeToNominalTag stmtKind =
   case stmtKind of
     SK.Alias ->
       Just Alias
+    SK.AliasOpaque ->
+      Just AliasOpaque
     SK.Data {} ->
       Just Data

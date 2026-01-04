@@ -65,6 +65,7 @@ parseStmt h = do
       parseInline h,
       parseMacro h,
       parseAlias h,
+      parseAliasOpaque h,
       parseNominal h,
       parseResource h,
       parseVariadic h FoldLeft,
@@ -156,7 +157,13 @@ parseAlias :: Handle -> Parser (RawStmt, C)
 parseAlias h = do
   c1 <- keyword "alias"
   (def, c) <- parseAliasDef h baseName
-  return (RawStmtDefineType c1 def, c)
+  return (RawStmtDefineType c1 TransparentAlias def, c)
+
+parseAliasOpaque :: Handle -> Parser (RawStmt, C)
+parseAliasOpaque h = do
+  c1 <- keyword "alias-opaque"
+  (def, c) <- parseAliasDef h baseName
+  return (RawStmtDefineType c1 OpaqueAlias def, c)
 
 parseData :: Handle -> Parser (RawStmt, C)
 parseData h = do
@@ -192,6 +199,11 @@ parseNominalEntry h =
         (geist, cGeist) <- parseGeist h baseName
         loc <- getCurrentLoc
         return ((Macro, geist, loc), cTag ++ cGeist),
+      do
+        cTag <- keyword "alias-opaque"
+        (geist, cGeist) <- parseAliasGeist h baseName
+        loc <- getCurrentLoc
+        return ((AliasOpaque, geist, loc), cTag ++ cGeist),
       do
         cTag <- keyword "alias"
         (geist, cGeist) <- parseAliasGeist h baseName

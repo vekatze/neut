@@ -8,10 +8,12 @@ module Kernel.Elaborate.Internal.Handle.TypeDef
   )
 where
 
+import Control.Monad
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Language.Common.Binder
 import Language.Common.DefiniteDescription qualified as DD
+import Language.Common.Opacity qualified as O
 import Language.Term.Term qualified as TM
 import Prelude hiding (lookup, read)
 
@@ -31,11 +33,12 @@ new = do
   typeDefMapRef <- newIORef Map.empty
   return $ Handle {..}
 
-insert' :: Handle -> DD.DefiniteDescription -> [BinderF TM.Type] -> TM.Type -> IO ()
-insert' h name binders body = do
-  let typeDefInfo = TypeDefInfo {typeDefBinders = binders, typeDefBody = body}
-  modifyIORef' (typeDefMapRef h) $
-    Map.insert name typeDefInfo
+insert' :: Handle -> O.Opacity -> DD.DefiniteDescription -> [BinderF TM.Type] -> TM.Type -> IO ()
+insert' h opacity name binders body =
+  when (opacity == O.Clear) $ do
+    let typeDefInfo = TypeDefInfo {typeDefBinders = binders, typeDefBody = body}
+    modifyIORef' (typeDefMapRef h) $
+      Map.insert name typeDefInfo
 
 get' :: Handle -> IO TypeDefMap
 get' h =

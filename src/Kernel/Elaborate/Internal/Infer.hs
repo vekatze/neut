@@ -157,6 +157,8 @@ inferStmtKindType h stmtKind =
   case stmtKind of
     SK.Alias ->
       return SK.Alias
+    SK.AliasOpaque ->
+      return SK.AliasOpaque
     SK.Data dataName dataArgs consInfoList -> do
       (dataArgs', varEnv) <- inferBinder' h dataArgs
       consInfoList' <- forM consInfoList $ \(m, dd, constLike, consArgs, discriminant) -> do

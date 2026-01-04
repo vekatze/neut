@@ -14,6 +14,7 @@ data NominalTag
   | Inline
   | Macro
   | Alias
+  | AliasOpaque
   | Data
   deriving (Eq, Ord, Show, Generic)
 
@@ -30,6 +31,8 @@ nominalTagToText tag =
       "macro"
     Alias ->
       "alias"
+    AliasOpaque ->
+      "alias-opaque"
     Data ->
       "data"
 
@@ -43,6 +46,8 @@ isTermTag tag =
     Macro ->
       True
     Alias ->
+      False
+    AliasOpaque ->
       False
     Data ->
       False

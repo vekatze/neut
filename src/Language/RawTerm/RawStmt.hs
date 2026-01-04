@@ -7,6 +7,7 @@ module Language.RawTerm.RawStmt
     PostRawProgram (..),
     RawStmtKindTerm,
     RawStmtKindType,
+    AliasKind (..),
     RawConsInfo (..),
     RawImport (..),
     RawImportItem (..),
@@ -53,6 +54,11 @@ type RawStmtKindTerm a =
 type RawStmtKindType a =
   SK.BaseStmtKindType a (RawBinder RT.RawType)
 
+data AliasKind
+  = TransparentAlias
+  | OpaqueAlias
+  deriving (Show, Eq)
+
 data BaseRawStmt name
   = RawStmtDefineTerm
       C
@@ -60,6 +66,7 @@ data BaseRawStmt name
       (RT.RawDef name)
   | RawStmtDefineType
       C
+      AliasKind
       (RT.RawTypeDef name)
   | RawStmtDefineData
       C

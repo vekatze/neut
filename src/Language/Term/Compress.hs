@@ -138,6 +138,8 @@ compressStmtKindType stmtKind =
   case stmtKind of
     Alias ->
       Alias
+    AliasOpaque ->
+      AliasOpaque
     Data name args consInfoList ->
       Data name (map compressBinder args) (map compressConsInfo consInfoList)
 
