@@ -277,8 +277,13 @@ inline' h term = do
       return $ m :< TM.TauIntro ty'
     m :< TM.TauElim (mx, x) e1 e2 -> do
       e1' <- inline' h e1
-      e2' <- inline' h e2
-      return $ m :< TM.TauElim (mx, x) e1' e2'
+      case e1' of
+        _ :< TM.TauIntro ty -> do
+          let sub = IntMap.singleton (Ident.toInt x) (Subst.Type ty)
+          liftIO (Subst.subst (substHandle h) sub e2) >>= inline' h
+        _ -> do
+          e2' <- inline' h e2
+          return $ m :< TM.TauElim (mx, x) e1' e2'
     m :< TM.Let opacity mxt@(_, x, _) e1 e2 -> do
       e1' <- inline' h e1
       case opacity of
