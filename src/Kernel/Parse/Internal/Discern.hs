@@ -224,6 +224,8 @@ discernStmtKindTerm h stmtKind m =
       (expConsArgs', h'') <- discernBinder' h' expConsArgs
       forM_ (H.nameEnv h'') $ \(_, (_, newVar, _, _)) -> do
         liftIO $ Unused.deleteVariable (H.unusedHandle h'') newVar
+      forM_ dataArgs' $ \(_, x, _) -> do
+        liftIO $ Unused.deleteVariable (H.unusedHandle h'') x
       return $ SK.DataIntro dataName dataArgs' expConsArgs' discriminant
 
 discernStmtKindType :: H.Handle -> RawStmtKindType DD.DefiniteDescription -> Hint -> App (SK.StmtKindType WT.WeakType)
