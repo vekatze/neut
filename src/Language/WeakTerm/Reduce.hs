@@ -189,6 +189,9 @@ reduce' h term = do
     m :< WT.CodeElim e -> do
       e' <- reduce' h e
       return $ m :< WT.CodeElim e'
+    m :< WT.TauIntro ty -> do
+      ty' <- reduceType h ty
+      return $ m :< WT.TauIntro ty'
     m :< WT.Actual e -> do
       e' <- reduce' h e
       return $ m :< WT.Actual e'
@@ -473,6 +476,3 @@ reduceLowMagic h lowMagic =
       arg1' <- reduce' h arg1
       arg2' <- reduce' h arg2
       return $ LM.CallType func' arg1' arg2'
-    LM.TermType ty -> do
-      ty' <- reduceType h ty
-      return $ LM.TermType ty'

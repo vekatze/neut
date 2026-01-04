@@ -466,6 +466,9 @@ discern h term =
       let hInner = h {H.currentStage = innerStage}
       body' <- discern hInner body
       return $ m :< WT.CodeElim body'
+    m :< RT.TauIntro _ (_, (ty, _)) -> do
+      ty' <- discernType h ty
+      return $ m :< WT.TauIntro ty'
     m :< RT.Embody e -> do
       ensureRuntimeStage m h "meta operation (`*`)"
       embodyVar <- liftEither $ locatorToVarGlobal m coreBoxEmbody
@@ -761,9 +764,6 @@ discernMagic h m magic =
       arg1' <- discern h arg1
       arg2' <- discern h arg2
       return $ M.WeakMagic $ M.LowMagic $ LM.CallType func' arg1' arg2'
-    RT.TermType (_, (ty, _)) -> do
-      ty' <- discernType h ty
-      return $ M.WeakMagic $ M.LowMagic $ LM.TermType ty'
     RT.GetTypeTag (_, (typeExpr, _)) -> do
       ensureCompileStage m h "inline magic (`get-type-tag`)"
       coreModuleID <- Alias.resolveModuleAlias (H.aliasHandle h) m coreModuleAlias

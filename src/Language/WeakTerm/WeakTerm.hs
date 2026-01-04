@@ -81,6 +81,7 @@ data WeakTermF a
   | BoxElim [(BinderF WeakType, a)] (BinderF WeakType) a [(BinderF WeakType, a)] a
   | CodeIntro a
   | CodeElim a
+  | TauIntro WeakType
   | Actual a
   | Let LetOpacity (BinderF WeakType) a a
   | LetType (Hint, Ident) a a

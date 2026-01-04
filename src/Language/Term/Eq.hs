@@ -46,6 +46,8 @@ eqTerm (_ :< term1) (_ :< term2) =
       eqTerm e1 e2
     (TM.CodeElim e1, TM.CodeElim e2) ->
       eqTerm e1 e2
+    (TM.TauIntro ty1, TM.TauIntro ty2) ->
+      eqType ty1 ty2
     (TM.Let opacity1 _ e1 e1', TM.Let opacity2 _ e2 e2') ->
       opacity1 == opacity2 && eqTerm e1 e2 && eqTerm e1' e2'
     (TM.Prim prim1, TM.Prim prim2) -> eqTermPrimValue prim1 prim2
@@ -197,8 +199,6 @@ eqTermMagic magic1 magic2 =
           eqTerm val1 val2
         (LM.CallType f1 arg1 ret1, LM.CallType f2 arg2 ret2) ->
           eqTerm f1 f2 && eqTerm arg1 arg2 && eqTerm ret1 ret2
-        (LM.TermType ty1, LM.TermType ty2) ->
-          eqType ty1 ty2
         _ ->
           False
     (M.GetTypeTag _ typeTagExpr1 typeExpr1, M.GetTypeTag _ typeTagExpr2 typeExpr2) ->

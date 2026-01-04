@@ -132,6 +132,9 @@ subst h sub term =
     m :< WT.CodeElim e -> do
       e' <- subst h sub e
       return $ m :< WT.CodeElim e'
+    m :< WT.TauIntro ty -> do
+      ty' <- substType h sub ty
+      return $ m :< WT.TauIntro ty'
     m :< WT.Actual e -> do
       e' <- subst h sub e
       return $ m :< WT.Actual e'
@@ -506,6 +509,3 @@ substLowMagic h sub lowMagic =
       arg1' <- subst h sub arg1
       arg2' <- subst h sub arg2
       return $ LM.CallType func' arg1' arg2'
-    LM.TermType ty -> do
-      ty' <- substType h sub ty
-      return $ LM.TermType ty'

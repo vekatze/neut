@@ -88,6 +88,9 @@ refresh h term =
     m :< TM.CodeElim e -> do
       e' <- refresh h e
       return $ m :< TM.CodeElim e'
+    m :< TM.TauIntro ty -> do
+      ty' <- refreshType h ty
+      return $ m :< TM.TauIntro ty'
     m :< TM.Let opacity mxt e1 e2 -> do
       e1' <- refresh h e1
       ([mxt'], e2') <- refresh' h [mxt] e2
@@ -157,9 +160,6 @@ refreshLowMagic h lowMagic =
       arg1' <- refresh h arg1
       arg2' <- refresh h arg2
       return $ LM.CallType func' arg1' arg2'
-    LM.TermType ty -> do
-      ty' <- refreshType h ty
-      return $ LM.TermType ty'
 
 refreshType :: Handle -> TM.Type -> IO TM.Type
 refreshType h ty =

@@ -76,6 +76,8 @@ ensureTemplateResolved h m term =
       ensureTemplateResolved h m e
     _ :< TM.CodeElim e ->
       ensureTemplateResolved h m e
+    _ :< TM.TauIntro ty ->
+      ensureTemplateResolvedType h m ty
     _ :< TM.Let _ (_, _, t) e1 e2 -> do
       ensureTemplateResolvedType h m t
       ensureTemplateResolved h m e1
@@ -174,8 +176,6 @@ ensureTemplateResolvedInLowMagic h m lowMagic =
       ensureTemplateResolved h m func
       ensureTemplateResolved h m arg1
       ensureTemplateResolved h m arg2
-    LM.TermType ty ->
-      ensureTemplateResolvedType h m ty
 
 ensureTemplateResolvedType :: Handle -> Hint -> TM.Type -> App ()
 ensureTemplateResolvedType h m ty =

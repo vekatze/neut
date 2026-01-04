@@ -75,6 +75,7 @@ data TermF a
   | BoxElim [(BinderF Type, a)] (BinderF Type) a [(BinderF Type, a)] a
   | CodeIntro a
   | CodeElim a
+  | TauIntro Type
   | Let O.Opacity (BinderF Type) a a
   | LetType (Hint, Ident) a a
   | Prim (PV.PrimValue Type)

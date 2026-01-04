@@ -341,6 +341,8 @@ clarifyTerm h tenv term =
     _ :< TM.CodeElim e -> do
       e' <- clarifyTerm h tenv e
       liftIO $ callClosure h False e' []
+    _ :< TM.TauIntro ty -> do
+      clarifyType h tenv ty
     _ :< TM.Let opacity mxt@(_, x, _) e1 e2 -> do
       e2' <- clarifyTerm h (TM.insTypeEnv [mxt] tenv) e2
       mxts' <- dropFst <$> clarifyBinder h tenv [mxt]
@@ -653,8 +655,6 @@ clarifyMagic h tenv der = do
           return $
             Utility.bindLet [(funcVarName, func'), (arg1VarName, arg1'), (arg2VarName, arg2')] $
               C.Primitive (C.Magic (LM.CallType funcVar arg1Var arg2Var))
-        LM.TermType ty ->
-          clarifyType h tenv ty
     M.GetTypeTag {} ->
       error "GetTypeTag should be evaluated during inline expansion"
     M.GetConsSize _ ->

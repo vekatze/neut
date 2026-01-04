@@ -182,6 +182,8 @@ analyze h term = do
       analyze h e
     _ :< TM.CodeElim e -> do
       analyze h e
+    _ :< TM.TauIntro ty -> do
+      analyzeType h ty
     _ :< TM.Let _ mxt e1 e2 -> do
       (cs1, h') <- analyzeLet h [(mxt, e1)]
       cs2 <- analyze h' e2
@@ -225,8 +227,6 @@ analyze h term = do
               cs2 <- analyze h arg1
               cs3 <- analyze h arg2
               return $ cs1 ++ cs2 ++ cs3
-            LM.TermType ty ->
-              analyzeType h ty
         M.GetTypeTag _ typeTagExpr typeExpr -> do
           cs1 <- analyzeType h typeTagExpr
           cs2 <- analyzeType h typeExpr

@@ -120,6 +120,9 @@ eq (_ :< term1) (_ :< term2)
   | WT.CodeElim e1 <- term1,
     WT.CodeElim e2 <- term2 =
       eq e1 e2
+  | WT.TauIntro ty1 <- term1,
+    WT.TauIntro ty2 <- term2 =
+      eqType ty1 ty2
   | WT.Actual e1 <- term1,
     WT.Actual e2 <- term2 = do
       eq e1 e2
@@ -363,8 +366,6 @@ eqM (M.WeakMagic m1) (M.WeakMagic m2)
           let b2 = eq switch1 switch2
           let b3 = eq arg1 arg2
           b1 && b2 && b3
-        (LM.TermType ty1, LM.TermType ty2) -> do
-          eqType ty1 ty2
         _ ->
           False
   | M.GetTypeTag mid1 t1 e1 <- m1,

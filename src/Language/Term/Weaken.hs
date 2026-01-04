@@ -98,6 +98,8 @@ weaken term =
       m :< WT.CodeIntro (weaken e)
     m :< TM.CodeElim e ->
       m :< WT.CodeElim (weaken e)
+    m :< TM.TauIntro ty ->
+      m :< WT.TauIntro (weakenType ty)
     m :< TM.Let opacity mxt e1 e2 ->
       m :< WT.Let (reflectOpacity opacity) (weakenTypeBinder mxt) (weaken e1) (weaken e2)
     m :< TM.LetType mx e1 e2 ->
@@ -163,8 +165,6 @@ weakenMagic m magic = do
               LM.OpaqueValue (weaken e)
             LM.CallType func arg1 arg2 ->
               LM.CallType (weaken func) (weaken arg1) (weaken arg2)
-            LM.TermType ty ->
-              LM.TermType (weakenType ty)
     M.GetTypeTag mid typeTagExpr e ->
       M.WeakMagic $ M.GetTypeTag mid (weakenType typeTagExpr) (weakenType e)
     M.GetConsSize typeExpr ->

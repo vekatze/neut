@@ -49,6 +49,8 @@ extend term =
       _m :< TM.CodeIntro (extend e)
     () :< TM.CodeElim e ->
       _m :< TM.CodeElim (extend e)
+    () :< TM.TauIntro ty ->
+      _m :< TM.TauIntro ty
     () :< TM.Let opacity mxt e1 e2 ->
       _m :< TM.Let opacity mxt (extend e1) (extend e2)
     () :< TM.LetType (mx, x) e1 e2 ->

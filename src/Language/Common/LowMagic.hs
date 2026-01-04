@@ -16,7 +16,6 @@ data LowMagic lt ty a
   | Global EN.ExternalName lt
   | OpaqueValue a
   | CallType a a a
-  | TermType ty
   deriving (Show, Eq, G.Generic)
 
 instance (Binary lt, Binary ty, Binary a) => Binary (LowMagic lt ty a)
@@ -41,8 +40,6 @@ instance Functor (LowMagic lt ty) where
         OpaqueValue (f e)
       CallType func arg1 arg2 ->
         CallType (f func) (f arg1) (f arg2)
-      TermType ty ->
-        TermType ty
 
 instance Foldable (LowMagic lt ty) where
   foldMap f der =
@@ -63,8 +60,6 @@ instance Foldable (LowMagic lt ty) where
         f e
       CallType func arg1 arg2 ->
         f func <> f arg1 <> f arg2
-      TermType _ ->
-        mempty
 
 instance Traversable (LowMagic lt ty) where
   traverse f der =
@@ -87,5 +82,3 @@ instance Traversable (LowMagic lt ty) where
         OpaqueValue <$> f e
       CallType func arg1 arg2 ->
         CallType <$> f func <*> f arg1 <*> f arg2
-      TermType ty ->
-        pure $ TermType ty

@@ -21,8 +21,6 @@ import Language.Common.Discriminant qualified as D
 import Language.Common.Ident (Ident)
 import Language.Common.Ident.Reify qualified as Ident
 import Language.Common.IsConstLike (IsConstLike)
-import Language.Common.LowMagic qualified as LM
-import Language.Common.Magic qualified as M
 import Language.Common.ModuleID qualified as MID
 import Language.Common.PrimNumSize qualified as PNS
 import Language.Common.PrimType qualified as PT
@@ -166,7 +164,7 @@ checkConstructorArgBinder hint boundVars (_, x, t) = do
 
 constructListTerm :: Hint -> SGL.StrictGlobalLocator -> [TM.Type] -> TM.Term
 constructListTerm hint listSgl types = do
-  let wrappedTypes = map (\ty -> hint :< TM.Magic (M.LowMagic (LM.TermType ty))) types
+  let wrappedTypes = map (\ty -> hint :< TM.TauIntro ty) types
   foldr (constructListCons hint listSgl) (constructListNil hint listSgl) wrappedTypes
 
 constructListNil :: Hint -> SGL.StrictGlobalLocator -> TM.Term

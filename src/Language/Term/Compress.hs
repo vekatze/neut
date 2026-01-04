@@ -44,6 +44,8 @@ compress term =
       () :< TM.CodeIntro (compress e)
     _ :< TM.CodeElim e ->
       () :< TM.CodeElim (compress e)
+    _ :< TM.TauIntro ty ->
+      () :< TM.TauIntro ty
     _ :< TM.Let opacity mxt e1 e2 ->
       () :< TM.Let opacity mxt (compress e1) (compress e2)
     _ :< TM.LetType (mx, x) e1 e2 ->

@@ -9,9 +9,9 @@ import Language.Common.Attr.DataIntro qualified as AttrDI
 import Language.Common.Attr.Lam qualified as AttrL
 import Language.Common.Binder
 import Language.Common.DecisionTree qualified as DT
+import Language.Common.DefaultArgs qualified as DefaultArgs
 import Language.Common.ForeignCodType qualified as FCT
 import Language.Common.Ident
-import Language.Common.DefaultArgs qualified as DefaultArgs
 import Language.Common.ImpArgs qualified as ImpArgs
 import Language.Common.LowMagic qualified as LM
 import Language.Common.Magic qualified as M
@@ -55,6 +55,8 @@ freeVars term =
       freeVars e
     _ :< WT.CodeElim e ->
       freeVars e
+    _ :< WT.TauIntro _ ->
+      S.empty
     _ :< WT.Actual e ->
       freeVars e
     _ :< WT.Let _ mxt e1 e2 -> do
@@ -137,8 +139,6 @@ freeVarsLowMagicTerm lowMagic =
       freeVars e
     LM.CallType _ arg1 arg2 ->
       S.union (freeVars arg1) (freeVars arg2)
-    LM.TermType _ ->
-      S.empty
 
 freeVarsAll :: WT.WeakTerm -> S.Set Ident
 freeVarsAll term =
@@ -182,6 +182,8 @@ freeVarsAll term =
       freeVarsAll e
     _ :< WT.CodeElim e ->
       freeVarsAll e
+    _ :< WT.TauIntro ty ->
+      freeVarsType ty
     _ :< WT.Actual e ->
       freeVarsAll e
     _ :< WT.Let _ mxt e1 e2 -> do
@@ -309,8 +311,6 @@ freeVarsLowMagic lowMagic =
       freeVarsAll e
     LM.CallType func arg1 arg2 ->
       S.unions [freeVarsAll func, freeVarsAll arg1, freeVarsAll arg2]
-    LM.TermType ty ->
-      freeVarsType ty
 
 freeVarsAttrData :: AttrD.Attr name (BinderF WT.WeakType) -> S.Set Ident
 freeVarsAttrData attr = do

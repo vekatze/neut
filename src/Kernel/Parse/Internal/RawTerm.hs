@@ -689,7 +689,7 @@ rawTermMagicTermType :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermMagicTermType h m c = do
   rawTermMagicBase "term-type" $ do
     ty <- rawType h
-    return $ \_ c2 -> m :< RT.Magic c (RT.TermType (c2, ty))
+    return $ \_ c2 -> m :< RT.TauIntro c (c2, ty)
 
 rawTermMagicCompileError :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermMagicCompileError _h m c = do

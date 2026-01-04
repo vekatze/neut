@@ -272,6 +272,9 @@ inline' h term = do
     m :< TM.CodeElim e -> do
       e' <- inline' h e
       return $ m :< TM.CodeElim e'
+    m :< TM.TauIntro ty -> do
+      ty' <- inlineType' h ty
+      return $ m :< TM.TauIntro ty'
     m :< TM.Let opacity mxt@(_, x, _) e1 e2 -> do
       e1' <- inline' h e1
       case opacity of
@@ -407,9 +410,6 @@ inlineLowMagic h lowMagic =
       arg1' <- inline' h arg1
       arg2' <- inline' h arg2
       return $ LM.CallType func' arg1' arg2'
-    LM.TermType ty -> do
-      ty' <- inlineType' h ty
-      return $ LM.TermType ty'
 
 inlineTypeBinder :: Handle -> BinderF TM.Type -> App (BinderF TM.Type)
 inlineTypeBinder h (m, x, t) = do

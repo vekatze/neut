@@ -194,5 +194,3 @@ distinguishPrimitive h z term =
           (vs1, arg1') <- distinguishValue h z arg1
           (vs2, arg2') <- distinguishValue h z arg2
           return (vs1 <> vs2, C.Magic (LM.CallType func arg1' arg2'))
-        LM.TermType ty -> do
-          return ([], C.Magic (LM.TermType ty))

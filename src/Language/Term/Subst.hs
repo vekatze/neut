@@ -124,6 +124,9 @@ subst h sub term =
     m :< TM.CodeElim e -> do
       e' <- subst h sub e
       return $ m :< TM.CodeElim e'
+    m :< TM.TauIntro ty -> do
+      ty' <- substType h sub ty
+      return $ m :< TM.TauIntro ty'
     m :< TM.Let opacity mxt e1 e2 -> do
       e1' <- subst h sub e1
       ([mxt'], e2') <- subst' h sub [mxt] e2
@@ -454,6 +457,3 @@ substLowMagic h sub lowMagic =
       arg1' <- subst h sub arg1
       arg2' <- subst h sub arg2
       return $ LM.CallType func' arg1' arg2'
-    LM.TermType ty -> do
-      ty' <- substType h sub ty
-      return $ LM.TermType ty'

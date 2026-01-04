@@ -106,6 +106,9 @@ fill h typeSubst term =
     m :< WT.CodeElim e -> do
       e' <- fill h typeSubst e
       return $ m :< WT.CodeElim e'
+    m :< WT.TauIntro ty -> do
+      ty' <- fillType h typeSubst ty
+      return $ m :< WT.TauIntro ty'
     m :< WT.Actual e -> do
       e' <- fill h typeSubst e
       return $ m :< WT.Actual e'
@@ -469,7 +472,4 @@ fillLowMagic h holeSubst lowMagic =
       arg1' <- fill h holeSubst arg1
       arg2' <- fill h holeSubst arg2
       return $ LM.CallType func' arg1' arg2'
-    LM.TermType ty -> do
-      ty' <- fillType h holeSubst ty
-      return $ LM.TermType ty'
 

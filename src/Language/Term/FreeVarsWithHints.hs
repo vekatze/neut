@@ -53,6 +53,8 @@ freeVarsWithHints term =
       freeVarsWithHints e
     _ :< TM.CodeElim e ->
       freeVarsWithHints e
+    _ :< TM.TauIntro ty ->
+      freeVarsWithHintsType ty
     _ :< TM.Let _ mxt e1 e2 -> do
       let set1 = freeVarsWithHints e1
       let set2 = freeVarsWithHintsBinderType [mxt] (freeVarsWithHints e2)
@@ -188,5 +190,3 @@ freeVarsWithHintsLowMagic lowMagic =
       freeVarsWithHints e
     LM.CallType func arg1 arg2 ->
       S.unions [freeVarsWithHints func, freeVarsWithHints arg1, freeVarsWithHints arg2]
-    LM.TermType ty ->
-      freeVarsWithHintsType ty

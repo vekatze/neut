@@ -57,6 +57,8 @@ chainOf' tenv term =
       chainOf' tenv e
     _ :< TM.CodeElim e ->
       chainOf' tenv e
+    _ :< TM.TauIntro ty ->
+      chainOfType tenv ty
     _ :< TM.Let _ mxt e1 e2 -> do
       let xs1 = chainOf' tenv e1
       let xs2 = chainOfBinder tenv [mxt] [e2]

@@ -274,6 +274,9 @@ infer h term =
       tInner <- liftIO $ WT.createTypeHole (gensymHandle h) m holeArgs
       liftIO $ Constraint.insert (constraintHandle h) (m :< WT.Code tInner) t1
       return (m :< WT.CodeElim e', tInner)
+    m :< WT.TauIntro ty -> do
+      ty' <- inferType h ty
+      return (m :< WT.TauIntro ty', m :< WT.Tau)
     _ :< WT.Actual e -> do
       (e', t') <- infer h e
       liftIO $ Constraint.insertActualityConstraint (constraintHandle h) t'
@@ -373,9 +376,6 @@ infer h term =
               liftIO $ Constraint.insert (constraintHandle h) intType t1
               resultType <- liftIO $ newTypeHole h m (varEnv h)
               return (m :< WT.Magic (M.WeakMagic $ M.LowMagic $ LM.CallType func' arg1' arg2'), resultType)
-            LM.TermType ty -> do
-              ty' <- inferType h ty
-              return (m :< WT.Magic (M.WeakMagic $ M.LowMagic $ LM.TermType ty'), m :< WT.Tau)
         M.GetTypeTag mid typeTagExpr typeExpr -> do
           typeTagExpr' <- inferType h typeTagExpr
           typeExpr' <- inferType h typeExpr

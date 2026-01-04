@@ -101,6 +101,7 @@ data RawTermF a
   | BoxElim NecessityVariant Bool C (PatParam RawType) C (SE.Series (Hint, RawIdent)) C a C Loc C a Loc
   | CodeIntro C C (a, C)
   | CodeElim C C (a, C)
+  | TauIntro C (EL RawType)
   | Embody a
   | Let LetKind C (PatParam RawType) C C a C Loc C a Loc
   | LetOn LetKind C (PatParam RawType) C (SE.Series (Hint, RawIdent)) C a C Loc C a Loc
@@ -292,7 +293,6 @@ data RawMagic
   | GetTypeTag (EL RawType)
   | GetConsSize C (EL RawType)
   | GetConstructorArgTypes C (EL RawType) C (EL RawTerm)
-  | TermType (EL RawType)
   | CompileError T.Text
 
 -- elem

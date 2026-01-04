@@ -130,6 +130,11 @@ toDoc term =
         [ PI.horizontal $ attachComment c1 $ D.text "splice",
           PI.inject $ toDoc $ m :< Brace c2 (e, c3)
         ]
+    _ :< TauIntro c (c1, (ty, c2)) -> do
+      D.join
+        [ attachComment c $ D.text "magic term-type",
+          SE.decode $ SE.fromListWithComment (Just SE.Paren) SE.Comma [(c1, (typeToDoc ty, c2))]
+        ]
     _ :< Embody e ->
       D.join [D.text "*", toDoc e]
     _ :< Let letKind c1 mxt c2 c3 e c4 _ c5 cont _ -> do
@@ -308,11 +313,6 @@ toDoc term =
                   [ (c2, (typeToDoc typeExpr, c3)),
                     (c5, (toDoc index, c6))
                   ]
-            ]
-        TermType (c1, (ty, c2)) -> do
-          D.join
-            [ attachComment c $ D.text "magic term-type",
-              SE.decode $ SE.fromListWithComment (Just SE.Paren) SE.Comma [(c1, (typeToDoc ty, c2))]
             ]
         CompileError msg -> do
           D.text $ "magic compile-error(\"" <> msg <> "\")"

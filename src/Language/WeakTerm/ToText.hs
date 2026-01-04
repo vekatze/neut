@@ -100,6 +100,8 @@ toText term =
       "quote " <> inBrace (toText e)
     _ :< WT.CodeElim e ->
       "splice " <> inBrace (toText e)
+    _ :< WT.TauIntro ty ->
+      "magic term-type" <> inParen (toTextType ty)
     _ :< WT.Actual e ->
       "ACTUAL(" <> toText e <> ")"
     _ :< WT.Let opacity (_, x, t) e1 e2 -> do
@@ -380,8 +382,6 @@ showLowMagic lowMagic =
       "magic opaque" <> inParen (toText e)
     LM.CallType func arg1 arg2 ->
       "magic call-type" <> inParen (toText func <> ", " <> toText arg1 <> ", " <> toText arg2)
-    LM.TermType ty ->
-      "magic term-type" <> inParen (toTextType ty)
 
 showForeignCodType :: FCT.ForeignCodType WT.WeakType -> T.Text
 showForeignCodType cod =

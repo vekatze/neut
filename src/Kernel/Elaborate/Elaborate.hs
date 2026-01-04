@@ -338,6 +338,9 @@ elaborate' h term = do
     m :< WT.CodeElim e -> do
       e' <- elaborate' h e
       return $ m :< TM.CodeElim e'
+    m :< WT.TauIntro ty -> do
+      ty' <- elaborateType h ty
+      return $ m :< TM.TauIntro ty'
     _ :< WT.Actual e -> do
       elaborate' h e
     m :< WT.Let opacity (mx, x, t) e1 e2 -> do
@@ -399,9 +402,6 @@ elaborate' h term = do
               arg1' <- elaborate' h arg1
               arg2' <- elaborate' h arg2
               return $ m :< TM.Magic (M.LowMagic $ LM.CallType func' arg1' arg2')
-            LM.TermType ty -> do
-              ty' <- elaborateType h ty
-              return $ m :< TM.Magic (M.LowMagic $ LM.TermType ty')
         M.GetTypeTag mid typeTagExpr typeExpr -> do
           typeTagExpr' <- elaborateType h typeTagExpr
           typeExpr' <- elaborateType h typeExpr

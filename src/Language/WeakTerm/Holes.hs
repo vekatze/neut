@@ -59,6 +59,8 @@ holes term =
       holes e
     _ :< WT.CodeElim e ->
       holes e
+    _ :< WT.TauIntro ty ->
+      holesType ty
     _ :< WT.Actual e ->
       holes e
     _ :< WT.Let _ mxt e1 e2 -> do
@@ -186,8 +188,6 @@ holesLowMagic lowMagic =
       holes e
     LM.CallType func arg1 arg2 ->
       S.unions [holes func, holes arg1, holes arg2]
-    LM.TermType ty ->
-      holesType ty
 
 holesAttrData :: AttrD.Attr name (BinderF WT.WeakType) -> S.Set HoleID
 holesAttrData attr = do
