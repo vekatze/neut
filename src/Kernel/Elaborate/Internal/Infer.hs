@@ -57,7 +57,6 @@ import Language.LowComp.DeclarationName qualified as DN
 import Language.WeakTerm.CreateHole qualified as WT
 import Language.WeakTerm.Subst qualified as Subst
 import Language.WeakTerm.ToText (toTextType)
-import Language.WeakTerm.ToText qualified as WT
 import Language.WeakTerm.WeakPrimValue qualified as WPV
 import Language.WeakTerm.WeakStmt
 import Language.WeakTerm.WeakTerm qualified as WT
@@ -69,7 +68,6 @@ inferStmt :: Handle -> WeakStmt -> App WeakStmt
 inferStmt h stmt =
   case stmt of
     WeakStmtDefineTerm isConstLike stmtKind m x impArgs defaultArgs expArgs codType e -> do
-      liftIO $ putStrLn $ T.unpack $ DD.reify x
       (impArgs', h') <- inferImpBinder h impArgs
       (defaultArgs', h'') <- inferImpBinderWithDefaults h' defaultArgs
       (expArgs', h''') <- inferBinder' h'' expArgs
@@ -94,9 +92,6 @@ inferStmt h stmt =
           return ()
       return $ WeakStmtDefineTerm isConstLike stmtKind' m x impArgs' defaultArgs' expArgs' codType' e'
     WeakStmtDefineType isConstLike stmtKind m x impArgs defaultArgs expArgs codType body -> do
-      liftIO $ putStrLn "define-type-in"
-      liftIO $ putStrLn $ T.unpack $ DD.reify x
-      liftIO $ putStrLn $ T.unpack $ WT.toTextType body
       (impArgs', h') <- inferImpBinder h impArgs
       (defaultArgs', h'') <- inferImpBinderWithDefaults h' defaultArgs
       (expArgs', h''') <- inferBinder' h'' expArgs
@@ -104,7 +99,6 @@ inferStmt h stmt =
       liftIO $ insertType h''' x $ m :< WT.Pi (PK.Normal isConstLike) impArgs' defaultArgs' expArgs' codType'
       body' <- inferType h''' body
       stmtKind' <- inferStmtKindType h''' stmtKind
-      liftIO $ putStrLn "define-type-out"
       return $ WeakStmtDefineType isConstLike stmtKind' m x impArgs' defaultArgs' expArgs' codType' body'
     WeakStmtVariadic kind m dd -> do
       return $ WeakStmtVariadic kind m dd
