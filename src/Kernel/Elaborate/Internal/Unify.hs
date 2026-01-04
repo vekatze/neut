@@ -24,7 +24,6 @@ import Kernel.Elaborate.Internal.Handle.Constraint qualified as Constraint
 import Kernel.Elaborate.Internal.Handle.Elaborate
 import Kernel.Elaborate.Internal.Handle.Hole qualified as Hole
 import Kernel.Elaborate.Internal.Handle.WeakTypeDef qualified as WeakTypeDef
-import Kernel.Elaborate.Stuck (mStuckToText)
 import Kernel.Elaborate.Stuck qualified as Stuck
 import Kernel.Elaborate.TypeHoleSubst qualified as THS
 import Language.Common.Attr.Data qualified as AttrD
@@ -73,13 +72,6 @@ unify' h constraintList = do
 
 throwTypeErrors :: Handle -> [SuspendedConstraint] -> App a
 throwTypeErrors h susList = do
-  liftIO $ putStrLn "remaining:"
-  liftIO $ putStrLn $ T.unpack $ C.showSuspendedConstraints susList
-  defMap <- liftIO $ WeakTypeDef.read' (weakTypeDefHandle h)
-  let keys = Map.keys defMap
-  liftIO $ putStrLn $ "defined names:"
-  liftIO $ print $ map DD.reify keys
-
   sub <- liftIO $ Hole.getTypeSubst (holeHandle h)
   errorList <- mapM (\(C.SuspendedConstraint (_, (_, c))) -> constraintToRemark h sub c) susList
   throwError $ E.MakeError errorList
@@ -260,48 +252,6 @@ simplify h susList constraintList =
                             Nothing -> do
                               simplify h (C.SuspendedConstraint (fmvs, headConstraint) : susList) cs
                     _ -> do
-                      -- liftIO $
-                      --   putStrLn $
-                      --     "suspend stuck: " <> show (T.unpack $ mStuckToText ms1, T.unpack $ mStuckToText ms2)
-                      -- let describe ty =
-                      --       case ty of
-                      --         _ :< WT.Tau ->
-                      --           "Tau"
-                      --         _ :< WT.TVar {} ->
-                      --           "TVar"
-                      --         _ :< WT.TVarGlobal _ _ ->
-                      --           "TVarGlobal"
-                      --         _ :< WT.TyApp {} ->
-                      --           "TyApp"
-                      --         _ :< WT.Pi {} ->
-                      --           "Pi"
-                      --         _ :< WT.Data {} ->
-                      --           "Data"
-                      --         _ :< WT.Box {} ->
-                      --           "Box"
-                      --         _ :< WT.BoxNoema {} ->
-                      --           "BoxNoema"
-                      --         _ :< WT.Code {} ->
-                      --           "Code"
-                      --         _ :< WT.PrimType {} ->
-                      --           "PrimType"
-                      --         _ :< WT.Void ->
-                      --           "Void"
-                      --         _ :< WT.Resource {} ->
-                      --           "Resource"
-                      --         _ :< WT.TypeHole {} ->
-                      --           "TypeHole"
-                      -- liftIO $
-                      --   putStrLn $
-                      --     showFilePos (WT.metaOfType t1)
-                      --       <> " eq-suspend: "
-                      --       <> describe t1
-                      --       <> " vs "
-                      --       <> describe t2
-                      --       <> " | "
-                      --       <> T.unpack (toTextType t1)
-                      --       <> " vs "
-                      --       <> T.unpack (toTextType t2)
                       simplify h (C.SuspendedConstraint (fmvs, headConstraint) : susList) cs
 
 {-# INLINE resolveHole #-}

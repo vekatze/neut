@@ -19,7 +19,6 @@ import Data.IntMap qualified as IntMap
 import Data.List (unzip5, zip5)
 import Data.Set qualified as S
 import Data.Text qualified as T
-import Data.Text.IO qualified as T
 import Gensym.Trick qualified as Gensym
 import Kernel.Common.Cache qualified as Cache
 import Kernel.Common.Const (holeLiteral)

@@ -21,7 +21,6 @@ import Data.Text qualified as T
 import Gensym.Gensym qualified as Gensym
 import Gensym.Handle qualified as GensymHandle
 import Kernel.Elaborate.Internal.Handle.TypeDef qualified as TypeDef
-import Language.Common.Attr.Data qualified as AttrD
 import Language.Common.Attr.DataIntro qualified as AttrDI
 import Language.Common.Attr.Lam qualified as AttrL
 import Language.Common.BaseLowType qualified as BLT
@@ -433,14 +432,6 @@ inlineTypeBinder :: Handle -> BinderF TM.Type -> App (BinderF TM.Type)
 inlineTypeBinder h (m, x, t) = do
   t' <- inlineType' h t
   return (m, x, t')
-
-inlineAttrData :: Handle -> AttrD.Attr name (BinderF TM.Type) -> App (AttrD.Attr name (BinderF TM.Type))
-inlineAttrData h attr = do
-  let consNameList = AttrD.consNameList attr
-  consNameList' <- forM consNameList $ \(cn, binders, cl) -> do
-    binders' <- mapM (inlineTypeBinder h) binders
-    return (cn, binders', cl)
-  return $ attr {AttrD.consNameList = consNameList'}
 
 inlineAttrDataIntro :: Handle -> AttrDI.Attr name (BinderF TM.Type) -> App (AttrDI.Attr name (BinderF TM.Type))
 inlineAttrDataIntro h attr = do
