@@ -11,6 +11,7 @@ import Control.Comonad.Cofree
 import Control.Lens (Bifunctor (bimap))
 import Control.Monad
 import Control.Monad.IO.Class
+import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.IntMap qualified as IntMap
 import Data.Set qualified as S
@@ -19,6 +20,8 @@ import Kernel.Common.Handle.Global.Type qualified as Type
 import Kernel.Common.OptimizableData
 import Kernel.Common.OptimizableData qualified as OD
 import Kernel.Elaborate.Internal.Handle.Elaborate qualified as Elaborate
+import Kernel.Elaborate.Internal.Handle.WeakTypeDef qualified as WeakTypeDef
+import Kernel.Elaborate.Stuck qualified as Stuck
 import Language.Common.Attr.Data qualified as AttrD
 import Language.Common.Attr.Lam qualified as AttrL
 import Language.Common.Binder
@@ -411,7 +414,18 @@ simplifyAffine h dataNameSet (t, orig@(m :< _)) = do
     _ :< WT.PrimType {} -> do
       return []
     _ -> do
-      return [AffineConstraintError orig]
+      defMap <- liftIO $ WeakTypeDef.read' (Elaborate.weakTypeDefHandle (elaborateHandle h))
+      case Stuck.asStuckedType t' of
+        Just (Stuck.VarGlobal dd, evalCtx)
+          | Just lam <- Map.lookup dd defMap -> do
+              mt'' <- liftIO $ Stuck.resume lam evalCtx
+              case mt'' of
+                Just t'' -> do
+                  simplifyAffine h dataNameSet (t'', orig)
+                Nothing -> do
+                  return [AffineConstraintError orig]
+        _ -> do
+          return [AffineConstraintError orig]
 
 substConsArgs :: Handle -> Subst.SubstType -> [BinderF WT.WeakType] -> App [BinderF WT.WeakType]
 substConsArgs h sub consArgs =
