@@ -182,11 +182,11 @@ infer :: Handle -> WT.WeakTerm -> App (WT.WeakTerm, WT.WeakType)
 infer h term =
   case term of
     m :< WT.Var x -> do
-      t <- WeakType.lookup (weakTypeHandle h) m x
-      return (term, t)
+      _ :< t <- WeakType.lookup (weakTypeHandle h) m x
+      return (term, m :< t)
     m :< WT.VarGlobal _ name -> do
-      t <- Type.lookup' (typeHandle h) m name
-      return (term, t)
+      _ :< t <- Type.lookup' (typeHandle h) m name
+      return (term, m :< t)
     m :< WT.PiIntro attr@(AttrL.Attr {lamKind}) impArgs defaultArgs expArgs e -> do
       case lamKind of
         LK.Fix opacity (mx, x, codType) -> do
@@ -270,8 +270,7 @@ infer h term =
       return (m :< WT.CodeIntro e', m :< WT.Code t)
     m :< WT.CodeElim e -> do
       (e', t1) <- infer h e
-      let holeArgs = map (\(mx, x, _) -> mx :< WT.TVar x) (varEnv h)
-      tInner <- liftIO $ WT.createTypeHole (gensymHandle h) m holeArgs
+      tInner <- liftIO $ newTypeHole h m (varEnv h)
       liftIO $ Constraint.insert (constraintHandle h) (m :< WT.Code tInner) t1
       return (m :< WT.CodeElim e', tInner)
     m :< WT.TauIntro ty -> do
@@ -414,11 +413,11 @@ inferTypeWithKind h ty =
     _ :< WT.Tau ->
       return (ty, ty)
     m :< WT.TVar x -> do
-      k <- WeakType.lookup (weakTypeHandle h) m x
-      return (ty, k)
+      _ :< k <- WeakType.lookup (weakTypeHandle h) m x
+      return (ty, m :< k)
     m :< WT.TVarGlobal _ name -> do
-      k <- Type.lookup' (typeHandle h) m name
-      return (ty, k)
+      _ :< k <- Type.lookup' (typeHandle h) m name
+      return (ty, m :< k)
     m :< WT.TyApp t args -> do
       (t', k) <- inferTypeWithKind h t
       argsWithKinds <- mapM (inferTypeWithKind h) args
@@ -644,10 +643,10 @@ inferPiElim h m (e, t) impArgs defaultArgsSpec expArgs = do
       forM_ (zip defaultParams' (map snd defaultArgsTyped)) $ \((_, _, tParam), tArg) -> do
         tParam' <- inferType h tParam
         liftIO $ Constraint.insert (constraintHandle h) tParam' tArg
-      cod' <- inferArgsTerms h subType m expArgs expParams cod
+      _ :< cod' <- inferArgsTerms h subType m expArgs expParams cod
       let impArgs' = map fst impArgsTyped
       let defaultArgs' = map fst defaultArgsTyped
-      return (m :< WT.PiElim isNoetic e (ImpArgs.FullySpecified impArgs') (DefaultArgs.FullySpecified defaultArgs') expArgs', cod')
+      return (m :< WT.PiElim isNoetic e (ImpArgs.FullySpecified impArgs') (DefaultArgs.FullySpecified defaultArgs') expArgs', m :< cod')
     expArgs' = map fst expArgs
 
 createImpArgFromParam ::
@@ -679,9 +678,6 @@ resolveDefaultOverrides h function expected defaultArgs =
 newTypeHole :: Handle -> Hint -> BoundVarEnv -> IO WT.WeakType
 newTypeHole h m varEnv = do
   fst <$> newTypedHole h m varEnv
-
--- let holeArgs = map (\(mx, x, _) -> mx :< WT.TVar x) varEnv
--- WT.createTypeHole (gensymHandle h) m holeArgs
 
 newTypedHole :: Handle -> Hint -> BoundVarEnv -> IO (WT.WeakType, WT.WeakType)
 newTypedHole h m varEnv = do
