@@ -19,6 +19,7 @@ import Data.IntMap qualified as IntMap
 import Data.List (unzip5, zip5)
 import Data.Set qualified as S
 import Data.Text qualified as T
+import Data.Text.IO qualified as T
 import Gensym.Trick qualified as Gensym
 import Kernel.Common.Cache qualified as Cache
 import Kernel.Common.Const (holeLiteral)
@@ -56,6 +57,7 @@ import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.Foreign qualified as F
 import Language.Common.ForeignCodType qualified as FCT
 import Language.Common.Geist qualified as G
+import Language.Common.HoleID qualified as HID
 import Language.Common.Ident
 import Language.Common.Ident.Reify qualified as Ident
 import Language.Common.ImpArgs qualified as ImpArgs
@@ -134,6 +136,9 @@ elaborateStmt h stmt = do
       -- liftIO $ putStrLn "define-term"
       stmtKind' <- elaborateStmtKindTerm h stmtKind
       -- liftIO $ putStrLn "elab1"
+      -- sub <- liftIO $ Hole.getTypeSubst (holeHandle h)
+      -- liftIO $ putStrLn $ "target: " <> T.unpack (toText e)
+      -- liftIO $ T.putStrLn $ THS.toText sub
       e' <- elaborate' h e
       -- liftIO $ putStrLn "elab2"
       impArgs' <- mapM (elaborateWeakBinder h) impArgs
@@ -234,6 +239,7 @@ elaborateGeist h (G.Geist {..}) = do
 
 insertStmt :: Handle -> Stmt -> App ()
 insertStmt h stmt = do
+  liftIO $ putStrLn "insertStmt-in"
   case stmt of
     StmtDefine isConstLike stmtKind (SavedHint m) f impArgs defaultArgs expArgs t e -> do
       case stmtKind of
@@ -252,6 +258,7 @@ insertStmt h stmt = do
     StmtForeign _ -> do
       return ()
   insertWeakStmt h $ weakenStmt stmt
+  liftIO $ putStrLn "insertStmt-out"
 
 insertWeakStmt :: Handle -> WeakStmt -> App ()
 insertWeakStmt h stmt = do
@@ -499,10 +506,8 @@ elaborateType h ty =
       copier' <- elaborate' h copier
       typeTag' <- elaborate' h typeTag
       return $ m :< TM.Resource dd resourceID unitType' discarder' copier' typeTag'
-    holeTerm@(_ :< WT.TypeHole {}) -> do
-      -- liftIO $ putStrLn "hole-loop"
-      sub <- liftIO $ Hole.getTypeSubst (holeHandle h)
-      fillType h sub holeTerm >>= elaborateType h
+    m :< WT.TypeHole hole es -> do
+      fillHole h m hole es >>= elaborateType h
 
 elaboratePrimValue :: Handle -> Hint -> WPV.WeakPrimValue WT.WeakType -> App (PV.PrimValue TM.Type)
 elaboratePrimValue h m primValue =
@@ -800,17 +805,7 @@ reduceWeakType h t = do
   t' <- reduceType h t
   case t' of
     m :< WT.TypeHole holeID args -> do
-      holeSubst <- liftIO $ Hole.getTypeSubst (holeHandle h)
-      case THS.lookup holeID holeSubst of
-        Nothing ->
-          raiseError m $ "Could not instantiate the hole here: " <> T.pack (show holeID)
-        Just (xs, body)
-          | length xs == length args -> do
-              let sub = IntMap.fromList $ zip (map Ident.toInt xs) (map Right args)
-              body' <- liftIO $ Subst.substTypeWith sub body
-              reduceWeakType h body'
-          | otherwise ->
-              raiseError m "Arity mismatch"
+      fillHole h m holeID args >>= reduceWeakType h
     _ :< WT.TyApp (_ :< WT.TVarGlobal _ name) args -> do
       mDef <- liftIO $ WeakTypeDef.lookup' (weakTypeDefHandle h) name
       case mDef of
@@ -824,6 +819,24 @@ reduceWeakType h t = do
           return t'
     _ ->
       return t'
+
+fillHole ::
+  Handle ->
+  Hint ->
+  HID.HoleID ->
+  [WT.WeakType] ->
+  App WT.WeakType
+fillHole h m holeID es = do
+  holeSubst <- liftIO $ Hole.getTypeSubst (holeHandle h)
+  case THS.lookup holeID holeSubst of
+    Nothing ->
+      raiseError m $ "Could not instantiate the hole here: " <> T.pack (show holeID)
+    Just (xs, e)
+      | length xs == length es -> do
+          let s = IntMap.fromList $ zip (map Ident.toInt xs) (map Right es)
+          liftIO $ Subst.substTypeWith s e
+      | otherwise ->
+          raiseError m "Arity mismatch"
 
 elaborateAttrData ::
   Handle ->

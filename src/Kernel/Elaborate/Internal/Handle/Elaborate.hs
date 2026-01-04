@@ -88,8 +88,6 @@ new globalHandle@(Global.Handle {..}) (Local.Handle {..}) currentSource = do
   let inlineLimit = fromMaybe defaultInlineLimit $ moduleInlineLimit (sourceModule currentSource)
   constraintHandle <- Constraint.new
   holeHandle <- Hole.new
-  weakTypeDefHandle <- WeakTypeDef.new
-  typeDefHandle <- TypeDef.new
   weakTypeHandle <- WeakType.new
   let varEnv = []
   let currentStep = 0

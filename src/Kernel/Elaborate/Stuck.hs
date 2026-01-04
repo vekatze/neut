@@ -6,13 +6,14 @@ module Kernel.Elaborate.Stuck
     asStuckedType,
     resume,
     asPairList,
+    stuckToText,
+    mStuckToText,
   )
 where
 
-import App.App (App)
 import Control.Comonad.Cofree
-import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.IntMap qualified as IntMap
+import Data.Text qualified as T
 import Kernel.Elaborate.Constraint qualified as C
 import Kernel.Elaborate.Internal.Handle.WeakTypeDef (TypeDef (..))
 import Language.Common.DefiniteDescription qualified as DD
@@ -20,6 +21,7 @@ import Language.Common.HoleID qualified as HID
 import Language.Common.Ident
 import Language.Common.Ident.Reify qualified as Ident
 import Language.WeakTerm.Subst (substTypeWith)
+import Language.WeakTerm.ToText qualified as ToText
 import Language.WeakTerm.WeakPrimValue qualified as WPV
 import Language.WeakTerm.WeakTerm qualified as WT
 import Logger.Hint
@@ -82,3 +84,49 @@ asPairList ctx1 ctx2 =
           return $ zipWith C.Eq args1 args2 ++ pairList
     _ ->
       Nothing
+
+mStuckToText :: Maybe Stuck -> T.Text
+mStuckToText mStuck =
+  case mStuck of
+    Nothing ->
+      "Nothing"
+    Just stuck ->
+      "Just (" <> stuckToText stuck <> ")"
+
+stuckToText :: Stuck -> T.Text
+stuckToText (base, ctx) =
+  "(" <> evalBaseToText base <> ", " <> evalCtxToText ctx <> ")"
+
+evalBaseToText :: EvalBase -> T.Text
+evalBaseToText base =
+  case base of
+    VarLocal x ->
+      Ident.toText x
+    VarGlobal dd ->
+      DD.localLocator dd
+    Hole holeId args ->
+      "?" <> T.pack (show (HID.reify holeId)) <> "(" <> T.intercalate ", " (map ToText.toTextType args) <> ")"
+    Prim primValue ->
+      showPrimValue primValue
+
+evalCtxToText :: EvalCtx -> T.Text
+evalCtxToText (_ :< ctx) =
+  case ctx of
+    Base ->
+      "*"
+    App ctx' args ->
+      "App(" <> evalCtxToText ctx' <> ", [" <> T.intercalate ", " (map ToText.toTextType args) <> "])"
+
+-- "App[" <> evalCtxToText ctx' <> "(" <> T.intercalate ", " (map ToText.toTextType args) <> ")]"
+
+showPrimValue :: WPV.WeakPrimValue WT.WeakType -> T.Text
+showPrimValue (WPV.Int _ v) =
+  T.pack (show v)
+showPrimValue (WPV.Float _ v) =
+  T.pack (show v)
+showPrimValue (WPV.Op op) =
+  T.pack (show op)
+showPrimValue (WPV.StaticText _ text) =
+  T.pack (show text)
+showPrimValue (WPV.Rune r) =
+  T.pack (show r)

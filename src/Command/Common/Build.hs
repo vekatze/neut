@@ -137,6 +137,7 @@ compile h target outputKindList contentSeq = do
     item <- Interpret.interpret interpretHandle target source cacheOrProg
     return (localHandle, (source, item))
   contentAsync <- fmap catMaybes $ forM cacheOrStmtList $ \(localHandle, (source, (cacheOrStmt, logs))) -> do
+    liftIO $ putStrLn $ show $ sourceFilePath source
     elaborateHandle <- liftIO $ Elaborate.new (globalHandle h) localHandle source
     let ensureMainHandle = EnsureMain.new (Global.envHandle (globalHandle h))
     stmtList <- Elaborate.elaborate elaborateHandle target logs cacheOrStmt

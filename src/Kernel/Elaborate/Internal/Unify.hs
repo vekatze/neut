@@ -24,6 +24,7 @@ import Kernel.Elaborate.Internal.Handle.Constraint qualified as Constraint
 import Kernel.Elaborate.Internal.Handle.Elaborate
 import Kernel.Elaborate.Internal.Handle.Hole qualified as Hole
 import Kernel.Elaborate.Internal.Handle.WeakTypeDef qualified as WeakTypeDef
+import Kernel.Elaborate.Stuck (mStuckToText)
 import Kernel.Elaborate.Stuck qualified as Stuck
 import Kernel.Elaborate.TypeHoleSubst qualified as THS
 import Language.Common.Attr.Data qualified as AttrD
@@ -59,6 +60,8 @@ unifyCurrentConstraints h = do
   susList <- liftIO $ Constraint.getSuspendedConstraints (constraintHandle h)
   cs <- liftIO $ Constraint.get (constraintHandle h)
   susList' <- simplify h susList $ zip cs cs
+  -- liftIO $ putStrLn "remaining:"
+  -- liftIO $ putStrLn $ T.unpack $ C.showSuspendedConstraints susList'
   liftIO $ Constraint.set (constraintHandle h) []
   liftIO $ Constraint.setSuspendedConstraints (constraintHandle h) susList'
   liftIO $ Hole.getTypeSubst (holeHandle h)
@@ -70,6 +73,13 @@ unify' h constraintList = do
 
 throwTypeErrors :: Handle -> [SuspendedConstraint] -> App a
 throwTypeErrors h susList = do
+  liftIO $ putStrLn "remaining:"
+  liftIO $ putStrLn $ T.unpack $ C.showSuspendedConstraints susList
+  defMap <- liftIO $ WeakTypeDef.read' (weakTypeDefHandle h)
+  let keys = Map.keys defMap
+  liftIO $ putStrLn $ "defined names:"
+  liftIO $ print $ map DD.reify keys
+
   sub <- liftIO $ Hole.getTypeSubst (holeHandle h)
   errorList <- mapM (\(C.SuspendedConstraint (_, (_, c))) -> constraintToRemark h sub c) susList
   throwError $ E.MakeError errorList
@@ -233,69 +243,65 @@ simplify h susList constraintList =
                               simplify h (C.SuspendedConstraint (fmvs, headConstraint) : susList) cs
                     (Just (Stuck.VarGlobal g1, ctx1), _)
                       | Just lam <- Map.lookup g1 defMap -> do
-                          -- liftIO $ putStrLn $ "found: " <> show g1
                           let h' = increment h
                           mt1' <- liftIO $ Stuck.resume lam ctx1
                           case mt1' of
                             Just t1' -> do
-                              -- liftIO $ putStrLn "stuck-success"
                               simplify h' susList $ (C.Eq t1' t2, orig) : cs
                             Nothing -> do
-                              -- liftIO $ putStrLn "stuck-fail"
                               simplify h (C.SuspendedConstraint (fmvs, headConstraint) : susList) cs
                     (_, Just (Stuck.VarGlobal g2, ctx2))
                       | Just lam <- Map.lookup g2 defMap -> do
-                          -- liftIO $ putStrLn $ "found: " <> show g2
                           let h' = increment h
                           mt2' <- liftIO $ Stuck.resume lam ctx2
                           case mt2' of
                             Just t2' -> do
-                              -- liftIO $ putStrLn "stuck-success (2)"
                               simplify h' susList $ (C.Eq t1 t2', orig) : cs
                             Nothing -> do
-                              -- liftIO $ putStrLn "stuck-fail (2)"
                               simplify h (C.SuspendedConstraint (fmvs, headConstraint) : susList) cs
                     _ -> do
-                      when (S.null fmvs) $ do
-                        let describe ty =
-                              case ty of
-                                _ :< WT.Tau ->
-                                  "Tau"
-                                _ :< WT.TVar {} ->
-                                  "TVar"
-                                _ :< WT.TVarGlobal _ _ ->
-                                  "TVarGlobal"
-                                _ :< WT.TyApp {} ->
-                                  "TyApp"
-                                _ :< WT.Pi {} ->
-                                  "Pi"
-                                _ :< WT.Data {} ->
-                                  "Data"
-                                _ :< WT.Box {} ->
-                                  "Box"
-                                _ :< WT.BoxNoema {} ->
-                                  "BoxNoema"
-                                _ :< WT.Code {} ->
-                                  "Code"
-                                _ :< WT.PrimType {} ->
-                                  "PrimType"
-                                _ :< WT.Void ->
-                                  "Void"
-                                _ :< WT.Resource {} ->
-                                  "Resource"
-                                _ :< WT.TypeHole {} ->
-                                  "TypeHole"
-                        liftIO $
-                          putStrLn $
-                            showFilePos (WT.metaOfType t1)
-                              <> " eq-suspend(no-holes): "
-                              <> describe t1
-                              <> " vs "
-                              <> describe t2
-                              <> " | "
-                              <> T.unpack (toTextType t1)
-                              <> " vs "
-                              <> T.unpack (toTextType t2)
+                      -- liftIO $
+                      --   putStrLn $
+                      --     "suspend stuck: " <> show (T.unpack $ mStuckToText ms1, T.unpack $ mStuckToText ms2)
+                      -- let describe ty =
+                      --       case ty of
+                      --         _ :< WT.Tau ->
+                      --           "Tau"
+                      --         _ :< WT.TVar {} ->
+                      --           "TVar"
+                      --         _ :< WT.TVarGlobal _ _ ->
+                      --           "TVarGlobal"
+                      --         _ :< WT.TyApp {} ->
+                      --           "TyApp"
+                      --         _ :< WT.Pi {} ->
+                      --           "Pi"
+                      --         _ :< WT.Data {} ->
+                      --           "Data"
+                      --         _ :< WT.Box {} ->
+                      --           "Box"
+                      --         _ :< WT.BoxNoema {} ->
+                      --           "BoxNoema"
+                      --         _ :< WT.Code {} ->
+                      --           "Code"
+                      --         _ :< WT.PrimType {} ->
+                      --           "PrimType"
+                      --         _ :< WT.Void ->
+                      --           "Void"
+                      --         _ :< WT.Resource {} ->
+                      --           "Resource"
+                      --         _ :< WT.TypeHole {} ->
+                      --           "TypeHole"
+                      -- liftIO $
+                      --   putStrLn $
+                      --     showFilePos (WT.metaOfType t1)
+                      --       <> " eq-suspend: "
+                      --       <> describe t1
+                      --       <> " vs "
+                      --       <> describe t2
+                      --       <> " | "
+                      --       <> T.unpack (toTextType t1)
+                      --       <> " vs "
+                      --       <> T.unpack (toTextType t2)
                       simplify h (C.SuspendedConstraint (fmvs, headConstraint) : susList) cs
 
 {-# INLINE resolveHole #-}
@@ -410,8 +416,20 @@ simplifyActual h m dataNameSet t orig = do
           let s = THS.singleton hole xs body
           t'' <- fillType h s t'
           simplifyActual h m dataNameSet t'' orig
-        Nothing ->
-          return [C.SuspendedConstraint (fmvs, (C.Actual t', orig))]
+        Nothing -> do
+          defMap <- liftIO $ WeakTypeDef.read' (weakTypeDefHandle h)
+          case Stuck.asStuckedType t' of
+            Just (Stuck.VarGlobal dd, evalCtx)
+              | Just lam <- Map.lookup dd defMap -> do
+                  let h' = increment h
+                  mt'' <- liftIO $ Stuck.resume lam evalCtx
+                  case mt'' of
+                    Just t'' -> do
+                      simplifyActual h' m dataNameSet t'' orig
+                    Nothing -> do
+                      return [C.SuspendedConstraint (fmvs, (C.Actual t', orig))]
+            _ -> do
+              return [C.SuspendedConstraint (fmvs, (C.Actual t', orig))]
 
 getConsArgTypes ::
   Handle ->
@@ -447,8 +465,20 @@ simplifyInteger h m t orig = do
         Just (hole, (xs, body)) -> do
           t'' <- fillType h (THS.singleton hole xs body) t'
           simplifyInteger h m t'' orig
-        Nothing ->
-          return [C.SuspendedConstraint (fmvs, (C.Integer t', orig))]
+        Nothing -> do
+          defMap <- liftIO $ WeakTypeDef.read' (weakTypeDefHandle h)
+          case Stuck.asStuckedType t' of
+            Just (Stuck.VarGlobal dd, evalCtx)
+              | Just lam <- Map.lookup dd defMap -> do
+                  let h' = increment h
+                  mt'' <- liftIO $ Stuck.resume lam evalCtx
+                  case mt'' of
+                    Just t'' -> do
+                      simplifyInteger h' m t'' orig
+                    Nothing -> do
+                      return [C.SuspendedConstraint (fmvs, (C.Integer t', orig))]
+            _ -> do
+              return [C.SuspendedConstraint (fmvs, (C.Integer t', orig))]
 
 lookupAnyType :: [HID.HoleID] -> THS.TypeHoleSubst -> Maybe (HID.HoleID, ([Ident], WT.WeakType))
 lookupAnyType is sub =

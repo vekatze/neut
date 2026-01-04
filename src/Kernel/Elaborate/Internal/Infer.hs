@@ -22,8 +22,10 @@ import Kernel.Common.Handle.Global.Type qualified as Type
 import Kernel.Common.ReadableDD
 import Kernel.Elaborate.Internal.Handle.Constraint qualified as Constraint
 import Kernel.Elaborate.Internal.Handle.Elaborate
+import Kernel.Elaborate.Internal.Handle.Hole qualified as Hole
 import Kernel.Elaborate.Internal.Handle.WeakDecl qualified as WeakDecl
 import Kernel.Elaborate.Internal.Handle.WeakType qualified as WeakType
+import Kernel.Elaborate.Internal.Handle.WeakTypeDef qualified as WeakTypeDef
 import Kernel.Elaborate.Internal.Unify qualified as Unify
 import Kernel.Elaborate.TypeHoleSubst qualified as THS
 import Language.Common.Annotation qualified as Annotation
@@ -39,6 +41,7 @@ import Language.Common.DefaultArgs qualified as DefaultArgs
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.ForeignCodType qualified as FCT
 import Language.Common.Geist qualified as G
+import Language.Common.HoleID qualified as HID
 import Language.Common.Ident (isHole)
 import Language.Common.Ident.Reify qualified as Ident
 import Language.Common.ImpArgs qualified as ImpArgs
@@ -54,6 +57,7 @@ import Language.LowComp.DeclarationName qualified as DN
 import Language.WeakTerm.CreateHole qualified as WT
 import Language.WeakTerm.Subst qualified as Subst
 import Language.WeakTerm.ToText (toTextType)
+import Language.WeakTerm.ToText qualified as WT
 import Language.WeakTerm.WeakPrimValue qualified as WPV
 import Language.WeakTerm.WeakStmt
 import Language.WeakTerm.WeakTerm qualified as WT
@@ -65,6 +69,7 @@ inferStmt :: Handle -> WeakStmt -> App WeakStmt
 inferStmt h stmt =
   case stmt of
     WeakStmtDefineTerm isConstLike stmtKind m x impArgs defaultArgs expArgs codType e -> do
+      liftIO $ putStrLn $ T.unpack $ DD.reify x
       (impArgs', h') <- inferImpBinder h impArgs
       (defaultArgs', h'') <- inferImpBinderWithDefaults h' defaultArgs
       (expArgs', h''') <- inferBinder' h'' expArgs
@@ -89,13 +94,17 @@ inferStmt h stmt =
           return ()
       return $ WeakStmtDefineTerm isConstLike stmtKind' m x impArgs' defaultArgs' expArgs' codType' e'
     WeakStmtDefineType isConstLike stmtKind m x impArgs defaultArgs expArgs codType body -> do
+      liftIO $ putStrLn "define-type-in"
+      liftIO $ putStrLn $ T.unpack $ DD.reify x
+      liftIO $ putStrLn $ T.unpack $ WT.toTextType body
       (impArgs', h') <- inferImpBinder h impArgs
       (defaultArgs', h'') <- inferImpBinderWithDefaults h' defaultArgs
       (expArgs', h''') <- inferBinder' h'' expArgs
       codType' <- inferType h''' codType
-      body' <- inferType h''' body
       liftIO $ insertType h''' x $ m :< WT.Pi (PK.Normal isConstLike) impArgs' defaultArgs' expArgs' codType'
+      body' <- inferType h''' body
       stmtKind' <- inferStmtKindType h''' stmtKind
+      liftIO $ putStrLn "define-type-out"
       return $ WeakStmtDefineType isConstLike stmtKind' m x impArgs' defaultArgs' expArgs' codType' body'
     WeakStmtVariadic kind m dd -> do
       return $ WeakStmtVariadic kind m dd
@@ -475,10 +484,18 @@ inferTypeWithKind h ty =
       liftIO $ Constraint.insert (constraintHandle h) tCopy tc
       liftIO $ Constraint.insert (constraintHandle h) intType tt
       return (m :< WT.Resource dd resourceID unitType' discarder' copier' typeTag', m :< WT.Tau)
-    m :< WT.TypeHole hole es -> do
-      es' <- mapM (inferType h) es
-      kind <- liftIO $ newTypeHole h m (varEnv h)
-      return (m :< WT.TypeHole hole es', kind)
+    m :< WT.TypeHole holeID _ -> do
+      let rawHoleID = HID.reify holeID
+      mHoleInfo <- liftIO $ Hole.lookup (holeHandle h) rawHoleID
+      case mHoleInfo of
+        Just (_ :< holeTerm, _ :< holeType) -> do
+          return (m :< holeTerm, m :< holeType)
+        Nothing -> do
+          let holeArgs = map (\(mx, x, _) -> mx :< WT.TVar x) (varEnv h)
+          let holeTerm = m :< WT.TypeHole holeID holeArgs
+          holeType <- liftIO $ WT.createTypeHole (gensymHandle h) m holeArgs
+          liftIO $ Hole.insert (holeHandle h) rawHoleID holeTerm holeType
+          return (holeTerm, holeType)
 
 inferAttrData :: Handle -> AttrD.Attr DD.DefiniteDescription (BinderF WT.WeakType) -> App (AttrD.Attr DD.DefiniteDescription (BinderF WT.WeakType))
 inferAttrData h attr = do
@@ -635,7 +652,11 @@ data CastDirection
   = FromNoema
   | ToNoema
 
-inferDecisionTree :: Hint -> Handle -> DT.DecisionTree WT.WeakType WT.WeakTerm -> App (DT.DecisionTree WT.WeakType WT.WeakTerm, WT.WeakType)
+inferDecisionTree ::
+  Hint ->
+  Handle ->
+  DT.DecisionTree WT.WeakType WT.WeakTerm ->
+  App (DT.DecisionTree WT.WeakType WT.WeakTerm, WT.WeakType)
 inferDecisionTree m h tree =
   case tree of
     DT.Leaf ys letSeq body -> do
@@ -680,9 +701,9 @@ inferClause h cursorType decisionCase =
       return (DT.LiteralCase mPat literal cont', tCont)
     DT.ConsCase record@DT.ConsCaseRecord {..} -> do
       let m = mCons
-      let (dataTermList, dataTypes) = unzip dataArgs
-      dataTermList' <- mapM (inferType h) dataTermList
-      let typedDataArgs' = zip dataTermList' dataTypes
+      let (dataTermList, _) = unzip dataArgs
+      typedDataArgs' <- mapM (inferTypeWithKind h) dataTermList
+      -- let typedDataArgs' = zip dataTermList' dataTypes
       (consArgs', _) <- inferBinder' h consArgs
       let argNum = AN.fromInt $ length dataArgs + length consArgs
       let attr = AttrVG.Attr {..}
@@ -720,11 +741,43 @@ resolveType h t = do
   reduceWeakType' h sub t
 
 reduceWeakType' :: Handle -> THS.TypeHoleSubst -> WT.WeakType -> App WT.WeakType
-reduceWeakType' h sub e = do
-  e' <- reduceType h e
-  if THS.fillableType e' sub
-    then fillType h sub e' >>= reduceWeakType' h sub
-    else return e'
+reduceWeakType' h holeSubst t = do
+  t' <- reduceType h t
+  case t' of
+    m :< WT.TypeHole holeID args -> do
+      case THS.lookup holeID holeSubst of
+        Nothing ->
+          return t'
+        Just (xs, body)
+          | length xs == length args -> do
+              let sub = IntMap.fromList $ zip (map Ident.toInt xs) (map Right args)
+              body' <- liftIO $ Subst.substTypeWith sub body
+              reduceWeakType' h holeSubst body'
+          | otherwise ->
+              raiseError m "Arity mismatch"
+    _ :< WT.TyApp (_ :< WT.TVarGlobal _ name) args -> do
+      mDef <- liftIO $ WeakTypeDef.lookup' (weakTypeDefHandle h) name
+      case mDef of
+        Just def
+          | length args == length (WeakTypeDef.typeDefBinders def) -> do
+              let varList = map (\(_, x, _) -> Ident.toInt x) (WeakTypeDef.typeDefBinders def)
+              let sub = IntMap.fromList $ zip varList (map Right args)
+              body' <- liftIO $ Subst.substTypeWith sub (WeakTypeDef.typeDefBody def)
+              reduceWeakType' h holeSubst body'
+        _ ->
+          return t'
+    m :< WT.BoxNoema tInner -> do
+      tInner' <- reduceWeakType' h holeSubst tInner
+      return $ m :< WT.BoxNoema tInner'
+    _ ->
+      return t'
+
+-- reduceWeakType' :: Handle -> THS.TypeHoleSubst -> WT.WeakType -> App WT.WeakType
+-- reduceWeakType' h sub e = do
+--   e' <- reduceType h e
+--   if THS.fillableType e' sub
+--     then fillType h sub e' >>= reduceWeakType' h sub
+--     else return e'
 
 ensureArityCorrectness :: Handle -> WT.WeakTerm -> Int -> Int -> App ()
 ensureArityCorrectness h function expected found = do

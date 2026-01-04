@@ -121,7 +121,7 @@ toTextType ty =
     _ :< WT.TVar x ->
       showVariable x
     _ :< WT.TVarGlobal _ x ->
-      "GLOBAL" <> showGlobalVariable x
+      "<GLOBAL>" <> showGlobalVariable x
     _ :< WT.TyApp t args ->
       showApp (toTextType t) (map toTextType args)
     _ :< WT.Pi piKind impArgs defaultArgs expArgs cod -> do
@@ -134,8 +134,8 @@ toTextType ty =
           "pi-data-intro" <> showImpArgsForAll impArgs defaultArgs <> toTextType cod
     _ :< WT.Data (AttrD.Attr {..}) name es -> do
       if isConstLike
-        then "DATA" <> showGlobalVariable name
-        else "DATA" <> showApp (showGlobalVariable name) (map toTextType es)
+        then "<DATA>" <> showGlobalVariable name
+        else "<DATA>" <> showApp (showGlobalVariable name) (map toTextType es)
     _ :< WT.Box t ->
       "meta " <> toTextType t
     _ :< WT.BoxNoema t ->

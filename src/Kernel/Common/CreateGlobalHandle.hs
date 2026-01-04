@@ -24,7 +24,9 @@ import Kernel.Common.Handle.Global.Platform qualified as Platform
 import Kernel.Common.Handle.Global.Type qualified as Type
 import Kernel.Common.Import
 import Kernel.Elaborate.Internal.Handle.Def qualified as Definition
+import Kernel.Elaborate.Internal.Handle.TypeDef qualified as TypeDef
 import Kernel.Elaborate.Internal.Handle.WeakDef qualified as WeakDef
+import Kernel.Elaborate.Internal.Handle.WeakTypeDef qualified as WeakTypeDef
 import Kernel.Parse.Internal.Handle.GlobalNameMap qualified as GlobalNameMap
 import Language.Common.ModuleID qualified as MID
 import Logger.CreateHandle qualified as Logger
@@ -47,6 +49,8 @@ data Handle = Handle
     loggerHandle :: Logger.Handle,
     typeHandle :: Type.Handle,
     weakDefHandle :: WeakDef.Handle,
+    weakTypeDefHandle :: WeakTypeDef.Handle,
+    typeDefHandle :: TypeDef.Handle,
     compDefHandle :: CompDef.Handle,
     globalNameMapHandle :: GlobalNameMap.Handle,
     presetCacheRef :: IORef (Map.HashMap MID.ModuleID [ImportItem])
@@ -68,7 +72,9 @@ new cfg moduleFilePathOrNone = do
   artifactHandle <- Artifact.new
   moduleHandle <- Module.new
   weakDefHandle <- WeakDef.new gensymHandle
+  weakTypeDefHandle <- WeakTypeDef.new
   defHandle <- Definition.new
+  typeDefHandle <- TypeDef.new
   antecedentHandle <- Antecedent.new
   compDefHandle <- CompDef.new
   globalNameMapHandle <- GlobalNameMap.new
