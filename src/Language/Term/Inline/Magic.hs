@@ -9,6 +9,7 @@ import App.App (App)
 import App.Run (raiseError)
 import Control.Comonad.Cofree
 import Control.Monad (foldM_)
+import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Kernel.Common.TypeTag qualified as TypeTag
@@ -29,7 +30,7 @@ import Language.Common.StrictGlobalLocator qualified as SGL
 import Language.Term.FreeVars qualified as FreeVars
 import Language.Term.PrimValue qualified as PV
 import Language.Term.Term qualified as TM
-import Language.Term.Weaken (weakenType)
+import Language.Term.Weaken (weaken, weakenType)
 import Language.WeakTerm.ToText (toTextType)
 import Logger.Hint (Hint)
 
@@ -135,32 +136,12 @@ evaluateGetConstructorArgTypes m sgl typeExpr indexExpr = do
               <> ")"
         else do
           let (_, binders, _) = consNameList !! index
-          checkConstructorArgNoDependencies m binders
           let types = map (\(_, _, t) -> t) binders
           return $ constructListTerm m sgl types
     (_ :< TM.Data {}, _) ->
       raiseError m "get-constructor-arg-types: index must be an integer literal, but got a different term"
     _ ->
       raiseError m "get-constructor-arg-types: type expression must be a data type"
-
-checkConstructorArgNoDependencies :: Hint -> [BinderF TM.Type] -> App ()
-checkConstructorArgNoDependencies hint binders = do
-  foldM_ (checkConstructorArgBinder hint) [] binders
-
-checkConstructorArgBinder :: Hint -> [Ident] -> BinderF TM.Type -> App [Ident]
-checkConstructorArgBinder hint boundVars (_, x, t) = do
-  let fvs = FreeVars.freeVarsType t
-  let illegalDeps = S.intersection (S.fromList boundVars) fvs
-  if S.null illegalDeps
-    then return (x : boundVars)
-    else
-      raiseError hint $
-        "get-constructor-arg-types: constructor argument types must not depend on previous arguments. "
-          <> "Variable(s) "
-          <> T.pack (show (S.toList illegalDeps))
-          <> " in type of '"
-          <> Ident.toText x
-          <> "' depend on previous arguments"
 
 constructListTerm :: Hint -> SGL.StrictGlobalLocator -> [TM.Type] -> TM.Term
 constructListTerm hint listSgl types = do
