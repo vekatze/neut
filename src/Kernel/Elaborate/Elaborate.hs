@@ -143,7 +143,10 @@ elaborateStmt h stmt = do
       remarks <- do
         affHandle <- liftIO $ EnsureAffinity.new h
         EnsureAffinity.ensureAffinity affHandle $ m :< TM.PiIntro dummyAttr impArgs' defaultArgs' expArgs' e'
-      e'' <- inline h m e'
+      e'' <-
+        if not $ SK.isMacroStmtKind stmtKind
+          then inline h m e'
+          else return e'
       impArgs'' <- mapM (inlineBinder h) impArgs'
       defaultArgs'' <- forM defaultArgs' $ \(binder, value) -> do
         binder' <- inlineBinder h binder
@@ -154,7 +157,8 @@ elaborateStmt h stmt = do
       when isConstLike $ do
         unless (TM.isValue e'') $ do
           raiseError m "Could not reduce the body of this definition into a constant"
-      EnsureTemplateResolved.ensureTemplateResolved h m e''
+      unless (SK.isMacroStmtKind stmtKind) $ do
+        EnsureTemplateResolved.ensureTemplateResolved h m e''
       let result = StmtDefine isConstLike stmtKind' (SavedHint m) x impArgs'' defaultArgs'' expArgs'' codType'' e''
       insertStmt h result
       return ([result], remarks)
