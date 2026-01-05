@@ -384,7 +384,7 @@ infer h term =
           intType <- getIntType (platformHandle h) m
           return (m :< WT.Magic (M.WeakMagic $ M.GetConsSize typeExpr'), intType)
         M.GetConstructorArgTypes sgl listExpr typeExpr index -> do
-          listExpr' <- inferType h listExpr
+          (listExpr', _) <- inferTypeWithKind h listExpr
           typeExpr' <- inferType h typeExpr
           (index', indexType) <- infer h index
           intType <- getIntType (platformHandle h) m
