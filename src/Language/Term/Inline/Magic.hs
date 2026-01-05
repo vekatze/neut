@@ -8,9 +8,6 @@ where
 import App.App (App)
 import App.Run (raiseError)
 import Control.Comonad.Cofree
-import Control.Monad (foldM_)
-import Control.Monad.IO.Class (MonadIO (liftIO))
-import Data.Set qualified as S
 import Data.Text qualified as T
 import Kernel.Common.TypeTag qualified as TypeTag
 import Language.Common.Attr.Data qualified as AttrD
@@ -19,18 +16,15 @@ import Language.Common.BaseName qualified as BN
 import Language.Common.Binder (BinderF)
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.Discriminant qualified as D
-import Language.Common.Ident (Ident)
-import Language.Common.Ident.Reify qualified as Ident
 import Language.Common.IsConstLike (IsConstLike)
 import Language.Common.ModuleID qualified as MID
 import Language.Common.PrimNumSize qualified as PNS
 import Language.Common.PrimType qualified as PT
 import Language.Common.SourceLocator (binaryLocator, typeTagLocator, vectorLocator)
 import Language.Common.StrictGlobalLocator qualified as SGL
-import Language.Term.FreeVars qualified as FreeVars
 import Language.Term.PrimValue qualified as PV
 import Language.Term.Term qualified as TM
-import Language.Term.Weaken (weaken, weakenType)
+import Language.Term.Weaken (weakenType)
 import Language.WeakTerm.ToText (toTextType)
 import Logger.Hint (Hint)
 
