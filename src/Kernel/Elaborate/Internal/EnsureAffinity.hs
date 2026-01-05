@@ -410,6 +410,8 @@ simplifyAffine h dataNameSet (t, orig@(m :< _)) = do
           return $ constraintsFromDataArgs ++ constraintsFromDataConsArgs
         _ -> do
           return [AffineConstraintError orig]
+    _ :< WT.Code tCode ->
+      simplifyAffine h dataNameSet (tCode, orig)
     _ :< WT.BoxNoema {} ->
       return []
     _ :< WT.PrimType {} -> do
