@@ -308,7 +308,7 @@ stmtKindTermToNominalTag stmtKind =
     SK.Inline ->
       Just Inline
     SK.Macro ->
-      Just Define
+      Just Macro
     SK.Main _ ->
       Just Define
     SK.DataIntro {} ->
