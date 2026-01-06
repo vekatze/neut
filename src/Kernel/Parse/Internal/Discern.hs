@@ -713,7 +713,6 @@ discernMagic :: H.Handle -> Hint -> RT.RawMagic -> App (M.WeakMagic WT.WeakType 
 discernMagic h m magic =
   case magic of
     RT.Cast _ (_, (from, _)) (_, (to, _)) (_, (e, _)) _ -> do
-      ensureRuntimeStage m h "runtime magic (`cast`)"
       from' <- discernType h from
       to' <- discernType h to
       e' <- discern h e
