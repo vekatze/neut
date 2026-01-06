@@ -456,8 +456,9 @@ discern h term =
       when mustIgnoreRelayedVars $ do
         forM_ ysCont $ \(_, y) -> liftIO (Unused.deleteVariable (H.unusedHandle h) y)
       return $ m :< WT.BoxElim yetsInner mxt' e1' yetsCont e2''
-    m :< RT.CodeIntro _ _ (body, _) -> do
-      let innerStage = H.currentStage h - 1
+    m :< RT.CodeIntro codeVariant _ _ (body, _) -> do
+      let offset = case codeVariant of RT.CodeVariantK -> 1; RT.CodeVariantC -> 0
+      let innerStage = H.currentStage h - offset
       let hInner = h {H.currentStage = innerStage}
       body' <- discern hInner body
       return $ m :< WT.CodeIntro body'

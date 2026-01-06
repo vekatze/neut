@@ -120,9 +120,9 @@ toDoc term =
           D.line,
           attachComment c5 $ toDoc cont
         ]
-    m :< CodeIntro c1 c2 (e, c3) -> do
+    m :< CodeIntro codeVariant c1 c2 (e, c3) -> do
       PI.arrange
-        [ PI.horizontal $ attachComment c1 $ D.text "quote",
+        [ PI.horizontal $ attachComment c1 $ D.text (codeVariantToKeyword codeVariant),
           PI.inject $ toDoc $ m :< Brace c2 (e, c3)
         ]
     m :< CodeElim c1 c2 (e, c3) -> do
