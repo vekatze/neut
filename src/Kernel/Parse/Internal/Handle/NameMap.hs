@@ -82,7 +82,7 @@ registerGeist h tag RT.RawGeist {..} = do
   liftIO $ insertToGeistMap h name' loc isConstLike
   liftIO $ insertToNameMap h name' loc (Just tag) $ do
     if isTermTag tag
-      then GN.TopLevelFuncTerm argNum isConstLike False
+      then GN.TopLevelFuncTerm argNum isConstLike (isMacroTag tag)
       else GN.TopLevelFuncType argNum isConstLike False
 
 lookup :: Handle -> Hint.Hint -> DD.DefiniteDescription -> App (Maybe (Hint, GN.GlobalName))

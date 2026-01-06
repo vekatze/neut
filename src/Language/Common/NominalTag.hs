@@ -2,6 +2,7 @@ module Language.Common.NominalTag
   ( NominalTag (..),
     nominalTagToText,
     isTermTag,
+    isMacroTag,
   )
 where
 
@@ -50,4 +51,12 @@ isTermTag tag =
     AliasOpaque ->
       False
     Data ->
+      False
+
+isMacroTag :: NominalTag -> Bool
+isMacroTag tag =
+  case tag of
+    Macro ->
+      True
+    _ ->
       False
