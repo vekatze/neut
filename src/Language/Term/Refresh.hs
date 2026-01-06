@@ -115,6 +115,10 @@ refreshMagic h magic =
       typeTagExpr' <- refreshType h typeTagExpr
       typeExpr' <- refreshType h typeExpr
       return $ M.GetTypeTag mid typeTagExpr' typeExpr'
+    M.GetDataArgs sgl listExpr typeExpr -> do
+      listExpr' <- refreshType h listExpr
+      typeExpr' <- refreshType h typeExpr
+      return $ M.GetDataArgs sgl listExpr' typeExpr'
     M.GetConsSize typeExpr -> do
       typeExpr' <- refreshType h typeExpr
       return $ M.GetConsSize typeExpr'

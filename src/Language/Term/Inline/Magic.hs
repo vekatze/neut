@@ -1,5 +1,6 @@
 module Language.Term.Inline.Magic
   ( evaluateGetTypeTag,
+    evaluateGetDataArgs,
     evaluateGetConsSize,
     evaluateGetConstructorArgTypes,
   )
@@ -114,6 +115,14 @@ evaluateGetConsSize m typeExpr = do
       return $ m :< TM.Prim (PV.Int intType PNS.IntSize64 (fromIntegral consCount))
     _ ->
       raiseError m "get-cons-size: type expression must be a data type"
+
+evaluateGetDataArgs :: Hint -> SGL.StrictGlobalLocator -> TM.Type -> TM.Type -> App TM.Term
+evaluateGetDataArgs m sgl _listExpr typeExpr = do
+  case typeExpr of
+    _ :< TM.Data _ _ dataArgs -> do
+      return $ constructListTerm m sgl dataArgs
+    _ ->
+      raiseError m "get-data-args: type expression must be a data type"
 
 evaluateGetConstructorArgTypes :: Hint -> SGL.StrictGlobalLocator -> TM.Type -> TM.Term -> App TM.Term
 evaluateGetConstructorArgTypes m sgl typeExpr indexExpr = do

@@ -771,6 +771,14 @@ discernMagic h m magic =
       typeTagExpr <- discernType h typeTagVar
       typeExpr' <- discernType h typeExpr
       return $ M.WeakMagic $ M.GetTypeTag coreModuleID typeTagExpr typeExpr'
+    RT.GetDataArgs _ (_, (typeExpr, _)) -> do
+      ensureCompileStage m h "inline magic (`get-data-args`)"
+      typeExpr' <- discernType h typeExpr
+      listVar <- liftEither $ locatorToTypeVar m coreListList
+      listExpr <- discernType h listVar
+      gl <- liftEither $ GL.reflect m coreList
+      sgl <- Alias.resolveAlias (H.aliasHandle h) m gl
+      return $ M.WeakMagic $ M.GetDataArgs sgl listExpr typeExpr'
     RT.GetConsSize _ (_, (typeExpr, _)) -> do
       ensureCompileStage m h "inline magic (`get-cons-size`)"
       typeExpr' <- discernType h typeExpr

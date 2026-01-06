@@ -379,6 +379,11 @@ infer h term =
           typeTagExpr' <- inferType h typeTagExpr
           typeExpr' <- inferType h typeExpr
           return (m :< WT.Magic (M.WeakMagic $ M.GetTypeTag mid typeTagExpr' typeExpr'), typeTagExpr')
+        M.GetDataArgs sgl listExpr typeExpr -> do
+          (listExpr', _) <- inferTypeWithKind h listExpr
+          typeExpr' <- inferType h typeExpr
+          listType <- inferType h $ m :< WT.TyApp listExpr' [m :< WT.Tau]
+          return (m :< WT.Magic (M.WeakMagic $ M.GetDataArgs sgl listExpr' typeExpr'), listType)
         M.GetConsSize typeExpr -> do
           typeExpr' <- inferType h typeExpr
           intType <- getIntType (platformHandle h) m

@@ -446,6 +446,10 @@ substMagic h sub (WT.WeakMagic magic) = do
       typeTagExpr' <- substType h sub typeTagExpr
       e' <- substType h sub e
       return $ M.GetTypeTag sgl typeTagExpr' e'
+    M.GetDataArgs sgl listExpr typeExpr -> do
+      listExpr' <- substType h sub listExpr
+      typeExpr' <- substType h sub typeExpr
+      return $ M.GetDataArgs sgl listExpr' typeExpr'
     M.GetConsSize typeExpr -> do
       typeExpr' <- substType h sub typeExpr
       return $ M.GetConsSize typeExpr'

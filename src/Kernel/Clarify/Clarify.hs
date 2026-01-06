@@ -657,6 +657,8 @@ clarifyMagic h tenv der = do
               C.Primitive (C.Magic (LM.CallType funcVar arg1Var arg2Var))
     M.GetTypeTag {} ->
       error "GetTypeTag should be evaluated during inline expansion"
+    M.GetDataArgs _ _ _ ->
+      error "GetDataArgs should be evaluated during inline expansion"
     M.GetConsSize _ ->
       error "GetConsSize should be evaluated during inline expansion"
     M.GetConstructorArgTypes _ _ _ _ ->

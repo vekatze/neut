@@ -93,6 +93,8 @@ ensureTemplateResolved h m term =
           ensureTemplateResolvedInLowMagic h m' lowMagic
         M.GetTypeTag _ _ _ ->
           raiseError m' "get-type-tag can only be used in template"
+        M.GetDataArgs _ _ _ ->
+          raiseError m' "get-data-args can only be used in template"
         M.GetConsSize _ ->
           raiseError m' "get-cons-size can only be used in template"
         M.GetConstructorArgTypes {} ->

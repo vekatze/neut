@@ -414,6 +414,10 @@ fillMagic h holeSubst magic =
       typeTagExpr' <- fillType h holeSubst typeTagExpr
       typeExpr' <- fillType h holeSubst typeExpr
       return $ M.GetTypeTag mid typeTagExpr' typeExpr'
+    M.GetDataArgs sgl listExpr typeExpr -> do
+      listExpr' <- fillType h holeSubst listExpr
+      typeExpr' <- fillType h holeSubst typeExpr
+      return $ M.GetDataArgs sgl listExpr' typeExpr'
     M.GetConsSize typeExpr -> do
       typeExpr' <- fillType h holeSubst typeExpr
       return $ M.GetConsSize typeExpr'

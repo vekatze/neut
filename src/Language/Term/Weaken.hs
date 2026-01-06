@@ -166,6 +166,8 @@ weakenMagic m magic = do
               LM.CallType (weaken func) (weaken arg1) (weaken arg2)
     M.GetTypeTag mid typeTagExpr e ->
       M.WeakMagic $ M.GetTypeTag mid (weakenType typeTagExpr) (weakenType e)
+    M.GetDataArgs sgl listExpr typeExpr ->
+      M.WeakMagic $ M.GetDataArgs sgl (weakenType listExpr) (weakenType typeExpr)
     M.GetConsSize typeExpr ->
       M.WeakMagic $ M.GetConsSize (weakenType typeExpr)
     M.GetConstructorArgTypes sgl listExpr typeExpr index ->

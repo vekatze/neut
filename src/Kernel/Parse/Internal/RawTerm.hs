@@ -560,6 +560,7 @@ rawTermMagic h m c = do
       rawTermMagicGlobal h m c,
       rawTermMagicCallType h m c,
       rawTermMagicGetTypeTag h m c,
+      rawTermMagicGetDataArgs h m c,
       rawTermMagicGetConsSize h m c,
       rawTermMagicGetConstructorArgTypes h m c,
       rawTermMagicCompileError h m c
@@ -663,6 +664,12 @@ rawTermMagicGetTypeTag h m c = do
   rawTermMagicBase "get-type-tag" $ do
     typeExpr <- rawType h
     return $ \_ c2 -> m :< RT.Magic c (RT.GetTypeTag (c2, typeExpr))
+
+rawTermMagicGetDataArgs :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
+rawTermMagicGetDataArgs h m c = do
+  rawTermMagicBase "get-data-args" $ do
+    typeExpr <- rawType h
+    return $ \c1 c2 -> m :< RT.Magic c (RT.GetDataArgs c1 (c2, typeExpr))
 
 rawTermMagicGetConsSize :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermMagicGetConsSize h m c = do

@@ -162,6 +162,8 @@ freeVarsWithHintsMagic magic =
       freeVarsWithHintsLowMagic lowMagic
     M.GetTypeTag _ typeTagExpr e ->
       S.union (freeVarsWithHintsType typeTagExpr) (freeVarsWithHintsType e)
+    M.GetDataArgs _ listExpr typeExpr ->
+      S.union (freeVarsWithHintsType listExpr) (freeVarsWithHintsType typeExpr)
     M.GetConsSize typeExpr ->
       freeVarsWithHintsType typeExpr
     M.GetConstructorArgTypes _ listExpr typeExpr index ->

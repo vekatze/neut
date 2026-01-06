@@ -319,6 +319,10 @@ inline' h term = do
           typeTagExpr' <- inlineType' h typeTagExpr
           typeExpr' <- inlineType' h typeExpr
           Magic.evaluateGetTypeTag m mid typeTagExpr' typeExpr'
+        M.GetDataArgs sgl listExpr typeExpr -> do
+          listExpr' <- inlineType' h listExpr
+          typeExpr' <- inlineType' h typeExpr
+          Magic.evaluateGetDataArgs m sgl listExpr' typeExpr'
         M.GetConsSize typeExpr -> do
           typeExpr' <- inlineType' h typeExpr
           Magic.evaluateGetConsSize m typeExpr'

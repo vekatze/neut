@@ -298,6 +298,11 @@ toDoc term =
             [ attachComment c $ D.text "magic get-type-tag",
               SE.decode $ SE.fromListWithComment (Just SE.Paren) SE.Comma [(c1, (typeToDoc e, c2))]
             ]
+        GetDataArgs c1 (c2, (typeExpr, c3)) -> do
+          D.join
+            [ attachComment (c ++ c1) $ D.text "magic get-data-args",
+              SE.decode $ SE.fromListWithComment (Just SE.Paren) SE.Comma [(c2, (typeToDoc typeExpr, c3))]
+            ]
         GetConsSize c1 (c2, (typeExpr, c3)) -> do
           D.join
             [ attachComment (c ++ c1) $ D.text "magic get-cons-size",

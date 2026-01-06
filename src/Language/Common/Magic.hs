@@ -14,6 +14,7 @@ import Language.Common.StrictGlobalLocator qualified as SGL
 data Magic lt ty a
   = LowMagic (LM.LowMagic lt ty a)
   | GetTypeTag MID.ModuleID ty ty -- typeTagExpr, e (both types)
+  | GetDataArgs SGL.StrictGlobalLocator ty ty -- listExpr, typeExpr (both types)
   | GetConsSize ty
   | GetConstructorArgTypes SGL.StrictGlobalLocator ty ty a -- listExpr, typeExpr (types), index (term)
   | CompileError T.Text
@@ -28,6 +29,8 @@ instance Functor (Magic lt ty) where
         LowMagic (fmap f magic)
       GetTypeTag mid typeTagExpr e ->
         GetTypeTag mid typeTagExpr e
+      GetDataArgs sgl listExpr typeExpr ->
+        GetDataArgs sgl listExpr typeExpr
       GetConsSize typeExpr ->
         GetConsSize typeExpr
       GetConstructorArgTypes sgl listExpr typeExpr index ->
@@ -41,6 +44,8 @@ instance Foldable (Magic lt ty) where
       LowMagic magic ->
         foldMap f magic
       GetTypeTag {} ->
+        mempty
+      GetDataArgs {} ->
         mempty
       GetConsSize {} ->
         mempty
@@ -56,6 +61,8 @@ instance Traversable (Magic lt ty) where
         LowMagic <$> traverse f magic
       GetTypeTag mid typeTagExpr e ->
         pure $ GetTypeTag mid typeTagExpr e
+      GetDataArgs sgl listExpr typeExpr ->
+        pure $ GetDataArgs sgl listExpr typeExpr
       GetConsSize typeExpr ->
         pure $ GetConsSize typeExpr
       GetConstructorArgTypes sgl listExpr typeExpr index ->

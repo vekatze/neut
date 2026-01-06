@@ -230,6 +230,10 @@ analyze h term = do
           cs1 <- analyzeType h typeTagExpr
           cs2 <- analyzeType h typeExpr
           return $ cs1 ++ cs2
+        M.GetDataArgs _ listExpr typeExpr -> do
+          cs1 <- analyzeType h listExpr
+          cs2 <- analyzeType h typeExpr
+          return $ cs1 ++ cs2
         M.GetConsSize typeExpr -> do
           analyzeType h typeExpr
         M.GetConstructorArgTypes _ listExpr typeExpr index -> do

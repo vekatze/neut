@@ -305,6 +305,7 @@ data RawMagic
   | OpaqueValue C (EL RawTerm)
   | CallType C (EL RawTerm) (EL RawTerm) (EL RawTerm)
   | GetTypeTag (EL RawType)
+  | GetDataArgs C (EL RawType)
   | GetConsSize C (EL RawType)
   | GetConstructorArgTypes C (EL RawType) C (EL RawTerm)
   | CompileError T.Text

@@ -410,6 +410,10 @@ elaborate' h term = do
           typeTagExpr' <- elaborateType h typeTagExpr
           typeExpr' <- elaborateType h typeExpr
           return $ m :< TM.Magic (M.GetTypeTag mid typeTagExpr' typeExpr')
+        M.GetDataArgs sgl listExpr typeExpr -> do
+          listExpr' <- elaborateType h listExpr
+          typeExpr' <- elaborateType h typeExpr
+          return $ m :< TM.Magic (M.GetDataArgs sgl listExpr' typeExpr')
         M.GetConsSize typeExpr -> do
           typeExpr' <- elaborateType h typeExpr
           return $ m :< TM.Magic (M.GetConsSize typeExpr')

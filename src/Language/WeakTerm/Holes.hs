@@ -156,6 +156,8 @@ holesMagic (M.WeakMagic magic) =
       holesLowMagic lowMagic
     M.GetTypeTag _ typeTagExpr e ->
       S.union (holesType typeTagExpr) (holesType e)
+    M.GetDataArgs _ listExpr typeExpr ->
+      S.union (holesType listExpr) (holesType typeExpr)
     M.GetConsSize typeExpr ->
       holesType typeExpr
     M.GetConstructorArgTypes _ listExpr typeExpr index ->
