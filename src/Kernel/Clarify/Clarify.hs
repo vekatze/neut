@@ -68,7 +68,7 @@ import Language.Term.Chain (nubFreeVariables)
 import Language.Term.Chain qualified as TM
 import Language.Term.FromPrimNum
 import Language.Term.PrimValue qualified as PV
-import Language.Term.Stmt (Stmt, StmtF (..))
+import Language.Term.Stmt (Stmt, StmtF (..), isMacroStmt)
 import Language.Term.Subst qualified as Subst
 import Language.Term.Term qualified as TM
 import Logger.Hint
@@ -105,8 +105,9 @@ clarify h stmtList = do
   liftIO $ AuxEnv.clear (auxEnvHandle h)
   baseAuxEnv <- AuxEnv.toCompStmtList <$> liftIO (getBaseAuxEnv (auxEnvHandle h) (sigmaHandle h))
   liftIO $ AuxEnv.clear (auxEnvHandle h)
+  let filteredStmtList = filter (not . isMacroStmt) stmtList
   stmtList' <- do
-    stmtList' <- mapM (clarifyStmt h) stmtList
+    stmtList' <- mapM (clarifyStmt h) filteredStmtList
     auxEnv <- liftIO $ AuxEnv.toCompStmtList <$> AuxEnv.get (auxEnvHandle h)
     return $ stmtList' ++ auxEnv
   forM_ (stmtList' ++ baseAuxEnv) $ \stmt -> do

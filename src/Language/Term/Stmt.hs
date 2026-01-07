@@ -5,6 +5,7 @@ module Language.Term.Stmt
     StrippedStmt,
     getStmtName,
     getStmtName',
+    isMacroStmt,
   )
 where
 
@@ -18,6 +19,7 @@ import Language.Common.Discriminant qualified as D
 import Language.Common.Foreign qualified as F
 import Language.Common.IsConstLike
 import Language.Common.RuleKind (RuleKind)
+import Language.Common.StmtKind (isMacroStmtKind)
 import Language.Common.StmtKind qualified as SK
 import Language.Term.Term qualified as TM
 import Logger.Hint
@@ -70,3 +72,11 @@ getStmtName' stmt =
       return (m, name)
     StmtForeign _ ->
       Nothing
+
+isMacroStmt :: Stmt -> Bool
+isMacroStmt stmt =
+  case stmt of
+    StmtDefine _ stmtKind _ _ _ _ _ _ _ ->
+      isMacroStmtKind stmtKind
+    _ ->
+      False
