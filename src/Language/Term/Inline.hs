@@ -271,7 +271,11 @@ inline' h term = do
       return $ m :< TM.CodeIntro e'
     m :< TM.CodeElim e -> do
       e' <- inline' h e
-      return $ m :< TM.CodeElim e'
+      case e' of
+        _ :< TM.CodeIntro e'' ->
+          inline' h e''
+        _ ->
+          return $ m :< TM.CodeElim e'
     m :< TM.TauIntro ty -> do
       ty' <- inlineType' h ty
       return $ m :< TM.TauIntro ty'
