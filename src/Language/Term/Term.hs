@@ -111,6 +111,8 @@ isValue term =
       all isValue consArgs
     _ :< CodeIntro {} ->
       True
+    _ :< TauIntro _ ->
+      True
     _ :< Prim {} ->
       True
     _ :< Magic (LowMagic (LM.OpaqueValue _)) ->
