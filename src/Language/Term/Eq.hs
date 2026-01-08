@@ -1,11 +1,12 @@
-module Language.Term.Eq (eqTerm, eqTerms, eqType, eqTypes) where
+module Language.Term.Eq (eqType, eqTypes) where
 
 import Control.Comonad.Cofree
+import Data.Map.Strict qualified as Map
+import Language.Common.BaseLowType qualified as BLT
 import Language.Common.Binder (BinderF)
 import Language.Common.DecisionTree qualified as DT
-import Language.Common.Ident (Ident)
-import Language.Common.BaseLowType qualified as BLT
 import Language.Common.ForeignCodType qualified as FCT
+import Language.Common.Ident (Ident)
 import Language.Common.LowMagic qualified as LM
 import Language.Common.Magic qualified as M
 import Language.Term.PrimValue qualified as PV
@@ -18,9 +19,9 @@ eqTerm (_ :< term1) (_ :< term2) =
     (TM.Var x1, TM.Var x2) -> x1 == x2
     (TM.VarGlobal _ dd1, TM.VarGlobal _ dd2) -> dd1 == dd2
     (TM.PiIntro _ impArgs1 defaultArgs1 expArgs1 e1, TM.PiIntro _ impArgs2 defaultArgs2 expArgs2 e2) ->
-      eqTypeImpArgs impArgs1 impArgs2
-        && eqTypeDefaultArgs defaultArgs1 defaultArgs2
-        && eqTypeBinders (impArgs1 ++ map fst defaultArgs1 ++ expArgs1) (impArgs2 ++ map fst defaultArgs2 ++ expArgs2)
+      eqTypeBinders impArgs1 impArgs2
+        && eqTermDefaultArgs defaultArgs1 defaultArgs2
+        && eqTypeBinders expArgs1 expArgs2
         && eqTerm e1 e2
     (TM.PiElim isNoetic1 e1 impArgs1 expArgs1, TM.PiElim isNoetic2 e2 impArgs2 expArgs2) ->
       isNoetic1 == isNoetic2
@@ -54,51 +55,91 @@ eqTerm (_ :< term1) (_ :< term2) =
     (TM.Magic magic1, TM.Magic magic2) -> eqTermMagic magic1 magic2
     _ -> False
 
--- Type equality (syntactic equality, ignoring metadata)
+type VarMap = Map.Map Ident Ident
+
 eqType :: TM.Type -> TM.Type -> Bool
-eqType (_ :< type1) (_ :< type2) =
+eqType = eqTypeWithEnv Map.empty
+
+eqTypeWithEnv :: VarMap -> TM.Type -> TM.Type -> Bool
+eqTypeWithEnv env (_ :< type1) (_ :< type2) =
   case (type1, type2) of
-    (TM.Tau, TM.Tau) -> True
-    (TM.TVar x1, TM.TVar x2) -> x1 == x2
-    (TM.TVarGlobal _ dd1, TM.TVarGlobal _ dd2) -> dd1 == dd2
+    (TM.Tau, TM.Tau) ->
+      True
+    (TM.TVar x1, TM.TVar x2) ->
+      case Map.lookup x1 env of
+        Just x2' ->
+          x2 == x2'
+        Nothing ->
+          x1 == x2
+    (TM.TVarGlobal _ dd1, TM.TVarGlobal _ dd2) ->
+      dd1 == dd2
     (TM.TyApp t1 args1, TM.TyApp t2 args2) ->
-      eqType t1 t2
+      eqTypeWithEnv env t1 t2
         && length args1 == length args2
-        && eqTypes args1 args2
-    (TM.Pi pk1 impArgs1 defaultArgs1 expArgs1 cod1, TM.Pi pk2 impArgs2 defaultArgs2 expArgs2 cod2) ->
+        && and (zipWith (eqTypeWithEnv env) args1 args2)
+    (TM.Pi pk1 impArgs1 defaultArgs1 expArgs1 cod1, TM.Pi pk2 impArgs2 defaultArgs2 expArgs2 cod2) -> do
+      let (envAfterImp, impArgsEq) = eqAndExtendImpArgs env impArgs1 impArgs2
+      let (envAfterDefault, defaultArgsEq) = eqDefaultArgsWithEnv envAfterImp defaultArgs1 defaultArgs2
       pk1 == pk2
-        && eqTypeImpArgs impArgs1 impArgs2
-        && eqTypeDefaultArgs defaultArgs1 defaultArgs2
-        && eqTypeBinders (impArgs1 ++ map fst defaultArgs1 ++ expArgs1) (impArgs2 ++ map fst defaultArgs2 ++ expArgs2)
-        && eqType cod1 cod2
+        && impArgsEq
+        && defaultArgsEq
+        && eqTypeBinders expArgs1 expArgs2
+        && eqTypeWithEnv envAfterDefault cod1 cod2
     (TM.Data _ name1 es1, TM.Data _ name2 es2) ->
-      name1 == name2 && eqTypes es1 es2
-    (TM.Box t1, TM.Box t2) -> eqType t1 t2
-    (TM.BoxNoema t1, TM.BoxNoema t2) -> eqType t1 t2
-    (TM.Code t1, TM.Code t2) -> eqType t1 t2
-    (TM.PrimType pt1, TM.PrimType pt2) -> pt1 == pt2
-    (TM.Void, TM.Void) -> True
+      name1 == name2 && and (zipWith (eqTypeWithEnv env) es1 es2)
+    (TM.Box t1, TM.Box t2) ->
+      eqTypeWithEnv env t1 t2
+    (TM.BoxNoema t1, TM.BoxNoema t2) ->
+      eqTypeWithEnv env t1 t2
+    (TM.Code t1, TM.Code t2) ->
+      eqTypeWithEnv env t1 t2
+    (TM.PrimType pt1, TM.PrimType pt2) ->
+      pt1 == pt2
+    (TM.Void, TM.Void) ->
+      True
     (TM.Resource dd1 _ unitType1 discarder1 copier1 typeTag1, TM.Resource dd2 _ unitType2 discarder2 copier2 typeTag2) ->
       dd1 == dd2
-        && eqType unitType1 unitType2
+        && eqTypeWithEnv env unitType1 unitType2
         && eqTerm discarder1 discarder2
         && eqTerm copier1 copier2
         && eqTerm typeTag1 typeTag2
-    _ -> False
+    _ ->
+      False
 
-eqTypeImpArgs :: [BinderF TM.Type] -> [BinderF TM.Type] -> Bool
-eqTypeImpArgs =
-  eqTypeBinders
+eqAndExtendImpArgs :: VarMap -> [BinderF TM.Type] -> [BinderF TM.Type] -> (VarMap, Bool)
+eqAndExtendImpArgs env bs1 bs2 =
+  case (bs1, bs2) of
+    ([], []) ->
+      (env, True)
+    ((_, x1, t1) : rest1, (_, x2, t2) : rest2) -> do
+      let typeEq = eqTypeWithEnv env t1 t2
+      let env' = Map.insert x1 x2 env
+      let (envFinal, restEq) = eqAndExtendImpArgs env' rest1 rest2
+      (envFinal, typeEq && restEq)
+    _ ->
+      (env, False)
 
-eqTypeDefaultArgs :: [(BinderF TM.Type, TM.Term)] -> [(BinderF TM.Type, TM.Term)] -> Bool
-eqTypeDefaultArgs args1 args2 =
+eqDefaultArgsWithEnv :: VarMap -> [(BinderF TM.Type, TM.Term)] -> [(BinderF TM.Type, TM.Term)] -> (VarMap, Bool)
+eqDefaultArgsWithEnv env args1 args2 =
+  case (args1, args2) of
+    ([], []) ->
+      (env, True)
+    (((_, _, t1), val1) : rest1, ((_, _, t2), val2) : rest2) -> do
+      let typeEq = eqTypeWithEnv env t1 t2
+      let valEq = eqTerm val1 val2
+      let (envFinal, restEq) = eqDefaultArgsWithEnv env rest1 rest2
+      (envFinal, typeEq && valEq && restEq)
+    _ ->
+      (env, False)
+
+eqTermDefaultArgs :: [(BinderF TM.Type, TM.Term)] -> [(BinderF TM.Type, TM.Term)] -> Bool
+eqTermDefaultArgs args1 args2 =
   length args1 == length args2
-    && and (zipWith eqTypeDefaultArg args1 args2)
+    && and (zipWith eqTermDefaultArg args1 args2)
 
-eqTypeDefaultArg :: (BinderF TM.Type, TM.Term) -> (BinderF TM.Type, TM.Term) -> Bool
-eqTypeDefaultArg (binder1, value1) (binder2, value2) =
-  eqTypeBinders [binder1] [binder2]
-    && eqTerm value1 value2
+eqTermDefaultArg :: (BinderF TM.Type, TM.Term) -> (BinderF TM.Type, TM.Term) -> Bool
+eqTermDefaultArg ((_, _, t1), val1) ((_, _, t2), val2) =
+  eqType t1 t2 && eqTerm val1 val2
 
 eqTypeBinders :: [BinderF TM.Type] -> [BinderF TM.Type] -> Bool
 eqTypeBinders bs1 bs2 =
@@ -132,12 +173,14 @@ eqTermDecisionTree dt1 dt2 =
   case (dt1, dt2) of
     (DT.Leaf _ letSeq1 e1, DT.Leaf _ letSeq2 e2) ->
       eqTermLetSeq letSeq1 letSeq2 && eqTerm e1 e2
-    (DT.Unreachable, DT.Unreachable) -> True
+    (DT.Unreachable, DT.Unreachable) ->
+      True
     (DT.Switch _ (fallback1, cases1), DT.Switch _ (fallback2, cases2)) ->
       eqTermDecisionTree fallback1 fallback2
         && length cases1 == length cases2
         && and (zipWith eqTermCase cases1 cases2)
-    _ -> False
+    _ ->
+      False
 
 eqTermCase :: DT.Case TM.Type TM.Term -> DT.Case TM.Type TM.Term -> Bool
 eqTermCase case1 case2 =
@@ -150,7 +193,8 @@ eqTermCase case1 case2 =
         && eqTypeDataArgs (DT.dataArgs record1) (DT.dataArgs record2)
         && eqTypeBinders (DT.consArgs record1) (DT.consArgs record2)
         && eqTermDecisionTree (DT.cont record1) (DT.cont record2)
-    _ -> False
+    _ ->
+      False
 
 eqTypeDataArgs :: [(TM.Type, TM.Type)] -> [(TM.Type, TM.Type)] -> Bool
 eqTypeDataArgs args1 args2 =
@@ -168,11 +212,13 @@ eqTermPrimValue pv1 pv2 =
       eqType t1 t2 && size1 == size2 && val1 == val2
     (PV.Float t1 size1 val1, PV.Float t2 size2 val2) ->
       eqType t1 t2 && size1 == size2 && val1 == val2
-    (PV.Op op1, PV.Op op2) -> op1 == op2
+    (PV.Op op1, PV.Op op2) ->
+      op1 == op2
     (PV.StaticText t1 txt1, PV.StaticText t2 txt2) ->
       eqType t1 t2 && txt1 == txt2
     (PV.Rune r1, PV.Rune r2) -> r1 == r2
-    _ -> False
+    _ ->
+      False
 
 eqTermMagic :: M.Magic BLT.BaseLowType TM.Type TM.Term -> M.Magic BLT.BaseLowType TM.Type TM.Term -> Bool
 eqTermMagic magic1 magic2 =
@@ -212,7 +258,8 @@ eqTermMagic magic1 magic2 =
         && eqTerm index1 index2
     (M.CompileError msg1, M.CompileError msg2) ->
       msg1 == msg2
-    _ -> False
+    _ ->
+      False
 
 eqTermNamedArgs :: [(TM.Term, BLT.BaseLowType)] -> [(TM.Term, BLT.BaseLowType)] -> Bool
 eqTermNamedArgs args1 args2 =
@@ -229,7 +276,7 @@ eqTerms ts1 ts2 =
 
 eqTypes :: [TM.Type] -> [TM.Type] -> Bool
 eqTypes ts1 ts2 =
-  length ts1 == length ts2 && and (zipWith eqType ts1 ts2)
+  length ts1 == length ts2 && and (zipWith (eqTypeWithEnv Map.empty) ts1 ts2)
 
 eqForeignCodType :: FCT.ForeignCodType BLT.BaseLowType -> FCT.ForeignCodType BLT.BaseLowType -> Bool
 eqForeignCodType cod1 cod2 =
