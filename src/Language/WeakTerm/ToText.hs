@@ -34,7 +34,7 @@ toText term =
     _ :< WT.Var x ->
       showVariable x
     _ :< WT.VarGlobal _ x ->
-      "<GLOBAL>" <> showGlobalVariable x
+      showGlobalVariable x
     _ :< WT.PiIntro attr impArgs defaultArgs expArgs e -> do
       case attr of
         AttrL.Attr {lamKind = LK.Fix opacity (_, x, codType)} ->
@@ -44,7 +44,7 @@ toText term =
           )
             <> showVariable x
             <> showImpArgs impArgs defaultArgs
-            <> inParen (showDomArgList expArgs)
+            <> inParen (showFnDomArgList expArgs)
             <> ": "
             <> toTextType codType
             <> " "
@@ -54,7 +54,7 @@ toText term =
           "function "
             <> name
             <> showImpArgs impArgs defaultArgs
-            <> inParen (showDomArgList expArgs)
+            <> inParen (showFnDomArgList expArgs)
             <> ": "
             <> toTextType codType
             <> " "
@@ -66,15 +66,15 @@ toText term =
       case e of
         _ :< WT.VarGlobal attr _
           | AttrVG.isConstLike attr ->
-              "<CONST>" <> toText e <> impArgsText
+              toText e <> impArgsText
         _ ->
           toText e <> impArgsText <> inParen (T.intercalate ", " (map toText expArgs))
     _ :< WT.PiElimExact e -> do
       "exact " <> toText e
     _ :< WT.DataIntro (AttrDI.Attr {..}) consName _ consArgs -> do
       if isConstLike
-        then "data-constlike: " <> showGlobalVariable consName
-        else "data:" <> showApp (showGlobalVariable consName) (map toText consArgs)
+        then showGlobalVariable consName
+        else showApp (showGlobalVariable consName) (map toText consArgs)
     _ :< WT.DataElim isNoetic xets tree -> do
       if isNoetic
         then "case " <> showMatchArgs xets <> " " <> inBrace (showDecisionTree tree)
@@ -127,7 +127,7 @@ toTextType ty =
     _ :< WT.TVar x ->
       showVariable x
     _ :< WT.TVarGlobal _ x ->
-      "<GLOBAL>" <> showGlobalVariable x
+      showGlobalVariable x
     _ :< WT.TyApp t args ->
       showApp (toTextType t) (map toTextType args)
     _ :< WT.Pi piKind impArgs defaultArgs expArgs cod -> do
@@ -140,8 +140,8 @@ toTextType ty =
           "pi-data-intro" <> showImpArgsForAll impArgs defaultArgs <> toTextType cod
     _ :< WT.Data (AttrD.Attr {..}) name es -> do
       if isConstLike
-        then "<DATA>" <> showGlobalVariable name
-        else "<DATA>" <> showApp (showGlobalVariable name) (map toTextType es)
+        then showGlobalVariable name
+        else showApp (showGlobalVariable name) (map toTextType es)
     _ :< WT.Box t ->
       "meta " <> toTextType t
     _ :< WT.BoxNoema t ->
@@ -234,9 +234,17 @@ showDomArg :: BinderF WT.WeakType -> T.Text
 showDomArg (_, _, t) =
   toTextType t
 
+showFnDomArg :: BinderF WT.WeakType -> T.Text
+showFnDomArg (_, x, t) =
+  Ident.toText' x <> ": " <> toTextType t
+
 showDomArgList :: [BinderF WT.WeakType] -> T.Text
 showDomArgList mxts =
   T.intercalate ", " $ map showDomArg mxts
+
+showFnDomArgList :: [BinderF WT.WeakType] -> T.Text
+showFnDomArgList mxts =
+  T.intercalate ", " $ map showFnDomArg mxts
 
 showApp :: T.Text -> [T.Text] -> T.Text
 showApp e es =
