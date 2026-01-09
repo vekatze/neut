@@ -335,13 +335,9 @@ clarifyTerm h tenv term =
         TM.fromLetSeqOpaque castSeq $
           TM.fromLetSeq ((mxt, e1) : uncastSeq) e2
     _ :< TM.CodeIntro e -> do
-      let fvs = TM.chainOf tenv [e]
-      lamID <- liftIO $ Gensym.newCount (gensymHandle h)
-      e' <- clarifyTerm h tenv e
-      returnClosure h tenv lamID (Just "code") O.Clear fvs [] e'
+      clarifyTerm h tenv e
     _ :< TM.CodeElim e -> do
-      e' <- clarifyTerm h tenv e
-      liftIO $ callClosure h False e' []
+      clarifyTerm h tenv e
     _ :< TM.TauIntro ty -> do
       clarifyType h tenv ty
     m :< TM.TauElim (mx, x) e1 e2 -> do
@@ -398,8 +394,8 @@ clarifyType h tenv ty =
       clarifyType h tenv t
     _ :< TM.BoxNoema {} ->
       return Sigma.returnImmediateNoemaS4
-    _ :< TM.Code {} -> do
-      return Sigma.returnClosureS4
+    _ :< TM.Code t -> do
+      clarifyType h tenv t
     _ :< TM.PrimType primType ->
       case primType of
         PT.Int intSize ->
