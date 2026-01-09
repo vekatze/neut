@@ -847,6 +847,8 @@ stmtKindToDefKind stmtKind =
       Just Inline.Macro
     SK.Template ->
       Just Inline.Template
+    SK.DataIntro {} ->
+      Just Inline.DataIntro
     _ ->
       Nothing
 

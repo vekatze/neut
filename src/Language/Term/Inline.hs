@@ -51,6 +51,7 @@ data DefKind
   = Inline
   | Macro
   | Template
+  | DataIntro
   deriving (Eq, Show)
 
 data DefInfo = DefInfo
