@@ -215,8 +215,7 @@ insertStmt h stmt = do
           liftIO $ Type.insert' (typeHandle h) f $ weakenType $ m :< TM.Pi (PK.DataIntro isConstLike) impArgs defaultArgs expArgs t
         _ ->
           liftIO $ Type.insert' (typeHandle h) f $ weakenType $ m :< TM.Pi (PK.Normal isConstLike) impArgs defaultArgs expArgs t
-      let isInlineFlag = SK.isInlineStmtKind stmtKind
-      liftIO $ Definition.insert' (defHandle h) (SK.toOpacityTerm stmtKind) f (impArgs ++ map fst defaultArgs ++ expArgs) e t isInlineFlag
+      liftIO $ Definition.insert' (defHandle h) f (impArgs ++ map fst defaultArgs ++ expArgs) e t (stmtKindToDefKind stmtKind)
     StmtDefineType isConstLike stmtKind (SavedHint m) f impArgs defaultArgs expArgs t body -> do
       liftIO $ Type.insert' (typeHandle h) f $ weakenType $ m :< TM.Pi (PK.Normal isConstLike) impArgs defaultArgs expArgs t
       let allBinders = impArgs ++ map fst defaultArgs ++ expArgs
@@ -838,6 +837,18 @@ elaborateAttrDataIntro h attr = do
       return (mx, x, t')
     return (name, binders', isConstLike)
   return $ attr {AttrDI.consNameList = consNameList'}
+
+stmtKindToDefKind :: SK.StmtKindTerm a -> Maybe Inline.DefKind
+stmtKindToDefKind stmtKind =
+  case stmtKind of
+    SK.Inline ->
+      Just Inline.Inline
+    SK.Macro ->
+      Just Inline.Macro
+    SK.Template ->
+      Just Inline.Template
+    _ ->
+      Nothing
 
 -- viewStmt :: WeakStmt -> IO ()
 -- viewStmt stmt = do

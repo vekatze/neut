@@ -7,12 +7,10 @@ module Kernel.Elaborate.Internal.Handle.Def
   )
 where
 
-import Control.Monad
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Language.Common.Binder
 import Language.Common.DefiniteDescription qualified as DD
-import Language.Common.Opacity qualified as O
 import Language.Term.Inline qualified as Inline
 import Language.Term.Term qualified as TM
 import Prelude hiding (lookup, read)
@@ -26,18 +24,21 @@ new = do
   defMapRef <- newIORef Map.empty
   return $ Handle {..}
 
-insert' :: Handle -> O.Opacity -> DD.DefiniteDescription -> [BinderF TM.Type] -> TM.Term -> TM.Type -> Bool -> IO ()
-insert' h opacity name xts e typ isInlineFlag =
-  when (opacity == O.Clear) $ do
-    let defInfo =
-          Inline.DefInfo
-            { Inline.defBinders = xts,
-              Inline.defBody = e,
-              Inline.codType = typ,
-              Inline.isInline = isInlineFlag
-            }
-    modifyIORef' (defMapRef h) $
-      Map.insert name defInfo
+insert' :: Handle -> DD.DefiniteDescription -> [BinderF TM.Type] -> TM.Term -> TM.Type -> Maybe Inline.DefKind -> IO ()
+insert' h name xts e typ mDefKind =
+  case mDefKind of
+    Just defKind -> do
+      let defInfo =
+            Inline.DefInfo
+              { Inline.defBinders = xts,
+                Inline.defBody = e,
+                Inline.codType = typ,
+                Inline.defKind = defKind
+              }
+      modifyIORef' (defMapRef h) $
+        Map.insert name defInfo
+    Nothing ->
+      return ()
 
 get' :: Handle -> IO (Map.HashMap DD.DefiniteDescription Inline.DefInfo)
 get' h =
