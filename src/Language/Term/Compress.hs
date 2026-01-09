@@ -128,6 +128,8 @@ compressStmtKindTerm stmtKind =
       Inline
     Macro ->
       Macro
+    Template ->
+      Template
     Main t ->
       Main (compressType t)
     DataIntro name dataArgs consArgs disc ->

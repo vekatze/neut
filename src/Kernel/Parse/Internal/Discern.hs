@@ -216,6 +216,8 @@ discernStmtKindTerm h stmtKind m =
       return SK.Inline
     SK.Macro ->
       return SK.Macro
+    SK.Template ->
+      return SK.Template
     SK.Main _ -> do
       unitType <- getUnitType h m
       return $ SK.Main unitType
@@ -258,6 +260,8 @@ toCandidateKindTerm stmtKind =
     SK.Inline ->
       Function
     SK.Macro ->
+      Function
+    SK.Template ->
       Function
     SK.Main {} ->
       Function

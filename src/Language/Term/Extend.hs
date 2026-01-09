@@ -135,6 +135,8 @@ extendStmtKindTerm stmtKind =
       Inline
     Macro ->
       Macro
+    Template ->
+      Template
     Main t ->
       Main (extendType t)
     DataIntro name dataArgs consArgs disc ->

@@ -190,6 +190,8 @@ decStmt stmt =
           RT.decodeDef (RT.nameToDoc . N.Var) "inline" c (fmap BN.reify def)
         SK.Macro ->
           RT.decodeDef (RT.nameToDoc . N.Var) "macro" c (fmap BN.reify def)
+        SK.Template ->
+          RT.decodeDef (RT.nameToDoc . N.Var) "template" c (fmap BN.reify def)
         SK.Main _ ->
           RT.decodeDef (RT.nameToDoc . N.Var) "define" c (fmap BN.reify def)
         _ ->
@@ -288,6 +290,8 @@ decNominalGeist (tag, geist, _) = do
         Inline ->
           RT.decGeist (D.text . BN.reify) geist
         Macro ->
+          RT.decGeist (D.text . BN.reify) geist
+        Template ->
           RT.decGeist (D.text . BN.reify) geist
         Alias ->
           RT.decTypeGeist (D.text . BN.reify) geist

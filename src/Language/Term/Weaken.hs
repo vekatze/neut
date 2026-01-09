@@ -251,6 +251,8 @@ weakenStmtKindTerm stmtKind =
       Inline
     Macro ->
       Macro
+    Template ->
+      Template
     Main t ->
       Main (weakenType t)
     DataIntro dataName dataArgs expConsArgs discriminant -> do

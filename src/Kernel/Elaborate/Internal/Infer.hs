@@ -139,6 +139,8 @@ inferStmtKindTerm h stmtKind =
       return SK.Inline
     SK.Macro ->
       return SK.Macro
+    SK.Template ->
+      return SK.Template
     SK.Main t -> do
       t' <- inferType h t
       return $ SK.Main t'

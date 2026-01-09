@@ -64,6 +64,7 @@ parseStmt h = do
       parseData h,
       parseInline h,
       parseMacro h,
+      parseTemplate h,
       parseAlias h,
       parseAliasOpaque h,
       parseNominal h,
@@ -144,6 +145,15 @@ parseMacro h = do
   checkNotMainOrZen defName m "macro"
   return (RawStmtDefineTerm c1 SK.Macro def, c)
 
+parseTemplate :: Handle -> Parser (RawStmt, C)
+parseTemplate h = do
+  c1 <- keyword "template"
+  (def, c) <- parseDef h baseName
+  let defName = RT.getDefName def
+  let m = RT.loc $ RT.geist def
+  checkNotMainOrZen defName m "template"
+  return (RawStmtDefineTerm c1 SK.Template def, c)
+
 parseInline :: Handle -> Parser (RawStmt, C)
 parseInline h = do
   c1 <- keyword "inline"
@@ -199,6 +209,11 @@ parseNominalEntry h =
         (geist, cGeist) <- parseGeist h baseName
         loc <- getCurrentLoc
         return ((Macro, geist, loc), cTag ++ cGeist),
+      do
+        cTag <- keyword "template"
+        (geist, cGeist) <- parseGeist h baseName
+        loc <- getCurrentLoc
+        return ((Template, geist, loc), cTag ++ cGeist),
       do
         cTag <- keyword "alias-opaque"
         (geist, cGeist) <- parseAliasGeist h baseName

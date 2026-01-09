@@ -309,6 +309,8 @@ stmtKindTermToNominalTag stmtKind =
       Just Inline
     SK.Macro ->
       Just Macro
+    SK.Template ->
+      Just Template
     SK.Main _ ->
       Just Define
     SK.DataIntro {} ->
@@ -318,6 +320,8 @@ stmtKindTermIsMacro :: SK.BaseStmtKindTerm name binder t -> Bool
 stmtKindTermIsMacro stmtKind =
   case stmtKind of
     SK.Macro ->
+      True
+    SK.Template ->
       True
     _ ->
       False
