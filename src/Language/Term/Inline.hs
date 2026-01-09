@@ -317,8 +317,12 @@ inline' h term = do
     m :< TM.Magic magic -> do
       case magic of
         M.LowMagic lowMagic -> do
-          lowMagic' <- inlineLowMagic h lowMagic
-          return (m :< TM.Magic (M.LowMagic lowMagic'))
+          case lowMagic of
+            LM.Cast _ _ e ->
+              inline' h e
+            _ -> do
+              lowMagic' <- inlineLowMagic h lowMagic
+              return (m :< TM.Magic (M.LowMagic lowMagic'))
         M.GetTypeTag mid typeTagExpr typeExpr -> do
           typeTagExpr' <- inlineType' h typeTagExpr
           typeExpr' <- inlineType' h typeExpr
