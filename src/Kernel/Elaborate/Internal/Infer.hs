@@ -77,6 +77,12 @@ inferStmt h stmt =
         forM_ (impArgs' ++ map fst defaultArgs') $ \(mx, _, t) ->
           checkIsTypeType h''' mx t
       case stmtKind of
+        SK.Macro -> do
+          forM_ (map fst defaultArgs' ++ expArgs') $ \(mx, _, t) ->
+            checkIsCodeType h''' mx t
+        _ ->
+          return ()
+      case stmtKind of
         SK.DataIntro {} -> do
           liftIO $ insertType h''' x $ m :< WT.Pi (PK.DataIntro isConstLike) impArgs' defaultArgs' expArgs' codType'
         _ ->
@@ -918,6 +924,11 @@ checkIsTypeType :: Handle -> Hint -> WT.WeakType -> App ()
 checkIsTypeType h m t = do
   let tau = m :< WT.Tau
   liftIO $ Constraint.insert (constraintHandle h) tau t
+
+checkIsCodeType :: Handle -> Hint -> WT.WeakType -> App ()
+checkIsCodeType h m t = do
+  tInner <- liftIO $ newTypeHole h m (varEnv h)
+  liftIO $ Constraint.insert (constraintHandle h) (m :< WT.Code tInner) t
 
 substTypeBinder :: Handle -> Subst.Subst -> BinderF WT.WeakType -> App (BinderF WT.WeakType)
 substTypeBinder h sub (mx, x, t) = do
