@@ -268,7 +268,8 @@ inline' h term = do
       e2' <- inline' h e2
       return $ m :< TM.BoxElim castSeq' mxt' e1' uncastSeq' e2'
     m :< TM.CodeIntro e -> do
-      return $ m :< TM.CodeIntro e
+      e' <- inline' h e
+      return $ m :< TM.CodeIntro e'
     m :< TM.CodeElim e -> do
       e' <- inline' h e
       case e' of
