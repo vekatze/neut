@@ -138,20 +138,20 @@ parseDefine h = do
 
 parseMacro :: Handle -> Parser (RawStmt, C)
 parseMacro h = do
-  c1 <- keyword "define-macro"
+  c1 <- keyword "macro"
   (def, c) <- parseDef h baseName
   let defName = RT.getDefName def
   let m = RT.loc $ RT.geist def
-  checkNotMainOrZen defName m "define-macro"
+  checkNotMainOrZen defName m "macro"
   return (RawStmtDefineTerm c1 SK.Macro def, c)
 
 parseMacroInline :: Handle -> Parser (RawStmt, C)
 parseMacroInline h = do
-  c1 <- keyword "inline-macro"
+  c1 <- keyword "macro-inline"
   (def, c) <- parseDef h baseName
   let defName = RT.getDefName def
   let m = RT.loc $ RT.geist def
-  checkNotMainOrZen defName m "inline-macro"
+  checkNotMainOrZen defName m "macro-inline"
   return (RawStmtDefineTerm c1 SK.MacroInline def, c)
 
 parseInline :: Handle -> Parser (RawStmt, C)
@@ -205,12 +205,12 @@ parseNominalEntry h =
         loc <- getCurrentLoc
         return ((Inline, geist, loc), cTag ++ cGeist),
       do
-        cTag <- keyword "define-macro"
+        cTag <- keyword "macro"
         (geist, cGeist) <- parseGeist h baseName
         loc <- getCurrentLoc
         return ((Macro, geist, loc), cTag ++ cGeist),
       do
-        cTag <- keyword "inline-macro"
+        cTag <- keyword "macro-inline"
         (geist, cGeist) <- parseGeist h baseName
         loc <- getCurrentLoc
         return ((MacroInline, geist, loc), cTag ++ cGeist),

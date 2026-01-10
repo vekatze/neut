@@ -189,9 +189,9 @@ decStmt stmt =
         SK.Inline ->
           RT.decodeDef (RT.nameToDoc . N.Var) "inline" c (fmap BN.reify def)
         SK.Macro ->
-          RT.decodeDef (RT.nameToDoc . N.Var) "define-macro" c (fmap BN.reify def)
+          RT.decodeDef (RT.nameToDoc . N.Var) "macro" c (fmap BN.reify def)
         SK.MacroInline ->
-          RT.decodeDef (RT.nameToDoc . N.Var) "inline-macro" c (fmap BN.reify def)
+          RT.decodeDef (RT.nameToDoc . N.Var) "macro-inline" c (fmap BN.reify def)
         SK.Main _ ->
           RT.decodeDef (RT.nameToDoc . N.Var) "define" c (fmap BN.reify def)
         _ ->
