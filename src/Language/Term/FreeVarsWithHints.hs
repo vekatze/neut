@@ -166,6 +166,8 @@ freeVarsWithHintsMagic magic =
       S.union (freeVarsWithHintsType listExpr) (freeVarsWithHintsType typeExpr)
     M.GetConsSize typeExpr ->
       freeVarsWithHintsType typeExpr
+    M.GetWrapperContentType typeExpr ->
+      freeVarsWithHintsType typeExpr
     M.GetConstructorArgTypes _ listExpr typeExpr index ->
       S.unions [freeVarsWithHintsType listExpr, freeVarsWithHintsType typeExpr, freeVarsWithHints index]
     M.CompileError _ ->

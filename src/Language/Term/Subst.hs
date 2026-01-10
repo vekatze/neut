@@ -416,6 +416,8 @@ substMagic h sub magic =
       return $ M.GetDataArgs sgl listExpr' typeExpr'
     M.GetConsSize typeExpr ->
       M.GetConsSize <$> substType h sub typeExpr
+    M.GetWrapperContentType typeExpr ->
+      M.GetWrapperContentType <$> substType h sub typeExpr
     M.GetConstructorArgTypes sgl listExpr typeExpr index -> do
       listExpr' <- substType h sub listExpr
       typeExpr' <- substType h sub typeExpr

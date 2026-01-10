@@ -308,6 +308,11 @@ toDoc term =
             [ attachComment (c ++ c1) $ D.text "magic get-cons-size",
               SE.decode $ SE.fromListWithComment (Just SE.Paren) SE.Comma [(c2, (typeToDoc typeExpr, c3))]
             ]
+        GetWrapperContentType c1 (c2, (typeExpr, c3)) -> do
+          D.join
+            [ attachComment (c ++ c1) $ D.text "magic get-wrapper-content-type",
+              SE.decode $ SE.fromListWithComment (Just SE.Paren) SE.Comma [(c2, (typeToDoc typeExpr, c3))]
+            ]
         GetConstructorArgTypes c1 (c2, (typeExpr, c3)) _c4 (c5, (index, c6)) -> do
           D.join
             [ attachComment (c ++ c1) $ D.text "magic get-constructor-arg-types",

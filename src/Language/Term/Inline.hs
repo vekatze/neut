@@ -324,10 +324,9 @@ inline' h term = do
             _ -> do
               lowMagic' <- inlineLowMagic h lowMagic
               return (m :< TM.Magic (M.LowMagic lowMagic'))
-        M.GetTypeTag mid typeTagExpr typeExpr -> do
-          typeTagExpr' <- inlineType' h typeTagExpr
+        M.GetTypeTag mid _ typeExpr -> do
           typeExpr' <- inlineType' h typeExpr
-          Magic.evaluateGetTypeTag m mid typeTagExpr' typeExpr'
+          Magic.evaluateGetTypeTag m mid typeExpr'
         M.GetDataArgs sgl listExpr typeExpr -> do
           listExpr' <- inlineType' h listExpr
           typeExpr' <- inlineType' h typeExpr
@@ -335,8 +334,10 @@ inline' h term = do
         M.GetConsSize typeExpr -> do
           typeExpr' <- inlineType' h typeExpr
           Magic.evaluateGetConsSize m typeExpr'
-        M.GetConstructorArgTypes sgl listExpr typeExpr indexExpr -> do
-          _ <- inlineType' h listExpr
+        M.GetWrapperContentType typeExpr -> do
+          typeExpr' <- inlineType' h typeExpr
+          Magic.evaluateGetWrapperContentType m typeExpr'
+        M.GetConstructorArgTypes sgl _ typeExpr indexExpr -> do
           typeExpr' <- inlineType' h typeExpr
           indexExpr' <- inline' h indexExpr
           Magic.evaluateGetConstructorArgTypes m sgl typeExpr' indexExpr'

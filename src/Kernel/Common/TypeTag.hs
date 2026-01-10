@@ -33,6 +33,8 @@ data TypeTag
   | Rune
   | Binary
   | Vector
+  | Wrapper
+  deriving (Show)
 
 immTypeTagMap :: [(DD.DefiniteDescription, TypeTag)]
 immTypeTagMap =
@@ -102,6 +104,8 @@ typeTagToInteger tag =
       19
     Vector ->
       20
+    Wrapper ->
+      21
 
 fromIntSize :: IntSize -> TypeTag
 fromIntSize s =

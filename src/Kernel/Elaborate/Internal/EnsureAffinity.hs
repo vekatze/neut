@@ -236,6 +236,8 @@ analyze h term = do
           return $ cs1 ++ cs2
         M.GetConsSize typeExpr -> do
           analyzeType h typeExpr
+        M.GetWrapperContentType typeExpr -> do
+          analyzeType h typeExpr
         M.GetConstructorArgTypes _ listExpr typeExpr index -> do
           cs0 <- analyzeType h listExpr
           cs1 <- analyzeType h typeExpr

@@ -377,6 +377,9 @@ eqM (M.WeakMagic m1) (M.WeakMagic m2)
   | M.GetConsSize t1 <- m1,
     M.GetConsSize t2 <- m2 =
       eqType t1 t2
+  | M.GetWrapperContentType t1 <- m1,
+    M.GetWrapperContentType t2 <- m2 =
+      eqType t1 t2
   | M.GetConstructorArgTypes sgl1 t1a t1b e1 <- m1,
     M.GetConstructorArgTypes sgl2 t2a t2b e2 <- m2 = do
       let b1 = sgl1 == sgl2

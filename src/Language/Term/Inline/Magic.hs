@@ -2,6 +2,7 @@ module Language.Term.Inline.Magic
   ( evaluateGetTypeTag,
     evaluateGetDataArgs,
     evaluateGetConsSize,
+    evaluateGetWrapperContentType,
     evaluateGetConstructorArgTypes,
   )
 where
@@ -29,8 +30,8 @@ import Language.Term.Weaken (weakenType)
 import Language.WeakTerm.ToText (toTextType)
 import Logger.Hint (Hint)
 
-evaluateGetTypeTag :: Hint -> MID.ModuleID -> TM.Type -> TM.Type -> App TM.Term
-evaluateGetTypeTag m moduleID typeTagExpr typeExpr = do
+evaluateGetTypeTag :: Hint -> MID.ModuleID -> TM.Type -> App TM.Term
+evaluateGetTypeTag m moduleID typeExpr = do
   case typeExpr of
     _ :< TM.Tau ->
       returnTypeTagIntValue m moduleID TypeTag.Type
@@ -38,8 +39,8 @@ evaluateGetTypeTag m moduleID typeTagExpr typeExpr = do
       returnTypeTagIntValue m moduleID TypeTag.Function
     _ :< TM.Data (AttrD.Attr {AttrD.consNameList}) _ _ -> do
       case consNameList of
-        [(_, [(_, _, t)], _)] -> do
-          evaluateGetTypeTag m moduleID typeTagExpr t -- newtype
+        [(_, [(_, _, _)], _)] -> do
+          returnTypeTagIntValue m moduleID TypeTag.Wrapper
         _ -> do
           let isEnum = all (\(_, _, isConstLike) -> isConstLike) consNameList
           if isEnum && not (null consNameList)
@@ -115,6 +116,15 @@ evaluateGetConsSize m typeExpr = do
       return $ m :< TM.Prim (PV.Int intType PNS.IntSize64 (fromIntegral consCount))
     _ ->
       raiseError m "get-cons-size: type expression must be a data type"
+
+evaluateGetWrapperContentType :: Hint -> TM.Type -> App TM.Term
+evaluateGetWrapperContentType m typeExpr =
+  case typeExpr of
+    _ :< TM.Data (AttrD.Attr {AttrD.consNameList}) _ _
+      | [(_, [(_, _, t)], _)] <- consNameList -> do
+          return $ m :< TM.TauIntro t
+    _ ->
+      raiseError m "get-wrapper-content-type: type expression must be a wrapper"
 
 evaluateGetDataArgs :: Hint -> SGL.StrictGlobalLocator -> TM.Type -> TM.Type -> App TM.Term
 evaluateGetDataArgs m sgl _listExpr typeExpr = do

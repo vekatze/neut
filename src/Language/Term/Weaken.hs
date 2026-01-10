@@ -170,6 +170,8 @@ weakenMagic m magic = do
       M.WeakMagic $ M.GetDataArgs sgl (weakenType listExpr) (weakenType typeExpr)
     M.GetConsSize typeExpr ->
       M.WeakMagic $ M.GetConsSize (weakenType typeExpr)
+    M.GetWrapperContentType typeExpr ->
+      M.WeakMagic $ M.GetWrapperContentType (weakenType typeExpr)
     M.GetConstructorArgTypes sgl listExpr typeExpr index ->
       M.WeakMagic $ M.GetConstructorArgTypes sgl (weakenType listExpr) (weakenType typeExpr) (weaken index)
     M.CompileError msg ->
