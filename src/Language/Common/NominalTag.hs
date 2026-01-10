@@ -30,9 +30,9 @@ nominalTagToText tag =
     Inline ->
       "inline"
     Macro ->
-      "macro"
+      "define-macro"
     Template ->
-      "template"
+      "inline-macro"
     Alias ->
       "alias"
     AliasOpaque ->
