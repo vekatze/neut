@@ -172,6 +172,8 @@ freeVarsWithHintsMagic magic =
       freeVarsWithHintsType typeExpr
     M.GetConstructorArgTypes _ listExpr typeExpr index ->
       S.unions [freeVarsWithHintsType listExpr, freeVarsWithHintsType typeExpr, freeVarsWithHints index]
+    M.GetConsName textType typeExpr index ->
+      S.unions [freeVarsWithHintsType textType, freeVarsWithHintsType typeExpr, freeVarsWithHints index]
     M.ShowType textTypeExpr typeExpr ->
       S.union (freeVarsWithHintsType textTypeExpr) (freeVarsWithHintsType typeExpr)
     M.TextCons textTypeExpr rune text ->

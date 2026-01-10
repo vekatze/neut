@@ -806,6 +806,11 @@ discernMagic h m magic =
       gl <- liftEither $ GL.reflect m coreList
       sgl <- Alias.resolveAlias (H.aliasHandle h) m gl
       return $ M.WeakMagic $ M.GetConstructorArgTypes sgl listExpr typeExpr' index'
+    RT.GetConsArgName _ (_, (typeExpr, _)) _ (_, (index, _)) -> do
+      textType <- liftEither (locatorToTypeVar m coreText) >>= discernType h
+      typeExpr' <- discernType h typeExpr
+      index' <- discern h index
+      return $ M.WeakMagic $ M.GetConsName textType typeExpr' index'
     RT.ShowType _ (_, (typeExpr, _)) -> do
       textType <- liftEither (locatorToTypeVar m coreText) >>= discernType h
       typeExpr' <- discernType h typeExpr

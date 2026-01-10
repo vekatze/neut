@@ -18,6 +18,7 @@ data Magic lt ty a
   | GetWrapperContentType ty
   | GetVectorContentType SGL.StrictGlobalLocator ty
   | GetConstructorArgTypes SGL.StrictGlobalLocator ty ty a -- listExpr, typeExpr (types), index (term)
+  | GetConsName ty ty a -- textType, type, index
   | ShowType ty ty
   | TextCons ty a a
   | TextUncons MID.ModuleID a
@@ -43,6 +44,8 @@ instance Functor (Magic lt ty) where
         GetVectorContentType sgl typeExpr
       GetConstructorArgTypes sgl listExpr typeExpr index ->
         GetConstructorArgTypes sgl listExpr typeExpr (f index)
+      GetConsName textType typeExpr index ->
+        GetConsName textType typeExpr (f index)
       ShowType textTypeExpr typeExpr ->
         ShowType textTypeExpr typeExpr
       TextCons textTypeExpr rune text ->
@@ -68,6 +71,8 @@ instance Foldable (Magic lt ty) where
       GetVectorContentType {} ->
         mempty
       GetConstructorArgTypes _ _ _ index ->
+        f index
+      GetConsName _ _ index ->
         f index
       ShowType {} ->
         mempty
@@ -95,6 +100,8 @@ instance Traversable (Magic lt ty) where
         pure $ GetVectorContentType sgl typeExpr
       GetConstructorArgTypes sgl listExpr typeExpr index ->
         GetConstructorArgTypes sgl listExpr typeExpr <$> f index
+      GetConsName textType typeExpr index ->
+        GetConsName textType typeExpr <$> f index
       ShowType textTypeExpr typeExpr ->
         pure $ ShowType textTypeExpr typeExpr
       TextCons textTypeExpr rune text ->

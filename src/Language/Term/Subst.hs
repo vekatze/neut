@@ -425,6 +425,11 @@ substMagic h sub magic =
       typeExpr' <- substType h sub typeExpr
       index' <- subst h sub index
       return $ M.GetConstructorArgTypes sgl listExpr' typeExpr' index'
+    M.GetConsName textType typeExpr index -> do
+      textType' <- substType h sub textType
+      typeExpr' <- substType h sub typeExpr
+      index' <- subst h sub index
+      return $ M.GetConsName textType' typeExpr' index'
     M.ShowType textTypeExpr typeExpr -> do
       textTypeExpr' <- substType h sub textTypeExpr
       typeExpr' <- substType h sub typeExpr

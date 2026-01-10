@@ -329,6 +329,17 @@ toDoc term =
                     (c5, (toDoc index, c6))
                   ]
             ]
+        GetConsArgName c1 (c2, (typeExpr, c3)) _c4 (c5, (index, c6)) -> do
+          D.join
+            [ attachComment (c ++ c1) $ D.text "magic get-cons-name",
+              SE.decode $
+                SE.fromListWithComment
+                  (Just SE.Paren)
+                  SE.Comma
+                  [ (c2, (typeToDoc typeExpr, c3)),
+                    (c5, (toDoc index, c6))
+                  ]
+            ]
         ShowType c1 (c2, (typeExpr, c3)) -> do
           D.join
             [ attachComment (c ++ c1) $ D.text "magic show-type",

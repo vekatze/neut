@@ -166,6 +166,8 @@ holesMagic (M.WeakMagic magic) =
       holesType typeExpr
     M.GetConstructorArgTypes _ listExpr typeExpr index ->
       S.unions [holesType listExpr, holesType typeExpr, holes index]
+    M.GetConsName textType typeExpr index ->
+      S.unions [holesType textType, holesType typeExpr, holes index]
     M.ShowType textTypeExpr typeExpr ->
       S.union (holesType textTypeExpr) (holesType typeExpr)
     M.TextCons textTypeExpr rune text ->

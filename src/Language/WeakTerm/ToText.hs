@@ -355,6 +355,15 @@ showMagic (M.WeakMagic magic) =
               <> ", "
               <> toText index
           )
+    M.GetConsName textType typeExpr index ->
+      "magic get-cons-name"
+        <> inParen
+          ( toTextType textType
+              <> ", "
+              <> toTextType typeExpr
+              <> ", "
+              <> toText index
+          )
     M.ShowType textTypeExpr typeExpr ->
       "magic show-type" <> inParen (toTextType textTypeExpr <> ", " <> toTextType typeExpr)
     M.TextCons textTypeExpr rune text ->

@@ -310,6 +310,7 @@ data RawMagic
   | GetWrapperContentType C (EL RawType)
   | GetVectorContentType C (EL RawType)
   | GetConstructorArgTypes C (EL RawType) C (EL RawTerm)
+  | GetConsArgName C (EL RawType) C (EL RawTerm)
   | ShowType C (EL RawType)
   | TextCons C (EL RawTerm) (EL RawTerm)
   | TextUncons C (EL RawTerm)

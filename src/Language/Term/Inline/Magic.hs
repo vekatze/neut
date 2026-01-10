@@ -5,6 +5,7 @@ module Language.Term.Inline.Magic
     evaluateGetWrapperContentType,
     evaluateGetVectorContentType,
     evaluateGetConstructorArgTypes,
+    evaluateGetConsName,
     evaluateShowType,
     evaluateTextCons,
     evaluateTextUncons,
@@ -174,6 +175,28 @@ evaluateGetConstructorArgTypes m sgl typeExpr indexExpr = do
       raiseError m "get-constructor-arg-types: index must be an integer literal, but got a different term"
     _ ->
       raiseError m "get-constructor-arg-types: type expression must be a data type"
+
+evaluateGetConsName :: Hint -> TM.Type -> TM.Type -> TM.Term -> App TM.Term
+evaluateGetConsName m textTypeExpr typeExpr indexExpr = do
+  case (typeExpr, indexExpr) of
+    (_ :< TM.Data (AttrD.Attr {AttrD.consNameList}) _ _, _ :< TM.Prim (PV.Int _ _ indexInt)) -> do
+      let index = fromIntegral indexInt
+      if index < 0 || index >= length consNameList
+        then
+          raiseError m $
+            "get-cons-name: index "
+              <> T.pack (show index)
+              <> " is out of bounds (valid range: 0-"
+              <> T.pack (show (length consNameList - 1))
+              <> ")"
+        else do
+          let (consDD, _, _) = consNameList !! index
+          let consName = DD.localLocator consDD
+          return $ m :< TM.Prim (PV.StaticText textTypeExpr consName)
+    (_ :< TM.Data {}, _) ->
+      raiseError m "get-cons-name: index must be an integer literal, but got a different term"
+    _ ->
+      raiseError m "get-cons-name: type expression must be a data type"
 
 constructListTerm :: Hint -> SGL.StrictGlobalLocator -> [TM.Type] -> TM.Term
 constructListTerm hint listSgl types = do

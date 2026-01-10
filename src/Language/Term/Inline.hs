@@ -309,6 +309,11 @@ inline' h term = do
           typeExpr' <- inlineType' h typeExpr
           indexExpr' <- inline' h indexExpr
           Magic.evaluateGetConstructorArgTypes m sgl typeExpr' indexExpr'
+        M.GetConsName textTypeExpr typeExpr indexExpr -> do
+          textTypeExpr' <- inlineType' h textTypeExpr
+          typeExpr' <- inlineType' h typeExpr
+          indexExpr' <- inline' h indexExpr
+          Magic.evaluateGetConsName m textTypeExpr' typeExpr' indexExpr'
         M.ShowType textTypeExpr typeExpr -> do
           textTypeExpr' <- inlineType' h textTypeExpr
           typeExpr' <- inlineType' h typeExpr

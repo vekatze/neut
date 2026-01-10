@@ -413,6 +413,13 @@ infer h term =
           liftIO $ Constraint.insert (constraintHandle h) intType indexType
           listType <- inferType h $ m :< WT.TyApp listExpr' [m :< WT.Tau]
           return (m :< WT.Magic (M.WeakMagic $ M.GetConstructorArgTypes sgl listExpr' typeExpr' index'), listType)
+        M.GetConsName textType typeExpr index -> do
+          textType' <- inferType h textType
+          typeExpr' <- inferType h typeExpr
+          (index', indexType) <- infer h index
+          intType <- getIntType (platformHandle h) m
+          liftIO $ Constraint.insert (constraintHandle h) intType indexType
+          return (m :< WT.Magic (M.WeakMagic $ M.GetConsName textType' typeExpr' index'), m :< WT.BoxNoema textType')
         M.ShowType textTypeExpr typeExpr -> do
           textTypeExpr' <- inferType h textTypeExpr
           typeExpr' <- inferType h typeExpr
