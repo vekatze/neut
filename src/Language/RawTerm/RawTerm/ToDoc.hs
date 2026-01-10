@@ -345,6 +345,11 @@ toDoc term =
                     (c4, (toDoc text, c5))
                   ]
             ]
+        TextUncons c1 (c2, (text, c3)) -> do
+          D.join
+            [ attachComment (c ++ c1) $ D.text "magic text-uncons",
+              SE.decode $ SE.fromListWithComment (Just SE.Paren) SE.Comma [(c2, (toDoc text, c3))]
+            ]
         CompileError c1 (c2, (msg, c3)) -> do
           D.join
             [ attachComment (c ++ c1) $ D.text "magic compile-error",

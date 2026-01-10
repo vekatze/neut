@@ -441,6 +441,9 @@ fillMagic h holeSubst magic =
       rune' <- fill h holeSubst rune
       text' <- fill h holeSubst text
       return $ M.TextCons textTypeExpr' rune' text'
+    M.TextUncons mid text -> do
+      text' <- fill h holeSubst text
+      return $ M.TextUncons mid text'
     M.CompileError {} ->
       return magic
 

@@ -359,6 +359,8 @@ showMagic (M.WeakMagic magic) =
       "magic show-type" <> inParen (toTextType textTypeExpr <> ", " <> toTextType typeExpr)
     M.TextCons textTypeExpr rune text ->
       "magic text-cons" <> inParen (toTextType textTypeExpr <> ", " <> toText rune <> ", " <> toText text)
+    M.TextUncons _ text ->
+      "magic text-uncons" <> inParen (toText text)
     M.CompileError typeExpr msg ->
       "magic compile-error" <> inParen (toTextType typeExpr <> ", " <> toText msg)
 

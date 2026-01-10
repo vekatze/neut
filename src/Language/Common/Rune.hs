@@ -1,6 +1,7 @@
 module Language.Common.Rune
   ( Rune,
     make,
+    fromChar,
     asInt,
     asChar,
     asText,
@@ -41,6 +42,10 @@ asInt (MkRune r _) = do
 asChar :: Rune -> Char
 asChar (MkRune r _) =
   r
+
+fromChar :: Char -> Rune
+fromChar r =
+  MkRune r (T.singleton r)
 
 asText :: Rune -> T.Text
 asText (MkRune _ orig) =

@@ -435,6 +435,9 @@ elaborate' h term = do
           rune' <- elaborate' h rune
           text' <- elaborate' h text
           return $ m :< TM.Magic (M.TextCons textTypeExpr' rune' text')
+        M.TextUncons mid text -> do
+          text' <- elaborate' h text
+          return $ m :< TM.Magic (M.TextUncons mid text')
         M.CompileError typeExpr msg -> do
           typeExpr' <- elaborateType h typeExpr
           msg' <- elaborate' h msg

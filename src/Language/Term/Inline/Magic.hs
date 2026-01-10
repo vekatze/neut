@@ -7,6 +7,7 @@ module Language.Term.Inline.Magic
     evaluateGetConstructorArgTypes,
     evaluateShowType,
     evaluateTextCons,
+    evaluateTextUncons,
     evaluateCompileError,
   )
 where
@@ -20,8 +21,10 @@ import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NE
 import Data.Text qualified as T
 import Kernel.Common.TypeTag qualified as TypeTag
+import Language.Common.ArgNum qualified as AN
 import Language.Common.Attr.Data qualified as AttrD
 import Language.Common.Attr.DataIntro qualified as AttrDI
+import Language.Common.Attr.VarGlobal qualified as AttrVG
 import Language.Common.BaseName qualified as BN
 import Language.Common.Binder (BinderF)
 import Language.Common.DefiniteDescription qualified as DD
@@ -31,7 +34,7 @@ import Language.Common.ModuleID qualified as MID
 import Language.Common.PrimNumSize qualified as PNS
 import Language.Common.PrimType qualified as PT
 import Language.Common.Rune qualified as Rune
-import Language.Common.SourceLocator (binaryLocator, typeTagLocator, vectorLocator)
+import Language.Common.SourceLocator qualified as SL
 import Language.Common.StrictGlobalLocator qualified as SGL
 import Language.Term.Inline.Handle
 import Language.Term.PrimValue qualified as PV
@@ -71,7 +74,7 @@ evaluateGetTypeTag m moduleID typeExpr = do
     _ :< TM.PrimType PT.Rune ->
       returnTypeTagIntValue m moduleID TypeTag.Rune
     _ :< TM.Resource name _ _ _ _ _ -> do
-      let binarySGL = SGL.StrictGlobalLocator {moduleID, sourceLocator = binaryLocator}
+      let binarySGL = SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.binaryLocator}
       let binaryDD = DD.newByGlobalLocator binarySGL BN.binary
       if name == binaryDD
         then returnTypeTagIntValue m moduleID TypeTag.Binary
@@ -79,7 +82,7 @@ evaluateGetTypeTag m moduleID typeExpr = do
     _ :< TM.TVarGlobal _ _ -> do
       returnTypeTagIntValue m moduleID TypeTag.Opaque
     _ :< TM.TyApp (_ :< TM.TVarGlobal _ name) _ -> do
-      let vectorSGL = SGL.StrictGlobalLocator {moduleID, sourceLocator = vectorLocator}
+      let vectorSGL = SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.vectorLocator}
       let vectorDD = DD.newByGlobalLocator vectorSGL BN.vector
       if name == vectorDD
         then returnTypeTagIntValue m moduleID TypeTag.Vector
@@ -102,7 +105,7 @@ makeAttrDI typeTagSGL typeTag = do
 
 returnTypeTagIntValue :: Hint -> MID.ModuleID -> TypeTag.TypeTag -> App TM.Term
 returnTypeTagIntValue m' moduleID tag = do
-  let typeTagSGL = SGL.StrictGlobalLocator {moduleID, sourceLocator = typeTagLocator}
+  let typeTagSGL = SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.typeTagLocator}
   let attr = makeAttrDI typeTagSGL tag
   let tagInt = TypeTag.typeTagToInteger tag
   let index = fromIntegral tagInt
@@ -216,6 +219,38 @@ evaluateTextCons m textTypeExpr rune text = do
       return $ m :< TM.Prim (PV.StaticText textTypeExpr newText)
     _ ->
       raiseError m "text-cons requires a rune literal and a static text literal"
+
+evaluateTextUncons :: Hint -> MID.ModuleID -> TM.Term -> App TM.Term
+evaluateTextUncons m moduleID text = do
+  case text of
+    _ :< TM.Prim (PV.StaticText textTypeExpr textValue) -> do
+      let eitherSGL = SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.eitherLocator}
+      let unitSGL = SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.unitLocator}
+      let pairSGL = SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.pairLocator}
+      let unitTypeDD = DD.newByGlobalLocator unitSGL BN.unitType
+      let pairTypeDD = DD.newByGlobalLocator pairSGL BN.pairType
+      let unitTypeVar = m :< TM.TVarGlobal (AttrVG.Attr {argNum = AN.zero, isConstLike = True}) unitTypeDD
+      let pairTypeVar = m :< TM.TVarGlobal (AttrVG.Attr {argNum = AN.fromInt 4, isConstLike = False}) pairTypeDD
+      let runeType = m :< TM.PrimType PT.Rune
+      let pairType = m :< TM.TyApp pairTypeVar [runeType, m :< TM.BoxNoema textTypeExpr]
+      case T.uncons textValue of
+        Nothing -> do
+          let leftDD = DD.newByGlobalLocator eitherSGL BN.left
+          let unitDD = DD.newByGlobalLocator unitSGL BN.unit
+          let leftVar = m :< TM.VarGlobal (AttrVG.Attr {argNum = AN.fromInt 3, isConstLike = False}) leftDD
+          let unitVar = m :< TM.VarGlobal (AttrVG.Attr {argNum = AN.zero, isConstLike = True}) unitDD
+          return $ m :< TM.PiElim False (m :< TM.PiElim False leftVar [unitTypeVar, pairType] []) [] [unitVar]
+        Just (c, rest) -> do
+          let rightDD = DD.newByGlobalLocator eitherSGL BN.right
+          let pairDD = DD.newByGlobalLocator pairSGL BN.pair
+          let rightVar = m :< TM.VarGlobal (AttrVG.Attr {argNum = AN.fromInt 3, isConstLike = False}) rightDD
+          let pairVar = m :< TM.VarGlobal (AttrVG.Attr {argNum = AN.fromInt 4, isConstLike = False}) pairDD
+          let runeValue = m :< TM.Prim (PV.Rune (Rune.fromChar c))
+          let restText = m :< TM.Prim (PV.StaticText textTypeExpr rest)
+          let pair = m :< TM.PiElim False (m :< TM.PiElim False pairVar [runeType, m :< TM.BoxNoema textTypeExpr] []) [] [runeValue, restText]
+          return $ m :< TM.PiElim False (m :< TM.PiElim False rightVar [unitTypeVar, pairType] []) [] [pair]
+    _ ->
+      raiseError m "text-uncons requires a static text literal"
 
 evaluateCompileError :: Handle -> Hint -> TM.Term -> App a
 evaluateCompileError h m msg = do

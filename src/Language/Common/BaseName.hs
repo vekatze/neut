@@ -43,6 +43,14 @@ module Language.Common.BaseName
     typeTagList,
     binary,
     vector,
+    left,
+    right,
+    eitherType,
+    unit,
+    unitType,
+    pair,
+    pairType,
+    textType,
   )
 where
 
@@ -244,6 +252,38 @@ binary =
 vector :: BaseName
 vector =
   MakeBaseName "vector"
+
+left :: BaseName
+left =
+  MakeBaseName "Left"
+
+right :: BaseName
+right =
+  MakeBaseName "Right"
+
+unit :: BaseName
+unit =
+  MakeBaseName "Unit"
+
+unitType :: BaseName
+unitType =
+  MakeBaseName "unit"
+
+pair :: BaseName
+pair =
+  MakeBaseName "Pair"
+
+pairType :: BaseName
+pairType =
+  MakeBaseName "pair"
+
+eitherType :: BaseName
+eitherType =
+  MakeBaseName "either"
+
+textType :: BaseName
+textType =
+  MakeBaseName "text"
 
 typeTagList :: [BaseName]
 typeTagList =

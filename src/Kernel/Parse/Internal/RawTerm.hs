@@ -567,6 +567,7 @@ rawTermMagic h m c = do
       rawTermMagicGetConstructorArgTypes h m c,
       rawTermMagicShowType h m c,
       rawTermMagicTextCons h m c,
+      rawTermMagicTextUncons h m c,
       rawTermMagicCompileError h m c
     ]
 
@@ -714,6 +715,12 @@ rawTermMagicTextCons h m c = do
     c3 <- delimiter ","
     textTerm <- rawTerm h
     return $ \c1 c2 -> m :< RT.Magic c (RT.TextCons c1 (c2, runeTerm) (c3, textTerm))
+
+rawTermMagicTextUncons :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
+rawTermMagicTextUncons h m c = do
+  rawTermMagicBase "text-uncons" $ do
+    textTerm <- rawTerm h
+    return $ \c1 c2 -> m :< RT.Magic c (RT.TextUncons c1 (c2, textTerm))
 
 rawTermMagicCompileError :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermMagicCompileError h m c = do

@@ -668,6 +668,8 @@ clarifyMagic h tenv der = do
       error "ShowType should be evaluated during inline expansion"
     M.TextCons _ _ _ ->
       error "TextCons should be evaluated during inline expansion"
+    M.TextUncons _ _ ->
+      error "TextUncons should be evaluated during inline expansion"
     M.CompileError {} ->
       error "CompileError should be evaluated during inline expansion"
 

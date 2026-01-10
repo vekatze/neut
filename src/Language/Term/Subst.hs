@@ -434,6 +434,9 @@ substMagic h sub magic =
       rune' <- subst h sub rune
       text' <- subst h sub text
       return $ M.TextCons textTypeExpr' rune' text'
+    M.TextUncons mid text -> do
+      text' <- subst h sub text
+      return $ M.TextUncons mid text'
     M.CompileError typeExpr msg -> do
       typeExpr' <- substType h sub typeExpr
       msg' <- subst h sub msg

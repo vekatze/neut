@@ -254,6 +254,8 @@ analyze h term = do
           cs2 <- analyze h rune
           cs3 <- analyze h text
           return $ cs1 ++ cs2 ++ cs3
+        M.TextUncons _ text -> do
+          analyze h text
         M.CompileError typeExpr msg -> do
           cs1 <- analyzeType h typeExpr
           cs2 <- analyze h msg

@@ -20,6 +20,7 @@ data Magic lt ty a
   | GetConstructorArgTypes SGL.StrictGlobalLocator ty ty a -- listExpr, typeExpr (types), index (term)
   | ShowType ty ty
   | TextCons ty a a
+  | TextUncons MID.ModuleID a
   | CompileError ty a
   deriving (Show, Eq, G.Generic)
 
@@ -46,6 +47,8 @@ instance Functor (Magic lt ty) where
         ShowType textTypeExpr typeExpr
       TextCons textTypeExpr rune text ->
         TextCons textTypeExpr (f rune) (f text)
+      TextUncons mid text ->
+        TextUncons mid (f text)
       CompileError typeExpr msg ->
         CompileError typeExpr (f msg)
 
@@ -70,6 +73,8 @@ instance Foldable (Magic lt ty) where
         mempty
       TextCons _ rune text ->
         f rune <> f text
+      TextUncons _ text ->
+        f text
       CompileError _ msg ->
         f msg
 
@@ -94,6 +99,8 @@ instance Traversable (Magic lt ty) where
         pure $ ShowType textTypeExpr typeExpr
       TextCons textTypeExpr rune text ->
         TextCons textTypeExpr <$> f rune <*> f text
+      TextUncons mid text ->
+        TextUncons mid <$> f text
       CompileError typeExpr msg ->
         CompileError typeExpr <$> f msg
 

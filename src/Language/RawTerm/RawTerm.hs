@@ -312,6 +312,7 @@ data RawMagic
   | GetConstructorArgTypes C (EL RawType) C (EL RawTerm)
   | ShowType C (EL RawType)
   | TextCons C (EL RawTerm) (EL RawTerm)
+  | TextUncons C (EL RawTerm)
   | CompileError C (EL RawTerm)
 
 -- elem

@@ -318,6 +318,9 @@ inline' h term = do
           rune' <- inline' h rune
           text' <- inline' h text
           Magic.evaluateTextCons m textTypeExpr' rune' text'
+        M.TextUncons mid text -> do
+          text' <- inline' h text
+          Magic.evaluateTextUncons m mid text' >>= inline' h
         M.CompileError _ msg -> do
           msg' <- inline' h msg
           Magic.evaluateCompileError h m msg'

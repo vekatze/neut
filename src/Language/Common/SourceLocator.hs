@@ -8,6 +8,10 @@ module Language.Common.SourceLocator
     typeTagLocator,
     binaryLocator,
     vectorLocator,
+    eitherLocator,
+    pairLocator,
+    unitLocator,
+    textLocator,
   )
 where
 
@@ -67,3 +71,19 @@ binaryLocator =
 vectorLocator :: SourceLocator
 vectorLocator =
   SourceLocator $(mkRelFile "vector")
+
+eitherLocator :: SourceLocator
+eitherLocator =
+  SourceLocator $(mkRelFile "either")
+
+pairLocator :: SourceLocator
+pairLocator =
+  SourceLocator $(mkRelFile "pair")
+
+unitLocator :: SourceLocator
+unitLocator =
+  SourceLocator $(mkRelFile "unit")
+
+textLocator :: SourceLocator
+textLocator =
+  SourceLocator $(mkRelFile "text")

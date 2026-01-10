@@ -815,6 +815,10 @@ discernMagic h m magic =
       rune' <- discern h rune
       text' <- discern h text
       return $ M.WeakMagic $ M.TextCons textType rune' text'
+    RT.TextUncons _ (_, (text, _)) -> do
+      moduleID <- Alias.resolveModuleAlias (H.aliasHandle h) m coreModuleAlias
+      text' <- discern h text
+      return $ M.WeakMagic $ M.TextUncons moduleID text'
     RT.CompileError _ (_, (msg, _)) -> do
       ensureCompileStage m h "inline magic (`compile-error`)"
       textType <- liftEither (locatorToTypeVar m coreText) >>= discernType h

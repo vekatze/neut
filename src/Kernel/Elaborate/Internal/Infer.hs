@@ -34,6 +34,7 @@ import Language.Common.Attr.Data qualified as AttrD
 import Language.Common.Attr.DataIntro qualified as AttrDI
 import Language.Common.Attr.Lam qualified as AttrL
 import Language.Common.Attr.VarGlobal qualified as AttrVG
+import Language.Common.BaseName qualified as BN
 import Language.Common.Binder
 import Language.Common.CreateSymbol qualified as Gensym
 import Language.Common.DecisionTree qualified as DT
@@ -52,7 +53,9 @@ import Language.Common.Magic qualified as M
 import Language.Common.PiKind qualified as PK
 import Language.Common.PrimOp
 import Language.Common.PrimType qualified as PT
+import Language.Common.SourceLocator qualified as SL
 import Language.Common.StmtKind qualified as SK
+import Language.Common.StrictGlobalLocator qualified as SGL
 import Language.LowComp.DeclarationName qualified as DN
 import Language.WeakTerm.CreateHole qualified as WT
 import Language.WeakTerm.Subst (SubstEntry (..))
@@ -421,6 +424,25 @@ infer h term =
           liftIO $ Constraint.insert (constraintHandle h) (m :< WT.PrimType PT.Rune) runeType
           liftIO $ Constraint.insert (constraintHandle h) (m :< WT.BoxNoema textTypeExpr') textType
           return (m :< WT.Magic (M.WeakMagic $ M.TextCons textTypeExpr' rune' text'), m :< WT.BoxNoema textTypeExpr')
+        M.TextUncons moduleID text -> do
+          (text', textType) <- infer h text
+          let textSGL = SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.textLocator}
+          let textDD = DD.newByGlobalLocator textSGL BN.textType
+          let expected = m :< WT.TVarGlobal (AttrVG.Attr {argNum = AN.zero, isConstLike = True}) textDD
+          liftIO $ Constraint.insert (constraintHandle h) (m :< WT.BoxNoema expected) textType
+          let eitherSGL = SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.eitherLocator}
+          let unitSGL = SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.unitLocator}
+          let pairSGL = SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.pairLocator}
+          let eitherTypeDD = DD.newByGlobalLocator eitherSGL BN.eitherType
+          let unitTypeDD = DD.newByGlobalLocator unitSGL BN.unitType
+          let pairTypeDD = DD.newByGlobalLocator pairSGL BN.pairType
+          let eitherTypeVar = m :< WT.TVarGlobal (AttrVG.Attr {argNum = AN.fromInt 3, isConstLike = False}) eitherTypeDD
+          let unitTypeVar = m :< WT.TVarGlobal (AttrVG.Attr {argNum = AN.zero, isConstLike = True}) unitTypeDD
+          let pairTypeVar = m :< WT.TVarGlobal (AttrVG.Attr {argNum = AN.fromInt 4, isConstLike = False}) pairTypeDD
+          let runeType = m :< WT.PrimType PT.Rune
+          let pairType = m :< WT.TyApp pairTypeVar [runeType, textType]
+          let eitherType = m :< WT.TyApp eitherTypeVar [unitTypeVar, pairType]
+          return (m :< WT.Magic (M.WeakMagic $ M.TextUncons moduleID text'), eitherType)
         M.CompileError typeExpr msg -> do
           typeExpr' <- inferType h typeExpr
           (msg', msgType) <- infer h msg

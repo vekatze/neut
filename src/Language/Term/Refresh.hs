@@ -142,6 +142,9 @@ refreshMagic h magic =
       rune' <- refresh h rune
       text' <- refresh h text
       return $ M.TextCons textTypeExpr' rune' text'
+    M.TextUncons mid text -> do
+      text' <- refresh h text
+      return $ M.TextUncons mid text'
     M.CompileError typeExpr msg -> do
       typeExpr' <- refreshType h typeExpr
       msg' <- refresh h msg
