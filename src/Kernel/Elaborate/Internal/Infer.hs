@@ -410,6 +410,10 @@ infer h term =
           liftIO $ Constraint.insert (constraintHandle h) intType indexType
           listType <- inferType h $ m :< WT.TyApp listExpr' [m :< WT.Tau]
           return (m :< WT.Magic (M.WeakMagic $ M.GetConstructorArgTypes sgl listExpr' typeExpr' index'), listType)
+        M.ShowType textTypeExpr typeExpr -> do
+          textTypeExpr' <- inferType h textTypeExpr
+          typeExpr' <- inferType h typeExpr
+          return (m :< WT.Magic (M.WeakMagic $ M.ShowType textTypeExpr' typeExpr'), m :< WT.BoxNoema textTypeExpr')
         M.CompileError msg -> do
           resultType <- liftIO $ newTypeHole h m (varEnv h)
           return (m :< WT.Magic (M.WeakMagic $ M.CompileError msg), resultType)

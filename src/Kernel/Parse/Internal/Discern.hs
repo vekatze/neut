@@ -806,6 +806,10 @@ discernMagic h m magic =
       gl <- liftEither $ GL.reflect m coreList
       sgl <- Alias.resolveAlias (H.aliasHandle h) m gl
       return $ M.WeakMagic $ M.GetConstructorArgTypes sgl listExpr typeExpr' index'
+    RT.ShowType _ (_, (typeExpr, _)) -> do
+      textType <- liftEither (locatorToTypeVar m coreText) >>= discernType h
+      typeExpr' <- discernType h typeExpr
+      return $ M.WeakMagic $ M.ShowType textType typeExpr'
     RT.CompileError msg -> do
       ensureCompileStage m h "inline magic (`compile-error`)"
       return $ M.WeakMagic $ M.CompileError msg

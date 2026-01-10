@@ -176,6 +176,8 @@ weakenMagic m magic = do
       M.WeakMagic $ M.GetVectorContentType sgl (weakenType typeExpr)
     M.GetConstructorArgTypes sgl listExpr typeExpr index ->
       M.WeakMagic $ M.GetConstructorArgTypes sgl (weakenType listExpr) (weakenType typeExpr) (weaken index)
+    M.ShowType textTypeExpr typeExpr ->
+      M.WeakMagic $ M.ShowType (weakenType textTypeExpr) (weakenType typeExpr)
     M.CompileError msg ->
       M.WeakMagic $ M.CompileError msg
 

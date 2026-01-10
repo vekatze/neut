@@ -565,6 +565,7 @@ rawTermMagic h m c = do
       rawTermMagicGetWrapperContentType h m c,
       rawTermMagicGetVectorContentType h m c,
       rawTermMagicGetConstructorArgTypes h m c,
+      rawTermMagicShowType h m c,
       rawTermMagicCompileError h m c
     ]
 
@@ -698,6 +699,12 @@ rawTermMagicGetConstructorArgTypes h m c = do
     c3 <- delimiter ","
     index <- rawTerm h
     return $ \c1 c2 -> m :< RT.Magic c (RT.GetConstructorArgTypes c1 (c2, typeExpr) c3 (c3, index))
+
+rawTermMagicShowType :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
+rawTermMagicShowType h m c = do
+  rawTermMagicBase "show-type" $ do
+    typeExpr <- rawType h
+    return $ \c1 c2 -> m :< RT.Magic c (RT.ShowType c1 (c2, typeExpr))
 
 rawTermMagicCompileError :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermMagicCompileError _h m c = do

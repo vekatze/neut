@@ -171,6 +171,8 @@ freeVarsMagic magic =
       freeVarsType typeExpr
     M.GetConstructorArgTypes _ listExpr typeExpr index ->
       S.unions [freeVarsType listExpr, freeVarsType typeExpr, freeVars index]
+    M.ShowType textTypeExpr typeExpr ->
+      S.union (freeVarsType textTypeExpr) (freeVarsType typeExpr)
     M.CompileError _ ->
       S.empty
 

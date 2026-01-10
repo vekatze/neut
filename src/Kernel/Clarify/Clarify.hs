@@ -664,6 +664,8 @@ clarifyMagic h tenv der = do
       error "GetVectorContentType should be evaluated during inline expansion"
     M.GetConstructorArgTypes _ _ _ _ ->
       error "GetConstructorArgTypes should be evaluated during inline expansion"
+    M.ShowType _ _ ->
+      error "ShowType should be evaluated during inline expansion"
     M.CompileError {} ->
       error "CompileError should be evaluated during inline expansion"
 

@@ -432,6 +432,10 @@ fillMagic h holeSubst magic =
       typeExpr' <- fillType h holeSubst typeExpr
       index' <- fill h holeSubst index
       return $ M.GetConstructorArgTypes sgl listExpr' typeExpr' index'
+    M.ShowType textTypeExpr typeExpr -> do
+      textTypeExpr' <- fillType h holeSubst textTypeExpr
+      typeExpr' <- fillType h holeSubst typeExpr
+      return $ M.ShowType textTypeExpr' typeExpr'
     M.CompileError {} ->
       return magic
 

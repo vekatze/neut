@@ -310,6 +310,7 @@ data RawMagic
   | GetWrapperContentType C (EL RawType)
   | GetVectorContentType C (EL RawType)
   | GetConstructorArgTypes C (EL RawType) C (EL RawTerm)
+  | ShowType C (EL RawType)
   | CompileError T.Text
 
 -- elem

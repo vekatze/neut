@@ -133,6 +133,10 @@ refreshMagic h magic =
       typeExpr' <- refreshType h typeExpr
       index' <- refresh h index
       return $ M.GetConstructorArgTypes sgl listExpr' typeExpr' index'
+    M.ShowType textTypeExpr typeExpr -> do
+      textTypeExpr' <- refreshType h textTypeExpr
+      typeExpr' <- refreshType h typeExpr
+      return $ M.ShowType textTypeExpr' typeExpr'
     M.CompileError msg ->
       return $ M.CompileError msg
 

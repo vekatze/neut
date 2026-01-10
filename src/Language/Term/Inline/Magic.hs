@@ -5,6 +5,7 @@ module Language.Term.Inline.Magic
     evaluateGetWrapperContentType,
     evaluateGetVectorContentType,
     evaluateGetConstructorArgTypes,
+    evaluateShowType,
   )
 where
 
@@ -193,3 +194,8 @@ coreListNil sglList =
 coreListCons :: SGL.StrictGlobalLocator -> DD.DefiniteDescription
 coreListCons sglList =
   DD.newByGlobalLocator sglList BN.consName
+
+evaluateShowType :: Hint -> TM.Type -> TM.Type -> App TM.Term
+evaluateShowType m textTypeExpr typeExpr = do
+  let typeText = toTextType $ weakenType typeExpr
+  return $ m :< TM.Prim (PV.StaticText textTypeExpr typeText)

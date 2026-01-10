@@ -121,6 +121,8 @@ freeVarsMagicTerm (M.WeakMagic magic) =
       S.empty
     M.GetConstructorArgTypes _ _ _ index ->
       freeVars index
+    M.ShowType {} ->
+      S.empty
     M.CompileError _ ->
       S.empty
 
@@ -295,6 +297,8 @@ freeVarsMagic (M.WeakMagic magic) =
       freeVarsType typeExpr
     M.GetConstructorArgTypes _ listExpr typeExpr index ->
       S.unions [freeVarsType listExpr, freeVarsType typeExpr, freeVarsAll index]
+    M.ShowType textTypeExpr typeExpr ->
+      S.union (freeVarsType textTypeExpr) (freeVarsType typeExpr)
     M.CompileError _ ->
       S.empty
 
