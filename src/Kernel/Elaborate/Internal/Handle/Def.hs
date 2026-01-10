@@ -3,7 +3,6 @@ module Kernel.Elaborate.Internal.Handle.Def
     new,
     insert',
     get',
-    isTemplate',
   )
 where
 
@@ -43,7 +42,3 @@ insert' h name xts e typ mDefKind =
 get' :: Handle -> IO (Map.HashMap DD.DefiniteDescription Inline.DefInfo)
 get' h =
   readIORef (defMapRef h)
-
-isTemplate' :: Handle -> DD.DefiniteDescription -> IO Bool
-isTemplate' _ _ =
-  return False

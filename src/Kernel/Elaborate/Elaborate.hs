@@ -28,7 +28,6 @@ import Kernel.Common.Handle.Global.Type qualified as Type
 import Kernel.Common.ManageCache qualified as Cache
 import Kernel.Common.Target hiding (Main)
 import Kernel.Elaborate.Internal.EnsureAffinity qualified as EnsureAffinity
-import Kernel.Elaborate.Internal.EnsureTemplateResolved qualified as EnsureTemplateResolved
 import Kernel.Elaborate.Internal.Handle.Constraint qualified as Constraint
 import Kernel.Elaborate.Internal.Handle.Def qualified as Definition
 import Kernel.Elaborate.Internal.Handle.Elaborate
@@ -157,8 +156,6 @@ elaborateStmt h stmt = do
       when isConstLike $ do
         unless (TM.isValue e'') $ do
           raiseError m "Could not reduce the body of this definition into a constant"
-      unless (SK.isMacroStmtKind stmtKind) $ do
-        EnsureTemplateResolved.ensureTemplateResolved h m e''
       let result = StmtDefine isConstLike stmtKind' (SavedHint m) x impArgs'' defaultArgs'' expArgs'' codType'' e''
       insertStmt h result
       return ([result], remarks)
