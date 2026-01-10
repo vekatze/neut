@@ -337,12 +337,15 @@ inline' h term = do
         M.GetWrapperContentType typeExpr -> do
           typeExpr' <- inlineType' h typeExpr
           Magic.evaluateGetWrapperContentType m typeExpr'
+        M.GetVectorContentType sgl typeExpr -> do
+          typeExpr' <- inlineType' h typeExpr
+          Magic.evaluateGetVectorContentType m sgl typeExpr'
         M.GetConstructorArgTypes sgl _ typeExpr indexExpr -> do
           typeExpr' <- inlineType' h typeExpr
           indexExpr' <- inline' h indexExpr
           Magic.evaluateGetConstructorArgTypes m sgl typeExpr' indexExpr'
         M.CompileError msg ->
-          raiseError (location h) $ "compile-error: " <> msg
+          raiseError m $ "compile-error: " <> msg
 
 inlineType' :: Handle -> TM.Type -> App TM.Type
 inlineType' h ty =

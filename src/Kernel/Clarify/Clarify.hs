@@ -660,6 +660,8 @@ clarifyMagic h tenv der = do
       error "GetConsSize should be evaluated during inline expansion"
     M.GetWrapperContentType _ ->
       error "GetWrapperContentType should be evaluated during inline expansion"
+    M.GetVectorContentType _ _ ->
+      error "GetVectorContentType should be evaluated during inline expansion"
     M.GetConstructorArgTypes _ _ _ _ ->
       error "GetConstructorArgTypes should be evaluated during inline expansion"
     M.CompileError {} ->

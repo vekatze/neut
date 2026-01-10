@@ -162,6 +162,8 @@ holesMagic (M.WeakMagic magic) =
       holesType typeExpr
     M.GetWrapperContentType typeExpr ->
       holesType typeExpr
+    M.GetVectorContentType _ typeExpr ->
+      holesType typeExpr
     M.GetConstructorArgTypes _ listExpr typeExpr index ->
       S.unions [holesType listExpr, holesType typeExpr, holes index]
     M.CompileError _ ->

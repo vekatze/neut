@@ -563,6 +563,7 @@ rawTermMagic h m c = do
       rawTermMagicGetDataArgs h m c,
       rawTermMagicGetConsSize h m c,
       rawTermMagicGetWrapperContentType h m c,
+      rawTermMagicGetVectorContentType h m c,
       rawTermMagicGetConstructorArgTypes h m c,
       rawTermMagicCompileError h m c
     ]
@@ -683,6 +684,12 @@ rawTermMagicGetWrapperContentType h m c = do
   rawTermMagicBase "get-wrapper-content-type" $ do
     typeExpr <- rawType h
     return $ \c1 c2 -> m :< RT.Magic c (RT.GetWrapperContentType c1 (c2, typeExpr))
+
+rawTermMagicGetVectorContentType :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
+rawTermMagicGetVectorContentType h m c = do
+  rawTermMagicBase "get-vector-content-type" $ do
+    typeExpr <- rawType h
+    return $ \c1 c2 -> m :< RT.Magic c (RT.GetVectorContentType c1 (c2, typeExpr))
 
 rawTermMagicGetConstructorArgTypes :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermMagicGetConstructorArgTypes h m c = do

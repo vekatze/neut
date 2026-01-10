@@ -308,6 +308,7 @@ data RawMagic
   | GetDataArgs C (EL RawType)
   | GetConsSize C (EL RawType)
   | GetWrapperContentType C (EL RawType)
+  | GetVectorContentType C (EL RawType)
   | GetConstructorArgTypes C (EL RawType) C (EL RawTerm)
   | CompileError T.Text
 

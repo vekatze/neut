@@ -253,6 +253,8 @@ eqTermMagic magic1 magic2 =
       eqType typeExpr1 typeExpr2
     (M.GetWrapperContentType typeExpr1, M.GetWrapperContentType typeExpr2) ->
       eqType typeExpr1 typeExpr2
+    (M.GetVectorContentType sgl1 typeExpr1, M.GetVectorContentType sgl2 typeExpr2) ->
+      sgl1 == sgl2 && eqType typeExpr1 typeExpr2
     (M.GetConstructorArgTypes sgl1 listExpr1 typeExpr1 index1, M.GetConstructorArgTypes sgl2 listExpr2 typeExpr2 index2) ->
       sgl1 == sgl2
         && eqType listExpr1 listExpr2

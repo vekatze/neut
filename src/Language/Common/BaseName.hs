@@ -42,7 +42,7 @@ module Language.Common.BaseName
     typeTag,
     typeTagList,
     binary,
-    vectorInternal,
+    vector,
   )
 where
 
@@ -241,9 +241,9 @@ binary :: BaseName
 binary =
   MakeBaseName "binary"
 
-vectorInternal :: BaseName
-vectorInternal =
-  MakeBaseName "_vector-internal"
+vector :: BaseName
+vector =
+  MakeBaseName "vector"
 
 typeTagList :: [BaseName]
 typeTagList =

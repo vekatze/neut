@@ -17,6 +17,7 @@ data Magic lt ty a
   | GetDataArgs SGL.StrictGlobalLocator ty ty -- listExpr, typeExpr (both types)
   | GetConsSize ty
   | GetWrapperContentType ty
+  | GetVectorContentType SGL.StrictGlobalLocator ty
   | GetConstructorArgTypes SGL.StrictGlobalLocator ty ty a -- listExpr, typeExpr (types), index (term)
   | CompileError T.Text
   deriving (Show, Eq, G.Generic)
@@ -36,6 +37,8 @@ instance Functor (Magic lt ty) where
         GetConsSize typeExpr
       GetWrapperContentType typeExpr ->
         GetWrapperContentType typeExpr
+      GetVectorContentType sgl typeExpr ->
+        GetVectorContentType sgl typeExpr
       GetConstructorArgTypes sgl listExpr typeExpr index ->
         GetConstructorArgTypes sgl listExpr typeExpr (f index)
       CompileError msg ->
@@ -53,6 +56,8 @@ instance Foldable (Magic lt ty) where
       GetConsSize {} ->
         mempty
       GetWrapperContentType {} ->
+        mempty
+      GetVectorContentType {} ->
         mempty
       GetConstructorArgTypes _ _ _ index ->
         f index
@@ -72,6 +77,8 @@ instance Traversable (Magic lt ty) where
         pure $ GetConsSize typeExpr
       GetWrapperContentType typeExpr ->
         pure $ GetWrapperContentType typeExpr
+      GetVectorContentType sgl typeExpr ->
+        pure $ GetVectorContentType sgl typeExpr
       GetConstructorArgTypes sgl listExpr typeExpr index ->
         GetConstructorArgTypes sgl listExpr typeExpr <$> f index
       CompileError msg ->

@@ -791,6 +791,12 @@ discernMagic h m magic =
       ensureCompileStage m h "inline magic (`get-wrapper-content-type`)"
       typeExpr' <- discernType h typeExpr
       return $ M.WeakMagic $ M.GetWrapperContentType typeExpr'
+    RT.GetVectorContentType _ (_, (typeExpr, _)) -> do
+      ensureCompileStage m h "inline magic (`get-vector-content-type`)"
+      typeExpr' <- discernType h typeExpr
+      gl <- liftEither $ GL.reflect m coreVector
+      sgl <- Alias.resolveAlias (H.aliasHandle h) m gl
+      return $ M.WeakMagic $ M.GetVectorContentType sgl typeExpr'
     RT.GetConstructorArgTypes _ (_, (typeExpr, _)) _ (_, (index, _)) -> do
       ensureCompileStage m h "inline magic (`get-constructor-arg-types`)"
       typeExpr' <- discernType h typeExpr

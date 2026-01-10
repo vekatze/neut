@@ -167,6 +167,8 @@ freeVarsMagic magic =
       freeVarsType typeExpr
     M.GetWrapperContentType typeExpr ->
       freeVarsType typeExpr
+    M.GetVectorContentType _ typeExpr ->
+      freeVarsType typeExpr
     M.GetConstructorArgTypes _ listExpr typeExpr index ->
       S.unions [freeVarsType listExpr, freeVarsType typeExpr, freeVars index]
     M.CompileError _ ->

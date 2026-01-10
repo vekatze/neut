@@ -3,6 +3,7 @@ module Language.Term.Inline.Magic
     evaluateGetDataArgs,
     evaluateGetConsSize,
     evaluateGetWrapperContentType,
+    evaluateGetVectorContentType,
     evaluateGetConstructorArgTypes,
   )
 where
@@ -66,15 +67,11 @@ evaluateGetTypeTag m moduleID typeExpr = do
       if name == binaryDD
         then returnTypeTagIntValue m moduleID TypeTag.Binary
         else returnTypeTagIntValue m moduleID TypeTag.Opaque
-    _ :< TM.TVarGlobal _ name -> do
-      let vectorSGL = SGL.StrictGlobalLocator {moduleID, sourceLocator = vectorLocator}
-      let vectorDD = DD.newByGlobalLocator vectorSGL BN.vectorInternal
-      if name == vectorDD
-        then returnTypeTagIntValue m moduleID TypeTag.Vector
-        else returnTypeTagIntValue m moduleID TypeTag.Opaque
+    _ :< TM.TVarGlobal _ _ -> do
+      returnTypeTagIntValue m moduleID TypeTag.Opaque
     _ :< TM.TyApp (_ :< TM.TVarGlobal _ name) _ -> do
       let vectorSGL = SGL.StrictGlobalLocator {moduleID, sourceLocator = vectorLocator}
-      let vectorDD = DD.newByGlobalLocator vectorSGL BN.vectorInternal
+      let vectorDD = DD.newByGlobalLocator vectorSGL BN.vector
       if name == vectorDD
         then returnTypeTagIntValue m moduleID TypeTag.Vector
         else returnTypeTagIntValue m moduleID TypeTag.Opaque
@@ -125,6 +122,16 @@ evaluateGetWrapperContentType m typeExpr =
           return $ m :< TM.TauIntro t
     _ ->
       raiseError m "get-wrapper-content-type: type expression must be a wrapper"
+
+evaluateGetVectorContentType :: Hint -> SGL.StrictGlobalLocator -> TM.Type -> App TM.Term
+evaluateGetVectorContentType m vectorSgl typeExpr = do
+  let vectorDD = DD.newByGlobalLocator vectorSgl BN.vector
+  case typeExpr of
+    _ :< TM.TyApp (_ :< TM.TVarGlobal _ dd) [contentType]
+      | dd == vectorDD -> do
+          return $ m :< TM.TauIntro contentType
+    _ ->
+      raiseError m "get-vector-content-type: type expression must be vector(..)"
 
 evaluateGetDataArgs :: Hint -> SGL.StrictGlobalLocator -> TM.Type -> TM.Type -> App TM.Term
 evaluateGetDataArgs m sgl _listExpr typeExpr = do

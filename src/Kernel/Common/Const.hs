@@ -127,6 +127,10 @@ coreListList :: T.Text
 coreListList =
   core <> nsSep <> "list" <> nsSep <> "list"
 
+coreVector :: T.Text
+coreVector =
+  core <> nsSep <> "vector"
+
 coreRuneRune :: T.Text
 coreRuneRune =
   core <> nsSep <> "rune" <> nsSep <> "_Rune"

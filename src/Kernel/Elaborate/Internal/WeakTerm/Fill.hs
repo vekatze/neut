@@ -424,6 +424,9 @@ fillMagic h holeSubst magic =
     M.GetWrapperContentType typeExpr -> do
       typeExpr' <- fillType h holeSubst typeExpr
       return $ M.GetWrapperContentType typeExpr'
+    M.GetVectorContentType sgl typeExpr -> do
+      typeExpr' <- fillType h holeSubst typeExpr
+      return $ M.GetVectorContentType sgl typeExpr'
     M.GetConstructorArgTypes sgl listExpr typeExpr index -> do
       listExpr' <- fillType h holeSubst listExpr
       typeExpr' <- fillType h holeSubst typeExpr
