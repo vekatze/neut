@@ -18,6 +18,8 @@ import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.IntMap qualified as IntMap
 import Data.List (find)
+import Data.List.NonEmpty (NonEmpty ((:|)))
+import Data.List.NonEmpty qualified as NE
 import Data.Text qualified as T
 import Gensym.Gensym qualified as Gensym
 import Gensym.Handle qualified as GensymHandle
@@ -82,6 +84,7 @@ data Handle = Handle
     currentStepRef :: IORef Int,
     location :: Hint,
     guardStack :: IORef [GuardEntry],
+    macroCallStack :: IORef [(DD.DefiniteDescription, Hint)],
     gensymHandle :: GensymHandle.Handle
   }
 
@@ -91,6 +94,7 @@ new gensymHandle dmap typeDefMap location inlineLimit = do
   let refreshHandle = Refresh.new gensymHandle
   currentStepRef <- liftIO $ newIORef 0
   guardStack <- liftIO $ newIORef []
+  macroCallStack <- liftIO $ newIORef []
   return $ Handle {..}
 
 inline :: Handle -> TM.Term -> App TM.Term
@@ -172,6 +176,7 @@ inline' h term = do
                   let (impParams, expParams) = splitAt impArgNum xts
                   let impIds = map (\(_, x, _) -> x) impParams
                   let subType = IntMap.fromList $ zip (map Ident.toInt impIds) (map Subst.Type impArgs')
+                  let tracer = if isMacroDef defKind then withMacroHint h dd m else id
                   case defKind of
                     Macro -> do
                       mSelf <- lookupGuard h dd impArgs'
@@ -183,7 +188,7 @@ inline' h term = do
                           self <- liftIO $ CreateSymbol.newIdentFromText (gensymHandle h) $ "knot-" <> DD.localLocator dd
                           codType' <- liftIO $ Subst.substType (substHandle h) subType codType
                           pushGuard h dd impArgs' (m :< TM.Var self)
-                          body'' <- liftIO (Refresh.refresh (refreshHandle h) body') >>= inline h
+                          body'' <- tracer $ liftIO (Refresh.refresh (refreshHandle h) body') >>= inline h
                           popGuard h
                           identity <- liftIO $ Gensym.newCount (gensymHandle h)
                           let selfType = m :< TM.Pi PK.normal [] [] expBinders' codType'
@@ -198,11 +203,11 @@ inline' h term = do
                           let sub = IntMap.union subTerm subType
                           _ :< body' <- liftIO $ Subst.subst (substHandle h) sub body
                           body'' <- liftIO $ Refresh.refresh (refreshHandle h) $ m :< body'
-                          inline' h body''
+                          tracer $ inline' h body''
                         else do
                           (expParams', _ :< body') <- liftIO $ Subst.subst' (substHandle h) subType expParams body
                           body'' <- liftIO $ Refresh.refresh (refreshHandle h) $ m :< body'
-                          inline' h $ bind (zip expParams' expArgs') body''
+                          tracer $ inline' h $ bind (zip expParams' expArgs') body''
             (_ :< TM.Prim (PV.Op op)) -> do
               case ConstantFold.evaluatePrimOp m op expArgs' of
                 Just result -> do
@@ -344,8 +349,16 @@ inline' h term = do
           typeExpr' <- inlineType' h typeExpr
           indexExpr' <- inline' h indexExpr
           Magic.evaluateGetConstructorArgTypes m sgl typeExpr' indexExpr'
-        M.CompileError msg ->
-          raiseError m $ "compile-error: " <> msg
+        M.CompileError msg -> do
+          reportMacroError h m msg
+
+reportMacroError :: Handle -> Hint -> T.Text -> App a
+reportMacroError h m message = do
+  ms <- liftIO $ getMacroCallStack h
+  let trace = formatMacroTrace ms
+  let hints = map snd ms
+  let hintStack = NE.reverse $ m :| hints
+  raiseError (NE.head hintStack) $ message <> "\n\n" <> trace
 
 inlineType' :: Handle -> TM.Type -> App TM.Type
 inlineType' h ty =
@@ -597,6 +610,31 @@ matchesGuardEntry :: DD.DefiniteDescription -> [TM.Type] -> GuardEntry -> Bool
 matchesGuardEntry dd' args entry =
   guardFunction entry == dd' && TermEq.eqTypes (guardTypeArgs entry) args
 
+-- Macro call stack operations
+withMacroHint :: Handle -> DD.DefiniteDescription -> Hint -> App a -> App a
+withMacroHint h dd hint action = do
+  let Handle {macroCallStack} = h
+  liftIO $ modifyIORef' macroCallStack ((dd, hint) :)
+  result <- action
+  liftIO $ modifyIORef' macroCallStack (drop 1)
+  return result
+
+getMacroCallStack :: Handle -> IO [(DD.DefiniteDescription, Hint)]
+getMacroCallStack h = do
+  let Handle {macroCallStack} = h
+  readIORef macroCallStack
+
+formatMacroTrace :: [(DD.DefiniteDescription, Hint)] -> T.Text
+formatMacroTrace stack =
+  case reverse stack of
+    [] ->
+      ""
+    (dd, m) : rest -> do
+      let firstLine = "    " <> DD.localLocator dd <> " (" <> T.pack (showFilePos m) <> ")"
+      let restLines = map (\(dd', m') -> "  → " <> DD.localLocator dd' <> " (" <> T.pack (showFilePos m') <> ")") rest
+      let allLines = firstLine : restLines
+      "Trace:\n" <> T.intercalate "\n" allLines
+
 canReduceByLamKind :: LK.LamKindF a -> Bool
 canReduceByLamKind lamKind =
   case lamKind of
@@ -614,3 +652,13 @@ selfSubstForLamKind lamKind selfTerm =
       IntMap.singleton (Ident.toInt selfIdent) (Subst.Term selfTerm)
     _ ->
       IntMap.empty
+
+isMacroDef :: DefKind -> Bool
+isMacroDef dk =
+  case dk of
+    Macro ->
+      True
+    MacroInline ->
+      True
+    _ ->
+      False
