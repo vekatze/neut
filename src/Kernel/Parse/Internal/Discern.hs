@@ -811,6 +811,11 @@ discernMagic h m magic =
       typeExpr' <- discernType h typeExpr
       index' <- discern h index
       return $ M.WeakMagic $ M.GetConsName textType typeExpr' index'
+    RT.GetConsConstFlag _ (_, (typeExpr, _)) _ (_, (index, _)) -> do
+      boolType <- liftEither (locatorToTypeVar m coreBool) >>= discernType h
+      typeExpr' <- discernType h typeExpr
+      index' <- discern h index
+      return $ M.WeakMagic $ M.GetConsConstFlag boolType typeExpr' index'
     RT.ShowType _ (_, (typeExpr, _)) -> do
       textType <- liftEither (locatorToTypeVar m coreText) >>= discernType h
       typeExpr' <- discernType h typeExpr

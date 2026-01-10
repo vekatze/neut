@@ -314,6 +314,11 @@ inline' h term = do
           typeExpr' <- inlineType' h typeExpr
           indexExpr' <- inline' h indexExpr
           Magic.evaluateGetConsName m textTypeExpr' typeExpr' indexExpr'
+        M.GetConsConstFlag boolTypeExpr typeExpr indexExpr -> do
+          boolTypeExpr' <- inlineType' h boolTypeExpr
+          typeExpr' <- inlineType' h typeExpr
+          indexExpr' <- inline' h indexExpr
+          Magic.evaluateGetConsConstFlag m boolTypeExpr' typeExpr' indexExpr'
         M.ShowType textTypeExpr typeExpr -> do
           textTypeExpr' <- inlineType' h textTypeExpr
           typeExpr' <- inlineType' h typeExpr

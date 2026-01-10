@@ -437,6 +437,11 @@ fillMagic h holeSubst magic =
       typeExpr' <- fillType h holeSubst typeExpr
       index' <- fill h holeSubst index
       return $ M.GetConsName textType' typeExpr' index'
+    M.GetConsConstFlag boolType typeExpr index -> do
+      boolType' <- fillType h holeSubst boolType
+      typeExpr' <- fillType h holeSubst typeExpr
+      index' <- fill h holeSubst index
+      return $ M.GetConsConstFlag boolType' typeExpr' index'
     M.ShowType textTypeExpr typeExpr -> do
       textTypeExpr' <- fillType h holeSubst textTypeExpr
       typeExpr' <- fillType h holeSubst typeExpr

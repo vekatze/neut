@@ -51,6 +51,9 @@ module Language.Common.BaseName
     pair,
     pairType,
     textType,
+    boolType,
+    trueConstructor,
+    falseConstructor,
   )
 where
 
@@ -284,6 +287,18 @@ eitherType =
 textType :: BaseName
 textType =
   MakeBaseName "text"
+
+boolType :: BaseName
+boolType =
+  MakeBaseName "bool"
+
+trueConstructor :: BaseName
+trueConstructor =
+  MakeBaseName "True"
+
+falseConstructor :: BaseName
+falseConstructor =
+  MakeBaseName "False"
 
 typeTagList :: [BaseName]
 typeTagList =

@@ -6,6 +6,7 @@ module Language.Term.Inline.Magic
     evaluateGetVectorContentType,
     evaluateGetConstructorArgTypes,
     evaluateGetConsName,
+    evaluateGetConsConstFlag,
     evaluateShowType,
     evaluateTextCons,
     evaluateTextUncons,
@@ -197,6 +198,41 @@ evaluateGetConsName m textTypeExpr typeExpr indexExpr = do
       raiseError m "get-cons-name: index must be an integer literal, but got a different term"
     _ ->
       raiseError m "get-cons-name: type expression must be a data type"
+
+evaluateGetConsConstFlag :: Hint -> TM.Type -> TM.Type -> TM.Term -> App TM.Term
+evaluateGetConsConstFlag m boolTypeExpr typeExpr indexExpr = do
+  case (boolTypeExpr, typeExpr, indexExpr) of
+    (_ :< TM.Data _ boolDD _, _ :< TM.Data (AttrD.Attr {AttrD.consNameList}) _ _, _ :< TM.Prim (PV.Int _ _ indexInt)) -> do
+      let index = fromIntegral indexInt
+      if index < 0 || index >= length consNameList
+        then
+          raiseError m $
+            "get-cons-const-flag: index "
+              <> T.pack (show index)
+              <> " is out of bounds (valid range: 0-"
+              <> T.pack (show (length consNameList - 1))
+              <> ")"
+        else do
+          let (moduleID, _) = DD.unconsDD boolDD
+          let boolSGL = SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.boolLocator}
+          let boolTypeDD = DD.newByGlobalLocator boolSGL BN.boolType
+          let trueDD = DD.newByGlobalLocator boolSGL BN.trueConstructor
+          let falseDD = DD.newByGlobalLocator boolSGL BN.falseConstructor
+          let (_, _, isConstLike) = consNameList !! index
+          let (consDD, discriminant) =
+                if isConstLike
+                  then (trueDD, D.increment D.zero)
+                  else (falseDD, D.zero)
+          let attr = AttrDI.Attr {dataName = boolTypeDD, consNameList, discriminant, isConstLike = True}
+          return $ m :< TM.DataIntro attr consDD [] []
+    (_, _ :< TM.Data {}, _ :< TM.Prim {}) ->
+      raiseError m "get-cons-const-flag: the first argument must be an ADT"
+    (_ :< TM.Data {}, _, _ :< TM.Prim {}) ->
+      raiseError m "get-cons-const-flag: the second argument must be an ADT"
+    (_ :< TM.Data {}, _ :< TM.Data {}, _) ->
+      raiseError m "get-cons-const-flag: index must be an integer literal, but got a different term"
+    _ ->
+      raiseError m "get-cons-const-flag: got invalid arguments"
 
 constructListTerm :: Hint -> SGL.StrictGlobalLocator -> [TM.Type] -> TM.Term
 constructListTerm hint listSgl types = do

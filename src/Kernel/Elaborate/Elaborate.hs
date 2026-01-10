@@ -431,6 +431,11 @@ elaborate' h term = do
           typeExpr' <- elaborateType h typeExpr
           index' <- elaborate' h index
           return $ m :< TM.Magic (M.GetConsName textType' typeExpr' index')
+        M.GetConsConstFlag boolType typeExpr index -> do
+          boolType' <- elaborateType h boolType
+          typeExpr' <- elaborateType h typeExpr
+          index' <- elaborate' h index
+          return $ m :< TM.Magic (M.GetConsConstFlag boolType' typeExpr' index')
         M.ShowType textTypeExpr typeExpr -> do
           textTypeExpr' <- elaborateType h textTypeExpr
           typeExpr' <- elaborateType h typeExpr

@@ -123,6 +123,8 @@ freeVarsMagicTerm (M.WeakMagic magic) =
       freeVars index
     M.GetConsName _ _ index ->
       freeVars index
+    M.GetConsConstFlag _ _ index ->
+      freeVars index
     M.ShowType {} ->
       S.empty
     M.TextCons _ rune text ->
@@ -305,6 +307,8 @@ freeVarsMagic (M.WeakMagic magic) =
       S.unions [freeVarsType listExpr, freeVarsType typeExpr, freeVarsAll index]
     M.GetConsName textType typeExpr index ->
       S.unions [freeVarsType textType, freeVarsType typeExpr, freeVarsAll index]
+    M.GetConsConstFlag boolType typeExpr index ->
+      S.unions [freeVarsType boolType, freeVarsType typeExpr, freeVarsAll index]
     M.ShowType textTypeExpr typeExpr ->
       S.union (freeVarsType textTypeExpr) (freeVarsType typeExpr)
     M.TextCons textTypeExpr rune text ->

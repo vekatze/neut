@@ -12,6 +12,7 @@ module Language.Common.SourceLocator
     pairLocator,
     unitLocator,
     textLocator,
+    boolLocator,
   )
 where
 
@@ -87,3 +88,7 @@ unitLocator =
 textLocator :: SourceLocator
 textLocator =
   SourceLocator $(mkRelFile "text")
+
+boolLocator :: SourceLocator
+boolLocator =
+  SourceLocator $(mkRelFile "bool")

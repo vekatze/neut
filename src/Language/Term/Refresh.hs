@@ -138,6 +138,11 @@ refreshMagic h magic =
       typeExpr' <- refreshType h typeExpr
       index' <- refresh h index
       return $ M.GetConsName textType' typeExpr' index'
+    M.GetConsConstFlag boolType typeExpr index -> do
+      boolType' <- refreshType h boolType
+      typeExpr' <- refreshType h typeExpr
+      index' <- refresh h index
+      return $ M.GetConsConstFlag boolType' typeExpr' index'
     M.ShowType textTypeExpr typeExpr -> do
       textTypeExpr' <- refreshType h textTypeExpr
       typeExpr' <- refreshType h typeExpr

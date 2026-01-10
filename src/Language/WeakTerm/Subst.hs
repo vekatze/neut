@@ -469,6 +469,11 @@ substMagic h sub (WT.WeakMagic magic) = do
       typeExpr' <- substType h sub typeExpr
       index' <- subst h sub index
       return $ M.GetConsName textType' typeExpr' index'
+    M.GetConsConstFlag boolType typeExpr index -> do
+      boolType' <- substType h sub boolType
+      typeExpr' <- substType h sub typeExpr
+      index' <- subst h sub index
+      return $ M.GetConsConstFlag boolType' typeExpr' index'
     M.ShowType textTypeExpr typeExpr -> do
       textTypeExpr' <- substType h sub textTypeExpr
       typeExpr' <- substType h sub typeExpr

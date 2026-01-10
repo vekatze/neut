@@ -364,6 +364,15 @@ showMagic (M.WeakMagic magic) =
               <> ", "
               <> toText index
           )
+    M.GetConsConstFlag boolType typeExpr index ->
+      "magic get-cons-const-flag"
+        <> inParen
+          ( toTextType boolType
+              <> ", "
+              <> toTextType typeExpr
+              <> ", "
+              <> toText index
+          )
     M.ShowType textTypeExpr typeExpr ->
       "magic show-type" <> inParen (toTextType textTypeExpr <> ", " <> toTextType typeExpr)
     M.TextCons textTypeExpr rune text ->

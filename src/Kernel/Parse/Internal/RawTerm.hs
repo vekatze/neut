@@ -566,6 +566,7 @@ rawTermMagic h m c = do
       rawTermMagicGetVectorContentType h m c,
       rawTermMagicGetConstructorArgTypes h m c,
       rawTermMagicGetConsName h m c,
+      rawTermMagicGetConsConstFlag h m c,
       rawTermMagicShowType h m c,
       rawTermMagicTextCons h m c,
       rawTermMagicTextUncons h m c,
@@ -710,6 +711,14 @@ rawTermMagicGetConsName h m c = do
     c3 <- delimiter ","
     index <- rawTerm h
     return $ \c1 c2 -> m :< RT.Magic c (RT.GetConsArgName c1 (c2, typeExpr) c3 (c3, index))
+
+rawTermMagicGetConsConstFlag :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
+rawTermMagicGetConsConstFlag h m c = do
+  rawTermMagicBase "get-cons-const-flag" $ do
+    typeExpr <- rawType h
+    c3 <- delimiter ","
+    index <- rawTerm h
+    return $ \c1 c2 -> m :< RT.Magic c (RT.GetConsConstFlag c1 (c2, typeExpr) c3 (c3, index))
 
 rawTermMagicShowType :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermMagicShowType h m c = do
