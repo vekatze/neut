@@ -174,6 +174,8 @@ freeVarsWithHintsMagic magic =
       S.unions [freeVarsWithHintsType listExpr, freeVarsWithHintsType typeExpr, freeVarsWithHints index]
     M.ShowType textTypeExpr typeExpr ->
       S.union (freeVarsWithHintsType textTypeExpr) (freeVarsWithHintsType typeExpr)
+    M.TextCons textTypeExpr rune text ->
+      S.unions [freeVarsWithHintsType textTypeExpr, freeVarsWithHints rune, freeVarsWithHints text]
     M.CompileError typeExpr msg ->
       S.union (freeVarsWithHintsType typeExpr) (freeVarsWithHints msg)
 

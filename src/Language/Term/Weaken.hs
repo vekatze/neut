@@ -178,6 +178,8 @@ weakenMagic m magic = do
       M.WeakMagic $ M.GetConstructorArgTypes sgl (weakenType listExpr) (weakenType typeExpr) (weaken index)
     M.ShowType textTypeExpr typeExpr ->
       M.WeakMagic $ M.ShowType (weakenType textTypeExpr) (weakenType typeExpr)
+    M.TextCons textTypeExpr rune text ->
+      M.WeakMagic $ M.TextCons (weakenType textTypeExpr) (weaken rune) (weaken text)
     M.CompileError typeExpr msg ->
       M.WeakMagic $ M.CompileError (weakenType typeExpr) (weaken msg)
 

@@ -313,6 +313,11 @@ inline' h term = do
           textTypeExpr' <- inlineType' h textTypeExpr
           typeExpr' <- inlineType' h typeExpr
           Magic.evaluateShowType m textTypeExpr' typeExpr'
+        M.TextCons textTypeExpr rune text -> do
+          textTypeExpr' <- inlineType' h textTypeExpr
+          rune' <- inline' h rune
+          text' <- inline' h text
+          Magic.evaluateTextCons m textTypeExpr' rune' text'
         M.CompileError _ msg -> do
           msg' <- inline' h msg
           Magic.evaluateCompileError h m msg'

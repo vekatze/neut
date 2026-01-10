@@ -426,8 +426,15 @@ elaborate' h term = do
           typeExpr' <- elaborateType h typeExpr
           index' <- elaborate' h index
           return $ m :< TM.Magic (M.GetConstructorArgTypes sgl listExpr' typeExpr' index')
-        M.ShowType _textTypeExpr _typeExpr -> do
-          undefined
+        M.ShowType textTypeExpr typeExpr -> do
+          textTypeExpr' <- elaborateType h textTypeExpr
+          typeExpr' <- elaborateType h typeExpr
+          return $ m :< TM.Magic (M.ShowType textTypeExpr' typeExpr')
+        M.TextCons textTypeExpr rune text -> do
+          textTypeExpr' <- elaborateType h textTypeExpr
+          rune' <- elaborate' h rune
+          text' <- elaborate' h text
+          return $ m :< TM.Magic (M.TextCons textTypeExpr' rune' text')
         M.CompileError typeExpr msg -> do
           typeExpr' <- elaborateType h typeExpr
           msg' <- elaborate' h msg

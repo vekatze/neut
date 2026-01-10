@@ -468,6 +468,11 @@ substMagic h sub (WT.WeakMagic magic) = do
       textTypeExpr' <- substType h sub textTypeExpr
       typeExpr' <- substType h sub typeExpr
       return $ M.ShowType textTypeExpr' typeExpr'
+    M.TextCons textTypeExpr rune text -> do
+      textTypeExpr' <- substType h sub textTypeExpr
+      rune' <- subst h sub rune
+      text' <- subst h sub text
+      return $ M.TextCons textTypeExpr' rune' text'
     M.CompileError typeExpr msg -> do
       typeExpr' <- substType h sub typeExpr
       msg' <- subst h sub msg

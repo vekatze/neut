@@ -173,6 +173,8 @@ freeVarsMagic magic =
       S.unions [freeVarsType listExpr, freeVarsType typeExpr, freeVars index]
     M.ShowType textTypeExpr typeExpr ->
       S.union (freeVarsType textTypeExpr) (freeVarsType typeExpr)
+    M.TextCons textTypeExpr rune text ->
+      S.unions [freeVarsType textTypeExpr, freeVars rune, freeVars text]
     M.CompileError typeExpr msg ->
       S.union (freeVarsType typeExpr) (freeVars msg)
 

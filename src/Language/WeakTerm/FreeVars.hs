@@ -123,6 +123,8 @@ freeVarsMagicTerm (M.WeakMagic magic) =
       freeVars index
     M.ShowType {} ->
       S.empty
+    M.TextCons _ rune text ->
+      S.union (freeVars rune) (freeVars text)
     M.CompileError _ msg ->
       freeVars msg
 
@@ -299,6 +301,8 @@ freeVarsMagic (M.WeakMagic magic) =
       S.unions [freeVarsType listExpr, freeVarsType typeExpr, freeVarsAll index]
     M.ShowType textTypeExpr typeExpr ->
       S.union (freeVarsType textTypeExpr) (freeVarsType typeExpr)
+    M.TextCons textTypeExpr rune text ->
+      S.unions [freeVarsType textTypeExpr, freeVarsAll rune, freeVarsAll text]
     M.CompileError typeExpr msg ->
       S.union (freeVarsType typeExpr) (freeVarsAll msg)
 

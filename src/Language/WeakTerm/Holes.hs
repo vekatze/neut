@@ -168,6 +168,8 @@ holesMagic (M.WeakMagic magic) =
       S.unions [holesType listExpr, holesType typeExpr, holes index]
     M.ShowType textTypeExpr typeExpr ->
       S.union (holesType textTypeExpr) (holesType typeExpr)
+    M.TextCons textTypeExpr rune text ->
+      S.unions [holesType textTypeExpr, holes rune, holes text]
     M.CompileError typeExpr msg ->
       S.union (holesType typeExpr) (holes msg)
 

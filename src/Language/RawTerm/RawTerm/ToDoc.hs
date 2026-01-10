@@ -334,6 +334,17 @@ toDoc term =
             [ attachComment (c ++ c1) $ D.text "magic show-type",
               SE.decode $ SE.fromListWithComment (Just SE.Paren) SE.Comma [(c2, (typeToDoc typeExpr, c3))]
             ]
+        TextCons c1 (c2, (rune, c3)) (c4, (text, c5)) -> do
+          D.join
+            [ attachComment (c ++ c1) $ D.text "magic text-cons",
+              SE.decode $
+                SE.fromListWithComment
+                  (Just SE.Paren)
+                  SE.Comma
+                  [ (c2, (toDoc rune, c3)),
+                    (c4, (toDoc text, c5))
+                  ]
+            ]
         CompileError c1 (c2, (msg, c3)) -> do
           D.join
             [ attachComment (c ++ c1) $ D.text "magic compile-error",

@@ -414,6 +414,13 @@ infer h term =
           textTypeExpr' <- inferType h textTypeExpr
           typeExpr' <- inferType h typeExpr
           return (m :< WT.Magic (M.WeakMagic $ M.ShowType textTypeExpr' typeExpr'), m :< WT.BoxNoema textTypeExpr')
+        M.TextCons textTypeExpr rune text -> do
+          textTypeExpr' <- inferType h textTypeExpr
+          (rune', runeType) <- infer h rune
+          (text', textType) <- infer h text
+          liftIO $ Constraint.insert (constraintHandle h) (m :< WT.PrimType PT.Rune) runeType
+          liftIO $ Constraint.insert (constraintHandle h) (m :< WT.BoxNoema textTypeExpr') textType
+          return (m :< WT.Magic (M.WeakMagic $ M.TextCons textTypeExpr' rune' text'), m :< WT.BoxNoema textTypeExpr')
         M.CompileError typeExpr msg -> do
           typeExpr' <- inferType h typeExpr
           (msg', msgType) <- infer h msg

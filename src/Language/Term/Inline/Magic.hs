@@ -6,6 +6,7 @@ module Language.Term.Inline.Magic
     evaluateGetVectorContentType,
     evaluateGetConstructorArgTypes,
     evaluateShowType,
+    evaluateTextCons,
     evaluateCompileError,
   )
 where
@@ -29,6 +30,7 @@ import Language.Common.IsConstLike (IsConstLike)
 import Language.Common.ModuleID qualified as MID
 import Language.Common.PrimNumSize qualified as PNS
 import Language.Common.PrimType qualified as PT
+import Language.Common.Rune qualified as Rune
 import Language.Common.SourceLocator (binaryLocator, typeTagLocator, vectorLocator)
 import Language.Common.StrictGlobalLocator qualified as SGL
 import Language.Term.Inline.Handle
@@ -205,6 +207,15 @@ evaluateShowType :: Hint -> TM.Type -> TM.Type -> App TM.Term
 evaluateShowType m textTypeExpr typeExpr = do
   let typeText = toTextType $ weakenType typeExpr
   return $ m :< TM.Prim (PV.StaticText textTypeExpr typeText)
+
+evaluateTextCons :: Hint -> TM.Type -> TM.Term -> TM.Term -> App TM.Term
+evaluateTextCons m textTypeExpr rune text = do
+  case (rune, text) of
+    (_ :< TM.Prim (PV.Rune r), _ :< TM.Prim (PV.StaticText _ textValue)) -> do
+      let newText = T.cons (Rune.asChar r) textValue
+      return $ m :< TM.Prim (PV.StaticText textTypeExpr newText)
+    _ ->
+      raiseError m "text-cons requires a rune literal and a static text literal"
 
 evaluateCompileError :: Handle -> Hint -> TM.Term -> App a
 evaluateCompileError h m msg = do
