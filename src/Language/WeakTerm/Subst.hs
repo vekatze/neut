@@ -468,8 +468,10 @@ substMagic h sub (WT.WeakMagic magic) = do
       textTypeExpr' <- substType h sub textTypeExpr
       typeExpr' <- substType h sub typeExpr
       return $ M.ShowType textTypeExpr' typeExpr'
-    M.CompileError msg ->
-      return $ M.CompileError msg
+    M.CompileError typeExpr msg -> do
+      typeExpr' <- substType h sub typeExpr
+      msg' <- subst h sub msg
+      return $ M.CompileError typeExpr' msg'
   return $ WT.WeakMagic magic'
 
 substLowMagic :: Handle -> Subst -> LM.LowMagic WT.WeakType WT.WeakType WT.WeakTerm -> IO (LM.LowMagic WT.WeakType WT.WeakType WT.WeakTerm)

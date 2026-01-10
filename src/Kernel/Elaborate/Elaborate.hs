@@ -428,8 +428,10 @@ elaborate' h term = do
           return $ m :< TM.Magic (M.GetConstructorArgTypes sgl listExpr' typeExpr' index')
         M.ShowType _textTypeExpr _typeExpr -> do
           undefined
-        M.CompileError msg ->
-          return $ m :< TM.Magic (M.CompileError msg)
+        M.CompileError typeExpr msg -> do
+          typeExpr' <- elaborateType h typeExpr
+          msg' <- elaborate' h msg
+          return $ m :< TM.Magic (M.CompileError typeExpr' msg')
     m :< WT.Annotation remarkLevel annot e -> do
       e' <- elaborate' h e
       case annot of

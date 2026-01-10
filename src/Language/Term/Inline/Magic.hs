@@ -6,12 +6,17 @@ module Language.Term.Inline.Magic
     evaluateGetVectorContentType,
     evaluateGetConstructorArgTypes,
     evaluateShowType,
+    evaluateCompileError,
   )
 where
 
 import App.App (App)
 import App.Run (raiseError)
 import Control.Comonad.Cofree
+import Control.Monad.IO.Class
+import Data.IORef (readIORef)
+import Data.List.NonEmpty (NonEmpty ((:|)))
+import Data.List.NonEmpty qualified as NE
 import Data.Text qualified as T
 import Kernel.Common.TypeTag qualified as TypeTag
 import Language.Common.Attr.Data qualified as AttrD
@@ -26,11 +31,12 @@ import Language.Common.PrimNumSize qualified as PNS
 import Language.Common.PrimType qualified as PT
 import Language.Common.SourceLocator (binaryLocator, typeTagLocator, vectorLocator)
 import Language.Common.StrictGlobalLocator qualified as SGL
+import Language.Term.Inline.Handle
 import Language.Term.PrimValue qualified as PV
 import Language.Term.Term qualified as TM
 import Language.Term.Weaken (weakenType)
 import Language.WeakTerm.ToText (toTextType)
-import Logger.Hint (Hint)
+import Logger.Hint (Hint, showFilePos)
 
 evaluateGetTypeTag :: Hint -> MID.ModuleID -> TM.Type -> App TM.Term
 evaluateGetTypeTag m moduleID typeExpr = do
@@ -199,3 +205,35 @@ evaluateShowType :: Hint -> TM.Type -> TM.Type -> App TM.Term
 evaluateShowType m textTypeExpr typeExpr = do
   let typeText = toTextType $ weakenType typeExpr
   return $ m :< TM.Prim (PV.StaticText textTypeExpr typeText)
+
+evaluateCompileError :: Handle -> Hint -> TM.Term -> App a
+evaluateCompileError h m msg = do
+  case msg of
+    _ :< TM.Prim (PV.StaticText _ messageText) -> do
+      reportMacroError h m messageText
+    _ ->
+      raiseError m "compile-error requires a static text message"
+
+reportMacroError :: Handle -> Hint -> T.Text -> App a
+reportMacroError h m message = do
+  ms <- liftIO $ getMacroCallStack h
+  let trace = formatMacroTrace ms
+  let hints = map snd ms
+  let hintStack = NE.reverse $ m :| hints
+  raiseError (NE.head hintStack) $ message <> "\n\n" <> trace
+
+getMacroCallStack :: Handle -> IO [(DD.DefiniteDescription, Hint)]
+getMacroCallStack h = do
+  let Handle {macroCallStack} = h
+  readIORef macroCallStack
+
+formatMacroTrace :: [(DD.DefiniteDescription, Hint)] -> T.Text
+formatMacroTrace stack =
+  case reverse stack of
+    [] ->
+      ""
+    (dd, m) : rest -> do
+      let firstLine = "    " <> DD.localLocator dd <> " (" <> T.pack (showFilePos m) <> ")"
+      let restLines = map (\(dd', m') -> "  → " <> DD.localLocator dd' <> " (" <> T.pack (showFilePos m') <> ")") rest
+      let allLines = firstLine : restLines
+      "Trace:\n" <> T.intercalate "\n" allLines

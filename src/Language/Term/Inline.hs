@@ -18,8 +18,6 @@ import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.IntMap qualified as IntMap
 import Data.List (find)
-import Data.List.NonEmpty (NonEmpty ((:|)))
-import Data.List.NonEmpty qualified as NE
 import Data.Text qualified as T
 import Gensym.Gensym qualified as Gensym
 import Gensym.Handle qualified as GensymHandle
@@ -42,51 +40,13 @@ import Language.Common.Opacity qualified as O
 import Language.Common.PiKind qualified as PK
 import Language.Term.Eq qualified as TermEq
 import Language.Term.Inline.ConstantFold qualified as ConstantFold
+import Language.Term.Inline.Handle
 import Language.Term.Inline.Magic qualified as Magic
 import Language.Term.PrimValue qualified as PV
 import Language.Term.Refresh qualified as Refresh
 import Language.Term.Subst qualified as Subst
 import Language.Term.Term qualified as TM
 import Logger.Hint
-
-data DefKind
-  = Inline
-  | Macro
-  | MacroInline
-  | DataIntro
-  deriving (Eq, Show)
-
-data DefInfo = DefInfo
-  { defBinders :: [BinderF TM.Type],
-    defBody :: TM.Term,
-    codType :: TM.Type,
-    defKind :: DefKind
-  }
-
-type DefMap =
-  Map.HashMap DD.DefiniteDescription DefInfo
-
-type TypeDefMap =
-  TypeDef.TypeDefMap
-
-data GuardEntry = GuardEntry
-  { guardFunction :: DD.DefiniteDescription,
-    guardTypeArgs :: [TM.Type],
-    guardSelf :: TM.Term
-  }
-
-data Handle = Handle
-  { substHandle :: Subst.Handle,
-    refreshHandle :: Refresh.Handle,
-    dmap :: DefMap,
-    typeDefMap :: TypeDefMap,
-    inlineLimit :: Int,
-    currentStepRef :: IORef Int,
-    location :: Hint,
-    guardStack :: IORef [GuardEntry],
-    macroCallStack :: IORef [(DD.DefiniteDescription, Hint)],
-    gensymHandle :: GensymHandle.Handle
-  }
 
 new :: GensymHandle.Handle -> DefMap -> TypeDefMap -> Hint -> Int -> IO Handle
 new gensymHandle dmap typeDefMap location inlineLimit = do
@@ -353,16 +313,9 @@ inline' h term = do
           textTypeExpr' <- inlineType' h textTypeExpr
           typeExpr' <- inlineType' h typeExpr
           Magic.evaluateShowType m textTypeExpr' typeExpr'
-        M.CompileError msg -> do
-          reportMacroError h m msg
-
-reportMacroError :: Handle -> Hint -> T.Text -> App a
-reportMacroError h m message = do
-  ms <- liftIO $ getMacroCallStack h
-  let trace = formatMacroTrace ms
-  let hints = map snd ms
-  let hintStack = NE.reverse $ m :| hints
-  raiseError (NE.head hintStack) $ message <> "\n\n" <> trace
+        M.CompileError _ msg -> do
+          msg' <- inline' h msg
+          Magic.evaluateCompileError h m msg'
 
 inlineType' :: Handle -> TM.Type -> App TM.Type
 inlineType' h ty =
@@ -592,7 +545,6 @@ bind binder cont =
     ((m, x, t), e1) : rest -> do
       m :< TM.Let O.Clear (m, x, t) e1 (bind rest cont)
 
--- Guard stack operations
 pushGuard :: Handle -> DD.DefiniteDescription -> [TM.Type] -> TM.Term -> App ()
 pushGuard h dd typeArgs selfVar = do
   let entry = GuardEntry dd typeArgs selfVar
@@ -614,7 +566,6 @@ matchesGuardEntry :: DD.DefiniteDescription -> [TM.Type] -> GuardEntry -> Bool
 matchesGuardEntry dd' args entry =
   guardFunction entry == dd' && TermEq.eqTypes (guardTypeArgs entry) args
 
--- Macro call stack operations
 withMacroHint :: Handle -> DD.DefiniteDescription -> Hint -> App a -> App a
 withMacroHint h dd hint action = do
   let Handle {macroCallStack} = h
@@ -622,22 +573,6 @@ withMacroHint h dd hint action = do
   result <- action
   liftIO $ modifyIORef' macroCallStack (drop 1)
   return result
-
-getMacroCallStack :: Handle -> IO [(DD.DefiniteDescription, Hint)]
-getMacroCallStack h = do
-  let Handle {macroCallStack} = h
-  readIORef macroCallStack
-
-formatMacroTrace :: [(DD.DefiniteDescription, Hint)] -> T.Text
-formatMacroTrace stack =
-  case reverse stack of
-    [] ->
-      ""
-    (dd, m) : rest -> do
-      let firstLine = "    " <> DD.localLocator dd <> " (" <> T.pack (showFilePos m) <> ")"
-      let restLines = map (\(dd', m') -> "  → " <> DD.localLocator dd' <> " (" <> T.pack (showFilePos m') <> ")") rest
-      let allLines = firstLine : restLines
-      "Trace:\n" <> T.intercalate "\n" allLines
 
 canReduceByLamKind :: LK.LamKindF a -> Bool
 canReduceByLamKind lamKind =

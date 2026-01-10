@@ -260,8 +260,8 @@ eqTermMagic magic1 magic2 =
         && eqType listExpr1 listExpr2
         && eqType typeExpr1 typeExpr2
         && eqTerm index1 index2
-    (M.CompileError msg1, M.CompileError msg2) ->
-      msg1 == msg2
+    (M.CompileError t1 msg1, M.CompileError t2 msg2) ->
+      eqType t1 t2 && eqTerm msg1 msg2
     _ ->
       False
 

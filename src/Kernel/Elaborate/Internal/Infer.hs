@@ -414,9 +414,12 @@ infer h term =
           textTypeExpr' <- inferType h textTypeExpr
           typeExpr' <- inferType h typeExpr
           return (m :< WT.Magic (M.WeakMagic $ M.ShowType textTypeExpr' typeExpr'), m :< WT.BoxNoema textTypeExpr')
-        M.CompileError msg -> do
+        M.CompileError typeExpr msg -> do
+          typeExpr' <- inferType h typeExpr
+          (msg', msgType) <- infer h msg
+          liftIO $ Constraint.insert (constraintHandle h) (m :< WT.BoxNoema typeExpr') msgType
           resultType <- liftIO $ newTypeHole h m (varEnv h)
-          return (m :< WT.Magic (M.WeakMagic $ M.CompileError msg), resultType)
+          return (m :< WT.Magic (M.WeakMagic $ M.CompileError typeExpr' msg'), resultType)
     m :< WT.Annotation logLevel annot e -> do
       (e', t) <- infer h e
       case annot of

@@ -249,8 +249,10 @@ analyze h term = do
           cs1 <- analyzeType h textTypeExpr
           cs2 <- analyzeType h typeExpr
           return $ cs1 ++ cs2
-        M.CompileError _ ->
-          return []
+        M.CompileError typeExpr msg -> do
+          cs1 <- analyzeType h typeExpr
+          cs2 <- analyze h msg
+          return $ cs1 ++ cs2
 
 analyzeType :: Handle -> TM.Type -> App [AffineConstraint]
 analyzeType h ty =

@@ -123,8 +123,8 @@ freeVarsMagicTerm (M.WeakMagic magic) =
       freeVars index
     M.ShowType {} ->
       S.empty
-    M.CompileError _ ->
-      S.empty
+    M.CompileError _ msg ->
+      freeVars msg
 
 freeVarsLowMagicTerm :: LM.LowMagic WT.WeakType WT.WeakType WT.WeakTerm -> S.Set Ident
 freeVarsLowMagicTerm lowMagic =
@@ -299,8 +299,8 @@ freeVarsMagic (M.WeakMagic magic) =
       S.unions [freeVarsType listExpr, freeVarsType typeExpr, freeVarsAll index]
     M.ShowType textTypeExpr typeExpr ->
       S.union (freeVarsType textTypeExpr) (freeVarsType typeExpr)
-    M.CompileError _ ->
-      S.empty
+    M.CompileError typeExpr msg ->
+      S.union (freeVarsType typeExpr) (freeVarsAll msg)
 
 freeVarsLowMagic :: LM.LowMagic WT.WeakType WT.WeakType WT.WeakTerm -> S.Set Ident
 freeVarsLowMagic lowMagic =

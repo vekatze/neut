@@ -311,7 +311,7 @@ data RawMagic
   | GetVectorContentType C (EL RawType)
   | GetConstructorArgTypes C (EL RawType) C (EL RawTerm)
   | ShowType C (EL RawType)
-  | CompileError T.Text
+  | CompileError C (EL RawTerm)
 
 -- elem
 type EL a =

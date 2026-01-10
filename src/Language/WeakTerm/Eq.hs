@@ -392,9 +392,11 @@ eqM (M.WeakMagic m1) (M.WeakMagic m2)
       let b3 = eqType t1b t2b
       let b4 = eq e1 e2
       b1 && b2 && b3 && b4
-  | M.CompileError msg1 <- m1,
-    M.CompileError msg2 <- m2 =
-      msg1 == msg2
+  | M.CompileError t1 msg1 <- m1,
+    M.CompileError t2 msg2 <- m2 = do
+      let b1 = eqType t1 t2
+      let b2 = eq msg1 msg2
+      b1 && b2
   | otherwise =
       False
 

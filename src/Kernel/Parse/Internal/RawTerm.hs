@@ -707,10 +707,10 @@ rawTermMagicShowType h m c = do
     return $ \c1 c2 -> m :< RT.Magic c (RT.ShowType c1 (c2, typeExpr))
 
 rawTermMagicCompileError :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
-rawTermMagicCompileError _h m c = do
+rawTermMagicCompileError h m c = do
   rawTermMagicBase "compile-error" $ do
-    (msg, c3) <- string
-    return $ \c1 c2 -> m :< RT.Magic (c ++ c1 ++ c2 ++ c3) (RT.CompileError msg)
+    msgTerm <- rawTerm h
+    return $ \c1 c2 -> m :< RT.Magic c (RT.CompileError c1 (c2, msgTerm))
 
 rawTermMatch :: Handle -> Hint -> C -> Bool -> Parser (RT.RawTerm, C)
 rawTermMatch h m c1 isNoetic = do

@@ -137,8 +137,10 @@ refreshMagic h magic =
       textTypeExpr' <- refreshType h textTypeExpr
       typeExpr' <- refreshType h typeExpr
       return $ M.ShowType textTypeExpr' typeExpr'
-    M.CompileError msg ->
-      return $ M.CompileError msg
+    M.CompileError typeExpr msg -> do
+      typeExpr' <- refreshType h typeExpr
+      msg' <- refresh h msg
+      return $ M.CompileError typeExpr' msg'
 
 refreshLowMagic :: Handle -> LM.LowMagic BLT.BaseLowType TM.Type TM.Term -> IO (LM.LowMagic BLT.BaseLowType TM.Type TM.Term)
 refreshLowMagic h lowMagic =

@@ -429,8 +429,10 @@ substMagic h sub magic =
       textTypeExpr' <- substType h sub textTypeExpr
       typeExpr' <- substType h sub typeExpr
       return $ M.ShowType textTypeExpr' typeExpr'
-    M.CompileError msg ->
-      return $ M.CompileError msg
+    M.CompileError typeExpr msg -> do
+      typeExpr' <- substType h sub typeExpr
+      msg' <- subst h sub msg
+      return $ M.CompileError typeExpr' msg'
 
 substLowMagic :: Handle -> Subst -> LM.LowMagic BLT.BaseLowType TM.Type TM.Term -> IO (LM.LowMagic BLT.BaseLowType TM.Type TM.Term)
 substLowMagic h sub lowMagic =

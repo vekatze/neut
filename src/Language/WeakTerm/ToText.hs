@@ -357,8 +357,8 @@ showMagic (M.WeakMagic magic) =
           )
     M.ShowType textTypeExpr typeExpr ->
       "magic show-type" <> inParen (toTextType textTypeExpr <> ", " <> toTextType typeExpr)
-    M.CompileError msg ->
-      "magic compile-error" <> inParen (T.pack $ show msg)
+    M.CompileError typeExpr msg ->
+      "magic compile-error" <> inParen (toTextType typeExpr <> ", " <> toText msg)
 
 showLowMagic :: LM.LowMagic WT.WeakType WT.WeakType WT.WeakTerm -> T.Text
 showLowMagic lowMagic =

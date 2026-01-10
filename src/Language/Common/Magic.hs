@@ -5,7 +5,6 @@ module Language.Common.Magic
 where
 
 import Data.Binary
-import Data.Text qualified as T
 import GHC.Generics qualified as G
 import Language.Common.LowMagic qualified as LM
 import Language.Common.ModuleID qualified as MID
@@ -20,7 +19,7 @@ data Magic lt ty a
   | GetVectorContentType SGL.StrictGlobalLocator ty
   | GetConstructorArgTypes SGL.StrictGlobalLocator ty ty a -- listExpr, typeExpr (types), index (term)
   | ShowType ty ty
-  | CompileError T.Text
+  | CompileError ty a
   deriving (Show, Eq, G.Generic)
 
 instance (Binary lt, Binary ty, Binary a) => Binary (Magic lt ty a)
@@ -44,8 +43,8 @@ instance Functor (Magic lt ty) where
         GetConstructorArgTypes sgl listExpr typeExpr (f index)
       ShowType textTypeExpr typeExpr ->
         ShowType textTypeExpr typeExpr
-      CompileError msg ->
-        CompileError msg
+      CompileError typeExpr msg ->
+        CompileError typeExpr (f msg)
 
 instance Foldable (Magic lt ty) where
   foldMap f der =
@@ -66,8 +65,8 @@ instance Foldable (Magic lt ty) where
         f index
       ShowType {} ->
         mempty
-      CompileError _ ->
-        mempty
+      CompileError _ msg ->
+        f msg
 
 instance Traversable (Magic lt ty) where
   traverse f der =
@@ -88,7 +87,7 @@ instance Traversable (Magic lt ty) where
         GetConstructorArgTypes sgl listExpr typeExpr <$> f index
       ShowType textTypeExpr typeExpr ->
         pure $ ShowType textTypeExpr typeExpr
-      CompileError msg ->
-        pure $ CompileError msg
+      CompileError typeExpr msg ->
+        CompileError typeExpr <$> f msg
 
 newtype WeakMagic lt ty a = WeakMagic (Magic lt ty a)

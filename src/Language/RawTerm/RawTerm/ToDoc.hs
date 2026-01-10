@@ -334,8 +334,11 @@ toDoc term =
             [ attachComment (c ++ c1) $ D.text "magic show-type",
               SE.decode $ SE.fromListWithComment (Just SE.Paren) SE.Comma [(c2, (typeToDoc typeExpr, c3))]
             ]
-        CompileError msg -> do
-          D.text $ "magic compile-error(\"" <> msg <> "\")"
+        CompileError c1 (c2, (msg, c3)) -> do
+          D.join
+            [ attachComment (c ++ c1) $ D.text "magic compile-error",
+              SE.decode $ SE.fromListWithComment (Just SE.Paren) SE.Comma [(c2, (toDoc msg, c3))]
+            ]
     _ :< Annotation {} -> do
       D.text "<annot>"
     _ :< If ifClause elseIfClauseList elseBody -> do

@@ -810,9 +810,11 @@ discernMagic h m magic =
       textType <- liftEither (locatorToTypeVar m coreText) >>= discernType h
       typeExpr' <- discernType h typeExpr
       return $ M.WeakMagic $ M.ShowType textType typeExpr'
-    RT.CompileError msg -> do
+    RT.CompileError _ (_, (msg, _)) -> do
       ensureCompileStage m h "inline magic (`compile-error`)"
-      return $ M.WeakMagic $ M.CompileError msg
+      textType <- liftEither (locatorToTypeVar m coreText) >>= discernType h
+      msg' <- discern h msg
+      return $ M.WeakMagic $ M.CompileError textType msg'
 
 modifyLetContinuation ::
   H.Handle ->

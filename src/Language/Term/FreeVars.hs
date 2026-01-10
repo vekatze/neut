@@ -173,8 +173,8 @@ freeVarsMagic magic =
       S.unions [freeVarsType listExpr, freeVarsType typeExpr, freeVars index]
     M.ShowType textTypeExpr typeExpr ->
       S.union (freeVarsType textTypeExpr) (freeVarsType typeExpr)
-    M.CompileError _ ->
-      S.empty
+    M.CompileError typeExpr msg ->
+      S.union (freeVarsType typeExpr) (freeVars msg)
 
 freeVarsLowMagic :: LM.LowMagic BLT.BaseLowType TM.Type TM.Term -> S.Set Ident
 freeVarsLowMagic lowMagic =
