@@ -25,7 +25,7 @@ data BaseStmtKindTerm name binder t
   = Define
   | Inline
   | Macro
-  | Template
+  | MacroInline
   | Main t
   | DataIntro name [binder] [binder] D.Discriminant
   deriving (Generic)
@@ -58,7 +58,7 @@ toOpacityTerm stmtKind =
       O.Clear
     Macro ->
       O.Clear
-    Template ->
+    MacroInline ->
       O.Clear
     Main _ ->
       O.Opaque
@@ -84,7 +84,7 @@ toLowOpacityTerm stmtKind =
       O.Opaque
     Macro ->
       O.Opaque
-    Template ->
+    MacroInline ->
       O.Opaque
     Main _ ->
       O.Opaque
@@ -106,7 +106,7 @@ isMacroStmtKind stmtKind =
   case stmtKind of
     Macro ->
       True
-    Template ->
+    MacroInline ->
       True
     _ ->
       False
@@ -120,7 +120,7 @@ isInlineStmtKind stmtKind =
       False -- fixme: should be true
     Macro ->
       True
-    Template ->
+    MacroInline ->
       True
     Main _ ->
       False

@@ -50,7 +50,7 @@ import Logger.Hint
 data DefKind
   = Inline
   | Macro
-  | Template
+  | MacroInline
   | DataIntro
   deriving (Eq, Show)
 

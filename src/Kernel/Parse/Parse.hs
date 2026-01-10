@@ -141,8 +141,8 @@ liftStmtKindTerm _h stmtKind = do
       SK.Inline
     SK.Macro ->
       SK.Macro
-    SK.Template ->
-      SK.Template
+    SK.MacroInline ->
+      SK.MacroInline
     SK.Main t ->
       SK.Main t
     SK.DataIntro name dataArgs expConsArgs discriminant -> do

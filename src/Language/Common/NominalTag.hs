@@ -14,7 +14,7 @@ data NominalTag
   = Define
   | Inline
   | Macro
-  | Template
+  | MacroInline
   | Alias
   | AliasOpaque
   | Data
@@ -31,7 +31,7 @@ nominalTagToText tag =
       "inline"
     Macro ->
       "define-macro"
-    Template ->
+    MacroInline ->
       "inline-macro"
     Alias ->
       "alias"
@@ -49,7 +49,7 @@ isTermTag tag =
       True
     Macro ->
       True
-    Template ->
+    MacroInline ->
       True
     Alias ->
       False
@@ -63,7 +63,7 @@ isMacroTag tag =
   case tag of
     Macro ->
       True
-    Template ->
+    MacroInline ->
       True
     _ ->
       False

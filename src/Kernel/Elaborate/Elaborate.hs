@@ -248,8 +248,8 @@ elaborateStmtKindTerm h stmtKind =
       return SK.Inline
     SK.Macro ->
       return SK.Macro
-    SK.Template ->
-      return SK.Template
+    SK.MacroInline ->
+      return SK.MacroInline
     SK.Main t -> do
       t' <- elaborateType h t
       return $ SK.Main t'
@@ -842,8 +842,8 @@ stmtKindToDefKind stmtKind =
       Just Inline.Inline
     SK.Macro ->
       Just Inline.Macro
-    SK.Template ->
-      Just Inline.Template
+    SK.MacroInline ->
+      Just Inline.MacroInline
     SK.DataIntro {} ->
       Just Inline.DataIntro
     _ ->
