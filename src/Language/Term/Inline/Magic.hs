@@ -4,6 +4,7 @@ module Language.Term.Inline.Magic
     evaluateGetConsSize,
     evaluateGetWrapperContentType,
     evaluateGetVectorContentType,
+    evaluateGetNoemaContentType,
     evaluateGetConstructorArgTypes,
     evaluateGetConsName,
     evaluateGetConsConstFlag,
@@ -45,52 +46,52 @@ import Language.Term.Weaken (weakenType)
 import Language.WeakTerm.ToText (toTextType)
 import Logger.Hint (Hint, showFilePos)
 
-evaluateGetTypeTag :: Hint -> MID.ModuleID -> TM.Type -> App TM.Term
-evaluateGetTypeTag m moduleID typeExpr = do
+evaluateGetTypeTag :: Handle -> Hint -> MID.ModuleID -> TM.Type -> App TM.Term
+evaluateGetTypeTag h m moduleID typeExpr = do
   case typeExpr of
     _ :< TM.Tau ->
-      returnTypeTagIntValue m moduleID TypeTag.Type
+      returnTypeTagIntValue h m moduleID TypeTag.Type
     _ :< TM.Pi {} ->
-      returnTypeTagIntValue m moduleID TypeTag.Function
+      returnTypeTagIntValue h m moduleID TypeTag.Function
     _ :< TM.Data (AttrD.Attr {AttrD.consNameList}) _ _ -> do
       case consNameList of
         [(_, [(_, _, _)], _)] -> do
-          returnTypeTagIntValue m moduleID TypeTag.Wrapper
+          returnTypeTagIntValue h m moduleID TypeTag.Wrapper
         _ -> do
           let isEnum = all (\(_, _, isConstLike) -> isConstLike) consNameList
           if isEnum && not (null consNameList)
-            then returnTypeTagIntValue m moduleID TypeTag.Enum
-            else returnTypeTagIntValue m moduleID TypeTag.Algebraic
+            then returnTypeTagIntValue h m moduleID TypeTag.Enum
+            else returnTypeTagIntValue h m moduleID TypeTag.Algebraic
     _ :< TM.BoxNoema _ ->
-      returnTypeTagIntValue m moduleID TypeTag.Noema
+      returnTypeTagIntValue h m moduleID TypeTag.Noema
     _ :< TM.Box _ ->
-      returnTypeTagIntValue m moduleID TypeTag.Opaque
+      returnTypeTagIntValue h m moduleID TypeTag.Opaque
     _ :< TM.Code _ ->
-      returnTypeTagIntValue m moduleID TypeTag.Opaque
+      returnTypeTagIntValue h m moduleID TypeTag.Opaque
     _ :< TM.PrimType (PT.Int size) ->
-      returnTypeTagIntValue m moduleID (TypeTag.fromIntSize size)
+      returnTypeTagIntValue h m moduleID (TypeTag.fromIntSize size)
     _ :< TM.PrimType (PT.Float size) ->
-      returnTypeTagIntValue m moduleID (TypeTag.fromFloatSize size)
+      returnTypeTagIntValue h m moduleID (TypeTag.fromFloatSize size)
     _ :< TM.PrimType PT.Pointer ->
-      returnTypeTagIntValue m moduleID TypeTag.Pointer
+      returnTypeTagIntValue h m moduleID TypeTag.Pointer
     _ :< TM.PrimType PT.Rune ->
-      returnTypeTagIntValue m moduleID TypeTag.Rune
+      returnTypeTagIntValue h m moduleID TypeTag.Rune
     _ :< TM.Resource name _ _ _ _ _ -> do
       let binarySGL = SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.binaryLocator}
       let binaryDD = DD.newByGlobalLocator binarySGL BN.binary
       if name == binaryDD
-        then returnTypeTagIntValue m moduleID TypeTag.Binary
-        else returnTypeTagIntValue m moduleID TypeTag.Opaque
+        then returnTypeTagIntValue h m moduleID TypeTag.Binary
+        else returnTypeTagIntValue h m moduleID TypeTag.Opaque
     _ :< TM.TVarGlobal _ _ -> do
-      returnTypeTagIntValue m moduleID TypeTag.Opaque
+      returnTypeTagIntValue h m moduleID TypeTag.Opaque
     _ :< TM.TyApp (_ :< TM.TVarGlobal _ name) _ -> do
       let vectorSGL = SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.vectorLocator}
       let vectorDD = DD.newByGlobalLocator vectorSGL BN.vector
       if name == vectorDD
-        then returnTypeTagIntValue m moduleID TypeTag.Vector
-        else returnTypeTagIntValue m moduleID TypeTag.Opaque
+        then returnTypeTagIntValue h m moduleID TypeTag.Vector
+        else returnTypeTagIntValue h m moduleID TypeTag.Opaque
     _ -> do
-      raiseError m $
+      reportMacroError h m $
         "get-type-tag: unable to determine type tag for this type expression. Got: "
           <> toTextType (weakenType typeExpr)
 
@@ -105,8 +106,8 @@ makeAttrDI typeTagSGL typeTag = do
   let consNameList = makeConsNameList typeTagSGL
   AttrDI.Attr {dataName, consNameList, discriminant, isConstLike = True}
 
-returnTypeTagIntValue :: Hint -> MID.ModuleID -> TypeTag.TypeTag -> App TM.Term
-returnTypeTagIntValue m' moduleID tag = do
+returnTypeTagIntValue :: Handle -> Hint -> MID.ModuleID -> TypeTag.TypeTag -> App TM.Term
+returnTypeTagIntValue h m' moduleID tag = do
   let typeTagSGL = SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.typeTagLocator}
   let attr = makeAttrDI typeTagSGL tag
   let tagInt = TypeTag.typeTagToInteger tag
@@ -116,53 +117,61 @@ returnTypeTagIntValue m' moduleID tag = do
       let consName = DD.newByGlobalLocator typeTagSGL consBaseName
       return $ m' :< TM.DataIntro attr consName [] []
     [] -> do
-      raiseError m' $ "get-type-tag: unknown type-tag discriminant " <> T.pack (show tagInt)
+      reportMacroError h m' $ "get-type-tag: unknown type-tag discriminant " <> T.pack (show tagInt)
 
-evaluateGetConsSize :: Hint -> TM.Type -> App TM.Term
-evaluateGetConsSize m typeExpr = do
+evaluateGetConsSize :: Handle -> Hint -> TM.Type -> App TM.Term
+evaluateGetConsSize h m typeExpr = do
   case typeExpr of
     _ :< TM.Data (AttrD.Attr {AttrD.consNameList}) _ _ -> do
       let consCount = length consNameList
       let intType = m :< TM.PrimType (PT.Int PNS.IntSize64)
       return $ m :< TM.Prim (PV.Int intType PNS.IntSize64 (fromIntegral consCount))
     _ ->
-      raiseError m "get-cons-size: type expression must be a data type"
+      reportMacroError h m "get-cons-size: type expression must be a data type"
 
-evaluateGetWrapperContentType :: Hint -> TM.Type -> App TM.Term
-evaluateGetWrapperContentType m typeExpr =
+evaluateGetWrapperContentType :: Handle -> Hint -> TM.Type -> App TM.Term
+evaluateGetWrapperContentType h m typeExpr =
   case typeExpr of
     _ :< TM.Data (AttrD.Attr {AttrD.consNameList}) _ _
       | [(_, [(_, _, t)], _)] <- consNameList -> do
           return $ m :< TM.TauIntro t
     _ ->
-      raiseError m "get-wrapper-content-type: type expression must be a wrapper"
+      reportMacroError h m "get-wrapper-content-type: type expression must be a wrapper"
 
-evaluateGetVectorContentType :: Hint -> SGL.StrictGlobalLocator -> TM.Type -> App TM.Term
-evaluateGetVectorContentType m vectorSgl typeExpr = do
+evaluateGetVectorContentType :: Handle -> Hint -> SGL.StrictGlobalLocator -> TM.Type -> App TM.Term
+evaluateGetVectorContentType h m vectorSgl typeExpr = do
   let vectorDD = DD.newByGlobalLocator vectorSgl BN.vector
   case typeExpr of
     _ :< TM.TyApp (_ :< TM.TVarGlobal _ dd) [contentType]
       | dd == vectorDD -> do
           return $ m :< TM.TauIntro contentType
     _ ->
-      raiseError m "get-vector-content-type: type expression must be vector(..)"
+      reportMacroError h m "get-vector-content-type: type expression must be vector(..)"
 
-evaluateGetDataArgs :: Hint -> SGL.StrictGlobalLocator -> TM.Type -> TM.Type -> App TM.Term
-evaluateGetDataArgs m sgl _listExpr typeExpr = do
+evaluateGetNoemaContentType :: Handle -> Hint -> TM.Type -> App TM.Term
+evaluateGetNoemaContentType h m typeExpr =
+  case typeExpr of
+    _ :< TM.BoxNoema contentType -> do
+      return $ m :< TM.TauIntro contentType
+    _ ->
+      reportMacroError h m "get-noema-content-type: type expression must be &a"
+
+evaluateGetDataArgs :: Handle -> Hint -> SGL.StrictGlobalLocator -> TM.Type -> TM.Type -> App TM.Term
+evaluateGetDataArgs h m sgl _listExpr typeExpr = do
   case typeExpr of
     _ :< TM.Data _ _ dataArgs -> do
       return $ constructListTerm m sgl dataArgs
     _ ->
-      raiseError m "get-data-args: type expression must be a data type"
+      reportMacroError h m "get-data-args: type expression must be a data type"
 
-evaluateGetConstructorArgTypes :: Hint -> SGL.StrictGlobalLocator -> TM.Type -> TM.Term -> App TM.Term
-evaluateGetConstructorArgTypes m sgl typeExpr indexExpr = do
+evaluateGetConstructorArgTypes :: Handle -> Hint -> SGL.StrictGlobalLocator -> TM.Type -> TM.Term -> App TM.Term
+evaluateGetConstructorArgTypes h m sgl typeExpr indexExpr = do
   case (typeExpr, indexExpr) of
     (_ :< TM.Data (AttrD.Attr {AttrD.consNameList}) _ _, _ :< TM.Prim (PV.Int _ _ indexInt)) -> do
       let index = fromIntegral indexInt
       if index < 0 || index >= length consNameList
         then
-          raiseError m $
+          reportMacroError h m $
             "get-constructor-arg-types: index "
               <> T.pack (show index)
               <> " is out of bounds (valid range: 0-"
@@ -173,18 +182,18 @@ evaluateGetConstructorArgTypes m sgl typeExpr indexExpr = do
           let types = map (\(_, _, t) -> t) binders
           return $ constructListTerm m sgl types
     (_ :< TM.Data {}, _) ->
-      raiseError m "get-constructor-arg-types: index must be an integer literal, but got a different term"
+      reportMacroError h m "get-constructor-arg-types: index must be an integer literal, but got a different term"
     _ ->
-      raiseError m "get-constructor-arg-types: type expression must be a data type"
+      reportMacroError h m "get-constructor-arg-types: type expression must be a data type"
 
-evaluateGetConsName :: Hint -> TM.Type -> TM.Type -> TM.Term -> App TM.Term
-evaluateGetConsName m textTypeExpr typeExpr indexExpr = do
+evaluateGetConsName :: Handle -> Hint -> TM.Type -> TM.Type -> TM.Term -> App TM.Term
+evaluateGetConsName h m textTypeExpr typeExpr indexExpr = do
   case (typeExpr, indexExpr) of
     (_ :< TM.Data (AttrD.Attr {AttrD.consNameList}) _ _, _ :< TM.Prim (PV.Int _ _ indexInt)) -> do
       let index = fromIntegral indexInt
       if index < 0 || index >= length consNameList
         then
-          raiseError m $
+          reportMacroError h m $
             "get-cons-name: index "
               <> T.pack (show index)
               <> " is out of bounds (valid range: 0-"
@@ -195,18 +204,18 @@ evaluateGetConsName m textTypeExpr typeExpr indexExpr = do
           let consName = DD.localLocator consDD
           return $ m :< TM.Prim (PV.StaticText textTypeExpr consName)
     (_ :< TM.Data {}, _) ->
-      raiseError m "get-cons-name: index must be an integer literal, but got a different term"
+      reportMacroError h m "get-cons-name: index must be an integer literal, but got a different term"
     _ ->
-      raiseError m "get-cons-name: type expression must be a data type"
+      reportMacroError h m "get-cons-name: type expression must be a data type"
 
-evaluateGetConsConstFlag :: Hint -> TM.Type -> TM.Type -> TM.Term -> App TM.Term
-evaluateGetConsConstFlag m boolTypeExpr typeExpr indexExpr = do
+evaluateGetConsConstFlag :: Handle -> Hint -> TM.Type -> TM.Type -> TM.Term -> App TM.Term
+evaluateGetConsConstFlag h m boolTypeExpr typeExpr indexExpr = do
   case (boolTypeExpr, typeExpr, indexExpr) of
     (_ :< TM.Data _ boolDD _, _ :< TM.Data (AttrD.Attr {AttrD.consNameList}) _ _, _ :< TM.Prim (PV.Int _ _ indexInt)) -> do
       let index = fromIntegral indexInt
       if index < 0 || index >= length consNameList
         then
-          raiseError m $
+          reportMacroError h m $
             "get-cons-const-flag: index "
               <> T.pack (show index)
               <> " is out of bounds (valid range: 0-"
@@ -226,13 +235,13 @@ evaluateGetConsConstFlag m boolTypeExpr typeExpr indexExpr = do
           let attr = AttrDI.Attr {dataName = boolTypeDD, consNameList, discriminant, isConstLike = True}
           return $ m :< TM.DataIntro attr consDD [] []
     (_, _ :< TM.Data {}, _ :< TM.Prim {}) ->
-      raiseError m "get-cons-const-flag: the first argument must be an ADT"
+      reportMacroError h m "get-cons-const-flag: the first argument must be an ADT"
     (_ :< TM.Data {}, _, _ :< TM.Prim {}) ->
-      raiseError m "get-cons-const-flag: the second argument must be an ADT"
+      reportMacroError h m "get-cons-const-flag: the second argument must be an ADT"
     (_ :< TM.Data {}, _ :< TM.Data {}, _) ->
-      raiseError m "get-cons-const-flag: index must be an integer literal, but got a different term"
+      reportMacroError h m "get-cons-const-flag: index must be an integer literal, but got a different term"
     _ ->
-      raiseError m "get-cons-const-flag: got invalid arguments"
+      reportMacroError h m "get-cons-const-flag: got invalid arguments"
 
 constructListTerm :: Hint -> SGL.StrictGlobalLocator -> [TM.Type] -> TM.Term
 constructListTerm hint listSgl types = do
@@ -270,17 +279,17 @@ evaluateShowType m textTypeExpr typeExpr = do
   let typeText = toTextType $ weakenType typeExpr
   return $ m :< TM.Prim (PV.StaticText textTypeExpr typeText)
 
-evaluateTextCons :: Hint -> TM.Type -> TM.Term -> TM.Term -> App TM.Term
-evaluateTextCons m textTypeExpr rune text = do
+evaluateTextCons :: Handle -> Hint -> TM.Type -> TM.Term -> TM.Term -> App TM.Term
+evaluateTextCons h m textTypeExpr rune text = do
   case (rune, text) of
     (_ :< TM.Prim (PV.Rune r), _ :< TM.Prim (PV.StaticText _ textValue)) -> do
       let newText = T.cons (Rune.asChar r) textValue
       return $ m :< TM.Prim (PV.StaticText textTypeExpr newText)
     _ ->
-      raiseError m "text-cons requires a rune literal and a static text literal"
+      reportMacroError h m "text-cons requires a rune literal and a static text literal"
 
-evaluateTextUncons :: Hint -> MID.ModuleID -> TM.Term -> App TM.Term
-evaluateTextUncons m moduleID text = do
+evaluateTextUncons :: Handle -> Hint -> MID.ModuleID -> TM.Term -> App TM.Term
+evaluateTextUncons h m moduleID text = do
   case text of
     _ :< TM.Prim (PV.StaticText textTypeExpr textValue) -> do
       let eitherSGL = SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.eitherLocator}
@@ -309,7 +318,7 @@ evaluateTextUncons m moduleID text = do
           let pair = m :< TM.PiElim False (m :< TM.PiElim False pairVar [runeType, m :< TM.BoxNoema textTypeExpr] []) [] [runeValue, restText]
           return $ m :< TM.PiElim False (m :< TM.PiElim False rightVar [unitTypeVar, pairType] []) [] [pair]
     _ ->
-      raiseError m "text-uncons requires a static text literal"
+      reportMacroError h m "text-uncons requires a static text literal"
 
 evaluateCompileError :: Handle -> Hint -> TM.Term -> App a
 evaluateCompileError h m msg = do

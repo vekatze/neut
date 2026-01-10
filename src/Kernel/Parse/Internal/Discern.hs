@@ -797,6 +797,10 @@ discernMagic h m magic =
       gl <- liftEither $ GL.reflect m coreVector
       sgl <- Alias.resolveAlias (H.aliasHandle h) m gl
       return $ M.WeakMagic $ M.GetVectorContentType sgl typeExpr'
+    RT.GetNoemaContentType _ (_, (typeExpr, _)) -> do
+      ensureCompileStage m h "inline magic (`get-noema-content-type`)"
+      typeExpr' <- discernType h typeExpr
+      return $ M.WeakMagic $ M.GetNoemaContentType typeExpr'
     RT.GetConstructorArgTypes _ (_, (typeExpr, _)) _ (_, (index, _)) -> do
       ensureCompileStage m h "inline magic (`get-constructor-arg-types`)"
       typeExpr' <- discernType h typeExpr

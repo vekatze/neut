@@ -344,6 +344,8 @@ showMagic (M.WeakMagic magic) =
       "magic get-wrapper-content-type" <> inParen (toTextType typeExpr)
     M.GetVectorContentType sgl typeExpr ->
       "magic get-vector-content-type" <> inParen (T.pack (show sgl) <> ", " <> toTextType typeExpr)
+    M.GetNoemaContentType typeExpr ->
+      "magic get-noema-content-type" <> inParen (toTextType typeExpr)
     M.GetConstructorArgTypes sgl listExpr typeExpr index ->
       "magic get-constructor-arg-types"
         <> inParen

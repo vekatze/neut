@@ -405,6 +405,9 @@ infer h term =
         M.GetVectorContentType sgl typeExpr -> do
           typeExpr' <- inferType h typeExpr
           return (m :< WT.Magic (M.WeakMagic $ M.GetVectorContentType sgl typeExpr'), m :< WT.Tau)
+        M.GetNoemaContentType typeExpr -> do
+          typeExpr' <- inferType h typeExpr
+          return (m :< WT.Magic (M.WeakMagic $ M.GetNoemaContentType typeExpr'), m :< WT.Tau)
         M.GetConstructorArgTypes sgl listExpr typeExpr index -> do
           (listExpr', _) <- inferTypeWithKind h listExpr
           typeExpr' <- inferType h typeExpr

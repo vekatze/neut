@@ -420,6 +420,8 @@ substMagic h sub magic =
       M.GetWrapperContentType <$> substType h sub typeExpr
     M.GetVectorContentType sgl typeExpr ->
       M.GetVectorContentType sgl <$> substType h sub typeExpr
+    M.GetNoemaContentType typeExpr ->
+      M.GetNoemaContentType <$> substType h sub typeExpr
     M.GetConstructorArgTypes sgl listExpr typeExpr index -> do
       listExpr' <- substType h sub listExpr
       typeExpr' <- substType h sub typeExpr

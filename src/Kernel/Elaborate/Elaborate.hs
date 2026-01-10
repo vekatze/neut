@@ -421,6 +421,9 @@ elaborate' h term = do
         M.GetVectorContentType sgl typeExpr -> do
           typeExpr' <- elaborateType h typeExpr
           return $ m :< TM.Magic (M.GetVectorContentType sgl typeExpr')
+        M.GetNoemaContentType typeExpr -> do
+          typeExpr' <- elaborateType h typeExpr
+          return $ m :< TM.Magic (M.GetNoemaContentType typeExpr')
         M.GetConstructorArgTypes sgl listExpr typeExpr index -> do
           listExpr' <- elaborateType h listExpr
           typeExpr' <- elaborateType h typeExpr

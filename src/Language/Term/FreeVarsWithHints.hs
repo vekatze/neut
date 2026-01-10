@@ -170,6 +170,8 @@ freeVarsWithHintsMagic magic =
       freeVarsWithHintsType typeExpr
     M.GetVectorContentType _ typeExpr ->
       freeVarsWithHintsType typeExpr
+    M.GetNoemaContentType typeExpr ->
+      freeVarsWithHintsType typeExpr
     M.GetConstructorArgTypes _ listExpr typeExpr index ->
       S.unions [freeVarsWithHintsType listExpr, freeVarsWithHintsType typeExpr, freeVarsWithHints index]
     M.GetConsName textType typeExpr index ->
