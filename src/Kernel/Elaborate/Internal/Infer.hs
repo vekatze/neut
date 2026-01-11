@@ -76,9 +76,6 @@ inferStmt h stmt =
       (defaultArgs', h'') <- inferImpBinderWithDefaults h' defaultArgs
       (expArgs', h''') <- inferBinder' h'' expArgs
       codType' <- inferType h''' codType
-      when (SK.isMacroStmtKind stmtKind) $
-        forM_ (impArgs' ++ map fst defaultArgs') $ \(mx, _, t) ->
-          checkIsTypeType h''' mx t
       case stmtKind of
         SK.Macro -> do
           forM_ (map fst defaultArgs' ++ expArgs') $ \(mx, _, t) ->
