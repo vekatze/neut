@@ -323,7 +323,8 @@ typeTagList =
     MakeBaseName "Rune",
     MakeBaseName "Binary",
     MakeBaseName "Vector",
-    MakeBaseName "Wrapper"
+    MakeBaseName "Wrapper",
+    MakeBaseName "Own"
   ]
 
 {-# INLINE fromText #-}

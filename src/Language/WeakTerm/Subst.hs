@@ -462,6 +462,9 @@ substMagic h sub (WT.WeakMagic magic) = do
     M.GetNoemaContentType typeExpr -> do
       typeExpr' <- substType h sub typeExpr
       return $ M.GetNoemaContentType typeExpr'
+    M.GetBoxContentType typeExpr -> do
+      typeExpr' <- substType h sub typeExpr
+      return $ M.GetBoxContentType typeExpr'
     M.GetConstructorArgTypes sgl listExpr typeExpr index -> do
       listExpr' <- substType h sub listExpr
       typeExpr' <- substType h sub typeExpr

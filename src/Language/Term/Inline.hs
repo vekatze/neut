@@ -308,6 +308,9 @@ inline' h term = do
         M.GetNoemaContentType typeExpr -> do
           typeExpr' <- inlineType' h typeExpr
           Magic.evaluateGetNoemaContentType h m typeExpr'
+        M.GetBoxContentType typeExpr -> do
+          typeExpr' <- inlineType' h typeExpr
+          Magic.evaluateGetBoxContentType h m typeExpr'
         M.GetConstructorArgTypes sgl _ typeExpr indexExpr -> do
           typeExpr' <- inlineType' h typeExpr
           indexExpr' <- inline' h indexExpr

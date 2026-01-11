@@ -166,6 +166,8 @@ holesMagic (M.WeakMagic magic) =
       holesType typeExpr
     M.GetNoemaContentType typeExpr ->
       holesType typeExpr
+    M.GetBoxContentType typeExpr ->
+      holesType typeExpr
     M.GetConstructorArgTypes _ listExpr typeExpr index ->
       S.unions [holesType listExpr, holesType typeExpr, holes index]
     M.GetConsName textType typeExpr index ->

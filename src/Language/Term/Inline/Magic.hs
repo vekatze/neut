@@ -5,6 +5,7 @@ module Language.Term.Inline.Magic
     evaluateGetWrapperContentType,
     evaluateGetVectorContentType,
     evaluateGetNoemaContentType,
+    evaluateGetBoxContentType,
     evaluateGetConstructorArgTypes,
     evaluateGetConsName,
     evaluateGetConsConstFlag,
@@ -155,6 +156,14 @@ evaluateGetNoemaContentType h m typeExpr =
       return $ m :< TM.TauIntro contentType
     _ ->
       reportMacroError h m "get-noema-content-type: type expression must be &a"
+
+evaluateGetBoxContentType :: Handle -> Hint -> TM.Type -> App TM.Term
+evaluateGetBoxContentType h m typeExpr =
+  case typeExpr of
+    _ :< TM.Box contentType -> do
+      return $ m :< TM.TauIntro contentType
+    _ ->
+      reportMacroError h m "get-box-content-type: type expression must be meta a"
 
 evaluateGetDataArgs :: Handle -> Hint -> SGL.StrictGlobalLocator -> TM.Type -> TM.Type -> App TM.Term
 evaluateGetDataArgs h m sgl _listExpr typeExpr = do

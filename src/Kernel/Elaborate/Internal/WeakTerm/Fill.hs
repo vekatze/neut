@@ -430,6 +430,9 @@ fillMagic h holeSubst magic =
     M.GetNoemaContentType typeExpr -> do
       typeExpr' <- fillType h holeSubst typeExpr
       return $ M.GetNoemaContentType typeExpr'
+    M.GetBoxContentType typeExpr -> do
+      typeExpr' <- fillType h holeSubst typeExpr
+      return $ M.GetBoxContentType typeExpr'
     M.GetConstructorArgTypes sgl listExpr typeExpr index -> do
       listExpr' <- fillType h holeSubst listExpr
       typeExpr' <- fillType h holeSubst typeExpr

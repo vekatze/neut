@@ -242,6 +242,8 @@ analyze h term = do
           analyzeType h typeExpr
         M.GetNoemaContentType typeExpr -> do
           analyzeType h typeExpr
+        M.GetBoxContentType typeExpr -> do
+          analyzeType h typeExpr
         M.GetConstructorArgTypes _ listExpr typeExpr index -> do
           cs0 <- analyzeType h listExpr
           cs1 <- analyzeType h typeExpr

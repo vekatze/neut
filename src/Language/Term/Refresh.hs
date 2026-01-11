@@ -131,6 +131,9 @@ refreshMagic h magic =
     M.GetNoemaContentType typeExpr -> do
       typeExpr' <- refreshType h typeExpr
       return $ M.GetNoemaContentType typeExpr'
+    M.GetBoxContentType typeExpr -> do
+      typeExpr' <- refreshType h typeExpr
+      return $ M.GetBoxContentType typeExpr'
     M.GetConstructorArgTypes sgl listExpr typeExpr index -> do
       listExpr' <- refreshType h listExpr
       typeExpr' <- refreshType h typeExpr
