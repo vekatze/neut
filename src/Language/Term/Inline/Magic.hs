@@ -65,7 +65,7 @@ evaluateGetTypeTag h m moduleID typeExpr = do
     _ :< TM.BoxNoema _ ->
       returnTypeTagIntValue h m moduleID TypeTag.Noema
     _ :< TM.Box _ ->
-      returnTypeTagIntValue h m moduleID TypeTag.Opaque
+      returnTypeTagIntValue h m moduleID TypeTag.Own
     _ :< TM.Code _ ->
       returnTypeTagIntValue h m moduleID TypeTag.Opaque
     _ :< TM.PrimType (PT.Int size) ->
@@ -136,7 +136,7 @@ evaluateGetWrapperContentType h m typeExpr =
       | [(_, [(_, _, t)], _)] <- consNameList -> do
           return $ m :< TM.TauIntro t
     _ ->
-      reportMacroError h m "get-wrapper-content-type: type expression must be a wrapper"
+      reportMacroError h m $ "get-wrapper-content-type: type expression must be a wrapper, but got: " <> toTextType (weakenType typeExpr)
 
 evaluateGetVectorContentType :: Handle -> Hint -> SGL.StrictGlobalLocator -> TM.Type -> App TM.Term
 evaluateGetVectorContentType h m vectorSgl typeExpr = do

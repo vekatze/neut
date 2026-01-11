@@ -34,6 +34,7 @@ data TypeTag
   | Binary
   | Vector
   | Wrapper
+  | Own
   deriving (Show)
 
 immTypeTagMap :: [(DD.DefiniteDescription, TypeTag)]
@@ -106,6 +107,8 @@ typeTagToInteger tag =
       20
     Wrapper ->
       21
+    Own ->
+      22
 
 fromIntSize :: IntSize -> TypeTag
 fromIntSize s =
