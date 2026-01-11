@@ -976,11 +976,6 @@ primOpToType h m op = do
   let cod' = m :< WT.PrimType cod
   return $ m :< WT.Pi PK.normal [] [] xts cod'
 
-checkIsTypeType :: Handle -> Hint -> WT.WeakType -> App ()
-checkIsTypeType h m t = do
-  let tau = m :< WT.Tau
-  liftIO $ Constraint.insert (constraintHandle h) tau t
-
 checkIsCodeType :: Handle -> Hint -> WT.WeakType -> App ()
 checkIsCodeType h m t = do
   tInner <- liftIO $ newTypeHole h m (varEnv h)
