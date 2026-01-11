@@ -109,8 +109,6 @@ rawType h = do
 rawType' :: Handle -> Hint -> T.Text -> C -> Parser (RT.RawType, C)
 rawType' h m headSymbol c =
   case headSymbol of
-    "meta" ->
-      rawTypeBox h m c
     "code" ->
       rawTypeCode h m c
     "type" ->
@@ -130,6 +128,7 @@ rawType' h m headSymbol c =
         then do
           choice
             [ rawTypePi h,
+              rawTypeBox h,
               rawTypeBoxNoema h,
               rawTypeOption h
             ]
@@ -892,11 +891,6 @@ rawTermBrace h = do
   (c1, (e, c)) <- betweenBrace $ rawExpr h
   return (m :< RT.Brace c1 e, c)
 
-rawTypeBox :: Handle -> Hint -> C -> Parser (RT.RawType, C)
-rawTypeBox h m c1 = do
-  (t, c) <- rawType h
-  return (m :< RT.Box t, c1 ++ c)
-
 rawTypeCode :: Handle -> Hint -> C -> Parser (RT.RawType, C)
 rawTypeCode h m c1 = do
   (t, c) <- rawType h
@@ -927,6 +921,13 @@ rawTermCodeElim :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermCodeElim h m c1 = do
   (c2, (e, c)) <- betweenBrace $ rawExpr h
   return (m :< RT.CodeElim c1 c2 e, c)
+
+rawTypeBox :: Handle -> Parser (RT.RawType, C)
+rawTypeBox h = do
+  m <- getCurrentHint
+  c1 <- delimiter "+"
+  (t, c) <- rawType h
+  return (m :< RT.Box t, c1 ++ c)
 
 rawTypeBoxNoema :: Handle -> Parser (RT.RawType, C)
 rawTypeBoxNoema h = do

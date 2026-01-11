@@ -477,10 +477,7 @@ typeToDoc ty =
               PI.inject $ SE.decodeHorizontallyIfPossible $ fmap typeToDoc $ SE.fromList' es
             ]
     _ :< Box t -> do
-      PI.arrange
-        [ PI.horizontal $ D.text "meta",
-          PI.inject $ typeToDoc t
-        ]
+      D.join [D.text "+", typeToDoc t]
     _ :< BoxNoema t ->
       D.join [D.text "&", typeToDoc t]
     _ :< Code t -> do

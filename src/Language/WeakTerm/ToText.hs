@@ -143,7 +143,7 @@ toTextType ty =
         then showGlobalVariable name
         else showApp (showGlobalVariable name) (map toTextType es)
     _ :< WT.Box t ->
-      "meta " <> toTextType t
+      "+" <> toTextType t
     _ :< WT.BoxNoema t ->
       "&" <> toTextType t
     _ :< WT.Code t ->
