@@ -481,10 +481,7 @@ typeToDoc ty =
     _ :< BoxNoema t ->
       D.join [D.text "&", typeToDoc t]
     _ :< Code t -> do
-      PI.arrange
-        [ PI.horizontal $ D.text "code",
-          PI.inject $ typeToDoc t
-        ]
+      D.join [D.text "'", typeToDoc t]
     _ :< Rune ->
       D.text "rune"
     _ :< Pointer ->

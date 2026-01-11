@@ -147,7 +147,7 @@ toTextType ty =
     _ :< WT.BoxNoema t ->
       "&" <> toTextType t
     _ :< WT.Code t ->
-      "code " <> toTextType t
+      "'" <> toTextType t
     _ :< WT.PrimType pt ->
       PT.toText pt
     _ :< WT.Void ->

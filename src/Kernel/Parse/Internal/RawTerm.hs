@@ -109,8 +109,6 @@ rawType h = do
 rawType' :: Handle -> Hint -> T.Text -> C -> Parser (RT.RawType, C)
 rawType' h m headSymbol c =
   case headSymbol of
-    "code" ->
-      rawTypeCode h m c
     "type" ->
       rawTypeTau m c
     "rune" ->
@@ -130,6 +128,7 @@ rawType' h m headSymbol c =
             [ rawTypePi h,
               rawTypeBox h,
               rawTypeBoxNoema h,
+              rawTypeCode h,
               rawTypeOption h
             ]
         else do
@@ -891,11 +890,6 @@ rawTermBrace h = do
   (c1, (e, c)) <- betweenBrace $ rawExpr h
   return (m :< RT.Brace c1 e, c)
 
-rawTypeCode :: Handle -> Hint -> C -> Parser (RT.RawType, C)
-rawTypeCode h m c1 = do
-  (t, c) <- rawType h
-  return (m :< RT.Code t, c1 ++ c)
-
 rawTermBoxIntro :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermBoxIntro h m c1 = do
   vs <- bareSeries Nothing SE.Comma $ rawTermNoeticVar h
@@ -935,6 +929,13 @@ rawTypeBoxNoema h = do
   c1 <- delimiter "&"
   (t, c) <- rawType h
   return (m :< RT.BoxNoema t, c1 ++ c)
+
+rawTypeCode :: Handle -> Parser (RT.RawType, C)
+rawTypeCode h = do
+  m <- getCurrentHint
+  c1 <- delimiter "'"
+  (t, c) <- rawType h
+  return (m :< RT.Code t, c1 ++ c)
 
 rawTermFlowIntro :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermFlowIntro h m c1 = do
