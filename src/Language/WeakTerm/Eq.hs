@@ -207,23 +207,11 @@ eqImpArgs =
   eqBinderType
 
 eqDefaultOverrideArgs :: DefaultArgs.DefaultArgs WT.WeakTerm -> DefaultArgs.DefaultArgs WT.WeakTerm -> Bool
-eqDefaultOverrideArgs args1 args2 =
-  case (args1, args2) of
-    (DefaultArgs.Unspecified, DefaultArgs.Unspecified) ->
-      True
-    (DefaultArgs.FullySpecified xs, DefaultArgs.FullySpecified ys) ->
-      length xs == length ys && all (uncurry eq) (zip xs ys)
-    (DefaultArgs.PartiallySpecified xs, DefaultArgs.PartiallySpecified ys) ->
-      length xs == length ys && and (zipWith eqMaybe xs ys)
-    _ ->
-      False
+eqDefaultOverrideArgs (DefaultArgs.ByKey xs) (DefaultArgs.ByKey ys) =
+  length xs == length ys && all (uncurry eqKeyArg) (zip xs ys)
   where
-    eqMaybe Nothing Nothing =
-      True
-    eqMaybe (Just x) (Just y) =
-      eq x y
-    eqMaybe _ _ =
-      False
+    eqKeyArg (k1, v1) (k2, v2) =
+      k1 == k2 && eq v1 v2
 
 eqDefaultArgs :: [(BinderF WT.WeakType, WT.WeakTerm)] -> [(BinderF WT.WeakType, WT.WeakTerm)] -> Bool
 eqDefaultArgs defaultArgs1 defaultArgs2

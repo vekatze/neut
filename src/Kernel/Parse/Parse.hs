@@ -187,7 +187,7 @@ registerKeyArg h stmt = do
       case stmtKind of
         SK.DataIntro _ _ expConsArgs _ -> do
           let expKeys = map (\(_, x, _, _, _) -> x) expConsArgs
-          KeyArg.insert (keyArgHandle h) m name isConstLike [] [] expKeys
+          KeyArg.insert (keyArgHandle h) m name isConstLike [] expKeys []
         _ -> do
           let impArgs = RT.extractImpArgs $ RT.impArgs geist
           let defaultArgs = map fst $ SE.extract $ fst $ RT.defaultArgs geist
@@ -195,7 +195,7 @@ registerKeyArg h stmt = do
           let impKeys = map (\(_, x, _, _, _) -> x) impArgs
           let defaultKeys = map (\(_, x, _, _, _) -> x) defaultArgs
           let expKeys = map (\(_, x, _, _, _) -> x) expArgs
-          KeyArg.insert (keyArgHandle h) m name isConstLike impKeys defaultKeys expKeys
+          KeyArg.insert (keyArgHandle h) m name isConstLike impKeys expKeys defaultKeys
     PostRawStmtDefineType {} -> do
       return ()
     PostRawStmtNominal {} -> do
@@ -214,12 +214,12 @@ registerKeyArg' h stmt = do
       case stmtKind of
         SK.DataIntro _ _ expConsArgs _ -> do
           let expKeys = map (\(_, x, _) -> toText x) expConsArgs
-          KeyArg.insert (keyArgHandle h) m name isConstLike [] [] expKeys
+          KeyArg.insert (keyArgHandle h) m name isConstLike [] expKeys []
         _ -> do
           let impKeys = map (\(_, x, _) -> toText x) impArgs
           let defaultKeys = map (\(_, x, _) -> toText x) (map fst defaultArgs)
           let expKeys = map (\(_, x, _) -> toText x) expArgs
-          KeyArg.insert (keyArgHandle h) m name isConstLike impKeys defaultKeys expKeys
+          KeyArg.insert (keyArgHandle h) m name isConstLike impKeys expKeys defaultKeys
     StmtDefineType {} ->
       return ()
     StmtVariadic {} ->

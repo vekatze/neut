@@ -13,7 +13,9 @@ import App.Run (raiseError)
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
+import Data.HashMap.Strict qualified as Map
 import Data.IntMap qualified as IntMap
+import Data.Set qualified as S
 import Data.Text qualified as T
 import Gensym.Gensym qualified as Gensym
 import Kernel.Common.Handle.Global.Env qualified as Env
@@ -239,7 +241,7 @@ infer h term =
           codType' <- liftIO $ Subst.substType (substHandle h) subType codType
           let expArgs'' = map (\(mx, x, _) -> mx :< WT.Var x) expArgs' ++ map snd defaultArgs'
           lamID <- liftIO $ Gensym.newCount (gensymHandle h)
-          infer h $ m :< WT.PiIntro (AttrL.normal lamID codType') [] expArgs' [] (m :< WT.PiElim False e' (ImpArgs.FullySpecified impArgs') expArgs'' DefaultArgs.Unspecified)
+          infer h $ m :< WT.PiIntro (AttrL.normal lamID codType') [] expArgs' [] (m :< WT.PiElim False e' (ImpArgs.FullySpecified impArgs') expArgs'' (DefaultArgs.ByKey []))
         _ ->
           raiseError m $ "Expected a function type, but got: " <> toTextType t'
     m :< WT.DataIntro attr@(AttrDI.Attr {..}) consName dataArgs consArgs -> do
@@ -705,7 +707,8 @@ inferPiElim h m (e, t) impArgs defaultArgsSpec expArgs = do
       subType <- inferArgsTypes h IntMap.empty m impArgsTyped impArgsParam
       let impArgs' = map fst impArgsTyped
       let expArgs' = map fst expArgs
-      defaultArgsOverrides <- resolveDefaultOverrides h e (length defaultParams) defaultArgsSpec
+      let defaultKeys = map (\((_, x, _), _) -> Ident.toText x) defaultParams
+      defaultArgsOverrides <- resolveDefaultOverrides e defaultParams defaultArgsSpec
       defaultArgsTyped <- forM (zip defaultParams defaultArgsOverrides) $ \((_, defaultValue), mOverride) -> do
         case mOverride of
           Just override -> do
@@ -719,7 +722,8 @@ inferPiElim h m (e, t) impArgs defaultArgsSpec expArgs = do
         liftIO $ Constraint.insert (constraintHandle h) tParam' tArg
       _ :< cod' <- inferArgsTerms h subType m expArgs expParams cod
       let defaultArgs' = map fst defaultArgsTyped
-      return (m :< WT.PiElim isNoetic e (ImpArgs.FullySpecified impArgs') expArgs' (DefaultArgs.FullySpecified defaultArgs'), m :< cod')
+      let defaultArgs'' = DefaultArgs.ByKey (zip defaultKeys defaultArgs')
+      return (m :< WT.PiElim isNoetic e (ImpArgs.FullySpecified impArgs') expArgs' defaultArgs'', m :< cod')
 
 createImpArgFromParam ::
   Handle ->
@@ -731,21 +735,20 @@ createImpArgFromParam h m (_, _, _paramKind) = do
   return (holeType, holeKind) -- fixme: constrain paramKind
 
 resolveDefaultOverrides ::
-  Handle ->
   WT.WeakTerm ->
-  Int ->
+  [(BinderF WT.WeakType, WT.WeakTerm)] ->
   DefaultArgs.DefaultArgs a ->
   App [Maybe a]
-resolveDefaultOverrides h function expected defaultArgs =
-  case defaultArgs of
-    DefaultArgs.Unspecified ->
-      return $ replicate expected Nothing
-    DefaultArgs.FullySpecified args -> do
-      ensureDefaultArityCorrectness h function expected (length args)
-      return $ map Just args
-    DefaultArgs.PartiallySpecified args -> do
-      ensureDefaultArityCorrectness h function expected (length args)
-      return args
+resolveDefaultOverrides function defaultParams defaultArgs =
+  let defaultKeys = map (\((_, x, _), _) -> Ident.toText x) defaultParams
+      (m :< _) = function
+   in case defaultArgs of
+        DefaultArgs.ByKey kvs -> do
+          let (ks, _) = unzip kvs
+          ensureDefaultKeyLinearity m ks
+          checkDefaultKeyRedundancy m defaultKeys ks
+          let keyMap = Map.fromList kvs
+          return $ map (`Map.lookup` keyMap) defaultKeys
 
 newTypeHole :: Handle -> Hint -> BoundVarEnv -> IO WT.WeakType
 newTypeHole h m varEnv = do
@@ -820,13 +823,13 @@ inferClause h cursorType decisionCase =
       let argNum = AN.fromInt $ length dataArgs + length consArgs
       let attr = AttrVG.Attr {..}
       let dataArgs' = ImpArgs.FullySpecified $ map fst typedDataArgs'
-      consTerm@(_, consType) <- infer h $ m :< WT.PiElim False (m :< WT.VarGlobal attr consDD) dataArgs' [] (DefaultArgs.FullySpecified [])
+      consTerm@(_, consType) <- infer h $ m :< WT.PiElim False (m :< WT.VarGlobal attr consDD) dataArgs' [] (DefaultArgs.ByKey [])
       if isConstLike
         then liftIO $ Constraint.insert (constraintHandle h) cursorType consType
         else do
           let impConsArgs = ImpArgs.FullySpecified []
           let expConsArgs = map (\(mx, x, t) -> (mx :< WT.Var x, t)) consArgs'
-          (_, tPat) <- inferPiElim h m consTerm impConsArgs (DefaultArgs.FullySpecified []) expConsArgs
+          (_, tPat) <- inferPiElim h m consTerm impConsArgs (DefaultArgs.ByKey []) expConsArgs
           liftIO $ Constraint.insert (constraintHandle h) cursorType tPat
       (cont', tCont) <- inferDecisionTree m h cont
       return
@@ -937,28 +940,25 @@ ensureImplicitArityCorrectness h function expected found = do
             <> T.pack (show found)
             <> "."
 
-ensureDefaultArityCorrectness :: Handle -> WT.WeakTerm -> Int -> Int -> App ()
-ensureDefaultArityCorrectness h function expected found = do
-  when (expected /= found) $ do
-    case function of
-      m :< WT.VarGlobal _ name -> do
-        let mainModule = Env.getMainModule (envHandle h)
-        let name' = readableDD mainModule name
-        raiseError m $
-          "The function `"
-            <> name'
-            <> "` expects "
-            <> T.pack (show expected)
-            <> " default arguments, but found "
-            <> T.pack (show found)
-            <> "."
-      m :< _ ->
-        raiseError m $
-          "This function expects "
-            <> T.pack (show expected)
-            <> " default arguments, but found "
-            <> T.pack (show found)
-            <> "."
+ensureDefaultKeyLinearity :: Hint -> [T.Text] -> App ()
+ensureDefaultKeyLinearity m ks = do
+  let counts = Map.fromListWith (+) $ map (\k -> (k, 1 :: Int)) ks
+  let nonLinear = Map.keys $ Map.filter (> 1) counts
+  unless (null nonLinear) $ do
+    raiseError m $
+      "The following fields are defined more than once:\n"
+        <> showKeyList nonLinear
+
+checkDefaultKeyRedundancy :: Hint -> [T.Text] -> [T.Text] -> App ()
+checkDefaultKeyRedundancy m allowedKeys ks = do
+  let allowedSet = S.fromList allowedKeys
+  let diff = filter (`S.notMember` allowedSet) ks
+  unless (null diff) $ do
+    raiseError m $ "The following field(s) are redundant:\n" <> showKeyList diff
+
+showKeyList :: [T.Text] -> T.Text
+showKeyList ks =
+  T.intercalate "\n" $ map ("- " <>) ks
 
 ensureTypeArityCorrectness :: Hint -> Int -> Int -> App ()
 ensureTypeArityCorrectness m expected found = do

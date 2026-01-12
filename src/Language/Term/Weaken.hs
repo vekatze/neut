@@ -73,7 +73,7 @@ weaken term =
       let e' = weaken e
       let impArgs' = ImpArgs.FullySpecified $ map weakenType impArgs
       let expArgs' = map weaken expArgs
-      m :< WT.PiElim b e' impArgs' expArgs' DefaultArgs.Unspecified
+      m :< WT.PiElim b e' impArgs' expArgs' (DefaultArgs.ByKey [])
     m :< TM.DataIntro attr consName dataArgs consArgs -> do
       let dataArgs' = map weakenType dataArgs
       let consArgs' = map weaken consArgs

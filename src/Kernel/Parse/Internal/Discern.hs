@@ -11,7 +11,7 @@ import Data.Containers.ListUtils qualified as ListUtils
 import Data.HashMap.Strict qualified as Map
 import Data.List ((\\))
 import Data.List qualified as List
-import Data.Maybe (catMaybes, isJust, isNothing)
+import Data.Maybe (mapMaybe)
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Vector qualified as V
@@ -359,37 +359,29 @@ discern h term =
           return $ ImpArgs.FullySpecified impArgs'
       defaultArgs' <- case mDefaultArgs of
         Nothing ->
-          return DefaultArgs.Unspecified
+          return $ DefaultArgs.ByKey []
         Just defaultArgs -> do
-          case e' of
-            _ :< WT.VarGlobal _ dd -> do
-              let (ks, vs) = unzip $ map (\(_, k, _, _, v) -> (k, v)) $ SE.extract defaultArgs
-              ensureFieldLinearity m ks S.empty S.empty
-              vs' <- mapM (discern h) vs
-              (_, defaultKeys, _) <- KeyArg.lookup (H.keyArgHandle h) m dd
-              let keyMap = Map.fromList $ zip ks (repeat ())
-              checkRedundancy m defaultKeys keyMap
-              let defaultKvs = Map.fromList $ zip ks vs'
-              return $ resolveDefaultKeys defaultKeys defaultKvs
-            _ ->
-              raiseError m "Default arguments are only supported for global function calls"
+          let (ks, vs) = unzip $ map (\(_, k, _, _, v) -> (k, v)) $ SE.extract defaultArgs
+          ensureFieldLinearity m ks S.empty S.empty
+          vs' <- mapM (discern h) vs
+          return $ DefaultArgs.ByKey (zip ks vs')
       expArgs' <- mapM (discern h) $ SE.extract expArgs
       return $ m :< WT.PiElim isNoetic e' impArgs' expArgs' defaultArgs'
     m :< RT.PiElimByKey name _ kvs -> do
+      let isNoetic = False -- overwritten later in `infer`
       (dd, (_, gn)) <- resolveName h m name
       _ :< func <- interpretGlobalName h m dd (GN.disableConstLikeFlag gn)
       let (ks, vs) = unzip $ map (\(_, k, _, _, v) -> (k, v)) $ SE.extract kvs
       ensureFieldLinearity m ks S.empty S.empty
-      (impKeys, defaultKeys, expKeys) <- KeyArg.lookup (H.keyArgHandle h) m dd
+      (impKeys, expKeys, defaultKeys) <- KeyArg.lookup (H.keyArgHandle h) m dd
       when (any (`elem` impKeys) ks) $ do
         raiseError m "Implicit key arguments must be specified via explicit type arguments"
       let keyMap = Map.fromList $ zip ks (repeat ())
-      checkRedundancy m (defaultKeys ++ expKeys) keyMap
+      checkRedundancy m (expKeys ++ defaultKeys) keyMap
       vs' <- mapM (discern h) vs
       let expKvs = Map.fromList $ zip ks vs'
-      let defaultArgs = resolveDefaultKeys defaultKeys expKvs
       expArgs <- resolveExpKeys h m expKeys expKvs
-      let isNoetic = False -- overwritten later in `infer`
+      let defaultArgs = selectDefaultKeyArgs defaultKeys expKvs
       return $ m :< WT.PiElim isNoetic (m :< func) ImpArgs.Unspecified expArgs defaultArgs
     m :< RT.PiElimRule name _ es -> do
       (dd, (_, gn)) <- resolveName h m name
@@ -611,14 +603,14 @@ discern h term =
       detachVar' <- discern h detachVar
       t' <- discernType h t
       lam' <- discern h $ RT.lam fakeLoc m [] cod e
-      return $ m :< WT.PiElim False detachVar' (ImpArgs.FullySpecified [t']) [lam'] DefaultArgs.Unspecified
+      return $ m :< WT.PiElim False detachVar' (ImpArgs.FullySpecified [t']) [lam'] (DefaultArgs.ByKey [])
     m :< RT.Attach _ _ (e, _) -> do
       t <- liftIO $ RT.createTypeHole (H.gensymHandle h) (blur m)
       attachVar <- liftEither $ locatorToVarGlobal m coreThreadAttach
       attachVar' <- discern h attachVar
       t' <- discernType h t
       e' <- discern h e
-      return $ m :< WT.PiElim False attachVar' (ImpArgs.FullySpecified [t']) [e'] DefaultArgs.Unspecified
+      return $ m :< WT.PiElim False attachVar' (ImpArgs.FullySpecified [t']) [e'] (DefaultArgs.ByKey [])
     m :< RT.Assert _ (mText, message) _ _ (e@(mCond :< _), _) -> do
       assert <- liftEither $ locatorToVarGlobal m coreTrickAssert
       textType <- liftEither $ locatorToTypeVar m coreText
@@ -627,7 +619,7 @@ discern h term =
       assertVar' <- discern h assert
       textTerm' <- discern h (mText :< RT.StaticText textType fullMessage)
       lam' <- discern h $ RT.lam fakeLoc mCond [] cod e
-      return $ m :< WT.PiElim False assertVar' ImpArgs.Unspecified [textTerm', lam'] DefaultArgs.Unspecified
+      return $ m :< WT.PiElim False assertVar' ImpArgs.Unspecified [textTerm', lam'] (DefaultArgs.ByKey [])
     m :< RT.Introspect _ key _ clauseList -> do
       value <- getIntrospectiveValue h m key
       clause <- lookupIntrospectiveClause m value $ SE.extract clauseList
@@ -1371,7 +1363,7 @@ discernPattern h layer stage (m, pat) = do
           let (ks, mvcs) = unzip $ SE.extract mkvs
           let mvs = map (\(mv, _, v) -> (mv, v)) mvcs
           ensureFieldLinearity m ks S.empty S.empty
-          (_, _, expKeys) <- KeyArg.lookup (H.keyArgHandle h) m consName
+          (_, expKeys, _) <- KeyArg.lookup (H.keyArgHandle h) m consName
           defaultKeyMap <- liftIO $ constructDefaultKeyMap h m expKeys
           let specifiedKeyMap = Map.fromList $ zip ks mvs
           let kvs' = Map.union specifiedKeyMap defaultKeyMap
@@ -1492,15 +1484,10 @@ interpretForeignItem h (RawForeignItemF m name _ lts _ _ cod) = do
   PreDecl.insert (H.preDeclHandle h) name m
   return $ F.Foreign m name lts' cod
 
-resolveDefaultKeys :: [DefaultKey] -> Map.HashMap Key a -> DefaultArgs.DefaultArgs a
-resolveDefaultKeys defaultKeys kvs = do
-  let args = map (`Map.lookup` kvs) defaultKeys
-  if all isNothing args
-    then DefaultArgs.Unspecified
-    else
-      if all isJust args
-        then DefaultArgs.FullySpecified (catMaybes args)
-        else DefaultArgs.PartiallySpecified args
+selectDefaultKeyArgs :: [DefaultKey] -> Map.HashMap Key a -> DefaultArgs.DefaultArgs a
+selectDefaultKeyArgs defaultKeys kvs = do
+  let args = mapMaybe (\k -> fmap (k,) (Map.lookup k kvs)) defaultKeys
+  DefaultArgs.ByKey args
 
 resolveExpKeys :: H.Handle -> Hint -> [ExpKey] -> Map.HashMap Key a -> App [a]
 resolveExpKeys h m expKeys kvs = do

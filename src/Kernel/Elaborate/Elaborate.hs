@@ -723,7 +723,7 @@ elaborateDecisionTree h ctx mOrig m tree =
                 DT.Unreachable -> do
                   (rootIdent, tBase) <- makeTree mOrig ctx
                   uncoveredPatterns <- forM (S.toList diff) $ \(consDD, isConstLike) -> do
-                    (_, _, keys) <- KeyArg.lookup (keyArgHandle h) m consDD
+                    (_, keys, _) <- KeyArg.lookup (keyArgHandle h) m consDD
                     let expArgNum = length keys
                     let args = map (const (holeIdent, Node (Just holeLiteral) True [])) [1 .. expArgNum]
                     let tBase' = graft cursor (Node (Just $ DD.localLocator consDD) isConstLike args) tBase

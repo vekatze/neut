@@ -5,30 +5,20 @@ module Language.Common.DefaultArgs
   )
 where
 
-import Data.Maybe (catMaybes)
+import Data.Text qualified as T
 
-data DefaultArgs a
-  = Unspecified
-  | FullySpecified [a]
-  | PartiallySpecified [Maybe a]
+newtype DefaultArgs a
+  = ByKey [(T.Text, a)]
   deriving (Eq, Show, Functor, Foldable, Traversable)
 
 extract :: DefaultArgs a -> [a]
 extract args =
   case args of
-    Unspecified ->
-      []
-    FullySpecified xs ->
-      xs
-    PartiallySpecified xs ->
-      catMaybes xs
+    ByKey xs ->
+      map snd xs
 
 traverseDefaultArgs :: (Applicative f) => (a -> f b) -> DefaultArgs a -> f (DefaultArgs b)
 traverseDefaultArgs f args =
   case args of
-    Unspecified ->
-      pure Unspecified
-    FullySpecified xs ->
-      FullySpecified <$> traverse f xs
-    PartiallySpecified xs ->
-      PartiallySpecified <$> traverse (traverse f) xs
+    ByKey xs ->
+      ByKey <$> traverse (\(k, v) -> (,) k <$> f v) xs
