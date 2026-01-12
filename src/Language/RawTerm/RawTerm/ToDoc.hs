@@ -57,18 +57,33 @@ toDoc term =
               O.Clear ->
                 "inline"
       decodeDef (nameToDoc . N.Var) keyword c def
-    _ :< PiElim e c1 mImpArgs c2 expArgs -> do
-      case mImpArgs of
-        Nothing ->
+    _ :< PiElim e c1 mImpArgs c2 mDefaultArgs c3 expArgs -> do
+      let expArgsDoc c =
+            attachComment c $ SE.decodeHorizontallyIfPossible $ fmap toDoc expArgs
+      case (mImpArgs, mDefaultArgs) of
+        (Nothing, Nothing) ->
           PI.arrange
             [ PI.inject $ toDoc e,
-              PI.inject $ attachComment c1 $ SE.decodeHorizontallyIfPossible $ fmap toDoc expArgs
+              PI.inject $ expArgsDoc c1
             ]
-        Just impArgs ->
+        (Just impArgs, Nothing) ->
           PI.arrange
             [ PI.inject $ toDoc e,
               PI.inject $ attachComment c1 $ SE.decodeHorizontallyIfPossible $ fmap typeToDoc impArgs,
-              PI.inject $ attachComment c2 $ SE.decodeHorizontallyIfPossible $ fmap toDoc expArgs
+              PI.inject $ expArgsDoc c2
+            ]
+        (Nothing, Just defaultArgs) ->
+          PI.arrange
+            [ PI.inject $ toDoc e,
+              PI.inject $ attachComment c1 $ SE.decodeHorizontallyIfPossible $ fmap toDoc defaultArgs,
+              PI.inject $ expArgsDoc c3
+            ]
+        (Just impArgs, Just defaultArgs) ->
+          PI.arrange
+            [ PI.inject $ toDoc e,
+              PI.inject $ attachComment c1 $ SE.decodeHorizontallyIfPossible $ fmap typeToDoc impArgs,
+              PI.inject $ attachComment c2 $ SE.decodeHorizontallyIfPossible $ fmap toDoc defaultArgs,
+              PI.inject $ expArgsDoc c3
             ]
     _ :< PiElimByKey name c kvs -> do
       PI.arrange

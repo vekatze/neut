@@ -346,7 +346,7 @@ discern h term =
       lamID <- liftIO $ Gensym.newCount (H.gensymHandle h)
       ensureLayerClosedness m h'''' body'
       return $ m :< WT.PiIntro (AttrL.Attr {lamKind = LK.Fix opacity mxt', identity = lamID}) impArgs' defaultArgs' expArgs' body'
-    m :< RT.PiElim e _ mImpArgs _ expArgs -> do
+    m :< RT.PiElim e _ mImpArgs _ mDefaultArgs _ expArgs -> do
       let isNoetic = False -- overwritten later in `infer`
       e' <- discern h e
       impArgs' <- case mImpArgs of
@@ -355,8 +355,14 @@ discern h term =
         Just impArgs -> do
           impArgs' <- mapM (discernType h) $ SE.extract impArgs
           return $ ImpArgs.FullySpecified impArgs'
+      defaultArgs' <- case mDefaultArgs of
+        Nothing ->
+          return DefaultArgs.Unspecified
+        Just defaultArgs -> do
+          defaultArgs' <- mapM (discern h) $ SE.extract defaultArgs
+          return $ DefaultArgs.FullySpecified defaultArgs'
       expArgs' <- mapM (discern h) $ SE.extract expArgs
-      return $ m :< WT.PiElim isNoetic e' impArgs' DefaultArgs.Unspecified expArgs'
+      return $ m :< WT.PiElim isNoetic e' impArgs' defaultArgs' expArgs'
     m :< RT.PiElimByKey name _ kvs -> do
       (dd, (_, gn)) <- resolveName h m name
       _ :< func <- interpretGlobalName h m dd (GN.disableConstLikeFlag gn)
@@ -397,7 +403,7 @@ discern h term =
     m :< RT.PiElimMeta name _ es -> do
       let var = m :< RT.Var name
       let args = fmap (\e -> m :< RT.CodeIntro CodeVariantK [] [] (e, [])) es
-      discern h $ m :< RT.CodeElim [] [] (m :< RT.PiElim var [] Nothing [] args, [])
+      discern h $ m :< RT.CodeElim [] [] (m :< RT.PiElim var [] Nothing [] Nothing [] args, [])
     m :< RT.PiElimExact _ e -> do
       e' <- discern h e
       return $ m :< WT.PiElimExact e'
