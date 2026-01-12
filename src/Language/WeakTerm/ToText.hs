@@ -99,7 +99,7 @@ toText term =
     _ :< WT.CodeIntro e ->
       "quote " <> inBrace (toText e)
     _ :< WT.CodeElim e ->
-      "splice " <> inBrace (toText e)
+      "unquote " <> inBrace (toText e)
     _ :< WT.TauIntro ty ->
       "magic term-type" <> inParen (toTextType ty)
     _ :< WT.TauElim (_, x) e1 e2 ->

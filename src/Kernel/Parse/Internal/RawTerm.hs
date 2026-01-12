@@ -162,7 +162,7 @@ rawTerm' h m headSymbol c = do
       rawTermCodeIntro h RT.CodeVariantK m c
     "promote" ->
       rawTermCodeIntro h RT.CodeVariantC m c
-    "splice" -> do
+    "unquote" -> do
       rawTermCodeElim h m c
     "veil" -> do
       rawTermTauIntro h m c

@@ -127,7 +127,7 @@ toDoc term =
         ]
     m :< CodeElim c1 c2 (e, c3) -> do
       PI.arrange
-        [ PI.horizontal $ attachComment c1 $ D.text "splice",
+        [ PI.horizontal $ attachComment c1 $ D.text "unquote",
           PI.inject $ toDoc $ m :< Brace c2 (e, c3)
         ]
     _ :< TauIntro c1 (c2, (ty, c3)) -> do
