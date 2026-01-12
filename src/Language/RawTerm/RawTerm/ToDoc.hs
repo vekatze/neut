@@ -57,33 +57,33 @@ toDoc term =
               O.Clear ->
                 "inline"
       decodeDef (nameToDoc . N.Var) keyword c def
-    _ :< PiElim e c1 mImpArgs c2 mDefaultArgs c3 expArgs -> do
+    _ :< PiElim e c1 mImpArgs c2 expArgs c3 mDefaultArgs -> do
       let expArgsDoc c =
             attachComment c $ SE.decodeHorizontallyIfPossible $ fmap toDoc expArgs
       case (mImpArgs, mDefaultArgs) of
         (Nothing, Nothing) ->
           PI.arrange
             [ PI.inject $ toDoc e,
-              PI.inject $ expArgsDoc c1
+              PI.inject $ expArgsDoc (c1 ++ c3)
             ]
         (Just impArgs, Nothing) ->
           PI.arrange
             [ PI.inject $ toDoc e,
               PI.inject $ attachComment c1 $ SE.decodeHorizontallyIfPossible $ fmap typeToDoc impArgs,
-              PI.inject $ expArgsDoc c2
+              PI.inject $ expArgsDoc (c2 ++ c3)
             ]
         (Nothing, Just defaultArgs) ->
           PI.arrange
             [ PI.inject $ toDoc e,
-              PI.inject $ attachComment c1 $ SE.decodeHorizontallyIfPossible $ fmap toDoc defaultArgs,
-              PI.inject $ expArgsDoc c3
+              PI.inject $ expArgsDoc c1,
+              PI.inject $ attachComment c3 $ SE.decodeHorizontallyIfPossible $ fmap toDoc defaultArgs
             ]
         (Just impArgs, Just defaultArgs) ->
           PI.arrange
             [ PI.inject $ toDoc e,
               PI.inject $ attachComment c1 $ SE.decodeHorizontallyIfPossible $ fmap typeToDoc impArgs,
-              PI.inject $ attachComment c2 $ SE.decodeHorizontallyIfPossible $ fmap toDoc defaultArgs,
-              PI.inject $ expArgsDoc c3
+              PI.inject $ expArgsDoc c2,
+              PI.inject $ attachComment c3 $ SE.decodeHorizontallyIfPossible $ fmap toDoc defaultArgs
             ]
     _ :< PiElimByKey name c kvs -> do
       PI.arrange
@@ -475,16 +475,22 @@ typeToDoc ty =
         [ PI.inject $ typeToDoc t,
           PI.inject $ attachComment c $ SE.decodeHorizontallyIfPossible $ fmap typeToDoc args
         ]
-    _ :< Pi (impArgs, c1) (defaultArgs, c2) (expArgs, c3) c cod _ -> do
-      let (cDefault, cExp) =
-            if SE.isEmpty defaultArgs
-              then ([], c1)
-              else (c1, [])
+    _ :< Pi (impArgs, c1) (expArgs, c3) (defaultArgs, c2) c cod _ -> do
+      let hasDefault = not (SE.isEmpty defaultArgs)
+      let expParamsBase = SE.decode $ fmap piArgToDoc expArgs
+      let defaultParamsBase = decodeDefaultParams defaultArgs
+      let expParamsWithImp = attachComment c1 expParamsBase
+      let defaultParamsWithExpComment =
+            if hasDefault
+              then attachComment c3 defaultParamsBase
+              else defaultParamsBase
+      let cArrow =
+            (if hasDefault then [] else c3) ++ c2
       PI.arrange
         [ PI.container $ decodeImpParams impArgs,
-          PI.container $ attachComment cDefault $ decodeDefaultParams defaultArgs,
-          PI.container $ attachComment (cExp ++ c2) $ SE.decode $ fmap piArgToDoc expArgs,
-          PI.delimiter $ attachComment c3 $ D.text "->",
+          PI.container $ expParamsWithImp,
+          PI.container $ defaultParamsWithExpComment,
+          PI.delimiter $ attachComment cArrow $ D.text "->",
           PI.inject $ attachComment c $ typeToDoc cod
         ]
     _ :< Data (AttrD.Attr {isConstLike}) dataName es -> do
@@ -679,27 +685,51 @@ decGeist
         isConstLike
       }
     ) = do
-    let (cDefault, cExp) =
-          if SE.isEmpty defaultArgs
-            then ([], c1)
-            else (c1, [])
-    let defaultParams = attachComment cDefault $ decodeDefaultParams defaultArgs
-    let expParams = attachComment (cExp ++ c2) $ decodeExpParams isConstLike expArgs
+    let hasExp = (not isConstLike) || (not (SE.isEmpty expArgs))
+    let hasDefault = not (SE.isEmpty defaultArgs)
+    let expParamsBase = decodeExpParams isConstLike expArgs
+    let defaultParamsBase = decodeDefaultParams defaultArgs
+    let expParamsWithImp =
+          if hasExp
+            then attachComment c1 expParamsBase
+            else expParamsBase
+    let defaultParamsWithImp =
+          if (not hasExp) && hasDefault
+            then attachComment c1 defaultParamsBase
+            else defaultParamsBase
     case cod of
-      _ :< RT.TypeHole {} ->
+      _ :< RT.TypeHole {} -> do
+        let defaultParamsWithTrailing =
+              if hasDefault
+                then attachComment (c3 ++ c2) defaultParamsWithImp
+                else defaultParamsWithImp
+        let expParamsWithTrailing =
+              if hasDefault
+                then expParamsWithImp
+                else attachComment (c3 ++ c2) expParamsWithImp
         PI.arrange
           [ PI.inject $ attachComment c0 $ nameDecoder name,
             PI.inject $ decodeImpParams impArgs,
-            PI.inject defaultParams,
-            PI.inject expParams
+            PI.inject expParamsWithTrailing,
+            PI.inject defaultParamsWithTrailing
           ]
-      _ ->
+      _ -> do
+        let defaultParamsWithExpComment =
+              if hasDefault
+                then attachComment c3 defaultParamsWithImp
+                else defaultParamsWithImp
+        let cColon =
+              (if hasDefault then [] else c3) ++ c2
+        let cColon' =
+              if (not hasExp) && (not hasDefault)
+                then c1 ++ cColon
+                else cColon
         PI.arrange
           [ PI.inject $ attachComment c0 $ nameDecoder name,
             PI.inject $ decodeImpParams impArgs,
-            PI.inject defaultParams,
-            PI.inject expParams,
-            PI.horizontal $ attachComment c3 $ D.text ":",
+            PI.inject expParamsWithImp,
+            PI.inject defaultParamsWithExpComment,
+            PI.horizontal $ attachComment cColon' $ D.text ":",
             PI.inject $ attachComment c4 $ typeToDoc cod
           ]
 
@@ -714,17 +744,31 @@ decTypeGeist
         isConstLike
       }
     ) = do
-    let (cDefault, cExp) =
-          if SE.isEmpty defaultArgs
-            then ([], c1)
-            else (c1, [])
-    let defaultParams = attachComment cDefault $ decodeDefaultParams defaultArgs
-    let expParams = attachComment (cExp ++ c2) $ decodeExpParams isConstLike expArgs
+    let hasExp = (not isConstLike) || (not (SE.isEmpty expArgs))
+    let hasDefault = not (SE.isEmpty defaultArgs)
+    let expParamsBase = decodeExpParams isConstLike expArgs
+    let defaultParamsBase = decodeDefaultParams defaultArgs
+    let expParamsWithImp =
+          if hasExp
+            then attachComment c1 expParamsBase
+            else expParamsBase
+    let defaultParamsWithImp =
+          if (not hasExp) && hasDefault
+            then attachComment c1 defaultParamsBase
+            else defaultParamsBase
+    let defaultParamsWithTrailing =
+          if hasDefault
+            then attachComment (c3 ++ c2) defaultParamsWithImp
+            else defaultParamsWithImp
+    let expParamsWithTrailing =
+          if hasDefault
+            then expParamsWithImp
+            else attachComment (c3 ++ c2) expParamsWithImp
     PI.arrange
       [ PI.inject $ attachComment c0 $ nameDecoder name,
         PI.inject $ decodeImpParams impArgs,
-        PI.inject defaultParams,
-        PI.inject $ attachComment c3 expParams
+        PI.inject expParamsWithTrailing,
+        PI.inject defaultParamsWithTrailing
       ]
 
 decodeImpParams :: SE.Series (RawBinder RawType) -> D.Doc

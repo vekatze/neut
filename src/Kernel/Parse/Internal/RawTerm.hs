@@ -212,11 +212,11 @@ rawTermPiElimCont h (e@(m :< _), c) = do
 
 rawTermPiElimArgs ::
   Handle ->
-  Parser ((Maybe (SE.Series RT.RawType), C, Maybe (SE.Series RT.RawTerm), C, SE.Series RT.RawTerm), C)
+  Parser ((Maybe (SE.Series RT.RawType), C, SE.Series RT.RawTerm, C, Maybe (SE.Series RT.RawTerm)), C)
 rawTermPiElimArgs h = do
   (mImpArgs, c1) <- parseImplicitArgsMaybe h
   (expArgs, c2) <- seriesParen (rawTerm h)
-  return ((mImpArgs, c1, Nothing, [], expArgs), c2)
+  return ((mImpArgs, c1, expArgs, c2, Nothing), c2)
 
 rawTypeTyAppCont :: Handle -> (RT.RawType, C) -> Parser (RT.RawType, C)
 rawTypeTyAppCont h (t@(m :< _), c) = do
@@ -227,12 +227,12 @@ rawTypePi :: Handle -> Parser (RT.RawType, C)
 rawTypePi h = do
   m <- getCurrentHint
   impArgs <- parseImplicitParams h
-  defaultArgs <- parseDefaultParams h
   expArgs <- seriesParen (choice [try $ var h >>= preAscription h, typeWithoutIdent h])
+  defaultArgs <- parseDefaultParams h
   cArrow <- delimiter "->"
   (cod, c) <- rawType h
   loc <- getCurrentLoc
-  return (m :< RT.Pi impArgs defaultArgs expArgs cArrow cod loc, c)
+  return (m :< RT.Pi impArgs expArgs defaultArgs cArrow cod loc, c)
 
 rawTermPiIntro :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermPiIntro h m c0 = do
@@ -442,13 +442,13 @@ parseGeist h nameParser = do
   loc <- getCurrentHint
   (name', c1) <- nameParser
   impArgs <- parseImplicitParams h
-  defaultArgs <- parseDefaultParams h
-  (isConstLike, expArgs@(expSeries, _)) <- do
+  (isConstLike, expArgs@(expSeries, _), defaultArgs) <- do
     choice
       [ do
           expDomArgList <- seriesParen $ preBinder h
-          return (False, expDomArgList),
-        return (True, (SE.emptySeries (Just SE.Paren) SE.Comma, []))
+          defaultArgs <- parseDefaultParams h
+          return (False, expDomArgList, defaultArgs),
+        return (True, (SE.emptySeries (Just SE.Paren) SE.Comma, []), (SE.emptySeries (Just SE.Bracket) SE.Comma, []))
       ]
   lift $ ensureArgumentLinearity S.empty $ map (\(mx, x, _, _, _) -> (mx, x)) $ SE.extract expSeries
   m <- getCurrentHint
@@ -460,13 +460,13 @@ parseAliasGeist h nameParser = do
   loc <- getCurrentHint
   (name', c1) <- nameParser
   impArgs <- parseImplicitParams h
-  defaultArgs <- parseDefaultParams h
-  (isConstLike, expArgs@(expSeries, _)) <- do
+  (isConstLike, expArgs@(expSeries, _), defaultArgs) <- do
     choice
       [ do
           expDomArgList <- seriesParen $ preBinder h
-          return (False, expDomArgList),
-        return (True, (SE.emptySeries (Just SE.Paren) SE.Comma, []))
+          defaultArgs <- parseDefaultParams h
+          return (False, expDomArgList, defaultArgs),
+        return (True, (SE.emptySeries (Just SE.Paren) SE.Comma, []), (SE.emptySeries (Just SE.Bracket) SE.Comma, []))
       ]
   lift $ ensureArgumentLinearity S.empty $ map (\(mx, x, _, _, _) -> (mx, x)) $ SE.extract expSeries
   m <- getCurrentHint
@@ -983,14 +983,14 @@ metaPiElim p = do
 foldPiElim ::
   Hint ->
   (RT.RawTerm, C) ->
-  [((Maybe (SE.Series RT.RawType), C, Maybe (SE.Series RT.RawTerm), C, SE.Series RT.RawTerm), C)] ->
+  [((Maybe (SE.Series RT.RawType), C, SE.Series RT.RawTerm, C, Maybe (SE.Series RT.RawTerm)), C)] ->
   (RT.RawTerm, C)
 foldPiElim m (e, c) argListList =
   case argListList of
     [] ->
       (e, c)
-    ((mImpArgs, c2, mDefaultArgs, c3, expArgs), c1) : rest ->
-      foldPiElim m (m :< RT.PiElim e c mImpArgs c2 mDefaultArgs c3 expArgs, c1) rest
+    ((mImpArgs, c2, expArgs, c3, mDefaultArgs), c1) : rest ->
+      foldPiElim m (m :< RT.PiElim e c mImpArgs c2 expArgs c3 mDefaultArgs, c1) rest
 
 foldTyApp ::
   Hint ->

@@ -257,7 +257,7 @@ getGlobalNames' stmtList = do
 _getGlobalNames' :: Stmt -> [NameEntry]
 _getGlobalNames' stmt = do
   case stmt of
-    StmtDefine isConstLike stmtKind (SavedHint m) name impArgs defaultArgs expArgs _ _ -> do
+    StmtDefine isConstLike stmtKind (SavedHint m) name impArgs expArgs defaultArgs _ _ -> do
       let defaultBinders = map fst defaultArgs
       let allArgNum = AN.fromInt $ length $ impArgs ++ defaultBinders ++ expArgs
       case stmtKindTermToNominalTag stmtKind of
@@ -266,7 +266,7 @@ _getGlobalNames' stmt = do
           [(name, (m, Just tag, GN.TopLevelFuncTerm allArgNum isConstLike isMacro))]
         Nothing ->
           []
-    StmtDefineType isConstLike stmtKind (SavedHint m) name impArgs defaultArgs expArgs _ _ -> do
+    StmtDefineType isConstLike stmtKind (SavedHint m) name impArgs expArgs defaultArgs _ _ -> do
       let defaultBinders = map fst defaultArgs
       let allArgNum = AN.fromInt $ length $ impArgs ++ defaultBinders ++ expArgs
       let mTag = stmtKindTypeToNominalTag stmtKind

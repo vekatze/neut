@@ -86,20 +86,20 @@ inline' h term = do
       return term
     _ :< TM.VarGlobal {} ->
       return term
-    m :< TM.PiIntro attr@(AttrL.Attr {lamKind}) impArgs defaultArgs expArgs e -> do
+    m :< TM.PiIntro attr@(AttrL.Attr {lamKind}) impArgs expArgs defaultArgs e -> do
       impArgs' <- mapM (inlineTypeBinder h) impArgs
-      defaultArgs' <- mapM (bimapM (inlineTypeBinder h) (inline' h)) defaultArgs
       expArgs' <- mapM (inlineTypeBinder h) expArgs
+      defaultArgs' <- mapM (bimapM (inlineTypeBinder h) (inline' h)) defaultArgs
       e' <- inline' h e
       case lamKind of
         LK.Fix opacity (mx, x, codType) -> do
           codType' <- inlineType' h codType
           let attr' = attr {AttrL.lamKind = LK.Fix opacity (mx, x, codType')}
-          return (m :< TM.PiIntro attr' impArgs' defaultArgs' expArgs' e')
+          return (m :< TM.PiIntro attr' impArgs' expArgs' defaultArgs' e')
         LK.Normal mName codType -> do
           codType' <- inlineType' h codType
           let attr' = attr {AttrL.lamKind = LK.Normal mName codType'}
-          return (m :< TM.PiIntro attr' impArgs' defaultArgs' expArgs' e')
+          return (m :< TM.PiIntro attr' impArgs' expArgs' defaultArgs' e')
     m :< TM.PiElim isNoetic e impArgs expArgs -> do
       e' <- inline' h e
       impArgs' <- mapM (inlineType' h) impArgs
@@ -109,9 +109,9 @@ inline' h term = do
         else do
           let Handle {dmap} = h
           case e' of
-            (_ :< TM.PiIntro (AttrL.Attr {lamKind}) impBinders defBinders expBinders body)
+            (_ :< TM.PiIntro (AttrL.Attr {lamKind}) impBinders expBinders defBinders body)
               | length impBinders == length impArgs',
-                expParams <- map fst defBinders ++ expBinders,
+                expParams <- expBinders ++ map fst defBinders,
                 length expParams == length expArgs',
                 canReduceByLamKind lamKind -> do
                   let subSelf = selfSubstForLamKind lamKind e'
@@ -151,9 +151,9 @@ inline' h term = do
                           body'' <- tracer $ liftIO (Refresh.refresh (refreshHandle h) body') >>= inline h
                           popGuard h
                           identity <- liftIO $ Gensym.newCount (gensymHandle h)
-                          let selfType = m :< TM.Pi PK.normal [] [] expBinders' codType'
+                          let selfType = m :< TM.Pi PK.normal [] expBinders' [] codType'
                           let attr = AttrL.Attr {lamKind = LK.Fix O.Opaque (m, self, selfType), identity}
-                          let fun = m :< TM.PiIntro attr [] [] expBinders' body''
+                          let fun = m :< TM.PiIntro attr [] expBinders' [] body''
                           return $ m :< TM.PiElim False fun [] expArgs'
                     _ -> do
                       if all TM.isValue expArgs'
@@ -365,12 +365,12 @@ inlineType' h ty =
           t' <- inlineType' h t
           args' <- mapM (inlineType' h) args
           return $ m :< TM.TyApp t' args'
-    m :< TM.Pi piKind impArgs defaultArgs expArgs cod -> do
+    m :< TM.Pi piKind impArgs expArgs defaultArgs cod -> do
       impArgs' <- mapM (inlineTypeBinder h) impArgs
-      defaultArgs' <- mapM (bimapM (inlineTypeBinder h) (inline' h)) defaultArgs
       expArgs' <- mapM (inlineTypeBinder h) expArgs
+      defaultArgs' <- mapM (bimapM (inlineTypeBinder h) (inline' h)) defaultArgs
       cod' <- inlineType' h cod
-      return $ m :< TM.Pi piKind impArgs' defaultArgs' expArgs' cod'
+      return $ m :< TM.Pi piKind impArgs' expArgs' defaultArgs' cod'
     m :< TM.Data attr name es -> do
       es' <- mapM (inlineType' h) es
       return $ m :< TM.Data attr name es'

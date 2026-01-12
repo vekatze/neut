@@ -35,7 +35,7 @@ toText term =
       showVariable x
     _ :< WT.VarGlobal _ x ->
       showGlobalVariable x
-    _ :< WT.PiIntro attr impArgs defaultArgs expArgs e -> do
+    _ :< WT.PiIntro attr impArgs expArgs defaultArgs e -> do
       case attr of
         AttrL.Attr {lamKind = LK.Fix opacity (_, x, codType)} ->
           ( case opacity of
@@ -43,8 +43,9 @@ toText term =
               O.Clear -> "inline "
           )
             <> showVariable x
-            <> showImpArgs impArgs defaultArgs
+            <> showImpArgs impArgs []
             <> inParen (showFnDomArgList expArgs)
+            <> showDefaultArgs defaultArgs
             <> ": "
             <> toTextType codType
             <> " "
@@ -53,13 +54,14 @@ toText term =
           let name = fromMaybe "" mName
           "function "
             <> name
-            <> showImpArgs impArgs defaultArgs
+            <> showImpArgs impArgs []
             <> inParen (showFnDomArgList expArgs)
+            <> showDefaultArgs defaultArgs
             <> ": "
             <> toTextType codType
             <> " "
             <> inBrace (toText e)
-    _ :< WT.PiElim _ e impArgs _ expArgs -> do
+    _ :< WT.PiElim _ e impArgs expArgs _ -> do
       let impArgsText = case impArgs of
             ImpArgs.Unspecified -> ""
             ImpArgs.FullySpecified ts -> inAngleBracket (T.intercalate ", " (map toTextType ts))
@@ -130,12 +132,12 @@ toTextType ty =
       showGlobalVariable x
     _ :< WT.TyApp t args ->
       showApp (toTextType t) (map toTextType args)
-    _ :< WT.Pi piKind impArgs defaultArgs expArgs cod -> do
+    _ :< WT.Pi piKind impArgs expArgs defaultArgs cod -> do
       case piKind of
         PK.Normal isConstLike ->
           if isConstLike
             then "pi-constlike: " <> showImpArgsForAll impArgs defaultArgs <> toTextType cod
-            else showImpArgs impArgs defaultArgs <> inParen (showDomArgList expArgs) <> " -> " <> toTextType cod
+            else showImpArgs impArgs [] <> inParen (showDomArgList expArgs) <> showDefaultArgs defaultArgs <> " -> " <> toTextType cod
         PK.DataIntro _ -> do
           "pi-data-intro" <> showImpArgsForAll impArgs defaultArgs <> toTextType cod
     _ :< WT.Data (AttrD.Attr {..}) name es -> do
@@ -168,6 +170,12 @@ showImpArgs impArgs defaultArgs = do
           then ""
           else inBracket $ showDefaultDomArgList defaultArgs
   nonDefaultDoc <> defaultDoc
+
+showDefaultArgs :: [(BinderF WT.WeakType, WT.WeakTerm)] -> T.Text
+showDefaultArgs defaultArgs =
+  if null defaultArgs
+    then ""
+    else inBracket $ showDefaultDomArgList defaultArgs
 
 showImpArgsForAll :: [BinderF WT.WeakType] -> [(BinderF WT.WeakType, WT.WeakTerm)] -> T.Text
 showImpArgsForAll impArgs defaultArgs = do

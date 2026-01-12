@@ -68,7 +68,7 @@ subst h sub term =
           return term
     _ :< WT.VarGlobal {} ->
       return term
-    m :< WT.PiIntro (AttrL.Attr {lamKind}) impArgs defaultArgs expArgs e -> do
+    m :< WT.PiIntro (AttrL.Attr {lamKind}) impArgs expArgs defaultArgs e -> do
       let fvs = S.map Ident.toInt $ WT.freeVarsAll term
       let subDomSet = S.fromList $ IntMap.keys sub
       if S.intersection fvs subDomSet == S.empty
@@ -78,26 +78,26 @@ subst h sub term =
           case lamKind of
             LK.Fix opacity xt -> do
               (impArgs', sub') <- subst' h sub impArgs
-              (defaultArgs', sub'') <- substDefaultArgs h sub' defaultArgs
-              (expArgs', sub''') <- subst' h sub'' expArgs
+              (expArgs', sub'') <- subst' h sub' expArgs
+              (defaultArgs', sub''') <- substDefaultArgs h sub'' defaultArgs
               ([xt'], sub'''') <- subst' h sub''' [xt]
               e' <- subst h sub'''' e
               let fixAttr = AttrL.Attr {lamKind = LK.Fix opacity xt', identity = newLamID}
-              return (m :< WT.PiIntro fixAttr impArgs' defaultArgs' expArgs' e')
+              return (m :< WT.PiIntro fixAttr impArgs' expArgs' defaultArgs' e')
             LK.Normal mName codType -> do
               (impArgs', sub') <- subst' h sub impArgs
-              (defaultArgs', sub'') <- substDefaultArgs h sub' defaultArgs
-              (expArgs', sub''') <- subst' h sub'' expArgs
+              (expArgs', sub'') <- subst' h sub' expArgs
+              (defaultArgs', sub''') <- substDefaultArgs h sub'' defaultArgs
               codType' <- substType h sub''' codType
               e' <- subst h sub''' e
               let lamAttr = AttrL.Attr {lamKind = LK.Normal mName codType', identity = newLamID}
-              return (m :< WT.PiIntro lamAttr impArgs' defaultArgs' expArgs' e')
-    m :< WT.PiElim b e impArgs defaultArgs expArgs -> do
+              return (m :< WT.PiIntro lamAttr impArgs' expArgs' defaultArgs' e')
+    m :< WT.PiElim b e impArgs expArgs defaultArgs -> do
       e' <- subst h sub e
       impArgs' <- ImpArgs.traverseImpArgs (substType h sub) impArgs
       defaultArgs' <- DefaultArgs.traverseDefaultArgs (subst h sub) defaultArgs
       expArgs' <- mapM (subst h sub) expArgs
-      return $ m :< WT.PiElim b e' impArgs' defaultArgs' expArgs'
+      return $ m :< WT.PiElim b e' impArgs' expArgs' defaultArgs'
     m :< WT.PiElimExact e -> do
       e' <- subst h sub e
       return $ m :< WT.PiElimExact e'
@@ -185,12 +185,12 @@ substType h sub ty =
       t' <- substType h sub t
       args' <- mapM (substType h sub) args
       return $ m :< WT.TyApp t' args'
-    m :< WT.Pi piKind impArgs defaultArgs expArgs t -> do
+    m :< WT.Pi piKind impArgs expArgs defaultArgs t -> do
       (impArgs', sub') <- subst' h sub impArgs
-      (defaultArgs', sub'') <- substDefaultArgs h sub' defaultArgs
-      (expArgs', sub''') <- subst' h sub'' expArgs
+      (expArgs', sub'') <- subst' h sub' expArgs
+      (defaultArgs', sub''') <- substDefaultArgs h sub'' defaultArgs
       t' <- substType h sub''' t
-      return $ m :< WT.Pi piKind impArgs' defaultArgs' expArgs' t'
+      return $ m :< WT.Pi piKind impArgs' expArgs' defaultArgs' t'
     m :< WT.Data attr name es -> do
       es' <- mapM (substType h sub) es
       attr' <- substAttrData h sub attr

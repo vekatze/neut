@@ -210,7 +210,7 @@ registerKeyArg h stmt = do
 registerKeyArg' :: Handle -> Stmt -> App ()
 registerKeyArg' h stmt = do
   case stmt of
-    StmtDefine isConstLike stmtKind (SavedHint m) name impArgs defaultArgs expArgs _ _ -> do
+    StmtDefine isConstLike stmtKind (SavedHint m) name impArgs expArgs defaultArgs _ _ -> do
       case stmtKind of
         SK.DataIntro _ _ expConsArgs _ -> do
           let expKeys = map (\(_, x, _) -> toText x) expConsArgs

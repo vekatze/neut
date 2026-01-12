@@ -50,25 +50,25 @@ fill h typeSubst term =
       return term
     _ :< WT.VarGlobal {} ->
       return term
-    m :< WT.PiIntro attr@(AttrL.Attr {lamKind}) impArgs defaultArgs expArgs e -> do
+    m :< WT.PiIntro attr@(AttrL.Attr {lamKind}) impArgs expArgs defaultArgs e -> do
       impArgs' <- fillBinder h typeSubst impArgs
-      defaultArgs' <- fillDefaultArgs h typeSubst defaultArgs
       expArgs' <- fillBinder h typeSubst expArgs
+      defaultArgs' <- fillDefaultArgs h typeSubst defaultArgs
       case lamKind of
         LK.Fix opacity xt -> do
           [xt'] <- fillBinder h typeSubst [xt]
           e' <- fill h typeSubst e
-          return $ m :< WT.PiIntro (attr {AttrL.lamKind = LK.Fix opacity xt'}) impArgs' defaultArgs' expArgs' e'
+          return $ m :< WT.PiIntro (attr {AttrL.lamKind = LK.Fix opacity xt'}) impArgs' expArgs' defaultArgs' e'
         LK.Normal name codType -> do
           codType' <- fillType h typeSubst codType
           e' <- fill h typeSubst e
-          return $ m :< WT.PiIntro (attr {AttrL.lamKind = LK.Normal name codType'}) impArgs' defaultArgs' expArgs' e'
-    m :< WT.PiElim b e impArgs defaultArgs expArgs -> do
+          return $ m :< WT.PiIntro (attr {AttrL.lamKind = LK.Normal name codType'}) impArgs' expArgs' defaultArgs' e'
+    m :< WT.PiElim b e impArgs expArgs defaultArgs -> do
       e' <- fill h typeSubst e
       impArgs' <- ImpArgs.traverseImpArgs (fillType h typeSubst) impArgs
-      defaultArgs' <- DefaultArgs.traverseDefaultArgs (fill h typeSubst) defaultArgs
       expArgs' <- mapM (fill h typeSubst) expArgs
-      return $ m :< WT.PiElim b e' impArgs' defaultArgs' expArgs'
+      defaultArgs' <- DefaultArgs.traverseDefaultArgs (fill h typeSubst) defaultArgs
+      return $ m :< WT.PiElim b e' impArgs' expArgs' defaultArgs'
     m :< WT.PiElimExact e -> do
       e' <- fill h typeSubst e
       return $ m :< WT.PiElimExact e'
@@ -146,12 +146,12 @@ fillType h holeSubst ty =
       t' <- fillType h holeSubst t
       args' <- mapM (fillType h holeSubst) args
       return $ m :< WT.TyApp t' args'
-    m :< WT.Pi piKind impArgs defaultArgs expArgs t -> do
+    m :< WT.Pi piKind impArgs expArgs defaultArgs t -> do
       impArgs' <- fillTypeBinder h holeSubst impArgs
-      defaultArgs' <- fillTypeDefaultArgs h holeSubst defaultArgs
       expArgs' <- fillTypeBinder h holeSubst expArgs
+      defaultArgs' <- fillTypeDefaultArgs h holeSubst defaultArgs
       t' <- fillType h holeSubst t
-      return $ m :< WT.Pi piKind impArgs' defaultArgs' expArgs' t'
+      return $ m :< WT.Pi piKind impArgs' expArgs' defaultArgs' t'
     m :< WT.Data attr name es -> do
       es' <- mapM (fillType h holeSubst) es
       attr' <- fillAttrData h holeSubst attr

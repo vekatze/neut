@@ -24,8 +24,8 @@ eq (_ :< term1) (_ :< term2)
   | WT.VarGlobal _ dd1 <- term1,
     WT.VarGlobal _ dd2 <- term2 =
       dd1 == dd2
-  | WT.PiIntro kind1 impArgs1 defaultArgs1 expArgs1 body1 <- term1,
-    WT.PiIntro kind2 impArgs2 defaultArgs2 expArgs2 body2 <- term2,
+  | WT.PiIntro kind1 impArgs1 expArgs1 defaultArgs1 body1 <- term1,
+    WT.PiIntro kind2 impArgs2 expArgs2 defaultArgs2 body2 <- term2,
     length impArgs1 == length impArgs2,
     length defaultArgs1 == length defaultArgs2,
     length expArgs1 == length expArgs2 =
@@ -33,7 +33,7 @@ eq (_ :< term1) (_ :< term2)
         (AttrL.Attr {lamKind = LK.Normal _ codType1}, AttrL.Attr {lamKind = LK.Normal _ codType2}) -> do
           let b1 = eqImpArgs impArgs1 impArgs2
           let b2 = eqDefaultArgs defaultArgs1 defaultArgs2
-          let b3 = eqBinderType (impArgs1 ++ map fst defaultArgs1 ++ expArgs1) (impArgs2 ++ map fst defaultArgs2 ++ expArgs2)
+          let b3 = eqBinderType (impArgs1 ++ expArgs1 ++ map fst defaultArgs1) (impArgs2 ++ expArgs2 ++ map fst defaultArgs2)
           let b4 = eq body1 body2
           let b5 = eqType codType1 codType2
           b1 && b2 && b3 && b4 && b5
@@ -41,21 +41,21 @@ eq (_ :< term1) (_ :< term2)
           | opacity1 == opacity2 -> do
           let b1 = eqImpArgs impArgs1 impArgs2
           let b2 = eqDefaultArgs defaultArgs1 defaultArgs2
-          let b3 = eqBinderType (impArgs1 ++ map fst defaultArgs1 ++ expArgs1 ++ [mxt1]) (impArgs2 ++ map fst defaultArgs2 ++ expArgs2 ++ [mxt2])
+          let b3 = eqBinderType (impArgs1 ++ expArgs1 ++ map fst defaultArgs1 ++ [mxt1]) (impArgs2 ++ expArgs2 ++ map fst defaultArgs2 ++ [mxt2])
           let b4 = eq body1 body2
           b1 && b2 && b3 && b4
         _ ->
           False
-  | WT.PiElim isNoetic1 f1 ImpArgs.Unspecified defaultArgs1 expArgs1 <- term1,
-    WT.PiElim isNoetic2 f2 ImpArgs.Unspecified defaultArgs2 expArgs2 <- term2,
+  | WT.PiElim isNoetic1 f1 ImpArgs.Unspecified expArgs1 defaultArgs1 <- term1,
+    WT.PiElim isNoetic2 f2 ImpArgs.Unspecified expArgs2 defaultArgs2 <- term2,
     length expArgs1 == length expArgs2,
     isNoetic1 == isNoetic2 = do
       let b1 = eq f1 f2
       let b2 = eqDefaultOverrideArgs defaultArgs1 defaultArgs2
       let b3 = all (uncurry eq) $ zip expArgs1 expArgs2
       b1 && b2 && b3
-  | WT.PiElim isNoetic1 f1 (ImpArgs.FullySpecified impArgs1) defaultArgs1 expArgs1 <- term1,
-    WT.PiElim isNoetic2 f2 (ImpArgs.FullySpecified impArgs2) defaultArgs2 expArgs2 <- term2,
+  | WT.PiElim isNoetic1 f1 (ImpArgs.FullySpecified impArgs1) expArgs1 defaultArgs1 <- term1,
+    WT.PiElim isNoetic2 f2 (ImpArgs.FullySpecified impArgs2) expArgs2 defaultArgs2 <- term2,
     length impArgs1 == length impArgs2,
     length expArgs1 == length expArgs2,
     isNoetic1 == isNoetic2 = do
@@ -163,11 +163,11 @@ eqType (_ :< ty1) (_ :< ty2)
       let b2 = length args1 == length args2
       let b3 = all (uncurry eqType) $ zip args1 args2
       b1 && b2 && b3
-  | WT.Pi _ impArgs1 defaultArgs1 expArgs1 cod1 <- ty1,
-    WT.Pi _ impArgs2 defaultArgs2 expArgs2 cod2 <- ty2 = do
+  | WT.Pi _ impArgs1 expArgs1 defaultArgs1 cod1 <- ty1,
+    WT.Pi _ impArgs2 expArgs2 defaultArgs2 cod2 <- ty2 = do
       let b1 = eqImpArgs impArgs1 impArgs2
       let b2 = eqDefaultArgs defaultArgs1 defaultArgs2
-      let b3 = eqBinderType (impArgs1 ++ map fst defaultArgs1 ++ expArgs1) (impArgs2 ++ map fst defaultArgs2 ++ expArgs2)
+      let b3 = eqBinderType (impArgs1 ++ expArgs1 ++ map fst defaultArgs1) (impArgs2 ++ expArgs2 ++ map fst defaultArgs2)
       let b4 = eqType cod1 cod2
       b1 && b2 && b3 && b4
   | WT.Data attr1 name1 es1 <- ty1,

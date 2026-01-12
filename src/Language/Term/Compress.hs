@@ -23,8 +23,8 @@ compress term =
       () :< TM.Var x
     _ :< TM.VarGlobal g argNum ->
       () :< TM.VarGlobal g argNum
-    _ :< TM.PiIntro attr impArgs defaultArgs expArgs e ->
-      () :< TM.PiIntro attr impArgs (map compressDefaultArg defaultArgs) expArgs (compress e)
+    _ :< TM.PiIntro attr impArgs expArgs defaultArgs e ->
+      () :< TM.PiIntro attr impArgs expArgs (map compressDefaultArg defaultArgs) (compress e)
     _ :< TM.PiElim b e impArgs expArgs ->
       () :< TM.PiElim b (compress e) impArgs (map compress expArgs)
     _ :< TM.DataIntro attr consName dataArgs consArgs ->
@@ -64,8 +64,8 @@ compressType ty =
       () :< TM.TVarGlobal attr g
     _ :< TM.TyApp t args ->
       () :< TM.TyApp (compressType t) (map compressType args)
-    _ :< TM.Pi piKind impArgs defaultArgs expArgs cod ->
-      () :< TM.Pi piKind (map compressBinder impArgs) (map compressTypeDefaultArg defaultArgs) (map compressBinder expArgs) (compressType cod)
+    _ :< TM.Pi piKind impArgs expArgs defaultArgs cod ->
+      () :< TM.Pi piKind (map compressBinder impArgs) (map compressBinder expArgs) (map compressTypeDefaultArg defaultArgs) (compressType cod)
     _ :< TM.Data attr name es ->
       () :< TM.Data (fmap compressBinder attr) name (map compressType es)
     _ :< TM.Box t ->

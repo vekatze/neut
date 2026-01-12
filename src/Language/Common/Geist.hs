@@ -10,7 +10,7 @@ data Geist t a = Geist
     name :: DD.DefiniteDescription,
     isConstLike :: IsConstLike,
     impArgs :: [(Hint, Ident, t)],
-    defaultArgs :: [((Hint, Ident, t), a)],
     expArgs :: [(Hint, Ident, t)],
+    defaultArgs :: [((Hint, Ident, t), a)],
     cod :: t
   }

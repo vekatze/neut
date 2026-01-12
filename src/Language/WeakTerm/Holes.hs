@@ -24,11 +24,11 @@ holes term =
       S.empty
     _ :< WT.VarGlobal {} ->
       S.empty
-    _ :< WT.PiIntro k impArgs defaultArgs expArgs e -> do
-      let impBinders = impArgs ++ map fst defaultArgs
+    _ :< WT.PiIntro k impArgs expArgs defaultArgs e -> do
+      let impBinders = impArgs ++ expArgs
       let defaultHoles = S.unions $ map holes $ map snd defaultArgs
-      S.union defaultHoles (holesBindersType (impBinders ++ expArgs ++ catMaybes [AttrL.fromAttr k]) (holes e))
-    _ :< WT.PiElim _ e impArgs defaultArgs expArgs ->
+      S.union defaultHoles (holesBindersType (impBinders ++ map fst defaultArgs ++ catMaybes [AttrL.fromAttr k]) (holes e))
+    _ :< WT.PiElim _ e impArgs expArgs defaultArgs ->
       S.unions $
         holes e
           : map holesType (ImpArgs.extract impArgs)
@@ -91,10 +91,10 @@ holesType ty =
       S.empty
     _ :< WT.TyApp t args ->
       S.unions $ holesType t : map holesType args
-    _ :< WT.Pi _ impArgs defaultArgs expArgs t -> do
-      let impBinders = impArgs ++ map fst defaultArgs
+    _ :< WT.Pi _ impArgs expArgs defaultArgs t -> do
+      let impBinders = impArgs ++ expArgs
       let defaultHoles = S.unions $ map holes $ map snd defaultArgs
-      S.union defaultHoles (holesBindersType (impBinders ++ expArgs) (holesType t))
+      S.union defaultHoles (holesBindersType (impBinders ++ map fst defaultArgs) (holesType t))
     _ :< WT.Data attr _ es -> do
       let xs1 = S.unions $ map holesType es
       let xs2 = holesAttrData attr

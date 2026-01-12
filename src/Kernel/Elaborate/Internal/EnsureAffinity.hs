@@ -136,20 +136,20 @@ analyze h term = do
       analyzeVar h m x
     _ :< TM.VarGlobal {} -> do
       return []
-    m :< TM.PiIntro (AttrL.Attr {lamKind}) impArgs defaultArgs expArgs e -> do
+    m :< TM.PiIntro (AttrL.Attr {lamKind}) impArgs expArgs defaultArgs e -> do
       case lamKind of
         LK.Fix _ (mx, x, codType) -> do
-          (cs1, h') <- analyzeBinder h (impArgs ++ map fst defaultArgs)
-          (cs2, h'') <- analyzeBinder h' expArgs
+          (cs1, h') <- analyzeBinder h (impArgs ++ expArgs)
+          (cs2, h'') <- analyzeBinder h' (map fst defaultArgs)
           cs3 <- analyzeType h'' codType
-          let piType = m :< TM.Pi PK.normal impArgs defaultArgs expArgs codType
+          let piType = m :< TM.Pi PK.normal impArgs expArgs defaultArgs codType
           liftIO $ insertRelevantVar x h''
           cs4 <- analyze (extendHandle (mx, x, piType) h'') e
           css <- forM (S.toList $ freeVarsWithHints term) $ uncurry (analyzeVar h)
           return $ cs1 ++ cs2 ++ cs3 ++ cs4 ++ concat css
         LK.Normal _ codType -> do
-          (cs1, h') <- analyzeBinder h (impArgs ++ map fst defaultArgs)
-          (cs2, h'') <- analyzeBinder h' expArgs
+          (cs1, h') <- analyzeBinder h (impArgs ++ expArgs)
+          (cs2, h'') <- analyzeBinder h' (map fst defaultArgs)
           cs3 <- analyzeType h'' codType
           cs4 <- analyze h'' e
           return $ cs1 ++ cs2 ++ cs3 ++ cs4
@@ -288,8 +288,8 @@ analyzeType h ty =
       cs0 <- analyzeType h t
       css <- mapM (analyzeType h) args
       return $ cs0 ++ concat css
-    _ :< TM.Pi _ impArgs defaultArgs expArgs t -> do
-      let impBinders = impArgs ++ map fst defaultArgs
+    _ :< TM.Pi _ impArgs expArgs defaultArgs t -> do
+      let impBinders = impArgs ++ expArgs ++ map fst defaultArgs
       (cs1, h') <- analyzeBinder h impBinders
       (cs2, h'') <- analyzeBinder h' expArgs
       cs3 <- analyzeType h'' t
@@ -485,10 +485,10 @@ getConsArgTypes ::
 getConsArgTypes h m consName = do
   t <- Type.lookup' (Elaborate.typeHandle (elaborateHandle h)) m consName
   case t of
-    _ :< WT.Pi (PK.DataIntro False) impArgs defaultArgs expArgs (_ :< WT.Pi (PK.Normal _) impArgs' defaultArgs' expArgs' _dataType) -> do
-      return $ impArgs ++ map fst defaultArgs ++ expArgs ++ impArgs' ++ map fst defaultArgs' ++ expArgs'
-    _ :< WT.Pi (PK.DataIntro True) impArgs defaultArgs expArgs _dataType -> do
-      return $ impArgs ++ map fst defaultArgs ++ expArgs
+    _ :< WT.Pi (PK.DataIntro False) impArgs expArgs defaultArgs (_ :< WT.Pi (PK.Normal _) impArgs' expArgs' defaultArgs' _dataType) -> do
+      return $ impArgs ++ expArgs ++ map fst defaultArgs ++ impArgs' ++ expArgs' ++ map fst defaultArgs'
+    _ :< WT.Pi (PK.DataIntro True) impArgs expArgs defaultArgs _dataType -> do
+      return $ impArgs ++ expArgs ++ map fst defaultArgs
     _ ->
       raiseCritical m $ "Got a malformed constructor type:\n" <> WT.toTextType t
 

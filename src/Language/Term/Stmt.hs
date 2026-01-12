@@ -33,8 +33,8 @@ data StmtF t a
       SavedHint
       DD.DefiniteDescription
       [BinderF t]
-      [(BinderF t, a)]
       [BinderF t]
+      [(BinderF t, a)]
       t
       a
   | StmtDefineType
@@ -43,8 +43,8 @@ data StmtF t a
       SavedHint
       DD.DefiniteDescription
       [BinderF t]
-      [(BinderF t, a)]
       [BinderF t]
+      [(BinderF t, a)]
       t
       t
   | StmtVariadic RuleKind SavedHint DD.DefiniteDescription

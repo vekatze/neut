@@ -67,7 +67,7 @@ subst h sub term =
           return term
     _ :< TM.VarGlobal {} ->
       return term
-    m :< TM.PiIntro (AttrL.Attr {lamKind}) impArgs defaultArgs expArgs e -> do
+    m :< TM.PiIntro (AttrL.Attr {lamKind}) impArgs expArgs defaultArgs e -> do
       let fvs = S.map Ident.toInt $ TM.freeVars term
       let subDomSet = S.fromList $ IntMap.keys sub
       if S.intersection fvs subDomSet == S.empty
@@ -77,20 +77,20 @@ subst h sub term =
           case lamKind of
             LK.Fix opacity xt -> do
               (impArgs', sub') <- substBinder h sub impArgs
-              (defaultArgs', sub'') <- substDefaultArgs h sub' defaultArgs
-              (expArgs', sub''') <- substBinder h sub'' expArgs
+              (expArgs', sub'') <- substBinder h sub' expArgs
+              (defaultArgs', sub''') <- substDefaultArgs h sub'' defaultArgs
               ([xt'], sub'''') <- substBinder h sub''' [xt]
               e' <- subst h sub'''' e
               let fixAttr = AttrL.Attr {lamKind = LK.Fix opacity xt', identity = newLamID}
-              return (m :< TM.PiIntro fixAttr impArgs' defaultArgs' expArgs' e')
+              return (m :< TM.PiIntro fixAttr impArgs' expArgs' defaultArgs' e')
             LK.Normal name codType -> do
               (impArgs', sub') <- substBinder h sub impArgs
-              (defaultArgs', sub'') <- substDefaultArgs h sub' defaultArgs
-              (expArgs', sub''') <- substBinder h sub'' expArgs
+              (expArgs', sub'') <- substBinder h sub' expArgs
+              (defaultArgs', sub''') <- substDefaultArgs h sub'' defaultArgs
               codType' <- substType h sub''' codType
               e' <- subst h sub''' e
               let lamAttr = AttrL.Attr {lamKind = LK.Normal name codType', identity = newLamID}
-              return (m :< TM.PiIntro lamAttr impArgs' defaultArgs' expArgs' e')
+              return (m :< TM.PiIntro lamAttr impArgs' expArgs' defaultArgs' e')
     m :< TM.PiElim b e impArgs expArgs -> do
       e' <- subst h sub e
       impArgs' <- mapM (substType h sub) impArgs
@@ -167,12 +167,12 @@ substType h sub ty =
       t' <- substType h sub t
       args' <- mapM (substType h sub) args
       return $ m :< TM.TyApp t' args'
-    m :< TM.Pi piKind impArgs defaultArgs expArgs t -> do
+    m :< TM.Pi piKind impArgs expArgs defaultArgs t -> do
       (impArgs', sub') <- substBinder h sub impArgs
-      (defaultArgs', sub'') <- substDefaultArgs h sub' defaultArgs
-      (expArgs', sub''') <- substBinder h sub'' expArgs
+      (expArgs', sub'') <- substBinder h sub' expArgs
+      (defaultArgs', sub''') <- substDefaultArgs h sub'' defaultArgs
       t' <- substType h sub''' t
-      return (m :< TM.Pi piKind impArgs' defaultArgs' expArgs' t')
+      return (m :< TM.Pi piKind impArgs' expArgs' defaultArgs' t')
     m :< TM.Data attr name es -> do
       es' <- mapM (substType h sub) es
       attr' <- substAttrData h sub attr

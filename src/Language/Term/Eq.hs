@@ -18,7 +18,7 @@ eqTerm (_ :< term1) (_ :< term2) =
   case (term1, term2) of
     (TM.Var x1, TM.Var x2) -> x1 == x2
     (TM.VarGlobal _ dd1, TM.VarGlobal _ dd2) -> dd1 == dd2
-    (TM.PiIntro _ impArgs1 defaultArgs1 expArgs1 e1, TM.PiIntro _ impArgs2 defaultArgs2 expArgs2 e2) ->
+    (TM.PiIntro _ impArgs1 expArgs1 defaultArgs1 e1, TM.PiIntro _ impArgs2 expArgs2 defaultArgs2 e2) ->
       eqTypeBinders impArgs1 impArgs2
         && eqTermDefaultArgs defaultArgs1 defaultArgs2
         && eqTypeBinders expArgs1 expArgs2
@@ -77,13 +77,14 @@ eqTypeWithEnv env (_ :< type1) (_ :< type2) =
       eqTypeWithEnv env t1 t2
         && length args1 == length args2
         && and (zipWith (eqTypeWithEnv env) args1 args2)
-    (TM.Pi pk1 impArgs1 defaultArgs1 expArgs1 cod1, TM.Pi pk2 impArgs2 defaultArgs2 expArgs2 cod2) -> do
+    (TM.Pi pk1 impArgs1 expArgs1 defaultArgs1 cod1, TM.Pi pk2 impArgs2 expArgs2 defaultArgs2 cod2) -> do
       let (envAfterImp, impArgsEq) = eqAndExtendImpArgs env impArgs1 impArgs2
-      let (envAfterDefault, defaultArgsEq) = eqDefaultArgsWithEnv envAfterImp defaultArgs1 defaultArgs2
+      let (envAfterExp, expArgsEq) = eqAndExtendImpArgs envAfterImp expArgs1 expArgs2
+      let (envAfterDefault, defaultArgsEq) = eqDefaultArgsWithEnv envAfterExp defaultArgs1 defaultArgs2
       pk1 == pk2
         && impArgsEq
+        && expArgsEq
         && defaultArgsEq
-        && eqTypeBinders expArgs1 expArgs2
         && eqTypeWithEnv envAfterDefault cod1 cod2
     (TM.Data _ name1 es1, TM.Data _ name2 es2) ->
       name1 == name2 && and (zipWith (eqTypeWithEnv env) es1 es2)

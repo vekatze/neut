@@ -34,22 +34,22 @@ import Logger.Hint
 weakenStmt :: Stmt -> WeakStmt
 weakenStmt stmt = do
   case stmt of
-    StmtDefine isConstLike stmtKind (SavedHint m) name impArgs defaultArgs expArgs codType e -> do
+    StmtDefine isConstLike stmtKind (SavedHint m) name impArgs expArgs defaultArgs codType e -> do
       let stmtKind' = weakenStmtKindTerm stmtKind
       let impArgs' = map weakenTypeBinder impArgs
-      let defaultArgs' = map (bimap weakenTypeBinder weaken) defaultArgs
       let expArgs' = map weakenTypeBinder expArgs
+      let defaultArgs' = map (bimap weakenTypeBinder weaken) defaultArgs
       let codType' = weakenType codType
       let e' = weaken e
-      WeakStmtDefineTerm isConstLike stmtKind' m name impArgs' defaultArgs' expArgs' codType' e'
-    StmtDefineType isConstLike stmtKind (SavedHint m) name impArgs defaultArgs expArgs codType body -> do
+      WeakStmtDefineTerm isConstLike stmtKind' m name impArgs' expArgs' defaultArgs' codType' e'
+    StmtDefineType isConstLike stmtKind (SavedHint m) name impArgs expArgs defaultArgs codType body -> do
       let stmtKind' = weakenStmtKindType stmtKind
       let impArgs' = map weakenTypeBinder impArgs
-      let defaultArgs' = map (bimap weakenTypeBinder weaken) defaultArgs
       let expArgs' = map weakenTypeBinder expArgs
+      let defaultArgs' = map (bimap weakenTypeBinder weaken) defaultArgs
       let codType' = weakenType codType
       let body' = weakenType body
-      WeakStmtDefineType isConstLike stmtKind' m name impArgs' defaultArgs' expArgs' codType' body'
+      WeakStmtDefineType isConstLike stmtKind' m name impArgs' expArgs' defaultArgs' codType' body'
     StmtVariadic kind (SavedHint m) name -> do
       WeakStmtVariadic kind m name
     StmtForeign foreignList ->
@@ -62,18 +62,18 @@ weaken term =
       m :< WT.Var x
     m :< TM.VarGlobal g argNum ->
       m :< WT.VarGlobal g argNum
-    m :< TM.PiIntro attr impArgs defaultArgs expArgs e -> do
+    m :< TM.PiIntro attr impArgs expArgs defaultArgs e -> do
       let attr' = weakenAttr attr
       let impArgs' = map weakenTypeBinder impArgs
-      let defaultArgs' = map (bimap weakenTypeBinder weaken) defaultArgs
       let expArgs' = map weakenTypeBinder expArgs
+      let defaultArgs' = map (bimap weakenTypeBinder weaken) defaultArgs
       let e' = weaken e
-      m :< WT.PiIntro attr' impArgs' defaultArgs' expArgs' e'
+      m :< WT.PiIntro attr' impArgs' expArgs' defaultArgs' e'
     m :< TM.PiElim b e impArgs expArgs -> do
       let e' = weaken e
       let impArgs' = ImpArgs.FullySpecified $ map weakenType impArgs
       let expArgs' = map weaken expArgs
-      m :< WT.PiElim b e' impArgs' DefaultArgs.Unspecified expArgs'
+      m :< WT.PiElim b e' impArgs' expArgs' DefaultArgs.Unspecified
     m :< TM.DataIntro attr consName dataArgs consArgs -> do
       let dataArgs' = map weakenType dataArgs
       let consArgs' = map weaken consArgs
@@ -119,8 +119,8 @@ weakenType ty =
       m :< WT.TVarGlobal g argNum
     m :< TM.TyApp t args ->
       m :< WT.TyApp (weakenType t) (map weakenType args)
-    m :< TM.Pi piKind impArgs defaultArgs expArgs t ->
-      m :< WT.Pi piKind (map weakenTypeBinder impArgs) (map (bimap weakenTypeBinder weaken) defaultArgs) (map weakenTypeBinder expArgs) (weakenType t)
+    m :< TM.Pi piKind impArgs expArgs defaultArgs t ->
+      m :< WT.Pi piKind (map weakenTypeBinder impArgs) (map weakenTypeBinder expArgs) (map (bimap weakenTypeBinder weaken) defaultArgs) (weakenType t)
     m :< TM.Data attr name es -> do
       let es' = map weakenType es
       let attr' = fmap weakenTypeBinder attr

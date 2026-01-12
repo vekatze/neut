@@ -148,7 +148,7 @@ simplify h susList constraintList =
         then simplify h susList cs
         else do
           case (expected', actual') of
-            (m1 :< WT.Pi _ impArgs1 defaultArgs1 expArgs1 cod1, m2 :< WT.Pi _ impArgs2 defaultArgs2 expArgs2 cod2)
+            (m1 :< WT.Pi _ impArgs1 expArgs1 defaultArgs1 cod1, m2 :< WT.Pi _ impArgs2 expArgs2 defaultArgs2 cod2)
               | Just (impBinders, impConstraints) <- createDefaultConstraints impArgs1 defaultArgs1 impArgs2 defaultArgs2,
                 length expArgs1 == length expArgs2 -> do
                   codBinder1 <- liftIO $ asWeakBinder h m1 cod1
@@ -390,10 +390,10 @@ getConsArgTypes ::
 getConsArgTypes h m consName = do
   t <- Type.lookup' (typeHandle h) m consName
   case t of
-    _ :< WT.Pi (PK.DataIntro False) impArgs defaultArgs expArgs (_ :< WT.Pi (PK.Normal _) impArgs' defaultArgs' expArgs' _dataType) -> do
-      return $ impArgs ++ map fst defaultArgs ++ expArgs ++ impArgs' ++ map fst defaultArgs' ++ expArgs'
-    _ :< WT.Pi (PK.DataIntro True) impArgs defaultArgs expArgs _dataType -> do
-      return $ impArgs ++ map fst defaultArgs ++ expArgs
+    _ :< WT.Pi (PK.DataIntro False) impArgs expArgs defaultArgs (_ :< WT.Pi (PK.Normal _) impArgs' expArgs' defaultArgs' _dataType) -> do
+      return $ impArgs ++ expArgs ++ map fst defaultArgs ++ impArgs' ++ expArgs' ++ map fst defaultArgs'
+    _ :< WT.Pi (PK.DataIntro True) impArgs expArgs defaultArgs _dataType -> do
+      return $ impArgs ++ expArgs ++ map fst defaultArgs
     _ ->
       raiseCritical m $ "Got a malformed constructor type:\n" <> toTextType t
 

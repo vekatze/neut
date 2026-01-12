@@ -33,8 +33,8 @@ data WeakStmt
       Hint
       DD.DefiniteDescription
       [BinderF WT.WeakType]
-      [(BinderF WT.WeakType, WT.WeakTerm)]
       [BinderF WT.WeakType]
+      [(BinderF WT.WeakType, WT.WeakTerm)]
       WT.WeakType
       WT.WeakTerm
   | WeakStmtDefineType
@@ -43,8 +43,8 @@ data WeakStmt
       Hint
       DD.DefiniteDescription
       [BinderF WT.WeakType]
-      [(BinderF WT.WeakType, WT.WeakTerm)]
       [BinderF WT.WeakType]
+      [(BinderF WT.WeakType, WT.WeakTerm)]
       WT.WeakType
       WT.WeakType
   | WeakStmtVariadic RuleKind Hint DD.DefiniteDescription

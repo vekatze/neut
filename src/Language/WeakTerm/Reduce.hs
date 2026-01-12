@@ -52,12 +52,12 @@ reduceType h ty = do
       t' <- reduceType h t
       args' <- mapM (reduceType h) args
       return $ m :< WT.TyApp t' args'
-    m :< WT.Pi piKind impArgs defaultArgs expArgs cod -> do
+    m :< WT.Pi piKind impArgs expArgs defaultArgs cod -> do
       impArgs' <- mapM (reduceBinder h) impArgs
-      defaultArgs' <- mapM (bimapM (reduceBinder h) return) defaultArgs
       expArgs' <- mapM (reduceBinder h) expArgs
+      defaultArgs' <- mapM (bimapM (reduceBinder h) return) defaultArgs
       cod' <- reduceType h cod
-      return $ m :< WT.Pi piKind impArgs' defaultArgs' expArgs' cod'
+      return $ m :< WT.Pi piKind impArgs' expArgs' defaultArgs' cod'
     m :< WT.Data attr name es -> do
       es' <- mapM (reduceType h) es
       attr' <- reduceAttrData h attr

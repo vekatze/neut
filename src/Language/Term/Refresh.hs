@@ -36,7 +36,7 @@ refresh h term =
       return term
     _ :< TM.VarGlobal {} ->
       return term
-    m :< TM.PiIntro (AttrL.Attr {lamKind}) impArgs defaultArgs expArgs e -> do
+    m :< TM.PiIntro (AttrL.Attr {lamKind}) impArgs expArgs defaultArgs e -> do
       newLamID <- liftIO $ Gensym.newCount (gensymHandle h)
       case lamKind of
         LK.Fix opacity xt -> do
@@ -46,7 +46,7 @@ refresh h term =
           [xt'] <- refreshTypeBinder h [xt]
           e' <- refresh h e
           let fixAttr = AttrL.Attr {lamKind = LK.Fix opacity xt', identity = newLamID}
-          return (m :< TM.PiIntro fixAttr impArgs' defaultArgs' expArgs' e')
+          return (m :< TM.PiIntro fixAttr impArgs' expArgs' defaultArgs' e')
         LK.Normal name codType -> do
           impArgs' <- refreshTypeBinder h impArgs
           defaultArgs' <- refreshDefaultArgs h defaultArgs
@@ -54,7 +54,7 @@ refresh h term =
           codType' <- refreshType h codType
           e' <- refresh h e
           let lamAttr = AttrL.Attr {lamKind = LK.Normal name codType', identity = newLamID}
-          return (m :< TM.PiIntro lamAttr impArgs' defaultArgs' expArgs' e')
+          return (m :< TM.PiIntro lamAttr impArgs' expArgs' defaultArgs' e')
     m :< TM.PiElim b e impArgs expArgs -> do
       e' <- refresh h e
       impArgs' <- mapM (refreshType h) impArgs
@@ -218,12 +218,12 @@ refreshType h ty =
       t' <- refreshType h t
       args' <- mapM (refreshType h) args
       return $ m :< TM.TyApp t' args'
-    m :< TM.Pi piKind impArgs defaultArgs expArgs t -> do
+    m :< TM.Pi piKind impArgs expArgs defaultArgs t -> do
       impArgs' <- refreshTypeBinder h impArgs
       defaultArgs' <- refreshDefaultArgs h defaultArgs
       expArgs' <- refreshTypeBinder h expArgs
       t' <- refreshType h t
-      return (m :< TM.Pi piKind impArgs' defaultArgs' expArgs' t')
+      return (m :< TM.Pi piKind impArgs' expArgs' defaultArgs' t')
     m :< TM.Data attr name es -> do
       es' <- mapM (refreshType h) es
       attr' <- refreshAttrData h attr

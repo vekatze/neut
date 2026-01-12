@@ -24,11 +24,11 @@ freeVars term =
       S.singleton x
     _ :< WT.VarGlobal {} ->
       S.empty
-    _ :< WT.PiIntro k impArgs defaultArgs expArgs e -> do
-      let impBinders = impArgs ++ map fst defaultArgs
+    _ :< WT.PiIntro k impArgs expArgs defaultArgs e -> do
+      let impBinders = impArgs ++ expArgs
       let defaultVars = S.unions $ map freeVars $ map snd defaultArgs
-      S.union defaultVars (freeVarsBinders (impBinders ++ expArgs ++ catMaybes [AttrL.fromAttr k]) (freeVars e))
-    _ :< WT.PiElim _ e _ defaultArgs expArgs -> do
+      S.union defaultVars (freeVarsBinders (impBinders ++ map fst defaultArgs ++ catMaybes [AttrL.fromAttr k]) (freeVars e))
+    _ :< WT.PiElim _ e _ expArgs defaultArgs -> do
       let xs = freeVars e
       let ys2 = S.unions $ map freeVars (DefaultArgs.extract defaultArgs)
       let ys3 = S.unions $ map freeVars expArgs
@@ -167,11 +167,11 @@ freeVarsAll term =
       S.singleton x
     _ :< WT.VarGlobal {} ->
       S.empty
-    _ :< WT.PiIntro k impArgs defaultArgs expArgs e -> do
-      let impBinders = impArgs ++ map fst defaultArgs
+    _ :< WT.PiIntro k impArgs expArgs defaultArgs e -> do
+      let impBinders = impArgs ++ expArgs
       let defaultVars = S.unions $ map freeVarsAll $ map snd defaultArgs
-      S.union defaultVars (freeVarsBindersType (impBinders ++ expArgs ++ catMaybes [AttrL.fromAttr k]) (freeVarsAll e))
-    _ :< WT.PiElim _ e impArgs defaultArgs expArgs -> do
+      S.union defaultVars (freeVarsBindersType (impBinders ++ map fst defaultArgs ++ catMaybes [AttrL.fromAttr k]) (freeVarsAll e))
+    _ :< WT.PiElim _ e impArgs expArgs defaultArgs -> do
       let xs = freeVarsAll e
       let ys1 = S.unions $ map freeVarsType (ImpArgs.extract impArgs)
       let ys2 = S.unions $ map freeVarsAll (DefaultArgs.extract defaultArgs)
@@ -234,10 +234,10 @@ freeVarsType ty =
       S.empty
     _ :< WT.TyApp t args -> do
       S.unions $ freeVarsType t : map freeVarsType args
-    _ :< WT.Pi _ impArgs defaultArgs expArgs t -> do
-      let impBinders = impArgs ++ map fst defaultArgs
+    _ :< WT.Pi _ impArgs expArgs defaultArgs t -> do
+      let impBinders = impArgs ++ expArgs
       let defaultVars = S.unions $ map freeVarsAll $ map snd defaultArgs
-      S.union defaultVars (freeVarsBindersType (impBinders ++ expArgs) (freeVarsType t))
+      S.union defaultVars (freeVarsBindersType (impBinders ++ map fst defaultArgs) (freeVarsType t))
     _ :< WT.Data attr _ es -> do
       let xs1 = S.unions $ map freeVarsType es
       let xs2 = freeVarsAttrData attr

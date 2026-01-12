@@ -162,8 +162,8 @@ getBaseAuxEnv auxEnvHandle sigmaHandle = do
 clarifyStmt :: Handle -> Stmt -> App C.CompStmt
 clarifyStmt h stmt =
   case stmt of
-    StmtDefine _ stmtKind _ f impArgs defaultArgs expArgs _ e -> do
-      let xts = impArgs ++ map fst defaultArgs ++ expArgs
+    StmtDefine _ stmtKind _ f impArgs expArgs defaultArgs _ e -> do
+      let xts = impArgs ++ expArgs ++ map fst defaultArgs
       xts' <- dropFst <$> clarifyBinder h IntMap.empty xts
       envArg <- liftIO $ makeEnvArg h
       switchArg <- liftIO $ makeSwitchArg h
@@ -171,8 +171,8 @@ clarifyStmt h stmt =
       let tenv = TM.insTypeEnv xts IntMap.empty
       e' <- clarifyStmtDefineBody h tenv xts'' e
       return $ C.Def f (SK.toLowOpacityTerm stmtKind) (map fst xts'') e'
-    StmtDefineType _ stmtKind (SavedHint m) f impArgs defaultArgs expArgs _ body -> do
-      let xts = impArgs ++ map fst defaultArgs ++ expArgs
+    StmtDefineType _ stmtKind (SavedHint m) f impArgs expArgs defaultArgs _ body -> do
+      let xts = impArgs ++ expArgs ++ map fst defaultArgs
       xts' <- dropFst <$> clarifyBinder h IntMap.empty xts
       envArg <- liftIO $ makeEnvArg h
       switchArg <- liftIO $ makeSwitchArg h
@@ -292,8 +292,8 @@ clarifyTerm h tenv term =
               C.SigmaIntro [],
               C.VarGlobal x (AN.add argNum (AN.fromInt 2))
             ]
-    _ :< TM.PiIntro attr impArgs defaultArgs expArgs e -> do
-      clarifyLambda h tenv attr (TM.chainOf tenv [term]) (impArgs ++ map fst defaultArgs ++ expArgs) e
+    _ :< TM.PiIntro attr impArgs expArgs defaultArgs e -> do
+      clarifyLambda h tenv attr (TM.chainOf tenv [term]) (impArgs ++ expArgs ++ map fst defaultArgs) e
     _ :< TM.PiElim b e impArgs expArgs -> do
       impArgs' <- mapM (clarifyTypePlus h tenv) impArgs
       expArgs' <- mapM (clarifyPlus h tenv) expArgs
@@ -700,7 +700,7 @@ clarifyLambda h tenv attrL@(AttrL.Attr {lamKind, identity}) fvs mxts e@(m :< _) 
       lamAttr <- do
         c <- liftIO $ Gensym.newCount (gensymHandle h)
         return $ AttrL.normal' (Just (Ident.toText recFuncName)) c codType
-      let lamApp = m :< TM.PiIntro lamAttr [] [] mxts (m :< TM.PiElim False (m :< TM.VarGlobal attr liftedName) [] appArgs')
+      let lamApp = m :< TM.PiIntro lamAttr [] mxts [] (m :< TM.PiElim False (m :< TM.VarGlobal attr liftedName) [] appArgs')
       isAlreadyRegistered <- liftIO $ AuxEnv.checkIfAlreadyRegistered (auxEnvHandle h) liftedName
       unless isAlreadyRegistered $ do
         liftedBody <- liftIO $ Subst.subst (substHandle h) (IntMap.fromList [(Ident.toInt recFuncName, Subst.Term lamApp)]) e

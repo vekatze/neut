@@ -44,7 +44,7 @@ data TypeF a
   | TVar Ident
   | TVarGlobal AttrVG.Attr DD.DefiniteDescription
   | TyApp a [a]
-  | Pi PiKind [BinderF a] [(BinderF a, Term)] [BinderF a] a
+  | Pi PiKind [BinderF a] [BinderF a] [(BinderF a, Term)] a
   | Data (AttrD.Attr DD.DefiniteDescription (BinderF a)) DD.DefiniteDescription [a]
   | Box a
   | BoxNoema a
@@ -66,7 +66,7 @@ type Term = Cofree TermF Hint
 data TermF a
   = Var Ident
   | VarGlobal AttrVG.Attr DD.DefiniteDescription
-  | PiIntro (AttrL.Attr Type) [BinderF Type] [(BinderF Type, a)] [BinderF Type] a
+  | PiIntro (AttrL.Attr Type) [BinderF Type] [BinderF Type] [(BinderF Type, a)] a
   | PiElim N.IsNoetic a [Type] [a]
   | DataIntro (AttrDI.Attr DD.DefiniteDescription (BinderF Type)) DD.DefiniteDescription [Type] [a]
   | DataElim N.IsNoetic [(Ident, a, Type)] (DT.DecisionTree Type a)

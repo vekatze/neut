@@ -30,8 +30,8 @@ extend term =
       _m :< TM.Var x
     () :< TM.VarGlobal g argNum ->
       _m :< TM.VarGlobal g argNum
-    () :< TM.PiIntro attr impArgs defaultArgs expArgs e ->
-      _m :< TM.PiIntro attr impArgs (map extendDefaultArg defaultArgs) expArgs (extend e)
+    () :< TM.PiIntro attr impArgs expArgs defaultArgs e ->
+      _m :< TM.PiIntro attr impArgs expArgs (map extendDefaultArg defaultArgs) (extend e)
     () :< TM.PiElim b e impArgs expArgs ->
       _m :< TM.PiElim b (extend e) impArgs (map extend expArgs)
     () :< TM.DataIntro attr consName dataArgs consArgs ->
@@ -71,8 +71,8 @@ extendType ty =
       _m :< TM.TVarGlobal attr g
     () :< TM.TyApp t args ->
       _m :< TM.TyApp (extendType t) (map extendType args)
-    () :< TM.Pi piKind impArgs defaultArgs expArgs cod ->
-      _m :< TM.Pi piKind (map extendBinder impArgs) (map extendTypeDefaultArg defaultArgs) (map extendBinder expArgs) (extendType cod)
+    () :< TM.Pi piKind impArgs expArgs defaultArgs cod ->
+      _m :< TM.Pi piKind (map extendBinder impArgs) (map extendBinder expArgs) (map extendTypeDefaultArg defaultArgs) (extendType cod)
     () :< TM.Data attr name es ->
       _m :< TM.Data (fmap extendBinder attr) name (map extendType es)
     () :< TM.Box t ->

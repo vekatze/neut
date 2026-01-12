@@ -71,7 +71,7 @@ data RawTypeF a
   | TypeHole HoleID
   | TyVar Name
   | TyApp a C (SE.Series a)
-  | Pi (SE.Series (RawBinder a), C) (SE.Series (RawBinder a, RawTerm), C) (Args a) C a Loc
+  | Pi (SE.Series (RawBinder a), C) (Args a) (SE.Series (RawBinder a, RawTerm), C) C a Loc
   | Data (AttrD.Attr DD.DefiniteDescription (RawBinder a)) DD.DefiniteDescription [a]
   | Box a
   | BoxNoema a
@@ -104,7 +104,7 @@ data RawTermF a
   | VarGlobal DD.DefiniteDescription GN.GlobalName
   | PiIntro C FuncInfo
   | PiIntroFix O.Opacity C DefInfo
-  | PiElim a C (Maybe (SE.Series RawType)) C (Maybe (SE.Series a)) C (SE.Series a)
+  | PiElim a C (Maybe (SE.Series RawType)) C (SE.Series a) C (Maybe (SE.Series a))
   | PiElimByKey Name C (SE.Series (Hint, Key, C, C, a)) -- auxiliary syntax for key-call
   | PiElimRule Name C (SE.Series a)
   | PiElimMeta Name C (SE.Series a)
@@ -185,8 +185,8 @@ data RawGeist a = RawGeist
     name :: (a, C),
     isConstLike :: IsConstLike,
     impArgs :: (SE.Series (RawBinder RawType), C),
-    defaultArgs :: (SE.Series (RawBinder RawType, RawTerm), C),
     expArgs :: Args RawType,
+    defaultArgs :: (SE.Series (RawBinder RawType, RawTerm), C),
     cod :: (C, RawType)
   }
 
@@ -240,7 +240,7 @@ force e@(m :< _) =
 
 piElim :: a -> [a] -> RawTermF a
 piElim e es =
-  PiElim e [] Nothing [] Nothing [] (SE.fromList' es)
+  PiElim e [] Nothing [] (SE.fromList' es) [] Nothing
 
 lam :: Loc -> Hint -> [(RawBinder RawType, C)] -> RawType -> RawTerm -> RawTerm
 lam loc m varList codType e =

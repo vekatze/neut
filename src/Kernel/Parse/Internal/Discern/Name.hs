@@ -162,7 +162,7 @@ interpretGlobalName h m dd gn = do
     GN.DataIntro dataArgNum consArgNum _ isConstLike -> do
       let argNum = AN.add dataArgNum consArgNum
       let attr = AttrVG.Attr {..}
-      return $ m :< WT.PiElim False (m :< WT.VarGlobal attr dd) ImpArgs.Unspecified DefaultArgs.Unspecified []
+      return $ m :< WT.PiElim False (m :< WT.VarGlobal attr dd) ImpArgs.Unspecified [] DefaultArgs.Unspecified
     GN.PrimType _ ->
       raiseError m $ "`" <> DD.reify dd <> "` is a type name and cannot appear in term position"
     GN.PrimOp primOp ->
@@ -209,7 +209,7 @@ interpretTopLevelFuncTerm ::
 interpretTopLevelFuncTerm m dd argNum isConstLike = do
   let attr = AttrVG.Attr {..}
   if isConstLike
-    then m :< WT.PiElim False (m :< WT.VarGlobal attr dd) ImpArgs.Unspecified DefaultArgs.Unspecified []
+    then m :< WT.PiElim False (m :< WT.VarGlobal attr dd) ImpArgs.Unspecified [] DefaultArgs.Unspecified
     else m :< WT.VarGlobal attr dd
 
 interpretTopLevelFuncType ::
@@ -255,7 +255,7 @@ castFromIntToBool h e@(m :< _) = do
   t <- liftIO $ WT.createTypeHole (H.gensymHandle h) m []
   x1 <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) "arg"
   x2 <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) "arg"
-  let cmpOpType cod = m :< WT.Pi PK.normal [] [] [(m, x1, t), (m, x2, t)] cod
+  let cmpOpType cod = m :< WT.Pi PK.normal [] [(m, x1, t), (m, x2, t)] [] cod
   return $ m :< WT.Magic (M.WeakMagic $ M.LowMagic $ LM.Cast (cmpOpType i1) (cmpOpType bool) e)
 
 candFilter :: (a, Maybe b) -> Maybe (a, b)
