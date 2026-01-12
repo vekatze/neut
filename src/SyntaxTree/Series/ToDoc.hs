@@ -141,7 +141,7 @@ decodePrefix series =
     Nothing ->
       D.Nil
     Just (p, c) -> do
-      let p' = D.text $ " " <> p <> " "
+      let p' = D.text p
       if null c
         then p'
         else

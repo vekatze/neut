@@ -82,6 +82,7 @@ import Language.RawTerm.RawBinder
 import Language.RawTerm.RawIdent hiding (isHole)
 import Language.RawTerm.RawPattern qualified as RP
 import Language.RawTerm.RawStmt
+import Language.RawTerm.RawTerm (CodeVariant (CodeVariantK))
 import Language.RawTerm.RawTerm qualified as RT
 import Language.WeakTerm.CreateHole qualified as WT
 import Language.WeakTerm.FreeVars (freeVars, freeVarsType)
@@ -393,6 +394,10 @@ discern h term =
         FoldRight -> do
           foldedTerm <- buildFoldRight nodeTM (args ++ [leafTM])
           discern h (m :< RT.piElim rootTM [foldedTerm])
+    m :< RT.PiElimMeta name _ es -> do
+      let var = m :< RT.Var name
+      let args = fmap (\e -> m :< RT.CodeIntro CodeVariantK [] [] (e, [])) es
+      discern h $ m :< RT.CodeElim [] [] (m :< RT.PiElim var [] Nothing [] args, [])
     m :< RT.PiElimExact _ e -> do
       e' <- discern h e
       return $ m :< WT.PiElimExact e'

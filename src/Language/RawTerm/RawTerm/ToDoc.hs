@@ -80,6 +80,11 @@ toDoc term =
         [ PI.inject $ attachComment c $ nameToDoc name,
           PI.inject $ SE.decodeHorizontallyIfPossible $ fmap toDoc es
         ]
+    _ :< PiElimMeta name c es -> do
+      PI.arrange
+        [ PI.inject $ attachComment c $ nameToDoc name,
+          PI.inject $ SE.decodeHorizontallyIfPossible $ fmap toDoc es
+        ]
     _ :< PiElimExact c e ->
       PI.arrange
         [ PI.delimiterLeftAligned $ D.text "exact",

@@ -196,6 +196,9 @@ rawTerm' h m headSymbol c = do
                 (kvs, c') <- keyValueArgs $ rawTermKeyValuePair h
                 return (m :< RT.PiElimByKey name c kvs, c'),
               do
+                (es, c') <- metaPiElim $ rawTerm h
+                return (m :< RT.PiElimMeta name c es, c'),
+              do
                 (es, c') <- seriesBracket $ rawTerm h
                 return (m :< RT.PiElimRule name c es, c'),
               do
@@ -260,7 +263,7 @@ rawTermLet h mLet letKind c1 = do
     choice
       [ do
           c <- keyword "on"
-          vs <- bareSeries Nothing SE.Comma $ rawTermNoeticVar h
+          vs <- bareSeries SE.Comma $ rawTermNoeticVar h
           return $ SE.pushComment c vs,
         return $ SE.emptySeries' Nothing SE.Comma
       ]
@@ -283,7 +286,7 @@ rawTermBoxElim h mLet nv c1 = do
     choice
       [ do
           c <- keyword "on"
-          vs <- bareSeries Nothing SE.Comma $ rawTermNoeticVar h
+          vs <- bareSeries SE.Comma $ rawTermNoeticVar h
           return $ SE.pushComment c vs,
         return $ SE.emptySeries' Nothing SE.Comma
       ]
@@ -304,7 +307,7 @@ rawTermPin h m c1 = do
     choice
       [ do
           c <- keyword "on"
-          vs <- bareSeries Nothing SE.Comma $ rawTermNoeticVar h
+          vs <- bareSeries SE.Comma $ rawTermNoeticVar h
           return $ SE.pushComment c vs,
         return $ SE.emptySeries' Nothing SE.Comma
       ]
@@ -760,14 +763,14 @@ rawTermMagicCompileError h m c = do
 
 rawTermMatch :: Handle -> Hint -> C -> Bool -> Parser (RT.RawTerm, C)
 rawTermMatch h m c1 isNoetic = do
-  es <- bareSeries Nothing SE.Comma $ rawTerm h
+  es <- bareSeries SE.Comma $ rawTerm h
   (patternRowList, c) <- seriesBraceList $ rawTermPatternRow h (length $ SE.extract es)
   return (m :< RT.DataElim c1 isNoetic es patternRowList, c)
 
 rawTermPatternRow :: Handle -> Int -> Parser (RP.RawPatternRow RT.RawTerm, C)
 rawTermPatternRow h patternSize = do
   m <- getCurrentHint
-  patternList <- bareSeries Nothing SE.Comma $ rawTermPattern h
+  patternList <- bareSeries SE.Comma $ rawTermPattern h
   if SE.isEmpty patternList
     then failure Nothing (S.fromList [asLabel "list of patterns"])
     else do
@@ -892,7 +895,7 @@ rawTermBrace h = do
 
 rawTermBoxIntro :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermBoxIntro h m c1 = do
-  vs <- bareSeries Nothing SE.Comma $ rawTermNoeticVar h
+  vs <- bareSeries SE.Comma $ rawTermNoeticVar h
   (c2, (e, c)) <- betweenBrace $ rawExpr h
   return (m :< RT.BoxIntro c1 c2 vs e, c)
 
@@ -968,7 +971,12 @@ rawTermAssert h m c1 = do
 keyValueArgs :: Parser (a, C) -> Parser (SE.Series a, C)
 keyValueArgs p = do
   c1 <- keyword "of"
-  series (Just ("of", c1)) SE.Brace SE.Comma p
+  series (Just (" of ", c1)) SE.Brace SE.Comma p
+
+metaPiElim :: Parser (a, C) -> Parser (SE.Series a, C)
+metaPiElim p = do
+  c1 <- delimiter "::"
+  series (Just ("::", c1)) SE.Paren SE.Comma p
 
 foldPiElim ::
   Hint ->

@@ -92,19 +92,18 @@ series prefix container separator p = do
   c2 <- delimiter close
   return (se {SE.prefix = prefix}, c2)
 
-series' :: SE.Prefix -> SE.Container -> SE.Separator -> Parser (a, C) -> Parser (SE.Series a, Loc, C)
-series' prefix container separator p = do
+series' :: SE.Container -> SE.Separator -> Parser (a, C) -> Parser (SE.Series a, Loc, C)
+series' container separator p = do
   let (opener, closer) = getParserPair container
   c1 <- opener
   se <- _series (Just container) separator c1 p
   loc <- getCurrentLoc
   c2 <- closer
-  return (se {SE.prefix = prefix}, loc, c2)
+  return (se, loc, c2)
 
-bareSeries :: SE.Prefix -> SE.Separator -> Parser (a, C) -> Parser (SE.Series a)
-bareSeries prefix separator p = do
-  se <- _series Nothing separator [] p
-  return se {SE.prefix = prefix}
+bareSeries :: SE.Separator -> Parser (a, C) -> Parser (SE.Series a)
+bareSeries separator p = do
+  _series Nothing separator [] p
 
 getParserPair :: SE.Container -> (Parser C, Parser C)
 getParserPair container =
@@ -124,7 +123,7 @@ seriesParen =
 
 seriesParen' :: Parser (a, C) -> Parser (SE.Series a, Loc, C)
 seriesParen' =
-  series' Nothing SE.Paren SE.Comma
+  series' SE.Paren SE.Comma
 
 seriesBrace :: Parser (a, C) -> Parser (SE.Series a, C)
 seriesBrace =
@@ -132,7 +131,7 @@ seriesBrace =
 
 seriesBrace' :: Parser (a, C) -> Parser (SE.Series a, Loc, C)
 seriesBrace' =
-  series' Nothing SE.Brace SE.Comma
+  series' SE.Brace SE.Comma
 
 seriesBracket :: Parser (a, C) -> Parser (SE.Series a, C)
 seriesBracket =
@@ -148,4 +147,4 @@ seriesBraceList =
 
 seriesBraceList' :: Parser (a, C) -> Parser (SE.Series a, Loc, C)
 seriesBraceList' =
-  series' Nothing SE.Brace SE.Bar
+  series' SE.Brace SE.Bar
