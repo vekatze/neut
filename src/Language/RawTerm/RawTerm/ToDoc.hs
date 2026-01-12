@@ -76,14 +76,14 @@ toDoc term =
           PI.arrange
             [ PI.inject $ toDoc e,
               PI.inject $ expArgsDoc c1,
-              PI.inject $ attachComment c3 $ SE.decodeHorizontallyIfPossible $ fmap toDoc defaultArgs
+              PI.inject $ attachComment c3 $ decPiElimKey defaultArgs
             ]
         (Just impArgs, Just defaultArgs) ->
           PI.arrange
             [ PI.inject $ toDoc e,
               PI.inject $ attachComment c1 $ SE.decodeHorizontallyIfPossible $ fmap typeToDoc impArgs,
               PI.inject $ expArgsDoc c2,
-              PI.inject $ attachComment c3 $ SE.decodeHorizontallyIfPossible $ fmap toDoc defaultArgs
+              PI.inject $ attachComment c3 $ decPiElimKey defaultArgs
             ]
     _ :< PiElimByKey name c kvs -> do
       PI.arrange

@@ -104,7 +104,7 @@ data RawTermF a
   | VarGlobal DD.DefiniteDescription GN.GlobalName
   | PiIntro C FuncInfo
   | PiIntroFix O.Opacity C DefInfo
-  | PiElim a C (Maybe (SE.Series RawType)) C (SE.Series a) C (Maybe (SE.Series a))
+  | PiElim a C (Maybe (SE.Series RawType)) C (SE.Series a) C (Maybe (SE.Series (Hint, Key, C, C, a)))
   | PiElimByKey Name C (SE.Series (Hint, Key, C, C, a)) -- auxiliary syntax for key-call
   | PiElimRule Name C (SE.Series a)
   | PiElimMeta Name C (SE.Series a)

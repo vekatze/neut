@@ -361,8 +361,18 @@ discern h term =
         Nothing ->
           return DefaultArgs.Unspecified
         Just defaultArgs -> do
-          defaultArgs' <- mapM (discern h) $ SE.extract defaultArgs
-          return $ DefaultArgs.FullySpecified defaultArgs'
+          case e' of
+            _ :< WT.VarGlobal _ dd -> do
+              let (ks, vs) = unzip $ map (\(_, k, _, _, v) -> (k, v)) $ SE.extract defaultArgs
+              ensureFieldLinearity m ks S.empty S.empty
+              vs' <- mapM (discern h) vs
+              (_, defaultKeys, _) <- KeyArg.lookup (H.keyArgHandle h) m dd
+              let keyMap = Map.fromList $ zip ks (repeat ())
+              checkRedundancy m defaultKeys keyMap
+              let defaultKvs = Map.fromList $ zip ks vs'
+              return $ resolveDefaultKeys defaultKeys defaultKvs
+            _ ->
+              raiseError m "Default arguments are only supported for global function calls"
       expArgs' <- mapM (discern h) $ SE.extract expArgs
       return $ m :< WT.PiElim isNoetic e' impArgs' expArgs' defaultArgs'
     m :< RT.PiElimByKey name _ kvs -> do

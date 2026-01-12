@@ -210,13 +210,32 @@ rawTermPiElimCont h (e@(m :< _), c) = do
   argListList <- many $ rawTermPiElimArgs h
   return $ foldPiElim m (e, c) argListList
 
+type PiElimDefaultArgs =
+  SE.Series (Hint, Key, C, C, RT.RawTerm)
+
+type PiElimArgs =
+  ( Maybe (SE.Series RT.RawType),
+    C,
+    SE.Series RT.RawTerm,
+    C,
+    Maybe PiElimDefaultArgs
+  )
+
+type PiElimArgList =
+  (PiElimArgs, C)
+
 rawTermPiElimArgs ::
   Handle ->
-  Parser ((Maybe (SE.Series RT.RawType), C, SE.Series RT.RawTerm, C, Maybe (SE.Series RT.RawTerm)), C)
+  Parser PiElimArgList
 rawTermPiElimArgs h = do
   (mImpArgs, c1) <- parseImplicitArgsMaybe h
   (expArgs, c2) <- seriesParen (rawTerm h)
-  return ((mImpArgs, c1, expArgs, c2, Nothing), c2)
+  mDefaultArgs <- optional $ seriesBracket $ rawTermKeyValuePair h
+  case mDefaultArgs of
+    Nothing ->
+      return ((mImpArgs, c1, expArgs, c2, Nothing), [])
+    Just (defaultArgs, c3) ->
+      return ((mImpArgs, c1, expArgs, c2, Just defaultArgs), c3)
 
 rawTypeTyAppCont :: Handle -> (RT.RawType, C) -> Parser (RT.RawType, C)
 rawTypeTyAppCont h (t@(m :< _), c) = do
@@ -983,7 +1002,7 @@ metaPiElim p = do
 foldPiElim ::
   Hint ->
   (RT.RawTerm, C) ->
-  [((Maybe (SE.Series RT.RawType), C, SE.Series RT.RawTerm, C, Maybe (SE.Series RT.RawTerm)), C)] ->
+  [PiElimArgList] ->
   (RT.RawTerm, C)
 foldPiElim m (e, c) argListList =
   case argListList of
