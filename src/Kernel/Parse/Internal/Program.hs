@@ -291,10 +291,10 @@ parseResource h = do
   (name, c2) <- baseName
   (handlers, c) <- seriesBrace $ rawExpr h
   case SE.elems handlers of
-    [discarder, copier, typeTag] -> do
-      return (RawStmtDefineResource c1 m (name, c2) discarder copier typeTag (SE.trailingComment handlers), c)
+    [discarder, copier] -> do
+      return (RawStmtDefineResource c1 m (name, c2) discarder copier (SE.trailingComment handlers), c)
     _ ->
-      lift $ raiseError m $ "`resource` must have 3 elements, but found: " <> T.pack (show $ length $ SE.elems handlers)
+      lift $ raiseError m $ "`resource` must have 2 elements, but found: " <> T.pack (show $ length $ SE.elems handlers)
 
 parseVariadic :: Handle -> RuleKind -> Parser (RawStmt, C)
 parseVariadic h vk = do

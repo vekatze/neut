@@ -80,7 +80,6 @@ data BaseRawStmt name
       (name, C)
       (C, RT.RawTerm)
       (C, RT.RawTerm)
-      (C, RT.RawTerm)
       C
   | RawStmtVariadic
       RuleKind
@@ -117,7 +116,6 @@ data PostRawStmt
       C
       Hint
       (DD.DefiniteDescription, C)
-      (C, RT.RawTerm)
       (C, RT.RawTerm)
       (C, RT.RawTerm)
       C

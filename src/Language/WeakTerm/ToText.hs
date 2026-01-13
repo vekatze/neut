@@ -154,7 +154,7 @@ toTextType ty =
       PT.toText pt
     _ :< WT.Void ->
       "void"
-    _ :< WT.Resource dd _ _ _ _ _ -> do
+    _ :< WT.Resource dd _ _ _ _ -> do
       showGlobalVariable dd
     _ :< WT.TypeHole i es ->
       "?" <> T.pack (show (HID.reify i)) <> "(" <> T.intercalate "," (map toTextType es) <> ")"

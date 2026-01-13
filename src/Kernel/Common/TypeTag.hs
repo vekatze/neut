@@ -1,14 +1,11 @@
 module Kernel.Common.TypeTag
   ( TypeTag (..),
     typeTagToInteger,
-    immTypeTagMap,
-    baseTypeTagMap,
     fromIntSize,
     fromFloatSize,
   )
 where
 
-import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.PrimNumSize
 
 data TypeTag
@@ -36,29 +33,6 @@ data TypeTag
   | Wrapper
   | Own
   deriving (Show)
-
-immTypeTagMap :: [(DD.DefiniteDescription, TypeTag)]
-immTypeTagMap =
-  [ (DD.immType, Type),
-    (DD.immNoema, Noema),
-    (DD.immInt1, Int1),
-    (DD.immInt2, Int2),
-    (DD.immInt4, Int4),
-    (DD.immInt8, Int8),
-    (DD.immInt16, Int16),
-    (DD.immInt32, Int32),
-    (DD.immInt64, Int64),
-    (DD.immFloat16, Float16),
-    (DD.immFloat32, Float32),
-    (DD.immFloat64, Float64),
-    (DD.immPointer, Pointer),
-    (DD.immNull, Null),
-    (DD.immRune, Rune)
-  ]
-
-baseTypeTagMap :: [(DD.DefiniteDescription, TypeTag)]
-baseTypeTagMap =
-  immTypeTagMap ++ [(DD.cls, Function)]
 
 typeTagToInteger :: TypeTag -> Integer
 typeTagToInteger tag =

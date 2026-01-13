@@ -135,8 +135,8 @@ weakenType ty =
       m :< WT.PrimType pt
     m :< TM.Void ->
       m :< WT.Void
-    m :< TM.Resource dd resourceID unitType discarder copier typeTag -> do
-      m :< WT.Resource dd resourceID (weakenType unitType) (weaken discarder) (weaken copier) (weaken typeTag)
+    m :< TM.Resource dd resourceID unitType discarder copier -> do
+      m :< WT.Resource dd resourceID (weakenType unitType) (weaken discarder) (weaken copier)
 
 weakenMagic :: Hint -> M.Magic BLT.BaseLowType TM.Type TM.Term -> M.WeakMagic WT.WeakType WT.WeakType WT.WeakTerm
 weakenMagic m magic = do

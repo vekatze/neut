@@ -182,8 +182,7 @@ clarifyStmt h stmt =
           od <- liftIO $ OptimizableData.lookup (optDataHandle h) name
           case od of
             Just OD.Enum -> do
-              let enumInfo = map (\(_, consName, isConstLike, _, d) -> (consName, isConstLike, d)) consInfoList
-              liftIO (Sigma.returnSigmaEnumS4 (sigmaHandle h) name O.Clear enumInfo)
+              liftIO (Sigma.returnSigmaEnumS4 (sigmaHandle h) name O.Clear)
                 >>= clarifyStmtDefineBody' h name xts''
             Just OD.Unary
               | [(_, _, _, [(_, _, t)], _)] <- consInfoList -> do
@@ -406,7 +405,7 @@ clarifyType h tenv ty =
           return Sigma.returnImmediateRuneS4
         PT.Pointer ->
           return Sigma.returnImmediatePointerS4
-    m :< TM.Resource _ resourceID _ discarder copier typeTag -> do
+    m :< TM.Resource _ resourceID _ discarder copier -> do
       let liftedName = Locator.attachCurrentLocator (locatorHandle h) $ BN.resourceName resourceID
       isAlreadyRegistered <- liftIO $ AuxEnv.checkIfAlreadyRegistered (auxEnvHandle h) liftedName
       unless isAlreadyRegistered $ do
@@ -418,10 +417,7 @@ clarifyType h tenv ty =
         copy <-
           clarifyTerm h IntMap.empty (m :< TM.PiElim False copier [] [m :< TM.Var argVarName])
             >>= liftIO . Reduce.reduce (reduceHandle h)
-        tagMaker <-
-          clarifyTerm h IntMap.empty typeTag
-            >>= liftIO . Reduce.reduce (reduceHandle h)
-        let resourceSpec = Utility.ResourceSpec {switch, arg, defaultClause = tagMaker, clauses = [discard, copy]}
+        let resourceSpec = Utility.ResourceSpec {switch, arg, discard, copy}
         liftIO $ Utility.registerSwitcher (utilityHandle h) O.Clear liftedName resourceSpec
       return $ C.UpIntro $ C.VarGlobal liftedName AN.argNumS4
     _ :< TM.Void ->

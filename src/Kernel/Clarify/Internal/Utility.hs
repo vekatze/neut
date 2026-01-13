@@ -76,18 +76,17 @@ makeSwitcher ::
   ResourceSpec ->
   IO ([Ident], C.Comp)
 makeSwitcher h resourceSpec = do
-  let ResourceSpec {defaultClause, clauses} = resourceSpec
+  let ResourceSpec {discard, copy} = resourceSpec
   let (argVarName, _) = arg resourceSpec
   let (switchVarName, switchVar) = switch resourceSpec
-  let clauseList = zip (map EC.Int [0 ..]) clauses
-  enumElim <- getEnumElim h [argVarName] switchVar defaultClause clauseList
+  enumElim <- getEnumElim h [argVarName] switchVar copy [(EC.Int 0, discard)]
   return ([switchVarName, argVarName], enumElim)
 
 data ResourceSpec = ResourceSpec
   { switch :: (Ident, C.Value),
     arg :: (Ident, C.Value),
-    defaultClause :: C.Comp,
-    clauses :: [C.Comp]
+    discard :: C.Comp,
+    copy :: C.Comp
   }
 
 registerSwitcher ::

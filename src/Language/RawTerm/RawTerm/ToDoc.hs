@@ -514,7 +514,7 @@ typeToDoc ty =
       D.text "pointer"
     _ :< Void ->
       D.text "void"
-    _ :< Resource dd _ _ _ _ ->
+    _ :< Resource dd _ _ _ ->
       D.text $ DD.localLocator dd
     _ :< Option t ->
       D.join [D.text "?", typeToDoc t]

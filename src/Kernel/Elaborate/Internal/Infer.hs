@@ -540,20 +540,17 @@ inferTypeWithKind h ty =
       return (ty, m :< WT.Tau)
     m :< WT.Void ->
       return (ty, m :< WT.Tau)
-    m :< WT.Resource dd resourceID unitType discarder copier typeTag -> do
+    m :< WT.Resource dd resourceID unitType discarder copier -> do
       unitType' <- inferType h unitType
       (discarder', td) <- infer (h {varEnv = []}) discarder
       (copier', tc) <- infer (h {varEnv = []}) copier
-      (typeTag', tt) <- infer (h {varEnv = []}) typeTag
       x <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "_"
       resourceType <- liftIO $ newTypeHole h m []
       let tDiscard = m :< WT.Pi PK.normal [] [(m, x, resourceType)] [] unitType'
       let tCopy = m :< WT.Pi PK.normal [] [(m, x, resourceType)] [] resourceType
-      intType <- getIntType (platformHandle h) m
       liftIO $ Constraint.insert (constraintHandle h) tDiscard td
       liftIO $ Constraint.insert (constraintHandle h) tCopy tc
-      liftIO $ Constraint.insert (constraintHandle h) intType tt
-      return (m :< WT.Resource dd resourceID unitType' discarder' copier' typeTag', m :< WT.Tau)
+      return (m :< WT.Resource dd resourceID unitType' discarder' copier', m :< WT.Tau)
     m :< WT.TypeHole holeID _ -> do
       let rawHoleID = HID.reify holeID
       mHoleInfo <- liftIO $ Hole.lookup (holeHandle h) rawHoleID

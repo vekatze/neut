@@ -100,12 +100,11 @@ chainOfType tenv ty =
       []
     _ :< TM.Void ->
       []
-    _ :< TM.Resource _ _ unitType discarder copier typeTag -> do
+    _ :< TM.Resource _ _ unitType discarder copier -> do
       let xs1 = chainOfType tenv unitType
       let xs2 = chainOf' tenv discarder
       let xs3 = chainOf' tenv copier
-      let xs4 = chainOf' tenv typeTag
-      xs1 ++ xs2 ++ xs3 ++ xs4
+      xs1 ++ xs2 ++ xs3
 
 chainOfBinder :: TM.TypeEnv -> [BinderF TM.Type] -> [TM.Term] -> [BinderF TM.Type]
 chainOfBinder tenv binder es =

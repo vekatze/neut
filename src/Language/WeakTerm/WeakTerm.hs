@@ -60,7 +60,7 @@ data WeakTypeF a
   | Code a
   | PrimType PT.PrimType
   | Void
-  | Resource DD.DefiniteDescription Int WeakType WeakTerm WeakTerm WeakTerm
+  | Resource DD.DefiniteDescription Int WeakType WeakTerm WeakTerm
   | TypeHole HoleID [WeakType]
 
 type WeakTerm = Cofree WeakTermF Hint

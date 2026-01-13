@@ -190,12 +190,11 @@ substType h sub ty =
       return ty
     _ :< TM.Void ->
       return ty
-    m :< TM.Resource dd resourceID unitType discarder copier typeTag -> do
+    m :< TM.Resource dd resourceID unitType discarder copier -> do
       unitType' <- substType h sub unitType
       discarder' <- subst h sub discarder
       copier' <- subst h sub copier
-      typeTag' <- subst h sub typeTag
-      return $ m :< TM.Resource dd resourceID unitType' discarder' copier' typeTag'
+      return $ m :< TM.Resource dd resourceID unitType' discarder' copier'
 
 substBinder ::
   Handle ->

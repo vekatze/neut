@@ -103,12 +103,11 @@ freeVarsWithHintsType ty =
       S.empty
     _ :< TM.Void ->
       S.empty
-    _ :< TM.Resource _ _ unitType discarder copier typeTag -> do
+    _ :< TM.Resource _ _ unitType discarder copier -> do
       let xs1 = freeVarsWithHintsType unitType
       let xs2 = freeVarsWithHints discarder
       let xs3 = freeVarsWithHints copier
-      let xs4 = freeVarsWithHints typeTag
-      S.unions [xs1, xs2, xs3, xs4]
+      S.unions [xs1, xs2, xs3]
 
 freeVarsWithHintsBinderType :: [BinderF TM.Type] -> S.Set (Hint, Ident) -> S.Set (Hint, Ident)
 freeVarsWithHintsBinderType binder zs =

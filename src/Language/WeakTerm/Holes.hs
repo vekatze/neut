@@ -109,8 +109,8 @@ holesType ty =
       S.empty
     _ :< WT.Void ->
       S.empty
-    _ :< WT.Resource _ _ unitType discarder copier typeTag -> do
-      S.unions [holesType unitType, holes discarder, holes copier, holes typeTag]
+    _ :< WT.Resource _ _ unitType discarder copier -> do
+      S.unions [holesType unitType, holes discarder, holes copier]
     _ :< WT.TypeHole h es ->
       S.insert h $ S.unions $ map holesType es
 

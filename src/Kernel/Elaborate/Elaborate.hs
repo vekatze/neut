@@ -507,12 +507,11 @@ elaborateType h ty =
       return $ m :< TM.PrimType pt
     m :< WT.Void ->
       return $ m :< TM.Void
-    m :< WT.Resource dd resourceID unitType discarder copier typeTag -> do
+    m :< WT.Resource dd resourceID unitType discarder copier -> do
       unitType' <- elaborateType h unitType
       discarder' <- elaborate' h discarder
       copier' <- elaborate' h copier
-      typeTag' <- elaborate' h typeTag
-      return $ m :< TM.Resource dd resourceID unitType' discarder' copier' typeTag'
+      return $ m :< TM.Resource dd resourceID unitType' discarder' copier'
     m :< WT.TypeHole hole es -> do
       fillHole h m hole es >>= elaborateType h
 

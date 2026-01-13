@@ -78,8 +78,8 @@ compressType ty =
       () :< TM.PrimType pt
     _ :< TM.Void ->
       () :< TM.Void
-    _ :< TM.Resource dd resourceID unitType discarder copier typeTag ->
-      () :< TM.Resource dd resourceID unitType discarder copier typeTag
+    _ :< TM.Resource dd resourceID unitType discarder copier ->
+      () :< TM.Resource dd resourceID unitType discarder copier
 
 compressBinder :: BinderF TM.Type -> BinderF (Cofree TM.TypeF ())
 compressBinder (m, x, t) =

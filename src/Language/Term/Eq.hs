@@ -98,12 +98,11 @@ eqTypeWithEnv env (_ :< type1) (_ :< type2) =
       pt1 == pt2
     (TM.Void, TM.Void) ->
       True
-    (TM.Resource dd1 _ unitType1 discarder1 copier1 typeTag1, TM.Resource dd2 _ unitType2 discarder2 copier2 typeTag2) ->
+    (TM.Resource dd1 _ unitType1 discarder1 copier1, TM.Resource dd2 _ unitType2 discarder2 copier2) ->
       dd1 == dd2
         && eqTypeWithEnv env unitType1 unitType2
         && eqTerm discarder1 discarder2
         && eqTerm copier1 copier2
-        && eqTerm typeTag1 typeTag2
     _ ->
       False
 

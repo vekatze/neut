@@ -51,7 +51,7 @@ data TypeF a
   | Code a
   | PrimType PT.PrimType
   | Void
-  | Resource DD.DefiniteDescription ID Type Term Term Term
+  | Resource DD.DefiniteDescription ID Type Term Term
   deriving (Generic)
 
 instance (Binary a) => Binary (TypeF a)

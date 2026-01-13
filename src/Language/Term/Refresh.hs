@@ -241,12 +241,11 @@ refreshType h ty =
       return ty
     _ :< TM.Void ->
       return ty
-    m :< TM.Resource dd resourceID unitType discarder copier typeTag -> do
+    m :< TM.Resource dd resourceID unitType discarder copier -> do
       unitType' <- refreshType h unitType
       discarder' <- refresh h discarder
       copier' <- refresh h copier
-      typeTag' <- refresh h typeTag
-      return $ m :< TM.Resource dd resourceID unitType' discarder' copier' typeTag'
+      return $ m :< TM.Resource dd resourceID unitType' discarder' copier'
 
 refreshTypeBinder ::
   Handle ->

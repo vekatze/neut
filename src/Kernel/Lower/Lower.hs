@@ -33,7 +33,6 @@ import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.Env qualified as Env
 import Kernel.Common.Handle.Global.Platform qualified as Platform
 import Kernel.Common.Target
-import Kernel.Common.TypeTag (baseTypeTagMap)
 import Kernel.Lower.Cancel
 import Language.Common.ArgNum qualified as AN
 import Language.Common.BaseLowType qualified as BLT
@@ -92,7 +91,7 @@ makeBaseDeclEnv arch = do
 lower :: Handle -> [C.CompStmt] -> App LC.LowCode
 lower h stmtList = do
   liftIO $ registerInternalNames h stmtList
-  liftIO $ forM baseTypeTagMap $ \(dd, _) ->
+  liftIO $ forM DD.baseTypes $ \dd ->
     insDeclEnv h (DN.In dd) AN.argNumS4
   stmtList' <- catMaybes <$> mapM (lowerStmt h) stmtList
   LC.LowCodeNormal <$> liftIO (summarize h stmtList')

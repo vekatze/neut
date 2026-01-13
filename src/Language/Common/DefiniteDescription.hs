@@ -24,6 +24,8 @@ module Language.Common.DefiniteDescription
     immRune,
     immPointer,
     immNull,
+    immTypes,
+    baseTypes,
     cls,
     toBuilder,
     llvmGlobalLocator,
@@ -201,6 +203,29 @@ immPointer =
 immNull :: DefiniteDescription
 immNull =
   newByGlobalLocator (SGL.baseGlobalLocatorOf SL.internalLocator) BN.immNull
+
+immTypes :: [DefiniteDescription]
+immTypes =
+  [ immType,
+    immNoema,
+    immInt1,
+    immInt2,
+    immInt4,
+    immInt8,
+    immInt16,
+    immInt32,
+    immInt64,
+    immFloat16,
+    immFloat32,
+    immFloat64,
+    immPointer,
+    immNull,
+    immRune
+  ]
+
+baseTypes :: [DefiniteDescription]
+baseTypes =
+  immTypes ++ [cls]
 
 cls :: DefiniteDescription
 cls =
