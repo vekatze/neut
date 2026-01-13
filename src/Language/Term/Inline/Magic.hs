@@ -66,7 +66,7 @@ evaluateGetTypeTag h m moduleID typeExpr = do
     _ :< TM.BoxNoema _ ->
       returnTypeTagIntValue h m moduleID TypeTag.Noema
     _ :< TM.Box _ ->
-      returnTypeTagIntValue h m moduleID TypeTag.Own
+      returnTypeTagIntValue h m moduleID TypeTag.BoxT
     _ :< TM.Code _ ->
       returnTypeTagIntValue h m moduleID TypeTag.Opaque
     _ :< TM.PrimType (PT.Int size) ->

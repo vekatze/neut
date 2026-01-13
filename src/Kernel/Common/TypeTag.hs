@@ -31,7 +31,7 @@ data TypeTag
   | Binary
   | Vector
   | Wrapper
-  | Own
+  | BoxT
   deriving (Show)
 
 typeTagToInteger :: TypeTag -> Integer
@@ -81,7 +81,7 @@ typeTagToInteger tag =
       20
     Wrapper ->
       21
-    Own ->
+    BoxT ->
       22
 
 fromIntSize :: IntSize -> TypeTag
