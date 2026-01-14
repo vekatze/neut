@@ -357,6 +357,7 @@ discern h term =
         Just impArgs -> do
           impArgs' <- mapM (discernType h) $ SE.extract impArgs
           return $ ImpArgs.FullySpecified impArgs'
+      expArgs' <- mapM (discern h) $ SE.extract expArgs
       defaultArgs' <- case mDefaultArgs of
         Nothing ->
           return $ DefaultArgs.ByKey []
@@ -365,7 +366,6 @@ discern h term =
           ensureFieldLinearity m ks S.empty S.empty
           vs' <- mapM (discern h) vs
           return $ DefaultArgs.ByKey (zip ks vs')
-      expArgs' <- mapM (discern h) $ SE.extract expArgs
       return $ m :< WT.PiElim isNoetic e' impArgs' expArgs' defaultArgs'
     m :< RT.PiElimByKey name _ kvs -> do
       let isNoetic = False -- overwritten later in `infer`
@@ -668,9 +668,10 @@ discernType h ty =
       (expArgs', h'') <- discernTypeBinder h' (RT.extractArgs expArgs) endLoc
       (defaultArgs', h''') <- discernTypeBinderWithDefaultArgs h'' defaultArgsBase endLoc
       t' <- discernType h''' t
-      forM_ (impArgs' ++ expArgs' ++ map fst defaultArgs') $ \(_, x, _) ->
+      let defaultBinders = map fst defaultArgs'
+      forM_ (impArgs' ++ expArgs' ++ defaultBinders) $ \(_, x, _) ->
         liftIO (Unused.deleteVariable (H.unusedHandle h''') x)
-      return $ m :< WT.Pi PK.normal impArgs' expArgs' defaultArgs' t'
+      return $ m :< WT.Pi PK.normal impArgs' expArgs' defaultBinders t'
     m :< RT.Data attr dataName es -> do
       es' <- mapM (discernType h) es
       let allowedVars = S.unions $ map freeVarsType es'

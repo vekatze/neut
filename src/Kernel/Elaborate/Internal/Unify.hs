@@ -11,7 +11,6 @@ import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.IO.Class
-import Data.Bifunctor (second)
 import Data.HashMap.Strict qualified as Map
 import Data.IntMap qualified as IntMap
 import Data.List (partition)
@@ -391,9 +390,9 @@ getConsArgTypes h m consName = do
   t <- Type.lookup' (typeHandle h) m consName
   case t of
     _ :< WT.Pi (PK.DataIntro False) impArgs expArgs defaultArgs (_ :< WT.Pi (PK.Normal _) impArgs' expArgs' defaultArgs' _dataType) -> do
-      return $ impArgs ++ expArgs ++ map fst defaultArgs ++ impArgs' ++ expArgs' ++ map fst defaultArgs'
+      return $ impArgs ++ expArgs ++ defaultArgs ++ impArgs' ++ expArgs' ++ defaultArgs'
     _ :< WT.Pi (PK.DataIntro True) impArgs expArgs defaultArgs _dataType -> do
-      return $ impArgs ++ expArgs ++ map fst defaultArgs
+      return $ impArgs ++ expArgs ++ defaultArgs
     _ ->
       raiseCritical m $ "Got a malformed constructor type:\n" <> toTextType t
 
@@ -457,39 +456,16 @@ substConsArgs h sub consArgs =
 
 createDefaultConstraints ::
   [BinderF WT.WeakType] ->
-  [(BinderF WT.WeakType, WT.WeakTerm)] ->
   [BinderF WT.WeakType] ->
-  [(BinderF WT.WeakType, WT.WeakTerm)] ->
+  [BinderF WT.WeakType] ->
+  [BinderF WT.WeakType] ->
   Maybe ([(BinderF WT.WeakType, BinderF WT.WeakType)], [C.Constraint])
 createDefaultConstraints impArgs1 defaultArgs1 impArgs2 defaultArgs2 = do
-  let params1 = map (,Nothing) impArgs1 ++ map (second Just) defaultArgs1
-  let params2 = map (,Nothing) impArgs2 ++ map (second Just) defaultArgs2
-  createDefaultConstraints' params1 params2
-
-createDefaultConstraints' ::
-  [(BinderF WT.WeakType, Maybe WT.WeakTerm)] ->
-  [(BinderF WT.WeakType, Maybe WT.WeakTerm)] ->
-  Maybe ([(BinderF WT.WeakType, BinderF WT.WeakType)], [C.Constraint])
-createDefaultConstraints' params1 params2 = do
-  case (params1, params2) of
-    ([], []) ->
-      Just ([], [])
-    (_ : _, []) ->
-      Nothing
-    ([], _ : _) ->
-      Nothing
-    ((binder1, me1) : rest1, (binder2, me2) : rest2) -> do
-      case (me1, me2) of
-        (Nothing, Nothing) -> do
-          (binders, cs) <- createDefaultConstraints' rest1 rest2
-          return ((binder1, binder2) : binders, cs)
-        (Just _, Nothing) ->
-          Nothing
-        (Nothing, Just _) ->
-          Nothing
-        (Just _, Just _) -> do
-          (binders, cs) <- createDefaultConstraints' rest1 rest2
-          return ((binder1, binder2) : binders, cs)
+  let params1 = impArgs1 ++ defaultArgs1
+  let params2 = impArgs2 ++ defaultArgs2
+  if length params1 == length params2
+    then Just (zip params1 params2, [])
+    else Nothing
 
 increment :: Handle -> Handle
 increment h = do

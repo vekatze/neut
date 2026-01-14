@@ -10,7 +10,6 @@ import App.Run (raiseError)
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.IO.Class
-import Data.Bitraversable (bimapM)
 import Data.IORef
 import Data.Text qualified as T
 import Language.Common.Attr.Data qualified as AttrD
@@ -55,7 +54,7 @@ reduceType h ty = do
     m :< WT.Pi piKind impArgs expArgs defaultArgs cod -> do
       impArgs' <- mapM (reduceBinder h) impArgs
       expArgs' <- mapM (reduceBinder h) expArgs
-      defaultArgs' <- mapM (bimapM (reduceBinder h) return) defaultArgs
+      defaultArgs' <- mapM (reduceBinder h) defaultArgs
       cod' <- reduceType h cod
       return $ m :< WT.Pi piKind impArgs' expArgs' defaultArgs' cod'
     m :< WT.Data attr name es -> do

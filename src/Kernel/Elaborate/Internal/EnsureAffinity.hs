@@ -14,6 +14,7 @@ import Control.Monad.IO.Class
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.IntMap qualified as IntMap
+import Data.Maybe (catMaybes)
 import Data.Set qualified as S
 import Kernel.Common.Handle.Global.OptimizableData qualified as OptimizableData
 import Kernel.Common.Handle.Global.Type qualified as Type
@@ -142,7 +143,7 @@ analyze h term = do
           (cs1, h') <- analyzeBinder h (impArgs ++ expArgs)
           (cs2, h'') <- analyzeBinder h' (map fst defaultArgs)
           cs3 <- analyzeType h'' codType
-          let piType = m :< TM.Pi PK.normal impArgs expArgs defaultArgs codType
+          let piType = m :< TM.Pi PK.normal impArgs expArgs (map fst defaultArgs) codType
           liftIO $ insertRelevantVar x h''
           cs4 <- analyze (extendHandle (mx, x, piType) h'') e
           css <- forM (S.toList $ freeVarsWithHints term) $ uncurry (analyzeVar h)
@@ -153,11 +154,12 @@ analyze h term = do
           cs3 <- analyzeType h'' codType
           cs4 <- analyze h'' e
           return $ cs1 ++ cs2 ++ cs3 ++ cs4
-    _ :< TM.PiElim _ e impArgs expArgs -> do
+    _ :< TM.PiElim _ e impArgs expArgs defaultArgs -> do
       cs <- analyze h e
       css1 <- mapM (analyzeType h) impArgs
       css2 <- mapM (analyze h) expArgs
-      return $ cs ++ concat css1 ++ concat css2
+      css3 <- mapM (analyze h) (catMaybes defaultArgs)
+      return $ cs ++ concat css1 ++ concat css2 ++ concat css3
     _ :< TM.DataIntro _ _ dataArgs consArgs -> do
       css1 <- mapM (analyzeType $ deactivateExpCheck h) dataArgs
       css2 <- mapM (analyze $ deactivateExpCheck h) consArgs
@@ -289,7 +291,7 @@ analyzeType h ty =
       css <- mapM (analyzeType h) args
       return $ cs0 ++ concat css
     _ :< TM.Pi _ impArgs expArgs defaultArgs t -> do
-      let impBinders = impArgs ++ expArgs ++ map fst defaultArgs
+      let impBinders = impArgs ++ expArgs ++ defaultArgs
       (cs1, h') <- analyzeBinder h impBinders
       (cs2, h'') <- analyzeBinder h' expArgs
       cs3 <- analyzeType h'' t
@@ -485,9 +487,9 @@ getConsArgTypes h m consName = do
   t <- Type.lookup' (Elaborate.typeHandle (elaborateHandle h)) m consName
   case t of
     _ :< WT.Pi (PK.DataIntro False) impArgs expArgs defaultArgs (_ :< WT.Pi (PK.Normal _) impArgs' expArgs' defaultArgs' _dataType) -> do
-      return $ impArgs ++ expArgs ++ map fst defaultArgs ++ impArgs' ++ expArgs' ++ map fst defaultArgs'
+      return $ impArgs ++ expArgs ++ defaultArgs ++ impArgs' ++ expArgs' ++ defaultArgs'
     _ :< WT.Pi (PK.DataIntro True) impArgs expArgs defaultArgs _dataType -> do
-      return $ impArgs ++ expArgs ++ map fst defaultArgs
+      return $ impArgs ++ expArgs ++ defaultArgs
     _ ->
       raiseCritical m $ "Got a malformed constructor type:\n" <> WT.toTextType t
 

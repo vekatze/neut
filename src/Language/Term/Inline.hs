@@ -18,6 +18,7 @@ import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.IntMap qualified as IntMap
 import Data.List (find)
+import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
 import Gensym.Gensym qualified as Gensym
 import Gensym.Handle qualified as GensymHandle
@@ -100,82 +101,97 @@ inline' h term = do
           codType' <- inlineType' h codType
           let attr' = attr {AttrL.lamKind = LK.Normal mName codType'}
           return (m :< TM.PiIntro attr' impArgs' expArgs' defaultArgs' e')
-    m :< TM.PiElim isNoetic e impArgs expArgs -> do
+    m :< TM.PiElim isNoetic e impArgs expArgs defaultArgs -> do
       e' <- inline' h e
       impArgs' <- mapM (inlineType' h) impArgs
       expArgs' <- mapM (inline' h) expArgs
+      defaultArgs' <- mapM (traverse (inline' h)) defaultArgs
       if isNoetic
-        then return $ m :< TM.PiElim isNoetic e' impArgs' expArgs'
+        then return $ m :< TM.PiElim isNoetic e' impArgs' expArgs' defaultArgs'
         else do
           let Handle {dmap} = h
           case e' of
-            (_ :< TM.PiIntro (AttrL.Attr {lamKind}) impBinders expBinders defBinders body)
-              | length impBinders == length impArgs',
-                expParams <- expBinders ++ map fst defBinders,
-                length expParams == length expArgs',
-                canReduceByLamKind lamKind -> do
-                  let subSelf = selfSubstForLamKind lamKind e'
+            (_ :< TM.PiIntro (AttrL.Attr {lamKind}) impBinders expBinders defBinders body) -> do
+              if length impBinders /= length impArgs' || not (canReduceByLamKind lamKind)
+                then return (m :< TM.PiElim isNoetic e' impArgs' expArgs' defaultArgs')
+                else do
                   let impIds = map (\(_, x, _) -> x) impBinders
-                  let expIds = map (\(_, x, _) -> x) expParams
                   let subType = IntMap.fromList $ zip (map Ident.toInt impIds) (map Subst.Type impArgs')
-                  let subTerm = IntMap.fromList $ zip (map Ident.toInt expIds) (map Subst.Term expArgs')
-                  if all TM.isValue expArgs'
-                    then do
-                      let sub = IntMap.unions [subSelf, subType, subTerm]
-                      _ :< body' <- liftIO $ Subst.subst (substHandle h) sub body
-                      inline' h $ m :< body'
+                  let defaultArgsRaw = fillDefaultArgs defaultArgs' (map snd defBinders)
+                  defaultArgsFilled <- liftIO $ mapM (Subst.subst (substHandle h) subType) defaultArgsRaw
+                  let expParams = expBinders ++ map fst defBinders
+                  let expArgsAll = expArgs' ++ defaultArgsFilled
+                  if length expParams /= length expArgsAll
+                    then return (m :< TM.PiElim isNoetic e' impArgs' expArgs' defaultArgs')
                     else do
-                      let sub = IntMap.unions [subSelf, subType]
-                      (expParams', _ :< body') <- liftIO $ Subst.subst' (substHandle h) sub expParams body
-                      body'' <- liftIO $ Refresh.refresh (refreshHandle h) $ m :< body'
-                      inline' h $ bind (zip expParams' expArgs') body''
+                      let subSelf = selfSubstForLamKind lamKind e'
+                      let expIds = map (\(_, x, _) -> x) expParams
+                      let subTerm = IntMap.fromList $ zip (map Ident.toInt expIds) (map Subst.Term expArgsAll)
+                      if all TM.isValue expArgsAll
+                        then do
+                          let sub = IntMap.unions [subSelf, subType, subTerm]
+                          _ :< body' <- liftIO $ Subst.subst (substHandle h) sub body
+                          inline' h $ m :< body'
+                        else do
+                          let sub = IntMap.unions [subSelf, subType]
+                          (expParams', _ :< body') <- liftIO $ Subst.subst' (substHandle h) sub expParams body
+                          body'' <- liftIO $ Refresh.refresh (refreshHandle h) $ m :< body'
+                          inline' h $ bind (zip expParams' expArgsAll) body''
             (_ :< TM.VarGlobal _ dd)
               | Just defInfo <- Map.lookup dd dmap -> do
-                  let DefInfo {defBinders = xts, defBody = body, codType, defKind} = defInfo
-                  let impArgNum = length impArgs'
-                  let (impParams, expParams) = splitAt impArgNum xts
-                  let impIds = map (\(_, x, _) -> x) impParams
-                  let subType = IntMap.fromList $ zip (map Ident.toInt impIds) (map Subst.Type impArgs')
-                  let tracer = if isMacroDef defKind then withMacroHint h dd m else id
-                  case defKind of
-                    Macro -> do
-                      mSelf <- lookupGuard h dd impArgs'
-                      case mSelf of
-                        Just selfTerm -> do
-                          return $ m :< TM.PiElim False selfTerm [] expArgs'
-                        Nothing -> do
-                          (expBinders', body') <- liftIO $ Subst.subst' (substHandle h) subType expParams body
-                          self <- liftIO $ CreateSymbol.newIdentFromText (gensymHandle h) $ "knot-" <> DD.localLocator dd
-                          codType' <- liftIO $ Subst.substType (substHandle h) subType codType
-                          pushGuard h dd impArgs' (m :< TM.Var self)
-                          body'' <- tracer $ liftIO (Refresh.refresh (refreshHandle h) body') >>= inline h
-                          popGuard h
-                          identity <- liftIO $ Gensym.newCount (gensymHandle h)
-                          let selfType = m :< TM.Pi PK.normal [] expBinders' [] codType'
-                          let attr = AttrL.Attr {lamKind = LK.Fix O.Opaque (m, self, selfType), identity}
-                          let fun = m :< TM.PiIntro attr [] expBinders' [] body''
-                          return $ m :< TM.PiElim False fun [] expArgs'
-                    _ -> do
-                      if all TM.isValue expArgs'
-                        then do
-                          let expIds = map (\(_, x, _) -> x) expParams
-                          let subTerm = IntMap.fromList $ zip (map Ident.toInt expIds) (map Subst.Term expArgs')
-                          let sub = IntMap.union subTerm subType
-                          _ :< body' <- liftIO $ Subst.subst (substHandle h) sub body
-                          body'' <- liftIO $ Refresh.refresh (refreshHandle h) $ m :< body'
-                          tracer $ inline' h body''
+                  let DefInfo {defImpBinders = impParams, defExpBinders = expBinders, defDefaultArgs = defDefaults, defBody = body, codType, defKind} = defInfo
+                  if length impParams /= length impArgs'
+                    then return (m :< TM.PiElim isNoetic e' impArgs' expArgs' defaultArgs')
+                    else do
+                      let impIds = map (\(_, x, _) -> x) impParams
+                      let subType = IntMap.fromList $ zip (map Ident.toInt impIds) (map Subst.Type impArgs')
+                      let expParams = expBinders ++ map fst defDefaults
+                      let defaultArgsRaw = fillDefaultArgs defaultArgs' (map snd defDefaults)
+                      defaultArgsFilled <- liftIO $ mapM (Subst.subst (substHandle h) subType) defaultArgsRaw
+                      let expArgsAll = expArgs' ++ defaultArgsFilled
+                      if length expParams /= length expArgsAll
+                        then return (m :< TM.PiElim isNoetic e' impArgs' expArgs' defaultArgs')
                         else do
-                          (expParams', _ :< body') <- liftIO $ Subst.subst' (substHandle h) subType expParams body
-                          body'' <- liftIO $ Refresh.refresh (refreshHandle h) $ m :< body'
-                          tracer $ inline' h $ bind (zip expParams' expArgs') body''
+                          let tracer = if isMacroDef defKind then withMacroHint h dd m else id
+                          case defKind of
+                            Macro -> do
+                              mSelf <- lookupGuard h dd impArgs'
+                              case mSelf of
+                                Just selfTerm -> do
+                                  return $ m :< TM.PiElim False selfTerm [] expArgsAll []
+                                Nothing -> do
+                                  (expBinders', body') <- liftIO $ Subst.subst' (substHandle h) subType expParams body
+                                  self <- liftIO $ CreateSymbol.newIdentFromText (gensymHandle h) $ "knot-" <> DD.localLocator dd
+                                  codType' <- liftIO $ Subst.substType (substHandle h) subType codType
+                                  pushGuard h dd impArgs' (m :< TM.Var self)
+                                  body'' <- tracer $ liftIO (Refresh.refresh (refreshHandle h) body') >>= inline h
+                                  popGuard h
+                                  identity <- liftIO $ Gensym.newCount (gensymHandle h)
+                                  let selfType = m :< TM.Pi PK.normal [] expBinders' [] codType'
+                                  let attr = AttrL.Attr {lamKind = LK.Fix O.Opaque (m, self, selfType), identity}
+                                  let fun = m :< TM.PiIntro attr [] expBinders' [] body''
+                                  return $ m :< TM.PiElim False fun [] expArgsAll []
+                            _ -> do
+                              if all TM.isValue expArgsAll
+                                then do
+                                  let expIds = map (\(_, x, _) -> x) expParams
+                                  let subTerm = IntMap.fromList $ zip (map Ident.toInt expIds) (map Subst.Term expArgsAll)
+                                  let sub = IntMap.union subTerm subType
+                                  _ :< body' <- liftIO $ Subst.subst (substHandle h) sub body
+                                  body'' <- liftIO $ Refresh.refresh (refreshHandle h) $ m :< body'
+                                  tracer $ inline' h body''
+                                else do
+                                  (expParams', _ :< body') <- liftIO $ Subst.subst' (substHandle h) subType expParams body
+                                  body'' <- liftIO $ Refresh.refresh (refreshHandle h) $ m :< body'
+                                  tracer $ inline' h $ bind (zip expParams' expArgsAll) body''
             (_ :< TM.Prim (PV.Op op)) -> do
               case ConstantFold.evaluatePrimOp m op expArgs' of
                 Just result -> do
                   return result
                 Nothing ->
-                  return (m :< TM.PiElim isNoetic e' impArgs' expArgs')
+                  return (m :< TM.PiElim isNoetic e' impArgs' expArgs' defaultArgs')
             _ ->
-              return (m :< TM.PiElim isNoetic e' impArgs' expArgs')
+              return (m :< TM.PiElim isNoetic e' impArgs' expArgs' defaultArgs')
     m :< TM.DataIntro attr consName dataArgs consArgs -> do
       dataArgs' <- mapM (inlineType' h) dataArgs
       consArgs' <- mapM (inline' h) consArgs
@@ -368,7 +384,7 @@ inlineType' h ty =
     m :< TM.Pi piKind impArgs expArgs defaultArgs cod -> do
       impArgs' <- mapM (inlineTypeBinder h) impArgs
       expArgs' <- mapM (inlineTypeBinder h) expArgs
-      defaultArgs' <- mapM (bimapM (inlineTypeBinder h) (inline' h)) defaultArgs
+      defaultArgs' <- mapM (inlineTypeBinder h) defaultArgs
       cod' <- inlineType' h cod
       return $ m :< TM.Pi piKind impArgs' expArgs' defaultArgs' cod'
     m :< TM.Data attr name es -> do
@@ -559,6 +575,13 @@ lookupSplit' cursor acc oets =
       if o == cursor
         then Just (e, reverse acc ++ rest)
         else lookupSplit' cursor (oet : acc) rest
+
+fillDefaultArgs ::
+  [Maybe TM.Term] ->
+  [TM.Term] ->
+  [TM.Term]
+fillDefaultArgs overrides defaults = do
+  zipWith (flip fromMaybe) overrides defaults
 
 bind :: [(BinderF TM.Type, TM.Term)] -> TM.Term -> TM.Term
 bind binder cont =

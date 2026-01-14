@@ -53,7 +53,7 @@ data WeakTypeF a
   | TVar Ident
   | TVarGlobal AttrVG.Attr DD.DefiniteDescription
   | TyApp a [a]
-  | Pi PiKind [BinderF a] [BinderF a] [(BinderF a, WeakTerm)] a
+  | Pi PiKind [BinderF a] [BinderF a] [BinderF a] a
   | Data (AttrD.Attr DD.DefiniteDescription (BinderF a)) DD.DefiniteDescription [a]
   | Box a
   | BoxNoema a

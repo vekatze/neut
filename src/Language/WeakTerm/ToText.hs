@@ -1,7 +1,6 @@
 module Language.WeakTerm.ToText (toText, toTextType) where
 
 import Control.Comonad.Cofree
-import Data.Bifunctor (second)
 import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
 import Language.Common.Attr.Data qualified as AttrD
@@ -137,7 +136,7 @@ toTextType ty =
         PK.Normal isConstLike ->
           if isConstLike
             then "pi-constlike: " <> showImpArgsForAll impArgs defaultArgs <> toTextType cod
-            else showImpArgs impArgs [] <> inParen (showDomArgList expArgs) <> showDefaultArgs defaultArgs <> " -> " <> toTextType cod
+            else showImpArgs impArgs [] <> inParen (showDomArgList expArgs) <> showDefaultBinders defaultArgs <> " -> " <> toTextType cod
         PK.DataIntro _ -> do
           "pi-data-intro" <> showImpArgsForAll impArgs defaultArgs <> toTextType cod
     _ :< WT.Data (AttrD.Attr {..}) name es -> do
@@ -177,12 +176,18 @@ showDefaultArgs defaultArgs =
     then ""
     else inBracket $ showDefaultDomArgList defaultArgs
 
-showImpArgsForAll :: [BinderF WT.WeakType] -> [(BinderF WT.WeakType, WT.WeakTerm)] -> T.Text
+showImpArgsForAll :: [BinderF WT.WeakType] -> [BinderF WT.WeakType] -> T.Text
 showImpArgsForAll impArgs defaultArgs = do
-  let impArgsWithDefaults = map (,Nothing) impArgs ++ map (second Just) defaultArgs
+  let impArgsWithDefaults = map (,Nothing) impArgs ++ map (,Nothing) defaultArgs
   if null impArgsWithDefaults
     then ""
     else "∀ " <> T.intercalate " " (map showDataImpArgWithDefault impArgsWithDefaults) <> ". "
+
+showDefaultBinders :: [BinderF WT.WeakType] -> T.Text
+showDefaultBinders defaultArgs =
+  if null defaultArgs
+    then ""
+    else inBracket $ showDefaultDomBinderList defaultArgs
 
 showImpDomArgList :: [BinderF WT.WeakType] -> T.Text
 showImpDomArgList mxts =
@@ -192,6 +197,10 @@ showDefaultDomArgList :: [(BinderF WT.WeakType, WT.WeakTerm)] -> T.Text
 showDefaultDomArgList mxts =
   T.intercalate ", " $ map showDefaultDomArg mxts
 
+showDefaultDomBinderList :: [BinderF WT.WeakType] -> T.Text
+showDefaultDomBinderList mxts =
+  T.intercalate ", " $ map showDefaultDomBinder mxts
+
 showImpDomArg :: BinderF WT.WeakType -> T.Text
 showImpDomArg (_, x, _) =
   showVariable x
@@ -199,6 +208,10 @@ showImpDomArg (_, x, _) =
 showDefaultDomArg :: (BinderF WT.WeakType, WT.WeakTerm) -> T.Text
 showDefaultDomArg ((_, x, t), defaultValue) =
   showVariable x <> ": " <> toTextType t <> " := " <> toText defaultValue
+
+showDefaultDomBinder :: BinderF WT.WeakType -> T.Text
+showDefaultDomBinder (_, x, t) =
+  showVariable x <> ": " <> toTextType t
 
 showDataImpArgWithDefault :: (BinderF WT.WeakType, Maybe WT.WeakTerm) -> T.Text
 showDataImpArgWithDefault ((_, x, t), maybeDefault) = do

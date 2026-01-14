@@ -166,8 +166,8 @@ eqType (_ :< ty1) (_ :< ty2)
   | WT.Pi _ impArgs1 expArgs1 defaultArgs1 cod1 <- ty1,
     WT.Pi _ impArgs2 expArgs2 defaultArgs2 cod2 <- ty2 = do
       let b1 = eqImpArgs impArgs1 impArgs2
-      let b2 = eqDefaultArgs defaultArgs1 defaultArgs2
-      let b3 = eqBinderType (impArgs1 ++ expArgs1 ++ map fst defaultArgs1) (impArgs2 ++ expArgs2 ++ map fst defaultArgs2)
+      let b2 = eqBinderType defaultArgs1 defaultArgs2
+      let b3 = eqBinderType (impArgs1 ++ expArgs1 ++ defaultArgs1) (impArgs2 ++ expArgs2 ++ defaultArgs2)
       let b4 = eqType cod1 cod2
       b1 && b2 && b3 && b4
   | WT.Data attr1 name1 es1 <- ty1,
@@ -207,11 +207,25 @@ eqImpArgs =
   eqBinderType
 
 eqDefaultOverrideArgs :: DefaultArgs.DefaultArgs WT.WeakTerm -> DefaultArgs.DefaultArgs WT.WeakTerm -> Bool
-eqDefaultOverrideArgs (DefaultArgs.ByKey xs) (DefaultArgs.ByKey ys) =
-  length xs == length ys && all (uncurry eqKeyArg) (zip xs ys)
+eqDefaultOverrideArgs args1 args2 =
+  case (args1, args2) of
+    (DefaultArgs.ByKey xs, DefaultArgs.ByKey ys) ->
+      length xs == length ys && all (uncurry eqKeyArg) (zip xs ys)
+    (DefaultArgs.Aligned xs, DefaultArgs.Aligned ys) ->
+      length xs == length ys && all (uncurry eqMaybeTerm) (zip xs ys)
+    _ ->
+      False
   where
     eqKeyArg (k1, v1) (k2, v2) =
       k1 == k2 && eq v1 v2
+    eqMaybeTerm mx my =
+      case (mx, my) of
+        (Just x, Just y) ->
+          eq x y
+        (Nothing, Nothing) ->
+          True
+        _ ->
+          False
 
 eqDefaultArgs :: [(BinderF WT.WeakType, WT.WeakTerm)] -> [(BinderF WT.WeakType, WT.WeakTerm)] -> Bool
 eqDefaultArgs defaultArgs1 defaultArgs2

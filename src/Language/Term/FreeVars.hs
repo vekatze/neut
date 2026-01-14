@@ -26,11 +26,12 @@ freeVars term =
       let impBinders = impArgs ++ expArgs
       let defaultVars = S.unions $ map freeVars $ map snd defaultArgs
       S.union defaultVars (freeVarsBinderType (impBinders ++ map fst defaultArgs ++ catMaybes [AttrL.fromAttr k]) (freeVars e))
-    _ :< TM.PiElim _ e impArgs expArgs -> do
+    _ :< TM.PiElim _ e impArgs expArgs defaultArgs -> do
       let xs = freeVars e
       let ys1 = S.unions $ map freeVarsType impArgs
       let ys2 = S.unions $ map freeVars expArgs
-      S.unions [xs, ys1, ys2]
+      let ys3 = S.unions $ map freeVars (catMaybes defaultArgs)
+      S.unions [xs, ys1, ys2, ys3]
     _ :< TM.DataIntro attr _ dataArgs consArgs -> do
       let xs1 = S.unions $ map freeVarsType dataArgs
       let xs2 = S.unions $ map freeVars consArgs
@@ -84,10 +85,8 @@ freeVarsType ty =
       S.empty
     _ :< TM.TyApp t args ->
       S.unions $ freeVarsType t : map freeVarsType args
-    _ :< TM.Pi _ impArgs expArgs defaultArgs t -> do
-      let impBinders = impArgs ++ expArgs
-      let defaultVars = S.unions $ map freeVars $ map snd defaultArgs
-      S.union defaultVars (freeVarsBinderType (impBinders ++ map fst defaultArgs) (freeVarsType t))
+    _ :< TM.Pi _ impArgs expArgs defaultArgs t ->
+      freeVarsBinderType (impArgs ++ expArgs ++ defaultArgs) (freeVarsType t)
     _ :< TM.Data attr _ es -> do
       let xs1 = S.unions $ map freeVarsType es
       let xs2 = freeVarsAttrData attr

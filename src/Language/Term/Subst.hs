@@ -91,11 +91,12 @@ subst h sub term =
               e' <- subst h sub''' e
               let lamAttr = AttrL.Attr {lamKind = LK.Normal name codType', identity = newLamID}
               return (m :< TM.PiIntro lamAttr impArgs' expArgs' defaultArgs' e')
-    m :< TM.PiElim b e impArgs expArgs -> do
+    m :< TM.PiElim b e impArgs expArgs defaultArgs -> do
       e' <- subst h sub e
       impArgs' <- mapM (substType h sub) impArgs
       expArgs' <- mapM (subst h sub) expArgs
-      return (m :< TM.PiElim b e' impArgs' expArgs')
+      defaultArgs' <- mapM (traverse (subst h sub)) defaultArgs
+      return (m :< TM.PiElim b e' impArgs' expArgs' defaultArgs')
     m :< TM.DataIntro attr consName dataArgs consArgs -> do
       dataArgs' <- mapM (substType h sub) dataArgs
       consArgs' <- mapM (subst h sub) consArgs
@@ -170,7 +171,7 @@ substType h sub ty =
     m :< TM.Pi piKind impArgs expArgs defaultArgs t -> do
       (impArgs', sub') <- substBinder h sub impArgs
       (expArgs', sub'') <- substBinder h sub' expArgs
-      (defaultArgs', sub''') <- substDefaultArgs h sub'' defaultArgs
+      (defaultArgs', sub''') <- substBinder h sub'' defaultArgs
       t' <- substType h sub''' t
       return (m :< TM.Pi piKind impArgs' expArgs' defaultArgs' t')
     m :< TM.Data attr name es -> do

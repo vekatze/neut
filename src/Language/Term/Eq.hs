@@ -23,11 +23,12 @@ eqTerm (_ :< term1) (_ :< term2) =
         && eqTermDefaultArgs defaultArgs1 defaultArgs2
         && eqTypeBinders expArgs1 expArgs2
         && eqTerm e1 e2
-    (TM.PiElim isNoetic1 e1 impArgs1 expArgs1, TM.PiElim isNoetic2 e2 impArgs2 expArgs2) ->
+    (TM.PiElim isNoetic1 e1 impArgs1 expArgs1 defaultArgs1, TM.PiElim isNoetic2 e2 impArgs2 expArgs2 defaultArgs2) ->
       isNoetic1 == isNoetic2
         && eqTerm e1 e2
         && eqTypes impArgs1 impArgs2
         && eqTerms expArgs1 expArgs2
+        && eqMaybeTerms defaultArgs1 defaultArgs2
     (TM.DataIntro _ consName1 dataArgs1 consArgs1, TM.DataIntro _ consName2 dataArgs2 consArgs2) ->
       consName1 == consName2
         && eqTypes dataArgs1 dataArgs2
@@ -80,7 +81,7 @@ eqTypeWithEnv env (_ :< type1) (_ :< type2) =
     (TM.Pi pk1 impArgs1 expArgs1 defaultArgs1 cod1, TM.Pi pk2 impArgs2 expArgs2 defaultArgs2 cod2) -> do
       let (envAfterImp, impArgsEq) = eqAndExtendImpArgs env impArgs1 impArgs2
       let (envAfterExp, expArgsEq) = eqAndExtendImpArgs envAfterImp expArgs1 expArgs2
-      let (envAfterDefault, defaultArgsEq) = eqDefaultArgsWithEnv envAfterExp defaultArgs1 defaultArgs2
+      let (envAfterDefault, defaultArgsEq) = eqAndExtendImpArgs envAfterExp defaultArgs1 defaultArgs2
       pk1 == pk2
         && impArgsEq
         && expArgsEq
@@ -119,18 +120,20 @@ eqAndExtendImpArgs env bs1 bs2 =
     _ ->
       (env, False)
 
-eqDefaultArgsWithEnv :: VarMap -> [(BinderF TM.Type, TM.Term)] -> [(BinderF TM.Type, TM.Term)] -> (VarMap, Bool)
-eqDefaultArgsWithEnv env args1 args2 =
-  case (args1, args2) of
-    ([], []) ->
-      (env, True)
-    (((_, _, t1), val1) : rest1, ((_, _, t2), val2) : rest2) -> do
-      let typeEq = eqTypeWithEnv env t1 t2
-      let valEq = eqTerm val1 val2
-      let (envFinal, restEq) = eqDefaultArgsWithEnv env rest1 rest2
-      (envFinal, typeEq && valEq && restEq)
+eqMaybeTerms :: [Maybe TM.Term] -> [Maybe TM.Term] -> Bool
+eqMaybeTerms xs ys =
+  length xs == length ys
+    && and (zipWith eqMaybeTerm xs ys)
+
+eqMaybeTerm :: Maybe TM.Term -> Maybe TM.Term -> Bool
+eqMaybeTerm mx my =
+  case (mx, my) of
+    (Just x, Just y) ->
+      eqTerm x y
+    (Nothing, Nothing) ->
+      True
     _ ->
-      (env, False)
+      False
 
 eqTermDefaultArgs :: [(BinderF TM.Type, TM.Term)] -> [(BinderF TM.Type, TM.Term)] -> Bool
 eqTermDefaultArgs args1 args2 =

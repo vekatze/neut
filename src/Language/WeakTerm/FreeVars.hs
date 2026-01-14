@@ -234,10 +234,8 @@ freeVarsType ty =
       S.empty
     _ :< WT.TyApp t args -> do
       S.unions $ freeVarsType t : map freeVarsType args
-    _ :< WT.Pi _ impArgs expArgs defaultArgs t -> do
-      let impBinders = impArgs ++ expArgs
-      let defaultVars = S.unions $ map freeVarsAll $ map snd defaultArgs
-      S.union defaultVars (freeVarsBindersType (impBinders ++ map fst defaultArgs) (freeVarsType t))
+    _ :< WT.Pi _ impArgs expArgs defaultArgs t ->
+      freeVarsBindersType (impArgs ++ expArgs ++ defaultArgs) (freeVarsType t)
     _ :< WT.Data attr _ es -> do
       let xs1 = S.unions $ map freeVarsType es
       let xs2 = freeVarsAttrData attr

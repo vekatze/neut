@@ -316,7 +316,7 @@ evaluateTextUncons h m moduleID text = do
           let unitDD = DD.newByGlobalLocator unitSGL BN.unit
           let leftVar = m :< TM.VarGlobal (AttrVG.Attr {argNum = AN.fromInt 3, isConstLike = False}) leftDD
           let unitVar = m :< TM.VarGlobal (AttrVG.Attr {argNum = AN.zero, isConstLike = True}) unitDD
-          return $ m :< TM.PiElim False (m :< TM.PiElim False leftVar [unitTypeVar, pairType] []) [] [unitVar]
+          return $ m :< TM.PiElim False (m :< TM.PiElim False leftVar [unitTypeVar, pairType] [] []) [] [unitVar] []
         Just (c, rest) -> do
           let rightDD = DD.newByGlobalLocator eitherSGL BN.right
           let pairDD = DD.newByGlobalLocator pairSGL BN.pair
@@ -324,8 +324,8 @@ evaluateTextUncons h m moduleID text = do
           let pairVar = m :< TM.VarGlobal (AttrVG.Attr {argNum = AN.fromInt 4, isConstLike = False}) pairDD
           let runeValue = m :< TM.Prim (PV.Rune (Rune.fromChar c))
           let restText = m :< TM.Prim (PV.StaticText textTypeExpr rest)
-          let pair = m :< TM.PiElim False (m :< TM.PiElim False pairVar [runeType, m :< TM.BoxNoema textTypeExpr] []) [] [runeValue, restText]
-          return $ m :< TM.PiElim False (m :< TM.PiElim False rightVar [unitTypeVar, pairType] []) [] [pair]
+          let pair = m :< TM.PiElim False (m :< TM.PiElim False pairVar [runeType, m :< TM.BoxNoema textTypeExpr] [] []) [] [runeValue, restText] []
+          return $ m :< TM.PiElim False (m :< TM.PiElim False rightVar [unitTypeVar, pairType] [] []) [] [pair] []
     _ ->
       reportMacroError h m "text-uncons requires a static text literal"
 

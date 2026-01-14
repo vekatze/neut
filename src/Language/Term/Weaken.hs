@@ -69,11 +69,12 @@ weaken term =
       let defaultArgs' = map (bimap weakenTypeBinder weaken) defaultArgs
       let e' = weaken e
       m :< WT.PiIntro attr' impArgs' expArgs' defaultArgs' e'
-    m :< TM.PiElim b e impArgs expArgs -> do
+    m :< TM.PiElim b e impArgs expArgs defaultArgs -> do
       let e' = weaken e
       let impArgs' = ImpArgs.FullySpecified $ map weakenType impArgs
       let expArgs' = map weaken expArgs
-      m :< WT.PiElim b e' impArgs' expArgs' (DefaultArgs.ByKey [])
+      let defaultArgs' = map (fmap weaken) defaultArgs
+      m :< WT.PiElim b e' impArgs' expArgs' (DefaultArgs.Aligned defaultArgs')
     m :< TM.DataIntro attr consName dataArgs consArgs -> do
       let dataArgs' = map weakenType dataArgs
       let consArgs' = map weaken consArgs
@@ -120,7 +121,7 @@ weakenType ty =
     m :< TM.TyApp t args ->
       m :< WT.TyApp (weakenType t) (map weakenType args)
     m :< TM.Pi piKind impArgs expArgs defaultArgs t ->
-      m :< WT.Pi piKind (map weakenTypeBinder impArgs) (map weakenTypeBinder expArgs) (map (bimap weakenTypeBinder weaken) defaultArgs) (weakenType t)
+      m :< WT.Pi piKind (map weakenTypeBinder impArgs) (map weakenTypeBinder expArgs) (map weakenTypeBinder defaultArgs) (weakenType t)
     m :< TM.Data attr name es -> do
       let es' = map weakenType es
       let attr' = fmap weakenTypeBinder attr

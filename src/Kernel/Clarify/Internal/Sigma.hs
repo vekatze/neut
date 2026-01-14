@@ -24,7 +24,7 @@ import Control.Monad.IO.Class (MonadIO (liftIO))
 import Gensym.Gensym qualified as Gensym
 import Gensym.Handle qualified as Gensym
 import Kernel.Clarify.Internal.Linearize qualified as Linearize
-import Kernel.Clarify.Internal.Utility (ResourceSpec (ResourceSpec))
+import Kernel.Clarify.Internal.Utility (ResourceSpec (..))
 import Kernel.Clarify.Internal.Utility qualified as Utility
 import Kernel.Common.Handle.Local.Locator qualified as Locator
 import Language.Common.ArgNum qualified as AN
@@ -67,7 +67,7 @@ registerImmediateS4 h = do
     let discard = C.UpIntro $ C.SigmaIntro []
     let copy = C.UpIntro argVar
     Utility.registerSwitcher (utilityHandle h) O.Clear name $ do
-      ResourceSpec {switch, arg, discard, copy}
+      ResourceSpec {switch, arg, discard, copy, defaultValues = []}
 
 registerClosureS4 :: Handle -> IO ()
 registerClosureS4 h = do
@@ -152,7 +152,7 @@ makeSigmaResourceSpec h xts = do
   arg@(_, argVar) <- Gensym.createVar (gensymHandle h) "arg"
   discard <- sigmaT h xts argVar
   copy <- sigma4 h xts argVar
-  return $ ResourceSpec {switch, arg, discard, copy}
+  return $ ResourceSpec {switch, arg, discard, copy, defaultValues = []}
 
 -- (Assuming `ti` = `return di` for some `di` such that `xi : di`)
 -- sigmaT NAME LOC [(x1, t1), ..., (xn, tn)]   ~>
@@ -212,16 +212,19 @@ closureEnvS4 ::
   Handle ->
   Locator.Handle ->
   [(Ident, C.Comp)] ->
+  [C.Value] ->
   IO C.Value
-closureEnvS4 h locatorHandle mxts =
+closureEnvS4 h locatorHandle mxts defaultValues =
   case mxts of
-    [] ->
-      return immediateNullS4 -- performance optimization; not necessary for correctness
+    []
+      | null defaultValues ->
+          return immediateNullS4 -- performance optimization; not necessary for correctness
     _ -> do
       i <- Gensym.newCount (gensymHandle h)
       let name = Locator.attachCurrentLocator locatorHandle $ BN.sigmaName i
       resourceSpec <- makeSigmaResourceSpec h mxts
-      liftIO $ Utility.registerSwitcher (utilityHandle h) O.Clear name resourceSpec
+      let resourceSpec' = resourceSpec {defaultValues}
+      liftIO $ Utility.registerSwitcher (utilityHandle h) O.Clear name resourceSpec'
       return $ C.VarGlobal name AN.argNumS4
 
 returnSigmaDataS4 ::
@@ -237,7 +240,7 @@ returnSigmaDataS4 h dataName opacity dataInfo = do
   copy <- sigmaData4 h dataInfo argVar
   let dataName' = DD.getFormDD dataName
   Utility.registerSwitcher (utilityHandle h) opacity dataName' $
-    ResourceSpec {switch, arg, discard, copy}
+    ResourceSpec {switch, arg, discard, copy, defaultValues = []}
   return $ C.UpIntro $ C.VarGlobal dataName' AN.argNumS4
 
 returnSigmaEnumS4 ::
@@ -252,7 +255,7 @@ returnSigmaEnumS4 h dataName opacity = do
   let copy = C.UpIntro argVar
   let dataName' = DD.getFormDD dataName
   Utility.registerSwitcher (utilityHandle h) opacity dataName' $
-    ResourceSpec {switch, arg, discard, copy}
+    ResourceSpec {switch, arg, discard, copy, defaultValues = []}
   return $ C.UpIntro $ C.VarGlobal dataName' AN.argNumS4
 
 sigmaData4 :: Handle -> [DataConstructorInfo] -> C.Value -> IO C.Comp

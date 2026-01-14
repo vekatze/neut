@@ -55,11 +55,12 @@ refresh h term =
           e' <- refresh h e
           let lamAttr = AttrL.Attr {lamKind = LK.Normal name codType', identity = newLamID}
           return (m :< TM.PiIntro lamAttr impArgs' expArgs' defaultArgs' e')
-    m :< TM.PiElim b e impArgs expArgs -> do
+    m :< TM.PiElim b e impArgs expArgs defaultArgs -> do
       e' <- refresh h e
       impArgs' <- mapM (refreshType h) impArgs
       expArgs' <- mapM (refresh h) expArgs
-      return (m :< TM.PiElim b e' impArgs' expArgs')
+      defaultArgs' <- mapM (traverse (refresh h)) defaultArgs
+      return (m :< TM.PiElim b e' impArgs' expArgs' defaultArgs')
     m :< TM.DataIntro attr consName dataArgs consArgs -> do
       dataArgs' <- mapM (refreshType h) dataArgs
       consArgs' <- mapM (refresh h) consArgs
@@ -220,8 +221,8 @@ refreshType h ty =
       return $ m :< TM.TyApp t' args'
     m :< TM.Pi piKind impArgs expArgs defaultArgs t -> do
       impArgs' <- refreshTypeBinder h impArgs
-      defaultArgs' <- refreshDefaultArgs h defaultArgs
       expArgs' <- refreshTypeBinder h expArgs
+      defaultArgs' <- refreshTypeBinder h defaultArgs
       t' <- refreshType h t
       return (m :< TM.Pi piKind impArgs' expArgs' defaultArgs' t')
     m :< TM.Data attr name es -> do

@@ -32,8 +32,8 @@ extend term =
       _m :< TM.VarGlobal g argNum
     () :< TM.PiIntro attr impArgs expArgs defaultArgs e ->
       _m :< TM.PiIntro attr impArgs expArgs (map extendDefaultArg defaultArgs) (extend e)
-    () :< TM.PiElim b e impArgs expArgs ->
-      _m :< TM.PiElim b (extend e) impArgs (map extend expArgs)
+    () :< TM.PiElim b e impArgs expArgs defaultArgs ->
+      _m :< TM.PiElim b (extend e) impArgs (map extend expArgs) (map (fmap extend) defaultArgs)
     () :< TM.DataIntro attr consName dataArgs consArgs ->
       _m :< TM.DataIntro attr consName dataArgs (map extend consArgs)
     () :< TM.DataElim isNoetic oets tree ->
@@ -72,7 +72,7 @@ extendType ty =
     () :< TM.TyApp t args ->
       _m :< TM.TyApp (extendType t) (map extendType args)
     () :< TM.Pi piKind impArgs expArgs defaultArgs cod ->
-      _m :< TM.Pi piKind (map extendBinder impArgs) (map extendBinder expArgs) (map extendTypeDefaultArg defaultArgs) (extendType cod)
+      _m :< TM.Pi piKind (map extendBinder impArgs) (map extendBinder expArgs) (map extendBinder defaultArgs) (extendType cod)
     () :< TM.Data attr name es ->
       _m :< TM.Data (fmap extendBinder attr) name (map extendType es)
     () :< TM.Box t ->
@@ -94,9 +94,6 @@ extendBinder (m, x, t) =
 
 extendDefaultArg :: (BinderF TM.Type, Cofree TM.TermF ()) -> (BinderF TM.Type, TM.Term)
 extendDefaultArg (binder, e) = (binder, extend e)
-
-extendTypeDefaultArg :: (BinderF (Cofree TM.TypeF ()), TM.Term) -> (BinderF TM.Type, TM.Term)
-extendTypeDefaultArg (binder, e) = (extendBinder binder, e)
 
 extendLet :: (BinderF TM.Type, Cofree TM.TermF ()) -> (BinderF TM.Type, TM.Term)
 extendLet (binder, e) = (binder, extend e)

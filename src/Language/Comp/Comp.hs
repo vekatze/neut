@@ -13,6 +13,7 @@ module Language.Comp.Comp
     getPhiList,
     graft,
     isUnreachable,
+    null,
   )
 where
 
@@ -31,6 +32,7 @@ import Language.Common.Opacity
 import Language.Common.PrimNumSize
 import Language.Common.PrimOp
 import Language.Comp.EnumCase hiding (Int)
+import Prelude hiding (null)
 
 data Value
   = VarLocal Ident
@@ -209,3 +211,7 @@ isUnreachable comp =
       True
     Phi {} ->
       False
+
+null :: Value
+null =
+  SigmaIntro []

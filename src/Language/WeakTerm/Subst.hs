@@ -188,7 +188,7 @@ substType h sub ty =
     m :< WT.Pi piKind impArgs expArgs defaultArgs t -> do
       (impArgs', sub') <- subst' h sub impArgs
       (expArgs', sub'') <- subst' h sub' expArgs
-      (defaultArgs', sub''') <- substDefaultArgs h sub'' defaultArgs
+      (defaultArgs', sub''') <- subst' h sub'' defaultArgs
       t' <- substType h sub''' t
       return $ m :< WT.Pi piKind impArgs' expArgs' defaultArgs' t'
     m :< WT.Data attr name es -> do

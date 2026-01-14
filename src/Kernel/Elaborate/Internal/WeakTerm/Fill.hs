@@ -149,7 +149,7 @@ fillType h holeSubst ty =
     m :< WT.Pi piKind impArgs expArgs defaultArgs t -> do
       impArgs' <- fillTypeBinder h holeSubst impArgs
       expArgs' <- fillTypeBinder h holeSubst expArgs
-      defaultArgs' <- fillTypeDefaultArgs h holeSubst defaultArgs
+      defaultArgs' <- fillTypeBinder h holeSubst defaultArgs
       t' <- fillType h holeSubst t
       return $ m :< WT.Pi piKind impArgs' expArgs' defaultArgs' t'
     m :< WT.Data attr name es -> do
@@ -231,21 +231,6 @@ fillDefaultArgs h holeSubst binderList =
       rest' <- fillDefaultArgs h holeSubst rest
       return $ (binder', value') : rest'
 
-fillTypeDefaultArgs ::
-  Handle ->
-  THS.TypeHoleSubst ->
-  [(BinderF WT.WeakType, WT.WeakTerm)] ->
-  App [(BinderF WT.WeakType, WT.WeakTerm)]
-fillTypeDefaultArgs h holeSubst binderList =
-  case binderList of
-    [] -> do
-      return []
-    (binder, value) : rest -> do
-      binder' <- fillTypeSingleBinder h holeSubst binder
-      value' <- fill h holeSubst value
-      rest' <- fillTypeDefaultArgs h holeSubst rest
-      return $ (binder', value') : rest'
-
 fillLet ::
   Handle ->
   THS.TypeHoleSubst ->
@@ -276,15 +261,6 @@ fillSingleBinder ::
   BinderF WT.WeakType ->
   App (BinderF WT.WeakType)
 fillSingleBinder h holeSubst (m, x, t) = do
-  t' <- fillType h holeSubst t
-  return (m, x, t')
-
-fillTypeSingleBinder ::
-  Handle ->
-  THS.TypeHoleSubst ->
-  BinderF WT.WeakType ->
-  App (BinderF WT.WeakType)
-fillTypeSingleBinder h holeSubst (m, x, t) = do
   t' <- fillType h holeSubst t
   return (m, x, t')
 

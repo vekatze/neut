@@ -91,10 +91,8 @@ holesType ty =
       S.empty
     _ :< WT.TyApp t args ->
       S.unions $ holesType t : map holesType args
-    _ :< WT.Pi _ impArgs expArgs defaultArgs t -> do
-      let impBinders = impArgs ++ expArgs
-      let defaultHoles = S.unions $ map holes $ map snd defaultArgs
-      S.union defaultHoles (holesBindersType (impBinders ++ map fst defaultArgs) (holesType t))
+    _ :< WT.Pi _ impArgs expArgs defaultArgs t ->
+      holesBindersType (impArgs ++ expArgs ++ defaultArgs) (holesType t)
     _ :< WT.Data attr _ es -> do
       let xs1 = S.unions $ map holesType es
       let xs2 = holesAttrData attr

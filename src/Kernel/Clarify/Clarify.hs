@@ -30,6 +30,7 @@ import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.CreateLocalHandle qualified as Local
 import Kernel.Common.Handle.Global.OptimizableData qualified as OptimizableData
 import Kernel.Common.Handle.Global.Platform qualified as Platform
+import Kernel.Common.Handle.Global.Type qualified as Type
 import Kernel.Common.Handle.Local.Locator qualified as Locator
 import Kernel.Common.OptimizableData qualified as OD
 import Language.Common.ArgNum qualified as AN
@@ -71,6 +72,7 @@ import Language.Term.PrimValue qualified as PV
 import Language.Term.Stmt (Stmt, StmtF (..), isMacroStmt)
 import Language.Term.Subst qualified as Subst
 import Language.Term.Term qualified as TM
+import Language.WeakTerm.WeakTerm qualified as WT
 import Logger.Hint
 
 data Handle = Handle
@@ -84,7 +86,8 @@ data Handle = Handle
     reduceHandle :: Reduce.Handle,
     substHandle :: Subst.Handle,
     compDefHandle :: CompDef.Handle,
-    baseSize :: DS.DataSize
+    baseSize :: DS.DataSize,
+    typeHandle :: Type.Handle
   }
 
 new :: Global.Handle -> Local.Handle -> IO Handle
@@ -163,6 +166,8 @@ clarifyStmt :: Handle -> Stmt -> App C.CompStmt
 clarifyStmt h stmt =
   case stmt of
     StmtDefine _ stmtKind _ f impArgs expArgs defaultArgs _ e -> do
+      defaultValues <- registerDefaultFunctions h IntMap.empty f [] impArgs defaultArgs
+      liftIO $ registerDefaultEnvType h f defaultValues
       let xts = impArgs ++ expArgs ++ map fst defaultArgs
       xts' <- dropFst <$> clarifyBinder h IntMap.empty xts
       envArg <- liftIO $ makeEnvArg h
@@ -172,6 +177,8 @@ clarifyStmt h stmt =
       e' <- clarifyStmtDefineBody h tenv xts'' e
       return $ C.Def f (SK.toLowOpacityTerm stmtKind) (map fst xts'') e'
     StmtDefineType _ stmtKind (SavedHint m) f impArgs expArgs defaultArgs _ body -> do
+      defaultValues <- registerDefaultFunctions h IntMap.empty f [] impArgs defaultArgs
+      liftIO $ registerDefaultEnvType h f defaultValues
       let xts = impArgs ++ expArgs ++ map fst defaultArgs
       xts' <- dropFst <$> clarifyBinder h IntMap.empty xts
       envArg <- liftIO $ makeEnvArg h
@@ -213,6 +220,71 @@ makeSwitchArg :: Handle -> IO (Ident, C.Comp)
 makeSwitchArg h = do
   x <- Gensym.newIdentFromText (gensymHandle h) "sw"
   return (x, Sigma.returnImmediateIntS4 PNS.IntSize64)
+
+defaultEnvTypeName :: DD.DefiniteDescription -> DD.DefiniteDescription
+defaultEnvTypeName dd =
+  DD.MakeDefiniteDescription {DD.reify = DD.reify dd <> "#default-env"}
+
+hasDefaultArgs :: Handle -> DD.DefiniteDescription -> IO Bool
+hasDefaultArgs h name = do
+  mType <- Type.lookupMaybe' (typeHandle h) name
+  return $ case mType of
+    Just (_ :< WT.Pi _ _ _ defaultArgs _) ->
+      not (null defaultArgs)
+    Just (_ :< WT.BoxNoema (_ :< WT.Pi _ _ _ defaultArgs _)) ->
+      not (null defaultArgs)
+    _ ->
+      False
+
+envTypeForGlobal :: Handle -> DD.DefiniteDescription -> IO C.Value
+envTypeForGlobal h name = do
+  useImmediate <- not <$> hasDefaultArgs h name
+  return $
+    if useImmediate
+      then Sigma.immediateNullS4
+      else C.VarGlobal (defaultEnvTypeName name) AN.argNumS4
+
+defaultLabelName :: DD.DefiniteDescription -> Int -> DD.DefiniteDescription
+defaultLabelName dd index =
+  DD.MakeDefiniteDescription {DD.reify = DD.reify dd <> "#default" <> T.pack (show index)}
+
+registerDefaultEnvType :: Handle -> DD.DefiniteDescription -> [C.Value] -> IO ()
+registerDefaultEnvType h name defaultValues = do
+  unless (null defaultValues) $ do
+    let envTypeName = defaultEnvTypeName name
+    isAlreadyRegistered <- AuxEnv.checkIfAlreadyRegistered (auxEnvHandle h) envTypeName
+    unless isAlreadyRegistered $ do
+      switch <- Gensym.createVar (gensymHandle h) "switch"
+      arg@(_, argVar) <- Gensym.createVar (gensymHandle h) "arg"
+      let discard = C.UpIntro $ C.SigmaIntro []
+      let copy = C.UpIntro argVar
+      let resourceSpec = Utility.ResourceSpec {switch, arg, discard, copy, defaultValues}
+      Utility.registerSwitcher (utilityHandle h) O.Clear envTypeName resourceSpec
+
+registerDefaultFunctions ::
+  Handle ->
+  TM.TypeEnv ->
+  DD.DefiniteDescription ->
+  [BinderF TM.Type] ->
+  [BinderF TM.Type] ->
+  [(BinderF TM.Type, TM.Term)] ->
+  App [C.Value]
+registerDefaultFunctions h tenv name fvs impArgs defaultArgs =
+  case defaultArgs of
+    [] ->
+      return []
+    _ -> do
+      let tenv' = TM.insTypeEnv (fvs ++ impArgs) tenv
+      fvs' <- dropFst <$> clarifyBinder h tenv fvs
+      impArgs' <- dropFst <$> clarifyBinder h tenv impArgs
+      let argNum = AN.fromInt (length impArgs' + 2)
+      forM (zip [0 ..] defaultArgs) $ \(i, (_, value)) -> do
+        let labelName = defaultLabelName name i
+        isAlreadyRegistered <- liftIO $ AuxEnv.checkIfAlreadyRegistered (auxEnvHandle h) labelName
+        unless isAlreadyRegistered $ do
+          body <- clarifyTerm h tenv' value
+          liftIO $ registerClosure h labelName O.Clear impArgs' fvs' body
+        return $ C.VarGlobal labelName argNum
 
 clarifyBinderBody ::
   Handle ->
@@ -284,25 +356,27 @@ clarifyTerm h tenv term =
     _ :< TM.Var x -> do
       return $ C.UpIntro $ C.VarLocal x
     _ :< TM.VarGlobal (AttrVG.Attr {..}) x -> do
+      envType <- liftIO $ envTypeForGlobal h x
       return $
         C.UpIntro $
           C.SigmaIntro
-            [ Sigma.immediateNullS4,
+            [ envType,
               C.SigmaIntro [],
               C.VarGlobal x (AN.add argNum (AN.fromInt 2))
             ]
     _ :< TM.PiIntro attr impArgs expArgs defaultArgs e -> do
-      clarifyLambda h tenv attr (TM.chainOf tenv [term]) (impArgs ++ expArgs ++ map fst defaultArgs) e
-    _ :< TM.PiElim b e impArgs expArgs -> do
+      clarifyLambda h tenv attr (TM.chainOf tenv [term]) impArgs expArgs defaultArgs e
+    _ :< TM.PiElim b e impArgs expArgs defaultArgs -> do
       impArgs' <- mapM (clarifyTypePlus h tenv) impArgs
       expArgs' <- mapM (clarifyPlus h tenv) expArgs
-      let allArgs = impArgs' ++ expArgs'
+      defaultArgs' <- mapM (traverse (clarifyPlus h tenv)) defaultArgs
+      let allArgs = impArgs' ++ expArgs' ++ catMaybes defaultArgs'
       case e of
         _ :< TM.Prim (PV.Op op) ->
           return $ callPrimOp op allArgs
         _ -> do
           e' <- clarifyTerm h tenv e
-          liftIO $ callClosure h b e' allArgs
+          liftIO $ callClosure h b e' impArgs' expArgs' defaultArgs'
     m :< TM.DataIntro (AttrDI.Attr {..}) consName dataArgs consArgs -> do
       od <- liftIO $ OptimizableData.lookup (optDataHandle h) consName
       case od of
@@ -371,24 +445,26 @@ clarifyType h tenv ty =
     _ :< TM.TVar x -> do
       return $ C.UpIntro $ C.VarLocal x
     _ :< TM.TVarGlobal (AttrVG.Attr {..}) x -> do
+      envType <- liftIO $ envTypeForGlobal h x
       return $
         C.UpIntro $
           C.SigmaIntro
-            [ Sigma.immediateNullS4,
+            [ envType,
               C.SigmaIntro [],
               C.VarGlobal x (AN.add argNum (AN.fromInt 2))
             ]
     _ :< TM.TyApp t args -> do
       t' <- clarifyType h tenv t
       args' <- mapM (clarifyTypePlus h tenv) args
-      liftIO $ callClosure h False t' args'
+      liftIO $ callClosure h False t' args' [] []
     _ :< TM.Pi {} ->
       return Sigma.returnClosureS4
     _ :< TM.Data _ name dataArgs -> do
       let argNum = AN.fromInt $ length dataArgs + 2
-      let cls = C.UpIntro $ C.SigmaIntro [Sigma.immediateNullS4, C.SigmaIntro [], C.VarGlobal name argNum]
+      envType <- liftIO $ envTypeForGlobal h name
+      let cls = C.UpIntro $ C.SigmaIntro [envType, C.SigmaIntro [], C.VarGlobal name argNum]
       dataArgs' <- mapM (clarifyTypePlus h tenv) dataArgs
-      liftIO $ callClosure h False cls dataArgs'
+      liftIO $ callClosure h False cls dataArgs' [] []
     _ :< TM.Box t -> do
       clarifyType h tenv t
     _ :< TM.BoxNoema {} ->
@@ -412,12 +488,12 @@ clarifyType h tenv ty =
         switch <- liftIO $ Gensym.createVar (gensymHandle h) "switch"
         arg@(argVarName, _) <- liftIO $ Gensym.createVar (gensymHandle h) "arg"
         discard <-
-          clarifyTerm h IntMap.empty (m :< TM.PiElim False discarder [] [m :< TM.Var argVarName])
+          clarifyTerm h IntMap.empty (m :< TM.PiElim False discarder [] [m :< TM.Var argVarName] [])
             >>= liftIO . Reduce.reduce (reduceHandle h)
         copy <-
-          clarifyTerm h IntMap.empty (m :< TM.PiElim False copier [] [m :< TM.Var argVarName])
+          clarifyTerm h IntMap.empty (m :< TM.PiElim False copier [] [m :< TM.Var argVarName] [])
             >>= liftIO . Reduce.reduce (reduceHandle h)
-        let resourceSpec = Utility.ResourceSpec {switch, arg, discard, copy}
+        let resourceSpec = Utility.ResourceSpec {switch, arg, discard, copy, defaultValues = []}
         liftIO $ Utility.registerSwitcher (utilityHandle h) O.Clear liftedName resourceSpec
       return $ C.UpIntro $ C.VarGlobal liftedName AN.argNumS4
     _ :< TM.Void ->
@@ -683,9 +759,12 @@ clarifyLambda ::
   AttrL.Attr TM.Type ->
   [BinderF TM.Type] ->
   [BinderF TM.Type] ->
+  [BinderF TM.Type] ->
+  [(BinderF TM.Type, TM.Term)] ->
   TM.Term ->
   App C.Comp
-clarifyLambda h tenv attrL@(AttrL.Attr {lamKind, identity}) fvs mxts e@(m :< _) = do
+clarifyLambda h tenv attrL@(AttrL.Attr {lamKind, identity}) fvs impArgs expArgs defaultArgs e@(m :< _) = do
+  let mxts = impArgs ++ expArgs ++ map fst defaultArgs
   case lamKind of
     LK.Fix _ (_, recFuncName, codType) -> do
       let liftedName = Locator.attachCurrentLocator (locatorHandle h) $ BN.muName recFuncName identity
@@ -696,17 +775,20 @@ clarifyLambda h tenv attrL@(AttrL.Attr {lamKind, identity}) fvs mxts e@(m :< _) 
       lamAttr <- do
         c <- liftIO $ Gensym.newCount (gensymHandle h)
         return $ AttrL.normal' (Just (Ident.toText recFuncName)) c codType
-      let lamApp = m :< TM.PiIntro lamAttr [] mxts [] (m :< TM.PiElim False (m :< TM.VarGlobal attr liftedName) [] appArgs')
+      let lamApp = m :< TM.PiIntro lamAttr impArgs expArgs defaultArgs (m :< TM.PiElim False (m :< TM.VarGlobal attr liftedName) [] appArgs' [])
       isAlreadyRegistered <- liftIO $ AuxEnv.checkIfAlreadyRegistered (auxEnvHandle h) liftedName
       unless isAlreadyRegistered $ do
         liftedBody <- liftIO $ Subst.subst (substHandle h) (IntMap.fromList [(Ident.toInt recFuncName, Subst.Term lamApp)]) e
         (liftedArgs, liftedBody') <- clarifyBinderBody h IntMap.empty appArgs liftedBody
         liftedBody'' <- liftIO $ Linearize.linearize (linearizeHandle h) liftedArgs liftedBody'
         liftIO $ AuxEnv.insert (auxEnvHandle h) liftedName (O.Opaque, map fst liftedArgs, liftedBody'')
+      liftIO $ registerDefaultEnvType h liftedName []
       clarifyTerm h tenv lamApp
     LK.Normal mName _ -> do
+      let name = Locator.attachCurrentLocator (locatorHandle h) $ BN.lambdaName mName identity
+      defaultValues <- registerDefaultFunctions h tenv name fvs impArgs defaultArgs
       e' <- clarifyTerm h (TM.insTypeEnv (catMaybes [AttrL.fromAttr attrL] ++ mxts) tenv) e
-      returnClosure h tenv identity mName O.Clear fvs mxts e'
+      returnClosure h tenv identity mName O.Clear fvs mxts defaultValues e'
 
 clarifyPlus :: Handle -> TM.TypeEnv -> TM.Term -> App (Ident, C.Comp, C.Value)
 clarifyPlus h tenv e = do
@@ -737,7 +819,7 @@ clarifyPrimOp h tenv op m = do
   (xs, varList) <- liftIO $ mapAndUnzipM (const (Gensym.createVar (gensymHandle h) "prim")) domList
   let mxts = zipWith (\x t -> (m, x, t)) xs argTypeList
   lamID <- liftIO $ Gensym.newCount (gensymHandle h)
-  returnClosure h tenv lamID (Just "primOp") O.Clear [] mxts $ C.Primitive (C.PrimOp op varList)
+  returnClosure h tenv lamID (Just "primOp") O.Clear [] mxts [] $ C.Primitive (C.PrimOp op varList)
 
 returnClosure ::
   Handle ->
@@ -747,12 +829,13 @@ returnClosure ::
   O.Opacity ->
   [BinderF TM.Type] -> -- list of free variables in `lam (x1, ..., xn). e` (this must be a closed chain)
   [BinderF TM.Type] -> -- the `(x1 : A1, ..., xn : An)` in `lam (x1 : A1, ..., xn : An). e`
+  [C.Value] -> -- default argument labels
   C.Comp -> -- the `e` in `lam (x1, ..., xn). e`
   App C.Comp
-returnClosure h tenv lamID mName opacity fvs xts e = do
+returnClosure h tenv lamID mName opacity fvs xts defaultValues e = do
   fvs'' <- dropFst <$> clarifyBinder h tenv fvs
   xts'' <- dropFst <$> clarifyBinder h tenv xts
-  fvEnvSigma <- liftIO $ Sigma.closureEnvS4 (sigmaHandle h) (locatorHandle h) fvs''
+  fvEnvSigma <- liftIO $ Sigma.closureEnvS4 (sigmaHandle h) (locatorHandle h) fvs'' defaultValues
   let fvEnv = C.SigmaIntro (map (\(x, _) -> C.VarLocal x) fvs'')
   let argNum = AN.fromInt $ length xts'' + 2 -- argNum == count(xts) + env
   let name = Locator.attachCurrentLocator (locatorHandle h) $ BN.lambdaName mName lamID
@@ -789,28 +872,67 @@ registerClosure h name opacity xts fvs e = do
   let args = map fst xts ++ [envVarName, switchVarName]
   AuxEnv.insert (auxEnvHandle h) name (opacity, args, lambdaBody')
 
-callClosure :: Handle -> N.IsNoetic -> C.Comp -> [(Ident, C.Comp, C.Value)] -> IO C.Comp
-callClosure h isNoetic e zexes = do
+callClosure ::
+  Handle ->
+  N.IsNoetic ->
+  C.Comp ->
+  [(Ident, C.Comp, C.Value)] ->
+  [(Ident, C.Comp, C.Value)] ->
+  [Maybe (Ident, C.Comp, C.Value)] ->
+  IO C.Comp
+callClosure h isNoetic e impArgs expArgs defaultArgs = do
   let flag = if isNoetic then C.intValue1 else C.intValue0
-  let (zs, es', xs) = unzip3 zexes
-  ((closureVarName, closureVar), typeVarName, (envVarName, envVar), (lamVarName, lamVar)) <- newClosureNames h
+  let (impNames, impComps, impVals) = unzip3 impArgs
+  let (expNames, expComps, expVals) = unzip3 expArgs
+  ((closureVarName, closureVar), envTypeVarName, (envVarName, envVar), (lamVarName, lamVar)) <- newClosureNames h
+  defaultTriples <- forM (zip [(0 :: Int) ..] defaultArgs) $ \(i, mOverride) -> do
+    case mOverride of
+      Just (name, comp, v) ->
+        return (name, comp, v)
+      Nothing -> do
+        (labelName, labelVar) <- Gensym.createVar (gensymHandle h) "default-label"
+        let labelComp = C.PiElimDownElim (C.VarLocal envTypeVarName) [intTerm h (i + 2), C.null]
+        defaultComp <-
+          Utility.bindLet [(labelName, labelComp)]
+            <$> callDefaultLabel h envTypeVarName envVar impVals labelVar
+        (defaultName, defaultVar) <- Gensym.createVar (gensymHandle h) "default-arg"
+        return (defaultName, defaultComp, defaultVar)
+  let (defNames, defComps, defVals) = unzip3 defaultTriples
   return $
-    Utility.bindLet
-      ((closureVarName, e) : zip zs es')
-      ( C.SigmaElim
-          (not isNoetic)
-          [typeVarName, envVarName, lamVarName]
-          closureVar
-          (C.PiElimDownElim lamVar (xs ++ [envVar, flag]))
-      )
+    Utility.bindLet [(closureVarName, e)] $
+      C.SigmaElim (not isNoetic) [envTypeVarName, envVarName, lamVarName] closureVar $
+        Utility.bindLet (zip (impNames ++ expNames ++ defNames) (impComps ++ expComps ++ defComps)) $
+          C.PiElimDownElim lamVar (impVals ++ expVals ++ defVals ++ [envVar, flag])
+
+intTerm :: (Integral a) => Handle -> a -> C.Value
+intTerm h i =
+  C.Int (intSizeFrom h) (toInteger i)
+
+intSizeFrom :: Handle -> PNS.IntSize
+intSizeFrom h =
+  dataSizeToIntSize (baseSize h)
+
+callDefaultLabel ::
+  Handle ->
+  Ident ->
+  C.Value ->
+  [C.Value] ->
+  C.Value ->
+  IO C.Comp
+callDefaultLabel h envTypeVarName envVar impVals labelVar = do
+  (envCopyName, envCopyVar) <- Gensym.createVar (gensymHandle h) "env"
+  let envCopyComp = C.PiElimDownElim (C.VarLocal envTypeVarName) [intTerm h (1 :: Int), envVar]
+  return $
+    Utility.bindLet [(envCopyName, envCopyComp)] $
+      C.PiElimDownElim labelVar (impVals ++ [envCopyVar, C.intValue0])
 
 newClosureNames :: Handle -> IO ((Ident, C.Value), Ident, (Ident, C.Value), (Ident, C.Value))
 newClosureNames h = do
   closureVarInfo <- Gensym.createVar (gensymHandle h) "closure"
-  typeVarName <- Gensym.newIdentFromText (gensymHandle h) "exp"
+  envTypeVarName <- Gensym.newIdentFromText (gensymHandle h) "exp"
   envVarInfo <- Gensym.createVar (gensymHandle h) "env"
   lamVarInfo <- Gensym.createVar (gensymHandle h) "thunk"
-  return (closureVarInfo, typeVarName, envVarInfo, lamVarInfo)
+  return (closureVarInfo, envTypeVarName, envVarInfo, lamVarInfo)
 
 callPrimOp :: PrimOp -> [(Ident, C.Comp, C.Value)] -> C.Comp
 callPrimOp op zexes = do

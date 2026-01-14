@@ -39,7 +39,7 @@ new :: Gensym.Handle -> Subst.Handle -> AuxEnv.Handle -> DS.DataSize -> Handle
 new gensymHandle substHandle auxEnvHandle baseSize = do
   Handle {..}
 
--- toAffineApp meta x t ~>
+-- toAffineApp h x t ~>
 --   bind exp := t in
 --   exp @ (0, x)
 toAffineApp :: Handle -> C.Value -> C.Comp -> IO C.Comp
@@ -47,7 +47,7 @@ toAffineApp h v t = do
   (expVarName, expVar) <- Gensym.createVar (gensymHandle h) "exp"
   return $ C.UpElim True expVarName t (C.PiElimDownElim expVar [C.Int (dataSizeToIntSize (baseSize h)) 0, v])
 
--- toRelevantApp meta x t ~>
+-- toRelevantApp h x t ~>
 --   bind exp := t in
 --   exp @ (1, x)
 toRelevantApp :: Handle -> C.Value -> C.Comp -> IO C.Comp
@@ -76,17 +76,19 @@ makeSwitcher ::
   ResourceSpec ->
   IO ([Ident], C.Comp)
 makeSwitcher h resourceSpec = do
-  let ResourceSpec {discard, copy} = resourceSpec
+  let ResourceSpec {discard, copy, defaultValues} = resourceSpec
   let (argVarName, _) = arg resourceSpec
   let (switchVarName, switchVar) = switch resourceSpec
-  enumElim <- getEnumElim h [argVarName] switchVar copy [(EC.Int 0, discard)]
+  let defaultCases = zipWith (\i v -> (EC.Int i, C.UpIntro v)) [2 ..] defaultValues
+  enumElim <- getEnumElim h [argVarName] switchVar discard ((EC.Int 1, copy) : defaultCases)
   return ([switchVarName, argVarName], enumElim)
 
 data ResourceSpec = ResourceSpec
   { switch :: (Ident, C.Value),
     arg :: (Ident, C.Value),
     discard :: C.Comp,
-    copy :: C.Comp
+    copy :: C.Comp,
+    defaultValues :: [C.Value]
   }
 
 registerSwitcher ::

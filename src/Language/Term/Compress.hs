@@ -25,8 +25,8 @@ compress term =
       () :< TM.VarGlobal g argNum
     _ :< TM.PiIntro attr impArgs expArgs defaultArgs e ->
       () :< TM.PiIntro attr impArgs expArgs (map compressDefaultArg defaultArgs) (compress e)
-    _ :< TM.PiElim b e impArgs expArgs ->
-      () :< TM.PiElim b (compress e) impArgs (map compress expArgs)
+    _ :< TM.PiElim b e impArgs expArgs defaultArgs ->
+      () :< TM.PiElim b (compress e) impArgs (map compress expArgs) (map (fmap compress) defaultArgs)
     _ :< TM.DataIntro attr consName dataArgs consArgs ->
       () :< TM.DataIntro attr consName dataArgs (map compress consArgs)
     _ :< TM.DataElim isNoetic oets tree -> do
@@ -65,7 +65,7 @@ compressType ty =
     _ :< TM.TyApp t args ->
       () :< TM.TyApp (compressType t) (map compressType args)
     _ :< TM.Pi piKind impArgs expArgs defaultArgs cod ->
-      () :< TM.Pi piKind (map compressBinder impArgs) (map compressBinder expArgs) (map compressTypeDefaultArg defaultArgs) (compressType cod)
+      () :< TM.Pi piKind (map compressBinder impArgs) (map compressBinder expArgs) (map compressBinder defaultArgs) (compressType cod)
     _ :< TM.Data attr name es ->
       () :< TM.Data (fmap compressBinder attr) name (map compressType es)
     _ :< TM.Box t ->
@@ -87,9 +87,6 @@ compressBinder (m, x, t) =
 
 compressDefaultArg :: (BinderF TM.Type, TM.Term) -> (BinderF TM.Type, Cofree TM.TermF ())
 compressDefaultArg (binder, e) = (binder, compress e)
-
-compressTypeDefaultArg :: (BinderF TM.Type, TM.Term) -> (BinderF (Cofree TM.TypeF ()), TM.Term)
-compressTypeDefaultArg (binder, e) = (compressBinder binder, e)
 
 compressLet :: (BinderF TM.Type, TM.Term) -> (BinderF TM.Type, Cofree TM.TermF ())
 compressLet (binder, e) = (binder, compress e)

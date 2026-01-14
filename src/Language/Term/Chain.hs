@@ -34,11 +34,12 @@ chainOf' tenv term =
       []
     _ :< TM.PiIntro attr impArgs expArgs defaultArgs e ->
       chainOfBinder tenv (impArgs ++ expArgs ++ map fst defaultArgs ++ catMaybes [AttrL.fromAttr attr]) [e]
-    _ :< TM.PiElim _ e impArgs expArgs -> do
+    _ :< TM.PiElim _ e impArgs expArgs defaultArgs -> do
       let xs1 = chainOf' tenv e
       let xs2 = concatMap (chainOfType tenv) impArgs
       let xs3 = concatMap (chainOf' tenv) expArgs
-      xs1 ++ xs2 ++ xs3
+      let xs4 = concatMap (chainOf' tenv) (catMaybes defaultArgs)
+      xs1 ++ xs2 ++ xs3 ++ xs4
     _ :< TM.DataIntro _ _ dataArgs consArgs -> do
       concatMap (chainOfType tenv) dataArgs ++ concatMap (chainOf' tenv) consArgs
     m :< TM.DataElim _ xets tree -> do
@@ -85,7 +86,7 @@ chainOfType tenv ty =
     _ :< TM.TyApp t args ->
       concatMap (chainOfType tenv) (t : args)
     _ :< TM.Pi _ impArgs expArgs defaultArgs t -> do
-      chainOfTypeBinder tenv (impArgs ++ expArgs ++ map fst defaultArgs) [t]
+      chainOfTypeBinder tenv (impArgs ++ expArgs ++ defaultArgs) [t]
     _ :< TM.Data attr _ es -> do
       let xs1 = concatMap (chainOfType tenv) es
       let xs2 = chainOfAttrData tenv attr

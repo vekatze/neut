@@ -209,12 +209,12 @@ insertStmt h stmt = do
     StmtDefine isConstLike stmtKind (SavedHint m) f impArgs expArgs defaultArgs t e -> do
       case stmtKind of
         SK.DataIntro {} ->
-          liftIO $ Type.insert' (typeHandle h) f $ weakenType $ m :< TM.Pi (PK.DataIntro isConstLike) impArgs expArgs defaultArgs t
+          liftIO $ Type.insert' (typeHandle h) f $ weakenType $ m :< TM.Pi (PK.DataIntro isConstLike) impArgs expArgs (map fst defaultArgs) t
         _ ->
-          liftIO $ Type.insert' (typeHandle h) f $ weakenType $ m :< TM.Pi (PK.Normal isConstLike) impArgs expArgs defaultArgs t
-      liftIO $ Definition.insert' (defHandle h) f (impArgs ++ expArgs ++ map fst defaultArgs) e t (stmtKindToDefKind stmtKind)
+          liftIO $ Type.insert' (typeHandle h) f $ weakenType $ m :< TM.Pi (PK.Normal isConstLike) impArgs expArgs (map fst defaultArgs) t
+      liftIO $ Definition.insert' (defHandle h) f impArgs expArgs defaultArgs e t (stmtKindToDefKind stmtKind)
     StmtDefineType isConstLike stmtKind (SavedHint m) f impArgs expArgs defaultArgs t body -> do
-      liftIO $ Type.insert' (typeHandle h) f $ weakenType $ m :< TM.Pi (PK.Normal isConstLike) impArgs expArgs defaultArgs t
+      liftIO $ Type.insert' (typeHandle h) f $ weakenType $ m :< TM.Pi (PK.Normal isConstLike) impArgs expArgs (map fst defaultArgs) t
       let allBinders = impArgs ++ expArgs ++ map fst defaultArgs
       liftIO $ TypeDef.insert' (typeDefHandle h) (SK.toOpacityType stmtKind) f allBinders body
     StmtVariadic {} ->
@@ -294,8 +294,12 @@ elaborate' h term = do
       let impArgs' = ImpArgs.extract impArgs
       impArgs'' <- mapM (elaborateType h) impArgs'
       expArgs' <- mapM (elaborate' h) expArgs
-      defaultArgs' <- mapM (elaborate' h) (DefaultArgs.extract defaultArgs)
-      return $ m :< TM.PiElim b e' impArgs'' (expArgs' ++ defaultArgs')
+      defaultArgs' <- case defaultArgs of
+        DefaultArgs.Aligned args ->
+          mapM (traverse (elaborate' h)) args
+        DefaultArgs.ByKey _ ->
+          raiseCritical m "Scene.Elaborate.elaborate': found a remaining `ByKey` default argument"
+      return $ m :< TM.PiElim b e' impArgs'' expArgs' defaultArgs'
     m :< WT.PiElimExact {} -> do
       raiseCritical m "Scene.Elaborate.elaborate': found a remaining `exact`"
     m :< WT.DataIntro attr consName dataArgs consArgs -> do
@@ -484,10 +488,7 @@ elaborateType h ty =
     m :< WT.Pi piKind impArgs expArgs defaultArgs t -> do
       impArgs' <- mapM (elaborateWeakBinder h) impArgs
       expArgs' <- mapM (elaborateWeakBinder h) expArgs
-      defaultArgs' <- forM defaultArgs $ \(binder, value) -> do
-        binder' <- elaborateWeakBinder h binder
-        value' <- elaborate' h value
-        return (binder', value')
+      defaultArgs' <- mapM (elaborateWeakBinder h) defaultArgs
       t' <- elaborateType h t
       return $ m :< TM.Pi piKind impArgs' expArgs' defaultArgs' t'
     m :< WT.Data attr name es -> do
@@ -554,7 +555,7 @@ strictify' h m t = do
       consType <- Type.lookup' (typeHandle h) m consName
       case consType of
         _ :< WT.Pi (PK.DataIntro False) _ [] [] (_ :< WT.Pi _ impArgs expArgs defaultArgs _)
-          | [(_, _, arg)] <- impArgs ++ expArgs ++ map fst defaultArgs -> do
+          | [(_, _, arg)] <- impArgs ++ expArgs ++ defaultArgs -> do
               strictify' h m arg
         _ ->
           raiseNonStrictType m consType
@@ -573,7 +574,7 @@ strictifyDecimalType h m x t = do
       consType <- Type.lookup' (typeHandle h) m consName
       case consType of
         _ :< WT.Pi (PK.DataIntro False) _ [] [] (_ :< WT.Pi _ impArgs expArgs defaultArgs _)
-          | [(_, _, arg)] <- impArgs ++ expArgs ++ map fst defaultArgs -> do
+          | [(_, _, arg)] <- impArgs ++ expArgs ++ defaultArgs -> do
               strictifyDecimalType h m x arg
         _ ->
           raiseNonDecimalType m x (weakenType t')
@@ -590,7 +591,7 @@ strictifyFloatType h m x t = do
       consType <- Type.lookup' (typeHandle h) m consName
       case consType of
         _ :< WT.Pi (PK.DataIntro False) _ [] [] (_ :< WT.Pi _ impArgs expArgs defaultArgs _)
-          | [(_, _, arg)] <- impArgs ++ expArgs ++ map fst defaultArgs -> do
+          | [(_, _, arg)] <- impArgs ++ expArgs ++ defaultArgs -> do
               strictifyFloatType h m x arg
         _ ->
           raiseNonFloatType m x (weakenType t')
