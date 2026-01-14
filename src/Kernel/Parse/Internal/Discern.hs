@@ -155,12 +155,14 @@ discernStmt h stmt = do
       return [WeakStmtDefineType isConstLike stmtKind' m functionName impArgs' expArgs' defaultArgs' codType' body']
     PostRawStmtDefineResource _ m (dd, _) (_, discarder) (_, copier) _ -> do
       registerTopLevelName h stmt
-      t' <- discernType h $ m :< RT.Tau
-      e' <- discernType h $ m :< RT.Resource dd [] (discarder, []) (copier, [])
+      unitType <- liftEither (locatorToTypeVar m coreUnit) >>= discernType h
+      resourceID <- liftIO $ Gensym.newCount (H.gensymHandle h)
+      discarder' <- discern h discarder
+      copier' <- discern h copier
       liftIO $ Tag.insertGlobalVar (H.tagHandle h) m dd True m
       liftIO $ TopCandidate.insert (H.topCandidateHandle h) $ do
         TopCandidate {loc = metaLocation m, dd = dd, kind = Constant}
-      return [WeakStmtDefineType True SK.Alias m dd [] [] [] t' e']
+      return [WeakStmtDefineResource m dd resourceID unitType discarder' copier']
     PostRawStmtVariadic kind m dd -> do
       registerTopLevelName h stmt
       liftIO $ Tag.insertGlobalVar (H.tagHandle h) m dd True m
@@ -694,12 +696,9 @@ discernType h ty =
       return $ m :< WT.PrimType PT.Pointer
     m :< RT.Void ->
       return $ m :< WT.Void
-    m :< RT.Resource dd _ (discarder, _) (copier, _) -> do
-      unitType <- liftEither (locatorToTypeVar m coreUnit) >>= discernType h
+    m :< RT.Resource dd _ _ _ -> do
       resourceID <- liftIO $ Gensym.newCount (H.gensymHandle h)
-      discarder' <- discern h discarder
-      copier' <- discern h copier
-      return $ m :< WT.Resource dd resourceID unitType discarder' copier'
+      return $ m :< WT.Resource dd resourceID
     m :< RT.Option t -> do
       eitherType <- liftEither $ locatorToTypeVar m coreEither
       unitType <- liftEither $ locatorToTypeVar m coreUnit

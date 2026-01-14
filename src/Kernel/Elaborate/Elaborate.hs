@@ -180,6 +180,13 @@ elaborateStmt h stmt = do
       let result = StmtDefineType isConstLike stmtKind' (SavedHint m) x impArgs'' expArgs'' defaultArgs'' codType'' body''
       insertStmt h result
       return ([result], [])
+    WeakStmtDefineResource m dd resourceID unitType discarder copier -> do
+      unitType' <- elaborateType h unitType
+      discarder' <- elaborate' h discarder
+      copier' <- elaborate' h copier
+      let result = StmtDefineResource (SavedHint m) dd resourceID unitType' discarder' copier'
+      insertStmt h result
+      return ([result], [])
     WeakStmtVariadic kind m dd -> do
       return ([StmtVariadic kind (SavedHint m) dd], [])
     WeakStmtNominal _ geistList -> do
@@ -214,9 +221,12 @@ insertStmt h stmt = do
           liftIO $ Type.insert' (typeHandle h) f $ weakenType $ m :< TM.Pi (PK.Normal isConstLike) impArgs expArgs (map fst defaultArgs) t
       liftIO $ Definition.insert' (defHandle h) f impArgs expArgs defaultArgs e t (stmtKindToDefKind stmtKind)
     StmtDefineType isConstLike stmtKind (SavedHint m) f impArgs expArgs defaultArgs t body -> do
-      liftIO $ Type.insert' (typeHandle h) f $ weakenType $ m :< TM.Pi (PK.Normal isConstLike) impArgs expArgs (map fst defaultArgs) t
       let allBinders = impArgs ++ expArgs ++ map fst defaultArgs
+      liftIO $ Type.insert' (typeHandle h) f $ weakenType $ m :< TM.Pi (PK.Normal isConstLike) impArgs expArgs (map fst defaultArgs) t
       liftIO $ TypeDef.insert' (typeDefHandle h) (SK.toOpacityType stmtKind) f allBinders body
+    StmtDefineResource (SavedHint m) dd resourceID _ _ _ -> do
+      liftIO $ Type.insert' (typeHandle h) dd $ weakenType (m :< TM.Pi (PK.Normal True) [] [] [] (m :< TM.Tau))
+      liftIO $ TypeDef.insert' (typeDefHandle h) (SK.toOpacityType SK.Alias) dd [] (m :< TM.Resource dd resourceID)
     StmtVariadic {} ->
       return ()
     StmtForeign _ -> do
@@ -231,6 +241,9 @@ insertWeakStmt h stmt = do
     WeakStmtDefineType _ stmtKind _ f impArgs expArgs defaultArgs _ body -> do
       let binders = impArgs ++ expArgs ++ map fst defaultArgs
       liftIO $ WeakTypeDef.insert' (weakTypeDefHandle h) (SK.toOpacityType stmtKind) f binders body
+    WeakStmtDefineResource m dd resourceID _ _ _ -> do
+      let resourceType = m :< WT.Resource dd resourceID
+      liftIO $ WeakTypeDef.insert' (weakTypeDefHandle h) (SK.toOpacityType SK.Alias) dd [] resourceType
     WeakStmtNominal {} -> do
       return ()
     WeakStmtVariadic {} -> do
@@ -508,11 +521,8 @@ elaborateType h ty =
       return $ m :< TM.PrimType pt
     m :< WT.Void ->
       return $ m :< TM.Void
-    m :< WT.Resource dd resourceID unitType discarder copier -> do
-      unitType' <- elaborateType h unitType
-      discarder' <- elaborate' h discarder
-      copier' <- elaborate' h copier
-      return $ m :< TM.Resource dd resourceID unitType' discarder' copier'
+    m :< WT.Resource dd resourceID -> do
+      return $ m :< TM.Resource dd resourceID
     m :< WT.TypeHole hole es -> do
       fillHole h m hole es >>= elaborateType h
 

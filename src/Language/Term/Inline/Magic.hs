@@ -77,7 +77,7 @@ evaluateGetTypeTag h m moduleID typeExpr = do
       returnTypeTagIntValue h m moduleID TypeTag.Pointer
     _ :< TM.PrimType PT.Rune ->
       returnTypeTagIntValue h m moduleID TypeTag.Rune
-    _ :< TM.Resource name _ _ _ _ -> do
+    _ :< TM.Resource name _ -> do
       let binarySGL = SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.binaryLocator}
       let binaryDD = DD.newByGlobalLocator binarySGL BN.binary
       if name == binaryDD

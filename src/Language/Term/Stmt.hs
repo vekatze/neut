@@ -47,6 +47,13 @@ data StmtF t a
       [(BinderF t, a)]
       t
       t
+  | StmtDefineResource
+      SavedHint
+      DD.DefiniteDescription
+      Int
+      t
+      a
+      a
   | StmtVariadic RuleKind SavedHint DD.DefiniteDescription
   | StmtForeign [F.Foreign]
   deriving (Generic)
@@ -67,6 +74,8 @@ getStmtName' stmt =
     StmtDefine _ _ (SavedHint m) name _ _ _ _ _ ->
       return (m, name)
     StmtDefineType _ _ (SavedHint m) name _ _ _ _ _ ->
+      return (m, name)
+    StmtDefineResource (SavedHint m) name _ _ _ _ ->
       return (m, name)
     StmtVariadic _ (SavedHint m) name ->
       return (m, name)

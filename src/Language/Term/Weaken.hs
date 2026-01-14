@@ -50,6 +50,11 @@ weakenStmt stmt = do
       let codType' = weakenType codType
       let body' = weakenType body
       WeakStmtDefineType isConstLike stmtKind' m name impArgs' expArgs' defaultArgs' codType' body'
+    StmtDefineResource (SavedHint m) name resourceID unitType discarder copier -> do
+      let unitType' = weakenType unitType
+      let discarder' = weaken discarder
+      let copier' = weaken copier
+      WeakStmtDefineResource m name resourceID unitType' discarder' copier'
     StmtVariadic kind (SavedHint m) name -> do
       WeakStmtVariadic kind m name
     StmtForeign foreignList ->
@@ -136,8 +141,8 @@ weakenType ty =
       m :< WT.PrimType pt
     m :< TM.Void ->
       m :< WT.Void
-    m :< TM.Resource dd resourceID unitType discarder copier -> do
-      m :< WT.Resource dd resourceID (weakenType unitType) (weaken discarder) (weaken copier)
+    m :< TM.Resource dd resourceID -> do
+      m :< WT.Resource dd resourceID
 
 weakenMagic :: Hint -> M.Magic BLT.BaseLowType TM.Type TM.Term -> M.WeakMagic WT.WeakType WT.WeakType WT.WeakTerm
 weakenMagic m magic = do

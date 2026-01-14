@@ -101,11 +101,8 @@ freeVarsType ty =
       S.empty
     _ :< TM.Void ->
       S.empty
-    _ :< TM.Resource _ _ unitType discarder copier -> do
-      let xs1 = freeVarsType unitType
-      let xs2 = freeVars discarder
-      let xs3 = freeVars copier
-      S.unions [xs1, xs2, xs3]
+    _ :< TM.Resource _ _ -> do
+      S.empty
 
 freeVarsBinderType :: [BinderF TM.Type] -> S.Set Ident -> S.Set Ident
 freeVarsBinderType binder zs =

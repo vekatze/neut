@@ -87,6 +87,11 @@ compressStmt stmt =
       let codType' = TM.compressType codType
       let body' = TM.compressType body
       Stmt.StmtDefineType isConstLike stmtKind' m functionName impArgs' expArgs' defaultArgs' codType' body'
+    Stmt.StmtDefineResource m name resourceID unitType discarder copier -> do
+      let unitType' = TM.compressType unitType
+      let discarder' = TM.compress discarder
+      let copier' = TM.compress copier
+      Stmt.StmtDefineResource m name resourceID unitType' discarder' copier'
     Stmt.StmtVariadic kind m name -> do
       Stmt.StmtVariadic kind m name
     Stmt.StmtForeign foreignList ->
@@ -111,6 +116,11 @@ extendStmt stmt =
       let codType' = TM.extendType codType
       let body' = TM.extendType body
       Stmt.StmtDefineType isConstLike stmtKind' m functionName impArgs' expArgs' defaultArgs' codType' body'
+    Stmt.StmtDefineResource m name resourceID unitType discarder copier -> do
+      let unitType' = TM.extendType unitType
+      let discarder' = TM.extend discarder
+      let copier' = TM.extend copier
+      Stmt.StmtDefineResource m name resourceID unitType' discarder' copier'
     Stmt.StmtVariadic kind m name -> do
       Stmt.StmtVariadic kind m name
     Stmt.StmtForeign foreignList ->

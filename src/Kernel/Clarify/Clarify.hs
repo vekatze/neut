@@ -206,6 +206,23 @@ clarifyStmt h stmt =
           let tenv = TM.insTypeEnv xts IntMap.empty
           body' <- clarifyStmtDefineTypeBody h tenv xts'' body
           return $ C.Def f (SK.toLowOpacityType stmtKind) (map fst xts'') body'
+    StmtDefineResource (SavedHint m) dd resourceID _ discarder copier -> do
+      let liftedName = Locator.attachCurrentLocator (locatorHandle h) $ BN.resourceName resourceID
+      switch <- liftIO $ Gensym.createVar (gensymHandle h) "switch"
+      arg@(argVarName, _) <- liftIO $ Gensym.createVar (gensymHandle h) "arg"
+      discard <-
+        clarifyTerm h IntMap.empty (m :< TM.PiElim False discarder [] [m :< TM.Var argVarName] [])
+          >>= liftIO . Reduce.reduce (reduceHandle h)
+      copy <-
+        clarifyTerm h IntMap.empty (m :< TM.PiElim False copier [] [m :< TM.Var argVarName] [])
+          >>= liftIO . Reduce.reduce (reduceHandle h)
+      let resourceSpec = Utility.ResourceSpec {switch, arg, discard, copy, defaultValues = []}
+      liftIO $ Utility.registerSwitcher (utilityHandle h) O.Clear liftedName resourceSpec
+      envArg <- liftIO $ makeEnvArg h
+      switchArg <- liftIO $ makeSwitchArg h
+      let xts'' = [envArg, switchArg]
+      let resourceBody = C.UpIntro $ C.VarGlobal liftedName AN.argNumS4
+      return $ C.Def dd O.Clear (map fst xts'') resourceBody
     StmtVariadic {} -> do
       return $ C.Foreign [] -- nop
     StmtForeign foreignList ->
@@ -481,20 +498,8 @@ clarifyType h tenv ty =
           return Sigma.returnImmediateRuneS4
         PT.Pointer ->
           return Sigma.returnImmediatePointerS4
-    m :< TM.Resource _ resourceID _ discarder copier -> do
+    _ :< TM.Resource _ resourceID -> do
       let liftedName = Locator.attachCurrentLocator (locatorHandle h) $ BN.resourceName resourceID
-      isAlreadyRegistered <- liftIO $ AuxEnv.checkIfAlreadyRegistered (auxEnvHandle h) liftedName
-      unless isAlreadyRegistered $ do
-        switch <- liftIO $ Gensym.createVar (gensymHandle h) "switch"
-        arg@(argVarName, _) <- liftIO $ Gensym.createVar (gensymHandle h) "arg"
-        discard <-
-          clarifyTerm h IntMap.empty (m :< TM.PiElim False discarder [] [m :< TM.Var argVarName] [])
-            >>= liftIO . Reduce.reduce (reduceHandle h)
-        copy <-
-          clarifyTerm h IntMap.empty (m :< TM.PiElim False copier [] [m :< TM.Var argVarName] [])
-            >>= liftIO . Reduce.reduce (reduceHandle h)
-        let resourceSpec = Utility.ResourceSpec {switch, arg, discard, copy, defaultValues = []}
-        liftIO $ Utility.registerSwitcher (utilityHandle h) O.Clear liftedName resourceSpec
       return $ C.UpIntro $ C.VarGlobal liftedName AN.argNumS4
     _ :< TM.Void ->
       return Sigma.returnImmediateNullS4

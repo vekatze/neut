@@ -169,11 +169,8 @@ fillType h holeSubst ty =
       return ty
     _ :< WT.Void ->
       return ty
-    m :< WT.Resource dd resourceID unitType discarder copier -> do
-      unitType' <- fillType h holeSubst unitType
-      discarder' <- fill h holeSubst discarder
-      copier' <- fill h holeSubst copier
-      return $ m :< WT.Resource dd resourceID unitType' discarder' copier'
+    m :< WT.Resource dd resourceID -> do
+      return $ m :< WT.Resource dd resourceID
     m :< WT.TypeHole i es -> do
       es' <- mapM (fillType h holeSubst) es
       case THS.lookup i holeSubst of

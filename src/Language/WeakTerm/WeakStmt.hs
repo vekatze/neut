@@ -47,6 +47,13 @@ data WeakStmt
       [(BinderF WT.WeakType, WT.WeakTerm)]
       WT.WeakType
       WT.WeakType
+  | WeakStmtDefineResource
+      Hint
+      DD.DefiniteDescription
+      Int
+      WT.WeakType
+      WT.WeakTerm
+      WT.WeakTerm
   | WeakStmtVariadic RuleKind Hint DD.DefiniteDescription
   | WeakStmtNominal Hint [(NominalTag, G.Geist WT.WeakType WT.WeakTerm)]
   | WeakStmtForeign [WT.WeakForeign]

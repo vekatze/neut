@@ -222,6 +222,8 @@ registerKeyArg' h stmt = do
           KeyArg.insert (keyArgHandle h) m name isConstLike impKeys expKeys defaultKeys
     StmtDefineType {} ->
       return ()
+    StmtDefineResource {} ->
+      return ()
     StmtVariadic {} ->
       return ()
     StmtForeign {} ->

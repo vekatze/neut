@@ -403,11 +403,8 @@ inlineType' h ty =
       return ty
     _ :< TM.Void ->
       return ty
-    m :< TM.Resource dd resourceID unitType discarder copier -> do
-      unitType' <- inlineType' h unitType
-      discarder' <- inline' h discarder
-      copier' <- inline' h copier
-      return $ m :< TM.Resource dd resourceID unitType' discarder' copier'
+    m :< TM.Resource dd resourceID -> do
+      return $ m :< TM.Resource dd resourceID
 
 inlineLowMagic :: Handle -> LM.LowMagic BLT.BaseLowType TM.Type TM.Term -> App (LM.LowMagic BLT.BaseLowType TM.Type TM.Term)
 inlineLowMagic h lowMagic =

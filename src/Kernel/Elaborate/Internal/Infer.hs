@@ -112,6 +112,13 @@ inferStmt h stmt =
       body' <- inferType h''' body
       stmtKind' <- inferStmtKindType h''' stmtKind
       return $ WeakStmtDefineType isConstLike stmtKind' m x impArgs' expArgs' defaultArgs' codType' body'
+    WeakStmtDefineResource m dd resourceID unitType discarder copier -> do
+      unitType' <- inferType h unitType
+      (discarder', _) <- infer h discarder
+      (copier', _) <- infer h copier
+      let piType = m :< WT.Pi (PK.Normal True) [] [] [] (m :< WT.Tau)
+      liftIO $ insertType h dd piType
+      return $ WeakStmtDefineResource m dd resourceID unitType' discarder' copier'
     WeakStmtVariadic kind m dd -> do
       return $ WeakStmtVariadic kind m dd
     WeakStmtNominal m geistList -> do
@@ -538,17 +545,8 @@ inferTypeWithKind h ty =
       return (ty, m :< WT.Tau)
     m :< WT.Void ->
       return (ty, m :< WT.Tau)
-    m :< WT.Resource dd resourceID unitType discarder copier -> do
-      unitType' <- inferType h unitType
-      (discarder', td) <- infer (h {varEnv = []}) discarder
-      (copier', tc) <- infer (h {varEnv = []}) copier
-      x <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "_"
-      resourceType <- liftIO $ newTypeHole h m []
-      let tDiscard = m :< WT.Pi PK.normal [] [(m, x, resourceType)] [] unitType'
-      let tCopy = m :< WT.Pi PK.normal [] [(m, x, resourceType)] [] resourceType
-      liftIO $ Constraint.insert (constraintHandle h) tDiscard td
-      liftIO $ Constraint.insert (constraintHandle h) tCopy tc
-      return (m :< WT.Resource dd resourceID unitType' discarder' copier', m :< WT.Tau)
+    m :< WT.Resource dd resourceID -> do
+      return (m :< WT.Resource dd resourceID, m :< WT.Tau)
     m :< WT.TypeHole holeID _ -> do
       let rawHoleID = HID.reify holeID
       mHoleInfo <- liftIO $ Hole.lookup (holeHandle h) rawHoleID

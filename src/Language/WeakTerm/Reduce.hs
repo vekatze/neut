@@ -74,9 +74,8 @@ reduceType h ty = do
       return ty
     _ :< WT.Void ->
       return ty
-    m :< WT.Resource dd resourceID unitType discarder copier -> do
-      unitType' <- reduceType h unitType
-      return $ m :< WT.Resource dd resourceID unitType' discarder copier
+    m :< WT.Resource dd resourceID -> do
+      return $ m :< WT.Resource dd resourceID
     m :< WT.TypeHole hole es -> do
       es' <- mapM (reduceType h) es
       return $ m :< WT.TypeHole hole es'

@@ -250,8 +250,8 @@ freeVarsType ty =
       S.empty
     _ :< WT.Void ->
       S.empty
-    _ :< WT.Resource _ _ unitType discarder copier -> do
-      S.unions [freeVarsType unitType, freeVarsAll discarder, freeVarsAll copier]
+    _ :< WT.Resource _ _ -> do
+      S.empty
     _ :< WT.TypeHole _ es ->
       S.unions $ map freeVarsType es
 

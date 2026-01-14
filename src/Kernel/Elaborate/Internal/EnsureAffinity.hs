@@ -309,11 +309,8 @@ analyzeType h ty =
       return []
     _ :< TM.Void ->
       return []
-    _ :< TM.Resource _ _ unitType discarder copier -> do
-      cs1 <- analyzeType h unitType
-      cs2 <- analyze h discarder
-      cs3 <- analyze h copier
-      return $ cs1 ++ cs2 ++ cs3
+    _ :< TM.Resource _ _ -> do
+      return []
 
 analyzeBinder ::
   Handle ->

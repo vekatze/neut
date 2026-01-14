@@ -85,8 +85,8 @@ extendType ty =
       _m :< TM.PrimType pt
     () :< TM.Void ->
       _m :< TM.Void
-    () :< TM.Resource dd resourceID unitType discarder copier ->
-      _m :< TM.Resource dd resourceID unitType discarder copier
+    () :< TM.Resource dd resourceID ->
+      _m :< TM.Resource dd resourceID
 
 extendBinder :: BinderF (Cofree TM.TypeF ()) -> BinderF TM.Type
 extendBinder (m, x, t) =

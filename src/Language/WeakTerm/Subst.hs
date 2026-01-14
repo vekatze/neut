@@ -208,11 +208,8 @@ substType h sub ty =
       return ty
     _ :< WT.Void ->
       return ty
-    m :< WT.Resource dd resourceID unitType discarder copier -> do
-      unitType' <- substType h sub unitType
-      discarder' <- subst h sub discarder
-      copier' <- subst h sub copier
-      return $ m :< WT.Resource dd resourceID unitType' discarder' copier'
+    m :< WT.Resource dd resourceID -> do
+      return $ m :< WT.Resource dd resourceID
     m :< WT.TypeHole holeID es -> do
       es' <- mapM (substType h sub) es
       return $ m :< WT.TypeHole holeID es'

@@ -191,8 +191,8 @@ eqType (_ :< ty1) (_ :< ty2)
   | WT.Void <- ty1,
     WT.Void <- ty2 =
       True
-  | WT.Resource _ id1 _ _ _ <- ty1,
-    WT.Resource _ id2 _ _ _ <- ty2 =
+  | WT.Resource _ id1 <- ty1,
+    WT.Resource _ id2 <- ty2 =
       id1 == id2
   | WT.TypeHole h1 es1 <- ty1,
     WT.TypeHole h2 es2 <- ty2 = do

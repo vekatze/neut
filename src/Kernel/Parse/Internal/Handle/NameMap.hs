@@ -279,6 +279,8 @@ _getGlobalNames' stmt = do
           let dataArgNum = AN.fromInt $ length dataArgs
           let consNameArrowList = map (toConsNameArrow dataArgNum) consInfoList
           (dataName, (m, mTag, GN.Data dataArgNum (map stripTag consNameArrowList) isConstLike)) : consNameArrowList
+    StmtDefineResource (SavedHint m) name _ _ _ _ -> do
+      [(name, (m, Nothing, GN.TopLevelFuncType AN.argNumS4 True False))]
     StmtVariadic kind (SavedHint m) name -> do
       [(name, (m, Nothing, GN.Rule kind))]
     StmtForeign {} ->
