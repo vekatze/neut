@@ -696,9 +696,6 @@ discernType h ty =
       return $ m :< WT.PrimType PT.Pointer
     m :< RT.Void ->
       return $ m :< WT.Void
-    m :< RT.Resource dd _ _ _ -> do
-      resourceID <- liftIO $ Gensym.newCount (H.gensymHandle h)
-      return $ m :< WT.Resource dd resourceID
     m :< RT.Option t -> do
       eitherType <- liftEither $ locatorToTypeVar m coreEither
       unitType <- liftEither $ locatorToTypeVar m coreUnit

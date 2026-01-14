@@ -488,8 +488,8 @@ typeToDoc ty =
             (if hasDefault then [] else c3) ++ c2
       PI.arrange
         [ PI.container $ decodeImpParams impArgs,
-          PI.container $ expParamsWithImp,
-          PI.container $ defaultParamsWithExpComment,
+          PI.container expParamsWithImp,
+          PI.container defaultParamsWithExpComment,
           PI.delimiter $ attachComment cArrow $ D.text "->",
           PI.inject $ attachComment c $ typeToDoc cod
         ]
@@ -514,8 +514,6 @@ typeToDoc ty =
       D.text "pointer"
     _ :< Void ->
       D.text "void"
-    _ :< Resource dd _ _ _ ->
-      D.text $ DD.localLocator dd
     _ :< Option t ->
       D.join [D.text "?", typeToDoc t]
     _ :< TyIntrospect c1 key c2 clauseList -> do
