@@ -152,13 +152,13 @@ toDoc term =
         ]
     _ :< TauIntro c1 (c2, (ty, c3)) -> do
       PI.arrange
-        [ PI.horizontal $ attachComment c1 $ D.text "veil",
+        [ PI.horizontal $ attachComment c1 $ D.text "pack-type",
           PI.inject $ decodeBrace' False c2 (typeToDoc ty) c3
         ]
     _ :< TauElim c1 (_, x, c2) c3 e1 c4 _ c5 e2 _ -> do
       D.join
         [ PI.arrange
-            [ PI.beforeBareSeries $ D.text "letveil",
+            [ PI.beforeBareSeries $ D.text "unpack-type",
               PI.bareSeries $ attachComment (c1 ++ c2) $ D.text x
             ],
           PI.arrange

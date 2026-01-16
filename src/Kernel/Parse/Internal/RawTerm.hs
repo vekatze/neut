@@ -76,7 +76,7 @@ rawExpr h = do
           rawTermBoxElim h m variant c
         Nothing ->
           case headSymbol of
-            "letveil" ->
+            "unpack-type" ->
               rawTermTauElim h m c
             "pin" ->
               rawTermPin h m c
@@ -164,7 +164,7 @@ rawTerm' h m headSymbol c = do
       rawTermCodeIntro h RT.CodeVariantC m c
     "unquote" -> do
       rawTermCodeElim h m c
-    "veil" -> do
+    "pack-type" -> do
       rawTermTauIntro h m c
     "assert" -> do
       rawTermAssert h m c
