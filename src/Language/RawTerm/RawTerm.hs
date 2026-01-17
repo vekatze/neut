@@ -80,6 +80,7 @@ data RawTypeF a
   | Pointer
   | Void
   | Option a
+  | TyBrace C (a, C)
   | TyIntrospect C T.Text C (SE.Series (Maybe T.Text, C, a))
 
 type RawType = Cofree RawTypeF Hint

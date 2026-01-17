@@ -516,6 +516,8 @@ typeToDoc ty =
       D.text "void"
     _ :< Option t ->
       D.join [D.text "?", typeToDoc t]
+    _ :< TyBrace c1 (t, c2) -> do
+      decodeBrace' False c1 (typeToDoc t) c2
     _ :< TyIntrospect c1 key c2 clauseList -> do
       PI.arrange
         [ PI.horizontal $ attachComment (c1 ++ c2) $ D.text "introspect",

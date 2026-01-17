@@ -125,7 +125,8 @@ rawType' h m headSymbol c =
       if T.null headSymbol
         then do
           choice
-            [ rawTypePi h,
+            [ rawTypeBrace h,
+              rawTypePi h,
               rawTypeBox h,
               rawTypeBoxNoema h,
               rawTypeCode h,
@@ -913,6 +914,12 @@ rawTermBrace h = do
   m <- getCurrentHint
   (c1, (e, c)) <- betweenBrace $ rawExpr h
   return (m :< RT.Brace c1 e, c)
+
+rawTypeBrace :: Handle -> Parser (RT.RawType, C)
+rawTypeBrace h = do
+  m <- getCurrentHint
+  (c1, (t, c)) <- betweenBrace $ rawType h
+  return (m :< RT.TyBrace c1 t, c)
 
 rawTermBoxIntro :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermBoxIntro h m c1 = do

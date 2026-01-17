@@ -703,6 +703,8 @@ discernType h ty =
       unitType' <- discernType h unitType
       t' <- discernType h t
       return $ m :< WT.TyApp eitherType' [unitType', t']
+    _ :< RT.TyBrace _ (t, _) ->
+      discernType h t
     m :< RT.TyIntrospect _ key _ clauseList -> do
       value <- getIntrospectiveValue h m key
       clause <- lookupIntrospectiveClause m value $ SE.extract clauseList
