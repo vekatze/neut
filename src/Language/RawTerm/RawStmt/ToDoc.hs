@@ -299,6 +299,8 @@ decNominalGeist (tag, geist, _) = do
           RT.decTypeGeist (D.text . BN.reify) geist
         Data ->
           RT.decTypeGeist (D.text . BN.reify) geist
+        Resource ->
+          RT.decTypeGeist (D.text . BN.reify) geist
   PI.arrange
     [ PI.horizontal $ D.text keyword,
       PI.inject geistDoc

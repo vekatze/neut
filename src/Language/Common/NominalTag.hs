@@ -18,6 +18,7 @@ data NominalTag
   | Alias
   | AliasOpaque
   | Data
+  | Resource
   deriving (Eq, Ord, Show, Generic)
 
 instance Binary NominalTag
@@ -39,6 +40,8 @@ nominalTagToText tag =
       "alias-opaque"
     Data ->
       "data"
+    Resource ->
+      "resource"
 
 isTermTag :: NominalTag -> Bool
 isTermTag tag =
@@ -56,6 +59,8 @@ isTermTag tag =
     AliasOpaque ->
       False
     Data ->
+      False
+    Resource ->
       False
 
 isMacroTag :: NominalTag -> Bool

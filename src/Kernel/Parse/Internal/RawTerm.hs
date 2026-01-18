@@ -11,6 +11,7 @@ module Kernel.Parse.Internal.RawTerm
     parseAliasDef,
     parseGeist,
     parseAliasGeist,
+    parseResourceGeist,
     parseDefInfoCod,
     typeWithoutIdent,
     parseImplicitParams,
@@ -491,6 +492,17 @@ parseAliasGeist h nameParser = do
   lift $ ensureArgumentLinearity S.empty $ map (\(mx, x, _, _, _) -> (mx, x)) $ SE.extract expSeries
   m <- getCurrentHint
   let cod = m :< RT.Tau
+  return (RT.RawGeist {loc, name = (name', c1), isConstLike, impArgs, defaultArgs, expArgs, cod = ([], cod)}, [])
+
+parseResourceGeist :: Parser (a, C) -> Parser (RT.RawGeist a, C)
+parseResourceGeist nameParser = do
+  loc <- getCurrentHint
+  (name', c1) <- nameParser
+  let impArgs = (SE.emptySeriesAC, [])
+  let isConstLike = True
+  let expArgs = (SE.emptySeries (Just SE.Paren) SE.Comma, [])
+  let defaultArgs = (SE.emptySeries (Just SE.Bracket) SE.Comma, [])
+  let cod = loc :< RT.Tau
   return (RT.RawGeist {loc, name = (name', c1), isConstLike, impArgs, defaultArgs, expArgs, cod = ([], cod)}, [])
 
 parseImplicitParams :: Handle -> Parser (SE.Series (RawBinder RT.RawType), C)
