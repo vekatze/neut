@@ -246,11 +246,11 @@ infer h term =
           impArgs' <- mapM (const $ liftIO $ newTypeHole h m (varEnv h)) impArgs
           let impIds = map (\(_, x, _) -> x) impArgs
           let subType = IntMap.fromList $ zip (map Ident.toInt impIds) (map Type impArgs')
+          (expArgs', subType') <- liftIO $ Subst.subst' (substHandle h) subType expArgs
+          let expArgs'' = map (\(mx, x, _) -> mx :< WT.Var x) expArgs'
           unless (null defaultArgs) $ do
             raiseError m "exact application does not support default parameters"
-          expArgs' <- mapM (substTypeBinder h subType) expArgs
-          codType' <- liftIO $ Subst.substType (substHandle h) subType codType
-          let expArgs'' = map (\(mx, x, _) -> mx :< WT.Var x) expArgs'
+          codType' <- liftIO $ Subst.substType (substHandle h) subType' codType
           lamID <- liftIO $ Gensym.newCount (gensymHandle h)
           infer h $ m :< WT.PiIntro (AttrL.normal lamID codType') [] expArgs' [] (m :< WT.PiElim False e' (ImpArgs.FullySpecified impArgs') expArgs'' (DefaultArgs.ByKey []))
         _ ->
@@ -514,7 +514,7 @@ inferTypeWithKind h ty =
           let impParamIds = map (\(_, x, _) -> x) impParams
           impParams' <- mapM (const $ liftIO $ newTypeHole h m (varEnv h)) impParams
           let subType = IntMap.fromList $ zip (map Ident.toInt impParamIds) (map Type impParams')
-          expParams' <- mapM (substTypeBinder h subType) expParams
+          (expParams', _) <- substTypeBinder h subType expParams
           ensureTypeArityCorrectness m (length expParams') (length args')
           forM_ (zip expParams' argKinds) $ \((_, _, tParam), tArg) ->
             liftIO $ Constraint.insert (constraintHandle h) tParam tArg
@@ -702,8 +702,9 @@ inferPiElim h m (e, t) impArgs defaultArgsSpec expArgs = do
       subType <- inferArgsTypes h IntMap.empty m impArgsTyped impArgsParam
       let impArgs' = map fst impArgsTyped
       let expArgs' = map fst expArgs
+      _ :< cod' <- inferArgsTerms h subType m expArgs expParams cod
       defaultArgsOverrides <- resolveDefaultOverrides e defaultParams defaultArgsSpec
-      defaultParams' <- mapM (substTypeBinder h subType) defaultParams
+      (defaultParams', _) <- substTypeBinder h subType defaultParams
       forM_ (zip defaultParams' defaultArgsOverrides) $ \((_, _, tParam), mOverride) -> do
         case mOverride of
           Just (_, tArg) -> do
@@ -711,7 +712,6 @@ inferPiElim h m (e, t) impArgs defaultArgsSpec expArgs = do
             liftIO $ Constraint.insert (constraintHandle h) tParam' tArg
           Nothing ->
             return ()
-      _ :< cod' <- inferArgsTerms h subType m expArgs expParams cod
       let defaultArgsAligned = DefaultArgs.Aligned (map (fmap fst) defaultArgsOverrides)
       return (m :< WT.PiElim isNoetic e (ImpArgs.FullySpecified impArgs') expArgs' defaultArgsAligned, m :< cod')
 
@@ -978,7 +978,6 @@ checkIsCodeType h m t = do
   tInner <- liftIO $ newTypeHole h m (varEnv h)
   liftIO $ Constraint.insert (constraintHandle h) (m :< WT.Code tInner) t
 
-substTypeBinder :: Handle -> Subst.Subst -> BinderF WT.WeakType -> App (BinderF WT.WeakType)
-substTypeBinder h sub (mx, x, t) = do
-  t' <- liftIO $ Subst.substType (substHandle h) sub t
-  return (mx, x, t')
+substTypeBinder :: Handle -> Subst.Subst -> [BinderF WT.WeakType] -> App ([BinderF WT.WeakType], Subst.Subst)
+substTypeBinder h sub mxts = do
+  liftIO $ Subst.subst' (substHandle h) sub mxts

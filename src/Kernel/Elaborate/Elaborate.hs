@@ -132,15 +132,15 @@ elaborateStmt h stmt = do
       stmtKind' <- elaborateStmtKindTerm h stmtKind
       e' <- elaborate' h e
       impArgs' <- mapM (elaborateWeakBinder h) impArgs
+      expArgs' <- mapM (elaborateWeakBinder h) expArgs
       defaultArgs' <- forM defaultArgs $ \(binder, value) -> do
         binder' <- elaborateWeakBinder h binder
         value' <- elaborate' h value
         return (binder', value')
-      expArgs' <- mapM (elaborateWeakBinder h) expArgs
       codType' <- elaborateType h codType
-      let dummyAttr = AttrL.Attr {lamKind = LK.Normal Nothing codType', identity = 0}
       remarks <- do
         affHandle <- liftIO $ EnsureAffinity.new h
+        let dummyAttr = AttrL.Attr {lamKind = LK.Normal Nothing codType', identity = 0}
         EnsureAffinity.ensureAffinity affHandle $ m :< TM.PiIntro dummyAttr impArgs' expArgs' defaultArgs' e'
       e'' <-
         if not $ SK.isMacroStmtKind stmtKind

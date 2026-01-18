@@ -4,6 +4,7 @@ module Language.WeakTerm.Subst
     SubstEntry (..),
     Subst,
     subst,
+    subst',
     substType,
     substDecisionTree,
   )
