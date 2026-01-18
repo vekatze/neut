@@ -5,57 +5,57 @@ import {
 
 define test-syntax(): unit {
   // nullary
-  let _ = () -> type;
+  let _ = pack-type {() -> type};
   // general, non-dependent
-  let _ = (type) -> type;
-  let _ = (() -> type) -> type;
-  let _ = (() -> (type) -> type) -> type;
-  let _ = (((type) -> type) -> type) -> type;
+  let _ = pack-type {(type) -> type};
+  let _ = pack-type {(() -> type) -> type};
+  let _ = pack-type {(() -> (type) -> type) -> type};
+  let _ = pack-type {(((type) -> type) -> type) -> type};
   // general, dependent
-  let _ = (a: type, a) -> a;
-  let _ = (a: type, a) -> a;
-  let _ = (a: type, a) -> list(type);
-  let _ = (a: type, list(type)) -> a;
-  let _ = (a: type, a) -> &list(type);
-  let _ = (a: type, &list(type)) -> a;
-  let _ = (a: type, a) -> thread(list(type));
-  let _ = (a: type, thread(list(type))) -> a;
-  let _ = (a: type, a) -> type;
-  let _ = (a: type, (a) -> a) -> type;
-  let _ = (a: type, ((a) -> a) -> a) -> type;
+  let _ = pack-type {(a: type, a) -> a};
+  let _ = pack-type {(a: type, a) -> a};
+  let _ = pack-type {(a: type, a) -> list(type)};
+  let _ = pack-type {(a: type, list(type)) -> a};
+  let _ = pack-type {(a: type, a) -> &list(type)};
+  let _ = pack-type {(a: type, &list(type)) -> a};
+  let _ = pack-type {(a: type, a) -> thread(list(type))};
+  let _ = pack-type {(a: type, thread(list(type))) -> a};
+  let _ = pack-type {(a: type, a) -> type};
+  let _ = pack-type {(a: type, (a) -> a) -> type};
+  let _ = pack-type {(a: type, ((a) -> a) -> a) -> type};
   // simplified
-  let _ = (type) -> type;
-  let _ = ({(type) -> type}) -> type;
-  let _ = (type) -> (type) -> list(type);
-  let _ = (type) -> {(type) -> type};
-  let _ = (type) -> {(type) -> list(type)};
-  let _ = (type) -> {(list(type)) -> type};
-  let _ = (type) -> {(type) -> &list(type)};
-  let _ = (type) -> {(&list(type)) -> type};
-  let _ = (type) -> {(type) -> thread(list(type))};
-  let _ = (type) -> {(thread(list(type))) -> type};
-  let _ = (type) -> {({(type) -> type}) -> type};
-  let _ = (type) -> {(type) -> {(type) -> type}};
-  let _ = (type) -> {({(type) -> type}) -> {(type) -> type}};
-  let _ = ({(type) -> type}) -> {({(type) -> type}) -> {(type) -> type}};
-  let _ = ({({(type) -> type}) -> {(type) -> type}}) -> {({(type) -> type}) -> {(type) -> type}};
+  let _ = pack-type {(type) -> type};
+  let _ = pack-type {({(type) -> type}) -> type};
+  let _ = pack-type {(type) -> (type) -> list(type)};
+  let _ = pack-type {(type) -> {(type) -> type}};
+  let _ = pack-type {(type) -> {(type) -> list(type)}};
+  let _ = pack-type {(type) -> {(list(type)) -> type}};
+  let _ = pack-type {(type) -> {(type) -> &list(type)}};
+  let _ = pack-type {(type) -> {(&list(type)) -> type}};
+  let _ = pack-type {(type) -> {(type) -> thread(list(type))}};
+  let _ = pack-type {(type) -> {(thread(list(type))) -> type}};
+  let _ = pack-type {(type) -> {({(type) -> type}) -> type}};
+  let _ = pack-type {(type) -> {(type) -> {(type) -> type}}};
+  let _ = pack-type {(type) -> {({(type) -> type}) -> {(type) -> type}}};
+  let _ = pack-type {({(type) -> type}) -> {({(type) -> type}) -> {(type) -> type}}};
+  let _ = pack-type {({({(type) -> type}) -> {(type) -> type}}) -> {({(type) -> type}) -> {(type) -> type}}};
   // complex
-  let _ = (a: type, m: (type, type) -> type) -> ({(s: type) -> (a) -> m(s, a)}) -> a;
+  let _ = pack-type {(a: type, m: (type, type) -> type) -> ({(s: type) -> (a) -> m(s, a)}) -> a};
   Unit
 }
 
 define affine-pi(): type {
-  let _ = (type) -> type;
-  type
+  let _ = pack-type {(type) -> type};
+  pack-type {type}
 }
 
 define linear-pi(): type {
-  let x = (type) -> type;
+  let x = pack-type {(type) -> type};
   x
 }
 
 define relevant-pi(): type {
-  let x = (type) -> type;
+  let x = pack-type {(type) -> type};
   let _ = x;
   x
 }

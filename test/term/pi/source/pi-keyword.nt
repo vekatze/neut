@@ -10,13 +10,16 @@ define foo(
 ): type {
   let _ = 竹の葉に霰ふるなりさらさらに独りは寝べき心地こそせね;
   if FOO {
-    (a) -> 🌟🌟🌟
+    unpack-type a = a;
+    unpack-type 🌟🌟🌟 = 🌟🌟🌟;
+    pack-type {(a) -> 🌟🌟🌟}
   } else {
-    (🌟🌟🌟) -> type
+    unpack-type 🌟🌟🌟 = 🌟🌟🌟;
+    pack-type {(🌟🌟🌟) -> type}
   }
 }
 
-define bar(a: type, some-value: a): unit {
+define bar<a>(some-value: a): unit {
   let _ = some-value;
   Unit
 }
@@ -24,31 +27,29 @@ define bar(a: type, some-value: a): unit {
 define test-syntax(): unit {
   let _ =
     foo of {
-      a := int,
+      a := pack-type {int},
       FOO := True,
-      🌟🌟🌟 := list(null),
+      🌟🌟🌟 := pack-type {list(null)},
       竹の葉に霰ふるなりさらさらに独りは寝べき心地こそせね := {
         let x = 10;
         let y = 20;
         add-int(x, y)
       },
-    }
- ;
+    };
   let _ =
     foo of {
-      a := int,
-      🌟🌟🌟 := list(null),
+      a := pack-type {int},
+      🌟🌟🌟 := pack-type {list(null)},
       FOO := False,
       竹の葉に霰ふるなりさらさらに独りは寝べき心地こそせね := {
         let x = 10;
         let y = 20;
         add-int(x, y)
       },
-    }
- ;
+    };
   let _ =
     foo of {
-      🌟🌟🌟 := list(null),
+      🌟🌟🌟 := pack-type {list(null)},
       a := {
         foo of {
           竹の葉に霰ふるなりさらさらに独りは寝べき心地こそせね := {
@@ -56,8 +57,8 @@ define test-syntax(): unit {
             let y = 20;
             add-int(x, y)
           },
-          a := int,
-          🌟🌟🌟 := list(null),
+          a := pack-type {int},
+          🌟🌟🌟 := pack-type {list(null)},
           FOO := True,
         }
       },
@@ -67,15 +68,12 @@ define test-syntax(): unit {
         let y = 20;
         add-int(x, y)
       },
-    }
- ;
+    };
   let _ =
     // hole-notation + keyword arguments
     bar of {
-      a := _,
-      some-value := type,
-    }
- ;
+      some-value := pack-type {type},
+    };
   Unit
 }
 

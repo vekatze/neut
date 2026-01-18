@@ -12,24 +12,24 @@ data tree(a) {
 | Node(color, tree(a), a, tree(a))
 }
 
-define member(a: type, !cmp: (a, a) -> ordering, !x: a, t: &tree(a)): bool {
+define member<a>(!cmp: (a, a) -> ordering, !x: a, t: &tree(a)): bool {
   case t {
   | Leaf =>
     False
   | Node(_, t1, v, t2) =>
     match !cmp(!x, *v) {
     | LT =>
-      member(a, !cmp, !x, t1)
+      member<a>(!cmp, !x, t1)
     | EQ =>
       True
     | GT =>
-      member(a, !cmp, !x, t2)
+      member<a>(!cmp, !x, t2)
     }
   }
 }
 
 // detect and repair each Red-Red violation
-define balance(a: type, c: color, t1: tree(a), v: a, t2: tree(a)): tree(a) {
+define balance<a>(c: color, t1: tree(a), v: a, t2: tree(a)): tree(a) {
   match c, t1, t2 {
   | Black, Node(Red, Node(Red, l11, v11, r11), x1, t12), t2 =>
     Node(Red, Node(Black, l11, v11, r11), x1, Node(Black, t12, v, t2))
@@ -44,7 +44,7 @@ define balance(a: type, c: color, t1: tree(a), v: a, t2: tree(a)): tree(a) {
   }
 }
 
-define insert(a: type, !cmp: (a, a) -> ordering, !x: a, t: tree(a)): tree(a) {
+define insert<a>(!cmp: (a, a) -> ordering, !x: a, t: tree(a)): tree(a) {
   let helper =
     define self(t: tree(a)): tree(a) {
       match t {
@@ -53,11 +53,11 @@ define insert(a: type, !cmp: (a, a) -> ordering, !x: a, t: tree(a)): tree(a) {
       | Node(c, left, !y, right) =>
         match !cmp(!x, !y) {
         | LT =>
-          balance(a, c, self(left), !y, right)
+          balance<a>(c, self(left), !y, right)
         | EQ =>
           Node(c, left, !y, right)
         | GT =>
-          balance(a, c, left, !y, self(right))
+          balance<a>(c, left, !y, self(right))
         }
       }
     };
@@ -84,7 +84,6 @@ define main(): unit {
   let t: tree(() -> int) = Leaf;
   let t =
     insert(
-      _,
       compare-int,
       function () {
         3
@@ -93,7 +92,6 @@ define main(): unit {
     );
   let t =
     insert(
-      _,
       compare-int,
       function () {
         4
@@ -102,7 +100,6 @@ define main(): unit {
     );
   let t =
     insert(
-      _,
       compare-int,
       function () {
         2
@@ -111,7 +108,6 @@ define main(): unit {
     );
   let t =
     insert(
-      _,
       compare-int,
       function () {
         9
@@ -120,7 +116,6 @@ define main(): unit {
     );
   let t =
     insert(
-      _,
       compare-int,
       function () {
         100
@@ -129,7 +124,6 @@ define main(): unit {
     );
   let t =
     insert(
-      _,
       compare-int,
       function () {
         8
@@ -138,7 +132,6 @@ define main(): unit {
     );
   let t =
     insert(
-      _,
       compare-int,
       function () {
         1
@@ -147,7 +140,6 @@ define main(): unit {
     );
   let b on t =
     member(
-      _,
       compare-int,
       function () {
         5

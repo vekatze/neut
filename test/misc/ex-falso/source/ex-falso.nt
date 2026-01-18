@@ -1,6 +1,6 @@
 data my-empty() {}
 
-define ex-falso(a: type, e: my-empty()): a {
+define ex-falso<a>(e: my-empty()): a {
   match e {}
 }
 

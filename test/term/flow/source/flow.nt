@@ -5,11 +5,11 @@ import {
 }
 
 define test-syntax(): unit {
-  let _ = thread(type);
-  let _ = (thread(type)) -> type;
-  let _ = (type) -> thread(type);
-  let _ = (thread(type), thread(type)) -> (thread(type)) -> thread(type);
-  let _ = thread(thread(type));
+  let _ = pack-type {thread(type)};
+  let _ = pack-type {(thread(type)) -> type};
+  let _ = pack-type {(type) -> thread(type)};
+  let _ = pack-type {(thread(type), thread(type)) -> (thread(type)) -> thread(type)};
+  let _ = pack-type {thread(thread(type))};
   let _ = detach {Unit};
   let _ =
     detach {

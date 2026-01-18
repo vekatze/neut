@@ -7,7 +7,7 @@ data heap(a) {
 | Node(heap(a), a, heap(a))
 }
 
-define split(a: type, !cmp: (a, a) -> ordering, !pivot: a, t: heap(a)): pair(heap(a), heap(a)) {
+define split<a>(!cmp: (a, a) -> ordering, !pivot: a, t: heap(a)): pair(heap(a), heap(a)) {
   match t {
   | Leaf =>
     Pair(Leaf, Leaf)
@@ -22,11 +22,11 @@ define split(a: type, !cmp: (a, a) -> ordering, !pivot: a, t: heap(a)): pair(hea
         match !cmp(!w, !pivot) {
         | LT =>
           // go right
-          let Pair(!right-right-small, right-right-big) = split(_, !cmp, !pivot, right-right);
+          let Pair(!right-right-small, right-right-big) = split(!cmp, !pivot, right-right);
           Pair(Node(Node(left, !v, !right-right-small), !w, !right-right-small), right-right-big)
         | _ =>
           // go left
-          let Pair(right-left-small, right-left-big) = split(_, !cmp, !pivot, right-left);
+          let Pair(right-left-small, right-left-big) = split(!cmp, !pivot, right-left);
           Pair(Node(left, !v, right-left-small), Node(right-left-big, !w, right-right))
         }
       }
@@ -39,11 +39,11 @@ define split(a: type, !cmp: (a, a) -> ordering, !pivot: a, t: heap(a)): pair(hea
         match !cmp(!w, !pivot) {
         | LT =>
           // go right
-          let Pair(left-right-small, left-right-big) = split(_, !cmp, !pivot, left-right);
+          let Pair(left-right-small, left-right-big) = split(!cmp, !pivot, left-right);
           Pair(Node(left-left, !w, left-right-small), Node(left-right-big, !v, right))
         | _ =>
           // go left
-          let Pair(left-left-small, left-left-big) = split(_, !cmp, !pivot, left-left);
+          let Pair(left-left-small, left-left-big) = split(!cmp, !pivot, left-left);
           Pair(left-left-small, Node(left-left-big, !w, Node(left-right, !v, right)))
         }
       }
@@ -51,23 +51,23 @@ define split(a: type, !cmp: (a, a) -> ordering, !pivot: a, t: heap(a)): pair(hea
   }
 }
 
-define insert(a: type, cmp: (a, a) -> ordering, !x: a, t: heap(a)): heap(a) {
-  let Pair(smaller, bigger) = split(_, cmp, !x, t);
+define insert<a>(cmp: (a, a) -> ordering, !x: a, t: heap(a)): heap(a) {
+  let Pair(smaller, bigger) = split(cmp, !x, t);
   Node(smaller, !x, bigger)
 }
 
-define find-min(a: type, t: &heap(a)): ?a {
+define find-min<a>(t: &heap(a)): ?a {
   case t {
   | Leaf =>
     none
   | Node(Leaf, x, _) =>
     Right(*x)
   | Node(left, _, _) =>
-    find-min(a, left)
+    find-min<a>(left)
   }
 }
 
-define delete-min(a: type, t: heap(a)): ?heap(a) {
+define delete-min<a>(t: heap(a)): ?heap(a) {
   match t {
   | Leaf =>
     none
@@ -76,7 +76,7 @@ define delete-min(a: type, t: heap(a)): ?heap(a) {
   | Node(Node(Leaf, _, t12), y, t2) =>
     Right(Node(t12, y, t2))
   | Node(Node(t11, x, t12), y, t2) =>
-    try t11 = delete-min(a, t11);
+    try t11 = delete-min<a>(t11);
     Right(Node(t11, x, Node(t12, y, t2)))
   }
 }
@@ -106,12 +106,12 @@ define compare-int-list(xs: list(int), ys: list(int)): ordering {
 
 define main(): unit {
   let h: heap(list(int)) = Leaf;
-  let h = insert(_, compare-int-list, List[1, 2], h);
-  let h = insert(_, compare-int-list, List[10], h);
-  let h = insert(_, compare-int-list, List[5], h);
+  let h = insert(compare-int-list, List[1, 2], h);
+  let h = insert(compare-int-list, List[10], h);
+  let h = insert(compare-int-list, List[5], h);
   // v1 = 3
   let v1 on h =
-    match find-min(_, h) {
+    match find-min(h) {
     | Right(xs) =>
       let v on xs = sum(xs);
       // xs = [1, 2]
@@ -121,17 +121,17 @@ define main(): unit {
     | Left(_) =>
       4
     };
-  let mh = delete-min(_, h);
+  let mh = delete-min(h);
   let result =
     match mh {
     | Left(_) =>
       3
     | Right(h) =>
-      let h = insert(_, compare-int-list, List[4, 8], h);
-      let h = insert(_, compare-int-list, List[1, 1], h);
+      let h = insert(compare-int-list, List[4, 8], h);
+      let h = insert(compare-int-list, List[1, 1], h);
       // v2 = 2
       let v2 on h =
-        match find-min(_, h) {
+        match find-min(h) {
         | Right(xs) =>
           let v on xs = sum(xs);
           // xs = [1, 1]

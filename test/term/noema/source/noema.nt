@@ -5,9 +5,9 @@ import {
 }
 
 define test-syntax(): unit {
-  let _ = &list(type);
-  let _ = &list(&list(type));
-  let _ = (&type, &list((&list(type)) -> &list(type))) -> &list(type);
+  let _ = pack-type {&list(type)};
+  let _ = pack-type {&list(&list(type))};
+  let _ = pack-type {(&type, &list((&list(type)) -> &list(type))) -> &list(type)};
   let xs: list(int) = List[1, 2, 3];
   let _ on xs = {
     let _ on xs = {
@@ -60,16 +60,16 @@ data my-enum {
 define nested-enum-match(t: &term(my-enum)): term(my-enum) {
   let val =
     case t {
-    | App(Abs(x, !t'), Var(e)) =>
+    | App(Abs(x, !t), Var(e)) =>
       let _ = Var(e);
-      let !t' = *!t';
-      let _ = !t';
+      let !t = *!t;
+      let _ = !t;
       let _ = x;
       let _ = Var(e);
-      let _ = !t';
+      let _ = !t;
       let _ = x;
       let _ = Var(e);
-      let _ = !t';
+      let _ = !t;
       let _ = x;
       let _ = Var(e);
       let _ = x;
@@ -106,7 +106,7 @@ define nested-enum-match(t: &term(my-enum)): term(my-enum) {
   }
 }
 
-define unbalanced-freevars-in-branches(a: type, t: &term(a)): term(a) {
+define unbalanced-freevars-in-branches<a>(t: &term(a)): term(a) {
   let !foo = Var("test");
   let f =
     function () {
@@ -191,10 +191,10 @@ define test-resource(): unit {
   let _ on t2 = nested-enum-match(t2);
   let _ on t3 = nested-enum-match(t3);
   let _ on t4 = nested-enum-match(t4);
-  let _ on t1 = unbalanced-freevars-in-branches(_, t1);
-  let _ on t2 = unbalanced-freevars-in-branches(_, t2);
-  let _ on t3 = unbalanced-freevars-in-branches(_, t3);
-  let _ on t4 = unbalanced-freevars-in-branches(_, t4);
+  let _ on t1 = unbalanced-freevars-in-branches(t1);
+  let _ on t2 = unbalanced-freevars-in-branches(t2);
+  let _ on t3 = unbalanced-freevars-in-branches(t3);
+  let _ on t4 = unbalanced-freevars-in-branches(t4);
   let _ = t1;
   let _ = t2;
   let _ = t3;

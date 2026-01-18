@@ -2,7 +2,7 @@ define test-syntax(): unit {
   // nullary
   let _ =
     function () {
-      type
+      pack-type {type}
     };
   // unary
   let _: (type) -> type =
@@ -41,12 +41,12 @@ define test-syntax(): unit {
   // exprs in bodies
   let _ =
     function (f: (type) -> type) {
-      f(type)
+      f(pack-type {type})
     };
   let _ =
     function (f: (type) -> type) {
-      let _ = f(type);
-      type
+      let _ = f(pack-type {type});
+      pack-type {type}
     };
   let _ =
     function (_: (type) -> type) {
@@ -56,30 +56,26 @@ define test-syntax(): unit {
   // (unnecessarily) complex type
   let _ =
     function (
-      x:
-      {
-        let _ = type;
-        (type, type) -> type
-      },
+      x: {(type, type) -> type},
       _: {(type) -> type},
     ) {
       x
     };
   let f =
     function (_: type, _: type, _: type) {
-      type
+      pack-type {type}
     };
   let _ =
     f(
       {
-        let _ = type;
-        type
+        let _ = pack-type {type};
+        pack-type {type}
       },
-      type,
+      pack-type {type},
       {
         let f =
           function () {
-            type
+            pack-type {type}
           };
         f()
       },
@@ -88,19 +84,19 @@ define test-syntax(): unit {
 }
 
 define sample(): type {
-  let _ = type;
+  let _ = pack-type {type};
   Unit;
-  (type, type) -> type
+  pack-type {(type, type) -> type}
 }
 
-define opaque(a: type, x: a) {
+define opaque<a>(x: a) {
   x
 }
 
 define affine-lam1(): unit {
   let lam1 =
-    opaque(_, function () {
-      type
+    opaque(function () {
+      pack-type {type}
     });
   let _ = lam1;
   Unit
@@ -108,8 +104,8 @@ define affine-lam1(): unit {
 
 define relevant-lam1(): unit {
   let !lam1 =
-    opaque(_, function () {
-      type
+    opaque(function () {
+      pack-type {type}
     });
   let _ = !lam1;
   let _ = !lam1;
@@ -118,11 +114,11 @@ define relevant-lam1(): unit {
 
 define affine-lam2(): unit {
   let lam1 =
-    opaque(_, function () {
-      type
+    opaque(function () {
+      pack-type {type}
     });
   let lam2 =
-    opaque(_, function () {
+    opaque(function () {
       let v = lam1;
       v
     });
@@ -132,11 +128,11 @@ define affine-lam2(): unit {
 
 define relevant-lam2(): unit {
   let lam1 =
-    opaque(_, function () {
-      type
+    opaque(function () {
+      pack-type {type}
     });
   let !lam2 =
-    opaque(_, function () {
+    opaque(function () {
       let v = lam1;
       v
     });
@@ -147,16 +143,16 @@ define relevant-lam2(): unit {
 
 define affine-lam3(): unit {
   let !lam1 =
-    opaque(_, function () {
-      type
+    opaque(function () {
+      pack-type {type}
     });
   let lam2 =
-    opaque(_, function () {
+    opaque(function () {
       let v = !lam1;
       v
     });
   let lam3 =
-    opaque(_, function (_: (type) -> type) {
+    opaque(function (_: (type) -> type) {
       let _ = !lam1;
       let v2 = lam2;
       v2
@@ -167,16 +163,16 @@ define affine-lam3(): unit {
 
 define relevant-lam3(): unit {
   let !lam1 =
-    opaque(_, function () {
-      type
+    opaque(function () {
+      pack-type {type}
     });
   let lam2 =
-    opaque(_, function () {
+    opaque(function () {
       let v = !lam1;
       v
     });
   let !lam3 =
-    opaque(_, function (_: (type) -> type) {
+    opaque(function (_: (type) -> type) {
       let _ = !lam1;
       let v2 = lam2;
       v2
@@ -188,23 +184,23 @@ define relevant-lam3(): unit {
 
 define affine-lam4(): unit {
   let !lam1 =
-    opaque(_, function () {
-      type
+    opaque(function () {
+      pack-type {type}
     });
   let !lam2 =
-    opaque(_, function () {
+    opaque(function () {
       let v = !lam1;
       v
     });
   let !lam3 =
-    opaque(_, function (_: (type) -> type) {
+    opaque(function (_: (type) -> type) {
       let _ = !lam1;
       let v2 = !lam2;
       v2
     });
   let _ = !lam3;
   let lam4 =
-    opaque(_, function (_: (type) -> type) {
+    opaque(function (_: (type) -> type) {
       let _ = !lam1;
       let _ = !lam2;
       let v3 = !lam3;
@@ -216,23 +212,23 @@ define affine-lam4(): unit {
 
 define relevant-lam4(): unit {
   let !lam1 =
-    opaque(_, function () {
-      type
+    opaque(function () {
+      pack-type {type}
     });
   let !lam2 =
-    opaque(_, function () {
+    opaque(function () {
       let v = !lam1;
       v
     });
   let !lam3 =
-    opaque(_, function (_: (type) -> type) {
+    opaque(function (_: (type) -> type) {
       let _ = !lam1;
       let v2 = !lam2;
       v2
     });
   let _ = !lam3;
   let !lam4 =
-    opaque(_, function (_: (type) -> type) {
+    opaque(function (_: (type) -> type) {
       let _ = !lam1;
       let _ = !lam2;
       let v3 = !lam3;
