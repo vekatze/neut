@@ -30,6 +30,7 @@ module Language.Common.DefiniteDescription
     toBuilder,
     llvmGlobalLocator,
     unconsDD,
+    makeResourceName,
   )
 where
 
@@ -143,6 +144,11 @@ localLocator dd = do
       result
     _ ->
       error "Rule.DefiniteDescription.localLocator"
+
+makeResourceName :: DefiniteDescription -> Int -> DefiniteDescription
+makeResourceName baseDD resourceID = do
+  let gl = globalLocator baseDD
+  MakeDefiniteDescription $ gl <> nsSep <> BN.reify (BN.resourceName resourceID)
 
 immType :: DefiniteDescription
 immType =

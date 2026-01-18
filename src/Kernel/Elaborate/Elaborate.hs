@@ -899,7 +899,8 @@ stmtKindToDefKind stmtKind =
 -- viewStmt stmt = do
 --   case stmt of
 --     WeakStmtDefineTerm _ _ m x impArgs expArgs defArgs codType e -> do
+--       let defArgs' = map fst defArgs
 --       let attr = AttrL.Attr {lamKind = LK.Normal Nothing codType, identity = 0}
---       putStrLn $ T.unpack $ DD.reify x <> "\n" <> toTextType (m :< WT.Pi (PK.Normal False) impArgs defArgs expArgs codType) <> "\n" <> toText (m :< WT.PiIntro attr impArgs defArgs expArgs e)
+--       putStrLn $ T.unpack $ DD.reify x <> "\n" <> toTextType (m :< WT.Pi (PK.Normal False) impArgs expArgs defArgs' codType) <> "\n" <> toText (m :< WT.PiIntro attr impArgs expArgs defArgs e)
 --     _ ->
 --       return ()

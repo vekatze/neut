@@ -207,7 +207,7 @@ clarifyStmt h stmt =
           body' <- clarifyStmtDefineTypeBody h tenv xts'' body
           return $ C.Def f (SK.toLowOpacityType stmtKind) (map fst xts'') body'
     StmtDefineResource (SavedHint m) dd resourceID _ discarder copier -> do
-      let liftedName = Locator.attachCurrentLocator (locatorHandle h) $ BN.resourceName resourceID
+      let liftedName = DD.makeResourceName dd resourceID
       switch <- liftIO $ Gensym.createVar (gensymHandle h) "switch"
       arg@(argVarName, _) <- liftIO $ Gensym.createVar (gensymHandle h) "arg"
       discard <-
@@ -218,11 +218,7 @@ clarifyStmt h stmt =
           >>= liftIO . Reduce.reduce (reduceHandle h)
       let resourceSpec = Utility.ResourceSpec {switch, arg, discard, copy, defaultValues = []}
       liftIO $ Utility.registerSwitcher (utilityHandle h) O.Clear liftedName resourceSpec
-      envArg <- liftIO $ makeEnvArg h
-      switchArg <- liftIO $ makeSwitchArg h
-      let xts'' = [envArg, switchArg]
-      let resourceBody = C.UpIntro $ C.VarGlobal liftedName AN.argNumS4
-      return $ C.Def dd O.Clear (map fst xts'') resourceBody
+      return $ C.Def dd O.Clear [] (C.UpIntro $ C.VarGlobal liftedName AN.argNumS4)
     StmtVariadic {} -> do
       return $ C.Foreign [] -- nop
     StmtForeign foreignList ->
@@ -498,9 +494,8 @@ clarifyType h tenv ty =
           return Sigma.returnImmediateRuneS4
         PT.Pointer ->
           return Sigma.returnImmediatePointerS4
-    _ :< TM.Resource _ resourceID -> do
-      let liftedName = Locator.attachCurrentLocator (locatorHandle h) $ BN.resourceName resourceID
-      return $ C.UpIntro $ C.VarGlobal liftedName AN.argNumS4
+    _ :< TM.Resource dd resourceID -> do
+      return $ C.UpIntro $ C.VarGlobal (DD.makeResourceName dd resourceID) AN.argNumS4
     _ :< TM.Void ->
       return Sigma.returnImmediateNullS4
 
