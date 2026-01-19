@@ -82,7 +82,7 @@ toText term =
         else "match " <> showMatchArgs xets <> " " <> inBrace (showDecisionTree tree)
     _ :< WT.BoxIntro letSeq t -> do
       let kes = map (\((_, x, _), e) -> (x, e)) letSeq
-      "box " <> T.intercalate ", " (map (\(k, e) -> inParen $ Ident.toText' k <> ", " <> toText e) kes) <> inBrace (toText t)
+      "box " <> T.intercalate ", " (map (\(k, e) -> inParen $ Ident.toText k <> ", " <> toText e) kes) <> inBrace (toText t)
     _ :< WT.BoxIntroLift e ->
       "lift " <> inBrace (toText e)
     _ :< WT.BoxElim castSeq (_, x, t) e1 _ e2 -> do
@@ -135,10 +135,10 @@ toTextType ty =
       case piKind of
         PK.Normal isConstLike ->
           if isConstLike
-            then "pi-constlike: " <> showImpArgsForAll impArgs defaultArgs <> toTextType cod
+            then showImpArgsForAll impArgs defaultArgs <> toTextType cod
             else showImpArgs impArgs [] <> inParen (showDomArgList expArgs) <> showDefaultBinders defaultArgs <> " -> " <> toTextType cod
         PK.DataIntro _ -> do
-          "pi-data-intro" <> showImpArgsForAll impArgs defaultArgs <> toTextType cod
+          showImpArgsForAll impArgs defaultArgs <> toTextType cod
     _ :< WT.Data (AttrD.Attr {..}) name es -> do
       if isConstLike
         then showGlobalVariable name
@@ -257,7 +257,7 @@ showDomArg (_, _, t) =
 
 showFnDomArg :: BinderF WT.WeakType -> T.Text
 showFnDomArg (_, x, t) =
-  Ident.toText' x <> ": " <> toTextType t
+  Ident.toText x <> ": " <> toTextType t
 
 showDomArgList :: [BinderF WT.WeakType] -> T.Text
 showDomArgList mxts =
@@ -275,7 +275,7 @@ showVariable :: Ident -> T.Text
 showVariable x =
   if isHole x
     then "_"
-    else Ident.toText' x
+    else Ident.toText x
 
 showGlobalVariable :: DD.DefiniteDescription -> T.Text
 showGlobalVariable =
