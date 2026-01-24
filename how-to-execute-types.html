@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>How to Execute Types - Neut Programming Language</title>
+    <meta name="description" content="A functional programming language with static memory management." />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="data:;base64,iVBORw0KGgo=">
+    <link rel="stylesheet" href="css/general.css" />
+    <link rel="stylesheet" href="highlight.css" />
+    <meta property="og:title" content="How to Execute Types - Neut Programming Language" />
+    <meta property="og:description" content="A functional programming language with static memory management." />
+    <meta property="og:url" content="https://vekatze.github.io/neut/how-to-execute-types.md" />
+    <meta property="og:type" content="article" />
+  </head>
+  <body>
+    <div id="body-container">
+      <header id="menu-bar">
+        <h1 class="menu-title">
+          <a href="overview.html">
+            Neut Programming Language
+          </a>
+        </h1>
+
+        <div class="right-buttons">
+            <a href="https://github.com/vekatze/neut" class="menubar-item">
+              <span>GitHub</span>
+            </a>
+        </div>
+      </header>
+      <div id="content-box">
+        <aside id="sidebar">
+          <nav class="sidebar-scrollbox">
+            <ol class="chapter"><li class="chapter-item expanded "><a href="overview.html"><strong aria-hidden="true">1.</strong> Overview</a></li><li class="chapter-item expanded "><a href="installation.html"><strong aria-hidden="true">2.</strong> Installation</a></li><li class="chapter-item expanded "><a href="tutorial.html"><strong aria-hidden="true">3.</strong> Tutorial</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="modules-and-sources.html"><strong aria-hidden="true">3.1.</strong> Modules and Sources</a></li><li class="chapter-item expanded "><a href="programming-in-neut.html"><strong aria-hidden="true">3.2.</strong> Programming in Neut</a></li><li class="chapter-item expanded "><a href="static-memory-management.html"><strong aria-hidden="true">3.3.</strong> Static Memory Management</a></li><li class="chapter-item expanded "><a href="modality-and-memory.html"><strong aria-hidden="true">3.4.</strong> Modality and Memory</a></li></ol></li><li class="chapter-item expanded "><a href="language-reference.html"><strong aria-hidden="true">4.</strong> Language Reference</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="commands.html"><strong aria-hidden="true">4.1.</strong> Commands</a></li><li class="chapter-item expanded "><a href="modules.html"><strong aria-hidden="true">4.2.</strong> Modules</a></li><li class="chapter-item expanded "><a href="statements.html"><strong aria-hidden="true">4.3.</strong> Statements</a></li><li class="chapter-item expanded "><a href="terms.html"><strong aria-hidden="true">4.4.</strong> Terms</a></li><li class="chapter-item expanded "><a href="primitives.html"><strong aria-hidden="true">4.5.</strong> Primitives</a></li><li class="chapter-item expanded "><a href="basis.html"><strong aria-hidden="true">4.6.</strong> Basis</a></li></ol></li><li class="chapter-item expanded "><a href="what-is-next.html"><strong aria-hidden="true">5.</strong> What is Next?</a></li><li class="chapter-item expanded affix "><li class="part-title">Appendix</li><li class="chapter-item expanded "><a href="manual-installation.html"><strong aria-hidden="true">6.</strong> Manual Installation</a></li><li class="chapter-item expanded "><a href="development-environment.html"><strong aria-hidden="true">7.</strong> Development Environment</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="lovely-lsp-showcase.html"><strong aria-hidden="true">7.1.</strong> Lovely LSP Showcase</a></li><li class="chapter-item expanded "><a href="rapid-prototyping.html"><strong aria-hidden="true">7.2.</strong> Rapid Prototyping</a></li><li class="chapter-item expanded "><a href="editor-setup.html"><strong aria-hidden="true">7.3.</strong> Editor Setup</a></li></ol></li><li class="chapter-item expanded "><a href="how-to-execute-types.html" class="active"><strong aria-hidden="true">8.</strong> How to Execute Types</a></li><li class="chapter-item expanded "><a href="benchmarks.html"><strong aria-hidden="true">9.</strong> Benchmarks</a></li></ol>
+          </nav>
+        </aside>
+
+        <main id="content" tabindex="0">
+          <article id="content-inner">
+            <h1 id="how-to-execute-types"><a class="header" href="#how-to-execute-types">How to Execute Types</a></h1>
+<h2 id="table-of-contents"><a class="header" href="#table-of-contents">Table of Contents</a></h2>
+<ul>
+<li><a href="#types-as-closed-functions">Types as Closed Functions</a></li>
+<li><a href="#example-behavior-of-types">Example Behavior of Types</a></li>
+<li><a href="#immediate-types">Immediate Types</a></li>
+<li><a href="#polymorphic-types">Polymorphic Types</a></li>
+<li><a href="#algebraic-data-types">Algebraic Data Types</a></li>
+<li><a href="#advanced-function-types">Advanced: Function Types</a></li>
+</ul>
+<h2 id="types-as-closed-functions"><a class="header" href="#types-as-closed-functions">Types as Closed Functions</a></h2>
+<p>Here, we'll see how a type is translated into a function that discards/copies the terms of the type. To see the basic idea, let's take a simple ADT for example:</p>
+<pre><code class="language-neut">data item {
+| New(int, int)
+}
+</code></pre>
+<p>The internal representation of <code>New(10, 20)</code> is something like the below:</p>
+<pre><code class="language-neut">New(10, 20)
+
+// ↓ (compile)
+
+let ptr = malloc({2-words});
+store(ptr[0], 10); // ptr[0] := 10
+store(ptr[1], 20); // ptr[1] := 20
+ptr
+</code></pre>
+<h3 id="discardingcopying-a-value"><a class="header" href="#discardingcopying-a-value">Discarding/Copying a Value</a></h3>
+<p>Now, let's see how to discard and copy the values of the type <code>item</code>.</p>
+<p>A value <code>v</code> of type <code>item</code> can be discarded as follows:</p>
+<pre><code class="language-neut">free(v)
+</code></pre>
+<p>The value <code>v</code> can be copied as follows:</p>
+<pre><code class="language-neut">// copy `v`, keeping the original `v` intact
+let ptr = malloc({2-words});
+store(ptr[0], v[0]); // ptr[0] := v[0]
+store(ptr[1], v[1]); // ptr[1] := v[1]
+ptr
+</code></pre>
+<p>Not a big deal, right?</p>
+<h3 id="combining-discardingcopying-functions"><a class="header" href="#combining-discardingcopying-functions">Combining Discarding/Copying Functions</a></h3>
+<p>Using the two procedures above, we can construct a closed function that discards and copies the values of the type <code>item</code>:</p>
+<pre><code class="language-neut">define exp-item(selector, v) {
+  if selector == 0 {
+    // discard
+    free(v)
+  } else {
+    // copy `v`
+    let ptr = malloc({2-words});
+    store(ptr[0], v[0]);
+    store(ptr[1], v[1]);
+    ptr
+  }
+}
+</code></pre>
+<p><code>exp-item(selector, v)</code> discards <code>v</code> if <code>selector</code> is 0. Otherwise, this function creates a copy of <code>v</code> and then returns it, keeping the original <code>v</code> intact.</p>
+<p>The type <code>item</code> is compiled into a pointer to this function.</p>
+<p>More generally, a type <code>a</code> is translated into a pointer to a closed function like below:</p>
+<pre><code class="language-neut">define exp-a(selector, v) {
+  if selector == 0 {
+    // a procedure that discards `v`
+  } else {
+    // a procedure that copies `v` (keeping the original `v` intact)
+  }
+}
+</code></pre>
+<p>We'll call such a closed function a resource exponential of <code>a</code>.</p>
+<h2 id="example-behavior-of-types"><a class="header" href="#example-behavior-of-types">Example Behavior of Types</a></h2>
+<p>This <code>exp-item</code> is called when a variable isn't used:</p>
+<pre><code class="language-neut">let x = New(10, 20);
+print(&quot;hello&quot;) // `x` isn't used
+
+// ↓ (compile)
+
+let x = New(10, 20);
+let _ = exp-item(0, x); // discard `x` by passing 0 as `selector`
+print(&quot;hello&quot;)
+</code></pre>
+<p>This <code>exp-item</code> is also called when a variable is used more than twice:</p>
+<pre><code class="language-neut">let x = New(10, 20);
+let a = foo(x); // first use of `x`
+let b = bar(x); // second use of `x`
+cont(a, b)
+
+// ↓ (compile)
+
+let x = New(10, 20);
+let x-copy = exp-item(1, x); // copy `x` by passing 1 as `selector`
+let a = foo(x-copy);
+let b = bar(x);
+cont(a, b)
+</code></pre>
+<div class="info-block">
+<p>This discarding/copying procedure happens <em>immediately after a variable is defined</em>.</p>
+</div>
+<h2 id="immediate-types"><a class="header" href="#immediate-types">Immediate Types</a></h2>
+<p>Immediates like integers or floats don't have to be discarded or copied since they don't rely on memory-related operations like <code>malloc</code> or <code>free</code>. This fact is reflected in the resulting function that <code>int</code> or <code>float</code> are translated into:</p>
+<pre><code class="language-neut">define base.#.imm(selector, value) {
+  if selector == 0 {
+    0 // &quot;discarding&quot; doesn't have to do anything
+  } else {
+    value // &quot;copying&quot; simply reuses the original value
+  }
+}
+</code></pre>
+<p>Immediate types are compiled into this function. Noema types like <code>&amp;list(int)</code> are also translated into this function.</p>
+<p>Uses of <code>base.#.imm</code> like <code>base.#.imm(1, some-value)</code> are optimized away by inlining.</p>
+<div class="info-block">
+<p>A type is compiled into a pointer to a closed function. This means that types are immediate values. Because of that, the type of types (<code>type</code>) is also compiled into <code>base.#.imm</code>.</p>
+</div>
+<h2 id="polymorphic-types"><a class="header" href="#polymorphic-types">Polymorphic Types</a></h2>
+<p>Let's see how polymorphic values are copied. Consider the following code:</p>
+<pre><code class="language-neut">define foo(a: type, x: a): pair(a, a) {
+  Pair(x, x)
+}
+</code></pre>
+<p>The code uses the variable <code>x</code> twice. Thus, this <code>x</code> must be copied according to the type <code>a</code>.</p>
+<p>This can be done because the internal representation of <code>a</code> is a function that can discard and copy the values of type <code>a</code>. Thus, the above code is compiled into something like the below:</p>
+<pre><code class="language-neut">define foo(a: type, x: a): pair(a, a) {
+  let x-clone = a(1, x);
+  Pair(x, x-clone)
+}
+</code></pre>
+<p>Thus, we can discard and copy values of polymorphic types.</p>
+<h2 id="algebraic-data-types"><a class="header" href="#algebraic-data-types">Algebraic Data Types</a></h2>
+<p>ADTs like the below also have resource exponentials, of course:</p>
+<pre><code class="language-neut">data list(a) {
+| Nil
+| Cons(a, list(a))
+}
+</code></pre>
+<p>The first thing to note is that the values of an ADT must be able to be discarded/copied using a closed function (since all the types in Neut are compiled into closed functions). This means the information about <code>a</code> in <code>list(a)</code> must be contained in the values.</p>
+<p>That is, for example, the internal representation of <code>Nil</code> is something like below:</p>
+<pre><code class="language-neut">(a, 0)
+</code></pre>
+<p>Here, the <code>0</code> is the discriminant for <code>Nil</code>. Also, that of <code>Cons(10, xs)</code> is:</p>
+<pre><code class="language-neut">(a, 1, 10, xs)
+</code></pre>
+<p>Here, the <code>1</code> is the discriminant for <code>Cons</code>.</p>
+<p>With that in mind, the resource exponential of <code>list(a)</code> will be something like the below (A bit lengthy; Skip it and just read the succeeding note if you aren't that interested in details):</p>
+<pre><code class="language-neut">define exp-list(selector, v) {
+  if selector == 0 {
+    let d = get-discriminant(v);
+    if d == 0 {
+      // discard Nil
+      free(v)
+    } else {
+      // discard Cons
+      let a = v[0];
+      let cons-head = v[1];
+      let cons-tail = v[2];
+      free(v);
+      let () = a(0, v[1]); // ← discard the head of cons using v[0]
+      exp-list(0, v[2])
+    }
+  } else {
+    let d = get-discriminant(v);
+    if d == 0 {
+      // copy Nil
+      let ptr = malloc({2-words});
+      let a = v[0];
+      store(ptr[0], a);
+      store(ptr[1], d);
+      ptr
+    } else {
+      // copy Cons
+      let ptr = malloc({4-words});
+      let a = v[0];
+      let cons-head-copy = a(1, v[2]); // ← copy the head of cons using v[0]
+      let cons-tail-copy = exp-list(1, v[3]);
+      store(ptr[0], a);
+      store(ptr[1], d);
+      store(ptr[2], cons-head-copy);
+      store(ptr[3], cons-tail-copy);
+      ptr
+    }
+  }
+}
+</code></pre>
+<p>The point is that <em>the type information in a value is loaded at runtime and used to discard/copy values</em>. This utilization of types is the main point of first-class types in Neut.</p>
+<p>The main part of this section is now over. What follows is for curious cats.</p>
+<h2 id="advanced-function-types"><a class="header" href="#advanced-function-types">Advanced: Function Types</a></h2>
+<p>We'll see how function types like <code>(int) -&gt; bool</code> are translated.</p>
+<p>Suppose we have a function like the below:</p>
+<pre><code class="language-neut">define foo(a: type): int {
+  let x: int = 10;
+  let y = type;
+  let f =
+    function (z: a) {  // lambda
+      let foo = x;     // ← x is a free var of this lambda
+      let bar = y;     // ← y is also a free var of this lambda
+      let buz = z;
+      bar
+    };
+  0
+}
+</code></pre>
+<p>Let's see how the <code>function</code> is compiled.</p>
+<h3 id="extracting-a-closed-chain-from-a-lambda"><a class="header" href="#extracting-a-closed-chain-from-a-lambda">Extracting a Closed Chain From a Lambda</a></h3>
+<p>First, the compiler collects all the free variables in the lambda. Here, the compiler also collects all the free variables in the types of the free variables. Thus, in this case, the compiler constructs a list like below:</p>
+<pre><code class="language-neut">[a, x, y, z]
+</code></pre>
+<p>This list is &quot;closed&quot; in the following sense. Consider annotating all the variables in the list by their variables, like below:</p>
+<pre><code class="language-neut">[a: type, x: int, y: type, z: a]
+</code></pre>
+<p>This list is closed in that the term</p>
+<pre><code class="language-neut">function (a: type, x: int, y: type, z: a) {
+  Unit
+}
+</code></pre>
+<p>contains no free variables. We'll call a list like this a closed chain.</p>
+<h3 id="closure-conversion"><a class="header" href="#closure-conversion">Closure Conversion</a></h3>
+<p>We'll use this closed chain to compile a lambda. The internal representation of a closure for the lambda will be a 3-word tuple like the following:</p>
+<pre><code class="language-text">(Σ (a: type, x: int, y: type). a , (a, x, y, z), LABEL-TO-FUNCTION-DEFINITION)
+ -----------------------------   ------------
+ the type of the environment     the closed chain (i.e. environment)
+</code></pre>
+<p>This is more or less the usual closure conversion, except that we now have the types of the free variables in the closure.</p>
+<h3 id="discardingcopying-a-closure"><a class="header" href="#discardingcopying-a-closure">Discarding/Copying a Closure</a></h3>
+<p>Knowing its internal representation, we can now discard/copy a closure. To copy a closure, we can do the following:</p>
+<pre><code class="language-neut">// copy a closure `cls`
+
+let env-type = cls[0]; // get the type of the environment
+let env      = cls[1]; // get the pointer to the environment
+let label    = cls[2]; // get the label to the function
+
+let env-clone = env-type(1, env); // copy the environment using the type of it
+
+// allocate new memory region for our new closure
+let new-ptr = malloc(mul-int(3, word-size));
+
+// store cloned values
+store(new-ptr[0], env-type);  // remember that a type is an immediate
+store(new-ptr[1], env-clone);
+store(new-ptr[2], label);     // note that a label is an immediate
+
+new-ptr // ... and return the new closure
+</code></pre>
+<p>Discarding a closure can also be done with the same idea: discard the environment using the type information in the closure.</p>
+<h3 id="translating-a-function-type"><a class="header" href="#translating-a-function-type">Translating a Function Type</a></h3>
+<p>This leads us to translate the function type as follows:</p>
+<pre><code class="language-neut">(x1: A1, ..., xn: An) -&gt; B
+
+// ↓
+
+define base.#.cls(action-selector, cls) {
+  if action-selector == 0 {
+    // discard
+
+    // discard the environment using the type of it
+    let env-type = cls[0];
+    let env      = cls[1];
+    env-type(0, env);
+
+    // discard the tuple of the closure
+    free(cls)
+  } else {
+    // copy
+
+    // get the original values
+    let env-type = cls[0];
+    let env      = cls[1];
+    let label    = cls[2];
+
+    // copy the environment using the type of it
+    let env-clone = env-type(1, env);
+
+    let new-ptr = malloc(mul-int(3, word-size));
+    // copy the original values
+    store(new-ptr[0], env-type);
+    store(new-ptr[1], env-clone);
+    store(new-ptr[2], label);
+
+    // ... and return the new closure
+    new-ptr
+  }
+}
+</code></pre>
+<div class="info-block">
+<p>Every function type is translated into this same <code>base.#.cls</code>, no matter its argument types and the result types.</p>
+</div>
+
+            <footer id="footer-paginator">
+              <a rel="prev" href="editor-setup.html" class="nav previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                ← Previous Page
+              </a>
+
+              <div id="footer-spacer"></div>
+
+              <a rel="next" href="benchmarks.html" class="nav next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                Next Page →
+              </a>
+            </footer>
+          </article>
+          <div id="footer-wrapper">
+            <footer id="footer-nav">
+              <ol class="chapter"><li class="chapter-item expanded "><a href="overview.html"><strong aria-hidden="true">1.</strong> Overview</a></li><li class="chapter-item expanded "><a href="installation.html"><strong aria-hidden="true">2.</strong> Installation</a></li><li class="chapter-item expanded "><a href="tutorial.html"><strong aria-hidden="true">3.</strong> Tutorial</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="modules-and-sources.html"><strong aria-hidden="true">3.1.</strong> Modules and Sources</a></li><li class="chapter-item expanded "><a href="programming-in-neut.html"><strong aria-hidden="true">3.2.</strong> Programming in Neut</a></li><li class="chapter-item expanded "><a href="static-memory-management.html"><strong aria-hidden="true">3.3.</strong> Static Memory Management</a></li><li class="chapter-item expanded "><a href="modality-and-memory.html"><strong aria-hidden="true">3.4.</strong> Modality and Memory</a></li></ol></li><li class="chapter-item expanded "><a href="language-reference.html"><strong aria-hidden="true">4.</strong> Language Reference</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="commands.html"><strong aria-hidden="true">4.1.</strong> Commands</a></li><li class="chapter-item expanded "><a href="modules.html"><strong aria-hidden="true">4.2.</strong> Modules</a></li><li class="chapter-item expanded "><a href="statements.html"><strong aria-hidden="true">4.3.</strong> Statements</a></li><li class="chapter-item expanded "><a href="terms.html"><strong aria-hidden="true">4.4.</strong> Terms</a></li><li class="chapter-item expanded "><a href="primitives.html"><strong aria-hidden="true">4.5.</strong> Primitives</a></li><li class="chapter-item expanded "><a href="basis.html"><strong aria-hidden="true">4.6.</strong> Basis</a></li></ol></li><li class="chapter-item expanded "><a href="what-is-next.html"><strong aria-hidden="true">5.</strong> What is Next?</a></li><li class="chapter-item expanded affix "><li class="part-title">Appendix</li><li class="chapter-item expanded "><a href="manual-installation.html"><strong aria-hidden="true">6.</strong> Manual Installation</a></li><li class="chapter-item expanded "><a href="development-environment.html"><strong aria-hidden="true">7.</strong> Development Environment</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="lovely-lsp-showcase.html"><strong aria-hidden="true">7.1.</strong> Lovely LSP Showcase</a></li><li class="chapter-item expanded "><a href="rapid-prototyping.html"><strong aria-hidden="true">7.2.</strong> Rapid Prototyping</a></li><li class="chapter-item expanded "><a href="editor-setup.html"><strong aria-hidden="true">7.3.</strong> Editor Setup</a></li></ol></li><li class="chapter-item expanded "><a href="how-to-execute-types.html" class="active"><strong aria-hidden="true">8.</strong> How to Execute Types</a></li><li class="chapter-item expanded "><a href="benchmarks.html"><strong aria-hidden="true">9.</strong> Benchmarks</a></li></ol>
+            </footer>
+          </div>
+        </main>
+      </div>
+
+
+      <script src="highlight.js"></script>
+      <script src="book.js"></script>
+    </div>
+  </body>
+</html>
