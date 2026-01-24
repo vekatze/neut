@@ -46,7 +46,7 @@ inline source-locator-sero: sero(source-locator) {
       function (k) {
         try t = get-text(k);
         Right(box {
-          letbox t = quote {t};
+          letbox t = lift {t};
           Source-Locator(t)
         })
       }

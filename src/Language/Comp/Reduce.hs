@@ -11,7 +11,7 @@ import Gensym.Handle qualified as Gensym
 import Language.Common.CreateSymbol qualified as Gensym
 import Language.Common.Ident
 import Language.Common.Ident.Reify qualified as Ident
-import Language.Common.Magic qualified as M
+import Language.Common.LowMagic qualified as LM
 import Language.Common.Opacity qualified as O
 import Language.Comp.Comp qualified as C
 import Language.Comp.EnumCase qualified as EC
@@ -142,7 +142,7 @@ reduce h term = do
           return $ C.EnumElim fvInfo' v' defaultBranch' (zip cs es') phiVarList' cont'
     C.Primitive prim -> do
       case prim of
-        C.Magic (M.Cast _ _ value) ->
+        C.Magic (LM.Cast _ _ value) ->
           return $ C.UpIntro $ Subst.substValue (subst h) value
         _ ->
           return $ C.Primitive $ Subst.substPrimitive (subst h) prim

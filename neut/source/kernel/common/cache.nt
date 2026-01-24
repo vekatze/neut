@@ -119,7 +119,7 @@ inline low-cache-sero: sero(low-cache) {
         Right(box {
           letbox stmt-list = stmt-list;
           letbox remark-list = remark-list;
-          letbox count-snapshot = quote {count-snapshot};
+          letbox count-snapshot = lift {count-snapshot};
           Low-Cache of {stmt-list, remark-list, count-snapshot}
         })
       }

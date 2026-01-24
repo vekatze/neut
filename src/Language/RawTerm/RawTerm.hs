@@ -1,6 +1,8 @@
 module Language.RawTerm.RawTerm
   ( RawTerm,
     RawTermF (..),
+    RawType,
+    RawTypeF (..),
     DefInfo,
     TopDef,
     TopGeist,
@@ -12,13 +14,16 @@ module Language.RawTerm.RawTerm
     Args,
     RawGeist (..),
     RawDef (..),
+    RawTypeDef (..),
+    CodeVariant (..),
+    RawImpVar,
     VarArg,
     getDefName,
     emptyArgs,
     emptyImpArgs,
+    emptyDefaultArgs,
     extractArgs,
     extractImpArgs,
-    extractImpArgsWithDefaults,
     lam,
     piElim,
     pushCommentToKeywordClause,
@@ -28,6 +33,7 @@ module Language.RawTerm.RawTerm
     mapKeywordClause,
     letKindFromText,
     force,
+    codeVariantToKeyword,
   )
 where
 
@@ -44,6 +50,7 @@ import Language.Common.ExternalName qualified as EN
 import Language.Common.HoleID
 import Language.Common.IsConstLike
 import Language.Common.Noema qualified as N
+import Language.Common.Opacity qualified as O
 import Language.Common.Rune qualified as R
 import Language.RawTerm.Key
 import Language.RawTerm.Name
@@ -56,38 +63,69 @@ import Logger.LogLevel
 import SyntaxTree.C
 import SyntaxTree.Series qualified as SE
 
-type RawTerm = Cofree RawTermF Hint
+type RawImpVar =
+  (Hint, RawIdent, C)
 
-data RawTermF a
+data RawTypeF a
   = Tau
-  | Var Name
-  | VarGlobal DD.DefiniteDescription GN.GlobalName
-  | Pi (SE.Series (RawBinder a, Maybe a), C) (Args a) C a Loc
-  | PiIntro C FuncInfo
-  | PiIntroFix C DefInfo
-  | PiElim a C (SE.Series a)
-  | PiElimByKey Name C (SE.Series (Hint, Key, C, C, a)) -- auxiliary syntax for key-call
-  | PiElimRule Name C (SE.Series a)
-  | PiElimExact C a
-  | Data (AttrD.Attr DD.DefiniteDescription) DD.DefiniteDescription [a]
-  | DataIntro (AttrDI.Attr DD.DefiniteDescription) DD.DefiniteDescription [a] [a] -- (attr, consName, dataArgs, consArgs)
-  | DataElim C N.IsNoetic (SE.Series a) (SE.Series (RP.RawPatternRow a))
+  | TypeHole HoleID
+  | TyVar Name
+  | TyApp a C (SE.Series a)
+  | Pi (SE.Series (RawBinder a), C) (Args a) (SE.Series (RawBinder a, RawTerm), C) C a Loc
+  | Data (AttrD.Attr DD.DefiniteDescription (RawBinder a)) DD.DefiniteDescription [a]
   | Box a
   | BoxNoema a
-  | BoxIntro C C (SE.Series (Hint, RawIdent)) (a, C)
-  | BoxIntroQuote C C (a, C)
-  | BoxElim NecessityVariant Bool C (PatParam a) C (SE.Series (Hint, RawIdent)) C a C Loc C a Loc
-  | Embody a
-  | Let LetKind C (PatParam a) C C a C Loc C a Loc
-  | LetOn LetKind C (PatParam a) C (SE.Series (Hint, RawIdent)) C a C Loc C a Loc
-  | Pin C (RawBinder a) C (SE.Series (Hint, RawIdent)) C a C Loc C a Loc
-  | StaticText a T.Text
+  | Code a
   | Rune
+  | Pointer
+  | Void
+  | Option a
+  | TyBrace C (a, C)
+  | TyIntrospect C T.Text C (SE.Series (Maybe T.Text, C, a))
+
+type RawType = Cofree RawTypeF Hint
+
+type RawTerm = Cofree RawTermF Hint
+
+data CodeVariant
+  = CodeVariantK
+  | CodeVariantC -- C: A -> □A (completeness principle)
+
+codeVariantToKeyword :: CodeVariant -> T.Text
+codeVariantToKeyword v =
+  case v of
+    CodeVariantK ->
+      "quote"
+    CodeVariantC ->
+      "promote"
+
+data RawTermF a
+  = Var Name
+  | VarGlobal DD.DefiniteDescription GN.GlobalName
+  | PiIntro C FuncInfo
+  | PiIntroFix O.Opacity C DefInfo
+  | PiElim a C (Maybe (SE.Series RawType)) C (SE.Series a) C (Maybe (SE.Series (Hint, Key, C, C, a)))
+  | PiElimByKey Name C (SE.Series (Hint, Key, C, C, a)) -- auxiliary syntax for key-call
+  | PiElimRule Name C (SE.Series a)
+  | PiElimMeta Name C (SE.Series a)
+  | PiElimExact C a
+  | DataIntro (AttrDI.Attr DD.DefiniteDescription (RawBinder RawType)) DD.DefiniteDescription [RawType] [a] -- (attr, consName, dataArgs, consArgs)
+  | DataElim C N.IsNoetic (SE.Series a) (SE.Series (RP.RawPatternRow a))
+  | BoxIntro C C (SE.Series (Hint, RawIdent)) (a, C)
+  | BoxIntroLift C C (a, C)
+  | BoxElim NecessityVariant Bool C (PatParam RawType) C (SE.Series (Hint, RawIdent)) C a C Loc C a Loc
+  | CodeIntro CodeVariant C C (a, C)
+  | CodeElim C C (a, C)
+  | TauIntro C (EL RawType)
+  | TauElim C (Hint, RawIdent, C) C a C Loc C a Loc
+  | Embody a
+  | Let LetKind C (PatParam RawType) C C a C Loc C a Loc
+  | LetOn LetKind C (PatParam RawType) C (SE.Series (Hint, RawIdent)) C a C Loc C a Loc
+  | Pin C (RawBinder RawType) C (SE.Series (Hint, RawIdent)) C a C Loc C a Loc
+  | StaticText RawType T.Text
   | RuneIntro a R.Rune
   | Magic C RawMagic -- (magic kind arg-1 ... arg-n)
-  | Hole HoleID
   | Annotation LogLevel (Annot.Annotation ()) a
-  | Resource DD.DefiniteDescription C (a, C) (a, C) (a, C) -- DD is only for printing
   | If (KeywordClause a) [KeywordClause a] (EL a)
   | When (KeywordClause a)
   | Seq (a, C) C a
@@ -95,14 +133,11 @@ data RawTermF a
   | Admit
   | Detach C C (a, C)
   | Attach C C (a, C)
-  | Option a
   | Assert C (Hint, T.Text) C C (a, C)
   | Introspect C T.Text C (SE.Series (Maybe T.Text, C, a))
   | IncludeText C C Hint (T.Text, C)
   | Brace C (a, C)
   | Int Integer
-  | Pointer
-  | Void
 
 type PatParam a =
   (Hint, RP.RawPattern, C, C, a)
@@ -114,20 +149,20 @@ emptyArgs :: Args a
 emptyArgs =
   (SE.emptySeriesPC, [])
 
-emptyImpArgs :: (SE.Series (RawBinder a, Maybe a), C)
+emptyImpArgs :: (SE.Series (RawBinder RawType), C)
 emptyImpArgs =
-  (SE.emptySeriesPC, [])
+  (SE.emptySeries (Just SE.Angle) SE.Comma, [])
+
+emptyDefaultArgs :: (SE.Series (RawBinder RawType, RawTerm), C)
+emptyDefaultArgs =
+  (SE.emptySeries (Just SE.Bracket) SE.Comma, [])
 
 extractArgs :: Args a -> [RawBinder a]
 extractArgs (series, _) =
   SE.extract series
 
-extractImpArgs :: (SE.Series (RawBinder a, Maybe a), C) -> [RawBinder a]
+extractImpArgs :: (SE.Series (RawBinder RawType), C) -> [RawBinder RawType]
 extractImpArgs (series, _) =
-  map fst $ SE.extract series
-
-extractImpArgsWithDefaults :: (SE.Series (RawBinder a, Maybe a), C) -> [(RawBinder a, Maybe a)]
-extractImpArgsWithDefaults (series, _) =
   SE.extract series
 
 type KeywordClause a =
@@ -149,9 +184,10 @@ data RawGeist a = RawGeist
   { loc :: Hint,
     name :: (a, C),
     isConstLike :: IsConstLike,
-    impArgs :: (SE.Series (RawBinder RawTerm, Maybe RawTerm), C),
-    expArgs :: Args RawTerm,
-    cod :: (C, RawTerm)
+    impArgs :: (SE.Series (RawBinder RawType), C),
+    expArgs :: Args RawType,
+    defaultArgs :: (SE.Series (RawBinder RawType, RawTerm), C),
+    cod :: (C, RawType)
   }
 
 instance Functor RawGeist where
@@ -169,6 +205,18 @@ data RawDef a = RawDef
 instance Functor RawDef where
   fmap f def =
     def {geist = fmap f (geist def)}
+
+data RawTypeDef a = RawTypeDef
+  { typeGeist :: RawGeist a,
+    typeLeadingComment :: C,
+    typeBody :: RawType,
+    typeTrailingComment :: C,
+    typeEndLoc :: Loc
+  }
+
+instance Functor RawTypeDef where
+  fmap f def =
+    def {typeGeist = fmap f (typeGeist def)}
 
 type DefInfo =
   RawDef RawIdent
@@ -192,9 +240,9 @@ force e@(m :< _) =
 
 piElim :: a -> [a] -> RawTermF a
 piElim e es =
-  PiElim e [] (SE.fromList' es)
+  PiElim e [] Nothing [] (SE.fromList' es) [] Nothing
 
-lam :: Loc -> Hint -> [(RawBinder RawTerm, C)] -> RawTerm -> RawTerm -> RawTerm
+lam :: Loc -> Hint -> [(RawBinder RawType, C)] -> RawType -> RawTerm -> RawTerm
 lam loc m varList codType e =
   m
     :< PiIntro
@@ -206,6 +254,7 @@ lam loc m varList codType e =
                   name = (Nothing, []),
                   isConstLike = False,
                   impArgs = (SE.emptySeries (Just SE.Angle) SE.Comma, []),
+                  defaultArgs = (SE.emptySeries (Just SE.Bracket) SE.Comma, []),
                   expArgs = (SE.assoc $ SE.fromList SE.Paren SE.Comma varList, []),
                   cod = ([], codType)
                 },
@@ -245,17 +294,31 @@ letKindFromText t =
       Nothing
 
 type VarArg =
-  (Hint, RawTerm, C, C, RawTerm)
+  (Hint, RawTerm, C, C, RawType)
 
 data RawMagic
-  = Cast C (EL RawTerm) (EL RawTerm) (EL RawTerm) (Maybe C)
-  | Store C (EL RawTerm) (EL RawTerm) (EL RawTerm) (Maybe C)
-  | Load C (EL RawTerm) (EL RawTerm) (Maybe C)
-  | Alloca C (EL RawTerm) (EL RawTerm) (Maybe C)
+  = Cast C (EL RawType) (EL RawType) (EL RawTerm) (Maybe C)
+  | Store C (EL RawType) (EL RawTerm) (EL RawTerm) (Maybe C)
+  | Load C (EL RawType) (EL RawTerm) (Maybe C)
+  | Alloca C (EL RawType) (EL RawTerm) (Maybe C)
   | External C Hint EN.ExternalName C (SE.Series RawTerm) (Maybe (C, SE.Series VarArg))
-  | Global C (EL EN.ExternalName) (EL RawTerm) (Maybe C)
+  | Global C (EL EN.ExternalName) (EL RawType) (Maybe C)
   | OpaqueValue C (EL RawTerm)
   | CallType C (EL RawTerm) (EL RawTerm) (EL RawTerm)
+  | GetTypeTag (EL RawType)
+  | GetDataArgs C (EL RawType)
+  | GetConsSize C (EL RawType)
+  | GetWrapperContentType C (EL RawType)
+  | GetVectorContentType C (EL RawType)
+  | GetNoemaContentType C (EL RawType)
+  | GetBoxContentType C (EL RawType)
+  | GetConstructorArgTypes C (EL RawType) C (EL RawTerm)
+  | GetConsArgName C (EL RawType) C (EL RawTerm)
+  | GetConsConstFlag C (EL RawType) C (EL RawTerm)
+  | ShowType C (EL RawType)
+  | TextCons C (EL RawTerm) (EL RawTerm)
+  | TextUncons C (EL RawTerm)
+  | CompileError C (EL RawTerm)
 
 -- elem
 type EL a =

@@ -3,85 +3,118 @@ module Language.Term.FreeVars (freeVars) where
 import Control.Comonad.Cofree
 import Data.Maybe
 import Data.Set qualified as S
+import Language.Common.Attr.Data qualified as AttrD
+import Language.Common.Attr.DataIntro qualified as AttrDI
 import Language.Common.Attr.Lam qualified as AttrL
+import Language.Common.BaseLowType qualified as BLT
 import Language.Common.Binder
 import Language.Common.DecisionTree qualified as DT
 import Language.Common.Ident
-import Language.Term.Prim qualified as P
+import Language.Common.LowMagic qualified as LM
+import Language.Common.Magic qualified as M
 import Language.Term.PrimValue qualified as PV
 import Language.Term.Term qualified as TM
 
 freeVars :: TM.Term -> S.Set Ident
 freeVars term =
   case term of
-    _ :< TM.Tau ->
-      S.empty
     _ :< TM.Var x ->
       S.singleton x
     _ :< TM.VarGlobal {} ->
       S.empty
-    _ :< TM.Pi _ impArgs expArgs t -> do
-      let impBinders = map fst impArgs
-      freeVars' (impBinders ++ expArgs) (freeVars t)
-    _ :< TM.PiIntro k impArgs expArgs e ->
-      freeVars' (map fst impArgs ++ expArgs ++ catMaybes [AttrL.fromAttr k]) (freeVars e)
-    _ :< TM.PiElim _ e impArgs expArgs -> do
+    _ :< TM.PiIntro k impArgs expArgs defaultArgs e -> do
+      let impBinders = impArgs ++ expArgs
+      let defaultVars = S.unions $ map freeVars $ map snd defaultArgs
+      S.union defaultVars (freeVarsBinderType (impBinders ++ map fst defaultArgs ++ catMaybes [AttrL.fromAttr k]) (freeVars e))
+    _ :< TM.PiElim _ e impArgs expArgs defaultArgs -> do
       let xs = freeVars e
-      let ys1 = S.unions $ map freeVars impArgs
+      let ys1 = S.unions $ map freeVarsType impArgs
       let ys2 = S.unions $ map freeVars expArgs
-      S.unions [xs, ys1, ys2]
-    _ :< TM.Data _ _ es ->
-      S.unions $ map freeVars es
-    _ :< TM.DataIntro _ _ dataArgs consArgs -> do
-      S.unions $ map freeVars $ dataArgs ++ consArgs
+      let ys3 = S.unions $ map freeVars (catMaybes defaultArgs)
+      S.unions [xs, ys1, ys2, ys3]
+    _ :< TM.DataIntro attr _ dataArgs consArgs -> do
+      let xs1 = S.unions $ map freeVarsType dataArgs
+      let xs2 = S.unions $ map freeVars consArgs
+      let xs3 = freeVarsAttrDataIntro attr
+      S.unions [xs1, xs2, xs3]
     m :< TM.DataElim _ oets decisionTree -> do
       let (os, es, ts) = unzip3 oets
       let xs1 = S.unions $ map freeVars es
       let binder = zipWith (\o t -> (m, o, t)) os ts
-      let xs2 = freeVars' binder (freeVarsDecisionTree decisionTree)
+      let xs2 = freeVarsBinderType binder (freeVarsDecisionTree decisionTree)
       S.union xs1 xs2
-    _ :< TM.Box t ->
-      freeVars t
-    _ :< TM.BoxNoema t ->
-      freeVars t
     _ :< TM.BoxIntro letSeq e -> do
       let (xts, es) = unzip letSeq
-      freeVars' xts (S.unions $ map freeVars (e : es))
+      freeVarsBinderType xts (S.unions $ map freeVars (e : es))
     _ :< TM.BoxElim castSeq mxt e1 uncastSeq e2 -> do
       let (xts, es) = unzip $ castSeq ++ [(mxt, e1)] ++ uncastSeq
-      freeVars' xts (S.unions $ map freeVars $ es ++ [e2])
+      freeVarsBinderType xts (S.unions $ map freeVars $ es ++ [e2])
+    _ :< TM.CodeIntro e ->
+      freeVars e
+    _ :< TM.CodeElim e ->
+      freeVars e
+    _ :< TM.TauIntro ty ->
+      freeVarsType ty
+    _ :< TM.TauElim (_, x) e1 e2 ->
+      S.union (freeVars e1) (S.delete x (freeVars e2))
     _ :< TM.Let _ mxt e1 e2 -> do
       let set1 = freeVars e1
-      let set2 = freeVars' [mxt] (freeVars e2)
+      let set2 = freeVarsBinderType [mxt] (freeVars e2)
       S.union set1 set2
     _ :< TM.Prim prim ->
       case prim of
-        P.Value (PV.StaticText t _) ->
-          freeVars t
+        PV.StaticText t _ ->
+          freeVarsType t
+        PV.Int t _ _ ->
+          freeVarsType t
+        PV.Float t _ _ ->
+          freeVarsType t
         _ ->
           S.empty
     _ :< TM.Magic der ->
-      foldMap freeVars der
-    _ :< TM.Resource _ _ unitType discarder copier typeTag -> do
-      let xs1 = freeVars unitType
-      let xs2 = freeVars discarder
-      let xs3 = freeVars copier
-      let xs4 = freeVars typeTag
-      S.unions [xs1, xs2, xs3, xs4]
+      freeVarsMagic der
+
+freeVarsType :: TM.Type -> S.Set Ident
+freeVarsType ty =
+  case ty of
+    _ :< TM.Tau ->
+      S.empty
+    _ :< TM.TVar x ->
+      S.singleton x
+    _ :< TM.TVarGlobal {} ->
+      S.empty
+    _ :< TM.TyApp t args ->
+      S.unions $ freeVarsType t : map freeVarsType args
+    _ :< TM.Pi _ impArgs expArgs defaultArgs t ->
+      freeVarsBinderType (impArgs ++ expArgs ++ defaultArgs) (freeVarsType t)
+    _ :< TM.Data attr _ es -> do
+      let xs1 = S.unions $ map freeVarsType es
+      let xs2 = freeVarsAttrData attr
+      S.union xs1 xs2
+    _ :< TM.Box t ->
+      freeVarsType t
+    _ :< TM.BoxNoema t ->
+      freeVarsType t
+    _ :< TM.Code t ->
+      freeVarsType t
+    _ :< TM.PrimType {} ->
+      S.empty
     _ :< TM.Void ->
       S.empty
+    _ :< TM.Resource _ _ -> do
+      S.empty
 
-freeVars' :: [BinderF TM.Term] -> S.Set Ident -> S.Set Ident
-freeVars' binder zs =
+freeVarsBinderType :: [BinderF TM.Type] -> S.Set Ident -> S.Set Ident
+freeVarsBinderType binder zs =
   case binder of
     [] ->
       zs
     ((_, x, t) : xts) -> do
-      let hs1 = freeVars t
-      let hs2 = freeVars' xts zs
+      let hs1 = freeVarsType t
+      let hs2 = freeVarsBinderType xts zs
       S.union hs1 $ S.filter (/= x) hs2
 
-freeVarsDecisionTree :: DT.DecisionTree TM.Term -> S.Set Ident
+freeVarsDecisionTree :: DT.DecisionTree TM.Type TM.Term -> S.Set Ident
 freeVarsDecisionTree tree =
   case tree of
     DT.Leaf _ letSeq e ->
@@ -89,19 +122,85 @@ freeVarsDecisionTree tree =
     DT.Unreachable ->
       S.empty
     DT.Switch (_, cursor) caseList ->
-      S.union (freeVars cursor) (freeVarsCaseList caseList)
+      S.union (freeVarsType cursor) (freeVarsCaseList caseList)
 
-freeVarsCaseList :: DT.CaseList TM.Term -> S.Set Ident
+freeVarsCaseList :: DT.CaseList TM.Type TM.Term -> S.Set Ident
 freeVarsCaseList (fallbackClause, clauseList) = do
   let xs1 = freeVarsDecisionTree fallbackClause
   let xs2 = S.unions $ map freeVarsCase clauseList
   S.union xs1 xs2
 
-freeVarsCase :: DT.Case TM.Term -> S.Set Ident
+freeVarsCase :: DT.Case TM.Type TM.Term -> S.Set Ident
 freeVarsCase decisionCase = do
   case decisionCase of
     DT.LiteralCase _ _ cont -> do
       freeVarsDecisionTree cont
     DT.ConsCase (DT.ConsCaseRecord {..}) -> do
       let (dataTerms, dataTypes) = unzip dataArgs
-      S.unions $ freeVars' consArgs (freeVarsDecisionTree cont) : map freeVars dataTerms ++ map freeVars dataTypes
+      S.unions $ freeVarsBinderType consArgs (freeVarsDecisionTree cont) : map freeVarsType dataTerms ++ map freeVarsType dataTypes
+
+freeVarsAttrData :: AttrD.Attr name (BinderF TM.Type) -> S.Set Ident
+freeVarsAttrData attr = do
+  let consNameList = AttrD.consNameList attr
+  S.unions $ map (\(_, binders, _) -> S.unions $ map (\(_, _, t) -> freeVarsType t) binders) consNameList
+
+freeVarsAttrDataIntro :: AttrDI.Attr name (BinderF TM.Type) -> S.Set Ident
+freeVarsAttrDataIntro attr = do
+  let consNameList = AttrDI.consNameList attr
+  S.unions $ map (\(_, binders, _) -> S.unions $ map (\(_, _, t) -> freeVarsType t) binders) consNameList
+
+freeVarsMagic :: M.Magic BLT.BaseLowType TM.Type TM.Term -> S.Set Ident
+freeVarsMagic magic =
+  case magic of
+    M.LowMagic lowMagic ->
+      freeVarsLowMagic lowMagic
+    M.GetTypeTag _ typeTagExpr e ->
+      S.union (freeVarsType typeTagExpr) (freeVarsType e)
+    M.GetDataArgs _ listExpr typeExpr ->
+      S.union (freeVarsType listExpr) (freeVarsType typeExpr)
+    M.GetConsSize typeExpr ->
+      freeVarsType typeExpr
+    M.GetWrapperContentType typeExpr ->
+      freeVarsType typeExpr
+    M.GetVectorContentType _ typeExpr ->
+      freeVarsType typeExpr
+    M.GetNoemaContentType typeExpr ->
+      freeVarsType typeExpr
+    M.GetBoxContentType typeExpr ->
+      freeVarsType typeExpr
+    M.GetConstructorArgTypes _ listExpr typeExpr index ->
+      S.unions [freeVarsType listExpr, freeVarsType typeExpr, freeVars index]
+    M.GetConsName textType typeExpr index ->
+      S.unions [freeVarsType textType, freeVarsType typeExpr, freeVars index]
+    M.GetConsConstFlag boolType typeExpr index ->
+      S.unions [freeVarsType boolType, freeVarsType typeExpr, freeVars index]
+    M.ShowType textTypeExpr typeExpr ->
+      S.union (freeVarsType textTypeExpr) (freeVarsType typeExpr)
+    M.TextCons textTypeExpr rune text ->
+      S.unions [freeVarsType textTypeExpr, freeVars rune, freeVars text]
+    M.TextUncons _ text ->
+      freeVars text
+    M.CompileError typeExpr msg ->
+      S.union (freeVarsType typeExpr) (freeVars msg)
+
+freeVarsLowMagic :: LM.LowMagic BLT.BaseLowType TM.Type TM.Term -> S.Set Ident
+freeVarsLowMagic lowMagic =
+  case lowMagic of
+    LM.Cast from to value ->
+      S.unions [freeVarsType from, freeVarsType to, freeVars value]
+    LM.Store _ _ value pointer ->
+      S.unions [freeVars value, freeVars pointer]
+    LM.Load _ pointer ->
+      freeVars pointer
+    LM.Alloca _ size ->
+      freeVars size
+    LM.External _ _ _ args varArgs -> do
+      let argVars = S.unions $ map freeVars args
+      let varArgVars = S.unions $ map (\(arg, _) -> freeVars arg) varArgs
+      S.unions [argVars, varArgVars]
+    LM.Global {} ->
+      S.empty
+    LM.OpaqueValue e ->
+      freeVars e
+    LM.CallType func arg1 arg2 ->
+      S.unions [freeVars func, freeVars arg1, freeVars arg2]

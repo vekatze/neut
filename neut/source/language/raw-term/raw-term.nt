@@ -127,7 +127,7 @@ inline loc-sero: sero(loc) {
       function (k) {
         try l = get-int64(k);
         try c = get-int64(k);
-        Right(quote {Loc(l, c)})
+        Right(lift {Loc(l, c)})
       }
     },
   }

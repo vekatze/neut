@@ -1,6 +1,6 @@
 import {
   core.control {grow},
-  core.dictionary {dictionary, empty, insert, lookup},
+  core.dictionary {dictionary, empty, make-insert, make-lookup},
   core.environment {get-argv},
   core.int.io {print-int-line},
   core.int.ord,
@@ -8,20 +8,20 @@ import {
   core.random {random-int},
 }
 
-define make-big-dict(k: &ord(int), size: int): dictionary(int, int) {
+define make-big-dict(size: int): dictionary(int, int) {
   grow(empty, size, function (acc, _) {
     let key = random-int(1000000);
     let val = random-int(1000000);
-    insert(k, acc, key, val)
+    make-insert(core.int.ord.as-ord)(acc, key, val)
   })
 }
 
-define random-lookup-sum(k: &ord(int), count: int, d: &dictionary(int, int)): unit {
+define random-lookup-sum(count: int, d: &dictionary(int, int)): unit {
   let rsum =
     grow(0, count, function (acc, _) {
       let key = random-int(1000000);
       let val on key =
-        match lookup(k, d, key) {
+        match make-lookup(core.int.ord.as-ord)(d, key) {
         | Left(_) =>
           0
         | Right(v) =>
@@ -34,15 +34,14 @@ define random-lookup-sum(k: &ord(int), count: int, d: &dictionary(int, int)): un
 }
 
 define main(): unit {
-  pin k = core.int.ord.as-ord;
   let args = get-argv();
   match args {
   | Cons(_, Cons(size-str, Nil)) =>
     pin size-str = size-str;
     match parse-int(size-str) {
     | Right(size) =>
-      pin big-dict = make-big-dict(k, size);
-      random-lookup-sum(k, size, big-dict);
+      pin big-dict = make-big-dict(size);
+      random-lookup-sum(size, big-dict);
     | Left(_) =>
       print("couldn't parse `");
       print(size-str);

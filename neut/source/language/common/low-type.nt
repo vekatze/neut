@@ -78,7 +78,7 @@ define low-type-sero: sero(low-type) {
           try size = get-int64(k);
           try t = loop(k);
           Right(box {
-            letbox size = quote {size};
+            letbox size = lift {size};
             letbox t = t;
             Array(size, t)
           })

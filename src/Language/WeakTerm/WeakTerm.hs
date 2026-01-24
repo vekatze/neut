@@ -1,20 +1,24 @@
 module Language.WeakTerm.WeakTerm
   ( WeakTerm,
     WeakTermF (..),
-    SubstWeakTerm,
+    WeakType,
+    WeakTypeF (..),
     LetOpacity (..),
     WeakForeign,
     reifyOpacity,
     reflectOpacity,
     intTypeBySize,
-    metaOf,
+    metaOfType,
     fromLetSeq,
     fromBaseLowType,
+    -- Re-exports for convenience
+    WeakMagic (..),
+    Magic (..),
+    LowMagic (..),
   )
 where
 
 import Control.Comonad.Cofree
-import Data.IntMap qualified as IntMap
 import Language.Common.Annotation qualified as AN
 import Language.Common.Attr.Data qualified as AttrD
 import Language.Common.Attr.DataIntro qualified as AttrDI
@@ -25,50 +29,62 @@ import Language.Common.BasePrimType qualified as BPT
 import Language.Common.Binder
 import Language.Common.DataSize (DataSize)
 import Language.Common.DecisionTree qualified as DT
+import Language.Common.DefaultArgs qualified as DefaultArgs
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.Foreign
 import Language.Common.HoleID
 import Language.Common.Ident
 import Language.Common.ImpArgs qualified as ImpArgs
-import Language.Common.Magic
+import Language.Common.LowMagic (LowMagic (..))
+import Language.Common.Magic (Magic (..), WeakMagic (..))
 import Language.Common.Noema qualified as N
 import Language.Common.Opacity qualified as O
 import Language.Common.PiKind (PiKind)
 import Language.Common.PrimNumSize
 import Language.Common.PrimType qualified as PT
-import Language.WeakTerm.WeakPrim qualified as WP
+import Language.WeakTerm.WeakPrimValue qualified as WPV
 import Logger.Hint
 import Logger.LogLevel
+
+type WeakType = Cofree WeakTypeF Hint
+
+data WeakTypeF a
+  = Tau
+  | TVar Ident
+  | TVarGlobal AttrVG.Attr DD.DefiniteDescription
+  | TyApp a [a]
+  | Pi PiKind [BinderF a] [BinderF a] [BinderF a] a
+  | Data (AttrD.Attr DD.DefiniteDescription (BinderF a)) DD.DefiniteDescription [a]
+  | Box a
+  | BoxNoema a
+  | Code a
+  | PrimType PT.PrimType
+  | Void
+  | Resource DD.DefiniteDescription Int
+  | TypeHole HoleID [WeakType]
 
 type WeakTerm = Cofree WeakTermF Hint
 
 data WeakTermF a
-  = Tau
-  | Var Ident
+  = Var Ident
   | VarGlobal AttrVG.Attr DD.DefiniteDescription
-  | Pi PiKind [(BinderF a, Maybe a)] [BinderF a] a
-  | PiIntro (AttrL.Attr a) [(BinderF a, Maybe a)] [BinderF a] a
-  | PiElim N.IsNoetic a (ImpArgs.ImpArgs a) [a]
+  | PiIntro (AttrL.Attr WeakType) [BinderF WeakType] [BinderF WeakType] [(BinderF WeakType, WeakTerm)] a
+  | PiElim N.IsNoetic a (ImpArgs.ImpArgs WeakType) [a] (DefaultArgs.DefaultArgs a)
   | PiElimExact a
-  | Data (AttrD.Attr DD.DefiniteDescription) DD.DefiniteDescription [a]
-  | DataIntro (AttrDI.Attr DD.DefiniteDescription) DD.DefiniteDescription [a] [a] -- (consName, dataArgs, consArgs)
-  | DataElim N.IsNoetic [(Ident, a, a)] (DT.DecisionTree a)
-  | Box a
-  | BoxNoema a
-  | BoxIntro [(BinderF a, a)] a
-  | BoxIntroQuote a
-  | BoxElim [(BinderF a, a)] (BinderF a) a [(BinderF a, a)] a
+  | DataIntro (AttrDI.Attr DD.DefiniteDescription (BinderF WeakType)) DD.DefiniteDescription [WeakType] [a]
+  | DataElim N.IsNoetic [(Ident, a, WeakType)] (DT.DecisionTree WeakType a)
+  | BoxIntro [(BinderF WeakType, a)] a
+  | BoxIntroLift a
+  | BoxElim [(BinderF WeakType, a)] (BinderF WeakType) a [(BinderF WeakType, a)] a
+  | CodeIntro a
+  | CodeElim a
+  | TauIntro WeakType
+  | TauElim (Hint, Ident) a a
   | Actual a
-  | Let LetOpacity (BinderF a) a a
-  | Prim (WP.WeakPrim a)
-  | Magic (WeakMagic a) -- (magic kind arg-1 ... arg-n)
-  | Hole HoleID [WeakTerm] -- ?M @ (e1, ..., en)
-  | Annotation LogLevel (AN.Annotation a) a
-  | Resource DD.DefiniteDescription Int a a a a
-  | Void
-
-type SubstWeakTerm =
-  IntMap.IntMap (Either Ident WeakTerm)
+  | Let LetOpacity (BinderF WeakType) a a
+  | Prim (WPV.WeakPrimValue WeakType)
+  | Magic (WeakMagic WeakType WeakType a)
+  | Annotation LogLevel (AN.Annotation WeakType) a
 
 data LetOpacity
   = Opaque
@@ -94,15 +110,15 @@ reflectOpacity opacity =
     O.Clear ->
       Clear
 
-intTypeBySize :: Hint -> DataSize -> WeakTerm
+intTypeBySize :: Hint -> DataSize -> WeakType
 intTypeBySize m size =
-  m :< Prim (WP.Type $ PT.Int $ dataSizeToIntSize size)
+  m :< PrimType (PT.Int $ dataSizeToIntSize size)
 
-metaOf :: WeakTerm -> Hint
-metaOf (m :< _) =
+metaOfType :: WeakType -> Hint
+metaOfType (m :< _) =
   m
 
-fromLetSeq :: [(BinderF WeakTerm, WeakTerm)] -> WeakTerm -> WeakTerm
+fromLetSeq :: [(BinderF WeakType, WeakTerm)] -> WeakTerm -> WeakTerm
 fromLetSeq xts cont =
   case xts of
     [] ->
@@ -110,17 +126,17 @@ fromLetSeq xts cont =
     (mxt@(m, _, _), e) : rest ->
       m :< Let Clear mxt e (fromLetSeq rest cont)
 
-fromBaseLowType :: Hint -> BLT.BaseLowType -> WeakTerm
+fromBaseLowType :: Hint -> BLT.BaseLowType -> WeakType
 fromBaseLowType m lt =
   case lt of
     BLT.PrimNum pt ->
       case pt of
         BPT.Int s ->
-          m :< Prim (WP.Type (PT.Int (BPT.extractSize s)))
+          m :< PrimType (PT.Int (BPT.extractSize s))
         BPT.Float s ->
-          m :< Prim (WP.Type (PT.Float (BPT.extractSize s)))
+          m :< PrimType (PT.Float (BPT.extractSize s))
     BLT.Pointer ->
-      m :< Prim (WP.Type PT.Pointer)
+      m :< PrimType PT.Pointer
 
 type WeakForeign =
-  BaseForeign WeakTerm
+  BaseForeign WeakType

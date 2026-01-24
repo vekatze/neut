@@ -31,7 +31,7 @@ define main(): unit {
   | _ =>
     print("other\n")
   };
-  let p: either(pair(rune, type), type) = Left(Pair(`x`, type));
+  let p: either(pair(rune, type), type) = Left(Pair(`x`, pack-type {type}));
   match p {
   | Right(_) =>
     print("right\n")

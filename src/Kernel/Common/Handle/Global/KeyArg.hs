@@ -2,6 +2,7 @@ module Kernel.Common.Handle.Global.KeyArg
   ( Handle (..),
     ExpKey,
     ImpKey,
+    DefaultKey,
     _eqKeys,
     _showKeys,
     _showKeyList,
@@ -32,9 +33,12 @@ type ExpKey =
 type ImpKey =
   Key
 
+type DefaultKey =
+  Key
+
 data Handle = Handle
   { _mainModule :: MainModule,
-    _keyArgMapRef :: IORef (Map.HashMap DD.DefiniteDescription (IsConstLike, ([ImpKey], [ExpKey])))
+    _keyArgMapRef :: IORef (Map.HashMap DD.DefiniteDescription (IsConstLike, ([ImpKey], [ExpKey], [DefaultKey])))
   }
 
 isHole :: Key -> Bool
@@ -89,13 +93,13 @@ new _mainModule = do
   _keyArgMapRef <- newIORef Map.empty
   return $ Handle {..}
 
-insert :: Handle -> Hint -> DD.DefiniteDescription -> IsConstLike -> [ImpKey] -> [ExpKey] -> App ()
-insert h m funcName isConstLike impKeys expKeys = do
+insert :: Handle -> Hint -> DD.DefiniteDescription -> IsConstLike -> [ImpKey] -> [ExpKey] -> [DefaultKey] -> App ()
+insert h m funcName isConstLike impKeys expKeys defaultKeys = do
   kmap <- liftIO $ readIORef (_keyArgMapRef h)
   case Map.lookup funcName kmap of
     Nothing ->
       return ()
-    Just (isConstLike', (impKeys', expKeys'))
+    Just (isConstLike', (impKeys', expKeys', defaultKeys'))
       | isConstLike,
         not isConstLike' -> do
           let funcName' = readableDD (_mainModule h) funcName
@@ -120,6 +124,16 @@ insert h m funcName isConstLike impKeys expKeys = do
               <> ", but defined as "
               <> T.pack (show $ length impKeys)
               <> "."
+      | not $ _eqKeys defaultKeys defaultKeys' -> do
+          let funcName' = readableDD (_mainModule h) funcName
+          raiseError m $
+            "The default key sequence of `"
+              <> funcName'
+              <> "` is declared as `"
+              <> _showKeys defaultKeys'
+              <> "`, but defined as `"
+              <> _showKeys defaultKeys
+              <> "`."
       | not $ _eqKeys expKeys expKeys' -> do
           let funcName' = readableDD (_mainModule h) funcName
           raiseError m $
@@ -133,9 +147,9 @@ insert h m funcName isConstLike impKeys expKeys = do
       | otherwise ->
           return ()
   liftIO $ atomicModifyIORef' (_keyArgMapRef h) $ \mp -> do
-    (Map.insert funcName (isConstLike, (impKeys, expKeys)) mp, ())
+    (Map.insert funcName (isConstLike, (impKeys, expKeys, defaultKeys)) mp, ())
 
-lookup :: Handle -> Hint -> DD.DefiniteDescription -> App ([ImpKey], [ExpKey])
+lookup :: Handle -> Hint -> DD.DefiniteDescription -> App ([ImpKey], [ExpKey], [DefaultKey])
 lookup h m dataName = do
   keyArgMap <- liftIO $ readIORef (_keyArgMapRef h)
   case Map.lookup dataName keyArgMap of

@@ -32,11 +32,11 @@ inline literal-sero: sero(literal) {
         match tag {
         | 0 =>
           try i = get-int64(k);
-          Right(quote {Int(i)})
+          Right(lift {Int(i)})
         | 1 =>
           let Sero of {get} = rune-sero;
           try r = get(k);
-          Right(quote {Rune(axiom-T(r))})
+          Right(lift {Rune(axiom-T(r))})
         | _ =>
           none
         }

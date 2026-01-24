@@ -34,14 +34,14 @@ define mul-nat(x: nat, !y: nat): nat {
   }
 }
 
-define fold(a: type, fs: &list((a) -> a), x: a): a {
+define fold<a>(fs: &list((a) -> a), x: a): a {
   case fs {
   | Nil =>
     x
   | Cons(f, rest) =>
     let _ = rest;
     let _ = rest;
-    f(fold(a, rest, x))
+    f(fold(rest, x))
   }
 }
 
@@ -66,5 +66,5 @@ define main(): unit {
   let gs = fs;
   pin hs = gs;
   // 2 + (3 * (9 * 3)) = 83
-  print-int-line(interpret(fold(_, hs, !n3)))
+  print-int-line(interpret(fold(hs, !n3)))
 }

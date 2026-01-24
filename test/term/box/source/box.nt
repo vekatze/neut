@@ -4,17 +4,17 @@ import {
   core.list {length},
 }
 
-define axiom-K<a, b>(f: meta (a) -> b, x: meta a): meta b {
+define axiom-K<a, b>(f: +(a) -> b, x: +a): +b {
   box {
-    letbox f' = f;
-    letbox x' = x;
-    f'(x')
+    letbox f = f;
+    letbox x = x;
+    f(x)
   }
 }
 
-define axiom-T<a>(x: meta a): a {
-  letbox-T x' = x;
-  x'
+define axiom-T<a>(x: +a): a {
+  letbox-T x = x;
+  x
 }
 
 define test-syntax(): unit {
@@ -32,7 +32,7 @@ define test-syntax(): unit {
     let _ = y;
     box x {x}
   };
-  // let-on (= letbox-T + quote)
+  // let-on (= letbox-T + lift)
   let len: int on x = {
     let _: &unit = x;
     1234
@@ -44,7 +44,7 @@ define test-syntax(): unit {
 
 define test-resource(xs: list(int)): unit {
   // letbox-T
-  letbox-T len on xs = quote {length(xs)};
+  letbox-T len on xs = lift {length(xs)};
   print-int-line(len);
   // letbox-T + box
   letbox-T len on xs =

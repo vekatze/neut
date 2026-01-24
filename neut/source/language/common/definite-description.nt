@@ -301,7 +301,7 @@ inline definite-description-sero: sero(definite-description) {
       function (k) {
         try t = get-text(k);
         Right(box {
-          letbox t = quote {t};
+          letbox t = lift {t};
           _Definite-Description(t)
         })
       }

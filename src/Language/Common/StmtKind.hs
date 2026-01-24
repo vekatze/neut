@@ -1,8 +1,14 @@
 module Language.Common.StmtKind
-  ( BaseStmtKind (..),
-    StmtKind,
-    toOpacity,
-    toLowOpacity,
+  ( BaseStmtKindTerm (..),
+    BaseStmtKindType (..),
+    StmtKindTerm,
+    StmtKindType,
+    toOpacityTerm,
+    toOpacityType,
+    toLowOpacityTerm,
+    toLowOpacityType,
+    isMacroStmtKind,
+    isInlineStmtKind,
   )
 where
 
@@ -15,39 +21,108 @@ import Language.Common.IsConstLike
 import Language.Common.Opacity qualified as O
 import Logger.Hint
 
-data BaseStmtKind name binder t
-  = Normal O.Opacity
-  | Main O.Opacity t
-  | Data
-      name -- the name of the variant type
-      [binder] -- variant args
-      [(SavedHint, name, IsConstLike, [binder], D.Discriminant)] -- constructors
+data BaseStmtKindTerm name binder t
+  = Define
+  | Inline
+  | Macro
+  | MacroInline
+  | Main t
   | DataIntro name [binder] [binder] D.Discriminant
   deriving (Generic)
 
-instance (Binary name, Binary x, Binary t) => Binary (BaseStmtKind name x t)
+data BaseStmtKindType name binder
+  = Alias
+  | AliasOpaque
+  | Data
+      name
+      [binder]
+      [(SavedHint, name, IsConstLike, [binder], D.Discriminant)]
+  deriving (Generic)
 
-type StmtKind a =
-  BaseStmtKind DD.DefiniteDescription (BinderF a) a
+instance (Binary name, Binary x, Binary t) => Binary (BaseStmtKindTerm name x t)
 
-toOpacity :: BaseStmtKind name x t -> O.Opacity
-toOpacity stmtKind =
+instance (Binary name, Binary x) => Binary (BaseStmtKindType name x)
+
+type StmtKindTerm a =
+  BaseStmtKindTerm DD.DefiniteDescription (BinderF a) a
+
+type StmtKindType a =
+  BaseStmtKindType DD.DefiniteDescription (BinderF a)
+
+toOpacityTerm :: BaseStmtKindTerm name x t -> O.Opacity
+toOpacityTerm stmtKind =
   case stmtKind of
-    Normal opacity ->
-      opacity
-    Main opacity _ ->
-      opacity
-    _ ->
+    Define ->
+      O.Opaque
+    Inline ->
       O.Clear
-
-toLowOpacity :: BaseStmtKind name x t -> O.Opacity
-toLowOpacity stmtKind =
-  case stmtKind of
-    Normal opacity ->
-      opacity
-    Main opacity _ ->
-      opacity
-    Data {} ->
-      O.Opaque -- so as not to reduce recursive terms
+    Macro ->
+      O.Clear
+    MacroInline ->
+      O.Clear
+    Main _ ->
+      O.Opaque
     DataIntro {} ->
       O.Clear
+
+toOpacityType :: BaseStmtKindType name x -> O.Opacity
+toOpacityType stmtKind =
+  case stmtKind of
+    Alias ->
+      O.Clear
+    AliasOpaque ->
+      O.Opaque
+    Data {} ->
+      O.Clear
+
+toLowOpacityTerm :: BaseStmtKindTerm name x t -> O.Opacity
+toLowOpacityTerm stmtKind =
+  case stmtKind of
+    Define ->
+      O.Opaque
+    Inline ->
+      O.Opaque
+    Macro ->
+      O.Opaque
+    MacroInline ->
+      O.Opaque
+    Main _ ->
+      O.Opaque
+    DataIntro {} ->
+      O.Clear
+
+toLowOpacityType :: BaseStmtKindType name x -> O.Opacity
+toLowOpacityType stmtKind =
+  case stmtKind of
+    Alias ->
+      O.Opaque
+    AliasOpaque ->
+      O.Opaque
+    Data {} ->
+      O.Opaque
+
+isMacroStmtKind :: BaseStmtKindTerm name binder t -> Bool
+isMacroStmtKind stmtKind =
+  case stmtKind of
+    Macro ->
+      True
+    MacroInline ->
+      True
+    _ ->
+      False
+
+isInlineStmtKind :: BaseStmtKindTerm name binder t -> Bool
+isInlineStmtKind stmtKind =
+  case stmtKind of
+    Define ->
+      False
+    Inline ->
+      False -- fixme: should be true
+    Macro ->
+      True
+    MacroInline ->
+      True
+    Main _ ->
+      False
+    _ ->
+      False

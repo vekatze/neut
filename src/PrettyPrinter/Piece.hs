@@ -11,7 +11,6 @@ module PrettyPrinter.Piece
     delimiterLeftAligned,
     clauseDelimiter,
     horizontal,
-    vertical,
     delimiterBar,
     nest,
     block,
@@ -151,14 +150,6 @@ horizontal doc =
     { content = doc,
       singleModifier = _appendSpace,
       multiModifier = _appendSpace
-    }
-
-vertical :: D.Doc -> Piece
-vertical doc =
-  Piece
-    { content = doc,
-      singleModifier = _appendNewLine,
-      multiModifier = _appendNewLine
     }
 
 appendCommaIfVertical :: D.Doc -> Piece

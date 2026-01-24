@@ -1,4 +1,4 @@
-data dummy(a: type) {
+data dummy(_: type) {
 | Dummy
 }
 

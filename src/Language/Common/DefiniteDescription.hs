@@ -1,7 +1,6 @@
 module Language.Common.DefiniteDescription
   ( DefiniteDescription (..),
     new,
-    moduleID,
     localLocator,
     globalLocator,
     getLocatorPair,
@@ -25,10 +24,13 @@ module Language.Common.DefiniteDescription
     immRune,
     immPointer,
     immNull,
+    immTypes,
+    baseTypes,
     cls,
     toBuilder,
     llvmGlobalLocator,
     unconsDD,
+    makeResourceName,
   )
 where
 
@@ -110,15 +112,6 @@ getRootDD dd = do
     { reify = reify dd <> "#" <> BN.reify BN.root
     }
 
-moduleID :: DefiniteDescription -> T.Text
-moduleID dd = do
-  let nameList = T.splitOn nsSep (reify dd)
-  case nameList of
-    headElem : _ ->
-      headElem
-    _ ->
-      error "Rule.DefiniteDescription.moduleID"
-
 unconsDD :: DefiniteDescription -> (MID.ModuleID, T.Text)
 unconsDD dd = do
   let nameList = T.splitOn nsSep (reify dd)
@@ -151,6 +144,11 @@ localLocator dd = do
       result
     _ ->
       error "Rule.DefiniteDescription.localLocator"
+
+makeResourceName :: DefiniteDescription -> Int -> DefiniteDescription
+makeResourceName baseDD resourceID = do
+  let gl = globalLocator baseDD
+  MakeDefiniteDescription $ gl <> nsSep <> BN.reify (BN.resourceName resourceID)
 
 immType :: DefiniteDescription
 immType =
@@ -211,6 +209,29 @@ immPointer =
 immNull :: DefiniteDescription
 immNull =
   newByGlobalLocator (SGL.baseGlobalLocatorOf SL.internalLocator) BN.immNull
+
+immTypes :: [DefiniteDescription]
+immTypes =
+  [ immType,
+    immNoema,
+    immInt1,
+    immInt2,
+    immInt4,
+    immInt8,
+    immInt16,
+    immInt32,
+    immInt64,
+    immFloat16,
+    immFloat32,
+    immFloat64,
+    immPointer,
+    immNull,
+    immRune
+  ]
+
+baseTypes :: [DefiniteDescription]
+baseTypes =
+  immTypes ++ [cls]
 
 cls :: DefiniteDescription
 cls =

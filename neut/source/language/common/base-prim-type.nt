@@ -86,11 +86,11 @@ inline base-prim-type-sero: sero(base-prim-type) {
         | 0 =>
           let Sero of {get} = base-prim-type-size-sero(int-size-sero);
           try v = get(k);
-          Right(quote {Int(axiom-T(v))})
+          Right(lift {Int(axiom-T(v))})
         | 1 =>
           let Sero of {get} = base-prim-type-size-sero(float-size-sero);
           try v = get(k);
-          Right(quote {Float(axiom-T(v))})
+          Right(lift {Float(axiom-T(v))})
         | _ =>
           none
         }

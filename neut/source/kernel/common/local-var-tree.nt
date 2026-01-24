@@ -89,10 +89,10 @@ inline local-var-tree-sero: sero(local-var-tree) {
           try left = loop(k);
           try right = loop(k);
           Right(box {
-            letbox sl = quote {sl};
-            letbox sc = quote {sc};
-            letbox el = quote {el};
-            letbox ec = quote {ec};
+            letbox sl = lift {sl};
+            letbox sc = lift {sc};
+            letbox el = lift {el};
+            letbox ec = lift {ec};
             letbox x = x;
             letbox left = left;
             letbox right = right;

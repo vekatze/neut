@@ -27,8 +27,8 @@ specialize ::
   N.IsNoetic ->
   Ident ->
   Specializer ->
-  PatternMatrix ([Ident], [(BinderF WT.WeakTerm, WT.WeakTerm)], WT.WeakTerm) ->
-  App (PatternMatrix ([Ident], [(BinderF WT.WeakTerm, WT.WeakTerm)], WT.WeakTerm))
+  PatternMatrix ([Ident], [(BinderF WT.WeakType, WT.WeakTerm)], WT.WeakTerm) ->
+  App (PatternMatrix ([Ident], [(BinderF WT.WeakType, WT.WeakTerm)], WT.WeakTerm))
 specialize h isNoetic cursor cons mat = do
   mapMaybeRowM (specializeRow h isNoetic cursor cons) mat
 
@@ -37,8 +37,8 @@ specializeRow ::
   N.IsNoetic ->
   Ident ->
   Specializer ->
-  PatternRow ([Ident], [(BinderF WT.WeakTerm, WT.WeakTerm)], WT.WeakTerm) ->
-  App (Maybe (PatternRow ([Ident], [(BinderF WT.WeakTerm, WT.WeakTerm)], WT.WeakTerm)))
+  PatternRow ([Ident], [(BinderF WT.WeakType, WT.WeakTerm)], WT.WeakTerm) ->
+  App (Maybe (PatternRow ([Ident], [(BinderF WT.WeakType, WT.WeakTerm)], WT.WeakTerm)))
 specializeRow h isNoetic cursor specializer (patternVector, (freedVars, baseSeq, body@(mBody :< _))) =
   case V.uncons patternVector of
     Nothing ->
@@ -53,12 +53,12 @@ specializeRow h isNoetic cursor specializer (patternVector, (freedVars, baseSeq,
     Just ((_, Var x), rest) -> do
       case specializer of
         LiteralSpecializer _ -> do
-          hole <- liftIO $ WT.createHole (H.gensymHandle h) mBody []
+          hole <- liftIO $ WT.createTypeHole (H.gensymHandle h) mBody []
           adjustedCursor <- liftIO $ castToNoemaIfNecessary h isNoetic (mBody :< WT.Var cursor)
           return $ Just (rest, (freedVars, ((mBody, x, hole), adjustedCursor) : baseSeq, body))
         ConsSpecializer (ConsInfo {consArgNum}) -> do
           let wildcards = V.fromList $ replicate (AN.reify consArgNum) (mBody, WildcardVar)
-          hole <- liftIO $ WT.createHole (H.gensymHandle h) mBody []
+          hole <- liftIO $ WT.createTypeHole (H.gensymHandle h) mBody []
           adjustedCursor <- liftIO $ castToNoemaIfNecessary h isNoetic (mBody :< WT.Var cursor)
           return $ Just (V.concat [wildcards, rest], (freedVars, ((mBody, x, hole), adjustedCursor) : baseSeq, body))
     Just ((_, Cons (ConsInfo {..})), rest) -> do

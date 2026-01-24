@@ -1,12 +1,12 @@
 module Kernel.Common.TypeTag
   ( TypeTag (..),
     typeTagToInteger,
-    immTypeTagMap,
-    baseTypeTagMap,
+    fromIntSize,
+    fromFloatSize,
   )
 where
 
-import Language.Common.DefiniteDescription qualified as DD
+import Language.Common.PrimNumSize
 
 data TypeTag
   = Opaque
@@ -30,29 +30,9 @@ data TypeTag
   | Rune
   | Binary
   | Vector
-
-immTypeTagMap :: [(DD.DefiniteDescription, TypeTag)]
-immTypeTagMap =
-  [ (DD.immType, Type),
-    (DD.immNoema, Noema),
-    (DD.immInt1, Int1),
-    (DD.immInt2, Int2),
-    (DD.immInt4, Int4),
-    (DD.immInt8, Int8),
-    (DD.immInt16, Int16),
-    (DD.immInt32, Int32),
-    (DD.immInt64, Int64),
-    (DD.immFloat16, Float16),
-    (DD.immFloat32, Float32),
-    (DD.immFloat64, Float64),
-    (DD.immPointer, Pointer),
-    (DD.immNull, Null),
-    (DD.immRune, Rune)
-  ]
-
-baseTypeTagMap :: [(DD.DefiniteDescription, TypeTag)]
-baseTypeTagMap =
-  immTypeTagMap ++ [(DD.cls, Function)]
+  | Wrapper
+  | BoxT
+  deriving (Show)
 
 typeTagToInteger :: TypeTag -> Integer
 typeTagToInteger tag =
@@ -99,3 +79,35 @@ typeTagToInteger tag =
       19
     Vector ->
       20
+    Wrapper ->
+      21
+    BoxT ->
+      22
+
+fromIntSize :: IntSize -> TypeTag
+fromIntSize s =
+  case s of
+    IntSize1 ->
+      Int1
+    IntSize2 ->
+      Int2
+    IntSize4 ->
+      Int4
+    IntSize8 ->
+      Int8
+    IntSize16 ->
+      Int16
+    IntSize32 ->
+      Int32
+    IntSize64 ->
+      Int64
+
+fromFloatSize :: FloatSize -> TypeTag
+fromFloatSize s =
+  case s of
+    FloatSize16 ->
+      Float16
+    FloatSize32 ->
+      Float32
+    FloatSize64 ->
+      Float64

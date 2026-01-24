@@ -1,61 +1,62 @@
 import {
   core.null {null},
-  core.vector {vector},
 }
 
 define test-syntax(): type {
-  let _: type = type;
-  let _: type = type;
-  type
+  let _: type = pack-type {type};
+  let _: type = pack-type {type};
+  pack-type {type}
 }
 
 define affine-type(): type {
-  let _ = type;
-  type
+  let _ = pack-type {type};
+  pack-type {type}
 }
 
 define linear-type(): type {
-  let x = type;
+  let x = pack-type {type};
   x
 }
 
 define relevant-type(): type {
-  let x = type;
+  let x = pack-type {type};
   let _ = x;
   x
 }
 
 define type-is-type(): type {
-  type
+  pack-type {type}
 }
 
 define pi-is-type(): type {
-  let _: type = () -> type;
-  let _: type = (type) -> type;
-  let _: type = (type, type, type) -> type;
-  type
+  let _: type = pack-type {() -> type};
+  let _: type = pack-type {(type) -> type};
+  let _: type = pack-type {(type, type, type) -> type};
+  pack-type {type}
 }
 
 define data-is-type(): type {
-  let _: type = null;
-  let _: type = unit;
-  let _: type = bool;
-  let _: type = list(type);
-  type
+  let _: type = pack-type {null};
+  let _: type = pack-type {unit};
+  let _: type = pack-type {bool};
+  let _: type = pack-type {list(type)};
+  pack-type {type}
 }
 
 define noema-is-type(a: type): type {
-  &a
+  unpack-type a = a;
+  pack-type {&a}
 }
 
 define thread-is-type(a: type): type {
-  thread(a)
+  unpack-type a = a;
+  pack-type {thread(a)}
 }
 
 define resource-is-type(): type {
-  let _: type = text;
-  let _: type = vector(text);
-  type
+  let _: type = pack-type {text};
+  let _: type = pack-type {vector(text)};
+  pack-type {type}
 }
 
 define test-semantics(): type {
@@ -65,10 +66,10 @@ define test-semantics(): type {
   let _ = type-is-type();
   let _ = pi-is-type();
   let _ = data-is-type();
-  let _ = noema-is-type(type);
-  let _ = thread-is-type(type);
+  let _ = noema-is-type(pack-type {type});
+  let _ = thread-is-type(pack-type {type});
   let _ = resource-is-type();
-  type
+  pack-type {type}
 }
 
 define main(): unit {

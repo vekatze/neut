@@ -43,10 +43,6 @@ moduleFile :: Path Rel File
 moduleFile =
   $(mkRelFile "module.ens")
 
-signatureFile :: Path Rel File
-signatureFile =
-  $(mkRelFile "signature.ens")
-
 sourceRelDir :: Path Rel Dir
 sourceRelDir =
   $(mkRelDir "source")
@@ -123,9 +119,17 @@ coreText :: T.Text
 coreText =
   core <> nsSep <> "text" <> nsSep <> "text"
 
-coreRune :: T.Text
-coreRune =
-  core <> nsSep <> "rune" <> nsSep <> "rune"
+coreList :: T.Text
+coreList =
+  core <> nsSep <> "list"
+
+coreListList :: T.Text
+coreListList =
+  core <> nsSep <> "list" <> nsSep <> "list"
+
+coreVector :: T.Text
+coreVector =
+  core <> nsSep <> "vector"
 
 coreRuneRune :: T.Text
 coreRuneRune =
@@ -151,17 +155,13 @@ coreBoxEmbody :: T.Text
 coreBoxEmbody =
   core <> nsSep <> "box" <> nsSep <> "embody"
 
+coreTypeTagTypeTag :: T.Text
+coreTypeTagTypeTag =
+  core <> nsSep <> "type-tag" <> nsSep <> "type-tag"
+
 holeLiteral :: T.Text
 holeLiteral =
   "_"
-
-holeVarPrefix :: T.Text
-holeVarPrefix =
-  "{}"
-
-expVarPrefix :: T.Text
-expVarPrefix =
-  "!"
 
 unsafeArgcName :: T.Text
 unsafeArgcName =

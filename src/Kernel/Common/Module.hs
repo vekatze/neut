@@ -25,7 +25,6 @@ module Kernel.Common.Module
     keyLinkOption,
     keyMain,
     keyMirror,
-    keyPrefix,
     keyPreset,
     keySource,
     keyStatic,
@@ -35,11 +34,8 @@ module Kernel.Common.Module
     getTargetPathList,
     getTargetPath,
     getArchiveDir,
-    getExtraContents,
-    insertDependency,
     getAliasListWithEnabledPresets,
     toDefaultEns,
-    ppDirPath,
     getDigestMap,
     getDigestFromModulePath,
     reifyPresetMap,
@@ -56,7 +52,6 @@ import App.Error
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.Catch
-import Data.Containers.ListUtils (nubOrd)
 import Data.HashMap.Strict qualified as Map
 import Data.List (sort)
 import Data.List.NonEmpty qualified as NE
@@ -213,10 +208,6 @@ keyForeignScript :: T.Text
 keyForeignScript =
   "script"
 
-keyPrefix :: T.Text
-keyPrefix =
-  "prefix"
-
 keyInlineLimit :: T.Text
 keyInlineLimit =
   "inline-limit"
@@ -245,17 +236,9 @@ getArchiveDir :: Module -> Path Abs Dir
 getArchiveDir baseModule =
   getModuleRootDir baseModule </> moduleArchiveDir baseModule
 
-getExtraContents :: Module -> [SomePath Rel]
-getExtraContents baseModule = do
-  moduleExtraContents baseModule
-
 getModuleRootDir :: Module -> Path Abs Dir
 getModuleRootDir baseModule =
   parent $ moduleLocation baseModule
-
-insertDependency :: ([ModuleURL], [ModuleDigest]) -> ([ModuleURL], [ModuleDigest]) -> ([ModuleURL], [ModuleDigest])
-insertDependency (mirrorList1, digest1) (mirrorList2, _) = do
-  (nubOrd $ mirrorList1 ++ mirrorList2, digest1)
 
 getDigestMap :: Module -> Map.HashMap ModuleDigest (NE.NonEmpty MA.ModuleAlias)
 getDigestMap baseModule = do
@@ -399,10 +382,6 @@ ppExtraContent somePath =
       T.pack $ toFilePath dirPath
     Right filePath ->
       T.pack $ toFilePath filePath
-
-ppDirPath :: Path Rel Dir -> T.Text
-ppDirPath dirPath =
-  T.pack $ toFilePath dirPath
 
 getDigestFromModulePath :: Path Abs File -> MID.ModuleID
 getDigestFromModulePath moduleFilePath =

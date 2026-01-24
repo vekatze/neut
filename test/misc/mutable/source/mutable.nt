@@ -9,24 +9,24 @@ define bar(xs-cell: &cell(list(int))): unit {
   borrow(xs-cell, function (xs) {
     let len = length(xs);
     print-int-line(len);
-    quote {Unit}
+    lift {Unit}
   })
 }
 
 define main(): unit {
   let xs: list(int) = Cons(1, Cons(2, Nil));
-  let xs-cell = make-cell(quote {xs});
+  let xs-cell = make-cell(lift {xs});
   let _ on xs-cell = {
     let _ = bar(xs-cell);
     mutate(xs-cell, function (xs) {
-      quote {Cons(4, axiom-T(xs))}
+      lift {Cons(4, axiom-T(xs))}
     });
     let _ = bar(xs-cell);
     mutate(xs-cell, function (_) {
-      quote {Nil}
+      lift {Nil}
     });
     mutate(xs-cell, function (xs) {
-      quote {Cons(4, axiom-T(xs))}
+      lift {Cons(4, axiom-T(xs))}
     });
     bar(xs-cell)
   };

@@ -12,7 +12,7 @@ data set-signature(a) {
 | Set(empty: set(a), insert: (a, set(a)) -> set(a), member: (a, &set(a)) -> bool)
 }
 
-define make-set-signature(a: type, !compare: (&a, &a) -> ordering): set-signature(a) {
+define make-set-signature<a>(!compare: (&a, &a) -> ordering): set-signature(a) {
   Set of {
     empty := Leaf,
     insert := {
@@ -56,7 +56,7 @@ define make-set-signature(a: type, !compare: (&a, &a) -> ordering): set-signatur
 
 define main(): unit {
   let Ord of {compare} = core.int.ord.as-ord;
-  let int-set-signature = make-set-signature(int, compare);
+  let int-set-signature = make-set-signature<int>(compare);
   match int-set-signature {
   | Set of {insert := !insert, member, empty} =>
     let my-set = !insert(10, empty);

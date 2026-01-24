@@ -5,6 +5,14 @@ module Language.Common.SourceLocator
     fromBaseNameList,
     llvmLocator,
     internalLocator,
+    typeTagLocator,
+    binaryLocator,
+    vectorLocator,
+    eitherLocator,
+    pairLocator,
+    unitLocator,
+    textLocator,
+    boolLocator,
   )
 where
 
@@ -41,6 +49,10 @@ fromBaseNameList baseNameList = do
   path <- parseRelFile $ T.unpack $ T.intercalate "/" $ map BN.reify baseNameList
   return $ SourceLocator path
 
+getRelPathText :: SourceLocator -> T.Text
+getRelPathText sl =
+  T.pack $ toFilePath $ reify sl
+
 llvmLocator :: SourceLocator
 llvmLocator =
   SourceLocator $(mkRelFile "llvm")
@@ -49,6 +61,34 @@ internalLocator :: SourceLocator
 internalLocator =
   SourceLocator $(mkRelFile "#")
 
-getRelPathText :: SourceLocator -> T.Text
-getRelPathText sl =
-  T.pack $ toFilePath $ reify sl
+typeTagLocator :: SourceLocator
+typeTagLocator =
+  SourceLocator $(mkRelFile "type-tag")
+
+binaryLocator :: SourceLocator
+binaryLocator =
+  SourceLocator $(mkRelFile "binary")
+
+vectorLocator :: SourceLocator
+vectorLocator =
+  SourceLocator $(mkRelFile "vector")
+
+eitherLocator :: SourceLocator
+eitherLocator =
+  SourceLocator $(mkRelFile "either")
+
+pairLocator :: SourceLocator
+pairLocator =
+  SourceLocator $(mkRelFile "pair")
+
+unitLocator :: SourceLocator
+unitLocator =
+  SourceLocator $(mkRelFile "unit")
+
+textLocator :: SourceLocator
+textLocator =
+  SourceLocator $(mkRelFile "text")
+
+boolLocator :: SourceLocator
+boolLocator =
+  SourceLocator $(mkRelFile "bool")

@@ -51,14 +51,14 @@ define test-item1(): unit {
   Unit
 }
 
-define use-item2(a: type, x: item2(a)): a {
+define use-item2<a>(x: item2(a)): a {
   match x {
   | Item2(value) =>
     value
   }
 }
 
-define use-item2-noetic(a: type, x: &item2(a)): &a {
+define use-item2-noetic<a>(x: &item2(a)): &a {
   case x {
   | Item2(value) =>
     value
@@ -70,23 +70,23 @@ define test-item2(): unit {
   let _ = !value;
   let _ = !value;
   let _ = !value;
-  let _ = use-item2(list(int), !value);
+  let _ = use-item2<list(int)>(!value);
   let _ on !value = {
-    let _ = use-item2-noetic(list(int), !value);
+    let _ = use-item2-noetic<list(int)>(!value);
     Unit
   };
   let _ = !value;
   Unit
 }
 
-define use-item3(a: type, b: type, f: item3(a, b), x: a): b {
+define use-item3<a, b>(f: item3(a, b), x: a): b {
   match f {
   | Item3(func) =>
     func(x)
   }
 }
 
-define use-item3-noetic(a: type, b: type, f: &item3(a, b), x: a): b {
+define use-item3-noetic<a, b>(f: &item3(a, b), x: a): b {
   case f {
   | Item3(func-n) =>
     let func = *func-n;
@@ -102,9 +102,9 @@ define test-item3(): unit {
   let _ = !value;
   let _ = !value;
   let _ = !value;
-  let _ = use-item3(int, list(int), !value, 1);
+  let _ = use-item3<int, list(int)>(!value, 1);
   let _ on !value = {
-    let _ = use-item3-noetic(int, list(int), !value, 1);
+    let _ = use-item3-noetic<int, list(int)>(!value, 1);
     Unit
   };
   let _ = !value;

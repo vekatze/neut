@@ -4,7 +4,7 @@ import {
 }
 
 nominal {
-  stream(a: type): type,
+  data stream(a: type),
 }
 
 data stream-cell(a) {
@@ -16,19 +16,19 @@ data stream(a) {
 | Stream(() -> stream-cell(a))
 }
 
-define append(a: type, xs: stream(a), ys: stream(a)): stream(a) {
+define append<a>(xs: stream(a), ys: stream(a)): stream(a) {
   let Stream(k) = xs;
   match k() {
   | Nil =>
     ys
   | Cons(x1, rest) =>
     Stream(function () {
-      Cons(x1, append(a, rest, ys))
+      Cons(x1, append<a>(rest, ys))
     })
   }
 }
 
-define take(a: type, n: int, xs: stream(a)): stream(a) {
+define take<a>(n: int, xs: stream(a)): stream(a) {
   if eq-int(n, 0) {
     Stream(function () {
       Nil
@@ -42,7 +42,7 @@ define take(a: type, n: int, xs: stream(a)): stream(a) {
       })
     | Cons(x, rest) =>
       Stream(function () {
-        Cons(x, take(a, sub-int(n, 1), rest))
+        Cons(x, take<a>(sub-int(n, 1), rest))
       })
     }
   }

@@ -1,0 +1,185 @@
+import {
+  core.debug {vet-doc},
+  core.doc {Chunk, Group, Nest, Seq, doc},
+  core.doc.chunk {Chunk-Choose, Chunk-Empty, Chunk-Join, Chunk-Line, Chunk-Style, Chunk-Style-N, chunk},
+  core.doc.show {show-doc},
+  core.int.io {print-int-line},
+  core.text.io {print-line},
+}
+
+define _simplify-chunk(x: chunk): chunk {
+  match x {
+  | Chunk-Line =>
+    Chunk-Empty
+  | Chunk-Join(left, right) =>
+    Chunk-Join(_simplify-chunk(left), _simplify-chunk(right))
+  | Chunk-Choose(horizontal, _) =>
+    horizontal
+  | Chunk-Style(_) =>
+    Chunk-Empty
+  | Chunk-Style-N(_) =>
+    Chunk-Empty
+  | x =>
+    x
+  }
+}
+
+define _simplify-doc(d: doc): doc {
+  match d {
+  | Chunk(c) =>
+    Chunk(_simplify-chunk(c))
+  | Seq(d1, d2) =>
+    Seq(_simplify-doc(d1), _simplify-doc(d2))
+  | Nest(i, d) =>
+    Nest(i, _simplify-doc(d))
+  | Group(d) =>
+    Group(_simplify-doc(d))
+  }
+}
+
+inline-meta vet-simple<a>(x: '&a)[ribbon-length: 'int := quote {50}]: 'unit {
+  quote {
+    let tmp = unquote {vet-doc(x)};
+    pin tmp = _simplify-doc(tmp);
+    pin item = show-doc(tmp, unquote {ribbon-length});
+    print(item);
+    print("\n");
+  }
+}
+
+define default-top<a>(x: int)[y: either(a, unit) := Right(Unit), z: bool := True]: int {
+  match y {
+  | Left(_) =>
+    print-line("left");
+  | Right(_) =>
+    print-line("right");
+  };
+  if z {
+    print-line("true")
+  } else {
+    print-line("false")
+  };
+  x
+}
+
+define call-default-top(): unit {
+  let v1 = default-top<unit>(10);
+  print-int-line(v1);
+  let v2 = default-top<unit>(10)[y := Left(Unit)];
+  print-int-line(v2);
+  let v3 = default-top<unit>(10)[z := False];
+  print-int-line(v3);
+  let v4 = default-top<unit>(10)[y := Left(Unit), z := False];
+  print-int-line(v4);
+  let f =
+    function (x) {
+      default-top<unit>(x)
+    };
+  let v5 = f(10);
+  print-int-line(v5);
+}
+
+define default-list<a>()[xs: list(a) := Nil]: list(a) {
+  xs
+}
+
+define call-default-list(): unit {
+  pin result = default-list<int>();
+  vet-simple::(result)
+}
+
+inline local-lambda-default<a>(x: a): a {
+  let f =
+    function ()[r: either(a, unit) := Right(Unit)] {
+      match r {
+      | Left(_) =>
+        print-line("left");
+      | Right(_) =>
+        print-line("right");
+      };
+      x
+    };
+  f()
+}
+
+define call-local-lambda-default(): unit {
+  pin v = local-lambda-default<unit>(Unit);
+  vet-simple::(v)
+}
+
+define local-lambda-override(): unit {
+  let !f =
+    function ()[r: either(unit, unit) := Right(Unit)] {
+      match r {
+      | Left(_) =>
+        print-line("left");
+      | Right(_) =>
+        print-line("right");
+      };
+      Unit
+    };
+  pin v1 = !f();
+  vet-simple::(v1);
+  pin v2 = !f()[r := Left(Unit)];
+  vet-simple::(v2);
+}
+
+inline local-define-default<a>(x: a): a {
+  let g =
+    define _(v: a)[r: either(a, unit) := Right(Unit)]: a {
+      let _ = r;
+      v
+    };
+  g(x)
+}
+
+define takes-default-fun<a>(f: (x: int)[y: either(a, unit) := Right(Unit)] -> int): int {
+  f(1)
+}
+
+define use-takes-default-fun(): int {
+  let _ =
+    takes-default-fun<unit>(function (x)[y: either(unit, unit) := Right(Unit)] {
+      let _ = y;
+      x
+    });
+  0
+}
+
+inline inline-default(x: int)[y: int := 1, z: int := 2]: int {
+  add-int(x, add-int(y, z))
+}
+
+define call-inline-default(): unit {
+  let v1 = inline-default(10);
+  let v2 = inline-default(10)[z := 5];
+  print-int-line(v1);
+  print-int-line(v2);
+}
+
+define-meta default-meta(x: 'int)[n: 'int := quote {0}]: 'int {
+  quote {
+    let _ = unquote {n};
+    unquote {x}
+  }
+}
+
+define use-default-meta(): unit {
+  let result = default-meta::(1);
+  print-int-line(result)
+}
+
+define main(): unit {
+  call-default-top();
+  call-default-list();
+  call-local-lambda-default();
+  local-lambda-override();
+  pin v = local-define-default(*"lorem");
+  print-line(v);
+  call-inline-default();
+  use-default-meta();
+}
+
+define zen(): unit {
+  main()
+}

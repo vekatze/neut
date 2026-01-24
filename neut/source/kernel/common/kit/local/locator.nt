@@ -140,7 +140,7 @@ define activate-specified-names(
                 append-text(buf, "\n- ");
                 append-text(buf, existing-dd-text);
               };
-              quote {Right(extract(buf))}
+              lift {Right(extract(buf))}
             }
           });
         match unit-or-message {
@@ -148,8 +148,8 @@ define activate-specified-names(
           mutate(active-definite-description-dict-ref, function (xs) {
             box {
               letbox xs = xs;
-              letbox ll = quote {*ll};
-              letbox dd = quote {*dd};
+              letbox ll = lift {*ll};
+              letbox dd = lift {*dd};
               make-insert(ord-local-locator)(xs, ll, dd)
             }
           });
@@ -169,7 +169,7 @@ define activate-static-files(k: &locator-kit, m: hint, key: &text, path: &text):
     mutate(active-static-file-list-ref, function (xs) {
       box {
         letbox xs = xs;
-        letbox content = quote {content};
+        letbox content = lift {content};
         letbox key = box key {key};
         letbox path = box path {path};
         make-insert(core.text.ord.as-ord)(xs, key, Pair(path, content))
@@ -210,7 +210,7 @@ define _get-imported-referents(k: &locator-kit, ll: &local-locator): list(defini
   borrow(active-definite-description-dict-ref, function (dict) {
     match _lookup-ll(dict, ll) {
     | Left(_) =>
-      quote {Nil}
+      lift {Nil}
     | Right(dd) =>
       box dd {List[dd]}
     }

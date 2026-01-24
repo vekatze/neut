@@ -33,7 +33,6 @@ import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.Env qualified as Env
 import Kernel.Common.Handle.Global.Platform qualified as Platform
 import Kernel.Common.Target
-import Kernel.Common.TypeTag (baseTypeTagMap)
 import Kernel.Lower.Cancel
 import Language.Common.ArgNum qualified as AN
 import Language.Common.BaseLowType qualified as BLT
@@ -46,9 +45,9 @@ import Language.Common.Foreign qualified as F
 import Language.Common.ForeignCodType qualified as F
 import Language.Common.ForeignCodType qualified as FCT
 import Language.Common.Ident
+import Language.Common.LowMagic qualified as LM
 import Language.Common.LowType qualified as LT
 import Language.Common.LowType.FromBaseLowType qualified as LT
-import Language.Common.Magic qualified as M
 import Language.Common.PrimNumSize
 import Language.Common.PrimOp
 import Language.Common.PrimType qualified as PT
@@ -92,7 +91,7 @@ makeBaseDeclEnv arch = do
 lower :: Handle -> [C.CompStmt] -> App LC.LowCode
 lower h stmtList = do
   liftIO $ registerInternalNames h stmtList
-  liftIO $ forM baseTypeTagMap $ \(dd, _) ->
+  liftIO $ forM DD.baseTypes $ \dd ->
     insDeclEnv h (DN.In dd) AN.argNumS4
   stmtList' <- catMaybes <$> mapM (lowerStmt h) stmtList
   LC.LowCodeNormal <$> liftIO (summarize h stmtList')
@@ -213,9 +212,9 @@ lowerCompPrimitive h resultVar codeOp cont =
         =<< return (LC.Let resultVar (LC.GetElementPtr (ptr, toLowType aggType) indexList') cont)
     C.Magic der -> do
       case der of
-        M.Cast _ _ value -> do
+        LM.Cast _ _ value -> do
           lowerValue h resultVar value cont
-        M.Store valueLowType _ value pointer -> do
+        LM.Store valueLowType _ value pointer -> do
           let valueLowType' = LT.fromBaseLowType valueLowType
           (valVar, val) <- liftIO $ newValueLocal h "val"
           (ptrVar, ptr) <- liftIO $ newValueLocal h "ptr"
@@ -223,14 +222,14 @@ lowerCompPrimitive h resultVar codeOp cont =
             =<< lowerValueLetCast h ptrVar pointer LT.Pointer
             =<< return . LC.Let resultVar (LC.nop LC.Null)
             =<< return (LC.Cont (LC.Store valueLowType' val ptr) cont)
-        M.Load valueLowType pointer -> do
+        LM.Load valueLowType pointer -> do
           let valueLowType' = LT.fromBaseLowType valueLowType
           (tmpVar, tmp) <- liftIO $ newValueLocal h "tmp"
           (ptrVar, ptrValue) <- liftIO $ newValueLocal h "ptr"
           lowerValueLetCast h ptrVar pointer LT.Pointer
             =<< return . LC.Let tmpVar (LC.Load ptrValue valueLowType')
             =<< uncast h resultVar tmp valueLowType' cont
-        M.Alloca t size -> do
+        LM.Alloca t size -> do
           let t' = LT.fromBaseLowType t
           let indexType = LT.PrimNum $ PT.Int $ dataSizeToIntSize (baseSize h)
           (sizeVar, sizeValue) <- liftIO $ newValueLocal h "size"
@@ -238,7 +237,7 @@ lowerCompPrimitive h resultVar codeOp cont =
           lowerValueLetCast h sizeVar size indexType
             =<< return . LC.Let ptrVar (LC.StackAlloc t' indexType sizeValue)
             =<< uncast h resultVar ptrValue LT.Pointer cont
-        M.External domList cod name fixedArgs varArgAndTypeList -> do
+        LM.External domList cod name fixedArgs varArgAndTypeList -> do
           alreadyRegistered <- liftIO $ member h (DN.Ext name)
           unless alreadyRegistered $ do
             liftIO $ insDeclEnv' h (DN.Ext name) domList cod
@@ -260,12 +259,12 @@ lowerCompPrimitive h resultVar codeOp cont =
               lowerAndCastValues h (zip argVars (zip args argCaster))
                 =<< return . LC.Let tmpVar (LC.MagicCall funcType (LC.VarExternal name) $ zip argCaster argValues)
                 =<< uncast h resultVar tmpValue lowCod cont
-        M.Global name t -> do
+        LM.Global name t -> do
           let t' = LT.fromBaseLowType t
           uncast h resultVar (LC.VarExternal name) t' cont
-        M.OpaqueValue e ->
+        LM.OpaqueValue e ->
           lowerValue h resultVar e cont
-        M.CallType func arg1 arg2 -> do
+        LM.CallType func arg1 arg2 -> do
           (funcVar, funcValue) <- liftIO $ newValueLocal h "func"
           (arg1Var, arg1Value) <- liftIO $ newValueLocal h "arg1"
           (arg2Var, arg2Value) <- liftIO $ newValueLocal h "arg2"

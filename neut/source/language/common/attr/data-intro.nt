@@ -42,7 +42,7 @@ inline attr-data-intro-sero<name>(!name-sero: sero(name)): sero(attr-data-intro(
         Right(box {
           letbox data-name = data-name;
           letbox cons-name-list = cons-name-list;
-          letbox discriminant = quote {discriminant};
+          letbox discriminant = lift {discriminant};
           letbox is-const-like = is-const-like;
           let discriminant = Discriminant(discriminant);
           Attr-Data-Intro(data-name, cons-name-list, discriminant, is-const-like)

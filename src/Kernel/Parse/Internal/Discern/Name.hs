@@ -3,6 +3,7 @@ module Kernel.Parse.Internal.Discern.Name
     resolveConstructor,
     resolveLocator,
     interpretGlobalName,
+    interpretGlobalTypeName,
     interpretRuleName,
     resolveDefiniteDescription,
   )
@@ -29,12 +30,14 @@ import Kernel.Parse.Internal.Handle.Unused qualified as Unused
 import Language.Common.ArgNum qualified as AN
 import Language.Common.Attr.VarGlobal qualified as AttrVG
 import Language.Common.CreateSymbol qualified as Gensym
+import Language.Common.DefaultArgs qualified as DefaultArgs
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.Discriminant qualified as D
 import Language.Common.GlobalLocator qualified as GL
 import Language.Common.ImpArgs qualified as ImpArgs
 import Language.Common.IsConstLike
 import Language.Common.LocalLocator qualified as LL
+import Language.Common.LowMagic qualified as LM
 import Language.Common.Magic qualified as M
 import Language.Common.PiKind qualified as PK
 import Language.Common.PrimNumSize qualified as PNS
@@ -44,7 +47,6 @@ import Language.Common.RuleKind (RuleKind)
 import Language.RawTerm.Locator qualified as L
 import Language.RawTerm.Name
 import Language.WeakTerm.CreateHole qualified as WT
-import Language.WeakTerm.WeakPrim qualified as WP
 import Language.WeakTerm.WeakPrimValue qualified as WPV
 import Language.WeakTerm.WeakTerm qualified as WT
 import Logger.Hint
@@ -150,24 +152,45 @@ resolveConstructorMaybe dd gn = do
 interpretGlobalName :: H.Handle -> Hint -> DD.DefiniteDescription -> GN.GlobalName -> App WT.WeakTerm
 interpretGlobalName h m dd gn = do
   case gn of
-    GN.TopLevelFunc argNum isConstLike ->
-      return $ interpretTopLevelFunc m dd argNum isConstLike
-    GN.Data argNum _ isConstLike ->
-      return $ interpretTopLevelFunc m dd argNum isConstLike
+    GN.TopLevelFuncTerm argNum isConstLike isMacro -> do
+      ensureTopLevelStage m h dd isMacro
+      return $ interpretTopLevelFuncTerm m dd argNum isConstLike
+    GN.TopLevelFuncType {} -> do
+      raiseError m $ "`" <> DD.reify dd <> "` is a type name and cannot appear in term position"
+    GN.Data {} ->
+      raiseError m $ "`" <> DD.reify dd <> "` is a type name and cannot appear in term position"
     GN.DataIntro dataArgNum consArgNum _ isConstLike -> do
       let argNum = AN.add dataArgNum consArgNum
       let attr = AttrVG.Attr {..}
-      return $ m :< WT.PiElim False (m :< WT.VarGlobal attr dd) ImpArgs.Unspecified []
-    GN.PrimType primNum ->
-      return $ m :< WT.Prim (WP.Type primNum)
+      return $ m :< WT.PiElim False (m :< WT.VarGlobal attr dd) ImpArgs.Unspecified [] (DefaultArgs.ByKey [])
+    GN.PrimType _ ->
+      raiseError m $ "`" <> DD.reify dd <> "` is a type name and cannot appear in term position"
     GN.PrimOp primOp ->
       case primOp of
         PO.PrimCmpOp {} ->
-          castFromIntToBool h $ m :< WT.Prim (WP.Value (WPV.Op primOp)) -- i1 to bool
+          castFromIntToBool h $ m :< WT.Prim (WPV.Op primOp) -- i1 to bool
         _ ->
-          return $ m :< WT.Prim (WP.Value (WPV.Op primOp))
+          return $ m :< WT.Prim (WPV.Op primOp)
     GN.Rule _ ->
       raiseError m $ "`" <> DD.reify dd <> "` must be used with arguments"
+
+interpretGlobalTypeName :: Hint -> DD.DefiniteDescription -> GN.GlobalName -> App WT.WeakType
+interpretGlobalTypeName m dd gn = do
+  case gn of
+    GN.TopLevelFuncTerm {} -> do
+      raiseError m $ "`" <> DD.reify dd <> "` is a term name and cannot appear in type position"
+    GN.TopLevelFuncType argNum isConstLike _ -> do
+      return $ interpretTopLevelFuncType m dd argNum isConstLike
+    GN.Data argNum _ isConstLike ->
+      return $ interpretTopLevelFuncType m dd argNum isConstLike
+    GN.DataIntro {} ->
+      raiseError m $ "`" <> DD.reify dd <> "` is a constructor and cannot appear in type position"
+    GN.PrimType primNum ->
+      return $ m :< WT.PrimType primNum
+    GN.PrimOp {} ->
+      raiseError m $ "`" <> DD.reify dd <> "` is not a type"
+    GN.Rule {} ->
+      raiseError m $ "`" <> DD.reify dd <> "` is not a type"
 
 interpretRuleName :: Hint -> DD.DefiniteDescription -> GN.GlobalName -> App RuleKind
 interpretRuleName m dd gn = do
@@ -177,29 +200,63 @@ interpretRuleName m dd gn = do
     _ -> do
       raiseError m $ "`" <> DD.reify dd <> "` is not a macro"
 
-interpretTopLevelFunc ::
+interpretTopLevelFuncTerm ::
   Hint ->
   DD.DefiniteDescription ->
   AN.ArgNum ->
   IsConstLike ->
   WT.WeakTerm
-interpretTopLevelFunc m dd argNum isConstLike = do
+interpretTopLevelFuncTerm m dd argNum isConstLike = do
   let attr = AttrVG.Attr {..}
   if isConstLike
-    then m :< WT.PiElim False (m :< WT.VarGlobal attr dd) ImpArgs.Unspecified []
+    then m :< WT.PiElim False (m :< WT.VarGlobal attr dd) ImpArgs.Unspecified [] (DefaultArgs.ByKey [])
     else m :< WT.VarGlobal attr dd
+
+interpretTopLevelFuncType ::
+  Hint ->
+  DD.DefiniteDescription ->
+  AN.ArgNum ->
+  IsConstLike ->
+  WT.WeakType
+interpretTopLevelFuncType m dd argNum isConstLike = do
+  let attr = AttrVG.Attr {..}
+  if isConstLike
+    then m :< WT.TyApp (m :< WT.TVarGlobal attr dd) []
+    else m :< WT.TVarGlobal attr dd
+
+ensureTopLevelStage :: Hint -> H.Handle -> DD.DefiniteDescription -> Bool -> App ()
+ensureTopLevelStage m h dd isMacro =
+  if isMacro
+    then do
+      let stage = H.currentStage h
+      when (stage < 1) $ do
+        raiseError m $
+          "`"
+            <> DD.reify dd
+            <> "` is a macro definition and can only be used at stage >= 1 (current stage: "
+            <> T.pack (show stage)
+            <> ")"
+    else do
+      let stage = H.currentStage h
+      when (stage > 0) $ do
+        raiseError m $
+          "`"
+            <> DD.reify dd
+            <> "` is a runtime definition and can only be used at stage <= 0 (current stage: "
+            <> T.pack (show stage)
+            <> ")"
 
 castFromIntToBool :: H.Handle -> WT.WeakTerm -> App WT.WeakTerm
 castFromIntToBool h e@(m :< _) = do
-  let i1 = m :< WT.Prim (WP.Type (PT.Int PNS.IntSize1))
+  let i1 = m :< WT.PrimType (PT.Int PNS.IntSize1)
   l <- liftEither $ DD.getLocatorPair m C.coreBool
   (dd, (_, gn)) <- resolveLocator h m l False
-  bool <- interpretGlobalName h m dd gn
-  t <- liftIO $ WT.createHole (H.gensymHandle h) m []
+  bool <- interpretGlobalTypeName m dd gn
+  t <- liftIO $ WT.createTypeHole (H.gensymHandle h) m []
   x1 <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) "arg"
   x2 <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) "arg"
-  let cmpOpType cod = m :< WT.Pi PK.normal [] [(m, x1, t), (m, x2, t)] cod
-  return $ m :< WT.Magic (M.WeakMagic $ M.Cast (cmpOpType i1) (cmpOpType bool) e)
+  let cmpOpType cod = m :< WT.Pi PK.normal [] [(m, x1, t), (m, x2, t)] [] cod
+  return $ m :< WT.Magic (M.WeakMagic $ M.LowMagic $ LM.Cast (cmpOpType i1) (cmpOpType bool) e)
 
 candFilter :: (a, Maybe b) -> Maybe (a, b)
 candFilter (from, mTo) =

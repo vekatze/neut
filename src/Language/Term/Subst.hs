@@ -1,7 +1,10 @@
 module Language.Term.Subst
   ( Handle,
     new,
+    SubstEntry (..),
+    Subst,
     subst,
+    substType,
     subst',
     subst'',
     substDecisionTree,
@@ -15,18 +18,28 @@ import Data.Maybe (mapMaybe)
 import Data.Set qualified as S
 import Gensym.Gensym qualified as Gensym
 import Gensym.Handle qualified as Gensym
+import Language.Common.Attr.Data qualified as AttrD
+import Language.Common.Attr.DataIntro qualified as AttrDI
 import Language.Common.Attr.Lam qualified as AttrL
+import Language.Common.BaseLowType qualified as BLT
 import Language.Common.Binder
 import Language.Common.CreateSymbol qualified as Gensym
 import Language.Common.DecisionTree qualified as DT
 import Language.Common.Ident
 import Language.Common.Ident.Reify qualified as Ident
 import Language.Common.LamKind qualified as LK
+import Language.Common.LowMagic qualified as LM
+import Language.Common.Magic qualified as M
 import Language.Term.FreeVars qualified as TM
 import Language.Term.Term qualified as TM
 
-type SubstTerm =
-  IntMap.IntMap (Either Ident TM.Term)
+data SubstEntry
+  = Var Ident
+  | Term TM.Term
+  | Type TM.Type
+
+type Subst =
+  IntMap.IntMap SubstEntry
 
 newtype Handle = Handle
   { gensymHandle :: Gensym.Handle
@@ -36,28 +49,25 @@ new :: Gensym.Handle -> Handle
 new gensymHandle = do
   Handle {..}
 
-subst :: Handle -> SubstTerm -> TM.Term -> IO TM.Term
+subst :: Handle -> Subst -> TM.Term -> IO TM.Term
 subst h sub term =
   case term of
-    _ :< TM.Tau ->
-      return term
     m :< TM.Var x
-      | Just varOrTerm <- IntMap.lookup (Ident.toInt x) sub ->
-          case varOrTerm of
-            Left x' ->
+      | Just entry <- IntMap.lookup (Ident.toInt x) sub ->
+          case entry of
+            Var x' ->
               return $ m :< TM.Var x'
-            Right e ->
+            Term e ->
               return e
+            Type (_ :< TM.TVar x') ->
+              return $ m :< TM.Var x'
+            Type _ ->
+              return term
       | otherwise ->
           return term
     _ :< TM.VarGlobal {} ->
       return term
-    m :< TM.Pi piKind impArgs expArgs t -> do
-      (impArgs', sub') <- substBinderWithMaybeType h sub impArgs
-      (expArgs', sub'') <- substBinder h sub' expArgs
-      t' <- subst h sub'' t
-      return (m :< TM.Pi piKind impArgs' expArgs' t')
-    m :< TM.PiIntro (AttrL.Attr {lamKind}) impArgs expArgs e -> do
+    m :< TM.PiIntro (AttrL.Attr {lamKind}) impArgs expArgs defaultArgs e -> do
       let fvs = S.map Ident.toInt $ TM.freeVars term
       let subDomSet = S.fromList $ IntMap.keys sub
       if S.intersection fvs subDomSet == S.empty
@@ -65,32 +75,33 @@ subst h sub term =
         else do
           newLamID <- liftIO $ Gensym.newCount (gensymHandle h)
           case lamKind of
-            LK.Fix xt -> do
-              (impArgs', sub') <- substBinderWithMaybeType h sub impArgs
+            LK.Fix opacity xt -> do
+              (impArgs', sub') <- substBinder h sub impArgs
               (expArgs', sub'') <- substBinder h sub' expArgs
-              ([xt'], sub''') <- substBinder h sub'' [xt]
-              e' <- subst h sub''' e
-              let fixAttr = AttrL.Attr {lamKind = LK.Fix xt', identity = newLamID}
-              return (m :< TM.PiIntro fixAttr impArgs' expArgs' e')
+              (defaultArgs', sub''') <- substDefaultArgs h sub'' defaultArgs
+              ([xt'], sub'''') <- substBinder h sub''' [xt]
+              e' <- subst h sub'''' e
+              let fixAttr = AttrL.Attr {lamKind = LK.Fix opacity xt', identity = newLamID}
+              return (m :< TM.PiIntro fixAttr impArgs' expArgs' defaultArgs' e')
             LK.Normal name codType -> do
-              (impArgs', sub') <- substBinderWithMaybeType h sub impArgs
+              (impArgs', sub') <- substBinder h sub impArgs
               (expArgs', sub'') <- substBinder h sub' expArgs
-              codType' <- subst h sub'' codType
-              e' <- subst h sub'' e
+              (defaultArgs', sub''') <- substDefaultArgs h sub'' defaultArgs
+              codType' <- substType h sub''' codType
+              e' <- subst h sub''' e
               let lamAttr = AttrL.Attr {lamKind = LK.Normal name codType', identity = newLamID}
-              return (m :< TM.PiIntro lamAttr impArgs' expArgs' e')
-    m :< TM.PiElim b e impArgs expArgs -> do
+              return (m :< TM.PiIntro lamAttr impArgs' expArgs' defaultArgs' e')
+    m :< TM.PiElim b e impArgs expArgs defaultArgs -> do
       e' <- subst h sub e
-      impArgs' <- mapM (subst h sub) impArgs
+      impArgs' <- mapM (substType h sub) impArgs
       expArgs' <- mapM (subst h sub) expArgs
-      return (m :< TM.PiElim b e' impArgs' expArgs')
-    m :< TM.Data attr name es -> do
-      es' <- mapM (subst h sub) es
-      return $ m :< TM.Data attr name es'
+      defaultArgs' <- mapM (traverse (subst h sub)) defaultArgs
+      return (m :< TM.PiElim b e' impArgs' expArgs' defaultArgs')
     m :< TM.DataIntro attr consName dataArgs consArgs -> do
-      dataArgs' <- mapM (subst h sub) dataArgs
+      dataArgs' <- mapM (substType h sub) dataArgs
       consArgs' <- mapM (subst h sub) consArgs
-      return $ m :< TM.DataIntro attr consName dataArgs' consArgs'
+      attr' <- substAttrDataIntro h sub attr
+      return $ m :< TM.DataIntro attr' consName dataArgs' consArgs'
     m :< TM.DataElim isNoetic oets decisionTree -> do
       let (os, es, ts) = unzip3 oets
       es' <- mapM (subst h sub) es
@@ -98,12 +109,6 @@ subst h sub term =
       (binder', decisionTree') <- subst'' h sub binder decisionTree
       let (_, os', ts') = unzip3 binder'
       return $ m :< TM.DataElim isNoetic (zip3 os' es' ts') decisionTree'
-    m :< TM.Box t -> do
-      t' <- subst h sub t
-      return $ m :< TM.Box t'
-    m :< TM.BoxNoema t -> do
-      t' <- subst h sub t
-      return $ m :< TM.BoxNoema t'
     m :< TM.BoxIntro letSeq e -> do
       (letSeq', sub') <- substLetSeq h sub letSeq
       e' <- subst h sub' e
@@ -114,6 +119,21 @@ subst h sub term =
       (uncastSeq', sub3) <- substLetSeq h sub2 uncastSeq
       e2' <- subst h sub3 e2
       return $ m :< TM.BoxElim castSeq' mxt' e1' uncastSeq' e2'
+    m :< TM.CodeIntro e -> do
+      e' <- subst h sub e
+      return $ m :< TM.CodeIntro e'
+    m :< TM.CodeElim e -> do
+      e' <- subst h sub e
+      return $ m :< TM.CodeElim e'
+    m :< TM.TauIntro ty -> do
+      ty' <- substType h sub ty
+      return $ m :< TM.TauIntro ty'
+    m :< TM.TauElim (mx, x) e1 e2 -> do
+      e1' <- subst h sub e1
+      x' <- liftIO $ Gensym.newIdentFromIdent (gensymHandle h) x
+      let sub' = IntMap.insert (Ident.toInt x) (Var x') sub
+      e2' <- subst h sub' e2
+      return $ m :< TM.TauElim (mx, x') e1' e2'
     m :< TM.Let opacity mxt e1 e2 -> do
       e1' <- subst h sub e1
       ([mxt'], e2') <- subst' h sub [mxt] e2
@@ -121,103 +141,145 @@ subst h sub term =
     _ :< TM.Prim _ ->
       return term
     m :< TM.Magic der -> do
-      der' <- traverse (subst h sub) der
+      der' <- substMagic h sub der
       return (m :< TM.Magic der')
-    m :< TM.Resource dd resourceID unitType discarder copier typeTag -> do
-      unitType' <- subst h sub unitType
-      discarder' <- subst h sub discarder
-      copier' <- subst h sub copier
-      typeTag' <- subst h sub typeTag
-      return $ m :< TM.Resource dd resourceID unitType' discarder' copier' typeTag'
+
+substType :: Handle -> Subst -> TM.Type -> IO TM.Type
+substType h sub ty =
+  case ty of
+    _ :< TM.Tau ->
+      return ty
+    m :< TM.TVar x
+      | Just entry <- IntMap.lookup (Ident.toInt x) sub ->
+          case entry of
+            Var x' ->
+              return $ m :< TM.TVar x'
+            Term (_ :< TM.Var x') ->
+              return $ m :< TM.TVar x'
+            Term _ ->
+              return ty
+            Type t ->
+              return t
+      | otherwise ->
+          return ty
+    _ :< TM.TVarGlobal {} ->
+      return ty
+    m :< TM.TyApp t args -> do
+      t' <- substType h sub t
+      args' <- mapM (substType h sub) args
+      return $ m :< TM.TyApp t' args'
+    m :< TM.Pi piKind impArgs expArgs defaultArgs t -> do
+      (impArgs', sub') <- substBinder h sub impArgs
+      (expArgs', sub'') <- substBinder h sub' expArgs
+      (defaultArgs', sub''') <- substBinder h sub'' defaultArgs
+      t' <- substType h sub''' t
+      return (m :< TM.Pi piKind impArgs' expArgs' defaultArgs' t')
+    m :< TM.Data attr name es -> do
+      es' <- mapM (substType h sub) es
+      attr' <- substAttrData h sub attr
+      return $ m :< TM.Data attr' name es'
+    m :< TM.Box t -> do
+      t' <- substType h sub t
+      return $ m :< TM.Box t'
+    m :< TM.BoxNoema t -> do
+      t' <- substType h sub t
+      return $ m :< TM.BoxNoema t'
+    m :< TM.Code t -> do
+      t' <- substType h sub t
+      return $ m :< TM.Code t'
+    _ :< TM.PrimType {} ->
+      return ty
     _ :< TM.Void ->
-      return term
+      return ty
+    m :< TM.Resource dd resourceID -> do
+      return $ m :< TM.Resource dd resourceID
 
 substBinder ::
   Handle ->
-  SubstTerm ->
-  [BinderF TM.Term] ->
-  IO ([BinderF TM.Term], SubstTerm)
+  Subst ->
+  [BinderF TM.Type] ->
+  IO ([BinderF TM.Type], Subst)
 substBinder h sub binder =
   case binder of
     [] -> do
       return ([], sub)
     ((m, x, t) : xts) -> do
-      t' <- subst h sub t
+      t' <- substType h sub t
       x' <- liftIO $ Gensym.newIdentFromIdent (gensymHandle h) x
-      let sub' = IntMap.insert (Ident.toInt x) (Left x') sub
+      let sub' = IntMap.insert (Ident.toInt x) (Var x') sub
       (xts', sub'') <- substBinder h sub' xts
       return ((m, x', t') : xts', sub'')
 
-substBinderWithMaybeType ::
+substDefaultArgs ::
   Handle ->
-  SubstTerm ->
-  [(BinderF TM.Term, Maybe TM.Term)] ->
-  IO ([(BinderF TM.Term, Maybe TM.Term)], SubstTerm)
-substBinderWithMaybeType h sub binderList =
+  Subst ->
+  [(BinderF TM.Type, TM.Term)] ->
+  IO ([(BinderF TM.Type, TM.Term)], Subst)
+substDefaultArgs h sub binderList =
   case binderList of
     [] -> do
       return ([], sub)
-    (((m, x, t), maybeType) : xts) -> do
-      t' <- subst h sub t
-      maybeType' <- traverse (subst h sub) maybeType
+    ((m, x, t), defaultValue) : xts -> do
+      t' <- substType h sub t
+      defaultValue' <- subst h sub defaultValue
       x' <- liftIO $ Gensym.newIdentFromIdent (gensymHandle h) x
-      let sub' = IntMap.insert (Ident.toInt x) (Left x') sub
-      (xts', sub'') <- substBinderWithMaybeType h sub' xts
-      return (((m, x', t'), maybeType') : xts', sub'')
+      let sub' = IntMap.insert (Ident.toInt x) (Var x') sub
+      (xts', sub'') <- substDefaultArgs h sub' xts
+      return (((m, x', t'), defaultValue') : xts', sub'')
 
 subst' ::
   Handle ->
-  SubstTerm ->
-  [BinderF TM.Term] ->
+  Subst ->
+  [BinderF TM.Type] ->
   TM.Term ->
-  IO ([BinderF TM.Term], TM.Term)
+  IO ([BinderF TM.Type], TM.Term)
 subst' h sub binder e =
   case binder of
     [] -> do
       e' <- subst h sub e
       return ([], e')
     ((m, x, t) : xts) -> do
-      t' <- subst h sub t
+      t' <- substType h sub t
       x' <- liftIO $ Gensym.newIdentFromIdent (gensymHandle h) x
-      let sub' = IntMap.insert (Ident.toInt x) (Left x') sub
+      let sub' = IntMap.insert (Ident.toInt x) (Var x') sub
       (xts', e') <- subst' h sub' xts e
       return ((m, x', t') : xts', e')
 
 subst'' ::
   Handle ->
-  SubstTerm ->
-  [BinderF TM.Term] ->
-  DT.DecisionTree TM.Term ->
-  IO ([BinderF TM.Term], DT.DecisionTree TM.Term)
+  Subst ->
+  [BinderF TM.Type] ->
+  DT.DecisionTree TM.Type TM.Term ->
+  IO ([BinderF TM.Type], DT.DecisionTree TM.Type TM.Term)
 subst'' h sub binder decisionTree =
   case binder of
     [] -> do
       decisionTree' <- substDecisionTree h sub decisionTree
       return ([], decisionTree')
     ((m, x, t) : xts) -> do
-      t' <- subst h sub t
+      t' <- substType h sub t
       x' <- liftIO $ Gensym.newIdentFromIdent (gensymHandle h) x
-      let sub' = IntMap.insert (Ident.toInt x) (Left x') sub
+      let sub' = IntMap.insert (Ident.toInt x) (Var x') sub
       (xts', e') <- subst'' h sub' xts decisionTree
       return ((m, x', t') : xts', e')
 
 substLet ::
   Handle ->
-  SubstTerm ->
-  (BinderF TM.Term, TM.Term) ->
-  IO ((BinderF TM.Term, TM.Term), SubstTerm)
+  Subst ->
+  (BinderF TM.Type, TM.Term) ->
+  IO ((BinderF TM.Type, TM.Term), Subst)
 substLet h sub ((m, x, t), e) = do
   e' <- subst h sub e
-  t' <- subst h sub t
+  t' <- substType h sub t
   x' <- liftIO $ Gensym.newIdentFromIdent (gensymHandle h) x
-  let sub' = IntMap.insert (Ident.toInt x) (Left x') sub
+  let sub' = IntMap.insert (Ident.toInt x) (Var x') sub
   return (((m, x', t'), e'), sub')
 
 substLetSeq ::
   Handle ->
-  SubstTerm ->
-  [(BinderF TM.Term, TM.Term)] ->
-  IO ([(BinderF TM.Term, TM.Term)], SubstTerm)
+  Subst ->
+  [(BinderF TM.Type, TM.Term)] ->
+  IO ([(BinderF TM.Type, TM.Term)], Subst)
 substLetSeq h sub letSeq = do
   case letSeq of
     [] ->
@@ -229,9 +291,9 @@ substLetSeq h sub letSeq = do
 
 substDecisionTree ::
   Handle ->
-  SubstTerm ->
-  DT.DecisionTree TM.Term ->
-  IO (DT.DecisionTree TM.Term)
+  Subst ->
+  DT.DecisionTree TM.Type TM.Term ->
+  IO (DT.DecisionTree TM.Type TM.Term)
 substDecisionTree h sub tree =
   case tree of
     DT.Leaf xs letSeq e -> do
@@ -243,15 +305,15 @@ substDecisionTree h sub tree =
       return tree
     DT.Switch (cursorVar, cursor) caseList -> do
       let cursorVar' = substVar sub cursorVar
-      cursor' <- subst h sub cursor
+      cursor' <- substType h sub cursor
       caseList' <- substCaseList h sub caseList
       return $ DT.Switch (cursorVar', cursor') caseList'
 
 substCaseList ::
   Handle ->
-  SubstTerm ->
-  DT.CaseList TM.Term ->
-  IO (DT.CaseList TM.Term)
+  Subst ->
+  DT.CaseList TM.Type TM.Term ->
+  IO (DT.CaseList TM.Type TM.Term)
 substCaseList h sub (fallbackClause, clauseList) = do
   fallbackClause' <- substDecisionTree h sub fallbackClause
   clauseList' <- mapM (substCase h sub) clauseList
@@ -259,9 +321,9 @@ substCaseList h sub (fallbackClause, clauseList) = do
 
 substCase ::
   Handle ->
-  SubstTerm ->
-  DT.Case TM.Term ->
-  IO (DT.Case TM.Term)
+  Subst ->
+  DT.Case TM.Type TM.Term ->
+  IO (DT.Case TM.Type TM.Term)
 substCase h sub decisionCase = do
   case decisionCase of
     DT.LiteralCase mPat i cont -> do
@@ -269,8 +331,8 @@ substCase h sub decisionCase = do
       return $ DT.LiteralCase mPat i cont'
     DT.ConsCase record@(DT.ConsCaseRecord {..}) -> do
       let (dataTerms, dataTypes) = unzip dataArgs
-      dataTerms' <- mapM (subst h sub) dataTerms
-      dataTypes' <- mapM (subst h sub) dataTypes
+      dataTerms' <- mapM (substType h sub) dataTerms
+      dataTypes' <- mapM (substType h sub) dataTypes
       (consArgs', cont') <- subst'' h sub consArgs cont
       return $
         DT.ConsCase
@@ -280,20 +342,151 @@ substCase h sub decisionCase = do
               DT.cont = cont'
             }
 
-substLeafVar :: SubstTerm -> Ident -> Maybe Ident
+substLeafVar :: Subst -> Ident -> Maybe Ident
 substLeafVar sub leafVar =
   case IntMap.lookup (Ident.toInt leafVar) sub of
-    Just (Left leafVar') ->
+    Just (Var leafVar') ->
       return leafVar'
-    Just (Right _) ->
+    Just (Term _) ->
       Nothing
+    Just (Type _) ->
+      return leafVar
     Nothing ->
       return leafVar
 
-substVar :: SubstTerm -> Ident -> Ident
+substVar :: Subst -> Ident -> Ident
 substVar sub x =
   case IntMap.lookup (Ident.toInt x) sub of
-    Just (Left x') ->
+    Just (Var x') ->
       x'
     _ ->
       x
+
+substAttrData :: Handle -> Subst -> AttrD.Attr name (BinderF TM.Type) -> IO (AttrD.Attr name (BinderF TM.Type))
+substAttrData h sub attr = do
+  let consNameList = AttrD.consNameList attr
+  consNameList' <-
+    mapM
+      ( \(cn, binders, cl) -> do
+          binders' <-
+            mapM
+              ( \(mx, x, t) -> do
+                  t' <- substType h sub t
+                  return (mx, x, t')
+              )
+              binders
+          return (cn, binders', cl)
+      )
+      consNameList
+  return $ attr {AttrD.consNameList = consNameList'}
+
+substAttrDataIntro :: Handle -> Subst -> AttrDI.Attr name (BinderF TM.Type) -> IO (AttrDI.Attr name (BinderF TM.Type))
+substAttrDataIntro h sub attr = do
+  let consNameList = AttrDI.consNameList attr
+  consNameList' <-
+    mapM
+      ( \(cn, binders, cl) -> do
+          binders' <-
+            mapM
+              ( \(mx, x, t) -> do
+                  t' <- substType h sub t
+                  return (mx, x, t')
+              )
+              binders
+          return (cn, binders', cl)
+      )
+      consNameList
+  return $ attr {AttrDI.consNameList = consNameList'}
+
+substMagic :: Handle -> Subst -> M.Magic BLT.BaseLowType TM.Type TM.Term -> IO (M.Magic BLT.BaseLowType TM.Type TM.Term)
+substMagic h sub magic =
+  case magic of
+    M.LowMagic lowMagic ->
+      M.LowMagic <$> substLowMagic h sub lowMagic
+    M.GetTypeTag mid typeTagExpr e -> do
+      typeTagExpr' <- substType h sub typeTagExpr
+      e' <- substType h sub e
+      return $ M.GetTypeTag mid typeTagExpr' e'
+    M.GetDataArgs sgl listExpr typeExpr -> do
+      listExpr' <- substType h sub listExpr
+      typeExpr' <- substType h sub typeExpr
+      return $ M.GetDataArgs sgl listExpr' typeExpr'
+    M.GetConsSize typeExpr ->
+      M.GetConsSize <$> substType h sub typeExpr
+    M.GetWrapperContentType typeExpr ->
+      M.GetWrapperContentType <$> substType h sub typeExpr
+    M.GetVectorContentType sgl typeExpr ->
+      M.GetVectorContentType sgl <$> substType h sub typeExpr
+    M.GetNoemaContentType typeExpr ->
+      M.GetNoemaContentType <$> substType h sub typeExpr
+    M.GetBoxContentType typeExpr ->
+      M.GetBoxContentType <$> substType h sub typeExpr
+    M.GetConstructorArgTypes sgl listExpr typeExpr index -> do
+      listExpr' <- substType h sub listExpr
+      typeExpr' <- substType h sub typeExpr
+      index' <- subst h sub index
+      return $ M.GetConstructorArgTypes sgl listExpr' typeExpr' index'
+    M.GetConsName textType typeExpr index -> do
+      textType' <- substType h sub textType
+      typeExpr' <- substType h sub typeExpr
+      index' <- subst h sub index
+      return $ M.GetConsName textType' typeExpr' index'
+    M.GetConsConstFlag boolType typeExpr index -> do
+      boolType' <- substType h sub boolType
+      typeExpr' <- substType h sub typeExpr
+      index' <- subst h sub index
+      return $ M.GetConsConstFlag boolType' typeExpr' index'
+    M.ShowType textTypeExpr typeExpr -> do
+      textTypeExpr' <- substType h sub textTypeExpr
+      typeExpr' <- substType h sub typeExpr
+      return $ M.ShowType textTypeExpr' typeExpr'
+    M.TextCons textTypeExpr rune text -> do
+      textTypeExpr' <- substType h sub textTypeExpr
+      rune' <- subst h sub rune
+      text' <- subst h sub text
+      return $ M.TextCons textTypeExpr' rune' text'
+    M.TextUncons mid text -> do
+      text' <- subst h sub text
+      return $ M.TextUncons mid text'
+    M.CompileError typeExpr msg -> do
+      typeExpr' <- substType h sub typeExpr
+      msg' <- subst h sub msg
+      return $ M.CompileError typeExpr' msg'
+
+substLowMagic :: Handle -> Subst -> LM.LowMagic BLT.BaseLowType TM.Type TM.Term -> IO (LM.LowMagic BLT.BaseLowType TM.Type TM.Term)
+substLowMagic h sub lowMagic =
+  case lowMagic of
+    LM.Cast from to value -> do
+      from' <- substType h sub from
+      to' <- substType h sub to
+      value' <- subst h sub value
+      return $ LM.Cast from' to' value'
+    LM.Store t unit value pointer -> do
+      value' <- subst h sub value
+      pointer' <- subst h sub pointer
+      return $ LM.Store t unit value' pointer'
+    LM.Load t pointer -> do
+      pointer' <- subst h sub pointer
+      return $ LM.Load t pointer'
+    LM.Alloca t size -> do
+      size' <- subst h sub size
+      return $ LM.Alloca t size'
+    LM.External domList cod extFunName args varArgs -> do
+      args' <- mapM (subst h sub) args
+      varArgs' <-
+        mapM
+          ( \(arg, typ) -> do
+              arg' <- subst h sub arg
+              return (arg', typ)
+          )
+          varArgs
+      return $ LM.External domList cod extFunName args' varArgs'
+    LM.Global name t ->
+      return $ LM.Global name t
+    LM.OpaqueValue e ->
+      LM.OpaqueValue <$> subst h sub e
+    LM.CallType func arg1 arg2 -> do
+      func' <- subst h sub func
+      arg1' <- subst h sub arg1
+      arg2' <- subst h sub arg2
+      return $ LM.CallType func' arg1' arg2'

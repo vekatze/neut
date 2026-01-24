@@ -13,6 +13,7 @@ module Language.Comp.Comp
     getPhiList,
     graft,
     isUnreachable,
+    null,
   )
 where
 
@@ -26,11 +27,12 @@ import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.Foreign qualified as F
 import Language.Common.Ident
 import Language.Common.Ident.Reify
-import Language.Common.Magic
+import Language.Common.LowMagic
 import Language.Common.Opacity
 import Language.Common.PrimNumSize
 import Language.Common.PrimOp
 import Language.Comp.EnumCase hiding (Int)
+import Prelude hiding (null)
 
 data Value
   = VarLocal Ident
@@ -105,7 +107,7 @@ type ShouldDeallocate = Bool
 data Primitive
   = PrimOp PrimOp [Value]
   | ShiftPointer Value Integer Integer -- (ptr, num-of-elems, index)
-  | Magic (Magic BaseLowType Value)
+  | Magic (LowMagic BaseLowType Value Value)
   deriving (Show)
 
 type SubstValue =
@@ -209,3 +211,7 @@ isUnreachable comp =
       True
     Phi {} ->
       False
+
+null :: Value
+null =
+  SigmaIntro []

@@ -7,6 +7,7 @@ where
 import App.Run (raiseError)
 import CodeParser.GetInfo
 import CodeParser.Parser
+import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.Trans
 import Data.Text qualified as T
@@ -15,7 +16,7 @@ import Language.Common.BaseName qualified as BN
 import Language.Common.ExternalName qualified as EN
 import Language.Common.ForeignCodType qualified as F
 import Language.Common.LocalLocator qualified as LL
-import Language.Common.Opacity qualified as O
+import Language.Common.NominalTag
 import Language.Common.RuleKind
 import Language.Common.StmtKind qualified as SK
 import Language.RawTerm.CreateHole qualified as RT
@@ -62,6 +63,10 @@ parseStmt h = do
     [ parseDefine h,
       parseData h,
       parseInline h,
+      parseMacro h,
+      parseMacroInline h,
+      parseAlias h,
+      parseAliasOpaque h,
       parseNominal h,
       parseResource h,
       parseVariadic h FoldLeft,
@@ -102,7 +107,7 @@ parseForeignItem :: Handle -> Parser (RawForeignItem, C)
 parseForeignItem h = do
   m <- getCurrentHint
   (funcName, c1) <- symbol
-  (domList, c2) <- seriesParen $ rawTerm h
+  (domList, c2) <- seriesParen $ rawType h
   c3 <- delimiter ":"
   (cod, c) <-
     choice
@@ -110,32 +115,65 @@ parseForeignItem h = do
           c <- keyword "void"
           return (F.Void, c),
         do
-          (lt, c) <- rawTerm h
+          (lt, c) <- rawType h
           return (F.Cod lt, c)
       ]
   return (RawForeignItemF m (EN.ExternalName funcName) c1 domList c2 c3 cod, c)
 
+checkNotMainOrZen :: BN.BaseName -> Hint -> T.Text -> Parser ()
+checkNotMainOrZen defName m keywordName = do
+  when (defName == BN.mainName) $ do
+    lift $ raiseError m $ "`main` must be defined using `define`, not `" <> keywordName <> "`"
+  when (defName == BN.zenName) $ do
+    lift $ raiseError m $ "`zen` must be defined using `define`, not `" <> keywordName <> "`"
+
 parseDefine :: Handle -> Parser (RawStmt, C)
-parseDefine h =
-  parseDefine' h O.Opaque
-
-parseInline :: Handle -> Parser (RawStmt, C)
-parseInline h =
-  parseDefine' h O.Clear
-
-parseDefine' :: Handle -> O.Opacity -> Parser (RawStmt, C)
-parseDefine' h opacity = do
-  c1 <-
-    case opacity of
-      O.Opaque ->
-        keyword "define"
-      O.Clear ->
-        keyword "inline"
+parseDefine h = do
+  c1 <- keyword "define"
   (def, c) <- parseDef h baseName
   let defName = RT.getDefName def
   if defName == BN.mainName || defName == BN.zenName
-    then return (RawStmtDefine c1 (SK.Main opacity ()) def, c)
-    else return (RawStmtDefine c1 (SK.Normal opacity) def, c)
+    then return (RawStmtDefineTerm c1 (SK.Main ()) def, c)
+    else return (RawStmtDefineTerm c1 SK.Define def, c)
+
+parseMacro :: Handle -> Parser (RawStmt, C)
+parseMacro h = do
+  c1 <- keyword "define-meta"
+  (def, c) <- parseDef h baseName
+  let defName = RT.getDefName def
+  let m = RT.loc $ RT.geist def
+  checkNotMainOrZen defName m "define-meta"
+  return (RawStmtDefineTerm c1 SK.Macro def, c)
+
+parseMacroInline :: Handle -> Parser (RawStmt, C)
+parseMacroInline h = do
+  c1 <- keyword "inline-meta"
+  (def, c) <- parseDef h baseName
+  let defName = RT.getDefName def
+  let m = RT.loc $ RT.geist def
+  checkNotMainOrZen defName m "inline-meta"
+  return (RawStmtDefineTerm c1 SK.MacroInline def, c)
+
+parseInline :: Handle -> Parser (RawStmt, C)
+parseInline h = do
+  c1 <- keyword "inline"
+  (def, c) <- parseDef h baseName
+  let defName = RT.getDefName def
+  let m = RT.loc $ RT.geist def
+  checkNotMainOrZen defName m "inline"
+  return (RawStmtDefineTerm c1 SK.Inline def, c)
+
+parseAlias :: Handle -> Parser (RawStmt, C)
+parseAlias h = do
+  c1 <- keyword "alias"
+  (def, c) <- parseAliasDef h baseName
+  return (RawStmtDefineType c1 TransparentAlias def, c)
+
+parseAliasOpaque :: Handle -> Parser (RawStmt, C)
+parseAliasOpaque h = do
+  c1 <- keyword "alias-opaque"
+  (def, c) <- parseAliasDef h baseName
+  return (RawStmtDefineType c1 OpaqueAlias def, c)
 
 parseData :: Handle -> Parser (RawStmt, C)
 parseData h = do
@@ -150,13 +188,74 @@ parseNominal :: Handle -> Parser (RawStmt, C)
 parseNominal h = do
   c1 <- keyword "nominal"
   m <- getCurrentHint
-  (geists, c) <- seriesBrace $ do
-    (geist, c) <- parseGeist h baseName
-    loc <- getCurrentLoc
-    return ((geist, loc), c)
+  (geists, c) <- seriesBrace $ parseNominalEntry h
   return (RawStmtNominal c1 m geists, c)
 
-parseDataArgs :: Handle -> Parser (Maybe (RT.Args RT.RawTerm))
+parseNominalEntry :: Handle -> Parser ((NominalTag, RT.RawGeist BN.BaseName, Loc), C)
+parseNominalEntry h =
+  choice
+    [ do
+        cTag <- keyword "define"
+        (geist, cGeist) <- parseGeist h baseName
+        loc <- getCurrentLoc
+        return ((Define, geist, loc), cTag ++ cGeist),
+      do
+        cTag <- keyword "inline"
+        (geist, cGeist) <- parseGeist h baseName
+        loc <- getCurrentLoc
+        return ((Inline, geist, loc), cTag ++ cGeist),
+      do
+        cTag <- keyword "define-meta"
+        (geist, cGeist) <- parseGeist h baseName
+        loc <- getCurrentLoc
+        return ((Macro, geist, loc), cTag ++ cGeist),
+      do
+        cTag <- keyword "inline-meta"
+        (geist, cGeist) <- parseGeist h baseName
+        loc <- getCurrentLoc
+        return ((MacroInline, geist, loc), cTag ++ cGeist),
+      do
+        cTag <- keyword "alias-opaque"
+        (geist, cGeist) <- parseAliasGeist h baseName
+        loc <- getCurrentLoc
+        return ((AliasOpaque, geist, loc), cTag ++ cGeist),
+      do
+        cTag <- keyword "alias"
+        (geist, cGeist) <- parseAliasGeist h baseName
+        loc <- getCurrentLoc
+        return ((Alias, geist, loc), cTag ++ cGeist),
+      do
+        cTag <- keyword "data"
+        (geist, cGeist) <- parseNominalData h
+        loc <- getCurrentLoc
+        return ((Data, geist, loc), cTag ++ cGeist),
+      do
+        cTag <- keyword "resource"
+        (geist, cGeist) <- parseResourceGeist baseName
+        loc <- getCurrentLoc
+        return ((Resource, geist, loc), cTag ++ cGeist)
+    ]
+
+parseNominalData :: Handle -> Parser (RT.RawGeist BN.BaseName, C)
+parseNominalData h = do
+  m <- getCurrentHint
+  (name, c1) <- baseName
+  argsOrNone <- parseDataArgs h
+  let expArgs = maybe RT.emptyArgs id argsOrNone
+  let isConstLike = maybe True (const False) argsOrNone
+  let geist =
+        RT.RawGeist
+          { loc = m,
+            name = (name, c1),
+            isConstLike = isConstLike,
+            impArgs = RT.emptyImpArgs,
+            defaultArgs = RT.emptyDefaultArgs,
+            expArgs = expArgs,
+            cod = ([], m :< RT.Tau)
+          }
+  return (geist, [])
+
+parseDataArgs :: Handle -> Parser (Maybe (RT.Args RT.RawType))
 parseDataArgs h = do
   choice
     [ Just <$> try (seriesParen $ preBinder h),
@@ -172,7 +271,7 @@ parseDefineDataClause h = do
   (expArgs, endLoc, c2) <- parseConsArgs h
   return (RawConsInfo {loc, name, expArgs, endLoc}, c1 ++ c2)
 
-parseConsArgs :: Handle -> Parser (Maybe (SE.Series (RawBinder RT.RawTerm)), Loc, C)
+parseConsArgs :: Handle -> Parser (Maybe (SE.Series (RawBinder RT.RawType)), Loc, C)
 parseConsArgs h = do
   choice
     [ do
@@ -183,7 +282,7 @@ parseConsArgs h = do
         return (Nothing, loc, [])
     ]
 
-parseDefineDataClauseArg :: Handle -> Parser (RawBinder RT.RawTerm, C)
+parseDefineDataClauseArg :: Handle -> Parser (RawBinder RT.RawType, C)
 parseDefineDataClauseArg h = do
   choice
     [ try $ var h >>= preAscription h,
@@ -197,10 +296,10 @@ parseResource h = do
   (name, c2) <- baseName
   (handlers, c) <- seriesBrace $ rawExpr h
   case SE.elems handlers of
-    [discarder, copier, typeTag] -> do
-      return (RawStmtDefineResource c1 m (name, c2) discarder copier typeTag (SE.trailingComment handlers), c)
+    [discarder, copier] -> do
+      return (RawStmtDefineResource c1 m (name, c2) discarder copier (SE.trailingComment handlers), c)
     _ ->
-      lift $ raiseError m $ "`resource` must have 3 elements, but found: " <> T.pack (show $ length $ SE.elems handlers)
+      lift $ raiseError m $ "`resource` must have 2 elements, but found: " <> T.pack (show $ length $ SE.elems handlers)
 
 parseVariadic :: Handle -> RuleKind -> Parser (RawStmt, C)
 parseVariadic h vk = do
@@ -211,9 +310,9 @@ parseVariadic h vk = do
   (handlers, loc, c) <- seriesBrace' $ rawExpr h
   case SE.elems handlers of
     [(cLeaf, leaf), (cNode, node), (cRoot, root)] -> do
-      nodeType <- liftIO $ RT.createHole (gensymHandle h) m
-      leafType <- liftIO $ RT.createHole (gensymHandle h) m
-      rootType <- liftIO $ RT.createHole (gensymHandle h) m
+      nodeType <- liftIO $ RT.createTypeHole (gensymHandle h) m
+      leafType <- liftIO $ RT.createTypeHole (gensymHandle h) m
+      rootType <- liftIO $ RT.createTypeHole (gensymHandle h) m
       let l = (cLeaf, leaf, leafType)
       let n = (cNode, node, nodeType)
       let r = (cRoot, root, rootType)

@@ -24,10 +24,9 @@ import Control.Monad.IO.Class (MonadIO (liftIO))
 import Gensym.Gensym qualified as Gensym
 import Gensym.Handle qualified as Gensym
 import Kernel.Clarify.Internal.Linearize qualified as Linearize
-import Kernel.Clarify.Internal.Utility (ResourceSpec (ResourceSpec))
+import Kernel.Clarify.Internal.Utility (ResourceSpec (..))
 import Kernel.Clarify.Internal.Utility qualified as Utility
 import Kernel.Common.Handle.Local.Locator qualified as Locator
-import Kernel.Common.TypeTag
 import Language.Common.ArgNum qualified as AN
 import Language.Common.BaseLowType qualified as BLT
 import Language.Common.BaseName qualified as BN
@@ -35,7 +34,7 @@ import Language.Common.CreateSymbol qualified as Gensym
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.Discriminant qualified as D
 import Language.Common.Ident
-import Language.Common.Magic qualified as M
+import Language.Common.LowMagic qualified as LM
 import Language.Common.Opacity qualified as O
 import Language.Common.PrimNumSize (FloatSize (..), IntSize (..))
 import Language.Comp.Comp qualified as C
@@ -62,13 +61,13 @@ new gensymHandle linearizeHandle utilityHandle = do
 
 registerImmediateS4 :: Handle -> IO ()
 registerImmediateS4 h = do
-  forM_ immTypeTagMap $ \(name, typeTag) -> do
+  forM_ DD.immTypes $ \name -> do
     switch <- Gensym.createVar (gensymHandle h) "switch"
     arg@(_, argVar) <- Gensym.createVar (gensymHandle h) "arg"
     let discard = C.UpIntro $ C.SigmaIntro []
     let copy = C.UpIntro argVar
     Utility.registerSwitcher (utilityHandle h) O.Clear name $ do
-      ResourceSpec {switch, arg, defaultClause = newTagMaker typeTag, clauses = [discard, copy]}
+      ResourceSpec {switch, arg, discard, copy, defaultValues = []}
 
 registerClosureS4 :: Handle -> IO ()
 registerClosureS4 h = do
@@ -80,7 +79,6 @@ registerClosureS4 h = do
     DD.cls
     O.Clear
     [(env, returnImmediateTypeS4), (hole1, C.UpIntro envVar), (hole2, returnImmediatePointerS4)]
-    (newTagMaker Function)
 
 returnImmediateTypeS4 :: C.Comp
 returnImmediateTypeS4 = do
@@ -143,19 +141,18 @@ registerSigmaS4 ::
   DD.DefiniteDescription ->
   O.Opacity ->
   [(Ident, C.Comp)] ->
-  C.Comp ->
   IO ()
-registerSigmaS4 h name opacity xts tagMaker = do
-  resourceSpec <- makeSigmaResourceSpec h xts tagMaker
+registerSigmaS4 h name opacity xts = do
+  resourceSpec <- makeSigmaResourceSpec h xts
   Utility.registerSwitcher (utilityHandle h) opacity name resourceSpec
 
-makeSigmaResourceSpec :: Handle -> [(Ident, C.Comp)] -> C.Comp -> IO ResourceSpec
-makeSigmaResourceSpec h xts tagMaker = do
+makeSigmaResourceSpec :: Handle -> [(Ident, C.Comp)] -> IO ResourceSpec
+makeSigmaResourceSpec h xts = do
   switch <- Gensym.createVar (gensymHandle h) "switch"
   arg@(_, argVar) <- Gensym.createVar (gensymHandle h) "arg"
   discard <- sigmaT h xts argVar
   copy <- sigma4 h xts argVar
-  return $ ResourceSpec {switch, arg, defaultClause = tagMaker, clauses = [discard, copy]}
+  return $ ResourceSpec {switch, arg, discard, copy, defaultValues = []}
 
 -- (Assuming `ti` = `return di` for some `di` such that `xi : di`)
 -- sigmaT NAME LOC [(x1, t1), ..., (xn, tn)]   ~>
@@ -211,82 +208,23 @@ sigma4 h xts argVar = do
   body' <- Linearize.linearize (linearizeHandle h) xts $ Utility.bindLet (zip varNameList as) $ C.UpIntro $ C.SigmaIntro varList
   return $ C.SigmaElim False (map fst xts) argVar body'
 
-storeAtOffset ::
-  Handle ->
-  C.Value -> -- source array
-  Integer -> -- total size
-  Integer -> -- offset index
-  C.Comp -> -- type computation
-  IO C.Comp
-storeAtOffset h argVar size index comp = do
-  (pointerVarName, pointerVar) <- Gensym.createVar (gensymHandle h) "pointer"
-  (tmpVarName, tmpVar) <- Gensym.createVar (gensymHandle h) "tmp"
-  return $
-    C.UpElim True pointerVarName (C.Primitive $ C.ShiftPointer argVar size index) $
-      C.UpElim True tmpVarName comp $
-        C.Primitive $
-          C.Magic $
-            M.Store BLT.Pointer (C.SigmaIntro []) tmpVar pointerVar
-
--- lam z.
---   let-without-free (x1, ..., xn) := z;
---   <∀i. copy xi if xi is used multiple times>;
---   z[0] = t0;
---   z[1] = t1;
---   ...
---   z[n] = tn;
---   return unit
-sigmaStoreTypeClause ::
-  Handle ->
-  DataConstructorInfo ->
-  C.Value ->
-  IO C.Comp
-sigmaStoreTypeClause h info argVar = do
-  x <- Gensym.newIdentFromText (gensymHandle h) "unused-sigarg"
-  let xts = (x, returnImmediateIntS4 IntSize64) : dataArgs info ++ consArgs info
-  let size = toInteger $ length xts + 2
-  a0 <- storeAtOffset h argVar size 0 (C.UpIntro $ C.VarStaticText $ DD.localLocator (consName info))
-  as <- forM (zip [1 .. size - 3] (drop 1 xts)) $ \(index, (_, t)) ->
-    storeAtOffset h argVar size index t
-  let dataArgLen = toInteger $ length $ dataArgs info
-  an <- storeAtOffset h argVar size (size - 2) (C.UpIntro $ C.Int IntSize64 dataArgLen)
-  let isConstLike' = if isConstLike info then 1 else 0
-  an2 <- storeAtOffset h argVar size (size - 1) (C.UpIntro $ C.Int IntSize64 isConstLike')
-  ys <- mapM (const $ Gensym.newIdentFromText (gensymHandle h) "arg") [1 .. length xts + 2]
-  body' <-
-    Linearize.linearizeDuplicatedVariables (linearizeHandle h) xts $
-      Utility.bindLet (zip ys (a0 : as ++ [an, an2])) $
-        C.UpIntro $
-          C.SigmaIntro []
-  return $ C.SigmaElim False (map fst xts) argVar body'
-
-sigmaEnumConsName ::
-  Handle ->
-  [(DD.DefiniteDescription, D.Discriminant)] ->
-  C.Value ->
-  IO C.Comp
-sigmaEnumConsName h enumInfo arg = do
-  let discList' = map (discriminantToEnumCase . snd) enumInfo
-  let branchList = map (\(name, _) -> C.UpIntro $ C.VarStaticText $ DD.localLocator name) enumInfo
-  let defaultBranch = C.UpIntro (C.SigmaIntro [])
-  (disc, discVar) <- Gensym.createVar (gensymHandle h) "disc"
-  enumElim <- Utility.getEnumElim (utilityHandle h) [] discVar defaultBranch (zip discList' branchList)
-  return $ C.UpElim True disc (C.UpIntro arg) enumElim
-
 closureEnvS4 ::
   Handle ->
   Locator.Handle ->
   [(Ident, C.Comp)] ->
+  [C.Value] ->
   IO C.Value
-closureEnvS4 h locatorHandle mxts =
+closureEnvS4 h locatorHandle mxts defaultValues =
   case mxts of
-    [] ->
-      return immediateNullS4 -- performance optimization; not necessary for correctness
+    []
+      | null defaultValues ->
+          return immediateNullS4 -- performance optimization; not necessary for correctness
     _ -> do
       i <- Gensym.newCount (gensymHandle h)
       let name = Locator.attachCurrentLocator locatorHandle $ BN.sigmaName i
-      resourceSpec <- makeSigmaResourceSpec h mxts (newTagMaker Opaque)
-      liftIO $ Utility.registerSwitcher (utilityHandle h) O.Clear name resourceSpec
+      resourceSpec <- makeSigmaResourceSpec h mxts
+      let resourceSpec' = resourceSpec {defaultValues}
+      liftIO $ Utility.registerSwitcher (utilityHandle h) O.Clear name resourceSpec'
       return $ C.VarGlobal name AN.argNumS4
 
 returnSigmaDataS4 ::
@@ -300,31 +238,24 @@ returnSigmaDataS4 h dataName opacity dataInfo = do
   arg@(_, argVar) <- Gensym.createVar (gensymHandle h) "arg"
   discard <- sigmaDataT h dataInfo argVar
   copy <- sigmaData4 h dataInfo argVar
-  consSizeClause <- sigmaDataConsSize h dataInfo argVar
   let dataName' = DD.getFormDD dataName
-  let clauses = [discard, copy, newTagMaker Algebraic, consSizeClause]
-  defaultClause <- sigmaStoreType h dataInfo argVar
   Utility.registerSwitcher (utilityHandle h) opacity dataName' $
-    ResourceSpec {switch, arg, defaultClause, clauses}
+    ResourceSpec {switch, arg, discard, copy, defaultValues = []}
   return $ C.UpIntro $ C.VarGlobal dataName' AN.argNumS4
 
 returnSigmaEnumS4 ::
   Handle ->
   DD.DefiniteDescription ->
   O.Opacity ->
-  [(DD.DefiniteDescription, Bool, D.Discriminant)] ->
   IO C.Comp
-returnSigmaEnumS4 h dataName opacity enumInfo = do
+returnSigmaEnumS4 h dataName opacity = do
   switch <- Gensym.createVar (gensymHandle h) "switch"
   arg@(_, argVar) <- Gensym.createVar (gensymHandle h) "arg"
   let discard = C.UpIntro $ C.SigmaIntro []
   let copy = C.UpIntro argVar
-  consSizeClause <- sigmaEnumConsSize h (map (\(_, _, d) -> d) enumInfo) argVar
-  defaultClause <- sigmaEnumConsName h (map (\(name, _, d) -> (name, d)) enumInfo) argVar
   let dataName' = DD.getFormDD dataName
-  let clauses = [discard, copy, newTagMaker Enum, consSizeClause]
   Utility.registerSwitcher (utilityHandle h) opacity dataName' $
-    ResourceSpec {switch, arg, defaultClause, clauses}
+    ResourceSpec {switch, arg, discard, copy, defaultValues = []}
   return $ C.UpIntro $ C.VarGlobal dataName' AN.argNumS4
 
 sigmaData4 :: Handle -> [DataConstructorInfo] -> C.Value -> IO C.Comp
@@ -334,10 +265,6 @@ sigmaData4 h = do
 sigmaDataT :: Handle -> [DataConstructorInfo] -> C.Value -> IO C.Comp
 sigmaDataT h = do
   sigmaData h (sigmaBinderT h)
-
-sigmaStoreType :: Handle -> [DataConstructorInfo] -> C.Value -> IO C.Comp
-sigmaStoreType h = do
-  sigmaData h (sigmaStoreTypeClause h)
 
 sigmaBinder4 :: Handle -> DataConstructorInfo -> C.Value -> IO C.Comp
 sigmaBinder4 h info v = do
@@ -369,41 +296,8 @@ sigmaData h resourceHandler dataInfo arg = do
       enumElim <- Utility.getEnumElim (utilityHandle h) [localName] discVar (last binderList') (zip discList' (init binderList'))
       return $
         C.UpElim False localName (C.UpIntro arg) $
-          C.UpElim True disc (C.Primitive (C.Magic (M.Load BLT.Pointer (C.VarLocal localName)))) enumElim
-
-sigmaDataConsSize ::
-  Handle ->
-  [DataConstructorInfo] ->
-  C.Value ->
-  IO C.Comp
-sigmaDataConsSize h dataInfo arg = do
-  let discList' = map (discriminantToEnumCase . discriminant) dataInfo
-  let branchList = flip map dataInfo $ \info -> do
-        let numOfArgs = toInteger $ length (dataArgs info ++ consArgs info)
-        C.UpIntro $ C.Int IntSize64 (numOfArgs + 1) -- `+1` is for discriminants
-  let defaultBranch = C.UpIntro (C.Int IntSize64 (-1))
-  (disc, discVar) <- Gensym.createVar (gensymHandle h) "disc"
-  enumElim <- Utility.getEnumElim (utilityHandle h) [] discVar defaultBranch (zip discList' branchList)
-  return $ C.UpElim True disc (C.UpIntro arg) enumElim
-
-sigmaEnumConsSize ::
-  Handle ->
-  [D.Discriminant] ->
-  C.Value ->
-  IO C.Comp
-sigmaEnumConsSize h discList arg = do
-  let discList' = map discriminantToEnumCase discList
-  let branchList = map (const $ C.UpIntro $ C.Int IntSize64 0) discList
-  let defaultBranch = C.UpIntro (C.Int IntSize64 (-1))
-  (disc, discVar) <- Gensym.createVar (gensymHandle h) "disc"
-  enumElim <- Utility.getEnumElim (utilityHandle h) [] discVar defaultBranch (zip discList' branchList)
-  return $ C.UpElim True disc (C.UpIntro arg) enumElim
+          C.UpElim True disc (C.Primitive (C.Magic (LM.Load BLT.Pointer (C.VarLocal localName)))) enumElim
 
 discriminantToEnumCase :: D.Discriminant -> EC.EnumCase
 discriminantToEnumCase discriminant =
   EC.Int (D.reify discriminant)
-
-newTagMaker :: TypeTag -> C.Comp
-newTagMaker tag = do
-  C.UpIntro $
-    C.Int IntSize64 (typeTagToInteger tag)

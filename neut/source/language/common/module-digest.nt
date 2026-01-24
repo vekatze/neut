@@ -31,7 +31,7 @@ inline module-digest-sero: sero(module-digest) {
       function (k) {
         try t = get-text(k);
         Right(box {
-          letbox t = quote {t};
+          letbox t = lift {t};
           Module-Digest(t)
         })
       }

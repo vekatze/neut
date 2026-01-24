@@ -44,21 +44,21 @@ define gen(!n: nat): list(nat) {
   }
 }
 
-define fold-r(a: type, b: type, !f: (b, a) -> a, acc: a, xs: list(b)): a {
+define fold-r<a, b>(!f: (b, a) -> a, acc: a, xs: list(b)): a {
   match xs {
   | Nil =>
     acc
   | Cons(y, ys) =>
-    !f(y, fold-r(a, b, !f, acc, ys))
+    !f(y, fold-r(!f, acc, ys))
   }
 }
 
-define tails(a: type, !xs: list(a)): list(list(a)) {
+define tails<a>(!xs: list(a)): list(list(a)) {
   match !xs {
   | Nil =>
     Cons(Nil, Nil)
   | Cons(_, !xs) =>
-    Cons(!xs, tails(a, !xs))
+    Cons(!xs, tails(!xs))
   }
 }
 
@@ -83,7 +83,7 @@ define main(): unit {
   // [27, 26, 25, ..., 1]
   let xs = gen(!m);
   // [[26, ...], [25, ...], ..., [1, ...]]
-  let !yss = tails(_, xs);
+  let !yss = tails(xs);
   let _ = !yss;
   let _ = !yss;
   let !zs =
@@ -99,8 +99,6 @@ define main(): unit {
   let !result-nat =
     // 26 + ... + 1 = 351
     fold-r(
-      nat,
-      nat,
       function (a, b) {
         add-nat(a, b)
       },

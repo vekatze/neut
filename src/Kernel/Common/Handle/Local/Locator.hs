@@ -76,7 +76,7 @@ activateSpecifiedNames h currentSource topNameMap mustUpdateTag sgl lls = do
     case Map.lookup dd topNameMap of
       Nothing ->
         raiseError m $ "The name `" <> LL.reify ll <> "` is not defined in the module"
-      Just (mDef, gn) -> do
+      Just (mDef, _tag, gn) -> do
         when mustUpdateTag $
           liftIO $
             Tag.insertGlobalVar (_tagHandle h) m dd (GN.getIsConstLike gn) mDef

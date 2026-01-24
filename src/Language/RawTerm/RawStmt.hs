@@ -5,11 +5,12 @@ module Language.RawTerm.RawStmt
     RawStmt,
     PostRawStmt (..),
     PostRawProgram (..),
-    RawStmtKind,
+    RawStmtKindTerm,
+    RawStmtKindType,
+    AliasKind (..),
     RawConsInfo (..),
     RawImport (..),
     RawImportItem (..),
-    getPostRawStmtName,
     compareImportItem,
     isImportEmpty,
     mergeImportList,
@@ -24,6 +25,7 @@ import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.ExternalName qualified as EN
 import Language.Common.ForeignCodType qualified as F
 import Language.Common.LocalLocator qualified as LL
+import Language.Common.NominalTag
 import Language.Common.RuleKind
 import Language.Common.StmtKind qualified as SK
 import Language.RawTerm.RawBinder
@@ -41,23 +43,35 @@ type RawProgram =
 data RawConsInfo a = RawConsInfo
   { loc :: Hint,
     name :: a,
-    expArgs :: Maybe (SE.Series (RawBinder RT.RawTerm)),
+    expArgs :: Maybe (SE.Series (RawBinder RT.RawType)),
     endLoc :: Loc
   }
 
-type RawStmtKind a =
-  SK.BaseStmtKind a (RawBinder RT.RawTerm) ()
+type RawStmtKindTerm a =
+  SK.BaseStmtKindTerm a (RawBinder RT.RawType) ()
+
+type RawStmtKindType a =
+  SK.BaseStmtKindType a (RawBinder RT.RawType)
+
+data AliasKind
+  = TransparentAlias
+  | OpaqueAlias
+  deriving (Show, Eq)
 
 data BaseRawStmt name
-  = RawStmtDefine
+  = RawStmtDefineTerm
       C
-      (RawStmtKind name)
+      (RawStmtKindTerm name)
       (RT.RawDef name)
+  | RawStmtDefineType
+      C
+      AliasKind
+      (RT.RawTypeDef name)
   | RawStmtDefineData
       C
       Hint
       (name, C)
-      (Maybe (RT.Args RT.RawTerm))
+      (Maybe (RT.Args RT.RawType))
       (SE.Series (RawConsInfo name))
       Loc
   | RawStmtDefineResource
@@ -66,19 +80,18 @@ data BaseRawStmt name
       (name, C)
       (C, RT.RawTerm)
       (C, RT.RawTerm)
-      (C, RT.RawTerm)
       C
   | RawStmtVariadic
       RuleKind
       C
       Hint
       (name, C)
-      (C, RT.RawTerm, RT.RawTerm)
-      (C, RT.RawTerm, RT.RawTerm)
-      (C, RT.RawTerm, RT.RawTerm)
+      (C, RT.RawTerm, RT.RawType)
+      (C, RT.RawTerm, RT.RawType)
+      (C, RT.RawTerm, RT.RawType)
       C
       Loc
-  | RawStmtNominal C Hint (SE.Series (RT.RawGeist name, Loc))
+  | RawStmtNominal C Hint (SE.Series (NominalTag, RT.RawGeist name, Loc))
   | RawStmtForeign C (SE.Series RawForeignItem)
 
 type RawStmt =
@@ -91,15 +104,18 @@ data PostRawProgram
   = PostRawProgram Hint [(RawImport, C)] [PostRawStmt]
 
 data PostRawStmt
-  = PostRawStmtDefine
+  = PostRawStmtDefineTerm
       C
-      (RawStmtKind DD.DefiniteDescription)
+      (RawStmtKindTerm DD.DefiniteDescription)
       (RT.RawDef DD.DefiniteDescription)
+  | PostRawStmtDefineType
+      C
+      (RawStmtKindType DD.DefiniteDescription)
+      (RT.RawTypeDef DD.DefiniteDescription)
   | PostRawStmtDefineResource
       C
       Hint
       (DD.DefiniteDescription, C)
-      (C, RT.RawTerm)
       (C, RT.RawTerm)
       (C, RT.RawTerm)
       C
@@ -107,24 +123,8 @@ data PostRawStmt
       RuleKind
       Hint
       DD.DefiniteDescription
-  | PostRawStmtNominal C Hint (SE.Series (RT.RawGeist DD.DefiniteDescription, Loc))
+  | PostRawStmtNominal C Hint (SE.Series (NominalTag, RT.RawGeist DD.DefiniteDescription, Loc))
   | PostRawStmtForeign C (SE.Series RawForeignItem)
-
-getPostRawStmtName :: PostRawStmt -> [(Hint, DD.DefiniteDescription)]
-getPostRawStmtName stmt =
-  case stmt of
-    PostRawStmtDefine _ _ def -> do
-      let m = RT.loc $ RT.geist def
-      let name = fst $ RT.name $ RT.geist def
-      [(m, name)]
-    PostRawStmtDefineResource _ m (name, _) _ _ _ _ ->
-      [(m, name)]
-    PostRawStmtVariadic _ m name ->
-      [(m, name)]
-    PostRawStmtNominal {} ->
-      []
-    PostRawStmtForeign {} ->
-      []
 
 data RawImportItem
   = RawImportItem Hint (T.Text, C) (SE.Series (Hint, LL.LocalLocator))
@@ -147,7 +147,7 @@ data RawForeignItemF a
   deriving (Functor, Foldable, Traversable)
 
 type RawForeignItem =
-  RawForeignItemF RT.RawTerm
+  RawForeignItemF RT.RawType
 
 isImportEmpty :: RawImport -> Bool
 isImportEmpty rawImport =

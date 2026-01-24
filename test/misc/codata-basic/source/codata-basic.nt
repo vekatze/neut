@@ -25,14 +25,14 @@ define int-stream(x: int): stream(int) {
   }
 }
 
-define get-tail(a: type, s: stream(a)): stream(a) {
+define get-tail<a>(s: stream(a)): stream(a) {
   match s {
   | Stream(_, tail-generator) =>
     tail-generator()
   }
 }
 
-define get-head(a: type, s: stream(a)): a {
+define get-head<a>(s: stream(a)): a {
   match s {
   | Stream(v, _) =>
     v
@@ -62,7 +62,7 @@ define main(): unit {
   let _ = config;
   let some-stream = int-stream(3);
   // value = 3 + 1 + 1 = 5
-  let value = get-head(int, get-tail(int, get-tail(int, some-stream)));
+  let value = get-head<int>(get-tail<int>(get-tail<int>(some-stream)));
   // 24
   print-int-line(add-int(k, value))
 }

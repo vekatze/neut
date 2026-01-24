@@ -9,7 +9,6 @@ import App.Run (forP, forP_)
 import CodeParser.Parser (runParser)
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
-import Data.Bifunctor (Bifunctor (first))
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
 import Kernel.Common.Cache (Cache)
@@ -33,6 +32,7 @@ import Language.Common.ArgNum qualified as AN
 import Language.Common.BaseName qualified as BN
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.Ident.Reify
+import Language.Common.NominalTag qualified as NT
 import Language.Common.StmtKind qualified as SK
 import Language.RawTerm.RawStmt
 import Language.RawTerm.RawTerm qualified as RT
@@ -102,22 +102,28 @@ postprocess h (RawProgram m importList stmtList) = do
 postprocess' :: Locator.Handle -> RawStmt -> [PostRawStmt]
 postprocess' h stmt = do
   case stmt of
-    RawStmtDefine c stmtKind rawDef@(RT.RawDef {geist}) -> do
+    RawStmtDefineTerm c stmtKind rawDef@(RT.RawDef {geist}) -> do
       let geist' = liftGeist h geist
-      let stmtKind' = liftStmtKind h stmtKind
-      [PostRawStmtDefine c stmtKind' (rawDef {RT.geist = geist'})]
+      let stmtKind' = liftStmtKindTerm h stmtKind
+      [PostRawStmtDefineTerm c stmtKind' (rawDef {RT.geist = geist'})]
+    RawStmtDefineType c aliasKind rawDef@(RT.RawTypeDef {typeGeist}) -> do
+      let geist' = liftGeist h typeGeist
+      let stmtKind = case aliasKind of
+            TransparentAlias -> SK.Alias
+            OpaqueAlias -> SK.AliasOpaque
+      [PostRawStmtDefineType c stmtKind (rawDef {RT.typeGeist = geist'})]
     RawStmtDefineData _ m (name, _) args consInfo loc -> do
       let name' = Locator.attachCurrentLocator h name
       let consInfo' = fmap (liftRawCons h) consInfo
       defineData m name' args (SE.extract consInfo') loc
-    RawStmtDefineResource c m (name, c1) (c2, discarder) (c3, copier) (c4, typeTag) c5 -> do
+    RawStmtDefineResource c m (name, c1) (c2, discarder) (c3, copier) c4 -> do
       let name' = Locator.attachCurrentLocator h name
-      [PostRawStmtDefineResource c m (name', c1) (c2, discarder) (c3, copier) (c4, typeTag) c5]
+      [PostRawStmtDefineResource c m (name', c1) (c2, discarder) (c3, copier) c4]
     RawStmtVariadic kind _ m (name, _) (_, leaf, leafType) (_, node, nodeType) (_, root, rootType) _ loc -> do
       let name' = Locator.attachCurrentLocator h name
       defineVariadic kind m name' (leaf, leafType) (node, nodeType) (root, rootType) loc
     RawStmtNominal c m geistList -> do
-      let geistList' = fmap (first (liftGeist h)) geistList
+      let geistList' = fmap (\(tag, geist, endLoc) -> (tag, liftGeist h geist, endLoc)) geistList
       [PostRawStmtNominal c m geistList']
     RawStmtForeign m foreignList -> do
       [PostRawStmtForeign m foreignList]
@@ -126,21 +132,21 @@ liftGeist :: Locator.Handle -> RT.RawGeist BN.BaseName -> RT.RawGeist DD.Definit
 liftGeist h geist = do
   fmap (Locator.attachCurrentLocator h) geist
 
-liftStmtKind :: Locator.Handle -> RawStmtKind BN.BaseName -> RawStmtKind DD.DefiniteDescription
-liftStmtKind h stmtKind = do
+liftStmtKindTerm :: Locator.Handle -> RawStmtKindTerm BN.BaseName -> RawStmtKindTerm DD.DefiniteDescription
+liftStmtKindTerm _h stmtKind = do
   case stmtKind of
-    SK.Normal o ->
-      SK.Normal o
-    SK.Main o t ->
-      SK.Main o t
-    SK.Data name dataArgs consInfo -> do
-      let name' = Locator.attachCurrentLocator h name
-      let f (m, consName, isConstLike, consArgs, loc) = do
-            let consName' = Locator.attachCurrentLocator h consName
-            (m, consName', isConstLike, consArgs, loc)
-      SK.Data name' dataArgs (fmap f consInfo)
+    SK.Define ->
+      SK.Define
+    SK.Inline ->
+      SK.Inline
+    SK.Macro ->
+      SK.Macro
+    SK.MacroInline ->
+      SK.MacroInline
+    SK.Main t ->
+      SK.Main t
     SK.DataIntro name dataArgs expConsArgs discriminant -> do
-      let name' = Locator.attachCurrentLocator h name
+      let name' = Locator.attachCurrentLocator _h name
       SK.DataIntro name' dataArgs expConsArgs discriminant
 
 liftRawCons :: Locator.Handle -> RawConsInfo BN.BaseName -> RawConsInfo DD.DefiniteDescription
@@ -165,7 +171,7 @@ registerTopLevelNames h source cacheOrContent = do
       liftIO $ saveTopLevelNames h source nameArrowList
       forM_ stmtList $ registerKeyArg h
 
-saveTopLevelNames :: Handle -> Source.Source -> [(DD.DefiniteDescription, (Hint, GN.GlobalName))] -> IO ()
+saveTopLevelNames :: Handle -> Source.Source -> [(DD.DefiniteDescription, (Hint, Maybe NT.NominalTag, GN.GlobalName))] -> IO ()
 saveTopLevelNames h source nameArrowList = do
   let nameMap = Map.fromList nameArrowList
   GlobalNameMap.insert (globalNameMapHandle h) (Source.sourceFilePath source) nameMap
@@ -174,20 +180,24 @@ saveTopLevelNames h source nameArrowList = do
 registerKeyArg :: Handle -> PostRawStmt -> App ()
 registerKeyArg h stmt = do
   case stmt of
-    PostRawStmtDefine _ stmtKind (RT.RawDef {geist}) -> do
+    PostRawStmtDefineTerm _ stmtKind (RT.RawDef {geist}) -> do
       let name = fst $ RT.name geist
       let isConstLike = RT.isConstLike geist
       let m = RT.loc geist
       case stmtKind of
         SK.DataIntro _ _ expConsArgs _ -> do
           let expKeys = map (\(_, x, _, _, _) -> x) expConsArgs
-          KeyArg.insert (keyArgHandle h) m name isConstLike [] expKeys
+          KeyArg.insert (keyArgHandle h) m name isConstLike [] expKeys []
         _ -> do
           let impArgs = RT.extractImpArgs $ RT.impArgs geist
+          let defaultArgs = map fst $ SE.extract $ fst $ RT.defaultArgs geist
           let expArgs = RT.extractArgs $ RT.expArgs geist
           let impKeys = map (\(_, x, _, _, _) -> x) impArgs
+          let defaultKeys = map (\(_, x, _, _, _) -> x) defaultArgs
           let expKeys = map (\(_, x, _, _, _) -> x) expArgs
-          KeyArg.insert (keyArgHandle h) m name isConstLike impKeys expKeys
+          KeyArg.insert (keyArgHandle h) m name isConstLike impKeys expKeys defaultKeys
+    PostRawStmtDefineType {} -> do
+      return ()
     PostRawStmtNominal {} -> do
       return ()
     PostRawStmtDefineResource {} -> do
@@ -200,23 +210,28 @@ registerKeyArg h stmt = do
 registerKeyArg' :: Handle -> Stmt -> App ()
 registerKeyArg' h stmt = do
   case stmt of
-    StmtDefine isConstLike stmtKind (SavedHint m) name impArgs expArgs _ _ -> do
+    StmtDefine isConstLike stmtKind (SavedHint m) name impArgs expArgs defaultArgs _ _ -> do
       case stmtKind of
         SK.DataIntro _ _ expConsArgs _ -> do
           let expKeys = map (\(_, x, _) -> toText x) expConsArgs
-          KeyArg.insert (keyArgHandle h) m name isConstLike [] expKeys
+          KeyArg.insert (keyArgHandle h) m name isConstLike [] expKeys []
         _ -> do
-          let impKeys = map (\((_, x, _), _) -> toText x) impArgs
+          let impKeys = map (\(_, x, _) -> toText x) impArgs
+          let defaultKeys = map (\(_, x, _) -> toText x) (map fst defaultArgs)
           let expKeys = map (\(_, x, _) -> toText x) expArgs
-          KeyArg.insert (keyArgHandle h) m name isConstLike impKeys expKeys
+          KeyArg.insert (keyArgHandle h) m name isConstLike impKeys expKeys defaultKeys
+    StmtDefineType {} ->
+      return ()
+    StmtDefineResource {} ->
+      return ()
     StmtVariadic {} ->
       return ()
     StmtForeign {} ->
       return ()
 
-registerOptDataInfo :: Handle -> [(DD.DefiniteDescription, (Hint, GN.GlobalName))] -> IO ()
+registerOptDataInfo :: Handle -> [(DD.DefiniteDescription, (Hint, Maybe NT.NominalTag, GN.GlobalName))] -> IO ()
 registerOptDataInfo h nameArrowList = do
-  forM_ nameArrowList $ \(dd, (_, gn)) -> do
+  forM_ nameArrowList $ \(dd, (_, _, gn)) -> do
     case gn of
       GN.Data dataArgNum consNameArrowList _ -> do
         registerAsUnaryIfNecessary h dd consNameArrowList

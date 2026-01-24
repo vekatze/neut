@@ -37,9 +37,9 @@ define rule-kind-sero: sero(rule-kind) {
         try v = get-int64(k);
         match v {
         | 0 =>
-          Right(quote {Fold-Left})
+          Right(lift {Fold-Left})
         | 1 =>
-          Right(quote {Fold-Right})
+          Right(lift {Fold-Right})
         | _ =>
           none
         }

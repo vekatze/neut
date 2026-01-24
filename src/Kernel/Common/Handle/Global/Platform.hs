@@ -2,7 +2,6 @@ module Kernel.Common.Handle.Global.Platform
   ( Handle (..),
     new,
     getArch,
-    getDataSizeValue,
     getDataSize,
     getPlatform,
     getClang,
@@ -44,10 +43,6 @@ data Handle = Handle
     _clangDigest :: T.Text,
     _baseSize :: DS.DataSize
   }
-
-getDataSizeValue :: Handle -> Int
-getDataSizeValue h =
-  DS.reify $ _baseSize h
 
 getArch :: Handle -> Arch.Arch
 getArch =

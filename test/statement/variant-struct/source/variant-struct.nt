@@ -57,17 +57,17 @@ data config {
 | Config(counter: int, path: &text, func: (int) -> int)
 }
 
-data top {
-| Top(a: type, x: a)
+data top(a) {
+| Top(x: a)
 }
 
-define yo(x: top): unit {
-  let Top(_, _) = x;
+define yo(x: top(int)): unit {
+  let Top(_) = x;
   Unit
 }
 
 nominal {
-  bar: type,
+  data bar,
 }
 
 data foo {

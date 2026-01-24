@@ -3,8 +3,6 @@ module Kernel.Elaborate.Internal.Handle.WeakDef
     new,
     DefMap,
     insert',
-    read',
-    lookup',
   )
 where
 
@@ -41,22 +39,14 @@ insert' ::
   O.Opacity ->
   Hint ->
   DD.DefiniteDescription ->
-  [BinderF WeakTerm] ->
-  [BinderF WeakTerm] ->
-  WeakTerm ->
+  [BinderF WeakType] ->
+  [BinderF WeakType] ->
+  [(BinderF WeakType, WeakTerm)] ->
+  WeakType ->
   WeakTerm ->
   IO ()
-insert' h opacity m name impArgs expArgs codType e =
+insert' h opacity m name impArgs expArgs defaultArgs codType e =
   when (opacity == O.Clear) $ do
     i <- Gensym.newCount (gensymHandle h)
     modifyIORef' (weakDefMapRef h) $
-      Map.insert name (m :< WT.PiIntro (AttrL.normal' (Just $ DD.localLocator name) i codType) (map (,Nothing) impArgs) expArgs e)
-
-read' :: Handle -> IO DefMap
-read' h =
-  readIORef (weakDefMapRef h)
-
-lookup' :: Handle -> DD.DefiniteDescription -> IO (Maybe WeakTerm)
-lookup' h name = do
-  weakDefMap <- readIORef (weakDefMapRef h)
-  return $ Map.lookup name weakDefMap
+      Map.insert name (m :< WT.PiIntro (AttrL.normal' (Just $ DD.localLocator name) i codType) impArgs expArgs defaultArgs e)

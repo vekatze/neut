@@ -7,11 +7,11 @@ data queue(a) {
 | Queue(list(a), list(a))
 }
 
-define empty(a: type): queue(a) {
+define empty<a>(): queue(a) {
   Queue(List[], List[])
 }
 
-define head(a: type, q: &queue(a)): ?a {
+define head<a>(q: &queue(a)): ?a {
   case q {
   | Queue(Cons(x, _), _) =>
     Right(*x)
@@ -20,7 +20,7 @@ define head(a: type, q: &queue(a)): ?a {
   }
 }
 
-define sanitize(a: type, q: queue(a)): queue(a) {
+define sanitize<a>(q: queue(a)): queue(a) {
   match q {
   | Queue(Nil, ys) =>
     Queue(reverse(ys), List[])
@@ -29,18 +29,18 @@ define sanitize(a: type, q: queue(a)): queue(a) {
   }
 }
 
-define tail(a: type, q: queue(a)): ?queue(a) {
+define tail<a>(q: queue(a)): ?queue(a) {
   match q {
   | Queue(Cons(_, rest), ys) =>
-    Right(sanitize(_, Queue(rest, ys)))
+    Right(sanitize(Queue(rest, ys)))
   | _ =>
     none
   }
 }
 
-define snoc(a: type, v: a, q: queue(a)): queue(a) {
+define snoc<a>(v: a, q: queue(a)): queue(a) {
   let Queue(xs, ys) = q;
-  sanitize(_, Queue(xs, Cons(v, ys)))
+  sanitize(Queue(xs, Cons(v, ys)))
 }
 
 define sum(xs: &list(int)): int {
@@ -53,13 +53,13 @@ define sum(xs: &list(int)): int {
 }
 
 define main(): unit {
-  let q: queue(list(int)) = empty(_);
-  let q = snoc(_, List[2], q);
-  let q = snoc(_, List[5], q);
-  let q = snoc(_, List[1], q);
+  let q: queue(list(int)) = empty();
+  let q = snoc(List[2], q);
+  let q = snoc(List[5], q);
+  let q = snoc(List[1], q);
   // v1 == 2
   let v1 on q =
-    match head(_, q) {
+    match head(q) {
     | Right(xs1) =>
       let v1 on xs1 = sum(xs1);
       let _ = xs1;
@@ -67,17 +67,17 @@ define main(): unit {
     | Left(_) =>
       4
     };
-  let mq = tail(_, q);
+  let mq = tail(q);
   let result =
     match mq {
     | Left(_) =>
       1
     | Right(q) =>
-      let q = snoc(_, List[3], q);
-      let q = snoc(_, List[8], q);
+      let q = snoc(List[3], q);
+      let q = snoc(List[8], q);
       // v2 = 5
       let v2 on q =
-        match head(_, q) {
+        match head(q) {
         | Right(xs) =>
           let v on xs = sum(xs);
           let _ = xs;

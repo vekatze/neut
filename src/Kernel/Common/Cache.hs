@@ -71,13 +71,27 @@ extend cache =
 compressStmt :: Stmt.Stmt -> Stmt.StrippedStmt
 compressStmt stmt =
   case stmt of
-    Stmt.StmtDefine isConstLike stmtKind m functionName impArgs expArgs codType e -> do
-      let stmtKind' = TM.compressStmtKind stmtKind
-      let impArgs' = map (bimap TM.compressBinder (fmap TM.compress)) impArgs
+    Stmt.StmtDefine isConstLike stmtKind m functionName impArgs expArgs defaultArgs codType e -> do
+      let stmtKind' = TM.compressStmtKindTerm stmtKind
+      let impArgs' = map TM.compressBinder impArgs
+      let defaultArgs' = map (bimap TM.compressBinder TM.compress) defaultArgs
       let expArgs' = map TM.compressBinder expArgs
-      let codType' = TM.compress codType
+      let codType' = TM.compressType codType
       let e' = TM.compress e
-      Stmt.StmtDefine isConstLike stmtKind' m functionName impArgs' expArgs' codType' e'
+      Stmt.StmtDefine isConstLike stmtKind' m functionName impArgs' expArgs' defaultArgs' codType' e'
+    Stmt.StmtDefineType isConstLike stmtKind m functionName impArgs expArgs defaultArgs codType body -> do
+      let stmtKind' = TM.compressStmtKindType stmtKind
+      let impArgs' = map TM.compressBinder impArgs
+      let defaultArgs' = map (bimap TM.compressBinder TM.compress) defaultArgs
+      let expArgs' = map TM.compressBinder expArgs
+      let codType' = TM.compressType codType
+      let body' = TM.compressType body
+      Stmt.StmtDefineType isConstLike stmtKind' m functionName impArgs' expArgs' defaultArgs' codType' body'
+    Stmt.StmtDefineResource m name resourceID unitType discarder copier -> do
+      let unitType' = TM.compressType unitType
+      let discarder' = TM.compress discarder
+      let copier' = TM.compress copier
+      Stmt.StmtDefineResource m name resourceID unitType' discarder' copier'
     Stmt.StmtVariadic kind m name -> do
       Stmt.StmtVariadic kind m name
     Stmt.StmtForeign foreignList ->
@@ -86,13 +100,27 @@ compressStmt stmt =
 extendStmt :: Stmt.StrippedStmt -> Stmt.Stmt
 extendStmt stmt =
   case stmt of
-    Stmt.StmtDefine isConstLike stmtKind m functionName impArgs expArgs codType e -> do
-      let stmtKind' = TM.extendStmtKind stmtKind
-      let impArgs' = map (bimap TM.extendBinder (fmap TM.extend)) impArgs
+    Stmt.StmtDefine isConstLike stmtKind m functionName impArgs expArgs defaultArgs codType e -> do
+      let stmtKind' = TM.extendStmtKindTerm stmtKind
+      let impArgs' = map TM.extendBinder impArgs
+      let defaultArgs' = map (bimap TM.extendBinder TM.extend) defaultArgs
       let expArgs' = map TM.extendBinder expArgs
-      let codType' = TM.extend codType
+      let codType' = TM.extendType codType
       let e' = TM.extend e
-      Stmt.StmtDefine isConstLike stmtKind' m functionName impArgs' expArgs' codType' e'
+      Stmt.StmtDefine isConstLike stmtKind' m functionName impArgs' expArgs' defaultArgs' codType' e'
+    Stmt.StmtDefineType isConstLike stmtKind m functionName impArgs expArgs defaultArgs codType body -> do
+      let stmtKind' = TM.extendStmtKindType stmtKind
+      let impArgs' = map TM.extendBinder impArgs
+      let defaultArgs' = map (bimap TM.extendBinder TM.extend) defaultArgs
+      let expArgs' = map TM.extendBinder expArgs
+      let codType' = TM.extendType codType
+      let body' = TM.extendType body
+      Stmt.StmtDefineType isConstLike stmtKind' m functionName impArgs' expArgs' defaultArgs' codType' body'
+    Stmt.StmtDefineResource m name resourceID unitType discarder copier -> do
+      let unitType' = TM.extendType unitType
+      let discarder' = TM.extend discarder
+      let copier' = TM.extend copier
+      Stmt.StmtDefineResource m name resourceID unitType' discarder' copier'
     Stmt.StmtVariadic kind m name -> do
       Stmt.StmtVariadic kind m name
     Stmt.StmtForeign foreignList ->

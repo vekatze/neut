@@ -7,12 +7,10 @@ module Kernel.Parse.Pattern
     new,
     getHeadConstructors,
     swapColumn,
-    rowVars,
     getClauseBody,
     mapMaybeRowM,
     consRow,
     unconsRow,
-    findRowM,
   )
 where
 
@@ -64,22 +62,6 @@ mapMaybeRowM :: (Monad m) => (PatternRow a -> m (Maybe (PatternRow b))) -> Patte
 mapMaybeRowM f (MakePatternMatrix mat) = do
   mat' <- mapM f mat
   return $ MakePatternMatrix $ V.catMaybes mat'
-
-rowVars :: V.Vector (Hint, Pattern) -> [(Hint, Ident)]
-rowVars vec =
-  concatMap patVars $ V.toList vec
-
-patVars :: (Hint, Pattern) -> [(Hint, Ident)]
-patVars (m, pat) =
-  case pat of
-    Var x ->
-      [(m, x)]
-    Literal _ ->
-      []
-    WildcardVar ->
-      []
-    Cons consInfo ->
-      concatMap patVars (args consInfo)
 
 consRow :: PatternRow a -> PatternMatrix a -> PatternMatrix a
 consRow row (MakePatternMatrix mat) =
@@ -173,16 +155,3 @@ getClauseBody' index varList patList e =
       getClauseBody' (index + 1) (Nothing : varList) rest e
     Just ((m, _), _) ->
       Left (m, index)
-
-findRowM :: (Monad m) => (PatternRow a -> m (Maybe b)) -> PatternMatrix a -> m (Maybe b)
-findRowM f (MakePatternMatrix rows) =
-  case V.uncons rows of
-    Just (row, rest) -> do
-      mv <- f row
-      case mv of
-        Just v ->
-          return $ Just v
-        Nothing ->
-          findRowM f (MakePatternMatrix rest)
-    Nothing ->
-      return Nothing

@@ -19,14 +19,14 @@ import SyntaxTree.Series qualified as SE
 defineData ::
   Hint ->
   DD.DefiniteDescription ->
-  Maybe (RT.Args RT.RawTerm) ->
+  Maybe (RT.Args RT.RawType) ->
   [RawConsInfo DD.DefiniteDescription] ->
   Loc ->
   [PostRawStmt]
 defineData m dataName dataArgsOrNone consInfoList loc = do
   let dataArgs = modifyDataArgs dataArgsOrNone
   let dataArgs' = fromMaybe RT.emptyArgs dataArgsOrNone
-  let consNameList = map (\consInfo -> (name consInfo, isConstLikeConsInfo consInfo)) consInfoList
+  let consNameList = map (\consInfo -> (name consInfo, maybe [] SE.extract (expArgs consInfo), isConstLikeConsInfo consInfo)) consInfoList
   let consInfoList' = modifyConsInfo D.zero consInfoList
   let stmtKind = SK.Data dataName dataArgs consInfoList'
   let isConstLike = isNothing dataArgsOrNone
@@ -37,32 +37,33 @@ defineData m dataName dataArgsOrNone consInfoList loc = do
             name = (dataName, []),
             isConstLike = isConstLike,
             impArgs = RT.emptyImpArgs,
+            defaultArgs = RT.emptyDefaultArgs,
             expArgs = dataArgs',
             cod = ([], m :< RT.Tau)
           }
   let formRule =
-        PostRawStmtDefine
+        PostRawStmtDefineType
           []
           stmtKind
-          ( RT.RawDef
-              { geist,
-                leadingComment = [],
-                body = dataType,
-                trailingComment = [],
-                endLoc = loc
+          ( RT.RawTypeDef
+              { typeGeist = geist,
+                typeLeadingComment = [],
+                typeBody = dataType,
+                typeTrailingComment = [],
+                typeEndLoc = loc
               }
           )
   let introRuleList = parseDefineDataConstructor dataType dataName dataArgs' consInfoList D.zero
   formRule : introRuleList
 
-modifyDataArgs :: Maybe (RT.Args RT.RawTerm) -> [RawBinder RT.RawTerm]
+modifyDataArgs :: Maybe (RT.Args RT.RawType) -> [RawBinder RT.RawType]
 modifyDataArgs =
   maybe [] RT.extractArgs
 
 modifyConsInfo ::
   D.Discriminant ->
   [RawConsInfo DD.DefiniteDescription] ->
-  [(SavedHint, DD.DefiniteDescription, IsConstLike, [RawBinder RT.RawTerm], D.Discriminant)]
+  [(SavedHint, DD.DefiniteDescription, IsConstLike, [RawBinder RT.RawType], D.Discriminant)]
 modifyConsInfo d consInfoList =
   case consInfoList of
     [] ->
@@ -72,9 +73,9 @@ modifyConsInfo d consInfoList =
       (SavedHint (loc consInfo), name consInfo, isConstLikeConsInfo consInfo, expArgsExtracted, d) : modifyConsInfo (D.increment d) rest
 
 parseDefineDataConstructor ::
-  RT.RawTerm ->
+  RT.RawType ->
   DD.DefiniteDescription ->
-  RT.Args RT.RawTerm ->
+  RT.Args RT.RawType ->
   [RawConsInfo DD.DefiniteDescription] ->
   D.Discriminant ->
   [PostRawStmt]
@@ -87,19 +88,17 @@ parseDefineDataConstructor dataType dataName dataArgs consInfoList discriminant 
       let dataArgs'' = map identPlusToVar dataArgs'
       let expConsArgs = maybe [] SE.extract (expArgs consInfo)
       let expConsArgs' = map adjustExpConsArg expConsArgs
-      let consNameList = map (\ci -> (name ci, isConstLikeConsInfo ci)) consInfoList
+      let consNameList = map (\ci -> (name ci, maybe [] SE.extract (expArgs ci), isConstLikeConsInfo ci)) consInfoList
       let m = loc consInfo
       let attr = AttrDI.Attr {dataName, consNameList, discriminant, isConstLike = isConstLikeConsInfo consInfo}
-      let dataImpArgs = do
-            let (series, c) = dataArgs
-            (fmap (,Nothing) series, c)
       let consType =
             if isConstLikeConsInfo consInfo
               then dataType
               else do
                 let impArgsWithEmpty = (SE.emptySeriesAC, [])
+                let defaultArgsWithEmpty = RT.emptyDefaultArgs
                 let expArgsWithEmpty = (fromMaybe SE.emptySeriesPC (expArgs consInfo), [])
-                m :< RT.Pi impArgsWithEmpty expArgsWithEmpty [] dataType (endLoc consInfo)
+                m :< RT.Pi impArgsWithEmpty expArgsWithEmpty defaultArgsWithEmpty [] dataType (endLoc consInfo)
       let body =
             if isConstLikeConsInfo consInfo
               then m :< RT.DataIntro attr (name consInfo) dataArgs'' (map fst expConsArgs')
@@ -107,7 +106,7 @@ parseDefineDataConstructor dataType dataName dataArgs consInfoList discriminant 
                 RT.lam (endLoc consInfo) m (map (,[]) expConsArgs) dataType $
                   m :< RT.DataIntro attr (name consInfo) dataArgs'' (map fst expConsArgs')
       let introRule =
-            PostRawStmtDefine
+            PostRawStmtDefineTerm
               []
               (SK.DataIntro (name consInfo) dataArgs' expConsArgs discriminant)
               ( RT.RawDef
@@ -116,7 +115,8 @@ parseDefineDataConstructor dataType dataName dataArgs consInfoList discriminant 
                         { loc = loc consInfo,
                           name = (name consInfo, []),
                           isConstLike = isConstLikeConsInfo consInfo,
-                          impArgs = dataImpArgs,
+                          impArgs = dataArgs,
+                          defaultArgs = RT.emptyDefaultArgs,
                           expArgs = (SE.emptySeriesPC, []),
                           cod = ([], consType)
                         },
@@ -133,15 +133,15 @@ constructDataType ::
   Hint ->
   DD.DefiniteDescription ->
   IsConstLike ->
-  [(DD.DefiniteDescription, IsConstLike)] ->
-  [RawBinder RT.RawTerm] ->
-  RT.RawTerm
+  [(DD.DefiniteDescription, [RawBinder RT.RawType], IsConstLike)] ->
+  [RawBinder RT.RawType] ->
+  RT.RawType
 constructDataType m dataName isConstLike consNameList dataArgs = do
   m :< RT.Data (AttrD.Attr {..}) dataName (map identPlusToVar dataArgs)
 
-identPlusToVar :: RawBinder a -> RT.RawTerm
+identPlusToVar :: RawBinder a -> RT.RawType
 identPlusToVar (m, x, _, _, _) =
-  m :< RT.Var (Var x)
+  m :< RT.TyVar (Var x)
 
 adjustExpConsArg :: RawBinder a -> (RT.RawTerm, RawIdent)
 adjustExpConsArg (m, x, _, _, _) =

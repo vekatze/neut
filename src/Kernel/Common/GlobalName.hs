@@ -17,7 +17,8 @@ import Language.Common.RuleKind (RuleKind)
 import Logger.Hint
 
 data GlobalName
-  = TopLevelFunc ArgNum IsConstLike
+  = TopLevelFuncTerm ArgNum IsConstLike Bool
+  | TopLevelFuncType ArgNum IsConstLike Bool
   | PrimType PT.PrimType
   | PrimOp PrimOp
   | Data ArgNum [(DD.DefiniteDescription, (Hint, GlobalName))] IsConstLike
@@ -28,7 +29,9 @@ data GlobalName
 getIsConstLike :: GlobalName -> IsConstLike
 getIsConstLike gn =
   case gn of
-    TopLevelFunc _ isConstLike ->
+    TopLevelFuncTerm _ isConstLike _ ->
+      isConstLike
+    TopLevelFuncType _ isConstLike _ ->
       isConstLike
     Data _ _ isConstLike ->
       isConstLike
@@ -40,7 +43,9 @@ getIsConstLike gn =
 hasNoArgs :: GlobalName -> Bool
 hasNoArgs gn =
   case gn of
-    TopLevelFunc argNum _ ->
+    TopLevelFuncTerm argNum _ _ ->
+      argNum == fromInt 0
+    TopLevelFuncType argNum _ _ ->
       argNum == fromInt 0
     Data argNum _ _ ->
       argNum == fromInt 0
@@ -56,8 +61,10 @@ hasNoArgs gn =
 disableConstLikeFlag :: GlobalName -> GlobalName
 disableConstLikeFlag gn =
   case gn of
-    TopLevelFunc argNum _ ->
-      TopLevelFunc argNum False
+    TopLevelFuncTerm argNum _ isMacro ->
+      TopLevelFuncTerm argNum False isMacro
+    TopLevelFuncType argNum _ isMacro ->
+      TopLevelFuncType argNum False isMacro
     Data argNum consInfo _ ->
       Data argNum consInfo False
     DataIntro dataArgNum consArgNum discriminant False ->

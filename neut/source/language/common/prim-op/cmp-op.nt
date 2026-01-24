@@ -175,7 +175,7 @@ inline cmp-op-sero: sero(cmp-op) {
       function (k) {
         try tag = get-int64(k);
         if and(le-int(0, tag), le-int(tag, 25)) {
-          Right(quote {magic cast(int, cmp-op, tag)})
+          Right(lift {magic cast(int, cmp-op, tag)})
         } else {
           none
         }

@@ -5,23 +5,17 @@ module Language.Common.BaseName
     reflect,
     reflect',
     isCapitalized,
-    length,
-    hole,
     form,
     sigmaName,
     lambdaName,
     muName,
     resourceName,
-    textName,
     mainName,
     zenName,
     fromText,
     this,
-    new,
     base,
     core,
-    internalBaseName,
-    cons,
     immType,
     immNoema,
     immInt1,
@@ -38,15 +32,28 @@ module Language.Common.BaseName
     immPointer,
     immNull,
     cls,
-    cell,
-    arrayType,
-    malloc,
-    free,
     reservedAlias,
-    extend,
     node,
     leaf,
     root,
+    list,
+    nil,
+    consName,
+    typeTag,
+    typeTagList,
+    binary,
+    vector,
+    left,
+    right,
+    eitherType,
+    unit,
+    unitType,
+    pair,
+    pairType,
+    textType,
+    boolType,
+    trueConstructor,
+    falseConstructor,
   )
 where
 
@@ -60,8 +67,6 @@ import GHC.Generics
 import Language.Common.Const
 import Language.Common.Ident (Ident)
 import Language.Common.Ident.Reify (toText)
-import Language.Common.PrimType qualified as PT
-import Language.Common.PrimType.ToText qualified as PT
 import Logger.Hint qualified as H
 import Prelude hiding (length)
 
@@ -103,10 +108,6 @@ isCapitalized (MakeBaseName bn) =
     Just (c, _) ->
       isUpper c
 
-length :: BaseName -> Int
-length MakeBaseName {reify} =
-  T.length reify
-
 empty :: BaseName
 empty =
   MakeBaseName ""
@@ -114,10 +115,6 @@ empty =
 this :: BaseName
 this =
   MakeBaseName "this"
-
-hole :: BaseName
-hole =
-  MakeBaseName "_"
 
 base :: BaseName
 base =
@@ -134,10 +131,6 @@ mainName =
 zenName :: BaseName
 zenName =
   MakeBaseName "zen"
-
-new :: BaseName
-new =
-  MakeBaseName "New"
 
 immType :: BaseName
 immType =
@@ -203,10 +196,6 @@ cls :: BaseName
 cls =
   MakeBaseName "cls"
 
-cell :: BaseName
-cell =
-  MakeBaseName "cell"
-
 sigmaName :: Int -> BaseName
 sigmaName i =
   MakeBaseName $ "sigma;" <> T.pack (show i)
@@ -227,14 +216,6 @@ resourceName :: Int -> BaseName
 resourceName i =
   MakeBaseName $ "resource;" <> T.pack (show i)
 
-textName :: Int -> BaseName
-textName i =
-  MakeBaseName $ "text;" <> T.pack (show i)
-
-cons :: BaseName
-cons =
-  MakeBaseName "cons"
-
 form :: BaseName
 form =
   MakeBaseName "form"
@@ -251,21 +232,100 @@ root :: BaseName
 root =
   MakeBaseName "root"
 
-malloc :: BaseName
-malloc =
-  MakeBaseName "malloc"
+list :: BaseName
+list =
+  MakeBaseName "list"
 
-free :: BaseName
-free =
-  MakeBaseName "free"
+nil :: BaseName
+nil =
+  MakeBaseName "Nil"
 
-arrayType :: PT.PrimType -> BaseName
-arrayType elemType =
-  MakeBaseName $ "unsafe-" <> PT.toText elemType <> "-array-internal"
+consName :: BaseName
+consName =
+  MakeBaseName "Cons"
 
-internalBaseName :: BaseName
-internalBaseName =
-  MakeBaseName "#"
+typeTag :: BaseName
+typeTag =
+  MakeBaseName "type-tag"
+
+binary :: BaseName
+binary =
+  MakeBaseName "binary"
+
+vector :: BaseName
+vector =
+  MakeBaseName "vector"
+
+left :: BaseName
+left =
+  MakeBaseName "Left"
+
+right :: BaseName
+right =
+  MakeBaseName "Right"
+
+unit :: BaseName
+unit =
+  MakeBaseName "Unit"
+
+unitType :: BaseName
+unitType =
+  MakeBaseName "unit"
+
+pair :: BaseName
+pair =
+  MakeBaseName "Pair"
+
+pairType :: BaseName
+pairType =
+  MakeBaseName "pair"
+
+eitherType :: BaseName
+eitherType =
+  MakeBaseName "either"
+
+textType :: BaseName
+textType =
+  MakeBaseName "text"
+
+boolType :: BaseName
+boolType =
+  MakeBaseName "bool"
+
+trueConstructor :: BaseName
+trueConstructor =
+  MakeBaseName "True"
+
+falseConstructor :: BaseName
+falseConstructor =
+  MakeBaseName "False"
+
+typeTagList :: [BaseName]
+typeTagList =
+  [ MakeBaseName "Opaque",
+    MakeBaseName "Type",
+    MakeBaseName "Function",
+    MakeBaseName "Algebraic",
+    MakeBaseName "Noema",
+    MakeBaseName "Enum",
+    MakeBaseName "Int1",
+    MakeBaseName "Int2",
+    MakeBaseName "Int4",
+    MakeBaseName "Int8",
+    MakeBaseName "Int16",
+    MakeBaseName "Int32",
+    MakeBaseName "Int64",
+    MakeBaseName "Float16",
+    MakeBaseName "Float32",
+    MakeBaseName "Float64",
+    MakeBaseName "Pointer",
+    MakeBaseName "Null",
+    MakeBaseName "Rune",
+    MakeBaseName "Binary",
+    MakeBaseName "Vector",
+    MakeBaseName "Wrapper",
+    MakeBaseName "Own"
+  ]
 
 {-# INLINE fromText #-}
 fromText :: T.Text -> BaseName
@@ -285,7 +345,3 @@ reservedAlias =
     [ this,
       base
     ]
-
-extend :: BaseName -> BaseName -> BaseName
-extend (MakeBaseName b1) (MakeBaseName b2) =
-  MakeBaseName $ b1 <> "#" <> b2

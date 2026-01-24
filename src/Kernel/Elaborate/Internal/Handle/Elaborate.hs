@@ -1,8 +1,8 @@
 module Kernel.Elaborate.Internal.Handle.Elaborate
   ( Handle (..),
     new,
-    reduce,
-    fill,
+    reduceType,
+    fillType,
     inline,
     inlineBinder,
   )
@@ -24,15 +24,17 @@ import Kernel.Common.Handle.Global.Platform qualified as Platform
 import Kernel.Common.Handle.Global.Type qualified as Type
 import Kernel.Common.Module (Module (moduleInlineLimit))
 import Kernel.Common.Source
-import Kernel.Elaborate.HoleSubst (HoleSubst)
 import Kernel.Elaborate.Internal.Handle.Constraint qualified as Constraint
 import Kernel.Elaborate.Internal.Handle.Def qualified as Definition
 import Kernel.Elaborate.Internal.Handle.Hole qualified as Hole
 import Kernel.Elaborate.Internal.Handle.LocalLogs qualified as LocalLogs
+import Kernel.Elaborate.Internal.Handle.TypeDef qualified as TypeDef
 import Kernel.Elaborate.Internal.Handle.WeakDecl qualified as WeakDecl
 import Kernel.Elaborate.Internal.Handle.WeakDef qualified as WeakDef
 import Kernel.Elaborate.Internal.Handle.WeakType qualified as WeakType
+import Kernel.Elaborate.Internal.Handle.WeakTypeDef qualified as WeakTypeDef
 import Kernel.Elaborate.Internal.WeakTerm.Fill qualified as Fill
+import Kernel.Elaborate.TypeHoleSubst qualified as THS
 import Language.Common.Binder
 import Language.Term.Inline qualified as Inline
 import Language.Term.Term qualified as TM
@@ -46,12 +48,14 @@ data Handle = Handle
     envHandle :: Env.Handle,
     platformHandle :: Platform.Handle,
     weakDefHandle :: WeakDef.Handle,
+    weakTypeDefHandle :: WeakTypeDef.Handle,
     constraintHandle :: Constraint.Handle,
     holeHandle :: Hole.Handle,
     substHandle :: Subst.Handle,
     typeHandle :: Type.Handle,
     weakDeclHandle :: WeakDecl.Handle,
     defHandle :: Definition.Handle,
+    typeDefHandle :: TypeDef.Handle,
     gensymHandle :: Gensym.Handle,
     keyArgHandle :: KeyArg.Handle,
     localLogsHandle :: LocalLogs.Handle,
@@ -65,7 +69,7 @@ data Handle = Handle
     varEnv :: BoundVarEnv
   }
 
-type BoundVarEnv = [BinderF WT.WeakTerm]
+type BoundVarEnv = [BinderF WT.WeakType]
 
 new :: Global.Handle -> Local.Handle -> Source -> IO Handle
 new globalHandle@(Global.Handle {..}) (Local.Handle {..}) currentSource = do
@@ -79,25 +83,29 @@ new globalHandle@(Global.Handle {..}) (Local.Handle {..}) currentSource = do
   let currentStep = 0
   return $ Handle {..}
 
-reduce :: Handle -> WT.WeakTerm -> App WT.WeakTerm
-reduce h e = do
-  reduceHandle <- liftIO $ Reduce.new (substHandle h) (WT.metaOf e) (inlineLimit h)
-  Reduce.reduce reduceHandle e
+reduceType :: Handle -> WT.WeakType -> App WT.WeakType
+reduceType h t = do
+  reduceHandle <- liftIO $ Reduce.new (substHandle h) (WT.metaOfType t) (inlineLimit h)
+  Reduce.reduceType reduceHandle t
 
-fill :: Handle -> HoleSubst -> WT.WeakTerm -> App WT.WeakTerm
-fill h sub e = do
-  reduceHandle <- liftIO $ Reduce.new (substHandle h) (WT.metaOf e) (inlineLimit h)
+fillType :: Handle -> THS.TypeHoleSubst -> WT.WeakType -> App WT.WeakType
+fillType h sub t = do
+  reduceHandle <- liftIO $ Reduce.new (substHandle h) (WT.metaOfType t) (inlineLimit h)
   let substHandle = Subst.new (Global.gensymHandle (globalHandle h))
   let fillHandle = Fill.new substHandle reduceHandle
-  Fill.fill fillHandle sub e
+  Fill.fillType fillHandle sub t
 
 inline :: Handle -> Hint -> TM.Term -> App TM.Term
 inline h m e = do
   dmap <- liftIO $ Definition.get' (defHandle h)
-  inlineHandle <- liftIO $ Inline.new (gensymHandle h) dmap m (inlineLimit h)
+  typeDefMap <- liftIO $ TypeDef.get' (typeDefHandle h)
+  inlineHandle <- liftIO $ Inline.new (gensymHandle h) dmap typeDefMap m (inlineLimit h)
   Inline.inline inlineHandle e
 
-inlineBinder :: Handle -> BinderF TM.Term -> App (BinderF TM.Term)
+inlineBinder :: Handle -> BinderF TM.Type -> App (BinderF TM.Type)
 inlineBinder h (m, x, t) = do
-  t' <- inline h m t
+  dmap <- liftIO $ Definition.get' (defHandle h)
+  typeDefMap <- liftIO $ TypeDef.get' (typeDefHandle h)
+  inlineHandle <- liftIO $ Inline.new (gensymHandle h) dmap typeDefMap m (inlineLimit h)
+  t' <- Inline.inlineType inlineHandle t
   return (m, x, t')

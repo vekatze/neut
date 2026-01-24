@@ -7,7 +7,7 @@ import Language.Common.BaseName qualified as BN
 import Language.Common.ExternalName qualified as EN
 import Language.Common.ForeignCodType qualified as FCT
 import Language.Common.LocalLocator qualified as LL
-import Language.Common.Opacity qualified as O
+import Language.Common.NominalTag
 import Language.Common.RuleKind (ruleKindToKeyword)
 import Language.Common.StmtKind qualified as SK
 import Language.Common.UnusedGlobalLocators (UnusedGlobalLocators, isUsedGL)
@@ -182,14 +182,25 @@ decImportItemLocator (_, l) =
 decStmt :: RawStmt -> D.Doc
 decStmt stmt =
   case stmt of
-    RawStmtDefine c stmtKind def -> do
+    RawStmtDefineTerm c stmtKind def -> do
       case stmtKind of
-        SK.Normal O.Clear ->
+        SK.Define ->
+          RT.decodeDef (RT.nameToDoc . N.Var) "define" c (fmap BN.reify def)
+        SK.Inline ->
           RT.decodeDef (RT.nameToDoc . N.Var) "inline" c (fmap BN.reify def)
-        SK.Main O.Clear _ ->
-          RT.decodeDef (RT.nameToDoc . N.Var) "inline" c (fmap BN.reify def)
+        SK.Macro ->
+          RT.decodeDef (RT.nameToDoc . N.Var) "define-meta" c (fmap BN.reify def)
+        SK.MacroInline ->
+          RT.decodeDef (RT.nameToDoc . N.Var) "inline-meta" c (fmap BN.reify def)
+        SK.Main _ ->
+          RT.decodeDef (RT.nameToDoc . N.Var) "define" c (fmap BN.reify def)
         _ ->
           RT.decodeDef (RT.nameToDoc . N.Var) "define" c (fmap BN.reify def)
+    RawStmtDefineType c aliasKind def -> do
+      let keyword = case aliasKind of
+            TransparentAlias -> "alias"
+            OpaqueAlias -> "alias-opaque"
+      RT.decodeTypeDef (RT.nameToDoc . N.Var) keyword c (fmap BN.reify def)
     RawStmtDefineData c1 _ (dataName, c2) argsOrNone consInfo _ -> do
       attachStmtComment (c1 ++ c2) $
         D.join
@@ -199,10 +210,10 @@ decStmt stmt =
             D.text " ",
             SE.decode $ fmap decConsInfo consInfo
           ]
-    RawStmtDefineResource c1 _ (name, c2) discarder copier typeTag trailingComment -> do
+    RawStmtDefineResource c1 _ (name, c2) discarder copier trailingComment -> do
       let series =
             SE.Series
-              { elems = [discarder, copier, typeTag],
+              { elems = [discarder, copier],
                 trailingComment,
                 prefix = Nothing,
                 container = Just SE.Brace,
@@ -236,7 +247,7 @@ decStmt stmt =
       attachStmtComment c $
         D.join
           [ D.text "nominal ",
-            SE.decode $ fmap (decTopGeist . fst) geistList
+            SE.decode $ fmap decNominalGeist geistList
           ]
     RawStmtForeign c foreignList -> do
       let foreignList' = SE.decode $ fmap decForeignItem foreignList
@@ -248,16 +259,16 @@ decStmt stmt =
 
 decForeignItem :: RawForeignItem -> D.Doc
 decForeignItem (RawForeignItemF _ funcName _ args _ _ cod) = do
-  let args' = SE.decode $ fmap RT.toDoc args
+  let args' = SE.decode $ fmap RT.typeToDoc args
   let cod' =
         case cod of
           FCT.Cod c ->
-            RT.toDoc c
+            RT.typeToDoc c
           FCT.Void ->
             D.text "void"
   D.join [D.text (EN.reify funcName), args', D.text ": ", cod']
 
-decDataArgs :: Maybe (RT.Args RT.RawTerm) -> D.Doc
+decDataArgs :: Maybe (RT.Args RT.RawType) -> D.Doc
 decDataArgs argsOrNone =
   case argsOrNone of
     Nothing ->
@@ -270,9 +281,30 @@ decConsInfo (RawConsInfo {name = consName, expArgs}) = do
   let consName' = D.text (BN.reify consName)
   D.join [consName', RT.decodeArgsMaybe expArgs]
 
-decTopGeist :: RT.TopGeist -> D.Doc
-decTopGeist = do
-  RT.decGeist (D.text . BN.reify)
+decNominalGeist :: (NominalTag, RT.RawGeist BN.BaseName, Loc) -> D.Doc
+decNominalGeist (tag, geist, _) = do
+  let keyword = nominalTagToText tag
+  let geistDoc = case tag of
+        Define ->
+          RT.decGeist (D.text . BN.reify) geist
+        Inline ->
+          RT.decGeist (D.text . BN.reify) geist
+        Macro ->
+          RT.decGeist (D.text . BN.reify) geist
+        MacroInline ->
+          RT.decGeist (D.text . BN.reify) geist
+        Alias ->
+          RT.decTypeGeist (D.text . BN.reify) geist
+        AliasOpaque ->
+          RT.decTypeGeist (D.text . BN.reify) geist
+        Data ->
+          RT.decTypeGeist (D.text . BN.reify) geist
+        Resource ->
+          RT.decTypeGeist (D.text . BN.reify) geist
+  PI.arrange
+    [ PI.horizontal $ D.text keyword,
+      PI.inject geistDoc
+    ]
 
 attachStmtComment :: C -> D.Doc -> D.Doc
 attachStmtComment c doc =

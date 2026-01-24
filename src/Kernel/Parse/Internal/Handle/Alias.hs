@@ -3,6 +3,7 @@ module Kernel.Parse.Internal.Handle.Alias
     new,
     resolveAlias,
     resolveLocatorAlias,
+    resolveModuleAlias,
     activateAliasInfo,
   )
 where

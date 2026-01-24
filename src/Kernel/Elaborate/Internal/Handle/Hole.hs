@@ -3,47 +3,47 @@ module Kernel.Elaborate.Internal.Handle.Hole
     new,
     insert,
     lookup,
-    insertSubst,
-    getSubst,
-    setSubst,
+    insertTypeSubst,
+    getTypeSubst,
+    setTypeSubst,
   )
 where
 
 import Data.IORef
 import Data.IntMap qualified as IntMap
-import Kernel.Elaborate.HoleSubst qualified as HS
+import Kernel.Elaborate.TypeHoleSubst qualified as THS
 import Language.Common.HoleID qualified as HID
 import Language.Common.Ident
 import Language.WeakTerm.WeakTerm qualified as WT
 import Prelude hiding (lookup)
 
 data Handle = Handle
-  { holeEnvRef :: IORef (IntMap.IntMap (WT.WeakTerm, WT.WeakTerm)),
-    holeSubstRef :: IORef HS.HoleSubst
+  { holeEnvRef :: IORef (IntMap.IntMap (WT.WeakType, WT.WeakType)),
+    typeHoleSubstRef :: IORef THS.TypeHoleSubst
   }
 
 new :: IO Handle
 new = do
   holeEnvRef <- newIORef IntMap.empty
-  holeSubstRef <- newIORef HS.empty
+  typeHoleSubstRef <- newIORef THS.empty
   return $ Handle {..}
 
-insert :: Handle -> Int -> WT.WeakTerm -> WT.WeakTerm -> IO ()
+insert :: Handle -> Int -> WT.WeakType -> WT.WeakType -> IO ()
 insert h i e1 e2 =
   modifyIORef' (holeEnvRef h) $ IntMap.insert i (e1, e2)
 
-lookup :: Handle -> Int -> IO (Maybe (WT.WeakTerm, WT.WeakTerm))
+lookup :: Handle -> Int -> IO (Maybe (WT.WeakType, WT.WeakType))
 lookup h i =
   IntMap.lookup i <$> readIORef (holeEnvRef h)
 
-insertSubst :: Handle -> HID.HoleID -> [Ident] -> WT.WeakTerm -> IO ()
-insertSubst h holeID xs e =
-  modifyIORef' (holeSubstRef h) $ HS.insert holeID xs e
+insertTypeSubst :: Handle -> HID.HoleID -> [Ident] -> WT.WeakType -> IO ()
+insertTypeSubst h holeID xs e =
+  modifyIORef' (typeHoleSubstRef h) $ THS.insert holeID xs e
 
-getSubst :: Handle -> IO HS.HoleSubst
-getSubst h =
-  readIORef (holeSubstRef h)
+getTypeSubst :: Handle -> IO THS.TypeHoleSubst
+getTypeSubst h =
+  readIORef (typeHoleSubstRef h)
 
-setSubst :: Handle -> HS.HoleSubst -> IO ()
-setSubst h =
-  writeIORef (holeSubstRef h)
+setTypeSubst :: Handle -> THS.TypeHoleSubst -> IO ()
+setTypeSubst h =
+  writeIORef (typeHoleSubstRef h)

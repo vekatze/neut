@@ -74,8 +74,8 @@ inline top-candidate-sero: sero(top-candidate) {
         try dd = get-dd(k);
         try kind = get-candidate-kind(k);
         Right(box {
-          letbox line = quote {line};
-          letbox column = quote {column};
+          letbox line = lift {line};
+          letbox column = lift {column};
           letbox dd = dd;
           letbox kind = kind;
           Top-Candidate(Loc(line, column), dd, kind)

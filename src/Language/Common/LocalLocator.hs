@@ -3,8 +3,6 @@ module Language.Common.LocalLocator
     new,
     reify,
     reflect,
-    extend,
-    length,
   )
 where
 
@@ -38,13 +36,3 @@ reflect m rawTxt = do
 new :: BN.BaseName -> LocalLocator
 new base =
   MakeLocalLocator {baseName = base}
-
-extend :: LocalLocator -> BN.BaseName -> LocalLocator
-extend base ext =
-  MakeLocalLocator
-    { baseName = BN.extend (baseName base) ext
-    }
-
-length :: LocalLocator -> Int
-length MakeLocalLocator {baseName} =
-  BN.length baseName
