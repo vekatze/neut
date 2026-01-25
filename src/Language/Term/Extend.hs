@@ -89,8 +89,8 @@ extendType ty =
       _m :< TM.Resource dd resourceID
 
 extendBinder :: BinderF (Cofree TM.TypeF ()) -> BinderF TM.Type
-extendBinder (m, x, t) =
-  (m, x, extendType t)
+extendBinder (m, k, x, t) =
+  (m, k, x, extendType t)
 
 extendDefaultArg :: (BinderF TM.Type, Cofree TM.TermF ()) -> (BinderF TM.Type, TM.Term)
 extendDefaultArg (binder, e) = (binder, extend e)

@@ -181,13 +181,13 @@ weakenMagic m magic = do
     M.CompileError typeExpr msg ->
       M.WeakMagic $ M.CompileError (weakenType typeExpr) (weaken msg)
 
-weakenTypeBinder :: (Hint, Ident, TM.Type) -> (Hint, Ident, WT.WeakType)
-weakenTypeBinder (m, x, t) =
-  (m, x, weakenType t)
+weakenTypeBinder :: BinderF TM.Type -> BinderF WT.WeakType
+weakenTypeBinder (m, k, x, t) =
+  (m, k, x, weakenType t)
 
 weakenLet :: (BinderF TM.Type, TM.Term) -> (BinderF WT.WeakType, WT.WeakTerm)
-weakenLet ((m, x, t), e) =
-  ((m, x, weakenType t), weaken e)
+weakenLet ((m, k, x, t), e) =
+  ((m, k, x, weakenType t), weaken e)
 
 weakenAttr :: AttrL.Attr TM.Type -> AttrL.Attr WT.WeakType
 weakenAttr AttrL.Attr {lamKind, identity} =

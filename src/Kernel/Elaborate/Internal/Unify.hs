@@ -34,6 +34,7 @@ import Language.Common.Ident
 import Language.Common.Ident.Reify qualified as Ident
 import Language.Common.PiKind qualified as PK
 import Language.Common.PrimType qualified as PT
+import Language.Common.VarKind qualified as VK
 import Language.WeakTerm.Eq qualified as WT
 import Language.WeakTerm.FreeVars
 import Language.WeakTerm.Holes
@@ -287,7 +288,7 @@ simplifyBinder' ::
   IO [(C.Constraint, C.Constraint)]
 simplifyBinder' h orig sub args1 args2 =
   case (args1, args2) of
-    ((m1, x1, t1) : xts1, (_, x2, t2) : xts2) -> do
+    ((m1, _, x1, t1) : xts1, (_, _, x2, t2) : xts2) -> do
       t2' <- Subst.substType (substHandle h) sub t2
       let sub' = IntMap.insert (Ident.toInt x2) (Type (m1 :< WT.TVar x1)) sub
       rest <- simplifyBinder' h orig sub' xts1 xts2
@@ -298,7 +299,7 @@ simplifyBinder' h orig sub args1 args2 =
 asWeakBinder :: Handle -> Hint -> WT.WeakType -> IO (BinderF WT.WeakType)
 asWeakBinder h m t = do
   x <- Gensym.newIdentFromText (gensymHandle h) "hole"
-  return (m, x, t)
+  return (m, VK.Normal, x, t)
 
 asIdentType :: WT.WeakType -> Maybe Ident
 asIdentType e =
@@ -347,7 +348,7 @@ simplifyActual h m dataNameSet t orig = do
           else mapM (getConsArgTypes h m . (\(name, _, _) -> name)) consNameList
       constraintsFromDataConsArgs <- fmap concat $ forM dataConsArgsList $ \dataConsArgs -> do
         dataConsArgs' <- liftIO $ substConsArgs h IntMap.empty dataConsArgs
-        fmap concat $ forM dataConsArgs' $ \(_, _, consArg) -> do
+        fmap concat $ forM dataConsArgs' $ \(_, _, _, consArg) -> do
           simplifyActual h m dataNameSet' consArg orig
       return $ constraintsFromDataArgs ++ constraintsFromDataConsArgs
     _ :< WT.Box t'' -> do
@@ -447,12 +448,12 @@ substConsArgs h sub consArgs =
   case consArgs of
     [] ->
       return []
-    (m, x, t) : rest -> do
+    (m, k, x, t) : rest -> do
       t' <- Subst.substType (substHandle h) sub t
       let opaque = m :< WT.Tau -- allow `a` in `Cons(a: type, x: a)`
       let sub' = IntMap.insert (Ident.toInt x) (Type opaque) sub
       rest' <- substConsArgs h sub' rest
-      return $ (m, x, t') : rest'
+      return $ (m, k, x, t') : rest'
 
 createDefaultConstraints ::
   [BinderF WT.WeakType] ->

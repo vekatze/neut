@@ -82,8 +82,8 @@ compressType ty =
       () :< TM.Resource dd resourceID
 
 compressBinder :: BinderF TM.Type -> BinderF (Cofree TM.TypeF ())
-compressBinder (m, x, t) =
-  (m, x, compressType t)
+compressBinder (m, k, x, t) =
+  (m, k, x, compressType t)
 
 compressDefaultArg :: (BinderF TM.Type, TM.Term) -> (BinderF TM.Type, Cofree TM.TermF ())
 compressDefaultArg (binder, e) = (binder, compress e)

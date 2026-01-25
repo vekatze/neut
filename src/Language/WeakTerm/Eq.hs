@@ -70,9 +70,9 @@ eqBinderType xts1 xts2
   | [] <- xts1,
     [] <- xts2 =
       True
-  | (_, x1, t1) : rest1 <- xts1,
-    (_, x2, t2) : rest2 <- xts2 = do
-      let b1 = x1 == x2
+  | (_, k1, x1, t1) : rest1 <- xts1,
+    (_, k2, x2, t2) : rest2 <- xts2 = do
+      let b1 = k1 == k2 && x1 == x2
       let b2 = eqType t1 t2
       let b3 = eqBinderType rest1 rest2
       b1 && b2 && b3
@@ -92,4 +92,3 @@ eqAttrData attr1 attr2 = do
   where
     eqConsInfo (cn1, binders1, cl1) (cn2, binders2, cl2) =
       cn1 == cn2 && cl1 == cl2 && eqBinderType binders1 binders2
-

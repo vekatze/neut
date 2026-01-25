@@ -12,6 +12,7 @@ import Language.Common.DecisionTree qualified as DT
 import Language.Common.Ident
 import Language.Common.LowMagic qualified as LM
 import Language.Common.Magic qualified as M
+import Language.Common.VarKind qualified as VK
 import Language.Term.PrimValue qualified as PV
 import Language.Term.Term qualified as TM
 
@@ -40,7 +41,7 @@ freeVars term =
     m :< TM.DataElim _ oets decisionTree -> do
       let (os, es, ts) = unzip3 oets
       let xs1 = S.unions $ map freeVars es
-      let binder = zipWith (\o t -> (m, o, t)) os ts
+      let binder = zipWith (\o t -> (m, VK.Normal, o, t)) os ts
       let xs2 = freeVarsBinderType binder (freeVarsDecisionTree decisionTree)
       S.union xs1 xs2
     _ :< TM.BoxIntro letSeq e -> do
@@ -109,7 +110,7 @@ freeVarsBinderType binder zs =
   case binder of
     [] ->
       zs
-    ((_, x, t) : xts) -> do
+    ((_, _, x, t) : xts) -> do
       let hs1 = freeVarsType t
       let hs2 = freeVarsBinderType xts zs
       S.union hs1 $ S.filter (/= x) hs2
@@ -142,12 +143,12 @@ freeVarsCase decisionCase = do
 freeVarsAttrData :: AttrD.Attr name (BinderF TM.Type) -> S.Set Ident
 freeVarsAttrData attr = do
   let consNameList = AttrD.consNameList attr
-  S.unions $ map (\(_, binders, _) -> S.unions $ map (\(_, _, t) -> freeVarsType t) binders) consNameList
+  S.unions $ map (\(_, binders, _) -> S.unions $ map (\(_, _, _, t) -> freeVarsType t) binders) consNameList
 
 freeVarsAttrDataIntro :: AttrDI.Attr name (BinderF TM.Type) -> S.Set Ident
 freeVarsAttrDataIntro attr = do
   let consNameList = AttrDI.consNameList attr
-  S.unions $ map (\(_, binders, _) -> S.unions $ map (\(_, _, t) -> freeVarsType t) binders) consNameList
+  S.unions $ map (\(_, binders, _) -> S.unions $ map (\(_, _, _, t) -> freeVarsType t) binders) consNameList
 
 freeVarsMagic :: M.Magic BLT.BaseLowType TM.Type TM.Term -> S.Set Ident
 freeVarsMagic magic =

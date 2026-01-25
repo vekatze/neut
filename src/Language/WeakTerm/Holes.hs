@@ -44,7 +44,7 @@ holesBindersType binder zs =
   case binder of
     [] ->
       zs
-    ((_, _, t) : xts) -> do
+    ((_, _, _, t) : xts) -> do
       let set1 = holesType t
       let set2 = holesBindersType xts zs
       S.union set1 set2
@@ -52,4 +52,4 @@ holesBindersType binder zs =
 holesAttrData :: AttrD.Attr name (BinderF WT.WeakType) -> S.Set HoleID
 holesAttrData attr = do
   let consNameList = AttrD.consNameList attr
-  S.unions $ map (\(_, binders, _) -> S.unions $ map (\(_, _, t) -> holesType t) binders) consNameList
+  S.unions $ map (\(_, binders, _) -> S.unions $ map (\(_, _, _, t) -> holesType t) binders) consNameList

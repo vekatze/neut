@@ -28,6 +28,7 @@ import Language.Common.CreateSymbol qualified as Gensym
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.Discriminant qualified as D
 import Language.Common.Ident.Reify qualified as Ident
+import Language.Common.VarKind qualified as VK
 import Language.Common.IsConstLike (IsConstLike)
 import Language.Common.ModuleID qualified as MID
 import Language.Common.PrimType qualified as PT
@@ -50,7 +51,7 @@ evaluateInspectType h m moduleID typeExpr = do
       returnTypeValueIntValue h m moduleID TypeValue.Function
     _ :< TM.Data (AttrD.Attr {AttrD.consNameList}) dataName dataArgs -> do
       case consNameList of
-        [(_, [(_, _, arg)], _)] -> do
+        [(_, [(_, _, _, arg)], _)] -> do
           returnTypeValueIntValue h m moduleID $ TypeValue.Wrapper arg
         _ -> do
           let consInfoList = map consToTypeValue consNameList
@@ -116,7 +117,7 @@ makeConsNameList h m typeValueSGL = do
     case tag of
       TypeTag.Vector -> do
         doNotCare <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "tmp"
-        return (dd, [(m, doNotCare, m :< TM.Tau)], False)
+        return (dd, [(m, VK.Normal, doNotCare, m :< TM.Tau)], False)
       TypeTag.Algebraic -> do
         doNotCare0 <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "tmp"
         doNotCare1 <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "tmp"
@@ -125,21 +126,28 @@ makeConsNameList h m typeValueSGL = do
         let dataNameType = m :< TM.BoxNoema textType
         let dataArgsType = makeListTypeExpr m moduleID (m :< TM.Tau)
         let consInfoListType = makeListTypeExpr m moduleID (makeConstructorTypeExpr m moduleID)
-        return (dd, [(m, doNotCare0, dataNameType), (m, doNotCare1, dataArgsType), (m, doNotCare2, consInfoListType)], False)
+        return
+          ( dd,
+            [ (m, VK.Normal, doNotCare0, dataNameType),
+              (m, VK.Normal, doNotCare1, dataArgsType),
+              (m, VK.Normal, doNotCare2, consInfoListType)
+            ],
+            False
+          )
       TypeTag.Wrapper -> do
         doNotCare <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "tmp"
-        return (dd, [(m, doNotCare, m :< TM.Tau)], False)
+        return (dd, [(m, VK.Normal, doNotCare, m :< TM.Tau)], False)
       TypeTag.Noema -> do
         doNotCare <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "tmp"
-        return (dd, [(m, doNotCare, m :< TM.Tau)], False)
+        return (dd, [(m, VK.Normal, doNotCare, m :< TM.Tau)], False)
       TypeTag.Enum -> do
         doNotCare <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "tmp"
         let textType = makeTextTypeExpr m moduleID
         let nameListType = makeListTypeExpr m moduleID (m :< TM.BoxNoema textType)
-        return (dd, [(m, doNotCare, nameListType)], False)
+        return (dd, [(m, VK.Normal, doNotCare, nameListType)], False)
       TypeTag.BoxT -> do
         doNotCare <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "tmp"
-        return (dd, [(m, doNotCare, m :< TM.Tau)], False)
+        return (dd, [(m, VK.Normal, doNotCare, m :< TM.Tau)], False)
       _ ->
         return (dd, [], True)
 
@@ -147,7 +155,7 @@ consToTypeValue ::
   (DD.DefiniteDescription, [BinderF TM.Type], IsConstLike) ->
   (T.Text, IsConstLike, [(T.Text, TM.Type)])
 consToTypeValue (dd, binders, isConstLike) = do
-  let params = map (\(_, x, t) -> (Ident.toText x, t)) binders
+  let params = map (\(_, _, x, t) -> (Ident.toText x, t)) binders
   (DD.localLocator dd, isConstLike, params)
 
 isConstTypeTag :: TypeTag.TypeTag -> Bool
@@ -374,7 +382,7 @@ constructParamPairTerm h m moduleID textType (paramName, paramType) = do
 mkBinder :: Handle -> Hint -> T.Text -> TM.Type -> App (BinderF TM.Type)
 mkBinder h hint name ty = do
   x <- liftIO $ Gensym.newIdentFromText (gensymHandle h) name
-  return (hint, x, ty)
+  return (hint, VK.Normal, x, ty)
 
 evaluateShowType :: Hint -> TM.Type -> TM.Type -> App TM.Term
 evaluateShowType m textTypeExpr typeExpr = do

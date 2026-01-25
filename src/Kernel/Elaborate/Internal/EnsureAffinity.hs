@@ -34,6 +34,7 @@ import Language.Common.LamKind qualified as LK
 import Language.Common.LowMagic qualified as LM
 import Language.Common.Magic qualified as M
 import Language.Common.PiKind qualified as PK
+import Language.Common.VarKind qualified as VK
 import Language.Term.FreeVarsWithHints (freeVarsWithHints)
 import Language.Term.Term qualified as TM
 import Language.Term.Weaken (weakenType)
@@ -51,7 +52,7 @@ type AffineConstraint =
 type WeakAffineConstraint =
   (WT.WeakType, WT.WeakType)
 
-type VarEnv = IntMap.IntMap TM.Type
+type VarEnv = IntMap.IntMap (VK.VarKind, TM.Type)
 
 data Handle = Handle
   { elaborateHandle :: Elaborate.Handle,
@@ -73,8 +74,8 @@ ensureAffinity h e = do
   synthesize h $ map (bimap weakenType weakenType) cs
 
 extendHandle :: BinderF TM.Type -> Handle -> Handle
-extendHandle (_, x, t) h = do
-  h {varEnv = IntMap.insert (toInt x) t (varEnv h)}
+extendHandle (_, k, x, t) h = do
+  h {varEnv = IntMap.insert (toInt x) (k, t) (varEnv h)}
 
 extendHandle' :: [BinderF TM.Type] -> Handle -> Handle
 extendHandle' mxts h = do
@@ -114,21 +115,25 @@ deactivateExpCheck h =
 
 analyzeVar :: Handle -> Hint -> Ident -> App [AffineConstraint]
 analyzeVar h m x = do
-  if isCartesian x || not (mustPerformExpCheck h)
+  if not (mustPerformExpCheck h)
     then return []
     else do
-      boolOrNone <- liftIO $ isExistingVar x h
-      case boolOrNone of
-        Nothing -> do
-          liftIO $ insertVar x h
-          return []
-        Just alreadyRegistered ->
-          if alreadyRegistered
-            then return []
-            else do
-              liftIO $ insertRelevantVar x h
-              _ :< t <- lookupTypeEnv (varEnv h) m x
-              return [(m :< t, m :< t)]
+      varKind <- lookupVarKind (varEnv h) m x
+      if VK.isExp varKind
+        then return []
+        else do
+          boolOrNone <- liftIO $ isExistingVar x h
+          case boolOrNone of
+            Nothing -> do
+              liftIO $ insertVar x h
+              return []
+            Just alreadyRegistered ->
+              if alreadyRegistered
+                then return []
+                else do
+                  liftIO $ insertRelevantVar x h
+                  _ :< t <- lookupTypeEnv (varEnv h) m x
+                  return [(m :< t, m :< t)]
 
 analyze :: Handle -> TM.Term -> App [AffineConstraint]
 analyze h term = do
@@ -139,13 +144,13 @@ analyze h term = do
       return []
     m :< TM.PiIntro (AttrL.Attr {lamKind}) impArgs expArgs defaultArgs e -> do
       case lamKind of
-        LK.Fix _ (mx, x, codType) -> do
+        LK.Fix _ (mx, _k, x, codType) -> do
           (cs1, h') <- analyzeBinder h (impArgs ++ expArgs)
           (cs2, h'') <- analyzeBinder h' (map fst defaultArgs)
           cs3 <- analyzeType h'' codType
           let piType = m :< TM.Pi PK.normal impArgs expArgs (map fst defaultArgs) codType
           liftIO $ insertRelevantVar x h''
-          cs4 <- analyze (extendHandle (mx, x, piType) h'') e
+          cs4 <- analyze (extendHandle (mx, VK.Normal, x, piType) h'') e
           css <- forM (S.toList $ freeVarsWithHints term) $ uncurry (analyzeVar h)
           return $ cs1 ++ cs2 ++ cs3 ++ cs4 ++ concat css
         LK.Normal _ codType -> do
@@ -168,7 +173,7 @@ analyze h term = do
       let (os, es, ts) = unzip3 oets
       cs1 <- concat <$> mapM (analyze h) es
       cs2 <- concat <$> mapM (analyzeType h) ts
-      let mots = zipWith (\o t -> (m, o, t)) os ts
+      let mots = zipWith (\o t -> (m, VK.Normal, o, t)) os ts
       cs3 <- analyzeDecisionTree (extendHandle' mots h) tree
       return $ cs1 ++ cs2 ++ cs3
     _ :< TM.BoxIntro letSeq e -> do
@@ -186,7 +191,7 @@ analyze h term = do
     _ :< TM.TauIntro ty -> do
       analyzeType h ty
     _ :< TM.TauElim (mx, x) e1 e2 -> do
-      let mxt = (mx, x, mx :< TM.Tau)
+      let mxt = (mx, VK.Normal, x, mx :< TM.Tau)
       (cs1, h') <- analyzeLet h [(mxt, e1)]
       cs2 <- analyze h' e2
       return $ cs1 ++ cs2
@@ -291,9 +296,9 @@ analyzeBinder h binder =
   case binder of
     [] -> do
       return ([], h)
-    ((mx, x, t) : xts) -> do
+    ((mx, k, x, t) : xts) -> do
       cs <- analyzeType h t
-      (cs', h') <- analyzeBinder (extendHandle (mx, x, t) h) xts
+      (cs', h') <- analyzeBinder (extendHandle (mx, k, x, t) h) xts
       return (cs ++ cs', h')
 
 analyzeLet ::
@@ -304,20 +309,31 @@ analyzeLet h xtes =
   case xtes of
     [] ->
       return ([], h)
-    ((m, x, t), e) : rest -> do
+    ((m, k, x, t), e) : rest -> do
       cs0 <- analyzeType h t
       cs1 <- analyze h e
-      (cs', h') <- analyzeLet (extendHandle (m, x, t) h) rest
+      (cs', h') <- analyzeLet (extendHandle (m, k, x, t) h) rest
       return (cs0 ++ cs1 ++ cs', h')
 
 lookupTypeEnv :: VarEnv -> Hint -> Ident -> App TM.Type
 lookupTypeEnv varEnv m x =
   case IntMap.lookup (toInt x) varEnv of
-    Just t ->
+    Just (_, t) ->
       return t
     Nothing ->
       raiseCritical m $
         "Scene.Elaborate.EnsureAffinity: the type of the variable `"
+          <> toText' x
+          <> "` is not registered in the type environment"
+
+lookupVarKind :: VarEnv -> Hint -> Ident -> App VK.VarKind
+lookupVarKind varEnv m x =
+  case IntMap.lookup (toInt x) varEnv of
+    Just (k, _) ->
+      return k
+    Nothing ->
+      raiseCritical m $
+        "Scene.Elaborate.EnsureAffinity: the kind of the variable `"
           <> toText' x
           <> "` is not registered in the type environment"
 
@@ -382,7 +398,7 @@ newtype AffineConstraintError
 
 constructErrorMessageAffine :: AffineConstraintError -> L.Log
 constructErrorMessageAffine (AffineConstraintError t) =
-  L.newLog (WT.metaOfType t) L.Error "Variable name must start with `!` to be copyable"
+  L.newLog (WT.metaOfType t) L.Error "Variable must be declared with `!` to be copyable"
 
 simplifyAffine ::
   Handle ->
@@ -409,7 +425,7 @@ simplifyAffine h dataNameSet (t, orig@(m :< _)) = do
               else mapM (getConsArgTypes h m . (\(name, _, _) -> name)) consNameList
           constraintsFromDataConsArgs <- fmap concat $ forM dataConsArgsList $ \dataConsArgs -> do
             dataConsArgs' <- substConsArgs h IntMap.empty dataConsArgs
-            fmap concat $ forM dataConsArgs' $ \(_, _, consArg) -> do
+            fmap concat $ forM dataConsArgs' $ \(_, _, _, consArg) -> do
               simplifyAffine h dataNameSet' (consArg, orig)
           return $ constraintsFromDataArgs ++ constraintsFromDataConsArgs
         _ -> do
@@ -439,12 +455,12 @@ substConsArgs h sub consArgs =
   case consArgs of
     [] ->
       return []
-    (m, x, t) : rest -> do
+    (m, k, x, t) : rest -> do
       t' <- liftIO $ Subst.substType (Elaborate.substHandle (elaborateHandle h)) sub t
       let opaque = m :< WT.Tau -- allow `a` in `Cons(a: type, x: a)`
       let sub' = IntMap.insert (toInt x) (Type opaque) sub
       rest' <- substConsArgs h sub' rest
-      return $ (m, x, t') : rest'
+      return $ (m, k, x, t') : rest'
 
 getConsArgTypes ::
   Handle ->

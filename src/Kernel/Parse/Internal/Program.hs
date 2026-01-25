@@ -285,7 +285,7 @@ parseConsArgs h = do
 parseDefineDataClauseArg :: Handle -> Parser (RawBinder RT.RawType, C)
 parseDefineDataClauseArg h = do
   choice
-    [ try $ var h >>= preAscription h,
+    [ try $ varWithKind h >>= preAscription h,
       typeWithoutIdent h
     ]
 

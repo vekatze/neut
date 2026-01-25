@@ -366,11 +366,11 @@ elaborate' h term = do
       return $ m :< TM.TauElim (mx, x) e1' e2'
     _ :< WT.Actual e -> do
       elaborate' h e
-    m :< WT.Let opacity (mx, x, t) e1 e2 -> do
+    m :< WT.Let opacity (mx, k, x, t) e1 e2 -> do
       e1' <- elaborate' h e1
       t' <- reduceWeakType h t >>= elaborateType h
       e2' <- elaborate' h e2
-      return $ m :< TM.Let (WT.reifyOpacity opacity) (mx, x, t') e1' e2'
+      return $ m :< TM.Let (WT.reifyOpacity opacity) (mx, k, x, t') e1' e2'
     m :< WT.Prim primValue -> do
       primValue' <- elaboratePrimValue h m primValue
       return $ m :< TM.Prim primValue'
@@ -531,7 +531,7 @@ strictify' h m t = do
       consType <- Type.lookup' (typeHandle h) m consName
       case consType of
         _ :< WT.Pi (PK.DataIntro False) _ [] [] (_ :< WT.Pi _ impArgs expArgs defaultArgs _)
-          | [(_, _, arg)] <- impArgs ++ expArgs ++ defaultArgs -> do
+          | [(_, _, _, arg)] <- impArgs ++ expArgs ++ defaultArgs -> do
               strictify' h m arg
         _ ->
           raiseNonStrictType m consType
@@ -550,7 +550,7 @@ strictifyDecimalType h m x t = do
       consType <- Type.lookup' (typeHandle h) m consName
       case consType of
         _ :< WT.Pi (PK.DataIntro False) _ [] [] (_ :< WT.Pi _ impArgs expArgs defaultArgs _)
-          | [(_, _, arg)] <- impArgs ++ expArgs ++ defaultArgs -> do
+          | [(_, _, _, arg)] <- impArgs ++ expArgs ++ defaultArgs -> do
               strictifyDecimalType h m x arg
         _ ->
           raiseNonDecimalType m x (weakenType t')
@@ -567,7 +567,7 @@ strictifyFloatType h m x t = do
       consType <- Type.lookup' (typeHandle h) m consName
       case consType of
         _ :< WT.Pi (PK.DataIntro False) _ [] [] (_ :< WT.Pi _ impArgs expArgs defaultArgs _)
-          | [(_, _, arg)] <- impArgs ++ expArgs ++ defaultArgs -> do
+          | [(_, _, _, arg)] <- impArgs ++ expArgs ++ defaultArgs -> do
               strictifyFloatType h m x arg
         _ ->
           raiseNonFloatType m x (weakenType t')
@@ -575,9 +575,9 @@ strictifyFloatType h m x t = do
       raiseNonFloatType m x (weakenType t')
 
 elaborateWeakBinder :: Handle -> BinderF WT.WeakType -> App (BinderF TM.Type)
-elaborateWeakBinder h (m, x, t) = do
+elaborateWeakBinder h (m, k, x, t) = do
   t' <- elaborateType h t
-  return (m, x, t')
+  return (m, k, x, t')
 
 inlineType :: Handle -> Hint -> TM.Type -> App TM.Type
 inlineType h m t = do
@@ -724,7 +724,7 @@ elaborateClause h mOrig cursor ctx decisionCase = do
       dataTerms' <- mapM (elaborateType h) dataTerms
       dataTypes' <- mapM (elaborateType h) dataTypes
       consArgs' <- mapM (elaborateWeakBinder h) consArgs
-      let consArgIdents = map (\(_, x, _) -> x) consArgs
+      let consArgIdents = map (\(_, _, x, _) -> x) consArgs
       let consContext = (cursor, (Just consDD, isConstLike, consArgIdents))
       cont' <- elaborateDecisionTree h (consContext : ctx) mOrig mCons cont
       return $
@@ -794,7 +794,7 @@ reduceWeakType h t = do
       case mDef of
         Just def
           | length args == length (WeakTypeDef.typeDefBinders def) -> do
-              let varList = map (\(_, x, _) -> Ident.toInt x) (WeakTypeDef.typeDefBinders def)
+              let varList = map (\(_, _, x, _) -> Ident.toInt x) (WeakTypeDef.typeDefBinders def)
               let sub = IntMap.fromList $ zip varList (map Type args)
               body' <- liftIO $ Subst.substType (substHandle h) sub (WeakTypeDef.typeDefBody def)
               reduceWeakType h body'
@@ -828,9 +828,9 @@ elaborateAttrData ::
 elaborateAttrData h attr = do
   let consNameList = AttrD.consNameList attr
   consNameList' <- forM consNameList $ \(name, binders, isConstLike) -> do
-    binders' <- forM binders $ \(mx, x, t) -> do
+    binders' <- forM binders $ \(mx, k, x, t) -> do
       t' <- elaborateType h t
-      return (mx, x, t')
+      return (mx, k, x, t')
     return (name, binders', isConstLike)
   return $ attr {AttrD.consNameList = consNameList'}
 
@@ -841,9 +841,9 @@ elaborateAttrDataIntro ::
 elaborateAttrDataIntro h attr = do
   let consNameList = AttrDI.consNameList attr
   consNameList' <- forM consNameList $ \(name, binders, isConstLike) -> do
-    binders' <- forM binders $ \(mx, x, t) -> do
+    binders' <- forM binders $ \(mx, k, x, t) -> do
       t' <- elaborateType h t
-      return (mx, x, t')
+      return (mx, k, x, t')
     return (name, binders', isConstLike)
   return $ attr {AttrDI.consNameList = consNameList'}
 

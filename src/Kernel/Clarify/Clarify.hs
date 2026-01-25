@@ -60,6 +60,7 @@ import Language.Common.PrimOp
 import Language.Common.PrimType qualified as PT
 import Language.Common.Rune qualified as RU
 import Language.Common.StmtKind qualified as SK
+import Language.Common.VarKind qualified as VK
 import Language.Comp.Comp qualified as C
 import Language.Comp.CreateVar qualified as Gensym
 import Language.Comp.EnumCase qualified as EC
@@ -192,7 +193,7 @@ clarifyStmt h stmt =
               liftIO (Sigma.returnSigmaEnumS4 (sigmaHandle h) name O.Clear)
                 >>= clarifyStmtDefineBody' h name xts''
             Just OD.Unary
-              | [(_, _, _, [(_, _, t)], _)] <- consInfoList -> do
+              | [(_, _, _, [(_, _, _, t)], _)] <- consInfoList -> do
                   (dataArgs', t') <- clarifyTypeBinderBody h IntMap.empty dataArgs t
                   return $ C.Def f O.Clear (map fst $ dataArgs' ++ [envArg, switchArg]) t'
               | otherwise ->
@@ -310,9 +311,9 @@ clarifyBinderBody h tenv xts e =
     [] -> do
       e' <- clarifyTerm h tenv e
       return ([], e')
-    (m, x, t) : rest -> do
+    (m, k, x, t) : rest -> do
       t' <- clarifyType h tenv t
-      (binder, e') <- clarifyBinderBody h (TM.insTypeEnv [(m, x, t)] tenv) rest e
+      (binder, e') <- clarifyBinderBody h (TM.insTypeEnv [(m, k, x, t)] tenv) rest e
       return ((x, t') : binder, e')
 
 clarifyTypeBinderBody ::
@@ -326,9 +327,9 @@ clarifyTypeBinderBody h tenv xts t =
     [] -> do
       t' <- clarifyType h tenv t
       return ([], t')
-    (m, x, t1) : rest -> do
+    (m, k, x, t1) : rest -> do
       t1' <- clarifyType h tenv t1
-      (binder, t') <- clarifyTypeBinderBody h (TM.insTypeEnv [(m, x, t1)] tenv) rest t
+      (binder, t') <- clarifyTypeBinderBody h (TM.insTypeEnv [(m, k, x, t1)] tenv) rest t
       return ((x, t1') : binder, t')
 
 clarifyStmtDefineBody ::
@@ -410,7 +411,7 @@ clarifyTerm h tenv term =
                   C.Int (dataSizeToIntSize (baseSize h)) (D.reify discriminant) : (xs1 ++ xs2)
     m :< TM.DataElim isNoetic xets tree -> do
       let (xs, es, _) = unzip3 xets
-      let mxts = map (m,,m :< TM.Tau) xs
+      let mxts = map (\x -> (m, VK.Normal, x, m :< TM.Tau)) xs
       es' <- mapM (clarifyTerm h tenv) es
       (tree', _) <- clarifyDecisionTree h (TM.insTypeEnv mxts tenv) isNoetic IntMap.empty tree
       return $ Utility.irreducibleBindLet (zip xs es') tree'
@@ -427,8 +428,8 @@ clarifyTerm h tenv term =
     _ :< TM.TauIntro ty -> do
       clarifyType h tenv ty
     m :< TM.TauElim (mx, x) e1 e2 -> do
-      clarifyTerm h tenv $ m :< TM.Let O.Clear (mx, x, mx :< TM.Tau) e1 e2
-    _ :< TM.Let opacity mxt@(_, x, _) e1 e2 -> do
+      clarifyTerm h tenv $ m :< TM.Let O.Clear (mx, VK.Normal, x, mx :< TM.Tau) e1 e2
+    _ :< TM.Let opacity mxt@(_, _, x, _) e1 e2 -> do
       e2' <- clarifyTerm h (TM.insTypeEnv [mxt] tenv) e2
       mxts' <- dropFst <$> clarifyBinder h tenv [mxt]
       e2'' <- liftIO $ Linearize.linearize (linearizeHandle h) mxts' e2'
@@ -504,7 +505,7 @@ embody h tenv xets cont =
   case xets of
     [] ->
       clarifyTerm h tenv cont
-    (mxt@(_, x, t), e) : rest -> do
+    (mxt@(_, _, x, t), e) : rest -> do
       t' <- clarifyType h tenv t
       (valueVarName, value, valueVar) <- clarifyPlus h tenv e
       relApp <- liftIO $ toRelevantApp (utilityHandle h) valueVar t'
@@ -559,8 +560,8 @@ clarifyDecisionTree h tenv isNoetic dataArgsMap tree =
       let chain = nubFreeVariables $ fallbackChain ++ concat clauseChainList
       let aligner = alignFreeVariable h tenv chain
       clauseList'' <- mapM aligner clauseList'
-      let newChain = (m, cursor, m :< TM.Tau) : chain
-      let idents = nubOrd $ map (\(_, x, _) -> x) newChain
+      let newChain = (m, VK.Normal, cursor, m :< TM.Tau) : chain
+      let idents = nubOrd $ map (\(_, _, x, _) -> x) newChain
       ck <- getClauseDataGroup h t
       case ck of
         Just OD.Enum -> do
@@ -615,7 +616,7 @@ tidyCursorList h tenv dataArgsMap consumedCursorList cont =
           (cont', chain) <- tidyCursorList h tenv dataArgsMap rest cont
           tmp <- liftIO $ Linearize.linearize (linearizeHandle h) (zip dataArgVars dataTypes') $ do
             C.Free (C.VarLocal cursor) cursorSize cont'
-          let newChain = zipWith (\x t@(m :< _) -> (m, x, t)) dataArgVars dataTypes
+          let newChain = zipWith (\x t@(m :< _) -> (m, VK.Normal, x, t)) dataArgVars dataTypes
           return (tmp, newChain ++ chain)
 
 clarifyCase ::
@@ -640,19 +641,19 @@ clarifyCase h tenv isNoetic dataArgsMap cursor decisionCase = do
       dataArgVars <- liftIO $ mapM (const $ Gensym.newIdentFromText (gensymHandle h) "dataArg") dataTypes
       let cursorSize = 1 + length dataArgVars + length consArgs
       let dataArgsMap' = IntMap.insert (Ident.toInt cursor) (zip dataArgVars dataTypes, cursorSize) dataArgsMap
-      let consArgs' = map (\(m, x, _) -> (m, x, m :< TM.Tau)) consArgs
+      let consArgs' = map (\(m, k, x, _) -> (m, k, x, m :< TM.Tau)) consArgs
       let prefixChain = TM.chainOfCaseWithoutCont tenv decisionCase
       (body', contChain) <- clarifyDecisionTree h (TM.insTypeEnv consArgs' tenv) isNoetic dataArgsMap' cont
-      let consArgVars = map (\(_, x, _) -> x) consArgs
+      let consArgVars = map (\(_, _, x, _) -> x) consArgs
       let argVars = dataArgVars ++ consArgVars
-      let contChain' = filter (\(_, x, _) -> x `notElem` argVars) contChain
+      let contChain' = filter (\(_, _, x, _) -> x `notElem` argVars) contChain
       let chain = prefixChain ++ contChain'
       od <- liftIO $ OptimizableData.lookup (optDataHandle h) consDD
       case od of
         Just OD.Enum -> do
           return (EC.Int (D.reify disc), body', chain)
         Just OD.Unary
-          | [(_, consArg, _)] <- consArgs ->
+          | [(_, _, consArg, _)] <- consArgs ->
               return
                 ( EC.Int 0,
                   C.UpElim True consArg (C.UpIntro (C.VarLocal cursor)) body',
@@ -666,7 +667,7 @@ clarifyCase h tenv isNoetic dataArgsMap cursor decisionCase = do
             ( EC.Int (D.reify disc),
               C.SigmaElim
                 False
-                (discriminantVar : dataArgVars ++ map (\(_, x, _) -> x) consArgs)
+                (discriminantVar : dataArgVars ++ map (\(_, _, x, _) -> x) consArgs)
                 (C.VarLocal cursor)
                 body',
               chain
@@ -748,10 +749,10 @@ clarifyLambda ::
 clarifyLambda h tenv attrL@(AttrL.Attr {lamKind, identity}) fvs impArgs expArgs defaultArgs e@(m :< _) = do
   let mxts = impArgs ++ expArgs ++ map fst defaultArgs
   case lamKind of
-    LK.Fix _ (_, recFuncName, codType) -> do
+    LK.Fix _ (_, _k, recFuncName, codType) -> do
       let liftedName = Locator.attachCurrentLocator (locatorHandle h) $ BN.muName recFuncName identity
       let appArgs = fvs ++ mxts
-      let appArgs' = map (\(mx, x, _) -> mx :< TM.Var x) appArgs
+      let appArgs' = map (\(mx, _, x, _) -> mx :< TM.Var x) appArgs
       let argNum = AN.fromInt $ length appArgs'
       let attr = AttrVG.new argNum
       lamAttr <- do
@@ -789,7 +790,7 @@ clarifyBinder h tenv binder =
   case binder of
     [] ->
       return []
-    ((m, x, t) : xts) -> do
+    ((m, _, x, t) : xts) -> do
       t' <- clarifyType h tenv t
       xts' <- clarifyBinder h (IntMap.insert (Ident.toInt x) t tenv) xts
       return $ (m, x, t') : xts'
@@ -799,7 +800,7 @@ clarifyPrimOp h tenv op m = do
   let (domList, _) = getTypeInfo op
   let argTypeList = map (fromPrimNum m) domList
   (xs, varList) <- liftIO $ mapAndUnzipM (const (Gensym.createVar (gensymHandle h) "prim")) domList
-  let mxts = zipWith (\x t -> (m, x, t)) xs argTypeList
+  let mxts = zipWith (\x t -> (m, VK.Normal, x, t)) xs argTypeList
   lamID <- liftIO $ Gensym.newCount (gensymHandle h)
   returnClosure h tenv lamID (Just "primOp") O.Clear [] mxts [] $ C.Primitive (C.PrimOp op varList)
 

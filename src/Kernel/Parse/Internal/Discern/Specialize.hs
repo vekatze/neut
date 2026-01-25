@@ -50,17 +50,17 @@ specializeRow h isNoetic cursor specializer (patternVector, (freedVars, baseSeq,
         ConsSpecializer (ConsInfo {consArgNum}) -> do
           let wildcards = V.fromList $ replicate (AN.reify consArgNum) (m, WildcardVar)
           return $ Just (V.concat [wildcards, rest], (freedVars, baseSeq, body))
-    Just ((_, Var x), rest) -> do
+    Just ((_, Var k x), rest) -> do
       case specializer of
         LiteralSpecializer _ -> do
           hole <- liftIO $ WT.createTypeHole (H.gensymHandle h) mBody []
           adjustedCursor <- liftIO $ castToNoemaIfNecessary h isNoetic (mBody :< WT.Var cursor)
-          return $ Just (rest, (freedVars, ((mBody, x, hole), adjustedCursor) : baseSeq, body))
+          return $ Just (rest, (freedVars, ((mBody, k, x, hole), adjustedCursor) : baseSeq, body))
         ConsSpecializer (ConsInfo {consArgNum}) -> do
           let wildcards = V.fromList $ replicate (AN.reify consArgNum) (mBody, WildcardVar)
           hole <- liftIO $ WT.createTypeHole (H.gensymHandle h) mBody []
           adjustedCursor <- liftIO $ castToNoemaIfNecessary h isNoetic (mBody :< WT.Var cursor)
-          return $ Just (V.concat [wildcards, rest], (freedVars, ((mBody, x, hole), adjustedCursor) : baseSeq, body))
+          return $ Just (V.concat [wildcards, rest], (freedVars, ((mBody, k, x, hole), adjustedCursor) : baseSeq, body))
     Just ((_, Cons (ConsInfo {..})), rest) -> do
       case specializer of
         LiteralSpecializer {} ->

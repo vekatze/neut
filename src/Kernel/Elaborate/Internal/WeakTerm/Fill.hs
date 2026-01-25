@@ -92,17 +92,17 @@ fillTypeBinder h holeSubst binder =
   case binder of
     [] -> do
       return []
-    (m, x, t) : xts -> do
+    (m, k, x, t) : xts -> do
       t' <- fillType h holeSubst t
       xts' <- fillTypeBinder h holeSubst xts
-      return $ (m, x, t') : xts'
+      return $ (m, k, x, t') : xts'
 
 fillAttrData :: Handle -> THS.TypeHoleSubst -> AttrD.Attr name (BinderF WT.WeakType) -> App (AttrD.Attr name (BinderF WT.WeakType))
 fillAttrData h holeSubst attr = do
   let consNameList = AttrD.consNameList attr
   consNameList' <- forM consNameList $ \(cn, binders, cl) -> do
-    binders' <- forM binders $ \(mx, x, t) -> do
+    binders' <- forM binders $ \(mx, k, x, t) -> do
       t' <- fillType h holeSubst t
-      return (mx, x, t')
+      return (mx, k, x, t')
     return (cn, binders', cl)
   return $ attr {AttrD.consNameList = consNameList'}

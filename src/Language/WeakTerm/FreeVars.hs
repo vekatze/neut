@@ -15,6 +15,7 @@ import Language.Common.Ident
 import Language.Common.ImpArgs qualified as ImpArgs
 import Language.Common.LowMagic qualified as LM
 import Language.Common.Magic qualified as M
+import Language.Common.VarKind qualified as VK
 import Language.WeakTerm.WeakTerm qualified as WT
 
 freeVars :: WT.WeakTerm -> S.Set Ident
@@ -40,7 +41,7 @@ freeVars term =
     m :< WT.DataElim _ oets decisionTree -> do
       let (os, es, ts) = unzip3 oets
       let xs1 = S.unions $ map freeVars es
-      let binder = zipWith (\o t -> (m, o, t)) os ts
+      let binder = zipWith (\o t -> (m, VK.Normal, o, t)) os ts
       let xs2 = freeVarsBinders binder (freeVarsDecisionTreeTerm decisionTree)
       S.union xs1 xs2
     _ :< WT.BoxIntro letSeq e -> do
@@ -77,7 +78,7 @@ freeVarsBinders binder zs =
   case binder of
     [] ->
       zs
-    ((_, x, _) : xts) ->
+    ((_, _, x, _) : xts) ->
       S.filter (/= x) (freeVarsBinders xts zs)
 
 freeVarsDecisionTreeTerm :: DT.DecisionTree WT.WeakType WT.WeakTerm -> S.Set Ident
@@ -169,7 +170,7 @@ freeVarsAll term =
     m :< WT.DataElim _ oets decisionTree -> do
       let (os, es, ts) = unzip3 oets
       let xs1 = S.unions $ map freeVarsAll es
-      let binder = zipWith (\o t -> (m, o, t)) os ts
+      let binder = zipWith (\o t -> (m, VK.Normal, o, t)) os ts
       let xs2 = freeVarsBindersType binder (freeVarsDecisionTree decisionTree)
       S.union xs1 xs2
     _ :< WT.BoxIntro letSeq e -> do
@@ -242,7 +243,7 @@ freeVarsBindersType binder zs =
   case binder of
     [] ->
       zs
-    ((_, x, t) : xts) -> do
+    ((_, _, x, t) : xts) -> do
       let hs1 = freeVarsType t
       let hs2 = freeVarsBindersType xts zs
       S.union hs1 $ S.filter (/= x) hs2
@@ -317,9 +318,9 @@ freeVarsLowMagic lowMagic =
 freeVarsAttrData :: AttrD.Attr name (BinderF WT.WeakType) -> S.Set Ident
 freeVarsAttrData attr = do
   let consNameList = AttrD.consNameList attr
-  S.unions $ map (\(_, binders, _) -> S.unions $ map (\(_, _, t) -> freeVarsType t) binders) consNameList
+  S.unions $ map (\(_, binders, _) -> S.unions $ map (\(_, _, _, t) -> freeVarsType t) binders) consNameList
 
 freeVarsAttrDataIntro :: AttrDI.Attr name (BinderF WT.WeakType) -> S.Set Ident
 freeVarsAttrDataIntro attr = do
   let consNameList = AttrDI.consNameList attr
-  S.unions $ map (\(_, binders, _) -> S.unions $ map (\(_, _, t) -> freeVarsType t) binders) consNameList
+  S.unions $ map (\(_, binders, _) -> S.unions $ map (\(_, _, _, t) -> freeVarsType t) binders) consNameList

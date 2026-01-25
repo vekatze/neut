@@ -95,7 +95,7 @@ insTypeEnv xts tenv =
   case xts of
     [] ->
       tenv
-    (_, x, t) : rest ->
+    (_, _, x, t) : rest ->
       insTypeEnv rest $ IntMap.insert (toInt x) t tenv
 
 isValue :: Term -> Bool
@@ -125,7 +125,7 @@ fromLetSeq xts cont =
   case xts of
     [] ->
       cont
-    (mxt@(m, _, _), e) : rest ->
+    (mxt@(m, _, _, _), e) : rest ->
       m :< Let O.Clear mxt e (fromLetSeq rest cont)
 
 fromLetSeqOpaque :: [(BinderF Type, Term)] -> Term -> Term
@@ -133,5 +133,5 @@ fromLetSeqOpaque xts cont =
   case xts of
     [] ->
       cont
-    (mxt@(m, _, _), e) : rest ->
+    (mxt@(m, _, _, _), e) : rest ->
       m :< Let O.Opaque mxt e (fromLetSeq rest cont)

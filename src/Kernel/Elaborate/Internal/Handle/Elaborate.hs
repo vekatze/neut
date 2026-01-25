@@ -103,9 +103,9 @@ inline h m e = do
   Inline.inline inlineHandle e
 
 inlineBinder :: Handle -> BinderF TM.Type -> App (BinderF TM.Type)
-inlineBinder h (m, x, t) = do
+inlineBinder h (m, k, x, t) = do
   dmap <- liftIO $ Definition.get' (defHandle h)
   typeDefMap <- liftIO $ TypeDef.get' (typeDefHandle h)
   inlineHandle <- liftIO $ Inline.new (gensymHandle h) dmap typeDefMap m (inlineLimit h)
   t' <- Inline.inlineType inlineHandle t
-  return (m, x, t')
+  return (m, k, x, t')

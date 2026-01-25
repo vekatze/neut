@@ -81,9 +81,9 @@ reduceType h ty = do
       return $ m :< WT.TypeHole hole es'
 
 reduceBinder :: Handle -> BinderF WT.WeakType -> App (BinderF WT.WeakType)
-reduceBinder h (m, x, t) = do
+reduceBinder h (m, k, x, t) = do
   t' <- reduceType h t
-  return (m, x, t')
+  return (m, k, x, t')
 
 detectPossibleInfiniteLoop :: Handle -> App ()
 detectPossibleInfiniteLoop h = do
@@ -101,8 +101,8 @@ reduceAttrData :: Handle -> AttrD.Attr name (BinderF WT.WeakType) -> App (AttrD.
 reduceAttrData h attr = do
   let consNameList = AttrD.consNameList attr
   consNameList' <- forM consNameList $ \(cn, binders, cl) -> do
-    binders' <- forM binders $ \(mx, x, t) -> do
+    binders' <- forM binders $ \(mx, k, x, t) -> do
       t' <- reduceType h t
-      return (mx, x, t')
+      return (mx, k, x, t')
     return (cn, binders', cl)
   return $ attr {AttrD.consNameList = consNameList'}

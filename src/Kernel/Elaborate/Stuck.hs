@@ -63,7 +63,7 @@ resume substHandle typeDef ctx = do
           mInner <- resume substHandle (TypeDef [] typeDefBody) ctx'
           case mInner of
             Just inner -> do
-              let sub = IntMap.fromList $ zipWith (\(_, x, _) t -> (Ident.toInt x, Type t)) params args
+              let sub = IntMap.fromList $ zipWith (\(_, _, x, _) t -> (Ident.toInt x, Type t)) params args
               Just <$> Subst.substType substHandle sub inner
             Nothing ->
               return Nothing
