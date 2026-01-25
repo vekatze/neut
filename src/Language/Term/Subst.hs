@@ -403,10 +403,10 @@ substMagic h sub magic =
   case magic of
     M.LowMagic lowMagic ->
       M.LowMagic <$> substLowMagic h sub lowMagic
-    M.GetTypeTag mid typeTagExpr e -> do
+    M.InspectType mid typeTagExpr e -> do
       typeTagExpr' <- substType h sub typeTagExpr
       e' <- substType h sub e
-      return $ M.GetTypeTag mid typeTagExpr' e'
+      return $ M.InspectType mid typeTagExpr' e'
     M.ShowType textTypeExpr typeExpr -> do
       textTypeExpr' <- substType h sub textTypeExpr
       typeExpr' <- substType h sub typeExpr

@@ -109,7 +109,7 @@ freeVarsMagicTerm (M.WeakMagic magic) =
   case magic of
     M.LowMagic lowMagic ->
       freeVarsLowMagicTerm lowMagic
-    M.GetTypeTag {} ->
+    M.InspectType {} ->
       S.empty
     M.ShowType {} ->
       S.empty
@@ -277,7 +277,7 @@ freeVarsMagic (M.WeakMagic magic) =
   case magic of
     M.LowMagic lowMagic ->
       freeVarsLowMagic lowMagic
-    M.GetTypeTag _ typeTagExpr e ->
+    M.InspectType _ typeTagExpr e ->
       S.union (freeVarsType typeTagExpr) (freeVarsType e)
     M.ShowType textTypeExpr typeExpr ->
       S.union (freeVarsType textTypeExpr) (freeVarsType typeExpr)

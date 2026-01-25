@@ -11,7 +11,7 @@ import Language.Common.ModuleID qualified as MID
 
 data Magic lt ty a
   = LowMagic (LM.LowMagic lt ty a)
-  | GetTypeTag MID.ModuleID ty ty -- typeTagExpr, e (both types)
+  | InspectType MID.ModuleID ty ty -- typeTagExpr, e (both types)
   | ShowType ty ty
   | TextCons ty a a
   | TextUncons MID.ModuleID a
@@ -25,8 +25,8 @@ instance Functor (Magic lt ty) where
     case der of
       LowMagic magic ->
         LowMagic (fmap f magic)
-      GetTypeTag mid typeTagExpr e ->
-        GetTypeTag mid typeTagExpr e
+      InspectType mid typeTagExpr e ->
+        InspectType mid typeTagExpr e
       ShowType textTypeExpr typeExpr ->
         ShowType textTypeExpr typeExpr
       TextCons textTypeExpr rune text ->
@@ -41,7 +41,7 @@ instance Foldable (Magic lt ty) where
     case der of
       LowMagic magic ->
         foldMap f magic
-      GetTypeTag {} ->
+      InspectType {} ->
         mempty
       ShowType {} ->
         mempty
@@ -57,8 +57,8 @@ instance Traversable (Magic lt ty) where
     case der of
       LowMagic magic ->
         LowMagic <$> traverse f magic
-      GetTypeTag mid typeTagExpr e ->
-        pure $ GetTypeTag mid typeTagExpr e
+      InspectType mid typeTagExpr e ->
+        pure $ InspectType mid typeTagExpr e
       ShowType textTypeExpr typeExpr ->
         pure $ ShowType textTypeExpr typeExpr
       TextCons textTypeExpr rune text ->

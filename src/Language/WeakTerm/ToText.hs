@@ -355,8 +355,8 @@ showMagic (M.WeakMagic magic) =
   case magic of
     M.LowMagic lowMagic ->
       showLowMagic lowMagic
-    M.GetTypeTag _ typeTagExpr e ->
-      "magic get-type-tag" <> inParen (toTextType typeTagExpr <> ", " <> toTextType e)
+    M.InspectType _ typeTagExpr e ->
+      "magic inspect-type" <> inParen (toTextType typeTagExpr <> ", " <> toTextType e)
     M.ShowType textTypeExpr typeExpr ->
       "magic show-type" <> inParen (toTextType textTypeExpr <> ", " <> toTextType typeExpr)
     M.TextCons textTypeExpr rune text ->

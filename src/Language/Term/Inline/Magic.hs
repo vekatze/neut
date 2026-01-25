@@ -1,5 +1,5 @@
 module Language.Term.Inline.Magic
-  ( evaluateGetTypeTag,
+  ( evaluateInspectType,
     evaluateShowType,
     evaluateTextCons,
     evaluateTextUncons,
@@ -41,8 +41,8 @@ import Language.Term.Weaken (weakenType)
 import Language.WeakTerm.ToText (toTextType)
 import Logger.Hint (Hint, showFilePos)
 
-evaluateGetTypeTag :: Handle -> Hint -> MID.ModuleID -> TM.Type -> App TM.Term
-evaluateGetTypeTag h m moduleID typeExpr = do
+evaluateInspectType :: Handle -> Hint -> MID.ModuleID -> TM.Type -> App TM.Term
+evaluateInspectType h m moduleID typeExpr = do
   case typeExpr of
     _ :< TM.Tau ->
       returnTypeValueIntValue h m moduleID TypeValue.Type
@@ -89,12 +89,12 @@ evaluateGetTypeTag h m moduleID typeExpr = do
               returnTypeValueIntValue h m moduleID $ TypeValue.Vector arg
             _ -> do
               reportMacroError h m $
-                "get-type-tag: `vector` expects 1 argument, but got " <> T.pack (show (length args)) <> " arguments."
+                "inspect-type: `vector` expects 1 argument, but got " <> T.pack (show (length args)) <> " arguments."
     _ :< TM.TyApp (_ :< TM.TVarGlobal _ _) _ -> do
       returnTypeValueIntValue h m moduleID TypeValue.Opaque
     _ -> do
       reportMacroError h m $
-        "get-type-tag: unable to determine type tag for this type expression. Got: "
+        "inspect-type: unable to determine type tag for this type expression. Got: "
           <> toTextType (weakenType typeExpr)
 
 makeVectorDD :: MID.ModuleID -> DD.DefiniteDescription

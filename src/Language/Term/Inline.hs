@@ -305,9 +305,9 @@ inline' h term = do
             _ -> do
               lowMagic' <- inlineLowMagic h lowMagic
               return (m :< TM.Magic (M.LowMagic lowMagic'))
-        M.GetTypeTag mid _ typeExpr -> do
+        M.InspectType mid _ typeExpr -> do
           typeExpr' <- inlineType' h typeExpr
-          Magic.evaluateGetTypeTag h m mid typeExpr' >>= inline' h
+          Magic.evaluateInspectType h m mid typeExpr' >>= inline' h
         M.ShowType textTypeExpr typeExpr -> do
           textTypeExpr' <- inlineType' h textTypeExpr
           typeExpr' <- inlineType' h typeExpr

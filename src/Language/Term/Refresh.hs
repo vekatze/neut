@@ -112,10 +112,10 @@ refreshMagic h magic =
     M.LowMagic lowMagic -> do
       lowMagic' <- refreshLowMagic h lowMagic
       return $ M.LowMagic lowMagic'
-    M.GetTypeTag mid typeTagExpr typeExpr -> do
+    M.InspectType mid typeTagExpr typeExpr -> do
       typeTagExpr' <- refreshType h typeTagExpr
       typeExpr' <- refreshType h typeExpr
-      return $ M.GetTypeTag mid typeTagExpr' typeExpr'
+      return $ M.InspectType mid typeTagExpr' typeExpr'
     M.ShowType textTypeExpr typeExpr -> do
       textTypeExpr' <- refreshType h textTypeExpr
       typeExpr' <- refreshType h typeExpr

@@ -313,9 +313,9 @@ toDoc term =
                     RT.mapEL toDoc arg2
                   ]
             ]
-        GetTypeTag (c1, (e, c2)) -> do
+        InspectType (c1, (e, c2)) -> do
           D.join
-            [ attachComment c $ D.text "magic get-type-tag",
+            [ attachComment c $ D.text "magic inspect-type",
               SE.decode $ SE.fromListWithComment (Just SE.Paren) SE.Comma [(c1, (typeToDoc e, c2))]
             ]
         ShowType c1 (c2, (typeExpr, c3)) -> do

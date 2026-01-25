@@ -439,10 +439,10 @@ substMagic h sub (WT.WeakMagic magic) = do
     M.LowMagic lowMagic -> do
       lowMagic' <- substLowMagic h sub lowMagic
       return $ M.LowMagic lowMagic'
-    M.GetTypeTag sgl typeTagExpr e -> do
+    M.InspectType sgl typeTagExpr e -> do
       typeTagExpr' <- substType h sub typeTagExpr
       e' <- substType h sub e
-      return $ M.GetTypeTag sgl typeTagExpr' e'
+      return $ M.InspectType sgl typeTagExpr' e'
     M.ShowType textTypeExpr typeExpr -> do
       textTypeExpr' <- substType h sub textTypeExpr
       typeExpr' <- substType h sub typeExpr

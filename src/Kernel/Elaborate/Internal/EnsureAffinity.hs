@@ -228,7 +228,7 @@ analyze h term = do
               cs2 <- analyze h arg1
               cs3 <- analyze h arg2
               return $ cs1 ++ cs2 ++ cs3
-        M.GetTypeTag _ typeTagExpr typeExpr -> do
+        M.InspectType _ typeTagExpr typeExpr -> do
           cs1 <- analyzeType h typeTagExpr
           cs2 <- analyzeType h typeExpr
           return $ cs1 ++ cs2

@@ -594,7 +594,7 @@ rawTermMagic h m c = do
       rawTermMagicOpaqueValue h m c,
       rawTermMagicGlobal h m c,
       rawTermMagicCallType h m c,
-      rawTermMagicGetTypeTag h m c,
+      rawTermMagicInspectType h m c,
       rawTermMagicShowType h m c,
       rawTermMagicTextCons h m c,
       rawTermMagicTextUncons h m c,
@@ -694,11 +694,11 @@ rawTermMagicCallType h m c = do
     arg2 <- rawTerm h
     return $ \c1 c2 -> m :< RT.Magic c (RT.CallType c1 (c2, func) (c3, arg1) (c4, arg2))
 
-rawTermMagicGetTypeTag :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
-rawTermMagicGetTypeTag h m c = do
-  rawTermMagicBase "get-type-tag" $ do
+rawTermMagicInspectType :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
+rawTermMagicInspectType h m c = do
+  rawTermMagicBase "inspect-type" $ do
     typeExpr <- rawType h
-    return $ \_ c2 -> m :< RT.Magic c (RT.GetTypeTag (c2, typeExpr))
+    return $ \_ c2 -> m :< RT.Magic c (RT.InspectType (c2, typeExpr))
 
 rawTermMagicShowType :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermMagicShowType h m c = do

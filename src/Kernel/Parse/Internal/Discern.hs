@@ -780,13 +780,13 @@ discernMagic h m magic =
       arg1' <- discern h arg1
       arg2' <- discern h arg2
       return $ M.WeakMagic $ M.LowMagic $ LM.CallType func' arg1' arg2'
-    RT.GetTypeTag (_, (typeExpr, _)) -> do
-      ensureCompileStage m h "inline magic (`get-type-tag`)"
+    RT.InspectType (_, (typeExpr, _)) -> do
+      ensureCompileStage m h "inline magic (`inspect-type`)"
       coreModuleID <- Alias.resolveModuleAlias (H.aliasHandle h) m coreModuleAlias
       typeTagVar <- liftEither $ locatorToTypeVar m coreTypeTagTypeTag
       typeTagExpr <- discernType h typeTagVar
       typeExpr' <- discernType h typeExpr
-      return $ M.WeakMagic $ M.GetTypeTag coreModuleID typeTagExpr typeExpr'
+      return $ M.WeakMagic $ M.InspectType coreModuleID typeTagExpr typeExpr'
     RT.ShowType _ (_, (typeExpr, _)) -> do
       textType <- liftEither (locatorToTypeVar m coreText) >>= discernType h
       typeExpr' <- discernType h typeExpr

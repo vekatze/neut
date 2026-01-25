@@ -724,8 +724,8 @@ clarifyMagic h tenv der = do
           return $
             Utility.bindLet [(funcVarName, func'), (arg1VarName, arg1'), (arg2VarName, arg2')] $
               C.Primitive (C.Magic (LM.CallType funcVar arg1Var arg2Var))
-    M.GetTypeTag {} ->
-      error "GetTypeTag should be evaluated during inline expansion"
+    M.InspectType {} ->
+      error "InspectType should be evaluated during inline expansion"
     M.ShowType _ _ ->
       error "ShowType should be evaluated during inline expansion"
     M.TextCons _ _ _ ->
