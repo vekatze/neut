@@ -161,8 +161,6 @@ freeVarsWithHintsMagic magic =
       S.union (freeVarsWithHintsType listExpr) (freeVarsWithHintsType typeExpr)
     M.GetConsSize typeExpr ->
       freeVarsWithHintsType typeExpr
-    M.GetWrapperContentType typeExpr ->
-      freeVarsWithHintsType typeExpr
     M.GetNoemaContentType typeExpr ->
       freeVarsWithHintsType typeExpr
     M.GetBoxContentType typeExpr ->

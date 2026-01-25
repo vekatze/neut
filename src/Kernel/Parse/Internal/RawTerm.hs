@@ -597,7 +597,6 @@ rawTermMagic h m c = do
       rawTermMagicGetTypeTag h m c,
       rawTermMagicGetDataArgs h m c,
       rawTermMagicGetConsSize h m c,
-      rawTermMagicGetWrapperContentType h m c,
       rawTermMagicGetNoemaContentType h m c,
       rawTermMagicGetBoxContentType h m c,
       rawTermMagicGetConstructorArgTypes h m c,
@@ -719,12 +718,6 @@ rawTermMagicGetConsSize h m c = do
   rawTermMagicBase "get-cons-size" $ do
     typeExpr <- rawType h
     return $ \c1 c2 -> m :< RT.Magic c (RT.GetConsSize c1 (c2, typeExpr))
-
-rawTermMagicGetWrapperContentType :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
-rawTermMagicGetWrapperContentType h m c = do
-  rawTermMagicBase "get-wrapper-content-type" $ do
-    typeExpr <- rawType h
-    return $ \c1 c2 -> m :< RT.Magic c (RT.GetWrapperContentType c1 (c2, typeExpr))
 
 rawTermMagicGetNoemaContentType :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermMagicGetNoemaContentType h m c = do

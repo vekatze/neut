@@ -176,8 +176,6 @@ weakenMagic m magic = do
       M.WeakMagic $ M.GetDataArgs sgl (weakenType listExpr) (weakenType typeExpr)
     M.GetConsSize typeExpr ->
       M.WeakMagic $ M.GetConsSize (weakenType typeExpr)
-    M.GetWrapperContentType typeExpr ->
-      M.WeakMagic $ M.GetWrapperContentType (weakenType typeExpr)
     M.GetNoemaContentType typeExpr ->
       M.WeakMagic $ M.GetNoemaContentType (weakenType typeExpr)
     M.GetBoxContentType typeExpr ->

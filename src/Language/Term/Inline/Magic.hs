@@ -2,7 +2,6 @@ module Language.Term.Inline.Magic
   ( evaluateGetTypeTag,
     evaluateGetDataArgs,
     evaluateGetConsSize,
-    evaluateGetWrapperContentType,
     evaluateGetNoemaContentType,
     evaluateGetBoxContentType,
     evaluateGetConstructorArgTypes,
@@ -170,15 +169,6 @@ evaluateGetConsSize h m typeExpr = do
       return $ m :< TM.Prim (PV.Int intType PNS.IntSize64 (fromIntegral consCount))
     _ ->
       reportMacroError h m "get-cons-size: type expression must be a data type"
-
-evaluateGetWrapperContentType :: Handle -> Hint -> TM.Type -> App TM.Term
-evaluateGetWrapperContentType h m typeExpr =
-  case typeExpr of
-    _ :< TM.Data (AttrD.Attr {AttrD.consNameList}) _ _
-      | [(_, [(_, _, t)], _)] <- consNameList -> do
-          return $ m :< TM.TauIntro t
-    _ ->
-      reportMacroError h m $ "get-wrapper-content-type: type expression must be a wrapper, but got: " <> toTextType (weakenType typeExpr)
 
 evaluateGetNoemaContentType :: Handle -> Hint -> TM.Type -> App TM.Term
 evaluateGetNoemaContentType h m typeExpr =

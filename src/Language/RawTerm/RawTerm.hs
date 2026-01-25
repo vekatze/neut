@@ -308,7 +308,6 @@ data RawMagic
   | GetTypeTag (EL RawType)
   | GetDataArgs C (EL RawType)
   | GetConsSize C (EL RawType)
-  | GetWrapperContentType C (EL RawType)
   | GetNoemaContentType C (EL RawType)
   | GetBoxContentType C (EL RawType)
   | GetConstructorArgTypes C (EL RawType) C (EL RawTerm)

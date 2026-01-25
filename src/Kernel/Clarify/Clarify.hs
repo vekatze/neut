@@ -730,8 +730,6 @@ clarifyMagic h tenv der = do
       error "GetDataArgs should be evaluated during inline expansion"
     M.GetConsSize _ ->
       error "GetConsSize should be evaluated during inline expansion"
-    M.GetWrapperContentType _ ->
-      error "GetWrapperContentType should be evaluated during inline expansion"
     M.GetNoemaContentType _ ->
       error "GetNoemaContentType should be evaluated during inline expansion"
     M.GetBoxContentType _ ->

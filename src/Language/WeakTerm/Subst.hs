@@ -450,9 +450,6 @@ substMagic h sub (WT.WeakMagic magic) = do
     M.GetConsSize typeExpr -> do
       typeExpr' <- substType h sub typeExpr
       return $ M.GetConsSize typeExpr'
-    M.GetWrapperContentType typeExpr -> do
-      typeExpr' <- substType h sub typeExpr
-      return $ M.GetWrapperContentType typeExpr'
     M.GetNoemaContentType typeExpr -> do
       typeExpr' <- substType h sub typeExpr
       return $ M.GetNoemaContentType typeExpr'
