@@ -62,7 +62,9 @@ evaluateGetTypeTag h m moduleID typeExpr = do
           let consInfoList = map consToTypeValue consNameList
           let isEnum = all (\(_, _, isConstLike) -> isConstLike) consNameList
           if isEnum && not (null consNameList)
-            then returnTypeValueIntValue h m moduleID TypeValue.Enum
+            then do
+              let enumConsNames = map (\(dd, _, _) -> DD.localLocator dd) consNameList
+              returnTypeValueIntValue h m moduleID $ TypeValue.Enum enumConsNames
             else returnTypeValueIntValue h m moduleID $ TypeValue.Algebraic dataArgs consInfoList
     _ :< TM.BoxNoema t ->
       returnTypeValueIntValue h m moduleID $ TypeValue.Noema t
@@ -131,6 +133,11 @@ makeConsNameList h m typeTagSGL = do
       TypeTag.Noema -> do
         doNotCare <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "tmp"
         return (dd, [(m, doNotCare, m :< TM.Tau)], False)
+      TypeTag.Enum -> do
+        doNotCare <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "tmp"
+        let textType = makeTextTypeExpr m moduleID
+        let nameListType = makeListTypeExpr m moduleID (m :< TM.BoxNoema textType)
+        return (dd, [(m, doNotCare, nameListType)], False)
       TypeTag.BoxT -> do
         doNotCare <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "tmp"
         return (dd, [(m, doNotCare, m :< TM.Tau)], False)
@@ -154,6 +161,8 @@ isConstTypeTag tt =
     TypeTag.Wrapper ->
       False
     TypeTag.Noema ->
+      False
+    TypeTag.Enum ->
       False
     TypeTag.BoxT ->
       False
@@ -184,6 +193,13 @@ returnTypeValueIntValue h m moduleID typeValue = do
       dataArgsTerm <- constructListTerm h m listSgl dataArgs
       consInfoTerm <- constructConstructorInfoListTerm h m moduleID consInfoList
       return $ m :< TM.DataIntro attr consName [] [dataArgsTerm, consInfoTerm]
+    TypeValue.Enum consNames -> do
+      let listSgl = makeListSGL moduleID
+      let textType = makeTextTypeExpr m moduleID
+      let elemType = m :< TM.BoxNoema textType
+      let nameTerms = map (\name -> m :< TM.Prim (PV.StaticText textType name)) consNames
+      namesListTerm <- constructListTermFromTerms h m listSgl elemType nameTerms
+      return $ m :< TM.DataIntro attr consName [] [namesListTerm]
     TypeValue.Vector t -> do
       return $ m :< TM.DataIntro attr consName [] [m :< TM.TauIntro t]
     TypeValue.Wrapper t -> do
