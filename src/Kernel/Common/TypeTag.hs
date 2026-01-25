@@ -1,12 +1,9 @@
 module Kernel.Common.TypeTag
   ( TypeTag (..),
     typeTagToInteger,
-    fromIntSize,
-    fromFloatSize,
+    typeTagList,
   )
 where
-
-import Language.Common.PrimNumSize
 
 data TypeTag
   = Opaque
@@ -32,7 +29,6 @@ data TypeTag
   | Vector
   | Wrapper
   | BoxT
-  deriving (Show)
 
 typeTagToInteger :: TypeTag -> Integer
 typeTagToInteger tag =
@@ -84,30 +80,29 @@ typeTagToInteger tag =
     BoxT ->
       22
 
-fromIntSize :: IntSize -> TypeTag
-fromIntSize s =
-  case s of
-    IntSize1 ->
-      Int1
-    IntSize2 ->
-      Int2
-    IntSize4 ->
-      Int4
-    IntSize8 ->
-      Int8
-    IntSize16 ->
-      Int16
-    IntSize32 ->
-      Int32
-    IntSize64 ->
-      Int64
-
-fromFloatSize :: FloatSize -> TypeTag
-fromFloatSize s =
-  case s of
-    FloatSize16 ->
-      Float16
-    FloatSize32 ->
-      Float32
-    FloatSize64 ->
-      Float64
+typeTagList :: [TypeTag]
+typeTagList =
+  [ Opaque,
+    Type,
+    Function,
+    Algebraic,
+    Noema,
+    Enum,
+    Int1,
+    Int2,
+    Int4,
+    Int8,
+    Int16,
+    Int32,
+    Int64,
+    Float16,
+    Float32,
+    Float64,
+    Pointer,
+    Null,
+    Rune,
+    Binary,
+    Vector,
+    Wrapper,
+    BoxT
+  ]

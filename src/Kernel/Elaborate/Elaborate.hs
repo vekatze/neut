@@ -421,44 +421,10 @@ elaborate' h term = do
               arg1' <- elaborate' h arg1
               arg2' <- elaborate' h arg2
               return $ m :< TM.Magic (M.LowMagic $ LM.CallType func' arg1' arg2')
-        M.GetTypeTag mid typeTagExpr typeExpr -> do
-          typeTagExpr' <- elaborateType h typeTagExpr
+        M.InspectType mid typeValueExpr typeExpr -> do
+          typeValueExpr' <- elaborateType h typeValueExpr
           typeExpr' <- elaborateType h typeExpr
-          return $ m :< TM.Magic (M.GetTypeTag mid typeTagExpr' typeExpr')
-        M.GetDataArgs sgl listExpr typeExpr -> do
-          listExpr' <- elaborateType h listExpr
-          typeExpr' <- elaborateType h typeExpr
-          return $ m :< TM.Magic (M.GetDataArgs sgl listExpr' typeExpr')
-        M.GetConsSize typeExpr -> do
-          typeExpr' <- elaborateType h typeExpr
-          return $ m :< TM.Magic (M.GetConsSize typeExpr')
-        M.GetWrapperContentType typeExpr -> do
-          typeExpr' <- elaborateType h typeExpr
-          return $ m :< TM.Magic (M.GetWrapperContentType typeExpr')
-        M.GetVectorContentType sgl typeExpr -> do
-          typeExpr' <- elaborateType h typeExpr
-          return $ m :< TM.Magic (M.GetVectorContentType sgl typeExpr')
-        M.GetNoemaContentType typeExpr -> do
-          typeExpr' <- elaborateType h typeExpr
-          return $ m :< TM.Magic (M.GetNoemaContentType typeExpr')
-        M.GetBoxContentType typeExpr -> do
-          typeExpr' <- elaborateType h typeExpr
-          return $ m :< TM.Magic (M.GetBoxContentType typeExpr')
-        M.GetConstructorArgTypes sgl listExpr typeExpr index -> do
-          listExpr' <- elaborateType h listExpr
-          typeExpr' <- elaborateType h typeExpr
-          index' <- elaborate' h index
-          return $ m :< TM.Magic (M.GetConstructorArgTypes sgl listExpr' typeExpr' index')
-        M.GetConsName textType typeExpr index -> do
-          textType' <- elaborateType h textType
-          typeExpr' <- elaborateType h typeExpr
-          index' <- elaborate' h index
-          return $ m :< TM.Magic (M.GetConsName textType' typeExpr' index')
-        M.GetConsConstFlag boolType typeExpr index -> do
-          boolType' <- elaborateType h boolType
-          typeExpr' <- elaborateType h typeExpr
-          index' <- elaborate' h index
-          return $ m :< TM.Magic (M.GetConsConstFlag boolType' typeExpr' index')
+          return $ m :< TM.Magic (M.InspectType mid typeValueExpr' typeExpr')
         M.ShowType textTypeExpr typeExpr -> do
           textTypeExpr' <- elaborateType h textTypeExpr
           typeExpr' <- elaborateType h typeExpr

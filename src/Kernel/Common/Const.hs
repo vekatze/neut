@@ -155,9 +155,9 @@ coreBoxEmbody :: T.Text
 coreBoxEmbody =
   core <> nsSep <> "box" <> nsSep <> "embody"
 
-coreTypeTagTypeTag :: T.Text
-coreTypeTagTypeTag =
-  core <> nsSep <> "type-tag" <> nsSep <> "type-tag"
+coreTypeValueTypeValue :: T.Text
+coreTypeValueTypeValue =
+  core <> nsSep <> "type-value" <> nsSep <> "type-value"
 
 holeLiteral :: T.Text
 holeLiteral =

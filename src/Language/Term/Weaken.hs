@@ -170,26 +170,8 @@ weakenMagic m magic = do
               LM.OpaqueValue (weaken e)
             LM.CallType func arg1 arg2 ->
               LM.CallType (weaken func) (weaken arg1) (weaken arg2)
-    M.GetTypeTag mid typeTagExpr e ->
-      M.WeakMagic $ M.GetTypeTag mid (weakenType typeTagExpr) (weakenType e)
-    M.GetDataArgs sgl listExpr typeExpr ->
-      M.WeakMagic $ M.GetDataArgs sgl (weakenType listExpr) (weakenType typeExpr)
-    M.GetConsSize typeExpr ->
-      M.WeakMagic $ M.GetConsSize (weakenType typeExpr)
-    M.GetWrapperContentType typeExpr ->
-      M.WeakMagic $ M.GetWrapperContentType (weakenType typeExpr)
-    M.GetVectorContentType sgl typeExpr ->
-      M.WeakMagic $ M.GetVectorContentType sgl (weakenType typeExpr)
-    M.GetNoemaContentType typeExpr ->
-      M.WeakMagic $ M.GetNoemaContentType (weakenType typeExpr)
-    M.GetBoxContentType typeExpr ->
-      M.WeakMagic $ M.GetBoxContentType (weakenType typeExpr)
-    M.GetConstructorArgTypes sgl listExpr typeExpr index ->
-      M.WeakMagic $ M.GetConstructorArgTypes sgl (weakenType listExpr) (weakenType typeExpr) (weaken index)
-    M.GetConsName textType typeExpr index ->
-      M.WeakMagic $ M.GetConsName (weakenType textType) (weakenType typeExpr) (weaken index)
-    M.GetConsConstFlag boolType typeExpr index ->
-      M.WeakMagic $ M.GetConsConstFlag (weakenType boolType) (weakenType typeExpr) (weaken index)
+    M.InspectType mid typeValueExpr e ->
+      M.WeakMagic $ M.InspectType mid (weakenType typeValueExpr) (weakenType e)
     M.ShowType textTypeExpr typeExpr ->
       M.WeakMagic $ M.ShowType (weakenType textTypeExpr) (weakenType typeExpr)
     M.TextCons textTypeExpr rune text ->

@@ -102,9 +102,9 @@ toText term =
     _ :< WT.CodeElim e ->
       "unquote " <> inBrace (toText e)
     _ :< WT.TauIntro ty ->
-      "magic term-type" <> inParen (toTextType ty)
+      "pack-type" <> inParen (toTextType ty)
     _ :< WT.TauElim (_, x) e1 e2 ->
-      "let-type " <> showVariable x <> " = " <> toText e1 <> "; " <> toText e2
+      "unpack-type " <> showVariable x <> " = " <> toText e1 <> "; " <> toText e2
     _ :< WT.Actual e ->
       "ACTUAL(" <> toText e <> ")"
     _ :< WT.Let opacity (_, x, t) e1 e2 -> do
@@ -355,49 +355,8 @@ showMagic (M.WeakMagic magic) =
   case magic of
     M.LowMagic lowMagic ->
       showLowMagic lowMagic
-    M.GetTypeTag _ typeTagExpr e ->
-      "magic get-type-tag" <> inParen (toTextType typeTagExpr <> ", " <> toTextType e)
-    M.GetDataArgs sgl listExpr typeExpr ->
-      "magic get-data-args" <> inParen (T.pack (show sgl) <> ", " <> toTextType listExpr <> ", " <> toTextType typeExpr)
-    M.GetConsSize typeExpr ->
-      "magic get-cons-size" <> inParen (toTextType typeExpr)
-    M.GetWrapperContentType typeExpr ->
-      "magic get-wrapper-content-type" <> inParen (toTextType typeExpr)
-    M.GetVectorContentType sgl typeExpr ->
-      "magic get-vector-content-type" <> inParen (T.pack (show sgl) <> ", " <> toTextType typeExpr)
-    M.GetNoemaContentType typeExpr ->
-      "magic get-noema-content-type" <> inParen (toTextType typeExpr)
-    M.GetBoxContentType typeExpr ->
-      "magic get-box-content-type" <> inParen (toTextType typeExpr)
-    M.GetConstructorArgTypes sgl listExpr typeExpr index ->
-      "magic get-constructor-arg-types"
-        <> inParen
-          ( T.pack (show sgl)
-              <> ", "
-              <> toTextType listExpr
-              <> ", "
-              <> toTextType typeExpr
-              <> ", "
-              <> toText index
-          )
-    M.GetConsName textType typeExpr index ->
-      "magic get-cons-name"
-        <> inParen
-          ( toTextType textType
-              <> ", "
-              <> toTextType typeExpr
-              <> ", "
-              <> toText index
-          )
-    M.GetConsConstFlag boolType typeExpr index ->
-      "magic get-cons-const-flag"
-        <> inParen
-          ( toTextType boolType
-              <> ", "
-              <> toTextType typeExpr
-              <> ", "
-              <> toText index
-          )
+    M.InspectType _ typeValueExpr e ->
+      "magic inspect-type" <> inParen (toTextType typeValueExpr <> ", " <> toTextType e)
     M.ShowType textTypeExpr typeExpr ->
       "magic show-type" <> inParen (toTextType textTypeExpr <> ", " <> toTextType typeExpr)
     M.TextCons textTypeExpr rune text ->

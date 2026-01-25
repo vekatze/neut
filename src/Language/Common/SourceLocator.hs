@@ -5,13 +5,14 @@ module Language.Common.SourceLocator
     fromBaseNameList,
     llvmLocator,
     internalLocator,
-    typeTagLocator,
+    typeValueLocator,
     binaryLocator,
     vectorLocator,
     eitherLocator,
     pairLocator,
     unitLocator,
     textLocator,
+    listLocator,
     boolLocator,
   )
 where
@@ -61,9 +62,9 @@ internalLocator :: SourceLocator
 internalLocator =
   SourceLocator $(mkRelFile "#")
 
-typeTagLocator :: SourceLocator
-typeTagLocator =
-  SourceLocator $(mkRelFile "type-tag")
+typeValueLocator :: SourceLocator
+typeValueLocator =
+  SourceLocator $(mkRelFile "type-value")
 
 binaryLocator :: SourceLocator
 binaryLocator =
@@ -72,6 +73,10 @@ binaryLocator =
 vectorLocator :: SourceLocator
 vectorLocator =
   SourceLocator $(mkRelFile "vector")
+
+listLocator :: SourceLocator
+listLocator =
+  SourceLocator $(mkRelFile "list")
 
 eitherLocator :: SourceLocator
 eitherLocator =

@@ -112,44 +112,10 @@ refreshMagic h magic =
     M.LowMagic lowMagic -> do
       lowMagic' <- refreshLowMagic h lowMagic
       return $ M.LowMagic lowMagic'
-    M.GetTypeTag mid typeTagExpr typeExpr -> do
-      typeTagExpr' <- refreshType h typeTagExpr
+    M.InspectType mid typeValueExpr typeExpr -> do
+      typeValueExpr' <- refreshType h typeValueExpr
       typeExpr' <- refreshType h typeExpr
-      return $ M.GetTypeTag mid typeTagExpr' typeExpr'
-    M.GetDataArgs sgl listExpr typeExpr -> do
-      listExpr' <- refreshType h listExpr
-      typeExpr' <- refreshType h typeExpr
-      return $ M.GetDataArgs sgl listExpr' typeExpr'
-    M.GetConsSize typeExpr -> do
-      typeExpr' <- refreshType h typeExpr
-      return $ M.GetConsSize typeExpr'
-    M.GetWrapperContentType typeExpr -> do
-      typeExpr' <- refreshType h typeExpr
-      return $ M.GetWrapperContentType typeExpr'
-    M.GetVectorContentType sgl typeExpr -> do
-      typeExpr' <- refreshType h typeExpr
-      return $ M.GetVectorContentType sgl typeExpr'
-    M.GetNoemaContentType typeExpr -> do
-      typeExpr' <- refreshType h typeExpr
-      return $ M.GetNoemaContentType typeExpr'
-    M.GetBoxContentType typeExpr -> do
-      typeExpr' <- refreshType h typeExpr
-      return $ M.GetBoxContentType typeExpr'
-    M.GetConstructorArgTypes sgl listExpr typeExpr index -> do
-      listExpr' <- refreshType h listExpr
-      typeExpr' <- refreshType h typeExpr
-      index' <- refresh h index
-      return $ M.GetConstructorArgTypes sgl listExpr' typeExpr' index'
-    M.GetConsName textType typeExpr index -> do
-      textType' <- refreshType h textType
-      typeExpr' <- refreshType h typeExpr
-      index' <- refresh h index
-      return $ M.GetConsName textType' typeExpr' index'
-    M.GetConsConstFlag boolType typeExpr index -> do
-      boolType' <- refreshType h boolType
-      typeExpr' <- refreshType h typeExpr
-      index' <- refresh h index
-      return $ M.GetConsConstFlag boolType' typeExpr' index'
+      return $ M.InspectType mid typeValueExpr' typeExpr'
     M.ShowType textTypeExpr typeExpr -> do
       textTypeExpr' <- refreshType h textTypeExpr
       typeExpr' <- refreshType h typeExpr

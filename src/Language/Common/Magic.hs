@@ -8,20 +8,10 @@ import Data.Binary
 import GHC.Generics qualified as G
 import Language.Common.LowMagic qualified as LM
 import Language.Common.ModuleID qualified as MID
-import Language.Common.StrictGlobalLocator qualified as SGL
 
 data Magic lt ty a
   = LowMagic (LM.LowMagic lt ty a)
-  | GetTypeTag MID.ModuleID ty ty -- typeTagExpr, e (both types)
-  | GetDataArgs SGL.StrictGlobalLocator ty ty -- listExpr, typeExpr (both types)
-  | GetConsSize ty
-  | GetWrapperContentType ty
-  | GetVectorContentType SGL.StrictGlobalLocator ty
-  | GetNoemaContentType ty
-  | GetBoxContentType ty
-  | GetConstructorArgTypes SGL.StrictGlobalLocator ty ty a -- listExpr, typeExpr (types), index (term)
-  | GetConsName ty ty a -- textType, type, index
-  | GetConsConstFlag ty ty a -- boolType, type, index
+  | InspectType MID.ModuleID ty ty -- typeValueExpr, e (both types)
   | ShowType ty ty
   | TextCons ty a a
   | TextUncons MID.ModuleID a
@@ -35,26 +25,8 @@ instance Functor (Magic lt ty) where
     case der of
       LowMagic magic ->
         LowMagic (fmap f magic)
-      GetTypeTag mid typeTagExpr e ->
-        GetTypeTag mid typeTagExpr e
-      GetDataArgs sgl listExpr typeExpr ->
-        GetDataArgs sgl listExpr typeExpr
-      GetConsSize typeExpr ->
-        GetConsSize typeExpr
-      GetWrapperContentType typeExpr ->
-        GetWrapperContentType typeExpr
-      GetVectorContentType sgl typeExpr ->
-        GetVectorContentType sgl typeExpr
-      GetNoemaContentType typeExpr ->
-        GetNoemaContentType typeExpr
-      GetBoxContentType typeExpr ->
-        GetBoxContentType typeExpr
-      GetConstructorArgTypes sgl listExpr typeExpr index ->
-        GetConstructorArgTypes sgl listExpr typeExpr (f index)
-      GetConsName textType typeExpr index ->
-        GetConsName textType typeExpr (f index)
-      GetConsConstFlag boolType typeExpr index ->
-        GetConsConstFlag boolType typeExpr (f index)
+      InspectType mid typeValueExpr e ->
+        InspectType mid typeValueExpr e
       ShowType textTypeExpr typeExpr ->
         ShowType textTypeExpr typeExpr
       TextCons textTypeExpr rune text ->
@@ -69,26 +41,8 @@ instance Foldable (Magic lt ty) where
     case der of
       LowMagic magic ->
         foldMap f magic
-      GetTypeTag {} ->
+      InspectType {} ->
         mempty
-      GetDataArgs {} ->
-        mempty
-      GetConsSize {} ->
-        mempty
-      GetWrapperContentType {} ->
-        mempty
-      GetVectorContentType {} ->
-        mempty
-      GetNoemaContentType {} ->
-        mempty
-      GetBoxContentType {} ->
-        mempty
-      GetConstructorArgTypes _ _ _ index ->
-        f index
-      GetConsName _ _ index ->
-        f index
-      GetConsConstFlag _ _ index ->
-        f index
       ShowType {} ->
         mempty
       TextCons _ rune text ->
@@ -103,26 +57,8 @@ instance Traversable (Magic lt ty) where
     case der of
       LowMagic magic ->
         LowMagic <$> traverse f magic
-      GetTypeTag mid typeTagExpr e ->
-        pure $ GetTypeTag mid typeTagExpr e
-      GetDataArgs sgl listExpr typeExpr ->
-        pure $ GetDataArgs sgl listExpr typeExpr
-      GetConsSize typeExpr ->
-        pure $ GetConsSize typeExpr
-      GetWrapperContentType typeExpr ->
-        pure $ GetWrapperContentType typeExpr
-      GetVectorContentType sgl typeExpr ->
-        pure $ GetVectorContentType sgl typeExpr
-      GetNoemaContentType typeExpr ->
-        pure $ GetNoemaContentType typeExpr
-      GetBoxContentType typeExpr ->
-        pure $ GetBoxContentType typeExpr
-      GetConstructorArgTypes sgl listExpr typeExpr index ->
-        GetConstructorArgTypes sgl listExpr typeExpr <$> f index
-      GetConsName textType typeExpr index ->
-        GetConsName textType typeExpr <$> f index
-      GetConsConstFlag boolType typeExpr index ->
-        GetConsConstFlag boolType typeExpr <$> f index
+      InspectType mid typeValueExpr e ->
+        pure $ InspectType mid typeValueExpr e
       ShowType textTypeExpr typeExpr ->
         pure $ ShowType textTypeExpr typeExpr
       TextCons textTypeExpr rune text ->

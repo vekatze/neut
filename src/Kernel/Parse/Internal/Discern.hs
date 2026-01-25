@@ -58,7 +58,6 @@ import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.Foreign qualified as F
 import Language.Common.ForeignCodType qualified as FCT
 import Language.Common.Geist qualified as G
-import Language.Common.GlobalLocator qualified as GL
 import Language.Common.Ident
 import Language.Common.Ident.Reify qualified as Ident
 import Language.Common.ImpArgs qualified as ImpArgs
@@ -781,62 +780,13 @@ discernMagic h m magic =
       arg1' <- discern h arg1
       arg2' <- discern h arg2
       return $ M.WeakMagic $ M.LowMagic $ LM.CallType func' arg1' arg2'
-    RT.GetTypeTag (_, (typeExpr, _)) -> do
-      ensureCompileStage m h "inline magic (`get-type-tag`)"
+    RT.InspectType (_, (typeExpr, _)) -> do
+      ensureCompileStage m h "inline magic (`inspect-type`)"
       coreModuleID <- Alias.resolveModuleAlias (H.aliasHandle h) m coreModuleAlias
-      typeTagVar <- liftEither $ locatorToTypeVar m coreTypeTagTypeTag
-      typeTagExpr <- discernType h typeTagVar
+      typeValueVar <- liftEither $ locatorToTypeVar m coreTypeValueTypeValue
+      typeValueExpr <- discernType h typeValueVar
       typeExpr' <- discernType h typeExpr
-      return $ M.WeakMagic $ M.GetTypeTag coreModuleID typeTagExpr typeExpr'
-    RT.GetDataArgs _ (_, (typeExpr, _)) -> do
-      ensureCompileStage m h "inline magic (`get-data-args`)"
-      typeExpr' <- discernType h typeExpr
-      listVar <- liftEither $ locatorToTypeVar m coreListList
-      listExpr <- discernType h listVar
-      gl <- liftEither $ GL.reflect m coreList
-      sgl <- Alias.resolveAlias (H.aliasHandle h) m gl
-      return $ M.WeakMagic $ M.GetDataArgs sgl listExpr typeExpr'
-    RT.GetConsSize _ (_, (typeExpr, _)) -> do
-      ensureCompileStage m h "inline magic (`get-cons-size`)"
-      typeExpr' <- discernType h typeExpr
-      return $ M.WeakMagic $ M.GetConsSize typeExpr'
-    RT.GetWrapperContentType _ (_, (typeExpr, _)) -> do
-      ensureCompileStage m h "inline magic (`get-wrapper-content-type`)"
-      typeExpr' <- discernType h typeExpr
-      return $ M.WeakMagic $ M.GetWrapperContentType typeExpr'
-    RT.GetVectorContentType _ (_, (typeExpr, _)) -> do
-      ensureCompileStage m h "inline magic (`get-vector-content-type`)"
-      typeExpr' <- discernType h typeExpr
-      gl <- liftEither $ GL.reflect m coreVector
-      sgl <- Alias.resolveAlias (H.aliasHandle h) m gl
-      return $ M.WeakMagic $ M.GetVectorContentType sgl typeExpr'
-    RT.GetNoemaContentType _ (_, (typeExpr, _)) -> do
-      ensureCompileStage m h "inline magic (`get-noema-content-type`)"
-      typeExpr' <- discernType h typeExpr
-      return $ M.WeakMagic $ M.GetNoemaContentType typeExpr'
-    RT.GetBoxContentType _ (_, (typeExpr, _)) -> do
-      ensureCompileStage m h "inline magic (`get-box-content-type`)"
-      typeExpr' <- discernType h typeExpr
-      return $ M.WeakMagic $ M.GetBoxContentType typeExpr'
-    RT.GetConstructorArgTypes _ (_, (typeExpr, _)) _ (_, (index, _)) -> do
-      ensureCompileStage m h "inline magic (`get-constructor-arg-types`)"
-      typeExpr' <- discernType h typeExpr
-      index' <- discern h index
-      listVar <- liftEither $ locatorToTypeVar m coreListList
-      listExpr <- discernType h listVar
-      gl <- liftEither $ GL.reflect m coreList
-      sgl <- Alias.resolveAlias (H.aliasHandle h) m gl
-      return $ M.WeakMagic $ M.GetConstructorArgTypes sgl listExpr typeExpr' index'
-    RT.GetConsArgName _ (_, (typeExpr, _)) _ (_, (index, _)) -> do
-      textType <- liftEither (locatorToTypeVar m coreText) >>= discernType h
-      typeExpr' <- discernType h typeExpr
-      index' <- discern h index
-      return $ M.WeakMagic $ M.GetConsName textType typeExpr' index'
-    RT.GetConsConstFlag _ (_, (typeExpr, _)) _ (_, (index, _)) -> do
-      boolType <- liftEither (locatorToTypeVar m coreBool) >>= discernType h
-      typeExpr' <- discernType h typeExpr
-      index' <- discern h index
-      return $ M.WeakMagic $ M.GetConsConstFlag boolType typeExpr' index'
+      return $ M.WeakMagic $ M.InspectType coreModuleID typeValueExpr typeExpr'
     RT.ShowType _ (_, (typeExpr, _)) -> do
       textType <- liftEither (locatorToTypeVar m coreText) >>= discernType h
       typeExpr' <- discernType h typeExpr

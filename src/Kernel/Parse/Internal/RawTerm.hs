@@ -594,16 +594,7 @@ rawTermMagic h m c = do
       rawTermMagicOpaqueValue h m c,
       rawTermMagicGlobal h m c,
       rawTermMagicCallType h m c,
-      rawTermMagicGetTypeTag h m c,
-      rawTermMagicGetDataArgs h m c,
-      rawTermMagicGetConsSize h m c,
-      rawTermMagicGetWrapperContentType h m c,
-      rawTermMagicGetVectorContentType h m c,
-      rawTermMagicGetNoemaContentType h m c,
-      rawTermMagicGetBoxContentType h m c,
-      rawTermMagicGetConstructorArgTypes h m c,
-      rawTermMagicGetConsName h m c,
-      rawTermMagicGetConsConstFlag h m c,
+      rawTermMagicInspectType h m c,
       rawTermMagicShowType h m c,
       rawTermMagicTextCons h m c,
       rawTermMagicTextUncons h m c,
@@ -703,71 +694,11 @@ rawTermMagicCallType h m c = do
     arg2 <- rawTerm h
     return $ \c1 c2 -> m :< RT.Magic c (RT.CallType c1 (c2, func) (c3, arg1) (c4, arg2))
 
-rawTermMagicGetTypeTag :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
-rawTermMagicGetTypeTag h m c = do
-  rawTermMagicBase "get-type-tag" $ do
+rawTermMagicInspectType :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
+rawTermMagicInspectType h m c = do
+  rawTermMagicBase "inspect-type" $ do
     typeExpr <- rawType h
-    return $ \_ c2 -> m :< RT.Magic c (RT.GetTypeTag (c2, typeExpr))
-
-rawTermMagicGetDataArgs :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
-rawTermMagicGetDataArgs h m c = do
-  rawTermMagicBase "get-data-args" $ do
-    typeExpr <- rawType h
-    return $ \c1 c2 -> m :< RT.Magic c (RT.GetDataArgs c1 (c2, typeExpr))
-
-rawTermMagicGetConsSize :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
-rawTermMagicGetConsSize h m c = do
-  rawTermMagicBase "get-cons-size" $ do
-    typeExpr <- rawType h
-    return $ \c1 c2 -> m :< RT.Magic c (RT.GetConsSize c1 (c2, typeExpr))
-
-rawTermMagicGetWrapperContentType :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
-rawTermMagicGetWrapperContentType h m c = do
-  rawTermMagicBase "get-wrapper-content-type" $ do
-    typeExpr <- rawType h
-    return $ \c1 c2 -> m :< RT.Magic c (RT.GetWrapperContentType c1 (c2, typeExpr))
-
-rawTermMagicGetVectorContentType :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
-rawTermMagicGetVectorContentType h m c = do
-  rawTermMagicBase "get-vector-content-type" $ do
-    typeExpr <- rawType h
-    return $ \c1 c2 -> m :< RT.Magic c (RT.GetVectorContentType c1 (c2, typeExpr))
-
-rawTermMagicGetNoemaContentType :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
-rawTermMagicGetNoemaContentType h m c = do
-  rawTermMagicBase "get-noema-content-type" $ do
-    typeExpr <- rawType h
-    return $ \c1 c2 -> m :< RT.Magic c (RT.GetNoemaContentType c1 (c2, typeExpr))
-
-rawTermMagicGetBoxContentType :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
-rawTermMagicGetBoxContentType h m c = do
-  rawTermMagicBase "get-box-content-type" $ do
-    typeExpr <- rawType h
-    return $ \c1 c2 -> m :< RT.Magic c (RT.GetBoxContentType c1 (c2, typeExpr))
-
-rawTermMagicGetConstructorArgTypes :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
-rawTermMagicGetConstructorArgTypes h m c = do
-  rawTermMagicBase "get-constructor-arg-types" $ do
-    typeExpr <- rawType h
-    c3 <- delimiter ","
-    index <- rawTerm h
-    return $ \c1 c2 -> m :< RT.Magic c (RT.GetConstructorArgTypes c1 (c2, typeExpr) c3 (c3, index))
-
-rawTermMagicGetConsName :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
-rawTermMagicGetConsName h m c = do
-  rawTermMagicBase "get-cons-name" $ do
-    typeExpr <- rawType h
-    c3 <- delimiter ","
-    index <- rawTerm h
-    return $ \c1 c2 -> m :< RT.Magic c (RT.GetConsArgName c1 (c2, typeExpr) c3 (c3, index))
-
-rawTermMagicGetConsConstFlag :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
-rawTermMagicGetConsConstFlag h m c = do
-  rawTermMagicBase "get-cons-const-flag" $ do
-    typeExpr <- rawType h
-    c3 <- delimiter ","
-    index <- rawTerm h
-    return $ \c1 c2 -> m :< RT.Magic c (RT.GetConsConstFlag c1 (c2, typeExpr) c3 (c3, index))
+    return $ \_ c2 -> m :< RT.Magic c (RT.InspectType (c2, typeExpr))
 
 rawTermMagicShowType :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermMagicShowType h m c = do

@@ -724,26 +724,8 @@ clarifyMagic h tenv der = do
           return $
             Utility.bindLet [(funcVarName, func'), (arg1VarName, arg1'), (arg2VarName, arg2')] $
               C.Primitive (C.Magic (LM.CallType funcVar arg1Var arg2Var))
-    M.GetTypeTag {} ->
-      error "GetTypeTag should be evaluated during inline expansion"
-    M.GetDataArgs _ _ _ ->
-      error "GetDataArgs should be evaluated during inline expansion"
-    M.GetConsSize _ ->
-      error "GetConsSize should be evaluated during inline expansion"
-    M.GetWrapperContentType _ ->
-      error "GetWrapperContentType should be evaluated during inline expansion"
-    M.GetVectorContentType _ _ ->
-      error "GetVectorContentType should be evaluated during inline expansion"
-    M.GetNoemaContentType _ ->
-      error "GetNoemaContentType should be evaluated during inline expansion"
-    M.GetBoxContentType _ ->
-      error "GetBoxContentType should be evaluated during inline expansion"
-    M.GetConstructorArgTypes _ _ _ _ ->
-      error "GetConstructorArgTypes should be evaluated during inline expansion"
-    M.GetConsName _ _ _ ->
-      error "GetConsName should be evaluated during inline expansion"
-    M.GetConsConstFlag _ _ _ ->
-      error "GetConsConstFlag should be evaluated during inline expansion"
+    M.InspectType {} ->
+      error "InspectType should be evaluated during inline expansion"
     M.ShowType _ _ ->
       error "ShowType should be evaluated during inline expansion"
     M.TextCons _ _ _ ->

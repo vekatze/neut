@@ -109,26 +109,8 @@ freeVarsMagicTerm (M.WeakMagic magic) =
   case magic of
     M.LowMagic lowMagic ->
       freeVarsLowMagicTerm lowMagic
-    M.GetTypeTag {} ->
+    M.InspectType {} ->
       S.empty
-    M.GetDataArgs {} ->
-      S.empty
-    M.GetConsSize {} ->
-      S.empty
-    M.GetWrapperContentType {} ->
-      S.empty
-    M.GetVectorContentType {} ->
-      S.empty
-    M.GetNoemaContentType {} ->
-      S.empty
-    M.GetBoxContentType {} ->
-      S.empty
-    M.GetConstructorArgTypes _ _ _ index ->
-      freeVars index
-    M.GetConsName _ _ index ->
-      freeVars index
-    M.GetConsConstFlag _ _ index ->
-      freeVars index
     M.ShowType {} ->
       S.empty
     M.TextCons _ rune text ->
@@ -295,26 +277,8 @@ freeVarsMagic (M.WeakMagic magic) =
   case magic of
     M.LowMagic lowMagic ->
       freeVarsLowMagic lowMagic
-    M.GetTypeTag _ typeTagExpr e ->
-      S.union (freeVarsType typeTagExpr) (freeVarsType e)
-    M.GetDataArgs _ listExpr typeExpr ->
-      S.union (freeVarsType listExpr) (freeVarsType typeExpr)
-    M.GetConsSize typeExpr ->
-      freeVarsType typeExpr
-    M.GetWrapperContentType typeExpr ->
-      freeVarsType typeExpr
-    M.GetVectorContentType _ typeExpr ->
-      freeVarsType typeExpr
-    M.GetNoemaContentType typeExpr ->
-      freeVarsType typeExpr
-    M.GetBoxContentType typeExpr ->
-      freeVarsType typeExpr
-    M.GetConstructorArgTypes _ listExpr typeExpr index ->
-      S.unions [freeVarsType listExpr, freeVarsType typeExpr, freeVarsAll index]
-    M.GetConsName textType typeExpr index ->
-      S.unions [freeVarsType textType, freeVarsType typeExpr, freeVarsAll index]
-    M.GetConsConstFlag boolType typeExpr index ->
-      S.unions [freeVarsType boolType, freeVarsType typeExpr, freeVarsAll index]
+    M.InspectType _ typeValueExpr e ->
+      S.union (freeVarsType typeValueExpr) (freeVarsType e)
     M.ShowType textTypeExpr typeExpr ->
       S.union (freeVarsType textTypeExpr) (freeVarsType typeExpr)
     M.TextCons textTypeExpr rune text ->

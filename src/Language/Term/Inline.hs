@@ -305,42 +305,9 @@ inline' h term = do
             _ -> do
               lowMagic' <- inlineLowMagic h lowMagic
               return (m :< TM.Magic (M.LowMagic lowMagic'))
-        M.GetTypeTag mid _ typeExpr -> do
+        M.InspectType mid _ typeExpr -> do
           typeExpr' <- inlineType' h typeExpr
-          Magic.evaluateGetTypeTag h m mid typeExpr'
-        M.GetDataArgs sgl listExpr typeExpr -> do
-          listExpr' <- inlineType' h listExpr
-          typeExpr' <- inlineType' h typeExpr
-          Magic.evaluateGetDataArgs h m sgl listExpr' typeExpr'
-        M.GetConsSize typeExpr -> do
-          typeExpr' <- inlineType' h typeExpr
-          Magic.evaluateGetConsSize h m typeExpr'
-        M.GetWrapperContentType typeExpr -> do
-          typeExpr' <- inlineType' h typeExpr
-          Magic.evaluateGetWrapperContentType h m typeExpr'
-        M.GetVectorContentType sgl typeExpr -> do
-          typeExpr' <- inlineType' h typeExpr
-          Magic.evaluateGetVectorContentType h m sgl typeExpr'
-        M.GetNoemaContentType typeExpr -> do
-          typeExpr' <- inlineType' h typeExpr
-          Magic.evaluateGetNoemaContentType h m typeExpr'
-        M.GetBoxContentType typeExpr -> do
-          typeExpr' <- inlineType' h typeExpr
-          Magic.evaluateGetBoxContentType h m typeExpr'
-        M.GetConstructorArgTypes sgl _ typeExpr indexExpr -> do
-          typeExpr' <- inlineType' h typeExpr
-          indexExpr' <- inline' h indexExpr
-          Magic.evaluateGetConstructorArgTypes h m sgl typeExpr' indexExpr'
-        M.GetConsName textTypeExpr typeExpr indexExpr -> do
-          textTypeExpr' <- inlineType' h textTypeExpr
-          typeExpr' <- inlineType' h typeExpr
-          indexExpr' <- inline' h indexExpr
-          Magic.evaluateGetConsName h m textTypeExpr' typeExpr' indexExpr'
-        M.GetConsConstFlag boolTypeExpr typeExpr indexExpr -> do
-          boolTypeExpr' <- inlineType' h boolTypeExpr
-          typeExpr' <- inlineType' h typeExpr
-          indexExpr' <- inline' h indexExpr
-          Magic.evaluateGetConsConstFlag h m boolTypeExpr' typeExpr' indexExpr'
+          Magic.evaluateInspectType h m mid typeExpr' >>= inline' h
         M.ShowType textTypeExpr typeExpr -> do
           textTypeExpr' <- inlineType' h textTypeExpr
           typeExpr' <- inlineType' h typeExpr

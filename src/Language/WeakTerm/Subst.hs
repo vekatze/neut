@@ -439,44 +439,10 @@ substMagic h sub (WT.WeakMagic magic) = do
     M.LowMagic lowMagic -> do
       lowMagic' <- substLowMagic h sub lowMagic
       return $ M.LowMagic lowMagic'
-    M.GetTypeTag sgl typeTagExpr e -> do
-      typeTagExpr' <- substType h sub typeTagExpr
+    M.InspectType sgl typeValueExpr e -> do
+      typeValueExpr' <- substType h sub typeValueExpr
       e' <- substType h sub e
-      return $ M.GetTypeTag sgl typeTagExpr' e'
-    M.GetDataArgs sgl listExpr typeExpr -> do
-      listExpr' <- substType h sub listExpr
-      typeExpr' <- substType h sub typeExpr
-      return $ M.GetDataArgs sgl listExpr' typeExpr'
-    M.GetConsSize typeExpr -> do
-      typeExpr' <- substType h sub typeExpr
-      return $ M.GetConsSize typeExpr'
-    M.GetWrapperContentType typeExpr -> do
-      typeExpr' <- substType h sub typeExpr
-      return $ M.GetWrapperContentType typeExpr'
-    M.GetVectorContentType sgl typeExpr -> do
-      typeExpr' <- substType h sub typeExpr
-      return $ M.GetVectorContentType sgl typeExpr'
-    M.GetNoemaContentType typeExpr -> do
-      typeExpr' <- substType h sub typeExpr
-      return $ M.GetNoemaContentType typeExpr'
-    M.GetBoxContentType typeExpr -> do
-      typeExpr' <- substType h sub typeExpr
-      return $ M.GetBoxContentType typeExpr'
-    M.GetConstructorArgTypes sgl listExpr typeExpr index -> do
-      listExpr' <- substType h sub listExpr
-      typeExpr' <- substType h sub typeExpr
-      index' <- subst h sub index
-      return $ M.GetConstructorArgTypes sgl listExpr' typeExpr' index'
-    M.GetConsName textType typeExpr index -> do
-      textType' <- substType h sub textType
-      typeExpr' <- substType h sub typeExpr
-      index' <- subst h sub index
-      return $ M.GetConsName textType' typeExpr' index'
-    M.GetConsConstFlag boolType typeExpr index -> do
-      boolType' <- substType h sub boolType
-      typeExpr' <- substType h sub typeExpr
-      index' <- subst h sub index
-      return $ M.GetConsConstFlag boolType' typeExpr' index'
+      return $ M.InspectType sgl typeValueExpr' e'
     M.ShowType textTypeExpr typeExpr -> do
       textTypeExpr' <- substType h sub textTypeExpr
       typeExpr' <- substType h sub typeExpr

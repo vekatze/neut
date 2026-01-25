@@ -403,39 +403,10 @@ substMagic h sub magic =
   case magic of
     M.LowMagic lowMagic ->
       M.LowMagic <$> substLowMagic h sub lowMagic
-    M.GetTypeTag mid typeTagExpr e -> do
-      typeTagExpr' <- substType h sub typeTagExpr
+    M.InspectType mid typeValueExpr e -> do
+      typeValueExpr' <- substType h sub typeValueExpr
       e' <- substType h sub e
-      return $ M.GetTypeTag mid typeTagExpr' e'
-    M.GetDataArgs sgl listExpr typeExpr -> do
-      listExpr' <- substType h sub listExpr
-      typeExpr' <- substType h sub typeExpr
-      return $ M.GetDataArgs sgl listExpr' typeExpr'
-    M.GetConsSize typeExpr ->
-      M.GetConsSize <$> substType h sub typeExpr
-    M.GetWrapperContentType typeExpr ->
-      M.GetWrapperContentType <$> substType h sub typeExpr
-    M.GetVectorContentType sgl typeExpr ->
-      M.GetVectorContentType sgl <$> substType h sub typeExpr
-    M.GetNoemaContentType typeExpr ->
-      M.GetNoemaContentType <$> substType h sub typeExpr
-    M.GetBoxContentType typeExpr ->
-      M.GetBoxContentType <$> substType h sub typeExpr
-    M.GetConstructorArgTypes sgl listExpr typeExpr index -> do
-      listExpr' <- substType h sub listExpr
-      typeExpr' <- substType h sub typeExpr
-      index' <- subst h sub index
-      return $ M.GetConstructorArgTypes sgl listExpr' typeExpr' index'
-    M.GetConsName textType typeExpr index -> do
-      textType' <- substType h sub textType
-      typeExpr' <- substType h sub typeExpr
-      index' <- subst h sub index
-      return $ M.GetConsName textType' typeExpr' index'
-    M.GetConsConstFlag boolType typeExpr index -> do
-      boolType' <- substType h sub boolType
-      typeExpr' <- substType h sub typeExpr
-      index' <- subst h sub index
-      return $ M.GetConsConstFlag boolType' typeExpr' index'
+      return $ M.InspectType mid typeValueExpr' e'
     M.ShowType textTypeExpr typeExpr -> do
       textTypeExpr' <- substType h sub textTypeExpr
       typeExpr' <- substType h sub typeExpr
