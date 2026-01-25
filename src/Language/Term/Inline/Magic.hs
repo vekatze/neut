@@ -64,8 +64,8 @@ evaluateGetTypeTag h m moduleID typeExpr = do
           if isEnum && not (null consNameList)
             then returnTypeValueIntValue h m moduleID TypeValue.Enum
             else returnTypeValueIntValue h m moduleID TypeValue.Algebraic
-    _ :< TM.BoxNoema _ ->
-      returnTypeValueIntValue h m moduleID TypeValue.Noema
+    _ :< TM.BoxNoema t ->
+      returnTypeValueIntValue h m moduleID $ TypeValue.Noema t
     _ :< TM.Box _ ->
       returnTypeValueIntValue h m moduleID TypeValue.BoxT
     _ :< TM.Code _ ->
@@ -121,6 +121,9 @@ makeConsNameList h m typeTagSGL = do
       TypeTag.Wrapper -> do
         doNotCare <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "tmp"
         return (dd, [(m, doNotCare, m :< TM.Tau)], False)
+      TypeTag.Noema -> do
+        doNotCare <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "tmp"
+        return (dd, [(m, doNotCare, m :< TM.Tau)], False)
       _ ->
         return (dd, [], True)
 
@@ -130,6 +133,8 @@ isConstTypeTag tt =
     TypeTag.Vector ->
       False
     TypeTag.Wrapper ->
+      False
+    TypeTag.Noema ->
       False
     _ ->
       True
@@ -153,10 +158,12 @@ returnTypeValueIntValue h m moduleID typeValue = do
   let tag = TypeValue.toTypeTag typeValue
   let consName = DD.newByGlobalLocator typeTagSGL (BN.fromTypeTag tag)
   case typeValue of
-    TypeValue.Vector arg -> do
-      return $ m :< TM.DataIntro attr consName [] [m :< TM.TauIntro arg]
-    TypeValue.Wrapper arg -> do
-      return $ m :< TM.DataIntro attr consName [] [m :< TM.TauIntro arg]
+    TypeValue.Vector t -> do
+      return $ m :< TM.DataIntro attr consName [] [m :< TM.TauIntro t]
+    TypeValue.Wrapper t -> do
+      return $ m :< TM.DataIntro attr consName [] [m :< TM.TauIntro t]
+    TypeValue.Noema t -> do
+      return $ m :< TM.DataIntro attr consName [] [m :< TM.TauIntro t]
     _ ->
       return $ m :< TM.DataIntro attr consName [] []
 

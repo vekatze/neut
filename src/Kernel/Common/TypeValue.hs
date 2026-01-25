@@ -15,7 +15,7 @@ data TypeValue
   | Type
   | Function
   | Algebraic
-  | Noema
+  | Noema TM.Type
   | Enum
   | Int1
   | Int2
@@ -46,7 +46,7 @@ toTypeTag tv =
       TT.Function
     Algebraic ->
       TT.Algebraic
-    Noema ->
+    Noema _ ->
       TT.Noema
     Enum ->
       TT.Enum
