@@ -162,8 +162,6 @@ freeVarsMagic magic =
       freeVarsType typeExpr
     M.GetWrapperContentType typeExpr ->
       freeVarsType typeExpr
-    M.GetVectorContentType _ typeExpr ->
-      freeVarsType typeExpr
     M.GetNoemaContentType typeExpr ->
       freeVarsType typeExpr
     M.GetBoxContentType typeExpr ->

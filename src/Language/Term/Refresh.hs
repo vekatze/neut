@@ -126,9 +126,6 @@ refreshMagic h magic =
     M.GetWrapperContentType typeExpr -> do
       typeExpr' <- refreshType h typeExpr
       return $ M.GetWrapperContentType typeExpr'
-    M.GetVectorContentType sgl typeExpr -> do
-      typeExpr' <- refreshType h typeExpr
-      return $ M.GetVectorContentType sgl typeExpr'
     M.GetNoemaContentType typeExpr -> do
       typeExpr' <- refreshType h typeExpr
       return $ M.GetNoemaContentType typeExpr'

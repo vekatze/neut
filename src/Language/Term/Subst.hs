@@ -415,8 +415,6 @@ substMagic h sub magic =
       M.GetConsSize <$> substType h sub typeExpr
     M.GetWrapperContentType typeExpr ->
       M.GetWrapperContentType <$> substType h sub typeExpr
-    M.GetVectorContentType sgl typeExpr ->
-      M.GetVectorContentType sgl <$> substType h sub typeExpr
     M.GetNoemaContentType typeExpr ->
       M.GetNoemaContentType <$> substType h sub typeExpr
     M.GetBoxContentType typeExpr ->

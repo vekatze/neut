@@ -412,9 +412,6 @@ infer h term =
         M.GetWrapperContentType typeExpr -> do
           typeExpr' <- inferType h typeExpr
           return (m :< WT.Magic (M.WeakMagic $ M.GetWrapperContentType typeExpr'), m :< WT.Tau)
-        M.GetVectorContentType sgl typeExpr -> do
-          typeExpr' <- inferType h typeExpr
-          return (m :< WT.Magic (M.WeakMagic $ M.GetVectorContentType sgl typeExpr'), m :< WT.Tau)
         M.GetNoemaContentType typeExpr -> do
           typeExpr' <- inferType h typeExpr
           return (m :< WT.Magic (M.WeakMagic $ M.GetNoemaContentType typeExpr'), m :< WT.Tau)

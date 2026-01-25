@@ -3,7 +3,6 @@ module Language.Term.Inline.Magic
     evaluateGetDataArgs,
     evaluateGetConsSize,
     evaluateGetWrapperContentType,
-    evaluateGetVectorContentType,
     evaluateGetNoemaContentType,
     evaluateGetBoxContentType,
     evaluateGetConstructorArgTypes,
@@ -173,16 +172,6 @@ evaluateGetWrapperContentType h m typeExpr =
           return $ m :< TM.TauIntro t
     _ ->
       reportMacroError h m $ "get-wrapper-content-type: type expression must be a wrapper, but got: " <> toTextType (weakenType typeExpr)
-
-evaluateGetVectorContentType :: Handle -> Hint -> SGL.StrictGlobalLocator -> TM.Type -> App TM.Term
-evaluateGetVectorContentType h m vectorSgl typeExpr = do
-  let vectorDD = DD.newByGlobalLocator vectorSgl BN.vector
-  case typeExpr of
-    _ :< TM.TyApp (_ :< TM.TVarGlobal _ dd) [contentType]
-      | dd == vectorDD -> do
-          return $ m :< TM.TauIntro contentType
-    _ ->
-      reportMacroError h m "get-vector-content-type: type expression must be vector(..)"
 
 evaluateGetNoemaContentType :: Handle -> Hint -> TM.Type -> App TM.Term
 evaluateGetNoemaContentType h m typeExpr =

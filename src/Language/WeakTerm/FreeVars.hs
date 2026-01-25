@@ -117,8 +117,6 @@ freeVarsMagicTerm (M.WeakMagic magic) =
       S.empty
     M.GetWrapperContentType {} ->
       S.empty
-    M.GetVectorContentType {} ->
-      S.empty
     M.GetNoemaContentType {} ->
       S.empty
     M.GetBoxContentType {} ->
@@ -302,8 +300,6 @@ freeVarsMagic (M.WeakMagic magic) =
     M.GetConsSize typeExpr ->
       freeVarsType typeExpr
     M.GetWrapperContentType typeExpr ->
-      freeVarsType typeExpr
-    M.GetVectorContentType _ typeExpr ->
       freeVarsType typeExpr
     M.GetNoemaContentType typeExpr ->
       freeVarsType typeExpr

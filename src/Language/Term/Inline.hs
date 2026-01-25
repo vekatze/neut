@@ -318,9 +318,6 @@ inline' h term = do
         M.GetWrapperContentType typeExpr -> do
           typeExpr' <- inlineType' h typeExpr
           Magic.evaluateGetWrapperContentType h m typeExpr'
-        M.GetVectorContentType sgl typeExpr -> do
-          typeExpr' <- inlineType' h typeExpr
-          Magic.evaluateGetVectorContentType h m sgl typeExpr'
         M.GetNoemaContentType typeExpr -> do
           typeExpr' <- inlineType' h typeExpr
           Magic.evaluateGetNoemaContentType h m typeExpr'

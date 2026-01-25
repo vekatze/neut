@@ -163,8 +163,6 @@ freeVarsWithHintsMagic magic =
       freeVarsWithHintsType typeExpr
     M.GetWrapperContentType typeExpr ->
       freeVarsWithHintsType typeExpr
-    M.GetVectorContentType _ typeExpr ->
-      freeVarsWithHintsType typeExpr
     M.GetNoemaContentType typeExpr ->
       freeVarsWithHintsType typeExpr
     M.GetBoxContentType typeExpr ->

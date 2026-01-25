@@ -240,8 +240,6 @@ analyze h term = do
           analyzeType h typeExpr
         M.GetWrapperContentType typeExpr -> do
           analyzeType h typeExpr
-        M.GetVectorContentType _ typeExpr -> do
-          analyzeType h typeExpr
         M.GetNoemaContentType typeExpr -> do
           analyzeType h typeExpr
         M.GetBoxContentType typeExpr -> do
