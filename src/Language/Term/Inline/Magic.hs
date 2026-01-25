@@ -19,18 +19,21 @@ where
 import App.App (App)
 import App.Run (raiseError)
 import Control.Comonad.Cofree
+import Control.Monad
 import Control.Monad.IO.Class
 import Data.IORef (readIORef)
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NE
 import Data.Text qualified as T
 import Kernel.Common.TypeTag qualified as TypeTag
+import Kernel.Common.TypeValue qualified as TypeValue
 import Language.Common.ArgNum qualified as AN
 import Language.Common.Attr.Data qualified as AttrD
 import Language.Common.Attr.DataIntro qualified as AttrDI
 import Language.Common.Attr.VarGlobal qualified as AttrVG
 import Language.Common.BaseName qualified as BN
 import Language.Common.Binder (BinderF)
+import Language.Common.CreateSymbol qualified as Gensym
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.Discriminant qualified as D
 import Language.Common.IsConstLike (IsConstLike)
@@ -51,74 +54,106 @@ evaluateGetTypeTag :: Handle -> Hint -> MID.ModuleID -> TM.Type -> App TM.Term
 evaluateGetTypeTag h m moduleID typeExpr = do
   case typeExpr of
     _ :< TM.Tau ->
-      returnTypeTagIntValue h m moduleID TypeTag.Type
+      returnTypeValueIntValue h m moduleID TypeValue.Type
     _ :< TM.Pi {} ->
-      returnTypeTagIntValue h m moduleID TypeTag.Function
+      returnTypeValueIntValue h m moduleID TypeValue.Function
     _ :< TM.Data (AttrD.Attr {AttrD.consNameList}) _ _ -> do
       case consNameList of
         [(_, [(_, _, _)], _)] -> do
-          returnTypeTagIntValue h m moduleID TypeTag.Wrapper
+          returnTypeValueIntValue h m moduleID TypeValue.Wrapper
         _ -> do
           let isEnum = all (\(_, _, isConstLike) -> isConstLike) consNameList
           if isEnum && not (null consNameList)
-            then returnTypeTagIntValue h m moduleID TypeTag.Enum
-            else returnTypeTagIntValue h m moduleID TypeTag.Algebraic
+            then returnTypeValueIntValue h m moduleID TypeValue.Enum
+            else returnTypeValueIntValue h m moduleID TypeValue.Algebraic
     _ :< TM.BoxNoema _ ->
-      returnTypeTagIntValue h m moduleID TypeTag.Noema
+      returnTypeValueIntValue h m moduleID TypeValue.Noema
     _ :< TM.Box _ ->
-      returnTypeTagIntValue h m moduleID TypeTag.BoxT
+      returnTypeValueIntValue h m moduleID TypeValue.BoxT
     _ :< TM.Code _ ->
-      returnTypeTagIntValue h m moduleID TypeTag.Opaque
+      returnTypeValueIntValue h m moduleID TypeValue.Opaque
     _ :< TM.PrimType (PT.Int size) ->
-      returnTypeTagIntValue h m moduleID (TypeTag.fromIntSize size)
+      returnTypeValueIntValue h m moduleID (TypeValue.fromIntSize size)
     _ :< TM.PrimType (PT.Float size) ->
-      returnTypeTagIntValue h m moduleID (TypeTag.fromFloatSize size)
+      returnTypeValueIntValue h m moduleID (TypeValue.fromFloatSize size)
     _ :< TM.PrimType PT.Pointer ->
-      returnTypeTagIntValue h m moduleID TypeTag.Pointer
+      returnTypeValueIntValue h m moduleID TypeValue.Pointer
     _ :< TM.PrimType PT.Rune ->
-      returnTypeTagIntValue h m moduleID TypeTag.Rune
+      returnTypeValueIntValue h m moduleID TypeValue.Rune
     _ :< TM.Resource name _ -> do
       let binarySGL = SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.binaryLocator}
       let binaryDD = DD.newByGlobalLocator binarySGL BN.binary
       if name == binaryDD
-        then returnTypeTagIntValue h m moduleID TypeTag.Binary
-        else returnTypeTagIntValue h m moduleID TypeTag.Opaque
+        then returnTypeValueIntValue h m moduleID TypeValue.Binary
+        else returnTypeValueIntValue h m moduleID TypeValue.Opaque
     _ :< TM.TVarGlobal _ _ -> do
-      returnTypeTagIntValue h m moduleID TypeTag.Opaque
-    _ :< TM.TyApp (_ :< TM.TVarGlobal _ name) _ -> do
-      let vectorSGL = SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.vectorLocator}
-      let vectorDD = DD.newByGlobalLocator vectorSGL BN.vector
-      if name == vectorDD
-        then returnTypeTagIntValue h m moduleID TypeTag.Vector
-        else returnTypeTagIntValue h m moduleID TypeTag.Opaque
+      returnTypeValueIntValue h m moduleID TypeValue.Opaque
+    _ :< TM.TyApp (_ :< TM.TVarGlobal _ name) args
+      | name == makeVectorDD moduleID -> do
+          case args of
+            [arg] ->
+              returnTypeValueIntValue h m moduleID $ TypeValue.Vector arg
+            _ -> do
+              reportMacroError h m $
+                "get-type-tag: `vector` expects 1 argument, but got " <> T.pack (show (length args)) <> " arguments."
+    _ :< TM.TyApp (_ :< TM.TVarGlobal _ _) _ -> do
+      returnTypeValueIntValue h m moduleID TypeValue.Opaque
     _ -> do
       reportMacroError h m $
         "get-type-tag: unable to determine type tag for this type expression. Got: "
           <> toTextType (weakenType typeExpr)
 
-makeConsNameList :: SGL.StrictGlobalLocator -> [(DD.DefiniteDescription, [BinderF TM.Type], IsConstLike)]
-makeConsNameList typeTagSGL = do
-  flip map BN.typeTagList $ \tag -> (DD.newByGlobalLocator typeTagSGL tag, [], True)
+makeVectorDD :: MID.ModuleID -> DD.DefiniteDescription
+makeVectorDD moduleID = do
+  let vectorSGL = SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.vectorLocator}
+  DD.newByGlobalLocator vectorSGL BN.vector
 
-makeAttrDI :: SGL.StrictGlobalLocator -> TypeTag.TypeTag -> AttrDI.Attr DD.DefiniteDescription (BinderF TM.Type)
-makeAttrDI typeTagSGL typeTag = do
+makeConsNameList ::
+  Handle ->
+  Hint ->
+  SGL.StrictGlobalLocator ->
+  App [(DD.DefiniteDescription, [BinderF TM.Type], IsConstLike)]
+makeConsNameList h m typeTagSGL = do
+  forM TypeTag.typeTagList $ \tag -> do
+    let dd = DD.newByGlobalLocator typeTagSGL (BN.fromTypeTag tag)
+    case tag of
+      TypeTag.Vector -> do
+        doNotCare <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "tmp"
+        return (dd, [(m, doNotCare, m :< TM.Tau)], False)
+      _ ->
+        return (dd, [], True)
+
+isConstTypeTag :: TypeTag.TypeTag -> Bool
+isConstTypeTag tt =
+  case tt of
+    TypeTag.Vector ->
+      False
+    _ ->
+      True
+
+makeAttrDI ::
+  Handle ->
+  Hint ->
+  SGL.StrictGlobalLocator ->
+  TypeTag.TypeTag ->
+  App (AttrDI.Attr DD.DefiniteDescription (BinderF TM.Type))
+makeAttrDI h m typeTagSGL typeTag = do
   let dataName = DD.newByGlobalLocator typeTagSGL BN.typeTag
   let discriminant = D.MakeDiscriminant $ TypeTag.typeTagToInteger typeTag
-  let consNameList = makeConsNameList typeTagSGL
-  AttrDI.Attr {dataName, consNameList, discriminant, isConstLike = True}
+  consNameList <- makeConsNameList h m typeTagSGL
+  return $ AttrDI.Attr {dataName, consNameList, discriminant, isConstLike = isConstTypeTag typeTag}
 
-returnTypeTagIntValue :: Handle -> Hint -> MID.ModuleID -> TypeTag.TypeTag -> App TM.Term
-returnTypeTagIntValue h m' moduleID tag = do
+returnTypeValueIntValue :: Handle -> Hint -> MID.ModuleID -> TypeValue.TypeValue -> App TM.Term
+returnTypeValueIntValue h m moduleID typeValue = do
   let typeTagSGL = SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.typeTagLocator}
-  let attr = makeAttrDI typeTagSGL tag
-  let tagInt = TypeTag.typeTagToInteger tag
-  let index = fromIntegral tagInt
-  case drop index BN.typeTagList of
-    consBaseName : _ -> do
-      let consName = DD.newByGlobalLocator typeTagSGL consBaseName
-      return $ m' :< TM.DataIntro attr consName [] []
-    [] -> do
-      reportMacroError h m' $ "get-type-tag: unknown type-tag discriminant " <> T.pack (show tagInt)
+  attr <- makeAttrDI h m typeTagSGL $ TypeValue.toTypeTag typeValue
+  let tag = TypeValue.toTypeTag typeValue
+  let consName = DD.newByGlobalLocator typeTagSGL (BN.fromTypeTag tag)
+  case typeValue of
+    TypeValue.Vector arg -> do
+      return $ m :< TM.DataIntro attr consName [] [m :< TM.TauIntro arg]
+    _ ->
+      return $ m :< TM.DataIntro attr consName [] []
 
 evaluateGetConsSize :: Handle -> Hint -> TM.Type -> App TM.Term
 evaluateGetConsSize h m typeExpr = do

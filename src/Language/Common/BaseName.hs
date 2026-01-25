@@ -40,7 +40,6 @@ module Language.Common.BaseName
     nil,
     consName,
     typeTag,
-    typeTagList,
     binary,
     vector,
     left,
@@ -54,6 +53,7 @@ module Language.Common.BaseName
     boolType,
     trueConstructor,
     falseConstructor,
+    fromTypeTag,
   )
 where
 
@@ -64,6 +64,7 @@ import Data.Hashable
 import Data.Set qualified as S
 import Data.Text qualified as T
 import GHC.Generics
+import Kernel.Common.TypeTag qualified as TT
 import Language.Common.Const
 import Language.Common.Ident (Ident)
 import Language.Common.Ident.Reify (toText)
@@ -300,32 +301,55 @@ falseConstructor :: BaseName
 falseConstructor =
   MakeBaseName "False"
 
-typeTagList :: [BaseName]
-typeTagList =
-  [ MakeBaseName "Opaque",
-    MakeBaseName "Type",
-    MakeBaseName "Function",
-    MakeBaseName "Algebraic",
-    MakeBaseName "Noema",
-    MakeBaseName "Enum",
-    MakeBaseName "Int1",
-    MakeBaseName "Int2",
-    MakeBaseName "Int4",
-    MakeBaseName "Int8",
-    MakeBaseName "Int16",
-    MakeBaseName "Int32",
-    MakeBaseName "Int64",
-    MakeBaseName "Float16",
-    MakeBaseName "Float32",
-    MakeBaseName "Float64",
-    MakeBaseName "Pointer",
-    MakeBaseName "Null",
-    MakeBaseName "Rune",
-    MakeBaseName "Binary",
-    MakeBaseName "Vector",
-    MakeBaseName "Wrapper",
-    MakeBaseName "Own"
-  ]
+fromTypeTag :: TT.TypeTag -> BaseName
+fromTypeTag tt =
+  case tt of
+    TT.Opaque ->
+      MakeBaseName "Opaque"
+    TT.Type ->
+      MakeBaseName "Type"
+    TT.Function ->
+      MakeBaseName "Function"
+    TT.Algebraic ->
+      MakeBaseName "Algebraic"
+    TT.Noema ->
+      MakeBaseName "Noema"
+    TT.Enum ->
+      MakeBaseName "Enum"
+    TT.Int1 ->
+      MakeBaseName "Int1"
+    TT.Int2 ->
+      MakeBaseName "Int2"
+    TT.Int4 ->
+      MakeBaseName "Int4"
+    TT.Int8 ->
+      MakeBaseName "Int8"
+    TT.Int16 ->
+      MakeBaseName "Int16"
+    TT.Int32 ->
+      MakeBaseName "Int32"
+    TT.Int64 ->
+      MakeBaseName "Int64"
+    TT.Float16 ->
+      MakeBaseName "Float16"
+    TT.Float32 ->
+      MakeBaseName "Float32"
+    TT.Float64 ->
+      MakeBaseName "Float64"
+    TT.Pointer ->
+      MakeBaseName "Pointer"
+    TT.Null ->
+      MakeBaseName "Null"
+    TT.Rune ->
+      MakeBaseName "Rune"
+    TT.Binary ->
+      MakeBaseName "Binary"
+    TT.Vector ->
+      MakeBaseName "Vector"
+    TT.Wrapper ->
+      MakeBaseName "Wrapper"
+    TT.BoxT ->
+      MakeBaseName "Box-T"
 
 {-# INLINE fromText #-}
 fromText :: T.Text -> BaseName
