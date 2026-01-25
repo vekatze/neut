@@ -595,11 +595,6 @@ rawTermMagic h m c = do
       rawTermMagicGlobal h m c,
       rawTermMagicCallType h m c,
       rawTermMagicGetTypeTag h m c,
-      rawTermMagicGetDataArgs h m c,
-      rawTermMagicGetConsSize h m c,
-      rawTermMagicGetConstructorArgTypes h m c,
-      rawTermMagicGetConsName h m c,
-      rawTermMagicGetConsConstFlag h m c,
       rawTermMagicShowType h m c,
       rawTermMagicTextCons h m c,
       rawTermMagicTextUncons h m c,
@@ -704,42 +699,6 @@ rawTermMagicGetTypeTag h m c = do
   rawTermMagicBase "get-type-tag" $ do
     typeExpr <- rawType h
     return $ \_ c2 -> m :< RT.Magic c (RT.GetTypeTag (c2, typeExpr))
-
-rawTermMagicGetDataArgs :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
-rawTermMagicGetDataArgs h m c = do
-  rawTermMagicBase "get-data-args" $ do
-    typeExpr <- rawType h
-    return $ \c1 c2 -> m :< RT.Magic c (RT.GetDataArgs c1 (c2, typeExpr))
-
-rawTermMagicGetConsSize :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
-rawTermMagicGetConsSize h m c = do
-  rawTermMagicBase "get-cons-size" $ do
-    typeExpr <- rawType h
-    return $ \c1 c2 -> m :< RT.Magic c (RT.GetConsSize c1 (c2, typeExpr))
-
-rawTermMagicGetConstructorArgTypes :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
-rawTermMagicGetConstructorArgTypes h m c = do
-  rawTermMagicBase "get-constructor-arg-types" $ do
-    typeExpr <- rawType h
-    c3 <- delimiter ","
-    index <- rawTerm h
-    return $ \c1 c2 -> m :< RT.Magic c (RT.GetConstructorArgTypes c1 (c2, typeExpr) c3 (c3, index))
-
-rawTermMagicGetConsName :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
-rawTermMagicGetConsName h m c = do
-  rawTermMagicBase "get-cons-name" $ do
-    typeExpr <- rawType h
-    c3 <- delimiter ","
-    index <- rawTerm h
-    return $ \c1 c2 -> m :< RT.Magic c (RT.GetConsArgName c1 (c2, typeExpr) c3 (c3, index))
-
-rawTermMagicGetConsConstFlag :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
-rawTermMagicGetConsConstFlag h m c = do
-  rawTermMagicBase "get-cons-const-flag" $ do
-    typeExpr <- rawType h
-    c3 <- delimiter ","
-    index <- rawTerm h
-    return $ \c1 c2 -> m :< RT.Magic c (RT.GetConsConstFlag c1 (c2, typeExpr) c3 (c3, index))
 
 rawTermMagicShowType :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermMagicShowType h m c = do

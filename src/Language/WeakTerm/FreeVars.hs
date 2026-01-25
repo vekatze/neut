@@ -111,16 +111,6 @@ freeVarsMagicTerm (M.WeakMagic magic) =
       freeVarsLowMagicTerm lowMagic
     M.GetTypeTag {} ->
       S.empty
-    M.GetDataArgs {} ->
-      S.empty
-    M.GetConsSize {} ->
-      S.empty
-    M.GetConstructorArgTypes _ _ _ index ->
-      freeVars index
-    M.GetConsName _ _ index ->
-      freeVars index
-    M.GetConsConstFlag _ _ index ->
-      freeVars index
     M.ShowType {} ->
       S.empty
     M.TextCons _ rune text ->
@@ -289,16 +279,6 @@ freeVarsMagic (M.WeakMagic magic) =
       freeVarsLowMagic lowMagic
     M.GetTypeTag _ typeTagExpr e ->
       S.union (freeVarsType typeTagExpr) (freeVarsType e)
-    M.GetDataArgs _ listExpr typeExpr ->
-      S.union (freeVarsType listExpr) (freeVarsType typeExpr)
-    M.GetConsSize typeExpr ->
-      freeVarsType typeExpr
-    M.GetConstructorArgTypes _ listExpr typeExpr index ->
-      S.unions [freeVarsType listExpr, freeVarsType typeExpr, freeVarsAll index]
-    M.GetConsName textType typeExpr index ->
-      S.unions [freeVarsType textType, freeVarsType typeExpr, freeVarsAll index]
-    M.GetConsConstFlag boolType typeExpr index ->
-      S.unions [freeVarsType boolType, freeVarsType typeExpr, freeVarsAll index]
     M.ShowType textTypeExpr typeExpr ->
       S.union (freeVarsType textTypeExpr) (freeVarsType typeExpr)
     M.TextCons textTypeExpr rune text ->

@@ -407,27 +407,6 @@ substMagic h sub magic =
       typeTagExpr' <- substType h sub typeTagExpr
       e' <- substType h sub e
       return $ M.GetTypeTag mid typeTagExpr' e'
-    M.GetDataArgs sgl listExpr typeExpr -> do
-      listExpr' <- substType h sub listExpr
-      typeExpr' <- substType h sub typeExpr
-      return $ M.GetDataArgs sgl listExpr' typeExpr'
-    M.GetConsSize typeExpr ->
-      M.GetConsSize <$> substType h sub typeExpr
-    M.GetConstructorArgTypes sgl listExpr typeExpr index -> do
-      listExpr' <- substType h sub listExpr
-      typeExpr' <- substType h sub typeExpr
-      index' <- subst h sub index
-      return $ M.GetConstructorArgTypes sgl listExpr' typeExpr' index'
-    M.GetConsName textType typeExpr index -> do
-      textType' <- substType h sub textType
-      typeExpr' <- substType h sub typeExpr
-      index' <- subst h sub index
-      return $ M.GetConsName textType' typeExpr' index'
-    M.GetConsConstFlag boolType typeExpr index -> do
-      boolType' <- substType h sub boolType
-      typeExpr' <- substType h sub typeExpr
-      index' <- subst h sub index
-      return $ M.GetConsConstFlag boolType' typeExpr' index'
     M.ShowType textTypeExpr typeExpr -> do
       textTypeExpr' <- substType h sub textTypeExpr
       typeExpr' <- substType h sub typeExpr

@@ -318,49 +318,6 @@ toDoc term =
             [ attachComment c $ D.text "magic get-type-tag",
               SE.decode $ SE.fromListWithComment (Just SE.Paren) SE.Comma [(c1, (typeToDoc e, c2))]
             ]
-        GetDataArgs c1 (c2, (typeExpr, c3)) -> do
-          D.join
-            [ attachComment (c ++ c1) $ D.text "magic get-data-args",
-              SE.decode $ SE.fromListWithComment (Just SE.Paren) SE.Comma [(c2, (typeToDoc typeExpr, c3))]
-            ]
-        GetConsSize c1 (c2, (typeExpr, c3)) -> do
-          D.join
-            [ attachComment (c ++ c1) $ D.text "magic get-cons-size",
-              SE.decode $ SE.fromListWithComment (Just SE.Paren) SE.Comma [(c2, (typeToDoc typeExpr, c3))]
-            ]
-        GetConstructorArgTypes c1 (c2, (typeExpr, c3)) _c4 (c5, (index, c6)) -> do
-          D.join
-            [ attachComment (c ++ c1) $ D.text "magic get-constructor-arg-types",
-              SE.decode $
-                SE.fromListWithComment
-                  (Just SE.Paren)
-                  SE.Comma
-                  [ (c2, (typeToDoc typeExpr, c3)),
-                    (c5, (toDoc index, c6))
-                  ]
-            ]
-        GetConsArgName c1 (c2, (typeExpr, c3)) _c4 (c5, (index, c6)) -> do
-          D.join
-            [ attachComment (c ++ c1) $ D.text "magic get-cons-name",
-              SE.decode $
-                SE.fromListWithComment
-                  (Just SE.Paren)
-                  SE.Comma
-                  [ (c2, (typeToDoc typeExpr, c3)),
-                    (c5, (toDoc index, c6))
-                  ]
-            ]
-        GetConsConstFlag c1 (c2, (typeExpr, c3)) _c4 (c5, (index, c6)) -> do
-          D.join
-            [ attachComment (c ++ c1) $ D.text "magic get-cons-const-flag",
-              SE.decode $
-                SE.fromListWithComment
-                  (Just SE.Paren)
-                  SE.Comma
-                  [ (c2, (typeToDoc typeExpr, c3)),
-                    (c5, (toDoc index, c6))
-                  ]
-            ]
         ShowType c1 (c2, (typeExpr, c3)) -> do
           D.join
             [ attachComment (c ++ c1) $ D.text "magic show-type",

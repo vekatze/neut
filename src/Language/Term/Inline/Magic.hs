@@ -1,10 +1,5 @@
 module Language.Term.Inline.Magic
   ( evaluateGetTypeTag,
-    evaluateGetDataArgs,
-    evaluateGetConsSize,
-    evaluateGetConstructorArgTypes,
-    evaluateGetConsName,
-    evaluateGetConsConstFlag,
     evaluateShowType,
     evaluateTextCons,
     evaluateTextUncons,
@@ -35,7 +30,6 @@ import Language.Common.Discriminant qualified as D
 import Language.Common.Ident.Reify qualified as Ident
 import Language.Common.IsConstLike (IsConstLike)
 import Language.Common.ModuleID qualified as MID
-import Language.Common.PrimNumSize qualified as PNS
 import Language.Common.PrimType qualified as PT
 import Language.Common.Rune qualified as Rune
 import Language.Common.SourceLocator qualified as SL
@@ -210,103 +204,6 @@ returnTypeValueIntValue h m moduleID typeValue = do
       return $ m :< TM.DataIntro attr consName [] [m :< TM.TauIntro t]
     _ ->
       return $ m :< TM.DataIntro attr consName [] []
-
-evaluateGetConsSize :: Handle -> Hint -> TM.Type -> App TM.Term
-evaluateGetConsSize h m typeExpr = do
-  case typeExpr of
-    _ :< TM.Data (AttrD.Attr {AttrD.consNameList}) _ _ -> do
-      let consCount = length consNameList
-      let intType = m :< TM.PrimType (PT.Int PNS.IntSize64)
-      return $ m :< TM.Prim (PV.Int intType PNS.IntSize64 (fromIntegral consCount))
-    _ ->
-      reportMacroError h m "get-cons-size: type expression must be a data type"
-
-evaluateGetDataArgs :: Handle -> Hint -> SGL.StrictGlobalLocator -> TM.Type -> TM.Type -> App TM.Term
-evaluateGetDataArgs h m sgl _listExpr typeExpr = do
-  case typeExpr of
-    _ :< TM.Data _ _ dataArgs -> do
-      constructListTerm h m sgl dataArgs
-    _ ->
-      reportMacroError h m "get-data-args: type expression must be a data type"
-
-evaluateGetConstructorArgTypes :: Handle -> Hint -> SGL.StrictGlobalLocator -> TM.Type -> TM.Term -> App TM.Term
-evaluateGetConstructorArgTypes h m sgl typeExpr indexExpr = do
-  case (typeExpr, indexExpr) of
-    (_ :< TM.Data (AttrD.Attr {AttrD.consNameList}) _ _, _ :< TM.Prim (PV.Int _ _ indexInt)) -> do
-      let index = fromIntegral indexInt
-      if index < 0 || index >= length consNameList
-        then
-          reportMacroError h m $
-            "get-constructor-arg-types: index "
-              <> T.pack (show index)
-              <> " is out of bounds (valid range: 0-"
-              <> T.pack (show (length consNameList - 1))
-              <> ")"
-        else do
-          let (_, binders, _) = consNameList !! index
-          let types = map (\(_, _, t) -> t) binders
-          constructListTerm h m sgl types
-    (_ :< TM.Data {}, _) ->
-      reportMacroError h m "get-constructor-arg-types: index must be an integer literal, but got a different term"
-    _ ->
-      reportMacroError h m "get-constructor-arg-types: type expression must be a data type"
-
-evaluateGetConsName :: Handle -> Hint -> TM.Type -> TM.Type -> TM.Term -> App TM.Term
-evaluateGetConsName h m textTypeExpr typeExpr indexExpr = do
-  case (typeExpr, indexExpr) of
-    (_ :< TM.Data (AttrD.Attr {AttrD.consNameList}) _ _, _ :< TM.Prim (PV.Int _ _ indexInt)) -> do
-      let index = fromIntegral indexInt
-      if index < 0 || index >= length consNameList
-        then
-          reportMacroError h m $
-            "get-cons-name: index "
-              <> T.pack (show index)
-              <> " is out of bounds (valid range: 0-"
-              <> T.pack (show (length consNameList - 1))
-              <> ")"
-        else do
-          let (consDD, _, _) = consNameList !! index
-          let consName = DD.localLocator consDD
-          return $ m :< TM.Prim (PV.StaticText textTypeExpr consName)
-    (_ :< TM.Data {}, _) ->
-      reportMacroError h m "get-cons-name: index must be an integer literal, but got a different term"
-    _ ->
-      reportMacroError h m "get-cons-name: type expression must be a data type"
-
-evaluateGetConsConstFlag :: Handle -> Hint -> TM.Type -> TM.Type -> TM.Term -> App TM.Term
-evaluateGetConsConstFlag h m boolTypeExpr typeExpr indexExpr = do
-  case (boolTypeExpr, typeExpr, indexExpr) of
-    (_ :< TM.Data _ boolDD _, _ :< TM.Data (AttrD.Attr {AttrD.consNameList}) _ _, _ :< TM.Prim (PV.Int _ _ indexInt)) -> do
-      let index = fromIntegral indexInt
-      if index < 0 || index >= length consNameList
-        then
-          reportMacroError h m $
-            "get-cons-const-flag: index "
-              <> T.pack (show index)
-              <> " is out of bounds (valid range: 0-"
-              <> T.pack (show (length consNameList - 1))
-              <> ")"
-        else do
-          let (moduleID, _) = DD.unconsDD boolDD
-          let boolSGL = SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.boolLocator}
-          let boolTypeDD = DD.newByGlobalLocator boolSGL BN.boolType
-          let trueDD = DD.newByGlobalLocator boolSGL BN.trueConstructor
-          let falseDD = DD.newByGlobalLocator boolSGL BN.falseConstructor
-          let (_, _, isConstLike) = consNameList !! index
-          let (consDD, discriminant) =
-                if isConstLike
-                  then (trueDD, D.increment D.zero)
-                  else (falseDD, D.zero)
-          let attr = AttrDI.Attr {dataName = boolTypeDD, consNameList, discriminant, isConstLike = True}
-          return $ m :< TM.DataIntro attr consDD [] []
-    (_, _ :< TM.Data {}, _ :< TM.Prim {}) ->
-      reportMacroError h m "get-cons-const-flag: the first argument must be an ADT"
-    (_ :< TM.Data {}, _, _ :< TM.Prim {}) ->
-      reportMacroError h m "get-cons-const-flag: the second argument must be an ADT"
-    (_ :< TM.Data {}, _ :< TM.Data {}, _) ->
-      reportMacroError h m "get-cons-const-flag: index must be an integer literal, but got a different term"
-    _ ->
-      reportMacroError h m "get-cons-const-flag: got invalid arguments"
 
 constructListTerm :: Handle -> Hint -> SGL.StrictGlobalLocator -> [TM.Type] -> App TM.Term
 constructListTerm h m listSgl types = do

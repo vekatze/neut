@@ -157,16 +157,6 @@ freeVarsWithHintsMagic magic =
       freeVarsWithHintsLowMagic lowMagic
     M.GetTypeTag _ typeTagExpr e ->
       S.union (freeVarsWithHintsType typeTagExpr) (freeVarsWithHintsType e)
-    M.GetDataArgs _ listExpr typeExpr ->
-      S.union (freeVarsWithHintsType listExpr) (freeVarsWithHintsType typeExpr)
-    M.GetConsSize typeExpr ->
-      freeVarsWithHintsType typeExpr
-    M.GetConstructorArgTypes _ listExpr typeExpr index ->
-      S.unions [freeVarsWithHintsType listExpr, freeVarsWithHintsType typeExpr, freeVarsWithHints index]
-    M.GetConsName textType typeExpr index ->
-      S.unions [freeVarsWithHintsType textType, freeVarsWithHintsType typeExpr, freeVarsWithHints index]
-    M.GetConsConstFlag boolType typeExpr index ->
-      S.unions [freeVarsWithHintsType boolType, freeVarsWithHintsType typeExpr, freeVarsWithHints index]
     M.ShowType textTypeExpr typeExpr ->
       S.union (freeVarsWithHintsType textTypeExpr) (freeVarsWithHintsType typeExpr)
     M.TextCons textTypeExpr rune text ->

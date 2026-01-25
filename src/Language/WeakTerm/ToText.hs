@@ -357,39 +357,6 @@ showMagic (M.WeakMagic magic) =
       showLowMagic lowMagic
     M.GetTypeTag _ typeTagExpr e ->
       "magic get-type-tag" <> inParen (toTextType typeTagExpr <> ", " <> toTextType e)
-    M.GetDataArgs sgl listExpr typeExpr ->
-      "magic get-data-args" <> inParen (T.pack (show sgl) <> ", " <> toTextType listExpr <> ", " <> toTextType typeExpr)
-    M.GetConsSize typeExpr ->
-      "magic get-cons-size" <> inParen (toTextType typeExpr)
-    M.GetConstructorArgTypes sgl listExpr typeExpr index ->
-      "magic get-constructor-arg-types"
-        <> inParen
-          ( T.pack (show sgl)
-              <> ", "
-              <> toTextType listExpr
-              <> ", "
-              <> toTextType typeExpr
-              <> ", "
-              <> toText index
-          )
-    M.GetConsName textType typeExpr index ->
-      "magic get-cons-name"
-        <> inParen
-          ( toTextType textType
-              <> ", "
-              <> toTextType typeExpr
-              <> ", "
-              <> toText index
-          )
-    M.GetConsConstFlag boolType typeExpr index ->
-      "magic get-cons-const-flag"
-        <> inParen
-          ( toTextType boolType
-              <> ", "
-              <> toTextType typeExpr
-              <> ", "
-              <> toText index
-          )
     M.ShowType textTypeExpr typeExpr ->
       "magic show-type" <> inParen (toTextType textTypeExpr <> ", " <> toTextType typeExpr)
     M.TextCons textTypeExpr rune text ->

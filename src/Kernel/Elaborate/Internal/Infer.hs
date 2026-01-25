@@ -400,37 +400,6 @@ infer h term =
           typeTagExpr' <- inferType h typeTagExpr
           typeExpr' <- inferType h typeExpr
           return (m :< WT.Magic (M.WeakMagic $ M.GetTypeTag mid typeTagExpr' typeExpr'), typeTagExpr')
-        M.GetDataArgs sgl listExpr typeExpr -> do
-          (listExpr', _) <- inferTypeWithKind h listExpr
-          typeExpr' <- inferType h typeExpr
-          listType <- inferType h $ m :< WT.TyApp listExpr' [m :< WT.Tau]
-          return (m :< WT.Magic (M.WeakMagic $ M.GetDataArgs sgl listExpr' typeExpr'), listType)
-        M.GetConsSize typeExpr -> do
-          typeExpr' <- inferType h typeExpr
-          intType <- getIntType (platformHandle h) m
-          return (m :< WT.Magic (M.WeakMagic $ M.GetConsSize typeExpr'), intType)
-        M.GetConstructorArgTypes sgl listExpr typeExpr index -> do
-          (listExpr', _) <- inferTypeWithKind h listExpr
-          typeExpr' <- inferType h typeExpr
-          (index', indexType) <- infer h index
-          intType <- getIntType (platformHandle h) m
-          liftIO $ Constraint.insert (constraintHandle h) intType indexType
-          listType <- inferType h $ m :< WT.TyApp listExpr' [m :< WT.Tau]
-          return (m :< WT.Magic (M.WeakMagic $ M.GetConstructorArgTypes sgl listExpr' typeExpr' index'), listType)
-        M.GetConsName textType typeExpr index -> do
-          textType' <- inferType h textType
-          typeExpr' <- inferType h typeExpr
-          (index', indexType) <- infer h index
-          intType <- getIntType (platformHandle h) m
-          liftIO $ Constraint.insert (constraintHandle h) intType indexType
-          return (m :< WT.Magic (M.WeakMagic $ M.GetConsName textType' typeExpr' index'), m :< WT.BoxNoema textType')
-        M.GetConsConstFlag boolType typeExpr index -> do
-          boolType' <- inferType h boolType
-          typeExpr' <- inferType h typeExpr
-          (index', indexType) <- infer h index
-          intType <- getIntType (platformHandle h) m
-          liftIO $ Constraint.insert (constraintHandle h) intType indexType
-          return (m :< WT.Magic (M.WeakMagic $ M.GetConsConstFlag boolType' typeExpr' index'), boolType')
         M.ShowType textTypeExpr typeExpr -> do
           textTypeExpr' <- inferType h textTypeExpr
           typeExpr' <- inferType h typeExpr

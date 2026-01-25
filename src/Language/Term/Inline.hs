@@ -308,27 +308,6 @@ inline' h term = do
         M.GetTypeTag mid _ typeExpr -> do
           typeExpr' <- inlineType' h typeExpr
           Magic.evaluateGetTypeTag h m mid typeExpr' >>= inline' h
-        M.GetDataArgs sgl listExpr typeExpr -> do
-          listExpr' <- inlineType' h listExpr
-          typeExpr' <- inlineType' h typeExpr
-          Magic.evaluateGetDataArgs h m sgl listExpr' typeExpr'
-        M.GetConsSize typeExpr -> do
-          typeExpr' <- inlineType' h typeExpr
-          Magic.evaluateGetConsSize h m typeExpr'
-        M.GetConstructorArgTypes sgl _ typeExpr indexExpr -> do
-          typeExpr' <- inlineType' h typeExpr
-          indexExpr' <- inline' h indexExpr
-          Magic.evaluateGetConstructorArgTypes h m sgl typeExpr' indexExpr'
-        M.GetConsName textTypeExpr typeExpr indexExpr -> do
-          textTypeExpr' <- inlineType' h textTypeExpr
-          typeExpr' <- inlineType' h typeExpr
-          indexExpr' <- inline' h indexExpr
-          Magic.evaluateGetConsName h m textTypeExpr' typeExpr' indexExpr'
-        M.GetConsConstFlag boolTypeExpr typeExpr indexExpr -> do
-          boolTypeExpr' <- inlineType' h boolTypeExpr
-          typeExpr' <- inlineType' h typeExpr
-          indexExpr' <- inline' h indexExpr
-          Magic.evaluateGetConsConstFlag h m boolTypeExpr' typeExpr' indexExpr'
         M.ShowType textTypeExpr typeExpr -> do
           textTypeExpr' <- inlineType' h textTypeExpr
           typeExpr' <- inlineType' h typeExpr

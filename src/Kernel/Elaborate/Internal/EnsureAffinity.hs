@@ -232,27 +232,6 @@ analyze h term = do
           cs1 <- analyzeType h typeTagExpr
           cs2 <- analyzeType h typeExpr
           return $ cs1 ++ cs2
-        M.GetDataArgs _ listExpr typeExpr -> do
-          cs1 <- analyzeType h listExpr
-          cs2 <- analyzeType h typeExpr
-          return $ cs1 ++ cs2
-        M.GetConsSize typeExpr -> do
-          analyzeType h typeExpr
-        M.GetConstructorArgTypes _ listExpr typeExpr index -> do
-          cs0 <- analyzeType h listExpr
-          cs1 <- analyzeType h typeExpr
-          cs2 <- analyze h index
-          return $ cs0 ++ cs1 ++ cs2
-        M.GetConsName textType typeExpr index -> do
-          cs0 <- analyzeType h textType
-          cs1 <- analyzeType h typeExpr
-          cs2 <- analyze h index
-          return $ cs0 ++ cs1 ++ cs2
-        M.GetConsConstFlag boolType typeExpr index -> do
-          cs0 <- analyzeType h boolType
-          cs1 <- analyzeType h typeExpr
-          cs2 <- analyze h index
-          return $ cs0 ++ cs1 ++ cs2
         M.ShowType textTypeExpr typeExpr -> do
           cs1 <- analyzeType h textTypeExpr
           cs2 <- analyzeType h typeExpr
