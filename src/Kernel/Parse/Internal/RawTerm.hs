@@ -145,7 +145,7 @@ rawTerm' h m headSymbol c = do
   case headSymbol of
     "define" -> do
       rawTermDefine h O.Opaque m c
-    "macro" -> do
+    "inline" -> do
       rawTermDefine h O.Clear m c
     "introspect" -> do
       rawTermIntrospect h m c
