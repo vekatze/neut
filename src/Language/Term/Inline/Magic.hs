@@ -2,7 +2,6 @@ module Language.Term.Inline.Magic
   ( evaluateGetTypeTag,
     evaluateGetDataArgs,
     evaluateGetConsSize,
-    evaluateGetBoxContentType,
     evaluateGetConstructorArgTypes,
     evaluateGetConsName,
     evaluateGetConsConstFlag,
@@ -182,14 +181,6 @@ evaluateGetConsSize h m typeExpr = do
       return $ m :< TM.Prim (PV.Int intType PNS.IntSize64 (fromIntegral consCount))
     _ ->
       reportMacroError h m "get-cons-size: type expression must be a data type"
-
-evaluateGetBoxContentType :: Handle -> Hint -> TM.Type -> App TM.Term
-evaluateGetBoxContentType h m typeExpr =
-  case typeExpr of
-    _ :< TM.Box contentType -> do
-      return $ m :< TM.TauIntro contentType
-    _ ->
-      reportMacroError h m "get-box-content-type: type expression must be meta a"
 
 evaluateGetDataArgs :: Handle -> Hint -> SGL.StrictGlobalLocator -> TM.Type -> TM.Type -> App TM.Term
 evaluateGetDataArgs h m sgl _listExpr typeExpr = do

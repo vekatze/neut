@@ -176,8 +176,6 @@ weakenMagic m magic = do
       M.WeakMagic $ M.GetDataArgs sgl (weakenType listExpr) (weakenType typeExpr)
     M.GetConsSize typeExpr ->
       M.WeakMagic $ M.GetConsSize (weakenType typeExpr)
-    M.GetBoxContentType typeExpr ->
-      M.WeakMagic $ M.GetBoxContentType (weakenType typeExpr)
     M.GetConstructorArgTypes sgl listExpr typeExpr index ->
       M.WeakMagic $ M.GetConstructorArgTypes sgl (weakenType listExpr) (weakenType typeExpr) (weaken index)
     M.GetConsName textType typeExpr index ->
