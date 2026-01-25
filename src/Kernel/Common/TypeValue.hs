@@ -1,20 +1,32 @@
 module Kernel.Common.TypeValue
   ( TypeValue (..),
+    Constructor,
     toTypeTag,
     fromIntSize,
     fromFloatSize,
   )
 where
 
+import Data.Text qualified as T
 import Kernel.Common.TypeTag qualified as TT
+import Language.Common.IsConstLike (IsConstLike)
 import Language.Common.PrimNumSize
 import Language.Term.Term qualified as TM
+
+type ConstructorName =
+  T.Text
+
+type ParamName =
+  T.Text
+
+type Constructor =
+  (ConstructorName, IsConstLike, [(ParamName, TM.Type)])
 
 data TypeValue
   = Opaque
   | Type
   | Function
-  | Algebraic
+  | Algebraic [TM.Type] [Constructor]
   | Noema TM.Type
   | Enum
   | Int1
@@ -44,7 +56,7 @@ toTypeTag tv =
       TT.Type
     Function ->
       TT.Function
-    Algebraic ->
+    Algebraic {} ->
       TT.Algebraic
     Noema _ ->
       TT.Noema

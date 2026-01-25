@@ -12,6 +12,7 @@ module Language.Common.SourceLocator
     pairLocator,
     unitLocator,
     textLocator,
+    listLocator,
     boolLocator,
   )
 where
@@ -72,6 +73,10 @@ binaryLocator =
 vectorLocator :: SourceLocator
 vectorLocator =
   SourceLocator $(mkRelFile "vector")
+
+listLocator :: SourceLocator
+listLocator =
+  SourceLocator $(mkRelFile "list")
 
 eitherLocator :: SourceLocator
 eitherLocator =
