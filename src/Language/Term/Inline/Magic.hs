@@ -48,18 +48,20 @@ evaluateInspectType h m moduleID typeExpr = do
       returnTypeValueIntValue h m moduleID TypeValue.Type
     _ :< TM.Pi {} ->
       returnTypeValueIntValue h m moduleID TypeValue.Function
-    _ :< TM.Data (AttrD.Attr {AttrD.consNameList}) _ dataArgs -> do
+    _ :< TM.Data (AttrD.Attr {AttrD.consNameList}) dataName dataArgs -> do
       case consNameList of
         [(_, [(_, _, arg)], _)] -> do
           returnTypeValueIntValue h m moduleID $ TypeValue.Wrapper arg
         _ -> do
           let consInfoList = map consToTypeValue consNameList
-          let isEnum = all (\(_, _, isConstLike) -> isConstLike) consNameList
+          let isEnum = all (\(_, binders, isConstLike) -> isConstLike && null binders) consNameList
           if isEnum && not (null consNameList)
             then do
               let enumConsNames = map (\(dd, _, _) -> DD.localLocator dd) consNameList
               returnTypeValueIntValue h m moduleID $ TypeValue.Enum enumConsNames
-            else returnTypeValueIntValue h m moduleID $ TypeValue.Algebraic dataArgs consInfoList
+            else do
+              let dataNameText = DD.localLocator dataName
+              returnTypeValueIntValue h m moduleID $ TypeValue.Algebraic dataNameText dataArgs consInfoList
     _ :< TM.BoxNoema t ->
       returnTypeValueIntValue h m moduleID $ TypeValue.Noema t
     _ :< TM.Box t ->
@@ -116,11 +118,14 @@ makeConsNameList h m typeValueSGL = do
         doNotCare <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "tmp"
         return (dd, [(m, doNotCare, m :< TM.Tau)], False)
       TypeTag.Algebraic -> do
+        doNotCare0 <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "tmp"
         doNotCare1 <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "tmp"
         doNotCare2 <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "tmp"
+        let textType = makeTextTypeExpr m moduleID
+        let dataNameType = m :< TM.BoxNoema textType
         let dataArgsType = makeListTypeExpr m moduleID (m :< TM.Tau)
         let consInfoListType = makeListTypeExpr m moduleID (makeConstructorTypeExpr m moduleID)
-        return (dd, [(m, doNotCare1, dataArgsType), (m, doNotCare2, consInfoListType)], False)
+        return (dd, [(m, doNotCare0, dataNameType), (m, doNotCare1, dataArgsType), (m, doNotCare2, consInfoListType)], False)
       TypeTag.Wrapper -> do
         doNotCare <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "tmp"
         return (dd, [(m, doNotCare, m :< TM.Tau)], False)
@@ -182,11 +187,13 @@ returnTypeValueIntValue h m moduleID typeValue = do
   let tag = TypeValue.toTypeTag typeValue
   let consName = DD.newByGlobalLocator typeValueSGL (BN.fromTypeTag tag)
   case typeValue of
-    TypeValue.Algebraic dataArgs consInfoList -> do
+    TypeValue.Algebraic dataName dataArgs consInfoList -> do
       let listSgl = makeListSGL moduleID
+      let textType = makeTextTypeExpr m moduleID
+      let dataNameTerm = m :< TM.Prim (PV.StaticText textType dataName)
       dataArgsTerm <- constructListTerm h m listSgl dataArgs
       consInfoTerm <- constructConstructorInfoListTerm h m moduleID consInfoList
-      return $ m :< TM.DataIntro attr consName [] [dataArgsTerm, consInfoTerm]
+      return $ m :< TM.DataIntro attr consName [] [dataNameTerm, dataArgsTerm, consInfoTerm]
     TypeValue.Enum consNames -> do
       let listSgl = makeListSGL moduleID
       let textType = makeTextTypeExpr m moduleID

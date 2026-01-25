@@ -19,6 +19,9 @@ type ConstructorName =
 type ParamName =
   T.Text
 
+type DataName =
+  T.Text
+
 type Constructor =
   (ConstructorName, IsConstLike, [(ParamName, TM.Type)])
 
@@ -26,7 +29,7 @@ data TypeValue
   = Opaque
   | Type
   | Function
-  | Algebraic [TM.Type] [Constructor]
+  | Algebraic DataName [TM.Type] [Constructor]
   | Noema TM.Type
   | Enum [ConstructorName]
   | Int1
