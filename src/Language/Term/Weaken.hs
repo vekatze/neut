@@ -170,8 +170,8 @@ weakenMagic m magic = do
               LM.OpaqueValue (weaken e)
             LM.CallType func arg1 arg2 ->
               LM.CallType (weaken func) (weaken arg1) (weaken arg2)
-    M.InspectType mid typeTagExpr e ->
-      M.WeakMagic $ M.InspectType mid (weakenType typeTagExpr) (weakenType e)
+    M.InspectType mid typeValueExpr e ->
+      M.WeakMagic $ M.InspectType mid (weakenType typeValueExpr) (weakenType e)
     M.ShowType textTypeExpr typeExpr ->
       M.WeakMagic $ M.ShowType (weakenType textTypeExpr) (weakenType typeExpr)
     M.TextCons textTypeExpr rune text ->

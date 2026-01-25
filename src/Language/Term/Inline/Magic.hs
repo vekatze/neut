@@ -94,7 +94,7 @@ evaluateInspectType h m moduleID typeExpr = do
       returnTypeValueIntValue h m moduleID TypeValue.Opaque
     _ -> do
       reportMacroError h m $
-        "inspect-type: unable to determine type tag for this type expression. Got: "
+        "inspect-type: unable to determine type value for this type expression. Got: "
           <> toTextType (weakenType typeExpr)
 
 makeVectorDD :: MID.ModuleID -> DD.DefiniteDescription
@@ -107,10 +107,10 @@ makeConsNameList ::
   Hint ->
   SGL.StrictGlobalLocator ->
   App [(DD.DefiniteDescription, [BinderF TM.Type], IsConstLike)]
-makeConsNameList h m typeTagSGL = do
-  let moduleID = SGL.moduleID typeTagSGL
+makeConsNameList h m typeValueSGL = do
+  let moduleID = SGL.moduleID typeValueSGL
   forM TypeTag.typeTagList $ \tag -> do
-    let dd = DD.newByGlobalLocator typeTagSGL (BN.fromTypeTag tag)
+    let dd = DD.newByGlobalLocator typeValueSGL (BN.fromTypeTag tag)
     case tag of
       TypeTag.Vector -> do
         doNotCare <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "tmp"
@@ -169,18 +169,18 @@ makeAttrDI ::
   SGL.StrictGlobalLocator ->
   TypeTag.TypeTag ->
   App (AttrDI.Attr DD.DefiniteDescription (BinderF TM.Type))
-makeAttrDI h m typeTagSGL typeTag = do
-  let dataName = DD.newByGlobalLocator typeTagSGL BN.typeTag
+makeAttrDI h m typeValueSGL typeTag = do
+  let dataName = DD.newByGlobalLocator typeValueSGL BN.typeValue
   let discriminant = D.MakeDiscriminant $ TypeTag.typeTagToInteger typeTag
-  consNameList <- makeConsNameList h m typeTagSGL
+  consNameList <- makeConsNameList h m typeValueSGL
   return $ AttrDI.Attr {dataName, consNameList, discriminant, isConstLike = isConstTypeTag typeTag}
 
 returnTypeValueIntValue :: Handle -> Hint -> MID.ModuleID -> TypeValue.TypeValue -> App TM.Term
 returnTypeValueIntValue h m moduleID typeValue = do
-  let typeTagSGL = SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.typeTagLocator}
-  attr <- makeAttrDI h m typeTagSGL $ TypeValue.toTypeTag typeValue
+  let typeValueSGL = SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.typeValueLocator}
+  attr <- makeAttrDI h m typeValueSGL $ TypeValue.toTypeTag typeValue
   let tag = TypeValue.toTypeTag typeValue
-  let consName = DD.newByGlobalLocator typeTagSGL (BN.fromTypeTag tag)
+  let consName = DD.newByGlobalLocator typeValueSGL (BN.fromTypeTag tag)
   case typeValue of
     TypeValue.Algebraic dataArgs consInfoList -> do
       let listSgl = makeListSGL moduleID
@@ -265,7 +265,7 @@ makeListSGL moduleID =
 
 makeConstructorSGL :: MID.ModuleID -> SGL.StrictGlobalLocator
 makeConstructorSGL moduleID =
-  SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.typeTagLocator}
+  SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.typeValueLocator}
 
 makeListTypeExpr :: Hint -> MID.ModuleID -> TM.Type -> TM.Type
 makeListTypeExpr m moduleID elemType = do

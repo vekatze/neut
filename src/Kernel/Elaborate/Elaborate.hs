@@ -421,10 +421,10 @@ elaborate' h term = do
               arg1' <- elaborate' h arg1
               arg2' <- elaborate' h arg2
               return $ m :< TM.Magic (M.LowMagic $ LM.CallType func' arg1' arg2')
-        M.InspectType mid typeTagExpr typeExpr -> do
-          typeTagExpr' <- elaborateType h typeTagExpr
+        M.InspectType mid typeValueExpr typeExpr -> do
+          typeValueExpr' <- elaborateType h typeValueExpr
           typeExpr' <- elaborateType h typeExpr
-          return $ m :< TM.Magic (M.InspectType mid typeTagExpr' typeExpr')
+          return $ m :< TM.Magic (M.InspectType mid typeValueExpr' typeExpr')
         M.ShowType textTypeExpr typeExpr -> do
           textTypeExpr' <- elaborateType h textTypeExpr
           typeExpr' <- elaborateType h typeExpr

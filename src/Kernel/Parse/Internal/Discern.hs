@@ -783,10 +783,10 @@ discernMagic h m magic =
     RT.InspectType (_, (typeExpr, _)) -> do
       ensureCompileStage m h "inline magic (`inspect-type`)"
       coreModuleID <- Alias.resolveModuleAlias (H.aliasHandle h) m coreModuleAlias
-      typeTagVar <- liftEither $ locatorToTypeVar m coreTypeTagTypeTag
-      typeTagExpr <- discernType h typeTagVar
+      typeValueVar <- liftEither $ locatorToTypeVar m coreTypeValueTypeValue
+      typeValueExpr <- discernType h typeValueVar
       typeExpr' <- discernType h typeExpr
-      return $ M.WeakMagic $ M.InspectType coreModuleID typeTagExpr typeExpr'
+      return $ M.WeakMagic $ M.InspectType coreModuleID typeValueExpr typeExpr'
     RT.ShowType _ (_, (typeExpr, _)) -> do
       textType <- liftEither (locatorToTypeVar m coreText) >>= discernType h
       typeExpr' <- discernType h typeExpr

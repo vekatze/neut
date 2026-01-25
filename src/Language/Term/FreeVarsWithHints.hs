@@ -155,8 +155,8 @@ freeVarsWithHintsMagic magic =
   case magic of
     M.LowMagic lowMagic ->
       freeVarsWithHintsLowMagic lowMagic
-    M.InspectType _ typeTagExpr e ->
-      S.union (freeVarsWithHintsType typeTagExpr) (freeVarsWithHintsType e)
+    M.InspectType _ typeValueExpr e ->
+      S.union (freeVarsWithHintsType typeValueExpr) (freeVarsWithHintsType e)
     M.ShowType textTypeExpr typeExpr ->
       S.union (freeVarsWithHintsType textTypeExpr) (freeVarsWithHintsType typeExpr)
     M.TextCons textTypeExpr rune text ->

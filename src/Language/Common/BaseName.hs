@@ -39,7 +39,7 @@ module Language.Common.BaseName
     list,
     nil,
     consName,
-    typeTag,
+    typeValue,
     binary,
     vector,
     left,
@@ -247,9 +247,9 @@ consName :: BaseName
 consName =
   MakeBaseName "Cons"
 
-typeTag :: BaseName
-typeTag =
-  MakeBaseName "type-tag"
+typeValue :: BaseName
+typeValue =
+  MakeBaseName "type-value"
 
 binary :: BaseName
 binary =
