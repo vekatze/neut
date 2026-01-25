@@ -432,9 +432,6 @@ elaborate' h term = do
         M.GetConsSize typeExpr -> do
           typeExpr' <- elaborateType h typeExpr
           return $ m :< TM.Magic (M.GetConsSize typeExpr')
-        M.GetNoemaContentType typeExpr -> do
-          typeExpr' <- elaborateType h typeExpr
-          return $ m :< TM.Magic (M.GetNoemaContentType typeExpr')
         M.GetBoxContentType typeExpr -> do
           typeExpr' <- elaborateType h typeExpr
           return $ m :< TM.Magic (M.GetBoxContentType typeExpr')

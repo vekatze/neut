@@ -238,8 +238,6 @@ analyze h term = do
           return $ cs1 ++ cs2
         M.GetConsSize typeExpr -> do
           analyzeType h typeExpr
-        M.GetNoemaContentType typeExpr -> do
-          analyzeType h typeExpr
         M.GetBoxContentType typeExpr -> do
           analyzeType h typeExpr
         M.GetConstructorArgTypes _ listExpr typeExpr index -> do

@@ -409,9 +409,6 @@ infer h term =
           typeExpr' <- inferType h typeExpr
           intType <- getIntType (platformHandle h) m
           return (m :< WT.Magic (M.WeakMagic $ M.GetConsSize typeExpr'), intType)
-        M.GetNoemaContentType typeExpr -> do
-          typeExpr' <- inferType h typeExpr
-          return (m :< WT.Magic (M.WeakMagic $ M.GetNoemaContentType typeExpr'), m :< WT.Tau)
         M.GetBoxContentType typeExpr -> do
           typeExpr' <- inferType h typeExpr
           return (m :< WT.Magic (M.WeakMagic $ M.GetBoxContentType typeExpr'), m :< WT.Tau)

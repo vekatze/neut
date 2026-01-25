@@ -15,7 +15,6 @@ data Magic lt ty a
   | GetTypeTag MID.ModuleID ty ty -- typeTagExpr, e (both types)
   | GetDataArgs SGL.StrictGlobalLocator ty ty -- listExpr, typeExpr (both types)
   | GetConsSize ty
-  | GetNoemaContentType ty
   | GetBoxContentType ty
   | GetConstructorArgTypes SGL.StrictGlobalLocator ty ty a -- listExpr, typeExpr (types), index (term)
   | GetConsName ty ty a -- textType, type, index
@@ -39,8 +38,6 @@ instance Functor (Magic lt ty) where
         GetDataArgs sgl listExpr typeExpr
       GetConsSize typeExpr ->
         GetConsSize typeExpr
-      GetNoemaContentType typeExpr ->
-        GetNoemaContentType typeExpr
       GetBoxContentType typeExpr ->
         GetBoxContentType typeExpr
       GetConstructorArgTypes sgl listExpr typeExpr index ->
@@ -68,8 +65,6 @@ instance Foldable (Magic lt ty) where
       GetDataArgs {} ->
         mempty
       GetConsSize {} ->
-        mempty
-      GetNoemaContentType {} ->
         mempty
       GetBoxContentType {} ->
         mempty
@@ -99,8 +94,6 @@ instance Traversable (Magic lt ty) where
         pure $ GetDataArgs sgl listExpr typeExpr
       GetConsSize typeExpr ->
         pure $ GetConsSize typeExpr
-      GetNoemaContentType typeExpr ->
-        pure $ GetNoemaContentType typeExpr
       GetBoxContentType typeExpr ->
         pure $ GetBoxContentType typeExpr
       GetConstructorArgTypes sgl listExpr typeExpr index ->

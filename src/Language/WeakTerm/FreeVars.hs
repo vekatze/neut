@@ -115,8 +115,6 @@ freeVarsMagicTerm (M.WeakMagic magic) =
       S.empty
     M.GetConsSize {} ->
       S.empty
-    M.GetNoemaContentType {} ->
-      S.empty
     M.GetBoxContentType {} ->
       S.empty
     M.GetConstructorArgTypes _ _ _ index ->
@@ -296,8 +294,6 @@ freeVarsMagic (M.WeakMagic magic) =
     M.GetDataArgs _ listExpr typeExpr ->
       S.union (freeVarsType listExpr) (freeVarsType typeExpr)
     M.GetConsSize typeExpr ->
-      freeVarsType typeExpr
-    M.GetNoemaContentType typeExpr ->
       freeVarsType typeExpr
     M.GetBoxContentType typeExpr ->
       freeVarsType typeExpr

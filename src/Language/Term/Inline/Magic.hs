@@ -2,7 +2,6 @@ module Language.Term.Inline.Magic
   ( evaluateGetTypeTag,
     evaluateGetDataArgs,
     evaluateGetConsSize,
-    evaluateGetNoemaContentType,
     evaluateGetBoxContentType,
     evaluateGetConstructorArgTypes,
     evaluateGetConsName,
@@ -176,14 +175,6 @@ evaluateGetConsSize h m typeExpr = do
       return $ m :< TM.Prim (PV.Int intType PNS.IntSize64 (fromIntegral consCount))
     _ ->
       reportMacroError h m "get-cons-size: type expression must be a data type"
-
-evaluateGetNoemaContentType :: Handle -> Hint -> TM.Type -> App TM.Term
-evaluateGetNoemaContentType h m typeExpr =
-  case typeExpr of
-    _ :< TM.BoxNoema contentType -> do
-      return $ m :< TM.TauIntro contentType
-    _ ->
-      reportMacroError h m "get-noema-content-type: type expression must be &a"
 
 evaluateGetBoxContentType :: Handle -> Hint -> TM.Type -> App TM.Term
 evaluateGetBoxContentType h m typeExpr =

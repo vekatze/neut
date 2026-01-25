@@ -123,9 +123,6 @@ refreshMagic h magic =
     M.GetConsSize typeExpr -> do
       typeExpr' <- refreshType h typeExpr
       return $ M.GetConsSize typeExpr'
-    M.GetNoemaContentType typeExpr -> do
-      typeExpr' <- refreshType h typeExpr
-      return $ M.GetNoemaContentType typeExpr'
     M.GetBoxContentType typeExpr -> do
       typeExpr' <- refreshType h typeExpr
       return $ M.GetBoxContentType typeExpr'

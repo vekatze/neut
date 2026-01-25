@@ -315,9 +315,6 @@ inline' h term = do
         M.GetConsSize typeExpr -> do
           typeExpr' <- inlineType' h typeExpr
           Magic.evaluateGetConsSize h m typeExpr'
-        M.GetNoemaContentType typeExpr -> do
-          typeExpr' <- inlineType' h typeExpr
-          Magic.evaluateGetNoemaContentType h m typeExpr'
         M.GetBoxContentType typeExpr -> do
           typeExpr' <- inlineType' h typeExpr
           Magic.evaluateGetBoxContentType h m typeExpr'

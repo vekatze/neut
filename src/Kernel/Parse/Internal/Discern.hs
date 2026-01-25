@@ -800,10 +800,6 @@ discernMagic h m magic =
       ensureCompileStage m h "inline magic (`get-cons-size`)"
       typeExpr' <- discernType h typeExpr
       return $ M.WeakMagic $ M.GetConsSize typeExpr'
-    RT.GetNoemaContentType _ (_, (typeExpr, _)) -> do
-      ensureCompileStage m h "inline magic (`get-noema-content-type`)"
-      typeExpr' <- discernType h typeExpr
-      return $ M.WeakMagic $ M.GetNoemaContentType typeExpr'
     RT.GetBoxContentType _ (_, (typeExpr, _)) -> do
       ensureCompileStage m h "inline magic (`get-box-content-type`)"
       typeExpr' <- discernType h typeExpr

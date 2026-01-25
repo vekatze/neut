@@ -160,8 +160,6 @@ freeVarsMagic magic =
       S.union (freeVarsType listExpr) (freeVarsType typeExpr)
     M.GetConsSize typeExpr ->
       freeVarsType typeExpr
-    M.GetNoemaContentType typeExpr ->
-      freeVarsType typeExpr
     M.GetBoxContentType typeExpr ->
       freeVarsType typeExpr
     M.GetConstructorArgTypes _ listExpr typeExpr index ->
