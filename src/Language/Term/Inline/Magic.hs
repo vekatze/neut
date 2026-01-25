@@ -65,8 +65,8 @@ evaluateGetTypeTag h m moduleID typeExpr = do
             else returnTypeValueIntValue h m moduleID TypeValue.Algebraic
     _ :< TM.BoxNoema t ->
       returnTypeValueIntValue h m moduleID $ TypeValue.Noema t
-    _ :< TM.Box _ ->
-      returnTypeValueIntValue h m moduleID TypeValue.BoxT
+    _ :< TM.Box t ->
+      returnTypeValueIntValue h m moduleID $ TypeValue.BoxT t
     _ :< TM.Code _ ->
       returnTypeValueIntValue h m moduleID TypeValue.Opaque
     _ :< TM.PrimType (PT.Int size) ->
@@ -123,6 +123,9 @@ makeConsNameList h m typeTagSGL = do
       TypeTag.Noema -> do
         doNotCare <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "tmp"
         return (dd, [(m, doNotCare, m :< TM.Tau)], False)
+      TypeTag.BoxT -> do
+        doNotCare <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "tmp"
+        return (dd, [(m, doNotCare, m :< TM.Tau)], False)
       _ ->
         return (dd, [], True)
 
@@ -134,6 +137,8 @@ isConstTypeTag tt =
     TypeTag.Wrapper ->
       False
     TypeTag.Noema ->
+      False
+    TypeTag.BoxT ->
       False
     _ ->
       True
@@ -162,6 +167,8 @@ returnTypeValueIntValue h m moduleID typeValue = do
     TypeValue.Wrapper t -> do
       return $ m :< TM.DataIntro attr consName [] [m :< TM.TauIntro t]
     TypeValue.Noema t -> do
+      return $ m :< TM.DataIntro attr consName [] [m :< TM.TauIntro t]
+    TypeValue.BoxT t -> do
       return $ m :< TM.DataIntro attr consName [] [m :< TM.TauIntro t]
     _ ->
       return $ m :< TM.DataIntro attr consName [] []

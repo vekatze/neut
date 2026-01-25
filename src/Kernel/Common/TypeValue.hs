@@ -33,7 +33,7 @@ data TypeValue
   | Binary
   | Vector TM.Type
   | Wrapper TM.Type
-  | BoxT
+  | BoxT TM.Type
 
 toTypeTag :: TypeValue -> TT.TypeTag
 toTypeTag tv =
@@ -82,7 +82,7 @@ toTypeTag tv =
       TT.Vector
     Wrapper _ ->
       TT.Wrapper
-    BoxT ->
+    BoxT _ ->
       TT.BoxT
 
 fromIntSize :: IntSize -> TypeValue
