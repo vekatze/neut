@@ -32,7 +32,7 @@ data TypeValue
   | Rune
   | Binary
   | Vector TM.Type
-  | Wrapper
+  | Wrapper TM.Type
   | BoxT
 
 toTypeTag :: TypeValue -> TT.TypeTag
@@ -80,7 +80,7 @@ toTypeTag tv =
       TT.Binary
     Vector _ ->
       TT.Vector
-    Wrapper ->
+    Wrapper _ ->
       TT.Wrapper
     BoxT ->
       TT.BoxT

@@ -307,7 +307,7 @@ inline' h term = do
               return (m :< TM.Magic (M.LowMagic lowMagic'))
         M.GetTypeTag mid _ typeExpr -> do
           typeExpr' <- inlineType' h typeExpr
-          Magic.evaluateGetTypeTag h m mid typeExpr'
+          Magic.evaluateGetTypeTag h m mid typeExpr' >>= inline' h
         M.GetDataArgs sgl listExpr typeExpr -> do
           listExpr' <- inlineType' h listExpr
           typeExpr' <- inlineType' h typeExpr
