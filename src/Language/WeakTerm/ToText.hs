@@ -24,6 +24,7 @@ import Language.Common.PiKind qualified as PK
 import Language.Common.PrimOp qualified as PO
 import Language.Common.PrimType.ToText qualified as PT
 import Language.Common.Rune qualified as RU
+import Language.Common.VarKind qualified as VK
 import Language.WeakTerm.WeakPrimValue qualified as WPV
 import Language.WeakTerm.WeakTerm qualified as WT
 
@@ -36,12 +37,12 @@ toText term =
       showGlobalVariable x
     _ :< WT.PiIntro attr impArgs expArgs defaultArgs e -> do
       case attr of
-        AttrL.Attr {lamKind = LK.Fix opacity (_, x, codType)} ->
+        AttrL.Attr {lamKind = LK.Fix opacity (_, k, x, codType)} ->
           ( case opacity of
               O.Opaque -> "define "
               O.Clear -> "inline "
           )
-            <> showVariable x
+            <> showVarWithKind k x
             <> showImpArgs impArgs []
             <> inParen (showFnDomArgList expArgs)
             <> showDefaultArgs defaultArgs
@@ -81,15 +82,15 @@ toText term =
         then "case " <> showMatchArgs xets <> " " <> inBrace (showDecisionTree tree)
         else "match " <> showMatchArgs xets <> " " <> inBrace (showDecisionTree tree)
     _ :< WT.BoxIntro letSeq t -> do
-      let kes = map (\((_, x, _), e) -> (x, e)) letSeq
+      let kes = map (\((_, _, x, _), e) -> (x, e)) letSeq
       "box " <> T.intercalate ", " (map (\(k, e) -> inParen $ Ident.toText k <> ", " <> toText e) kes) <> inBrace (toText t)
     _ :< WT.BoxIntroLift e ->
       "lift " <> inBrace (toText e)
-    _ :< WT.BoxElim castSeq (_, x, t) e1 _ e2 -> do
-      let ks = map (\((_, y, _), _) -> y) castSeq
+    _ :< WT.BoxElim castSeq (_, k, x, t) e1 _ e2 -> do
+      let ks = map (\((_, _, y, _), _) -> y) castSeq
       let ks' = if null ks then "" else " on " <> T.intercalate ", " (map Ident.toText ks)
       "letbox "
-        <> showVariable x
+        <> showVarWithKind k x
         <> ": "
         <> toTextType t
         <> ks'
@@ -107,12 +108,12 @@ toText term =
       "unpack-type " <> showVariable x <> " = " <> toText e1 <> "; " <> toText e2
     _ :< WT.Actual e ->
       "ACTUAL(" <> toText e <> ")"
-    _ :< WT.Let opacity (_, x, t) e1 e2 -> do
+    _ :< WT.Let opacity (_, k, x, t) e1 e2 -> do
       case opacity of
         WT.Noetic ->
-          "tie " <> showVariable x <> ": " <> toTextType t <> " = " <> toText e1 <> "; " <> toText e2
+          "tie " <> showVarWithKind k x <> ": " <> toTextType t <> " = " <> toText e1 <> "; " <> toText e2
         _ ->
-          "let " <> showVariable x <> ": " <> toTextType t <> " = " <> toText e1 <> "; " <> toText e2
+          "let " <> showVarWithKind k x <> ": " <> toTextType t <> " = " <> toText e1 <> "; " <> toText e2
     _ :< WT.Prim primValue ->
       showPrimValue primValue
     _ :< WT.Magic magic -> do
@@ -202,23 +203,23 @@ showDefaultDomBinderList mxts =
   T.intercalate ", " $ map showDefaultDomBinder mxts
 
 showImpDomArg :: BinderF WT.WeakType -> T.Text
-showImpDomArg (_, x, _) =
-  showVariable x
+showImpDomArg (_, k, x, _) =
+  showVarWithKind k x
 
 showDefaultDomArg :: (BinderF WT.WeakType, WT.WeakTerm) -> T.Text
-showDefaultDomArg ((_, x, t), defaultValue) =
-  showVariable x <> ": " <> toTextType t <> " := " <> toText defaultValue
+showDefaultDomArg ((_, k, x, t), defaultValue) =
+  showVarWithKind k x <> ": " <> toTextType t <> " := " <> toText defaultValue
 
 showDefaultDomBinder :: BinderF WT.WeakType -> T.Text
-showDefaultDomBinder (_, x, t) =
-  showVariable x <> ": " <> toTextType t
+showDefaultDomBinder (_, k, x, t) =
+  showVarWithKind k x <> ": " <> toTextType t
 
 showDataImpArgWithDefault :: (BinderF WT.WeakType, Maybe WT.WeakTerm) -> T.Text
-showDataImpArgWithDefault ((_, x, t), maybeDefault) = do
+showDataImpArgWithDefault ((_, k, x, t), maybeDefault) = do
   let baseArg =
         case t of
-          _ :< WT.Tau -> showVariable x
-          _ -> "(" <> showVariable x <> ": " <> toTextType t <> ")"
+          _ :< WT.Tau -> showVarWithKind k x
+          _ -> "(" <> showVarWithKind k x <> ": " <> toTextType t <> ")"
   case maybeDefault of
     Nothing -> baseArg
     Just defaultValue -> "(" <> baseArg <> " := " <> toText defaultValue <> ")"
@@ -244,20 +245,26 @@ showTypeArgs args =
   case args of
     [] ->
       T.empty
-    [(_, x, t)] ->
-      inParen $ showVariable x <> " " <> toTextType t
-    (_, x, t) : xts -> do
-      let s1 = inParen $ showVariable x <> " " <> toTextType t
+    [(_, k, x, t)] ->
+      inParen $ showVarWithKind k x <> " " <> toTextType t
+    (_, k, x, t) : xts -> do
+      let s1 = inParen $ showVarWithKind k x <> " " <> toTextType t
       let s2 = showTypeArgs xts
       s1 <> " " <> s2
 
 showDomArg :: BinderF WT.WeakType -> T.Text
-showDomArg (_, _, t) =
+showDomArg (_, _, _, t) =
   toTextType t
 
 showFnDomArg :: BinderF WT.WeakType -> T.Text
-showFnDomArg (_, x, t) =
-  Ident.toText x <> ": " <> toTextType t
+showFnDomArg (_, k, x, t) =
+  showVarWithKind k x <> ": " <> toTextType t
+
+showVarWithKind :: VK.VarKind -> Ident -> T.Text
+showVarWithKind k x =
+  case k of
+    VK.Exp -> "!" <> showVariable x
+    VK.Normal -> showVariable x
 
 showDomArgList :: [BinderF WT.WeakType] -> T.Text
 showDomArgList mxts =
@@ -312,8 +319,8 @@ showMatchArg (x, e, t) = do
   showVariable x <> ": " <> toTextType t <> " = " <> toText e
 
 showLeafLetItem :: (BinderF WT.WeakType, WT.WeakTerm) -> T.Text
-showLeafLetItem ((_, x, t), e) =
-  showVariable x <> ": " <> toTextType t <> " = " <> toText e
+showLeafLetItem ((_, k, x, t), e) =
+  showVarWithKind k x <> ": " <> toTextType t <> " = " <> toText e
 
 showDecisionTree :: DT.DecisionTree WT.WeakType WT.WeakTerm -> T.Text
 showDecisionTree tree =

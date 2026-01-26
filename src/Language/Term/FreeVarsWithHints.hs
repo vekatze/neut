@@ -12,6 +12,7 @@ import Language.Common.DecisionTree qualified as DT
 import Language.Common.Ident
 import Language.Common.LowMagic qualified as LM
 import Language.Common.Magic qualified as M
+import Language.Common.VarKind qualified as VK
 import Language.Term.PrimValue qualified as PV
 import Language.Term.Term qualified as TM
 import Logger.Hint
@@ -41,7 +42,7 @@ freeVarsWithHints term =
     m :< TM.DataElim _ oets decisionTree -> do
       let (os, es, ts) = unzip3 oets
       let xs1 = S.unions $ map freeVarsWithHints es
-      let binder = zipWith (\o t -> (m, o, t)) os ts
+      let binder = zipWith (\o t -> (m, VK.Normal, o, t)) os ts
       let xs2 = freeVarsWithHintsBinderType binder (freeVarsWithHintsDecisionTree decisionTree)
       S.union xs1 xs2
     _ :< TM.BoxIntro letSeq e -> do
@@ -110,7 +111,7 @@ freeVarsWithHintsBinderType binder zs =
   case binder of
     [] ->
       zs
-    ((_, x, t) : xts) -> do
+    ((_, _, x, t) : xts) -> do
       let hs1 = freeVarsWithHintsType t
       let hs2 = freeVarsWithHintsBinderType xts zs
       S.union hs1 $ S.filter (\(_, y) -> y /= x) hs2
@@ -143,12 +144,12 @@ freeVarsWithHintsCase decisionCase = do
 freeVarsWithHintsAttrData :: AttrD.Attr name (BinderF TM.Type) -> S.Set (Hint, Ident)
 freeVarsWithHintsAttrData attr = do
   let consNameList = AttrD.consNameList attr
-  S.unions $ map (\(_, binders, _) -> S.unions $ map (\(_, _, t) -> freeVarsWithHintsType t) binders) consNameList
+  S.unions $ map (\(_, binders, _) -> S.unions $ map (\(_, _, _, t) -> freeVarsWithHintsType t) binders) consNameList
 
 freeVarsWithHintsAttrDataIntro :: AttrDI.Attr name (BinderF TM.Type) -> S.Set (Hint, Ident)
 freeVarsWithHintsAttrDataIntro attr = do
   let consNameList = AttrDI.consNameList attr
-  S.unions $ map (\(_, binders, _) -> S.unions $ map (\(_, _, t) -> freeVarsWithHintsType t) binders) consNameList
+  S.unions $ map (\(_, binders, _) -> S.unions $ map (\(_, _, _, t) -> freeVarsWithHintsType t) binders) consNameList
 
 freeVarsWithHintsMagic :: M.Magic BLT.BaseLowType TM.Type TM.Term -> S.Set (Hint, Ident)
 freeVarsWithHintsMagic magic =

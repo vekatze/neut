@@ -27,6 +27,7 @@ import Language.Common.CreateSymbol qualified as Gensym
 import Language.Common.DecisionTree qualified as DT
 import Language.Common.Ident
 import Language.Common.Noema qualified as N
+import Language.Common.VarKind qualified as VK
 import Language.WeakTerm.CreateHole qualified as WT
 import Language.WeakTerm.WeakTerm qualified as WT
 import Logger.Hint
@@ -106,11 +107,11 @@ alignConsArgs h binder =
       t <- WT.createTypeHole (H.gensymHandle h) mx []
       let h' = H.extendWithoutInsert h mx x
       (xts', h'') <- alignConsArgs h' xts
-      return ((mx, x, t) : xts', h'')
+      return ((mx, VK.Normal, x, t) : xts', h'')
 
 asLetSeq ::
   H.Handle ->
-  [(Maybe (Hint, Ident), WT.WeakTerm)] ->
+  [(Maybe (Hint, VK.VarKind, Ident), WT.WeakTerm)] ->
   IO [(BinderF WT.WeakType, WT.WeakTerm)]
 asLetSeq h binder =
   case binder of
@@ -118,10 +119,10 @@ asLetSeq h binder =
       return []
     (Nothing, _) : xes -> do
       asLetSeq h xes
-    (Just (m, from), to) : xes -> do
+    (Just (m, k, from), to) : xes -> do
       hole <- liftIO $ WT.createTypeHole (H.gensymHandle h) m []
       cont' <- asLetSeq h xes
-      return $ ((m, from, hole), to) : cont'
+      return $ ((m, k, from, hole), to) : cont'
 
 ensurePatternMatrixSanity :: H.Handle -> PAT.PatternMatrix a -> App ()
 ensurePatternMatrixSanity h mat =
@@ -139,8 +140,8 @@ ensurePatternRowSanity h (patternVector, _) = do
 ensurePatternSanity :: H.Handle -> (Hint, PAT.Pattern) -> App ()
 ensurePatternSanity h (m, pat) =
   case pat of
-    PAT.Var v -> do
-      liftIO $ Tag.insertBinder (H.tagHandle h) (m, v, ())
+    PAT.Var k v -> do
+      liftIO $ Tag.insertBinder (H.tagHandle h) (m, k, v, ())
     PAT.Literal _ -> do
       return ()
     PAT.WildcardVar {} ->

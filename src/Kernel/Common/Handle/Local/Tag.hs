@@ -50,7 +50,7 @@ insertLocalVar h mUse ident@(I (var, varID)) mDef = do
     insert h mUse symbolLoc nameLength mDef
 
 insertBinder :: Handle -> BinderF a -> IO ()
-insertBinder h (m, ident, _) =
+insertBinder h (m, _, ident, _) =
   insertLocalVar h m ident m
 
 insertGlobalVar :: Handle -> Hint -> DD.DefiniteDescription -> IsConstLike -> Hint -> IO ()

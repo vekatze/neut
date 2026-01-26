@@ -30,6 +30,7 @@ import Language.Common.Ident.Reify qualified as Ident
 import Language.Common.LamKind qualified as LK
 import Language.Common.LowMagic qualified as LM
 import Language.Common.Magic qualified as M
+import Language.Common.VarKind qualified as VK
 import Language.Term.FreeVars qualified as TM
 import Language.Term.Term qualified as TM
 
@@ -105,9 +106,10 @@ subst h sub term =
     m :< TM.DataElim isNoetic oets decisionTree -> do
       let (os, es, ts) = unzip3 oets
       es' <- mapM (subst h sub) es
-      let binder = zipWith (\o t -> (m, o, t)) os ts
+      let binder = zipWith (\o t -> (m, VK.Normal, o, t)) os ts
       (binder', decisionTree') <- subst'' h sub binder decisionTree
-      let (_, os', ts') = unzip3 binder'
+      let os' = map (\(_, _, o, _) -> o) binder'
+      let ts' = map (\(_, _, _, t) -> t) binder'
       return $ m :< TM.DataElim isNoetic (zip3 os' es' ts') decisionTree'
     m :< TM.BoxIntro letSeq e -> do
       (letSeq', sub') <- substLetSeq h sub letSeq
@@ -203,12 +205,12 @@ substBinder h sub binder =
   case binder of
     [] -> do
       return ([], sub)
-    ((m, x, t) : xts) -> do
+    ((m, k, x, t) : xts) -> do
       t' <- substType h sub t
       x' <- liftIO $ Gensym.newIdentFromIdent (gensymHandle h) x
       let sub' = IntMap.insert (Ident.toInt x) (Var x') sub
       (xts', sub'') <- substBinder h sub' xts
-      return ((m, x', t') : xts', sub'')
+      return ((m, k, x', t') : xts', sub'')
 
 substDefaultArgs ::
   Handle ->
@@ -219,13 +221,13 @@ substDefaultArgs h sub binderList =
   case binderList of
     [] -> do
       return ([], sub)
-    ((m, x, t), defaultValue) : xts -> do
+    ((m, k, x, t), defaultValue) : xts -> do
       t' <- substType h sub t
       defaultValue' <- subst h sub defaultValue
       x' <- liftIO $ Gensym.newIdentFromIdent (gensymHandle h) x
       let sub' = IntMap.insert (Ident.toInt x) (Var x') sub
       (xts', sub'') <- substDefaultArgs h sub' xts
-      return (((m, x', t'), defaultValue') : xts', sub'')
+      return (((m, k, x', t'), defaultValue') : xts', sub'')
 
 subst' ::
   Handle ->
@@ -238,12 +240,12 @@ subst' h sub binder e =
     [] -> do
       e' <- subst h sub e
       return ([], e')
-    ((m, x, t) : xts) -> do
+    ((m, k, x, t) : xts) -> do
       t' <- substType h sub t
       x' <- liftIO $ Gensym.newIdentFromIdent (gensymHandle h) x
       let sub' = IntMap.insert (Ident.toInt x) (Var x') sub
       (xts', e') <- subst' h sub' xts e
-      return ((m, x', t') : xts', e')
+      return ((m, k, x', t') : xts', e')
 
 subst'' ::
   Handle ->
@@ -256,24 +258,24 @@ subst'' h sub binder decisionTree =
     [] -> do
       decisionTree' <- substDecisionTree h sub decisionTree
       return ([], decisionTree')
-    ((m, x, t) : xts) -> do
+    ((m, k, x, t) : xts) -> do
       t' <- substType h sub t
       x' <- liftIO $ Gensym.newIdentFromIdent (gensymHandle h) x
       let sub' = IntMap.insert (Ident.toInt x) (Var x') sub
       (xts', e') <- subst'' h sub' xts decisionTree
-      return ((m, x', t') : xts', e')
+      return ((m, k, x', t') : xts', e')
 
 substLet ::
   Handle ->
   Subst ->
   (BinderF TM.Type, TM.Term) ->
   IO ((BinderF TM.Type, TM.Term), Subst)
-substLet h sub ((m, x, t), e) = do
+substLet h sub ((m, k, x, t), e) = do
   e' <- subst h sub e
   t' <- substType h sub t
   x' <- liftIO $ Gensym.newIdentFromIdent (gensymHandle h) x
   let sub' = IntMap.insert (Ident.toInt x) (Var x') sub
-  return (((m, x', t'), e'), sub')
+  return (((m, k, x', t'), e'), sub')
 
 substLetSeq ::
   Handle ->
@@ -370,9 +372,9 @@ substAttrData h sub attr = do
       ( \(cn, binders, cl) -> do
           binders' <-
             mapM
-              ( \(mx, x, t) -> do
+              ( \(mx, k, x, t) -> do
                   t' <- substType h sub t
-                  return (mx, x, t')
+                  return (mx, k, x, t')
               )
               binders
           return (cn, binders', cl)
@@ -388,9 +390,9 @@ substAttrDataIntro h sub attr = do
       ( \(cn, binders, cl) -> do
           binders' <-
             mapM
-              ( \(mx, x, t) -> do
+              ( \(mx, k, x, t) -> do
                   t' <- substType h sub t
-                  return (mx, x, t')
+                  return (mx, k, x, t')
               )
               binders
           return (cn, binders', cl)

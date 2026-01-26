@@ -16,21 +16,21 @@ data finite-map-signature(a, b) {
 }
 
 define make-finite-map<a, b>(!compare: (a, a) -> ordering): finite-map-signature(a, b) {
-  Finite-Map of {
+  Finite-Map{
     empty := Leaf,
     insert := {
       define insert(!key: a, value: b, haystack: finite-map(a, b)): finite-map(a, b) {
         match haystack {
         | Leaf =>
-          Node(Leaf, !key, value, Leaf)
+          Node(Leaf, key, value, Leaf)
         | Node(left, !k, v, right) =>
-          match !compare(!key, !k) {
+          match compare(key, k) {
           | LT =>
-            Node(insert(!key, value, left), !k, v, right)
+            Node(insert(key, value, left), k, v, right)
           | EQ =>
-            Node(left, !k, value, right)
+            Node(left, k, value, right)
           | GT =>
-            Node(left, !k, v, insert(!key, value, right))
+            Node(left, k, v, insert(key, value, right))
           }
         }
       }
@@ -41,13 +41,13 @@ define make-finite-map<a, b>(!compare: (a, a) -> ordering): finite-map-signature
         | Leaf =>
           none
         | Node(left, k, v, right) =>
-          match !compare(!key, *k) {
+          match compare(key, *k) {
           | LT =>
-            lookup(!key, left)
+            lookup(key, left)
           | EQ =>
             Right(*v)
           | GT =>
-            lookup(!key, right)
+            lookup(key, right)
           }
         }
       }
@@ -66,16 +66,16 @@ define compare-int(x: int, y: int): ordering {
 }
 
 define main(): unit {
-  let Finite-Map of {empty, insert := !insert, lookup} = make-finite-map(compare-int);
-  let mymap = !insert(1, List[pack-type {type}], empty);
-  let mymap = !insert(2, List[pack-type {type}, pack-type {type}], mymap);
-  let mymap = !insert(2, List[pack-type {type}, pack-type {type}], mymap);
-  let mymap = !insert(2, List[pack-type {int}], mymap);
-  let !mymap = !insert(3, List[pack-type {() -> int}], mymap);
-  let _ = !mymap;
-  let _ = !mymap;
+  let Finite-Map{empty, insert := !insert, lookup} = make-finite-map(compare-int);
+  let mymap = insert(1, List[pack-type {type}], empty);
+  let mymap = insert(2, List[pack-type {type}, pack-type {type}], mymap);
+  let mymap = insert(2, List[pack-type {type}, pack-type {type}], mymap);
+  let mymap = insert(2, List[pack-type {int}], mymap);
+  let !mymap = insert(3, List[pack-type {() -> int}], mymap);
+  let _ = mymap;
+  let _ = mymap;
   let result on !mymap =
-    match lookup(2, !mymap) {
+    match lookup(2, mymap) {
     | Left(_) =>
       1
     | Right(xs) =>
@@ -86,6 +86,6 @@ define main(): unit {
         20
       }
     };
-  let _ = !mymap;
+  let _ = mymap;
   print-int-line(result);
 }

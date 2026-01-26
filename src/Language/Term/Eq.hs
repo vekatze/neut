@@ -59,11 +59,11 @@ eqAndExtendImpArgs env bs1 bs2 =
   case (bs1, bs2) of
     ([], []) ->
       (env, True)
-    ((_, x1, t1) : rest1, (_, x2, t2) : rest2) -> do
+    ((_, k1, x1, t1) : rest1, (_, k2, x2, t2) : rest2) -> do
       let typeEq = eqTypeWithEnv env t1 t2
       let env' = Map.insert x1 x2 env
       let (envFinal, restEq) = eqAndExtendImpArgs env' rest1 rest2
-      (envFinal, typeEq && restEq)
+      (envFinal, k1 == k2 && typeEq && restEq)
     _ ->
       (env, False)
 

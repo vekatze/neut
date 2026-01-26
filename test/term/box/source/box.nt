@@ -52,10 +52,10 @@ define test-resource(xs: list(int)): unit {
     box xs {
       // layer -1
       let !ys = xs;
-      discard(!ys);
-      discard(!ys);
-      let len on !ys = length(!ys);
-      discard(!ys);
+      discard(ys);
+      discard(ys);
+      let len on !ys = length(ys);
+      discard(ys);
       len
     };
   discard(xs);

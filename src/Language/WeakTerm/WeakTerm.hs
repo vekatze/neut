@@ -123,7 +123,7 @@ fromLetSeq xts cont =
   case xts of
     [] ->
       cont
-    (mxt@(m, _, _), e) : rest ->
+    (mxt@(m, _, _, _), e) : rest ->
       m :< Let Clear mxt e (fromLetSeq rest cont)
 
 fromBaseLowType :: Hint -> BLT.BaseLowType -> WeakType

@@ -75,5 +75,5 @@ findCase consDisc decisionCase =
       Nothing
     ConsCase (ConsCaseRecord {..}) -> do
       if consDisc == disc
-        then return (map (\(_, x, t) -> (x, t)) consArgs, cont)
+        then return (map (\(_, _, x, t) -> (x, t)) consArgs, cont)
         else Nothing

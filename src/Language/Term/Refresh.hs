@@ -19,6 +19,7 @@ import Language.Common.DecisionTree qualified as DT
 import Language.Common.LamKind qualified as LK
 import Language.Common.LowMagic qualified as LM
 import Language.Common.Magic qualified as M
+import Language.Common.VarKind qualified as VK
 import Language.Term.Term qualified as TM
 
 newtype Handle = Handle
@@ -69,9 +70,10 @@ refresh h term =
     m :< TM.DataElim isNoetic oets decisionTree -> do
       let (os, es, ts) = unzip3 oets
       es' <- mapM (refresh h) es
-      let binder = zipWith (\o t -> (m, o, t)) os ts
+      let binder = zipWith (\o t -> (m, VK.Normal, o, t)) os ts
       (binder', decisionTree') <- refresh'' h binder decisionTree
-      let (_, os', ts') = unzip3 binder'
+      let os' = map (\(_, _, o, _) -> o) binder'
+      let ts' = map (\(_, _, _, t) -> t) binder'
       return $ m :< TM.DataElim isNoetic (zip3 os' es' ts') decisionTree'
     m :< TM.BoxIntro letSeq e -> do
       letSeq' <- mapM (refreshLet h) letSeq
@@ -219,19 +221,19 @@ refreshTypeBinder h binder =
   case binder of
     [] -> do
       return []
-    ((m, x, t) : xts) -> do
+    ((m, k, x, t) : xts) -> do
       t' <- refreshType h t
       xts' <- refreshTypeBinder h xts
-      return ((m, x, t') : xts')
+      return ((m, k, x, t') : xts')
 
 refreshLet ::
   Handle ->
   (BinderF TM.Type, TM.Term) ->
   IO (BinderF TM.Type, TM.Term)
-refreshLet h ((m, x, t), e) = do
+refreshLet h ((m, k, x, t), e) = do
   t' <- refreshType h t
   e' <- refresh h e
-  return ((m, x, t'), e')
+  return ((m, k, x, t'), e')
 
 refresh' ::
   Handle ->
@@ -243,10 +245,10 @@ refresh' h binder e =
     [] -> do
       e' <- refresh h e
       return ([], e')
-    ((m, x, t) : xts) -> do
+    ((m, k, x, t) : xts) -> do
       t' <- refreshType h t
       (xts', e') <- refresh' h xts e
-      return ((m, x, t') : xts', e')
+      return ((m, k, x, t') : xts', e')
 
 refresh'' ::
   Handle ->
@@ -258,19 +260,19 @@ refresh'' h binder decisionTree =
     [] -> do
       decisionTree' <- refreshDecisionTree h decisionTree
       return ([], decisionTree')
-    ((m, x, t) : xts) -> do
+    ((m, k, x, t) : xts) -> do
       t' <- refreshType h t
       (xts', e') <- refresh'' h xts decisionTree
-      return ((m, x, t') : xts', e')
+      return ((m, k, x, t') : xts', e')
 
 refreshBinder1 ::
   Handle ->
   (BinderF TM.Type, TM.Term) ->
   IO (BinderF TM.Type, TM.Term)
-refreshBinder1 h ((m, x, t), e) = do
+refreshBinder1 h ((m, k, x, t), e) = do
   e' <- refresh h e
   t' <- refreshType h t
-  return ((m, x, t'), e')
+  return ((m, k, x, t'), e')
 
 refreshLetSeq ::
   Handle ->
@@ -355,9 +357,9 @@ refreshAttrData h attr = do
       ( \(cn, binders, cl) -> do
           binders' <-
             mapM
-              ( \(mx, x, t) -> do
+              ( \(mx, k, x, t) -> do
                   t' <- refreshType h t
-                  return (mx, x, t')
+                  return (mx, k, x, t')
               )
               binders
           return (cn, binders', cl)
@@ -373,9 +375,9 @@ refreshAttrDataIntro h attr = do
       ( \(cn, binders, cl) -> do
           binders' <-
             mapM
-              ( \(mx, x, t) -> do
+              ( \(mx, k, x, t) -> do
                   t' <- refreshType h t
-                  return (mx, x, t')
+                  return (mx, k, x, t')
               )
               binders
           return (cn, binders', cl)

@@ -107,8 +107,8 @@ define relevant-lam1(): unit {
     opaque(function () {
       pack-type {type}
     });
-  let _ = !lam1;
-  let _ = !lam1;
+  let _ = lam1;
+  let _ = lam1;
   Unit
 }
 
@@ -136,8 +136,8 @@ define relevant-lam2(): unit {
       let v = lam1;
       v
     });
-  let _ = !lam2;
-  let _ = !lam2;
+  let _ = lam2;
+  let _ = lam2;
   Unit
 }
 
@@ -148,12 +148,12 @@ define affine-lam3(): unit {
     });
   let lam2 =
     opaque(function () {
-      let v = !lam1;
+      let v = lam1;
       v
     });
   let lam3 =
     opaque(function (_: (type) -> type) {
-      let _ = !lam1;
+      let _ = lam1;
       let v2 = lam2;
       v2
     });
@@ -168,17 +168,17 @@ define relevant-lam3(): unit {
     });
   let lam2 =
     opaque(function () {
-      let v = !lam1;
+      let v = lam1;
       v
     });
   let !lam3 =
     opaque(function (_: (type) -> type) {
-      let _ = !lam1;
+      let _ = lam1;
       let v2 = lam2;
       v2
     });
-  let _ = !lam3;
-  let _ = !lam3;
+  let _ = lam3;
+  let _ = lam3;
   Unit
 }
 
@@ -189,21 +189,21 @@ define affine-lam4(): unit {
     });
   let !lam2 =
     opaque(function () {
-      let v = !lam1;
+      let v = lam1;
       v
     });
   let !lam3 =
     opaque(function (_: (type) -> type) {
-      let _ = !lam1;
-      let v2 = !lam2;
+      let _ = lam1;
+      let v2 = lam2;
       v2
     });
-  let _ = !lam3;
+  let _ = lam3;
   let lam4 =
     opaque(function (_: (type) -> type) {
-      let _ = !lam1;
-      let _ = !lam2;
-      let v3 = !lam3;
+      let _ = lam1;
+      let _ = lam2;
+      let v3 = lam3;
       v3
     });
   let _ = lam4;
@@ -217,90 +217,90 @@ define relevant-lam4(): unit {
     });
   let !lam2 =
     opaque(function () {
-      let v = !lam1;
+      let v = lam1;
       v
     });
   let !lam3 =
     opaque(function (_: (type) -> type) {
-      let _ = !lam1;
-      let v2 = !lam2;
+      let _ = lam1;
+      let v2 = lam2;
       v2
     });
-  let _ = !lam3;
+  let _ = lam3;
   let !lam4 =
     opaque(function (_: (type) -> type) {
-      let _ = !lam1;
-      let _ = !lam2;
-      let v3 = !lam3;
+      let _ = lam1;
+      let _ = lam2;
+      let v3 = lam3;
       v3
     });
-  let _ = !lam4;
-  let _ = !lam4;
-  let _ = !lam4;
-  let _ = !lam4;
-  let _ = !lam4;
-  let _ = !lam4;
-  let _ = !lam4;
-  let _ = !lam4;
-  let _ = !lam4;
-  let _ = !lam4;
-  let _ = !lam4;
-  let _ = !lam4;
-  let _ = !lam4;
-  let _ = !lam4;
-  let _ = !lam4;
-  let _ = !lam4;
-  let _ = !lam4;
-  let _ = !lam4;
-  let _ = !lam4;
-  let _ = !lam4;
-  let _ = !lam4;
-  let _ = !lam4;
-  let _ = !lam4;
-  let _ = !lam4;
-  let _ = !lam4;
-  let _ = !lam4;
-  let _ = !lam4;
-  let _ = !lam4;
-  let _ = !lam4;
-  let _ = !lam4;
-  let _ = !lam4;
-  let _ = !lam4;
-  let _ = !lam4;
-  let _ = !lam4;
-  let _ = !lam4;
-  let _ = !lam4;
-  let _ = !lam4;
-  let _ = !lam4;
-  let _ = !lam4;
-  let _ = !lam4;
-  let _ = !lam4;
-  let _ = !lam4;
-  let _ = !lam4;
-  let _ = !lam4;
-  let _ = !lam4;
-  let _ = !lam4;
-  let _ = !lam4;
-  let _ = !lam4;
-  let _ = !lam4;
-  let _ = !lam4;
-  let _ = !lam4;
-  let _ = !lam4;
-  let _ = !lam4;
-  let _ = !lam4;
-  let _ = !lam4;
-  let _ = !lam4;
-  let _ = !lam4;
-  let _ = !lam4;
-  let _ = !lam4;
-  let _ = !lam4;
-  let _ = !lam4;
-  let _ = !lam4;
-  let _ = !lam4;
-  let _ = !lam4;
-  let _ = !lam4;
-  let _ = !lam4;
-  let _ = !lam4;
+  let _ = lam4;
+  let _ = lam4;
+  let _ = lam4;
+  let _ = lam4;
+  let _ = lam4;
+  let _ = lam4;
+  let _ = lam4;
+  let _ = lam4;
+  let _ = lam4;
+  let _ = lam4;
+  let _ = lam4;
+  let _ = lam4;
+  let _ = lam4;
+  let _ = lam4;
+  let _ = lam4;
+  let _ = lam4;
+  let _ = lam4;
+  let _ = lam4;
+  let _ = lam4;
+  let _ = lam4;
+  let _ = lam4;
+  let _ = lam4;
+  let _ = lam4;
+  let _ = lam4;
+  let _ = lam4;
+  let _ = lam4;
+  let _ = lam4;
+  let _ = lam4;
+  let _ = lam4;
+  let _ = lam4;
+  let _ = lam4;
+  let _ = lam4;
+  let _ = lam4;
+  let _ = lam4;
+  let _ = lam4;
+  let _ = lam4;
+  let _ = lam4;
+  let _ = lam4;
+  let _ = lam4;
+  let _ = lam4;
+  let _ = lam4;
+  let _ = lam4;
+  let _ = lam4;
+  let _ = lam4;
+  let _ = lam4;
+  let _ = lam4;
+  let _ = lam4;
+  let _ = lam4;
+  let _ = lam4;
+  let _ = lam4;
+  let _ = lam4;
+  let _ = lam4;
+  let _ = lam4;
+  let _ = lam4;
+  let _ = lam4;
+  let _ = lam4;
+  let _ = lam4;
+  let _ = lam4;
+  let _ = lam4;
+  let _ = lam4;
+  let _ = lam4;
+  let _ = lam4;
+  let _ = lam4;
+  let _ = lam4;
+  let _ = lam4;
+  let _ = lam4;
+  let _ = lam4;
   Unit
 }
 

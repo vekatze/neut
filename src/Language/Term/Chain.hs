@@ -17,6 +17,7 @@ import Language.Common.Binder
 import Language.Common.DecisionTree qualified as DT
 import Language.Common.Ident
 import Language.Common.Ident.Reify qualified as Ident
+import Language.Common.VarKind qualified as VK
 import Language.Term.Term qualified as TM
 import Logger.Hint
 import Logger.Hint.Reify (toString)
@@ -45,7 +46,7 @@ chainOf' tenv term =
     m :< TM.DataElim _ xets tree -> do
       let (xs, es, ts) = unzip3 xets
       let xs1 = concatMap (chainOf' tenv) es
-      let mxts = zipWith (\x t -> (m, x, t)) xs ts
+      let mxts = zipWith (\x t -> (m, VK.Normal, x, t)) xs ts
       let xs2 = chainOfDecisionTree' tenv m mxts tree
       xs1 ++ xs2
     _ :< TM.BoxIntro letSeq e -> do
@@ -62,7 +63,7 @@ chainOf' tenv term =
       chainOfType tenv ty
     _ :< TM.TauElim (mx, x) e1 e2 -> do
       let xs1 = chainOf' tenv e1
-      let mxt = (mx, x, mx :< TM.Tau)
+      let mxt = (mx, VK.Normal, x, mx :< TM.Tau)
       let xs2 = chainOfBinder tenv [mxt] [e2]
       xs1 ++ xs2
     _ :< TM.Let _ mxt e1 e2 -> do
@@ -113,10 +114,10 @@ chainOfBinder' tenv mxts f =
   case mxts of
     [] ->
       f tenv
-    (mxt@(_, x, t) : xts) -> do
+    (mxt@(_, _, x, t) : xts) -> do
       let hs1 = chainOfType tenv t
       let hs2 = chainOfBinder' (TM.insTypeEnv [mxt] tenv) xts f
-      hs1 ++ filter (\(_, y, _) -> y /= x) hs2
+      hs1 ++ filter (\(_, _, y, _) -> y /= x) hs2
 
 chainOfTypeBinder :: TM.TypeEnv -> [BinderF TM.Type] -> [TM.Type] -> [BinderF TM.Type]
 chainOfTypeBinder tenv binder ts =
@@ -131,7 +132,7 @@ chainOfDecisionTree tenv m tree =
       []
     DT.Switch (cursor, _) caseList ->
       -- the cursor must be treated as an immediate
-      (m, cursor, m :< TM.Tau) : chainOfCaseList tenv m caseList
+      (m, VK.Normal, cursor, m :< TM.Tau) : chainOfCaseList tenv m caseList
 
 chainOfDecisionTree' :: TM.TypeEnv -> Hint -> [BinderF TM.Type] -> DT.DecisionTree TM.Type TM.Term -> [BinderF TM.Type]
 chainOfDecisionTree' tenv m xts tree =
@@ -168,18 +169,18 @@ chainOfCaseWithoutCont tenv decisionCase = do
 
 nubFreeVariables :: [BinderF TM.Type] -> [BinderF TM.Type]
 nubFreeVariables =
-  ListUtils.nubOrdOn (\(_, x, _) -> x)
+  ListUtils.nubOrdOn (\(_, _, x, _) -> x)
 
 chainOfVar :: TM.TypeEnv -> Hint -> Ident -> [BinderF TM.Type]
 chainOfVar tenv m x = do
   case IntMap.lookup (Ident.toInt x) tenv of
     Just t -> do
       let xts = chainOfType tenv t
-      xts ++ [(m, x, t)]
+      xts ++ [(m, VK.Normal, x, t)]
     _ ->
       error $ T.unpack $ "[critical] chainOfVar: " <> Ident.toText' x <> "\n" <> T.pack (toString m)
 
 chainOfAttrData :: TM.TypeEnv -> AttrD.Attr name (BinderF TM.Type) -> [BinderF TM.Type]
 chainOfAttrData tenv attr = do
   let consNameList = AttrD.consNameList attr
-  concatMap (\(_, binders, _) -> concatMap (\(_, _, t) -> chainOfType tenv t) binders) consNameList
+  concatMap (\(_, binders, _) -> concatMap (\(_, _, _, t) -> chainOfType tenv t) binders) consNameList

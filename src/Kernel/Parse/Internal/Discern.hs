@@ -73,6 +73,7 @@ import Language.Common.PrimType qualified as PT
 import Language.Common.RuleKind (RuleKind (FoldLeft, FoldRight))
 import Language.Common.StmtKind qualified as SK
 import Language.Common.Text.Util
+import Language.Common.VarKind qualified as VK
 import Language.RawTerm.CreateHole qualified as RT
 import Language.RawTerm.Key
 import Language.RawTerm.Name
@@ -188,7 +189,7 @@ discernGeist h endLoc geist = do
   (impArgs', h') <- discernImpArgs h impArgs endLoc
   (expArgs', h'') <- discernBinder h' expArgs endLoc
   (defaultArgs', h''') <- discernBinderWithDefaultArgs h'' defaultArgs endLoc
-  forM_ (impArgs' ++ expArgs' ++ map fst defaultArgs') $ \(_, x, _) ->
+  forM_ (impArgs' ++ expArgs' ++ map fst defaultArgs') $ \(_, _, x, _) ->
     liftIO $ Unused.deleteVariable (H.unusedHandle h) x
   cod' <- discernType h''' $ snd $ RT.cod geist
   let m = RT.loc geist
@@ -230,7 +231,7 @@ discernStmtKindTerm h stmtKind m =
       (expConsArgs', h'') <- discernBinder' h' expConsArgs
       forM_ (H.nameEnv h'') $ \(_, (_, newVar, _, _)) -> do
         liftIO $ Unused.deleteVariable (H.unusedHandle h'') newVar
-      forM_ dataArgs' $ \(_, x, _) -> do
+      forM_ dataArgs' $ \(_, _, x, _) -> do
         liftIO $ Unused.deleteVariable (H.unusedHandle h'') x
       return $ SK.DataIntro dataName dataArgs' expConsArgs' discriminant
 
@@ -344,7 +345,7 @@ discern h term =
       x' <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) x
       h'''' <- liftIO $ H.extend' h''' mx x' VDK.Normal
       body' <- discern h'''' body
-      let mxt' = (mx, x', codType')
+      let mxt' = (mx, VK.Normal, x', codType')
       liftIO $ Tag.insertBinder (H.tagHandle h) mxt'
       lamID <- liftIO $ Gensym.newCount (H.gensymHandle h)
       ensureLayerClosedness m h'''' body'
@@ -433,11 +434,13 @@ discern h term =
       return $ m :< WT.DataElim isNoetic (zip3 os es'' ts) decisionTree
     m :< RT.BoxIntro _ _ mxs (body, _) -> do
       ensureRuntimeStage m h "meta operation (`box`)"
-      xsOuter <- forM (SE.extract mxs) $ \(mx, x) -> discernIdent mx h x
+      xsOuter <- forM (SE.extract mxs) $ \(mx, k, x) -> do
+        (mDef, (mUse, x')) <- discernIdent mx h x
+        return (mDef, (mUse, k, x'))
       xets <- liftIO $ discernNoeticVarList h True xsOuter
       let innerLayer = H.currentLayer h - 1
       let innerStage = H.currentStage h
-      let xsInner = map (\((mx, x, _), _) -> (mx, x)) xets
+      let xsInner = map (\((mx, _, x, _), _) -> (mx, x)) xets
       let innerAddition = map (\(mx, x) -> (Ident.toText x, (mx, x, innerLayer, innerStage))) xsInner
       hInner <- liftIO $ H.extendByNominalEnv (h {H.currentLayer = innerLayer}) VDK.Borrowed innerAddition
       body' <- discern hInner body
@@ -454,22 +457,24 @@ discern h term =
         VariantT ->
           return ()
       tmp <- liftIO $ Gensym.newTextFromText (H.gensymHandle h) "tmp"
-      let mxt = (mx, tmp, c1, c2, t)
+      let mxt = (mx, VK.Normal, tmp, c1, c2, t)
       let m' = blur m
       let patParam = (mx, pat, [], [], t)
       let e2' = m' :< RT.Let (RT.Plain False) [] patParam [] [] (m' :< RT.Var (Var tmp)) [] startLoc [] e2 endLoc
       -- inner
-      ysOuter <- forM (SE.extract mys) $ \(my, y) -> discernIdent my h y
+      ysOuter <- forM (SE.extract mys) $ \(my, k, y) -> do
+        (mDef, (mUse, y')) <- discernIdent my h y
+        return (mDef, (mUse, k, y'))
       yetsInner <- liftIO $ discernNoeticVarList h True ysOuter
       let innerLayer = H.currentLayer h + layerOffset nv
       let innerStage = H.currentStage h
-      let ysInner = map (\((myUse, y, myDef :< _), _) -> (myDef, (myUse, y))) yetsInner
-      let innerAddition = map (\(_, (myUse, y)) -> (Ident.toText y, (myUse, y, innerLayer, innerStage))) ysInner
+      let ysInner = map (\((myUse, k, y, myDef :< _), _) -> (myDef, (myUse, k, y))) yetsInner
+      let innerAddition = map (\(_, (myUse, _, y)) -> (Ident.toText y, (myUse, y, innerLayer, innerStage))) ysInner
       hInner <- liftIO $ H.extendByNominalEnv (h {H.currentLayer = innerLayer}) VDK.Borrowed innerAddition
       e1' <- discern hInner e1
       -- cont
       yetsCont <- liftIO $ discernNoeticVarList h False ysInner
-      let ysCont = map (\((myUse, y, _), _) -> (myUse, y)) yetsCont
+      let ysCont = map (\((myUse, _, y, _), _) -> (myUse, y)) yetsCont
       let contAddition = map (\(myUse, y) -> (Ident.toText y, (myUse, y, H.currentLayer h, H.currentStage h))) ysCont
       hCont <- liftIO $ H.extendByNominalEnv h VDK.Relayed contAddition
       (mxt', e2'') <- discernBinderWithBody' hCont mxt startLoc endLoc e2'
@@ -518,7 +523,7 @@ discern h term =
               :< RT.LetOn
                 (RT.Plain False)
                 []
-                (m1, RP.Var tmpVar, [], [], tmpType)
+                (m1, RP.Var VK.Normal tmpVar, [], [], tmpType)
                 []
                 mys
                 []
@@ -528,16 +533,16 @@ discern h term =
                 []
                 (m :< RT.Let RT.Try [] pat [] [] (m :< RT.Var tmpVar) [] startLoc [] e2 endLoc)
                 endLoc
-    m :< RT.Pin _ mxt@(mx, x, _, _, t) _ mys _ e1 _ startLoc _ e2@(m2 :< _) endLoc -> do
+    m :< RT.Pin _ mxt@(mx, _k, x, _, _, t) _ mys _ e1 _ startLoc _ e2@(m2 :< _) endLoc -> do
       let m2' = blur m2
-      let x' = SE.fromListWithComment Nothing SE.Comma [([], ((mx, x), []))]
+      let x' = SE.fromListWithComment Nothing SE.Comma [([], ((mx, VK.Normal, x), []))]
       resultType <- liftIO $ RT.createTypeHole (H.gensymHandle h) m2'
       resultVar <- liftIO $ Var <$> Gensym.newTextFromText (H.gensymHandle h) "tmp-pin"
-      let resultParam = (m2', RP.Var resultVar, [], [], resultType)
+      let resultParam = (m2', RP.Var VK.Normal resultVar, [], [], resultType)
       let isNoetic = not $ null $ SE.extract mys
       if isNoetic
         then do
-          let mxt' = (mx, RP.Var (Var x), [], [], t)
+          let mxt' = (mx, RP.Var VK.Normal (Var x), [], [], t)
           let outerLet cont = m :< RT.LetOn (RT.Plain False) [] mxt' [] mys [] e1 [] startLoc [] cont endLoc
           discern h $
             outerLet $
@@ -571,12 +576,12 @@ discern h term =
     m :< RT.Seq (e1, _) _ e2 -> do
       hole <- liftIO $ Gensym.newTextForHole (H.gensymHandle h)
       unit <- liftEither $ locatorToTypeVar m coreUnit
-      discern h $ bind fakeLoc fakeLoc (m, hole, [], [], unit) e1 e2
+      discern h $ bind fakeLoc fakeLoc (m, VK.Normal, hole, [], [], unit) e1 e2
     m :< RT.SeqEnd e1 -> do
       hole <- liftIO $ Gensym.newTextForHole (H.gensymHandle h)
       unit <- liftEither $ locatorToTypeVar m coreUnit
       unitUnit <- liftEither $ locatorToVarGlobal m coreUnitUnit
-      discern h $ bind fakeLoc fakeLoc (m, hole, [], [], unit) e1 unitUnit
+      discern h $ bind fakeLoc fakeLoc (m, VK.Normal, hole, [], [], unit) e1 unitUnit
     m :< RT.When whenClause -> do
       let (whenCond, whenBody) = RT.extractFromKeywordClause whenClause
       boolTrue <- liftEither $ locatorToName (blur m) coreBoolTrue
@@ -670,7 +675,7 @@ discernType h ty =
       (defaultArgs', h''') <- discernTypeBinderWithDefaultArgs h'' defaultArgsBase endLoc
       t' <- discernType h''' t
       let defaultBinders = map fst defaultArgs'
-      forM_ (impArgs' ++ expArgs' ++ defaultBinders) $ \(_, x, _) ->
+      forM_ (impArgs' ++ expArgs' ++ defaultBinders) $ \(_, _, x, _) ->
         liftIO (Unused.deleteVariable (H.unusedHandle h''') x)
       return $ m :< WT.Pi PK.normal impArgs' expArgs' defaultBinders t'
     m :< RT.Data attr dataName es -> do
@@ -715,15 +720,15 @@ type ShouldInsertTagInfo =
 discernNoeticVarList ::
   H.Handle ->
   ShouldInsertTagInfo ->
-  [(Hint, (Hint, Ident))] ->
+  [(Hint, (Hint, VK.VarKind, Ident))] ->
   IO [(BinderF WT.WeakType, WT.WeakTerm)]
 discernNoeticVarList h mustInsertTagInfo xsOuter = do
-  forM xsOuter $ \(mDef, (mUse, outerVar)) -> do
+  forM xsOuter $ \(mDef, (mUse, k, outerVar)) -> do
     xInner <- Gensym.newIdentFromIdent (H.gensymHandle h) outerVar
     t <- WT.createTypeHole (H.gensymHandle h) mUse []
     when mustInsertTagInfo $ do
       Tag.insertLocalVar (H.tagHandle h) mUse outerVar mDef
-    return ((mUse, xInner, t), mDef :< WT.Var outerVar)
+    return ((mUse, k, xInner, t), mDef :< WT.Var outerVar)
 
 discernMagic :: H.Handle -> Hint -> RT.RawMagic -> App (M.WeakMagic WT.WeakType WT.WeakType WT.WeakTerm)
 discernMagic h m magic =
@@ -811,16 +816,17 @@ modifyLetContinuation ::
   (Hint, RP.RawPattern) ->
   N.IsNoetic ->
   RT.RawTerm ->
-  App (RawIdent, RT.RawTerm)
+  App (VK.VarKind, RawIdent, RT.RawTerm)
 modifyLetContinuation h pat isNoetic cont@(mCont :< _) =
   case pat of
-    (_, RP.Var (Var x))
+    (_, RP.Var k (Var x))
       | not (isConsName x) ->
-          return (x, cont)
+          return (k, x, cont)
     _ -> do
       tmp <- liftIO $ Gensym.newTextForHole (H.gensymHandle h)
       return
-        ( tmp,
+        ( VK.Normal,
+          tmp,
           mCont
             :< RT.DataElim
               []
@@ -836,8 +842,8 @@ bind ::
   RT.RawTerm ->
   RT.RawTerm ->
   RT.RawTerm
-bind startLoc endLoc (m, x, c1, c2, t) =
-  bind' False startLoc endLoc (m, x, c1, c2, t)
+bind startLoc endLoc (m, k, x, c1, c2, t) =
+  bind' False startLoc endLoc (m, k, x, c1, c2, t)
 
 bind' ::
   RT.MustIgnoreRelayedVars ->
@@ -847,12 +853,12 @@ bind' ::
   RT.RawTerm ->
   RT.RawTerm ->
   RT.RawTerm
-bind' mustIgnoreRelayedVars loc endLoc (m, x, c1, c2, t) e cont =
+bind' mustIgnoreRelayedVars loc endLoc (m, _, x, c1, c2, t) e cont =
   m
     :< RT.Let
       (RT.Plain mustIgnoreRelayedVars)
       []
-      (m, RP.Var (Var x), c1, c2, t)
+      (m, RP.Var VK.Normal (Var x), c1, c2, t)
       []
       []
       e
@@ -909,11 +915,11 @@ foldIf m true false ifCond ifBody elseIfList elseBody =
           ( SE.fromList
               SE.Brace
               SE.Bar
-              [ ( SE.fromList'' [(blur m, RP.Var true)],
+              [ ( SE.fromList'' [(blur m, RP.Var VK.Normal true)],
                   [],
                   ifBody
                 ),
-                ( SE.fromList'' [(blur m, RP.Var false)],
+                ( SE.fromList'' [(blur m, RP.Var VK.Normal false)],
                   [],
                   elseBody
                 )
@@ -930,8 +936,8 @@ foldIf m true false ifCond ifBody elseIfList elseBody =
           ( SE.fromList
               SE.Brace
               SE.Bar
-              [ (SE.fromList'' [(blur m, RP.Var true)], [], ifBody),
-                (SE.fromList'' [(blur m, RP.Var false)], [], cont)
+              [ (SE.fromList'' [(blur m, RP.Var VK.Normal true)], [], ifBody),
+                (SE.fromList'' [(blur m, RP.Var VK.Normal false)], [], cont)
               ]
           )
 
@@ -953,8 +959,8 @@ discernLet h m letKind (mx, pat, c1, c2, t) e1@(m1 :< _) e2 startLoc endLoc = do
   let opacity = WT.Clear
   let discernLet' isNoetic = do
         e1' <- discern h e1
-        (x, e2') <- modifyLetContinuation h (mx, pat) isNoetic e2
-        (mxt', e2'') <- discernBinderWithBody' h (mx, x, c1, c2, t) startLoc endLoc e2'
+        (k, x, e2') <- modifyLetContinuation h (mx, pat) isNoetic e2
+        (mxt', e2'') <- discernBinderWithBody' h (mx, k, x, c1, c2, t) startLoc endLoc e2'
         liftIO $ Tag.insertBinder (H.tagHandle h) mxt'
         return $ m :< WT.Let opacity mxt' e1' e2''
   case letKind of
@@ -970,7 +976,7 @@ discernLet h m letKind (mx, pat, c1, c2, t) e1@(m1 :< _) e2 startLoc endLoc = do
       e1' <- discern h e1
       tmpVar <- liftIO $ Gensym.newText (H.gensymHandle h)
       eitherCont <- constructEitherBinder h m mx m1 pat tmpVar e2
-      (mxt', eitherCont') <- discernBinderWithBody' h (mx, tmpVar, c1, c2, eitherType) startLoc endLoc eitherCont
+      (mxt', eitherCont') <- discernBinderWithBody' h (mx, VK.Normal, tmpVar, c1, c2, eitherType) startLoc endLoc eitherCont
       return $ m :< WT.Let opacity mxt' e1' eitherCont'
 
 constructEitherBinder ::
@@ -996,7 +1002,7 @@ constructEitherBinder h m mx m1 pat tmpVar cont = do
           cont
         )
   let shortClause =
-        ( SE.fromList'' [(m', RP.Cons eitherL [] (RP.Paren (SE.fromList' [(m', RP.Var (Var earlyRetVar))])))],
+        ( SE.fromList'' [(m', RP.Cons eitherL [] (RP.Paren (SE.fromList' [(m', RP.Var VK.Normal (Var earlyRetVar))])))],
           [],
           m' :< RT.piElim eitherVarL [m' :< RT.Var (Var earlyRetVar)]
         )
@@ -1029,14 +1035,14 @@ discernImpArgs h binder endLoc =
   case binder of
     [] -> do
       return ([], h)
-    (mx, x, _, _, t) : xts -> do
+    (mx, k, x, _, _, t) : xts -> do
       t' <- discernType h t
       x' <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) x
       h' <- liftIO $ H.extendType' h mx x' VDK.Normal
       (xts', h'') <- discernImpArgs h' xts endLoc
-      liftIO $ Tag.insertBinder (H.tagHandle h'') (mx, x', t')
+      liftIO $ Tag.insertBinder (H.tagHandle h'') (mx, k, x', t')
       liftIO $ SymLoc.insert (H.symLocHandle h'') x' (metaLocation mx) endLoc
-      return ((mx, x', t') : xts', h'')
+      return ((mx, k, x', t') : xts', h'')
 
 discernBinder ::
   H.Handle ->
@@ -1047,14 +1053,14 @@ discernBinder h binder endLoc =
   case binder of
     [] -> do
       return ([], h)
-    (mx, x, _, _, t) : xts -> do
+    (mx, k, x, _, _, t) : xts -> do
       t' <- discernType h t
       x' <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) x
       h' <- liftIO $ H.extend' h mx x' VDK.Normal
       (xts', h'') <- discernBinder h' xts endLoc
-      liftIO $ Tag.insertBinder (H.tagHandle h'') (mx, x', t')
+      liftIO $ Tag.insertBinder (H.tagHandle h'') (mx, k, x', t')
       liftIO $ SymLoc.insert (H.symLocHandle h'') x' (metaLocation mx) endLoc
-      return ((mx, x', t') : xts', h'')
+      return ((mx, k, x', t') : xts', h'')
 
 discernTypeBinder ::
   H.Handle ->
@@ -1065,14 +1071,14 @@ discernTypeBinder h binder endLoc =
   case binder of
     [] -> do
       return ([], h)
-    (mx, x, _, _, t) : xts -> do
+    (mx, k, x, _, _, t) : xts -> do
       t' <- discernType h t
       x' <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) x
       h' <- liftIO $ H.extendType' h mx x' VDK.Normal
       (xts', h'') <- discernTypeBinder h' xts endLoc
-      liftIO $ Tag.insertBinder (H.tagHandle h'') (mx, x', t')
+      liftIO $ Tag.insertBinder (H.tagHandle h'') (mx, k, x', t')
       liftIO $ SymLoc.insert (H.symLocHandle h'') x' (metaLocation mx) endLoc
-      return ((mx, x', t') : xts', h'')
+      return ((mx, k, x', t') : xts', h'')
 
 discernBinderWithDefaultArgs ::
   H.Handle ->
@@ -1083,15 +1089,15 @@ discernBinderWithDefaultArgs h binder endLoc =
   case binder of
     [] -> do
       return ([], h)
-    ((mx, x, _, _, t), defaultValue) : xts -> do
+    ((mx, k, x, _, _, t), defaultValue) : xts -> do
       t' <- discernType h t
       defaultValue' <- discern h {H.nameEnv = []} defaultValue -- default values must be closed
       x' <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) x
       h' <- liftIO $ H.extend' h mx x' VDK.Normal
       (xts', h'') <- discernBinderWithDefaultArgs h' xts endLoc
-      liftIO $ Tag.insertBinder (H.tagHandle h'') (mx, x', t')
+      liftIO $ Tag.insertBinder (H.tagHandle h'') (mx, k, x', t')
       liftIO $ SymLoc.insert (H.symLocHandle h'') x' (metaLocation mx) endLoc
-      return (((mx, x', t'), defaultValue') : xts', h'')
+      return (((mx, k, x', t'), defaultValue') : xts', h'')
 
 discernTypeBinderWithDefaultArgs ::
   H.Handle ->
@@ -1102,15 +1108,15 @@ discernTypeBinderWithDefaultArgs h binder endLoc =
   case binder of
     [] -> do
       return ([], h)
-    ((mx, x, _, _, t), defaultValue) : xts -> do
+    ((mx, k, x, _, _, t), defaultValue) : xts -> do
       t' <- discernType h t
       defaultValue' <- discern h {H.nameEnv = []} defaultValue
       x' <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) x
       h' <- liftIO $ H.extendType' h mx x' VDK.Normal
       (xts', h'') <- discernTypeBinderWithDefaultArgs h' xts endLoc
-      liftIO $ Tag.insertBinder (H.tagHandle h'') (mx, x', t')
+      liftIO $ Tag.insertBinder (H.tagHandle h'') (mx, k, x', t')
       liftIO $ SymLoc.insert (H.symLocHandle h'') x' (metaLocation mx) endLoc
-      return (((mx, x', t'), defaultValue') : xts', h'')
+      return (((mx, k, x', t'), defaultValue') : xts', h'')
 
 discernBinder' ::
   H.Handle ->
@@ -1120,13 +1126,13 @@ discernBinder' h binder =
   case binder of
     [] -> do
       return ([], h)
-    (mx, x, _, _, t) : xts -> do
+    (mx, k, x, _, _, t) : xts -> do
       t' <- discernType h t
       x' <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) x
       h' <- liftIO $ H.extend' h mx x' VDK.Normal
       (xts', h'') <- discernBinder' h' xts
-      liftIO $ Tag.insertBinder (H.tagHandle h) (mx, x', t')
-      return ((mx, x', t') : xts', h'')
+      liftIO $ Tag.insertBinder (H.tagHandle h) (mx, k, x', t')
+      return ((mx, k, x', t') : xts', h'')
 
 discernTypeBinder' ::
   H.Handle ->
@@ -1136,13 +1142,13 @@ discernTypeBinder' h binder =
   case binder of
     [] -> do
       return ([], h)
-    (mx, x, _, _, t) : xts -> do
+    (mx, k, x, _, _, t) : xts -> do
       t' <- discernType h t
       x' <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) x
       h' <- liftIO $ H.extendType' h mx x' VDK.Normal
       (xts', h'') <- discernTypeBinder' h' xts
-      liftIO $ Tag.insertBinder (H.tagHandle h) (mx, x', t')
-      return ((mx, x', t') : xts', h'')
+      liftIO $ Tag.insertBinder (H.tagHandle h) (mx, k, x', t')
+      return ((mx, k, x', t') : xts', h'')
 
 discernBinderWithBody' ::
   H.Handle ->
@@ -1151,13 +1157,13 @@ discernBinderWithBody' ::
   Loc ->
   RT.RawTerm ->
   App (BinderF WT.WeakType, WT.WeakTerm)
-discernBinderWithBody' h (mx, x, _, _, codType) startLoc endLoc e = do
+discernBinderWithBody' h (mx, k, x, _, _, codType) startLoc endLoc e = do
   codType' <- discernType h codType
   x' <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) x
   h'' <- liftIO $ H.extend' h mx x' VDK.Normal
   e' <- discern h'' e
   liftIO $ SymLoc.insert (H.symLocHandle h'') x' startLoc endLoc
-  return ((mx, x', codType'), e')
+  return ((mx, k, x', codType'), e')
 
 -- Helper to convert Attr with RawBinder to Attr with BinderF
 discernAttrData ::
@@ -1168,7 +1174,7 @@ discernAttrData h attr = do
   let consNameList = AttrD.consNameList attr
   consNameList' <- forM consNameList $ \(name, binders, isConstLike) -> do
     (binders', _) <- discernBinder' h binders
-    forM_ binders' $ \(_, x, _) -> do
+    forM_ binders' $ \(_, _, x, _) -> do
       liftIO $ Unused.deleteVariable (H.unusedHandle h) x
     return (name, binders', isConstLike)
   return $ attr {AttrD.consNameList = consNameList'}
@@ -1181,7 +1187,7 @@ discernAttrDataIntro h attr = do
   let consNameList = AttrDI.consNameList attr
   consNameList' <- forM consNameList $ \(name, binders, isConstLike) -> do
     (binders', _) <- discernBinder' h binders
-    forM_ binders' $ \(_, x, _) -> do
+    forM_ binders' $ \(_, _, x, _) -> do
       liftIO $ Unused.deleteVariable (H.unusedHandle h) x
     return (name, binders', isConstLike)
   return $ attr {AttrDI.consNameList = consNameList'}
@@ -1254,12 +1260,16 @@ discernPattern ::
   App ((Hint, PAT.Pattern), NominalEnv)
 discernPattern h layer stage (m, pat) = do
   case pat of
-    RP.Var name -> do
+    RP.Var k name -> do
       case name of
         Var x
           | Just i <- R.readMaybe (T.unpack x) -> do
-              return ((m, PAT.Literal (LI.Int i)), [])
-          | isConsName x -> do
+              case k of
+                VK.Exp ->
+                  raiseError m "Numeric literal cannot be marked with `!`"
+                VK.Normal ->
+                  return ((m, PAT.Literal (LI.Int i)), [])
+          | isConsName x && k == VK.Normal -> do
               (consDD, dataArgNum, consArgNum, disc, isConstLike, _) <- resolveConstructor h m $ Var x
               unless isConstLike $ do
                 let mainModule = Env.getMainModule (H.envHandle h)
@@ -1269,26 +1279,30 @@ discernPattern h layer stage (m, pat) = do
               return ((m, PAT.Cons (PAT.ConsInfo {args = [], ..})), [])
           | otherwise -> do
               x' <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) x
-              return ((m, PAT.Var x'), [(x, (m, x', layer, stage))])
+              return ((m, PAT.Var k x'), [(x, (m, x', layer, stage))])
         Locator l -> do
-          (dd, gn) <- resolveName h m $ Locator l
-          case gn of
-            (_, GN.DataIntro dataArgNum consArgNum disc isConstLike) -> do
-              let consInfo =
-                    PAT.ConsInfo
-                      { consDD = dd,
-                        isConstLike = isConstLike,
-                        disc = disc,
-                        dataArgNum = dataArgNum,
-                        consArgNum = consArgNum,
-                        args = []
-                      }
-              return ((m, PAT.Cons consInfo), [])
-            _ -> do
-              let mainModule = Env.getMainModule (H.envHandle h)
-              let dd' = readableDD mainModule dd
-              raiseError m $
-                "The symbol `" <> dd' <> "` is not defined as a constuctor"
+          case k of
+            VK.Exp ->
+              raiseError m "Locator patterns cannot be marked with `!`"
+            VK.Normal -> do
+              (dd, gn) <- resolveName h m $ Locator l
+              case gn of
+                (_, GN.DataIntro dataArgNum consArgNum disc isConstLike) -> do
+                  let consInfo =
+                        PAT.ConsInfo
+                          { consDD = dd,
+                            isConstLike = isConstLike,
+                            disc = disc,
+                            dataArgNum = dataArgNum,
+                            consArgNum = consArgNum,
+                            args = []
+                          }
+                  return ((m, PAT.Cons consInfo), [])
+                _ -> do
+                  let mainModule = Env.getMainModule (H.envHandle h)
+                  let dd' = readableDD mainModule dd
+                  raiseError m $
+                    "The symbol `" <> dd' <> "` is not defined as a constuctor"
     RP.Cons cons _ mArgs -> do
       (consName, dataArgNum, consArgNum, disc, isConstLike, _) <- resolveConstructor h m cons
       when isConstLike $
@@ -1334,7 +1348,7 @@ discernPattern h layer stage (m, pat) = do
 constructDefaultKeyMap :: H.Handle -> Hint -> [Key] -> IO (Map.HashMap Key (Hint, RP.RawPattern))
 constructDefaultKeyMap h m keyList = do
   names <- mapM (const $ Gensym.newTextForHole (H.gensymHandle h)) keyList
-  return $ Map.fromList $ zipWith (\k v -> (k, (m, RP.Var (Var v)))) keyList names
+  return $ Map.fromList $ zipWith (\k v -> (k, (m, RP.Var VK.Normal (Var v)))) keyList names
 
 locatorToName :: Hint -> T.Text -> Either E.Error Name
 locatorToName m text = do

@@ -52,6 +52,7 @@ import Language.Common.IsConstLike
 import Language.Common.Noema qualified as N
 import Language.Common.Opacity qualified as O
 import Language.Common.Rune qualified as R
+import Language.Common.VarKind (VarKind)
 import Language.RawTerm.Key
 import Language.RawTerm.Name
 import Language.RawTerm.NecessityVariant (NecessityVariant)
@@ -111,17 +112,17 @@ data RawTermF a
   | PiElimExact C a
   | DataIntro (AttrDI.Attr DD.DefiniteDescription (RawBinder RawType)) DD.DefiniteDescription [RawType] [a] -- (attr, consName, dataArgs, consArgs)
   | DataElim C N.IsNoetic (SE.Series a) (SE.Series (RP.RawPatternRow a))
-  | BoxIntro C C (SE.Series (Hint, RawIdent)) (a, C)
+  | BoxIntro C C (SE.Series (Hint, VarKind, RawIdent)) (a, C)
   | BoxIntroLift C C (a, C)
-  | BoxElim NecessityVariant Bool C (PatParam RawType) C (SE.Series (Hint, RawIdent)) C a C Loc C a Loc
+  | BoxElim NecessityVariant Bool C (PatParam RawType) C (SE.Series (Hint, VarKind, RawIdent)) C a C Loc C a Loc
   | CodeIntro CodeVariant C C (a, C)
   | CodeElim C C (a, C)
   | TauIntro C (EL RawType)
   | TauElim C (Hint, RawIdent, C) C a C Loc C a Loc
   | Embody a
   | Let LetKind C (PatParam RawType) C C a C Loc C a Loc
-  | LetOn LetKind C (PatParam RawType) C (SE.Series (Hint, RawIdent)) C a C Loc C a Loc
-  | Pin C (RawBinder RawType) C (SE.Series (Hint, RawIdent)) C a C Loc C a Loc
+  | LetOn LetKind C (PatParam RawType) C (SE.Series (Hint, VarKind, RawIdent)) C a C Loc C a Loc
+  | Pin C (RawBinder RawType) C (SE.Series (Hint, VarKind, RawIdent)) C a C Loc C a Loc
   | StaticText RawType T.Text
   | RuneIntro a R.Rune
   | Magic C RawMagic -- (magic kind arg-1 ... arg-n)

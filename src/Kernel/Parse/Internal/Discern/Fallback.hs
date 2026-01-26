@@ -36,10 +36,10 @@ fallbackRow h isNoetic cursor (patternVector, (freedVars, baseSeq, body@(mBody :
       raiseCritical' "Defaulting against the empty pattern matrix should not happen"
     Just ((_, WildcardVar), rest) ->
       return $ Just (rest, (freedVars, baseSeq, body))
-    Just ((_, Var x), rest) -> do
+    Just ((_, Var k x), rest) -> do
       hole <- liftIO $ WT.createTypeHole (H.gensymHandle h) mBody []
       adjustedCursor <- liftIO $ castToNoemaIfNecessary h isNoetic (mBody :< WT.Var cursor)
-      return $ Just (rest, (freedVars, ((mBody, x, hole), adjustedCursor) : baseSeq, body))
+      return $ Just (rest, (freedVars, ((mBody, k, x, hole), adjustedCursor) : baseSeq, body))
     Just ((_, Cons {}), _) ->
       return Nothing
     Just ((_, Literal {}), _) ->

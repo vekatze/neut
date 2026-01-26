@@ -23,12 +23,13 @@ import Language.Common.ArgNum qualified as AN
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.Discriminant qualified as D
 import Language.Common.Ident
+import Language.Common.VarKind
 import Language.Common.IsConstLike
 import Language.Common.Literal qualified as L
 import Logger.Hint
 
 data Pattern
-  = Var Ident
+  = Var VarKind Ident
   | WildcardVar
   | Cons ConsInfo
   | Literal L.Literal
@@ -133,7 +134,7 @@ swapColumn' m i (row, e) = do
 
 -- get leaf if the row doesn't contain any cons; otherwise return
 -- the index of the column that contains a cons
-getClauseBody :: PatternRow a -> Either (Hint, Int) ([Maybe (Hint, Ident)], a)
+getClauseBody :: PatternRow a -> Either (Hint, Int) ([Maybe (Hint, VarKind, Ident)], a)
 getClauseBody patternRow =
   case patternRow of
     (patList, e) ->
@@ -141,16 +142,16 @@ getClauseBody patternRow =
 
 getClauseBody' ::
   Int ->
-  [Maybe (Hint, Ident)] ->
+  [Maybe (Hint, VarKind, Ident)] ->
   V.Vector (Hint, Pattern) ->
   a ->
-  Either (Hint, Int) ([Maybe (Hint, Ident)], a)
+  Either (Hint, Int) ([Maybe (Hint, VarKind, Ident)], a)
 getClauseBody' index varList patList e =
   case V.uncons patList of
     Nothing ->
       Right (reverse varList, e)
-    Just ((m, Var x), rest) ->
-      getClauseBody' (index + 1) (Just (m, x) : varList) rest e
+    Just ((m, Var k x), rest) ->
+      getClauseBody' (index + 1) (Just (m, k, x) : varList) rest e
     Just ((_, WildcardVar), rest) ->
       getClauseBody' (index + 1) (Nothing : varList) rest e
     Just ((m, _), _) ->

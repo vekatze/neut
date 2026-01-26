@@ -26,7 +26,7 @@ define bar<a>(some-value: a): unit {
 
 define test-syntax(): unit {
   let _ =
-    foo of {
+    foo{
       a := pack-type {int},
       FOO := True,
       🌟🌟🌟 := pack-type {list(null)},
@@ -37,7 +37,7 @@ define test-syntax(): unit {
       },
     };
   let _ =
-    foo of {
+    foo{
       a := pack-type {int},
       🌟🌟🌟 := pack-type {list(null)},
       FOO := False,
@@ -48,10 +48,10 @@ define test-syntax(): unit {
       },
     };
   let _ =
-    foo of {
+    foo{
       🌟🌟🌟 := pack-type {list(null)},
       a := {
-        foo of {
+        foo{
           竹の葉に霰ふるなりさらさらに独りは寝べき心地こそせね := {
             let x = 10;
             let y = 20;
@@ -71,7 +71,7 @@ define test-syntax(): unit {
     };
   let _ =
     // hole-notation + keyword arguments
-    bar of {
+    bar{
       some-value := pack-type {type},
     };
   Unit

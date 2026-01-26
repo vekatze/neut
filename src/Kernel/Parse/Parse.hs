@@ -186,15 +186,15 @@ registerKeyArg h stmt = do
       let m = RT.loc geist
       case stmtKind of
         SK.DataIntro _ _ expConsArgs _ -> do
-          let expKeys = map (\(_, x, _, _, _) -> x) expConsArgs
+          let expKeys = map (\(_, _, x, _, _, _) -> x) expConsArgs
           KeyArg.insert (keyArgHandle h) m name isConstLike [] expKeys []
         _ -> do
           let impArgs = RT.extractImpArgs $ RT.impArgs geist
           let defaultArgs = map fst $ SE.extract $ fst $ RT.defaultArgs geist
           let expArgs = RT.extractArgs $ RT.expArgs geist
-          let impKeys = map (\(_, x, _, _, _) -> x) impArgs
-          let defaultKeys = map (\(_, x, _, _, _) -> x) defaultArgs
-          let expKeys = map (\(_, x, _, _, _) -> x) expArgs
+          let impKeys = map (\(_, _, x, _, _, _) -> x) impArgs
+          let defaultKeys = map (\(_, _, x, _, _, _) -> x) defaultArgs
+          let expKeys = map (\(_, _, x, _, _, _) -> x) expArgs
           KeyArg.insert (keyArgHandle h) m name isConstLike impKeys expKeys defaultKeys
     PostRawStmtDefineType {} -> do
       return ()
@@ -213,12 +213,12 @@ registerKeyArg' h stmt = do
     StmtDefine isConstLike stmtKind (SavedHint m) name impArgs expArgs defaultArgs _ _ -> do
       case stmtKind of
         SK.DataIntro _ _ expConsArgs _ -> do
-          let expKeys = map (\(_, x, _) -> toText x) expConsArgs
+          let expKeys = map (\(_, _, x, _) -> toText x) expConsArgs
           KeyArg.insert (keyArgHandle h) m name isConstLike [] expKeys []
         _ -> do
-          let impKeys = map (\(_, x, _) -> toText x) impArgs
-          let defaultKeys = map (\(_, x, _) -> toText x) (map fst defaultArgs)
-          let expKeys = map (\(_, x, _) -> toText x) expArgs
+          let impKeys = map (\(_, _, x, _) -> toText x) impArgs
+          let defaultKeys = map (\(_, _, x, _) -> toText x) (map fst defaultArgs)
+          let expKeys = map (\(_, _, x, _) -> toText x) expArgs
           KeyArg.insert (keyArgHandle h) m name isConstLike impKeys expKeys defaultKeys
     StmtDefineType {} ->
       return ()

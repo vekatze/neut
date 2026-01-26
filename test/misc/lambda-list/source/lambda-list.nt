@@ -30,7 +30,7 @@ define mul-nat(x: nat, !y: nat): nat {
   | Zero =>
     Zero
   | Succ(m) =>
-    add-nat(mul-nat(m, !y), !y)
+    add-nat(mul-nat(m, y), y)
   }
 }
 
@@ -39,32 +39,32 @@ define fold<a>(fs: list((a) -> a), x: a): a {
   | Nil =>
     x
   | Cons(f, !rest) =>
-    let _ = !rest;
-    let _ = !rest;
-    f(fold(!rest, x))
+    let _ = rest;
+    let _ = rest;
+    f(fold(rest, x))
   }
 }
 
 define main(): unit {
   let n1 = Succ(Zero);
   let !n2 = Succ(n1);
-  let !n3 = Succ(!n2);
+  let !n3 = Succ(n2);
   let add2 =
     function (x) {
-      add-nat(x, !n2)
+      add-nat(x, n2)
     };
   let mul3 =
     function (x) {
-      mul-nat(x, !n3)
+      mul-nat(x, n3)
     };
   let !mul9 =
     function (x) {
-      mul-nat(x, mul-nat(!n3, !n3))
+      mul-nat(x, mul-nat(n3, n3))
     };
-  let _ = !mul9;
-  let fs = Cons(add2, Cons(mul3, Cons(!mul9, Nil)));
+  let _ = mul9;
+  let fs = Cons(add2, Cons(mul3, Cons(mul9, Nil)));
   let gs = fs;
   let hs = gs;
   // 2 + (3 * (9 * 3)) = 83
-  print-int-line(interpret(fold(hs, !n3)));
+  print-int-line(interpret(fold(hs, n3)));
 }

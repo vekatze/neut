@@ -27,8 +27,8 @@ define create-new-noisy-boxed-int(x: int): noisy-boxed-int {
 
 define main(): unit {
   let !i = create-new-noisy-boxed-int(10);
-  let _ = !i;
-  let _ = !i;
-  let _ = !i;
+  let _ = i;
+  let _ = i;
+  let _ = i;
   Unit
 }

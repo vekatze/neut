@@ -140,11 +140,11 @@ constructDataType m dataName isConstLike consNameList dataArgs = do
   m :< RT.Data (AttrD.Attr {..}) dataName (map identPlusToVar dataArgs)
 
 identPlusToVar :: RawBinder a -> RT.RawType
-identPlusToVar (m, x, _, _, _) =
+identPlusToVar (m, _, x, _, _, _) =
   m :< RT.TyVar (Var x)
 
 adjustExpConsArg :: RawBinder a -> (RT.RawTerm, RawIdent)
-adjustExpConsArg (m, x, _, _, _) =
+adjustExpConsArg (m, _, x, _, _, _) =
   (m :< RT.Var (Var x), x)
 
 isConstLikeConsInfo :: RawConsInfo a -> IsConstLike

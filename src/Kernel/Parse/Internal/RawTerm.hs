@@ -5,6 +5,7 @@ module Kernel.Parse.Internal.RawTerm
     rawTerm,
     rawType,
     var,
+    varWithMode,
     preAscription,
     preBinder,
     parseDef,
@@ -29,6 +30,7 @@ import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.Except (liftEither)
 import Control.Monad.Trans
+import Data.Maybe (fromMaybe)
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Gensym.Handle qualified as Gensym
@@ -39,6 +41,7 @@ import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.ExternalName qualified as EN
 import Language.Common.Opacity qualified as O
 import Language.Common.Rune qualified as RU
+import Language.Common.VarKind qualified as VK
 import Language.RawTerm.CreateHole qualified as RT
 import Language.RawTerm.Key
 import Language.RawTerm.Name
@@ -82,7 +85,7 @@ rawExpr h = do
             "pin" ->
               rawTermPin h m c
             _ -> do
-              e1 <- rawTerm' h m headSymbol c
+              e1 <- rawTerm' Full h m headSymbol c
               choice
                 [ do
                     c1 <- delimiter ";"
@@ -96,10 +99,22 @@ rawExpr h = do
                 ]
 
 rawTerm :: Handle -> Parser (RT.RawTerm, C)
-rawTerm h = do
+rawTerm =
+  rawTermWithMode Full
+
+rawTermPartial :: Handle -> Parser (RT.RawTerm, C)
+rawTermPartial =
+  rawTermWithMode Partial
+
+data TermMode
+  = Full
+  | Partial
+
+rawTermWithMode :: TermMode -> Handle -> Parser (RT.RawTerm, C)
+rawTermWithMode mode h = do
   m <- getCurrentHint
   (headSymbol, c) <- symbol'
-  rawTerm' h m headSymbol c
+  rawTerm' mode h m headSymbol c
 
 rawType :: Handle -> Parser (RT.RawType, C)
 rawType h = do
@@ -137,12 +152,12 @@ rawType' h m headSymbol c =
           name <- interpretTypeName m headSymbol
           rawTypeTyAppCont h (m :< RT.TyVar name, c)
 
-rawTerm' :: Handle -> Hint -> T.Text -> C -> Parser (RT.RawTerm, C)
-rawTerm' h m headSymbol c = do
+rawTerm' :: TermMode -> Handle -> Hint -> T.Text -> C -> Parser (RT.RawTerm, C)
+rawTerm' mode h m headSymbol c = do
   case headSymbol of
     "define" -> do
       rawTermDefine h O.Opaque m c
-    "macro" -> do
+    "inline" -> do
       rawTermDefine h O.Clear m c
     "introspect" -> do
       rawTermIntrospect h m c
@@ -175,7 +190,7 @@ rawTerm' h m headSymbol c = do
     "attach" -> do
       rawTermFlowElim h m c
     "exact" -> do
-      rawTermPiElimExact h m c
+      rawTermPiElimExact mode h m c
     "if" -> do
       rawTermIf h m c
     "when" -> do
@@ -189,23 +204,32 @@ rawTerm' h m headSymbol c = do
             [ rawTermBrace h,
               rawTermTextIntro,
               rawTermRuneIntro,
-              rawTermEmbody h
+              rawTermEmbody mode h
             ]
         else do
           name <- interpretVarName m headSymbol
-          choice
-            [ do
-                (kvs, c') <- keyValueArgs $ rawTermKeyValuePair h
-                return (m :< RT.PiElimByKey name c kvs, c'),
-              do
-                (es, c') <- metaPiElim $ rawTerm h
-                return (m :< RT.PiElimMeta name c es, c'),
-              do
-                (es, c') <- seriesBracket $ rawTerm h
-                return (m :< RT.PiElimRule name c es, c'),
-              do
-                rawTermPiElimCont h (m :< RT.Var name, c)
-            ]
+          choice $
+            additionalBranchList mode h m name c
+              ++ [ do
+                     (es, c') <- metaPiElim $ rawTerm h
+                     return (m :< RT.PiElimMeta name c es, c'),
+                   do
+                     (es, c') <- seriesBracket $ rawTerm h
+                     return (m :< RT.PiElimRule name c es, c'),
+                   do
+                     rawTermPiElimCont h (m :< RT.Var name, c)
+                 ]
+
+additionalBranchList :: TermMode -> Handle -> Hint -> Name -> C -> [Parser (RT.RawTerm, C)]
+additionalBranchList mode h m name c =
+  case mode of
+    Full ->
+      [ do
+          (kvs, c') <- keyValueArgs $ rawTermKeyValuePair h
+          return (m :< RT.PiElimByKey name c kvs, c')
+      ]
+    Partial ->
+      []
 
 rawTermPiElimCont :: Handle -> (RT.RawTerm, C) -> Parser (RT.RawTerm, C)
 rawTermPiElimCont h (e@(m :< _), c) = do
@@ -248,7 +272,7 @@ rawTypePi :: Handle -> Parser (RT.RawType, C)
 rawTypePi h = do
   m <- getCurrentHint
   impArgs <- parseImplicitParams h
-  expArgs <- seriesParen (choice [try $ var h >>= preAscription h, typeWithoutIdent h])
+  expArgs <- seriesParen (choice [try $ varWithMode h >>= preAscription h, typeWithoutIdent h])
   defaultArgs <- parseDefaultParams h
   cArrow <- delimiter "->"
   (cod, c) <- rawType h
@@ -324,7 +348,7 @@ rawTermBoxElim h mLet nv c1 = do
 
 rawTermPin :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermPin h m c1 = do
-  ((mx, x), c2) <- rawTermNoeticVar h
+  ((mx, k, x), c2) <- rawTermNoeticVar h
   (c3, (t, c4)) <- rawTermLetVarAscription h mx
   noeticVarList <-
     choice
@@ -340,7 +364,7 @@ rawTermPin h m c1 = do
   c7 <- delimiter ";"
   (e2, c) <- rawExpr h
   endLoc <- getCurrentLoc
-  return (m :< RT.Pin c1 (mx, x, c2, c3, t) c4 noeticVarList c5 e1 c6 loc c7 e2 endLoc, c)
+  return (m :< RT.Pin c1 (mx, k, x, c2, c3, t) c4 noeticVarList c5 e1 c6 loc c7 e2 endLoc, c)
 
 rawTermTauElim :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermTauElim h m c1 = do
@@ -373,27 +397,27 @@ rawTermLetVarAscription' h =
       return ([], Nothing)
     ]
 
-ensureIdentLinearity :: S.Set RawIdent -> [(Hint, RawIdent)] -> App ()
+ensureIdentLinearity :: S.Set RawIdent -> [(Hint, VK.VarKind, RawIdent)] -> App ()
 ensureIdentLinearity foundVarSet vs =
   case vs of
     [] ->
       return ()
-    (m, name) : rest
+    (m, _, name) : rest
       | S.member name foundVarSet ->
           raiseError m $ "Found a non-linear occurrence of `" <> name <> "`."
       | otherwise ->
           ensureIdentLinearity (S.insert name foundVarSet) rest
 
-rawTermNoeticVar :: Handle -> Parser ((Hint, T.Text), C)
+rawTermNoeticVar :: Handle -> Parser ((Hint, VK.VarKind, T.Text), C)
 rawTermNoeticVar h = do
-  ((m, x), c) <- var h
-  return ((m, x), c)
+  ((m, k, x), c) <- varWithMode h
+  return ((m, k, x), c)
 
-rawTermEmbody :: Handle -> Parser (RT.RawTerm, C)
-rawTermEmbody h = do
+rawTermEmbody :: TermMode -> Handle -> Parser (RT.RawTerm, C)
+rawTermEmbody mode h = do
   m <- getCurrentHint
   c1 <- delimiter "*"
-  (e, c) <- rawTerm h
+  (e, c) <- rawTermWithMode mode h
   return (m :< RT.Embody e, c1 ++ c)
 
 rawTypeTau :: Hint -> C -> Parser (RT.RawType, C)
@@ -471,7 +495,7 @@ parseGeist h nameParser = do
           return (False, expDomArgList, defaultArgs),
         return (True, (SE.emptySeries (Just SE.Paren) SE.Comma, []), (SE.emptySeries (Just SE.Bracket) SE.Comma, []))
       ]
-  lift $ ensureArgumentLinearity S.empty $ map (\(mx, x, _, _, _) -> (mx, x)) $ SE.extract expSeries
+  lift $ ensureArgumentLinearity S.empty $ map (\(mx, _, x, _, _, _) -> (mx, x)) $ SE.extract expSeries
   m <- getCurrentHint
   (c2, (cod, c)) <- parseDefInfoCod h m
   return (RT.RawGeist {loc, name = (name', c1), isConstLike, impArgs, defaultArgs, expArgs, cod = (c2, cod)}, c)
@@ -489,7 +513,7 @@ parseAliasGeist h nameParser = do
           return (False, expDomArgList, defaultArgs),
         return (True, (SE.emptySeries (Just SE.Paren) SE.Comma, []), (SE.emptySeries (Just SE.Bracket) SE.Comma, []))
       ]
-  lift $ ensureArgumentLinearity S.empty $ map (\(mx, x, _, _, _) -> (mx, x)) $ SE.extract expSeries
+  lift $ ensureArgumentLinearity S.empty $ map (\(mx, _, x, _, _, _) -> (mx, x)) $ SE.extract expSeries
   m <- getCurrentHint
   let cod = m :< RT.Tau
   return (RT.RawGeist {loc, name = (name', c1), isConstLike, impArgs, defaultArgs, expArgs, cod = ([], cod)}, [])
@@ -534,15 +558,15 @@ parseImplicitArgsMaybe h =
 
 parseImplicitParam :: Handle -> Parser (RawBinder RT.RawType, C)
 parseImplicitParam h = do
-  ((m, x), varC) <- var h
+  ((m, k, x), varC) <- varWithMode h
   choice
     [ do
         c1 <- delimiter ":"
         (a, c2) <- rawType h
-        return ((m, x, varC, c1, a), c2),
+        return ((m, k, x, varC, c1, a), c2),
       do
         hole <- liftIO $ RT.createTypeHole (gensymHandle h) m
-        return ((m, x, varC, [], hole), [])
+        return ((m, k, x, varC, [], hole), [])
     ]
 
 ensureArgumentLinearity :: S.Set RawIdent -> [(Hint, RawIdent)] -> App ()
@@ -728,7 +752,7 @@ rawTermMagicCompileError h m c = do
 
 rawTermMatch :: Handle -> Hint -> C -> Bool -> Parser (RT.RawTerm, C)
 rawTermMatch h m c1 isNoetic = do
-  es <- bareSeries SE.Comma $ rawTerm h
+  es <- bareSeries SE.Comma $ rawTermPartial h
   (patternRowList, c) <- seriesBraceList $ rawTermPatternRow h (length $ SE.extract es)
   return (m :< RT.DataElim c1 isNoetic es patternRowList, c)
 
@@ -754,19 +778,25 @@ rawTermPatternRow h patternSize = do
 
 rawTermPattern :: Handle -> Parser ((Hint, RP.RawPattern), C)
 rawTermPattern h = do
+  mBang <- optional $ delimiter "!"
   m <- getCurrentHint
   (headSymbol, c) <- symbol'
   headSymbol' <-
     if headSymbol /= "_"
       then return headSymbol
       else liftIO $ newTextForHole (gensymHandle h)
-  rawTermPatternBasic h m headSymbol' c
+  let k =
+        case mBang of
+          Just _ -> VK.Exp
+          Nothing -> VK.Normal
+  let c' = maybe [] id mBang ++ c
+  rawTermPatternBasic h m k headSymbol' c'
 
-rawTermPatternBasic :: Handle -> Hint -> T.Text -> C -> Parser ((Hint, RP.RawPattern), C)
-rawTermPatternBasic h m headSymbol c = do
+rawTermPatternBasic :: Handle -> Hint -> VK.VarKind -> T.Text -> C -> Parser ((Hint, RP.RawPattern), C)
+rawTermPatternBasic h m k headSymbol c = do
   if T.null headSymbol
     then rawTermPatternRuneIntro m c
-    else rawTermPatternConsOrVar h m headSymbol c
+    else rawTermPatternConsOrVar h m k headSymbol c
 
 rawTermPatternRuneIntro :: Hint -> C -> Parser ((Hint, RP.RawPattern), C)
 rawTermPatternRuneIntro m c1 = do
@@ -777,19 +807,22 @@ rawTermPatternRuneIntro m c1 = do
     Left e ->
       lift $ raiseError m e
 
-rawTermPatternConsOrVar :: Handle -> Hint -> T.Text -> C -> Parser ((Hint, RP.RawPattern), C)
-rawTermPatternConsOrVar h m headSymbol c1 = do
-  varOrLocator <- interpretVarName m headSymbol
-  choice
-    [ do
-        (patArgs, c) <- seriesParen $ rawTermPattern h
-        return ((m, RP.Cons varOrLocator c1 (RP.Paren patArgs)), c),
-      do
-        (kvs, c) <- keyValueArgs $ rawTermPatternKeyValuePair h
-        return ((m, RP.Cons varOrLocator c1 (RP.Of kvs)), c),
-      do
-        return ((m, RP.Var varOrLocator), c1)
-    ]
+rawTermPatternConsOrVar :: Handle -> Hint -> VK.VarKind -> T.Text -> C -> Parser ((Hint, RP.RawPattern), C)
+rawTermPatternConsOrVar h m k headSymbol c1 = do
+  if k == VK.Exp
+    then return ((m, RP.Var k (Var headSymbol)), c1)
+    else do
+      varOrLocator <- interpretVarName m headSymbol
+      choice
+        [ do
+            (patArgs, c) <- seriesParen $ rawTermPattern h
+            return ((m, RP.Cons varOrLocator c1 (RP.Paren patArgs)), c),
+          do
+            (kvs, c) <- keyValueArgs $ rawTermPatternKeyValuePair h
+            return ((m, RP.Cons varOrLocator c1 (RP.Of kvs)), c),
+          do
+            return ((m, RP.Var k varOrLocator), c1)
+        ]
 
 rawTermPatternKeyValuePair :: Handle -> Parser ((Key, (Hint, C, RP.RawPattern)), C)
 rawTermPatternKeyValuePair h = do
@@ -801,7 +834,7 @@ rawTermPatternKeyValuePair h = do
         ((mTo, to), c) <- rawTermPattern h
         return ((from, (mTo, c1 ++ c2, to)), c),
       do
-        return ((from, (mFrom, [], RP.Var (Var from))), []) -- record rhyming
+        return ((from, (mFrom, [], RP.Var VK.Normal (Var from))), []) -- record rhyming
     ]
 
 rawTermIf :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
@@ -837,13 +870,13 @@ joinComment xs =
 rawTermKeywordClause :: Handle -> T.Text -> Parser (RT.KeywordClause RT.RawTerm, C)
 rawTermKeywordClause h k = do
   c1 <- keyword k
-  cond <- rawTerm h
+  cond <- rawTermPartial h
   (c2, (body, c3)) <- betweenBrace $ rawExpr h
   return (((c1, cond), (c2, body)), c3)
 
 rawTermClause :: Handle -> C -> Parser (RT.KeywordClause RT.RawTerm, C)
 rawTermClause h c1 = do
-  cond <- rawTerm h
+  cond <- rawTermPartial h
   (c2, (body, c3)) <- betweenBrace $ rawExpr h
   return (((c1, cond), (c2, body)), c3)
 
@@ -941,8 +974,7 @@ rawTermAssert h m c1 = do
 
 keyValueArgs :: Parser (a, C) -> Parser (SE.Series a, C)
 keyValueArgs p = do
-  c1 <- keyword "of"
-  series (Just (" of ", c1)) SE.Brace SE.Comma p
+  series Nothing SE.Brace SE.Comma p
 
 metaPiElim :: Parser (a, C) -> Parser (SE.Series a, C)
 metaPiElim p = do
@@ -975,7 +1007,7 @@ foldTyApp m (t, c) argListList =
 
 preBinder :: Handle -> Parser (RawBinder RT.RawType, C)
 preBinder h = do
-  mxc <- var h
+  mxc <- varWithMode h
   choice
     [ preAscription h mxc,
       preAscription' h mxc
@@ -983,44 +1015,44 @@ preBinder h = do
 
 preBinderWithDefault :: Handle -> Parser ((RawBinder RT.RawType, RT.RawTerm), C)
 preBinderWithDefault h = do
-  ((m, x), varC) <- var h
+  ((m, k, x), varC) <- varWithMode h
   choice
     [ do
         c2 <- delimiter ":="
         (defaultValue, c3) <- rawTerm h
         hole <- liftIO $ RT.createTypeHole (gensymHandle h) m
-        let binder = (m, x, varC, [], hole)
+        let binder = (m, k, x, varC, [], hole)
         return ((binder, defaultValue), c2 ++ c3),
       do
         c1 <- delimiter ":"
         (a, c2) <- rawType h
         c3 <- delimiter ":="
         (defaultValue, c4) <- rawTerm h
-        let binder = (m, x, varC, c1, a)
+        let binder = (m, k, x, varC, c1, a)
         return ((binder, defaultValue), c2 ++ c3 ++ c4)
     ]
 
-preAscription :: Handle -> ((Hint, T.Text), C) -> Parser (RawBinder RT.RawType, C)
-preAscription h ((m, x), c1) = do
+preAscription :: Handle -> ((Hint, VK.VarKind, T.Text), C) -> Parser (RawBinder RT.RawType, C)
+preAscription h ((m, k, x), c1) = do
   c2 <- delimiter ":"
   (a, c) <- rawType h
-  return ((m, x, c1, c2, a), c)
+  return ((m, k, x, c1, c2, a), c)
 
-preAscription' :: Handle -> ((Hint, T.Text), C) -> Parser (RawBinder RT.RawType, C)
-preAscription' h ((m, x), c) = do
+preAscription' :: Handle -> ((Hint, VK.VarKind, T.Text), C) -> Parser (RawBinder RT.RawType, C)
+preAscription' h ((m, k, x), c) = do
   hole <- liftIO $ RT.createTypeHole (gensymHandle h) m
-  return ((m, x, c, [], hole), [])
+  return ((m, k, x, c, [], hole), [])
 
 typeWithoutIdent :: Handle -> Parser (RawBinder RT.RawType, C)
 typeWithoutIdent h = do
   m <- getCurrentHint
   x <- liftIO $ newTextForHole (gensymHandle h)
   (t, c) <- rawType h
-  return ((m, x, [], [], t), c)
+  return ((m, VK.Normal, x, [], [], t), c)
 
-rawTermPiElimExact :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
-rawTermPiElimExact h m c1 = do
-  (e, c) <- rawTerm h
+rawTermPiElimExact :: TermMode -> Handle -> Hint -> C -> Parser (RT.RawTerm, C)
+rawTermPiElimExact mode h m c1 = do
+  (e, c) <- rawTermWithMode mode h
   return (m :< RT.PiElimExact c1 e, c)
 
 rawTermIntrospect :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
@@ -1110,6 +1142,24 @@ var h = do
     else do
       unusedVar <- liftIO $ newTextForHole (gensymHandle h)
       return ((m, unusedVar), c)
+
+varWithMode :: Handle -> Parser ((Hint, VK.VarKind, T.Text), C)
+varWithMode h = do
+  mBang <- optional $ delimiter "!"
+  m <- getCurrentHint
+  (x, c) <- symbol
+  let k =
+        case mBang of
+          Just _ ->
+            VK.Exp
+          Nothing ->
+            VK.Normal
+  let c' = fromMaybe [] mBang ++ c
+  if x /= "_"
+    then return ((m, k, x), c')
+    else do
+      unusedVar <- liftIO $ newTextForHole (gensymHandle h)
+      return ((m, k, unusedVar), c')
 
 baseName :: Parser (BN.BaseName, C)
 baseName = do

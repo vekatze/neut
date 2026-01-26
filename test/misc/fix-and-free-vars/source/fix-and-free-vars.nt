@@ -17,33 +17,33 @@ define main(): unit {
   let single-free-var =
     define free-vars-in-recursion(c: int): int {
       if eq-int(c, 0) {
-        let _ = !xs;
-        let _ on !xs = length(!xs);
-        let _ = !xs;
+        let _ = xs;
+        let _ on !xs = length(xs);
+        let _ = xs;
         1
       } else {
         free-vars-in-recursion(sub-int(c, 1))
       }
     };
   let _ = single-free-var(3);
-  let !ys = !xs;
-  let !zs = !xs;
+  let !ys = xs;
+  let !zs = xs;
   let !ws: list(int) = List[];
   let multiple-free-var =
     define free-vars-in-recursion(c: int): int {
       if eq-int(c, 0) {
-        let _ = !xs;
-        let _ = !xs;
-        let _ = !ys;
-        let _ on !ys = length(!ys);
-        let _ on !zs = length(!zs);
-        let _ = !ys;
-        let _ = !zs;
+        let _ = xs;
+        let _ = xs;
+        let _ = ys;
+        let _ on !ys = length(ys);
+        let _ on !zs = length(zs);
+        let _ = ys;
+        let _ = zs;
         1
       } else {
-        let _ = !xs;
-        let _ = !ys;
-        let _ = !ws;
+        let _ = xs;
+        let _ = ys;
+        let _ = ws;
         free-vars-in-recursion(sub-int(c, 1))
       }
     };

@@ -23,6 +23,7 @@ import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.ExternalName qualified as EN
 import Language.Common.Opacity qualified as O
 import Language.Common.Rune qualified as RU
+import Language.Common.VarKind qualified as VK
 import Language.RawTerm.Key
 import Language.RawTerm.Locator qualified as Locator
 import Language.RawTerm.Name qualified as N
@@ -550,11 +551,11 @@ decodeBinder' :: SE.Series (RawBinder RawType) -> D.Doc
 decodeBinder' series =
   SE.decode $ fmap piIntroArgToDoc series
 
-decodeNoeticVar :: (Hint, RawIdent) -> D.Doc
-decodeNoeticVar (_, v) =
-  D.text v
+decodeNoeticVar :: (Hint, VK.VarKind, RawIdent) -> D.Doc
+decodeNoeticVar (_, k, v) =
+  prefixVarKind k $ D.text v
 
-decodeNoeticVarList :: SE.Series (Hint, RawIdent) -> [PI.Piece]
+decodeNoeticVarList :: SE.Series (Hint, VK.VarKind, RawIdent) -> [PI.Piece]
 decodeNoeticVarList vs =
   if SE.isEmpty vs
     then []
@@ -563,29 +564,29 @@ decodeNoeticVarList vs =
         PI.bareSeries $ SE.decode $ fmap decodeNoeticVar vs
       ]
 
-decodeQuoteVarList :: SE.Series (Hint, RawIdent) -> [PI.Piece]
+decodeQuoteVarList :: SE.Series (Hint, VK.VarKind, RawIdent) -> [PI.Piece]
 decodeQuoteVarList vs =
   if SE.isEmpty vs
     then []
     else [PI.horizontal $ SE.decode $ fmap decodeNoeticVar vs]
 
 piArgToDoc :: RawBinder RawType -> D.Doc
-piArgToDoc (m, x, c1, c2, t) = do
+piArgToDoc (m, k, x, c1, c2, t) = do
   let t' = typeToDoc t
   if isHole x
     then attachComment (c1 ++ c2) t'
     else do
-      let x' = D.text x
+      let x' = prefixVarKind k $ D.text x
       paramToDoc' (m, x', c1, c2, t')
 
 piIntroArgToDoc :: RawBinder RawType -> D.Doc
-piIntroArgToDoc (m, x, c1, c2, t) = do
-  let x' = nameToDoc $ N.Var x
+piIntroArgToDoc (m, k, x, c1, c2, t) = do
+  let x' = prefixVarKind k $ nameToDoc $ N.Var x
   paramToDoc (m, x', c1, c2, t)
 
 piIntroArgWithDefaultToDoc :: (RawBinder RawType, RawTerm) -> D.Doc
-piIntroArgWithDefaultToDoc ((m, x, c1, c2, t), defaultValue) = do
-  let x' = nameToDoc $ N.Var x
+piIntroArgWithDefaultToDoc ((m, k, x, c1, c2, t), defaultValue) = do
+  let x' = prefixVarKind k $ nameToDoc $ N.Var x
   let baseParam = paramToDoc (m, x', c1, c2, t)
   D.join [baseParam, D.text " := ", toDoc defaultValue]
 
@@ -609,6 +610,12 @@ paramToDoc' (_, x, c1, c2, t) = do
     [ PI.parameter x,
       PI.inject $ attachComment (c1 ++ c2) $ typeAnnot t
     ]
+
+prefixVarKind :: VK.VarKind -> D.Doc -> D.Doc
+prefixVarKind k doc =
+  case k of
+    VK.Exp -> D.join [D.text "!", doc]
+    VK.Normal -> doc
 
 decGeist :: (a -> D.Doc) -> RT.RawGeist a -> D.Doc
 decGeist
@@ -715,10 +722,10 @@ decodeImpParams impParams =
     else SE.decode $ fmap decodeImpVar impParams
 
 decodeImpVar :: RawBinder RawType -> D.Doc
-decodeImpVar (m, x, c1, c2, t) = do
+decodeImpVar (m, k, x, c1, c2, t) = do
   if isHole x
     then attachComment (c1 ++ c2) (typeToDoc t)
-    else paramToDoc (m, D.text x, c1, c2, t)
+    else paramToDoc (m, prefixVarKind k $ D.text x, c1, c2, t)
 
 decodeDefaultParams :: SE.Series (RawBinder RawType, RawTerm) -> D.Doc
 decodeDefaultParams defaultParams =
@@ -834,8 +841,8 @@ decodeClauseBody c e = do
 decodePattern :: RP.RawPattern -> D.Doc
 decodePattern pat = do
   case pat of
-    RP.Var name ->
-      nameToDoc name
+    RP.Var k name ->
+      prefixVarKind k $ nameToDoc name
     RP.Cons name c args -> do
       let name' = nameToDoc name
       case args of
@@ -851,7 +858,7 @@ decodePattern pat = do
 decodePatternKeyValue :: (Key, (Hint, C, RP.RawPattern)) -> D.Doc
 decodePatternKeyValue (k, (_, c, v)) = do
   case v of
-    RP.Var (N.Var k')
+    RP.Var VK.Normal (N.Var k')
       | k == k' ->
           D.text k
     _ ->

@@ -16,11 +16,11 @@ alias heap(a: type) {
 define join<a>(cmp: &(a, a) -> ordering, t1: tree(a), t2: tree(a)): tree(a) {
   match t1, t2 {
   | Node(r1, !x1, children1), Node(r2, !x2, children2) =>
-    match cmp(!x1, !x2) {
+    match cmp(x1, x2) {
     | LT =>
-      Node(add-int(r1, 1), !x1, Cons(Node(r2, !x2, children2), children1))
+      Node(add-int(r1, 1), x1, Cons(Node(r2, x2, children2), children1))
     | _ =>
-      Node(add-int(r1, 1), !x2, Cons(Node(r1, !x1, children1), children2))
+      Node(add-int(r1, 1), x2, Cons(Node(r1, x1, children1), children2))
     }
   }
 }
@@ -82,14 +82,14 @@ define find-min<a>(cmp: &(a, a) -> ordering, h: &heap(a)): ?a {
     define self(!cand: a, h: &heap(a)): a {
       case h {
       | Nil =>
-        !cand
+        cand
       | Cons(t, ts) =>
         let !root-head = root<a>(t);
-        match cmp(!root-head, !cand) {
+        match cmp(root-head, cand) {
         | LT =>
-          self(!root-head, ts)
+          self(root-head, ts)
         | _ =>
-          self(!cand, ts)
+          self(cand, ts)
         }
       }
     };
@@ -149,7 +149,7 @@ define main(): unit {
   let h = insert<int>(compare-int, 100, h);
   let h = insert<int>(compare-int, 8, h);
   let !h = insert<int>(compare-int, 1, h);
-  let h = merge<int>(compare-int, !h, !h);
+  let h = merge<int>(compare-int, h, h);
   let maybe-min on h =
     match find-min<int>(compare-int, h) {
     | Left(_) =>

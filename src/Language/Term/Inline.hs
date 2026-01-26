@@ -38,6 +38,7 @@ import Language.Common.Literal qualified as L
 import Language.Common.LowMagic qualified as LM
 import Language.Common.Magic qualified as M
 import Language.Common.Opacity qualified as O
+import Language.Common.VarKind qualified as VK
 import Language.Common.PiKind qualified as PK
 import Language.Term.Eq qualified as TermEq
 import Language.Term.Inline.ConstantFold qualified as ConstantFold
@@ -93,9 +94,9 @@ inline' h term = do
       defaultArgs' <- mapM (bimapM (inlineTypeBinder h) (inline' h)) defaultArgs
       e' <- inline' h e
       case lamKind of
-        LK.Fix opacity (mx, x, codType) -> do
+        LK.Fix opacity (mx, k, x, codType) -> do
           codType' <- inlineType' h codType
-          let attr' = attr {AttrL.lamKind = LK.Fix opacity (mx, x, codType')}
+          let attr' = attr {AttrL.lamKind = LK.Fix opacity (mx, k, x, codType')}
           return (m :< TM.PiIntro attr' impArgs' expArgs' defaultArgs' e')
         LK.Normal mName codType -> do
           codType' <- inlineType' h codType
@@ -115,7 +116,7 @@ inline' h term = do
               if length impBinders /= length impArgs' || not (canReduceByLamKind lamKind)
                 then return (m :< TM.PiElim isNoetic e' impArgs' expArgs' defaultArgs')
                 else do
-                  let impIds = map (\(_, x, _) -> x) impBinders
+                  let impIds = map (\(_, _, x, _) -> x) impBinders
                   let subType = IntMap.fromList $ zip (map Ident.toInt impIds) (map Subst.Type impArgs')
                   let defaultArgsRaw = fillDefaultArgs defaultArgs' (map snd defBinders)
                   defaultArgsFilled <- liftIO $ mapM (Subst.subst (substHandle h) subType) defaultArgsRaw
@@ -125,7 +126,7 @@ inline' h term = do
                     then return (m :< TM.PiElim isNoetic e' impArgs' expArgs' defaultArgs')
                     else do
                       let subSelf = selfSubstForLamKind lamKind e'
-                      let expIds = map (\(_, x, _) -> x) expParams
+                      let expIds = map (\(_, _, x, _) -> x) expParams
                       let subTerm = IntMap.fromList $ zip (map Ident.toInt expIds) (map Subst.Term expArgsAll)
                       if all TM.isValue expArgsAll
                         then do
@@ -143,7 +144,7 @@ inline' h term = do
                   if length impParams /= length impArgs'
                     then return (m :< TM.PiElim isNoetic e' impArgs' expArgs' defaultArgs')
                     else do
-                      let impIds = map (\(_, x, _) -> x) impParams
+                      let impIds = map (\(_, _, x, _) -> x) impParams
                       let subType = IntMap.fromList $ zip (map Ident.toInt impIds) (map Subst.Type impArgs')
                       let expParams = expBinders ++ map fst defDefaults
                       let defaultArgsRaw = fillDefaultArgs defaultArgs' (map snd defDefaults)
@@ -168,13 +169,13 @@ inline' h term = do
                                   popGuard h
                                   identity <- liftIO $ Gensym.newCount (gensymHandle h)
                                   let selfType = m :< TM.Pi PK.normal [] expBinders' [] codType'
-                                  let attr = AttrL.Attr {lamKind = LK.Fix O.Opaque (m, self, selfType), identity}
+                                  let attr = AttrL.Attr {lamKind = LK.Fix O.Opaque (m, VK.Normal, self, selfType), identity}
                                   let fun = m :< TM.PiIntro attr [] expBinders' [] body''
                                   return $ m :< TM.PiElim False fun [] expArgsAll []
                             _ -> do
                               if all TM.isValue expArgsAll
                                 then do
-                                  let expIds = map (\(_, x, _) -> x) expParams
+                                  let expIds = map (\(_, _, x, _) -> x) expParams
                                   let subTerm = IntMap.fromList $ zip (map Ident.toInt expIds) (map Subst.Term expArgsAll)
                                   let sub = IntMap.union subTerm subType
                                   _ :< body' <- liftIO $ Subst.subst (substHandle h) sub body
@@ -270,7 +271,7 @@ inline' h term = do
         _ -> do
           e2' <- inline' h e2
           return $ m :< TM.TauElim (mx, x) e1' e2'
-    m :< TM.Let opacity mxt@(_, x, _) e1 e2 -> do
+    m :< TM.Let opacity mxt@(_, _, x, _) e1 e2 -> do
       e1' <- inline' h e1
       case opacity of
         O.Clear
@@ -340,7 +341,7 @@ inlineType' h ty =
             TypeDef.TypeDefInfo {TypeDef.typeDefBinders = binders, TypeDef.typeDefBody = body} <- typeDefInfo,
             length binders == length args -> do
               args' <- mapM (inlineType' h) args
-              let binderIds = map (\(_, x, _) -> x) binders
+              let binderIds = map (\(_, _, x, _) -> x) binders
               let subType = IntMap.fromList $ zip (map Ident.toInt binderIds) (map Subst.Type args')
               body' <- liftIO $ Subst.substType (substHandle h) subType body
               inlineType' h body'
@@ -407,9 +408,9 @@ inlineLowMagic h lowMagic =
       return $ LM.CallType func' arg1' arg2'
 
 inlineTypeBinder :: Handle -> BinderF TM.Type -> App (BinderF TM.Type)
-inlineTypeBinder h (m, x, t) = do
+inlineTypeBinder h (m, k, x, t) = do
   t' <- inlineType' h t
-  return (m, x, t')
+  return (m, k, x, t')
 
 inlineAttrDataIntro :: Handle -> AttrDI.Attr name (BinderF TM.Type) -> App (AttrDI.Attr name (BinderF TM.Type))
 inlineAttrDataIntro h attr = do
@@ -552,8 +553,8 @@ bind binder cont =
   case binder of
     [] ->
       cont
-    ((m, x, t), e1) : rest -> do
-      m :< TM.Let O.Clear (m, x, t) e1 (bind rest cont)
+    ((m, k, x, t), e1) : rest -> do
+      m :< TM.Let O.Clear (m, k, x, t) e1 (bind rest cont)
 
 pushGuard :: Handle -> DD.DefiniteDescription -> [TM.Type] -> TM.Term -> App ()
 pushGuard h dd typeArgs selfVar = do
@@ -597,7 +598,7 @@ canReduceByLamKind lamKind =
 selfSubstForLamKind :: LK.LamKindF a -> TM.Term -> Subst.Subst
 selfSubstForLamKind lamKind selfTerm =
   case lamKind of
-    LK.Fix O.Clear (_, selfIdent, _) ->
+    LK.Fix O.Clear (_, _, selfIdent, _) ->
       IntMap.singleton (Ident.toInt selfIdent) (Subst.Term selfTerm)
     _ ->
       IntMap.empty
