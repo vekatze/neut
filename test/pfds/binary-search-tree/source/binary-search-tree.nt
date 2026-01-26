@@ -13,22 +13,22 @@ data set-signature(a) {
 }
 
 define make-set-signature<a>(!compare: (&a, &a) -> ordering): set-signature(a) {
-  Set of {
+  Set{
     empty := Leaf,
     insert := {
       define insert(!new-value: a, haystack: set(a)): set(a) {
         match haystack {
         | Leaf =>
-          Node(Leaf, !new-value, Leaf)
+          Node(Leaf, new-value, Leaf)
         | Node(left, !x, right) =>
-          let b on !new-value, !x = !compare(!new-value, !x);
+          let b on !new-value, !x = compare(new-value, x);
           match b {
           | LT =>
-            Node(insert(!new-value, left), !x, right)
+            Node(insert(new-value, left), x, right)
           | EQ =>
-            Node(left, !x, right)
+            Node(left, x, right)
           | GT =>
-            Node(left, !x, insert(!new-value, right))
+            Node(left, x, insert(new-value, right))
           }
         }
       }
@@ -39,14 +39,14 @@ define make-set-signature<a>(!compare: (&a, &a) -> ordering): set-signature(a) {
         | Leaf =>
           False
         | Node(left, x, right) =>
-          let b on !needle = !compare(!needle, x);
+          let b on !needle = compare(needle, x);
           match b {
           | LT =>
-            member(!needle, left)
+            member(needle, left)
           | EQ =>
             True
           | GT =>
-            member(!needle, right)
+            member(needle, right)
           }
         }
       }
@@ -55,15 +55,15 @@ define make-set-signature<a>(!compare: (&a, &a) -> ordering): set-signature(a) {
 }
 
 define main(): unit {
-  let Ord of {compare} = core.int.ord.as-ord;
+  let Ord{compare} = core.int.ord.as-ord;
   let int-set-signature = make-set-signature<int>(compare);
   match int-set-signature {
-  | Set of {insert := !insert, member, empty} =>
-    let my-set = !insert(10, empty);
-    let my-set = !insert(20, my-set);
-    let my-set = !insert(20, my-set);
-    let my-set = !insert(20, my-set);
-    let my-set = !insert(30, my-set);
+  | Set{insert := !insert, member, empty} =>
+    let my-set = insert(10, empty);
+    let my-set = insert(20, my-set);
+    let my-set = insert(20, my-set);
+    let my-set = insert(20, my-set);
+    let my-set = insert(30, my-set);
     let result on my-set = member(5, my-set);
     let _ = my-set;
     if result {

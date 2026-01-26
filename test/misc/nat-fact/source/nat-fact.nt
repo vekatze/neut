@@ -21,7 +21,7 @@ define mul-nat(x: nat, !y: nat): nat {
   | Zero =>
     Zero
   | Succ(m) =>
-    add-nat(mul-nat(m, !y), !y)
+    add-nat(mul-nat(m, y), y)
   }
 }
 
@@ -37,11 +37,11 @@ define eq-nat(n1: nat, n2: nat): bool {
 }
 
 define fact(!n: nat): nat {
-  match !n {
+  match n {
   | Zero =>
     Succ(Zero)
   | Succ(m) =>
-    mul-nat(!n, fact(m))
+    mul-nat(n, fact(m))
   }
 }
 

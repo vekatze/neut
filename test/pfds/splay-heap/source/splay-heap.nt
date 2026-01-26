@@ -12,39 +12,39 @@ define split<a>(!cmp: (a, a) -> ordering, !pivot: a, t: heap(a)): pair(heap(a), 
   | Leaf =>
     Pair(Leaf, Leaf)
   | Node(left, !v, right) =>
-    match !cmp(!v, !pivot) {
+    match cmp(v, pivot) {
     | LT =>
       // go right
       match right {
       | Leaf =>
-        Pair(Node(left, !v, Leaf), Leaf)
+        Pair(Node(left, v, Leaf), Leaf)
       | Node(right-left, !w, right-right) =>
-        match !cmp(!w, !pivot) {
+        match cmp(w, pivot) {
         | LT =>
           // go right
-          let Pair(!right-right-small, right-right-big) = split(!cmp, !pivot, right-right);
-          Pair(Node(Node(left, !v, !right-right-small), !w, !right-right-small), right-right-big)
+          let Pair(!right-right-small, right-right-big) = split(cmp, pivot, right-right);
+          Pair(Node(Node(left, v, right-right-small), w, right-right-small), right-right-big)
         | _ =>
           // go left
-          let Pair(right-left-small, right-left-big) = split(!cmp, !pivot, right-left);
-          Pair(Node(left, !v, right-left-small), Node(right-left-big, !w, right-right))
+          let Pair(right-left-small, right-left-big) = split(cmp, pivot, right-left);
+          Pair(Node(left, v, right-left-small), Node(right-left-big, w, right-right))
         }
       }
     | _ =>
       // go left
       match left {
       | Leaf =>
-        Pair(Leaf, Node(Leaf, !v, right))
+        Pair(Leaf, Node(Leaf, v, right))
       | Node(left-left, !w, left-right) =>
-        match !cmp(!w, !pivot) {
+        match cmp(w, pivot) {
         | LT =>
           // go right
-          let Pair(left-right-small, left-right-big) = split(!cmp, !pivot, left-right);
-          Pair(Node(left-left, !w, left-right-small), Node(left-right-big, !v, right))
+          let Pair(left-right-small, left-right-big) = split(cmp, pivot, left-right);
+          Pair(Node(left-left, w, left-right-small), Node(left-right-big, v, right))
         | _ =>
           // go left
-          let Pair(left-left-small, left-left-big) = split(!cmp, !pivot, left-left);
-          Pair(left-left-small, Node(left-left-big, !w, Node(left-right, !v, right)))
+          let Pair(left-left-small, left-left-big) = split(cmp, pivot, left-left);
+          Pair(left-left-small, Node(left-left-big, w, Node(left-right, v, right)))
         }
       }
     }
@@ -52,8 +52,8 @@ define split<a>(!cmp: (a, a) -> ordering, !pivot: a, t: heap(a)): pair(heap(a), 
 }
 
 define insert<a>(cmp: (a, a) -> ordering, !x: a, t: heap(a)): heap(a) {
-  let Pair(smaller, bigger) = split(cmp, !x, t);
-  Node(smaller, !x, bigger)
+  let Pair(smaller, bigger) = split(cmp, x, t);
+  Node(smaller, x, bigger)
 }
 
 define find-min<a>(t: &heap(a)): ?a {

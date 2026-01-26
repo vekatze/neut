@@ -121,9 +121,9 @@ define test-behavior(): unit {
   let _ = ch;
   let ch = make-channel();
   let !ch: channel(int) = ch;
-  let _ = !ch;
-  let _ on !ch = send(!ch, lift {1});
-  let ch = !ch;
+  let _ = ch;
+  let _ on !ch = send(ch, lift {1});
+  let ch = ch;
   let ch-clone = ch;
   let _ on ch-clone = send(ch-clone, lift {1});
   let tmp on ch-clone = {

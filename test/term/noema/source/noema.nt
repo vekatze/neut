@@ -20,9 +20,9 @@ define test-syntax(): unit {
     let _ = xs;
     let _ = xs;
     let _ = xs;
-    let _ = !xs-copy;
-    let _ = !xs-copy;
-    let _ = !xs-copy;
+    let _ = xs-copy;
+    let _ = xs-copy;
+    let _ = xs-copy;
     case xs {
     | Nil =>
       length(xs)
@@ -32,15 +32,15 @@ define test-syntax(): unit {
   };
   let !xs = xs;
   // let _ = xs;
-  let ys = !xs;
-  let zs = !xs;
+  let ys = xs;
+  let zs = xs;
   let _ on !xs, ys, zs = {
-    let v1 = length(!xs);
+    let v1 = length(xs);
     let v2 = length(ys);
     let v3 = length(zs);
     add-int(v1, add-int(v2, v3))
   };
-  let _ = !xs;
+  let _ = xs;
   let _ = ys;
   let _ = zs;
   Unit
@@ -62,14 +62,14 @@ define nested-enum-match(t: &term(my-enum)): term(my-enum) {
     case t {
     | App(Abs(x, !t), Var(e)) =>
       let _ = Var(e);
-      let !t = *!t;
-      let _ = !t;
+      let !t = *t;
+      let _ = t;
       let _ = x;
       let _ = Var(e);
-      let _ = !t;
+      let _ = t;
       let _ = x;
       let _ = Var(e);
-      let _ = !t;
+      let _ = t;
       let _ = x;
       let _ = Var(e);
       let _ = x;
@@ -78,10 +78,10 @@ define nested-enum-match(t: &term(my-enum)): term(my-enum) {
       Bar
     | App(Abs(x, _), App(Var(_), App(_, App(w, _)))) =>
       let !foo = *w;
-      let _ = !foo;
-      let _ = !foo;
-      let _ = !foo;
-      let _ = !foo;
+      let _ = foo;
+      let _ = foo;
+      let _ = foo;
+      let _ = foo;
       let _ = x;
       Foo
     | App(Abs(_, _), App(App(_, App(_, _)), Var(_))) =>
@@ -92,9 +92,9 @@ define nested-enum-match(t: &term(my-enum)): term(my-enum) {
       Bar
     | t =>
       let !t = *t;
-      let _ = !t;
-      let _ = !t;
-      let _ = !t;
+      let _ = t;
+      let _ = t;
+      let _ = t;
       Foo
     };
   match val {
@@ -110,15 +110,15 @@ define unbalanced-freevars-in-branches<a>(t: &term(a)): term(a) {
   let !foo = Var("test");
   let f =
     function () {
-      !foo
+      foo
     };
   let g =
     function () {
-      !foo
+      foo
     };
   let h =
     function () {
-      !foo
+      foo
     };
   case t {
   | Var(x) =>
@@ -130,11 +130,11 @@ define unbalanced-freevars-in-branches<a>(t: &term(a)): term(a) {
       *t
     | Abs(_, t) =>
       let !val = *t;
-      let _ = !val;
-      let _ = !val;
-      let _ = !val;
-      let _ = !val;
-      !val
+      let _ = val;
+      let _ = val;
+      let _ = val;
+      let _ = val;
+      val
     | _ =>
       *t
     }
@@ -157,9 +157,9 @@ define unbalanced-freevars-in-branches<a>(t: &term(a)): term(a) {
           Var("pohe")
         }
       };
-    let _ = !k;
-    let _ = !k;
-    let _ = !k;
+    let _ = k;
+    let _ = k;
+    let _ = k;
     *t1
   }
 }

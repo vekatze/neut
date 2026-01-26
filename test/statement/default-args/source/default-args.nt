@@ -118,9 +118,9 @@ define local-lambda-override(): unit {
       };
       Unit
     };
-  pin v1 = !f();
+  pin v1 = f();
   vet-simple::(v1);
-  pin v2 = !f()[r := Left(Unit)];
+  pin v2 = f()[r := Left(Unit)];
   vet-simple::(v2);
 }
 

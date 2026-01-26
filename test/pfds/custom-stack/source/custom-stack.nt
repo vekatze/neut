@@ -46,13 +46,13 @@ define main(): unit {
     }, function () {
       2
     });
-  let ys = C(!v, !xs);
-  let zs = C(!v, C(!v, ys));
+  let ys = C(v, xs);
+  let zs = C(v, C(v, ys));
   let calc on zs, !xs = {
     let _ = is-empty(zs);
-    let _ = is-empty(!xs);
+    let _ = is-empty(xs);
     let h = head(zs);
-    let _ = head(!xs);
+    let _ = head(xs);
     let _ = tail(zs);
     let _ = tail(zs);
     match h {
@@ -65,6 +65,6 @@ define main(): unit {
     }
   };
   let _ = zs;
-  let _ = !xs;
+  let _ = xs;
   print-int-line(calc);
 }

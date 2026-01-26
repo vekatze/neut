@@ -22,7 +22,7 @@ define mul-nat(x: nat, !y: nat): nat {
   | Zero =>
     Zero
   | Succ(m) =>
-    add-nat(mul-nat(m, !y), !y)
+    add-nat(mul-nat(m, y), y)
   }
 }
 
@@ -36,11 +36,11 @@ define interpret(n: nat): int {
 }
 
 define gen(!n: nat): list(nat) {
-  match !n {
+  match n {
   | Zero =>
     Nil
   | Succ(m) =>
-    Cons(!n, gen(m))
+    Cons(n, gen(m))
   }
 }
 
@@ -49,16 +49,16 @@ define fold-r<a, b>(!f: (b, a) -> a, acc: a, xs: list(b)): a {
   | Nil =>
     acc
   | Cons(y, ys) =>
-    !f(y, fold-r(!f, acc, ys))
+    f(y, fold-r(f, acc, ys))
   }
 }
 
 define tails<a>(!xs: list(a)): list(list(a)) {
-  match !xs {
+  match xs {
   | Nil =>
     Cons(Nil, Nil)
   | Cons(_, !xs) =>
-    Cons(!xs, tails(!xs))
+    Cons(xs, tails(xs))
   }
 }
 
@@ -73,29 +73,29 @@ define head(xs: list(nat)): nat {
 
 define main(): unit {
   let !n = Succ(Succ(Succ(Zero)));
-  let _ = !n;
-  let _ = !n;
-  let _ = !n;
-  let !m = mul-nat(!n, mul-nat(!n, !n));
+  let _ = n;
+  let _ = n;
+  let _ = n;
+  let !m = mul-nat(n, mul-nat(n, n));
   // 27
-  let _ = !m;
-  let _ = !m;
+  let _ = m;
+  let _ = m;
   // [27, 26, 25, ..., 1]
-  let xs = gen(!m);
+  let xs = gen(m);
   // [[26, ...], [25, ...], ..., [1, ...]]
   let !yss = tails(xs);
-  let _ = !yss;
-  let _ = !yss;
+  let _ = yss;
+  let _ = yss;
   let !zs =
     // [26, ..., 1]
-    for-each(!yss, function (l) {
+    for-each(yss, function (l) {
       head(l)
     });
-  let _ = !zs;
-  let _ = !zs;
-  let _ = !zs;
-  let _ = !zs;
-  let _ = !zs;
+  let _ = zs;
+  let _ = zs;
+  let _ = zs;
+  let _ = zs;
+  let _ = zs;
   let !result-nat =
     // 26 + ... + 1 = 351
     fold-r(
@@ -103,10 +103,10 @@ define main(): unit {
         add-nat(a, b)
       },
       Zero,
-      !zs,
+      zs,
     );
-  let _ = !result-nat;
-  let _ = !result-nat;
-  let result = interpret(!result-nat);
+  let _ = result-nat;
+  let _ = result-nat;
+  let result = interpret(result-nat);
   print-int-line(result);
 }
