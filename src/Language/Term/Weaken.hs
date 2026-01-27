@@ -16,7 +16,6 @@ import Language.Common.Binder
 import Language.Common.DecisionTree qualified as DT
 import Language.Common.DefaultArgs qualified as DefaultArgs
 import Language.Common.Foreign qualified as F
-import Language.Common.Ident
 import Language.Common.ImpArgs qualified as ImpArgs
 import Language.Common.LamKind qualified as LK
 import Language.Common.LowMagic qualified as LM
@@ -172,6 +171,8 @@ weakenMagic m magic = do
               LM.CallType (weaken func) (weaken arg1) (weaken arg2)
     M.InspectType mid typeValueExpr e ->
       M.WeakMagic $ M.InspectType mid (weakenType typeValueExpr) (weakenType e)
+    M.EqType moduleID typeExpr1 typeExpr2 ->
+      M.WeakMagic $ M.EqType moduleID (weakenType typeExpr1) (weakenType typeExpr2)
     M.ShowType textTypeExpr typeExpr ->
       M.WeakMagic $ M.ShowType (weakenType textTypeExpr) (weakenType typeExpr)
     M.TextCons textTypeExpr rune text ->

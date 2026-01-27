@@ -409,6 +409,10 @@ substMagic h sub magic =
       typeValueExpr' <- substType h sub typeValueExpr
       e' <- substType h sub e
       return $ M.InspectType mid typeValueExpr' e'
+    M.EqType moduleID typeExpr1 typeExpr2 -> do
+      typeExpr1' <- substType h sub typeExpr1
+      typeExpr2' <- substType h sub typeExpr2
+      return $ M.EqType moduleID typeExpr1' typeExpr2'
     M.ShowType textTypeExpr typeExpr -> do
       textTypeExpr' <- substType h sub textTypeExpr
       typeExpr' <- substType h sub typeExpr

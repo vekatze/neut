@@ -309,6 +309,10 @@ inline' h term = do
         M.InspectType mid _ typeExpr -> do
           typeExpr' <- inlineType' h typeExpr
           Magic.evaluateInspectType h m mid typeExpr' >>= inline' h
+        M.EqType moduleID typeExpr1 typeExpr2 -> do
+          typeExpr1' <- inlineType' h typeExpr1
+          typeExpr2' <- inlineType' h typeExpr2
+          Magic.evaluateEqType m moduleID typeExpr1' typeExpr2'
         M.ShowType textTypeExpr typeExpr -> do
           textTypeExpr' <- inlineType' h textTypeExpr
           typeExpr' <- inlineType' h typeExpr

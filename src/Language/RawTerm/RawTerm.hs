@@ -307,6 +307,7 @@ data RawMagic
   | OpaqueValue C (EL RawTerm)
   | CallType C (EL RawTerm) (EL RawTerm) (EL RawTerm)
   | InspectType (EL RawType)
+  | EqType (EL RawType) (EL RawType)
   | ShowType C (EL RawType)
   | TextCons C (EL RawTerm) (EL RawTerm)
   | TextUncons C (EL RawTerm)

@@ -112,6 +112,8 @@ freeVarsMagicTerm (M.WeakMagic magic) =
       freeVarsLowMagicTerm lowMagic
     M.InspectType {} ->
       S.empty
+    M.EqType {} ->
+      S.empty
     M.ShowType {} ->
       S.empty
     M.TextCons _ rune text ->
@@ -280,6 +282,8 @@ freeVarsMagic (M.WeakMagic magic) =
       freeVarsLowMagic lowMagic
     M.InspectType _ typeValueExpr e ->
       S.union (freeVarsType typeValueExpr) (freeVarsType e)
+    M.EqType _ typeExpr1 typeExpr2 ->
+      S.union (freeVarsType typeExpr1) (freeVarsType typeExpr2)
     M.ShowType textTypeExpr typeExpr ->
       S.union (freeVarsType textTypeExpr) (freeVarsType typeExpr)
     M.TextCons textTypeExpr rune text ->

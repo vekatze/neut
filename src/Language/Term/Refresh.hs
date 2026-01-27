@@ -118,6 +118,10 @@ refreshMagic h magic =
       typeValueExpr' <- refreshType h typeValueExpr
       typeExpr' <- refreshType h typeExpr
       return $ M.InspectType mid typeValueExpr' typeExpr'
+    M.EqType moduleID typeExpr1 typeExpr2 -> do
+      typeExpr1' <- refreshType h typeExpr1
+      typeExpr2' <- refreshType h typeExpr2
+      return $ M.EqType moduleID typeExpr1' typeExpr2'
     M.ShowType textTypeExpr typeExpr -> do
       textTypeExpr' <- refreshType h textTypeExpr
       typeExpr' <- refreshType h typeExpr

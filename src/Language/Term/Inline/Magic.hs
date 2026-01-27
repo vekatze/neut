@@ -1,5 +1,6 @@
 module Language.Term.Inline.Magic
   ( evaluateInspectType,
+    evaluateEqType,
     evaluateShowType,
     evaluateTextCons,
     evaluateTextUncons,
@@ -28,13 +29,14 @@ import Language.Common.CreateSymbol qualified as Gensym
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.Discriminant qualified as D
 import Language.Common.Ident.Reify qualified as Ident
-import Language.Common.VarKind qualified as VK
 import Language.Common.IsConstLike (IsConstLike)
 import Language.Common.ModuleID qualified as MID
 import Language.Common.PrimType qualified as PT
 import Language.Common.Rune qualified as Rune
 import Language.Common.SourceLocator qualified as SL
 import Language.Common.StrictGlobalLocator qualified as SGL
+import Language.Common.VarKind qualified as VK
+import Language.Term.Eq qualified as TermEq
 import Language.Term.Inline.Handle
 import Language.Term.PrimValue qualified as PV
 import Language.Term.Term qualified as TM
@@ -99,6 +101,11 @@ evaluateInspectType h m moduleID typeExpr = do
       reportMacroError h m $
         "inspect-type: unable to determine type value for this type expression. Got: "
           <> toTextType (weakenType typeExpr)
+
+evaluateEqType :: Hint -> MID.ModuleID -> TM.Type -> TM.Type -> App TM.Term
+evaluateEqType m moduleID typeExpr1 typeExpr2 = do
+  let isEqual = TermEq.eqType typeExpr1 typeExpr2
+  return $ constructBoolTerm m moduleID isEqual
 
 makeVectorDD :: MID.ModuleID -> DD.DefiniteDescription
 makeVectorDD moduleID = do
@@ -325,7 +332,7 @@ constructBoolTerm hint moduleID value = do
   let boolTypeDD = DD.newByGlobalLocator boolSgl BN.boolType
   let trueDD = DD.newByGlobalLocator boolSgl BN.trueConstructor
   let falseDD = DD.newByGlobalLocator boolSgl BN.falseConstructor
-  let consNameList = [(trueDD, [], True), (falseDD, [], True)]
+  let consNameList = [(falseDD, [], True), (trueDD, [], True)]
   let (consName, discriminant) =
         if value
           then (trueDD, D.increment D.zero)

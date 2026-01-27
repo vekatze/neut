@@ -364,6 +364,8 @@ showMagic (M.WeakMagic magic) =
       showLowMagic lowMagic
     M.InspectType _ typeValueExpr e ->
       "magic inspect-type" <> inParen (toTextType typeValueExpr <> ", " <> toTextType e)
+    M.EqType _ typeExpr1 typeExpr2 ->
+      "magic eq-type" <> inParen (toTextType typeExpr1 <> ", " <> toTextType typeExpr2)
     M.ShowType textTypeExpr typeExpr ->
       "magic show-type" <> inParen (toTextType textTypeExpr <> ", " <> toTextType typeExpr)
     M.TextCons textTypeExpr rune text ->

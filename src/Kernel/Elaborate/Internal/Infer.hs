@@ -401,6 +401,14 @@ infer h term =
           typeValueExpr' <- inferType h typeValueExpr
           typeExpr' <- inferType h typeExpr
           return (m :< WT.Magic (M.WeakMagic $ M.InspectType mid typeValueExpr' typeExpr'), typeValueExpr')
+        M.EqType moduleID typeExpr1 typeExpr2 -> do
+          typeExpr1' <- inferType h typeExpr1
+          typeExpr2' <- inferType h typeExpr2
+          let boolSGL = SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.boolLocator}
+          let boolTypeDD = DD.newByGlobalLocator boolSGL BN.boolType
+          let boolTypeVar = m :< WT.TVarGlobal (AttrVG.Attr {argNum = AN.zero, isConstLike = True}) boolTypeDD
+          let boolType = m :< WT.TyApp boolTypeVar []
+          return (m :< WT.Magic (M.WeakMagic $ M.EqType moduleID typeExpr1' typeExpr2'), boolType)
         M.ShowType textTypeExpr typeExpr -> do
           textTypeExpr' <- inferType h textTypeExpr
           typeExpr' <- inferType h typeExpr
