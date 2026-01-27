@@ -335,6 +335,17 @@ toDoc term =
             [ attachComment c $ D.text "magic inspect-type",
               SE.decode $ SE.fromListWithComment (Just SE.Paren) SE.Comma [(c1, (typeToDoc e, c2))]
             ]
+        EqType (c1, (t1, c2)) (c3, (t2, c4)) -> do
+          D.join
+            [ attachComment c $ D.text "magic eq-type",
+              SE.decode $
+                SE.fromListWithComment
+                  (Just SE.Paren)
+                  SE.Comma
+                  [ (c1, (typeToDoc t1, c2)),
+                    (c3, (typeToDoc t2, c4))
+                  ]
+            ]
         ShowType c1 (c2, (typeExpr, c3)) -> do
           D.join
             [ attachComment (c ++ c1) $ D.text "magic show-type",

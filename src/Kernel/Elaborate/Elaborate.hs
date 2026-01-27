@@ -425,6 +425,10 @@ elaborate' h term = do
           typeValueExpr' <- elaborateType h typeValueExpr
           typeExpr' <- elaborateType h typeExpr
           return $ m :< TM.Magic (M.InspectType mid typeValueExpr' typeExpr')
+        M.EqType moduleID typeExpr1 typeExpr2 -> do
+          typeExpr1' <- elaborateType h typeExpr1
+          typeExpr2' <- elaborateType h typeExpr2
+          return $ m :< TM.Magic (M.EqType moduleID typeExpr1' typeExpr2')
         M.ShowType textTypeExpr typeExpr -> do
           textTypeExpr' <- elaborateType h textTypeExpr
           typeExpr' <- elaborateType h typeExpr

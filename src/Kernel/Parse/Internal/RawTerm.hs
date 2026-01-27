@@ -638,6 +638,7 @@ rawTermMagic h m c = do
       rawTermMagicGlobal h m c,
       rawTermMagicCallType h m c,
       rawTermMagicInspectType h m c,
+      rawTermMagicEqType h m c,
       rawTermMagicShowType h m c,
       rawTermMagicTextCons h m c,
       rawTermMagicTextUncons h m c,
@@ -742,6 +743,14 @@ rawTermMagicInspectType h m c = do
   rawTermMagicBase "inspect-type" $ do
     typeExpr <- rawType h
     return $ \_ c2 -> m :< RT.Magic c (RT.InspectType (c2, typeExpr))
+
+rawTermMagicEqType :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
+rawTermMagicEqType h m c = do
+  rawTermMagicBase "eq-type" $ do
+    typeExpr1 <- rawType h
+    c3 <- delimiter ","
+    typeExpr2 <- rawType h
+    return $ \_ c2 -> m :< RT.Magic c (RT.EqType (c2, typeExpr1) (c3, typeExpr2))
 
 rawTermMagicShowType :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermMagicShowType h m c = do

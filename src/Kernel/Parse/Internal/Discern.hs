@@ -798,6 +798,12 @@ discernMagic h m magic =
       typeValueExpr <- discernType h typeValueVar
       typeExpr' <- discernType h typeExpr
       return $ M.WeakMagic $ M.InspectType coreModuleID typeValueExpr typeExpr'
+    RT.EqType (_, (typeExpr1, _)) (_, (typeExpr2, _)) -> do
+      ensureCompileStage m h "inline magic (`eq-type`)"
+      coreModuleID <- Alias.resolveModuleAlias (H.aliasHandle h) m coreModuleAlias
+      typeExpr1' <- discernType h typeExpr1
+      typeExpr2' <- discernType h typeExpr2
+      return $ M.WeakMagic $ M.EqType coreModuleID typeExpr1' typeExpr2'
     RT.ShowType _ (_, (typeExpr, _)) -> do
       textType <- liftEither (locatorToTypeVar m coreText) >>= discernType h
       typeExpr' <- discernType h typeExpr

@@ -237,6 +237,10 @@ analyze h term = do
           cs1 <- analyzeType h typeValueExpr
           cs2 <- analyzeType h typeExpr
           return $ cs1 ++ cs2
+        M.EqType _ typeExpr1 typeExpr2 -> do
+          cs1 <- analyzeType h typeExpr1
+          cs2 <- analyzeType h typeExpr2
+          return $ cs1 ++ cs2
         M.ShowType textTypeExpr typeExpr -> do
           cs1 <- analyzeType h textTypeExpr
           cs2 <- analyzeType h typeExpr

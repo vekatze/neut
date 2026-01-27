@@ -727,6 +727,8 @@ clarifyMagic h tenv der = do
               C.Primitive (C.Magic (LM.CallType funcVar arg1Var arg2Var))
     M.InspectType {} ->
       error "InspectType should be evaluated during inline expansion"
+    M.EqType {} ->
+      error "EqType should be evaluated during inline expansion"
     M.ShowType _ _ ->
       error "ShowType should be evaluated during inline expansion"
     M.TextCons _ _ _ ->
