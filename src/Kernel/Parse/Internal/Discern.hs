@@ -369,7 +369,7 @@ discern h term =
           vs' <- mapM (discern h) vs
           return $ DefaultArgs.ByKey (zip ks vs')
       return $ m :< WT.PiElim isNoetic e' impArgs' expArgs' defaultArgs'
-    m :< RT.PiElimByKey name _ kvs -> do
+    m :< RT.PiElimByKey name _ mImpArgs _ kvs -> do
       let isNoetic = False -- overwritten later in `infer`
       (dd, (_, gn)) <- resolveName h m name
       _ :< func <- interpretGlobalName h m dd (GN.disableConstLikeFlag gn)
@@ -378,13 +378,19 @@ discern h term =
       (impKeys, expKeys, defaultKeys) <- KeyArg.lookup (H.keyArgHandle h) m dd
       when (any (`elem` impKeys) ks) $ do
         raiseError m "Implicit key arguments must be specified via explicit type arguments"
+      impArgs' <- case mImpArgs of
+        Nothing ->
+          return ImpArgs.Unspecified
+        Just impArgs -> do
+          impArgs' <- mapM (discernType h) $ SE.extract impArgs
+          return $ ImpArgs.FullySpecified impArgs'
       let keyMap = Map.fromList $ zip ks (repeat ())
       checkRedundancy m (expKeys ++ defaultKeys) keyMap
       vs' <- mapM (discern h) vs
       let expKvs = Map.fromList $ zip ks vs'
       expArgs <- resolveExpKeys h m expKeys expKvs
       let defaultArgs = selectDefaultKeyArgs defaultKeys expKvs
-      return $ m :< WT.PiElim isNoetic (m :< func) ImpArgs.Unspecified expArgs defaultArgs
+      return $ m :< WT.PiElim isNoetic (m :< func) impArgs' expArgs defaultArgs
     m :< RT.PiElimRule name _ es -> do
       (dd, (_, gn)) <- resolveName h m name
       kind <- interpretRuleName m dd gn
@@ -406,10 +412,10 @@ discern h term =
         FoldRight -> do
           foldedTerm <- buildFoldRight nodeTM (args ++ [leafTM])
           discern h (m :< RT.piElim rootTM [foldedTerm])
-    m :< RT.PiElimMeta name _ es -> do
+    m :< RT.PiElimMeta name _ mImpArgs _ es -> do
       let var = m :< RT.Var name
       let args = fmap (\e -> m :< RT.CodeIntro CodeVariantK [] [] (e, [])) es
-      discern h $ m :< RT.CodeElim [] [] (m :< RT.PiElim var [] Nothing [] args [] Nothing, [])
+      discern h $ m :< RT.CodeElim [] [] (m :< RT.PiElim var [] mImpArgs [] args [] Nothing, [])
     m :< RT.PiElimExact _ e -> do
       e' <- discern h e
       return $ m :< WT.PiElimExact e'

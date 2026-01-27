@@ -208,33 +208,52 @@ rawTerm' mode h m headSymbol c = do
             ]
         else do
           name <- interpretVarName m headSymbol
-          choice $
-            additionalBranchList mode h m name c
-              ++ [ do
-                     (es, c') <- metaPiElim $ rawTerm h
-                     return (m :< RT.PiElimMeta name c es, c'),
-                   do
-                     (es, c') <- seriesBracket $ rawTerm h
-                     return (m :< RT.PiElimRule name c es, c'),
-                   do
-                     rawTermPiElimCont h (m :< RT.Var name, c)
-                 ]
-
-additionalBranchList :: TermMode -> Handle -> Hint -> Name -> C -> [Parser (RT.RawTerm, C)]
-additionalBranchList mode h m name c =
-  case mode of
-    Full ->
-      [ do
-          (kvs, c') <- keyValueArgs $ rawTermKeyValuePair h
-          return (m :< RT.PiElimByKey name c kvs, c')
-      ]
-    Partial ->
-      []
+          choice
+            [ do
+                (es, c') <- seriesBracket $ rawTerm h
+                return (m :< RT.PiElimRule name c es, c'),
+              do
+                (mImpArgs, cImpArgs) <- parseImplicitArgsMaybe h
+                let parseByKey = do
+                      (kvs, c') <- keyValueArgs $ rawTermKeyValuePair h
+                      return (m :< RT.PiElimByKey name c mImpArgs cImpArgs kvs, c')
+                let parseMeta = do
+                      (es, c') <- metaPiElim $ rawTerm h
+                      return (m :< RT.PiElimMeta name c mImpArgs cImpArgs es, c')
+                let parseCont =
+                      rawTermPiElimContWithImp h (m :< RT.Var name, c) mImpArgs cImpArgs
+                case mode of
+                  Full ->
+                    choice [parseByKey, parseMeta, parseCont]
+                  Partial ->
+                    choice [parseMeta, parseCont]
+            ]
 
 rawTermPiElimCont :: Handle -> (RT.RawTerm, C) -> Parser (RT.RawTerm, C)
 rawTermPiElimCont h (e@(m :< _), c) = do
   argListList <- many $ rawTermPiElimArgs h
   return $ foldPiElim m (e, c) argListList
+
+rawTermPiElimContWithImp ::
+  Handle ->
+  (RT.RawTerm, C) ->
+  Maybe (SE.Series RT.RawType) ->
+  C ->
+  Parser (RT.RawTerm, C)
+rawTermPiElimContWithImp h (e@(m :< _), c) mImpArgs cImpArgs =
+  case mImpArgs of
+    Nothing ->
+      rawTermPiElimCont h (e, c)
+    Just impArgs -> do
+      (expArgs, c2) <- seriesParen (rawTerm h)
+      mDefaultArgs <- optional $ seriesBracket $ rawTermKeyValuePair h
+      let (args, c3) = case mDefaultArgs of
+            Nothing ->
+              ((Just impArgs, cImpArgs, expArgs, c2, Nothing), [])
+            Just (defaultArgs, c4) ->
+              ((Just impArgs, cImpArgs, expArgs, c2, Just defaultArgs), c4)
+      rest <- many $ rawTermPiElimArgs h
+      return $ foldPiElim m (e, c) ((args, c3) : rest)
 
 type PiElimDefaultArgs =
   SE.Series (Hint, Key, C, C, RT.RawTerm)
