@@ -32,6 +32,7 @@ data Value
   | VarTextName T.Text
   | Int Integer
   | Float FloatSize Double
+  | Address Integer
   | Null
 
 instance Show Value where
@@ -49,6 +50,8 @@ instance Show Value where
         show i
       Float _ f ->
         show f
+      Address a ->
+        "inttoptr (i64 " <> show a <> " to ptr)"
       Null ->
         "null"
 
@@ -83,8 +86,8 @@ data Op
       Value
       LowType -- cast from
       LowType -- cast to
-  | IntToPointer Value LowType LowType
-  | PointerToInt Value LowType LowType
+  | IntToPointer Value LowType
+  | PointerToInt Value LowType
   | Load Value LowType
   | Store LowType Value Value
   | StackAlloc LowType LowType Value

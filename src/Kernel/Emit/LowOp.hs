@@ -44,10 +44,10 @@ emitLowOp ax lowOp =
         ]
     LC.Bitcast d fromType toType ->
       emitConvOp "bitcast" d fromType toType
-    LC.IntToPointer d fromType toType ->
-      emitConvOp "inttoptr" d fromType toType
-    LC.PointerToInt d fromType toType ->
-      emitConvOp "ptrtoint" d fromType toType
+    LC.IntToPointer d fromType ->
+      emitConvOp "inttoptr" d fromType LT.Pointer
+    LC.PointerToInt d toType ->
+      emitConvOp "ptrtoint" d LT.Pointer toType
     LC.Load d lowType ->
       unwordsL
         [ "load",
