@@ -86,21 +86,37 @@ toDoc term =
               PI.inject $ expArgsDoc c2,
               PI.inject $ attachComment c3 $ decPiElimKey defaultArgs
             ]
-    _ :< PiElimByKey name c kvs -> do
-      PI.arrange
-        [ PI.inject $ nameToDoc name,
-          PI.inject $ attachComment c $ decPiElimKey kvs
-        ]
+    _ :< PiElimByKey name c mImpArgs c2 kvs -> do
+      case mImpArgs of
+        Nothing ->
+          PI.arrange
+            [ PI.inject $ nameToDoc name,
+              PI.inject $ attachComment c $ decPiElimKey kvs
+            ]
+        Just impArgs ->
+          PI.arrange
+            [ PI.inject $ nameToDoc name,
+              PI.inject $ attachComment c $ SE.decodeHorizontallyIfPossible $ fmap typeToDoc impArgs,
+              PI.inject $ attachComment c2 $ decPiElimKey kvs
+            ]
     _ :< PiElimRule name c es -> do
       PI.arrange
         [ PI.inject $ attachComment c $ nameToDoc name,
           PI.inject $ SE.decodeHorizontallyIfPossible $ fmap toDoc es
         ]
-    _ :< PiElimMeta name c es -> do
-      PI.arrange
-        [ PI.inject $ attachComment c $ nameToDoc name,
-          PI.inject $ SE.decodeHorizontallyIfPossible $ fmap toDoc es
-        ]
+    _ :< PiElimMeta name c mImpArgs c2 es -> do
+      case mImpArgs of
+        Nothing ->
+          PI.arrange
+            [ PI.inject $ attachComment c $ nameToDoc name,
+              PI.inject $ SE.decodeHorizontallyIfPossible $ fmap toDoc es
+            ]
+        Just impArgs ->
+          PI.arrange
+            [ PI.inject $ nameToDoc name,
+              PI.inject $ attachComment c $ SE.decodeHorizontallyIfPossible $ fmap typeToDoc impArgs,
+              PI.inject $ attachComment c2 $ SE.decodeHorizontallyIfPossible $ fmap toDoc es
+            ]
     _ :< PiElimExact c e ->
       PI.arrange
         [ PI.delimiterLeftAligned $ D.text "exact",
