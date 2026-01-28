@@ -1,4 +1,4 @@
-FROM debian:12.11-slim
+FROM debian:13.3-slim
 
 WORKDIR /app/
 
@@ -11,20 +11,17 @@ RUN apt-get update && \
   curl \
   g++ \
   gnupg \
+  just \
   lsb-release \
-  software-properties-common \
   tar \
   wget \
   zstd && \
   curl -sSL https://get.haskellstack.org/ | sh && \
-  curl -sSL https://github.com/casey/just/releases/download/1.39.0/just-1.39.0-x86_64-unknown-linux-musl.tar.gz | \
-  gunzip | \
-  tar xvf - -C /usr/local/bin/ just && \
   rm -rf /var/lib/apt/lists/* && \
   curl -O https://apt.llvm.org/llvm.sh && \
   chmod +x llvm.sh && \
-  ./llvm.sh 19 && \
-  ln -s /usr/bin/clang-19 /usr/bin/clang
+  ./llvm.sh 21 && \
+  ln -s /usr/bin/clang-21 /usr/bin/clang
 
 COPY build/package.template.yaml /app/build/package.template.yaml
 

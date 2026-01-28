@@ -309,13 +309,13 @@ cast :: Handle -> Ident -> LC.Value -> LT.LowType -> LC.Comp -> App LC.Comp
 cast h var v lowType cont = do
   case lowType of
     LT.PrimNum (PT.Int _) -> do
-      return $ LC.Let var (LC.PointerToInt v LT.Pointer lowType) cont
+      return $ LC.Let var (LC.PointerToInt v lowType) cont
     LT.PrimNum (PT.Float size) -> do
       let floatType = LT.PrimNum $ PT.Float size
       let intType = LT.PrimNum $ PT.Int $ floatSizeToIntSize size
       (tmp, tmpVar) <- liftIO $ newValueLocal h "tmp"
       return $
-        LC.Let tmp (LC.PointerToInt v LT.Pointer intType) $
+        LC.Let tmp (LC.PointerToInt v intType) $
           LC.Let var (LC.Bitcast tmpVar intType floatType) cont
     _ -> do
       return $ LC.Let var (LC.Bitcast v LT.Pointer lowType) cont
@@ -324,14 +324,14 @@ uncast :: Handle -> Ident -> LC.Value -> LT.LowType -> LC.Comp -> App LC.Comp
 uncast h var castedValue lowType cont = do
   case lowType of
     LT.PrimNum (PT.Int _) ->
-      return $ LC.Let var (LC.IntToPointer castedValue lowType LT.Pointer) cont
+      return $ LC.Let var (LC.IntToPointer castedValue lowType) cont
     LT.PrimNum (PT.Float i) -> do
       let floatType = LT.PrimNum $ PT.Float i
       let intType = LT.PrimNum $ PT.Int $ floatSizeToIntSize i
       (tmp, tmpVar) <- liftIO $ newValueLocal h "tmp"
       return $
         LC.Let tmp (LC.Bitcast castedValue floatType intType) $
-          LC.Let var (LC.IntToPointer tmpVar intType LT.Pointer) cont
+          LC.Let var (LC.IntToPointer tmpVar intType) cont
     _ ->
       return $ LC.Let var (LC.Bitcast castedValue lowType LT.Pointer) cont
 

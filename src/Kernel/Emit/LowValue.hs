@@ -38,6 +38,10 @@ emitValue lowValue =
       doubleDec (realToFrac x')
     LC.Float FloatSize64 x -> do
       doubleDec x
+    LC.Address a ->
+      if a == 0
+        then "null"
+        else "inttoptr (i64 " <> integerDec a <> " to ptr)"
     LC.Null ->
       "null"
 

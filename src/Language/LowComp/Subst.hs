@@ -33,12 +33,12 @@ substOp sub llvmOp =
     LC.Bitcast d t1 t2 -> do
       let d' = substLowValue sub d
       LC.Bitcast d' t1 t2
-    LC.IntToPointer d t1 t2 -> do
+    LC.IntToPointer d t1 -> do
       let d' = substLowValue sub d
-      LC.IntToPointer d' t1 t2
-    LC.PointerToInt d t1 t2 -> do
+      LC.IntToPointer d' t1
+    LC.PointerToInt d t2 -> do
       let d' = substLowValue sub d
-      LC.PointerToInt d' t1 t2
+      LC.PointerToInt d' t2
     LC.Load d t -> do
       let d' = substLowValue sub d
       LC.Load d' t
