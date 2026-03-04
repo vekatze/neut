@@ -137,6 +137,7 @@ data RawTermF a
   | Assert C (Hint, T.Text) C C (a, C)
   | Introspect C T.Text C (SE.Series (Maybe T.Text, C, a))
   | IncludeText C C Hint (T.Text, C)
+  | With (KeywordClause a)
   | Brace C (a, C)
   | Int Integer
 
@@ -273,6 +274,7 @@ data LetKind
   = Plain MustIgnoreRelayedVars
   | Noetic
   | Try
+  | Bind
 
 {-# INLINE decodeLetKind #-}
 decodeLetKind :: LetKind -> T.Text
@@ -281,6 +283,7 @@ decodeLetKind letKind =
     Plain _ -> "let"
     Noetic -> "tie"
     Try -> "try"
+    Bind -> "bind"
 
 letKindFromText :: T.Text -> Maybe LetKind
 letKindFromText t =
@@ -291,6 +294,8 @@ letKindFromText t =
       return Noetic
     "try" ->
       return Try
+    "bind" ->
+      return Bind
     _ ->
       Nothing
 

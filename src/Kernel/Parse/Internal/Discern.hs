@@ -521,6 +521,8 @@ discern h term =
           discern h $ m :< RT.BoxElim VariantT mustIgnoreRelayedVars [] pat [] mys [] e1' [] startLoc [] e2 endLoc
         RT.Noetic -> do
           raiseError m $ "`on` cannot be used with: `" <> RT.decodeLetKind letKind <> "`"
+        RT.Bind -> do
+          raiseError m $ "`on` cannot be used with: `" <> RT.decodeLetKind letKind <> "`"
         RT.Try -> do
           tmpType <- liftIO $ RT.createTypeHole (H.gensymHandle h) m1
           tmpVar <- liftIO $ Var <$> Gensym.newTextFromText (H.gensymHandle h) "tmp-try"
@@ -646,6 +648,63 @@ discern h term =
           return $ m :< WT.Prim (WPV.StaticText textType content)
         Nothing ->
           raiseError m $ "No such static file is defined: `" <> key <> "`"
+    m :< RT.With withClause -> do
+      let (binder, body) = RT.extractFromKeywordClause withClause
+      case body of
+        mLet :< RT.Let letKind c1 mxt@(mPat, pat, c2, c3, t) c c4 e1 c5 startLoc c6 e2 endLoc -> do
+          let e1' = m :< RT.With (([], (binder, [])), ([], (e1, [])))
+          let e2' = m :< RT.With (([], (binder, [])), ([], (e2, [])))
+          case letKind of
+            RT.Bind -> do
+              tmpVar <- liftIO $ Gensym.newText (H.gensymHandle h)
+              (k, x, e2'') <- modifyLetContinuation h (mPat, pat) False e2'
+              let m' = blur m
+              dom <- liftIO $ RT.createTypeHole (H.gensymHandle h) m'
+              cod <- liftIO $ RT.createTypeHole (H.gensymHandle h) m'
+              discern h $
+                bind'
+                  False
+                  startLoc
+                  endLoc
+                  (mPat, VK.Normal, tmpVar, c2, c3, dom)
+                  e1'
+                  ( m
+                      :< RT.piElim
+                        binder
+                        [ m' :< RT.Var (Var tmpVar),
+                          RT.lam
+                            startLoc
+                            m'
+                            [((mPat, k, x, c2, c3, t), c)]
+                            cod
+                            e2''
+                        ]
+                  )
+            _ -> do
+              discern h $ mLet :< RT.Let letKind c1 mxt c c4 e1' c5 startLoc c6 e2' endLoc
+        mLet :< RT.LetOn letKind c1 mxt c2 mys c3 e1 c4 startLoc c5 e2 endLoc -> do
+          let e1' = m :< RT.With (([], (binder, [])), ([], (e1, [])))
+          let e2' = m :< RT.With (([], (binder, [])), ([], (e2, [])))
+          discern h $ mLet :< RT.LetOn letKind c1 mxt c2 mys c3 e1' c4 startLoc c5 e2' endLoc
+        mTau :< RT.TauElim c1 mxt c2 e1 c3 startLoc c4 e2 endLoc -> do
+          let e1' = m :< RT.With (([], (binder, [])), ([], (e1, [])))
+          let e2' = m :< RT.With (([], (binder, [])), ([], (e2, [])))
+          discern h $ mTau :< RT.TauElim c1 mxt c2 e1' c3 startLoc c4 e2' endLoc
+        mBox :< RT.BoxElim nesVariant mustIgnoreRelayedVars c1 mxt c2 mys c3 e1 c4 startLoc c5 e2 endLoc -> do
+          let e1' = m :< RT.With (([], (binder, [])), ([], (e1, [])))
+          let e2' = m :< RT.With (([], (binder, [])), ([], (e2, [])))
+          discern h $
+            mBox :< RT.BoxElim nesVariant mustIgnoreRelayedVars c1 mxt c2 mys c3 e1' c4 startLoc c5 e2' endLoc
+        mSeq :< RT.Seq (e1, c1) c2 e2 -> do
+          let e1' = m :< RT.With (([], (binder, [])), ([], (e1, [])))
+          let e2' = m :< RT.With (([], (binder, [])), ([], (e2, [])))
+          discern h $ mSeq :< RT.Seq (e1', c1) c2 e2'
+        mPin :< RT.Pin c1 mxt c2 mys c3 e1 c4 startLoc c5 e2 endLoc -> do
+          let e1' = m :< RT.With (([], (binder, [])), ([], (e1, [])))
+          let e2' = m :< RT.With (([], (binder, [])), ([], (e2, [])))
+          discern h $ mPin :< RT.Pin c1 mxt c2 mys c3 e1' c4 startLoc c5 e2' endLoc
+        _ ->
+          discern h body
     _ :< RT.Brace _ (e, _) ->
       discern h e
     m :< RT.Int i -> do
@@ -980,6 +1039,8 @@ discernLet h m letKind (mx, pat, c1, c2, t) e1@(m1 :< _) e2 startLoc endLoc = do
       discernLet' False
     RT.Noetic -> do
       discernLet' True
+    RT.Bind -> do
+      raiseError m "`bind` can only be used inside `with`"
     RT.Try -> do
       let m' = blur m
       eitherTypeInner <- liftEither $ locatorToTypeVar m' coreEither
