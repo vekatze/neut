@@ -130,7 +130,6 @@ elaborateStmt h stmt = do
   case stmt of
     WeakStmtDefineTerm isConstLike stmtKind m x impArgs expArgs defaultArgs codType e -> do
       stmtKind' <- elaborateStmtKindTerm h stmtKind
-      e' <- elaborate' h e
       impArgs' <- mapM (elaborateWeakBinder h) impArgs
       expArgs' <- mapM (elaborateWeakBinder h) expArgs
       defaultArgs' <- forM defaultArgs $ \(binder, value) -> do
@@ -138,6 +137,16 @@ elaborateStmt h stmt = do
         value' <- elaborate' h value
         return (binder', value')
       codType' <- elaborateType h codType
+      let mDefKind = stmtKindToDefKind stmtKind defaultArgs'
+      e' <- elaborate' h e
+      defaultArgsForSelf <- forM defaultArgs' $ \(binder, value) -> do
+        value' <- inline h m value
+        return (binder, value')
+      case mDefKind of
+        Just Inline.NoInline ->
+          liftIO $ Definition.insert' (defHandle h) x impArgs' expArgs' defaultArgsForSelf e' codType' mDefKind
+        _ ->
+          return ()
       remarks <- do
         affHandle <- liftIO $ EnsureAffinity.new h
         let dummyAttr = AttrL.Attr {lamKind = LK.Normal Nothing codType', identity = 0}
@@ -219,7 +228,7 @@ insertStmt h stmt = do
           liftIO $ Type.insert' (typeHandle h) f $ weakenType $ m :< TM.Pi (PK.DataIntro isConstLike) impArgs expArgs (map fst defaultArgs) t
         _ ->
           liftIO $ Type.insert' (typeHandle h) f $ weakenType $ m :< TM.Pi (PK.Normal isConstLike) impArgs expArgs (map fst defaultArgs) t
-      liftIO $ Definition.insert' (defHandle h) f impArgs expArgs defaultArgs e t (stmtKindToDefKind stmtKind)
+      liftIO $ Definition.insert' (defHandle h) f impArgs expArgs defaultArgs e t (stmtKindToDefKind stmtKind defaultArgs)
     StmtDefineType isConstLike stmtKind (SavedHint m) f impArgs expArgs defaultArgs t body -> do
       let allBinders = impArgs ++ expArgs ++ map fst defaultArgs
       liftIO $ Type.insert' (typeHandle h) f $ weakenType $ m :< TM.Pi (PK.Normal isConstLike) impArgs expArgs (map fst defaultArgs) t
@@ -851,8 +860,8 @@ elaborateAttrDataIntro h attr = do
     return (name, binders', isConstLike)
   return $ attr {AttrDI.consNameList = consNameList'}
 
-stmtKindToDefKind :: SK.StmtKindTerm a -> Maybe Inline.DefKind
-stmtKindToDefKind stmtKind =
+stmtKindToDefKind :: SK.StmtKindTerm a -> [(binder, b)] -> Maybe Inline.DefKind
+stmtKindToDefKind stmtKind defaultArgs =
   case stmtKind of
     SK.Inline ->
       Just Inline.Inline
@@ -863,7 +872,9 @@ stmtKindToDefKind stmtKind =
     SK.DataIntro {} ->
       Just Inline.DataIntro
     _ ->
-      Nothing
+      if null defaultArgs
+        then Nothing
+        else Just Inline.NoInline
 
 -- viewStmt :: WeakStmt -> IO ()
 -- viewStmt stmt = do
