@@ -38,13 +38,14 @@ import Language.Common.ImpArgs qualified as ImpArgs
 import Language.Common.IsConstLike
 import Language.Common.LocalLocator qualified as LL
 import Language.Common.LowMagic qualified as LM
-import Language.Common.VarKind qualified as VK
 import Language.Common.Magic qualified as M
+import Language.Common.PiElimKind qualified as PEK
 import Language.Common.PiKind qualified as PK
 import Language.Common.PrimNumSize qualified as PNS
 import Language.Common.PrimOp qualified as PO
 import Language.Common.PrimType qualified as PT
 import Language.Common.RuleKind (RuleKind)
+import Language.Common.VarKind qualified as VK
 import Language.RawTerm.Locator qualified as L
 import Language.RawTerm.Name
 import Language.WeakTerm.CreateHole qualified as WT
@@ -163,7 +164,7 @@ interpretGlobalName h m dd gn = do
     GN.DataIntro dataArgNum consArgNum _ isConstLike -> do
       let argNum = AN.add dataArgNum consArgNum
       let attr = AttrVG.Attr {..}
-      return $ m :< WT.PiElim False (m :< WT.VarGlobal attr dd) ImpArgs.Unspecified [] (DefaultArgs.ByKey [])
+      return $ m :< WT.PiElim PEK.Normal (m :< WT.VarGlobal attr dd) ImpArgs.Unspecified [] (DefaultArgs.ByKey [])
     GN.PrimType _ ->
       raiseError m $ "`" <> DD.reify dd <> "` is a type name and cannot appear in term position"
     GN.PrimOp primOp ->
@@ -210,7 +211,7 @@ interpretTopLevelFuncTerm ::
 interpretTopLevelFuncTerm m dd argNum isConstLike = do
   let attr = AttrVG.Attr {..}
   if isConstLike
-    then m :< WT.PiElim False (m :< WT.VarGlobal attr dd) ImpArgs.Unspecified [] (DefaultArgs.ByKey [])
+    then m :< WT.PiElim PEK.Normal (m :< WT.VarGlobal attr dd) ImpArgs.Unspecified [] (DefaultArgs.ByKey [])
     else m :< WT.VarGlobal attr dd
 
 interpretTopLevelFuncType ::

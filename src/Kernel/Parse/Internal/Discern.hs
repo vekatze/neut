@@ -67,6 +67,7 @@ import Language.Common.LowMagic qualified as LM
 import Language.Common.Magic qualified as M
 import Language.Common.ModuleAlias (coreModuleAlias)
 import Language.Common.Noema qualified as N
+import Language.Common.PiElimKind qualified as PEK
 import Language.Common.PiKind qualified as PK
 import Language.Common.PrimNumSize (IntSize (IntSize64))
 import Language.Common.PrimType qualified as PT
@@ -351,7 +352,7 @@ discern h term =
       ensureLayerClosedness m h'''' body'
       return $ m :< WT.PiIntro (AttrL.Attr {lamKind = LK.Fix opacity mxt', identity = lamID}) impArgs' expArgs' defaultArgs' body'
     m :< RT.PiElim e _ mImpArgs _ expArgs _ mDefaultArgs -> do
-      let isNoetic = False -- overwritten later in `infer`
+      let kind = PEK.Normal -- overwritten later in `infer`
       e' <- discern h e
       impArgs' <- case mImpArgs of
         Nothing ->
@@ -368,9 +369,9 @@ discern h term =
           ensureFieldLinearity m ks S.empty S.empty
           vs' <- mapM (discern h) vs
           return $ DefaultArgs.ByKey (zip ks vs')
-      return $ m :< WT.PiElim isNoetic e' impArgs' expArgs' defaultArgs'
+      return $ m :< WT.PiElim kind e' impArgs' expArgs' defaultArgs'
     m :< RT.PiElimByKey name _ mImpArgs _ kvs -> do
-      let isNoetic = False -- overwritten later in `infer`
+      let kind = PEK.Normal -- overwritten later in `infer`
       (dd, (_, gn)) <- resolveName h m name
       _ :< func <- interpretGlobalName h m dd (GN.disableConstLikeFlag gn)
       let (ks, vs) = unzip $ map (\(_, k, _, _, v) -> (k, v)) $ SE.extract kvs
@@ -390,7 +391,7 @@ discern h term =
       let expKvs = Map.fromList $ zip ks vs'
       expArgs <- resolveExpKeys h m expKeys expKvs
       let defaultArgs = selectDefaultKeyArgs defaultKeys expKvs
-      return $ m :< WT.PiElim isNoetic (m :< func) impArgs' expArgs defaultArgs
+      return $ m :< WT.PiElim kind (m :< func) impArgs' expArgs defaultArgs
     m :< RT.PiElimRule name _ es -> do
       (dd, (_, gn)) <- resolveName h m name
       kind <- interpretRuleName m dd gn
@@ -617,14 +618,14 @@ discern h term =
       detachVar' <- discern h detachVar
       t' <- discernType h t
       lam' <- discern h $ RT.lam fakeLoc m [] cod e
-      return $ m :< WT.PiElim False detachVar' (ImpArgs.FullySpecified [t']) [lam'] (DefaultArgs.ByKey [])
+      return $ m :< WT.PiElim PEK.Normal detachVar' (ImpArgs.FullySpecified [t']) [lam'] (DefaultArgs.ByKey [])
     m :< RT.Attach _ _ (e, _) -> do
       t <- liftIO $ RT.createTypeHole (H.gensymHandle h) (blur m)
       attachVar <- liftEither $ locatorToVarGlobal m coreThreadAttach
       attachVar' <- discern h attachVar
       t' <- discernType h t
       e' <- discern h e
-      return $ m :< WT.PiElim False attachVar' (ImpArgs.FullySpecified [t']) [e'] (DefaultArgs.ByKey [])
+      return $ m :< WT.PiElim PEK.Normal attachVar' (ImpArgs.FullySpecified [t']) [e'] (DefaultArgs.ByKey [])
     m :< RT.Assert _ (mText, message) _ _ (e@(mCond :< _), _) -> do
       assert <- liftEither $ locatorToVarGlobal m coreTrickAssert
       textType <- liftEither $ locatorToTypeVar m coreText
@@ -633,7 +634,7 @@ discern h term =
       assertVar' <- discern h assert
       textTerm' <- discern h (mText :< RT.StaticText textType fullMessage)
       lam' <- discern h $ RT.lam fakeLoc mCond [] cod e
-      return $ m :< WT.PiElim False assertVar' ImpArgs.Unspecified [textTerm', lam'] (DefaultArgs.ByKey [])
+      return $ m :< WT.PiElim PEK.Normal assertVar' ImpArgs.Unspecified [textTerm', lam'] (DefaultArgs.ByKey [])
     m :< RT.Introspect _ key _ clauseList -> do
       value <- getIntrospectiveValue h m key
       clause <- lookupIntrospectiveClause m value $ SE.extract clauseList

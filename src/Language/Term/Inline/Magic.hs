@@ -31,6 +31,7 @@ import Language.Common.Discriminant qualified as D
 import Language.Common.Ident.Reify qualified as Ident
 import Language.Common.IsConstLike (IsConstLike)
 import Language.Common.ModuleID qualified as MID
+import Language.Common.PiElimKind qualified as PEK
 import Language.Common.PrimType qualified as PT
 import Language.Common.Rune qualified as Rune
 import Language.Common.SourceLocator qualified as SL
@@ -424,7 +425,7 @@ evaluateTextUncons h m moduleID text = do
           let unitDD = DD.newByGlobalLocator unitSGL BN.unit
           let leftVar = m :< TM.VarGlobal (AttrVG.Attr {argNum = AN.fromInt 3, isConstLike = False}) leftDD
           let unitVar = m :< TM.VarGlobal (AttrVG.Attr {argNum = AN.zero, isConstLike = True}) unitDD
-          return $ m :< TM.PiElim False (m :< TM.PiElim False leftVar [unitTypeVar, pairType] [] []) [] [unitVar] []
+          return $ m :< TM.PiElim PEK.Normal (m :< TM.PiElim PEK.Normal leftVar [unitTypeVar, pairType] [] []) [] [unitVar] []
         Just (c, rest) -> do
           let rightDD = DD.newByGlobalLocator eitherSGL BN.right
           let pairDD = DD.newByGlobalLocator pairSGL BN.pair
@@ -432,8 +433,8 @@ evaluateTextUncons h m moduleID text = do
           let pairVar = m :< TM.VarGlobal (AttrVG.Attr {argNum = AN.fromInt 4, isConstLike = False}) pairDD
           let runeValue = m :< TM.Prim (PV.Rune (Rune.fromChar c))
           let restText = m :< TM.Prim (PV.StaticText textTypeExpr rest)
-          let pair = m :< TM.PiElim False (m :< TM.PiElim False pairVar [runeType, m :< TM.BoxNoema textTypeExpr] [] []) [] [runeValue, restText] []
-          return $ m :< TM.PiElim False (m :< TM.PiElim False rightVar [unitTypeVar, pairType] [] []) [] [pair] []
+          let pair = m :< TM.PiElim PEK.Normal (m :< TM.PiElim PEK.Normal pairVar [runeType, m :< TM.BoxNoema textTypeExpr] [] []) [] [runeValue, restText] []
+          return $ m :< TM.PiElim PEK.Normal (m :< TM.PiElim PEK.Normal rightVar [unitTypeVar, pairType] [] []) [] [pair] []
     _ ->
       reportMacroError h m "text-uncons requires a static text literal"
 

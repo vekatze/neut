@@ -52,6 +52,7 @@ import Language.Common.LamKind qualified as LK
 import Language.Common.Literal qualified as L
 import Language.Common.LowMagic qualified as LM
 import Language.Common.Magic qualified as M
+import Language.Common.PiElimKind qualified as PEK
 import Language.Common.PiKind qualified as PK
 import Language.Common.PrimOp
 import Language.Common.PrimType qualified as PT
@@ -253,7 +254,7 @@ infer h term =
             raiseError m "exact application does not support default parameters"
           codType' <- liftIO $ Subst.substType (substHandle h) subType' codType
           lamID <- liftIO $ Gensym.newCount (gensymHandle h)
-          infer h $ m :< WT.PiIntro (AttrL.normal lamID codType') [] expArgs' [] (m :< WT.PiElim False e' (ImpArgs.FullySpecified impArgs') expArgs'' (DefaultArgs.ByKey []))
+          infer h $ m :< WT.PiIntro (AttrL.normal lamID codType') [] expArgs' [] (m :< WT.PiElim PEK.Normal e' (ImpArgs.FullySpecified impArgs') expArgs'' (DefaultArgs.ByKey []))
         _ ->
           raiseError m $ "Expected a function type, but got: " <> toTextType t'
     m :< WT.DataIntro attr@(AttrDI.Attr {..}) consName dataArgs consArgs -> do
@@ -651,13 +652,13 @@ inferPiElim h m (e, t) impArgs defaultArgsSpec expArgs = do
   t' <- resolveType h t
   case t' of
     _ :< WT.Pi _ impArgsParam expParams defaultParams cod -> do
-      inferCore False impArgsParam expParams defaultParams cod
+      inferCore PEK.Normal impArgsParam expParams defaultParams cod
     _ :< WT.BoxNoema (_ :< WT.Pi _ impArgsParam expParams defaultParams cod) ->
-      inferCore True impArgsParam expParams defaultParams cod
+      inferCore PEK.Noetic impArgsParam expParams defaultParams cod
     _ ->
       raiseError m $ "Expected a function type, but got: " <> toTextType t'
   where
-    inferCore isNoetic impArgsParam expParams defaultParams cod = do
+    inferCore kind impArgsParam expParams defaultParams cod = do
       ensureArityCorrectness h e (length expParams) (length expArgs)
       impArgsTyped <- case impArgs of
         ImpArgs.Unspecified ->
@@ -679,7 +680,7 @@ inferPiElim h m (e, t) impArgs defaultArgsSpec expArgs = do
           Nothing ->
             return ()
       let defaultArgsAligned = DefaultArgs.Aligned (map (fmap fst) defaultArgsOverrides)
-      return (m :< WT.PiElim isNoetic e (ImpArgs.FullySpecified impArgs') expArgs' defaultArgsAligned, m :< cod')
+      return (m :< WT.PiElim kind e (ImpArgs.FullySpecified impArgs') expArgs' defaultArgsAligned, m :< cod')
 
 createImpArgFromParam ::
   Handle ->
@@ -783,7 +784,7 @@ inferClause h cursorType decisionCase =
       let argNum = AN.fromInt $ length dataArgs + length consArgs
       let attr = AttrVG.Attr {..}
       let dataArgs' = ImpArgs.FullySpecified $ map fst typedDataArgs'
-      consTerm@(_, consType) <- infer h $ m :< WT.PiElim False (m :< WT.VarGlobal attr consDD) dataArgs' [] (DefaultArgs.ByKey [])
+      consTerm@(_, consType) <- infer h $ m :< WT.PiElim PEK.Normal (m :< WT.VarGlobal attr consDD) dataArgs' [] (DefaultArgs.ByKey [])
       if isConstLike
         then liftIO $ Constraint.insert (constraintHandle h) cursorType consType
         else do

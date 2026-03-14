@@ -54,6 +54,7 @@ import Language.Common.Magic qualified as M
 import Language.Common.Noema qualified as N
 import Language.Common.Opacity (isOpaque)
 import Language.Common.Opacity qualified as O
+import Language.Common.PiElimKind qualified as PEK
 import Language.Common.PrimNumSize (dataSizeToIntSize)
 import Language.Common.PrimNumSize qualified as PNS
 import Language.Common.PrimOp
@@ -212,10 +213,10 @@ clarifyStmt h stmt =
       switch <- liftIO $ Gensym.createVar (gensymHandle h) "switch"
       arg@(argVarName, _) <- liftIO $ Gensym.createVar (gensymHandle h) "arg"
       discard <-
-        clarifyTerm h IntMap.empty (m :< TM.PiElim False discarder [] [m :< TM.Var argVarName] [])
+        clarifyTerm h IntMap.empty (m :< TM.PiElim PEK.Normal discarder [] [m :< TM.Var argVarName] [])
           >>= liftIO . Reduce.reduce (reduceHandle h)
       copy <-
-        clarifyTerm h IntMap.empty (m :< TM.PiElim False copier [] [m :< TM.Var argVarName] [])
+        clarifyTerm h IntMap.empty (m :< TM.PiElim PEK.Normal copier [] [m :< TM.Var argVarName] [])
           >>= liftIO . Reduce.reduce (reduceHandle h)
       let resourceSpec = Utility.ResourceSpec {switch, arg, discard, copy, defaultValues = []}
       liftIO $ Utility.registerSwitcher (utilityHandle h) O.Clear liftedName resourceSpec
@@ -380,7 +381,7 @@ clarifyTerm h tenv term =
             ]
     _ :< TM.PiIntro attr impArgs expArgs defaultArgs e -> do
       clarifyLambda h tenv attr (TM.chainOf tenv [term]) impArgs expArgs defaultArgs e
-    _ :< TM.PiElim b e impArgs expArgs defaultArgs -> do
+    _ :< TM.PiElim kind e impArgs expArgs defaultArgs -> do
       impArgs' <- mapM (clarifyTypePlus h tenv) impArgs
       expArgs' <- mapM (clarifyPlus h tenv) expArgs
       defaultArgs' <- mapM (traverse (clarifyPlus h tenv)) defaultArgs
@@ -390,7 +391,7 @@ clarifyTerm h tenv term =
           return $ callPrimOp op allArgs
         _ -> do
           e' <- clarifyTerm h tenv e
-          liftIO $ callClosure h b e' impArgs' expArgs' defaultArgs'
+          liftIO $ callClosure h kind e' impArgs' expArgs' defaultArgs'
     m :< TM.DataIntro (AttrDI.Attr {..}) consName dataArgs consArgs -> do
       od <- liftIO $ OptimizableData.lookup (optDataHandle h) consName
       case od of
@@ -470,7 +471,7 @@ clarifyType h tenv ty =
     _ :< TM.TyApp t args -> do
       t' <- clarifyType h tenv t
       args' <- mapM (clarifyTypePlus h tenv) args
-      liftIO $ callClosure h False t' args' [] []
+      liftIO $ callClosure h PEK.Normal t' args' [] []
     _ :< TM.Pi {} ->
       return Sigma.returnClosureS4
     _ :< TM.Data _ name dataArgs -> do
@@ -478,7 +479,7 @@ clarifyType h tenv ty =
       envType <- liftIO $ envTypeForGlobal h name
       let cls = C.UpIntro $ C.SigmaIntro [envType, C.SigmaIntro [], C.VarGlobal name argNum]
       dataArgs' <- mapM (clarifyTypePlus h tenv) dataArgs
-      liftIO $ callClosure h False cls dataArgs' [] []
+      liftIO $ callClosure h PEK.Normal cls dataArgs' [] []
     _ :< TM.Box t -> do
       clarifyType h tenv t
     _ :< TM.BoxNoema {} ->
@@ -760,7 +761,7 @@ clarifyLambda h tenv attrL@(AttrL.Attr {lamKind, identity}) fvs impArgs expArgs 
       lamAttr <- do
         c <- liftIO $ Gensym.newCount (gensymHandle h)
         return $ AttrL.normal' (Just (Ident.toText recFuncName)) c codType
-      let lamApp = m :< TM.PiIntro lamAttr impArgs expArgs defaultArgs (m :< TM.PiElim False (m :< TM.VarGlobal attr liftedName) [] appArgs' [])
+      let lamApp = m :< TM.PiIntro lamAttr impArgs expArgs defaultArgs (m :< TM.PiElim PEK.Normal (m :< TM.VarGlobal attr liftedName) [] appArgs' [])
       isAlreadyRegistered <- liftIO $ AuxEnv.checkIfAlreadyRegistered (auxEnvHandle h) liftedName
       unless isAlreadyRegistered $ do
         liftedBody <- liftIO $ Subst.subst (substHandle h) (IntMap.fromList [(Ident.toInt recFuncName, Subst.Term lamApp)]) e
@@ -859,14 +860,14 @@ registerClosure h name opacity xts fvs e = do
 
 callClosure ::
   Handle ->
-  N.IsNoetic ->
+  PEK.PiElimKind ->
   C.Comp ->
   [(Ident, C.Comp, C.Value)] ->
   [(Ident, C.Comp, C.Value)] ->
   [Maybe (Ident, C.Comp, C.Value)] ->
   IO C.Comp
-callClosure h isNoetic e impArgs expArgs defaultArgs = do
-  let flag = if isNoetic then C.intValue1 else C.intValue0
+callClosure h kind e impArgs expArgs defaultArgs = do
+  let flag = if PEK.isNoetic kind then C.intValue1 else C.intValue0
   let (impNames, impComps, impVals) = unzip3 impArgs
   let (expNames, expComps, expVals) = unzip3 expArgs
   ((closureVarName, closureVar), envTypeVarName, (envVarName, envVar), (lamVarName, lamVar)) <- newClosureNames h
@@ -885,7 +886,7 @@ callClosure h isNoetic e impArgs expArgs defaultArgs = do
   let (defNames, defComps, defVals) = unzip3 defaultTriples
   return $
     Utility.bindLet [(closureVarName, e)] $
-      C.SigmaElim (not isNoetic) [envTypeVarName, envVarName, lamVarName] closureVar $
+      C.SigmaElim (not $ PEK.isNoetic kind) [envTypeVarName, envVarName, lamVarName] closureVar $
         Utility.bindLet (zip (impNames ++ expNames ++ defNames) (impComps ++ expComps ++ defComps)) $
           C.PiElimDownElim lamVar (impVals ++ expVals ++ defVals ++ [envVar, flag])
 

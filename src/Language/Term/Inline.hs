@@ -38,8 +38,9 @@ import Language.Common.Literal qualified as L
 import Language.Common.LowMagic qualified as LM
 import Language.Common.Magic qualified as M
 import Language.Common.Opacity qualified as O
-import Language.Common.VarKind qualified as VK
+import Language.Common.PiElimKind qualified as PEK
 import Language.Common.PiKind qualified as PK
+import Language.Common.VarKind qualified as VK
 import Language.Term.Eq qualified as TermEq
 import Language.Term.Inline.ConstantFold qualified as ConstantFold
 import Language.Term.Inline.Handle
@@ -102,18 +103,18 @@ inline' h term = do
           codType' <- inlineType' h codType
           let attr' = attr {AttrL.lamKind = LK.Normal mName codType'}
           return (m :< TM.PiIntro attr' impArgs' expArgs' defaultArgs' e')
-    m :< TM.PiElim isNoetic e impArgs expArgs defaultArgs -> do
+    m :< TM.PiElim kind e impArgs expArgs defaultArgs -> do
       e' <- inline' h e
       impArgs' <- mapM (inlineType' h) impArgs
       expArgs' <- mapM (inline' h) expArgs
       defaultArgs' <- mapM (traverse (inline' h)) defaultArgs
       let Handle {dmap} = h
       let rebuildWithDefaults defaultArgsFilled =
-            m :< TM.PiElim isNoetic e' impArgs' expArgs' (map Just defaultArgsFilled)
+            m :< TM.PiElim kind e' impArgs' expArgs' (map Just defaultArgsFilled)
       case e' of
         (_ :< TM.PiIntro (AttrL.Attr {lamKind}) impBinders expBinders defBinders body) -> do
           if length impBinders /= length impArgs'
-            then return (m :< TM.PiElim isNoetic e' impArgs' expArgs' defaultArgs')
+            then return (m :< TM.PiElim kind e' impArgs' expArgs' defaultArgs')
             else do
               let impIds = map (\(_, _, x, _) -> x) impBinders
               let subType = IntMap.fromList $ zip (map Ident.toInt impIds) (map Subst.Type impArgs')
@@ -122,9 +123,9 @@ inline' h term = do
               let expParams = expBinders ++ map fst defBinders
               let expArgsAll = expArgs' ++ defaultArgsFilled
               if length expParams /= length expArgsAll
-                then return (m :< TM.PiElim isNoetic e' impArgs' expArgs' defaultArgs')
+                then return (m :< TM.PiElim kind e' impArgs' expArgs' defaultArgs')
                 else
-                  if isNoetic || not (canReduceByLamKind lamKind)
+                  if PEK.isNoetic kind || not (canReduceByLamKind lamKind)
                     then return (rebuildWithDefaults defaultArgsFilled)
                     else do
                       let subSelf = selfSubstForLamKind lamKind e'
@@ -144,7 +145,7 @@ inline' h term = do
           | Just defInfo <- Map.lookup dd dmap -> do
               let DefInfo {defImpBinders = impParams, defExpBinders = expBinders, defDefaultArgs = defDefaults, defBody = body, codType, defKind} = defInfo
               if length impParams /= length impArgs'
-                then return (m :< TM.PiElim isNoetic e' impArgs' expArgs' defaultArgs')
+                then return (m :< TM.PiElim kind e' impArgs' expArgs' defaultArgs')
                 else do
                   let impIds = map (\(_, _, x, _) -> x) impParams
                   let subType = IntMap.fromList $ zip (map Ident.toInt impIds) (map Subst.Type impArgs')
@@ -153,9 +154,9 @@ inline' h term = do
                   defaultArgsFilled <- liftIO $ mapM (Subst.subst (substHandle h) subType) defaultArgsRaw
                   let expArgsAll = expArgs' ++ defaultArgsFilled
                   if length expParams /= length expArgsAll
-                    then return (m :< TM.PiElim isNoetic e' impArgs' expArgs' defaultArgs')
+                    then return (m :< TM.PiElim kind e' impArgs' expArgs' defaultArgs')
                     else
-                      if isNoetic || not (canInlineDefKind defKind)
+                      if PEK.isNoetic kind || not (canInlineDefKind defKind)
                         then return (rebuildWithDefaults defaultArgsFilled)
                         else do
                           let tracer = if isMacroDef defKind then withMacroHint h dd m else id
@@ -164,7 +165,7 @@ inline' h term = do
                               mSelf <- lookupGuard h dd impArgs'
                               case mSelf of
                                 Just selfTerm -> do
-                                  return $ m :< TM.PiElim False selfTerm [] expArgsAll []
+                                  return $ m :< TM.PiElim PEK.Normal selfTerm [] expArgsAll []
                                 Nothing -> do
                                   (expBinders', body') <- liftIO $ Subst.subst' (substHandle h) subType expParams body
                                   self <- liftIO $ CreateSymbol.newIdentFromText (gensymHandle h) $ "knot-" <> DD.localLocator dd
@@ -176,7 +177,7 @@ inline' h term = do
                                   let selfType = m :< TM.Pi PK.normal [] expBinders' [] codType'
                                   let attr = AttrL.Attr {lamKind = LK.Fix O.Opaque (m, VK.Normal, self, selfType), identity}
                                   let fun = m :< TM.PiIntro attr [] expBinders' [] body''
-                                  return $ m :< TM.PiElim False fun [] expArgsAll []
+                                  return $ m :< TM.PiElim PEK.Normal fun [] expArgsAll []
                             _ -> do
                               if all TM.isValue expArgsAll
                                 then do
@@ -191,14 +192,14 @@ inline' h term = do
                                   body'' <- liftIO $ Refresh.refresh (refreshHandle h) $ m :< body'
                                   tracer $ inline' h $ bind (zip expParams' expArgsAll) body''
         (_ :< TM.Prim (PV.Op op))
-          | not isNoetic -> do
+          | kind == PEK.Normal -> do
               case ConstantFold.evaluatePrimOp m op expArgs' of
                 Just result -> do
                   return result
                 Nothing ->
-                  return (m :< TM.PiElim isNoetic e' impArgs' expArgs' defaultArgs')
+                  return (m :< TM.PiElim kind e' impArgs' expArgs' defaultArgs')
         _ ->
-          return (m :< TM.PiElim isNoetic e' impArgs' expArgs' defaultArgs')
+          return (m :< TM.PiElim kind e' impArgs' expArgs' defaultArgs')
     m :< TM.DataIntro attr consName dataArgs consArgs -> do
       dataArgs' <- mapM (inlineType' h) dataArgs
       consArgs' <- mapM (inline' h) consArgs
