@@ -50,10 +50,11 @@ weakenStmt stmt = do
       let body' = weakenType body
       WeakStmtDefineType isConstLike stmtKind' m name impArgs' expArgs' defaultArgs' codType' body'
     StmtDefineResource (SavedHint m) name resourceID resourceSize unitType discarder copier -> do
+      let resourceSize' = weaken resourceSize
       let unitType' = weakenType unitType
       let discarder' = weaken discarder
       let copier' = weaken copier
-      WeakStmtDefineResource m name resourceID resourceSize unitType' discarder' copier'
+      WeakStmtDefineResource m name resourceID resourceSize' unitType' discarder' copier'
     StmtVariadic kind (SavedHint m) name -> do
       WeakStmtVariadic kind m name
     StmtForeign foreignList ->

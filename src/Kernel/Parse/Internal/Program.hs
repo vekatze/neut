@@ -12,7 +12,6 @@ import Control.Monad
 import Control.Monad.Trans
 import Data.Text qualified as T
 import Kernel.Parse.Internal.RawTerm
-import Kernel.Parse.Internal.Util (readIntDecimalMaybe)
 import Language.Common.BaseName qualified as BN
 import Language.Common.ExternalName qualified as EN
 import Language.Common.ForeignCodType qualified as F
@@ -295,31 +294,20 @@ parseResource h = do
   c1 <- keyword "resource"
   m <- getCurrentHint
   (name, c2) <- baseName
-  (resourceSize, cSize) <- parseResourceSize m
+  resourceSize <- parseResourceSize h
   (handlers, c) <- seriesBrace $ rawExpr h
   case SE.elems handlers of
     [discarder, copier] -> do
-      return (RawStmtDefineResource c1 m (name, c2 ++ cSize) resourceSize discarder copier (SE.trailingComment handlers), c)
+      return (RawStmtDefineResource c1 m (name, c2) resourceSize discarder copier (SE.trailingComment handlers), c)
     _ ->
       lift $ raiseError m $ "`resource` must have 2 elements, but found: " <> T.pack (show $ length $ SE.elems handlers)
 
-parseResourceSize :: Hint -> Parser (Int, C)
-parseResourceSize m = do
-  c1 <- delimiter "["
-  (sizeText, c2) <- symbol
-  c3 <- delimiter "]"
-  case readIntDecimalMaybe sizeText >>= integerToIntMaybe of
-    Just size ->
-      return (size, c1 ++ c2 ++ c3)
-    Nothing ->
-      lift $ raiseError m $ "`resource` size must be a decimal integer literal that fits in Int, but found: " <> sizeText
-
-integerToIntMaybe :: Integer -> Maybe Int
-integerToIntMaybe n
-  | toInteger (minBound :: Int) <= n && n <= toInteger (maxBound :: Int) =
-      Just $ fromInteger n
-  | otherwise =
-      Nothing
+parseResourceSize :: Handle -> Parser RT.RawTerm
+parseResourceSize h = do
+  _ <- delimiter "["
+  (size, _) <- rawExpr h
+  _ <- delimiter "]"
+  return size
 
 parseVariadic :: Handle -> RuleKind -> Parser (RawStmt, C)
 parseVariadic h vk = do

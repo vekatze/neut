@@ -69,7 +69,7 @@ registerImmediateS4 h = do
     let discard = C.UpIntro $ C.SigmaIntro []
     let copy = C.UpIntro argVar
     Utility.registerSwitcher (utilityHandle h) O.Clear name $ do
-      ResourceSpec {switch, arg, discard, copy, size = -1, defaultValues = []}
+      ResourceSpec {switch, arg, discard, copy, size = Utility.returnIntComp (utilityHandle h) (-1), defaultValues = []}
 
 registerClosureS4 :: Handle -> IO ()
 registerClosureS4 h = do
@@ -154,7 +154,7 @@ makeSigmaResourceSpec h xts = do
   arg@(_, argVar) <- Gensym.createVar (gensymHandle h) "arg"
   discard <- sigmaT h xts argVar
   copy <- sigma4 h xts argVar
-  return $ ResourceSpec {switch, arg, discard, copy, size = length xts, defaultValues = []}
+  return $ ResourceSpec {switch, arg, discard, copy, size = Utility.returnIntComp (utilityHandle h) (toInteger $ length xts), defaultValues = []}
 
 -- (Assuming `ti` = `return di` for some `di` such that `xi : di`)
 -- sigmaT NAME LOC [(x1, t1), ..., (xn, tn)]   ~>
@@ -244,7 +244,7 @@ returnSigmaDataS4 h dataName opacity totalSlotCount dataInfo = do
   copy <- sigmaData4 h dataInfo argVar
   let dataName' = DD.getFormDD dataName
   Utility.registerSwitcher (utilityHandle h) opacity dataName' $
-    ResourceSpec {switch, arg, discard, copy, size = totalSlotCount, defaultValues = []}
+    ResourceSpec {switch, arg, discard, copy, size = Utility.returnIntComp (utilityHandle h) (toInteger totalSlotCount), defaultValues = []}
   return $ C.UpIntro $ C.VarGlobal dataName' AN.argNumS4
 
 returnSigmaEnumS4 ::
@@ -259,7 +259,7 @@ returnSigmaEnumS4 h dataName opacity = do
   let copy = C.UpIntro argVar
   let dataName' = DD.getFormDD dataName
   Utility.registerSwitcher (utilityHandle h) opacity dataName' $
-    ResourceSpec {switch, arg, discard, copy, size = -1, defaultValues = []}
+    ResourceSpec {switch, arg, discard, copy, size = Utility.returnIntComp (utilityHandle h) (-1), defaultValues = []}
   return $ C.UpIntro $ C.VarGlobal dataName' AN.argNumS4
 
 sigmaData4 :: Handle -> [DataConstructorInfo] -> C.Value -> IO C.Comp

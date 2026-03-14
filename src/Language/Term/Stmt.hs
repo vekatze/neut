@@ -51,7 +51,7 @@ data StmtF t a
       SavedHint
       DD.DefiniteDescription
       Int
-      Int
+      a
       t
       a
       a

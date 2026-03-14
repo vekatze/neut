@@ -223,7 +223,13 @@ decStmt stmt =
       attachStmtComment (c1 ++ c2) $
         PI.arrange
           [ PI.horizontal $ D.text "resource",
-            PI.horizontal $ D.text (BN.reify name <> "[" <> T.pack (show resourceSize) <> "]"),
+            PI.horizontal $
+              D.join
+                [ D.text $ BN.reify name,
+                  D.text "[",
+                  RT.toDoc resourceSize,
+                  D.text "]"
+                ],
             PI.inject $ SE.decode $ fmap RT.toDoc series
           ]
     RawStmtVariadic kind c1 _ (name, c2) (ct, leaf, _) (cn, node, _) (cr, root, _) trailingComment _ -> do

@@ -158,12 +158,13 @@ discernStmt h stmt = do
       registerTopLevelName h stmt
       unitType <- liftEither (locatorToTypeVar m coreUnit) >>= discernType h
       resourceID <- liftIO $ Gensym.newCount (H.gensymHandle h)
+      resourceSize' <- discern h resourceSize
       discarder' <- discern h discarder
       copier' <- discern h copier
       liftIO $ Tag.insertGlobalVar (H.tagHandle h) m dd True m
       liftIO $ TopCandidate.insert (H.topCandidateHandle h) $ do
         TopCandidate {loc = metaLocation m, dd = dd, kind = Constant}
-      return [WeakStmtDefineResource m dd resourceID resourceSize unitType discarder' copier']
+      return [WeakStmtDefineResource m dd resourceID resourceSize' unitType discarder' copier']
     PostRawStmtVariadic kind m dd -> do
       registerTopLevelName h stmt
       liftIO $ Tag.insertGlobalVar (H.tagHandle h) m dd True m

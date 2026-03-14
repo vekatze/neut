@@ -214,13 +214,16 @@ clarifyStmt h stmt =
       let liftedName = DD.makeResourceName dd resourceID
       switch <- liftIO $ Gensym.createVar (gensymHandle h) "switch"
       arg@(argVarName, _) <- liftIO $ Gensym.createVar (gensymHandle h) "arg"
+      size <-
+        clarifyTerm h IntMap.empty resourceSize
+          >>= liftIO . Reduce.reduce (reduceHandle h)
       discard <-
         clarifyTerm h IntMap.empty (m :< TM.PiElim PEK.Normal discarder [] [m :< TM.Var argVarName] [])
           >>= liftIO . Reduce.reduce (reduceHandle h)
       copy <-
         clarifyTerm h IntMap.empty (m :< TM.PiElim PEK.Normal copier [] [m :< TM.Var argVarName] [])
           >>= liftIO . Reduce.reduce (reduceHandle h)
-      let resourceSpec = Utility.ResourceSpec {switch, arg, discard, copy, size = resourceSize, defaultValues = []}
+      let resourceSpec = Utility.ResourceSpec {switch, arg, discard, copy, size, defaultValues = []}
       liftIO $ Utility.registerSwitcher (utilityHandle h) O.Clear liftedName resourceSpec
       return $ C.Def dd O.Clear [] (C.UpIntro $ C.VarGlobal liftedName AN.argNumS4)
     StmtVariadic {} -> do
@@ -275,7 +278,7 @@ registerDefaultEnvType h name defaultValues = do
       arg@(_, argVar) <- Gensym.createVar (gensymHandle h) "arg"
       let discard = C.UpIntro $ C.SigmaIntro []
       let copy = C.UpIntro argVar
-      let resourceSpec = Utility.ResourceSpec {switch, arg, discard, copy, size = -1, defaultValues}
+      let resourceSpec = Utility.ResourceSpec {switch, arg, discard, copy, size = Utility.returnIntComp (utilityHandle h) (-1), defaultValues}
       Utility.registerSwitcher (utilityHandle h) O.Clear envTypeName resourceSpec
 
 registerDefaultFunctions ::

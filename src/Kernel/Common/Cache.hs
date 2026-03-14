@@ -88,10 +88,11 @@ compressStmt stmt =
       let body' = TM.compressType body
       Stmt.StmtDefineType isConstLike stmtKind' m functionName impArgs' expArgs' defaultArgs' codType' body'
     Stmt.StmtDefineResource m name resourceID resourceSize unitType discarder copier -> do
+      let resourceSize' = TM.compress resourceSize
       let unitType' = TM.compressType unitType
       let discarder' = TM.compress discarder
       let copier' = TM.compress copier
-      Stmt.StmtDefineResource m name resourceID resourceSize unitType' discarder' copier'
+      Stmt.StmtDefineResource m name resourceID resourceSize' unitType' discarder' copier'
     Stmt.StmtVariadic kind m name -> do
       Stmt.StmtVariadic kind m name
     Stmt.StmtForeign foreignList ->
@@ -117,10 +118,11 @@ extendStmt stmt =
       let body' = TM.extendType body
       Stmt.StmtDefineType isConstLike stmtKind' m functionName impArgs' expArgs' defaultArgs' codType' body'
     Stmt.StmtDefineResource m name resourceID resourceSize unitType discarder copier -> do
+      let resourceSize' = TM.extend resourceSize
       let unitType' = TM.extendType unitType
       let discarder' = TM.extend discarder
       let copier' = TM.extend copier
-      Stmt.StmtDefineResource m name resourceID resourceSize unitType' discarder' copier'
+      Stmt.StmtDefineResource m name resourceID resourceSize' unitType' discarder' copier'
     Stmt.StmtVariadic kind m name -> do
       Stmt.StmtVariadic kind m name
     Stmt.StmtForeign foreignList ->
