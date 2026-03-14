@@ -69,7 +69,7 @@ registerImmediateS4 h = do
     let discard = C.UpIntro $ C.SigmaIntro []
     let copy = C.UpIntro argVar
     Utility.registerSwitcher (utilityHandle h) O.Clear name $ do
-      ResourceSpec {switch, arg, discard, copy, defaultValues = []}
+      ResourceSpec {switch, arg, discard, copy, size = -1, defaultValues = []}
 
 registerClosureS4 :: Handle -> IO ()
 registerClosureS4 h = do
@@ -154,7 +154,7 @@ makeSigmaResourceSpec h xts = do
   arg@(_, argVar) <- Gensym.createVar (gensymHandle h) "arg"
   discard <- sigmaT h xts argVar
   copy <- sigma4 h xts argVar
-  return $ ResourceSpec {switch, arg, discard, copy, defaultValues = []}
+  return $ ResourceSpec {switch, arg, discard, copy, size = length xts, defaultValues = []}
 
 -- (Assuming `ti` = `return di` for some `di` such that `xi : di`)
 -- sigmaT NAME LOC [(x1, t1), ..., (xn, tn)]   ~>
@@ -234,16 +234,17 @@ returnSigmaDataS4 ::
   Handle ->
   DD.DefiniteDescription ->
   O.Opacity ->
+  Int ->
   [DataConstructorInfo] ->
   IO C.Comp
-returnSigmaDataS4 h dataName opacity dataInfo = do
+returnSigmaDataS4 h dataName opacity totalSlotCount dataInfo = do
   switch <- Gensym.createVar (gensymHandle h) "switch"
   arg@(_, argVar) <- Gensym.createVar (gensymHandle h) "arg"
   discard <- sigmaDataT h dataInfo argVar
   copy <- sigmaData4 h dataInfo argVar
   let dataName' = DD.getFormDD dataName
   Utility.registerSwitcher (utilityHandle h) opacity dataName' $
-    ResourceSpec {switch, arg, discard, copy, defaultValues = []}
+    ResourceSpec {switch, arg, discard, copy, size = totalSlotCount, defaultValues = []}
   return $ C.UpIntro $ C.VarGlobal dataName' AN.argNumS4
 
 returnSigmaEnumS4 ::
@@ -258,7 +259,7 @@ returnSigmaEnumS4 h dataName opacity = do
   let copy = C.UpIntro argVar
   let dataName' = DD.getFormDD dataName
   Utility.registerSwitcher (utilityHandle h) opacity dataName' $
-    ResourceSpec {switch, arg, discard, copy, defaultValues = []}
+    ResourceSpec {switch, arg, discard, copy, size = -1, defaultValues = []}
   return $ C.UpIntro $ C.VarGlobal dataName' AN.argNumS4
 
 sigmaData4 :: Handle -> [DataConstructorInfo] -> C.Value -> IO C.Comp

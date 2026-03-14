@@ -76,11 +76,12 @@ makeSwitcher ::
   ResourceSpec ->
   IO ([Ident], C.Comp)
 makeSwitcher h resourceSpec = do
-  let ResourceSpec {discard, copy, defaultValues} = resourceSpec
+  let ResourceSpec {discard, copy, size = valueSize, defaultValues} = resourceSpec
   let (argVarName, _) = arg resourceSpec
   let (switchVarName, switchVar) = switch resourceSpec
-  let defaultCases = zipWith (\i v -> (EC.Int i, C.UpIntro v)) [2 ..] defaultValues
-  enumElim <- getEnumElim h [argVarName] switchVar discard ((EC.Int 1, copy) : defaultCases)
+  let sizeComp = C.UpIntro $ C.Int (dataSizeToIntSize (baseSize h)) (toInteger valueSize)
+  let defaultCases = zipWith (\i v -> (EC.Int i, C.UpIntro v)) [3 ..] defaultValues
+  enumElim <- getEnumElim h [argVarName] switchVar discard ((EC.Int 1, copy) : (EC.Int 2, sizeComp) : defaultCases)
   return ([switchVarName, argVarName], enumElim)
 
 data ResourceSpec = ResourceSpec
@@ -88,6 +89,7 @@ data ResourceSpec = ResourceSpec
     arg :: (Ident, C.Value),
     discard :: C.Comp,
     copy :: C.Comp,
+    size :: Int,
     defaultValues :: [C.Value]
   }
 

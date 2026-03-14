@@ -204,7 +204,7 @@ clarifyStmt h stmt =
               let totalSlotCount = getDataSlotCount dataArgs consInfoList
               let dataInfo = map (\(_, consName, isConstLike, consArgs, discriminant) -> (consName, isConstLike, discriminant, dataArgs, consArgs)) consInfoList
               dataInfo' <- mapM (clarifyDataClause h totalSlotCount) dataInfo
-              liftIO (Sigma.returnSigmaDataS4 (sigmaHandle h) name O.Opaque dataInfo')
+              liftIO (Sigma.returnSigmaDataS4 (sigmaHandle h) name O.Opaque totalSlotCount dataInfo')
                 >>= clarifyStmtDefineBody' h name xts''
         _ -> do
           let tenv = TM.insTypeEnv xts IntMap.empty
@@ -220,7 +220,7 @@ clarifyStmt h stmt =
       copy <-
         clarifyTerm h IntMap.empty (m :< TM.PiElim PEK.Normal copier [] [m :< TM.Var argVarName] [])
           >>= liftIO . Reduce.reduce (reduceHandle h)
-      let resourceSpec = Utility.ResourceSpec {switch, arg, discard, copy, defaultValues = []}
+      let resourceSpec = Utility.ResourceSpec {switch, arg, discard, copy, size = 0, defaultValues = []}
       liftIO $ Utility.registerSwitcher (utilityHandle h) O.Clear liftedName resourceSpec
       return $ C.Def dd O.Clear [] (C.UpIntro $ C.VarGlobal liftedName AN.argNumS4)
     StmtVariadic {} -> do
@@ -275,7 +275,7 @@ registerDefaultEnvType h name defaultValues = do
       arg@(_, argVar) <- Gensym.createVar (gensymHandle h) "arg"
       let discard = C.UpIntro $ C.SigmaIntro []
       let copy = C.UpIntro argVar
-      let resourceSpec = Utility.ResourceSpec {switch, arg, discard, copy, defaultValues}
+      let resourceSpec = Utility.ResourceSpec {switch, arg, discard, copy, size = -1, defaultValues}
       Utility.registerSwitcher (utilityHandle h) O.Clear envTypeName resourceSpec
 
 registerDefaultFunctions ::
@@ -889,7 +889,7 @@ callClosure h kind e impArgs expArgs defaultArgs = do
         return (name, comp, v)
       Nothing -> do
         (labelName, labelVar) <- Gensym.createVar (gensymHandle h) "default-label"
-        let labelComp = C.PiElimDownElim False (C.VarLocal envTypeVarName) [intTerm h (i + 2), C.null]
+        let labelComp = C.PiElimDownElim False (C.VarLocal envTypeVarName) [intTerm h (i + 3), C.null]
         defaultComp <-
           Utility.bindLet [(labelName, labelComp)]
             <$> callDefaultLabel h envTypeVarName envVar impVals labelVar
