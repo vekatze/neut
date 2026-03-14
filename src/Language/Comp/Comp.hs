@@ -1,5 +1,6 @@
 module Language.Comp.Comp
   ( Value (..),
+    ForceInline,
     Comp (..),
     Primitive (..),
     CompStmt (..),
@@ -63,11 +64,13 @@ instance Show Value where
 
 type IsReducible = Bool
 
+type ForceInline = Bool
+
 type Label =
   Ident
 
 data Comp
-  = PiElimDownElim Value [Value] -- ((force v) v1 ... vn)
+  = PiElimDownElim ForceInline Value [Value] -- ((force v) v1 ... vn)
   | SigmaElim ShouldDeallocate [Ident] Value Comp
   | UpIntro Value
   | UpElim IsReducible Ident Comp Comp
@@ -80,7 +83,7 @@ data Comp
 instance Show Comp where
   show c =
     case c of
-      PiElimDownElim v vs ->
+      PiElimDownElim _ v vs ->
         show v ++ "@(" ++ intercalate "," (map show vs) ++ ")"
       SigmaElim b xs v cont -> do
         let h = if b then "let" else "let-noetic"

@@ -889,7 +889,7 @@ callClosure h kind e impArgs expArgs defaultArgs = do
         return (name, comp, v)
       Nothing -> do
         (labelName, labelVar) <- Gensym.createVar (gensymHandle h) "default-label"
-        let labelComp = C.PiElimDownElim (C.VarLocal envTypeVarName) [intTerm h (i + 2), C.null]
+        let labelComp = C.PiElimDownElim False (C.VarLocal envTypeVarName) [intTerm h (i + 2), C.null]
         defaultComp <-
           Utility.bindLet [(labelName, labelComp)]
             <$> callDefaultLabel h envTypeVarName envVar impVals labelVar
@@ -900,7 +900,7 @@ callClosure h kind e impArgs expArgs defaultArgs = do
     Utility.bindLet [(closureVarName, e)] $
       C.SigmaElim (not $ PEK.isNoetic kind) [envTypeVarName, envVarName, lamVarName] closureVar $
         Utility.bindLet (zip (impNames ++ expNames ++ defNames) (impComps ++ expComps ++ defComps)) $
-          C.PiElimDownElim lamVar (impVals ++ expVals ++ defVals ++ [envVar, flag])
+          C.PiElimDownElim False lamVar (impVals ++ expVals ++ defVals ++ [envVar, flag])
 
 intTerm :: (Integral a) => Handle -> a -> C.Value
 intTerm h i =
@@ -919,10 +919,10 @@ callDefaultLabel ::
   IO C.Comp
 callDefaultLabel h envTypeVarName envVar impVals labelVar = do
   (envCopyName, envCopyVar) <- Gensym.createVar (gensymHandle h) "env"
-  let envCopyComp = C.PiElimDownElim (C.VarLocal envTypeVarName) [intTerm h (1 :: Int), envVar]
+  let envCopyComp = C.PiElimDownElim False (C.VarLocal envTypeVarName) [intTerm h (1 :: Int), envVar]
   return $
     Utility.bindLet [(envCopyName, envCopyComp)] $
-      C.PiElimDownElim labelVar (impVals ++ [envCopyVar, C.intValue0])
+      C.PiElimDownElim False labelVar (impVals ++ [envCopyVar, C.intValue0])
 
 newClosureNames :: Handle -> IO ((Ident, C.Value), Ident, (Ident, C.Value), (Ident, C.Value))
 newClosureNames h = do

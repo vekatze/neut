@@ -45,7 +45,7 @@ new gensymHandle substHandle auxEnvHandle baseSize = do
 toAffineApp :: Handle -> C.Value -> C.Comp -> IO C.Comp
 toAffineApp h v t = do
   (expVarName, expVar) <- Gensym.createVar (gensymHandle h) "exp"
-  return $ C.UpElim True expVarName t (C.PiElimDownElim expVar [C.Int (dataSizeToIntSize (baseSize h)) 0, v])
+  return $ C.UpElim True expVarName t (C.PiElimDownElim False expVar [C.Int (dataSizeToIntSize (baseSize h)) 0, v])
 
 -- toRelevantApp h x t ~>
 --   bind exp := t in
@@ -53,7 +53,7 @@ toAffineApp h v t = do
 toRelevantApp :: Handle -> C.Value -> C.Comp -> IO C.Comp
 toRelevantApp h v t = do
   (expVarName, expVar) <- Gensym.createVar (gensymHandle h) "exp"
-  return $ C.UpElim True expVarName t (C.PiElimDownElim expVar [C.Int (dataSizeToIntSize (baseSize h)) 1, v])
+  return $ C.UpElim True expVarName t (C.PiElimDownElim False expVar [C.Int (dataSizeToIntSize (baseSize h)) 1, v])
 
 bindLet :: [(Ident, C.Comp)] -> C.Comp -> C.Comp
 bindLet =

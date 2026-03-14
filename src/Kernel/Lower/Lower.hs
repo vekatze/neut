@@ -149,7 +149,7 @@ lowerComp h term =
     C.Primitive theta -> do
       (resultVar, resultValue) <- liftIO $ newValueLocal h "result"
       lowerCompPrimitive h resultVar theta (LC.Return resultValue)
-    C.PiElimDownElim v ds -> do
+    C.PiElimDownElim _ v ds -> do
       (funcVar, func) <- liftIO $ newValueLocal h "func"
       (castFuncVar, castFunc) <- liftIO $ newValueLocal h "func"
       (argVars, argValues) <- mapAndUnzipM (const $ liftIO $ newValueLocal h "arg") ds

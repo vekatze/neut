@@ -28,10 +28,10 @@ subst =
 substComp :: Handle -> C.SubstValue -> C.Comp -> IO C.Comp
 substComp h sub term =
   case term of
-    C.PiElimDownElim v ds -> do
+    C.PiElimDownElim forceInline v ds -> do
       let v' = substValue sub v
       let ds' = map (substValue sub) ds
-      return $ C.PiElimDownElim v' ds'
+      return $ C.PiElimDownElim forceInline v' ds'
     C.SigmaElim b xs v e -> do
       let v' = substValue sub v
       xs' <- mapM (Gensym.newIdentFromIdent (gensymHandle h)) xs

@@ -37,19 +37,20 @@ unionSubst (Handle {..}) newSubst = do
 reduce :: Handle -> C.Comp -> IO C.Comp
 reduce h term = do
   case term of
-    C.PiElimDownElim v ds -> do
+    C.PiElimDownElim forceInline v ds -> do
       let v' = Subst.substValue (subst h) v
       let ds' = map (Subst.substValue (subst h)) ds
       case v' of
         C.VarGlobal x _ -> do
           case Map.lookup x (defMap h) of
-            Just (O.Clear, xs, body) -> do
+            Just (opacity, xs, body)
+              | forceInline || opacity == O.Clear -> do
               let sub = IntMap.fromList (zip (map Ident.toInt xs) ds')
               reduce (unionSubst h sub) body
             _ ->
-              return $ C.PiElimDownElim v' ds'
+              return $ C.PiElimDownElim forceInline v' ds'
         _ ->
-          return $ C.PiElimDownElim v' ds'
+          return $ C.PiElimDownElim forceInline v' ds'
     C.SigmaElim shouldDeallocate xs v e -> do
       let v' = Subst.substValue (subst h) v
       if not shouldDeallocate

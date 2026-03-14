@@ -119,10 +119,10 @@ distinguishComp h z term =
     C.Primitive theta -> do
       (vs, theta') <- distinguishPrimitive h z theta
       return (vs, C.Primitive theta')
-    C.PiElimDownElim d ds -> do
+    C.PiElimDownElim forceInline d ds -> do
       (vs, d') <- distinguishValue h z d
       (vss, ds') <- mapAndUnzipM (distinguishValue h z) ds
-      return (concat $ vs : vss, C.PiElimDownElim d' ds')
+      return (concat $ vs : vss, C.PiElimDownElim forceInline d' ds')
     C.SigmaElim shouldDeallocate xs d e -> do
       (vs1, d') <- distinguishValue h z d
       if z `elem` xs
