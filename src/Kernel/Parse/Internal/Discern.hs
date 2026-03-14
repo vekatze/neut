@@ -154,7 +154,7 @@ discernStmt h stmt = do
       liftIO $ forM_ expArgs' $ Tag.insertBinder (H.tagHandle h')
       liftIO $ forM_ (map fst defaultArgs') $ Tag.insertBinder (H.tagHandle h')
       return [WeakStmtDefineType isConstLike stmtKind' m functionName impArgs' expArgs' defaultArgs' codType' body']
-    PostRawStmtDefineResource _ m (dd, _) (_, discarder) (_, copier) _ -> do
+    PostRawStmtDefineResource _ m (dd, _) resourceSize (_, discarder) (_, copier) _ -> do
       registerTopLevelName h stmt
       unitType <- liftEither (locatorToTypeVar m coreUnit) >>= discernType h
       resourceID <- liftIO $ Gensym.newCount (H.gensymHandle h)
@@ -163,7 +163,7 @@ discernStmt h stmt = do
       liftIO $ Tag.insertGlobalVar (H.tagHandle h) m dd True m
       liftIO $ TopCandidate.insert (H.topCandidateHandle h) $ do
         TopCandidate {loc = metaLocation m, dd = dd, kind = Constant}
-      return [WeakStmtDefineResource m dd resourceID unitType discarder' copier']
+      return [WeakStmtDefineResource m dd resourceID resourceSize unitType discarder' copier']
     PostRawStmtVariadic kind m dd -> do
       registerTopLevelName h stmt
       liftIO $ Tag.insertGlobalVar (H.tagHandle h) m dd True m

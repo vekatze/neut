@@ -51,6 +51,7 @@ data WeakStmt
       Hint
       DD.DefiniteDescription
       Int
+      Int
       WT.WeakType
       WT.WeakTerm
       WT.WeakTerm

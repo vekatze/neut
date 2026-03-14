@@ -203,7 +203,7 @@ _getGlobalNames stmt = do
       [(name, (m, Nothing, GN.Rule kind))]
     PostRawStmtNominal {} -> do
       []
-    PostRawStmtDefineResource _ m (name, _) _ _ _ -> do
+    PostRawStmtDefineResource _ m (name, _) _ _ _ _ -> do
       [(name, (m, Just Resource, GN.TopLevelFuncType AN.zero True False))]
     PostRawStmtForeign {} ->
       []
@@ -279,7 +279,7 @@ _getGlobalNames' stmt = do
           let dataArgNum = AN.fromInt $ length dataArgs
           let consNameArrowList = map (toConsNameArrow dataArgNum) consInfoList
           (dataName, (m, mTag, GN.Data dataArgNum (map stripTag consNameArrowList) isConstLike)) : consNameArrowList
-    StmtDefineResource (SavedHint m) name _ _ _ _ -> do
+    StmtDefineResource (SavedHint m) name _ _ _ _ _ -> do
       [(name, (m, Nothing, GN.TopLevelFuncType AN.argNumS4 True False))]
     StmtVariadic kind (SavedHint m) name -> do
       [(name, (m, Nothing, GN.Rule kind))]

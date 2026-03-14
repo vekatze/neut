@@ -78,6 +78,7 @@ data BaseRawStmt name
       C
       Hint
       (name, C)
+      Int
       (C, RT.RawTerm)
       (C, RT.RawTerm)
       C
@@ -116,6 +117,7 @@ data PostRawStmt
       C
       Hint
       (DD.DefiniteDescription, C)
+      Int
       (C, RT.RawTerm)
       (C, RT.RawTerm)
       C

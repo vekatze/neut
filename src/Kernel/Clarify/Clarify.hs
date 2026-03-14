@@ -210,7 +210,7 @@ clarifyStmt h stmt =
           let tenv = TM.insTypeEnv xts IntMap.empty
           body' <- clarifyStmtDefineTypeBody h tenv xts'' body
           return $ C.Def f (SK.toLowOpacityType stmtKind) (map fst xts'') body'
-    StmtDefineResource (SavedHint m) dd resourceID _ discarder copier -> do
+    StmtDefineResource (SavedHint m) dd resourceID resourceSize _ discarder copier -> do
       let liftedName = DD.makeResourceName dd resourceID
       switch <- liftIO $ Gensym.createVar (gensymHandle h) "switch"
       arg@(argVarName, _) <- liftIO $ Gensym.createVar (gensymHandle h) "arg"
@@ -220,7 +220,7 @@ clarifyStmt h stmt =
       copy <-
         clarifyTerm h IntMap.empty (m :< TM.PiElim PEK.Normal copier [] [m :< TM.Var argVarName] [])
           >>= liftIO . Reduce.reduce (reduceHandle h)
-      let resourceSpec = Utility.ResourceSpec {switch, arg, discard, copy, size = 0, defaultValues = []}
+      let resourceSpec = Utility.ResourceSpec {switch, arg, discard, copy, size = resourceSize, defaultValues = []}
       liftIO $ Utility.registerSwitcher (utilityHandle h) O.Clear liftedName resourceSpec
       return $ C.Def dd O.Clear [] (C.UpIntro $ C.VarGlobal liftedName AN.argNumS4)
     StmtVariadic {} -> do

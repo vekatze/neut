@@ -51,6 +51,7 @@ data StmtF t a
       SavedHint
       DD.DefiniteDescription
       Int
+      Int
       t
       a
       a
@@ -75,7 +76,7 @@ getStmtName' stmt =
       return (m, name)
     StmtDefineType _ _ (SavedHint m) name _ _ _ _ _ ->
       return (m, name)
-    StmtDefineResource (SavedHint m) name _ _ _ _ ->
+    StmtDefineResource (SavedHint m) name _ _ _ _ _ ->
       return (m, name)
     StmtVariadic _ (SavedHint m) name ->
       return (m, name)
