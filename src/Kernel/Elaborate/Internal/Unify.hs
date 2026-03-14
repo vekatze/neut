@@ -148,8 +148,9 @@ simplify h susList constraintList =
         then simplify h susList cs
         else do
           case (expected', actual') of
-            (m1 :< WT.Pi _ impArgs1 expArgs1 defaultArgs1 cod1, m2 :< WT.Pi _ impArgs2 expArgs2 defaultArgs2 cod2)
-              | Just (impBinders, impConstraints) <- createDefaultConstraints impArgs1 defaultArgs1 impArgs2 defaultArgs2,
+            (m1 :< WT.Pi piKind1 impArgs1 expArgs1 defaultArgs1 cod1, m2 :< WT.Pi piKind2 impArgs2 expArgs2 defaultArgs2 cod2)
+              | piKind1 == piKind2,
+                Just (impBinders, impConstraints) <- createDefaultConstraints impArgs1 defaultArgs1 impArgs2 defaultArgs2,
                 length expArgs1 == length expArgs2 -> do
                   codBinder1 <- liftIO $ asWeakBinder h m1 cod1
                   codBinder2 <- liftIO $ asWeakBinder h m2 cod2

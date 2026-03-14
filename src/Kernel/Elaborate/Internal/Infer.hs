@@ -141,7 +141,7 @@ inferGeist h (G.Geist {..}) = do
   (defaultArgs', h''') <- inferImpBinderWithDefaults h'' defaultArgs
   let defaultBinders = map fst defaultArgs'
   cod' <- inferType h''' cod
-  liftIO $ insertType h''' name $ loc :< WT.Pi PK.normal impArgs' expArgs' defaultBinders cod'
+  liftIO $ insertType h''' name $ loc :< WT.Pi (PK.Normal isConstLike) impArgs' expArgs' defaultBinders cod'
   return $ G.Geist {impArgs = impArgs', defaultArgs = defaultArgs', expArgs = expArgs', cod = cod', ..}
 
 insertType :: Handle -> DD.DefiniteDescription -> WT.WeakType -> IO ()

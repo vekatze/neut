@@ -138,6 +138,10 @@ toTextType ty =
           if isConstLike
             then showImpArgsForAll impArgs defaultArgs <> toTextType cod
             else showImpArgs impArgs [] <> inParen (showDomArgList expArgs) <> showDefaultBinders defaultArgs <> " -> " <> toTextType cod
+        PK.DestPass isConstLike ->
+          if isConstLike
+            then showImpArgsForAll impArgs defaultArgs <> toTextType cod
+            else showImpArgs impArgs [] <> inParen (showDomArgList expArgs) <> showDefaultBinders defaultArgs <> " ->> " <> toTextType cod
         PK.DataIntro _ -> do
           showImpArgsForAll impArgs defaultArgs <> toTextType cod
     _ :< WT.Data (AttrD.Attr {..}) name es -> do

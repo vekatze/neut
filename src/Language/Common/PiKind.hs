@@ -10,6 +10,7 @@ import Language.Common.IsConstLike (IsConstLike)
 
 data PiKind
   = Normal IsConstLike
+  | DestPass IsConstLike
   | DataIntro IsConstLike
   deriving (Show, Eq, Generic)
 
