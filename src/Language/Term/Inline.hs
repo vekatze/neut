@@ -107,23 +107,25 @@ inline' h term = do
       impArgs' <- mapM (inlineType' h) impArgs
       expArgs' <- mapM (inline' h) expArgs
       defaultArgs' <- mapM (traverse (inline' h)) defaultArgs
-      if isNoetic
-        then return $ m :< TM.PiElim isNoetic e' impArgs' expArgs' defaultArgs'
-        else do
-          let Handle {dmap} = h
-          case e' of
-            (_ :< TM.PiIntro (AttrL.Attr {lamKind}) impBinders expBinders defBinders body) -> do
-              if length impBinders /= length impArgs' || not (canReduceByLamKind lamKind)
+      let Handle {dmap} = h
+      let rebuildWithDefaults defaultArgsFilled =
+            m :< TM.PiElim isNoetic e' impArgs' expArgs' (map Just defaultArgsFilled)
+      case e' of
+        (_ :< TM.PiIntro (AttrL.Attr {lamKind}) impBinders expBinders defBinders body) -> do
+          if length impBinders /= length impArgs'
+            then return (m :< TM.PiElim isNoetic e' impArgs' expArgs' defaultArgs')
+            else do
+              let impIds = map (\(_, _, x, _) -> x) impBinders
+              let subType = IntMap.fromList $ zip (map Ident.toInt impIds) (map Subst.Type impArgs')
+              let defaultArgsRaw = fillDefaultArgs defaultArgs' (map snd defBinders)
+              defaultArgsFilled <- liftIO $ mapM (Subst.subst (substHandle h) subType) defaultArgsRaw
+              let expParams = expBinders ++ map fst defBinders
+              let expArgsAll = expArgs' ++ defaultArgsFilled
+              if length expParams /= length expArgsAll
                 then return (m :< TM.PiElim isNoetic e' impArgs' expArgs' defaultArgs')
-                else do
-                  let impIds = map (\(_, _, x, _) -> x) impBinders
-                  let subType = IntMap.fromList $ zip (map Ident.toInt impIds) (map Subst.Type impArgs')
-                  let defaultArgsRaw = fillDefaultArgs defaultArgs' (map snd defBinders)
-                  defaultArgsFilled <- liftIO $ mapM (Subst.subst (substHandle h) subType) defaultArgsRaw
-                  let expParams = expBinders ++ map fst defBinders
-                  let expArgsAll = expArgs' ++ defaultArgsFilled
-                  if length expParams /= length expArgsAll
-                    then return (m :< TM.PiElim isNoetic e' impArgs' expArgs' defaultArgs')
+                else
+                  if isNoetic || not (canReduceByLamKind lamKind)
+                    then return (rebuildWithDefaults defaultArgsFilled)
                     else do
                       let subSelf = selfSubstForLamKind lamKind e'
                       let expIds = map (\(_, _, x, _) -> x) expParams
@@ -138,20 +140,23 @@ inline' h term = do
                           (expParams', _ :< body') <- liftIO $ Subst.subst' (substHandle h) sub expParams body
                           body'' <- liftIO $ Refresh.refresh (refreshHandle h) $ m :< body'
                           inline' h $ bind (zip expParams' expArgsAll) body''
-            (_ :< TM.VarGlobal _ dd)
-              | Just defInfo <- Map.lookup dd dmap -> do
-                  let DefInfo {defImpBinders = impParams, defExpBinders = expBinders, defDefaultArgs = defDefaults, defBody = body, codType, defKind} = defInfo
-                  if length impParams /= length impArgs'
+        (_ :< TM.VarGlobal _ dd)
+          | Just defInfo <- Map.lookup dd dmap -> do
+              let DefInfo {defImpBinders = impParams, defExpBinders = expBinders, defDefaultArgs = defDefaults, defBody = body, codType, defKind} = defInfo
+              if length impParams /= length impArgs'
+                then return (m :< TM.PiElim isNoetic e' impArgs' expArgs' defaultArgs')
+                else do
+                  let impIds = map (\(_, _, x, _) -> x) impParams
+                  let subType = IntMap.fromList $ zip (map Ident.toInt impIds) (map Subst.Type impArgs')
+                  let expParams = expBinders ++ map fst defDefaults
+                  let defaultArgsRaw = fillDefaultArgs defaultArgs' (map snd defDefaults)
+                  defaultArgsFilled <- liftIO $ mapM (Subst.subst (substHandle h) subType) defaultArgsRaw
+                  let expArgsAll = expArgs' ++ defaultArgsFilled
+                  if length expParams /= length expArgsAll
                     then return (m :< TM.PiElim isNoetic e' impArgs' expArgs' defaultArgs')
-                    else do
-                      let impIds = map (\(_, _, x, _) -> x) impParams
-                      let subType = IntMap.fromList $ zip (map Ident.toInt impIds) (map Subst.Type impArgs')
-                      let expParams = expBinders ++ map fst defDefaults
-                      let defaultArgsRaw = fillDefaultArgs defaultArgs' (map snd defDefaults)
-                      defaultArgsFilled <- liftIO $ mapM (Subst.subst (substHandle h) subType) defaultArgsRaw
-                      let expArgsAll = expArgs' ++ defaultArgsFilled
-                      if length expParams /= length expArgsAll
-                        then return (m :< TM.PiElim isNoetic e' impArgs' expArgs' defaultArgs')
+                    else
+                      if isNoetic || not (canInlineDefKind defKind)
+                        then return (rebuildWithDefaults defaultArgsFilled)
                         else do
                           let tracer = if isMacroDef defKind then withMacroHint h dd m else id
                           case defKind of
@@ -185,14 +190,15 @@ inline' h term = do
                                   (expParams', _ :< body') <- liftIO $ Subst.subst' (substHandle h) subType expParams body
                                   body'' <- liftIO $ Refresh.refresh (refreshHandle h) $ m :< body'
                                   tracer $ inline' h $ bind (zip expParams' expArgsAll) body''
-            (_ :< TM.Prim (PV.Op op)) -> do
+        (_ :< TM.Prim (PV.Op op))
+          | not isNoetic -> do
               case ConstantFold.evaluatePrimOp m op expArgs' of
                 Just result -> do
                   return result
                 Nothing ->
                   return (m :< TM.PiElim isNoetic e' impArgs' expArgs' defaultArgs')
-            _ ->
-              return (m :< TM.PiElim isNoetic e' impArgs' expArgs' defaultArgs')
+        _ ->
+          return (m :< TM.PiElim isNoetic e' impArgs' expArgs' defaultArgs')
     m :< TM.DataIntro attr consName dataArgs consArgs -> do
       dataArgs' <- mapM (inlineType' h) dataArgs
       consArgs' <- mapM (inline' h) consArgs
@@ -616,3 +622,11 @@ isMacroDef dk =
       True
     _ ->
       False
+
+canInlineDefKind :: DefKind -> Bool
+canInlineDefKind dk =
+  case dk of
+    NoInline ->
+      False
+    _ ->
+      True

@@ -20,7 +20,8 @@ import Language.Term.Term qualified as TM
 import Logger.Hint
 
 data DefKind
-  = Inline
+  = NoInline
+  | Inline
   | Macro
   | MacroInline
   | DataIntro
