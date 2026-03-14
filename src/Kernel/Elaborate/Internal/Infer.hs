@@ -658,8 +658,8 @@ inferPiElim ::
 inferPiElim h m (e, t) impArgs defaultArgsSpec expArgs = do
   t' <- resolveType h t
   case t' of
-    _ :< WT.Pi _ impArgsParam expParams defaultParams cod -> do
-      inferCore PEK.Normal impArgsParam expParams defaultParams cod
+    _ :< WT.Pi piKind impArgsParam expParams defaultParams cod -> do
+      inferCore (PEK.fromPiKind piKind) impArgsParam expParams defaultParams cod
     _ :< WT.BoxNoema (_ :< WT.Pi _ impArgsParam expParams defaultParams cod) ->
       inferCore PEK.Noetic impArgsParam expParams defaultParams cod
     _ ->
