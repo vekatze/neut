@@ -219,6 +219,8 @@ discernStmtKindTerm h stmtKind m =
   case stmtKind of
     SK.Define ->
       return SK.Define
+    SK.Script ->
+      return SK.Script
     SK.Inline ->
       return SK.Inline
     SK.Macro ->
@@ -263,6 +265,8 @@ toCandidateKindTerm :: SK.StmtKindTerm a -> CandidateKind
 toCandidateKindTerm stmtKind =
   case stmtKind of
     SK.Define ->
+      Function
+    SK.Script ->
       Function
     SK.Inline ->
       Function

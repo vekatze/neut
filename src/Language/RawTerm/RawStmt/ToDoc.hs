@@ -186,6 +186,8 @@ decStmt stmt =
       case stmtKind of
         SK.Define ->
           RT.decodeDef (RT.nameToDoc . N.Var) "define" c (fmap BN.reify def)
+        SK.Script ->
+          RT.decodeDef (RT.nameToDoc . N.Var) "script" c (fmap BN.reify def)
         SK.Inline ->
           RT.decodeDef (RT.nameToDoc . N.Var) "inline" c (fmap BN.reify def)
         SK.Macro ->
@@ -292,6 +294,8 @@ decNominalGeist (tag, geist, _) = do
   let keyword = nominalTagToText tag
   let geistDoc = case tag of
         Define ->
+          RT.decGeist (D.text . BN.reify) geist
+        Script ->
           RT.decGeist (D.text . BN.reify) geist
         Inline ->
           RT.decGeist (D.text . BN.reify) geist

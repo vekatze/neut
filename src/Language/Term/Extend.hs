@@ -128,6 +128,8 @@ extendStmtKindTerm stmtKind =
   case stmtKind of
     Define ->
       Define
+    Script ->
+      Script
     Inline ->
       Inline
     Macro ->

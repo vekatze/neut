@@ -91,6 +91,8 @@ inferStmt h stmt =
       case stmtKind of
         SK.DataIntro {} -> do
           liftIO $ insertType h''' x $ m :< WT.Pi (PK.DataIntro isConstLike) impArgs' expArgs' defaultBinders codType'
+        SK.Script -> do
+          liftIO $ insertType h''' x $ m :< WT.Pi (PK.DestPass isConstLike) impArgs' expArgs' defaultBinders codType'
         _ ->
           liftIO $ insertType h''' x $ m :< WT.Pi (PK.Normal isConstLike) impArgs' expArgs' defaultBinders codType'
       stmtKind' <- inferStmtKindTerm h''' stmtKind
@@ -159,6 +161,8 @@ inferStmtKindTerm h stmtKind =
   case stmtKind of
     SK.Define ->
       return SK.Define
+    SK.Script ->
+      return SK.Script
     SK.Inline ->
       return SK.Inline
     SK.Macro ->

@@ -61,6 +61,7 @@ parseStmt :: Handle -> Parser (RawStmt, C)
 parseStmt h = do
   choice
     [ parseDefine h,
+      parseScript h,
       parseData h,
       parseInline h,
       parseMacro h,
@@ -135,6 +136,15 @@ parseDefine h = do
   if defName == BN.mainName || defName == BN.zenName
     then return (RawStmtDefineTerm c1 (SK.Main ()) def, c)
     else return (RawStmtDefineTerm c1 SK.Define def, c)
+
+parseScript :: Handle -> Parser (RawStmt, C)
+parseScript h = do
+  c1 <- keyword "script"
+  (def, c) <- parseDef h baseName
+  let defName = RT.getDefName def
+  let m = RT.loc $ RT.geist def
+  checkNotMainOrZen defName m "script"
+  return (RawStmtDefineTerm c1 SK.Script def, c)
 
 parseMacro :: Handle -> Parser (RawStmt, C)
 parseMacro h = do

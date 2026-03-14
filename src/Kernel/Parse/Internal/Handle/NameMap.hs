@@ -307,6 +307,8 @@ stmtKindTermToNominalTag stmtKind =
   case stmtKind of
     SK.Define ->
       Just Define
+    SK.Script ->
+      Just Script
     SK.Inline ->
       Just Inline
     SK.Macro ->

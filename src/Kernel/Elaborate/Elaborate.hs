@@ -227,6 +227,8 @@ insertStmt h stmt = do
       case stmtKind of
         SK.DataIntro {} ->
           liftIO $ Type.insert' (typeHandle h) f $ weakenType $ m :< TM.Pi (PK.DataIntro isConstLike) impArgs expArgs (map fst defaultArgs) t
+        SK.Script ->
+          liftIO $ Type.insert' (typeHandle h) f $ weakenType $ m :< TM.Pi (PK.DestPass isConstLike) impArgs expArgs (map fst defaultArgs) t
         _ ->
           liftIO $ Type.insert' (typeHandle h) f $ weakenType $ m :< TM.Pi (PK.Normal isConstLike) impArgs expArgs (map fst defaultArgs) t
       liftIO $ Definition.insert' (defHandle h) f impArgs expArgs defaultArgs e t (stmtKindToDefKind stmtKind defaultArgs)
@@ -267,6 +269,8 @@ elaborateStmtKindTerm h stmtKind =
   case stmtKind of
     SK.Define ->
       return SK.Define
+    SK.Script ->
+      return SK.Script
     SK.Inline ->
       return SK.Inline
     SK.Macro ->
@@ -864,6 +868,10 @@ elaborateAttrDataIntro h attr = do
 stmtKindToDefKind :: SK.StmtKindTerm a -> [(binder, b)] -> Maybe Inline.DefKind
 stmtKindToDefKind stmtKind defaultArgs =
   case stmtKind of
+    SK.Script ->
+      if null defaultArgs
+        then Nothing
+        else Just Inline.NoInline
     SK.Inline ->
       Just Inline.Inline
     SK.Macro ->

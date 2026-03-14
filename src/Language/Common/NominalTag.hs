@@ -12,6 +12,7 @@ import GHC.Generics (Generic)
 
 data NominalTag
   = Define
+  | Script
   | Inline
   | Macro
   | MacroInline
@@ -28,6 +29,8 @@ nominalTagToText tag =
   case tag of
     Define ->
       "define"
+    Script ->
+      "script"
     Inline ->
       "inline"
     Macro ->
@@ -47,6 +50,8 @@ isTermTag :: NominalTag -> Bool
 isTermTag tag =
   case tag of
     Define ->
+      True
+    Script ->
       True
     Inline ->
       True

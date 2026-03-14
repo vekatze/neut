@@ -23,6 +23,7 @@ import Logger.Hint
 
 data BaseStmtKindTerm name binder t
   = Define
+  | Script
   | Inline
   | Macro
   | MacroInline
@@ -54,6 +55,8 @@ toOpacityTerm stmtKind =
   case stmtKind of
     Define ->
       O.Opaque
+    Script ->
+      O.Opaque
     Inline ->
       O.Clear
     Macro ->
@@ -79,6 +82,8 @@ toLowOpacityTerm :: BaseStmtKindTerm name x t -> O.Opacity
 toLowOpacityTerm stmtKind =
   case stmtKind of
     Define ->
+      O.Opaque
+    Script ->
       O.Opaque
     Inline ->
       O.Opaque
@@ -115,6 +120,8 @@ isInlineStmtKind :: BaseStmtKindTerm name binder t -> Bool
 isInlineStmtKind stmtKind =
   case stmtKind of
     Define ->
+      False
+    Script ->
       False
     Inline ->
       False -- fixme: should be true
