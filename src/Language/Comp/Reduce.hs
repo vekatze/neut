@@ -68,12 +68,20 @@ reduce h term = do
               | length ds == length xs -> do
                   let h' = unionSubst h (IntMap.fromList (zip (map Ident.toInt xs) ds))
                   reduce h' e
+            C.SigmaDataIntro _ ds
+              | length ds == length xs -> do
+                  let h' = unionSubst h (IntMap.fromList (zip (map Ident.toInt xs) ds))
+                  reduce h' e
             _ -> do
               xs' <- mapM (Gensym.newIdentFromIdent (gensymHandle h)) xs
               let h' = unionSubst h (IntMap.fromList (zip (map Ident.toInt xs) (map C.VarLocal xs')))
               e' <- reduce h' e
               case e' of
                 C.UpIntro (C.SigmaIntro ds)
+                  | Just ys <- mapM extractIdent ds,
+                    xs' == ys ->
+                      return $ C.UpIntro v -- eta-reduce
+                C.UpIntro (C.SigmaDataIntro _ ds)
                   | Just ys <- mapM extractIdent ds,
                     xs' == ys ->
                       return $ C.UpIntro v -- eta-reduce

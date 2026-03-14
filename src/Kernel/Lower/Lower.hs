@@ -432,6 +432,9 @@ lowerValue h resultVar v cont =
     C.SigmaIntro ds -> do
       let arrayType = AggTypeArray (length ds) LT.Pointer
       createAggData h resultVar arrayType (map (,LT.Pointer) ds) cont
+    C.SigmaDataIntro size ds -> do
+      let arrayType = AggTypeArray size LT.Pointer
+      createAggData h resultVar arrayType (map (,LT.Pointer) ds) cont
     C.Int size l -> do
       uncast h resultVar (LC.Int l) (LT.PrimNum $ PT.Int size) cont
     C.Float size f -> do

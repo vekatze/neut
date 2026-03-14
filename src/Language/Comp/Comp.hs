@@ -39,6 +39,7 @@ data Value
   | VarGlobal DD.DefiniteDescription ArgNum
   | VarStaticText T.Text
   | SigmaIntro [Value]
+  | SigmaDataIntro Int [Value]
   | Int IntSize Integer
   | Float FloatSize Double
 
@@ -53,6 +54,8 @@ instance Show Value where
         T.unpack $ "\"" <> dd <> "\""
       SigmaIntro vs ->
         "(" ++ intercalate ", " (map show vs) ++ ")"
+      SigmaDataIntro size vs ->
+        "data[" ++ show size ++ "](" ++ intercalate ", " (map show vs) ++ ")"
       Language.Comp.Comp.Int _ i ->
         show i
       Language.Comp.Comp.Float _ f ->

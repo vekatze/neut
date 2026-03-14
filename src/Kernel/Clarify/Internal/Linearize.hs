@@ -107,6 +107,9 @@ distinguishValue h z term =
     C.SigmaIntro ds -> do
       (vss, ds') <- mapAndUnzipM (distinguishValue h z) ds
       return (concat vss, C.SigmaIntro ds')
+    C.SigmaDataIntro size ds -> do
+      (vss, ds') <- mapAndUnzipM (distinguishValue h z) ds
+      return (concat vss, C.SigmaDataIntro size ds')
     _ ->
       return ([], term)
 

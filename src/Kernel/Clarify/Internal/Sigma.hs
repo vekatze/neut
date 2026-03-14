@@ -53,7 +53,8 @@ data DataConstructorInfo = DataConstructorInfo
     isConstLike :: Bool,
     discriminant :: D.Discriminant,
     dataArgs :: [(Ident, C.Comp)],
-    consArgs :: [(Ident, C.Comp)]
+    consArgs :: [(Ident, C.Comp)],
+    totalSlotCount :: Int
   }
 
 new :: Gensym.Handle -> Linearize.Handle -> Utility.Handle -> Handle
@@ -272,13 +273,26 @@ sigmaBinder4 :: Handle -> DataConstructorInfo -> C.Value -> IO C.Comp
 sigmaBinder4 h info v = do
   let xts = dataArgs info ++ consArgs info
   x <- Gensym.newIdentFromText (gensymHandle h) "unused-sigarg"
-  sigma4 h ((x, returnImmediateIntS4 IntSize64) : xts) v
+  sigmaData4' h (totalSlotCount info) ((x, returnImmediateIntS4 IntSize64) : xts) v
 
 sigmaBinderT :: Handle -> DataConstructorInfo -> C.Value -> IO C.Comp
 sigmaBinderT h info v = do
   let xts = dataArgs info ++ consArgs info
   x <- Gensym.newIdentFromText (gensymHandle h) "unused-sigarg"
   sigmaT h ((x, returnImmediateIntS4 IntSize64) : xts) v
+
+sigmaData4' ::
+  Handle ->
+  Int ->
+  [(Ident, C.Comp)] ->
+  C.Value ->
+  IO C.Comp
+sigmaData4' h totalSlotCount xts argVar = do
+  as <- forM xts $ \(x, t) -> do
+    Utility.toRelevantApp (utilityHandle h) (C.VarLocal x) t
+  (varNameList, varList) <- mapAndUnzipM (const $ Gensym.createVar (gensymHandle h) "pair") xts
+  body' <- Linearize.linearize (linearizeHandle h) xts $ Utility.bindLet (zip varNameList as) $ C.UpIntro $ C.SigmaDataIntro totalSlotCount varList
+  return $ C.SigmaElim False (map fst xts) argVar body'
 
 sigmaData ::
   Handle ->

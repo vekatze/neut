@@ -47,6 +47,7 @@ import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.Discriminant qualified as D
 import Language.Common.Ident
 import Language.Common.Ident.Reify qualified as Ident
+import Language.Common.IsConstLike (IsConstLike)
 import Language.Common.LamKind qualified as LK
 import Language.Common.Literal qualified as L
 import Language.Common.LowMagic qualified as LM
@@ -200,8 +201,9 @@ clarifyStmt h stmt =
               | otherwise ->
                   raiseCritical m "Found a broken unary data"
             _ -> do
+              let totalSlotCount = getDataSlotCount dataArgs consInfoList
               let dataInfo = map (\(_, consName, isConstLike, consArgs, discriminant) -> (consName, isConstLike, discriminant, dataArgs, consArgs)) consInfoList
-              dataInfo' <- mapM (clarifyDataClause h) dataInfo
+              dataInfo' <- mapM (clarifyDataClause h totalSlotCount) dataInfo
               liftIO (Sigma.returnSigmaDataS4 (sigmaHandle h) name O.Opaque dataInfo')
                 >>= clarifyStmtDefineBody' h name xts''
         _ -> do
@@ -405,10 +407,11 @@ clarifyTerm h tenv term =
         _ -> do
           (zs1, es1, xs1) <- fmap unzip3 $ mapM (clarifyTypePlus h tenv) dataArgs
           (zs2, es2, xs2) <- fmap unzip3 $ mapM (clarifyPlus h tenv) consArgs
+          let totalSlotCount = 1 + length xs1 + foldr max 0 (map (\(_, binders, _) -> length binders) consNameList)
           return $
             Utility.bindLet (zip zs1 es1 ++ zip zs2 es2) $
               C.UpIntro $
-                C.SigmaIntro $
+                C.SigmaDataIntro totalSlotCount $
                   C.Int (dataSizeToIntSize (baseSize h)) (D.reify discriminant) : (xs1 ++ xs2)
     m :< TM.DataElim isNoetic xets tree -> do
       let (xs, es, _) = unzip3 xets
@@ -519,11 +522,19 @@ type Size =
 
 type DataArgsMap = IntMap.IntMap ([(Ident, TM.Type)], Size)
 
+getDataSlotCount ::
+  [BinderF TM.Type] ->
+  [(SavedHint, DD.DefiniteDescription, IsConstLike, [BinderF TM.Type], D.Discriminant)] ->
+  Int
+getDataSlotCount dataArgs consInfoList =
+  1 + length dataArgs + foldr max 0 (map (\(_, _, _, consArgs, _) -> length consArgs) consInfoList)
+
 clarifyDataClause ::
   Handle ->
+  Int ->
   (DD.DefiniteDescription, Bool, D.Discriminant, [BinderF TM.Type], [BinderF TM.Type]) ->
   App Sigma.DataConstructorInfo
-clarifyDataClause h (consNameVal, isConstLikeVal, discriminantVal, dataArgsVal, consArgsVal) = do
+clarifyDataClause h totalSlotCount (consNameVal, isConstLikeVal, discriminantVal, dataArgsVal, consArgsVal) = do
   args <- dropFst <$> clarifyBinder h IntMap.empty (dataArgsVal ++ consArgsVal)
   let (dataArgs', consArgs') = splitAt (length dataArgsVal) args
   return $
@@ -532,7 +543,8 @@ clarifyDataClause h (consNameVal, isConstLikeVal, discriminantVal, dataArgsVal, 
         Sigma.isConstLike = isConstLikeVal,
         Sigma.discriminant = discriminantVal,
         Sigma.dataArgs = dataArgs',
-        Sigma.consArgs = consArgs'
+        Sigma.consArgs = consArgs',
+        Sigma.totalSlotCount = totalSlotCount
       }
 
 clarifyDecisionTree ::

@@ -82,6 +82,9 @@ substValue sub term =
     C.SigmaIntro vs -> do
       let vs' = map (substValue sub) vs
       C.SigmaIntro vs'
+    C.SigmaDataIntro size vs -> do
+      let vs' = map (substValue sub) vs
+      C.SigmaDataIntro size vs'
     C.Int {} ->
       term
     C.Float {} ->
