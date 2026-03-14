@@ -195,6 +195,8 @@ rawTerm' mode h m headSymbol c = do
       rawTermIf h m c
     "when" -> do
       rawTermWhen h m c
+    "with" -> do
+      rawTermWith h m c
     "admit" -> do
       rawTermAdmit m c
     _ -> do
@@ -912,6 +914,11 @@ rawTermWhen :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermWhen h m c0 = do
   (whenClause, c) <- rawTermClause h c0
   return (m :< RT.When whenClause, c)
+
+rawTermWith :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
+rawTermWith h m c0 = do
+  (withClause, c) <- rawTermClause h c0
+  return (m :< RT.With withClause, c)
 
 rawTermBrace :: Handle -> Parser (RT.RawTerm, C)
 rawTermBrace h = do

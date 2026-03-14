@@ -21,6 +21,7 @@ where
 
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
+import Data.Text qualified as T
 import Gensym.Gensym qualified as Gensym
 import Gensym.Handle qualified as Gensym
 import Kernel.Clarify.Internal.Linearize qualified as Linearize
@@ -210,18 +211,19 @@ sigma4 h xts argVar = do
 
 closureEnvS4 ::
   Handle ->
+  Maybe T.Text ->
   Locator.Handle ->
   [(Ident, C.Comp)] ->
   [C.Value] ->
   IO C.Value
-closureEnvS4 h locatorHandle mxts defaultValues =
+closureEnvS4 h mName locatorHandle mxts defaultValues =
   case mxts of
     []
       | null defaultValues ->
           return immediateNullS4 -- performance optimization; not necessary for correctness
     _ -> do
       i <- Gensym.newCount (gensymHandle h)
-      let name = Locator.attachCurrentLocator locatorHandle $ BN.sigmaName i
+      let name = Locator.attachCurrentLocator locatorHandle $ BN.sigmaName mName i
       resourceSpec <- makeSigmaResourceSpec h mxts
       let resourceSpec' = resourceSpec {defaultValues}
       liftIO $ Utility.registerSwitcher (utilityHandle h) O.Clear name resourceSpec'
