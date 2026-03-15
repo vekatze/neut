@@ -738,7 +738,7 @@ discernType h ty =
       t' <- discernType h t
       args' <- mapM (discernType h) $ SE.extract args
       return $ m :< WT.TyApp t' args'
-    m :< RT.Pi impArgs expArgs defaultArgs _ t endLoc -> do
+    m :< RT.Pi impArgs expArgs defaultArgs piArrow _ t endLoc -> do
       let impArgsBase = RT.extractImpArgs impArgs
       let defaultArgsBase = SE.extract $ fst defaultArgs
       (impArgs', h') <- discernImpArgs h impArgsBase endLoc
@@ -748,7 +748,13 @@ discernType h ty =
       let defaultBinders = map fst defaultArgs'
       forM_ (impArgs' ++ expArgs' ++ defaultBinders) $ \(_, _, x, _) ->
         liftIO (Unused.deleteVariable (H.unusedHandle h''') x)
-      return $ m :< WT.Pi PK.normal impArgs' expArgs' defaultBinders t'
+      let piKind =
+            case piArrow of
+              RT.Arrow ->
+                PK.normal
+              RT.ArrowDestPass ->
+                PK.DestPass False
+      return $ m :< WT.Pi piKind impArgs' expArgs' defaultBinders t'
     m :< RT.Data attr dataName es -> do
       es' <- mapM (discernType h) es
       let allowedVars = S.unions $ map freeVarsType es'

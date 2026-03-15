@@ -442,7 +442,7 @@ typeToDoc ty =
         [ PI.inject $ typeToDoc t,
           PI.inject $ attachComment c $ SE.decodeHorizontallyIfPossible $ fmap typeToDoc args
         ]
-    _ :< Pi (impArgs, c1) (expArgs, c3) (defaultArgs, c2) c cod _ -> do
+    _ :< Pi (impArgs, c1) (expArgs, c3) (defaultArgs, c2) piArrow c cod _ -> do
       let hasDefault = not (SE.isEmpty defaultArgs)
       let expParamsBase = SE.decode $ fmap piArgToDoc expArgs
       let defaultParamsBase = decodeDefaultParams defaultArgs
@@ -453,11 +453,17 @@ typeToDoc ty =
               else defaultParamsBase
       let cArrow =
             (if hasDefault then [] else c3) ++ c2
+      let arrowText =
+            case piArrow of
+              RT.Arrow ->
+                "->"
+              RT.ArrowDestPass ->
+                "->>"
       PI.arrange
         [ PI.container $ decodeImpParams impArgs,
           PI.container expParamsWithImp,
           PI.container defaultParamsWithExpComment,
-          PI.delimiter $ attachComment cArrow $ D.text "->",
+          PI.delimiter $ attachComment cArrow $ D.text arrowText,
           PI.inject $ attachComment c $ typeToDoc cod
         ]
     _ :< Data (AttrD.Attr {isConstLike}) dataName es -> do

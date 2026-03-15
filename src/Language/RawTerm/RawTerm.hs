@@ -3,6 +3,7 @@ module Language.RawTerm.RawTerm
     RawTermF (..),
     RawType,
     RawTypeF (..),
+    PiArrow (..),
     DefInfo,
     TopDef,
     TopGeist,
@@ -67,12 +68,16 @@ import SyntaxTree.Series qualified as SE
 type RawImpVar =
   (Hint, RawIdent, C)
 
+data PiArrow
+  = Arrow
+  | ArrowDestPass
+
 data RawTypeF a
   = Tau
   | TypeHole HoleID
   | TyVar Name
   | TyApp a C (SE.Series a)
-  | Pi (SE.Series (RawBinder a), C) (Args a) (SE.Series (RawBinder a, RawTerm), C) C a Loc
+  | Pi (SE.Series (RawBinder a), C) (Args a) (SE.Series (RawBinder a, RawTerm), C) PiArrow C a Loc
   | Data (AttrD.Attr DD.DefiniteDescription (RawBinder a)) DD.DefiniteDescription [a]
   | Box a
   | BoxNoema a

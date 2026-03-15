@@ -98,7 +98,7 @@ parseDefineDataConstructor dataType dataName dataArgs consInfoList discriminant 
                 let impArgsWithEmpty = (SE.emptySeriesAC, [])
                 let defaultArgsWithEmpty = RT.emptyDefaultArgs
                 let expArgsWithEmpty = (fromMaybe SE.emptySeriesPC (expArgs consInfo), [])
-                m :< RT.Pi impArgsWithEmpty expArgsWithEmpty defaultArgsWithEmpty [] dataType (endLoc consInfo)
+                m :< RT.Pi impArgsWithEmpty expArgsWithEmpty defaultArgsWithEmpty RT.Arrow [] dataType (endLoc consInfo)
       let body =
             if isConstLikeConsInfo consInfo
               then m :< RT.DataIntro attr (name consInfo) dataArgs'' (map fst expConsArgs')
