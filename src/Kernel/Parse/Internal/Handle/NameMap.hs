@@ -311,6 +311,8 @@ stmtKindTermToNominalTag stmtKind =
       Just Script
     SK.Inline ->
       Just Inline
+    SK.Constant ->
+      Just Constant
     SK.Macro ->
       Just Macro
     SK.MacroInline ->

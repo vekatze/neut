@@ -141,6 +141,8 @@ liftStmtKindTerm _h stmtKind = do
       SK.Script
     SK.Inline ->
       SK.Inline
+    SK.Constant ->
+      SK.Constant
     SK.Macro ->
       SK.Macro
     SK.MacroInline ->

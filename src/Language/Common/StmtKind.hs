@@ -25,6 +25,7 @@ data BaseStmtKindTerm name binder t
   = Define
   | Script
   | Inline
+  | Constant
   | Macro
   | MacroInline
   | Main t
@@ -59,6 +60,8 @@ toOpacityTerm stmtKind =
       O.Opaque
     Inline ->
       O.Clear
+    Constant ->
+      O.Clear
     Macro ->
       O.Clear
     MacroInline ->
@@ -86,6 +89,8 @@ toLowOpacityTerm stmtKind =
     Script ->
       O.Opaque
     Inline ->
+      O.Opaque
+    Constant ->
       O.Opaque
     Macro ->
       O.Opaque
@@ -125,6 +130,8 @@ isInlineStmtKind stmtKind =
       False
     Inline ->
       False -- fixme: should be true
+    Constant ->
+      False
     Macro ->
       True
     MacroInline ->

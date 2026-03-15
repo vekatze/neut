@@ -64,6 +64,7 @@ parseStmt h = do
       parseScript h,
       parseData h,
       parseInline h,
+      parseConstant h,
       parseMacro h,
       parseMacroInline h,
       parseAlias h,
@@ -173,6 +174,15 @@ parseInline h = do
   checkNotMainOrZen defName m "inline"
   return (RawStmtDefineTerm c1 SK.Inline def, c)
 
+parseConstant :: Handle -> Parser (RawStmt, C)
+parseConstant h = do
+  c1 <- keyword "constant"
+  (def, c) <- parseConstantDef h baseName
+  let defName = RT.getDefName def
+  let m = RT.loc $ RT.geist def
+  checkNotMainOrZen defName m "constant"
+  return (RawStmtDefineTerm c1 SK.Constant def, c)
+
 parseAlias :: Handle -> Parser (RawStmt, C)
 parseAlias h = do
   c1 <- keyword "alias"
@@ -214,6 +224,11 @@ parseNominalEntry h =
         (geist, cGeist) <- parseGeist h baseName
         loc <- getCurrentLoc
         return ((Inline, geist, loc), cTag ++ cGeist),
+      do
+        cTag <- keyword "constant"
+        (geist, cGeist) <- parseConstantGeist h baseName
+        loc <- getCurrentLoc
+        return ((Constant, geist, loc), cTag ++ cGeist),
       do
         cTag <- keyword "define-meta"
         (geist, cGeist) <- parseGeist h baseName

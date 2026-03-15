@@ -125,6 +125,8 @@ compressStmtKindTerm stmtKind =
       Script
     Inline ->
       Inline
+    Constant ->
+      Constant
     Macro ->
       Macro
     MacroInline ->

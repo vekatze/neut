@@ -13,6 +13,8 @@ module Kernel.Parse.Internal.RawTerm
     parseGeist,
     parseAliasGeist,
     parseResourceGeist,
+    parseConstantDef,
+    parseConstantGeist,
     parseDefInfoCod,
     typeWithoutIdent,
     parseImplicitParams,
@@ -518,14 +520,9 @@ parseGeist h nameParser = do
   loc <- getCurrentHint
   (name', c1) <- nameParser
   impArgs <- parseImplicitParams h
-  (isConstLike, expArgs@(expSeries, _), defaultArgs) <- do
-    choice
-      [ do
-          expDomArgList <- seriesParen $ preBinder h
-          defaultArgs <- parseDefaultParams h
-          return (False, expDomArgList, defaultArgs),
-        return (True, (SE.emptySeries (Just SE.Paren) SE.Comma, []), (SE.emptySeries (Just SE.Bracket) SE.Comma, []))
-      ]
+  let isConstLike = False
+  expArgs@(expSeries, _) <- seriesParen $ preBinder h
+  defaultArgs <- parseDefaultParams h
   lift $ ensureArgumentLinearity S.empty $ map (\(mx, _, x, _, _, _) -> (mx, x)) $ SE.extract expSeries
   m <- getCurrentHint
   (c2, (cod, c)) <- parseDefInfoCod h m
@@ -559,6 +556,33 @@ parseResourceGeist nameParser = do
   let defaultArgs = (SE.emptySeries (Just SE.Bracket) SE.Comma, [])
   let cod = loc :< RT.Tau
   return (RT.RawGeist {loc, name = (name', c1), isConstLike, impArgs, defaultArgs, expArgs, cod = ([], cod)}, [])
+
+parseConstantDef :: Handle -> Parser (a, C) -> Parser (RT.RawDef a, C)
+parseConstantDef h nameParser = do
+  (geist, c1) <- parseConstantGeist h nameParser
+  (c2, ((e, c3), loc, c)) <- betweenBrace' $ rawExpr h
+  return
+    ( RT.RawDef
+        { geist,
+          leadingComment = c1 ++ c2,
+          body = e,
+          trailingComment = c3,
+          endLoc = loc
+        },
+      c
+    )
+
+parseConstantGeist :: Handle -> Parser (a, C) -> Parser (RT.RawGeist a, C)
+parseConstantGeist h nameParser = do
+  loc <- getCurrentHint
+  (name', c1) <- nameParser
+  impArgs <- parseImplicitParams h
+  let isConstLike = True
+  let expArgs = (SE.emptySeries (Just SE.Paren) SE.Comma, [])
+  defaultArgs <- parseDefaultParams h
+  m <- getCurrentHint
+  (c2, (cod, c)) <- parseDefInfoCod h m
+  return (RT.RawGeist {loc, name = (name', c1), isConstLike, impArgs, defaultArgs, expArgs, cod = (c2, cod)}, c)
 
 parseImplicitParams :: Handle -> Parser (SE.Series (RawBinder RT.RawType), C)
 parseImplicitParams h =

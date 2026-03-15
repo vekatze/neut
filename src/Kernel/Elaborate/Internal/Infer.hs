@@ -165,6 +165,8 @@ inferStmtKindTerm h stmtKind =
       return SK.Script
     SK.Inline ->
       return SK.Inline
+    SK.Constant ->
+      return SK.Constant
     SK.Macro ->
       return SK.Macro
     SK.MacroInline ->

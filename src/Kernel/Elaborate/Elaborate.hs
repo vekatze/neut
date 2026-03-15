@@ -274,6 +274,8 @@ elaborateStmtKindTerm h stmtKind =
       return SK.Script
     SK.Inline ->
       return SK.Inline
+    SK.Constant ->
+      return SK.Constant
     SK.Macro ->
       return SK.Macro
     SK.MacroInline ->
@@ -875,6 +877,8 @@ stmtKindToDefKind stmtKind defaultArgs =
         then Nothing
         else Just Inline.NoInline
     SK.Inline ->
+      Just Inline.Inline
+    SK.Constant ->
       Just Inline.Inline
     SK.Macro ->
       Just Inline.Macro

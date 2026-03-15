@@ -14,6 +14,7 @@ data NominalTag
   = Define
   | Script
   | Inline
+  | Constant
   | Macro
   | MacroInline
   | Alias
@@ -33,6 +34,8 @@ nominalTagToText tag =
       "script"
     Inline ->
       "inline"
+    Constant ->
+      "constant"
     Macro ->
       "define-meta"
     MacroInline ->
@@ -54,6 +57,8 @@ isTermTag tag =
     Script ->
       True
     Inline ->
+      True
+    Constant ->
       True
     Macro ->
       True

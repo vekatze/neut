@@ -223,6 +223,8 @@ discernStmtKindTerm h stmtKind m =
       return SK.Script
     SK.Inline ->
       return SK.Inline
+    SK.Constant ->
+      return SK.Constant
     SK.Macro ->
       return SK.Macro
     SK.MacroInline ->
@@ -269,6 +271,8 @@ toCandidateKindTerm stmtKind =
     SK.Script ->
       Function
     SK.Inline ->
+      Function
+    SK.Constant ->
       Function
     SK.Macro ->
       Function
