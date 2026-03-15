@@ -169,6 +169,11 @@ distinguishPrimitive h z term =
     C.ShiftPointer v size index -> do
       (vs, v') <- distinguishValue h z v
       return (vs, C.ShiftPointer v' size index)
+    C.Memcpy dest src size -> do
+      (vs1, dest') <- distinguishValue h z dest
+      (vs2, src') <- distinguishValue h z src
+      (vs3, size') <- distinguishValue h z size
+      return (vs1 <> vs2 <> vs3, C.Memcpy dest' src' size')
     C.Magic magic -> do
       case magic of
         LM.Cast from to value -> do

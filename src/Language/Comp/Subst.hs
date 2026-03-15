@@ -98,6 +98,8 @@ substPrimitive sub c =
       C.PrimOp op vs'
     C.ShiftPointer v size index ->
       C.ShiftPointer (substValue sub v) size index
+    C.Memcpy dest src size ->
+      C.Memcpy (substValue sub dest) (substValue sub src) (substValue sub size)
     C.Magic der -> do
       let der' = fmap (substValue sub) der
       C.Magic der'

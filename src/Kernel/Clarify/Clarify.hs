@@ -168,7 +168,7 @@ getBaseAuxEnv auxEnvHandle sigmaHandle = do
 clarifyStmt :: Handle -> Stmt -> App C.CompStmt
 clarifyStmt h stmt =
   case stmt of
-    StmtDefine _ stmtKind _ f impArgs expArgs defaultArgs _ e -> do
+    StmtDefine _ stmtKind _ f impArgs expArgs defaultArgs codType e -> do
       defaultValues <- registerDefaultFunctions h IntMap.empty f [] impArgs defaultArgs
       liftIO $ registerDefaultEnvType h f defaultValues
       let xts = impArgs ++ expArgs ++ map fst defaultArgs
@@ -178,7 +178,15 @@ clarifyStmt h stmt =
       let xts'' = xts' ++ [envArg, switchArg]
       let tenv = TM.insTypeEnv xts IntMap.empty
       e' <- clarifyStmtDefineBody h tenv xts'' e
-      return $ C.Def f (SK.toLowOpacityTerm stmtKind) (map fst xts'') e'
+      case stmtKind of
+        SK.Script -> do
+          codType' <- clarifyType h tenv codType
+          (destParam, _) <- liftIO $ makeDestParam h
+          let params = map fst xts''
+          e'' <- liftIO $ toDestPassing h destParam params codType' e'
+          return $ C.Def f (SK.toLowOpacityTerm stmtKind) (destParam : params) e''
+        _ -> do
+          return $ C.Def f (SK.toLowOpacityTerm stmtKind) (map fst xts'') e'
     StmtDefineType _ stmtKind (SavedHint m) f impArgs expArgs defaultArgs _ body -> do
       defaultValues <- registerDefaultFunctions h IntMap.empty f [] impArgs defaultArgs
       liftIO $ registerDefaultEnvType h f defaultValues
@@ -240,6 +248,37 @@ makeSwitchArg :: Handle -> IO (Ident, C.Comp)
 makeSwitchArg h = do
   x <- Gensym.newIdentFromText (gensymHandle h) "sw"
   return (x, Sigma.returnImmediateIntS4 PNS.IntSize64)
+
+makeDestParam :: Handle -> IO (Ident, C.Comp)
+makeDestParam h = do
+  x <- Gensym.newIdentFromText (gensymHandle h) "dest"
+  return (x, Sigma.returnImmediatePointerS4)
+
+toDestPassing :: Handle -> Ident -> [Ident] -> C.Comp -> C.Comp -> IO C.Comp
+toDestPassing h dest fvs codType e = do
+  (resultVarName, resultVar) <- Gensym.createVar (gensymHandle h) "result"
+  (typeVarName, typeVar) <- Gensym.createVar (gensymHandle h) "type"
+  (sizeVarName, sizeVar) <- Gensym.createVar (gensymHandle h) "size"
+  memcpyResultVarName <- Gensym.newIdentFromText (gensymHandle h) "memcpy"
+  let immediateClause =
+        C.Primitive $
+          C.Magic $
+            LM.Store BLT.Pointer C.null resultVar (C.VarLocal dest)
+  let boxedClause =
+        C.UpElim
+          True
+          memcpyResultVarName
+          (C.Primitive $ C.Memcpy (C.VarLocal dest) resultVar sizeVar)
+          (C.Free resultVar 0 (C.UpIntro C.null))
+  cont <- Utility.getEnumElim (utilityHandle h) fvs sizeVar boxedClause [(EC.Int (-1), immediateClause)]
+  return $
+    C.UpElim True resultVarName e $
+      C.UpElim True typeVarName codType $
+        C.UpElim
+          True
+          sizeVarName
+          (C.PiElimDownElim True typeVar [C.Int (dataSizeToIntSize (baseSize h)) 2, C.null])
+          cont
 
 defaultEnvTypeName :: DD.DefiniteDescription -> DD.DefiniteDescription
 defaultEnvTypeName dd =

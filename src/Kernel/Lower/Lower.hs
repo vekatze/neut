@@ -210,6 +210,12 @@ lowerCompPrimitive h resultVar codeOp cont =
       let indexList' = [(LC.Int 0, LT.PrimNum $ PT.Int IntSize32), (LC.Int index, LT.PrimNum $ PT.Int IntSize32)]
       lowerValue h ptrVar v
         =<< return (LC.Let resultVar (LC.GetElementPtr (ptr, toLowType aggType) indexList') cont)
+    C.Memcpy dest src size -> do
+      let wordBytes = toInteger $ DS.reify (baseSize h) `div` 8
+      byteCountVarName <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "size"
+      let byteCountValue = C.VarLocal byteCountVarName
+      lowerCompPrimitive h byteCountVarName (C.mulInt64 size (C.Int IntSize64 wordBytes))
+        =<< lowerCompPrimitive h resultVar (memcpyExternal dest src byteCountValue) cont
     C.Magic der -> do
       case der of
         LM.Cast _ _ value -> do
@@ -575,3 +581,10 @@ defaultForeignList arch =
 getWordType :: A.Arch -> BLT.BaseLowType
 getWordType arch =
   BLT.PrimNum $ BPT.Int $ BPT.Explicit $ dataSizeToIntSize $ A.dataSizeOf arch
+
+memcpyExternal :: C.Value -> C.Value -> C.Value -> C.Primitive
+memcpyExternal dest src byteCount = do
+  let ptr = BLT.Pointer
+  let int1 = BLT.PrimNum $ BPT.Int $ BPT.Explicit IntSize1
+  let int64 = BLT.PrimNum $ BPT.Int $ BPT.Explicit IntSize64
+  C.Magic $ LM.External [ptr, ptr, int64, int1] FCT.Void EN.memcpy [dest, src, byteCount, C.intValue0] []

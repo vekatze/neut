@@ -11,6 +11,7 @@ module Language.Comp.Comp
     fromDefTuple,
     intValue0,
     intValue1,
+    mulInt64,
     getPhiList,
     graft,
     isUnreachable,
@@ -32,6 +33,8 @@ import Language.Common.LowMagic
 import Language.Common.Opacity
 import Language.Common.PrimNumSize
 import Language.Common.PrimOp
+import Language.Common.PrimOp.BinaryOp qualified as BOp
+import Language.Common.PrimType qualified as PT
 import Language.Comp.EnumCase hiding (Int)
 import Prelude hiding (null)
 
@@ -113,6 +116,7 @@ type ShouldDeallocate = Bool
 data Primitive
   = PrimOp PrimOp [Value]
   | ShiftPointer Value Integer Integer -- (ptr, num-of-elems, index)
+  | Memcpy Value Value Value -- (dest, src, size-in-words)
   | Magic (LowMagic BaseLowType Value Value)
   deriving (Show)
 
@@ -137,6 +141,10 @@ intValue0 =
 intValue1 :: Value
 intValue1 =
   Int IntSize1 1
+
+mulInt64 :: Value -> Value -> Primitive
+mulInt64 x y =
+  PrimOp (PrimBinaryOp BOp.Mul (PT.Int IntSize64) (PT.Int IntSize64)) [x, y]
 
 getPhiList :: Comp -> Maybe [Value]
 getPhiList e =

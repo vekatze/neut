@@ -2,6 +2,7 @@ module Language.Common.ExternalName
   ( ExternalName (..),
     malloc,
     free,
+    memcpy,
     toBuilder,
   )
 where
@@ -27,6 +28,10 @@ malloc =
 free :: ExternalName
 free =
   ExternalName "free"
+
+memcpy :: ExternalName
+memcpy =
+  ExternalName "llvm.memcpy.p0.p0.i64"
 
 toBuilder :: ExternalName -> Builder
 toBuilder (ExternalName rawTxt) =
