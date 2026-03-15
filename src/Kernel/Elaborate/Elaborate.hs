@@ -63,6 +63,7 @@ import Language.Common.IsConstLike (IsConstLike)
 import Language.Common.LamKind qualified as LK
 import Language.Common.LowMagic qualified as LM
 import Language.Common.Magic qualified as M
+import Language.Common.PiElimKind qualified as PEK
 import Language.Common.PiKind qualified as PK
 import Language.Common.PrimNumSize
 import Language.Common.PrimType qualified as PT
@@ -317,6 +318,7 @@ elaborate' h term = do
       e' <- elaborate' h e
       return $ m :< TM.PiIntro kind' impArgs' expArgs' defaultArgs' e'
     m :< WT.PiElim b e impArgs expArgs defaultArgs -> do
+      b' <- PEK.traverseArg (elaborateType h) b
       e' <- elaborate' h e
       let impArgs' = ImpArgs.extract impArgs
       impArgs'' <- mapM (elaborateType h) impArgs'
@@ -326,7 +328,7 @@ elaborate' h term = do
           mapM (traverse (elaborate' h)) args
         DefaultArgs.ByKey _ ->
           raiseCritical m "Scene.Elaborate.elaborate': found a remaining `ByKey` default argument"
-      return $ m :< TM.PiElim b e' impArgs'' expArgs' defaultArgs'
+      return $ m :< TM.PiElim b' e' impArgs'' expArgs' defaultArgs'
     m :< WT.PiElimExact {} -> do
       raiseCritical m "Scene.Elaborate.elaborate': found a remaining `exact`"
     m :< WT.DataIntro attr consName dataArgs consArgs -> do

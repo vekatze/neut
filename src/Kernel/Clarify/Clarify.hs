@@ -914,7 +914,7 @@ registerClosure h name opacity xts fvs e = do
 
 callClosure ::
   Handle ->
-  PEK.PiElimKind ->
+  PEK.PiElimKind TM.Type ->
   C.Comp ->
   [(Ident, C.Comp, C.Value)] ->
   [(Ident, C.Comp, C.Value)] ->

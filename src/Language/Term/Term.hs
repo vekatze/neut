@@ -68,7 +68,7 @@ data TermF a
   = Var Ident
   | VarGlobal AttrVG.Attr DD.DefiniteDescription
   | PiIntro (AttrL.Attr Type) [BinderF Type] [BinderF Type] [(BinderF Type, a)] a
-  | PiElim PEK.PiElimKind a [Type] [a] [Maybe a]
+  | PiElim (PEK.PiElimKind Type) a [Type] [a] [Maybe a]
   | DataIntro (AttrDI.Attr DD.DefiniteDescription (BinderF Type)) DD.DefiniteDescription [Type] [a]
   | DataElim N.IsNoetic [(Ident, a, Type)] (DT.DecisionTree Type a)
   | BoxIntro [(BinderF Type, a)] a

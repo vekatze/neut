@@ -20,6 +20,7 @@ import Language.Common.ImpArgs qualified as ImpArgs
 import Language.Common.LamKind qualified as LK
 import Language.Common.LowMagic qualified as LM
 import Language.Common.Magic qualified as M
+import Language.Common.PiElimKind qualified as PEK
 import Language.Common.StmtKind
 import Language.Term.PrimValue qualified as PV
 import Language.Term.Stmt
@@ -75,11 +76,12 @@ weaken term =
       let e' = weaken e
       m :< WT.PiIntro attr' impArgs' expArgs' defaultArgs' e'
     m :< TM.PiElim b e impArgs expArgs defaultArgs -> do
+      let b' = PEK.mapArg weakenType b
       let e' = weaken e
       let impArgs' = ImpArgs.FullySpecified $ map weakenType impArgs
       let expArgs' = map weaken expArgs
       let defaultArgs' = map (fmap weaken) defaultArgs
-      m :< WT.PiElim b e' impArgs' expArgs' (DefaultArgs.Aligned defaultArgs')
+      m :< WT.PiElim b' e' impArgs' expArgs' (DefaultArgs.Aligned defaultArgs')
     m :< TM.DataIntro attr consName dataArgs consArgs -> do
       let dataArgs' = map weakenType dataArgs
       let consArgs' = map weaken consArgs

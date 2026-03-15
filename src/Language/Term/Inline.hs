@@ -192,7 +192,7 @@ inline' h term = do
                                   body'' <- liftIO $ Refresh.refresh (refreshHandle h) $ m :< body'
                                   tracer $ inline' h $ bind (zip expParams' expArgsAll) body''
         (_ :< TM.Prim (PV.Op op))
-          | kind == PEK.Normal -> do
+          | PEK.isNormal kind -> do
               case ConstantFold.evaluatePrimOp m op expArgs' of
                 Just result -> do
                   return result

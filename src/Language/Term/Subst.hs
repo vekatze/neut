@@ -29,6 +29,7 @@ import Language.Common.Ident
 import Language.Common.Ident.Reify qualified as Ident
 import Language.Common.LamKind qualified as LK
 import Language.Common.LowMagic qualified as LM
+import Language.Common.PiElimKind qualified as PEK
 import Language.Common.Magic qualified as M
 import Language.Common.VarKind qualified as VK
 import Language.Term.FreeVars qualified as TM
@@ -93,11 +94,12 @@ subst h sub term =
               let lamAttr = AttrL.Attr {lamKind = LK.Normal name codType', identity = newLamID}
               return (m :< TM.PiIntro lamAttr impArgs' expArgs' defaultArgs' e')
     m :< TM.PiElim b e impArgs expArgs defaultArgs -> do
+      b' <- PEK.traverseArg (substType h sub) b
       e' <- subst h sub e
       impArgs' <- mapM (substType h sub) impArgs
       expArgs' <- mapM (subst h sub) expArgs
       defaultArgs' <- mapM (traverse (subst h sub)) defaultArgs
-      return (m :< TM.PiElim b e' impArgs' expArgs' defaultArgs')
+      return (m :< TM.PiElim b' e' impArgs' expArgs' defaultArgs')
     m :< TM.DataIntro attr consName dataArgs consArgs -> do
       dataArgs' <- mapM (substType h sub) dataArgs
       consArgs' <- mapM (subst h sub) consArgs

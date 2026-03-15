@@ -661,11 +661,11 @@ inferPiElim h m (e, t) impArgs defaultArgsSpec expArgs = do
     _ :< WT.Pi piKind impArgsParam expParams defaultParams cod -> do
       inferCore (PEK.fromPiKind piKind) impArgsParam expParams defaultParams cod
     _ :< WT.BoxNoema (_ :< WT.Pi _ impArgsParam expParams defaultParams cod) ->
-      inferCore PEK.Noetic impArgsParam expParams defaultParams cod
+      inferCore (const PEK.Noetic) impArgsParam expParams defaultParams cod
     _ ->
       raiseError m $ "Expected a function type, but got: " <> toTextType t'
   where
-    inferCore kind impArgsParam expParams defaultParams cod = do
+    inferCore mkKind impArgsParam expParams defaultParams cod = do
       ensureArityCorrectness h e (length expParams) (length expArgs)
       impArgsTyped <- case impArgs of
         ImpArgs.Unspecified ->
@@ -687,6 +687,7 @@ inferPiElim h m (e, t) impArgs defaultArgsSpec expArgs = do
           Nothing ->
             return ()
       let defaultArgsAligned = DefaultArgs.Aligned (map (fmap fst) defaultArgsOverrides)
+      let kind = mkKind (m :< cod')
       return (m :< WT.PiElim kind e (ImpArgs.FullySpecified impArgs') expArgs' defaultArgsAligned, m :< cod')
 
 createImpArgFromParam ::
