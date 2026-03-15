@@ -210,6 +210,16 @@ lowerCompPrimitive h resultVar codeOp cont =
       let indexList' = [(LC.Int 0, LT.PrimNum $ PT.Int IntSize32), (LC.Int index, LT.PrimNum $ PT.Int IntSize32)]
       lowerValue h ptrVar v
         =<< return (LC.Let resultVar (LC.GetElementPtr (ptr, toLowType aggType) indexList') cont)
+    C.Alloc size -> do
+      let wordBytes = toInteger $ DS.reify (baseSize h) `div` 8
+      byteCountVarName <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "size"
+      let byteCountValue = C.VarLocal byteCountVarName
+      allocID <- liftIO $ Gensym.newCount (gensymHandle h)
+      (castVar, castValue) <- liftIO $ newValueLocal h "size"
+      let lowInt = LT.PrimNum $ PT.Int $ dataSizeToIntSize (baseSize h)
+      lowerCompPrimitive h byteCountVarName (C.mulInt64 size (C.Int IntSize64 wordBytes))
+        =<< lowerValueLetCast h castVar byteCountValue lowInt
+        =<< return (LC.Let resultVar (LC.Alloc castValue (-1) allocID) cont)
     C.Memcpy dest src size -> do
       let wordBytes = toInteger $ DS.reify (baseSize h) `div` 8
       byteCountVarName <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "size"

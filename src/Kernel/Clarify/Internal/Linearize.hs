@@ -169,6 +169,9 @@ distinguishPrimitive h z term =
     C.ShiftPointer v size index -> do
       (vs, v') <- distinguishValue h z v
       return (vs, C.ShiftPointer v' size index)
+    C.Alloc size -> do
+      (vs, size') <- distinguishValue h z size
+      return (vs, C.Alloc size')
     C.Memcpy dest src size -> do
       (vs1, dest') <- distinguishValue h z dest
       (vs2, src') <- distinguishValue h z src

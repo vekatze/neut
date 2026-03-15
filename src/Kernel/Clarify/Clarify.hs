@@ -272,7 +272,7 @@ toDestPassing h dest fvs codType e = do
           (C.Free resultVar 0 (C.UpIntro C.null))
   cont <- Utility.getEnumElim (utilityHandle h) fvs sizeVar boxedClause [(EC.Int (-1), immediateClause)]
   return $
-    C.UpElim True resultVarName e $
+    C.UpElim False resultVarName e $
       C.UpElim True typeVarName codType $
         C.UpElim
           True
@@ -426,6 +426,7 @@ clarifyTerm h tenv term =
     _ :< TM.PiIntro attr impArgs expArgs defaultArgs e -> do
       clarifyLambda h tenv attr (TM.chainOf tenv [term]) impArgs expArgs defaultArgs e
     _ :< TM.PiElim kind e impArgs expArgs defaultArgs -> do
+      kind' <- PEK.traverseArg (clarifyType h tenv) kind
       impArgs' <- mapM (clarifyTypePlus h tenv) impArgs
       expArgs' <- mapM (clarifyPlus h tenv) expArgs
       defaultArgs' <- mapM (traverse (clarifyPlus h tenv)) defaultArgs
@@ -435,7 +436,7 @@ clarifyTerm h tenv term =
           return $ callPrimOp op allArgs
         _ -> do
           e' <- clarifyTerm h tenv e
-          liftIO $ callClosure h kind e' impArgs' expArgs' defaultArgs'
+          liftIO $ callClosure h kind' e' impArgs' expArgs' defaultArgs'
     m :< TM.DataIntro (AttrDI.Attr {..}) consName dataArgs consArgs -> do
       od <- liftIO $ OptimizableData.lookup (optDataHandle h) consName
       case od of
@@ -914,7 +915,7 @@ registerClosure h name opacity xts fvs e = do
 
 callClosure ::
   Handle ->
-  PEK.PiElimKind TM.Type ->
+  PEK.PiElimKind C.Comp ->
   C.Comp ->
   [(Ident, C.Comp, C.Value)] ->
   [(Ident, C.Comp, C.Value)] ->
@@ -938,11 +939,64 @@ callClosure h kind e impArgs expArgs defaultArgs = do
         (defaultName, defaultVar) <- Gensym.createVar (gensymHandle h) "default-arg"
         return (defaultName, defaultComp, defaultVar)
   let (defNames, defComps, defVals) = unzip3 defaultTriples
+  callComp <-
+    case kind of
+      PEK.DestPass codType -> do
+        (typeVarName, typeVar) <- Gensym.createVar (gensymHandle h) "type"
+        (sizeVarName, sizeVar) <- Gensym.createVar (gensymHandle h) "size"
+        (immediateDestName, immediateDestVar) <- Gensym.createVar (gensymHandle h) "dest"
+        immediateCallName <- Gensym.newIdentFromText (gensymHandle h) "call"
+        (immediateResultName, immediateResultVar) <- Gensym.createVar (gensymHandle h) "result"
+        (boxedDestName, boxedDestVar) <- Gensym.createVar (gensymHandle h) "dest"
+        boxedCallName <- Gensym.newIdentFromText (gensymHandle h) "call"
+        let args = impVals ++ expVals ++ defVals ++ [envVar, flag]
+        let immediateClause =
+              C.UpElim
+                True
+                immediateDestName
+                (C.Primitive $ C.Alloc $ intTerm h (1 :: Integer))
+                ( C.UpElim
+                    True
+                    immediateCallName
+                    (C.PiElimDownElim False lamVar (immediateDestVar : args))
+                    ( C.UpElim
+                        True
+                        immediateResultName
+                        (C.Primitive $ C.Magic $ LM.Load BLT.Pointer immediateDestVar)
+                        (C.Free immediateDestVar 1 (C.UpIntro immediateResultVar))
+                    )
+                )
+        let boxedClause =
+              C.UpElim
+                True
+                boxedDestName
+                (C.Primitive $ C.Alloc sizeVar)
+                ( C.UpElim
+                    True
+                    boxedCallName
+                    (C.PiElimDownElim False lamVar (boxedDestVar : args))
+                    (C.UpIntro boxedDestVar)
+                )
+        branch <-
+          Utility.getEnumElim
+            (utilityHandle h)
+            (impNames ++ expNames ++ defNames ++ [envVarName, lamVarName])
+            sizeVar
+            boxedClause
+            [(EC.Int (-1), immediateClause)]
+        return $
+          Utility.bindLet
+            [ (typeVarName, codType),
+              (sizeVarName, C.PiElimDownElim True typeVar [intTerm h (2 :: Integer), C.null])
+            ]
+            branch
+      _ ->
+        return $ C.PiElimDownElim False lamVar (impVals ++ expVals ++ defVals ++ [envVar, flag])
   return $
     Utility.bindLet [(closureVarName, e)] $
       C.SigmaElim (not $ PEK.isNoetic kind) [envTypeVarName, envVarName, lamVarName] closureVar $
         Utility.bindLet (zip (impNames ++ expNames ++ defNames) (impComps ++ expComps ++ defComps)) $
-          C.PiElimDownElim False lamVar (impVals ++ expVals ++ defVals ++ [envVar, flag])
+          callComp
 
 intTerm :: (Integral a) => Handle -> a -> C.Value
 intTerm h i =

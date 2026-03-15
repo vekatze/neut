@@ -126,7 +126,7 @@ getEnumElim h idents d defaultBranch branchList = do
 adjustBranch :: Handle -> C.Comp -> IO C.Comp
 adjustBranch h body = do
   (phiVarName, phiVar) <- Gensym.createVar (gensymHandle h) "phi"
-  return $ C.UpElim False phiVarName body $ C.Phi [phiVar]
+  return $ C.UpElim True phiVarName body $ C.Phi [phiVar]
 
 getSub :: Gensym.Handle -> [Ident] -> IO ([(Int, C.Value)], [(Int, C.Value)])
 getSub h idents = do
