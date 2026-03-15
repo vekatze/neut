@@ -144,12 +144,12 @@ analyze h term = do
       return []
     m :< TM.PiIntro (AttrL.Attr {lamKind}) impArgs expArgs defaultArgs e -> do
       case lamKind of
-        LK.Fix _ isScript (mx, _k, x, codType) -> do
+        LK.Fix _ isDestPassing (mx, _k, x, codType) -> do
           (cs1, h') <- analyzeBinder h (impArgs ++ expArgs)
           (cs2, h'') <- analyzeBinder h' (map fst defaultArgs)
           cs3 <- analyzeType h'' codType
           let piKind =
-                if isScript
+                if isDestPassing
                   then PK.DestPass False
                   else PK.normal
           let piType = m :< TM.Pi piKind impArgs expArgs (map fst defaultArgs) codType

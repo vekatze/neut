@@ -91,7 +91,7 @@ inferStmt h stmt =
       case stmtKind of
         SK.DataIntro {} -> do
           liftIO $ insertType h''' x $ m :< WT.Pi (PK.DataIntro isConstLike) impArgs' expArgs' defaultBinders codType'
-        SK.Script -> do
+        SK.DestPassing -> do
           liftIO $ insertType h''' x $ m :< WT.Pi (PK.DestPass isConstLike) impArgs' expArgs' defaultBinders codType'
         _ ->
           liftIO $ insertType h''' x $ m :< WT.Pi (PK.Normal isConstLike) impArgs' expArgs' defaultBinders codType'
@@ -161,8 +161,8 @@ inferStmtKindTerm h stmtKind =
   case stmtKind of
     SK.Define ->
       return SK.Define
-    SK.Script ->
-      return SK.Script
+    SK.DestPassing ->
+      return SK.DestPassing
     SK.Inline ->
       return SK.Inline
     SK.Constant ->
@@ -221,23 +221,23 @@ infer h term =
       return (term, m :< t)
     m :< WT.PiIntro attr@(AttrL.Attr {lamKind}) impArgs expArgs defaultArgs e -> do
       case lamKind of
-        LK.Fix opacity isScript (mx, k, x, codType) -> do
+        LK.Fix opacity isDestPassing (mx, k, x, codType) -> do
           (impArgs', h') <- inferImpBinder h impArgs
           (expArgs', h'') <- inferBinder' h' expArgs
           (defaultArgs', h''') <- inferImpBinderWithDefaults h'' defaultArgs
           let defaultBinders = map fst defaultArgs'
           codType' <- inferType h''' codType
           let piKind =
-                if isScript
+                if isDestPassing
                   then PK.DestPass False
                   else PK.normal
           let piType = m :< WT.Pi piKind impArgs' expArgs' defaultBinders codType'
           liftIO $ WeakType.insert (weakTypeHandle h) x piType
           (e', tBody) <- infer h''' e
           liftIO $ Constraint.insert (constraintHandle h''') codType' tBody
-          let term' = m :< WT.PiIntro (attr {AttrL.lamKind = LK.Fix opacity isScript (mx, k, x, codType')}) impArgs' expArgs' defaultArgs' e'
+          let term' = m :< WT.PiIntro (attr {AttrL.lamKind = LK.Fix opacity isDestPassing (mx, k, x, codType')}) impArgs' expArgs' defaultArgs' e'
           return (term', piType)
-        LK.Normal name isScript codType -> do
+        LK.Normal name isDestPassing codType -> do
           (impArgs', h') <- inferImpBinder h impArgs
           (expArgs', h'') <- inferBinder' h' expArgs
           (defaultArgs', h''') <- inferImpBinderWithDefaults h'' defaultArgs
@@ -246,10 +246,10 @@ infer h term =
           (e', t') <- infer h''' e
           liftIO $ Constraint.insert (constraintHandle h''') codType' t'
           let piKind =
-                if isScript
+                if isDestPassing
                   then PK.DestPass False
                   else PK.normal
-          let term' = m :< WT.PiIntro (attr {AttrL.lamKind = LK.Normal name isScript codType'}) impArgs' expArgs' defaultArgs' e'
+          let term' = m :< WT.PiIntro (attr {AttrL.lamKind = LK.Normal name isDestPassing codType'}) impArgs' expArgs' defaultArgs' e'
           return (term', m :< WT.Pi piKind impArgs' expArgs' defaultBinders t')
     m :< WT.PiElim _ e impArgs expArgs defaultArgs -> do
       etl <- infer h e
@@ -424,7 +424,7 @@ infer h term =
           typeExpr2' <- inferType h typeExpr2
           let boolSGL = SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.boolLocator}
           let boolTypeDD = DD.newByGlobalLocator boolSGL BN.boolType
-          let boolTypeVar = m :< WT.TVarGlobal (AttrVG.Attr {argNum = AN.zero, isConstLike = True, isScript = False}) boolTypeDD
+          let boolTypeVar = m :< WT.TVarGlobal (AttrVG.Attr {argNum = AN.zero, isConstLike = True, isDestPassing = False}) boolTypeDD
           let boolType = m :< WT.TyApp boolTypeVar []
           return (m :< WT.Magic (M.WeakMagic $ M.EqType moduleID typeExpr1' typeExpr2'), boolType)
         M.ShowType textTypeExpr typeExpr -> do
@@ -442,7 +442,7 @@ infer h term =
           (text', textType) <- infer h text
           let textSGL = SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.textLocator}
           let textDD = DD.newByGlobalLocator textSGL BN.textType
-          let expected = m :< WT.TVarGlobal (AttrVG.Attr {argNum = AN.zero, isConstLike = True, isScript = False}) textDD
+          let expected = m :< WT.TVarGlobal (AttrVG.Attr {argNum = AN.zero, isConstLike = True, isDestPassing = False}) textDD
           liftIO $ Constraint.insert (constraintHandle h) (m :< WT.BoxNoema expected) textType
           let eitherSGL = SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.eitherLocator}
           let unitSGL = SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.unitLocator}
@@ -450,9 +450,9 @@ infer h term =
           let eitherTypeDD = DD.newByGlobalLocator eitherSGL BN.eitherType
           let unitTypeDD = DD.newByGlobalLocator unitSGL BN.unitType
           let pairTypeDD = DD.newByGlobalLocator pairSGL BN.pairType
-          let eitherTypeVar = m :< WT.TVarGlobal (AttrVG.Attr {argNum = AN.fromInt 3, isConstLike = False, isScript = False}) eitherTypeDD
-          let unitTypeVar = m :< WT.TVarGlobal (AttrVG.Attr {argNum = AN.zero, isConstLike = True, isScript = False}) unitTypeDD
-          let pairTypeVar = m :< WT.TVarGlobal (AttrVG.Attr {argNum = AN.fromInt 4, isConstLike = False, isScript = False}) pairTypeDD
+          let eitherTypeVar = m :< WT.TVarGlobal (AttrVG.Attr {argNum = AN.fromInt 3, isConstLike = False, isDestPassing = False}) eitherTypeDD
+          let unitTypeVar = m :< WT.TVarGlobal (AttrVG.Attr {argNum = AN.zero, isConstLike = True, isDestPassing = False}) unitTypeDD
+          let pairTypeVar = m :< WT.TVarGlobal (AttrVG.Attr {argNum = AN.fromInt 4, isConstLike = False, isDestPassing = False}) pairTypeDD
           let runeType = m :< WT.PrimType PT.Rune
           let pairType = m :< WT.TyApp pairTypeVar [runeType, textType]
           let eitherType = m :< WT.TyApp eitherTypeVar [unitTypeVar, pairType]
@@ -800,7 +800,7 @@ inferClause h cursorType decisionCase =
       typedDataArgs' <- mapM (inferTypeWithKind h) dataTermList
       (consArgs', _) <- inferBinder' h consArgs
       let argNum = AN.fromInt $ length dataArgs + length consArgs
-      let isScript = False
+      let isDestPassing = False
       let attr = AttrVG.Attr {..}
       let dataArgs' = ImpArgs.FullySpecified $ map fst typedDataArgs'
       consTerm@(_, consType) <- infer h $ m :< WT.PiElim PEK.Normal (m :< WT.VarGlobal attr consDD) dataArgs' [] (DefaultArgs.ByKey [])

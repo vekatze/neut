@@ -95,13 +95,13 @@ inline' h term = do
       defaultArgs' <- mapM (bimapM (inlineTypeBinder h) (inline' h)) defaultArgs
       e' <- inline' h e
       case lamKind of
-        LK.Fix opacity isScript (mx, k, x, codType) -> do
+        LK.Fix opacity isDestPassing (mx, k, x, codType) -> do
           codType' <- inlineType' h codType
-          let attr' = attr {AttrL.lamKind = LK.Fix opacity isScript (mx, k, x, codType')}
+          let attr' = attr {AttrL.lamKind = LK.Fix opacity isDestPassing (mx, k, x, codType')}
           return (m :< TM.PiIntro attr' impArgs' expArgs' defaultArgs' e')
-        LK.Normal mName isScript codType -> do
+        LK.Normal mName isDestPassing codType -> do
           codType' <- inlineType' h codType
-          let attr' = attr {AttrL.lamKind = LK.Normal mName isScript codType'}
+          let attr' = attr {AttrL.lamKind = LK.Normal mName isDestPassing codType'}
           return (m :< TM.PiIntro attr' impArgs' expArgs' defaultArgs' e')
     m :< TM.PiElim kind e impArgs expArgs defaultArgs -> do
       e' <- inline' h e

@@ -4,12 +4,12 @@ import Data.Binary
 import GHC.Generics (Generic)
 import Language.Common.ArgNum
 import Language.Common.IsConstLike
-import Language.Common.IsScript
+import Language.Common.IsDestPassing
 
 data Attr = Attr
   { argNum :: ArgNum,
     isConstLike :: IsConstLike,
-    isScript :: IsScript
+    isDestPassing :: IsDestPassing
   }
   deriving (Show, Generic)
 
@@ -17,4 +17,4 @@ instance Binary Attr
 
 new :: ArgNum -> Attr
 new argNum =
-  Attr {argNum = argNum, isConstLike = False, isScript = False}
+  Attr {argNum = argNum, isConstLike = False, isDestPassing = False}

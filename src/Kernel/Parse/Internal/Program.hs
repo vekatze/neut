@@ -133,16 +133,16 @@ parseDefine h = do
   c1 <- keyword "define"
   (def, c) <- parseDef h baseName
   let defName = RT.getDefName def
-  let isScript = RT.isScript $ RT.geist def
+  let isDestPassing = RT.isDestPassing $ RT.geist def
   if defName == BN.mainName || defName == BN.zenName
     then do
       let m = RT.loc $ RT.geist def
-      if isScript
+      if isDestPassing
         then lift $ raiseError m $ "`main` and `zen` cannot use `->>`"
         else return (RawStmtDefineTerm c1 (SK.Main ()) def, c)
     else
-      if isScript
-        then return (RawStmtDefineTerm c1 SK.Script def, c)
+      if isDestPassing
+        then return (RawStmtDefineTerm c1 SK.DestPassing def, c)
         else return (RawStmtDefineTerm c1 SK.Define def, c)
 
 parseMacro :: Handle -> Parser (RawStmt, C)
@@ -170,7 +170,7 @@ parseInline h = do
   let defName = RT.getDefName def
   let m = RT.loc $ RT.geist def
   checkNotMainOrZen defName m "inline"
-  if RT.isScript $ RT.geist def
+  if RT.isDestPassing $ RT.geist def
     then lift $ raiseError m $ "`inline` cannot use `->>`"
     else return (RawStmtDefineTerm c1 SK.Inline def, c)
 
@@ -273,7 +273,7 @@ parseNominalData h = do
           { loc = m,
             name = (name, c1),
             isConstLike = isConstLike,
-            isScript = False,
+            isDestPassing = False,
             impArgs = RT.emptyImpArgs,
             defaultArgs = RT.emptyDefaultArgs,
             expArgs = expArgs,

@@ -662,7 +662,7 @@ decGeist
         expArgs = (expArgs, c3),
         cod = (c4, cod),
         isConstLike,
-        isScript
+        isDestPassing
       }
     ) = do
     let hasExp = (not isConstLike) || (not (SE.isEmpty expArgs))
@@ -707,7 +707,7 @@ decGeist
         let codDelim =
               if isConstLike
                 then PI.horizontal $ attachComment cColon' $ D.text ":"
-                else PI.delimiter $ attachComment cColon' $ D.text (if isScript then "->>" else "->")
+                else PI.delimiter $ attachComment cColon' $ D.text (if isDestPassing then "->>" else "->")
         PI.arrange
           [ PI.inject $ attachComment c0 $ nameDecoder name,
             PI.inject $ decodeImpParams impArgs,

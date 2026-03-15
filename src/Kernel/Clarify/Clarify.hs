@@ -198,7 +198,7 @@ clarifyStmt h stmt =
       let tenv = TM.insTypeEnv xts IntMap.empty
       e' <- clarifyStmtDefineBody h tenv xts'' e
       case stmtKind of
-        SK.Script -> do
+        SK.DestPassing -> do
           codType' <- clarifyType h tenv codType
           (destParam, _) <- liftIO $ makeDestParam h
           let params = map fst xts''
@@ -330,8 +330,8 @@ envTypeForGlobal h name = do
       else C.VarGlobal (defaultEnvTypeName name) AN.argNumS4 (FCT.Cod BLT.Pointer)
 
 getGlobalRefInfo :: AttrVG.Attr -> (AN.ArgNum, FCT.ForeignCodType BLT.BaseLowType)
-getGlobalRefInfo AttrVG.Attr {argNum, isScript} =
-  if isScript
+getGlobalRefInfo AttrVG.Attr {argNum, isDestPassing} =
+  if isDestPassing
     then (AN.add argNum (AN.fromInt 3), FCT.Void)
     else (AN.add argNum (AN.fromInt 2), FCT.Cod BLT.Pointer)
 
@@ -841,19 +841,19 @@ clarifyLambda ::
 clarifyLambda h tenv attrL@(AttrL.Attr {lamKind, identity}) fvs impArgs expArgs defaultArgs e@(m :< _) = do
   let mxts = impArgs ++ expArgs ++ map fst defaultArgs
   case lamKind of
-    LK.Fix _ isScript (_, _k, recFuncName, codType) -> do
+    LK.Fix _ isDestPassing (_, _k, recFuncName, codType) -> do
       let liftedName = Locator.attachCurrentLocator (locatorHandle h) $ BN.muName recFuncName identity
       let appArgs = fvs ++ mxts
       let appArgs' = map (\(mx, _, x, _) -> mx :< TM.Var x) appArgs
       let argNum = AN.fromInt $ length appArgs'
-      let attr = AttrVG.Attr {argNum, isConstLike = False, isScript}
+      let attr = AttrVG.Attr {argNum, isConstLike = False, isDestPassing}
       let piElimKind =
-            if isScript
+            if isDestPassing
               then PEK.DestPass codType
               else PEK.Normal
       lamAttr <- do
         c <- liftIO $ Gensym.newCount (gensymHandle h)
-        return $ AttrL.Attr {lamKind = LK.Normal (Just (Ident.toText recFuncName)) isScript codType, identity = c}
+        return $ AttrL.Attr {lamKind = LK.Normal (Just (Ident.toText recFuncName)) isDestPassing codType, identity = c}
       let lamApp =
             m :< TM.PiIntro lamAttr impArgs expArgs defaultArgs
               (m :< TM.PiElim piElimKind (m :< TM.VarGlobal attr liftedName) [] appArgs' [])
@@ -865,7 +865,7 @@ clarifyLambda h tenv attrL@(AttrL.Attr {lamKind, identity}) fvs impArgs expArgs 
         liftedBody''' <- liftIO $ Reduce.reduce (reduceHandle h) liftedBody''
         envArg <- liftIO $ makeEnvArg h
         switchArg <- liftIO $ makeSwitchArg h
-        if isScript
+        if isDestPassing
           then do
             codType' <- clarifyType h (TM.insTypeEnv appArgs IntMap.empty) codType
             (destParam, _) <- liftIO $ makeDestParam h
@@ -876,11 +876,11 @@ clarifyLambda h tenv attrL@(AttrL.Attr {lamKind, identity}) fvs impArgs expArgs 
             liftIO $ AuxEnv.insert (auxEnvHandle h) liftedName (C.Def liftedName O.Opaque (map fst liftedArgs ++ [fst envArg, fst switchArg]) liftedBody''')
       liftIO $ registerDefaultEnvType h liftedName []
       clarifyTerm h tenv lamApp
-    LK.Normal mName isScript codType -> do
+    LK.Normal mName isDestPassing codType -> do
       let name = Locator.attachCurrentLocator (locatorHandle h) $ BN.lambdaName mName identity
       defaultValues <- registerDefaultFunctions h tenv name fvs impArgs defaultArgs
       e' <- clarifyTerm h (TM.insTypeEnv (catMaybes [AttrL.fromAttr attrL] ++ mxts) tenv) e
-      returnClosure h tenv identity mName O.Clear isScript (Just codType) Nothing fvs mxts defaultValues e'
+      returnClosure h tenv identity mName O.Clear isDestPassing (Just codType) Nothing fvs mxts defaultValues e'
 
 clarifyPlus :: Handle -> TM.TypeEnv -> TM.Term -> App (Ident, C.Comp, C.Value)
 clarifyPlus h tenv e = do
@@ -927,7 +927,7 @@ returnClosure ::
   [C.Value] -> -- default argument labels
   C.Comp -> -- the `e` in `lam (x1, ..., xn). e`
   App C.Comp
-returnClosure h tenv lamID mName opacity isScript mCodType mSelf fvs xts defaultValues e = do
+returnClosure h tenv lamID mName opacity isDestPassing mCodType mSelf fvs xts defaultValues e = do
   fvs'' <- dropFst <$> clarifyBinder h tenv fvs
   xts'' <- dropFst <$> clarifyBinder h tenv xts
   fvEnvSigma <- liftIO $ Sigma.closureEnvS4 (sigmaHandle h) mName (locatorHandle h) fvs'' defaultValues
@@ -935,7 +935,7 @@ returnClosure h tenv lamID mName opacity isScript mCodType mSelf fvs xts default
   let argNum =
         AN.fromInt $
           length xts''
-            + if isScript
+            + if isDestPassing
               then 3
               else 2
   let name = Locator.attachCurrentLocator (locatorHandle h) $ BN.lambdaName mName lamID
@@ -943,8 +943,8 @@ returnClosure h tenv lamID mName opacity isScript mCodType mSelf fvs xts default
   unless isAlreadyRegistered $ do
     let codTypeTenv = TM.insTypeEnv (fvs ++ xts) tenv
     codType' <- traverse (clarifyType h codTypeTenv) mCodType
-    liftIO $ registerClosure h name opacity isScript codType' fvEnvSigma mSelf xts'' fvs'' e
-  let cod = if isScript then FCT.Void else FCT.Cod BLT.Pointer
+    liftIO $ registerClosure h name opacity isDestPassing codType' fvEnvSigma mSelf xts'' fvs'' e
+  let cod = if isDestPassing then FCT.Void else FCT.Cod BLT.Pointer
   return $ C.UpIntro $ C.SigmaIntro [fvEnvSigma, fvEnv, C.VarGlobal name argNum cod]
 
 registerClosure ::
@@ -959,7 +959,7 @@ registerClosure ::
   [(Ident, C.Comp)] ->
   C.Comp ->
   IO ()
-registerClosure h name opacity isScript mCodType fvEnvSigma mSelf xts fvs e = do
+registerClosure h name opacity isDestPassing mCodType fvEnvSigma mSelf xts fvs e = do
   e' <- liftIO $ Linearize.linearize (linearizeHandle h) (fvs ++ xts) e
   (envVarName, envVar) <- Gensym.createVar (gensymHandle h) "env"
   (normalEnvVarName, normalEnvVar) <- Gensym.createVar (gensymHandle h) "env"
@@ -970,10 +970,10 @@ registerClosure h name opacity isScript mCodType fvEnvSigma mSelf xts fvs e = do
   let argNum =
         AN.fromInt $
           length xts
-            + if isScript
+            + if isDestPassing
               then 3
               else 2
-  let cod = if isScript then FCT.Void else FCT.Cod BLT.Pointer
+  let cod = if isDestPassing then FCT.Void else FCT.Cod BLT.Pointer
   let normalPrefix =
         case mSelfEnvCopyInfo of
           Just (selfEnvCopyName, _) ->
@@ -1021,7 +1021,7 @@ registerClosure h name opacity isScript mCodType fvEnvSigma mSelf xts fvs e = do
           phiVars
           e''
   lambdaBody' <- liftIO $ Reduce.reduce (reduceHandle h) lambdaBody
-  if isScript
+  if isDestPassing
     then do
       (destParam, _) <- makeDestParam h
       let args = map fst xts ++ [envVarName, switchVarName]

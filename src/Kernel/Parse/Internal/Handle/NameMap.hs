@@ -82,7 +82,7 @@ registerGeist h tag RT.RawGeist {..} = do
   liftIO $ insertToGeistMap h name' loc isConstLike
   liftIO $ insertToNameMap h name' loc (Just tag) $ do
     if isTermTag tag
-      then GN.TopLevelFuncTerm argNum isConstLike (tag == Script) (isMacroTag tag)
+      then GN.TopLevelFuncTerm argNum isConstLike (tag == DestPassing) (isMacroTag tag)
       else GN.TopLevelFuncType argNum isConstLike False
 
 lookup :: Handle -> Hint.Hint -> DD.DefiniteDescription -> App (Maybe (Hint, GN.GlobalName))
@@ -223,7 +223,7 @@ getGlobalNamesFromDefTerm stmtKind geist = do
   case stmtKindTermToNominalTag stmtKind of
     Just tag -> do
       let isMacro = stmtKindTermIsMacro stmtKind
-      [(name, (m, Just tag, GN.TopLevelFuncTerm allArgNum isConstLike (tag == Script) isMacro))]
+      [(name, (m, Just tag, GN.TopLevelFuncTerm allArgNum isConstLike (tag == DestPassing) isMacro))]
     Nothing ->
       []
 
@@ -263,7 +263,7 @@ _getGlobalNames' stmt = do
       case stmtKindTermToNominalTag stmtKind of
         Just tag -> do
           let isMacro = stmtKindTermIsMacro stmtKind
-          [(name, (m, Just tag, GN.TopLevelFuncTerm allArgNum isConstLike (tag == Script) isMacro))]
+          [(name, (m, Just tag, GN.TopLevelFuncTerm allArgNum isConstLike (tag == DestPassing) isMacro))]
         Nothing ->
           []
     StmtDefineType isConstLike stmtKind (SavedHint m) name impArgs expArgs defaultArgs _ _ -> do
@@ -307,8 +307,8 @@ stmtKindTermToNominalTag stmtKind =
   case stmtKind of
     SK.Define ->
       Just Define
-    SK.Script ->
-      Just Script
+    SK.DestPassing ->
+      Just DestPassing
     SK.Inline ->
       Just Inline
     SK.Constant ->

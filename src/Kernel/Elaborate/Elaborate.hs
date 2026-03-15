@@ -228,7 +228,7 @@ insertStmt h stmt = do
       case stmtKind of
         SK.DataIntro {} ->
           liftIO $ Type.insert' (typeHandle h) f $ weakenType $ m :< TM.Pi (PK.DataIntro isConstLike) impArgs expArgs (map fst defaultArgs) t
-        SK.Script ->
+        SK.DestPassing ->
           liftIO $ Type.insert' (typeHandle h) f $ weakenType $ m :< TM.Pi (PK.DestPass isConstLike) impArgs expArgs (map fst defaultArgs) t
         _ ->
           liftIO $ Type.insert' (typeHandle h) f $ weakenType $ m :< TM.Pi (PK.Normal isConstLike) impArgs expArgs (map fst defaultArgs) t
@@ -270,8 +270,8 @@ elaborateStmtKindTerm h stmtKind =
   case stmtKind of
     SK.Define ->
       return SK.Define
-    SK.Script ->
-      return SK.Script
+    SK.DestPassing ->
+      return SK.DestPassing
     SK.Inline ->
       return SK.Inline
     SK.Constant ->
@@ -617,12 +617,12 @@ elaborateLet h (xt, e) = do
 elaborateLamAttr :: Handle -> AttrL.Attr WT.WeakType -> App (AttrL.Attr TM.Type)
 elaborateLamAttr h (AttrL.Attr {lamKind, identity}) =
   case lamKind of
-    LK.Normal name isScript codType -> do
+    LK.Normal name isDestPassing codType -> do
       codType' <- elaborateType h codType
-      return $ AttrL.Attr {lamKind = LK.Normal name isScript codType', identity}
-    LK.Fix opacity isScript xt -> do
+      return $ AttrL.Attr {lamKind = LK.Normal name isDestPassing codType', identity}
+    LK.Fix opacity isDestPassing xt -> do
       xt' <- elaborateWeakBinder h xt
-      return $ AttrL.Attr {lamKind = LK.Fix opacity isScript xt', identity}
+      return $ AttrL.Attr {lamKind = LK.Fix opacity isDestPassing xt', identity}
 
 type ClauseContext =
   [(Ident, (Maybe DD.DefiniteDescription, IsConstLike, [Ident]))]
@@ -872,7 +872,7 @@ elaborateAttrDataIntro h attr = do
 stmtKindToDefKind :: SK.StmtKindTerm a -> [(binder, b)] -> Maybe Inline.DefKind
 stmtKindToDefKind stmtKind defaultArgs =
   case stmtKind of
-    SK.Script ->
+    SK.DestPassing ->
       if null defaultArgs
         then Nothing
         else Just Inline.NoInline

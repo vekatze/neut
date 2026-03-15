@@ -538,8 +538,8 @@ parseGeist h nameParser = do
   expArgs@(expSeries, _) <- seriesParen $ preBinder h
   defaultArgs <- parseDefaultParams h
   lift $ ensureArgumentLinearity S.empty $ map (\(mx, _, x, _, _, _) -> (mx, x)) $ SE.extract expSeries
-  (isScript, c2, (cod, c)) <- parseDefInfoCod h
-  return (RT.RawGeist {loc, name = (name', c1), isConstLike, isScript, impArgs, defaultArgs, expArgs, cod = (c2, cod)}, c)
+  (isDestPassing, c2, (cod, c)) <- parseDefInfoCod h
+  return (RT.RawGeist {loc, name = (name', c1), isConstLike, isDestPassing, impArgs, defaultArgs, expArgs, cod = (c2, cod)}, c)
 
 parseGeistOptionalCod :: Handle -> Parser (a, C) -> Parser (RT.RawGeist a, C)
 parseGeistOptionalCod h nameParser = do
@@ -550,8 +550,8 @@ parseGeistOptionalCod h nameParser = do
   expArgs@(expSeries, _) <- seriesParen $ preBinder h
   defaultArgs <- parseDefaultParams h
   lift $ ensureArgumentLinearity S.empty $ map (\(mx, _, x, _, _, _) -> (mx, x)) $ SE.extract expSeries
-  (isScript, c2, (cod, c)) <- parseDefInfoCodOptional h
-  return (RT.RawGeist {loc, name = (name', c1), isConstLike, isScript, impArgs, defaultArgs, expArgs, cod = (c2, cod)}, c)
+  (isDestPassing, c2, (cod, c)) <- parseDefInfoCodOptional h
+  return (RT.RawGeist {loc, name = (name', c1), isConstLike, isDestPassing, impArgs, defaultArgs, expArgs, cod = (c2, cod)}, c)
 
 parseAliasGeist :: Handle -> Parser (a, C) -> Parser (RT.RawGeist a, C)
 parseAliasGeist h nameParser = do
@@ -569,8 +569,8 @@ parseAliasGeist h nameParser = do
   lift $ ensureArgumentLinearity S.empty $ map (\(mx, _, x, _, _, _) -> (mx, x)) $ SE.extract expSeries
   m <- getCurrentHint
   let cod = m :< RT.Tau
-  let isScript = False
-  return (RT.RawGeist {loc, name = (name', c1), isConstLike, isScript, impArgs, defaultArgs, expArgs, cod = ([], cod)}, [])
+  let isDestPassing = False
+  return (RT.RawGeist {loc, name = (name', c1), isConstLike, isDestPassing, impArgs, defaultArgs, expArgs, cod = ([], cod)}, [])
 
 parseResourceGeist :: Parser (a, C) -> Parser (RT.RawGeist a, C)
 parseResourceGeist nameParser = do
@@ -578,11 +578,11 @@ parseResourceGeist nameParser = do
   (name', c1) <- nameParser
   let impArgs = (SE.emptySeriesAC, [])
   let isConstLike = True
-  let isScript = False
+  let isDestPassing = False
   let expArgs = (SE.emptySeries (Just SE.Paren) SE.Comma, [])
   let defaultArgs = (SE.emptySeries (Just SE.Bracket) SE.Comma, [])
   let cod = loc :< RT.Tau
-  return (RT.RawGeist {loc, name = (name', c1), isConstLike, isScript, impArgs, defaultArgs, expArgs, cod = ([], cod)}, [])
+  return (RT.RawGeist {loc, name = (name', c1), isConstLike, isDestPassing, impArgs, defaultArgs, expArgs, cod = ([], cod)}, [])
 
 parseConstantDef :: Handle -> Parser (a, C) -> Parser (RT.RawDef a, C)
 parseConstantDef h nameParser = do
@@ -609,8 +609,8 @@ parseConstantGeist h nameParser = do
   defaultArgs <- parseDefaultParams h
   c2 <- delimiter ":"
   (cod, c) <- rawType h
-  let isScript = False
-  return (RT.RawGeist {loc, name = (name', c1), isConstLike, isScript, impArgs, defaultArgs, expArgs, cod = (c2, cod)}, c)
+  let isDestPassing = False
+  return (RT.RawGeist {loc, name = (name', c1), isConstLike, isDestPassing, impArgs, defaultArgs, expArgs, cod = (c2, cod)}, c)
 
 parseImplicitParams :: Handle -> Parser (SE.Series (RawBinder RT.RawType), C)
 parseImplicitParams h =
@@ -665,7 +665,7 @@ ensureArgumentLinearity foundVarSet vs =
 
 parseDefInfoCod :: Handle -> Parser (Bool, C, (RT.RawType, C))
 parseDefInfoCod h = do
-  (isScript, c) <-
+  (isDestPassing, c) <-
     choice
       [ do
           c <- delimiter "->>"
@@ -675,7 +675,7 @@ parseDefInfoCod h = do
           return (False, c)
       ]
   t <- rawType h
-  return (isScript, c, t)
+  return (isDestPassing, c, t)
 
 parseDefInfoCodOptional :: Handle -> Parser (Bool, C, (RT.RawType, C))
 parseDefInfoCodOptional h =
@@ -695,7 +695,7 @@ rawTermDefine h opacity m c0 = do
     return (name', c1)
   case opacity of
     O.Clear
-      | RT.isScript (RT.geist defInfo) ->
+      | RT.isDestPassing (RT.geist defInfo) ->
           lift $ raiseError m "`inline` cannot use `->>`"
     _ ->
       return ()

@@ -50,7 +50,7 @@ import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.ExternalName qualified as EN
 import Language.Common.HoleID
 import Language.Common.IsConstLike
-import Language.Common.IsScript
+import Language.Common.IsDestPassing
 import Language.Common.Noema qualified as N
 import Language.Common.Opacity qualified as O
 import Language.Common.Rune qualified as R
@@ -192,7 +192,7 @@ data RawGeist a = RawGeist
   { loc :: Hint,
     name :: (a, C),
     isConstLike :: IsConstLike,
-    isScript :: IsScript,
+    isDestPassing :: IsDestPassing,
     impArgs :: (SE.Series (RawBinder RawType), C),
     expArgs :: Args RawType,
     defaultArgs :: (SE.Series (RawBinder RawType, RawTerm), C),
@@ -262,7 +262,7 @@ lam loc m varList codType e =
                 { loc = m,
                   name = (Nothing, []),
                   isConstLike = False,
-                  isScript = False,
+                  isDestPassing = False,
                   impArgs = (SE.emptySeries (Just SE.Angle) SE.Comma, []),
                   defaultArgs = (SE.emptySeries (Just SE.Bracket) SE.Comma, []),
                   expArgs = (SE.assoc $ SE.fromList SE.Paren SE.Comma varList, []),

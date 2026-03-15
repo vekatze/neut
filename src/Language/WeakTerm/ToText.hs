@@ -37,9 +37,9 @@ toText term =
       showGlobalVariable x
     _ :< WT.PiIntro attr impArgs expArgs defaultArgs e -> do
       case attr of
-        AttrL.Attr {lamKind = LK.Fix opacity isScript (_, k, x, codType)} ->
-          ( if isScript
-              then "script "
+        AttrL.Attr {lamKind = LK.Fix opacity isDestPassing (_, k, x, codType)} ->
+          ( if isDestPassing
+              then "define-dest-passing "
               else case opacity of
                 O.Opaque -> "define "
                 O.Clear -> "inline "
@@ -52,9 +52,9 @@ toText term =
             <> toTextType codType
             <> " "
             <> inBrace (toText e)
-        AttrL.Attr {lamKind = LK.Normal mName isScript codType} -> do
+        AttrL.Attr {lamKind = LK.Normal mName isDestPassing codType} -> do
           let name = fromMaybe "" mName
-          (if isScript then "script " else "function ")
+          (if isDestPassing then "function-dest-passing " else "function ")
             <> name
             <> showImpArgs impArgs []
             <> inParen (showFnDomArgList expArgs)

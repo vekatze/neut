@@ -219,8 +219,8 @@ discernStmtKindTerm h stmtKind m =
   case stmtKind of
     SK.Define ->
       return SK.Define
-    SK.Script ->
-      return SK.Script
+    SK.DestPassing ->
+      return SK.DestPassing
     SK.Inline ->
       return SK.Inline
     SK.Constant ->
@@ -268,7 +268,7 @@ toCandidateKindTerm stmtKind =
   case stmtKind of
     SK.Define ->
       Function
-    SK.Script ->
+    SK.DestPassing ->
       Function
     SK.Inline ->
       Function
@@ -343,7 +343,7 @@ discern h term =
       ensureLayerClosedness m h''' body'
       return $ m :< WT.PiIntro (AttrL.normal' name lamID codType') impArgs' expArgs' defaultArgs' body'
     m :< RT.PiIntroFix opacity _ (RT.RawDef {geist, body, endLoc}) -> do
-      let isScript = RT.isScript geist
+      let isDestPassing = RT.isDestPassing geist
       let impArgs = RT.extractImpArgs $ RT.impArgs geist
       let defaultArgs = SE.extract $ fst $ RT.defaultArgs geist
       let expArgs = RT.extractArgs $ RT.expArgs geist
@@ -360,7 +360,7 @@ discern h term =
       liftIO $ Tag.insertBinder (H.tagHandle h) mxt'
       lamID <- liftIO $ Gensym.newCount (H.gensymHandle h)
       ensureLayerClosedness m h'''' body'
-      return $ m :< WT.PiIntro (AttrL.Attr {lamKind = LK.Fix opacity isScript mxt', identity = lamID}) impArgs' expArgs' defaultArgs' body'
+      return $ m :< WT.PiIntro (AttrL.Attr {lamKind = LK.Fix opacity isDestPassing mxt', identity = lamID}) impArgs' expArgs' defaultArgs' body'
     m :< RT.PiElim e _ mImpArgs _ expArgs _ mDefaultArgs -> do
       let kind = PEK.Normal -- overwritten later in `infer`
       e' <- discern h e

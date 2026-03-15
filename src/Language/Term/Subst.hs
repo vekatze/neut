@@ -77,21 +77,21 @@ subst h sub term =
         else do
           newLamID <- liftIO $ Gensym.newCount (gensymHandle h)
           case lamKind of
-            LK.Fix opacity isScript xt -> do
+            LK.Fix opacity isDestPassing xt -> do
               (impArgs', sub') <- substBinder h sub impArgs
               (expArgs', sub'') <- substBinder h sub' expArgs
               (defaultArgs', sub''') <- substDefaultArgs h sub'' defaultArgs
               ([xt'], sub'''') <- substBinder h sub''' [xt]
               e' <- subst h sub'''' e
-              let fixAttr = AttrL.Attr {lamKind = LK.Fix opacity isScript xt', identity = newLamID}
+              let fixAttr = AttrL.Attr {lamKind = LK.Fix opacity isDestPassing xt', identity = newLamID}
               return (m :< TM.PiIntro fixAttr impArgs' expArgs' defaultArgs' e')
-            LK.Normal name isScript codType -> do
+            LK.Normal name isDestPassing codType -> do
               (impArgs', sub') <- substBinder h sub impArgs
               (expArgs', sub'') <- substBinder h sub' expArgs
               (defaultArgs', sub''') <- substDefaultArgs h sub'' defaultArgs
               codType' <- substType h sub''' codType
               e' <- subst h sub''' e
-              let lamAttr = AttrL.Attr {lamKind = LK.Normal name isScript codType', identity = newLamID}
+              let lamAttr = AttrL.Attr {lamKind = LK.Normal name isDestPassing codType', identity = newLamID}
               return (m :< TM.PiIntro lamAttr impArgs' expArgs' defaultArgs' e')
     m :< TM.PiElim b e impArgs expArgs defaultArgs -> do
       b' <- PEK.traverseArg (substType h sub) b

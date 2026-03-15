@@ -137,8 +137,8 @@ liftStmtKindTerm _h stmtKind = do
   case stmtKind of
     SK.Define ->
       SK.Define
-    SK.Script ->
-      SK.Script
+    SK.DestPassing ->
+      SK.DestPassing
     SK.Inline ->
       SK.Inline
     SK.Constant ->

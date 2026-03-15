@@ -186,7 +186,7 @@ decStmt stmt =
       case stmtKind of
         SK.Define ->
           RT.decodeDef (RT.nameToDoc . N.Var) "define" c (fmap BN.reify def)
-        SK.Script ->
+        SK.DestPassing ->
           RT.decodeDef (RT.nameToDoc . N.Var) "define" c (fmap BN.reify def)
         SK.Inline ->
           if RT.isConstLike (RT.geist def)
@@ -293,7 +293,7 @@ decNominalGeist (tag, geist, _) = do
   let geistDoc = case tag of
         Define ->
           RT.decGeist (D.text . BN.reify) geist
-        Script ->
+        DestPassing ->
           RT.decGeist (D.text . BN.reify) geist
         Inline ->
           RT.decGeist (D.text . BN.reify) geist

@@ -8,12 +8,12 @@ import Data.Binary
 import Data.Text qualified as T
 import GHC.Generics
 import Language.Common.Binder
-import Language.Common.IsScript
+import Language.Common.IsDestPassing
 import Language.Common.Opacity qualified as O
 
 data LamKindF a
-  = Normal (Maybe T.Text) IsScript a
-  | Fix O.Opacity IsScript (BinderF a)
+  = Normal (Maybe T.Text) IsDestPassing a
+  | Fix O.Opacity IsDestPassing (BinderF a)
   deriving (Show, Generic)
 
 instance (Binary a) => Binary (LamKindF a)

@@ -121,8 +121,8 @@ compressStmtKindTerm stmtKind =
   case stmtKind of
     Define ->
       Define
-    Script ->
-      Script
+    DestPassing ->
+      DestPassing
     Inline ->
       Inline
     Constant ->
