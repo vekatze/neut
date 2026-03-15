@@ -1,4 +1,4 @@
-module Kernel.Lower.Cancel (cancel) where
+module Kernel.Lower.FreeMallocCancel (freeMallocCancel) where
 
 import Data.IntMap qualified as IntMap
 import Data.Set qualified as S
@@ -41,11 +41,11 @@ data Axis = Axis
     allocCanceller :: AllocCanceller
   }
 
-cancel :: LC.Comp -> LC.Comp
-cancel lowComp = do
+freeMallocCancel :: LC.Comp -> LC.Comp
+freeMallocCancel lowComp = do
   let scenario = analyze lowComp
   let (freeCanceller, allocCanceller) = relate scenario
-  cancel' (Axis {freeCanceller = freeCanceller, allocCanceller = allocCanceller}) lowComp
+  freeMallocCancel' (Axis {freeCanceller = freeCanceller, allocCanceller = allocCanceller}) lowComp
 
 analyze :: LC.Comp -> Scenario
 analyze lowComp = do
@@ -183,15 +183,15 @@ findAllocInMemOpList' size prefix memOpList =
     memOp : rest ->
       findAllocInMemOpList' size (memOp : prefix) rest
 
-cancel' :: Axis -> LC.Comp -> LC.Comp
-cancel' ctx lowComp =
+freeMallocCancel' :: Axis -> LC.Comp -> LC.Comp
+freeMallocCancel' ctx lowComp =
   case lowComp of
     LC.Return {} ->
       lowComp
     LC.ReturnVoid ->
       lowComp
     LC.Let x op cont -> do
-      let cont' = cancel' ctx cont
+      let cont' = freeMallocCancel' ctx cont
       case op of
         LC.Alloc _ _ allocID
           | Just ptr <- IntMap.lookup allocID (allocCanceller ctx) -> do
@@ -199,7 +199,7 @@ cancel' ctx lowComp =
         _ ->
           LC.Let x op cont'
     LC.Cont op cont -> do
-      let cont' = cancel' ctx cont
+      let cont' = freeMallocCancel' ctx cont
       case op of
         LC.Free _ _ freeID
           | S.member freeID (freeCanceller ctx) -> do
@@ -207,10 +207,10 @@ cancel' ctx lowComp =
         _ ->
           LC.Cont op cont'
     LC.Switch d defaultBranch ces (phi, cont) -> do
-      let defaultBranch' = cancel' ctx defaultBranch
+      let defaultBranch' = freeMallocCancel' ctx defaultBranch
       let (cs, es) = unzip ces
-      let es' = map (cancel' ctx) es
-      let cont' = cancel' ctx cont
+      let es' = map (freeMallocCancel' ctx) es
+      let cont' = freeMallocCancel' ctx cont
       LC.Switch d defaultBranch' (zip cs es') (phi, cont')
     LC.TailCall {} ->
       lowComp

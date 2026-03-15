@@ -33,7 +33,8 @@ import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.Env qualified as Env
 import Kernel.Common.Handle.Global.Platform qualified as Platform
 import Kernel.Common.Target
-import Kernel.Lower.Cancel
+import Kernel.Lower.FreeMallocCancel qualified as FreeMallocCancel
+import Kernel.Lower.MallocFreeCancel qualified as MallocFreeCancel
 import Language.Common.ArgNum qualified as AN
 import Language.Common.BaseLowType qualified as BLT
 import Language.Common.BasePrimType qualified as BPT
@@ -115,10 +116,10 @@ lowerStmt :: Handle -> C.CompStmt -> App (Maybe LC.Def)
 lowerStmt h stmt = do
   case stmt of
     C.Def name _ args e -> do
-      e' <- lowerComp h e >>= liftIO . return . cancel
+      e' <- lowerComp h e >>= liftIO . return . FreeMallocCancel.freeMallocCancel . MallocFreeCancel.mallocFreeCancel
       return $ Just (name, LC.DefContent LT.Pointer args e')
     C.DefVoid name _ args e -> do
-      e' <- lowerComp h e >>= liftIO . return . cancel
+      e' <- lowerComp h e >>= liftIO . return . FreeMallocCancel.freeMallocCancel . MallocFreeCancel.mallocFreeCancel
       return $ Just (name, LC.DefContent LT.Void args e')
     C.Foreign {} -> do
       return Nothing
