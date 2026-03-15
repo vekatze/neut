@@ -607,7 +607,8 @@ parseConstantGeist h nameParser = do
   let isConstLike = True
   let expArgs = (SE.emptySeries (Just SE.Paren) SE.Comma, [])
   defaultArgs <- parseDefaultParams h
-  (c2, (cod, c)) <- parseDefInfoCod h
+  c2 <- delimiter ":"
+  (cod, c) <- rawType h
   return (RT.RawGeist {loc, name = (name', c1), isConstLike, impArgs, defaultArgs, expArgs, cod = (c2, cod)}, c)
 
 parseImplicitParams :: Handle -> Parser (SE.Series (RawBinder RT.RawType), C)
@@ -663,7 +664,7 @@ ensureArgumentLinearity foundVarSet vs =
 
 parseDefInfoCod :: Handle -> Parser (C, (RT.RawType, C))
 parseDefInfoCod h = do
-  c <- delimiter ":"
+  c <- choice [delimiter "->", delimiter ":"]
   t <- rawType h
   return (c, t)
 

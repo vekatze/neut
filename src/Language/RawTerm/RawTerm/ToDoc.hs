@@ -705,12 +705,16 @@ decGeist
               if (not hasExp) && (not hasDefault)
                 then c1 ++ cColon
                 else cColon
+        let codDelim =
+              if isConstLike
+                then PI.horizontal $ attachComment cColon' $ D.text ":"
+                else PI.delimiter $ attachComment cColon' $ D.text "->"
         PI.arrange
           [ PI.inject $ attachComment c0 $ nameDecoder name,
             PI.inject $ decodeImpParams impArgs,
             PI.inject expParamsWithImp,
             PI.inject defaultParamsWithExpComment,
-            PI.horizontal $ attachComment cColon' $ D.text ":",
+            codDelim,
             PI.inject $ attachComment c4 $ typeToDoc cod
           ]
 
