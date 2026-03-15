@@ -79,21 +79,21 @@ subst h sub term =
         else do
           newLamID <- liftIO $ Gensym.newCount (gensymHandle h)
           case lamKind of
-            LK.Fix opacity xt -> do
+            LK.Fix opacity isScript xt -> do
               (impArgs', sub') <- subst' h sub impArgs
               (expArgs', sub'') <- subst' h sub' expArgs
               (defaultArgs', sub''') <- substDefaultArgs h sub'' defaultArgs
               ([xt'], sub'''') <- subst' h sub''' [xt]
               e' <- subst h sub'''' e
-              let fixAttr = AttrL.Attr {lamKind = LK.Fix opacity xt', identity = newLamID}
+              let fixAttr = AttrL.Attr {lamKind = LK.Fix opacity isScript xt', identity = newLamID}
               return (m :< WT.PiIntro fixAttr impArgs' expArgs' defaultArgs' e')
-            LK.Normal mName codType -> do
+            LK.Normal mName isScript codType -> do
               (impArgs', sub') <- subst' h sub impArgs
               (expArgs', sub'') <- subst' h sub' expArgs
               (defaultArgs', sub''') <- substDefaultArgs h sub'' defaultArgs
               codType' <- substType h sub''' codType
               e' <- subst h sub''' e
-              let lamAttr = AttrL.Attr {lamKind = LK.Normal mName codType', identity = newLamID}
+              let lamAttr = AttrL.Attr {lamKind = LK.Normal mName isScript codType', identity = newLamID}
               return (m :< WT.PiIntro lamAttr impArgs' expArgs' defaultArgs' e')
     m :< WT.PiElim b e impArgs expArgs defaultArgs -> do
       b' <- PEK.traverseArg (substType h sub) b

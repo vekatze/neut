@@ -14,7 +14,6 @@ import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Containers.ListUtils (nubOrd)
-import Data.HashMap.Strict qualified as Map
 import Data.IntMap qualified as IntMap
 import Data.Maybe
 import Data.Text qualified as T
@@ -107,10 +106,16 @@ new (Global.Handle {..}) (Local.Handle {..}) = do
   let sigmaHandle = Sigma.new gensymHandle linearizeHandle utilityHandle
   return $ Handle {..}
 
+newCurrentReduceHandle :: Handle -> IO Reduce.Handle
+newCurrentReduceHandle h = do
+  defMap <- CompDef.get (compDefHandle h)
+  let compSubstHandle = CompSubst.new (gensymHandle h)
+  return $ Reduce.new compSubstHandle (gensymHandle h) defMap
+
 clarify :: Handle -> [Stmt] -> App [C.CompStmt]
 clarify h stmtList = do
   liftIO $ AuxEnv.clear (auxEnvHandle h)
-  baseAuxEnv <- AuxEnv.toCompStmtList <$> liftIO (getBaseAuxEnv (auxEnvHandle h) (sigmaHandle h))
+  baseAuxEnv <- liftIO $ getBaseAuxEnv (auxEnvHandle h) (sigmaHandle h)
   liftIO $ AuxEnv.clear (auxEnvHandle h)
   let filteredStmtList = filter (not . isMacroStmt) stmtList
   stmtList' <- do
@@ -125,17 +130,18 @@ clarify h stmtList = do
         liftIO $ CompDef.insert (compDefHandle h) x (opacity, args, e)
       C.Foreign {} ->
         return ()
+  currentReduceHandle <- liftIO $ newCurrentReduceHandle h
   forM stmtList' $ \stmt -> do
     case stmt of
       C.Def x opacity args e -> do
-        e' <- liftIO $ Reduce.reduce (reduceHandle h) e
+        e' <- liftIO $ Reduce.reduce currentReduceHandle e
         -- liftIO $ putStrLn $ T.unpack "==================="
         -- liftIO $ putStrLn $ T.unpack $ DD.reify x
         -- liftIO $ putStrLn $ T.unpack $ T.pack $ show args
         -- liftIO $ putStrLn $ T.unpack $ T.pack $ show e'
         return $ C.Def x opacity args e'
       C.DefVoid x opacity args e -> do
-        e' <- liftIO $ Reduce.reduce (reduceHandle h) e
+        e' <- liftIO $ Reduce.reduce currentReduceHandle e
         return $ C.DefVoid x opacity args e'
       C.Foreign {} ->
         return stmt
@@ -161,15 +167,22 @@ newMain Global.Handle {..} = do
 clarifyEntryPoint :: MainHandle -> IO [C.CompStmt]
 clarifyEntryPoint h = do
   baseAuxEnv <- getBaseAuxEnv (mainAuxEnvHandle h) (mainSigmaHandle h)
-  forM (Map.toList baseAuxEnv) $ \(x, (opacity, args, e)) -> do
-    e' <- Reduce.reduce (mainReduceHandle h) e
-    return $ C.Def x opacity args e'
+  forM baseAuxEnv $ \stmt -> do
+    case stmt of
+      C.Def x opacity args e -> do
+        e' <- Reduce.reduce (mainReduceHandle h) e
+        return $ C.Def x opacity args e'
+      C.DefVoid x opacity args e -> do
+        e' <- Reduce.reduce (mainReduceHandle h) e
+        return $ C.DefVoid x opacity args e'
+      C.Foreign {} ->
+        return stmt
 
-getBaseAuxEnv :: AuxEnv.Handle -> Sigma.Handle -> IO C.DefMap
+getBaseAuxEnv :: AuxEnv.Handle -> Sigma.Handle -> IO [C.CompStmt]
 getBaseAuxEnv auxEnvHandle sigmaHandle = do
   Sigma.registerImmediateS4 sigmaHandle
   Sigma.registerClosureS4 sigmaHandle
-  AuxEnv.get auxEnvHandle
+  AuxEnv.toCompStmtList <$> AuxEnv.get auxEnvHandle
 
 clarifyStmt :: Handle -> Stmt -> App C.CompStmt
 clarifyStmt h stmt =
@@ -277,7 +290,13 @@ toDestPassing h dest fvs codType e = do
           memcpyResultVarName
           (C.Primitive $ C.Memcpy (C.VarLocal dest) resultVar sizeVar)
           (C.Free resultVar 0 (C.UpIntro C.null))
-  branch <- Utility.getEnumElim (utilityHandle h) fvs sizeVar boxedClause [(EC.Int (-1), immediateClause)]
+  branch <-
+    Utility.getEnumElim
+      (utilityHandle h)
+      (dest : resultVarName : sizeVarName : fvs)
+      sizeVar
+      boxedClause
+      [(EC.Int (-1), immediateClause)]
   return $
     C.UpElim False resultVarName e $
       C.UpElim True typeVarName codType $
@@ -355,7 +374,7 @@ registerDefaultFunctions h tenv name fvs impArgs defaultArgs =
         isAlreadyRegistered <- liftIO $ AuxEnv.checkIfAlreadyRegistered (auxEnvHandle h) labelName
         unless isAlreadyRegistered $ do
           body <- clarifyTerm h tenv' value
-          liftIO $ registerClosure h labelName O.Clear impArgs' fvs' body
+          liftIO $ registerClosure h labelName O.Clear False Nothing C.null Nothing impArgs' fvs' body
         return $ C.VarGlobal labelName argNum (FCT.Cod BLT.Pointer)
 
 clarifyBinderBody ::
@@ -822,29 +841,46 @@ clarifyLambda ::
 clarifyLambda h tenv attrL@(AttrL.Attr {lamKind, identity}) fvs impArgs expArgs defaultArgs e@(m :< _) = do
   let mxts = impArgs ++ expArgs ++ map fst defaultArgs
   case lamKind of
-    LK.Fix _ (_, _k, recFuncName, codType) -> do
+    LK.Fix _ isScript (_, _k, recFuncName, codType) -> do
       let liftedName = Locator.attachCurrentLocator (locatorHandle h) $ BN.muName recFuncName identity
       let appArgs = fvs ++ mxts
       let appArgs' = map (\(mx, _, x, _) -> mx :< TM.Var x) appArgs
       let argNum = AN.fromInt $ length appArgs'
-      let attr = AttrVG.new argNum
+      let attr = AttrVG.Attr {argNum, isConstLike = False, isScript}
+      let piElimKind =
+            if isScript
+              then PEK.DestPass codType
+              else PEK.Normal
       lamAttr <- do
         c <- liftIO $ Gensym.newCount (gensymHandle h)
-        return $ AttrL.normal' (Just (Ident.toText recFuncName)) c codType
-      let lamApp = m :< TM.PiIntro lamAttr impArgs expArgs defaultArgs (m :< TM.PiElim PEK.Normal (m :< TM.VarGlobal attr liftedName) [] appArgs' [])
+        return $ AttrL.Attr {lamKind = LK.Normal (Just (Ident.toText recFuncName)) isScript codType, identity = c}
+      let lamApp =
+            m :< TM.PiIntro lamAttr impArgs expArgs defaultArgs
+              (m :< TM.PiElim piElimKind (m :< TM.VarGlobal attr liftedName) [] appArgs' [])
       isAlreadyRegistered <- liftIO $ AuxEnv.checkIfAlreadyRegistered (auxEnvHandle h) liftedName
       unless isAlreadyRegistered $ do
         liftedBody <- liftIO $ Subst.subst (substHandle h) (IntMap.fromList [(Ident.toInt recFuncName, Subst.Term lamApp)]) e
         (liftedArgs, liftedBody') <- clarifyBinderBody h IntMap.empty appArgs liftedBody
         liftedBody'' <- liftIO $ Linearize.linearize (linearizeHandle h) liftedArgs liftedBody'
-        liftIO $ AuxEnv.insert (auxEnvHandle h) liftedName (O.Opaque, map fst liftedArgs, liftedBody'')
+        liftedBody''' <- liftIO $ Reduce.reduce (reduceHandle h) liftedBody''
+        envArg <- liftIO $ makeEnvArg h
+        switchArg <- liftIO $ makeSwitchArg h
+        if isScript
+          then do
+            codType' <- clarifyType h (TM.insTypeEnv appArgs IntMap.empty) codType
+            (destParam, _) <- liftIO $ makeDestParam h
+            let params = map fst liftedArgs ++ [fst envArg, fst switchArg]
+            liftedBody'''' <- liftIO $ toDestPassing h destParam params codType' liftedBody'''
+            liftIO $ AuxEnv.insert (auxEnvHandle h) liftedName (C.DefVoid liftedName O.Opaque (destParam : params) liftedBody'''')
+          else
+            liftIO $ AuxEnv.insert (auxEnvHandle h) liftedName (C.Def liftedName O.Opaque (map fst liftedArgs ++ [fst envArg, fst switchArg]) liftedBody''')
       liftIO $ registerDefaultEnvType h liftedName []
       clarifyTerm h tenv lamApp
-    LK.Normal mName _ -> do
+    LK.Normal mName isScript codType -> do
       let name = Locator.attachCurrentLocator (locatorHandle h) $ BN.lambdaName mName identity
       defaultValues <- registerDefaultFunctions h tenv name fvs impArgs defaultArgs
       e' <- clarifyTerm h (TM.insTypeEnv (catMaybes [AttrL.fromAttr attrL] ++ mxts) tenv) e
-      returnClosure h tenv identity mName O.Clear fvs mxts defaultValues e'
+      returnClosure h tenv identity mName O.Clear isScript (Just codType) Nothing fvs mxts defaultValues e'
 
 clarifyPlus :: Handle -> TM.TypeEnv -> TM.Term -> App (Ident, C.Comp, C.Value)
 clarifyPlus h tenv e = do
@@ -875,7 +911,7 @@ clarifyPrimOp h tenv op m = do
   (xs, varList) <- liftIO $ mapAndUnzipM (const (Gensym.createVar (gensymHandle h) "prim")) domList
   let mxts = zipWith (\x t -> (m, VK.Normal, x, t)) xs argTypeList
   lamID <- liftIO $ Gensym.newCount (gensymHandle h)
-  returnClosure h tenv lamID (Just "primOp") O.Clear [] mxts [] $ C.Primitive (C.PrimOp op varList)
+  returnClosure h tenv lamID (Just "primOp") O.Clear False Nothing Nothing [] mxts [] $ C.Primitive (C.PrimOp op varList)
 
 returnClosure ::
   Handle ->
@@ -883,50 +919,121 @@ returnClosure ::
   Int ->
   Maybe T.Text ->
   O.Opacity ->
+  Bool ->
+  Maybe TM.Type ->
+  Maybe (Ident, C.Comp) ->
   [BinderF TM.Type] -> -- list of free variables in `lam (x1, ..., xn). e` (this must be a closed chain)
   [BinderF TM.Type] -> -- the `(x1 : A1, ..., xn : An)` in `lam (x1 : A1, ..., xn : An). e`
   [C.Value] -> -- default argument labels
   C.Comp -> -- the `e` in `lam (x1, ..., xn). e`
   App C.Comp
-returnClosure h tenv lamID mName opacity fvs xts defaultValues e = do
+returnClosure h tenv lamID mName opacity isScript mCodType mSelf fvs xts defaultValues e = do
   fvs'' <- dropFst <$> clarifyBinder h tenv fvs
   xts'' <- dropFst <$> clarifyBinder h tenv xts
   fvEnvSigma <- liftIO $ Sigma.closureEnvS4 (sigmaHandle h) mName (locatorHandle h) fvs'' defaultValues
   let fvEnv = C.SigmaIntro (map (\(x, _) -> C.VarLocal x) fvs'')
-  let argNum = AN.fromInt $ length xts'' + 2 -- argNum == count(xts) + env
+  let argNum =
+        AN.fromInt $
+          length xts''
+            + if isScript
+              then 3
+              else 2
   let name = Locator.attachCurrentLocator (locatorHandle h) $ BN.lambdaName mName lamID
   isAlreadyRegistered <- liftIO $ AuxEnv.checkIfAlreadyRegistered (auxEnvHandle h) name
   unless isAlreadyRegistered $ do
-    liftIO $ registerClosure h name opacity xts'' fvs'' e
-  return $ C.UpIntro $ C.SigmaIntro [fvEnvSigma, fvEnv, C.VarGlobal name argNum (FCT.Cod BLT.Pointer)]
+    let codTypeTenv = TM.insTypeEnv (fvs ++ xts) tenv
+    codType' <- traverse (clarifyType h codTypeTenv) mCodType
+    liftIO $ registerClosure h name opacity isScript codType' fvEnvSigma mSelf xts'' fvs'' e
+  let cod = if isScript then FCT.Void else FCT.Cod BLT.Pointer
+  return $ C.UpIntro $ C.SigmaIntro [fvEnvSigma, fvEnv, C.VarGlobal name argNum cod]
 
 registerClosure ::
   Handle ->
   DD.DefiniteDescription ->
   O.Opacity ->
+  Bool ->
+  Maybe C.Comp ->
+  C.Value ->
+  Maybe (Ident, C.Comp) ->
   [(Ident, C.Comp)] ->
   [(Ident, C.Comp)] ->
   C.Comp ->
   IO ()
-registerClosure h name opacity xts fvs e = do
+registerClosure h name opacity isScript mCodType fvEnvSigma mSelf xts fvs e = do
   e' <- liftIO $ Linearize.linearize (linearizeHandle h) (fvs ++ xts) e
   (envVarName, envVar) <- Gensym.createVar (gensymHandle h) "env"
   (normalEnvVarName, normalEnvVar) <- Gensym.createVar (gensymHandle h) "env"
   (noeticEnvVarName, noeticEnvVar) <- Gensym.createVar (gensymHandle h) "env"
   (switchVarName, switchVar) <- Gensym.createVar (gensymHandle h) "switch"
-  let normalPrefix = lambdaPrefixNormal fvs normalEnvVar
-  noeticPrefix <- lambdaPrefixNoetic h fvs noeticEnvVar
+  mSelfEnvCopyInfo <-
+    traverse (const $ Gensym.createVar (gensymHandle h) "env") mSelf
+  let argNum =
+        AN.fromInt $
+          length xts
+            + if isScript
+              then 3
+              else 2
+  let cod = if isScript then FCT.Void else FCT.Cod BLT.Pointer
+  let normalPrefix =
+        case mSelfEnvCopyInfo of
+          Just (selfEnvCopyName, _) ->
+            lambdaPrefixNormalWithSelf h fvEnvSigma selfEnvCopyName fvs normalEnvVar
+          Nothing ->
+            lambdaPrefixNormal fvs normalEnvVar
+  noeticPrefix <-
+    case mSelfEnvCopyInfo of
+      Just (selfEnvCopyName, _) ->
+        lambdaPrefixNoeticWithSelf h fvEnvSigma selfEnvCopyName fvs noeticEnvVar
+      Nothing ->
+        lambdaPrefixNoetic h fvs noeticEnvVar
+  let phiVars =
+        map fst fvs
+          ++ case mSelfEnvCopyInfo of
+            Just (selfEnvCopyName, _) ->
+              [selfEnvCopyName]
+            Nothing ->
+              []
+  let e'' =
+        case mSelf of
+          Nothing ->
+            e'
+          Just (selfName, _) ->
+            let selfEnvCopyVar =
+                  case mSelfEnvCopyInfo of
+                    Just (_, copiedEnvVar) ->
+                      copiedEnvVar
+                    Nothing ->
+                      error "Found a recursive closure without a self environment copy"
+                selfValue =
+                  C.SigmaIntro
+                    [ fvEnvSigma,
+                      selfEnvCopyVar,
+                      C.VarGlobal name argNum cod
+                    ]
+             in
+              C.UpElim False selfName (C.UpIntro selfValue) e'
   let lambdaBody =
         C.EnumElim
           [(Ident.toInt normalEnvVarName, envVar), (Ident.toInt noeticEnvVarName, envVar)]
           switchVar
           normalPrefix
           [(EC.Int 1, noeticPrefix)]
-          (map fst fvs)
-          e'
+          phiVars
+          e''
   lambdaBody' <- liftIO $ Reduce.reduce (reduceHandle h) lambdaBody
-  let args = map fst xts ++ [envVarName, switchVarName]
-  AuxEnv.insert (auxEnvHandle h) name (opacity, args, lambdaBody')
+  if isScript
+    then do
+      (destParam, _) <- makeDestParam h
+      let args = map fst xts ++ [envVarName, switchVarName]
+      lambdaBody'' <- case mCodType of
+        Just codType ->
+          toDestPassing h destParam args codType lambdaBody'
+        Nothing ->
+          error "Found a script closure without a codomain type in Scene.Clarify.registerClosure"
+      AuxEnv.insert (auxEnvHandle h) name (C.DefVoid name opacity (destParam : args) lambdaBody'')
+    else do
+      let args = map fst xts ++ [envVarName, switchVarName]
+      AuxEnv.insert (auxEnvHandle h) name (C.Def name opacity args lambdaBody')
 
 callClosure ::
   Handle ->
@@ -987,7 +1094,7 @@ callClosure h kind e impArgs expArgs defaultArgs = do
         branch <-
           Utility.getEnumElim
             (utilityHandle h)
-            (impNames ++ expNames ++ defNames ++ [envVarName, lamVarName])
+            (impNames ++ expNames ++ defNames ++ [envVarName, lamVarName, sizeVarName])
             sizeVar
             boxedClause
             [(EC.Int (-1), immediateClause)]
@@ -1052,6 +1159,25 @@ lambdaPrefixNormal ::
 lambdaPrefixNormal fvs envVar = do
   C.SigmaElim True (map fst fvs) envVar (C.Phi $ map (C.VarLocal . fst) fvs)
 
+lambdaPrefixNormalWithSelf ::
+  Handle ->
+  C.Value ->
+  Ident ->
+  [(Ident, C.Comp)] ->
+  C.Value ->
+  C.Comp
+lambdaPrefixNormalWithSelf h fvEnvSigma selfEnvCopyName fvs envVar =
+  C.UpElim
+    True
+    selfEnvCopyName
+    (C.PiElimDownElim False fvEnvSigma [intTerm h (1 :: Int), envVar])
+    ( C.SigmaElim
+        True
+        (map fst fvs)
+        envVar
+        (C.Phi $ map (C.VarLocal . fst) fvs ++ [C.VarLocal selfEnvCopyName])
+    )
+
 lambdaPrefixNoetic ::
   Handle ->
   [(Ident, C.Comp)] ->
@@ -1063,3 +1189,25 @@ lambdaPrefixNoetic h fvs envVar = do
   (varNameList, varList) <- mapAndUnzipM (const $ Gensym.createVar (gensymHandle h) "pair") fvs
   body <- Linearize.linearize (linearizeHandle h) fvs $ Utility.bindLet (zip varNameList as) $ C.Phi varList
   return $ C.SigmaElim False (map fst fvs) envVar body
+
+lambdaPrefixNoeticWithSelf ::
+  Handle ->
+  C.Value ->
+  Ident ->
+  [(Ident, C.Comp)] ->
+  C.Value ->
+  IO C.Comp
+lambdaPrefixNoeticWithSelf h fvEnvSigma selfEnvCopyName fvs envVar = do
+  as <- forM fvs $ \(x, t) -> Utility.toRelevantApp (utilityHandle h) (C.VarLocal x) t
+  (varNameList, varList) <- mapAndUnzipM (const $ Gensym.createVar (gensymHandle h) "pair") fvs
+  body <-
+    Linearize.linearize
+      (linearizeHandle h)
+      fvs
+      (Utility.bindLet (zip varNameList as) $ C.Phi $ varList ++ [C.VarLocal selfEnvCopyName])
+  return $
+    C.UpElim
+      True
+      selfEnvCopyName
+      (C.PiElimDownElim False fvEnvSigma [intTerm h (1 :: Int), envVar])
+      (C.SigmaElim False (map fst fvs) envVar body)

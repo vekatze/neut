@@ -50,13 +50,15 @@ toDoc term =
       D.text $ DD.reify dd -- unreachable
     _ :< PiIntro c def -> do
       decodeDef lambdaNameToDoc "function" c def
-    _ :< PiIntroFix opacity c def -> do
+    _ :< PiIntroFix opacity isScript c def -> do
       let keyword =
-            case opacity of
-              O.Opaque ->
-                "define"
-              O.Clear ->
-                "inline"
+            if isScript
+              then "script"
+              else case opacity of
+                O.Opaque ->
+                  "define"
+                O.Clear ->
+                  "inline"
       decodeDef (nameToDoc . N.Var) keyword c def
     _ :< PiElim e c1 mImpArgs c2 expArgs c3 mDefaultArgs -> do
       let expArgsDoc c =

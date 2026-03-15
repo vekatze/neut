@@ -150,7 +150,7 @@ elaborateStmt h stmt = do
           return ()
       remarks <- do
         affHandle <- liftIO $ EnsureAffinity.new h
-        let dummyAttr = AttrL.Attr {lamKind = LK.Normal Nothing codType', identity = 0}
+        let dummyAttr = AttrL.Attr {lamKind = LK.Normal Nothing False codType', identity = 0}
         EnsureAffinity.ensureAffinity affHandle $ m :< TM.PiIntro dummyAttr impArgs' expArgs' defaultArgs' e'
       e'' <-
         if not $ SK.isMacroStmtKind stmtKind
@@ -615,12 +615,12 @@ elaborateLet h (xt, e) = do
 elaborateLamAttr :: Handle -> AttrL.Attr WT.WeakType -> App (AttrL.Attr TM.Type)
 elaborateLamAttr h (AttrL.Attr {lamKind, identity}) =
   case lamKind of
-    LK.Normal name codType -> do
+    LK.Normal name isScript codType -> do
       codType' <- elaborateType h codType
-      return $ AttrL.Attr {lamKind = LK.Normal name codType', identity}
-    LK.Fix opacity xt -> do
+      return $ AttrL.Attr {lamKind = LK.Normal name isScript codType', identity}
+    LK.Fix opacity isScript xt -> do
       xt' <- elaborateWeakBinder h xt
-      return $ AttrL.Attr {lamKind = LK.Fix opacity xt', identity}
+      return $ AttrL.Attr {lamKind = LK.Fix opacity isScript xt', identity}
 
 type ClauseContext =
   [(Ident, (Maybe DD.DefiniteDescription, IsConstLike, [Ident]))]

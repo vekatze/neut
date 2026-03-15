@@ -50,6 +50,7 @@ import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.ExternalName qualified as EN
 import Language.Common.HoleID
 import Language.Common.IsConstLike
+import Language.Common.IsScript
 import Language.Common.Noema qualified as N
 import Language.Common.Opacity qualified as O
 import Language.Common.Rune qualified as R
@@ -109,7 +110,7 @@ data RawTermF a
   = Var Name
   | VarGlobal DD.DefiniteDescription GN.GlobalName
   | PiIntro C FuncInfo
-  | PiIntroFix O.Opacity C DefInfo
+  | PiIntroFix O.Opacity IsScript C DefInfo
   | PiElim a C (Maybe (SE.Series RawType)) C (SE.Series a) C (Maybe (SE.Series (Hint, Key, C, C, a)))
   | PiElimByKey Name C (Maybe (SE.Series RawType)) C (SE.Series (Hint, Key, C, C, a)) -- auxiliary syntax for key-call
   | PiElimRule Name C (SE.Series a)

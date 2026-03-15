@@ -219,19 +219,23 @@ infer h term =
       return (term, m :< t)
     m :< WT.PiIntro attr@(AttrL.Attr {lamKind}) impArgs expArgs defaultArgs e -> do
       case lamKind of
-        LK.Fix opacity (mx, k, x, codType) -> do
+        LK.Fix opacity isScript (mx, k, x, codType) -> do
           (impArgs', h') <- inferImpBinder h impArgs
           (expArgs', h'') <- inferBinder' h' expArgs
           (defaultArgs', h''') <- inferImpBinderWithDefaults h'' defaultArgs
           let defaultBinders = map fst defaultArgs'
           codType' <- inferType h''' codType
-          let piType = m :< WT.Pi PK.normal impArgs' expArgs' defaultBinders codType'
+          let piKind =
+                if isScript
+                  then PK.DestPass False
+                  else PK.normal
+          let piType = m :< WT.Pi piKind impArgs' expArgs' defaultBinders codType'
           liftIO $ WeakType.insert (weakTypeHandle h) x piType
           (e', tBody) <- infer h''' e
           liftIO $ Constraint.insert (constraintHandle h''') codType' tBody
-          let term' = m :< WT.PiIntro (attr {AttrL.lamKind = LK.Fix opacity (mx, k, x, codType')}) impArgs' expArgs' defaultArgs' e'
+          let term' = m :< WT.PiIntro (attr {AttrL.lamKind = LK.Fix opacity isScript (mx, k, x, codType')}) impArgs' expArgs' defaultArgs' e'
           return (term', piType)
-        LK.Normal name codType -> do
+        LK.Normal name isScript codType -> do
           (impArgs', h') <- inferImpBinder h impArgs
           (expArgs', h'') <- inferBinder' h' expArgs
           (defaultArgs', h''') <- inferImpBinderWithDefaults h'' defaultArgs
@@ -239,8 +243,12 @@ infer h term =
           codType' <- inferType h''' codType
           (e', t') <- infer h''' e
           liftIO $ Constraint.insert (constraintHandle h''') codType' t'
-          let term' = m :< WT.PiIntro (attr {AttrL.lamKind = LK.Normal name codType'}) impArgs' expArgs' defaultArgs' e'
-          return (term', m :< WT.Pi PK.normal impArgs' expArgs' defaultBinders t')
+          let piKind =
+                if isScript
+                  then PK.DestPass False
+                  else PK.normal
+          let term' = m :< WT.PiIntro (attr {AttrL.lamKind = LK.Normal name isScript codType'}) impArgs' expArgs' defaultArgs' e'
+          return (term', m :< WT.Pi piKind impArgs' expArgs' defaultBinders t')
     m :< WT.PiElim _ e impArgs expArgs defaultArgs -> do
       etl <- infer h e
       impArgs' <- ImpArgs.traverseImpArgs (inferType h) impArgs

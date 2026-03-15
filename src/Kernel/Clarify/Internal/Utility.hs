@@ -105,7 +105,7 @@ registerSwitcher ::
   IO ()
 registerSwitcher h opacity name resourceSpec = do
   (args, e) <- makeSwitcher h resourceSpec
-  AuxEnv.insert (auxEnvHandle h) name (opacity, args, e)
+  AuxEnv.insert (auxEnvHandle h) name (C.Def name opacity args e)
 
 getEnumElim :: Handle -> [Ident] -> C.Value -> C.Comp -> [(EnumCase, C.Comp)] -> IO C.Comp
 getEnumElim h idents d defaultBranch branchList = do

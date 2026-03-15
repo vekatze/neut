@@ -156,9 +156,11 @@ rawTerm' :: TermMode -> Handle -> Hint -> T.Text -> C -> Parser (RT.RawTerm, C)
 rawTerm' mode h m headSymbol c = do
   case headSymbol of
     "define" -> do
-      rawTermDefine h O.Opaque m c
+      rawTermDefine h O.Opaque False m c
+    "script" -> do
+      rawTermDefine h O.Opaque True m c
     "inline" -> do
-      rawTermDefine h O.Clear m c
+      rawTermDefine h O.Clear False m c
     "introspect" -> do
       rawTermIntrospect h m c
     "include-text" -> do
@@ -621,13 +623,13 @@ parseDefInfoCod h m =
         return ([], (hole, []))
     ]
 
-rawTermDefine :: Handle -> O.Opacity -> Hint -> C -> Parser (RT.RawTerm, C)
-rawTermDefine h opacity m c0 = do
+rawTermDefine :: Handle -> O.Opacity -> Bool -> Hint -> C -> Parser (RT.RawTerm, C)
+rawTermDefine h opacity isScript m c0 = do
   (defInfo, c) <- parseDef h $ do
     (name, c1) <- baseName
     name' <- liftIO $ adjustHoleVar h name
     return (name', c1)
-  return (m :< RT.PiIntroFix opacity c0 defInfo, c)
+  return (m :< RT.PiIntroFix opacity isScript c0 defInfo, c)
 
 adjustHoleVar :: Handle -> BN.BaseName -> IO T.Text
 adjustHoleVar h bn = do

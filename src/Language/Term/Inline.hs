@@ -95,13 +95,13 @@ inline' h term = do
       defaultArgs' <- mapM (bimapM (inlineTypeBinder h) (inline' h)) defaultArgs
       e' <- inline' h e
       case lamKind of
-        LK.Fix opacity (mx, k, x, codType) -> do
+        LK.Fix opacity isScript (mx, k, x, codType) -> do
           codType' <- inlineType' h codType
-          let attr' = attr {AttrL.lamKind = LK.Fix opacity (mx, k, x, codType')}
+          let attr' = attr {AttrL.lamKind = LK.Fix opacity isScript (mx, k, x, codType')}
           return (m :< TM.PiIntro attr' impArgs' expArgs' defaultArgs' e')
-        LK.Normal mName codType -> do
+        LK.Normal mName isScript codType -> do
           codType' <- inlineType' h codType
-          let attr' = attr {AttrL.lamKind = LK.Normal mName codType'}
+          let attr' = attr {AttrL.lamKind = LK.Normal mName isScript codType'}
           return (m :< TM.PiIntro attr' impArgs' expArgs' defaultArgs' e')
     m :< TM.PiElim kind e impArgs expArgs defaultArgs -> do
       e' <- inline' h e
@@ -175,7 +175,7 @@ inline' h term = do
                                   popGuard h
                                   identity <- liftIO $ Gensym.newCount (gensymHandle h)
                                   let selfType = m :< TM.Pi PK.normal [] expBinders' [] codType'
-                                  let attr = AttrL.Attr {lamKind = LK.Fix O.Opaque (m, VK.Normal, self, selfType), identity}
+                                  let attr = AttrL.Attr {lamKind = LK.Fix O.Opaque False (m, VK.Normal, self, selfType), identity}
                                   let fun = m :< TM.PiIntro attr [] expBinders' [] body''
                                   return $ m :< TM.PiElim PEK.Normal fun [] expArgsAll []
                             _ -> do
@@ -601,7 +601,7 @@ canReduceByLamKind lamKind =
   case lamKind of
     LK.Normal {} ->
       True
-    LK.Fix O.Clear _ ->
+    LK.Fix O.Clear False _ ->
       True
     _ ->
       False
@@ -609,7 +609,7 @@ canReduceByLamKind lamKind =
 selfSubstForLamKind :: LK.LamKindF a -> TM.Term -> Subst.Subst
 selfSubstForLamKind lamKind selfTerm =
   case lamKind of
-    LK.Fix O.Clear (_, _, selfIdent, _) ->
+    LK.Fix O.Clear False (_, _, selfIdent, _) ->
       IntMap.singleton (Ident.toInt selfIdent) (Subst.Term selfTerm)
     _ ->
       IntMap.empty

@@ -37,10 +37,12 @@ toText term =
       showGlobalVariable x
     _ :< WT.PiIntro attr impArgs expArgs defaultArgs e -> do
       case attr of
-        AttrL.Attr {lamKind = LK.Fix opacity (_, k, x, codType)} ->
-          ( case opacity of
-              O.Opaque -> "define "
-              O.Clear -> "inline "
+        AttrL.Attr {lamKind = LK.Fix opacity isScript (_, k, x, codType)} ->
+          ( if isScript
+              then "script "
+              else case opacity of
+                O.Opaque -> "define "
+                O.Clear -> "inline "
           )
             <> showVarWithKind k x
             <> showImpArgs impArgs []
@@ -50,9 +52,9 @@ toText term =
             <> toTextType codType
             <> " "
             <> inBrace (toText e)
-        AttrL.Attr {lamKind = LK.Normal mName codType} -> do
+        AttrL.Attr {lamKind = LK.Normal mName isScript codType} -> do
           let name = fromMaybe "" mName
-          "function "
+          (if isScript then "script " else "function ")
             <> name
             <> showImpArgs impArgs []
             <> inParen (showFnDomArgList expArgs)

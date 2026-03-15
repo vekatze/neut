@@ -131,12 +131,28 @@ reduce h term = do
     C.UpElimCallVoid f vs e2 -> do
       let f' = Subst.substValue (subst h) f
       let vs' = map (Subst.substValue (subst h)) vs
-      e2' <- reduce h e2
-      case e2' of
-        C.Unreachable ->
-          return C.Unreachable
-        _ ->
-          return $ C.UpElimCallVoid f' vs' e2'
+      case f' of
+        C.VarGlobal x _ _ -> do
+          case Map.lookup x (defMap h) of
+            Just (opacity, xs, body)
+              | opacity == O.Clear -> do
+                  let sub = IntMap.fromList (zip (map Ident.toInt xs) vs')
+                  body' <- reduce (unionSubst h sub) body
+                  graftVoidReduce h body' e2
+            _ -> do
+              e2' <- reduce h e2
+              case e2' of
+                C.Unreachable ->
+                  return C.Unreachable
+                _ ->
+                  return $ C.UpElimCallVoid f' vs' e2'
+        _ -> do
+          e2' <- reduce h e2
+          case e2' of
+            C.Unreachable ->
+              return C.Unreachable
+            _ ->
+              return $ C.UpElimCallVoid f' vs' e2'
     C.EnumElim fvInfo v defaultBranch [] phiVarList cont -> do
       let fvInfo' = substFvInfo h fvInfo
       let v' = Subst.substValue (subst h) v
@@ -200,6 +216,39 @@ graftReduce h origTerm fvInfo e phiVarList cont = do
       reduce h' e'
     Nothing ->
       return origTerm -- unreachable
+
+graftVoidReduce :: Handle -> C.Comp -> C.Comp -> IO C.Comp
+graftVoidReduce h e cont = do
+  case graftVoid e cont of
+    Just e' ->
+      reduce h e'
+    Nothing ->
+      return e
+
+graftVoid :: C.Comp -> C.Comp -> Maybe C.Comp
+graftVoid e cont =
+  case e of
+    C.UpIntroVoid ->
+      return cont
+    C.SigmaElim flag ys v e2 -> do
+      e2' <- graftVoid e2 cont
+      return $ C.SigmaElim flag ys v e2'
+    C.UpElim flag x e1 e2 -> do
+      e2' <- graftVoid e2 cont
+      return $ C.UpElim flag x e1 e2'
+    C.UpElimCallVoid f vs e2 -> do
+      e2' <- graftVoid e2 cont
+      return $ C.UpElimCallVoid f vs e2'
+    C.EnumElim fvInfo v defaultBranch branchList ys e2 -> do
+      e2' <- graftVoid e2 cont
+      return $ C.EnumElim fvInfo v defaultBranch branchList ys e2'
+    C.Free v size e2 -> do
+      e2' <- graftVoid e2 cont
+      return $ C.Free v size e2'
+    C.Unreachable ->
+      return C.Unreachable
+    _ ->
+      Nothing
 
 extractIdent :: C.Value -> Maybe Ident
 extractIdent term =

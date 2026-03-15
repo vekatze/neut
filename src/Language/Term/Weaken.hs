@@ -196,10 +196,10 @@ weakenLet ((m, k, x, t), e) =
 weakenAttr :: AttrL.Attr TM.Type -> AttrL.Attr WT.WeakType
 weakenAttr AttrL.Attr {lamKind, identity} =
   case lamKind of
-    LK.Normal name codType ->
-      AttrL.normal' name identity (weakenType codType)
-    LK.Fix opacity xt ->
-      AttrL.Attr {lamKind = LK.Fix opacity (weakenTypeBinder xt), identity}
+    LK.Normal name isScript codType ->
+      AttrL.Attr {lamKind = LK.Normal name isScript (weakenType codType), identity}
+    LK.Fix opacity isScript xt ->
+      AttrL.Attr {lamKind = LK.Fix opacity isScript (weakenTypeBinder xt), identity}
 
 weakenPrimValue :: PV.PrimValue TM.Type -> WPV.WeakPrimValue WT.WeakType
 weakenPrimValue prim =
