@@ -27,6 +27,7 @@ import Language.Common.ArgNum
 import Language.Common.BaseLowType
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.Foreign qualified as F
+import Language.Common.ForeignCodType qualified as FCT
 import Language.Common.Ident
 import Language.Common.Ident.Reify
 import Language.Common.LowMagic
@@ -40,7 +41,7 @@ import Prelude hiding (null)
 
 data Value
   = VarLocal Ident
-  | VarGlobal DD.DefiniteDescription ArgNum
+  | VarGlobal DD.DefiniteDescription ArgNum (FCT.ForeignCodType BaseLowType)
   | VarStaticText T.Text
   | SigmaIntro [Value]
   | SigmaDataIntro Int [Value]
@@ -52,7 +53,7 @@ instance Show Value where
     case v of
       VarLocal x ->
         T.unpack $ toText' x
-      VarGlobal dd _ ->
+      VarGlobal dd _ _ ->
         T.unpack $ DD.reify dd
       VarStaticText dd ->
         T.unpack $ "\"" <> dd <> "\""
@@ -76,7 +77,9 @@ data Comp
   = PiElimDownElim ForceInline Value [Value] -- ((force v) v1 ... vn)
   | SigmaElim ShouldDeallocate [Ident] Value Comp
   | UpIntro Value
+  | UpIntroVoid
   | UpElim IsReducible Ident Comp Comp
+  | UpElimCallVoid Value [Value] Comp
   | EnumElim [(Int, Value)] Value Comp [(EnumCase, Comp)] [Ident] Comp
   | Primitive Primitive
   | Free Value Int Comp
@@ -93,9 +96,13 @@ instance Show Comp where
         h ++ " (" ++ intercalate "," (map show xs) ++ ") = " ++ show v ++ "\n" ++ show cont
       UpIntro v ->
         "return " ++ show v
+      UpIntroVoid ->
+        "return-void"
       UpElim isReducible x c1 c2 -> do
         let modifier = if isReducible then "" else "*"
         "let" ++ modifier ++ " " ++ show x ++ " = " ++ show c1 ++ "\n" ++ show c2
+      UpElimCallVoid f vs cont ->
+        "call-void " ++ show f ++ "@(" ++ intercalate "," (map show vs) ++ ")\n" ++ show cont
       EnumElim sub v c1 caseList phiVarList cont -> do
         "switch " ++ show sub ++ " " ++ show v ++ "\n<default>\n" ++ show c1 ++ unwords (map showEnumCase caseList) ++ "\nphi " <> show phiVarList <> " = (parent) in\n" <> show cont
       Primitive prim ->
@@ -126,6 +133,7 @@ type SubstValue =
 
 data CompStmt
   = Def DD.DefiniteDescription Opacity [Ident] Comp
+  | DefVoid DD.DefiniteDescription Opacity [Ident] Comp
   | Foreign [F.Foreign]
 
 fromDefTuple :: (DD.DefiniteDescription, (Opacity, [Ident], Comp)) -> CompStmt
@@ -158,7 +166,11 @@ getPhiList e =
       getPhiList cont
     UpIntro {} ->
       Nothing
+    UpIntroVoid ->
+      Nothing
     UpElim _ _ _ cont ->
+      getPhiList cont
+    UpElimCallVoid _ _ cont ->
       getPhiList cont
     EnumElim _ _ _ _ _ cont ->
       getPhiList cont
@@ -181,9 +193,14 @@ graft e1 phiVarList cont =
       return $ SigmaElim flag ys v e2'
     UpIntro {} ->
       Nothing
+    UpIntroVoid ->
+      Nothing
     UpElim flag x e2 e3 -> do
       e3' <- graft e3 phiVarList cont
       return $ UpElim flag x e2 e3'
+    UpElimCallVoid f vs e2 -> do
+      e2' <- graft e2 phiVarList cont
+      return $ UpElimCallVoid f vs e2'
     EnumElim fvInfo v defaultBranch branchList ys e2 -> do
       e2' <- graft e2 phiVarList cont
       return $ EnumElim fvInfo v defaultBranch branchList ys e2'
@@ -212,8 +229,12 @@ isUnreachable comp =
       isUnreachable cont
     UpIntro {} ->
       False
+    UpIntroVoid ->
+      False
     UpElim _ _ e1 e2 ->
       isUnreachable e1 || isUnreachable e2
+    UpElimCallVoid _ _ e ->
+      isUnreachable e
     EnumElim _ _ defaultBranch branchList _ cont -> do
       let b1 = isUnreachable cont
       let b2 = isUnreachable defaultBranch && all (isUnreachable . snd) branchList

@@ -41,7 +41,7 @@ reduce h term = do
       let v' = Subst.substValue (subst h) v
       let ds' = map (Subst.substValue (subst h)) ds
       case v' of
-        C.VarGlobal x _ -> do
+        C.VarGlobal x _ _ -> do
           case Map.lookup x (defMap h) of
             Just (opacity, xs, body)
               | forceInline || opacity == O.Clear -> do
@@ -96,6 +96,8 @@ reduce h term = do
                       return $ C.SigmaElim shouldDeallocate xs' v' e'
     C.UpIntro d -> do
       return $ C.UpIntro $ Subst.substValue (subst h) d
+    C.UpIntroVoid -> do
+      return C.UpIntroVoid
     C.UpElim isReducible x e1 e2 -> do
       e1' <- reduce h e1
       case e1' of
@@ -126,6 +128,15 @@ reduce h term = do
                   return e1' -- eta-reduce
             _ ->
               return $ C.UpElim isReducible x' e1' e2'
+    C.UpElimCallVoid f vs e2 -> do
+      let f' = Subst.substValue (subst h) f
+      let vs' = map (Subst.substValue (subst h)) vs
+      e2' <- reduce h e2
+      case e2' of
+        C.Unreachable ->
+          return C.Unreachable
+        _ ->
+          return $ C.UpElimCallVoid f' vs' e2'
     C.EnumElim fvInfo v defaultBranch [] phiVarList cont -> do
       let fvInfo' = substFvInfo h fvInfo
       let v' = Subst.substValue (subst h) v

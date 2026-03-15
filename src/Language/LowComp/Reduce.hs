@@ -29,6 +29,8 @@ reduce' h sub lowComp = do
   case lowComp of
     LC.Return d ->
       return $ LC.Return $ substLowValue sub d
+    LC.ReturnVoid ->
+      return LC.ReturnVoid
     LC.Let x op cont -> do
       let op' = substOp sub op
       case op' of

@@ -52,6 +52,8 @@ analyze lowComp = do
   case lowComp of
     LC.Return _ ->
       emptyScenario
+    LC.ReturnVoid ->
+      emptyScenario
     LC.Let _ op cont -> do
       let scenario = analyze cont
       case op of
@@ -185,6 +187,8 @@ cancel' :: Axis -> LC.Comp -> LC.Comp
 cancel' ctx lowComp =
   case lowComp of
     LC.Return {} ->
+      lowComp
+    LC.ReturnVoid ->
       lowComp
     LC.Let x op cont -> do
       let cont' = cancel' ctx cont

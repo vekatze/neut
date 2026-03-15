@@ -20,7 +20,6 @@ import Kernel.Emit.Builder
 import Kernel.Emit.Internal.LowComp qualified as EmitLowComp
 import Kernel.Emit.LowType
 import Kernel.Emit.LowValue
-import Kernel.Emit.PrimType (emitPrimType)
 import Language.Common.BaseLowType qualified as BLT
 import Language.Common.CreateSymbol qualified as Gensym
 import Language.Common.DataSize qualified as DS
@@ -29,8 +28,6 @@ import Language.Common.ForeignCodType qualified as FCT
 import Language.Common.Ident.Reify
 import Language.Common.LowType qualified as LT
 import Language.Common.LowType.FromBaseLowType qualified as LT
-import Language.Common.PrimNumSize
-import Language.Common.PrimType qualified as PT
 import Language.LowComp.DeclarationName qualified as DN
 import Language.LowComp.LowComp qualified as LC
 import Language.LowComp.Reduce qualified as Reduce
@@ -124,20 +121,18 @@ emitDeclarations declEnv = do
   map declToBuilder $ List.sort $ HashMap.toList declEnv
 
 emitDefinitions :: Handle -> LC.Def -> IO [Builder]
-emitDefinitions h (name, (args, body)) = do
+emitDefinitions h (name, LC.DefContent {codType = codType, args = args, body = body}) = do
   args' <- mapM (Gensym.newIdentFromIdent (Global.gensymHandle (globalHandle h))) args
   let sub = IntMap.fromList $ zipWith (\from to -> (toInt from, LC.VarLocal to)) args args'
   let reduceHandle = Reduce.new (Global.gensymHandle (globalHandle h))
   body' <- Reduce.reduce reduceHandle sub body
   let args'' = map (emitValue . LC.VarLocal) args'
-  emitDefinition h "ptr" (DD.toBuilder name) args'' body'
+  emitDefinition h (emitLowType codType) (DD.toBuilder name) args'' body'
 
 emitMain :: Handle -> LC.DefContent -> IO [Builder]
-emitMain h (args, body) = do
-  let baseSize = Platform.getDataSize (Global.platformHandle (globalHandle h))
-  let mainType = emitPrimType $ PT.Int (dataSizeToIntSize baseSize)
+emitMain h (LC.DefContent {codType = codType, args = args, body = body}) = do
   let args' = map (emitValue . LC.VarLocal) args
-  emitDefinition h mainType "main" args' body
+  emitDefinition h (emitLowType codType) "main" args' body
 
 declToBuilder :: (DN.DeclarationName, ([BLT.BaseLowType], FCT.ForeignCodType BLT.BaseLowType)) -> Builder
 declToBuilder (name, (dom, cod)) = do

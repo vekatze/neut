@@ -45,6 +45,7 @@ import Language.Common.DataSize qualified as DS
 import Language.Common.DecisionTree qualified as DT
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.Discriminant qualified as D
+import Language.Common.ForeignCodType qualified as FCT
 import Language.Common.Ident
 import Language.Common.Ident.Reify qualified as Ident
 import Language.Common.IsConstLike (IsConstLike)
@@ -120,6 +121,8 @@ clarify h stmtList = do
     case stmt of
       C.Def x opacity args e -> do
         liftIO $ CompDef.insert (compDefHandle h) x (opacity, args, e)
+      C.DefVoid x opacity args e -> do
+        liftIO $ CompDef.insert (compDefHandle h) x (opacity, args, e)
       C.Foreign {} ->
         return ()
   forM stmtList' $ \stmt -> do
@@ -131,6 +134,9 @@ clarify h stmtList = do
         -- liftIO $ putStrLn $ T.unpack $ T.pack $ show args
         -- liftIO $ putStrLn $ T.unpack $ T.pack $ show e'
         return $ C.Def x opacity args e'
+      C.DefVoid x opacity args e -> do
+        e' <- liftIO $ Reduce.reduce (reduceHandle h) e
+        return $ C.DefVoid x opacity args e'
       C.Foreign {} ->
         return stmt
 
@@ -184,7 +190,7 @@ clarifyStmt h stmt =
           (destParam, _) <- liftIO $ makeDestParam h
           let params = map fst xts''
           e'' <- liftIO $ toDestPassing h destParam params codType' e'
-          return $ C.Def f (SK.toLowOpacityTerm stmtKind) (destParam : params) e''
+          return $ C.DefVoid f (SK.toLowOpacityTerm stmtKind) (destParam : params) e''
         _ -> do
           return $ C.Def f (SK.toLowOpacityTerm stmtKind) (map fst xts'') e'
     StmtDefineType _ stmtKind (SavedHint m) f impArgs expArgs defaultArgs _ body -> do
@@ -233,7 +239,7 @@ clarifyStmt h stmt =
           >>= liftIO . Reduce.reduce (reduceHandle h)
       let resourceSpec = Utility.ResourceSpec {switch, arg, discard, copy, size, defaultValues = []}
       liftIO $ Utility.registerSwitcher (utilityHandle h) O.Clear liftedName resourceSpec
-      return $ C.Def dd O.Clear [] (C.UpIntro $ C.VarGlobal liftedName AN.argNumS4)
+      return $ C.Def dd O.Clear [] (C.UpIntro $ C.VarGlobal liftedName AN.argNumS4 (FCT.Cod BLT.Pointer))
     StmtVariadic {} -> do
       return $ C.Foreign [] -- nop
     StmtForeign foreignList ->
@@ -260,6 +266,7 @@ toDestPassing h dest fvs codType e = do
   (typeVarName, typeVar) <- Gensym.createVar (gensymHandle h) "type"
   (sizeVarName, sizeVar) <- Gensym.createVar (gensymHandle h) "size"
   memcpyResultVarName <- Gensym.newIdentFromText (gensymHandle h) "memcpy"
+  ignoredVarName <- Gensym.newIdentFromText (gensymHandle h) "_"
   let immediateClause =
         C.Primitive $
           C.Magic $
@@ -270,7 +277,7 @@ toDestPassing h dest fvs codType e = do
           memcpyResultVarName
           (C.Primitive $ C.Memcpy (C.VarLocal dest) resultVar sizeVar)
           (C.Free resultVar 0 (C.UpIntro C.null))
-  cont <- Utility.getEnumElim (utilityHandle h) fvs sizeVar boxedClause [(EC.Int (-1), immediateClause)]
+  branch <- Utility.getEnumElim (utilityHandle h) fvs sizeVar boxedClause [(EC.Int (-1), immediateClause)]
   return $
     C.UpElim False resultVarName e $
       C.UpElim True typeVarName codType $
@@ -278,7 +285,7 @@ toDestPassing h dest fvs codType e = do
           True
           sizeVarName
           (C.PiElimDownElim True typeVar [C.Int (dataSizeToIntSize (baseSize h)) 2, C.null])
-          cont
+          (C.UpElim True ignoredVarName branch C.UpIntroVoid)
 
 defaultEnvTypeName :: DD.DefiniteDescription -> DD.DefiniteDescription
 defaultEnvTypeName dd =
@@ -301,7 +308,13 @@ envTypeForGlobal h name = do
   return $
     if useImmediate
       then Sigma.immediateNullS4
-      else C.VarGlobal (defaultEnvTypeName name) AN.argNumS4
+      else C.VarGlobal (defaultEnvTypeName name) AN.argNumS4 (FCT.Cod BLT.Pointer)
+
+getGlobalRefInfo :: AttrVG.Attr -> (AN.ArgNum, FCT.ForeignCodType BLT.BaseLowType)
+getGlobalRefInfo AttrVG.Attr {argNum, isScript} =
+  if isScript
+    then (AN.add argNum (AN.fromInt 3), FCT.Void)
+    else (AN.add argNum (AN.fromInt 2), FCT.Cod BLT.Pointer)
 
 defaultLabelName :: DD.DefiniteDescription -> Int -> DD.DefiniteDescription
 defaultLabelName dd index =
@@ -343,7 +356,7 @@ registerDefaultFunctions h tenv name fvs impArgs defaultArgs =
         unless isAlreadyRegistered $ do
           body <- clarifyTerm h tenv' value
           liftIO $ registerClosure h labelName O.Clear impArgs' fvs' body
-        return $ C.VarGlobal labelName argNum
+        return $ C.VarGlobal labelName argNum (FCT.Cod BLT.Pointer)
 
 clarifyBinderBody ::
   Handle ->
@@ -416,12 +429,13 @@ clarifyTerm h tenv term =
       return $ C.UpIntro $ C.VarLocal x
     _ :< TM.VarGlobal (AttrVG.Attr {..}) x -> do
       envType <- liftIO $ envTypeForGlobal h x
+      let (globalArgNum, globalCodType) = getGlobalRefInfo AttrVG.Attr {..}
       return $
         C.UpIntro $
           C.SigmaIntro
             [ envType,
               C.SigmaIntro [],
-              C.VarGlobal x (AN.add argNum (AN.fromInt 2))
+              C.VarGlobal x globalArgNum globalCodType
             ]
     _ :< TM.PiIntro attr impArgs expArgs defaultArgs e -> do
       clarifyLambda h tenv attr (TM.chainOf tenv [term]) impArgs expArgs defaultArgs e
@@ -507,12 +521,13 @@ clarifyType h tenv ty =
       return $ C.UpIntro $ C.VarLocal x
     _ :< TM.TVarGlobal (AttrVG.Attr {..}) x -> do
       envType <- liftIO $ envTypeForGlobal h x
+      let (globalArgNum, globalCodType) = getGlobalRefInfo AttrVG.Attr {..}
       return $
         C.UpIntro $
           C.SigmaIntro
             [ envType,
               C.SigmaIntro [],
-              C.VarGlobal x (AN.add argNum (AN.fromInt 2))
+              C.VarGlobal x globalArgNum globalCodType
             ]
     _ :< TM.TyApp t args -> do
       t' <- clarifyType h tenv t
@@ -523,7 +538,7 @@ clarifyType h tenv ty =
     _ :< TM.Data _ name dataArgs -> do
       let argNum = AN.fromInt $ length dataArgs + 2
       envType <- liftIO $ envTypeForGlobal h name
-      let cls = C.UpIntro $ C.SigmaIntro [envType, C.SigmaIntro [], C.VarGlobal name argNum]
+      let cls = C.UpIntro $ C.SigmaIntro [envType, C.SigmaIntro [], C.VarGlobal name argNum (FCT.Cod BLT.Pointer)]
       dataArgs' <- mapM (clarifyTypePlus h tenv) dataArgs
       liftIO $ callClosure h PEK.Normal cls dataArgs' [] []
     _ :< TM.Box t -> do
@@ -543,7 +558,7 @@ clarifyType h tenv ty =
         PT.Pointer ->
           return Sigma.returnImmediatePointerS4
     _ :< TM.Resource dd resourceID -> do
-      return $ C.UpIntro $ C.VarGlobal (DD.makeResourceName dd resourceID) AN.argNumS4
+      return $ C.UpIntro $ C.VarGlobal (DD.makeResourceName dd resourceID) AN.argNumS4 (FCT.Cod BLT.Pointer)
     _ :< TM.Void ->
       return Sigma.returnImmediateNullS4
 
@@ -883,7 +898,7 @@ returnClosure h tenv lamID mName opacity fvs xts defaultValues e = do
   isAlreadyRegistered <- liftIO $ AuxEnv.checkIfAlreadyRegistered (auxEnvHandle h) name
   unless isAlreadyRegistered $ do
     liftIO $ registerClosure h name opacity xts'' fvs'' e
-  return $ C.UpIntro $ C.SigmaIntro [fvEnvSigma, fvEnv, C.VarGlobal name argNum]
+  return $ C.UpIntro $ C.SigmaIntro [fvEnvSigma, fvEnv, C.VarGlobal name argNum (FCT.Cod BLT.Pointer)]
 
 registerClosure ::
   Handle ->
@@ -945,20 +960,15 @@ callClosure h kind e impArgs expArgs defaultArgs = do
         (typeVarName, typeVar) <- Gensym.createVar (gensymHandle h) "type"
         (sizeVarName, sizeVar) <- Gensym.createVar (gensymHandle h) "size"
         (immediateDestName, immediateDestVar) <- Gensym.createVar (gensymHandle h) "dest"
-        immediateCallName <- Gensym.newIdentFromText (gensymHandle h) "call"
         (immediateResultName, immediateResultVar) <- Gensym.createVar (gensymHandle h) "result"
         (boxedDestName, boxedDestVar) <- Gensym.createVar (gensymHandle h) "dest"
-        boxedCallName <- Gensym.newIdentFromText (gensymHandle h) "call"
         let args = impVals ++ expVals ++ defVals ++ [envVar, flag]
         let immediateClause =
               C.UpElim
                 True
                 immediateDestName
                 (C.Primitive $ C.Alloc $ intTerm h (1 :: Integer))
-                ( C.UpElim
-                    True
-                    immediateCallName
-                    (C.PiElimDownElim False lamVar (immediateDestVar : args))
+                ( C.UpElimCallVoid lamVar (immediateDestVar : args)
                     ( C.UpElim
                         True
                         immediateResultName
@@ -971,10 +981,7 @@ callClosure h kind e impArgs expArgs defaultArgs = do
                 True
                 boxedDestName
                 (C.Primitive $ C.Alloc sizeVar)
-                ( C.UpElim
-                    True
-                    boxedCallName
-                    (C.PiElimDownElim False lamVar (boxedDestVar : args))
+                ( C.UpElimCallVoid lamVar (boxedDestVar : args)
                     (C.UpIntro boxedDestVar)
                 )
         branch <-

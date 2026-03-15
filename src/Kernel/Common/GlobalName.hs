@@ -11,13 +11,14 @@ import Language.Common.ArgNum
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.Discriminant qualified as D
 import Language.Common.IsConstLike
+import Language.Common.IsScript
 import Language.Common.PrimOp
 import Language.Common.PrimType qualified as PT
 import Language.Common.RuleKind (RuleKind)
 import Logger.Hint
 
 data GlobalName
-  = TopLevelFuncTerm ArgNum IsConstLike Bool
+  = TopLevelFuncTerm ArgNum IsConstLike IsScript Bool
   | TopLevelFuncType ArgNum IsConstLike Bool
   | PrimType PT.PrimType
   | PrimOp PrimOp
@@ -29,7 +30,7 @@ data GlobalName
 getIsConstLike :: GlobalName -> IsConstLike
 getIsConstLike gn =
   case gn of
-    TopLevelFuncTerm _ isConstLike _ ->
+    TopLevelFuncTerm _ isConstLike _ _ ->
       isConstLike
     TopLevelFuncType _ isConstLike _ ->
       isConstLike
@@ -43,7 +44,7 @@ getIsConstLike gn =
 hasNoArgs :: GlobalName -> Bool
 hasNoArgs gn =
   case gn of
-    TopLevelFuncTerm argNum _ _ ->
+    TopLevelFuncTerm argNum _ _ _ ->
       argNum == fromInt 0
     TopLevelFuncType argNum _ _ ->
       argNum == fromInt 0
@@ -61,8 +62,8 @@ hasNoArgs gn =
 disableConstLikeFlag :: GlobalName -> GlobalName
 disableConstLikeFlag gn =
   case gn of
-    TopLevelFuncTerm argNum _ isMacro ->
-      TopLevelFuncTerm argNum False isMacro
+    TopLevelFuncTerm argNum _ isScript isMacro ->
+      TopLevelFuncTerm argNum False isScript isMacro
     TopLevelFuncType argNum _ isMacro ->
       TopLevelFuncType argNum False isMacro
     Data argNum consInfo _ ->

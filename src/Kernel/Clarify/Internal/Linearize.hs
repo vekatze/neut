@@ -133,6 +133,8 @@ distinguishComp h z term =
     C.UpIntro d -> do
       (vs, d') <- distinguishValue h z d
       return (vs, C.UpIntro d')
+    C.UpIntroVoid ->
+      return ([], C.UpIntroVoid)
     C.UpElim isReducible x e1 e2 -> do
       (vs1, e1') <- distinguishComp h z e1
       if z == x
@@ -140,6 +142,11 @@ distinguishComp h z term =
         else do
           (vs2, e2') <- distinguishComp h z e2
           return (vs1 ++ vs2, C.UpElim isReducible x e1' e2')
+    C.UpElimCallVoid f ds e2 -> do
+      (vs1, f') <- distinguishValue h z f
+      (vss, ds') <- mapAndUnzipM (distinguishValue h z) ds
+      (vs2, e2') <- distinguishComp h z e2
+      return (vs1 ++ concat vss ++ vs2, C.UpElimCallVoid f' ds' e2')
     C.EnumElim fvInfo d defaultBranch branchList phiVarList cont -> do
       let (vs, ds) = unzip fvInfo
       (vss, ds') <- mapAndUnzipM (distinguishValue h z) ds

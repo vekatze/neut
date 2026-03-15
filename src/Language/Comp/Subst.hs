@@ -41,12 +41,19 @@ substComp h sub term =
     C.UpIntro v -> do
       let v' = substValue sub v
       return $ C.UpIntro v'
+    C.UpIntroVoid ->
+      return C.UpIntroVoid
     C.UpElim isReducible x e1 e2 -> do
       e1' <- substComp h sub e1
       x' <- Gensym.newIdentFromIdent (gensymHandle h) x
       let sub' = IntMap.insert (Ident.toInt x) (C.VarLocal x') sub
       e2' <- substComp h sub' e2
       return $ C.UpElim isReducible x' e1' e2'
+    C.UpElimCallVoid f vs e2 -> do
+      let f' = substValue sub f
+      let vs' = map (substValue sub) vs
+      e2' <- substComp h sub e2
+      return $ C.UpElimCallVoid f' vs' e2'
     C.EnumElim fvInfo v defaultBranch branchList phiVar cont -> do
       let (is, ds) = unzip fvInfo
       let ds' = map (substValue sub) ds

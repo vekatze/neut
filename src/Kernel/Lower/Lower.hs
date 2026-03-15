@@ -92,7 +92,7 @@ lower :: Handle -> [C.CompStmt] -> App LC.LowCode
 lower h stmtList = do
   liftIO $ registerInternalNames h stmtList
   liftIO $ forM DD.baseTypes $ \dd ->
-    insDeclEnv h (DN.In dd) AN.argNumS4
+    insDeclEnv h (DN.In dd) AN.argNumS4 (FCT.Cod BLT.Pointer)
   stmtList' <- catMaybes <$> mapM (lowerStmt h) stmtList
   LC.LowCodeNormal <$> liftIO (summarize h stmtList')
 
@@ -100,7 +100,7 @@ lowerEntryPoint :: Handle -> MainTarget -> [C.CompStmt] -> App LC.LowCode
 lowerEntryPoint h target stmtList = do
   liftIO $ registerInternalNames h stmtList
   mainDD <- Env.getMainDefiniteDescriptionByTarget (envHandle h) target
-  liftIO $ insDeclEnv h (DN.In mainDD) AN.zero
+  liftIO $ insDeclEnv h (DN.In mainDD) AN.zero (FCT.Cod BLT.Pointer)
   mainDef <- liftIO $ constructMainTerm h mainDD
   stmtList' <- catMaybes <$> mapM (lowerStmt h) stmtList
   LC.LowCodeMain mainDef <$> liftIO (summarize h stmtList')
@@ -111,12 +111,15 @@ summarize h stmtList = do
   staticTextList <- readIORef $ staticTextList h
   return (declEnv, stmtList, staticTextList)
 
-lowerStmt :: Handle -> C.CompStmt -> App (Maybe (DD.DefiniteDescription, ([Ident], LC.Comp)))
+lowerStmt :: Handle -> C.CompStmt -> App (Maybe LC.Def)
 lowerStmt h stmt = do
   case stmt of
     C.Def name _ args e -> do
       e' <- lowerComp h e >>= liftIO . return . cancel
-      return $ Just (name, (args, e'))
+      return $ Just (name, LC.DefContent LT.Pointer args e')
+    C.DefVoid name _ args e -> do
+      e' <- lowerComp h e >>= liftIO . return . cancel
+      return $ Just (name, LC.DefContent LT.Void args e')
     C.Foreign {} -> do
       return Nothing
 
@@ -125,6 +128,8 @@ registerInternalNames h stmtList =
   forM_ stmtList $ \stmt -> do
     case stmt of
       C.Def name _ _ _ -> do
+        modifyIORef' (definedNameSet h) $ S.insert name
+      C.DefVoid name _ _ _ -> do
         modifyIORef' (definedNameSet h) $ S.insert name
       C.Foreign foreignList ->
         forM_ foreignList $ \(F.Foreign _ name domList cod) -> do
@@ -141,7 +146,8 @@ constructMainTerm h mainName = do
           LC.Cont (LC.Store LT.Pointer (LC.VarLocal argv) argvGlobal) $
             LC.Cont (LC.Call LT.Pointer (LC.VarGlobal mainName) []) $
               LC.Return (LC.Int 0)
-  return ([argc, argv], mainTerm)
+  let mainType = LT.PrimNum $ PT.Int $ dataSizeToIntSize (baseSize h)
+  return $ LC.DefContent mainType [argc, argv] mainTerm
 
 lowerComp :: Handle -> C.Comp -> App LC.Comp
 lowerComp h term =
@@ -170,10 +176,21 @@ lowerComp h term =
     C.UpIntro d -> do
       (resultVar, resultValue) <- liftIO $ newValueLocal h "result"
       lowerValue h resultVar d (LC.Return resultValue)
+    C.UpIntroVoid ->
+      return LC.ReturnVoid
     C.UpElim _ x e1 e2 -> do
       e1' <- lowerComp h e1
       e2' <- lowerComp h e2
       return $ commConv x e1' e2'
+    C.UpElimCallVoid f ds e2 -> do
+      (funcVar, func) <- liftIO $ newValueLocal h "func"
+      (castFuncVar, castFunc) <- liftIO $ newValueLocal h "func"
+      (argVars, argValues) <- mapAndUnzipM (const $ liftIO $ newValueLocal h "arg") ds
+      e2' <- lowerComp h e2
+      lowerValue h funcVar f
+        =<< lowerValues h (zip argVars ds)
+        =<< cast h castFuncVar func LT.Pointer
+        =<< return (LC.Cont (LC.Call LT.Void castFunc (map (LT.Pointer,) argValues)) e2')
     C.EnumElim fvInfo v defaultBranch branchList phiList cont -> do
       let sub = IntMap.fromList fvInfo
       defaultBranch' <- liftIO $ Subst.subst (substHandle h) sub defaultBranch >>= Reduce.reduce (reduceHandle h)
@@ -430,10 +447,10 @@ loadElements h basePointer values cont =
 lowerValue :: Handle -> Ident -> C.Value -> LC.Comp -> App LC.Comp
 lowerValue h resultVar v cont =
   case v of
-    C.VarGlobal globalName argNum -> do
+    C.VarGlobal globalName argNum cod -> do
       lowNameSet <- liftIO $ getDefinedNameSet h
       unless (S.member globalName lowNameSet) $ do
-        liftIO $ insDeclEnv h (DN.In globalName) argNum
+        liftIO $ insDeclEnv h (DN.In globalName) argNum cod
       uncast h resultVar (LC.VarGlobal globalName) LT.Pointer cont
     C.VarLocal y ->
       return $ LC.Let resultVar (LC.nop $ LC.VarLocal y) cont
@@ -510,9 +527,9 @@ newValueLocal h name = do
   x <- Gensym.newIdentFromText (gensymHandle h) name
   return (x, LC.VarLocal x)
 
-insDeclEnv :: Handle -> DN.DeclarationName -> AN.ArgNum -> IO ()
-insDeclEnv h k argNum = do
-  modifyIORef' (declEnv h) $ Map.insert k (BLT.toVoidPtrSeq argNum, FCT.Void)
+insDeclEnv :: Handle -> DN.DeclarationName -> AN.ArgNum -> FCT.ForeignCodType BLT.BaseLowType -> IO ()
+insDeclEnv h k argNum cod = do
+  modifyIORef' (declEnv h) $ Map.insert k (BLT.toVoidPtrSeq argNum, cod)
 
 insDeclEnv' :: Handle -> DN.DeclarationName -> [BLT.BaseLowType] -> FCT.ForeignCodType BLT.BaseLowType -> IO ()
 insDeclEnv' h k domList cod = do
@@ -566,6 +583,8 @@ commConv x lowComp cont2 =
   case lowComp of
     LC.Return d ->
       LC.Let x (LC.nop d) cont2
+    LC.ReturnVoid ->
+      LC.Unreachable -- shouldn't occur
     LC.Let y op cont1 -> do
       let cont = commConv x cont1 cont2
       LC.Let y op cont
