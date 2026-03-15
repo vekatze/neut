@@ -215,7 +215,7 @@ decStmt stmt =
     RawStmtDefineResource c1 _ (name, c2) resourceSize discarder copier trailingComment -> do
       let series =
             SE.Series
-              { elems = [discarder, copier],
+              { elems = [resourceSize, discarder, copier],
                 trailingComment,
                 prefix = Nothing,
                 container = Just SE.Brace,
@@ -225,13 +225,7 @@ decStmt stmt =
       attachStmtComment (c1 ++ c2) $
         PI.arrange
           [ PI.horizontal $ D.text "resource",
-            PI.horizontal $
-              D.join
-                [ D.text $ BN.reify name,
-                  D.text "[",
-                  RT.toDoc resourceSize,
-                  D.text "]"
-                ],
+            PI.horizontal $ D.text $ BN.reify name,
             PI.inject $ SE.decode $ fmap RT.toDoc series
           ]
     RawStmtVariadic kind c1 _ (name, c2) (ct, leaf, _) (cn, node, _) (cr, root, _) trailingComment _ -> do

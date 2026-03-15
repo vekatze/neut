@@ -304,20 +304,12 @@ parseResource h = do
   c1 <- keyword "resource"
   m <- getCurrentHint
   (name, c2) <- baseName
-  resourceSize <- parseResourceSize h
   (handlers, c) <- seriesBrace $ rawExpr h
   case SE.elems handlers of
-    [discarder, copier] -> do
+    [resourceSize, discarder, copier] -> do
       return (RawStmtDefineResource c1 m (name, c2) resourceSize discarder copier (SE.trailingComment handlers), c)
     _ ->
-      lift $ raiseError m $ "`resource` must have 2 elements, but found: " <> T.pack (show $ length $ SE.elems handlers)
-
-parseResourceSize :: Handle -> Parser RT.RawTerm
-parseResourceSize h = do
-  _ <- delimiter "["
-  (size, _) <- rawExpr h
-  _ <- delimiter "]"
-  return size
+      lift $ raiseError m $ "`resource` must have 3 elements, but found: " <> T.pack (show $ length $ SE.elems handlers)
 
 parseVariadic :: Handle -> RuleKind -> Parser (RawStmt, C)
 parseVariadic h vk = do

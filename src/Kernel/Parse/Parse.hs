@@ -116,9 +116,9 @@ postprocess' h stmt = do
       let name' = Locator.attachCurrentLocator h name
       let consInfo' = fmap (liftRawCons h) consInfo
       defineData m name' args (SE.extract consInfo') loc
-    RawStmtDefineResource c m (name, c1) resourceSize (c2, discarder) (c3, copier) c4 -> do
+    RawStmtDefineResource c m (name, c1) (c2, resourceSize) (c3, discarder) (c4, copier) c5 -> do
       let name' = Locator.attachCurrentLocator h name
-      [PostRawStmtDefineResource c m (name', c1) resourceSize (c2, discarder) (c3, copier) c4]
+      [PostRawStmtDefineResource c m (name', c1) (c2, resourceSize) (c3, discarder) (c4, copier) c5]
     RawStmtVariadic kind _ m (name, _) (_, leaf, leafType) (_, node, nodeType) (_, root, rootType) _ loc -> do
       let name' = Locator.attachCurrentLocator h name
       defineVariadic kind m name' (leaf, leafType) (node, nodeType) (root, rootType) loc
