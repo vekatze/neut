@@ -187,7 +187,7 @@ decStmt stmt =
         SK.Define ->
           RT.decodeDef (RT.nameToDoc . N.Var) "define" c (fmap BN.reify def)
         SK.Script ->
-          RT.decodeDef (RT.nameToDoc . N.Var) "script" c (fmap BN.reify def)
+          RT.decodeDef (RT.nameToDoc . N.Var) "define" c (fmap BN.reify def)
         SK.Inline ->
           if RT.isConstLike (RT.geist def)
             then RT.decodeDef (RT.nameToDoc . N.Var) "constant" c (fmap BN.reify def)

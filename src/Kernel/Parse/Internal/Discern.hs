@@ -342,7 +342,8 @@ discern h term =
       body' <- discern h''' body
       ensureLayerClosedness m h''' body'
       return $ m :< WT.PiIntro (AttrL.normal' name lamID codType') impArgs' expArgs' defaultArgs' body'
-    m :< RT.PiIntroFix opacity isScript _ (RT.RawDef {geist, body, endLoc}) -> do
+    m :< RT.PiIntroFix opacity _ (RT.RawDef {geist, body, endLoc}) -> do
+      let isScript = RT.isScript geist
       let impArgs = RT.extractImpArgs $ RT.impArgs geist
       let defaultArgs = SE.extract $ fst $ RT.defaultArgs geist
       let expArgs = RT.extractArgs $ RT.expArgs geist

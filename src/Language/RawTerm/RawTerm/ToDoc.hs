@@ -50,15 +50,13 @@ toDoc term =
       D.text $ DD.reify dd -- unreachable
     _ :< PiIntro c def -> do
       decodeDef lambdaNameToDoc "function" c def
-    _ :< PiIntroFix opacity isScript c def -> do
+    _ :< PiIntroFix opacity c def -> do
       let keyword =
-            if isScript
-              then "script"
-              else case opacity of
-                O.Opaque ->
-                  "define"
-                O.Clear ->
-                  "inline"
+            case opacity of
+              O.Opaque ->
+                "define"
+              O.Clear ->
+                "inline"
       decodeDef (nameToDoc . N.Var) keyword c def
     _ :< PiElim e c1 mImpArgs c2 expArgs c3 mDefaultArgs -> do
       let expArgsDoc c =
@@ -663,7 +661,8 @@ decGeist
         defaultArgs = (defaultArgs, c2),
         expArgs = (expArgs, c3),
         cod = (c4, cod),
-        isConstLike
+        isConstLike,
+        isScript
       }
     ) = do
     let hasExp = (not isConstLike) || (not (SE.isEmpty expArgs))
@@ -708,7 +707,7 @@ decGeist
         let codDelim =
               if isConstLike
                 then PI.horizontal $ attachComment cColon' $ D.text ":"
-                else PI.delimiter $ attachComment cColon' $ D.text "->"
+                else PI.delimiter $ attachComment cColon' $ D.text (if isScript then "->>" else "->")
         PI.arrange
           [ PI.inject $ attachComment c0 $ nameDecoder name,
             PI.inject $ decodeImpParams impArgs,

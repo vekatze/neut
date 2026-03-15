@@ -33,6 +33,7 @@ makeDef m name e t loc = do
                 { loc = m',
                   name = (name, []),
                   isConstLike = False,
+                  isScript = False,
                   impArgs = (SE.emptySeriesAC, []),
                   defaultArgs = RT.emptyDefaultArgs,
                   expArgs = (SE.emptySeriesPC, []),

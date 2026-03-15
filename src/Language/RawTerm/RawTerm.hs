@@ -110,7 +110,7 @@ data RawTermF a
   = Var Name
   | VarGlobal DD.DefiniteDescription GN.GlobalName
   | PiIntro C FuncInfo
-  | PiIntroFix O.Opacity IsScript C DefInfo
+  | PiIntroFix O.Opacity C DefInfo
   | PiElim a C (Maybe (SE.Series RawType)) C (SE.Series a) C (Maybe (SE.Series (Hint, Key, C, C, a)))
   | PiElimByKey Name C (Maybe (SE.Series RawType)) C (SE.Series (Hint, Key, C, C, a)) -- auxiliary syntax for key-call
   | PiElimRule Name C (SE.Series a)
@@ -192,6 +192,7 @@ data RawGeist a = RawGeist
   { loc :: Hint,
     name :: (a, C),
     isConstLike :: IsConstLike,
+    isScript :: IsScript,
     impArgs :: (SE.Series (RawBinder RawType), C),
     expArgs :: Args RawType,
     defaultArgs :: (SE.Series (RawBinder RawType, RawTerm), C),
@@ -261,6 +262,7 @@ lam loc m varList codType e =
                 { loc = m,
                   name = (Nothing, []),
                   isConstLike = False,
+                  isScript = False,
                   impArgs = (SE.emptySeries (Just SE.Angle) SE.Comma, []),
                   defaultArgs = (SE.emptySeries (Just SE.Bracket) SE.Comma, []),
                   expArgs = (SE.assoc $ SE.fromList SE.Paren SE.Comma varList, []),

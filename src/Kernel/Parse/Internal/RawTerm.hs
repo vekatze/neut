@@ -159,11 +159,9 @@ rawTerm' :: TermMode -> Handle -> Hint -> T.Text -> C -> Parser (RT.RawTerm, C)
 rawTerm' mode h m headSymbol c = do
   case headSymbol of
     "define" -> do
-      rawTermDefine h O.Opaque False m c
-    "script" -> do
-      rawTermDefine h O.Opaque True m c
+      rawTermDefine h O.Opaque m c
     "inline" -> do
-      rawTermDefine h O.Clear False m c
+      rawTermDefine h O.Clear m c
     "introspect" -> do
       rawTermIntrospect h m c
     "include-text" -> do
@@ -540,8 +538,8 @@ parseGeist h nameParser = do
   expArgs@(expSeries, _) <- seriesParen $ preBinder h
   defaultArgs <- parseDefaultParams h
   lift $ ensureArgumentLinearity S.empty $ map (\(mx, _, x, _, _, _) -> (mx, x)) $ SE.extract expSeries
-  (c2, (cod, c)) <- parseDefInfoCod h
-  return (RT.RawGeist {loc, name = (name', c1), isConstLike, impArgs, defaultArgs, expArgs, cod = (c2, cod)}, c)
+  (isScript, c2, (cod, c)) <- parseDefInfoCod h
+  return (RT.RawGeist {loc, name = (name', c1), isConstLike, isScript, impArgs, defaultArgs, expArgs, cod = (c2, cod)}, c)
 
 parseGeistOptionalCod :: Handle -> Parser (a, C) -> Parser (RT.RawGeist a, C)
 parseGeistOptionalCod h nameParser = do
@@ -552,8 +550,8 @@ parseGeistOptionalCod h nameParser = do
   expArgs@(expSeries, _) <- seriesParen $ preBinder h
   defaultArgs <- parseDefaultParams h
   lift $ ensureArgumentLinearity S.empty $ map (\(mx, _, x, _, _, _) -> (mx, x)) $ SE.extract expSeries
-  (c2, (cod, c)) <- parseDefInfoCodOptional h
-  return (RT.RawGeist {loc, name = (name', c1), isConstLike, impArgs, defaultArgs, expArgs, cod = (c2, cod)}, c)
+  (isScript, c2, (cod, c)) <- parseDefInfoCodOptional h
+  return (RT.RawGeist {loc, name = (name', c1), isConstLike, isScript, impArgs, defaultArgs, expArgs, cod = (c2, cod)}, c)
 
 parseAliasGeist :: Handle -> Parser (a, C) -> Parser (RT.RawGeist a, C)
 parseAliasGeist h nameParser = do
@@ -571,7 +569,8 @@ parseAliasGeist h nameParser = do
   lift $ ensureArgumentLinearity S.empty $ map (\(mx, _, x, _, _, _) -> (mx, x)) $ SE.extract expSeries
   m <- getCurrentHint
   let cod = m :< RT.Tau
-  return (RT.RawGeist {loc, name = (name', c1), isConstLike, impArgs, defaultArgs, expArgs, cod = ([], cod)}, [])
+  let isScript = False
+  return (RT.RawGeist {loc, name = (name', c1), isConstLike, isScript, impArgs, defaultArgs, expArgs, cod = ([], cod)}, [])
 
 parseResourceGeist :: Parser (a, C) -> Parser (RT.RawGeist a, C)
 parseResourceGeist nameParser = do
@@ -579,10 +578,11 @@ parseResourceGeist nameParser = do
   (name', c1) <- nameParser
   let impArgs = (SE.emptySeriesAC, [])
   let isConstLike = True
+  let isScript = False
   let expArgs = (SE.emptySeries (Just SE.Paren) SE.Comma, [])
   let defaultArgs = (SE.emptySeries (Just SE.Bracket) SE.Comma, [])
   let cod = loc :< RT.Tau
-  return (RT.RawGeist {loc, name = (name', c1), isConstLike, impArgs, defaultArgs, expArgs, cod = ([], cod)}, [])
+  return (RT.RawGeist {loc, name = (name', c1), isConstLike, isScript, impArgs, defaultArgs, expArgs, cod = ([], cod)}, [])
 
 parseConstantDef :: Handle -> Parser (a, C) -> Parser (RT.RawDef a, C)
 parseConstantDef h nameParser = do
@@ -609,7 +609,8 @@ parseConstantGeist h nameParser = do
   defaultArgs <- parseDefaultParams h
   c2 <- delimiter ":"
   (cod, c) <- rawType h
-  return (RT.RawGeist {loc, name = (name', c1), isConstLike, impArgs, defaultArgs, expArgs, cod = (c2, cod)}, c)
+  let isScript = False
+  return (RT.RawGeist {loc, name = (name', c1), isConstLike, isScript, impArgs, defaultArgs, expArgs, cod = (c2, cod)}, c)
 
 parseImplicitParams :: Handle -> Parser (SE.Series (RawBinder RT.RawType), C)
 parseImplicitParams h =
@@ -662,29 +663,43 @@ ensureArgumentLinearity foundVarSet vs =
       | otherwise ->
           ensureArgumentLinearity (S.insert name foundVarSet) rest
 
-parseDefInfoCod :: Handle -> Parser (C, (RT.RawType, C))
+parseDefInfoCod :: Handle -> Parser (Bool, C, (RT.RawType, C))
 parseDefInfoCod h = do
-  c <- choice [delimiter "->", delimiter ":"]
+  (isScript, c) <-
+    choice
+      [ do
+          c <- delimiter "->>"
+          return (True, c),
+        do
+          c <- choice [delimiter "->", delimiter ":"]
+          return (False, c)
+      ]
   t <- rawType h
-  return (c, t)
+  return (isScript, c, t)
 
-parseDefInfoCodOptional :: Handle -> Parser (C, (RT.RawType, C))
+parseDefInfoCodOptional :: Handle -> Parser (Bool, C, (RT.RawType, C))
 parseDefInfoCodOptional h =
   choice
     [ parseDefInfoCod h,
       do
         m <- getCurrentHint
         hole <- liftIO $ RT.createTypeHole (gensymHandle h) m
-        return ([], (hole, []))
+        return (False, [], (hole, []))
     ]
 
-rawTermDefine :: Handle -> O.Opacity -> Bool -> Hint -> C -> Parser (RT.RawTerm, C)
-rawTermDefine h opacity isScript m c0 = do
+rawTermDefine :: Handle -> O.Opacity -> Hint -> C -> Parser (RT.RawTerm, C)
+rawTermDefine h opacity m c0 = do
   (defInfo, c) <- parseDef h $ do
     (name, c1) <- baseName
     name' <- liftIO $ adjustHoleVar h name
     return (name', c1)
-  return (m :< RT.PiIntroFix opacity isScript c0 defInfo, c)
+  case opacity of
+    O.Clear
+      | RT.isScript (RT.geist defInfo) ->
+          lift $ raiseError m "`inline` cannot use `->>`"
+    _ ->
+      return ()
+  return (m :< RT.PiIntroFix opacity c0 defInfo, c)
 
 adjustHoleVar :: Handle -> BN.BaseName -> IO T.Text
 adjustHoleVar h bn = do

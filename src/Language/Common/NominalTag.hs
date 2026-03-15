@@ -31,7 +31,7 @@ nominalTagToText tag =
     Define ->
       "define"
     Script ->
-      "script"
+      "define"
     Inline ->
       "inline"
     Constant ->

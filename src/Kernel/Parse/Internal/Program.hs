@@ -61,7 +61,6 @@ parseStmt :: Handle -> Parser (RawStmt, C)
 parseStmt h = do
   choice
     [ parseDefine h,
-      parseScript h,
       parseData h,
       parseInline h,
       parseConstant h,
@@ -134,18 +133,17 @@ parseDefine h = do
   c1 <- keyword "define"
   (def, c) <- parseDef h baseName
   let defName = RT.getDefName def
+  let isScript = RT.isScript $ RT.geist def
   if defName == BN.mainName || defName == BN.zenName
-    then return (RawStmtDefineTerm c1 (SK.Main ()) def, c)
-    else return (RawStmtDefineTerm c1 SK.Define def, c)
-
-parseScript :: Handle -> Parser (RawStmt, C)
-parseScript h = do
-  c1 <- keyword "script"
-  (def, c) <- parseDef h baseName
-  let defName = RT.getDefName def
-  let m = RT.loc $ RT.geist def
-  checkNotMainOrZen defName m "script"
-  return (RawStmtDefineTerm c1 SK.Script def, c)
+    then do
+      let m = RT.loc $ RT.geist def
+      if isScript
+        then lift $ raiseError m $ "`main` and `zen` cannot use `->>`"
+        else return (RawStmtDefineTerm c1 (SK.Main ()) def, c)
+    else
+      if isScript
+        then return (RawStmtDefineTerm c1 SK.Script def, c)
+        else return (RawStmtDefineTerm c1 SK.Define def, c)
 
 parseMacro :: Handle -> Parser (RawStmt, C)
 parseMacro h = do
@@ -172,7 +170,9 @@ parseInline h = do
   let defName = RT.getDefName def
   let m = RT.loc $ RT.geist def
   checkNotMainOrZen defName m "inline"
-  return (RawStmtDefineTerm c1 SK.Inline def, c)
+  if RT.isScript $ RT.geist def
+    then lift $ raiseError m $ "`inline` cannot use `->>`"
+    else return (RawStmtDefineTerm c1 SK.Inline def, c)
 
 parseConstant :: Handle -> Parser (RawStmt, C)
 parseConstant h = do
@@ -273,6 +273,7 @@ parseNominalData h = do
           { loc = m,
             name = (name, c1),
             isConstLike = isConstLike,
+            isScript = False,
             impArgs = RT.emptyImpArgs,
             defaultArgs = RT.emptyDefaultArgs,
             expArgs = expArgs,
