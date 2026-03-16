@@ -51,10 +51,10 @@ data StmtF t a
       SavedHint
       DD.DefiniteDescription
       Int
-      a
-      t
-      a
-      a
+      t -- unitType
+      a -- discarder
+      a -- copier
+      a -- resourceSize
   | StmtVariadic RuleKind SavedHint DD.DefiniteDescription
   | StmtForeign [F.Foreign]
   deriving (Generic)

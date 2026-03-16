@@ -110,16 +110,16 @@ inferStmt h stmt =
       body' <- inferType h''' body
       stmtKind' <- inferStmtKindType h''' stmtKind
       return $ WeakStmtDefineType isConstLike stmtKind' m x impArgs' expArgs' defaultArgs' codType' body'
-    WeakStmtDefineResource m dd resourceID resourceSize unitType discarder copier -> do
+    WeakStmtDefineResource m dd resourceID unitType discarder copier resourceSize -> do
+      (discarder', _) <- infer h discarder
+      (copier', _) <- infer h copier
       (resourceSize', resourceSizeType) <- infer h resourceSize
       intType <- getIntType (platformHandle h) m
       unitType' <- inferType h unitType
-      (discarder', _) <- infer h discarder
-      (copier', _) <- infer h copier
       let piType = m :< WT.Pi (PK.Normal True) [] [] [] (m :< WT.Tau)
       liftIO $ Constraint.insert (constraintHandle h) intType resourceSizeType
       liftIO $ insertType h dd piType
-      return $ WeakStmtDefineResource m dd resourceID resourceSize' unitType' discarder' copier'
+      return $ WeakStmtDefineResource m dd resourceID unitType' discarder' copier' resourceSize'
     WeakStmtVariadic kind m dd -> do
       return $ WeakStmtVariadic kind m dd
     WeakStmtNominal m geistList -> do

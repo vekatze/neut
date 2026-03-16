@@ -238,7 +238,7 @@ clarifyStmt h stmt =
           let tenv = TM.insTypeEnv xts IntMap.empty
           body' <- clarifyStmtDefineTypeBody h tenv xts'' body
           return $ C.Def f (SK.toLowOpacityType stmtKind) (map fst xts'') body'
-    StmtDefineResource (SavedHint m) dd resourceID resourceSize _ discarder copier -> do
+    StmtDefineResource (SavedHint m) dd resourceID _ discarder copier resourceSize -> do
       let liftedName = DD.makeResourceName dd resourceID
       switch <- liftIO $ Gensym.createVar (gensymHandle h) "switch"
       arg@(argVarName, _) <- liftIO $ Gensym.createVar (gensymHandle h) "arg"

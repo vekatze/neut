@@ -218,10 +218,10 @@ decStmt stmt =
             D.text " ",
             SE.decode $ fmap decConsInfo consInfo
           ]
-    RawStmtDefineResource c1 _ (name, c2) resourceSize discarder copier trailingComment -> do
+    RawStmtDefineResource c1 _ (name, c2) discarder copier resourceSize trailingComment -> do
       let series =
             SE.Series
-              { elems = [resourceSize, discarder, copier],
+              { elems = [discarder, copier, resourceSize],
                 trailingComment,
                 prefix = Nothing,
                 container = Just SE.Brace,

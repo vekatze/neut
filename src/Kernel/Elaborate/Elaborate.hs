@@ -190,12 +190,12 @@ elaborateStmt h stmt = do
       let result = StmtDefineType isConstLike stmtKind' (SavedHint m) x impArgs'' expArgs'' defaultArgs'' codType'' body''
       insertStmt h result
       return ([result], [])
-    WeakStmtDefineResource m dd resourceID resourceSize unitType discarder copier -> do
-      resourceSize' <- elaborate' h resourceSize
-      unitType' <- elaborateType h unitType
+    WeakStmtDefineResource m dd resourceID unitType discarder copier resourceSize -> do
       discarder' <- elaborate' h discarder
       copier' <- elaborate' h copier
-      let result = StmtDefineResource (SavedHint m) dd resourceID resourceSize' unitType' discarder' copier'
+      resourceSize' <- elaborate' h resourceSize
+      unitType' <- elaborateType h unitType
+      let result = StmtDefineResource (SavedHint m) dd resourceID unitType' discarder' copier' resourceSize'
       insertStmt h result
       return ([result], [])
     WeakStmtVariadic kind m dd -> do
