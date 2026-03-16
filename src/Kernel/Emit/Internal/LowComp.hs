@@ -69,7 +69,7 @@ emitLowComp h lowComp =
                   unwordsL
                     [ "tail call fastcc",
                       emitLowType codType,
-                      emitValue f <> showArgs args
+                      emitValue f <> showArgsWithSRet args
                     ]
           ret <- emitLowComp h LC.ReturnVoid
           return $ op <> ret
