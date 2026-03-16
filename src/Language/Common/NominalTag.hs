@@ -3,6 +3,7 @@ module Language.Common.NominalTag
     nominalTagToText,
     isTermTag,
     isMacroTag,
+    isDestPassingTag,
   )
 where
 
@@ -13,6 +14,7 @@ import GHC.Generics (Generic)
 data NominalTag
   = Define
   | DestPassing
+  | DestPassingInline
   | Inline
   | Constant
   | Macro
@@ -32,6 +34,8 @@ nominalTagToText tag =
       "define"
     DestPassing ->
       "define"
+    DestPassingInline ->
+      "inline"
     Inline ->
       "inline"
     Constant ->
@@ -56,6 +60,8 @@ isTermTag tag =
       True
     DestPassing ->
       True
+    DestPassingInline ->
+      True
     Inline ->
       True
     Constant ->
@@ -79,6 +85,16 @@ isMacroTag tag =
     Macro ->
       True
     MacroInline ->
+      True
+    _ ->
+      False
+
+isDestPassingTag :: NominalTag -> Bool
+isDestPassingTag tag =
+  case tag of
+    DestPassing ->
+      True
+    DestPassingInline ->
       True
     _ ->
       False

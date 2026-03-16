@@ -221,6 +221,8 @@ discernStmtKindTerm h stmtKind m =
       return SK.Define
     SK.DestPassing ->
       return SK.DestPassing
+    SK.DestPassingInline ->
+      return SK.DestPassingInline
     SK.Inline ->
       return SK.Inline
     SK.Constant ->
@@ -269,6 +271,8 @@ toCandidateKindTerm stmtKind =
     SK.Define ->
       Function
     SK.DestPassing ->
+      Function
+    SK.DestPassingInline ->
       Function
     SK.Inline ->
       Function

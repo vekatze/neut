@@ -1,12 +1,14 @@
 module Language.Common.PiKind
   ( PiKind (..),
     normal,
+    fromStmtKind,
   )
 where
 
 import Data.Binary
 import GHC.Generics (Generic)
 import Language.Common.IsConstLike (IsConstLike)
+import Language.Common.StmtKind qualified as SK
 
 data PiKind
   = Normal IsConstLike
@@ -19,3 +21,14 @@ instance Binary PiKind
 normal :: PiKind
 normal =
   Normal False
+
+fromStmtKind :: SK.BaseStmtKindTerm name binder t -> IsConstLike -> PiKind
+fromStmtKind stmtKind isConstLike =
+  if SK.isDestPassingStmtKind stmtKind
+    then DestPass isConstLike
+    else do
+      case stmtKind of
+        SK.DataIntro {} ->
+          DataIntro isConstLike
+        _ ->
+          Normal isConstLike

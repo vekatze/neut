@@ -693,12 +693,6 @@ rawTermDefine h opacity m c0 = do
     (name, c1) <- baseName
     name' <- liftIO $ adjustHoleVar h name
     return (name', c1)
-  case opacity of
-    O.Clear
-      | RT.isDestPassing (RT.geist defInfo) ->
-          lift $ raiseError m "`inline` cannot use `->>`"
-    _ ->
-      return ()
   return (m :< RT.PiIntroFix opacity c0 defInfo, c)
 
 adjustHoleVar :: Handle -> BN.BaseName -> IO T.Text

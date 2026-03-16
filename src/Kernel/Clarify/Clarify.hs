@@ -197,14 +197,14 @@ clarifyStmt h stmt =
       let xts'' = xts' ++ [envArg, switchArg]
       let tenv = TM.insTypeEnv xts IntMap.empty
       e' <- clarifyStmtDefineBody h tenv xts'' e
-      case stmtKind of
-        SK.DestPassing -> do
+      if SK.isDestPassingStmtKind stmtKind
+        then do
           codType' <- clarifyType h tenv codType
           (destParam, _) <- liftIO $ makeDestParam h
           let params = map fst xts''
           e'' <- liftIO $ toDestPassing h destParam params codType' e'
           return $ C.DefVoid f (SK.toLowOpacityTerm stmtKind) (destParam : params) e''
-        _ -> do
+        else do
           return $ C.Def f (SK.toLowOpacityTerm stmtKind) (map fst xts'') e'
     StmtDefineType _ stmtKind (SavedHint m) f impArgs expArgs defaultArgs _ body -> do
       defaultValues <- registerDefaultFunctions h IntMap.empty f [] impArgs defaultArgs

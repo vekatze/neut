@@ -139,6 +139,8 @@ liftStmtKindTerm _h stmtKind = do
       SK.Define
     SK.DestPassing ->
       SK.DestPassing
+    SK.DestPassingInline ->
+      SK.DestPassingInline
     SK.Inline ->
       SK.Inline
     SK.Constant ->

@@ -225,13 +225,7 @@ insertStmt :: Handle -> Stmt -> App ()
 insertStmt h stmt = do
   case stmt of
     StmtDefine isConstLike stmtKind (SavedHint m) f impArgs expArgs defaultArgs t e -> do
-      case stmtKind of
-        SK.DataIntro {} ->
-          liftIO $ Type.insert' (typeHandle h) f $ weakenType $ m :< TM.Pi (PK.DataIntro isConstLike) impArgs expArgs (map fst defaultArgs) t
-        SK.DestPassing ->
-          liftIO $ Type.insert' (typeHandle h) f $ weakenType $ m :< TM.Pi (PK.DestPass isConstLike) impArgs expArgs (map fst defaultArgs) t
-        _ ->
-          liftIO $ Type.insert' (typeHandle h) f $ weakenType $ m :< TM.Pi (PK.Normal isConstLike) impArgs expArgs (map fst defaultArgs) t
+      liftIO $ Type.insert' (typeHandle h) f $ weakenType $ m :< TM.Pi (PK.fromStmtKind stmtKind isConstLike) impArgs expArgs (map fst defaultArgs) t
       liftIO $ Definition.insert' (defHandle h) f impArgs expArgs defaultArgs e t (stmtKindToDefKind stmtKind defaultArgs)
     StmtDefineType isConstLike stmtKind (SavedHint m) f impArgs expArgs defaultArgs t body -> do
       let allBinders = impArgs ++ expArgs ++ map fst defaultArgs
@@ -272,6 +266,8 @@ elaborateStmtKindTerm h stmtKind =
       return SK.Define
     SK.DestPassing ->
       return SK.DestPassing
+    SK.DestPassingInline ->
+      return SK.DestPassingInline
     SK.Inline ->
       return SK.Inline
     SK.Constant ->
@@ -876,6 +872,8 @@ stmtKindToDefKind stmtKind defaultArgs =
       if null defaultArgs
         then Nothing
         else Just Inline.NoInline
+    SK.DestPassingInline ->
+      Just Inline.Inline
     SK.Inline ->
       Just Inline.Inline
     SK.Constant ->

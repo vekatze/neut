@@ -88,13 +88,7 @@ inferStmt h stmt =
             checkIsCodeType h''' mx t
         _ ->
           return ()
-      case stmtKind of
-        SK.DataIntro {} -> do
-          liftIO $ insertType h''' x $ m :< WT.Pi (PK.DataIntro isConstLike) impArgs' expArgs' defaultBinders codType'
-        SK.DestPassing -> do
-          liftIO $ insertType h''' x $ m :< WT.Pi (PK.DestPass isConstLike) impArgs' expArgs' defaultBinders codType'
-        _ ->
-          liftIO $ insertType h''' x $ m :< WT.Pi (PK.Normal isConstLike) impArgs' expArgs' defaultBinders codType'
+      liftIO $ insertType h''' x $ m :< WT.Pi (PK.fromStmtKind stmtKind isConstLike) impArgs' expArgs' defaultBinders codType'
       stmtKind' <- inferStmtKindTerm h''' stmtKind
       (e', te) <- infer h''' e
       liftIO $ Constraint.insert (constraintHandle h''') codType' te
@@ -163,6 +157,8 @@ inferStmtKindTerm h stmtKind =
       return SK.Define
     SK.DestPassing ->
       return SK.DestPassing
+    SK.DestPassingInline ->
+      return SK.DestPassingInline
     SK.Inline ->
       return SK.Inline
     SK.Constant ->

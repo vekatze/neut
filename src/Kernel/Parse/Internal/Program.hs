@@ -171,7 +171,7 @@ parseInline h = do
   let m = RT.loc $ RT.geist def
   checkNotMainOrZen defName m "inline"
   if RT.isDestPassing $ RT.geist def
-    then lift $ raiseError m $ "`inline` cannot use `->>`"
+    then return (RawStmtDefineTerm c1 SK.DestPassingInline def, c)
     else return (RawStmtDefineTerm c1 SK.Inline def, c)
 
 parseConstant :: Handle -> Parser (RawStmt, C)

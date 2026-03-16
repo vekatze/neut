@@ -188,6 +188,8 @@ decStmt stmt =
           RT.decodeDef (RT.nameToDoc . N.Var) "define" c (fmap BN.reify def)
         SK.DestPassing ->
           RT.decodeDef (RT.nameToDoc . N.Var) "define" c (fmap BN.reify def)
+        SK.DestPassingInline ->
+          RT.decodeDef (RT.nameToDoc . N.Var) "inline" c (fmap BN.reify def)
         SK.Inline ->
           if RT.isConstLike (RT.geist def)
             then RT.decodeDef (RT.nameToDoc . N.Var) "constant" c (fmap BN.reify def)
@@ -294,6 +296,8 @@ decNominalGeist (tag, geist, _) = do
         Define ->
           RT.decGeist (D.text . BN.reify) geist
         DestPassing ->
+          RT.decGeist (D.text . BN.reify) geist
+        DestPassingInline ->
           RT.decGeist (D.text . BN.reify) geist
         Inline ->
           RT.decGeist (D.text . BN.reify) geist

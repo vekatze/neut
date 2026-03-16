@@ -259,6 +259,8 @@ weakenStmtKindTerm stmtKind =
       Define
     DestPassing ->
       DestPassing
+    DestPassingInline ->
+      DestPassingInline
     Inline ->
       Inline
     Constant ->
