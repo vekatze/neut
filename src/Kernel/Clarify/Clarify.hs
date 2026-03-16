@@ -196,15 +196,17 @@ clarifyStmt h stmt =
       switchArg <- liftIO $ makeSwitchArg h
       let xts'' = xts' ++ [envArg, switchArg]
       let tenv = TM.insTypeEnv xts IntMap.empty
-      e' <- clarifyStmtDefineBody h tenv xts'' e
       if SK.isDestPassingStmtKind stmtKind
         then do
+          e' <- clarifyTerm h tenv e
           codType' <- clarifyType h tenv codType
           (destParam, _) <- liftIO $ makeDestParam h
           let params = map fst xts''
           e'' <- liftIO $ toDestPassing h destParam params codType' e'
-          return $ C.DefVoid f (SK.toLowOpacityTerm stmtKind) (destParam : params) e''
+          e''' <- liftIO $ Linearize.linearize (linearizeHandle h) xts'' e'' >>= Reduce.reduce (reduceHandle h)
+          return $ C.DefVoid f (SK.toLowOpacityTerm stmtKind) (destParam : params) e'''
         else do
+          e' <- clarifyStmtDefineBody h tenv xts'' e
           return $ C.Def f (SK.toLowOpacityTerm stmtKind) (map fst xts'') e'
     StmtDefineType _ stmtKind (SavedHint m) f impArgs expArgs defaultArgs _ body -> do
       defaultValues <- registerDefaultFunctions h IntMap.empty f [] impArgs defaultArgs
@@ -848,10 +850,7 @@ clarifyLambda h tenv attrL@(AttrL.Attr {lamKind, identity}) fvs impArgs expArgs 
       let appArgs' = map (\(mx, _, x, _) -> mx :< TM.Var x) appArgs
       let argNum = AN.fromInt $ length appArgs'
       let attr = AttrVG.Attr {argNum, isConstLike = False, isDestPassing}
-      let piElimKind =
-            if isDestPassing
-              then PEK.DestPass codType
-              else PEK.Normal
+      let piElimKind = if isDestPassing then PEK.DestPass codType else PEK.Normal
       lamAttr <- do
         c <- liftIO $ Gensym.newCount (gensymHandle h)
         return $ AttrL.Attr {lamKind = LK.Normal (Just (Ident.toText recFuncName)) isDestPassing codType, identity = c}
@@ -867,8 +866,6 @@ clarifyLambda h tenv attrL@(AttrL.Attr {lamKind, identity}) fvs impArgs expArgs 
       unless isAlreadyRegistered $ do
         liftedBody <- liftIO $ Subst.subst (substHandle h) (IntMap.fromList [(Ident.toInt recFuncName, Subst.Term lamApp)]) e
         (liftedArgs, liftedBody') <- clarifyBinderBody h IntMap.empty appArgs liftedBody
-        liftedBody'' <- liftIO $ Linearize.linearize (linearizeHandle h) liftedArgs liftedBody'
-        liftedBody''' <- liftIO $ Reduce.reduce (reduceHandle h) liftedBody''
         envArg <- liftIO $ makeEnvArg h
         switchArg <- liftIO $ makeSwitchArg h
         if isDestPassing
@@ -876,9 +873,12 @@ clarifyLambda h tenv attrL@(AttrL.Attr {lamKind, identity}) fvs impArgs expArgs 
             codType' <- clarifyType h (TM.insTypeEnv appArgs IntMap.empty) codType
             (destParam, _) <- liftIO $ makeDestParam h
             let params = map fst liftedArgs ++ [fst envArg, fst switchArg]
-            liftedBody'''' <- liftIO $ toDestPassing h destParam params codType' liftedBody'''
-            liftIO $ AuxEnv.insert (auxEnvHandle h) liftedName (C.DefVoid liftedName O.Opaque (destParam : params) liftedBody'''')
-          else
+            liftedBody'' <- liftIO $ toDestPassing h destParam params codType' liftedBody'
+            liftedBody''' <- liftIO $ Linearize.linearize (linearizeHandle h) liftedArgs liftedBody'' >>= Reduce.reduce (reduceHandle h)
+            liftIO $ AuxEnv.insert (auxEnvHandle h) liftedName (C.DefVoid liftedName O.Opaque (destParam : params) liftedBody''')
+          else do
+            liftedBody'' <- liftIO $ Linearize.linearize (linearizeHandle h) liftedArgs liftedBody'
+            liftedBody''' <- liftIO $ Reduce.reduce (reduceHandle h) liftedBody''
             liftIO $ AuxEnv.insert (auxEnvHandle h) liftedName (C.Def liftedName O.Opaque (map fst liftedArgs ++ [fst envArg, fst switchArg]) liftedBody''')
       liftIO $ registerDefaultEnvType h liftedName []
       clarifyTerm h tenv lamApp
@@ -963,11 +963,17 @@ registerClosure ::
   C.Comp ->
   IO ()
 registerClosure h name opacity isDestPassing codType xts fvs e = do
-  e' <- liftIO $ Linearize.linearize (linearizeHandle h) (fvs ++ xts) e
   (envVarName, envVar) <- Gensym.createVar (gensymHandle h) "env"
   (normalEnvVarName, normalEnvVar) <- Gensym.createVar (gensymHandle h) "env"
   (noeticEnvVarName, noeticEnvVar) <- Gensym.createVar (gensymHandle h) "env"
   (switchVarName, switchVar) <- Gensym.createVar (gensymHandle h) "switch"
+  (destParam, _) <- makeDestParam h
+  let liveVars = map fst fvs ++ map fst xts
+  e' <-
+    if isDestPassing
+      then liftIO $ toDestPassing h destParam liveVars codType e
+      else return e
+  e'' <- liftIO $ Linearize.linearize (linearizeHandle h) (fvs ++ xts) e'
   let normalPrefix = lambdaPrefixNormal fvs normalEnvVar
   noeticPrefix <- lambdaPrefixNoetic h fvs noeticEnvVar
   let lambdaBody =
@@ -977,14 +983,12 @@ registerClosure h name opacity isDestPassing codType xts fvs e = do
           normalPrefix
           [(EC.Int 1, noeticPrefix)]
           (map fst fvs)
-          e'
+          e''
   lambdaBody' <- liftIO $ Reduce.reduce (reduceHandle h) lambdaBody
   let args = map fst xts ++ [envVarName, switchVarName]
   if isDestPassing
     then do
-      (destParam, _) <- makeDestParam h
-      lambdaBody'' <- toDestPassing h destParam args codType lambdaBody'
-      AuxEnv.insert (auxEnvHandle h) name (C.DefVoid name opacity (destParam : args) lambdaBody'')
+      AuxEnv.insert (auxEnvHandle h) name (C.DefVoid name opacity (destParam : args) lambdaBody')
     else do
       AuxEnv.insert (auxEnvHandle h) name (C.Def name opacity args lambdaBody')
 
