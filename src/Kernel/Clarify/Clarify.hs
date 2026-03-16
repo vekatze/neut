@@ -201,10 +201,9 @@ clarifyStmt h stmt =
           e' <- clarifyTerm h tenv e
           codType' <- clarifyType h tenv codType
           (destParam, _) <- liftIO $ makeDestParam h
-          let params = map fst xts''
-          e'' <- liftIO $ toDestPassing h destParam params codType' e'
+          e'' <- liftIO $ toDestPassing h destParam codType' e'
           e''' <- liftIO $ Linearize.linearize (linearizeHandle h) xts'' e'' >>= Reduce.reduce (reduceHandle h)
-          return $ C.DefVoid f (SK.toLowOpacityTerm stmtKind) (destParam : params) e'''
+          return $ C.DefVoid f (SK.toLowOpacityTerm stmtKind) (destParam : map fst xts'') e'''
         else do
           e' <- clarifyStmtDefineBody h tenv xts'' e
           return $ C.Def f (SK.toLowOpacityTerm stmtKind) (map fst xts'') e'
@@ -275,38 +274,20 @@ makeDestParam h = do
   x <- Gensym.newIdentFromText (gensymHandle h) "dest"
   return (x, Sigma.returnImmediatePointerS4)
 
-toDestPassing :: Handle -> Ident -> [Ident] -> C.Comp -> C.Comp -> IO C.Comp
-toDestPassing h dest fvs codType e = do
-  (resultVarName, resultVar) <- Gensym.createVar (gensymHandle h) "result"
-  (typeVarName, typeVar) <- Gensym.createVar (gensymHandle h) "type"
-  (sizeVarName, sizeVar) <- Gensym.createVar (gensymHandle h) "size"
-  memcpyResultVarName <- Gensym.newIdentFromText (gensymHandle h) "memcpy"
-  ignoredVarName <- Gensym.newIdentFromText (gensymHandle h) "_"
-  let immediateClause =
-        C.Primitive $
-          C.Magic $
-            LM.Store BLT.Pointer C.null resultVar (C.VarLocal dest)
-  let boxedClause =
-        C.UpElim
-          True
-          memcpyResultVarName
-          (C.Primitive $ C.Memcpy (C.VarLocal dest) resultVar sizeVar)
-          (C.Free resultVar 0 (C.UpIntro C.null))
-  branch <-
-    Utility.getEnumElim
-      (utilityHandle h)
-      (dest : resultVarName : sizeVarName : fvs)
-      sizeVar
-      boxedClause
-      [(EC.Int (-1), immediateClause)]
+getSizeComp :: Handle -> C.Comp -> IO C.Comp
+getSizeComp h codType = do
+  (typeName, typeVar) <- Gensym.createVar (gensymHandle h) "type"
   return $
-    C.UpElim False resultVarName e $
-      C.UpElim True typeVarName codType $
-        C.UpElim
-          True
-          sizeVarName
-          (C.PiElimDownElim True typeVar [C.Int (dataSizeToIntSize (baseSize h)) 2, C.null])
-          (C.UpElim True ignoredVarName branch C.UpIntroVoid)
+    C.UpElim
+      True
+      typeName
+      codType
+      (C.PiElimDownElim True typeVar [intTerm h (2 :: Int), C.null])
+
+toDestPassing :: Handle -> Ident -> C.Comp -> C.Comp -> IO C.Comp
+toDestPassing h dest codType e = do
+  sizeComp <- getSizeComp h codType
+  return $ C.WriteToDest (C.VarLocal dest) sizeComp e C.UpIntroVoid
 
 defaultEnvTypeName :: DD.DefiniteDescription -> DD.DefiniteDescription
 defaultEnvTypeName dd =
@@ -872,10 +853,9 @@ clarifyLambda h tenv attrL@(AttrL.Attr {lamKind, identity}) fvs impArgs expArgs 
           then do
             codType' <- clarifyType h (TM.insTypeEnv appArgs IntMap.empty) codType
             (destParam, _) <- liftIO $ makeDestParam h
-            let params = map fst liftedArgs ++ [fst envArg, fst switchArg]
-            liftedBody'' <- liftIO $ toDestPassing h destParam params codType' liftedBody'
+            liftedBody'' <- liftIO $ toDestPassing h destParam codType' liftedBody'
             liftedBody''' <- liftIO $ Linearize.linearize (linearizeHandle h) liftedArgs liftedBody'' >>= Reduce.reduce (reduceHandle h)
-            liftIO $ AuxEnv.insert (auxEnvHandle h) liftedName (C.DefVoid liftedName O.Opaque (destParam : params) liftedBody''')
+            liftIO $ AuxEnv.insert (auxEnvHandle h) liftedName (C.DefVoid liftedName O.Opaque (destParam : map fst liftedArgs ++ [fst envArg, fst switchArg]) liftedBody''')
           else do
             liftedBody'' <- liftIO $ Linearize.linearize (linearizeHandle h) liftedArgs liftedBody'
             liftedBody''' <- liftIO $ Reduce.reduce (reduceHandle h) liftedBody''
@@ -968,16 +948,16 @@ registerClosure h name opacity isDestPassing codType xts fvs e = do
   (noeticEnvVarName, noeticEnvVar) <- Gensym.createVar (gensymHandle h) "env"
   (switchVarName, switchVar) <- Gensym.createVar (gensymHandle h) "switch"
   (destParam, _) <- makeDestParam h
-  let liveVars = map fst fvs ++ map fst xts
   e' <-
     if isDestPassing
-      then liftIO $ toDestPassing h destParam liveVars codType e
+      then liftIO $ toDestPassing h destParam codType e
       else return e
   e'' <- liftIO $ Linearize.linearize (linearizeHandle h) (fvs ++ xts) e'
   let normalPrefix = lambdaPrefixNormal fvs normalEnvVar
   noeticPrefix <- lambdaPrefixNoetic h fvs noeticEnvVar
   let lambdaBody =
         C.EnumElim
+          C.GeneralJoin
           [(Ident.toInt normalEnvVarName, envVar), (Ident.toInt noeticEnvVarName, envVar)]
           switchVar
           normalPrefix
@@ -1021,50 +1001,9 @@ callClosure h kind e impArgs expArgs defaultArgs = do
   callComp <-
     case kind of
       PEK.DestPass codType -> do
-        (typeVarName, typeVar) <- Gensym.createVar (gensymHandle h) "type"
-        (sizeVarName, sizeVar) <- Gensym.createVar (gensymHandle h) "size"
-        (immediateDestName, immediateDestVar) <- Gensym.createVar (gensymHandle h) "dest"
-        (immediateResultName, immediateResultVar) <- Gensym.createVar (gensymHandle h) "result"
-        (boxedDestName, boxedDestVar) <- Gensym.createVar (gensymHandle h) "dest"
         let args = impVals ++ expVals ++ defVals ++ [envVar, flag]
-        let immediateClause =
-              C.UpElim
-                True
-                immediateDestName
-                (C.Primitive $ C.Alloc $ intTerm h (1 :: Integer))
-                ( C.UpElimCallVoid
-                    lamVar
-                    (immediateDestVar : args)
-                    ( C.UpElim
-                        True
-                        immediateResultName
-                        (C.Primitive $ C.Magic $ LM.Load BLT.Pointer immediateDestVar)
-                        (C.Free immediateDestVar 1 (C.UpIntro immediateResultVar))
-                    )
-                )
-        let boxedClause =
-              C.UpElim
-                True
-                boxedDestName
-                (C.Primitive $ C.Alloc sizeVar)
-                ( C.UpElimCallVoid
-                    lamVar
-                    (boxedDestVar : args)
-                    (C.UpIntro boxedDestVar)
-                )
-        branch <-
-          Utility.getEnumElim
-            (utilityHandle h)
-            (impNames ++ expNames ++ defNames ++ [envVarName, lamVarName, sizeVarName])
-            sizeVar
-            boxedClause
-            [(EC.Int (-1), immediateClause)]
-        return $
-          Utility.bindLet
-            [ (typeVarName, codType),
-              (sizeVarName, C.PiElimDownElim True typeVar [intTerm h (2 :: Integer), C.null])
-            ]
-            branch
+        sizeComp <- getSizeComp h codType
+        return $ C.DestCall sizeComp lamVar args
       _ ->
         return $ C.PiElimDownElim False lamVar (impVals ++ expVals ++ defVals ++ [envVar, flag])
   return $

@@ -53,6 +53,7 @@ import Language.Common.PrimNumSize
 import Language.Common.PrimOp
 import Language.Common.PrimType qualified as PT
 import Language.Comp.Comp qualified as C
+import Language.Comp.CreateVar (createVar)
 import Language.Comp.EnumCase qualified as EC
 import Language.Comp.Reduce qualified as Reduce
 import Language.Comp.Subst qualified as Subst
@@ -192,7 +193,7 @@ lowerComp h term =
         =<< lowerValues h (zip argVars ds)
         =<< cast h castFuncVar func LT.Pointer
         =<< return (LC.Cont (LC.Call LT.Void castFunc (map (LT.Pointer,) argValues)) e2')
-    C.EnumElim fvInfo v defaultBranch branchList phiList cont -> do
+    C.EnumElim _ fvInfo v defaultBranch branchList phiList cont -> do
       let sub = IntMap.fromList fvInfo
       defaultBranch' <- liftIO $ Subst.subst (substHandle h) sub defaultBranch >>= Reduce.reduce (reduceHandle h)
       let (keys, clauses) = unzip branchList
@@ -204,6 +205,14 @@ lowerComp h term =
       (castVar, castValue) <- liftIO $ newValueLocal h "cast"
       lowerValueLetCast h castVar v t
         =<< return (LC.Switch (castValue, t) defaultCase caseList (phiList, cont'))
+    C.DestCall sizeComp f ds ->
+      liftIO (materializeDestCall h sizeComp f ds)
+        >>= liftIO . Reduce.reduce (reduceHandle h)
+        >>= lowerComp h
+    C.WriteToDest dest sizeComp result cont ->
+      liftIO (materializeWriteToDest h dest sizeComp result cont)
+        >>= liftIO . Reduce.reduce (reduceHandle h)
+        >>= lowerComp h
     C.Free x size cont -> do
       freeID <- liftIO $ Gensym.newCount (gensymHandle h)
       (ptrVar, ptr) <- liftIO $ newValueLocal h "ptr"
@@ -216,6 +225,89 @@ lowerComp h term =
       (argVars, argValues) <- mapAndUnzipM (const $ liftIO $ newValueLocal h "arg") ds
       lowerValues h (zip argVars ds)
         =<< return (LC.Phi argValues)
+
+materializeDestCall :: Handle -> C.Comp -> C.Value -> [C.Value] -> IO C.Comp
+materializeDestCall h sizeComp f ds = do
+  (sizeName, sizeVar) <- createVar (gensymHandle h) "size"
+  (phiName, phiVar) <- createVar (gensymHandle h) "phi"
+  (immediateDestName, immediateDestVar) <- createVar (gensymHandle h) "dest"
+  (immediateResultName, immediateResultVar) <- createVar (gensymHandle h) "result"
+  (immediateBranchPhiName, immediateBranchPhi) <- createVar (gensymHandle h) "phi"
+  (boxedDestName, boxedDestVar) <- createVar (gensymHandle h) "dest"
+  (boxedBranchPhiName, boxedBranchPhi) <- createVar (gensymHandle h) "phi"
+  let immediateBody =
+        C.UpElim
+          True
+          immediateDestName
+          (C.Primitive $ C.Alloc $ C.Int (dataSizeToIntSize (baseSize h)) 1)
+          ( C.UpElimCallVoid
+              f
+              (immediateDestVar : ds)
+              ( C.UpElim
+                  True
+                  immediateResultName
+                  (C.Primitive $ C.Magic $ LM.Load BLT.Pointer immediateDestVar)
+                  (C.Free immediateDestVar 1 (C.UpIntro immediateResultVar))
+              )
+          )
+  let immediateBranch =
+        C.UpElim True immediateBranchPhiName immediateBody (C.Phi [immediateBranchPhi])
+  let boxedBody =
+        C.UpElim
+          True
+          boxedDestName
+          (C.Primitive $ C.Alloc sizeVar)
+          (C.UpElimCallVoid f (boxedDestVar : ds) (C.UpIntro boxedDestVar))
+  let boxedBranch =
+        C.UpElim True boxedBranchPhiName boxedBody (C.Phi [boxedBranchPhi])
+  return $
+    C.UpElim
+      True
+      sizeName
+      sizeComp
+      ( C.EnumElim
+          C.CanonicalJoin
+          []
+          sizeVar
+          boxedBranch
+          [(EC.Int (-1), immediateBranch)]
+          [phiName]
+          (C.UpIntro phiVar)
+      )
+
+materializeWriteToDest :: Handle -> C.Value -> C.Comp -> C.Comp -> C.Comp -> IO C.Comp
+materializeWriteToDest h dest sizeComp result cont = do
+  (resultName, resultVar) <- createVar (gensymHandle h) "result"
+  (sizeName, sizeVar) <- createVar (gensymHandle h) "size"
+  (ignoredImmediate, _) <- createVar (gensymHandle h) "_"
+  (ignoredBoxed, _) <- createVar (gensymHandle h) "_"
+  (ignoredBranch, _) <- createVar (gensymHandle h) "_"
+  (phiName, phiVar) <- createVar (gensymHandle h) "phi"
+  let immediateBranch =
+        C.UpElim
+          True
+          ignoredImmediate
+          (C.Primitive $ C.Magic $ LM.Store BLT.Pointer C.null resultVar dest)
+          (C.Phi [C.null])
+  let boxedBranch =
+        C.UpElim
+          True
+          ignoredBoxed
+          (C.Primitive $ C.Memcpy dest resultVar sizeVar)
+          (C.Free resultVar 0 (C.Phi [C.null]))
+  let branch =
+        C.EnumElim
+          C.CanonicalJoin
+          []
+          sizeVar
+          boxedBranch
+          [(EC.Int (-1), immediateBranch)]
+          [phiName]
+          (C.UpIntro phiVar)
+  return $
+    C.UpElim False resultName result $
+      C.UpElim True sizeName sizeComp $
+        C.UpElim True ignoredBranch branch cont
 
 lowerCompPrimitive :: Handle -> Ident -> C.Primitive -> LC.Comp -> App LC.Comp
 lowerCompPrimitive h resultVar codeOp cont =

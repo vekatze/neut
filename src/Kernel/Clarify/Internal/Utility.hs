@@ -121,7 +121,7 @@ getEnumElim h idents d defaultBranch branchList = do
       defaultClause' <- adjustBranch h defaultBranch''
       clauseList' <- mapM (adjustBranch h) clauses'
       resultVar <- Gensym.newIdentFromText (gensymHandle h) "result"
-      return $ C.EnumElim newToOld d defaultClause' (zip tags clauseList') [resultVar] $ C.UpIntro (C.VarLocal resultVar)
+      return $ C.EnumElim C.CanonicalJoin newToOld d defaultClause' (zip tags clauseList') [resultVar] $ C.UpIntro (C.VarLocal resultVar)
 
 adjustBranch :: Handle -> C.Comp -> IO C.Comp
 adjustBranch h body = do

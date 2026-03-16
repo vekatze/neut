@@ -147,16 +147,27 @@ distinguishComp h z term =
       (vss, ds') <- mapAndUnzipM (distinguishValue h z) ds
       (vs2, e2') <- distinguishComp h z e2
       return (vs1 ++ concat vss ++ vs2, C.UpElimCallVoid f' ds' e2')
-    C.EnumElim fvInfo d defaultBranch branchList phiVarList cont -> do
+    C.EnumElim kind fvInfo d defaultBranch branchList phiVarList cont -> do
       let (vs, ds) = unzip fvInfo
       (vss, ds') <- mapAndUnzipM (distinguishValue h z) ds
       let fvInfo' = zip vs ds'
       (vs1, d') <- distinguishValue h z d
       if z `elem` phiVarList
-        then return (concat vss ++ vs1, C.EnumElim fvInfo' d' defaultBranch branchList phiVarList cont)
+        then return (concat vss ++ vs1, C.EnumElim kind fvInfo' d' defaultBranch branchList phiVarList cont)
         else do
           (vs2, cont') <- distinguishComp h z cont
-          return (concat vss ++ vs1 ++ vs2, C.EnumElim fvInfo' d' defaultBranch branchList phiVarList cont')
+          return (concat vss ++ vs1 ++ vs2, C.EnumElim kind fvInfo' d' defaultBranch branchList phiVarList cont')
+    C.DestCall sizeComp f ds -> do
+      (vs1, sizeComp') <- distinguishComp h z sizeComp
+      (vs2, f') <- distinguishValue h z f
+      (vss, ds') <- mapAndUnzipM (distinguishValue h z) ds
+      return (vs1 ++ vs2 ++ concat vss, C.DestCall sizeComp' f' ds')
+    C.WriteToDest dest sizeComp result cont -> do
+      (vs1, dest') <- distinguishValue h z dest
+      (vs2, sizeComp') <- distinguishComp h z sizeComp
+      (vs3, result') <- distinguishComp h z result
+      (vs4, cont') <- distinguishComp h z cont
+      return (vs1 ++ vs2 ++ vs3 ++ vs4, C.WriteToDest dest' sizeComp' result' cont')
     C.Free x size cont -> do
       (vs1, x') <- distinguishValue h z x
       (vs2, cont') <- distinguishComp h z cont

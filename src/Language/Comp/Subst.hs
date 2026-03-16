@@ -54,14 +54,25 @@ substComp h sub term =
       let vs' = map (substValue sub) vs
       e2' <- substComp h sub e2
       return $ C.UpElimCallVoid f' vs' e2'
-    C.EnumElim fvInfo v defaultBranch branchList phiVar cont -> do
+    C.EnumElim kind fvInfo v defaultBranch branchList phiVar cont -> do
       let (is, ds) = unzip fvInfo
       let ds' = map (substValue sub) ds
       let v' = substValue sub v
       phiVar' <- mapM (Gensym.newIdentFromIdent (gensymHandle h)) phiVar
       let sub' = IntMap.union (IntMap.fromList (zip (map Ident.toInt phiVar) (map C.VarLocal phiVar'))) sub
       cont' <- substComp h sub' cont
-      return $ C.EnumElim (zip is ds') v' defaultBranch branchList phiVar' cont'
+      return $ C.EnumElim kind (zip is ds') v' defaultBranch branchList phiVar' cont'
+    C.DestCall sizeComp f vs -> do
+      sizeComp' <- substComp h sub sizeComp
+      let f' = substValue sub f
+      let vs' = map (substValue sub) vs
+      return $ C.DestCall sizeComp' f' vs'
+    C.WriteToDest dest sizeComp result cont -> do
+      let dest' = substValue sub dest
+      sizeComp' <- substComp h sub sizeComp
+      result' <- substComp h sub result
+      cont' <- substComp h sub cont
+      return $ C.WriteToDest dest' sizeComp' result' cont'
     C.Primitive theta -> do
       let theta' = substPrimitive sub theta
       return $ C.Primitive theta'
