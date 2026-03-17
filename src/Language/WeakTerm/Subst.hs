@@ -32,6 +32,7 @@ import Language.Common.PiElimKind qualified as PEK
 import Language.Common.ImpArgs qualified as ImpArgs
 import Language.Common.LamKind qualified as LK
 import Language.Common.LowMagic qualified as LM
+import Language.Common.Magic (WeakMagic (..))
 import Language.Common.Magic qualified as M
 import Language.Common.VarKind qualified as VK
 import Language.WeakTerm.FreeVars qualified as WT
@@ -437,8 +438,8 @@ substAttrDataIntro h sub attr = do
       consNameList
   return $ attr {AttrDI.consNameList = consNameList'}
 
-substMagic :: Handle -> Subst -> WT.WeakMagic WT.WeakType WT.WeakType WT.WeakTerm -> IO (WT.WeakMagic WT.WeakType WT.WeakType WT.WeakTerm)
-substMagic h sub (WT.WeakMagic magic) = do
+substMagic :: Handle -> Subst -> WeakMagic WT.WeakType WT.WeakType WT.WeakTerm -> IO (WeakMagic WT.WeakType WT.WeakType WT.WeakTerm)
+substMagic h sub (WeakMagic magic) = do
   magic' <- case magic of
     M.LowMagic lowMagic -> do
       lowMagic' <- substLowMagic h sub lowMagic
@@ -467,7 +468,7 @@ substMagic h sub (WT.WeakMagic magic) = do
       typeExpr' <- substType h sub typeExpr
       msg' <- subst h sub msg
       return $ M.CompileError typeExpr' msg'
-  return $ WT.WeakMagic magic'
+  return $ WeakMagic magic'
 
 substLowMagic :: Handle -> Subst -> LM.LowMagic WT.WeakType WT.WeakType WT.WeakTerm -> IO (LM.LowMagic WT.WeakType WT.WeakType WT.WeakTerm)
 substLowMagic h sub lowMagic =

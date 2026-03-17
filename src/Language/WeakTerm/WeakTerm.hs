@@ -11,10 +11,6 @@ module Language.WeakTerm.WeakTerm
     metaOfType,
     fromLetSeq,
     fromBaseLowType,
-    -- Re-exports for convenience
-    WeakMagic (..),
-    Magic (..),
-    LowMagic (..),
   )
 where
 
@@ -35,8 +31,7 @@ import Language.Common.Foreign
 import Language.Common.HoleID
 import Language.Common.Ident
 import Language.Common.ImpArgs qualified as ImpArgs
-import Language.Common.LowMagic (LowMagic (..))
-import Language.Common.Magic (Magic (..), WeakMagic (..))
+import Language.Common.Magic (WeakMagic (..))
 import Language.Common.Noema qualified as N
 import Language.Common.Opacity qualified as O
 import Language.Common.PiElimKind qualified as PEK
