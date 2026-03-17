@@ -7,7 +7,8 @@ define foo(
   a: type,
   🌟🌟🌟: type,
   竹の葉に霰ふるなりさらさらに独りは寝べき心地こそせね: int,
-): type {
+)->
+type {
   let _ = 竹の葉に霰ふるなりさらさらに独りは寝べき心地こそせね;
   if FOO {
     unpack-type a = a;
@@ -19,12 +20,12 @@ define foo(
   }
 }
 
-define bar<a>(some-value: a): unit {
+define bar<a>(some-value: a) -> unit {
   let _ = some-value;
   Unit
 }
 
-define test-syntax(): unit {
+define test-syntax() -> unit {
   let _ =
     foo{
       a := pack-type {int},
@@ -80,7 +81,8 @@ define test-syntax(): unit {
 define def-func-using-of(
   arg-1: int,
   arg-2: type,
-): type {
+)->
+type {
   let _ = arg-1;
   arg-2
 }

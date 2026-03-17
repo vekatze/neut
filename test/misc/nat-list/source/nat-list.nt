@@ -7,7 +7,7 @@ data nat {
 | Succ(nat)
 }
 
-define interpret(n: nat): int {
+define interpret(n: nat) -> int {
   match n {
   | Zero =>
     0
@@ -16,7 +16,7 @@ define interpret(n: nat): int {
   }
 }
 
-define nat-list-sum(xs: list(nat)): int {
+define nat-list-sum(xs: list(nat)) -> int {
   match xs {
   | Nil =>
     0
@@ -25,6 +25,6 @@ define nat-list-sum(xs: list(nat)): int {
   }
 }
 
-define main(): unit {
+define main() -> unit {
   print-int-line(nat-list-sum(Cons(Succ(Zero), Cons(Succ(Zero), Nil))));
 }

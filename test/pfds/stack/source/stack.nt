@@ -10,11 +10,11 @@ data stack(a) {
 | Cons(a, stack(a))
 }
 
-define empty<a>(): stack(a) {
+define empty<a>() -> stack(a) {
   Nil
 }
 
-define is-empty<a>(xs: &stack(a)): bool {
+define is-empty<a>(xs: &stack(a)) -> bool {
   case xs {
   | Nil =>
     True
@@ -23,7 +23,7 @@ define is-empty<a>(xs: &stack(a)): bool {
   }
 }
 
-define head<a>(xs: &stack(a)): ?&a {
+define head<a>(xs: &stack(a)) -> ?&a {
   case xs {
   | Nil =>
     none
@@ -32,7 +32,7 @@ define head<a>(xs: &stack(a)): ?&a {
   }
 }
 
-define tail<a>(xs: &stack(a)): ?&stack(a) {
+define tail<a>(xs: &stack(a)) -> ?&stack(a) {
   case xs {
   | Nil =>
     none
@@ -41,7 +41,7 @@ define tail<a>(xs: &stack(a)): ?&stack(a) {
   }
 }
 
-define update<a>(xs: stack(a), index: int, value: a): stack(a) {
+define update<a>(xs: stack(a), index: int, value: a) -> stack(a) {
   match xs {
   | Nil =>
     Nil
@@ -54,7 +54,7 @@ define update<a>(xs: stack(a), index: int, value: a): stack(a) {
   }
 }
 
-define suffixes<a>(!xs: stack(a)): stack(stack(a)) {
+define suffixes<a>(!xs: stack(a)) -> stack(stack(a)) {
   match xs {
   | Nil =>
     Nil
@@ -63,7 +63,7 @@ define suffixes<a>(!xs: stack(a)): stack(stack(a)) {
   }
 }
 
-define suffixes-noetic<a>(xs: &stack(a)): stack(&stack(a)) {
+define suffixes-noetic<a>(xs: &stack(a)) -> stack(&stack(a)) {
   case xs {
   | Nil =>
     Nil
@@ -72,7 +72,7 @@ define suffixes-noetic<a>(xs: &stack(a)): stack(&stack(a)) {
   }
 }
 
-define main(): unit {
+define main() -> unit {
   let !xs = empty<int>();
   let ys = Cons(10, xs);
   let zs = Cons(30, Cons(20, ys));

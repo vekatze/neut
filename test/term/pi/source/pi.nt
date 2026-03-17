@@ -3,7 +3,7 @@ import {
   this.pi-term,
 }
 
-define test-syntax(): unit {
+define test-syntax() -> unit {
   // nullary
   let _ = pack-type {() -> type};
   // general, non-dependent
@@ -44,30 +44,30 @@ define test-syntax(): unit {
   Unit
 }
 
-define affine-pi(): type {
+define affine-pi() -> type {
   let _ = pack-type {(type) -> type};
   pack-type {type}
 }
 
-define linear-pi(): type {
+define linear-pi() -> type {
   let x = pack-type {(type) -> type};
   x
 }
 
-define relevant-pi(): type {
+define relevant-pi() -> type {
   let x = pack-type {(type) -> type};
   let _ = x;
   x
 }
 
-define test-resource(): unit {
+define test-resource() -> unit {
   let _ = affine-pi();
   let _ = linear-pi();
   let _ = relevant-pi();
   Unit
 }
 
-define main(): unit {
+define main() -> unit {
   test-syntax();
   test-resource();
   this.pi-term.test-syntax();

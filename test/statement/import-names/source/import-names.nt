@@ -3,7 +3,7 @@ import {
   this.foo {some-func},
 }
 
-define main(): unit {
+define main() -> unit {
   let _ = some-func;
   let _ = other-func-X;
   other-func-Y()

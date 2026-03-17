@@ -4,7 +4,7 @@ import {
   core.list {length},
 }
 
-define test-syntax(): unit {
+define test-syntax() -> unit {
   let _ = pack-type {&list(type)};
   let _ = pack-type {&list(&list(type))};
   let _ = pack-type {(&type, &list((&list(type)) -> &list(type))) -> &list(type)};
@@ -57,7 +57,7 @@ data my-enum {
 | Bar
 }
 
-define nested-enum-match(t: &term(my-enum)): term(my-enum) {
+define nested-enum-match(t: &term(my-enum)) -> term(my-enum) {
   let val =
     case t {
     | App(Abs(x, !t), Var(e)) =>
@@ -106,7 +106,7 @@ define nested-enum-match(t: &term(my-enum)): term(my-enum) {
   }
 }
 
-define unbalanced-freevars-in-branches<a>(t: &term(a)): term(a) {
+define unbalanced-freevars-in-branches<a>(t: &term(a)) -> term(a) {
   let !foo = Var("test");
   let f =
     function () {
@@ -168,7 +168,7 @@ data ctx {
 | Ctx(counter: cell(int))
 }
 
-define with-ctx(c: &ctx): unit {
+define with-ctx(c: &ctx) -> unit {
   tie Ctx(counter) = c;
   let current-value = clone(counter);
   if eq-int(current-value, 0) {
@@ -182,7 +182,7 @@ define with-ctx(c: &ctx): unit {
   }
 }
 
-define test-resource(): unit {
+define test-resource() -> unit {
   let t1 = Var(Foo);
   let t2 = Abs(Bar, Var(Bar));
   let t3 = App(Abs(Bar, Var(Bar)), Var(Foo));
@@ -205,7 +205,7 @@ define test-resource(): unit {
   Unit
 }
 
-define main(): unit {
+define main() -> unit {
   test-syntax();
   test-resource();
   Unit

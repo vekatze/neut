@@ -20,9 +20,9 @@
   },
   dependency {
     core {
-      digest "27kV7tvM00y4CxpIi4_juhS0wkWXE4jkQaV7VOwlJaM",
+      digest "jxVm7s8KCUWEygoBklH-pRjhPE40t_RRB0_-JG6rVeM",
       mirror [
-        "https://github.com/vekatze/neut-core/raw/main/archive/0-52-3.tar.zst",
+        "https://github.com/vekatze/neut-core/raw/main/archive/0-53-0.tar.zst",
       ],
       enable-preset true,
     },

@@ -12,7 +12,7 @@ data tree(a) {
 | Node(color, tree(a), a, tree(a))
 }
 
-define member<a>(!cmp: (a, a) -> ordering, !x: a, t: &tree(a)): bool {
+define member<a>(!cmp: (a, a) -> ordering, !x: a, t: &tree(a)) -> bool {
   case t {
   | Leaf =>
     False
@@ -29,7 +29,7 @@ define member<a>(!cmp: (a, a) -> ordering, !x: a, t: &tree(a)): bool {
 }
 
 // detect and repair each Red-Red violation
-define balance<a>(c: color, t1: tree(a), v: a, t2: tree(a)): tree(a) {
+define balance<a>(c: color, t1: tree(a), v: a, t2: tree(a)) -> tree(a) {
   match c, t1, t2 {
   | Black, Node(Red, Node(Red, l11, v11, r11), x1, t12), t2 =>
     Node(Red, Node(Black, l11, v11, r11), x1, Node(Black, t12, v, t2))
@@ -44,9 +44,9 @@ define balance<a>(c: color, t1: tree(a), v: a, t2: tree(a)): tree(a) {
   }
 }
 
-define insert<a>(!cmp: (a, a) -> ordering, !x: a, t: tree(a)): tree(a) {
+define insert<a>(!cmp: (a, a) -> ordering, !x: a, t: tree(a)) -> tree(a) {
   let helper =
-    define self(t: tree(a)): tree(a) {
+    define self(t: tree(a)) -> tree(a) {
       match t {
       | Leaf =>
         Node(Red, Leaf, x, Leaf)
@@ -70,7 +70,7 @@ define insert<a>(!cmp: (a, a) -> ordering, !x: a, t: tree(a)): tree(a) {
   }
 }
 
-define compare-int(!x: () -> int, !y: () -> int): ordering {
+define compare-int(!x: () -> int, !y: () -> int) -> ordering {
   if lt-int(x(), y()) {
     LT
   } else-if gt-int(x(), y()) {
@@ -80,7 +80,7 @@ define compare-int(!x: () -> int, !y: () -> int): ordering {
   }
 }
 
-define main(): unit {
+define main() -> unit {
   let t: tree(() -> int) = Leaf;
   let t =
     insert(

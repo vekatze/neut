@@ -2,10 +2,10 @@ import {
   this.foo {some-func},
 }
 
-define other-func-X(): unit {
+define other-func-X() -> unit {
   some-func()
 }
 
-define other-func-Y(): unit {
+define other-func-Y() -> unit {
   some-func()
 }

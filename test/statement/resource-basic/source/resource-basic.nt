@@ -16,16 +16,17 @@ resource noisy-boxed-int {
     magic store(int, orig-value, new-ptr);
     new-ptr
   },
+  -1,
 }
 
 // provide a way to introduce new boxed integer
-define create-new-noisy-boxed-int(x: int): noisy-boxed-int {
+define create-new-noisy-boxed-int(x: int) -> noisy-boxed-int {
   let new-ptr = malloc(C-Size(1));
   store-int(x, new-ptr);
   magic cast(pointer, noisy-boxed-int, new-ptr)
 }
 
-define main(): unit {
+define main() -> unit {
   let !i = create-new-noisy-boxed-int(10);
   let _ = i;
   let _ = i;

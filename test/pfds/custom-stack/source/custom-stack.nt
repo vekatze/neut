@@ -7,11 +7,11 @@ data custom-stack(a) {
 | C(pair(a, a), custom-stack(a))
 }
 
-define empty<a>(): custom-stack(a) {
+define empty<a>() -> custom-stack(a) {
   N
 }
 
-define is-empty<a>(xs: &custom-stack(a)): bool {
+define is-empty<a>(xs: &custom-stack(a)) -> bool {
   case xs {
   | N =>
     True
@@ -20,7 +20,7 @@ define is-empty<a>(xs: &custom-stack(a)): bool {
   }
 }
 
-define head<a>(xs: &custom-stack(a)): ?&pair(a, a) {
+define head<a>(xs: &custom-stack(a)) -> ?&pair(a, a) {
   case xs {
   | N =>
     none
@@ -29,7 +29,7 @@ define head<a>(xs: &custom-stack(a)): ?&pair(a, a) {
   }
 }
 
-define tail<a>(xs: &custom-stack(a)): ?&custom-stack(a) {
+define tail<a>(xs: &custom-stack(a)) -> ?&custom-stack(a) {
   case xs {
   | N =>
     none
@@ -38,7 +38,7 @@ define tail<a>(xs: &custom-stack(a)): ?&custom-stack(a) {
   }
 }
 
-define main(): unit {
+define main() -> unit {
   let !xs = empty<() -> int>();
   let !v =
     Pair(function () {

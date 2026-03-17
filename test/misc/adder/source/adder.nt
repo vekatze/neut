@@ -2,7 +2,7 @@ import {
   core.int.io {print-int-line},
 }
 
-define make-adder(x: int): (int) -> int {
+define make-adder(x: int) -> (int) -> int {
   let adder =
     function (y) {
       add-int(x, y)
@@ -10,6 +10,6 @@ define make-adder(x: int): (int) -> int {
   adder
 }
 
-define main(): unit {
+define main() -> unit {
   print-int-line(make-adder(3)(7));
 }

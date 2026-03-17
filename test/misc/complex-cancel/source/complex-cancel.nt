@@ -4,7 +4,7 @@ data joker {
 }
 
 // cancel: x ~> {}
-define test(x: joker): joker {
+define test(x: joker) -> joker {
   match x {
   | L(v1) =>
     // the `free(x)` inserted here is cancelled by ((A) + (B)) * (C)
@@ -27,7 +27,7 @@ define test(x: joker): joker {
   }
 }
 
-define test2(x: joker): int {
+define test2(x: joker) -> int {
   match x {
   | L(v1) =>
     // the `free(x)` inserted here isn't cancelled
@@ -50,7 +50,7 @@ define test2(x: joker): int {
   }
 }
 
-define main(): unit {
+define main() -> unit {
   let _ = test(L(L(L(L(R(10))))));
   let _ = test(L(L(L(R(10)))));
   let _ = test(L(L(R(10))));

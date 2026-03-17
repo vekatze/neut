@@ -7,7 +7,7 @@ import {
   core.text.io {print-line},
 }
 
-define _simplify-chunk(x: chunk): chunk {
+define _simplify-chunk(x: chunk) -> chunk {
   match x {
   | Chunk-Line =>
     Chunk-Empty
@@ -24,7 +24,7 @@ define _simplify-chunk(x: chunk): chunk {
   }
 }
 
-define _simplify-doc(d: doc): doc {
+define _simplify-doc(d: doc) -> doc {
   match d {
   | Chunk(c) =>
     Chunk(_simplify-chunk(c))
@@ -37,7 +37,7 @@ define _simplify-doc(d: doc): doc {
   }
 }
 
-inline-meta vet-simple<a>(x: '&a)[ribbon-length: 'int := quote {50}]: 'unit {
+inline-meta vet-simple<a>(x: '&a)[ribbon-length: 'int := quote {50}] -> 'unit {
   quote {
     let tmp = unquote {vet-doc(x)};
     pin tmp = _simplify-doc(tmp);
@@ -47,7 +47,7 @@ inline-meta vet-simple<a>(x: '&a)[ribbon-length: 'int := quote {50}]: 'unit {
   }
 }
 
-define default-top<a>(x: int)[y: either(a, unit) := Right(Unit), z: bool := True]: int {
+define default-top<a>(x: int)[y: either(a, unit) := Right(Unit), z: bool := True] -> int {
   match y {
   | Left(_) =>
     print-line("left");
@@ -62,7 +62,7 @@ define default-top<a>(x: int)[y: either(a, unit) := Right(Unit), z: bool := True
   x
 }
 
-define call-default-top(): unit {
+define call-default-top() -> unit {
   let v1 = default-top<unit>(10);
   print-int-line(v1);
   let v2 = default-top<unit>(10)[y := Left(Unit)];
@@ -79,16 +79,16 @@ define call-default-top(): unit {
   print-int-line(v5);
 }
 
-define default-list<a>()[xs: list(a) := Nil]: list(a) {
+define default-list<a>()[xs: list(a) := Nil] -> list(a) {
   xs
 }
 
-define call-default-list(): unit {
+define call-default-list() -> unit {
   pin result = default-list<int>();
   vet-simple::(result)
 }
 
-inline local-lambda-default<a>(x: a): a {
+inline local-lambda-default<a>(x: a) -> a {
   let f =
     function ()[r: either(a, unit) := Right(Unit)] {
       match r {
@@ -102,12 +102,12 @@ inline local-lambda-default<a>(x: a): a {
   f()
 }
 
-define call-local-lambda-default(): unit {
+define call-local-lambda-default() -> unit {
   pin v = local-lambda-default<unit>(Unit);
   vet-simple::(v)
 }
 
-define local-lambda-override(): unit {
+define local-lambda-override() -> unit {
   let !f =
     function ()[r: either(unit, unit) := Right(Unit)] {
       match r {
@@ -124,20 +124,20 @@ define local-lambda-override(): unit {
   vet-simple::(v2);
 }
 
-inline local-define-default<a>(x: a): a {
+inline local-define-default<a>(x: a) -> a {
   let g =
-    define _(v: a)[r: either(a, unit) := Right(Unit)]: a {
+    define _(v: a)[r: either(a, unit) := Right(Unit)] -> a {
       let _ = r;
       v
     };
   g(x)
 }
 
-define takes-default-fun<a>(f: (x: int)[y: either(a, unit) := Right(Unit)] -> int): int {
+define takes-default-fun<a>(f: (x: int)[y: either(a, unit) := Right(Unit)] -> int) -> int {
   f(1)
 }
 
-define use-takes-default-fun(): int {
+define use-takes-default-fun() -> int {
   let _ =
     takes-default-fun<unit>(function (x)[y: either(unit, unit) := Right(Unit)] {
       let _ = y;
@@ -146,30 +146,30 @@ define use-takes-default-fun(): int {
   0
 }
 
-inline inline-default(x: int)[y: int := 1, z: int := 2]: int {
+inline inline-default(x: int)[y: int := 1, z: int := 2] -> int {
   add-int(x, add-int(y, z))
 }
 
-define call-inline-default(): unit {
+define call-inline-default() -> unit {
   let v1 = inline-default(10);
   let v2 = inline-default(10)[z := 5];
   print-int-line(v1);
   print-int-line(v2);
 }
 
-define-meta default-meta(x: 'int)[n: 'int := quote {0}]: 'int {
+define-meta default-meta(x: 'int)[n: 'int := quote {0}] -> 'int {
   quote {
     let _ = unquote {n};
     unquote {x}
   }
 }
 
-define use-default-meta(): unit {
+define use-default-meta() -> unit {
   let result = default-meta::(1);
   print-int-line(result)
 }
 
-define main(): unit {
+define main() -> unit {
   call-default-top();
   call-default-list();
   call-local-lambda-default();
@@ -180,6 +180,6 @@ define main(): unit {
   use-default-meta();
 }
 
-define zen(): unit {
+define zen() -> unit {
   main()
 }

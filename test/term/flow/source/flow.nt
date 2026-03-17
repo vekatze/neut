@@ -4,7 +4,7 @@ import {
   core.list {length},
 }
 
-define test-syntax(): unit {
+define test-syntax() -> unit {
   let _ = pack-type {thread(type)};
   let _ = pack-type {(thread(type)) -> type};
   let _ = pack-type {(type) -> thread(type)};
@@ -37,7 +37,7 @@ define test-syntax(): unit {
   Unit
 }
 
-define some-list(len: int, acc: list(int)): list(int) {
+define some-list(len: int, acc: list(int)) -> list(int) {
   if eq-int(len, 0) {
     acc
   } else {
@@ -46,11 +46,11 @@ define some-list(len: int, acc: list(int)): list(int) {
   }
 }
 
-define detach-send(x: int, ch: &channel(int)): thread(unit) {
+define detach-send(x: int, ch: &channel(int)) -> thread(unit) {
   detach {send(ch, lift {x})}
 }
 
-define send-all(xs: list(int), ch: &channel(int), acc: list(thread(unit))): list(thread(unit)) {
+define send-all(xs: list(int), ch: &channel(int), acc: list(thread(unit))) -> list(thread(unit)) {
   match xs {
   | Nil =>
     acc
@@ -60,7 +60,7 @@ define send-all(xs: list(int), ch: &channel(int), acc: list(thread(unit))): list
   }
 }
 
-define receive-one-by-one(xs: list(thread(unit)), ch: &channel(int)): unit {
+define receive-one-by-one(xs: list(thread(unit)), ch: &channel(int)) -> unit {
   match xs {
   | Nil =>
     Unit
@@ -71,9 +71,9 @@ define receive-one-by-one(xs: list(thread(unit)), ch: &channel(int)): unit {
   }
 }
 
-define receive-all-at-once(xs: list(thread(unit)), ch: &channel(int)): unit {
+define receive-all-at-once(xs: list(thread(unit)), ch: &channel(int)) -> unit {
   let wait-all =
-    define wait-all(ys: list(thread(unit))) {
+    define wait-all(ys: list(thread(unit))) -> unit {
       match ys {
       | Nil =>
         Unit
@@ -85,7 +85,7 @@ define receive-all-at-once(xs: list(thread(unit)), ch: &channel(int)): unit {
   let size on xs = length(xs);
   wait-all(xs);
   let receive-all =
-    define receive-all(count: int) {
+    define receive-all(count: int) -> unit {
       if eq-int(count, 0) {
         Unit
       } else {
@@ -96,7 +96,7 @@ define receive-all-at-once(xs: list(thread(unit)), ch: &channel(int)): unit {
   receive-all(size)
 }
 
-define test-behavior(): unit {
+define test-behavior() -> unit {
   let ch = make-channel();
   let _ on ch = {
     let fl1 = {
@@ -150,7 +150,7 @@ define test-behavior(): unit {
   Unit
 }
 
-define main(): unit {
+define main() -> unit {
   test-syntax();
   test-behavior();
   Unit

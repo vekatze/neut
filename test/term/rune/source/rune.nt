@@ -3,12 +3,12 @@ import {
   core.text.io {print-line},
 }
 
-define print-rune(r: rune): unit {
+define print-rune(r: rune) -> unit {
   pin t = singleton(r);
   print-line(t)
 }
 
-define main(): unit {
+define main() -> unit {
   print-rune(`a`);
   print-rune(`b`);
   print-rune(`α`);
@@ -44,6 +44,6 @@ define main(): unit {
   }
 }
 
-define zen(): unit {
+define zen() -> unit {
   main()
 }

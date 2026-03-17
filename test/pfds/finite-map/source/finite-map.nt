@@ -15,11 +15,11 @@ data finite-map-signature(a, b) {
   )
 }
 
-define make-finite-map<a, b>(!compare: (a, a) -> ordering): finite-map-signature(a, b) {
+define make-finite-map<a, b>(!compare: (a, a) -> ordering) -> finite-map-signature(a, b) {
   Finite-Map{
     empty := Leaf,
     insert := {
-      define insert(!key: a, value: b, haystack: finite-map(a, b)): finite-map(a, b) {
+      define insert(!key: a, value: b, haystack: finite-map(a, b)) -> finite-map(a, b) {
         match haystack {
         | Leaf =>
           Node(Leaf, key, value, Leaf)
@@ -36,7 +36,7 @@ define make-finite-map<a, b>(!compare: (a, a) -> ordering): finite-map-signature
       }
     },
     lookup := {
-      define lookup(!key: a, haystack: &finite-map(a, b)): ?b {
+      define lookup(!key: a, haystack: &finite-map(a, b)) -> ?b {
         case haystack {
         | Leaf =>
           none
@@ -55,7 +55,7 @@ define make-finite-map<a, b>(!compare: (a, a) -> ordering): finite-map-signature
   }
 }
 
-define compare-int(x: int, y: int): ordering {
+define compare-int(x: int, y: int) -> ordering {
   if lt-int(x, y) {
     LT
   } else-if gt-int(x, y) {
@@ -65,7 +65,7 @@ define compare-int(x: int, y: int): ordering {
   }
 }
 
-define main(): unit {
+define main() -> unit {
   let Finite-Map{empty, insert := !insert, lookup} = make-finite-map(compare-int);
   let mymap = insert(1, List[pack-type {type}], empty);
   let mymap = insert(2, List[pack-type {type}, pack-type {type}], mymap);

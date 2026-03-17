@@ -8,7 +8,7 @@ import {
   core.random {random-int},
 }
 
-define make-big-dict(size: int): dictionary(int, int) {
+define make-big-dict(size: int) -> dictionary(int, int) {
   grow(empty, size, function (acc, _) {
     let key = random-int(1000000);
     let val = random-int(1000000);
@@ -16,7 +16,7 @@ define make-big-dict(size: int): dictionary(int, int) {
   })
 }
 
-define random-lookup-sum(count: int, d: &dictionary(int, int)): unit {
+define random-lookup-sum(count: int, d: &dictionary(int, int)) -> unit {
   let rsum =
     grow(0, count, function (acc, _) {
       let key = random-int(1000000);
@@ -33,7 +33,7 @@ define random-lookup-sum(count: int, d: &dictionary(int, int)): unit {
   print-int-line(rsum);
 }
 
-define main(): unit {
+define main() -> unit {
   let args = get-argv();
   match args {
   | Cons(_, Cons(size-str, Nil)) =>

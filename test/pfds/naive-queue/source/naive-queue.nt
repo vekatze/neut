@@ -7,11 +7,11 @@ data queue(a) {
 | Queue(list(a), list(a))
 }
 
-define empty<a>(): queue(a) {
+define empty<a>() -> queue(a) {
   Queue(List[], List[])
 }
 
-define head<a>(q: &queue(a)): ?a {
+define head<a>(q: &queue(a)) -> ?a {
   case q {
   | Queue(Cons(x, _), _) =>
     Right(*x)
@@ -20,7 +20,7 @@ define head<a>(q: &queue(a)): ?a {
   }
 }
 
-define sanitize<a>(q: queue(a)): queue(a) {
+define sanitize<a>(q: queue(a)) -> queue(a) {
   match q {
   | Queue(Nil, ys) =>
     Queue(reverse(ys), List[])
@@ -29,7 +29,7 @@ define sanitize<a>(q: queue(a)): queue(a) {
   }
 }
 
-define tail<a>(q: queue(a)): ?queue(a) {
+define tail<a>(q: queue(a)) -> ?queue(a) {
   match q {
   | Queue(Cons(_, rest), ys) =>
     Right(sanitize(Queue(rest, ys)))
@@ -38,12 +38,12 @@ define tail<a>(q: queue(a)): ?queue(a) {
   }
 }
 
-define snoc<a>(v: a, q: queue(a)): queue(a) {
+define snoc<a>(v: a, q: queue(a)) -> queue(a) {
   let Queue(xs, ys) = q;
   sanitize(Queue(xs, Cons(v, ys)))
 }
 
-define sum(xs: &list(int)): int {
+define sum(xs: &list(int)) -> int {
   case xs {
   | Nil =>
     0
@@ -52,7 +52,7 @@ define sum(xs: &list(int)): int {
   }
 }
 
-define main(): unit {
+define main() -> unit {
   let q: queue(list(int)) = empty();
   let q = snoc(List[2], q);
   let q = snoc(List[5], q);
