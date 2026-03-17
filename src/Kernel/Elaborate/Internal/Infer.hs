@@ -257,7 +257,7 @@ infer h term =
       (e', t) <- infer h e
       t' <- resolveType h t
       case t' of
-        _ :< WT.Pi _ impArgs expArgs defaultArgs codType -> do
+        _ :< WT.Pi piKind impArgs expArgs defaultArgs codType -> do
           impArgs' <- mapM (const $ liftIO $ newTypeHole h m (varEnv h)) impArgs
           let impIds = map (\(_, _, x, _) -> x) impArgs
           let subType = IntMap.fromList $ zip (map Ident.toInt impIds) (map Type impArgs')
@@ -267,7 +267,15 @@ infer h term =
             raiseError m "exact application does not support default parameters"
           codType' <- liftIO $ Subst.substType (substHandle h) subType' codType
           lamID <- liftIO $ Gensym.newCount (gensymHandle h)
-          infer h $ m :< WT.PiIntro (AttrL.normal lamID codType') [] expArgs' [] (m :< WT.PiElim PEK.Normal e' (ImpArgs.FullySpecified impArgs') expArgs'' (DefaultArgs.ByKey []))
+          let isDestPassing =
+                case piKind of
+                  PK.DestPass _ ->
+                    True
+                  _ ->
+                    False
+          let attr = AttrL.Attr {lamKind = LK.Normal Nothing isDestPassing codType', identity = lamID}
+          let piElimKind = PEK.fromPiKind piKind codType'
+          infer h $ m :< WT.PiIntro attr [] expArgs' [] (m :< WT.PiElim piElimKind e' (ImpArgs.FullySpecified impArgs') expArgs'' (DefaultArgs.ByKey []))
         _ ->
           raiseError m $ "Expected a function type, but got: " <> toTextType t'
     m :< WT.DataIntro attr@(AttrDI.Attr {..}) consName dataArgs consArgs -> do
