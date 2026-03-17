@@ -65,13 +65,13 @@ toDoc term =
         (Nothing, Nothing) ->
           PI.arrange
             [ PI.inject $ toDoc e,
-              PI.inject $ expArgsDoc (c1 ++ c3)
+              PI.inject $ D.join [expArgsDoc c1, C.asSuffix c3]
             ]
         (Just impArgs, Nothing) ->
           PI.arrange
             [ PI.inject $ toDoc e,
               PI.inject $ attachComment c1 $ SE.decodeHorizontallyIfPossible $ fmap typeToDoc impArgs,
-              PI.inject $ expArgsDoc (c2 ++ c3)
+              PI.inject $ D.join [expArgsDoc c2, C.asSuffix c3]
             ]
         (Nothing, Just defaultArgs) ->
           PI.arrange
