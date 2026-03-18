@@ -66,6 +66,9 @@ test-arm64-linux-single target:
 test-arm64-darwin:
     @NEUT={{justfile_directory()}}/bin/neut-arm64-darwin TARGET_ARCH=arm64 CLANG_PATH=${NEUT_ARM64_DARWIN_CLANG_PATH} ./test/test-darwin.sh ./test/term ./test/statement ./test/pfds ./test/misc
 
+test-arm64-darwin-single target:
+    @NEUT={{justfile_directory()}}/bin/neut-arm64-darwin TARGET_ARCH=arm64 CLANG_PATH=${NEUT_ARM64_DARWIN_CLANG_PATH} ./test/test-darwin-single.sh ./test/{{target}}
+
 test-bench-darwin:
     @NEUT={{justfile_directory()}}/bin/neut-arm64-darwin PLATFORM=arm64-darwin {{justfile_directory()}}/bench/script/bench-darwin-mini.sh
 
