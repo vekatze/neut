@@ -255,17 +255,17 @@ clarifyStmt h stmt =
 makeEnvArg :: Handle -> IO (Ident, C.Comp)
 makeEnvArg h = do
   x <- Gensym.newIdentFromText (gensymHandle h) "env"
-  return (x, Sigma.returnImmediateNullS4) -- top-level function's env is always null
+  return (x, Sigma.returnImmediateS4) -- top-level function's env is always null
 
 makeSwitchArg :: Handle -> IO (Ident, C.Comp)
 makeSwitchArg h = do
   x <- Gensym.newIdentFromText (gensymHandle h) "sw"
-  return (x, Sigma.returnImmediateIntS4 PNS.IntSize64)
+  return (x, Sigma.returnImmediateS4)
 
 makeDestParam :: Handle -> IO (Ident, C.Comp)
 makeDestParam h = do
   x <- Gensym.newIdentFromText (gensymHandle h) "dest"
-  return (x, Sigma.returnImmediatePointerS4)
+  return (x, Sigma.returnImmediateS4)
 
 getSizeComp :: Handle -> C.Comp -> IO C.Comp
 getSizeComp h codType = do
@@ -302,7 +302,7 @@ envTypeForGlobal h name = do
   useImmediate <- not <$> hasDefaultArgs h name
   return $
     if useImmediate
-      then Sigma.immediateNullS4
+      then Sigma.immediateS4
       else C.VarGlobal (defaultEnvTypeName name) AN.argNumS4 (FCT.Cod BLT.Pointer)
 
 getGlobalRefInfo :: AttrVG.Attr -> (AN.ArgNum, FCT.ForeignCodType BLT.BaseLowType)
@@ -512,7 +512,7 @@ clarifyType :: Handle -> TM.TypeEnv -> TM.Type -> App C.Comp
 clarifyType h tenv ty =
   case ty of
     _ :< TM.Tau -> do
-      return Sigma.returnImmediateTypeS4
+      return Sigma.returnImmediateS4
     _ :< TM.TVar x -> do
       return $ C.UpIntro $ C.VarLocal x
     _ :< TM.TVarGlobal (AttrVG.Attr {..}) x -> do
@@ -540,23 +540,15 @@ clarifyType h tenv ty =
     _ :< TM.Box t -> do
       clarifyType h tenv t
     _ :< TM.BoxNoema {} ->
-      return Sigma.returnImmediateNoemaS4
+      return Sigma.returnImmediateS4
     _ :< TM.Code t -> do
       clarifyType h tenv t
-    _ :< TM.PrimType primType ->
-      case primType of
-        PT.Int intSize ->
-          return $ Sigma.returnImmediateIntS4 intSize
-        PT.Float floatSize ->
-          return $ Sigma.returnImmediateFloatS4 floatSize
-        PT.Rune ->
-          return Sigma.returnImmediateRuneS4
-        PT.Pointer ->
-          return Sigma.returnImmediatePointerS4
+    _ :< TM.PrimType {} ->
+      return Sigma.returnImmediateS4
     _ :< TM.Resource dd resourceID -> do
       return $ C.UpIntro $ C.VarGlobal (DD.makeResourceName dd resourceID) AN.argNumS4 (FCT.Cod BLT.Pointer)
     _ :< TM.Void ->
-      return Sigma.returnImmediateNullS4
+      return Sigma.returnImmediateS4
 
 embody :: Handle -> TM.TypeEnv -> [(BinderF TM.Type, TM.Term)] -> TM.Term -> App C.Comp
 embody h tenv xets cont =
