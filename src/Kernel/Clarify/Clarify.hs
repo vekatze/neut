@@ -913,12 +913,7 @@ returnClosure h tenv lamID mName opacity isDestPassing codType fvs xts defaultVa
   xts'' <- dropFst <$> clarifyBinder h tenv xts
   fvEnvSigma <- liftIO $ Sigma.closureEnvS4 (sigmaHandle h) mName (locatorHandle h) fvs'' defaultValues
   let fvEnv = C.SigmaIntro (map (\(x, _) -> C.VarLocal x) fvs'')
-  let argNum =
-        AN.fromInt $
-          length xts''
-            + if isDestPassing
-              then 3
-              else 2
+  let argNum = AN.fromInt $ length xts'' + if isDestPassing then 3 else 2
   let name = Locator.attachCurrentLocator (locatorHandle h) $ BN.lambdaName mName lamID
   isAlreadyRegistered <- liftIO $ AuxEnv.checkIfAlreadyRegistered (auxEnvHandle h) name
   unless isAlreadyRegistered $ do
@@ -994,14 +989,14 @@ callClosure h kind e impArgs expArgs defaultArgs = do
         (defaultName, defaultVar) <- Gensym.createVar (gensymHandle h) "default-arg"
         return (defaultName, defaultComp, defaultVar)
   let (defNames, defComps, defVals) = unzip3 defaultTriples
+  let args = impVals ++ expVals ++ defVals ++ [envVar, flag]
   callComp <-
     case kind of
       PEK.DestPass codType -> do
-        let args = impVals ++ expVals ++ defVals ++ [envVar, flag]
         sizeComp <- getSizeComp h codType
         return $ C.DestCall sizeComp lamVar args
       _ ->
-        return $ C.PiElimDownElim False lamVar (impVals ++ expVals ++ defVals ++ [envVar, flag])
+        return $ C.PiElimDownElim False lamVar args
   return $
     Utility.bindLet [(closureVarName, e)] $
       C.SigmaElim (not $ PEK.isNoetic kind) [envTypeVarName, envVarName, lamVarName] closureVar $

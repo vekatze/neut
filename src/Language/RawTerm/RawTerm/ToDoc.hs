@@ -473,7 +473,7 @@ typeToDoc ty =
         else
           PI.arrange
             [ PI.inject base,
-              PI.inject $ SE.decodeHorizontallyIfPossible $ fmap typeToDoc $ SE.fromList' es
+              PI.inject $ SE.decodeHorizontallyIfPossible $ typeToDoc <$> SE.fromList' es
             ]
     _ :< Box t -> do
       D.join [D.text "+", typeToDoc t]
@@ -676,7 +676,7 @@ decGeist
         isDestPassing
       }
     ) = do
-    let hasExp = (not isConstLike) || (not (SE.isEmpty expArgs))
+    let hasExp = not isConstLike || not (SE.isEmpty expArgs)
     let hasDefault = not (SE.isEmpty defaultArgs)
     let expParamsBase = decodeExpParams isConstLike expArgs
     let defaultParamsBase = decodeDefaultParams defaultArgs
@@ -685,7 +685,7 @@ decGeist
             then attachComment c1 expParamsBase
             else expParamsBase
     let defaultParamsWithImp =
-          if (not hasExp) && hasDefault
+          if not hasExp && hasDefault
             then attachComment c1 defaultParamsBase
             else defaultParamsBase
     case cod of
@@ -712,7 +712,7 @@ decGeist
         let cColon =
               (if hasDefault then [] else c3) ++ c2
         let cColon' =
-              if (not hasExp) && (not hasDefault)
+              if not hasExp && not hasDefault
                 then c1 ++ cColon
                 else cColon
         let codDelim =
@@ -739,7 +739,7 @@ decTypeGeist
         isConstLike
       }
     ) = do
-    let hasExp = (not isConstLike) || (not (SE.isEmpty expArgs))
+    let hasExp = not isConstLike || not (SE.isEmpty expArgs)
     let hasDefault = not (SE.isEmpty defaultArgs)
     let expParamsBase = decodeExpParams isConstLike expArgs
     let defaultParamsBase = decodeDefaultParams defaultArgs
@@ -748,7 +748,7 @@ decTypeGeist
             then attachComment c1 expParamsBase
             else expParamsBase
     let defaultParamsWithImp =
-          if (not hasExp) && hasDefault
+          if not hasExp && hasDefault
             then attachComment c1 defaultParamsBase
             else defaultParamsBase
     let defaultParamsWithTrailing =
