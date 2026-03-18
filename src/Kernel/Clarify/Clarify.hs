@@ -106,12 +106,6 @@ new (Global.Handle {..}) (Local.Handle {..}) = do
   let sigmaHandle = Sigma.new gensymHandle linearizeHandle utilityHandle
   return $ Handle {..}
 
-newCurrentReduceHandle :: Handle -> IO Reduce.Handle
-newCurrentReduceHandle h = do
-  defMap <- CompDef.get (compDefHandle h)
-  let compSubstHandle = CompSubst.new (gensymHandle h)
-  return $ Reduce.new compSubstHandle (gensymHandle h) defMap
-
 clarify :: Handle -> [Stmt] -> App [C.CompStmt]
 clarify h stmtList = do
   liftIO $ AuxEnv.clear (auxEnvHandle h)
@@ -130,18 +124,17 @@ clarify h stmtList = do
         liftIO $ CompDef.insert (compDefHandle h) x (opacity, args, e)
       C.Foreign {} ->
         return ()
-  currentReduceHandle <- liftIO $ newCurrentReduceHandle h
   forM stmtList' $ \stmt -> do
     case stmt of
       C.Def x opacity args e -> do
-        e' <- liftIO $ Reduce.reduce currentReduceHandle e
+        e' <- liftIO $ Reduce.reduce (reduceHandle h) e
         -- liftIO $ putStrLn $ T.unpack "==================="
         -- liftIO $ putStrLn $ T.unpack $ DD.reify x
         -- liftIO $ putStrLn $ T.unpack $ T.pack $ show args
         -- liftIO $ putStrLn $ T.unpack $ T.pack $ show e'
         return $ C.Def x opacity args e'
       C.DefVoid x opacity args e -> do
-        e' <- liftIO $ Reduce.reduce currentReduceHandle e
+        e' <- liftIO $ Reduce.reduce (reduceHandle h) e
         return $ C.DefVoid x opacity args e'
       C.Foreign {} ->
         return stmt
