@@ -14,6 +14,7 @@ import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Containers.ListUtils (nubOrd)
+import Data.HashMap.Strict qualified as Map
 import Data.IntMap qualified as IntMap
 import Data.Maybe
 import Data.Text qualified as T
@@ -106,6 +107,15 @@ new (Global.Handle {..}) (Local.Handle {..}) = do
   let sigmaHandle = Sigma.new gensymHandle linearizeHandle utilityHandle
   return $ Handle {..}
 
+newAuxReduceHandle :: Handle -> IO Reduce.Handle
+newAuxReduceHandle h = do
+  let baseDefMap = Map.empty
+  auxDefMap <- AuxEnv.get (auxEnvHandle h)
+  let auxDefMap' = fromMaybe Map.empty $ mapM C.fromCompStmt auxDefMap
+  let defMap' = Map.union baseDefMap auxDefMap'
+  let compSubstHandle = CompSubst.new (gensymHandle h)
+  return $ Reduce.new compSubstHandle (gensymHandle h) defMap'
+
 clarify :: Handle -> [Stmt] -> App [C.CompStmt]
 clarify h stmtList = do
   liftIO $ AuxEnv.clear (auxEnvHandle h)
@@ -124,17 +134,18 @@ clarify h stmtList = do
         liftIO $ CompDef.insert (compDefHandle h) x (opacity, args, e)
       C.Foreign {} ->
         return ()
+  auxReduceHandle <- liftIO $ newAuxReduceHandle h
   forM stmtList' $ \stmt -> do
     case stmt of
       C.Def x opacity args e -> do
-        e' <- liftIO $ Reduce.reduce (reduceHandle h) e
+        e' <- liftIO $ Reduce.reduce auxReduceHandle e
         -- liftIO $ putStrLn $ T.unpack "==================="
         -- liftIO $ putStrLn $ T.unpack $ DD.reify x
         -- liftIO $ putStrLn $ T.unpack $ T.pack $ show args
         -- liftIO $ putStrLn $ T.unpack $ T.pack $ show e'
         return $ C.Def x opacity args e'
       C.DefVoid x opacity args e -> do
-        e' <- liftIO $ Reduce.reduce (reduceHandle h) e
+        e' <- liftIO $ Reduce.reduce auxReduceHandle e
         return $ C.DefVoid x opacity args e'
       C.Foreign {} ->
         return stmt

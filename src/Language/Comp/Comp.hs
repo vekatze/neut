@@ -10,6 +10,7 @@ module Language.Comp.Comp
     DefMap,
     Label,
     fromDefTuple,
+    fromCompStmt,
     intValue0,
     intValue1,
     mulInt64,
@@ -113,7 +114,14 @@ instance Show Comp where
       UpElimCallVoid f vs cont ->
         "call-void " ++ show f ++ "@(" ++ intercalate "," (map show vs) ++ ")\n" ++ show cont
       EnumElim kind sub v c1 caseList phiVarList cont -> do
-        "switch " ++ show sub ++ " " ++ show v ++ "\n<default>\n" ++ show c1 ++ unwords (map showEnumCase caseList) ++ "\nphi " <> show phiVarList <> " = (parent) in\n" <> show cont
+        "switch "
+          ++ show sub
+          ++ " "
+          ++ show v
+          ++ "\n<default>\n"
+          ++ show c1
+          ++ unwords (map showEnumCase caseList)
+          ++ "\nphi " <> show phiVarList <> " = (parent) in\n" <> show cont
           ++ "\nkind="
           ++ show kind
       DestCall sizeComp f vs ->
@@ -150,6 +158,16 @@ data CompStmt
   = Def DD.DefiniteDescription Opacity [Ident] Comp
   | DefVoid DD.DefiniteDescription Opacity [Ident] Comp
   | Foreign [F.Foreign]
+
+fromCompStmt :: CompStmt -> Maybe (Opacity, [Ident], Comp)
+fromCompStmt cs =
+  case cs of
+    Def _ opacity xs body ->
+      Just (opacity, xs, body)
+    DefVoid _ opacity xs body ->
+      Just (opacity, xs, body)
+    Foreign {} ->
+      Nothing
 
 fromDefTuple :: (DD.DefiniteDescription, (Opacity, [Ident], Comp)) -> CompStmt
 fromDefTuple (dd, (opacity, args, body)) =
