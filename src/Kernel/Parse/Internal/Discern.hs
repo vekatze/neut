@@ -345,7 +345,8 @@ discern h term =
       codType' <- discernType h''' $ snd $ RT.cod geist
       body' <- discern h''' body
       ensureLayerClosedness m h''' body'
-      return $ m :< WT.PiIntro (AttrL.normal' name lamID codType') impArgs' expArgs' defaultArgs' body'
+      let isDestPassing = RT.isDestPassing geist
+      return $ m :< WT.PiIntro (AttrL.normal' name isDestPassing lamID codType') impArgs' expArgs' defaultArgs' body'
     m :< RT.PiIntroFix opacity _ (RT.RawDef {geist, body, endLoc}) -> do
       let isDestPassing = RT.isDestPassing geist
       let impArgs = RT.extractImpArgs $ RT.impArgs geist

@@ -5,6 +5,7 @@ module Language.RawTerm.RawTerm
     RawTypeF (..),
     PiArrow (..),
     DefInfo,
+    FuncInfo,
     TopDef,
     TopGeist,
     LetKind (..),

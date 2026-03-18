@@ -49,7 +49,7 @@ toDoc term =
     _ :< VarGlobal dd _ ->
       D.text $ DD.reify dd -- unreachable
     _ :< PiIntro c def -> do
-      decodeDef lambdaNameToDoc "function" c def
+      decodeLambda c def
     _ :< PiIntroFix opacity c def -> do
       let keyword =
             case opacity of
@@ -507,6 +507,17 @@ decodeDef nameDecoder keyword c def = do
         decGeist nameDecoder $ RT.geist def,
         D.text " ",
         decodeBlock (RT.leadingComment def, (toDoc $ RT.body def, RT.trailingComment def))
+      ]
+
+decodeLambda :: C -> RT.FuncInfo -> D.Doc
+decodeLambda c def = do
+  let geist = RT.geist def
+  let arrow = if RT.isDestPassing geist then "=>>" else "=>"
+  attachComment c $
+    PI.arrange
+      [ PI.horizontal $ decGeist lambdaNameToDoc geist,
+        PI.horizontal $ D.text arrow,
+        PI.inject $ decodeBlock (RT.leadingComment def, (toDoc $ RT.body def, RT.trailingComment def))
       ]
 
 decodeTypeDef :: (a -> D.Doc) -> T.Text -> C -> RT.RawTypeDef a -> D.Doc
