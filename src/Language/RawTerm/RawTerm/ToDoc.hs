@@ -718,7 +718,7 @@ decGeist
         let codDelim =
               if isConstLike
                 then PI.horizontal $ attachComment cColon' $ D.text ":"
-                else PI.delimiter $ attachComment cColon' $ D.text (if isDestPassing then "->>" else "->")
+                else PI.delimiterArrow $ attachComment cColon' $ D.text (if isDestPassing then "->>" else "->")
         PI.arrange
           [ PI.inject $ attachComment c0 $ nameDecoder name,
             PI.inject $ decodeImpParams impArgs,
