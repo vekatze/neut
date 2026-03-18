@@ -360,6 +360,7 @@ discern h term =
       codType' <- discernType h''' $ snd $ RT.cod geist
       x' <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) x
       h'''' <- liftIO $ H.extend' h''' mx x' VDK.Normal
+      liftIO $ Unused.deleteVariable (H.unusedHandle h) x'
       body' <- discern h'''' body
       let mxt' = (mx, VK.Normal, x', codType')
       liftIO $ Tag.insertBinder (H.tagHandle h) mxt'
