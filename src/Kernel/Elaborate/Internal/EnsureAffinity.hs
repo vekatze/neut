@@ -144,16 +144,20 @@ analyze h term = do
       return []
     m :< TM.PiIntro (AttrL.Attr {lamKind}) impArgs expArgs defaultArgs e -> do
       case lamKind of
-        LK.Fix _ (mx, _k, x, codType) -> do
+        LK.Fix _ isDestPassing (mx, _k, x, codType) -> do
           (cs1, h') <- analyzeBinder h (impArgs ++ expArgs)
           (cs2, h'') <- analyzeBinder h' (map fst defaultArgs)
           cs3 <- analyzeType h'' codType
-          let piType = m :< TM.Pi PK.normal impArgs expArgs (map fst defaultArgs) codType
+          let piKind =
+                if isDestPassing
+                  then PK.DestPass False
+                  else PK.normal
+          let piType = m :< TM.Pi piKind impArgs expArgs (map fst defaultArgs) codType
           liftIO $ insertRelevantVar x h''
           cs4 <- analyze (extendHandle (mx, VK.Normal, x, piType) h'') e
           css <- forM (S.toList $ freeVarsWithHints term) $ uncurry (analyzeVar h)
           return $ cs1 ++ cs2 ++ cs3 ++ cs4 ++ concat css
-        LK.Normal _ codType -> do
+        LK.Normal _ _ codType -> do
           (cs1, h') <- analyzeBinder h (impArgs ++ expArgs)
           (cs2, h'') <- analyzeBinder h' (map fst defaultArgs)
           cs3 <- analyzeType h'' codType

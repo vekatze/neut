@@ -9,6 +9,7 @@ module Language.Common.StmtKind
     toLowOpacityType,
     isMacroStmtKind,
     isInlineStmtKind,
+    isDestPassingStmtKind,
   )
 where
 
@@ -23,7 +24,10 @@ import Logger.Hint
 
 data BaseStmtKindTerm name binder t
   = Define
+  | DestPassing
+  | DestPassingInline
   | Inline
+  | Constant
   | Macro
   | MacroInline
   | Main t
@@ -54,7 +58,13 @@ toOpacityTerm stmtKind =
   case stmtKind of
     Define ->
       O.Opaque
+    DestPassing ->
+      O.Opaque
+    DestPassingInline ->
+      O.Clear
     Inline ->
+      O.Clear
+    Constant ->
       O.Clear
     Macro ->
       O.Clear
@@ -80,7 +90,13 @@ toLowOpacityTerm stmtKind =
   case stmtKind of
     Define ->
       O.Opaque
+    DestPassing ->
+      O.Opaque
+    DestPassingInline ->
+      O.Opaque
     Inline ->
+      O.Opaque
+    Constant ->
       O.Opaque
     Macro ->
       O.Opaque
@@ -116,13 +132,29 @@ isInlineStmtKind stmtKind =
   case stmtKind of
     Define ->
       False
+    DestPassing ->
+      False
+    DestPassingInline ->
+      False
     Inline ->
       False -- fixme: should be true
+    Constant ->
+      False
     Macro ->
       True
     MacroInline ->
       True
     Main _ ->
       False
+    _ ->
+      False
+
+isDestPassingStmtKind :: BaseStmtKindTerm name binder t -> Bool
+isDestPassingStmtKind stmtKind =
+  case stmtKind of
+    DestPassing ->
+      True
+    DestPassingInline ->
+      True
     _ ->
       False

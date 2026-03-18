@@ -18,7 +18,7 @@ data R-list(a) {
 | New(list(digit(a)))
 }
 
-define size<a>(t: &tree(a)): int {
+define size<a>(t: &tree(a)) -> int {
   case t {
   | Leaf(_) =>
     1
@@ -27,13 +27,13 @@ define size<a>(t: &tree(a)): int {
   }
 }
 
-define join<a>(t1: tree(a), t2: tree(a)): tree(a) {
+define join<a>(t1: tree(a), t2: tree(a)) -> tree(a) {
   let s1 on t1 = size(t1);
   let s2 on t2 = size(t2);
   Node(add-int(s1, s2), t1, t2)
 }
 
-define cons-tree<a>(t: tree(a), ts: R-list(a)): R-list(a) {
+define cons-tree<a>(t: tree(a), ts: R-list(a)) -> R-list(a) {
   match ts {
   | New(Nil) =>
     New(List[DigitOne(t)])
@@ -45,11 +45,11 @@ define cons-tree<a>(t: tree(a), ts: R-list(a)): R-list(a) {
   }
 }
 
-define cons<a>(x: a, ts: R-list(a)): R-list(a) {
+define cons<a>(x: a, ts: R-list(a)) -> R-list(a) {
   cons-tree<a>(Leaf(x), ts)
 }
 
-define uncons-tree<a>(ts: R-list(a)): ?pair(tree(a), R-list(a)) {
+define uncons-tree<a>(ts: R-list(a)) -> ?pair(tree(a), R-list(a)) {
   let New(xs) = ts;
   match xs {
   | Nil =>
@@ -73,7 +73,7 @@ define uncons-tree<a>(ts: R-list(a)): ?pair(tree(a), R-list(a)) {
   }
 }
 
-define lookup-tree<a>(i: int, t: &tree(a)): ?a {
+define lookup-tree<a>(i: int, t: &tree(a)) -> ?a {
   case t {
   | Leaf(v) =>
     if eq-int(i, 0) {
@@ -91,7 +91,7 @@ define lookup-tree<a>(i: int, t: &tree(a)): ?a {
   }
 }
 
-define lookup-list<a>(i: int, xs: &list(digit(a))): ?a {
+define lookup-list<a>(i: int, xs: &list(digit(a))) -> ?a {
   case xs {
   | Nil =>
     none
@@ -107,12 +107,12 @@ define lookup-list<a>(i: int, xs: &list(digit(a))): ?a {
   }
 }
 
-define lookup<a>(i: int, xs: &R-list(a)): ?a {
+define lookup<a>(i: int, xs: &R-list(a)) -> ?a {
   tie New(xs) = xs;
   lookup-list(i, xs)
 }
 
-define update-tree<a>(i: int, x: a, t: tree(a)): tree(a) {
+define update-tree<a>(i: int, x: a, t: tree(a)) -> tree(a) {
   match t {
   | Leaf(v) =>
     if eq-int(i, 0) {
@@ -130,7 +130,7 @@ define update-tree<a>(i: int, x: a, t: tree(a)): tree(a) {
   }
 }
 
-define update<a>(i: int, x: a, xs: R-list(a)): R-list(a) {
+define update<a>(i: int, x: a, xs: R-list(a)) -> R-list(a) {
   match xs {
   | New(Nil) =>
     New(Nil)
@@ -148,7 +148,7 @@ define update<a>(i: int, x: a, xs: R-list(a)): R-list(a) {
   }
 }
 
-define find-and-get(i: int, xs: &R-list(int)): int {
+define find-and-get(i: int, xs: &R-list(int)) -> int {
   match lookup(i, xs) {
   | Left(_) =>
     0
@@ -157,7 +157,7 @@ define find-and-get(i: int, xs: &R-list(int)): int {
   }
 }
 
-define main(): unit {
+define main() -> unit {
   let xs: R-list(int) = New(Nil);
   let xs = cons(3, xs);
   let xs = cons(2, xs);

@@ -13,7 +13,7 @@ alias heap(a: type) {
   list(tree(a))
 }
 
-define join<a>(cmp: &(a, a) -> ordering, t1: tree(a), t2: tree(a)): tree(a) {
+define join<a>(cmp: &(a, a) -> ordering, t1: tree(a), t2: tree(a)) -> tree(a) {
   match t1, t2 {
   | Node(r1, !x1, children1), Node(r2, !x2, children2) =>
     match cmp(x1, x2) {
@@ -25,14 +25,14 @@ define join<a>(cmp: &(a, a) -> ordering, t1: tree(a), t2: tree(a)): tree(a) {
   }
 }
 
-define rank<a>(t: &tree(a)): int {
+define rank<a>(t: &tree(a)) -> int {
   case t {
   | Node(r, _, _) =>
     *r
   }
 }
 
-define insert-tree<a>(cmp: &(a, a) -> ordering, t: tree(a), h: heap(a)): heap(a) {
+define insert-tree<a>(cmp: &(a, a) -> ordering, t: tree(a), h: heap(a)) -> heap(a) {
   match h {
   | Nil =>
     List[t]
@@ -47,11 +47,11 @@ define insert-tree<a>(cmp: &(a, a) -> ordering, t: tree(a), h: heap(a)): heap(a)
   }
 }
 
-define insert<a>(cmp: &(a, a) -> ordering, value: a, h: heap(a)): heap(a) {
+define insert<a>(cmp: &(a, a) -> ordering, value: a, h: heap(a)) -> heap(a) {
   insert-tree<a>(cmp, Node(0, value, Nil), h)
 }
 
-define merge<a>(cmp: &(a, a) -> ordering, h1: heap(a), h2: heap(a)): heap(a) {
+define merge<a>(cmp: &(a, a) -> ordering, h1: heap(a), h2: heap(a)) -> heap(a) {
   match h1, h2 {
   | Nil, h2 =>
     h2
@@ -70,16 +70,16 @@ define merge<a>(cmp: &(a, a) -> ordering, h1: heap(a), h2: heap(a)): heap(a) {
   }
 }
 
-define root<a>(t: &tree(a)): a {
+define root<a>(t: &tree(a)) -> a {
   case t {
   | Node(_, v, _) =>
     *v
   }
 }
 
-define find-min<a>(cmp: &(a, a) -> ordering, h: &heap(a)): ?a {
+define find-min<a>(cmp: &(a, a) -> ordering, h: &heap(a)) -> ?a {
   let helper =
-    define self(!cand: a, h: &heap(a)): a {
+    define self(!cand: a, h: &heap(a)) -> a {
       case h {
       | Nil =>
         cand
@@ -102,7 +102,7 @@ define find-min<a>(cmp: &(a, a) -> ordering, h: &heap(a)): ?a {
   }
 }
 
-define remove-min-tree<a>(cmp: &(a, a) -> ordering, h: heap(a)): ?pair(tree(a), heap(a)) {
+define remove-min-tree<a>(cmp: &(a, a) -> ordering, h: heap(a)) -> ?pair(tree(a), heap(a)) {
   match h {
   | Nil =>
     none
@@ -124,12 +124,12 @@ define remove-min-tree<a>(cmp: &(a, a) -> ordering, h: heap(a)): ?pair(tree(a), 
   }
 }
 
-define delete-min<a>(cmp: &(a, a) -> ordering, h: heap(a)): ?heap(a) {
+define delete-min<a>(cmp: &(a, a) -> ordering, h: heap(a)) -> ?heap(a) {
   try Pair(Node(_, _, ts1), ts2): pair(tree(a), heap(a)) = remove-min-tree<a>(cmp, h);
   Right(merge<a>(cmp, reverse(ts1), ts2))
 }
 
-define compare-int(x: int, y: int): ordering {
+define compare-int(x: int, y: int) -> ordering {
   if lt-int(x, y) {
     LT
   } else-if gt-int(x, y) {
@@ -139,7 +139,7 @@ define compare-int(x: int, y: int): ordering {
   }
 }
 
-define main(): unit {
+define main() -> unit {
   let h: heap(int) = Nil;
   pin compare-int = compare-int;
   let h = insert<int>(compare-int, 3, h);

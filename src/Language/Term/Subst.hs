@@ -29,6 +29,7 @@ import Language.Common.Ident
 import Language.Common.Ident.Reify qualified as Ident
 import Language.Common.LamKind qualified as LK
 import Language.Common.LowMagic qualified as LM
+import Language.Common.PiElimKind qualified as PEK
 import Language.Common.Magic qualified as M
 import Language.Common.VarKind qualified as VK
 import Language.Term.FreeVars qualified as TM
@@ -76,28 +77,29 @@ subst h sub term =
         else do
           newLamID <- liftIO $ Gensym.newCount (gensymHandle h)
           case lamKind of
-            LK.Fix opacity xt -> do
+            LK.Fix opacity isDestPassing xt -> do
               (impArgs', sub') <- substBinder h sub impArgs
               (expArgs', sub'') <- substBinder h sub' expArgs
               (defaultArgs', sub''') <- substDefaultArgs h sub'' defaultArgs
               ([xt'], sub'''') <- substBinder h sub''' [xt]
               e' <- subst h sub'''' e
-              let fixAttr = AttrL.Attr {lamKind = LK.Fix opacity xt', identity = newLamID}
+              let fixAttr = AttrL.Attr {lamKind = LK.Fix opacity isDestPassing xt', identity = newLamID}
               return (m :< TM.PiIntro fixAttr impArgs' expArgs' defaultArgs' e')
-            LK.Normal name codType -> do
+            LK.Normal name isDestPassing codType -> do
               (impArgs', sub') <- substBinder h sub impArgs
               (expArgs', sub'') <- substBinder h sub' expArgs
               (defaultArgs', sub''') <- substDefaultArgs h sub'' defaultArgs
               codType' <- substType h sub''' codType
               e' <- subst h sub''' e
-              let lamAttr = AttrL.Attr {lamKind = LK.Normal name codType', identity = newLamID}
+              let lamAttr = AttrL.Attr {lamKind = LK.Normal name isDestPassing codType', identity = newLamID}
               return (m :< TM.PiIntro lamAttr impArgs' expArgs' defaultArgs' e')
     m :< TM.PiElim b e impArgs expArgs defaultArgs -> do
+      b' <- PEK.traverseArg (substType h sub) b
       e' <- subst h sub e
       impArgs' <- mapM (substType h sub) impArgs
       expArgs' <- mapM (subst h sub) expArgs
       defaultArgs' <- mapM (traverse (subst h sub)) defaultArgs
-      return (m :< TM.PiElim b e' impArgs' expArgs' defaultArgs')
+      return (m :< TM.PiElim b' e' impArgs' expArgs' defaultArgs')
     m :< TM.DataIntro attr consName dataArgs consArgs -> do
       dataArgs' <- mapM (substType h sub) dataArgs
       consArgs' <- mapM (subst h sub) consArgs

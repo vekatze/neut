@@ -128,8 +128,14 @@ extendStmtKindTerm stmtKind =
   case stmtKind of
     Define ->
       Define
+    DestPassing ->
+      DestPassing
+    DestPassingInline ->
+      DestPassingInline
     Inline ->
       Inline
+    Constant ->
+      Constant
     Macro ->
       Macro
     MacroInline ->

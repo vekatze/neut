@@ -4,7 +4,7 @@ import {
   core.list {length},
 }
 
-define axiom-K<a, b>(f: +(a) -> b, x: +a): +b {
+define axiom-K<a, b>(f: +(a) -> b, x: +a) -> +b {
   box {
     letbox f = f;
     letbox x = x;
@@ -12,12 +12,12 @@ define axiom-K<a, b>(f: +(a) -> b, x: +a): +b {
   }
 }
 
-define axiom-T<a>(x: +a): a {
+define axiom-T<a>(x: +a) -> a {
   letbox-T x = x;
   x
 }
 
-define test-syntax(): unit {
+define test-syntax() -> unit {
   // box-intro, box-elim
   letbox x = box {Unit};
   let _ = x;
@@ -42,7 +42,7 @@ define test-syntax(): unit {
   Unit
 }
 
-define test-resource(xs: list(int)): unit {
+define test-resource(xs: list(int)) -> unit {
   // letbox-T
   letbox-T len on xs = lift {length(xs)};
   print-int-line(len);
@@ -63,7 +63,7 @@ define test-resource(xs: list(int)): unit {
   Unit
 }
 
-define complex(): () -> unit {
+define complex() -> () -> unit {
   // layer 0
   let xs: list(int) = List[1, 2, 3, 4];
   letbox-T f on xs =
@@ -89,12 +89,12 @@ define complex(): () -> unit {
   f
 }
 
-define main(): unit {
+define main() -> unit {
   test-syntax();
   test-resource(List[1, 2, 3]);
   complex()()
 }
 
-define zen(): unit {
+define zen() -> unit {
   main()
 }

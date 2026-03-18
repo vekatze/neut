@@ -78,8 +78,9 @@ data BaseRawStmt name
       C
       Hint
       (name, C)
-      (C, RT.RawTerm)
-      (C, RT.RawTerm)
+      (C, RT.RawTerm) -- discarder
+      (C, RT.RawTerm) -- copier
+      (C, RT.RawTerm) -- resourceSize
       C
   | RawStmtVariadic
       RuleKind
@@ -116,8 +117,9 @@ data PostRawStmt
       C
       Hint
       (DD.DefiniteDescription, C)
-      (C, RT.RawTerm)
-      (C, RT.RawTerm)
+      (C, RT.RawTerm) -- discarder
+      (C, RT.RawTerm) -- copier
+      (C, RT.RawTerm) -- resourceSize
       C
   | PostRawStmtVariadic
       RuleKind

@@ -51,9 +51,10 @@ data WeakStmt
       Hint
       DD.DefiniteDescription
       Int
-      WT.WeakType
-      WT.WeakTerm
-      WT.WeakTerm
+      WT.WeakType -- unitType
+      WT.WeakTerm -- discarder
+      WT.WeakTerm -- copier
+      WT.WeakTerm -- resourceSize
   | WeakStmtVariadic RuleKind Hint DD.DefiniteDescription
   | WeakStmtNominal Hint [(NominalTag, G.Geist WT.WeakType WT.WeakTerm)]
   | WeakStmtForeign [WT.WeakForeign]

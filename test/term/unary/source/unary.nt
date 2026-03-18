@@ -14,7 +14,7 @@ data item4(a, b) {
 | Item4(pair(a, b))
 }
 
-define trace-list<a>(xs: list(a)): list(a) {
+define trace-list<a>(xs: list(a)) -> list(a) {
   match xs {
   | Nil =>
     Nil
@@ -23,21 +23,21 @@ define trace-list<a>(xs: list(a)): list(a) {
   }
 }
 
-define use-item1(x: item1): list(int) {
+define use-item1(x: item1) -> list(int) {
   match x {
   | Item1(value) =>
     trace-list(value)
   }
 }
 
-define use-item1-noetic(x: &item1): list(int) {
+define use-item1-noetic(x: &item1) -> list(int) {
   case x {
   | Item1(value) =>
     trace-list(*value)
   }
 }
 
-define test-item1(): unit {
+define test-item1() -> unit {
   let !value = Item1(List[1, 2, 3]);
   let _ = value;
   let _ = value;
@@ -51,21 +51,21 @@ define test-item1(): unit {
   Unit
 }
 
-define use-item2<a>(x: item2(a)): a {
+define use-item2<a>(x: item2(a)) -> a {
   match x {
   | Item2(value) =>
     value
   }
 }
 
-define use-item2-noetic<a>(x: &item2(a)): &a {
+define use-item2-noetic<a>(x: &item2(a)) -> &a {
   case x {
   | Item2(value) =>
     value
   }
 }
 
-define test-item2(): unit {
+define test-item2() -> unit {
   let !value: item2(list(int)) = Item2(List[1, 2, 3]);
   let _ = value;
   let _ = value;
@@ -79,14 +79,14 @@ define test-item2(): unit {
   Unit
 }
 
-define use-item3<a, b>(f: item3(a, b), x: a): b {
+define use-item3<a, b>(f: item3(a, b), x: a) -> b {
   match f {
   | Item3(func) =>
     func(x)
   }
 }
 
-define use-item3-noetic<a, b>(f: &item3(a, b), x: a): b {
+define use-item3-noetic<a, b>(f: &item3(a, b), x: a) -> b {
   case f {
   | Item3(func-n) =>
     let func = *func-n;
@@ -94,7 +94,7 @@ define use-item3-noetic<a, b>(f: &item3(a, b), x: a): b {
   }
 }
 
-define test-item3(): unit {
+define test-item3() -> unit {
   let !value: item3(int, list(int)) =
     Item3(function (x) {
       List[x, 2, 3]
@@ -111,21 +111,21 @@ define test-item3(): unit {
   Unit
 }
 
-define use-item4(x: item4(int, list(int))): list(int) {
+define use-item4(x: item4(int, list(int))) -> list(int) {
   match x {
   | Item4(Pair(v, xs)) =>
     trace-list(Cons(v, xs))
   }
 }
 
-define use-item4-noetic(x: &item4(int, list(int))): list(int) {
+define use-item4-noetic(x: &item4(int, list(int))) -> list(int) {
   case x {
   | Item4(Pair(v, xs)) =>
     trace-list(Cons(*v, *xs))
   }
 }
 
-define test-item4(): unit {
+define test-item4() -> unit {
   let !value: item4(int, list(int)) = Item4(Pair(3, List[1, 2, 3]));
   let _ = value;
   let _ = value;
@@ -139,7 +139,7 @@ define test-item4(): unit {
   Unit
 }
 
-define main(): unit {
+define main() -> unit {
   test-item1();
   test-item2();
   test-item3();

@@ -7,7 +7,7 @@ data heap(a) {
 | Node(heap(a), a, heap(a))
 }
 
-define split<a>(!cmp: (a, a) -> ordering, !pivot: a, t: heap(a)): pair(heap(a), heap(a)) {
+define split<a>(!cmp: (a, a) -> ordering, !pivot: a, t: heap(a)) -> pair(heap(a), heap(a)) {
   match t {
   | Leaf =>
     Pair(Leaf, Leaf)
@@ -51,12 +51,12 @@ define split<a>(!cmp: (a, a) -> ordering, !pivot: a, t: heap(a)): pair(heap(a), 
   }
 }
 
-define insert<a>(cmp: (a, a) -> ordering, !x: a, t: heap(a)): heap(a) {
+define insert<a>(cmp: (a, a) -> ordering, !x: a, t: heap(a)) -> heap(a) {
   let Pair(smaller, bigger) = split(cmp, x, t);
   Node(smaller, x, bigger)
 }
 
-define find-min<a>(t: &heap(a)): ?a {
+define find-min<a>(t: &heap(a)) -> ?a {
   case t {
   | Leaf =>
     none
@@ -67,7 +67,7 @@ define find-min<a>(t: &heap(a)): ?a {
   }
 }
 
-define delete-min<a>(t: heap(a)): ?heap(a) {
+define delete-min<a>(t: heap(a)) -> ?heap(a) {
   match t {
   | Leaf =>
     none
@@ -81,7 +81,7 @@ define delete-min<a>(t: heap(a)): ?heap(a) {
   }
 }
 
-define sum(xs: &list(int)): int {
+define sum(xs: &list(int)) -> int {
   case xs {
   | Nil =>
     0
@@ -90,7 +90,7 @@ define sum(xs: &list(int)): int {
   }
 }
 
-define compare-int-list(xs: list(int), ys: list(int)): ordering {
+define compare-int-list(xs: list(int), ys: list(int)) -> ordering {
   let x on xs = sum(xs);
   let y on ys = sum(ys);
   let _ = xs;
@@ -104,7 +104,7 @@ define compare-int-list(xs: list(int), ys: list(int)): ordering {
   }
 }
 
-define main(): unit {
+define main() -> unit {
   let h: heap(list(int)) = Leaf;
   let h = insert(compare-int-list, List[1, 2], h);
   let h = insert(compare-int-list, List[10], h);

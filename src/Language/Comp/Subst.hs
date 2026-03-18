@@ -28,10 +28,10 @@ subst =
 substComp :: Handle -> C.SubstValue -> C.Comp -> IO C.Comp
 substComp h sub term =
   case term of
-    C.PiElimDownElim v ds -> do
+    C.PiElimDownElim forceInline v ds -> do
       let v' = substValue sub v
       let ds' = map (substValue sub) ds
-      return $ C.PiElimDownElim v' ds'
+      return $ C.PiElimDownElim forceInline v' ds'
     C.SigmaElim b xs v e -> do
       let v' = substValue sub v
       xs' <- mapM (Gensym.newIdentFromIdent (gensymHandle h)) xs
@@ -41,20 +41,38 @@ substComp h sub term =
     C.UpIntro v -> do
       let v' = substValue sub v
       return $ C.UpIntro v'
+    C.UpIntroVoid ->
+      return C.UpIntroVoid
     C.UpElim isReducible x e1 e2 -> do
       e1' <- substComp h sub e1
       x' <- Gensym.newIdentFromIdent (gensymHandle h) x
       let sub' = IntMap.insert (Ident.toInt x) (C.VarLocal x') sub
       e2' <- substComp h sub' e2
       return $ C.UpElim isReducible x' e1' e2'
-    C.EnumElim fvInfo v defaultBranch branchList phiVar cont -> do
+    C.UpElimCallVoid f vs e2 -> do
+      let f' = substValue sub f
+      let vs' = map (substValue sub) vs
+      e2' <- substComp h sub e2
+      return $ C.UpElimCallVoid f' vs' e2'
+    C.EnumElim kind fvInfo v defaultBranch branchList phiVar cont -> do
       let (is, ds) = unzip fvInfo
       let ds' = map (substValue sub) ds
       let v' = substValue sub v
       phiVar' <- mapM (Gensym.newIdentFromIdent (gensymHandle h)) phiVar
       let sub' = IntMap.union (IntMap.fromList (zip (map Ident.toInt phiVar) (map C.VarLocal phiVar'))) sub
       cont' <- substComp h sub' cont
-      return $ C.EnumElim (zip is ds') v' defaultBranch branchList phiVar' cont'
+      return $ C.EnumElim kind (zip is ds') v' defaultBranch branchList phiVar' cont'
+    C.DestCall sizeComp f vs -> do
+      sizeComp' <- substComp h sub sizeComp
+      let f' = substValue sub f
+      let vs' = map (substValue sub) vs
+      return $ C.DestCall sizeComp' f' vs'
+    C.WriteToDest dest sizeComp result cont -> do
+      let dest' = substValue sub dest
+      sizeComp' <- substComp h sub sizeComp
+      result' <- substComp h sub result
+      cont' <- substComp h sub cont
+      return $ C.WriteToDest dest' sizeComp' result' cont'
     C.Primitive theta -> do
       let theta' = substPrimitive sub theta
       return $ C.Primitive theta'
@@ -82,6 +100,9 @@ substValue sub term =
     C.SigmaIntro vs -> do
       let vs' = map (substValue sub) vs
       C.SigmaIntro vs'
+    C.SigmaDataIntro size vs -> do
+      let vs' = map (substValue sub) vs
+      C.SigmaDataIntro size vs'
     C.Int {} ->
       term
     C.Float {} ->
@@ -95,6 +116,10 @@ substPrimitive sub c =
       C.PrimOp op vs'
     C.ShiftPointer v size index ->
       C.ShiftPointer (substValue sub v) size index
+    C.Alloc size ->
+      C.Alloc (substValue sub size)
+    C.Memcpy dest src size ->
+      C.Memcpy (substValue sub dest) (substValue sub src) (substValue sub size)
     C.Magic der -> do
       let der' = fmap (substValue sub) der
       C.Magic der'

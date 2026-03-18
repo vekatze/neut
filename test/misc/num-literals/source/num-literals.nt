@@ -3,7 +3,7 @@ import {
   core.int.io {print-int-line},
 }
 
-define foo(): c-int {
+define foo() -> c-int {
   123
 }
 
@@ -11,14 +11,14 @@ data my-float {
 | My-Float(float32)
 }
 
-define bar(): my-float {
+define bar() -> my-float {
   123
 }
 
-define buz(): my-float {
+define buz() -> my-float {
   123.456
 }
 
-define main(): unit {
+define main() -> unit {
   print-int-line(from-c-int(foo()));
 }

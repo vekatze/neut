@@ -186,8 +186,16 @@ decStmt stmt =
       case stmtKind of
         SK.Define ->
           RT.decodeDef (RT.nameToDoc . N.Var) "define" c (fmap BN.reify def)
-        SK.Inline ->
+        SK.DestPassing ->
+          RT.decodeDef (RT.nameToDoc . N.Var) "define" c (fmap BN.reify def)
+        SK.DestPassingInline ->
           RT.decodeDef (RT.nameToDoc . N.Var) "inline" c (fmap BN.reify def)
+        SK.Inline ->
+          if RT.isConstLike (RT.geist def)
+            then RT.decodeDef (RT.nameToDoc . N.Var) "constant" c (fmap BN.reify def)
+            else RT.decodeDef (RT.nameToDoc . N.Var) "inline" c (fmap BN.reify def)
+        SK.Constant ->
+          RT.decodeDef (RT.nameToDoc . N.Var) "constant" c (fmap BN.reify def)
         SK.Macro ->
           RT.decodeDef (RT.nameToDoc . N.Var) "define-meta" c (fmap BN.reify def)
         SK.MacroInline ->
@@ -210,10 +218,10 @@ decStmt stmt =
             D.text " ",
             SE.decode $ fmap decConsInfo consInfo
           ]
-    RawStmtDefineResource c1 _ (name, c2) discarder copier trailingComment -> do
+    RawStmtDefineResource c1 _ (name, c2) discarder copier resourceSize trailingComment -> do
       let series =
             SE.Series
-              { elems = [discarder, copier],
+              { elems = [discarder, copier, resourceSize],
                 trailingComment,
                 prefix = Nothing,
                 container = Just SE.Brace,
@@ -223,7 +231,7 @@ decStmt stmt =
       attachStmtComment (c1 ++ c2) $
         PI.arrange
           [ PI.horizontal $ D.text "resource",
-            PI.horizontal $ D.text (BN.reify name),
+            PI.horizontal $ D.text $ BN.reify name,
             PI.inject $ SE.decode $ fmap RT.toDoc series
           ]
     RawStmtVariadic kind c1 _ (name, c2) (ct, leaf, _) (cn, node, _) (cr, root, _) trailingComment _ -> do
@@ -287,11 +295,17 @@ decNominalGeist (tag, geist, _) = do
   let geistDoc = case tag of
         Define ->
           RT.decGeist (D.text . BN.reify) geist
+        DestPassing ->
+          RT.decGeist (D.text . BN.reify) geist
+        DestPassingInline ->
+          RT.decGeist (D.text . BN.reify) geist
         Inline ->
           RT.decGeist (D.text . BN.reify) geist
         Macro ->
           RT.decGeist (D.text . BN.reify) geist
         MacroInline ->
+          RT.decGeist (D.text . BN.reify) geist
+        Constant ->
           RT.decGeist (D.text . BN.reify) geist
         Alias ->
           RT.decTypeGeist (D.text . BN.reify) geist

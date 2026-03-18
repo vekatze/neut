@@ -1,12 +1,8 @@
-import {
-  core.vector,
-}
-
-define identity<a>(x: a): a {
+define identity<a>(x: a) -> a {
   x
 }
 
-define test(): type {
+define test() -> type {
   // ordinary variable
   let x = pack-type {type};
   let _ = x;
@@ -14,21 +10,21 @@ define test(): type {
   let _ = this.var.test;
   let _ = pack-type {core.vector.vector(int)};
   // non-ascii long name
-  let もの思へば沢の蛍も我が身よりあくがれ出づる魂かとぞ見る = pack-type{type};
-  let _ = identity<type>( もの思へば沢の蛍も我が身よりあくがれ出づる魂かとぞ見る);
+  let もの思へば沢の蛍も我が身よりあくがれ出づる魂かとぞ見る = pack-type {type};
+  let _ = identity<type>(もの思へば沢の蛍も我が身よりあくがれ出づる魂かとぞ見る);
   // emoji name
-  let ♥️🌟 = pack-type{type};
-  let _ = identity<type>( ♥️🌟);
+  let ♥️🌟 = pack-type {type};
+  let _ = identity<type>(♥️🌟);
   // very long name
-  let but-what-after-all-is-one-night-A-short-space-especially-when-the-darkness-dims-so-soon-and-so-soon-a-bird-sings-a-cock-crows-or-a-faint-green-quickens-like-a-turning-leaf-in-the-hollows-of-the-wave-Night-however-succeeds-to-night-The-winter-holds-a-pack-of-them-in-store-and-deals-them-equally-evenly-with-indefatigable-fingers-They-lengthen-they-darken-Some-of-them-hold-aloft-clear-planets-plates-of-brightness-The-autumn-trees-ravaged-as-they-are-take-on-the-flesh-of-tattered-flags-kindling-in-the-doom-of-cool-cathedral-caves-where-gold-letters-on-marble-pages-describe-death-in-battle-and-how-bones-bleach-and-burn-far-away-in-Indian-sands-The-autumn-trees-gleam-in-the-yellow-moonlight-in-the-light-of-harvest-moons-the-light-which-mellows-the-energy-of-labour-and-smooths-the-stubble-and-brings-the-wave-lapping-blue-to-the-shore = pack-type{type};
+  let but-what-after-all-is-one-night-A-short-space-especially-when-the-darkness-dims-so-soon-and-so-soon-a-bird-sings-a-cock-crows-or-a-faint-green-quickens-like-a-turning-leaf-in-the-hollows-of-the-wave-Night-however-succeeds-to-night-The-winter-holds-a-pack-of-them-in-store-and-deals-them-equally-evenly-with-indefatigable-fingers-They-lengthen-they-darken-Some-of-them-hold-aloft-clear-planets-plates-of-brightness-The-autumn-trees-ravaged-as-they-are-take-on-the-flesh-of-tattered-flags-kindling-in-the-doom-of-cool-cathedral-caves-where-gold-letters-on-marble-pages-describe-death-in-battle-and-how-bones-bleach-and-burn-far-away-in-Indian-sands-The-autumn-trees-gleam-in-the-yellow-moonlight-in-the-light-of-harvest-moons-the-light-which-mellows-the-energy-of-labour-and-smooths-the-stubble-and-brings-the-wave-lapping-blue-to-the-shore = pack-type {type};
   let _ = but-what-after-all-is-one-night-A-short-space-especially-when-the-darkness-dims-so-soon-and-so-soon-a-bird-sings-a-cock-crows-or-a-faint-green-quickens-like-a-turning-leaf-in-the-hollows-of-the-wave-Night-however-succeeds-to-night-The-winter-holds-a-pack-of-them-in-store-and-deals-them-equally-evenly-with-indefatigable-fingers-They-lengthen-they-darken-Some-of-them-hold-aloft-clear-planets-plates-of-brightness-The-autumn-trees-ravaged-as-they-are-take-on-the-flesh-of-tattered-flags-kindling-in-the-doom-of-cool-cathedral-caves-where-gold-letters-on-marble-pages-describe-death-in-battle-and-how-bones-bleach-and-burn-far-away-in-Indian-sands-The-autumn-trees-gleam-in-the-yellow-moonlight-in-the-light-of-harvest-moons-the-light-which-mellows-the-energy-of-labour-and-smooths-the-stubble-and-brings-the-wave-lapping-blue-to-the-shore;
   // complex name
-  let ♥️a🌟あ🌕α$-$~@#%^\_ = pack-type{type};
+  let ♥️a🌟あ🌕α$-$~@#%^\_ = pack-type {type};
   let _ = ♥️a🌟あ🌕α$-$~@#%^\_;
   x
 }
 
-define main(): unit {
+define main() -> unit {
   let _ = test();
   Unit
 }

@@ -1,4 +1,4 @@
-define test-syntax(): unit {
+define test-syntax() -> unit {
   // nullary
   let _ =
     function () {
@@ -83,17 +83,17 @@ define test-syntax(): unit {
   Unit
 }
 
-define sample(): type {
+define sample() -> type {
   let _ = pack-type {type};
   Unit;
   pack-type {(type, type) -> type}
 }
 
-define opaque<a>(x: a) {
+define opaque<a>(x: a) -> a {
   x
 }
 
-define affine-lam1(): unit {
+define affine-lam1() -> unit {
   let lam1 =
     opaque(function () {
       pack-type {type}
@@ -102,7 +102,7 @@ define affine-lam1(): unit {
   Unit
 }
 
-define relevant-lam1(): unit {
+define relevant-lam1() -> unit {
   let !lam1 =
     opaque(function () {
       pack-type {type}
@@ -112,7 +112,7 @@ define relevant-lam1(): unit {
   Unit
 }
 
-define affine-lam2(): unit {
+define affine-lam2() -> unit {
   let lam1 =
     opaque(function () {
       pack-type {type}
@@ -126,7 +126,7 @@ define affine-lam2(): unit {
   Unit
 }
 
-define relevant-lam2(): unit {
+define relevant-lam2() -> unit {
   let lam1 =
     opaque(function () {
       pack-type {type}
@@ -141,7 +141,7 @@ define relevant-lam2(): unit {
   Unit
 }
 
-define affine-lam3(): unit {
+define affine-lam3() -> unit {
   let !lam1 =
     opaque(function () {
       pack-type {type}
@@ -161,7 +161,7 @@ define affine-lam3(): unit {
   Unit
 }
 
-define relevant-lam3(): unit {
+define relevant-lam3() -> unit {
   let !lam1 =
     opaque(function () {
       pack-type {type}
@@ -182,7 +182,7 @@ define relevant-lam3(): unit {
   Unit
 }
 
-define affine-lam4(): unit {
+define affine-lam4() -> unit {
   let !lam1 =
     opaque(function () {
       pack-type {type}
@@ -210,7 +210,7 @@ define affine-lam4(): unit {
   Unit
 }
 
-define relevant-lam4(): unit {
+define relevant-lam4() -> unit {
   let !lam1 =
     opaque(function () {
       pack-type {type}
@@ -304,11 +304,11 @@ define relevant-lam4(): unit {
   Unit
 }
 
-define test-reduction(): unit {
+define test-reduction() -> unit {
   Unit
 }
 
-define test-resource(): unit {
+define test-resource() -> unit {
   affine-lam1();
   relevant-lam1();
   affine-lam2();
@@ -319,7 +319,7 @@ define test-resource(): unit {
   relevant-lam4()
 }
 
-define main(): unit {
+define main() -> unit {
   test-syntax();
   test-resource()
 }

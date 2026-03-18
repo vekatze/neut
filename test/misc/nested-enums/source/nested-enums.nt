@@ -2,7 +2,7 @@ data dummy(_: type) {
 | Dummy
 }
 
-define joker(x: unit, y: bool): dummy(int) {
+define joker(x: unit, y: bool) -> dummy(int) {
   match x, y {
   | Unit, True =>
     print("a");
@@ -13,7 +13,7 @@ define joker(x: unit, y: bool): dummy(int) {
   }
 }
 
-define main(): unit {
+define main() -> unit {
   let _ = joker(Unit, True);
   let _ = joker(Unit, False);
   print("\n");

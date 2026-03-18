@@ -11,10 +11,6 @@ module Language.WeakTerm.WeakTerm
     metaOfType,
     fromLetSeq,
     fromBaseLowType,
-    -- Re-exports for convenience
-    WeakMagic (..),
-    Magic (..),
-    LowMagic (..),
   )
 where
 
@@ -35,10 +31,10 @@ import Language.Common.Foreign
 import Language.Common.HoleID
 import Language.Common.Ident
 import Language.Common.ImpArgs qualified as ImpArgs
-import Language.Common.LowMagic (LowMagic (..))
-import Language.Common.Magic (Magic (..), WeakMagic (..))
+import Language.Common.Magic (WeakMagic (..))
 import Language.Common.Noema qualified as N
 import Language.Common.Opacity qualified as O
+import Language.Common.PiElimKind qualified as PEK
 import Language.Common.PiKind (PiKind)
 import Language.Common.PrimNumSize
 import Language.Common.PrimType qualified as PT
@@ -69,7 +65,7 @@ data WeakTermF a
   = Var Ident
   | VarGlobal AttrVG.Attr DD.DefiniteDescription
   | PiIntro (AttrL.Attr WeakType) [BinderF WeakType] [BinderF WeakType] [(BinderF WeakType, WeakTerm)] a
-  | PiElim N.IsNoetic a (ImpArgs.ImpArgs WeakType) [a] (DefaultArgs.DefaultArgs a)
+  | PiElim (PEK.PiElimKind WeakType) a (ImpArgs.ImpArgs WeakType) [a] (DefaultArgs.DefaultArgs a)
   | PiElimExact a
   | DataIntro (AttrDI.Attr DD.DefiniteDescription (BinderF WeakType)) DD.DefiniteDescription [WeakType] [a]
   | DataElim N.IsNoetic [(Ident, a, WeakType)] (DT.DecisionTree WeakType a)

@@ -29,6 +29,7 @@ import Language.Common.LowMagic qualified as LM
 import Language.Common.Magic
 import Language.Common.Noema qualified as N
 import Language.Common.Opacity qualified as O
+import Language.Common.PiElimKind qualified as PEK
 import Language.Common.PiKind (PiKind)
 import Language.Common.PrimType qualified as PT
 import Language.Term.PrimValue qualified as PV
@@ -67,7 +68,7 @@ data TermF a
   = Var Ident
   | VarGlobal AttrVG.Attr DD.DefiniteDescription
   | PiIntro (AttrL.Attr Type) [BinderF Type] [BinderF Type] [(BinderF Type, a)] a
-  | PiElim N.IsNoetic a [Type] [a] [Maybe a]
+  | PiElim (PEK.PiElimKind Type) a [Type] [a] [Maybe a]
   | DataIntro (AttrDI.Attr DD.DefiniteDescription (BinderF Type)) DD.DefiniteDescription [Type] [a]
   | DataElim N.IsNoetic [(Ident, a, Type)] (DT.DecisionTree Type a)
   | BoxIntro [(BinderF Type, a)] a

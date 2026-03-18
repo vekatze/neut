@@ -7,7 +7,7 @@ data nat {
 | Succ(nat)
 }
 
-define add-nat(x: nat, y: nat): nat {
+define add-nat(x: nat, y: nat) -> nat {
   match x {
   | Zero =>
     y
@@ -16,7 +16,7 @@ define add-nat(x: nat, y: nat): nat {
   }
 }
 
-define mul-nat(x: nat, !y: nat): nat {
+define mul-nat(x: nat, !y: nat) -> nat {
   match x {
   | Zero =>
     Zero
@@ -25,7 +25,7 @@ define mul-nat(x: nat, !y: nat): nat {
   }
 }
 
-define eq-nat(n1: nat, n2: nat): bool {
+define eq-nat(n1: nat, n2: nat) -> bool {
   match n1, n2 {
   | Zero, Zero =>
     True
@@ -36,7 +36,7 @@ define eq-nat(n1: nat, n2: nat): bool {
   }
 }
 
-define fact(!n: nat): nat {
+define fact(!n: nat) -> nat {
   match n {
   | Zero =>
     Succ(Zero)
@@ -45,7 +45,7 @@ define fact(!n: nat): nat {
   }
 }
 
-define interpret(n: nat): int {
+define interpret(n: nat) -> int {
   match n {
   | Zero =>
     0
@@ -54,7 +54,7 @@ define interpret(n: nat): int {
   }
 }
 
-define main(): unit {
+define main() -> unit {
   let n5 = Succ(Succ(Succ(Succ(Succ(Zero)))));
   print-int-line(interpret(fact(n5)))
 }

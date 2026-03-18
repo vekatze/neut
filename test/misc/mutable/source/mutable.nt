@@ -5,7 +5,7 @@ import {
   core.list {length},
 }
 
-define bar(xs-cell: &cell(list(int))): unit {
+define bar(xs-cell: &cell(list(int))) -> unit {
   borrow(xs-cell, function (xs) {
     let len = length(xs);
     print-int-line(len);
@@ -13,7 +13,7 @@ define bar(xs-cell: &cell(list(int))): unit {
   })
 }
 
-define main(): unit {
+define main() -> unit {
   let xs: list(int) = Cons(1, Cons(2, Nil));
   let xs-cell = make-cell(lift {xs});
   let _ on xs-cell = {

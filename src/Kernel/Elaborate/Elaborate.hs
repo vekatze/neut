@@ -63,6 +63,7 @@ import Language.Common.IsConstLike (IsConstLike)
 import Language.Common.LamKind qualified as LK
 import Language.Common.LowMagic qualified as LM
 import Language.Common.Magic qualified as M
+import Language.Common.PiElimKind qualified as PEK
 import Language.Common.PiKind qualified as PK
 import Language.Common.PrimNumSize
 import Language.Common.PrimType qualified as PT
@@ -149,7 +150,7 @@ elaborateStmt h stmt = do
           return ()
       remarks <- do
         affHandle <- liftIO $ EnsureAffinity.new h
-        let dummyAttr = AttrL.Attr {lamKind = LK.Normal Nothing codType', identity = 0}
+        let dummyAttr = AttrL.Attr {lamKind = LK.Normal Nothing False codType', identity = 0}
         EnsureAffinity.ensureAffinity affHandle $ m :< TM.PiIntro dummyAttr impArgs' expArgs' defaultArgs' e'
       e'' <-
         if not $ SK.isMacroStmtKind stmtKind
@@ -189,11 +190,12 @@ elaborateStmt h stmt = do
       let result = StmtDefineType isConstLike stmtKind' (SavedHint m) x impArgs'' expArgs'' defaultArgs'' codType'' body''
       insertStmt h result
       return ([result], [])
-    WeakStmtDefineResource m dd resourceID unitType discarder copier -> do
-      unitType' <- elaborateType h unitType
+    WeakStmtDefineResource m dd resourceID unitType discarder copier resourceSize -> do
       discarder' <- elaborate' h discarder
       copier' <- elaborate' h copier
-      let result = StmtDefineResource (SavedHint m) dd resourceID unitType' discarder' copier'
+      resourceSize' <- elaborate' h resourceSize
+      unitType' <- elaborateType h unitType
+      let result = StmtDefineResource (SavedHint m) dd resourceID unitType' discarder' copier' resourceSize'
       insertStmt h result
       return ([result], [])
     WeakStmtVariadic kind m dd -> do
@@ -223,17 +225,13 @@ insertStmt :: Handle -> Stmt -> App ()
 insertStmt h stmt = do
   case stmt of
     StmtDefine isConstLike stmtKind (SavedHint m) f impArgs expArgs defaultArgs t e -> do
-      case stmtKind of
-        SK.DataIntro {} ->
-          liftIO $ Type.insert' (typeHandle h) f $ weakenType $ m :< TM.Pi (PK.DataIntro isConstLike) impArgs expArgs (map fst defaultArgs) t
-        _ ->
-          liftIO $ Type.insert' (typeHandle h) f $ weakenType $ m :< TM.Pi (PK.Normal isConstLike) impArgs expArgs (map fst defaultArgs) t
+      liftIO $ Type.insert' (typeHandle h) f $ weakenType $ m :< TM.Pi (PK.fromStmtKind stmtKind isConstLike) impArgs expArgs (map fst defaultArgs) t
       liftIO $ Definition.insert' (defHandle h) f impArgs expArgs defaultArgs e t (stmtKindToDefKind stmtKind defaultArgs)
     StmtDefineType isConstLike stmtKind (SavedHint m) f impArgs expArgs defaultArgs t body -> do
       let allBinders = impArgs ++ expArgs ++ map fst defaultArgs
       liftIO $ Type.insert' (typeHandle h) f $ weakenType $ m :< TM.Pi (PK.Normal isConstLike) impArgs expArgs (map fst defaultArgs) t
       liftIO $ TypeDef.insert' (typeDefHandle h) (SK.toOpacityType stmtKind) f allBinders body
-    StmtDefineResource (SavedHint m) dd resourceID _ _ _ -> do
+    StmtDefineResource (SavedHint m) dd resourceID _ _ _ _ -> do
       liftIO $ Type.insert' (typeHandle h) dd $ weakenType (m :< TM.Pi (PK.Normal True) [] [] [] (m :< TM.Tau))
       liftIO $ TypeDef.insert' (typeDefHandle h) (SK.toOpacityType SK.Alias) dd [] (m :< TM.Resource dd resourceID)
     StmtVariadic {} ->
@@ -250,7 +248,7 @@ insertWeakStmt h stmt = do
     WeakStmtDefineType _ stmtKind _ f impArgs expArgs defaultArgs _ body -> do
       let binders = impArgs ++ expArgs ++ map fst defaultArgs
       liftIO $ WeakTypeDef.insert' (weakTypeDefHandle h) (SK.toOpacityType stmtKind) f binders body
-    WeakStmtDefineResource m dd resourceID _ _ _ -> do
+    WeakStmtDefineResource m dd resourceID _ _ _ _ -> do
       let resourceType = m :< WT.Resource dd resourceID
       liftIO $ WeakTypeDef.insert' (weakTypeDefHandle h) (SK.toOpacityType SK.Alias) dd [] resourceType
     WeakStmtNominal {} -> do
@@ -266,8 +264,14 @@ elaborateStmtKindTerm h stmtKind =
   case stmtKind of
     SK.Define ->
       return SK.Define
+    SK.DestPassing ->
+      return SK.DestPassing
+    SK.DestPassingInline ->
+      return SK.DestPassingInline
     SK.Inline ->
       return SK.Inline
+    SK.Constant ->
+      return SK.Constant
     SK.Macro ->
       return SK.Macro
     SK.MacroInline ->
@@ -312,6 +316,7 @@ elaborate' h term = do
       e' <- elaborate' h e
       return $ m :< TM.PiIntro kind' impArgs' expArgs' defaultArgs' e'
     m :< WT.PiElim b e impArgs expArgs defaultArgs -> do
+      b' <- PEK.traverseArg (elaborateType h) b
       e' <- elaborate' h e
       let impArgs' = ImpArgs.extract impArgs
       impArgs'' <- mapM (elaborateType h) impArgs'
@@ -321,7 +326,7 @@ elaborate' h term = do
           mapM (traverse (elaborate' h)) args
         DefaultArgs.ByKey _ ->
           raiseCritical m "Scene.Elaborate.elaborate': found a remaining `ByKey` default argument"
-      return $ m :< TM.PiElim b e' impArgs'' expArgs' defaultArgs'
+      return $ m :< TM.PiElim b' e' impArgs'' expArgs' defaultArgs'
     m :< WT.PiElimExact {} -> do
       raiseCritical m "Scene.Elaborate.elaborate': found a remaining `exact`"
     m :< WT.DataIntro attr consName dataArgs consArgs -> do
@@ -608,12 +613,12 @@ elaborateLet h (xt, e) = do
 elaborateLamAttr :: Handle -> AttrL.Attr WT.WeakType -> App (AttrL.Attr TM.Type)
 elaborateLamAttr h (AttrL.Attr {lamKind, identity}) =
   case lamKind of
-    LK.Normal name codType -> do
+    LK.Normal name isDestPassing codType -> do
       codType' <- elaborateType h codType
-      return $ AttrL.Attr {lamKind = LK.Normal name codType', identity}
-    LK.Fix opacity xt -> do
+      return $ AttrL.Attr {lamKind = LK.Normal name isDestPassing codType', identity}
+    LK.Fix opacity isDestPassing xt -> do
       xt' <- elaborateWeakBinder h xt
-      return $ AttrL.Attr {lamKind = LK.Fix opacity xt', identity}
+      return $ AttrL.Attr {lamKind = LK.Fix opacity isDestPassing xt', identity}
 
 type ClauseContext =
   [(Ident, (Maybe DD.DefiniteDescription, IsConstLike, [Ident]))]
@@ -863,7 +868,15 @@ elaborateAttrDataIntro h attr = do
 stmtKindToDefKind :: SK.StmtKindTerm a -> [(binder, b)] -> Maybe Inline.DefKind
 stmtKindToDefKind stmtKind defaultArgs =
   case stmtKind of
+    SK.DestPassing ->
+      if null defaultArgs
+        then Nothing
+        else Just Inline.NoInline
+    SK.DestPassingInline ->
+      Just Inline.Inline
     SK.Inline ->
+      Just Inline.Inline
+    SK.Constant ->
       Just Inline.Inline
     SK.Macro ->
       Just Inline.Macro

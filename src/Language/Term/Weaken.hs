@@ -20,6 +20,7 @@ import Language.Common.ImpArgs qualified as ImpArgs
 import Language.Common.LamKind qualified as LK
 import Language.Common.LowMagic qualified as LM
 import Language.Common.Magic qualified as M
+import Language.Common.PiElimKind qualified as PEK
 import Language.Common.StmtKind
 import Language.Term.PrimValue qualified as PV
 import Language.Term.Stmt
@@ -49,11 +50,12 @@ weakenStmt stmt = do
       let codType' = weakenType codType
       let body' = weakenType body
       WeakStmtDefineType isConstLike stmtKind' m name impArgs' expArgs' defaultArgs' codType' body'
-    StmtDefineResource (SavedHint m) name resourceID unitType discarder copier -> do
-      let unitType' = weakenType unitType
+    StmtDefineResource (SavedHint m) name resourceID unitType discarder copier resourceSize -> do
       let discarder' = weaken discarder
       let copier' = weaken copier
-      WeakStmtDefineResource m name resourceID unitType' discarder' copier'
+      let resourceSize' = weaken resourceSize
+      let unitType' = weakenType unitType
+      WeakStmtDefineResource m name resourceID unitType' discarder' copier' resourceSize'
     StmtVariadic kind (SavedHint m) name -> do
       WeakStmtVariadic kind m name
     StmtForeign foreignList ->
@@ -74,11 +76,12 @@ weaken term =
       let e' = weaken e
       m :< WT.PiIntro attr' impArgs' expArgs' defaultArgs' e'
     m :< TM.PiElim b e impArgs expArgs defaultArgs -> do
+      let b' = PEK.mapArg weakenType b
       let e' = weaken e
       let impArgs' = ImpArgs.FullySpecified $ map weakenType impArgs
       let expArgs' = map weaken expArgs
       let defaultArgs' = map (fmap weaken) defaultArgs
-      m :< WT.PiElim b e' impArgs' expArgs' (DefaultArgs.Aligned defaultArgs')
+      m :< WT.PiElim b' e' impArgs' expArgs' (DefaultArgs.Aligned defaultArgs')
     m :< TM.DataIntro attr consName dataArgs consArgs -> do
       let dataArgs' = map weakenType dataArgs
       let consArgs' = map weaken consArgs
@@ -193,10 +196,10 @@ weakenLet ((m, k, x, t), e) =
 weakenAttr :: AttrL.Attr TM.Type -> AttrL.Attr WT.WeakType
 weakenAttr AttrL.Attr {lamKind, identity} =
   case lamKind of
-    LK.Normal name codType ->
-      AttrL.normal' name identity (weakenType codType)
-    LK.Fix opacity xt ->
-      AttrL.Attr {lamKind = LK.Fix opacity (weakenTypeBinder xt), identity}
+    LK.Normal name isDestPassing codType ->
+      AttrL.Attr {lamKind = LK.Normal name isDestPassing (weakenType codType), identity}
+    LK.Fix opacity isDestPassing xt ->
+      AttrL.Attr {lamKind = LK.Fix opacity isDestPassing (weakenTypeBinder xt), identity}
 
 weakenPrimValue :: PV.PrimValue TM.Type -> WPV.WeakPrimValue WT.WeakType
 weakenPrimValue prim =
@@ -254,8 +257,14 @@ weakenStmtKindTerm stmtKind =
   case stmtKind of
     Define ->
       Define
+    DestPassing ->
+      DestPassing
+    DestPassingInline ->
+      DestPassingInline
     Inline ->
       Inline
+    Constant ->
+      Constant
     Macro ->
       Macro
     MacroInline ->

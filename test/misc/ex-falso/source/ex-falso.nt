@@ -1,9 +1,9 @@
 data my-empty() {}
 
-define ex-falso<a>(e: my-empty()): a {
+define ex-falso<a>(e: my-empty()) -> a {
   match e {}
 }
 
-define main(): unit {
+define main() -> unit {
   Unit
 }

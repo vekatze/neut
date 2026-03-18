@@ -36,6 +36,7 @@ defineData m dataName dataArgsOrNone consInfoList loc = do
           { loc = m,
             name = (dataName, []),
             isConstLike = isConstLike,
+            isDestPassing = False,
             impArgs = RT.emptyImpArgs,
             defaultArgs = RT.emptyDefaultArgs,
             expArgs = dataArgs',
@@ -98,7 +99,7 @@ parseDefineDataConstructor dataType dataName dataArgs consInfoList discriminant 
                 let impArgsWithEmpty = (SE.emptySeriesAC, [])
                 let defaultArgsWithEmpty = RT.emptyDefaultArgs
                 let expArgsWithEmpty = (fromMaybe SE.emptySeriesPC (expArgs consInfo), [])
-                m :< RT.Pi impArgsWithEmpty expArgsWithEmpty defaultArgsWithEmpty [] dataType (endLoc consInfo)
+                m :< RT.Pi impArgsWithEmpty expArgsWithEmpty defaultArgsWithEmpty RT.Arrow [] dataType (endLoc consInfo)
       let body =
             if isConstLikeConsInfo consInfo
               then m :< RT.DataIntro attr (name consInfo) dataArgs'' (map fst expConsArgs')
@@ -115,6 +116,7 @@ parseDefineDataConstructor dataType dataName dataArgs consInfoList discriminant 
                         { loc = loc consInfo,
                           name = (name consInfo, []),
                           isConstLike = isConstLikeConsInfo consInfo,
+                          isDestPassing = False,
                           impArgs = dataArgs,
                           defaultArgs = RT.emptyDefaultArgs,
                           expArgs = (SE.emptySeriesPC, []),

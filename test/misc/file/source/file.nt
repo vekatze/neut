@@ -6,14 +6,14 @@ import {
   core.text.io {read, write},
 }
 
-define use-file(): system(unit) {
+define use-file() -> system(unit) {
   try file = open("./test", core.file.flag.for-rw, default-file-mode);
   try _ = write(file, "hey\n");
   try _ = read(file, 1024);
   close(file)
 }
 
-define main(): unit {
+define main() -> unit {
   match use-file() {
   | Right(_) =>
     Unit

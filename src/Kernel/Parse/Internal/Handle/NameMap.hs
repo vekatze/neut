@@ -82,7 +82,7 @@ registerGeist h tag RT.RawGeist {..} = do
   liftIO $ insertToGeistMap h name' loc isConstLike
   liftIO $ insertToNameMap h name' loc (Just tag) $ do
     if isTermTag tag
-      then GN.TopLevelFuncTerm argNum isConstLike (isMacroTag tag)
+      then GN.TopLevelFuncTerm argNum isConstLike (isDestPassingTag tag) (isMacroTag tag)
       else GN.TopLevelFuncType argNum isConstLike False
 
 lookup :: Handle -> Hint.Hint -> DD.DefiniteDescription -> App (Maybe (Hint, GN.GlobalName))
@@ -203,7 +203,7 @@ _getGlobalNames stmt = do
       [(name, (m, Nothing, GN.Rule kind))]
     PostRawStmtNominal {} -> do
       []
-    PostRawStmtDefineResource _ m (name, _) _ _ _ -> do
+    PostRawStmtDefineResource _ m (name, _) _ _ _ _ -> do
       [(name, (m, Just Resource, GN.TopLevelFuncType AN.zero True False))]
     PostRawStmtForeign {} ->
       []
@@ -223,7 +223,7 @@ getGlobalNamesFromDefTerm stmtKind geist = do
   case stmtKindTermToNominalTag stmtKind of
     Just tag -> do
       let isMacro = stmtKindTermIsMacro stmtKind
-      [(name, (m, Just tag, GN.TopLevelFuncTerm allArgNum isConstLike isMacro))]
+      [(name, (m, Just tag, GN.TopLevelFuncTerm allArgNum isConstLike (isDestPassingTag tag) isMacro))]
     Nothing ->
       []
 
@@ -263,7 +263,7 @@ _getGlobalNames' stmt = do
       case stmtKindTermToNominalTag stmtKind of
         Just tag -> do
           let isMacro = stmtKindTermIsMacro stmtKind
-          [(name, (m, Just tag, GN.TopLevelFuncTerm allArgNum isConstLike isMacro))]
+          [(name, (m, Just tag, GN.TopLevelFuncTerm allArgNum isConstLike (isDestPassingTag tag) isMacro))]
         Nothing ->
           []
     StmtDefineType isConstLike stmtKind (SavedHint m) name impArgs expArgs defaultArgs _ _ -> do
@@ -279,7 +279,7 @@ _getGlobalNames' stmt = do
           let dataArgNum = AN.fromInt $ length dataArgs
           let consNameArrowList = map (toConsNameArrow dataArgNum) consInfoList
           (dataName, (m, mTag, GN.Data dataArgNum (map stripTag consNameArrowList) isConstLike)) : consNameArrowList
-    StmtDefineResource (SavedHint m) name _ _ _ _ -> do
+    StmtDefineResource (SavedHint m) name _ _ _ _ _ -> do
       [(name, (m, Nothing, GN.TopLevelFuncType AN.argNumS4 True False))]
     StmtVariadic kind (SavedHint m) name -> do
       [(name, (m, Nothing, GN.Rule kind))]
@@ -307,8 +307,14 @@ stmtKindTermToNominalTag stmtKind =
   case stmtKind of
     SK.Define ->
       Just Define
+    SK.DestPassing ->
+      Just DestPassing
+    SK.DestPassingInline ->
+      Just DestPassingInline
     SK.Inline ->
       Just Inline
+    SK.Constant ->
+      Just Constant
     SK.Macro ->
       Just Macro
     SK.MacroInline ->

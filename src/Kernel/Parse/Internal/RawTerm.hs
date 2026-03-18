@@ -9,10 +9,13 @@ module Kernel.Parse.Internal.RawTerm
     preAscription,
     preBinder,
     parseDef,
+    parseDefOptionalCod,
     parseAliasDef,
     parseGeist,
     parseAliasGeist,
     parseResourceGeist,
+    parseConstantDef,
+    parseConstantGeist,
     parseDefInfoCod,
     typeWithoutIdent,
     parseImplicitParams,
@@ -295,14 +298,22 @@ rawTypePi h = do
   impArgs <- parseImplicitParams h
   expArgs <- seriesParen (choice [try $ varWithMode h >>= preAscription h, typeWithoutIdent h])
   defaultArgs <- parseDefaultParams h
-  cArrow <- delimiter "->"
+  (piArrow, cArrow) <-
+    choice
+      [ do
+          cArrow <- delimiter "->>"
+          return (RT.ArrowDestPass, cArrow),
+        do
+          cArrow <- delimiter "->"
+          return (RT.Arrow, cArrow)
+      ]
   (cod, c) <- rawType h
   loc <- getCurrentLoc
-  return (m :< RT.Pi impArgs expArgs defaultArgs cArrow cod loc, c)
+  return (m :< RT.Pi impArgs expArgs defaultArgs piArrow cArrow cod loc, c)
 
 rawTermPiIntro :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermPiIntro h m c0 = do
-  (defInfo, c) <- parseDef h $ do
+  (defInfo, c) <- parseDefOptionalCod h $ do
     mName <- optional symbol
     case mName of
       Nothing ->
@@ -488,6 +499,21 @@ parseDef h nameParser = do
       c
     )
 
+parseDefOptionalCod :: Handle -> Parser (a, C) -> Parser (RT.RawDef a, C)
+parseDefOptionalCod h nameParser = do
+  (geist, c1) <- parseGeistOptionalCod h nameParser
+  (c2, ((e, c3), loc, c)) <- betweenBrace' $ rawExpr h
+  return
+    ( RT.RawDef
+        { geist,
+          leadingComment = c1 ++ c2,
+          body = e,
+          trailingComment = c3,
+          endLoc = loc
+        },
+      c
+    )
+
 parseAliasDef :: Handle -> Parser (a, C) -> Parser (RT.RawTypeDef a, C)
 parseAliasDef h nameParser = do
   (geist, c1) <- parseAliasGeist h nameParser
@@ -508,18 +534,24 @@ parseGeist h nameParser = do
   loc <- getCurrentHint
   (name', c1) <- nameParser
   impArgs <- parseImplicitParams h
-  (isConstLike, expArgs@(expSeries, _), defaultArgs) <- do
-    choice
-      [ do
-          expDomArgList <- seriesParen $ preBinder h
-          defaultArgs <- parseDefaultParams h
-          return (False, expDomArgList, defaultArgs),
-        return (True, (SE.emptySeries (Just SE.Paren) SE.Comma, []), (SE.emptySeries (Just SE.Bracket) SE.Comma, []))
-      ]
+  let isConstLike = False
+  expArgs@(expSeries, _) <- seriesParen $ preBinder h
+  defaultArgs <- parseDefaultParams h
   lift $ ensureArgumentLinearity S.empty $ map (\(mx, _, x, _, _, _) -> (mx, x)) $ SE.extract expSeries
-  m <- getCurrentHint
-  (c2, (cod, c)) <- parseDefInfoCod h m
-  return (RT.RawGeist {loc, name = (name', c1), isConstLike, impArgs, defaultArgs, expArgs, cod = (c2, cod)}, c)
+  (isDestPassing, c2, (cod, c)) <- parseDefInfoCod h
+  return (RT.RawGeist {loc, name = (name', c1), isConstLike, isDestPassing, impArgs, defaultArgs, expArgs, cod = (c2, cod)}, c)
+
+parseGeistOptionalCod :: Handle -> Parser (a, C) -> Parser (RT.RawGeist a, C)
+parseGeistOptionalCod h nameParser = do
+  loc <- getCurrentHint
+  (name', c1) <- nameParser
+  impArgs <- parseImplicitParams h
+  let isConstLike = False
+  expArgs@(expSeries, _) <- seriesParen $ preBinder h
+  defaultArgs <- parseDefaultParams h
+  lift $ ensureArgumentLinearity S.empty $ map (\(mx, _, x, _, _, _) -> (mx, x)) $ SE.extract expSeries
+  (isDestPassing, c2, (cod, c)) <- parseDefInfoCodOptional h
+  return (RT.RawGeist {loc, name = (name', c1), isConstLike, isDestPassing, impArgs, defaultArgs, expArgs, cod = (c2, cod)}, c)
 
 parseAliasGeist :: Handle -> Parser (a, C) -> Parser (RT.RawGeist a, C)
 parseAliasGeist h nameParser = do
@@ -537,7 +569,8 @@ parseAliasGeist h nameParser = do
   lift $ ensureArgumentLinearity S.empty $ map (\(mx, _, x, _, _, _) -> (mx, x)) $ SE.extract expSeries
   m <- getCurrentHint
   let cod = m :< RT.Tau
-  return (RT.RawGeist {loc, name = (name', c1), isConstLike, impArgs, defaultArgs, expArgs, cod = ([], cod)}, [])
+  let isDestPassing = False
+  return (RT.RawGeist {loc, name = (name', c1), isConstLike, isDestPassing, impArgs, defaultArgs, expArgs, cod = ([], cod)}, [])
 
 parseResourceGeist :: Parser (a, C) -> Parser (RT.RawGeist a, C)
 parseResourceGeist nameParser = do
@@ -545,10 +578,39 @@ parseResourceGeist nameParser = do
   (name', c1) <- nameParser
   let impArgs = (SE.emptySeriesAC, [])
   let isConstLike = True
+  let isDestPassing = False
   let expArgs = (SE.emptySeries (Just SE.Paren) SE.Comma, [])
   let defaultArgs = (SE.emptySeries (Just SE.Bracket) SE.Comma, [])
   let cod = loc :< RT.Tau
-  return (RT.RawGeist {loc, name = (name', c1), isConstLike, impArgs, defaultArgs, expArgs, cod = ([], cod)}, [])
+  return (RT.RawGeist {loc, name = (name', c1), isConstLike, isDestPassing, impArgs, defaultArgs, expArgs, cod = ([], cod)}, [])
+
+parseConstantDef :: Handle -> Parser (a, C) -> Parser (RT.RawDef a, C)
+parseConstantDef h nameParser = do
+  (geist, c1) <- parseConstantGeist h nameParser
+  (c2, ((e, c3), loc, c)) <- betweenBrace' $ rawExpr h
+  return
+    ( RT.RawDef
+        { geist,
+          leadingComment = c1 ++ c2,
+          body = e,
+          trailingComment = c3,
+          endLoc = loc
+        },
+      c
+    )
+
+parseConstantGeist :: Handle -> Parser (a, C) -> Parser (RT.RawGeist a, C)
+parseConstantGeist h nameParser = do
+  loc <- getCurrentHint
+  (name', c1) <- nameParser
+  impArgs <- parseImplicitParams h
+  let isConstLike = True
+  let expArgs = (SE.emptySeries (Just SE.Paren) SE.Comma, [])
+  defaultArgs <- parseDefaultParams h
+  c2 <- delimiter ":"
+  (cod, c) <- rawType h
+  let isDestPassing = False
+  return (RT.RawGeist {loc, name = (name', c1), isConstLike, isDestPassing, impArgs, defaultArgs, expArgs, cod = (c2, cod)}, c)
 
 parseImplicitParams :: Handle -> Parser (SE.Series (RawBinder RT.RawType), C)
 parseImplicitParams h =
@@ -601,16 +663,28 @@ ensureArgumentLinearity foundVarSet vs =
       | otherwise ->
           ensureArgumentLinearity (S.insert name foundVarSet) rest
 
-parseDefInfoCod :: Handle -> Hint -> Parser (C, (RT.RawType, C))
-parseDefInfoCod h m =
+parseDefInfoCod :: Handle -> Parser (Bool, C, (RT.RawType, C))
+parseDefInfoCod h = do
+  (isDestPassing, c) <-
+    choice
+      [ do
+          c <- delimiter "->>"
+          return (True, c),
+        do
+          c <- choice [delimiter "->", delimiter ":"]
+          return (False, c)
+      ]
+  t <- rawType h
+  return (isDestPassing, c, t)
+
+parseDefInfoCodOptional :: Handle -> Parser (Bool, C, (RT.RawType, C))
+parseDefInfoCodOptional h =
   choice
-    [ do
-        c <- delimiter ":"
-        t <- rawType h
-        return (c, t),
+    [ parseDefInfoCod h,
       do
+        m <- getCurrentHint
         hole <- liftIO $ RT.createTypeHole (gensymHandle h) m
-        return ([], (hole, []))
+        return (False, [], (hole, []))
     ]
 
 rawTermDefine :: Handle -> O.Opacity -> Hint -> C -> Parser (RT.RawTerm, C)

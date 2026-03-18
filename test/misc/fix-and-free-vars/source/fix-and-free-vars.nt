@@ -3,10 +3,10 @@ import {
   core.list {length},
 }
 
-define main(): unit {
+define main() -> unit {
   let !xs: list(int) = List[];
   let no-free-var =
-    define foo(c: int): int {
+    define foo(c: int) -> int {
       if eq-int(c, 0) {
         1
       } else {
@@ -15,7 +15,7 @@ define main(): unit {
     };
   let _ = no-free-var(3);
   let single-free-var =
-    define free-vars-in-recursion(c: int): int {
+    define free-vars-in-recursion(c: int) -> int {
       if eq-int(c, 0) {
         let _ = xs;
         let _ on !xs = length(xs);
@@ -30,7 +30,7 @@ define main(): unit {
   let !zs = xs;
   let !ws: list(int) = List[];
   let multiple-free-var =
-    define free-vars-in-recursion(c: int): int {
+    define free-vars-in-recursion(c: int) -> int {
       if eq-int(c, 0) {
         let _ = xs;
         let _ = xs;

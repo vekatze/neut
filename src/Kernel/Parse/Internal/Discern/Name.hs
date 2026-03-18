@@ -36,15 +36,17 @@ import Language.Common.Discriminant qualified as D
 import Language.Common.GlobalLocator qualified as GL
 import Language.Common.ImpArgs qualified as ImpArgs
 import Language.Common.IsConstLike
+import Language.Common.IsDestPassing
 import Language.Common.LocalLocator qualified as LL
 import Language.Common.LowMagic qualified as LM
-import Language.Common.VarKind qualified as VK
 import Language.Common.Magic qualified as M
+import Language.Common.PiElimKind qualified as PEK
 import Language.Common.PiKind qualified as PK
 import Language.Common.PrimNumSize qualified as PNS
 import Language.Common.PrimOp qualified as PO
 import Language.Common.PrimType qualified as PT
 import Language.Common.RuleKind (RuleKind)
+import Language.Common.VarKind qualified as VK
 import Language.RawTerm.Locator qualified as L
 import Language.RawTerm.Name
 import Language.WeakTerm.CreateHole qualified as WT
@@ -153,17 +155,18 @@ resolveConstructorMaybe dd gn = do
 interpretGlobalName :: H.Handle -> Hint -> DD.DefiniteDescription -> GN.GlobalName -> App WT.WeakTerm
 interpretGlobalName h m dd gn = do
   case gn of
-    GN.TopLevelFuncTerm argNum isConstLike isMacro -> do
+    GN.TopLevelFuncTerm argNum isConstLike isDestPassing isMacro -> do
       ensureTopLevelStage m h dd isMacro
-      return $ interpretTopLevelFuncTerm m dd argNum isConstLike
+      return $ interpretTopLevelFuncTerm m dd argNum isConstLike isDestPassing
     GN.TopLevelFuncType {} -> do
       raiseError m $ "`" <> DD.reify dd <> "` is a type name and cannot appear in term position"
     GN.Data {} ->
       raiseError m $ "`" <> DD.reify dd <> "` is a type name and cannot appear in term position"
     GN.DataIntro dataArgNum consArgNum _ isConstLike -> do
       let argNum = AN.add dataArgNum consArgNum
+      let isDestPassing = False
       let attr = AttrVG.Attr {..}
-      return $ m :< WT.PiElim False (m :< WT.VarGlobal attr dd) ImpArgs.Unspecified [] (DefaultArgs.ByKey [])
+      return $ m :< WT.PiElim PEK.Normal (m :< WT.VarGlobal attr dd) ImpArgs.Unspecified [] (DefaultArgs.ByKey [])
     GN.PrimType _ ->
       raiseError m $ "`" <> DD.reify dd <> "` is a type name and cannot appear in term position"
     GN.PrimOp primOp ->
@@ -206,11 +209,12 @@ interpretTopLevelFuncTerm ::
   DD.DefiniteDescription ->
   AN.ArgNum ->
   IsConstLike ->
+  IsDestPassing ->
   WT.WeakTerm
-interpretTopLevelFuncTerm m dd argNum isConstLike = do
+interpretTopLevelFuncTerm m dd argNum isConstLike isDestPassing = do
   let attr = AttrVG.Attr {..}
   if isConstLike
-    then m :< WT.PiElim False (m :< WT.VarGlobal attr dd) ImpArgs.Unspecified [] (DefaultArgs.ByKey [])
+    then m :< WT.PiElim PEK.Normal (m :< WT.VarGlobal attr dd) ImpArgs.Unspecified [] (DefaultArgs.ByKey [])
     else m :< WT.VarGlobal attr dd
 
 interpretTopLevelFuncType ::
@@ -220,6 +224,7 @@ interpretTopLevelFuncType ::
   IsConstLike ->
   WT.WeakType
 interpretTopLevelFuncType m dd argNum isConstLike = do
+  let isDestPassing = False
   let attr = AttrVG.Attr {..}
   if isConstLike
     then m :< WT.TyApp (m :< WT.TVarGlobal attr dd) []

@@ -37,10 +37,12 @@ toText term =
       showGlobalVariable x
     _ :< WT.PiIntro attr impArgs expArgs defaultArgs e -> do
       case attr of
-        AttrL.Attr {lamKind = LK.Fix opacity (_, k, x, codType)} ->
-          ( case opacity of
-              O.Opaque -> "define "
-              O.Clear -> "inline "
+        AttrL.Attr {lamKind = LK.Fix opacity isDestPassing (_, k, x, codType)} ->
+          ( if isDestPassing
+              then "define-dest-passing "
+              else case opacity of
+                O.Opaque -> "define "
+                O.Clear -> "inline "
           )
             <> showVarWithKind k x
             <> showImpArgs impArgs []
@@ -50,9 +52,9 @@ toText term =
             <> toTextType codType
             <> " "
             <> inBrace (toText e)
-        AttrL.Attr {lamKind = LK.Normal mName codType} -> do
+        AttrL.Attr {lamKind = LK.Normal mName isDestPassing codType} -> do
           let name = fromMaybe "" mName
-          "function "
+          (if isDestPassing then "function-dest-passing " else "function ")
             <> name
             <> showImpArgs impArgs []
             <> inParen (showFnDomArgList expArgs)
@@ -138,6 +140,10 @@ toTextType ty =
           if isConstLike
             then showImpArgsForAll impArgs defaultArgs <> toTextType cod
             else showImpArgs impArgs [] <> inParen (showDomArgList expArgs) <> showDefaultBinders defaultArgs <> " -> " <> toTextType cod
+        PK.DestPass isConstLike ->
+          if isConstLike
+            then showImpArgsForAll impArgs defaultArgs <> toTextType cod
+            else showImpArgs impArgs [] <> inParen (showDomArgList expArgs) <> showDefaultBinders defaultArgs <> " ->> " <> toTextType cod
         PK.DataIntro _ -> do
           showImpArgsForAll impArgs defaultArgs <> toTextType cod
     _ :< WT.Data (AttrD.Attr {..}) name es -> do

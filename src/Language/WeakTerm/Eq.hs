@@ -21,13 +21,14 @@ eqType (_ :< ty1) (_ :< ty2)
       let b2 = length args1 == length args2
       let b3 = all (uncurry eqType) $ zip args1 args2
       b1 && b2 && b3
-  | WT.Pi _ impArgs1 expArgs1 defaultArgs1 cod1 <- ty1,
-    WT.Pi _ impArgs2 expArgs2 defaultArgs2 cod2 <- ty2 = do
-      let b1 = eqImpArgs impArgs1 impArgs2
-      let b2 = eqBinderType defaultArgs1 defaultArgs2
-      let b3 = eqBinderType (impArgs1 ++ expArgs1 ++ defaultArgs1) (impArgs2 ++ expArgs2 ++ defaultArgs2)
-      let b4 = eqType cod1 cod2
-      b1 && b2 && b3 && b4
+  | WT.Pi pk1 impArgs1 expArgs1 defaultArgs1 cod1 <- ty1,
+    WT.Pi pk2 impArgs2 expArgs2 defaultArgs2 cod2 <- ty2 = do
+      let b1 = pk1 == pk2
+      let b2 = eqImpArgs impArgs1 impArgs2
+      let b3 = eqBinderType defaultArgs1 defaultArgs2
+      let b4 = eqBinderType (impArgs1 ++ expArgs1 ++ defaultArgs1) (impArgs2 ++ expArgs2 ++ defaultArgs2)
+      let b5 = eqType cod1 cod2
+      b1 && b2 && b3 && b4 && b5
   | WT.Data attr1 name1 es1 <- ty1,
     WT.Data attr2 name2 es2 <- ty2 = do
       let b1 = name1 == name2

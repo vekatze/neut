@@ -2,6 +2,7 @@ module Kernel.Clarify.Internal.Utility
   ( Handle,
     ResourceSpec (..),
     new,
+    returnIntComp,
     toAffineApp,
     toRelevantApp,
     bindLet,
@@ -45,7 +46,7 @@ new gensymHandle substHandle auxEnvHandle baseSize = do
 toAffineApp :: Handle -> C.Value -> C.Comp -> IO C.Comp
 toAffineApp h v t = do
   (expVarName, expVar) <- Gensym.createVar (gensymHandle h) "exp"
-  return $ C.UpElim True expVarName t (C.PiElimDownElim expVar [C.Int (dataSizeToIntSize (baseSize h)) 0, v])
+  return $ C.UpElim True expVarName t (C.PiElimDownElim False expVar [C.Int (dataSizeToIntSize (baseSize h)) 0, v])
 
 -- toRelevantApp h x t ~>
 --   bind exp := t in
@@ -53,7 +54,7 @@ toAffineApp h v t = do
 toRelevantApp :: Handle -> C.Value -> C.Comp -> IO C.Comp
 toRelevantApp h v t = do
   (expVarName, expVar) <- Gensym.createVar (gensymHandle h) "exp"
-  return $ C.UpElim True expVarName t (C.PiElimDownElim expVar [C.Int (dataSizeToIntSize (baseSize h)) 1, v])
+  return $ C.UpElim True expVarName t (C.PiElimDownElim False expVar [C.Int (dataSizeToIntSize (baseSize h)) 1, v])
 
 bindLet :: [(Ident, C.Comp)] -> C.Comp -> C.Comp
 bindLet =
@@ -76,11 +77,11 @@ makeSwitcher ::
   ResourceSpec ->
   IO ([Ident], C.Comp)
 makeSwitcher h resourceSpec = do
-  let ResourceSpec {discard, copy, defaultValues} = resourceSpec
+  let ResourceSpec {discard, copy, size, defaultValues} = resourceSpec
   let (argVarName, _) = arg resourceSpec
   let (switchVarName, switchVar) = switch resourceSpec
-  let defaultCases = zipWith (\i v -> (EC.Int i, C.UpIntro v)) [2 ..] defaultValues
-  enumElim <- getEnumElim h [argVarName] switchVar discard ((EC.Int 1, copy) : defaultCases)
+  let defaultCases = zipWith (\i v -> (EC.Int i, C.UpIntro v)) [3 ..] defaultValues
+  enumElim <- getEnumElim h [argVarName] switchVar discard ((EC.Int 1, copy) : (EC.Int 2, size) : defaultCases)
   return ([switchVarName, argVarName], enumElim)
 
 data ResourceSpec = ResourceSpec
@@ -88,8 +89,13 @@ data ResourceSpec = ResourceSpec
     arg :: (Ident, C.Value),
     discard :: C.Comp,
     copy :: C.Comp,
+    size :: C.Comp,
     defaultValues :: [C.Value]
   }
+
+returnIntComp :: Handle -> Integer -> C.Comp
+returnIntComp h value =
+  C.UpIntro $ C.Int (dataSizeToIntSize (baseSize h)) value
 
 registerSwitcher ::
   Handle ->
@@ -99,7 +105,7 @@ registerSwitcher ::
   IO ()
 registerSwitcher h opacity name resourceSpec = do
   (args, e) <- makeSwitcher h resourceSpec
-  AuxEnv.insert (auxEnvHandle h) name (opacity, args, e)
+  AuxEnv.insert (auxEnvHandle h) name (C.Def name opacity args e)
 
 getEnumElim :: Handle -> [Ident] -> C.Value -> C.Comp -> [(EnumCase, C.Comp)] -> IO C.Comp
 getEnumElim h idents d defaultBranch branchList = do
@@ -115,12 +121,12 @@ getEnumElim h idents d defaultBranch branchList = do
       defaultClause' <- adjustBranch h defaultBranch''
       clauseList' <- mapM (adjustBranch h) clauses'
       resultVar <- Gensym.newIdentFromText (gensymHandle h) "result"
-      return $ C.EnumElim newToOld d defaultClause' (zip tags clauseList') [resultVar] $ C.UpIntro (C.VarLocal resultVar)
+      return $ C.EnumElim C.CanonicalJoin newToOld d defaultClause' (zip tags clauseList') [resultVar] $ C.UpIntro (C.VarLocal resultVar)
 
 adjustBranch :: Handle -> C.Comp -> IO C.Comp
 adjustBranch h body = do
   (phiVarName, phiVar) <- Gensym.createVar (gensymHandle h) "phi"
-  return $ C.UpElim False phiVarName body $ C.Phi [phiVar]
+  return $ C.UpElim True phiVarName body $ C.Phi [phiVar]
 
 getSub :: Gensym.Handle -> [Ident] -> IO ([(Int, C.Value)], [(Int, C.Value)])
 getSub h idents = do

@@ -28,9 +28,11 @@ import Language.Common.DefaultArgs qualified as DefaultArgs
 import Language.Common.ForeignCodType qualified as FCT
 import Language.Common.Ident
 import Language.Common.Ident.Reify qualified as Ident
+import Language.Common.PiElimKind qualified as PEK
 import Language.Common.ImpArgs qualified as ImpArgs
 import Language.Common.LamKind qualified as LK
 import Language.Common.LowMagic qualified as LM
+import Language.Common.Magic (WeakMagic (..))
 import Language.Common.Magic qualified as M
 import Language.Common.VarKind qualified as VK
 import Language.WeakTerm.FreeVars qualified as WT
@@ -78,28 +80,29 @@ subst h sub term =
         else do
           newLamID <- liftIO $ Gensym.newCount (gensymHandle h)
           case lamKind of
-            LK.Fix opacity xt -> do
+            LK.Fix opacity isDestPassing xt -> do
               (impArgs', sub') <- subst' h sub impArgs
               (expArgs', sub'') <- subst' h sub' expArgs
               (defaultArgs', sub''') <- substDefaultArgs h sub'' defaultArgs
               ([xt'], sub'''') <- subst' h sub''' [xt]
               e' <- subst h sub'''' e
-              let fixAttr = AttrL.Attr {lamKind = LK.Fix opacity xt', identity = newLamID}
+              let fixAttr = AttrL.Attr {lamKind = LK.Fix opacity isDestPassing xt', identity = newLamID}
               return (m :< WT.PiIntro fixAttr impArgs' expArgs' defaultArgs' e')
-            LK.Normal mName codType -> do
+            LK.Normal mName isDestPassing codType -> do
               (impArgs', sub') <- subst' h sub impArgs
               (expArgs', sub'') <- subst' h sub' expArgs
               (defaultArgs', sub''') <- substDefaultArgs h sub'' defaultArgs
               codType' <- substType h sub''' codType
               e' <- subst h sub''' e
-              let lamAttr = AttrL.Attr {lamKind = LK.Normal mName codType', identity = newLamID}
+              let lamAttr = AttrL.Attr {lamKind = LK.Normal mName isDestPassing codType', identity = newLamID}
               return (m :< WT.PiIntro lamAttr impArgs' expArgs' defaultArgs' e')
     m :< WT.PiElim b e impArgs expArgs defaultArgs -> do
+      b' <- PEK.traverseArg (substType h sub) b
       e' <- subst h sub e
       impArgs' <- ImpArgs.traverseImpArgs (substType h sub) impArgs
       defaultArgs' <- DefaultArgs.traverseDefaultArgs (subst h sub) defaultArgs
       expArgs' <- mapM (subst h sub) expArgs
-      return $ m :< WT.PiElim b e' impArgs' expArgs' defaultArgs'
+      return $ m :< WT.PiElim b' e' impArgs' expArgs' defaultArgs'
     m :< WT.PiElimExact e -> do
       e' <- subst h sub e
       return $ m :< WT.PiElimExact e'
@@ -435,8 +438,8 @@ substAttrDataIntro h sub attr = do
       consNameList
   return $ attr {AttrDI.consNameList = consNameList'}
 
-substMagic :: Handle -> Subst -> WT.WeakMagic WT.WeakType WT.WeakType WT.WeakTerm -> IO (WT.WeakMagic WT.WeakType WT.WeakType WT.WeakTerm)
-substMagic h sub (WT.WeakMagic magic) = do
+substMagic :: Handle -> Subst -> WeakMagic WT.WeakType WT.WeakType WT.WeakTerm -> IO (WeakMagic WT.WeakType WT.WeakType WT.WeakTerm)
+substMagic h sub (WeakMagic magic) = do
   magic' <- case magic of
     M.LowMagic lowMagic -> do
       lowMagic' <- substLowMagic h sub lowMagic
@@ -465,7 +468,7 @@ substMagic h sub (WT.WeakMagic magic) = do
       typeExpr' <- substType h sub typeExpr
       msg' <- subst h sub msg
       return $ M.CompileError typeExpr' msg'
-  return $ WT.WeakMagic magic'
+  return $ WeakMagic magic'
 
 substLowMagic :: Handle -> Subst -> LM.LowMagic WT.WeakType WT.WeakType WT.WeakTerm -> IO (LM.LowMagic WT.WeakType WT.WeakType WT.WeakTerm)
 substLowMagic h sub lowMagic =

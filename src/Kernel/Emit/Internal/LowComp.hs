@@ -52,6 +52,8 @@ emitLowComp h lowComp =
   case lowComp of
     LC.Return d -> do
       return $ emitOp $ unwordsL ["ret", retType h, emitValue d]
+    LC.ReturnVoid -> do
+      return $ emitOp "ret void"
     LC.Phi _ -> do
       case goalLabel h of
         Nothing -> do
@@ -60,18 +62,30 @@ emitLowComp h lowComp =
         Just goalLabel ->
           return $ emitOp $ unwordsL ["br", "label", emitValue (LC.VarLocal goalLabel)]
     LC.TailCall codType f args -> do
-      tmp <- Gensym.newIdentFromText (gensymHandle h) "tmp"
-      let op =
-            emitOp $
-              unwordsL
-                [ emitValue (LC.VarLocal tmp),
-                  "=",
-                  "tail call fastcc",
-                  emitLowType codType,
-                  emitValue f <> showArgs args
-                ]
-      ret <- emitLowComp h $ LC.Return (LC.VarLocal tmp)
-      return $ op <> ret
+      case codType of
+        LT.Void -> do
+          let op =
+                emitOp $
+                  unwordsL
+                    [ "tail call fastcc",
+                      emitLowType codType,
+                      emitValue f <> showArgsWithSRet args
+                    ]
+          ret <- emitLowComp h LC.ReturnVoid
+          return $ op <> ret
+        _ -> do
+          tmp <- Gensym.newIdentFromText (gensymHandle h) "tmp"
+          let op =
+                emitOp $
+                  unwordsL
+                    [ emitValue (LC.VarLocal tmp),
+                      "=",
+                      "tail call fastcc",
+                      emitLowType codType,
+                      emitValue f <> showArgs args
+                    ]
+          ret <- emitLowComp h $ LC.Return (LC.VarLocal tmp)
+          return $ op <> ret
     LC.Switch (d, lowType) defaultBranch branchList (phiList, cont) -> do
       defaultLabel <- Gensym.newIdentFromText (gensymHandle h) "default"
       labelList <- mapM (const $ Gensym.newIdentFromText (gensymHandle h) "case") branchList

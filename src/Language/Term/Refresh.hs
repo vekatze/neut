@@ -19,6 +19,7 @@ import Language.Common.DecisionTree qualified as DT
 import Language.Common.LamKind qualified as LK
 import Language.Common.LowMagic qualified as LM
 import Language.Common.Magic qualified as M
+import Language.Common.PiElimKind qualified as PEK
 import Language.Common.VarKind qualified as VK
 import Language.Term.Term qualified as TM
 
@@ -40,28 +41,29 @@ refresh h term =
     m :< TM.PiIntro (AttrL.Attr {lamKind}) impArgs expArgs defaultArgs e -> do
       newLamID <- liftIO $ Gensym.newCount (gensymHandle h)
       case lamKind of
-        LK.Fix opacity xt -> do
+        LK.Fix opacity isDestPassing xt -> do
           impArgs' <- refreshTypeBinder h impArgs
           defaultArgs' <- refreshDefaultArgs h defaultArgs
           expArgs' <- refreshTypeBinder h expArgs
           [xt'] <- refreshTypeBinder h [xt]
           e' <- refresh h e
-          let fixAttr = AttrL.Attr {lamKind = LK.Fix opacity xt', identity = newLamID}
+          let fixAttr = AttrL.Attr {lamKind = LK.Fix opacity isDestPassing xt', identity = newLamID}
           return (m :< TM.PiIntro fixAttr impArgs' expArgs' defaultArgs' e')
-        LK.Normal name codType -> do
+        LK.Normal name isDestPassing codType -> do
           impArgs' <- refreshTypeBinder h impArgs
           defaultArgs' <- refreshDefaultArgs h defaultArgs
           expArgs' <- refreshTypeBinder h expArgs
           codType' <- refreshType h codType
           e' <- refresh h e
-          let lamAttr = AttrL.Attr {lamKind = LK.Normal name codType', identity = newLamID}
+          let lamAttr = AttrL.Attr {lamKind = LK.Normal name isDestPassing codType', identity = newLamID}
           return (m :< TM.PiIntro lamAttr impArgs' expArgs' defaultArgs' e')
     m :< TM.PiElim b e impArgs expArgs defaultArgs -> do
+      b' <- PEK.traverseArg (refreshType h) b
       e' <- refresh h e
       impArgs' <- mapM (refreshType h) impArgs
       expArgs' <- mapM (refresh h) expArgs
       defaultArgs' <- mapM (traverse (refresh h)) defaultArgs
-      return (m :< TM.PiElim b e' impArgs' expArgs' defaultArgs')
+      return (m :< TM.PiElim b' e' impArgs' expArgs' defaultArgs')
     m :< TM.DataIntro attr consName dataArgs consArgs -> do
       dataArgs' <- mapM (refreshType h) dataArgs
       consArgs' <- mapM (refresh h) consArgs

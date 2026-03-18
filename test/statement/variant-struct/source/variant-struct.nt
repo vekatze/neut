@@ -61,7 +61,7 @@ data top(a) {
 | Top(x: a)
 }
 
-define yo(x: top(int)): unit {
+define yo(x: top(int)) -> unit {
   let Top(_) = x;
   Unit
 }
@@ -78,7 +78,7 @@ data bar {
 | Bar(foo)
 }
 
-define buz(c: &config): &text {
+define buz(c: &config) -> &text {
   tie Config{counter, func, path} = c;
   let _: int = *counter;
   let _ = *counter;
@@ -88,6 +88,6 @@ define buz(c: &config): &text {
   *path
 }
 
-define main(): unit {
+define main() -> unit {
   Unit
 }

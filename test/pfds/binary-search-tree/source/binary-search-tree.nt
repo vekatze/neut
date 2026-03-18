@@ -12,11 +12,11 @@ data set-signature(a) {
 | Set(empty: set(a), insert: (a, set(a)) -> set(a), member: (a, &set(a)) -> bool)
 }
 
-define make-set-signature<a>(!compare: (&a, &a) -> ordering): set-signature(a) {
+define make-set-signature<a>(!compare: (&a, &a) -> ordering) -> set-signature(a) {
   Set{
     empty := Leaf,
     insert := {
-      define insert(!new-value: a, haystack: set(a)): set(a) {
+      define insert(!new-value: a, haystack: set(a)) -> set(a) {
         match haystack {
         | Leaf =>
           Node(Leaf, new-value, Leaf)
@@ -34,7 +34,7 @@ define make-set-signature<a>(!compare: (&a, &a) -> ordering): set-signature(a) {
       }
     },
     member := {
-      define member(!needle: a, haystack: &set(a)) {
+      define member(!needle: a, haystack: &set(a)) -> bool {
         case haystack {
         | Leaf =>
           False
@@ -54,7 +54,7 @@ define make-set-signature<a>(!compare: (&a, &a) -> ordering): set-signature(a) {
   }
 }
 
-define main(): unit {
+define main() -> unit {
   let Ord{compare} = core.int.ord.as-ord;
   let int-set-signature = make-set-signature<int>(compare);
   match int-set-signature {

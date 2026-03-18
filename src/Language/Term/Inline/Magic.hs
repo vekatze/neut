@@ -31,6 +31,7 @@ import Language.Common.Discriminant qualified as D
 import Language.Common.Ident.Reify qualified as Ident
 import Language.Common.IsConstLike (IsConstLike)
 import Language.Common.ModuleID qualified as MID
+import Language.Common.PiElimKind qualified as PEK
 import Language.Common.PrimType qualified as PT
 import Language.Common.Rune qualified as Rune
 import Language.Common.SourceLocator qualified as SL
@@ -293,27 +294,27 @@ makeListTypeExpr :: Hint -> MID.ModuleID -> TM.Type -> TM.Type
 makeListTypeExpr m moduleID elemType = do
   let listSgl = makeListSGL moduleID
   let listDD = DD.newByGlobalLocator listSgl BN.list
-  let listTypeVar = m :< TM.TVarGlobal (AttrVG.Attr {argNum = AN.fromInt 1, isConstLike = False}) listDD
+  let listTypeVar = m :< TM.TVarGlobal (AttrVG.Attr {argNum = AN.fromInt 1, isConstLike = False, isDestPassing = False}) listDD
   m :< TM.TyApp listTypeVar [elemType]
 
 makeConstructorTypeExpr :: Hint -> MID.ModuleID -> TM.Type
 makeConstructorTypeExpr m moduleID = do
   let constructorSgl = makeConstructorSGL moduleID
   let constructorTypeDD = DD.newByGlobalLocator constructorSgl BN.constructorType
-  m :< TM.TVarGlobal (AttrVG.Attr {argNum = AN.zero, isConstLike = True}) constructorTypeDD
+  m :< TM.TVarGlobal (AttrVG.Attr {argNum = AN.zero, isConstLike = True, isDestPassing = False}) constructorTypeDD
 
 makePairTypeExpr :: Hint -> MID.ModuleID -> TM.Type -> TM.Type -> TM.Type
 makePairTypeExpr m moduleID leftType rightType = do
   let pairSgl = SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.pairLocator}
   let pairTypeDD = DD.newByGlobalLocator pairSgl BN.pairType
-  let pairTypeVar = m :< TM.TVarGlobal (AttrVG.Attr {argNum = AN.fromInt 4, isConstLike = False}) pairTypeDD
+  let pairTypeVar = m :< TM.TVarGlobal (AttrVG.Attr {argNum = AN.fromInt 4, isConstLike = False, isDestPassing = False}) pairTypeDD
   m :< TM.TyApp pairTypeVar [leftType, rightType]
 
 makeTextTypeExpr :: Hint -> MID.ModuleID -> TM.Type
 makeTextTypeExpr m moduleID = do
   let textSgl = SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.textLocator}
   let textTypeDD = DD.newByGlobalLocator textSgl BN.textType
-  m :< TM.TVarGlobal (AttrVG.Attr {argNum = AN.zero, isConstLike = True}) textTypeDD
+  m :< TM.TVarGlobal (AttrVG.Attr {argNum = AN.zero, isConstLike = True, isDestPassing = False}) textTypeDD
 
 constructPairTerm :: Handle -> Hint -> MID.ModuleID -> TM.Type -> TM.Type -> TM.Term -> TM.Term -> App TM.Term
 constructPairTerm h m moduleID leftType rightType leftTerm rightTerm = do
@@ -366,7 +367,7 @@ constructConstructorTerm h m moduleID (consName, isConstLike, params) = do
   let textType = makeTextTypeExpr m moduleID
   let boolSgl = SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.boolLocator}
   let boolTypeDD = DD.newByGlobalLocator boolSgl BN.boolType
-  let boolType = m :< TM.TVarGlobal (AttrVG.Attr {argNum = AN.zero, isConstLike = True}) boolTypeDD
+  let boolType = m :< TM.TVarGlobal (AttrVG.Attr {argNum = AN.zero, isConstLike = True, isDestPassing = False}) boolTypeDD
   let paramPairType = makePairTypeExpr m moduleID (m :< TM.BoxNoema textType) (m :< TM.Tau)
   let paramListType = makeListTypeExpr m moduleID paramPairType
   nameBinder <- mkBinder h m "name" (m :< TM.BoxNoema textType)
@@ -414,26 +415,26 @@ evaluateTextUncons h m moduleID text = do
       let pairSGL = SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.pairLocator}
       let unitTypeDD = DD.newByGlobalLocator unitSGL BN.unitType
       let pairTypeDD = DD.newByGlobalLocator pairSGL BN.pairType
-      let unitTypeVar = m :< TM.TVarGlobal (AttrVG.Attr {argNum = AN.zero, isConstLike = True}) unitTypeDD
-      let pairTypeVar = m :< TM.TVarGlobal (AttrVG.Attr {argNum = AN.fromInt 4, isConstLike = False}) pairTypeDD
+      let unitTypeVar = m :< TM.TVarGlobal (AttrVG.Attr {argNum = AN.zero, isConstLike = True, isDestPassing = False}) unitTypeDD
+      let pairTypeVar = m :< TM.TVarGlobal (AttrVG.Attr {argNum = AN.fromInt 4, isConstLike = False, isDestPassing = False}) pairTypeDD
       let runeType = m :< TM.PrimType PT.Rune
       let pairType = m :< TM.TyApp pairTypeVar [runeType, m :< TM.BoxNoema textTypeExpr]
       case T.uncons textValue of
         Nothing -> do
           let leftDD = DD.newByGlobalLocator eitherSGL BN.left
           let unitDD = DD.newByGlobalLocator unitSGL BN.unit
-          let leftVar = m :< TM.VarGlobal (AttrVG.Attr {argNum = AN.fromInt 3, isConstLike = False}) leftDD
-          let unitVar = m :< TM.VarGlobal (AttrVG.Attr {argNum = AN.zero, isConstLike = True}) unitDD
-          return $ m :< TM.PiElim False (m :< TM.PiElim False leftVar [unitTypeVar, pairType] [] []) [] [unitVar] []
+          let leftVar = m :< TM.VarGlobal (AttrVG.Attr {argNum = AN.fromInt 3, isConstLike = False, isDestPassing = False}) leftDD
+          let unitVar = m :< TM.VarGlobal (AttrVG.Attr {argNum = AN.zero, isConstLike = True, isDestPassing = False}) unitDD
+          return $ m :< TM.PiElim PEK.Normal (m :< TM.PiElim PEK.Normal leftVar [unitTypeVar, pairType] [] []) [] [unitVar] []
         Just (c, rest) -> do
           let rightDD = DD.newByGlobalLocator eitherSGL BN.right
           let pairDD = DD.newByGlobalLocator pairSGL BN.pair
-          let rightVar = m :< TM.VarGlobal (AttrVG.Attr {argNum = AN.fromInt 3, isConstLike = False}) rightDD
-          let pairVar = m :< TM.VarGlobal (AttrVG.Attr {argNum = AN.fromInt 4, isConstLike = False}) pairDD
+          let rightVar = m :< TM.VarGlobal (AttrVG.Attr {argNum = AN.fromInt 3, isConstLike = False, isDestPassing = False}) rightDD
+          let pairVar = m :< TM.VarGlobal (AttrVG.Attr {argNum = AN.fromInt 4, isConstLike = False, isDestPassing = False}) pairDD
           let runeValue = m :< TM.Prim (PV.Rune (Rune.fromChar c))
           let restText = m :< TM.Prim (PV.StaticText textTypeExpr rest)
-          let pair = m :< TM.PiElim False (m :< TM.PiElim False pairVar [runeType, m :< TM.BoxNoema textTypeExpr] [] []) [] [runeValue, restText] []
-          return $ m :< TM.PiElim False (m :< TM.PiElim False rightVar [unitTypeVar, pairType] [] []) [] [pair] []
+          let pair = m :< TM.PiElim PEK.Normal (m :< TM.PiElim PEK.Normal pairVar [runeType, m :< TM.BoxNoema textTypeExpr] [] []) [] [runeValue, restText] []
+          return $ m :< TM.PiElim PEK.Normal (m :< TM.PiElim PEK.Normal rightVar [unitTypeVar, pairType] [] []) [] [pair] []
     _ ->
       reportMacroError h m "text-uncons requires a static text literal"
 

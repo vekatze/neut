@@ -3,7 +3,7 @@ import {
   core.int.io {print-int-line},
 }
 
-define main(): unit {
+define main() -> unit {
   let _ = get-argv();
   let argc = get-argc();
   print-int-line(argc)

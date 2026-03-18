@@ -34,6 +34,7 @@ import Language.Common.BaseName qualified as BN
 import Language.Common.CreateSymbol qualified as Gensym
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.Discriminant qualified as D
+import Language.Common.ForeignCodType qualified as FCT
 import Language.Common.Ident
 import Language.Common.LowMagic qualified as LM
 import Language.Common.Opacity qualified as O
@@ -53,12 +54,17 @@ data DataConstructorInfo = DataConstructorInfo
     isConstLike :: Bool,
     discriminant :: D.Discriminant,
     dataArgs :: [(Ident, C.Comp)],
-    consArgs :: [(Ident, C.Comp)]
+    consArgs :: [(Ident, C.Comp)],
+    totalSlotCount :: Int
   }
 
 new :: Gensym.Handle -> Linearize.Handle -> Utility.Handle -> Handle
 new gensymHandle linearizeHandle utilityHandle = do
   Handle {..}
+
+globalPointer :: DD.DefiniteDescription -> AN.ArgNum -> C.Value
+globalPointer name argNum =
+  C.VarGlobal name argNum (FCT.Cod BLT.Pointer)
 
 registerImmediateS4 :: Handle -> IO ()
 registerImmediateS4 h = do
@@ -68,7 +74,7 @@ registerImmediateS4 h = do
     let discard = C.UpIntro $ C.SigmaIntro []
     let copy = C.UpIntro argVar
     Utility.registerSwitcher (utilityHandle h) O.Clear name $ do
-      ResourceSpec {switch, arg, discard, copy, defaultValues = []}
+      ResourceSpec {switch, arg, discard, copy, size = Utility.returnIntComp (utilityHandle h) (-1), defaultValues = []}
 
 registerClosureS4 :: Handle -> IO ()
 registerClosureS4 h = do
@@ -83,47 +89,47 @@ registerClosureS4 h = do
 
 returnImmediateTypeS4 :: C.Comp
 returnImmediateTypeS4 = do
-  C.UpIntro (C.VarGlobal DD.immType AN.argNumS4)
+  C.UpIntro (globalPointer DD.immType AN.argNumS4)
 
 returnImmediateNoemaS4 :: C.Comp
 returnImmediateNoemaS4 = do
-  C.UpIntro (C.VarGlobal DD.immNoema AN.argNumS4)
+  C.UpIntro (globalPointer DD.immNoema AN.argNumS4)
 
 returnImmediateIntS4 :: IntSize -> C.Comp
 returnImmediateIntS4 intSize = do
   case intSize of
     IntSize1 ->
-      C.UpIntro (C.VarGlobal DD.immInt1 AN.argNumS4)
+      C.UpIntro (globalPointer DD.immInt1 AN.argNumS4)
     IntSize2 ->
-      C.UpIntro (C.VarGlobal DD.immInt2 AN.argNumS4)
+      C.UpIntro (globalPointer DD.immInt2 AN.argNumS4)
     IntSize4 ->
-      C.UpIntro (C.VarGlobal DD.immInt4 AN.argNumS4)
+      C.UpIntro (globalPointer DD.immInt4 AN.argNumS4)
     IntSize8 ->
-      C.UpIntro (C.VarGlobal DD.immInt8 AN.argNumS4)
+      C.UpIntro (globalPointer DD.immInt8 AN.argNumS4)
     IntSize16 ->
-      C.UpIntro (C.VarGlobal DD.immInt16 AN.argNumS4)
+      C.UpIntro (globalPointer DD.immInt16 AN.argNumS4)
     IntSize32 ->
-      C.UpIntro (C.VarGlobal DD.immInt32 AN.argNumS4)
+      C.UpIntro (globalPointer DD.immInt32 AN.argNumS4)
     IntSize64 ->
-      C.UpIntro (C.VarGlobal DD.immInt64 AN.argNumS4)
+      C.UpIntro (globalPointer DD.immInt64 AN.argNumS4)
 
 returnImmediateFloatS4 :: FloatSize -> C.Comp
 returnImmediateFloatS4 floatSize = do
   case floatSize of
     FloatSize16 ->
-      C.UpIntro (C.VarGlobal DD.immFloat16 AN.argNumS4)
+      C.UpIntro (globalPointer DD.immFloat16 AN.argNumS4)
     FloatSize32 ->
-      C.UpIntro (C.VarGlobal DD.immFloat32 AN.argNumS4)
+      C.UpIntro (globalPointer DD.immFloat32 AN.argNumS4)
     FloatSize64 ->
-      C.UpIntro (C.VarGlobal DD.immFloat64 AN.argNumS4)
+      C.UpIntro (globalPointer DD.immFloat64 AN.argNumS4)
 
 returnImmediateRuneS4 :: C.Comp
 returnImmediateRuneS4 = do
-  C.UpIntro (C.VarGlobal DD.immRune AN.argNumS4)
+  C.UpIntro (globalPointer DD.immRune AN.argNumS4)
 
 returnImmediatePointerS4 :: C.Comp
 returnImmediatePointerS4 = do
-  C.UpIntro (C.VarGlobal DD.immPointer AN.argNumS4)
+  C.UpIntro (globalPointer DD.immPointer AN.argNumS4)
 
 returnImmediateNullS4 :: C.Comp
 returnImmediateNullS4 = do
@@ -131,11 +137,11 @@ returnImmediateNullS4 = do
 
 returnClosureS4 :: C.Comp
 returnClosureS4 = do
-  C.UpIntro $ C.VarGlobal DD.cls AN.argNumS4
+  C.UpIntro $ globalPointer DD.cls AN.argNumS4
 
 immediateNullS4 :: C.Value
 immediateNullS4 = do
-  C.VarGlobal DD.immNull AN.argNumS4
+  globalPointer DD.immNull AN.argNumS4
 
 registerSigmaS4 ::
   Handle ->
@@ -153,7 +159,7 @@ makeSigmaResourceSpec h xts = do
   arg@(_, argVar) <- Gensym.createVar (gensymHandle h) "arg"
   discard <- sigmaT h xts argVar
   copy <- sigma4 h xts argVar
-  return $ ResourceSpec {switch, arg, discard, copy, defaultValues = []}
+  return $ ResourceSpec {switch, arg, discard, copy, size = Utility.returnIntComp (utilityHandle h) (toInteger $ length xts), defaultValues = []}
 
 -- (Assuming `ti` = `return di` for some `di` such that `xi : di`)
 -- sigmaT NAME LOC [(x1, t1), ..., (xn, tn)]   ~>
@@ -227,23 +233,24 @@ closureEnvS4 h mName locatorHandle mxts defaultValues =
       resourceSpec <- makeSigmaResourceSpec h mxts
       let resourceSpec' = resourceSpec {defaultValues}
       liftIO $ Utility.registerSwitcher (utilityHandle h) O.Clear name resourceSpec'
-      return $ C.VarGlobal name AN.argNumS4
+      return $ globalPointer name AN.argNumS4
 
 returnSigmaDataS4 ::
   Handle ->
   DD.DefiniteDescription ->
   O.Opacity ->
+  Int ->
   [DataConstructorInfo] ->
   IO C.Comp
-returnSigmaDataS4 h dataName opacity dataInfo = do
+returnSigmaDataS4 h dataName opacity totalSlotCount dataInfo = do
   switch <- Gensym.createVar (gensymHandle h) "switch"
   arg@(_, argVar) <- Gensym.createVar (gensymHandle h) "arg"
   discard <- sigmaDataT h dataInfo argVar
   copy <- sigmaData4 h dataInfo argVar
   let dataName' = DD.getFormDD dataName
   Utility.registerSwitcher (utilityHandle h) opacity dataName' $
-    ResourceSpec {switch, arg, discard, copy, defaultValues = []}
-  return $ C.UpIntro $ C.VarGlobal dataName' AN.argNumS4
+    ResourceSpec {switch, arg, discard, copy, size = Utility.returnIntComp (utilityHandle h) (toInteger totalSlotCount), defaultValues = []}
+  return $ C.UpIntro $ globalPointer dataName' AN.argNumS4
 
 returnSigmaEnumS4 ::
   Handle ->
@@ -257,8 +264,8 @@ returnSigmaEnumS4 h dataName opacity = do
   let copy = C.UpIntro argVar
   let dataName' = DD.getFormDD dataName
   Utility.registerSwitcher (utilityHandle h) opacity dataName' $
-    ResourceSpec {switch, arg, discard, copy, defaultValues = []}
-  return $ C.UpIntro $ C.VarGlobal dataName' AN.argNumS4
+    ResourceSpec {switch, arg, discard, copy, size = Utility.returnIntComp (utilityHandle h) (-1), defaultValues = []}
+  return $ C.UpIntro $ globalPointer dataName' AN.argNumS4
 
 sigmaData4 :: Handle -> [DataConstructorInfo] -> C.Value -> IO C.Comp
 sigmaData4 h = do
@@ -272,13 +279,26 @@ sigmaBinder4 :: Handle -> DataConstructorInfo -> C.Value -> IO C.Comp
 sigmaBinder4 h info v = do
   let xts = dataArgs info ++ consArgs info
   x <- Gensym.newIdentFromText (gensymHandle h) "unused-sigarg"
-  sigma4 h ((x, returnImmediateIntS4 IntSize64) : xts) v
+  sigmaData4' h (totalSlotCount info) ((x, returnImmediateIntS4 IntSize64) : xts) v
 
 sigmaBinderT :: Handle -> DataConstructorInfo -> C.Value -> IO C.Comp
 sigmaBinderT h info v = do
   let xts = dataArgs info ++ consArgs info
   x <- Gensym.newIdentFromText (gensymHandle h) "unused-sigarg"
   sigmaT h ((x, returnImmediateIntS4 IntSize64) : xts) v
+
+sigmaData4' ::
+  Handle ->
+  Int ->
+  [(Ident, C.Comp)] ->
+  C.Value ->
+  IO C.Comp
+sigmaData4' h totalSlotCount xts argVar = do
+  as <- forM xts $ \(x, t) -> do
+    Utility.toRelevantApp (utilityHandle h) (C.VarLocal x) t
+  (varNameList, varList) <- mapAndUnzipM (const $ Gensym.createVar (gensymHandle h) "pair") xts
+  body' <- Linearize.linearize (linearizeHandle h) xts $ Utility.bindLet (zip varNameList as) $ C.UpIntro $ C.SigmaDataIntro totalSlotCount varList
+  return $ C.SigmaElim False (map fst xts) argVar body'
 
 sigmaData ::
   Handle ->

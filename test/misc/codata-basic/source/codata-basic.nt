@@ -14,7 +14,7 @@ data stream(a: type) {
 | Stream(head: a, tail: () -> stream(a))
 }
 
-define int-stream(x: int): stream(int) {
+define int-stream(x: int) -> stream(int) {
   Stream{
     head := x,
     tail := {
@@ -25,21 +25,21 @@ define int-stream(x: int): stream(int) {
   }
 }
 
-define get-tail<a>(s: stream(a)): stream(a) {
+define get-tail<a>(s: stream(a)) -> stream(a) {
   match s {
   | Stream(_, tail-generator) =>
     tail-generator()
   }
 }
 
-define get-head<a>(s: stream(a)): a {
+define get-head<a>(s: stream(a)) -> a {
   match s {
   | Stream(v, _) =>
     v
   }
 }
 
-define main(): unit {
+define main() -> unit {
   let inner = Bar(10);
   let config =
     Foo{

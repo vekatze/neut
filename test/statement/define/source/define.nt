@@ -1,40 +1,40 @@
-define no-type-ascription() {
+define no-type-ascription() -> unit {
   Unit
 }
 
-define hole-in-ascription() {
+define hole-in-ascription() -> unit {
   Unit
 }
 
-define complex-term-in-ascription(): {unit} {
+define complex-term-in-ascription() -> {unit} {
   Unit
 }
 
-define imp-0-exp-0(): type {
+define imp-0-exp-0() -> type {
   pack-type {type}
 }
 
-define imp-0-exp-1(_: type): type {
+define imp-0-exp-1(_: type) -> type {
   pack-type {type}
 }
 
-define i(): type {
+define i() -> type {
   pack-type {type}
 }
 
-define but-what-after-all-is-one-night-A-short-space-especially-when-the-darkness-dims-so-soon-and-so-soon-a-bird-sings-a-cock-crows-or-a-faint-green-quickens-like-a-turning-leaf-in-the-hollows-of-the-wave-Night-however-succeeds-to-night-The-winter-holds-a-pack-of-them-in-store-and-deals-them-equally-evenly-with-indefatigable-fingers-They-lengthen-they-darken-Some-of-them-hold-aloft-clear-planets-plates-of-brightness-The-autumn-trees-ravaged-as-they-are-take-on-the-flesh-of-tattered-flags-kindling-in-the-doom-of-cool-cathedral-caves-where-gold-letters-on-marble-pages-describe-death-in-battle-and-how-bones-bleach-and-burn-far-away-in-Indian-sands-The-autumn-trees-gleam-in-the-yellow-moonlight-in-the-light-of-harvest-moons-the-light-which-mellows-the-energy-of-labour-and-smooths-the-stubble-and-brings-the-wave-lapping-blue-to-the-shore(): type {
+define but-what-after-all-is-one-night-A-short-space-especially-when-the-darkness-dims-so-soon-and-so-soon-a-bird-sings-a-cock-crows-or-a-faint-green-quickens-like-a-turning-leaf-in-the-hollows-of-the-wave-Night-however-succeeds-to-night-The-winter-holds-a-pack-of-them-in-store-and-deals-them-equally-evenly-with-indefatigable-fingers-They-lengthen-they-darken-Some-of-them-hold-aloft-clear-planets-plates-of-brightness-The-autumn-trees-ravaged-as-they-are-take-on-the-flesh-of-tattered-flags-kindling-in-the-doom-of-cool-cathedral-caves-where-gold-letters-on-marble-pages-describe-death-in-battle-and-how-bones-bleach-and-burn-far-away-in-Indian-sands-The-autumn-trees-gleam-in-the-yellow-moonlight-in-the-light-of-harvest-moons-the-light-which-mellows-the-energy-of-labour-and-smooths-the-stubble-and-brings-the-wave-lapping-blue-to-the-shore() -> type {
   pack-type {type}
 }
 
-define ♥️a🌟あ🌕α$-$~@#%^\_(): type {
+define ♥️a🌟あ🌕α$-$~@#%^\_() -> type {
   pack-type {type}
 }
 
 nominal {
-  define is-odd(x: int): int,
+  define is-odd(x: int) -> int,
 }
 
-define is-even(x: int): int {
+define is-even(x: int) -> int {
   if eq-int(x, 0) {
     2
   } else {
@@ -42,7 +42,7 @@ define is-even(x: int): int {
   }
 }
 
-define is-odd(x: int): int {
+define is-odd(x: int) -> int {
   if eq-int(x, 0) {
     1
   } else {
@@ -50,15 +50,15 @@ define is-odd(x: int): int {
   }
 }
 
-define implicit-1<a>(x: a): a {
+define implicit-1<a>(x: a) -> a {
   x
 }
 
-define implicit-2<a, b>(x: a, y: b): pair(a, b) {
+define implicit-2<a, b>(x: a, y: b) -> pair(a, b) {
   Pair(x, y)
 }
 
-define main(): unit {
+define main() -> unit {
   let _ = is-even(12345);
   let _ = implicit-1("hello");
   let _ = implicit-2("hello", pack-type {type});

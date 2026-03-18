@@ -30,8 +30,14 @@ new baseSize = do
 emitLowOp :: Handle -> LC.Op -> Builder
 emitLowOp ax lowOp =
   case lowOp of
-    LC.Call codType d ds ->
-      unwordsL ["call fastcc", emitLowType codType, emitValue d <> showArgs ds]
+    LC.Call codType d ds -> do
+      let renderedArgs =
+            case codType of
+              LT.Void ->
+                showArgsWithSRet ds
+              _ ->
+                showArgs ds
+      unwordsL ["call fastcc", emitLowType codType, emitValue d <> renderedArgs]
     LC.MagicCall funcType d ds ->
       unwordsL ["call", emitLowType funcType, emitValue d <> showArgs ds]
     LC.GetElementPtr (basePtr, n) is ->

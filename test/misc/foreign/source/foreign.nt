@@ -6,7 +6,7 @@ foreign {
   add_const(int): int,
 }
 
-define main(): unit {
+define main() -> unit {
   let x: int = 10;
   print-int-line(magic external add_const(x));
 }

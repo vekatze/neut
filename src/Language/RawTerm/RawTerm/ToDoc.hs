@@ -65,13 +65,13 @@ toDoc term =
         (Nothing, Nothing) ->
           PI.arrange
             [ PI.inject $ toDoc e,
-              PI.inject $ expArgsDoc (c1 ++ c3)
+              PI.inject $ D.join [expArgsDoc c1, C.asSuffix c3]
             ]
         (Just impArgs, Nothing) ->
           PI.arrange
             [ PI.inject $ toDoc e,
               PI.inject $ attachComment c1 $ SE.decodeHorizontallyIfPossible $ fmap typeToDoc impArgs,
-              PI.inject $ expArgsDoc (c2 ++ c3)
+              PI.inject $ D.join [expArgsDoc c2, C.asSuffix c3]
             ]
         (Nothing, Just defaultArgs) ->
           PI.arrange
@@ -442,7 +442,7 @@ typeToDoc ty =
         [ PI.inject $ typeToDoc t,
           PI.inject $ attachComment c $ SE.decodeHorizontallyIfPossible $ fmap typeToDoc args
         ]
-    _ :< Pi (impArgs, c1) (expArgs, c3) (defaultArgs, c2) c cod _ -> do
+    _ :< Pi (impArgs, c1) (expArgs, c3) (defaultArgs, c2) piArrow c cod _ -> do
       let hasDefault = not (SE.isEmpty defaultArgs)
       let expParamsBase = SE.decode $ fmap piArgToDoc expArgs
       let defaultParamsBase = decodeDefaultParams defaultArgs
@@ -453,11 +453,17 @@ typeToDoc ty =
               else defaultParamsBase
       let cArrow =
             (if hasDefault then [] else c3) ++ c2
+      let arrowText =
+            case piArrow of
+              RT.Arrow ->
+                "->"
+              RT.ArrowDestPass ->
+                "->>"
       PI.arrange
         [ PI.container $ decodeImpParams impArgs,
           PI.container expParamsWithImp,
           PI.container defaultParamsWithExpComment,
-          PI.delimiter $ attachComment cArrow $ D.text "->",
+          PI.delimiter $ attachComment cArrow $ D.text arrowText,
           PI.inject $ attachComment c $ typeToDoc cod
         ]
     _ :< Data (AttrD.Attr {isConstLike}) dataName es -> do
@@ -655,7 +661,8 @@ decGeist
         defaultArgs = (defaultArgs, c2),
         expArgs = (expArgs, c3),
         cod = (c4, cod),
-        isConstLike
+        isConstLike,
+        isDestPassing
       }
     ) = do
     let hasExp = (not isConstLike) || (not (SE.isEmpty expArgs))
@@ -697,12 +704,16 @@ decGeist
               if (not hasExp) && (not hasDefault)
                 then c1 ++ cColon
                 else cColon
+        let codDelim =
+              if isConstLike
+                then PI.horizontal $ attachComment cColon' $ D.text ":"
+                else PI.delimiter $ attachComment cColon' $ D.text (if isDestPassing then "->>" else "->")
         PI.arrange
           [ PI.inject $ attachComment c0 $ nameDecoder name,
             PI.inject $ decodeImpParams impArgs,
             PI.inject expParamsWithImp,
             PI.inject defaultParamsWithExpComment,
-            PI.horizontal $ attachComment cColon' $ D.text ":",
+            codDelim,
             PI.inject $ attachComment c4 $ typeToDoc cod
           ]
 

@@ -1,0 +1,84 @@
+my-loop-func
+Right True
+foo-tail
+15
+foo-tail-list
+16
+foo-tail-either-let
+Right True
+foo-tail-list-print-either
+tick
+tick
+tick
+Left 6
+foo-tail-pair
+Pair 10 4
+foo-tail-list-pair-print
+tick
+tick
+tick
+tick
+Pair 6 4
+foo-tail-list-of-either
+tick
+Pair 8 4
+foo-tail-inner-complex
+tick
+tick
+tick
+tick
+Pair 16 4
+use-immediate-step
+17
+use-pair-step
+17
+use-either-step-even
+104
+use-either-step-odd
+1
+apply-int-dps
+106
+apply-either-dps
+Right True
+forward-pair-step
+Pair 10 11
+use-destcall-in-arg
+24
+use-destcall-in-constructor-arg
+Pair 6 17
+use-destcall-via-closure-capture
+108
+use-boxed-destcall-via-closure-capture
+17
+use-local-nontail-dps-captured-pair
+Pair 16 400
+use-local-nontail-dps-captured-either
+46
+apply-local-pair-dps
+Pair 35 40
+local-nontail-with-free
+10
+local-mixed-tailness
+4
+apply-tagged-dps
+63
+use-poly-id-int
+17
+use-poly-id-pair
+Pair 12 13
+use-poly-id-both
+18
+use-poly-escaped-boxed-id
+Pair 24 35
+use-exact-poly-captured-boxed
+Pair 43 54
+branchy-left
+6
+branchy-right
+11
+two-dps
+13
+hard-case
+15
+use-huge-box
+26

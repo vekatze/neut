@@ -1,7 +1,9 @@
 module Kernel.Emit.LowValue
   ( emitValue,
     showArgs,
+    showArgsWithSRet,
     showFuncArgs,
+    showFuncArgsWithSRet,
   )
 where
 
@@ -49,9 +51,20 @@ showArgs :: [(LT.LowType, LC.Value)] -> Builder
 showArgs tds =
   showLocals $ map showArg tds
 
+showArgsWithSRet :: [(LT.LowType, LC.Value)] -> Builder
+showArgsWithSRet tds =
+  showLocals $ map showArgWithSRet $ zip [(0 :: Int) ..] tds
+
 showArg :: (LT.LowType, LC.Value) -> Builder
 showArg (t, d) =
   emitLowType t <> " " <> emitValue d
+
+showArgWithSRet :: (Int, (LT.LowType, LC.Value)) -> Builder
+showArgWithSRet (i, (t, d))
+  | i == 0 && t == LT.Pointer =
+      emitLowType t <> " sret(ptr) " <> emitValue d
+  | otherwise =
+      showArg (t, d)
 
 showLocals :: [Builder] -> Builder
 showLocals ds =
@@ -60,3 +73,14 @@ showLocals ds =
 showFuncArgs :: [Builder] -> Builder
 showFuncArgs ds =
   "(" <> unwordsC (map ("ptr " <>) ds) <> ")"
+
+showFuncArgsWithSRet :: [Builder] -> Builder
+showFuncArgsWithSRet ds =
+  showLocals $ map emitFuncArgWithSRet $ zip [(0 :: Int) ..] ds
+
+emitFuncArgWithSRet :: (Int, Builder) -> Builder
+emitFuncArgWithSRet (i, d)
+  | i == 0 =
+      "ptr sret(ptr) " <> d
+  | otherwise =
+      "ptr " <> d

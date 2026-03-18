@@ -14,10 +14,10 @@ data int-list {
 }
 
 nominal {
-  define _insert(v: int, xs: int-list): int-list,
+  define _insert(v: int, xs: int-list) -> int-list,
 }
 
-inline _swap-gt(cond: bool, v: int, x: int, xs: int-list): int-list {
+inline _swap-gt(cond: bool, v: int, x: int, xs: int-list) -> int-list {
   if cond {
     My-Cons(x, _insert(v, xs))
   } else {
@@ -25,7 +25,7 @@ inline _swap-gt(cond: bool, v: int, x: int, xs: int-list): int-list {
   }
 }
 
-define _insert(v: int, xs: int-list): int-list {
+define _insert(v: int, xs: int-list) -> int-list {
   match xs {
   | My-Nil =>
     My-Cons(v, My-Nil)
@@ -34,7 +34,7 @@ define _insert(v: int, xs: int-list): int-list {
   }
 }
 
-define sort(xs: int-list, acc: int-list): int-list {
+define sort(xs: int-list, acc: int-list) -> int-list {
   match xs {
   | My-Nil =>
     acc
@@ -43,7 +43,7 @@ define sort(xs: int-list, acc: int-list): int-list {
   }
 }
 
-define rand-list(len: int, acc: int-list): int-list {
+define rand-list(len: int, acc: int-list) -> int-list {
   if eq-int(len, 0) {
     acc
   } else {
@@ -52,7 +52,7 @@ define rand-list(len: int, acc: int-list): int-list {
   }
 }
 
-define main(): unit {
+define main() -> unit {
   let args = get-argv();
   match args {
   | Cons(_, Cons(size-str, Nil)) =>

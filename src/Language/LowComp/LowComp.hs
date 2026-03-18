@@ -7,7 +7,7 @@ module Language.LowComp.LowComp
     LowCode (..),
     LowCodeInfo,
     Def,
-    DefContent,
+    DefContent (..),
     Label,
     nop,
     getPhiList,
@@ -60,6 +60,7 @@ type Label =
 
 data Comp
   = Return Value -- UpIntro
+  | ReturnVoid -- UpIntroVoid
   | Let Ident Op Comp -- UpElim
   -- `CompCont` is `CompLet` that discards the result of Op. This `CompCont` is required separately
   -- since LLVM doesn't allow us to write something like `%foo = store i32 3, i32* %ptr`.
@@ -99,8 +100,11 @@ data Op
 type Def =
   (DD.DefiniteDescription, DefContent)
 
-type DefContent =
-  ([Ident], Comp)
+data DefContent = DefContent
+  { codType :: LowType,
+    args :: [Ident],
+    body :: Comp
+  }
 
 type LowCodeInfo =
   (DN.DeclEnv, [Def], [StaticTextInfo])
@@ -121,6 +125,8 @@ getPhiList comp =
     Phi vs ->
       return vs
     Return _ ->
+      Nothing
+    ReturnVoid ->
       Nothing
     Let _ _ cont ->
       getPhiList cont

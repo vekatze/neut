@@ -2,6 +2,6 @@ import {
   core.float.io {print-float-line},
 }
 
-define main(): unit {
+define main() -> unit {
   print-float-line(4.2, 6);
 }

@@ -63,6 +63,7 @@ parseStmt h = do
     [ parseDefine h,
       parseData h,
       parseInline h,
+      parseConstant h,
       parseMacro h,
       parseMacroInline h,
       parseAlias h,
@@ -132,9 +133,17 @@ parseDefine h = do
   c1 <- keyword "define"
   (def, c) <- parseDef h baseName
   let defName = RT.getDefName def
+  let isDestPassing = RT.isDestPassing $ RT.geist def
   if defName == BN.mainName || defName == BN.zenName
-    then return (RawStmtDefineTerm c1 (SK.Main ()) def, c)
-    else return (RawStmtDefineTerm c1 SK.Define def, c)
+    then do
+      let m = RT.loc $ RT.geist def
+      if isDestPassing
+        then lift $ raiseError m $ "`main` and `zen` cannot use `->>`"
+        else return (RawStmtDefineTerm c1 (SK.Main ()) def, c)
+    else
+      if isDestPassing
+        then return (RawStmtDefineTerm c1 SK.DestPassing def, c)
+        else return (RawStmtDefineTerm c1 SK.Define def, c)
 
 parseMacro :: Handle -> Parser (RawStmt, C)
 parseMacro h = do
@@ -161,7 +170,18 @@ parseInline h = do
   let defName = RT.getDefName def
   let m = RT.loc $ RT.geist def
   checkNotMainOrZen defName m "inline"
-  return (RawStmtDefineTerm c1 SK.Inline def, c)
+  if RT.isDestPassing $ RT.geist def
+    then return (RawStmtDefineTerm c1 SK.DestPassingInline def, c)
+    else return (RawStmtDefineTerm c1 SK.Inline def, c)
+
+parseConstant :: Handle -> Parser (RawStmt, C)
+parseConstant h = do
+  c1 <- keyword "constant"
+  (def, c) <- parseConstantDef h baseName
+  let defName = RT.getDefName def
+  let m = RT.loc $ RT.geist def
+  checkNotMainOrZen defName m "constant"
+  return (RawStmtDefineTerm c1 SK.Constant def, c)
 
 parseAlias :: Handle -> Parser (RawStmt, C)
 parseAlias h = do
@@ -204,6 +224,11 @@ parseNominalEntry h =
         (geist, cGeist) <- parseGeist h baseName
         loc <- getCurrentLoc
         return ((Inline, geist, loc), cTag ++ cGeist),
+      do
+        cTag <- keyword "constant"
+        (geist, cGeist) <- parseConstantGeist h baseName
+        loc <- getCurrentLoc
+        return ((Constant, geist, loc), cTag ++ cGeist),
       do
         cTag <- keyword "define-meta"
         (geist, cGeist) <- parseGeist h baseName
@@ -248,6 +273,7 @@ parseNominalData h = do
           { loc = m,
             name = (name, c1),
             isConstLike = isConstLike,
+            isDestPassing = False,
             impArgs = RT.emptyImpArgs,
             defaultArgs = RT.emptyDefaultArgs,
             expArgs = expArgs,
@@ -296,10 +322,10 @@ parseResource h = do
   (name, c2) <- baseName
   (handlers, c) <- seriesBrace $ rawExpr h
   case SE.elems handlers of
-    [discarder, copier] -> do
-      return (RawStmtDefineResource c1 m (name, c2) discarder copier (SE.trailingComment handlers), c)
+    [discarder, copier, resourceSize] -> do
+      return (RawStmtDefineResource c1 m (name, c2) discarder copier resourceSize (SE.trailingComment handlers), c)
     _ ->
-      lift $ raiseError m $ "`resource` must have 2 elements, but found: " <> T.pack (show $ length $ SE.elems handlers)
+      lift $ raiseError m $ "`resource` must have 3 elements, but found: " <> T.pack (show $ length $ SE.elems handlers)
 
 parseVariadic :: Handle -> RuleKind -> Parser (RawStmt, C)
 parseVariadic h vk = do

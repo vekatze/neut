@@ -107,6 +107,9 @@ distinguishValue h z term =
     C.SigmaIntro ds -> do
       (vss, ds') <- mapAndUnzipM (distinguishValue h z) ds
       return (concat vss, C.SigmaIntro ds')
+    C.SigmaDataIntro size ds -> do
+      (vss, ds') <- mapAndUnzipM (distinguishValue h z) ds
+      return (concat vss, C.SigmaDataIntro size ds')
     _ ->
       return ([], term)
 
@@ -116,10 +119,10 @@ distinguishComp h z term =
     C.Primitive theta -> do
       (vs, theta') <- distinguishPrimitive h z theta
       return (vs, C.Primitive theta')
-    C.PiElimDownElim d ds -> do
+    C.PiElimDownElim forceInline d ds -> do
       (vs, d') <- distinguishValue h z d
       (vss, ds') <- mapAndUnzipM (distinguishValue h z) ds
-      return (concat $ vs : vss, C.PiElimDownElim d' ds')
+      return (concat $ vs : vss, C.PiElimDownElim forceInline d' ds')
     C.SigmaElim shouldDeallocate xs d e -> do
       (vs1, d') <- distinguishValue h z d
       if z `elem` xs
@@ -130,6 +133,8 @@ distinguishComp h z term =
     C.UpIntro d -> do
       (vs, d') <- distinguishValue h z d
       return (vs, C.UpIntro d')
+    C.UpIntroVoid ->
+      return ([], C.UpIntroVoid)
     C.UpElim isReducible x e1 e2 -> do
       (vs1, e1') <- distinguishComp h z e1
       if z == x
@@ -137,16 +142,32 @@ distinguishComp h z term =
         else do
           (vs2, e2') <- distinguishComp h z e2
           return (vs1 ++ vs2, C.UpElim isReducible x e1' e2')
-    C.EnumElim fvInfo d defaultBranch branchList phiVarList cont -> do
+    C.UpElimCallVoid f ds e2 -> do
+      (vs1, f') <- distinguishValue h z f
+      (vss, ds') <- mapAndUnzipM (distinguishValue h z) ds
+      (vs2, e2') <- distinguishComp h z e2
+      return (vs1 ++ concat vss ++ vs2, C.UpElimCallVoid f' ds' e2')
+    C.EnumElim kind fvInfo d defaultBranch branchList phiVarList cont -> do
       let (vs, ds) = unzip fvInfo
       (vss, ds') <- mapAndUnzipM (distinguishValue h z) ds
       let fvInfo' = zip vs ds'
       (vs1, d') <- distinguishValue h z d
       if z `elem` phiVarList
-        then return (concat vss ++ vs1, C.EnumElim fvInfo' d' defaultBranch branchList phiVarList cont)
+        then return (concat vss ++ vs1, C.EnumElim kind fvInfo' d' defaultBranch branchList phiVarList cont)
         else do
           (vs2, cont') <- distinguishComp h z cont
-          return (concat vss ++ vs1 ++ vs2, C.EnumElim fvInfo' d' defaultBranch branchList phiVarList cont')
+          return (concat vss ++ vs1 ++ vs2, C.EnumElim kind fvInfo' d' defaultBranch branchList phiVarList cont')
+    C.DestCall sizeComp f ds -> do
+      (vs1, sizeComp') <- distinguishComp h z sizeComp
+      (vs2, f') <- distinguishValue h z f
+      (vss, ds') <- mapAndUnzipM (distinguishValue h z) ds
+      return (vs1 ++ vs2 ++ concat vss, C.DestCall sizeComp' f' ds')
+    C.WriteToDest dest sizeComp result cont -> do
+      (vs1, dest') <- distinguishValue h z dest
+      (vs2, sizeComp') <- distinguishComp h z sizeComp
+      (vs3, result') <- distinguishComp h z result
+      (vs4, cont') <- distinguishComp h z cont
+      return (vs1 ++ vs2 ++ vs3 ++ vs4, C.WriteToDest dest' sizeComp' result' cont')
     C.Free x size cont -> do
       (vs1, x') <- distinguishValue h z x
       (vs2, cont') <- distinguishComp h z cont
@@ -166,6 +187,14 @@ distinguishPrimitive h z term =
     C.ShiftPointer v size index -> do
       (vs, v') <- distinguishValue h z v
       return (vs, C.ShiftPointer v' size index)
+    C.Alloc size -> do
+      (vs, size') <- distinguishValue h z size
+      return (vs, C.Alloc size')
+    C.Memcpy dest src size -> do
+      (vs1, dest') <- distinguishValue h z dest
+      (vs2, src') <- distinguishValue h z src
+      (vs3, size') <- distinguishValue h z size
+      return (vs1 <> vs2 <> vs3, C.Memcpy dest' src' size')
     C.Magic magic -> do
       case magic of
         LM.Cast from to value -> do
