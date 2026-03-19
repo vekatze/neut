@@ -5,7 +5,6 @@ module Language.Comp.Reduce
   )
 where
 
-import Control.Monad (forM)
 import Data.HashMap.Strict qualified as Map
 import Data.IntMap qualified as IntMap
 import Gensym.Handle qualified as Gensym
@@ -193,22 +192,15 @@ reduce h term = do
         C.Free x size e ->
           reduce h $ C.Free x size (C.WriteToDest dest' sizeComp' e cont')
         C.EnumElim fvInfo disc defaultBranch caseList -> do
-          mDefaultBranch' <- rewriteWriteToDestBranch dest' sizeComp' defaultBranch
-          caseList' <-
-            forM caseList $ \(tag, branch) -> do
-              mBranch' <- rewriteWriteToDestBranch dest' sizeComp' branch
-              return $ fmap (\branch' -> (tag, branch')) mBranch'
-          case (mDefaultBranch', sequence caseList') of
-            (Just defaultBranch', Just caseList'') -> do
-              ignoredVar <- Gensym.newIdentFromText (gensymHandle h) "_"
-              reduce h $
-                C.UpElim
-                  True
-                  ignoredVar
-                  (C.EnumElim fvInfo disc defaultBranch' caseList'')
-                  cont'
-            _ ->
-              return $ C.WriteToDest dest' sizeComp' result' cont'
+          let defaultBranch' = rewriteWriteToDestBranch dest' sizeComp' defaultBranch
+          let caseList' = map (\(tag, branch) -> (tag, rewriteWriteToDestBranch dest' sizeComp' branch)) caseList
+          ignoredVar <- Gensym.newIdentFromText (gensymHandle h) "_"
+          reduce h $
+            C.UpElim
+              True
+              ignoredVar
+              (C.EnumElim fvInfo disc defaultBranch' caseList')
+              cont'
         C.Unreachable ->
           return C.Unreachable
         _ ->
@@ -236,9 +228,9 @@ rewriteWriteToDestBranch ::
   C.Value ->
   C.Comp ->
   C.Comp ->
-  IO (Maybe C.Comp)
+  C.Comp
 rewriteWriteToDestBranch dest sizeComp branch =
-  return . Just $ C.WriteToDest dest sizeComp branch (C.UpIntro C.null)
+  C.WriteToDest dest sizeComp branch (C.UpIntro C.null)
 
 substFvInfo :: Handle -> [(Int, C.Value)] -> [(Int, C.Value)]
 substFvInfo h fvInfo = do
