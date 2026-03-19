@@ -143,26 +143,26 @@ analyze h term = do
     _ :< TM.VarGlobal {} -> do
       return []
     m :< TM.PiIntro (AttrL.Attr {lamKind}) impArgs expArgs defaultArgs e -> do
+      let ds = map snd defaultArgs
       case lamKind of
         LK.Fix _ isDestPassing (mx, _k, x, codType) -> do
           (cs1, h') <- analyzeBinder h (impArgs ++ expArgs)
           (cs2, h'') <- analyzeBinder h' (map fst defaultArgs)
-          cs3 <- analyzeType h'' codType
-          let piKind =
-                if isDestPassing
-                  then PK.DestPass False
-                  else PK.normal
+          cs3 <- concat <$> mapM (analyze h'') ds
+          cs4 <- analyzeType h'' codType
+          let piKind = if isDestPassing then PK.DestPass False else PK.normal
           let piType = m :< TM.Pi piKind impArgs expArgs (map fst defaultArgs) codType
           liftIO $ insertRelevantVar x h''
-          cs4 <- analyze (extendHandle (mx, VK.Normal, x, piType) h'') e
+          cs5 <- analyze (extendHandle (mx, VK.Normal, x, piType) h'') e
           css <- forM (S.toList $ freeVarsWithHints term) $ uncurry (analyzeVar h)
-          return $ cs1 ++ cs2 ++ cs3 ++ cs4 ++ concat css
+          return $ cs1 ++ cs2 ++ cs3 ++ cs4 ++ cs5 ++ concat css
         LK.Normal _ _ codType -> do
           (cs1, h') <- analyzeBinder h (impArgs ++ expArgs)
           (cs2, h'') <- analyzeBinder h' (map fst defaultArgs)
-          cs3 <- analyzeType h'' codType
-          cs4 <- analyze h'' e
-          return $ cs1 ++ cs2 ++ cs3 ++ cs4
+          cs3 <- concat <$> mapM (analyze h'') ds
+          cs4 <- analyzeType h'' codType
+          cs5 <- analyze h'' e
+          return $ cs1 ++ cs2 ++ cs3 ++ cs4 ++ cs5
     _ :< TM.PiElim _ e impArgs expArgs defaultArgs -> do
       cs <- analyze h e
       css1 <- mapM (analyzeType h) impArgs

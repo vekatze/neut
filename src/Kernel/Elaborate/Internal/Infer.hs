@@ -62,7 +62,6 @@ import Language.Common.StrictGlobalLocator qualified as SGL
 import Language.Common.VarKind qualified as VK
 import Language.LowComp.DeclarationName qualified as DN
 import Language.WeakTerm.CreateHole qualified as WT
-import Language.WeakTerm.FreeVars (freeVars)
 import Language.WeakTerm.Subst (SubstEntry (..))
 import Language.WeakTerm.Subst qualified as Subst
 import Language.WeakTerm.ToText (toTextType)
@@ -574,8 +573,6 @@ inferImpBinderWithDefaults h binderList =
     ((mx, k, x, t), defaultValue) : rest -> do
       t' <- inferType h t
       (defaultValue', defaultType) <- infer h defaultValue
-      unless (S.null (freeVars defaultValue')) $ do
-        raiseError mx "Default argument must be closed"
       liftIO $ Constraint.insert (constraintHandle h) t' defaultType
       liftIO $ WeakType.insert (weakTypeHandle h) x t'
       (rest', h') <- inferImpBinderWithDefaults h rest

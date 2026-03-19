@@ -969,31 +969,48 @@ callClosure h kind e impArgs expArgs defaultArgs = do
   let (impNames, impComps, impVals) = unzip3 impArgs
   let (expNames, expComps, expVals) = unzip3 expArgs
   ((closureVarName, closureVar), envTypeVarName, (envVarName, envVar), (lamVarName, lamVar)) <- newClosureNames h
-  defaultTriples <- forM (zip [(0 :: Int) ..] defaultArgs) $ \(i, mOverride) -> do
-    case mOverride of
-      Just (name, comp, v) ->
-        return (name, comp, v)
-      Nothing -> do
-        (labelName, labelVar) <- Gensym.createVar (gensymHandle h) "default-label"
-        let labelComp = C.PiElimDownElim False (C.VarLocal envTypeVarName) [intTerm h (i + 3), C.null]
-        defaultComp <-
-          Utility.bindLet [(labelName, labelComp)]
-            <$> callDefaultLabel h envTypeVarName envVar impVals labelVar
-        (defaultName, defaultVar) <- Gensym.createVar (gensymHandle h) "default-arg"
-        return (defaultName, defaultComp, defaultVar)
+  defaultTriples <- forM (zip [0 ..] defaultArgs) $ resolveDefaultTriple h envTypeVarName envVar impVals
   let (defNames, defComps, defVals) = unzip3 defaultTriples
   let args = impVals ++ expVals ++ defVals ++ [envVar, flag]
-  callComp <-
-    case kind of
-      PEK.DestPass codType -> do
-        sizeComp <- getSizeComp h codType
-        return $ C.DestCall sizeComp lamVar args
-      _ ->
-        return $ C.PiElimDownElim False lamVar args
+  callComp <- buildCall h kind lamVar args
   return $
     Utility.bindLet [(closureVarName, e)] $
       C.SigmaElim (not $ PEK.isNoetic kind) [envTypeVarName, envVarName, lamVarName] closureVar $
         Utility.bindLet (zip (impNames ++ expNames ++ defNames) (impComps ++ expComps ++ defComps)) callComp
+
+resolveDefaultTriple ::
+  Handle ->
+  Ident ->
+  C.Value ->
+  [C.Value] ->
+  (Int, Maybe (Ident, C.Comp, C.Value)) ->
+  IO (Ident, C.Comp, C.Value)
+resolveDefaultTriple h envTypeVarName envVar impVals (i, mOverride) =
+  case mOverride of
+    Just triple ->
+      return triple
+    Nothing -> do
+      (labelName, labelVar) <- Gensym.createVar (gensymHandle h) "label"
+      let labelComp = C.PiElimDownElim False (C.VarLocal envTypeVarName) [intTerm h (i + 3), C.null]
+      defaultComp <-
+        Utility.bindLet [(labelName, labelComp)]
+          <$> callDefaultLabel h envTypeVarName envVar impVals labelVar
+      (defaultName, defaultVar) <- Gensym.createVar (gensymHandle h) "arg"
+      return (defaultName, defaultComp, defaultVar)
+
+buildCall ::
+  Handle ->
+  PEK.PiElimKind C.Comp ->
+  C.Value ->
+  [C.Value] ->
+  IO C.Comp
+buildCall h kind lamVar args =
+  case kind of
+    PEK.DestPass codType -> do
+      sizeComp <- getSizeComp h codType
+      return $ C.DestCall sizeComp lamVar args
+    _ ->
+      return $ C.PiElimDownElim False lamVar args
 
 intTerm :: (Integral a) => Handle -> a -> C.Value
 intTerm h i =
