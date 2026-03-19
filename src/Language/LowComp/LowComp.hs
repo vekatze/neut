@@ -10,7 +10,7 @@ module Language.LowComp.LowComp
     DefContent (..),
     Label,
     nop,
-    getPhiValue,
+    getReturnValue,
   )
 where
 
@@ -68,7 +68,6 @@ data Comp
   | Switch Value LowType Comp [(Integer, Comp)] Ident Comp
   | TailCall LowType Value [(LowType, Value)] -- tail call
   | Unreachable -- for empty case analysis
-  | Phi Value
   deriving (Show)
 
 type AllocID =
@@ -119,21 +118,19 @@ nop :: Value -> Op
 nop v =
   Bitcast v Pointer Pointer
 
-getPhiValue :: Comp -> Maybe Value
-getPhiValue comp =
+getReturnValue :: Comp -> Maybe Value
+getReturnValue comp =
   case comp of
-    Phi v ->
+    Return v ->
       return v
-    Return _ ->
-      Nothing
     ReturnVoid ->
       Nothing
     Let _ _ cont ->
-      getPhiValue cont
+      getReturnValue cont
     Cont _ cont ->
-      getPhiValue cont
+      getReturnValue cont
     Switch _ _ _ _ _ cont ->
-      getPhiValue cont
+      getReturnValue cont
     TailCall {} ->
       Nothing
     Unreachable ->

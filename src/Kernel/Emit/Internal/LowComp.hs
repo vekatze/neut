@@ -50,16 +50,13 @@ emitLowComp :: Handle -> LC.Comp -> IO [Builder]
 emitLowComp h lowComp =
   case lowComp of
     LC.Return d -> do
-      return $ emitOp $ unwordsL ["ret", retType h, emitValue d]
+      case goalLabel h of
+        Nothing ->
+          return $ emitOp $ unwordsL ["ret", retType h, emitValue d]
+        Just joinLabel ->
+          return $ emitOp $ unwordsL ["br", "label", emitValue (LC.VarLocal joinLabel)]
     LC.ReturnVoid -> do
       return $ emitOp "ret void"
-    LC.Phi _ -> do
-      case goalLabel h of
-        Nothing -> do
-          -- unreachable
-          error $ "compiler bug: no goal label is found for the block `" <> show (currentLabel h) <> "`"
-        Just goalLabel ->
-          return $ emitOp $ unwordsL ["br", "label", emitValue (LC.VarLocal goalLabel)]
     LC.TailCall codType f args -> do
       case codType of
         LT.Void -> do
@@ -115,7 +112,7 @@ emitLowComp h lowComp =
         let resolvedLabelList = resolveLabelList currentLabelMap allLabelList
         let phiIncomingList =
               flip mapMaybe (zip resolvedLabelList allBranchList) $ \(label, branch) -> do
-                value <- LC.getPhiValue branch
+                value <- LC.getReturnValue branch
                 return (value, label)
         let phiOpStr
               | null phiIncomingList = []

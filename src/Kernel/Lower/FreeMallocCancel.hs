@@ -83,8 +83,6 @@ analyze lowComp = do
       emptyScenario
     LC.Unreachable ->
       emptyScenario
-    LC.Phi _ ->
-      emptyScenario
 
 insert :: MemOp -> Scenario -> Scenario
 insert memOp allocInfo =
@@ -215,6 +213,4 @@ freeMallocCancel' ctx lowComp =
     LC.TailCall {} ->
       lowComp
     LC.Unreachable ->
-      lowComp
-    LC.Phi {} ->
       lowComp

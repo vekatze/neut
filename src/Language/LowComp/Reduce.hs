@@ -69,5 +69,3 @@ reduce' h sub lowComp = do
       return $ LC.TailCall codType d' (zip ts ds')
     LC.Unreachable ->
       return LC.Unreachable
-    LC.Phi d ->
-      return $ LC.Phi $ substLowValue sub d

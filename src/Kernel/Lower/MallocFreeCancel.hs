@@ -59,8 +59,6 @@ analyze lowComp =
       mempty
     LC.Unreachable ->
       mempty
-    LC.Phi {} ->
-      mempty
 
 collectFreeIDs :: S.Set Ident -> LC.Comp -> Maybe IntSet.IntSet
 collectFreeIDs aliases lowComp =
@@ -93,8 +91,6 @@ collectFreeIDs aliases lowComp =
       Nothing
     LC.Unreachable ->
       Just IntSet.empty
-    LC.Phi {} ->
-      Nothing
 
 getAliasSource :: LC.Op -> Maybe Ident
 getAliasSource op =
@@ -112,7 +108,7 @@ analyzeSwitchJoin :: [LC.Comp] -> Ident -> LC.Comp -> Axis
 analyzeSwitchJoin branches phiTarget cont =
   case collectFreeIDs (S.singleton phiTarget) cont of
     Just freeIDs ->
-      case traverse collectBranchAllocIDs branches of
+      case traverse collectBranchResultAllocIDs branches of
         Just allocIDList ->
           Axis
             { allocCanceller = IntSet.unions allocIDList,
@@ -123,44 +119,42 @@ analyzeSwitchJoin branches phiTarget cont =
     Nothing ->
       mempty
 
-collectBranchAllocIDs :: LC.Comp -> Maybe IntSet.IntSet
-collectBranchAllocIDs branch = do
-  phiOrigin <- collectBranchPhiOrigins Map.empty branch
-  case phiOrigin of
+collectBranchResultAllocIDs :: LC.Comp -> Maybe IntSet.IntSet
+collectBranchResultAllocIDs branch = do
+  resultOrigin <- collectBranchResultOrigin Map.empty branch
+  case resultOrigin of
     DeadBranch ->
       Just IntSet.empty
     ReachableBranch origin ->
       origin
 
-data BranchPhiOrigins
+data BranchResultOrigin
   = DeadBranch
   | ReachableBranch (Maybe IntSet.IntSet)
 
 type OriginEnv =
   Map.Map Ident (Maybe IntSet.IntSet)
 
-collectBranchPhiOrigins :: OriginEnv -> LC.Comp -> Maybe BranchPhiOrigins
-collectBranchPhiOrigins env lowComp =
+collectBranchResultOrigin :: OriginEnv -> LC.Comp -> Maybe BranchResultOrigin
+collectBranchResultOrigin env lowComp =
   case lowComp of
-    LC.Return {} ->
-      Nothing
+    LC.Return value ->
+      Just $ ReachableBranch $ getValueOrigin env value
     LC.ReturnVoid ->
       Nothing
     LC.Let x op cont -> do
       let env' = Map.insert x (getOrigin env op) env
-      collectBranchPhiOrigins env' cont
+      collectBranchResultOrigin env' cont
     LC.Cont _ cont ->
-      collectBranchPhiOrigins env cont
+      collectBranchResultOrigin env cont
     LC.Switch _ _ defaultBranch ces phiTarget cont -> do
-      phiOrigin <- collectMergedPhiOrigins env (defaultBranch : map snd ces)
-      let env' = Map.insert phiTarget phiOrigin env
-      collectBranchPhiOrigins env' cont
+      resultOrigin <- collectMergedBranchResultOrigins env (defaultBranch : map snd ces)
+      let env' = Map.insert phiTarget resultOrigin env
+      collectBranchResultOrigin env' cont
     LC.TailCall {} ->
       Nothing
     LC.Unreachable ->
       Just DeadBranch
-    LC.Phi value ->
-      Just $ ReachableBranch $ getValueOrigin env value
 
 getOrigin :: OriginEnv -> LC.Op -> Maybe IntSet.IntSet
 getOrigin env op =
@@ -182,11 +176,11 @@ getValueOrigin env value =
     _ ->
       Nothing
 
-collectMergedPhiOrigins :: OriginEnv -> [LC.Comp] -> Maybe (Maybe IntSet.IntSet)
-collectMergedPhiOrigins env branches = do
-  phiOrigins <- traverse (collectBranchPhiOrigins env) branches
+collectMergedBranchResultOrigins :: OriginEnv -> [LC.Comp] -> Maybe (Maybe IntSet.IntSet)
+collectMergedBranchResultOrigins env branches = do
+  resultOrigins <- traverse (collectBranchResultOrigin env) branches
   let reachableOrigins =
-        [origin | ReachableBranch origin <- phiOrigins]
+        [origin | ReachableBranch origin <- resultOrigins]
   case reachableOrigins of
     [] ->
       return Nothing
@@ -231,6 +225,4 @@ cancelMallocFree axis lowComp =
     LC.TailCall {} ->
       lowComp
     LC.Unreachable ->
-      lowComp
-    LC.Phi {} ->
       lowComp

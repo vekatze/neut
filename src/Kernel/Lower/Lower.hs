@@ -300,7 +300,7 @@ lowerEnumBranch :: Handle -> C.Comp -> App LC.Comp
 lowerEnumBranch h branch = do
   lowBranch <- lowerComp h branch
   (phiName, phiVar) <- liftIO $ newValueLocal h "phi"
-  return $ commConv phiName lowBranch (LC.Phi phiVar)
+  return $ commConv phiName lowBranch (LC.Return phiVar)
 
 enumCaseToInteger :: EC.EnumCase -> Integer
 enumCaseToInteger enumCase =
@@ -675,8 +675,6 @@ commConv x lowComp cont2 =
       LC.Let x (LC.Call codType d ds) cont2
     LC.Unreachable ->
       LC.Unreachable
-    LC.Phi _ ->
-      LC.Unreachable -- shouldn't occur
 
 defaultForeignList :: A.Arch -> [F.Foreign]
 defaultForeignList arch =
