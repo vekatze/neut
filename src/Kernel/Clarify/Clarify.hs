@@ -799,7 +799,7 @@ clarifyMagic h tenv der = do
       error "EqType should be evaluated during inline expansion"
     M.ShowType _ _ ->
       error "ShowType should be evaluated during inline expansion"
-    M.TextCons _ _ _ ->
+    M.TextCons {} ->
       error "TextCons should be evaluated during inline expansion"
     M.TextUncons _ _ ->
       error "TextUncons should be evaluated during inline expansion"
@@ -951,10 +951,8 @@ registerClosure h name opacity isDestPassing codType xts fvs e = do
   lambdaBody' <- liftIO $ Reduce.reduce (reduceHandle h) lambdaBody
   let args = map fst xts ++ [envVarName, switchVarName]
   if isDestPassing
-    then do
-      AuxEnv.insert (auxEnvHandle h) name (C.DefVoid name opacity (destParam : args) lambdaBody')
-    else do
-      AuxEnv.insert (auxEnvHandle h) name (C.Def name opacity args lambdaBody')
+    then AuxEnv.insert (auxEnvHandle h) name (C.DefVoid name opacity (destParam : args) lambdaBody')
+    else AuxEnv.insert (auxEnvHandle h) name (C.Def name opacity args lambdaBody')
 
 callClosure ::
   Handle ->
