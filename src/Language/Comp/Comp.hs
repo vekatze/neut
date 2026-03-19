@@ -82,7 +82,7 @@ data Comp
   | UpIntroVoid
   | UpElim IsReducible Ident Comp Comp
   | UpElimCallVoid Value [Value] Comp
-  | EnumElim [(Int, Value)] Value Comp [(EnumCase, Comp)] [Ident] Comp
+  | EnumElim [(Int, Value)] Value Comp [(EnumCase, Comp)]
   | DestCall Comp Value [Value]
   | WriteToDest Value Comp Comp Comp
   | Primitive Primitive
@@ -107,7 +107,7 @@ instance Show Comp where
         "let" ++ modifier ++ " " ++ show x ++ " = " ++ show c1 ++ "\n" ++ show c2
       UpElimCallVoid f vs cont ->
         "call-void " ++ show f ++ "@(" ++ intercalate "," (map show vs) ++ ")\n" ++ show cont
-      EnumElim sub v c1 caseList phiVarList cont -> do
+      EnumElim sub v c1 caseList -> do
         "switch "
           ++ show sub
           ++ " "
@@ -115,7 +115,6 @@ instance Show Comp where
           ++ "\n<default>\n"
           ++ show c1
           ++ unwords (map showEnumCase caseList)
-          ++ "\nphi " <> show phiVarList <> " = (parent) in\n" <> show cont
       DestCall sizeComp f vs ->
         "dest-call\n<size-comp>\n" ++ show sizeComp ++ "\n" ++ show f ++ "@(" ++ intercalate "," (map show vs) ++ ")"
       WriteToDest dest sizeComp result cont ->
@@ -197,8 +196,8 @@ getPhiList e =
       getPhiList cont
     UpElimCallVoid _ _ cont ->
       getPhiList cont
-    EnumElim _ _ _ _ _ cont ->
-      getPhiList cont
+    EnumElim {} ->
+      Nothing
     DestCall {} ->
       Nothing
     WriteToDest _ _ _ cont ->
@@ -230,9 +229,13 @@ graft e1 phiVarList cont =
     UpElimCallVoid f vs e2 -> do
       e2' <- graft e2 phiVarList cont
       return $ UpElimCallVoid f vs e2'
-    EnumElim fvInfo v defaultBranch branchList ys e2 -> do
-      e2' <- graft e2 phiVarList cont
-      return $ EnumElim fvInfo v defaultBranch branchList ys e2'
+    EnumElim fvInfo v defaultBranch branchList -> do
+      defaultBranch' <- graft defaultBranch phiVarList cont
+      let graftCase (tag, branch) = do
+            branch' <- graft branch phiVarList cont
+            return (tag, branch')
+      branchList' <- mapM graftCase branchList
+      return $ EnumElim fvInfo v defaultBranch' branchList'
     DestCall {} ->
       Nothing
     WriteToDest dest sizeComp result e2 -> do
@@ -269,10 +272,8 @@ isUnreachable comp =
       isUnreachable e1 || isUnreachable e2
     UpElimCallVoid _ _ e ->
       isUnreachable e
-    EnumElim _ _ defaultBranch branchList _ cont -> do
-      let b1 = isUnreachable cont
-      let b2 = isUnreachable defaultBranch && all (isUnreachable . snd) branchList
-      b1 || b2
+    EnumElim _ _ defaultBranch branchList ->
+      isUnreachable defaultBranch && all (isUnreachable . snd) branchList
     DestCall {} ->
       False
     WriteToDest _ _ result cont ->

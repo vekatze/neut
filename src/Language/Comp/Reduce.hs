@@ -154,29 +154,23 @@ reduce h term = do
               return C.Unreachable
             _ ->
               return $ C.UpElimCallVoid f' vs' e2'
-    C.EnumElim fvInfo v defaultBranch [] phiVarList cont -> do
+    C.EnumElim fvInfo _ defaultBranch [] -> do
+      let fvInfo' = substFvInfo h fvInfo
+      reduce (unionSubst h $ IntMap.fromList fvInfo') defaultBranch
+    C.EnumElim fvInfo v defaultBranch ces -> do
       let fvInfo' = substFvInfo h fvInfo
       let v' = Subst.substValue (subst h) v
-      let term' = C.EnumElim fvInfo' v' defaultBranch [] phiVarList cont
-      graftReduce h term' fvInfo' defaultBranch phiVarList cont
-    C.EnumElim fvInfo v defaultBranch ces phiVarList cont -> do
-      let fvInfo' = substFvInfo h fvInfo
-      let v' = Subst.substValue (subst h) v
-      let term' = C.EnumElim fvInfo' v' defaultBranch [] phiVarList cont
       case v' of
         C.Int _ l
           | Just body <- lookup (EC.Int (fromInteger l)) ces -> do
-              graftReduce h term' fvInfo' body phiVarList cont
+              reduce (unionSubst h $ IntMap.fromList fvInfo') body
           | otherwise -> do
-              graftReduce h term' fvInfo' defaultBranch phiVarList cont
+              reduce (unionSubst h $ IntMap.fromList fvInfo') defaultBranch
         _ -> do
           let (cs, es) = unzip ces
           defaultBranch' <- reduce h defaultBranch
           es' <- mapM (reduce h) es
-          phiVarList' <- mapM (Gensym.newIdentFromIdent (gensymHandle h)) phiVarList
-          let h' = unionSubst h $ IntMap.fromList (zip (map Ident.toInt phiVarList) (map C.VarLocal phiVarList'))
-          cont' <- reduce h' cont
-          return $ C.EnumElim fvInfo' v' defaultBranch' (zip cs es') phiVarList' cont'
+          return $ C.EnumElim fvInfo' v' defaultBranch' (zip cs es')
     C.DestCall sizeComp f vs -> do
       sizeComp' <- reduce h sizeComp
       let f' = Subst.substValue (subst h) f
@@ -198,7 +192,7 @@ reduce h term = do
           reduce h $ C.SigmaElim shouldDeallocate ys v (C.WriteToDest dest' sizeComp' e cont')
         C.Free x size e ->
           reduce h $ C.Free x size (C.WriteToDest dest' sizeComp' e cont')
-        C.EnumElim fvInfo disc defaultBranch caseList phiVarList enumCont -> do
+        C.EnumElim fvInfo disc defaultBranch caseList -> do
           mDefaultBranch' <- rewriteWriteToDestBranch dest' sizeComp' defaultBranch
           caseList' <-
             forM caseList $ \(tag, branch) -> do
@@ -211,7 +205,7 @@ reduce h term = do
                 C.UpElim
                   True
                   ignoredVar
-                  (C.EnumElim fvInfo disc defaultBranch' caseList'' phiVarList enumCont)
+                  (C.EnumElim fvInfo disc defaultBranch' caseList'')
                   cont'
             _ ->
               return $ C.WriteToDest dest' sizeComp' result' cont'
@@ -244,48 +238,13 @@ rewriteWriteToDestBranch ::
   C.Comp ->
   IO (Maybe C.Comp)
 rewriteWriteToDestBranch dest sizeComp branch =
-  case branch of
-    C.UpElim True phiVar body (C.Phi [C.VarLocal phiVar'])
-      | phiVar == phiVar' ->
-          return . Just $ C.WriteToDest dest sizeComp body (C.Phi [C.null])
-    C.Phi [v] ->
-      return . Just $ C.WriteToDest dest sizeComp (C.UpIntro v) (C.Phi [C.null])
-    C.UpElim flag x e1 e2 -> do
-      mBranch' <- rewriteWriteToDestBranch dest sizeComp e2
-      return $ C.UpElim flag x e1 <$> mBranch'
-    C.UpElimCallVoid f vs e -> do
-      mBranch' <- rewriteWriteToDestBranch dest sizeComp e
-      return $ C.UpElimCallVoid f vs <$> mBranch'
-    C.SigmaElim shouldDeallocate ys v e -> do
-      mBranch' <- rewriteWriteToDestBranch dest sizeComp e
-      return $ C.SigmaElim shouldDeallocate ys v <$> mBranch'
-    C.Free v size e -> do
-      mBranch' <- rewriteWriteToDestBranch dest sizeComp e
-      return $ C.Free v size <$> mBranch'
-    _ ->
-      return Nothing
+  return . Just $ C.WriteToDest dest sizeComp branch (C.UpIntro C.null)
 
 substFvInfo :: Handle -> [(Int, C.Value)] -> [(Int, C.Value)]
 substFvInfo h fvInfo = do
   let (is, ds) = unzip fvInfo
   let ds' = map (Subst.substValue (subst h)) ds
   zip is ds'
-
-graftReduce ::
-  Handle ->
-  C.Comp ->
-  [(Int, C.Value)] ->
-  C.Comp ->
-  [Ident] ->
-  C.Comp ->
-  IO C.Comp
-graftReduce h origTerm fvInfo e phiVarList cont = do
-  case C.graft e phiVarList cont of
-    Just e' -> do
-      let h' = unionSubst h $ IntMap.fromList fvInfo
-      reduce h' e'
-    Nothing ->
-      return origTerm -- unreachable
 
 graftVoidReduce :: Handle -> C.Comp -> C.Comp -> IO C.Comp
 graftVoidReduce h e cont = do
@@ -309,9 +268,13 @@ graftVoid e cont =
     C.UpElimCallVoid f vs e2 -> do
       e2' <- graftVoid e2 cont
       return $ C.UpElimCallVoid f vs e2'
-    C.EnumElim fvInfo v defaultBranch branchList ys e2 -> do
-      e2' <- graftVoid e2 cont
-      return $ C.EnumElim fvInfo v defaultBranch branchList ys e2'
+    C.EnumElim fvInfo v defaultBranch branchList -> do
+      defaultBranch' <- graftVoid defaultBranch cont
+      let graftCase (tag, branch) = do
+            branch' <- graftVoid branch cont
+            return (tag, branch')
+      branchList' <- mapM graftCase branchList
+      return $ C.EnumElim fvInfo v defaultBranch' branchList'
     C.DestCall {} ->
       Nothing
     C.WriteToDest dest sizeComp result e2 -> do
