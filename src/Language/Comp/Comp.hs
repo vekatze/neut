@@ -13,8 +13,6 @@ module Language.Comp.Comp
     intValue0,
     intValue1,
     mulInt64,
-    getPhiList,
-    graft,
     isUnreachable,
     null,
   )
@@ -88,7 +86,6 @@ data Comp
   | Primitive Primitive
   | Free Value Int Comp
   | Unreachable
-  | Phi [Value]
 
 instance Show Comp where
   show c =
@@ -125,8 +122,6 @@ instance Show Comp where
         "free(" ++ show x ++ ", " ++ show size ++ ")\n" ++ show cont
       Unreachable ->
         "⊥"
-      Phi ds ->
-        "phi" <> "(" ++ intercalate "," (map show ds) ++ ")"
 
 showEnumCase :: (EnumCase, Comp) -> String
 showEnumCase (ec, c) = do
@@ -179,84 +174,6 @@ mulInt64 :: Value -> Value -> Primitive
 mulInt64 x y =
   PrimOp (PrimBinaryOp BOp.Mul (PT.Int IntSize64) (PT.Int IntSize64)) [x, y]
 
-getPhiList :: Comp -> Maybe [Value]
-getPhiList e =
-  case e of
-    Phi ds ->
-      return ds
-    PiElimDownElim {} ->
-      Nothing
-    SigmaElim _ _ _ cont ->
-      getPhiList cont
-    UpIntro {} ->
-      Nothing
-    UpIntroVoid ->
-      Nothing
-    UpElim _ _ _ cont ->
-      getPhiList cont
-    UpElimCallVoid _ _ cont ->
-      getPhiList cont
-    EnumElim {} ->
-      Nothing
-    DestCall {} ->
-      Nothing
-    WriteToDest _ _ _ cont ->
-      getPhiList cont
-    Primitive {} ->
-      Nothing
-    Free _ _ cont ->
-      getPhiList cont
-    Unreachable ->
-      Nothing
-
-graft :: Comp -> [Ident] -> Comp -> Maybe Comp
-graft e1 phiVarList cont =
-  case e1 of
-    Phi vs -> do
-      return $ bind (zip phiVarList vs) cont
-    PiElimDownElim {} ->
-      Nothing
-    SigmaElim flag ys v e2 -> do
-      e2' <- graft e2 phiVarList cont
-      return $ SigmaElim flag ys v e2'
-    UpIntro {} ->
-      Nothing
-    UpIntroVoid ->
-      Nothing
-    UpElim flag x e2 e3 -> do
-      e3' <- graft e3 phiVarList cont
-      return $ UpElim flag x e2 e3'
-    UpElimCallVoid f vs e2 -> do
-      e2' <- graft e2 phiVarList cont
-      return $ UpElimCallVoid f vs e2'
-    EnumElim fvInfo v defaultBranch branchList -> do
-      defaultBranch' <- graft defaultBranch phiVarList cont
-      let graftCase (tag, branch) = do
-            branch' <- graft branch phiVarList cont
-            return (tag, branch')
-      branchList' <- mapM graftCase branchList
-      return $ EnumElim fvInfo v defaultBranch' branchList'
-    DestCall {} ->
-      Nothing
-    WriteToDest dest sizeComp result e2 -> do
-      e2' <- graft e2 phiVarList cont
-      return $ WriteToDest dest sizeComp result e2'
-    Primitive {} ->
-      Nothing
-    Free v size e2 -> do
-      e2' <- graft e2 phiVarList cont
-      return $ Free v size e2'
-    Unreachable ->
-      Nothing
-
-bind :: [(Ident, Value)] -> Comp -> Comp
-bind xvs e =
-  case xvs of
-    [] ->
-      e
-    (x, v) : rest ->
-      UpElim True x (UpIntro v) $ bind rest e
-
 isUnreachable :: Comp -> Bool
 isUnreachable comp =
   case comp of
@@ -284,8 +201,6 @@ isUnreachable comp =
       isUnreachable cont
     Unreachable ->
       True
-    Phi {} ->
-      False
 
 null :: Value
 null =

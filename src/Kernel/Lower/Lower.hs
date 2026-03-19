@@ -226,10 +226,6 @@ lowerComp h term =
         =<< lowerComp h cont
     C.Unreachable ->
       return LC.Unreachable
-    C.Phi ds -> do
-      (argVars, argValues) <- mapAndUnzipM (const $ liftIO $ newValueLocal h "arg") ds
-      lowerValues h (zip argVars ds)
-        =<< return (LC.Phi argValues)
 
 materializeDestCall :: Handle -> C.Comp -> C.Value -> [C.Value] -> IO C.Comp
 materializeDestCall h sizeComp f ds = do
@@ -302,8 +298,9 @@ materializeWriteToDest h dest sizeComp result cont = do
 
 lowerEnumBranch :: Handle -> C.Comp -> App LC.Comp
 lowerEnumBranch h branch = do
-  (phiName, phiVar) <- liftIO $ createVar (gensymHandle h) "phi"
-  lowerComp h $ C.UpElim True phiName branch (C.Phi [phiVar])
+  lowBranch <- lowerComp h branch
+  (phiName, phiVar) <- liftIO $ newValueLocal h "phi"
+  return $ commConv phiName lowBranch (LC.Phi [phiVar])
 
 enumCaseToInteger :: EC.EnumCase -> Integer
 enumCaseToInteger enumCase =

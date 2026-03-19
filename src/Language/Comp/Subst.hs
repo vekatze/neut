@@ -87,8 +87,6 @@ substComp h sub term =
       return $ C.Free x' size cont'
     C.Unreachable ->
       return term
-    C.Phi vs -> do
-      return $ C.Phi (map (substValue sub) vs)
 
 substValue :: C.SubstValue -> C.Value -> C.Value
 substValue sub term =

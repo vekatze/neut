@@ -176,9 +176,6 @@ distinguishComp h z term =
       return (vs1 ++ vs2, C.Free x' size cont')
     C.Unreachable ->
       return ([], term)
-    C.Phi ds -> do
-      (vss, ds') <- mapAndUnzipM (distinguishValue h z) ds
-      return (concat vss, C.Phi ds')
 
 distinguishPrimitive :: Handle -> Ident -> C.Primitive -> IO ([Occurrence], C.Primitive)
 distinguishPrimitive h z term =

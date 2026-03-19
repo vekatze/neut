@@ -221,8 +221,6 @@ reduce h term = do
           return $ C.Free x' size cont'
     C.Unreachable -> do
       return C.Unreachable
-    C.Phi ds -> do
-      return $ C.Phi $ map (Subst.substValue (subst h)) ds
 
 rewriteWriteToDestBranch ::
   C.Value ->
