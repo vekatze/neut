@@ -515,7 +515,7 @@ decodeLambda c def = do
   let arrow = if RT.isDestPassing geist then "=>>" else "=>"
   attachComment c $
     PI.arrange
-      [ PI.horizontal $ decGeist lambdaNameToDoc geist,
+      [ PI.horizontal $ decGeist (const D.Nil) geist,
         PI.horizontal $ D.text arrow,
         PI.inject $ decodeBlock (RT.leadingComment def, (toDoc $ RT.body def, RT.trailingComment def))
       ]
@@ -810,10 +810,6 @@ nameToDoc varOrLocator =
         else D.text var
     N.Locator locator ->
       D.text $ Locator.reify locator
-
-lambdaNameToDoc :: Maybe T.Text -> D.Doc
-lambdaNameToDoc =
-  maybe D.Nil D.text
 
 isMultiLine :: [D.Doc] -> Bool
 isMultiLine docList =
