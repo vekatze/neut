@@ -154,15 +154,15 @@ reduce h term = do
               return C.Unreachable
             _ ->
               return $ C.UpElimCallVoid f' vs' e2'
-    C.EnumElim kind fvInfo v defaultBranch [] phiVarList cont -> do
+    C.EnumElim fvInfo v defaultBranch [] phiVarList cont -> do
       let fvInfo' = substFvInfo h fvInfo
       let v' = Subst.substValue (subst h) v
-      let term' = C.EnumElim kind fvInfo' v' defaultBranch [] phiVarList cont
+      let term' = C.EnumElim fvInfo' v' defaultBranch [] phiVarList cont
       graftReduce h term' fvInfo' defaultBranch phiVarList cont
-    C.EnumElim kind fvInfo v defaultBranch ces phiVarList cont -> do
+    C.EnumElim fvInfo v defaultBranch ces phiVarList cont -> do
       let fvInfo' = substFvInfo h fvInfo
       let v' = Subst.substValue (subst h) v
-      let term' = C.EnumElim kind fvInfo' v' defaultBranch [] phiVarList cont
+      let term' = C.EnumElim fvInfo' v' defaultBranch [] phiVarList cont
       case v' of
         C.Int _ l
           | Just body <- lookup (EC.Int (fromInteger l)) ces -> do
@@ -176,7 +176,7 @@ reduce h term = do
           phiVarList' <- mapM (Gensym.newIdentFromIdent (gensymHandle h)) phiVarList
           let h' = unionSubst h $ IntMap.fromList (zip (map Ident.toInt phiVarList) (map C.VarLocal phiVarList'))
           cont' <- reduce h' cont
-          return $ C.EnumElim kind fvInfo' v' defaultBranch' (zip cs es') phiVarList' cont'
+          return $ C.EnumElim fvInfo' v' defaultBranch' (zip cs es') phiVarList' cont'
     C.DestCall sizeComp f vs -> do
       sizeComp' <- reduce h sizeComp
       let f' = Subst.substValue (subst h) f
@@ -198,7 +198,7 @@ reduce h term = do
           reduce h $ C.SigmaElim shouldDeallocate ys v (C.WriteToDest dest' sizeComp' e cont')
         C.Free x size e ->
           reduce h $ C.Free x size (C.WriteToDest dest' sizeComp' e cont')
-        C.EnumElim C.CanonicalJoin fvInfo disc defaultBranch caseList phiVarList enumCont -> do
+        C.EnumElim fvInfo disc defaultBranch caseList phiVarList enumCont -> do
           mDefaultBranch' <- rewriteWriteToDestBranch dest' sizeComp' defaultBranch
           caseList' <-
             forM caseList $ \(tag, branch) -> do
@@ -211,7 +211,7 @@ reduce h term = do
                 C.UpElim
                   True
                   ignoredVar
-                  (C.EnumElim C.CanonicalJoin fvInfo disc defaultBranch' caseList'' phiVarList enumCont)
+                  (C.EnumElim fvInfo disc defaultBranch' caseList'' phiVarList enumCont)
                   cont'
             _ ->
               return $ C.WriteToDest dest' sizeComp' result' cont'
@@ -309,9 +309,9 @@ graftVoid e cont =
     C.UpElimCallVoid f vs e2 -> do
       e2' <- graftVoid e2 cont
       return $ C.UpElimCallVoid f vs e2'
-    C.EnumElim kind fvInfo v defaultBranch branchList ys e2 -> do
+    C.EnumElim fvInfo v defaultBranch branchList ys e2 -> do
       e2' <- graftVoid e2 cont
-      return $ C.EnumElim kind fvInfo v defaultBranch branchList ys e2'
+      return $ C.EnumElim fvInfo v defaultBranch branchList ys e2'
     C.DestCall {} ->
       Nothing
     C.WriteToDest dest sizeComp result e2 -> do

@@ -193,7 +193,7 @@ lowerComp h term =
         =<< lowerValues h (zip argVars ds)
         =<< cast h castFuncVar func LT.Pointer
         =<< return (LC.Cont (LC.Call LT.Void castFunc (map (LT.Pointer,) argValues)) e2')
-    C.EnumElim _ fvInfo v defaultBranch branchList phiList cont -> do
+    C.EnumElim fvInfo v defaultBranch branchList phiList cont -> do
       let sub = IntMap.fromList fvInfo
       defaultBranch' <- liftIO $ Subst.subst (substHandle h) sub defaultBranch >>= Reduce.reduce (reduceHandle h)
       let (keys, clauses) = unzip branchList
@@ -266,7 +266,6 @@ materializeDestCall h sizeComp f ds = do
       sizeName
       sizeComp
       ( C.EnumElim
-          C.CanonicalJoin
           []
           sizeVar
           boxedBranch
@@ -297,7 +296,6 @@ materializeWriteToDest h dest sizeComp result cont = do
           (C.Free resultVar 0 (C.Phi [C.null]))
   let branch =
         C.EnumElim
-          C.CanonicalJoin
           []
           sizeVar
           boxedBranch
