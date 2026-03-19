@@ -935,26 +935,31 @@ registerClosure ::
   IO ()
 registerClosure h name opacity isDestPassing codType xts fvs e = do
   (envVarName, envVar) <- Gensym.createVar (gensymHandle h) "env"
-  (normalEnvVarName, normalEnvVar) <- Gensym.createVar (gensymHandle h) "env"
-  (noeticEnvVarName, noeticEnvVar) <- Gensym.createVar (gensymHandle h) "env"
   (switchVarName, switchVar) <- Gensym.createVar (gensymHandle h) "switch"
+  (slotNameList, slotVarList) <- mapAndUnzipM (const $ Gensym.createVar (gensymHandle h) "slot") fvs
+  ignoredEnumVar <- Gensym.newIdentFromText (gensymHandle h) "_"
   (destParam, _) <- makeDestParam h
   e' <-
     if isDestPassing
       then liftIO $ toDestPassing h destParam codType e
       else return e
   e'' <- liftIO $ Linearize.linearize (linearizeHandle h) (fvs ++ xts) e'
-  let normalPrefix = lambdaPrefixNormal fvs normalEnvVar
-  noeticPrefix <- lambdaPrefixNoetic h fvs noeticEnvVar
+  normalPrefix <- lambdaPrefixNormal h fvs slotVarList envVar
+  noeticPrefix <- lambdaPrefixNoetic h fvs slotVarList envVar
+  enumElim <- Utility.getEnumElim (utilityHandle h) (envVarName : slotNameList) switchVar normalPrefix [(EC.Int 1, noeticPrefix)]
+  let slotBinderList =
+        map
+          (\slotName -> (slotName, C.Primitive (C.Magic (LM.Alloca BLT.Pointer (intTerm h (1 :: Int))))))
+          slotNameList
+  let loadBinderList =
+        zipWith
+          (\(x, _) slotVar -> (x, C.Primitive (C.Magic (LM.Load BLT.Pointer slotVar))))
+          fvs
+          slotVarList
   let lambdaBody =
-        C.EnumElim
-          C.GeneralJoin
-          [(Ident.toInt normalEnvVarName, envVar), (Ident.toInt noeticEnvVarName, envVar)]
-          switchVar
-          normalPrefix
-          [(EC.Int 1, noeticPrefix)]
-          (map fst fvs)
-          e''
+        Utility.bindLet slotBinderList $
+          C.UpElim True ignoredEnumVar enumElim $
+            Utility.bindLet loadBinderList e''
   lambdaBody' <- liftIO $ Reduce.reduce (reduceHandle h) lambdaBody
   let args = map fst xts ++ [envVarName, switchVarName]
   if isDestPassing
@@ -1044,20 +1049,40 @@ dropFst xyzs = do
   zip ys zs
 
 lambdaPrefixNormal ::
+  Handle ->
   [(Ident, C.Comp)] ->
+  [C.Value] ->
   C.Value ->
-  C.Comp
-lambdaPrefixNormal fvs envVar = do
-  C.SigmaElim True (map fst fvs) envVar (C.Phi $ map (C.VarLocal . fst) fvs)
+  IO C.Comp
+lambdaPrefixNormal h fvs slotVarList envVar = do
+  body <- storeValuesInSlots h (map (C.VarLocal . fst) fvs) slotVarList
+  return $ C.SigmaElim True (map fst fvs) envVar body
 
 lambdaPrefixNoetic ::
   Handle ->
   [(Ident, C.Comp)] ->
+  [C.Value] ->
   C.Value ->
   IO C.Comp
-lambdaPrefixNoetic h fvs envVar = do
+lambdaPrefixNoetic h fvs slotVarList envVar = do
   -- as == [APP-1, ..., APP-n]
   as <- forM fvs $ \(x, t) -> Utility.toRelevantApp (utilityHandle h) (C.VarLocal x) t
   (varNameList, varList) <- mapAndUnzipM (const $ Gensym.createVar (gensymHandle h) "pair") fvs
-  body <- Linearize.linearize (linearizeHandle h) fvs $ Utility.bindLet (zip varNameList as) $ C.Phi varList
+  storeBody <- storeValuesInSlots h varList slotVarList
+  body <- Linearize.linearize (linearizeHandle h) fvs $ Utility.bindLet (zip varNameList as) storeBody
   return $ C.SigmaElim False (map fst fvs) envVar body
+
+storeValuesInSlots ::
+  Handle ->
+  [C.Value] ->
+  [C.Value] ->
+  IO C.Comp
+storeValuesInSlots h valueList slotVarList = do
+  ignoredVarList <- mapM (const $ Gensym.newIdentFromText (gensymHandle h) "_") valueList
+  let storeBinderList =
+        zip ignoredVarList $
+          zipWith
+            (\value slotVar -> C.Primitive (C.Magic (LM.Store BLT.Pointer C.null value slotVar)))
+            valueList
+            slotVarList
+  return $ Utility.bindLet storeBinderList (C.UpIntro C.null)
