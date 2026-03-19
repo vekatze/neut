@@ -1,3 +1,7 @@
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+
+{-# HLINT ignore "Use tuple-section" #-}
+
 module Kernel.Clarify.Clarify
   ( Handle,
     new,
@@ -204,7 +208,7 @@ clarifyStmt h stmt =
         then do
           e' <- clarifyTerm h tenv e
           codType' <- clarifyType h tenv codType
-          (destParam, _) <- liftIO $ makeDestParam h
+          destParam <- liftIO $ makeDestParam h
           e'' <- liftIO $ toDestPassing h destParam codType' e'
           e''' <- liftIO $ Linearize.linearize (linearizeHandle h) xts'' e'' >>= Reduce.reduce (reduceHandle h)
           return $ C.DefVoid f (SK.toLowOpacityTerm stmtKind) (destParam : map fst xts'') e'''
@@ -273,20 +277,14 @@ makeSwitchArg h = do
   x <- Gensym.newIdentFromText (gensymHandle h) "sw"
   return (x, Sigma.returnImmediateS4)
 
-makeDestParam :: Handle -> IO (Ident, C.Comp)
+makeDestParam :: Handle -> IO Ident
 makeDestParam h = do
-  x <- Gensym.newIdentFromText (gensymHandle h) "dest"
-  return (x, Sigma.returnImmediateS4)
+  Gensym.newIdentFromText (gensymHandle h) "dest"
 
 getSizeComp :: Handle -> C.Comp -> IO C.Comp
 getSizeComp h codType = do
   (typeName, typeVar) <- Gensym.createVar (gensymHandle h) "type"
-  return $
-    C.UpElim
-      True
-      typeName
-      codType
-      (C.PiElimDownElim True typeVar [intTerm h (2 :: Int), C.null])
+  return $ C.UpElim True typeName codType (C.PiElimDownElim True typeVar [intTerm h (2 :: Int), C.null])
 
 toDestPassing :: Handle -> Ident -> C.Comp -> C.Comp -> IO C.Comp
 toDestPassing h dest codType e = do
@@ -848,7 +846,7 @@ clarifyLambda h tenv attrL@(AttrL.Attr {lamKind, identity}) fvs impArgs expArgs 
         if isDestPassing
           then do
             codType' <- clarifyType h (TM.insTypeEnv appArgs IntMap.empty) codType
-            (destParam, _) <- liftIO $ makeDestParam h
+            destParam <- liftIO $ makeDestParam h
             liftedBody'' <- liftIO $ toDestPassing h destParam codType' liftedBody'
             liftedBody''' <- liftIO $ Linearize.linearize (linearizeHandle h) liftedArgs liftedBody'' >>= Reduce.reduce (reduceHandle h)
             liftIO $ AuxEnv.insert (auxEnvHandle h) liftedName (C.DefVoid liftedName O.Opaque (destParam : map fst liftedArgs ++ [fst envArg, fst switchArg]) liftedBody''')
@@ -937,29 +935,19 @@ registerClosure h name opacity isDestPassing codType xts fvs e = do
   (envVarName, envVar) <- Gensym.createVar (gensymHandle h) "env"
   (switchVarName, switchVar) <- Gensym.createVar (gensymHandle h) "switch"
   (slotNameList, slotVarList) <- mapAndUnzipM (const $ Gensym.createVar (gensymHandle h) "slot") fvs
-  ignoredEnumVar <- Gensym.newIdentFromText (gensymHandle h) "_"
-  (destParam, _) <- makeDestParam h
-  e' <-
-    if isDestPassing
-      then liftIO $ toDestPassing h destParam codType e
-      else return e
+  hole <- Gensym.newIdentFromText (gensymHandle h) "_"
+  destParam <- makeDestParam h
+  e' <- if isDestPassing then toDestPassing h destParam codType e else return e
   e'' <- liftIO $ Linearize.linearize (linearizeHandle h) (fvs ++ xts) e'
   normalPrefix <- lambdaPrefixNormal h fvs slotVarList envVar
   noeticPrefix <- lambdaPrefixNoetic h fvs slotVarList envVar
-  enumElim <- Utility.getEnumElim (utilityHandle h) (envVarName : slotNameList) switchVar normalPrefix [(EC.Int 1, noeticPrefix)]
-  let slotBinderList =
-        map
-          (\slotName -> (slotName, C.Primitive (C.Magic (LM.Alloca BLT.Pointer (intTerm h (1 :: Int))))))
-          slotNameList
-  let loadBinderList =
-        zipWith
-          (\(x, _) slotVar -> (x, C.Primitive (C.Magic (LM.Load BLT.Pointer slotVar))))
-          fvs
-          slotVarList
-  let lambdaBody =
-        Utility.bindLet slotBinderList $
-          C.UpElim True ignoredEnumVar enumElim $
-            Utility.bindLet loadBinderList e''
+  let allocList =
+        map (\slotName -> (slotName, C.Primitive (C.Magic (LM.Alloca BLT.Pointer (intTerm h (1 :: Int)))))) slotNameList
+  enumElim <-
+    Utility.getEnumElim (utilityHandle h) (envVarName : slotNameList) switchVar normalPrefix [(EC.Int 1, noeticPrefix)]
+  let loadList =
+        zipWith (\(x, _) slotVar -> (x, C.Primitive (C.Magic (LM.Load BLT.Pointer slotVar)))) fvs slotVarList
+  let lambdaBody = Utility.bindLet (allocList ++ [(hole, enumElim)] ++ loadList) e''
   lambdaBody' <- liftIO $ Reduce.reduce (reduceHandle h) lambdaBody
   let args = map fst xts ++ [envVarName, switchVarName]
   if isDestPassing
@@ -1005,8 +993,7 @@ callClosure h kind e impArgs expArgs defaultArgs = do
   return $
     Utility.bindLet [(closureVarName, e)] $
       C.SigmaElim (not $ PEK.isNoetic kind) [envTypeVarName, envVarName, lamVarName] closureVar $
-        Utility.bindLet (zip (impNames ++ expNames ++ defNames) (impComps ++ expComps ++ defComps)) $
-          callComp
+        Utility.bindLet (zip (impNames ++ expNames ++ defNames) (impComps ++ expComps ++ defComps)) callComp
 
 intTerm :: (Integral a) => Handle -> a -> C.Value
 intTerm h i =

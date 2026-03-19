@@ -195,12 +195,7 @@ reduce h term = do
           let defaultBranch' = rewriteWriteToDestBranch dest' sizeComp' defaultBranch
           let caseList' = map (\(tag, branch) -> (tag, rewriteWriteToDestBranch dest' sizeComp' branch)) caseList
           ignoredVar <- Gensym.newIdentFromText (gensymHandle h) "_"
-          reduce h $
-            C.UpElim
-              True
-              ignoredVar
-              (C.EnumElim fvInfo disc defaultBranch' caseList')
-              cont'
+          reduce h $ C.UpElim True ignoredVar (C.EnumElim fvInfo disc defaultBranch' caseList') cont'
         C.Unreachable ->
           return C.Unreachable
         _ ->
