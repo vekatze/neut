@@ -209,7 +209,7 @@ lowerComp h term =
       let t = LT.PrimNum $ PT.Int $ dataSizeToIntSize (baseSize h)
       (castVar, castValue) <- liftIO $ newValueLocal h "cast"
       lowerValueLetCast h castVar v t
-        =<< return (LC.Switch (castValue, t) defaultCase caseList ([phiName], LC.Return phiValue))
+        =<< return (LC.Switch castValue t defaultCase caseList phiName (LC.Return phiValue))
     C.DestCall sizeComp f ds ->
       liftIO (materializeDestCall h sizeComp f ds)
         >>= liftIO . Reduce.reduce (reduceHandle h)
@@ -300,7 +300,7 @@ lowerEnumBranch :: Handle -> C.Comp -> App LC.Comp
 lowerEnumBranch h branch = do
   lowBranch <- lowerComp h branch
   (phiName, phiVar) <- liftIO $ newValueLocal h "phi"
-  return $ commConv phiName lowBranch (LC.Phi [phiVar])
+  return $ commConv phiName lowBranch (LC.Phi phiVar)
 
 enumCaseToInteger :: EC.EnumCase -> Integer
 enumCaseToInteger enumCase =
@@ -668,9 +668,9 @@ commConv x lowComp cont2 =
     LC.Cont op cont1 -> do
       let cont = commConv x cont1 cont2
       LC.Cont op cont
-    LC.Switch (d, t) defaultCase caseList (phiVar, cont) -> do
+    LC.Switch d t defaultCase caseList phiVar cont -> do
       let cont' = commConv x cont cont2
-      LC.Switch (d, t) defaultCase caseList (phiVar, cont')
+      LC.Switch d t defaultCase caseList phiVar cont'
     LC.TailCall codType d ds ->
       LC.Let x (LC.Call codType d ds) cont2
     LC.Unreachable ->
