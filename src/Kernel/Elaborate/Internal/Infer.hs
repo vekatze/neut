@@ -257,14 +257,12 @@ infer h term =
       (e', t) <- infer h e
       t' <- resolveType h t
       case t' of
-        _ :< WT.Pi piKind impArgs expArgs defaultArgs codType -> do
+        _ :< WT.Pi piKind impArgs expArgs _ codType -> do
           impArgs' <- mapM (const $ liftIO $ newTypeHole h m (varEnv h)) impArgs
           let impIds = map (\(_, _, x, _) -> x) impArgs
           let subType = IntMap.fromList $ zip (map Ident.toInt impIds) (map Type impArgs')
           (expArgs', subType') <- liftIO $ Subst.subst' (substHandle h) subType expArgs
           let expArgs'' = map (\(mx, _, x, _) -> mx :< WT.Var x) expArgs'
-          unless (null defaultArgs) $ do
-            raiseError m "exact application does not support default parameters"
           codType' <- liftIO $ Subst.substType (substHandle h) subType' codType
           lamID <- liftIO $ Gensym.newCount (gensymHandle h)
           let isDestPassing =
@@ -718,20 +716,20 @@ resolveDefaultOverrides ::
   [BinderF WT.WeakType] ->
   DefaultArgs.DefaultArgs a ->
   App [Maybe a]
-resolveDefaultOverrides function defaultParams defaultArgs =
+resolveDefaultOverrides function defaultParams defaultArgs = do
   let defaultKeys = map (\(_, _, x, _) -> Ident.toText x) defaultParams
-      (m :< _) = function
-   in case defaultArgs of
-        DefaultArgs.ByKey kvs -> do
-          let (ks, _) = unzip kvs
-          ensureDefaultKeyLinearity m ks
-          checkDefaultKeyRedundancy m defaultKeys ks
-          let keyMap = Map.fromList kvs
-          return $ map (`Map.lookup` keyMap) defaultKeys
-        DefaultArgs.Aligned xs -> do
-          when (length xs /= length defaultParams) $ do
-            raiseError m "Default argument arity mismatch"
-          return xs
+  let (m :< _) = function
+  case defaultArgs of
+    DefaultArgs.ByKey kvs -> do
+      let (ks, _) = unzip kvs
+      ensureDefaultKeyLinearity m ks
+      checkDefaultKeyRedundancy m defaultKeys ks
+      let keyMap = Map.fromList kvs
+      return $ map (`Map.lookup` keyMap) defaultKeys
+    DefaultArgs.Aligned xs -> do
+      when (length xs /= length defaultParams) $ do
+        raiseError m "Default argument arity mismatch"
+      return xs
 
 newTypeHole :: Handle -> Hint -> BoundVarEnv -> IO WT.WeakType
 newTypeHole h m varEnv = do
