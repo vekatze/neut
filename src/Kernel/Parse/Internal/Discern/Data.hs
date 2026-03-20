@@ -54,7 +54,7 @@ defineData m dataName dataArgsOrNone consInfoList loc = do
                 typeEndLoc = loc
               }
           )
-  let introRuleList = parseDefineDataConstructor dataType dataName dataArgs' consInfoList D.zero
+  let introRuleList = parseDefineDataConstructor dataType dataName dataArgs' consNameList consInfoList D.zero
   formRule : introRuleList
 
 modifyDataArgs :: Maybe (RT.Args RT.RawType) -> [RawBinder RT.RawType]
@@ -77,10 +77,11 @@ parseDefineDataConstructor ::
   RT.RawType ->
   DD.DefiniteDescription ->
   RT.Args RT.RawType ->
+  [(DD.DefiniteDescription, [RawBinder RT.RawType], IsConstLike)] ->
   [RawConsInfo DD.DefiniteDescription] ->
   D.Discriminant ->
   [PostRawStmt]
-parseDefineDataConstructor dataType dataName dataArgs consInfoList discriminant = do
+parseDefineDataConstructor dataType dataName dataArgs consNameList consInfoList discriminant = do
   case consInfoList of
     [] ->
       []
@@ -89,7 +90,6 @@ parseDefineDataConstructor dataType dataName dataArgs consInfoList discriminant 
       let dataArgs'' = map identPlusToVar dataArgs'
       let expConsArgs = maybe [] SE.extract (expArgs consInfo)
       let expConsArgs' = map adjustExpConsArg expConsArgs
-      let consNameList = map (\ci -> (name ci, maybe [] SE.extract (expArgs ci), isConstLikeConsInfo ci)) consInfoList
       let m = loc consInfo
       let attr = AttrDI.Attr {dataName, consNameList, discriminant, isConstLike = isConstLikeConsInfo consInfo}
       let consType =
@@ -128,7 +128,7 @@ parseDefineDataConstructor dataType dataName dataArgs consInfoList discriminant 
                     body = body
                   }
               )
-      let introRuleList = parseDefineDataConstructor dataType dataName dataArgs rest (D.increment discriminant)
+      let introRuleList = parseDefineDataConstructor dataType dataName dataArgs consNameList rest (D.increment discriminant)
       introRule : introRuleList
 
 constructDataType ::
