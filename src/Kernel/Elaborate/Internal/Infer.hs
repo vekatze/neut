@@ -671,8 +671,8 @@ inferPiElim h m (e, t) impArgs defaultArgsSpec expArgs = do
   case t' of
     _ :< WT.Pi piKind impArgsParam expParams defaultParams cod -> do
       inferCore (PEK.fromPiKind piKind) impArgsParam expParams defaultParams cod
-    _ :< WT.BoxNoema (_ :< WT.Pi _ impArgsParam expParams defaultParams cod) ->
-      inferCore (const PEK.Noetic) impArgsParam expParams defaultParams cod
+    _ :< WT.BoxNoema (_ :< WT.Pi piKind impArgsParam expParams defaultParams cod) ->
+      inferCore (PEK.fromNoeticPiKind piKind) impArgsParam expParams defaultParams cod
     _ ->
       raiseError m $ "Expected a function type, but got: " <> toTextType t'
   where
