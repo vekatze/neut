@@ -72,7 +72,7 @@ define complex() -> () -> unit {
     box xs {
       // layer 0
       // xs: list(int) at layer 0
-      function () {
+      () => {
         letbox-T k on xs = {
           // 1
           // xs: &list(int) at layer 1

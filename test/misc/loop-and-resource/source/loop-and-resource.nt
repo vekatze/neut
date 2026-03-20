@@ -18,7 +18,7 @@ define loop(!f: (int) -> ?int) -> unit {
 }
 
 define main() -> unit {
-  loop(function (x) {
+  loop((x) => {
     if eq-int(x, 0) {
       Left(Unit)
     } else {

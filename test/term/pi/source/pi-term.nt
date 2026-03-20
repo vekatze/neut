@@ -1,68 +1,68 @@
 define test-syntax() -> unit {
   // nullary
   let _ =
-    function () {
+    () => {
       pack-type {type}
     };
   // unary
   let _: (type) -> type =
-    function (x) {
+    (x) => {
       x
     };
   let _ =
-    function (x: type) {
+    (x: type) => {
       x
     };
   // binary
   let _: (type, type) -> type =
-    function (x, _) {
+    (x, _) => {
       x
     };
   let _: (type, type) -> type =
-    function (_, y) {
+    (_, y) => {
       y
     };
   let _: (type, type) -> type =
-    function (x: type, _) {
+    (x: type, _) => {
       x
     };
   let _: (type, type) -> type =
-    function (_, y: type) {
+    (_, y: type) => {
       y
     };
   let _: (type, type) -> type =
-    function (x: type, _) {
+    (x: type, _) => {
       x
     };
   let _ =
-    function (x: type, y: type) {
+    (x: type, y: type) => {
       Pair(x, y)
     };
   // exprs in bodies
   let _ =
-    function (f: (type) -> type) {
+    (f: (type) -> type) => {
       f(pack-type {type})
     };
   let _ =
-    function (f: (type) -> type) {
+    (f: (type) -> type) => {
       let _ = f(pack-type {type});
       pack-type {type}
     };
   let _ =
-    function (_: (type) -> type) {
+    (_: (type) -> type) => {
       Unit;
       Unit
     };
   // (unnecessarily) complex type
   let _ =
-    function (
+    (
       x: {(type, type) -> type},
       _: {(type) -> type},
-    ) {
+    ) => {
       x
     };
   let f =
-    function (_: type, _: type, _: type) {
+    (_: type, _: type, _: type) => {
       pack-type {type}
     };
   let _ =
@@ -74,7 +74,7 @@ define test-syntax() -> unit {
       pack-type {type},
       {
         let f =
-          function () {
+          () => {
             pack-type {type}
           };
         f()
@@ -95,7 +95,7 @@ define opaque<a>(x: a) -> a {
 
 define affine-lam1() -> unit {
   let lam1 =
-    opaque(function () {
+    opaque(() => {
       pack-type {type}
     });
   let _ = lam1;
@@ -104,7 +104,7 @@ define affine-lam1() -> unit {
 
 define relevant-lam1() -> unit {
   let !lam1 =
-    opaque(function () {
+    opaque(() => {
       pack-type {type}
     });
   let _ = lam1;
@@ -114,11 +114,11 @@ define relevant-lam1() -> unit {
 
 define affine-lam2() -> unit {
   let lam1 =
-    opaque(function () {
+    opaque(() => {
       pack-type {type}
     });
   let lam2 =
-    opaque(function () {
+    opaque(() => {
       let v = lam1;
       v
     });
@@ -128,11 +128,11 @@ define affine-lam2() -> unit {
 
 define relevant-lam2() -> unit {
   let lam1 =
-    opaque(function () {
+    opaque(() => {
       pack-type {type}
     });
   let !lam2 =
-    opaque(function () {
+    opaque(() => {
       let v = lam1;
       v
     });
@@ -143,16 +143,16 @@ define relevant-lam2() -> unit {
 
 define affine-lam3() -> unit {
   let !lam1 =
-    opaque(function () {
+    opaque(() => {
       pack-type {type}
     });
   let lam2 =
-    opaque(function () {
+    opaque(() => {
       let v = lam1;
       v
     });
   let lam3 =
-    opaque(function (_: (type) -> type) {
+    opaque((_: (type) -> type) => {
       let _ = lam1;
       let v2 = lam2;
       v2
@@ -163,16 +163,16 @@ define affine-lam3() -> unit {
 
 define relevant-lam3() -> unit {
   let !lam1 =
-    opaque(function () {
+    opaque(() => {
       pack-type {type}
     });
   let lam2 =
-    opaque(function () {
+    opaque(() => {
       let v = lam1;
       v
     });
   let !lam3 =
-    opaque(function (_: (type) -> type) {
+    opaque((_: (type) -> type) => {
       let _ = lam1;
       let v2 = lam2;
       v2
@@ -184,23 +184,23 @@ define relevant-lam3() -> unit {
 
 define affine-lam4() -> unit {
   let !lam1 =
-    opaque(function () {
+    opaque(() => {
       pack-type {type}
     });
   let !lam2 =
-    opaque(function () {
+    opaque(() => {
       let v = lam1;
       v
     });
   let !lam3 =
-    opaque(function (_: (type) -> type) {
+    opaque((_: (type) -> type) => {
       let _ = lam1;
       let v2 = lam2;
       v2
     });
   let _ = lam3;
   let lam4 =
-    opaque(function (_: (type) -> type) {
+    opaque((_: (type) -> type) => {
       let _ = lam1;
       let _ = lam2;
       let v3 = lam3;
@@ -212,23 +212,23 @@ define affine-lam4() -> unit {
 
 define relevant-lam4() -> unit {
   let !lam1 =
-    opaque(function () {
+    opaque(() => {
       pack-type {type}
     });
   let !lam2 =
-    opaque(function () {
+    opaque(() => {
       let v = lam1;
       v
     });
   let !lam3 =
-    opaque(function (_: (type) -> type) {
+    opaque((_: (type) -> type) => {
       let _ = lam1;
       let v2 = lam2;
       v2
     });
   let _ = lam3;
   let !lam4 =
-    opaque(function (_: (type) -> type) {
+    opaque((_: (type) -> type) => {
       let _ = lam1;
       let _ = lam2;
       let v3 = lam3;

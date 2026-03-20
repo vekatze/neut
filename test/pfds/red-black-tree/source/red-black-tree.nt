@@ -85,7 +85,7 @@ define main() -> unit {
   let t =
     insert(
       compare-int,
-      function () {
+      () => {
         3
       },
       t,
@@ -93,7 +93,7 @@ define main() -> unit {
   let t =
     insert(
       compare-int,
-      function () {
+      () => {
         4
       },
       t,
@@ -101,7 +101,7 @@ define main() -> unit {
   let t =
     insert(
       compare-int,
-      function () {
+      () => {
         2
       },
       t,
@@ -109,7 +109,7 @@ define main() -> unit {
   let t =
     insert(
       compare-int,
-      function () {
+      () => {
         9
       },
       t,
@@ -117,7 +117,7 @@ define main() -> unit {
   let t =
     insert(
       compare-int,
-      function () {
+      () => {
         100
       },
       t,
@@ -125,7 +125,7 @@ define main() -> unit {
   let t =
     insert(
       compare-int,
-      function () {
+      () => {
         8
       },
       t,
@@ -133,7 +133,7 @@ define main() -> unit {
   let t =
     insert(
       compare-int,
-      function () {
+      () => {
         1
       },
       t,
@@ -141,7 +141,7 @@ define main() -> unit {
   let b on t =
     member(
       compare-int,
-      function () {
+      () => {
         5
       },
       t,

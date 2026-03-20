@@ -5,11 +5,11 @@ import {
 }
 
 resource noisy-boxed-int {
-  function (v: pointer) {
+  (v: pointer) => {
     print("discarded.\n");
     free(v)
   },
-  function (v: pointer) {
+  (v: pointer) => {
     print("copied.\n");
     let orig-value = load-int(v);
     let new-ptr = malloc(C-Size(1));

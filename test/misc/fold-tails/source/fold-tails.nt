@@ -88,7 +88,7 @@ define main() -> unit {
   let _ = yss;
   let !zs =
     // [26, ..., 1]
-    for-each(yss, function (l) {
+    for-each(yss, (l) => {
       head(l)
     });
   let _ = zs;
@@ -99,7 +99,7 @@ define main() -> unit {
   let !result-nat =
     // 26 + ... + 1 = 351
     fold-r(
-      function (a, b) {
+      (a, b) => {
         add-nat(a, b)
       },
       Zero,
