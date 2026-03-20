@@ -55,7 +55,16 @@ evaluateInspectType h m moduleID typeExpr = do
     _ :< TM.Data (AttrD.Attr {AttrD.consNameList}) dataName dataArgs -> do
       case consNameList of
         [(_, [(_, _, _, arg)], _)] -> do
-          returnTypeValueIntValue h m moduleID $ TypeValue.Wrapper arg
+          if dataName == makeVectorDD moduleID
+            then do
+              case dataArgs of
+                [dataArg] ->
+                  returnTypeValueIntValue h m moduleID $ TypeValue.Vector dataArg
+                _ -> do
+                  let len = length dataArgs
+                  reportMacroError h m $
+                    "inspect-type: `vector` expects 1 argument, but got " <> T.pack (show len) <> " arguments."
+            else returnTypeValueIntValue h m moduleID $ TypeValue.Wrapper arg
         _ -> do
           let consInfoList = map consToTypeValue consNameList
           let isEnum = all (\(_, binders, isConstLike) -> isConstLike && null binders) consNameList
@@ -88,14 +97,6 @@ evaluateInspectType h m moduleID typeExpr = do
         else returnTypeValueIntValue h m moduleID TypeValue.Opaque
     _ :< TM.TVarGlobal _ _ -> do
       returnTypeValueIntValue h m moduleID TypeValue.Opaque
-    _ :< TM.TyApp (_ :< TM.TVarGlobal _ name) args
-      | name == makeVectorDD moduleID -> do
-          case args of
-            [arg] ->
-              returnTypeValueIntValue h m moduleID $ TypeValue.Vector arg
-            _ -> do
-              reportMacroError h m $
-                "inspect-type: `vector` expects 1 argument, but got " <> T.pack (show (length args)) <> " arguments."
     _ :< TM.TyApp (_ :< TM.TVarGlobal _ _) _ -> do
       returnTypeValueIntValue h m moduleID TypeValue.Opaque
     _ -> do
