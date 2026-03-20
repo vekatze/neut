@@ -49,7 +49,11 @@ toDoc term =
     _ :< VarGlobal dd _ ->
       D.text $ DD.reify dd -- unreachable
     _ :< PiIntro c def -> do
-      decodeLambda c def
+      case getName def of
+        Just name ->
+          decodeDef (const $ D.text name) "inline" c def
+        Nothing ->
+          decodeLambda c def
     _ :< PiIntroFix opacity c def -> do
       let keyword =
             case opacity of
@@ -509,13 +513,18 @@ decodeDef nameDecoder keyword c def = do
         decodeBlock (RT.leadingComment def, (toDoc $ RT.body def, RT.trailingComment def))
       ]
 
+getName :: RT.FuncInfo -> Maybe T.Text
+getName def = do
+  let geist = RT.geist def
+  fst $ RT.name geist
+
 decodeLambda :: C -> RT.FuncInfo -> D.Doc
 decodeLambda c def = do
   let geist = RT.geist def
   let arrow = if RT.isDestPassing geist then "=>>" else "=>"
   attachComment c $
     PI.arrange
-      [ PI.horizontal $ decGeist (const D.Nil) geist,
+      [ PI.horizontal $ decGeistSimple (const D.Nil) geist,
         PI.horizontal $ D.text arrow,
         PI.inject $ decodeBlock (RT.leadingComment def, (toDoc $ RT.body def, RT.trailingComment def))
       ]
@@ -689,21 +698,21 @@ decGeist
             then attachComment c1 defaultParamsBase
             else defaultParamsBase
     case cod of
-      _ :< RT.TypeHole {} -> do
-        let defaultParamsWithTrailing =
-              if hasDefault
-                then attachComment (c3 ++ c2) defaultParamsWithImp
-                else defaultParamsWithImp
-        let expParamsWithTrailing =
-              if hasDefault
-                then expParamsWithImp
-                else attachComment (c3 ++ c2) expParamsWithImp
-        PI.arrange
-          [ PI.inject $ attachComment c0 $ nameDecoder name,
-            PI.inject $ decodeImpParams impArgs,
-            PI.inject expParamsWithTrailing,
-            PI.inject defaultParamsWithTrailing
-          ]
+      -- _ :< RT.TypeHole {} -> do
+      --   let defaultParamsWithTrailing =
+      --         if hasDefault
+      --           then attachComment (c3 ++ c2) defaultParamsWithImp
+      --           else defaultParamsWithImp
+      --   let expParamsWithTrailing =
+      --         if hasDefault
+      --           then expParamsWithImp
+      --           else attachComment (c3 ++ c2) expParamsWithImp
+      --   PI.arrange
+      --     [ PI.inject $ attachComment c0 $ nameDecoder name,
+      --       PI.inject $ decodeImpParams impArgs,
+      --       PI.inject expParamsWithTrailing,
+      --       PI.inject defaultParamsWithTrailing
+      --     ]
       _ -> do
         let defaultParamsWithExpComment =
               if hasDefault
@@ -727,6 +736,44 @@ decGeist
             codDelim,
             PI.inject $ attachComment c4 $ typeToDoc cod
           ]
+
+decGeistSimple :: (a -> D.Doc) -> RT.RawGeist a -> D.Doc
+decGeistSimple
+  nameDecoder
+  ( RT.RawGeist
+      { name = (name, c0),
+        impArgs = (impArgs, c1),
+        defaultArgs = (defaultArgs, c2),
+        expArgs = (expArgs, c3),
+        isConstLike
+      }
+    ) = do
+    let hasExp = not isConstLike || not (SE.isEmpty expArgs)
+    let hasDefault = not (SE.isEmpty defaultArgs)
+    let expParamsBase = decodeExpParams isConstLike expArgs
+    let defaultParamsBase = decodeDefaultParams defaultArgs
+    let expParamsWithImp =
+          if hasExp
+            then attachComment c1 expParamsBase
+            else expParamsBase
+    let defaultParamsWithImp =
+          if not hasExp && hasDefault
+            then attachComment c1 defaultParamsBase
+            else defaultParamsBase
+    let defaultParamsWithTrailing =
+          if hasDefault
+            then attachComment (c3 ++ c2) defaultParamsWithImp
+            else defaultParamsWithImp
+    let expParamsWithTrailing =
+          if hasDefault
+            then expParamsWithImp
+            else attachComment (c3 ++ c2) expParamsWithImp
+    PI.arrange
+      [ PI.inject $ attachComment c0 $ nameDecoder name,
+        PI.inject $ decodeImpParams impArgs,
+        PI.inject expParamsWithTrailing,
+        PI.inject defaultParamsWithTrailing
+      ]
 
 decTypeGeist :: (a -> D.Doc) -> RT.RawGeist a -> D.Doc
 decTypeGeist
