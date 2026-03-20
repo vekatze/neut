@@ -172,7 +172,7 @@ define use-destcall-in-constructor-arg(x: int) -> pair(int, int) {
 define use-destcall-via-closure-capture(x: int) -> int {
   let captured = immediate-step(x);
   let f =
-    function (y) {
+    (y) => {
       add-int(captured, y)
     };
   f(100)
@@ -181,7 +181,7 @@ define use-destcall-via-closure-capture(x: int) -> int {
 define use-boxed-destcall-via-closure-capture(x: int) -> int {
   let captured = pair-step(x);
   let f =
-    function (_: int) {
+    (_: int) => {
       let Pair(left, right) = captured;
       add-int(left, right)
     };

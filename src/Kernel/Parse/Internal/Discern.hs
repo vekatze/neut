@@ -345,7 +345,8 @@ discern h term =
       codType' <- discernType h''' $ snd $ RT.cod geist
       body' <- discern h''' body
       ensureLayerClosedness m h''' body'
-      return $ m :< WT.PiIntro (AttrL.normal' name lamID codType') impArgs' expArgs' defaultArgs' body'
+      let isDestPassing = RT.isDestPassing geist
+      return $ m :< WT.PiIntro (AttrL.normal' name isDestPassing lamID codType') impArgs' expArgs' defaultArgs' body'
     m :< RT.PiIntroFix opacity _ (RT.RawDef {geist, body, endLoc}) -> do
       let isDestPassing = RT.isDestPassing geist
       let impArgs = RT.extractImpArgs $ RT.impArgs geist
@@ -359,6 +360,7 @@ discern h term =
       codType' <- discernType h''' $ snd $ RT.cod geist
       x' <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) x
       h'''' <- liftIO $ H.extend' h''' mx x' VDK.Normal
+      liftIO $ Unused.deleteVariable (H.unusedHandle h) x'
       body' <- discern h'''' body
       let mxt' = (mx, VK.Normal, x', codType')
       liftIO $ Tag.insertBinder (H.tagHandle h) mxt'
@@ -1185,7 +1187,7 @@ discernBinderWithDefaultArgs h binder endLoc =
       return ([], h)
     ((mx, k, x, _, _, t), defaultValue) : xts -> do
       t' <- discernType h t
-      defaultValue' <- discern h {H.nameEnv = []} defaultValue -- default values must be closed
+      defaultValue' <- discern h defaultValue
       x' <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) x
       h' <- liftIO $ H.extend' h mx x' VDK.Normal
       (xts', h'') <- discernBinderWithDefaultArgs h' xts endLoc

@@ -12,6 +12,7 @@ module PrettyPrinter.Piece
     clauseDelimiter,
     horizontal,
     delimiterBar,
+    delimiterArrow,
     nest,
     block,
     idOrNest,
@@ -86,6 +87,14 @@ delimiter doc =
     { content = doc,
       singleModifier = _wrapBySpace,
       multiModifier = _appendNewLine
+    }
+
+delimiterArrow :: D.Doc -> Piece
+delimiterArrow doc =
+  Piece
+    { content = doc,
+      singleModifier = _wrapBySpace,
+      multiModifier = _wrapBySpace
     }
 
 clauseDelimiter :: D.Doc -> Piece

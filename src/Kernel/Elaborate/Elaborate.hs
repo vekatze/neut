@@ -244,7 +244,7 @@ insertWeakStmt :: Handle -> WeakStmt -> App ()
 insertWeakStmt h stmt = do
   case stmt of
     WeakStmtDefineTerm _ stmtKind m f impArgs expArgs defaultArgs codType e -> do
-      liftIO $ WeakDef.insert' (weakDefHandle h) (SK.toOpacityTerm stmtKind) m f impArgs expArgs defaultArgs codType e
+      liftIO $ WeakDef.insert' (weakDefHandle h) (SK.toOpacityTerm stmtKind) (SK.isDestPassingStmtKind stmtKind) m f impArgs expArgs defaultArgs codType e
     WeakStmtDefineType _ stmtKind _ f impArgs expArgs defaultArgs _ body -> do
       let binders = impArgs ++ expArgs ++ map fst defaultArgs
       liftIO $ WeakTypeDef.insert' (weakTypeDefHandle h) (SK.toOpacityType stmtKind) f binders body

@@ -6,7 +6,7 @@ import {
 }
 
 define bar(xs-cell: &cell(list(int))) -> unit {
-  borrow(xs-cell, function (xs) {
+  borrow(xs-cell, (xs) => {
     let len = length(xs);
     print-int-line(len);
     lift {Unit}
@@ -18,14 +18,14 @@ define main() -> unit {
   let xs-cell = make-cell(lift {xs});
   let _ on xs-cell = {
     let _ = bar(xs-cell);
-    mutate(xs-cell, function (xs) {
+    mutate(xs-cell, (xs) => {
       lift {Cons(4, axiom-T(xs))}
     });
     let _ = bar(xs-cell);
-    mutate(xs-cell, function (_) {
+    mutate(xs-cell, (_) => {
       lift {Nil}
     });
-    mutate(xs-cell, function (xs) {
+    mutate(xs-cell, (xs) => {
       lift {Cons(4, axiom-T(xs))}
     });
     bar(xs-cell)

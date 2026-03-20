@@ -72,7 +72,7 @@ define call-default-top() -> unit {
   let v4 = default-top<unit>(10)[y := Left(Unit), z := False];
   print-int-line(v4);
   let f =
-    function (x) {
+    (x) => {
       default-top<unit>(x)
     };
   let v5 = f(10);
@@ -90,7 +90,7 @@ define call-default-list() -> unit {
 
 inline local-lambda-default<a>(x: a) -> a {
   let f =
-    function ()[r: either(a, unit) := Right(Unit)] {
+    ()[r: either(a, unit) := Right(Unit)] => {
       match r {
       | Left(_) =>
         print-line("left");
@@ -107,9 +107,9 @@ define call-local-lambda-default() -> unit {
   vet-simple::(v)
 }
 
-define local-lambda-override() -> unit {
+define local-lambda-override(!u: text) -> unit {
   let !f =
-    function ()[r: either(unit, unit) := Right(Unit)] {
+    define tmp()[r := Right(u)] -> unit {
       match r {
       | Left(_) =>
         print-line("left");
@@ -139,7 +139,7 @@ define takes-default-fun<a>(f: (x: int)[y: either(a, unit) := Right(Unit)] -> in
 
 define use-takes-default-fun() -> int {
   let _ =
-    takes-default-fun<unit>(function (x)[y: either(unit, unit) := Right(Unit)] {
+    takes-default-fun<unit>((x)[y: either(unit, unit) := Right(Unit)] => {
       let _ = y;
       x
     });
@@ -173,7 +173,7 @@ define main() -> unit {
   call-default-top();
   call-default-list();
   call-local-lambda-default();
-  local-lambda-override();
+  local-lambda-override(*"test");
   pin v = local-define-default(*"lorem");
   print-line(v);
   call-inline-default();

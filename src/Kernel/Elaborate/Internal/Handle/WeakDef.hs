@@ -37,6 +37,7 @@ new gensymHandle = do
 insert' ::
   Handle ->
   O.Opacity ->
+  Bool ->
   Hint ->
   DD.DefiniteDescription ->
   [BinderF WeakType] ->
@@ -45,8 +46,8 @@ insert' ::
   WeakType ->
   WeakTerm ->
   IO ()
-insert' h opacity m name impArgs expArgs defaultArgs codType e =
+insert' h opacity isDestPassing m name impArgs expArgs defaultArgs codType e =
   when (opacity == O.Clear) $ do
     i <- Gensym.newCount (gensymHandle h)
     modifyIORef' (weakDefMapRef h) $
-      Map.insert name (m :< WT.PiIntro (AttrL.normal' (Just $ DD.localLocator name) i codType) impArgs expArgs defaultArgs e)
+      Map.insert name (m :< WT.PiIntro (AttrL.normal' (Just $ DD.localLocator name) isDestPassing i codType) impArgs expArgs defaultArgs e)

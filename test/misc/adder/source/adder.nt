@@ -4,7 +4,7 @@ import {
 
 define make-adder(x: int) -> (int) -> int {
   let adder =
-    function (y) {
+    (y) => {
       add-int(x, y)
     };
   adder

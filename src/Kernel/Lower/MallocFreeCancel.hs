@@ -1,8 +1,6 @@
 module Kernel.Lower.MallocFreeCancel (mallocFreeCancel) where
 
-import Control.Monad (join)
 import Data.IntSet qualified as IntSet
-import Data.List (foldl', transpose)
 import Data.Map.Strict qualified as Map
 import Data.Set qualified as S
 import Language.Common.Ident
@@ -54,14 +52,12 @@ analyze lowComp =
           axis
     LC.Cont _ cont ->
       analyze cont
-    LC.Switch _ defaultBranch ces (phiTargets, cont) ->
+    LC.Switch _ _ defaultBranch ces phiTarget cont ->
       let branches = defaultBranch : map snd ces
-       in analyzeSwitchJoin branches phiTargets cont <> mconcat (map analyze (cont : branches))
+       in analyzeSwitchJoin branches phiTarget cont <> mconcat (map analyze (cont : branches))
     LC.TailCall {} ->
       mempty
     LC.Unreachable ->
-      mempty
-    LC.Phi {} ->
       mempty
 
 collectFreeIDs :: S.Set Ident -> LC.Comp -> Maybe IntSet.IntSet
@@ -85,7 +81,7 @@ collectFreeIDs aliases lowComp =
               Just $ IntSet.singleton freeID
         _ ->
           collectFreeIDs aliases cont
-    LC.Switch _ defaultBranch ces (_, cont) ->
+    LC.Switch _ _ defaultBranch ces _ cont ->
       case collectFreeIDs aliases cont of
         Just freeIDs ->
           Just freeIDs
@@ -95,8 +91,6 @@ collectFreeIDs aliases lowComp =
       Nothing
     LC.Unreachable ->
       Just IntSet.empty
-    LC.Phi {} ->
-      Nothing
 
 getAliasSource :: LC.Op -> Maybe Ident
 getAliasSource op =
@@ -110,64 +104,57 @@ getAliasSource op =
     _ ->
       Nothing
 
-analyzeSwitchJoin :: [LC.Comp] -> [Ident] -> LC.Comp -> Axis
-analyzeSwitchJoin branches phiTargets cont =
-  mconcat $ flip map (zip [0 ..] phiTargets) $ \(index, phiTarget) ->
-    case collectFreeIDs (S.singleton phiTarget) cont of
-      Just freeIDs ->
-        case traverse (collectBranchAllocIDs index) branches of
-          Just allocIDList ->
-            Axis
-              { allocCanceller = IntSet.unions allocIDList,
-                freeCanceller = freeIDs
-              }
-          Nothing ->
-            mempty
-      Nothing ->
-        mempty
+analyzeSwitchJoin :: [LC.Comp] -> Ident -> LC.Comp -> Axis
+analyzeSwitchJoin branches phiTarget cont =
+  case collectFreeIDs (S.singleton phiTarget) cont of
+    Just freeIDs ->
+      case traverse collectBranchResultAllocIDs branches of
+        Just allocIDList ->
+          Axis
+            { allocCanceller = IntSet.unions allocIDList,
+              freeCanceller = freeIDs
+            }
+        Nothing ->
+          mempty
+    Nothing ->
+      mempty
 
-collectBranchAllocIDs :: Int -> LC.Comp -> Maybe IntSet.IntSet
-collectBranchAllocIDs index branch = do
-  phiOrigins <- collectBranchPhiOrigins Map.empty branch
-  case phiOrigins of
+collectBranchResultAllocIDs :: LC.Comp -> Maybe IntSet.IntSet
+collectBranchResultAllocIDs branch = do
+  resultOrigin <- collectBranchResultOrigin Map.empty branch
+  case resultOrigin of
     DeadBranch ->
       Just IntSet.empty
-    ReachableBranch originList -> do
-      join $ getAt index originList
+    ReachableBranch origin ->
+      origin
 
-data BranchPhiOrigins
+data BranchResultOrigin
   = DeadBranch
-  | ReachableBranch [Maybe IntSet.IntSet]
+  | ReachableBranch (Maybe IntSet.IntSet)
 
 type OriginEnv =
   Map.Map Ident (Maybe IntSet.IntSet)
 
-collectBranchPhiOrigins :: OriginEnv -> LC.Comp -> Maybe BranchPhiOrigins
-collectBranchPhiOrigins env lowComp =
+collectBranchResultOrigin :: OriginEnv -> LC.Comp -> Maybe BranchResultOrigin
+collectBranchResultOrigin env lowComp =
   case lowComp of
-    LC.Return {} ->
-      Nothing
+    LC.Return value ->
+      Just $ ReachableBranch $ getValueOrigin env value
     LC.ReturnVoid ->
       Nothing
     LC.Let x op cont -> do
       let env' = Map.insert x (getOrigin env op) env
-      collectBranchPhiOrigins env' cont
+      collectBranchResultOrigin env' cont
     LC.Cont _ cont ->
-      collectBranchPhiOrigins env cont
-    LC.Switch _ defaultBranch ces (phiTargets, cont) -> do
-      phiOrigins <- collectMergedPhiOrigins env (length phiTargets) (defaultBranch : map snd ces)
-      let env' =
-            foldl'
-              (\acc (phiTarget, origin) -> Map.insert phiTarget origin acc)
-              env
-              (zip phiTargets phiOrigins)
-      collectBranchPhiOrigins env' cont
+      collectBranchResultOrigin env cont
+    LC.Switch _ _ defaultBranch ces phiTarget cont -> do
+      resultOrigin <- collectMergedBranchResultOrigins env (defaultBranch : map snd ces)
+      let env' = Map.insert phiTarget resultOrigin env
+      collectBranchResultOrigin env' cont
     LC.TailCall {} ->
       Nothing
     LC.Unreachable ->
       Just DeadBranch
-    LC.Phi values ->
-      Just $ ReachableBranch $ map (getValueOrigin env) values
 
 getOrigin :: OriginEnv -> LC.Op -> Maybe IntSet.IntSet
 getOrigin env op =
@@ -189,30 +176,20 @@ getValueOrigin env value =
     _ ->
       Nothing
 
-collectMergedPhiOrigins :: OriginEnv -> Int -> [LC.Comp] -> Maybe [Maybe IntSet.IntSet]
-collectMergedPhiOrigins env phiCount branches = do
-  phiOrigins <- traverse (collectBranchPhiOrigins env) branches
+collectMergedBranchResultOrigins :: OriginEnv -> [LC.Comp] -> Maybe (Maybe IntSet.IntSet)
+collectMergedBranchResultOrigins env branches = do
+  resultOrigins <- traverse (collectBranchResultOrigin env) branches
   let reachableOrigins =
-        [originList | ReachableBranch originList <- phiOrigins]
+        [origin | ReachableBranch origin <- resultOrigins]
   case reachableOrigins of
     [] ->
-      return $ replicate phiCount Nothing
-    _ -> do
-      if all ((== phiCount) . length) reachableOrigins
-        then return $ map mergeOrigins $ transpose reachableOrigins
-        else Nothing
+      return Nothing
+    _ ->
+      return $ mergeOrigins reachableOrigins
 
 mergeOrigins :: [Maybe IntSet.IntSet] -> Maybe IntSet.IntSet
 mergeOrigins origins =
   IntSet.unions <$> sequence origins
-
-getAt :: Int -> [a] -> Maybe a
-getAt index xs =
-  case drop index xs of
-    y : _ ->
-      Just y
-    [] ->
-      Nothing
 
 cancelMallocFree :: Axis -> LC.Comp -> LC.Comp
 cancelMallocFree axis lowComp =
@@ -239,15 +216,13 @@ cancelMallocFree axis lowComp =
               cont'
         _ ->
           LC.Cont op cont'
-    LC.Switch d defaultBranch ces (phi, cont) -> do
+    LC.Switch d t defaultBranch ces phi cont -> do
       let defaultBranch' = cancelMallocFree axis defaultBranch
       let (cs, es) = unzip ces
       let es' = map (cancelMallocFree axis) es
       let cont' = cancelMallocFree axis cont
-      LC.Switch d defaultBranch' (zip cs es') (phi, cont')
+      LC.Switch d t defaultBranch' (zip cs es') phi cont'
     LC.TailCall {} ->
       lowComp
     LC.Unreachable ->
-      lowComp
-    LC.Phi {} ->
       lowComp

@@ -8,7 +8,7 @@ import {
 }
 
 define make-big-dict(size: int) -> intmap(int) {
-  grow(empty, size, function (acc, _) {
+  grow(empty, size, (acc, _) => {
     let key = random-int(1000000);
     let val = random-int(1000000);
     insert(acc, key, val)
@@ -17,7 +17,7 @@ define make-big-dict(size: int) -> intmap(int) {
 
 define random-lookup-sum(count: int, d: &intmap(int)) -> unit {
   let rsum =
-    grow(0, count, function (acc, _) {
+    grow(0, count, (acc, _) => {
       let key = random-int(1000000);
       let val on key =
         match lookup(d, *key) {

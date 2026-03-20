@@ -18,7 +18,7 @@ define test-syntax() -> unit {
       Unit
     };
   let _ =
-    function () {
+    () => {
       let fl =
         detach {
           let _ = Unit;
@@ -28,7 +28,7 @@ define test-syntax() -> unit {
       attach {fl}
     };
   let _ =
-    function (fl: thread(unit)) {
+    (fl: thread(unit)) => {
       attach {
         let _ = Unit;
         fl

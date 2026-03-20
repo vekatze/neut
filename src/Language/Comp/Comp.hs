@@ -1,6 +1,5 @@
 module Language.Comp.Comp
   ( Value (..),
-    EnumElimKind (..),
     ForceInline,
     Comp (..),
     Primitive (..),
@@ -10,11 +9,10 @@ module Language.Comp.Comp
     DefMap,
     Label,
     fromDefTuple,
+    fromCompStmt,
     intValue0,
     intValue1,
     mulInt64,
-    getPhiList,
-    graft,
     isUnreachable,
     null,
   )
@@ -75,11 +73,6 @@ type ForceInline = Bool
 type Label =
   Ident
 
-data EnumElimKind
-  = CanonicalJoin
-  | GeneralJoin
-  deriving (Eq, Show)
-
 data Comp
   = PiElimDownElim ForceInline Value [Value] -- ((force v) v1 ... vn)
   | SigmaElim ShouldDeallocate [Ident] Value Comp
@@ -87,13 +80,12 @@ data Comp
   | UpIntroVoid
   | UpElim IsReducible Ident Comp Comp
   | UpElimCallVoid Value [Value] Comp
-  | EnumElim EnumElimKind [(Int, Value)] Value Comp [(EnumCase, Comp)] [Ident] Comp
+  | EnumElim [(Int, Value)] Value Comp [(EnumCase, Comp)]
   | DestCall Comp Value [Value]
   | WriteToDest Value Comp Comp Comp
   | Primitive Primitive
   | Free Value Int Comp
   | Unreachable
-  | Phi [Value]
 
 instance Show Comp where
   show c =
@@ -112,10 +104,14 @@ instance Show Comp where
         "let" ++ modifier ++ " " ++ show x ++ " = " ++ show c1 ++ "\n" ++ show c2
       UpElimCallVoid f vs cont ->
         "call-void " ++ show f ++ "@(" ++ intercalate "," (map show vs) ++ ")\n" ++ show cont
-      EnumElim kind sub v c1 caseList phiVarList cont -> do
-        "switch " ++ show sub ++ " " ++ show v ++ "\n<default>\n" ++ show c1 ++ unwords (map showEnumCase caseList) ++ "\nphi " <> show phiVarList <> " = (parent) in\n" <> show cont
-          ++ "\nkind="
-          ++ show kind
+      EnumElim sub v c1 caseList -> do
+        "switch "
+          ++ show sub
+          ++ " "
+          ++ show v
+          ++ "\n<default>\n"
+          ++ show c1
+          ++ unwords (map showEnumCase caseList)
       DestCall sizeComp f vs ->
         "dest-call\n<size-comp>\n" ++ show sizeComp ++ "\n" ++ show f ++ "@(" ++ intercalate "," (map show vs) ++ ")"
       WriteToDest dest sizeComp result cont ->
@@ -126,8 +122,6 @@ instance Show Comp where
         "free(" ++ show x ++ ", " ++ show size ++ ")\n" ++ show cont
       Unreachable ->
         "⊥"
-      Phi ds ->
-        "phi" <> "(" ++ intercalate "," (map show ds) ++ ")"
 
 showEnumCase :: (EnumCase, Comp) -> String
 showEnumCase (ec, c) = do
@@ -151,6 +145,16 @@ data CompStmt
   | DefVoid DD.DefiniteDescription Opacity [Ident] Comp
   | Foreign [F.Foreign]
 
+fromCompStmt :: CompStmt -> Maybe (Opacity, [Ident], Comp)
+fromCompStmt cs =
+  case cs of
+    Def _ opacity xs body ->
+      Just (opacity, xs, body)
+    DefVoid _ opacity xs body ->
+      Just (opacity, xs, body)
+    Foreign {} ->
+      Nothing
+
 fromDefTuple :: (DD.DefiniteDescription, (Opacity, [Ident], Comp)) -> CompStmt
 fromDefTuple (dd, (opacity, args, body)) =
   Def dd opacity args body
@@ -170,80 +174,6 @@ mulInt64 :: Value -> Value -> Primitive
 mulInt64 x y =
   PrimOp (PrimBinaryOp BOp.Mul (PT.Int IntSize64) (PT.Int IntSize64)) [x, y]
 
-getPhiList :: Comp -> Maybe [Value]
-getPhiList e =
-  case e of
-    Phi ds ->
-      return ds
-    PiElimDownElim {} ->
-      Nothing
-    SigmaElim _ _ _ cont ->
-      getPhiList cont
-    UpIntro {} ->
-      Nothing
-    UpIntroVoid ->
-      Nothing
-    UpElim _ _ _ cont ->
-      getPhiList cont
-    UpElimCallVoid _ _ cont ->
-      getPhiList cont
-    EnumElim _ _ _ _ _ _ cont ->
-      getPhiList cont
-    DestCall {} ->
-      Nothing
-    WriteToDest _ _ _ cont ->
-      getPhiList cont
-    Primitive {} ->
-      Nothing
-    Free _ _ cont ->
-      getPhiList cont
-    Unreachable ->
-      Nothing
-
-graft :: Comp -> [Ident] -> Comp -> Maybe Comp
-graft e1 phiVarList cont =
-  case e1 of
-    Phi vs -> do
-      return $ bind (zip phiVarList vs) cont
-    PiElimDownElim {} ->
-      Nothing
-    SigmaElim flag ys v e2 -> do
-      e2' <- graft e2 phiVarList cont
-      return $ SigmaElim flag ys v e2'
-    UpIntro {} ->
-      Nothing
-    UpIntroVoid ->
-      Nothing
-    UpElim flag x e2 e3 -> do
-      e3' <- graft e3 phiVarList cont
-      return $ UpElim flag x e2 e3'
-    UpElimCallVoid f vs e2 -> do
-      e2' <- graft e2 phiVarList cont
-      return $ UpElimCallVoid f vs e2'
-    EnumElim kind fvInfo v defaultBranch branchList ys e2 -> do
-      e2' <- graft e2 phiVarList cont
-      return $ EnumElim kind fvInfo v defaultBranch branchList ys e2'
-    DestCall {} ->
-      Nothing
-    WriteToDest dest sizeComp result e2 -> do
-      e2' <- graft e2 phiVarList cont
-      return $ WriteToDest dest sizeComp result e2'
-    Primitive {} ->
-      Nothing
-    Free v size e2 -> do
-      e2' <- graft e2 phiVarList cont
-      return $ Free v size e2'
-    Unreachable ->
-      Nothing
-
-bind :: [(Ident, Value)] -> Comp -> Comp
-bind xvs e =
-  case xvs of
-    [] ->
-      e
-    (x, v) : rest ->
-      UpElim True x (UpIntro v) $ bind rest e
-
 isUnreachable :: Comp -> Bool
 isUnreachable comp =
   case comp of
@@ -259,10 +189,8 @@ isUnreachable comp =
       isUnreachable e1 || isUnreachable e2
     UpElimCallVoid _ _ e ->
       isUnreachable e
-    EnumElim _ _ _ defaultBranch branchList _ cont -> do
-      let b1 = isUnreachable cont
-      let b2 = isUnreachable defaultBranch && all (isUnreachable . snd) branchList
-      b1 || b2
+    EnumElim _ _ defaultBranch branchList ->
+      isUnreachable defaultBranch && all (isUnreachable . snd) branchList
     DestCall {} ->
       False
     WriteToDest _ _ result cont ->
@@ -273,8 +201,6 @@ isUnreachable comp =
       isUnreachable cont
     Unreachable ->
       True
-    Phi {} ->
-      False
 
 null :: Value
 null =

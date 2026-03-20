@@ -49,7 +49,11 @@ toDoc term =
     _ :< VarGlobal dd _ ->
       D.text $ DD.reify dd -- unreachable
     _ :< PiIntro c def -> do
-      decodeDef lambdaNameToDoc "function" c def
+      case getName def of
+        Just name ->
+          decodeDef (const $ D.text name) "inline" c def
+        Nothing ->
+          decodeLambda c def
     _ :< PiIntroFix opacity c def -> do
       let keyword =
             case opacity of
@@ -90,13 +94,13 @@ toDoc term =
       case mImpArgs of
         Nothing ->
           PI.arrange
-            [ PI.inject $ nameToDoc name,
+            [ PI.horizontal $ nameToDoc name,
               PI.inject $ attachComment c $ decPiElimKey kvs
             ]
         Just impArgs ->
           PI.arrange
             [ PI.inject $ nameToDoc name,
-              PI.inject $ attachComment c $ SE.decodeHorizontallyIfPossible $ fmap typeToDoc impArgs,
+              PI.horizontal $ attachComment c $ SE.decodeHorizontallyIfPossible $ fmap typeToDoc impArgs,
               PI.inject $ attachComment c2 $ decPiElimKey kvs
             ]
     _ :< PiElimRule name c es -> do
@@ -473,7 +477,7 @@ typeToDoc ty =
         else
           PI.arrange
             [ PI.inject base,
-              PI.inject $ SE.decodeHorizontallyIfPossible $ fmap typeToDoc $ SE.fromList' es
+              PI.inject $ SE.decodeHorizontallyIfPossible $ typeToDoc <$> SE.fromList' es
             ]
     _ :< Box t -> do
       D.join [D.text "+", typeToDoc t]
@@ -507,6 +511,22 @@ decodeDef nameDecoder keyword c def = do
         decGeist nameDecoder $ RT.geist def,
         D.text " ",
         decodeBlock (RT.leadingComment def, (toDoc $ RT.body def, RT.trailingComment def))
+      ]
+
+getName :: RT.FuncInfo -> Maybe T.Text
+getName def = do
+  let geist = RT.geist def
+  fst $ RT.name geist
+
+decodeLambda :: C -> RT.FuncInfo -> D.Doc
+decodeLambda c def = do
+  let geist = RT.geist def
+  let arrow = if RT.isDestPassing geist then "=>>" else "=>"
+  attachComment c $
+    PI.arrange
+      [ PI.horizontal $ decGeistSimple (const D.Nil) geist,
+        PI.horizontal $ D.text arrow,
+        PI.inject $ decodeBlock (RT.leadingComment def, (toDoc $ RT.body def, RT.trailingComment def))
       ]
 
 decodeTypeDef :: (a -> D.Doc) -> T.Text -> C -> RT.RawTypeDef a -> D.Doc
@@ -665,7 +685,7 @@ decGeist
         isDestPassing
       }
     ) = do
-    let hasExp = (not isConstLike) || (not (SE.isEmpty expArgs))
+    let hasExp = not isConstLike || not (SE.isEmpty expArgs)
     let hasDefault = not (SE.isEmpty defaultArgs)
     let expParamsBase = decodeExpParams isConstLike expArgs
     let defaultParamsBase = decodeDefaultParams defaultArgs
@@ -674,25 +694,25 @@ decGeist
             then attachComment c1 expParamsBase
             else expParamsBase
     let defaultParamsWithImp =
-          if (not hasExp) && hasDefault
+          if not hasExp && hasDefault
             then attachComment c1 defaultParamsBase
             else defaultParamsBase
     case cod of
-      _ :< RT.TypeHole {} -> do
-        let defaultParamsWithTrailing =
-              if hasDefault
-                then attachComment (c3 ++ c2) defaultParamsWithImp
-                else defaultParamsWithImp
-        let expParamsWithTrailing =
-              if hasDefault
-                then expParamsWithImp
-                else attachComment (c3 ++ c2) expParamsWithImp
-        PI.arrange
-          [ PI.inject $ attachComment c0 $ nameDecoder name,
-            PI.inject $ decodeImpParams impArgs,
-            PI.inject expParamsWithTrailing,
-            PI.inject defaultParamsWithTrailing
-          ]
+      -- _ :< RT.TypeHole {} -> do
+      --   let defaultParamsWithTrailing =
+      --         if hasDefault
+      --           then attachComment (c3 ++ c2) defaultParamsWithImp
+      --           else defaultParamsWithImp
+      --   let expParamsWithTrailing =
+      --         if hasDefault
+      --           then expParamsWithImp
+      --           else attachComment (c3 ++ c2) expParamsWithImp
+      --   PI.arrange
+      --     [ PI.inject $ attachComment c0 $ nameDecoder name,
+      --       PI.inject $ decodeImpParams impArgs,
+      --       PI.inject expParamsWithTrailing,
+      --       PI.inject defaultParamsWithTrailing
+      --     ]
       _ -> do
         let defaultParamsWithExpComment =
               if hasDefault
@@ -701,13 +721,13 @@ decGeist
         let cColon =
               (if hasDefault then [] else c3) ++ c2
         let cColon' =
-              if (not hasExp) && (not hasDefault)
+              if not hasExp && not hasDefault
                 then c1 ++ cColon
                 else cColon
         let codDelim =
               if isConstLike
                 then PI.horizontal $ attachComment cColon' $ D.text ":"
-                else PI.delimiter $ attachComment cColon' $ D.text (if isDestPassing then "->>" else "->")
+                else PI.delimiterArrow $ attachComment cColon' $ D.text (if isDestPassing then "->>" else "->")
         PI.arrange
           [ PI.inject $ attachComment c0 $ nameDecoder name,
             PI.inject $ decodeImpParams impArgs,
@@ -716,6 +736,44 @@ decGeist
             codDelim,
             PI.inject $ attachComment c4 $ typeToDoc cod
           ]
+
+decGeistSimple :: (a -> D.Doc) -> RT.RawGeist a -> D.Doc
+decGeistSimple
+  nameDecoder
+  ( RT.RawGeist
+      { name = (name, c0),
+        impArgs = (impArgs, c1),
+        defaultArgs = (defaultArgs, c2),
+        expArgs = (expArgs, c3),
+        isConstLike
+      }
+    ) = do
+    let hasExp = not isConstLike || not (SE.isEmpty expArgs)
+    let hasDefault = not (SE.isEmpty defaultArgs)
+    let expParamsBase = decodeExpParams isConstLike expArgs
+    let defaultParamsBase = decodeDefaultParams defaultArgs
+    let expParamsWithImp =
+          if hasExp
+            then attachComment c1 expParamsBase
+            else expParamsBase
+    let defaultParamsWithImp =
+          if not hasExp && hasDefault
+            then attachComment c1 defaultParamsBase
+            else defaultParamsBase
+    let defaultParamsWithTrailing =
+          if hasDefault
+            then attachComment (c3 ++ c2) defaultParamsWithImp
+            else defaultParamsWithImp
+    let expParamsWithTrailing =
+          if hasDefault
+            then expParamsWithImp
+            else attachComment (c3 ++ c2) expParamsWithImp
+    PI.arrange
+      [ PI.inject $ attachComment c0 $ nameDecoder name,
+        PI.inject $ decodeImpParams impArgs,
+        PI.inject expParamsWithTrailing,
+        PI.inject defaultParamsWithTrailing
+      ]
 
 decTypeGeist :: (a -> D.Doc) -> RT.RawGeist a -> D.Doc
 decTypeGeist
@@ -728,7 +786,7 @@ decTypeGeist
         isConstLike
       }
     ) = do
-    let hasExp = (not isConstLike) || (not (SE.isEmpty expArgs))
+    let hasExp = not isConstLike || not (SE.isEmpty expArgs)
     let hasDefault = not (SE.isEmpty defaultArgs)
     let expParamsBase = decodeExpParams isConstLike expArgs
     let defaultParamsBase = decodeDefaultParams defaultArgs
@@ -737,7 +795,7 @@ decTypeGeist
             then attachComment c1 expParamsBase
             else expParamsBase
     let defaultParamsWithImp =
-          if (not hasExp) && hasDefault
+          if not hasExp && hasDefault
             then attachComment c1 defaultParamsBase
             else defaultParamsBase
     let defaultParamsWithTrailing =
@@ -799,10 +857,6 @@ nameToDoc varOrLocator =
         else D.text var
     N.Locator locator ->
       D.text $ Locator.reify locator
-
-lambdaNameToDoc :: Maybe T.Text -> D.Doc
-lambdaNameToDoc =
-  maybe D.Nil D.text
 
 isMultiLine :: [D.Doc] -> Bool
 isMultiLine docList =
@@ -891,7 +945,7 @@ decodePattern pat = do
           D.join [name', attachComment c patList']
         RP.Of kvs -> do
           let kvs' = SE.decode $ fmap decodePatternKeyValue kvs
-          D.join [name', attachComment c kvs']
+          D.join [name', D.text " ", attachComment c kvs']
     RP.RuneIntro r ->
       D.text $ "`" <> T.replace "`" "\\`" (RU.asText r) <> "`"
 

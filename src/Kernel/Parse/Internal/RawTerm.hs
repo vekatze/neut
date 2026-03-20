@@ -207,6 +207,7 @@ rawTerm' mode h m headSymbol c = do
         then do
           choice
             [ rawTermBrace h,
+              rawTermLambda h,
               rawTermTextIntro,
               rawTermRuneIntro,
               rawTermEmbody mode h
@@ -321,6 +322,45 @@ rawTermPiIntro h m c0 = do
       Just (name, c) ->
         return (Just name, c)
   return (m :< RT.PiIntro c0 defInfo, c)
+
+rawTermLambda :: Handle -> Parser (RT.RawTerm, C)
+rawTermLambda h = do
+  m <- getCurrentHint
+  impArgs <- parseImplicitParams h
+  expArgs@(expSeries, _) <- seriesParen $ preBinder h
+  defaultArgs <- parseDefaultParams h
+  lift $ ensureArgumentLinearity S.empty $ map (\(mx, _, x, _, _, _) -> (mx, x)) $ SE.extract expSeries
+  cod <- liftIO $ RT.createTypeHole (gensymHandle h) m
+  (isDestPassing, cArrow) <-
+    choice
+      [ do
+          c' <- delimiter "=>>"
+          return (True, c'),
+        do
+          c' <- delimiter "=>"
+          return (False, c')
+      ]
+  (c2, ((e, c3), loc, c)) <- betweenBrace' $ rawExpr h
+  let geist =
+        RT.RawGeist
+          { loc = m,
+            name = (Nothing, []),
+            isConstLike = False,
+            isDestPassing,
+            impArgs,
+            defaultArgs,
+            expArgs,
+            cod = ([], cod)
+          }
+  let defInfo =
+        RT.RawDef
+          { geist,
+            leadingComment = cArrow ++ c2,
+            body = e,
+            trailingComment = c3,
+            endLoc = loc
+          }
+  return (m :< RT.PiIntro [] defInfo, c)
 
 rawTermKeyValuePair :: Handle -> Parser ((Hint, Key, C, C, RT.RawTerm), C)
 rawTermKeyValuePair h = do

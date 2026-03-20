@@ -16,21 +16,7 @@ module Language.Common.BaseName
     this,
     base,
     core,
-    immType,
-    immNoema,
-    immInt1,
-    immInt2,
-    immInt4,
-    immInt8,
-    immInt16,
-    immInt32,
-    immInt64,
-    immFloat16,
-    immFloat32,
-    immFloat64,
-    immRune,
-    immPointer,
-    immNull,
+    imm,
     cls,
     reservedAlias,
     node,
@@ -135,65 +121,9 @@ zenName :: BaseName
 zenName =
   MakeBaseName "zen"
 
-immType :: BaseName
-immType =
-  MakeBaseName "imm-type"
-
-immNoema :: BaseName
-immNoema =
-  MakeBaseName "imm-noema"
-
-immInt1 :: BaseName
-immInt1 =
-  MakeBaseName "imm-int1"
-
-immInt2 :: BaseName
-immInt2 =
-  MakeBaseName "imm-int2"
-
-immInt4 :: BaseName
-immInt4 =
-  MakeBaseName "imm-int4"
-
-immInt8 :: BaseName
-immInt8 =
-  MakeBaseName "imm-int8"
-
-immInt16 :: BaseName
-immInt16 =
-  MakeBaseName "imm-int16"
-
-immInt32 :: BaseName
-immInt32 =
-  MakeBaseName "imm-int32"
-
-immInt64 :: BaseName
-immInt64 =
-  MakeBaseName "imm-int64"
-
-immFloat16 :: BaseName
-immFloat16 =
-  MakeBaseName "imm-float16"
-
-immFloat32 :: BaseName
-immFloat32 =
-  MakeBaseName "imm-float32"
-
-immFloat64 :: BaseName
-immFloat64 =
-  MakeBaseName "imm-float64"
-
-immRune :: BaseName
-immRune =
-  MakeBaseName "imm-rune"
-
-immPointer :: BaseName
-immPointer =
-  MakeBaseName "imm-pointer"
-
-immNull :: BaseName
-immNull =
-  MakeBaseName "imm-null"
+imm :: BaseName
+imm =
+  MakeBaseName "imm"
 
 cls :: BaseName
 cls =

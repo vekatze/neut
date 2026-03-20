@@ -193,18 +193,23 @@ lowerComp h term =
         =<< lowerValues h (zip argVars ds)
         =<< cast h castFuncVar func LT.Pointer
         =<< return (LC.Cont (LC.Call LT.Void castFunc (map (LT.Pointer,) argValues)) e2')
-    C.EnumElim _ fvInfo v defaultBranch branchList phiList cont -> do
+    C.EnumElim fvInfo v defaultBranch branchList -> do
       let sub = IntMap.fromList fvInfo
       defaultBranch' <- liftIO $ Subst.subst (substHandle h) sub defaultBranch >>= Reduce.reduce (reduceHandle h)
       let (keys, clauses) = unzip branchList
       clauses' <- liftIO $ mapM (Subst.subst (substHandle h) sub >=> Reduce.reduce (reduceHandle h)) clauses
-      let branchList' = zip keys clauses'
-      (defaultCase, caseList) <- constructSwitch h defaultBranch' branchList'
+      defaultCase <- lowerEnumBranch h defaultBranch'
+      caseList <-
+        mapM
+          (\(tag, branch) -> do
+             branch' <- lowerEnumBranch h branch
+             return (enumCaseToInteger tag, branch'))
+          (zip keys clauses')
+      (phiName, phiValue) <- liftIO $ newValueLocal h "phi"
       let t = LT.PrimNum $ PT.Int $ dataSizeToIntSize (baseSize h)
-      cont' <- lowerComp h cont
       (castVar, castValue) <- liftIO $ newValueLocal h "cast"
       lowerValueLetCast h castVar v t
-        =<< return (LC.Switch (castValue, t) defaultCase caseList (phiList, cont'))
+        =<< return (LC.Switch castValue t defaultCase caseList phiName (LC.Return phiValue))
     C.DestCall sizeComp f ds ->
       liftIO (materializeDestCall h sizeComp f ds)
         >>= liftIO . Reduce.reduce (reduceHandle h)
@@ -221,20 +226,13 @@ lowerComp h term =
         =<< lowerComp h cont
     C.Unreachable ->
       return LC.Unreachable
-    C.Phi ds -> do
-      (argVars, argValues) <- mapAndUnzipM (const $ liftIO $ newValueLocal h "arg") ds
-      lowerValues h (zip argVars ds)
-        =<< return (LC.Phi argValues)
 
 materializeDestCall :: Handle -> C.Comp -> C.Value -> [C.Value] -> IO C.Comp
 materializeDestCall h sizeComp f ds = do
   (sizeName, sizeVar) <- createVar (gensymHandle h) "size"
-  (phiName, phiVar) <- createVar (gensymHandle h) "phi"
   (immediateDestName, immediateDestVar) <- createVar (gensymHandle h) "dest"
   (immediateResultName, immediateResultVar) <- createVar (gensymHandle h) "result"
-  (immediateBranchPhiName, immediateBranchPhi) <- createVar (gensymHandle h) "phi"
   (boxedDestName, boxedDestVar) <- createVar (gensymHandle h) "dest"
-  (boxedBranchPhiName, boxedBranchPhi) <- createVar (gensymHandle h) "phi"
   let immediateBody =
         C.UpElim
           True
@@ -250,29 +248,22 @@ materializeDestCall h sizeComp f ds = do
                   (C.Free immediateDestVar 1 (C.UpIntro immediateResultVar))
               )
           )
-  let immediateBranch =
-        C.UpElim True immediateBranchPhiName immediateBody (C.Phi [immediateBranchPhi])
   let boxedBody =
         C.UpElim
           True
           boxedDestName
           (C.Primitive $ C.Alloc sizeVar)
           (C.UpElimCallVoid f (boxedDestVar : ds) (C.UpIntro boxedDestVar))
-  let boxedBranch =
-        C.UpElim True boxedBranchPhiName boxedBody (C.Phi [boxedBranchPhi])
   return $
     C.UpElim
       True
       sizeName
       sizeComp
       ( C.EnumElim
-          C.CanonicalJoin
           []
           sizeVar
-          boxedBranch
-          [(EC.Int (-1), immediateBranch)]
-          [phiName]
-          (C.UpIntro phiVar)
+          boxedBody
+          [(EC.Int (-1), immediateBody)]
       )
 
 materializeWriteToDest :: Handle -> C.Value -> C.Comp -> C.Comp -> C.Comp -> IO C.Comp
@@ -282,32 +273,40 @@ materializeWriteToDest h dest sizeComp result cont = do
   (ignoredImmediate, _) <- createVar (gensymHandle h) "_"
   (ignoredBoxed, _) <- createVar (gensymHandle h) "_"
   (ignoredBranch, _) <- createVar (gensymHandle h) "_"
-  (phiName, phiVar) <- createVar (gensymHandle h) "phi"
   let immediateBranch =
         C.UpElim
           True
           ignoredImmediate
           (C.Primitive $ C.Magic $ LM.Store BLT.Pointer C.null resultVar dest)
-          (C.Phi [C.null])
+          (C.UpIntro C.null)
   let boxedBranch =
         C.UpElim
           True
           ignoredBoxed
           (C.Primitive $ C.Memcpy dest resultVar sizeVar)
-          (C.Free resultVar 0 (C.Phi [C.null]))
+          (C.Free resultVar 0 (C.UpIntro C.null))
   let branch =
         C.EnumElim
-          C.CanonicalJoin
           []
           sizeVar
           boxedBranch
           [(EC.Int (-1), immediateBranch)]
-          [phiName]
-          (C.UpIntro phiVar)
   return $
     C.UpElim False resultName result $
       C.UpElim True sizeName sizeComp $
         C.UpElim True ignoredBranch branch cont
+
+lowerEnumBranch :: Handle -> C.Comp -> App LC.Comp
+lowerEnumBranch h branch = do
+  lowBranch <- lowerComp h branch
+  (phiName, phiVar) <- liftIO $ newValueLocal h "phi"
+  return $ commConv phiName lowBranch (LC.Return phiVar)
+
+enumCaseToInteger :: EC.EnumCase -> Integer
+enumCaseToInteger enumCase =
+  case enumCase of
+    EC.Int i ->
+      i
 
 lowerCompPrimitive :: Handle -> Ident -> C.Primitive -> LC.Comp -> App LC.Comp
 lowerCompPrimitive h resultVar codeOp cont =
@@ -600,21 +599,6 @@ freeIfNecessary h shouldDeallocate pointer len cont = do
       return cont
 
 -- returns Nothing iff the branch list is empty
-constructSwitch ::
-  Handle ->
-  C.Comp ->
-  [(EC.EnumCase, C.Comp)] ->
-  App (LC.Comp, [(Integer, LC.Comp)])
-constructSwitch h defaultBranch switch =
-  case switch of
-    [] -> do
-      defaultBranch' <- lowerComp h defaultBranch
-      return (defaultBranch', [])
-    (EC.Int i, code) : rest -> do
-      code' <- lowerComp h code
-      (defaultBranch', caseList) <- constructSwitch h defaultBranch rest
-      return (defaultBranch', (i, code') : caseList)
-
 newValueLocal :: Handle -> T.Text -> IO (Ident, LC.Value)
 newValueLocal h name = do
   x <- Gensym.newIdentFromText (gensymHandle h) name
@@ -684,15 +668,13 @@ commConv x lowComp cont2 =
     LC.Cont op cont1 -> do
       let cont = commConv x cont1 cont2
       LC.Cont op cont
-    LC.Switch (d, t) defaultCase caseList (phiVar, cont) -> do
+    LC.Switch d t defaultCase caseList phiVar cont -> do
       let cont' = commConv x cont cont2
-      LC.Switch (d, t) defaultCase caseList (phiVar, cont')
+      LC.Switch d t defaultCase caseList phiVar cont'
     LC.TailCall codType d ds ->
       LC.Let x (LC.Call codType d ds) cont2
     LC.Unreachable ->
       LC.Unreachable
-    LC.Phi _ ->
-      LC.Unreachable -- shouldn't occur
 
 defaultForeignList :: A.Arch -> [F.Foreign]
 defaultForeignList arch =

@@ -96,7 +96,7 @@ define use-item3-noetic<a, b>(f: &item3(a, b), x: a) -> b {
 
 define test-item3() -> unit {
   let !value: item3(int, list(int)) =
-    Item3(function (x) {
+    Item3((x) => {
       List[x, 2, 3]
     });
   let _ = value;

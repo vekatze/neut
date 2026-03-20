@@ -4,14 +4,8 @@ module Kernel.Clarify.Internal.Sigma
     new,
     registerImmediateS4,
     registerClosureS4,
-    immediateNullS4,
-    returnImmediateTypeS4,
-    returnImmediateNoemaS4,
-    returnImmediateIntS4,
-    returnImmediateFloatS4,
-    returnImmediateRuneS4,
-    returnImmediatePointerS4,
-    returnImmediateNullS4,
+    immediateS4,
+    returnImmediateS4,
     returnClosureS4,
     closureEnvS4,
     returnSigmaDataS4,
@@ -38,7 +32,6 @@ import Language.Common.ForeignCodType qualified as FCT
 import Language.Common.Ident
 import Language.Common.LowMagic qualified as LM
 import Language.Common.Opacity qualified as O
-import Language.Common.PrimNumSize (FloatSize (..), IntSize (..))
 import Language.Comp.Comp qualified as C
 import Language.Comp.CreateVar qualified as Gensym
 import Language.Comp.EnumCase qualified as EC
@@ -68,13 +61,12 @@ globalPointer name argNum =
 
 registerImmediateS4 :: Handle -> IO ()
 registerImmediateS4 h = do
-  forM_ DD.immTypes $ \name -> do
-    switch <- Gensym.createVar (gensymHandle h) "switch"
-    arg@(_, argVar) <- Gensym.createVar (gensymHandle h) "arg"
-    let discard = C.UpIntro $ C.SigmaIntro []
-    let copy = C.UpIntro argVar
-    Utility.registerSwitcher (utilityHandle h) O.Clear name $ do
-      ResourceSpec {switch, arg, discard, copy, size = Utility.returnIntComp (utilityHandle h) (-1), defaultValues = []}
+  switch <- Gensym.createVar (gensymHandle h) "switch"
+  arg@(_, argVar) <- Gensym.createVar (gensymHandle h) "arg"
+  let discard = C.UpIntro $ C.SigmaIntro []
+  let copy = C.UpIntro argVar
+  Utility.registerSwitcher (utilityHandle h) O.Clear DD.imm $
+    ResourceSpec {switch, arg, discard, copy, size = Utility.returnIntComp (utilityHandle h) (-1), defaultValues = []}
 
 registerClosureS4 :: Handle -> IO ()
 registerClosureS4 h = do
@@ -85,63 +77,19 @@ registerClosureS4 h = do
     h
     DD.cls
     O.Clear
-    [(env, returnImmediateTypeS4), (hole1, C.UpIntro envVar), (hole2, returnImmediatePointerS4)]
+    [(env, returnImmediateS4), (hole1, C.UpIntro envVar), (hole2, returnImmediateS4)]
 
-returnImmediateTypeS4 :: C.Comp
-returnImmediateTypeS4 = do
-  C.UpIntro (globalPointer DD.immType AN.argNumS4)
-
-returnImmediateNoemaS4 :: C.Comp
-returnImmediateNoemaS4 = do
-  C.UpIntro (globalPointer DD.immNoema AN.argNumS4)
-
-returnImmediateIntS4 :: IntSize -> C.Comp
-returnImmediateIntS4 intSize = do
-  case intSize of
-    IntSize1 ->
-      C.UpIntro (globalPointer DD.immInt1 AN.argNumS4)
-    IntSize2 ->
-      C.UpIntro (globalPointer DD.immInt2 AN.argNumS4)
-    IntSize4 ->
-      C.UpIntro (globalPointer DD.immInt4 AN.argNumS4)
-    IntSize8 ->
-      C.UpIntro (globalPointer DD.immInt8 AN.argNumS4)
-    IntSize16 ->
-      C.UpIntro (globalPointer DD.immInt16 AN.argNumS4)
-    IntSize32 ->
-      C.UpIntro (globalPointer DD.immInt32 AN.argNumS4)
-    IntSize64 ->
-      C.UpIntro (globalPointer DD.immInt64 AN.argNumS4)
-
-returnImmediateFloatS4 :: FloatSize -> C.Comp
-returnImmediateFloatS4 floatSize = do
-  case floatSize of
-    FloatSize16 ->
-      C.UpIntro (globalPointer DD.immFloat16 AN.argNumS4)
-    FloatSize32 ->
-      C.UpIntro (globalPointer DD.immFloat32 AN.argNumS4)
-    FloatSize64 ->
-      C.UpIntro (globalPointer DD.immFloat64 AN.argNumS4)
-
-returnImmediateRuneS4 :: C.Comp
-returnImmediateRuneS4 = do
-  C.UpIntro (globalPointer DD.immRune AN.argNumS4)
-
-returnImmediatePointerS4 :: C.Comp
-returnImmediatePointerS4 = do
-  C.UpIntro (globalPointer DD.immPointer AN.argNumS4)
-
-returnImmediateNullS4 :: C.Comp
-returnImmediateNullS4 = do
-  C.UpIntro immediateNullS4
+returnImmediateS4 :: C.Comp
+returnImmediateS4 =
+  C.UpIntro immediateS4
 
 returnClosureS4 :: C.Comp
 returnClosureS4 = do
   C.UpIntro $ globalPointer DD.cls AN.argNumS4
 
-immediateNullS4 :: C.Value
-immediateNullS4 = do
-  globalPointer DD.immNull AN.argNumS4
+immediateS4 :: C.Value
+immediateS4 =
+  globalPointer DD.imm AN.argNumS4
 
 registerSigmaS4 ::
   Handle ->
@@ -226,7 +174,7 @@ closureEnvS4 h mName locatorHandle mxts defaultValues =
   case mxts of
     []
       | null defaultValues ->
-          return immediateNullS4 -- performance optimization; not necessary for correctness
+          return immediateS4 -- performance optimization; not necessary for correctness
     _ -> do
       i <- Gensym.newCount (gensymHandle h)
       let name = Locator.attachCurrentLocator locatorHandle $ BN.sigmaName mName i
@@ -279,13 +227,13 @@ sigmaBinder4 :: Handle -> DataConstructorInfo -> C.Value -> IO C.Comp
 sigmaBinder4 h info v = do
   let xts = dataArgs info ++ consArgs info
   x <- Gensym.newIdentFromText (gensymHandle h) "unused-sigarg"
-  sigmaData4' h (totalSlotCount info) ((x, returnImmediateIntS4 IntSize64) : xts) v
+  sigmaData4' h (totalSlotCount info) ((x, returnImmediateS4) : xts) v
 
 sigmaBinderT :: Handle -> DataConstructorInfo -> C.Value -> IO C.Comp
 sigmaBinderT h info v = do
   let xts = dataArgs info ++ consArgs info
   x <- Gensym.newIdentFromText (gensymHandle h) "unused-sigarg"
-  sigmaT h ((x, returnImmediateIntS4 IntSize64) : xts) v
+  sigmaT h ((x, returnImmediateS4) : xts) v
 
 sigmaData4' ::
   Handle ->

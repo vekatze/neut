@@ -41,9 +41,9 @@ define tail<a>(xs: &custom-stack(a)) -> ?&custom-stack(a) {
 define main() -> unit {
   let !xs = empty<() -> int>();
   let !v =
-    Pair(function () {
+    Pair(() => {
       1
-    }, function () {
+    }, () => {
       2
     });
   let ys = C(v, xs);
