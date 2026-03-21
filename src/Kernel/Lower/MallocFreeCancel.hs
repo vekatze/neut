@@ -1,5 +1,6 @@
 module Kernel.Lower.MallocFreeCancel (mallocFreeCancel) where
 
+import Data.IntMap.Strict qualified as IntMap
 import Data.IntSet qualified as IntSet
 import Data.Map.Strict qualified as Map
 import Data.Set qualified as S
@@ -11,18 +12,18 @@ import Language.LowComp.LowComp qualified as LC
 
 data Axis = Axis
   { allocCanceller :: IntSet.IntSet,
-    freeCanceller :: IntSet.IntSet
+    freeCanceller :: IntMap.IntMap IntSet.IntSet
   }
 
 emptyAxis :: Axis
 emptyAxis =
-  Axis {allocCanceller = IntSet.empty, freeCanceller = IntSet.empty}
+  Axis {allocCanceller = IntSet.empty, freeCanceller = IntMap.empty}
 
 instance Semigroup Axis where
   Axis alloc1 free1 <> Axis alloc2 free2 =
     Axis
       { allocCanceller = IntSet.union alloc1 alloc2,
-        freeCanceller = IntSet.union free1 free2
+        freeCanceller = IntMap.unionWith IntSet.union free1 free2
       }
 
 instance Monoid Axis where
@@ -45,7 +46,8 @@ analyze lowComp =
         LC.Alloc _ allocID ->
           case collectFreeIDs (S.singleton x) cont of
             Just freeIDs ->
-              axis <> Axis {allocCanceller = IntSet.singleton allocID, freeCanceller = freeIDs}
+              let allocIDs = IntSet.singleton allocID
+               in axis <> Axis {allocCanceller = allocIDs, freeCanceller = newFreeCanceller allocIDs freeIDs}
             Nothing ->
               axis
         _ ->
@@ -112,7 +114,7 @@ analyzeSwitchJoin branches phiTarget cont =
         Just allocIDList ->
           Axis
             { allocCanceller = IntSet.unions allocIDList,
-              freeCanceller = freeIDs
+              freeCanceller = newFreeCanceller (IntSet.unions allocIDList) freeIDs
             }
         Nothing ->
           mempty
@@ -191,6 +193,10 @@ mergeOrigins :: [Maybe IntSet.IntSet] -> Maybe IntSet.IntSet
 mergeOrigins origins =
   IntSet.unions <$> sequence origins
 
+newFreeCanceller :: IntSet.IntSet -> IntSet.IntSet -> IntMap.IntMap IntSet.IntSet
+newFreeCanceller allocIDs freeIDs =
+  IntMap.fromList $ map (,allocIDs) (IntSet.toList freeIDs)
+
 cancelMallocFree :: Axis -> LC.Comp -> LC.Comp
 cancelMallocFree axis lowComp =
   case lowComp of
@@ -203,17 +209,23 @@ cancelMallocFree axis lowComp =
       case op of
         LC.Alloc size allocID
           | IntSet.member allocID (allocCanceller axis) -> do
-              let byteType = LT.PrimNum $ PT.Int IntSize8
-              let indexType = LT.PrimNum $ PT.Int IntSize64
-              LC.Let x (LC.StackAlloc byteType indexType size) cont'
+              let stackAllocInfo =
+                    LC.StackAllocInfo
+                      { stackSlotID = allocID,
+                        stackElemType = LT.PrimNum $ PT.Int IntSize8,
+                        stackIndexType = LT.PrimNum $ PT.Int IntSize64,
+                        stackSize = size
+                      }
+              LC.Let x (LC.StackAlloc stackAllocInfo) $
+                LC.Cont (LC.StackLifetimeStart allocID) cont'
         _ ->
           LC.Let x op cont'
     LC.Cont op cont -> do
       let cont' = cancelMallocFree axis cont
       case op of
         LC.Free _ _ freeID
-          | IntSet.member freeID (freeCanceller axis) ->
-              cont'
+          | Just stackSlotIDs <- IntMap.lookup freeID (freeCanceller axis) ->
+              foldr (LC.Cont . LC.StackLifetimeEnd) cont' (IntSet.toAscList stackSlotIDs)
         _ ->
           LC.Cont op cont'
     LC.Switch d t defaultBranch ces phi cont -> do

@@ -4,6 +4,8 @@ module Language.LowComp.LowComp
     Op (..),
     AllocID,
     FreeID,
+    StackSlotID,
+    StackAllocInfo (..),
     LowCode (..),
     LowCodeInfo,
     Def,
@@ -76,6 +78,17 @@ type AllocID =
 type FreeID =
   Int
 
+type StackSlotID =
+  Int
+
+data StackAllocInfo = StackAllocInfo
+  { stackSlotID :: StackSlotID,
+    stackElemType :: LowType,
+    stackIndexType :: LowType,
+    stackSize :: Either Integer Value
+  }
+  deriving (Show)
+
 data Op
   = Call LowType Value [(LowType, Value)] -- non-tail call
   | MagicCall LowType Value [(LowType, Value)] -- non-tail call (external)
@@ -90,7 +103,9 @@ data Op
   | PointerToInt Value LowType
   | Load Value LowType
   | Store LowType Value Value
-  | StackAlloc LowType LowType (Either Integer Value)
+  | StackAlloc StackAllocInfo
+  | StackLifetimeStart StackSlotID
+  | StackLifetimeEnd StackSlotID
   | Alloc (Either Integer Value) AllocID
   | Free Value Int FreeID
   | PrimOp PrimOp [Value]
