@@ -201,11 +201,13 @@ cancelMallocFree axis lowComp =
     LC.Let x op cont -> do
       let cont' = cancelMallocFree axis cont
       case op of
-        LC.Alloc size _ allocID
+        LC.Alloc size knownSize allocID
           | IntSet.member allocID (allocCanceller axis) -> do
               let byteType = LT.PrimNum $ PT.Int IntSize8
               let indexType = LT.PrimNum $ PT.Int IntSize64
-              LC.Let x (LC.StackAlloc byteType indexType size) cont'
+              if knownSize >= 0
+                then LC.Let x (LC.StackAlloc byteType indexType (Left $ fromIntegral knownSize)) cont'
+                else LC.Let x (LC.StackAlloc byteType indexType (Right size)) cont'
         _ ->
           LC.Let x op cont'
     LC.Cont op cont -> do

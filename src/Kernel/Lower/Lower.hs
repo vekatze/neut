@@ -332,8 +332,8 @@ lowerCompPrimitive h resultVar codeOp cont =
       case size of
         Left knownWordCount -> do
           let byteCount = LC.Int (knownWordCount * wordBytes)
-          let allocSize = fromInteger knownWordCount
-          return $ LC.Let resultVar (LC.Alloc byteCount allocSize allocID) cont
+          let knownSize = fromInteger knownWordCount
+          return $ LC.Let resultVar (LC.Alloc byteCount knownSize allocID) cont
         Right runtimeSize -> do
           byteCountVarName <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "size"
           let byteCountValue = C.VarLocal byteCountVarName
@@ -373,7 +373,7 @@ lowerCompPrimitive h resultVar codeOp cont =
           (sizeVar, sizeValue) <- liftIO $ newValueLocal h "size"
           (ptrVar, ptrValue) <- liftIO $ newValueLocal h "ptr"
           lowerValueLetCast h sizeVar size indexType
-            =<< return . LC.Let ptrVar (LC.StackAlloc t' indexType sizeValue)
+            =<< return . LC.Let ptrVar (LC.StackAlloc t' indexType (Right sizeValue))
             =<< uncast h resultVar ptrValue LT.Pointer cont
         LM.External domList cod name fixedArgs varArgAndTypeList -> do
           alreadyRegistered <- liftIO $ member h (DN.Ext name)

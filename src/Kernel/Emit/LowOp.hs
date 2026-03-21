@@ -70,7 +70,7 @@ emitLowOp ax lowOp =
           emitValue d2
         ]
     LC.StackAlloc lt indexType num -> do
-      unwordsL ["alloca", emitLowType lt <> ",", emitLowType indexType, emitValue num]
+      unwordsL ["alloca", emitLowType lt <> ",", emitLowType indexType, emitStackSize num]
     LC.Alloc d _ _ -> do
       unwordsL ["call fastcc", "ptr", "@malloc(" <> emitLowType (intType ax) <> " " <> emitValue d <> ")"]
     LC.Free d _ _ -> do
@@ -105,6 +105,14 @@ emitLowOp ax lowOp =
               emitConvOp name' arg (LT.PrimNum dom) (LT.PrimNum cod)
             _ ->
               error "Kernel.Emit.LowOp.emitLowOp.PrimConvOp"
+
+emitStackSize :: Either Integer LC.Value -> Builder
+emitStackSize stackSize =
+  case stackSize of
+    Left knownSize ->
+      integerDec knownSize
+    Right runtimeSize ->
+      emitValue runtimeSize
 
 emitUnaryOp :: PT.PrimType -> Builder -> LC.Value -> Builder
 emitUnaryOp t inst d =
