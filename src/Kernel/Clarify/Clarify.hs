@@ -1008,6 +1008,9 @@ buildCall h kind lamVar args =
     PEK.DestPass codType -> do
       sizeComp <- getSizeComp h codType
       return $ C.DestCall sizeComp lamVar args
+    PEK.NoeticDestPass codType -> do
+      sizeComp <- getSizeComp h codType
+      return $ C.DestCall sizeComp lamVar args
     _ ->
       return $ C.PiElimDownElim False lamVar args
 

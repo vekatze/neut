@@ -218,12 +218,14 @@ parseNominalEntry h =
         cTag <- keyword "define"
         (geist, cGeist) <- parseGeist h baseName
         loc <- getCurrentLoc
-        return ((Define, geist, loc), cTag ++ cGeist),
+        let kind = if RT.isDestPassing geist then DestPassing else Define
+        return ((kind, geist, loc), cTag ++ cGeist),
       do
         cTag <- keyword "inline"
         (geist, cGeist) <- parseGeist h baseName
         loc <- getCurrentLoc
-        return ((Inline, geist, loc), cTag ++ cGeist),
+        let kind = if RT.isDestPassing geist then DestPassingInline else Inline
+        return ((kind, geist, loc), cTag ++ cGeist),
       do
         cTag <- keyword "constant"
         (geist, cGeist) <- parseConstantGeist h baseName

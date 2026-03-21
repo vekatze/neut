@@ -52,6 +52,7 @@ import Language.Common.LamKind qualified as LK
 import Language.Common.Literal qualified as L
 import Language.Common.LowMagic qualified as LM
 import Language.Common.Magic qualified as M
+import Language.Common.NominalTag (NominalTag)
 import Language.Common.PiElimKind qualified as PEK
 import Language.Common.PiKind qualified as PK
 import Language.Common.PrimOp
@@ -123,20 +124,21 @@ inferStmt h stmt =
       return $ WeakStmtVariadic kind m dd
     WeakStmtNominal m geistList -> do
       geistList' <- forM geistList $ \(tag, geist) -> do
-        geist' <- inferGeist h geist
+        geist' <- inferGeist h tag geist
         return (tag, geist')
       return $ WeakStmtNominal m geistList'
     WeakStmtForeign foreignList ->
       return $ WeakStmtForeign foreignList
 
-inferGeist :: Handle -> G.Geist WT.WeakType WT.WeakTerm -> App (G.Geist WT.WeakType WT.WeakTerm)
-inferGeist h (G.Geist {..}) = do
+inferGeist :: Handle -> NominalTag -> G.Geist WT.WeakType WT.WeakTerm -> App (G.Geist WT.WeakType WT.WeakTerm)
+inferGeist h tag (G.Geist {..}) = do
   (impArgs', h') <- inferImpBinder h impArgs
   (expArgs', h'') <- inferBinder' h' expArgs
   (defaultArgs', h''') <- inferImpBinderWithDefaults h'' defaultArgs
   let defaultBinders = map fst defaultArgs'
   cod' <- inferType h''' cod
-  liftIO $ insertType h''' name $ loc :< WT.Pi (PK.Normal isConstLike) impArgs' expArgs' defaultBinders cod'
+  let kind = PK.fromNominalTag tag isConstLike
+  liftIO $ insertType h''' name $ loc :< WT.Pi kind impArgs' expArgs' defaultBinders cod'
   return $ G.Geist {impArgs = impArgs', defaultArgs = defaultArgs', expArgs = expArgs', cod = cod', ..}
 
 insertType :: Handle -> DD.DefiniteDescription -> WT.WeakType -> IO ()
@@ -669,8 +671,8 @@ inferPiElim h m (e, t) impArgs defaultArgsSpec expArgs = do
   case t' of
     _ :< WT.Pi piKind impArgsParam expParams defaultParams cod -> do
       inferCore (PEK.fromPiKind piKind) impArgsParam expParams defaultParams cod
-    _ :< WT.BoxNoema (_ :< WT.Pi _ impArgsParam expParams defaultParams cod) ->
-      inferCore (const PEK.Noetic) impArgsParam expParams defaultParams cod
+    _ :< WT.BoxNoema (_ :< WT.Pi piKind impArgsParam expParams defaultParams cod) ->
+      inferCore (PEK.fromNoeticPiKind piKind) impArgsParam expParams defaultParams cod
     _ ->
       raiseError m $ "Expected a function type, but got: " <> toTextType t'
   where

@@ -2,12 +2,14 @@ module Language.Common.PiKind
   ( PiKind (..),
     normal,
     fromStmtKind,
+    fromNominalTag,
   )
 where
 
 import Data.Binary
 import GHC.Generics (Generic)
 import Language.Common.IsConstLike (IsConstLike)
+import Language.Common.NominalTag (NominalTag, isDestPassingTag)
 import Language.Common.StmtKind qualified as SK
 
 data PiKind
@@ -32,3 +34,9 @@ fromStmtKind stmtKind isConstLike =
           DataIntro isConstLike
         _ ->
           Normal isConstLike
+
+fromNominalTag :: NominalTag -> IsConstLike -> PiKind
+fromNominalTag tag isConstLike =
+  if isDestPassingTag tag
+    then DestPass isConstLike
+    else Normal isConstLike

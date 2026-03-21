@@ -1,10 +1,12 @@
 module Language.Common.PiElimKind
   ( PiElimKind (..),
     fromPiKind,
+    fromNoeticPiKind,
     mapArg,
     traverseArg,
     isNormal,
     isNoetic,
+    isDestPassing,
   )
 where
 
@@ -16,6 +18,7 @@ data PiElimKind t
   = Normal
   | DestPass t
   | Noetic
+  | NoeticDestPass t
   deriving (Eq, Ord, Show, Generic)
 
 instance (Binary t) => Binary (PiElimKind t)
@@ -28,6 +31,14 @@ fromPiKind piKind t =
     _ ->
       Normal
 
+fromNoeticPiKind :: PK.PiKind -> t -> PiElimKind t
+fromNoeticPiKind piKind t =
+  case piKind of
+    PK.DestPass _ ->
+      NoeticDestPass t
+    _ ->
+      Noetic
+
 mapArg :: (a -> b) -> PiElimKind a -> PiElimKind b
 mapArg f kind =
   case kind of
@@ -37,6 +48,8 @@ mapArg f kind =
       DestPass (f t)
     Noetic ->
       Noetic
+    NoeticDestPass t ->
+      NoeticDestPass (f t)
 
 traverseArg :: (Applicative f) => (a -> f b) -> PiElimKind a -> f (PiElimKind b)
 traverseArg f kind =
@@ -47,6 +60,8 @@ traverseArg f kind =
       DestPass <$> f t
     Noetic ->
       pure Noetic
+    NoeticDestPass t ->
+      NoeticDestPass <$> f t
 
 isNormal :: PiElimKind t -> Bool
 isNormal kind =
@@ -57,6 +72,8 @@ isNormal kind =
       False
     Noetic ->
       False
+    NoeticDestPass _ ->
+      False
 
 isNoetic :: PiElimKind t -> Bool
 isNoetic kind =
@@ -66,4 +83,18 @@ isNoetic kind =
     DestPass _ ->
       False
     Noetic ->
+      True
+    NoeticDestPass _ ->
+      True
+
+isDestPassing :: PiElimKind t -> Bool
+isDestPassing kind =
+  case kind of
+    Normal ->
+      False
+    DestPass _ ->
+      True
+    Noetic ->
+      False
+    NoeticDestPass _ ->
       True
