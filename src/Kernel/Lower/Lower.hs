@@ -201,9 +201,10 @@ lowerComp h term =
       defaultCase <- lowerEnumBranch h defaultBranch'
       caseList <-
         mapM
-          (\(tag, branch) -> do
-             branch' <- lowerEnumBranch h branch
-             return (enumCaseToInteger tag, branch'))
+          ( \(tag, branch) -> do
+              branch' <- lowerEnumBranch h branch
+              return (enumCaseToInteger tag, branch')
+          )
           (zip keys clauses')
       (phiName, phiValue) <- liftIO $ newValueLocal h "phi"
       let t = LT.PrimNum $ PT.Int $ dataSizeToIntSize (baseSize h)
@@ -248,23 +249,29 @@ materializeDestCall h sizeComp f ds = do
                   (C.Free immediateDestVar 1 (C.UpIntro immediateResultVar))
               )
           )
-  let boxedBody =
+  let boxedBody size =
         C.UpElim
           True
           boxedDestName
-          (C.Primitive $ C.Alloc $ Right sizeVar)
+          (C.Primitive $ C.Alloc size)
           (C.UpElimCallVoid f (boxedDestVar : ds) (C.UpIntro boxedDestVar))
-  return $
-    C.UpElim
-      True
-      sizeName
-      sizeComp
-      ( C.EnumElim
-          []
-          sizeVar
-          boxedBody
-          [(EC.Int (-1), immediateBody)]
-      )
+  case sizeComp of
+    C.UpIntro (C.Int _ v) -> do
+      if v < 0
+        then return immediateBody
+        else return $ boxedBody $ Left v
+    _ -> do
+      return $
+        C.UpElim
+          True
+          sizeName
+          sizeComp
+          ( C.EnumElim
+              []
+              sizeVar
+              (boxedBody $ Right sizeVar)
+              [(EC.Int (-1), immediateBody)]
+          )
 
 materializeWriteToDest :: Handle -> C.Value -> C.Comp -> C.Comp -> C.Comp -> IO C.Comp
 materializeWriteToDest h dest sizeComp result cont = do
