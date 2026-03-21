@@ -42,7 +42,7 @@ analyze lowComp =
     LC.Let x op cont -> do
       let axis = analyze cont
       case op of
-        LC.Alloc _ _ allocID ->
+        LC.Alloc _ allocID ->
           case collectFreeIDs (S.singleton x) cont of
             Just freeIDs ->
               axis <> Axis {allocCanceller = IntSet.singleton allocID, freeCanceller = freeIDs}
@@ -159,7 +159,7 @@ collectBranchResultOrigin env lowComp =
 getOrigin :: OriginEnv -> LC.Op -> Maybe IntSet.IntSet
 getOrigin env op =
   case op of
-    LC.Alloc _ _ allocID ->
+    LC.Alloc _ allocID ->
       Just $ IntSet.singleton allocID
     _ ->
       case getAliasSource op of
@@ -201,13 +201,11 @@ cancelMallocFree axis lowComp =
     LC.Let x op cont -> do
       let cont' = cancelMallocFree axis cont
       case op of
-        LC.Alloc size knownSize allocID
+        LC.Alloc size allocID
           | IntSet.member allocID (allocCanceller axis) -> do
               let byteType = LT.PrimNum $ PT.Int IntSize8
               let indexType = LT.PrimNum $ PT.Int IntSize64
-              if knownSize >= 0
-                then LC.Let x (LC.StackAlloc byteType indexType (Left $ fromIntegral knownSize)) cont'
-                else LC.Let x (LC.StackAlloc byteType indexType (Right size)) cont'
+              LC.Let x (LC.StackAlloc byteType indexType size) cont'
         _ ->
           LC.Let x op cont'
     LC.Cont op cont -> do

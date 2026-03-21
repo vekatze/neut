@@ -53,9 +53,15 @@ substOp sub llvmOp =
             Left knownSize
           Right runtimeSize ->
             Right (substLowValue sub runtimeSize)
-    LC.Alloc d size allocID -> do
-      let d' = substLowValue sub d
-      LC.Alloc d' size allocID
+    LC.Alloc size allocID -> do
+      LC.Alloc
+        ( case size of
+            Left knownSize ->
+              Left knownSize
+            Right runtimeSize ->
+              Right (substLowValue sub runtimeSize)
+        )
+        allocID
     LC.Free d size freeID -> do
       LC.Free (substLowValue sub d) size freeID
     LC.PrimOp op ds -> do

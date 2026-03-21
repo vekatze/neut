@@ -223,7 +223,7 @@ lowerComp h term =
       freeID <- liftIO $ Gensym.newCount (gensymHandle h)
       (ptrVar, ptr) <- liftIO $ newValueLocal h "ptr"
       lowerValue h ptrVar x
-        =<< return . LC.Cont (LC.Free ptr size freeID)
+        =<< return . LC.Cont (LC.Free ptr (wordCountToByteSize h size) freeID)
         =<< lowerComp h cont
     C.Unreachable ->
       return LC.Unreachable
@@ -331,9 +331,8 @@ lowerCompPrimitive h resultVar codeOp cont =
       allocID <- liftIO $ Gensym.newCount (gensymHandle h)
       case size of
         Left knownWordCount -> do
-          let byteCount = LC.Int (knownWordCount * wordBytes)
-          let knownSize = fromInteger knownWordCount
-          return $ LC.Let resultVar (LC.Alloc byteCount knownSize allocID) cont
+          let knownByteCount = knownWordCount * wordBytes
+          return $ LC.Let resultVar (LC.Alloc (Left knownByteCount) allocID) cont
         Right runtimeSize -> do
           byteCountVarName <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "size"
           let byteCountValue = C.VarLocal byteCountVarName
@@ -341,7 +340,7 @@ lowerCompPrimitive h resultVar codeOp cont =
           let lowInt = LT.PrimNum $ PT.Int $ dataSizeToIntSize (baseSize h)
           lowerCompPrimitive h byteCountVarName (C.mulInt64 runtimeSize (C.Int IntSize64 wordBytes))
             =<< lowerValueLetCast h castVar byteCountValue lowInt
-            =<< return (LC.Let resultVar (LC.Alloc castValue (-1) allocID) cont)
+            =<< return (LC.Let resultVar (LC.Alloc (Right castValue) allocID) cont)
     C.Memcpy dest src size -> do
       let wordBytes = toInteger $ DS.reify (baseSize h) `div` 8
       byteCountVarName <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "size"
@@ -482,14 +481,9 @@ allocateBasePointer h resultVar aggType cont = do
     LT.Struct [] ->
       return $ LC.Let resultVar (LC.nop LC.Null) cont
     _ -> do
-      let (elemType, len) = getSizeInfoOf aggType
-      (sizeVar, sizeValue) <- liftIO $ newValueLocal h "result"
-      (castVar, castValue) <- liftIO $ newValueLocal h "result"
       allocID <- liftIO $ Gensym.newCount (gensymHandle h)
-      let lowInt = LT.PrimNum $ PT.Int $ dataSizeToIntSize (baseSize h)
-      return . getElemPtr sizeVar LC.Null elemType [toInteger len]
-        =<< cast h castVar sizeValue lowInt
-        =<< return (LC.Let resultVar (LC.Alloc castValue len allocID) cont)
+      let knownByteCount = aggTypeByteSize h aggType
+      return $ LC.Let resultVar (LC.Alloc (Left knownByteCount) allocID) cont
 
 createAggData ::
   Handle ->
@@ -607,9 +601,13 @@ freeIfNecessary h shouldDeallocate pointer len cont = do
   if shouldDeallocate
     then do
       freeID <- Gensym.newCount (gensymHandle h)
-      return $ LC.Cont (LC.Free pointer len freeID) cont
+      return $ LC.Cont (LC.Free pointer (wordCountToByteSize h len) freeID) cont
     else do
       return cont
+
+wordCountToByteSize :: Handle -> Int -> Int
+wordCountToByteSize h wordCount =
+  wordCount * (DS.reify (baseSize h) `div` 8)
 
 -- returns Nothing iff the branch list is empty
 newValueLocal :: Handle -> T.Text -> IO (Ident, LC.Value)
@@ -660,13 +658,67 @@ toLowType aggType =
     AggTypeStruct ts ->
       LT.Struct ts
 
-getSizeInfoOf :: AggType -> (LT.LowType, Int)
-getSizeInfoOf aggType =
-  case aggType of
-    AggTypeArray len t ->
-      (t, len)
-    AggTypeStruct ts ->
-      (LT.Struct ts, 1)
+aggTypeByteSize :: Handle -> AggType -> Integer
+aggTypeByteSize h aggType =
+  lowTypeByteSize h (toLowType aggType)
+
+lowTypeByteSize :: Handle -> LT.LowType -> Integer
+lowTypeByteSize h lowType =
+  case lowType of
+    LT.PrimNum primType ->
+      primTypeByteSize h primType
+    LT.Pointer ->
+      fromIntegral $ DS.reify (baseSize h) `div` 8
+    LT.Array len elemType ->
+      fromIntegral len * lowTypeByteSize h elemType
+    LT.Struct ts ->
+      sum $ map (lowTypeByteSize h) ts
+    LT.Function {} ->
+      fromIntegral $ DS.reify (baseSize h) `div` 8
+    LT.Void ->
+      0
+    LT.VarArgs ->
+      0
+
+primTypeByteSize :: Handle -> PT.PrimType -> Integer
+primTypeByteSize h primType =
+  case primType of
+    PT.Int intSize ->
+      intSizeByteSize intSize
+    PT.Float floatSize ->
+      floatSizeByteSize floatSize
+    PT.Rune ->
+      4
+    PT.Pointer ->
+      fromIntegral $ DS.reify (baseSize h) `div` 8
+
+intSizeByteSize :: IntSize -> Integer
+intSizeByteSize intSize =
+  case intSize of
+    IntSize1 ->
+      1
+    IntSize2 ->
+      1
+    IntSize4 ->
+      1
+    IntSize8 ->
+      1
+    IntSize16 ->
+      2
+    IntSize32 ->
+      4
+    IntSize64 ->
+      8
+
+floatSizeByteSize :: FloatSize -> Integer
+floatSizeByteSize floatSize =
+  case floatSize of
+    FloatSize16 ->
+      2
+    FloatSize32 ->
+      4
+    FloatSize64 ->
+      8
 
 commConv :: Ident -> LC.Comp -> LC.Comp -> LC.Comp
 commConv x lowComp cont2 =

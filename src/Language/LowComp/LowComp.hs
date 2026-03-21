@@ -91,7 +91,7 @@ data Op
   | Load Value LowType
   | Store LowType Value Value
   | StackAlloc LowType LowType (Either Integer Value)
-  | Alloc Value Int AllocID
+  | Alloc (Either Integer Value) AllocID
   | Free Value Int FreeID
   | PrimOp PrimOp [Value]
   deriving (Show)
