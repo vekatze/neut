@@ -113,7 +113,7 @@ instance Show Comp where
           ++ show c1
           ++ unwords (map showEnumCase caseList)
       DestCall sizeComp f vs ->
-        "dest-call\n<size-comp>\n" ++ show sizeComp ++ "\n" ++ show f ++ "@(" ++ intercalate "," (map show vs) ++ ")"
+        "dest-call<" ++ show sizeComp ++ ">" ++ show f ++ "@(" ++ intercalate "," (map show vs) ++ ")"
       WriteToDest dest sizeComp result cont ->
         "write-to-dest(" ++ show dest ++ ")\n<size-comp>\n" ++ show sizeComp ++ "\n<result>\n" ++ show result ++ "\n<cont>\n" ++ show cont
       Primitive prim ->
@@ -132,7 +132,7 @@ type ShouldDeallocate = Bool
 data Primitive
   = PrimOp PrimOp [Value]
   | ShiftPointer Value Integer Integer -- (ptr, num-of-elems, index)
-  | Alloc Value -- number of words to allocate
+  | Alloc (Either Integer Value) -- number of words to allocate
   | Memcpy Value Value Value -- (dest, src, size-in-words)
   | Magic (LowMagic BaseLowType Value Value)
   deriving (Show)

@@ -111,7 +111,7 @@ toLowOpacityType :: BaseStmtKindType name x -> O.Opacity
 toLowOpacityType stmtKind =
   case stmtKind of
     Alias ->
-      O.Opaque
+      O.Clear
     AliasOpaque ->
       O.Opaque
     Data {} ->

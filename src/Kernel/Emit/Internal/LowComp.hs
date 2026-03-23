@@ -146,8 +146,14 @@ resolveLabelList labelMapRef xs =
           x : resolveLabelList labelMapRef rest
 
 emitLowOp :: EmitOp.Handle -> Builder -> LC.Op -> [Builder]
-emitLowOp ax prefix op = do
-  emitOp $ prefix <> EmitOp.emitLowOp ax op
+emitLowOp ax prefix op =
+  case op of
+    LC.StackLifetimeStart {} ->
+      []
+    LC.StackLifetimeEnd {} ->
+      []
+    _ ->
+      emitOp $ prefix <> EmitOp.emitLowOp ax op
 
 emitPhiList :: [(LC.Value, Ident)] -> Builder
 emitPhiList valueLabelList =

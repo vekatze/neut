@@ -34,6 +34,7 @@ import Kernel.Common.Handle.Global.Env qualified as Env
 import Kernel.Common.Handle.Global.Platform qualified as Platform
 import Kernel.Common.Target
 import Kernel.Lower.FreeMallocCancel qualified as FreeMallocCancel
+import Kernel.Lower.HoistStackAlloc qualified as HoistStackAlloc
 import Kernel.Lower.MallocFreeCancel qualified as MallocFreeCancel
 import Language.Common.ArgNum qualified as AN
 import Language.Common.BaseLowType qualified as BLT
@@ -49,6 +50,7 @@ import Language.Common.Ident
 import Language.Common.LowMagic qualified as LM
 import Language.Common.LowType qualified as LT
 import Language.Common.LowType.FromBaseLowType qualified as LT
+import Language.Common.LowType.ToByteSize (lowTypeToByteSize)
 import Language.Common.PrimNumSize
 import Language.Common.PrimOp
 import Language.Common.PrimType qualified as PT
@@ -113,14 +115,18 @@ summarize h stmtList = do
   staticTextList <- readIORef $ staticTextList h
   return (declEnv, stmtList, staticTextList)
 
+optimize :: Handle -> LC.Comp -> LC.Comp
+optimize h =
+  HoistStackAlloc.hoistStackAlloc (baseSize h) . FreeMallocCancel.freeMallocCancel . MallocFreeCancel.mallocFreeCancel
+
 lowerStmt :: Handle -> C.CompStmt -> App (Maybe LC.Def)
 lowerStmt h stmt = do
   case stmt of
     C.Def name _ args e -> do
-      e' <- lowerComp h e >>= liftIO . return . FreeMallocCancel.freeMallocCancel . MallocFreeCancel.mallocFreeCancel
+      e' <- optimize h <$> lowerComp h e
       return $ Just (name, LC.DefContent LT.Pointer args e')
     C.DefVoid name _ args e -> do
-      e' <- lowerComp h e >>= liftIO . return . FreeMallocCancel.freeMallocCancel . MallocFreeCancel.mallocFreeCancel
+      e' <- optimize h <$> lowerComp h e
       return $ Just (name, LC.DefContent LT.Void args e')
     C.Foreign {} -> do
       return Nothing
@@ -201,17 +207,19 @@ lowerComp h term =
       defaultCase <- lowerEnumBranch h defaultBranch'
       caseList <-
         mapM
-          (\(tag, branch) -> do
-             branch' <- lowerEnumBranch h branch
-             return (enumCaseToInteger tag, branch'))
+          ( \(tag, branch) -> do
+              branch' <- lowerEnumBranch h branch
+              return (enumCaseToInteger tag, branch')
+          )
           (zip keys clauses')
       (phiName, phiValue) <- liftIO $ newValueLocal h "phi"
       let t = LT.PrimNum $ PT.Int $ dataSizeToIntSize (baseSize h)
       (castVar, castValue) <- liftIO $ newValueLocal h "cast"
       lowerValueLetCast h castVar v t
         =<< return (LC.Switch castValue t defaultCase caseList phiName (LC.Return phiValue))
-    C.DestCall sizeComp f ds ->
-      liftIO (materializeDestCall h sizeComp f ds)
+    C.DestCall sizeComp f ds -> do
+      sizeComp' <- liftIO $ Reduce.reduce (reduceHandle h) sizeComp
+      liftIO (materializeDestCall h sizeComp' f ds)
         >>= liftIO . Reduce.reduce (reduceHandle h)
         >>= lowerComp h
     C.WriteToDest dest sizeComp result cont ->
@@ -222,7 +230,7 @@ lowerComp h term =
       freeID <- liftIO $ Gensym.newCount (gensymHandle h)
       (ptrVar, ptr) <- liftIO $ newValueLocal h "ptr"
       lowerValue h ptrVar x
-        =<< return . LC.Cont (LC.Free ptr size freeID)
+        =<< return . LC.Cont (LC.Free ptr (wordCountToByteSize h size) freeID)
         =<< lowerComp h cont
     C.Unreachable ->
       return LC.Unreachable
@@ -237,7 +245,7 @@ materializeDestCall h sizeComp f ds = do
         C.UpElim
           True
           immediateDestName
-          (C.Primitive $ C.Alloc $ C.Int (dataSizeToIntSize (baseSize h)) 1)
+          (C.Primitive $ C.Alloc $ Left 1)
           ( C.UpElimCallVoid
               f
               (immediateDestVar : ds)
@@ -248,23 +256,29 @@ materializeDestCall h sizeComp f ds = do
                   (C.Free immediateDestVar 1 (C.UpIntro immediateResultVar))
               )
           )
-  let boxedBody =
+  let boxedBody size =
         C.UpElim
           True
           boxedDestName
-          (C.Primitive $ C.Alloc sizeVar)
+          (C.Primitive $ C.Alloc size)
           (C.UpElimCallVoid f (boxedDestVar : ds) (C.UpIntro boxedDestVar))
-  return $
-    C.UpElim
-      True
-      sizeName
-      sizeComp
-      ( C.EnumElim
-          []
-          sizeVar
-          boxedBody
-          [(EC.Int (-1), immediateBody)]
-      )
+  case sizeComp of
+    C.UpIntro (C.Int _ v) -> do
+      if v < 0
+        then return immediateBody
+        else return $ boxedBody $ Left v
+    _ -> do
+      return $
+        C.UpElim
+          True
+          sizeName
+          sizeComp
+          ( C.EnumElim
+              []
+              sizeVar
+              (boxedBody $ Right sizeVar)
+              [(EC.Int (-1), immediateBody)]
+          )
 
 materializeWriteToDest :: Handle -> C.Value -> C.Comp -> C.Comp -> C.Comp -> IO C.Comp
 materializeWriteToDest h dest sizeComp result cont = do
@@ -321,14 +335,19 @@ lowerCompPrimitive h resultVar codeOp cont =
         =<< return (LC.Let resultVar (LC.GetElementPtr (ptr, toLowType aggType) indexList') cont)
     C.Alloc size -> do
       let wordBytes = toInteger $ DS.reify (baseSize h) `div` 8
-      byteCountVarName <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "size"
-      let byteCountValue = C.VarLocal byteCountVarName
       allocID <- liftIO $ Gensym.newCount (gensymHandle h)
-      (castVar, castValue) <- liftIO $ newValueLocal h "size"
-      let lowInt = LT.PrimNum $ PT.Int $ dataSizeToIntSize (baseSize h)
-      lowerCompPrimitive h byteCountVarName (C.mulInt64 size (C.Int IntSize64 wordBytes))
-        =<< lowerValueLetCast h castVar byteCountValue lowInt
-        =<< return (LC.Let resultVar (LC.Alloc castValue (-1) allocID) cont)
+      case size of
+        Left knownWordCount -> do
+          let knownByteCount = knownWordCount * wordBytes
+          return $ LC.Let resultVar (LC.Alloc (Left knownByteCount) allocID) cont
+        Right runtimeSize -> do
+          byteCountVarName <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "size"
+          let byteCountValue = C.VarLocal byteCountVarName
+          (castVar, castValue) <- liftIO $ newValueLocal h "size"
+          let lowInt = LT.PrimNum $ PT.Int $ dataSizeToIntSize (baseSize h)
+          lowerCompPrimitive h byteCountVarName (C.mulInt64 runtimeSize (C.Int IntSize64 wordBytes))
+            =<< lowerValueLetCast h castVar byteCountValue lowInt
+            =<< return (LC.Let resultVar (LC.Alloc (Right castValue) allocID) cont)
     C.Memcpy dest src size -> do
       let wordBytes = toInteger $ DS.reify (baseSize h) `div` 8
       byteCountVarName <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "size"
@@ -357,11 +376,36 @@ lowerCompPrimitive h resultVar codeOp cont =
         LM.Alloca t size -> do
           let t' = LT.fromBaseLowType t
           let indexType = LT.PrimNum $ PT.Int $ dataSizeToIntSize (baseSize h)
-          (sizeVar, sizeValue) <- liftIO $ newValueLocal h "size"
           (ptrVar, ptrValue) <- liftIO $ newValueLocal h "ptr"
-          lowerValueLetCast h sizeVar size indexType
-            =<< return . LC.Let ptrVar (LC.StackAlloc t' indexType sizeValue)
-            =<< uncast h resultVar ptrValue LT.Pointer cont
+          stackSlotID <- liftIO $ Gensym.newCount (gensymHandle h)
+          case size of
+            C.Int _ n -> do
+              let stackAllocInfo =
+                    LC.StackAllocInfo
+                      { stackSlotID = stackSlotID,
+                        stackElemType = t',
+                        stackIndexType = indexType,
+                        stackSize = Left n
+                      }
+              return . LC.Let ptrVar (LC.StackAlloc stackAllocInfo)
+                =<< return . LC.Cont (LC.StackLifetimeStart stackSlotID)
+                =<< uncast h resultVar ptrValue LT.Pointer cont
+            _ -> do
+              (sizeVar, sizeValue) <- liftIO $ newValueLocal h "size"
+              lowerValueLetCast h sizeVar size indexType
+                =<< return
+                  . LC.Let
+                    ptrVar
+                    ( LC.StackAlloc $
+                        LC.StackAllocInfo
+                          { stackSlotID = stackSlotID,
+                            stackElemType = t',
+                            stackIndexType = indexType,
+                            stackSize = Right sizeValue
+                          }
+                    )
+                =<< return . LC.Cont (LC.StackLifetimeStart stackSlotID)
+                =<< uncast h resultVar ptrValue LT.Pointer cont
         LM.External domList cod name fixedArgs varArgAndTypeList -> do
           alreadyRegistered <- liftIO $ member h (DN.Ext name)
           unless alreadyRegistered $ do
@@ -469,14 +513,9 @@ allocateBasePointer h resultVar aggType cont = do
     LT.Struct [] ->
       return $ LC.Let resultVar (LC.nop LC.Null) cont
     _ -> do
-      let (elemType, len) = getSizeInfoOf aggType
-      (sizeVar, sizeValue) <- liftIO $ newValueLocal h "result"
-      (castVar, castValue) <- liftIO $ newValueLocal h "result"
       allocID <- liftIO $ Gensym.newCount (gensymHandle h)
-      let lowInt = LT.PrimNum $ PT.Int $ dataSizeToIntSize (baseSize h)
-      return . getElemPtr sizeVar LC.Null elemType [toInteger len]
-        =<< cast h castVar sizeValue lowInt
-        =<< return (LC.Let resultVar (LC.Alloc castValue len allocID) cont)
+      let knownByteCount = aggTypeByteSize h aggType
+      return $ LC.Let resultVar (LC.Alloc (Left knownByteCount) allocID) cont
 
 createAggData ::
   Handle ->
@@ -594,9 +633,13 @@ freeIfNecessary h shouldDeallocate pointer len cont = do
   if shouldDeallocate
     then do
       freeID <- Gensym.newCount (gensymHandle h)
-      return $ LC.Cont (LC.Free pointer len freeID) cont
+      return $ LC.Cont (LC.Free pointer (wordCountToByteSize h len) freeID) cont
     else do
       return cont
+
+wordCountToByteSize :: Handle -> Int -> Int
+wordCountToByteSize h wordCount =
+  wordCount * (DS.reify (baseSize h) `div` 8)
 
 -- returns Nothing iff the branch list is empty
 newValueLocal :: Handle -> T.Text -> IO (Ident, LC.Value)
@@ -647,13 +690,13 @@ toLowType aggType =
     AggTypeStruct ts ->
       LT.Struct ts
 
-getSizeInfoOf :: AggType -> (LT.LowType, Int)
-getSizeInfoOf aggType =
-  case aggType of
-    AggTypeArray len t ->
-      (t, len)
-    AggTypeStruct ts ->
-      (LT.Struct ts, 1)
+aggTypeByteSize :: Handle -> AggType -> Integer
+aggTypeByteSize h aggType =
+  lowTypeByteSize h (toLowType aggType)
+
+lowTypeByteSize :: Handle -> LT.LowType -> Integer
+lowTypeByteSize h lowType =
+  lowTypeToByteSize (baseSize h) lowType
 
 commConv :: Ident -> LC.Comp -> LC.Comp -> LC.Comp
 commConv x lowComp cont2 =

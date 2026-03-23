@@ -46,12 +46,29 @@ substOp sub llvmOp =
       let d1' = substLowValue sub d1
       let d2' = substLowValue sub d2
       LC.Store t d1' d2'
-    LC.StackAlloc lt indexType num -> do
-      let num' = substLowValue sub num
-      LC.StackAlloc lt indexType num'
-    LC.Alloc d size allocID -> do
-      let d' = substLowValue sub d
-      LC.Alloc d' size allocID
+    LC.StackAlloc stackAllocInfo -> do
+      LC.StackAlloc $
+        stackAllocInfo
+          { LC.stackSize =
+              case LC.stackSize stackAllocInfo of
+                Left knownSize ->
+                  Left knownSize
+                Right runtimeSize ->
+                  Right (substLowValue sub runtimeSize)
+          }
+    LC.StackLifetimeStart stackSlotID ->
+      LC.StackLifetimeStart stackSlotID
+    LC.StackLifetimeEnd stackSlotID ->
+      LC.StackLifetimeEnd stackSlotID
+    LC.Alloc size allocID -> do
+      LC.Alloc
+        ( case size of
+            Left knownSize ->
+              Left knownSize
+            Right runtimeSize ->
+              Right (substLowValue sub runtimeSize)
+        )
+        allocID
     LC.Free d size freeID -> do
       LC.Free (substLowValue sub d) size freeID
     LC.PrimOp op ds -> do

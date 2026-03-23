@@ -57,8 +57,12 @@ analyze lowComp = do
     LC.Let _ op cont -> do
       let scenario = analyze cont
       case op of
-        LC.Alloc _ size allocID -> do
-          insert (Alloc size allocID) scenario
+        LC.Alloc size allocID -> do
+          case size of
+            Left knownSize ->
+              insert (Alloc (fromInteger knownSize) allocID) scenario
+            Right {} ->
+              scenario
         _ ->
           scenario
     LC.Cont op cont -> do
@@ -191,7 +195,7 @@ freeMallocCancel' ctx lowComp =
     LC.Let x op cont -> do
       let cont' = freeMallocCancel' ctx cont
       case op of
-        LC.Alloc _ _ allocID
+        LC.Alloc _ allocID
           | Just ptr <- IntMap.lookup allocID (allocCanceller ctx) -> do
               LC.Let x (LC.Bitcast (LC.VarLocal ptr) LT.Pointer LT.Pointer) cont'
         _ ->
