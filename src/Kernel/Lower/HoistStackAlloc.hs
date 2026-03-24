@@ -4,7 +4,8 @@ import Data.IntMap.Strict qualified as IntMap
 import Data.IntSet qualified as IntSet
 import Data.List (foldl', minimumBy, sortOn)
 import Data.Ord (Down (..), comparing)
-import Data.Text qualified as T
+import Gensym.Handle qualified as GensymHandle
+import Language.Common.CreateSymbol qualified as CreateSymbol
 import Language.Common.DataSize qualified as DS
 import Language.Common.Ident
 import Language.Common.LowType qualified as LT
@@ -31,17 +32,18 @@ data PhysicalSlot = PhysicalSlot
     physicalMembers :: IntSet.IntSet
   }
 
-hoistStackAlloc :: DS.DataSize -> LC.Comp -> LC.Comp
-hoistStackAlloc dataSize lowComp =
+hoistStackAlloc :: GensymHandle.Handle -> DS.DataSize -> LC.Comp -> IO LC.Comp
+hoistStackAlloc gensymHandle dataSize lowComp =
   case collectHoistableSlotMap dataSize lowComp of
     slotMap
       | IntMap.null slotMap ->
-          lowComp
+          pure lowComp
       | otherwise -> do
           let conflictGraph = snd $ analyzeConflicts slotMap IntSet.empty lowComp
           let (slotAssignment, physicalSlotMap) = allocatePhysicalSlots slotMap conflictGraph
-          let lowComp' = rewriteComp dataSize slotAssignment physicalSlotMap lowComp
-          prependPhysicalSlotMap physicalSlotMap lowComp'
+          physicalSlotIdentMap <- createPhysicalSlotIdentMap gensymHandle physicalSlotMap
+          let lowComp' = rewriteComp slotAssignment physicalSlotIdentMap lowComp
+          pure $ prependPhysicalSlotMap physicalSlotIdentMap physicalSlotMap lowComp'
 
 collectHoistableSlotMap :: DS.DataSize -> LC.Comp -> IntMap.IntMap HoistableSlot
 collectHoistableSlotMap dataSize lowComp =
@@ -75,6 +77,8 @@ collectHoistableSlotMap dataSize lowComp =
     LC.TailCall {} ->
       IntMap.empty
     LC.Unreachable ->
+      IntMap.empty
+    LC.Phi {} ->
       IntMap.empty
 
 getKnownByteSize :: DS.DataSize -> LC.StackAllocInfo -> Maybe Integer
@@ -114,6 +118,8 @@ analyzeConflicts slotMap active lowComp =
       (Nothing, IntMap.empty)
     LC.Unreachable ->
       (Nothing, IntMap.empty)
+    LC.Phi {} ->
+      (Just active, IntMap.empty)
 
 stepConflict :: IntMap.IntMap HoistableSlot -> ActiveSlotSet -> LC.Op -> (ActiveSlotSet, ConflictGraph)
 stepConflict slotMap active op =
@@ -195,30 +201,32 @@ isCompatiblePhysicalSlot conflictGraph stackSlotID physicalSlot = do
   let conflictSet = IntMap.findWithDefault IntSet.empty stackSlotID conflictGraph
   IntSet.null $ IntSet.intersection conflictSet (physicalMembers physicalSlot)
 
+createPhysicalSlotIdentMap :: GensymHandle.Handle -> IntMap.IntMap PhysicalSlot -> IO (IntMap.IntMap Ident)
+createPhysicalSlotIdentMap gensymHandle =
+  traverse (const $ CreateSymbol.newIdentFromText gensymHandle "stack-slot")
+
 rewriteComp ::
-  DS.DataSize ->
   IntMap.IntMap LC.StackSlotID ->
-  IntMap.IntMap PhysicalSlot ->
+  IntMap.IntMap Ident ->
   LC.Comp ->
   LC.Comp
-rewriteComp dataSize slotAssignment physicalSlotMap lowComp =
+rewriteComp slotAssignment physicalSlotIdentMap lowComp =
   case lowComp of
     LC.Return {} ->
       lowComp
     LC.ReturnVoid ->
       lowComp
     LC.Let x op cont -> do
-      let cont' = rewriteComp dataSize slotAssignment physicalSlotMap cont
+      let cont' = rewriteComp slotAssignment physicalSlotIdentMap cont
       case op of
         LC.StackAlloc stackAllocInfo
-          | Just _ <- getKnownByteSize dataSize stackAllocInfo,
-            Just physicalSlotID' <- IntMap.lookup (LC.stackSlotID stackAllocInfo) slotAssignment,
-            Just _ <- IntMap.lookup physicalSlotID' physicalSlotMap ->
-              LC.Let x (LC.Bitcast (LC.VarLocal $ physicalSlotIdent physicalSlotID') LT.Pointer LT.Pointer) cont'
+          | Just physicalSlotID' <- IntMap.lookup (LC.stackSlotID stackAllocInfo) slotAssignment,
+            Just physicalSlotIdent <- IntMap.lookup physicalSlotID' physicalSlotIdentMap ->
+              LC.Let x (LC.Bitcast (LC.VarLocal physicalSlotIdent) LT.Pointer LT.Pointer) cont'
         _ ->
           LC.Let x op cont'
     LC.Cont op cont -> do
-      let cont' = rewriteComp dataSize slotAssignment physicalSlotMap cont
+      let cont' = rewriteComp slotAssignment physicalSlotIdentMap cont
       case op of
         LC.StackLifetimeStart stackSlotID
           | Just physicalSlotID' <- IntMap.lookup stackSlotID slotAssignment ->
@@ -228,24 +236,26 @@ rewriteComp dataSize slotAssignment physicalSlotMap lowComp =
               LC.Cont (LC.StackLifetimeEnd physicalSlotID') cont'
         _ ->
           LC.Cont op cont'
-    LC.Switch d t defaultBranch ces phiTarget cont -> do
-      let defaultBranch' = rewriteComp dataSize slotAssignment physicalSlotMap defaultBranch
+    LC.Switch d t defaultBranch ces phiTargets cont -> do
+      let defaultBranch' = rewriteComp slotAssignment physicalSlotIdentMap defaultBranch
       let (cs, es) = unzip ces
-      let es' = map (rewriteComp dataSize slotAssignment physicalSlotMap) es
-      let cont' = rewriteComp dataSize slotAssignment physicalSlotMap cont
-      LC.Switch d t defaultBranch' (zip cs es') phiTarget cont'
+      let es' = map (rewriteComp slotAssignment physicalSlotIdentMap) es
+      let cont' = rewriteComp slotAssignment physicalSlotIdentMap cont
+      LC.Switch d t defaultBranch' (zip cs es') phiTargets cont'
     LC.TailCall {} ->
       lowComp
     LC.Unreachable ->
       lowComp
+    LC.Phi {} ->
+      lowComp
 
-prependPhysicalSlotMap :: IntMap.IntMap PhysicalSlot -> LC.Comp -> LC.Comp
-prependPhysicalSlotMap physicalSlotMap lowComp =
-  foldr prependPhysicalSlot lowComp $ sortOn physicalSlotID (IntMap.elems physicalSlotMap)
+prependPhysicalSlotMap :: IntMap.IntMap Ident -> IntMap.IntMap PhysicalSlot -> LC.Comp -> LC.Comp
+prependPhysicalSlotMap physicalSlotIdentMap physicalSlotMap lowComp =
+  foldr (prependPhysicalSlot physicalSlotIdentMap) lowComp $ sortOn physicalSlotID (IntMap.elems physicalSlotMap)
 
-prependPhysicalSlot :: PhysicalSlot -> LC.Comp -> LC.Comp
-prependPhysicalSlot physicalSlot =
-  LC.Let (physicalSlotIdent $ physicalSlotID physicalSlot) $
+prependPhysicalSlot :: IntMap.IntMap Ident -> PhysicalSlot -> LC.Comp -> LC.Comp
+prependPhysicalSlot physicalSlotIdentMap physicalSlot =
+  LC.Let physicalSlotIdent $
     LC.StackAlloc $
       LC.StackAllocInfo
         { stackSlotID = physicalSlotID physicalSlot,
@@ -253,7 +263,9 @@ prependPhysicalSlot physicalSlot =
           stackIndexType = physicalIndexType physicalSlot,
           stackSize = Left $ physicalByteSize physicalSlot
         }
-
-physicalSlotIdent :: LC.StackSlotID -> Ident
-physicalSlotIdent stackSlotID =
-  I (T.pack "stack-slot", negate stackSlotID - 1)
+  where
+    physicalSlotIdent =
+      IntMap.findWithDefault
+        (error "missing physical slot ident")
+        (physicalSlotID physicalSlot)
+        physicalSlotIdentMap

@@ -115,18 +115,23 @@ summarize h stmtList = do
   staticTextList <- readIORef $ staticTextList h
   return (declEnv, stmtList, staticTextList)
 
-optimize :: Handle -> LC.Comp -> LC.Comp
-optimize h =
-  HoistStackAlloc.hoistStackAlloc (baseSize h) . FreeMallocCancel.freeMallocCancel . MallocFreeCancel.mallocFreeCancel
+optimize :: Handle -> LC.Comp -> IO LC.Comp
+optimize h = do
+  return . MallocFreeCancel.mallocFreeCancel
+    >=> FreeMallocCancel.freeMallocCancel FreeMallocCancel.Exact (gensymHandle h)
+    >=> FreeMallocCancel.freeMallocCancel FreeMallocCancel.Compatible (gensymHandle h)
+    >=> HoistStackAlloc.hoistStackAlloc (gensymHandle h) (baseSize h)
 
 lowerStmt :: Handle -> C.CompStmt -> App (Maybe LC.Def)
 lowerStmt h stmt = do
   case stmt of
     C.Def name _ args e -> do
-      e' <- optimize h <$> lowerComp h e
+      e0 <- lowerComp h e
+      e' <- liftIO $ optimize h e0
       return $ Just (name, LC.DefContent LT.Pointer args e')
     C.DefVoid name _ args e -> do
-      e' <- optimize h <$> lowerComp h e
+      e0 <- lowerComp h e
+      e' <- liftIO $ optimize h e0
       return $ Just (name, LC.DefContent LT.Void args e')
     C.Foreign {} -> do
       return Nothing
@@ -216,7 +221,7 @@ lowerComp h term =
       let t = LT.PrimNum $ PT.Int $ dataSizeToIntSize (baseSize h)
       (castVar, castValue) <- liftIO $ newValueLocal h "cast"
       lowerValueLetCast h castVar v t
-        =<< return (LC.Switch castValue t defaultCase caseList phiName (LC.Return phiValue))
+        =<< return (LC.Switch castValue t defaultCase caseList [phiName] (LC.Return phiValue))
     C.DestCall sizeComp f ds -> do
       sizeComp' <- liftIO $ Reduce.reduce (reduceHandle h) sizeComp
       liftIO (materializeDestCall h sizeComp' f ds)
@@ -314,7 +319,7 @@ lowerEnumBranch :: Handle -> C.Comp -> App LC.Comp
 lowerEnumBranch h branch = do
   lowBranch <- lowerComp h branch
   (phiName, phiVar) <- liftIO $ newValueLocal h "phi"
-  return $ commConv phiName lowBranch (LC.Return phiVar)
+  return $ commConv phiName lowBranch (LC.Phi [phiVar])
 
 enumCaseToInteger :: EC.EnumCase -> Integer
 enumCaseToInteger enumCase =
@@ -711,13 +716,15 @@ commConv x lowComp cont2 =
     LC.Cont op cont1 -> do
       let cont = commConv x cont1 cont2
       LC.Cont op cont
-    LC.Switch d t defaultCase caseList phiVar cont -> do
+    LC.Switch d t defaultCase caseList phiVars cont -> do
       let cont' = commConv x cont cont2
-      LC.Switch d t defaultCase caseList phiVar cont'
+      LC.Switch d t defaultCase caseList phiVars cont'
     LC.TailCall codType d ds ->
       LC.Let x (LC.Call codType d ds) cont2
     LC.Unreachable ->
       LC.Unreachable
+    LC.Phi _ ->
+      LC.Unreachable -- shouldn't occur
 
 defaultForeignList :: A.Arch -> [F.Foreign]
 defaultForeignList arch =
