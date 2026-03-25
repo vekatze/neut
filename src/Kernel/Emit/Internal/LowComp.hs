@@ -10,6 +10,7 @@ import Control.Monad.IO.Class
 import Data.ByteString.Builder
 import Data.IORef
 import Data.IntMap qualified as IntMap
+import Data.List (transpose)
 import Data.Maybe (mapMaybe)
 import Gensym.Handle qualified as Gensym
 import Kernel.Common.CreateGlobalHandle qualified as Global
@@ -57,6 +58,12 @@ emitLowComp h lowComp =
           return $ emitOp $ unwordsL ["br", "label", emitValue (LC.VarLocal joinLabel)]
     LC.ReturnVoid -> do
       return $ emitOp "ret void"
+    LC.Phi _ -> do
+      case goalLabel h of
+        Nothing ->
+          error $ "compiler bug: no goal label is found for the block `" <> show (currentLabel h) <> "`"
+        Just joinLabel ->
+          return $ emitOp $ unwordsL ["br", "label", emitValue (LC.VarLocal joinLabel)]
     LC.TailCall codType f args -> do
       case codType of
         LT.Void -> do
@@ -82,7 +89,7 @@ emitLowComp h lowComp =
                     ]
           ret <- emitLowComp h $ LC.Return (LC.VarLocal tmp)
           return $ op <> ret
-    LC.Switch d lowType defaultBranch branchList phiTarget cont -> do
+    LC.Switch d lowType defaultBranch branchList phiTargets cont -> do
       defaultLabel <- Gensym.newIdentFromText (gensymHandle h) "default"
       labelList <- mapM (const $ Gensym.newIdentFromText (gensymHandle h) "case") branchList
       let switchOpStr =
@@ -110,15 +117,17 @@ emitLowComp h lowComp =
         currentLabelMap <- liftIO $ readIORef $ labelMapRef h
         let (allLabelList, allBranchList) = unzip labelBranchList
         let resolvedLabelList = resolveLabelList currentLabelMap allLabelList
-        let phiIncomingList =
+        let phiBranchList =
               flip mapMaybe (zip resolvedLabelList allBranchList) $ \(label, branch) -> do
-                value <- LC.getReturnValue branch
-                return (value, label)
-        let phiOpStr
-              | null phiIncomingList = []
-              | otherwise = do
-                  let phiOp = unwordsL ["phi", emitLowType LT.Pointer, emitPhiList phiIncomingList]
-                  emitOp $ emitValue (LC.VarLocal phiTarget) <> " = " <> phiOp
+                values <- LC.getPhiList branch
+                return (label, values)
+        let (reachableLabels, phiValueLists) = unzip phiBranchList
+        let phiValueListList = transpose phiValueLists
+        let phiOpList =
+              flip map (zip phiTargets phiValueListList) $ \(phiTarget, values) -> do
+                let phiOp = unwordsL ["phi", emitLowType LT.Pointer, emitPhiList $ zip values reachableLabels]
+                emitOp $ emitValue (LC.VarLocal phiTarget) <> " = " <> phiOp
+        let phiOpStr = concat phiOpList
         a <- emitLowComp (h {currentLabel = Just goalLabel}) cont
         return $ emitLabel ("_" <> intDec (toInt goalLabel)) : phiOpStr <> a
       return $ switchOpStr <> concat blockAsmList <> goalBlock
