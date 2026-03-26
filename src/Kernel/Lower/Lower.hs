@@ -598,10 +598,7 @@ lowerValue h resultVar v cont =
       let encodedText = foldMap (\w -> "\\" <> word8HexFixed w) i8s
       liftIO $ insertStaticText h name encodedText len
       uncast h resultVar (LC.VarTextName name) LT.Pointer cont
-    C.SigmaIntro ds -> do
-      let arrayType = AggTypeArray (length ds) LT.Pointer
-      createAggData h resultVar arrayType (map (,LT.Pointer) ds) cont
-    C.SigmaDataIntro size ds -> do
+    C.SigmaIntro size ds -> do
       let arrayType = AggTypeArray size LT.Pointer
       createAggData h resultVar arrayType (map (,LT.Pointer) ds) cont
     C.Int size l -> do

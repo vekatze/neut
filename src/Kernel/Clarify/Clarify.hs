@@ -38,6 +38,7 @@ import Kernel.Common.Handle.Global.Type qualified as Type
 import Kernel.Common.Handle.Local.Locator qualified as Locator
 import Kernel.Common.OptimizableData qualified as OD
 import Language.Common.ArgNum qualified as AN
+import Language.Common.Attr.Data qualified as AttrD
 import Language.Common.Attr.DataIntro qualified as AttrDI
 import Language.Common.Attr.Lam qualified as AttrL
 import Language.Common.Attr.VarGlobal qualified as AttrVG
@@ -332,7 +333,7 @@ registerDefaultEnvType h name defaultValues = do
     unless isAlreadyRegistered $ do
       switch <- Gensym.createVar (gensymHandle h) "switch"
       arg@(_, argVar) <- Gensym.createVar (gensymHandle h) "arg"
-      let discard = C.UpIntro $ C.SigmaIntro []
+      let discard = C.UpIntro C.null
       let copy = C.UpIntro argVar
       let resourceSpec = Utility.ResourceSpec {switch, arg, discard, copy, size = Utility.returnIntComp (utilityHandle h) (-1), defaultValues}
       Utility.registerSwitcher (utilityHandle h) O.Clear envTypeName resourceSpec
@@ -437,9 +438,9 @@ clarifyTerm h tenv term =
       let (globalArgNum, globalCodType) = getGlobalRefInfo AttrVG.Attr {..}
       return $
         C.UpIntro $
-          C.SigmaIntro
+          C.sigmaIntro
             [ envType,
-              C.SigmaIntro [],
+              C.null,
               C.VarGlobal x globalArgNum globalCodType
             ]
     _ :< TM.PiIntro attr impArgs expArgs defaultArgs e -> do
@@ -469,11 +470,11 @@ clarifyTerm h tenv term =
         _ -> do
           (zs1, es1, xs1) <- unzip3 <$> mapM (clarifyTypePlus h tenv) dataArgs
           (zs2, es2, xs2) <- unzip3 <$> mapM (clarifyPlus h tenv) consArgs
-          let totalSlotCount = 1 + length xs1 + foldr (max . (\(_, binders, _) -> length binders)) 0 consNameList
+          let totalSlotCount = getDataSlotCount' xs1 consNameList
           return $
             Utility.bindLet (zip zs1 es1 ++ zip zs2 es2) $
               C.UpIntro $
-                C.SigmaDataIntro totalSlotCount $
+                C.SigmaIntro totalSlotCount $
                   C.Int (dataSizeToIntSize (baseSize h)) (D.reify discriminant) : (xs1 ++ xs2)
     m :< TM.DataElim isNoetic xets tree -> do
       let (xs, es, _) = unzip3 xets
@@ -529,9 +530,9 @@ clarifyType h tenv ty =
       let (globalArgNum, globalCodType) = getGlobalRefInfo AttrVG.Attr {..}
       return $
         C.UpIntro $
-          C.SigmaIntro
+          C.sigmaIntro
             [ envType,
-              C.SigmaIntro [],
+              C.null,
               C.VarGlobal x globalArgNum globalCodType
             ]
     _ :< TM.TyApp t args -> do
@@ -543,7 +544,7 @@ clarifyType h tenv ty =
     _ :< TM.Data _ name dataArgs -> do
       let argNum = AN.fromInt $ length dataArgs + 2
       envType <- liftIO $ envTypeForGlobal h name
-      let cls = C.UpIntro $ C.SigmaIntro [envType, C.SigmaIntro [], C.VarGlobal name argNum (FCT.Cod BLT.Pointer)]
+      let cls = C.UpIntro $ C.sigmaIntro [envType, C.null, C.VarGlobal name argNum (FCT.Cod BLT.Pointer)]
       dataArgs' <- mapM (clarifyTypePlus h tenv) dataArgs
       liftIO $ callClosure h PEK.Normal cls dataArgs' [] []
     _ :< TM.Box t -> do
@@ -584,6 +585,18 @@ getDataSlotCount ::
 getDataSlotCount dataArgs consInfoList =
   1 + length dataArgs + foldr max 0 (map (\(_, _, _, consArgs, _) -> length consArgs) consInfoList)
 
+getDataSlotCount' :: [t] -> [(name, [binder], isConstLike)] -> Int
+getDataSlotCount' dataArgs consNameList =
+  1 + length dataArgs + foldr (max . (\(_, binders, _) -> length binders)) 0 consNameList
+
+getDataSlotCountFromType :: TM.Type -> App Int
+getDataSlotCountFromType t =
+  case t of
+    _ :< TM.Data (AttrD.Attr {..}) _ dataArgs ->
+      return $ getDataSlotCount' dataArgs consNameList
+    m :< _ ->
+      raiseCritical m "Clarify.getDataSlotCountFromType"
+
 clarifyDataClause ::
   Handle ->
   Int ->
@@ -621,16 +634,16 @@ clarifyDecisionTree h tenv isNoetic dataArgsMap tree =
           return (cont'', dataChain ++ chain)
     DT.Unreachable -> do
       return (C.Unreachable, [])
-    DT.Switch (cursor, t@(m :< _)) (fallbackClause, clauseList) -> do
+    DT.Switch (cursor, cursorType@(m :< _)) (fallbackClause, clauseList) -> do
       (fallbackClause', fallbackChain) <- clarifyDecisionTree h tenv isNoetic dataArgsMap fallbackClause
-      tmp <- mapM (clarifyCase h tenv isNoetic dataArgsMap cursor) clauseList
+      tmp <- mapM (clarifyCase h tenv isNoetic dataArgsMap cursor cursorType) clauseList
       let (enumCaseList, clauseList', clauseChainList) = unzip3 tmp
       let chain = nubFreeVariables $ fallbackChain ++ concat clauseChainList
       let aligner = alignFreeVariable h tenv chain
       clauseList'' <- mapM aligner clauseList'
       let newChain = (m, VK.Normal, cursor, m :< TM.Tau) : chain
       let idents = nubOrd $ map (\(_, _, x, _) -> x) newChain
-      ck <- getClauseDataGroup h t
+      ck <- getClauseDataGroup h cursorType
       case ck of
         Just OD.Enum -> do
           tree' <- liftIO $ Utility.getEnumElim (utilityHandle h) idents (C.VarLocal cursor) fallbackClause' (zip enumCaseList clauseList'')
@@ -693,9 +706,10 @@ clarifyCase ::
   N.IsNoetic ->
   DataArgsMap ->
   Ident ->
+  TM.Type ->
   DT.Case TM.Type TM.Term ->
   App (EC.EnumCase, C.Comp, [BinderF TM.Type])
-clarifyCase h tenv isNoetic dataArgsMap cursor decisionCase = do
+clarifyCase h tenv isNoetic dataArgsMap cursor cursorType decisionCase = do
   case decisionCase of
     DT.LiteralCase _ l cont -> do
       (body', contChain) <- clarifyDecisionTree h tenv isNoetic dataArgsMap cont
@@ -707,7 +721,7 @@ clarifyCase h tenv isNoetic dataArgsMap cursor decisionCase = do
     DT.ConsCase (DT.ConsCaseRecord {..}) -> do
       let (_, dataTypes) = unzip dataArgs
       dataArgVars <- liftIO $ mapM (const $ Gensym.newIdentFromText (gensymHandle h) "dataArg") dataTypes
-      let cursorSize = 1 + length dataArgVars + length consArgs
+      cursorSize <- getDataSlotCountFromType cursorType
       let dataArgsMap' = IntMap.insert (Ident.toInt cursor) (zip dataArgVars dataTypes, cursorSize) dataArgsMap
       let consArgs' = map (\(m, k, x, _) -> (m, k, x, m :< TM.Tau)) consArgs
       let prefixChain = TM.chainOfCaseWithoutCont tenv decisionCase
@@ -911,7 +925,7 @@ returnClosure h tenv lamID mName opacity isDestPassing codType fvs xts defaultVa
   fvs'' <- dropFst <$> clarifyBinder h tenv fvs
   xts'' <- dropFst <$> clarifyBinder h tenv xts
   fvEnvSigma <- liftIO $ Sigma.closureEnvS4 (sigmaHandle h) mName (locatorHandle h) fvs'' defaultValues
-  let fvEnv = C.SigmaIntro (map (\(x, _) -> C.VarLocal x) fvs'')
+  let fvEnv = C.sigmaIntro (map (\(x, _) -> C.VarLocal x) fvs'')
   let argNum = AN.fromInt $ length xts'' + if isDestPassing then 3 else 2
   let name = Locator.attachCurrentLocator (locatorHandle h) $ BN.lambdaName mName lamID
   isAlreadyRegistered <- liftIO $ AuxEnv.checkIfAlreadyRegistered (auxEnvHandle h) name
@@ -920,7 +934,7 @@ returnClosure h tenv lamID mName opacity isDestPassing codType fvs xts defaultVa
     codType' <- clarifyType h codTypeTenv codType
     liftIO $ registerClosure h name opacity isDestPassing codType' xts'' fvs'' e
   let cod = if isDestPassing then FCT.Void else FCT.Cod BLT.Pointer
-  return $ C.UpIntro $ C.SigmaIntro [fvEnvSigma, fvEnv, C.VarGlobal name argNum cod]
+  return $ C.UpIntro $ C.sigmaIntro [fvEnvSigma, fvEnv, C.VarGlobal name argNum cod]
 
 registerClosure ::
   Handle ->

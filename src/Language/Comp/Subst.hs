@@ -100,12 +100,9 @@ substValue sub term =
       term
     C.VarStaticText {} ->
       term
-    C.SigmaIntro vs -> do
+    C.SigmaIntro size vs -> do
       let vs' = map (substValue sub) vs
-      C.SigmaIntro vs'
-    C.SigmaDataIntro size vs -> do
-      let vs' = map (substValue sub) vs
-      C.SigmaDataIntro size vs'
+      C.SigmaIntro size vs'
     C.Int {} ->
       term
     C.Float {} ->

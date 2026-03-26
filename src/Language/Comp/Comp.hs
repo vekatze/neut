@@ -13,6 +13,7 @@ module Language.Comp.Comp
     intValue0,
     intValue1,
     mulInt64,
+    sigmaIntro,
     isUnreachable,
     null,
   )
@@ -42,8 +43,7 @@ data Value
   = VarLocal Ident
   | VarGlobal DD.DefiniteDescription ArgNum (FCT.ForeignCodType BaseLowType)
   | VarStaticText T.Text
-  | SigmaIntro [Value]
-  | SigmaDataIntro Int [Value]
+  | SigmaIntro Int [Value]
   | Int IntSize Integer
   | Float FloatSize Double
   deriving (Eq)
@@ -57,10 +57,8 @@ instance Show Value where
         T.unpack $ DD.reify dd
       VarStaticText dd ->
         T.unpack $ "\"" <> dd <> "\""
-      SigmaIntro vs ->
-        "(" ++ intercalate ", " (map show vs) ++ ")"
-      SigmaDataIntro size vs ->
-        "data[" ++ show size ++ "](" ++ intercalate ", " (map show vs) ++ ")"
+      SigmaIntro size vs ->
+        "[" ++ show size ++ "](" ++ intercalate ", " (map show vs) ++ ")"
       Language.Comp.Comp.Int _ i ->
         show i
       Language.Comp.Comp.Float _ f ->
@@ -174,6 +172,10 @@ mulInt64 :: Value -> Value -> Primitive
 mulInt64 x y =
   PrimOp (PrimBinaryOp BOp.Mul (PT.Int IntSize64) (PT.Int IntSize64)) [x, y]
 
+sigmaIntro :: [Value] -> Value
+sigmaIntro vs =
+  SigmaIntro (length vs) vs
+
 isUnreachable :: Comp -> Bool
 isUnreachable comp =
   case comp of
@@ -204,4 +206,4 @@ isUnreachable comp =
 
 null :: Value
 null =
-  SigmaIntro []
+  sigmaIntro []

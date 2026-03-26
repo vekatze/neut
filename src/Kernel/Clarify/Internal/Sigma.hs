@@ -63,7 +63,7 @@ registerImmediateS4 :: Handle -> IO ()
 registerImmediateS4 h = do
   switch <- Gensym.createVar (gensymHandle h) "switch"
   arg@(_, argVar) <- Gensym.createVar (gensymHandle h) "arg"
-  let discard = C.UpIntro $ C.SigmaIntro []
+  let discard = C.UpIntro C.null
   let copy = C.UpIntro argVar
   Utility.registerSwitcher (utilityHandle h) O.Clear DD.imm $
     ResourceSpec {switch, arg, discard, copy, size = Utility.returnIntComp (utilityHandle h) (-1), defaultValues = []}
@@ -133,7 +133,7 @@ sigmaT h xts argVar = do
   as <- forM xts $ \(x, t) -> do
     Utility.toAffineApp (utilityHandle h) (C.VarLocal x) t
   ys <- mapM (const $ Gensym.newIdentFromText (gensymHandle h) "arg") xts
-  body' <- Linearize.linearize (linearizeHandle h) xts $ Utility.bindLet (zip ys as) $ C.UpIntro $ C.SigmaIntro []
+  body' <- Linearize.linearize (linearizeHandle h) xts $ Utility.bindLet (zip ys as) $ C.UpIntro C.null
   return $ C.SigmaElim True (map fst xts) argVar body'
 
 -- (Assuming `ti` = `return di` for some `di` such that `xi : di`)
@@ -160,7 +160,7 @@ sigma4 h xts argVar = do
   as <- forM xts $ \(x, t) -> do
     Utility.toRelevantApp (utilityHandle h) (C.VarLocal x) t
   (varNameList, varList) <- mapAndUnzipM (const $ Gensym.createVar (gensymHandle h) "pair") xts
-  body' <- Linearize.linearize (linearizeHandle h) xts $ Utility.bindLet (zip varNameList as) $ C.UpIntro $ C.SigmaIntro varList
+  body' <- Linearize.linearize (linearizeHandle h) xts $ Utility.bindLet (zip varNameList as) $ C.UpIntro $ C.sigmaIntro varList
   return $ C.SigmaElim False (map fst xts) argVar body'
 
 closureEnvS4 ::
@@ -208,7 +208,7 @@ returnSigmaEnumS4 ::
 returnSigmaEnumS4 h dataName opacity = do
   switch <- Gensym.createVar (gensymHandle h) "switch"
   arg@(_, argVar) <- Gensym.createVar (gensymHandle h) "arg"
-  let discard = C.UpIntro $ C.SigmaIntro []
+  let discard = C.UpIntro C.null
   let copy = C.UpIntro argVar
   let dataName' = DD.getFormDD dataName
   Utility.registerSwitcher (utilityHandle h) opacity dataName' $
@@ -245,7 +245,7 @@ sigmaData4' h totalSlotCount xts argVar = do
   as <- forM xts $ \(x, t) -> do
     Utility.toRelevantApp (utilityHandle h) (C.VarLocal x) t
   (varNameList, varList) <- mapAndUnzipM (const $ Gensym.createVar (gensymHandle h) "pair") xts
-  body' <- Linearize.linearize (linearizeHandle h) xts $ Utility.bindLet (zip varNameList as) $ C.UpIntro $ C.SigmaDataIntro totalSlotCount varList
+  body' <- Linearize.linearize (linearizeHandle h) xts $ Utility.bindLet (zip varNameList as) $ C.UpIntro $ C.SigmaIntro totalSlotCount varList
   return $ C.SigmaElim False (map fst xts) argVar body'
 
 sigmaData ::
