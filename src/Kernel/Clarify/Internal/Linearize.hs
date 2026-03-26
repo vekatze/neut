@@ -104,12 +104,9 @@ distinguishValue h z term =
     C.VarLocal x -> do
       (vs, x') <- distinguishVar h z x
       return (vs, C.VarLocal x')
-    C.SigmaIntro ds -> do
+    C.SigmaIntro size ds -> do
       (vss, ds') <- mapAndUnzipM (distinguishValue h z) ds
-      return (concat vss, C.SigmaIntro ds')
-    C.SigmaDataIntro size ds -> do
-      (vss, ds') <- mapAndUnzipM (distinguishValue h z) ds
-      return (concat vss, C.SigmaDataIntro size ds')
+      return (concat vss, C.SigmaIntro size ds')
     _ ->
       return ([], term)
 

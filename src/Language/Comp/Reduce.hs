@@ -65,11 +65,7 @@ reduce h term = do
               return $ C.SigmaElim shouldDeallocate xs' v' e'
         else do
           case v' of
-            C.SigmaIntro ds
-              | length ds == length xs -> do
-                  let h' = unionSubst h (IntMap.fromList (zip (map Ident.toInt xs) ds))
-                  reduce h' e
-            C.SigmaDataIntro _ ds
+            C.SigmaIntro _ ds
               | length ds == length xs -> do
                   let h' = unionSubst h (IntMap.fromList (zip (map Ident.toInt xs) ds))
                   reduce h' e
@@ -78,11 +74,7 @@ reduce h term = do
               let h' = unionSubst h (IntMap.fromList (zip (map Ident.toInt xs) (map C.VarLocal xs')))
               e' <- reduce h' e
               case e' of
-                C.UpIntro (C.SigmaIntro ds)
-                  | Just ys <- mapM extractIdent ds,
-                    xs' == ys ->
-                      return $ C.UpIntro v -- eta-reduce
-                C.UpIntro (C.SigmaDataIntro _ ds)
+                C.UpIntro (C.SigmaIntro _ ds)
                   | Just ys <- mapM extractIdent ds,
                     xs' == ys ->
                       return $ C.UpIntro v -- eta-reduce

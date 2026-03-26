@@ -332,7 +332,7 @@ registerDefaultEnvType h name defaultValues = do
     unless isAlreadyRegistered $ do
       switch <- Gensym.createVar (gensymHandle h) "switch"
       arg@(_, argVar) <- Gensym.createVar (gensymHandle h) "arg"
-      let discard = C.UpIntro $ C.SigmaIntro []
+      let discard = C.UpIntro C.null
       let copy = C.UpIntro argVar
       let resourceSpec = Utility.ResourceSpec {switch, arg, discard, copy, size = Utility.returnIntComp (utilityHandle h) (-1), defaultValues}
       Utility.registerSwitcher (utilityHandle h) O.Clear envTypeName resourceSpec
@@ -437,9 +437,9 @@ clarifyTerm h tenv term =
       let (globalArgNum, globalCodType) = getGlobalRefInfo AttrVG.Attr {..}
       return $
         C.UpIntro $
-          C.SigmaIntro
+          C.sigmaIntro
             [ envType,
-              C.SigmaIntro [],
+              C.null,
               C.VarGlobal x globalArgNum globalCodType
             ]
     _ :< TM.PiIntro attr impArgs expArgs defaultArgs e -> do
@@ -473,7 +473,7 @@ clarifyTerm h tenv term =
           return $
             Utility.bindLet (zip zs1 es1 ++ zip zs2 es2) $
               C.UpIntro $
-                C.SigmaDataIntro totalSlotCount $
+                C.SigmaIntro totalSlotCount $
                   C.Int (dataSizeToIntSize (baseSize h)) (D.reify discriminant) : (xs1 ++ xs2)
     m :< TM.DataElim isNoetic xets tree -> do
       let (xs, es, _) = unzip3 xets
@@ -529,9 +529,9 @@ clarifyType h tenv ty =
       let (globalArgNum, globalCodType) = getGlobalRefInfo AttrVG.Attr {..}
       return $
         C.UpIntro $
-          C.SigmaIntro
+          C.sigmaIntro
             [ envType,
-              C.SigmaIntro [],
+              C.null,
               C.VarGlobal x globalArgNum globalCodType
             ]
     _ :< TM.TyApp t args -> do
@@ -543,7 +543,7 @@ clarifyType h tenv ty =
     _ :< TM.Data _ name dataArgs -> do
       let argNum = AN.fromInt $ length dataArgs + 2
       envType <- liftIO $ envTypeForGlobal h name
-      let cls = C.UpIntro $ C.SigmaIntro [envType, C.SigmaIntro [], C.VarGlobal name argNum (FCT.Cod BLT.Pointer)]
+      let cls = C.UpIntro $ C.sigmaIntro [envType, C.null, C.VarGlobal name argNum (FCT.Cod BLT.Pointer)]
       dataArgs' <- mapM (clarifyTypePlus h tenv) dataArgs
       liftIO $ callClosure h PEK.Normal cls dataArgs' [] []
     _ :< TM.Box t -> do
@@ -911,7 +911,7 @@ returnClosure h tenv lamID mName opacity isDestPassing codType fvs xts defaultVa
   fvs'' <- dropFst <$> clarifyBinder h tenv fvs
   xts'' <- dropFst <$> clarifyBinder h tenv xts
   fvEnvSigma <- liftIO $ Sigma.closureEnvS4 (sigmaHandle h) mName (locatorHandle h) fvs'' defaultValues
-  let fvEnv = C.SigmaIntro (map (\(x, _) -> C.VarLocal x) fvs'')
+  let fvEnv = C.sigmaIntro (map (\(x, _) -> C.VarLocal x) fvs'')
   let argNum = AN.fromInt $ length xts'' + if isDestPassing then 3 else 2
   let name = Locator.attachCurrentLocator (locatorHandle h) $ BN.lambdaName mName lamID
   isAlreadyRegistered <- liftIO $ AuxEnv.checkIfAlreadyRegistered (auxEnvHandle h) name
@@ -920,7 +920,7 @@ returnClosure h tenv lamID mName opacity isDestPassing codType fvs xts defaultVa
     codType' <- clarifyType h codTypeTenv codType
     liftIO $ registerClosure h name opacity isDestPassing codType' xts'' fvs'' e
   let cod = if isDestPassing then FCT.Void else FCT.Cod BLT.Pointer
-  return $ C.UpIntro $ C.SigmaIntro [fvEnvSigma, fvEnv, C.VarGlobal name argNum cod]
+  return $ C.UpIntro $ C.sigmaIntro [fvEnvSigma, fvEnv, C.VarGlobal name argNum cod]
 
 registerClosure ::
   Handle ->
