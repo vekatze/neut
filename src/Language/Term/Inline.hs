@@ -313,13 +313,15 @@ inline' h term = do
             _ -> do
               lowMagic' <- inlineLowMagic h lowMagic
               return (m :< TM.Magic (M.LowMagic lowMagic'))
-        M.Malloc size -> do
+        M.Malloc sizeType size -> do
+          sizeType' <- inlineType' h sizeType
           size' <- inline' h size
-          return (m :< TM.Magic (M.Malloc size'))
-        M.Realloc ptr size -> do
+          return (m :< TM.Magic (M.Malloc sizeType' size'))
+        M.Realloc sizeType ptr size -> do
+          sizeType' <- inlineType' h sizeType
           ptr' <- inline' h ptr
           size' <- inline' h size
-          return (m :< TM.Magic (M.Realloc ptr' size'))
+          return (m :< TM.Magic (M.Realloc sizeType' ptr' size'))
         M.Free unitType ptr -> do
           unitType' <- inlineType' h unitType
           ptr' <- inline' h ptr

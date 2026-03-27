@@ -368,10 +368,10 @@ showMagic (M.WeakMagic magic) =
   case magic of
     M.LowMagic lowMagic ->
       showLowMagic lowMagic
-    M.Malloc size ->
-      "magic malloc" <> inParen (toText size)
-    M.Realloc ptr size ->
-      "magic realloc" <> inParen (toText ptr <> ", " <> toText size)
+    M.Malloc sizeType size ->
+      "magic malloc" <> inParen (toTextType sizeType <> ", " <> toText size)
+    M.Realloc sizeType ptr size ->
+      "magic realloc" <> inParen (toTextType sizeType <> ", " <> toText ptr <> ", " <> toText size)
     M.Free _ ptr ->
       "magic free" <> inParen (toText ptr)
     M.InspectType _ typeValueExpr e ->

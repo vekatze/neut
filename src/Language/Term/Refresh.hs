@@ -116,13 +116,15 @@ refreshMagic h magic =
     M.LowMagic lowMagic -> do
       lowMagic' <- refreshLowMagic h lowMagic
       return $ M.LowMagic lowMagic'
-    M.Malloc size -> do
+    M.Malloc sizeType size -> do
+      sizeType' <- refreshType h sizeType
       size' <- refresh h size
-      return $ M.Malloc size'
-    M.Realloc ptr size -> do
+      return $ M.Malloc sizeType' size'
+    M.Realloc sizeType ptr size -> do
+      sizeType' <- refreshType h sizeType
       ptr' <- refresh h ptr
       size' <- refresh h size
-      return $ M.Realloc ptr' size'
+      return $ M.Realloc sizeType' ptr' size'
     M.Free unitType ptr -> do
       unitType' <- refreshType h unitType
       ptr' <- refresh h ptr

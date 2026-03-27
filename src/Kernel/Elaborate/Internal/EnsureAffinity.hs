@@ -237,12 +237,15 @@ analyze h term = do
               cs2 <- analyze h arg1
               cs3 <- analyze h arg2
               return $ cs1 ++ cs2 ++ cs3
-        M.Malloc size -> do
-          analyze h size
-        M.Realloc ptr size -> do
-          cs1 <- analyze h ptr
+        M.Malloc sizeType size -> do
+          cs1 <- analyzeType h sizeType
           cs2 <- analyze h size
           return $ cs1 ++ cs2
+        M.Realloc sizeType ptr size -> do
+          cs1 <- analyzeType h sizeType
+          cs2 <- analyze h ptr
+          cs3 <- analyze h size
+          return $ cs1 ++ cs2 ++ cs3
         M.Free unitType ptr -> do
           cs1 <- analyzeType h unitType
           cs2 <- analyze h ptr

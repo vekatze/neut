@@ -811,12 +811,12 @@ clarifyMagic h tenv der = do
           return $
             Utility.bindLet [(funcVarName, func'), (arg1VarName, arg1'), (arg2VarName, arg2')] $
               C.Primitive (C.Magic (LM.CallType funcVar arg1Var arg2Var))
-    M.Malloc size -> do
+    M.Malloc _ size -> do
       (sizeVarName, size', sizeVar) <- clarifyPlus h tenv size
       return $
         Utility.bindLet [(sizeVarName, size')] $
           C.Primitive (C.Alloc sizeVar)
-    M.Realloc ptr size -> do
+    M.Realloc _ ptr size -> do
       (ptrVarName, ptr', ptrVar) <- clarifyPlus h tenv ptr
       (sizeVarName, size', sizeVar) <- clarifyPlus h tenv size
       return $

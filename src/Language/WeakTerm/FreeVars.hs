@@ -110,9 +110,9 @@ freeVarsMagicTerm (M.WeakMagic magic) =
   case magic of
     M.LowMagic lowMagic ->
       freeVarsLowMagicTerm lowMagic
-    M.Malloc size ->
+    M.Malloc _ size ->
       freeVars size
-    M.Realloc ptr size ->
+    M.Realloc _ ptr size ->
       S.union (freeVars ptr) (freeVars size)
     M.Free _ ptr ->
       freeVars ptr
@@ -286,10 +286,10 @@ freeVarsMagic (M.WeakMagic magic) =
   case magic of
     M.LowMagic lowMagic ->
       freeVarsLowMagic lowMagic
-    M.Malloc size ->
-      freeVarsAll size
-    M.Realloc ptr size ->
-      S.union (freeVarsAll ptr) (freeVarsAll size)
+    M.Malloc sizeType size ->
+      S.union (freeVarsType sizeType) (freeVarsAll size)
+    M.Realloc sizeType ptr size ->
+      S.unions [freeVarsType sizeType, freeVarsAll ptr, freeVarsAll size]
     M.Free unitType ptr ->
       S.union (freeVarsType unitType) (freeVarsAll ptr)
     M.InspectType _ typeValueExpr e ->
