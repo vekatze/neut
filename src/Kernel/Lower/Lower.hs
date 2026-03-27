@@ -250,7 +250,7 @@ materializeDestCall h sizeComp f ds = do
         C.UpElim
           True
           immediateDestName
-          (C.Primitive $ C.Alloc $ Left 1)
+          (C.Primitive $ C.Alloc $ C.Int IntSize64 1)
           ( C.UpElimCallVoid
               f
               (immediateDestVar : ds)
@@ -271,7 +271,7 @@ materializeDestCall h sizeComp f ds = do
     C.UpIntro (C.Int _ v) -> do
       if v < 0
         then return immediateBody
-        else return $ boxedBody $ Left v
+        else return $ boxedBody $ C.Int IntSize64 v
     _ -> do
       return $
         C.UpElim
@@ -281,7 +281,7 @@ materializeDestCall h sizeComp f ds = do
           ( C.EnumElim
               []
               sizeVar
-              (boxedBody $ Right sizeVar)
+              (boxedBody sizeVar)
               [(EC.Int (-1), immediateBody)]
           )
 
@@ -342,10 +342,10 @@ lowerCompPrimitive h resultVar codeOp cont =
       let wordBytes = toInteger $ DS.reify (baseSize h) `div` 8
       allocID <- liftIO $ Gensym.newCount (gensymHandle h)
       case size of
-        Left knownWordCount -> do
+        C.Int _ knownWordCount -> do
           let knownByteCount = knownWordCount * wordBytes
           return $ LC.Let resultVar (LC.Alloc (Left knownByteCount) allocID) cont
-        Right runtimeSize -> do
+        runtimeSize -> do
           byteCountVarName <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "size"
           let byteCountValue = C.VarLocal byteCountVarName
           (castVar, castValue) <- liftIO $ newValueLocal h "size"

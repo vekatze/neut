@@ -130,7 +130,7 @@ type ShouldDeallocate = Bool
 data Primitive
   = PrimOp PrimOp [Value]
   | ShiftPointer Value Integer Integer -- (ptr, num-of-elems, index)
-  | Alloc (Either Integer Value) -- number of words to allocate
+  | Alloc Value -- number of words to allocate
   | Memcpy Value Value Value -- (dest, src, size-in-words)
   | Magic (LowMagic BaseLowType Value Value)
   deriving (Show)
