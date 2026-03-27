@@ -811,6 +811,11 @@ clarifyMagic h tenv der = do
           return $
             Utility.bindLet [(funcVarName, func'), (arg1VarName, arg1'), (arg2VarName, arg2')] $
               C.Primitive (C.Magic (LM.CallType funcVar arg1Var arg2Var))
+    M.Malloc size -> do
+      (sizeVarName, size', sizeVar) <- clarifyPlus h tenv size
+      return $
+        Utility.bindLet [(sizeVarName, size')] $
+          C.Primitive (C.Alloc sizeVar)
     M.InspectType {} ->
       error "InspectType should be evaluated during inline expansion"
     M.EqType {} ->

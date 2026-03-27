@@ -291,6 +291,16 @@ toDoc term =
                       RT.mapEL toDoc size
                     ]
             ]
+        Malloc c1 size mc -> do
+          D.join
+            [ attachComment (c ++ c1) $ D.text "magic malloc",
+              SE.decode $
+                attachOptionalComment mc $
+                  SE.fromListWithComment
+                    (Just SE.Paren)
+                    SE.Comma
+                    [RT.mapEL toDoc size]
+            ]
         External c1 _ funcName c2 args varArgsOrNone -> do
           let args' = SE.decode $ fmap toDoc args
           case varArgsOrNone of

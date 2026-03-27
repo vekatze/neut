@@ -116,6 +116,9 @@ refreshMagic h magic =
     M.LowMagic lowMagic -> do
       lowMagic' <- refreshLowMagic h lowMagic
       return $ M.LowMagic lowMagic'
+    M.Malloc size -> do
+      size' <- refresh h size
+      return $ M.Malloc size'
     M.InspectType mid typeValueExpr typeExpr -> do
       typeValueExpr' <- refreshType h typeValueExpr
       typeExpr' <- refreshType h typeExpr

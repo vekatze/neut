@@ -172,6 +172,8 @@ weakenMagic m magic = do
               LM.OpaqueValue (weaken e)
             LM.CallType func arg1 arg2 ->
               LM.CallType (weaken func) (weaken arg1) (weaken arg2)
+    M.Malloc size ->
+      M.WeakMagic $ M.Malloc (weaken size)
     M.InspectType mid typeValueExpr e ->
       M.WeakMagic $ M.InspectType mid (weakenType typeValueExpr) (weakenType e)
     M.EqType moduleID typeExpr1 typeExpr2 ->

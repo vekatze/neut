@@ -435,6 +435,9 @@ elaborate' h term = do
               arg1' <- elaborate' h arg1
               arg2' <- elaborate' h arg2
               return $ m :< TM.Magic (M.LowMagic $ LM.CallType func' arg1' arg2')
+        M.Malloc size -> do
+          size' <- elaborate' h size
+          return $ m :< TM.Magic (M.Malloc size')
         M.InspectType mid typeValueExpr typeExpr -> do
           typeValueExpr' <- elaborateType h typeValueExpr
           typeExpr' <- elaborateType h typeExpr

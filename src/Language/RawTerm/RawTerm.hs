@@ -316,6 +316,7 @@ data RawMagic
   | Store C (EL RawType) (EL RawTerm) (EL RawTerm) (Maybe C)
   | Load C (EL RawType) (EL RawTerm) (Maybe C)
   | Alloca C (EL RawType) (EL RawTerm) (Maybe C)
+  | Malloc C (EL RawTerm) (Maybe C)
   | External C Hint EN.ExternalName C (SE.Series RawTerm) (Maybe (C, SE.Series VarArg))
   | Global C (EL EN.ExternalName) (EL RawType) (Maybe C)
   | OpaqueValue C (EL RawTerm)

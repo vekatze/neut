@@ -155,6 +155,8 @@ freeVarsMagic magic =
   case magic of
     M.LowMagic lowMagic ->
       freeVarsLowMagic lowMagic
+    M.Malloc size ->
+      freeVars size
     M.InspectType _ typeValueExpr e ->
       S.union (freeVarsType typeValueExpr) (freeVarsType e)
     M.EqType _ typeExpr1 typeExpr2 ->

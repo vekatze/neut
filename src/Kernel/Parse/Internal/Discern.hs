@@ -843,6 +843,10 @@ discernMagic h m magic =
       t' <- discernType h t
       size' <- discern h size
       return $ M.WeakMagic $ M.LowMagic $ LM.Alloca t' size'
+    RT.Malloc _ (_, (size, _)) _ -> do
+      ensureRuntimeStage m h "runtime magic (`malloc`)"
+      size' <- discern h size
+      return $ M.WeakMagic $ M.Malloc size'
     RT.External _ mUse funcName _ args varArgsOrNone -> do
       ensureRuntimeStage m h "runtime magic (`external`)"
       mDef <- PreDecl.lookup (H.preDeclHandle h) m funcName

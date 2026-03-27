@@ -418,6 +418,11 @@ infer h term =
               liftIO $ Constraint.insert (constraintHandle h) intType t1
               resultType <- liftIO $ newTypeHole h m (varEnv h)
               return (m :< WT.Magic (M.WeakMagic $ M.LowMagic $ LM.CallType func' arg1' arg2'), resultType)
+        M.Malloc size -> do
+          (size', sizeType) <- infer h size
+          intType <- getIntType (platformHandle h) m
+          liftIO $ Constraint.insert (constraintHandle h) intType sizeType
+          return (m :< WT.Magic (M.WeakMagic $ M.Malloc size'), m :< WT.PrimType PT.Pointer)
         M.InspectType mid typeValueExpr typeExpr -> do
           typeValueExpr' <- inferType h typeValueExpr
           typeExpr' <- inferType h typeExpr

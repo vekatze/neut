@@ -313,6 +313,9 @@ inline' h term = do
             _ -> do
               lowMagic' <- inlineLowMagic h lowMagic
               return (m :< TM.Magic (M.LowMagic lowMagic'))
+        M.Malloc size -> do
+          size' <- inline' h size
+          return (m :< TM.Magic (M.Malloc size'))
         M.InspectType mid _ typeExpr -> do
           typeExpr' <- inlineType' h typeExpr
           Magic.evaluateInspectType h m mid typeExpr' >>= inline' h

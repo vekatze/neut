@@ -237,6 +237,8 @@ analyze h term = do
               cs2 <- analyze h arg1
               cs3 <- analyze h arg2
               return $ cs1 ++ cs2 ++ cs3
+        M.Malloc size -> do
+          analyze h size
         M.InspectType _ typeValueExpr typeExpr -> do
           cs1 <- analyzeType h typeValueExpr
           cs2 <- analyzeType h typeExpr

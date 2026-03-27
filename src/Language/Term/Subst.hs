@@ -407,6 +407,9 @@ substMagic h sub magic =
   case magic of
     M.LowMagic lowMagic ->
       M.LowMagic <$> substLowMagic h sub lowMagic
+    M.Malloc size -> do
+      size' <- subst h sub size
+      return $ M.Malloc size'
     M.InspectType mid typeValueExpr e -> do
       typeValueExpr' <- substType h sub typeValueExpr
       e' <- substType h sub e
