@@ -186,6 +186,10 @@ distinguishPrimitive h z term =
     C.Alloc size -> do
       (vs, size') <- distinguishValue h z size
       return (vs, C.Alloc size')
+    C.Realloc ptr size -> do
+      (vs1, ptr') <- distinguishValue h z ptr
+      (vs2, size') <- distinguishValue h z size
+      return (vs1 <> vs2, C.Realloc ptr' size')
     C.Memcpy dest src size -> do
       (vs1, dest') <- distinguishValue h z dest
       (vs2, src') <- distinguishValue h z src

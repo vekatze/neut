@@ -316,6 +316,10 @@ inline' h term = do
         M.Malloc size -> do
           size' <- inline' h size
           return (m :< TM.Magic (M.Malloc size'))
+        M.Realloc ptr size -> do
+          ptr' <- inline' h ptr
+          size' <- inline' h size
+          return (m :< TM.Magic (M.Realloc ptr' size'))
         M.Free unitType ptr -> do
           unitType' <- inlineType' h unitType
           ptr' <- inline' h ptr

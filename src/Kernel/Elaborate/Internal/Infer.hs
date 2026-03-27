@@ -423,6 +423,13 @@ infer h term =
           intType <- getIntType (platformHandle h) m
           liftIO $ Constraint.insert (constraintHandle h) intType sizeType
           return (m :< WT.Magic (M.WeakMagic $ M.Malloc size'), m :< WT.PrimType PT.Pointer)
+        M.Realloc ptr size -> do
+          (ptr', ptrType) <- infer h ptr
+          (size', sizeType) <- infer h size
+          intType <- getIntType (platformHandle h) m
+          liftIO $ Constraint.insert (constraintHandle h) (m :< WT.PrimType PT.Pointer) ptrType
+          liftIO $ Constraint.insert (constraintHandle h) intType sizeType
+          return (m :< WT.Magic (M.WeakMagic $ M.Realloc ptr' size'), m :< WT.PrimType PT.Pointer)
         M.Free unitType ptr -> do
           unitType' <- inferType h unitType
           (ptr', ptrType) <- infer h ptr

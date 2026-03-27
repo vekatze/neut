@@ -447,6 +447,10 @@ substMagic h sub (WeakMagic magic) = do
     M.Malloc size -> do
       size' <- subst h sub size
       return $ M.Malloc size'
+    M.Realloc ptr size -> do
+      ptr' <- subst h sub ptr
+      size' <- subst h sub size
+      return $ M.Realloc ptr' size'
     M.Free unitType ptr -> do
       unitType' <- substType h sub unitType
       ptr' <- subst h sub ptr

@@ -119,6 +119,10 @@ refreshMagic h magic =
     M.Malloc size -> do
       size' <- refresh h size
       return $ M.Malloc size'
+    M.Realloc ptr size -> do
+      ptr' <- refresh h ptr
+      size' <- refresh h size
+      return $ M.Realloc ptr' size'
     M.Free unitType ptr -> do
       unitType' <- refreshType h unitType
       ptr' <- refresh h ptr

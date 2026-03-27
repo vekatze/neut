@@ -816,6 +816,12 @@ clarifyMagic h tenv der = do
       return $
         Utility.bindLet [(sizeVarName, size')] $
           C.Primitive (C.Alloc sizeVar)
+    M.Realloc ptr size -> do
+      (ptrVarName, ptr', ptrVar) <- clarifyPlus h tenv ptr
+      (sizeVarName, size', sizeVar) <- clarifyPlus h tenv size
+      return $
+        Utility.bindLet [(ptrVarName, ptr'), (sizeVarName, size')] $
+          C.Primitive (C.Realloc ptrVar sizeVar)
     M.Free _ ptr -> do
       (ptrVarName, ptr', ptrVar) <- clarifyPlus h tenv ptr
       return $

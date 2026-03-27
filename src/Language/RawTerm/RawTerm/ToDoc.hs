@@ -301,6 +301,16 @@ toDoc term =
                     SE.Comma
                     [RT.mapEL toDoc size]
             ]
+        Realloc c1 ptr size mc -> do
+          D.join
+            [ attachComment (c ++ c1) $ D.text "magic realloc",
+              SE.decode $
+                attachOptionalComment mc $
+                  SE.fromListWithComment
+                    (Just SE.Paren)
+                    SE.Comma
+                    [RT.mapEL toDoc ptr, RT.mapEL toDoc size]
+            ]
         Free c1 ptr mc -> do
           D.join
             [ attachComment (c ++ c1) $ D.text "magic free",

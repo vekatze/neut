@@ -174,6 +174,8 @@ weakenMagic m magic = do
               LM.CallType (weaken func) (weaken arg1) (weaken arg2)
     M.Malloc size ->
       M.WeakMagic $ M.Malloc (weaken size)
+    M.Realloc ptr size ->
+      M.WeakMagic $ M.Realloc (weaken ptr) (weaken size)
     M.Free unitType ptr ->
       M.WeakMagic $ M.Free (weakenType unitType) (weaken ptr)
     M.InspectType mid typeValueExpr e ->

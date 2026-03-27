@@ -351,6 +351,16 @@ lowerCompPrimitive h resultVar codeOp cont =
           lowerValue h byteCountVarName runtimeByteSize
             =<< lowerValueLetCast h castVar byteCountValue lowInt
             =<< return (LC.Let resultVar (LC.Alloc (Right castValue) allocID) cont)
+    C.Realloc ptr size -> do
+      byteCountVarName <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "size"
+      let byteCountValue = C.VarLocal byteCountVarName
+      (castVar, castValue) <- liftIO $ newValueLocal h "size"
+      (ptrVar, ptrValue) <- liftIO $ newValueLocal h "ptr"
+      let lowInt = LT.PrimNum $ PT.Int $ dataSizeToIntSize (baseSize h)
+      lowerValue h byteCountVarName size
+        =<< lowerValueLetCast h castVar byteCountValue lowInt
+        =<< lowerValueLetCast h ptrVar ptr LT.Pointer
+        =<< return (LC.Let resultVar (LC.Realloc ptrValue castValue) cont)
     C.Memcpy dest src size -> do
       byteCountVarName <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "size"
       let byteCountValue = C.VarLocal byteCountVarName
@@ -723,6 +733,7 @@ commConv x lowComp cont2 =
 defaultForeignList :: A.Arch -> [F.Foreign]
 defaultForeignList arch =
   [ F.Foreign internalHint EN.malloc [getWordType arch] (FCT.Cod BLT.Pointer),
+    F.Foreign internalHint EN.realloc [BLT.Pointer, getWordType arch] (FCT.Cod BLT.Pointer),
     F.Foreign internalHint EN.free [BLT.Pointer] FCT.Void
   ]
 

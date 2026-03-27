@@ -118,6 +118,8 @@ substPrimitive sub c =
       C.ShiftPointer (substValue sub v) size index
     C.Alloc size ->
       C.Alloc (substValue sub size)
+    C.Realloc ptr size ->
+      C.Realloc (substValue sub ptr) (substValue sub size)
     C.Memcpy dest src size ->
       C.Memcpy (substValue sub dest) (substValue sub src) (substValue sub size)
     C.Magic der -> do

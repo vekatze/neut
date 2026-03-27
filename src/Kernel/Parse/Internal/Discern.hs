@@ -847,6 +847,11 @@ discernMagic h m magic =
       ensureRuntimeStage m h "runtime magic (`malloc`)"
       size' <- discern h size
       return $ M.WeakMagic $ M.Malloc size'
+    RT.Realloc _ (_, (ptr, _)) (_, (size, _)) _ -> do
+      ensureRuntimeStage m h "runtime magic (`realloc`)"
+      ptr' <- discern h ptr
+      size' <- discern h size
+      return $ M.WeakMagic $ M.Realloc ptr' size'
     RT.Free _ (_, (ptr, _)) _ -> do
       ensureRuntimeStage m h "runtime magic (`free`)"
       unitType <- liftEither (locatorToTypeVar m coreUnit) >>= discernType h

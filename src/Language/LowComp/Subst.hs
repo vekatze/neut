@@ -69,6 +69,8 @@ substOp sub llvmOp =
               Right (substLowValue sub runtimeSize)
         )
         allocID
+    LC.Realloc ptr size -> do
+      LC.Realloc (substLowValue sub ptr) (substLowValue sub size)
     LC.Free d size freeID -> do
       LC.Free (substLowValue sub d) size freeID
     LC.PrimOp op ds -> do

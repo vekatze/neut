@@ -131,6 +131,7 @@ data Primitive
   = PrimOp PrimOp [Value]
   | ShiftPointer Value Integer Integer -- (ptr, num-of-elems, index)
   | Alloc Value -- number of bytes to allocate
+  | Realloc Value Value -- ptr, size-in-bytes
   | Memcpy Value Value Value -- (dest, src, size-in-bytes)
   | Magic (LowMagic BaseLowType Value Value)
   deriving (Show)

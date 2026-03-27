@@ -157,6 +157,8 @@ freeVarsMagic magic =
       freeVarsLowMagic lowMagic
     M.Malloc size ->
       freeVars size
+    M.Realloc ptr size ->
+      S.union (freeVars ptr) (freeVars size)
     M.Free unitType ptr ->
       S.union (freeVarsType unitType) (freeVars ptr)
     M.InspectType _ typeValueExpr e ->

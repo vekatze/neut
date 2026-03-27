@@ -750,6 +750,7 @@ rawTermMagic h m c = do
       rawTermMagicLoad h m c,
       rawTermMagicAlloca h m c,
       rawTermMagicMalloc h m c,
+      rawTermMagicRealloc h m c,
       rawTermMagicFree h m c,
       rawTermMagicExternal h m c,
       rawTermMagicOpaqueValue h m c,
@@ -815,6 +816,15 @@ rawTermMagicMalloc h m c = do
     size <- rawTerm h
     c3 <- optional $ delimiter ","
     return $ \c1 c2 -> m :< RT.Magic c (RT.Malloc c1 (c2, size) c3)
+
+rawTermMagicRealloc :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
+rawTermMagicRealloc h m c = do
+  rawTermMagicBase "realloc" $ do
+    ptr <- rawTerm h
+    c3 <- delimiter ","
+    size <- rawTerm h
+    c4 <- optional $ delimiter ","
+    return $ \c1 c2 -> m :< RT.Magic c (RT.Realloc c1 (c2, ptr) (c3, size) c4)
 
 rawTermMagicFree :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermMagicFree h m c = do
