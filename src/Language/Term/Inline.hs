@@ -316,6 +316,10 @@ inline' h term = do
         M.Malloc size -> do
           size' <- inline' h size
           return (m :< TM.Magic (M.Malloc size'))
+        M.Free unitType ptr -> do
+          unitType' <- inlineType' h unitType
+          ptr' <- inline' h ptr
+          return (m :< TM.Magic (M.Free unitType' ptr'))
         M.InspectType mid _ typeExpr -> do
           typeExpr' <- inlineType' h typeExpr
           Magic.evaluateInspectType h m mid typeExpr' >>= inline' h

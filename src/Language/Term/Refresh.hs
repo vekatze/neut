@@ -119,6 +119,10 @@ refreshMagic h magic =
     M.Malloc size -> do
       size' <- refresh h size
       return $ M.Malloc size'
+    M.Free unitType ptr -> do
+      unitType' <- refreshType h unitType
+      ptr' <- refresh h ptr
+      return $ M.Free unitType' ptr'
     M.InspectType mid typeValueExpr typeExpr -> do
       typeValueExpr' <- refreshType h typeValueExpr
       typeExpr' <- refreshType h typeExpr

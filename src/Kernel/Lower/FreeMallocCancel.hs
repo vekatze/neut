@@ -22,7 +22,7 @@ freeMallocCancel matchMode gensymHandle lowComp =
       LC.Let x op <$> freeMallocCancel matchMode gensymHandle cont
     LC.Cont op cont -> do
       case op of
-        LC.Free (LC.VarLocal ptr) size _ ->
+        LC.Free (LC.VarLocal ptr) (Just size) _ ->
           case consumeAlloc matchMode ptr size cont of
             Just cont' ->
               freeMallocCancel matchMode gensymHandle cont'
@@ -171,7 +171,7 @@ captureFirstFree matchMode gensymHandle size lowComp =
       fmap (mapCaptureComp (LC.Let x op)) <$> captureFirstFree matchMode gensymHandle size cont
     LC.Cont op cont ->
       case op of
-        LC.Free (LC.VarLocal ptr) size' _
+        LC.Free (LC.VarLocal ptr) (Just size') _
           | sizeMatches matchMode size' size ->
               pure $ Just $ foundCapture cont (LC.VarLocal ptr)
         _ ->

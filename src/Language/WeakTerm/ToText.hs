@@ -370,6 +370,8 @@ showMagic (M.WeakMagic magic) =
       showLowMagic lowMagic
     M.Malloc size ->
       "magic malloc" <> inParen (toText size)
+    M.Free _ ptr ->
+      "magic free" <> inParen (toText ptr)
     M.InspectType _ typeValueExpr e ->
       "magic inspect-type" <> inParen (toTextType typeValueExpr <> ", " <> toTextType e)
     M.EqType _ typeExpr1 typeExpr2 ->

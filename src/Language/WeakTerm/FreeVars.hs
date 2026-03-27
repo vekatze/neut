@@ -112,6 +112,8 @@ freeVarsMagicTerm (M.WeakMagic magic) =
       freeVarsLowMagicTerm lowMagic
     M.Malloc size ->
       freeVars size
+    M.Free _ ptr ->
+      freeVars ptr
     M.InspectType {} ->
       S.empty
     M.EqType {} ->
@@ -284,6 +286,8 @@ freeVarsMagic (M.WeakMagic magic) =
       freeVarsLowMagic lowMagic
     M.Malloc size ->
       freeVarsAll size
+    M.Free unitType ptr ->
+      S.union (freeVarsType unitType) (freeVarsAll ptr)
     M.InspectType _ typeValueExpr e ->
       S.union (freeVarsType typeValueExpr) (freeVarsType e)
     M.EqType _ typeExpr1 typeExpr2 ->

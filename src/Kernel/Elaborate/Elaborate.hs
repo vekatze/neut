@@ -438,6 +438,10 @@ elaborate' h term = do
         M.Malloc size -> do
           size' <- elaborate' h size
           return $ m :< TM.Magic (M.Malloc size')
+        M.Free unitType ptr -> do
+          unitType' <- elaborateType h unitType
+          ptr' <- elaborate' h ptr
+          return $ m :< TM.Magic (M.Free unitType' ptr')
         M.InspectType mid typeValueExpr typeExpr -> do
           typeValueExpr' <- elaborateType h typeValueExpr
           typeExpr' <- elaborateType h typeExpr

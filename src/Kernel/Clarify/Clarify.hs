@@ -700,7 +700,7 @@ tidyCursorList h tenv dataArgsMap consumedCursorList cont =
           dataTypes' <- mapM (clarifyType h tenv) dataTypes
           (cont', chain) <- tidyCursorList h tenv dataArgsMap rest cont
           tmp <- liftIO $ Linearize.linearize (linearizeHandle h) (zip dataArgVars dataTypes') $ do
-            C.Free (C.VarLocal cursor) cursorSize cont'
+            C.Free (C.VarLocal cursor) (Just cursorSize) cont'
           let newChain = zipWith (\x t@(m :< _) -> (m, VK.Normal, x, t)) dataArgVars dataTypes
           return (tmp, newChain ++ chain)
 
@@ -816,6 +816,11 @@ clarifyMagic h tenv der = do
       return $
         Utility.bindLet [(sizeVarName, size')] $
           C.Primitive (C.Alloc sizeVar)
+    M.Free _ ptr -> do
+      (ptrVarName, ptr', ptrVar) <- clarifyPlus h tenv ptr
+      return $
+        Utility.bindLet [(ptrVarName, ptr')] $
+          C.Free ptrVar Nothing (C.UpIntro C.null)
     M.InspectType {} ->
       error "InspectType should be evaluated during inline expansion"
     M.EqType {} ->

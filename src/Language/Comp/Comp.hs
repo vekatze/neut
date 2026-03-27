@@ -82,7 +82,7 @@ data Comp
   | DestCall Comp Value [Value]
   | WriteToDest Value Comp Comp Comp
   | Primitive Primitive
-  | Free Value Int Comp -- number of bytes to deallocate
+  | Free Value (Maybe Int) Comp -- number of bytes to deallocate
   | Unreachable
 
 instance Show Comp where

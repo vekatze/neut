@@ -258,7 +258,7 @@ materializeDestCall h sizeComp f ds = do
                   True
                   immediateResultName
                   (C.Primitive $ C.Magic $ LM.Load BLT.Pointer immediateDestVar)
-                  (C.Free immediateDestVar (DS.reify (baseSize h) `div` 8) (C.UpIntro immediateResultVar))
+                  (C.Free immediateDestVar (Just (DS.reify (baseSize h) `div` 8)) (C.UpIntro immediateResultVar))
               )
           )
   let boxedBody size =
@@ -303,7 +303,7 @@ materializeWriteToDest h dest sizeComp result cont = do
           True
           ignoredBoxed
           (C.Primitive $ C.Memcpy dest resultVar sizeVar)
-          (C.Free resultVar 0 (C.UpIntro C.null))
+          (C.Free resultVar (Just 0) (C.UpIntro C.null))
   let branch =
         C.EnumElim
           []
@@ -632,7 +632,7 @@ freeIfNecessary h shouldDeallocate pointer len cont = do
   if shouldDeallocate
     then do
       freeID <- Gensym.newCount (gensymHandle h)
-      return $ LC.Cont (LC.Free pointer (wordCountToByteSize h len) freeID) cont
+      return $ LC.Cont (LC.Free pointer (Just (wordCountToByteSize h len)) freeID) cont
     else do
       return cont
 
