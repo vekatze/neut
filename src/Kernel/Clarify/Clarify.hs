@@ -597,6 +597,10 @@ getDataSlotCountFromType t =
     m :< _ ->
       raiseCritical m "Clarify.getDataSlotCountFromType"
 
+dataSlotCountToByteSize :: Handle -> Int -> Int
+dataSlotCountToByteSize h slotCount =
+  slotCount * (DS.reify (baseSize h) `div` 8)
+
 clarifyDataClause ::
   Handle ->
   Int ->
@@ -721,7 +725,7 @@ clarifyCase h tenv isNoetic dataArgsMap cursor cursorType decisionCase = do
     DT.ConsCase (DT.ConsCaseRecord {..}) -> do
       let (_, dataTypes) = unzip dataArgs
       dataArgVars <- liftIO $ mapM (const $ Gensym.newIdentFromText (gensymHandle h) "dataArg") dataTypes
-      cursorSize <- getDataSlotCountFromType cursorType
+      cursorSize <- dataSlotCountToByteSize h <$> getDataSlotCountFromType cursorType
       let dataArgsMap' = IntMap.insert (Ident.toInt cursor) (zip dataArgVars dataTypes, cursorSize) dataArgsMap
       let consArgs' = map (\(m, k, x, _) -> (m, k, x, m :< TM.Tau)) consArgs
       let prefixChain = TM.chainOfCaseWithoutCont tenv decisionCase

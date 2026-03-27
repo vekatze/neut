@@ -3,6 +3,7 @@ module Kernel.Clarify.Internal.Utility
     ResourceSpec (..),
     new,
     returnIntComp,
+    returnByteSizeComp,
     toAffineApp,
     toRelevantApp,
     bindLet,
@@ -96,6 +97,10 @@ data ResourceSpec = ResourceSpec
 returnIntComp :: Handle -> Integer -> C.Comp
 returnIntComp h value =
   C.UpIntro $ C.Int (dataSizeToIntSize (baseSize h)) value
+
+returnByteSizeComp :: Handle -> Integer -> C.Comp
+returnByteSizeComp h wordCount =
+  returnIntComp h $ wordCount * toInteger (DS.reify (baseSize h) `div` 8)
 
 registerSwitcher ::
   Handle ->

@@ -235,7 +235,7 @@ lowerComp h term =
       freeID <- liftIO $ Gensym.newCount (gensymHandle h)
       (ptrVar, ptr) <- liftIO $ newValueLocal h "ptr"
       lowerValue h ptrVar x
-        =<< return . LC.Cont (LC.Free ptr (wordCountToByteSize h size) freeID)
+        =<< return . LC.Cont (LC.Free ptr size freeID)
         =<< lowerComp h cont
     C.Unreachable ->
       return LC.Unreachable
@@ -250,7 +250,7 @@ materializeDestCall h sizeComp f ds = do
         C.UpElim
           True
           immediateDestName
-          (C.Primitive $ C.Alloc $ C.Int IntSize64 1)
+          (C.Primitive $ C.Alloc $ C.Int IntSize64 (toInteger $ DS.reify (baseSize h) `div` 8))
           ( C.UpElimCallVoid
               f
               (immediateDestVar : ds)
@@ -258,7 +258,7 @@ materializeDestCall h sizeComp f ds = do
                   True
                   immediateResultName
                   (C.Primitive $ C.Magic $ LM.Load BLT.Pointer immediateDestVar)
-                  (C.Free immediateDestVar 1 (C.UpIntro immediateResultVar))
+                  (C.Free immediateDestVar (DS.reify (baseSize h) `div` 8) (C.UpIntro immediateResultVar))
               )
           )
   let boxedBody size =
@@ -339,25 +339,22 @@ lowerCompPrimitive h resultVar codeOp cont =
       lowerValue h ptrVar v
         =<< return (LC.Let resultVar (LC.GetElementPtr (ptr, toLowType aggType) indexList') cont)
     C.Alloc size -> do
-      let wordBytes = toInteger $ DS.reify (baseSize h) `div` 8
       allocID <- liftIO $ Gensym.newCount (gensymHandle h)
       case size of
-        C.Int _ knownWordCount -> do
-          let knownByteCount = knownWordCount * wordBytes
+        C.Int _ knownByteCount ->
           return $ LC.Let resultVar (LC.Alloc (Left knownByteCount) allocID) cont
-        runtimeSize -> do
+        runtimeByteSize -> do
           byteCountVarName <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "size"
           let byteCountValue = C.VarLocal byteCountVarName
           (castVar, castValue) <- liftIO $ newValueLocal h "size"
           let lowInt = LT.PrimNum $ PT.Int $ dataSizeToIntSize (baseSize h)
-          lowerCompPrimitive h byteCountVarName (C.mulInt64 runtimeSize (C.Int IntSize64 wordBytes))
+          lowerValue h byteCountVarName runtimeByteSize
             =<< lowerValueLetCast h castVar byteCountValue lowInt
             =<< return (LC.Let resultVar (LC.Alloc (Right castValue) allocID) cont)
     C.Memcpy dest src size -> do
-      let wordBytes = toInteger $ DS.reify (baseSize h) `div` 8
       byteCountVarName <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "size"
       let byteCountValue = C.VarLocal byteCountVarName
-      lowerCompPrimitive h byteCountVarName (C.mulInt64 size (C.Int IntSize64 wordBytes))
+      lowerValue h byteCountVarName size
         =<< lowerCompPrimitive h resultVar (memcpyExternal dest src byteCountValue) cont
     C.Magic der -> do
       case der of
