@@ -116,6 +116,24 @@ refreshMagic h magic =
     M.LowMagic lowMagic -> do
       lowMagic' <- refreshLowMagic h lowMagic
       return $ M.LowMagic lowMagic'
+    M.Calloc sizeType num size -> do
+      sizeType' <- refreshType h sizeType
+      num' <- refresh h num
+      size' <- refresh h size
+      return $ M.Calloc sizeType' num' size'
+    M.Malloc sizeType size -> do
+      sizeType' <- refreshType h sizeType
+      size' <- refresh h size
+      return $ M.Malloc sizeType' size'
+    M.Realloc sizeType ptr size -> do
+      sizeType' <- refreshType h sizeType
+      ptr' <- refresh h ptr
+      size' <- refresh h size
+      return $ M.Realloc sizeType' ptr' size'
+    M.Free unitType ptr -> do
+      unitType' <- refreshType h unitType
+      ptr' <- refresh h ptr
+      return $ M.Free unitType' ptr'
     M.InspectType mid typeValueExpr typeExpr -> do
       typeValueExpr' <- refreshType h typeValueExpr
       typeExpr' <- refreshType h typeExpr

@@ -313,6 +313,24 @@ inline' h term = do
             _ -> do
               lowMagic' <- inlineLowMagic h lowMagic
               return (m :< TM.Magic (M.LowMagic lowMagic'))
+        M.Calloc sizeType num size -> do
+          sizeType' <- inlineType' h sizeType
+          num' <- inline' h num
+          size' <- inline' h size
+          return (m :< TM.Magic (M.Calloc sizeType' num' size'))
+        M.Malloc sizeType size -> do
+          sizeType' <- inlineType' h sizeType
+          size' <- inline' h size
+          return (m :< TM.Magic (M.Malloc sizeType' size'))
+        M.Realloc sizeType ptr size -> do
+          sizeType' <- inlineType' h sizeType
+          ptr' <- inline' h ptr
+          size' <- inline' h size
+          return (m :< TM.Magic (M.Realloc sizeType' ptr' size'))
+        M.Free unitType ptr -> do
+          unitType' <- inlineType' h unitType
+          ptr' <- inline' h ptr
+          return (m :< TM.Magic (M.Free unitType' ptr'))
         M.InspectType mid _ typeExpr -> do
           typeExpr' <- inlineType' h typeExpr
           Magic.evaluateInspectType h m mid typeExpr' >>= inline' h

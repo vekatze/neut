@@ -435,6 +435,24 @@ elaborate' h term = do
               arg1' <- elaborate' h arg1
               arg2' <- elaborate' h arg2
               return $ m :< TM.Magic (M.LowMagic $ LM.CallType func' arg1' arg2')
+        M.Calloc sizeType num size -> do
+          sizeType' <- elaborateType h sizeType
+          num' <- elaborate' h num
+          size' <- elaborate' h size
+          return $ m :< TM.Magic (M.Calloc sizeType' num' size')
+        M.Malloc sizeType size -> do
+          sizeType' <- elaborateType h sizeType
+          size' <- elaborate' h size
+          return $ m :< TM.Magic (M.Malloc sizeType' size')
+        M.Realloc sizeType ptr size -> do
+          sizeType' <- elaborateType h sizeType
+          ptr' <- elaborate' h ptr
+          size' <- elaborate' h size
+          return $ m :< TM.Magic (M.Realloc sizeType' ptr' size')
+        M.Free unitType ptr -> do
+          unitType' <- elaborateType h unitType
+          ptr' <- elaborate' h ptr
+          return $ m :< TM.Magic (M.Free unitType' ptr')
         M.InspectType mid typeValueExpr typeExpr -> do
           typeValueExpr' <- elaborateType h typeValueExpr
           typeExpr' <- elaborateType h typeExpr

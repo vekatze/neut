@@ -108,8 +108,10 @@ data Op
   | StackAlloc StackAllocInfo
   | StackLifetimeStart StackSlotID
   | StackLifetimeEnd StackSlotID
+  | Calloc Value Value
   | Alloc (Either Integer Value) AllocID
-  | Free Value Int FreeID
+  | Realloc Value Value
+  | Free Value (Maybe Int) FreeID
   | PrimOp PrimOp [Value]
   deriving (Show)
 

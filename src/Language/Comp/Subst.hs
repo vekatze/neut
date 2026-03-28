@@ -116,12 +116,12 @@ substPrimitive sub c =
       C.PrimOp op vs'
     C.ShiftPointer v size index ->
       C.ShiftPointer (substValue sub v) size index
+    C.Calloc num size ->
+      C.Calloc (substValue sub num) (substValue sub size)
     C.Alloc size ->
-      C.Alloc $ case size of
-        Left knownSize ->
-          Left knownSize
-        Right runtimeSize ->
-          Right (substValue sub runtimeSize)
+      C.Alloc (substValue sub size)
+    C.Realloc ptr size ->
+      C.Realloc (substValue sub ptr) (substValue sub size)
     C.Memcpy dest src size ->
       C.Memcpy (substValue sub dest) (substValue sub src) (substValue sub size)
     C.Magic der -> do

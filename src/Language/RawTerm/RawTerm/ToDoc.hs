@@ -291,6 +291,46 @@ toDoc term =
                       RT.mapEL toDoc size
                     ]
             ]
+        Calloc c1 num size mc -> do
+          D.join
+            [ attachComment (c ++ c1) $ D.text "magic calloc",
+              SE.decode $
+                attachOptionalComment mc $
+                  SE.fromListWithComment
+                    (Just SE.Paren)
+                    SE.Comma
+                    [RT.mapEL toDoc num, RT.mapEL toDoc size]
+            ]
+        Malloc c1 size mc -> do
+          D.join
+            [ attachComment (c ++ c1) $ D.text "magic malloc",
+              SE.decode $
+                attachOptionalComment mc $
+                  SE.fromListWithComment
+                    (Just SE.Paren)
+                    SE.Comma
+                    [RT.mapEL toDoc size]
+            ]
+        Realloc c1 ptr size mc -> do
+          D.join
+            [ attachComment (c ++ c1) $ D.text "magic realloc",
+              SE.decode $
+                attachOptionalComment mc $
+                  SE.fromListWithComment
+                    (Just SE.Paren)
+                    SE.Comma
+                    [RT.mapEL toDoc ptr, RT.mapEL toDoc size]
+            ]
+        Free c1 ptr mc -> do
+          D.join
+            [ attachComment (c ++ c1) $ D.text "magic free",
+              SE.decode $
+                attachOptionalComment mc $
+                  SE.fromListWithComment
+                    (Just SE.Paren)
+                    SE.Comma
+                    [RT.mapEL toDoc ptr]
+            ]
         External c1 _ funcName c2 args varArgsOrNone -> do
           let args' = SE.decode $ fmap toDoc args
           case varArgsOrNone of

@@ -60,6 +60,8 @@ substOp sub llvmOp =
       LC.StackLifetimeStart stackSlotID
     LC.StackLifetimeEnd stackSlotID ->
       LC.StackLifetimeEnd stackSlotID
+    LC.Calloc num size -> do
+      LC.Calloc (substLowValue sub num) (substLowValue sub size)
     LC.Alloc size allocID -> do
       LC.Alloc
         ( case size of
@@ -69,6 +71,8 @@ substOp sub llvmOp =
               Right (substLowValue sub runtimeSize)
         )
         allocID
+    LC.Realloc ptr size -> do
+      LC.Realloc (substLowValue sub ptr) (substLowValue sub size)
     LC.Free d size freeID -> do
       LC.Free (substLowValue sub d) size freeID
     LC.PrimOp op ds -> do

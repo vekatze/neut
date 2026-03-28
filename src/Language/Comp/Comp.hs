@@ -82,7 +82,7 @@ data Comp
   | DestCall Comp Value [Value]
   | WriteToDest Value Comp Comp Comp
   | Primitive Primitive
-  | Free Value Int Comp
+  | Free Value (Maybe Int) Comp -- number of bytes to deallocate
   | Unreachable
 
 instance Show Comp where
@@ -130,8 +130,10 @@ type ShouldDeallocate = Bool
 data Primitive
   = PrimOp PrimOp [Value]
   | ShiftPointer Value Integer Integer -- (ptr, num-of-elems, index)
-  | Alloc (Either Integer Value) -- number of words to allocate
-  | Memcpy Value Value Value -- (dest, src, size-in-words)
+  | Calloc Value Value -- num, size-in-bytes
+  | Alloc Value -- number of bytes to allocate
+  | Realloc Value Value -- ptr, size-in-bytes
+  | Memcpy Value Value Value -- (dest, src, size-in-bytes)
   | Magic (LowMagic BaseLowType Value Value)
   deriving (Show)
 

@@ -1,6 +1,8 @@
 module Language.Common.ExternalName
   ( ExternalName (..),
+    calloc,
     malloc,
+    realloc,
     free,
     memcpy,
     toBuilder,
@@ -21,9 +23,17 @@ instance Binary ExternalName
 
 instance Hashable ExternalName
 
+calloc :: ExternalName
+calloc =
+  ExternalName "calloc"
+
 malloc :: ExternalName
 malloc =
   ExternalName "malloc"
+
+realloc :: ExternalName
+realloc =
+  ExternalName "realloc"
 
 free :: ExternalName
 free =

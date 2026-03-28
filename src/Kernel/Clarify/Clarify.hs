@@ -597,6 +597,10 @@ getDataSlotCountFromType t =
     m :< _ ->
       raiseCritical m "Clarify.getDataSlotCountFromType"
 
+dataSlotCountToByteSize :: Handle -> Int -> Int
+dataSlotCountToByteSize h slotCount =
+  slotCount * (DS.reify (baseSize h) `div` 8)
+
 clarifyDataClause ::
   Handle ->
   Int ->
@@ -696,7 +700,7 @@ tidyCursorList h tenv dataArgsMap consumedCursorList cont =
           dataTypes' <- mapM (clarifyType h tenv) dataTypes
           (cont', chain) <- tidyCursorList h tenv dataArgsMap rest cont
           tmp <- liftIO $ Linearize.linearize (linearizeHandle h) (zip dataArgVars dataTypes') $ do
-            C.Free (C.VarLocal cursor) cursorSize cont'
+            C.Free (C.VarLocal cursor) (Just cursorSize) cont'
           let newChain = zipWith (\x t@(m :< _) -> (m, VK.Normal, x, t)) dataArgVars dataTypes
           return (tmp, newChain ++ chain)
 
@@ -721,7 +725,7 @@ clarifyCase h tenv isNoetic dataArgsMap cursor cursorType decisionCase = do
     DT.ConsCase (DT.ConsCaseRecord {..}) -> do
       let (_, dataTypes) = unzip dataArgs
       dataArgVars <- liftIO $ mapM (const $ Gensym.newIdentFromText (gensymHandle h) "dataArg") dataTypes
-      cursorSize <- getDataSlotCountFromType cursorType
+      cursorSize <- dataSlotCountToByteSize h <$> getDataSlotCountFromType cursorType
       let dataArgsMap' = IntMap.insert (Ident.toInt cursor) (zip dataArgVars dataTypes, cursorSize) dataArgsMap
       let consArgs' = map (\(m, k, x, _) -> (m, k, x, m :< TM.Tau)) consArgs
       let prefixChain = TM.chainOfCaseWithoutCont tenv decisionCase
@@ -807,6 +811,28 @@ clarifyMagic h tenv der = do
           return $
             Utility.bindLet [(funcVarName, func'), (arg1VarName, arg1'), (arg2VarName, arg2')] $
               C.Primitive (C.Magic (LM.CallType funcVar arg1Var arg2Var))
+    M.Calloc _ num size -> do
+      (numVarName, num', numVar) <- clarifyPlus h tenv num
+      (sizeVarName, size', sizeVar) <- clarifyPlus h tenv size
+      return $
+        Utility.bindLet [(numVarName, num'), (sizeVarName, size')] $
+          C.Primitive (C.Calloc numVar sizeVar)
+    M.Malloc _ size -> do
+      (sizeVarName, size', sizeVar) <- clarifyPlus h tenv size
+      return $
+        Utility.bindLet [(sizeVarName, size')] $
+          C.Primitive (C.Alloc sizeVar)
+    M.Realloc _ ptr size -> do
+      (ptrVarName, ptr', ptrVar) <- clarifyPlus h tenv ptr
+      (sizeVarName, size', sizeVar) <- clarifyPlus h tenv size
+      return $
+        Utility.bindLet [(ptrVarName, ptr'), (sizeVarName, size')] $
+          C.Primitive (C.Realloc ptrVar sizeVar)
+    M.Free _ ptr -> do
+      (ptrVarName, ptr', ptrVar) <- clarifyPlus h tenv ptr
+      return $
+        Utility.bindLet [(ptrVarName, ptr')] $
+          C.Free ptrVar Nothing (C.UpIntro C.null)
     M.InspectType {} ->
       error "InspectType should be evaluated during inline expansion"
     M.EqType {} ->

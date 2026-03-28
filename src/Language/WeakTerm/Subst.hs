@@ -444,6 +444,24 @@ substMagic h sub (WeakMagic magic) = do
     M.LowMagic lowMagic -> do
       lowMagic' <- substLowMagic h sub lowMagic
       return $ M.LowMagic lowMagic'
+    M.Calloc sizeType num size -> do
+      sizeType' <- substType h sub sizeType
+      num' <- subst h sub num
+      size' <- subst h sub size
+      return $ M.Calloc sizeType' num' size'
+    M.Malloc sizeType size -> do
+      sizeType' <- substType h sub sizeType
+      size' <- subst h sub size
+      return $ M.Malloc sizeType' size'
+    M.Realloc sizeType ptr size -> do
+      sizeType' <- substType h sub sizeType
+      ptr' <- subst h sub ptr
+      size' <- subst h sub size
+      return $ M.Realloc sizeType' ptr' size'
+    M.Free unitType ptr -> do
+      unitType' <- substType h sub unitType
+      ptr' <- subst h sub ptr
+      return $ M.Free unitType' ptr'
     M.InspectType sgl typeValueExpr e -> do
       typeValueExpr' <- substType h sub typeValueExpr
       e' <- substType h sub e

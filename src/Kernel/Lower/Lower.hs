@@ -235,7 +235,7 @@ lowerComp h term =
       freeID <- liftIO $ Gensym.newCount (gensymHandle h)
       (ptrVar, ptr) <- liftIO $ newValueLocal h "ptr"
       lowerValue h ptrVar x
-        =<< return . LC.Cont (LC.Free ptr (wordCountToByteSize h size) freeID)
+        =<< return . LC.Cont (LC.Free ptr size freeID)
         =<< lowerComp h cont
     C.Unreachable ->
       return LC.Unreachable
@@ -250,7 +250,7 @@ materializeDestCall h sizeComp f ds = do
         C.UpElim
           True
           immediateDestName
-          (C.Primitive $ C.Alloc $ Left 1)
+          (C.Primitive $ C.Alloc $ C.Int IntSize64 (toInteger $ DS.reify (baseSize h) `div` 8))
           ( C.UpElimCallVoid
               f
               (immediateDestVar : ds)
@@ -258,7 +258,7 @@ materializeDestCall h sizeComp f ds = do
                   True
                   immediateResultName
                   (C.Primitive $ C.Magic $ LM.Load BLT.Pointer immediateDestVar)
-                  (C.Free immediateDestVar 1 (C.UpIntro immediateResultVar))
+                  (C.Free immediateDestVar (Just (DS.reify (baseSize h) `div` 8)) (C.UpIntro immediateResultVar))
               )
           )
   let boxedBody size =
@@ -271,7 +271,7 @@ materializeDestCall h sizeComp f ds = do
     C.UpIntro (C.Int _ v) -> do
       if v < 0
         then return immediateBody
-        else return $ boxedBody $ Left v
+        else return $ boxedBody $ C.Int IntSize64 v
     _ -> do
       return $
         C.UpElim
@@ -281,7 +281,7 @@ materializeDestCall h sizeComp f ds = do
           ( C.EnumElim
               []
               sizeVar
-              (boxedBody $ Right sizeVar)
+              (boxedBody sizeVar)
               [(EC.Int (-1), immediateBody)]
           )
 
@@ -303,7 +303,7 @@ materializeWriteToDest h dest sizeComp result cont = do
           True
           ignoredBoxed
           (C.Primitive $ C.Memcpy dest resultVar sizeVar)
-          (C.Free resultVar 0 (C.UpIntro C.null))
+          (C.Free resultVar (Just 0) (C.UpIntro C.null))
   let branch =
         C.EnumElim
           []
@@ -338,26 +338,46 @@ lowerCompPrimitive h resultVar codeOp cont =
       let indexList' = [(LC.Int 0, LT.PrimNum $ PT.Int IntSize32), (LC.Int index, LT.PrimNum $ PT.Int IntSize32)]
       lowerValue h ptrVar v
         =<< return (LC.Let resultVar (LC.GetElementPtr (ptr, toLowType aggType) indexList') cont)
+    C.Calloc num size -> do
+      byteCountVarName <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "size"
+      let byteCountValue = C.VarLocal byteCountVarName
+      numVarName <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "num"
+      let numValue = C.VarLocal numVarName
+      (castSizeVar, castSizeValue) <- liftIO $ newValueLocal h "size"
+      (castNumVar, castNumValue) <- liftIO $ newValueLocal h "num"
+      let lowInt = LT.PrimNum $ PT.Int $ dataSizeToIntSize (baseSize h)
+      lowerValue h byteCountVarName size
+        =<< lowerValue h numVarName num
+        =<< lowerValueLetCast h castSizeVar byteCountValue lowInt
+        =<< lowerValueLetCast h castNumVar numValue lowInt
+        =<< return (LC.Let resultVar (LC.Calloc castNumValue castSizeValue) cont)
     C.Alloc size -> do
-      let wordBytes = toInteger $ DS.reify (baseSize h) `div` 8
       allocID <- liftIO $ Gensym.newCount (gensymHandle h)
       case size of
-        Left knownWordCount -> do
-          let knownByteCount = knownWordCount * wordBytes
+        C.Int _ knownByteCount ->
           return $ LC.Let resultVar (LC.Alloc (Left knownByteCount) allocID) cont
-        Right runtimeSize -> do
+        runtimeByteSize -> do
           byteCountVarName <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "size"
           let byteCountValue = C.VarLocal byteCountVarName
           (castVar, castValue) <- liftIO $ newValueLocal h "size"
           let lowInt = LT.PrimNum $ PT.Int $ dataSizeToIntSize (baseSize h)
-          lowerCompPrimitive h byteCountVarName (C.mulInt64 runtimeSize (C.Int IntSize64 wordBytes))
+          lowerValue h byteCountVarName runtimeByteSize
             =<< lowerValueLetCast h castVar byteCountValue lowInt
             =<< return (LC.Let resultVar (LC.Alloc (Right castValue) allocID) cont)
-    C.Memcpy dest src size -> do
-      let wordBytes = toInteger $ DS.reify (baseSize h) `div` 8
+    C.Realloc ptr size -> do
       byteCountVarName <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "size"
       let byteCountValue = C.VarLocal byteCountVarName
-      lowerCompPrimitive h byteCountVarName (C.mulInt64 size (C.Int IntSize64 wordBytes))
+      (castVar, castValue) <- liftIO $ newValueLocal h "size"
+      (ptrVar, ptrValue) <- liftIO $ newValueLocal h "ptr"
+      let lowInt = LT.PrimNum $ PT.Int $ dataSizeToIntSize (baseSize h)
+      lowerValue h byteCountVarName size
+        =<< lowerValueLetCast h castVar byteCountValue lowInt
+        =<< lowerValueLetCast h ptrVar ptr LT.Pointer
+        =<< return (LC.Let resultVar (LC.Realloc ptrValue castValue) cont)
+    C.Memcpy dest src size -> do
+      byteCountVarName <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "size"
+      let byteCountValue = C.VarLocal byteCountVarName
+      lowerValue h byteCountVarName size
         =<< lowerCompPrimitive h resultVar (memcpyExternal dest src byteCountValue) cont
     C.Magic der -> do
       case der of
@@ -635,7 +655,7 @@ freeIfNecessary h shouldDeallocate pointer len cont = do
   if shouldDeallocate
     then do
       freeID <- Gensym.newCount (gensymHandle h)
-      return $ LC.Cont (LC.Free pointer (wordCountToByteSize h len) freeID) cont
+      return $ LC.Cont (LC.Free pointer (Just (wordCountToByteSize h len)) freeID) cont
     else do
       return cont
 
@@ -697,8 +717,8 @@ aggTypeByteSize h aggType =
   lowTypeByteSize h (toLowType aggType)
 
 lowTypeByteSize :: Handle -> LT.LowType -> Integer
-lowTypeByteSize h lowType =
-  lowTypeToByteSize (baseSize h) lowType
+lowTypeByteSize h =
+  lowTypeToByteSize (baseSize h)
 
 commConv :: Ident -> LC.Comp -> LC.Comp -> LC.Comp
 commConv x lowComp cont2 =
@@ -725,7 +745,9 @@ commConv x lowComp cont2 =
 
 defaultForeignList :: A.Arch -> [F.Foreign]
 defaultForeignList arch =
-  [ F.Foreign internalHint EN.malloc [getWordType arch] (FCT.Cod BLT.Pointer),
+  [ F.Foreign internalHint EN.calloc [getWordType arch, getWordType arch] (FCT.Cod BLT.Pointer),
+    F.Foreign internalHint EN.malloc [getWordType arch] (FCT.Cod BLT.Pointer),
+    F.Foreign internalHint EN.realloc [BLT.Pointer, getWordType arch] (FCT.Cod BLT.Pointer),
     F.Foreign internalHint EN.free [BLT.Pointer] FCT.Void
   ]
 

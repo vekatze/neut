@@ -80,8 +80,28 @@ emitLowOp ax lowOp =
       ""
     LC.StackLifetimeEnd {} ->
       ""
+    LC.Calloc num size -> do
+      unwordsL
+        [ "call fastcc",
+          "ptr",
+          "@calloc("
+            <> emitLowType (intType ax)
+            <> " "
+            <> emitValue num
+            <> ", "
+            <> emitLowType (intType ax)
+            <> " "
+            <> emitValue size
+            <> ")"
+        ]
     LC.Alloc size _ -> do
       unwordsL ["call fastcc", "ptr", "@malloc(" <> emitLowType (intType ax) <> " " <> emitAllocSize size <> ")"]
+    LC.Realloc ptr size -> do
+      unwordsL
+        [ "call fastcc",
+          "ptr",
+          "@realloc(ptr " <> emitValue ptr <> ", " <> emitLowType (intType ax) <> " " <> emitValue size <> ")"
+        ]
     LC.Free d _ _ -> do
       unwordsL ["call fastcc", "void", "@free(ptr " <> emitValue d <> ")"]
     LC.PrimOp op args -> do
