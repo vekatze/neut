@@ -26,6 +26,7 @@ import Data.Text qualified as T
 import Gensym.Gensym qualified as Gensym
 import Gensym.Handle qualified as Gensym
 import Kernel.Clarify.Internal.Handle.CompDef qualified as CompDef
+import Kernel.Common.Allocator (Allocator, AllocatorSpec (..), allocatorSpec)
 import Kernel.Common.Arch
 import Kernel.Common.Arch qualified as A
 import Kernel.Common.Const
@@ -64,7 +65,8 @@ import Language.LowComp.LowComp qualified as LC
 import Logger.Hint (internalHint)
 
 data Handle = Handle
-  { arch :: Arch,
+  { allocator :: Allocator,
+    arch :: Arch,
     baseSize :: DS.DataSize,
     gensymHandle :: Gensym.Handle,
     envHandle :: Env.Handle,
@@ -75,21 +77,22 @@ data Handle = Handle
     definedNameSet :: IORef (S.Set DD.DefiniteDescription)
   }
 
-new :: Global.Handle -> IO Handle
-new (Global.Handle {..}) = do
+new :: Global.Handle -> Target -> App Handle
+new (Global.Handle {..}) target = do
+  allocator <- Env.getAllocatorByTarget envHandle target
   let arch = Platform.getArch platformHandle
   let baseSize = Platform.getDataSize platformHandle
   let substHandle = Subst.new gensymHandle
-  defMap <- CompDef.get compDefHandle
+  defMap <- liftIO $ CompDef.get compDefHandle
   let reduceHandle = Reduce.new substHandle gensymHandle defMap
-  declEnv <- liftIO $ newIORef $ makeBaseDeclEnv arch
+  declEnv <- liftIO $ newIORef $ makeBaseDeclEnv arch (allocatorSpec allocator)
   staticTextList <- liftIO $ newIORef []
   definedNameSet <- liftIO $ newIORef S.empty
   return $ Handle {..}
 
-makeBaseDeclEnv :: Arch -> DN.DeclEnv
-makeBaseDeclEnv arch = do
-  Map.fromList $ flip map (defaultForeignList arch) $ \(F.Foreign _ name domList cod) -> do
+makeBaseDeclEnv :: Arch -> AllocatorSpec -> DN.DeclEnv
+makeBaseDeclEnv arch spec = do
+  Map.fromList $ flip map (defaultForeignList arch spec) $ \(F.Foreign _ name domList cod) -> do
     (DN.Ext name, (domList, cod))
 
 lower :: Handle -> [C.CompStmt] -> App LC.LowCode
@@ -743,12 +746,12 @@ commConv x lowComp cont2 =
     LC.Phi _ ->
       LC.Unreachable -- shouldn't occur
 
-defaultForeignList :: A.Arch -> [F.Foreign]
-defaultForeignList arch =
-  [ F.Foreign internalHint EN.calloc [getWordType arch, getWordType arch] (FCT.Cod BLT.Pointer),
-    F.Foreign internalHint EN.malloc [getWordType arch] (FCT.Cod BLT.Pointer),
-    F.Foreign internalHint EN.realloc [BLT.Pointer, getWordType arch] (FCT.Cod BLT.Pointer),
-    F.Foreign internalHint EN.free [BLT.Pointer] FCT.Void
+defaultForeignList :: A.Arch -> AllocatorSpec -> [F.Foreign]
+defaultForeignList arch spec =
+  [ F.Foreign internalHint (EN.ExternalName $ callocName spec) [getWordType arch, getWordType arch] (FCT.Cod BLT.Pointer),
+    F.Foreign internalHint (EN.ExternalName $ mallocName spec) [getWordType arch] (FCT.Cod BLT.Pointer),
+    F.Foreign internalHint (EN.ExternalName $ reallocName spec) [BLT.Pointer, getWordType arch] (FCT.Cod BLT.Pointer),
+    F.Foreign internalHint (EN.ExternalName $ freeName spec) [BLT.Pointer] FCT.Void
   ]
 
 getWordType :: A.Arch -> BLT.BaseLowType

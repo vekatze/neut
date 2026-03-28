@@ -13,6 +13,7 @@ import Data.IntMap qualified as IntMap
 import Data.List (transpose)
 import Data.Maybe (mapMaybe)
 import Gensym.Handle qualified as Gensym
+import Kernel.Common.Allocator (AllocatorSpec)
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.Platform qualified as Platform
 import Kernel.Emit.Builder
@@ -37,13 +38,13 @@ data Handle = Handle
     labelMapRef :: IORef (IntMap.IntMap Ident)
   }
 
-new :: Global.Handle -> Builder -> IO Handle
-new globalHandle retType = do
+new :: Global.Handle -> Builder -> AllocatorSpec -> IO Handle
+new globalHandle retType allocatorSpec = do
   let currentLabel = Nothing
   let goalLabel = Nothing
   labelMapRef <- liftIO $ newIORef IntMap.empty
   let baseSize = Platform.getDataSize (Global.platformHandle globalHandle)
-  let emitOpHandle = EmitOp.new baseSize
+  let emitOpHandle = EmitOp.new baseSize allocatorSpec
   let gensymHandle = Global.gensymHandle globalHandle
   return $ Handle {..}
 

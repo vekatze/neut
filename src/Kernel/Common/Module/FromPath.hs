@@ -16,6 +16,7 @@ import Data.Text qualified as T
 import Ens.Ens (dictFromListVertical')
 import Ens.Ens qualified as E
 import Ens.Parse qualified as Ens
+import Kernel.Common.Allocator (Allocator (..), defaultAllocator, showAllocator)
 import Kernel.Common.ClangOption qualified as CL
 import Kernel.Common.Const (archiveRelDir, cacheRelDir, sourceRelDir)
 import Kernel.Common.Module
@@ -97,13 +98,27 @@ interpretTarget (_, targetDict) = do
   kvs <- forM (SE.extract targetDict) $ \(k, v) -> do
     entryPoint <- liftEither (E.access keyMain v) >>= interpretSourceLocator
     clangOption <- interpretClangOption v
-    return (k, TargetSummary {entryPoint, clangOption})
+    allocator <- interpretAllocator v
+    return (k, TargetSummary {entryPoint, clangOption, allocator})
   return $ Map.fromList kvs
+
+interpretAllocator :: E.Ens -> App Allocator
+interpretAllocator ens = do
+  allocatorEns <- liftEither $ E.access' keyAllocator (E.String $ showAllocator defaultAllocator) ens
+  (_, allocatorText) <- liftEither $ E.toString allocatorEns
+  case allocatorText of
+    "mimalloc" ->
+      return Mimalloc
+    "system" ->
+      return System
+    _ ->
+      return defaultAllocator
 
 interpretZenConfig :: E.Ens -> App ZenConfig
 interpretZenConfig zenDict = do
   clangOption <- interpretClangOption zenDict
-  return $ ZenConfig {clangOption}
+  allocator <- interpretAllocator zenDict
+  return $ ZenConfig {clangOption, allocator}
 
 interpretClangOption :: E.Ens -> App CL.ClangOption
 interpretClangOption v = do

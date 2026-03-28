@@ -41,6 +41,7 @@ import Kernel.Common.OutputKind qualified as OK
 import Kernel.Common.RunProcess qualified as RunProcess
 import Kernel.Common.Source
 import Kernel.Common.Target
+import Kernel.Common.ZenConfig qualified as Z
 import Kernel.Elaborate.Elaborate qualified as Elaborate
 import Kernel.Elaborate.Internal.Handle.Elaborate qualified as Elaborate
 import Kernel.Emit.Emit qualified as Emit
@@ -147,7 +148,7 @@ compile h target outputKindList contentSeq = do
     if b
       then do
         fmap Just $ liftIO $ async $ runApp $ do
-          lowerHandle <- liftIO $ Lower.new (globalHandle h)
+          lowerHandle <- Lower.new (globalHandle h) target
           virtualCode <- Lower.lower lowerHandle stmtList'
           emit h hp currentTime target outputKindList (Right source) virtualCode
       else return Nothing
@@ -180,7 +181,7 @@ emit ::
   LC.LowCode ->
   App ()
 emit h progressBar currentTime target outputKindList src code = do
-  let emitHandle = Emit.new (globalHandle h)
+  emitHandle <- Emit.new (globalHandle h) target
   let llvmHandle = Gen.new (globalHandle h)
   let clangOptions = getCompileOption target
   llvmIR' <- liftIO $ Emit.emit emitHandle code
@@ -218,7 +219,7 @@ compileEntryPoint h target outputKindList = do
         then return []
         else do
           clarifyMainHandle <- liftIO $ Clarify.newMain (globalHandle h)
-          lowerHandle <- liftIO $ Lower.new (globalHandle h)
+          lowerHandle <- Lower.new (globalHandle h) target
           mainVirtualCode <-
             liftIO (Clarify.clarifyEntryPoint clarifyMainHandle)
               >>= Lower.lowerEntryPoint lowerHandle t
@@ -343,10 +344,13 @@ expandClangOptions h target =
                           }
                     }
                 )
-        Zen path clangOption -> do
-          compileOption' <- expandOptions h (CL.compileOption clangOption)
-          linkOption' <- expandOptions h (CL.linkOption clangOption)
-          return $ Main $ Zen path $ CL.ClangOption {compileOption = compileOption', linkOption = linkOption'}
+        Zen path zenConfig -> do
+          let cl = Z.clangOption zenConfig
+          compileOption' <- expandOptions h (CL.compileOption cl)
+          linkOption' <- expandOptions h (CL.linkOption cl)
+          let cl' = CL.ClangOption {compileOption = compileOption', linkOption = linkOption'}
+          let zenConfig' = zenConfig {Z.clangOption = cl'}
+          return $ Main $ Zen path zenConfig'
     Peripheral {} ->
       return target
     PeripheralSingle {} ->

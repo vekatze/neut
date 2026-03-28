@@ -4,8 +4,29 @@ image-amd64 := "neut-haskell-amd64"
 
 image-arm64 := "neut-haskell-arm64"
 
+mimalloc-version := "v3.2.8"
+
+mimalloc-url := "https://github.com/microsoft/mimalloc.git"
+
+mimalloc-dir := justfile_directory() + "/cache/mimalloc"
+
+mimalloc-build-dir := justfile_directory() + "/cache/mimalloc/out/release"
+
 build-images:
     @just _build-images-in-parallel amd64-linux arm64-linux
+
+build-mimalloc:
+    @mkdir -p {{justfile_directory()}}/cache
+    @if [ -d {{mimalloc-dir}}/.git ]; then \
+      git -C {{mimalloc-dir}} fetch --depth 1 origin tag {{mimalloc-version}}; \
+    else \
+      git clone --branch {{mimalloc-version}} --depth 1 {{mimalloc-url}} {{mimalloc-dir}}; \
+    fi
+    @git -C {{mimalloc-dir}} checkout --detach "$(git -C {{mimalloc-dir}} rev-list -n 1 {{mimalloc-version}})"
+    @rm -rf {{mimalloc-build-dir}}
+    @cmake -S {{mimalloc-dir}} -B {{mimalloc-build-dir}} -DCMAKE_BUILD_TYPE=Release -DMI_BUILD_SHARED=OFF -DMI_BUILD_STATIC=ON -DMI_BUILD_OBJECT=OFF -DMI_BUILD_TESTS=OFF
+    @cmake --build {{mimalloc-build-dir}} --target mimalloc-static
+    @test -f {{mimalloc-build-dir}}/libmimalloc.a
 
 build-image-amd64-linux:
     @docker build . -f build/Dockerfile --platform linux/amd64 -t {{image-amd64}}
@@ -19,17 +40,23 @@ build-compilers:
     @just build-compiler-arm64-darwin
 
 build-compiler-amd64-linux:
-    @just _run-amd64-linux "just _generate-package-yaml && stack install neut --allow-different-user --local-bin-path ./bin/tmp-amd64-linux"
+    @just _run-amd64-linux "just build-mimalloc && just _generate-package-yaml && stack install neut --allow-different-user --local-bin-path ./bin/tmp-amd64-linux"
     @just _run-amd64-linux "mv ./bin/tmp-amd64-linux/neut ./bin/neut-amd64-linux"
     @just _run-amd64-linux "rm -r ./bin/tmp-amd64-linux"
 
 build-compiler-arm64-linux:
-    @just _run-arm64-linux "just _generate-package-yaml && stack install neut --allow-different-user --local-bin-path ./bin/tmp-arm64-linux"
+    @just _run-arm64-linux "just build-mimalloc && just _generate-package-yaml && stack install neut --allow-different-user --local-bin-path ./bin/tmp-arm64-linux"
     @just _run-arm64-linux "mv ./bin/tmp-arm64-linux/neut ./bin/neut-arm64-linux"
     @just _run-arm64-linux "rm -r ./bin/tmp-arm64-linux"
 
 build-compiler-arm64-darwin:
+    @just build-mimalloc
     @just _build-compiler-darwin arm64
+
+install:
+    @just build-mimalloc
+    @just _build-compiler-darwin arm64
+    stack install
 
 bench-arm64-darwin:
     @just build-compiler-arm64-darwin
@@ -108,6 +135,7 @@ _build-compiler-darwin arch-name:
     @rm -r ./bin/tmp-{{arch-name}}-darwin
 
 _build-native platform:
+    @just build-mimalloc
     @just _generate-package-yaml
     @stack install neut --allow-different-user --local-bin-path ./bin/tmp-{{platform}}
     @mv ./bin/tmp-{{platform}}/neut ./bin/neut-{{platform}}

@@ -9,6 +9,7 @@ module Kernel.Common.Module
     TargetName,
     PresetSummary,
     keyAntecedent,
+    keyAllocator,
     keyArchive,
     keyBuildOption,
     keyCache,
@@ -58,6 +59,7 @@ import Data.List.NonEmpty qualified as NE
 import Data.Maybe (catMaybes, maybeToList)
 import Data.Text qualified as T
 import Ens.Ens qualified as E
+import Kernel.Common.Allocator qualified as Allocator
 import Kernel.Common.ClangOption qualified as CL
 import Kernel.Common.Const
 import Kernel.Common.ModuleURL
@@ -151,6 +153,10 @@ keyZen =
 keyMain :: T.Text
 keyMain =
   "main"
+
+keyAllocator :: T.Text
+keyAllocator =
+  "allocator"
 
 keyBuildOption :: T.Text
 keyBuildOption =
@@ -259,6 +265,7 @@ toDefaultEns someModule =
   E.dictFromList _m $
     catMaybes
       [ return $ getTargetInfo someModule,
+        getZenInfo someModule,
         getSourceDirInfo someModule,
         getCacheDirInfo someModule,
         getArchiveDirInfo someModule,
@@ -284,6 +291,35 @@ getSourceDirInfo someModule = do
     then Nothing
     else return (keySource, _m :< E.ensPath dir)
 
+getZenInfo :: Module -> Maybe (T.Text, E.Ens)
+getZenInfo someModule = do
+  let zenConfig = moduleZenConfig someModule
+  let compileOption = map (\x -> _m :< E.String x) $ CL.compileOption $ clangOption zenConfig
+  let compileOption' =
+        if null compileOption
+          then Nothing
+          else Just (keyCompileOption, _m :< E.List (seriesFromList compileOption))
+  let linkOption = map (\x -> _m :< E.String x) $ CL.linkOption $ clangOption zenConfig
+  let linkOption' =
+        if null linkOption
+          then Nothing
+          else Just (keyLinkOption, _m :< E.List (seriesFromList linkOption))
+  let allocatorText =
+        case allocator zenConfig of
+          Allocator.Mimalloc ->
+            "mimalloc"
+          Allocator.System ->
+            "system"
+  let zenInfo =
+        E.dictFromListVertical
+          _m
+          $ [(keyAllocator, _m :< E.String allocatorText)]
+            ++ maybeToList compileOption'
+            ++ maybeToList linkOption'
+  if clangOption zenConfig == CL.empty && allocator zenConfig == Allocator.defaultAllocator
+    then Nothing
+    else Just (keyZen, zenInfo)
+
 getCacheDirInfo :: Module -> Maybe (T.Text, E.Ens)
 getCacheDirInfo someModule = do
   let dir = moduleCacheDir someModule
@@ -304,9 +340,17 @@ getTargetInfo someModule = do
               if null linkOption
                 then Nothing
                 else Just (keyLinkOption, _m :< E.List (seriesFromList linkOption))
+        let allocatorText =
+              case Target.allocator summary of
+                Allocator.Mimalloc ->
+                  "mimalloc"
+                Allocator.System ->
+                  "system"
         E.dictFromListVertical
           _m
-          $ [(keyMain, _m :< E.String (SL.getRelPathText (Target.entryPoint summary)))]
+          $ [ (keyMain, _m :< E.String (SL.getRelPathText (Target.entryPoint summary))),
+              (keyAllocator, _m :< E.String allocatorText)
+            ]
             ++ maybeToList compileOption'
             ++ maybeToList linkOption'
   (keyTarget, E.dictFromListVertical _m (Map.toList targetDict))

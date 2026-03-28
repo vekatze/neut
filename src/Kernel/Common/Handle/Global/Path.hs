@@ -5,6 +5,7 @@ module Kernel.Common.Handle.Global.Path
     getBaseName,
     getExecutableOutputPath,
     getForeignDir,
+    getAllocatorDir,
     getInstallDir,
     sourceToOutputPath,
     getSourceCachePath,
@@ -29,6 +30,7 @@ import Data.Text qualified as T
 import Data.Time
 import Ens.Ens qualified as E
 import Ens.ToDoc qualified as E
+import Kernel.Common.Allocator (Allocator, defaultAllocator, showAllocator)
 import Kernel.Common.ClangOption qualified as CL
 import Kernel.Common.Const
 import Kernel.Common.Handle.Global.Platform qualified as Platform
@@ -37,6 +39,7 @@ import Kernel.Common.Module qualified as M
 import Kernel.Common.OutputKind qualified as OK
 import Kernel.Common.Source qualified as Src
 import Kernel.Common.Target qualified as Target
+import Kernel.Common.ZenConfig qualified as Z
 import Language.Common.Digest
 import Language.Common.ModuleID qualified as MID
 import Logger.Handle qualified as Logger
@@ -101,12 +104,14 @@ getBuildSignature h t = do
     Nothing -> do
       let clangDigest = Platform.getClangDigest (_platformHandle h)
       let MainModule m = _mainModule h
+      allocator <- getAllocator t m
       clangOption <- getClangOption t m
       moduleEns' <- readTextFromPath (moduleLocation m)
       let ens =
             E.dictFromList
               _m
               [ ("clang-digest", _m :< E.String clangDigest),
+                ("allocator", _m :< E.String (showAllocator allocator)),
                 ("compile-option", _m :< E.String (T.unwords $ CL.compileOption clangOption)),
                 ("link-option", _m :< E.String (T.unwords $ CL.linkOption clangOption)),
                 ("module-configuration", _m :< E.String moduleEns')
@@ -126,12 +131,30 @@ getClangOption t baseModule =
               return clangOption
             Nothing ->
               raiseError' $ "No such target is defined: `" <> name <> "`"
-        Target.Zen _ clangOption ->
-          return clangOption
+        Target.Zen _ zenConfig ->
+          return $ Z.clangOption zenConfig
     Target.Peripheral ->
       return CL.empty
     Target.PeripheralSingle _ ->
       return CL.empty
+
+getAllocator :: Target.Target -> Module -> App Allocator
+getAllocator t baseModule =
+  case t of
+    Target.Main mainModule ->
+      case mainModule of
+        Target.Named name _ ->
+          case Map.lookup name (moduleTarget baseModule) of
+            Just (Target.TargetSummary {allocator}) ->
+              return allocator
+            Nothing ->
+              raiseError' $ "No such target is defined: `" <> name <> "`"
+        Target.Zen _ zenConfig ->
+          return $ Z.allocator zenConfig
+    Target.Peripheral ->
+      return defaultAllocator
+    Target.PeripheralSingle _ ->
+      return defaultAllocator
 
 getArtifactDir :: Handle -> Target.Target -> Module -> App (Path Abs Dir)
 getArtifactDir h t baseModule = do
@@ -144,6 +167,13 @@ getForeignDir h t baseModule = do
   let foreignDir = buildDir </> foreignRelDir
   P.ensureDir foreignDir
   return foreignDir
+
+getAllocatorDir :: Handle -> Target.Target -> Module -> App (Path Abs Dir)
+getAllocatorDir h t baseModule = do
+  buildDir <- getBuildDir h t baseModule
+  let allocatorDir = buildDir </> allocatorRelDir
+  P.ensureDir allocatorDir
+  return allocatorDir
 
 getEntryDir :: Handle -> Target.Target -> Module -> App (Path Abs Dir)
 getEntryDir h t baseModule = do

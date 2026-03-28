@@ -12,7 +12,10 @@ where
 import Data.Hashable
 import Data.Text qualified as T
 import GHC.Generics (Generic)
+import Kernel.Common.Allocator (Allocator, defaultAllocator)
 import Kernel.Common.ClangOption qualified as CL
+import Kernel.Common.ZenConfig (ZenConfig)
+import Kernel.Common.ZenConfig qualified as Z
 import Language.Common.BaseName qualified as BN
 import Language.Common.SourceLocator qualified as SL
 import Path
@@ -25,13 +28,14 @@ data Target
 
 data TargetSummary = TargetSummary
   { entryPoint :: SL.SourceLocator,
-    clangOption :: CL.ClangOption
+    clangOption :: CL.ClangOption,
+    allocator :: Allocator
   }
   deriving (Show, Eq, Generic)
 
 data MainTarget
   = Named T.Text TargetSummary
-  | Zen (Path Abs File) CL.ClangOption
+  | Zen (Path Abs File) ZenConfig
   deriving (Show, Eq, Generic)
 
 instance Hashable Target
@@ -42,7 +46,7 @@ instance Hashable MainTarget
 
 emptyZen :: Path Abs File -> MainTarget
 emptyZen path =
-  Zen path $ CL.ClangOption {compileOption = [], linkOption = []}
+  Zen path $ Z.ZenConfig {clangOption = CL.empty, allocator = defaultAllocator}
 
 getEntryPointName :: MainTarget -> BN.BaseName
 getEntryPointName target =
@@ -63,8 +67,8 @@ getCompileOption target =
       case c of
         Named _ targetSummary -> do
           map T.unpack $ CL.compileOption (clangOption targetSummary)
-        Zen _ clangOption ->
-          map T.unpack $ CL.compileOption clangOption
+        Zen _ zenConfig ->
+          map T.unpack $ CL.compileOption (Z.clangOption zenConfig)
 
 getLinkOption :: Target -> [String]
 getLinkOption target =
@@ -77,5 +81,5 @@ getLinkOption target =
       case c of
         Named _ targetSummary ->
           map T.unpack $ CL.linkOption (clangOption targetSummary)
-        Zen _ clangOption ->
-          map T.unpack $ CL.linkOption clangOption
+        Zen _ zenConfig ->
+          map T.unpack $ CL.linkOption (Z.clangOption zenConfig)
