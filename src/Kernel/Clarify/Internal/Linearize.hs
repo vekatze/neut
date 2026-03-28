@@ -183,6 +183,10 @@ distinguishPrimitive h z term =
     C.ShiftPointer v size index -> do
       (vs, v') <- distinguishValue h z v
       return (vs, C.ShiftPointer v' size index)
+    C.Calloc num size -> do
+      (vs1, num') <- distinguishValue h z num
+      (vs2, size') <- distinguishValue h z size
+      return (vs1 <> vs2, C.Calloc num' size')
     C.Alloc size -> do
       (vs, size') <- distinguishValue h z size
       return (vs, C.Alloc size')

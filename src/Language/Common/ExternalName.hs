@@ -1,5 +1,6 @@
 module Language.Common.ExternalName
   ( ExternalName (..),
+    calloc,
     malloc,
     realloc,
     free,
@@ -21,6 +22,10 @@ newtype ExternalName = ExternalName {reify :: T.Text}
 instance Binary ExternalName
 
 instance Hashable ExternalName
+
+calloc :: ExternalName
+calloc =
+  ExternalName "calloc"
 
 malloc :: ExternalName
 malloc =

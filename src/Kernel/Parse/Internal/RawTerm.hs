@@ -749,6 +749,7 @@ rawTermMagic h m c = do
       rawTermMagicStore h m c,
       rawTermMagicLoad h m c,
       rawTermMagicAlloca h m c,
+      rawTermMagicCalloc h m c,
       rawTermMagicMalloc h m c,
       rawTermMagicRealloc h m c,
       rawTermMagicFree h m c,
@@ -809,6 +810,15 @@ rawTermMagicAlloca h m c = do
     size <- rawTerm h
     c4 <- optional $ delimiter ","
     return $ \c1 c2 -> m :< RT.Magic c (RT.Alloca c1 (c2, t) (c3, size) c4)
+
+rawTermMagicCalloc :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
+rawTermMagicCalloc h m c = do
+  rawTermMagicBase "calloc" $ do
+    num <- rawTerm h
+    c3 <- delimiter ","
+    size <- rawTerm h
+    c4 <- optional $ delimiter ","
+    return $ \c1 c2 -> m :< RT.Magic c (RT.Calloc c1 (c2, num) (c3, size) c4)
 
 rawTermMagicMalloc :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermMagicMalloc h m c = do

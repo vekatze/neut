@@ -116,6 +116,11 @@ refreshMagic h magic =
     M.LowMagic lowMagic -> do
       lowMagic' <- refreshLowMagic h lowMagic
       return $ M.LowMagic lowMagic'
+    M.Calloc sizeType num size -> do
+      sizeType' <- refreshType h sizeType
+      num' <- refresh h num
+      size' <- refresh h size
+      return $ M.Calloc sizeType' num' size'
     M.Malloc sizeType size -> do
       sizeType' <- refreshType h sizeType
       size' <- refresh h size

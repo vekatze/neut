@@ -130,6 +130,7 @@ type ShouldDeallocate = Bool
 data Primitive
   = PrimOp PrimOp [Value]
   | ShiftPointer Value Integer Integer -- (ptr, num-of-elems, index)
+  | Calloc Value Value -- num, size-in-bytes
   | Alloc Value -- number of bytes to allocate
   | Realloc Value Value -- ptr, size-in-bytes
   | Memcpy Value Value Value -- (dest, src, size-in-bytes)

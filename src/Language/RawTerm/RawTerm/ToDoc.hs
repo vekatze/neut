@@ -291,6 +291,16 @@ toDoc term =
                       RT.mapEL toDoc size
                     ]
             ]
+        Calloc c1 num size mc -> do
+          D.join
+            [ attachComment (c ++ c1) $ D.text "magic calloc",
+              SE.decode $
+                attachOptionalComment mc $
+                  SE.fromListWithComment
+                    (Just SE.Paren)
+                    SE.Comma
+                    [RT.mapEL toDoc num, RT.mapEL toDoc size]
+            ]
         Malloc c1 size mc -> do
           D.join
             [ attachComment (c ++ c1) $ D.text "magic malloc",

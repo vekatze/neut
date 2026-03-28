@@ -116,6 +116,8 @@ substPrimitive sub c =
       C.PrimOp op vs'
     C.ShiftPointer v size index ->
       C.ShiftPointer (substValue sub v) size index
+    C.Calloc num size ->
+      C.Calloc (substValue sub num) (substValue sub size)
     C.Alloc size ->
       C.Alloc (substValue sub size)
     C.Realloc ptr size ->

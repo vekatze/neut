@@ -338,6 +338,19 @@ lowerCompPrimitive h resultVar codeOp cont =
       let indexList' = [(LC.Int 0, LT.PrimNum $ PT.Int IntSize32), (LC.Int index, LT.PrimNum $ PT.Int IntSize32)]
       lowerValue h ptrVar v
         =<< return (LC.Let resultVar (LC.GetElementPtr (ptr, toLowType aggType) indexList') cont)
+    C.Calloc num size -> do
+      byteCountVarName <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "size"
+      let byteCountValue = C.VarLocal byteCountVarName
+      numVarName <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "num"
+      let numValue = C.VarLocal numVarName
+      (castSizeVar, castSizeValue) <- liftIO $ newValueLocal h "size"
+      (castNumVar, castNumValue) <- liftIO $ newValueLocal h "num"
+      let lowInt = LT.PrimNum $ PT.Int $ dataSizeToIntSize (baseSize h)
+      lowerValue h byteCountVarName size
+        =<< lowerValue h numVarName num
+        =<< lowerValueLetCast h castSizeVar byteCountValue lowInt
+        =<< lowerValueLetCast h castNumVar numValue lowInt
+        =<< return (LC.Let resultVar (LC.Calloc castNumValue castSizeValue) cont)
     C.Alloc size -> do
       allocID <- liftIO $ Gensym.newCount (gensymHandle h)
       case size of
@@ -732,7 +745,8 @@ commConv x lowComp cont2 =
 
 defaultForeignList :: A.Arch -> [F.Foreign]
 defaultForeignList arch =
-  [ F.Foreign internalHint EN.malloc [getWordType arch] (FCT.Cod BLT.Pointer),
+  [ F.Foreign internalHint EN.calloc [getWordType arch, getWordType arch] (FCT.Cod BLT.Pointer),
+    F.Foreign internalHint EN.malloc [getWordType arch] (FCT.Cod BLT.Pointer),
     F.Foreign internalHint EN.realloc [BLT.Pointer, getWordType arch] (FCT.Cod BLT.Pointer),
     F.Foreign internalHint EN.free [BLT.Pointer] FCT.Void
   ]

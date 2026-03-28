@@ -316,6 +316,7 @@ data RawMagic
   | Store C (EL RawType) (EL RawTerm) (EL RawTerm) (Maybe C)
   | Load C (EL RawType) (EL RawTerm) (Maybe C)
   | Alloca C (EL RawType) (EL RawTerm) (Maybe C)
+  | Calloc C (EL RawTerm) (EL RawTerm) (Maybe C)
   | Malloc C (EL RawTerm) (Maybe C)
   | Realloc C (EL RawTerm) (EL RawTerm) (Maybe C)
   | Free C (EL RawTerm) (Maybe C)

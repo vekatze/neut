@@ -843,6 +843,12 @@ discernMagic h m magic =
       t' <- discernType h t
       size' <- discern h size
       return $ M.WeakMagic $ M.LowMagic $ LM.Alloca t' size'
+    RT.Calloc _ (_, (num, _)) (_, (size, _)) _ -> do
+      ensureRuntimeStage m h "runtime magic (`calloc`)"
+      sizeType <- liftEither (locatorToTypeVar m coreCSize) >>= discernType h
+      num' <- discern h num
+      size' <- discern h size
+      return $ M.WeakMagic $ M.Calloc sizeType num' size'
     RT.Malloc _ (_, (size, _)) _ -> do
       ensureRuntimeStage m h "runtime magic (`malloc`)"
       sizeType <- liftEither (locatorToTypeVar m coreCSize) >>= discernType h

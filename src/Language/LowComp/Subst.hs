@@ -60,6 +60,8 @@ substOp sub llvmOp =
       LC.StackLifetimeStart stackSlotID
     LC.StackLifetimeEnd stackSlotID ->
       LC.StackLifetimeEnd stackSlotID
+    LC.Calloc num size -> do
+      LC.Calloc (substLowValue sub num) (substLowValue sub size)
     LC.Alloc size allocID -> do
       LC.Alloc
         ( case size of

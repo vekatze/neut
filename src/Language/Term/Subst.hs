@@ -407,6 +407,11 @@ substMagic h sub magic =
   case magic of
     M.LowMagic lowMagic ->
       M.LowMagic <$> substLowMagic h sub lowMagic
+    M.Calloc sizeType num size -> do
+      sizeType' <- substType h sub sizeType
+      num' <- subst h sub num
+      size' <- subst h sub size
+      return $ M.Calloc sizeType' num' size'
     M.Malloc sizeType size -> do
       sizeType' <- substType h sub sizeType
       size' <- subst h sub size

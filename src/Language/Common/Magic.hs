@@ -11,6 +11,7 @@ import Language.Common.ModuleID qualified as MID
 
 data Magic lt ty a
   = LowMagic (LM.LowMagic lt ty a)
+  | Calloc ty a a -- Calloc sizeType num size
   | Malloc ty a -- Malloc sizeType size
   | Realloc ty a a -- Realloc sizeType ptr size
   | Free ty a -- Free unitType ptr
@@ -29,6 +30,8 @@ instance Functor (Magic lt ty) where
     case der of
       LowMagic magic ->
         LowMagic (fmap f magic)
+      Calloc sizeType num size ->
+        Calloc sizeType (f num) (f size)
       Malloc sizeType size ->
         Malloc sizeType (f size)
       Realloc sizeType ptr size ->
@@ -53,6 +56,8 @@ instance Foldable (Magic lt ty) where
     case der of
       LowMagic magic ->
         foldMap f magic
+      Calloc _ num size ->
+        f num <> f size
       Malloc _ size ->
         f size
       Realloc _ ptr size ->
@@ -77,6 +82,8 @@ instance Traversable (Magic lt ty) where
     case der of
       LowMagic magic ->
         LowMagic <$> traverse f magic
+      Calloc sizeType num size ->
+        Calloc sizeType <$> f num <*> f size
       Malloc sizeType size ->
         Malloc sizeType <$> f size
       Realloc sizeType ptr size ->
