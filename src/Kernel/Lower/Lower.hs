@@ -717,8 +717,8 @@ aggTypeByteSize h aggType =
   lowTypeByteSize h (toLowType aggType)
 
 lowTypeByteSize :: Handle -> LT.LowType -> Integer
-lowTypeByteSize h lowType =
-  lowTypeToByteSize (baseSize h) lowType
+lowTypeByteSize h =
+  lowTypeToByteSize (baseSize h)
 
 commConv :: Ident -> LC.Comp -> LC.Comp -> LC.Comp
 commConv x lowComp cont2 =
