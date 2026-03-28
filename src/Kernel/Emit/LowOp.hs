@@ -8,6 +8,7 @@ where
 import Data.ByteString.Builder
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
+import Kernel.Common.Allocator (AllocatorSpec (..))
 import Kernel.Emit.LowType
 import Kernel.Emit.LowValue
 import Kernel.Emit.PrimType
@@ -18,12 +19,13 @@ import Language.Common.PrimOp
 import Language.Common.PrimType qualified as PT
 import Language.LowComp.LowComp qualified as LC
 
-newtype Handle = Handle
-  { intType :: LT.LowType
+data Handle = Handle
+  { intType :: LT.LowType,
+    allocatorSpec :: AllocatorSpec
   }
 
-new :: DataSize -> Handle
-new baseSize = do
+new :: DataSize -> AllocatorSpec -> Handle
+new baseSize allocatorSpec = do
   let intType = LT.PrimNum $ PT.Int $ dataSizeToIntSize baseSize
   Handle {..}
 
@@ -84,7 +86,9 @@ emitLowOp ax lowOp =
       unwordsL
         [ "call fastcc",
           "ptr",
-          "@calloc("
+          "@"
+            <> TE.encodeUtf8Builder (callocName $ allocatorSpec ax)
+            <> "("
             <> emitLowType (intType ax)
             <> " "
             <> emitValue num
@@ -95,15 +99,41 @@ emitLowOp ax lowOp =
             <> ")"
         ]
     LC.Alloc size _ -> do
-      unwordsL ["call fastcc", "ptr", "@malloc(" <> emitLowType (intType ax) <> " " <> emitAllocSize size <> ")"]
+      unwordsL
+        [ "call fastcc",
+          "ptr",
+          "@"
+            <> TE.encodeUtf8Builder (mallocName $ allocatorSpec ax)
+            <> "("
+            <> emitLowType (intType ax)
+            <> " "
+            <> emitAllocSize size
+            <> ")"
+        ]
     LC.Realloc ptr size -> do
       unwordsL
         [ "call fastcc",
           "ptr",
-          "@realloc(ptr " <> emitValue ptr <> ", " <> emitLowType (intType ax) <> " " <> emitValue size <> ")"
+          "@"
+            <> TE.encodeUtf8Builder (reallocName $ allocatorSpec ax)
+            <> "(ptr "
+            <> emitValue ptr
+            <> ", "
+            <> emitLowType (intType ax)
+            <> " "
+            <> emitValue size
+            <> ")"
         ]
     LC.Free d _ _ -> do
-      unwordsL ["call fastcc", "void", "@free(ptr " <> emitValue d <> ")"]
+      unwordsL
+        [ "call fastcc",
+          "void",
+          "@"
+            <> TE.encodeUtf8Builder (freeName $ allocatorSpec ax)
+            <> "(ptr "
+            <> emitValue d
+            <> ")"
+        ]
     LC.PrimOp op args -> do
       case op of
         PrimUnaryOp name dom _ -> do

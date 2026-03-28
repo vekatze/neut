@@ -1,0 +1,28 @@
+import {
+  core.c-size,
+  core.external {free, malloc, realloc},
+}
+
+define basics(ptr: pointer) -> unit {
+  free(ptr);
+  let ptr = malloc(1234);
+  let p = realloc(ptr, 4567);
+  free(p);
+  let p2 = magic calloc(3, 8);
+  free(p2);
+}
+
+define cancel() -> unit {
+  let ptr = malloc(1234);
+  free(ptr);
+  Unit
+}
+
+define test-mimalloc() -> unit {
+  basics(magic calloc(10, 20));
+  cancel();
+}
+
+define main() -> unit {
+  test-mimalloc();
+}

@@ -71,6 +71,10 @@ foreignRelDir :: Path Rel Dir
 foreignRelDir =
   $(mkRelDir "foreign")
 
+allocatorRelDir :: Path Rel Dir
+allocatorRelDir =
+  $(mkRelDir "allocator")
+
 zenRelDir :: Path Rel Dir
 zenRelDir =
   $(mkRelDir "zen")

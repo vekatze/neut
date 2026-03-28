@@ -14,6 +14,7 @@ import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.HashMap.Strict qualified as Map
 import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
+import Kernel.Common.Allocator (defaultAllocator)
 import Kernel.Common.ClangOption qualified as CL
 import Kernel.Common.Const
 import Kernel.Common.Handle.Global.Platform qualified as Platform
@@ -66,11 +67,12 @@ constructDefaultModule moduleName mTargetName = do
             [ ( targetName,
                 TargetSummary
                   { entryPoint = SL.SourceLocator mainFile,
-                    clangOption = CL.empty
+                    clangOption = CL.empty,
+                    allocator = defaultAllocator
                   }
               )
             ],
-        moduleZenConfig = ZenConfig {clangOption = CL.empty},
+        moduleZenConfig = ZenConfig {clangOption = CL.empty, allocator = defaultAllocator},
         moduleDependency = Map.empty,
         moduleExtraContents = [],
         moduleAntecedents = [],

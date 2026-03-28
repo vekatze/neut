@@ -8,9 +8,11 @@ where
 import App.App (App)
 import Color.Handle qualified as Color
 import Control.Monad.IO.Class (MonadIO (liftIO))
+import Data.ByteString qualified as B
 import Data.Containers.ListUtils (nubOrdOn)
 import Data.Maybe
 import Data.Text qualified as T
+import Kernel.Common.Allocator (Allocator (Mimalloc), mimallocArchive)
 import Kernel.Common.Artifact qualified as A
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.Env qualified as Env
@@ -56,8 +58,9 @@ link' h target sourceList = do
   let moduleList = nubOrdOn moduleID $ map Source.sourceModule sourceList
   foreignDirList <- mapM (Path.getForeignDir (pathHandle h) (Main target)) moduleList
   foreignObjectList <- concat <$> mapM getForeignDirContent foreignDirList
+  mAllocatorLibrary <- getAllocatorLibraryIfNecessary h target
   let clangOptions = getLinkOption (Main target)
-  let objects = mainObject : objectPathList ++ foreignObjectList
+  let objects = mainObject : objectPathList ++ foreignObjectList ++ maybeToList mAllocatorLibrary
   let numOfObjects = length objects
   let workingTitle = getWorkingTitle numOfObjects
   let completedTitle = getCompletedTitle numOfObjects
@@ -86,6 +89,22 @@ getForeignDirContent foreignDir = do
   if b
     then snd <$> listDirRecur foreignDir
     else return []
+
+getAllocatorLibraryIfNecessary :: Handle -> MainTarget -> App (Maybe (Path Abs File))
+getAllocatorLibraryIfNecessary h target = do
+  allocator <- Env.getAllocatorByTarget (envHandle h) (Main target)
+  case allocator of
+    Mimalloc -> do
+      let baseModule = extractModule $ Env.getMainModule (envHandle h)
+      allocatorDir <- Path.getAllocatorDir (pathHandle h) (Main target) baseModule
+      archivePath <- resolveFile allocatorDir "libmimalloc.a"
+      archiveExists <- doesFileExist archivePath
+      if archiveExists
+        then return ()
+        else liftIO $ B.writeFile (toFilePath archivePath) mimallocArchive
+      return $ Just archivePath
+    _ ->
+      return Nothing
 
 link'' :: Handle -> [String] -> [Path Abs File] -> Path Abs File -> App ()
 link'' h clangOptions objectPathList outputPath = do

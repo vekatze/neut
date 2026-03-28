@@ -6,19 +6,22 @@ module Kernel.Common.Handle.Global.Env
     getSilentMode,
     setBuildMode,
     getMainDefiniteDescriptionByTarget,
+    getAllocatorByTarget,
   )
 where
 
 import App.App (App)
-import App.Run (raiseError', run)
+import App.Run (raiseCritical', raiseError', run)
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.Text qualified as T
+import Kernel.Common.Allocator (Allocator)
 import Kernel.Common.BuildMode qualified as BM
 import Kernel.Common.Module
 import Kernel.Common.Module qualified as Module
 import Kernel.Common.Module.FromPath qualified as ModuleReflect
 import Kernel.Common.Target qualified as Target
+import Kernel.Common.ZenConfig qualified as Z
 import Language.Common.BaseName qualified as BN
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.LocalLocator qualified as LL
@@ -76,6 +79,25 @@ getMainDefiniteDescriptionByTarget h targetOrZen = do
     Target.Zen path _ -> do
       relPath <- Module.getRelPathFromSourceDir (extractModule mainModule) path
       relPathToDD relPath BN.zenName
+
+getAllocatorByTarget :: Handle -> Target.Target -> App Allocator
+getAllocatorByTarget h target =
+  case target of
+    Target.Peripheral {} ->
+      raiseCritical' "Kernel.Common.Handle.Global.Env.getAllocatorByTarget: unexpected peripheral target"
+    Target.PeripheralSingle {} ->
+      raiseCritical' "Kernel.Common.Handle.Global.Env.getAllocatorByTarget: unexpected peripheral-single target"
+    Target.Main mainTarget ->
+      case mainTarget of
+        Target.Named targetName _ -> do
+          let targetMap = Module.moduleTarget $ extractModule $ getMainModule h
+          case Map.lookup targetName targetMap of
+            Nothing ->
+              raiseCritical' $ "Kernel.Common.Handle.Global.Env.getAllocatorByTarget: no such target: " <> targetName
+            Just targetSummary ->
+              return $ Target.allocator targetSummary
+        Target.Zen _ zenConfig ->
+          return $ Z.allocator zenConfig
 
 relPathToDD :: Path Rel File -> BN.BaseName -> App DD.DefiniteDescription
 relPathToDD relPath baseName = do

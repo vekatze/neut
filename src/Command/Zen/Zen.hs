@@ -20,7 +20,6 @@ import Kernel.Common.Handle.Global.Path qualified as Path
 import Kernel.Common.Module (Module (moduleZenConfig), extractModule)
 import Kernel.Common.OutputKind
 import Kernel.Common.Target
-import Kernel.Common.ZenConfig qualified as Z
 import Path.IO (resolveFile')
 import Prelude hiding (log)
 
@@ -48,8 +47,7 @@ zen h cfg = do
   Build.buildTarget (buildHandle h) mainModule $
     Main $
       Zen path $
-        Z.clangOption $
-          moduleZenConfig (extractModule mainModule)
+        moduleZenConfig (extractModule mainModule)
 
 toBuildConfig :: Config -> Build.Config
 toBuildConfig cfg = do

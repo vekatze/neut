@@ -1,7 +1,9 @@
 name: neut
 version: 0
 license: MIT
-license-file: license.md
+license-file:
+- license.md
+- licenses.md
 author: "vekatze"
 maintainer: "vekatze@icloud.com"
 
@@ -40,6 +42,7 @@ dependencies:
 - cryptohash-sha256
 - directory
 - exceptions
+- file-embed
 - filepath
 - free
 - half

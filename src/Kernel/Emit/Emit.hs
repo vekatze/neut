@@ -5,6 +5,7 @@ module Kernel.Emit.Emit
   )
 where
 
+import App.App (App)
 import Data.ByteString.Builder
 import Data.ByteString.Builder qualified as L
 import Data.ByteString.Lazy qualified as L
@@ -13,9 +14,12 @@ import Data.IntMap qualified as IntMap
 import Data.List qualified as List
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
+import Kernel.Common.Allocator (Allocator, allocatorSpec)
 import Kernel.Common.Const
 import Kernel.Common.CreateGlobalHandle qualified as Global
+import Kernel.Common.Handle.Global.Env qualified as Env
 import Kernel.Common.Handle.Global.Platform qualified as Platform
+import Kernel.Common.Target (Target)
 import Kernel.Emit.Builder
 import Kernel.Emit.Internal.LowComp qualified as EmitLowComp
 import Kernel.Emit.LowType
@@ -32,13 +36,15 @@ import Language.LowComp.DeclarationName qualified as DN
 import Language.LowComp.LowComp qualified as LC
 import Language.LowComp.Reduce qualified as Reduce
 
-newtype Handle = Handle
-  { globalHandle :: Global.Handle
+data Handle = Handle
+  { globalHandle :: Global.Handle,
+    allocator :: Allocator
   }
 
-new :: Global.Handle -> Handle
-new globalHandle = do
-  Handle {..}
+new :: Global.Handle -> Target -> App Handle
+new globalHandle target = do
+  allocator <- Env.getAllocatorByTarget (Global.envHandle globalHandle) target
+  return $ Handle {..}
 
 emit :: Handle -> LC.LowCode -> IO L.ByteString
 emit h lowCode = do
@@ -153,7 +159,7 @@ declToBuilder (name, (dom, cod)) = do
 emitDefinition :: Handle -> Builder -> Builder -> Builder -> LC.Comp -> IO [Builder]
 emitDefinition h retType name args asm = do
   let header = sig retType name args <> " {"
-  emitLowCompHandle <- EmitLowComp.new (globalHandle h) retType
+  emitLowCompHandle <- EmitLowComp.new (globalHandle h) retType (allocatorSpec $ allocator h)
   content <- EmitLowComp.emitLowComp emitLowCompHandle asm
   let footer = "}"
   return $ [header] <> content <> [footer]
