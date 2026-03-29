@@ -9,6 +9,7 @@ module Language.Common.DefiniteDescription
     getNodeDD,
     getLeafDD,
     getRootDD,
+    getSigmaDD,
     getLambdaDD,
     getMuDD,
     imm,
@@ -97,6 +98,10 @@ getLeafDD dd =
 getRootDD :: DefiniteDescription -> DefiniteDescription
 getRootDD dd =
   appendLocalName dd BN.root
+
+getSigmaDD :: DefiniteDescription -> Maybe T.Text -> Int -> DefiniteDescription
+getSigmaDD dd mName i =
+  appendLocalName dd (BN.sigmaName mName i)
 
 getLambdaDD :: DefiniteDescription -> Maybe T.Text -> Int -> DefiniteDescription
 getLambdaDD dd mName i =
