@@ -99,17 +99,22 @@ data Handle = Handle
     typeHandle :: Type.Handle
   }
 
-newtype Context = Context
-  { typeEnv :: TM.TypeEnv
+data Context = Context
+  { typeEnv :: TM.TypeEnv,
+    currentFunction :: DD.DefiniteDescription
   }
 
-emptyContext :: Context
-emptyContext =
-  Context IntMap.empty
+newContext :: DD.DefiniteDescription -> Context
+newContext currentFunction =
+  Context {typeEnv = IntMap.empty, currentFunction}
 
 extendContext :: [BinderF TM.Type] -> Context -> Context
-extendContext xts (Context tenv) =
-  Context $ TM.insTypeEnv xts tenv
+extendContext xts context =
+  context {typeEnv = TM.insTypeEnv xts (typeEnv context)}
+
+setCurrentFunction :: DD.DefiniteDescription -> Context -> Context
+setCurrentFunction currentFunction context =
+  context {currentFunction}
 
 new :: Global.Handle -> Local.Handle -> IO Handle
 new (Global.Handle {..}) (Local.Handle {..}) = do
@@ -220,30 +225,32 @@ clarifyStmt :: Handle -> Stmt -> App C.CompStmt
 clarifyStmt h stmt =
   case stmt of
     StmtDefine _ stmtKind _ f impArgs expArgs defaultArgs codType e -> do
-      defaultValues <- registerDefaultFunctions h emptyContext f [] impArgs defaultArgs
+      let context = newContext f
+      defaultValues <- registerDefaultFunctions h context f [] impArgs defaultArgs
       liftIO $ registerDefaultEnvType h f defaultValues
       let xts = impArgs ++ expArgs ++ map fst defaultArgs
-      xts' <- dropFst <$> clarifyBinder h emptyContext xts
+      xts' <- dropFst <$> clarifyBinder h context xts
       envArg <- liftIO $ makeEnvArg h
       switchArg <- liftIO $ makeSwitchArg h
       let xts'' = xts' ++ [envArg, switchArg]
-      let context = extendContext xts emptyContext
+      let context' = extendContext xts context
       if SK.isDestPassingStmtKind stmtKind
         then do
-          e' <- clarifyTerm h context e
-          codType' <- clarifyType h context codType
+          e' <- clarifyTerm h context' e
+          codType' <- clarifyType h context' codType
           destParam <- liftIO $ makeDestParam h
           e'' <- liftIO $ toDestPassing h destParam codType' e'
           e''' <- liftIO $ Linearize.linearize (linearizeHandle h) xts'' e'' >>= Reduce.reduce (reduceHandle h)
           return $ C.DefVoid f (SK.toLowOpacityTerm stmtKind) (destParam : map fst xts'') e'''
         else do
-          e' <- clarifyStmtDefineBody h context xts'' e
+          e' <- clarifyStmtDefineBody h context' xts'' e
           return $ C.Def f (SK.toLowOpacityTerm stmtKind) (map fst xts'') e'
     StmtDefineType _ stmtKind (SavedHint m) f impArgs expArgs defaultArgs _ body -> do
-      defaultValues <- registerDefaultFunctions h emptyContext f [] impArgs defaultArgs
+      let context = newContext f
+      defaultValues <- registerDefaultFunctions h context f [] impArgs defaultArgs
       liftIO $ registerDefaultEnvType h f defaultValues
       let xts = impArgs ++ expArgs ++ map fst defaultArgs
-      xts' <- dropFst <$> clarifyBinder h emptyContext xts
+      xts' <- dropFst <$> clarifyBinder h context xts
       envArg <- liftIO $ makeEnvArg h
       switchArg <- liftIO $ makeSwitchArg h
       let xts'' = xts' ++ [envArg, switchArg]
@@ -256,32 +263,33 @@ clarifyStmt h stmt =
                 >>= clarifyStmtDefineBody' h name xts''
             Just OD.Unary
               | [(_, _, _, [(_, _, _, t)], _)] <- consInfoList -> do
-                  (dataArgs', t') <- clarifyTypeBinderBody h emptyContext dataArgs t
+                  (dataArgs', t') <- clarifyTypeBinderBody h (newContext name) dataArgs t
                   return $ C.Def f O.Clear (map fst $ dataArgs' ++ [envArg, switchArg]) t'
               | otherwise ->
                   raiseCritical m "Found a broken unary data"
             _ -> do
               let totalSlotCount = getDataSlotCount dataArgs consInfoList
               let dataInfo = map (\(_, consName, isConstLike, consArgs, discriminant) -> (consName, isConstLike, discriminant, dataArgs, consArgs)) consInfoList
-              dataInfo' <- mapM (clarifyDataClause h totalSlotCount) dataInfo
+              dataInfo' <- mapM (clarifyDataClause h (newContext name) totalSlotCount) dataInfo
               liftIO (Sigma.returnSigmaDataS4 (sigmaHandle h) name O.Opaque totalSlotCount dataInfo')
                 >>= clarifyStmtDefineBody' h name xts''
         _ -> do
-          let context = extendContext xts emptyContext
-          body' <- clarifyStmtDefineTypeBody h context xts'' body
+          let context' = extendContext xts context
+          body' <- clarifyStmtDefineTypeBody h context' xts'' body
           return $ C.Def f (SK.toLowOpacityType stmtKind) (map fst xts'') body'
     StmtDefineResource (SavedHint m) dd resourceID _ discarder copier resourceSize -> do
       let liftedName = DD.makeResourceName dd resourceID
+      let context = newContext liftedName
       switch <- liftIO $ Gensym.createVar (gensymHandle h) "switch"
       arg@(argVarName, _) <- liftIO $ Gensym.createVar (gensymHandle h) "arg"
       size <-
-        clarifyTerm h emptyContext resourceSize
+        clarifyTerm h context resourceSize
           >>= liftIO . Reduce.reduce (reduceHandle h)
       discard <-
-        clarifyTerm h emptyContext (m :< TM.PiElim PEK.Normal discarder [] [m :< TM.Var argVarName] [])
+        clarifyTerm h context (m :< TM.PiElim PEK.Normal discarder [] [m :< TM.Var argVarName] [])
           >>= liftIO . Reduce.reduce (reduceHandle h)
       copy <-
-        clarifyTerm h emptyContext (m :< TM.PiElim PEK.Normal copier [] [m :< TM.Var argVarName] [])
+        clarifyTerm h context (m :< TM.PiElim PEK.Normal copier [] [m :< TM.Var argVarName] [])
           >>= liftIO . Reduce.reduce (reduceHandle h)
       let resourceSpec = Utility.ResourceSpec {switch, arg, discard, copy, size, defaultValues = []}
       liftIO $ Utility.registerSwitcher (utilityHandle h) O.Clear liftedName resourceSpec
@@ -382,8 +390,9 @@ registerDefaultFunctions h context name fvs impArgs defaultArgs =
         let labelName = defaultLabelName name i
         isAlreadyRegistered <- liftIO $ AuxEnv.checkIfAlreadyRegistered (auxEnvHandle h) labelName
         unless isAlreadyRegistered $ do
-          codType' <- clarifyType h context' codType
-          body <- clarifyTerm h context' value
+          let labelContext = setCurrentFunction labelName context'
+          codType' <- clarifyType h labelContext codType
+          body <- clarifyTerm h labelContext value
           liftIO $ registerClosure h labelName O.Clear False codType' impArgs' fvs' body
         return $ C.VarGlobal labelName argNum (FCT.Cod BLT.Pointer)
 
@@ -626,11 +635,12 @@ dataSlotCountToByteSize h slotCount =
 
 clarifyDataClause ::
   Handle ->
+  Context ->
   Int ->
   (DD.DefiniteDescription, Bool, D.Discriminant, [BinderF TM.Type], [BinderF TM.Type]) ->
   App Sigma.DataConstructorInfo
-clarifyDataClause h totalSlotCount (consNameVal, isConstLikeVal, discriminantVal, dataArgsVal, consArgsVal) = do
-  args <- dropFst <$> clarifyBinder h emptyContext (dataArgsVal ++ consArgsVal)
+clarifyDataClause h context totalSlotCount (consNameVal, isConstLikeVal, discriminantVal, dataArgsVal, consArgsVal) = do
+  args <- dropFst <$> clarifyBinder h context (dataArgsVal ++ consArgsVal)
   let (dataArgs', consArgs') = splitAt (length dataArgsVal) args
   return $
     Sigma.DataConstructorInfo
@@ -903,13 +913,13 @@ clarifyLambda h context attrL@(AttrL.Attr {lamKind, identity}) fvs impArgs expAr
       isAlreadyRegistered <- liftIO $ AuxEnv.checkIfAlreadyRegistered (auxEnvHandle h) liftedName
       unless isAlreadyRegistered $ do
         liftedBody <- liftIO $ Subst.subst (substHandle h) (IntMap.fromList [(Ident.toInt recFuncName, Subst.Term lamApp)]) e
-        (liftedArgs, liftedBody') <- clarifyBinderBody h emptyContext appArgs liftedBody
+        (liftedArgs, liftedBody') <- clarifyBinderBody h (newContext liftedName) appArgs liftedBody
         envArg <- liftIO $ makeEnvArg h
         switchArg <- liftIO $ makeSwitchArg h
         let params = map fst liftedArgs ++ [fst envArg, fst switchArg]
         if isDestPassing
           then do
-            codType' <- clarifyType h (extendContext appArgs emptyContext) codType
+            codType' <- clarifyType h (extendContext appArgs $ newContext liftedName) codType
             destParam <- liftIO $ makeDestParam h
             liftedBody'' <- liftIO $ toDestPassing h destParam codType' liftedBody'
             liftedBody''' <- liftIO $ Linearize.linearize (linearizeHandle h) liftedArgs liftedBody'' >>= Reduce.reduce (reduceHandle h)
@@ -923,7 +933,8 @@ clarifyLambda h context attrL@(AttrL.Attr {lamKind, identity}) fvs impArgs expAr
     LK.Normal mName isDestPassing codType -> do
       let name = Locator.attachCurrentLocator (locatorHandle h) $ BN.lambdaName mName identity
       defaultValues <- registerDefaultFunctions h context name fvs impArgs defaultArgs
-      e' <- clarifyTerm h (extendContext (catMaybes [AttrL.fromAttr attrL] ++ mxts) context) e
+      let lambdaContext = setCurrentFunction name $ extendContext (catMaybes [AttrL.fromAttr attrL] ++ mxts) context
+      e' <- clarifyTerm h lambdaContext e
       returnClosure h context identity mName O.Clear isDestPassing codType fvs mxts defaultValues e'
 
 clarifyPlus :: Handle -> Context -> TM.Term -> App (Ident, C.Comp, C.Value)
@@ -979,7 +990,7 @@ returnClosure h context lamID mName opacity isDestPassing codType fvs xts defaul
   let name = Locator.attachCurrentLocator (locatorHandle h) $ BN.lambdaName mName lamID
   isAlreadyRegistered <- liftIO $ AuxEnv.checkIfAlreadyRegistered (auxEnvHandle h) name
   unless isAlreadyRegistered $ do
-    let codTypeContext = extendContext (fvs ++ xts) context
+    let codTypeContext = setCurrentFunction name $ extendContext (fvs ++ xts) context
     codType' <- clarifyType h codTypeContext codType
     liftIO $ registerClosure h name opacity isDestPassing codType' xts'' fvs'' e
   let cod = if isDestPassing then FCT.Void else FCT.Cod BLT.Pointer
