@@ -1575,9 +1575,9 @@ resolveExpKeys h m expKeys kvs = do
     [] ->
       return []
     expKey : rest -> do
-      args <- resolveExpKeys h m rest kvs
       case Map.lookup expKey kvs of
         Just value -> do
+          args <- resolveExpKeys h m rest kvs
           return $ value : args
         Nothing -> do
           raiseError m $ "The field `" <> expKey <> "` is missing"
