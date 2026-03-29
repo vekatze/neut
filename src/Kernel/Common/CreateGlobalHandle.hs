@@ -64,6 +64,7 @@ new cfg moduleFilePathOrNone = do
   platformHandle <- Platform.new loggerHandle
   envHandle <- Env.new loggerHandle (Remark.enableSilentMode cfg) moduleFilePathOrNone
   let mainModule = Env.getMainModule envHandle
+  Logger.setModuleDir loggerHandle mainModule
   keyArgHandle <- KeyArg.new mainModule
   optDataHandle <- OptimizableData.new
   typeHandle <- Type.new

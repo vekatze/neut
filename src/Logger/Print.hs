@@ -9,6 +9,8 @@ where
 
 import Color.Print qualified as Color
 import Color.Text qualified as Color
+import Data.IORef (readIORef)
+import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
 import Logger.Handle (Handle (..))
 import Logger.Hint
@@ -42,25 +44,26 @@ printLogWithoutFilePos h level txt =
 
 printLogIO :: Handle -> L.Log -> IO ()
 printLogIO h l = do
-  let locText = getLogLocation $ L.position l
+  locText <- getLogLocation h $ L.position l
   let levelText = getLogLevel (L.logLevel l)
   let logText = Color.pack' $ getLogText (L.content l) (logLevelToPad (L.logLevel l))
   Color.printStdOut (_colorHandle h) $ locText <> levelText <> logText
 
 printErrorIO :: Handle -> L.Log -> IO ()
 printErrorIO h l = do
-  let locText = getLogLocation $ L.position l
+  locText <- getLogLocation h $ L.position l
   let levelText = getLogLevel (L.logLevel l)
   let logText = Color.pack' $ getLogText (L.content l) (logLevelToPad (L.logLevel l))
   Color.printStdErr (_colorHandle h) $ locText <> levelText <> logText
 
-getLogLocation :: Maybe SavedHint -> Color.Text
-getLogLocation mpos = do
+getLogLocation :: Handle -> Maybe SavedHint -> IO Color.Text
+getLogLocation h mpos = do
   case mpos of
     Just (SavedHint pos) -> do
-      Color.pack [SetConsoleIntensity BoldIntensity] $ T.pack (showFilePos pos ++ "\n")
+      moduleDir <- readIORef (_moduleDirRef h)
+      return . Color.pack [SetConsoleIntensity BoldIntensity] $ showFilePosRelative moduleDir pos <> "\n"
     _ ->
-      Color.empty
+      return Color.empty
 
 getLogLevel :: L.LogLevel -> Color.Text
 getLogLevel l =
@@ -83,3 +86,9 @@ stylizeLogText str pad = do
       str
     l : rest ->
       T.intercalate "\n" $ l : map (pad <>) rest
+
+showFilePosRelative :: T.Text -> Hint -> T.Text
+showFilePosRelative moduleDir Hint {metaFileName, metaLocation = (l, c)} = do
+  let filePath = T.pack metaFileName
+  let filePath' = fromMaybe filePath (T.stripPrefix moduleDir filePath)
+  filePath' <> ":" <> T.pack (show l) <> ":" <> T.pack (show c)
