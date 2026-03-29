@@ -14,6 +14,7 @@ import Data.IntMap qualified as IntMap
 import Data.List qualified as List
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
+import Gensym.CreateHandle qualified as Gensym
 import Kernel.Common.Allocator (Allocator, allocatorSpec)
 import Kernel.Common.Const
 import Kernel.Common.CreateGlobalHandle qualified as Global
@@ -128,9 +129,11 @@ emitDeclarations declEnv = do
 
 emitDefinitions :: Handle -> LC.Def -> IO [Builder]
 emitDefinitions h (name, LC.DefContent {codType = codType, args = args, body = body}) = do
-  args' <- mapM (Gensym.newIdentFromIdent (Global.gensymHandle (globalHandle h))) args
+  gensymHandle <- Gensym.createHandle
+  let h' = h {globalHandle = (globalHandle h) {Global.gensymHandle = gensymHandle}}
+  args' <- mapM (Gensym.newIdentFromIdent (Global.gensymHandle (globalHandle h'))) args
   let sub = IntMap.fromList $ zipWith (\from to -> (toInt from, LC.VarLocal to)) args args'
-  let reduceHandle = Reduce.new (Global.gensymHandle (globalHandle h))
+  let reduceHandle = Reduce.new (Global.gensymHandle (globalHandle h'))
   body' <- Reduce.reduce reduceHandle sub body
   let args'' =
         case codType of
@@ -138,7 +141,7 @@ emitDefinitions h (name, LC.DefContent {codType = codType, args = args, body = b
             showFuncArgsWithSRet $ map (emitValue . LC.VarLocal) args'
           _ ->
             showFuncArgs $ map (emitValue . LC.VarLocal) args'
-  emitDefinition h (emitLowType codType) (DD.toBuilder name) args'' body'
+  emitDefinition h' (emitLowType codType) (DD.toBuilder name) args'' body'
 
 emitMain :: Handle -> LC.DefContent -> IO [Builder]
 emitMain h (LC.DefContent {codType = codType, args = args, body = body}) = do
