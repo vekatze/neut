@@ -33,22 +33,10 @@ reduce' h sub lowComp = do
       return LC.ReturnVoid
     LC.Let x op cont -> do
       let op' = substOp sub op
-      case op' of
-        LC.Bitcast d from to
-          | from == to -> do
-              let sub' = IntMap.insert (Ident.toInt x) (substLowValue sub d) sub
-              reduce' h sub' cont
-        LC.IntToPointer (LC.Int d) _ -> do
-          let sub' = IntMap.insert (Ident.toInt x) (LC.Address d) sub
-          reduce' h sub' cont
-        LC.PointerToInt (LC.Address a) _ -> do
-          let sub' = IntMap.insert (Ident.toInt x) (LC.Int a) sub
-          reduce' h sub' cont
-        _ -> do
-          x' <- Gensym.newIdentFromIdent (gensymHandle h) x
-          let sub' = IntMap.insert (Ident.toInt x) (LC.VarLocal x') sub
-          cont' <- reduce' h sub' cont
-          return $ LC.Let x' op' cont'
+      x' <- Gensym.newIdentFromIdent (gensymHandle h) x
+      let sub' = IntMap.insert (Ident.toInt x) (LC.VarLocal x') sub
+      cont' <- reduce' h sub' cont
+      return $ LC.Let x' op' cont'
     LC.Cont op cont -> do
       let op' = substOp sub op
       cont' <- reduce' h sub cont
