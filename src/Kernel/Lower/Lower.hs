@@ -35,6 +35,7 @@ import Kernel.Common.Handle.Global.Env qualified as Env
 import Kernel.Common.Handle.Global.Platform qualified as Platform
 import Kernel.Common.Target
 import Kernel.Lower.CoercionCancel qualified as CoercionCancel
+import Kernel.Lower.DeadLetElim qualified as DeadLetElim
 import Kernel.Lower.FreeMallocCancel qualified as FreeMallocCancel
 import Kernel.Lower.HoistStackAlloc qualified as HoistStackAlloc
 import Kernel.Lower.MallocFreeCancel qualified as MallocFreeCancel
@@ -126,6 +127,7 @@ summarize h stmtList = do
 optimize :: Handle -> LC.Comp -> IO LC.Comp
 optimize h = do
   return
+    . DeadLetElim.deadLetElim
     . CoercionCancel.coercionCancel
     . MallocFreeCancel.mallocFreeCancel
     >=> FreeMallocCancel.freeMallocCancel FreeMallocCancel.Exact (gensymHandle h)
