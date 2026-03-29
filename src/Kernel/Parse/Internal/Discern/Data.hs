@@ -96,11 +96,11 @@ parseDefineDataConstructor dataType dataName dataArgs consNameList consInfoList 
             if isConstLikeConsInfo consInfo
               then dataType
               else do
-                let impArgsWithEmpty = (SE.emptySeriesAC, [])
-                let defaultArgsWithEmpty = RT.emptyDefaultArgs
+                let emptyImpArgs = (SE.emptySeriesAC, [])
                 let expArgsWithEmpty = (fromMaybe SE.emptySeriesPC (expArgs consInfo), [])
-                m :< RT.Pi impArgsWithEmpty expArgsWithEmpty defaultArgsWithEmpty RT.Arrow [] dataType (endLoc consInfo)
-      let body =
+                let emptyDefArgs = RT.emptyDefaultArgs
+                m :< RT.Pi emptyImpArgs expArgsWithEmpty emptyDefArgs RT.PiDataIntro [] dataType (endLoc consInfo)
+      let consBody =
             if isConstLikeConsInfo consInfo
               then m :< RT.DataIntro attr (name consInfo) dataArgs'' (map fst expConsArgs')
               else
@@ -125,7 +125,7 @@ parseDefineDataConstructor dataType dataName dataArgs consNameList consInfoList 
                     leadingComment = [],
                     endLoc = endLoc consInfo,
                     trailingComment = [],
-                    body = body
+                    body = consBody
                   }
               )
       let introRuleList = parseDefineDataConstructor dataType dataName dataArgs consNameList rest (D.increment discriminant)
