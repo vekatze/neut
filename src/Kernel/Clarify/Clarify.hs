@@ -980,10 +980,10 @@ returnClosure ::
 returnClosure h context lamID mName opacity isDestPassing codType fvs xts defaultValues e = do
   fvs'' <- dropFst <$> clarifyBinder h context fvs
   xts'' <- dropFst <$> clarifyBinder h context xts
-  fvEnvSigma <- liftIO $ Sigma.closureEnvS4 (sigmaHandle h) (currentFunction context) mName fvs'' defaultValues
+  let name = DD.getLambdaDD (currentFunction context) mName lamID
+  fvEnvSigma <- liftIO $ Sigma.closureEnvS4 (sigmaHandle h) name fvs'' defaultValues
   let fvEnv = C.sigmaIntro (map (\(x, _) -> C.VarLocal x) fvs'')
   let argNum = AN.fromInt $ length xts'' + if isDestPassing then 3 else 2
-  let name = DD.getLambdaDD (currentFunction context) mName lamID
   isAlreadyRegistered <- liftIO $ AuxEnv.checkIfAlreadyRegistered (auxEnvHandle h) name
   unless isAlreadyRegistered $ do
     let codTypeContext = setCurrentFunction name $ extendContext (fvs ++ xts) context

@@ -15,7 +15,6 @@ where
 
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
-import Data.Text qualified as T
 import Gensym.Gensym qualified as Gensym
 import Gensym.Handle qualified as Gensym
 import Kernel.Clarify.Internal.Linearize qualified as Linearize
@@ -164,18 +163,17 @@ sigma4 h xts argVar = do
 closureEnvS4 ::
   Handle ->
   DD.DefiniteDescription ->
-  Maybe T.Text ->
   [(Ident, C.Comp)] ->
   [C.Value] ->
   IO C.Value
-closureEnvS4 h currentFunction mName mxts defaultValues =
+closureEnvS4 h closureName mxts defaultValues =
   case mxts of
     []
       | null defaultValues ->
           return immediateS4 -- performance optimization; not necessary for correctness
     _ -> do
       i <- Gensym.newCount (gensymHandle h)
-      let name = DD.getSigmaDD currentFunction mName i
+      let name = DD.getClosureEnvDD closureName i
       resourceSpec <- makeSigmaResourceSpec h mxts
       let resourceSpec' = resourceSpec {defaultValues}
       liftIO $ Utility.registerSwitcher (utilityHandle h) O.Clear name resourceSpec'

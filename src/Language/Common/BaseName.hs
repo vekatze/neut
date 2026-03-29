@@ -6,7 +6,6 @@ module Language.Common.BaseName
     reflect',
     isCapitalized,
     form,
-    sigmaName,
     lambdaName,
     muName,
     resourceName,
@@ -129,23 +128,13 @@ cls :: BaseName
 cls =
   MakeBaseName "cls"
 
-sigmaName :: Maybe T.Text -> Int -> BaseName
-sigmaName mName i =
-  case mName of
-    Just name ->
-      MakeBaseName $ name <> ";" <> T.pack (show i)
-    Nothing ->
-      MakeBaseName $ "sigma;" <> T.pack (show i)
-
--- MakeBaseName $ "sigma;" <> T.pack (show i)
-
 lambdaName :: Maybe T.Text -> Int -> BaseName
 lambdaName mName i =
   case mName of
     Just name ->
       MakeBaseName $ name <> ";" <> T.pack (show i)
     Nothing ->
-      MakeBaseName $ "lambda;" <> T.pack (show i)
+      MakeBaseName $ "lam;" <> T.pack (show i)
 
 muName :: Ident -> Int -> BaseName
 muName x i =
