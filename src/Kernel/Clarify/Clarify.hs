@@ -121,17 +121,17 @@ newAuxReduceHandle h = do
   let compSubstHandle = CompSubst.new (gensymHandle h)
   return $ Reduce.new compSubstHandle (gensymHandle h) defMap'
 
-clarify :: Handle -> [Stmt] -> App [C.CompStmt]
+clarify :: Handle -> [Stmt] -> App ([C.CompStmt], [C.CompStmt])
 clarify h stmtList = do
   liftIO $ AuxEnv.clear (auxEnvHandle h)
   baseAuxEnv <- liftIO $ getBaseAuxEnv (auxEnvHandle h) (sigmaHandle h)
   liftIO $ AuxEnv.clear (auxEnvHandle h)
   let filteredStmtList = filter (not . isMacroStmt) stmtList
-  stmtList' <- do
+  (stmtList', auxEnv) <- do
     stmtList' <- mapM (clarifyStmt h) filteredStmtList
     auxEnv <- liftIO $ AuxEnv.toCompStmtList <$> AuxEnv.get (auxEnvHandle h)
-    return $ stmtList' ++ auxEnv
-  forM_ (stmtList' ++ baseAuxEnv) $ \stmt -> do
+    return (stmtList', auxEnv)
+  forM_ (stmtList' ++ auxEnv ++ baseAuxEnv) $ \stmt -> do
     case stmt of
       C.Def x opacity args e -> do
         liftIO $ CompDef.insert (compDefHandle h) x (opacity, args, e)
@@ -140,7 +140,7 @@ clarify h stmtList = do
       C.Foreign {} ->
         return ()
   auxReduceHandle <- liftIO $ newAuxReduceHandle h
-  forM stmtList' $ \stmt -> do
+  stmtList'' <- forM stmtList' $ \stmt -> do
     case stmt of
       C.Def x opacity args e -> do
         e' <- liftIO $ Reduce.reduce auxReduceHandle e
@@ -154,6 +154,17 @@ clarify h stmtList = do
         return $ C.DefVoid x opacity args e'
       C.Foreign {} ->
         return stmt
+  auxEnv' <- forM auxEnv $ \stmt -> do
+    case stmt of
+      C.Def x opacity args e -> do
+        e' <- liftIO $ Reduce.reduce auxReduceHandle e
+        return $ C.Def x opacity args e'
+      C.DefVoid x opacity args e -> do
+        e' <- liftIO $ Reduce.reduce auxReduceHandle e
+        return $ C.DefVoid x opacity args e'
+      C.Foreign {} ->
+        return stmt
+  return (stmtList'', auxEnv')
 
 data MainHandle = MainHandle
   { mainAuxEnvHandle :: AuxEnv.Handle,

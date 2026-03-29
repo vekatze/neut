@@ -10,6 +10,7 @@ module Language.Comp.Comp
     Label,
     fromDefTuple,
     fromCompStmt,
+    getCompStmtName,
     intValue0,
     intValue1,
     mulInt64,
@@ -152,6 +153,16 @@ fromCompStmt cs =
       Just (opacity, xs, body)
     DefVoid _ opacity xs body ->
       Just (opacity, xs, body)
+    Foreign {} ->
+      Nothing
+
+getCompStmtName :: CompStmt -> Maybe DD.DefiniteDescription
+getCompStmtName stmt =
+  case stmt of
+    Def name _ _ _ ->
+      Just name
+    DefVoid name _ _ _ ->
+      Just name
     Foreign {} ->
       Nothing
 

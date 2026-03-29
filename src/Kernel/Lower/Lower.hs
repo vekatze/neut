@@ -74,7 +74,8 @@ data Handle = Handle
     substHandle :: Subst.Handle,
     declEnv :: IORef DN.DeclEnv,
     staticTextList :: IORef [(T.Text, (Builder, Int))],
-    definedNameSet :: IORef (S.Set DD.DefiniteDescription)
+    definedNameSet :: IORef (S.Set DD.DefiniteDescription),
+    referencedNameSet :: IORef (S.Set DD.DefiniteDescription)
   }
 
 new :: Global.Handle -> Target -> App Handle
@@ -88,6 +89,7 @@ new (Global.Handle {..}) target = do
   declEnv <- liftIO $ newIORef $ makeBaseDeclEnv arch (allocatorSpec allocator)
   staticTextList <- liftIO $ newIORef []
   definedNameSet <- liftIO $ newIORef S.empty
+  referencedNameSet <- liftIO $ newIORef S.empty
   return $ Handle {..}
 
 makeBaseDeclEnv :: Arch -> AllocatorSpec -> DN.DeclEnv
@@ -95,13 +97,15 @@ makeBaseDeclEnv arch spec = do
   Map.fromList $ flip map (defaultForeignList arch spec) $ \(F.Foreign _ name domList cod) -> do
     (DN.Ext name, (domList, cod))
 
-lower :: Handle -> [C.CompStmt] -> App LC.LowCode
-lower h stmtList = do
-  liftIO $ registerInternalNames h stmtList
+lower :: Handle -> [C.CompStmt] -> [C.CompStmt] -> App LC.LowCode
+lower h stmtList auxStmtList = do
+  let auxNameSet = S.fromList $ mapMaybe C.getCompStmtName auxStmtList
+  liftIO $ registerInternalNames h (stmtList ++ auxStmtList)
   liftIO $ forM DD.baseTypes $ \dd ->
     insDeclEnv h (DN.In dd) AN.argNumS4 (FCT.Cod BLT.Pointer)
-  stmtList' <- catMaybes <$> mapM (lowerStmt h) stmtList
-  LC.LowCodeNormal <$> liftIO (summarize h stmtList')
+  stmtDefList <- catMaybes <$> mapM (lowerStmt h) stmtList
+  auxDefList <- lowerAuxStmtList h auxNameSet auxStmtList
+  LC.LowCodeNormal <$> liftIO (summarize h (stmtDefList ++ auxDefList))
 
 lowerEntryPoint :: Handle -> MainTarget -> [C.CompStmt] -> App LC.LowCode
 lowerEntryPoint h target stmtList = do
@@ -150,6 +154,29 @@ registerInternalNames h stmtList =
       C.Foreign foreignList ->
         forM_ foreignList $ \(F.Foreign _ name domList cod) -> do
           insDeclEnv' h (DN.Ext name) domList cod
+
+lowerAuxStmtList :: Handle -> S.Set DD.DefiniteDescription -> [C.CompStmt] -> App [LC.Def]
+lowerAuxStmtList h auxNameSet auxStmtList =
+  go S.empty []
+  where
+    go loweredAuxNameSet acc = do
+      referencedAuxNameSet <-
+        liftIO $
+          S.intersection auxNameSet <$> getReferencedNameSet h
+      let pendingAuxNameSet = S.difference referencedAuxNameSet loweredAuxNameSet
+      let pendingStmtList =
+            filter
+              (maybe False (`S.member` pendingAuxNameSet) . C.getCompStmtName)
+              auxStmtList
+      if null pendingStmtList
+        then
+          return acc
+        else do
+          liftIO $ registerInternalNames h pendingStmtList
+          pendingDefList <- catMaybes <$> mapM (lowerStmt h) pendingStmtList
+          let loweredAuxNameSet' =
+                S.union loweredAuxNameSet (S.fromList $ mapMaybe C.getCompStmtName pendingStmtList)
+          go loweredAuxNameSet' (acc ++ pendingDefList)
 
 constructMainTerm :: Handle -> DD.DefiniteDescription -> IO LC.DefContent
 constructMainTerm h mainName = do
@@ -607,6 +634,7 @@ lowerValue :: Handle -> Ident -> C.Value -> LC.Comp -> App LC.Comp
 lowerValue h resultVar v cont =
   case v of
     C.VarGlobal globalName argNum cod -> do
+      liftIO $ insertReferencedName h globalName
       lowNameSet <- liftIO $ getDefinedNameSet h
       unless (S.member globalName lowNameSet) $ do
         liftIO $ insDeclEnv h (DN.In globalName) argNum cod
@@ -692,6 +720,14 @@ insertStaticText h name text len =
 getDefinedNameSet :: Handle -> IO (S.Set DD.DefiniteDescription)
 getDefinedNameSet h = do
   readIORef (definedNameSet h)
+
+getReferencedNameSet :: Handle -> IO (S.Set DD.DefiniteDescription)
+getReferencedNameSet h = do
+  readIORef (referencedNameSet h)
+
+insertReferencedName :: Handle -> DD.DefiniteDescription -> IO ()
+insertReferencedName h name = do
+  modifyIORef' (referencedNameSet h) $ S.insert name
 
 getElemPtr :: Ident -> LC.Value -> LT.LowType -> [Integer] -> LC.Comp -> LC.Comp
 getElemPtr var value valueType indexList cont = do
