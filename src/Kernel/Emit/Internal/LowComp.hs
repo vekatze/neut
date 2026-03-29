@@ -113,7 +113,7 @@ emitLowComp h lowComp =
       blockAsmList <-
         forM labelBranchList $ \(label, branch) -> do
           a <- emitLowComp (h {currentLabel = Just label, goalLabel = Just goalLabel}) branch
-          return $ emitLabel ("_" <> intDec (toInt label)) : a
+          return $ emitLabel (emitIdentAsVar label) : a
       goalBlock <- do
         currentLabelMap <- liftIO $ readIORef $ labelMapRef h
         let (allLabelList, allBranchList) = unzip labelBranchList
@@ -130,7 +130,7 @@ emitLowComp h lowComp =
                 emitOp $ emitValue (LC.VarLocal phiTarget) <> " = " <> phiOp
         let phiOpStr = concat phiOpList
         a <- emitLowComp (h {currentLabel = Just goalLabel}) cont
-        return $ emitLabel ("_" <> intDec (toInt goalLabel)) : phiOpStr <> a
+        return $ emitLabel (emitIdentAsVar goalLabel) : phiOpStr <> a
       return $ switchOpStr <> concat blockAsmList <> goalBlock
     LC.Cont op cont -> do
       let lowOp = emitLowOp (emitOpHandle h) "" op

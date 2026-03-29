@@ -1,5 +1,6 @@
 module Kernel.Emit.LowValue
   ( emitValue,
+    emitIdentAsVar,
     showArgs,
     showArgsWithSRet,
     showFuncArgs,
@@ -22,8 +23,8 @@ import Numeric.Half
 emitValue :: LC.Value -> Builder
 emitValue lowValue =
   case lowValue of
-    LC.VarLocal (I (_, i)) ->
-      "%_" <> intDec i
+    LC.VarLocal x ->
+      "%" <> emitIdentAsVar x
     LC.VarGlobal globalName ->
       "@" <> DD.toBuilder globalName
     LC.VarExternal extName ->
@@ -46,6 +47,10 @@ emitValue lowValue =
         else "inttoptr (i64 " <> integerDec a <> " to ptr)"
     LC.Null ->
       "null"
+
+emitIdentAsVar :: Ident -> Builder
+emitIdentAsVar (I (_, i)) =
+  "v" <> intDec i
 
 showArgs :: [(LT.LowType, LC.Value)] -> Builder
 showArgs tds =
