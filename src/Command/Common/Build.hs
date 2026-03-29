@@ -142,7 +142,7 @@ compile h target outputKindList contentSeq = do
     let ensureMainHandle = EnsureMain.new (Global.envHandle (globalHandle h))
     stmtList <- Elaborate.elaborate elaborateHandle target logs cacheOrStmt
     EnsureMain.ensureMain ensureMainHandle target source (map snd $ getStmtName stmtList)
-    clarifyHandle <- liftIO $ Clarify.new (globalHandle h) localHandle
+    clarifyHandle <- liftIO $ Clarify.new (globalHandle h)
     (stmtList', auxStmtList) <- Clarify.clarify clarifyHandle stmtList
     b <- Cache.needsCompilation cacheHandle outputKindList source
     if b

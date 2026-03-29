@@ -31,11 +31,9 @@ import Kernel.Clarify.Internal.Sigma qualified as Sigma
 import Kernel.Clarify.Internal.Utility (toRelevantApp)
 import Kernel.Clarify.Internal.Utility qualified as Utility
 import Kernel.Common.CreateGlobalHandle qualified as Global
-import Kernel.Common.CreateLocalHandle qualified as Local
 import Kernel.Common.Handle.Global.OptimizableData qualified as OptimizableData
 import Kernel.Common.Handle.Global.Platform qualified as Platform
 import Kernel.Common.Handle.Global.Type qualified as Type
-import Kernel.Common.Handle.Local.Locator qualified as Locator
 import Kernel.Common.OptimizableData qualified as OD
 import Language.Common.ArgNum qualified as AN
 import Language.Common.Attr.Data qualified as AttrD
@@ -89,7 +87,6 @@ data Handle = Handle
     utilityHandle :: Utility.Handle,
     auxEnvHandle :: AuxEnv.Handle,
     sigmaHandle :: Sigma.Handle,
-    locatorHandle :: Locator.Handle,
     optDataHandle :: OptimizableData.Handle,
     reduceHandle :: Reduce.Handle,
     substHandle :: Subst.Handle,
@@ -115,8 +112,8 @@ setCurrentFunction :: DD.DefiniteDescription -> Context -> Context
 setCurrentFunction currentFunction context =
   context {currentFunction}
 
-new :: Global.Handle -> Local.Handle -> IO Handle
-new (Global.Handle {..}) (Local.Handle {..}) = do
+new :: Global.Handle -> IO Handle
+new (Global.Handle {..}) = do
   let baseSize = Platform.getDataSize platformHandle
   auxEnvHandle <- AuxEnv.new
   defMap <- CompDef.get compDefHandle
