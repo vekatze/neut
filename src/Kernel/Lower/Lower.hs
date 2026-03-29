@@ -126,13 +126,12 @@ summarize h stmtList = do
 
 optimize :: Handle -> LC.Comp -> IO LC.Comp
 optimize h = do
-  return
-    . DeadLetElim.deadLetElim
-    . CoercionCancel.coercionCancel
-    . MallocFreeCancel.mallocFreeCancel
+  return . MallocFreeCancel.mallocFreeCancel
     >=> FreeMallocCancel.freeMallocCancel FreeMallocCancel.Exact (gensymHandle h)
     >=> FreeMallocCancel.freeMallocCancel FreeMallocCancel.Compatible (gensymHandle h)
     >=> HoistStackAlloc.hoistStackAlloc (gensymHandle h) (baseSize h)
+    >=> return . CoercionCancel.coercionCancel
+    >=> return . DeadLetElim.deadLetElim
 
 lowerStmt :: Handle -> C.CompStmt -> App (Maybe LC.Def)
 lowerStmt h stmt = do
