@@ -1,5 +1,8 @@
 module Kernel.Emit.LowValue
   ( emitValue,
+    emitIdentAsVar,
+    emitIdentAsLabel,
+    emitIdentAsLabelVar,
     showArgs,
     showArgsWithSRet,
     showFuncArgs,
@@ -22,8 +25,8 @@ import Numeric.Half
 emitValue :: LC.Value -> Builder
 emitValue lowValue =
   case lowValue of
-    LC.VarLocal (I (_, i)) ->
-      "%_" <> intDec i
+    LC.VarLocal x ->
+      "%" <> emitIdentAsVar x
     LC.VarGlobal globalName ->
       "@" <> DD.toBuilder globalName
     LC.VarExternal extName ->
@@ -47,13 +50,25 @@ emitValue lowValue =
     LC.Null ->
       "null"
 
+emitIdentAsVar :: Ident -> Builder
+emitIdentAsVar (I (_, i)) =
+  "v" <> intDec i
+
+emitIdentAsLabel :: Ident -> Builder
+emitIdentAsLabel (I (_, i)) =
+  "L" <> intDec i
+
+emitIdentAsLabelVar :: Ident -> Builder
+emitIdentAsLabelVar x =
+  "%" <> emitIdentAsLabel x
+
 showArgs :: [(LT.LowType, LC.Value)] -> Builder
 showArgs tds =
   showLocals $ map showArg tds
 
 showArgsWithSRet :: [(LT.LowType, LC.Value)] -> Builder
 showArgsWithSRet tds =
-  showLocals $ map showArgWithSRet $ zip [(0 :: Int) ..] tds
+  showLocals $ zipWith (curry showArgWithSRet) [0 ..] tds
 
 showArg :: (LT.LowType, LC.Value) -> Builder
 showArg (t, d) =
@@ -76,7 +91,7 @@ showFuncArgs ds =
 
 showFuncArgsWithSRet :: [Builder] -> Builder
 showFuncArgsWithSRet ds =
-  showLocals $ map emitFuncArgWithSRet $ zip [(0 :: Int) ..] ds
+  showLocals $ zipWith (curry emitFuncArgWithSRet) [0 ..] ds
 
 emitFuncArgWithSRet :: (Int, Builder) -> Builder
 emitFuncArgWithSRet (i, d)

@@ -31,11 +31,9 @@ import Kernel.Clarify.Internal.Sigma qualified as Sigma
 import Kernel.Clarify.Internal.Utility (toRelevantApp)
 import Kernel.Clarify.Internal.Utility qualified as Utility
 import Kernel.Common.CreateGlobalHandle qualified as Global
-import Kernel.Common.CreateLocalHandle qualified as Local
 import Kernel.Common.Handle.Global.OptimizableData qualified as OptimizableData
 import Kernel.Common.Handle.Global.Platform qualified as Platform
 import Kernel.Common.Handle.Global.Type qualified as Type
-import Kernel.Common.Handle.Local.Locator qualified as Locator
 import Kernel.Common.OptimizableData qualified as OD
 import Language.Common.ArgNum qualified as AN
 import Language.Common.Attr.Data qualified as AttrD
@@ -43,7 +41,6 @@ import Language.Common.Attr.DataIntro qualified as AttrDI
 import Language.Common.Attr.Lam qualified as AttrL
 import Language.Common.Attr.VarGlobal qualified as AttrVG
 import Language.Common.BaseLowType qualified as BLT
-import Language.Common.BaseName qualified as BN
 import Language.Common.Binder
 import Language.Common.CreateSymbol qualified as Gensym
 import Language.Common.DataSize qualified as DS
@@ -90,7 +87,6 @@ data Handle = Handle
     utilityHandle :: Utility.Handle,
     auxEnvHandle :: AuxEnv.Handle,
     sigmaHandle :: Sigma.Handle,
-    locatorHandle :: Locator.Handle,
     optDataHandle :: OptimizableData.Handle,
     reduceHandle :: Reduce.Handle,
     substHandle :: Subst.Handle,
@@ -99,8 +95,25 @@ data Handle = Handle
     typeHandle :: Type.Handle
   }
 
-new :: Global.Handle -> Local.Handle -> IO Handle
-new (Global.Handle {..}) (Local.Handle {..}) = do
+data Context = Context
+  { typeEnv :: TM.TypeEnv,
+    currentFunction :: DD.DefiniteDescription
+  }
+
+newContext :: DD.DefiniteDescription -> Context
+newContext currentFunction =
+  Context {typeEnv = IntMap.empty, currentFunction}
+
+extendContext :: [BinderF TM.Type] -> Context -> Context
+extendContext xts context =
+  context {typeEnv = TM.insTypeEnv xts (typeEnv context)}
+
+setCurrentFunction :: DD.DefiniteDescription -> Context -> Context
+setCurrentFunction currentFunction context =
+  context {currentFunction}
+
+new :: Global.Handle -> IO Handle
+new (Global.Handle {..}) = do
   let baseSize = Platform.getDataSize platformHandle
   auxEnvHandle <- AuxEnv.new
   defMap <- CompDef.get compDefHandle
@@ -121,17 +134,17 @@ newAuxReduceHandle h = do
   let compSubstHandle = CompSubst.new (gensymHandle h)
   return $ Reduce.new compSubstHandle (gensymHandle h) defMap'
 
-clarify :: Handle -> [Stmt] -> App [C.CompStmt]
+clarify :: Handle -> [Stmt] -> App ([C.CompStmt], [C.CompStmt])
 clarify h stmtList = do
   liftIO $ AuxEnv.clear (auxEnvHandle h)
   baseAuxEnv <- liftIO $ getBaseAuxEnv (auxEnvHandle h) (sigmaHandle h)
   liftIO $ AuxEnv.clear (auxEnvHandle h)
   let filteredStmtList = filter (not . isMacroStmt) stmtList
-  stmtList' <- do
+  (stmtList', auxEnv) <- do
     stmtList' <- mapM (clarifyStmt h) filteredStmtList
     auxEnv <- liftIO $ AuxEnv.toCompStmtList <$> AuxEnv.get (auxEnvHandle h)
-    return $ stmtList' ++ auxEnv
-  forM_ (stmtList' ++ baseAuxEnv) $ \stmt -> do
+    return (stmtList', auxEnv)
+  forM_ (stmtList' ++ auxEnv ++ baseAuxEnv) $ \stmt -> do
     case stmt of
       C.Def x opacity args e -> do
         liftIO $ CompDef.insert (compDefHandle h) x (opacity, args, e)
@@ -140,7 +153,7 @@ clarify h stmtList = do
       C.Foreign {} ->
         return ()
   auxReduceHandle <- liftIO $ newAuxReduceHandle h
-  forM stmtList' $ \stmt -> do
+  stmtList'' <- forM stmtList' $ \stmt -> do
     case stmt of
       C.Def x opacity args e -> do
         e' <- liftIO $ Reduce.reduce auxReduceHandle e
@@ -154,6 +167,17 @@ clarify h stmtList = do
         return $ C.DefVoid x opacity args e'
       C.Foreign {} ->
         return stmt
+  auxEnv' <- forM auxEnv $ \stmt -> do
+    case stmt of
+      C.Def x opacity args e -> do
+        e' <- liftIO $ Reduce.reduce auxReduceHandle e
+        return $ C.Def x opacity args e'
+      C.DefVoid x opacity args e -> do
+        e' <- liftIO $ Reduce.reduce auxReduceHandle e
+        return $ C.DefVoid x opacity args e'
+      C.Foreign {} ->
+        return stmt
+  return (stmtList'', auxEnv')
 
 data MainHandle = MainHandle
   { mainAuxEnvHandle :: AuxEnv.Handle,
@@ -197,30 +221,32 @@ clarifyStmt :: Handle -> Stmt -> App C.CompStmt
 clarifyStmt h stmt =
   case stmt of
     StmtDefine _ stmtKind _ f impArgs expArgs defaultArgs codType e -> do
-      defaultValues <- registerDefaultFunctions h IntMap.empty f [] impArgs defaultArgs
+      let context = newContext f
+      defaultValues <- registerDefaultFunctions h context f [] impArgs defaultArgs
       liftIO $ registerDefaultEnvType h f defaultValues
       let xts = impArgs ++ expArgs ++ map fst defaultArgs
-      xts' <- dropFst <$> clarifyBinder h IntMap.empty xts
+      xts' <- dropFst <$> clarifyBinder h context xts
       envArg <- liftIO $ makeEnvArg h
       switchArg <- liftIO $ makeSwitchArg h
       let xts'' = xts' ++ [envArg, switchArg]
-      let tenv = TM.insTypeEnv xts IntMap.empty
+      let context' = extendContext xts context
       if SK.isDestPassingStmtKind stmtKind
         then do
-          e' <- clarifyTerm h tenv e
-          codType' <- clarifyType h tenv codType
+          e' <- clarifyTerm h context' e
+          codType' <- clarifyType h context' codType
           destParam <- liftIO $ makeDestParam h
           e'' <- liftIO $ toDestPassing h destParam codType' e'
           e''' <- liftIO $ Linearize.linearize (linearizeHandle h) xts'' e'' >>= Reduce.reduce (reduceHandle h)
           return $ C.DefVoid f (SK.toLowOpacityTerm stmtKind) (destParam : map fst xts'') e'''
         else do
-          e' <- clarifyStmtDefineBody h tenv xts'' e
+          e' <- clarifyStmtDefineBody h context' xts'' e
           return $ C.Def f (SK.toLowOpacityTerm stmtKind) (map fst xts'') e'
     StmtDefineType _ stmtKind (SavedHint m) f impArgs expArgs defaultArgs _ body -> do
-      defaultValues <- registerDefaultFunctions h IntMap.empty f [] impArgs defaultArgs
+      let context = newContext f
+      defaultValues <- registerDefaultFunctions h context f [] impArgs defaultArgs
       liftIO $ registerDefaultEnvType h f defaultValues
       let xts = impArgs ++ expArgs ++ map fst defaultArgs
-      xts' <- dropFst <$> clarifyBinder h IntMap.empty xts
+      xts' <- dropFst <$> clarifyBinder h context xts
       envArg <- liftIO $ makeEnvArg h
       switchArg <- liftIO $ makeSwitchArg h
       let xts'' = xts' ++ [envArg, switchArg]
@@ -233,32 +259,33 @@ clarifyStmt h stmt =
                 >>= clarifyStmtDefineBody' h name xts''
             Just OD.Unary
               | [(_, _, _, [(_, _, _, t)], _)] <- consInfoList -> do
-                  (dataArgs', t') <- clarifyTypeBinderBody h IntMap.empty dataArgs t
+                  (dataArgs', t') <- clarifyTypeBinderBody h (newContext name) dataArgs t
                   return $ C.Def f O.Clear (map fst $ dataArgs' ++ [envArg, switchArg]) t'
               | otherwise ->
                   raiseCritical m "Found a broken unary data"
             _ -> do
               let totalSlotCount = getDataSlotCount dataArgs consInfoList
               let dataInfo = map (\(_, consName, isConstLike, consArgs, discriminant) -> (consName, isConstLike, discriminant, dataArgs, consArgs)) consInfoList
-              dataInfo' <- mapM (clarifyDataClause h totalSlotCount) dataInfo
+              dataInfo' <- mapM (clarifyDataClause h (newContext name) totalSlotCount) dataInfo
               liftIO (Sigma.returnSigmaDataS4 (sigmaHandle h) name O.Opaque totalSlotCount dataInfo')
                 >>= clarifyStmtDefineBody' h name xts''
         _ -> do
-          let tenv = TM.insTypeEnv xts IntMap.empty
-          body' <- clarifyStmtDefineTypeBody h tenv xts'' body
+          let context' = extendContext xts context
+          body' <- clarifyStmtDefineTypeBody h context' xts'' body
           return $ C.Def f (SK.toLowOpacityType stmtKind) (map fst xts'') body'
     StmtDefineResource (SavedHint m) dd resourceID _ discarder copier resourceSize -> do
       let liftedName = DD.makeResourceName dd resourceID
+      let context = newContext liftedName
       switch <- liftIO $ Gensym.createVar (gensymHandle h) "switch"
       arg@(argVarName, _) <- liftIO $ Gensym.createVar (gensymHandle h) "arg"
       size <-
-        clarifyTerm h IntMap.empty resourceSize
+        clarifyTerm h context resourceSize
           >>= liftIO . Reduce.reduce (reduceHandle h)
       discard <-
-        clarifyTerm h IntMap.empty (m :< TM.PiElim PEK.Normal discarder [] [m :< TM.Var argVarName] [])
+        clarifyTerm h context (m :< TM.PiElim PEK.Normal discarder [] [m :< TM.Var argVarName] [])
           >>= liftIO . Reduce.reduce (reduceHandle h)
       copy <-
-        clarifyTerm h IntMap.empty (m :< TM.PiElim PEK.Normal copier [] [m :< TM.Var argVarName] [])
+        clarifyTerm h context (m :< TM.PiElim PEK.Normal copier [] [m :< TM.Var argVarName] [])
           >>= liftIO . Reduce.reduce (reduceHandle h)
       let resourceSpec = Utility.ResourceSpec {switch, arg, discard, copy, size, defaultValues = []}
       liftIO $ Utility.registerSwitcher (utilityHandle h) O.Clear liftedName resourceSpec
@@ -340,81 +367,82 @@ registerDefaultEnvType h name defaultValues = do
 
 registerDefaultFunctions ::
   Handle ->
-  TM.TypeEnv ->
+  Context ->
   DD.DefiniteDescription ->
   [BinderF TM.Type] ->
   [BinderF TM.Type] ->
   [(BinderF TM.Type, TM.Term)] ->
   App [C.Value]
-registerDefaultFunctions h tenv name fvs impArgs defaultArgs =
+registerDefaultFunctions h context name fvs impArgs defaultArgs =
   case defaultArgs of
     [] ->
       return []
     _ -> do
-      let tenv' = TM.insTypeEnv (fvs ++ impArgs) tenv
-      fvs' <- dropFst <$> clarifyBinder h tenv fvs
-      impArgs' <- dropFst <$> clarifyBinder h tenv impArgs
+      let context' = extendContext (fvs ++ impArgs) context
+      fvs' <- dropFst <$> clarifyBinder h context fvs
+      impArgs' <- dropFst <$> clarifyBinder h context impArgs
       let argNum = AN.fromInt (length impArgs' + 2)
       forM (zip [0 ..] defaultArgs) $ \(i, ((_, _, _, codType), value)) -> do
         let labelName = defaultLabelName name i
         isAlreadyRegistered <- liftIO $ AuxEnv.checkIfAlreadyRegistered (auxEnvHandle h) labelName
         unless isAlreadyRegistered $ do
-          codType' <- clarifyType h tenv' codType
-          body <- clarifyTerm h tenv' value
+          let labelContext = setCurrentFunction labelName context'
+          codType' <- clarifyType h labelContext codType
+          body <- clarifyTerm h labelContext value
           liftIO $ registerClosure h labelName O.Clear False codType' impArgs' fvs' body
         return $ C.VarGlobal labelName argNum (FCT.Cod BLT.Pointer)
 
 clarifyBinderBody ::
   Handle ->
-  TM.TypeEnv ->
+  Context ->
   [BinderF TM.Type] ->
   TM.Term ->
   App ([(Ident, C.Comp)], C.Comp)
-clarifyBinderBody h tenv xts e =
+clarifyBinderBody h context xts e =
   case xts of
     [] -> do
-      e' <- clarifyTerm h tenv e
+      e' <- clarifyTerm h context e
       return ([], e')
     (m, k, x, t) : rest -> do
-      t' <- clarifyType h tenv t
-      (binder, e') <- clarifyBinderBody h (TM.insTypeEnv [(m, k, x, t)] tenv) rest e
+      t' <- clarifyType h context t
+      (binder, e') <- clarifyBinderBody h (extendContext [(m, k, x, t)] context) rest e
       return ((x, t') : binder, e')
 
 clarifyTypeBinderBody ::
   Handle ->
-  TM.TypeEnv ->
+  Context ->
   [BinderF TM.Type] ->
   TM.Type ->
   App ([(Ident, C.Comp)], C.Comp)
-clarifyTypeBinderBody h tenv xts t =
+clarifyTypeBinderBody h context xts t =
   case xts of
     [] -> do
-      t' <- clarifyType h tenv t
+      t' <- clarifyType h context t
       return ([], t')
     (m, k, x, t1) : rest -> do
-      t1' <- clarifyType h tenv t1
-      (binder, t') <- clarifyTypeBinderBody h (TM.insTypeEnv [(m, k, x, t1)] tenv) rest t
+      t1' <- clarifyType h context t1
+      (binder, t') <- clarifyTypeBinderBody h (extendContext [(m, k, x, t1)] context) rest t
       return ((x, t1') : binder, t')
 
 clarifyStmtDefineBody ::
   Handle ->
-  TM.TypeEnv ->
+  Context ->
   [(Ident, C.Comp)] ->
   TM.Term ->
   App C.Comp
-clarifyStmtDefineBody h tenv xts e = do
-  clarifyTerm h tenv e
+clarifyStmtDefineBody h context xts e = do
+  clarifyTerm h context e
     >>= liftIO . Linearize.linearize (linearizeHandle h) xts
     >>= liftIO . Reduce.reduce (reduceHandle h)
 
 clarifyStmtDefineTypeBody ::
   Handle ->
-  TM.TypeEnv ->
+  Context ->
   [(Ident, C.Comp)] ->
   TM.Type ->
   App C.Comp
-clarifyStmtDefineTypeBody h tenv xts t = do
-  clarifyType h tenv t
+clarifyStmtDefineTypeBody h context xts t = do
+  clarifyType h context t
     >>= liftIO . Linearize.linearize (linearizeHandle h) xts
     >>= liftIO . Reduce.reduce (reduceHandle h)
 
@@ -428,8 +456,8 @@ clarifyStmtDefineBody' h name xts' dataType = do
   dataType' <- liftIO $ Linearize.linearize (linearizeHandle h) xts' dataType >>= Reduce.reduce (reduceHandle h)
   return $ C.Def name O.Clear (map fst xts') dataType'
 
-clarifyTerm :: Handle -> TM.TypeEnv -> TM.Term -> App C.Comp
-clarifyTerm h tenv term =
+clarifyTerm :: Handle -> Context -> TM.Term -> App C.Comp
+clarifyTerm h context term =
   case term of
     _ :< TM.Var x -> do
       return $ C.UpIntro $ C.VarLocal x
@@ -444,18 +472,18 @@ clarifyTerm h tenv term =
               C.VarGlobal x globalArgNum globalCodType
             ]
     _ :< TM.PiIntro attr impArgs expArgs defaultArgs e -> do
-      clarifyLambda h tenv attr (TM.chainOf tenv [term]) impArgs expArgs defaultArgs e
+      clarifyLambda h context attr (TM.chainOf (typeEnv context) [term]) impArgs expArgs defaultArgs e
     _ :< TM.PiElim kind e impArgs expArgs defaultArgs -> do
-      kind' <- PEK.traverseArg (clarifyType h tenv) kind
-      impArgs' <- mapM (clarifyTypePlus h tenv) impArgs
-      expArgs' <- mapM (clarifyPlus h tenv) expArgs
-      defaultArgs' <- mapM (traverse (clarifyPlus h tenv)) defaultArgs
+      kind' <- PEK.traverseArg (clarifyType h context) kind
+      impArgs' <- mapM (clarifyTypePlus h context) impArgs
+      expArgs' <- mapM (clarifyPlus h context) expArgs
+      defaultArgs' <- mapM (traverse (clarifyPlus h context)) defaultArgs
       let allArgs = impArgs' ++ expArgs' ++ catMaybes defaultArgs'
       case e of
         _ :< TM.Prim (PV.Op op) ->
           return $ callPrimOp op allArgs
         _ -> do
-          e' <- clarifyTerm h tenv e
+          e' <- clarifyTerm h context e
           liftIO $ callClosure h kind' e' impArgs' expArgs' defaultArgs'
     m :< TM.DataIntro (AttrDI.Attr {..}) consName dataArgs consArgs -> do
       od <- liftIO $ OptimizableData.lookup (optDataHandle h) consName
@@ -464,12 +492,12 @@ clarifyTerm h tenv term =
           return $ C.UpIntro $ C.Int (dataSizeToIntSize (baseSize h)) (D.reify discriminant)
         Just OD.Unary
           | [e] <- consArgs ->
-              clarifyTerm h tenv e
+              clarifyTerm h context e
           | otherwise ->
               raiseCritical m "Found a malformed unary data in Scene.Clarify.clarifyTerm"
         _ -> do
-          (zs1, es1, xs1) <- unzip3 <$> mapM (clarifyTypePlus h tenv) dataArgs
-          (zs2, es2, xs2) <- unzip3 <$> mapM (clarifyPlus h tenv) consArgs
+          (zs1, es1, xs1) <- unzip3 <$> mapM (clarifyTypePlus h context) dataArgs
+          (zs2, es2, xs2) <- unzip3 <$> mapM (clarifyPlus h context) consArgs
           let totalSlotCount = getDataSlotCount' xs1 consNameList
           return $
             Utility.bindLet (zip zs1 es1 ++ zip zs2 es2) $
@@ -479,28 +507,28 @@ clarifyTerm h tenv term =
     m :< TM.DataElim isNoetic xets tree -> do
       let (xs, es, _) = unzip3 xets
       let mxts = map (\x -> (m, VK.Normal, x, m :< TM.Tau)) xs
-      es' <- mapM (clarifyTerm h tenv) es
-      (tree', _) <- clarifyDecisionTree h (TM.insTypeEnv mxts tenv) isNoetic IntMap.empty tree
+      es' <- mapM (clarifyTerm h context) es
+      (tree', _) <- clarifyDecisionTree h (extendContext mxts context) isNoetic IntMap.empty tree
       return $ Utility.irreducibleBindLet (zip xs es') tree'
     _ :< TM.BoxIntro letSeq e -> do
-      embody h tenv letSeq e
+      embody h context letSeq e
     _ :< TM.BoxElim castSeq mxt e1 uncastSeq e2 -> do
-      clarifyTerm h tenv $
+      clarifyTerm h context $
         TM.fromLetSeqOpaque castSeq $
           TM.fromLetSeq ((mxt, e1) : uncastSeq) e2
     _ :< TM.CodeIntro e -> do
-      clarifyTerm h tenv e
+      clarifyTerm h context e
     _ :< TM.CodeElim e -> do
-      clarifyTerm h tenv e
+      clarifyTerm h context e
     _ :< TM.TauIntro ty -> do
-      clarifyType h tenv ty
+      clarifyType h context ty
     m :< TM.TauElim (mx, x) e1 e2 -> do
-      clarifyTerm h tenv $ m :< TM.Let O.Clear (mx, VK.Normal, x, mx :< TM.Tau) e1 e2
+      clarifyTerm h context $ m :< TM.Let O.Clear (mx, VK.Normal, x, mx :< TM.Tau) e1 e2
     _ :< TM.Let opacity mxt@(_, _, x, _) e1 e2 -> do
-      e2' <- clarifyTerm h (TM.insTypeEnv [mxt] tenv) e2
-      mxts' <- dropFst <$> clarifyBinder h tenv [mxt]
+      e2' <- clarifyTerm h (extendContext [mxt] context) e2
+      mxts' <- dropFst <$> clarifyBinder h context [mxt]
       e2'' <- liftIO $ Linearize.linearize (linearizeHandle h) mxts' e2'
-      e1' <- clarifyTerm h tenv e1
+      e1' <- clarifyTerm h context e1
       return $ Utility.bindLetWithReducibility (not $ isOpaque opacity) [(x, e1')] e2''
     m :< TM.Prim primValue ->
       case primValue of
@@ -509,17 +537,17 @@ clarifyTerm h tenv term =
         PV.Float _ size l ->
           return $ C.UpIntro (C.Float size l)
         PV.Op op -> do
-          clarifyPrimOp h tenv op m
+          clarifyPrimOp h context op m
         PV.StaticText _ text ->
           return $ C.UpIntro $ C.VarStaticText text
         PV.Rune r -> do
           let t = fromPrimNum m (PT.Int PNS.IntSize32)
-          clarifyTerm h tenv $ m :< TM.Prim (PV.Int t PNS.IntSize32 (RU.asInt r))
+          clarifyTerm h context $ m :< TM.Prim (PV.Int t PNS.IntSize32 (RU.asInt r))
     _ :< TM.Magic der -> do
-      clarifyMagic h tenv der
+      clarifyMagic h context der
 
-clarifyType :: Handle -> TM.TypeEnv -> TM.Type -> App C.Comp
-clarifyType h tenv ty =
+clarifyType :: Handle -> Context -> TM.Type -> App C.Comp
+clarifyType h context ty =
   case ty of
     _ :< TM.Tau -> do
       return Sigma.returnImmediateS4
@@ -536,8 +564,8 @@ clarifyType h tenv ty =
               C.VarGlobal x globalArgNum globalCodType
             ]
     _ :< TM.TyApp t args -> do
-      t' <- clarifyType h tenv t
-      args' <- mapM (clarifyTypePlus h tenv) args
+      t' <- clarifyType h context t
+      args' <- mapM (clarifyTypePlus h context) args
       liftIO $ callClosure h PEK.Normal t' args' [] []
     _ :< TM.Pi {} ->
       return Sigma.returnClosureS4
@@ -545,14 +573,14 @@ clarifyType h tenv ty =
       let argNum = AN.fromInt $ length dataArgs + 2
       envType <- liftIO $ envTypeForGlobal h name
       let cls = C.UpIntro $ C.sigmaIntro [envType, C.null, C.VarGlobal name argNum (FCT.Cod BLT.Pointer)]
-      dataArgs' <- mapM (clarifyTypePlus h tenv) dataArgs
+      dataArgs' <- mapM (clarifyTypePlus h context) dataArgs
       liftIO $ callClosure h PEK.Normal cls dataArgs' [] []
     _ :< TM.Box t -> do
-      clarifyType h tenv t
+      clarifyType h context t
     _ :< TM.BoxNoema {} ->
       return Sigma.returnImmediateS4
     _ :< TM.Code t -> do
-      clarifyType h tenv t
+      clarifyType h context t
     _ :< TM.PrimType {} ->
       return Sigma.returnImmediateS4
     _ :< TM.Resource dd resourceID -> do
@@ -560,16 +588,16 @@ clarifyType h tenv ty =
     _ :< TM.Void ->
       return Sigma.returnImmediateS4
 
-embody :: Handle -> TM.TypeEnv -> [(BinderF TM.Type, TM.Term)] -> TM.Term -> App C.Comp
-embody h tenv xets cont =
+embody :: Handle -> Context -> [(BinderF TM.Type, TM.Term)] -> TM.Term -> App C.Comp
+embody h context xets cont =
   case xets of
     [] ->
-      clarifyTerm h tenv cont
+      clarifyTerm h context cont
     (mxt@(_, _, x, t), e) : rest -> do
-      t' <- clarifyType h tenv t
-      (valueVarName, value, valueVar) <- clarifyPlus h tenv e
+      t' <- clarifyType h context t
+      (valueVarName, value, valueVar) <- clarifyPlus h context e
       relApp <- liftIO $ toRelevantApp (utilityHandle h) valueVar t'
-      cont' <- embody h (TM.insTypeEnv [mxt] tenv) rest cont
+      cont' <- embody h (extendContext [mxt] context) rest cont
       cont'' <- liftIO $ Linearize.linearize (linearizeHandle h) [(x, t')] cont'
       return $ Utility.bindLet [(valueVarName, value), (x, relApp)] cont''
 
@@ -603,11 +631,12 @@ dataSlotCountToByteSize h slotCount =
 
 clarifyDataClause ::
   Handle ->
+  Context ->
   Int ->
   (DD.DefiniteDescription, Bool, D.Discriminant, [BinderF TM.Type], [BinderF TM.Type]) ->
   App Sigma.DataConstructorInfo
-clarifyDataClause h totalSlotCount (consNameVal, isConstLikeVal, discriminantVal, dataArgsVal, consArgsVal) = do
-  args <- dropFst <$> clarifyBinder h IntMap.empty (dataArgsVal ++ consArgsVal)
+clarifyDataClause h context totalSlotCount (consNameVal, isConstLikeVal, discriminantVal, dataArgsVal, consArgsVal) = do
+  args <- dropFst <$> clarifyBinder h context (dataArgsVal ++ consArgsVal)
   let (dataArgs', consArgs') = splitAt (length dataArgsVal) args
   return $
     Sigma.DataConstructorInfo
@@ -621,29 +650,29 @@ clarifyDataClause h totalSlotCount (consNameVal, isConstLikeVal, discriminantVal
 
 clarifyDecisionTree ::
   Handle ->
-  TM.TypeEnv ->
+  Context ->
   N.IsNoetic ->
   DataArgsMap ->
   DT.DecisionTree TM.Type TM.Term ->
   App (C.Comp, [BinderF TM.Type])
-clarifyDecisionTree h tenv isNoetic dataArgsMap tree =
+clarifyDecisionTree h context isNoetic dataArgsMap tree =
   case tree of
     DT.Leaf consumedCursorList letSeq cont@(m :< _) -> do
-      let chain = TM.chainOfDecisionTree tenv m tree
-      cont' <- clarifyTerm h tenv $ TM.fromLetSeq letSeq cont
+      let chain = TM.chainOfDecisionTree (typeEnv context) m tree
+      cont' <- clarifyTerm h context $ TM.fromLetSeq letSeq cont
       if isNoetic
         then return (cont', chain)
         else do
-          (cont'', dataChain) <- tidyCursorList h tenv dataArgsMap consumedCursorList cont'
+          (cont'', dataChain) <- tidyCursorList h context dataArgsMap consumedCursorList cont'
           return (cont'', dataChain ++ chain)
     DT.Unreachable -> do
       return (C.Unreachable, [])
     DT.Switch (cursor, cursorType@(m :< _)) (fallbackClause, clauseList) -> do
-      (fallbackClause', fallbackChain) <- clarifyDecisionTree h tenv isNoetic dataArgsMap fallbackClause
-      tmp <- mapM (clarifyCase h tenv isNoetic dataArgsMap cursor cursorType) clauseList
+      (fallbackClause', fallbackChain) <- clarifyDecisionTree h context isNoetic dataArgsMap fallbackClause
+      tmp <- mapM (clarifyCase h context isNoetic dataArgsMap cursor cursorType) clauseList
       let (enumCaseList, clauseList', clauseChainList) = unzip3 tmp
       let chain = nubFreeVariables $ fallbackChain ++ concat clauseChainList
-      let aligner = alignFreeVariable h tenv chain
+      let aligner = alignFreeVariable h context chain
       clauseList'' <- mapM aligner clauseList'
       let newChain = (m, VK.Normal, cursor, m :< TM.Tau) : chain
       let idents = nubOrd $ map (\(_, _, x, _) -> x) newChain
@@ -686,8 +715,8 @@ getClauseDataGroup h term =
     _ ->
       raiseCritical' "Clarify.isEnumType"
 
-tidyCursorList :: Handle -> TM.TypeEnv -> DataArgsMap -> [Ident] -> C.Comp -> App (C.Comp, [BinderF TM.Type])
-tidyCursorList h tenv dataArgsMap consumedCursorList cont =
+tidyCursorList :: Handle -> Context -> DataArgsMap -> [Ident] -> C.Comp -> App (C.Comp, [BinderF TM.Type])
+tidyCursorList h context dataArgsMap consumedCursorList cont =
   case consumedCursorList of
     [] ->
       return (cont, [])
@@ -697,8 +726,8 @@ tidyCursorList h tenv dataArgsMap consumedCursorList cont =
           error "tidyCursor"
         Just (dataArgs, cursorSize) -> do
           let (dataArgVars, dataTypes) = unzip dataArgs
-          dataTypes' <- mapM (clarifyType h tenv) dataTypes
-          (cont', chain) <- tidyCursorList h tenv dataArgsMap rest cont
+          dataTypes' <- mapM (clarifyType h context) dataTypes
+          (cont', chain) <- tidyCursorList h context dataArgsMap rest cont
           tmp <- liftIO $ Linearize.linearize (linearizeHandle h) (zip dataArgVars dataTypes') $ do
             C.Free (C.VarLocal cursor) (Just cursorSize) cont'
           let newChain = zipWith (\x t@(m :< _) -> (m, VK.Normal, x, t)) dataArgVars dataTypes
@@ -706,17 +735,17 @@ tidyCursorList h tenv dataArgsMap consumedCursorList cont =
 
 clarifyCase ::
   Handle ->
-  TM.TypeEnv ->
+  Context ->
   N.IsNoetic ->
   DataArgsMap ->
   Ident ->
   TM.Type ->
   DT.Case TM.Type TM.Term ->
   App (EC.EnumCase, C.Comp, [BinderF TM.Type])
-clarifyCase h tenv isNoetic dataArgsMap cursor cursorType decisionCase = do
+clarifyCase h context isNoetic dataArgsMap cursor cursorType decisionCase = do
   case decisionCase of
     DT.LiteralCase _ l cont -> do
-      (body', contChain) <- clarifyDecisionTree h tenv isNoetic dataArgsMap cont
+      (body', contChain) <- clarifyDecisionTree h context isNoetic dataArgsMap cont
       case l of
         L.Int i ->
           return (EC.Int i, body', contChain)
@@ -728,8 +757,8 @@ clarifyCase h tenv isNoetic dataArgsMap cursor cursorType decisionCase = do
       cursorSize <- dataSlotCountToByteSize h <$> getDataSlotCountFromType cursorType
       let dataArgsMap' = IntMap.insert (Ident.toInt cursor) (zip dataArgVars dataTypes, cursorSize) dataArgsMap
       let consArgs' = map (\(m, k, x, _) -> (m, k, x, m :< TM.Tau)) consArgs
-      let prefixChain = TM.chainOfCaseWithoutCont tenv decisionCase
-      (body', contChain) <- clarifyDecisionTree h (TM.insTypeEnv consArgs' tenv) isNoetic dataArgsMap' cont
+      let prefixChain = TM.chainOfCaseWithoutCont (typeEnv context) decisionCase
+      (body', contChain) <- clarifyDecisionTree h (extendContext consArgs' context) isNoetic dataArgsMap' cont
       let consArgVars = map (\(_, _, x, _) -> x) consArgs
       let argVars = dataArgVars ++ consArgVars
       let contChain' = filter (\(_, _, x, _) -> x `notElem` argVars) contChain
@@ -759,77 +788,77 @@ clarifyCase h tenv isNoetic dataArgsMap cursor cursorType decisionCase = do
               chain
             )
 
-alignFreeVariable :: Handle -> TM.TypeEnv -> [BinderF TM.Type] -> C.Comp -> App C.Comp
-alignFreeVariable h tenv fvs e = do
-  fvs' <- dropFst <$> clarifyBinder h tenv fvs
+alignFreeVariable :: Handle -> Context -> [BinderF TM.Type] -> C.Comp -> App C.Comp
+alignFreeVariable h context fvs e = do
+  fvs' <- dropFst <$> clarifyBinder h context fvs
   liftIO $ Linearize.linearize (linearizeHandle h) fvs' e
 
-clarifyMagic :: Handle -> TM.TypeEnv -> M.Magic BLT.BaseLowType TM.Type TM.Term -> App C.Comp
-clarifyMagic h tenv der = do
+clarifyMagic :: Handle -> Context -> M.Magic BLT.BaseLowType TM.Type TM.Term -> App C.Comp
+clarifyMagic h context der = do
   case der of
     M.LowMagic magic -> do
       case magic of
         LM.Cast from to value -> do
-          (fromVarName, from', fromVar) <- clarifyTypePlus h tenv from
-          (toVarName, to', toVar) <- clarifyTypePlus h tenv to
-          (valueVarName, value', valueVar) <- clarifyPlus h tenv value
+          (fromVarName, from', fromVar) <- clarifyTypePlus h context from
+          (toVarName, to', toVar) <- clarifyTypePlus h context to
+          (valueVarName, value', valueVar) <- clarifyPlus h context value
           return $
             Utility.bindLet [(fromVarName, from'), (toVarName, to'), (valueVarName, value')] $
               C.Primitive (C.Magic (LM.Cast fromVar toVar valueVar))
         LM.Store lt unit value pointer -> do
-          (unitVarName, unit', unitVar) <- clarifyTypePlus h tenv unit
-          (valueVarName, value', valueVar) <- clarifyPlus h tenv value
-          (pointerVarName, pointer', pointerVar) <- clarifyPlus h tenv pointer
+          (unitVarName, unit', unitVar) <- clarifyTypePlus h context unit
+          (valueVarName, value', valueVar) <- clarifyPlus h context value
+          (pointerVarName, pointer', pointerVar) <- clarifyPlus h context pointer
           return $
             Utility.bindLet [(unitVarName, unit'), (valueVarName, value'), (pointerVarName, pointer')] $
               C.Primitive (C.Magic (LM.Store lt unitVar valueVar pointerVar))
         LM.Load lt pointer -> do
-          (pointerVarName, pointer', pointerVar) <- clarifyPlus h tenv pointer
+          (pointerVarName, pointer', pointerVar) <- clarifyPlus h context pointer
           return $
             Utility.bindLet [(pointerVarName, pointer')] $
               C.Primitive (C.Magic (LM.Load lt pointerVar))
         LM.Alloca lt size -> do
-          (sizeVarName, size', sizeVar) <- clarifyPlus h tenv size
+          (sizeVarName, size', sizeVar) <- clarifyPlus h context size
           return $
             Utility.bindLet [(sizeVarName, size')] $
               C.Primitive (C.Magic (LM.Alloca lt sizeVar))
         LM.External domList cod extFunName args varArgAndTypeList -> do
-          (xs, args', xsAsVars) <- unzip3 <$> mapM (clarifyPlus h tenv) args
+          (xs, args', xsAsVars) <- unzip3 <$> mapM (clarifyPlus h context) args
           let (varArgs, varTypes) = unzip varArgAndTypeList
-          (ys, varArgs', ysAsVarArgs) <- unzip3 <$> mapM (clarifyPlus h tenv) varArgs
+          (ys, varArgs', ysAsVarArgs) <- unzip3 <$> mapM (clarifyPlus h context) varArgs
           return $
             Utility.bindLet (zip xs args' ++ zip ys varArgs') $
               C.Primitive (C.Magic (LM.External domList cod extFunName xsAsVars (zip ysAsVarArgs varTypes)))
         LM.Global name lt ->
           return $ C.Primitive (C.Magic (LM.Global name lt))
         LM.OpaqueValue e ->
-          clarifyTerm h tenv e
+          clarifyTerm h context e
         LM.CallType func arg1 arg2 -> do
-          (funcVarName, func', funcVar) <- clarifyPlus h tenv func
-          (arg1VarName, arg1', arg1Var) <- clarifyPlus h tenv arg1
-          (arg2VarName, arg2', arg2Var) <- clarifyPlus h tenv arg2
+          (funcVarName, func', funcVar) <- clarifyPlus h context func
+          (arg1VarName, arg1', arg1Var) <- clarifyPlus h context arg1
+          (arg2VarName, arg2', arg2Var) <- clarifyPlus h context arg2
           return $
             Utility.bindLet [(funcVarName, func'), (arg1VarName, arg1'), (arg2VarName, arg2')] $
               C.Primitive (C.Magic (LM.CallType funcVar arg1Var arg2Var))
     M.Calloc _ num size -> do
-      (numVarName, num', numVar) <- clarifyPlus h tenv num
-      (sizeVarName, size', sizeVar) <- clarifyPlus h tenv size
+      (numVarName, num', numVar) <- clarifyPlus h context num
+      (sizeVarName, size', sizeVar) <- clarifyPlus h context size
       return $
         Utility.bindLet [(numVarName, num'), (sizeVarName, size')] $
           C.Primitive (C.Calloc numVar sizeVar)
     M.Malloc _ size -> do
-      (sizeVarName, size', sizeVar) <- clarifyPlus h tenv size
+      (sizeVarName, size', sizeVar) <- clarifyPlus h context size
       return $
         Utility.bindLet [(sizeVarName, size')] $
           C.Primitive (C.Alloc sizeVar)
     M.Realloc _ ptr size -> do
-      (ptrVarName, ptr', ptrVar) <- clarifyPlus h tenv ptr
-      (sizeVarName, size', sizeVar) <- clarifyPlus h tenv size
+      (ptrVarName, ptr', ptrVar) <- clarifyPlus h context ptr
+      (sizeVarName, size', sizeVar) <- clarifyPlus h context size
       return $
         Utility.bindLet [(ptrVarName, ptr'), (sizeVarName, size')] $
           C.Primitive (C.Realloc ptrVar sizeVar)
     M.Free _ ptr -> do
-      (ptrVarName, ptr', ptrVar) <- clarifyPlus h tenv ptr
+      (ptrVarName, ptr', ptrVar) <- clarifyPlus h context ptr
       return $
         Utility.bindLet [(ptrVarName, ptr')] $
           C.Free ptrVar Nothing (C.UpIntro C.null)
@@ -848,7 +877,7 @@ clarifyMagic h tenv der = do
 
 clarifyLambda ::
   Handle ->
-  TM.TypeEnv ->
+  Context ->
   AttrL.Attr TM.Type ->
   [BinderF TM.Type] ->
   [BinderF TM.Type] ->
@@ -856,11 +885,11 @@ clarifyLambda ::
   [(BinderF TM.Type, TM.Term)] ->
   TM.Term ->
   App C.Comp
-clarifyLambda h tenv attrL@(AttrL.Attr {lamKind, identity}) fvs impArgs expArgs defaultArgs e@(m :< _) = do
+clarifyLambda h context attrL@(AttrL.Attr {lamKind, identity}) fvs impArgs expArgs defaultArgs e@(m :< _) = do
   let mxts = impArgs ++ expArgs ++ map fst defaultArgs
   case lamKind of
     LK.Fix _ isDestPassing (_, _k, recFuncName, codType) -> do
-      let liftedName = Locator.attachCurrentLocator (locatorHandle h) $ BN.muName recFuncName identity
+      let liftedName = DD.getMuDD (currentFunction context) recFuncName identity
       let appArgs = fvs ++ mxts
       let appArgs' = map (\(mx, _, x, _) -> mx :< TM.Var x) appArgs
       let argNum = AN.fromInt $ length appArgs'
@@ -880,13 +909,13 @@ clarifyLambda h tenv attrL@(AttrL.Attr {lamKind, identity}) fvs impArgs expArgs 
       isAlreadyRegistered <- liftIO $ AuxEnv.checkIfAlreadyRegistered (auxEnvHandle h) liftedName
       unless isAlreadyRegistered $ do
         liftedBody <- liftIO $ Subst.subst (substHandle h) (IntMap.fromList [(Ident.toInt recFuncName, Subst.Term lamApp)]) e
-        (liftedArgs, liftedBody') <- clarifyBinderBody h IntMap.empty appArgs liftedBody
+        (liftedArgs, liftedBody') <- clarifyBinderBody h (newContext liftedName) appArgs liftedBody
         envArg <- liftIO $ makeEnvArg h
         switchArg <- liftIO $ makeSwitchArg h
         let params = map fst liftedArgs ++ [fst envArg, fst switchArg]
         if isDestPassing
           then do
-            codType' <- clarifyType h (TM.insTypeEnv appArgs IntMap.empty) codType
+            codType' <- clarifyType h (extendContext appArgs $ newContext liftedName) codType
             destParam <- liftIO $ makeDestParam h
             liftedBody'' <- liftIO $ toDestPassing h destParam codType' liftedBody'
             liftedBody''' <- liftIO $ Linearize.linearize (linearizeHandle h) liftedArgs liftedBody'' >>= Reduce.reduce (reduceHandle h)
@@ -896,47 +925,48 @@ clarifyLambda h tenv attrL@(AttrL.Attr {lamKind, identity}) fvs impArgs expArgs 
             liftedBody''' <- liftIO $ Reduce.reduce (reduceHandle h) liftedBody''
             liftIO $ AuxEnv.insert (auxEnvHandle h) liftedName (C.Def liftedName O.Opaque params liftedBody''')
       liftIO $ registerDefaultEnvType h liftedName []
-      clarifyTerm h tenv lamApp
+      clarifyTerm h context lamApp
     LK.Normal mName isDestPassing codType -> do
-      let name = Locator.attachCurrentLocator (locatorHandle h) $ BN.lambdaName mName identity
-      defaultValues <- registerDefaultFunctions h tenv name fvs impArgs defaultArgs
-      e' <- clarifyTerm h (TM.insTypeEnv (catMaybes [AttrL.fromAttr attrL] ++ mxts) tenv) e
-      returnClosure h tenv identity mName O.Clear isDestPassing codType fvs mxts defaultValues e'
+      let name = DD.getLambdaDD (currentFunction context) mName identity
+      defaultValues <- registerDefaultFunctions h context name fvs impArgs defaultArgs
+      let lambdaContext = setCurrentFunction name $ extendContext (catMaybes [AttrL.fromAttr attrL] ++ mxts) context
+      e' <- clarifyTerm h lambdaContext e
+      returnClosure h context identity mName O.Clear isDestPassing codType fvs mxts defaultValues e'
 
-clarifyPlus :: Handle -> TM.TypeEnv -> TM.Term -> App (Ident, C.Comp, C.Value)
-clarifyPlus h tenv e = do
-  e' <- clarifyTerm h tenv e
+clarifyPlus :: Handle -> Context -> TM.Term -> App (Ident, C.Comp, C.Value)
+clarifyPlus h context e = do
+  e' <- clarifyTerm h context e
   (varName, var) <- liftIO $ Gensym.createVar (gensymHandle h) "var"
   return (varName, e', var)
 
-clarifyTypePlus :: Handle -> TM.TypeEnv -> TM.Type -> App (Ident, C.Comp, C.Value)
-clarifyTypePlus h tenv t = do
-  t' <- clarifyType h tenv t
+clarifyTypePlus :: Handle -> Context -> TM.Type -> App (Ident, C.Comp, C.Value)
+clarifyTypePlus h context t = do
+  t' <- clarifyType h context t
   (varName, var) <- liftIO $ Gensym.createVar (gensymHandle h) "var"
   return (varName, t', var)
 
-clarifyBinder :: Handle -> TM.TypeEnv -> [BinderF TM.Type] -> App [(Hint, Ident, C.Comp)]
-clarifyBinder h tenv binder =
+clarifyBinder :: Handle -> Context -> [BinderF TM.Type] -> App [(Hint, Ident, C.Comp)]
+clarifyBinder h context binder =
   case binder of
     [] ->
       return []
-    ((m, _, x, t) : xts) -> do
-      t' <- clarifyType h tenv t
-      xts' <- clarifyBinder h (IntMap.insert (Ident.toInt x) t tenv) xts
+    ((m, k, x, t) : xts) -> do
+      t' <- clarifyType h context t
+      xts' <- clarifyBinder h (extendContext [(m, k, x, t)] context) xts
       return $ (m, x, t') : xts'
 
-clarifyPrimOp :: Handle -> TM.TypeEnv -> PrimOp -> Hint -> App C.Comp
-clarifyPrimOp h tenv op m = do
+clarifyPrimOp :: Handle -> Context -> PrimOp -> Hint -> App C.Comp
+clarifyPrimOp h context op m = do
   let (domList, codType) = getTypeInfo op
   let argTypeList = map (fromPrimNum m) domList
   (xs, varList) <- liftIO $ mapAndUnzipM (const (Gensym.createVar (gensymHandle h) "prim")) domList
   let mxts = zipWith (\x t -> (m, VK.Normal, x, t)) xs argTypeList
   lamID <- liftIO $ Gensym.newCount (gensymHandle h)
-  returnClosure h tenv lamID (Just "primOp") O.Clear False (fromPrimNum m codType) [] mxts [] $ C.Primitive (C.PrimOp op varList)
+  returnClosure h context lamID (Just "primOp") O.Clear False (fromPrimNum m codType) [] mxts [] $ C.Primitive (C.PrimOp op varList)
 
 returnClosure ::
   Handle ->
-  TM.TypeEnv ->
+  Context ->
   Int ->
   Maybe T.Text ->
   O.Opacity ->
@@ -947,17 +977,17 @@ returnClosure ::
   [C.Value] -> -- default argument labels
   C.Comp -> -- the `e` in `lam (x1, ..., xn). e`
   App C.Comp
-returnClosure h tenv lamID mName opacity isDestPassing codType fvs xts defaultValues e = do
-  fvs'' <- dropFst <$> clarifyBinder h tenv fvs
-  xts'' <- dropFst <$> clarifyBinder h tenv xts
-  fvEnvSigma <- liftIO $ Sigma.closureEnvS4 (sigmaHandle h) mName (locatorHandle h) fvs'' defaultValues
+returnClosure h context lamID mName opacity isDestPassing codType fvs xts defaultValues e = do
+  fvs'' <- dropFst <$> clarifyBinder h context fvs
+  xts'' <- dropFst <$> clarifyBinder h context xts
+  let name = DD.getLambdaDD (currentFunction context) mName lamID
+  fvEnvSigma <- liftIO $ Sigma.closureEnvS4 (sigmaHandle h) name fvs'' defaultValues
   let fvEnv = C.sigmaIntro (map (\(x, _) -> C.VarLocal x) fvs'')
   let argNum = AN.fromInt $ length xts'' + if isDestPassing then 3 else 2
-  let name = Locator.attachCurrentLocator (locatorHandle h) $ BN.lambdaName mName lamID
   isAlreadyRegistered <- liftIO $ AuxEnv.checkIfAlreadyRegistered (auxEnvHandle h) name
   unless isAlreadyRegistered $ do
-    let codTypeTenv = TM.insTypeEnv (fvs ++ xts) tenv
-    codType' <- clarifyType h codTypeTenv codType
+    let codTypeContext = setCurrentFunction name $ extendContext (fvs ++ xts) context
+    codType' <- clarifyType h codTypeContext codType
     liftIO $ registerClosure h name opacity isDestPassing codType' xts'' fvs'' e
   let cod = if isDestPassing then FCT.Void else FCT.Cod BLT.Pointer
   return $ C.UpIntro $ C.sigmaIntro [fvEnvSigma, fvEnv, C.VarGlobal name argNum cod]

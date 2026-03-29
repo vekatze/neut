@@ -9,6 +9,9 @@ module Language.Common.DefiniteDescription
     getNodeDD,
     getLeafDD,
     getRootDD,
+    getClosureEnvDD,
+    getLambdaDD,
+    getMuDD,
     imm,
     baseTypes,
     cls,
@@ -29,6 +32,7 @@ import GHC.Generics
 import Language.Common.BaseName qualified as BN
 import Language.Common.Const
 import Language.Common.GlobalLocator qualified as GL
+import Language.Common.Ident
 import Language.Common.List (initLast)
 import Language.Common.LocalLocator qualified as LL
 import Language.Common.ModuleDigest qualified as MD
@@ -73,29 +77,41 @@ wrapWithQuote x =
 
 -- this.foo.bar
 -- ~> this.foo.bar#form
-getFormDD :: DefiniteDescription -> DefiniteDescription
-getFormDD dd = do
+appendLocalName :: DefiniteDescription -> BN.BaseName -> DefiniteDescription
+appendLocalName dd name = do
   MakeDefiniteDescription
-    { reify = reify dd <> "#" <> BN.reify BN.form
+    { reify = reify dd <> "#" <> BN.reify name
     }
+
+getFormDD :: DefiniteDescription -> DefiniteDescription
+getFormDD dd =
+  appendLocalName dd BN.form
 
 getNodeDD :: DefiniteDescription -> DefiniteDescription
-getNodeDD dd = do
-  MakeDefiniteDescription
-    { reify = reify dd <> "#" <> BN.reify BN.node
-    }
+getNodeDD dd =
+  appendLocalName dd BN.node
 
 getLeafDD :: DefiniteDescription -> DefiniteDescription
-getLeafDD dd = do
-  MakeDefiniteDescription
-    { reify = reify dd <> "#" <> BN.reify BN.leaf
-    }
+getLeafDD dd =
+  appendLocalName dd BN.leaf
 
 getRootDD :: DefiniteDescription -> DefiniteDescription
-getRootDD dd = do
+getRootDD dd =
+  appendLocalName dd BN.root
+
+getClosureEnvDD :: DefiniteDescription -> Int -> DefiniteDescription
+getClosureEnvDD closureName i =
   MakeDefiniteDescription
-    { reify = reify dd <> "#" <> BN.reify BN.root
+    { reify = reify closureName <> ";env;" <> T.pack (show i)
     }
+
+getLambdaDD :: DefiniteDescription -> Maybe T.Text -> Int -> DefiniteDescription
+getLambdaDD dd mName i =
+  appendLocalName dd (BN.lambdaName mName i)
+
+getMuDD :: DefiniteDescription -> Ident -> Int -> DefiniteDescription
+getMuDD dd x i =
+  appendLocalName dd (BN.muName x i)
 
 unconsDD :: DefiniteDescription -> (MID.ModuleID, T.Text)
 unconsDD dd = do
