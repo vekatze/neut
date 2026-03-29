@@ -43,7 +43,6 @@ import Language.Common.Attr.DataIntro qualified as AttrDI
 import Language.Common.Attr.Lam qualified as AttrL
 import Language.Common.Attr.VarGlobal qualified as AttrVG
 import Language.Common.BaseLowType qualified as BLT
-import Language.Common.BaseName qualified as BN
 import Language.Common.Binder
 import Language.Common.CreateSymbol qualified as Gensym
 import Language.Common.DataSize qualified as DS
@@ -893,7 +892,7 @@ clarifyLambda h context attrL@(AttrL.Attr {lamKind, identity}) fvs impArgs expAr
   let mxts = impArgs ++ expArgs ++ map fst defaultArgs
   case lamKind of
     LK.Fix _ isDestPassing (_, _k, recFuncName, codType) -> do
-      let liftedName = Locator.attachCurrentLocator (locatorHandle h) $ BN.muName recFuncName identity
+      let liftedName = DD.getMuDD (currentFunction context) recFuncName identity
       let appArgs = fvs ++ mxts
       let appArgs' = map (\(mx, _, x, _) -> mx :< TM.Var x) appArgs
       let argNum = AN.fromInt $ length appArgs'
@@ -931,7 +930,7 @@ clarifyLambda h context attrL@(AttrL.Attr {lamKind, identity}) fvs impArgs expAr
       liftIO $ registerDefaultEnvType h liftedName []
       clarifyTerm h context lamApp
     LK.Normal mName isDestPassing codType -> do
-      let name = Locator.attachCurrentLocator (locatorHandle h) $ BN.lambdaName mName identity
+      let name = DD.getLambdaDD (currentFunction context) mName identity
       defaultValues <- registerDefaultFunctions h context name fvs impArgs defaultArgs
       let lambdaContext = setCurrentFunction name $ extendContext (catMaybes [AttrL.fromAttr attrL] ++ mxts) context
       e' <- clarifyTerm h lambdaContext e
@@ -987,7 +986,7 @@ returnClosure h context lamID mName opacity isDestPassing codType fvs xts defaul
   fvEnvSigma <- liftIO $ Sigma.closureEnvS4 (sigmaHandle h) mName (locatorHandle h) fvs'' defaultValues
   let fvEnv = C.sigmaIntro (map (\(x, _) -> C.VarLocal x) fvs'')
   let argNum = AN.fromInt $ length xts'' + if isDestPassing then 3 else 2
-  let name = Locator.attachCurrentLocator (locatorHandle h) $ BN.lambdaName mName lamID
+  let name = DD.getLambdaDD (currentFunction context) mName lamID
   isAlreadyRegistered <- liftIO $ AuxEnv.checkIfAlreadyRegistered (auxEnvHandle h) name
   unless isAlreadyRegistered $ do
     let codTypeContext = setCurrentFunction name $ extendContext (fvs ++ xts) context
