@@ -56,7 +56,7 @@ emitLowComp h lowComp =
         Nothing ->
           return $ emitOp $ unwordsL ["ret", retType h, emitValue d]
         Just joinLabel ->
-          return $ emitOp $ unwordsL ["br", "label", emitValue (LC.VarLocal joinLabel)]
+          return $ emitOp $ unwordsL ["br", "label", emitIdentAsLabelVar joinLabel]
     LC.ReturnVoid -> do
       return $ emitOp "ret void"
     LC.Phi _ -> do
@@ -64,7 +64,7 @@ emitLowComp h lowComp =
         Nothing ->
           error $ "compiler bug: no goal label is found for the block `" <> show (currentLabel h) <> "`"
         Just joinLabel ->
-          return $ emitOp $ unwordsL ["br", "label", emitValue (LC.VarLocal joinLabel)]
+          return $ emitOp $ unwordsL ["br", "label", emitIdentAsLabelVar joinLabel]
     LC.TailCall codType f args -> do
       case codType of
         LT.Void -> do
@@ -100,7 +100,7 @@ emitLowComp h lowComp =
                   emitLowType lowType,
                   emitValue d <> ",",
                   "label",
-                  emitValue (LC.VarLocal defaultLabel),
+                  emitIdentAsLabelVar defaultLabel,
                   showBranchList lowType $ zip (map fst branchList) labelList
                 ]
       let labelBranchList = (defaultLabel, defaultBranch) : zip labelList (map snd branchList)
@@ -113,7 +113,7 @@ emitLowComp h lowComp =
       blockAsmList <-
         forM labelBranchList $ \(label, branch) -> do
           a <- emitLowComp (h {currentLabel = Just label, goalLabel = Just goalLabel}) branch
-          return $ emitLabel (emitIdentAsVar label) : a
+          return $ emitLabel (emitIdentAsLabel label) : a
       goalBlock <- do
         currentLabelMap <- liftIO $ readIORef $ labelMapRef h
         let (allLabelList, allBranchList) = unzip labelBranchList
@@ -130,7 +130,7 @@ emitLowComp h lowComp =
                 emitOp $ emitValue (LC.VarLocal phiTarget) <> " = " <> phiOp
         let phiOpStr = concat phiOpList
         a <- emitLowComp (h {currentLabel = Just goalLabel}) cont
-        return $ emitLabel (emitIdentAsVar goalLabel) : phiOpStr <> a
+        return $ emitLabel (emitIdentAsLabel goalLabel) : phiOpStr <> a
       return $ switchOpStr <> concat blockAsmList <> goalBlock
     LC.Cont op cont -> do
       let lowOp = emitLowOp (emitOpHandle h) "" op
@@ -171,13 +171,13 @@ emitPhiList valueLabelList =
     [] ->
       ""
     [(value, label)] ->
-      "[" <> emitValue value <> ", " <> emitValue (LC.VarLocal label) <> "]"
+      "[" <> emitValue value <> ", " <> emitIdentAsLabelVar label <> "]"
     (value, label) : rest ->
       showValueLabel value label <> ", " <> emitPhiList rest
 
 showValueLabel :: LC.Value -> Ident -> Builder
 showValueLabel value label =
-  "[" <> emitValue value <> ", " <> emitValue (LC.VarLocal label) <> "]"
+  "[" <> emitValue value <> ", " <> emitIdentAsLabelVar label <> "]"
 
 emitOp :: Builder -> [Builder]
 emitOp s =
@@ -197,4 +197,4 @@ showBranch lowType i label =
     <> " "
     <> integerDec i
     <> ", label "
-    <> emitValue (LC.VarLocal label)
+    <> emitIdentAsLabelVar label

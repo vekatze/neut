@@ -1,6 +1,8 @@
 module Kernel.Emit.LowValue
   ( emitValue,
     emitIdentAsVar,
+    emitIdentAsLabel,
+    emitIdentAsLabelVar,
     showArgs,
     showArgsWithSRet,
     showFuncArgs,
@@ -51,6 +53,14 @@ emitValue lowValue =
 emitIdentAsVar :: Ident -> Builder
 emitIdentAsVar (I (_, i)) =
   "v" <> intDec i
+
+emitIdentAsLabel :: Ident -> Builder
+emitIdentAsLabel (I (_, i)) =
+  "L" <> intDec i
+
+emitIdentAsLabelVar :: Ident -> Builder
+emitIdentAsLabelVar x =
+  "%" <> emitIdentAsLabel x
 
 showArgs :: [(LT.LowType, LC.Value)] -> Builder
 showArgs tds =
