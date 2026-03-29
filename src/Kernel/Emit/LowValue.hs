@@ -53,7 +53,7 @@ showArgs tds =
 
 showArgsWithSRet :: [(LT.LowType, LC.Value)] -> Builder
 showArgsWithSRet tds =
-  showLocals $ map showArgWithSRet $ zip [(0 :: Int) ..] tds
+  showLocals $ zipWith (curry showArgWithSRet) [0 ..] tds
 
 showArg :: (LT.LowType, LC.Value) -> Builder
 showArg (t, d) =
@@ -76,7 +76,7 @@ showFuncArgs ds =
 
 showFuncArgsWithSRet :: [Builder] -> Builder
 showFuncArgsWithSRet ds =
-  showLocals $ map emitFuncArgWithSRet $ zip [(0 :: Int) ..] ds
+  showLocals $ zipWith (curry emitFuncArgWithSRet) [0 ..] ds
 
 emitFuncArgWithSRet :: (Int, Builder) -> Builder
 emitFuncArgWithSRet (i, d)
