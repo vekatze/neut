@@ -132,8 +132,13 @@ toTextType ty =
       showVariable x
     _ :< WT.TVarGlobal _ x ->
       showGlobalVariable x
-    _ :< WT.TyApp t args ->
-      showApp (toTextType t) (map toTextType args)
+    _ :< WT.TyApp t args -> do
+      case t of
+        _ :< WT.TVarGlobal attr _
+          | AttrVG.isConstLike attr ->
+              toTextType t
+        _ ->
+          showApp (toTextType t) (map toTextType args)
     _ :< WT.Pi piKind impArgs expArgs defaultArgs cod -> do
       case piKind of
         PK.Normal isConstLike ->
