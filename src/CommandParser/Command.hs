@@ -25,11 +25,11 @@ data InternalCommand
   | FormatSource FormatSource.Config
   | FormatEns FormatEns.Config
   | Get Get.Config
-  | LSP
   | Zen Zen.Config
 
 data ExternalCommand
   = Create Create.Config
+  | LSP
   | ShowVersion Version.Config
 
 data Command

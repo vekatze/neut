@@ -39,10 +39,12 @@ main = do
             let saveModuleHandle = SaveModule.new loggerHandle
             createHandle <- liftIO $ Create.new loggerConfig loggerHandle saveModuleHandle
             Create.create createHandle cfg
+          C.LSP -> do
+            LSP.lsp
           C.ShowVersion cfg ->
             liftIO $ Version.showVersion cfg
     C.Internal loggerConfig cmd -> do
-      h <- Global.new loggerConfig Nothing
+      h <- liftIO $ Global.new loggerConfig Nothing
       run (Global.loggerHandle h) $ do
         ensureExecutables
         case cmd of
@@ -62,7 +64,5 @@ main = do
             FormatSource.format (FormatSource.new h) cfg
           C.FormatEns cfg -> do
             FormatEns.format cfg
-          C.LSP -> do
-            LSP.lsp (LSP.new h)
           C.Zen cfg -> do
             Zen.zen (Zen.new h cfg) cfg

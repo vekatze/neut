@@ -11,7 +11,8 @@ module Kernel.Common.Handle.Global.Env
 where
 
 import App.App (App)
-import App.Run (raiseCritical', raiseError', run)
+import App.Error qualified as E
+import App.Run (raiseCritical', raiseError', runApp)
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.Text qualified as T
@@ -28,7 +29,6 @@ import Language.Common.LocalLocator qualified as LL
 import Language.Common.ModuleID qualified as MID
 import Language.Common.SourceLocator qualified as SL
 import Language.Common.StrictGlobalLocator qualified as SGL
-import Logger.Handle qualified as Logger
 import Path
 
 data Handle = Handle
@@ -45,10 +45,10 @@ getSilentMode :: Handle -> Bool
 getSilentMode =
   _enableSilentMode
 
-new :: Logger.Handle -> Bool -> Maybe (Path Abs File) -> IO Handle
-new loggerHandle _enableSilentMode moduleFilePathOrNone = do
+new :: Bool -> Maybe (Path Abs File) -> IO (Either E.Error Handle)
+new _enableSilentMode moduleFilePathOrNone = do
   _buildModeRef <- newIORef BM.Develop
-  run loggerHandle $ do
+  runApp $ do
     _mainModule <-
       MainModule
         <$> case moduleFilePathOrNone of

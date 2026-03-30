@@ -102,7 +102,7 @@ parseZenOpt = do
 parseLSPOpt :: Parser Command
 parseLSPOpt = do
   remarkCfg <- remarkConfigOpt
-  pure $ Internal remarkCfg LSP
+  pure $ External remarkCfg LSP
 
 parseCreateOpt :: Parser Command
 parseCreateOpt = do

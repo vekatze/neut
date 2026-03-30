@@ -1,12 +1,16 @@
 module Kernel.Common.CreateGlobalHandle
   ( Handle (..),
     new,
+    newOrError,
   )
 where
 
+import App.Error qualified as E
+import App.Run (run)
 import Color.CreateHandle qualified as Color
 import Color.Handle qualified as Color
 import CommandParser.Config.Remark qualified as Remark
+import Control.Monad.Except (MonadError (throwError))
 import Data.HashMap.Strict qualified as Map
 import Data.IORef (IORef, newIORef)
 import Gensym.CreateHandle qualified as Gensym
@@ -58,26 +62,39 @@ data Handle = Handle
 
 new :: Remark.Config -> Maybe (Path Abs File) -> IO Handle
 new cfg moduleFilePathOrNone = do
+  handleOrError <- newOrError cfg moduleFilePathOrNone
+  case handleOrError of
+    Left (loggerHandle, err) -> do
+      run loggerHandle $ throwError err
+    Right v ->
+      return v
+
+newOrError :: Remark.Config -> Maybe (Path Abs File) -> IO (Either (Logger.Handle, E.Error) Handle)
+newOrError cfg moduleFilePathOrNone = do
   colorHandle <- Color.createHandle (Remark.shouldColorize cfg) (Remark.shouldColorize cfg)
   loggerHandle <- Logger.createHandle colorHandle (Remark.enableDebugMode cfg)
   gensymHandle <- Gensym.createHandle
   platformHandle <- Platform.new loggerHandle
-  envHandle <- Env.new loggerHandle (Remark.enableSilentMode cfg) moduleFilePathOrNone
-  let mainModule = Env.getMainModule envHandle
-  Logger.setModuleDir loggerHandle mainModule
-  keyArgHandle <- KeyArg.new mainModule
-  optDataHandle <- OptimizableData.new
-  typeHandle <- Type.new
-  pathHandle <- Path.new mainModule platformHandle loggerHandle
-  globalRemarkHandle <- GlobalRemark.new
-  artifactHandle <- Artifact.new
-  moduleHandle <- Module.new
-  weakDefHandle <- WeakDef.new gensymHandle
-  weakTypeDefHandle <- WeakTypeDef.new
-  defHandle <- Definition.new
-  typeDefHandle <- TypeDef.new
-  antecedentHandle <- Antecedent.new
-  compDefHandle <- CompDef.new
-  globalNameMapHandle <- GlobalNameMap.new
-  presetCacheRef <- newIORef Map.empty
-  return $ Handle {..}
+  envHandleOrError <- Env.new (Remark.enableSilentMode cfg) moduleFilePathOrNone
+  case envHandleOrError of
+    Left errors ->
+      return $ Left (loggerHandle, errors)
+    Right envHandle -> do
+      let mainModule = Env.getMainModule envHandle
+      Logger.setModuleDir loggerHandle mainModule
+      keyArgHandle <- KeyArg.new mainModule
+      optDataHandle <- OptimizableData.new
+      typeHandle <- Type.new
+      pathHandle <- Path.new mainModule platformHandle loggerHandle
+      globalRemarkHandle <- GlobalRemark.new
+      artifactHandle <- Artifact.new
+      moduleHandle <- Module.new
+      weakDefHandle <- WeakDef.new gensymHandle
+      weakTypeDefHandle <- WeakTypeDef.new
+      defHandle <- Definition.new
+      typeDefHandle <- TypeDef.new
+      antecedentHandle <- Antecedent.new
+      compDefHandle <- CompDef.new
+      globalNameMapHandle <- GlobalNameMap.new
+      presetCacheRef <- newIORef Map.empty
+      return $ Right $ Handle {..}
