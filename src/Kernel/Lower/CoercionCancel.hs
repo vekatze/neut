@@ -154,15 +154,7 @@ rewriteOp env op =
     LC.Store lowType value1 value2 ->
       LC.Store lowType (rewriteValue env value1) (rewriteValue env value2)
     LC.StackAlloc stackAllocInfo ->
-      LC.StackAlloc $
-        stackAllocInfo
-          { LC.stackSize =
-              case LC.stackSize stackAllocInfo of
-                Left knownSize ->
-                  Left knownSize
-                Right runtimeSize ->
-                  Right (rewriteValue env runtimeSize)
-          }
+      LC.StackAlloc $ stackAllocInfo {LC.stackSize = fmap (rewriteValue env) (LC.stackSize stackAllocInfo)}
     LC.StackLifetimeStart stackSlotID ->
       LC.StackLifetimeStart stackSlotID
     LC.StackLifetimeEnd stackSlotID ->
@@ -170,14 +162,7 @@ rewriteOp env op =
     LC.Calloc value1 value2 ->
       LC.Calloc (rewriteValue env value1) (rewriteValue env value2)
     LC.Alloc size allocID ->
-      LC.Alloc
-        ( case size of
-            Left knownSize ->
-              Left knownSize
-            Right runtimeSize ->
-              Right (rewriteValue env runtimeSize)
-        )
-        allocID
+      LC.Alloc (fmap (rewriteValue env) size) allocID
     LC.Realloc value1 value2 ->
       LC.Realloc (rewriteValue env value1) (rewriteValue env value2)
     LC.Free value size freeID ->

@@ -749,22 +749,34 @@ discernType h ty =
       t' <- discernType h t
       args' <- mapM (discernType h) $ SE.extract args
       return $ m :< WT.TyApp t' args'
-    m :< RT.Pi impArgs expArgs defaultArgs piArrow _ t endLoc -> do
+    m :< RT.Pi impArgs expArgs defaultArgs rawPiKind _ t endLoc -> do
       let impArgsBase = RT.extractImpArgs impArgs
       let defaultArgsBase = SE.extract $ fst defaultArgs
       (impArgs', h') <- discernImpArgs h impArgsBase endLoc
-      (expArgs', h'') <- discernTypeBinder h' (RT.extractArgs expArgs) endLoc
-      (defaultArgs', h''') <- discernTypeBinderWithDefaultArgs h'' defaultArgsBase endLoc
+      (expArgs', h'') <-
+        case rawPiKind of
+          RT.PiDataIntro ->
+            discernBinder h' (RT.extractArgs expArgs) endLoc
+          _ ->
+            discernTypeBinder h' (RT.extractArgs expArgs) endLoc
+      (defaultArgs', h''') <-
+        case rawPiKind of
+          RT.PiDataIntro ->
+            discernBinderWithDefaultArgs h'' defaultArgsBase endLoc
+          _ ->
+            discernTypeBinderWithDefaultArgs h'' defaultArgsBase endLoc
       t' <- discernType h''' t
       let defaultBinders = map fst defaultArgs'
       forM_ (impArgs' ++ expArgs' ++ defaultBinders) $ \(_, _, x, _) ->
         liftIO (Unused.deleteVariable (H.unusedHandle h''') x)
       let piKind =
-            case piArrow of
-              RT.Arrow ->
+            case rawPiKind of
+              RT.PiNormal ->
                 PK.normal
-              RT.ArrowDestPass ->
+              RT.PiDestPass ->
                 PK.DestPass False
+              RT.PiDataIntro ->
+                PK.normal
       return $ m :< WT.Pi piKind impArgs' expArgs' defaultBinders t'
     m :< RT.Data attr dataName es -> do
       es' <- mapM (discernType h) es
@@ -1575,9 +1587,9 @@ resolveExpKeys h m expKeys kvs = do
     [] ->
       return []
     expKey : rest -> do
-      args <- resolveExpKeys h m rest kvs
       case Map.lookup expKey kvs of
         Just value -> do
+          args <- resolveExpKeys h m rest kvs
           return $ value : args
         Nothing -> do
           raiseError m $ "The field `" <> expKey <> "` is missing"

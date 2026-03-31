@@ -299,18 +299,18 @@ rawTypePi h = do
   impArgs <- parseImplicitParams h
   expArgs <- seriesParen (choice [try $ varWithMode h >>= preAscription h, typeWithoutIdent h])
   defaultArgs <- parseDefaultParams h
-  (piArrow, cArrow) <-
+  (piKind, cArrow) <-
     choice
       [ do
           cArrow <- delimiter "->>"
-          return (RT.ArrowDestPass, cArrow),
+          return (RT.PiDestPass, cArrow),
         do
           cArrow <- delimiter "->"
-          return (RT.Arrow, cArrow)
+          return (RT.PiNormal, cArrow)
       ]
   (cod, c) <- rawType h
   loc <- getCurrentLoc
-  return (m :< RT.Pi impArgs expArgs defaultArgs piArrow cArrow cod loc, c)
+  return (m :< RT.Pi impArgs expArgs defaultArgs piKind cArrow cod loc, c)
 
 rawTermPiIntro :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermPiIntro h m c0 = do

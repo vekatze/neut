@@ -231,23 +231,24 @@ interpretTopLevelFuncType m dd argNum isConstLike = do
     else m :< WT.TVarGlobal attr dd
 
 ensureTopLevelStage :: Hint -> H.Handle -> DD.DefiniteDescription -> Bool -> App ()
-ensureTopLevelStage m h dd isMacro =
+ensureTopLevelStage m h dd isMacro = do
+  let stage = H.currentStage h
+  let mainModule = Env.getMainModule (H.envHandle h)
+  let dd' = readableDD mainModule dd
   if isMacro
     then do
-      let stage = H.currentStage h
       when (stage < 1) $ do
         raiseError m $
           "`"
-            <> DD.reify dd
-            <> "` is a macro definition and can only be used at stage >= 1 (current stage: "
+            <> dd'
+            <> "` is a meta definition and can only be used at stage >= 1 (current stage: "
             <> T.pack (show stage)
             <> ")"
     else do
-      let stage = H.currentStage h
       when (stage > 0) $ do
         raiseError m $
           "`"
-            <> DD.reify dd
+            <> dd'
             <> "` is a runtime definition and can only be used at stage <= 0 (current stage: "
             <> T.pack (show stage)
             <> ")"
