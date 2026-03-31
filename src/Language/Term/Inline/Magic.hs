@@ -2,8 +2,8 @@ module Language.Term.Inline.Magic
   ( evaluateInspectType,
     evaluateEqType,
     evaluateShowType,
-    evaluateTextCons,
-    evaluateTextUncons,
+    evaluateStringCons,
+    evaluateStringUncons,
     evaluateCompileError,
   )
 where
@@ -313,7 +313,7 @@ makePairTypeExpr m moduleID leftType rightType = do
 
 makeTextTypeExpr :: Hint -> MID.ModuleID -> TM.Type
 makeTextTypeExpr m moduleID = do
-  let textSgl = SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.textLocator}
+  let textSgl = SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.stringLocator}
   let stringTypeDD = DD.newByGlobalLocator textSgl BN.stringType
   m :< TM.TVarGlobal (AttrVG.Attr {argNum = AN.zero, isConstLike = True, isDestPassing = False}) stringTypeDD
 
@@ -398,8 +398,8 @@ evaluateShowType m stringTypeExpr typeExpr = do
   let typeText = toTextType $ weakenType typeExpr
   return $ m :< TM.Prim (PV.StaticText stringTypeExpr typeText)
 
-evaluateTextCons :: Handle -> Hint -> TM.Type -> TM.Term -> TM.Term -> App TM.Term
-evaluateTextCons h m stringTypeExpr rune text = do
+evaluateStringCons :: Handle -> Hint -> TM.Type -> TM.Term -> TM.Term -> App TM.Term
+evaluateStringCons h m stringTypeExpr rune text = do
   case (rune, text) of
     (_ :< TM.Prim (PV.Rune r), _ :< TM.Prim (PV.StaticText _ textValue)) -> do
       let newText = T.cons (Rune.asChar r) textValue
@@ -407,8 +407,8 @@ evaluateTextCons h m stringTypeExpr rune text = do
     _ ->
       reportMacroError h m "text-cons requires a rune literal and a static text literal"
 
-evaluateTextUncons :: Handle -> Hint -> MID.ModuleID -> TM.Term -> App TM.Term
-evaluateTextUncons h m moduleID text = do
+evaluateStringUncons :: Handle -> Hint -> MID.ModuleID -> TM.Term -> App TM.Term
+evaluateStringUncons h m moduleID text = do
   case text of
     _ :< TM.Prim (PV.StaticText stringTypeExpr textValue) -> do
       let eitherSGL = SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.eitherLocator}

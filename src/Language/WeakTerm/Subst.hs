@@ -474,14 +474,14 @@ substMagic h sub (WeakMagic magic) = do
       stringTypeExpr' <- substType h sub stringTypeExpr
       typeExpr' <- substType h sub typeExpr
       return $ M.ShowType stringTypeExpr' typeExpr'
-    M.TextCons stringTypeExpr rune text -> do
+    M.StringCons stringTypeExpr rune text -> do
       stringTypeExpr' <- substType h sub stringTypeExpr
       rune' <- subst h sub rune
       text' <- subst h sub text
-      return $ M.TextCons stringTypeExpr' rune' text'
-    M.TextUncons mid text -> do
+      return $ M.StringCons stringTypeExpr' rune' text'
+    M.StringUncons mid text -> do
       text' <- subst h sub text
-      return $ M.TextUncons mid text'
+      return $ M.StringUncons mid text'
     M.CompileError typeExpr msg -> do
       typeExpr' <- substType h sub typeExpr
       msg' <- subst h sub msg

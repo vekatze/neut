@@ -924,15 +924,15 @@ discernMagic h m magic =
       stringType <- liftEither (locatorToTypeVar m coreString) >>= discernType h
       typeExpr' <- discernType h typeExpr
       return $ M.WeakMagic $ M.ShowType stringType typeExpr'
-    RT.TextCons _ (_, (rune, _)) (_, (text, _)) -> do
+    RT.StringCons _ (_, (rune, _)) (_, (text, _)) -> do
       stringType <- liftEither (locatorToTypeVar m coreString) >>= discernType h
       rune' <- discern h rune
       text' <- discern h text
-      return $ M.WeakMagic $ M.TextCons stringType rune' text'
-    RT.TextUncons _ (_, (text, _)) -> do
+      return $ M.WeakMagic $ M.StringCons stringType rune' text'
+    RT.StringUncons _ (_, (text, _)) -> do
       moduleID <- Alias.resolveModuleAlias (H.aliasHandle h) m coreModuleAlias
       text' <- discern h text
-      return $ M.WeakMagic $ M.TextUncons moduleID text'
+      return $ M.WeakMagic $ M.StringUncons moduleID text'
     RT.CompileError _ (_, (msg, _)) -> do
       ensureCompileStage m h "inline magic (`compile-error`)"
       stringType <- liftEither (locatorToTypeVar m coreString) >>= discernType h

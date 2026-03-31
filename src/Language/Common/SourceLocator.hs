@@ -11,7 +11,7 @@ module Language.Common.SourceLocator
     eitherLocator,
     pairLocator,
     unitLocator,
-    textLocator,
+    stringLocator,
     listLocator,
     boolLocator,
   )
@@ -90,8 +90,8 @@ unitLocator :: SourceLocator
 unitLocator =
   SourceLocator $(mkRelFile "unit")
 
-textLocator :: SourceLocator
-textLocator =
+stringLocator :: SourceLocator
+stringLocator =
   SourceLocator $(mkRelFile "text")
 
 boolLocator :: SourceLocator

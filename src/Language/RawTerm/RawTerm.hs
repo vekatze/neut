@@ -328,8 +328,8 @@ data RawMagic
   | InspectType (EL RawType)
   | EqType (EL RawType) (EL RawType)
   | ShowType C (EL RawType)
-  | TextCons C (EL RawTerm) (EL RawTerm)
-  | TextUncons C (EL RawTerm)
+  | StringCons C (EL RawTerm) (EL RawTerm)
+  | StringUncons C (EL RawTerm)
   | CompileError C (EL RawTerm)
 
 -- elem

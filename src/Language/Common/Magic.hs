@@ -18,8 +18,8 @@ data Magic lt ty a
   | InspectType MID.ModuleID ty ty -- typeValueExpr, e (both types)
   | EqType MID.ModuleID ty ty
   | ShowType ty ty
-  | TextCons ty a a
-  | TextUncons MID.ModuleID a
+  | StringCons ty a a
+  | StringUncons MID.ModuleID a
   | CompileError ty a
   deriving (Show, Eq, G.Generic)
 
@@ -44,10 +44,10 @@ instance Functor (Magic lt ty) where
         EqType mid t1 t2
       ShowType stringTypeExpr typeExpr ->
         ShowType stringTypeExpr typeExpr
-      TextCons stringTypeExpr rune text ->
-        TextCons stringTypeExpr (f rune) (f text)
-      TextUncons mid text ->
-        TextUncons mid (f text)
+      StringCons stringTypeExpr rune text ->
+        StringCons stringTypeExpr (f rune) (f text)
+      StringUncons mid text ->
+        StringUncons mid (f text)
       CompileError typeExpr msg ->
         CompileError typeExpr (f msg)
 
@@ -70,9 +70,9 @@ instance Foldable (Magic lt ty) where
         mempty
       ShowType {} ->
         mempty
-      TextCons _ rune text ->
+      StringCons _ rune text ->
         f rune <> f text
-      TextUncons _ text ->
+      StringUncons _ text ->
         f text
       CompileError _ msg ->
         f msg
@@ -96,10 +96,10 @@ instance Traversable (Magic lt ty) where
         pure $ EqType mid t1 t2
       ShowType stringTypeExpr typeExpr ->
         pure $ ShowType stringTypeExpr typeExpr
-      TextCons stringTypeExpr rune text ->
-        TextCons stringTypeExpr <$> f rune <*> f text
-      TextUncons mid text ->
-        TextUncons mid <$> f text
+      StringCons stringTypeExpr rune text ->
+        StringCons stringTypeExpr <$> f rune <*> f text
+      StringUncons mid text ->
+        StringUncons mid <$> f text
       CompileError typeExpr msg ->
         CompileError typeExpr <$> f msg
 

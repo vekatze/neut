@@ -465,14 +465,14 @@ elaborate' h term = do
           stringTypeExpr' <- elaborateType h stringTypeExpr
           typeExpr' <- elaborateType h typeExpr
           return $ m :< TM.Magic (M.ShowType stringTypeExpr' typeExpr')
-        M.TextCons stringTypeExpr rune text -> do
+        M.StringCons stringTypeExpr rune text -> do
           stringTypeExpr' <- elaborateType h stringTypeExpr
           rune' <- elaborate' h rune
           text' <- elaborate' h text
-          return $ m :< TM.Magic (M.TextCons stringTypeExpr' rune' text')
-        M.TextUncons mid text -> do
+          return $ m :< TM.Magic (M.StringCons stringTypeExpr' rune' text')
+        M.StringUncons mid text -> do
           text' <- elaborate' h text
-          return $ m :< TM.Magic (M.TextUncons mid text')
+          return $ m :< TM.Magic (M.StringUncons mid text')
         M.CompileError typeExpr msg -> do
           typeExpr' <- elaborateType h typeExpr
           msg' <- elaborate' h msg

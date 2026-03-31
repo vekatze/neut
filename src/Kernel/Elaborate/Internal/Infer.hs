@@ -458,16 +458,16 @@ infer h term =
           stringTypeExpr' <- inferType h stringTypeExpr
           typeExpr' <- inferType h typeExpr
           return (m :< WT.Magic (M.WeakMagic $ M.ShowType stringTypeExpr' typeExpr'), m :< WT.BoxNoema stringTypeExpr')
-        M.TextCons stringTypeExpr rune text -> do
+        M.StringCons stringTypeExpr rune text -> do
           stringTypeExpr' <- inferType h stringTypeExpr
           (rune', runeType) <- infer h rune
           (text', stringType) <- infer h text
           liftIO $ Constraint.insert (constraintHandle h) (m :< WT.PrimType PT.Rune) runeType
           liftIO $ Constraint.insert (constraintHandle h) (m :< WT.BoxNoema stringTypeExpr') stringType
-          return (m :< WT.Magic (M.WeakMagic $ M.TextCons stringTypeExpr' rune' text'), m :< WT.BoxNoema stringTypeExpr')
-        M.TextUncons moduleID text -> do
+          return (m :< WT.Magic (M.WeakMagic $ M.StringCons stringTypeExpr' rune' text'), m :< WT.BoxNoema stringTypeExpr')
+        M.StringUncons moduleID text -> do
           (text', stringType) <- infer h text
-          let textSGL = SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.textLocator}
+          let textSGL = SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.stringLocator}
           let textDD = DD.newByGlobalLocator textSGL BN.stringType
           let expected = m :< WT.TVarGlobal (AttrVG.Attr {argNum = AN.zero, isConstLike = True, isDestPassing = False}) textDD
           liftIO $ Constraint.insert (constraintHandle h) (m :< WT.BoxNoema expected) stringType
@@ -483,7 +483,7 @@ infer h term =
           let runeType = m :< WT.PrimType PT.Rune
           let pairType = m :< WT.TyApp pairTypeVar [runeType, stringType]
           let eitherType = m :< WT.TyApp eitherTypeVar [unitTypeVar, pairType]
-          return (m :< WT.Magic (M.WeakMagic $ M.TextUncons moduleID text'), eitherType)
+          return (m :< WT.Magic (M.WeakMagic $ M.StringUncons moduleID text'), eitherType)
         M.CompileError typeExpr msg -> do
           typeExpr' <- inferType h typeExpr
           (msg', msgType) <- infer h msg

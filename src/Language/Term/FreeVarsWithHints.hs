@@ -170,9 +170,9 @@ freeVarsWithHintsMagic magic =
       S.union (freeVarsWithHintsType typeExpr1) (freeVarsWithHintsType typeExpr2)
     M.ShowType stringTypeExpr typeExpr ->
       S.union (freeVarsWithHintsType stringTypeExpr) (freeVarsWithHintsType typeExpr)
-    M.TextCons stringTypeExpr rune text ->
+    M.StringCons stringTypeExpr rune text ->
       S.unions [freeVarsWithHintsType stringTypeExpr, freeVarsWithHints rune, freeVarsWithHints text]
-    M.TextUncons _ text ->
+    M.StringUncons _ text ->
       freeVarsWithHints text
     M.CompileError typeExpr msg ->
       S.union (freeVarsWithHintsType typeExpr) (freeVarsWithHints msg)

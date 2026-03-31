@@ -186,10 +186,10 @@ weakenMagic m magic = do
       M.WeakMagic $ M.EqType moduleID (weakenType typeExpr1) (weakenType typeExpr2)
     M.ShowType stringTypeExpr typeExpr ->
       M.WeakMagic $ M.ShowType (weakenType stringTypeExpr) (weakenType typeExpr)
-    M.TextCons stringTypeExpr rune text ->
-      M.WeakMagic $ M.TextCons (weakenType stringTypeExpr) (weaken rune) (weaken text)
-    M.TextUncons mid text ->
-      M.WeakMagic $ M.TextUncons mid (weaken text)
+    M.StringCons stringTypeExpr rune text ->
+      M.WeakMagic $ M.StringCons (weakenType stringTypeExpr) (weaken rune) (weaken text)
+    M.StringUncons mid text ->
+      M.WeakMagic $ M.StringUncons mid (weaken text)
     M.CompileError typeExpr msg ->
       M.WeakMagic $ M.CompileError (weakenType typeExpr) (weaken msg)
 

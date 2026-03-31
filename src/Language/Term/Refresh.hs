@@ -146,14 +146,14 @@ refreshMagic h magic =
       stringTypeExpr' <- refreshType h stringTypeExpr
       typeExpr' <- refreshType h typeExpr
       return $ M.ShowType stringTypeExpr' typeExpr'
-    M.TextCons stringTypeExpr rune text -> do
+    M.StringCons stringTypeExpr rune text -> do
       stringTypeExpr' <- refreshType h stringTypeExpr
       rune' <- refresh h rune
       text' <- refresh h text
-      return $ M.TextCons stringTypeExpr' rune' text'
-    M.TextUncons mid text -> do
+      return $ M.StringCons stringTypeExpr' rune' text'
+    M.StringUncons mid text -> do
       text' <- refresh h text
-      return $ M.TextUncons mid text'
+      return $ M.StringUncons mid text'
     M.CompileError typeExpr msg -> do
       typeExpr' <- refreshType h typeExpr
       msg' <- refresh h msg

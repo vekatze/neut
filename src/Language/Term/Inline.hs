@@ -342,14 +342,14 @@ inline' h term = do
           stringTypeExpr' <- inlineType' h stringTypeExpr
           typeExpr' <- inlineType' h typeExpr
           Magic.evaluateShowType m stringTypeExpr' typeExpr'
-        M.TextCons stringTypeExpr rune text -> do
+        M.StringCons stringTypeExpr rune text -> do
           stringTypeExpr' <- inlineType' h stringTypeExpr
           rune' <- inline' h rune
           text' <- inline' h text
-          Magic.evaluateTextCons h m stringTypeExpr' rune' text'
-        M.TextUncons mid text -> do
+          Magic.evaluateStringCons h m stringTypeExpr' rune' text'
+        M.StringUncons mid text -> do
           text' <- inline' h text
-          Magic.evaluateTextUncons h m mid text' >>= inline' h
+          Magic.evaluateStringUncons h m mid text' >>= inline' h
         M.CompileError _ msg -> do
           msg' <- inline' h msg
           Magic.evaluateCompileError h m msg'
