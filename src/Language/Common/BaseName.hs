@@ -36,7 +36,7 @@ module Language.Common.BaseName
     constructorType,
     pair,
     pairType,
-    textType,
+    stringType,
     boolType,
     trueConstructor,
     falseConstructor,
@@ -220,9 +220,9 @@ eitherType :: BaseName
 eitherType =
   MakeBaseName "either"
 
-textType :: BaseName
-textType =
-  MakeBaseName "text"
+stringType :: BaseName
+stringType =
+  MakeBaseName "string"
 
 boolType :: BaseName
 boolType =

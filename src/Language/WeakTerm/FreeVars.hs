@@ -300,10 +300,10 @@ freeVarsMagic (M.WeakMagic magic) =
       S.union (freeVarsType typeValueExpr) (freeVarsType e)
     M.EqType _ typeExpr1 typeExpr2 ->
       S.union (freeVarsType typeExpr1) (freeVarsType typeExpr2)
-    M.ShowType textTypeExpr typeExpr ->
-      S.union (freeVarsType textTypeExpr) (freeVarsType typeExpr)
-    M.TextCons textTypeExpr rune text ->
-      S.unions [freeVarsType textTypeExpr, freeVarsAll rune, freeVarsAll text]
+    M.ShowType stringTypeExpr typeExpr ->
+      S.union (freeVarsType stringTypeExpr) (freeVarsType typeExpr)
+    M.TextCons stringTypeExpr rune text ->
+      S.unions [freeVarsType stringTypeExpr, freeVarsAll rune, freeVarsAll text]
     M.TextUncons _ text ->
       freeVarsAll text
     M.CompileError typeExpr msg ->

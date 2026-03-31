@@ -299,9 +299,9 @@ inline' h term = do
           return $ m :< TM.Prim (PV.Float floatType' size value)
         PV.Op {} ->
           return term
-        PV.StaticText textType text -> do
-          textType' <- inlineType' h textType
-          return $ m :< TM.Prim (PV.StaticText textType' text)
+        PV.StaticText stringType text -> do
+          stringType' <- inlineType' h stringType
+          return $ m :< TM.Prim (PV.StaticText stringType' text)
         PV.Rune {} ->
           return term
     m :< TM.Magic magic -> do
@@ -338,15 +338,15 @@ inline' h term = do
           typeExpr1' <- inlineType' h typeExpr1
           typeExpr2' <- inlineType' h typeExpr2
           Magic.evaluateEqType m moduleID typeExpr1' typeExpr2'
-        M.ShowType textTypeExpr typeExpr -> do
-          textTypeExpr' <- inlineType' h textTypeExpr
+        M.ShowType stringTypeExpr typeExpr -> do
+          stringTypeExpr' <- inlineType' h stringTypeExpr
           typeExpr' <- inlineType' h typeExpr
-          Magic.evaluateShowType m textTypeExpr' typeExpr'
-        M.TextCons textTypeExpr rune text -> do
-          textTypeExpr' <- inlineType' h textTypeExpr
+          Magic.evaluateShowType m stringTypeExpr' typeExpr'
+        M.TextCons stringTypeExpr rune text -> do
+          stringTypeExpr' <- inlineType' h stringTypeExpr
           rune' <- inline' h rune
           text' <- inline' h text
-          Magic.evaluateTextCons h m textTypeExpr' rune' text'
+          Magic.evaluateTextCons h m stringTypeExpr' rune' text'
         M.TextUncons mid text -> do
           text' <- inline' h text
           Magic.evaluateTextUncons h m mid text' >>= inline' h

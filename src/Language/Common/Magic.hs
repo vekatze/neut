@@ -42,10 +42,10 @@ instance Functor (Magic lt ty) where
         InspectType mid typeValueExpr e
       EqType mid t1 t2 ->
         EqType mid t1 t2
-      ShowType textTypeExpr typeExpr ->
-        ShowType textTypeExpr typeExpr
-      TextCons textTypeExpr rune text ->
-        TextCons textTypeExpr (f rune) (f text)
+      ShowType stringTypeExpr typeExpr ->
+        ShowType stringTypeExpr typeExpr
+      TextCons stringTypeExpr rune text ->
+        TextCons stringTypeExpr (f rune) (f text)
       TextUncons mid text ->
         TextUncons mid (f text)
       CompileError typeExpr msg ->
@@ -94,10 +94,10 @@ instance Traversable (Magic lt ty) where
         pure $ InspectType mid typeValueExpr e
       EqType mid t1 t2 ->
         pure $ EqType mid t1 t2
-      ShowType textTypeExpr typeExpr ->
-        pure $ ShowType textTypeExpr typeExpr
-      TextCons textTypeExpr rune text ->
-        TextCons textTypeExpr <$> f rune <*> f text
+      ShowType stringTypeExpr typeExpr ->
+        pure $ ShowType stringTypeExpr typeExpr
+      TextCons stringTypeExpr rune text ->
+        TextCons stringTypeExpr <$> f rune <*> f text
       TextUncons mid text ->
         TextUncons mid <$> f text
       CompileError typeExpr msg ->

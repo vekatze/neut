@@ -28,12 +28,12 @@ import Language.Common.DefaultArgs qualified as DefaultArgs
 import Language.Common.ForeignCodType qualified as FCT
 import Language.Common.Ident
 import Language.Common.Ident.Reify qualified as Ident
-import Language.Common.PiElimKind qualified as PEK
 import Language.Common.ImpArgs qualified as ImpArgs
 import Language.Common.LamKind qualified as LK
 import Language.Common.LowMagic qualified as LM
 import Language.Common.Magic (WeakMagic (..))
 import Language.Common.Magic qualified as M
+import Language.Common.PiElimKind qualified as PEK
 import Language.Common.VarKind qualified as VK
 import Language.WeakTerm.FreeVars qualified as WT
 import Language.WeakTerm.WeakTerm qualified as WT
@@ -470,15 +470,15 @@ substMagic h sub (WeakMagic magic) = do
       typeExpr1' <- substType h sub typeExpr1
       typeExpr2' <- substType h sub typeExpr2
       return $ M.EqType moduleID typeExpr1' typeExpr2'
-    M.ShowType textTypeExpr typeExpr -> do
-      textTypeExpr' <- substType h sub textTypeExpr
+    M.ShowType stringTypeExpr typeExpr -> do
+      stringTypeExpr' <- substType h sub stringTypeExpr
       typeExpr' <- substType h sub typeExpr
-      return $ M.ShowType textTypeExpr' typeExpr'
-    M.TextCons textTypeExpr rune text -> do
-      textTypeExpr' <- substType h sub textTypeExpr
+      return $ M.ShowType stringTypeExpr' typeExpr'
+    M.TextCons stringTypeExpr rune text -> do
+      stringTypeExpr' <- substType h sub stringTypeExpr
       rune' <- subst h sub rune
       text' <- subst h sub text
-      return $ M.TextCons textTypeExpr' rune' text'
+      return $ M.TextCons stringTypeExpr' rune' text'
     M.TextUncons mid text -> do
       text' <- subst h sub text
       return $ M.TextUncons mid text'

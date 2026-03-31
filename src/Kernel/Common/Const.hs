@@ -119,9 +119,9 @@ coreEitherRight :: T.Text
 coreEitherRight =
   core <> nsSep <> "either" <> nsSep <> "Right"
 
-coreText :: T.Text
-coreText =
-  core <> nsSep <> "text" <> nsSep <> "text"
+coreString :: T.Text
+coreString =
+  core <> nsSep <> "string" <> nsSep <> "string"
 
 coreCSize :: T.Text
 coreCSize =

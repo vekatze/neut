@@ -385,10 +385,10 @@ showMagic (M.WeakMagic magic) =
       "magic inspect-type" <> inParen (toTextType typeValueExpr <> ", " <> toTextType e)
     M.EqType _ typeExpr1 typeExpr2 ->
       "magic eq-type" <> inParen (toTextType typeExpr1 <> ", " <> toTextType typeExpr2)
-    M.ShowType textTypeExpr typeExpr ->
-      "magic show-type" <> inParen (toTextType textTypeExpr <> ", " <> toTextType typeExpr)
-    M.TextCons textTypeExpr rune text ->
-      "magic text-cons" <> inParen (toTextType textTypeExpr <> ", " <> toText rune <> ", " <> toText text)
+    M.ShowType stringTypeExpr typeExpr ->
+      "magic show-type" <> inParen (toTextType stringTypeExpr <> ", " <> toTextType typeExpr)
+    M.TextCons stringTypeExpr rune text ->
+      "magic text-cons" <> inParen (toTextType stringTypeExpr <> ", " <> toText rune <> ", " <> toText text)
     M.TextUncons _ text ->
       "magic text-uncons" <> inParen (toText text)
     M.CompileError typeExpr msg ->
