@@ -1285,7 +1285,7 @@ rawTermTextIntro = do
   m <- getCurrentHint
   (s, c) <- string
   stringType <- lift $ locatorToTypeVar (blur m) coreString
-  return (m :< RT.StaticText stringType s, c)
+  return (m :< RT.StaticString stringType s, c)
 
 rawTypeRune :: Hint -> C -> Parser (RT.RawType, C)
 rawTypeRune m c = do

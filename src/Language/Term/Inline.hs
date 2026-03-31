@@ -299,9 +299,9 @@ inline' h term = do
           return $ m :< TM.Prim (PV.Float floatType' size value)
         PV.Op {} ->
           return term
-        PV.StaticText stringType text -> do
+        PV.StaticString stringType text -> do
           stringType' <- inlineType' h stringType
-          return $ m :< TM.Prim (PV.StaticText stringType' text)
+          return $ m :< TM.Prim (PV.StaticString stringType' text)
         PV.Rune {} ->
           return term
     m :< TM.Magic magic -> do

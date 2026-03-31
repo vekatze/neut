@@ -232,7 +232,7 @@ toDoc term =
           D.line,
           attachComment c5 $ toDoc e2
         ]
-    _ :< StaticText _ txt -> do
+    _ :< StaticString _ txt -> do
       D.text $ "\"" <> txt <> "\""
     _ :< RuneIntro _ r -> do
       D.text $ "`" <> T.replace "`" "\\`" (RU.asText r) <> "`"

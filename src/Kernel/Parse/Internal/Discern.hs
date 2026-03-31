@@ -576,13 +576,13 @@ discern h term =
           discern h $
             bind startLoc endLoc mxt e1 $
               m :< RT.LetOn (RT.Plain True) [] resultParam [] x' [] e2 [] startLoc [] (m2' :< RT.Var resultVar) endLoc
-    m :< RT.StaticText s str -> do
+    m :< RT.StaticString s str -> do
       s' <- discernType h s
       case parseText str of
         Left reason ->
           raiseError m $ "Could not interpret the following as a text: " <> str <> "\nReason: " <> reason
         Right str' -> do
-          return $ m :< WT.Prim (WPV.StaticText s' str')
+          return $ m :< WT.Prim (WPV.StaticString s' str')
     m :< RT.RuneIntro _ r -> do
       return $ m :< WT.Prim (WPV.Rune r)
     m :< RT.Magic _ magic -> do
@@ -625,7 +625,7 @@ discern h term =
               ( m
                   :< RT.piElim
                     panic
-                    [m :< RT.StaticText stringType ("Admitted: " <> T.pack (Hint.toString m) <> "\n")]
+                    [m :< RT.StaticString stringType ("Admitted: " <> T.pack (Hint.toString m) <> "\n")]
               )
     m :< RT.Detach _ _ (e, _) -> do
       t <- liftIO $ RT.createTypeHole (H.gensymHandle h) (blur m)
@@ -648,7 +648,7 @@ discern h term =
       let fullMessage = T.pack (Hint.toString m) <> "\nAssertion failure: " <> message <> "\n"
       cod <- liftIO $ RT.createTypeHole (H.gensymHandle h) (blur m)
       assertVar' <- discern h assert
-      textTerm' <- discern h (mText :< RT.StaticText stringType fullMessage)
+      textTerm' <- discern h (mText :< RT.StaticString stringType fullMessage)
       lam' <- discern h $ RT.lam fakeLoc mCond [] cod e
       return $ m :< WT.PiElim PEK.Normal assertVar' ImpArgs.Unspecified [textTerm', lam'] (DefaultArgs.ByKey [])
     m :< RT.Introspect _ key _ clauseList -> do
@@ -662,7 +662,7 @@ discern h term =
           liftIO $ Unused.deleteStaticFile (H.unusedHandle h) key
           stringType <- liftEither (locatorToTypeVar m coreString) >>= discernType h
           liftIO $ Tag.insertFileLoc (H.tagHandle h) mKey (T.length key) (newSourceHint path)
-          return $ m :< WT.Prim (WPV.StaticText stringType content)
+          return $ m :< WT.Prim (WPV.StaticString stringType content)
         Nothing ->
           raiseError m $ "No such static file is defined: `" <> key <> "`"
     m :< RT.With withClause -> do

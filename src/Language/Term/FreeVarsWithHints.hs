@@ -65,7 +65,7 @@ freeVarsWithHints term =
       S.union set1 set2
     _ :< TM.Prim prim ->
       case prim of
-        PV.StaticText t _ ->
+        PV.StaticString t _ ->
           freeVarsWithHintsType t
         PV.Int t _ _ ->
           freeVarsWithHintsType t

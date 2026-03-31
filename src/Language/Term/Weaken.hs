@@ -218,8 +218,8 @@ weakenPrimValue prim =
       WPV.Float (weakenType t) float
     PV.Op op ->
       WPV.Op op
-    PV.StaticText t text ->
-      WPV.StaticText (weakenType t) text
+    PV.StaticString t text ->
+      WPV.StaticString (weakenType t) text
     PV.Rune r ->
       WPV.Rune r
 

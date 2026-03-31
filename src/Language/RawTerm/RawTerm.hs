@@ -131,7 +131,7 @@ data RawTermF a
   | Let LetKind C (PatParam RawType) C C a C Loc C a Loc
   | LetOn LetKind C (PatParam RawType) C (SE.Series (Hint, VarKind, RawIdent)) C a C Loc C a Loc
   | Pin C (RawBinder RawType) C (SE.Series (Hint, VarKind, RawIdent)) C a C Loc C a Loc
-  | StaticText RawType T.Text
+  | StaticString RawType T.Text
   | RuneIntro a R.Rune
   | Magic C RawMagic -- (magic kind arg-1 ... arg-n)
   | Annotation LogLevel (Annot.Annotation ()) a

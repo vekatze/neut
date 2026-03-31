@@ -354,9 +354,9 @@ infer h term =
         WPV.Op op -> do
           primOpType <- liftIO $ primOpToType h m op
           return (m :< WT.Prim prim, primOpType)
-        WPV.StaticText t text -> do
+        WPV.StaticString t text -> do
           t' <- inferType (h {varEnv = []}) t
-          return (m :< WT.Prim (WPV.StaticText t' text), m :< WT.BoxNoema t')
+          return (m :< WT.Prim (WPV.StaticString t' text), m :< WT.BoxNoema t')
         WPV.Rune _ -> do
           return (m :< WT.Prim prim, m :< WT.PrimType PT.Rune)
     m :< WT.Magic (M.WeakMagic magic) -> do
