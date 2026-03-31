@@ -4,7 +4,7 @@ module Kernel.Common.Handle.Local.Locator
     attachCurrentLocator,
     activateSpecifiedNames,
     getStaticFileContent,
-    activateStaticFile,
+    activateTextFile,
     getPossibleReferents,
   )
 where
@@ -48,7 +48,7 @@ data Handle = Handle
   { _tagHandle :: Tag.Handle,
     _envHandle :: Env.Handle,
     _activeDefiniteDescriptionListRef :: IORef (Map.HashMap LL.LocalLocator DD.DefiniteDescription),
-    _activeStaticFileListRef :: IORef (Map.HashMap T.Text (Path Abs File, T.Text)),
+    _activeTextFileMapRef :: IORef (Map.HashMap T.Text (Path Abs File, T.Text)),
     _activeGlobalLocatorList :: [SGL.StrictGlobalLocator],
     _currentGlobalLocator :: SGL.StrictGlobalLocator
   }
@@ -57,7 +57,7 @@ new :: Env.Handle -> Tag.Handle -> Source.Source -> App Handle
 new _envHandle _tagHandle source = do
   cgl <- constructGlobalLocator source
   _activeDefiniteDescriptionListRef <- liftIO $ newIORef Map.empty
-  _activeStaticFileListRef <- liftIO $ newIORef Map.empty
+  _activeTextFileMapRef <- liftIO $ newIORef Map.empty
   let _activeGlobalLocatorList = [cgl, SGL.llvmGlobalLocator]
   let _currentGlobalLocator = cgl
   return $ Handle {..}
@@ -96,20 +96,20 @@ activateSpecifiedNames h currentSource topNameMap mustUpdateTag sgl lls = do
           _ ->
             liftIO $ modifyIORef' (_activeDefiniteDescriptionListRef h) $ Map.insert ll dd
 
-activateStaticFile :: Handle -> Hint -> T.Text -> Path Abs File -> App ()
-activateStaticFile h m key path = do
+activateTextFile :: Handle -> Hint -> T.Text -> Path Abs File -> App ()
+activateTextFile h m key path = do
   b <- doesFileExist path
   if b
     then do
       content <- readTextFromPath path
-      liftIO $ modifyIORef' (_activeStaticFileListRef h) $ Map.insert key (path, content)
+      liftIO $ modifyIORef' (_activeTextFileMapRef h) $ Map.insert key (path, content)
     else
       raiseError m $
-        "The static file `" <> key <> "` does not exist at: " <> T.pack (toFilePath path)
+        "The text file `" <> key <> "` does not exist at: " <> T.pack (toFilePath path)
 
 getStaticFileContent :: Handle -> T.Text -> IO (Maybe (Path Abs File, T.Text))
 getStaticFileContent h key = do
-  activeStaticFileList <- readIORef (_activeStaticFileListRef h)
+  activeStaticFileList <- readIORef (_activeTextFileMapRef h)
   return $ Map.lookup key activeStaticFileList
 
 attachCurrentLocator ::

@@ -222,7 +222,7 @@ unravelImportItem h t importItem = do
   case importItem of
     ImportItem source _ ->
       unravel'' h t source
-    StaticKey staticFileList -> do
+    TextFileKey staticFileList -> do
       let pathList = map snd staticFileList
       itemModTime <- forM pathList $ \(m, p) -> do
         ensureFileExistence p m

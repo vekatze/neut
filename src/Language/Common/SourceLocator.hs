@@ -92,7 +92,7 @@ unitLocator =
 
 stringLocator :: SourceLocator
 stringLocator =
-  SourceLocator $(mkRelFile "text")
+  SourceLocator $(mkRelFile "string")
 
 boolLocator :: SourceLocator
 boolLocator =

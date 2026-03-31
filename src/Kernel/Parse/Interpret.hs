@@ -116,9 +116,9 @@ activateImport h m sourceInfoList = do
         liftIO $ NameMap.activateTopLevelNames (nameMapHandle h) namesInSource
         forM_ aliasInfoList $ \aliasInfo ->
           Alias.activateAliasInfo (aliasHandle h) source namesInSource aliasInfo
-      StaticKey pathList -> do
+      TextFileKey pathList -> do
         forM_ pathList $ \(key, (mKey, path)) -> do
-          Locator.activateStaticFile (locatorHandle h) mKey key path
+          Locator.activateTextFile (locatorHandle h) mKey key path
 
 registerUnusedVariableRemarks :: Handle -> IO [L.Log]
 registerUnusedVariableRemarks h = do

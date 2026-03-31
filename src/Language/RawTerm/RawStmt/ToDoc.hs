@@ -80,7 +80,7 @@ filterImport importInfo = do
 filterUnused :: ImportInfo -> RawImportItem -> Either C RawImportItem
 filterUnused importInfo rawImportItem = do
   case rawImportItem of
-    RawStaticKey {} ->
+    RawTextFileKey {} ->
       return rawImportItem
     RawImportItem m (loc, c) lls -> do
       if isUsedGL (unusedGlobalLocators importInfo) loc
@@ -92,7 +92,7 @@ filterUnused importInfo rawImportItem = do
 filterPreset :: ImportInfo -> RawImportItem -> Either C RawImportItem
 filterPreset importInfo item = do
   case item of
-    RawStaticKey {} ->
+    RawTextFileKey {} ->
       return item
     RawImportItem m (loc, c) lls -> do
       case lookup loc (presetNames importInfo) of
@@ -127,8 +127,8 @@ mergeAdjacentImport importList = do
       [item]
     (c1, item1) : (c2, item2) : rest -> do
       case (item1, item2) of
-        (RawStaticKey m1 c1' ks1, RawStaticKey _ c2' ks2) -> do
-          let item = RawStaticKey m1 (c1' ++ c2') (SE.appendLeftBiased ks1 ks2)
+        (RawTextFileKey m1 c1' ks1, RawTextFileKey _ c2' ks2) -> do
+          let item = RawTextFileKey m1 (c1' ++ c2') (SE.appendLeftBiased ks1 ks2)
           mergeAdjacentImport $ (c1 ++ c2, item) : rest
         (RawImportItem m1 (locator1, c1') localLocatorList1, RawImportItem _ (locator2, c2') localLocatorList2)
           | locator1 == locator2 -> do
@@ -144,9 +144,9 @@ sortLocalLocators rawImportItem = do
     RawImportItem m locator localLocators -> do
       let cmp (_, x) (_, y) = compare x y
       RawImportItem m locator $ SE.sortSeriesBy cmp localLocators
-    RawStaticKey m c ks -> do
+    RawTextFileKey m c ks -> do
       let cmp (_, x) (_, y) = compare x y
-      RawStaticKey m c $ SE.sortSeriesBy cmp ks
+      RawTextFileKey m c $ SE.sortSeriesBy cmp ks
 
 nubLocalLocators :: RawImportItem -> RawImportItem
 nubLocalLocators rawImportItem = do
@@ -154,9 +154,9 @@ nubLocalLocators rawImportItem = do
     RawImportItem m locator localLocators -> do
       let eq (_, x) (_, y) = x == y
       RawImportItem m locator $ SE.nubSeriesBy eq localLocators
-    RawStaticKey m c ks -> do
+    RawTextFileKey m c ks -> do
       let eq (_, x) (_, y) = x == y
-      RawStaticKey m c $ SE.nubSeriesBy eq ks
+      RawTextFileKey m c $ SE.nubSeriesBy eq ks
 
 decImportItem :: RawImportItem -> (D.Doc, C)
 decImportItem rawImportItem = do
@@ -168,12 +168,12 @@ decImportItem rawImportItem = do
           let args' = SE.pushComment c args
           let args'' = SE.decode $ fmap decImportItemLocator args'
           (D.join [D.text item, D.text " ", args''], [])
-    RawStaticKey _ c ks -> do
+    RawTextFileKey _ c ks -> do
       if SE.isEmpty ks
         then (D.Nil, c)
         else do
           let ks' = D.text . snd <$> SE.pushComment c ks
-          (D.join [D.text "static", D.text " ", SE.decode ks'], [])
+          (D.join [D.text "text-file", D.text " ", SE.decode ks'], [])
 
 decImportItemLocator :: (a, LL.LocalLocator) -> D.Doc
 decImportItemLocator (_, l) =

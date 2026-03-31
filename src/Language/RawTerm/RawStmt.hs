@@ -130,18 +130,18 @@ data PostRawStmt
 
 data RawImportItem
   = RawImportItem Hint (T.Text, C) (SE.Series (Hint, LL.LocalLocator))
-  | RawStaticKey Hint C (SE.Series (Hint, T.Text))
+  | RawTextFileKey Hint C (SE.Series (Hint, T.Text))
 
 compareImportItem :: RawImportItem -> RawImportItem -> Ordering
 compareImportItem item1 item2 = do
   case (item1, item2) of
     (RawImportItem _ locator1 _, RawImportItem _ locator2 _) ->
       compare locator1 locator2
-    (RawImportItem {}, RawStaticKey {}) ->
+    (RawImportItem {}, RawTextFileKey {}) ->
       LT
-    (RawStaticKey {}, RawImportItem {}) ->
+    (RawTextFileKey {}, RawImportItem {}) ->
       GT
-    (RawStaticKey {}, RawStaticKey {}) ->
+    (RawTextFileKey {}, RawTextFileKey {}) ->
       EQ
 
 data RawForeignItemF a

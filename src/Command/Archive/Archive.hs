@@ -51,5 +51,5 @@ collectModuleFiles (MainModule baseModule) = do
   let relModuleSourceDir = Left $ moduleSourceDir baseModule
   let foreignContents = input $ moduleForeign baseModule
   let extraContents = moduleExtraContents baseModule
-  let staticContents = map (\(_, path) -> Right path) $ Map.toList $ moduleStaticFiles baseModule
+  let staticContents = map (\(_, path) -> Right path) $ Map.toList $ moduleTextFiles baseModule
   (moduleRootDir, relModuleSourceDir : foreignContents ++ staticContents ++ extraContents)
