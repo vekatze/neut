@@ -64,7 +64,7 @@ freeVars term =
       S.union set1 set2
     _ :< TM.Prim prim ->
       case prim of
-        PV.StaticString t _ ->
+        PV.NoeticString t _ ->
           freeVarsType t
         PV.Text t _ ->
           freeVarsType t

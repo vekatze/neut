@@ -538,7 +538,7 @@ clarifyTerm h context term =
           return $ C.UpIntro (C.Float size l)
         PV.Op op -> do
           clarifyPrimOp h context op m
-        PV.StaticString _ text ->
+        PV.NoeticString _ text ->
           return $ C.UpIntro $ C.VarStaticText text
         PV.Text _ text ->
           return $ C.UpIntro $ C.VarStaticText text

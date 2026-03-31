@@ -543,9 +543,9 @@ elaboratePrimValue h m primValue =
       return $ PV.Float t' size x
     WPV.Op op ->
       return $ PV.Op op
-    WPV.StaticString t text -> do
+    WPV.NoeticString t text -> do
       t' <- elaborateType h t
-      return $ PV.StaticString t' text
+      return $ PV.NoeticString t' text
     WPV.Text t text -> do
       t' <- elaborateType h t
       return $ PV.Text t' text

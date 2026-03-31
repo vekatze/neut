@@ -232,7 +232,7 @@ toDoc term =
           D.line,
           attachComment c5 $ toDoc e2
         ]
-    _ :< StaticString _ txt -> do
+    _ :< NoeticString _ txt -> do
       D.text $ "\"" <> txt <> "\""
     _ :< RuneIntro _ r -> do
       D.text $ "`" <> T.replace "`" "\\`" (RU.asText r) <> "`"
@@ -461,7 +461,7 @@ toDoc term =
           PI.horizontal $ D.text key,
           PI.inject $ SE.decode' $ fmap decodeIntrospectClause clauseList
         ]
-    _ :< StaticContent c1 _ staticItem -> do
+    _ :< Static c1 _ staticItem -> do
       PI.arrange
         [ PI.horizontal $ attachComment c1 $ D.text "static",
           PI.inject $

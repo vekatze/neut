@@ -576,13 +576,6 @@ discern h term =
           discern h $
             bind startLoc endLoc mxt e1 $
               m :< RT.LetOn (RT.Plain True) [] resultParam [] x' [] e2 [] startLoc [] (m2' :< RT.Var resultVar) endLoc
-    m :< RT.StaticString s str -> do
-      s' <- discernType h s
-      case parseText str of
-        Left reason ->
-          raiseError m $ "Could not interpret the following as a string: " <> str <> "\nReason: " <> reason
-        Right str' -> do
-          return $ m :< WT.Prim (WPV.StaticString s' str')
     m :< RT.RuneIntro _ r -> do
       return $ m :< WT.Prim (WPV.Rune r)
     m :< RT.Magic _ magic -> do
@@ -625,7 +618,7 @@ discern h term =
               ( m
                   :< RT.piElim
                     panic
-                    [m :< RT.StaticString stringType ("Admitted: " <> T.pack (Hint.toString m) <> "\n")]
+                    [m :< RT.NoeticString stringType ("Admitted: " <> T.pack (Hint.toString m) <> "\n")]
               )
     m :< RT.Detach _ _ (e, _) -> do
       t <- liftIO $ RT.createTypeHole (H.gensymHandle h) (blur m)
@@ -648,14 +641,14 @@ discern h term =
       let fullMessage = T.pack (Hint.toString m) <> "\nAssertion failure: " <> message <> "\n"
       cod <- liftIO $ RT.createTypeHole (H.gensymHandle h) (blur m)
       assertVar' <- discern h assert
-      textTerm' <- discern h (mText :< RT.StaticString stringType fullMessage)
+      textTerm' <- discern h (mText :< RT.NoeticString stringType fullMessage)
       lam' <- discern h $ RT.lam fakeLoc mCond [] cod e
       return $ m :< WT.PiElim PEK.Normal assertVar' ImpArgs.Unspecified [textTerm', lam'] (DefaultArgs.ByKey [])
     m :< RT.Introspect _ key _ clauseList -> do
       value <- getIntrospectiveValue h m key
       clause <- lookupIntrospectiveClause m value $ SE.extract clauseList
       discern h clause
-    m :< RT.StaticContent _ mKey staticItem -> do
+    m :< RT.Static _ mKey staticItem -> do
       textType <- liftEither (locatorToTypeVar m coreText) >>= discernType h
       case staticItem of
         RT.TextContent content -> do
@@ -673,6 +666,13 @@ discern h term =
               return $ m :< WT.Prim (WPV.Text textType content)
             Nothing ->
               raiseError m $ "No such static file is defined: `" <> key <> "`"
+    m :< RT.NoeticString s str -> do
+      s' <- discernType h s
+      case parseText str of
+        Left reason ->
+          raiseError m $ "Could not interpret the following as a string: " <> str <> "\nReason: " <> reason
+        Right str' -> do
+          return $ m :< WT.Prim (WPV.NoeticString s' str')
     m :< RT.With withClause -> do
       let (binder, body) = RT.extractFromKeywordClause withClause
       case body of

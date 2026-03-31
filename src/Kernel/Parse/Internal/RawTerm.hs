@@ -1261,10 +1261,10 @@ rawTermStatic m c1 = do
   choice
     [ do
         (s, c) <- string
-        return (m :< RT.StaticContent c1 mKey (RT.TextContent s), c),
+        return (m :< RT.Static c1 mKey (RT.TextContent s), c),
       do
         (key, c) <- symbol
-        return (m :< RT.StaticContent c1 mKey (RT.TextFileKey key), c)
+        return (m :< RT.Static c1 mKey (RT.TextFileKey key), c)
     ]
 
 interpretVarName :: Hint -> T.Text -> Parser Name
@@ -1291,7 +1291,7 @@ rawTermTextIntro = do
   m <- getCurrentHint
   (s, c) <- string
   stringType <- lift $ locatorToTypeVar (blur m) coreString
-  return (m :< RT.StaticString stringType s, c)
+  return (m :< RT.NoeticString stringType s, c)
 
 rawTypeRune :: Hint -> C -> Parser (RT.RawType, C)
 rawTypeRune m c = do

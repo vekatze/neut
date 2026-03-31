@@ -207,7 +207,7 @@ returnTypeValueIntValue h m moduleID typeValue = do
     TypeValue.Algebraic dataName dataArgs consInfoList -> do
       let listSgl = makeListSGL moduleID
       let stringType = makeTextTypeExpr m moduleID
-      let dataNameTerm = m :< TM.Prim (PV.StaticString stringType dataName)
+      let dataNameTerm = m :< TM.Prim (PV.NoeticString stringType dataName)
       dataArgsTerm <- constructListTerm h m listSgl dataArgs
       consInfoTerm <- constructConstructorInfoListTerm h m moduleID consInfoList
       return $ m :< TM.DataIntro attr consName [] [dataNameTerm, dataArgsTerm, consInfoTerm]
@@ -215,7 +215,7 @@ returnTypeValueIntValue h m moduleID typeValue = do
       let listSgl = makeListSGL moduleID
       let stringType = makeTextTypeExpr m moduleID
       let elemType = m :< TM.BoxNoema stringType
-      let nameTerms = map (\name -> m :< TM.Prim (PV.StaticString stringType name)) consNames
+      let nameTerms = map (\name -> m :< TM.Prim (PV.NoeticString stringType name)) consNames
       namesListTerm <- constructListTermFromTerms h m listSgl elemType nameTerms
       return $ m :< TM.DataIntro attr consName [] [namesListTerm]
     TypeValue.Vector t -> do
@@ -376,7 +376,7 @@ constructConstructorTerm h m moduleID (consName, isConstLike, params) = do
   flagBinder <- mkBinder h m "is-const-like" boolType
   let consNameList = [(consDD, [nameBinder, flagBinder, paramsBinder], False)]
   let attr = AttrDI.Attr {dataName = constructorTypeDD, consNameList, discriminant = D.zero, isConstLike = False}
-  let consNameText = m :< TM.Prim (PV.StaticString stringType consName)
+  let consNameText = m :< TM.Prim (PV.NoeticString stringType consName)
   paramTerms <- mapM (constructParamPairTerm h m moduleID stringType) params
   paramListTerm <- constructListTermFromTerms h m listSgl paramPairType paramTerms
   let boolTerm = constructBoolTerm m moduleID isConstLike
@@ -384,7 +384,7 @@ constructConstructorTerm h m moduleID (consName, isConstLike, params) = do
 
 constructParamPairTerm :: Handle -> Hint -> MID.ModuleID -> TM.Type -> (T.Text, TM.Type) -> App TM.Term
 constructParamPairTerm h m moduleID stringType (paramName, paramType) = do
-  let nameTerm = m :< TM.Prim (PV.StaticString stringType paramName)
+  let nameTerm = m :< TM.Prim (PV.NoeticString stringType paramName)
   let typeTerm = m :< TM.TauIntro paramType
   constructPairTerm h m moduleID (m :< TM.BoxNoema stringType) (m :< TM.Tau) nameTerm typeTerm
 
@@ -396,21 +396,21 @@ mkBinder h hint name ty = do
 evaluateShowType :: Hint -> TM.Type -> TM.Type -> App TM.Term
 evaluateShowType m stringTypeExpr typeExpr = do
   let typeText = toTextType $ weakenType typeExpr
-  return $ m :< TM.Prim (PV.StaticString stringTypeExpr typeText)
+  return $ m :< TM.Prim (PV.NoeticString stringTypeExpr typeText)
 
 evaluateStringCons :: Handle -> Hint -> TM.Type -> TM.Term -> TM.Term -> App TM.Term
 evaluateStringCons h m stringTypeExpr rune text = do
   case (rune, text) of
-    (_ :< TM.Prim (PV.Rune r), _ :< TM.Prim (PV.StaticString _ textValue)) -> do
+    (_ :< TM.Prim (PV.Rune r), _ :< TM.Prim (PV.NoeticString _ textValue)) -> do
       let newText = T.cons (Rune.asChar r) textValue
-      return $ m :< TM.Prim (PV.StaticString stringTypeExpr newText)
+      return $ m :< TM.Prim (PV.NoeticString stringTypeExpr newText)
     _ ->
       reportMacroError h m "text-cons requires a rune literal and a static text literal"
 
 evaluateStringUncons :: Handle -> Hint -> MID.ModuleID -> TM.Term -> App TM.Term
 evaluateStringUncons h m moduleID text = do
   case text of
-    _ :< TM.Prim (PV.StaticString stringTypeExpr textValue) -> do
+    _ :< TM.Prim (PV.NoeticString stringTypeExpr textValue) -> do
       let eitherSGL = SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.eitherLocator}
       let unitSGL = SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.unitLocator}
       let pairSGL = SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.pairLocator}
@@ -433,7 +433,7 @@ evaluateStringUncons h m moduleID text = do
           let rightVar = m :< TM.VarGlobal (AttrVG.Attr {argNum = AN.fromInt 3, isConstLike = False, isDestPassing = False}) rightDD
           let pairVar = m :< TM.VarGlobal (AttrVG.Attr {argNum = AN.fromInt 4, isConstLike = False, isDestPassing = False}) pairDD
           let runeValue = m :< TM.Prim (PV.Rune (Rune.fromChar c))
-          let restText = m :< TM.Prim (PV.StaticString stringTypeExpr rest)
+          let restText = m :< TM.Prim (PV.NoeticString stringTypeExpr rest)
           let pair = m :< TM.PiElim PEK.Normal (m :< TM.PiElim PEK.Normal pairVar [runeType, m :< TM.BoxNoema stringTypeExpr] [] []) [] [runeValue, restText] []
           return $ m :< TM.PiElim PEK.Normal (m :< TM.PiElim PEK.Normal rightVar [unitTypeVar, pairType] [] []) [] [pair] []
     _ ->
@@ -442,7 +442,7 @@ evaluateStringUncons h m moduleID text = do
 evaluateCompileError :: Handle -> Hint -> TM.Term -> App a
 evaluateCompileError h m msg = do
   case msg of
-    _ :< TM.Prim (PV.StaticString _ messageText) -> do
+    _ :< TM.Prim (PV.NoeticString _ messageText) -> do
       reportMacroError h m messageText
     _ ->
       raiseError m "compile-error requires a static string message"
