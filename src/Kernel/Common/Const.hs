@@ -123,6 +123,10 @@ coreString :: T.Text
 coreString =
   core <> nsSep <> "string" <> nsSep <> "string"
 
+coreText :: T.Text
+coreText =
+  core <> nsSep <> "text" <> nsSep <> "text"
+
 coreCSize :: T.Text
 coreCSize =
   core <> nsSep <> "c-size" <> nsSep <> "c-size"

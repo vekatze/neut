@@ -318,6 +318,8 @@ showPrimValue primValue =
           T.pack (show name)
     WPV.StaticString _ text ->
       T.pack $ show text
+    WPV.Text _ text ->
+      T.pack $ show text
     WPV.Rune r ->
       "`" <> T.replace "`" "\\`" (RU.asText r) <> "`"
 

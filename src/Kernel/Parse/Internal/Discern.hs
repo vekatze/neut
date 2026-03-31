@@ -660,9 +660,9 @@ discern h term =
       case contentOrNone of
         Just (path, content) -> do
           liftIO $ Unused.deleteStaticFile (H.unusedHandle h) key
-          stringType <- liftEither (locatorToTypeVar m coreString) >>= discernType h
+          textType <- liftEither (locatorToTypeVar m coreText) >>= discernType h
           liftIO $ Tag.insertFileLoc (H.tagHandle h) mKey (T.length key) (newSourceHint path)
-          return $ m :< WT.Prim (WPV.StaticString stringType content)
+          return $ m :< WT.Prim (WPV.Text textType content)
         Nothing ->
           raiseError m $ "No such static file is defined: `" <> key <> "`"
     m :< RT.With withClause -> do

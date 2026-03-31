@@ -538,7 +538,9 @@ clarifyTerm h context term =
           return $ C.UpIntro (C.Float size l)
         PV.Op op -> do
           clarifyPrimOp h context op m
-        PV.StaticText _ text ->
+        PV.StaticString _ text ->
+          return $ C.UpIntro $ C.VarStaticText text
+        PV.Text _ text ->
           return $ C.UpIntro $ C.VarStaticText text
         PV.Rune r -> do
           let t = fromPrimNum m (PT.Int PNS.IntSize32)

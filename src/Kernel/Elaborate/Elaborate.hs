@@ -546,6 +546,9 @@ elaboratePrimValue h m primValue =
     WPV.StaticString t text -> do
       t' <- elaborateType h t
       return $ PV.StaticString t' text
+    WPV.Text t text -> do
+      t' <- elaborateType h t
+      return $ PV.Text t' text
     WPV.Rune r ->
       return $ PV.Rune r
 

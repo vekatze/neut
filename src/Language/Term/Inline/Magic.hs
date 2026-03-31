@@ -437,7 +437,7 @@ evaluateStringUncons h m moduleID text = do
           let pair = m :< TM.PiElim PEK.Normal (m :< TM.PiElim PEK.Normal pairVar [runeType, m :< TM.BoxNoema stringTypeExpr] [] []) [] [runeValue, restText] []
           return $ m :< TM.PiElim PEK.Normal (m :< TM.PiElim PEK.Normal rightVar [unitTypeVar, pairType] [] []) [] [pair] []
     _ ->
-      reportMacroError h m "text-uncons requires a static text literal"
+      reportMacroError h m "text-uncons requires a static string literal"
 
 evaluateCompileError :: Handle -> Hint -> TM.Term -> App a
 evaluateCompileError h m msg = do
@@ -445,7 +445,7 @@ evaluateCompileError h m msg = do
     _ :< TM.Prim (PV.StaticString _ messageText) -> do
       reportMacroError h m messageText
     _ ->
-      raiseError m "compile-error requires a static text message"
+      raiseError m "compile-error requires a static string message"
 
 reportMacroError :: Handle -> Hint -> T.Text -> App a
 reportMacroError h m message = do

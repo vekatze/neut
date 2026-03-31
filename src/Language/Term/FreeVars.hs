@@ -66,6 +66,8 @@ freeVars term =
       case prim of
         PV.StaticString t _ ->
           freeVarsType t
+        PV.Text t _ ->
+          freeVarsType t
         PV.Int t _ _ ->
           freeVarsType t
         PV.Float t _ _ ->

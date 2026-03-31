@@ -15,6 +15,7 @@ data PrimValue a
   | Float a FloatSize Double
   | Op PrimOp
   | StaticString a T.Text
+  | Text a T.Text
   | Rune RU.Rune
   deriving (Show, Generic)
 

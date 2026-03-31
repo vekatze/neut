@@ -23,6 +23,7 @@ data WeakPrimValue a
   | Float a Double
   | Op PrimOp
   | StaticString a T.Text
+  | Text a T.Text
   | Rune RU.Rune
   deriving (Show, Generic)
 
@@ -39,6 +40,8 @@ instance Functor WeakPrimValue where
         Op op
       StaticString t text ->
         StaticString (f t) text
+      Text t text ->
+        Text (f t) text
       Rune r ->
         Rune r
 
@@ -52,6 +55,8 @@ instance Foldable WeakPrimValue where
       Op _ ->
         mempty
       StaticString t _ ->
+        f t
+      Text t _ ->
         f t
       Rune _ ->
         mempty
@@ -67,6 +72,8 @@ instance Traversable WeakPrimValue where
         pure $ Op op
       StaticString t text ->
         StaticString <$> f t <*> pure text
+      Text t text ->
+        Text <$> f t <*> pure text
       Rune r ->
         pure $ Rune r
 

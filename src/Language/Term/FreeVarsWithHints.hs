@@ -67,6 +67,8 @@ freeVarsWithHints term =
       case prim of
         PV.StaticString t _ ->
           freeVarsWithHintsType t
+        PV.Text t _ ->
+          freeVarsWithHintsType t
         PV.Int t _ _ ->
           freeVarsWithHintsType t
         PV.Float t _ _ ->
