@@ -461,10 +461,15 @@ toDoc term =
           PI.horizontal $ D.text key,
           PI.inject $ SE.decode' $ fmap decodeIntrospectClause clauseList
         ]
-    _ :< StaticContent c1 _ path -> do
+    _ :< StaticContent c1 _ staticItem -> do
       PI.arrange
         [ PI.horizontal $ attachComment c1 $ D.text "static",
-          PI.inject $ D.text path
+          PI.inject $
+            case staticItem of
+              RT.TextFileKey path ->
+                D.text path
+              RT.TextContent content ->
+                D.text $ "\"" <> content <> "\""
         ]
     _ :< Brace c1 (e, c2) -> do
       decodeBrace False c1 e c2

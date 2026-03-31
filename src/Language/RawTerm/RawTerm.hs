@@ -10,6 +10,7 @@ module Language.RawTerm.RawTerm
     TopGeist,
     LetKind (..),
     RawMagic (..),
+    StaticItem (..),
     KeywordClause,
     EL,
     MustIgnoreRelayedVars,
@@ -144,10 +145,14 @@ data RawTermF a
   | Attach C C (a, C)
   | Assert C (Hint, T.Text) C C (a, C)
   | Introspect C T.Text C (SE.Series (Maybe T.Text, C, a))
-  | StaticContent C Hint T.Text
+  | StaticContent C Hint StaticItem
   | With (KeywordClause a)
   | Brace C (a, C)
   | Int Integer
+
+data StaticItem
+  = TextFileKey T.Text
+  | TextContent T.Text
 
 type PatParam a =
   (Hint, RP.RawPattern, C, C, a)

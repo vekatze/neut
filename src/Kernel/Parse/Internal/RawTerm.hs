@@ -1258,8 +1258,14 @@ rawTermIntrospectiveClause h = do
 rawTermStatic :: Hint -> C -> Parser (RT.RawTerm, C)
 rawTermStatic m c1 = do
   mKey <- getCurrentHint
-  (key, c) <- symbol
-  return (m :< RT.StaticContent c1 mKey key, c)
+  choice
+    [ do
+        (s, c) <- string
+        return (m :< RT.StaticContent c1 mKey (RT.TextContent s), c),
+      do
+        (key, c) <- symbol
+        return (m :< RT.StaticContent c1 mKey (RT.TextFileKey key), c)
+    ]
 
 interpretVarName :: Hint -> T.Text -> Parser Name
 interpretVarName m varText = do

@@ -580,7 +580,7 @@ discern h term =
       s' <- discernType h s
       case parseText str of
         Left reason ->
-          raiseError m $ "Could not interpret the following as a text: " <> str <> "\nReason: " <> reason
+          raiseError m $ "Could not interpret the following as a string: " <> str <> "\nReason: " <> reason
         Right str' -> do
           return $ m :< WT.Prim (WPV.StaticString s' str')
     m :< RT.RuneIntro _ r -> do
@@ -655,16 +655,24 @@ discern h term =
       value <- getIntrospectiveValue h m key
       clause <- lookupIntrospectiveClause m value $ SE.extract clauseList
       discern h clause
-    m :< RT.StaticContent _ mKey key -> do
-      contentOrNone <- liftIO $ Locator.getStaticFileContent (H.locatorHandle h) key
-      case contentOrNone of
-        Just (path, content) -> do
-          liftIO $ Unused.deleteStaticFile (H.unusedHandle h) key
-          textType <- liftEither (locatorToTypeVar m coreText) >>= discernType h
-          liftIO $ Tag.insertFileLoc (H.tagHandle h) mKey (T.length key) (newSourceHint path)
-          return $ m :< WT.Prim (WPV.Text textType content)
-        Nothing ->
-          raiseError m $ "No such static file is defined: `" <> key <> "`"
+    m :< RT.StaticContent _ mKey staticItem -> do
+      textType <- liftEither (locatorToTypeVar m coreText) >>= discernType h
+      case staticItem of
+        RT.TextContent content -> do
+          case parseText content of
+            Left reason ->
+              raiseError m $ "Could not interpret the following as a text: " <> content <> "\nReason: " <> reason
+            Right str' -> do
+              return $ m :< WT.Prim (WPV.Text textType str')
+        RT.TextFileKey key -> do
+          contentOrNone <- liftIO $ Locator.getStaticFileContent (H.locatorHandle h) key
+          case contentOrNone of
+            Just (path, content) -> do
+              liftIO $ Unused.deleteStaticFile (H.unusedHandle h) key
+              liftIO $ Tag.insertFileLoc (H.tagHandle h) mKey (T.length key) (newSourceHint path)
+              return $ m :< WT.Prim (WPV.Text textType content)
+            Nothing ->
+              raiseError m $ "No such static file is defined: `" <> key <> "`"
     m :< RT.With withClause -> do
       let (binder, body) = RT.extractFromKeywordClause withClause
       case body of
