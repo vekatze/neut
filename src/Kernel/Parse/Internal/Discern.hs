@@ -655,7 +655,7 @@ discern h term =
       value <- getIntrospectiveValue h m key
       clause <- lookupIntrospectiveClause m value $ SE.extract clauseList
       discern h clause
-    m :< RT.IncludeText _ _ mKey (key, _) -> do
+    m :< RT.StaticContent _ mKey key -> do
       contentOrNone <- liftIO $ Locator.getStaticFileContent (H.locatorHandle h) key
       case contentOrNone of
         Just (path, content) -> do

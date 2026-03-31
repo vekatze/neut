@@ -144,7 +144,7 @@ data RawTermF a
   | Attach C C (a, C)
   | Assert C (Hint, T.Text) C C (a, C)
   | Introspect C T.Text C (SE.Series (Maybe T.Text, C, a))
-  | IncludeText C C Hint (T.Text, C)
+  | StaticContent C Hint T.Text
   | With (KeywordClause a)
   | Brace C (a, C)
   | Int Integer

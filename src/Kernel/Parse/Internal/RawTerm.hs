@@ -164,8 +164,8 @@ rawTerm' mode h m headSymbol c = do
       rawTermDefine h O.Clear m c
     "introspect" -> do
       rawTermIntrospect h m c
-    "include-text" -> do
-      rawTermIncludeText m c
+    "static" -> do
+      rawTermStatic m c
     "magic" -> do
       rawTermMagic h m c
     "match" -> do
@@ -1255,13 +1255,11 @@ rawTermIntrospectiveClause h = do
     then return ((Just s, cKey ++ cArrow, body), c)
     else return ((Nothing, cKey ++ cArrow, body), c)
 
-rawTermIncludeText :: Hint -> C -> Parser (RT.RawTerm, C)
-rawTermIncludeText m c1 = do
-  (c2, ((mKey, key), c)) <- betweenParen $ do
-    mKey <- getCurrentHint
-    k <- symbol
-    return (mKey, k)
-  return (m :< RT.IncludeText c1 c2 mKey key, c)
+rawTermStatic :: Hint -> C -> Parser (RT.RawTerm, C)
+rawTermStatic m c1 = do
+  mKey <- getCurrentHint
+  (key, c) <- symbol
+  return (m :< RT.StaticContent c1 mKey key, c)
 
 interpretVarName :: Hint -> T.Text -> Parser Name
 interpretVarName m varText = do
