@@ -54,7 +54,7 @@ data empty {
 }
 
 data config {
-| Config(counter: int, path: &text, func: (int) -> int)
+| Config(counter: int, path: &string, func: (int) -> int)
 }
 
 data top(a) {
@@ -78,7 +78,7 @@ data bar {
 | Bar(foo)
 }
 
-define buz(c: &config) -> &text {
+define buz(c: &config) -> &string {
   tie Config {counter, func, path} = c;
   let _: int = *counter;
   let _ = *counter;

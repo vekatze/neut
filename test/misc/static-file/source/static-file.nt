@@ -1,7 +1,8 @@
 import {
-  static {some-file},
+  core.string {from-text},
+  text-file {some-file},
 }
 
 define main() -> unit {
-  print(include-text(some-file))
+  print(from-text(static some-file))
 }

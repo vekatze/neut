@@ -10,6 +10,7 @@ module Language.RawTerm.RawTerm
     TopGeist,
     LetKind (..),
     RawMagic (..),
+    StaticItem (..),
     KeywordClause,
     EL,
     MustIgnoreRelayedVars,
@@ -131,7 +132,6 @@ data RawTermF a
   | Let LetKind C (PatParam RawType) C C a C Loc C a Loc
   | LetOn LetKind C (PatParam RawType) C (SE.Series (Hint, VarKind, RawIdent)) C a C Loc C a Loc
   | Pin C (RawBinder RawType) C (SE.Series (Hint, VarKind, RawIdent)) C a C Loc C a Loc
-  | StaticText RawType T.Text
   | RuneIntro a R.Rune
   | Magic C RawMagic -- (magic kind arg-1 ... arg-n)
   | Annotation LogLevel (Annot.Annotation ()) a
@@ -144,10 +144,15 @@ data RawTermF a
   | Attach C C (a, C)
   | Assert C (Hint, T.Text) C C (a, C)
   | Introspect C T.Text C (SE.Series (Maybe T.Text, C, a))
-  | IncludeText C C Hint (T.Text, C)
+  | Static C Hint StaticItem
+  | NoeticString RawType T.Text
   | With (KeywordClause a)
   | Brace C (a, C)
   | Int Integer
+
+data StaticItem
+  = TextFileKey T.Text
+  | TextContent T.Text
 
 type PatParam a =
   (Hint, RP.RawPattern, C, C, a)
@@ -328,8 +333,8 @@ data RawMagic
   | InspectType (EL RawType)
   | EqType (EL RawType) (EL RawType)
   | ShowType C (EL RawType)
-  | TextCons C (EL RawTerm) (EL RawTerm)
-  | TextUncons C (EL RawTerm)
+  | StringCons C (EL RawTerm) (EL RawTerm)
+  | StringUncons C (EL RawTerm)
   | CompileError C (EL RawTerm)
 
 -- elem

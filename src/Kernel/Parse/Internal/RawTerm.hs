@@ -164,8 +164,8 @@ rawTerm' mode h m headSymbol c = do
       rawTermDefine h O.Clear m c
     "introspect" -> do
       rawTermIntrospect h m c
-    "include-text" -> do
-      rawTermIncludeText m c
+    "static" -> do
+      rawTermStatic m c
     "magic" -> do
       rawTermMagic h m c
     "match" -> do
@@ -760,8 +760,8 @@ rawTermMagic h m c = do
       rawTermMagicInspectType h m c,
       rawTermMagicEqType h m c,
       rawTermMagicShowType h m c,
-      rawTermMagicTextCons h m c,
-      rawTermMagicTextUncons h m c,
+      rawTermMagicStringCons h m c,
+      rawTermMagicStringUncons h m c,
       rawTermMagicCompileError h m c
     ]
 
@@ -910,19 +910,19 @@ rawTermMagicShowType h m c = do
     typeExpr <- rawType h
     return $ \c1 c2 -> m :< RT.Magic c (RT.ShowType c1 (c2, typeExpr))
 
-rawTermMagicTextCons :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
-rawTermMagicTextCons h m c = do
-  rawTermMagicBase "text-cons" $ do
+rawTermMagicStringCons :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
+rawTermMagicStringCons h m c = do
+  rawTermMagicBase "string-cons" $ do
     runeTerm <- rawTerm h
     c3 <- delimiter ","
     textTerm <- rawTerm h
-    return $ \c1 c2 -> m :< RT.Magic c (RT.TextCons c1 (c2, runeTerm) (c3, textTerm))
+    return $ \c1 c2 -> m :< RT.Magic c (RT.StringCons c1 (c2, runeTerm) (c3, textTerm))
 
-rawTermMagicTextUncons :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
-rawTermMagicTextUncons h m c = do
-  rawTermMagicBase "text-uncons" $ do
+rawTermMagicStringUncons :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
+rawTermMagicStringUncons h m c = do
+  rawTermMagicBase "string-uncons" $ do
     textTerm <- rawTerm h
-    return $ \c1 c2 -> m :< RT.Magic c (RT.TextUncons c1 (c2, textTerm))
+    return $ \c1 c2 -> m :< RT.Magic c (RT.StringUncons c1 (c2, textTerm))
 
 rawTermMagicCompileError :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermMagicCompileError h m c = do
@@ -1255,13 +1255,17 @@ rawTermIntrospectiveClause h = do
     then return ((Just s, cKey ++ cArrow, body), c)
     else return ((Nothing, cKey ++ cArrow, body), c)
 
-rawTermIncludeText :: Hint -> C -> Parser (RT.RawTerm, C)
-rawTermIncludeText m c1 = do
-  (c2, ((mKey, key), c)) <- betweenParen $ do
-    mKey <- getCurrentHint
-    k <- symbol
-    return (mKey, k)
-  return (m :< RT.IncludeText c1 c2 mKey key, c)
+rawTermStatic :: Hint -> C -> Parser (RT.RawTerm, C)
+rawTermStatic m c1 = do
+  mKey <- getCurrentHint
+  choice
+    [ do
+        (s, c) <- string
+        return (m :< RT.Static c1 mKey (RT.TextContent s), c),
+      do
+        (key, c) <- symbol
+        return (m :< RT.Static c1 mKey (RT.TextFileKey key), c)
+    ]
 
 interpretVarName :: Hint -> T.Text -> Parser Name
 interpretVarName m varText = do
@@ -1286,8 +1290,8 @@ rawTermTextIntro :: Parser (RT.RawTerm, C)
 rawTermTextIntro = do
   m <- getCurrentHint
   (s, c) <- string
-  textType <- lift $ locatorToTypeVar (blur m) coreText
-  return (m :< RT.StaticText textType s, c)
+  stringType <- lift $ locatorToTypeVar (blur m) coreString
+  return (m :< RT.NoeticString stringType s, c)
 
 rawTypeRune :: Hint -> C -> Parser (RT.RawType, C)
 rawTypeRune m c = do

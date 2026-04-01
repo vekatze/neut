@@ -142,18 +142,18 @@ refreshMagic h magic =
       typeExpr1' <- refreshType h typeExpr1
       typeExpr2' <- refreshType h typeExpr2
       return $ M.EqType moduleID typeExpr1' typeExpr2'
-    M.ShowType textTypeExpr typeExpr -> do
-      textTypeExpr' <- refreshType h textTypeExpr
+    M.ShowType stringTypeExpr typeExpr -> do
+      stringTypeExpr' <- refreshType h stringTypeExpr
       typeExpr' <- refreshType h typeExpr
-      return $ M.ShowType textTypeExpr' typeExpr'
-    M.TextCons textTypeExpr rune text -> do
-      textTypeExpr' <- refreshType h textTypeExpr
+      return $ M.ShowType stringTypeExpr' typeExpr'
+    M.StringCons stringTypeExpr rune text -> do
+      stringTypeExpr' <- refreshType h stringTypeExpr
       rune' <- refresh h rune
       text' <- refresh h text
-      return $ M.TextCons textTypeExpr' rune' text'
-    M.TextUncons mid text -> do
+      return $ M.StringCons stringTypeExpr' rune' text'
+    M.StringUncons mid text -> do
       text' <- refresh h text
-      return $ M.TextUncons mid text'
+      return $ M.StringUncons mid text'
     M.CompileError typeExpr msg -> do
       typeExpr' <- refreshType h typeExpr
       msg' <- refresh h msg

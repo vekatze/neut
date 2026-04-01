@@ -18,5 +18,7 @@ emitPrimType lowType =
       "double"
     PT.Rune ->
       emitPrimType $ PT.Int IntSize32
+    PT.Text ->
+      "ptr"
     PT.Pointer ->
       "ptr"

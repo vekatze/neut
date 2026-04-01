@@ -4,7 +4,7 @@ import {
   core.doc.chunk {Chunk-Choose, Chunk-Empty, Chunk-Join, Chunk-Line, Chunk-Style, Chunk-Style-N, chunk},
   core.doc.show {show-doc},
   core.int.io {print-int-line},
-  core.text.io {print-line},
+  core.string.io {print-line},
 }
 
 define _simplify-chunk(x: chunk) -> chunk {
@@ -107,7 +107,7 @@ define call-local-lambda-default() -> unit {
   vet-simple::(v)
 }
 
-define local-lambda-override(!u: text) -> unit {
+define local-lambda-override(!u: string) -> unit {
   let !f =
     define tmp()[r := Right(u)] -> unit {
       match r {

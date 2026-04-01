@@ -2,8 +2,8 @@ import {
   core.file {close, open},
   core.file.flag,
   core.file.mode {default-file-mode},
+  core.string.io {read, write},
   core.system {system},
-  core.text.io {read, write},
 }
 
 define use-file() -> system(unit) {

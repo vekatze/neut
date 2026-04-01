@@ -1,6 +1,6 @@
 import {
-  core.text {singleton},
-  core.text.io {print-line},
+  core.string {singleton},
+  core.string.io {print-line},
 }
 
 define print-rune(r: rune) -> unit {

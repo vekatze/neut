@@ -354,9 +354,11 @@ infer h term =
         WPV.Op op -> do
           primOpType <- liftIO $ primOpToType h m op
           return (m :< WT.Prim prim, primOpType)
-        WPV.StaticText t text -> do
+        WPV.NoeticString t text -> do
           t' <- inferType (h {varEnv = []}) t
-          return (m :< WT.Prim (WPV.StaticText t' text), m :< WT.BoxNoema t')
+          return (m :< WT.Prim (WPV.NoeticString t' text), m :< WT.BoxNoema t')
+        WPV.Text text -> do
+          return (m :< WT.Prim (WPV.Text text), m :< WT.PrimType PT.Text)
         WPV.Rune _ -> do
           return (m :< WT.Prim prim, m :< WT.PrimType PT.Rune)
     m :< WT.Magic (M.WeakMagic magic) -> do
@@ -454,23 +456,23 @@ infer h term =
           let boolTypeVar = m :< WT.TVarGlobal (AttrVG.Attr {argNum = AN.zero, isConstLike = True, isDestPassing = False}) boolTypeDD
           let boolType = m :< WT.TyApp boolTypeVar []
           return (m :< WT.Magic (M.WeakMagic $ M.EqType moduleID typeExpr1' typeExpr2'), boolType)
-        M.ShowType textTypeExpr typeExpr -> do
-          textTypeExpr' <- inferType h textTypeExpr
+        M.ShowType stringTypeExpr typeExpr -> do
+          stringTypeExpr' <- inferType h stringTypeExpr
           typeExpr' <- inferType h typeExpr
-          return (m :< WT.Magic (M.WeakMagic $ M.ShowType textTypeExpr' typeExpr'), m :< WT.BoxNoema textTypeExpr')
-        M.TextCons textTypeExpr rune text -> do
-          textTypeExpr' <- inferType h textTypeExpr
+          return (m :< WT.Magic (M.WeakMagic $ M.ShowType stringTypeExpr' typeExpr'), m :< WT.BoxNoema stringTypeExpr')
+        M.StringCons stringTypeExpr rune text -> do
+          stringTypeExpr' <- inferType h stringTypeExpr
           (rune', runeType) <- infer h rune
-          (text', textType) <- infer h text
+          (text', stringType) <- infer h text
           liftIO $ Constraint.insert (constraintHandle h) (m :< WT.PrimType PT.Rune) runeType
-          liftIO $ Constraint.insert (constraintHandle h) (m :< WT.BoxNoema textTypeExpr') textType
-          return (m :< WT.Magic (M.WeakMagic $ M.TextCons textTypeExpr' rune' text'), m :< WT.BoxNoema textTypeExpr')
-        M.TextUncons moduleID text -> do
-          (text', textType) <- infer h text
-          let textSGL = SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.textLocator}
-          let textDD = DD.newByGlobalLocator textSGL BN.textType
+          liftIO $ Constraint.insert (constraintHandle h) (m :< WT.BoxNoema stringTypeExpr') stringType
+          return (m :< WT.Magic (M.WeakMagic $ M.StringCons stringTypeExpr' rune' text'), m :< WT.BoxNoema stringTypeExpr')
+        M.StringUncons moduleID text -> do
+          (text', stringType) <- infer h text
+          let textSGL = SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.stringLocator}
+          let textDD = DD.newByGlobalLocator textSGL BN.stringType
           let expected = m :< WT.TVarGlobal (AttrVG.Attr {argNum = AN.zero, isConstLike = True, isDestPassing = False}) textDD
-          liftIO $ Constraint.insert (constraintHandle h) (m :< WT.BoxNoema expected) textType
+          liftIO $ Constraint.insert (constraintHandle h) (m :< WT.BoxNoema expected) stringType
           let eitherSGL = SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.eitherLocator}
           let unitSGL = SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.unitLocator}
           let pairSGL = SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.pairLocator}
@@ -481,9 +483,9 @@ infer h term =
           let unitTypeVar = m :< WT.TVarGlobal (AttrVG.Attr {argNum = AN.zero, isConstLike = True, isDestPassing = False}) unitTypeDD
           let pairTypeVar = m :< WT.TVarGlobal (AttrVG.Attr {argNum = AN.fromInt 4, isConstLike = False, isDestPassing = False}) pairTypeDD
           let runeType = m :< WT.PrimType PT.Rune
-          let pairType = m :< WT.TyApp pairTypeVar [runeType, textType]
+          let pairType = m :< WT.TyApp pairTypeVar [runeType, stringType]
           let eitherType = m :< WT.TyApp eitherTypeVar [unitTypeVar, pairType]
-          return (m :< WT.Magic (M.WeakMagic $ M.TextUncons moduleID text'), eitherType)
+          return (m :< WT.Magic (M.WeakMagic $ M.StringUncons moduleID text'), eitherType)
         M.CompileError typeExpr msg -> do
           typeExpr' <- inferType h typeExpr
           (msg', msgType) <- infer h msg

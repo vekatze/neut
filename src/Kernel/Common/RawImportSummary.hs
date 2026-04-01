@@ -23,5 +23,5 @@ fromRawImportItem rawImportItem = do
     RawImportItem _ (gl, _) llSeries -> do
       let llList = map (LL.reify . snd) $ SE.extract llSeries
       Just (gl, llList)
-    RawStaticKey {} ->
+    RawTextFileKey {} ->
       Nothing

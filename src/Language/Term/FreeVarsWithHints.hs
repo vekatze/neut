@@ -65,8 +65,10 @@ freeVarsWithHints term =
       S.union set1 set2
     _ :< TM.Prim prim ->
       case prim of
-        PV.StaticText t _ ->
+        PV.NoeticString t _ ->
           freeVarsWithHintsType t
+        PV.Text _ ->
+          mempty
         PV.Int t _ _ ->
           freeVarsWithHintsType t
         PV.Float t _ _ ->
@@ -168,11 +170,11 @@ freeVarsWithHintsMagic magic =
       S.union (freeVarsWithHintsType typeValueExpr) (freeVarsWithHintsType e)
     M.EqType _ typeExpr1 typeExpr2 ->
       S.union (freeVarsWithHintsType typeExpr1) (freeVarsWithHintsType typeExpr2)
-    M.ShowType textTypeExpr typeExpr ->
-      S.union (freeVarsWithHintsType textTypeExpr) (freeVarsWithHintsType typeExpr)
-    M.TextCons textTypeExpr rune text ->
-      S.unions [freeVarsWithHintsType textTypeExpr, freeVarsWithHints rune, freeVarsWithHints text]
-    M.TextUncons _ text ->
+    M.ShowType stringTypeExpr typeExpr ->
+      S.union (freeVarsWithHintsType stringTypeExpr) (freeVarsWithHintsType typeExpr)
+    M.StringCons stringTypeExpr rune text ->
+      S.unions [freeVarsWithHintsType stringTypeExpr, freeVarsWithHints rune, freeVarsWithHints text]
+    M.StringUncons _ text ->
       freeVarsWithHints text
     M.CompileError typeExpr msg ->
       S.union (freeVarsWithHintsType typeExpr) (freeVarsWithHints msg)

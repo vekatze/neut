@@ -184,12 +184,12 @@ weakenMagic m magic = do
       M.WeakMagic $ M.InspectType mid (weakenType typeValueExpr) (weakenType e)
     M.EqType moduleID typeExpr1 typeExpr2 ->
       M.WeakMagic $ M.EqType moduleID (weakenType typeExpr1) (weakenType typeExpr2)
-    M.ShowType textTypeExpr typeExpr ->
-      M.WeakMagic $ M.ShowType (weakenType textTypeExpr) (weakenType typeExpr)
-    M.TextCons textTypeExpr rune text ->
-      M.WeakMagic $ M.TextCons (weakenType textTypeExpr) (weaken rune) (weaken text)
-    M.TextUncons mid text ->
-      M.WeakMagic $ M.TextUncons mid (weaken text)
+    M.ShowType stringTypeExpr typeExpr ->
+      M.WeakMagic $ M.ShowType (weakenType stringTypeExpr) (weakenType typeExpr)
+    M.StringCons stringTypeExpr rune text ->
+      M.WeakMagic $ M.StringCons (weakenType stringTypeExpr) (weaken rune) (weaken text)
+    M.StringUncons mid text ->
+      M.WeakMagic $ M.StringUncons mid (weaken text)
     M.CompileError typeExpr msg ->
       M.WeakMagic $ M.CompileError (weakenType typeExpr) (weaken msg)
 
@@ -218,8 +218,10 @@ weakenPrimValue prim =
       WPV.Float (weakenType t) float
     PV.Op op ->
       WPV.Op op
-    PV.StaticText t text ->
-      WPV.StaticText (weakenType t) text
+    PV.NoeticString t text ->
+      WPV.NoeticString (weakenType t) text
+    PV.Text text ->
+      WPV.Text text
     PV.Rune r ->
       WPV.Rune r
 

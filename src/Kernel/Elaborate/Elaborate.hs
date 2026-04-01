@@ -461,18 +461,18 @@ elaborate' h term = do
           typeExpr1' <- elaborateType h typeExpr1
           typeExpr2' <- elaborateType h typeExpr2
           return $ m :< TM.Magic (M.EqType moduleID typeExpr1' typeExpr2')
-        M.ShowType textTypeExpr typeExpr -> do
-          textTypeExpr' <- elaborateType h textTypeExpr
+        M.ShowType stringTypeExpr typeExpr -> do
+          stringTypeExpr' <- elaborateType h stringTypeExpr
           typeExpr' <- elaborateType h typeExpr
-          return $ m :< TM.Magic (M.ShowType textTypeExpr' typeExpr')
-        M.TextCons textTypeExpr rune text -> do
-          textTypeExpr' <- elaborateType h textTypeExpr
+          return $ m :< TM.Magic (M.ShowType stringTypeExpr' typeExpr')
+        M.StringCons stringTypeExpr rune text -> do
+          stringTypeExpr' <- elaborateType h stringTypeExpr
           rune' <- elaborate' h rune
           text' <- elaborate' h text
-          return $ m :< TM.Magic (M.TextCons textTypeExpr' rune' text')
-        M.TextUncons mid text -> do
+          return $ m :< TM.Magic (M.StringCons stringTypeExpr' rune' text')
+        M.StringUncons mid text -> do
           text' <- elaborate' h text
-          return $ m :< TM.Magic (M.TextUncons mid text')
+          return $ m :< TM.Magic (M.StringUncons mid text')
         M.CompileError typeExpr msg -> do
           typeExpr' <- elaborateType h typeExpr
           msg' <- elaborate' h msg
@@ -543,9 +543,11 @@ elaboratePrimValue h m primValue =
       return $ PV.Float t' size x
     WPV.Op op ->
       return $ PV.Op op
-    WPV.StaticText t text -> do
+    WPV.NoeticString t text -> do
       t' <- elaborateType h t
-      return $ PV.StaticText t' text
+      return $ PV.NoeticString t' text
+    WPV.Text text ->
+      return $ PV.Text text
     WPV.Rune r ->
       return $ PV.Rune r
 

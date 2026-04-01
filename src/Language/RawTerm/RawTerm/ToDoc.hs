@@ -232,7 +232,7 @@ toDoc term =
           D.line,
           attachComment c5 $ toDoc e2
         ]
-    _ :< StaticText _ txt -> do
+    _ :< NoeticString _ txt -> do
       D.text $ "\"" <> txt <> "\""
     _ :< RuneIntro _ r -> do
       D.text $ "`" <> T.replace "`" "\\`" (RU.asText r) <> "`"
@@ -395,9 +395,9 @@ toDoc term =
             [ attachComment (c ++ c1) $ D.text "magic show-type",
               SE.decode $ SE.fromListWithComment (Just SE.Paren) SE.Comma [(c2, (typeToDoc typeExpr, c3))]
             ]
-        TextCons c1 (c2, (rune, c3)) (c4, (text, c5)) -> do
+        StringCons c1 (c2, (rune, c3)) (c4, (text, c5)) -> do
           D.join
-            [ attachComment (c ++ c1) $ D.text "magic text-cons",
+            [ attachComment (c ++ c1) $ D.text "magic string-cons",
               SE.decode $
                 SE.fromListWithComment
                   (Just SE.Paren)
@@ -406,9 +406,9 @@ toDoc term =
                     (c4, (toDoc text, c5))
                   ]
             ]
-        TextUncons c1 (c2, (text, c3)) -> do
+        StringUncons c1 (c2, (text, c3)) -> do
           D.join
-            [ attachComment (c ++ c1) $ D.text "magic text-uncons",
+            [ attachComment (c ++ c1) $ D.text "magic string-uncons",
               SE.decode $ SE.fromListWithComment (Just SE.Paren) SE.Comma [(c2, (toDoc text, c3))]
             ]
         CompileError c1 (c2, (msg, c3)) -> do
@@ -461,11 +461,15 @@ toDoc term =
           PI.horizontal $ D.text key,
           PI.inject $ SE.decode' $ fmap decodeIntrospectClause clauseList
         ]
-    _ :< IncludeText c1 c2 _ (path, c3) -> do
-      let args = SE.fromListWithComment (Just SE.Paren) SE.Comma [(c2, (path, c3))]
+    _ :< Static c1 _ staticItem -> do
       PI.arrange
-        [ PI.inject $ D.text "include-text",
-          PI.inject $ attachComment c1 $ SE.decodeHorizontallyIfPossible $ fmap D.text args
+        [ PI.horizontal $ attachComment c1 $ D.text "static",
+          PI.inject $
+            case staticItem of
+              RT.TextFileKey path ->
+                D.text path
+              RT.TextContent content ->
+                D.text $ "\"" <> content <> "\""
         ]
     _ :< Brace c1 (e, c2) -> do
       decodeBrace False c1 e c2

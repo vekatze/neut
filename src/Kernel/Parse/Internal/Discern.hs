@@ -576,13 +576,6 @@ discern h term =
           discern h $
             bind startLoc endLoc mxt e1 $
               m :< RT.LetOn (RT.Plain True) [] resultParam [] x' [] e2 [] startLoc [] (m2' :< RT.Var resultVar) endLoc
-    m :< RT.StaticText s str -> do
-      s' <- discernType h s
-      case parseText str of
-        Left reason ->
-          raiseError m $ "Could not interpret the following as a text: " <> str <> "\nReason: " <> reason
-        Right str' -> do
-          return $ m :< WT.Prim (WPV.StaticText s' str')
     m :< RT.RuneIntro _ r -> do
       return $ m :< WT.Prim (WPV.Rune r)
     m :< RT.Magic _ magic -> do
@@ -615,7 +608,7 @@ discern h term =
       discern h $ foldIf m boolTrue boolFalse whenCond whenBody [] unitUnit
     m :< RT.Admit -> do
       panic <- liftEither $ locatorToVarGlobal m coreTrickPanic
-      textType <- liftEither $ locatorToTypeVar m coreText
+      stringType <- liftEither $ locatorToTypeVar m coreString
       discern h $
         asOpaqueValue $
           m
@@ -625,7 +618,7 @@ discern h term =
               ( m
                   :< RT.piElim
                     panic
-                    [m :< RT.StaticText textType ("Admitted: " <> T.pack (Hint.toString m) <> "\n")]
+                    [m :< RT.NoeticString stringType ("Admitted: " <> T.pack (Hint.toString m) <> "\n")]
               )
     m :< RT.Detach _ _ (e, _) -> do
       t <- liftIO $ RT.createTypeHole (H.gensymHandle h) (blur m)
@@ -644,27 +637,41 @@ discern h term =
       return $ m :< WT.PiElim PEK.Normal attachVar' (ImpArgs.FullySpecified [t']) [e'] (DefaultArgs.ByKey [])
     m :< RT.Assert _ (mText, message) _ _ (e@(mCond :< _), _) -> do
       assert <- liftEither $ locatorToVarGlobal m coreTrickAssert
-      textType <- liftEither $ locatorToTypeVar m coreText
+      stringType <- liftEither $ locatorToTypeVar m coreString
       let fullMessage = T.pack (Hint.toString m) <> "\nAssertion failure: " <> message <> "\n"
       cod <- liftIO $ RT.createTypeHole (H.gensymHandle h) (blur m)
       assertVar' <- discern h assert
-      textTerm' <- discern h (mText :< RT.StaticText textType fullMessage)
+      textTerm' <- discern h (mText :< RT.NoeticString stringType fullMessage)
       lam' <- discern h $ RT.lam fakeLoc mCond [] cod e
       return $ m :< WT.PiElim PEK.Normal assertVar' ImpArgs.Unspecified [textTerm', lam'] (DefaultArgs.ByKey [])
     m :< RT.Introspect _ key _ clauseList -> do
       value <- getIntrospectiveValue h m key
       clause <- lookupIntrospectiveClause m value $ SE.extract clauseList
       discern h clause
-    m :< RT.IncludeText _ _ mKey (key, _) -> do
-      contentOrNone <- liftIO $ Locator.getStaticFileContent (H.locatorHandle h) key
-      case contentOrNone of
-        Just (path, content) -> do
-          liftIO $ Unused.deleteStaticFile (H.unusedHandle h) key
-          textType <- liftEither (locatorToTypeVar m coreText) >>= discernType h
-          liftIO $ Tag.insertFileLoc (H.tagHandle h) mKey (T.length key) (newSourceHint path)
-          return $ m :< WT.Prim (WPV.StaticText textType content)
-        Nothing ->
-          raiseError m $ "No such static file is defined: `" <> key <> "`"
+    m :< RT.Static _ mKey staticItem -> do
+      case staticItem of
+        RT.TextContent content -> do
+          case parseText content of
+            Left reason ->
+              raiseError m $ "Could not interpret the following as a text: " <> content <> "\nReason: " <> reason
+            Right str' -> do
+              return $ m :< WT.Prim (WPV.Text str')
+        RT.TextFileKey key -> do
+          contentOrNone <- liftIO $ Locator.getStaticFileContent (H.locatorHandle h) key
+          case contentOrNone of
+            Just (path, content) -> do
+              liftIO $ Unused.deleteStaticFile (H.unusedHandle h) key
+              liftIO $ Tag.insertFileLoc (H.tagHandle h) mKey (T.length key) (newSourceHint path)
+              return $ m :< WT.Prim (WPV.Text content)
+            Nothing ->
+              raiseError m $ "No such static file is defined: `" <> key <> "`"
+    m :< RT.NoeticString s str -> do
+      s' <- discernType h s
+      case parseText str of
+        Left reason ->
+          raiseError m $ "Could not interpret the following as a string: " <> str <> "\nReason: " <> reason
+        Right str' -> do
+          return $ m :< WT.Prim (WPV.NoeticString s' str')
     m :< RT.With withClause -> do
       let (binder, body) = RT.extractFromKeywordClause withClause
       case body of
@@ -921,23 +928,23 @@ discernMagic h m magic =
       typeExpr2' <- discernType h typeExpr2
       return $ M.WeakMagic $ M.EqType coreModuleID typeExpr1' typeExpr2'
     RT.ShowType _ (_, (typeExpr, _)) -> do
-      textType <- liftEither (locatorToTypeVar m coreText) >>= discernType h
+      stringType <- liftEither (locatorToTypeVar m coreString) >>= discernType h
       typeExpr' <- discernType h typeExpr
-      return $ M.WeakMagic $ M.ShowType textType typeExpr'
-    RT.TextCons _ (_, (rune, _)) (_, (text, _)) -> do
-      textType <- liftEither (locatorToTypeVar m coreText) >>= discernType h
+      return $ M.WeakMagic $ M.ShowType stringType typeExpr'
+    RT.StringCons _ (_, (rune, _)) (_, (text, _)) -> do
+      stringType <- liftEither (locatorToTypeVar m coreString) >>= discernType h
       rune' <- discern h rune
       text' <- discern h text
-      return $ M.WeakMagic $ M.TextCons textType rune' text'
-    RT.TextUncons _ (_, (text, _)) -> do
+      return $ M.WeakMagic $ M.StringCons stringType rune' text'
+    RT.StringUncons _ (_, (text, _)) -> do
       moduleID <- Alias.resolveModuleAlias (H.aliasHandle h) m coreModuleAlias
       text' <- discern h text
-      return $ M.WeakMagic $ M.TextUncons moduleID text'
+      return $ M.WeakMagic $ M.StringUncons moduleID text'
     RT.CompileError _ (_, (msg, _)) -> do
       ensureCompileStage m h "inline magic (`compile-error`)"
-      textType <- liftEither (locatorToTypeVar m coreText) >>= discernType h
+      stringType <- liftEither (locatorToTypeVar m coreString) >>= discernType h
       msg' <- discern h msg
-      return $ M.WeakMagic $ M.CompileError textType msg'
+      return $ M.WeakMagic $ M.CompileError stringType msg'
 
 modifyLetContinuation ::
   H.Handle ->

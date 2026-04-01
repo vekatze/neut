@@ -263,16 +263,16 @@ analyze h term = do
           cs1 <- analyzeType h typeExpr1
           cs2 <- analyzeType h typeExpr2
           return $ cs1 ++ cs2
-        M.ShowType textTypeExpr typeExpr -> do
-          cs1 <- analyzeType h textTypeExpr
+        M.ShowType stringTypeExpr typeExpr -> do
+          cs1 <- analyzeType h stringTypeExpr
           cs2 <- analyzeType h typeExpr
           return $ cs1 ++ cs2
-        M.TextCons textTypeExpr rune text -> do
-          cs1 <- analyzeType h textTypeExpr
+        M.StringCons stringTypeExpr rune text -> do
+          cs1 <- analyzeType h stringTypeExpr
           cs2 <- analyze h rune
           cs3 <- analyze h text
           return $ cs1 ++ cs2 ++ cs3
-        M.TextUncons _ text -> do
+        M.StringUncons _ text -> do
           analyze h text
         M.CompileError typeExpr msg -> do
           cs1 <- analyzeType h typeExpr

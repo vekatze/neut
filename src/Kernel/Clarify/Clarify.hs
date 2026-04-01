@@ -538,7 +538,9 @@ clarifyTerm h context term =
           return $ C.UpIntro (C.Float size l)
         PV.Op op -> do
           clarifyPrimOp h context op m
-        PV.StaticText _ text ->
+        PV.NoeticString _ text ->
+          return $ C.UpIntro $ C.VarStaticText text
+        PV.Text text ->
           return $ C.UpIntro $ C.VarStaticText text
         PV.Rune r -> do
           let t = fromPrimNum m (PT.Int PNS.IntSize32)
@@ -868,10 +870,10 @@ clarifyMagic h context der = do
       error "EqType should be evaluated during inline expansion"
     M.ShowType _ _ ->
       error "ShowType should be evaluated during inline expansion"
-    M.TextCons {} ->
-      error "TextCons should be evaluated during inline expansion"
-    M.TextUncons _ _ ->
-      error "TextUncons should be evaluated during inline expansion"
+    M.StringCons {} ->
+      error "StringCons should be evaluated during inline expansion"
+    M.StringUncons _ _ ->
+      error "StringUncons should be evaluated during inline expansion"
     M.CompileError {} ->
       error "CompileError should be evaluated during inline expansion"
 

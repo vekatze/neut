@@ -21,6 +21,8 @@ fromText dataSize name
       Just $ PT.Int intSize
   | Just floatSize <- asLowFloat dataSize name =
       Just $ PT.Float floatSize
+  | name == textTypeName =
+      Just PT.Text
   | otherwise =
       Nothing
 
@@ -61,3 +63,6 @@ asLowFloat dataSize s =
               Just size
           | otherwise ->
               Nothing
+
+textTypeName :: T.Text
+textTypeName = "text"

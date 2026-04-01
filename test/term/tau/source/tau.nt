@@ -54,8 +54,8 @@ define thread-is-type(a: type) -> type {
 }
 
 define resource-is-type() -> type {
-  let _: type = pack-type {text};
-  let _: type = pack-type {vector(text)};
+  let _: type = pack-type {string};
+  let _: type = pack-type {vector(string)};
   pack-type {type}
 }
 

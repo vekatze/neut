@@ -84,21 +84,21 @@ interpretImport h m currentSource importList = do
           RawImportItem mItem (locatorText, _) localLocatorList -> do
             let localLocatorList' = SE.extract localLocatorList
             interpretImportItem h True mItem locatorText localLocatorList'
-          RawStaticKey _ _ keys -> do
+          RawTextFileKey _ _ keys -> do
             let keys' = SE.extract keys
-            interpretImportItemStatic h (Source.sourceModule currentSource) keys'
+            interpretImportItemTextFile h (Source.sourceModule currentSource) keys'
       return $ presetImportList ++ importItemList'
 
-interpretImportItemStatic ::
+interpretImportItemTextFile ::
   Handle ->
   Module ->
   [(Hint, T.Text)] ->
   App [ImportItem]
-interpretImportItemStatic h currentModule keyList = do
+interpretImportItemTextFile h currentModule keyList = do
   currentModule' <- STL.shiftToLatestModule (shiftToLatestHandle h) currentModule
   let moduleRootDir = getModuleRootDir currentModule'
   pathList <- forM keyList $ \(mKey, key) -> do
-    case Map.lookup key (moduleStaticFiles currentModule') of
+    case Map.lookup key (moduleTextFiles currentModule') of
       Just path -> do
         let fullPath = moduleRootDir </> path
         liftIO $ Tag.insertFileLoc (tagHandle h) mKey (T.length key) (newSourceHint fullPath)
@@ -106,7 +106,7 @@ interpretImportItemStatic h currentModule keyList = do
         return (key, (mKey, fullPath))
       Nothing ->
         raiseError mKey $ "No such static file is defined: " <> key
-  return [StaticKey pathList]
+  return [TextFileKey pathList]
 
 interpretImportItem ::
   Handle ->
