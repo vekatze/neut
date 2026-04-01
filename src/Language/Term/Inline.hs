@@ -302,9 +302,8 @@ inline' h term = do
         PV.NoeticString stringType text -> do
           stringType' <- inlineType' h stringType
           return $ m :< TM.Prim (PV.NoeticString stringType' text)
-        PV.Text stringType text -> do
-          stringType' <- inlineType' h stringType
-          return $ m :< TM.Prim (PV.Text stringType' text)
+        PV.Text text ->
+          return $ m :< TM.Prim (PV.Text text)
         PV.Rune {} ->
           return term
     m :< TM.Magic magic -> do

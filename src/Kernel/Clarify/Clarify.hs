@@ -540,7 +540,7 @@ clarifyTerm h context term =
           clarifyPrimOp h context op m
         PV.NoeticString _ text ->
           return $ C.UpIntro $ C.VarStaticText text
-        PV.Text _ text ->
+        PV.Text text ->
           return $ C.UpIntro $ C.VarStaticText text
         PV.Rune r -> do
           let t = fromPrimNum m (PT.Int PNS.IntSize32)

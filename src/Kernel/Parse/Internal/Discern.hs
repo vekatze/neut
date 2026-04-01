@@ -649,21 +649,20 @@ discern h term =
       clause <- lookupIntrospectiveClause m value $ SE.extract clauseList
       discern h clause
     m :< RT.Static _ mKey staticItem -> do
-      textType <- liftEither (locatorToTypeVar m coreText) >>= discernType h
       case staticItem of
         RT.TextContent content -> do
           case parseText content of
             Left reason ->
               raiseError m $ "Could not interpret the following as a text: " <> content <> "\nReason: " <> reason
             Right str' -> do
-              return $ m :< WT.Prim (WPV.Text textType str')
+              return $ m :< WT.Prim (WPV.Text str')
         RT.TextFileKey key -> do
           contentOrNone <- liftIO $ Locator.getStaticFileContent (H.locatorHandle h) key
           case contentOrNone of
             Just (path, content) -> do
               liftIO $ Unused.deleteStaticFile (H.unusedHandle h) key
               liftIO $ Tag.insertFileLoc (H.tagHandle h) mKey (T.length key) (newSourceHint path)
-              return $ m :< WT.Prim (WPV.Text textType content)
+              return $ m :< WT.Prim (WPV.Text content)
             Nothing ->
               raiseError m $ "No such static file is defined: `" <> key <> "`"
     m :< RT.NoeticString s str -> do

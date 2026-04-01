@@ -318,7 +318,7 @@ showPrimValue primValue =
           T.pack (show name)
     WPV.NoeticString _ text ->
       T.pack $ show text
-    WPV.Text _ text ->
+    WPV.Text text ->
       T.pack $ show text
     WPV.Rune r ->
       "`" <> T.replace "`" "\\`" (RU.asText r) <> "`"

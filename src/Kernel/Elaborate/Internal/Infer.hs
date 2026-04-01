@@ -357,9 +357,8 @@ infer h term =
         WPV.NoeticString t text -> do
           t' <- inferType (h {varEnv = []}) t
           return (m :< WT.Prim (WPV.NoeticString t' text), m :< WT.BoxNoema t')
-        WPV.Text t text -> do
-          t' <- inferType (h {varEnv = []}) t
-          return (m :< WT.Prim (WPV.Text t' text), t')
+        WPV.Text text -> do
+          return (m :< WT.Prim (WPV.Text text), m :< WT.PrimType PT.Text)
         WPV.Rune _ -> do
           return (m :< WT.Prim prim, m :< WT.PrimType PT.Rune)
     m :< WT.Magic (M.WeakMagic magic) -> do
