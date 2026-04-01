@@ -8,6 +8,7 @@ data PrimType
   = Int IntSize
   | Float FloatSize
   | Rune
+  | Text
   | Pointer
   deriving (Show, G.Generic, Eq, Ord)
 
