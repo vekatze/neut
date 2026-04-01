@@ -9,14 +9,14 @@ data top-candidate-kit {
   )
 }
 
-define make-top-candidate-kit(): top-candidate-kit {
+define make-top-candidate-kit() -> top-candidate-kit {
   let top-candidate-env-ref = make-ref(box {Nil});
-  _Top-Candidate-Kit of {top-candidate-env-ref}
+  _Top-Candidate-Kit {top-candidate-env-ref}
 }
 
-define insert(k: &top-candidate-kit, cand: top-candidate): unit {
+define insert(k: &top-candidate-kit, cand: top-candidate) -> unit {
   tie _Top-Candidate-Kit(ref) = k;
-  mutate(ref, function (xs) {
+  mutate(ref, (xs) => {
     box {
       letbox xs = xs;
       letbox cand = lift {cand};
@@ -25,7 +25,7 @@ define insert(k: &top-candidate-kit, cand: top-candidate): unit {
   })
 }
 
-define get(k: top-candidate-kit): meta list(top-candidate) {
+define get(k: top-candidate-kit) -> +list(top-candidate) {
   let _Top-Candidate-Kit(ref) = k;
   core.ref.extract(ref)
 }

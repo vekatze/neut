@@ -18,7 +18,7 @@ data conv-op {
 | Sitofp
 }
 
-define show-conv-op(op: conv-op): &text {
+define show-conv-op(op: conv-op) -> &string {
   match op {
   | Trunc =>
     "trunc"
@@ -41,32 +41,32 @@ define show-conv-op(op: conv-op): &text {
   }
 }
 
-define as-conv-op(name: &text, dom-type: &prim-type, cod-type: &prim-type): ?conv-op {
+define as-conv-op(name: &string, dom-type: &prim-type, cod-type: &prim-type) -> ?conv-op {
   case dom-type, cod-type {
   | Int(s1), Int(s2) =>
     let s1 = int-from-int-size(*s1);
     let s2 = int-from-int-size(*s2);
-    if and(eq-text(name, "trunc"), gt-int(s1, s2)) {
+    if and(eq-string(name, "trunc"), gt-int(s1, s2)) {
       Right(Trunc)
-    } else-if and(eq-text(name, "zext"), lt-int(s1, s2)) {
+    } else-if and(eq-string(name, "zext"), lt-int(s1, s2)) {
       Right(Zext)
-    } else-if and(eq-text(name, "sext"), lt-int(s1, s2)) {
+    } else-if and(eq-string(name, "sext"), lt-int(s1, s2)) {
       Right(Sext)
     } else {
       none
     }
   | Int(_), Float(_) =>
-    if eq-text(name, "uitofp") {
+    if eq-string(name, "uitofp") {
       Right(Trunc)
-    } else-if eq-text(name, "sitofp") {
+    } else-if eq-string(name, "sitofp") {
       Right(Zext)
     } else {
       none
     }
   | Float(_), Int(_) =>
-    if eq-text(name, "fptoui") {
+    if eq-string(name, "fptoui") {
       Right(Trunc)
-    } else-if eq-text(name, "fptosi") {
+    } else-if eq-string(name, "fptosi") {
       Right(Zext)
     } else {
       none
@@ -74,9 +74,9 @@ define as-conv-op(name: &text, dom-type: &prim-type, cod-type: &prim-type): ?con
   | Float(s1), Float(s2) =>
     let s1 = int-from-float-size(*s1);
     let s2 = int-from-float-size(*s2);
-    if and(eq-text(name, "fptrunc"), gt-int(s1, s2)) {
+    if and(eq-string(name, "fptrunc"), gt-int(s1, s2)) {
       Right(Fptrunc)
-    } else-if and(eq-text(name, "fpext"), lt-int(s1, s2)) {
+    } else-if and(eq-string(name, "fpext"), lt-int(s1, s2)) {
       Right(Fpext)
     } else {
       none
@@ -86,15 +86,15 @@ define as-conv-op(name: &text, dom-type: &prim-type, cod-type: &prim-type): ?con
   }
 }
 
-inline conv-op-sero: sero(conv-op) {
-  Sero of {
+constant conv-op-sero: sero(conv-op) {
+  Sero {
     put := {
-      function (k, v) {
+      (k, v) => {
         put-int64(k, magic cast(&conv-op, int, v));
       }
     },
     get := {
-      function (k) {
+      (k) => {
         try tag = get-int64(k);
         if and(le-int(0, tag), le-int(tag, 8)) {
           Right(lift {magic cast(int, conv-op, tag)})

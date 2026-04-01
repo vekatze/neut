@@ -1,6 +1,6 @@
 import {
   this.app.app {app},
-  this.app.error {new-error'},
+  this.app.error {new-error-prime},
 }
 
 data build-mode {
@@ -8,7 +8,7 @@ data build-mode {
 | Release
 }
 
-define text-from-build-mode(bm: build-mode): &text {
+define string-from-build-mode(bm: build-mode) -> &string {
   match bm {
   | Develop =>
     "develop"
@@ -17,13 +17,13 @@ define text-from-build-mode(bm: build-mode): &text {
   }
 }
 
-define build-mode-from-text(t: &text): app(build-mode) {
-  if eq-text(t, "develop") {
+define build-mode-from-string(t: &string) -> app(build-mode) {
+  if eq-string(t, "develop") {
     Right(Develop)
-  } else-if eq-text(t, "release") {
+  } else-if eq-string(t, "release") {
     Right(Release)
   } else {
-    let t = core.text.append("No such build mode exists: ", t);
-    Left(new-error'(t))
+    let t = core.string.append("No such build mode exists: ", t);
+    Left(new-error-prime(t))
   }
 }

@@ -1,22 +1,22 @@
 import {
   core.int.show {show-int},
-  sero.common.get {get-int64, get-text},
-  sero.common.put {put-int64, put-text},
+  sero.common.get {get-int64, get-string},
+  sero.common.put {put-int64, put-string},
   sero.sero {Sero, sero},
   this.language.common.const {exp-var-prefix, hole-var-prefix},
 }
 
 data ident {
-| I(text, int)
+| I(string, int)
 }
 
-define eq-ident(x: &ident, y: &ident): bool {
+define eq-ident(x: &ident, y: &ident) -> bool {
   tie I(_, x) = x;
   tie I(_, y) = y;
   eq-int(*x, *y)
 }
 
-define cmp-ident(x: &ident, y: &ident): ordering {
+define cmp-ident(x: &ident, y: &ident) -> ordering {
   tie I(_, x) = x;
   tie I(_, y) = y;
   if lt-int(*x, *y) {
@@ -28,40 +28,40 @@ define cmp-ident(x: &ident, y: &ident): ordering {
   }
 }
 
-define length-ident(x: &ident): int {
+define length-ident(x: &ident) -> int {
   tie I(x, _) = x;
-  core.text.length(x)
+  core.string.length(x)
 }
 
-define show-ident(x: &ident): text {
+define show-ident(x: &ident) -> string {
   tie I(s, i) = x;
   pin i = show-int(*i);
-  pin tmp = core.text.append("-", i);
-  core.text.append(s, tmp)
+  pin tmp = core.string.append("-", i);
+  core.string.append(s, tmp)
 }
 
-define is-hole(x: &ident): bool {
+define is-hole(x: &ident) -> bool {
   tie I(name, _) = x;
-  core.text.eq.eq-prefix(name, hole-var-prefix)
+  core.string.eq.eq-prefix(name, hole-var-prefix)
 }
 
-define is-cartesian(x: &ident): bool {
+define is-cartesian(x: &ident) -> bool {
   tie I(name, _) = x;
-  core.text.eq.eq-prefix(name, exp-var-prefix)
+  core.string.eq.eq-prefix(name, exp-var-prefix)
 }
 
-inline ident-sero: sero(ident) {
-  Sero of {
+constant ident-sero: sero(ident) {
+  Sero {
     put := {
-      function (k, v) {
+      (k, v) => {
         tie I(t, i) = v;
-        put-text(k, t);
+        put-string(k, t);
         put-int64(k, *i);
       }
     },
     get := {
-      function (k) {
-        try t = get-text(k);
+      (k) => {
+        try t = get-string(k);
         try i = get-int64(k);
         Right(box {
           letbox t = lift {t};
@@ -73,12 +73,12 @@ inline ident-sero: sero(ident) {
   }
 }
 
-define zen(): unit {
+define zen() -> unit {
   pin x = I(*"{}test", 3);
   pin b = is-hole(x);
-  vet(b);
+  vet::(b);
   pin b = is-cartesian(x);
-  vet(b);
+  vet::(b);
   pin x = show-ident(x);
-  vet(x);
+  vet::(x);
 }

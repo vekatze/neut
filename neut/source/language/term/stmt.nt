@@ -32,22 +32,22 @@ data stmt-f(mt, a) {
   )
 }
 
-inline stmt: type {
+alias stmt {
   stmt-f(hint, term)
 }
 
-inline stripped-stmt: type {
+alias stripped-stmt {
   stmt-f(unit, term-f(unit))
 }
 
-define get-stmt-name(s: &stmt): ?pair(&log-position, &definite-description) {
+define get-stmt-name(s: &stmt) -> ?pair(&log-position, &definite-description) {
   case s {
-  | Stmt-Define of {m, name} =>
+  | Stmt-Define {m, name} =>
     Right(Pair(m, name))
   }
 }
 
-define get-stmt-names(s: &list(stmt)): list(pair(&log-position, &definite-description)) {
+define get-stmt-names(s: &list(stmt)) -> list(pair(&log-position, &definite-description)) {
   filter-some(for-each-N(s, get-stmt-name))
 }
 
@@ -59,47 +59,47 @@ data cons-info {
   )
 }
 
-inline stmt-f-sero<m, a>(!sm: sero(m), !s: sero(a)): sero(stmt-f(m, a)) {
-  let stmt-kind-sero = base-stmt-kind-sero(definite-description-sero, binder-sero(!sm, !s), !s);
-  let imp-params-sero = list-sero(pair-sero(binder-sero(!sm, !s), either-sero(unit-sero, !s)));
-  let exp-params-sero = list-sero(binder-sero(!sm, !s));
-  let Sero of {put := !put-a, get := !get-a} = !s;
-  let Sero of {put := !put-bool, get := !get-bool} = bool-sero;
-  let Sero of {put := !put-log-position, get := !get-log-position} = log-position-sero;
-  let Sero of {put := !put-dd, get := !get-dd} = definite-description-sero;
-  let Sero of {put := !put-sk, get := !get-sk} = stmt-kind-sero;
-  let Sero of {put := !put-ip, get := !get-ip} = imp-params-sero;
-  let Sero of {put := !put-ep, get := !get-ep} = exp-params-sero;
-  Sero of {
+inline stmt-f-sero<m, a>(!sm: sero(m), !s: sero(a)) -> sero(stmt-f(m, a)) {
+  let stmt-kind-sero = base-stmt-kind-sero(definite-description-sero, binder-sero(sm, s), s);
+  let imp-params-sero = list-sero(pair-sero(binder-sero(sm, s), either-sero(unit-sero, s)));
+  let exp-params-sero = list-sero(binder-sero(sm, s));
+  let Sero {put := !put-a, get := !get-a} = s;
+  let Sero {put := !put-bool, get := !get-bool} = bool-sero;
+  let Sero {put := !put-log-position, get := !get-log-position} = log-position-sero;
+  let Sero {put := !put-dd, get := !get-dd} = definite-description-sero;
+  let Sero {put := !put-sk, get := !get-sk} = stmt-kind-sero;
+  let Sero {put := !put-ip, get := !get-ip} = imp-params-sero;
+  let Sero {put := !put-ep, get := !get-ep} = exp-params-sero;
+  Sero {
     put := {
-      function (k, v) {
+      (k, v) => {
         case v {
-        | Stmt-Define of {b, sk, m, name, imp-params, exp-params, cod, body} =>
+        | Stmt-Define {b, sk, m, name, imp-params, exp-params, cod, body} =>
           put-int64(k, 0);
-          !put-bool(k, b);
-          !put-sk(k, sk);
-          !put-log-position(k, m);
-          !put-dd(k, name);
-          !put-ip(k, imp-params);
-          !put-ep(k, exp-params);
-          !put-a(k, cod);
-          !put-a(k, body)
+          put-bool(k, b);
+          put-sk(k, sk);
+          put-log-position(k, m);
+          put-dd(k, name);
+          put-ip(k, imp-params);
+          put-ep(k, exp-params);
+          put-a(k, cod);
+          put-a(k, body)
         }
       }
     },
     get := {
-      function (k) {
+      (k) => {
         try tag = get-int64(k);
         match tag {
         | 0 =>
-          try b = !get-bool(k);
-          try sk = !get-sk(k);
-          try m = !get-log-position(k);
-          try name = !get-dd(k);
-          try ip = !get-ip(k);
-          try ep = !get-ep(k);
-          try cod = !get-a(k);
-          try body = !get-a(k);
+          try b = get-bool(k);
+          try sk = get-sk(k);
+          try m = get-log-position(k);
+          try name = get-dd(k);
+          try ip = get-ip(k);
+          try ep = get-ep(k);
+          try cod = get-a(k);
+          try body = get-a(k);
           Right(box {
             letbox b = b;
             letbox sk = sk;

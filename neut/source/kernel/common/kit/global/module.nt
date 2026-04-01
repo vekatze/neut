@@ -4,18 +4,18 @@ import {
   core.dictionary {dictionary, empty, make-insert},
   core.environment {get-env},
   core.list {filter, for-each, for-each-E},
+  core.string-builder {append-string, extract, make-string-builder},
+  core.string.eq {eq-suffix, strip-prefix},
   core.system {get-error-message, system, system-error},
-  core.text-builder {append-text, extract, make-text-builder},
-  core.text.eq {eq-suffix, strip-prefix},
   path.entity.dirent {Dirent},
   path.io {create-directory, is-directory, read-directory},
   path.path {drop-last},
   this.app.app {app},
-  this.app.run {app-from-system, raise-error, raise-error'},
+  this.app.run {app-from-system, raise-error, raise-error-prime},
   this.kernel.common.const {env-var-core-module-URL, env-var-core-module-digest, module-file, source-file-extension},
   this.kernel.common.module {
     Module,
-    _lookup-text-dict,
+    _lookup-string-dict,
     extract-module,
     get-module-root-dir,
     get-source-dir,
@@ -32,19 +32,19 @@ import {
 
 data module-kit {
 | _Module-Kit(
-    cache-map-cell: cell(dictionary(text, module)),
+    cache-map-cell: cell(dictionary(string, module)),
   )
 }
 
-define make-module-kit(): module-kit {
+define make-module-kit() -> module-kit {
   let cache-map-cell = make-cell(box {empty});
-  _Module-Kit of {cache-map-cell}
+  _Module-Kit {cache-map-cell}
 }
 
-define lookup-module(k: &module-kit, path: &text): ?module {
-  tie _Module-Kit of {cache-map-cell} = k;
-  borrow(cache-map-cell, function (dict) {
-    match _lookup-text-dict(dict, path) {
+define lookup-module(k: &module-kit, path: &string) -> ?module {
+  tie _Module-Kit {cache-map-cell} = k;
+  borrow(cache-map-cell, (dict) => {
+    match _lookup-string-dict(dict, path) {
     | Left(_) =>
       box {none}
     | Right(v) =>
@@ -53,24 +53,24 @@ define lookup-module(k: &module-kit, path: &text): ?module {
   })
 }
 
-define insert-to-module-cache-map(k: &module-kit, path: &text, m: module): unit {
-  tie _Module-Kit of {cache-map-cell} = k;
-  mutate(cache-map-cell, function (dict) {
+define insert-to-module-cache-map(k: &module-kit, path: &string, m: module) -> unit {
+  tie _Module-Kit {cache-map-cell} = k;
+  mutate(cache-map-cell, (dict) => {
     box {
       letbox dict = dict;
       letbox path = lift {*path};
       letbox m = lift {m};
-      let insert = make-insert(core.text.ord.as-ord);
+      let insert = make-insert(core.string.ord.as-ord);
       insert(dict, path, m)
     }
   })
 }
 
-define _has-source-extension(path: &text): bool {
+define _has-source-extension(path: &string) -> bool {
   eq-suffix(path, source-file-extension)
 }
 
-define ensure-directory(path: &text): system(unit) {
+define ensure-directory(path: &string) -> system(unit) {
   if is-directory(path) {
     Right(Unit)
   } else {
@@ -78,18 +78,18 @@ define ensure-directory(path: &text): system(unit) {
   }
 }
 
-define _return-directory(path: text): app(text) {
+define _return-directory(path: string) -> app(string) {
   let result: either(system-error, unit) on path = ensure-directory(path);
   match result {
   | Left(e) =>
-    raise-error'(get-error-message(e))
+    raise-error-prime(get-error-message(e))
   | Right(_) =>
     Right(path)
   }
 }
 
-define _get-dependency-dir-path(m: &module): app(text) {
-  tie Module of {id, cache-dir} = m;
+define _get-dependency-dir-path(m: &module) -> app(string) {
+  tie Module {id, cache-dir} = m;
   let module-root-dir = get-module-root-dir(m);
   case id {
   | Library(_) =>
@@ -105,13 +105,13 @@ define _get-dependency-dir-path(m: &module): app(text) {
   }
 }
 
-define get-module-dir-by-id(m: &main-module, hint-or-none: ?&hint, mid: &module-id): app(text) {
+define get-module-dir-by-id(m: &main-module, hint-or-none: ?&hint, mid: &module-id) -> app(string) {
   case mid {
   | Base =>
     let message = "The base module cannot be used here";
     match hint-or-none {
     | Left(_) =>
-      raise-error'(*message)
+      raise-error-prime(*message)
     | Right(hint) =>
       raise-error(*hint, *message)
     }
@@ -125,70 +125,70 @@ define get-module-dir-by-id(m: &main-module, hint-or-none: ?&hint, mid: &module-
   }
 }
 
-define get-module-file-path(m: &main-module, hint-or-none: ?&hint, mid: &module-id): app(text) {
+define get-module-file-path(m: &main-module, hint-or-none: ?&hint, mid: &module-id) -> app(string) {
   try module-dir = get-module-dir-by-id(m, hint-or-none, mid);
   pin module-dir = module-dir;
   Right(path.path.append(module-dir, module-file))
 }
 
-define get-core-module-URL(): app(module-URL) {
+define get-core-module-URL() -> app(module-URL) {
   match get-env(env-var-core-module-URL) {
   | Right(core-module-URL) =>
     Right(Module-URL(core-module-URL))
   | Left(_) =>
     let tmp =
-      core.text.append(
-        "The URL of the core module is not specified; set it via ",
+      core.string.append(
+        "The URL the core module is not specified; set it via ",
         env-var-core-module-URL,
       );
-    raise-error'(tmp)
+    raise-error-prime(tmp)
   }
 }
 
-define get-core-module-digest(): app(module-digest) {
+define get-core-module-digest() -> app(module-digest) {
   match get-env(env-var-core-module-digest) {
   | Right(core-module-digest) =>
     Right(Module-Digest(core-module-digest))
   | Left(_) =>
     let tmp =
-      core.text.append(
-        "The digest of the core module is not specified; set it via ",
+      core.string.append(
+        "The digest the core module is not specified; set it via ",
         env-var-core-module-digest,
       );
-    raise-error'(tmp)
+    raise-error-prime(tmp)
   }
 }
 
 data _error-info {
-| _Message(message: text)
-| _Located-Message(message: text)
+| _Message(message: string)
+| _Located-Message(message: string)
 }
 
-define _ensure-file-module-sanity(m: &module, source-abs-path: &text): either(_error-info, unit) {
+define _ensure-file-module-sanity(m: &module, source-abs-path: &string) -> either(_error-info, unit) {
   let source-dir = get-source-dir(m);
   let source-rel-path on source-dir = strip-prefix(source-dir, source-abs-path);
   match source-rel-path {
   | Left(_) =>
-    let buf = make-text-builder(64);
+    let buf = make-string-builder(64);
     let _ on buf = {
-      append-text(buf, "The file`");
-      append-text(buf, source-abs-path);
-      append-text(buf, "` is not in the source directory of current module")
+      append-string(buf, "The file`");
+      append-string(buf, source-abs-path);
+      append-string(buf, "` is not in the source directory current module")
     };
     Left(_Message(extract(buf)))
   | Right(source-rel-path) =>
     let rel-dir on source-rel-path = drop-last(source-rel-path);
     let _ = source-rel-path;
-    let has-sep on rel-dir = core.text.find-text(rel-dir, ns-sep);
+    let has-sep on rel-dir = core.string.find-string(rel-dir, ns-sep);
     if has-sep {
-      let buf = make-text-builder(64);
+      let buf = make-string-builder(64);
       let _ on buf = {
         pin source-dir = source-dir;
         pin rel-dir = rel-dir;
-        append-text(buf, "Directory names in ");
-        append-text(buf, source-dir);
-        append-text(buf, " must not contain dots, but found: ");
-        append-text(buf, rel-dir);
+        append-string(buf, "Directory names in ");
+        append-string(buf, source-dir);
+        append-string(buf, " must not contain dots, but found: ");
+        append-string(buf, rel-dir);
       };
       Left(_Located-Message(extract(buf)))
     } else {
@@ -197,14 +197,14 @@ define _ensure-file-module-sanity(m: &module, source-abs-path: &text): either(_e
   }
 }
 
-define source-from-path(m: &module, source-abs-path: text): app(source) {
+define source-from-path(m: &module, source-abs-path: string) -> app(source) {
   let x on source-abs-path = _ensure-file-module-sanity(m, source-abs-path);
   try source-abs-path =
     match x {
     | Left(e) =>
       match e {
       | _Message(message) =>
-        raise-error'(message)
+        raise-error-prime(message)
       | _Located-Message(message) =>
         let source-hint = new-source-hint(source-abs-path);
         raise-error(source-hint, message)
@@ -212,28 +212,28 @@ define source-from-path(m: &module, source-abs-path: text): app(source) {
     | Right(_) =>
       Right(source-abs-path)
     };
-  Right(Source of {
+  Right(Source {
     source-module := *m,
     file-path := source-abs-path,
     source-hint := none,
   })
 }
 
-define _get-directory-contents(dir-path: &text): system(list(text)) {
+define _get-directory-contents(dir-path: &string) -> system(list(string)) {
   try items = read-directory(dir-path);
   let items =
-    filter(items, function (i) {
-      tie Dirent of {name} = i;
-      and(ne-text(name, "."), ne-text(name, ".."))
+    filter(items, (i) => {
+      tie Dirent {name} = i;
+      and(ne-string(name, "."), ne-string(name, ".."))
     });
-  Right(for-each(items, function (i) {
-    let Dirent of {name} = i;
+  Right(for-each(items, (i) => {
+    let Dirent {name} = i;
     pin name = name;
     path.path.append(dir-path, name)
   }))
 }
 
-define get-all-source-path-in-module(m: &module): app(list(text)) {
+define get-all-source-path-in-module(m: &module) -> app(list(string)) {
   let source-dir = get-source-dir(m);
   let items on source-dir = _get-directory-contents(source-dir);
   discard(source-dir);
@@ -241,20 +241,20 @@ define get-all-source-path-in-module(m: &module): app(list(text)) {
   Right(filter(items, _has-source-extension))
 }
 
-define get-all-source-in-module(m: &module): app(list(source)) {
+define get-all-source-in-module(m: &module) -> app(list(source)) {
   try source-path-list = get-all-source-path-in-module(m);
-  for-each-E(source-path-list, function (source-path) {
+  for-each-E(source-path-list, (source-path) => {
     source-from-path(m, source-path)
   })
 }
 
-define zen(): unit {
+define zen() -> unit {
   pin result = _has-source-extension("foo.nt");
-  vet(result);
+  vet::(result);
   pin result = _has-source-extension("foo.txt");
-  vet(result);
+  vet::(result);
   pin result = _has-source-extension("nt");
-  vet(result);
+  vet::(result);
   pin result = get-core-module-URL();
-  vet(result)
+  vet::(result)
 }

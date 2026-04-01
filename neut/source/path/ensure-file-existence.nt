@@ -1,43 +1,43 @@
 import {
   path.io {is-directory, is-regular-file},
   this.app.app {app},
-  this.app.error {new-error, new-error'},
+  this.app.error {new-error, new-error-prime},
   this.logger.hint {hint},
 }
 
-define ensure-file-existence(path: &text, m: hint): app(unit) {
+define ensure-file-existence(path: &string, m: hint) -> app(unit) {
   if is-regular-file(path) {
     Right(Unit)
   } else {
-    let message = core.text.append("No such file exists: ", path);
+    let message = core.string.append("No such file exists: ", path);
     Left(new-error(m, message))
   }
 }
 
-define ensure-file-existence'(path: &text): app(unit) {
+define ensure-file-existence-prime(path: &string) -> app(unit) {
   if is-regular-file(path) {
     Right(Unit)
   } else {
-    let message = core.text.append("No such file exists: ", path);
-    Left(new-error'(message))
+    let message = core.string.append("No such file exists: ", path);
+    Left(new-error-prime(message))
   }
 }
 
-define ensure-directory-existence(path: &text, m: hint): app(unit) {
+define ensure-directory-existence(path: &string, m: hint) -> app(unit) {
   if is-directory(path) {
     Right(Unit)
   } else {
-    let message = core.text.append("No such directory exists: ", path);
+    let message = core.string.append("No such directory exists: ", path);
     Left(new-error(m, message))
   }
 }
 
-define zen(): unit {
-  pin result = ensure-file-existence'("/etc/bashrc");
-  vet(result);
-  pin result = ensure-file-existence'("/etc/bashrcrc");
-  vet(result);
-  pin result = ensure-file-existence'("/etc/");
-  vet(result);
+define zen() -> unit {
+  pin result = ensure-file-existence-prime("/etc/bashrc");
+  vet::(result);
+  pin result = ensure-file-existence-prime("/etc/bashrcrc");
+  vet::(result);
+  pin result = ensure-file-existence-prime("/etc/");
+  vet::(result);
   Unit
 }

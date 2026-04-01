@@ -11,18 +11,18 @@ data sym-loc-kit {
   )
 }
 
-define make-sym-loc-kit(): sym-loc-kit {
+define make-sym-loc-kit() -> sym-loc-kit {
   let local-var-map-ref = make-ref(box {empty-local-var-tree});
-  Sym-Loc of {local-var-map-ref}
+  Sym-Loc {local-var-map-ref}
 }
 
-define insert(k: &sym-loc-kit, x: ident, start: loc, end: loc): unit {
+define insert(k: &sym-loc-kit, x: ident, start: loc, end: loc) -> unit {
   let b on x = is-hole(x);
   if b {
     Unit
   } else {
     tie Sym-Loc(ref) = k;
-    mutate(ref, function (t) {
+    mutate(ref, (t) => {
       box {
         letbox t = t;
         letbox start = lift {start};
@@ -34,7 +34,7 @@ define insert(k: &sym-loc-kit, x: ident, start: loc, end: loc): unit {
   }
 }
 
-define get(k: sym-loc-kit): meta local-var-tree {
+define get(k: sym-loc-kit) -> +local-var-tree {
   let Sym-Loc(ref) = k;
   core.ref.extract(ref)
 }

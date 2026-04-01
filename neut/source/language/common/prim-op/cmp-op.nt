@@ -35,15 +35,15 @@ data cmp-op {
 | FFalse
 }
 
-define icmp(x: &text): text {
-  core.text.append("icmp ", x)
+define icmp(x: &string) -> string {
+  core.string.append("icmp ", x)
 }
 
-define fcmp(x: &text): text {
-  core.text.append("fcmp ", x)
+define fcmp(x: &string) -> string {
+  core.string.append("fcmp ", x)
 }
 
-define show-cmp-op(op: &cmp-op): text {
+define show-cmp-op(op: &cmp-op) -> string {
   case op {
   | Eql =>
     icmp("eq")
@@ -100,79 +100,79 @@ define show-cmp-op(op: &cmp-op): text {
   }
 }
 
-define int-cmp-op-from-text(name: &text): ?cmp-op {
-  if eq-text(name, "eq") {
+define int-cmp-op-from-string(name: &string) -> ?cmp-op {
+  if eq-string(name, "eq") {
     Right(Eql)
-  } else-if eq-text(name, "ne") {
+  } else-if eq-string(name, "ne") {
     Right(Neq)
-  } else-if eq-text(name, "gt") {
+  } else-if eq-string(name, "gt") {
     Right(SGt)
-  } else-if eq-text(name, "ge") {
+  } else-if eq-string(name, "ge") {
     Right(SGe)
-  } else-if eq-text(name, "lt") {
+  } else-if eq-string(name, "lt") {
     Right(SLt)
-  } else-if eq-text(name, "le") {
+  } else-if eq-string(name, "le") {
     Right(SLe)
-  } else-if eq-text(name, "ugt") {
+  } else-if eq-string(name, "ugt") {
     Right(UGt)
-  } else-if eq-text(name, "uge") {
+  } else-if eq-string(name, "uge") {
     Right(UGe)
-  } else-if eq-text(name, "ult") {
+  } else-if eq-string(name, "ult") {
     Right(ULt)
-  } else-if eq-text(name, "ule") {
+  } else-if eq-string(name, "ule") {
     Right(ULe)
   } else {
     none
   }
 }
 
-define float-cmp-op-from-text(name: &text): ?cmp-op {
-  if eq-text(name, "eq") {
+define float-cmp-op-from-string(name: &string) -> ?cmp-op {
+  if eq-string(name, "eq") {
     Right(FOEq)
-  } else-if eq-text(name, "ne") {
+  } else-if eq-string(name, "ne") {
     Right(FONe)
-  } else-if eq-text(name, "gt") {
+  } else-if eq-string(name, "gt") {
     Right(FOGt)
-  } else-if eq-text(name, "ge") {
+  } else-if eq-string(name, "ge") {
     Right(FOGe)
-  } else-if eq-text(name, "lt") {
+  } else-if eq-string(name, "lt") {
     Right(FOLt)
-  } else-if eq-text(name, "le") {
+  } else-if eq-string(name, "le") {
     Right(FOLe)
-  } else-if eq-text(name, "ueq") {
+  } else-if eq-string(name, "ueq") {
     Right(FUEq)
-  } else-if eq-text(name, "une") {
+  } else-if eq-string(name, "une") {
     Right(FUNe)
-  } else-if eq-text(name, "ugt") {
+  } else-if eq-string(name, "ugt") {
     Right(FUGt)
-  } else-if eq-text(name, "uge") {
+  } else-if eq-string(name, "uge") {
     Right(FUGe)
-  } else-if eq-text(name, "ult") {
+  } else-if eq-string(name, "ult") {
     Right(FULt)
-  } else-if eq-text(name, "ule") {
+  } else-if eq-string(name, "ule") {
     Right(FULe)
-  } else-if eq-text(name, "ord") {
+  } else-if eq-string(name, "ord") {
     Right(FOrd)
-  } else-if eq-text(name, "uno") {
+  } else-if eq-string(name, "uno") {
     Right(FUno)
-  } else-if eq-text(name, "true") {
+  } else-if eq-string(name, "true") {
     Right(FTrue)
-  } else-if eq-text(name, "false") {
+  } else-if eq-string(name, "false") {
     Right(FFalse)
   } else {
     none
   }
 }
 
-inline cmp-op-sero: sero(cmp-op) {
-  Sero of {
+constant cmp-op-sero: sero(cmp-op) {
+  Sero {
     put := {
-      function (k, v) {
+      (k, v) => {
         put-int64(k, magic cast(&cmp-op, int, v));
       }
     },
     get := {
-      function (k) {
+      (k) => {
         try tag = get-int64(k);
         if and(le-int(0, tag), le-int(tag, 25)) {
           Right(lift {magic cast(int, cmp-op, tag)})
@@ -184,13 +184,13 @@ inline cmp-op-sero: sero(cmp-op) {
   }
 }
 
-define zen(): unit {
+define zen() -> unit {
   pin val = Eql;
   let k = encode(cmp-op-sero, val, 123);
   pin result = decode(cmp-op-sero, k);
-  vet(result);
+  vet::(result);
   pin val = FFalse;
   let k = encode(cmp-op-sero, val, 123);
   pin result = decode(cmp-op-sero, k);
-  vet(result);
+  vet::(result);
 }

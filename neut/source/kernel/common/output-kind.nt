@@ -1,6 +1,6 @@
 import {
   this.app.app {app},
-  this.app.error {new-error'},
+  this.app.error {new-error-prime},
 }
 
 data output-kind {
@@ -8,13 +8,13 @@ data output-kind {
 | LLVM
 }
 
-define output-kind-from-text(t: &text): app(output-kind) {
-  if eq-text(t, "object") {
+define output-kind-from-string(t: &string) -> app(output-kind) {
+  if eq-string(t, "object") {
     Right(Object)
-  } else-if eq-text(t, "llvm") {
+  } else-if eq-string(t, "llvm") {
     Right(LLVM)
   } else {
-    let t = core.text.append("Invalid output kind: ", t);
-    Left(new-error'(t))
+    let t = core.string.append("Invalid output kind: ", t);
+    Left(new-error-prime(t))
   }
 }

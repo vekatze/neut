@@ -1,30 +1,30 @@
 import {
-  core.text.parse {Parse-Error, parse-text},
+  core.string.parse {Parse-Error, parse-string},
 }
 
-define rune-from-text(x: &text): either(text, rune) {
-  match parse-text(x) {
+define rune-from-string(x: &string) -> either(string, rune) {
+  match parse-string(x) {
   | Left(Parse-Error(reason)) =>
     pin reason = reason;
-    pin tmp = core.text.append("Could not interpret the following as a rune: ", x);
-    pin tmp2 = core.text.append(tmp, "\nReason: ");
-    Left(core.text.append(tmp2, reason))
+    pin tmp = core.string.append("Could not interpret the following as a rune: ", x);
+    pin tmp2 = core.string.append(tmp, "\nReason: ");
+    Left(core.string.append(tmp2, reason))
   | Right(x) =>
-    match core.text.uncons(x) {
+    match core.string.uncons(x) {
     | Left(_) =>
-      Left(*"The content of a rune literal must be of length 1")
+      Left(*"The content a rune literal must be length 1")
     | Right(Pair(r, rest)) =>
       pin rest = rest;
-      if eq-int(core.text.length(rest), 0) {
+      if eq-int(core.string.length(rest), 0) {
         Right(r)
       } else {
-        Left(*"The content of a rune literal must be of length 1")
+        Left(*"The content a rune literal must be length 1")
       }
     }
   }
 }
 
-define zen(): unit {
-  pin foo = rune-from-text("あ");
-  vet(foo);
+define zen() -> unit {
+  pin foo = rune-from-string("あ");
+  vet::(foo);
 }

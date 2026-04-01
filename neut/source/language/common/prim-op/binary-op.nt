@@ -25,7 +25,7 @@ data binary-op {
 | FRem
 }
 
-define show-binary-op(op: binary-op): &text {
+define show-binary-op(op: binary-op) -> &string {
   match op {
   | Add =>
     "add"
@@ -66,63 +66,63 @@ define show-binary-op(op: binary-op): &text {
   }
 }
 
-define binary-int-op-from-text(name: &text): ?binary-op {
-  if eq-text(name, "add") {
+define binary-int-op-from-string(name: &string) -> ?binary-op {
+  if eq-string(name, "add") {
     Right(Add)
-  } else-if eq-text(name, "sub") {
+  } else-if eq-string(name, "sub") {
     Right(Sub)
-  } else-if eq-text(name, "mul") {
+  } else-if eq-string(name, "mul") {
     Right(Mul)
-  } else-if eq-text(name, "div") {
+  } else-if eq-string(name, "div") {
     Right(SDiv)
-  } else-if eq-text(name, "rem") {
+  } else-if eq-string(name, "rem") {
     Right(SRem)
-  } else-if eq-text(name, "udiv") {
+  } else-if eq-string(name, "udiv") {
     Right(UDiv)
-  } else-if eq-text(name, "urem") {
+  } else-if eq-string(name, "urem") {
     Right(URem)
-  } else-if eq-text(name, "and") {
+  } else-if eq-string(name, "and") {
     Right(And)
-  } else-if eq-text(name, "or") {
+  } else-if eq-string(name, "or") {
     Right(Or)
-  } else-if eq-text(name, "xor") {
+  } else-if eq-string(name, "xor") {
     Right(Xor)
-  } else-if eq-text(name, "shl") {
+  } else-if eq-string(name, "shl") {
     Right(Shl)
-  } else-if eq-text(name, "lshr") {
+  } else-if eq-string(name, "lshr") {
     Right(Lshr)
-  } else-if eq-text(name, "ashr") {
+  } else-if eq-string(name, "ashr") {
     Right(Ashr)
   } else {
     none
   }
 }
 
-define binary-float-op-from-text(name: &text): ?binary-op {
-  if eq-text(name, "add") {
+define binary-float-op-from-string(name: &string) -> ?binary-op {
+  if eq-string(name, "add") {
     Right(FAdd)
-  } else-if eq-text(name, "sub") {
+  } else-if eq-string(name, "sub") {
     Right(FSub)
-  } else-if eq-text(name, "mul") {
+  } else-if eq-string(name, "mul") {
     Right(FMul)
-  } else-if eq-text(name, "div") {
+  } else-if eq-string(name, "div") {
     Right(FDiv)
-  } else-if eq-text(name, "rem") {
+  } else-if eq-string(name, "rem") {
     Right(FRem)
   } else {
     none
   }
 }
 
-inline binary-op-sero: sero(binary-op) {
-  Sero of {
+constant binary-op-sero: sero(binary-op) {
+  Sero {
     put := {
-      function (k, v) {
+      (k, v) => {
         put-int64(k, magic cast(&binary-op, int, v));
       }
     },
     get := {
-      function (k) {
+      (k) => {
         try tag = get-int64(k);
         if and(le-int(0, tag), le-int(tag, 17)) {
           Right(lift {magic cast(int, binary-op, tag)})

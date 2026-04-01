@@ -7,7 +7,7 @@ import {
 }
 
 nominal {
-  cons-args: type,
+  data cons-args,
 }
 
 data raw-pattern {

@@ -13,56 +13,56 @@ import {
     Vivid,
     style,
   },
-  core.text-builder {append-ansi, append-text, extract, make-text-builder},
+  core.string-builder {append-ansi, append-string, extract, make-string-builder},
 }
 
-data color-text {
+data color-string {
 | Empty
-| Join(vector(style), text, color-text)
-| Join-N(&vector(style), &text, color-text)
-| Join-TN(&text, color-text)
+| Join(vector(style), string, color-string)
+| Join-N(&vector(style), &string, color-string)
+| Join-TN(&string, color-string)
 }
 
-define packed(ts: vector(style), t: text): color-text {
+define packed(ts: vector(style), t: string) -> color-string {
   Join(ts, t, Empty)
 }
 
-define packed-N(ts: &vector(style), t: &text): color-text {
+define packed-N(ts: &vector(style), t: &string) -> color-string {
   Join-N(ts, t, Empty)
 }
 
-define packed'(t: text): color-text {
+define packed-empty(t: string) -> color-string {
   Join(core.vector.make(4), t, Empty)
 }
 
-define packed-N'(t: &text): color-text {
+define packed-N-empty(t: &string) -> color-string {
   Join-TN(t, Empty)
 }
 
-define _unpacked(t: &color-text): text {
-  let b = make-text-builder(64);
+define _unpacked(t: &color-string) -> string {
+  let b = make-string-builder(64);
   let _ on b = {
     let f =
-      define loop(t: &color-text): unit {
+      define loop(t: &color-string) -> unit {
         case t {
         | Empty =>
           Unit
         | Join(ts, t, rest) =>
-          core.vector.for-N(ts, function (t, _) {
+          core.vector.for-N(ts, (t, _) => {
             append-ansi(b, Set-Style(*t));
           });
-          append-text(b, t);
+          append-string(b, t);
           append-ansi(b, Set-Style(Normal));
           loop(rest)
         | Join-N(ts, t, rest) =>
-          core.vector.for-N(*ts, function (t, _) {
+          core.vector.for-N(*ts, (t, _) => {
             append-ansi(b, Set-Style(*t));
           });
-          append-text(b, *t);
+          append-string(b, *t);
           append-ansi(b, Set-Style(Normal));
           loop(rest)
         | Join-TN(t, rest) =>
-          append-text(b, *t);
+          append-string(b, *t);
           loop(rest)
         }
       };
@@ -71,22 +71,22 @@ define _unpacked(t: &color-text): text {
   extract(b)
 }
 
-define _unpacked-uncolored(t: &color-text): text {
-  let b = make-text-builder(256);
+define _unpacked-uncolored(t: &color-string) -> string {
+  let b = make-string-builder(256);
   let _ on b = {
     let f =
-      define loop(t: &color-text): unit {
+      define loop(t: &color-string) -> unit {
         case t {
         | Empty =>
           Unit
         | Join(_, t, rest) =>
-          append-text(b, t);
+          append-string(b, t);
           loop(rest)
         | Join-N(_, t, rest) =>
-          append-text(b, *t);
+          append-string(b, *t);
           loop(rest)
         | Join-TN(t, rest) =>
-          append-text(b, *t);
+          append-string(b, *t);
           loop(rest)
         }
       };
@@ -95,7 +95,7 @@ define _unpacked-uncolored(t: &color-text): text {
   extract(b)
 }
 
-define join(t1: color-text, t2: color-text): color-text {
+define join(t1: color-string, t2: color-string) -> color-string {
   match t1 {
   | Empty =>
     t2
@@ -109,18 +109,18 @@ define join(t1: color-text, t2: color-text): color-text {
 }
 
 rule-right join-full {
-  function leaf(_: int): color-text {
+  inline leaf(_: int) -> color-string {
     Empty
   },
-  function node-left(d: color-text, acc: color-text): color-text {
+  inline node-left(d: color-string, acc: color-string) -> color-string {
     join(d, acc)
   },
-  function root<a>(x: a): a {
+  inline root<a>(x: a) -> a {
     x
   },
 }
 
-define zen(): unit {
+define zen() -> unit {
   pin t =
     Join(
       Vector[Color(Foreground, Color-16(Vivid, Blue)), Bold],
@@ -129,8 +129,8 @@ define zen(): unit {
     );
   pin fragment1 = _unpacked(t);
   pin fragment2 = _unpacked-uncolored(t);
-  pin t' = packed(Vector[Color(Background, Color-16(Vivid, Red)), Italic], *"sample\n");
-  pin fragment3 = _unpacked(t');
+  pin t-prime = packed(Vector[Color(Background, Color-16(Vivid, Red)), Italic], *"sample\n");
+  pin fragment3 = _unpacked(t-prime);
   print(fragment1);
   print(fragment2);
   print(fragment3);

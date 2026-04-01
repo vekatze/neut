@@ -8,25 +8,25 @@ data discriminant {
 | Discriminant(int)
 }
 
-define zero-discriminant: discriminant {
+constant zero-discriminant: discriminant {
   Discriminant(0)
 }
 
-define increment-discriminant(d: discriminant): discriminant {
+define increment-discriminant(d: discriminant) -> discriminant {
   let Discriminant(x) = d;
   Discriminant(add-int(x, 1))
 }
 
-inline discriminant-sero: sero(discriminant) {
-  Sero of {
+constant discriminant-sero: sero(discriminant) {
+  Sero {
     put := {
-      function (k, v) {
+      (k, v) => {
         tie Discriminant(x) = v;
         put-int64(k, *x);
       }
     },
     get := {
-      function (k) {
+      (k) => {
         try x = get-int64(k);
         Right(lift {Discriminant(x)})
       }

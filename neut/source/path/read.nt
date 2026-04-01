@@ -7,20 +7,22 @@ import {
   core.file.mode {default-file-mode},
   core.system {get-error-message, system},
   this.app.app {app},
-  this.app.error {new-error'},
-  this.path.ensure-file-existence {ensure-file-existence'},
+  this.app.error {new-error-prime},
+  this.path.ensure-file-existence {ensure-file-existence-prime},
 }
 
-define is-stdin(path: &text): bool {
-  eq-text(path, "-")
+define is-stdin(path: &string) -> bool {
+  eq-string(path, "-")
 }
 
-define _read-binary-from-stdin<r := rho>(): system(binary) {
+define _read-binary-from-stdin() -> system(binary) {
+  let r = Right(Unit); // fixme
   try _ = r;
   core.binary.io.read(stdin, 1024)
 }
 
-define _read-binary-from-path<r := rho>(path: &text): system(binary) {
+define _read-binary-from-path(path: &string) -> system(binary) {
+  let r = Right(Unit); // fixme
   try _ = r;
   try fd = open(path, List[R], default-file-mode);
   try content = core.binary.io.read(fd, 4096);
@@ -28,18 +30,19 @@ define _read-binary-from-path<r := rho>(path: &text): system(binary) {
   Right(content)
 }
 
-define read-text-from-path<r := rho>(path: &text): app(text) {
+define read-string-from-path(path: &string) -> app(string) {
+  let r = Right(Unit); // fixme
   try _ = r;
-  try _ = ensure-file-existence'(path);
+  try _ = ensure-file-existence-prime(path);
   match _read-binary-from-path(path) {
   | Left(sys-err) =>
-    Left(new-error'(get-error-message(sys-err)))
+    Left(new-error-prime(get-error-message(sys-err)))
   | Right(content-binary) =>
-    Right(magic cast(binary, text, content-binary))
+    Right(magic cast(binary, string, content-binary))
   }
 }
 
-define zen(): unit {
-  pin x = read-text-from-path("/etc/bashrc");
-  vet(x);
+define zen() -> unit {
+  pin x = read-string-from-path("/etc/bashrc");
+  vet::(x);
 }

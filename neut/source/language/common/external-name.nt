@@ -1,40 +1,40 @@
 import {
-  core.text-builder {append-text, text-builder},
-  sero.common.get {get-text},
-  sero.common.put {put-text},
+  core.string-builder {append-string, string-builder},
+  sero.common.get {get-string},
+  sero.common.put {put-string},
   sero.get-kit {get-kit},
   sero.put-kit {put-kit},
   sero.sero {Sero, sero},
 }
 
 data external-name {
-| External-Name(text)
+| External-Name(string)
 }
 
-define malloc-name(): external-name {
+define malloc-name() -> external-name {
   External-Name(*"malloc")
 }
 
-define free-name(): external-name {
+define free-name() -> external-name {
   External-Name(*"free")
 }
 
-define append-external-name(b: &text-builder, v: &external-name): unit {
+define append-external-name(b: &string-builder, v: &external-name) -> unit {
   tie External-Name(t) = v;
-  append-text(b, t)
+  append-string(b, t)
 }
 
-define external-name-sero: sero(external-name) {
-  Sero of {
+constant external-name-sero: sero(external-name) {
+  Sero {
     put := {
-      function (k: &put-kit, v: &external-name) {
+      (k: &put-kit, v: &external-name) => {
         tie External-Name(v) = v;
-        put-text(k, v)
+        put-string(k, v)
       }
     },
     get := {
-      function (k: &get-kit) {
-        try v = get-text(k);
+      (k: &get-kit) => {
+        try v = get-string(k);
         Right(lift {External-Name(v)})
       }
     },

@@ -1,22 +1,22 @@
 import {
-  core.text {break, drop, is-empty},
+  core.string {break, drop, is-empty},
   this.language.common.data-size {Data-Size-64, data-size},
   this.language.common.definite-description {
     definite-description,
     global-locator-from-dd,
-    llvm-global-locator-text,
+    llvm-global-locator-string,
     local-locator-from-dd,
   },
   this.language.common.prim-op {Prim-Binary-Op, Prim-Cmp-Op, Prim-Conv-Op, Prim-Unary-Op, prim-op},
-  this.language.common.prim-op.binary-op {binary-float-op-from-text, binary-int-op-from-text},
-  this.language.common.prim-op.cmp-op {float-cmp-op-from-text, int-cmp-op-from-text},
+  this.language.common.prim-op.binary-op {binary-float-op-from-string, binary-int-op-from-string},
+  this.language.common.prim-op.cmp-op {float-cmp-op-from-string, int-cmp-op-from-string},
   this.language.common.prim-op.conv-op {as-conv-op},
-  this.language.common.prim-op.unary-op {unary-op-from-text},
+  this.language.common.prim-op.unary-op {unary-op-from-string},
   this.language.common.prim-type {Float, Int},
-  this.language.common.prim-type.from-text {prim-type-from-text},
+  this.language.common.prim-type.from-string {prim-type-from-string},
 }
 
-define _break-hyphen(haystack: &text): ?pair(text, text) {
+define _break-hyphen(haystack: &string) -> ?pair(string, string) {
   if is-empty(haystack) {
     none
   } else {
@@ -30,7 +30,7 @@ define _break-hyphen(haystack: &text): ?pair(text, text) {
   }
 }
 
-define prim-op-from-text(ds: data-size, name: &text): ?prim-op {
+define prim-op-from-string(ds: data-size, name: &string) -> ?prim-op {
   try Pair(op-str, type-str) = _break-hyphen(name);
   pin op-str = op-str;
   pin type-str = type-str;
@@ -38,31 +38,31 @@ define prim-op-from-text(ds: data-size, name: &text): ?prim-op {
   | Right(Pair(dom-type-str, cod-type-str)) =>
     pin dom-type-str = dom-type-str;
     pin cod-type-str = cod-type-str;
-    try dom-type = prim-type-from-text(ds, dom-type-str);
-    try cod-type = prim-type-from-text(ds, cod-type-str);
+    try dom-type = prim-type-from-string(ds, dom-type-str);
+    try cod-type = prim-type-from-string(ds, cod-type-str);
     try conv-op on dom-type, cod-type = as-conv-op(op-str, dom-type, cod-type);
     Right(Prim-Conv-Op(conv-op, dom-type, cod-type))
   | _ =>
-    try prim-type = prim-type-from-text(ds, type-str);
+    try prim-type = prim-type-from-string(ds, type-str);
     match prim-type {
     | Int(size) =>
-      match binary-int-op-from-text(op-str) {
+      match binary-int-op-from-string(op-str) {
       | Right(op) =>
         Right(Prim-Binary-Op(op, Int(size), Int(size)))
       | _ =>
-        try op = int-cmp-op-from-text(op-str);
+        try op = int-cmp-op-from-string(op-str);
         Right(Prim-Cmp-Op(op, Int(size), Int(size)))
       }
     | Float(size) =>
-      match binary-float-op-from-text(op-str) {
+      match binary-float-op-from-string(op-str) {
       | Right(op) =>
         Right(Prim-Binary-Op(op, Float(size), Float(size)))
       | _ =>
-        match unary-op-from-text(op-str) {
+        match unary-op-from-string(op-str) {
         | Right(op) =>
           Right(Prim-Unary-Op(op, Float(size), Float(size)))
         | _ =>
-          try op = float-cmp-op-from-text(op-str);
+          try op = float-cmp-op-from-string(op-str);
           Right(Prim-Cmp-Op(op, Float(size), Float(size)))
         }
       }
@@ -72,28 +72,28 @@ define prim-op-from-text(ds: data-size, name: &text): ?prim-op {
   }
 }
 
-define prim-op-from-definite-description(ds: data-size, dd: &definite-description): ?prim-op {
+define prim-op-from-definite-description(ds: data-size, dd: &definite-description) -> ?prim-op {
   pin sgl = global-locator-from-dd(dd);
-  let b = eq-text(llvm-global-locator-text, sgl);
+  let b = eq-string(llvm-global-locator-string, sgl);
   if b {
     pin ll = local-locator-from-dd(dd);
-    prim-op-from-text(ds, ll)
+    prim-op-from-string(ds, ll)
   } else {
     none
   }
 }
 
-define zen(): unit {
+define zen() -> unit {
   pin result = _break-hyphen("add-int");
-  vet(result);
+  vet::(result);
   pin result = _break-hyphen("int");
-  vet(result);
-  pin v = prim-op-from-text(Data-Size-64, "add-int");
-  vet(v);
-  pin v = prim-op-from-text(Data-Size-64, "sub-int32");
-  vet(v);
-  pin v = prim-op-from-text(Data-Size-64, "shl-int8");
-  vet(v);
-  pin v = prim-op-from-text(Data-Size-64, "fptosi-float-int");
-  vet(v);
+  vet::(result);
+  pin v = prim-op-from-string(Data-Size-64, "add-int");
+  vet::(v);
+  pin v = prim-op-from-string(Data-Size-64, "sub-int32");
+  vet::(v);
+  pin v = prim-op-from-string(Data-Size-64, "shl-int8");
+  vet::(v);
+  pin v = prim-op-from-string(Data-Size-64, "fptosi-float-int");
+  vet::(v);
 }

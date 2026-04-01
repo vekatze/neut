@@ -1,12 +1,12 @@
 import {
   core.cell {clone, make-cell, mutate},
   core.dictionary {make-lookup},
-  core.text {to-binary},
-  core.text-builder {append-text, extract, make-text-builder},
+  core.string {to-binary},
+  core.string-builder {append-string, extract, make-string-builder},
   path.io {get-modification-time, is-regular-file},
   path.path {split-extension, take-last},
   this.app.app {app},
-  this.app.run {app-from-system, raise-error'},
+  this.app.run {app-from-system, raise-error-prime},
   this.ens.ens {E-String, dict-from-list, inject},
   this.ens.to-doc,
   this.kernel.common.clang-option {Clang-Option, clang-option},
@@ -21,56 +21,56 @@ import {
   this.language.common.module-id {Library},
   this.logger.hint {hint, internal-hint},
   this.logger.logger-kit {logger-kit},
-  this.path.read {read-text-from-path},
+  this.path.read {read-string-from-path},
   time.time {gt-time, lt-time, time},
 }
 
 data path-kit {
 | _Path-Kit(
     main-module: &main-module,
-    cache-cell: cell(?text),
+    cache-cell: cell(?string),
     logger-kit: &logger-kit,
     platform-kit: &platform-kit,
   )
 }
 
-define make-path-kit(mm: &main-module, lk: &logger-kit, pk: &platform-kit): path-kit {
+define make-path-kit(mm: &main-module, lk: &logger-kit, pk: &platform-kit) -> path-kit {
   let cache-cell = make-cell(box {none});
   _Path-Kit(mm, cache-cell, lk, pk)
 }
 
-define get-base-name(path: &text): text {
+define get-base-name(path: &string) -> string {
   pin bar = take-last(path);
   let Pair(buz, _) = split-extension(bar);
   buz
 }
 
-define ensure-not-in-dependency-dir(m: &main-module): app(unit) {
-  tie Module of {id} = extract-module(m);
+define ensure-not-in-dependency-dir(m: &main-module) -> app(unit) {
+  tie Module {id} = extract-module(m);
   case id {
   | Library(_) =>
-    raise-error'(*"This command cannot be used under a dependency directory")
+    raise-error-prime(*"This command cannot be used under a dependency directory")
   | _ =>
     Right(Unit)
   }
 }
 
-define _get-clang-option-base(t: &main-target, m: &module): app(clang-option) {
+define _get-clang-option-base(t: &main-target, m: &module) -> app(clang-option) {
   case t {
   | Named(name, _) =>
-    tie Module of {target} = m;
-    let lookup = make-lookup(core.text.ord.as-ord);
+    tie Module {target} = m;
+    let lookup = make-lookup(core.string.ord.as-ord);
     match lookup(target, name) {
     | Left(_) =>
-      let buf = make-text-builder(64);
+      let buf = make-string-builder(64);
       let _ on buf = {
-        append-text(buf, "No such target is defined: `");
-        append-text(buf, name);
-        append-text(buf, "`");
+        append-string(buf, "No such target is defined: `");
+        append-string(buf, name);
+        append-string(buf, "`");
       };
-      raise-error'(extract(buf))
+      raise-error-prime(extract(buf))
     | Right(v) =>
-      tie Target-Summary of {clang-option} = v;
+      tie Target-Summary {clang-option} = v;
       Right(*clang-option)
     }
   | Zen(_, clang-option) =>
@@ -78,7 +78,7 @@ define _get-clang-option-base(t: &main-target, m: &module): app(clang-option) {
   }
 }
 
-define _get-clang-option(t: &target, m: &module): app(clang-option) {
+define _get-clang-option(t: &target, m: &module) -> app(clang-option) {
   case t {
   | Main(main-module) =>
     _get-clang-option-base(main-module, m)
@@ -89,37 +89,37 @@ define _get-clang-option(t: &target, m: &module): app(clang-option) {
   }
 }
 
-inline _m: hint {
+constant _m: hint {
   internal-hint
 }
 
-define _register-build-signature(k: &path-kit, clang-option: clang-option): app(text) {
-  tie _Path-Kit of {cache-cell, platform-kit, main-module} = k;
+define _register-build-signature(k: &path-kit, clang-option: clang-option) -> app(string) {
+  tie _Path-Kit {cache-cell, platform-kit, main-module} = k;
   let m = extract-module(*main-module);
-  tie Module of {location} = m;
+  tie Module {location} = m;
   let clang-digest = get-clang-digest(*platform-kit);
-  let Clang-Option of {compile-option, link-option} = clang-option;
-  let compile-option-text = core.text.intercalate(compile-option, *" ");
-  let link-option-text = core.text.intercalate(link-option, *" ");
-  try module-ens = read-text-from-path(location);
+  let Clang-Option {compile-option, link-option} = clang-option;
+  let compile-option-string = core.string.intercalate(compile-option, *" ");
+  let link-option-string = core.string.intercalate(link-option, *" ");
+  try module-ens = read-string-from-path(location);
   let ens =
     dict-from-list(_m, List[
       Pair(Pair(_m, *"clang-digest"), E-String(_m, *clang-digest)),
-      Pair(Pair(_m, *"compile-option"), E-String(_m, compile-option-text)),
-      Pair(Pair(_m, *"link-option"), E-String(_m, link-option-text)),
+      Pair(Pair(_m, *"compile-option"), E-String(_m, compile-option-string)),
+      Pair(Pair(_m, *"link-option"), E-String(_m, link-option-string)),
       Pair(Pair(_m, *"module-configuration"), E-String(_m, module-ens)),
     ]);
-  let ens-text = this.ens.to-doc.pp(inject(ens));
-  let !sig on ens-text = hash-and-encode(to-binary(ens-text));
-  let _ = ens-text;
-  mutate(cache-cell, function (_) {
-    lift {Right(!sig)}
+  let ens-string = this.ens.to-doc.pp(inject(ens));
+  let !sig on ens-string = hash-and-encode(to-binary(ens-string));
+  let _ = ens-string;
+  mutate(cache-cell, (_) => {
+    lift {Right(sig)}
   });
-  Right(!sig)
+  Right(sig)
 }
 
-define _get-build-signature-base(k: &path-kit, t: &main-target): app(text) {
-  tie _Path-Kit of {cache-cell, main-module} = k;
+define _get-build-signature-base(k: &path-kit, t: &main-target) -> app(string) {
+  tie _Path-Kit {cache-cell, main-module} = k;
   match clone(cache-cell) {
   | Right(sig) =>
     Right(sig)
@@ -130,8 +130,8 @@ define _get-build-signature-base(k: &path-kit, t: &main-target): app(text) {
   }
 }
 
-define _get-build-signature(k: &path-kit, t: &target): app(text) {
-  tie _Path-Kit of {cache-cell, main-module} = k;
+define _get-build-signature(k: &path-kit, t: &target) -> app(string) {
+  tie _Path-Kit {cache-cell, main-module} = k;
   match clone(cache-cell) {
   | Right(sig) =>
     Right(sig)
@@ -142,38 +142,38 @@ define _get-build-signature(k: &path-kit, t: &target): app(text) {
   }
 }
 
-define _get-build-dir(k: &path-kit, t: &target, m: &module): app(text) {
-  tie _Path-Kit of {platform-kit} = k;
+define _get-build-dir(k: &path-kit, t: &target, m: &module) -> app(string) {
+  tie _Path-Kit {platform-kit} = k;
   let base-build-dir = get-base-build-dir(*platform-kit, m);
   try build-signature = _get-build-signature(k, t);
-  let build-prefix on build-signature = core.text.append("build-", build-signature);
-  let result on base-build-dir, build-prefix = core.text.append(base-build-dir, build-prefix);
+  let build-prefix on build-signature = core.string.append("build-", build-signature);
+  let result on base-build-dir, build-prefix = core.string.append(base-build-dir, build-prefix);
   let _ = build-signature;
   let _ = base-build-dir;
   let _ = build-prefix;
   Right(result)
 }
 
-define _get-build-dir-base(k: &path-kit, t: &main-target, m: &module): app(text) {
-  tie _Path-Kit of {platform-kit} = k;
+define _get-build-dir-base(k: &path-kit, t: &main-target, m: &module) -> app(string) {
+  tie _Path-Kit {platform-kit} = k;
   let base-build-dir = get-base-build-dir(*platform-kit, m);
   try build-signature = _get-build-signature-base(k, t);
-  let build-prefix on build-signature = core.text.append("build-", build-signature);
-  let result on base-build-dir, build-prefix = core.text.append(base-build-dir, build-prefix);
+  let build-prefix on build-signature = core.string.append("build-", build-signature);
+  let result on base-build-dir, build-prefix = core.string.append(base-build-dir, build-prefix);
   let _ = build-signature;
   let _ = base-build-dir;
   let _ = build-prefix;
   Right(result)
 }
 
-define _get-artifact-dir(k: &path-kit, t: &target, m: &module): app(text) {
+define _get-artifact-dir(k: &path-kit, t: &target, m: &module) -> app(string) {
   try build-dir = _get-build-dir(k, t, m);
   let result on build-dir = path.path.append(build-dir, artifact-rel-dir);
   let _ = build-dir;
   Right(result)
 }
 
-define _get-foreign-dir(k: &path-kit, t: &target, m: &module): app(text) {
+define _get-foreign-dir(k: &path-kit, t: &target, m: &module) -> app(string) {
   try build-dir = _get-build-dir(k, t, m);
   let result on build-dir = path.path.append(build-dir, foreign-rel-dir);
   let _ = build-dir;
@@ -182,21 +182,21 @@ define _get-foreign-dir(k: &path-kit, t: &target, m: &module): app(text) {
   Right(result)
 }
 
-define _get-entry-dir(k: &path-kit, t: &main-target, m: &module): app(text) {
+define _get-entry-dir(k: &path-kit, t: &main-target, m: &module) -> app(string) {
   try build-dir = _get-build-dir-base(k, t, m);
   let result on build-dir = path.path.append(build-dir, entry-rel-dir);
   let _ = build-dir;
   Right(result)
 }
 
-define _get-executable-dir(k: &path-kit, t: &main-target, m: &module): app(text) {
+define _get-executable-dir(k: &path-kit, t: &main-target, m: &module) -> app(string) {
   try build-dir = _get-build-dir-base(k, t, m);
   let result on build-dir = path.path.append(build-dir, executable-rel-dir);
   let _ = build-dir;
   Right(result)
 }
 
-define _get-zen-executable-dir(k: &path-kit, t: &main-target, m: &module): app(text) {
+define _get-zen-executable-dir(k: &path-kit, t: &main-target, m: &module) -> app(string) {
   try build-dir = _get-build-dir-base(k, t, m);
   let tmp on build-dir = path.path.append(build-dir, zen-rel-dir);
   let result on tmp = path.path.append(tmp, executable-rel-dir);
@@ -205,7 +205,7 @@ define _get-zen-executable-dir(k: &path-kit, t: &main-target, m: &module): app(t
   Right(result)
 }
 
-define _get-zen-entry-dir(k: &path-kit, t: &main-target, m: &module): app(text) {
+define _get-zen-entry-dir(k: &path-kit, t: &main-target, m: &module) -> app(string) {
   try build-dir = _get-build-dir-base(k, t, m);
   let tmp on build-dir = path.path.append(build-dir, zen-rel-dir);
   let result on tmp = path.path.append(tmp, entry-rel-dir);
@@ -214,8 +214,8 @@ define _get-zen-entry-dir(k: &path-kit, t: &main-target, m: &module): app(text) 
   Right(result)
 }
 
-define get-executable-output-path(k: &path-kit, mt: &main-target): app(text) {
-  tie _Path-Kit of {main-module} = k;
+define get-executable-output-path(k: &path-kit, mt: &main-target) -> app(string) {
+  tie _Path-Kit {main-module} = k;
   let m = extract-module(*main-module);
   case mt {
   | Named(target, _) =>
@@ -227,7 +227,7 @@ define get-executable-output-path(k: &path-kit, mt: &main-target): app(text) {
     try zen-executable-dir = _get-zen-executable-dir(k, mt, m);
     try rel-path = get-rel-path-from-source-dir(m, path);
     let Pair(rel-path-without-ext, _) on rel-path = split-extension(rel-path);
-    let zen-path on rel-path-without-ext = core.text.append(rel-path-without-ext, ".zen");
+    let zen-path on rel-path-without-ext = core.string.append(rel-path-without-ext, ".zen");
     let result on zen-executable-dir, zen-path = path.path.append(zen-executable-dir, zen-path);
     let _ = rel-path;
     let _ = rel-path-without-ext;
@@ -237,17 +237,17 @@ define get-executable-output-path(k: &path-kit, mt: &main-target): app(text) {
   }
 }
 
-define _attach-extension(file: &text, kind: output-kind): text {
+define _attach-extension(file: &string, kind: output-kind) -> string {
   match kind {
   | LLVM =>
-    core.text.append(file, ".ll")
+    core.string.append(file, ".ll")
   | Object =>
-    core.text.append(file, ".o")
+    core.string.append(file, ".o")
   }
 }
 
-define output-path-from-source(k: &path-kit, t: &target, kind: output-kind, src: &source): app(text) {
-  tie Source of {source-module} = src;
+define output-path-from-source(k: &path-kit, t: &target, kind: output-kind, src: &source) -> app(string) {
+  tie Source {source-module} = src;
   try artifact-dir = _get-artifact-dir(k, t, source-module);
   try rel-path = this.kernel.common.source.get-rel-path-from-source-dir(src);
   let result on artifact-dir, rel-path = {
@@ -261,30 +261,30 @@ define output-path-from-source(k: &path-kit, t: &target, kind: output-kind, src:
   Right(result)
 }
 
-define _get-cache-path(k: &path-kit, t: &target, extension: &text, src: &source): app(text) {
-  tie Source of {source-module} = src;
+define _get-cache-path(k: &path-kit, t: &target, extension: &string, src: &source) -> app(string) {
+  tie Source {source-module} = src;
   try artifact-dir = _get-artifact-dir(k, t, source-module);
   try rel-path = this.kernel.common.source.get-rel-path-from-source-dir(src);
   let result on artifact-dir, rel-path = {
     let Pair(rel-path, _) = split-extension(rel-path);
     pin rel-path = rel-path;
     pin tmp = path.path.append(artifact-dir, rel-path);
-    core.text.append(tmp, extension)
+    core.string.append(tmp, extension)
   };
   let _ = artifact-dir;
   let _ = rel-path;
   Right(result)
 }
 
-define get-source-cache-path(k: &path-kit, t: &target, src: &source): app(text) {
+define get-source-cache-path(k: &path-kit, t: &target, src: &source) -> app(string) {
   _get-cache-path(k, t, ".def", src)
 }
 
-define get-source-completion-cache-path(k: &path-kit, t: &target, src: &source): app(text) {
+define get-source-completion-cache-path(k: &path-kit, t: &target, src: &source) -> app(string) {
   _get-cache-path(k, t, ".cmp", src)
 }
 
-define get-source-location-cache-path(k: &path-kit, t: &target, src: &source): app(text) {
+define get-source-location-cache-path(k: &path-kit, t: &target, src: &source) -> app(string) {
   _get-cache-path(k, t, ".loc", src)
 }
 
@@ -293,7 +293,7 @@ define attach-output-path(
   t: &target,
   kind: output-kind,
   src: &source,
-): app(pair(output-kind, text)) {
+) -> app(pair(output-kind, string)) {
   try output-path = output-path-from-source(k, t, kind, src);
   Right(Pair(kind, output-path))
 }
@@ -302,8 +302,8 @@ define get-output-path-for-entry-point(
   k: &path-kit,
   kind: output-kind,
   t: &main-target,
-): app(pair(output-kind, text)) {
-  tie _Path-Kit of {main-module} = k;
+) -> app(pair(output-kind, string)) {
+  tie _Path-Kit {main-module} = k;
   let m = extract-module(*main-module);
   case t {
   | Named(target, _) =>
@@ -327,12 +327,12 @@ define get-output-path-for-entry-point(
   }
 }
 
-define get-install-dir(path: &text): app(&text) {
+define get-install-dir(path: &string) -> app(&string) {
   try _ = app-from-system(ensure-directory(path));
   Right(path)
 }
 
-define get-last-modified-sup(path-list: &list(text)): app(?time) {
+define get-last-modified-sup(path-list: &list(string)) -> app(?time) {
   case path-list {
   | Nil =>
     Right(none)
@@ -364,7 +364,7 @@ define get-last-modified-sup(path-list: &list(text)): app(?time) {
   }
 }
 
-define get-last-modified-inf(path-list: &list(text)): app(?time) {
+define get-last-modified-inf(path-list: &list(string)) -> app(?time) {
   case path-list {
   | Nil =>
     Right(none)
@@ -396,7 +396,7 @@ define get-last-modified-inf(path-list: &list(text)): app(?time) {
   }
 }
 
-define zen(): unit {
+define zen() -> unit {
   pin x = get-base-name("foo/bar/buz.nt");
-  vet(x);
+  vet::(x);
 }

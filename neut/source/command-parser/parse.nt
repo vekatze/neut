@@ -3,10 +3,10 @@ import {
   argot.error {Key-Missing, Unexpected-End-Of-Input},
   argot.make-argot-kit {make-argot-kit-from-argv},
   argot.parse {attempt, branch, end-of-input, optional},
-  argot.preset {flag, text-required},
+  argot.preset {flag, string-required},
   argot.state {pop-head},
   core.external {exit},
-  core.text.io {print-line},
+  core.string.io {print-line},
   this.command-parser.command {
     Archive,
     Build,
@@ -36,10 +36,10 @@ import {
   this.command-parser.config.zen {Zen-Config},
 }
 
-inline _parse-argument(arg: &text): argot(unit) {
-  attempt(function (k) {
+inline _parse-argument(arg: &string) -> argot(unit) {
+  attempt((k) => {
     try head = pop-head(k);
-    let b on head = eq-text(head, arg);
+    let b on head = eq-string(head, arg);
     let _ = head;
     if b {
       Right(Unit)
@@ -49,8 +49,8 @@ inline _parse-argument(arg: &text): argot(unit) {
   })
 }
 
-define _consume-all(xs: list(text)): argot(list(text)) {
-  function (k) {
+define _consume-all(xs: list(string)) -> argot(list(string)) {
+  (k) => {
     match pop-head(k) {
     | Right(v) =>
       _consume-all(Cons(v, xs))(k)
@@ -60,9 +60,9 @@ define _consume-all(xs: list(text)): argot(list(text)) {
   }
 }
 
-inline _parse-text-or-fallback(key: &text, fallback: &text): argot(text) {
-  function (k) {
-    try mode-or-none = optional(text-required(key))(k);
+inline _parse-string-or-fallback(key: &string, fallback: &string) -> argot(string) {
+  (k) => {
+    try mode-or-none = optional(string-required(key))(k);
     match mode-or-none {
     | Right(mode) =>
       Right(mode)
@@ -72,41 +72,41 @@ inline _parse-text-or-fallback(key: &text, fallback: &text): argot(text) {
   }
 }
 
-inline _parse-log-config-opt(): argot(log-config) {
-  function (k) {
+inline _parse-log-config-opt() -> argot(log-config) {
+  (k) => {
     try no-color = flag("--no-color")(k);
     try enable-debug-mode = flag("--enable-debug-output")(k);
     try enable-silent-mode = flag("--silent")(k);
     let should-colorize = not(no-color);
-    Right(Log-Config of {should-colorize, enable-debug-mode, enable-silent-mode})
+    Right(Log-Config {should-colorize, enable-debug-mode, enable-silent-mode})
   }
 }
 
-inline _parse-build-mode(): argot(text) {
-  function (k) {
-    _parse-text-or-fallback("--mode", "develop")(k)
+inline _parse-build-mode() -> argot(string) {
+  (k) => {
+    _parse-string-or-fallback("--mode", "develop")(k)
   }
 }
 
-inline _parse-output-kind-list(): argot(list(text)) {
-  function (k) {
-    try tmp = _parse-text-or-fallback("--emit", "object")(k);
-    let result on tmp = core.text.split(tmp, ",");
+inline _parse-output-kind-list() -> argot(list(string)) {
+  (k) => {
+    try tmp = _parse-string-or-fallback("--emit", "object")(k);
+    let result on tmp = core.string.split(tmp, ",");
     let _ = tmp;
     Right(result)
   }
 }
 
-define _parse-should-skip-link(): argot(bool) {
+define _parse-should-skip-link() -> argot(bool) {
   flag("--skip-link")
 }
 
-define _parse-should-execute(): argot(bool) {
+define _parse-should-execute() -> argot(bool) {
   flag("--execute")
 }
 
-inline _parse-clean-command(): argot(command) {
-  function (k) {
+inline _parse-clean-command() -> argot(command) {
+  (k) => {
     try _ = _parse-argument("clean")(k);
     try log-config = _parse-log-config-opt()(k);
     try _ = end-of-input(k);
@@ -114,13 +114,13 @@ inline _parse-clean-command(): argot(command) {
   }
 }
 
-inline _parse-build-command(): argot(command) {
-  function (k) {
+inline _parse-build-command() -> argot(command) {
+  (k) => {
     try _ = _parse-argument("build")(k);
-    try install-dir = optional(text-required("--install"))(k);
+    try install-dir = optional(string-required("--install"))(k);
     try build-mode-string = _parse-build-mode()(k);
     try log-config = _parse-log-config-opt()(k);
-    try output-kind-text-list = _parse-output-kind-list()(k);
+    try output-kind-string-list = _parse-output-kind-list()(k);
     try should-skip-link = _parse-should-skip-link()(k);
     try should-execute = _parse-should-execute()(k);
     try target-name = pop-head(k);
@@ -128,7 +128,7 @@ inline _parse-build-command(): argot(command) {
     try _ = end-of-input(k);
     Right(Internal(log-config, Build(Build-Config(
       target-name,
-      output-kind-text-list,
+      output-kind-string-list,
       should-skip-link,
       should-execute,
       install-dir,
@@ -138,79 +138,79 @@ inline _parse-build-command(): argot(command) {
   }
 }
 
-inline _parse-get-command(): argot(command) {
-  function (k) {
+inline _parse-get-command() -> argot(command) {
+  (k) => {
     try _ = _parse-argument("get")(k);
     try log-config = _parse-log-config-opt()(k);
-    try module-alias-text = pop-head(k);
-    try module-URL-text = pop-head(k);
-    Right(Internal(log-config, Get(Get-Config of {module-alias-text, module-URL-text})))
+    try module-alias-string = pop-head(k);
+    try module-URL-string = pop-head(k);
+    Right(Internal(log-config, Get(Get-Config {module-alias-string, module-URL-string})))
   }
 }
 
-inline _parse-zen-command(): argot(command) {
-  function (k) {
+inline _parse-zen-command() -> argot(command) {
+  (k) => {
     try _ = _parse-argument("zen")(k);
     try log-config = _parse-log-config-opt()(k);
     try build-mode-string = _parse-build-mode()(k);
     try file-path-string = pop-head(k);
     try args = _consume-all(Nil)(k);
-    Right(Internal(log-config, Zen(Zen-Config of {file-path-string, build-mode-string, args})))
+    Right(Internal(log-config, Zen(Zen-Config {file-path-string, build-mode-string, args})))
   }
 }
 
-inline _parse-lsp-command(): argot(command) {
-  function (k) {
+inline _parse-lsp-command() -> argot(command) {
+  (k) => {
     try _ = _parse-argument("lsp")(k);
     try log-config = _parse-log-config-opt()(k);
     Right(Internal(log-config, LSP))
   }
 }
 
-inline _parse-create-command(): argot(command) {
-  function (k) {
+inline _parse-create-command() -> argot(command) {
+  (k) => {
     try _ = _parse-argument("create")(k);
-    try target-name = optional(text-required("--target"))(k);
+    try target-name = optional(string-required("--target"))(k);
     try log-config = _parse-log-config-opt()(k);
     try module-name = pop-head(k);
-    Right(External(log-config, Create(Create-Config of {target-name, module-name})))
+    Right(External(log-config, Create(Create-Config {target-name, module-name})))
   }
 }
 
-inline _parse-version-command(): argot(command) {
-  function (k) {
+inline _parse-version-command() -> argot(command) {
+  (k) => {
     try _ = _parse-argument("version")(k);
     try log-config = _parse-log-config-opt()(k);
     Right(External(log-config, Show-Version(Version-Config())))
   }
 }
 
-inline _parse-check-command(): argot(command) {
-  function (k) {
+inline _parse-check-command() -> argot(command) {
+  (k) => {
     try _ = _parse-argument("check")(k);
     try should-check-all-dependencies = flag("--full")(k);
     try log-config = _parse-log-config-opt()(k);
-    Right(Internal(log-config, Check(Check-Config of {should-check-all-dependencies})))
+    Right(Internal(log-config, Check(Check-Config {should-check-all-dependencies})))
   }
 }
 
-inline _parse-archive-command(): argot(command) {
-  function (k) {
+inline _parse-archive-command() -> argot(command) {
+  (k) => {
     try _ = _parse-argument("archive")(k);
     try log-config = _parse-log-config-opt()(k);
     try archive-name = optional(pop-head)(k);
-    Right(Internal(log-config, Archive(Archive-Config of {archive-name})))
+    Right(Internal(log-config, Archive(Archive-Config {archive-name})))
   }
 }
 
-inline _parse-format-source-command(): argot(command) {
-  function (k) {
+inline _parse-format-source-command() -> argot(command) {
+  (k) => {
     try _ = _parse-argument("format-source")(k);
     try should-minimize-imports = flag("--minimize-imports")(k);
     try must-update-in-place = flag("--in-place")(k);
     try log-config = _parse-log-config-opt()(k);
     try file-path-string = pop-head(k);
-    Right(Internal(log-config, Format-Source(Format-Source-Config of {
+    Right(Internal(log-config, Format-Source(Format-Source-Config {
       should-minimize-imports,
       must-update-in-place,
       file-path-string,
@@ -218,13 +218,13 @@ inline _parse-format-source-command(): argot(command) {
   }
 }
 
-inline _parse-format-ens-command(): argot(command) {
-  function (k) {
+inline _parse-format-ens-command() -> argot(command) {
+  (k) => {
     try _ = _parse-argument("format-ens")(k);
     try must-update-in-place = flag("--in-place")(k);
     try log-config = _parse-log-config-opt()(k);
     try file-path-string = pop-head(k);
-    Right(Internal(log-config, Format-Ens(Format-Ens-Config of {
+    Right(Internal(log-config, Format-Ens(Format-Ens-Config {
       must-update-in-place,
       file-path-string,
     })))
@@ -232,20 +232,20 @@ inline _parse-format-ens-command(): argot(command) {
 }
 
 rule-right _branch {
-  function leaf(_: int): argot(command) {
-    function (_) {
+  inline leaf(_: int) -> argot(command) {
+    (_) => {
       Left(Unexpected-End-Of-Input) // fixme
     }
   },
-  function node(p: argot(command), acc: argot(command)): argot(command) {
+  inline node(p: argot(command), acc: argot(command)) -> argot(command) {
     branch(p, acc)
   },
-  function root(x: argot(command)): argot(command) {
+  inline root(x: argot(command)) -> argot(command) {
     x
   },
 }
 
-inline _parse-command(): argot(command) {
+inline _parse-command() -> argot(command) {
   _branch[
     _parse-archive-command(),
     _parse-build-command(),
@@ -261,7 +261,7 @@ inline _parse-command(): argot(command) {
   ]
 }
 
-define parse-command-or-exit(): command {
+define parse-command-or-exit() -> command {
   pin k = make-argot-kit-from-argv();
   match _parse-command()(k) {
   | Right(c) =>
@@ -273,7 +273,7 @@ define parse-command-or-exit(): command {
   }
 }
 
-define zen(): unit {
+define zen() -> unit {
   pin result = parse-command-or-exit();
-  vet(result)
+  vet::(result)
 }

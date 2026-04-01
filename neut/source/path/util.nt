@@ -1,24 +1,24 @@
 import {
-  core.text-builder {append-text, make-text-builder},
+  core.string-builder {append-string, make-string-builder},
   path.path {split-extension},
   this.app.app {app},
-  this.app.run {raise-error'},
+  this.app.run {raise-error-prime},
   this.kernel.common.const {source-file-extension},
 }
 
-define remove-extension(path: &text): app(text) {
+define remove-extension(path: &string) -> app(string) {
   let Pair(a, b) = split-extension(path);
-  let has-valid-extension on b = eq-text(b, source-file-extension);
+  let has-valid-extension on b = eq-string(b, source-file-extension);
   let _ = b;
   if has-valid-extension {
     Right(a)
   } else {
-    let buf = make-text-builder(64);
+    let buf = make-string-builder(64);
     let _ on buf = {
-      append-text(buf, "The file extension in `");
-      append-text(buf, path);
-      append-text(buf, "` is invalid")
+      append-string(buf, "The file extension in `");
+      append-string(buf, path);
+      append-string(buf, "` is invalid")
     };
-    raise-error'(core.text-builder.extract(buf))
+    raise-error-prime(core.string-builder.extract(buf))
   }
 }

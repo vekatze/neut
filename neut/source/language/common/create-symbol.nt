@@ -5,42 +5,42 @@ import {
   this.language.common.ident {I, ident},
 }
 
-inline new-text-for-hole(k: &gensym-kit): text {
+inline new-string-for-hole(k: &gensym-kit) -> string {
   let i = new-count(k);
   pin i = show-int(i);
-  pin tmp = core.text.append(hole-var-prefix, ";");
-  core.text.append(tmp, i)
+  pin tmp = core.string.append(hole-var-prefix, ";");
+  core.string.append(tmp, i)
 }
 
-inline new-ident-from-text(k: &gensym-kit, s: text): ident {
+inline new-ident-from-string(k: &gensym-kit, s: string) -> ident {
   let i = new-count(k);
   I(s, i)
 }
 
-inline new-text(k: &gensym-kit): text {
-  new-text-for-hole(k)
+inline new-string(k: &gensym-kit) -> string {
+  new-string-for-hole(k)
 }
 
-inline new-ident-from-ident(k: &gensym-kit, x: &ident): ident {
+inline new-ident-from-ident(k: &gensym-kit, x: &ident) -> ident {
   tie I(s, _) = x;
-  new-ident-from-text(k, *s)
+  new-ident-from-string(k, *s)
 }
 
-inline new-text-from-text(k: &gensym-kit, base: &text): text {
+inline new-string-from-string(k: &gensym-kit, base: &string) -> string {
   let i = new-count(k);
-  pin tmp = core.text.append(";", base);
+  pin tmp = core.string.append(";", base);
   pin i = show-int(i);
-  core.text.append(tmp, i)
+  core.string.append(tmp, i)
 }
 
-inline new-ident-for-hole(k: &gensym-kit): ident {
-  let t = new-text-for-hole(k);
+inline new-ident-for-hole(k: &gensym-kit) -> ident {
+  let t = new-string-for-hole(k);
   let i = new-count(k);
   I(t, i)
 }
 
-define zen(): unit {
+define zen() -> unit {
   pin k = make-gensym-kit();
-  pin v = new-text-for-hole(k);
-  vet(v)
+  pin v = new-string-for-hole(k);
+  vet::(v)
 }

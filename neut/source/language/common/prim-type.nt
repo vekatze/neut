@@ -13,17 +13,17 @@ data prim-type {
 | Pointer
 }
 
-inline prim-type-sero: sero(prim-type) {
-  Sero of {
+constant prim-type-sero: sero(prim-type) {
+  Sero {
     put := {
-      function (k, v) {
+      (k, v) => {
         case v {
         | Int(s) =>
-          let Sero of {put} = int-size-sero;
+          let Sero {put} = int-size-sero;
           put-int64(k, 0);
           put(k, s)
         | Float(s) =>
-          let Sero of {put} = float-size-sero;
+          let Sero {put} = float-size-sero;
           put-int64(k, 1);
           put(k, s)
         | Rune =>
@@ -34,15 +34,15 @@ inline prim-type-sero: sero(prim-type) {
       }
     },
     get := {
-      function (k) {
+      (k) => {
         try tag = get-int64(k);
         match tag {
         | 0 =>
-          let Sero of {get} = int-size-sero;
+          let Sero {get} = int-size-sero;
           try v = get(k);
           Right(lift {Int(axiom-T(v))})
         | 1 =>
-          let Sero of {get} = float-size-sero;
+          let Sero {get} = float-size-sero;
           try v = get(k);
           Right(lift {Float(axiom-T(v))})
         | 2 =>

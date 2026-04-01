@@ -9,7 +9,7 @@ data log-level {
 | Critical
 }
 
-define _log-level-to-text(l: log-level): &text {
+define _log-level-to-string(l: log-level) -> &string {
   match l {
   | Note =>
     "Note"
@@ -22,7 +22,7 @@ define _log-level-to-text(l: log-level): &text {
   }
 }
 
-define _log-level-to-tone(l: log-level): vector(style) {
+define _log-level-to-tone(l: log-level) -> vector(style) {
   match l {
   | Note =>
     Vector[Bold, Color(Foreground, Color-16(Vivid, Blue))]
@@ -35,7 +35,7 @@ define _log-level-to-tone(l: log-level): vector(style) {
   }
 }
 
-define _log-level-to-pad(l: log-level): text {
-  let len = core.text.length(_log-level-to-text(l));
-  core.text.replicate(" ", add-int(len, 2))
+define _log-level-to-pad(l: log-level) -> string {
+  let len = core.string.length(_log-level-to-string(l));
+  core.string.replicate(" ", add-int(len, 2))
 }

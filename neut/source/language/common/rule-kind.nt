@@ -11,7 +11,7 @@ data rule-kind {
 | Fold-Right
 }
 
-define keyword-from-rule-kind(k: rule-kind): &text {
+define keyword-from-rule-kind(k: rule-kind) -> &string {
   match k {
   | Fold-Left =>
     "rule-left"
@@ -20,10 +20,10 @@ define keyword-from-rule-kind(k: rule-kind): &text {
   }
 }
 
-define rule-kind-sero: sero(rule-kind) {
-  Sero of {
+constant rule-kind-sero: sero(rule-kind) {
+  Sero {
     put := {
-      function (k: &put-kit, v: &rule-kind) {
+      (k: &put-kit, v: &rule-kind) => {
         case v {
         | Fold-Left =>
           put-int64(k, 0)
@@ -33,7 +33,7 @@ define rule-kind-sero: sero(rule-kind) {
       }
     },
     get := {
-      function (k: &get-kit) {
+      (k: &get-kit) => {
         try v = get-int64(k);
         match v {
         | 0 =>

@@ -3,20 +3,20 @@ import {
   this.language.common.ident {I, ident},
 }
 
-define text-from-ident(x: ident): text {
+define string-from-ident(x: ident) -> string {
   let I(t, _) = x;
   t
 }
 
-define text-from-ident-debug(x: ident): text {
+define string-from-ident-debug(x: ident) -> string {
   let I(t, i) = x;
   pin t = t;
   pin i = show-int(i);
-  pin tmp = core.text.append(t, "-");
-  core.text.append(tmp, i)
+  pin tmp = core.string.append(t, "-");
+  core.string.append(tmp, i)
 }
 
-define int-from-ident(x: &ident): int {
+define int-from-ident(x: &ident) -> int {
   tie I(_, i) = x;
   *i
 }

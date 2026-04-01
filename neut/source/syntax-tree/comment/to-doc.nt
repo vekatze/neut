@@ -1,23 +1,23 @@
 import {
   core.list {for-each, uncons},
-  core.text {replicate},
-  this.pretty-printer.doc {Empty, doc, indent, inline-comment, intercalate, join, line, make-text, nest},
+  core.string {replicate},
+  this.pretty-printer.doc {Empty, doc, indent, inline-comment, intercalate, join, line, make-string, nest},
   this.syntax-tree.comment {Comment-Item, Inline-Comment, Line-Comment, comment, comment-item},
 }
 
-define _decode(x: comment-item): doc {
+define _decode(x: comment-item) -> doc {
   let Comment-Item(t, s) = x;
   match t {
   | Line-Comment =>
     pin s = s;
-    make-text(core.text.append("//", s))
+    make-string(core.string.append("//", s))
   | Inline-Comment =>
     pin s = s;
-    inline-comment(core.text.append("//", s))
+    inline-comment(core.string.append("//", s))
   }
 }
 
-define decode(cs: comment): doc {
+define decode(cs: comment) -> doc {
   match uncons(cs) {
   | Left(_) =>
     Empty
@@ -33,7 +33,7 @@ define decode(cs: comment): doc {
   }
 }
 
-define as-prefix(cs: comment): doc {
+define as-prefix(cs: comment) -> doc {
   match uncons(cs) {
   | Left(_) =>
     Empty
@@ -43,27 +43,27 @@ define as-prefix(cs: comment): doc {
   }
 }
 
-define as-prefix-indented(cs: comment): doc {
+define as-prefix-indented(cs: comment) -> doc {
   match cs {
   | Nil =>
     Empty
   | Cons(c, rest) =>
     join[
-      make-text(replicate(" ", indent)),
+      make-string(replicate(" ", indent)),
       nest(indent, decode(Cons(c, rest))),
       line,
     ]
   }
 }
 
-define as-stmt-prefix(cs: comment): doc {
-  as-prefix(for-each(cs, function (c) {
+define as-stmt-prefix(cs: comment) -> doc {
+  as-prefix(for-each(cs, (c) => {
     let Comment-Item(_, x) = c;
     Comment-Item(Line-Comment, x)
   }))
 }
 
-define has-leading-inline-comment(cs: &comment): bool {
+define has-leading-inline-comment(cs: &comment) -> bool {
   case cs {
   | Nil =>
     False
@@ -77,7 +77,7 @@ define has-leading-inline-comment(cs: &comment): bool {
   }
 }
 
-define as-suffix(cs: comment): doc {
+define as-suffix(cs: comment) -> doc {
   match cs {
   | Nil =>
     Empty
@@ -85,7 +85,7 @@ define as-suffix(cs: comment): doc {
     let b on cs = has-leading-inline-comment(cs);
     let prefix =
       if b {
-        make-text(*" ")
+        make-string(*" ")
       } else {
         line
       };
@@ -94,7 +94,7 @@ define as-suffix(cs: comment): doc {
   }
 }
 
-define as-clause-header(cs: comment): doc {
+define as-clause-header(cs: comment) -> doc {
   match cs {
   | Nil =>
     Empty

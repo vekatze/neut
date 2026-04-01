@@ -5,6 +5,6 @@ import {
   this.logger.hint {hint},
 }
 
-inline top-name-map: type {
+alias top-name-map {
   dictionary(definite-description, pair(hint, global-name))
 }

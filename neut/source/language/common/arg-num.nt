@@ -9,36 +9,36 @@ data arg-num {
 | Arg-Num(int)
 }
 
-define arg-num-from-int(x: int): arg-num {
+define arg-num-from-int(x: int) -> arg-num {
   Arg-Num(x)
 }
 
-define zero: arg-num {
+constant zero: arg-num {
   Arg-Num(0)
 }
 
-define arg-num-S4: arg-num {
+constant arg-num-S4: arg-num {
   Arg-Num(2)
 }
 
-define add-arg-num(x: arg-num, y: arg-num): arg-num {
+define add-arg-num(x: arg-num, y: arg-num) -> arg-num {
   let Arg-Num(x) = x;
   let Arg-Num(y) = y;
   Arg-Num(add-int(x, y))
 }
 
-define succ-arg-num(x: arg-num): arg-num {
+define succ-arg-num(x: arg-num) -> arg-num {
   add-arg-num(x, Arg-Num(1))
 }
 
-define _put(k: &put-kit, v: &arg-num): unit {
+define _put(k: &put-kit, v: &arg-num) -> unit {
   tie Arg-Num(x) = v;
-  let Sero of {put} = int64-sero;
+  let Sero {put} = int64-sero;
   put(k, x);
 }
 
-define _get(k: &get-kit): ?meta arg-num {
-  let Sero of {get} = int64-sero;
+define _get(k: &get-kit) -> ?+arg-num {
+  let Sero {get} = int64-sero;
   try v = get(k);
   Right(box {
     letbox v = v;
@@ -46,8 +46,8 @@ define _get(k: &get-kit): ?meta arg-num {
   })
 }
 
-inline arg-num-sero: sero(arg-num) {
-  Sero of {
+constant arg-num-sero: sero(arg-num) {
+  Sero {
     put := _put,
     get := _get,
   }

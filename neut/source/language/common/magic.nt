@@ -20,38 +20,38 @@ data magic-t(t, a) {
 | Call-Type(a, a, a)
 }
 
-inline magic-sero<a>(!s: sero(a)): sero(magic-t(base-low-type, a)) {
-  let Sero of {put := !put-a, get := !get-a} = !s;
-  let Sero of {put := !put-blt, get := !get-blt} = base-low-type-sero;
-  Sero of {
+inline magic-sero<a>(!s: sero(a)) -> sero(magic-t(base-low-type, a)) {
+  let Sero {put := !put-a, get := !get-a} = s;
+  let Sero {put := !put-blt, get := !get-blt} = base-low-type-sero;
+  Sero {
     put := {
-      function (k, v) {
+      (k, v) => {
         case v {
         | Cast(from, to, v) =>
           put-int64(k, 0);
-          !put-a(k, from);
-          !put-a(k, to);
-          !put-a(k, v);
+          put-a(k, from);
+          put-a(k, to);
+          put-a(k, v);
         | Store(t, unit, value, ptr) =>
           put-int64(k, 1);
-          !put-blt(k, t);
-          !put-a(k, unit);
-          !put-a(k, value);
-          !put-a(k, ptr);
+          put-blt(k, t);
+          put-a(k, unit);
+          put-a(k, value);
+          put-a(k, ptr);
         | Load(lt, ptr) =>
           put-int64(k, 2);
-          !put-blt(k, lt);
-          !put-a(k, ptr);
+          put-blt(k, lt);
+          put-a(k, ptr);
         | Alloca(lt, size) =>
           put-int64(k, 3);
-          !put-blt(k, lt);
-          !put-a(k, size)
+          put-blt(k, lt);
+          put-a(k, size)
         | External(dom-list, cod, ext-fun-name, args, var-args) =>
-          let Sero of {put := put-lts} = list-sero(base-low-type-sero);
-          let Sero of {put := put-fct} = foreign-cod-type-sero(base-low-type-sero);
-          let Sero of {put := put-external-name} = external-name-sero;
-          let Sero of {put := put-args} = list-sero(!s);
-          let Sero of {put := put-var-args} = list-sero(pair-sero(!s, base-low-type-sero));
+          let Sero {put := put-lts} = list-sero(base-low-type-sero);
+          let Sero {put := put-fct} = foreign-cod-type-sero(base-low-type-sero);
+          let Sero {put := put-external-name} = external-name-sero;
+          let Sero {put := put-args} = list-sero(s);
+          let Sero {put := put-var-args} = list-sero(pair-sero(s, base-low-type-sero));
           put-int64(k, 4);
           put-lts(k, dom-list);
           put-fct(k, cod);
@@ -59,29 +59,29 @@ inline magic-sero<a>(!s: sero(a)): sero(magic-t(base-low-type, a)) {
           put-args(k, args);
           put-var-args(k, var-args);
         | Global(name, lt) =>
-          let Sero of {put := put-external-name} = external-name-sero;
+          let Sero {put := put-external-name} = external-name-sero;
           put-int64(k, 5);
           put-external-name(k, name);
-          !put-blt(k, lt);
+          put-blt(k, lt);
         | Opaque-Value(e) =>
           put-int64(k, 6);
-          !put-a(k, e)
+          put-a(k, e)
         | Call-Type(func, arg1, arg2) =>
           put-int64(k, 7);
-          !put-a(k, func);
-          !put-a(k, arg1);
-          !put-a(k, arg2);
+          put-a(k, func);
+          put-a(k, arg1);
+          put-a(k, arg2);
         }
       }
     },
     get := {
-      function (k) {
+      (k) => {
         try tag = get-int64(k);
         match tag {
         | 0 =>
-          try from = !get-a(k);
-          try to = !get-a(k);
-          try v = !get-a(k);
+          try from = get-a(k);
+          try to = get-a(k);
+          try v = get-a(k);
           Right(box {
             letbox from = from;
             letbox to = to;
@@ -89,10 +89,10 @@ inline magic-sero<a>(!s: sero(a)): sero(magic-t(base-low-type, a)) {
             Cast(from, to, v)
           })
         | 1 =>
-          try lt = !get-blt(k);
-          try unit = !get-a(k);
-          try value = !get-a(k);
-          try ptr = !get-a(k);
+          try lt = get-blt(k);
+          try unit = get-a(k);
+          try value = get-a(k);
+          try ptr = get-a(k);
           Right(box {
             letbox lt = lt;
             letbox unit = unit;
@@ -101,27 +101,27 @@ inline magic-sero<a>(!s: sero(a)): sero(magic-t(base-low-type, a)) {
             Store(lt, unit, value, ptr)
           })
         | 2 =>
-          try lt = !get-blt(k);
-          try ptr = !get-a(k);
+          try lt = get-blt(k);
+          try ptr = get-a(k);
           Right(box {
             letbox lt = lt;
             letbox ptr = ptr;
             Load(lt, ptr)
           })
         | 3 =>
-          try lt = !get-blt(k);
-          try size = !get-a(k);
+          try lt = get-blt(k);
+          try size = get-a(k);
           Right(box {
             letbox lt = lt;
             letbox size = size;
             Alloca(lt, size)
           })
         | 4 =>
-          let Sero of {get := get-lts} = list-sero(base-low-type-sero);
-          let Sero of {get := get-fct} = foreign-cod-type-sero(base-low-type-sero);
-          let Sero of {get := get-external-name} = external-name-sero;
-          let Sero of {get := get-args} = list-sero(!s);
-          let Sero of {get := get-var-args} = list-sero(pair-sero(!s, base-low-type-sero));
+          let Sero {get := get-lts} = list-sero(base-low-type-sero);
+          let Sero {get := get-fct} = foreign-cod-type-sero(base-low-type-sero);
+          let Sero {get := get-external-name} = external-name-sero;
+          let Sero {get := get-args} = list-sero(s);
+          let Sero {get := get-var-args} = list-sero(pair-sero(s, base-low-type-sero));
           try dom-list = get-lts(k);
           try cod = get-fct(k);
           try ext-fun-name = get-external-name(k);
@@ -136,24 +136,24 @@ inline magic-sero<a>(!s: sero(a)): sero(magic-t(base-low-type, a)) {
             External(dom-list, cod, ext-fun-name, args, var-args)
           })
         | 5 =>
-          let Sero of {get := get-external-name} = external-name-sero;
+          let Sero {get := get-external-name} = external-name-sero;
           try name = get-external-name(k);
-          try lt = !get-blt(k);
+          try lt = get-blt(k);
           Right(box {
             letbox name = name;
             letbox lt = lt;
             Global(name, lt)
           })
         | 6 =>
-          try e = !get-a(k);
+          try e = get-a(k);
           Right(box {
             letbox e = e;
             Opaque-Value(e)
           })
         | 7 =>
-          try func = !get-a(k);
-          try arg-1 = !get-a(k);
-          try arg-2 = !get-a(k);
+          try func = get-a(k);
+          try arg-1 = get-a(k);
+          try arg-2 = get-a(k);
           Right(box {
             letbox func = func;
             letbox arg-1 = arg-1;

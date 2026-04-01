@@ -5,7 +5,7 @@ import {
   this.logger.hint {hint},
 }
 
-define create-hole(h: &gensym-kit, m: hint): raw-term {
+define create-hole(h: &gensym-kit, m: hint) -> raw-term {
   let i = new-count(h);
   Hole(m, Hole-ID(i))
 }

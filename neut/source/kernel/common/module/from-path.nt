@@ -1,7 +1,7 @@
 import {
   core.dictionary {dictionary, from-list},
   core.list {for-each, for-each-EN},
-  core.text-builder {append-text, make-text-builder},
+  core.string-builder {append-string, make-string-builder},
   path.path {drop-last},
   this.app.app {app},
   this.app.run {raise-error},
@@ -65,10 +65,10 @@ import {
   this.kernel.common.zen-config {Zen-Config, zen-config},
   this.language.common.base-name {
     base-name,
-    base-name-from-text-meta,
+    base-name-from-string-meta,
     is-capitalized,
     is-reserved-alias,
-    text-from-base-name-N,
+    string-from-base-name-N,
   },
   this.language.common.module-alias {Module-Alias, module-alias, ord-module-alias},
   this.language.common.module-digest {Module-Digest, module-digest},
@@ -76,34 +76,34 @@ import {
   this.language.common.source-locator {Source-Locator, source-locator},
   this.logger.hint {hint, lift-hint},
   this.path.ensure-file-existence {ensure-directory-existence, ensure-file-existence},
-  this.path.read {read-text-from-path},
+  this.path.read {read-string-from-path},
   this.syntax-tree.series {Brace, Comma, empty-series, extract-N, series},
   zonk.make-zonk-kit {make-zonk-kit},
 }
 
-define _interpret-preset-map(s: &series(pair(ens-key, ens))): app(dictionary(locator-name, list(base-name))) {
+define _interpret-preset-map(s: &series(pair(ens-key, ens))) -> app(dictionary(locator-name, list(base-name))) {
   try items =
-    for-each-EN(extract-N(s), function (p) {
+    for-each-EN(extract-N(s), (p) => {
       tie Pair(_, Pair(Pair(_, k), v)) = p;
       try Pair(_, preset-series) = this.ens.ens.to-list-N(v);
       try v =
-        for-each-EN(extract-N(preset-series), function (x) {
+        for-each-EN(extract-N(preset-series), (x) => {
           tie Pair(_, x) = x;
           try Pair(m, t) = to-string-N(x);
-          letbox-T result = base-name-from-text-meta(m, t);
+          letbox-T result = base-name-from-string-meta(m, t);
           result
         });
       Right(Pair(*k, v))
     });
-  Right(core.dictionary.from-list(core.text.ord.as-ord, items))
+  Right(core.dictionary.from-list(core.string.ord.as-ord, items))
 }
 
-define _interpret-source-locator(e: &ens): app(source-locator) {
+define _interpret-source-locator(e: &ens) -> app(source-locator) {
   try Pair(_, path-string) = to-string-N(e);
   Right(Source-Locator(*path-string))
 }
 
-define _interpret-clang-option(e: &ens): app(clang-option) {
+define _interpret-clang-option(e: &ens) -> app(clang-option) {
   let m = get-hint-N(e);
   pin fallback = empty-list(m);
   try Pair(_, build-opt-ens-series) = {
@@ -119,19 +119,19 @@ define _interpret-clang-option(e: &ens): app(clang-option) {
     to-list-N(tmp)
   };
   try build-options =
-    for-each-EN(extract-N(build-opt-ens-series), function (p) {
+    for-each-EN(extract-N(build-opt-ens-series), (p) => {
       tie Pair(_, y) = p;
       try Pair(_, c) = to-string-N(y);
       Right(*c)
     });
   try compile-options =
-    for-each-EN(extract-N(compile-opt-ens-series), function (p) {
+    for-each-EN(extract-N(compile-opt-ens-series), (p) => {
       tie Pair(_, y) = p;
       try Pair(_, c) = to-string-N(y);
       Right(*c)
     });
   try link-options =
-    for-each-EN(extract-N(link-opt-ens-series), function (p) {
+    for-each-EN(extract-N(link-opt-ens-series), (p) => {
       tie Pair(_, y) = p;
       try Pair(_, c) = to-string-N(y);
       Right(*c)
@@ -139,57 +139,57 @@ define _interpret-clang-option(e: &ens): app(clang-option) {
   Right(make-clang-option(build-options, compile-options, link-options))
 }
 
-define _interpret-target(p: pair(&hint, &series(pair(ens-key, ens)))): app(dictionary(target-name, target-summary)) {
+define _interpret-target(p: pair(&hint, &series(pair(ens-key, ens)))) -> app(dictionary(target-name, target-summary)) {
   let Pair(_, target-dict) = p;
   try kvs =
-    for-each-EN(extract-N(target-dict), function (p) {
+    for-each-EN(extract-N(target-dict), (p) => {
       tie Pair(_, Pair(Pair(_, k), v)) = p;
       try entry-point = {
         try tmp = access(key-main, v);
         _interpret-source-locator(tmp)
       };
       try clang-option = _interpret-clang-option(v);
-      Right(Pair(*k, Target-Summary of {entry-point, clang-option}))
+      Right(Pair(*k, Target-Summary {entry-point, clang-option}))
     });
-  Right(core.dictionary.from-list(core.text.ord.as-ord, kvs))
+  Right(core.dictionary.from-list(core.string.ord.as-ord, kvs))
 }
 
-define _interpret-zen-config(e: &ens): app(zen-config) {
+define _interpret-zen-config(e: &ens) -> app(zen-config) {
   try clang-option = _interpret-clang-option(e);
   Right(Zen-Config(clang-option))
 }
 
-define _interpret-static-files(static-file-dict: &series(pair(ens-key, ens))): app(dictionary(text, text)) {
+define _interpret-static-files(static-file-dict: &series(pair(ens-key, ens))) -> app(dictionary(string, string)) {
   try kvs =
-    for-each-EN(extract-N(static-file-dict), function (kv) {
+    for-each-EN(extract-N(static-file-dict), (kv) => {
       tie Pair(_, Pair(Pair(_, k), v)) = kv;
       try Pair(_, tmp) = to-string-N(v);
       Right(Pair(*k, *tmp))
     });
-  Right(from-list(core.text.ord.as-ord, kvs))
+  Right(from-list(core.string.ord.as-ord, kvs))
 }
 
-define _interpret-rel-file-path(e: &ens): app(&text) {
+define _interpret-rel-file-path(e: &ens) -> app(&string) {
   try Pair(_, path-string) = to-string-N(e);
   Right(path-string)
 }
 
 define _interpret-dependency-dict(
   p: pair(&hint, &series(pair(ens-key, ens))),
-): app(dictionary(module-alias, dependency)) {
+) -> app(dictionary(module-alias, dependency)) {
   let Pair(m, dep) = p;
   try kvs =
-    for-each-EN(extract-N(dep), function (kv) {
+    for-each-EN(extract-N(dep), (kv) => {
       tie Pair(_, Pair(Pair(_, k), ens)) = kv;
-      letbox-T bk-or-err = base-name-from-text-meta(m, k);
+      letbox-T bk-or-err = base-name-from-string-meta(m, k);
       try bk = bk-or-err;
       let b on bk = is-capitalized(bk);
       try _ on bk =
         if b {
           let message =
-            core.text.append(
+            core.string.append(
               "Module aliases cannot be capitalized, but found: ",
-              text-from-base-name-N(bk),
+              string-from-base-name-N(bk),
             );
           raise-error(*m, message)
         } else {
@@ -198,20 +198,20 @@ define _interpret-dependency-dict(
       let b on bk = is-reserved-alias(bk);
       try _ on bk =
         if b {
-          let buf = make-text-builder(64);
+          let buf = make-string-builder(64);
           let _ on buf = {
-            append-text(buf, "The reserved name `");
-            append-text(buf, text-from-base-name-N(bk));
-            append-text(buf, "` cannot be used as an alias of a module");
+            append-string(buf, "The reserved name `");
+            append-string(buf, string-from-base-name-N(bk));
+            append-string(buf, "` cannot be used as an alias a module");
           };
-          raise-error(*m, core.text-builder.extract(buf))
+          raise-error(*m, core.string-builder.extract(buf))
         } else {
           Right(Unit)
         };
       try url-list = {
         try tmp = access(key-mirror, ens);
         try Pair(_, xs) = to-list-N(tmp);
-        for-each-EN(extract-N(xs), function (p) {
+        for-each-EN(extract-N(xs), (p) => {
           tie Pair(_, x) = p;
           try Pair(_, str) = to-string-N(x);
           Right(*str)
@@ -243,11 +243,11 @@ define _interpret-dependency-dict(
   Right(from-list(ord-module-alias, kvs))
 }
 
-define _interpret-extra-path(module-root-dir: &text, e: &ens): app(text) {
-  try Pair(m, item-path-text) = to-string-N(e);
-  pin k = core.text.take-end-N(item-path-text, 1);
-  let is-directory-path = eq-text(k, "/");
-  let path = path.path.append(module-root-dir, item-path-text);
+define _interpret-extra-path(module-root-dir: &string, e: &ens) -> app(string) {
+  try Pair(m, item-path-string) = to-string-N(e);
+  pin k = core.string.take-end-N(item-path-string, 1);
+  let is-directory-path = eq-string(k, "/");
+  let path = path.path.append(module-root-dir, item-path-string);
   if is-directory-path {
     try _ on path = ensure-directory-existence(path, *m);
     Right(path)
@@ -257,7 +257,7 @@ define _interpret-extra-path(module-root-dir: &text, e: &ens): app(text) {
   }
 }
 
-define _interpret-foreign-dict(module-root-dir: &text, e: &ens): app(foreign) {
+define _interpret-foreign-dict(module-root-dir: &string, e: &ens) -> app(foreign) {
   try Pair(_, input) = {
     try tmp = access(key-foreign-input, e);
     to-list-N(tmp)
@@ -271,36 +271,36 @@ define _interpret-foreign-dict(module-root-dir: &text, e: &ens): app(foreign) {
     to-list-N(tmp)
   };
   try input =
-    for-each-EN(extract-N(input), function (p) {
+    for-each-EN(extract-N(input), (p) => {
       tie Pair(_, x) = p;
       _interpret-extra-path(module-root-dir, x)
     });
   try output =
-    for-each-EN(extract-N(output), function (p) {
+    for-each-EN(extract-N(output), (p) => {
       tie Pair(_, x) = p;
       try x = _interpret-rel-file-path(x);
       Right(*x)
     });
   try script =
-    for-each-EN(extract-N(script), function (p) {
+    for-each-EN(extract-N(script), (p) => {
       tie Pair(_, x) = p;
       try Pair(_, x) = to-string-N(x);
       Right(*x)
     });
-  Right(Foreign of {input, output, script})
+  Right(Foreign {input, output, script})
 }
 
-define _interpret-antecedent(e: &ens): app(module-digest) {
+define _interpret-antecedent(e: &ens) -> app(module-digest) {
   try Pair(_, t) = to-string-N(e);
   Right(Module-Digest(*t))
 }
 
-define _interpret-dir-path(e: &ens): app(text) {
+define _interpret-dir-path(e: &ens) -> app(string) {
   try Pair(_, t) = to-string-N(e);
   Right(*t)
 }
 
-define _interpret-inline-limit(e: &ens): app(?int) {
+define _interpret-inline-limit(e: &ens) -> app(?int) {
   match access(key-inline-limit, e) {
   | Left(_) =>
     Right(none)
@@ -310,26 +310,26 @@ define _interpret-inline-limit(e: &ens): app(?int) {
   }
 }
 
-define _empty-foreign(!m: hint): ens {
+define _empty-foreign(!m: hint) -> ens {
   dict-from-list-vertical(
-    !m,
+    m,
     List[
-      Pair(Pair(!m, *key-foreign-input), E-List(!m, empty-series(Right(Brace), Comma))),
-      Pair(Pair(!m, *key-foreign-output), E-List(!m, empty-series(Right(Brace), Comma))),
-      Pair(Pair(!m, *key-foreign-script), E-List(!m, empty-series(Right(Brace), Comma))),
+      Pair(Pair(m, *key-foreign-input), E-List(m, empty-series(Right(Brace), Comma))),
+      Pair(Pair(m, *key-foreign-output), E-List(m, empty-series(Right(Brace), Comma))),
+      Pair(Pair(m, *key-foreign-script), E-List(m, empty-series(Right(Brace), Comma))),
     ],
   )
 }
 
-define from-file-path(module-file-path: &text): app(module) {
+define from-file-path(module-file-path: &string) -> app(module) {
   pin module-dir-path = drop-last(module-file-path);
-  try c = read-text-from-path(module-file-path);
+  try c = read-string-from-path(module-file-path);
   pin k = make-zonk-kit(c, *module-file-path);
   try Pair(ens, _) = this.ens.parse.parse-ens(k);
   pin ens = ens;
   letbox-T !m = lift-hint(get-hint-N(ens));
-  pin empty-dict = empty-dict(!m);
-  pin empty-list = empty-list(!m);
+  pin empty-dict = empty-dict(m);
+  pin empty-list = empty-list(m);
   try target = {
     try tmp = access-or-default(key-target, empty-dict, ens);
     try tmp = to-dictionary-N(tmp);
@@ -347,7 +347,7 @@ define from-file-path(module-file-path: &text): app(module) {
   try extra-contents = {
     try tmp = access-or-default(key-extra-content, empty-list, ens);
     try Pair(_, xs) = to-list-N(tmp);
-    for-each-EN(extract-N(xs), function (p) {
+    for-each-EN(extract-N(xs), (p) => {
       tie Pair(_, x) = p;
       _interpret-extra-path(module-dir-path, x)
     })
@@ -355,7 +355,7 @@ define from-file-path(module-file-path: &text): app(module) {
   try antecedents = {
     try tmp = access-or-default(key-antecedent, empty-list, ens);
     try Pair(_, xs) = to-list-N(tmp);
-    for-each-EN(extract-N(xs), function (p) {
+    for-each-EN(extract-N(xs), (p) => {
       tie Pair(_, x) = p;
       _interpret-antecedent(x)
     })
@@ -366,22 +366,22 @@ define from-file-path(module-file-path: &text): app(module) {
     _interpret-static-files(tmp)
   };
   try archive-dir = {
-    pin rel-path = ens-path(!m, *archive-rel-dir);
+    pin rel-path = ens-path(m, *archive-rel-dir);
     try tmp = access-or-default(key-archive, rel-path, ens);
     _interpret-dir-path(tmp)
   };
   try cache-dir = {
-    pin rel-path = ens-path(!m, *cache-rel-dir);
+    pin rel-path = ens-path(m, *cache-rel-dir);
     try tmp = access-or-default(key-cache, rel-path, ens);
     _interpret-dir-path(tmp)
   };
   try source-dir = {
-    pin rel-path = ens-path(!m, *source-rel-dir);
+    pin rel-path = ens-path(m, *source-rel-dir);
     try tmp = access-or-default(key-source, rel-path, ens);
     _interpret-dir-path(tmp)
   };
   try foreign-dict = {
-    pin empty = _empty-foreign(!m);
+    pin empty = _empty-foreign(m);
     try tmp = access-or-default(key-foreign, empty, ens);
     _interpret-foreign-dict(module-dir-path, tmp)
   };
@@ -392,7 +392,7 @@ define from-file-path(module-file-path: &text): app(module) {
     _interpret-preset-map(tmp)
   };
   let is-library = has-key(key-antecedent, ens);
-  Right(Module of {
+  Right(Module {
     id := {
       if is-library {
         get-library-id(module-file-path)
@@ -416,15 +416,15 @@ define from-file-path(module-file-path: &text): app(module) {
   })
 }
 
-define from-current-path(): app(module) {
+define from-current-path() -> app(module) {
   try path = get-current-module-file-path();
   pin path = path;
   from-file-path(path)
 }
 
-define zen(): unit {
+define zen() -> unit {
   pin tmp = get-current-module-file-path();
-  vet(tmp);
+  vet::(tmp);
   pin tmp = from-current-path();
-  vet(tmp);
+  vet::(tmp);
 }

@@ -1,155 +1,155 @@
-inline source-file-extension: &text {
+constant source-file-extension: &string {
   ".nt"
 }
 
-inline package-file-extension: &text {
+constant package-file-extension: &string {
   ".tar.zst"
 }
 
-inline ens-file-extension: &text {
+constant ens-file-extension: &string {
   ".ens"
 }
 
-inline ver-sep: &text {
+constant ver-sep: &string {
   "-"
 }
 
-inline env-var-core-module-URL: &text {
+constant env-var-core-module-URL: &string {
   "NEUT_CORE_MODULE_URL"
 }
 
-inline env-var-core-module-digest: &text {
+constant env-var-core-module-digest: &string {
   "NEUT_CORE_MODULE_DIGEST"
 }
 
-inline env-var-clang: &text {
+constant env-var-clang: &string {
   "NEUT_CLANG"
 }
 
-inline module-file: &text {
+constant module-file: &string {
   "module.ens"
 }
 
-inline source-rel-dir: &text {
+constant source-rel-dir: &string {
   "source"
 }
 
-inline cache-rel-dir: &text {
+constant cache-rel-dir: &string {
   "cache"
 }
 
-inline archive-rel-dir: &text {
+constant archive-rel-dir: &string {
   "archive"
 }
 
-inline artifact-rel-dir: &text {
+constant artifact-rel-dir: &string {
   "artifact"
 }
 
-inline entry-rel-dir: &text {
+constant entry-rel-dir: &string {
   "entry"
 }
 
-inline executable-rel-dir: &text {
+constant executable-rel-dir: &string {
   "executable"
 }
 
-inline foreign-rel-dir: &text {
+constant foreign-rel-dir: &string {
   "foreign"
 }
 
-inline zen-rel-dir: &text {
+constant zen-rel-dir: &string {
   "zen"
 }
 
-inline default-inline-limit: int {
+constant default-constant-limit: int {
   1000000
 }
 
-inline core: &text {
+constant core: &string {
   "core"
 }
 
-inline core-unit: &text {
+constant core-unit: &string {
   "core.unit.unit"
 }
 
-inline core-unit-Unit: &text {
+constant core-unit-Unit: &string {
   "core.unit.Unit"
 }
 
-inline core-bool: &text {
+constant core-bool: &string {
   "core.bool.bool"
 }
 
-inline core-bool-True: &text {
+constant core-bool-True: &string {
   "core.bool.True"
 }
 
-inline core-bool-False: &text {
+constant core-bool-False: &string {
   "core.bool.False"
 }
 
-inline core-either: &text {
+constant core-either: &string {
   "core.either.either"
 }
 
-inline core-either-Left: &text {
+constant core-either-Left: &string {
   "core.either.Left"
 }
 
-inline core-either-Right: &text {
+constant core-either-Right: &string {
   "core.either.Right"
 }
 
-inline core-text: &text {
-  "core.text.text"
+constant core-string: &string {
+  "core.string.string"
 }
 
-inline core-rune: &text {
+constant core-rune: &string {
   "core.rune.rune"
 }
 
-inline core-rune-Rune: &text {
+constant core-rune-Rune: &string {
   "core.rune._Rune"
 }
 
-inline core-trick-panic: &text {
+constant core-trick-panic: &string {
   "core.trick.panic"
 }
 
-inline core-trick-assert: &text {
+constant core-trick-assert: &string {
   "core.trick._assert"
 }
 
-inline core-thread-detach: &text {
+constant core-thread-detach: &string {
   "core.thread.detach"
 }
 
-inline core-thread-attach: &text {
+constant core-thread-attach: &string {
   "core.thread.attach"
 }
 
-inline core-box-embody: &text {
+constant core-box-embody: &string {
   "core.box.embody"
 }
 
-inline hole-literal: &text {
+constant hole-literal: &string {
   "_"
 }
 
-inline hole-var-prefix: &text {
+constant hole-var-prefix: &string {
   "{}"
 }
 
-inline exp-var-prefix: &text {
+constant exp-var-prefix: &string {
   "!"
 }
 
-inline unsafe-argc-name: &text {
+constant unsafe-argc-name: &string {
   "neut-unsafe-argc"
 }
 
-inline unsafe-argv-name: &text {
+constant unsafe-argv-name: &string {
   "neut-unsafe-argv"
 }

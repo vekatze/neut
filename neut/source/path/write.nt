@@ -4,11 +4,12 @@ import {
   core.file {close, open},
   core.file.flag {Create, W},
   core.file.mode {default-file-mode},
+  core.string {to-binary},
   core.system {system},
-  core.text {to-binary},
 }
 
-define _write-binary-to-path<r := rho>(path: &text, content: &binary): system(unit) {
+define _write-binary-to-path(path: &string, content: &binary) -> system(unit) {
+  let r = Right(Unit); // fixme (use destpass)
   try _ = r;
   try fd = open(path, List[W, Create], default-file-mode);
   try _ = core.binary.io.write(fd, content);
@@ -16,7 +17,8 @@ define _write-binary-to-path<r := rho>(path: &text, content: &binary): system(un
   Right(Unit)
 }
 
-define write-text<r := rho>(path: &text, content: &text): system(unit) {
+define write-string(path: &string, content: &string) -> system(unit) {
+  let r = Right(Unit); // fixme
   try _ = r;
   let content-binary = to-binary(content);
   _write-binary-to-path(path, content-binary)

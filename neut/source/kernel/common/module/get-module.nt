@@ -1,7 +1,7 @@
 import {
   core.dictionary {to-list},
   core.list {for-each-E},
-  core.text-builder {append-text, make-text-builder},
+  core.string-builder {append-string, make-string-builder},
   path.io {is-regular-file},
   this.app.app {app},
   this.app.run {raise-error},
@@ -11,7 +11,7 @@ import {
   this.kernel.common.module {Dependency, Module, main-module, module},
   this.kernel.common.module.from-path {from-file-path},
   this.language.common.module-alias {module-alias},
-  this.language.common.module-id {Library, module-id, text-from-module-id},
+  this.language.common.module-id {Library, module-id, string-from-module-id},
   this.logger.hint {hint, new-source-hint},
 }
 
@@ -22,9 +22,9 @@ data get-module-kit {
   )
 }
 
-define make-get-module-kit(k: &global-kit): get-module-kit {
-  tie Global-Kit of {gensym-kit, module-kit} = k;
-  Get-Module-Kit of {gensym-kit, module-kit}
+define make-get-module-kit(k: &global-kit) -> get-module-kit {
+  tie Global-Kit {gensym-kit, module-kit} = k;
+  Get-Module-Kit {gensym-kit, module-kit}
 }
 
 define get-module(
@@ -32,9 +32,9 @@ define get-module(
   m: &main-module,
   h: &hint,
   mid: &module-id,
-  locator-text: &text,
-): app(module) {
-  tie Get-Module-Kit of {module-kit} = k;
+  locator-string: &string,
+) -> app(module) {
+  tie Get-Module-Kit {module-kit} = k;
   try next-module-file-path = get-module-file-path(m, Right(h), mid);
   pin next-module-file-path = next-module-file-path;
   match lookup-module(*module-kit, next-module-file-path) {
@@ -45,17 +45,17 @@ define get-module(
       if is-regular-file(next-module-file-path) {
         Right(Unit)
       } else {
-        let buf = make-text-builder(64);
+        let buf = make-string-builder(64);
         let _ on buf = {
-          append-text(buf, "Could not find the module file for `");
-          append-text(buf, locator-text);
-          append-text(buf, "`");
+          append-string(buf, "Could not find the module file for `");
+          append-string(buf, locator-string);
+          append-string(buf, "`");
         };
-        raise-error(*h, core.text-builder.extract(buf))
+        raise-error(*h, core.string-builder.extract(buf))
       };
     try !next-module = from-file-path(next-module-file-path);
-    insert-to-module-cache-map(*module-kit, next-module-file-path, !next-module);
-    Right(!next-module)
+    insert-to-module-cache-map(*module-kit, next-module-file-path, next-module);
+    Right(next-module)
   }
 }
 
@@ -63,15 +63,15 @@ define get-all-dependencies(
   k: &get-module-kit,
   main-module: &main-module,
   m: &module,
-): app(list(pair(module-alias, module))) {
-  tie Module of {dependency} = m;
-  for-each-E(to-list(*dependency), function (p) {
-    let Pair(alias, Dependency of {digest}) = p;
+) -> app(list(pair(module-alias, module))) {
+  tie Module {dependency} = m;
+  for-each-E(to-list(*dependency), (p) => {
+    let Pair(alias, Dependency {digest}) = p;
     pin module-id = Library(digest);
     try module-file-path = get-module-file-path(main-module, none, module-id);
     pin m = new-source-hint(module-file-path);
-    let module-id-text = text-from-module-id(module-id);
-    try dep = get-module(k, main-module, m, module-id, module-id-text);
+    let module-id-string = string-from-module-id(module-id);
+    try dep = get-module(k, main-module, m, module-id, module-id-string);
     Right(Pair(alias, dep))
   })
 }

@@ -1,12 +1,12 @@
 import {
-  core.text.eq {eq-prefix},
+  core.string.eq {eq-prefix},
   this.language.common.const {hole-var-prefix},
 }
 
-inline raw-ident: type {
-  text
+alias raw-ident {
+  string
 }
 
-define is-hole(x: &raw-ident): bool {
+define is-hole(x: &raw-ident) -> bool {
   eq-prefix(x, hole-var-prefix)
 }

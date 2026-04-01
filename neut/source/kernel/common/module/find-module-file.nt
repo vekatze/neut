@@ -1,16 +1,16 @@
 import {
-  core.text-builder {append-text, extract, make-text-builder},
+  core.string-builder {append-string, extract, make-string-builder},
   path.io {get-current-directory, is-regular-file},
   path.path {drop-last},
   this.app.app {app},
-  this.app.run {app-from-system, raise-error'},
+  this.app.run {app-from-system, raise-error-prime},
   this.kernel.common.const {module-file},
 }
 
-define _find-module-file(base-dir: text, dir-candidate: text): app(text) {
+define _find-module-file(base-dir: string, dir-candidate: string) -> app(string) {
   let module-file-candidate on dir-candidate = path.path.append(dir-candidate, module-file);
   let next-dir on dir-candidate = drop-last(dir-candidate);
-  let is-root on dir-candidate, next-dir = ne-text(dir-candidate, next-dir);
+  let is-root on dir-candidate, next-dir = ne-string(dir-candidate, next-dir);
   let _ = dir-candidate;
   let file-found on module-file-candidate = is-regular-file(module-file-candidate);
   match file-found, is-root {
@@ -19,22 +19,22 @@ define _find-module-file(base-dir: text, dir-candidate: text): app(text) {
   | _, True =>
     _find-module-file(base-dir, next-dir)
   | _, _ =>
-    let buf = make-text-builder(64);
+    let buf = make-string-builder(64);
     let _ on buf, base-dir = {
-      append-text(buf, "Could not find a module file (Context: ");
-      append-text(buf, base-dir);
-      append-text(buf, ")");
+      append-string(buf, "Could not find a module file (Context: ");
+      append-string(buf, base-dir);
+      append-string(buf, ")");
     };
     let _ = base-dir;
-    raise-error'(extract(buf))
+    raise-error-prime(extract(buf))
   }
 }
 
-define find-module-file(!base-dir: text): app(text) {
-  _find-module-file(!base-dir, !base-dir)
+define find-module-file(!base-dir: string) -> app(string) {
+  _find-module-file(base-dir, base-dir)
 }
 
-define get-current-module-file-path(): app(text) {
+define get-current-module-file-path() -> app(string) {
   try base-dir = app-from-system(get-current-directory());
   find-module-file(base-dir)
 }

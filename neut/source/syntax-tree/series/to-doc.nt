@@ -1,8 +1,8 @@
 import {
   core.bool {all, any},
   core.list {fold-left-N, for-each, for-each-N, is-empty},
-  core.text {replicate},
-  this.pretty-printer.doc {Empty, _is-multi, doc, indent, join, line, make-text, nest},
+  core.string {replicate},
+  this.pretty-printer.doc {Empty, _is-multi, doc, indent, join, line, make-string, nest},
   this.pretty-printer.piece {
     append-comma-if-vertical,
     arrange,
@@ -24,24 +24,24 @@ import {
     Series,
     _get-separator,
     get-container-pair,
-    get-separator-text,
+    get-separator-string,
     has-comment,
     series,
   },
 }
 
-inline _c-decode {
+constant _c-decode: (cs: comment) -> doc {
   this.syntax-tree.comment.to-doc.decode
 }
 
-define _decode-prefix<a>(s: &series(a)): doc {
-  tie Series of {prefix} = s;
+define _decode-prefix<a>(s: &series(a)) -> doc {
+  tie Series {prefix} = s;
   case prefix {
   | Left(_) =>
     Empty
   | Right(Pair(p, c)) =>
-    pin p = core.text.append(" ", p);
-    let p = make-text(core.text.append(p, " "));
+    pin p = core.string.append(" ", p);
+    let p = make-string(core.string.append(p, " "));
     if is-empty(c) {
       p
     } else {
@@ -55,15 +55,15 @@ define _decode-prefix<a>(s: &series(a)): doc {
   }
 }
 
-define _attach-comment(c: comment, d: doc): doc {
+define _attach-comment(c: comment, d: doc) -> doc {
   join[as-prefix(c), d]
 }
 
 define _bar-seq-cont(
   elems: list(pair(comment, doc)),
   trailing-comment: comment,
-): list(piece) {
-  let sep = get-separator-text(Bar);
+) -> list(piece) {
+  let sep = get-separator-string(Bar);
   match elems {
   | Nil =>
     List[inject(nest(indent, as-suffix(trailing-comment)))]
@@ -71,7 +71,7 @@ define _bar-seq-cont(
     core.list.append(
       List[
         inject(as-clause-header(c)),
-        delimiter-bar(make-text(*sep)),
+        delimiter-bar(make-string(*sep)),
         inject(nest(indent, d)),
       ],
       _bar-seq-cont(rest, trailing-comment),
@@ -83,7 +83,7 @@ define _bar-seq(
   elems: list(pair(comment, doc)),
   is-vertical: bool,
   trailing-comment: comment,
-): list(piece) {
+) -> list(piece) {
   match elems {
   | Nil =>
     let b on trailing-comment = is-empty(trailing-comment);
@@ -91,15 +91,15 @@ define _bar-seq(
       List[inject(Empty)]
     } else {
       List[inject(join[
-        make-text(replicate(" ", indent)),
+        make-string(replicate(" ", indent)),
         _c-decode(trailing-comment),
       ])]
     }
   | Cons(Pair(c, d), rest) =>
     let prefix =
       if is-vertical {
-        let sep = get-separator-text(Bar);
-        inject(make-text(core.text.append(sep, " ")))
+        let sep = get-separator-string(Bar);
+        inject(make-string(core.string.append(sep, " ")))
       } else {
         inject(Empty)
       };
@@ -109,8 +109,8 @@ define _bar-seq(
   }
 }
 
-define _comma-seq-cont(elems: list(doc), is-vertical: bool, trailing-comment: comment): list(piece) {
-  let sep = get-separator-text(Comma);
+define _comma-seq-cont(elems: list(doc), is-vertical: bool, trailing-comment: comment) -> list(piece) {
+  let sep = get-separator-string(Comma);
   match elems {
   | Nil =>
     List[inject(_c-decode(trailing-comment))]
@@ -118,7 +118,7 @@ define _comma-seq-cont(elems: list(doc), is-vertical: bool, trailing-comment: co
     if is-vertical {
       List[
         inject(d),
-        inject(make-text(*sep)),
+        inject(make-string(*sep)),
         inject(as-suffix(trailing-comment)),
       ]
     } else {
@@ -131,26 +131,26 @@ define _comma-seq-cont(elems: list(doc), is-vertical: bool, trailing-comment: co
     core.list.append(
       List[
         inject(d),
-        delimiter-left-aligned(make-text(*sep)),
+        delimiter-left-aligned(make-string(*sep)),
       ],
       _comma-seq-cont(rest, is-vertical, trailing-comment),
     )
   }
 }
 
-define _comma-seq(elems: list(pair(comment, doc)), is-vertical: bool, trailing-comment: comment): list(piece) {
+define _comma-seq(elems: list(pair(comment, doc)), is-vertical: bool, trailing-comment: comment) -> list(piece) {
   let elems =
-    for-each(elems, function (e) {
+    for-each(elems, (e) => {
       let Pair(c, d) = e;
       _attach-comment(c, d)
     });
   _comma-seq-cont(elems, is-vertical, trailing-comment)
 }
 
-define _decode(force-vertical: bool, s: &series(doc)): doc {
+define _decode(force-vertical: bool, s: &series(doc)) -> doc {
   let prefix = _decode-prefix(s);
   let sep = _get-separator(s);
-  tie Series of {container, has-optional-separator, elems, trailing-comment} = s;
+  tie Series {container, has-optional-separator, elems, trailing-comment} = s;
   pin b = this.syntax-tree.series.is-empty(s);
   case container, b {
   | Left(_), True =>
@@ -168,38 +168,38 @@ define _decode(force-vertical: bool, s: &series(doc)): doc {
       let layout = match is-vertical {True => block | False => id-or-nest};
       arrange(List[
         inject(prefix),
-        inject(make-text(*open)),
+        inject(make-string(*open)),
         layout(arranger(_bar-seq(*elems, is-vertical, *trailing-comment))),
-        inject(make-text(*close)),
+        inject(make-string(*close)),
       ])
     | Comma =>
       let layout = match is-vertical {True => nested | False => id-or-nest};
       arrange(List[
         inject(prefix),
-        inject(make-text(*open)),
+        inject(make-string(*open)),
         layout(arranger(_comma-seq(*elems, is-vertical, *trailing-comment))),
-        inject(make-text(*close)),
+        inject(make-string(*close)),
       ])
     }
   }
 }
 
-define decode(s: &series(doc)): doc {
+define decode(s: &series(doc)) -> doc {
   _decode(False, s)
 }
 
 data clause {
 | Clause(
     dom: doc,
-    arrow: &text,
+    arrow: &string,
     cod: doc,
   )
 }
 
-define _is-vertical-series(s: &series(clause)): bool {
-  tie Series of {has-optional-separator, elems} = s;
+define _is-vertical-series(s: &series(clause)) -> bool {
+  tie Series {has-optional-separator, elems} = s;
   let has-vertical-content =
-    fold-left-N(False, elems, function (acc, elem) {
+    fold-left-N(False, elems, (acc, elem) => {
       if acc {
         acc
       } else {
@@ -214,7 +214,7 @@ define _is-vertical-series(s: &series(clause)): bool {
   ]
 }
 
-define __is-horizontal-elems(elems: &list(pair(comment, doc))): bool {
+define __is-horizontal-elems(elems: &list(pair(comment, doc))) -> bool {
   case elems {
   | Nil =>
     True
@@ -224,7 +224,7 @@ define __is-horizontal-elems(elems: &list(pair(comment, doc))): bool {
   }
 }
 
-define _is-horizontal-elems(elems: &list(pair(comment, doc))): bool {
+define _is-horizontal-elems(elems: &list(pair(comment, doc))) -> bool {
   case elems {
   | Nil =>
     True
@@ -239,8 +239,8 @@ define _is-horizontal-elems(elems: &list(pair(comment, doc))): bool {
 }
 
 // [single, ..., single, multi, .., multi] <=> True
-define _is-horizontal-series(s: &series(doc)): bool {
-  tie Series of {trailing-comment, elems, has-optional-separator} = s;
+define _is-horizontal-series(s: &series(doc)) -> bool {
+  tie Series {trailing-comment, elems, has-optional-separator} = s;
   all[
     is-empty(trailing-comment),
     _is-horizontal-elems(elems),
@@ -248,28 +248,28 @@ define _is-horizontal-series(s: &series(doc)): bool {
   ]
 }
 
-define _decode-clause-item-vertical(c: clause): doc {
+define _decode-clause-item-vertical(c: clause) -> doc {
   let Clause(dom, delim, cod) = c;
   pin dom = dom;
   let dom-layout = match _is-multi(dom) {True => inject | False => horizontal};
   arrange(List[
     dom-layout(*dom),
-    inject(make-text(*delim)),
+    inject(make-string(*delim)),
     inject(line),
     inject(cod),
   ])
 }
 
-define _decode-clause-item-horizontal(c: clause): doc {
+define _decode-clause-item-horizontal(c: clause) -> doc {
   let Clause(dom, delim, cod) = c;
   arrange(List[
     horizontal(dom),
-    horizontal(make-text(*delim)),
+    horizontal(make-string(*delim)),
     inject(cod),
   ])
 }
 
-define decode-clause-series(s: series(clause)): doc {
+define decode-clause-series(s: series(clause)) -> doc {
   let b on s = _is-vertical-series(s);
   if b {
     pin s = this.syntax-tree.series.for-each(s, _decode-clause-item-vertical);
@@ -280,7 +280,7 @@ define decode-clause-series(s: series(clause)): doc {
   }
 }
 
-define _comma-seq-horizontal(elems: list(doc)): list(piece) {
+define _comma-seq-horizontal(elems: list(doc)) -> list(piece) {
   match elems {
   | Nil =>
     Nil
@@ -288,29 +288,29 @@ define _comma-seq-horizontal(elems: list(doc)): list(piece) {
     Cons(inject(d), Nil)
   | Cons(d, rest) =>
     core.list.append(
-      List[inject(d), horizontal(make-text(*","))],
+      List[inject(d), horizontal(make-string(*","))],
       _comma-seq-horizontal(rest),
     )
   }
 }
 
-define decode-horizontally-if-possible(s: &series(doc)): doc {
-  tie Series of {separator, container, elems} = s;
+define decode-horizontally-if-possible(s: &series(doc)) -> doc {
+  tie Series {separator, container, elems} = s;
   pin b = _is-horizontal-series(s);
   case separator, container, b {
   | Comma, Right(k), True =>
     let prefix = _decode-prefix(s);
     let Pair(open, close) = get-container-pair(*k);
     let elems =
-      for-each-N(elems, function (p) {
+      for-each-N(elems, (p) => {
         tie Pair(_, y) = p;
         *y
       });
     arrange(List[
       inject(prefix),
-      inject(make-text(*open)),
+      inject(make-string(*open)),
       inject(arrange(_comma-seq-horizontal(elems))),
-      inject(make-text(*close)),
+      inject(make-string(*close)),
     ])
   | _, _, _ =>
     decode(s)

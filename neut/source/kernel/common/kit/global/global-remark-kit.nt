@@ -7,14 +7,14 @@ data global-remark-kit {
 | _Global-Remark-Kit(remark-list: ref(list(log)))
 }
 
-define make-global-remark-kit(): global-remark-kit {
+define make-global-remark-kit() -> global-remark-kit {
   let ref = make-ref(box {Nil});
   _Global-Remark-Kit(ref)
 }
 
-define insert-remark(k: &global-remark-kit, items: meta list(log)): unit {
+define insert-remark(k: &global-remark-kit, items: +list(log)) -> unit {
   tie _Global-Remark-Kit(ref) = k;
-  mutate(ref, function (xs) {
+  mutate(ref, (xs) => {
     box {
       letbox xs = xs;
       letbox items = items;
@@ -23,12 +23,12 @@ define insert-remark(k: &global-remark-kit, items: meta list(log)): unit {
   })
 }
 
-define clone-logs(k: &global-remark-kit): list(log) {
+define clone-logs(k: &global-remark-kit) -> list(log) {
   tie _Global-Remark-Kit(ref) = k;
   core.ref.clone(ref)
 }
 
-define extract-logs(k: global-remark-kit): meta list(log) {
+define extract-logs(k: global-remark-kit) -> +list(log) {
   let _Global-Remark-Kit(ref) = k;
   core.ref.extract(ref)
 }

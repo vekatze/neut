@@ -3,11 +3,11 @@ import {
   this.logger.hint {hint},
 }
 
-inline unused-local-locators: type {
+alias unused-local-locators {
   list(pair(local-locator, hint))
 }
 
-define is-used-LL(haystack: &unused-local-locators, needle: &local-locator): bool {
+define is-used-LL(haystack: &unused-local-locators, needle: &local-locator) -> bool {
   case haystack {
   | Nil =>
     True

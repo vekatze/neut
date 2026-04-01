@@ -2,18 +2,18 @@ import {
   sero.common.get {get-int64},
   sero.common.put {put-int64},
   sero.instance.either {either-sero},
-  sero.instance.text {text-sero},
+  sero.instance.text {string-sero},
   sero.sero {Sero, sero},
   this.language.common.binder {binder-f, binder-sero},
   this.logger.sero.log {_unit-sero},
 }
 
 data lam-kind-f(m, a) {
-| Normal(?text, a)
+| Normal(?string, a)
 | Fix(binder-f(m, a))
 }
 
-define from-lam-kind<m, a>(k: &lam-kind-f(m, a)): ?&binder-f(m, a) {
+define from-lam-kind<m, a>(k: &lam-kind-f(m, a)) -> ?&binder-f(m, a) {
   case k {
   | Fix(x) =>
     Right(x)
@@ -22,30 +22,30 @@ define from-lam-kind<m, a>(k: &lam-kind-f(m, a)): ?&binder-f(m, a) {
   }
 }
 
-inline lam-kind-sero<m, a>(!sm: sero(m), !s: sero(a)): sero(lam-kind-f(m, a)) {
-  let Sero of {put := put-a, get := get-a} = !s;
-  Sero of {
+inline lam-kind-sero<m, a>(!sm: sero(m), !s: sero(a)) -> sero(lam-kind-f(m, a)) {
+  let Sero {put := put-a, get := get-a} = s;
+  Sero {
     put := {
-      function (k, v) {
+      (k, v) => {
         case v {
         | Normal(t, x) =>
-          let Sero of {put} = either-sero(_unit-sero, text-sero);
+          let Sero {put} = either-sero(_unit-sero, string-sero);
           put-int64(k, 0);
           put(k, t);
           put-a(k, x);
         | Fix(x) =>
-          let Sero of {put := put-binder} = binder-sero(!sm, !s);
+          let Sero {put := put-binder} = binder-sero(sm, s);
           put-int64(k, 1);
           put-binder(k, x);
         }
       }
     },
     get := {
-      function (k) {
+      (k) => {
         try tag = get-int64(k);
         match tag {
         | 0 =>
-          let Sero of {get} = either-sero(_unit-sero, text-sero);
+          let Sero {get} = either-sero(_unit-sero, string-sero);
           try t = get(k);
           try x = get-a(k);
           Right(box {
@@ -54,7 +54,7 @@ inline lam-kind-sero<m, a>(!sm: sero(m), !s: sero(a)): sero(lam-kind-f(m, a)) {
             Normal(t, x)
           })
         | 1 =>
-          let Sero of {get := get-binder} = binder-sero(!sm, !s);
+          let Sero {get := get-binder} = binder-sero(sm, s);
           try b = get-binder(k);
           Right(box {
             letbox b = b;

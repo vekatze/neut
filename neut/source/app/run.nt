@@ -1,17 +1,17 @@
 import {
   core.external {exit},
   core.foreign {get-cpu-count, sleep},
+  core.string-builder {string-builder},
   core.system {get-error-message, system},
-  core.text-builder {text-builder},
   core.thread.pool,
   this.app.app {app},
-  this.app.error {Make-Error, new-critical, new-critical', new-error, new-error'},
+  this.app.error {Make-Error, new-critical, new-critical-prime, new-error, new-error-prime},
   this.logger.hint {hint},
   this.logger.logger-kit {logger-kit},
   this.logger.print {print-log-errors},
 }
 
-define run<a>(k: &logger-kit, c: app(a)): a {
+define run<a>(k: &logger-kit, c: app(a)) -> a {
   match c {
   | Left(Make-Error(xs)) =>
     let _ on xs = print-log-errors(k, xs);
@@ -22,7 +22,7 @@ define run<a>(k: &logger-kit, c: app(a)): a {
   }
 }
 
-inline for-each-parallel<a, b>(xs: vector(a), f: (a) -> app(b)): app(vector(b)) {
+inline for-each-parallel<a, b>(xs: vector(a), f: (a) -> app(b)) -> app(vector(b)) {
   let ys = core.thread.pool.for-each-parallel(get-cpu-count(), xs, f);
   let Pair(errors, results) = core.vector.partition(ys);
   let error-len on errors = core.vector.length(errors);
@@ -33,7 +33,7 @@ inline for-each-parallel<a, b>(xs: vector(a), f: (a) -> app(b)): app(vector(b)) 
   }
 }
 
-inline for-parallel<a>(xs: vector(a), f: (a) -> app(unit)): app(unit) {
+inline for-parallel<a>(xs: vector(a), f: (a) -> app(unit)) -> app(unit) {
   let ys = core.thread.pool.for-each-parallel(get-cpu-count(), xs, f);
   let Pair(errors, results) = core.vector.partition(ys);
   let error-len on errors = core.vector.length(errors);
@@ -45,56 +45,56 @@ inline for-parallel<a>(xs: vector(a), f: (a) -> app(unit)): app(unit) {
   }
 }
 
-inline raise-error<a>(m: hint, t: text): app(a) {
+inline raise-error<a>(m: hint, t: string) -> app(a) {
   Left(new-error(m, t))
 }
 
-inline raise-error'<a>(t: text): app(a) {
-  Left(new-error'(t))
+inline raise-error-prime<a>(t: string) -> app(a) {
+  Left(new-error-prime(t))
 }
 
-inline raise-critical<a>(m: hint, t: text): app(a) {
+inline raise-critical<a>(m: hint, t: string) -> app(a) {
   Left(new-critical(m, t))
 }
 
-inline raise-critical'<a>(t: text): app(a) {
-  Left(new-critical'(t))
+inline raise-critical-prime<a>(t: string) -> app(a) {
+  Left(new-critical-prime(t))
 }
 
-define app-from-system<a>(x: system(a)): app(a) {
+define app-from-system<a>(x: system(a)) -> app(a) {
   match x {
   | Right(v) =>
     Right(v)
   | Left(err) =>
-    Left(new-error'(get-error-message(err)))
+    Left(new-error-prime(get-error-message(err)))
   }
 }
 
-rule-left text-join {
-  function leaf(_: int): text-builder {
-    core.text-builder.make-text-builder(16)
+rule-left string-join {
+  inline leaf(_: int) -> string-builder {
+    core.string-builder.make-string-builder(16)
   },
-  function node-left(acc: text-builder, d: &text): text-builder {
-    let _ on acc = core.text-builder.append-text(acc, d);
+  inline node-left(acc: string-builder, d: &string) -> string-builder {
+    let _ on acc = core.string-builder.append-string(acc, d);
     acc
   },
-  function root(x: text-builder): text {
-    core.text-builder.extract(x)
+  inline root(x: string-builder) -> string {
+    core.string-builder.extract(x)
   },
 }
 
-define zen(): unit {
+define zen() -> unit {
   let num-of-elems = mul-int(get-cpu-count(), 2);
   pin tmp =
-    for-each-parallel(core.vector.range(0, num-of-elems), function (x) {
-      vet("sleep");
+    for-each-parallel(core.vector.range(0, num-of-elems), (x) => {
+      vet::("sleep");
       let _ = sleep(1);
       Right(add-int(x, 10))
     });
-  vet(tmp);
+  vet::(tmp);
   let _ =
-    for-parallel(Vector["a", "b", "c", "d", "e"], function (x: &text) {
-      vet(x);
+    for-parallel(Vector["a", "b", "c", "d", "e"], (x: &string) => {
+      vet::(x);
       Right(Unit)
     });
   Unit

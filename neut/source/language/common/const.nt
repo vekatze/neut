@@ -1,15 +1,15 @@
-inline ns-sep-char: rune {
+constant ns-sep-char: rune {
   `.`
 }
 
-define ns-sep: &text {
+constant ns-sep: &string {
   "."
 }
 
-define hole-var-prefix: &text {
+constant hole-var-prefix: &string {
   "{}"
 }
 
-define exp-var-prefix: &text {
+constant exp-var-prefix: &string {
   "!"
 }

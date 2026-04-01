@@ -41,7 +41,7 @@ define make-global-kit(
   logger-kit: &logger-kit,
   platform-kit: &platform-kit,
   env-kit: &env-kit,
-): global-kit {
+) -> global-kit {
   let gensym-kit = make-gensym-kit();
   let main-module = get-main-module(env-kit);
   let key-arg-kit = make-key-arg-kit(main-module);
@@ -53,7 +53,7 @@ define make-global-kit(
   let antecedent-kit = make-antecedent-kit();
   let preset-cache-cell = make-cell(box {empty});
   let type-kit = make-type-kit();
-  Global-Kit of {
+  Global-Kit {
     artifact-kit,
     antecedent-kit,
     color-kit := get-color-kit(logger-kit),

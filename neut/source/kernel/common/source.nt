@@ -8,21 +8,21 @@ import {
 
 data source {
 | Source(
-    file-path: text,
+    file-path: string,
     source-module: module,
     source-hint: ?hint,
   )
 }
 
-define get-rel-path-from-source-dir(s: &source): app(text) {
-  tie Source of {source-module, file-path} = s;
+define get-rel-path-from-source-dir(s: &source) -> app(string) {
+  tie Source {source-module, file-path} = s;
   this.kernel.common.module.get-rel-path-from-source-dir(source-module, file-path)
 }
 
-define get-base-readable-locator(s: &source): app(text) {
+define get-base-readable-locator(s: &source) -> app(string) {
   try rel-path = get-rel-path-from-source-dir(s);
   let Pair(rel-path-without-extension, _) on rel-path = split-extension(rel-path);
-  let result on rel-path-without-extension = core.text.replace(rel-path-without-extension, "/", *ns-sep);
+  let result on rel-path-without-extension = core.string.replace(rel-path-without-extension, "/", *ns-sep);
   let _ = rel-path;
   let _ = rel-path-without-extension;
   Right(result)

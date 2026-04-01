@@ -18,11 +18,11 @@ data low-type {
 | VarArgs
 }
 
-define _text-type(len: int): low-type {
+define _text-type(len: int) -> low-type {
   Array(len, Prim-Num(Int(Int-Size-8)))
 }
 
-define text-type(base-size: data-size, len: int): low-type {
+define text-type(base-size: data-size, len: int) -> low-type {
   Struct(List[
     Prim-Num(Int(int-size-from-data-size(base-size))),
     Prim-Num(Int(int-size-from-data-size(base-size))),
@@ -30,13 +30,13 @@ define text-type(base-size: data-size, len: int): low-type {
   ])
 }
 
-define low-type-sero: sero(low-type) {
-  Sero of {
+constant low-type-sero: sero(low-type) {
+  Sero {
     put := {
-      define loop(k, v) {
+      define loop(k, v) -> unit {
         case v {
         | Prim-Num(t) =>
-          let Sero of {put} = prim-type-sero;
+          let Sero {put} = prim-type-sero;
           put-int64(k, 0);
           put(k, t);
         | Pointer =>
@@ -46,11 +46,11 @@ define low-type-sero: sero(low-type) {
           put-int64(k, *size);
           loop(k, t);
         | Struct(ts) =>
-          let Sero of {put} = list-sero(low-type-sero);
+          let Sero {put} = list-sero(low-type-sero);
           put-int64(k, 3);
           put(k, ts);
         | Function(ts, t) =>
-          let Sero of {put} = list-sero(low-type-sero);
+          let Sero {put} = list-sero(low-type-sero);
           put-int64(k, 4);
           put(k, ts);
           loop(k, t);
@@ -62,11 +62,11 @@ define low-type-sero: sero(low-type) {
       }
     },
     get := {
-      define loop(k) {
+      define loop(k) -> ?+low-type {
         try tag = get-int64(k);
         match tag {
         | 0 =>
-          let Sero of {get} = prim-type-sero;
+          let Sero {get} = prim-type-sero;
           try t = get(k);
           Right(box {
             letbox t = t;
@@ -83,14 +83,14 @@ define low-type-sero: sero(low-type) {
             Array(size, t)
           })
         | 3 =>
-          let Sero of {get} = list-sero(low-type-sero);
+          let Sero {get} = list-sero(low-type-sero);
           try ts = get(k);
           Right(box {
             letbox ts = ts;
             Struct(ts)
           })
         | 4 =>
-          let Sero of {get} = list-sero(low-type-sero);
+          let Sero {get} = list-sero(low-type-sero);
           try ts = get(k);
           try t = loop(k);
           Right(box {

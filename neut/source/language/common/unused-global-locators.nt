@@ -3,16 +3,16 @@ import {
   this.logger.hint {hint},
 }
 
-inline unused-global-locators: type {
-  list(pair(text, list(pair(hint, text))))
+alias unused-global-locators {
+  list(pair(string, list(pair(hint, string))))
 }
 
-define _find(haystack: &list(pair(hint, text)), needle: &text): bool {
+define _find(haystack: &list(pair(hint, string)), needle: &string) -> bool {
   case haystack {
   | Nil =>
     False
   | Cons(Pair(_, x), rest) =>
-    if eq-text(x, needle) {
+    if eq-string(x, needle) {
       True
     } else {
       _find(rest, needle)
@@ -20,7 +20,7 @@ define _find(haystack: &list(pair(hint, text)), needle: &text): bool {
   }
 }
 
-define is-used-GL(unused: &unused-global-locators, cand: &text): bool {
+define is-used-GL(unused: &unused-global-locators, cand: &string) -> bool {
   case unused {
   | Nil =>
     True

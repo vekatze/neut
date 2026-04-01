@@ -11,7 +11,7 @@ data opacity {
 | Clear
 }
 
-define is-opaque(o: opacity): bool {
+define is-opaque(o: opacity) -> bool {
   match o {
   | Opaque =>
     True
@@ -20,10 +20,10 @@ define is-opaque(o: opacity): bool {
   }
 }
 
-define opacity-sero: sero(opacity) {
-  Sero of {
+constant opacity-sero: sero(opacity) {
+  Sero {
     put := {
-      function (k: &put-kit, v: &opacity) {
+      (k: &put-kit, v: &opacity) => {
         case v {
         | Opaque =>
           put-int64(k, 0)
@@ -33,7 +33,7 @@ define opacity-sero: sero(opacity) {
       }
     },
     get := {
-      function (k: &get-kit) {
+      (k: &get-kit) => {
         try v = get-int64(k);
         match v {
         | 0 =>

@@ -6,30 +6,30 @@ data unary-op {
 | FNeg
 }
 
-define show-unary-op(x: &unary-op): &text {
+define show-unary-op(x: &unary-op) -> &string {
   case x {
   | FNeg =>
     "fneg"
   }
 }
 
-define unary-op-from-text(name: &text): ?unary-op {
-  if eq-text(name, "fneg") {
+define unary-op-from-string(name: &string) -> ?unary-op {
+  if eq-string(name, "fneg") {
     Right(FNeg)
   } else {
     none
   }
 }
 
-inline unary-op-sero: sero(unary-op) {
-  Sero of {
+constant unary-op-sero: sero(unary-op) {
+  Sero {
     put := {
-      function (_, _) {
+      (_, _) => {
         Unit
       }
     },
     get := {
-      function (_) {
+      (_) => {
         Right(box {FNeg})
       }
     },

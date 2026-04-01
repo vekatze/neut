@@ -1,17 +1,17 @@
 import {
   core.dictionary {dictionary},
-  core.text-builder {append-text, make-text-builder},
+  core.string-builder {append-string, make-string-builder},
   path.io {is-regular-file},
   path.path,
   this.app.app {app},
-  this.app.run {raise-error, raise-error'},
+  this.app.run {raise-error, raise-error-prime},
   this.kernel.common.kit.global.antecedent {antecedent-kit, lookup-module},
   this.kernel.common.module {Module, get-source-dir, module},
   this.kernel.common.source {Source, get-rel-path-from-source-dir, source},
-  this.language.common.module-id {module-id, text-from-module-id},
+  this.language.common.module-id {module-id, string-from-module-id},
 }
 
-inline shift-map: type {
+alias shift-map {
   dictionary(module-id, module)
 }
 
@@ -21,21 +21,21 @@ data shift-kit {
   )
 }
 
-define make-shift-kit(k: &antecedent-kit): shift-kit {
+define make-shift-kit(k: &antecedent-kit) -> shift-kit {
   _Shift-Kit(k)
 }
 
-define _get-newer-source(s: source, m: module): app(source) {
+define _get-newer-source(s: source, m: module) -> app(source) {
   try rel-source-file-path on s = get-rel-path-from-source-dir(s);
   let source-dir on m = get-source-dir(m);
   let new-source-file-path on rel-source-file-path, source-dir = {
     path.path.append(source-dir, rel-source-file-path)
   };
   let _ = source-dir;
-  let Source of {source-hint := orig-source-hint} = s;
+  let Source {source-hint := orig-source-hint} = s;
   let b on new-source-file-path = is-regular-file(new-source-file-path);
   let new-source =
-    Source of {
+    Source {
       source-hint := orig-source-hint,
       source-module := m,
       file-path := new-source-file-path,
@@ -43,32 +43,32 @@ define _get-newer-source(s: source, m: module): app(source) {
   if b {
     Right(new-source)
   } else {
-    let buf = make-text-builder(64);
-    let Source of {source-hint, source-module} = new-source;
-    let Module of {id} = source-module;
+    let buf = make-string-builder(64);
+    let Source {source-hint, source-module} = new-source;
+    let Module {id} = source-module;
     let _ on buf, id = {
       pin rel-source-file-path = rel-source-file-path;
-      append-text(buf, "The file `");
-      append-text(buf, rel-source-file-path);
-      append-text(buf, "` is missing in the module `");
-      append-text(buf, text-from-module-id(id));
-      append-text(buf, "``");
+      append-string(buf, "The file `");
+      append-string(buf, rel-source-file-path);
+      append-string(buf, "` is missing in the module `");
+      append-string(buf, string-from-module-id(id));
+      append-string(buf, "``");
     };
     let _ = id;
-    let message = core.text-builder.extract(buf);
+    let message = core.string-builder.extract(buf);
     match source-hint {
     | Left(_) =>
-      raise-error'(message)
+      raise-error-prime(message)
     | Right(m) =>
       raise-error(m, message)
     }
   }
 }
 
-define shift-to-latest(k: &shift-kit, s: source): app(source) {
-  tie _Shift-Kit of {antecedent-kit} = k;
+define shift-to-latest(k: &shift-kit, s: source) -> app(source) {
+  tie _Shift-Kit {antecedent-kit} = k;
   let mv on s = {
-    tie Source of {source-module := Module of {id}} = s;
+    tie Source {source-module := Module {id}} = s;
     lookup-module(*antecedent-kit, id)
   };
   match mv {
@@ -79,10 +79,10 @@ define shift-to-latest(k: &shift-kit, s: source): app(source) {
   }
 }
 
-define shift-to-latest-module(k: &shift-kit, m: module): module {
-  tie _Shift-Kit of {antecedent-kit} = k;
+define shift-to-latest-module(k: &shift-kit, m: module) -> module {
+  tie _Shift-Kit {antecedent-kit} = k;
   let mv on m = {
-    tie Module of {id} = m;
+    tie Module {id} = m;
     lookup-module(*antecedent-kit, id)
   };
   match mv {

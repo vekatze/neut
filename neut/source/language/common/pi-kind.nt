@@ -12,11 +12,11 @@ data pi-kind {
 | Data-Intro(is-const-like)
 }
 
-inline pi-kind-sero: sero(pi-kind) {
-  let Sero of {put} = bool-sero;
-  Sero of {
+constant pi-kind-sero: sero(pi-kind) {
+  let Sero {put} = bool-sero;
+  Sero {
     put := {
-      function (k, v) {
+      (k, v) => {
         case v {
         | Normal(b) =>
           put-int64(k, 0);
@@ -28,8 +28,8 @@ inline pi-kind-sero: sero(pi-kind) {
       }
     },
     get := {
-      function (k) {
-        let Sero of {get} = bool-sero;
+      (k) => {
+        let Sero {get} = bool-sero;
         try tag = get-int64(k);
         try b = get(k);
         if eq-int(tag, 0) {
@@ -42,6 +42,6 @@ inline pi-kind-sero: sero(pi-kind) {
   }
 }
 
-define normal: pi-kind {
+constant normal: pi-kind {
   Normal(False)
 }

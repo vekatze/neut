@@ -11,11 +11,11 @@ data local-var-tree {
 | Node(loc, loc, ident, local-var-tree, local-var-tree)
 }
 
-inline empty-local-var-tree: local-var-tree {
+constant empty-local-var-tree: local-var-tree {
   Leaf
 }
 
-define insert(start: loc, end: loc, x: ident, t: local-var-tree): local-var-tree {
+define insert(start: loc, end: loc, x: ident, t: local-var-tree) -> local-var-tree {
   match t {
   | Leaf =>
     Node(start, end, x, Leaf, Leaf)
@@ -32,7 +32,7 @@ define insert(start: loc, end: loc, x: ident, t: local-var-tree): local-var-tree
   }
 }
 
-define collect(l: &loc, t: &local-var-tree): list(&ident) {
+define collect(l: &loc, t: &local-var-tree) -> list(&ident) {
   case t {
   | Leaf =>
     List[]
@@ -54,11 +54,11 @@ define collect(l: &loc, t: &local-var-tree): list(&ident) {
   }
 }
 
-inline local-var-tree-sero: sero(local-var-tree) {
-  let Sero of {put := !put-ident, get := !get-ident} = ident-sero;
-  Sero of {
+constant local-var-tree-sero: sero(local-var-tree) {
+  let Sero {put := !put-ident, get := !get-ident} = ident-sero;
+  Sero {
     put := {
-      define loop(k, v) {
+      define loop(k, v) -> unit {
         case v {
         | Leaf =>
           put-int64(k, 0);
@@ -68,14 +68,14 @@ inline local-var-tree-sero: sero(local-var-tree) {
           put-int64(k, *sc);
           put-int64(k, *el);
           put-int64(k, *ec);
-          !put-ident(k, x);
+          put-ident(k, x);
           loop(k, left);
           loop(k, right);
         }
       }
     },
     get := {
-      define loop(k) {
+      define loop(k) -> ?+local-var-tree {
         try tag = get-int64(k);
         match tag {
         | 0 =>
@@ -85,7 +85,7 @@ inline local-var-tree-sero: sero(local-var-tree) {
           try sc = get-int64(k);
           try el = get-int64(k);
           try ec = get-int64(k);
-          try x = !get-ident(k);
+          try x = get-ident(k);
           try left = loop(k);
           try right = loop(k);
           Right(box {
