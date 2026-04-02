@@ -15,6 +15,7 @@ import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.IO.Class
 import Data.Bifunctor
 import Data.Bitraversable (bimapM)
+import Data.IORef
 import Data.IntMap qualified as IntMap
 import Data.List (unzip5, zip5)
 import Data.Set qualified as S
@@ -113,18 +114,20 @@ synthesizeStmtList h t logs stmtList = do
   (stmtList', affineErrorList) <- bimap concat concat . unzip <$> mapM (elaborateStmt h) stmtList
   unless (null affineErrorList) $ do
     throwError $ E.MakeError affineErrorList
+  generatedStmtList <- liftIO $ reverse <$> readIORef (pendingSpecializationDefs h)
+  let stmtList'' = stmtList' ++ generatedStmtList
   -- mapM_ (liftIO . viewStmt . weakenStmt) stmtList'
   countSnapshot <- liftIO $ Gensym.getCount (gensymHandle h)
   localLogs <- liftIO $ LocalLogs.get (localLogsHandle h)
   let logs' = logs ++ localLogs
   Cache.saveCache (pathHandle h) t (currentSource h) $
     Cache.Cache
-      { Cache.stmtList = stmtList',
+      { Cache.stmtList = stmtList'',
         Cache.remarkList = logs',
         Cache.countSnapshot = countSnapshot
       }
   liftIO $ GlobalRemark.insert (globalRemarkHandle h) logs'
-  return stmtList'
+  return stmtList''
 
 elaborateStmt :: Handle -> WeakStmt -> App ([Stmt], [L.Log])
 elaborateStmt h stmt = do
@@ -621,7 +624,7 @@ inlineType :: Handle -> Hint -> TM.Type -> App TM.Type
 inlineType h m t = do
   dmap <- liftIO $ Definition.get' (defHandle h)
   typeDefMap <- liftIO $ TypeDef.get' (typeDefHandle h)
-  inlineHandle <- liftIO $ Inline.new (gensymHandle h) dmap typeDefMap m (inlineLimit h)
+  inlineHandle <- liftIO $ Inline.new (gensymHandle h) dmap typeDefMap m (inlineLimit h) (specializationTable h) (pendingSpecializationDefs h)
   Inline.inlineType inlineHandle t
 
 elaborateLet :: Handle -> (BinderF WT.WeakType, WT.WeakTerm) -> App (BinderF TM.Type, TM.Term)

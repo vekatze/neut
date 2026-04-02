@@ -1,10 +1,11 @@
 module Language.Term.Inline.Handle
   ( DefMap,
     TypeDefMap,
+    SpecializationTable,
     Handle (..),
     DefInfo (..),
     DefKind (..),
-    GuardEntry (..),
+    SpecializationEntry (..),
   )
 where
 
@@ -15,6 +16,7 @@ import Kernel.Elaborate.Internal.Handle.TypeDef qualified as TypeDef
 import Language.Common.Binder
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Term.Refresh qualified as Refresh
+import Language.Term.Stmt qualified as Stmt
 import Language.Term.Subst qualified as Subst
 import Language.Term.Term qualified as TM
 import Logger.Hint
@@ -42,11 +44,13 @@ type DefMap =
 type TypeDefMap =
   TypeDef.TypeDefMap
 
-data GuardEntry = GuardEntry
-  { guardFunction :: DD.DefiniteDescription,
-    guardTypeArgs :: [TM.Type],
-    guardSelf :: TM.Term
+data SpecializationEntry = SpecializationEntry
+  { specializationTypeArgs :: [TM.Type],
+    specializationName :: DD.DefiniteDescription
   }
+
+type SpecializationTable =
+  Map.HashMap DD.DefiniteDescription [SpecializationEntry]
 
 data Handle = Handle
   { substHandle :: Subst.Handle,
@@ -56,7 +60,8 @@ data Handle = Handle
     inlineLimit :: Int,
     currentStepRef :: IORef Int,
     location :: Hint,
-    guardStack :: IORef [GuardEntry],
+    specializationTable :: IORef SpecializationTable,
+    pendingSpecializationDefs :: IORef [Stmt.Stmt],
     macroCallStack :: IORef [(DD.DefiniteDescription, Hint)],
     gensymHandle :: GensymHandle.Handle
   }
