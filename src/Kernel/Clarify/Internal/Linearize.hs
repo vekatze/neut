@@ -1,13 +1,14 @@
+{-# LANGUAGE BangPatterns #-}
+
 module Kernel.Clarify.Internal.Linearize
   ( Handle (..),
     new,
     linearize,
-    linearizeDuplicatedVariables,
   )
 where
 
-import Control.Monad
-import Control.Monad.IO.Class
+import Data.IntMap.Strict qualified as IntMap
+import Data.IntSet qualified as IntSet
 import Gensym.Handle qualified as Gensym
 import Kernel.Clarify.Internal.Utility qualified as Utility
 import Language.Common.CreateSymbol qualified as Gensym
@@ -18,6 +19,10 @@ import Language.Comp.Comp qualified as C
 
 type Occurrence = Ident
 
+type ActiveSet = IntSet.IntSet
+
+type OccMap = IntMap.IntMap [Occurrence]
+
 data Handle = Handle
   { gensymHandle :: Gensym.Handle,
     utilityHandle :: Utility.Handle
@@ -27,203 +32,255 @@ new :: Gensym.Handle -> Utility.Handle -> Handle
 new gensymHandle utilityHandle = do
   Handle {..}
 
+appendOccMaps :: OccMap -> OccMap -> OccMap
+appendOccMaps =
+  IntMap.unionWith (++)
+
 linearize ::
   Handle ->
   [(Ident, C.Comp)] -> -- [(x1, t1), ..., (xn, tn)]  (closed chain)
   C.Comp -> -- a term that can contain non-linear occurrences of xi
   IO C.Comp -- a term in which all the variables in the closed chain occur linearly
-linearize h binder e =
-  case binder of
-    [] ->
-      return e
-    (x, t) : xts -> do
-      e' <- linearize h xts e
-      (newNameList, e'') <- distinguishComp h x e'
-      case newNameList of
-        [] -> do
-          hole <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "unit"
-          discardUnusedVar <- Utility.toAffineApp (utilityHandle h) (C.VarLocal x) t
-          return $ C.UpElim True hole discardUnusedVar e''
-        [z] ->
-          return $ C.UpElim True z (C.UpIntro (C.VarLocal x)) e''
-        z : zs -> do
-          localName <- liftIO $ Gensym.newIdentFromText (gensymHandle h) $ toText x <> "-local"
-          e''' <- insertHeader h localName z zs t e''
-          return $ C.UpElim False localName (C.UpIntro (C.VarLocal x)) e'''
+linearize h binder e = do
+  let activeAll = IntSet.fromList $ map (toInt . fst) binder
+  (occMap, e') <- distinguishComp h activeAll e
+  wrapBinders h activeAll (reverse binder) e' occMap
 
-linearizeDuplicatedVariables ::
-  Handle ->
-  [(Ident, C.Comp)] ->
-  C.Comp ->
-  IO C.Comp
-linearizeDuplicatedVariables h binder e =
-  case binder of
+wrapBinders :: Handle -> ActiveSet -> [(Ident, C.Comp)] -> C.Comp -> OccMap -> IO C.Comp
+wrapBinders h activeSet binderEntries body bodyOccMap =
+  case binderEntries of
     [] ->
-      return e
-    (x, t) : xts -> do
-      e' <- linearizeDuplicatedVariables h xts e
-      (newNameList, e'') <- distinguishComp h x e'
-      case newNameList of
+      return body
+    (binderName, binderType) : rest -> do
+      let activeSet' = IntSet.delete (toInt binderName) activeSet
+      case IntMap.findWithDefault [] (toInt binderName) bodyOccMap of
         [] -> do
-          return e''
-        [z] ->
-          return $ C.UpElim True z (C.UpIntro (C.VarLocal x)) e''
+          hole <- Gensym.newIdentFromText (gensymHandle h) "unit"
+          (headerOccMap, t') <- distinguishComp h activeSet' binderType
+          discardUnusedVar <- Utility.toAffineApp (utilityHandle h) (C.VarLocal binderName) t'
+          let occMap' = appendOccMaps headerOccMap (IntMap.delete (toInt binderName) bodyOccMap)
+          let term' = C.UpElim True hole discardUnusedVar body
+          wrapBinders h activeSet' rest term' occMap'
+        [z] -> do
+          let term' = C.UpElim True z (C.UpIntro (C.VarLocal binderName)) body
+          wrapBinders h activeSet' rest term' (IntMap.delete (toInt binderName) bodyOccMap)
         z : zs -> do
-          localName <- liftIO $ Gensym.newIdentFromText (gensymHandle h) $ toText x <> "-local"
-          e''' <- insertHeader h localName z zs t e''
-          return $ C.UpElim False localName (C.UpIntro (C.VarLocal x)) e'''
+          localName <- Gensym.newIdentFromText (gensymHandle h) $ toText binderName <> "-local"
+          (headerOccMap, headerTerm) <- insertHeader h activeSet' localName z zs binderType body
+          let occMap' = appendOccMaps headerOccMap (IntMap.delete (toInt binderName) bodyOccMap)
+          let term' = C.UpElim False localName (C.UpIntro (C.VarLocal binderName)) headerTerm
+          wrapBinders h activeSet' rest term' occMap'
 
 insertHeader ::
   Handle ->
+  ActiveSet ->
   Ident ->
   Occurrence ->
   [Occurrence] ->
   C.Comp ->
   C.Comp ->
-  IO C.Comp
-insertHeader h localName z1 zs t e = do
+  IO (OccMap, C.Comp)
+insertHeader h activeSet localName z1 zs t e =
   case zs of
     [] ->
-      return $ C.UpElim True z1 (C.UpIntro (C.VarLocal localName)) e
+      return (IntMap.empty, C.UpElim True z1 (C.UpIntro (C.VarLocal localName)) e)
     z2 : rest -> do
-      e' <- insertHeader h localName z2 rest t e
-      copyRelevantVar <- Utility.toRelevantApp (utilityHandle h) (C.VarLocal localName) t
-      return $ C.UpElim True z1 copyRelevantVar e'
+      (restOccMap, e') <- insertHeader h activeSet localName z2 rest t e
+      (copyOccMap, t') <- distinguishComp h activeSet t
+      copyRelevantVar <- Utility.toRelevantApp (utilityHandle h) (C.VarLocal localName) t'
+      return (appendOccMaps copyOccMap restOccMap, C.UpElim True z1 copyRelevantVar e')
 
-distinguishVar :: Handle -> Ident -> Ident -> IO ([Occurrence], Ident)
-distinguishVar h z x =
-  if x /= z
-    then return ([], x)
-    else do
+distinguishComp :: Handle -> ActiveSet -> C.Comp -> IO (OccMap, C.Comp)
+distinguishComp h activeSet term
+  | IntSet.null activeSet =
+      return (IntMap.empty, term)
+  | otherwise = do
+      (occMapRev, term') <- distinguishCompAcc h activeSet term IntMap.empty
+      return (fmap reverse occMapRev, term')
+
+distinguishVarAcc :: Handle -> ActiveSet -> Ident -> OccMap -> IO (OccMap, Ident)
+distinguishVarAcc h activeSet x !occMap =
+  if IntSet.member (toInt x) activeSet
+    then do
       x' <- Gensym.newIdentFromIdent (gensymHandle h) x
-      return ([x'], x')
+      let occMap' = IntMap.insertWith (++) (toInt x) [x'] occMap
+      return (occMap', x')
+    else
+      return (occMap, x)
 
-distinguishValue :: Handle -> Ident -> C.Value -> IO ([Occurrence], C.Value)
-distinguishValue h z term =
+distinguishValueAcc :: Handle -> ActiveSet -> C.Value -> OccMap -> IO (OccMap, C.Value)
+distinguishValueAcc h activeSet term !occMap =
   case term of
     C.VarLocal x -> do
-      (vs, x') <- distinguishVar h z x
-      return (vs, C.VarLocal x')
+      (occMap', x') <- distinguishVarAcc h activeSet x occMap
+      return (occMap', C.VarLocal x')
     C.SigmaIntro size ds -> do
-      (vss, ds') <- mapAndUnzipM (distinguishValue h z) ds
-      return (concat vss, C.SigmaIntro size ds')
+      (occMap', ds') <- distinguishValuesAcc h activeSet ds occMap
+      return (occMap', C.SigmaIntro size ds')
     _ ->
-      return ([], term)
+      return (occMap, term)
 
-distinguishComp :: Handle -> Ident -> C.Comp -> IO ([Occurrence], C.Comp)
-distinguishComp h z term =
+distinguishValuesAcc :: Handle -> ActiveSet -> [C.Value] -> OccMap -> IO (OccMap, [C.Value])
+distinguishValuesAcc h activeSet ds !occMap =
+  case ds of
+    [] ->
+      return (occMap, [])
+    d : rest -> do
+      (occMap1, d') <- distinguishValueAcc h activeSet d occMap
+      (occMap2, rest') <- distinguishValuesAcc h activeSet rest occMap1
+      return (occMap2, d' : rest')
+
+distinguishCompAcc :: Handle -> ActiveSet -> C.Comp -> OccMap -> IO (OccMap, C.Comp)
+distinguishCompAcc h activeSet term !occMap =
   case term of
     C.Primitive theta -> do
-      (vs, theta') <- distinguishPrimitive h z theta
-      return (vs, C.Primitive theta')
+      (occMap', theta') <- distinguishPrimitiveAcc h activeSet theta occMap
+      return (occMap', C.Primitive theta')
     C.PiElimDownElim forceInline d ds -> do
-      (vs, d') <- distinguishValue h z d
-      (vss, ds') <- mapAndUnzipM (distinguishValue h z) ds
-      return (concat $ vs : vss, C.PiElimDownElim forceInline d' ds')
+      (occMap1, d') <- distinguishValueAcc h activeSet d occMap
+      (occMap2, ds') <- distinguishValuesAcc h activeSet ds occMap1
+      return (occMap2, C.PiElimDownElim forceInline d' ds')
     C.SigmaElim shouldDeallocate xs d e -> do
-      (vs1, d') <- distinguishValue h z d
-      if z `elem` xs
-        then return (vs1, C.SigmaElim shouldDeallocate xs d' e)
+      (occMap1, d') <- distinguishValueAcc h activeSet d occMap
+      let activeSet' = removeBoundIdents activeSet xs
+      if IntSet.null activeSet'
+        then return (occMap1, C.SigmaElim shouldDeallocate xs d' e)
         else do
-          (vs2, e') <- distinguishComp h z e
-          return (vs1 ++ vs2, C.SigmaElim shouldDeallocate xs d' e')
+          (occMap2, e') <- distinguishCompAcc h activeSet' e occMap1
+          return (occMap2, C.SigmaElim shouldDeallocate xs d' e')
     C.UpIntro d -> do
-      (vs, d') <- distinguishValue h z d
-      return (vs, C.UpIntro d')
+      (occMap', d') <- distinguishValueAcc h activeSet d occMap
+      return (occMap', C.UpIntro d')
     C.UpIntroVoid ->
-      return ([], C.UpIntroVoid)
+      return (occMap, C.UpIntroVoid)
     C.UpElim isReducible x e1 e2 -> do
-      (vs1, e1') <- distinguishComp h z e1
-      if z == x
-        then return (vs1, C.UpElim isReducible x e1' e2)
+      (occMap1, e1') <- distinguishCompAcc h activeSet e1 occMap
+      let activeSet' = IntSet.delete (toInt x) activeSet
+      if IntSet.null activeSet'
+        then return (occMap1, C.UpElim isReducible x e1' e2)
         else do
-          (vs2, e2') <- distinguishComp h z e2
-          return (vs1 ++ vs2, C.UpElim isReducible x e1' e2')
+          (occMap2, e2') <- distinguishCompAcc h activeSet' e2 occMap1
+          return (occMap2, C.UpElim isReducible x e1' e2')
     C.UpElimCallVoid f ds e2 -> do
-      (vs1, f') <- distinguishValue h z f
-      (vss, ds') <- mapAndUnzipM (distinguishValue h z) ds
-      (vs2, e2') <- distinguishComp h z e2
-      return (vs1 ++ concat vss ++ vs2, C.UpElimCallVoid f' ds' e2')
+      (occMap1, f') <- distinguishValueAcc h activeSet f occMap
+      (occMap2, ds') <- distinguishValuesAcc h activeSet ds occMap1
+      (occMap3, e2') <- distinguishCompAcc h activeSet e2 occMap2
+      return (occMap3, C.UpElimCallVoid f' ds' e2')
     C.EnumElim fvInfo d defaultBranch branchList -> do
-      let (is, ds) = unzip fvInfo
-      (vss, ds') <- mapAndUnzipM (distinguishValue h z) ds
-      let fvInfo' = zip is ds'
-      (vs1, d') <- distinguishValue h z d
-      if toInt z `elem` is
-        then return (concat vss ++ vs1, C.EnumElim fvInfo' d' defaultBranch branchList)
+      (occMap1, fvInfo') <- distinguishFVInfoAcc h activeSet fvInfo occMap
+      (occMap2, d') <- distinguishValueAcc h activeSet d occMap1
+      let activeSet' = removeBoundInts activeSet $ map fst fvInfo
+      if IntSet.null activeSet'
+        then return (occMap2, C.EnumElim fvInfo' d' defaultBranch branchList)
         else do
-          (vs2, defaultBranch') <- distinguishComp h z defaultBranch
-          let (tags, branches) = unzip branchList
-          (vss2, branches') <- mapAndUnzipM (distinguishComp h z) branches
-          return (concat vss ++ vs1 ++ vs2 ++ concat vss2, C.EnumElim fvInfo' d' defaultBranch' (zip tags branches'))
+          (occMap3, defaultBranch') <- distinguishCompAcc h activeSet' defaultBranch occMap2
+          (occMap4, branchList') <- distinguishBranchListAcc h activeSet' branchList occMap3
+          return (occMap4, C.EnumElim fvInfo' d' defaultBranch' branchList')
     C.DestCall sizeComp f ds -> do
-      (vs1, sizeComp') <- distinguishComp h z sizeComp
-      (vs2, f') <- distinguishValue h z f
-      (vss, ds') <- mapAndUnzipM (distinguishValue h z) ds
-      return (vs1 ++ vs2 ++ concat vss, C.DestCall sizeComp' f' ds')
+      (occMap1, sizeComp') <- distinguishCompAcc h activeSet sizeComp occMap
+      (occMap2, f') <- distinguishValueAcc h activeSet f occMap1
+      (occMap3, ds') <- distinguishValuesAcc h activeSet ds occMap2
+      return (occMap3, C.DestCall sizeComp' f' ds')
     C.WriteToDest dest sizeComp result cont -> do
-      (vs1, dest') <- distinguishValue h z dest
-      (vs2, sizeComp') <- distinguishComp h z sizeComp
-      (vs3, result') <- distinguishComp h z result
-      (vs4, cont') <- distinguishComp h z cont
-      return (vs1 ++ vs2 ++ vs3 ++ vs4, C.WriteToDest dest' sizeComp' result' cont')
+      (occMap1, dest') <- distinguishValueAcc h activeSet dest occMap
+      (occMap2, sizeComp') <- distinguishCompAcc h activeSet sizeComp occMap1
+      (occMap3, result') <- distinguishCompAcc h activeSet result occMap2
+      (occMap4, cont') <- distinguishCompAcc h activeSet cont occMap3
+      return (occMap4, C.WriteToDest dest' sizeComp' result' cont')
     C.Free x size cont -> do
-      (vs1, x') <- distinguishValue h z x
-      (vs2, cont') <- distinguishComp h z cont
-      return (vs1 ++ vs2, C.Free x' size cont')
+      (occMap1, x') <- distinguishValueAcc h activeSet x occMap
+      (occMap2, cont') <- distinguishCompAcc h activeSet cont occMap1
+      return (occMap2, C.Free x' size cont')
     C.Unreachable ->
-      return ([], term)
+      return (occMap, term)
 
-distinguishPrimitive :: Handle -> Ident -> C.Primitive -> IO ([Occurrence], C.Primitive)
-distinguishPrimitive h z term =
+distinguishFVInfoAcc :: Handle -> ActiveSet -> [(Int, C.Value)] -> OccMap -> IO (OccMap, [(Int, C.Value)])
+distinguishFVInfoAcc h activeSet fvInfo !occMap =
+  case fvInfo of
+    [] ->
+      return (occMap, [])
+    (i, d) : rest -> do
+      (occMap1, d') <- distinguishValueAcc h activeSet d occMap
+      (occMap2, rest') <- distinguishFVInfoAcc h activeSet rest occMap1
+      return (occMap2, (i, d') : rest')
+
+distinguishBranchListAcc :: Handle -> ActiveSet -> [(tag, C.Comp)] -> OccMap -> IO (OccMap, [(tag, C.Comp)])
+distinguishBranchListAcc h activeSet branchList !occMap =
+  case branchList of
+    [] ->
+      return (occMap, [])
+    (tag, branch) : rest -> do
+      (occMap1, branch') <- distinguishCompAcc h activeSet branch occMap
+      (occMap2, rest') <- distinguishBranchListAcc h activeSet rest occMap1
+      return (occMap2, (tag, branch') : rest')
+
+distinguishPrimitiveAcc :: Handle -> ActiveSet -> C.Primitive -> OccMap -> IO (OccMap, C.Primitive)
+distinguishPrimitiveAcc h activeSet term !occMap =
   case term of
     C.PrimOp op ds -> do
-      (vss, ds') <- mapAndUnzipM (distinguishValue h z) ds
-      return (concat vss, C.PrimOp op ds')
+      (occMap', ds') <- distinguishValuesAcc h activeSet ds occMap
+      return (occMap', C.PrimOp op ds')
     C.ShiftPointer v size index -> do
-      (vs, v') <- distinguishValue h z v
-      return (vs, C.ShiftPointer v' size index)
+      (occMap', v') <- distinguishValueAcc h activeSet v occMap
+      return (occMap', C.ShiftPointer v' size index)
     C.Calloc num size -> do
-      (vs1, num') <- distinguishValue h z num
-      (vs2, size') <- distinguishValue h z size
-      return (vs1 <> vs2, C.Calloc num' size')
+      (occMap1, num') <- distinguishValueAcc h activeSet num occMap
+      (occMap2, size') <- distinguishValueAcc h activeSet size occMap1
+      return (occMap2, C.Calloc num' size')
     C.Alloc size -> do
-      (vs, size') <- distinguishValue h z size
-      return (vs, C.Alloc size')
+      (occMap', size') <- distinguishValueAcc h activeSet size occMap
+      return (occMap', C.Alloc size')
     C.Realloc ptr size -> do
-      (vs1, ptr') <- distinguishValue h z ptr
-      (vs2, size') <- distinguishValue h z size
-      return (vs1 <> vs2, C.Realloc ptr' size')
+      (occMap1, ptr') <- distinguishValueAcc h activeSet ptr occMap
+      (occMap2, size') <- distinguishValueAcc h activeSet size occMap1
+      return (occMap2, C.Realloc ptr' size')
     C.Memcpy dest src size -> do
-      (vs1, dest') <- distinguishValue h z dest
-      (vs2, src') <- distinguishValue h z src
-      (vs3, size') <- distinguishValue h z size
-      return (vs1 <> vs2 <> vs3, C.Memcpy dest' src' size')
-    C.Magic magic -> do
+      (occMap1, dest') <- distinguishValueAcc h activeSet dest occMap
+      (occMap2, src') <- distinguishValueAcc h activeSet src occMap1
+      (occMap3, size') <- distinguishValueAcc h activeSet size occMap2
+      return (occMap3, C.Memcpy dest' src' size')
+    C.Magic magic ->
       case magic of
         LM.Cast from to value -> do
-          (vs, value') <- distinguishValue h z value
-          return (vs, C.Magic (LM.Cast from to value'))
+          (occMap', value') <- distinguishValueAcc h activeSet value occMap
+          return (occMap', C.Magic (LM.Cast from to value'))
         LM.Store lt unit value pointer -> do
-          (vs1, value') <- distinguishValue h z value
-          (vs2, pointer') <- distinguishValue h z pointer
-          return (vs1 <> vs2, C.Magic (LM.Store lt unit value' pointer'))
+          (occMap1, value') <- distinguishValueAcc h activeSet value occMap
+          (occMap2, pointer') <- distinguishValueAcc h activeSet pointer occMap1
+          return (occMap2, C.Magic (LM.Store lt unit value' pointer'))
         LM.Load lt pointer -> do
-          (vs, pointer') <- distinguishValue h z pointer
-          return (vs, C.Magic (LM.Load lt pointer'))
-        LM.Alloca lt num -> do
-          return ([], C.Magic (LM.Alloca lt num))
+          (occMap', pointer') <- distinguishValueAcc h activeSet pointer occMap
+          return (occMap', C.Magic (LM.Load lt pointer'))
+        LM.Alloca lt num ->
+          return (occMap, C.Magic (LM.Alloca lt num))
         LM.External domList cod extFunName args varArgAndTypeList -> do
-          (vss, args') <- mapAndUnzipM (distinguishValue h z) args
-          let (varArgs, varTypes) = unzip varArgAndTypeList
-          (vss2, varArgs') <- mapAndUnzipM (distinguishValue h z) varArgs
-          return (concat vss ++ concat vss2, C.Magic (LM.External domList cod extFunName args' (zip varArgs' varTypes)))
-        LM.Global name lt -> do
-          return ([], C.Magic (LM.Global name lt))
+          (occMap1, args') <- distinguishValuesAcc h activeSet args occMap
+          (occMap2, varArgAndTypeList') <- distinguishVarArgListAcc h activeSet varArgAndTypeList occMap1
+          return (occMap2, C.Magic (LM.External domList cod extFunName args' varArgAndTypeList'))
+        LM.Global name lt ->
+          return (occMap, C.Magic (LM.Global name lt))
         LM.OpaqueValue e -> do
-          (vs, e') <- distinguishValue h z e
-          return (vs, C.Magic (LM.OpaqueValue e'))
+          (occMap', e') <- distinguishValueAcc h activeSet e occMap
+          return (occMap', C.Magic (LM.OpaqueValue e'))
         LM.CallType func arg1 arg2 -> do
-          (vs1, arg1') <- distinguishValue h z arg1
-          (vs2, arg2') <- distinguishValue h z arg2
-          return (vs1 <> vs2, C.Magic (LM.CallType func arg1' arg2'))
+          (occMap1, arg1') <- distinguishValueAcc h activeSet arg1 occMap
+          (occMap2, arg2') <- distinguishValueAcc h activeSet arg2 occMap1
+          return (occMap2, C.Magic (LM.CallType func arg1' arg2'))
+
+distinguishVarArgListAcc :: Handle -> ActiveSet -> [(C.Value, t)] -> OccMap -> IO (OccMap, [(C.Value, t)])
+distinguishVarArgListAcc h activeSet varArgAndTypeList !occMap =
+  case varArgAndTypeList of
+    [] ->
+      return (occMap, [])
+    (varArg, varType) : rest -> do
+      (occMap1, varArg') <- distinguishValueAcc h activeSet varArg occMap
+      (occMap2, rest') <- distinguishVarArgListAcc h activeSet rest occMap1
+      return (occMap2, (varArg', varType) : rest')
+
+removeBoundIdents :: ActiveSet -> [Ident] -> ActiveSet
+removeBoundIdents =
+  foldl (flip $ IntSet.delete . toInt)
+
+removeBoundInts :: ActiveSet -> [Int] -> ActiveSet
+removeBoundInts =
+  foldl (flip IntSet.delete)
