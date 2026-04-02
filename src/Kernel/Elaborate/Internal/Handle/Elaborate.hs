@@ -70,7 +70,7 @@ data Handle = Handle
     inlineLimit :: Int,
     currentStep :: Int,
     varEnv :: BoundVarEnv,
-    specializationEntries :: IORef [InlineHandle.GuardEntry],
+    specializationTable :: IORef InlineHandle.SpecializationTable,
     pendingSpecializationDefs :: IORef [Stmt.Stmt]
   }
 
@@ -86,7 +86,7 @@ new globalHandle@(Global.Handle {..}) (Local.Handle {..}) currentSource = do
   weakTypeHandle <- WeakType.new
   let varEnv = []
   let currentStep = 0
-  specializationEntries <- newIORef []
+  specializationTable <- newIORef mempty
   pendingSpecializationDefs <- newIORef []
   return $ Handle {..}
 
@@ -106,13 +106,13 @@ inline :: Handle -> Hint -> TM.Term -> App TM.Term
 inline h m e = do
   dmap <- liftIO $ Definition.get' (defHandle h)
   typeDefMap <- liftIO $ TypeDef.get' (typeDefHandle h)
-  inlineHandle <- liftIO $ Inline.new (gensymHandle h) dmap typeDefMap m (inlineLimit h) (specializationEntries h) (pendingSpecializationDefs h)
+  inlineHandle <- liftIO $ Inline.new (gensymHandle h) dmap typeDefMap m (inlineLimit h) (specializationTable h) (pendingSpecializationDefs h)
   Inline.inline inlineHandle e
 
 inlineBinder :: Handle -> BinderF TM.Type -> App (BinderF TM.Type)
 inlineBinder h (m, k, x, t) = do
   dmap <- liftIO $ Definition.get' (defHandle h)
   typeDefMap <- liftIO $ TypeDef.get' (typeDefHandle h)
-  inlineHandle <- liftIO $ Inline.new (gensymHandle h) dmap typeDefMap m (inlineLimit h) (specializationEntries h) (pendingSpecializationDefs h)
+  inlineHandle <- liftIO $ Inline.new (gensymHandle h) dmap typeDefMap m (inlineLimit h) (specializationTable h) (pendingSpecializationDefs h)
   t' <- Inline.inlineType inlineHandle t
   return (m, k, x, t')

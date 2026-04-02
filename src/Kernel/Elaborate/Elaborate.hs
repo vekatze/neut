@@ -624,7 +624,7 @@ inlineType :: Handle -> Hint -> TM.Type -> App TM.Type
 inlineType h m t = do
   dmap <- liftIO $ Definition.get' (defHandle h)
   typeDefMap <- liftIO $ TypeDef.get' (typeDefHandle h)
-  inlineHandle <- liftIO $ Inline.new (gensymHandle h) dmap typeDefMap m (inlineLimit h) (specializationEntries h) (pendingSpecializationDefs h)
+  inlineHandle <- liftIO $ Inline.new (gensymHandle h) dmap typeDefMap m (inlineLimit h) (specializationTable h) (pendingSpecializationDefs h)
   Inline.inlineType inlineHandle t
 
 elaborateLet :: Handle -> (BinderF WT.WeakType, WT.WeakTerm) -> App (BinderF TM.Type, TM.Term)

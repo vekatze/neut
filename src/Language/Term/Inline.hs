@@ -17,7 +17,6 @@ import Data.Bitraversable (bimapM)
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.IntMap qualified as IntMap
-import Data.List (find)
 import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
 import Gensym.Gensym qualified as Gensym
@@ -52,8 +51,8 @@ import Language.Term.Subst qualified as Subst
 import Language.Term.Term qualified as TM
 import Logger.Hint
 
-new :: GensymHandle.Handle -> DefMap -> TypeDefMap -> Hint -> Int -> IORef [GuardEntry] -> IORef [Stmt.Stmt] -> IO Handle
-new gensymHandle dmap typeDefMap location inlineLimit guardStack pendingSpecializationDefs = do
+new :: GensymHandle.Handle -> DefMap -> TypeDefMap -> Hint -> Int -> IORef SpecializationTable -> IORef [Stmt.Stmt] -> IO Handle
+new gensymHandle dmap typeDefMap location inlineLimit specializationTable pendingSpecializationDefs = do
   let substHandle = Subst.new gensymHandle
   let refreshHandle = Refresh.new gensymHandle
   currentStepRef <- liftIO $ newIORef 0
@@ -183,7 +182,7 @@ inline' h term = do
                                           []
                                           codType'
                                           body''
-                                  completeSpecialization h dd impArgs' specializedName stmt
+                                  completeSpecialization h stmt
                                   return $ applySpecialization m specializedName expArgsAll
                             _ -> do
                               if all TM.isValue expArgsAll
@@ -596,35 +595,34 @@ bind binder cont =
 
 beginSpecialization :: Handle -> DD.DefiniteDescription -> [TM.Type] -> DD.DefiniteDescription -> App ()
 beginSpecialization h dd typeArgs specializedName = do
-  let entry = GuardEntry dd typeArgs specializedName
-  let Handle {guardStack} = h
-  liftIO $ modifyIORef' guardStack (entry :)
+  let entry = SpecializationEntry typeArgs specializedName
+  let Handle {specializationTable} = h
+  liftIO $ modifyIORef' specializationTable $ Map.insertWith (<>) dd [entry]
 
-completeSpecialization :: Handle -> DD.DefiniteDescription -> [TM.Type] -> DD.DefiniteDescription -> Stmt.Stmt -> App ()
-completeSpecialization h dd typeArgs specializedName stmt = do
-  let Handle {guardStack, pendingSpecializationDefs} = h
-  liftIO $ modifyIORef' guardStack (completeGuardEntry dd typeArgs specializedName)
+completeSpecialization :: Handle -> Stmt.Stmt -> App ()
+completeSpecialization h stmt = do
+  let Handle {pendingSpecializationDefs} = h
   liftIO $ modifyIORef' pendingSpecializationDefs (stmt :)
 
 lookupSpecialization :: Handle -> DD.DefiniteDescription -> [TM.Type] -> App (Maybe DD.DefiniteDescription)
 lookupSpecialization h dd typeArgs = do
-  let Handle {guardStack} = h
-  stack <- liftIO $ readIORef guardStack
-  return $ guardName <$> find (matchesGuardEntry dd typeArgs) stack
+  let Handle {specializationTable} = h
+  table <- liftIO $ readIORef specializationTable
+  return $ specializationName <$> lookupSpecializationEntry typeArgs (Map.lookup dd table)
 
-matchesGuardEntry :: DD.DefiniteDescription -> [TM.Type] -> GuardEntry -> Bool
-matchesGuardEntry dd' args entry =
-  guardFunction entry == dd' && TermEq.eqTypes (guardTypeArgs entry) args
-
-completeGuardEntry :: DD.DefiniteDescription -> [TM.Type] -> DD.DefiniteDescription -> [GuardEntry] -> [GuardEntry]
-completeGuardEntry dd typeArgs specializedName =
-  map update
+lookupSpecializationEntry :: [TM.Type] -> Maybe [SpecializationEntry] -> Maybe SpecializationEntry
+lookupSpecializationEntry typeArgs =
+  go . fromMaybe []
   where
-    update entry
-      | matchesGuardEntry dd typeArgs entry && guardName entry == specializedName =
-          entry
-      | otherwise =
-          entry
+    go entries =
+      case entries of
+        [] ->
+          Nothing
+        entry : rest
+          | TermEq.eqTypes (specializationTypeArgs entry) typeArgs ->
+              Just entry
+          | otherwise ->
+              go rest
 
 createSpecializationName :: Handle -> DD.DefiniteDescription -> App DD.DefiniteDescription
 createSpecializationName h dd = do

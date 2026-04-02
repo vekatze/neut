@@ -1,10 +1,11 @@
 module Language.Term.Inline.Handle
   ( DefMap,
     TypeDefMap,
+    SpecializationTable,
     Handle (..),
     DefInfo (..),
     DefKind (..),
-    GuardEntry (..),
+    SpecializationEntry (..),
   )
 where
 
@@ -43,11 +44,13 @@ type DefMap =
 type TypeDefMap =
   TypeDef.TypeDefMap
 
-data GuardEntry = GuardEntry
-  { guardFunction :: DD.DefiniteDescription,
-    guardTypeArgs :: [TM.Type],
-    guardName :: DD.DefiniteDescription
+data SpecializationEntry = SpecializationEntry
+  { specializationTypeArgs :: [TM.Type],
+    specializationName :: DD.DefiniteDescription
   }
+
+type SpecializationTable =
+  Map.HashMap DD.DefiniteDescription [SpecializationEntry]
 
 data Handle = Handle
   { substHandle :: Subst.Handle,
@@ -57,7 +60,7 @@ data Handle = Handle
     inlineLimit :: Int,
     currentStepRef :: IORef Int,
     location :: Hint,
-    guardStack :: IORef [GuardEntry],
+    specializationTable :: IORef SpecializationTable,
     pendingSpecializationDefs :: IORef [Stmt.Stmt],
     macroCallStack :: IORef [(DD.DefiniteDescription, Hint)],
     gensymHandle :: GensymHandle.Handle
