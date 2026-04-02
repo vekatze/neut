@@ -12,7 +12,7 @@ import {
     container,
     empty-series,
     get-container-pair,
-    get-separator-text,
+    get-separator-string,
     prefix,
     separator,
     series,
@@ -23,26 +23,28 @@ import {
   zonk.point {point},
 }
 
-inline _parse-series-sep-trail<a, r := rho>(
+inline _parse-series-sep-trail<a>(
   k: &parser-kit,
   after-sep: bool,
   con: ?container,
   sep: separator,
   leading-comment: comment,
   !p: parser(pair(a, comment)),
-): parsed(series(a)) {
+) -> parsed(series(a)) {
+  let r = Right(Unit); // fixme
   let f =
-    define self<r := rho>(
+    define self(
       k: &parser-kit,
       after-sep: bool,
       con: ?container,
       sep: separator,
       leading-comment: comment,
-    ): parsed(series(a)) {
+    ) -> parsed(series(a)) {
+      let r = Right(Unit); // fixme
       try _ = r;
-      match !p(k) {
+      match p(k) {
       | Right(Pair(v, c)) =>
-        match delimiter(k, get-separator-text(sep)) {
+        match delimiter(k, get-separator-string(sep)) {
         | Right(c-sep) =>
           try rest = self(k, True, con, sep, core.list.append(c, c-sep));
           Right(this.syntax-tree.series.cons(Pair(leading-comment, v), rest))
@@ -50,8 +52,8 @@ inline _parse-series-sep-trail<a, r := rho>(
           Right(singleton(con, sep, leading-comment, v, c, False))
         }
       | Left(_) =>
-        let Series of {elems, prefix, container, separator} = empty-series(con, sep);
-        Right(Series of {
+        let Series {elems, prefix, container, separator} = empty-series(con, sep);
+        Right(Series {
           elems,
           trailing-comment := leading-comment,
           prefix,
@@ -65,26 +67,28 @@ inline _parse-series-sep-trail<a, r := rho>(
   f(k, after-sep, con, sep, leading-comment)
 }
 
-inline _parse-series-sep-by<a, r := rho>(
+inline _parse-series-sep-by<a>(
   k: &parser-kit,
   has-optional-separator: bool,
   con: ?container,
   sep: separator,
   leading-comment: comment,
   !p: parser(pair(a, comment)),
-): parsed(series(a)) {
+) -> parsed(series(a)) {
+  let r = Right(Unit); // fixme
   let f =
-    define self<r := rho>(
+    define self(
       k: &parser-kit,
       has-optional-separator: bool,
       con: ?container,
       sep: separator,
       leading-comment: comment,
-    ): parsed(series(a)) {
+    ) -> parsed(series(a)) {
+      let r = Right(Unit); // fixme
       try _ = r;
-      match !p(k) {
+      match p(k) {
       | Right(Pair(v, c)) =>
-        match delimiter(k, get-separator-text(sep)) {
+        match delimiter(k, get-separator-string(sep)) {
         | Right(c-sep) =>
           try rest = self(k, has-optional-separator, con, sep, core.list.append(c, c-sep));
           Right(this.syntax-tree.series.cons(Pair(leading-comment, v), rest))
@@ -92,8 +96,8 @@ inline _parse-series-sep-by<a, r := rho>(
           Right(singleton(con, sep, leading-comment, v, c, has-optional-separator))
         }
       | Left(_) =>
-        let Series of {elems, prefix, container, separator} = empty-series(con, sep);
-        Right(Series of {
+        let Series {elems, prefix, container, separator} = empty-series(con, sep);
+        Right(Series {
           elems,
           trailing-comment := leading-comment,
           prefix,
@@ -107,15 +111,16 @@ inline _parse-series-sep-by<a, r := rho>(
   f(k, has-optional-separator, con, sep, leading-comment)
 }
 
-inline _parse-series-sep-lead<a, r := rho>(
+inline _parse-series-sep-lead<a>(
   k: &parser-kit,
   con: ?container,
   sep: separator,
   leading-comment: comment,
   p: parser(pair(a, comment)),
-): parsed(series(a)) {
+) -> parsed(series(a)) {
+  let r = Right(Unit); // fixme
   try _ = r;
-  match delimiter(k, get-separator-text(sep)) {
+  match delimiter(k, get-separator-string(sep)) {
   | Right(c-sep) =>
     _parse-series-sep-by(k, True, con, sep, core.list.append(leading-comment, c-sep), p)
   | Left(_) =>
@@ -123,33 +128,36 @@ inline _parse-series-sep-lead<a, r := rho>(
   }
 }
 
-inline _parse-series-and<a, r := rho>(
+inline _parse-series-and<a>(
   k: &parser-kit,
   con: ?container,
   leading-comment: comment,
   p: parser(pair(a, comment)),
-): parsed(series(a)) {
+) -> parsed(series(a)) {
+  let r = Right(Unit); // fixme
   try _ = r;
   _parse-series-sep-trail(k, False, con, Comma, leading-comment, p)
 }
 
-inline _parse-series-or<a, r := rho>(
+inline _parse-series-or<a>(
   k: &parser-kit,
   con: ?container,
   leading-comment: comment,
   p: parser(pair(a, comment)),
-): parsed(series(a)) {
+) -> parsed(series(a)) {
+  let r = Right(Unit); // fixme
   try _ = r;
   _parse-series-sep-lead(k, con, Bar, leading-comment, p)
 }
 
-inline _parse-series<a, r := rho>(
+inline _parse-series<a>(
   k: &parser-kit,
   con: ?container,
   sep: separator,
   leading-comment: comment,
   p: parser(pair(a, comment)),
-): parsed(series(a)) {
+) -> parsed(series(a)) {
+  let r = Right(Unit); // fixme
   try _ = r;
   match sep {
   | Comma =>
@@ -159,21 +167,22 @@ inline _parse-series<a, r := rho>(
   }
 }
 
-inline parse-series<a, r := rho>(
+inline parse-series<a>(
   k: &parser-kit,
   prefix: prefix,
   con: container,
   sep: separator,
   p: parser(pair(a, comment)),
-): parsed(pair(series(a), comment)) {
+) -> parsed(pair(series(a), comment)) {
+  let r = Right(Unit); // fixme
   try _ = r;
   let Pair(open, close) = get-container-pair(con);
   try c1 = delimiter(k, open);
   try se = _parse-series(k, Right(con), sep, c1, p);
   try c2 = delimiter(k, close);
-  let Series of {elems, trailing-comment, container, separator, has-optional-separator} = se;
+  let Series {elems, trailing-comment, container, separator, has-optional-separator} = se;
   let se =
-    Series of {
+    Series {
       elems,
       trailing-comment,
       prefix,
@@ -192,22 +201,23 @@ data locpack(a) {
   )
 }
 
-inline parse-series-with-loc<a, r := rho>(
+inline parse-series-with-loc<a>(
   k: &parser-kit,
   prefix: prefix,
   con: container,
   sep: separator,
   p: parser(pair(a, comment)),
-): parsed(locpack(a)) {
+) -> parsed(locpack(a)) {
+  let r = Right(Unit); // fixme
   try _ = r;
   let Pair(open, close) = get-container-pair(con);
   try c1 = delimiter(k, open);
   try se = _parse-series(k, Right(con), sep, c1, p);
   let loc = get-point(k);
   try c2 = delimiter(k, close);
-  let Series of {elems, trailing-comment, container, separator, has-optional-separator} = se;
+  let Series {elems, trailing-comment, container, separator, has-optional-separator} = se;
   let se =
-    Series of {
+    Series {
       elems,
       trailing-comment,
       prefix,
@@ -218,17 +228,18 @@ inline parse-series-with-loc<a, r := rho>(
   Right(Locpack(se, loc, c2))
 }
 
-inline parse-bare-series<a, r := rho>(
+inline parse-bare-series<a>(
   k: &parser-kit,
   prefix: prefix,
   sep: separator,
   p: parser(pair(a, comment)),
-): parsed(series(a)) {
+) -> parsed(series(a)) {
+  let r = Right(Unit); // fixme
   try _ = r;
   try se = _parse-series(k, none, sep, Nil, p);
-  let Series of {elems, trailing-comment, container, separator, has-optional-separator} = se;
+  let Series {elems, trailing-comment, container, separator, has-optional-separator} = se;
   let se =
-    Series of {
+    Series {
       elems,
       trailing-comment,
       prefix,
@@ -242,82 +253,82 @@ inline parse-bare-series<a, r := rho>(
 inline parse-series-paren<a>(
   k: &parser-kit,
   p: parser(pair(a, comment)),
-): parsed(pair(series(a), comment)) {
+) -> parsed(pair(series(a), comment)) {
   parse-series(k, none, Paren, Comma, p)
 }
 
 inline parse-series-paren-with-loc<a>(
   k: &parser-kit,
   p: parser(pair(a, comment)),
-): parsed(locpack(a)) {
+) -> parsed(locpack(a)) {
   parse-series-with-loc(k, none, Paren, Comma, p)
 }
 
 inline parse-series-brace<a>(
   k: &parser-kit,
   p: parser(pair(a, comment)),
-): parsed(pair(series(a), comment)) {
+) -> parsed(pair(series(a), comment)) {
   parse-series(k, none, Brace, Comma, p)
 }
 
 inline parse-series-brace-with-loc<a>(
   k: &parser-kit,
   p: parser(pair(a, comment)),
-): parsed(locpack(a)) {
+) -> parsed(locpack(a)) {
   parse-series-with-loc(k, none, Brace, Comma, p)
 }
 
 inline parse-series-bracket<a>(
   k: &parser-kit,
   p: parser(pair(a, comment)),
-): parsed(pair(series(a), comment)) {
+) -> parsed(pair(series(a), comment)) {
   parse-series(k, none, Bracket, Comma, p)
 }
 
 inline parse-series-angle<a>(
   k: &parser-kit,
   p: parser(pair(a, comment)),
-): parsed(pair(series(a), comment)) {
+) -> parsed(pair(series(a), comment)) {
   parse-series(k, none, Angle, Comma, p)
 }
 
 inline parse-series-brace-list<a>(
   k: &parser-kit,
   p: parser(pair(a, comment)),
-): parsed(pair(series(a), comment)) {
+) -> parsed(pair(series(a), comment)) {
   parse-series(k, none, Brace, Bar, p)
 }
 
 inline parse-series-brace-list-with-loc<a>(
   k: &parser-kit,
   p: parser(pair(a, comment)),
-): parsed(locpack(a)) {
+) -> parsed(locpack(a)) {
   parse-series-with-loc(k, none, Brace, Bar, p)
 }
 
-define zen(): unit {
+define zen() -> unit {
   pin k = make-zonk-kit(*"{}", *"path/to/file.nt");
   pin foo =
-    parse-series-brace(k, function (_) {
+    parse-series-brace(k, (_) => {
       Right(Pair(Unit, Nil))
     });
-  vet(foo);
+  vet::(foo);
   pin k = make-zonk-kit(*"[  ]  ", *"path/to/file.nt");
   pin foo =
-    parse-series-bracket(k, function (_) {
+    parse-series-bracket(k, (_) => {
       Right(Pair(Unit, Nil))
     });
-  vet(foo);
+  vet::(foo);
   pin k = make-zonk-kit(*"(, )  ", *"path/to/file.nt");
   pin foo =
-    parse-series-paren-with-loc(k, function (_) {
+    parse-series-paren-with-loc(k, (_) => {
       Right(Pair(Unit, Nil))
     });
-  vet(foo);
+  vet::(foo);
   pin k = make-zonk-kit(*"{| }  ", *"path/to/file.nt");
   pin foo =
-    parse-series-brace-list(k, function (_) {
+    parse-series-brace-list(k, (_) => {
       Right(Pair(Unit, Nil))
     });
-  vet(foo);
+  vet::(foo);
 }

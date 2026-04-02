@@ -172,8 +172,6 @@ rawTerm' mode h m headSymbol c = do
       rawTermMatch h m c False
     "case" -> do
       rawTermMatch h m c True
-    "function" -> do
-      rawTermPiIntro h m c
     "box" -> do
       rawTermBoxIntro h m c
     "lift" -> do
@@ -311,17 +309,6 @@ rawTypePi h = do
   (cod, c) <- rawType h
   loc <- getCurrentLoc
   return (m :< RT.Pi impArgs expArgs defaultArgs piKind cArrow cod loc, c)
-
-rawTermPiIntro :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
-rawTermPiIntro h m c0 = do
-  (defInfo, c) <- parseDefOptionalCod h $ do
-    mName <- optional symbol
-    case mName of
-      Nothing ->
-        return (Nothing, [])
-      Just (name, c) ->
-        return (Just name, c)
-  return (m :< RT.PiIntro c0 defInfo, c)
 
 rawTermLambda :: Handle -> Parser (RT.RawTerm, C)
 rawTermLambda h = do
@@ -711,7 +698,7 @@ parseDefInfoCod h = do
           c <- delimiter "->>"
           return (True, c),
         do
-          c <- choice [delimiter "->", delimiter ":"]
+          c <- delimiter "->"
           return (False, c)
       ]
   t <- rawType h

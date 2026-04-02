@@ -7,7 +7,7 @@ data arch {
 | Arm64
 }
 
-define text-from-arch(a: arch): &text {
+define string-from-arch(a: arch) -> &string {
   match a {
   | Amd64 =>
     "amd64"
@@ -16,7 +16,7 @@ define text-from-arch(a: arch): &text {
   }
 }
 
-define data-size-from-arch(a: arch): data-size {
+define data-size-from-arch(a: arch) -> data-size {
   match a {
   | Amd64 =>
     Data-Size-64

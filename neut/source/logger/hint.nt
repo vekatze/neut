@@ -1,19 +1,19 @@
 data hint {
 | Hint(
-    file-path: &text,
+    file-path: &string,
     line: int,
     column: int,
     should-save-location: bool,
   )
 | Saved-Hint(
-    file-path: text,
+    file-path: string,
     line: int,
     column: int,
     should-save-location: bool,
   )
 }
 
-define lift-hint(m: hint): meta hint {
+define lift-hint(m: hint) -> +hint {
   match m {
   | Hint(path, line, column, should-save-location) =>
     box {
@@ -34,44 +34,44 @@ define lift-hint(m: hint): meta hint {
   }
 }
 
-define get-line(m: &hint): int {
+define get-line(m: &hint) -> int {
   case m {
-  | Hint of {line} =>
+  | Hint {line} =>
     *line
-  | Saved-Hint of {line} =>
+  | Saved-Hint {line} =>
     *line
   }
 }
 
-define get-column(m: &hint): int {
+define get-column(m: &hint) -> int {
   case m {
-  | Hint of {column} =>
+  | Hint {column} =>
     *column
-  | Saved-Hint of {column} =>
+  | Saved-Hint {column} =>
     *column
   }
 }
 
-define get-file-path(m: &hint): &text {
+define get-file-path(m: &hint) -> &string {
   case m {
-  | Hint of {file-path} =>
+  | Hint {file-path} =>
     *file-path
-  | Saved-Hint of {file-path} =>
+  | Saved-Hint {file-path} =>
     file-path
   }
 }
 
-define get-should-save-location(m: &hint): bool {
+define get-should-save-location(m: &hint) -> bool {
   case m {
-  | Hint of {should-save-location} =>
+  | Hint {should-save-location} =>
     *should-save-location
-  | Saved-Hint of {should-save-location} =>
+  | Saved-Hint {should-save-location} =>
     *should-save-location
   }
 }
 
-define new-hint(line: int, column: int, file-path: &text): hint {
-  Hint of {
+define new-hint(line: int, column: int, file-path: &string) -> hint {
+  Hint {
     file-path,
     line,
     column,
@@ -79,17 +79,17 @@ define new-hint(line: int, column: int, file-path: &text): hint {
   }
 }
 
-define blur(m: hint): hint {
+define blur(m: hint) -> hint {
   match m {
-  | Hint of {file-path, line, column} =>
-    Hint of {
+  | Hint {file-path, line, column} =>
+    Hint {
       file-path,
       line,
       column,
       should-save-location := False,
     }
-  | Saved-Hint of {file-path, line, column} =>
-    Saved-Hint of {
+  | Saved-Hint {file-path, line, column} =>
+    Saved-Hint {
       file-path,
       line,
       column,
@@ -98,8 +98,8 @@ define blur(m: hint): hint {
   }
 }
 
-inline internal-hint: hint {
-  Hint of {
+constant internal-hint: hint {
+  Hint {
     file-path := "",
     line := 1,
     column := 1,
@@ -107,12 +107,12 @@ inline internal-hint: hint {
   }
 }
 
-define new-source-hint-N(file-path: &text): hint {
+define new-source-hint-N(file-path: &string) -> hint {
   new-hint(1, 1, file-path)
 }
 
-define new-source-hint(file-path: text): hint {
-  Saved-Hint of {
+define new-source-hint(file-path: string) -> hint {
+  Saved-Hint {
     file-path,
     line := 1,
     column := 1,
@@ -120,8 +120,8 @@ define new-source-hint(file-path: text): hint {
   }
 }
 
-define zen(): unit {
+define zen() -> unit {
   pin m = new-hint(12, 3456, "/Users/foo/path/to/file.nt");
-  vet(m)
+  vet::(m)
   // printf("{}\n", List[show-file-pos(m)])
 }

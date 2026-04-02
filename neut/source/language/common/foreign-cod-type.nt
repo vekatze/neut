@@ -12,7 +12,7 @@ data foreign-cod-type(a) {
 | Cod(a)
 }
 
-define low-type-from-foreign-cod-type(cod: foreign-cod-type(base-low-type)): low-type {
+define low-type-from-foreign-cod-type(cod: foreign-cod-type(base-low-type)) -> low-type {
   match cod {
   | Void =>
     this.language.common.low-type.Void
@@ -21,11 +21,11 @@ define low-type-from-foreign-cod-type(cod: foreign-cod-type(base-low-type)): low
   }
 }
 
-inline foreign-cod-type-sero<a>(s: sero(a)): sero(foreign-cod-type(a)) {
-  let Sero of {put := put-a, get := get-a} = s;
-  Sero of {
+inline foreign-cod-type-sero<a>(s: sero(a)) -> sero(foreign-cod-type(a)) {
+  let Sero {put := put-a, get := get-a} = s;
+  Sero {
     put := {
-      function (k, v) {
+      (k, v) => {
         case v {
         | Void =>
           put-int64(k, 0);
@@ -36,7 +36,7 @@ inline foreign-cod-type-sero<a>(s: sero(a)): sero(foreign-cod-type(a)) {
       }
     },
     get := {
-      function (k) {
+      (k) => {
         try tag = get-int64(k);
         match tag {
         | 0 =>

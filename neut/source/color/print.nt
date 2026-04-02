@@ -1,48 +1,48 @@
 import {
   core.ansi {Blue, Bold, Color, Color-16, Foreground, Vivid},
   core.file.descriptor {descriptor, stderr, stdout},
-  core.text {_get-content-pointer, text-byte-length},
+  core.string {_get-content-pointer, string-byte-length},
   this.color.color-kit {_Color-Kit, color-kit, make-color-kit},
-  this.color.text {_unpacked, _unpacked-uncolored, color-text, packed},
+  this.color.string {_unpacked, _unpacked-uncolored, color-string, packed},
 }
 
 foreign {
   dprintf(int, pointer): void,
 }
 
-define _print(d: descriptor, t: &text): unit {
+define _print(d: descriptor, t: &string) -> unit {
   let fmt = _get-content-pointer("%.*s\0");
-  let len = text-byte-length(t);
+  let len = string-byte-length(t);
   let val = _get-content-pointer(t);
   let _ = magic external dprintf(magic cast(descriptor, int, d), fmt)(len: int, val: pointer);
   Unit
 }
 
-define print-stdout(k: &color-kit, t: &color-text): unit {
-  tie _Color-Kit of {colorize-stdout} = k;
-  pin t' =
+define print-stdout(k: &color-kit, t: &color-string) -> unit {
+  tie _Color-Kit {colorize-stdout} = k;
+  pin t-prime =
     if *colorize-stdout {
       _unpacked(t)
     } else {
       _unpacked-uncolored(t)
     };
-  _print(stdout, t')
+  _print(stdout, t-prime)
 }
 
-define print-stderr(k: &color-kit, t: &color-text): unit {
-  tie _Color-Kit of {colorize-stderr} = k;
-  pin t' =
+define print-stderr(k: &color-kit, t: &color-string) -> unit {
+  tie _Color-Kit {colorize-stderr} = k;
+  pin t-prime =
     if *colorize-stderr {
       _unpacked(t)
     } else {
       _unpacked-uncolored(t)
     };
-  _print(stderr, t')
+  _print(stderr, t-prime)
 }
 
-define zen(): unit {
-  pin t' = packed(Vector[Color(Foreground, Color-16(Vivid, Blue)), Bold], *"sample\n");
+define zen() -> unit {
+  pin t-prime = packed(Vector[Color(Foreground, Color-16(Vivid, Blue)), Bold], *"sample\n");
   pin h = make-color-kit(False, True);
-  print-stdout(h, t');
-  print-stderr(h, t')
+  print-stdout(h, t-prime);
+  print-stderr(h, t-prime)
 }

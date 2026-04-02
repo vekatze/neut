@@ -5,7 +5,7 @@ import {
   this.logger.hint {hint},
 }
 
-inline must-update-tag: type {
+alias must-update-tag {
   bool
 }
 
@@ -13,6 +13,6 @@ data alias-info {
 | Use(must-update-tag, strict-global-locator, list(pair(hint, local-locator)))
 }
 
-inline source-alias-map: type {
+alias source-alias-map {
   dictionary(text, list(alias-info))
 }

@@ -1,9 +1,9 @@
 import {
   core.dictionary {to-list},
   core.list {find},
-  core.text-builder {append-text, extract, make-text-builder},
+  core.string-builder {append-string, extract, make-string-builder},
   this.kernel.common.module {Dependency, Module, extract-module, main-module, module},
-  this.language.common.base-name {text-from-base-name-N},
+  this.language.common.base-name {string-from-base-name-N},
   this.language.common.const {ns-sep},
   this.language.common.definite-description {definite-description, uncons-dd},
   this.language.common.module-alias {Module-Alias},
@@ -11,61 +11,61 @@ import {
   this.language.common.module-id {Base, Library, Main},
 }
 
-define readable-dd-by-module(m: &module, dd: &definite-description): text {
+define readable-dd-by-module(m: &module, dd: &definite-description) -> string {
   match uncons-dd(dd) {
   | Pair(Main, rest) =>
     pin rest = rest;
-    let buf = make-text-builder(64);
+    let buf = make-string-builder(64);
     let _ on buf = {
-      append-text(buf, "this");
-      append-text(buf, ns-sep);
-      append-text(buf, rest);
+      append-string(buf, "this");
+      append-string(buf, ns-sep);
+      append-string(buf, rest);
     };
     extract(buf)
   | Pair(Base, rest) =>
     pin rest = rest;
-    let buf = make-text-builder(64);
+    let buf = make-string-builder(64);
     let _ on buf = {
-      append-text(buf, "buf");
-      append-text(buf, ns-sep);
-      append-text(buf, rest);
+      append-string(buf, "buf");
+      append-string(buf, ns-sep);
+      append-string(buf, rest);
     };
     extract(buf)
   | Pair(Library(digest), rest) =>
-    tie Module of {dependency} = m;
+    tie Module {dependency} = m;
     pin dep-map = to-list(*dependency);
     pin digest = digest;
     pin rest = rest;
     pin finder =
-      function (p) {
+      (p) => {
         tie Pair(_, v) = p;
-        tie Dependency of {digest := digest-cand} = v;
-        eq-data(digest, digest-cand)
+        tie Dependency {digest := digest-cand} = v;
+        eq-data::(digest, digest-cand)
       };
     match find(dep-map, finder) {
     | Left(_) =>
       tie Module-Digest(d) = digest;
-      let buf = make-text-builder(64);
+      let buf = make-string-builder(64);
       let _ on buf = {
-        append-text(buf, d);
-        append-text(buf, ns-sep);
-        append-text(buf, rest);
+        append-string(buf, d);
+        append-string(buf, ns-sep);
+        append-string(buf, rest);
       };
       extract(buf)
     | Right(p) =>
       tie Pair(Module-Alias(alias), _) = p;
-      let alias = text-from-base-name-N(alias);
-      let buf = make-text-builder(64);
+      let alias = string-from-base-name-N(alias);
+      let buf = make-string-builder(64);
       let _ on buf = {
-        append-text(buf, alias);
-        append-text(buf, ns-sep);
-        append-text(buf, rest);
+        append-string(buf, alias);
+        append-string(buf, ns-sep);
+        append-string(buf, rest);
       };
       extract(buf)
     }
   }
 }
 
-define readable-dd(m: &main-module, dd: &definite-description): text {
+define readable-dd(m: &main-module, dd: &definite-description) -> string {
   readable-dd-by-module(extract-module(m), dd)
 }

@@ -7,7 +7,7 @@ import {
   this.language.common.module-id {module-id, module-id-ord},
 }
 
-inline rev-map: type {
+alias rev-map {
   dictionary(module-id, list(module-id))
 }
 
@@ -18,16 +18,16 @@ data antecedent-kit {
   )
 }
 
-define make-antecedent-kit(): antecedent-kit {
+define make-antecedent-kit() -> antecedent-kit {
   let map-cell = make-cell(box {empty});
   let rev-map-cell = make-cell(box {empty});
-  _Antecedent-Kit of {map-cell, rev-map-cell}
+  _Antecedent-Kit {map-cell, rev-map-cell}
 }
 
-define lookup-module(k: &antecedent-kit, x: &module-id): ?module {
-  tie _Antecedent-Kit of {map-cell} = k;
+define lookup-module(k: &antecedent-kit, x: &module-id) -> ?module {
+  tie _Antecedent-Kit {map-cell} = k;
   let lookup = make-lookup(module-id-ord);
-  borrow(map-cell, function (dict) {
+  borrow(map-cell, (dict) => {
     match lookup(dict, x) {
     | Left(_) =>
       box {none}
@@ -37,36 +37,36 @@ define lookup-module(k: &antecedent-kit, x: &module-id): ?module {
   })
 }
 
-inline _dictionary-meta-in<k, v>(dict: meta dictionary(k, v)): dictionary(meta k, meta v) {
-  cast(_, _, dict)
+inline _dictionary-meta-in<k, v>(dict: +dictionary(k, v)) -> dictionary(+k, +v) {
+  cast<_, _>(dict)
 }
 
-define _rev-insert(mp: meta rev-map, v: meta module, k: meta module-id): meta rev-map {
+define _rev-insert(mp: +rev-map, v: +module, k: +module-id) -> +rev-map {
   box {
     letbox mp = mp;
     letbox k = k;
     letbox v = v;
-    let Module of {id} = v;
+    let Module {id} = v;
     let insert = make-insert-with(module-id-ord, exact core.list.append);
     insert(mp, id, List[k])
   }
 }
 
-define set(k: &antecedent-kit, !mp: meta dictionary(module-id, module)): unit {
-  tie _Antecedent-Kit of {map-cell, rev-map-cell} = k;
-  mutate(map-cell, function (_) {
-    !mp
+define set(k: &antecedent-kit, !mp: +dictionary(module-id, module)) -> unit {
+  tie _Antecedent-Kit {map-cell, rev-map-cell} = k;
+  mutate(map-cell, (_) => {
+    mp
   });
-  mutate(rev-map-cell, function (dict) {
-    let other-mp = to-list(_dictionary-meta-in(!mp));
-    fold-left(dict, other-mp, function (d, p) {
+  mutate(rev-map-cell, (dict) => {
+    let other-mp = to-list(_dictionary-meta-in(mp));
+    fold-left(dict, other-mp, (d, p) => {
       let Pair(mid, m) = p;
       _rev-insert(d, m, mid)
     })
   });
 }
 
-define get-reverse-map(k: antecedent-kit): meta rev-map {
-  let _Antecedent-Kit of {rev-map-cell} = k;
+define get-reverse-map(k: antecedent-kit) -> +rev-map {
+  let _Antecedent-Kit {rev-map-cell} = k;
   extract(rev-map-cell)
 }

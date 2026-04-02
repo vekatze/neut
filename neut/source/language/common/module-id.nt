@@ -3,7 +3,7 @@ import {
   sero.common.get {get-int64},
   sero.common.put {put-int64},
   sero.sero {Sero, sero},
-  this.language.common.module-digest {Module-Digest, module-digest, module-digest-sero, text-from-module-digest},
+  this.language.common.module-digest {Module-Digest, module-digest, module-digest-sero, string-from-module-digest},
 }
 
 data module-id {
@@ -12,21 +12,21 @@ data module-id {
 | Library(module-digest)
 }
 
-define text-from-module-id(i: &module-id): &text {
+define string-from-module-id(i: &module-id) -> &string {
   case i {
   | Main =>
     "this"
   | Library(digest) =>
-    text-from-module-digest(digest)
+    string-from-module-digest(digest)
   | Base =>
     "base"
   }
 }
 
-inline module-id-ord: ord(module-id) {
-  Ord of {
+constant module-id-ord: ord(module-id) {
+  Ord {
     compare := {
-      function (x, y) {
+      (x, y) => {
         case x, y {
         | Main, Main =>
           EQ
@@ -45,7 +45,7 @@ inline module-id-ord: ord(module-id) {
         | Library(_), Base =>
           GT
         | Library(Module-Digest(d1)), Library(Module-Digest(d2)) =>
-          let Ord of {compare} = core.text.ord.as-ord;
+          let Ord {compare} = core.string.ord.as-ord;
           compare(d1, d2)
         }
       }
@@ -53,15 +53,15 @@ inline module-id-ord: ord(module-id) {
   }
 }
 
-inline module-id-sero: sero(module-id) {
-  Sero of {
+constant module-id-sero: sero(module-id) {
+  Sero {
     put := {
-      function (k, v) {
+      (k, v) => {
         case v {
         | Main =>
           put-int64(k, 0);
         | Library(digest) =>
-          let Sero of {put} = module-digest-sero;
+          let Sero {put} = module-digest-sero;
           put-int64(k, 1);
           put(k, digest);
         | Base =>
@@ -70,13 +70,13 @@ inline module-id-sero: sero(module-id) {
       }
     },
     get := {
-      function (k) {
+      (k) => {
         try tag = get-int64(k);
         match tag {
         | 0 =>
           Right(box {Main})
         | 1 =>
-          let Sero of {get} = module-digest-sero;
+          let Sero {get} = module-digest-sero;
           try digest = get(k);
           Right(box {
             letbox digest = digest;
@@ -92,13 +92,13 @@ inline module-id-sero: sero(module-id) {
   }
 }
 
-define get-library-id(module-file-path: &text): module-id {
+define get-library-id(module-file-path: &string) -> module-id {
   pin module-dir-path = drop-last(module-file-path);
   let name = take-last(module-dir-path);
   Library(Module-Digest(name))
 }
 
-define zen(): unit {
+define zen() -> unit {
   pin result = get-library-id("/path/to/file.ens");
-  vet(result)
+  vet::(result)
 }

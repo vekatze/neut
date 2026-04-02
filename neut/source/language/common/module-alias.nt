@@ -1,17 +1,17 @@
 import {
   sero.sero {Sero, sero},
-  this.language.common.base-name {base, base-name, base-name-sero, core, ord-base-name, text-from-base-name, this},
+  this.language.common.base-name {base, base-name, base-name-sero, core, ord-base-name, string-from-base-name, this},
 }
 
 data module-alias {
 | Module-Alias(base-name)
 }
 
-inline ord-module-alias: ord(module-alias) {
-  Ord of {
+constant ord-module-alias: ord(module-alias) {
+  Ord {
     compare := {
-      function (x, y) {
-        let Ord of {compare} = ord-base-name;
+      (x, y) => {
+        let Ord {compare} = ord-base-name;
         tie Module-Alias(x) = x;
         tie Module-Alias(y) = y;
         compare(x, y)
@@ -20,35 +20,35 @@ inline ord-module-alias: ord(module-alias) {
   }
 }
 
-define default-module-alias(): module-alias {
+define default-module-alias() -> module-alias {
   Module-Alias(this())
 }
 
-define core-module-alias(): module-alias {
+define core-module-alias() -> module-alias {
   Module-Alias(core())
 }
 
-define base-module-alias(): module-alias {
+define base-module-alias() -> module-alias {
   Module-Alias(base())
 }
 
-define text-from-module-alias(alias: module-alias): text {
+define string-from-module-alias(alias: module-alias) -> string {
   let Module-Alias(bn) = alias;
-  text-from-base-name(bn)
+  string-from-base-name(bn)
 }
 
-inline module-alias-sero: sero(module-alias) {
-  Sero of {
+constant module-alias-sero: sero(module-alias) {
+  Sero {
     put := {
-      function (k, v) {
-        let Sero of {put} = base-name-sero;
+      (k, v) => {
+        let Sero {put} = base-name-sero;
         tie Module-Alias(base-name) = v;
         put(k, base-name)
       }
     },
     get := {
-      function (k) {
-        let Sero of {get} = base-name-sero;
+      (k) => {
+        let Sero {get} = base-name-sero;
         try bn = get(k);
         Right(box {
           letbox bn = bn;

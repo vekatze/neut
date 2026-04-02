@@ -1,40 +1,40 @@
 import {
   core.cell {make-cell},
   core.dictionary {dictionary},
-  core.text-builder {append-text, extract, make-text-builder},
+  core.string-builder {append-string, extract, make-string-builder},
   this.app.app {app},
-  this.app.run {raise-critical'},
+  this.app.run {raise-critical-prime},
   this.kernel.common.artifact {artifact-time},
 }
 
 data artifact-kit {
 | _Artifact-Kit(
-    artifact-map-ref: cell(dictionary(text, artifact-time)),
+    artifact-map-ref: cell(dictionary(string, artifact-time)),
   )
 }
 
-define make-artifact-kit(): artifact-kit {
+define make-artifact-kit() -> artifact-kit {
   let artifact-map-ref = make-cell(box {core.dictionary.empty});
-  _Artifact-Kit of {artifact-map-ref}
+  _Artifact-Kit {artifact-map-ref}
 }
 
-define insert(k: &artifact-kit, path: text, t: artifact-time): unit {
+define insert(k: &artifact-kit, path: string, t: artifact-time) -> unit {
   tie _Artifact-Kit(ref) = k;
-  core.cell.mutate(ref, function (dict) {
+  core.cell.mutate(ref, (dict) => {
     box {
       letbox dict = dict;
       letbox path = lift {path};
       letbox t = lift {t};
-      core.dictionary.make-insert(core.text.ord.as-ord)(dict, path, t)
+      core.dictionary.make-insert(core.string.ord.as-ord)(dict, path, t)
     }
   })
 }
 
-define lookup(k: &artifact-kit, path: &text): app(artifact-time) {
+define lookup(k: &artifact-kit, path: &string) -> app(artifact-time) {
   tie _Artifact-Kit(ref) = k;
   let tmp: ?artifact-time =
-    core.cell.borrow(ref, function (dict) {
-      match core.dictionary.make-lookup(core.text.ord.as-ord)(dict, path) {
+    core.cell.borrow(ref, (dict) => {
+      match core.dictionary.make-lookup(core.string.ord.as-ord)(dict, path) {
       | Left(_) =>
         box {none}
       | Right(v) =>
@@ -43,12 +43,12 @@ define lookup(k: &artifact-kit, path: &text): app(artifact-time) {
     });
   match tmp {
   | Left(_) =>
-    let buf = make-text-builder(64);
+    let buf = make-string-builder(64);
     let _ on buf = {
-      append-text(buf, "No artifact time is registered for the source: ");
-      append-text(buf, path);
+      append-string(buf, "No artifact time is registered for the source: ");
+      append-string(buf, path);
     };
-    raise-critical'(extract(buf))
+    raise-critical-prime(extract(buf))
   | Right(v) =>
     Right(v)
   }

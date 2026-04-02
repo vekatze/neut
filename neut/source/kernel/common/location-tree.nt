@@ -15,27 +15,27 @@ import {
   this.logger.sero.log-position {log-position-sero},
 }
 
-inline line: type {
+alias line {
   int
 }
 
-inline column: type {
+alias column {
   int
 }
 
-inline col-from: type {
+alias col-from {
   int
 }
 
-inline col-to: type {
+alias col-to {
   int
 }
 
-inline def-symbol-len: type {
+alias def-symbol-len {
   int
 }
 
-inline col-interval: type {
+alias col-interval {
   pair(col-from, col-to)
 }
 
@@ -54,24 +54,24 @@ data loc-item {
 | Loc-Item(int, col-interval, loc-type, log-position)
 }
 
-inline location-tree: type {
+alias location-tree {
   dictionary(loc, loc-item)
 }
 
-inline empty-location-tree: location-tree {
+constant empty-location-tree: location-tree {
   core.dictionary.empty
 }
 
-inline ord-loc: ord(loc) {
-  let Ord of {compare := !cmp-int} = core.int.ord.as-ord;
-  Ord of {
+constant ord-loc: ord(loc) {
+  let Ord {compare := !cmp-int} = core.int.ord.as-ord;
+  Ord {
     compare := {
-      function (l1, l2) {
+      (l1, l2) => {
         tie Loc(x1, y1) = l1;
         tie Loc(x2, y2) = l2;
-        match !cmp-int(x1, x2) {
+        match cmp-int(x1, x2) {
         | EQ =>
-          !cmp-int(y1, y2)
+          cmp-int(y1, y2)
         | c =>
           c
         }
@@ -80,20 +80,20 @@ inline ord-loc: ord(loc) {
   }
 }
 
-define insert(lt: loc-type, p: pair(line, col-interval), m: log-position, t: location-tree): location-tree {
+define insert(lt: loc-type, p: pair(line, col-interval), m: log-position, t: location-tree) -> location-tree {
   let Pair(l, Pair(from, to)) = p;
   core.dictionary.make-insert(ord-loc)(t, Loc(l, from), Loc-Item(l, Pair(from, to), lt, m))
 }
 
-define _get-length(s: &symbol-name): def-symbol-len {
+define _get-length(s: &symbol-name) -> def-symbol-len {
   case s {
   | Local(_, len) =>
     *len
   | Global(dd, _) =>
     pin tmp = local-locator-from-dd(dd);
-    core.text.length(tmp)
+    core.string.length(tmp)
   | Foreign(External-Name(t)) =>
-    core.text.length(t)
+    core.string.length(t)
   }
 }
 
@@ -101,7 +101,7 @@ data found-loc {
 | Found-Loc(loc-type, &log-position, &col-interval, def-symbol-len)
 }
 
-define find(loc: &loc, t: &location-tree): ?found-loc {
+define find(loc: &loc, t: &location-tree) -> ?found-loc {
   let lookup-LE = core.dictionary.make-lookup-LE(ord-loc);
   try Pair(_, li) = lookup-LE(t, loc);
   tie Loc-Item(line, col-interval, lt, m) = li;
@@ -119,7 +119,7 @@ define find(loc: &loc, t: &location-tree): ?found-loc {
   }
 }
 
-define _is-sym-loc(lt: &loc-type): bool {
+define _is-sym-loc(lt: &loc-type) -> bool {
   case lt {
   | File-Loc =>
     False
@@ -128,9 +128,9 @@ define _is-sym-loc(lt: &loc-type): bool {
   }
 }
 
-define find-ref(l: &loc, t: location-tree): list(pair(text, pair(line, col-interval))) {
+define find-ref(l: &loc, t: location-tree) -> list(pair(string, pair(line, col-interval))) {
   let kvs = to-list(t);
-  filter-some(for-each(kvs, function (p) {
+  filter-some(for-each(kvs, (p) => {
     let Pair(Loc(line, _), Loc-Item(_, col-interval, lt, m)) = p;
     pin lt = lt;
     tie Loc(l1, c1) = l;
@@ -146,30 +146,30 @@ define find-ref(l: &loc, t: location-tree): list(pair(text, pair(line, col-inter
   }))
 }
 
-inline symbol-name-sero: sero(symbol-name) {
-  Sero of {
+constant symbol-name-sero: sero(symbol-name) {
+  Sero {
     put := {
-      function (k, v) {
+      (k, v) => {
         case v {
         | Local(name, def-symbol-len) =>
           put-int64(k, 0);
           put-int64(k, *name);
           put-int64(k, *def-symbol-len);
         | Global(dd, is-const-like) =>
-          let Sero of {put := put-dd} = definite-description-sero;
-          let Sero of {put := put-bool} = bool-sero;
+          let Sero {put := put-dd} = definite-description-sero;
+          let Sero {put := put-bool} = bool-sero;
           put-int64(k, 1);
           put-dd(k, dd);
           put-bool(k, is-const-like);
         | Foreign(ext-name) =>
-          let Sero of {put := put-en} = external-name-sero;
+          let Sero {put := put-en} = external-name-sero;
           put-int64(k, 2);
           put-en(k, ext-name);
         }
       }
     },
     get := {
-      function (k) {
+      (k) => {
         try tag = get-int64(k);
         match tag {
         | 0 =>
@@ -177,8 +177,8 @@ inline symbol-name-sero: sero(symbol-name) {
           try len = get-int64(k);
           Right(lift {Local(name, len)})
         | 1 =>
-          let Sero of {get := get-dd} = definite-description-sero;
-          let Sero of {get := get-bool} = bool-sero;
+          let Sero {get := get-dd} = definite-description-sero;
+          let Sero {get := get-bool} = bool-sero;
           try dd = get-dd(k);
           try b = get-bool(k);
           Right(box {
@@ -187,7 +187,7 @@ inline symbol-name-sero: sero(symbol-name) {
             Global(dd, b)
           })
         | 2 =>
-          let Sero of {get := get-en} = external-name-sero;
+          let Sero {get := get-en} = external-name-sero;
           try ext-name = get-en(k);
           Right(box {
             letbox ext-name = ext-name;
@@ -201,28 +201,28 @@ inline symbol-name-sero: sero(symbol-name) {
   }
 }
 
-inline loc-type-sero: sero(loc-type) {
-  Sero of {
+constant loc-type-sero: sero(loc-type) {
+  Sero {
     put := {
-      function (k, v) {
+      (k, v) => {
         case v {
         | File-Loc =>
           put-int64(k, 0);
         | Symbol-Loc(sym) =>
-          let Sero of {put := put-sym} = symbol-name-sero;
+          let Sero {put := put-sym} = symbol-name-sero;
           put-int64(k, 1);
           put-sym(k, sym);
         }
       }
     },
     get := {
-      function (k) {
+      (k) => {
         try tag = get-int64(k);
         match tag {
         | 0 =>
           Right(box {File-Loc})
         | 1 =>
-          let Sero of {get := get-sym} = symbol-name-sero;
+          let Sero {get := get-sym} = symbol-name-sero;
           try sym = get-sym(k);
           Right(box {
             letbox sym = sym;
@@ -236,35 +236,35 @@ inline loc-type-sero: sero(loc-type) {
   }
 }
 
-inline dictionary-sero<k, v>(sk: sero(k), sv: sero(v)): sero(dictionary(k, v)) {
-  let Sero of {put := !put-k, get := !get-k} = sk;
-  let Sero of {put := !put-v, get := !get-v} = sv;
-  Sero of {
+inline dictionary-sero<k, v>(sk: sero(k), sv: sero(v)) -> sero(dictionary(k, v)) {
+  let Sero {put := !put-k, get := !get-k} = sk;
+  let Sero {put := !put-v, get := !get-v} = sv;
+  Sero {
     put := {
-      define loop(k, v) {
+      define loop(k, v) -> unit {
         case v {
         | core.dictionary.Tip =>
           put-int64(k, 0);
         | core.dictionary.Bin(size, key, value, left, right) =>
           put-int64(k, 1);
           put-int64(k, *size);
-          !put-k(k, key);
-          !put-v(k, value);
+          put-k(k, key);
+          put-v(k, value);
           loop(k, left);
           loop(k, right);
         }
       }
     },
     get := {
-      define loop(k) {
+      define loop(k) -> ?+dictionary(k, v) {
         try tag = get-int64(k);
         match tag {
         | 0 =>
           Right(box {core.dictionary.Tip})
         | 1 =>
           try size = get-int64(k);
-          try key = !get-k(k);
-          try value = !get-v(k);
+          try key = get-k(k);
+          try value = get-v(k);
           try left = loop(k);
           try right = loop(k);
           Right(box {
@@ -283,12 +283,12 @@ inline dictionary-sero<k, v>(sk: sero(k), sv: sero(v)): sero(dictionary(k, v)) {
   }
 }
 
-inline loc-item-sero: sero(loc-item) {
-  let Sero of {put, get} = loc-type-sero;
-  let Sero of {put := put-log-position, get := get-log-position} = log-position-sero;
-  Sero of {
+constant loc-item-sero: sero(loc-item) {
+  let Sero {put, get} = loc-type-sero;
+  let Sero {put := put-log-position, get := get-log-position} = log-position-sero;
+  Sero {
     put := {
-      function (k, v) {
+      (k, v) => {
         tie Loc-Item(l, Pair(from, to), lt, m) = v;
         put-int64(k, *l);
         put-int64(k, *from);
@@ -298,7 +298,7 @@ inline loc-item-sero: sero(loc-item) {
       }
     },
     get := {
-      function (k) {
+      (k) => {
         try l = get-int64(k);
         try from = get-int64(k);
         try to = get-int64(k);
@@ -317,6 +317,6 @@ inline loc-item-sero: sero(loc-item) {
   }
 }
 
-inline location-tree-sero: sero(location-tree) {
+constant location-tree-sero: sero(location-tree) {
   dictionary-sero(loc-sero, loc-item-sero)
 }

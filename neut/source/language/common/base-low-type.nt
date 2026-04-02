@@ -12,20 +12,20 @@ data base-low-type {
 | Pointer
 }
 
-define void-ptr-seq-from-arg-num(an: arg-num): list(base-low-type) {
+define void-ptr-seq-from-arg-num(an: arg-num) -> list(base-low-type) {
   let Arg-Num(x) = an;
-  grow(Nil, x, function (acc, _) {
+  grow(Nil, x, (acc, _) => {
     Cons(Pointer, acc)
   })
 }
 
-inline base-low-type-sero: sero(base-low-type) {
-  Sero of {
+constant base-low-type-sero: sero(base-low-type) {
+  Sero {
     put := {
-      function (k, v) {
+      (k, v) => {
         case v {
         | Prim-Num(t) =>
-          let Sero of {put} = base-prim-type-sero;
+          let Sero {put} = base-prim-type-sero;
           put-int64(k, 0);
           put(k, t);
         | Pointer =>
@@ -34,11 +34,11 @@ inline base-low-type-sero: sero(base-low-type) {
       }
     },
     get := {
-      function (k) {
+      (k) => {
         try tag = get-int64(k);
         match tag {
         | 0 =>
-          let Sero of {get} = base-prim-type-sero;
+          let Sero {get} = base-prim-type-sero;
           try t = get(k);
           Right(box {
             letbox t = t;

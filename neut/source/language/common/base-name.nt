@@ -2,21 +2,21 @@ import {
   core.bool {all},
   core.int.show {show-int},
   core.list {for-each-E},
-  core.text {is-empty, text-byte-length},
-  sero.common.get {get-text},
-  sero.common.put {put-text},
+  core.string {is-empty, string-byte-length},
+  sero.common.get {get-string},
+  sero.common.put {put-string},
   sero.sero {Sero, sero},
-  this.app.error {error, new-error, new-error'},
+  this.app.error {error, new-error, new-error-prime},
   this.language.common.const {ns-sep},
   this.logger.hint {hint, internal-hint, lift-hint},
 }
 
 data base-name {
-| _Base-Name(text)
-| _Base-Name-N(text)
+| _Base-Name(string)
+| _Base-Name-N(string)
 }
 
-define _get-text(bn: &base-name): &text {
+define _get-string(bn: &base-name) -> &string {
   case bn {
   | _Base-Name(t) =>
     t
@@ -25,40 +25,40 @@ define _get-text(bn: &base-name): &text {
   }
 }
 
-inline ord-base-name: ord(base-name) {
-  Ord of {
+constant ord-base-name: ord(base-name) {
+  Ord {
     compare := {
-      function (x, y) {
-        let Ord of {compare} = core.text.ord.as-ord;
-        compare(_get-text(x), _get-text(y))
+      (x, y) => {
+        let Ord {compare} = core.string.ord.as-ord;
+        compare(_get-string(x), _get-string(y))
       }
     },
   }
 }
 
-define base-name-by-split(m: &hint, name: &text): either(error, list(base-name)) {
-  for-each-E(core.text.split(name, ns-sep), function (t) {
+define base-name-by-split(m: &hint, name: &string) -> either(error, list(base-name)) {
+  for-each-E(core.string.split(name, ns-sep), (t) => {
     let b on t = is-empty(t);
     if b {
-      Left(new-error(*m, core.text.append("No succeeding dots are allowed here: ", name)))
+      Left(new-error(*m, core.string.append("No succeeding dots are allowed here: ", name)))
     } else {
       Right(_Base-Name(t))
     }
   })
 }
 
-define base-name-from-text(m: hint, name: &text): either(error, base-name) {
-  let tmp = core.text.split(name, ns-sep);
+define base-name-from-string(m: hint, name: &string) -> either(error, base-name) {
+  let tmp = core.string.split(name, ns-sep);
   match tmp {
   | Cons(b, Nil) =>
     Right(_Base-Name(b))
   | _ =>
-    Left(new-error(m, core.text.append("No dots are allowed here: ", name)))
+    Left(new-error(m, core.string.append("No dots are allowed here: ", name)))
   }
 }
 
-define base-name-from-text-meta(m: &hint, name: &text): meta either(error, base-name) {
-  let tmp = core.text.split(name, ns-sep);
+define base-name-from-string-meta(m: &hint, name: &string) -> +either(error, base-name) {
+  let tmp = core.string.split(name, ns-sep);
   match tmp {
   | Cons(b, Nil) =>
     box {
@@ -69,28 +69,28 @@ define base-name-from-text-meta(m: &hint, name: &text): meta either(error, base-
     box {
       letbox m = lift-hint(*m);
       letbox name = box name {name};
-      let message on name = core.text.append("No dots are allowed here: ", name);
+      let message on name = core.string.append("No dots are allowed here: ", name);
       let _ = name;
       Left(new-error(m, message))
     }
   }
 }
 
-define base-name-from-text-unsafe(name: text): base-name {
+define base-name-from-string-unsafe(name: string) -> base-name {
   _Base-Name(name)
 }
 
-define base-name-from-text-without-hint(name: &text): either(error, base-name) {
-  let tmp = core.text.split(name, ns-sep);
+define base-name-from-string-without-hint(name: &string) -> either(error, base-name) {
+  let tmp = core.string.split(name, ns-sep);
   match tmp {
   | Cons(b, Nil) =>
     Right(_Base-Name(b))
   | _ =>
-    Left(new-error'(core.text.append("No dots are allowed here: ", name)))
+    Left(new-error-prime(core.string.append("No dots are allowed here: ", name)))
   }
 }
 
-define text-from-base-name(bn: base-name): text {
+define string-from-base-name(bn: base-name) -> string {
   match bn {
   | _Base-Name(t) =>
     t
@@ -99,7 +99,7 @@ define text-from-base-name(bn: base-name): text {
   }
 }
 
-define text-from-base-name-N(bn: &base-name): &text {
+define string-from-base-name-N(bn: &base-name) -> &string {
   case bn {
   | _Base-Name(t) =>
     t
@@ -108,215 +108,216 @@ define text-from-base-name-N(bn: &base-name): &text {
   }
 }
 
-define _get-first-rune<r := rho>(t: &text): ?rune {
+define _get-first-rune(t: &string) -> ?rune {
+  let r = Right(Unit); // fixme
   try _ = r;
-  if gt-int(text-byte-length(t), 0) {
-    Right(core.text._get-rune(t, 0))
+  if gt-int(string-byte-length(t), 0) {
+    Right(core.string._get-rune(t, 0))
   } else {
     none
   }
 }
 
-define is-capitalized(bn: &base-name): bool {
-  let t = _get-text(bn);
-  if gt-int(text-byte-length(t), 0) {
-    let r = core.text._get-rune(t, 0);
+define is-capitalized(bn: &base-name) -> bool {
+  let t = _get-string(bn);
+  if gt-int(string-byte-length(t), 0) {
+    let r = core.string._get-rune(t, 0);
     all[le-rune(`A`, r), le-rune(r, `Z`)]
   } else {
     False
   }
 }
 
-define length(bn: &base-name): int {
-  let t = _get-text(bn);
-  core.text.length(t)
+define length(bn: &base-name) -> int {
+  let t = _get-string(bn);
+  core.string.length(t)
 }
 
-inline this(): base-name {
+inline this() -> base-name {
   _Base-Name-N(*"this")
 }
 
-inline base(): base-name {
+inline base() -> base-name {
   _Base-Name-N(*"base")
 }
 
-inline core(): base-name {
+inline core() -> base-name {
   _Base-Name-N(*"core")
 }
 
-define main-name(): base-name {
+define main-name() -> base-name {
   _Base-Name-N(*"main")
 }
 
-define zen-name(): base-name {
+define zen-name() -> base-name {
   _Base-Name-N(*"zen")
 }
 
-define imm-type(): base-name {
+define imm-type() -> base-name {
   _Base-Name-N(*"imm-type")
 }
 
-define imm-noema(): base-name {
+define imm-noema() -> base-name {
   _Base-Name-N(*"imm-noema")
 }
 
-define imm-int1(): base-name {
+define imm-int1() -> base-name {
   _Base-Name-N(*"imm-int1")
 }
 
-define imm-int2(): base-name {
+define imm-int2() -> base-name {
   _Base-Name-N(*"imm-int2")
 }
 
-define imm-int4(): base-name {
+define imm-int4() -> base-name {
   _Base-Name-N(*"imm-int4")
 }
 
-define imm-int8(): base-name {
+define imm-int8() -> base-name {
   _Base-Name-N(*"imm-int8")
 }
 
-define imm-int16(): base-name {
+define imm-int16() -> base-name {
   _Base-Name-N(*"imm-int16")
 }
 
-define imm-int32(): base-name {
+define imm-int32() -> base-name {
   _Base-Name-N(*"imm-int32")
 }
 
-define imm-int64(): base-name {
+define imm-int64() -> base-name {
   _Base-Name-N(*"imm-int64")
 }
 
-define imm-float16(): base-name {
+define imm-float16() -> base-name {
   _Base-Name-N(*"imm-float16")
 }
 
-define imm-float32(): base-name {
+define imm-float32() -> base-name {
   _Base-Name-N(*"imm-float32")
 }
 
-define imm-float64(): base-name {
+define imm-float64() -> base-name {
   _Base-Name-N(*"imm-float64")
 }
 
-define imm-rune(): base-name {
+define imm-rune() -> base-name {
   _Base-Name-N(*"imm-rune")
 }
 
-define imm-pointer(): base-name {
+define imm-pointer() -> base-name {
   _Base-Name-N(*"imm-pointer")
 }
 
-define imm-null(): base-name {
+define imm-null() -> base-name {
   _Base-Name-N(*"imm-null")
 }
 
-define cls(): base-name {
+define cls() -> base-name {
   _Base-Name-N(*"cls")
 }
 
-define sigma-name(i: int): base-name {
+define sigma-name(i: int) -> base-name {
   let ti = show-int(i);
-  let name on ti = core.text.append("sigma;", ti);
+  let name on ti = core.string.append("sigma;", ti);
   let _ = ti;
   _Base-Name(name)
 }
 
-define lambda-name(name-or-none: ?text, i: int): base-name {
+define lambda-name(name-or-none: ?string, i: int) -> base-name {
   let ti = show-int(i);
   match name-or-none {
   | Right(lam-name) =>
-    let tmp on lam-name = core.text.append("lambda;", lam-name);
+    let tmp on lam-name = core.string.append("lambda;", lam-name);
     let _ = lam-name;
-    let name on tmp, ti = core.text.append(tmp, ti);
+    let name on tmp, ti = core.string.append(tmp, ti);
     let _ = tmp;
     let _ = ti;
     _Base-Name(name)
   | Left(_) =>
-    let name on ti = core.text.append("lambda;anon;", ti);
+    let name on ti = core.string.append("lambda;anon;", ti);
     let _ = ti;
     _Base-Name(name)
   }
 }
 
-define mu-name(name: text, i: int): base-name {
+define mu-name(name: string, i: int) -> base-name {
   let ti = show-int(i);
-  let tmp on name = core.text.append("mu;", name);
+  let tmp on name = core.string.append("mu;", name);
   let _ = name;
-  let name on tmp, ti = core.text.append(tmp, ti);
+  let name on tmp, ti = core.string.append(tmp, ti);
   let _ = tmp;
   let _ = ti;
   _Base-Name(name)
 }
 
-define resource-name(i: int): base-name {
+define resource-name(i: int) -> base-name {
   let ti = show-int(i);
-  let name on ti = core.text.append("resource;", ti);
+  let name on ti = core.string.append("resource;", ti);
   let _ = ti;
   _Base-Name(name)
 }
 
-define text-name(i: int): base-name {
+define string-name(i: int) -> base-name {
   let ti = show-int(i);
-  let name on ti = core.text.append("text;", ti);
+  let name on ti = core.string.append("string;", ti);
   let _ = ti;
   _Base-Name(name)
 }
 
-define form(): base-name {
+define form() -> base-name {
   _Base-Name-N(*"form")
 }
 
-define node(): base-name {
+define node() -> base-name {
   _Base-Name-N(*"node")
 }
 
-define leaf(): base-name {
+define leaf() -> base-name {
   _Base-Name-N(*"leaf")
 }
 
-define root(): base-name {
+define root() -> base-name {
   _Base-Name-N(*"root")
 }
 
-define is-reserved-alias(k: &base-name): bool {
-  let t = _get-text(k);
+define is-reserved-alias(k: &base-name) -> bool {
+  let t = _get-string(k);
   pin this = this();
   pin base = base();
-  if eq-text(t, _get-text(this)) {
+  if eq-string(t, _get-string(this)) {
     True
-  } else-if eq-text(t, _get-text(base)) {
+  } else-if eq-string(t, _get-string(base)) {
     True
   } else {
     False
   }
 }
 
-define extend(x: &base-name, y: &base-name): base-name {
-  let t1 = _get-text(x);
-  let t2 = _get-text(y);
-  let tmp = core.text.append(t1, "#");
-  let name on tmp = core.text.append(tmp, t2);
+define extend(x: &base-name, y: &base-name) -> base-name {
+  let t1 = _get-string(x);
+  let t2 = _get-string(y);
+  let tmp = core.string.append(t1, "#");
+  let name on tmp = core.string.append(tmp, t2);
   let _ = tmp;
   _Base-Name(name)
 }
 
-inline base-name-sero: sero(base-name) {
-  Sero of {
+constant base-name-sero: sero(base-name) {
+  Sero {
     put := {
-      function (k, v) {
+      (k, v) => {
         case v {
         | _Base-Name(t) =>
-          put-text(k, t);
+          put-string(k, t);
         | _Base-Name-N(t) =>
-          put-text(k, t);
+          put-string(k, t);
         }
       }
     },
     get := {
-      function (k) {
-        try t = get-text(k);
+      (k) => {
+        try t = get-string(k);
         Right(box {
           letbox t = lift {t};
           _Base-Name(t)
@@ -326,19 +327,19 @@ inline base-name-sero: sero(base-name) {
   }
 }
 
-define zen(): unit {
-  pin v = base-name-from-text(internal-hint, "foo.bar");
-  vet(v);
+define zen() -> unit {
+  pin v = base-name-from-string(internal-hint, "foo.bar");
+  vet::(v);
   pin m = internal-hint;
   pin v = base-name-by-split(m, "foo.bar");
-  vet(v);
+  vet::(v);
   pin bn = _Base-Name(*"Foo");
   pin v = is-capitalized(bn);
-  vet(v);
+  vet::(v);
   pin bn = _Base-Name(*"foo");
   pin v = is-capitalized(bn);
-  vet(v);
+  vet::(v);
   pin bn = _Base-Name(*"");
   pin v = is-capitalized(bn);
-  vet(v);
+  vet::(v);
 }

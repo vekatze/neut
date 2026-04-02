@@ -3,12 +3,12 @@ import {
   core.float.show {show-float},
   core.int.show {show-int},
   core.list {fold-right},
-  core.text {drop-while},
-  core.text.io {print-line},
-  core.text.show {show-text},
+  core.string {drop-while},
+  core.string.io {print-line},
+  core.string.show {show-string},
   this.ens.ens {E-Bool, E-Dictionary, E-Float, E-Int, E-List, E-String, ens, ens-key, full-ens},
   this.ens.parse {_parse-ens},
-  this.pretty-printer.doc {doc, join, join-doc-list, layout, line, make-text},
+  this.pretty-printer.doc {doc, join, join-doc-list, layout, line, make-string},
   this.syntax-tree.block {Block},
   this.syntax-tree.comment {Comment-Item, comment},
   this.syntax-tree.series {for-each},
@@ -18,43 +18,43 @@ import {
   zonk.make-zonk-kit {make-zonk-kit},
 }
 
-define _comment-to-doc(cs: comment): list(doc) {
-  fold-right(cs, Nil, function (c, acc) {
-    let Comment-Item of {comment-text} = c;
+define _comment-to-doc(cs: comment) -> list(doc) {
+  fold-right(cs, Nil, (c, acc) => {
+    let Comment-Item {comment-string} = c;
     core.list.append(
-      List[line, make-text(*"//"), make-text(comment-text)],
+      List[line, make-string(*"//"), make-string(comment-string)],
       acc,
     )
   })
 }
 
 nominal {
-  _to-doc(e: ens): doc,
+  define _to-doc(e: ens) -> doc,
 }
 
-define _dict-item-to-doc(kv: pair(ens-key, ens)): doc {
+define _dict-item-to-doc(kv: pair(ens-key, ens)) -> doc {
   let Pair(Pair(_, k), v) = kv;
   join[
-    make-text(k),
-    make-text(*" "),
+    make-string(k),
+    make-string(*" "),
     _to-doc(v),
   ]
 }
 
-define _to-doc(e: ens): doc {
+define _to-doc(e: ens) -> doc {
   match e {
   | E-Int(_, x) =>
-    make-text(show-int(x))
+    make-string(show-int(x))
   | E-Float(_, x) =>
-    make-text(show-float(x, 8))
+    make-string(show-float(x, 8))
   | E-Bool(_, x) =>
     if x {
-      make-text(*"true")
+      make-string(*"true")
     } else {
-      make-text(*"false")
+      make-string(*"false")
     }
   | E-String(_, x) =>
-    make-text(show-text(x))
+    make-string(show-string(x))
   | E-List(_, xs) =>
     pin xs = for-each(xs, _to-doc);
     this.syntax-tree.series.to-doc.decode(xs)
@@ -64,13 +64,13 @@ define _to-doc(e: ens): doc {
   }
 }
 
-define pp(e: full-ens): text {
+define pp(e: full-ens) -> string {
   let Block(leading-comments, ens, trailing-comments) = e;
   let header = core.list.append(_comment-to-doc(leading-comments), List[line]);
   let body = List[_to-doc(ens)];
   let footer = core.list.append(_comment-to-doc(trailing-comments), List[line]);
   let tmp = layout(join-doc-list(core.list.append(header, core.list.append(body, footer))));
-  drop-while(tmp, function (r) {
+  drop-while(tmp, (r) => {
     any[
       eq-rune(r, ` `),
       eq-rune(r, `\n`),
@@ -78,7 +78,7 @@ define pp(e: full-ens): text {
   })
 }
 
-define zen(): unit {
+define zen() -> unit {
   pin k =
     make-zonk-kit(
       *"{some-key \"hello\", other-key 123, foo {a true, b false,}, bar [true, false], buz [1, 2, 3,]} // test",

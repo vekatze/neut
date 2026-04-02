@@ -5,15 +5,15 @@ import {
   zonk.zonk-kit {zonk-kit},
 }
 
-inline parser-kit: type {
-  zonk-kit(text)
+alias parser-kit {
+  zonk-kit(string)
 }
 
-inline parser(a): type {
-  zonk(text, a)
+alias parser(a) {
+  zonk(string, a)
 }
 
-define is-non-symbol-char(r: rune): bool {
+define is-non-symbol-char(r: rune) -> bool {
   match r {
   | `=` =>
     True
@@ -64,14 +64,15 @@ define is-non-symbol-char(r: rune): bool {
   }
 }
 
-define is-symbol-char(r: rune): bool {
+define is-symbol-char(r: rune) -> bool {
   not(is-non-symbol-char(r))
 }
 
-define skip-space<r := rho>(k: &parser-kit): parsed(unit) {
+define skip-space(k: &parser-kit) -> parsed(unit) {
+  let r = Right(Unit); // fixme
   try _ = r;
   try _ =
-    zonk.parse.take-while(function (r) {
+    zonk.parse.take-while((r) => {
       match r {
       | ` ` =>
         True
@@ -84,41 +85,45 @@ define skip-space<r := rho>(k: &parser-kit): parsed(unit) {
   Right(Unit)
 }
 
-define skip-space-without-newline<r := rho>(k: &parser-kit): parsed(unit) {
+define skip-space-without-newline(k: &parser-kit) -> parsed(unit) {
+  let r = Right(Unit); // fixme
   try _ = r;
   try _ =
-    zonk.parse.take-while(function (r) {
+    zonk.parse.take-while((r) => {
       eq-rune(r, ` `)
     })(k);
   Right(Unit)
 }
 
-define parse-comment-item<r := rho>(k: &parser-kit, comment-type: comment-type): parsed(comment-item) {
+define parse-comment-item(k: &parser-kit, comment-type: comment-type) -> parsed(comment-item) {
+  let r = Right(Unit); // fixme
   try _ = r;
   try _ = chunk("//")(k);
-  try comment-text =
-    zonk.parse.take-while(function (r) {
+  try comment-string =
+    zonk.parse.take-while((r) => {
       ne-rune(r, `\n`)
     })(k);
-  Right(Comment-Item of {comment-text, comment-type})
+  Right(Comment-Item {comment-string, comment-type})
 }
 
-define parse-line-comment<r := rho>(k: &parser-kit): parsed(comment-item) {
+define parse-line-comment(k: &parser-kit) -> parsed(comment-item) {
+  let r = Right(Unit); // fixme
   try _ = r;
   try _ = skip-space(k);
   parse-comment-item(k, Line-Comment)
 }
 
-define space-consumer<r := rho>(k: &parser-kit): parsed(comment) {
+define space-consumer(k: &parser-kit) -> parsed(comment) {
+  let r = Right(Unit); // fixme
   try _ = r;
   try _ = skip-space-without-newline(k);
   try maybe-inline-comment =
-    optional(function (k) {
+    optional((k) => {
       parse-comment-item(k, Inline-Comment)
     })(k);
   try _ = skip-space(k);
   try line-comments =
-    many(function (k) {
+    many((k) => {
       try c = parse-line-comment(k);
       try _ = skip-space(k);
       Right(c)
@@ -131,38 +136,43 @@ define space-consumer<r := rho>(k: &parser-kit): parsed(comment) {
   }
 }
 
-inline lexeme<a, r := rho>(k: &parser-kit, p: parser(a)): parsed(pair(a, comment)) {
+inline lexeme<a>(k: &parser-kit, p: parser(a)) -> parsed(pair(a, comment)) {
+  let r = Right(Unit); // fixme
   try _ = r;
   try v = p(k);
   try c = space-consumer(k);
   Right(Pair(v, c))
 }
 
-define delimiter<r := rho>(k: &parser-kit, expected: &text): parsed(comment) {
+define delimiter(k: &parser-kit, expected: &string) -> parsed(comment) {
+  let r = Right(Unit); // fixme
   try _ = r;
   try Pair(_, c) =
-    lexeme(k, function (k) {
+    lexeme(k, (k) => {
       try _ = chunk(expected)(k);
       Right(Unit)
     });
   Right(c)
 }
 
-define symbol<r := rho>(k: &parser-kit): parsed(pair(text, comment)) {
+define symbol(k: &parser-kit) -> parsed(pair(string, comment)) {
+  let r = Right(Unit); // fixme
   try _ = r;
-  lexeme(k, function (k) {
+  lexeme(k, (k) => {
     zonk.parse.take-while-1(is-symbol-char)(k)
   })
 }
 
-define symbol'<r := rho>(k: &parser-kit): parsed(pair(text, comment)) {
+define symbol-prime(k: &parser-kit) -> parsed(pair(string, comment)) {
+  let r = Right(Unit); // fixme
   try _ = r;
-  lexeme(k, function (k) {
+  lexeme(k, (k) => {
     zonk.parse.take-while(is-symbol-char)(k)
   })
 }
 
-define _string-inner<r := rho>(k: &parser-kit, cs: vector(rune)): parsed(text) {
+define _string-inner(k: &parser-kit, cs: vector(rune)) -> parsed(string) {
+  let r = Right(Unit); // fixme
   try _ = r;
   try v = any-rune(k);
   match v {
@@ -171,7 +181,7 @@ define _string-inner<r := rho>(k: &parser-kit, cs: vector(rune)): parsed(text) {
     _string-inner(k, push-back(push-back(cs, `\\`), w))
   | `"` =>
     let xs = to-list(cs);
-    let result on xs = core.text.pack(xs);
+    let result on xs = core.string.pack(xs);
     let _ = xs;
     Right(result)
   | v =>
@@ -179,11 +189,12 @@ define _string-inner<r := rho>(k: &parser-kit, cs: vector(rune)): parsed(text) {
   }
 }
 
-define string<r := rho>(k: &parser-kit): parsed(pair(text, comment)) {
+define parse-string(k: &parser-kit) -> parsed(pair(string, comment)) {
+  let r = Right(Unit); // fixme
   try _ = r;
-  lexeme(k, function (k) {
+  lexeme(k, (k) => {
     try _ =
-      zonk.parse.satisfy("double quote", function (r) {
+      zonk.parse.satisfy("double quote", (r) => {
         eq-rune(r, `"`)
       })(k);
     _string-inner(k, core.vector.make(8))

@@ -7,13 +7,13 @@ data binder-f(m, a) {
 | Binder-F(m, ident, a)
 }
 
-inline binder-sero<m, a>(s1: sero(m), s2: sero(a)): sero(binder-f(m, a)) {
-  let Sero of {put := put-m, get := get-m} = s1;
-  let Sero of {put, get} = s2;
-  Sero of {
+inline binder-sero<m, a>(s1: sero(m), s2: sero(a)) -> sero(binder-f(m, a)) {
+  let Sero {put := put-m, get := get-m} = s1;
+  let Sero {put, get} = s2;
+  Sero {
     put := {
-      function (k, v) {
-        let Sero of {put := put-ident} = ident-sero;
+      (k, v) => {
+        let Sero {put := put-ident} = ident-sero;
         tie Binder-F(m, x, val) = v;
         put-m(k, m);
         put-ident(k, x);
@@ -21,8 +21,8 @@ inline binder-sero<m, a>(s1: sero(m), s2: sero(a)): sero(binder-f(m, a)) {
       }
     },
     get := {
-      function (k) {
-        let Sero of {get := get-ident} = ident-sero;
+      (k) => {
+        let Sero {get := get-ident} = ident-sero;
         try m = get-m(k);
         try x = get-ident(k);
         try val = get(k);

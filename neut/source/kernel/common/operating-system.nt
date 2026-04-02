@@ -3,7 +3,7 @@ data operating-system {
 | Darwin
 }
 
-define text-from-operating-system(os: operating-system): &text {
+define string-from-operating-system(os: operating-system) -> &string {
   match os {
   | Linux =>
     "linux"

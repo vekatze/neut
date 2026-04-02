@@ -2,14 +2,14 @@ import {
   core.ansi {Bold},
   core.int.show {show-int},
   core.list {for-each-N},
-  this.color.text {Empty, color-text, join, packed, packed', packed-N'},
+  this.color.string {Empty, color-string, join, packed, packed-N-empty, packed-empty},
   this.logger.hint {Hint, Saved-Hint, hint},
-  this.logger.log-level {_log-level-to-pad, _log-level-to-text, _log-level-to-tone, log-level},
+  this.logger.log-level {_log-level-to-pad, _log-level-to-string, _log-level-to-tone, log-level},
 }
 
 data log-position {
 | Log-Position(
-    file-path: text,
+    file-path: string,
     line: int,
     column: int,
   )
@@ -19,75 +19,75 @@ data log {
 | Log(
     position: ?log-position,
     level: log-level,
-    content: text,
+    content: string,
   )
 }
 
-define log-position-from-hint(m: hint): log-position {
+define log-position-from-hint(m: hint) -> log-position {
   match m {
   | Hint(file-path, line, column, _) =>
     let file-path = *file-path;
-    Log-Position of {file-path, line, column}
+    Log-Position {file-path, line, column}
   | Saved-Hint(file-path, line, column, _) =>
-    Log-Position of {file-path, line, column}
+    Log-Position {file-path, line, column}
   }
 }
 
-define get-line(m: &log-position): int {
-  tie Log-Position of {line} = m;
+define get-line(m: &log-position) -> int {
+  tie Log-Position {line} = m;
   *line
 }
 
-define get-column(m: &log-position): int {
-  tie Log-Position of {column} = m;
+define get-column(m: &log-position) -> int {
+  tie Log-Position {column} = m;
   *column
 }
 
-define get-file-path(m: &log-position): &text {
-  tie Log-Position of {file-path} = m;
+define get-file-path(m: &log-position) -> &string {
+  tie Log-Position {file-path} = m;
   file-path
 }
 
-define show-file-pos(m: &log-position): text {
+define show-file-pos(m: &log-position) -> string {
   case m {
-  | Log-Position of {file-path, line, column} =>
-    pin line-text = show-int(*line);
-    pin column-text = show-int(*column);
-    pin xs = List[*file-path, *":", *line-text, *":", *column-text];
-    core.text.join-N(xs)
+  | Log-Position {file-path, line, column} =>
+    pin line-string = show-int(*line);
+    pin column-string = show-int(*column);
+    pin xs = List[*file-path, *":", *line-string, *":", *column-string];
+    core.string.join-N(xs)
   }
 }
 
-define _show-position(h: &?log-position): color-text {
+define _show-position(h: &?log-position) -> color-string {
   case h {
   | Left(_) =>
     Empty
   | Right(h) =>
-    join(packed(Vector[Bold], show-file-pos(h)), packed'(*"\n"))
+    join(packed(Vector[Bold], show-file-pos(h)), packed-empty(*"\n"))
   }
 }
 
-define _show-level(l: log-level): color-text {
-  packed(_log-level-to-tone(l), core.text.append(_log-level-to-text(l), ": "))
+define _show-level(l: log-level) -> color-string {
+  packed(_log-level-to-tone(l), core.string.append(_log-level-to-string(l), ": "))
 }
 
-define _show-content(level: log-level, content: text): color-text {
+define _show-content(level: log-level, content: string) -> color-string {
   let adjusted-content = {
-    let lines on content = core.text.split(content, "\n");
+    let lines on content = core.string.split(content, "\n");
     match lines {
     | Nil =>
-      packed'(content)
+      packed-empty(content)
     | Cons(head, tail) =>
       let pad = _log-level-to-pad(level);
-      let tail' on tail, pad =
-        for-each-N(tail, function (t) {
-          core.text.append(pad, t)
+      let tail-prime on tail, pad =
+        for-each-N(tail, (t) => {
+          core.string.append(pad, t)
         });
       let _ = pad;
       let _ = tail;
-      let tmp = core.text.intercalate(Cons(head, tail'), *"\n");
-      packed'(tmp)
+      let tmp = core.string.intercalate(Cons(head, tail-prime), *"\n");
+      packed-empty(tmp)
     }
   };
-  join(adjusted-content, packed-N'("\n"))
+  join(adjusted-content, packed-N-empty("\n"))
 }

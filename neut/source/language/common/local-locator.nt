@@ -1,6 +1,14 @@
 import {
   this.app.app {app},
-  this.language.common.base-name {_Base-Name, _Base-Name-N, base-name, base-name-from-text, ord-base-name, text-from-base-name, text-from-base-name-N},
+  this.language.common.base-name {
+    _Base-Name,
+    _Base-Name-N,
+    base-name,
+    base-name-from-string,
+    ord-base-name,
+    string-from-base-name,
+    string-from-base-name-N,
+  },
   this.logger.hint {hint},
 }
 
@@ -8,47 +16,47 @@ data local-locator {
 | _Local-Locator(base-name)
 }
 
-define text-from-local-locator(ll: local-locator): text {
+define string-from-local-locator(ll: local-locator) -> string {
   let _Local-Locator(bn) = ll;
-  text-from-base-name(bn)
+  string-from-base-name(bn)
 }
 
-define text-from-local-locator-N(ll: &local-locator): &text {
+define string-from-local-locator-N(ll: &local-locator) -> &string {
   tie _Local-Locator(bn) = ll;
-  text-from-base-name-N(bn)
+  string-from-base-name-N(bn)
 }
 
-define local-locator-from-text(m: hint, input: &text): app(local-locator) {
-  try bn = base-name-from-text(m, input);
+define local-locator-from-string(m: hint, input: &string) -> app(local-locator) {
+  try bn = base-name-from-string(m, input);
   Right(_Local-Locator(bn))
 }
 
-define make-local-locator(bn: base-name): local-locator {
+define make-local-locator(bn: base-name) -> local-locator {
   _Local-Locator(bn)
 }
 
-define eq-local-locator(x: &local-locator, y: &local-locator): bool {
+define eq-local-locator(x: &local-locator, y: &local-locator) -> bool {
   tie _Local-Locator(x) = x;
   tie _Local-Locator(y) = y;
   case x, y {
   | _Base-Name(x), _Base-Name(y) =>
-    eq-text(x, y)
+    eq-string(x, y)
   | _Base-Name(x), _Base-Name-N(y) =>
-    eq-text(x, y)
+    eq-string(x, y)
   | _Base-Name-N(x), _Base-Name(y) =>
-    eq-text(x, y)
+    eq-string(x, y)
   | _Base-Name-N(x), _Base-Name-N(y) =>
-    eq-text(x, y)
+    eq-string(x, y)
   | _, _ =>
     False
   }
 }
 
-inline ord-local-locator: ord(local-locator) {
-  Ord of {
+constant ord-local-locator: ord(local-locator) {
+  Ord {
     compare := {
-      function (x, y) {
-        let Ord of {compare} = ord-base-name;
+      (x, y) => {
+        let Ord {compare} = ord-base-name;
         tie _Local-Locator(x) = x;
         tie _Local-Locator(y) = y;
         compare(x, y)

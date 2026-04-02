@@ -13,21 +13,21 @@ data attr-data(name) {
   )
 }
 
-inline attr-data-sero<name>(name-sero: sero(name)): sero(attr-data(name)) {
+inline attr-data-sero<name>(name-sero: sero(name)) -> sero(attr-data(name)) {
   let foo = list-sero(pair-sero(name-sero, bool-sero));
-  let Sero of {put := put-cons-names, get := get-cons-names} = foo;
-  Sero of {
+  let Sero {put := put-cons-names, get := get-cons-names} = foo;
+  Sero {
     put := {
-      function (k, v) {
-        let Sero of {put := put-bool} = bool-sero;
+      (k, v) => {
+        let Sero {put := put-bool} = bool-sero;
         tie Attr-Data(cons-name-list, is-const-like) = v;
         put-cons-names(k, cons-name-list);
         put-bool(k, is-const-like);
       }
     },
     get := {
-      function (k) {
-        let Sero of {get := get-bool} = bool-sero;
+      (k) => {
+        let Sero {get := get-bool} = bool-sero;
         try cons-name-list = get-cons-names(k);
         try is-const-like = get-bool(k);
         Right(box {

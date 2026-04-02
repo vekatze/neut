@@ -4,7 +4,7 @@ import {
   this.language.common.prim-type.from-base-prim-type {prim-type-from-base-prim-type},
 }
 
-define from-base-low-type(lt: base-low-type): low-type {
+define from-base-low-type(lt: base-low-type) -> low-type {
   match lt {
   | Prim-Num(bpt) =>
     this.language.common.low-type.Prim-Num(prim-type-from-base-prim-type(bpt))

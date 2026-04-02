@@ -1,6 +1,6 @@
 import {
   core.list {fold-left-N, for-each},
-  this.pretty-printer.doc {Empty, _is-multi, doc, indent, join, join-doc-list, line, make-text, nest},
+  this.pretty-printer.doc {Empty, _is-multi, doc, indent, join, join-doc-list, line, make-string, nest},
 }
 
 data piece {
@@ -11,7 +11,7 @@ data piece {
   )
 }
 
-define _remove-nil(ps: list(piece)): list(piece) {
+define _remove-nil(ps: list(piece)) -> list(piece) {
   match ps {
   | Nil =>
     Nil
@@ -26,23 +26,23 @@ define _remove-nil(ps: list(piece)): list(piece) {
   }
 }
 
-define _apply-single(p: piece): doc {
+define _apply-single(p: piece) -> doc {
   let Piece(c, f, _) = p;
   f(c)
 }
 
-define _apply-multi(p: piece): doc {
+define _apply-multi(p: piece) -> doc {
   let Piece(c, _, g) = p;
   g(c)
 }
 
-define arrange-vertical(ps: list(piece)): doc {
+define arrange-vertical(ps: list(piece)) -> doc {
   join-doc-list(for-each(ps, _apply-multi))
 }
 
-define arrange(ps: list(piece)): doc {
+define arrange(ps: list(piece)) -> doc {
   let b on ps =
-    fold-left-N(False, ps, function (acc, p) {
+    fold-left-N(False, ps, (acc, p) => {
       if acc {
         acc
       } else {
@@ -57,184 +57,184 @@ define arrange(ps: list(piece)): doc {
   }
 }
 
-define _id(d: doc): doc {
+define _id(d: doc) -> doc {
   d
 }
 
-define _append-space(d: doc): doc {
-  join[d, make-text(*" ")]
+define _append-space(d: doc) -> doc {
+  join[d, make-string(*" ")]
 }
 
-define _append-newline(d: doc): doc {
+define _append-newline(d: doc) -> doc {
   join[d, line]
 }
 
-define _space-newline(d: doc): doc {
-  join[make-text(*" "), d, line]
+define _space-newline(d: doc) -> doc {
+  join[make-string(*" "), d, line]
 }
 
-define _wrap-by-space(d: doc): doc {
-  join[make-text(*" "), d, make-text(*" ")]
+define _wrap-by-space(d: doc) -> doc {
+  join[make-string(*" "), d, make-string(*" ")]
 }
 
-define container(content: doc): piece {
-  Piece of {
+define container(content: doc) -> piece {
+  Piece {
     content,
     single-modifier := _id,
     multi-modifier := _append-newline,
   }
 }
 
-define nested(content: doc): piece {
-  Piece of {
+define nested(content: doc) -> piece {
+  Piece {
     content,
     single-modifier := {
-      function (d) {
+      (d) => {
         join[nest(indent, join[line, d]), line]
       }
     },
     multi-modifier := {
-      function (d) {
+      (d) => {
         join[nest(indent, join[line, d]), line]
       }
     },
   }
 }
 
-define block(content: doc): piece {
-  Piece of {
+define block(content: doc) -> piece {
+  Piece {
     content,
     single-modifier := {
-      function (d) {
+      (d) => {
         join[line, d, line]
       }
     },
     multi-modifier := {
-      function (d) {
+      (d) => {
         join[line, d, line]
       }
     },
   }
 }
 
-define id-or-nest(content: doc): piece {
-  Piece of {
+define id-or-nest(content: doc) -> piece {
+  Piece {
     content,
     single-modifier := _id,
     multi-modifier := {
-      function (d) {
+      (d) => {
         join[nest(indent, join[line, d]), line]
       }
     },
   }
 }
 
-define delimiter(content: doc): piece {
-  Piece of {
+define delimiter(content: doc) -> piece {
+  Piece {
     content,
     single-modifier := _wrap-by-space,
     multi-modifier := _append-newline,
   }
 }
 
-define clause-delimiter(content: doc): piece {
-  Piece of {
+define clause-delimiter(content: doc) -> piece {
+  Piece {
     content,
     single-modifier := _wrap-by-space,
     multi-modifier := _space-newline,
   }
 }
 
-define parameter(content: doc): piece {
-  Piece of {
+define parameter(content: doc) -> piece {
+  Piece {
     content,
     single-modifier := _id,
     multi-modifier := _id,
   }
 }
 
-define bare-series(content: doc): piece {
-  Piece of {
+define bare-series(content: doc) -> piece {
+  Piece {
     content,
     single-modifier := _append-space,
     multi-modifier := {
-      function (d) {
+      (d) => {
         join[nest(indent, join[line, d]), line]
       }
     },
   }
 }
 
-define let-body(content: doc): piece {
-  Piece of {
+define let-body(content: doc) -> piece {
+  Piece {
     content,
     single-modifier := _id,
     multi-modifier := {
-      function (d) {
+      (d) => {
         join[nest(indent, join[line, d])]
       }
     },
   }
 }
 
-define before-bare-series(content: doc): piece {
-  Piece of {
+define before-bare-series(content: doc) -> piece {
+  Piece {
     content,
     single-modifier := _append-space,
     multi-modifier := _id,
   }
 }
 
-define delimiter-left-aligned(content: doc): piece {
-  Piece of {
+define delimiter-left-aligned(content: doc) -> piece {
+  Piece {
     content,
     single-modifier := _append-space,
     multi-modifier := _append-newline,
   }
 }
 
-define delimiter-bar(content: doc): piece {
-  Piece of {
+define delimiter-bar(content: doc) -> piece {
+  Piece {
     content,
     single-modifier := _wrap-by-space,
     multi-modifier := {
-      function (d) {
-        join[line, d, make-text(*" ")]
+      (d) => {
+        join[line, d, make-string(*" ")]
       }
     },
   }
 }
 
-define horizontal(content: doc): piece {
-  Piece of {
+define horizontal(content: doc) -> piece {
+  Piece {
     content,
     single-modifier := _append-space,
     multi-modifier := _append-space,
   }
 }
 
-define vertical(content: doc): piece {
-  Piece of {
+define vertical(content: doc) -> piece {
+  Piece {
     content,
     single-modifier := _append-newline,
     multi-modifier := _append-newline,
   }
 }
 
-define append-comma-if-vertical(content: doc): piece {
-  Piece of {
+define append-comma-if-vertical(content: doc) -> piece {
+  Piece {
     content,
     single-modifier := _id,
     multi-modifier := {
-      function (d) {
-        join[d, make-text(*",")]
+      (d) => {
+        join[d, make-string(*",")]
       }
     },
   }
 }
 
-define inject(content: doc): piece {
-  Piece of {
+define inject(content: doc) -> piece {
+  Piece {
     content,
     single-modifier := _id,
     multi-modifier := _id,

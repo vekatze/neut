@@ -1,20 +1,20 @@
 data clang-option {
 | Clang-Option(
-    compile-option: list(text),
-    link-option: list(text),
+    compile-option: list(string),
+    link-option: list(string),
   )
 }
 
 define make-clang-option(
-  !build-option: list(text),
-  compile-option: list(text),
-  link-option: list(text),
-): clang-option {
-  let compile-option = core.list.append(!build-option, compile-option);
-  let link-option = core.list.append(!build-option, link-option);
-  Clang-Option of {compile-option, link-option}
+  !build-option: list(string),
+  compile-option: list(string),
+  link-option: list(string),
+) -> clang-option {
+  let compile-option = core.list.append(build-option, compile-option);
+  let link-option = core.list.append(build-option, link-option);
+  Clang-Option {compile-option, link-option}
 }
 
-inline empty-clang-option: clang-option {
-  Clang-Option of {compile-option := Nil, link-option := Nil}
+constant empty-clang-option: clang-option {
+  Clang-Option {compile-option := Nil, link-option := Nil}
 }

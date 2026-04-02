@@ -2,13 +2,13 @@ data data-size {
 | Data-Size-64
 }
 
-define int-from-data-size(x: data-size): int {
+define int-from-data-size(x: data-size) -> int {
   match x {
   | Data-Size-64 =>
     64
   }
 }
 
-define data-size-max: data-size {
+constant data-size-max: data-size {
   Data-Size-64
 }

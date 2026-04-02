@@ -20,10 +20,10 @@ data top-candidate {
   )
 }
 
-inline candidate-kind-sero: sero(candidate-kind) {
-  Sero of {
+constant candidate-kind-sero: sero(candidate-kind) {
+  Sero {
     put := {
-      function (k, v) {
+      (k, v) => {
         case v {
         | Constant =>
           put-int64(k, 0);
@@ -35,7 +35,7 @@ inline candidate-kind-sero: sero(candidate-kind) {
       }
     },
     get := {
-      function (k) {
+      (k) => {
         try tag = get-int64(k);
         match tag {
         | 0 =>
@@ -52,12 +52,12 @@ inline candidate-kind-sero: sero(candidate-kind) {
   }
 }
 
-inline top-candidate-sero: sero(top-candidate) {
-  Sero of {
+constant top-candidate-sero: sero(top-candidate) {
+  Sero {
     put := {
-      function (k, v) {
-        let Sero of {put := put-dd} = definite-description-sero;
-        let Sero of {put := put-candidate-kind} = candidate-kind-sero;
+      (k, v) => {
+        let Sero {put := put-dd} = definite-description-sero;
+        let Sero {put := put-candidate-kind} = candidate-kind-sero;
         tie Top-Candidate(Loc(line, column), dd, kind) = v;
         put-int64(k, *line);
         put-int64(k, *column);
@@ -66,9 +66,9 @@ inline top-candidate-sero: sero(top-candidate) {
       }
     },
     get := {
-      function (k) {
-        let Sero of {get := get-dd} = definite-description-sero;
-        let Sero of {get := get-candidate-kind} = candidate-kind-sero;
+      (k) => {
+        let Sero {get := get-dd} = definite-description-sero;
+        let Sero {get := get-candidate-kind} = candidate-kind-sero;
         try line = get-int64(k);
         try column = get-int64(k);
         try dd = get-dd(k);

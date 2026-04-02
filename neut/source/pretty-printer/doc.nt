@@ -1,38 +1,38 @@
 import {
   core.control {loop},
   core.list {fold-left-N},
-  core.text-builder {append-text, extract, make-text-builder, text-builder},
+  core.string-builder {append-string, extract, make-string-builder, string-builder},
 }
 
 data doc {
 | Empty
-| Text(text, doc)
+| String(string, doc)
 | Line(int, doc)
-| Inline-Comment(text, doc)
+| Inline-Comment(string, doc)
 }
 
-inline indent: int {
+constant indent: int {
   2
 }
 
-inline line: doc {
+constant line: doc {
   Line(0, Empty)
 }
 
-inline make-text(t: text): doc {
-  Text(t, Empty)
+inline make-string(t: string) -> doc {
+  String(t, Empty)
 }
 
-inline inline-comment(t: text): doc {
+inline inline-comment(t: string) -> doc {
   Inline-Comment(t, Empty)
 }
 
-define _join(d1: doc, d2: doc): doc {
+define _join(d1: doc, d2: doc) -> doc {
   match d1 {
   | Empty =>
     d2
-  | Text(t, x) =>
-    Text(t, _join(x, d2))
+  | String(t, x) =>
+    String(t, _join(x, d2))
   | Line(i, x) =>
     Line(i, _join(x, d2))
   | Inline-Comment(t, x) =>
@@ -41,18 +41,18 @@ define _join(d1: doc, d2: doc): doc {
 }
 
 rule-right join {
-  function leaf(_: int): doc {
+  inline leaf(_: int) -> doc {
     Empty
   },
-  function node-left(d: doc, acc: doc): doc {
+  inline node-left(d: doc, acc: doc) -> doc {
     _join(d, acc)
   },
-  function root<a>(x: a): a {
+  inline root<a>(x: a) -> a {
     x
   },
 }
 
-define join-doc-list(ds: list(doc)): doc {
+define join-doc-list(ds: list(doc)) -> doc {
   match ds {
   | Nil =>
     Empty
@@ -61,12 +61,12 @@ define join-doc-list(ds: list(doc)): doc {
   }
 }
 
-define nest(i: int, d: doc): doc {
+define nest(i: int, d: doc) -> doc {
   match d {
   | Empty =>
     Empty
-  | Text(t, x) =>
-    Text(t, nest(i, x))
+  | String(t, x) =>
+    String(t, nest(i, x))
   | Line(j, x) =>
     Line(add-int(i, j), nest(i, x))
   | Inline-Comment(t, x) =>
@@ -74,36 +74,36 @@ define nest(i: int, d: doc): doc {
   }
 }
 
-define _layout-direct(b: &text-builder, d: &doc): unit {
+define _layout-direct(b: &string-builder, d: &doc) -> unit {
   case d {
   | Empty =>
     Unit
-  | Text(t, x) =>
-    append-text(b, t);
+  | String(t, x) =>
+    append-string(b, t);
     _layout-direct(b, x)
   | Line(i, x) =>
-    append-text(b, "\n");
-    loop(*i, function (_) {
-      append-text(b, " ");
+    append-string(b, "\n");
+    loop(*i, (_) => {
+      append-string(b, " ");
     });
     _layout-direct(b, x)
   | Inline-Comment(t, x) =>
-    append-text(b, t);
+    append-string(b, t);
     _layout-direct(b, x)
   }
 }
 
-define _slide-inline-comments(d: doc): doc {
+define _slide-inline-comments(d: doc) -> doc {
   match d {
   | Empty =>
     Empty
-  | Text(t, x) =>
-    Text(t, _slide-inline-comments(x))
+  | String(t, x) =>
+    String(t, _slide-inline-comments(x))
   | Line(i, x) =>
     match x {
     | Inline-Comment(t, cont) =>
       pin t = t;
-      Text(core.text.append(" ", t), _slide-inline-comments(cont))
+      String(core.string.append(" ", t), _slide-inline-comments(cont))
     | x =>
       Line(i, _slide-inline-comments(x))
     }
@@ -112,28 +112,28 @@ define _slide-inline-comments(d: doc): doc {
   }
 }
 
-define layout(d: doc): text {
-  let b = make-text-builder(256);
+define layout(d: doc) -> string {
+  let b = make-string-builder(256);
   pin d = _slide-inline-comments(d);
   let _ on b = _layout-direct(b, d);
   extract(b)
 }
 
-define _is-multi(d: &doc): bool {
+define _is-multi(d: &doc) -> bool {
   case d {
   | Empty =>
     False
-  | Text(_, rest) =>
+  | String(_, rest) =>
     _is-multi(rest)
-  | Line of {} =>
+  | Line {} =>
     True
   | Inline-Comment(_, rest) =>
     _is-multi(rest)
   }
 }
 
-define is-multi(ds: &list(doc)): bool {
-  fold-left-N(False, ds, function (acc, d) {
+define is-multi(ds: &list(doc)) -> bool {
+  fold-left-N(False, ds, (acc, d) => {
     if acc {
       True
     } else {
@@ -142,19 +142,19 @@ define is-multi(ds: &list(doc)): bool {
   })
 }
 
-define intercalate(!sep: doc, ds: list(doc)): doc {
+define intercalate(!sep: doc, ds: list(doc)) -> doc {
   match ds {
   | Nil =>
     Empty
   | Cons(d, Nil) =>
     d
   | Cons(d, rest) =>
-    join[d, !sep, intercalate(!sep, rest)]
+    join[d, sep, intercalate(sep, rest)]
   }
 }
 
-define zen(): unit {
+define zen() -> unit {
   pin d = List[Empty, Line(3, Empty)];
   pin b = is-multi(d);
-  vet(b);
+  vet::(b);
 }

@@ -4,57 +4,57 @@ import {
   sero.get-kit {get-kit},
   sero.instance.bool {bool-sero},
   sero.instance.int64 {int64-sero},
-  sero.instance.text {text-sero},
+  sero.instance.text {string-sero},
   sero.put-kit {put-kit},
   sero.sero {Sero, sero},
   this.logger.hint {Hint, Saved-Hint, hint},
 }
 
-define _put(k: &put-kit, v: &hint): unit {
-  let Sero of {put := !put-text} = text-sero;
-  let Sero of {put := !put-int} = int64-sero;
-  let Sero of {put := !put-bool} = bool-sero;
+define _put(k: &put-kit, v: &hint) -> unit {
+  let Sero {put := !put-string} = string-sero;
+  let Sero {put := !put-int} = int64-sero;
+  let Sero {put := !put-bool} = bool-sero;
   case v {
-  | Hint of {file-path, line, column, should-save-location} =>
-    !put-text(k, *file-path);
-    !put-int(k, line);
-    !put-int(k, column);
-    !put-bool(k, should-save-location)
-  | Saved-Hint of {file-path, line, column, should-save-location} =>
-    !put-text(k, file-path);
-    !put-int(k, line);
-    !put-int(k, column);
-    !put-bool(k, should-save-location)
+  | Hint {file-path, line, column, should-save-location} =>
+    put-string(k, *file-path);
+    put-int(k, line);
+    put-int(k, column);
+    put-bool(k, should-save-location)
+  | Saved-Hint {file-path, line, column, should-save-location} =>
+    put-string(k, file-path);
+    put-int(k, line);
+    put-int(k, column);
+    put-bool(k, should-save-location)
   }
 }
 
-define _get(k: &get-kit): ?meta hint {
-  let Sero of {get := !get-text} = text-sero;
-  let Sero of {get := !get-int} = int64-sero;
-  let Sero of {get := !get-bool} = bool-sero;
-  try file-path = !get-text(k);
-  try line = !get-int(k);
-  try column = !get-int(k);
-  try should-save-location = !get-bool(k);
+define _get(k: &get-kit) -> ?+hint {
+  let Sero {get := !get-string} = string-sero;
+  let Sero {get := !get-int} = int64-sero;
+  let Sero {get := !get-bool} = bool-sero;
+  try file-path = get-string(k);
+  try line = get-int(k);
+  try column = get-int(k);
+  try should-save-location = get-bool(k);
   Right(box {
     letbox file-path = file-path;
     letbox line = line;
     letbox column = column;
     letbox should-save-location = should-save-location;
-    Saved-Hint of {file-path, line, column, should-save-location}
+    Saved-Hint {file-path, line, column, should-save-location}
   })
 }
 
-inline hint-sero: sero(hint) {
-  Sero of {
+constant hint-sero: sero(hint) {
+  Sero {
     put := _put,
     get := _get,
   }
 }
 
-define zen(): unit {
+define zen() -> unit {
   pin val =
-    Hint of {
+    Hint {
       file-path := "/path/to/file.txt",
       line := 123,
       column := 42,
@@ -65,6 +65,6 @@ define zen(): unit {
     print("error\n")
   | Right(h) =>
     pin h = h;
-    vet(h)
+    vet::(h)
   }
 }

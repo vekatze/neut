@@ -3,8 +3,8 @@ import {
   this.app.run {raise-error},
   this.language.common.base-name {base-name, base-name-by-split},
   this.language.common.const {ns-sep},
-  this.language.common.module-alias {Module-Alias, module-alias, text-from-module-alias},
-  this.language.common.source-locator {source-locator, source-locator-from-base-name-list, text-from-source-locator},
+  this.language.common.module-alias {Module-Alias, module-alias, string-from-module-alias},
+  this.language.common.source-locator {source-locator, source-locator-from-base-name-list, string-from-source-locator},
   this.logger.hint {hint},
 }
 
@@ -15,15 +15,15 @@ data global-locator {
   )
 }
 
-define text-from-global-locator(gl: &global-locator): text {
-  tie Global-Locator of {module-alias, source-locator} = gl;
-  pin t1 = text-from-module-alias(*module-alias);
-  pin t2 = text-from-source-locator(source-locator);
-  pin tmp = core.text.append(t1, ns-sep);
-  core.text.append(tmp, t2)
+define string-from-global-locator(gl: &global-locator) -> string {
+  tie Global-Locator {module-alias, source-locator} = gl;
+  pin t1 = string-from-module-alias(*module-alias);
+  pin t2 = string-from-source-locator(source-locator);
+  pin tmp = core.string.append(t1, ns-sep);
+  core.string.append(tmp, t2)
 }
 
-define global-locator-from-text(m: &hint, t: &text): app(global-locator) {
+define global-locator-from-string(m: &hint, t: &string) -> app(global-locator) {
   try base-name-list = base-name-by-split(m, t);
   match base-name-list {
   | Cons(prefix, rest) =>
@@ -31,14 +31,14 @@ define global-locator-from-text(m: &hint, t: &text): app(global-locator) {
     Right(Global-Locator(Module-Alias(prefix), locator))
   | Nil =>
     let error-message = {
-      pin t1 = core.text.append("Invalid global locator: `", t);
-      core.text.append(t1, "`")
+      pin t1 = core.string.append("Invalid global locator: `", t);
+      core.string.append(t1, "`")
     };
     raise-error(*m, error-message)
   }
 }
 
-define _global-locator-from-base-name-list(m: &hint, xs: list(base-name)): app(global-locator) {
+define _global-locator-from-base-name-list(m: &hint, xs: list(base-name)) -> app(global-locator) {
   match xs {
   | Nil =>
     raise-error(*m, *"Empty string cannot be converted into a global locator")

@@ -1,9 +1,9 @@
 import {
-  core.text {split},
-  core.text-builder {append-text, make-text-builder, text-builder},
+  core.string {split},
+  core.string-builder {append-string, make-string-builder, string-builder},
   core.trick {panic},
-  sero.common.get {get-text},
-  sero.common.put {put-text},
+  sero.common.get {get-string},
+  sero.common.put {put-string},
   sero.sero {Sero, sero},
   this.app.app {app},
   this.app.run {raise-error},
@@ -30,15 +30,15 @@ import {
     leaf,
     node,
     root,
-    text-from-base-name,
+    string-from-base-name,
   },
   this.language.common.const {ns-sep},
   this.language.common.global-locator {_global-locator-from-base-name-list, global-locator},
   this.language.common.local-locator {
     local-locator,
     make-local-locator,
-    text-from-local-locator,
-    text-from-local-locator-N,
+    string-from-local-locator,
+    string-from-local-locator-N,
   },
   this.language.common.module-digest {Module-Digest},
   this.language.common.module-id {Base, Library, Main, module-id},
@@ -46,32 +46,32 @@ import {
   this.language.common.strict-global-locator {
     sgl-from-source-locator,
     strict-global-locator,
-    text-from-strict-global-locator,
+    string-from-strict-global-locator,
   },
   this.logger.hint {hint, internal-hint},
 }
 
 data definite-description {
-| _Definite-Description(text)
+| _Definite-Description(string)
 }
 
-inline eq-dd: eq(definite-description) {
-  Eq of {
+constant eq-dd: eq(definite-description) {
+  Eq {
     equal := {
-      function (x, y) {
+      (x, y) => {
         tie _Definite-Description(x) = x;
         tie _Definite-Description(y) = y;
-        eq-text(x, y)
+        eq-string(x, y)
       }
     },
   }
 }
 
-inline ord-dd: ord(definite-description) {
-  let Ord of {compare} = core.text.ord.as-ord;
-  Ord of {
+constant ord-dd: ord(definite-description) {
+  let Ord {compare} = core.string.ord.as-ord;
+  Ord {
     compare := {
-      function (x, y) {
+      (x, y) => {
         tie _Definite-Description(x) = x;
         tie _Definite-Description(y) = y;
         compare(x, y)
@@ -80,94 +80,94 @@ inline ord-dd: ord(definite-description) {
   }
 }
 
-define new-dd(gl: &strict-global-locator, ll: local-locator): definite-description {
-  pin tmp = text-from-strict-global-locator(gl);
-  pin tmp = core.text.append(tmp, ns-sep);
-  pin ll = text-from-local-locator(ll);
-  let tmp = core.text.append(tmp, ll);
+define new-dd(gl: &strict-global-locator, ll: local-locator) -> definite-description {
+  pin tmp = string-from-strict-global-locator(gl);
+  pin tmp = core.string.append(tmp, ns-sep);
+  pin ll = string-from-local-locator(ll);
+  let tmp = core.string.append(tmp, ll);
   _Definite-Description(tmp)
 }
 
-define new-dd-N(gl: &strict-global-locator, ll: &local-locator): definite-description {
-  pin tmp = text-from-strict-global-locator(gl);
-  pin tmp = core.text.append(tmp, ns-sep);
-  let ll = text-from-local-locator-N(ll);
-  let tmp = core.text.append(tmp, ll);
+define new-dd-N(gl: &strict-global-locator, ll: &local-locator) -> definite-description {
+  pin tmp = string-from-strict-global-locator(gl);
+  pin tmp = core.string.append(tmp, ns-sep);
+  let ll = string-from-local-locator-N(ll);
+  let tmp = core.string.append(tmp, ll);
   _Definite-Description(tmp)
 }
 
-define text-from-dd(dd: &definite-description): &text {
+define string-from-dd(dd: &definite-description) -> &string {
   tie _Definite-Description(t) = dd;
   t
 }
 
-define _new-by-global-locator(gl: &strict-global-locator, name: base-name): definite-description {
+define _new-by-global-locator(gl: &strict-global-locator, name: base-name) -> definite-description {
   new-dd(gl, make-local-locator(name))
 }
 
-define _get-form-dd(dd: &definite-description): definite-description {
+define _get-form-dd(dd: &definite-description) -> definite-description {
   tie _Definite-Description(t) = dd;
-  pin tmp = core.text.append(t, "#");
-  pin form = text-from-base-name(form());
-  let tmp = core.text.append(tmp, form);
+  pin tmp = core.string.append(t, "#");
+  pin form = string-from-base-name(form());
+  let tmp = core.string.append(tmp, form);
   _Definite-Description(tmp)
 }
 
-define _get-node-dd(dd: &definite-description): definite-description {
+define _get-node-dd(dd: &definite-description) -> definite-description {
   tie _Definite-Description(t) = dd;
-  pin tmp = core.text.append(t, "#");
-  pin node = text-from-base-name(node());
-  let tmp = core.text.append(tmp, node);
+  pin tmp = core.string.append(t, "#");
+  pin node = string-from-base-name(node());
+  let tmp = core.string.append(tmp, node);
   _Definite-Description(tmp)
 }
 
-define _get-leaf-dd(dd: &definite-description): definite-description {
+define _get-leaf-dd(dd: &definite-description) -> definite-description {
   tie _Definite-Description(t) = dd;
-  pin tmp = core.text.append(t, "#");
-  pin leaf = text-from-base-name(leaf());
-  let tmp = core.text.append(tmp, leaf);
+  pin tmp = core.string.append(t, "#");
+  pin leaf = string-from-base-name(leaf());
+  let tmp = core.string.append(tmp, leaf);
   _Definite-Description(tmp)
 }
 
-define _get-root-dd(dd: &definite-description): definite-description {
+define _get-root-dd(dd: &definite-description) -> definite-description {
   tie _Definite-Description(t) = dd;
-  pin tmp = core.text.append(t, "#");
-  pin root = text-from-base-name(root());
-  let tmp = core.text.append(tmp, root);
+  pin tmp = core.string.append(t, "#");
+  pin root = string-from-base-name(root());
+  let tmp = core.string.append(tmp, root);
   _Definite-Description(tmp)
 }
 
-define uncons-dd(dd: &definite-description): pair(module-id, text) {
+define uncons-dd(dd: &definite-description) -> pair(module-id, string) {
   tie _Definite-Description(t) = dd;
   let names = split(t, ns-sep);
   match names {
   | Cons(head-elem, rest) =>
-    let b1 on head-elem = eq-text(head-elem, "this");
-    let b2 on head-elem = eq-text(head-elem, "base");
+    let b1 on head-elem = eq-string(head-elem, "this");
+    let b2 on head-elem = eq-string(head-elem, "base");
     if b1 {
-      Pair(Main, core.text.intercalate(rest, *ns-sep))
+      Pair(Main, core.string.intercalate(rest, *ns-sep))
     } else-if b2 {
-      Pair(Base, core.text.intercalate(rest, *ns-sep))
+      Pair(Base, core.string.intercalate(rest, *ns-sep))
     } else {
-      Pair(Library(Module-Digest(head-elem)), core.text.intercalate(rest, *ns-sep))
+      Pair(Library(Module-Digest(head-elem)), core.string.intercalate(rest, *ns-sep))
     }
   | _ =>
     panic("language.common.definite-description.uncons-dd")
   }
 }
 
-define global-locator-from-dd(dd: &definite-description): text {
+define global-locator-from-dd(dd: &definite-description) -> string {
   tie _Definite-Description(t) = dd;
   let names = split(t, ns-sep);
   match core.list.unsnoc(names) {
   | Right(Pair(xs, _)) =>
-    core.text.intercalate(xs, *ns-sep)
+    core.string.intercalate(xs, *ns-sep)
   | _ =>
     panic("language.common.definite-description.global-locator-from-dd")
   }
 }
 
-define local-locator-from-dd(dd: &definite-description): text {
+define local-locator-from-dd(dd: &definite-description) -> string {
   tie _Definite-Description(t) = dd;
   let names = split(t, ns-sep);
   match core.list.unsnoc(names) {
@@ -178,106 +178,106 @@ define local-locator-from-dd(dd: &definite-description): text {
   }
 }
 
-define imm-type-dd(): definite-description {
+define imm-type-dd() -> definite-description {
   pin tmp = sgl-from-source-locator(internal-locator());
   _new-by-global-locator(tmp, imm-type())
 }
 
-define imm-noema-dd(): definite-description {
+define imm-noema-dd() -> definite-description {
   pin tmp = sgl-from-source-locator(internal-locator());
   _new-by-global-locator(tmp, imm-noema())
 }
 
-define imm-int1-dd(): definite-description {
+define imm-int1-dd() -> definite-description {
   pin tmp = sgl-from-source-locator(internal-locator());
   _new-by-global-locator(tmp, imm-int1())
 }
 
-define imm-int2-dd(): definite-description {
+define imm-int2-dd() -> definite-description {
   pin tmp = sgl-from-source-locator(internal-locator());
   _new-by-global-locator(tmp, imm-int2())
 }
 
-define imm-int4-dd(): definite-description {
+define imm-int4-dd() -> definite-description {
   pin tmp = sgl-from-source-locator(internal-locator());
   _new-by-global-locator(tmp, imm-int4())
 }
 
-define imm-int8-dd(): definite-description {
+define imm-int8-dd() -> definite-description {
   pin tmp = sgl-from-source-locator(internal-locator());
   _new-by-global-locator(tmp, imm-int8())
 }
 
-define imm-int16-dd(): definite-description {
+define imm-int16-dd() -> definite-description {
   pin tmp = sgl-from-source-locator(internal-locator());
   _new-by-global-locator(tmp, imm-int16())
 }
 
-define imm-int32-dd(): definite-description {
+define imm-int32-dd() -> definite-description {
   pin tmp = sgl-from-source-locator(internal-locator());
   _new-by-global-locator(tmp, imm-int32())
 }
 
-define imm-int64-dd(): definite-description {
+define imm-int64-dd() -> definite-description {
   pin tmp = sgl-from-source-locator(internal-locator());
   _new-by-global-locator(tmp, imm-int64())
 }
 
-define imm-float16-dd(): definite-description {
+define imm-float16-dd() -> definite-description {
   pin tmp = sgl-from-source-locator(internal-locator());
   _new-by-global-locator(tmp, imm-float16())
 }
 
-define imm-float32-dd(): definite-description {
+define imm-float32-dd() -> definite-description {
   pin tmp = sgl-from-source-locator(internal-locator());
   _new-by-global-locator(tmp, imm-float32())
 }
 
-define imm-float64-dd(): definite-description {
+define imm-float64-dd() -> definite-description {
   pin tmp = sgl-from-source-locator(internal-locator());
   _new-by-global-locator(tmp, imm-float64())
 }
 
-define imm-rune-dd(): definite-description {
+define imm-rune-dd() -> definite-description {
   pin tmp = sgl-from-source-locator(internal-locator());
   _new-by-global-locator(tmp, imm-rune())
 }
 
-define imm-pointer-dd(): definite-description {
+define imm-pointer-dd() -> definite-description {
   pin tmp = sgl-from-source-locator(internal-locator());
   _new-by-global-locator(tmp, imm-pointer())
 }
 
-define imm-null-dd(): definite-description {
+define imm-null-dd() -> definite-description {
   pin tmp = sgl-from-source-locator(internal-locator());
   _new-by-global-locator(tmp, imm-null())
 }
 
-define cls-dd(): definite-description {
+define cls-dd() -> definite-description {
   pin tmp = sgl-from-source-locator(internal-locator());
   _new-by-global-locator(tmp, cls())
 }
 
-define append-dd(buf: &text-builder, dd: &definite-description): unit {
+define append-dd(buf: &string-builder, dd: &definite-description) -> unit {
   tie _Definite-Description(t) = dd;
-  append-text(buf, "\"");
-  append-text(buf, t);
-  append-text(buf, "\"");
+  append-string(buf, "\"");
+  append-string(buf, t);
+  append-string(buf, "\"");
 }
 
-define get-locator-pair(m: &hint, var-text: &text): app(pair(global-locator, local-locator)) {
-  try names = base-name-by-split(m, var-text);
+define get-locator-pair(m: &hint, var-string: &string) -> app(pair(global-locator, local-locator)) {
+  try names = base-name-by-split(m, var-string);
   match core.list.unsnoc(names) {
   | Left(_) =>
     raise-error(*m, *"lanugage.common.definite-description.get-locator-pair: empty variable name")
   | Right(Pair(Nil, _)) =>
-    let buf = make-text-builder(64);
+    let buf = make-string-builder(64);
     let _ on buf = {
-      append-text(buf, "The symbol `");
-      append-text(buf, var-text);
-      append-text(buf, "` does not contain a global locator");
+      append-string(buf, "The symbol `");
+      append-string(buf, var-string);
+      append-string(buf, "` does not contain a global locator");
     };
-    raise-error(*m, core.text-builder.extract(buf))
+    raise-error(*m, core.string-builder.extract(buf))
   | Right(Pair(init-elems, last-elem)) =>
     try gl = _global-locator-from-base-name-list(m, init-elems);
     let ll = make-local-locator(last-elem);
@@ -285,21 +285,21 @@ define get-locator-pair(m: &hint, var-text: &text): app(pair(global-locator, loc
   }
 }
 
-inline llvm-global-locator-text: &text {
+constant llvm-global-locator-string: &string {
   "base.llvm"
 }
 
-inline definite-description-sero: sero(definite-description) {
-  Sero of {
+constant definite-description-sero: sero(definite-description) {
+  Sero {
     put := {
-      function (k, v) {
+      (k, v) => {
         tie _Definite-Description(t) = v;
-        put-text(k, t);
+        put-string(k, t);
       }
     },
     get := {
-      function (k) {
-        try t = get-text(k);
+      (k) => {
+        try t = get-string(k);
         Right(box {
           letbox t = lift {t};
           _Definite-Description(t)
@@ -309,8 +309,8 @@ inline definite-description-sero: sero(definite-description) {
   }
 }
 
-define zen(): unit {
+define zen() -> unit {
   pin m = internal-hint;
   pin v = get-locator-pair(m, "core.either.Left");
-  vet(v);
+  vet::(v);
 }

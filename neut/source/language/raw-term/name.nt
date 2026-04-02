@@ -1,5 +1,5 @@
 import {
-  this.language.raw-term.locator {locator, text-from-locator},
+  this.language.raw-term.locator {locator, string-from-locator},
   this.language.raw-term.raw-ident {raw-ident},
 }
 
@@ -8,25 +8,25 @@ data name {
 | Locator(locator)
 }
 
-define text-from-name(n: &name): text {
+define string-from-name(n: &name) -> string {
   case n {
   | Var(x) =>
     *x
   | Locator(l) =>
-    text-from-locator(l)
+    string-from-locator(l)
   }
 }
 
-define _is-upper(r: rune): bool {
+define _is-upper(r: rune) -> bool {
   and(le-rune(`A`, r), le-rune(r, `Z`))
 }
 
-define is-cons-name(x: &text): bool {
+define is-cons-name(x: &string) -> bool {
   let tmp =
-    core.text.drop-while-N(x, function (r) {
+    core.string.drop-while-N(x, (r) => {
       eq-rune(r, `_`)
     });
-  match core.text.uncons(tmp) {
+  match core.string.uncons(tmp) {
   | Right(Pair(c, _)) =>
     _is-upper(c)
   | _ =>
@@ -34,13 +34,13 @@ define is-cons-name(x: &text): bool {
   }
 }
 
-define zen(): unit {
+define zen() -> unit {
   pin a = _is-upper(`A`);
   pin x = _is-upper(`X`);
   pin z = _is-upper(`Z`);
   pin w = _is-upper(`w`);
-  vet(a);
-  vet(x);
-  vet(z);
-  vet(w);
+  vet::(a);
+  vet::(x);
+  vet::(z);
+  vet::(w);
 }

@@ -1,9 +1,14 @@
 import {
   core.int.parse {parse-int},
-  core.text {length},
-  core.text.eq {eq-prefix},
+  core.string {length},
+  core.string.eq {eq-prefix},
   this.language.common.data-size {Data-Size-64, data-size},
-  this.language.common.definite-description {definite-description, global-locator-from-dd, llvm-global-locator-text, local-locator-from-dd},
+  this.language.common.definite-description {
+    definite-description,
+    global-locator-from-dd,
+    llvm-global-locator-string,
+    local-locator-from-dd,
+  },
   this.language.common.prim-num-size {
     float-size,
     float-size-from-data-size,
@@ -15,19 +20,19 @@ import {
   this.language.common.prim-type {Float, Int, prim-type},
 }
 
-inline _int-type-name: &text {
+constant _int-type-name: &string {
   "int"
 }
 
-inline _float-type-name: &text {
+constant _float-type-name: &string {
   "float"
 }
 
-define _as-low-int(ds: data-size, s: &text): ?int-size {
-  if eq-text(s, _int-type-name) {
+define _as-low-int(ds: data-size, s: &string) -> ?int-size {
+  if eq-string(s, _int-type-name) {
     Right(int-size-from-data-size(ds))
   } else-if eq-prefix(s, _int-type-name) {
-    pin rest = core.text.drop-N(s, length(_int-type-name));
+    pin rest = core.string.drop-N(s, length(_int-type-name));
     try size-value = parse-int(rest);
     int-size-from-int(ds, size-value)
   } else {
@@ -35,11 +40,11 @@ define _as-low-int(ds: data-size, s: &text): ?int-size {
   }
 }
 
-define _as-low-float(ds: data-size, s: &text): ?float-size {
-  if eq-text(s, _float-type-name) {
+define _as-low-float(ds: data-size, s: &string) -> ?float-size {
+  if eq-string(s, _float-type-name) {
     Right(float-size-from-data-size(ds))
   } else-if eq-prefix(s, _float-type-name) {
-    pin rest = core.text.drop-N(s, length(_float-type-name));
+    pin rest = core.string.drop-N(s, length(_float-type-name));
     try size-value = parse-int(rest);
     float-size-from-int(ds, size-value)
   } else {
@@ -47,7 +52,7 @@ define _as-low-float(ds: data-size, s: &text): ?float-size {
   }
 }
 
-define prim-type-from-text(ds: data-size, name: &text): ?prim-type {
+define prim-type-from-string(ds: data-size, name: &string) -> ?prim-type {
   match _as-low-int(ds, name) {
   | Right(int-size) =>
     Right(Int(int-size))
@@ -61,30 +66,30 @@ define prim-type-from-text(ds: data-size, name: &text): ?prim-type {
   }
 }
 
-define prim-type-from-definite-description(ds: data-size, dd: &definite-description): ?prim-type {
+define prim-type-from-definite-description(ds: data-size, dd: &definite-description) -> ?prim-type {
   pin sgl = global-locator-from-dd(dd);
-  let b = eq-text(llvm-global-locator-text, sgl);
+  let b = eq-string(llvm-global-locator-string, sgl);
   if b {
     pin ll = local-locator-from-dd(dd);
-    prim-type-from-text(ds, ll)
+    prim-type-from-string(ds, ll)
   } else {
     none
   }
 }
 
-define zen(): unit {
+define zen() -> unit {
   pin v = _as-low-int(Data-Size-64, "int");
-  vet(v);
+  vet::(v);
   pin v = _as-low-int(Data-Size-64, "int8");
-  vet(v);
+  vet::(v);
   pin v = _as-low-int(Data-Size-64, "sample");
-  vet(v);
+  vet::(v);
   pin v = _as-low-float(Data-Size-64, "float");
-  vet(v);
+  vet::(v);
   pin v = _as-low-float(Data-Size-64, "float32");
-  vet(v);
+  vet::(v);
   pin v = _as-low-float(Data-Size-64, "sample");
-  vet(v);
-  pin v = prim-type-from-text(Data-Size-64, "int8");
-  vet(v);
+  vet::(v);
+  pin v = prim-type-from-string(Data-Size-64, "int8");
+  vet::(v);
 }

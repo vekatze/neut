@@ -18,7 +18,7 @@ data global-name {
 | Rule(rule-kind)
 }
 
-define get-is-const-like(gn: &global-name): is-const-like {
+define get-is-const-like(gn: &global-name) -> is-const-like {
   case gn {
   | Top-Level-Func(_, is-const-like) =>
     *is-const-like
@@ -31,7 +31,7 @@ define get-is-const-like(gn: &global-name): is-const-like {
   }
 }
 
-define has-no-args(gn: &global-name): bool {
+define has-no-args(gn: &global-name) -> bool {
   case gn {
   | Top-Level-Func(arg-num, _) =>
     tie Arg-Num(i) = arg-num;
@@ -52,7 +52,7 @@ define has-no-args(gn: &global-name): bool {
   }
 }
 
-define disable-const-like-flag(gn: global-name): global-name {
+define disable-const-like-flag(gn: global-name) -> global-name {
   match gn {
   | Top-Level-Func(arg-num, _) =>
     Top-Level-Func(arg-num, False)

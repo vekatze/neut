@@ -2,6 +2,6 @@ import {
   this.app.error {error},
 }
 
-inline app(a): type {
+alias app(a) {
   either(error, a)
 }

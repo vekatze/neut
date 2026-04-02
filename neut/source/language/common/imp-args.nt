@@ -8,7 +8,7 @@ data imp-args(a) {
 | FullySpecified(list(a))
 }
 
-define extract<a>(args: imp-args(a)): list(a) {
+define extract<a>(args: imp-args(a)) -> list(a) {
   match args {
   | Unspecified =>
     Nil
@@ -19,15 +19,15 @@ define extract<a>(args: imp-args(a)): list(a) {
   }
 }
 
-define for-each-E<e, a, b>(args: imp-args(a), !f: (a) -> either(e, b)): either(e, imp-args(b)) {
+define for-each-E<e, a, b>(args: imp-args(a), !f: (a) -> either(e, b)) -> either(e, imp-args(b)) {
   match args {
   | Unspecified =>
     Right(Unspecified)
   | PartiallySpecified(mxs) =>
     let mxs =
-      core.list.for-each(mxs, function (mx) {
+      core.list.for-each(mxs, (mx) => {
         try x = mx;
-        match !f(x) {
+        match f(x) {
         | Left(_) =>
           none
         | Right(x) =>
@@ -36,7 +36,7 @@ define for-each-E<e, a, b>(args: imp-args(a), !f: (a) -> either(e, b)): either(e
       });
     Right(PartiallySpecified(mxs))
   | FullySpecified(xs) =>
-    try xs = core.list.for-each-E(xs, !f);
+    try xs = core.list.for-each-E(xs, f);
     Right(FullySpecified(xs))
   }
 }

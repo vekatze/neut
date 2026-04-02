@@ -26,22 +26,22 @@ data tag-kit {
   )
 }
 
-define make-tag-kit(): tag-kit {
+define make-tag-kit() -> tag-kit {
   let tag-map-ref = make-ref(box {empty-location-tree});
-  _Tag-Kit of {tag-map-ref}
+  _Tag-Kit {tag-map-ref}
 }
 
-define get-location-tree(k: tag-kit): meta location-tree {
+define get-location-tree(k: tag-kit) -> +location-tree {
   let _Tag-Kit(ref) = k;
   core.ref.extract(ref)
 }
 
-define insert-file-loc(k: &tag-kit, m-use: &hint, name-length: int, m-def: meta log-position): unit {
+define insert-file-loc(k: &tag-kit, m-use: &hint, name-length: int, m-def: +log-position) -> unit {
   when get-should-save-location(m-use) {
     let l = get-line(m-use);
     let c = get-column(m-use);
     tie _Tag-Kit(ref) = k;
-    mutate(ref, function (map) {
+    mutate(ref, (map) => {
       box {
         letbox map = map;
         letbox l = lift {l};
@@ -54,12 +54,12 @@ define insert-file-loc(k: &tag-kit, m-use: &hint, name-length: int, m-def: meta 
   }
 }
 
-define _insert(k: &tag-kit, m-use: &hint, lt: loc-type, name-length: int, m-def: meta log-position): unit {
+define _insert(k: &tag-kit, m-use: &hint, lt: loc-type, name-length: int, m-def: +log-position) -> unit {
   when get-should-save-location(m-use) {
     let l = get-line(m-use);
     let c = get-column(m-use);
     tie _Tag-Kit(ref) = k;
-    mutate(ref, function (map) {
+    mutate(ref, (map) => {
       box {
         letbox map = map;
         letbox l = lift {l};
@@ -73,7 +73,7 @@ define _insert(k: &tag-kit, m-use: &hint, lt: loc-type, name-length: int, m-def:
   }
 }
 
-define insert-local-var(k: &tag-kit, m-use: &hint, x: &ident, m-def: meta log-position): unit {
+define insert-local-var(k: &tag-kit, m-use: &hint, x: &ident, m-def: +log-position) -> unit {
   when not(is-hole(x)) {
     let name-length = length-ident(x);
     tie I(_, var-ID) = x;
@@ -82,7 +82,7 @@ define insert-local-var(k: &tag-kit, m-use: &hint, x: &ident, m-def: meta log-po
   }
 }
 
-define insert-binder<a>(k: &tag-kit, b: &binder-f(hint, a)): unit {
+define insert-binder<a>(k: &tag-kit, b: &binder-f(hint, a)) -> unit {
   tie Binder-F(m, x, _) = b;
   insert-local-var(k, m, x, lift {log-position-from-hint(*m)})
 }
@@ -92,10 +92,10 @@ define insert-global-var(
   m-use: &hint,
   dd: definite-description,
   b: is-const-like,
-  m-def: meta log-position,
-): unit {
+  m-def: +log-position,
+) -> unit {
   pin tmp on dd = local-locator-from-dd(dd);
-  let name-length = core.text.length(tmp);
+  let name-length = core.string.length(tmp);
   let symbol-loc = Symbol-Loc(Global(dd, b));
   _insert(k, m-use, symbol-loc, name-length, m-def)
 }
@@ -106,8 +106,8 @@ define insert-locator(
   dd: definite-description,
   b: is-const-like,
   name-length: int,
-  m-def: meta log-position,
-): unit {
+  m-def: +log-position,
+) -> unit {
   let symbol-loc = Symbol-Loc(Global(dd, b));
   _insert(k, m-use, symbol-loc, name-length, m-def)
 }
@@ -116,11 +116,11 @@ define insert-external-name(
   k: &tag-kit,
   m-use: &hint,
   ext-name: external-name,
-  m-def: meta log-position,
-): unit {
+  m-def: +log-position,
+) -> unit {
   let name-length on ext-name = {
     tie External-Name(tmp) = ext-name;
-    core.text.length(tmp)
+    core.string.length(tmp)
   };
   let symbol-loc = Symbol-Loc(Foreign(ext-name));
   _insert(k, m-use, symbol-loc, name-length, m-def)

@@ -1,50 +1,50 @@
 import {
   core.list {for-each},
-  core.text {replace},
-  sero.common.get {get-text},
-  sero.common.put {put-text},
+  core.string {replace},
+  sero.common.get {get-string},
+  sero.common.put {put-string},
   sero.sero {Sero, sero},
-  this.language.common.base-name {base-name, text-from-base-name},
+  this.language.common.base-name {base-name, string-from-base-name},
   this.language.common.const {ns-sep},
 }
 
 data source-locator {
-| Source-Locator(text)
+| Source-Locator(string)
 }
 
-define text-from-source-locator(sl: &source-locator): text {
+define string-from-source-locator(sl: &source-locator) -> string {
   tie Source-Locator(x) = sl;
   replace(x, "/", *ns-sep)
 }
 
-define source-locator-from-base-name-list(bns: list(base-name)): source-locator {
-  Source-Locator(core.text.intercalate(for-each(bns, text-from-base-name), *"/"))
+define source-locator-from-base-name-list(bns: list(base-name)) -> source-locator {
+  Source-Locator(core.string.intercalate(for-each(bns, string-from-base-name), *"/"))
 }
 
-define llvm-locator(): source-locator {
+define llvm-locator() -> source-locator {
   Source-Locator(*"llvm")
 }
 
-define internal-locator(): source-locator {
+define internal-locator() -> source-locator {
   Source-Locator(*"#")
 }
 
-define get-rel-path-text(sl: source-locator): text {
+define get-rel-path-string(sl: source-locator) -> string {
   let Source-Locator(x) = sl;
   x
 }
 
-inline source-locator-sero: sero(source-locator) {
-  Sero of {
+constant source-locator-sero: sero(source-locator) {
+  Sero {
     put := {
-      function (k, v) {
+      (k, v) => {
         tie Source-Locator(x) = v;
-        put-text(k, x);
+        put-string(k, x);
       }
     },
     get := {
-      function (k) {
-        try t = get-text(k);
+      (k) => {
+        try t = get-string(k);
         Right(box {
           letbox t = lift {t};
           Source-Locator(t)

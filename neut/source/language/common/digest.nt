@@ -2,11 +2,11 @@ import {
   core.binary {binary, binary-access, binary-length},
   core.binary-builder {binary-builder, extract, make-binary-builder},
   core.control {loop},
-  core.text {to-binary},
-  core.text-builder {append-rune-UTF8, make-text-builder, text-builder},
+  core.string {to-binary},
+  core.string-builder {append-rune-UTF8, make-string-builder, string-builder},
 }
 
-inline _sha256-k(): vector(int32) {
+inline _sha256-k() -> vector(int32) {
   Vector[
     0x428a2f98,
     0x71374491,
@@ -79,7 +79,7 @@ data _pack {
 | _Pack(int32, int32, int32, int32, int32, int32, int32, int32)
 }
 
-inline _add-pack(x: _pack, y: _pack): _pack {
+inline _add-pack(x: _pack, y: _pack) -> _pack {
   let _Pack(a1, b1, c1, d1, e1, f1, g1, h1) = x;
   let _Pack(a2, b2, c2, d2, e2, f2, g2, h2) = y;
   _Pack(
@@ -94,7 +94,7 @@ inline _add-pack(x: _pack, y: _pack): _pack {
   )
 }
 
-inline _sha256-h0: _pack {
+constant _sha256-h0: _pack {
   _Pack(
     0x6a09e667,
     0xbb67ae85,
@@ -107,7 +107,7 @@ inline _sha256-h0: _pack {
   )
 }
 
-define _get-base64url-char(index: int): rune {
+define _get-base64url-char(index: int) -> rune {
   if lt-int(index, 26) {
     magic cast(int32, rune, add-int32(65, trunc-int-int32(index)))
   } else-if lt-int(index, 52) {
@@ -121,24 +121,24 @@ define _get-base64url-char(index: int): rune {
   }
 }
 
-define _append-3-bytes(buf: &text-builder, b1: int8, b2: int8, b3: int8): unit {
+define _append-3-bytes(buf: &string-builder, b1: int8, b2: int8, b3: int8) -> unit {
   let n = or-int(or-int(shl-int(zext-int8-int(b1), 16), shl-int(zext-int8-int(b2), 8)), zext-int8-int(b3));
   let c1 = _get-base64url-char(and-int(lshr-int(n, 18), 63));
   let c2 = _get-base64url-char(and-int(lshr-int(n, 12), 63));
   let c3 = _get-base64url-char(and-int(lshr-int(n, 6), 63));
   let c4 = _get-base64url-char(and-int(n, 63));
-  core.text-builder.append-rune-UTF8(buf, c1);
-  core.text-builder.append-rune-UTF8(buf, c2);
-  core.text-builder.append-rune-UTF8(buf, c3);
-  core.text-builder.append-rune-UTF8(buf, c4);
+  core.string-builder.append-rune-UTF8(buf, c1);
+  core.string-builder.append-rune-UTF8(buf, c2);
+  core.string-builder.append-rune-UTF8(buf, c3);
+  core.string-builder.append-rune-UTF8(buf, c4);
 }
 
-define base64url-encode(input: &binary): text {
+define base64url-encode(input: &binary) -> string {
   let input-len = binary-length(input);
   let f =
-    define loop(buf: text-builder, offset: int): text {
+    define loop(buf: string-builder, offset: int) -> string {
       if ge-int(offset, input-len) {
-        core.text-builder.extract(buf)
+        core.string-builder.extract(buf)
       } else {
         let remaining = sub-int(input-len, offset);
         if ge-int(remaining, 3) {
@@ -159,7 +159,7 @@ define base64url-encode(input: &binary): text {
             append-rune-UTF8(buf, c2);
             append-rune-UTF8(buf, c3);
           };
-          core.text-builder.extract(buf)
+          core.string-builder.extract(buf)
         } else {
           let b1 = binary-access(input, offset);
           let n = shl-int(zext-int8-int(b1), 16);
@@ -169,55 +169,55 @@ define base64url-encode(input: &binary): text {
             append-rune-UTF8(buf, c1);
             append-rune-UTF8(buf, c2);
           };
-          core.text-builder.extract(buf)
+          core.string-builder.extract(buf)
         }
       }
     };
-  let buf = make-text-builder(32);
+  let buf = make-string-builder(32);
   f(buf, 0)
 }
 
-define _rotr32(x: int32, n: int32): int32 {
+define _rotr32(x: int32, n: int32) -> int32 {
   or-int32(lshr-int32(x, n), shl-int32(x, sub-int32(32, n)))
 }
 
-define _sha256-ch(x: int32, y: int32, z: int32): int32 {
+define _sha256-ch(x: int32, y: int32, z: int32) -> int32 {
   xor-int32(and-int32(x, y), and-int32(xor-int32(x, 0xffffffff), z))
 }
 
-define _sha256-maj(x: int32, y: int32, z: int32): int32 {
+define _sha256-maj(x: int32, y: int32, z: int32) -> int32 {
   xor-int32(xor-int32(and-int32(x, y), and-int32(x, z)), and-int32(y, z))
 }
 
-define _sha256-sigma0(x: int32): int32 {
+define _sha256-sigma0(x: int32) -> int32 {
   xor-int32(xor-int32(_rotr32(x, 2), _rotr32(x, 13)), _rotr32(x, 22))
 }
 
-define _sha256-sigma1(x: int32): int32 {
+define _sha256-sigma1(x: int32) -> int32 {
   xor-int32(xor-int32(_rotr32(x, 6), _rotr32(x, 11)), _rotr32(x, 25))
 }
 
-define _sha256-s0(x: int32): int32 {
+define _sha256-s0(x: int32) -> int32 {
   xor-int32(xor-int32(_rotr32(x, 7), _rotr32(x, 18)), lshr-int32(x, 3))
 }
 
-define _sha256-s1(x: int32): int32 {
+define _sha256-s1(x: int32) -> int32 {
   xor-int32(xor-int32(_rotr32(x, 17), _rotr32(x, 19)), lshr-int32(x, 10))
 }
 
 rule-left _sum-int32 {
-  function leaf(_: int): int32 {
+  inline leaf(_: int) -> int32 {
     0
   },
-  function node-left(acc: int32, b: int32): int32 {
+  inline node-left(acc: int32, b: int32) -> int32 {
     add-int32(acc, b)
   },
-  function root<a>(x: a): a {
+  inline root<a>(x: a) -> a {
     x
   },
 }
 
-define _sha256-pad(message: &binary): binary {
+define _sha256-pad(message: &binary) -> binary {
   let msg-len = binary-length(message);
   let msg-len-bits = mul-int(msg-len, 8);
   let total-len = add-int(add-int(msg-len, 1), 8); // +1 for 0x80, +8 for length
@@ -227,7 +227,7 @@ define _sha256-pad(message: &binary): binary {
   let _ on buf = {
     core.binary-builder.append-binary(buf, message);
     core.binary-builder.append-int8(buf, 0x80);
-    loop(padding-zeros, function (_) {
+    loop(padding-zeros, (_) => {
       core.binary-builder.append-int8(buf, 0);
     });
     core.binary-builder.append-int8(buf, trunc-int-int8(and-int(lshr-int(msg-len-bits, 56), 255)));
@@ -242,9 +242,9 @@ define _sha256-pad(message: &binary): binary {
   extract(buf)
 }
 
-define _extract-block-words(block: &binary, offset: int): vector(int32) {
+define _extract-block-words(block: &binary, offset: int) -> vector(int32) {
   let f =
-    define loop(acc: vector(int32), i: int): vector(int32) {
+    define loop(acc: vector(int32), i: int) -> vector(int32) {
       if ge-int(i, 16) {
         acc
       } else {
@@ -261,9 +261,9 @@ define _extract-block-words(block: &binary, offset: int): vector(int32) {
   f(core.vector.make(16), 0)
 }
 
-define _compute-message-schedule(w: vector(int32)): vector(int32) {
+define _compute-message-schedule(w: vector(int32)) -> vector(int32) {
   let extend-words =
-    define loop(current-w: vector(int32), i: int): vector(int32) {
+    define loop(current-w: vector(int32), i: int) -> vector(int32) {
       if ge-int(i, 64) {
         current-w
       } else {
@@ -279,7 +279,7 @@ define _compute-message-schedule(w: vector(int32)): vector(int32) {
   extend-words(w, 16)
 }
 
-define _step(table: &vector(int32), p: _pack, round: int, w: &vector(int32)): _pack {
+define _step(table: &vector(int32), p: _pack, round: int, w: &vector(int32)) -> _pack {
   let _Pack(a, b, c, d, e, f, g, h) = p;
   let k-round = *core.vector._access(table, round);
   let w-round = *core.vector._access(w, round);
@@ -292,9 +292,9 @@ define _step(table: &vector(int32), p: _pack, round: int, w: &vector(int32)): _p
   _Pack(add-int32(temp1, temp2), a, b, c, add-int32(d, temp1), e, f, g)
 }
 
-define _process-block(table: &vector(int32), h: _pack, w: &vector(int32)): _pack {
+define _process-block(table: &vector(int32), h: _pack, w: &vector(int32)) -> _pack {
   let compress-64-rounds =
-    define loop(h: _pack, round: int): _pack {
+    define loop(h: _pack, round: int) -> _pack {
       if ge-int(round, 64) {
         _add-pack(_sha256-h0, h)
       } else {
@@ -304,9 +304,9 @@ define _process-block(table: &vector(int32), h: _pack, w: &vector(int32)): _pack
   compress-64-rounds(h, 0)
 }
 
-define _process-all-blocks(table: &vector(int32), h: _pack, padded: &binary, block-count: int): _pack {
+define _process-all-blocks(table: &vector(int32), h: _pack, padded: &binary, block-count: int) -> _pack {
   let process-blocks =
-    define loop(current-h: _pack, block-index: int): _pack {
+    define loop(current-h: _pack, block-index: int) -> _pack {
       if ge-int(block-index, block-count) {
         current-h
       } else {
@@ -319,14 +319,14 @@ define _process-all-blocks(table: &vector(int32), h: _pack, padded: &binary, blo
   process-blocks(h, 0)
 }
 
-define _append-int-be(b: &binary-builder, value: int32): unit {
+define _append-int-be(b: &binary-builder, value: int32) -> unit {
   core.binary-builder.append-int8(b, trunc-int32-int8(lshr-int32(value, 24)));
   core.binary-builder.append-int8(b, trunc-int32-int8(lshr-int32(value, 16)));
   core.binary-builder.append-int8(b, trunc-int32-int8(lshr-int32(value, 8)));
   core.binary-builder.append-int8(b, trunc-int32-int8(value));
 }
 
-define _pack-to-binary(x: &_pack): binary {
+define _pack-to-binary(x: &_pack) -> binary {
   let buf = core.binary-builder.make-binary-builder(32);
   tie _Pack(a, b, c, d, e, f, g, h) = x;
   let _ on buf = {
@@ -342,7 +342,7 @@ define _pack-to-binary(x: &_pack): binary {
   extract(buf)
 }
 
-define sha256(message: &binary): binary {
+define sha256(message: &binary) -> binary {
   pin padded = _sha256-pad(message);
   let h = _sha256-h0;
   let padded-len = binary-length(padded);
@@ -352,40 +352,40 @@ define sha256(message: &binary): binary {
   _pack-to-binary(final-h)
 }
 
-define hash-and-encode(x: &binary): text {
+define hash-and-encode(x: &binary) -> string {
   pin hash = sha256(x);
   base64url-encode(hash)
 }
 
-define zen(): unit {
+define zen() -> unit {
   pin v1 = hash-and-encode(to-binary("hello"));
   print("hello: ");
-  vet(v1);
+  vet::(v1);
   pin v2 = hash-and-encode(to-binary(""));
   print("empty: ");
-  vet(v2);
+  vet::(v2);
   pin v3 = hash-and-encode(to-binary("abc"));
   print("abc: ");
-  vet(v3);
+  vet::(v3);
   pin v4 = hash-and-encode(to-binary("a"));
   print("single char: ");
-  vet(v4);
+  vet::(v4);
   pin v5 = hash-and-encode(to-binary("1234567890123456789012345678901234567890123456789012345"));
   print("55 bytes: ");
-  vet(v5);
+  vet::(v5);
   pin v6 = hash-and-encode(to-binary("12345678901234567890123456789012345678901234567890123456"));
   print("56 bytes: ");
-  vet(v6);
+  vet::(v6);
   pin v7 = hash-and-encode(to-binary("1234567890123456789012345678901234567890123456789012345678901234"));
   print("64 bytes: ");
-  vet(v7);
+  vet::(v7);
   pin v8 = hash-and-encode(to-binary("12345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678"));
   print("128 bytes: ");
-  vet(v8);
+  vet::(v8);
   pin v9 = hash-and-encode(to-binary("Hello, 世界! 🌍"));
   print("unicode: ");
-  vet(v9);
+  vet::(v9);
   pin v10 = hash-and-encode(to-binary("0123456789"));
   print("digits: ");
-  vet(v10);
+  vet::(v10);
 }

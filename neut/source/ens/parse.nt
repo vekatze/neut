@@ -4,9 +4,9 @@ import {
   core.list {for-each-EN},
   core.pair {second},
   this.app.app {app},
-  this.app.run {raise-error'},
+  this.app.run {raise-error-prime},
   this.code-parser.get-info {get-current-hint},
-  this.code-parser.parser {parser-kit, string, symbol},
+  this.code-parser.parser {parse-string, parser-kit, symbol},
   this.ens.ens {E-Bool, E-Dictionary, E-Float, E-Int, E-List, E-String, ens, ens-key},
   this.logger.hint {Hint, hint},
   this.syntax-tree.comment {comment},
@@ -17,15 +17,16 @@ import {
   zonk.make-zonk-kit {make-zonk-kit},
   zonk.parse {attempt, get-point, parsed, report-unexpected-input, zonk},
   zonk.point {Point},
-  zonk.zonk-kit {get-context},
+  zonk.zonk-kit {get-constring},
 }
 
-define _make-hint(k: &parser-kit, line: int, column: int): hint {
-  let file-path = get-context(k);
-  Hint of {line, column, file-path, should-save-location := True}
+define _make-hint(k: &parser-kit, line: int, column: int) -> hint {
+  let file-path = get-constring(k);
+  Hint {line, column, file-path, should-save-location := True}
 }
 
-define _parse-int<r := rho>(k: &parser-kit): parsed(pair(int, comment)) {
+define _parse-int(k: &parser-kit) -> parsed(pair(int, comment)) {
+  let r = Right(Unit); // fixme
   try _ = r;
   try Pair(s, c) = symbol(k);
   let int-or-none on s = core.int.parse.parse-int(s);
@@ -38,7 +39,8 @@ define _parse-int<r := rho>(k: &parser-kit): parsed(pair(int, comment)) {
   }
 }
 
-define _parse-float<r := rho>(k: &parser-kit): parsed(pair(float, comment)) {
+define _parse-float(k: &parser-kit) -> parsed(pair(float, comment)) {
+  let r = Right(Unit); // fixme
   try _ = r;
   try Pair(s, c) = symbol(k);
   let float-or-none on s = core.float.parse.parse-float(s);
@@ -51,14 +53,15 @@ define _parse-float<r := rho>(k: &parser-kit): parsed(pair(float, comment)) {
   }
 }
 
-define _parse-bool<r := rho>(k: &parser-kit): parsed(pair(bool, comment)) {
+define _parse-bool(k: &parser-kit) -> parsed(pair(bool, comment)) {
+  let r = Right(Unit); // fixme
   try _ = r;
   try Pair(s, c) = symbol(k);
-  let is-true on s = eq-text(s, "true");
+  let is-true on s = eq-string(s, "true");
   if is-true {
     Right(Pair(True, c))
   } else {
-    let is-false on s = eq-text(s, "false");
+    let is-false on s = eq-string(s, "false");
     let _ = s;
     if is-false {
       Right(Pair(False, c))
@@ -68,11 +71,12 @@ define _parse-bool<r := rho>(k: &parser-kit): parsed(pair(bool, comment)) {
   }
 }
 
-inline _parse-int-ens<r := rho>(
+inline _parse-int-ens(
   line: int,
   column: int,
-): zonk(text, pair(ens, comment)) {
-  function (k) {
+) -> zonk(string, pair(ens, comment)) {
+  let r = Right(Unit); // fixme
+  (k) => {
     try _ = r;
     try Pair(x, c) = _parse-int(k);
     let m = _make-hint(k, line, column);
@@ -80,11 +84,12 @@ inline _parse-int-ens<r := rho>(
   }
 }
 
-inline _parse-float-ens<r := rho>(
+inline _parse-float-ens(
   line: int,
   column: int,
-): zonk(text, pair(ens, comment)) {
-  function (k) {
+) -> zonk(string, pair(ens, comment)) {
+  let r = Right(Unit); // fixme
+  (k) => {
     try _ = r;
     try Pair(x, c) = _parse-float(k);
     let m = _make-hint(k, line, column);
@@ -92,11 +97,12 @@ inline _parse-float-ens<r := rho>(
   }
 }
 
-inline _parse-bool-ens<r := rho>(
+inline _parse-bool-ens(
   line: int,
   column: int,
-): zonk(text, pair(ens, comment)) {
-  function (k) {
+) -> zonk(string, pair(ens, comment)) {
+  let r = Right(Unit); // fixme
+  (k) => {
     try _ = r;
     try Pair(x, c) = _parse-bool(k);
     let m = _make-hint(k, line, column);
@@ -104,24 +110,26 @@ inline _parse-bool-ens<r := rho>(
   }
 }
 
-inline _parse-string-ens<r := rho>(line: int, column: int): zonk(text, pair(ens, comment)) {
-  function (k) {
+inline _parse-string-ens(line: int, column: int) -> zonk(string, pair(ens, comment)) {
+  let r = Right(Unit); // fixme
+  (k) => {
     try _ = r;
-    try Pair(x, c) = string(k);
+    try Pair(x, c) = parse-string(k);
     let m = _make-hint(k, line, column);
     Right(Pair(E-String(m, x), c))
   }
 }
 
 nominal {
-  _parse-ens<r := rho>(k: &parser-kit): parsed(pair(ens, comment)),
+  define _parse-ens(k: &parser-kit) -> parsed(pair(ens, comment)),
 }
 
-inline _parse-list<r := rho>(
+inline _parse-list(
   line: int,
   column: int,
-): zonk(text, pair(ens, comment)) {
-  function (k) {
+) -> zonk(string, pair(ens, comment)) {
+  let r = Right(Unit); // fixme
+  (k) => {
     try _ = r;
     try Pair(ens-series, c) = parse-series-bracket(k, exact _parse-ens);
     let m = _make-hint(k, line, column);
@@ -129,9 +137,10 @@ inline _parse-list<r := rho>(
   }
 }
 
-define _parse-key-value-pair<r := rho>(
+define _parse-key-value-pair(
   k: &parser-kit,
-): parsed(pair(pair(comment, pair(ens-key, ens)), comment)) {
+) -> parsed(pair(pair(comment, pair(ens-key, ens)), comment)) {
+  let r = Right(Unit); // fixme
   try _ = r;
   let m = get-current-hint(k);
   try Pair(key, c-lead) = symbol(k);
@@ -139,11 +148,12 @@ define _parse-key-value-pair<r := rho>(
   Right(Pair(Pair(c-lead, Pair(Pair(m, key), value)), c-trail))
 }
 
-inline _parse-dictionary<r := rho>(
+inline _parse-dictionary(
   line: int,
   column: int,
-): zonk(text, pair(ens, comment)) {
-  function (k) {
+) -> zonk(string, pair(ens, comment)) {
+  let r = Right(Unit); // fixme
+  (k) => {
     try _ = r;
     try Pair(kvs, c) = parse-series-brace(k, exact _parse-key-value-pair);
     let m = _make-hint(k, line, column);
@@ -153,13 +163,13 @@ inline _parse-dictionary<r := rho>(
 }
 
 rule-right _branch-ens {
-  function leaf<c, a>(_: int): zonk(c, a) {
-    function (_) {
+  inline leaf<c, a>(_: int) -> zonk(c, a) {
+    (_) => {
       report-unexpected-input("ens")
     }
   },
-  function node-right<c, a>(d: zonk(c, a), acc: zonk(c, a)): zonk(c, a) {
-    function (k) {
+  inline node-right<c, a>(d: zonk(c, a), acc: zonk(c, a)) -> zonk(c, a) {
+    (k) => {
       match d(k) {
       | Right(v) =>
         Right(v)
@@ -168,12 +178,13 @@ rule-right _branch-ens {
       }
     }
   },
-  function root<a>(x: a): a {
+  inline root<a>(x: a) -> a {
     x
   },
 }
 
-define _parse-ens<r := rho>(k: &parser-kit): parsed(pair(ens, comment)) {
+define _parse-ens(k: &parser-kit) -> parsed(pair(ens, comment)) {
+  let r = Right(Unit); // fixme
   try _ = r;
   let Point(line, column) = get-point(k);
   let parser =
@@ -188,12 +199,12 @@ define _parse-ens<r := rho>(k: &parser-kit): parsed(pair(ens, comment)) {
   parser(k)
 }
 
-define _member(xs: &list(&text), k: &text): bool {
+define _member(xs: &list(&string), k: &string) -> bool {
   case xs {
   | Nil =>
     False
   | Cons(x, rest) =>
-    if eq-text(*x, k) {
+    if eq-string(*x, k) {
       True
     } else {
       _member(rest, k)
@@ -203,8 +214,8 @@ define _member(xs: &list(&text), k: &text): bool {
 
 define _find-duplicate-keys<a, b>(
   mks: &list(pair(b, pair(ens-key, a))),
-  found-keys: list(&text),
-): ?meta pair(hint, text) {
+  found-keys: list(&string),
+) -> ?+pair(hint, string) {
   case mks {
   | Nil =>
     none
@@ -218,12 +229,12 @@ define _find-duplicate-keys<a, b>(
   }
 }
 
-define _validate(e: &ens): either(meta pair(hint, text), unit) {
+define _validate(e: &ens) -> either(+pair(hint, string), unit) {
   case e {
   | E-List(_, xs) =>
     let xs = extract-N(xs);
     try _ =
-      for-each-EN(xs, function (x) {
+      for-each-EN(xs, (x) => {
         tie Pair(_, y) = x;
         _validate(y)
       });
@@ -241,40 +252,47 @@ define _validate(e: &ens): either(meta pair(hint, text), unit) {
   }
 }
 
-define parse-ens<r := rho>(k: &parser-kit): app(pair(ens, comment)) {
-  try _ = r;
+define parse-ens(k: &parser-kit) -> app(pair(ens, comment)) {
   match this.ens.parse._parse-ens(k) {
   | Right(v) =>
     Right(v)
   | Left(e) =>
     let message = report(zonk.make-parse-error.make-parse-error(k, e));
-    raise-error'(message)
+    raise-error-prime(message)
   }
 }
 
-define zen(): unit {
+define _vet-result-bool(result: &parsed(pair(bool, comment))) -> unit {
+  vet::(result)
+}
+
+define _vet-result-ens(result: &parsed(pair(ens, comment))) -> unit {
+  vet::(result)
+}
+
+define zen() -> unit {
   pin k = make-zonk-kit(*"1234", *"test");
   pin v = _parse-int(k);
-  vet(v);
+  vet::(v);
   pin k = make-zonk-kit(*"1234.5678", *"test");
   pin v = _parse-float(k);
-  vet(v);
+  vet::(v);
   pin k = make-zonk-kit(*"true // hello", *"test");
   pin v = _parse-bool(k);
-  vet(v);
+  _vet-result-bool(v);
   pin k = make-zonk-kit(*"false", *"test");
   pin v = _parse-bool(k);
-  vet(v);
+  _vet-result-bool(v);
   pin k = make-zonk-kit(*"1234", *"test");
   pin v = _parse-int-ens(1, 2)(k);
-  vet(v);
+  vet::(v);
   pin k = make-zonk-kit(*"\"hello\" // test", *"test");
   pin v = _parse-string-ens(1, 2)(k);
-  vet(v);
+  _vet-result-ens(v);
   pin k = make-zonk-kit(*"{some-key \"hello\", other-key true} // test", *"test");
   pin v = _parse-ens(k);
-  vet(v);
+  _vet-result-ens(v);
   pin k = make-zonk-kit(*"{some-key \"hello\", other-key true,} // test", *"test");
   pin v = _parse-ens(k);
-  vet(v);
+  _vet-result-ens(v);
 }

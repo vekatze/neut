@@ -11,30 +11,30 @@ data literal {
 | Rune(rune)
 }
 
-inline literal-sero: sero(literal) {
-  Sero of {
+constant literal-sero: sero(literal) {
+  Sero {
     put := {
-      function (k, v) {
+      (k, v) => {
         case v {
         | Int(i) =>
           put-int64(k, 0);
           put-int64(k, *i);
         | Rune(r) =>
           put-int64(k, 0);
-          let Sero of {put} = rune-sero;
+          let Sero {put} = rune-sero;
           put(k, r);
         }
       }
     },
     get := {
-      function (k) {
+      (k) => {
         try tag = get-int64(k);
         match tag {
         | 0 =>
           try i = get-int64(k);
           Right(lift {Int(i)})
         | 1 =>
-          let Sero of {get} = rune-sero;
+          let Sero {get} = rune-sero;
           try r = get(k);
           Right(lift {Rune(axiom-T(r))})
         | _ =>

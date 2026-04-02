@@ -3,7 +3,7 @@ import {
   this.language.common.prim-type {prim-type},
 }
 
-define prim-type-from-base-prim-type(bpt: base-prim-type): prim-type {
+define prim-type-from-base-prim-type(bpt: base-prim-type) -> prim-type {
   match bpt {
   | Int(size) =>
     match size {
@@ -22,7 +22,7 @@ define prim-type-from-base-prim-type(bpt: base-prim-type): prim-type {
   }
 }
 
-define prim-type-from-base-prim-type-N(bpt: &base-prim-type): prim-type {
+define prim-type-from-base-prim-type-N(bpt: &base-prim-type) -> prim-type {
   case bpt {
   | Int(size) =>
     case size {

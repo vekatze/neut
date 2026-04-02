@@ -9,8 +9,8 @@ import {
   this.logger.log-level {Critical, Error, Note, Warning, log-level},
 }
 
-define _put(k: &put-kit, v: &log-level): unit {
-  let Sero of {put} = int8-sero;
+define _put(k: &put-kit, v: &log-level) -> unit {
+  let Sero {put} = int8-sero;
   case v {
   | Note =>
     pin v = 0;
@@ -27,8 +27,8 @@ define _put(k: &put-kit, v: &log-level): unit {
   }
 }
 
-define _get(k: &get-kit): ?meta log-level {
-  let Sero of {get} = int8-sero;
+define _get(k: &get-kit) -> ?+log-level {
+  let Sero {get} = int8-sero;
   try value = get(k);
   match axiom-T(value) {
   | 0 =>
@@ -44,14 +44,14 @@ define _get(k: &get-kit): ?meta log-level {
   }
 }
 
-inline log-level-sero: sero(log-level) {
-  Sero of {
+constant log-level-sero: sero(log-level) {
+  Sero {
     put := _put,
     get := _get,
   }
 }
 
-define zen(): unit {
+define zen() -> unit {
   pin val = Critical;
   let foo = decode(log-level-sero, encode(log-level-sero, val, 8));
   match foo {
