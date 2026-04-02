@@ -23,11 +23,12 @@ import Data.Text qualified as T
 import Gensym.Gensym qualified as Gensym
 import Gensym.Handle qualified as GensymHandle
 import Kernel.Elaborate.Internal.Handle.TypeDef qualified as TypeDef
+import Language.Common.ArgNum qualified as AN
 import Language.Common.Attr.DataIntro qualified as AttrDI
 import Language.Common.Attr.Lam qualified as AttrL
+import Language.Common.Attr.VarGlobal qualified as AttrVG
 import Language.Common.BaseLowType qualified as BLT
 import Language.Common.Binder
-import Language.Common.CreateSymbol qualified as CreateSymbol
 import Language.Common.DecisionTree qualified as DT
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.Discriminant qualified as D
@@ -39,24 +40,23 @@ import Language.Common.LowMagic qualified as LM
 import Language.Common.Magic qualified as M
 import Language.Common.Opacity qualified as O
 import Language.Common.PiElimKind qualified as PEK
-import Language.Common.PiKind qualified as PK
-import Language.Common.VarKind qualified as VK
+import Language.Common.StmtKind qualified as SK
 import Language.Term.Eq qualified as TermEq
 import Language.Term.Inline.ConstantFold qualified as ConstantFold
 import Language.Term.Inline.Handle
 import Language.Term.Inline.Magic qualified as Magic
 import Language.Term.PrimValue qualified as PV
 import Language.Term.Refresh qualified as Refresh
+import Language.Term.Stmt qualified as Stmt
 import Language.Term.Subst qualified as Subst
 import Language.Term.Term qualified as TM
 import Logger.Hint
 
-new :: GensymHandle.Handle -> DefMap -> TypeDefMap -> Hint -> Int -> IO Handle
-new gensymHandle dmap typeDefMap location inlineLimit = do
+new :: GensymHandle.Handle -> DefMap -> TypeDefMap -> Hint -> Int -> IORef [GuardEntry] -> IORef [Stmt.Stmt] -> IO Handle
+new gensymHandle dmap typeDefMap location inlineLimit guardStack pendingSpecializationDefs = do
   let substHandle = Subst.new gensymHandle
   let refreshHandle = Refresh.new gensymHandle
   currentStepRef <- liftIO $ newIORef 0
-  guardStack <- liftIO $ newIORef []
   macroCallStack <- liftIO $ newIORef []
   return $ Handle {..}
 
@@ -162,22 +162,29 @@ inline' h term = do
                           let tracer = if isMacroDef defKind then withMacroHint h dd m else id
                           case defKind of
                             Macro -> do
-                              mSelf <- lookupGuard h dd impArgs'
-                              case mSelf of
-                                Just selfTerm -> do
-                                  return $ m :< TM.PiElim PEK.Normal selfTerm [] expArgsAll []
+                              mSpecializedName <- lookupSpecialization h dd impArgs'
+                              case mSpecializedName of
+                                Just specializedName -> do
+                                  return $ applySpecialization m specializedName expArgsAll
                                 Nothing -> do
                                   (expBinders', body') <- liftIO $ Subst.subst' (substHandle h) subType expParams body
-                                  self <- liftIO $ CreateSymbol.newIdentFromText (gensymHandle h) $ "knot-" <> DD.localLocator dd
+                                  specializedName <- createSpecializationName h dd
                                   codType' <- liftIO $ Subst.substType (substHandle h) subType codType
-                                  pushGuard h dd impArgs' (m :< TM.Var self)
+                                  beginSpecialization h dd impArgs' specializedName
                                   body'' <- tracer $ liftIO (Refresh.refresh (refreshHandle h) body') >>= inline h
-                                  popGuard h
-                                  identity <- liftIO $ Gensym.newCount (gensymHandle h)
-                                  let selfType = m :< TM.Pi PK.normal [] expBinders' [] codType'
-                                  let attr = AttrL.Attr {lamKind = LK.Fix O.Opaque False (m, VK.Normal, self, selfType), identity}
-                                  let fun = m :< TM.PiIntro attr [] expBinders' [] body''
-                                  return $ m :< TM.PiElim PEK.Normal fun [] expArgsAll []
+                                  let stmt =
+                                        Stmt.StmtDefine
+                                          False
+                                          SK.Define
+                                          (SavedHint m)
+                                          specializedName
+                                          []
+                                          expBinders'
+                                          []
+                                          codType'
+                                          body''
+                                  completeSpecialization h dd impArgs' specializedName stmt
+                                  return $ applySpecialization m specializedName expArgsAll
                             _ -> do
                               if all TM.isValue expArgsAll
                                 then do
@@ -587,26 +594,47 @@ bind binder cont =
     ((m, k, x, t), e1) : rest -> do
       m :< TM.Let O.Clear (m, k, x, t) e1 (bind rest cont)
 
-pushGuard :: Handle -> DD.DefiniteDescription -> [TM.Type] -> TM.Term -> App ()
-pushGuard h dd typeArgs selfVar = do
-  let entry = GuardEntry dd typeArgs selfVar
+beginSpecialization :: Handle -> DD.DefiniteDescription -> [TM.Type] -> DD.DefiniteDescription -> App ()
+beginSpecialization h dd typeArgs specializedName = do
+  let entry = GuardEntry dd typeArgs specializedName
   let Handle {guardStack} = h
   liftIO $ modifyIORef' guardStack (entry :)
 
-popGuard :: Handle -> App ()
-popGuard h = do
-  let Handle {guardStack} = h
-  liftIO $ modifyIORef' guardStack (drop 1)
+completeSpecialization :: Handle -> DD.DefiniteDescription -> [TM.Type] -> DD.DefiniteDescription -> Stmt.Stmt -> App ()
+completeSpecialization h dd typeArgs specializedName stmt = do
+  let Handle {guardStack, pendingSpecializationDefs} = h
+  liftIO $ modifyIORef' guardStack (completeGuardEntry dd typeArgs specializedName)
+  liftIO $ modifyIORef' pendingSpecializationDefs (stmt :)
 
-lookupGuard :: Handle -> DD.DefiniteDescription -> [TM.Type] -> App (Maybe TM.Term)
-lookupGuard h dd typeArgs = do
+lookupSpecialization :: Handle -> DD.DefiniteDescription -> [TM.Type] -> App (Maybe DD.DefiniteDescription)
+lookupSpecialization h dd typeArgs = do
   let Handle {guardStack} = h
   stack <- liftIO $ readIORef guardStack
-  return $ guardSelf <$> find (matchesGuardEntry dd typeArgs) stack
+  return $ guardName <$> find (matchesGuardEntry dd typeArgs) stack
 
 matchesGuardEntry :: DD.DefiniteDescription -> [TM.Type] -> GuardEntry -> Bool
 matchesGuardEntry dd' args entry =
   guardFunction entry == dd' && TermEq.eqTypes (guardTypeArgs entry) args
+
+completeGuardEntry :: DD.DefiniteDescription -> [TM.Type] -> DD.DefiniteDescription -> [GuardEntry] -> [GuardEntry]
+completeGuardEntry dd typeArgs specializedName =
+  map update
+  where
+    update entry
+      | matchesGuardEntry dd typeArgs entry && guardName entry == specializedName =
+          entry
+      | otherwise =
+          entry
+
+createSpecializationName :: Handle -> DD.DefiniteDescription -> App DD.DefiniteDescription
+createSpecializationName h dd = do
+  identity <- liftIO $ Gensym.newCount (gensymHandle h)
+  return $ DD.getKnotDD dd identity
+
+applySpecialization :: Hint -> DD.DefiniteDescription -> [TM.Term] -> TM.Term
+applySpecialization m specializedName expArgsAll = do
+  let attr = AttrVG.new (AN.fromInt $ length expArgsAll)
+  m :< TM.PiElim PEK.Normal (m :< TM.VarGlobal attr specializedName) [] expArgsAll []
 
 withMacroHint :: Handle -> DD.DefiniteDescription -> Hint -> App a -> App a
 withMacroHint h dd hint action = do

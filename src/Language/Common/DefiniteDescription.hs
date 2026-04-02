@@ -12,6 +12,7 @@ module Language.Common.DefiniteDescription
     getClosureEnvDD,
     getLambdaDD,
     getMuDD,
+    getKnotDD,
     imm,
     baseTypes,
     cls,
@@ -112,6 +113,10 @@ getLambdaDD dd mName i =
 getMuDD :: DefiniteDescription -> Ident -> Int -> DefiniteDescription
 getMuDD dd x i =
   appendLocalName dd (BN.muName x i)
+
+getKnotDD :: DefiniteDescription -> Int -> DefiniteDescription
+getKnotDD dd i =
+  MakeDefiniteDescription {reify = reify dd <> ";" <> T.pack (show i)}
 
 unconsDD :: DefiniteDescription -> (MID.ModuleID, T.Text)
 unconsDD dd = do

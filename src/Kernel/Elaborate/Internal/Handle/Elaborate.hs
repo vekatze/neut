@@ -10,6 +10,7 @@ where
 
 import App.App (App)
 import Control.Monad.IO.Class (MonadIO (liftIO))
+import Data.IORef
 import Data.Maybe (fromMaybe)
 import Gensym.Handle qualified as Gensym
 import Kernel.Common.Const (defaultInlineLimit)
@@ -37,6 +38,8 @@ import Kernel.Elaborate.Internal.WeakTerm.Fill qualified as Fill
 import Kernel.Elaborate.TypeHoleSubst qualified as THS
 import Language.Common.Binder
 import Language.Term.Inline qualified as Inline
+import Language.Term.Inline.Handle qualified as InlineHandle
+import Language.Term.Stmt qualified as Stmt
 import Language.Term.Term qualified as TM
 import Language.WeakTerm.Reduce qualified as Reduce
 import Language.WeakTerm.Subst qualified as Subst
@@ -66,7 +69,9 @@ data Handle = Handle
     currentSource :: Source,
     inlineLimit :: Int,
     currentStep :: Int,
-    varEnv :: BoundVarEnv
+    varEnv :: BoundVarEnv,
+    specializationEntries :: IORef [InlineHandle.GuardEntry],
+    pendingSpecializationDefs :: IORef [Stmt.Stmt]
   }
 
 type BoundVarEnv = [BinderF WT.WeakType]
@@ -81,6 +86,8 @@ new globalHandle@(Global.Handle {..}) (Local.Handle {..}) currentSource = do
   weakTypeHandle <- WeakType.new
   let varEnv = []
   let currentStep = 0
+  specializationEntries <- newIORef []
+  pendingSpecializationDefs <- newIORef []
   return $ Handle {..}
 
 reduceType :: Handle -> WT.WeakType -> App WT.WeakType
@@ -99,13 +106,13 @@ inline :: Handle -> Hint -> TM.Term -> App TM.Term
 inline h m e = do
   dmap <- liftIO $ Definition.get' (defHandle h)
   typeDefMap <- liftIO $ TypeDef.get' (typeDefHandle h)
-  inlineHandle <- liftIO $ Inline.new (gensymHandle h) dmap typeDefMap m (inlineLimit h)
+  inlineHandle <- liftIO $ Inline.new (gensymHandle h) dmap typeDefMap m (inlineLimit h) (specializationEntries h) (pendingSpecializationDefs h)
   Inline.inline inlineHandle e
 
 inlineBinder :: Handle -> BinderF TM.Type -> App (BinderF TM.Type)
 inlineBinder h (m, k, x, t) = do
   dmap <- liftIO $ Definition.get' (defHandle h)
   typeDefMap <- liftIO $ TypeDef.get' (typeDefHandle h)
-  inlineHandle <- liftIO $ Inline.new (gensymHandle h) dmap typeDefMap m (inlineLimit h)
+  inlineHandle <- liftIO $ Inline.new (gensymHandle h) dmap typeDefMap m (inlineLimit h) (specializationEntries h) (pendingSpecializationDefs h)
   t' <- Inline.inlineType inlineHandle t
   return (m, k, x, t')

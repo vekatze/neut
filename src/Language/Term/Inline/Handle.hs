@@ -15,6 +15,7 @@ import Kernel.Elaborate.Internal.Handle.TypeDef qualified as TypeDef
 import Language.Common.Binder
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Term.Refresh qualified as Refresh
+import Language.Term.Stmt qualified as Stmt
 import Language.Term.Subst qualified as Subst
 import Language.Term.Term qualified as TM
 import Logger.Hint
@@ -45,7 +46,7 @@ type TypeDefMap =
 data GuardEntry = GuardEntry
   { guardFunction :: DD.DefiniteDescription,
     guardTypeArgs :: [TM.Type],
-    guardSelf :: TM.Term
+    guardName :: DD.DefiniteDescription
   }
 
 data Handle = Handle
@@ -57,6 +58,7 @@ data Handle = Handle
     currentStepRef :: IORef Int,
     location :: Hint,
     guardStack :: IORef [GuardEntry],
+    pendingSpecializationDefs :: IORef [Stmt.Stmt],
     macroCallStack :: IORef [(DD.DefiniteDescription, Hint)],
     gensymHandle :: GensymHandle.Handle
   }
