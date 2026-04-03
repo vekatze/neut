@@ -7,6 +7,7 @@ module Language.Comp.Comp
     SubstValue,
     IsReducible,
     DefMap,
+    toDefMap,
     Label,
     fromDefTuple,
     fromCompStmt,
@@ -23,6 +24,7 @@ where
 import Data.HashMap.Strict qualified as Map
 import Data.IntMap qualified as IntMap
 import Data.List (intercalate)
+import Data.Maybe (mapMaybe)
 import Data.Text qualified as T
 import Language.Common.ArgNum
 import Language.Common.BaseLowType
@@ -172,6 +174,11 @@ fromDefTuple (dd, (opacity, args, body)) =
 
 type DefMap =
   Map.HashMap DD.DefiniteDescription (Opacity, [Ident], Comp)
+
+toDefMap :: [CompStmt] -> DefMap
+toDefMap stmtList =
+  Map.fromList $
+    mapMaybe (\stmt -> (,) <$> getCompStmtName stmt <*> fromCompStmt stmt) stmtList
 
 intValue0 :: Value
 intValue0 =

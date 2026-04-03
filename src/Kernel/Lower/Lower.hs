@@ -25,7 +25,6 @@ import Data.Set qualified as S
 import Data.Text qualified as T
 import Gensym.Gensym qualified as Gensym
 import Gensym.Handle qualified as Gensym
-import Kernel.Clarify.Internal.Handle.CompDef qualified as CompDef
 import Kernel.Common.Allocator (Allocator, AllocatorSpec (..), allocatorSpec)
 import Kernel.Common.Arch
 import Kernel.Common.Arch qualified as A
@@ -80,13 +79,12 @@ data Handle = Handle
     referencedNameSet :: IORef (S.Set DD.DefiniteDescription)
   }
 
-new :: Global.Handle -> Target -> App Handle
-new (Global.Handle {..}) target = do
+new :: Global.Handle -> Target -> C.DefMap -> App Handle
+new (Global.Handle {..}) target defMap = do
   allocator <- Env.getAllocatorByTarget envHandle target
   let arch = Platform.getArch platformHandle
   let baseSize = Platform.getDataSize platformHandle
   let substHandle = Subst.new gensymHandle
-  defMap <- liftIO $ CompDef.get compDefHandle
   let reduceHandle = Reduce.new substHandle gensymHandle defMap
   declEnv <- liftIO $ newIORef $ makeBaseDeclEnv arch (allocatorSpec allocator)
   staticTextList <- liftIO $ newIORef []

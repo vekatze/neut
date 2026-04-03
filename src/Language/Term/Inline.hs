@@ -421,9 +421,10 @@ inlineLowMagic h lowMagic =
       value' <- inline' h value
       return $ LM.Cast from' to' value'
     LM.Store t unit value pointer -> do
+      unit' <- inlineType' h unit
       value' <- inline' h value
       pointer' <- inline' h pointer
-      return $ LM.Store t unit value' pointer'
+      return $ LM.Store t unit' value' pointer'
     LM.Load t pointer -> do
       pointer' <- inline' h pointer
       return $ LM.Load t pointer'
