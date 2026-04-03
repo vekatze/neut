@@ -11,21 +11,21 @@ where
 import App.App (App)
 import App.Run (raiseError)
 import Control.Comonad.Cofree
-import Control.Monad
 import Control.Monad.IO.Class
+import Data.IntMap qualified as IntMap
 import Data.IORef (readIORef)
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NE
 import Data.Text qualified as T
+import Kernel.Common.Handle.Global.Data qualified as Data
 import Kernel.Common.TypeTag qualified as TypeTag
 import Kernel.Common.TypeValue qualified as TypeValue
 import Language.Common.ArgNum qualified as AN
-import Language.Common.Attr.Data qualified as AttrD
 import Language.Common.Attr.DataIntro qualified as AttrDI
 import Language.Common.Attr.VarGlobal qualified as AttrVG
 import Language.Common.BaseName qualified as BN
 import Language.Common.Binder (BinderF)
-import Language.Common.CreateSymbol qualified as Gensym
+import Language.Common.DataInfo qualified as DI
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.Discriminant qualified as D
 import Language.Common.Ident.Reify qualified as Ident
@@ -36,10 +36,10 @@ import Language.Common.PrimType qualified as PT
 import Language.Common.Rune qualified as Rune
 import Language.Common.SourceLocator qualified as SL
 import Language.Common.StrictGlobalLocator qualified as SGL
-import Language.Common.VarKind qualified as VK
 import Language.Term.Eq qualified as TermEq
 import Language.Term.Inline.Handle
 import Language.Term.PrimValue qualified as PV
+import Language.Term.Subst qualified as Subst
 import Language.Term.Term qualified as TM
 import Language.Term.Weaken (weakenType)
 import Language.WeakTerm.ToText (toTextType)
@@ -49,56 +49,58 @@ evaluateInspectType :: Handle -> Hint -> MID.ModuleID -> TM.Type -> App TM.Term
 evaluateInspectType h m moduleID typeExpr = do
   case typeExpr of
     _ :< TM.Tau ->
-      returnTypeValueIntValue h m moduleID TypeValue.Type
+      returnTypeValueIntValue m moduleID TypeValue.Type
     _ :< TM.Pi {} ->
-      returnTypeValueIntValue h m moduleID TypeValue.Function
-    _ :< TM.Data (AttrD.Attr {AttrD.consNameList}) dataName dataArgs -> do
-      case consNameList of
-        [(_, [(_, _, _, arg)], _)] -> do
+      returnTypeValueIntValue m moduleID TypeValue.Function
+    _ :< TM.Data _ dataName dataArgs -> do
+      DI.DataInfo {DI.dataArgs = dataArgBinders, DI.consInfoList = consInfoListRaw} <- lookupDataInfo h m dataName
+      consInfoList <- specializeConsInfoList h m dataName dataArgBinders dataArgs consInfoListRaw
+      case consInfoList of
+        [DI.ConsInfo {DI.consArgs = [(_, _, _, arg)]}] -> do
           if dataName == makeVectorDD moduleID
             then do
               case dataArgs of
                 [dataArg] ->
-                  returnTypeValueIntValue h m moduleID $ TypeValue.Vector dataArg
+                  returnTypeValueIntValue m moduleID $ TypeValue.Vector dataArg
                 _ -> do
                   let len = length dataArgs
                   reportMacroError h m $
                     "inspect-type: `vector` expects 1 argument, but got " <> T.pack (show len) <> " arguments."
-            else returnTypeValueIntValue h m moduleID $ TypeValue.Wrapper arg
+            else returnTypeValueIntValue m moduleID $ TypeValue.Wrapper arg
         _ -> do
-          let consInfoList = map consToTypeValue consNameList
-          let isEnum = all (\(_, binders, isConstLike) -> isConstLike && null binders) consNameList
-          if isEnum && not (null consNameList)
+          let consInfoList' = map consToTypeValue consInfoList
+          let isEnum = all (\consInfo -> DI.isConstLike consInfo && null (DI.consArgs consInfo)) consInfoList
+          if isEnum && not (null consInfoList)
             then do
-              let enumConsNames = map (\(dd, _, _) -> DD.localLocator dd) consNameList
-              returnTypeValueIntValue h m moduleID $ TypeValue.Enum enumConsNames
+              let enumConsNames = map (DD.localLocator . DI.consName) consInfoList
+              returnTypeValueIntValue m moduleID $ TypeValue.Enum enumConsNames
             else do
               let dataNameText = DD.localLocator dataName
-              returnTypeValueIntValue h m moduleID $ TypeValue.Algebraic dataNameText dataArgs consInfoList
+              returnTypeValueIntValue m moduleID $ TypeValue.Algebraic dataNameText dataArgs consInfoList'
     _ :< TM.BoxNoema t ->
-      returnTypeValueIntValue h m moduleID $ TypeValue.Noema t
+      returnTypeValueIntValue m moduleID $ TypeValue.Noema t
     _ :< TM.Box t ->
-      returnTypeValueIntValue h m moduleID $ TypeValue.BoxT t
+      returnTypeValueIntValue m moduleID $ TypeValue.BoxT t
     _ :< TM.Code _ ->
-      returnTypeValueIntValue h m moduleID TypeValue.Opaque
+      returnTypeValueIntValue m moduleID TypeValue.Opaque
     _ :< TM.PrimType (PT.Int size) ->
-      returnTypeValueIntValue h m moduleID (TypeValue.fromIntSize size)
+      returnTypeValueIntValue m moduleID (TypeValue.fromIntSize size)
     _ :< TM.PrimType (PT.Float size) ->
-      returnTypeValueIntValue h m moduleID (TypeValue.fromFloatSize size)
+      returnTypeValueIntValue m moduleID (TypeValue.fromFloatSize size)
     _ :< TM.PrimType PT.Pointer ->
-      returnTypeValueIntValue h m moduleID TypeValue.Pointer
+      returnTypeValueIntValue m moduleID TypeValue.Pointer
     _ :< TM.PrimType PT.Rune ->
-      returnTypeValueIntValue h m moduleID TypeValue.Rune
+      returnTypeValueIntValue m moduleID TypeValue.Rune
     _ :< TM.Resource name _ -> do
       let binarySGL = SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.binaryLocator}
       let binaryDD = DD.newByGlobalLocator binarySGL BN.binary
       if name == binaryDD
-        then returnTypeValueIntValue h m moduleID TypeValue.Binary
-        else returnTypeValueIntValue h m moduleID TypeValue.Opaque
+        then returnTypeValueIntValue m moduleID TypeValue.Binary
+        else returnTypeValueIntValue m moduleID TypeValue.Opaque
     _ :< TM.TVarGlobal _ _ -> do
-      returnTypeValueIntValue h m moduleID TypeValue.Opaque
+      returnTypeValueIntValue m moduleID TypeValue.Opaque
     _ :< TM.TyApp (_ :< TM.TVarGlobal _ _) _ -> do
-      returnTypeValueIntValue h m moduleID TypeValue.Opaque
+      returnTypeValueIntValue m moduleID TypeValue.Opaque
     _ -> do
       reportMacroError h m $
         "inspect-type: unable to determine type value for this type expression. Got: "
@@ -114,58 +116,12 @@ makeVectorDD moduleID = do
   let vectorSGL = SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.vectorLocator}
   DD.newByGlobalLocator vectorSGL BN.vector
 
-makeConsNameList ::
-  Handle ->
-  Hint ->
-  SGL.StrictGlobalLocator ->
-  App [(DD.DefiniteDescription, [BinderF TM.Type], IsConstLike)]
-makeConsNameList h m typeValueSGL = do
-  let moduleID = SGL.moduleID typeValueSGL
-  forM TypeTag.typeTagList $ \tag -> do
-    let dd = DD.newByGlobalLocator typeValueSGL (BN.fromTypeTag tag)
-    case tag of
-      TypeTag.Vector -> do
-        doNotCare <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "tmp"
-        return (dd, [(m, VK.Normal, doNotCare, m :< TM.Tau)], False)
-      TypeTag.Algebraic -> do
-        doNotCare0 <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "tmp"
-        doNotCare1 <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "tmp"
-        doNotCare2 <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "tmp"
-        let stringType = makeTextTypeExpr m moduleID
-        let dataNameType = m :< TM.BoxNoema stringType
-        let dataArgsType = makeListTypeExpr m moduleID (m :< TM.Tau)
-        let consInfoListType = makeListTypeExpr m moduleID (makeConstructorTypeExpr m moduleID)
-        return
-          ( dd,
-            [ (m, VK.Normal, doNotCare0, dataNameType),
-              (m, VK.Normal, doNotCare1, dataArgsType),
-              (m, VK.Normal, doNotCare2, consInfoListType)
-            ],
-            False
-          )
-      TypeTag.Wrapper -> do
-        doNotCare <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "tmp"
-        return (dd, [(m, VK.Normal, doNotCare, m :< TM.Tau)], False)
-      TypeTag.Noema -> do
-        doNotCare <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "tmp"
-        return (dd, [(m, VK.Normal, doNotCare, m :< TM.Tau)], False)
-      TypeTag.Enum -> do
-        doNotCare <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "tmp"
-        let stringType = makeTextTypeExpr m moduleID
-        let nameListType = makeListTypeExpr m moduleID (m :< TM.BoxNoema stringType)
-        return (dd, [(m, VK.Normal, doNotCare, nameListType)], False)
-      TypeTag.BoxT -> do
-        doNotCare <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "tmp"
-        return (dd, [(m, VK.Normal, doNotCare, m :< TM.Tau)], False)
-      _ ->
-        return (dd, [], True)
-
 consToTypeValue ::
-  (DD.DefiniteDescription, [BinderF TM.Type], IsConstLike) ->
+  DI.ConsInfo (BinderF TM.Type) ->
   (T.Text, IsConstLike, [(T.Text, TM.Type)])
-consToTypeValue (dd, binders, isConstLike) = do
-  let params = map (\(_, _, x, t) -> (Ident.toText x, t)) binders
-  (DD.localLocator dd, isConstLike, params)
+consToTypeValue consInfo = do
+  let params = map (\(_, _, x, t) -> (Ident.toText x, t)) (DI.consArgs consInfo)
+  (DD.localLocator (DI.consName consInfo), DI.isConstLike consInfo, params)
 
 isConstTypeTag :: TypeTag.TypeTag -> Bool
 isConstTypeTag tt =
@@ -186,21 +142,18 @@ isConstTypeTag tt =
       True
 
 makeAttrDI ::
-  Handle ->
-  Hint ->
   SGL.StrictGlobalLocator ->
   TypeTag.TypeTag ->
-  App (AttrDI.Attr DD.DefiniteDescription (BinderF TM.Type))
-makeAttrDI h m typeValueSGL typeTag = do
+  App AttrDI.Attr
+makeAttrDI typeValueSGL typeTag = do
   let dataName = DD.newByGlobalLocator typeValueSGL BN.typeValue
   let discriminant = D.MakeDiscriminant $ TypeTag.typeTagToInteger typeTag
-  consNameList <- makeConsNameList h m typeValueSGL
-  return $ AttrDI.Attr {dataName, consNameList, discriminant, isConstLike = isConstTypeTag typeTag}
+  return $ AttrDI.Attr {dataName, discriminant, isConstLike = isConstTypeTag typeTag}
 
-returnTypeValueIntValue :: Handle -> Hint -> MID.ModuleID -> TypeValue.TypeValue -> App TM.Term
-returnTypeValueIntValue h m moduleID typeValue = do
+returnTypeValueIntValue :: Hint -> MID.ModuleID -> TypeValue.TypeValue -> App TM.Term
+returnTypeValueIntValue m moduleID typeValue = do
   let typeValueSGL = SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.typeValueLocator}
-  attr <- makeAttrDI h m typeValueSGL $ TypeValue.toTypeTag typeValue
+  attr <- makeAttrDI typeValueSGL $ TypeValue.toTypeTag typeValue
   let tag = TypeValue.toTypeTag typeValue
   let consName = DD.newByGlobalLocator typeValueSGL (BN.fromTypeTag tag)
   case typeValue of
@@ -208,15 +161,15 @@ returnTypeValueIntValue h m moduleID typeValue = do
       let listSgl = makeListSGL moduleID
       let stringType = makeTextTypeExpr m moduleID
       let dataNameTerm = m :< TM.Prim (PV.NoeticString stringType dataName)
-      dataArgsTerm <- constructListTerm h m listSgl dataArgs
-      consInfoTerm <- constructConstructorInfoListTerm h m moduleID consInfoList
+      dataArgsTerm <- constructListTerm m listSgl dataArgs
+      consInfoTerm <- constructConstructorInfoListTerm m moduleID consInfoList
       return $ m :< TM.DataIntro attr consName [] [dataNameTerm, dataArgsTerm, consInfoTerm]
     TypeValue.Enum consNames -> do
       let listSgl = makeListSGL moduleID
       let stringType = makeTextTypeExpr m moduleID
       let elemType = m :< TM.BoxNoema stringType
       let nameTerms = map (\name -> m :< TM.Prim (PV.NoeticString stringType name)) consNames
-      namesListTerm <- constructListTermFromTerms h m listSgl elemType nameTerms
+      namesListTerm <- constructListTermFromTerms m listSgl elemType nameTerms
       return $ m :< TM.DataIntro attr consName [] [namesListTerm]
     TypeValue.Vector t -> do
       return $ m :< TM.DataIntro attr consName [] [m :< TM.TauIntro t]
@@ -229,47 +182,31 @@ returnTypeValueIntValue h m moduleID typeValue = do
     _ ->
       return $ m :< TM.DataIntro attr consName [] []
 
-constructListTerm :: Handle -> Hint -> SGL.StrictGlobalLocator -> [TM.Type] -> App TM.Term
-constructListTerm h m listSgl types = do
+constructListTerm :: Hint -> SGL.StrictGlobalLocator -> [TM.Type] -> App TM.Term
+constructListTerm m listSgl types = do
   let wrappedTypes = map (\ty -> m :< TM.TauIntro ty) types
-  constructListTermFromTerms h m listSgl (m :< TM.Tau) wrappedTypes
+  constructListTermFromTerms m listSgl (m :< TM.Tau) wrappedTypes
 
-constructListTermFromTerms :: Handle -> Hint -> SGL.StrictGlobalLocator -> TM.Type -> [TM.Term] -> App TM.Term
-constructListTermFromTerms h hint listSgl elemType terms =
+constructListTermFromTerms :: Hint -> SGL.StrictGlobalLocator -> TM.Type -> [TM.Term] -> App TM.Term
+constructListTermFromTerms hint listSgl elemType terms =
   case terms of
     [] ->
-      constructListNilTerm h hint listSgl elemType
+      constructListNilTerm hint listSgl elemType
     headTerm : rest -> do
-      tailList <- constructListTermFromTerms h hint listSgl elemType rest
-      constructListConsTerm h hint listSgl elemType headTerm tailList
+      tailList <- constructListTermFromTerms hint listSgl elemType rest
+      constructListConsTerm hint listSgl elemType headTerm tailList
 
-constructListNilTerm :: Handle -> Hint -> SGL.StrictGlobalLocator -> TM.Type -> App TM.Term
-constructListNilTerm h hint listSgl elemType = do
+constructListNilTerm :: Hint -> SGL.StrictGlobalLocator -> TM.Type -> App TM.Term
+constructListNilTerm hint listSgl elemType = do
   let dataName = coreListType listSgl
-  consNameList <- makeListConsNameList h hint listSgl elemType
-  let attr = AttrDI.Attr {dataName, consNameList, discriminant = D.zero, isConstLike = True}
+  let attr = AttrDI.Attr {dataName, discriminant = D.zero, isConstLike = True}
   return $ hint :< TM.DataIntro attr (coreListNil listSgl) [elemType] []
 
-constructListConsTerm :: Handle -> Hint -> SGL.StrictGlobalLocator -> TM.Type -> TM.Term -> TM.Term -> App TM.Term
-constructListConsTerm h hint listSgl elemType headTerm tailList = do
+constructListConsTerm :: Hint -> SGL.StrictGlobalLocator -> TM.Type -> TM.Term -> TM.Term -> App TM.Term
+constructListConsTerm hint listSgl elemType headTerm tailList = do
   let dataName = coreListType listSgl
-  consNameList <- makeListConsNameList h hint listSgl elemType
-  let attr = AttrDI.Attr {dataName, consNameList, discriminant = D.increment D.zero, isConstLike = False}
+  let attr = AttrDI.Attr {dataName, discriminant = D.increment D.zero, isConstLike = False}
   return $ hint :< TM.DataIntro attr (coreListCons listSgl) [elemType] [headTerm, tailList]
-
-makeListConsNameList ::
-  Handle ->
-  Hint ->
-  SGL.StrictGlobalLocator ->
-  TM.Type ->
-  App [(DD.DefiniteDescription, [BinderF TM.Type], IsConstLike)]
-makeListConsNameList h hint listSgl elemType = do
-  headBinder <- mkBinder h hint "head" elemType
-  tailBinder <- mkBinder h hint "tail" (makeListTypeExpr hint (SGL.moduleID listSgl) elemType)
-  return
-    [ (coreListNil listSgl, [], True),
-      (coreListCons listSgl, [headBinder, tailBinder], False)
-    ]
 
 coreListType :: SGL.StrictGlobalLocator -> DD.DefiniteDescription
 coreListType sglList =
@@ -291,13 +228,6 @@ makeConstructorSGL :: MID.ModuleID -> SGL.StrictGlobalLocator
 makeConstructorSGL moduleID =
   SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.typeValueLocator}
 
-makeListTypeExpr :: Hint -> MID.ModuleID -> TM.Type -> TM.Type
-makeListTypeExpr m moduleID elemType = do
-  let listSgl = makeListSGL moduleID
-  let listDD = DD.newByGlobalLocator listSgl BN.list
-  let listTypeVar = m :< TM.TVarGlobal (AttrVG.Attr {argNum = AN.fromInt 1, isConstLike = False, isDestPassing = False}) listDD
-  m :< TM.TyApp listTypeVar [elemType]
-
 makeConstructorTypeExpr :: Hint -> MID.ModuleID -> TM.Type
 makeConstructorTypeExpr m moduleID = do
   let constructorSgl = makeConstructorSGL moduleID
@@ -317,15 +247,12 @@ makeTextTypeExpr m moduleID = do
   let stringTypeDD = DD.newByGlobalLocator textSgl BN.stringType
   m :< TM.TVarGlobal (AttrVG.Attr {argNum = AN.zero, isConstLike = True, isDestPassing = False}) stringTypeDD
 
-constructPairTerm :: Handle -> Hint -> MID.ModuleID -> TM.Type -> TM.Type -> TM.Term -> TM.Term -> App TM.Term
-constructPairTerm h m moduleID leftType rightType leftTerm rightTerm = do
+constructPairTerm :: Hint -> MID.ModuleID -> TM.Type -> TM.Type -> TM.Term -> TM.Term -> App TM.Term
+constructPairTerm m moduleID leftType rightType leftTerm rightTerm = do
   let pairSgl = SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.pairLocator}
   let dataName = DD.newByGlobalLocator pairSgl BN.pairType
   let consName = DD.newByGlobalLocator pairSgl BN.pair
-  leftBinder <- mkBinder h m "left" leftType
-  rightBinder <- mkBinder h m "right" rightType
-  let consNameList = [(consName, [leftBinder, rightBinder], False)]
-  let attr = AttrDI.Attr {dataName, consNameList, discriminant = D.zero, isConstLike = False}
+  let attr = AttrDI.Attr {dataName, discriminant = D.zero, isConstLike = False}
   return $ m :< TM.DataIntro attr consName [leftType, rightType] [leftTerm, rightTerm]
 
 constructBoolTerm :: Hint -> MID.ModuleID -> IsConstLike -> TM.Term
@@ -334,64 +261,85 @@ constructBoolTerm hint moduleID value = do
   let boolTypeDD = DD.newByGlobalLocator boolSgl BN.boolType
   let trueDD = DD.newByGlobalLocator boolSgl BN.trueConstructor
   let falseDD = DD.newByGlobalLocator boolSgl BN.falseConstructor
-  let consNameList = [(falseDD, [], True), (trueDD, [], True)]
   let (consName, discriminant) =
         if value
           then (trueDD, D.increment D.zero)
           else (falseDD, D.zero)
-  let attr = AttrDI.Attr {dataName = boolTypeDD, consNameList, discriminant, isConstLike = True}
+  let attr = AttrDI.Attr {dataName = boolTypeDD, discriminant, isConstLike = True}
   hint :< TM.DataIntro attr consName [] []
 
 constructConstructorInfoListTerm ::
-  Handle ->
   Hint ->
   MID.ModuleID ->
   [(T.Text, IsConstLike, [(T.Text, TM.Type)])] ->
   App TM.Term
-constructConstructorInfoListTerm h hint moduleID consInfoList = do
+constructConstructorInfoListTerm hint moduleID consInfoList = do
   let listSgl = makeListSGL moduleID
   let constructorType = makeConstructorTypeExpr hint moduleID
-  consInfoTerms <- mapM (constructConstructorTerm h hint moduleID) consInfoList
-  constructListTermFromTerms h hint listSgl constructorType consInfoTerms
+  consInfoTerms <- mapM (constructConstructorTerm hint moduleID) consInfoList
+  constructListTermFromTerms hint listSgl constructorType consInfoTerms
 
 constructConstructorTerm ::
-  Handle ->
   Hint ->
   MID.ModuleID ->
   (T.Text, IsConstLike, [(T.Text, TM.Type)]) ->
   App TM.Term
-constructConstructorTerm h m moduleID (consName, isConstLike, params) = do
+constructConstructorTerm m moduleID (consName, isConstLike, params) = do
   let constructorSgl = makeConstructorSGL moduleID
   let listSgl = makeListSGL moduleID
   let constructorTypeDD = DD.newByGlobalLocator constructorSgl BN.constructorType
   let consDD = DD.newByGlobalLocator constructorSgl BN.constructor
   let stringType = makeTextTypeExpr m moduleID
-  let boolSgl = SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.boolLocator}
-  let boolTypeDD = DD.newByGlobalLocator boolSgl BN.boolType
-  let boolType = m :< TM.TVarGlobal (AttrVG.Attr {argNum = AN.zero, isConstLike = True, isDestPassing = False}) boolTypeDD
   let paramPairType = makePairTypeExpr m moduleID (m :< TM.BoxNoema stringType) (m :< TM.Tau)
-  let paramListType = makeListTypeExpr m moduleID paramPairType
-  nameBinder <- mkBinder h m "name" (m :< TM.BoxNoema stringType)
-  paramsBinder <- mkBinder h m "params" paramListType
-  flagBinder <- mkBinder h m "is-const-like" boolType
-  let consNameList = [(consDD, [nameBinder, flagBinder, paramsBinder], False)]
-  let attr = AttrDI.Attr {dataName = constructorTypeDD, consNameList, discriminant = D.zero, isConstLike = False}
+  let attr = AttrDI.Attr {dataName = constructorTypeDD, discriminant = D.zero, isConstLike = False}
   let consNameText = m :< TM.Prim (PV.NoeticString stringType consName)
-  paramTerms <- mapM (constructParamPairTerm h m moduleID stringType) params
-  paramListTerm <- constructListTermFromTerms h m listSgl paramPairType paramTerms
+  paramTerms <- mapM (constructParamPairTerm m moduleID stringType) params
+  paramListTerm <- constructListTermFromTerms m listSgl paramPairType paramTerms
   let boolTerm = constructBoolTerm m moduleID isConstLike
   return $ m :< TM.DataIntro attr consDD [] [consNameText, boolTerm, paramListTerm]
 
-constructParamPairTerm :: Handle -> Hint -> MID.ModuleID -> TM.Type -> (T.Text, TM.Type) -> App TM.Term
-constructParamPairTerm h m moduleID stringType (paramName, paramType) = do
+lookupDataInfo :: Handle -> Hint -> DD.DefiniteDescription -> App (DI.DataInfo (BinderF TM.Type))
+lookupDataInfo h m dataName = do
+  dataInfoOrNone <- liftIO $ Data.lookup (dataHandle h) dataName
+  case dataInfoOrNone of
+    Just dataInfo ->
+      return dataInfo
+    Nothing ->
+      reportMacroError h m $ "inspect-type: constructor metadata for `" <> DD.reify dataName <> "` is unavailable."
+
+specializeConsInfoList ::
+  Handle ->
+  Hint ->
+  DD.DefiniteDescription ->
+  [BinderF TM.Type] ->
+  [TM.Type] ->
+  [DI.ConsInfo (BinderF TM.Type)] ->
+  App [DI.ConsInfo (BinderF TM.Type)]
+specializeConsInfoList h m dataName dataBinders dataArgs consInfoList
+  | length dataBinders == length dataArgs = do
+      let binderIds = map (\(_, _, x, _) -> x) dataBinders
+      let sub = IntMap.fromList $ zip (map Ident.toInt binderIds) (map Subst.Type dataArgs)
+      mapM (specializeConsInfo h sub) consInfoList
+  | otherwise =
+      reportMacroError h m $
+        "inspect-type: arity mismatch while specializing constructor metadata for `"
+          <> DD.reify dataName
+          <> "`."
+
+specializeConsInfo :: Handle -> Subst.Subst -> DI.ConsInfo (BinderF TM.Type) -> App (DI.ConsInfo (BinderF TM.Type))
+specializeConsInfo h sub consInfo = do
+  consArgs' <- mapM specializeConsArg (DI.consArgs consInfo)
+  return $ consInfo {DI.consArgs = consArgs'}
+  where
+    specializeConsArg (mx, k, x, t) = do
+      t' <- liftIO $ Subst.substType (substHandle h) sub t
+      return (mx, k, x, t')
+
+constructParamPairTerm :: Hint -> MID.ModuleID -> TM.Type -> (T.Text, TM.Type) -> App TM.Term
+constructParamPairTerm m moduleID stringType (paramName, paramType) = do
   let nameTerm = m :< TM.Prim (PV.NoeticString stringType paramName)
   let typeTerm = m :< TM.TauIntro paramType
-  constructPairTerm h m moduleID (m :< TM.BoxNoema stringType) (m :< TM.Tau) nameTerm typeTerm
-
-mkBinder :: Handle -> Hint -> T.Text -> TM.Type -> App (BinderF TM.Type)
-mkBinder h hint name ty = do
-  x <- liftIO $ Gensym.newIdentFromText (gensymHandle h) name
-  return (hint, VK.Normal, x, ty)
+  constructPairTerm m moduleID (m :< TM.BoxNoema stringType) (m :< TM.Tau) nameTerm typeTerm
 
 evaluateShowType :: Hint -> TM.Type -> TM.Type -> App TM.Term
 evaluateShowType m stringTypeExpr typeExpr = do

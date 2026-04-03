@@ -24,7 +24,7 @@ type WeakStmtKindTerm =
   SK.BaseStmtKindTerm DD.DefiniteDescription (BinderF WT.WeakType) WT.WeakType
 
 type WeakStmtKindType =
-  SK.BaseStmtKindType DD.DefiniteDescription (BinderF WT.WeakType)
+  SK.BaseStmtKindType (BinderF WT.WeakType)
 
 data WeakStmt
   = WeakStmtDefineTerm

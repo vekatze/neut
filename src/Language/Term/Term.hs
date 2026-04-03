@@ -46,7 +46,7 @@ data TypeF a
   | TVarGlobal AttrVG.Attr DD.DefiniteDescription
   | TyApp a [a]
   | Pi PiKind [BinderF a] [BinderF a] [BinderF a] a
-  | Data (AttrD.Attr DD.DefiniteDescription (BinderF a)) DD.DefiniteDescription [a]
+  | Data AttrD.Attr DD.DefiniteDescription [a]
   | Box a
   | BoxNoema a
   | Code a
@@ -69,7 +69,7 @@ data TermF a
   | VarGlobal AttrVG.Attr DD.DefiniteDescription
   | PiIntro (AttrL.Attr Type) [BinderF Type] [BinderF Type] [(BinderF Type, a)] a
   | PiElim (PEK.PiElimKind Type) a [Type] [a] [Maybe a]
-  | DataIntro (AttrDI.Attr DD.DefiniteDescription (BinderF Type)) DD.DefiniteDescription [Type] [a]
+  | DataIntro AttrDI.Attr DD.DefiniteDescription [Type] [a]
   | DataElim N.IsNoetic [(Ident, a, Type)] (DT.DecisionTree Type a)
   | BoxIntro [(BinderF Type, a)] a
   | BoxElim [(BinderF Type, a)] (BinderF Type) a [(BinderF Type, a)] a

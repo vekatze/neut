@@ -18,8 +18,6 @@ import Data.Set qualified as S
 import Gensym.Gensym qualified as Gensym
 import Gensym.Handle qualified as Gensym
 import Language.Common.Annotation qualified as AN
-import Language.Common.Attr.Data qualified as AttrD
-import Language.Common.Attr.DataIntro qualified as AttrDI
 import Language.Common.Attr.Lam qualified as AttrL
 import Language.Common.Binder
 import Language.Common.CreateSymbol qualified as Gensym
@@ -109,8 +107,7 @@ subst h sub term =
     m :< WT.DataIntro attr consName dataArgs consArgs -> do
       dataArgs' <- mapM (substType h sub) dataArgs
       consArgs' <- mapM (subst h sub) consArgs
-      attr' <- substAttrDataIntro h sub attr
-      return $ m :< WT.DataIntro attr' consName dataArgs' consArgs'
+      return $ m :< WT.DataIntro attr consName dataArgs' consArgs'
     m :< WT.DataElim isNoetic oets decisionTree -> do
       let (os, es, ts) = unzip3 oets
       es' <- mapM (subst h sub) es
@@ -199,8 +196,7 @@ substType h sub ty =
       return $ m :< WT.Pi piKind impArgs' expArgs' defaultArgs' t'
     m :< WT.Data attr name es -> do
       es' <- mapM (substType h sub) es
-      attr' <- substAttrData h sub attr
-      return $ m :< WT.Data attr' name es'
+      return $ m :< WT.Data attr name es'
     m :< WT.Box t -> do
       t' <- substType h sub t
       return $ m :< WT.Box t'
@@ -401,42 +397,6 @@ substVar sub x =
       x'
     _ ->
       x
-
-substAttrData :: Handle -> Subst -> AttrD.Attr name (BinderF WT.WeakType) -> IO (AttrD.Attr name (BinderF WT.WeakType))
-substAttrData h sub attr = do
-  let consNameList = AttrD.consNameList attr
-  consNameList' <-
-    mapM
-      ( \(cn, binders, cl) -> do
-          binders' <-
-            mapM
-              ( \(mx, k, x, t) -> do
-                  t' <- substType h sub t
-                  return (mx, k, x, t')
-              )
-              binders
-          return (cn, binders', cl)
-      )
-      consNameList
-  return $ attr {AttrD.consNameList = consNameList'}
-
-substAttrDataIntro :: Handle -> Subst -> AttrDI.Attr name (BinderF WT.WeakType) -> IO (AttrDI.Attr name (BinderF WT.WeakType))
-substAttrDataIntro h sub attr = do
-  let consNameList = AttrDI.consNameList attr
-  consNameList' <-
-    mapM
-      ( \(cn, binders, cl) -> do
-          binders' <-
-            mapM
-              ( \(mx, k, x, t) -> do
-                  t' <- substType h sub t
-                  return (mx, k, x, t')
-              )
-              binders
-          return (cn, binders', cl)
-      )
-      consNameList
-  return $ attr {AttrDI.consNameList = consNameList'}
 
 substMagic :: Handle -> Subst -> WeakMagic WT.WeakType WT.WeakType WT.WeakTerm -> IO (WeakMagic WT.WeakType WT.WeakType WT.WeakTerm)
 substMagic h sub (WeakMagic magic) = do

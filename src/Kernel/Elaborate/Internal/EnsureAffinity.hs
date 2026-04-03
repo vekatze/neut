@@ -16,16 +16,16 @@ import Data.IORef
 import Data.IntMap qualified as IntMap
 import Data.Maybe (catMaybes)
 import Data.Set qualified as S
+import Kernel.Common.Handle.Global.Data qualified as Data
 import Kernel.Common.Handle.Global.OptimizableData qualified as OptimizableData
-import Kernel.Common.Handle.Global.Type qualified as Type
 import Kernel.Common.OptimizableData
 import Kernel.Common.OptimizableData qualified as OD
 import Kernel.Elaborate.Internal.Handle.Elaborate qualified as Elaborate
 import Kernel.Elaborate.Internal.Handle.WeakTypeDef qualified as WeakTypeDef
 import Kernel.Elaborate.Stuck qualified as Stuck
-import Language.Common.Attr.Data qualified as AttrD
 import Language.Common.Attr.Lam qualified as AttrL
 import Language.Common.Binder
+import Language.Common.DataInfo qualified as DI
 import Language.Common.DecisionTree qualified as DT
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.Ident
@@ -40,7 +40,6 @@ import Language.Term.Term qualified as TM
 import Language.Term.Weaken (weakenType)
 import Language.WeakTerm.Subst (SubstEntry (..))
 import Language.WeakTerm.Subst qualified as Subst
-import Language.WeakTerm.ToText qualified as WT
 import Language.WeakTerm.WeakTerm qualified as WT
 import Logger.Hint
 import Logger.Log qualified as L
@@ -436,7 +435,7 @@ simplifyAffine h dataNameSet (t, orig@(m :< _)) = do
   case t' of
     _ :< WT.Tau -> do
       return []
-    _ :< WT.Data (AttrD.Attr {consNameList}) dataName dataArgs -> do
+    _ :< WT.Data _ dataName dataArgs -> do
       optDataOrNone <- liftIO $ lookupOptimizableData h dataName
       case optDataOrNone of
         Just OD.Enum -> do
@@ -448,10 +447,9 @@ simplifyAffine h dataNameSet (t, orig@(m :< _)) = do
           dataConsArgsList <-
             if S.member dataName dataNameSet
               then return []
-              else mapM (getConsArgTypes h m . (\(name, _, _) -> name)) consNameList
+              else getConsArgTypes h m dataName dataArgs
           constraintsFromDataConsArgs <- fmap concat $ forM dataConsArgsList $ \dataConsArgs -> do
-            dataConsArgs' <- substConsArgs h IntMap.empty dataConsArgs
-            fmap concat $ forM dataConsArgs' $ \(_, _, _, consArg) -> do
+            fmap concat $ forM dataConsArgs $ \(_, _, _, consArg) -> do
               simplifyAffine h dataNameSet' (consArg, orig)
           return $ constraintsFromDataArgs ++ constraintsFromDataConsArgs
         _ -> do
@@ -494,16 +492,20 @@ getConsArgTypes ::
   Handle ->
   Hint ->
   DD.DefiniteDescription ->
-  App [BinderF WT.WeakType]
-getConsArgTypes h m consName = do
-  t <- Type.lookup' (Elaborate.typeHandle (elaborateHandle h)) m consName
-  case t of
-    _ :< WT.Pi (PK.DataIntro False) impArgs expArgs defaultArgs (_ :< WT.Pi (PK.Normal _) impArgs' expArgs' defaultArgs' _dataType) -> do
-      return $ impArgs ++ expArgs ++ defaultArgs ++ impArgs' ++ expArgs' ++ defaultArgs'
-    _ :< WT.Pi (PK.DataIntro True) impArgs expArgs defaultArgs _dataType -> do
-      return $ impArgs ++ expArgs ++ defaultArgs
-    _ ->
-      raiseCritical m $ "Got a malformed constructor type:\n" <> WT.toTextType t
+  [WT.WeakType] ->
+  App [[BinderF WT.WeakType]]
+getConsArgTypes h m dataName dataArgs = do
+  dataInfoOrNone <- liftIO $ Data.lookupWeak (Elaborate.dataHandle (elaborateHandle h)) dataName
+  case dataInfoOrNone of
+    Just DI.DataInfo {DI.dataArgs = dataBinders, DI.consInfoList = consInfoList}
+      | length dataBinders == length dataArgs -> do
+          let binderIds = map (\(_, _, x, _) -> x) dataBinders
+          let sub = IntMap.fromList $ zip (map toInt binderIds) (map Type dataArgs)
+          mapM (substConsArgs h sub . DI.consArgs) consInfoList
+      | otherwise ->
+          raiseCritical m $ "Could not specialize constructor metadata for `" <> DD.reify dataName <> "` due to arity mismatch"
+    Nothing ->
+      raiseCritical m $ "Could not find constructor metadata for `" <> DD.reify dataName <> "`"
 
 lookupOptimizableData :: Handle -> DD.DefiniteDescription -> IO (Maybe OptimizableData)
 lookupOptimizableData h dd = do

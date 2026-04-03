@@ -48,11 +48,10 @@ import Kernel.Parse.Pattern qualified as PAT
 import Kernel.Parse.Stage
 import Kernel.Parse.VarDefKind qualified as VDK
 import Language.Common.Annotation qualified as AN
-import Language.Common.Attr.Data qualified as AttrD
-import Language.Common.Attr.DataIntro qualified as AttrDI
 import Language.Common.Attr.Lam qualified as AttrL
 import Language.Common.Binder
 import Language.Common.CreateSymbol qualified as Gensym
+import Language.Common.DataInfo qualified as DI
 import Language.Common.DefaultArgs qualified as DefaultArgs
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.Foreign qualified as F
@@ -86,7 +85,7 @@ import Language.RawTerm.RawStmt
 import Language.RawTerm.RawTerm (CodeVariant (CodeVariantK))
 import Language.RawTerm.RawTerm qualified as RT
 import Language.WeakTerm.CreateHole qualified as WT
-import Language.WeakTerm.FreeVars (freeVars, freeVarsType)
+import Language.WeakTerm.FreeVars (freeVars)
 import Language.WeakTerm.WeakPrimValue qualified as WPV
 import Language.WeakTerm.WeakStmt
 import Language.WeakTerm.WeakTerm qualified as WT
@@ -144,7 +143,7 @@ discernStmt h stmt = do
       (expArgs', nenv') <- discernTypeBinder nenv expArgs typeEndLoc
       (defaultArgs', nenv'') <- discernTypeBinderWithDefaultArgs nenv' defaultArgs typeEndLoc
       codType' <- discernType nenv'' codType
-      stmtKind' <- discernStmtKindType h' stmtKind m
+      stmtKind' <- discernStmtKindType h' stmtKind
       body' <- discernType nenv'' typeBody
       liftIO $ Tag.insertGlobalVar (H.tagHandle h') m functionName isConstLike m
       when (metaShouldSaveLocation m) $ do
@@ -243,8 +242,8 @@ discernStmtKindTerm h stmtKind m =
         liftIO $ Unused.deleteVariable (H.unusedHandle h'') x
       return $ SK.DataIntro dataName dataArgs' expConsArgs' discriminant
 
-discernStmtKindType :: H.Handle -> RawStmtKindType DD.DefiniteDescription -> Hint -> App (SK.StmtKindType WT.WeakType)
-discernStmtKindType h stmtKind _m =
+discernStmtKindType :: H.Handle -> RawStmtKindType -> App (SK.StmtKindType WT.WeakType)
+discernStmtKindType h stmtKind =
   case stmtKind of
     SK.Alias ->
       return SK.Alias
@@ -252,12 +251,12 @@ discernStmtKindType h stmtKind _m =
       return SK.AliasOpaque
     SK.Data dataName dataArgs consInfoList -> do
       (dataArgs', h') <- discernTypeBinder' h dataArgs
-      let (locList, consNameList, isConstLikeList, consArgsList, discriminantList) = List.unzip5 consInfoList
-      (consArgsList', hList) <- mapAndUnzipM (discernBinder' h') consArgsList
+      let discernConsInfo (savedHint, consInfo) = do
+            (consArgs', h'') <- discernBinder' h' (DI.consArgs consInfo)
+            return ((savedHint, consInfo {DI.consArgs = consArgs'}), h'')
+      (consInfoList', hList) <- mapAndUnzipM discernConsInfo consInfoList
       forM_ (concatMap H.nameEnv hList) $ \(_, (_, newVar, _, _)) -> do
         liftIO $ Unused.deleteVariable (H.unusedHandle h') newVar
-      let consNameList' = consNameList
-      let consInfoList' = List.zip5 locList consNameList' isConstLikeList consArgsList' discriminantList
       return $ SK.Data dataName dataArgs' consInfoList'
 
 getUnitType :: H.Handle -> Hint -> App WT.WeakType
@@ -439,11 +438,7 @@ discern h term =
     m :< RT.DataIntro attr consName dataArgs consArgs -> do
       dataArgs' <- mapM (discernType h) dataArgs
       consArgs' <- mapM (discern h) consArgs
-      let allowedVars = S.unions $ map freeVarsType dataArgs'
-      let nameEnv' = filter (\(_, (_, x, _, _)) -> S.member x allowedVars) (H.typeNameEnv h)
-      let hAttr = h {H.typeNameEnv = nameEnv'}
-      attr' <- discernAttrDataIntro hAttr attr
-      return $ m :< WT.DataIntro attr' consName dataArgs' consArgs'
+      return $ m :< WT.DataIntro attr consName dataArgs' consArgs'
     m :< RT.DataElim _ isNoetic es patternMatrix -> do
       let es' = SE.extract es
       let ms = map (\(me :< _) -> me) es'
@@ -787,11 +782,7 @@ discernType h ty =
       return $ m :< WT.Pi piKind impArgs' expArgs' defaultBinders t'
     m :< RT.Data attr dataName es -> do
       es' <- mapM (discernType h) es
-      let allowedVars = S.unions $ map freeVarsType es'
-      let nameEnv' = filter (\(_, (_, x, _, _)) -> S.member x allowedVars) (H.typeNameEnv h)
-      let hAttr = h {H.typeNameEnv = nameEnv'}
-      attr' <- discernAttrData hAttr attr
-      return $ m :< WT.Data attr' dataName es'
+      return $ m :< WT.Data attr dataName es'
     m :< RT.Box t -> do
       t' <- discernType h t
       return $ m :< WT.Box t'
@@ -1301,33 +1292,6 @@ discernBinderWithBody' h (mx, k, x, _, _, codType) startLoc endLoc e = do
   e' <- discern h'' e
   liftIO $ SymLoc.insert (H.symLocHandle h'') x' startLoc endLoc
   return ((mx, k, x', codType'), e')
-
--- Helper to convert Attr with RawBinder to Attr with BinderF
-discernAttrData ::
-  H.Handle ->
-  AttrD.Attr DD.DefiniteDescription (RawBinder RT.RawType) ->
-  App (AttrD.Attr DD.DefiniteDescription (BinderF WT.WeakType))
-discernAttrData h attr = do
-  let consNameList = AttrD.consNameList attr
-  consNameList' <- forM consNameList $ \(name, binders, isConstLike) -> do
-    (binders', _) <- discernBinder' h binders
-    forM_ binders' $ \(_, _, x, _) -> do
-      liftIO $ Unused.deleteVariable (H.unusedHandle h) x
-    return (name, binders', isConstLike)
-  return $ attr {AttrD.consNameList = consNameList'}
-
-discernAttrDataIntro ::
-  H.Handle ->
-  AttrDI.Attr DD.DefiniteDescription (RawBinder RT.RawType) ->
-  App (AttrDI.Attr DD.DefiniteDescription (BinderF WT.WeakType))
-discernAttrDataIntro h attr = do
-  let consNameList = AttrDI.consNameList attr
-  consNameList' <- forM consNameList $ \(name, binders, isConstLike) -> do
-    (binders', _) <- discernBinder' h binders
-    forM_ binders' $ \(_, _, x, _) -> do
-      liftIO $ Unused.deleteVariable (H.unusedHandle h) x
-    return (name, binders', isConstLike)
-  return $ attr {AttrDI.consNameList = consNameList'}
 
 discernPatternMatrix ::
   H.Handle ->

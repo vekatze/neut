@@ -8,13 +8,13 @@ module Language.Term.Extend
 where
 
 import Control.Comonad.Cofree
+import Data.Bifunctor (second)
 import Language.Common.Binder
+import Language.Common.DataInfo qualified as DI
 import Language.Common.DecisionTree qualified as DT
-import Language.Common.Discriminant qualified as D
-import Language.Common.IsConstLike (IsConstLike)
 import Language.Common.StmtKind
 import Language.Term.Term qualified as TM
-import Logger.Hint (Hint, SavedHint, internalHint)
+import Logger.Hint (Hint, internalHint)
 
 {-# INLINE _m #-}
 _m :: Hint
@@ -74,7 +74,7 @@ extendType ty =
     () :< TM.Pi piKind impArgs expArgs defaultArgs cod ->
       _m :< TM.Pi piKind (map extendBinder impArgs) (map extendBinder expArgs) (map extendBinder defaultArgs) (extendType cod)
     () :< TM.Data attr name es ->
-      _m :< TM.Data (fmap extendBinder attr) name (map extendType es)
+      _m :< TM.Data attr name (map extendType es)
     () :< TM.Box t ->
       _m :< TM.Box (extendType t)
     () :< TM.BoxNoema t ->
@@ -153,10 +153,10 @@ extendStmtKindType stmtKind =
     AliasOpaque ->
       AliasOpaque
     Data name args consInfoList ->
-      Data name (map extendBinder args) (map extendConsInfo consInfoList)
+      Data name (map extendBinder args) (map (second extendConsInfo) consInfoList)
 
 extendConsInfo ::
-  (SavedHint, name, IsConstLike, [BinderF (Cofree TM.TypeF ())], D.Discriminant) ->
-  (SavedHint, name, IsConstLike, [BinderF TM.Type], D.Discriminant)
-extendConsInfo (hint, name, isConstLike, binders, disc) =
-  (hint, name, isConstLike, map extendBinder binders, disc)
+  DI.ConsInfo (BinderF (Cofree TM.TypeF ())) ->
+  DI.ConsInfo (BinderF TM.Type)
+extendConsInfo consInfo =
+  consInfo {DI.consArgs = map extendBinder (DI.consArgs consInfo)}

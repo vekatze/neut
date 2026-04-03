@@ -50,8 +50,8 @@ data RawConsInfo a = RawConsInfo
 type RawStmtKindTerm a =
   SK.BaseStmtKindTerm a (RawBinder RT.RawType) ()
 
-type RawStmtKindType a =
-  SK.BaseStmtKindType a (RawBinder RT.RawType)
+type RawStmtKindType =
+  SK.BaseStmtKindType (RawBinder RT.RawType)
 
 data AliasKind
   = TransparentAlias
@@ -111,7 +111,7 @@ data PostRawStmt
       (RT.RawDef DD.DefiniteDescription)
   | PostRawStmtDefineType
       C
-      (RawStmtKindType DD.DefiniteDescription)
+      RawStmtKindType
       (RT.RawTypeDef DD.DefiniteDescription)
   | PostRawStmtDefineResource
       C

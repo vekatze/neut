@@ -31,18 +31,19 @@ import Kernel.Clarify.Internal.Sigma qualified as Sigma
 import Kernel.Clarify.Internal.Utility (toRelevantApp)
 import Kernel.Clarify.Internal.Utility qualified as Utility
 import Kernel.Common.CreateGlobalHandle qualified as Global
+import Kernel.Common.Handle.Global.Data qualified as Data
 import Kernel.Common.Handle.Global.OptimizableData qualified as OptimizableData
 import Kernel.Common.Handle.Global.Platform qualified as Platform
 import Kernel.Common.Handle.Global.Type qualified as Type
 import Kernel.Common.OptimizableData qualified as OD
 import Language.Common.ArgNum qualified as AN
-import Language.Common.Attr.Data qualified as AttrD
 import Language.Common.Attr.DataIntro qualified as AttrDI
 import Language.Common.Attr.Lam qualified as AttrL
 import Language.Common.Attr.VarGlobal qualified as AttrVG
 import Language.Common.BaseLowType qualified as BLT
 import Language.Common.Binder
 import Language.Common.CreateSymbol qualified as Gensym
+import Language.Common.DataInfo qualified as DI
 import Language.Common.DataSize qualified as DS
 import Language.Common.DecisionTree qualified as DT
 import Language.Common.DefiniteDescription qualified as DD
@@ -50,7 +51,6 @@ import Language.Common.Discriminant qualified as D
 import Language.Common.ForeignCodType qualified as FCT
 import Language.Common.Ident
 import Language.Common.Ident.Reify qualified as Ident
-import Language.Common.IsConstLike (IsConstLike)
 import Language.Common.LamKind qualified as LK
 import Language.Common.Literal qualified as L
 import Language.Common.LowMagic qualified as LM
@@ -87,6 +87,7 @@ data Handle = Handle
     utilityHandle :: Utility.Handle,
     auxEnvHandle :: AuxEnv.Handle,
     sigmaHandle :: Sigma.Handle,
+    dataHandle :: Data.Handle,
     optDataHandle :: OptimizableData.Handle,
     reduceHandle :: Reduce.Handle,
     substHandle :: Subst.Handle,
@@ -258,15 +259,14 @@ clarifyStmt h stmt =
               liftIO (Sigma.returnSigmaEnumS4 (sigmaHandle h) name O.Clear)
                 >>= clarifyStmtDefineBody' h name xts''
             Just OD.Unary
-              | [(_, _, _, [(_, _, _, t)], _)] <- consInfoList -> do
+              | [(_, DI.ConsInfo {DI.consArgs = [(_, _, _, t)]})] <- consInfoList -> do
                   (dataArgs', t') <- clarifyTypeBinderBody h (newContext name) dataArgs t
                   return $ C.Def f O.Clear (map fst $ dataArgs' ++ [envArg, switchArg]) t'
               | otherwise ->
                   raiseCritical m "Found a broken unary data"
             _ -> do
               let totalSlotCount = getDataSlotCount dataArgs consInfoList
-              let dataInfo = map (\(_, consName, isConstLike, consArgs, discriminant) -> (consName, isConstLike, discriminant, dataArgs, consArgs)) consInfoList
-              dataInfo' <- mapM (clarifyDataClause h (newContext name) totalSlotCount) dataInfo
+              dataInfo' <- mapM (clarifyDataClause h (newContext name) totalSlotCount dataArgs . snd) consInfoList
               liftIO (Sigma.returnSigmaDataS4 (sigmaHandle h) name O.Opaque totalSlotCount dataInfo')
                 >>= clarifyStmtDefineBody' h name xts''
         _ -> do
@@ -498,7 +498,8 @@ clarifyTerm h context term =
         _ -> do
           (zs1, es1, xs1) <- unzip3 <$> mapM (clarifyTypePlus h context) dataArgs
           (zs2, es2, xs2) <- unzip3 <$> mapM (clarifyPlus h context) consArgs
-          let totalSlotCount = getDataSlotCount' xs1 consNameList
+          consInfoList <- lookupDataInfo h m dataName
+          let totalSlotCount = getDataSlotCount' xs1 consInfoList
           return $
             Utility.bindLet (zip zs1 es1 ++ zip zs2 es2) $
               C.UpIntro $
@@ -610,20 +611,21 @@ type DataArgsMap = IntMap.IntMap ([(Ident, TM.Type)], Size)
 
 getDataSlotCount ::
   [BinderF TM.Type] ->
-  [(SavedHint, DD.DefiniteDescription, IsConstLike, [BinderF TM.Type], D.Discriminant)] ->
+  [DI.StmtConsInfo (BinderF TM.Type)] ->
   Int
 getDataSlotCount dataArgs consInfoList =
-  1 + length dataArgs + foldr max 0 (map (\(_, _, _, consArgs, _) -> length consArgs) consInfoList)
+  1 + length dataArgs + foldr max 0 (map (length . DI.consArgs . snd) consInfoList)
 
-getDataSlotCount' :: [t] -> [(name, [binder], isConstLike)] -> Int
-getDataSlotCount' dataArgs consNameList =
-  1 + length dataArgs + foldr (max . (\(_, binders, _) -> length binders)) 0 consNameList
+getDataSlotCount' :: [t] -> [DI.ConsInfo (BinderF TM.Type)] -> Int
+getDataSlotCount' dataArgs consInfoList =
+  1 + length dataArgs + foldr (max . length . DI.consArgs) 0 consInfoList
 
-getDataSlotCountFromType :: TM.Type -> App Int
-getDataSlotCountFromType t =
+getDataSlotCountFromType :: Handle -> TM.Type -> App Int
+getDataSlotCountFromType h t =
   case t of
-    _ :< TM.Data (AttrD.Attr {..}) _ dataArgs ->
-      return $ getDataSlotCount' dataArgs consNameList
+    m :< TM.Data _ dataName dataArgs -> do
+      consInfoList <- lookupDataInfo h m dataName
+      return $ getDataSlotCount' dataArgs consInfoList
     m :< _ ->
       raiseCritical m "Clarify.getDataSlotCountFromType"
 
@@ -635,16 +637,15 @@ clarifyDataClause ::
   Handle ->
   Context ->
   Int ->
-  (DD.DefiniteDescription, Bool, D.Discriminant, [BinderF TM.Type], [BinderF TM.Type]) ->
+  [BinderF TM.Type] ->
+  DI.ConsInfo (BinderF TM.Type) ->
   App Sigma.DataConstructorInfo
-clarifyDataClause h context totalSlotCount (consNameVal, isConstLikeVal, discriminantVal, dataArgsVal, consArgsVal) = do
-  args <- dropFst <$> clarifyBinder h context (dataArgsVal ++ consArgsVal)
+clarifyDataClause h context totalSlotCount dataArgsVal consInfo = do
+  args <- dropFst <$> clarifyBinder h context (dataArgsVal ++ DI.consArgs consInfo)
   let (dataArgs', consArgs') = splitAt (length dataArgsVal) args
   return $
     Sigma.DataConstructorInfo
-      { Sigma.consName = consNameVal,
-        Sigma.isConstLike = isConstLikeVal,
-        Sigma.discriminant = discriminantVal,
+      { Sigma.discriminant = DI.discriminant consInfo,
         Sigma.dataArgs = dataArgs',
         Sigma.consArgs = consArgs',
         Sigma.totalSlotCount = totalSlotCount
@@ -717,6 +718,15 @@ getClauseDataGroup h term =
     _ ->
       raiseCritical' "Clarify.isEnumType"
 
+lookupDataInfo :: Handle -> Hint -> DD.DefiniteDescription -> App [DI.ConsInfo (BinderF TM.Type)]
+lookupDataInfo h m dataName = do
+  dataInfoOrNone <- liftIO $ Data.lookup (dataHandle h) dataName
+  case dataInfoOrNone of
+    Just dataInfo ->
+      return $ DI.consInfoList dataInfo
+    Nothing ->
+      raiseCritical m $ "Could not find constructor metadata for `" <> DD.reify dataName <> "`"
+
 tidyCursorList :: Handle -> Context -> DataArgsMap -> [Ident] -> C.Comp -> App (C.Comp, [BinderF TM.Type])
 tidyCursorList h context dataArgsMap consumedCursorList cont =
   case consumedCursorList of
@@ -756,7 +766,7 @@ clarifyCase h context isNoetic dataArgsMap cursor cursorType decisionCase = do
     DT.ConsCase (DT.ConsCaseRecord {..}) -> do
       let (_, dataTypes) = unzip dataArgs
       dataArgVars <- liftIO $ mapM (const $ Gensym.newIdentFromText (gensymHandle h) "dataArg") dataTypes
-      cursorSize <- dataSlotCountToByteSize h <$> getDataSlotCountFromType cursorType
+      cursorSize <- dataSlotCountToByteSize h <$> getDataSlotCountFromType h cursorType
       let dataArgsMap' = IntMap.insert (Ident.toInt cursor) (zip dataArgVars dataTypes, cursorSize) dataArgsMap
       let consArgs' = map (\(m, k, x, _) -> (m, k, x, m :< TM.Tau)) consArgs
       let prefixChain = TM.chainOfCaseWithoutCont (typeEnv context) decisionCase

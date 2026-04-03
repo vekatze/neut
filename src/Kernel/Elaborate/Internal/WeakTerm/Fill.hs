@@ -12,7 +12,6 @@ import Control.Monad.IO.Class
 import Data.IntMap qualified as IntMap
 import Data.Text qualified as T
 import Kernel.Elaborate.TypeHoleSubst qualified as THS
-import Language.Common.Attr.Data qualified as AttrD
 import Language.Common.Binder
 import Language.Common.Ident.Reify qualified as Ident
 import Language.WeakTerm.Reduce qualified as Reduce
@@ -52,8 +51,7 @@ fillType h holeSubst ty =
       return $ m :< WT.Pi piKind impArgs' expArgs' defaultArgs' t'
     m :< WT.Data attr name es -> do
       es' <- mapM (fillType h holeSubst) es
-      attr' <- fillAttrData h holeSubst attr
-      return $ m :< WT.Data attr' name es'
+      return $ m :< WT.Data attr name es'
     m :< WT.Box t -> do
       t' <- fillType h holeSubst t
       return $ m :< WT.Box t'
@@ -96,13 +94,3 @@ fillTypeBinder h holeSubst binder =
       t' <- fillType h holeSubst t
       xts' <- fillTypeBinder h holeSubst xts
       return $ (m, k, x, t') : xts'
-
-fillAttrData :: Handle -> THS.TypeHoleSubst -> AttrD.Attr name (BinderF WT.WeakType) -> App (AttrD.Attr name (BinderF WT.WeakType))
-fillAttrData h holeSubst attr = do
-  let consNameList = AttrD.consNameList attr
-  consNameList' <- forM consNameList $ \(cn, binders, cl) -> do
-    binders' <- forM binders $ \(mx, k, x, t) -> do
-      t' <- fillType h holeSubst t
-      return (mx, k, x, t')
-    return (cn, binders', cl)
-  return $ attr {AttrD.consNameList = consNameList'}

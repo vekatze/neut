@@ -12,6 +12,7 @@ where
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Gensym.Handle qualified as GensymHandle
+import Kernel.Common.Handle.Global.Data qualified as Data
 import Kernel.Elaborate.Internal.Handle.TypeDef qualified as TypeDef
 import Language.Common.Binder
 import Language.Common.DefiniteDescription qualified as DD
@@ -57,6 +58,7 @@ data Handle = Handle
     refreshHandle :: Refresh.Handle,
     dmap :: DefMap,
     typeDefMap :: TypeDefMap,
+    dataHandle :: Data.Handle,
     inlineLimit :: Int,
     currentStepRef :: IORef Int,
     location :: Hint,

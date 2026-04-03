@@ -50,7 +50,7 @@ data WeakTypeF a
   | TVarGlobal AttrVG.Attr DD.DefiniteDescription
   | TyApp a [a]
   | Pi PiKind [BinderF a] [BinderF a] [BinderF a] a
-  | Data (AttrD.Attr DD.DefiniteDescription (BinderF a)) DD.DefiniteDescription [a]
+  | Data AttrD.Attr DD.DefiniteDescription [a]
   | Box a
   | BoxNoema a
   | Code a
@@ -67,7 +67,7 @@ data WeakTermF a
   | PiIntro (AttrL.Attr WeakType) [BinderF WeakType] [BinderF WeakType] [(BinderF WeakType, WeakTerm)] a
   | PiElim (PEK.PiElimKind WeakType) a (ImpArgs.ImpArgs WeakType) [a] (DefaultArgs.DefaultArgs a)
   | PiElimExact a
-  | DataIntro (AttrDI.Attr DD.DefiniteDescription (BinderF WeakType)) DD.DefiniteDescription [WeakType] [a]
+  | DataIntro AttrDI.Attr DD.DefiniteDescription [WeakType] [a]
   | DataElim N.IsNoetic [(Ident, a, WeakType)] (DT.DecisionTree WeakType a)
   | BoxIntro [(BinderF WeakType, a)] a
   | BoxIntroLift a

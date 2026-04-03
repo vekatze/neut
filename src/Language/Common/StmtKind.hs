@@ -16,11 +16,10 @@ where
 import Data.Binary
 import GHC.Generics
 import Language.Common.Binder
+import Language.Common.DataInfo qualified as DI
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.Discriminant qualified as D
-import Language.Common.IsConstLike
 import Language.Common.Opacity qualified as O
-import Logger.Hint
 
 data BaseStmtKindTerm name binder t
   = Define
@@ -34,24 +33,21 @@ data BaseStmtKindTerm name binder t
   | DataIntro name [binder] [binder] D.Discriminant
   deriving (Generic)
 
-data BaseStmtKindType name binder
+data BaseStmtKindType binder
   = Alias
   | AliasOpaque
-  | Data
-      name
-      [binder]
-      [(SavedHint, name, IsConstLike, [binder], D.Discriminant)]
+  | Data DD.DefiniteDescription [binder] [DI.StmtConsInfo binder]
   deriving (Generic)
 
 instance (Binary name, Binary x, Binary t) => Binary (BaseStmtKindTerm name x t)
 
-instance (Binary name, Binary x) => Binary (BaseStmtKindType name x)
+instance (Binary x) => Binary (BaseStmtKindType x)
 
 type StmtKindTerm a =
   BaseStmtKindTerm DD.DefiniteDescription (BinderF a) a
 
 type StmtKindType a =
-  BaseStmtKindType DD.DefiniteDescription (BinderF a)
+  BaseStmtKindType (BinderF a)
 
 toOpacityTerm :: BaseStmtKindTerm name x t -> O.Opacity
 toOpacityTerm stmtKind =
@@ -75,7 +71,7 @@ toOpacityTerm stmtKind =
     DataIntro {} ->
       O.Clear
 
-toOpacityType :: BaseStmtKindType name x -> O.Opacity
+toOpacityType :: BaseStmtKindType x -> O.Opacity
 toOpacityType stmtKind =
   case stmtKind of
     Alias ->
@@ -107,7 +103,7 @@ toLowOpacityTerm stmtKind =
     DataIntro {} ->
       O.Clear
 
-toLowOpacityType :: BaseStmtKindType name x -> O.Opacity
+toLowOpacityType :: BaseStmtKindType x -> O.Opacity
 toLowOpacityType stmtKind =
   case stmtKind of
     Alias ->

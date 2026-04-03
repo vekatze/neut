@@ -39,6 +39,7 @@ import Language.Common.Attr.VarGlobal qualified as AttrVG
 import Language.Common.BaseName qualified as BN
 import Language.Common.Binder
 import Language.Common.CreateSymbol qualified as Gensym
+import Language.Common.DataInfo qualified as DI
 import Language.Common.DecisionTree qualified as DT
 import Language.Common.DefaultArgs qualified as DefaultArgs
 import Language.Common.DefiniteDescription qualified as DD
@@ -185,9 +186,9 @@ inferStmtKindType h stmtKind =
       return SK.AliasOpaque
     SK.Data dataName dataArgs consInfoList -> do
       (dataArgs', varEnv) <- inferBinder' h dataArgs
-      consInfoList' <- forM consInfoList $ \(m, dd, constLike, consArgs, discriminant) -> do
-        (consArgs', _) <- inferBinder' varEnv consArgs
-        return (m, dd, constLike, consArgs', discriminant)
+      consInfoList' <- forM consInfoList $ \(savedHint, consInfo) -> do
+        (consArgs', _) <- inferBinder' varEnv (DI.consArgs consInfo)
+        return (savedHint, consInfo {DI.consArgs = consArgs'})
       return $ SK.Data dataName dataArgs' consInfoList'
 
 getIntType :: Platform.Handle -> Hint -> App WT.WeakType
@@ -280,12 +281,8 @@ infer h term =
     m :< WT.DataIntro attr@(AttrDI.Attr {..}) consName dataArgs consArgs -> do
       (dataArgs', _) <- mapAndUnzipM (inferTypeWithKind h) dataArgs
       (consArgs', _) <- mapAndUnzipM (infer h) consArgs
-      consNameList' <- forM consNameList $ \(cn, binders, cl) -> do
-        binders' <- inferBinder'' h binders
-        return (cn, binders', cl)
-      let attr' = attr {AttrDI.consNameList = consNameList'}
-      let dataType = m :< WT.Data (AttrD.Attr {consNameList = consNameList', isConstLike}) dataName dataArgs'
-      return (m :< WT.DataIntro attr' consName dataArgs' consArgs', dataType)
+      let dataType = m :< WT.Data (AttrD.Attr {isConstLike}) dataName dataArgs'
+      return (m :< WT.DataIntro attr consName dataArgs' consArgs', dataType)
     m :< WT.DataElim isNoetic oets tree -> do
       let (os, es, _) = unzip3 oets
       (es', ts') <- mapAndUnzipM (infer h) es
@@ -543,8 +540,7 @@ inferTypeWithKind h ty =
       return (m :< WT.Pi piKind impArgs' expArgs' defaultArgs' t', m :< WT.Tau)
     m :< WT.Data attr name es -> do
       (es', _) <- mapAndUnzipM (inferTypeWithKind h) es
-      attr' <- inferAttrData h attr
-      return (m :< WT.Data attr' name es', m :< WT.Tau)
+      return (m :< WT.Data attr name es', m :< WT.Tau)
     m :< WT.Box t -> do
       t' <- inferType h t
       return (m :< WT.Box t', m :< WT.Tau)
@@ -573,13 +569,6 @@ inferTypeWithKind h ty =
           liftIO $ Hole.insert (holeHandle h) rawHoleID holeTerm holeType
           return (holeTerm, holeType)
 
-inferAttrData :: Handle -> AttrD.Attr DD.DefiniteDescription (BinderF WT.WeakType) -> App (AttrD.Attr DD.DefiniteDescription (BinderF WT.WeakType))
-inferAttrData h attr = do
-  let consNameList = AttrD.consNameList attr
-  consNameList' <- forM consNameList $ \(cn, binders, cl) -> do
-    binders' <- inferBinder'' h binders
-    return (cn, binders', cl)
-  return $ attr {AttrD.consNameList = consNameList'}
 
 inferImpBinder :: Handle -> [BinderF WT.WeakType] -> App ([BinderF WT.WeakType], Handle)
 inferImpBinder h binderList =
