@@ -142,12 +142,12 @@ compile h target outputKindList contentSeq = do
     let ensureMainHandle = EnsureMain.new (Global.envHandle (globalHandle h))
     stmtList <- Elaborate.elaborate elaborateHandle target logs cacheOrStmt
     EnsureMain.ensureMain ensureMainHandle target source (map snd $ getStmtName stmtList)
-    clarifyHandle <- liftIO $ Clarify.new (globalHandle h)
-    (stmtList', auxStmtList, defMap) <- Clarify.clarify clarifyHandle stmtList
     b <- Cache.needsCompilation cacheHandle outputKindList source
     if b
       then do
         fmap Just $ liftIO $ async $ runApp $ do
+          clarifyHandle <- liftIO $ Clarify.new (globalHandle h)
+          (stmtList', auxStmtList, defMap) <- Clarify.clarify clarifyHandle stmtList
           lowerHandle <- Lower.new (globalHandle h) target defMap
           virtualCode <- Lower.lower lowerHandle stmtList' auxStmtList
           emit h hp currentTime target outputKindList (Right source) virtualCode
