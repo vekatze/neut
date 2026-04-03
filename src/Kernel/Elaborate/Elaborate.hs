@@ -197,7 +197,11 @@ elaborateStmt h stmt = do
       copier' <- elaborate' h copier
       resourceSize' <- elaborate' h resourceSize
       unitType' <- elaborateType h unitType
-      let result = StmtDefineResource (SavedHint m) dd resourceID unitType' discarder' copier' resourceSize'
+      discarder'' <- inline h m discarder'
+      copier'' <- inline h m copier'
+      resourceSize'' <- inline h m resourceSize'
+      unitType'' <- inlineType h m unitType'
+      let result = StmtDefineResource (SavedHint m) dd resourceID unitType'' discarder'' copier'' resourceSize''
       insertStmt h result
       return ([result], [])
     WeakStmtVariadic kind m dd -> do
