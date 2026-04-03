@@ -29,8 +29,8 @@ import Kernel.Common.ReadableDD
 import Kernel.Common.TopNameMap
 import Kernel.Parse.Internal.Handle.Unused qualified as Unused
 import Language.Common.ArgNum qualified as AN
+import Language.Common.DataInfo qualified as DI
 import Language.Common.DefiniteDescription qualified as DD
-import Language.Common.Discriminant qualified as D
 import Language.Common.IsConstLike
 import Language.Common.NominalTag
 import Language.Common.PrimOp.FromText qualified as PrimOp
@@ -228,7 +228,7 @@ getGlobalNamesFromDefTerm stmtKind geist = do
       []
 
 getGlobalNamesFromDefType ::
-  RawStmtKindType DD.DefiniteDescription ->
+  RawStmtKindType ->
   RT.RawGeist DD.DefiniteDescription ->
   [NameEntry]
 getGlobalNamesFromDefType stmtKind geist = do
@@ -288,10 +288,13 @@ _getGlobalNames' stmt = do
 
 toConsNameArrow ::
   AN.ArgNum ->
-  (SavedHint, DD.DefiniteDescription, IsConstLike, [a], D.Discriminant) ->
+  DI.StmtConsInfo a ->
   NameEntry
-toConsNameArrow dataArgNum (SavedHint m, consDD, isConstLikeCons, consArgs, discriminant) = do
-  let consArgNum = AN.fromInt $ length consArgs
+toConsNameArrow dataArgNum (SavedHint m, consInfo) = do
+  let consArgNum = AN.fromInt $ length $ DI.consArgs consInfo
+  let consDD = DI.consName consInfo
+  let discriminant = DI.discriminant consInfo
+  let isConstLikeCons = DI.isConstLike consInfo
   (consDD, (m, Nothing, GN.DataIntro dataArgNum consArgNum discriminant isConstLikeCons))
 
 geistToRemark :: DD.DefiniteDescription -> (Hint, a) -> Log
@@ -334,7 +337,7 @@ stmtKindTermIsMacro stmtKind =
     _ ->
       False
 
-stmtKindTypeToNominalTag :: SK.BaseStmtKindType name binder -> Maybe NominalTag
+stmtKindTypeToNominalTag :: SK.BaseStmtKindType binder -> Maybe NominalTag
 stmtKindTypeToNominalTag stmtKind =
   case stmtKind of
     SK.Alias ->

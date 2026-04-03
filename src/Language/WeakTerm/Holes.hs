@@ -2,7 +2,6 @@ module Language.WeakTerm.Holes (holesType) where
 
 import Control.Comonad.Cofree
 import Data.Set qualified as S
-import Language.Common.Attr.Data qualified as AttrD
 import Language.Common.Binder
 import Language.Common.HoleID
 import Language.WeakTerm.WeakTerm qualified as WT
@@ -20,10 +19,8 @@ holesType ty =
       S.unions $ holesType t : map holesType args
     _ :< WT.Pi _ impArgs expArgs defaultArgs t ->
       holesBindersType (impArgs ++ expArgs ++ defaultArgs) (holesType t)
-    _ :< WT.Data attr _ es -> do
-      let xs1 = S.unions $ map holesType es
-      let xs2 = holesAttrData attr
-      S.union xs1 xs2
+    _ :< WT.Data _ _ es ->
+      S.unions $ map holesType es
     _ :< WT.Box t ->
       holesType t
     _ :< WT.BoxNoema t ->
@@ -48,8 +45,3 @@ holesBindersType binder zs =
       let set1 = holesType t
       let set2 = holesBindersType xts zs
       S.union set1 set2
-
-holesAttrData :: AttrD.Attr name (BinderF WT.WeakType) -> S.Set HoleID
-holesAttrData attr = do
-  let consNameList = AttrD.consNameList attr
-  S.unions $ map (\(_, binders, _) -> S.unions $ map (\(_, _, _, t) -> holesType t) binders) consNameList

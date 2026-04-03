@@ -18,6 +18,7 @@ import Gensym.Handle qualified as Gensym
 import Kernel.Clarify.Internal.Handle.CompDef qualified as CompDef
 import Kernel.Common.Handle.Global.Antecedent qualified as Antecedent
 import Kernel.Common.Handle.Global.Artifact qualified as Artifact
+import Kernel.Common.Handle.Global.Data qualified as Data
 import Kernel.Common.Handle.Global.Env qualified as Env
 import Kernel.Common.Handle.Global.GlobalRemark qualified as GlobalRemark
 import Kernel.Common.Handle.Global.KeyArg qualified as KeyArg
@@ -42,6 +43,7 @@ data Handle = Handle
     antecedentHandle :: Antecedent.Handle,
     colorHandle :: Color.Handle,
     platformHandle :: Platform.Handle,
+    dataHandle :: Data.Handle,
     defHandle :: Definition.Handle,
     envHandle :: Env.Handle,
     gensymHandle :: Gensym.Handle,
@@ -85,6 +87,7 @@ newOrError cfg moduleFilePathOrNone = do
       keyArgHandle <- KeyArg.new mainModule
       optDataHandle <- OptimizableData.new
       typeHandle <- Type.new
+      dataHandle <- Data.new
       pathHandle <- Path.new mainModule platformHandle loggerHandle
       globalRemarkHandle <- GlobalRemark.new
       artifactHandle <- Artifact.new

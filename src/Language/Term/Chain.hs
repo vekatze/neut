@@ -11,7 +11,6 @@ import Data.Containers.ListUtils qualified as ListUtils
 import Data.IntMap qualified as IntMap
 import Data.Maybe
 import Data.Text qualified as T
-import Language.Common.Attr.Data qualified as AttrD
 import Language.Common.Attr.Lam qualified as AttrL
 import Language.Common.Binder
 import Language.Common.DecisionTree qualified as DT
@@ -90,10 +89,8 @@ chainOfType tenv ty =
       concatMap (chainOfType tenv) (t : args)
     _ :< TM.Pi _ impArgs expArgs defaultArgs t -> do
       chainOfTypeBinder tenv (impArgs ++ expArgs ++ defaultArgs) [t]
-    _ :< TM.Data attr _ es -> do
-      let xs1 = concatMap (chainOfType tenv) es
-      let xs2 = chainOfAttrData tenv attr
-      xs1 ++ xs2
+    _ :< TM.Data _ _ es ->
+      concatMap (chainOfType tenv) es
     _ :< TM.Box t ->
       chainOfType tenv t
     _ :< TM.BoxNoema t ->
@@ -181,8 +178,3 @@ chainOfVar tenv m x = do
       xts ++ [(m, VK.Normal, x, t)]
     _ ->
       error $ T.unpack $ "[critical] chainOfVar: " <> Ident.toText' x <> "\n" <> T.pack (toString m)
-
-chainOfAttrData :: TM.TypeEnv -> AttrD.Attr name (BinderF TM.Type) -> [BinderF TM.Type]
-chainOfAttrData tenv attr = do
-  let consNameList = AttrD.consNameList attr
-  concatMap (\(_, binders, _) -> concatMap (\(_, _, _, t) -> chainOfType tenv t) binders) consNameList

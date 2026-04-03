@@ -18,8 +18,6 @@ import Data.Maybe (mapMaybe)
 import Data.Set qualified as S
 import Gensym.Gensym qualified as Gensym
 import Gensym.Handle qualified as Gensym
-import Language.Common.Attr.Data qualified as AttrD
-import Language.Common.Attr.DataIntro qualified as AttrDI
 import Language.Common.Attr.Lam qualified as AttrL
 import Language.Common.BaseLowType qualified as BLT
 import Language.Common.Binder
@@ -103,8 +101,7 @@ subst h sub term =
     m :< TM.DataIntro attr consName dataArgs consArgs -> do
       dataArgs' <- mapM (substType h sub) dataArgs
       consArgs' <- mapM (subst h sub) consArgs
-      attr' <- substAttrDataIntro h sub attr
-      return $ m :< TM.DataIntro attr' consName dataArgs' consArgs'
+      return $ m :< TM.DataIntro attr consName dataArgs' consArgs'
     m :< TM.DataElim isNoetic oets decisionTree -> do
       let (os, es, ts) = unzip3 oets
       es' <- mapM (subst h sub) es
@@ -180,8 +177,7 @@ substType h sub ty =
       return (m :< TM.Pi piKind impArgs' expArgs' defaultArgs' t')
     m :< TM.Data attr name es -> do
       es' <- mapM (substType h sub) es
-      attr' <- substAttrData h sub attr
-      return $ m :< TM.Data attr' name es'
+      return $ m :< TM.Data attr name es'
     m :< TM.Box t -> do
       t' <- substType h sub t
       return $ m :< TM.Box t'
@@ -365,42 +361,6 @@ substVar sub x =
       x'
     _ ->
       x
-
-substAttrData :: Handle -> Subst -> AttrD.Attr name (BinderF TM.Type) -> IO (AttrD.Attr name (BinderF TM.Type))
-substAttrData h sub attr = do
-  let consNameList = AttrD.consNameList attr
-  consNameList' <-
-    mapM
-      ( \(cn, binders, cl) -> do
-          binders' <-
-            mapM
-              ( \(mx, k, x, t) -> do
-                  t' <- substType h sub t
-                  return (mx, k, x, t')
-              )
-              binders
-          return (cn, binders', cl)
-      )
-      consNameList
-  return $ attr {AttrD.consNameList = consNameList'}
-
-substAttrDataIntro :: Handle -> Subst -> AttrDI.Attr name (BinderF TM.Type) -> IO (AttrDI.Attr name (BinderF TM.Type))
-substAttrDataIntro h sub attr = do
-  let consNameList = AttrDI.consNameList attr
-  consNameList' <-
-    mapM
-      ( \(cn, binders, cl) -> do
-          binders' <-
-            mapM
-              ( \(mx, k, x, t) -> do
-                  t' <- substType h sub t
-                  return (mx, k, x, t')
-              )
-              binders
-          return (cn, binders', cl)
-      )
-      consNameList
-  return $ attr {AttrDI.consNameList = consNameList'}
 
 substMagic :: Handle -> Subst -> M.Magic BLT.BaseLowType TM.Type TM.Term -> IO (M.Magic BLT.BaseLowType TM.Type TM.Term)
 substMagic h sub magic =

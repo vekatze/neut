@@ -82,7 +82,7 @@ data RawTypeF a
   | TyVar Name
   | TyApp a C (SE.Series a)
   | Pi (SE.Series (RawBinder a), C) (Args a) (SE.Series (RawBinder a, RawTerm), C) RawPiKind C a Loc
-  | Data (AttrD.Attr DD.DefiniteDescription (RawBinder a)) DD.DefiniteDescription [a]
+  | Data AttrD.Attr DD.DefiniteDescription [a]
   | Box a
   | BoxNoema a
   | Code a
@@ -119,7 +119,7 @@ data RawTermF a
   | PiElimRule Name C (SE.Series a)
   | PiElimMeta Name C (Maybe (SE.Series RawType)) C (SE.Series a)
   | PiElimExact C a
-  | DataIntro (AttrDI.Attr DD.DefiniteDescription (RawBinder RawType)) DD.DefiniteDescription [RawType] [a] -- (attr, consName, dataArgs, consArgs)
+  | DataIntro AttrDI.Attr DD.DefiniteDescription [RawType] [a] -- (attr, consName, dataArgs, consArgs)
   | DataElim C N.IsNoetic (SE.Series a) (SE.Series (RP.RawPatternRow a))
   | BoxIntro C C (SE.Series (Hint, VarKind, RawIdent)) (a, C)
   | BoxIntroLift C C (a, C)

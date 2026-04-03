@@ -40,9 +40,7 @@ data Handle = Handle
   }
 
 data DataConstructorInfo = DataConstructorInfo
-  { consName :: DD.DefiniteDescription,
-    isConstLike :: Bool,
-    discriminant :: D.Discriminant,
+  { discriminant :: D.Discriminant,
     dataArgs :: [(Ident, C.Comp)],
     consArgs :: [(Ident, C.Comp)],
     totalSlotCount :: Int

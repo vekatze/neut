@@ -9,10 +9,10 @@ where
 
 import Control.Comonad.Cofree
 import Data.Bifunctor
-import Data.List qualified as List
 import Language.Common.Attr.Lam qualified as AttrL
 import Language.Common.BaseLowType qualified as BLT
 import Language.Common.Binder
+import Language.Common.DataInfo qualified as DI
 import Language.Common.DecisionTree qualified as DT
 import Language.Common.DefaultArgs qualified as DefaultArgs
 import Language.Common.Foreign qualified as F
@@ -85,8 +85,7 @@ weaken term =
     m :< TM.DataIntro attr consName dataArgs consArgs -> do
       let dataArgs' = map weakenType dataArgs
       let consArgs' = map weaken consArgs
-      let attr' = fmap weakenTypeBinder attr
-      m :< WT.DataIntro attr' consName dataArgs' consArgs'
+      m :< WT.DataIntro attr consName dataArgs' consArgs'
     m :< TM.DataElim isNoetic oets tree -> do
       let (os, es, ts) = unzip3 oets
       let es' = map weaken es
@@ -131,8 +130,7 @@ weakenType ty =
       m :< WT.Pi piKind (map weakenTypeBinder impArgs) (map weakenTypeBinder expArgs) (map weakenTypeBinder defaultArgs) (weakenType t)
     m :< TM.Data attr name es -> do
       let es' = map weakenType es
-      let attr' = fmap weakenTypeBinder attr
-      m :< WT.Data attr' name es'
+      m :< WT.Data attr name es'
     m :< TM.Box t ->
       m :< WT.Box (weakenType t)
     m :< TM.BoxNoema t ->
@@ -295,9 +293,8 @@ weakenStmtKindType stmtKind =
       AliasOpaque
     Data dataName dataArgs consInfoList -> do
       let dataArgs' = map weakenTypeBinder dataArgs
-      let (hintList, consNameList, constLikeList, consArgsList, discriminantList) = List.unzip5 consInfoList
-      let consArgsList' = map (map weakenTypeBinder) consArgsList
-      let consInfoList' = List.zip5 hintList consNameList constLikeList consArgsList' discriminantList
+      let weakenConsInfo consInfo = consInfo {DI.consArgs = map weakenTypeBinder (DI.consArgs consInfo)}
+      let consInfoList' = map (second weakenConsInfo) consInfoList
       Data dataName dataArgs' consInfoList'
 
 weakenForeign :: F.Foreign -> WT.WeakForeign

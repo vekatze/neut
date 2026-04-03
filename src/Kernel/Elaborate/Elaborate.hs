@@ -17,12 +17,12 @@ import Data.Bifunctor
 import Data.Bitraversable (bimapM)
 import Data.IORef
 import Data.IntMap qualified as IntMap
-import Data.List (unzip5, zip5)
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Gensym.Trick qualified as Gensym
 import Kernel.Common.Cache qualified as Cache
 import Kernel.Common.Const (holeLiteral)
+import Kernel.Common.Handle.Global.Data qualified as Data
 import Kernel.Common.Handle.Global.GlobalRemark qualified as GlobalRemark
 import Kernel.Common.Handle.Global.KeyArg qualified as KeyArg
 import Kernel.Common.Handle.Global.Type qualified as Type
@@ -43,13 +43,12 @@ import Kernel.Elaborate.Internal.Infer qualified as Infer
 import Kernel.Elaborate.Internal.Unify qualified as Unify
 import Kernel.Elaborate.TypeHoleSubst qualified as THS
 import Language.Common.Annotation qualified as AN
-import Language.Common.Attr.Data qualified as AttrD
-import Language.Common.Attr.DataIntro qualified as AttrDI
 import Language.Common.Attr.Lam qualified as AttrL
 import Language.Common.BaseLowType qualified as BLT
 import Language.Common.BasePrimType qualified as BPT
 import Language.Common.Binder
 import Language.Common.CreateSymbol qualified as Gensym
+import Language.Common.DataInfo qualified as DI
 import Language.Common.DecisionTree qualified as DT
 import Language.Common.DefaultArgs qualified as DefaultArgs
 import Language.Common.DefiniteDescription qualified as DD
@@ -234,6 +233,7 @@ insertStmt h stmt = do
       let allBinders = impArgs ++ expArgs ++ map fst defaultArgs
       liftIO $ Type.insert' (typeHandle h) f $ weakenType $ m :< TM.Pi (PK.Normal isConstLike) impArgs expArgs (map fst defaultArgs) t
       liftIO $ TypeDef.insert' (typeDefHandle h) (SK.toOpacityType stmtKind) f allBinders body
+      registerDataTypeStmt h f stmtKind
     StmtDefineResource (SavedHint m) dd resourceID _ _ _ _ -> do
       liftIO $ Type.insert' (typeHandle h) dd $ weakenType (m :< TM.Pi (PK.Normal True) [] [] [] (m :< TM.Tau))
       liftIO $ TypeDef.insert' (typeDefHandle h) (SK.toOpacityType SK.Alias) dd [] (m :< TM.Resource dd resourceID)
@@ -251,6 +251,7 @@ insertWeakStmt h stmt = do
     WeakStmtDefineType _ stmtKind _ f impArgs expArgs defaultArgs _ body -> do
       let binders = impArgs ++ expArgs ++ map fst defaultArgs
       liftIO $ WeakTypeDef.insert' (weakTypeDefHandle h) (SK.toOpacityType stmtKind) f binders body
+      registerWeakDataTypeStmt h f stmtKind
     WeakStmtDefineResource m dd resourceID _ _ _ _ -> do
       let resourceType = m :< WT.Resource dd resourceID
       liftIO $ WeakTypeDef.insert' (weakTypeDefHandle h) (SK.toOpacityType SK.Alias) dd [] resourceType
@@ -261,6 +262,45 @@ insertWeakStmt h stmt = do
     WeakStmtForeign foreignList ->
       forM_ foreignList $ \(F.Foreign _ externalName domList cod) -> do
         liftIO $ WeakDecl.insert (weakDeclHandle h) (DN.Ext externalName) domList cod
+
+registerDataTypeStmt :: Handle -> DD.DefiniteDescription -> SK.StmtKindType TM.Type -> App ()
+registerDataTypeStmt h dataName stmtKind =
+  case stmtKind of
+    SK.Data _ dataArgs consInfoList ->
+      liftIO $
+        Data.insert
+          (dataHandle h)
+          dataName
+          DI.DataInfo
+            { DI.dataArgs = dataArgs,
+              DI.consInfoList = map snd consInfoList
+            }
+    _ ->
+      return ()
+
+registerWeakDataTypeStmt :: Handle -> DD.DefiniteDescription -> SK.StmtKindType WT.WeakType -> App ()
+registerWeakDataTypeStmt h dataName stmtKind =
+  case stmtKind of
+    SK.Data _ dataArgs consInfoList ->
+      liftIO $
+        Data.insertWeak
+          (dataHandle h)
+          dataName
+          DI.DataInfo
+            { DI.dataArgs = dataArgs,
+              DI.consInfoList = map snd consInfoList
+            }
+    _ ->
+      return ()
+
+lookupDataInfo :: Handle -> Hint -> DD.DefiniteDescription -> App [DI.ConsInfo (BinderF TM.Type)]
+lookupDataInfo h m dataName = do
+  dataInfoOrNone <- liftIO $ Data.lookup (dataHandle h) dataName
+  case dataInfoOrNone of
+    Just dataInfo ->
+      return $ DI.consInfoList dataInfo
+    Nothing ->
+      raiseCritical m $ "Could not find constructor metadata for `" <> DD.reify dataName <> "`"
 
 elaborateStmtKindTerm :: Handle -> SK.StmtKindTerm WT.WeakType -> App (SK.StmtKindTerm TM.Type)
 elaborateStmtKindTerm h stmtKind =
@@ -296,9 +336,9 @@ elaborateStmtKindType h stmtKind =
       return SK.AliasOpaque
     SK.Data dataName dataArgs consInfoList -> do
       dataArgs' <- mapM (elaborateWeakBinder h) dataArgs
-      let (ms, consNameList, constLikeList, consArgsList, discriminantList) = unzip5 consInfoList
-      consArgsList' <- mapM (mapM $ elaborateWeakBinder h) consArgsList
-      let consInfoList' = zip5 ms consNameList constLikeList consArgsList' discriminantList
+      consInfoList' <- forM consInfoList $ \(savedHint, consInfo) -> do
+        consArgs' <- mapM (elaborateWeakBinder h) (DI.consArgs consInfo)
+        return (savedHint, consInfo {DI.consArgs = consArgs'})
       return $ SK.Data dataName dataArgs' consInfoList'
 
 elaborate' :: Handle -> WT.WeakTerm -> App TM.Term
@@ -335,8 +375,7 @@ elaborate' h term = do
     m :< WT.DataIntro attr consName dataArgs consArgs -> do
       dataArgs' <- mapM (elaborateType h) dataArgs
       consArgs' <- mapM (elaborate' h) consArgs
-      attr' <- elaborateAttrDataIntro h attr
-      return $ m :< TM.DataIntro attr' consName dataArgs' consArgs'
+      return $ m :< TM.DataIntro attr consName dataArgs' consArgs'
     m :< WT.DataElim isNoetic oets tree -> do
       let (os, es, ts) = unzip3 oets
       es' <- mapM (elaborate' h) es
@@ -347,7 +386,7 @@ elaborate' h term = do
       when (DT.isUnreachable tree') $ do
         forM_ ts' $ \t -> do
           t' <- reduceWeakType h (weakenType t) >>= elaborateType h
-          switchSpec <- getSwitchSpec m t'
+          switchSpec <- getSwitchSpec h m t'
           case switchSpec of
             LiteralSwitch -> do
               raiseEmptyNonExhaustivePatternMatching m
@@ -511,8 +550,7 @@ elaborateType h ty =
       return $ m :< TM.Pi piKind impArgs' expArgs' defaultArgs' t'
     m :< WT.Data attr name es -> do
       es' <- mapM (elaborateType h) es
-      attr' <- elaborateAttrData h attr
-      return $ m :< TM.Data attr' name es'
+      return $ m :< TM.Data attr name es'
     m :< WT.Box t -> do
       t' <- elaborateType h t
       return $ m :< TM.Box t'
@@ -568,14 +606,13 @@ strictify' h m t = do
       return $ BLT.PrimNum $ BPT.Float $ BPT.Explicit size
     _ :< TM.PrimType PT.Pointer ->
       return BLT.Pointer
-    _ :< TM.Data (AttrD.Attr {consNameList = [(consName, _, _)]}) _ [] -> do
-      consType <- Type.lookup' (typeHandle h) m consName
-      case consType of
-        _ :< WT.Pi (PK.DataIntro False) _ [] [] (_ :< WT.Pi _ impArgs expArgs defaultArgs _)
-          | [(_, _, _, arg)] <- impArgs ++ expArgs ++ defaultArgs -> do
-              strictify' h m arg
+    _ :< TM.Data _ dataName [] -> do
+      consInfoList <- lookupDataInfo h m dataName
+      case consInfoList of
+        [DI.ConsInfo {DI.consArgs = [(_, _, _, arg)]}] ->
+          strictify' h m (weakenType arg)
         _ ->
-          raiseNonStrictType m consType
+          raiseNonStrictType m (weakenType t')
     _ :< _ ->
       raiseNonStrictType m (weakenType t')
 
@@ -587,12 +624,11 @@ strictifyDecimalType h m x t = do
       return (Right size, t')
     _ :< TM.PrimType (PT.Float size) ->
       return (Left size, t')
-    _ :< TM.Data (AttrD.Attr {consNameList = [(consName, _, _)]}) _ [] -> do
-      consType <- Type.lookup' (typeHandle h) m consName
-      case consType of
-        _ :< WT.Pi (PK.DataIntro False) _ [] [] (_ :< WT.Pi _ impArgs expArgs defaultArgs _)
-          | [(_, _, _, arg)] <- impArgs ++ expArgs ++ defaultArgs -> do
-              strictifyDecimalType h m x arg
+    _ :< TM.Data _ dataName [] -> do
+      consInfoList <- lookupDataInfo h m dataName
+      case consInfoList of
+        [DI.ConsInfo {DI.consArgs = [(_, _, _, arg)]}] ->
+          strictifyDecimalType h m x (weakenType arg)
         _ ->
           raiseNonDecimalType m x (weakenType t')
     _ :< _ ->
@@ -604,12 +640,11 @@ strictifyFloatType h m x t = do
   case t' of
     _ :< TM.PrimType (PT.Float size) ->
       return (size, t')
-    _ :< TM.Data (AttrD.Attr {consNameList = [(consName, _, _)]}) _ [] -> do
-      consType <- Type.lookup' (typeHandle h) m consName
-      case consType of
-        _ :< WT.Pi (PK.DataIntro False) _ [] [] (_ :< WT.Pi _ impArgs expArgs defaultArgs _)
-          | [(_, _, _, arg)] <- impArgs ++ expArgs ++ defaultArgs -> do
-              strictifyFloatType h m x arg
+    _ :< TM.Data _ dataName [] -> do
+      consInfoList <- lookupDataInfo h m dataName
+      case consInfoList of
+        [DI.ConsInfo {DI.consArgs = [(_, _, _, arg)]}] ->
+          strictifyFloatType h m x (weakenType arg)
         _ ->
           raiseNonFloatType m x (weakenType t')
     _ :< _ ->
@@ -624,7 +659,7 @@ inlineType :: Handle -> Hint -> TM.Type -> App TM.Type
 inlineType h m t = do
   dmap <- liftIO $ Definition.get' (defHandle h)
   typeDefMap <- liftIO $ TypeDef.get' (typeDefHandle h)
-  inlineHandle <- liftIO $ Inline.new (gensymHandle h) dmap typeDefMap m (inlineLimit h) (specializationTable h) (pendingSpecializationDefs h)
+  inlineHandle <- liftIO $ Inline.new (gensymHandle h) dmap typeDefMap (dataHandle h) m (inlineLimit h) (specializationTable h) (pendingSpecializationDefs h)
   Inline.inlineType inlineHandle t
 
 elaborateLet :: Handle -> (BinderF WT.WeakType, WT.WeakTerm) -> App (BinderF TM.Type, TM.Term)
@@ -720,7 +755,7 @@ elaborateDecisionTree h ctx mOrig m tree =
       return DT.Unreachable
     DT.Switch (cursor, cursorType) (fallbackClause, clauseList) -> do
       cursorType' <- reduceWeakType h cursorType >>= elaborateType h
-      switchSpec <- getSwitchSpec m cursorType'
+      switchSpec <- getSwitchSpec h m cursorType'
       case switchSpec of
         LiteralSwitch -> do
           when (DT.isUnreachable fallbackClause) $ do
@@ -810,11 +845,12 @@ data SwitchSpec
   = LiteralSwitch
   | ConsSwitch [(DD.DefiniteDescription, IsConstLike)]
 
-getSwitchSpec :: Hint -> TM.Type -> App SwitchSpec
-getSwitchSpec m cursorType = do
+getSwitchSpec :: Handle -> Hint -> TM.Type -> App SwitchSpec
+getSwitchSpec h m cursorType = do
   case cursorType of
-    _ :< TM.Data (AttrD.Attr {..}) _ _ -> do
-      return $ ConsSwitch $ map (\(name, _, cl) -> (name, cl)) consNameList
+    _ :< TM.Data _ dataName _ -> do
+      consInfoList <- lookupDataInfo h m dataName
+      return $ ConsSwitch $ map (\consInfo -> (DI.consName consInfo, DI.isConstLike consInfo)) consInfoList
     _ :< TM.PrimType (PT.Int _) -> do
       return LiteralSwitch
     _ :< TM.PrimType PT.Rune -> do
@@ -861,32 +897,6 @@ fillHole h m holeID es = do
           liftIO $ Subst.substType (substHandle h) s e
       | otherwise ->
           raiseError m "Arity mismatch"
-
-elaborateAttrData ::
-  Handle ->
-  AttrD.Attr DD.DefiniteDescription (BinderF WT.WeakType) ->
-  App (AttrD.Attr DD.DefiniteDescription (BinderF TM.Type))
-elaborateAttrData h attr = do
-  let consNameList = AttrD.consNameList attr
-  consNameList' <- forM consNameList $ \(name, binders, isConstLike) -> do
-    binders' <- forM binders $ \(mx, k, x, t) -> do
-      t' <- elaborateType h t
-      return (mx, k, x, t')
-    return (name, binders', isConstLike)
-  return $ attr {AttrD.consNameList = consNameList'}
-
-elaborateAttrDataIntro ::
-  Handle ->
-  AttrDI.Attr DD.DefiniteDescription (BinderF WT.WeakType) ->
-  App (AttrDI.Attr DD.DefiniteDescription (BinderF TM.Type))
-elaborateAttrDataIntro h attr = do
-  let consNameList = AttrDI.consNameList attr
-  consNameList' <- forM consNameList $ \(name, binders, isConstLike) -> do
-    binders' <- forM binders $ \(mx, k, x, t) -> do
-      t' <- elaborateType h t
-      return (mx, k, x, t')
-    return (name, binders', isConstLike)
-  return $ attr {AttrDI.consNameList = consNameList'}
 
 stmtKindToDefKind :: SK.StmtKindTerm a -> [(binder, b)] -> Maybe Inline.DefKind
 stmtKindToDefKind stmtKind defaultArgs =

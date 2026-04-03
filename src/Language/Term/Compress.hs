@@ -8,13 +8,12 @@ module Language.Term.Compress
 where
 
 import Control.Comonad.Cofree
+import Data.Bifunctor (second)
 import Language.Common.Binder
+import Language.Common.DataInfo qualified as DI
 import Language.Common.DecisionTree qualified as DT
-import Language.Common.Discriminant qualified as D
-import Language.Common.IsConstLike (IsConstLike)
 import Language.Common.StmtKind
 import Language.Term.Term qualified as TM
-import Logger.Hint (SavedHint)
 
 compress :: TM.Term -> Cofree TM.TermF ()
 compress term =
@@ -67,7 +66,7 @@ compressType ty =
     _ :< TM.Pi piKind impArgs expArgs defaultArgs cod ->
       () :< TM.Pi piKind (map compressBinder impArgs) (map compressBinder expArgs) (map compressBinder defaultArgs) (compressType cod)
     _ :< TM.Data attr name es ->
-      () :< TM.Data (fmap compressBinder attr) name (map compressType es)
+      () :< TM.Data attr name (map compressType es)
     _ :< TM.Box t ->
       () :< TM.Box (compressType t)
     _ :< TM.BoxNoema t ->
@@ -146,10 +145,10 @@ compressStmtKindType stmtKind =
     AliasOpaque ->
       AliasOpaque
     Data name args consInfoList ->
-      Data name (map compressBinder args) (map compressConsInfo consInfoList)
+      Data name (map compressBinder args) (map (second compressConsInfo) consInfoList)
 
 compressConsInfo ::
-  (SavedHint, name, IsConstLike, [BinderF TM.Type], D.Discriminant) ->
-  (SavedHint, name, IsConstLike, [BinderF (Cofree TM.TypeF ())], D.Discriminant)
-compressConsInfo (hint, name, isConstLike, binders, disc) =
-  (hint, name, isConstLike, map compressBinder binders, disc)
+  DI.ConsInfo (BinderF TM.Type) ->
+  DI.ConsInfo (BinderF (Cofree TM.TypeF ()))
+compressConsInfo consInfo =
+  consInfo {DI.consArgs = map compressBinder (DI.consArgs consInfo)}

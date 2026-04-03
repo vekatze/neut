@@ -21,6 +21,7 @@ import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
 import Gensym.Gensym qualified as Gensym
 import Gensym.Handle qualified as GensymHandle
+import Kernel.Common.Handle.Global.Data qualified as Data
 import Kernel.Elaborate.Internal.Handle.TypeDef qualified as TypeDef
 import Language.Common.ArgNum qualified as AN
 import Language.Common.Attr.DataIntro qualified as AttrDI
@@ -51,8 +52,8 @@ import Language.Term.Subst qualified as Subst
 import Language.Term.Term qualified as TM
 import Logger.Hint
 
-new :: GensymHandle.Handle -> DefMap -> TypeDefMap -> Hint -> Int -> IORef SpecializationTable -> IORef [Stmt.Stmt] -> IO Handle
-new gensymHandle dmap typeDefMap location inlineLimit specializationTable pendingSpecializationDefs = do
+new :: GensymHandle.Handle -> DefMap -> TypeDefMap -> Data.Handle -> Hint -> Int -> IORef SpecializationTable -> IORef [Stmt.Stmt] -> IO Handle
+new gensymHandle dmap typeDefMap dataHandle location inlineLimit specializationTable pendingSpecializationDefs = do
   let substHandle = Subst.new gensymHandle
   let refreshHandle = Refresh.new gensymHandle
   currentStepRef <- liftIO $ newIORef 0
@@ -209,8 +210,7 @@ inline' h term = do
     m :< TM.DataIntro attr consName dataArgs consArgs -> do
       dataArgs' <- mapM (inlineType' h) dataArgs
       consArgs' <- mapM (inline' h) consArgs
-      attr' <- inlineAttrDataIntro h attr
-      return $ m :< TM.DataIntro attr' consName dataArgs' consArgs'
+      return $ m :< TM.DataIntro attr consName dataArgs' consArgs'
     m :< TM.DataElim isNoetic oets decisionTree -> do
       let (os, es, ts) = unzip3 oets
       es' <- mapM (inline' h) es
@@ -448,14 +448,6 @@ inlineTypeBinder :: Handle -> BinderF TM.Type -> App (BinderF TM.Type)
 inlineTypeBinder h (m, k, x, t) = do
   t' <- inlineType' h t
   return (m, k, x, t')
-
-inlineAttrDataIntro :: Handle -> AttrDI.Attr name (BinderF TM.Type) -> App (AttrDI.Attr name (BinderF TM.Type))
-inlineAttrDataIntro h attr = do
-  let consNameList = AttrDI.consNameList attr
-  consNameList' <- forM consNameList $ \(cn, binders, cl) -> do
-    binders' <- mapM (inlineTypeBinder h) binders
-    return (cn, binders', cl)
-  return $ attr {AttrDI.consNameList = consNameList'}
 
 inlineDecisionTree ::
   Handle ->

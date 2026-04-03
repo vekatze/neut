@@ -16,7 +16,7 @@ import Data.IntMap qualified as IntMap
 import Data.List (partition)
 import Data.Set qualified as S
 import Data.Text qualified as T
-import Kernel.Common.Handle.Global.Type qualified as Type
+import Kernel.Common.Handle.Global.Data qualified as Data
 import Kernel.Elaborate.Constraint (SuspendedConstraint)
 import Kernel.Elaborate.Constraint qualified as C
 import Kernel.Elaborate.Internal.Handle.Constraint qualified as Constraint
@@ -25,14 +25,13 @@ import Kernel.Elaborate.Internal.Handle.Hole qualified as Hole
 import Kernel.Elaborate.Internal.Handle.WeakTypeDef qualified as WeakTypeDef
 import Kernel.Elaborate.Stuck qualified as Stuck
 import Kernel.Elaborate.TypeHoleSubst qualified as THS
-import Language.Common.Attr.Data qualified as AttrD
 import Language.Common.Binder
 import Language.Common.CreateSymbol qualified as Gensym
+import Language.Common.DataInfo qualified as DI
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.HoleID qualified as HID
 import Language.Common.Ident
 import Language.Common.Ident.Reify qualified as Ident
-import Language.Common.PiKind qualified as PK
 import Language.Common.PrimType qualified as PT
 import Language.Common.VarKind qualified as VK
 import Language.WeakTerm.Eq qualified as WT
@@ -339,17 +338,16 @@ simplifyActual h m dataNameSet t orig = do
   case t' of
     _ :< WT.Tau -> do
       return []
-    _ :< WT.Data (AttrD.Attr {consNameList}) dataName dataArgs -> do
+    _ :< WT.Data _ dataName dataArgs -> do
       let dataNameSet' = S.insert dataName dataNameSet
       constraintsFromDataArgs <- fmap concat $ forM dataArgs $ \dataArg ->
         simplifyActual h m dataNameSet' dataArg orig
       dataConsArgsList <-
         if S.member dataName dataNameSet
           then return []
-          else mapM (getConsArgTypes h m . (\(name, _, _) -> name)) consNameList
+          else getConsArgTypes h m dataName dataArgs
       constraintsFromDataConsArgs <- fmap concat $ forM dataConsArgsList $ \dataConsArgs -> do
-        dataConsArgs' <- liftIO $ substConsArgs h IntMap.empty dataConsArgs
-        fmap concat $ forM dataConsArgs' $ \(_, _, _, consArg) -> do
+        fmap concat $ forM dataConsArgs $ \(_, _, _, consArg) -> do
           simplifyActual h m dataNameSet' consArg orig
       return $ constraintsFromDataArgs ++ constraintsFromDataConsArgs
     _ :< WT.Box t'' -> do
@@ -387,16 +385,20 @@ getConsArgTypes ::
   Handle ->
   Hint ->
   DD.DefiniteDescription ->
-  App [BinderF WT.WeakType]
-getConsArgTypes h m consName = do
-  t <- Type.lookup' (typeHandle h) m consName
-  case t of
-    _ :< WT.Pi (PK.DataIntro False) impArgs expArgs defaultArgs (_ :< WT.Pi (PK.Normal _) impArgs' expArgs' defaultArgs' _dataType) -> do
-      return $ impArgs ++ expArgs ++ defaultArgs ++ impArgs' ++ expArgs' ++ defaultArgs'
-    _ :< WT.Pi (PK.DataIntro True) impArgs expArgs defaultArgs _dataType -> do
-      return $ impArgs ++ expArgs ++ defaultArgs
-    _ ->
-      raiseCritical m $ "Got a malformed constructor type:\n" <> toTextType t
+  [WT.WeakType] ->
+  App [[BinderF WT.WeakType]]
+getConsArgTypes h m dataName dataArgs = do
+  dataInfoOrNone <- liftIO $ Data.lookupWeak (dataHandle h) dataName
+  case dataInfoOrNone of
+    Just DI.DataInfo {DI.dataArgs = dataBinders, DI.consInfoList = consInfoList}
+      | length dataBinders == length dataArgs -> do
+          let binderIds = map (\(_, _, x, _) -> x) dataBinders
+          let sub = IntMap.fromList $ zip (map Ident.toInt binderIds) (map Type dataArgs)
+          liftIO $ mapM (substConsArgs h sub . DI.consArgs) consInfoList
+      | otherwise ->
+          raiseCritical m $ "Could not specialize constructor metadata for `" <> DD.reify dataName <> "` due to arity mismatch"
+    Nothing ->
+      raiseCritical m $ "Could not find constructor metadata for `" <> DD.reify dataName <> "`"
 
 simplifyInteger ::
   Handle ->

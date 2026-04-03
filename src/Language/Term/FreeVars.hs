@@ -3,8 +3,6 @@ module Language.Term.FreeVars (freeVars) where
 import Control.Comonad.Cofree
 import Data.Maybe
 import Data.Set qualified as S
-import Language.Common.Attr.Data qualified as AttrD
-import Language.Common.Attr.DataIntro qualified as AttrDI
 import Language.Common.Attr.Lam qualified as AttrL
 import Language.Common.BaseLowType qualified as BLT
 import Language.Common.Binder
@@ -33,11 +31,10 @@ freeVars term =
       let ys2 = S.unions $ map freeVars expArgs
       let ys3 = S.unions $ map freeVars (catMaybes defaultArgs)
       S.unions [xs, ys1, ys2, ys3]
-    _ :< TM.DataIntro attr _ dataArgs consArgs -> do
+    _ :< TM.DataIntro _ _ dataArgs consArgs -> do
       let xs1 = S.unions $ map freeVarsType dataArgs
       let xs2 = S.unions $ map freeVars consArgs
-      let xs3 = freeVarsAttrDataIntro attr
-      S.unions [xs1, xs2, xs3]
+      S.union xs1 xs2
     m :< TM.DataElim _ oets decisionTree -> do
       let (os, es, ts) = unzip3 oets
       let xs1 = S.unions $ map freeVars es
@@ -90,10 +87,8 @@ freeVarsType ty =
       S.unions $ freeVarsType t : map freeVarsType args
     _ :< TM.Pi _ impArgs expArgs defaultArgs t ->
       freeVarsBinderType (impArgs ++ expArgs ++ defaultArgs) (freeVarsType t)
-    _ :< TM.Data attr _ es -> do
-      let xs1 = S.unions $ map freeVarsType es
-      let xs2 = freeVarsAttrData attr
-      S.union xs1 xs2
+    _ :< TM.Data _ _ es ->
+      S.unions $ map freeVarsType es
     _ :< TM.Box t ->
       freeVarsType t
     _ :< TM.BoxNoema t ->
@@ -141,16 +136,6 @@ freeVarsCase decisionCase = do
     DT.ConsCase (DT.ConsCaseRecord {..}) -> do
       let (dataTerms, dataTypes) = unzip dataArgs
       S.unions $ freeVarsBinderType consArgs (freeVarsDecisionTree cont) : map freeVarsType dataTerms ++ map freeVarsType dataTypes
-
-freeVarsAttrData :: AttrD.Attr name (BinderF TM.Type) -> S.Set Ident
-freeVarsAttrData attr = do
-  let consNameList = AttrD.consNameList attr
-  S.unions $ map (\(_, binders, _) -> S.unions $ map (\(_, _, _, t) -> freeVarsType t) binders) consNameList
-
-freeVarsAttrDataIntro :: AttrDI.Attr name (BinderF TM.Type) -> S.Set Ident
-freeVarsAttrDataIntro attr = do
-  let consNameList = AttrDI.consNameList attr
-  S.unions $ map (\(_, binders, _) -> S.unions $ map (\(_, _, _, t) -> freeVarsType t) binders) consNameList
 
 freeVarsMagic :: M.Magic BLT.BaseLowType TM.Type TM.Term -> S.Set Ident
 freeVarsMagic magic =

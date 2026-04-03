@@ -12,7 +12,6 @@ import Control.Monad
 import Control.Monad.IO.Class
 import Data.IORef
 import Data.Text qualified as T
-import Language.Common.Attr.Data qualified as AttrD
 import Language.Common.Binder
 import Language.WeakTerm.Subst qualified as Subst
 import Language.WeakTerm.WeakTerm qualified as WT
@@ -59,8 +58,7 @@ reduceType h ty = do
       return $ m :< WT.Pi piKind impArgs' expArgs' defaultArgs' cod'
     m :< WT.Data attr name es -> do
       es' <- mapM (reduceType h) es
-      attr' <- reduceAttrData h attr
-      return $ m :< WT.Data attr' name es'
+      return $ m :< WT.Data attr name es'
     m :< WT.Box t -> do
       t' <- reduceType h t
       return $ m :< WT.Box t'
@@ -96,13 +94,3 @@ incrementStep :: Handle -> IO ()
 incrementStep h = do
   let Handle {currentStepRef} = h
   modifyIORef' currentStepRef (+ 1)
-
-reduceAttrData :: Handle -> AttrD.Attr name (BinderF WT.WeakType) -> App (AttrD.Attr name (BinderF WT.WeakType))
-reduceAttrData h attr = do
-  let consNameList = AttrD.consNameList attr
-  consNameList' <- forM consNameList $ \(cn, binders, cl) -> do
-    binders' <- forM binders $ \(mx, k, x, t) -> do
-      t' <- reduceType h t
-      return (mx, k, x, t')
-    return (cn, binders', cl)
-  return $ attr {AttrD.consNameList = consNameList'}

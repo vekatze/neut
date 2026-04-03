@@ -127,14 +127,6 @@ coreCSize :: T.Text
 coreCSize =
   core <> nsSep <> "c-size" <> nsSep <> "c-size"
 
-coreList :: T.Text
-coreList =
-  core <> nsSep <> "list"
-
-coreListList :: T.Text
-coreListList =
-  core <> nsSep <> "list" <> nsSep <> "list"
-
 coreVector :: T.Text
 coreVector =
   core <> nsSep <> "vector"
