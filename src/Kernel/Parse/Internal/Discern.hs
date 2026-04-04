@@ -536,14 +536,16 @@ discern h term =
         RT.Bind -> do
           raiseError m $ "`on` cannot be used with: `" <> RT.decodeLetKind letKind <> "`"
         RT.Try -> do
-          tmpType <- liftIO $ RT.createTypeHole (H.gensymHandle h) m1
-          tmpVar <- liftIO $ Var <$> Gensym.newTextFromText (H.gensymHandle h) "tmp-try"
+          let m1' = blur m1
+          tmpType <- liftIO $ RT.createTypeHole (H.gensymHandle h) m1'
+          tmpVar <- liftIO $ Var <$> Gensym.newTextFromText (H.gensymHandle h) "tmp"
+          let m' = blur m
           discern h $
             m
               :< RT.LetOn
                 (RT.Plain False)
                 []
-                (m1, RP.Var VK.Normal tmpVar, [], [], tmpType)
+                (m1', RP.Var VK.Normal tmpVar, [], [], tmpType)
                 []
                 mys
                 []
@@ -551,7 +553,7 @@ discern h term =
                 []
                 startLoc
                 []
-                (m :< RT.Let RT.Try [] pat [] [] (m :< RT.Var tmpVar) [] startLoc [] e2 endLoc)
+                (m' :< RT.Let RT.Try [] pat [] [] (m' :< RT.Var tmpVar) [] startLoc [] e2 endLoc)
                 endLoc
     m :< RT.Pin _ mxt@(mx, _k, x, _, _, t) _ mys _ e1 _ startLoc _ e2@(m2 :< _) endLoc -> do
       let m2' = blur m2

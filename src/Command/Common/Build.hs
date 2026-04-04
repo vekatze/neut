@@ -134,7 +134,7 @@ compile h target outputKindList contentSeq = do
   hp <- liftIO $ Indicator.new colorHandle silentMode (Just numOfItems) workingTitle completedTitle color
   cacheOrProgList <- Parse.parse (globalHandle h) contentSeq
   cacheOrStmtList <- forP cacheOrProgList $ \(localHandle, (source, cacheOrProg)) -> do
-    interpretHandle <- liftIO $ Interpret.new (globalHandle h) localHandle
+    interpretHandle <- liftIO $ Interpret.new (globalHandle h) localHandle (sourceModule source)
     item <- Interpret.interpret interpretHandle target source cacheOrProg
     return (localHandle, (source, item))
   contentAsync <- fmap catMaybes $ forM cacheOrStmtList $ \(localHandle, (source, (cacheOrStmt, logs))) -> do

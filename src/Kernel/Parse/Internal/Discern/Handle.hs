@@ -19,6 +19,7 @@ import Kernel.Common.Handle.Local.Locator qualified as Locator
 import Kernel.Common.Handle.Local.SymLoc qualified as SymLoc
 import Kernel.Common.Handle.Local.Tag qualified as Tag
 import Kernel.Common.Handle.Local.TopCandidate qualified as TopCandidate
+import Kernel.Common.Module qualified as Module
 import Kernel.Parse.Internal.Handle.Alias qualified as Alias
 import Kernel.Parse.Internal.Handle.NameMap qualified as NameMap
 import Kernel.Parse.Internal.Handle.PreDecl qualified as PreDecl
@@ -45,6 +46,7 @@ data Handle = Handle
     unusedHandle :: Unused.Handle,
     envHandle :: Env.Handle,
     platformHandle :: Platform.Handle,
+    currentModule :: Module.Module,
     nameEnv :: NominalEnv,
     typeNameEnv :: NominalEnv,
     currentLayer :: Layer,
@@ -55,8 +57,9 @@ new ::
   Global.Handle ->
   Local.Handle ->
   NameMap.Handle ->
+  Module.Module ->
   Handle
-new (Global.Handle {..}) (Local.Handle {..}) nameMapHandle = do
+new (Global.Handle {..}) (Local.Handle {..}) nameMapHandle currentModule = do
   let nameEnv = empty
   let typeNameEnv = empty
   let currentLayer = 0

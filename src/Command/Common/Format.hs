@@ -20,6 +20,7 @@ import Kernel.Common.CreateLocalHandle qualified as Local
 import Kernel.Common.Handle.Global.Env qualified as Env
 import Kernel.Common.Module (MainModule (MainModule))
 import Kernel.Common.Module.GetEnabledPreset qualified as GetEnabledPreset
+import Kernel.Common.Source qualified as Source
 import Kernel.Common.Target
 import Kernel.Load.Load qualified as Load
 import Kernel.Parse.Internal.Handle.Unused qualified as Unused
@@ -71,7 +72,7 @@ _formatSource h shouldMinimizeImports filePath fileContent = do
         Nothing ->
           raiseError' "Nothing to format"
         Just (_, (rootLocalHandle, (rootSource, rootCacheOrProg))) -> do
-          interpretHandle <- liftIO $ Interpret.new (globalHandle h) rootLocalHandle
+          interpretHandle <- liftIO $ Interpret.new (globalHandle h) rootLocalHandle (Source.sourceModule rootSource)
           _ <- Interpret.interpret interpretHandle Peripheral rootSource rootCacheOrProg
           let unusedHandle = Local.unusedHandle rootLocalHandle
           (unusedGlobalLocators, unusedLocalLocators) <- liftIO $ Unused.getUnusedLocators unusedHandle

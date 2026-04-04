@@ -19,6 +19,7 @@ import Kernel.Common.Handle.Local.Tag qualified as Tag
 import Kernel.Common.Handle.Local.TopCandidate qualified as TopCandidate
 import Kernel.Common.Import
 import Kernel.Common.ManageCache qualified as Cache
+import Kernel.Common.Module qualified as Module
 import Kernel.Common.Source qualified as Source
 import Kernel.Common.Target
 import Kernel.Parse.Internal.Discern qualified as Discern
@@ -54,8 +55,9 @@ data Handle = Handle
 new ::
   Global.Handle ->
   Local.Handle ->
+  Module.Module ->
   IO Handle
-new globalHandle localHandle = do
+new globalHandle localHandle currentModule = do
   let unusedHandle = Local.unusedHandle localHandle
   let pathHandle = Global.pathHandle globalHandle
   let importHandle = Import.new globalHandle localHandle
@@ -67,7 +69,7 @@ new globalHandle localHandle = do
   let symLocHandle = Local.symLocHandle localHandle
   let topCandidateHandle = Local.topCandidateHandle localHandle
   let rawImportSummaryHandle = Local.rawImportSummaryHandle localHandle
-  let discernHandle = Discern.new globalHandle localHandle nameMapHandle
+  let discernHandle = Discern.new globalHandle localHandle nameMapHandle currentModule
   return $ Handle {..}
 
 interpret ::
