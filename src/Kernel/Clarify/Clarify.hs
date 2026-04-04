@@ -122,26 +122,21 @@ new (Global.Handle {..}) = do
   let sigmaHandle = Sigma.new gensymHandle linearizeHandle utilityHandle
   return $ Handle {..}
 
-newAuxReduceHandle :: Gensym.Handle -> [C.CompStmt] -> [C.CompStmt] -> IO Reduce.Handle
-newAuxReduceHandle gensymHandle baseAuxEnv auxStmtList = do
-  let defMap' = C.toDefMap (baseAuxEnv ++ auxStmtList)
+newAuxReduceHandle :: Gensym.Handle -> C.DefMap -> IO Reduce.Handle
+newAuxReduceHandle gensymHandle defMap = do
   let compSubstHandle = CompSubst.new gensymHandle
-  return $ Reduce.new compSubstHandle gensymHandle defMap'
+  return $ Reduce.new compSubstHandle gensymHandle defMap
 
 clarify :: Handle -> [Stmt] -> App ([C.CompStmt], [C.CompStmt], C.DefMap)
 clarify h stmtList = do
-  liftIO $ AuxEnv.clear (auxEnvHandle h)
-  baseAuxEnv <- liftIO $ getBaseAuxEnv (auxEnvHandle h) (sigmaHandle h)
-  let baseReduceHandle = Reduce.new (CompSubst.new (gensymHandle h)) (gensymHandle h) (C.toDefMap baseAuxEnv)
-  let h' = h {reduceHandle = baseReduceHandle}
-  liftIO $ AuxEnv.clear (auxEnvHandle h)
   let filteredStmtList = filter (not . isMacroStmt) stmtList
   (stmtList', auxEnv) <- do
-    stmtList' <- mapM (clarifyStmt h') filteredStmtList
+    stmtList' <- mapM (clarifyStmt h) filteredStmtList
     auxEnv <- liftIO $ AuxEnv.toCompStmtList <$> AuxEnv.get (auxEnvHandle h)
     return (stmtList', auxEnv)
-  let defMap = C.toDefMap (stmtList' ++ auxEnv ++ baseAuxEnv)
-  auxReduceHandle <- liftIO $ newAuxReduceHandle (gensymHandle h) baseAuxEnv auxEnv
+  baseAuxEnv <- liftIO $ makeBaseAuxEnv (sigmaHandle h)
+  let defMap = C.toDefMap (auxEnv ++ baseAuxEnv)
+  auxReduceHandle <- liftIO $ newAuxReduceHandle (gensymHandle h) defMap
   stmtList'' <- forM stmtList' $ \stmt -> do
     case stmt of
       C.Def x opacity args e -> do
@@ -187,7 +182,7 @@ newMain Global.Handle {..} = do
 
 clarifyEntryPoint :: MainHandle -> IO ([C.CompStmt], C.DefMap)
 clarifyEntryPoint h = do
-  baseAuxEnv <- getBaseAuxEnv (mainAuxEnvHandle h) (mainSigmaHandle h)
+  baseAuxEnv <- makeBaseAuxEnv (mainSigmaHandle h)
   let defMap = C.toDefMap baseAuxEnv
   let compSubstHandle = CompSubst.new (mainGensymHandle h)
   let reduceHandle = Reduce.new compSubstHandle (mainGensymHandle h) defMap
@@ -203,11 +198,11 @@ clarifyEntryPoint h = do
         return stmt
   return (stmtList, defMap)
 
-getBaseAuxEnv :: AuxEnv.Handle -> Sigma.Handle -> IO [C.CompStmt]
-getBaseAuxEnv auxEnvHandle sigmaHandle = do
-  Sigma.registerImmediateS4 sigmaHandle
-  Sigma.registerClosureS4 sigmaHandle
-  AuxEnv.toCompStmtList <$> AuxEnv.get auxEnvHandle
+makeBaseAuxEnv :: Sigma.Handle -> IO [C.CompStmt]
+makeBaseAuxEnv sigmaHandle = do
+  immS4 <- Sigma.makeImmediateS4 sigmaHandle
+  clsS4 <- Sigma.makeClosureS4 sigmaHandle
+  return [immS4, clsS4]
 
 clarifyStmt :: Handle -> Stmt -> App C.CompStmt
 clarifyStmt h stmt =
@@ -228,7 +223,7 @@ clarifyStmt h stmt =
           codType' <- clarifyType h context' codType
           destParam <- liftIO $ makeDestParam h
           e'' <- liftIO $ toDestPassing h destParam codType' e'
-          e''' <- liftIO $ Linearize.linearize (linearizeHandle h) xts'' e'' >>= Reduce.reduce (reduceHandle h)
+          e''' <- liftIO $ Linearize.linearize (linearizeHandle h) xts'' e''
           return $ C.DefVoid f (SK.toLowOpacityTerm stmtKind) (destParam : map fst xts'') e'''
         else do
           e' <- clarifyStmtDefineBody h context' xts'' e
@@ -269,15 +264,9 @@ clarifyStmt h stmt =
       let context = newContext liftedName
       switch <- liftIO $ Gensym.createVar (gensymHandle h) "switch"
       arg@(argVarName, _) <- liftIO $ Gensym.createVar (gensymHandle h) "arg"
-      size <-
-        clarifyTerm h context resourceSize
-          >>= liftIO . Reduce.reduce (reduceHandle h)
-      discard <-
-        clarifyTerm h context (m :< TM.PiElim PEK.Normal discarder [] [m :< TM.Var argVarName] [])
-          >>= liftIO . Reduce.reduce (reduceHandle h)
-      copy <-
-        clarifyTerm h context (m :< TM.PiElim PEK.Normal copier [] [m :< TM.Var argVarName] [])
-          >>= liftIO . Reduce.reduce (reduceHandle h)
+      size <- clarifyTerm h context resourceSize
+      discard <- clarifyTerm h context (m :< TM.PiElim PEK.Normal discarder [] [m :< TM.Var argVarName] [])
+      copy <- clarifyTerm h context (m :< TM.PiElim PEK.Normal copier [] [m :< TM.Var argVarName] [])
       let resourceSpec = Utility.ResourceSpec {switch, arg, discard, copy, size, defaultValues = []}
       liftIO $ Utility.registerSwitcher (utilityHandle h) O.Clear liftedName resourceSpec
       return $ C.Def dd O.Clear [] (C.UpIntro $ C.VarGlobal liftedName AN.argNumS4 (FCT.Cod BLT.Pointer))
@@ -424,7 +413,6 @@ clarifyStmtDefineBody ::
 clarifyStmtDefineBody h context xts e = do
   clarifyTerm h context e
     >>= liftIO . Linearize.linearize (linearizeHandle h) xts
-    >>= liftIO . Reduce.reduce (reduceHandle h)
 
 clarifyStmtDefineTypeBody ::
   Handle ->
@@ -435,7 +423,6 @@ clarifyStmtDefineTypeBody ::
 clarifyStmtDefineTypeBody h context xts t = do
   clarifyType h context t
     >>= liftIO . Linearize.linearize (linearizeHandle h) xts
-    >>= liftIO . Reduce.reduce (reduceHandle h)
 
 clarifyStmtDefineBody' ::
   Handle ->
@@ -444,7 +431,7 @@ clarifyStmtDefineBody' ::
   C.Comp ->
   App C.CompStmt
 clarifyStmtDefineBody' h name xts' dataType = do
-  dataType' <- liftIO $ Linearize.linearize (linearizeHandle h) xts' dataType >>= Reduce.reduce (reduceHandle h)
+  dataType' <- liftIO $ Linearize.linearize (linearizeHandle h) xts' dataType
   return $ C.Def name O.Clear (map fst xts') dataType'
 
 clarifyTerm :: Handle -> Context -> TM.Term -> App C.Comp
@@ -954,12 +941,11 @@ clarifyLambda h context attrL@(AttrL.Attr {lamKind, identity}) fvs impArgs expAr
             codType' <- clarifyType h (extendContext appArgs $ newContext liftedName) codType
             destParam <- liftIO $ makeDestParam h
             liftedBody'' <- liftIO $ toDestPassing h destParam codType' liftedBody'
-            liftedBody''' <- liftIO $ Linearize.linearize (linearizeHandle h) liftedArgs liftedBody'' >>= Reduce.reduce (reduceHandle h)
+            liftedBody''' <- liftIO $ Linearize.linearize (linearizeHandle h) liftedArgs liftedBody''
             liftIO $ AuxEnv.insert (auxEnvHandle h) liftedName (C.DefVoid liftedName O.Opaque (destParam : params) liftedBody''')
           else do
             liftedBody'' <- liftIO $ Linearize.linearize (linearizeHandle h) liftedArgs liftedBody'
-            liftedBody''' <- liftIO $ Reduce.reduce (reduceHandle h) liftedBody''
-            liftIO $ AuxEnv.insert (auxEnvHandle h) liftedName (C.Def liftedName O.Opaque params liftedBody''')
+            liftIO $ AuxEnv.insert (auxEnvHandle h) liftedName (C.Def liftedName O.Opaque params liftedBody'')
       liftIO $ registerDefaultEnvType h liftedName []
       clarifyTerm h context lamApp
     LK.Normal mName isDestPassing codType -> do
@@ -1055,11 +1041,10 @@ registerClosure h name opacity isDestPassing codType xts fvs e = do
   let loadList =
         zipWith (\(x, _) slotVar -> (x, C.Primitive (C.Magic (LM.Load BLT.Pointer slotVar)))) fvs slotVarList
   let lambdaBody = Utility.bindLet (allocList ++ [(hole, enumElim)] ++ loadList) e''
-  lambdaBody' <- liftIO $ Reduce.reduce (reduceHandle h) lambdaBody
   let args = map fst xts ++ [envVarName, switchVarName]
   if isDestPassing
-    then AuxEnv.insert (auxEnvHandle h) name (C.DefVoid name opacity (destParam : args) lambdaBody')
-    else AuxEnv.insert (auxEnvHandle h) name (C.Def name opacity args lambdaBody')
+    then AuxEnv.insert (auxEnvHandle h) name (C.DefVoid name opacity (destParam : args) lambdaBody)
+    else AuxEnv.insert (auxEnvHandle h) name (C.Def name opacity args lambdaBody)
 
 callClosure ::
   Handle ->

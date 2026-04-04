@@ -2,8 +2,8 @@ module Kernel.Clarify.Internal.Sigma
   ( Handle (..),
     DataConstructorInfo (..),
     new,
-    registerImmediateS4,
-    registerClosureS4,
+    makeImmediateS4,
+    makeClosureS4,
     immediateS4,
     returnImmediateS4,
     returnClosureS4,
@@ -54,25 +54,23 @@ globalPointer :: DD.DefiniteDescription -> AN.ArgNum -> C.Value
 globalPointer name argNum =
   C.VarGlobal name argNum (FCT.Cod BLT.Pointer)
 
-registerImmediateS4 :: Handle -> IO ()
-registerImmediateS4 h = do
+makeImmediateS4 :: Handle -> IO C.CompStmt
+makeImmediateS4 h = do
   switch <- Gensym.createVar (gensymHandle h) "switch"
   arg@(_, argVar) <- Gensym.createVar (gensymHandle h) "arg"
   let discard = C.UpIntro C.null
   let copy = C.UpIntro argVar
-  Utility.registerSwitcher (utilityHandle h) O.Clear DD.imm $
+  Utility.makeSwitcherStmt (utilityHandle h) O.Clear DD.imm $
     ResourceSpec {switch, arg, discard, copy, size = Utility.returnIntComp (utilityHandle h) (-1), defaultValues = []}
 
-registerClosureS4 :: Handle -> IO ()
-registerClosureS4 h = do
+makeClosureS4 :: Handle -> IO C.CompStmt
+makeClosureS4 h = do
   (env, envVar) <- Gensym.createVar (gensymHandle h) "env"
   hole1 <- Gensym.newIdentFromText (gensymHandle h) "unused-sigarg"
   hole2 <- Gensym.newIdentFromText (gensymHandle h) "unused-sigarg"
-  registerSigmaS4
-    h
-    DD.cls
-    O.Clear
-    [(env, returnImmediateS4), (hole1, C.UpIntro envVar), (hole2, returnImmediateS4)]
+  let xts = [(env, returnImmediateS4), (hole1, C.UpIntro envVar), (hole2, returnImmediateS4)]
+  resourceSpec <- makeSigmaResourceSpec h xts
+  Utility.makeSwitcherStmt (utilityHandle h) O.Clear DD.cls resourceSpec
 
 returnImmediateS4 :: C.Comp
 returnImmediateS4 =
@@ -86,23 +84,14 @@ immediateS4 :: C.Value
 immediateS4 =
   globalPointer DD.imm AN.argNumS4
 
-registerSigmaS4 ::
-  Handle ->
-  DD.DefiniteDescription ->
-  O.Opacity ->
-  [(Ident, C.Comp)] ->
-  IO ()
-registerSigmaS4 h name opacity xts = do
-  resourceSpec <- makeSigmaResourceSpec h xts
-  Utility.registerSwitcher (utilityHandle h) opacity name resourceSpec
-
 makeSigmaResourceSpec :: Handle -> [(Ident, C.Comp)] -> IO ResourceSpec
 makeSigmaResourceSpec h xts = do
   switch <- Gensym.createVar (gensymHandle h) "switch"
   arg@(_, argVar) <- Gensym.createVar (gensymHandle h) "arg"
   discard <- sigmaT h xts argVar
   copy <- sigma4 h xts argVar
-  return $ ResourceSpec {switch, arg, discard, copy, size = Utility.returnByteSizeComp (utilityHandle h) (toInteger $ length xts), defaultValues = []}
+  let size = Utility.returnByteSizeComp (utilityHandle h) (toInteger $ length xts)
+  return $ ResourceSpec {switch, arg, discard, copy, size, defaultValues = []}
 
 -- (Assuming `ti` = `return di` for some `di` such that `xi : di`)
 -- sigmaT NAME LOC [(x1, t1), ..., (xn, tn)]   ~>

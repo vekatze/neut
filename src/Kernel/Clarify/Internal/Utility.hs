@@ -10,6 +10,7 @@ module Kernel.Clarify.Internal.Utility
     bindLetWithReducibility,
     irreducibleBindLet,
     registerSwitcher,
+    makeSwitcherStmt,
     getEnumElim,
   )
 where
@@ -84,6 +85,16 @@ makeSwitcher h resourceSpec = do
   let defaultCases = zipWith (\i v -> (EC.Int i, C.UpIntro v)) [3 ..] defaultValues
   enumElim <- getEnumElim h [argVarName] switchVar discard ((EC.Int 1, copy) : (EC.Int 2, size) : defaultCases)
   return ([switchVarName, argVarName], enumElim)
+
+makeSwitcherStmt ::
+  Handle ->
+  O.Opacity ->
+  DD.DefiniteDescription ->
+  ResourceSpec ->
+  IO C.CompStmt
+makeSwitcherStmt h opacity name resourceSpec = do
+  (args, e) <- makeSwitcher h resourceSpec
+  return $ C.Def name opacity args e
 
 data ResourceSpec = ResourceSpec
   { switch :: (Ident, C.Value),
