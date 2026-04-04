@@ -154,21 +154,22 @@ resolveConstructorMaybe dd gn = do
 
 interpretGlobalName :: H.Handle -> Hint -> DD.DefiniteDescription -> GN.GlobalName -> App WT.WeakTerm
 interpretGlobalName h m dd gn = do
+  let dd' = readableDD' (H.currentModule h) dd
   case gn of
     GN.TopLevelFuncTerm argNum isConstLike isDestPassing isMacro -> do
       ensureTopLevelStage m h dd isMacro
       return $ interpretTopLevelFuncTerm m dd argNum isConstLike isDestPassing
     GN.TopLevelFuncType {} -> do
-      raiseError m $ "`" <> DD.reify dd <> "` is a type name and cannot appear in term position"
+      raiseError m $ "`" <> dd' <> "` is a type name and cannot appear in term position"
     GN.Data {} ->
-      raiseError m $ "`" <> DD.reify dd <> "` is a type name and cannot appear in term position"
+      raiseError m $ "`" <> dd' <> "` is a type name and cannot appear in term position"
     GN.DataIntro dataArgNum consArgNum _ isConstLike -> do
       let argNum = AN.add dataArgNum consArgNum
       let isDestPassing = False
       let attr = AttrVG.Attr {..}
       return $ m :< WT.PiElim PEK.Normal (m :< WT.VarGlobal attr dd) ImpArgs.Unspecified [] (DefaultArgs.ByKey [])
     GN.PrimType _ ->
-      raiseError m $ "`" <> DD.reify dd <> "` is a type name and cannot appear in term position"
+      raiseError m $ "`" <> dd' <> "` is a type name and cannot appear in term position"
     GN.PrimOp primOp ->
       case primOp of
         PO.PrimCmpOp {} ->
@@ -176,7 +177,7 @@ interpretGlobalName h m dd gn = do
         _ ->
           return $ m :< WT.Prim (WPV.Op primOp)
     GN.Rule _ ->
-      raiseError m $ "`" <> DD.reify dd <> "` must be used with arguments"
+      raiseError m $ "`" <> dd' <> "` must be used with arguments"
 
 interpretGlobalTypeName :: Hint -> DD.DefiniteDescription -> GN.GlobalName -> App WT.WeakType
 interpretGlobalTypeName m dd gn = do
@@ -233,8 +234,7 @@ interpretTopLevelFuncType m dd argNum isConstLike = do
 ensureTopLevelStage :: Hint -> H.Handle -> DD.DefiniteDescription -> Bool -> App ()
 ensureTopLevelStage m h dd isMacro = do
   let stage = H.currentStage h
-  let mainModule = Env.getMainModule (H.envHandle h)
-  let dd' = readableDD mainModule dd
+  let dd' = readableDD' (H.currentModule h) dd
   if isMacro
     then do
       when (stage < 1) $ do

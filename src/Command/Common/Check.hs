@@ -23,6 +23,7 @@ import Kernel.Common.Module (extractModule)
 import Kernel.Common.Module qualified as M
 import Kernel.Common.Module.GetModule qualified as GetModule
 import Kernel.Common.Source (Source (sourceFilePath))
+import Kernel.Common.Source qualified as Source
 import Kernel.Common.Target
 import Kernel.Elaborate.Elaborate qualified as Elaborate
 import Kernel.Elaborate.Internal.Handle.Elaborate qualified as Elaborate
@@ -76,7 +77,7 @@ _check h target baseModule = do
     contentSeq <- Load.load loadHandle target dependenceSeq
     cacheOrProgList <- Parse.parse (globalHandle h) contentSeq
     cacheOrStmtList <- forP cacheOrProgList $ \(localHandle, (source, cacheOrProg)) -> do
-      interpretHandle <- liftIO $ Interpret.new (globalHandle h) localHandle
+      interpretHandle <- liftIO $ Interpret.new (globalHandle h) localHandle (Source.sourceModule source)
       item <- Interpret.interpret interpretHandle target source cacheOrProg
       return (localHandle, (source, item))
     forM_ cacheOrStmtList $ \(localHandle, (source, cacheOrContent)) -> do
@@ -90,7 +91,7 @@ _check' h target baseModule = do
   contentSeq <- Load.load loadHandle target dependenceSeq
   cacheOrProgList <- Parse.parse (globalHandle h) contentSeq
   cacheOrStmtList <- forP cacheOrProgList $ \(localHandle, (source, cacheOrProg)) -> do
-    interpretHandle <- liftIO $ Interpret.new (globalHandle h) localHandle
+    interpretHandle <- liftIO $ Interpret.new (globalHandle h) localHandle (Source.sourceModule source)
     item <- Interpret.interpret interpretHandle target source cacheOrProg
     return (localHandle, (source, item))
   case unsnoc cacheOrStmtList of
