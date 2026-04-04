@@ -18,14 +18,12 @@ import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Containers.ListUtils (nubOrd)
-import Data.HashMap.Strict qualified as Map
 import Data.IntMap qualified as IntMap
 import Data.Maybe
 import Data.Text qualified as T
 import Gensym.Gensym qualified as Gensym
 import Gensym.Handle qualified as Gensym
 import Kernel.Clarify.Internal.Handle.AuxEnv qualified as AuxEnv
-import Kernel.Clarify.Internal.Handle.CompDef qualified as CompDef
 import Kernel.Clarify.Internal.Linearize qualified as Linearize
 import Kernel.Clarify.Internal.Sigma qualified as Sigma
 import Kernel.Clarify.Internal.Utility (toRelevantApp)
@@ -91,7 +89,6 @@ data Handle = Handle
     optDataHandle :: OptimizableData.Handle,
     reduceHandle :: Reduce.Handle,
     substHandle :: Subst.Handle,
-    compDefHandle :: CompDef.Handle,
     baseSize :: DS.DataSize,
     typeHandle :: Type.Handle
   }
@@ -117,43 +114,29 @@ new :: Global.Handle -> IO Handle
 new (Global.Handle {..}) = do
   let baseSize = Platform.getDataSize platformHandle
   auxEnvHandle <- AuxEnv.new
-  defMap <- CompDef.get compDefHandle
   let substHandle = Subst.new gensymHandle
   let compSubstHandle = CompSubst.new gensymHandle
-  let reduceHandle = Reduce.new compSubstHandle gensymHandle defMap
+  let reduceHandle = Reduce.new compSubstHandle gensymHandle mempty
   let utilityHandle = Utility.new gensymHandle compSubstHandle auxEnvHandle baseSize
   let linearizeHandle = Linearize.new gensymHandle utilityHandle
   let sigmaHandle = Sigma.new gensymHandle linearizeHandle utilityHandle
   return $ Handle {..}
 
-newAuxReduceHandle :: Handle -> IO Reduce.Handle
-newAuxReduceHandle h = do
-  let baseDefMap = Map.empty
-  auxDefMap <- AuxEnv.get (auxEnvHandle h)
-  let auxDefMap' = fromMaybe Map.empty $ mapM C.fromCompStmt auxDefMap
-  let defMap' = Map.union baseDefMap auxDefMap'
-  let compSubstHandle = CompSubst.new (gensymHandle h)
-  return $ Reduce.new compSubstHandle (gensymHandle h) defMap'
+newAuxReduceHandle :: Gensym.Handle -> C.DefMap -> IO Reduce.Handle
+newAuxReduceHandle gensymHandle defMap = do
+  let compSubstHandle = CompSubst.new gensymHandle
+  return $ Reduce.new compSubstHandle gensymHandle defMap
 
-clarify :: Handle -> [Stmt] -> App ([C.CompStmt], [C.CompStmt])
+clarify :: Handle -> [Stmt] -> App ([C.CompStmt], [C.CompStmt], C.DefMap)
 clarify h stmtList = do
-  liftIO $ AuxEnv.clear (auxEnvHandle h)
-  baseAuxEnv <- liftIO $ getBaseAuxEnv (auxEnvHandle h) (sigmaHandle h)
-  liftIO $ AuxEnv.clear (auxEnvHandle h)
   let filteredStmtList = filter (not . isMacroStmt) stmtList
   (stmtList', auxEnv) <- do
     stmtList' <- mapM (clarifyStmt h) filteredStmtList
     auxEnv <- liftIO $ AuxEnv.toCompStmtList <$> AuxEnv.get (auxEnvHandle h)
     return (stmtList', auxEnv)
-  forM_ (stmtList' ++ auxEnv ++ baseAuxEnv) $ \stmt -> do
-    case stmt of
-      C.Def x opacity args e -> do
-        liftIO $ CompDef.insert (compDefHandle h) x (opacity, args, e)
-      C.DefVoid x opacity args e -> do
-        liftIO $ CompDef.insert (compDefHandle h) x (opacity, args, e)
-      C.Foreign {} ->
-        return ()
-  auxReduceHandle <- liftIO $ newAuxReduceHandle h
+  baseAuxEnv <- liftIO $ makeBaseAuxEnv (sigmaHandle h)
+  let defMap = C.toDefMap (auxEnv ++ baseAuxEnv)
+  auxReduceHandle <- liftIO $ newAuxReduceHandle (gensymHandle h) defMap
   stmtList'' <- forM stmtList' $ \stmt -> do
     case stmt of
       C.Def x opacity args e -> do
@@ -178,45 +161,48 @@ clarify h stmtList = do
         return $ C.DefVoid x opacity args e'
       C.Foreign {} ->
         return stmt
-  return (stmtList'', auxEnv')
+  return (stmtList'', auxEnv', defMap)
 
 data MainHandle = MainHandle
   { mainAuxEnvHandle :: AuxEnv.Handle,
     mainSigmaHandle :: Sigma.Handle,
-    mainReduceHandle :: Reduce.Handle
+    mainGensymHandle :: Gensym.Handle
   }
 
 newMain :: Global.Handle -> IO MainHandle
 newMain Global.Handle {..} = do
   mainAuxEnvHandle <- AuxEnv.new
-  defMap <- CompDef.get compDefHandle
   let baseSize = Platform.getDataSize platformHandle
   let compSubstHandle = CompSubst.new gensymHandle
-  let mainReduceHandle = Reduce.new compSubstHandle gensymHandle defMap
   let utilityHandle = Utility.new gensymHandle compSubstHandle mainAuxEnvHandle baseSize
   let linearizeHandle = Linearize.new gensymHandle utilityHandle
   let mainSigmaHandle = Sigma.new gensymHandle linearizeHandle utilityHandle
+  let mainGensymHandle = gensymHandle
   return $ MainHandle {..}
 
-clarifyEntryPoint :: MainHandle -> IO [C.CompStmt]
+clarifyEntryPoint :: MainHandle -> IO ([C.CompStmt], C.DefMap)
 clarifyEntryPoint h = do
-  baseAuxEnv <- getBaseAuxEnv (mainAuxEnvHandle h) (mainSigmaHandle h)
-  forM baseAuxEnv $ \stmt -> do
+  baseAuxEnv <- makeBaseAuxEnv (mainSigmaHandle h)
+  let defMap = C.toDefMap baseAuxEnv
+  let compSubstHandle = CompSubst.new (mainGensymHandle h)
+  let reduceHandle = Reduce.new compSubstHandle (mainGensymHandle h) defMap
+  stmtList <- forM baseAuxEnv $ \stmt -> do
     case stmt of
       C.Def x opacity args e -> do
-        e' <- Reduce.reduce (mainReduceHandle h) e
+        e' <- Reduce.reduce reduceHandle e
         return $ C.Def x opacity args e'
       C.DefVoid x opacity args e -> do
-        e' <- Reduce.reduce (mainReduceHandle h) e
+        e' <- Reduce.reduce reduceHandle e
         return $ C.DefVoid x opacity args e'
       C.Foreign {} ->
         return stmt
+  return (stmtList, defMap)
 
-getBaseAuxEnv :: AuxEnv.Handle -> Sigma.Handle -> IO [C.CompStmt]
-getBaseAuxEnv auxEnvHandle sigmaHandle = do
-  Sigma.registerImmediateS4 sigmaHandle
-  Sigma.registerClosureS4 sigmaHandle
-  AuxEnv.toCompStmtList <$> AuxEnv.get auxEnvHandle
+makeBaseAuxEnv :: Sigma.Handle -> IO [C.CompStmt]
+makeBaseAuxEnv sigmaHandle = do
+  immS4 <- Sigma.makeImmediateS4 sigmaHandle
+  clsS4 <- Sigma.makeClosureS4 sigmaHandle
+  return [immS4, clsS4]
 
 clarifyStmt :: Handle -> Stmt -> App C.CompStmt
 clarifyStmt h stmt =
@@ -237,7 +223,7 @@ clarifyStmt h stmt =
           codType' <- clarifyType h context' codType
           destParam <- liftIO $ makeDestParam h
           e'' <- liftIO $ toDestPassing h destParam codType' e'
-          e''' <- liftIO $ Linearize.linearize (linearizeHandle h) xts'' e'' >>= Reduce.reduce (reduceHandle h)
+          e''' <- liftIO $ Linearize.linearize (linearizeHandle h) xts'' e''
           return $ C.DefVoid f (SK.toLowOpacityTerm stmtKind) (destParam : map fst xts'') e'''
         else do
           e' <- clarifyStmtDefineBody h context' xts'' e
@@ -278,15 +264,9 @@ clarifyStmt h stmt =
       let context = newContext liftedName
       switch <- liftIO $ Gensym.createVar (gensymHandle h) "switch"
       arg@(argVarName, _) <- liftIO $ Gensym.createVar (gensymHandle h) "arg"
-      size <-
-        clarifyTerm h context resourceSize
-          >>= liftIO . Reduce.reduce (reduceHandle h)
-      discard <-
-        clarifyTerm h context (m :< TM.PiElim PEK.Normal discarder [] [m :< TM.Var argVarName] [])
-          >>= liftIO . Reduce.reduce (reduceHandle h)
-      copy <-
-        clarifyTerm h context (m :< TM.PiElim PEK.Normal copier [] [m :< TM.Var argVarName] [])
-          >>= liftIO . Reduce.reduce (reduceHandle h)
+      size <- clarifyTerm h context resourceSize
+      discard <- clarifyTerm h context (m :< TM.PiElim PEK.Normal discarder [] [m :< TM.Var argVarName] [])
+      copy <- clarifyTerm h context (m :< TM.PiElim PEK.Normal copier [] [m :< TM.Var argVarName] [])
       let resourceSpec = Utility.ResourceSpec {switch, arg, discard, copy, size, defaultValues = []}
       liftIO $ Utility.registerSwitcher (utilityHandle h) O.Clear liftedName resourceSpec
       return $ C.Def dd O.Clear [] (C.UpIntro $ C.VarGlobal liftedName AN.argNumS4 (FCT.Cod BLT.Pointer))
@@ -433,7 +413,6 @@ clarifyStmtDefineBody ::
 clarifyStmtDefineBody h context xts e = do
   clarifyTerm h context e
     >>= liftIO . Linearize.linearize (linearizeHandle h) xts
-    >>= liftIO . Reduce.reduce (reduceHandle h)
 
 clarifyStmtDefineTypeBody ::
   Handle ->
@@ -444,7 +423,6 @@ clarifyStmtDefineTypeBody ::
 clarifyStmtDefineTypeBody h context xts t = do
   clarifyType h context t
     >>= liftIO . Linearize.linearize (linearizeHandle h) xts
-    >>= liftIO . Reduce.reduce (reduceHandle h)
 
 clarifyStmtDefineBody' ::
   Handle ->
@@ -453,7 +431,7 @@ clarifyStmtDefineBody' ::
   C.Comp ->
   App C.CompStmt
 clarifyStmtDefineBody' h name xts' dataType = do
-  dataType' <- liftIO $ Linearize.linearize (linearizeHandle h) xts' dataType >>= Reduce.reduce (reduceHandle h)
+  dataType' <- liftIO $ Linearize.linearize (linearizeHandle h) xts' dataType
   return $ C.Def name O.Clear (map fst xts') dataType'
 
 clarifyTerm :: Handle -> Context -> TM.Term -> App C.Comp
@@ -572,12 +550,20 @@ clarifyType h context ty =
       liftIO $ callClosure h PEK.Normal t' args' [] []
     _ :< TM.Pi {} ->
       return Sigma.returnClosureS4
-    _ :< TM.Data _ name dataArgs -> do
-      let argNum = AN.fromInt $ length dataArgs + 2
-      envType <- liftIO $ envTypeForGlobal h name
-      let cls = C.UpIntro $ C.sigmaIntro [envType, C.null, C.VarGlobal name argNum (FCT.Cod BLT.Pointer)]
-      dataArgs' <- mapM (clarifyTypePlus h context) dataArgs
-      liftIO $ callClosure h PEK.Normal cls dataArgs' [] []
+    m :< TM.Data _ name dataArgs -> do
+      od <- liftIO $ OptimizableData.lookup (optDataHandle h) name
+      case od of
+        Just OD.Enum ->
+          return Sigma.returnImmediateS4
+        Just OD.Unary -> do
+          specializedArgType <- specializeUnaryDataType h m name dataArgs
+          clarifyType h context specializedArgType
+        _ -> do
+          let argNum = AN.fromInt $ length dataArgs + 2
+          envType <- liftIO $ envTypeForGlobal h name
+          let cls = C.UpIntro $ C.sigmaIntro [envType, C.null, C.VarGlobal name argNum (FCT.Cod BLT.Pointer)]
+          dataArgs' <- mapM (clarifyTypePlus h context) dataArgs
+          liftIO $ callClosure h PEK.Normal cls dataArgs' [] []
     _ :< TM.Box t -> do
       clarifyType h context t
     _ :< TM.BoxNoema {} ->
@@ -720,12 +706,37 @@ getClauseDataGroup h term =
 
 lookupDataInfo :: Handle -> Hint -> DD.DefiniteDescription -> App [DI.ConsInfo (BinderF TM.Type)]
 lookupDataInfo h m dataName = do
+  dataInfo <- lookupDataEntry h m dataName
+  return $ DI.consInfoList dataInfo
+
+lookupDataEntry :: Handle -> Hint -> DD.DefiniteDescription -> App (DI.DataInfo (BinderF TM.Type))
+lookupDataEntry h m dataName = do
   dataInfoOrNone <- liftIO $ Data.lookup (dataHandle h) dataName
   case dataInfoOrNone of
     Just dataInfo ->
-      return $ DI.consInfoList dataInfo
+      return dataInfo
     Nothing ->
       raiseCritical m $ "Could not find constructor metadata for `" <> DD.reify dataName <> "`"
+
+specializeUnaryDataType ::
+  Handle ->
+  Hint ->
+  DD.DefiniteDescription ->
+  [TM.Type] ->
+  App TM.Type
+specializeUnaryDataType h m dataName dataArgs = do
+  dataInfo <- lookupDataEntry h m dataName
+  let dataBinders = DI.dataArgs dataInfo
+  when (length dataBinders /= length dataArgs) $
+    raiseCritical m $
+      "Arity mismatch while specializing unary data metadata for `" <> DD.reify dataName <> "`"
+  let binderIds = map (\(_, _, x, _) -> x) dataBinders
+  let sub = IntMap.fromList $ zip (map Ident.toInt binderIds) (map Subst.Type dataArgs)
+  case DI.consInfoList dataInfo of
+    [DI.ConsInfo {DI.consArgs = [(_, _, _, t)]}] ->
+      liftIO $ Subst.substType (substHandle h) sub t
+    _ ->
+      raiseCritical m $ "Found a broken unary data metadata for `" <> DD.reify dataName <> "`"
 
 tidyCursorList :: Handle -> Context -> DataArgsMap -> [Ident] -> C.Comp -> App (C.Comp, [BinderF TM.Type])
 tidyCursorList h context dataArgsMap consumedCursorList cont =
@@ -930,12 +941,11 @@ clarifyLambda h context attrL@(AttrL.Attr {lamKind, identity}) fvs impArgs expAr
             codType' <- clarifyType h (extendContext appArgs $ newContext liftedName) codType
             destParam <- liftIO $ makeDestParam h
             liftedBody'' <- liftIO $ toDestPassing h destParam codType' liftedBody'
-            liftedBody''' <- liftIO $ Linearize.linearize (linearizeHandle h) liftedArgs liftedBody'' >>= Reduce.reduce (reduceHandle h)
+            liftedBody''' <- liftIO $ Linearize.linearize (linearizeHandle h) liftedArgs liftedBody''
             liftIO $ AuxEnv.insert (auxEnvHandle h) liftedName (C.DefVoid liftedName O.Opaque (destParam : params) liftedBody''')
           else do
             liftedBody'' <- liftIO $ Linearize.linearize (linearizeHandle h) liftedArgs liftedBody'
-            liftedBody''' <- liftIO $ Reduce.reduce (reduceHandle h) liftedBody''
-            liftIO $ AuxEnv.insert (auxEnvHandle h) liftedName (C.Def liftedName O.Opaque params liftedBody''')
+            liftIO $ AuxEnv.insert (auxEnvHandle h) liftedName (C.Def liftedName O.Opaque params liftedBody'')
       liftIO $ registerDefaultEnvType h liftedName []
       clarifyTerm h context lamApp
     LK.Normal mName isDestPassing codType -> do
@@ -1031,11 +1041,10 @@ registerClosure h name opacity isDestPassing codType xts fvs e = do
   let loadList =
         zipWith (\(x, _) slotVar -> (x, C.Primitive (C.Magic (LM.Load BLT.Pointer slotVar)))) fvs slotVarList
   let lambdaBody = Utility.bindLet (allocList ++ [(hole, enumElim)] ++ loadList) e''
-  lambdaBody' <- liftIO $ Reduce.reduce (reduceHandle h) lambdaBody
   let args = map fst xts ++ [envVarName, switchVarName]
   if isDestPassing
-    then AuxEnv.insert (auxEnvHandle h) name (C.DefVoid name opacity (destParam : args) lambdaBody')
-    else AuxEnv.insert (auxEnvHandle h) name (C.Def name opacity args lambdaBody')
+    then AuxEnv.insert (auxEnvHandle h) name (C.DefVoid name opacity (destParam : args) lambdaBody)
+    else AuxEnv.insert (auxEnvHandle h) name (C.Def name opacity args lambdaBody)
 
 callClosure ::
   Handle ->

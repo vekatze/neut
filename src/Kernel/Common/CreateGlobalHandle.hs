@@ -15,7 +15,6 @@ import Data.HashMap.Strict qualified as Map
 import Data.IORef (IORef, newIORef)
 import Gensym.CreateHandle qualified as Gensym
 import Gensym.Handle qualified as Gensym
-import Kernel.Clarify.Internal.Handle.CompDef qualified as CompDef
 import Kernel.Common.Handle.Global.Antecedent qualified as Antecedent
 import Kernel.Common.Handle.Global.Artifact qualified as Artifact
 import Kernel.Common.Handle.Global.Data qualified as Data
@@ -57,7 +56,6 @@ data Handle = Handle
     weakDefHandle :: WeakDef.Handle,
     weakTypeDefHandle :: WeakTypeDef.Handle,
     typeDefHandle :: TypeDef.Handle,
-    compDefHandle :: CompDef.Handle,
     globalNameMapHandle :: GlobalNameMap.Handle,
     presetCacheRef :: IORef (Map.HashMap MID.ModuleID [ImportItem])
   }
@@ -97,7 +95,6 @@ newOrError cfg moduleFilePathOrNone = do
       defHandle <- Definition.new
       typeDefHandle <- TypeDef.new
       antecedentHandle <- Antecedent.new
-      compDefHandle <- CompDef.new
       globalNameMapHandle <- GlobalNameMap.new
       presetCacheRef <- newIORef Map.empty
       return $ Right $ Handle {..}

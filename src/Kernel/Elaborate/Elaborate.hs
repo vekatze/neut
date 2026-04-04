@@ -197,7 +197,11 @@ elaborateStmt h stmt = do
       copier' <- elaborate' h copier
       resourceSize' <- elaborate' h resourceSize
       unitType' <- elaborateType h unitType
-      let result = StmtDefineResource (SavedHint m) dd resourceID unitType' discarder' copier' resourceSize'
+      discarder'' <- inline h m discarder'
+      copier'' <- inline h m copier'
+      resourceSize'' <- inline h m resourceSize'
+      unitType'' <- inlineType h m unitType'
+      let result = StmtDefineResource (SavedHint m) dd resourceID unitType'' discarder'' copier'' resourceSize''
       insertStmt h result
       return ([result], [])
     WeakStmtVariadic kind m dd -> do
@@ -336,10 +340,12 @@ elaborateStmtKindType h stmtKind =
       return SK.AliasOpaque
     SK.Data dataName dataArgs consInfoList -> do
       dataArgs' <- mapM (elaborateWeakBinder h) dataArgs
+      dataArgs'' <- mapM (inlineBinder h) dataArgs'
       consInfoList' <- forM consInfoList $ \(savedHint, consInfo) -> do
         consArgs' <- mapM (elaborateWeakBinder h) (DI.consArgs consInfo)
-        return (savedHint, consInfo {DI.consArgs = consArgs'})
-      return $ SK.Data dataName dataArgs' consInfoList'
+        consArgs'' <- mapM (inlineBinder h) consArgs'
+        return (savedHint, consInfo {DI.consArgs = consArgs''})
+      return $ SK.Data dataName dataArgs'' consInfoList'
 
 elaborate' :: Handle -> WT.WeakTerm -> App TM.Term
 elaborate' h term = do

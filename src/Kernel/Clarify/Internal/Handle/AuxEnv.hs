@@ -11,7 +11,6 @@ where
 
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
-import Kernel.Clarify.Internal.Handle.CompDef qualified as CompDef
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Comp.Comp
 import Prelude hiding (lookup)
@@ -29,11 +28,11 @@ get :: Handle -> IO (Map.HashMap DD.DefiniteDescription CompStmt)
 get h =
   readIORef (compAuxEnvRef h)
 
-insert :: Handle -> CompDef.DefKey -> CompStmt -> IO ()
+insert :: Handle -> DD.DefiniteDescription -> CompStmt -> IO ()
 insert h k v =
   modifyIORef' (compAuxEnvRef h) $ Map.insert k v
 
-checkIfAlreadyRegistered :: Handle -> CompDef.DefKey -> IO Bool
+checkIfAlreadyRegistered :: Handle -> DD.DefiniteDescription -> IO Bool
 checkIfAlreadyRegistered h k = do
   Map.member k <$> get h
 
