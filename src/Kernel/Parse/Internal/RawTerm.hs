@@ -186,10 +186,6 @@ rawTerm' mode h m headSymbol c = do
       rawTermTauIntro h m c
     "assert" -> do
       rawTermAssert h m c
-    "detach" -> do
-      rawTermFlowIntro h m c
-    "attach" -> do
-      rawTermFlowElim h m c
     "exact" -> do
       rawTermPiElimExact mode h m c
     "if" -> do
@@ -1115,16 +1111,6 @@ rawTypeCode h = do
   c1 <- delimiter "'"
   (t, c) <- rawType h
   return (m :< RT.Code t, c1 ++ c)
-
-rawTermFlowIntro :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
-rawTermFlowIntro h m c1 = do
-  (c2, (e, c)) <- betweenBrace $ rawExpr h
-  return (m :< RT.Detach c1 c2 e, c)
-
-rawTermFlowElim :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
-rawTermFlowElim h m c1 = do
-  (c2, (e, c)) <- betweenBrace $ rawExpr h
-  return (m :< RT.Attach c1 c2 e, c)
 
 rawTypeOption :: Handle -> Parser (RT.RawType, C)
 rawTypeOption h = do

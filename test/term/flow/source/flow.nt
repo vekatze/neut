@@ -2,6 +2,7 @@ import {
   core.channel {make-channel, receive, send},
   core.foreign {sleep},
   core.list {length},
+  core.thread {attach, detach},
 }
 
 define test-syntax() -> unit {
@@ -10,29 +11,32 @@ define test-syntax() -> unit {
   let _ = pack-type {(type) -> thread(type)};
   let _ = pack-type {(thread(type), thread(type)) -> (thread(type)) -> thread(type)};
   let _ = pack-type {thread(thread(type))};
-  let _ = detach {Unit};
   let _ =
-    detach {
+    detach(() => {
+      Unit
+    });
+  let _ =
+    detach(() => {
       let _ = Unit;
       let _ = Unit;
       Unit
-    };
+    });
   let _ =
     () => {
       let fl =
-        detach {
+        detach(() => {
           let _ = Unit;
           Unit
-        };
+        });
       Unit;
-      attach {fl}
+      attach(fl)
     };
   let _ =
     (fl: thread(unit)) => {
-      attach {
+      attach({
         let _ = Unit;
         fl
-      }
+      })
     };
   Unit
 }
@@ -47,7 +51,9 @@ define some-list(len: int, acc: list(int)) -> list(int) {
 }
 
 define detach-send(x: int, ch: &channel(int)) -> thread(unit) {
-  detach {send(ch, lift {x})}
+  detach(() => {
+    send(ch, lift {x})
+  })
 }
 
 define send-all(xs: list(int), ch: &channel(int), acc: list(thread(unit))) -> list(thread(unit)) {
@@ -65,7 +71,7 @@ define receive-one-by-one(xs: list(thread(unit)), ch: &channel(int)) -> unit {
   | Nil =>
     Unit
   | Cons(fl, rest) =>
-    let _ = attach {fl};
+    let _ = attach(fl);
     let _ = receive(ch);
     receive-one-by-one(rest, ch)
   }
@@ -78,7 +84,7 @@ define receive-all-at-once(xs: list(thread(unit)), ch: &channel(int)) -> unit {
       | Nil =>
         Unit
       | Cons(z, zs) =>
-        let _ = attach {z};
+        let _ = attach(z);
         wait-all(zs)
       }
     };
@@ -100,23 +106,23 @@ define test-behavior() -> unit {
   let ch = make-channel();
   let _ on ch = {
     let fl1 = {
-      detach {
+      detach(() => {
         let xs = some-list(1000, List[]);
         let fs = send-all(xs, ch, List[]);
         receive-one-by-one(fs, ch);
         Unit
-      }
+      })
     };
     let fl2 = {
-      detach {
+      detach(() => {
         let xs = some-list(1000, List[]);
         let fs = send-all(xs, ch, List[]);
         receive-all-at-once(fs, ch);
         Unit
-      }
+      })
     };
-    attach {fl1};
-    attach {fl2}
+    attach(fl1);
+    attach(fl2)
   };
   let _ = ch;
   let ch = make-channel();
@@ -128,22 +134,22 @@ define test-behavior() -> unit {
   let _ on ch-clone = send(ch-clone, lift {1});
   let tmp on ch-clone = {
     let f = {
-      detach {
+      detach(() => {
         let _ = sleep(1);
         send(ch-clone, lift {3})
-      }
+      })
     };
     let g = {
-      detach {
+      detach(() => {
         let _ = sleep(1);
         send(ch-clone, lift {4})
-      }
+      })
     };
     let _ = receive(ch-clone);
     let _ = receive(ch-clone);
     let _ = receive(ch-clone);
-    attach {f};
-    attach {g}
+    attach(f);
+    attach(g)
   };
   let _ = ch-clone;
   let _ = tmp;

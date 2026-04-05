@@ -442,16 +442,6 @@ toDoc term =
       D.join [toDoc e1, D.text ";"]
     _ :< Admit ->
       D.text "admit"
-    m :< Detach c1 c2 (e, c3) -> do
-      PI.arrange
-        [ PI.horizontal $ attachComment c1 $ D.text "detach",
-          PI.inject $ toDoc $ m :< Brace c2 (e, c3)
-        ]
-    m :< Attach c1 c2 (e, c3) -> do
-      PI.arrange
-        [ PI.horizontal $ attachComment c1 $ D.text "attach",
-          PI.inject $ toDoc $ m :< Brace c2 (e, c3)
-        ]
     _ :< Assert c1 (_, message) c2 c3 (e, c4) -> do
       let message' = D.text (T.pack (show message))
       decodeKeywordClause "assert" ((c1, (message', c2)), (c3, (toDoc e, c4)))
