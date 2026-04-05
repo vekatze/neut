@@ -617,21 +617,6 @@ discern h term =
                     panic
                     [m :< RT.NoeticString stringType ("Admitted: " <> T.pack (Hint.toString m) <> "\n")]
               )
-    m :< RT.Detach _ _ (e, _) -> do
-      t <- liftIO $ RT.createTypeHole (H.gensymHandle h) (blur m)
-      detachVar <- liftEither $ locatorToVarGlobal m coreThreadDetach
-      cod <- liftIO $ RT.createTypeHole (H.gensymHandle h) (blur m)
-      detachVar' <- discern h detachVar
-      t' <- discernType h t
-      lam' <- discern h $ RT.lam fakeLoc m [] cod e
-      return $ m :< WT.PiElim PEK.Normal detachVar' (ImpArgs.FullySpecified [t']) [lam'] (DefaultArgs.ByKey [])
-    m :< RT.Attach _ _ (e, _) -> do
-      t <- liftIO $ RT.createTypeHole (H.gensymHandle h) (blur m)
-      attachVar <- liftEither $ locatorToVarGlobal m coreThreadAttach
-      attachVar' <- discern h attachVar
-      t' <- discernType h t
-      e' <- discern h e
-      return $ m :< WT.PiElim PEK.Normal attachVar' (ImpArgs.FullySpecified [t']) [e'] (DefaultArgs.ByKey [])
     m :< RT.Assert _ (mText, message) _ _ (e@(mCond :< _), _) -> do
       assert <- liftEither $ locatorToVarGlobal m coreTrickAssert
       stringType <- liftEither $ locatorToTypeVar m coreString

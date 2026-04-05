@@ -140,8 +140,6 @@ data RawTermF a
   | Seq (a, C) C a
   | SeqEnd a
   | Admit
-  | Detach C C (a, C)
-  | Attach C C (a, C)
   | Assert C (Hint, T.Text) C C (a, C)
   | Introspect C T.Text C (SE.Series (Maybe T.Text, C, a))
   | Static C Hint StaticItem

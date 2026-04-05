@@ -143,14 +143,6 @@ coreTrickAssert :: T.Text
 coreTrickAssert =
   core <> nsSep <> "trick" <> nsSep <> "_assert"
 
-coreThreadDetach :: T.Text
-coreThreadDetach =
-  core <> nsSep <> "thread" <> nsSep <> "detach"
-
-coreThreadAttach :: T.Text
-coreThreadAttach =
-  core <> nsSep <> "thread" <> nsSep <> "attach"
-
 coreBoxEmbody :: T.Text
 coreBoxEmbody =
   core <> nsSep <> "box" <> nsSep <> "embody"
