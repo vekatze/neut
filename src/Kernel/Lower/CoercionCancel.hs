@@ -1,138 +1,63 @@
 module Kernel.Lower.CoercionCancel (coercionCancel) where
 
 import Data.IntMap.Strict qualified as IntMap
-import Data.List (transpose)
-import Data.Maybe (catMaybes, isNothing, mapMaybe)
+import Data.List (unsnoc)
 import Language.Common.Ident
 import Language.Common.Ident.Reify
 import Language.Common.LowType qualified as LT
 import Language.LowComp.LowComp qualified as LC
 
 type Env =
-  IntMap.IntMap Binding
+  IntMap.IntMap CoercionHistory
 
-data Binding = Binding
-  { replacement :: Maybe LC.Value,
-    coercionOrigin :: Maybe CoercionOrigin
+data CoercionHistory = CoercionHistory
+  { historyBaseValue :: LC.Value,
+    historySteps :: [HistoryStep]
   }
 
-data CoercionOrigin
-  = FromIntToPointer LC.Value LT.LowType
-  | FromPointerToInt LC.Value LT.LowType
-
-data TerminalInfo
-  = TerminalOther
-  | TerminalUnreachable
-  | TerminalPhi Env [LC.Value]
-
-data PhiInfo = PhiInfo
-  { phiReplacement :: Maybe LC.Value,
-    phiOrigin :: Maybe CoercionOrigin
+data HistoryStep = HistoryStep
+  { stepOp :: CoercionStep,
+    stepValue :: LC.Value
   }
 
-emptyBinding :: Binding
-emptyBinding =
-  Binding
-    { replacement = Nothing,
-      coercionOrigin = Nothing
-    }
+data CoercionStep
+  = StepBitcast LT.LowType LT.LowType
+  | StepIntToPointer LT.LowType
+  | StepPointerToInt LT.LowType
 
 coercionCancel :: LC.Comp -> LC.Comp
-coercionCancel lowComp =
-  fst $ rewriteComp IntMap.empty lowComp
+coercionCancel =
+  rewriteComp IntMap.empty
 
-rewriteComp :: Env -> LC.Comp -> (LC.Comp, TerminalInfo)
+rewriteComp :: Env -> LC.Comp -> LC.Comp
 rewriteComp env lowComp =
   case lowComp of
     LC.Return value ->
-      (LC.Return (rewriteValue env value), TerminalOther)
+      LC.Return (rewriteValue env value)
     LC.ReturnVoid ->
-      (LC.ReturnVoid, TerminalOther)
+      LC.ReturnVoid
     LC.Let x op cont -> do
-      let (mOp, env') = rewriteLet env x op
-      let (cont', terminalInfo) = rewriteComp env' cont
-      case mOp of
-        Just op' ->
-          (LC.Let x op' cont', terminalInfo)
-        Nothing ->
-          (cont', terminalInfo)
+      let op' = rewriteOp env op
+      let cont' = rewriteComp (insertCoercionStep env x op') cont
+      LC.Let x op' cont'
     LC.Cont op cont -> do
       let op' = rewriteOp env op
-      let (cont', terminalInfo) = rewriteComp env cont
-      (LC.Cont op' cont', terminalInfo)
+      let cont' = rewriteComp env cont
+      LC.Cont op' cont'
     LC.Switch value lowType defaultBranch branchList phiTargets cont -> do
       let value' = rewriteValue env value
-      let (defaultBranch', defaultTerminalInfo) = rewriteComp env defaultBranch
+      let defaultBranch' = rewriteComp env defaultBranch
       let (caseTags, caseBranches) = unzip branchList
-      let rewrittenBranchList = map (rewriteComp env) caseBranches
-      let caseBranches' = map fst rewrittenBranchList
-      let terminalInfoList = defaultTerminalInfo : map snd rewrittenBranchList
-      let mergedPhiEnv = mergePhiEnv phiTargets terminalInfoList
-      let env' = IntMap.union mergedPhiEnv env
-      let (cont', terminalInfo) = rewriteComp env' cont
-      (LC.Switch value' lowType defaultBranch' (zip caseTags caseBranches') phiTargets cont', terminalInfo)
+      let caseBranches' = map (rewriteComp env) caseBranches
+      let cont' = rewriteComp env cont
+      LC.Switch value' lowType defaultBranch' (zip caseTags caseBranches') phiTargets cont'
     LC.TailCall codType value valueList ->
-      (LC.TailCall codType (rewriteValue env value) (map (rewriteTypedValue env) valueList), TerminalOther)
+      LC.TailCall codType (rewriteValue env value) (map (rewriteTypedValue env) valueList)
     LC.Unreachable ->
-      (LC.Unreachable, TerminalUnreachable)
+      LC.Unreachable
     LC.Phi valueList -> do
       let valueList' = map (rewriteValue env) valueList
-      (LC.Phi valueList', TerminalPhi env valueList')
-
-rewriteLet :: Env -> Ident -> LC.Op -> (Maybe LC.Op, Env)
-rewriteLet env x op =
-  case rewriteOp env op of
-    LC.Bitcast value from to
-      | from == to ->
-          (Nothing, insertAlias env x value)
-    LC.IntToPointer value lowType ->
-      case cancelIntToPointer env value lowType of
-        Just value' ->
-          (Nothing, insertAlias env x value')
-        Nothing ->
-          case value of
-            LC.Int i ->
-              (Nothing, insertAlias env x (LC.Address i))
-            _ ->
-              (Just (LC.IntToPointer value lowType), insertOrigin env x (FromIntToPointer value lowType))
-    LC.PointerToInt value lowType ->
-      case cancelPointerToInt env value lowType of
-        Just value' ->
-          (Nothing, insertAlias env x value')
-        Nothing ->
-          case value of
-            LC.Address a ->
-              (Nothing, insertAlias env x (LC.Int a))
-            _ ->
-              (Just (LC.PointerToInt value lowType), insertOrigin env x (FromPointerToInt value lowType))
-    op' ->
-      (Just op', insertOpaque env x)
-
-cancelIntToPointer :: Env -> LC.Value -> LT.LowType -> Maybe LC.Value
-cancelIntToPointer env value lowType =
-  case getOrigin env value of
-    Just (FromPointerToInt value' lowType')
-      | lowType == lowType' ->
-          Just $ rewriteValue env value'
-    _ ->
-      Nothing
-
-cancelPointerToInt :: Env -> LC.Value -> LT.LowType -> Maybe LC.Value
-cancelPointerToInt env value lowType =
-  case getOrigin env value of
-    Just (FromIntToPointer value' lowType')
-      | lowType == lowType' ->
-          Just $ rewriteValue env value'
-    _ ->
-      Nothing
-
-rewriteTypedValue :: Env -> (LT.LowType, LC.Value) -> (LT.LowType, LC.Value)
-rewriteTypedValue env (lowType, value) =
-  (lowType, rewriteValue env value)
-
-rewriteIndexedValue :: Env -> (LC.Value, LT.LowType) -> (LC.Value, LT.LowType)
-rewriteIndexedValue env (value, lowType) =
-  (rewriteValue env value, lowType)
+      LC.Phi valueList'
 
 rewriteOp :: Env -> LC.Op -> LC.Op
 rewriteOp env op =
@@ -174,140 +99,135 @@ rewriteValue :: Env -> LC.Value -> LC.Value
 rewriteValue env value =
   case value of
     LC.VarLocal x ->
-      case IntMap.lookup (toInt x) env >>= replacement of
-        Just value' ->
-          rewriteValue env value'
+      case IntMap.lookup (toInt x) env of
+        Just history ->
+          historyRepresentative $ normalizeHistory history
         Nothing ->
           LC.VarLocal x
     _ ->
       value
 
-insertAlias :: Env -> Ident -> LC.Value -> Env
-insertAlias env x value =
-  IntMap.insert
-    (toInt x)
-    ( Binding
-        { replacement = Just value',
-          coercionOrigin = getOrigin env value'
-        }
-    )
-    env
-  where
-    value' = rewriteValue env value
+rewriteTypedValue :: Env -> (LT.LowType, LC.Value) -> (LT.LowType, LC.Value)
+rewriteTypedValue env (lowType, value) =
+  (lowType, rewriteValue env value)
 
-insertOrigin :: Env -> Ident -> CoercionOrigin -> Env
-insertOrigin env x origin =
-  IntMap.insert
-    (toInt x)
-    ( Binding
-        { replacement = Nothing,
-          coercionOrigin = Just origin
-        }
-    )
-    env
+rewriteIndexedValue :: Env -> (LC.Value, LT.LowType) -> (LC.Value, LT.LowType)
+rewriteIndexedValue env (value, lowType) =
+  (rewriteValue env value, lowType)
 
-insertOpaque :: Env -> Ident -> Env
-insertOpaque env x =
-  IntMap.insert (toInt x) emptyBinding env
-
-getOrigin :: Env -> LC.Value -> Maybe CoercionOrigin
-getOrigin env value =
-  case rewriteValue env value of
-    LC.VarLocal x ->
-      IntMap.lookup (toInt x) env >>= coercionOrigin
+insertCoercionStep :: Env -> Ident -> LC.Op -> Env
+insertCoercionStep env x op = do
+  case op of
+    LC.Bitcast value from to -> do
+      let base = getHistory env value
+      insertHistory env x $ appendCoercionStep base (HistoryStep (StepBitcast from to) (LC.VarLocal x))
+    LC.IntToPointer value lowType -> do
+      let base = getHistory env value
+      insertHistory env x $ appendCoercionStep base (HistoryStep (StepIntToPointer lowType) (LC.VarLocal x))
+    LC.PointerToInt value lowType -> do
+      let base = getHistory env value
+      insertHistory env x $ appendCoercionStep base (HistoryStep (StepPointerToInt lowType) (LC.VarLocal x))
     _ ->
-      Nothing
+      env
 
-mergePhiEnv :: [Ident] -> [TerminalInfo] -> Env
-mergePhiEnv phiTargets terminalInfoList =
-  case reachablePhiInfoList of
+appendCoercionStep :: CoercionHistory -> HistoryStep -> CoercionHistory
+appendCoercionStep base step = do
+  base {historySteps = historySteps base ++ [step]}
+
+normalizeHistory :: CoercionHistory -> CoercionHistory
+normalizeHistory CoercionHistory {historyBaseValue, historySteps} = do
+  let normalizedSteps = normalizeCoercionSteps historySteps
+  case normalizedSteps of
+    HistoryStep {stepOp = StepBitcast from to} : rest
+      | from == to ->
+          normalizeHistory $ CoercionHistory historyBaseValue rest
+    HistoryStep {stepOp = StepIntToPointer _} : rest
+      | LC.Int i <- historyBaseValue ->
+          normalizeHistory $ CoercionHistory (LC.Address i) rest
+    HistoryStep {stepOp = StepPointerToInt _} : rest
+      | LC.Address a <- historyBaseValue ->
+          normalizeHistory $ CoercionHistory (LC.Int a) rest
+    _ ->
+      CoercionHistory historyBaseValue normalizedSteps
+
+normalizeCoercionSteps :: [HistoryStep] -> [HistoryStep]
+normalizeCoercionSteps steps =
+  case steps of
     [] ->
-      IntMap.empty
-    _ ->
-      if all ((== length phiTargets) . length) reachablePhiInfoList
-        then
-          IntMap.fromList $
-            catMaybes $
-              zipWith toPhiBinding phiTargets (map mergePhiInfo (transpose reachablePhiInfoList))
-        else
-          IntMap.empty
-  where
-    reachablePhiInfoList =
-      flip mapMaybe terminalInfoList $ \terminalInfo ->
-        case terminalInfo of
-          TerminalPhi env valueList ->
-            Just $ map (toPhiInfo env) valueList
-          TerminalUnreachable ->
-            Nothing
-          TerminalOther ->
-            Nothing
+      []
+    s : rest ->
+      case normalizeStep s of
+        Nothing ->
+          normalizeCoercionSteps rest
+        Just step ->
+          case normalizeCoercionSteps rest of
+            [] ->
+              [step]
+            next : rest' ->
+              case mergeCoercionSteps (stepOp step) (stepOp next) of
+                MergeTo merged ->
+                  normalizeCoercionSteps (HistoryStep merged (stepValue next) : rest')
+                CancelPair ->
+                  rest'
+                NoMerge ->
+                  step : next : rest'
 
-toPhiInfo :: Env -> LC.Value -> PhiInfo
-toPhiInfo env value =
-  PhiInfo
-    { phiReplacement = Just value',
-      phiOrigin = getOrigin env value'
+normalizeStep :: HistoryStep -> Maybe HistoryStep
+normalizeStep step =
+  case stepOp step of
+    StepBitcast from to
+      | from == to ->
+          Nothing
+    _ ->
+      Just step
+
+data StepMerge
+  = MergeTo CoercionStep
+  | CancelPair
+  | NoMerge
+
+mergeCoercionSteps :: CoercionStep -> CoercionStep -> StepMerge
+mergeCoercionSteps prev next =
+  case (prev, next) of
+    (StepBitcast from mid1, StepBitcast mid2 to)
+      | mid1 == mid2 ->
+          MergeTo $ StepBitcast from to
+    (StepIntToPointer lowType1, StepPointerToInt lowType2)
+      | lowType1 == lowType2 ->
+          CancelPair
+    (StepPointerToInt lowType1, StepIntToPointer lowType2)
+      | lowType1 == lowType2 ->
+          CancelPair
+    _ ->
+      NoMerge
+
+insertHistory :: Env -> Ident -> CoercionHistory -> Env
+insertHistory env x history =
+  IntMap.insert (toInt x) history env
+
+getHistory :: Env -> LC.Value -> CoercionHistory
+getHistory env value =
+  case value of
+    LC.VarLocal x ->
+      case IntMap.lookup (toInt x) env of
+        Just history ->
+          history
+        Nothing ->
+          bareHistory value
+    _ ->
+      bareHistory value
+
+bareHistory :: LC.Value -> CoercionHistory
+bareHistory value =
+  CoercionHistory
+    { historyBaseValue = value,
+      historySteps = []
     }
-  where
-    value' = rewriteValue env value
 
-mergePhiInfo :: [PhiInfo] -> PhiInfo
-mergePhiInfo phiInfoList =
-  PhiInfo
-    { phiReplacement = mergeBy sameValue (map phiReplacement phiInfoList),
-      phiOrigin = mergeBy sameOrigin (map phiOrigin phiInfoList)
-    }
-
-toPhiBinding :: Ident -> PhiInfo -> Maybe (Int, Binding)
-toPhiBinding x phiInfo
-  | isNothing (phiReplacement phiInfo) && isNothing (phiOrigin phiInfo) =
-      Nothing
-  | otherwise =
-      Just
-        ( toInt x,
-          Binding
-            { replacement = phiReplacement phiInfo,
-              coercionOrigin = phiOrigin phiInfo
-            }
-        )
-
-mergeBy :: (a -> a -> Bool) -> [Maybe a] -> Maybe a
-mergeBy eq xs =
-  case sequence xs of
-    Just (y : ys)
-      | all (eq y) ys ->
-          Just y
-    _ ->
-      Nothing
-
-sameOrigin :: CoercionOrigin -> CoercionOrigin -> Bool
-sameOrigin origin1 origin2 =
-  case (origin1, origin2) of
-    (FromIntToPointer value1 lowType1, FromIntToPointer value2 lowType2) ->
-      sameValue value1 value2 && lowType1 == lowType2
-    (FromPointerToInt value1 lowType1, FromPointerToInt value2 lowType2) ->
-      sameValue value1 value2 && lowType1 == lowType2
-    _ ->
-      False
-
-sameValue :: LC.Value -> LC.Value -> Bool
-sameValue value1 value2 =
-  case (value1, value2) of
-    (LC.VarLocal x, LC.VarLocal y) ->
-      x == y
-    (LC.VarGlobal x, LC.VarGlobal y) ->
-      x == y
-    (LC.VarExternal x, LC.VarExternal y) ->
-      x == y
-    (LC.VarTextName x, LC.VarTextName y) ->
-      x == y
-    (LC.Int x, LC.Int y) ->
-      x == y
-    (LC.Float size1 x, LC.Float size2 y) ->
-      size1 == size2 && x == y
-    (LC.Address x, LC.Address y) ->
-      x == y
-    (LC.Null, LC.Null) ->
-      True
-    _ ->
-      False
+historyRepresentative :: CoercionHistory -> LC.Value
+historyRepresentative history =
+  case unsnoc (historySteps history) of
+    Just (_, HistoryStep {stepValue}) ->
+      stepValue
+    Nothing ->
+      historyBaseValue history
