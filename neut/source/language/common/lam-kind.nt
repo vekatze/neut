@@ -2,7 +2,7 @@ import {
   sero.common.get {get-int64},
   sero.common.put {put-int64},
   sero.instance.either {either-sero},
-  sero.instance.text {string-sero},
+  sero.instance.string {string-sero},
   sero.sero {Sero, sero},
   this.language.common.binder {binder-f, binder-sero},
   this.logger.sero.log {_unit-sero},

@@ -3,11 +3,11 @@ import {
   this.logger.hint {Hint, hint},
   zonk.parse {get-point},
   zonk.point {Point},
-  zonk.zonk-kit {get-constring},
+  zonk.zonk-kit {get-context},
 }
 
 inline get-current-hint(k: &parser-kit) -> hint {
   let Point(line, column) = get-point(k);
-  let file-path = get-constring(k);
+  let file-path = get-context(k);
   Hint {line, column, file-path, should-save-location := True}
 }

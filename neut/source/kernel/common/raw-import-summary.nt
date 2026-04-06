@@ -1,7 +1,7 @@
 import {
   sero.instance.list {list-sero},
   sero.instance.pair {pair-sero},
-  sero.instance.text {string-sero},
+  sero.instance.string {string-sero},
   sero.sero {Sero, sero},
   this.language.raw-term.raw-stmt {raw-import},
   this.language.raw-term.raw-term {loc, loc-sero},

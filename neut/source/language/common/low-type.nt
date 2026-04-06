@@ -1,7 +1,9 @@
 import {
   sero.common.get {get-int64},
   sero.common.put {put-int64},
+  sero.get-kit {get-kit},
   sero.instance.list {list-sero},
+  sero.put-kit {put-kit},
   sero.sero {Sero, sero},
   this.language.common.data-size {data-size},
   this.language.common.prim-num-size {Int-Size-8, int-size-from-data-size},
@@ -33,7 +35,7 @@ define text-type(base-size: data-size, len: int) -> low-type {
 constant low-type-sero: sero(low-type) {
   Sero {
     put := {
-      define loop(k, v) -> unit {
+      define loop(k: &put-kit, v: &low-type) -> unit {
         case v {
         | Prim-Num(t) =>
           let Sero {put} = prim-type-sero;
@@ -62,7 +64,7 @@ constant low-type-sero: sero(low-type) {
       }
     },
     get := {
-      define loop(k) -> ?+low-type {
+      define loop(k: &get-kit) -> ?+low-type {
         try tag = get-int64(k);
         match tag {
         | 0 =>

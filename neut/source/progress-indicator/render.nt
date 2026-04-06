@@ -19,6 +19,7 @@ import {
   core.foreign {sleep},
   core.intmap {intmap},
   core.system {system},
+  core.thread {attach, detach},
   this.color.color-kit {color-kit, make-color-kit},
   this.color.print {print-stdout},
   this.progress-indicator.rule {
@@ -134,7 +135,10 @@ define start-rendering(k: &progress-indicator-kit) -> renderer {
       core.intmap.insert(actives, id, Unit)
     }
   });
-  let th = detach {_render(k, id, 0)};
+  let th =
+    detach(() => {
+      _render(k, id, 0)
+    });
   _Renderer {id, renderer-thread := th}
 }
 
@@ -148,7 +152,7 @@ define stop-rendering(k: &progress-indicator-kit, r: renderer) -> unit {
       core.intmap.delete(actives, id)
     }
   });
-  attach {renderer-thread};
+  attach(renderer-thread);
 }
 
 define zen() -> unit {
