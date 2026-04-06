@@ -109,7 +109,7 @@ parseForeignItem h = do
   m <- getCurrentHint
   (funcName, c1) <- symbol
   (domList, c2) <- seriesParen $ rawType h
-  c3 <- delimiter ":"
+  c3 <- delimiter "->"
   (cod, c) <-
     choice
       [ do
