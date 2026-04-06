@@ -109,7 +109,7 @@ parseForeignItem h = do
   m <- getCurrentHint
   (funcName, c1) <- symbol
   (domList, c2) <- seriesParen $ rawType h
-  c3 <- delimiter ":"
+  c3 <- delimiter "->"
   (cod, c) <-
     choice
       [ do
@@ -138,7 +138,7 @@ parseDefine h = do
     then do
       let m = RT.loc $ RT.geist def
       if isDestPassing
-        then lift $ raiseError m $ "`main` and `zen` cannot use `->>`"
+        then lift $ raiseError m "`main` and `zen` cannot use `->>`"
         else return (RawStmtDefineTerm c1 (SK.Main ()) def, c)
     else
       if isDestPassing

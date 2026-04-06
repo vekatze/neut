@@ -274,7 +274,7 @@ decForeignItem (RawForeignItemF _ funcName _ args _ _ cod) = do
             RT.typeToDoc c
           FCT.Void ->
             D.text "void"
-  D.join [D.text (EN.reify funcName), args', D.text ": ", cod']
+  D.join [D.text (EN.reify funcName), args', D.text " -> ", cod']
 
 decDataArgs :: Maybe (RT.Args RT.RawType) -> D.Doc
 decDataArgs argsOrNone =
