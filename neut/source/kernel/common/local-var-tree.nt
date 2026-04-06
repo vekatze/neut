@@ -1,6 +1,8 @@
 import {
   sero.common.get {get-int64},
   sero.common.put {put-int64},
+  sero.get-kit {get-kit},
+  sero.put-kit {put-kit},
   sero.sero {Sero, sero},
   this.language.common.ident {ident, ident-sero},
   this.language.raw-term.raw-term {Loc, cmp-loc, loc},
@@ -58,7 +60,7 @@ constant local-var-tree-sero: sero(local-var-tree) {
   let Sero {put := !put-ident, get := !get-ident} = ident-sero;
   Sero {
     put := {
-      define loop(k, v) -> unit {
+      define loop(k: &put-kit, v: &local-var-tree) -> unit {
         case v {
         | Leaf =>
           put-int64(k, 0);
@@ -75,7 +77,7 @@ constant local-var-tree-sero: sero(local-var-tree) {
       }
     },
     get := {
-      define loop(k) -> ?+local-var-tree {
+      define loop(k: &get-kit) -> ?+local-var-tree {
         try tag = get-int64(k);
         match tag {
         | 0 =>

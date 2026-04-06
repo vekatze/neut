@@ -17,11 +17,11 @@ import {
   zonk.make-zonk-kit {make-zonk-kit},
   zonk.parse {attempt, get-point, parsed, report-unexpected-input, zonk},
   zonk.point {Point},
-  zonk.zonk-kit {get-constring},
+  zonk.zonk-kit {get-context},
 }
 
 define _make-hint(k: &parser-kit, line: int, column: int) -> hint {
-  let file-path = get-constring(k);
+  let file-path = get-context(k);
   Hint {line, column, file-path, should-save-location := True}
 }
 

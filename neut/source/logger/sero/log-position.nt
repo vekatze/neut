@@ -3,7 +3,7 @@ import {
   sero.encode {encode},
   sero.get-kit {get-kit},
   sero.instance.int64 {int64-sero},
-  sero.instance.text {string-sero},
+  sero.instance.string {string-sero},
   sero.put-kit {put-kit},
   sero.sero {Sero, sero},
   this.logger.hint {Hint},
