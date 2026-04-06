@@ -138,7 +138,7 @@ parseDefine h = do
     then do
       let m = RT.loc $ RT.geist def
       if isDestPassing
-        then lift $ raiseError m $ "`main` and `zen` cannot use `->>`"
+        then lift $ raiseError m "`main` and `zen` cannot use `->>`"
         else return (RawStmtDefineTerm c1 (SK.Main ()) def, c)
     else
       if isDestPassing
