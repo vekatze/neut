@@ -5,7 +5,7 @@ import {
 }
 
 foreign {
-  arc4random_uniform(int): int,
+  arc4random_uniform(int) -> int,
 }
 
 data int-list {
