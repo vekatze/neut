@@ -675,6 +675,11 @@ piIntroArgToDoc (m, k, x, c1, c2, t) = do
   let x' = prefixVarKind k $ nameToDoc $ N.Var x
   paramToDoc (m, x', c1, c2, t)
 
+defParamToDoc :: RawBinder RawType -> D.Doc
+defParamToDoc (m, k, x, c1, c2, t) = do
+  let x' = prefixVarKind k $ nameToDoc $ N.Var x
+  paramToDoc' (m, x', c1, c2, typeToDoc t)
+
 piIntroArgWithDefaultToDoc :: (RawBinder RawType, RawTerm) -> D.Doc
 piIntroArgWithDefaultToDoc ((m, k, x, c1, c2, t), defaultValue) = do
   let x' = prefixVarKind k $ nameToDoc $ N.Var x
@@ -723,7 +728,7 @@ decGeist
     ) = do
     let hasExp = not isConstLike || not (SE.isEmpty expArgs)
     let hasDefault = not (SE.isEmpty defaultArgs)
-    let expParamsBase = decodeExpParams isConstLike expArgs
+    let expParamsBase = decodeDefParams isConstLike expArgs
     let defaultParamsBase = decodeDefaultParams defaultArgs
     let expParamsWithImp =
           if hasExp
@@ -733,45 +738,28 @@ decGeist
           if not hasExp && hasDefault
             then attachComment c1 defaultParamsBase
             else defaultParamsBase
-    case cod of
-      -- _ :< RT.TypeHole {} -> do
-      --   let defaultParamsWithTrailing =
-      --         if hasDefault
-      --           then attachComment (c3 ++ c2) defaultParamsWithImp
-      --           else defaultParamsWithImp
-      --   let expParamsWithTrailing =
-      --         if hasDefault
-      --           then expParamsWithImp
-      --           else attachComment (c3 ++ c2) expParamsWithImp
-      --   PI.arrange
-      --     [ PI.inject $ attachComment c0 $ nameDecoder name,
-      --       PI.inject $ decodeImpParams impArgs,
-      --       PI.inject expParamsWithTrailing,
-      --       PI.inject defaultParamsWithTrailing
-      --     ]
-      _ -> do
-        let defaultParamsWithExpComment =
-              if hasDefault
-                then attachComment c3 defaultParamsWithImp
-                else defaultParamsWithImp
-        let cColon =
-              (if hasDefault then [] else c3) ++ c2
-        let cColon' =
-              if not hasExp && not hasDefault
-                then c1 ++ cColon
-                else cColon
-        let codDelim =
-              if isConstLike
-                then PI.horizontal $ attachComment cColon' $ D.text ":"
-                else PI.delimiterArrow $ attachComment cColon' $ D.text (if isDestPassing then "->>" else "->")
-        PI.arrange
-          [ PI.inject $ attachComment c0 $ nameDecoder name,
-            PI.inject $ decodeImpParams impArgs,
-            PI.inject expParamsWithImp,
-            PI.inject defaultParamsWithExpComment,
-            codDelim,
-            PI.inject $ attachComment c4 $ typeToDoc cod
-          ]
+    let defaultParamsWithExpComment =
+          if hasDefault
+            then attachComment c3 defaultParamsWithImp
+            else defaultParamsWithImp
+    let cArrow =
+          (if hasDefault then [] else c3) ++ c2
+    let cArrow' =
+          if not hasExp && not hasDefault
+            then c1 ++ cArrow
+            else cArrow
+    let codDelim =
+          if isConstLike
+            then PI.horizontal $ attachComment cArrow' $ D.text ":"
+            else PI.delimiterArrow $ attachComment cArrow' $ D.text (if isDestPassing then "->>" else "->")
+    PI.arrange
+      [ PI.inject $ attachComment c0 $ nameDecoder name,
+        PI.inject $ decodeImpParams impArgs,
+        PI.inject expParamsWithImp,
+        PI.inject defaultParamsWithExpComment,
+        codDelim,
+        PI.inject $ attachComment c4 $ typeToDoc cod
+      ]
 
 decGeistSimple :: (a -> D.Doc) -> RT.RawGeist a -> D.Doc
 decGeistSimple
@@ -872,6 +860,12 @@ decodeExpParams isConstLike expParams =
   if isConstLike && SE.isEmpty expParams
     then D.Nil
     else SE.decode $ fmap piIntroArgToDoc expParams
+
+decodeDefParams :: Bool -> SE.Series (RawBinder RawType) -> D.Doc
+decodeDefParams isConstLike expParams =
+  if isConstLike && SE.isEmpty expParams
+    then D.Nil
+    else SE.decode $ fmap defParamToDoc expParams
 
 letArgToDoc :: (a, RP.RawPattern, C, C, RawType) -> D.Doc
 letArgToDoc (m, x, c1, c2, t) = do
