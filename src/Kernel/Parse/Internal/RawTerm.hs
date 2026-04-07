@@ -87,7 +87,7 @@ rawExpr h = do
             "pin" ->
               rawTermPin h m c
             _ -> do
-              e1 <- rawTerm' Full h m headSymbol c
+              e1 <- rawTerm' h m headSymbol c
               choice
                 [ do
                     c1 <- delimiter ";"
@@ -100,23 +100,21 @@ rawExpr h = do
                   return e1
                 ]
 
-rawTerm :: Handle -> Parser (RT.RawTerm, C)
-rawTerm =
-  rawTermWithMode Full
-
-rawTermPartial :: Handle -> Parser (RT.RawTerm, C)
-rawTermPartial =
-  rawTermWithMode Partial
-
 data TermMode
   = Full
   | Partial
 
-rawTermWithMode :: TermMode -> Handle -> Parser (RT.RawTerm, C)
-rawTermWithMode mode h = do
+rawTerm :: Handle -> Parser (RT.RawTerm, C)
+rawTerm h = do
   m <- getCurrentHint
   (headSymbol, c) <- symbol'
-  rawTerm' mode h m headSymbol c
+  rawTerm' h m headSymbol c
+
+rawTermPartial :: Handle -> Parser (RT.RawTerm, C)
+rawTermPartial h = do
+  m <- getCurrentHint
+  (headSymbol, c) <- symbol'
+  rawTermBase Partial h m headSymbol c
 
 rawType :: Handle -> Parser (RT.RawType, C)
 rawType h = do
@@ -154,8 +152,8 @@ rawType' h m headSymbol c =
           name <- interpretTypeName m headSymbol
           rawTypeTyAppCont h (m :< RT.TyVar name, c)
 
-rawTerm' :: TermMode -> Handle -> Hint -> T.Text -> C -> Parser (RT.RawTerm, C)
-rawTerm' mode h m headSymbol c = do
+rawTerm' :: Handle -> Hint -> T.Text -> C -> Parser (RT.RawTerm, C)
+rawTerm' h m headSymbol c = do
   case headSymbol of
     "define" -> do
       rawTermDefine h O.Opaque m c
@@ -186,7 +184,7 @@ rawTerm' mode h m headSymbol c = do
     "assert" -> do
       rawTermAssert h m c
     "exact" -> do
-      rawTermPiElimExact mode h m c
+      rawTermPiElimExact h m c
     "if" -> do
       rawTermIf h m c
     "when" -> do
@@ -196,37 +194,41 @@ rawTerm' mode h m headSymbol c = do
     "admit" -> do
       rawTermAdmit m c
     _ -> do
-      if T.null headSymbol
-        then do
-          choice
-            [ rawTermBrace h,
-              rawTermLambda h,
-              rawTermTextIntro,
-              rawTermRuneIntro,
-              rawTermEmbody mode h
-            ]
-        else do
-          name <- interpretVarName m headSymbol
-          choice
-            [ do
-                (es, c') <- seriesBracket $ rawTerm h
-                return (m :< RT.PiElimRule name c es, c'),
-              do
-                (mImpArgs, cImpArgs) <- parseImplicitArgsMaybe h
-                let parseByKey = do
-                      (kvs, c') <- keyValueArgs $ rawTermKeyValuePair h
-                      return (m :< RT.PiElimByKey name c mImpArgs cImpArgs kvs, c')
-                let parseMeta = do
-                      (es, c') <- metaPiElim $ rawTerm h
-                      return (m :< RT.PiElimMeta name c mImpArgs cImpArgs es, c')
-                let parseCont =
-                      rawTermPiElimContWithImp h (m :< RT.Var name, c) mImpArgs cImpArgs
-                case mode of
-                  Full ->
-                    choice [parseByKey, parseMeta, parseCont]
-                  Partial ->
-                    choice [parseMeta, parseCont]
-            ]
+      rawTermBase Full h m headSymbol c
+
+rawTermBase :: TermMode -> Handle -> Hint -> T.Text -> C -> Parser (RT.RawTerm, C)
+rawTermBase mode h m headSymbol c = do
+  if T.null headSymbol
+    then do
+      choice
+        [ rawTermBrace h,
+          rawTermLambda h,
+          rawTermTextIntro,
+          rawTermRuneIntro,
+          rawTermEmbody h
+        ]
+    else do
+      name <- interpretVarName m headSymbol
+      choice
+        [ do
+            (es, c') <- seriesBracket $ rawTerm h
+            return (m :< RT.PiElimRule name c es, c'),
+          do
+            (mImpArgs, cImpArgs) <- parseImplicitArgsMaybe h
+            let parseByKey = do
+                  (kvs, c') <- keyValueArgs $ rawTermKeyValuePair h
+                  return (m :< RT.PiElimByKey name c mImpArgs cImpArgs kvs, c')
+            let parseMeta = do
+                  (es, c') <- metaPiElim $ rawTerm h
+                  return (m :< RT.PiElimMeta name c mImpArgs cImpArgs es, c')
+            let parseCont =
+                  rawTermPiElimContWithImp h (m :< RT.Var name, c) mImpArgs cImpArgs
+            case mode of
+              Full ->
+                choice [parseByKey, parseMeta, parseCont]
+              Partial ->
+                choice [parseMeta, parseCont]
+        ]
 
 rawTermPiElimCont :: Handle -> (RT.RawTerm, C) -> Parser (RT.RawTerm, C)
 rawTermPiElimCont h (e@(m :< _), c) = do
@@ -467,11 +469,11 @@ rawTermNoeticVar h = do
   ((m, k, x), c) <- varWithMode h
   return ((m, k, x), c)
 
-rawTermEmbody :: TermMode -> Handle -> Parser (RT.RawTerm, C)
-rawTermEmbody mode h = do
+rawTermEmbody :: Handle -> Parser (RT.RawTerm, C)
+rawTermEmbody h = do
   m <- getCurrentHint
   c1 <- delimiter "*"
-  (e, c) <- rawTermWithMode mode h
+  (e, c) <- rawTermPartial h
   return (m :< RT.Embody e, c1 ++ c)
 
 rawTypeTau :: Hint -> C -> Parser (RT.RawType, C)
@@ -1175,9 +1177,9 @@ typeWithoutIdent h = do
   (t, c) <- rawType h
   return ((m, VK.Normal, x, [], [], t), c)
 
-rawTermPiElimExact :: TermMode -> Handle -> Hint -> C -> Parser (RT.RawTerm, C)
-rawTermPiElimExact mode h m c1 = do
-  (e, c) <- rawTermWithMode mode h
+rawTermPiElimExact :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
+rawTermPiElimExact h m c1 = do
+  (e, c) <- rawTerm h
   return (m :< RT.PiElimExact c1 e, c)
 
 rawTermIntrospect :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)

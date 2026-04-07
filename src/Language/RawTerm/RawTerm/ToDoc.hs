@@ -94,14 +94,14 @@ toDoc term =
       case mImpArgs of
         Nothing ->
           PI.arrange
-            [ PI.horizontal $ nameToDoc name,
-              PI.inject $ attachComment c $ decPiElimKey kvs
+            [ PI.inject $ attachComment (map toLineComment c) $ nameToDoc name,
+              PI.inject $ decPiElimKey kvs
             ]
         Just impArgs ->
           PI.arrange
-            [ PI.inject $ nameToDoc name,
-              PI.horizontal $ attachComment c $ SE.decodeHorizontallyIfPossible $ fmap typeToDoc impArgs,
-              PI.inject $ attachComment c2 $ decPiElimKey kvs
+            [ PI.inject $ attachComment (map toLineComment $ c ++ c2) $ nameToDoc name,
+              PI.inject $ SE.decodeHorizontallyIfPossible $ fmap typeToDoc impArgs,
+              PI.inject $ decPiElimKey kvs
             ]
     _ :< PiElimRule name c es -> do
       PI.arrange
@@ -975,7 +975,7 @@ decodePattern pat = do
           D.join [name', attachComment c patList']
         RP.Of kvs -> do
           let kvs' = SE.decode $ fmap decodePatternKeyValue kvs
-          D.join [name', D.text " ", attachComment c kvs']
+          D.join [attachComment (map toLineComment c) name', kvs']
     RP.RuneIntro r ->
       D.text $ "`" <> T.replace "`" "\\`" (RU.asText r) <> "`"
 
