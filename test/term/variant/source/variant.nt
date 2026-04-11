@@ -279,7 +279,7 @@ data monoid(a) {
 }
 
 define list-monoid<a>() -> monoid(list(a)) {
-  Monoid {
+  Monoid{
     m-op := {
       (xs, ys) => {
         core.list.append(xs, ys)
@@ -290,12 +290,12 @@ define list-monoid<a>() -> monoid(list(a)) {
 }
 
 define use-struct<a>(m: monoid(a)) -> a {
-  let Monoid {m-empty := !empty, m-op} = m;
+  let Monoid{m-empty := !empty, m-op} = m;
   m-op(empty, empty)
 }
 
 define use-struct-2<a>(m: monoid(a)) -> a {
-  let Monoid {m-empty, m-op} = m;
+  let Monoid{m-empty, m-op} = m;
   let !empty = m-empty;
   m-op(empty, empty)
 }
