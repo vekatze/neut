@@ -57,7 +57,7 @@ define make-heap-signature<a>(!compare: (a, a) -> ordering) -> heap-signature(a)
       }
     }
   };
-  Heap {
+  Heap{
     empty := Leaf,
     is-empty := {
       (h: &heap(a)) => {
@@ -110,7 +110,7 @@ define compare-int(x: int, y: int) -> ordering {
 
 define main() -> unit {
   let int-heap-signature = make-heap-signature(compare-int);
-  let Heap {empty, insert := !insert, delete-min, find-min} = int-heap-signature;
+  let Heap{empty, insert := !insert, delete-min, find-min} = int-heap-signature;
   let h = empty;
   let h = insert(10, h);
   let h = insert(2, h);

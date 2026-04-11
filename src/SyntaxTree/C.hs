@@ -1,4 +1,10 @@
-module SyntaxTree.C (C, Comment (..), CommentType (..)) where
+module SyntaxTree.C
+  ( C,
+    Comment (..),
+    CommentType (..),
+    toLineComment,
+  )
+where
 
 import Data.Text qualified as T
 
@@ -15,3 +21,7 @@ data Comment = Comment
 
 -- list of comments
 type C = [Comment]
+
+toLineComment :: Comment -> Comment
+toLineComment c =
+  c {commentType = LineComment}
