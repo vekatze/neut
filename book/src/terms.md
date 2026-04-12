@@ -33,8 +33,8 @@
 
 ### Necessity and Noema
 
-- [meta](#meta)
-- [&a](#a)
+- [+a](#a)
+- [&a](#a-1)
 - [box](#box)
 - [letbox](#letbox)
 - [letbox-T](#letbox-t)
@@ -616,7 +616,7 @@ function (x1: a1, ..., xn: an) {
 All the free variables of a `function` must be at the same layer of the function. For example, the following is not a valid term in Neut:
 
 ```neut
-define return-int(x: meta int): meta () -> int {
+define return-int(x: +int): +() -> int {
   // here is layer 0
   box {
     // here is layer -1
@@ -1222,14 +1222,14 @@ An example of the application of the typing rule of `match`:
     }: int
 ```
 
-## `meta`
+## `+a`
 
-Given a type `a: type`, `meta a` is the type of `a` in the "outer" layer.
+Given a type `a: type`, `+a` is the type of `a` in the "outer" layer.
 
 ### Example
 
 ```neut
-define axiom-T<a>(x: meta a): a {
+define axiom-T<a>(x: +a): a {
   letbox-T result = x;
   result
 }
@@ -1238,29 +1238,29 @@ define axiom-T<a>(x: meta a): a {
 ### Syntax
 
 ```neut
-meta a
++a
 ```
 
 ### Semantics
 
-For every type `a`, `meta a` is compiled into the same term as `a`.
+For every type `a`, `+a` is compiled into the same term as `a`.
 
 ### Type
 
 ```neut
 Γ ⊢ t: type
 ----------------
-Γ ⊢ meta t: type
+Γ ⊢ +t: type
 ```
 
 ### Note
 
-`meta` is the T-necessity operator in that we can construct terms of the following types:
+`+` is the T-necessity operator in that we can construct terms of the following types:
 
-- `(meta (a) -> b, meta a) -> meta b` (Axiom K)
-- `(meta a) -> a` (Axiom T)
+- `((+(a) -> b), +a) -> +b` (Axiom K)
+- `(+a) -> a` (Axiom T)
 
-Note that `meta (a) -> b` means `meta {(a) -> b}` and not `(meta a) -> b`.
+Note that `+(a) -> b` and `(+a) -> b` are different types.
 
 ## `&a`
 
@@ -1308,7 +1308,7 @@ For every type `a`, `&a` is compiled into `base.#.imm`.
 - Values of type `&a` can be created using `on`.
 - Values of type `&a` are expected to be used in combination with `case` or `*e`.
 - Since `&a` is compiled into `base.#.imm`, values of type `&a` aren't discarded or copied even when used non-linearly.
-- See the Note of [box](#box) to see the relation between `&a` and `meta a`
+- See the Note of [box](#box) to see the relation between `&a` and `+a`
 
 ## `box`
 
@@ -1317,7 +1317,7 @@ For every type `a`, `&a` is compiled into `base.#.imm`.
 ### Example
 
 ```neut
-define use-noema<a>(x: &a, y: &a): meta b {
+define use-noema<a>(x: &a, y: &a): +b {
   // layer 0
   // - x: &a at layer 0
   // - y: a  at layer 0
@@ -1358,7 +1358,7 @@ e
 ```neut
 Γ1; ...; Γn; Δ ⊢ e1: a
 ------------------------------------- (□-intro)
-Γ1; ...; Γn, &Δ ⊢ box Δ {e1}: meta a
+Γ1; ...; Γn, &Δ ⊢ box Δ {e1}: +a
 ```
 
 where `Γ1; ...; Γn` is a sequence of contexts.
@@ -1378,7 +1378,7 @@ define some-function(x: int): int {
 Since `box e` lifts the layer of `e`, if we use `box` at layer 0, the layer of `e` will become -1:
 
 ```neut
-define use-box(x: int): meta int {
+define use-box(x: int): +int {
   // here is layer 0
   box {
     // here is layer -1
@@ -1390,7 +1390,7 @@ define use-box(x: int): meta int {
 _In layer n, we can only use variables at the layer_. Thus, the following is not a valid term:
 
 ```neut
-define use-box-error(x: int): meta int {
+define use-box-error(x: int): +int {
   // here is layer 0
   box {
     // here is layer -1
@@ -1402,7 +1402,7 @@ define use-box-error(x: int): meta int {
 We can incorporate variables outside `box` by capturing them:
 
 ```neut
-define use-box-with-noema(x: &int): meta int {
+define use-box-with-noema(x: &int): +int {
   // here is layer 0
   // x: &int at layer 0
   box x {
@@ -1421,7 +1421,7 @@ x: int ⊢ x: int // layer -1
 ---------------------------
 x: int ⊢ add-int(x, 1): int // layer -1
 -------------------------------------------- (□-intro with Δ = (x: int))
-· ; x: &int ⊢ box x {add-int(x, 1)}: meta int  // layer 0
+· ; x: &int ⊢ box x {add-int(x, 1)}: +int  // layer 0
 ```
 
 Here, `·` is the empty context.
@@ -1437,7 +1437,7 @@ Firstly, observe that the following derivation is admissible in Neut:
 ```neut
 Γ1; ...; Γn; x: a, Δ ⊢ e: b
 -------------------------------- (slide)
-Γ1; ...; Γn, x: meta a; Δ ⊢ e: b
+Γ1; ...; Γn, x: +a; Δ ⊢ e: b
 ```
 
 Also, by setting `Δ = ·` in the typing rule of `box`, we obtain the following:
@@ -1445,7 +1445,7 @@ Also, by setting `Δ = ·` in the typing rule of `box`, we obtain the following:
 ```neut
 Γ1; ...; Γn; · ⊢ e: a
 -------------------------------- (□-intro')
-Γ1; ...; Γn ⊢ box Δ {e}: meta a
+Γ1; ...; Γn ⊢ box Δ {e}: +a
 ```
 
 Thus, we can perform the following derivation:
@@ -1455,9 +1455,9 @@ Thus, we can perform the following derivation:
 ----------------------------- (slide)
 ...
 ----------------------------- (slide)
-Γ1; ...; Γn, meta Δ; · ⊢ e: a
+Γ1; ...; Γn, +Δ; · ⊢ e: a
 -------------------------------------  (□-intro')
-Γ1; ...; Γn, meta Δ ⊢ box {e}: meta a
+Γ1; ...; Γn, +Δ ⊢ box {e}: +a
 ```
 
 That is to say, the following rule is admissible without using `&`:
@@ -1465,7 +1465,7 @@ That is to say, the following rule is admissible without using `&`:
 ```neut
 Γ1; ...; Γn; Δ ⊢ e: a
 ------------------------------------- (□-intro-slide)
-Γ1; ...; Γn, meta Δ ⊢ box {e}: meta a
+Γ1; ...; Γn, +Δ ⊢ box {e}: +a
 ```
 
 Now, compare the above with the rule of `box`:
@@ -1473,12 +1473,12 @@ Now, compare the above with the rule of `box`:
 ```neut
 Γ1; ...; Γn; Δ ⊢ e: a
 ------------------------------------- (□-intro)
-Γ1; ...; Γn, &Δ ⊢ box Δ {e}: meta a
+Γ1; ...; Γn, &Δ ⊢ box Δ {e}: +a
 ```
 
-As you can see, we can obtain `(□-intro)` from `(□-intro-slide)` by replacing `meta Δ` with `&Δ`. That is to say, `&a` is the "structurally-defined" variant of `meta a`.
+As you can see, we can obtain `(□-intro)` from `(□-intro-slide)` by replacing `+Δ` with `&Δ`. That is to say, `&a` is the "structurally-defined" variant of `+a`.
 
-If we write `meta Δ` instead of `&Δ` in `(□-intro)`, the rule is equivalent to `(□-intro')`. By giving the "structural" part a name different from `meta`, the rule `(□-intro)` restricts the way how variables in `&Δ` (which could have been the same as `meta Δ`) are used.
+If we write `+Δ` instead of `&Δ` in `(□-intro)`, the rule is equivalent to `(□-intro')`. By giving the "structural" part a name different from `+`, the rule `(□-intro)` restricts the way how variables in `&Δ` (which could have been the same as `+Δ`) are used.
 
 In this sense, `&a` is the T-necessity modality defined through structural rules.
 
@@ -1489,7 +1489,7 @@ You can use `letbox` to "unlift" terms.
 ### Example
 
 ```neut
-define roundtrip(x: meta a): meta a {
+define roundtrip(x: +a): +a {
   // here is layer 0
   box {
     // here is layer -1
@@ -1535,7 +1535,7 @@ cont
 ### Type
 
 ```neut
-Γ1; ...; Γn ⊢ e1: meta a
+Γ1; ...; Γn ⊢ e1: +a
 Γ1; ...; Γn; Δ, x: a ⊢ e2: b
 ------------------------------------------------ (□-elim-K)
 Γ1; ...; Γn; Δ ⊢ letbox x = e1; e2: b
@@ -1546,7 +1546,7 @@ cont
 Given a term `e1` at layer n + 1, `letbox x = e1; e2` is at layer n:
 
 ```neut
-define roundtrip(x: meta a): meta a {
+define roundtrip(x: +a): +a {
   box {
     // here is layer -1 (= n)
     letbox tmp =
@@ -1561,9 +1561,9 @@ define roundtrip(x: meta a): meta a {
 _In layer n, we can only use variables at the layer_. Thus, the following is not a valid term:
 
 ```neut
-define use-letbox-error(x: meta int): int {
+define use-letbox-error(x: +int): int {
   // here is layer 0
-  // x: meta int (at layer 0)
+  // x: +int (at layer 0)
   letbox tmp =
     // here is layer 1
     x; // error: use of a variable at layer 0 (≠ 1)
@@ -1574,14 +1574,14 @@ define use-letbox-error(x: meta int): int {
 
 ## `letbox-T`
 
-You can use `letbox-T` to get values from terms of type `meta a` without changing layers.
+You can use `letbox-T` to get values from terms of type `+a` without changing layers.
 
 ### Example
 
 ```neut
-define extract-value-from-meta(x: meta int): int {
+define extract-value-from-meta(x: +int): int {
   // here is layer 0
-  // x: meta int (at layer 0)
+  // x: +int (at layer 0)
   letbox-T tmp =
     // here is layer 0
     x; // ok
@@ -1621,7 +1621,7 @@ cont
 ### Type
 
 ```neut
-Γ1; ...; Γn, &Δ ⊢ e1: meta a
+Γ1; ...; Γn, &Δ ⊢ e1: +a
 Γ1; ...; Γn, Δ, Δ', x: a ⊢ e2: b
 -------------------------------------------------- (□-elim-T)
 Γ1; ...; Γn, Δ, Δ' ⊢ letbox-T x on Δ = e1; e2: b
@@ -1634,7 +1634,7 @@ Note that the layer of `e1`, `e2`, `letbox-T (..)` are the same.
 `letbox-T` doesn't alter layers:
 
 ```neut
-define extract-value-from-meta(x: meta int): int {
+define extract-value-from-meta(x: +int): int {
   // here is layer 0
   letbox-T tmp =
     // here is layer 0
@@ -1896,20 +1896,20 @@ It also `free`s the 3-word + 1-byte tuple that represents a thread after getting
 
 ## `quote`
 
-You can use `quote` to wrap the types of "safe" values by `meta {..}`.
+You can use `quote` to wrap the types of "safe" values by `+`.
 
 ### Example
 
 ```neut
-define quote-int(x: int): meta int {
+define quote-int(x: int): +int {
   quote {x}
 }
 
-define quote-bool(x: bool): meta bool {
+define quote-bool(x: bool): +bool {
   quote {x}
 }
 
-define quote-function(f: (int) -> bool): meta (int) -> bool {
+define quote-function(f: (int) -> bool): +(int) -> bool {
   quote {f} // error; won't typecheck
 }
 ```
@@ -1936,7 +1936,7 @@ e
 Γ ⊢ e: a
 (a is an "actual" type)
 -----------------------
-Γ ⊢ quote {e}: meta a
+Γ ⊢ quote {e}: +a
 ```
 
 Here, an "actual" type is a type that satisfies all the following conditions:
@@ -1972,13 +1972,13 @@ data joker-z {
 (2) `quote` doesn't add extra expressiveness to the type system. For example, `quote` on `bool` can be replaced with `box` as follows:
 
 ```neut
-define quote-bool(b: bool): meta bool {
+define quote-bool(b: bool): +bool {
   quote {b}
 }
 
 ↓
 
-define quote-bool(b: bool): meta bool {
+define quote-bool(b: bool): +bool {
   if b {
     box {True}
   } else {
@@ -1990,13 +1990,13 @@ define quote-bool(b: bool): meta bool {
 `quote` on `either(bool, unit)` can also be replaced with `box` as follows:
 
 ```neut
-define quote-either(x: either(bool, unit)): meta either(bool, unit) {
+define quote-either(x: either(bool, unit)): +either(bool, unit) {
   quote {b}
 }
 
 ↓
 
-define quote-either(x: either(bool, unit)): meta either(bool, unit) {
+define quote-either(x: either(bool, unit)): +either(bool, unit) {
   match x {
   | Left(b) =>
     if b {
@@ -2550,7 +2550,7 @@ where the function `embody` is defined in the core library as follows:
 // core.box
 
 // □A -> A (Axiom T)
-inline axiom-T<a>(x: meta a): a {
+inline axiom-T<a>(x: +a): a {
   letbox-T x' = x;
   x'
 }

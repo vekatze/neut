@@ -1,6 +1,6 @@
 # Modality and Memory
 
-Here, we'll see how to interact with the box modality `meta`, which enables borrowing in Neut. We'll then see that both `on` and `*e` can be understood as syntactic sugar over this modality.
+Here, we'll see how to interact with the box modality `+`, which enables borrowing in Neut. We'll then see that both `on` and `*e` can be understood as syntactic sugar over this modality.
 
 ## Table of Contents
 
@@ -11,9 +11,9 @@ Here, we'll see how to interact with the box modality `meta`, which enables borr
 
 ## Layers and the Box Modality
 
-In Neut, each type `a` has a corresponding type `meta a`. This type provides a way to work with _layers_, which are similar to lifetimes in other languages.
+In Neut, each type `a` has a corresponding type `+a`. This type provides a way to work with _layers_, which are similar to lifetimes in other languages.
 
-Below, we’ll first introduce the concept of layers, and then see how to use `meta a`.
+Below, we’ll first introduce the concept of layers, and then see how to use `+a`.
 
 ### Layers and Variables
 
@@ -52,10 +52,10 @@ Only modality-related operations can change layers, as we'll see below.
 
 ### Creating Boxes
 
-To create a term of type `meta a`, use `box`:
+To create a term of type `+a`, use `box`:
 
 ```neut
-define use-box(x: &int, y: &bool, z: &text): meta pair(int, bool) {
+define use-box(x: &int, y: &bool, z: &text): +pair(int, bool) {
   // here is layer 0
   // free variables:
   // - x: &int
@@ -94,7 +94,7 @@ You can omit the sequence `x1, ..., xn` entirely if no variables need to be copi
 
 ### Using Boxes
 
-To use a term of type `meta a`, use `letbox`:
+To use a term of type `+a`, use `letbox`:
 
 ```neut
 define use-letbox(x: int, y: bool, z: text): int {
@@ -141,7 +141,7 @@ e2
 
 ### Using Boxes Without Changing the Current Layer
 
-Sometimes you want to use a term of type `meta a` without shifting your current layer. For this, Neut provides `letbox-T`, which keeps you in the same layer:
+Sometimes you want to use a term of type `+a` without shifting your current layer. For this, Neut provides `letbox-T`, which keeps you in the same layer:
 
 ```neut
 define use-letbox-T(x: int, y: bool): int {
@@ -155,10 +155,10 @@ define use-letbox-T(x: int, y: bool): int {
 }
 ```
 
-`letbox-T` can be used for example to write functions of type `(meta a) -> a` as follows:
+`letbox-T` can be used for example to write functions of type `(+a) -> a` as follows:
 
 ```neut
-define axiom-T<a>(x: meta a): a {
+define axiom-T<a>(x: +a): a {
   letbox-T tmp = x;
   tmp
 }
@@ -168,10 +168,10 @@ If you tried to use `letbox` instead, you’d get an error because it would resu
 
 ### A Shortcut for Creating Boxes
 
-We can, for example, construct a `meta bool` from a `bool` as follows:
+We can, for example, construct a `+bool` from a `bool` as follows:
 
 ```neut
-define box-bool(b: bool): meta bool {
+define box-bool(b: bool): +bool {
   match b {
   | True  => box {True}
   | False => box {False}
@@ -182,8 +182,8 @@ define box-bool(b: bool): meta bool {
 To streamline this kind of mechanical step, Neut provides `quote`:
 
 ```neut
-define box-bool(b: bool): meta bool {
-  quote {b} // `quote` casts `bool` into `meta bool`
+define box-bool(b: bool): +bool {
+  quote {b} // `quote` casts `bool` into `+bool`
 }
 ```
 
@@ -193,7 +193,7 @@ Not all types can be cast using `quote`. Specifically, it can't be used on any t
 - a type of the form `(a1, ..., an) -> b`
 - a type variable
 
-If you can get `meta t` by quoting `e: t`, you can get the same type using `box` instead. In this sense, `quote` is a shortcut for creating boxes.
+If you can get `+t` by quoting `e: t`, you can get the same type using `box` instead. In this sense, `quote` is a shortcut for creating boxes.
 
 ## Desugaring the Two Operations
 
@@ -266,7 +266,7 @@ define main(): unit {
 
 This example would wrongly allow a function at layer 0 (`★`) to keep a reference to data (`xs`) that, after the outer `letbox` completes, could be deallocated, leading to a use-after-free scenario in the body of the main function. Hence, Neut’s layer rules prohibit capturing a higher-layer variable in a lower-layer function.
 
-### Using `meta`
+### Using `+`
 
 The following function parses data and stores backups of said data.
 
@@ -321,10 +321,10 @@ The following happens inside `zen`:
 2. `joker` holds the (dangling) reference
 3. `bin-to-hex` takes `joker` as an argument, causing an use-after-free
 
-To fancy the requirements of the type system `meta` must be used as follows.
+To fancy the requirements of the type system `+` must be used as follows.
 
 ```neut
-define backup-parse<a>(transformer: (&binary) -> meta a): a {
+define backup-parse<a>(transformer: (&binary) -> +a): a {
   let input: binary = get-next-input();
   letbox-T result on binary = {
     write-to-file(input-backup, bin-to-hex(input));
@@ -335,10 +335,10 @@ define backup-parse<a>(transformer: (&binary) -> meta a): a {
 }
 ```
 
-The `meta` specifier asserts that the value a call to `transformer` evaluates will be valid on the outer layer (in this case the layer of `zen`, since it's where `backup-parse` has been called). The requirements of the operators that lift values into `meta` guarantee that this is the case. In order to make the previous example work, `id-bin` could look like the following:
+The `+` specifier asserts that the value a call to `transformer` evaluates will be valid on the outer layer (in this case the layer of `zen`, since it's where `backup-parse` has been called). The requirements of the operators that lift values into `+` guarantee that this is the case. In order to make the previous example work, `id-bin` could look like the following:
 
 ```neut
-define id-bin(arg: &binary): meta binary {
+define id-bin(arg: &binary): +binary {
   box arg { // *arg copied
     arg
   }
@@ -364,7 +364,7 @@ define zen(): unit {
 Lastly, to avoid the newly introduced copy, the following refactor is possible:
 
 ```neut
-define write-to-somefile(arg: &binary): meta unit { // used to be id-bin
+define write-to-somefile(arg: &binary): +unit { // used to be id-bin
   write-to-file(somefile, bin-to-hex(arg));
   box {Unit}
 }
