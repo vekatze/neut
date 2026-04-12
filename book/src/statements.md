@@ -253,10 +253,10 @@ define use-config(c: config) -> unit {
 
 ```neut
 resource my-type {
-  function (value: pointer) {
+  (value: pointer) => {
     // .. discard the value ..
   },
-  function (value: pointer) {
+  (value: pointer) => {
     // .. create a new clone of the value and return it as int ..
   },
   tag, // integer value
@@ -276,12 +276,12 @@ For example, the following is a definition of a "boxed" integer type with some n
 ```neut
 resource boxed-int {
   // discarder: (pointer) -> unit
-  function (v: pointer) {
+  (v: pointer) => {
     print("discarded!\n");
     free(v)
   },
   // copier: (pointer) -> pointer
-  function (v: pointer) {
+  (v: pointer) => {
     let orig-value = load-int(v);
     let new-ptr = malloc(1);
     magic store(int, orig-value, new-ptr);

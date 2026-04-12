@@ -19,7 +19,7 @@
 ### Function
 
 - [(x1: a1, ..., xn: an) -> b](#x1-a1--xn-an---b)
-- [function (x1: a1, ..., xn: an) { e }](#function-x1-a1--xn-an--e-)
+- [(x1: a1, ..., xn: an) => { e }](#x1-a1--xn-an---e-)
 - [define f(x1: a1, ..., xn: an) -> c { e }](#define-fx1-a1--xn-an-c--e-)
 - [e(e1, ..., en)](#ee1--en)
 - [e of {x1 := e1, ..., xn := en}](#e-of-x1--e1--xn--en)
@@ -126,7 +126,7 @@ define sample() -> unit {
   let x = Unit;
   let x = type;
   let x =
-    function (x: bool) {
+    (x: bool) => {
       x // x: bool
     };
   Unit
@@ -319,7 +319,7 @@ let x: t = e1; e2
 
 ### Note
 
-(1) `let x = e1; e2` isn't exactly the same as `{function (x) {e2}}(e1)`. The difference lies in the fact that the type of `e2` can't depend on `x` in `let x = e1; e2`.
+(1) `let x = e1; e2` isn't exactly the same as `{(x) => {e2}}(e1)`. The difference lies in the fact that the type of `e2` can't depend on `x` in `let x = e1; e2`.
 
 (2) When a pattern is passed, `let` is the following syntactic sugar:
 
@@ -588,16 +588,16 @@ A function type is compiled into a pointer to `base.#.cls`. For more, please see
 Γ ⊢ <x1: a1, ..., xn: an>(y1: b1, ..., ym: bm) -> c: type
 ```
 
-## `function (x1: a1, ..., xn: an) { e }`
+## `(x1: a1, ..., xn: an) => { e }`
 
-`function` can be used to create a lambda abstraction (an anonymous function).
+`=>` can be used to create a lambda abstraction (an anonymous function).
 
 ### Example
 
 ```neut
 define use-function() -> int {
   let f =
-    function (x: int, y: int) {
+    (x: int, y: int) => {
       let z = add-int(x, y);
       mul-int(z, z)
     };
@@ -608,19 +608,19 @@ define use-function() -> int {
 ### Syntax
 
 ```neut
-function (x1: a1, ..., xn: an) {
+(x1: a1, ..., xn: an) => {
   e
 }
 ```
 
-All the free variables of a `function` must be at the same layer of the function. For example, the following is not a valid term in Neut:
+All the free variables of a lambda abstraction must be at the same layer of the lambda abstraction. For example, the following is not a valid term in Neut:
 
 ```neut
 define return-int(x: +int) -> +() -> int {
   // here is layer 0
   box {
     // here is layer -1
-    function () {
+    () => {
       letbox result =
         // here is layer 0
         x; // ← error
@@ -630,26 +630,26 @@ define return-int(x: +int) -> +() -> int {
 }
 ```
 
-because the free variable `x` in the `function` is at layer 0, whereas the `function` is at layer -1.
+because the free variable `x` in the lambda abstraction is at layer 0, whereas the lambda abstraction is at layer -1.
 
 For more on layers, please see the section on [box](#box), [letbox](#letbox), and [letbox-T](#letbox-t).
 
 ### Semantics
 
-A `function` is compiled into a three-word closure. For more, please see [How to Execute Types](./how-to-execute-types.md#advanced-function-types).
+A lambda abstraction is compiled into a three-word closure. For more, please see [How to Execute Types](./how-to-execute-types.md#advanced-function-types).
 
 ### Type
 
 ```neut
     Γ, x1: a1, ..., xn: an ⊢ e: t
 -----------------------------------------
-Γ ⊢ function (x1: a1, ..., xn: an) {e}: t
+Γ ⊢ (x1: a1, ..., xn: an) => {e}: t
 
 ```
 
 ### Note
 
-- Lambda abstractions defined by `function` are reduced at compile-time when possible. If you would like to avoid this behavior, consider using `define`.
+- Lambda abstractions defined by `=>` are reduced at compile-time when possible. If you would like to avoid this behavior, consider using `define`.
 
 ## `define f(x1: a1, ..., xn: an) -> c { e }`
 
@@ -727,7 +727,7 @@ define some-recursive-func(c: int, x: int) -> int {
     0
   } else {
     let f =
-      function (x: int) {
+      (x: int) => {
         some-recursive-func(c, x)
       };
     add-int(c, f(sub-int(x, 1)))
@@ -737,7 +737,7 @@ define some-recursive-func(c: int, x: int) -> int {
 define use-define() -> int {
   let c = 10;
   let f =
-    function (x: int) {
+    (x: int) => {
       some-recursive-func(c, x)
     };
   f(100)
@@ -943,7 +943,7 @@ exact e
 is translated into the following:
 
 ```neut
-function (y1: b1, ..., ym: bm) {
+(y1: b1, ..., ym: bm) => {
   e(_, ..., _, y1, ..., ym)
 }
 ```

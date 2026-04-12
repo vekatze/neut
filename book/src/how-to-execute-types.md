@@ -261,7 +261,7 @@ define foo(a: type) -> int {
   let x: int = 10;
   let y = type;
   let f =
-    function (z: a) {  // lambda
+    (z: a) => {  // lambda
       let foo = x;     // ← x is a free var of this lambda
       let bar = y;     // ← y is also a free var of this lambda
       let buz = z;
@@ -271,7 +271,7 @@ define foo(a: type) -> int {
 }
 ```
 
-Let's see how the `function` is compiled.
+Let's see how the lambda abstraction is compiled.
 
 ### Extracting a Closed Chain From a Lambda
 
@@ -290,7 +290,7 @@ This list is "closed" in the following sense. Consider annotating all the variab
 This list is closed in that the term
 
 ```neut
-function (a: type, x: int, y: type, z: a) {
+(a: type, x: int, y: type, z: a) => {
   Unit
 }
 ```

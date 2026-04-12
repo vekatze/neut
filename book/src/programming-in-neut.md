@@ -143,12 +143,12 @@ define use-id() -> int {
 
 ### Defining Functions in a Body of a Function
 
-You can use `function` to define an anonymous function:
+You can use `=>` to define an anonymous function:
 
 ```neut
 define foo() -> int {
   let f =
-    function (x: int, cond: bool) {
+    (x: int, cond: bool) => {
       if cond {
         x
       } else {

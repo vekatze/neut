@@ -24,7 +24,7 @@ The body of a `define` starts at layer 0:
 ```neut
 define foo() -> () -> unit {
   // here is layer 0
-  function () {
+  () => {
     // here is also layer 0
     Unit
   }
@@ -244,7 +244,7 @@ define joker() -> () -> unit {
     // layer 0
     box {
       // layer -1
-      function () { // ★
+      () => { // ★
         letbox k = {
           // layer 0
           let len = length(xs);
