@@ -4,6 +4,7 @@
 
 - [import](#import)
 - [define](#define)
+- [constant](#constant)
 - [inline](#inline)
 - [data](#data)
 - [resource](#resource)
@@ -112,49 +113,6 @@ define use-func-with-implicit-arg(): int {
 }
 ```
 
-You can also use `define` without any explicit parameters:
-
-```neut
-define foo: int {
-  10
-}
-
-define empty-list<a>: list(a) {
-  Nil
-}
-
-define use-constants(): list(int) {
-  let x = foo;
-  empty-list
-}
-```
-
-The above code is translated into the following during compile time:
-
-```neut
-define foo(): int {
-  10
-}
-
-define empty-list<a>(): list(a) {
-  Nil
-}
-
-define use-constants(): list(int) {
-  let x = foo();
-  empty-list()
-}
-```
-
-The compiler tries to reduce the body of a `define` into a value at compile time if the `define` doesn't have any explicit parameters. The compiler reports an error if it can't get a value. For example, the following should result in an error:
-
-```neut
-define bar: int {
-  print("hello");
-  123
-}
-```
-
 A function with the same name can't be defined in the same file.
 
 All the tail-recursions in Neut are optimized into loops (thanks to geniuses in the LLVM team).
@@ -207,14 +165,16 @@ define use-inline-foo(): int {
 }
 ```
 
-You can also use `inline` without any explicit parameters:
+## `constant`
+
+`constant` defines a top-level constant. It should look like the following:
 
 ```neut
-inline foo: int {
+constant foo: int {
   10
 }
 
-inline empty-list<a>: list(a) {
+constant empty-list<a>: list(a) {
   Nil
 }
 
@@ -224,27 +184,10 @@ define use-constants(): list(int) {
 }
 ```
 
-The above code is translated into the following during compile time:
+The compiler tries to reduce the body of a `constant` into a value at compile time. The compiler reports an error if it can't get a value. For example, the following should result in an error:
 
 ```neut
-inline foo(): int {
-  10
-}
-
-inline empty-list<a>(): list(a) {
-  Nil
-}
-
-define use-constants(): list(int) {
-  let x = foo();
-  empty-list()
-}
-```
-
-The compiler tries to reduce the body of an `inline` into a value at compile time if the `inline` doesn't have any explicit parameters. The compiler reports an error if it can't get a value. For example, the following should result in an error:
-
-```neut
-inline bar: int {
+constant bar: int {
   print("hello");
   123
 }
@@ -592,7 +535,7 @@ foreign {
 Here, the definition of `c-int` is as follows:
 
 ```neut
-inline _c-int: type {
+constant _c-int: type {
   introspect architecture {
   | amd64 =>
     int32

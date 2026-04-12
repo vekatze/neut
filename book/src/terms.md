@@ -200,12 +200,12 @@ See the Note below for a more detailed explanation.
 
 ### Note
 
-Let's see how top-level variables are compiled. Consider the following top-level functions:
+Let's see how top-level variables are compiled. Consider the following top-level definitions:
 
 ```neut
 // (source-dir)/sample.nt
 
-// defining a top-level variable `increment`
+// defining a top-level function `increment`
 define increment(x: int): int {
   add-int(x, 1)
 }
@@ -2023,7 +2023,7 @@ You can use `magic` to perform weird stuff. Using `magic` is an unsafe operation
 data descriptor {}
 
 // add an element to the empty type
-inline stdin: descriptor {
+constant stdin: descriptor {
   magic cast(int, descriptor, 0) // 🌟 cast
 }
 
