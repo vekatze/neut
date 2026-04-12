@@ -15,7 +15,7 @@ Here, we'll see how to write programs in Neut.
 You can use `let` to define variables:
 
 ```neut
-define hey(): unit {
+define hey() -> unit {
   let x = "hello";
   let y: int = 100;
   let z: float = 3.8;
@@ -26,7 +26,7 @@ define hey(): unit {
 The compiler warns about unused variables (`x`, `y`, and `z` in the example above). You can use the special name `_` to suppress those warnings:
 
 ```neut
-define hey(): unit {
+define hey() -> unit {
   let _ = "hello";
   let _: int = 100;
   let _: float = 3.8;
@@ -37,7 +37,7 @@ define hey(): unit {
 `let`s can be nested using `{..}`:
 
 ```neut
-define hey(): unit {
+define hey() -> unit {
   let x = {
     let y: int = 100;
     let z: float = 3.8;
@@ -50,14 +50,14 @@ define hey(): unit {
 You can use `e1; e2` as syntactic sugar for `let _: unit = e1; e2`:
 
 ```neut
-define hey(): unit {
+define hey() -> unit {
   print("a");
   print("b");
 }
 
 // ↓ (desugar)
 
-define hey(): unit {
+define hey() -> unit {
   let _ = print("a");
   print("b");
 }
@@ -66,13 +66,13 @@ define hey(): unit {
 You can use `e;` as syntactic sugar for `let _: unit = e; Unit`:
 
 ```neut
-define hey(): unit {
+define hey() -> unit {
   print("hey"); // using a trailing semicolon
 }
 
 ↓
 
-define hey(): unit {
+define hey() -> unit {
   let _: unit = print("hey");
   Unit
 }
@@ -86,12 +86,12 @@ You can use the statement `define` to define functions:
 
 ```neut
 // defining an ordinary function
-define my-func1(x1: int, x2: bool): bool {
+define my-func1(x1: int, x2: bool) -> bool {
   x2
 }
 
 // defining a recursive function
-define my-func2(cond: bool): int {
+define my-func2(cond: bool) -> int {
   if cond {
     1
   } else {
@@ -100,7 +100,7 @@ define my-func2(cond: bool): int {
 }
 
 // a function that returns a function
-define my-func3(): (int, bool) -> bool {
+define my-func3() -> (int, bool) -> bool {
   my-func1
 }
 ```
@@ -109,11 +109,11 @@ define my-func3(): (int, bool) -> bool {
 
 ```neut
 // The `a` in the angle bracket is the implicit parameter of `id`
-define id<a>(x: a): a {
+define id<a>(x: a) -> a {
   x
 }
 
-define use-id(): int {
+define use-id() -> int {
   let str = 10;
   id(str) // calling `id` without specifying `a` explicitly
 }
@@ -122,7 +122,7 @@ define use-id(): int {
 Incidentally, you can explicitly write the type of `a`:
 
 ```neut
-define id<a: type>(x: a): a { // `type` is the type of types
+define id<a: type>(x: a) -> a { // `type` is the type of types
   x
 }
 ```
@@ -130,12 +130,12 @@ define id<a: type>(x: a): a { // `type` is the type of types
 You can define `id` without using any implicit parameters as follows (just for comparison):
 
 ```neut
-define id(a: type, x: a): a {
+define id(a: type, x: a) -> a {
   x
 }
 
 // using `id`
-define use-id(): int {
+define use-id() -> int {
   let str = 10;
   id(int, str) // ← the first argument `int` is now made explicit
 }
@@ -146,7 +146,7 @@ define use-id(): int {
 You can use `function` to define an anonymous function:
 
 ```neut
-define foo() {
+define foo() -> int {
   let f =
     function (x: int, cond: bool) {
       if cond {
@@ -162,9 +162,9 @@ define foo() {
 You can also use `define` in the body of a function to define a recursive function:
 
 ```neut
-define foo() {
+define foo() -> unit {
   let f =
-    define print-multiple-hellos(counter: int) {
+    define print-multiple-hellos(counter: int) -> unit {
       if eq-int(counter, 0) {
         Unit
       } else {
@@ -187,11 +187,11 @@ The compiler reports an error if you rewrite the example above so that it uses t
 You can call a function `f` with arguments `e1`, ..., `en` by writing `f(e1, ..., en)`:
 
 ```neut
-define my-func(x: int, y: int): int {
+define my-func(x: int, y: int) -> int {
   add-int(x, y)
 }
 
-define use-my-func(): int {
+define use-my-func() -> int {
   my-func(10, 20)
 }
 ```
@@ -199,7 +199,7 @@ define use-my-func(): int {
 The syntactic sugar `of` can be used to rewrite the above `use-my-func` as follows:
 
 ```neut
-define use-my-func(): int {
+define use-my-func() -> int {
   my-func of {
     x := 10,
     y := 20,
@@ -260,11 +260,11 @@ data config {
 You can use constructors just like normal functions to create ADT values:
 
 ```neut
-define make-my-list(): my-list(int) {
+define make-my-list() -> my-list(int) {
   My-Cons(1, My-Cons(2, My-Nil))
 }
 
-define make-config(): config {
+define make-config() -> config {
   Config of {
     count := 10,
     cond := True,
@@ -277,7 +277,7 @@ define make-config(): config {
 You can use `match` to destructure ADT values:
 
 ```neut
-define sum(xs: my-list(int)): int {
+define sum(xs: my-list(int)) -> int {
   match xs {
   | My-Nil =>
     0
@@ -290,7 +290,7 @@ define sum(xs: my-list(int)): int {
 Nested matching is also possible:
 
 ```neut
-define foo(xs: my-list(int)): int {
+define foo(xs: my-list(int)) -> int {
   match xs {
   | My-Nil =>
     0
@@ -305,7 +305,7 @@ define foo(xs: my-list(int)): int {
 The result of `match` can be bound to a variable:
 
 ```neut
-define yo(xs: my-list(int)): int {
+define yo(xs: my-list(int)) -> int {
   let val =
     match xs {
     | My-Nil =>
@@ -322,7 +322,7 @@ define yo(xs: my-list(int)): int {
 You can use `detach` and `attach` to perform parallel computation:
 
 ```neut
-define foo(): unit {
+define foo() -> unit {
   let t1: thread(unit) =
     // creates a thread
     detach {
@@ -358,7 +358,7 @@ nominal {
   is-odd(x: int): int, // ← declaration of `is-odd`
 }
 
-define is-even(x: int): bool {
+define is-even(x: int) -> bool {
   if eq-int(x, 0) {
     True
   } else {
@@ -367,7 +367,7 @@ define is-even(x: int): bool {
 }
 
 // ↓ the real definition of `is-odd`
-define is-odd(x: int): bool {
+define is-odd(x: int) -> bool {
   if eq-int(x, 0) {
     False
   } else {
@@ -390,7 +390,7 @@ data bool {
 You can use `if` when you use this `bool`:
 
 ```neut
-define yo(cond: bool) {
+define yo(cond: bool) -> unit {
   if cond {
     print("yo!")
   } else {
@@ -400,7 +400,7 @@ define yo(cond: bool) {
 
 // ↓ desugar
 
-define yo(cond: bool) {
+define yo(cond: bool) -> unit {
   match cond {
   | True =>
     print("yo!")
@@ -415,7 +415,7 @@ define yo(cond: bool) {
 You can use `admit` to postpone implementing a function and satisfy the type checker:
 
 ```neut
-define my-complex-function(x: int, y: bool): int {
+define my-complex-function(x: int, y: bool) -> int {
   admit
 }
 ```
@@ -425,7 +425,7 @@ define my-complex-function(x: int, y: bool): int {
 You can use `assert` as follows:
 
 ```neut
-define fact(n: int): int {
+define fact(n: int) -> int {
   assert "n must be non-negative" {
     ge-int(n, 0)
   };

@@ -335,7 +335,7 @@ import {
   // ..
 }
 
-define use-some-file(): unit {
+define use-some-file() -> unit {
   let t1: &text = include-text(some-file);
   let t2: &text = include-text(other-file);
   print(t1);
@@ -399,7 +399,7 @@ import {
   sample.foo {my-func},
 }
 
-define buz(): int {
+define buz() -> int {
   let i = my-func();
   add-int(i, 10)
 }
@@ -408,7 +408,7 @@ define buz(): int {
 This code is the same as the following since the preset is enabled:
 
 ```neut
-define buz(): int {
+define buz() -> int {
   let i = my-func();
   add-int(i, 10)
 }

@@ -32,7 +32,7 @@ These functions are then used to discard/copy values when necessary.
 Let's see how types are executed when discarding values. For example, consider the following code:
 
 ```neut
-define foo(xs: list(int)): unit {
+define foo(xs: list(int)) -> unit {
   Unit
 }
 ```
@@ -40,7 +40,7 @@ define foo(xs: list(int)): unit {
 Note that the variable `xs` isn't used. Because of that, the compiler translates the code above into the below (pseudo-code; won't typecheck):
 
 ```neut
-define foo(xs: list(int)): unit {
+define foo(xs: list(int)) -> unit {
   let f = list(int);
   f(0, xs); // passing `0` to discard `xs`
   Unit
@@ -54,7 +54,7 @@ Note that the above example executes the type `list(int)` as a function.
 Let's see how types are executed when copying values. For example, consider the following code:
 
 ```neut
-define foo(!xs: list(int)): unit {
+define foo(!xs: list(int)) -> unit {
   some-func(!xs, !xs)
 }
 ```
@@ -62,7 +62,7 @@ define foo(!xs: list(int)): unit {
 Note that the variable `!xs` is used twice. Because of that, the compiler translates the above code into the below (pseudo-code; won't typecheck):
 
 ```neut
-define foo(!xs: list(int)): unit {
+define foo(!xs: list(int)) -> unit {
   let f = list(int);
   let xs-clone = f(1, !xs); // passing `1` to copy `xs`
   some-func(xs-clone, !xs)
@@ -118,7 +118,7 @@ data int-list {
 }
 
 // [1, 5, 9] => [2, 6, 10]
-define increment(xs: int-list): int-list {
+define increment(xs: int-list) -> int-list {
   match xs {
   | Nil =>
     Nil
@@ -151,7 +151,7 @@ This optimization "penetrates" branching. For example, consider the following:
 
 ```neut
 // (an `insert` function in bubble sort)
-define insert(v: int, xs: int-list): int-list {
+define insert(v: int, xs: int-list) -> int-list {
   match xs {
   | Nil =>
     // ...
@@ -170,7 +170,7 @@ At point `(X)`, `free` against `xs` is required. However, this `free` can be can
 On the other hand, consider rewriting the code above into something like the following:
 
 ```neut
-define foo(v: int, xs: int-list): int-list {
+define foo(v: int, xs: int-list) -> int-list {
   match xs {
   | Nil =>
     // ...
@@ -197,7 +197,7 @@ import {
   core.text.io,
 }
 
-define use-external-module-function(): text {
+define use-external-module-function() -> text {
            // 🌟
   let value = core.text.io.get-line();
   ...
@@ -245,7 +245,7 @@ import {
   this.path.to.file,
 }
 
-define use-my-function(): text {
+define use-my-function() -> text {
            // 🌟
   let value = this.path.to.file.my-function();
   ...

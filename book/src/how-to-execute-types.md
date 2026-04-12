@@ -158,7 +158,7 @@ A type is compiled into a pointer to a closed function. This means that types ar
 Let's see how polymorphic values are copied. Consider the following code:
 
 ```neut
-define foo(a: type, x: a): pair(a, a) {
+define foo(a: type, x: a) -> pair(a, a) {
   Pair(x, x)
 }
 ```
@@ -168,7 +168,7 @@ The code uses the variable `x` twice. Thus, this `x` must be copied according to
 This can be done because the internal representation of `a` is a function that can discard and copy the values of type `a`. Thus, the above code is compiled into something like the below:
 
 ```neut
-define foo(a: type, x: a): pair(a, a) {
+define foo(a: type, x: a) -> pair(a, a) {
   let x-clone = a(1, x);
   Pair(x, x-clone)
 }
@@ -257,7 +257,7 @@ We'll see how function types like `(int) -> bool` are translated.
 Suppose we have a function like the below:
 
 ```neut
-define foo(a: type): int {
+define foo(a: type) -> int {
   let x: int = 10;
   let y = type;
   let f =

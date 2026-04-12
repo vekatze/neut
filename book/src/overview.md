@@ -18,7 +18,7 @@ Like the following:
 
 ```neut
 // the obligatory hello world
-define hello(): unit {
+define hello() -> unit {
   print("Hello, world!\n")
 }
 
@@ -29,7 +29,7 @@ data my-list(a) {
 }
 
 // a recursive function with pattern matching
-define noisy-length<a>(xs: my-list(a)): int {
+define noisy-length<a>(xs: my-list(a)) -> int {
   match xs {
   | Nil =>
     0

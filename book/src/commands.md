@@ -108,7 +108,7 @@ If you don't specify `--mode`, the mode defaults to `develop`.
 The value passed here can be obtained from source files by using `introspect`:
 
 ```neut
-define foo(): unit {
+define foo() -> unit {
   introspect build-mode {
   | release =>
     // ..
@@ -329,7 +329,7 @@ The subcommand `zen` treats the function `zen` inside the given file as its entr
 Thus, the type of the function `zen` must be `() -> unit`:
 
 ```neut
-define zen(): unit {
+define zen() -> unit {
   print("hello, world!\n");
 }
 ```
@@ -349,7 +349,7 @@ It might be, however, a bit cumbersome. We'd love to achieve rapid try-and-error
 You can use the command `zen` here. Suppose that a file `some-file.nt` contains a function `foo` that is defined as in the below:
 
 ```neut
-define foo(x: int): int {
+define foo(x: int) -> int {
   do-complex-calculation(x)
 }
 ```
@@ -357,7 +357,7 @@ define foo(x: int): int {
 The behavior of `foo` can be inspected rapidly by defining a function named `zen` in the file:
 
 ```neut
-define zen(): unit {
+define zen() -> unit {
   print-int(foo(10));
 }
 ```

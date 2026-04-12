@@ -103,7 +103,7 @@ Let's see the content of `source/sample.nt`:
 ```neut
 // sample.nt
 
-define main(): unit {
+define main() -> unit {
   print("Hello, world!\n"); // `print` is defined in `core`
 }
 ```
@@ -113,7 +113,7 @@ The above code defines a function `main` that returns a value of type `unit`. Th
 Let's try editing the code as follows:
 
 ```neut
-define main(): unit {
+define main() -> unit {
   print("Yo\n");
 }
 ```
@@ -137,11 +137,11 @@ import {
   core.int.io {print-int},
 }
 
-define get-int(): int {
+define get-int() -> int {
   42
 }
 
-define main(): unit {
+define main() -> unit {
   print-int(get-int()); // => 42
 }
 ```
@@ -155,15 +155,15 @@ import {
   core.int.io {print-int},
 }
 
-define increment(x: int): int {
+define increment(x: int) -> int {
   add-int(x, 1)
 }
 
-define my-add(x: int, y: int): int {
+define my-add(x: int, y: int) -> int {
   add-int(x, y)
 }
 
-define main(): unit {
+define main() -> unit {
   print-int(my-add(10, increment(10))); // => 21
 }
 ```
@@ -248,7 +248,7 @@ import {
   some-name.sample {my-add}, // imports `my-add` in `source/sample.nt`
 }
 
-define main(): unit {
+define main() -> unit {
   print-int(my-add(10, 11)); // ← using `my-add`
 }
 ```
@@ -275,7 +275,7 @@ import {
   some-name.sample, // removed `{my-add}`
 }
 
-define main(): unit {
+define main() -> unit {
   // ↓ using the fully-qualified form of `my-add`
   print-int(some-name.sample.my-add(10, 11));
 }
@@ -296,7 +296,7 @@ Let's try creating a new file `new-item/source/foo/greet.nt` with the following 
 ```neut
 // foo/greet.nt
 
-define yo(): unit {
+define yo() -> unit {
   print("Yo");
 }
 ```
@@ -310,7 +310,7 @@ import {
   this.foo.greet {yo},
 }
 
-define main(): unit {
+define main() -> unit {
   yo();
 }
 ```

@@ -16,7 +16,7 @@ In Neut, the content of a variable is copied if the variable is used more than o
 
 ```neut
 // before compilation (pseudo code)
-define foo(xs: list(int)): list(int) {
+define foo(xs: list(int)) -> list(int) {
   let ys = xs; // using `xs` (1)
   let zs = xs; // using `xs` (2)
   some-func(ys);
@@ -29,7 +29,7 @@ In the code above, `xs` is used three times. Therefore, its content is copied tw
 
 ```neut
 // after compilation (pseudo-code)
-define foo(xs: list(int)): list(int) {
+define foo(xs: list(int)) -> list(int) {
   let xs1 = COPY(list(int), xs);
   let xs2 = COPY(list(int), xs);
   let ys = xs1;
@@ -44,7 +44,7 @@ Also, the content of a variable is discarded if the variable isn't used. For exa
 
 ```neut
 // before compilation
-define bar(xs: list(int)): unit {
+define bar(xs: list(int)) -> unit {
   Unit
 }
 ```
@@ -53,7 +53,7 @@ In the code above, `xs` isn't used. Therefore, its content is discarded:
 
 ```neut
 // after compilation (pseudo-code)
-define bar(xs: list(int)): unit {
+define bar(xs: list(int)) -> unit {
   DISCARD(list(int), xs);
   Unit
 }
@@ -68,7 +68,7 @@ If you're interested in how Neut implements this translation, see [How to Execut
 To avoid unintentional copies, the compiler requires the `!` prefix on a variable name when a copy is needed. For example, consider the following code:
 
 ```neut
-define make-pair(t: text): pair(text, text) {
+define make-pair(t: text) -> pair(text, text) {
   Pair(t, t)
 }
 ```
@@ -78,7 +78,7 @@ The compiler rejects this code because the variable `t` is used twice without th
 You can satisfy the compiler by renaming `t` to `!t`:
 
 ```neut
-define make-pair(!t: text): pair(text, text) {
+define make-pair(!t: text) -> pair(text, text) {
   Pair(!t, !t)
 }
 ```
@@ -86,7 +86,7 @@ define make-pair(!t: text): pair(text, text) {
 The `!` prefix is unnecessary if the variable can be copied for free. For example, consider the following code:
 
 ```neut
-define make-pair(x: int): pair(int, int) {
+define make-pair(x: int) -> pair(int, int) {
   Pair(x, x)
 }
 ```
@@ -104,7 +104,7 @@ data int-list {
 }
 
 // [1, 5, 9] => [2, 6, 10]
-define increment(xs: int-list): int-list {
+define increment(xs: int-list) -> int-list {
   match xs {
   | Nil =>
     Nil
@@ -144,7 +144,7 @@ In other words, when a `free` is required, the compiler looks for a `malloc` in 
 Suppose we've defined a function `length` as follows:
 
 ```neut
-define length(xs: list(int)): int {
+define length(xs: list(int)) -> int {
   match xs {
   | Nil =>
     0
@@ -157,7 +157,7 @@ define length(xs: list(int)): int {
 Now, consider the following code:
 
 ```neut
-define use-length(!xs: list(int)): unit {
+define use-length(!xs: list(int)) -> unit {
   let len = length(!xs);
   some-function(len, !xs)
 }
@@ -180,7 +180,7 @@ Let's see how we can use noemata, rewriting `use-length` and `length`.
 We can create a noema using `on`:
 
 ```neut
-define use-length(xs: list(int)): unit {
+define use-length(xs: list(int)) -> unit {
   // xs: list(int)
   let len on xs =
     // xs: &list(int)
@@ -229,7 +229,7 @@ This condition might initially appear a bit artificial. In the next section, how
 If `t` is an ADT, you can view the content of a value `e: &t` using `case`:
 
 ```neut
-define length(xs: &list(int)): int {
+define length(xs: &list(int)) -> int {
   case xs {
   | Nil =>
     0
@@ -246,7 +246,7 @@ Also, note that the newly-bound variables in `case` are wrapped in `&(_)`. In th
 Now, we have new implementations of `length` and `use-length`:
 
 ```neut
-define length(xs: &list(int)): int {
+define length(xs: &list(int)) -> int {
   case xs {
   | Nil =>
     0
@@ -255,7 +255,7 @@ define length(xs: &list(int)): int {
   }
 }
 
-define use-length(xs: list(int)): unit {
+define use-length(xs: list(int)) -> unit {
   let len on xs = length(xs);
   some-function(len, xs)
 }
@@ -268,7 +268,7 @@ The code doesn't copy `xs` anymore, as you can see from the fact that it no long
 Incidentally, you can create a value of type `a` from a value of type `&a`, as follows:
 
 ```neut
-define make-pair<a>(x: &a): pair(a, a) {
+define make-pair<a>(x: &a) -> pair(a, a) {
   Pair(*x, *x)
 }
 ```

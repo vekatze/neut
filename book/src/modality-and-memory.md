@@ -22,7 +22,7 @@ Every term in Neut has an integer called layer. Conceptually, a layer can be see
 The body of a `define` starts at layer 0:
 
 ```neut
-define foo(): () -> unit {
+define foo() -> () -> unit {
   // here is layer 0
   function () {
     // here is also layer 0
@@ -34,7 +34,7 @@ define foo(): () -> unit {
 A variable defined at layer n can only be used at the same layer. For example, the following code is invalid because the variable `x` is defined at layer 0 but used at layer 3:
 
 ```neut
-define bar(): unit {
+define bar() -> unit {
   // here is layer 0
   let x = Unit; // ← `x` is defined at layer 0
 
@@ -55,7 +55,7 @@ Only modality-related operations can change layers, as we'll see below.
 To create a term of type `+a`, use `box`:
 
 ```neut
-define use-box(x: &int, y: &bool, z: &text): +pair(int, bool) {
+define use-box(x: &int, y: &bool, z: &text) -> +pair(int, bool) {
   // here is layer 0
   // free variables:
   // - x: &int
@@ -97,7 +97,7 @@ You can omit the sequence `x1, ..., xn` entirely if no variables need to be copi
 To use a term of type `+a`, use `letbox`:
 
 ```neut
-define use-letbox(x: int, y: bool, z: text): int {
+define use-letbox(x: int, y: bool, z: text) -> int {
   // here is layer 0
   // free variables:
   // - x: int
@@ -144,7 +144,7 @@ e2
 Sometimes you want to use a term of type `+a` without shifting your current layer. For this, Neut provides `letbox-T`, which keeps you in the same layer:
 
 ```neut
-define use-letbox-T(x: int, y: bool): int {
+define use-letbox-T(x: int, y: bool) -> int {
   // here is layer 0
   letbox-T value on x, y = {
     // here is layer 0 (== layer(outer))
@@ -158,7 +158,7 @@ define use-letbox-T(x: int, y: bool): int {
 `letbox-T` can be used for example to write functions of type `(+a) -> a` as follows:
 
 ```neut
-define axiom-T<a>(x: +a): a {
+define axiom-T<a>(x: +a) -> a {
   letbox-T tmp = x;
   tmp
 }
@@ -171,7 +171,7 @@ If you tried to use `letbox` instead, you’d get an error because it would resu
 We can, for example, construct a `+bool` from a `bool` as follows:
 
 ```neut
-define box-bool(b: bool): +bool {
+define box-bool(b: bool) -> +bool {
   match b {
   | True  => box {True}
   | False => box {False}
@@ -182,7 +182,7 @@ define box-bool(b: bool): +bool {
 To streamline this kind of mechanical step, Neut provides `quote`:
 
 ```neut
-define box-bool(b: bool): +bool {
+define box-bool(b: bool) -> +bool {
   quote {b} // `quote` casts `bool` into `+bool`
 }
 ```
@@ -237,7 +237,7 @@ There's one last rule that must be satisfied for memory safety. That is, if a fu
 Without this rule, you could do something like the following:
 
 ```neut
-define joker(): () -> unit {
+define joker() -> () -> unit {
   // layer 0
   let xs: list(int) = List[1, 2, 3];
   letbox-T f on xs = {
@@ -258,7 +258,7 @@ define joker(): () -> unit {
   // FREE(xs)
 }
 
-define main(): unit {
+define main() -> unit {
   let f = joker();
   f(); // xs used after freed here
 }
@@ -271,7 +271,7 @@ This example would wrongly allow a function at layer 0 (`★`) to keep a referen
 The following function parses data and stores backups of said data.
 
 ```neut
-define backup-parse<a>(transformer: (binary) -> a): a {
+define backup-parse<a>(transformer: (binary) -> a) -> a {
   let !input: binary = get-next-input();
   write-to-file(input-backup, bin-to-hex(!input)); // !input copied
   transformer(!input)
@@ -281,7 +281,7 @@ define backup-parse<a>(transformer: (binary) -> a): a {
 This function might get slow if huge chunks of data are processed due to the copy. Rewriting it to use noetic values could look like the following:
 
 ```neut
-define backup-parse<a>(transformer: (&binary) -> a): a {
+define backup-parse<a>(transformer: (&binary) -> a) -> a {
   let input: binary = get-next-input();
   let result on binary = {
     write-to-file(input-backup, bin-to-hex(input)); // bin-to-hex takes a &binary now, avoiding the copy
@@ -294,11 +294,11 @@ define backup-parse<a>(transformer: (&binary) -> a): a {
 This won't compile because `transformer` contains a free variable `a`. This works as a safety guard, it compiled the following scenario would be possible:
 
 ```neut
-define id-bin(arg: &binary): &binary {
+define id-bin(arg: &binary) -> &binary {
   arg
 }
 
-define backup-parse<a>(transformer: (&binary) -> a): a {
+define backup-parse<a>(transformer: (&binary) -> a) -> a {
   let input: binary = get-next-input();
   let result on binary = {
     write-to-file(input-backup, bin-to-hex(input));
@@ -308,7 +308,7 @@ define backup-parse<a>(transformer: (&binary) -> a): a {
   // FREE(input)
 }
 
-define zen(): unit {
+define zen() -> unit {
   let joker = backup-parse(id-bin);
   write-to-file(somefile, bin-to-hex(joker));
   Unit
@@ -324,7 +324,7 @@ The following happens inside `zen`:
 To fancy the requirements of the type system `+` must be used as follows.
 
 ```neut
-define backup-parse<a>(transformer: (&binary) -> +a): a {
+define backup-parse<a>(transformer: (&binary) -> +a) -> a {
   let input: binary = get-next-input();
   letbox-T result on binary = {
     write-to-file(input-backup, bin-to-hex(input));
@@ -338,13 +338,13 @@ define backup-parse<a>(transformer: (&binary) -> +a): a {
 The `+` specifier asserts that the value a call to `transformer` evaluates will be valid on the outer layer (in this case the layer of `zen`, since it's where `backup-parse` has been called). The requirements of the operators that lift values into `+` guarantee that this is the case. In order to make the previous example work, `id-bin` could look like the following:
 
 ```neut
-define id-bin(arg: &binary): +binary {
+define id-bin(arg: &binary) -> +binary {
   box arg { // *arg copied
     arg
   }
 }
 
-define backup-parse<a>(transformer: (&binary) -> a): a {
+define backup-parse<a>(transformer: (&binary) -> a) -> a {
   let input: binary = get-next-input();
   let result on binary = {
     write-to-file(input-backup, bin-to-hex(input));
@@ -354,7 +354,7 @@ define backup-parse<a>(transformer: (&binary) -> a): a {
   // FREE(input)
 }
 
-define zen(): unit {
+define zen() -> unit {
   let joker = backup-parse(id-bin);
   let _ on joker = write-to-file(somefile, bin-to-hex(joker));
   Unit
@@ -364,12 +364,12 @@ define zen(): unit {
 Lastly, to avoid the newly introduced copy, the following refactor is possible:
 
 ```neut
-define write-to-somefile(arg: &binary): +unit { // used to be id-bin
+define write-to-somefile(arg: &binary) -> +unit { // used to be id-bin
   write-to-file(somefile, bin-to-hex(arg));
   box {Unit}
 }
 
-define backup-parse<a>(transformer: (&binary) -> a): a {
+define backup-parse<a>(transformer: (&binary) -> a) -> a {
   let input: binary = get-next-input();
   let result on binary = {
     write-to-file(input-backup, bin-to-hex(input));
@@ -379,7 +379,7 @@ define backup-parse<a>(transformer: (&binary) -> a): a {
   // FREE(input)
 }
 
-define zen(): unit {
+define zen() -> unit {
   backup-parse(write-to-somefile)
 }
 ```

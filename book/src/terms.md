@@ -20,7 +20,7 @@
 
 - [(x1: a1, ..., xn: an) -> b](#x1-a1--xn-an---b)
 - [function (x1: a1, ..., xn: an) { e }](#function-x1-a1--xn-an--e-)
-- [define f(x1: a1, ..., xn: an): c { e }](#define-fx1-a1--xn-an-c--e-)
+- [define f(x1: a1, ..., xn: an) -> c { e }](#define-fx1-a1--xn-an-c--e-)
 - [e(e1, ..., en)](#ee1--en)
 - [e of {x1 := e1, ..., xn := en}](#e-of-x1--e1--xn--en)
 - [exact e](#exact-e)
@@ -75,14 +75,14 @@
 ### Example
 
 ```neut
-define sample(): unit {
+define sample() -> unit {
   // `type` used as a term
   let foo = type;
   Unit
 }
 
 // `type` used as a type
-define identity(a: type, x: a): a {
+define identity(a: type, x: a) -> a {
   x
 }
 ```
@@ -110,7 +110,7 @@ type
 ### Example
 
 ```neut
-define sample(): unit {
+define sample() -> unit {
   // defining/using various local variables
   let x = Unit;
   let foo = x;
@@ -166,7 +166,7 @@ import {
   core.bool {bool},
 }
 
-define sample(): unit {
+define sample() -> unit {
   // using top-level variables
   let _ = bool; // using an imported top-level name
   let _ = core.bool.bool; // using the definite description of `core.bool.bool`
@@ -206,11 +206,11 @@ Let's see how top-level variables are compiled. Consider the following top-level
 // (source-dir)/sample.nt
 
 // defining a top-level function `increment`
-define increment(x: int): int {
+define increment(x: int) -> int {
   add-int(x, 1)
 }
 
-define get-increment(): (int) -> int {
+define get-increment() -> (int) -> int {
   increment // using a top-level variable `increment`
 }
 ```
@@ -254,13 +254,13 @@ Incidentally, these 3-word tuples are optimized away as long as top-level variab
 ### Example
 
 ```neut
-define use-let(): unit {
+define use-let() -> unit {
   // `let`
   let t = "test";
   print(t)
 }
 
-define use-let(): unit {
+define use-let() -> unit {
   let bar = {
     // nested `let`
     let foo = some-func();
@@ -269,7 +269,7 @@ define use-let(): unit {
   do-something(bar)
 }
 
-define use-let(): unit {
+define use-let() -> unit {
   // `let` with a type annotation
   let t: &text = "test";
   print(t)
@@ -284,13 +284,13 @@ data item {
 | Item(i: int, b: bool)
 }
 
-define use-item(x: item): int {
+define use-item(x: item) -> int {
   // use `let` with a pattern
   let Item(i, _) = x; // ← here
   i
 }
 
-define use-item-2(x: item): int {
+define use-item-2(x: item) -> int {
   // use `let` with an of-pattern
   let Item of {i} = x;
   i
@@ -340,7 +340,7 @@ match x {
 ### Example
 
 ```neut
-define foo(): unit {
+define foo() -> unit {
   let _: int = 100;
   //           ^^^
   let _: int16 = 100;
@@ -376,7 +376,7 @@ The type of an integer is unknown in itself. It must be inferred to be one of th
 ### Example
 
 ```neut
-define foo(): unit {
+define foo() -> unit {
   let _: float = 3.8;
   //             ^^^
   let _: float32 = 3.8;
@@ -411,7 +411,7 @@ The type of a float is unknown in itself. It must be inferred to be one of the f
 ### Example
 
 ```neut
-define foo(): unit {
+define foo() -> unit {
   let _: rune = `A`;
   //            ^^^
   let _: rune = `\n`;
@@ -459,7 +459,7 @@ The underlying representation of a rune is an int32.
 You can see this by calling the following function:
 
 ```neut
-define print-star(): unit {
+define print-star() -> unit {
   // prints "⭐"
   pin t = core.text.singleton(magic cast(int32, rune, 0xe2ad90));
   print-line(t)
@@ -471,7 +471,7 @@ define print-star(): unit {
 ### Example
 
 ```neut
-define foo(): unit {
+define foo() -> unit {
   let _: &text = "test";
   //             ^^^^^^
   Unit
@@ -595,7 +595,7 @@ A function type is compiled into a pointer to `base.#.cls`. For more, please see
 ### Example
 
 ```neut
-define use-function(): int {
+define use-function() -> int {
   let f =
     function (x: int, y: int) {
       let z = add-int(x, y);
@@ -616,7 +616,7 @@ function (x1: a1, ..., xn: an) {
 All the free variables of a `function` must be at the same layer of the function. For example, the following is not a valid term in Neut:
 
 ```neut
-define return-int(x: +int): +() -> int {
+define return-int(x: +int) -> +() -> int {
   // here is layer 0
   box {
     // here is layer -1
@@ -651,18 +651,18 @@ A `function` is compiled into a three-word closure. For more, please see [How to
 
 - Lambda abstractions defined by `function` are reduced at compile-time when possible. If you would like to avoid this behavior, consider using `define`.
 
-## `define f(x1: a1, ..., xn: an): c { e }`
+## `define f(x1: a1, ..., xn: an) -> c { e }`
 
 `define` (at the term-level) can be used to create a function with possible recursion.
 
 ### Example
 
 ```neut
-define use-define(): int {
+define use-define() -> int {
   let c = 10;
   let f =
     // term-level `define` with a free variable `c`
-    define some-recursive-func(x: int): int {
+    define some-recursive-func(x: int) -> int {
       if eq-int(x, 0) {
         0
       } else {
@@ -676,7 +676,7 @@ define use-define(): int {
 ### Syntax
 
 ```neut
-define name<x1: a1, ..., xn: an>(y1: b1, ..., ym: bm): c {
+define name<x1: a1, ..., xn: an>(y1: b1, ..., ym: bm) -> c {
   e
 }
 ```
@@ -684,13 +684,13 @@ define name<x1: a1, ..., xn: an>(y1: b1, ..., ym: bm): c {
 The following abbreviations are available:
 
 ```neut
-define name(y1: b1, ..., ym: bm): c {e}
+define name(y1: b1, ..., ym: bm) -> c {e}
 
 // ↓
-// define name<>(y1: b1, ..., ym: bm): c {e}
+// define name<>(y1: b1, ..., ym: bm) -> c {e}
 
 
-define name<a1, ..., an>(y1: b1, ..., ym: bm): c {e}
+define name<a1, ..., an>(y1: b1, ..., ym: bm) -> c {e}
 
 // ↓
 // define name<a1: _, ..., an: _>(y1: b1, ..., ym: bm) -> c
@@ -703,11 +703,11 @@ As in `function`, all the free variables of a `define` must be at the same layer
 A term-level `define` is lifted to a top-level definition using lambda lifting. For example, consider the following example:
 
 ```neut
-define use-define(): int {
+define use-define() -> int {
   let c = 10;
   let f =
     // term-level `define` with a free variable `c`
-    define some-recursive-func(x: int): int {
+    define some-recursive-func(x: int) -> int {
       if eq-int(x, 0) {
         0
       } else {
@@ -722,7 +722,7 @@ The code above is compiled into something like the below:
 
 ```neut
 // the free variable `c` is now a parameter
-define some-recursive-func(c: int, x: int): int {
+define some-recursive-func(c: int, x: int) -> int {
   if eq-int(x, 0) {
     0
   } else {
@@ -734,7 +734,7 @@ define some-recursive-func(c: int, x: int): int {
   }
 }
 
-define use-define(): int {
+define use-define() -> int {
   let c = 10;
   let f =
     function (x: int) {
@@ -749,7 +749,7 @@ define use-define(): int {
 ```neut
 Γ, x1: a1, ..., xn: an, f: (x1: a1, ..., xn: an) -> t ⊢ e: t
 ------------------------------------------------------------
-     Γ ⊢ (define f(x1: a1, ..., xn: an):t {e}): t
+     Γ ⊢ (define f(x1: a1, ..., xn: an) -> t {e}): t
 ```
 
 ### Note
@@ -763,7 +763,7 @@ Given a function `e` and arguments `e1, ..., en`, we can write `e(e1, ..., en)` 
 ### Example
 
 ```neut
-define use-function(): unit {
+define use-function() -> unit {
   let _ = foo();
   //      ^^^^^
   let _ = bar(1);
@@ -806,11 +806,11 @@ If the function `e` contains implicit parameters, holes are inserted automatical
 For example, consider the following code:
 
 ```neut
-define id<a>(x: a): a {
+define id<a>(x: a) -> a {
   x
 }
 
-define use-id(): unit {
+define use-id() -> unit {
   id(Unit)
 }
 ```
@@ -818,11 +818,11 @@ define use-id(): unit {
 The `id(Unit)` in the example above is (conceptually) compiled into the below:
 
 ```neut
-define _id(a: type, x: a): a {
+define _id(a: type, x: a) -> a {
   x
 }
 
-define use-id(): unit {
+define use-id() -> unit {
   _id(_, Unit) // ← a hole `_` is inserted here
 }
 ```
@@ -834,11 +834,11 @@ define use-id(): unit {
 ### Example
 
 ```neut
-define foo(x: int, y: bool, some-path: &text): unit {
+define foo(x: int, y: bool, some-path: &text) -> unit {
   // ...
 }
 
-define use-foo(): unit {
+define use-foo() -> unit {
   foo of {
     x := 10,
     y := True,
@@ -886,7 +886,7 @@ inline some-config {
 If the argument is a variable that has the same name as the parameter, you can use a shorthand notation:
 
 ```neut
-define use-foo(): unit {
+define use-foo() -> unit {
   let x = 10;
   let y = True;
   let some-path = "/path/to/file";
@@ -901,11 +901,11 @@ Given a function `e`, `exact e` supplies all the implicit parameters of `e` by i
 ### Example
 
 ```neut
-define id<a>(x: a): a {
+define id<a>(x: a) -> a {
   x
 }
 
-define use-id() {
+define use-id() -> unit {
   let g: (x: int) -> int = exact id;
   Unit
 }
@@ -914,11 +914,11 @@ define use-id() {
 Note that the following won't type-check:
 
 ```neut
-define id<a>(x: a): a {
+define id<a>(x: a) -> a {
   x
 }
 
-define use-id() {
+define use-id() -> unit {
   let g: (x: int) -> int = id;
   Unit
 }
@@ -974,7 +974,7 @@ data my-nat {
 | Succ(my-nat)
 }
 
-define use-nat-type(): type {
+define use-nat-type() -> type {
   // 🌟
   my-nat
 }
@@ -1012,7 +1012,7 @@ data my-nat {
 | Succ(my-nat)
 }
 
-define create-nat(): my-nat {
+define create-nat() -> my-nat {
   // 🌟 (`Succ` and `Zero` are constructors)
   Succ(Succ(Zero))
 }
@@ -1074,7 +1074,7 @@ data my-nat {
 | Succ(my-nat)
 }
 
-define foo(n: my-nat): int {
+define foo(n: my-nat) -> int {
   // 🌟
   match n {
   | Zero =>
@@ -1084,7 +1084,7 @@ define foo(n: my-nat): int {
   }
 }
 
-define bar(n: my-nat): int {
+define bar(n: my-nat) -> int {
   // 🌟 (You can use nested patterns)
   match n {
   | Zero =>
@@ -1096,7 +1096,7 @@ define bar(n: my-nat): int {
   }
 }
 
-define eq-nat(n1: my-nat, n2: my-nat): bool {
+define eq-nat(n1: my-nat, n2: my-nat) -> bool {
   // 🌟 (`match` can handle multiple values)
   match n1, n2 {
   | Zero, Zero =>
@@ -1108,7 +1108,7 @@ define eq-nat(n1: my-nat, n2: my-nat): bool {
   }
 }
 
-define literal-match(x: int): int {
+define literal-match(x: int) -> int {
   // 🌟 (You can use `match` against integers)
   match x {
   | 3 =>
@@ -1158,7 +1158,7 @@ Succ:
 When evaluating `match`, the computer inspects the first element of the "tuple" `n`.
 
 ```neut
-define foo(n: my-nat): int {
+define foo(n: my-nat) -> int {
   // 🌟 (inspects the first element of `n` here)
   match n {
   | Zero =>
@@ -1229,7 +1229,7 @@ Given a type `a: type`, `+a` is the type of `a` in the "outer" layer.
 ### Example
 
 ```neut
-define axiom-T<a>(x: +a): a {
+define axiom-T<a>(x: +a) -> a {
   letbox-T result = x;
   result
 }
@@ -1275,7 +1275,7 @@ data my-nat {
 }
 
                      // 🌟
-define foo-noetic(n: &my-nat): int {
+define foo-noetic(n: &my-nat) -> int {
   case n {
   | Zero =>
     100
@@ -1317,7 +1317,7 @@ For every type `a`, `&a` is compiled into `base.#.imm`.
 ### Example
 
 ```neut
-define use-noema<a>(x: &a, y: &a): +b {
+define use-noema<a>(x: &a, y: &a) -> +b {
   // layer 0
   // - x: &a at layer 0
   // - y: a  at layer 0
@@ -1368,7 +1368,7 @@ where `Γ1; ...; Γn` is a sequence of contexts.
 The body of `define` is defined to be at layer 0:
 
 ```neut
-define some-function(x: int): int {
+define some-function(x: int) -> int {
   // here is layer 0
   // `x: int` is a variable at layer 0
   add-int(x, 1)
@@ -1378,7 +1378,7 @@ define some-function(x: int): int {
 Since `box e` lifts the layer of `e`, if we use `box` at layer 0, the layer of `e` will become -1:
 
 ```neut
-define use-box(x: int): +int {
+define use-box(x: int) -> +int {
   // here is layer 0
   box {
     // here is layer -1
@@ -1390,7 +1390,7 @@ define use-box(x: int): +int {
 _In layer n, we can only use variables at the layer_. Thus, the following is not a valid term:
 
 ```neut
-define use-box-error(x: int): +int {
+define use-box-error(x: int) -> +int {
   // here is layer 0
   box {
     // here is layer -1
@@ -1402,7 +1402,7 @@ define use-box-error(x: int): +int {
 We can incorporate variables outside `box` by capturing them:
 
 ```neut
-define use-box-with-noema(x: &int): +int {
+define use-box-with-noema(x: &int) -> +int {
   // here is layer 0
   // x: &int at layer 0
   box x {
@@ -1489,7 +1489,7 @@ You can use `letbox` to "unlift" terms.
 ### Example
 
 ```neut
-define roundtrip(x: +a): +a {
+define roundtrip(x: +a) -> +a {
   // here is layer 0
   box {
     // here is layer -1
@@ -1500,7 +1500,7 @@ define roundtrip(x: +a): +a {
   }
 }
 
-define try-borrowing(x: int): unit {
+define try-borrowing(x: int) -> unit {
   // here is layer 0
   // x: int (at layer 0)
   letbox tmp =
@@ -1546,7 +1546,7 @@ cont
 Given a term `e1` at layer n + 1, `letbox x = e1; e2` is at layer n:
 
 ```neut
-define roundtrip(x: +a): +a {
+define roundtrip(x: +a) -> +a {
   box {
     // here is layer -1 (= n)
     letbox tmp =
@@ -1561,7 +1561,7 @@ define roundtrip(x: +a): +a {
 _In layer n, we can only use variables at the layer_. Thus, the following is not a valid term:
 
 ```neut
-define use-letbox-error(x: +int): int {
+define use-letbox-error(x: +int) -> int {
   // here is layer 0
   // x: +int (at layer 0)
   letbox tmp =
@@ -1579,7 +1579,7 @@ You can use `letbox-T` to get values from terms of type `+a` without changing la
 ### Example
 
 ```neut
-define extract-value-from-meta(x: +int): int {
+define extract-value-from-meta(x: +int) -> int {
   // here is layer 0
   // x: +int (at layer 0)
   letbox-T tmp =
@@ -1634,7 +1634,7 @@ Note that the layer of `e1`, `e2`, `letbox-T (..)` are the same.
 `letbox-T` doesn't alter layers:
 
 ```neut
-define extract-value-from-meta(x: +int): int {
+define extract-value-from-meta(x: +int) -> int {
   // here is layer 0
   letbox-T tmp =
     // here is layer 0
@@ -1647,7 +1647,7 @@ define extract-value-from-meta(x: +int): int {
 `on` doesn't alter the layers of variables, too:
 
 ```neut
-define extract-value-from-meta(x: int): int {
+define extract-value-from-meta(x: int) -> int {
   // here is layer 0
   // x: int (at layer 0)
   letbox-T tmp on x =
@@ -1672,7 +1672,7 @@ data my-nat {
 | Succ(my-nat)
 }
 
-define foo-noetic(n: &my-nat): int {
+define foo-noetic(n: &my-nat) -> int {
   case n {
   | Zero =>
     100
@@ -1812,14 +1812,14 @@ You can use `detach` to create a new thread.
 ### Example
 
 ```neut
-define foo(): thread(int) {
+define foo() -> thread(int) {
   detach {
     print("fA");
     1
   }
 }
 
-define bar(): thread(int) {
+define bar() -> thread(int) {
   let f =
     detach {
       print("fA");
@@ -1860,11 +1860,11 @@ You can use `detach` to wait for a thread and get its result.
 ### Example
 
 ```neut
-define foo(f: thread(int)): int {
+define foo(f: thread(int)) -> int {
   attach { f }
 }
 
-define bar(f: thread((int) -> bool)): bool {
+define bar(f: thread((int) -> bool)) -> bool {
   let k = attach { f };
   k(100)
 }
@@ -1901,15 +1901,15 @@ You can use `quote` to wrap the types of "safe" values by `+`.
 ### Example
 
 ```neut
-define quote-int(x: int): +int {
+define quote-int(x: int) -> +int {
   quote {x}
 }
 
-define quote-bool(x: bool): +bool {
+define quote-bool(x: bool) -> +bool {
   quote {x}
 }
 
-define quote-function(f: (int) -> bool): +(int) -> bool {
+define quote-function(f: (int) -> bool) -> +(int) -> bool {
   quote {f} // error; won't typecheck
 }
 ```
@@ -1972,13 +1972,13 @@ data joker-z {
 (2) `quote` doesn't add extra expressiveness to the type system. For example, `quote` on `bool` can be replaced with `box` as follows:
 
 ```neut
-define quote-bool(b: bool): +bool {
+define quote-bool(b: bool) -> +bool {
   quote {b}
 }
 
 ↓
 
-define quote-bool(b: bool): +bool {
+define quote-bool(b: bool) -> +bool {
   if b {
     box {True}
   } else {
@@ -1990,13 +1990,13 @@ define quote-bool(b: bool): +bool {
 `quote` on `either(bool, unit)` can also be replaced with `box` as follows:
 
 ```neut
-define quote-either(x: either(bool, unit)): +either(bool, unit) {
+define quote-either(x: either(bool, unit)) -> +either(bool, unit) {
   quote {b}
 }
 
 ↓
 
-define quote-either(x: either(bool, unit)): +either(bool, unit) {
+define quote-either(x: either(bool, unit)) -> +either(bool, unit) {
   match x {
   | Left(b) =>
     if b {
@@ -2027,7 +2027,7 @@ constant stdin: descriptor {
   magic cast(int, descriptor, 0) // 🌟 cast
 }
 
-define malloc-then-free(): unit {
+define malloc-then-free() -> unit {
   // allocates memory region (stack)
   let ptr = magic alloca(int64, 2); // allocates (64 / 8) * 2 = 16 byte
 
@@ -2238,7 +2238,7 @@ You can use `introspect key {..}` to introspect the compiler's configuration.
 ### Example
 
 ```neut
-define arch-dependent-constant(): int {
+define arch-dependent-constant() -> int {
   introspect architecture {
   | arm64 =>
     1
@@ -2247,7 +2247,7 @@ define arch-dependent-constant(): int {
   }
 }
 
-define os-dependent-constant(): int {
+define os-dependent-constant() -> int {
   introspect operating-system {
   | linux =>
     1
@@ -2321,7 +2321,7 @@ import {
   static {some-file}
 }
 
-define use-some-file(): unit {
+define use-some-file() -> unit {
   let t: &text = include-text(some-file);
   print(t)
 }
@@ -2358,7 +2358,7 @@ You can use `admit` to suppress the type checker and sketch the structure of you
 ### Example
 
 ```neut
-define my-complex-function(): unit {
+define my-complex-function() -> unit {
   admit
 }
 ```
@@ -2399,7 +2399,7 @@ You can use `assert` to ensure that a condition is satisfied at run-time.
 ### Example
 
 ```neut
-define fact(n: int): int {
+define fact(n: int) -> int {
   assert "the input must be non-negative" {
     ge-int(n, 0)
   };
@@ -2440,11 +2440,11 @@ Otherwise, `assert "description" { condition }` evaluates `condition` and checks
 ### Example
 
 ```neut
-define id(a: type, x: a): a {
+define id(a: type, x: a) -> a {
   x
 }
 
-define use-hole(): unit {
+define use-hole() -> unit {
   id(_, Unit) // ← using a hole (inferred to be `unit`)
 }
 ```
@@ -2478,7 +2478,7 @@ Please do not confuse a hole with the `_` in `let _ = e1; e2`.
 ### Example
 
 ```neut
-define play-with-let-on(): int {
+define play-with-let-on() -> int {
   let xs: list(int) = List[1, 2, 3];
   let len on xs =
     // the type of `xs` is `&list(int)` here
@@ -2518,7 +2518,7 @@ You can use `*e` to create a non-noetic value from a noetic value.
 ### Example
 
 ```neut
-define clone-list<a>(xs: &list(a)): list(a) {
+define clone-list<a>(xs: &list(a)) -> list(a) {
   case xs {
   | Nil =>
     Nil
@@ -2550,12 +2550,12 @@ where the function `embody` is defined in the core library as follows:
 // core.box
 
 // □A -> A (Axiom T)
-inline axiom-T<a>(x: +a): a {
+inline axiom-T<a>(x: +a) -> a {
   letbox-T x' = x;
   x'
 }
 
-inline embody<a>(x: &a): a {
+inline embody<a>(x: &a) -> a {
   axiom-T(box x {x}) // ← this `box` copies the content of `x`
 }
 ```
@@ -2579,7 +2579,7 @@ You can use `if` as in other languages.
 ### Example
 
 ```neut
-define foo(b1: bool): unit {
+define foo(b1: bool) -> unit {
   if b1 {
     print("hey")
   } else {
@@ -2587,7 +2587,7 @@ define foo(b1: bool): unit {
   }
 }
 
-define bar(b1: bool, b2: bool): unit {
+define bar(b1: bool, b2: bool) -> unit {
   let tmp =
     if b1 {
       "hey"
@@ -2641,7 +2641,7 @@ You can use `when cond { e }` to perform `e` only when `cond` is true.
 ### Example
 
 ```neut
-define foo(b1: bool): unit {
+define foo(b1: bool) -> unit {
   when b1 {
     print("hey")
   }
@@ -2686,7 +2686,7 @@ You can use `e1; e2` to perform sequential operations.
 ### Example
 
 ```neut
-define foo(): unit {
+define foo() -> unit {
   print("hello");
   print(", ");
   print("world!");
@@ -2721,11 +2721,11 @@ Derived from the desugared form.
 ### Example
 
 ```neut
-define get-value-or-fail(): either(error, int) {
+define get-value-or-fail() -> either(error, int) {
   //  ...
 }
 
-define foo(): either(error, int) {
+define foo() -> either(error, int) {
   try x1 = get-value-or-fail();
   try x2 = get-value-or-fail();
   Right(add-int(x1, x2))
@@ -2781,7 +2781,7 @@ data config {
   )
 }
 
-define use-noetic-config(c: &config): int {
+define use-noetic-config(c: &config) -> int {
   tie Config of {foo} = c;
   *foo
 }
@@ -2817,7 +2817,7 @@ You can use `pin` to create a value and use it as a noema.
 
 ```neut
 // without `pin`
-define foo(): unit {
+define foo() -> unit {
   let xs = make-list(123);
   let result on xs = some-func(xs);
   let _ = xs;
@@ -2827,7 +2827,7 @@ define foo(): unit {
 ↓
 
 // with `pin`
-define foo(): unit {
+define foo() -> unit {
   pin xs = make-list(123);
   some-func(xs)
 }
@@ -2861,7 +2861,7 @@ You can use `?t` to represent an optional type.
 ### Example
 
 ```neut
-define foo(x: int): ?int {
+define foo(x: int) -> ?int {
   if eq-int(x, 0) {
     Right(100)
   } else {

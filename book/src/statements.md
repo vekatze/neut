@@ -48,7 +48,7 @@ import {
   this.foo.bar {some-func},
 }
 
-define yo(): unit {
+define yo() -> unit {
   some-func(arg-1, arg-2)
 }
 ```
@@ -60,7 +60,7 @@ import {
   this.foo.bar,
 }
 
-define yo(): unit {
+define yo() -> unit {
   this.foo.bar.some-func(arg-1, arg-2)
 }
 ```
@@ -80,16 +80,16 @@ For more on static files, please see [the section in Modules](modules.md#static)
 `define` defines a function. It should look like the following:
 
 ```neut
-define foo(x: int, y: int): int {
+define foo(x: int, y: int) -> int {
   add-int(x, y)
 }
 
-define identity-1(a: type, x: a): a {
+define identity-1(a: type, x: a) -> a {
   x
 }
 
 // a function with an implicit parameter
-define identity-2<a>(x: a): a {
+define identity-2<a>(x: a) -> a {
   x
 }
 ```
@@ -97,7 +97,7 @@ define identity-2<a>(x: a): a {
 Defined functions can then be used:
 
 ```neut
-define use-foo(): int {
+define use-foo() -> int {
   foo(1, 2)
 }
 ```
@@ -105,7 +105,7 @@ define use-foo(): int {
 `define` can optionally have implicit parameters, as in `identity-2` in the above example. The compiler inserts these implicit parameters at compile time, so you don't have to write them explicitly:
 
 ```neut
-define use-func-with-implicit-arg(): int {
+define use-func-with-implicit-arg() -> int {
   let x = 10;
   let y = identity-1(int, x); // ← explicit version
   let z = identity-2(x);      // ← implicit version
@@ -120,11 +120,11 @@ All the tail-recursions in Neut are optimized into loops (thanks to geniuses in 
 Note that statements are order-sensitive as in F#. Thus, the following code results in an error:
 
 ```neut
-define bar(): int {
+define bar() -> int {
   foo() // `foo` is undefined here
 }
 
-define foo(): int {
+define foo() -> int {
   10
 }
 ```
@@ -136,7 +136,7 @@ You have to use the statement `nominal` explicitly for forward references.
 `inline` defines an inline function. It should look like the following:
 
 ```neut
-inline foo(x: int, y: int): int {
+inline foo(x: int, y: int) -> int {
   print("foo");
   add-int(x, y)
 }
@@ -145,7 +145,7 @@ inline foo(x: int, y: int): int {
 `inline` is the same as `define` except that the definition is always expanded at compile-time. For example, if you write
 
 ```neut
-define use-inline-foo(): int {
+define use-inline-foo() -> int {
   let val = foo(10, 20);
   val
 }
@@ -154,7 +154,7 @@ define use-inline-foo(): int {
 The compiler will translate the above code into the following:
 
 ```neut
-define use-inline-foo(): int {
+define use-inline-foo() -> int {
   let val = {
     let x = 10;
     let y = 20;
@@ -178,7 +178,7 @@ constant empty-list<a>: list(a) {
   Nil
 }
 
-define use-constants(): list(int) {
+define use-constants() -> list(int) {
   let x = foo;
   empty-list
 }
@@ -220,7 +220,7 @@ data config {
 You can use the content of an ADT value by using `match` or `case`:
 
 ```neut
-define length<a>(xs: list(a)): int {
+define length<a>(xs: list(a)) -> int {
   // destruct ADT values using `match`
   match xs {
   | Nil =>
@@ -230,7 +230,7 @@ define length<a>(xs: list(a)): int {
   }
 }
 
-define length-noetic<a>(xs: &list(a)): int {
+define length-noetic<a>(xs: &list(a)) -> int {
   // read noetic ADT values using `case`
   case xs {
   | Nil =>
@@ -240,7 +240,7 @@ define length-noetic<a>(xs: &list(a)): int {
   }
 }
 
-define use-config(c: config) {
+define use-config(c: config) -> unit {
   // pattern-matching in `let` is also possible
   let Config of {count, some-path} = c;
   print(count)
@@ -296,7 +296,7 @@ resource boxed-int {
 }
 
 // provide a way to introduce new boxed integer
-define create-new-boxed-int(x: int): boxed-int {
+define create-new-boxed-int(x: int) -> boxed-int {
   let new-ptr = malloc(8);
   store-int(x, new-ptr);
   magic cast(int, boxed-int, new-ptr)
@@ -443,7 +443,7 @@ nominal {
 }
 
 // given a non-negative integer `x`, returns true if `x` is even.
-define is-even(x: int): bool {
+define is-even(x: int) -> bool {
   if eq-int(x, 0) {
     True
   } else {
@@ -453,7 +453,7 @@ define is-even(x: int): bool {
 
 // given a non-negative integer `x`, returns true if `x` is odd.
 // ("real" definition of `is-odd`)
-define is-odd(x: int): bool {
+define is-odd(x: int) -> bool {
   if eq-int(x, 0) {
     False
   } else {
@@ -493,7 +493,7 @@ foreign {
   neut_myapp_v1_add_const(int): int,
 }
 
-define my-func(): int {
+define my-func() -> int {
   let x: int = 10;
   magic external neut_myapp_v1_add_const(x)
 }
@@ -518,7 +518,7 @@ foreign {
   llvm.sin.f64(float): float,
 }
 
-define sin(x: float): float {
+define sin(x: float) -> float {
   magic external llvm.sin.f64(x)
 }
 ```
@@ -564,7 +564,7 @@ foreign {
 Then, specify the types of variadic arguments when using `magic external`:
 
 ```neut
-define print(t: &text): unit {
+define print(t: &text) -> unit {
   // ..
   magic external printf(fmt)(len: int, val: pointer)
   //                         ^^^^^^^^^^^^^^^^^^^^^^
