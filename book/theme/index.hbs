@@ -41,19 +41,19 @@
           <article id="content-inner">
             {{{content}}}
             <footer id="footer-paginator">
-              {{#previous}}
-              <a rel="prev" href="{{path_to_root}}{{link}}" class="nav previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+              {{#if previous}}
+              <a rel="prev" href="{{path_to_root}}{{previous.link}}" class="nav previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                 ← Previous Page
               </a>
-              {{/previous}}
+              {{/if}}
 
               <div id="footer-spacer"></div>
 
-              {{#next}}
-              <a rel="next" href="{{path_to_root}}{{link}}" class="nav next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+              {{#if next}}
+              <a rel="next" href="{{path_to_root}}{{next.link}}" class="nav next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                 Next Page →
               </a>
-              {{/next}}
+              {{/if}}
             </footer>
           </article>
           <div id="footer-wrapper">

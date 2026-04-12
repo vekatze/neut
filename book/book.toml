@@ -1,7 +1,6 @@
 [book]
 authors = ["vekatze"]
 language = "en"
-multilingual = false
 src = "src"
 title = "Neut Programming Language"
 description = "A functional programming language with static memory management."
@@ -11,6 +10,5 @@ build-dir = "dist"
 
 [output.html]
 git-repository-url = "https://github.com/vekatze/neut"
-copy-fonts = false
-curly-quotes = false
+smart-punctuation = false
 site-url = "/neut/"
