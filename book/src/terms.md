@@ -107,9 +107,7 @@ define sample() -> unit {
   // defining/using various local variables
   let x = Unit;
   let foo = x;
-  let 'bar = foo;
-  let buz' = 'bar;
-  let _h-e-l-l-o = buz';
+  let _h-e-l-l-o = foo;
   let αβγ = _h-e-l-l-o;
   let theSpreadingWideMyNarrowHandsToGatherParadise = αβγ;
   let 冥きより冥き道にぞ入りぬべきはるかに照らせ山の端の月 = Unit;
@@ -130,7 +128,7 @@ define sample() -> unit {
 
 The name of a local variable must satisfy the following conditions:
 
-- It doesn't contain any of ``=() `\"\n\t:;,<>[]{}/*|&?``
+- It doesn't contain any of ``=()' `\"\n\t:;,<>[]{}/*|&?``
 - It doesn't start with `A, B, .., Z` (the upper case alphabets)
 
 ### Semantics
@@ -171,7 +169,7 @@ define sample() -> unit {
 
 The name of a top-level variable is a (possibly) dot-separated symbols, where each symbol must satisfy the following conditions:
 
-- It doesn't contain any of ``=() `\"\n\t:;,<>[]{}/*|&?``
+- It doesn't contain any of ``=()' `\"\n\t:;,<>[]{}/*|&?``
 
 ### Semantics
 
@@ -2536,8 +2534,8 @@ where the function `embody` is defined in the core library as follows:
 
 // □A -> A (Axiom T)
 inline axiom-T<a>(x: +a) -> a {
-  letbox-T x' = x;
-  x'
+  letbox-T x-tmp = x;
+  x-tmp
 }
 
 inline embody<a>(x: &a) -> a {
