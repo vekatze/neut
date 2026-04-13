@@ -273,8 +273,8 @@ The following function parses data and stores backups of said data.
 ```neut
 define backup-parse<a>(transformer: (binary) -> a) -> a {
   let !input: binary = get-next-input();
-  write-to-file(input-backup, bin-to-hex(!input)); // !input copied
-  transformer(!input)
+  write-to-file(input-backup, bin-to-hex(input)); // `input` copied
+  transformer(input)
 }
 ```
 

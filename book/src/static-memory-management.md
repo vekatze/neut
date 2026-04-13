@@ -73,13 +73,13 @@ define make-pair(t: text) -> pair(text, text) {
 }
 ```
 
-The compiler rejects this code because the variable `t` is used twice without the `!` prefix.
+The compiler rejects this code because the variable `t` is used twice without being defined with the `!` prefix.
 
-You can satisfy the compiler by renaming `t` to `!t`:
+You can satisfy the compiler by defining `t` as `!t`:
 
 ```neut
 define make-pair(!t: text) -> pair(text, text) {
-  Pair(!t, !t)
+  Pair(t, t)
 }
 ```
 
@@ -158,12 +158,12 @@ Now, consider the following code:
 
 ```neut
 define use-length(!xs: list(int)) -> unit {
-  let len = length(!xs);
-  some-function(len, !xs)
+  let len = length(xs);
+  some-function(len, xs)
 }
 ```
 
-Note that the variable `!xs` is used twice. This means that the content of `!xs` is copied just to calculate its length. This is of course unfortunate. Worse, this kind of procedure isn't rare. We need some kind of loophole.
+Note that the variable `xs` is used twice. This means that the content of `xs` is copied just to calculate its length. This is of course unfortunate. Worse, this kind of procedure isn't rare. We need some kind of loophole.
 
 Luckily, Neut has a remedy for this kind of situation, as we'll see below.
 

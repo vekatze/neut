@@ -55,23 +55,23 @@ Let's see how types are executed when copying values. For example, consider the 
 
 ```neut
 define foo(!xs: list(int)) -> unit {
-  some-func(!xs, !xs)
+  some-func(xs, xs)
 }
 ```
 
-Note that the variable `!xs` is used twice. Because of that, the compiler translates the above code into the following (pseudo-code; won't typecheck):
+Note that the variable `xs` is used twice. Because of that, the compiler translates the above code into the following (pseudo-code; won't typecheck):
 
 ```neut
 define foo(!xs: list(int)) -> unit {
   let f = list(int);
-  let xs-clone = f(1, !xs); // passing `1` to copy `xs`
-  some-func(xs-clone, !xs)
+  let xs-clone = f(1, xs); // passing `1` to copy `xs`
+  some-func(xs-clone, xs)
 }
 ```
 
 Note that the above example executes the type `list(int)` as a function.
 
-You must prefix a variable with `!` if the variable needs to be copied. You must also prefix free variables in a term-level `define` with `!` if they cannot be copied for free.
+You must prefix a variable with `!` at its definition site if the variable may need to be copied. Likewise, if a free variable captured by a term-level `define` cannot be copied for free, that free variable must have been defined with the `!` prefix.
 
 The prefix `!` is unnecessary if the variable can be copied for free.
 

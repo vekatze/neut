@@ -164,7 +164,7 @@ define foo() -> unit {
 
 <div class="info-block">
 
-The compiler reports an error if you rewrite the example above so that it uses the variable `f` more than once. This behavior prevents unexpected copying of values. You can satisfy the compiler by renaming `f` into `!f`. The next section will cover this topic.
+The compiler reports an error if you rewrite the example above so that it uses the variable `f` more than once. This behavior prevents unexpected copying of values. You can satisfy the compiler by defining the variable as `!f`. The next section will cover this topic.
 
 </div>
 
