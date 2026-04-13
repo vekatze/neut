@@ -427,7 +427,7 @@ define foo() -> unit {
 
 `` `A` ``, `` `\n` ``, `` `\u{123}` ``, etc.
 
-The available escape sequences in rune literals are the same as those of [string literals](./terms.md#strings).
+The available escape sequences in rune literals are the same as those of the literal form of [`static`](./terms.md#static).
 
 ### Semantics
 
@@ -481,38 +481,11 @@ define foo() -> unit {
 
 ### Syntax
 
-`"hello"`, `"Hello, world!\n"`, `"\u{1f338} ← Cherry Blossom"`, etc.
-
-Below is the list of all the escape sequences in Neut:
-
-| Escape Sequence | Meaning                        |
-| --------------- | ------------------------------ |
-| `\0`            | U+0000 (null character)        |
-| `\t`            | U+0009 (horizontal tab)        |
-| `\n`            | U+000A (line feed)             |
-| `\r`            | U+000D (carriage return)       |
-| `\"`            | U+0022 (double quotation mark) |
-| `\\`            | U+005C (backslash)             |
-| `` \` ``        | U+0060 (backtick)              |
-| `\u{n}`         | U+n                            |
-
-The `n` in `\u{n}` must be a lowercase hexadecimal number.
+The syntax of a string literal is the same as that of the literal form of [`static`](#static).
 
 ### Semantics
 
-A string literal is compiled into a pointer to a tuple like the following:
-
-```text
-(0, length-of-string, array-of-characters)
-```
-
-This tuple is static. More specifically, a global constant like the following is inserted into the resulting IR.
-
-```llvm
-@"text-hello" = private unnamed_addr constant {i64, i64, [5 x i8]} {i64 0, i64 5, [5 x i8] c"hello"}
-```
-
-And a string like `"hello": &string` is compiled into `ptr @"text-hello"`.
+A string literal is, conceptually, shorthand for `magic cast(text, &string, static "hello")`.
 
 ### Type
 
@@ -524,10 +497,8 @@ And a string like `"hello": &string` is compiled into `ptr @"text-hello"`.
 
 ### Note
 
-- In the current implementation, the set of recognized escape sequences like `\n` or `\t` is the same as in Haskell.
 - String literals have type `&string`.
-- Neut also has a primitive type `text`, which is used by `static`.
-- Unlike `&string`, `text` can be lifted. If you need an `&string`, convert `text` using `core.string.from-text`.
+- For the exact syntax and internal representation of the literal part, see [`static`](#static).
 
 ## `(x1: a1, ..., xn: an) -> b`
 
@@ -2350,7 +2321,24 @@ define use-static-literal() -> unit {
 ```neut
 static some-file
 static "hello"
+static "Hello, world!\n"
+static "\u{1f338} ← Cherry Blossom"
 ```
+
+Below is the list of all the escape sequences in Neut for the literal form:
+
+| Escape Sequence | Meaning                        |
+| --------------- | ------------------------------ |
+| `\0`            | U+0000 (null character)        |
+| `\t`            | U+0009 (horizontal tab)        |
+| `\n`            | U+000A (line feed)             |
+| `\r`            | U+000D (carriage return)       |
+| `\"`            | U+0022 (double quotation mark) |
+| `\\`            | U+005C (backslash)             |
+| `` \` ``        | U+0060 (backtick)              |
+| `\u{n}`         | U+n                            |
+
+The `n` in `\u{n}` must be a lowercase hexadecimal number.
 
 ### Semantics
 
@@ -2359,6 +2347,20 @@ The compiler expands `static foo` into the content of `foo` at compile time.
 If `foo` isn't a key of a UTF-8 text file, `static foo` reports a compilation error.
 
 The expression `static "hello"` creates a value of type `text` from the given string literal.
+
+A static literal is compiled into a pointer to a tuple like the following:
+
+```text
+(0, length-of-string, array-of-characters)
+```
+
+This tuple is static. More specifically, a global constant like the following is inserted into the resulting IR.
+
+```llvm
+@"text-hello" = private unnamed_addr constant {i64, i64, [5 x i8]} {i64 0, i64 5, [5 x i8] c"hello"}
+```
+
+And a term like `static "hello": text` is compiled into `ptr @"text-hello"`.
 
 ### Type
 
