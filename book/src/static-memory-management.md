@@ -68,7 +68,7 @@ If you're interested in how Neut implements this translation, see [How to Execut
 To avoid unintentional copies, the compiler requires the `!` prefix on a variable name when a copy is needed. For example, consider the following code:
 
 ```neut
-define make-pair(t: text) -> pair(text, text) {
+define make-pair(t: string) -> pair(string, string) {
   Pair(t, t)
 }
 ```
@@ -78,7 +78,7 @@ The compiler rejects this code because the variable `t` is used twice without be
 You can satisfy the compiler by defining `t` as `!t`:
 
 ```neut
-define make-pair(!t: text) -> pair(text, text) {
+define make-pair(!t: string) -> pair(string, string) {
   Pair(t, t)
 }
 ```

@@ -336,8 +336,8 @@ import {
 }
 
 define use-some-file() -> unit {
-  let t1: &text = include-text(some-file);
-  let t2: &text = include-text(other-file);
+  let t1: &string = include-text(some-file);
+  let t2: &string = include-text(other-file);
   print(t1);
   print(t2)
 }

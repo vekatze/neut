@@ -211,7 +211,7 @@ data list(a) {
 data config {
 | Config(
     count: int,
-    foo-path: &text,
+    foo-path: &string,
     colorize: bool,
   )
 }
@@ -564,7 +564,7 @@ foreign {
 Then, specify the types of variadic arguments when using `magic external`:
 
 ```neut
-define print(t: &text) -> unit {
+define print(t: &string) -> unit {
   // ..
   magic external printf(fmt)(len: int, val: pointer)
   //                         ^^^^^^^^^^^^^^^^^^^^^^

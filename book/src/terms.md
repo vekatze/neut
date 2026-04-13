@@ -13,7 +13,7 @@
 
 - [Integers](#integers)
 - [Floats](#floats)
-- [Texts](#texts)
+- [Strings](#strings)
 - [Runes](#runes)
 
 ### Function
@@ -271,7 +271,7 @@ define use-let() -> unit {
 
 define use-let() -> unit {
   // `let` with a type annotation
-  let t: &text = "test";
+  let t: &string = "test";
   print(t)
 }
 
@@ -427,7 +427,7 @@ define foo() -> unit {
 
 `` `A` ``, `` `\n` ``, `` `\u{123}` ``, etc.
 
-The available escape sequences in rune literals are the same as those of [text literals](./terms.md#texts).
+The available escape sequences in rune literals are the same as those of [string literals](./terms.md#strings).
 
 ### Semantics
 
@@ -461,18 +461,18 @@ You can see this by calling the following function:
 ```neut
 define print-star() -> unit {
   // prints "⭐"
-  pin t = core.text.singleton(magic cast(int32, rune, 0xe2ad90));
+  pin t = core.string.singleton(magic cast(int32, rune, 0xe2ad90));
   print-line(t)
 }
 ```
 
-## Texts
+## Strings
 
 ### Example
 
 ```neut
 define foo() -> unit {
-  let _: &text = "test";
+  let _: &string = "test";
   //             ^^^^^^
   Unit
 }
@@ -500,7 +500,7 @@ The `n` in `\u{n}` must be a lowercase hexadecimal number.
 
 ### Semantics
 
-A text literal is compiled into a pointer to a tuple like the following:
+A string literal is compiled into a pointer to a tuple like the following:
 
 ```text
 (0, length-of-string, array-of-characters)
@@ -512,14 +512,14 @@ This tuple is static. More specifically, a global constant like the following is
 @"text-hello" = private unnamed_addr constant {i64, i64, [5 x i8]} {i64 0, i64 5, [5 x i8] c"hello"}
 ```
 
-And a text like `"hello": &text` is compiled into `ptr @"text-hello"`.
+And a string like `"hello": &string` is compiled into `ptr @"text-hello"`.
 
 ### Type
 
 ```neut
-(Γ is a context)  (t is a text literal)
+(Γ is a context)  (t is a string literal)
 ---------------------------------------
-         Γ ⊢ t: &text
+        Γ ⊢ t: &string
 ```
 
 ### Note
@@ -834,7 +834,7 @@ define use-id() -> unit {
 ### Example
 
 ```neut
-define foo(x: int, y: bool, some-path: &text) -> unit {
+define foo(x: int, y: bool, some-path: &string) -> unit {
   // ...
 }
 
@@ -869,7 +869,7 @@ This notation might be useful when used in combination with ADTs:
 data config {
 | Config(
     count: int,
-    path: &text,
+    path: &string,
     colorize: bool,
   )
 }
@@ -2053,8 +2053,8 @@ define malloc-then-free() -> unit {
   magic external free(ptr); // 🌟 external
 
   // call types as functions
-  let t: text = *"hello";
-  magic call-type(text, 0, t); // discard
+  let t: string = *"hello";
+  magic call-type(string, 0, t); // discard
 
   Unit
 }
@@ -2113,7 +2113,7 @@ You can also use `int` and `float` as a lowtype. These are just syntactic sugar 
 
 `magic external func(e1, ..., en)` can be used to call foreign functions (or FFI). See [foreign in Statements](./statements.md#foreign) for more information.
 
-`magic external func(e1, ..., en)(e{n+1}: lowtype1, ..., e{n+m}: lowtypem)` can also be used to call variadic foreign functions like printf in C. A use of such variadic `external` can be found in the core library [here](https://github.com/vekatze/neut-core/blob/6ef2fed68a6b0b063e15350e788c82ea9371f6bb/source/text/io.nt#L43).
+`magic external func(e1, ..., en)(e{n+1}: lowtype1, ..., e{n+m}: lowtypem)` can also be used to call variadic foreign functions like printf in C. A use of such variadic `external` can be found in the core library [here](https://github.com/vekatze/neut-core/blob/6ef2fed68a6b0b063e15350e788c82ea9371f6bb/source/string/io.nt#L43).
 
 ### Semantics (call-type)
 
@@ -2153,13 +2153,13 @@ is the internal structure of terms of type `some-type`. Given that, `magic call-
 
 where
 
-- `cons-name` is the constructor's name (`&text`).
+- `cons-name` is the constructor's name (`&string`).
 - `v1` is the number of data parameters.
   - Here, "data parameters" refers to the `a` in `data list(a) {..}`.
 - `v2` is 1 if and only if the constructor doesn't have parameters.
   - For example, `v2` for `Nil` is 1. `v2` for `Empty()` and `Cons(a, list(a))` is 0.
 
-If `some-type` is an enum, `magic call-type(some-type, 4, i)` returns the `i`th constructor's name (`&text`).
+If `some-type` is an enum, `magic call-type(some-type, 4, i)` returns the `i`th constructor's name (`&string`).
 
 `magic call-type(some-type, 4, value)` is intended to be used with `magic alloca`.
 
@@ -2322,7 +2322,7 @@ import {
 }
 
 define use-some-file() -> unit {
-  let t: &text = include-text(some-file);
+  let t: &string = include-text(some-file);
   print(t)
 }
 ```
@@ -2344,7 +2344,7 @@ If `foo` isn't a key of a UTF-8 file, `include-text(foo)` reports a compilation 
 ```neut
 (Γ is a context)    (k is a static file's key)
 ----------------------------------------------
-Γ ⊢ include-text(k): &text
+Γ ⊢ include-text(k): &string
 ```
 
 ### Note

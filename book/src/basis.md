@@ -190,16 +190,16 @@ At this point, the `free` against `xs` at `(X')` can't be optimized away since t
 
 ### Resolving Module Aliases
 
-Let's see how the name of a module alias is resolved. Here, the name of a module alias is something like the `core` in `core.text.io.get-line`:
+Let's see how the name of a module alias is resolved. Here, the name of a module alias is something like the `core` in `core.string.io.get-line`:
 
 ```neut
 import {
-  core.text.io,
+  core.string.io,
 }
 
-define use-external-module-function() -> text {
+define use-external-module-function() -> string {
            // 🌟
-  let value = core.text.io.get-line();
+  let value = core.string.io.get-line();
   ...
 }
 ```
@@ -217,11 +217,11 @@ bar-module => "zptXghmyD5druBl8kx2Qrei6O6fDsKCA7z2KoHp1aqA"
 The compiler then resolves aliases like below:
 
 ```text
-core.text.io.get-line
+core.string.io.get-line
 
 ↓
 
-jIx5FxfoymZ-X0jLXGcALSwK4J7NlR1yCdXqH2ij67o=.text.io.get-line
+jIx5FxfoymZ-X0jLXGcALSwK4J7NlR1yCdXqH2ij67o=.string.io.get-line
 
 --------------
 
@@ -245,7 +245,7 @@ import {
   this.path.to.file,
 }
 
-define use-my-function() -> text {
+define use-my-function() -> string {
            // 🌟
   let value = this.path.to.file.my-function();
   ...
@@ -266,11 +266,11 @@ this => "jIx5FxfoymZ-X0jLXGcALSwK4J7NlR1yCdXqH2ij67o"
 The compiler then resolves `this` like below:
 
 ```text
-this.text.io.get-line
+this.string.io.get-line
 
 ↓
 
-jIx5FxfoymZ-X0jLXGcALSwK4J7NlR1yCdXqH2ij67o=.text.io.get-line
+jIx5FxfoymZ-X0jLXGcALSwK4J7NlR1yCdXqH2ij67o=.string.io.get-line
 ```
 
 Thus, the resulting assembly file contains symbols like the above.

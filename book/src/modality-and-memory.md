@@ -55,12 +55,12 @@ Only modality-related operations can change layers, as we'll see below.
 To create a term of type `+a`, use `box`:
 
 ```neut
-define use-box(x: &int, y: &bool, z: &text) -> +pair(int, bool) {
+define use-box(x: &int, y: &bool, z: &string) -> +pair(int, bool) {
   // here is layer 0
   // free variables:
   // - x: &int
   // - y: &bool
-  // - z: &text
+  // - z: &string
   box x, y {
     // here is layer -1 (== layer(outer) - 1)
     // free variables:
@@ -97,12 +97,12 @@ You can omit the sequence `x1, ..., xn` entirely if no variables need to be copi
 To use a term of type `+a`, use `letbox`:
 
 ```neut
-define use-letbox(x: int, y: bool, z: text) -> int {
+define use-letbox(x: int, y: bool, z: string) -> int {
   // here is layer 0
   // free variables:
   // - x: int
   // - y: bool
-  // - z: text
+  // - z: string
   letbox extracted-value = {
     // here is layer 1 (== layer(outer) + 1)
     // (x, y, and z are unavailable here because of layer mismatch)
@@ -111,7 +111,7 @@ define use-letbox(x: int, y: bool, z: text) -> int {
       // free variables:
       // - x: int
       // - y: bool
-      // - z: text
+      // - z: string
       x
     }
   };
@@ -119,7 +119,7 @@ define use-letbox(x: int, y: bool, z: text) -> int {
   // free variables:
   // - x: int
   // - y: bool
-  // - z: text
+  // - z: string
   extracted-value // == x
 }
 
