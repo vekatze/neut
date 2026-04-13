@@ -127,20 +127,6 @@ define id<a: type>(x: a) -> a { // `type` is the type of types
 }
 ```
 
-You can define `id` without using any implicit parameters as follows (just for comparison):
-
-```neut
-define id(a: type, x: a) -> a {
-  x
-}
-
-// using `id`
-define use-id() -> int {
-  let str = 10;
-  id(int, str) // ← the first argument `int` is now made explicit
-}
-```
-
 ### Defining Functions in a Body of a Function
 
 You can use `=>` to define an anonymous function:
@@ -148,7 +134,7 @@ You can use `=>` to define an anonymous function:
 ```neut
 define foo() -> int {
   let f =
-    (x: int, cond: bool) => {
+    (x, cond) => {
       if cond {
         x
       } else {
