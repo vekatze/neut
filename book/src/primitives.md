@@ -9,12 +9,15 @@
 
 ### Primitive Types
 
-Neut supports integers and floats. More specifically, the following types are supported:
+Neut supports integers, floats, and texts. More specifically, the following types are supported:
 
 - integer types: `int1, int2, int4, int8, int16, int32, int64`
 - float types: `float16, float32, float64`
+- text type: `text`
 
 You can also use `int` and `float`. These are just syntactic sugar for `int64` and `float64`, respectively.
+
+The primitive type `text` is used by `static`. If you need the core library's string APIs, convert `text` to `&string` using `core.string.from-text`. Unlike `&string`, `text` can be lifted.
 
 ### Primitive Functions
 
@@ -78,3 +81,5 @@ data pair(a, b) {
 ```
 
 Functions for those types are also defined in the library. For more, please see [the source of the core library](https://github.com/vekatze/neut-core/tree/main/source).
+
+The core library also defines `string` and functions on it. String literals have type `&string`. In particular, `core.string.from-text` converts `text` to `&string`.

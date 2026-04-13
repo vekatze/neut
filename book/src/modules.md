@@ -342,7 +342,7 @@ define use-some-file() -> unit {
 }
 ```
 
-After specifying a key for a text file in `import`, you can use `static key` to embed the file's content into the source file at compile time. Here, `static key` assumes that the encoding of the file is UTF-8. If you need an `&string`, convert the resulting text using `core.string.from-text`.
+After specifying a key for a text file in `import`, you can use `static` to embed the file's content into the source file at compile time. Here, `static` assumes that the encoding of the file is UTF-8. For the term-level details of `static` and `text`, see [Terms](./terms.md#static) and [Primitives](./primitives.md#primitive-types).
 
 The compiler triggers recompilation when necessary by comparing the modification times of static resources and source files. In the code above, for example, the compiler recompiles `foo.nt` if you modify the content of `some-file.txt`.
 

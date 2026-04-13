@@ -525,6 +525,9 @@ And a string like `"hello": &string` is compiled into `ptr @"text-hello"`.
 ### Note
 
 - In the current implementation, the set of recognized escape sequences like `\n` or `\t` is the same as in Haskell.
+- String literals have type `&string`.
+- Neut also has a primitive type `text`, which is used by `static`.
+- Unlike `&string`, `text` can be lifted. If you need an `&string`, convert `text` using `core.string.from-text`.
 
 ## `(x1: a1, ..., xn: an) -> b`
 
@@ -1909,6 +1912,10 @@ define lift-bool(x: bool) -> +bool {
   lift {x}
 }
 
+define lift-text(t: text) -> +text {
+  lift {t}
+}
+
 define lift-function(f: (int) -> bool) -> +(int) -> bool {
   lift {f} // error; won't typecheck
 }
@@ -2011,6 +2018,8 @@ define lift-either(x: either(bool, unit)) -> +either(bool, unit) {
 ```
 
 `lift` is there only for convenience.
+
+One useful example is `text`: since `static` has type `text`, you can lift embedded text directly. If you first convert it to `&string` using `core.string.from-text`, it is no longer liftable.
 
 ## `magic`
 
@@ -2312,7 +2321,7 @@ The configuration value `default` is equal to any configuration values.
 
 ## `static`
 
-You can use `static k` to embed the content of a text file into a source file at compile time.
+You can use `static` to embed the content of a text file into a source file at compile time.
 
 ### Example
 
@@ -2323,14 +2332,16 @@ import {
 }
 
 define use-some-file() -> unit {
-  print(from-text(static some-file))
+  let t: text = static some-file;
+  let s: &string = from-text(t);
+  print(s)
 }
 ```
 
 ### Syntax
 
 ```neut
-static key
+static some-file
 ```
 
 ### Semantics
@@ -2349,7 +2360,10 @@ If `foo` isn't a key of a UTF-8 text file, `static foo` reports a compilation er
 
 ### Note
 
-You may also want to read [the section on text files in Modules](modules.md#text-file).
+- `static` has type `text`, not `&string`.
+- If you need an `&string`, use `core.string.from-text`.
+- Since `text` is primitive, `static` can be lifted.
+- You may also want to read [the section on text files in Modules](modules.md#text-file).
 
 ## `admit`
 
