@@ -29,14 +29,14 @@ data my-list(a) {
 }
 
 // a recursive function with pattern matching
-define noisy-length<a>(xs: my-list(a)) -> int {
+define foo<a>(xs: my-list(a)) -> int {
   match xs {
   | Nil =>
     0
   | Cons(_, ys) =>
     let my-message = "hey\n";
     print(my-message);
-    add-int(1, noisy-length(ys))
+    add-int(1, foo(ys))
   }
 }
 ```
@@ -49,13 +49,13 @@ For example, if a variable is used twice, a translation like the following happe
 
 ```neut
 // (before)
-let xs: list(a) = List[value-1, value-2];
+let xs: list(a) = make-list();
 some-func(xs, xs) // `xs` is used twice
 
 // ↓
 
 // (after)
-let xs: list(a) = List[value-1, value-2];
+let xs: list(a) = make-list();
 let (xs1, xs2) = copy-list-a(xs);  // `xs` is used once
 some-func(xs1, xs2)
 ```
@@ -69,7 +69,7 @@ You might wonder: _"So do I have to, for example, copy an entire list just to ge
 - Call by value
 - Impure
 - Compiles to [LLVM IR](https://llvm.org/docs/LangRef.html) and binary
-- The type system ≈ [CoC](https://en.wikipedia.org/wiki/Calculus_of_constructions) + [ADT](https://en.wikipedia.org/wiki/Algebraic_data_type) + (recursion) + (T-necessity) - (universe hierarchy)
+- The type system ≈ System Fω + ADT + recursion + (type-in-type) + (box modality)
   - That is, the usual one in functional programming, but a bit generalized
 - Built-in [LSP support](./lovely-lsp-showcase.md)
 - Built-in [rapid prototyping experience](./rapid-prototyping.md) like scripting languages
