@@ -22,7 +22,7 @@
 - [(x1: a1, ..., xn: an) => { e }](#x1-a1--xn-an---e-)
 - [define f(x1: a1, ..., xn: an) -> c { e }](#define-fx1-a1--xn-an-c--e-)
 - [e(e1, ..., en)](#ee1--en)
-- [e of {x1 := e1, ..., xn := en}](#e-of-x1--e1--xn--en)
+- [e{x1 := e1, ..., xn := en}](#ex1--e1--xn--en)
 - [exact e](#exact-e)
 
 ### ADT
@@ -291,8 +291,8 @@ define use-item(x: item) -> int {
 }
 
 define use-item-2(x: item) -> int {
-  // use `let` with an of-pattern
-  let Item of {i} = x;
+  // use `let` with a named-field pattern
+  let Item{i} = x;
   i
 }
 ```
@@ -827,9 +827,9 @@ define use-id() -> unit {
 }
 ```
 
-## `e of {x1 := e1, ..., xn := en}`
+## `e{x1 := e1, ..., xn := en}`
 
-`e of {x1 := e1, ..., xn := en}` is an alternative notation of function application.
+`e{x1 := e1, ..., xn := en}` is an alternative notation for function application.
 
 ### Example
 
@@ -839,7 +839,7 @@ define foo(x: int, y: bool, some-path: &text) -> unit {
 }
 
 define use-foo() -> unit {
-  foo of {
+  foo{
     x := 10,
     y := True,
     some-path := "/path/to/file",
@@ -850,7 +850,7 @@ define use-foo() -> unit {
 ### Syntax
 
 ```neut
-e of {x1 := e1, ..., xn := en}
+e{x1 := e1, ..., xn := en}
 ```
 
 ### Semantics
@@ -875,7 +875,7 @@ data config {
 }
 
 inline some-config {
-  Config of {
+  Config{
     count := 10,
     colorize := True,
     path := "/path/to/file", // you can reorder arguments
@@ -890,7 +890,7 @@ define use-foo() -> unit {
   let x = 10;
   let y = True;
   let some-path = "/path/to/file";
-  foo of {x, y, some-path} // == foo of {x := x, y := y, some-path := some-path}
+  foo{x, y, some-path} // == foo{x := x, y := y, some-path := some-path}
 }
 ```
 
@@ -2782,7 +2782,7 @@ data config {
 }
 
 define use-noetic-config(c: &config) -> int {
-  tie Config of {foo} = c;
+  tie Config{foo} = c;
   *foo
 }
 ```

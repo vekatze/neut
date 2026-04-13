@@ -182,11 +182,11 @@ define use-my-func() -> int {
 }
 ```
 
-The syntactic sugar `of` can be used to rewrite the above `use-my-func` as follows:
+You can also use named arguments to rewrite the above `use-my-func` as follows:
 
 ```neut
 define use-my-func() -> int {
-  my-func of {
+  my-func{
     x := 10,
     y := 20,
   }
@@ -251,7 +251,7 @@ define make-my-list() -> my-list(int) {
 }
 
 define make-config() -> config {
-  Config of {
+  Config{
     count := 10,
     cond := True,
   }

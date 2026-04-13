@@ -242,7 +242,7 @@ define length-noetic<a>(xs: &list(a)) -> int {
 
 define use-config(c: config) -> unit {
   // pattern-matching in `let` is also possible
-  let Config of {count, some-path} = c;
+  let Config{count, some-path} = c;
   print(count)
 }
 ```
