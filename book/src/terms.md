@@ -2365,11 +2365,11 @@ The expression `static "hello"` creates a value of type `text` from the given st
 ```neut
 (Γ is a context)    (k is a text file's key)
 --------------------------------------------
-Γ ⊢ static(k): text
+Γ ⊢ static k: text
 
 (Γ is a context)    (s is a string literal)
 -------------------------------------------
-Γ ⊢ static(s): text
+Γ ⊢ static s: text
 ```
 
 ### Note
