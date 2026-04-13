@@ -239,7 +239,7 @@ Without this rule, you could do something like the following:
 ```neut
 define joker() -> () -> unit {
   // layer 0
-  let xs: list(int) = List[1, 2, 3];
+  let xs: list(int) = make-list();
   letbox-T f on xs = {
     // layer 0
     box {

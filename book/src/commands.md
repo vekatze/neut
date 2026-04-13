@@ -221,13 +221,13 @@ This rewriting won't work if the minor "compatible" version `D (1.2)` isn't comp
 
 ### Utilizing the Compatibility Relation
 
-As an exercise, suppose the following:
+Suppose the following:
 
-1. Serious bugs were discovered in `D (1.1)` and `D (1.2)`
-2. The grave-look author of `D` released a bug-fix release `D (1.3)` in a hurry
-3. The happy authors of `B` and `C` are on a honeymoon vacation in Hawaii
+1. Serious bugs were discovered in `D (1.1)` and `D (1.2)`.
+2. The author of `D` released a bug-fix version `D (1.3)`.
+3. The authors of `B` and `C` have not yet updated their dependencies.
 
-In this case, we don't have to wait for the authors of `B` and `C` to update their dependencies. Instead, we can just add `D (1.3)` to our module's dependency:
+In this case, we do not have to wait for the authors of `B` and `C` to update their dependencies. We can simply add `D (1.3)` to our module's dependencies:
 
 ```text
 A ──> B ──┐
@@ -247,7 +247,7 @@ A ──> B ───┐
 └──────────┴──> D (1.3)
 ```
 
-So we don't have to rain on their happy parade in Waikiki Beach.
+So we can adopt the fixed version immediately.
 
 ## `neut create`
 
