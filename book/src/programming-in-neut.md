@@ -303,36 +303,6 @@ define yo(xs: my-list(int)) -> int {
 }
 ```
 
-## Parallel Computation
-
-You can use `detach` and `attach` to perform parallel computation:
-
-```neut
-define foo() -> unit {
-  let t1: thread(unit) =
-    // creates a thread
-    detach {
-      let value = some-heavy-computation();
-      print(value)
-    };
-  let t2: thread(unit) =
-    // creates a thread
-    detach {
-      let value = other-heavy-computation();
-      print(value)
-    };
-  // wait
-  let result-1 = attach { t1 };
-  // wait
-  let result-2 = attach { t2 };
-  Unit
-}
-```
-
-`detach` receives a term of type `t` and returns a term of type `thread(t)`. Internally, `detach` creates a new thread and starts computing the term in that thread.
-
-`attach` receives a term of type `thread(t)` and returns a term of type `t`. Internally, `attach` waits for a given thread to finish and extracts its result.
-
 ## Miscellaneous
 
 ### `nominal`
