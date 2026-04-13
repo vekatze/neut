@@ -7,7 +7,7 @@ Make sure all the following dependencies are on your system:
 - `tar`
 - `zstd`
 
-Add the below to your `.bashrc`, `.zshrc`, etc.
+Add the following to your `.bashrc`, `.zshrc`, etc.
 
 ```sh
 # this sets the core module (or "prelude") that is used in `neut create`

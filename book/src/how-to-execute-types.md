@@ -19,7 +19,7 @@ data item {
 }
 ```
 
-The internal representation of `New(10, 20)` is something like the below:
+The internal representation of `New(10, 20)` is something like the following:
 
 ```neut
 New(10, 20)
@@ -165,7 +165,7 @@ define foo(a: type, x: a) -> pair(a, a) {
 
 The code uses the variable `x` twice. Thus, this `x` must be copied according to the type `a`.
 
-This can be done because the internal representation of `a` is a function that can discard and copy the values of type `a`. Thus, the above code is compiled into something like the below:
+This can be done because the internal representation of `a` is a function that can discard and copy values of type `a`. Thus, the above code is compiled into something like the following:
 
 ```neut
 define foo(a: type, x: a) -> pair(a, a) {
@@ -178,7 +178,7 @@ Thus, we can discard and copy values of polymorphic types.
 
 ## Algebraic Data Types
 
-ADTs like the below also have resource exponentials, of course:
+ADTs like the following also have resource exponentials, of course:
 
 ```neut
 data list(a) {
@@ -203,7 +203,7 @@ Here, the `0` is the discriminant for `Nil`. Also, that of `Cons(10, xs)` is:
 
 Here, the `1` is the discriminant for `Cons`.
 
-With that in mind, the resource exponential of `list(a)` will be something like the below (A bit lengthy; Skip it and just read the succeeding note if you aren't that interested in details):
+With that in mind, the resource exponential of `list(a)` will be something like the following (a bit lengthy; skip it and just read the succeeding note if you aren't that interested in details):
 
 ```neut
 define exp-list(selector, v) {
@@ -254,7 +254,7 @@ The main part of this section is now over. What follows is for curious cats.
 
 We'll see how function types like `(int) -> bool` are translated.
 
-Suppose we have a function like the below:
+Suppose we have a function like the following:
 
 ```neut
 define foo(a: type) -> int {

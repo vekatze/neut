@@ -11,7 +11,7 @@
 
 ## On Executing Types
 
-A type in Neut is compiled into a pointer to a binary function like the below (pseudo-code):
+A type in Neut is compiled into a pointer to a binary function like the following (pseudo-code):
 
 ```neut
 define discard-or-copy-value(action-selector, value) {
@@ -37,7 +37,7 @@ define foo(xs: list(int)) -> unit {
 }
 ```
 
-Note that the variable `xs` isn't used. Because of that, the compiler translates the code above into the below (pseudo-code; won't typecheck):
+Note that the variable `xs` isn't used. Because of that, the compiler translates the code above into the following (pseudo-code; won't typecheck):
 
 ```neut
 define foo(xs: list(int)) -> unit {
@@ -59,7 +59,7 @@ define foo(!xs: list(int)) -> unit {
 }
 ```
 
-Note that the variable `!xs` is used twice. Because of that, the compiler translates the above code into the below (pseudo-code; won't typecheck):
+Note that the variable `!xs` is used twice. Because of that, the compiler translates the above code into the following (pseudo-code; won't typecheck):
 
 ```neut
 define foo(!xs: list(int)) -> unit {
@@ -143,7 +143,7 @@ However, since the size of `Cons(x, rest)` and `Cons(add-int(x, 1), increment(re
 2. calculate `add-int(x, 1)` and `increment(rest)`
 3. store the calculated values to `xs` (overwrite)
 
-And Neut does this optimization. When a `free` is required, Neut looks for a `malloc` that is the same size and optimizes away such a pair if one exists. The resulting assembly code thus performs in-place updates.
+Neut performs this optimization. When a `free` is required, Neut looks for a `malloc` that is the same size and optimizes away such a pair if one exists. The resulting assembly code thus performs in-place updates.
 
 ### Allocation Canceling and Branching
 
@@ -184,7 +184,7 @@ define foo(v: int, xs: int-list) -> int-list {
 }
 ```
 
-At this time, the `free` against `xs` at `(X')` can't be optimized away since there exists a branch (namely, `(Y')`) that doesn't perform `malloc` that is of the same size as `xs`.
+At this point, the `free` against `xs` at `(X')` can't be optimized away since there is a branch (namely, `(Y')`) that doesn't perform a `malloc` of the same size as `xs`.
 
 ## Name Resolution
 
@@ -204,7 +204,7 @@ define use-external-module-function() -> text {
 }
 ```
 
-When compiling a module, the compiler reads the field `dependency` in the `module.ens` and adds correspondences like the below to its internal state:
+When compiling a module, the compiler reads the field `dependency` in `module.ens` and adds correspondences like the following to its internal state:
 
 ```neut
 // alias => (the digest of the library)
@@ -238,7 +238,7 @@ JEpjuzZ0rlqxiVuCnD000jEKIA_Y6ku1L3J139h3M6Q.path.to.some.file.my-function
 
 ### Resolving `this`
 
-Let's see how `this` is resolved. Here, `this` is a component of a global variables, like the below:
+Let's see how `this` is resolved. Here, `this` is a component of a global variable, as in the following example:
 
 ```neut
 import {
@@ -256,7 +256,7 @@ The first thing to note here is that every module is marked as "main" or "librar
 
 All the occurrences of `this` in the main module are kept intact during compilation. Thus, the resulting assembly file contains symbols like `this.foo.bar`.
 
-On the other hand, all the occurrences of `this` in a library module are resolved into their corresponding digests. More specifically, when processing a library module, the compiler adds correspondences like the below:
+On the other hand, all occurrences of `this` in a library module are resolved into their corresponding digests. More specifically, when processing a library module, the compiler adds correspondences like the following:
 
 ```neut
 // this => (the digest of the library)

@@ -47,7 +47,7 @@ Primitive functions for `int` and `float` are also available. For example, you c
 
 ## Core Types and Functions
 
-The [preset](./modules.md#preset) of the core library (something like Prelude in other languages) is imported automatically and provides some types and functions. These types and functions can also be used as primitives. Things like the below are defined in the library:
+The [preset](./modules.md#preset) of the core library (something like Prelude in other languages) is imported automatically and provides some types and functions. These types and functions can also be used as primitives. For example, the following are defined in the library:
 
 ```neut
 data null {}

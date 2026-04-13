@@ -215,7 +215,7 @@ define get-increment() -> (int) -> int {
 }
 ```
 
-This `increment` and `get-increment` are compiled into LLVM functions like the below:
+`increment` and `get-increment` are compiled into LLVM functions like the following:
 
 ```llvm
 ; (build-dir)/path/to/sample.ll
@@ -524,7 +524,7 @@ And a text like `"hello": &text` is compiled into `ptr @"text-hello"`.
 
 ### Note
 
-- In the current implementation, the set of recognized escape sequences like `\n` or `\t` are the same as that of Haskell.
+- In the current implementation, the set of recognized escape sequences like `\n` or `\t` is the same as in Haskell.
 
 ## `(x1: a1, ..., xn: an) -> b`
 
@@ -718,7 +718,7 @@ define use-define() -> int {
 }
 ```
 
-The code above is compiled into something like the below:
+The code above is compiled into something like the following:
 
 ```neut
 // the free variable `c` is now a parameter
@@ -815,7 +815,7 @@ define use-id() -> unit {
 }
 ```
 
-The `id(Unit)` in the example above is (conceptually) compiled into the below:
+The `id(Unit)` in the example above is (conceptually) compiled into the following:
 
 ```neut
 define _id(a: type, x: a) -> a {
@@ -1146,7 +1146,7 @@ data my-nat {
 }
 ```
 
-The internal representation of `n: my-nat` is something like the below:
+The internal representation of `n: my-nat` is something like the following:
 
 ```neut
 Zero:
@@ -1783,7 +1783,7 @@ The type `t` is inside the internal representation of a term `e: thread(t)`. Bec
 
 ### Note
 
-(1) The internal representation of `e: thread(t)` is a "3-word + 1-byte" tuple like the below:
+(1) The internal representation of `e: thread(t)` is a "3-word + 1-byte" tuple like the following:
 
 ```neut
    (thread-id, t, result-value-or-none, finished)
@@ -1946,7 +1946,7 @@ Here, an "actual" type is a type that satisfies all the following conditions:
 - It doesn't contain any function types
 - It doesn't contain any "dubious" ADTs
 
-Here, a "dubious" ADT is something like the below:
+Here, a "dubious" ADT is something like the following:
 
 ```neut
 // the type `joker-x` is dubious since it contains a noetic argument
@@ -2741,7 +2741,7 @@ e2
 
 ### Semantics
 
-`try x = e1; e2` is a shorthand of the below:
+`try x = e1; e2` is shorthand for the following:
 
 ```neut
 match e1 {
@@ -2796,7 +2796,7 @@ e2
 
 ### Semantics
 
-`tie x = e1; e2` is a shorthand of the below:
+`tie x = e1; e2` is shorthand for the following:
 
 ```neut
 case e1 {

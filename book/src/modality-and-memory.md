@@ -155,7 +155,7 @@ define use-letbox-T(x: int, y: bool) -> int {
 }
 ```
 
-`letbox-T` can be used for example to write functions of type `(+a) -> a` as follows:
+`letbox-T` can, for example, be used to write functions of type `(+a) -> a` as follows:
 
 ```neut
 define axiom-T<a>(x: +a) -> a {
@@ -291,7 +291,7 @@ define backup-parse<a>(transformer: (&binary) -> a) -> a {
 }
 ```
 
-This won't compile because `transformer` contains a free variable `a`. This works as a safety guard, it compiled the following scenario would be possible:
+This won't compile because `transformer` contains a free variable `a`. This works as a safety guard: if it compiled, the following scenario would be possible:
 
 ```neut
 define id-bin(arg: &binary) -> &binary {
@@ -319,9 +319,9 @@ The following happens inside `zen`:
 
 1. `backup-parse(id-bin)` evaluates to a reference to (the freed) `input`
 2. `joker` holds the (dangling) reference
-3. `bin-to-hex` takes `joker` as an argument, causing an use-after-free
+3. `bin-to-hex` takes `joker` as an argument, causing a use-after-free
 
-To fancy the requirements of the type system `+` must be used as follows.
+To satisfy the requirements of the type system, `+` must be used as follows.
 
 ```neut
 define backup-parse<a>(transformer: (&binary) -> +a) -> a {

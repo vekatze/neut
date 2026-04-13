@@ -97,7 +97,7 @@ You can emit LLVM IR by passing `--emit llvm` to `neut build`. In this case, you
 
 ### `--mode`
 
-You can pass `--mode {develop,release}` like the below:
+You can pass `--mode {develop,release}` as follows:
 
 ```sh
 neut build my-app --mode release
@@ -166,7 +166,7 @@ This command then does the following:
 2. Creates a new `module.ens` that contains the list of the older digests
 3. Packs the ens file and the other required files to create a tarball `2-2.tar.zst`
 
-This digest information inside `module.ens` of `2-2.tar.zst` should appear like the below:
+This digest information inside `module.ens` of `2-2.tar.zst` should appear as follows:
 
 ```ens
 {
@@ -346,7 +346,7 @@ You can technically create a test function for the function and check its behavi
 
 It might be, however, a bit cumbersome. We'd love to achieve rapid try-and-error cycles in certain circumstances.
 
-You can use the command `zen` here. Suppose that a file `some-file.nt` contains a function `foo` that is defined as in the below:
+You can use the command `zen` here. Suppose that a file `some-file.nt` contains a function `foo` defined as follows:
 
 ```neut
 define foo(x: int) -> int {

@@ -305,7 +305,7 @@ An example of `foreign` can be found in the [core library](https://github.com/ve
 
 <div class="info-block">
 
-The compiler links the resulting foreign object files without any name mangling. You're strongly encouraged to prefix names in your foreign sources with your module name and the major version to avoid name collision. You can find an example of prefixed names [here](https://github.com/vekatze/neut-core/blob/0570cd5aa17914bef7021b7e88ca1fa421af721e/source/foreign.c).
+The compiler links the resulting foreign object files without any name mangling. You're strongly encouraged to prefix names in your foreign sources with your module name and the major version to avoid name collisions. You can find an example of prefixed names [here](https://github.com/vekatze/neut-core/blob/0570cd5aa17914bef7021b7e88ca1fa421af721e/source/foreign.c).
 
 </div>
 
@@ -343,7 +343,7 @@ define use-some-file() -> unit {
 }
 ```
 
-After specifying a key of a static source file in `import`, you can use it in `include-text` to embed the file's content to the source file at compile time. Here, `include-text` assumes that the encoding of the static file is UTF-8.
+After specifying a key for a static source file in `import`, you can use it in `include-text` to embed the file's content into the source file at compile time. Here, `include-text` assumes that the encoding of the static file is UTF-8.
 
 The compiler triggers recompilation when necessary by comparing the modification times of static resources and source files. In the code above, for example, the compiler recompiles `foo.nt` if you modify the content of `some-file.txt`.
 
