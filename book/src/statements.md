@@ -470,7 +470,7 @@ If a nominal definition isn't followed by a corresponding real definition, the c
 
 ```neut
 foreign {
-  neut_myapp_v1_add_const(int): int,
+  neut_myapp_v1_add_const(int) -> int,
 }
 ```
 
@@ -490,7 +490,7 @@ You can add the field `foreign` to your `module.ens` to compile and link this C 
 
 ```neut
 foreign {
-  neut_myapp_v1_add_const(int): int,
+  neut_myapp_v1_add_const(int) -> int,
 }
 
 define my-func() -> int {
@@ -515,7 +515,7 @@ Thus, the next is a valid use of `foreign`:
 
 ```neut
 foreign {
-  llvm.sin.f64(float): float,
+  llvm.sin.f64(float) -> float,
 }
 
 define sin(x: float) -> float {
@@ -527,8 +527,8 @@ Syscall wrapper functions and library functions are also available:
 
 ```neut
 foreign {
-  exit(c-int): void,
-  sleep(c-int): c-int,
+  exit(c-int) -> void,
+  sleep(c-int) -> c-int,
 }
 ```
 
@@ -549,7 +549,7 @@ data c-int {
 }
 ```
 
-The type of each parameter in every foreign entry must be a term that compiles to one of `int{N}`, `float{N}`, or `pointer` during compilation. For example, the `c-int` in `exit(c-int): void` is valid because it compiles to `int32` (thanks to an optimization like Haskell's `newtype`).
+The type of each parameter in every foreign entry must be a term that compiles to one of `int{N}`, `float{N}`, or `pointer` during compilation. For example, the `c-int` in `exit(c-int) -> void` is valid because it compiles to `int32` (thanks to an optimization like Haskell's `newtype`).
 
 The resulting type of every foreign entry must be `void` or a term that compiles to one of `int{N}`, `float{N}`, or `pointer` during compilation.
 
@@ -557,7 +557,7 @@ When declaring a variadic function, declare only the non-variadic part:
 
 ```neut
 foreign {
-  printf(pointer): void,
+  printf(pointer) -> void,
 }
 ```
 
