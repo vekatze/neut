@@ -17,7 +17,7 @@ Neut supports integers, floats, and texts. More specifically, the following type
 
 You can also use `int` and `float`. These are just syntactic sugar for `int64` and `float64`, respectively.
 
-The primitive type `text` is used by `static`. If you need the core library's string APIs, convert `text` to `&string` using `core.string.from-text`. Unlike `&string`, `text` can be lifted.
+The primitive type `text` is produced by `static`. For the details of `static`, `text`, and the relation to `&string`, see [Terms](./terms.md#static).
 
 ### Primitive Functions
 

@@ -2321,7 +2321,7 @@ The configuration value `default` is equal to any configuration values.
 
 ## `static`
 
-You can use `static` to embed the content of a text file into a source file at compile time.
+You can use `static` to create a value of type `text`. There are two forms: one embeds the content of a text file, and the other turns a string literal into a `text`.
 
 ### Example
 
@@ -2336,12 +2336,20 @@ define use-some-file() -> unit {
   let s: &string = from-text(t);
   print(s)
 }
+
+define use-static-literal() -> unit {
+  let t: text = static "hello";
+  let s: &string = "hello";
+  print(from-text(t));
+  print(s)
+}
 ```
 
 ### Syntax
 
 ```neut
 static some-file
+static "hello"
 ```
 
 ### Semantics
@@ -2350,17 +2358,24 @@ The compiler expands `static foo` into the content of `foo` at compile time.
 
 If `foo` isn't a key of a UTF-8 text file, `static foo` reports a compilation error.
 
+The expression `static "hello"` creates a value of type `text` from the given string literal.
+
 ### Type
 
 ```neut
 (Γ is a context)    (k is a text file's key)
 --------------------------------------------
 Γ ⊢ static(k): text
+
+(Γ is a context)    (s is a string literal)
+-------------------------------------------
+Γ ⊢ static(s): text
 ```
 
 ### Note
 
 - `static` has type `text`, not `&string`.
+- For example, `static "hello": text`, whereas `"hello": &string`.
 - If you need an `&string`, use `core.string.from-text`.
 - Since `text` is primitive, `static` can be lifted.
 - You may also want to read [the section on text files in Modules](modules.md#text-file).
