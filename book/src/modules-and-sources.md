@@ -70,6 +70,7 @@ The content of `module.ens` is something like the following:
   target {
     sample {
       main "sample.nt",
+      allocator "system",
     },
   },
   dependency {
@@ -213,6 +214,7 @@ The information of the newly-added module is saved to `module.ens`:
   target {
     new-item {
       main "new-item.nt",
+      allocator "system",
     },
   },
   dependency {
