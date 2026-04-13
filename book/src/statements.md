@@ -84,12 +84,7 @@ define foo(x: int, y: int) -> int {
   add-int(x, y)
 }
 
-define identity-1(a: type, x: a) -> a {
-  x
-}
-
-// a function with an implicit parameter
-define identity-2<a>(x: a) -> a {
+define identity<a>(x: a) -> a {
   x
 }
 ```
@@ -102,13 +97,12 @@ define use-foo() -> int {
 }
 ```
 
-`define` can optionally have implicit parameters, as in `identity-2` in the above example. The compiler inserts these implicit parameters at compile time, so you don't have to write them explicitly:
+`define` can optionally have implicit type parameters, as in `identity` in the above example. The compiler inserts these type parameters at compile time, so you don't have to write them explicitly:
 
 ```neut
 define use-func-with-implicit-arg() -> int {
   let x = 10;
-  let y = identity-1(int, x); // ← explicit version
-  let z = identity-2(x);      // ← implicit version
+  let z = identity(x);
   z
 }
 ```
@@ -259,7 +253,7 @@ resource my-type {
   (value: pointer) => {
     // .. create a new clone of the value and return it as int ..
   },
-  tag, // integer value
+  size, // integer value
 }
 ```
 
@@ -269,7 +263,7 @@ The type of a discarder is `(a) -> unit` for some `a`. You might want to call fu
 
 The type of a copier is `(a) -> a` for some `a`. This `a` must be the same as the `a` used in the discarder. You might want to call functions like `malloc` in this term.
 
-The type of a tag is `int`. See also: [Semantics (call-type)](./terms.md#semantics-call-type)
+The type of a size is `int`. See also: [Semantics (call-type)](./terms.md#semantics-call-type)
 
 For example, the following is a definition of a "boxed" integer type with some noisy messages:
 
@@ -287,12 +281,7 @@ resource boxed-int {
     magic store(int, orig-value, new-ptr);
     new-ptr
   },
-  // You should use `type-tag-to-int(Opaque)` as long as the structure of your
-  // resource type isn't the same as one of the `type-tag` values defined in `core.type-tag`.
-  // If your resource type has the same structure as one of the `type-tag` values, you can
-  // use something like `type-tag-to-int(Int32)` so it can be, for example,
-  // printed using `core.debug.vet: (&a) -> unit`.
-  type-tag-to-int(Opaque),
+  -1,
 }
 
 // provide a way to introduce new boxed integer

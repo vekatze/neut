@@ -2105,43 +2105,7 @@ Neut compiles types into functions. The first argument of such a function is usu
 
 `magic call-type(some-type, 1, value)` copies `value` and returns a new value.
 
-`magic call-type(some-type, 2, value)` ignores `value` and returns an integer `i` if `some-type` is the `i`th constructor of the type `type-tag` defined [here](https://github.com/vekatze/neut-core/blob/main/source/type-tag.nt). For example,
-
-- `call-type(type, 2, Unit)` returns 1 since the tag of `type` is `Type`,
-- `call-type(bool, 2, Unit)` returns 5 since the tag of `bool` is `Enum`,
-- `call-type(list(int), 2, Unit)` returns 3 since the tag of `list(int)` is `Algebraic`.
-
-`magic call-type(some-type, 3, i)` is defined only if `some-type` is an ADT or an enum. If `some-type` is an ADT, this term returns the number of parameters for the ADT's `i`th constructor, or `-1` if the `i`th constructor doesn't exist. If `some-type` is an enum, this term returns `0` if the `i`th constructor exists, or `-1` if not.
-
-`magic call-type(some-type, 4, value)` is defined only if `some-type` is an ADT or an enum. If `some-type` is an ADT, this term assumes that `value` has the following structure:
-
-```neut
-(discriminant, arg-1, ..., arg-n, any, any)
-```
-
-where
-
-```neut
-(discriminant, arg-1, ..., arg-n)
-```
-
-is the internal structure of terms of type `some-type`. Given that, `magic call-type(some-type, 4, value)` replaces the content of `value` as follows:
-
-```neut
-(cons-name, type(arg-1), ..., type(arg-n), v1, v2)
-```
-
-where
-
-- `cons-name` is the constructor's name (`&string`).
-- `v1` is the number of data parameters.
-  - Here, "data parameters" refers to the `a` in `data list(a) {..}`.
-- `v2` is 1 if and only if the constructor doesn't have parameters.
-  - For example, `v2` for `Nil` is 1. `v2` for `Empty()` and `Cons(a, list(a))` is 0.
-
-If `some-type` is an enum, `magic call-type(some-type, 4, i)` returns the `i`th constructor's name (`&string`).
-
-`magic call-type(some-type, 4, value)` is intended to be used with `magic alloca`.
+`magic call-type(some-type, 2, value)` returns the size of a value in words. This value is used when calling a function in destination-passing style.
 
 ### Type
 
