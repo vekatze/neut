@@ -473,7 +473,7 @@ define print-star() -> unit {
 ```neut
 define foo() -> unit {
   let _: &string = "test";
-  //             ^^^^^^
+  //               ^^^^^^
   Unit
 }
 
