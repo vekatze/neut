@@ -12,7 +12,7 @@ Below is the list of configurations of `module.ens`.
 - [cache](#cache)
 - [source](#source)
 - [foreign](#foreign)
-- [static](#static)
+- [text-file](#text-file)
 - [preset](#preset)
 - [inline-limit](#inline-limit)
 - [antecedent](#antecedent)
@@ -309,14 +309,14 @@ The compiler links the resulting foreign object files without any name mangling.
 
 </div>
 
-## `static`
+## `text-file`
 
-The field `static` defines the list of static files that can be embedded into source files at compile time. It should look like the following:
+The field `text-file` defines the list of text files that can be embedded into source files at compile time. It should look like the following:
 
 ```ens
 {
   // ..
-  static {
+  text-file {
     some-file "relative/path/from/the/module/root/to/some-file.txt",
     other-file "relative/path/from/the/module/root/to/other-file.txt",
   },
@@ -324,30 +324,29 @@ The field `static` defines the list of static files that can be embedded into so
 }
 ```
 
-You can use the keys defined here in source files using `import` and `include-text`:
+You can use the keys defined here in source files using `import` and `static`:
 
 ```neut
 // foo.nt
 
 import {
   // ..
-  static {some-file, other-file}
+  core.string {from-text},
+  text-file {some-file, other-file},
   // ..
 }
 
 define use-some-file() -> unit {
-  let t1: &string = include-text(some-file);
-  let t2: &string = include-text(other-file);
-  print(t1);
-  print(t2)
+  print(from-text(static some-file));
+  print(from-text(static other-file))
 }
 ```
 
-After specifying a key for a static source file in `import`, you can use it in `include-text` to embed the file's content into the source file at compile time. Here, `include-text` assumes that the encoding of the static file is UTF-8.
+After specifying a key for a text file in `import`, you can use `static key` to embed the file's content into the source file at compile time. Here, `static key` assumes that the encoding of the file is UTF-8. If you need an `&string`, convert the resulting text using `core.string.from-text`.
 
 The compiler triggers recompilation when necessary by comparing the modification times of static resources and source files. In the code above, for example, the compiler recompiles `foo.nt` if you modify the content of `some-file.txt`.
 
-The field `static` is optional. The default value of `static` is `{}`.
+The field `text-file` is optional. The default value of `text-file` is `{}`.
 
 ## `preset`
 
