@@ -311,7 +311,7 @@ You can use `nominal` for forward references:
 
 ```neut
 nominal {
-  is-odd(x: int): int, // ← declaration of `is-odd`
+  define is-odd(x: int) -> int, // ← declaration of `is-odd`
 }
 
 define is-even(x: int) -> bool {

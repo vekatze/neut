@@ -431,15 +431,15 @@ push-back(push-back(push-back(make(3), a), b), c)
 
 ```neut
 nominal {
-  is-odd(x: int): int,
+  define is-odd(x: int) -> int,
 }
 ```
 
-An entry of `nominal` is the same form as found in `define`. Nominal definitions can be used to achieve mutual recursions:
+Nominal definitions can be used to achieve mutual recursion:
 
 ```neut
 nominal {
-  is-odd(x: int): int, // nominal definition of `is-odd`
+  define is-odd(x: int) -> int, // nominal definition of `is-odd`
 }
 
 // given a non-negative integer `x`, returns true if `x` is even.
@@ -462,7 +462,7 @@ define is-odd(x: int) -> bool {
 }
 ```
 
-If a nominal definition isn't followed by a real definition, the compiler reports an error.
+If a nominal definition isn't followed by a corresponding real definition, the compiler reports an error.
 
 ## `foreign`
 
