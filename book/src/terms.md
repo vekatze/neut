@@ -48,7 +48,7 @@
 
 ### Miscellaneous
 
-- [quote](#quote)
+- [lift](#lift)
 - [magic](#magic)
 - [introspect](#introspect)
 - [include-text](#include-text)
@@ -1894,36 +1894,36 @@ It also `free`s the 3-word + 1-byte tuple that represents a thread after getting
 
 - `attach` internally uses pthread.
 
-## `quote`
+## `lift`
 
-You can use `quote` to wrap the types of "safe" values by `+`.
+You can use `lift` to wrap the types of "safe" values by `+`.
 
 ### Example
 
 ```neut
-define quote-int(x: int) -> +int {
-  quote {x}
+define lift-int(x: int) -> +int {
+  lift {x}
 }
 
-define quote-bool(x: bool) -> +bool {
-  quote {x}
+define lift-bool(x: bool) -> +bool {
+  lift {x}
 }
 
-define quote-function(f: (int) -> bool) -> +(int) -> bool {
-  quote {f} // error; won't typecheck
+define lift-function(f: (int) -> bool) -> +(int) -> bool {
+  lift {f} // error; won't typecheck
 }
 ```
 
 ### Syntax
 
 ```neut
-quote {e}
+lift {e}
 ```
 
 ### Semantics
 
 ```neut
-quote {e}
+lift {e}
 
 ↓
 
@@ -1936,7 +1936,7 @@ e
 Γ ⊢ e: a
 (a is an "actual" type)
 -----------------------
-Γ ⊢ quote {e}: +a
+Γ ⊢ lift {e}: +a
 ```
 
 Here, an "actual" type is a type that satisfies all the following conditions:
@@ -1967,18 +1967,18 @@ data joker-z {
 
 ### Note
 
-(1) Unlike `box`, `quote` doesn't alter layers.
+(1) Unlike `box`, `lift` doesn't alter layers.
 
-(2) `quote` doesn't add extra expressiveness to the type system. For example, `quote` on `bool` can be replaced with `box` as follows:
+(2) `lift` doesn't add extra expressiveness to the type system. For example, `lift` on `bool` can be replaced with `box` as follows:
 
 ```neut
-define quote-bool(b: bool) -> +bool {
-  quote {b}
+define lift-bool(b: bool) -> +bool {
+  lift {b}
 }
 
 ↓
 
-define quote-bool(b: bool) -> +bool {
+define lift-bool(b: bool) -> +bool {
   if b {
     box {True}
   } else {
@@ -1987,16 +1987,16 @@ define quote-bool(b: bool) -> +bool {
 }
 ```
 
-`quote` on `either(bool, unit)` can also be replaced with `box` as follows:
+`lift` on `either(bool, unit)` can also be replaced with `box` as follows:
 
 ```neut
-define quote-either(x: either(bool, unit)) -> +either(bool, unit) {
-  quote {b}
+define lift-either(x: either(bool, unit)) -> +either(bool, unit) {
+  lift {x}
 }
 
 ↓
 
-define quote-either(x: either(bool, unit)) -> +either(bool, unit) {
+define lift-either(x: either(bool, unit)) -> +either(bool, unit) {
   match x {
   | Left(b) =>
     if b {
@@ -2010,7 +2010,7 @@ define quote-either(x: either(bool, unit)) -> +either(bool, unit) {
 }
 ```
 
-`quote` is there only for convenience.
+`lift` is there only for convenience.
 
 ## `magic`
 
@@ -2503,7 +2503,7 @@ e2
 
 // ↓ desugar
 
-letbox-T result on x1, ..., xn = quote {e1};
+letbox-T result on x1, ..., xn = lift {e1};
 e2
 ```
 

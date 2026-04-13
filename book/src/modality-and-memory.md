@@ -179,21 +179,21 @@ define box-bool(b: bool) -> +bool {
 }
 ```
 
-To streamline this kind of mechanical step, Neut provides `quote`:
+To streamline this kind of mechanical step, Neut provides `lift`:
 
 ```neut
 define box-bool(b: bool) -> +bool {
-  quote {b} // `quote` casts `bool` into `+bool`
+  lift {b} // `lift` casts `bool` into `+bool`
 }
 ```
 
-Not all types can be cast using `quote`. Specifically, it can't be used on any type that contains:
+Not all types can be cast using `lift`. Specifically, it can't be used on any type that contains:
 
 - a type of the form `&a`
 - a type of the form `(a1, ..., an) -> b`
 - a type variable
 
-If you can get `+t` by quoting `e: t`, you can get the same type using `box` instead. In this sense, `quote` is a shortcut for creating boxes.
+If you can get `+t` by lifting `e: t`, you can get the same type using `box` instead. In this sense, `lift` is a shortcut for creating boxes.
 
 ## Desugaring the Two Operations
 
@@ -209,11 +209,11 @@ e2
 
 ↓ // desugar
 
-letbox-T x on y, z = quote {e1};
+letbox-T x on y, z = lift {e1};
 e2
 ```
 
-This explains why the result type of a `let-on` had to be restricted to some extent: the restriction is from `quote`.
+This explains why the result type of a `let-on` had to be restricted to some extent: the restriction is from `lift`.
 
 ### Desugar: Embodying
 
