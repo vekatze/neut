@@ -330,13 +330,13 @@ The `List` construct available in the core library is defined using `rule-right`
 
 ```neut
 rule-right List {
-  function leaf<a>(_: int): list(a) {
+  inline leaf<a>(_: int) -> list(a) {
     Nil
   },
-  function node<a>(x: a, acc: list(a)): list(a) {
+  inline node<a>(x: a, acc: list(a)) -> list(a) {
     Cons(x, acc)
   },
-  function root<a>(x: a): a {
+  inline root<a>(x: a) -> a {
     x
   },
 }
@@ -388,13 +388,13 @@ The `Vector` construct available in the core library is defined using `rule-left
 
 ```neut
 rule-left Vector {
-  function leaf<a>(size: int): vector(a) {
+  inline leaf<a>(size: int) -> vector(a) {
     make(size)
   },
-  function node<a>(acc: vector(a), x: a): vector(a) {
+  inline node<a>(acc: vector(a), x: a) -> vector(a) {
     push-back(acc, x)
   },
-  function root<a>(x: a): a {
+  inline root<a>(x: a) -> a {
     x
   },
 }
