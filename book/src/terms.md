@@ -75,14 +75,7 @@
 ### Example
 
 ```neut
-define sample() -> unit {
-  // `type` used as a term
-  let foo = type;
-  Unit
-}
-
-// `type` used as a type
-define identity(a: type, x: a) -> a {
+define identity<a: type>(x: a) -> a {
   x
 }
 ```
@@ -513,10 +506,7 @@ A string literal is, conceptually, shorthand for `magic cast(text, &string, stat
 // this is equivalent to `(_: int) -> bool`:
 (int) -> bool
 
-// use a type variable
-(a: type, x: a) -> a
-
-// make the first argument implicit
+// using a type variable
 <a: type>(x: a) -> a
 
 // this is equivalent to `<a: _>(x: a) -> a`
@@ -789,7 +779,7 @@ define use-id() -> unit {
 }
 ```
 
-The `id(Unit)` in the example above is (conceptually) compiled into the following:
+The `id(Unit)` in the example above is (conceptually) compiled into the following (pseudo-code):
 
 ```neut
 define _id(a: type, x: a) -> a {
@@ -797,7 +787,7 @@ define _id(a: type, x: a) -> a {
 }
 
 define use-id() -> unit {
-  _id(_, Unit) // ← a hole `_` is inserted here
+  _id(unit, Unit)
 }
 ```
 
@@ -2435,12 +2425,12 @@ Otherwise, `assert "description" { condition }` evaluates `condition` and checks
 ### Example
 
 ```neut
-define id(a: type, x: a) -> a {
+define id<a>(x: a) -> a {
   x
 }
 
 define use-hole() -> unit {
-  id(_, Unit) // ← using a hole (inferred to be `unit`)
+  id<_>(Unit) // ← using a hole (inferred to be `unit`)
 }
 ```
 

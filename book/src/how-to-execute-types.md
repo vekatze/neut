@@ -158,7 +158,7 @@ A type is compiled into a pointer to a closed function. This means that types ar
 Let's see how polymorphic values are copied. Consider the following code:
 
 ```neut
-define foo(a: type, x: a) -> pair(a, a) {
+define foo<a>(x: a) -> pair(a, a) {
   Pair(x, x)
 }
 ```
@@ -168,7 +168,7 @@ The code uses the variable `x` twice. Thus, this `x` must be copied according to
 This can be done because the internal representation of `a` is a function that can discard and copy values of type `a`. Thus, the above code is compiled into something like the following:
 
 ```neut
-define foo(a: type, x: a) -> pair(a, a) {
+define foo<a>(x: a) -> pair(a, a) {
   let x-clone = a(1, x);
   Pair(x, x-clone)
 }
@@ -257,7 +257,7 @@ We'll see how function types like `(int) -> bool` are translated.
 Suppose we have a function like the following:
 
 ```neut
-define foo(a: type) -> int {
+define foo<a>() -> int {
   let x: int = 10;
   let y = type;
   let f =
@@ -275,27 +275,26 @@ Let's see how the lambda abstraction is compiled.
 
 ### Extracting a Closed Chain From a Lambda
 
-First, the compiler collects all the free variables in the lambda. Here, the compiler also collects all the free variables in the types of the free variables. Thus, in this case, the compiler constructs a list like below:
-
-```neut
-[a, x, y, z]
-```
-
-This list is "closed" in the following sense. Consider annotating all the variables in the list by their variables, like below:
+First, the compiler collects all the free variables in the lambda. Here, the compiler also collects all the free variables in the types of the free variables. Thus, in this case, the compiler constructs a typed list like the following:
 
 ```neut
 [a: type, x: int, y: type, z: a]
 ```
 
-This list is closed in that the term
+Let's write this as a sequence `x1: t1, ..., xn: tn`. We call such a sequence a closed chain if each type `ti` mentions only earlier variables, that is,
 
-```neut
-(a: type, x: int, y: type, z: a) => {
-  Unit
-}
+```text
+FreeVars(ti) ⊆ {x1, ..., x{i-1}}
 ```
 
-contains no free variables. We'll call a list like this a closed chain.
+for every `i`.
+
+In the example above, this condition holds because:
+
+- `FreeVars(type) = ∅ ⊆ ∅`
+- `FreeVars(int) = ∅ ⊆ {a}`
+- `FreeVars(type) = ∅ ⊆ {a, x}`
+- `FreeVars(a) = {a} ⊆ {a, x, y}`
 
 ### Closure Conversion
 
