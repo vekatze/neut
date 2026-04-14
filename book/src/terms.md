@@ -1740,17 +1740,17 @@ Here, an "actual" type is a type that satisfies all the following conditions:
 Here, a "dubious" ADT is something like the following:
 
 ```neut
-// the type `joker-x` is dubious since it contains a noetic argument
+// the type `joker-x` is dubious since it contains a noetic type
 data joker-x {
 | Joker-X(&list(int))
 }
 
-// the type `joker-y` is dubious since it contains a functional argument
+// the type `joker-y` is dubious since it contains a functional type
 data joker-y {
 | Joker-Y(int -> bool)
 }
 
-// the type `joker-z` is dubious since it contains a dubious ADT argument
+// the type `joker-z` is dubious since it contains a dubious ADT type
 data joker-z {
 | Joker-Z(joker-y)
 }
@@ -1884,7 +1884,7 @@ You can also use `int` and `float` as a lowtype. These are just syntactic sugar 
 
 ### Semantics (cast)
 
-`magic cast (a, b, e)` casts the term `e` from the type `a` to `b`. `cast` does nothing at runtime.
+`magic cast(a, b, e)` casts the term `e` from the type `a` to `b`. `cast` does nothing at runtime.
 
 ### Semantics (store)
 
@@ -1984,10 +1984,6 @@ Neut compiles types into functions. The first argument of such a function is usu
 
 ```
 
-### Note
-
-`call-type` can be used, for example, to inspect the structure of a term at runtime. The function `vet` defined [here](https://github.com/vekatze/neut-core/blob/main/source/debug.nt), for example, inspects its argument's structure and prints it.
-
 ## `introspect`
 
 You can use `introspect key {..}` to introspect the compiler's configuration.
@@ -2069,7 +2065,7 @@ The configuration value `default` is equal to any configuration values.
 
 ## `static`
 
-You can use `static` to create a value of type `text`. There are two forms: one embeds the content of a text file, and the other turns a string literal into a `text`.
+You can use `static` to create a value of type `text`.
 
 ### Example
 
@@ -2274,10 +2270,6 @@ _
 -------------------
 Γ ⊢ e[tmp := _]: a
 ```
-
-### Note
-
-Please do not confuse a hole with the `_` in `let _ = e1; e2`.
 
 ## `on`
 
