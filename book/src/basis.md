@@ -135,7 +135,7 @@ The expected behavior of the `Cons` clause above would be something like the fol
 1. obtain `x` and `rest` from `xs`
 2. `free` the outer tuple of `xs`
 3. calculate `add-int(x, 1)` and `increment(rest)`
-4. allocate memory region using `malloc` to return the result
+4. allocate a memory region using `malloc` to hold the result
 5. store the calculated values to the pointer and return it
 
 However, since the size of `Cons(x, rest)` and `Cons(add-int(x, 1), increment(rest))` are known to be the same at compile-time, the pair of `free` and `malloc` should be able to be optimized away, as follows:
@@ -144,11 +144,11 @@ However, since the size of `Cons(x, rest)` and `Cons(add-int(x, 1), increment(re
 2. calculate `add-int(x, 1)` and `increment(rest)`
 3. store the calculated values to `xs` (overwrite)
 
-Neut performs this optimization. When a `free` is required, Neut looks for a `malloc` that is the same size and optimizes away such a pair if one exists. The resulting assembly code thus performs in-place updates.
+Neut performs this optimization. When a `free` is required, Neut looks for a `malloc` of the same size and optimizes away such a pair if one exists. The resulting assembly code thus performs in-place updates.
 
 ### Free-Malloc Canceling and Branching
 
-This optimization "penetrates" branching. For example, consider the following:
+This optimization works across branches. For example, consider the following:
 
 ```neut
 // (an `insert` function in bubble sort)
@@ -245,7 +245,7 @@ bar-module => "zptXghmyD5druBl8kx2Qrei6O6fDsKCA7z2KoHp1aqA"
 ...
 ```
 
-The compiler then resolves aliases like below:
+The compiler then resolves aliases as follows:
 
 ```text
 core.string.io.get-line
@@ -283,7 +283,7 @@ define use-my-function() -> string {
 }
 ```
 
-The first thing to note here is that every module is marked as "main" or "library" when running compilation. The main module is the module in which `neut build` is executed. Library modules are all the other modules that are necessary for compilation.
+The first thing to note here is that every module is marked as "main" or "library" during compilation. The main module is the module in which `neut build` is executed. Library modules are all the other modules that are necessary for compilation.
 
 All the occurrences of `this` in the main module are kept intact during compilation. Thus, the resulting assembly file contains symbols like `this.foo.bar`.
 
@@ -294,7 +294,7 @@ On the other hand, all occurrences of `this` in a library module are resolved in
 this => "jIx5FxfoymZ-X0jLXGcALSwK4J7NlR1yCdXqH2ij67o"
 ```
 
-The compiler then resolves `this` like below:
+The compiler then resolves `this` as follows:
 
 ```text
 this.string.io.get-line
@@ -304,7 +304,7 @@ this.string.io.get-line
 jIx5FxfoymZ-X0jLXGcALSwK4J7NlR1yCdXqH2ij67o=.string.io.get-line
 ```
 
-Thus, the resulting assembly file contains symbols like the above.
+Thus, the resulting assembly file contains symbols like these.
 
 ## Leading Bars and Trailing Commas
 
@@ -344,4 +344,4 @@ The default values are as follows:
 - Neut is impure
 - The type of `main` must be `() -> unit`
 - A module named `core` is treated specially (treated as the "prelude" library)
-  - Syntactic constructs like `List[1, 2, 3]` depends on functions in `core`
+- Syntactic constructs like `List[1, 2, 3]` depend on functions in `core`
