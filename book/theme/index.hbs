@@ -5,9 +5,13 @@
     <title>{{title}}</title>
     <meta name="description" content="{{description}}" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    {{#if favicon_svg}}
+    <link rel="icon" href="{{ resource "favicon.svg" }}">
+    {{else}}
     <link rel="icon" href="data:;base64,iVBORw0KGgo=">
-    <link rel="stylesheet" href="{{path_to_root}}css/general.css" />
-    <link rel="stylesheet" href="{{path_to_root}}highlight.css" />
+    {{/if}}
+    <link rel="stylesheet" href="{{ resource "css/general.css" }}" />
+    <link rel="stylesheet" href="{{ resource "highlight.css" }}" />
     <meta property="og:title" content="{{title}}" />
     <meta property="og:description" content="{{description}}" />
     <meta property="og:url" content="https://vekatze.github.io/neut/{{path}}" />
@@ -76,8 +80,8 @@
         </script>
       {{/if}}
 
-      <script src="{{path_to_root}}highlight.js"></script>
-      <script src="{{path_to_root}}book.js"></script>
+      <script src="{{ resource "highlight.js" }}"></script>
+      <script src="{{ resource "book.js" }}"></script>
     </div>
   </body>
 </html>
