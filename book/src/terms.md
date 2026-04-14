@@ -310,9 +310,7 @@ let x: t = e1; e2
 
 ### Note
 
-(1) `let x = e1; e2` isn't exactly the same as `{(x) => {e2}}(e1)`. The difference lies in the fact that the type of `e2` can't depend on `x` in `let x = e1; e2`.
-
-(2) When a pattern is passed, `let` is the following syntactic sugar:
+When a pattern is passed, `let` is the following syntactic sugar:
 
 ```neut
 let pat = x;
@@ -476,7 +474,7 @@ The syntax of a string literal is the same as that of the literal form of [`stat
 
 ### Semantics
 
-A string literal is, conceptually, shorthand for `magic cast(text, &string, static "hello")`.
+A string literal is shorthand for `magic cast(text, &string, static "hello")`.
 
 ### Type
 
@@ -488,7 +486,6 @@ A string literal is, conceptually, shorthand for `magic cast(text, &string, stat
 
 ### Note
 
-- String literals have type `&string`.
 - For the exact syntax and internal representation of the literal part, see [`static`](#static).
 
 ## `(x1: a1, ..., xn: an) -> b`
@@ -552,7 +549,7 @@ A function type is compiled into a pointer to `base.#.cls`. For more, please see
 
 ## `(x1: a1, ..., xn: an) => { e }`
 
-`=>` can be used to create a lambda abstraction (an anonymous function).
+`=>` can be used to create an anonymous function.
 
 ### Example
 
@@ -573,9 +570,23 @@ define use-function() -> int {
 (x1: a1, ..., xn: an) => {
   e
 }
+
+// You can omit type annotations
+(x1, ..., xn) => {
+  e
+}
 ```
 
-All the free variables of a lambda abstraction must be at the same layer of the lambda abstraction. For example, the following is not a valid term in Neut:
+The following abbreviation is available:
+
+```neut
+(x1, ..., xn) => { e }
+
+// ↓
+// (x1: _, ..., xn: _) => { e }
+```
+
+All the free variables of an anonymous function must be at the same layer of the anonymous function. For example, the following is not a valid term:
 
 ```neut
 define return-int(x: +int) -> +() -> int {
@@ -592,13 +603,13 @@ define return-int(x: +int) -> +() -> int {
 }
 ```
 
-because the free variable `x` in the lambda abstraction is at layer 0, whereas the lambda abstraction is at layer -1.
+because the free variable `x` in the anonymous function is at layer 0, whereas the anonymous function is at layer -1.
 
 For more on layers, please see the section on [box](#box), [letbox](#letbox), and [letbox-T](#letbox-t).
 
 ### Semantics
 
-A lambda abstraction is compiled into a three-word closure. For more, please see [How to Execute Types](./how-to-execute-types.md#advanced-function-types).
+Anonymous functions are compiled into three-word closures. For more, please see [How to Execute Types](./how-to-execute-types.md#advanced-function-types).
 
 ### Type
 
@@ -611,7 +622,7 @@ A lambda abstraction is compiled into a three-word closure. For more, please see
 
 ### Note
 
-- Lambda abstractions defined by `=>` are reduced at compile-time when possible. If you would like to avoid this behavior, consider using `define`.
+- Anonymous functions are reduced at compile-time when possible. If you would like to avoid this behavior, consider using `define`.
 
 ## `define f(x1: a1, ..., xn: an) -> c { e }`
 
@@ -711,7 +722,7 @@ define use-define() -> int {
 ```neut
 Γ, x1: a1, ..., xn: an, f: (x1: a1, ..., xn: an) -> t ⊢ e: t
 ------------------------------------------------------------
-     Γ ⊢ (define f(x1: a1, ..., xn: an) -> t {e}): t
+     Γ ⊢ define f(x1: a1, ..., xn: an) -> t {e}: t
 ```
 
 ### Note
@@ -760,34 +771,6 @@ Given a function application `e(e1, ..., en)` the system does the following:
 ```
 
 The `?Mi`s in the above rule are metavariables that must be inferred by the compiler.
-
-### Note
-
-If the function `e` contains implicit parameters, holes are inserted automatically.
-
-For example, consider the following code:
-
-```neut
-define id<a>(x: a) -> a {
-  x
-}
-
-define use-id() -> unit {
-  id(Unit)
-}
-```
-
-The `id(Unit)` in the example above is (conceptually) compiled into the following (pseudo-code):
-
-```neut
-define _id(a: type, x: a) -> a {
-  x
-}
-
-define use-id() -> unit {
-  _id(unit, Unit)
-}
-```
 
 ## `e{x1 := e1, ..., xn := en}`
 
@@ -906,7 +889,7 @@ is translated into the following:
 
 ```neut
 (y1: b1, ..., ym: bm) => {
-  e(_, ..., _, y1, ..., ym)
+  e<_, ..., _>(y1, ..., ym)
 }
 ```
 
@@ -915,7 +898,7 @@ is translated into the following:
 ```neut
        Γ ⊢ e: <x1: a1, ..., xn: an>(y1: b1, ..., ym: bm) -> c
 --------------------------------------------------------------------
-Γ ⊢ exact e: ((y1: b1, ..., ym: bm) -> c)[x1 := ?M1, ..., xn := ?Mn]
+Γ ⊢ exact e: {(y1: b1, ..., ym: bm) -> c}[x1 := ?M1, ..., xn := ?Mn]
 ```
 
 Here, `?Mi`s are metavariables that must be inferred by the type checker.
@@ -937,7 +920,6 @@ data my-nat {
 }
 
 define use-nat-type() -> type {
-  // 🌟
   my-nat
 }
 ```
@@ -975,7 +957,7 @@ data my-nat {
 }
 
 define create-nat() -> my-nat {
-  // 🌟 (`Succ` and `Zero` are constructors)
+  // `Succ` and `Zero` are constructors
   Succ(Succ(Zero))
 }
 ```
@@ -1037,7 +1019,6 @@ data my-nat {
 }
 
 define foo(n: my-nat) -> int {
-  // 🌟
   match n {
   | Zero =>
     100
@@ -1047,7 +1028,7 @@ define foo(n: my-nat) -> int {
 }
 
 define bar(n: my-nat) -> int {
-  // 🌟 (You can use nested patterns)
+  // You can use nested patterns
   match n {
   | Zero =>
     100
@@ -1059,7 +1040,7 @@ define bar(n: my-nat) -> int {
 }
 
 define eq-nat(n1: my-nat, n2: my-nat) -> bool {
-  // 🌟 (`match` can handle multiple values)
+  // `match` can handle multiple values
   match n1, n2 {
   | Zero, Zero =>
     True
@@ -1071,7 +1052,7 @@ define eq-nat(n1: my-nat, n2: my-nat) -> bool {
 }
 
 define literal-match(x: int) -> int {
-  // 🌟 (You can use `match` against integers)
+  // You can use `match` against integers
   match x {
   | 3 =>
     30
@@ -1121,7 +1102,7 @@ When evaluating `match`, the computer inspects the first element of the "tuple" 
 
 ```neut
 define foo(n: my-nat) -> int {
-  // 🌟 (inspects the first element of `n` here)
+  // inspects the first element of `n` here
   match n {
   | Zero =>
     100
@@ -1219,7 +1200,7 @@ For every type `a`, `+a` is compiled into the same term as `a`.
 
 `+` is the T-necessity operator in that we can construct terms of the following types:
 
-- `((+(a) -> b), +a) -> +b` (Axiom K)
+- `((a) -> b, +a) -> +b` (Axiom K)
 - `(+a) -> a` (Axiom T)
 
 Note that `+(a) -> b` and `(+a) -> b` are different types.
@@ -1236,7 +1217,6 @@ data my-nat {
 | Succ(my-nat)
 }
 
-                     // 🌟
 define foo-noetic(n: &my-nat) -> int {
   case n {
   | Zero =>
@@ -1394,7 +1374,7 @@ Incidentally, the rule "The body of `define` is at layer 0" is not really necess
 
 ### Note
 
-Firstly, observe that the following derivation is admissible in Neut:
+Firstly, observe that the following derivation is admissible:
 
 ```neut
 Γ1; ...; Γn; x: a, Δ ⊢ e: b
@@ -1570,13 +1550,13 @@ e2
 
 ↓
 
-let x1 = unsafe-cast(a1, &a1, x);
+let x1 = cast<a1, &a1>(x1);
 ...
-let xn = unsafe-cast(an, &an, xn);
+let xn = cast<an, &an>(xn);
 let result = e1;
-let x1 = unsafe-cast(&a1, a1, x);
+let x1 = cast<&a1, a1>(x1);
 ...
-let xn = unsafe-cast(&an, an, xn);
+let xn = cast<&an, an>(xn);
 cont
 ```
 
@@ -1639,7 +1619,6 @@ define foo-noetic(n: &my-nat) -> int {
   | Zero =>
     100
   | Succ(m) =>
-    // the type of foo-noetic is `(&my-nat) -> int`
     foo-noetic(m)
   }
 }
