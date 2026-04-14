@@ -17,8 +17,6 @@ Neut supports integers, floats, and texts. More specifically, the following type
 
 You can also use `int` and `float`. These are just syntactic sugar for `int64` and `float64`, respectively.
 
-The primitive type `text` is produced by `static`. For the details of `static`, `text`, and the relation to `&string`, see [Terms](./terms.md#static).
-
 ### Primitive Functions
 
 These primitive types have a lot of primitive functions from LLVM:
