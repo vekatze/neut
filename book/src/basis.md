@@ -3,7 +3,8 @@
 ## Table of Contents
 
 - [On Executing Types](./basis.md#on-executing-types)
-- [Allocation Canceling](./basis.md#allocation-canceling)
+- [Free-Malloc Canceling](./basis.md#free-malloc-canceling)
+- [Malloc-Free Canceling](./basis.md#malloc-free-canceling)
 - [Name Resolution](./basis.md#name-resolution)
 - [Leading Bars and Trailing Commas](./basis.md#leading-bars-and-trailing-commas)
 - [Compiler Configuration](./basis.md#compiler-configuration)
@@ -107,7 +108,7 @@ Since every type is translated into a pointer to a function, a type is an immedi
 
 </div>
 
-## Allocation Canceling
+## Free-Malloc Canceling
 
 Thanks to its static nature, memory allocation in Neut can sometimes be optimized away. Consider the following code:
 
@@ -145,7 +146,7 @@ However, since the size of `Cons(x, rest)` and `Cons(add-int(x, 1), increment(re
 
 Neut performs this optimization. When a `free` is required, Neut looks for a `malloc` that is the same size and optimizes away such a pair if one exists. The resulting assembly code thus performs in-place updates.
 
-### Allocation Canceling and Branching
+### Free-Malloc Canceling and Branching
 
 This optimization "penetrates" branching. For example, consider the following:
 
@@ -185,6 +186,36 @@ define foo(v: int, xs: int-list) -> int-list {
 ```
 
 At this point, the `free` against `xs` at `(X')` can't be optimized away since there is a branch (namely, `(Y')`) that doesn't perform a `malloc` of the same size as `xs`.
+
+## Malloc-Free Canceling
+
+Neut also performs the opposite optimization. If a region allocated by `malloc` does not escape and is eventually deallocated by `free`, the compiler replaces that heap allocation with a stack allocation.
+
+As a simple example, consider the following code:
+
+```neut
+define foo() -> int {
+  let ptr = malloc(8);
+  store-int(42, ptr);
+  let value = load-int(ptr);
+  free(ptr);
+  value
+}
+```
+
+This code is compiled into:
+
+```llvm
+define fastcc ptr @"this.test.foo"(ptr %v0, ptr %v1) {
+  %v2 = alloca i8, i64 8
+  store i64 42, ptr %v2
+  %v3 = load i64, ptr %v2
+  %v4 = inttoptr i64 %v3 to ptr
+  ret ptr %v4
+}
+```
+
+That is, the compiler removes the `malloc`/`free` pair and uses a stack slot instead.
 
 ## Name Resolution
 
