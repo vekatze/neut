@@ -24,4 +24,3 @@
   - [Rapid Prototyping](./rapid-prototyping.md)
   - [Editor Setup](./editor-setup.md)
 - [How to Execute Types](./how-to-execute-types.md)
-- [Benchmarks](./benchmarks.md)
