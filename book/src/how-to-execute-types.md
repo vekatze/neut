@@ -75,7 +75,7 @@ define exp-item(selector, v) {
 
 The type `item` is compiled into a pointer to this function.
 
-More generally, a type `a` is translated into a pointer to a closed function like below:
+More generally, a type `a` is translated into a pointer to a closed function like the following:
 
 ```neut
 define exp-a(selector, v) {
@@ -104,7 +104,7 @@ let _ = exp-item(0, x); // discard `x` by passing 0 as `selector`
 print("hello")
 ```
 
-This `exp-item` is also called when a variable is used more than twice:
+This `exp-item` is also called when a variable is used more than once:
 
 ```neut
 let x = New(10, 20);
@@ -129,7 +129,7 @@ This discarding/copying procedure happens _immediately after a variable is defin
 
 ## Immediate Types
 
-Immediates like integers or floats don't have to be discarded or copied since they don't rely on memory-related operations like `malloc` or `free`. This fact is reflected in the resulting function that `int` or `float` are translated into:
+Immediates like integers or floats don't have to be discarded or copied since they don't rely on memory-related operations like `malloc` or `free`. This fact is reflected in the function that `int` and `float` are translated into:
 
 ```neut
 define base.#.imm(selector, value) {
@@ -187,13 +187,13 @@ data list(a) {
 
 The first thing to note is that the values of an ADT must be able to be discarded/copied using a closed function (since all the types in Neut are compiled into closed functions). This means the information about `a` in `list(a)` must be contained in the values.
 
-That is, for example, the internal representation of `Nil` is something like below:
+That is, for example, the internal representation of `Nil` is something like the following:
 
 ```neut
 (a, 0)
 ```
 
-Here, the `0` is the discriminant for `Nil`. Also, that of `Cons(10, xs)` is:
+Here, the `0` is the discriminant for `Nil`. Similarly, the internal representation of `Cons(10, xs)` is:
 
 ```neut
 (a, 1, 10, xs)
@@ -328,7 +328,7 @@ store(new-ptr[2], label);     // note that a label is an immediate
 new-ptr // ... and return the new closure
 ```
 
-Discarding a closure can also be done with the same idea: discard the environment using the type information in the closure.
+Discarding a closure can also be done using the same idea: discard the environment using the type information in the closure.
 
 ### Translating a Function Type
 
@@ -375,6 +375,6 @@ define base.#.cls(action-selector, cls) {
 
 <div class="info-block">
 
-Every function type is translated into this same `base.#.cls`, no matter its argument types and the result types.
+Every function type is translated into this same `base.#.cls`, regardless of its argument and result types.
 
 </div>
