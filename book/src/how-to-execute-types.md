@@ -52,8 +52,6 @@ store(ptr[1], v[1]); // ptr[1] := v[1]
 ptr
 ```
 
-Not a big deal, right?
-
 ### Combining Discarding/Copying Functions
 
 Using the two procedures above, we can construct a closed function that discards and copies the values of the type `item`:
@@ -246,9 +244,7 @@ define exp-list(selector, v) {
 }
 ```
 
-The point is that _the type information in a value is loaded at runtime and used to discard/copy values_. This utilization of types is the main point of first-class types in Neut.
-
-The main part of this section is now over. What follows is for curious cats.
+The point is that the type information in a value is loaded at runtime and used to discard/copy values.
 
 ## Advanced: Function Types
 
