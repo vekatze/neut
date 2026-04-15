@@ -229,7 +229,6 @@ import {
 }
 
 define use-external-module-function() -> string {
-           // 🌟
   let value = core.string.io.get-line();
   ...
 }
@@ -277,7 +276,6 @@ import {
 }
 
 define use-my-function() -> string {
-           // 🌟
   let value = this.path.to.file.my-function();
   ...
 }

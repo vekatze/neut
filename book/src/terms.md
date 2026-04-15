@@ -1817,7 +1817,7 @@ data descriptor {}
 
 // add an element to the empty type
 constant stdin: descriptor {
-  magic cast(int, descriptor, 0) // 🌟 cast
+  magic cast(int, descriptor, 0) // ← cast
 }
 
 define malloc-then-free() -> unit {
@@ -1826,14 +1826,14 @@ define malloc-then-free() -> unit {
 
   // allocates memory region (heap)
   let size: int = 10;
-  let ptr: pointer = magic external malloc(size); // 🌟 external
+  let ptr: pointer = magic external malloc(size); // ← external
 
   // stores a value
   let value: int = 123;
-  magic store(int, value, ptr); // 🌟 store
+  magic store(int, value, ptr); // ← store
 
   // loads and print a value
-  let value = magic load(int, ptr); // 🌟 load
+  let value = magic load(int, ptr); // ← load
   print-int(value); // => 123
 
   // tells the compiler to treat the content of {..} as a value
@@ -1843,11 +1843,11 @@ define malloc-then-free() -> unit {
     };
 
   // frees the pointer and return
-  magic external free(ptr); // 🌟 external
+  magic external free(ptr); // ← external
 
   // call types as functions
   let t: string = *"hello";
-  magic call-type(string, 0, t); // discard
+  magic call-type(string, 0, t); // ← call-type (discard)
 
   Unit
 }

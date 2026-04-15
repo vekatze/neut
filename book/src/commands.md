@@ -272,7 +272,7 @@ After executing `neut get`, the information of the new module is saved to `modul
   },
   dependency {
     // ..
-    // 🌟 (something like this is added automatically)
+    // ↓ something like this is added automatically
     some-name {
       digest "xNmQu6It81lGBy1sKvk5_jE4Qt8w8KgkVgGj0RBbbrk",
       mirror [
