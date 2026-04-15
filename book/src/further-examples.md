@@ -1,17 +1,6 @@
-# What is Next?
+# Further Examples
 
-You can improve this book, this language, or this world by:
-
-- Writing libraries or executables
-- Opening PRs to fix typos, grammatical errors, or other issues in this book
-- Finding bugs and reporting them on GitHub, hopefully with PRs
-- Sharing the language on SNS
-- Starring the [repository](https://github.com/vekatze/neut)
-- ...
-
-## Introducing Some Libraries
-
-I've been enjoying this language by myself and have written several libraries:
+If you want to see some examples of working code, the following libraries may be helpful:
 
 - [argot](https://github.com/vekatze/argot) - An option parser
 - [ars-postgres](https://github.com/vekatze/ars-postgres) - A PostgreSQL client over libpq

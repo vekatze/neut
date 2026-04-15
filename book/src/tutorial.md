@@ -10,4 +10,6 @@ Neut is a _module-based_ _functional_ programming language with _static_ memory 
 
 [Modality and Memory](./modality-and-memory.md) covers the _"modality"_ part. We'll see how memory operations introduced in the previous section can be understood via modality.
 
+[Further Examples](./further-examples.md) presents some libraries written in this language as examples.
+
 This chapter assumes you are familiar with languages like Haskell, OCaml, or F#.

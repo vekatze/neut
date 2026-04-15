@@ -7,6 +7,7 @@
   - [Programming in Neut](./programming-in-neut.md)
   - [Static Memory Management](./static-memory-management.md)
   - [Modality and Memory](./modality-and-memory.md)
+  - [Further Examples](./further-examples.md)
 - [Language Reference](./language-reference.md)
   - [Commands](./commands.md)
   - [Modules](./modules.md)
@@ -14,7 +15,6 @@
   - [Terms](./terms.md)
   - [Primitives](./primitives.md)
   - [Basis](./basis.md)
-- [What is Next?](./what-is-next.md)
 
 # Appendix
 
