@@ -1,6 +1,8 @@
 # Further Examples
 
-If you want to see some examples of working code, the following libraries may be helpful:
+If you want to see examples of working code, [the core library](https://github.com/vekatze/neut-core) is a good place to start.
+
+The following libraries may also be helpful:
 
 - [argot](https://github.com/vekatze/argot) - An option parser
 - [ars-postgres](https://github.com/vekatze/ars-postgres) - A PostgreSQL client over libpq
