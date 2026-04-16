@@ -20,7 +20,7 @@
 
 - [Manual Installation](./manual-installation.md)
 - [Development Environment](./development-environment.md)
-  - [Lovely LSP Showcase](./lovely-lsp-showcase.md)
+  - [LSP Showcase](./lsp-showcase.md)
   - [Rapid Prototyping](./rapid-prototyping.md)
   - [Editor Setup](./editor-setup.md)
 - [How to Execute Types](./how-to-execute-types.md)

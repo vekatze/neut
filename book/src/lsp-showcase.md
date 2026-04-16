@@ -1,4 +1,4 @@
-# Lovely LSP Showcase
+# LSP Showcase
 
 The compiler contains an LSP server. Let's see what it is like.
 
