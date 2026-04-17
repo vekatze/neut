@@ -142,6 +142,28 @@ In `build-option`, you can use environment variables and shell interpolations.
 
 The field `build-option` is optional. The default value of `build-option` is `[]`.
 
+### `allocator`
+
+The field `allocator` specifies which allocator is used by the target:
+
+```ens
+{
+  target {
+    foo {
+      main "foo.nt",
+      allocator "mimalloc",
+    },
+  },
+}
+```
+
+The following values are available:
+
+- `"system"`: the system allocator
+- `"mimalloc"`: mimalloc
+
+The field `allocator` is optional. The default value of `allocator` is `"system"`.
+
 ## `dependency`
 
 The field `dependency` defines the dependencies of a module. It should look like the following:

@@ -87,6 +87,8 @@ The content of `module.ens` is something like the following:
 
 `target` specifies the targets of a module. In the example above, the command `neut build sample` builds the module using the file `source/sample.nt` as its entry point.
 
+`allocator` specifies which allocator is used by the target. By setting it to `"mimalloc"`, you can use mimalloc for that target.
+
 `dependency` specifies the dependencies of a module. Since our running example doesn't do much, the only dependency is `core`, which is the same as "prelude" in other languages.
 
 `digest` is the base64url-encoded checksum of a dependency.
