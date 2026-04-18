@@ -13,8 +13,8 @@
 
 - [Integers](#integers)
 - [Floats](#floats)
-- [Strings](#strings)
 - [Runes](#runes)
+- [Strings](#strings)
 
 ### Function
 
@@ -89,7 +89,7 @@ type
 ```neut
 (Γ is a context)
 ----------------
-  Γ ⊢ type: type
+Γ ⊢ type: type
 ```
 
 ## Local Variables
@@ -132,9 +132,14 @@ If the content of a variable `x` is an immediate value, `x` is compiled into the
 ### Type
 
 ```neut
-  Γ ⊢ a: type
-----------------
-Γ, x: a ⊢ x: a
+Γ ⊢ t: type
+---------------- (tvar)
+Γ, α: t ⊢ α: t
+
+
+Γ ⊢ t: type
+---------------- (var)
+Γ, x: t ⊢ x: t
 ```
 
 ### Notes
@@ -178,9 +183,10 @@ See the Note below for a more detailed explanation.
 ### Type
 
 ```neut
-(Γ is a context)     (c: a is defined at the top-level)
--------------------------------------------------------
-                  Γ ⊢ c: a
+(Γ is a context)
+(c: a is defined at the top-level)
+----------------------------------
+Γ ⊢ c: a
 ```
 
 ### Note
@@ -297,9 +303,10 @@ let x: t = e1; e2
 ### Type
 
 ```neut
-Γ ⊢ e1: a     Γ, x: a ⊢ e2: b
------------------------------
-   Γ ⊢ let x = e1; e2: b
+Γ ⊢ e1: a
+Γ, x: a ⊢ e2: b
+---------------------
+Γ ⊢ let x = e1; e2: b
 ```
 
 ### Note
@@ -421,9 +428,10 @@ The underlying representation of a rune is an int32.
 ### Type
 
 ```neut
-(Γ is a context)  (c is a rune literal)
----------------------------------------
-         Γ ⊢ c: rune
+(Γ is a context)
+(c is a rune literal)
+---------------------
+Γ ⊢ c: rune
 ```
 
 ### Note
@@ -473,9 +481,10 @@ A string literal is shorthand for `magic cast(text, &string, static "hello")`.
 ### Type
 
 ```neut
-(Γ is a context)  (t is a string literal)
----------------------------------------
-        Γ ⊢ t: &string
+(Γ is a context)
+(t is a string literal)
+-----------------------
+Γ ⊢ t: &string
 ```
 
 ### Note
@@ -536,9 +545,9 @@ A function type is compiled into a pointer to `base.#.cls`. For more, please see
 ### Type
 
 ```neut
-  Γ, x1: a1, ..., xn: an, y1: b1, ..., ym: bm ⊢ c: type
+Γ, α1: s1, ..., αn: sn, x1: t1, ..., xm: tm ⊢ u: type
 --------------------------------------------------------
-Γ ⊢ <x1: a1, ..., xn: an>(y1: b1, ..., ym: bm) -> c: type
+Γ ⊢ <α1: s1, ..., αn: sn>(x1: t1, ..., xm: tm) -> u: type
 ```
 
 ## `(x1: a1, ..., xn: an) => { e }`
@@ -554,7 +563,13 @@ define use-function() -> int {
       let z = add-int(x, y);
       mul-int(z, z)
     };
-  f(10, 20)
+  let id =
+    <a>(x: a) => {
+      x
+    };
+  let result = f(10, 20);
+  let _ = id(42);
+  result
 }
 ```
 
@@ -608,9 +623,9 @@ Anonymous functions are compiled into three-word closures. For more, please see 
 ### Type
 
 ```neut
-    Γ, x1: a1, ..., xn: an ⊢ e: t
------------------------------------------
-Γ ⊢ (x1: a1, ..., xn: an) => {e}: t
+Γ, α1: s1, ..., αn: sn, x1: t1, ..., xm: tm ⊢ e: u
+--------------------------------------------------------
+Γ ⊢ <α1: s1, ..., αn: sn>(x1: t1, ..., xm: tm) => {e}: u
 
 ```
 
@@ -716,7 +731,7 @@ define use-define() -> int {
 ```neut
 Γ, x1: a1, ..., xn: an, f: (x1: a1, ..., xn: an) -> t ⊢ e: t
 ------------------------------------------------------------
-     Γ ⊢ define f(x1: a1, ..., xn: an) -> t {e}: t
+Γ ⊢ define f(x1: a1, ..., xn: an) -> t {e}: t
 ```
 
 ### Note
@@ -759,9 +774,9 @@ Given a function application `e(e1, ..., en)` the system does the following:
 ### Type
 
 ```neut
-Γ ⊢ e: <x1: a1, .., xn: an>(y1: b1, .., ym: bm) -> c    Γ ⊢ e1: b1  ..   Γ ⊢ em: bm
+Γ ⊢ e: <α1: a1, .., αn: an>(y1: b1, .., ym: bm) -> c    Γ ⊢ e1: b1  ..   Γ ⊢ em: bm
 ---------------------------------------------------------------------------------------
-    Γ ⊢ e(e1, .., em): c[x1 := ?M1, .., xn := ?Mn, y1 := e1, .., ym := em]
+Γ ⊢ e(e1, .., em): c[α1 := ?M1, .., αn := ?Mn, y1 := e1, .., ym := em]
 ```
 
 The `?Mi`s in the above rule are metavariables that must be inferred by the compiler.
@@ -890,9 +905,9 @@ is translated into the following:
 ### Type
 
 ```neut
-       Γ ⊢ e: <x1: a1, ..., xn: an>(y1: b1, ..., ym: bm) -> c
+Γ ⊢ e: <α1: a1, ..., αn: an>(y1: b1, ..., ym: bm) -> c
 --------------------------------------------------------------------
-Γ ⊢ exact e: {(y1: b1, ..., ym: bm) -> c}[x1 := ?M1, ..., xn := ?Mn]
+Γ ⊢ exact e: {(y1: b1, ..., ym: bm) -> c}[α1 := ?M1, ..., αn := ?Mn]
 ```
 
 Here, `?Mi`s are metavariables that must be inferred by the type checker.
@@ -970,35 +985,35 @@ If a constructor `c` is nullary, the type of `c` is the ADT type. For example, c
 
 ```neut
 data some-adt {
-| c1
+| C1
 }
 
 data other-adt(a: type) {
-| c2
+| C2
 }
 ```
 
 In this case,
 
-- the type of `c1` is `some-adt`, and
-- the type of `c2` is `other-adt(?M)`, where the `?M` must be inferred by the compiler.
+- the type of `C1` is `some-adt`, and
+- the type of `C2` is `other-adt(?M)`, where the `?M` must be inferred by the compiler.
 
 If a constructor `c` isn't nullary, the type of `c` is the function type that takes specified arguments and turns them into the ADT type. For example, consider the following code:
 
 ```neut
 data some-adt {
-| c1(foo: int)
+| C1(foo: int)
 }
 
 data other-adt(a: type) {
-| c2(bar: bool, buz: other-adt(a))
+| C2(bar: bool, buz: other-adt(a))
 }
 ```
 
 In this case,
 
-- the type of `c1` is `(foo: int) -> some-adt`, and
-- the type of `c2` is `<a: type>(bar: bool, buz: other-adt(a)) -> other-adt(a)`.
+- the type of `C1` is `(foo: int) -> some-adt`, and
+- the type of `C2` is `(bar: bool, buz: other-adt(?M)) -> other-adt(?M)`.
 
 ## `match`
 
@@ -1292,14 +1307,17 @@ e
 ### Type
 
 ```neut
-Γ1; ...; Γn; Δ ⊢ e1: a
-------------------------------------- (□-intro)
-Γ1; ...; Γn, &Δ ⊢ box Δ {e1}: +a
+Γ, Δ ⊢ⁱ e1: a
+------------------------- (□-intro)
+Γ, &Δ ⊢ⁱ⁺¹ box Δ {e1}: +a
 ```
 
-where `Γ1; ...; Γn` is a sequence of contexts.
+where:
 
-### Layers
+- every variable in `Δ` is at layer `i`.
+- every variable in `&Δ` is at layer `i+1`.
+
+### Notes on Layers
 
 The body of `define` is defined to be at layer 0:
 
@@ -1323,7 +1341,7 @@ define use-box(x: int) -> +int {
 }
 ```
 
-_In layer n, we can only use variables at the layer_. Thus, the following is not a valid term:
+In layer n, we can only use variables at the layer. Thus, the following is not a valid term:
 
 ```neut
 define use-box-error(x: int) -> +int {
@@ -1348,75 +1366,6 @@ define use-box-with-noema(x: &int) -> +int {
   }
 }
 ```
-
-The body of this term is typed as follows:
-
-```neut
---------------
-x: int ⊢ x: int // layer -1
----------------------------
-x: int ⊢ add-int(x, 1): int // layer -1
--------------------------------------------- (□-intro with Δ = (x: int))
-· ; x: &int ⊢ box x {add-int(x, 1)}: +int  // layer 0
-```
-
-Here, `·` is the empty context.
-
----
-
-Incidentally, the rule "The body of `define` is at layer 0" is not really necessary. We can simply replace the 0 with any integer.
-
-### Note
-
-Firstly, observe that the following derivation is admissible:
-
-```neut
-Γ1; ...; Γn; x: a, Δ ⊢ e: b
--------------------------------- (slide)
-Γ1; ...; Γn, x: +a; Δ ⊢ e: b
-```
-
-Also, by setting `Δ = ·` in the typing rule of `box`, we obtain the following:
-
-```neut
-Γ1; ...; Γn; · ⊢ e: a
--------------------------------- (□-intro')
-Γ1; ...; Γn ⊢ box Δ {e}: +a
-```
-
-Thus, we can perform the following derivation:
-
-```neut
-Γ1; ...; Γn; Δ ⊢ e: a
------------------------------ (slide)
-...
------------------------------ (slide)
-Γ1; ...; Γn, +Δ; · ⊢ e: a
--------------------------------------  (□-intro')
-Γ1; ...; Γn, +Δ ⊢ box {e}: +a
-```
-
-That is to say, the following rule is admissible without using `&`:
-
-```neut
-Γ1; ...; Γn; Δ ⊢ e: a
-------------------------------------- (□-intro-slide)
-Γ1; ...; Γn, +Δ ⊢ box {e}: +a
-```
-
-Now, compare the above with the rule of `box`:
-
-```neut
-Γ1; ...; Γn; Δ ⊢ e: a
-------------------------------------- (□-intro)
-Γ1; ...; Γn, &Δ ⊢ box Δ {e}: +a
-```
-
-As you can see, we can obtain `(□-intro)` from `(□-intro-slide)` by replacing `+Δ` with `&Δ`. That is to say, `&a` is the "structurally-defined" variant of `+a`.
-
-If we write `+Δ` instead of `&Δ` in `(□-intro)`, the rule is equivalent to `(□-intro')`. By giving the "structural" part a name different from `+`, the rule `(□-intro)` restricts the way how variables in `&Δ` (which could have been the same as `+Δ`) are used.
-
-In this sense, `&a` is the T-necessity modality defined through structural rules.
 
 ## `letbox`
 
@@ -1471,11 +1420,13 @@ cont
 ### Type
 
 ```neut
-Γ1; ...; Γn ⊢ e1: +a
-Γ1; ...; Γn; Δ, x: a ⊢ e2: b
------------------------------------------------- (□-elim-K)
-Γ1; ...; Γn; Δ ⊢ letbox x = e1; e2: b
+Γ ⊢ⁱ⁺¹ e1: +a
+Γ, x: a ⊢ⁱ e2: b
+------------------------- (□-elim-K)
+Γ ⊢ⁱ letbox x = e1; e2: b
 ```
+
+where `x` is a variable at layer `i`.
 
 ### Note
 
@@ -1494,7 +1445,7 @@ define roundtrip(x: +a) -> +a {
 }
 ```
 
-_In layer n, we can only use variables at the layer_. Thus, the following is not a valid term:
+In layer n, we can only use variables at the layer. Thus, the following is not a valid term:
 
 ```neut
 define use-letbox-error(x: +int) -> int {
@@ -1557,13 +1508,13 @@ cont
 ### Type
 
 ```neut
-Γ1; ...; Γn, &Δ ⊢ e1: +a
-Γ1; ...; Γn, Δ, Δ', x: a ⊢ e2: b
--------------------------------------------------- (□-elim-T)
-Γ1; ...; Γn, Δ, Δ' ⊢ letbox-T x on Δ = e1; e2: b
+Γ, &Δ ⊢ⁱ e1: +a
+Γ, Δ, x: a ⊢ⁱ e2: b
+----------------------------------- (□-elim-T)
+Γ, Δ ⊢ⁱ letbox-T x on Δ = e1; e2: b
 ```
 
-Note that the layer of `e1`, `e2`, `letbox-T (..)` are the same.
+where every variable in `&Δ` and `Δ` is at layer `i`.
 
 ### Note
 
@@ -1939,9 +1890,9 @@ Neut compiles types into functions. The first argument of such a function is usu
 
 (t is a lowtype)
 Γ ⊢ t: type
-Γ ⊢ address: pointer
+Γ ⊢ e: pointer // address
 ------------------------------------------------------
-Γ ⊢ magic load(t, address): t
+Γ ⊢ magic load(t, e): t
 
 Γ ⊢ e:t
 ------------------------------------------------------
@@ -1977,10 +1928,11 @@ Neut compiles types into functions. The first argument of such a function is usu
 Γ ⊢ magic external func(e1, ..., en)(e{n+1}: t{n+1}, ..., e{n+m}: t{n+m}): t
 
 
-Γ ⊢ some-type: type
+Γ ⊢ t: type
 Γ ⊢ switch: int
+Γ ⊢ arg: s
 ------------------------------------------------------
-Γ ⊢ magic call-type(some-type, switch, arg): t
+Γ ⊢ magic call-type(t, switch, arg): t
 
 ```
 
@@ -2138,20 +2090,19 @@ And a term like `static "hello": text` is compiled into `ptr @"text-hello"`.
 ### Type
 
 ```neut
-(Γ is a context)    (k is a text file's key)
+(Γ is a context)
+(k is a text file's key)
 --------------------------------------------
 Γ ⊢ static k: text
 
-(Γ is a context)    (s is a string literal)
+(Γ is a context)
+(s is a string literal)
 -------------------------------------------
 Γ ⊢ static s: text
 ```
 
 ### Note
 
-- `static` has type `text`, not `&string`.
-- For example, `static "hello": text`, whereas `"hello": &string`.
-- If you need an `&string`, use `core.string.from-text`.
 - Since `text` is primitive, `static` can be lifted.
 - You may also want to read [the section on text files in Modules](modules.md#text-file).
 
@@ -2265,11 +2216,7 @@ _
 
 ### Type
 
-```neut
-Γ ⊢ e[tmp := e1]: a
--------------------
-Γ ⊢ e[tmp := _]: a
-```
+N/A
 
 ## `on`
 
