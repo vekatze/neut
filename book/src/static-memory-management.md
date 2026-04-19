@@ -1,11 +1,13 @@
 # Static Memory Management
 
-Here, we'll see how memory is managed in Neut. We'll also see two important optimizations.
+Here, we'll see how memory is managed in Neut. We'll also see some important optimizations.
 
 ## Table of Contents
 
 - [Copying and Discarding Values](#copying-and-discarding-values)
-- [Optimization: Reusing Memory](#optimization-reusing-memory)
+- [Optimization: Free-Malloc Canceling](#optimization-free-malloc-canceling)
+- [Optimization: Malloc-Free Canceling](#optimization-malloc-free-canceling)
+- [Destination-Passing Style](#destination-passing-style)
 - [Optimization: Avoiding Unnecessary Copies](#optimization-avoiding-unnecessary-copies)
 
 ## Copying and Discarding Values
@@ -93,7 +95,7 @@ define make-pair(x: int) -> pair(int, int) {
 
 The compiler accepts this code since we can "copy" integers for free (by reusing the same value).
 
-## Optimization: Reusing Memory
+## Optimization: Free-Malloc Canceling
 
 The compiler exploits Neut's static nature to reuse memory. Consider the following code:
 
@@ -136,6 +138,190 @@ Using this knowledge, the compiler translates the code so that it reuses the mem
 3. Store the calculated values to `Cons(y, ys)`
 
 In other words, when a `free` is required, the compiler looks for a `malloc` in the continuation that is the same size and optimizes away such a pair if one exists. The resulting assembly code thus performs in-place updates.
+
+This optimization is called free-malloc canceling.
+
+## Optimization: Malloc-Free Canceling
+
+Neut also performs the opposite optimization. If a region allocated by `malloc` does not escape and is eventually deallocated by `free`, the compiler replaces that heap allocation with a stack allocation.
+
+For example, consider the following code:
+
+```neut
+define foo() -> int {
+  let ptr = malloc(8);
+  store-int(42, ptr);
+  let value = load-int(ptr);
+  free(ptr);
+  value
+}
+```
+
+In the code above, the region created by `malloc` never escapes from `foo`. Therefore, the compiler can replace it with a stack slot:
+
+```neut
+// after optimization (pseudo-code)
+define foo() -> int {
+  let ptr = alloca(8);
+  store-int(42, ptr);
+  load-int(ptr)
+}
+```
+
+This optimization is called malloc-free canceling.
+
+## Destination-Passing Style
+
+Malloc-free canceling is especially useful when combined with destination-passing style.
+
+For example, consider the following code:
+
+```neut
+define foo(x: int) -> either(int, bool) {
+  if eq-int(x, 0) {
+    Left(42)
+  } else {
+    Right(True)
+  }
+}
+
+define use-foo() -> unit {
+  match foo(10) {
+  | Left(x) =>
+    cont1
+  | Right(y) =>
+    cont2
+  }
+}
+```
+
+Since `foo` returns its result using the ordinary arrow `->`, the result has to be allocated inside `foo` itself:
+
+```neut
+// after compilation (pseudo-code)
+define foo(x: int) -> either(int, bool) {
+  if eq-int(x, 0) {
+    let tmp = malloc(..);
+    // initialize `tmp := Left(42)`
+    tmp
+  } else {
+    let tmp = malloc(..);
+    // initialize `tmp := Right(True)`
+    tmp
+  }
+}
+
+define use-foo() -> unit {
+  let buf = foo(10);
+  match tag(buf) {
+  | 0 =>
+    let x = extract-from-left(buf);
+    free(buf);
+    cont1
+  | _ =>
+    let y = extract-from-right(buf);
+    free(buf);
+    cont2
+  }
+}
+```
+
+In this form, malloc-free canceling does not help much. The memory region created in `foo` escapes from `foo`, so `foo` itself cannot replace that allocation with a stack slot.
+
+To improve this situation, Neut provides destination-passing style. We write such functions using `->>` (and `=>>` for anonymous functions). A function written in this style can still be called in the usual way, but its compiled code receives the result destination from the caller.
+
+Rewriting `foo` in this style, we get:
+
+```neut
+define foo(x: int) ->> either(int, bool) {
+  if eq-int(x, 0) {
+    Left(42)
+  } else {
+    Right(True)
+  }
+}
+
+define use-foo() -> unit {
+  match foo(10) {
+  | Left(x) =>
+    cont1
+  | Right(y) =>
+    cont2
+  }
+}
+```
+
+This behaves roughly as follows after compilation:
+
+```neut
+// after compilation (pseudo-code)
+define foo(dest: pointer, x: int) -> void {
+  if eq-int(x, 0) {
+    let tmp = malloc(..);
+    // initialize `tmp := Left(42)`
+    copy(dest, tmp);
+    free(tmp)
+  } else {
+    let tmp = malloc(..);
+    // initialize `tmp := Right(True)`
+    copy(dest, tmp);
+    free(tmp)
+  }
+}
+
+define use-foo() -> unit {
+  let buf = malloc(..);
+  foo(buf, 10);
+  match tag(buf) {
+  | 0 =>
+    let x = extract-from-left(buf);
+    free(buf);
+    cont1
+  | _ =>
+    let y = extract-from-right(buf);
+    free(buf);
+    cont2
+  }
+}
+```
+
+Now the crucial `malloc`/`free` pairs no longer cross the function boundary. Because of that, malloc-free canceling can optimize them away:
+
+```neut
+// after malloc-free canceling (pseudo-code)
+define foo(dest: pointer, x: int) -> void {
+  if eq-int(x, 0) {
+    let tmp = alloca(..);
+    // initialize `tmp := Left(42)`
+    copy(dest, tmp)
+  } else {
+    let tmp = alloca(..);
+    // initialize `tmp := Right(True)`
+    copy(dest, tmp)
+  }
+}
+
+define use-foo() -> unit {
+  let buf = alloca(..);
+  foo(buf, 10);
+  match tag(buf) {
+  | 0 =>
+    let x = extract-from-left(buf);
+    cont1
+  | _ =>
+    let y = extract-from-right(buf);
+    cont2
+  }
+}
+```
+
+In this way, destination-passing style turns a returned value into caller-managed storage, making malloc-free canceling effective in cases where the ordinary arrow `->` would force a heap allocation.
+
+<div class="info-block">
+
+For simplicity, the code above keeps `tmp = alloca(..)` and `copy(dest, tmp)` separate. In practice, LLVM often optimizes this into ordinary assignments.
+
+</div>
 
 ## Optimization: Avoiding Unnecessary Copies
 

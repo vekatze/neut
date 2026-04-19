@@ -101,6 +101,8 @@ define use-foo() -> int {
 }
 ```
 
+`define` also accepts `->>` in place of `->`. Such a function is still called in the usual way, but its compiled code uses destination-passing style. For the details of this behavior, please see the section on [functions in Terms](./terms.md#x1-a1--xn-an---e-).
+
 `define` can optionally have implicit type parameters, as in `identity` in the example above. The compiler inserts these type parameters at compile time, so you don't have to write them explicitly:
 
 ```neut
@@ -162,6 +164,8 @@ define use-inline-foo() -> int {
   val
 }
 ```
+
+`inline` also accepts `->>` in place of `->`. As with `define`, such a function is still called in the usual way, while the compiled code uses destination-passing style. For the details of this behavior, please see the section on [functions in Terms](./terms.md#x1-a1--xn-an---e-).
 
 ## `define-meta`
 
@@ -331,7 +335,7 @@ resource my-type {
 }
 ```
 
-`resource` takes three terms. The first term ("discarder") receives a value of the type and discards it. The second term ("copier") receives a value of the type and returns a clone of the value (keeping the original value intact). The third term is the size returned when calling `magic call-type(my-type, 2, (..))`.
+`resource` takes three terms. The first term ("discarder") receives a value of the type and discards it. The second term ("copier") receives a value of the type and returns a clone of the value (keeping the original value intact). The third term is the size returned when calling `magic call-type(my-type, 2, (..))`. This size is also used when a value of the type is returned from a function written using `->>`: when the size is non-negative, the caller prepares a destination of that size, and otherwise it uses a one-word temporary slot.
 
 The type of a discarder is `(a) -> unit` for some `a`. You might want to call functions like `free` in this term.
 

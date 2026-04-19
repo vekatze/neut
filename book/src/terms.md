@@ -503,13 +503,16 @@ A string literal is shorthand for `magic cast(text, &string, static "hello")`.
 
 ## `(x1: a1, ..., xn: an) -> b`
 
-`(x1: a1, ..., xn: an) -> b` is the type of functions.
+`(x1: a1, ..., xn: an) -> b` is the type of ordinary functions. Replacing `->` with `->>` yields the type of destination-passing functions.
 
 ### Example
 
 ```neut
 // a function that accepts ints and returns bools
 (value: int) -> bool
+
+// a destination-passing function that returns `either(int, bool)`
+(value: int) ->> either(int, bool)
 
 // this is equivalent to `(_: int) -> bool`:
 (int) -> bool
@@ -525,6 +528,8 @@ A string literal is shorthand for `magic cast(text, &string, static "hello")`.
 
 ```neut
 <x1: a1, ..., xn: an>(y1: b1, ..., ym: bm) -> c
+
+<x1: a1, ..., xn: an>(y1: b1, ..., ym: bm) ->> c
 ```
 
 The following abbreviations are available:
@@ -548,6 +553,8 @@ The following abbreviations are available:
 // <a1: _, ..., an: _>(y1: b1, ..., ym: bm) -> c
 ```
 
+The same abbreviations are available when `->` is replaced with `->>`.
+
 ### Semantics
 
 A function type is compiled into a pointer to `base.#.cls`. For more, please see [How to Execute Types](./how-to-execute-types.md).
@@ -560,9 +567,11 @@ A function type is compiled into a pointer to `base.#.cls`. For more, please see
 Γ ⊢ <α1: s1, ..., αn: sn>(x1: t1, ..., xm: tm) -> u: type
 ```
 
+The same rule applies to `<α1: s1, ..., αn: sn>(x1: t1, ..., xm: tm) ->> u`.
+
 ## `(x1: a1, ..., xn: an) => { e }`
 
-`=>` can be used to create an anonymous function.
+`=>` can be used to create an anonymous function. Replacing `=>` with `=>>` yields a destination-passing anonymous function.
 
 ### Example
 
@@ -577,9 +586,14 @@ define use-function() -> int {
     <a>(x: a) => {
       x
     };
+  let step =
+    (x: int) =>> {
+      Pair(x, add-int(x, 1))
+    };
   let result = f(10, 20);
   let _ = id(42);
-  result
+  let Pair(a, b) = step(10);
+  add-int(result, add-int(a, b))
 }
 ```
 
@@ -587,6 +601,10 @@ define use-function() -> int {
 
 ```neut
 (x1: a1, ..., xn: an) => {
+  e
+}
+
+(x1: a1, ..., xn: an) =>> {
   e
 }
 
@@ -604,6 +622,8 @@ The following abbreviation is available:
 // ↓
 // (x1: _, ..., xn: _) => { e }
 ```
+
+The same abbreviation is available when `=>` is replaced with `=>>`.
 
 If an anonymous function is defined at layer `n`, then any free variable `x` in the function must satisfy `layer(x) <= n`. For example, the following is not a valid term:
 
@@ -630,6 +650,97 @@ For more on layers, please see the section on [box](#box), [letbox](#letbox), an
 
 Anonymous functions are compiled into three-word closures. For more, please see [How to Execute Types](./how-to-execute-types.md#advanced-function-types).
 
+When `=>>` is used, the closure uses destination-passing style when applied. The same destination-passing scheme is used for `->>` as well. The source-level calling syntax remains the usual one, but the caller passes the result destination to the callee.
+
+This is useful when combined with malloc-free canceling. For example, if a function returns an ADT value using the ordinary arrow `->`, then the function itself has to allocate that result. With `->>`, the allocation choice moves to the caller, so temporary heap allocations can often be removed.
+
+For example, consider the following definitions:
+
+```neut
+define foo(x: int) ->> either(int, bool) {
+  if eq-int(x, 0) {
+    Left(42)
+  } else {
+    Right(True)
+  }
+}
+
+define use-foo() -> unit {
+  match foo(10) {
+  | Left(x) =>
+    cont1
+  | Right(y) =>
+    cont2
+  }
+}
+```
+
+These behave roughly as follows after compilation:
+
+```neut
+// pseudocode
+define foo(dest: pointer, x: int) -> void {
+  if eq-int(x, 0) {
+    let tmp = malloc(..);
+    // initialize `tmp := Left(42)`
+    copy(dest, tmp);
+    free(tmp)
+  } else {
+    let tmp = malloc(..);
+    // initialize `tmp := Right(True)`
+    copy(dest, tmp);
+    free(tmp)
+  }
+}
+
+define use-foo() -> unit {
+  let buf = malloc(..);
+  foo(buf, 10);
+  match tag(buf) {
+  | 0 =>
+    let x = extract-from-left(buf);
+    free(buf);
+    cont1
+  | _ =>
+    let y = extract-from-right(buf);
+    free(buf);
+    cont2
+  }
+}
+```
+
+After malloc-free canceling, this can be simplified further:
+
+```neut
+// pseudocode
+define foo(dest: pointer, x: int) -> void {
+  if eq-int(x, 0) {
+    let tmp = alloca(..);
+    // initialize `tmp := Left(42)`
+    copy(dest, tmp)
+  } else {
+    let tmp = alloca(..);
+    // initialize `tmp := Right(True)`
+    copy(dest, tmp)
+  }
+}
+
+define use-foo() -> unit {
+  let buf = alloca(..);
+  foo(buf, 10);
+  match tag(buf) {
+  | 0 =>
+    let x = extract-from-left(buf);
+    cont1
+  | _ =>
+    let y = extract-from-right(buf);
+    cont2
+  }
+}
+```
+
+The size of the destination is determined by the value returned by `magic call-type(result-type, 2, ...)`. When the size is non-negative, the caller prepares a destination of that size. Otherwise, the caller uses a one-word temporary slot and passes that to the callee instead.
+
 ### Type
 
 ```neut
@@ -639,13 +750,15 @@ Anonymous functions are compiled into three-word closures. For more, please see 
 
 ```
 
+Replacing `=>` with `=>>` changes the resulting type from `-> u` to `->> u`.
+
 ### Note
 
 - Anonymous functions are reduced at compile time when possible. If you would like to avoid this behavior, consider using `define`.
 
 ## `define f(x1: a1, ..., xn: an) -> c { e }`
 
-`define` (at the term-level) can be used to create a function with possible recursion.
+`define` (at the term-level) can be used to create a function with possible recursion. Replacing `->` with `->>` yields a destination-passing function.
 
 ### Example
 
@@ -671,6 +784,10 @@ define use-define() -> int {
 define name<x1: a1, ..., xn: an>(y1: b1, ..., ym: bm) -> c {
   e
 }
+
+define name<x1: a1, ..., xn: an>(y1: b1, ..., ym: bm) ->> c {
+  e
+}
 ```
 
 The following abbreviations are available:
@@ -687,6 +804,8 @@ define name<a1, ..., an>(y1: b1, ..., ym: bm) -> c {e}
 // ↓
 // define name<a1: _, ..., an: _>(y1: b1, ..., ym: bm) -> c {e}
 ```
+
+The same abbreviations are available when `->` is replaced with `->>`.
 
 If a term-level `define` is at layer `n`, then any free variable `x` in it must satisfy `layer(x) <= n`.
 
@@ -736,6 +855,8 @@ define use-define() -> int {
 }
 ```
 
+When `->>` is used, the lifted function and the resulting closure use destination-passing style. The function is still called as usual. For the details of this behavior, please see the section on [anonymous functions](#x1-a1--xn-an---e-).
+
 ### Type
 
 ```neut
@@ -744,13 +865,15 @@ define use-define() -> int {
 Γ ⊢ define f(x1: a1, ..., xn: an) -> t {e}: (x1: a1, ..., xn: an) -> t
 ```
 
+Replacing `->` with `->>` changes the resulting type from `(x1: a1, ..., xn: an) -> t` to `(x1: a1, ..., xn: an) ->> t`.
+
 ### Note
 
 - Functions defined by term-level `define` aren't inlined at compile time, even if they contain no recursion.
 
 ## `inline f(x1: a1, ..., xn: an) -> c { e }`
 
-`inline` (at the term-level) can be used to create an inline function.
+`inline` (at the term-level) can be used to create an inline function. Replacing `->` with `->>` yields a destination-passing inline function.
 
 ### Example
 
@@ -772,6 +895,10 @@ define use-inline() -> int {
 inline name<x1: a1, ..., xn: an>(y1: b1, ..., ym: bm) -> c {
   e
 }
+
+inline name<x1: a1, ..., xn: an>(y1: b1, ..., ym: bm) ->> c {
+  e
+}
 ```
 
 The following abbreviations are available:
@@ -789,11 +916,13 @@ inline name<a1, ..., an>(y1: b1, ..., ym: bm) -> c {e}
 // inline name<a1: _, ..., an: _>(y1: b1, ..., ym: bm) -> c {e}
 ```
 
+The same abbreviations are available when `->` is replaced with `->>`.
+
 If a term-level `inline` is at layer `n`, then any free variable `x` in it must satisfy `layer(x) <= n`.
 
 ### Semantics
 
-A term-level `inline` is the same as a term-level `define`, except that the resulting function is always expanded at compile time.
+A term-level `inline` is the same as a term-level `define`, except that the resulting function is always expanded at compile time. When `->>` is used, the inlined function uses destination-passing style. For the details of this behavior, please see the section on [anonymous functions](#x1-a1--xn-an---e-).
 
 ### Type
 
@@ -802,6 +931,8 @@ A term-level `inline` is the same as a term-level `define`, except that the resu
 ----------------------------------------------------------------------
 Γ ⊢ inline f(x1: a1, ..., xn: an) -> t {e}: (x1: a1, ..., xn: an) -> t
 ```
+
+Replacing `->` with `->>` changes the resulting type from `(x1: a1, ..., xn: an) -> t` to `(x1: a1, ..., xn: an) ->> t`.
 
 ### Note
 
@@ -840,6 +971,8 @@ Given a function application `e(e1, ..., en)`, the system does the following:
 3. Deallocates the tuple of the closure `v`
 4. Calls the function label with the tuple and `v1, ..., vn` as arguments
 
+If `e` has a destination-passing function type, the surface syntax is still `e(e1, ..., en)`. In that case, the caller first prepares the result destination, passes it as an extra argument to the callee, and then reads the result from that destination. When the size of the result type is non-negative, the destination has that size. Otherwise, the caller uses a one-word temporary slot that stores a pointer to the result.
+
 ### Type
 
 ```neut
@@ -849,6 +982,8 @@ Given a function application `e(e1, ..., en)`, the system does the following:
 ```
 
 The `?Mi`s in the above rule are metavariables that must be inferred by the compiler.
+
+The same rule also applies when `e` has type `<α1: a1, .., αn: an>(y1: b1, .., ym: bm) ->> c`.
 
 ## `e{x1 := e1, ..., xn := en}`
 
@@ -2231,7 +2366,7 @@ Neut compiles types into functions. The first argument of such a function is usu
 
 `magic call-type(some-type, 1, value)` copies `value` and returns a new value.
 
-`magic call-type(some-type, 2, value)` returns the size of a value in words. This value is used when calling a function in destination-passing style.
+`magic call-type(some-type, 2, value)` returns the size of a value in words. This value is used when calling a function in destination-passing style. If it is non-negative, the caller prepares a destination of that size. Otherwise, the caller uses a one-word temporary slot. For `resource` types, this size is given by the third term of the `resource` definition.
 
 The type of the result of `call-type` is inferred from the context.
 

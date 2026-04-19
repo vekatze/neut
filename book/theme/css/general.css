@@ -405,8 +405,13 @@ em {
 
 /* Inline code */
 
+:not(pre) > code {
+  white-space: nowrap;
+}
+
 :not(pre) > .hljs {
   display: inline;
+  white-space: nowrap;
   padding: 0.1em 0.2em;
   margin: 0 0.3em;
   border: 1px dotted var(--light-blue);
