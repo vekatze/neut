@@ -172,7 +172,7 @@ define sample() -> unit {
 
 ### Syntax
 
-The name of a top-level variable is a (possibly) dot-separated symbols, where each symbol must satisfy the following conditions:
+The name of a top-level variable is a (possibly) dot-separated sequence of symbols, where each symbol must satisfy the following conditions:
 
 - It doesn't contain any of ``=()' `\"\n\t:;,<>[]{}/*|&?``
 
@@ -742,7 +742,7 @@ define use-define() -> int {
 
 ### Note
 
-- Functions defined by term-level `define` aren't inlined at compile-time, even if it doesn't contain any recursions.
+- Functions defined by term-level `define` aren't inlined at compile-time, even if they contain no recursion.
 
 ## `e(e1, ..., en)`
 
@@ -1147,7 +1147,7 @@ If the first element is `1`, which means that we found an ADT value of `Succ`, t
 Γ, arg_{m,1}: t_{m,1}, ..., arg_{m, k_{m}}: t{m, k_{m}} ⊢ body-m: b
 
 (for all i = 1, ..., m, pat-i is a pattern for e1, ..., en)
-(the sequence pat-1, ..., pat-m is a exhaustinve matching against e1, ..., en)
+(the sequence pat-1, ..., pat-m is an exhaustive matching against e1, ..., en)
 ------------------------------------------------------------------------------
 Γ ⊢ match e1, ..., en {
     | pat-1 => body-1
@@ -1172,7 +1172,7 @@ An example of the application of the typing rule of `match`:
 Γ, m: my-nat ⊢ foo(m): int // body-2
 
 (Zero and Succ(m) are patterns for n)
-(the sequence Zero, Succ(m) is a exhaustinve matching against n)
+(the sequence Zero, Succ(m) is an exhaustive matching against n)
 ------------------------------------------------------------------------------
 Γ ⊢ match n {
     | Zero => 100
@@ -1334,7 +1334,7 @@ We say that this `box` captures the variables `x1, ..., xn`.
 
 ### Semantics
 
-Given noetic variables `x1: &a1, ..., xn: &an`, the term `box x1, ..., xn { e }` copies all the `xi`s and execute `e`:
+Given noetic variables `x1: &a1, ..., xn: &an`, the term `box x1, ..., xn { e }` copies all the `xi`s and executes `e`:
 
 ```neut
 box x1, ..., xn { e }
@@ -1671,7 +1671,7 @@ define extract-value-from-meta(x: +int) -> int {
 }
 ```
 
-`on` doesn't alter the layers of variables, too:
+`on` doesn't alter variable layers either:
 
 ```neut
 define extract-value-from-meta(x: int) -> int {
@@ -1781,7 +1781,7 @@ The semantics of `case` is the same as `match`, except that `case` doesn't consu
 Γ, arg_{m,1}: &t_{m,1}, ..., arg_{m, k_{m}}: &t{m, k_{m}} ⊢ body-m: b
 
 (for all i = 1, ..., m, pat-i is a pattern for e1, ..., en)
-(the sequence pat-1, ..., pat-m is a exhaustinve matching against e1, ..., en)
+(the sequence pat-1, ..., pat-m is an exhaustive matching against e1, ..., en)
 ------------------------------------------------------------------------------
 Γ ⊢ case e1, ..., en {
     | pat-1 => body-1
@@ -1804,7 +1804,7 @@ An example of the application of the typing rule of `case`:
 Γ, m: &my-nat ⊢ foo-noetic(m): int // body-2
 
 (Zero and Succ(m) are patterns for n)
-(the sequence Zero, Succ(m) is a exhaustinve matching against n)
+(the sequence Zero, Succ(m) is an exhaustive matching against n)
 ------------------------------------------------------------------------------
 Γ ⊢ case n {
     | Zero => 100
@@ -2506,7 +2506,7 @@ admit
 
 ### Semantics
 
-Evaluating `admit` will exit the program, displaying a message like the following:
+Evaluating `admit` exits the program and displays a message like the following:
 
 ```text
 admit: /path/to/file.nt:1:2

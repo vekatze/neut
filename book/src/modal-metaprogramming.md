@@ -13,7 +13,7 @@ Here, we'll see how to interact with the code type `'a`, which enables metaprogr
 
 Neut provides primitives that can only be used at compile time. By using them, we can perform special computations that are not available in ordinary runtime code.
 
-To describe such compile-time parts of a program, Neut has the code type `'a` and the concept of _stages_. They can be understood almost in the same way as `+a` and layers.
+To describe such compile-time parts of a program, Neut has the code type `'a` and the concept of _stages_. They can be understood in much the same way as `+a` and layers.
 
 ### Creating and Using Code
 

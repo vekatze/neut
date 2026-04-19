@@ -6,7 +6,7 @@
 
 `neut-mode` is an Emacs major mode for Neut. The mode provides syntax highlighting and automatic indentation. It also provides a way to use the LSP server via `lsp-mode` and `eglot`.
 
-`neut-mode` is available on [Melpa](https://melpa.org/#/neut-mode). You can install the package by:
+`neut-mode` is available on [Melpa](https://melpa.org/#/neut-mode). You can install the package with:
 
 ```text
 M-x package-install RET neut-mode RET

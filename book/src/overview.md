@@ -69,7 +69,7 @@ At this point, one concern is whether operations such as taking the length of a 
 - Compiles to [LLVM IR](https://llvm.org/docs/LangRef.html) and binary
 - The type system ≈ System Fω + ADT + recursion + box modality
   - That is, the usual one in functional programming, but a bit generalized
-- Built-in [LSP support](./lovely-lsp-showcase.md)
+- Built-in [LSP support](./lsp-showcase.md)
 - Built-in [rapid prototyping experience](./rapid-prototyping.md) like scripting languages
 - Built-in formatter like Go
 

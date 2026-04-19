@@ -206,7 +206,7 @@ let x = unsafe-cast(&a, a, x); // uncast: `&a` ~> `a`
 cont
 ```
 
-`on` has to satisfy certain condition. Consider the following code:
+`on` has to satisfy a certain condition. Consider the following code:
 
 ```neut
 // xs: list(int)

@@ -1,8 +1,8 @@
 # Development Environment
 
-This chapter provides some tools for writing programs in Neut.
+This chapter introduces some tools for writing programs in Neut.
 
-[Lovely LSP Showcase](./lovely-lsp-showcase.md) shows what the LSP server is like using GIF animations.
+[LSP Showcase](./lsp-showcase.md) showcases the LSP server using GIF animations.
 
 [Rapid Prototyping](./rapid-prototyping.md) shows how the subcommand `neut zen` works in harmony with editors.
 

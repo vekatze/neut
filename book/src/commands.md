@@ -33,9 +33,9 @@ Only the following subcommands can be used outside a module:
 - `neut create`
 - `neut version`
 
-### Shared command line options:
+### Shared command line options
 
-Some subcommands share command line options. The list of them is as follows:
+Some subcommands share command line options:
 
 - `--no-color` can be used to turn off ANSI colors
 
@@ -322,7 +322,7 @@ When the option `--in-place` is set, `format-ens` performs in-place update.
 
 ## `neut zen`
 
-`neut zen path/to/source/file.nt` builds and executes specified file as if it were an entry point.
+`neut zen path/to/source/file.nt` builds and executes the specified file as if it were an entry point.
 
 The subcommand `zen` treats the function `zen` inside the given file as its entry point (that is, `main`).
 
@@ -344,9 +344,7 @@ Suppose that you created a new function deep inside your module.
 
 You can technically create a test function for the function and check its behavior. Or modify the main function to call the new function just to see its behavior.
 
-It might be, however, a bit cumbersome. We'd love to achieve rapid try-and-error cycles in certain circumstances.
-
-You can use the command `zen` here. Suppose that a file `some-file.nt` contains a function `foo` defined as follows:
+That can be a bit cumbersome. In such cases, `zen` lets you iterate quickly. Suppose that a file `some-file.nt` contains a function `foo` defined as follows:
 
 ```neut
 define foo(x: int) -> int {
@@ -368,7 +366,7 @@ Then, execute the following command:
 neut zen path/to/some-file.nt # => (the result of `foo(10)` is printed)
 ```
 
-This can be done even if `some-file.nt` isn't an entrypoint of the module. You can think of functions named `zen` as alternative `main`s.
+This can be done even if `some-file.nt` isn't an entry point of the module. You can think of functions named `zen` as alternative `main`s.
 
 ## `neut lsp`
 
@@ -383,7 +381,7 @@ This can be done even if `some-file.nt` isn't an entrypoint of the module. You c
 - `textDocument/formatting` (format)
 - `textDocument/hover` (show the type of a symbol)
 
-For more information, please see [Lovely LSP Showcase](./lovely-lsp-showcase.md) and [Editor Setup](./editor-setup.md).
+For more information, please see [LSP Showcase](./lsp-showcase.md) and [Editor Setup](./editor-setup.md).
 
 ## `neut version`
 

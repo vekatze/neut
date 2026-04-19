@@ -278,7 +278,7 @@ define backup-parse<a>(transformer: (binary) -> a) -> a {
 }
 ```
 
-This function might get slow if huge chunks of data are processed due to the copy. Rewriting it to use noetic values could look like the following:
+This function might become slow when processing huge chunks of data because of the copy. Rewriting it to use noetic values could look like the following:
 
 ```neut
 define backup-parse<a>(transformer: (&binary) -> a) -> a {
@@ -335,7 +335,7 @@ define backup-parse<a>(transformer: (&binary) -> +a) -> a {
 }
 ```
 
-The `+` specifier asserts that the value a call to `transformer` evaluates will be valid on the outer layer (in this case the layer of `zen`, since it's where `backup-parse` has been called). The requirements of the operators that lift values into `+` guarantee that this is the case. In order to make the previous example work, `id-bin` could look like the following:
+The `+` specifier asserts that the value to which a call to `transformer` evaluates will be valid on the outer layer (in this case the layer of `zen`, since that is where `backup-parse` has been called). The requirements of the operators that lift values into `+` guarantee that this is the case. In order to make the previous example work, `id-bin` could look like the following:
 
 ```neut
 define id-bin(arg: &binary) -> +binary {

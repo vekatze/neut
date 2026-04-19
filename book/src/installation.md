@@ -8,7 +8,7 @@ To install the toolchain, execute [the installation script](https://raw.githubus
 curl -sSL https://raw.githubusercontent.com/vekatze/neut/main/install.sh | bash
 ```
 
-Then please follow the instructions.
+Then follow the instructions.
 
 You might also want to [configure your editor](./editor-setup.md).
 

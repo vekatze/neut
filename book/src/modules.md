@@ -2,7 +2,7 @@
 
 A directory (including all its children) is a _module_ if it contains a file named `module.ens`.
 
-Below is the list of configurations of `module.ens`.
+Below is a list of the configurations in `module.ens`.
 
 ## Table of Contents
 
@@ -212,7 +212,7 @@ An example of `dependency`:
 }
 ```
 
-The field `digest` specifies the checksum of the tarball of the dependency. The digest is a Base64URL-encoded SHA256 checksum of the tarball. This digest is the "real" name of this dependency, and used as an identifier.
+The field `digest` specifies the checksum of the tarball of the dependency. The digest is a Base64URL-encoded SHA256 checksum of the tarball. This digest is the "real" name of this dependency and is used as an identifier.
 
 The field `mirror` specifies a list of URLs from which the compiler can fetch the tarball. When running `neut get`, the compiler will try to get the tarball if necessary, using this list from the beginning to the end.
 
@@ -294,7 +294,7 @@ When running `neut archive`, the compiler adds all the `input` files to the resu
 
 ### `output`
 
-The field `output` specifies the resulting files of foreign source files. The paths are relative to a directory named _foreign directory_. You can find a foreign directory in the build directory.
+The field `output` specifies the output files produced from foreign source files. The paths are relative to a directory named the _foreign directory_. You can find the foreign directory in the build directory.
 
 When running `neut build`, the compiler links all the `output` files in the foreign directory (in addition to Neut's "domestic" object files).
 
@@ -411,7 +411,7 @@ Suppose we released a module that contains the definition of `preset` as in the 
 }
 ```
 
-In this case, source files in `MMM` imports our preset names automatically since `enable-preset` is `true`.
+In this case, source files in `MMM` automatically import our preset names because `enable-preset` is `true`.
 
 As an example, suppose a file in `MMM` contains an `import` like the following:
 
