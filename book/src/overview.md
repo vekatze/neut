@@ -8,11 +8,11 @@ Its key features include:
 - Predictable automatic memory management
 - The ability to achieve both of the above without additional type annotations
 
-Neut doesn't use a GC. Instead, it takes a _type-directed approach_ for memory management.
+Neut doesn't use a GC. Instead, it takes a type-directed approach for memory management.
 
-## What Does it Look Like?
+## Code Example
 
-Like the following:
+A typical program looks as follows:
 
 ```neut
 // the obligatory hello world
@@ -39,9 +39,9 @@ define foo<a>(xs: my-list(a)) -> int {
 }
 ```
 
-## Static Memory Management — But How?
+## Static Memory Management
 
-_Neut translates a type into a function_ that can discard/copy the values of the type. By using those functions, the compiler translates programs so that every variable is used exactly once.
+Neut translates a type into a function that can discard/copy the values of the type. By using those functions, the compiler translates programs so that every variable is used exactly once.
 
 For example, if a variable is used twice, a translation like the following happens:
 
@@ -60,14 +60,14 @@ some-func(xs1, xs2)
 
 If you need more information, see [How to Execute Types](./how-to-execute-types.md).
 
-You might wonder: _"So do I have to, for example, copy an entire list just to get its length? Isn't that a tragedy?"_. This topic is covered in [Static Memory Management](./static-memory-management.md) and [Modality and Memory](./modality-and-memory.md). As written there, Neut avoids such copy operations by using the _box modality_, achieving something like borrowing in Rust.
+At this point, one concern is whether operations such as taking the length of a list require copying the entire value. Neut avoids such copy operations by using the _box modality_, achieving something like borrowing. See [Static Memory Management](./static-memory-management.md) and [Modality and Memory](./modality-and-memory.md) for details.
 
 ## Quick List of Other Features
 
 - Call by value
 - Impure
 - Compiles to [LLVM IR](https://llvm.org/docs/LangRef.html) and binary
-- The type system ≈ System Fω + ADT + recursion + (type-in-type) + (box modality)
+- The type system ≈ System Fω + ADT + recursion + box modality
   - That is, the usual one in functional programming, but a bit generalized
 - Built-in [LSP support](./lovely-lsp-showcase.md)
 - Built-in [rapid prototyping experience](./rapid-prototyping.md) like scripting languages
