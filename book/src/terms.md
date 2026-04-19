@@ -43,6 +43,8 @@
 ### Miscellaneous
 
 - [lift](#lift)
+- [pack-type](#pack-type)
+- [unpack-type](#unpack-type)
 - [magic](#magic)
 - [introspect](#introspect)
 - [static](#static)
@@ -1754,6 +1756,74 @@ define lift-either(x: either(bool, unit)) -> +either(bool, unit) {
 `lift` is there only for convenience.
 
 One useful example is `text`: since `static` has type `text`, you can lift embedded text directly. If you first convert it to `&string` using `core.string.from-text`, it is no longer liftable.
+
+## `pack-type`
+
+`pack-type {t}` turns a type `t` into a term of type `type`.
+
+### Example
+
+```neut
+define get-type<a>(x: a) -> type {
+  let tvar = pack-type {a};
+  tvar
+}
+```
+
+### Syntax
+
+```neut
+pack-type {t}
+```
+
+### Semantics
+
+`pack-type {t}` creates a first-class value from the type `t`.
+
+### Type
+
+```neut
+Γ ⊢ t: type
+-----------------------
+Γ ⊢ pack-type {t}: type
+```
+
+### Note
+
+- `pack-type` is useful when used in combination with `magic call-type`.
+
+## `unpack-type`
+
+`unpack-type a = e1; e2` binds the type represented by `e1` to the type variable `a`, and then evaluates `e2`.
+
+### Example
+
+```neut
+define use-unpack-type(arg: type) -> type {
+  unpack-type a = arg;
+  pack-type {list(a)}
+}
+```
+
+### Syntax
+
+```neut
+unpack-type a = e1;
+e2
+```
+
+### Semantics
+
+`unpack-type a = e1; e2` lets you use a term of type `type` in type positions.
+
+### Type
+
+```neut
+Γ ⊢ e1: type
+Γ, α: type ⊢ e2: b
+----------------------------
+Γ ⊢ unpack-type α = e1; e2: b
+```
 
 ## `magic`
 
