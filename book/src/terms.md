@@ -34,10 +34,14 @@
 ### Necessity and Noema
 
 - [+a](#a)
-- [&a](#a-1)
+- ['a](#a-1)
+- [&a](#a-2)
 - [box](#box)
+- [quote](#quote)
 - [letbox](#letbox)
+- [unquote](#unquote)
 - [letbox-T](#letbox-t)
+- [promote](#promote)
 - [case](#case)
 
 ### Miscellaneous
@@ -56,6 +60,7 @@
 
 - [let x on y1, ..., yn = e1; e2](#on)
 - [\*e](#e)
+- [`e::(e1, ..., en)`](#ee1--en-1)
 - [if](#if)
 - [when cond { e }](#when-cond--e-)
 - [e1; e2](#e1-e2)
@@ -1215,6 +1220,43 @@ For every type `a`, `+a` is compiled into the same term as `a`.
 
 Note that `+(a) -> b` and `(+a) -> b` are different types.
 
+## `'a`
+
+Given a type `a: type`, `'a` is the type of code that evaluates to a term of type `a`.
+
+### Example
+
+```neut
+define duplicate-code(x: 'int) -> 'pair(int, int) {
+  quote {
+    let y = unquote {x};
+    Pair(y, y)
+  }
+}
+```
+
+### Syntax
+
+```neut
+'a
+```
+
+### Semantics
+
+For every type `a`, `'a` is compiled into the same term as `a`.
+
+### Type
+
+```neut
+Γ ⊢ t: type
+----------------
+Γ ⊢ 't: type
+```
+
+### Note
+
+- Values of type `'a` are expected to be used in combination with `quote`, `unquote`, or `promote`.
+
 ## `&a`
 
 Given a type `a: type`, the `&a` is the type of noemata over `a`.
@@ -1368,6 +1410,55 @@ define use-box-with-noema(x: &int) -> +int {
 }
 ```
 
+## `quote`
+
+You can use `quote` to create code.
+
+### Example
+
+```neut
+define duplicate-code(x: 'int) -> 'pair(int, int) {
+  quote {
+    let y = unquote {x};
+    Pair(y, y)
+  }
+}
+```
+
+### Syntax
+
+```neut
+quote {
+  e
+}
+```
+
+### Semantics
+
+`quote` is compiled into the same term as its body.
+
+### Type
+
+```neut
+Γ ⊢ⁱ e: a
+----------------------------
+Γ ⊢ⁱ⁺¹ quote {e}: 'a
+```
+
+### Note
+
+The body of `quote` is at one stage lower than the outer context:
+
+```neut
+define make-code() -> 'int {
+  // here is stage 0
+  quote {
+    // here is stage -1
+    10
+  }
+}
+```
+
 ## `letbox`
 
 You can use `letbox` to "unlift" terms.
@@ -1460,6 +1551,54 @@ define use-letbox-error(x: +int) -> int {
 }
 ```
 
+## `unquote`
+
+You can use `unquote` to use code.
+
+### Example
+
+```neut
+define use-code() -> int {
+  unquote {
+    quote {10}
+  }
+}
+```
+
+### Syntax
+
+```neut
+unquote {
+  e
+}
+```
+
+### Semantics
+
+`unquote` is compiled into the same term as its body.
+
+### Type
+
+```neut
+Γ ⊢ⁱ⁺¹ e: 'a
+----------------------------
+Γ ⊢ⁱ unquote {e}: a
+```
+
+### Note
+
+Given a term `e` at stage n + 1, `unquote {e}` is at stage n:
+
+```neut
+define use-code() -> int {
+  // here is stage 0
+  unquote {
+    // here is stage 1
+    quote {10}
+  }
+}
+```
+
 ## `letbox-T`
 
 You can use `letbox-T` to get values from terms of type `+a` without changing layers.
@@ -1547,6 +1686,46 @@ define extract-value-from-meta(x: int) -> int {
   tmp
 }
 ```
+
+## `promote`
+
+You can use `promote` to create code without changing stages.
+
+### Example
+
+```neut
+define-meta make-message<a>() -> 'unit {
+  let t = magic show-type(a);
+  quote {
+    print(unquote {promote {t}});
+    Unit
+  }
+}
+```
+
+### Syntax
+
+```neut
+promote {
+  e
+}
+```
+
+### Semantics
+
+`promote` is compiled into the same term as its body.
+
+### Type
+
+```neut
+Γ ⊢ⁱ e: a
+----------------------------
+Γ ⊢ⁱ promote {e}: 'a
+```
+
+### Note
+
+Unlike `quote`, `promote` doesn't alter stages.
 
 ## `case`
 
@@ -1885,13 +2064,33 @@ magic load(lowtype, address)
 
 magic alloca(lowtype, num-of-elems)
 
+magic calloc(num-of-elems, size)
+
+magic malloc(size)
+
+magic realloc(pointer, size)
+
+magic free(pointer)
+
 magic opaque-value { e }
 
 magic external func-name(e1, ..., en)
 
 magic external func-name(e1, ..., en)(vararg-1: lowtype-1, ..., vararg-n: lowtype-n)
 
-magic external call-type(some-type, switch, arg)
+magic call-type(some-type, switch, arg)
+
+magic inspect-type(some-type)
+
+magic eq-type(type-1, type-2)
+
+magic show-type(some-type)
+
+magic string-cons(rune, text)
+
+magic string-uncons(text)
+
+magic compile-error(message)
 ```
 
 A "lowtype" is a term that reduces to one of the following:
@@ -1901,6 +2100,21 @@ A "lowtype" is a term that reduces to one of the following:
 - `pointer`
 
 You can also use `int` and `float` as a lowtype. These are just syntactic sugar for `int64` and `float64`, respectively.
+
+### Compile-Time Primitives
+
+The forms
+
+- `magic inspect-type(some-type)`
+- `magic eq-type(type-1, type-2)`
+- `magic show-type(some-type)`
+- `magic string-cons(rune, text)`
+- `magic string-uncons(text)`
+- `magic compile-error(message)`
+
+are compile-time primitives.
+
+These forms can only be used at stage 1 or above. The compiler reports an error if they are used below stage 1. They are resolved during compile-time evaluation and can therefore be used in `inline-meta` or `define-meta`.
 
 ### Semantics (cast)
 
@@ -1917,6 +2131,22 @@ You can also use `int` and `float` as a lowtype. These are just syntactic sugar 
 ### Semantics (alloca)
 
 `magic alloca(lowtype, num-of-elems)` allocates a memory region on the stack frame. This is the same as `alloca` [in LLVM](https://llvm.org/docs/LangRef.html#alloca-instruction).
+
+### Semantics (calloc)
+
+`magic calloc(num-of-elems, size)` allocates a zero-initialized memory region on the heap.
+
+### Semantics (malloc)
+
+`magic malloc(size)` allocates a memory region on the heap.
+
+### Semantics (realloc)
+
+`magic realloc(pointer, size)` resizes a memory region on the heap.
+
+### Semantics (free)
+
+`magic free(pointer)` deallocates a memory region on the heap.
 
 ### Semantics (opaque-value)
 
@@ -1940,6 +2170,32 @@ Neut compiles types into functions. The first argument of such a function is usu
 
 `magic call-type(some-type, 2, value)` returns the size of a value in words. This value is used when calling a function in destination-passing style.
 
+The type of the result of `call-type` is inferred from the context.
+
+### Semantics (inspect-type)
+
+`magic inspect-type(some-type)` inspects the given type and returns a structured value of type `type-value`.
+
+### Semantics (eq-type)
+
+`magic eq-type(type-1, type-2)` compares two types at compile time and returns whether they are equal.
+
+### Semantics (show-type)
+
+`magic show-type(some-type)` returns a string representation of the given type.
+
+### Semantics (string-cons)
+
+`magic string-cons(rune, text)` prepends `rune` to `text`.
+
+### Semantics (string-uncons)
+
+`magic string-uncons(text)` decomposes `text` into either the empty case or a pair of its first rune and the remaining text.
+
+### Semantics (compile-error)
+
+`magic compile-error(message)` reports a compile-time error with the given message when evaluated.
+
 ### Type
 
 ```neut
@@ -1962,6 +2218,29 @@ Neut compiles types into functions. The first argument of such a function is usu
 Γ ⊢ e: pointer // address
 ------------------------------------------------------
 Γ ⊢ magic load(t, e): t
+
+
+Γ ⊢ num-of-elems: c-size
+Γ ⊢ size: c-size
+------------------------------------------------------
+Γ ⊢ magic calloc(num-of-elems, size): pointer
+
+
+Γ ⊢ size: c-size
+------------------------------------------------------
+Γ ⊢ magic malloc(size): pointer
+
+
+Γ ⊢ pointer: pointer
+Γ ⊢ size: c-size
+------------------------------------------------------
+Γ ⊢ magic realloc(pointer, size): pointer
+
+
+Γ ⊢ pointer: pointer
+------------------------------------------------------
+Γ ⊢ magic free(pointer): unit
+
 
 Γ ⊢ e:t
 ------------------------------------------------------
@@ -2001,7 +2280,39 @@ Neut compiles types into functions. The first argument of such a function is usu
 Γ ⊢ switch: int
 Γ ⊢ arg: s
 ------------------------------------------------------
-Γ ⊢ magic call-type(t, switch, arg): t
+Γ ⊢ magic call-type(t, switch, arg): u
+
+
+Γ ⊢ t: type
+------------------------------------------------------
+Γ ⊢ magic inspect-type(t): type-value
+
+
+Γ ⊢ t1: type
+Γ ⊢ t2: type
+------------------------------------------------------
+Γ ⊢ magic eq-type(t1, t2): bool
+
+
+Γ ⊢ t: type
+------------------------------------------------------
+Γ ⊢ magic show-type(t): &string
+
+
+Γ ⊢ rune: rune
+Γ ⊢ text: &string
+------------------------------------------------------
+Γ ⊢ magic string-cons(rune, text): &string
+
+
+Γ ⊢ text: &string
+------------------------------------------------------
+Γ ⊢ magic string-uncons(text): either(unit, pair(rune, &string))
+
+
+Γ ⊢ message: &string
+------------------------------------------------------
+Γ ⊢ magic compile-error(message): a
 
 ```
 
@@ -2387,6 +2698,48 @@ Intuitively, given a term `e: &a`, `*e: a` is a clone of the content of `e`.
 This clone is created by copying the content along the type `a`.
 
 The original content is kept intact.
+
+## `e::(e1, ..., en)`
+
+You can use `e::(e1, ..., en)` to call a meta function.
+
+### Example
+
+```neut
+define-meta make-pair<a, b>(x: 'a, y: 'b) -> 'pair(a, b) {
+  quote {
+    let x = unquote {x};
+    let y = unquote {y};
+    Pair(x, y)
+  }
+}
+
+define use-meta() -> pair(int, bool) {
+  make-pair::(10, True)
+}
+```
+
+### Syntax
+
+```neut
+e::(e1, ..., en)
+```
+
+### Semantics
+
+`e::(e1, ..., en)` is the following syntactic sugar:
+
+```neut
+e::(e1, ..., en)
+
+↓
+
+unquote {e(quote {e1}, ..., quote {en})}
+```
+
+### Type
+
+Derived from the desugared form.
 
 ## `if`
 

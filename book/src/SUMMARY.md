@@ -7,6 +7,7 @@
   - [Programming in Neut](./programming-in-neut.md)
   - [Static Memory Management](./static-memory-management.md)
   - [Modality and Memory](./modality-and-memory.md)
+  - [Modal Metaprogramming](./modal-metaprogramming.md)
   - [Further Examples](./further-examples.md)
 - [Language Reference](./language-reference.md)
   - [Commands](./commands.md)

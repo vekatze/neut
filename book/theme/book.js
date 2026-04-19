@@ -17,12 +17,16 @@ hljs.registerLanguage("neut", function (hljs) {
     keywords: {
       $pattern: /[\w-]+/,
       keyword: [
+        "alias",
+        "alias-opaque",
         "attach",
         "box",
         "case",
+        "constant",
         "data",
         "default",
         "define",
+        "define-meta",
         "detach",
         "else",
         "else-if",
@@ -33,6 +37,7 @@ hljs.registerLanguage("neut", function (hljs) {
         "import",
         "in",
         "inline",
+        "inline-meta",
         "introspect",
         "let",
         "letbox",
@@ -43,6 +48,7 @@ hljs.registerLanguage("neut", function (hljs) {
         "on",
         "pack-type",
         "pin",
+        "promote",
         "quote",
         "resource",
         "rule-left",
@@ -50,6 +56,7 @@ hljs.registerLanguage("neut", function (hljs) {
         "tie",
         "try",
         "unpack-type",
+        "unquote",
         "use",
         "when",
       ].join(" "),
@@ -83,7 +90,7 @@ hljs.registerLanguage("neut", function (hljs) {
       },
       {
         begin: [
-          /(define|inline|data|resource)/,
+          /(define|inline|define-meta|inline-meta|alias|alias-opaque|constant|data|resource)/,
           /\s+/,
           /[\w-]+/,
         ],
@@ -108,7 +115,7 @@ hljs.registerLanguage("neut", function (hljs) {
       },
       {
         scope: "builtin",
-        begin: "\\*|\\+|\\||->|=>|:|!|,|;|&|=",
+        begin: "\\*|\\+|\\||->|=>|'|:|!|,|;|&|=",
       },
       hljs.COMMENT("//", "$"),
     ],

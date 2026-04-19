@@ -8,7 +8,7 @@ Neut is a _module-based_ _functional_ programming language with _static_ memory 
 
 [Static Memory Management](./static-memory-management.md) covers the _"static"_ part. We'll see how memory is managed in Neut. We'll also see Neut's technique to optimize memory allocation.
 
-[Modality and Memory](./modality-and-memory.md) covers the _"modality"_ part. We'll see how memory operations introduced in the previous section can be understood via modality.
+[Modality and Memory](./modality-and-memory.md) and [Modal Metaprogramming](./modal-metaprogramming.md) cover the _"modality"_ part. We'll see how memory operations and macros in Neut are organized around modality.
 
 [Further Examples](./further-examples.md) presents some libraries written in this language as examples.
 

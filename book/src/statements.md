@@ -4,9 +4,13 @@
 
 - [import](#import)
 - [define](#define)
+- [define-meta](#define-meta)
 - [constant](#constant)
 - [inline](#inline)
+- [inline-meta](#inline-meta)
 - [data](#data)
+- [alias](#alias)
+- [alias-opaque](#alias-opaque)
 - [resource](#resource)
 - [rule-right](#rule-right)
 - [rule-left](#rule-left)
@@ -159,6 +163,51 @@ define use-inline-foo() -> int {
 }
 ```
 
+## `define-meta`
+
+`define-meta` defines a top-level meta function. It should look like the following:
+
+```neut
+define-meta make-pair<a, b>(x: 'a, y: 'b) -> 'pair(a, b) {
+  quote {
+    let x = unquote {x};
+    let y = unquote {y};
+    Pair(x, y)
+  }
+}
+```
+
+`define-meta` starts at stage 1. When evaluating a call to `define-meta`, the compiler first specializes the definition to its type arguments and memoizes the result. This memoization is performed on a per-file basis. This allows `define-meta` to generate recursive code.
+
+Every explicit parameter of `define-meta` must have a type of the form `'a`:
+
+```neut
+// valid
+define-meta eq-data<a>(x: 'a, y: 'a) -> 'bool {
+  ..
+}
+
+// invalid
+define-meta bad<a>(x: int) -> 'int {
+  ..
+}
+```
+
+## `inline-meta`
+
+`inline-meta` defines an inline meta function. It should look like the following:
+
+```neut
+inline-meta duplicate(x: 'int) -> 'pair(int, int) {
+  quote {
+    let y = unquote {x};
+    Pair(y, y)
+  }
+}
+```
+
+`inline-meta` is the same as `inline` except that the body starts at stage 1, not 0.
+
 ## `constant`
 
 `constant` defines a top-level constant. It should look like the following:
@@ -240,6 +289,30 @@ define use-config(c: config) -> unit {
   print(count)
 }
 ```
+
+## `alias`
+
+`alias` defines a type alias. It should look like the following:
+
+```neut
+alias optional(a: type) {
+  either(unit, a)
+}
+```
+
+The body of `alias` can be used wherever a type is expected.
+
+## `alias-opaque`
+
+`alias-opaque` defines an opaque type alias. It should look like the following:
+
+```neut
+alias-opaque vector(_: type) {
+  _vector-internal
+}
+```
+
+`alias-opaque` can be used when you want to expose a type constructor while hiding its actual body.
 
 ## `resource`
 
