@@ -23,7 +23,7 @@ These primitive types have a lot of primitive functions from LLVM:
 
 |             | integers                                                      | floats                                                                      |
 | ----------- | ------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| arithmetics | add, sub, mul, div, rem, udiv, urem, or, xor, shl, lshr, ashr | neg, add, sub, mul, div, rem                                                |
+| arithmetic  | add, sub, mul, div, rem, udiv, urem, or, xor, shl, lshr, ashr | neg, add, sub, mul, div, rem                                                |
 | comparison  | eq, ne, gt, ge, lt, le, ugt, uge, ult, ule                    | eq, gt, ge, lt, le, ne, ord, ueq, ugt, uge, ult, ule, une, uno, false, true |
 
 For example, `add-int32`, `neg-float64`, `eq-int64`, and `gt-float32` are available.
@@ -48,7 +48,7 @@ Primitive functions for `int` and `float` are also available. For example, you c
 
 ## Core Types and Functions
 
-The [preset](./modules.md#preset) of the core library (something like Prelude in other languages) is imported automatically. It provides some types and functions that can also be used as primitives. For example, the following are defined in the library:
+The [preset](./modules.md#preset) of the core library (something like the Prelude in other languages) is imported automatically. It provides some types and functions that can also be used as primitives. For example, the following are defined in the library:
 
 ```neut
 data null {}

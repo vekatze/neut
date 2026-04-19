@@ -78,7 +78,7 @@ The prefix `!` is unnecessary if the variable can be copied for free.
 
 ### On Immediate Values
 
-We don't have to discard immediates like integers or floats because their internal representations don't depend on memory-related operations like `malloc` or `free`. Because of that, "discarding" immediate values does nothing. Also, "copying" immediate values means reusing original values.
+We don't have to discard immediates like integers or floats because their internal representations don't depend on memory-related operations like `malloc` or `free`. Because of that, "discarding" immediate values does nothing. Also, "copying" immediate values means reusing the original values.
 
 More specifically, the type of an immediate is compiled into a pointer to the following function (pseudo-code):
 
@@ -92,7 +92,7 @@ inline discard-or-copy-immediate(selector, value) {
 }
 ```
 
-These fake discarding/copying are optimized away at compile-time.
+These fake discard/copy operations are optimized away at compile time.
 
 Also, this function is internally called `"base.#.imm"`. Try compiling your project as follows:
 

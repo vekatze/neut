@@ -113,7 +113,7 @@ define use-func-with-implicit-arg() -> int {
 
 A function with the same name can't be defined in the same file.
 
-All the tail-recursions in Neut are optimized into loops (thanks to geniuses in the LLVM team).
+All tail-recursive calls in Neut are optimized into loops (thanks to geniuses in the LLVM team).
 
 Note that statements are order-sensitive as in F#. Thus, the following code results in an error:
 
@@ -283,10 +283,11 @@ define length-noetic<a>(xs: &list(a)) -> int {
   }
 }
 
-define use-config(c: config) -> unit {
+define use-config(c: config) -> int {
   // pattern-matching in `let` is also possible
-  let Config{count, some-path} = c;
-  print(count)
+  let Config{count, foo-path} = c;
+  let _ = foo-path;
+  count
 }
 ```
 
@@ -324,7 +325,7 @@ resource my-type {
     // .. discard the value ..
   },
   (value: pointer) => {
-    // .. create a new clone of the value and return it as int ..
+    // .. create a new clone of the value and return it as pointer ..
   },
   size, // integer value
 }
@@ -357,7 +358,7 @@ resource boxed-int {
   -1,
 }
 
-// provide a way to introduce new boxed integer
+// provide a way to introduce a new boxed integer
 define create-new-boxed-int(x: int) -> boxed-int {
   let new-ptr = malloc(8);
   store-int(x, new-ptr);
@@ -426,7 +427,7 @@ root(node(x, node(y, node(z, leaf(3)))))
 
 ↓
 
-Cons(1, Cons(2, Cons(3, Nil)))
+Cons(x, Cons(y, Cons(z, Nil)))
 ```
 
 ## `rule-left`
@@ -480,7 +481,7 @@ Vector[a, b, c]
 
 ↓
 
-root(node(node(node(leaf(3), a), b), c),)
+root(node(node(node(leaf(3), a), b), c))
 
 ↓
 
@@ -493,7 +494,7 @@ push-back(push-back(push-back(make(3), a), b), c)
 
 ```neut
 nominal {
-  define is-odd(x: int) -> int,
+  define is-odd(x: int) -> bool,
 }
 ```
 
@@ -501,7 +502,7 @@ Nominal definitions can be used to achieve mutual recursion:
 
 ```neut
 nominal {
-  define is-odd(x: int) -> int, // nominal definition of `is-odd`
+  define is-odd(x: int) -> bool, // nominal definition of `is-odd`
 }
 
 // given a non-negative integer `x`, returns true if `x` is even.
@@ -573,7 +574,7 @@ declare fp128     @llvm.sin.f128(fp128 %Val)
 declare ppc_fp128 @llvm.sin.ppcf128(ppc_fp128  %Val)
 ```
 
-Thus, the next is a valid use of `foreign`:
+Thus, the following is a valid use of `foreign`:
 
 ```neut
 foreign {

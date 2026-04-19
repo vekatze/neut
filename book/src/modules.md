@@ -208,7 +208,7 @@ An example of `dependency`:
       ],
     },
   },
-    // ..
+  // ..
 }
 ```
 
@@ -216,7 +216,7 @@ The field `digest` specifies the checksum of the tarball of the dependency. The 
 
 The field `mirror` specifies a list of URLs from which the compiler can fetch the tarball. When running `neut get`, the compiler will try to get the tarball if necessary, using this list from the beginning to the end.
 
-The optional field `enable-preset` specifies whether to import `preset`s automatically, as in "prelude" in other languages. This field should only be used (and set to be true) with the core library. For more information, see the explanation of `preset` in this section.
+The optional field `enable-preset` specifies whether to import `preset`s automatically, like the Prelude in other languages. This field should only be used (and set to be true) with the core library. For more information, see the explanation of `preset` in this section.
 
 The field `dependency` is optional. The default value of `dependency` is `{}`.
 

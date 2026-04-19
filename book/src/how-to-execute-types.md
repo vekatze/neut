@@ -213,11 +213,11 @@ define exp-list(selector, v) {
     } else {
       // discard Cons
       let a = v[0];
-      let cons-head = v[1];
-      let cons-tail = v[2];
+      let cons-head = v[2];
+      let cons-tail = v[3];
       free(v);
-      let () = a(0, v[1]); // ← discard the head of cons using v[0]
-      exp-list(0, v[2])
+      let _ = a(0, cons-head); // ← discard the head of cons using v[0]
+      exp-list(0, cons-tail)
     }
   } else {
     let d = get-discriminant(v);

@@ -1,13 +1,13 @@
 # Manual Installation
 
-Make sure all the following dependencies are on your system:
+Make sure the following dependencies are installed on your system:
 
 - `clang (>= 15.0.0)`
 - `curl`
 - `tar`
 - `zstd`
 
-Add the following to your `.bashrc`, `.zshrc`, etc.
+Add the following to your `.bashrc`, `.zshrc`, etc.:
 
 ```sh
 # this sets the core module (or "prelude") that is used in `neut create`

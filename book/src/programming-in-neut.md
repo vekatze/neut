@@ -7,8 +7,7 @@ Here, we'll see how to write programs in Neut.
 - [Variables](#variables)
 - [Functions](#functions)
 - [Algebraic Data Types](#algebraic-data-types)
-- [Parallel Computation](#parallel-computation)
-- [Misc](#misc)
+- [Miscellaneous](#miscellaneous)
 
 ## Variables
 
@@ -311,7 +310,7 @@ You can use `nominal` for forward references:
 
 ```neut
 nominal {
-  define is-odd(x: int) -> int, // ← declaration of `is-odd`
+  define is-odd(x: int) -> bool, // ← declaration of `is-odd`
 }
 
 define is-even(x: int) -> bool {
@@ -403,4 +402,4 @@ If you pass `--mode release` to `neut build`, `assert` does nothing.
 ### Miscellaneous
 
 - Additional syntactic sugar is also available. For more, please see the [language reference](./terms.md#syntactic-sugar).
-- If you want to call foreign functions (FFI), please see [here](statements.md#foreign).
+- If you want to call foreign functions (FFI), please see [here](./statements.md#foreign).

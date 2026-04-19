@@ -13,7 +13,7 @@ Here, we'll see how to interact with the box modality `+`, which enables borrowi
 
 In Neut, each type `a` has a corresponding type `+a`. This type provides a way to work with _layers_, which are similar to lifetimes in other languages.
 
-Below, we’ll first introduce the concept of layers, and then see how to use `+a`.
+Below, we'll first introduce the concept of layers, and then see how to use `+a`.
 
 ### Layers and Variables
 
@@ -164,7 +164,7 @@ define axiom-T<a>(x: +a) -> a {
 }
 ```
 
-If you tried to use `letbox` instead, you’d get an error because it would result in layer mismatch.
+If you tried to use `letbox` instead, you'd get an error because it would result in layer mismatch.
 
 ### A Shortcut for Creating Boxes
 
@@ -264,7 +264,7 @@ define main() -> unit {
 }
 ```
 
-This example would wrongly allow a function at layer 0 (`★`) to keep a reference to data (`xs`) that, after the outer `letbox` completes, could be deallocated, leading to a use-after-free scenario in the body of the main function. Hence, Neut’s layer rules prohibit capturing a higher-layer variable in a lower-layer function.
+This example would wrongly allow a function at layer 0 (`★`) to keep a reference to data (`xs`) that, after the outer `letbox` completes, could be deallocated, leading to a use-after-free scenario in the body of the main function. Hence, Neut's layer rules prohibit capturing a higher-layer variable in a lower-layer function.
 
 ### Using `+`
 
@@ -283,9 +283,9 @@ This function might become slow when processing huge chunks of data because of t
 ```neut
 define backup-parse<a>(transformer: (&binary) -> a) -> a {
   let input: binary = get-next-input();
-  let result on binary = {
+  let result on input = {
     write-to-file(input-backup, bin-to-hex(input)); // bin-to-hex takes a &binary now, avoiding the copy
-    transformer(binary)
+    transformer(input)
   };
   result
 }
@@ -300,9 +300,9 @@ define id-bin(arg: &binary) -> &binary {
 
 define backup-parse<a>(transformer: (&binary) -> a) -> a {
   let input: binary = get-next-input();
-  let result on binary = {
+  let result on input = {
     write-to-file(input-backup, bin-to-hex(input));
-    transformer(binary)
+    transformer(input)
   };
   result
   // FREE(input)
@@ -326,9 +326,9 @@ To satisfy the requirements of the type system, `+` must be used as follows.
 ```neut
 define backup-parse<a>(transformer: (&binary) -> +a) -> a {
   let input: binary = get-next-input();
-  letbox-T result on binary = {
+  letbox-T result on input = {
     write-to-file(input-backup, bin-to-hex(input));
-    transformer(binary)
+    transformer(input)
   };
   result
   // FREE(input)
@@ -344,11 +344,11 @@ define id-bin(arg: &binary) -> +binary {
   }
 }
 
-define backup-parse<a>(transformer: (&binary) -> a) -> a {
+define backup-parse<a>(transformer: (&binary) -> +a) -> a {
   let input: binary = get-next-input();
-  let result on binary = {
+  letbox-T result on input = {
     write-to-file(input-backup, bin-to-hex(input));
-    transformer(binary)
+    transformer(input)
   };
   result
   // FREE(input)
@@ -369,11 +369,11 @@ define write-to-somefile(arg: &binary) -> +unit { // used to be id-bin
   box {Unit}
 }
 
-define backup-parse<a>(transformer: (&binary) -> a) -> a {
+define backup-parse<a>(transformer: (&binary) -> +a) -> a {
   let input: binary = get-next-input();
-  let result on binary = {
+  letbox-T result on input = {
     write-to-file(input-backup, bin-to-hex(input));
-    transformer(binary)
+    transformer(input)
   };
   result
   // FREE(input)

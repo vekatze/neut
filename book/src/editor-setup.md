@@ -37,7 +37,7 @@ Below is an example configuration:
 
 You can install `vim-neut` for syntax highlighting and automatic indentation.
 
-The installation process is as usual. Just use your favorite plugin manager like [lazy.nvim](https://github.com/folke/lazy.nvim).
+Installation is as usual. Just use your favorite plugin manager like [lazy.nvim](https://github.com/folke/lazy.nvim).
 
 If you want to use the built-in LSP client, for example, you can do something like the following:
 
@@ -68,7 +68,7 @@ You should be able to use any other LSP clients for Neovim.
 
 You can install `vim-neut` for syntax highlighting and automatic indentation.
 
-The installation process is as usual. Just use your favorite plugin manager like [vim-plug](https://github.com/junegunn/vim-plug).
+Installation is as usual. Just use your favorite plugin manager like [vim-plug](https://github.com/junegunn/vim-plug).
 
 If you want to use [vim-lsp](https://github.com/prabirshrestha/vim-lsp), for example, you can do something like the following:
 

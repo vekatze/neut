@@ -20,7 +20,7 @@ Let's create a module by running the following command:
 neut create sample
 ```
 
-This command creates a template module `./sample/` that performs "hello world".
+This command creates a template module `./sample/` that prints "Hello, world!".
 
 You can build and execute this module as follows:
 
@@ -89,7 +89,7 @@ The content of `module.ens` is something like the following:
 
 `allocator` specifies which allocator is used by the target. By setting it to `"mimalloc"`, you can use mimalloc for that target.
 
-`dependency` specifies the dependencies of a module. Since our running example doesn't do much, the only dependency is `core`, which is the same as "prelude" in other languages.
+`dependency` specifies the dependencies of a module. Since our running example doesn't do much, the only dependency is `core`, which plays the same role as the Prelude in other languages.
 
 `digest` is the base64url-encoded checksum of a dependency.
 
@@ -171,7 +171,7 @@ define main() -> unit {
 }
 ```
 
-Top-level items like `define` are called statements. You’ll learn more about them in the next section.
+Top-level items like `define` are called statements. You'll learn more about them in the next section.
 
 <div class="info-block">
 
@@ -207,9 +207,9 @@ cd new-item
 neut get some-name https://github.com/vekatze/neut-sample/raw/main/archive/0-1-0.tar.zst
 ```
 
-The command `neut get` fetches the tarball from the specified URL and adds it to the current module. The module can then be used as `some-name` in your module.
+The command `neut get` fetches the tarball from the specified URL and adds it to the current module. You can then refer to that dependency as `some-name` in your module.
 
-The information of the newly-added module is saved to `module.ens`:
+The new dependency information is saved to `module.ens`:
 
 ```ens
 {

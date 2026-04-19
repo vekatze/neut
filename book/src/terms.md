@@ -165,7 +165,7 @@ import {
 define sample() -> unit {
   // using top-level variables
   let _ = and; // using an imported top-level name
-  let _ = core.bool.and; // using the definite description of `core.bool.bool`
+  let _ = core.bool.and; // using the fully qualified name `core.bool.and`
   Unit
 }
 ```
@@ -412,8 +412,8 @@ define foo() -> unit {
   //            ^^^
   let _: rune = `\n`;
   //            ^^^
-  let _: rune = `\n`;
-  //            ^^^
+  let _: rune = `\u{123}`;
+  //            ^^^^^^^^^
   Unit
 }
 
@@ -427,7 +427,7 @@ The available escape sequences in rune literals are the same as those of the lit
 
 ### Semantics
 
-The value of a rune literal is a Unicode codepoint encoded in UTF-8.
+The value of a rune literal is a Unicode code point encoded in UTF-8.
 
 The underlying representation of a rune is an int32.
 
@@ -546,7 +546,7 @@ The following abbreviations are available:
 
 ### Semantics
 
-A function type is compiled into a pointer to `base.#.cls`. For more, please see [How to Execute Types](./how-to-execute-types.md)
+A function type is compiled into a pointer to `base.#.cls`. For more, please see [How to Execute Types](./how-to-execute-types.md).
 
 ### Type
 
@@ -601,7 +601,7 @@ The following abbreviation is available:
 // (x1: _, ..., xn: _) => { e }
 ```
 
-All the free variables of an anonymous function must be at the same layer of the anonymous function. For example, the following is not a valid term:
+If an anonymous function is defined at layer `n`, then any free variable `x` in the function must satisfy `layer(x) <= n`. For example, the following is not a valid term:
 
 ```neut
 define return-int(x: +int) -> +() -> int {
@@ -618,7 +618,7 @@ define return-int(x: +int) -> +() -> int {
 }
 ```
 
-because the free variable `x` in the anonymous function is at layer 0, whereas the anonymous function is at layer -1.
+because the free variable `x` in the anonymous function is at layer 0, whereas the anonymous function is at layer -1, so the condition `layer(x) <= n` is not satisfied.
 
 For more on layers, please see the section on [box](#box), [letbox](#letbox), and [letbox-T](#letbox-t).
 
@@ -631,7 +631,7 @@ Anonymous functions are compiled into three-word closures. For more, please see 
 ```neut
 Γ, α1: s1, ..., αn: sn, x1: t1, ..., xm: tm ⊢ e: u
 --------------------------------------------------------
-Γ ⊢ <α1: s1, ..., αn: sn>(x1: t1, ..., xm: tm) => {e}: u
+Γ ⊢ <α1: s1, ..., αn: sn>(x1: t1, ..., xm: tm) => {e}: <α1: s1, ..., αn: sn>(x1: t1, ..., xm: tm) -> u
 
 ```
 
@@ -681,10 +681,10 @@ define name(y1: b1, ..., ym: bm) -> c {e}
 define name<a1, ..., an>(y1: b1, ..., ym: bm) -> c {e}
 
 // ↓
-// define name<a1: _, ..., an: _>(y1: b1, ..., ym: bm) -> c
+// define name<a1: _, ..., an: _>(y1: b1, ..., ym: bm) -> c {e}
 ```
 
-As in `function`, all the free variables of a `define` must be at the same layer of the `define`.
+As with anonymous functions, if a term-level `define` is at layer `n`, then any free variable `x` in it must satisfy `layer(x) <= n`.
 
 ### Semantics
 
@@ -737,7 +737,7 @@ define use-define() -> int {
 ```neut
 Γ, x1: a1, ..., xn: an, f: (x1: a1, ..., xn: an) -> t ⊢ e: t
 ------------------------------------------------------------
-Γ ⊢ define f(x1: a1, ..., xn: an) -> t {e}: t
+Γ ⊢ define f(x1: a1, ..., xn: an) -> t {e}: (x1: a1, ..., xn: an) -> t
 ```
 
 ### Note
@@ -746,7 +746,7 @@ define use-define() -> int {
 
 ## `e(e1, ..., en)`
 
-Given a function `e` and arguments `e1, ..., en`, we can write `e(e1, ..., en)` to write a function application.
+Given a function `e` and arguments `e1, ..., en`, we can write `e(e1, ..., en)` to denote a function application.
 
 ### Example
 
@@ -789,7 +789,7 @@ The `?Mi`s in the above rule are metavariables that must be inferred by the comp
 
 ## `e{x1 := e1, ..., xn := en}`
 
-`e{x1 := e1, ..., xn := en}` is an alternative notation for function application.
+`e{x1 := e1, ..., xn := en}` is an alternative notation for applying a function.
 
 ### Example
 
@@ -1259,7 +1259,7 @@ For every type `a`, `'a` is compiled into the same term as `a`.
 
 ## `&a`
 
-Given a type `a: type`, the `&a` is the type of noemata over `a`.
+Given a type `a: type`, `&a` is the type of noemata over `a`.
 
 ### Example
 
@@ -1311,10 +1311,10 @@ For every type `a`, `&a` is compiled into `base.#.imm`.
 ### Example
 
 ```neut
-define use-noema<a>(x: &a, y: &a) -> +b {
+define use-noema<a>(x: &a, y: &a) -> +a {
   // layer 0
   // - x: &a at layer 0
-  // - y: a  at layer 0
+  // - y: &a at layer 0
   box x {
     // layer -1
     // x:  a at layer -1
@@ -2020,10 +2020,10 @@ constant stdin: descriptor {
 }
 
 define malloc-then-free() -> unit {
-  // allocates memory region (stack)
+  // allocates a memory region (stack)
   let ptr = magic alloca(int64, 2); // allocates (64 / 8) * 2 = 16 byte
 
-  // allocates memory region (heap)
+  // allocates a memory region (heap)
   let size: int = 10;
   let ptr: pointer = magic external malloc(size); // ← external
 
@@ -2156,7 +2156,7 @@ These forms can only be used at stage 1 or above. The compiler reports an error 
 
 `magic external func(e1, ..., en)` can be used to call foreign functions (or FFI). See [foreign in Statements](./statements.md#foreign) for more information.
 
-`magic external func(e1, ..., en)(e{n+1}: lowtype1, ..., e{n+m}: lowtypem)` can also be used to call variadic foreign functions like printf in C. A use of such variadic `external` can be found in the core library [here](https://github.com/vekatze/neut-core/blob/6ef2fed68a6b0b063e15350e788c82ea9371f6bb/source/string/io.nt#L43).
+`magic external func(e1, ..., en)(e{n+1}: lowtype1, ..., e{n+m}: lowtypem)` can also be used to call variadic foreign functions like `printf` in C. A use of such variadic `external` can be found in the core library [here](https://github.com/vekatze/neut-core/blob/6ef2fed68a6b0b063e15350e788c82ea9371f6bb/source/string/io.nt#L43).
 
 ### Semantics (call-type)
 

@@ -1,6 +1,6 @@
 # Commands
 
-The command `neut` has subcommands like `neut build`, `neut get`, etc. This section describes those subcommands.
+The `neut` command has subcommands like `neut build`, `neut get`, etc. This section describes those subcommands.
 
 ## Table of Contents
 
@@ -33,9 +33,9 @@ Only the following subcommands can be used outside a module:
 - `neut create`
 - `neut version`
 
-### Shared command line options
+### Shared Command-Line Options
 
-Some subcommands share command line options:
+Some subcommands share command-line options:
 
 - `--no-color` can be used to turn off ANSI colors
 
@@ -151,7 +151,7 @@ cache/build/arm64-darwin/compiler-0.8.0/
 - `2-1-3`
 - `0-0-0-3`
 
-When running `neut archive VERSION`, this command searches the archive directory to get all the compatible older versions. For example, suppose the archive directory contains the following files:
+When running `neut archive VERSION`, this command searches the archive directory for all compatible older versions. For example, suppose the archive directory contains the following files:
 
 - `1-0.tar.zst`
 - `1-1.tar.zst`
@@ -166,7 +166,7 @@ This command then does the following:
 2. Creates a new `module.ens` that contains the list of the older digests
 3. Packs the ens file and the other required files to create a tarball `2-2.tar.zst`
 
-This digest information inside `module.ens` of `2-2.tar.zst` should appear as follows:
+The digest information inside `module.ens` of `2-2.tar.zst` should look as follows:
 
 ```ens
 {
@@ -211,7 +211,7 @@ A ──> B ──┐
 └───> C ──┴──> D (1.2)
 ```
 
-The compiler always uses the newest compatible modules in the dependency relation by this procedure.
+The compiler uses this procedure to select the newest compatible modules in the dependency relation.
 
 <div class="info-block">
 
@@ -255,7 +255,7 @@ So we can adopt the fixed version immediately.
 
 ## `neut get`
 
-`neut get ALIAS URL` fetches and builds external modules specified by `URL` and adds it to the current module as a dependency under the name `ALIAS`.
+`neut get ALIAS URL` fetches and builds the external module specified by `URL` and adds it to the current module as a dependency under the name `ALIAS`.
 
 ```sh
 neut get some-name https://github.com/USER_NAME/REPO_NAME/raw/main/archive/0-1.tar.zst
@@ -263,7 +263,7 @@ neut get some-name https://github.com/USER_NAME/REPO_NAME/raw/main/archive/0-1.t
 
 Here, the `URL` must be the URL of an archive that was created by `neut archive`.
 
-After executing `neut get`, the information of the new module is saved to `module.ens`:
+After executing `neut get`, the new dependency information is saved to `module.ens`:
 
 ```ens
 {
@@ -306,7 +306,7 @@ You can import dependencies from source files. See the notes on `import` in [Sta
 
 ### `--in-place`
 
-When the option `--in-place` is set, `format-source` performs in-place update.
+When the option `--in-place` is set, `format-source` performs an in-place update.
 
 ### `--minimize-imports`
 
@@ -318,7 +318,7 @@ When the option `--minimize-imports` is set, `format-source` removes all the unu
 
 ### `--in-place`
 
-When the option `--in-place` is set, `format-ens` performs in-place update.
+When the option `--in-place` is set, `format-ens` performs an in-place update.
 
 ## `neut zen`
 

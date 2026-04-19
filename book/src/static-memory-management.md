@@ -121,7 +121,7 @@ The naive behavior of the `Cons` clause in the `match` would be something like t
 1. Extract `y` and `ys` from `Cons(y, ys)`
 2. `free` the outer tuple of `Cons(y, ys)`
 3. Calculate `foo` and `bar`
-4. Allocate memory region using `malloc` to represent the tuple of `Cons(foo, bar)`
+4. Allocate a memory region using `malloc` to represent the tuple of `Cons(foo, bar)`
 5. Store the calculated values to the pointer and return it
 
 Now, note that:
@@ -129,7 +129,7 @@ Now, note that:
 - the outer tuple of `Cons(y, ys)` will never be used after extracting its contents, and that
 - the outer tuples of `Cons(y, ys)` and `Cons(foo, bar)` have the same size.
 
-Using this knowledge, the compiler translates given code so that it reuses the memory region of `Cons(y, ys)`. More specifically, this `Cons` clause behaves as follows:
+Using this knowledge, the compiler translates the code so that it reuses the memory region of `Cons(y, ys)`. More specifically, this `Cons` clause behaves as follows:
 
 1. Obtain `y` and `ys` from `Cons(y, ys)`
 2. Calculate `foo` and `bar`
