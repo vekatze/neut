@@ -20,7 +20,8 @@
 
 - [(x1: a1, ..., xn: an) -> b](#x1-a1--xn-an---b)
 - [(x1: a1, ..., xn: an) => { e }](#x1-a1--xn-an---e-)
-- [define f(x1: a1, ..., xn: an) -> c { e }](#define-fx1-a1--xn-an-c--e-)
+- [define f(x1: a1, ..., xn: an) -> c { e }](#define-fx1-a1--xn-an---c--e-)
+- [inline f(x1: a1, ..., xn: an) -> c { e }](#inline-fx1-a1--xn-an---c--e-)
 - [e(e1, ..., en)](#ee1--en)
 - [e{x1 := e1, ..., xn := en}](#ex1--e1--xn--en)
 - [exact e](#exact-e)
@@ -552,7 +553,7 @@ A function type is compiled into a pointer to `base.#.cls`. For more, please see
 
 ```neut
 Γ, α1: s1, ..., αn: sn, x1: t1, ..., xm: tm ⊢ u: type
---------------------------------------------------------
+---------------------------------------------------------
 Γ ⊢ <α1: s1, ..., αn: sn>(x1: t1, ..., xm: tm) -> u: type
 ```
 
@@ -630,7 +631,7 @@ Anonymous functions are compiled into three-word closures. For more, please see 
 
 ```neut
 Γ, α1: s1, ..., αn: sn, x1: t1, ..., xm: tm ⊢ e: u
---------------------------------------------------------
+------------------------------------------------------------------------------------------------------
 Γ ⊢ <α1: s1, ..., αn: sn>(x1: t1, ..., xm: tm) => {e}: <α1: s1, ..., αn: sn>(x1: t1, ..., xm: tm) -> u
 
 ```
@@ -684,7 +685,7 @@ define name<a1, ..., an>(y1: b1, ..., ym: bm) -> c {e}
 // define name<a1: _, ..., an: _>(y1: b1, ..., ym: bm) -> c {e}
 ```
 
-As with anonymous functions, if a term-level `define` is at layer `n`, then any free variable `x` in it must satisfy `layer(x) <= n`.
+If a term-level `define` is at layer `n`, then any free variable `x` in it must satisfy `layer(x) <= n`.
 
 ### Semantics
 
@@ -736,13 +737,72 @@ define use-define() -> int {
 
 ```neut
 Γ, x1: a1, ..., xn: an, f: (x1: a1, ..., xn: an) -> t ⊢ e: t
-------------------------------------------------------------
+----------------------------------------------------------------------
 Γ ⊢ define f(x1: a1, ..., xn: an) -> t {e}: (x1: a1, ..., xn: an) -> t
 ```
 
 ### Note
 
 - Functions defined by term-level `define` aren't inlined at compile-time, even if they contain no recursion.
+
+## `inline f(x1: a1, ..., xn: an) -> c { e }`
+
+`inline` (at the term-level) can be used to create an inline function.
+
+### Example
+
+```neut
+define use-inline() -> int {
+  let f =
+    inline add-and-double(x: int, y: int) -> int {
+      let z = add-int(x, y);
+      mul-int(z, z)
+    };
+  let result = f(10, 20);
+  result
+}
+```
+
+### Syntax
+
+```neut
+inline name<x1: a1, ..., xn: an>(y1: b1, ..., ym: bm) -> c {
+  e
+}
+```
+
+The following abbreviations are available:
+
+```neut
+inline name(y1: b1, ..., ym: bm) -> c {e}
+
+// ↓
+// inline name<>(y1: b1, ..., ym: bm) -> c {e}
+
+
+inline name<a1, ..., an>(y1: b1, ..., ym: bm) -> c {e}
+
+// ↓
+// inline name<a1: _, ..., an: _>(y1: b1, ..., ym: bm) -> c {e}
+```
+
+If a term-level `inline` is at layer `n`, then any free variable `x` in it must satisfy `layer(x) <= n`.
+
+### Semantics
+
+A term-level `inline` is the same as a term-level `define`, except that the resulting function is always expanded at compile-time.
+
+### Type
+
+```neut
+Γ, x1: a1, ..., xn: an, f: (x1: a1, ..., xn: an) -> t ⊢ e: t
+----------------------------------------------------------------------
+Γ ⊢ inline f(x1: a1, ..., xn: an) -> t {e}: (x1: a1, ..., xn: an) -> t
+```
+
+### Note
+
+- Functions defined by term-level `inline` are always inlined at compile-time. If you would like to avoid this behavior, consider using `define`.
 
 ## `e(e1, ..., en)`
 
