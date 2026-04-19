@@ -64,14 +64,14 @@ At this point, one concern is whether operations such as taking the length of a 
 
 ## Quick List of Other Features
 
-- Call by value
+- Call-by-value
 - Impure
 - Compiles to [LLVM IR](https://llvm.org/docs/LangRef.html) and binary
 - The type system ≈ System Fω + ADT + recursion + box modality
   - That is, the usual one in functional programming, but a bit generalized
 - Built-in [LSP support](./lsp-showcase.md)
-- Built-in [rapid prototyping experience](./rapid-prototyping.md) like scripting languages
-- Built-in formatter like Go
+- Built-in [rapid prototyping support](./rapid-prototyping.md) as found in scripting languages
+- Built-in formatter
 
 ---
 

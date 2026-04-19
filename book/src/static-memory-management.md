@@ -163,7 +163,7 @@ define use-length(!xs: list(int)) -> unit {
 }
 ```
 
-Note that the variable `xs` is used twice. This means that the content of `xs` is copied just to calculate its length. This is of course unfortunate. Worse, this kind of procedure isn't rare. We need some kind of loophole.
+Note that the variable `xs` is used twice. This means that the content of `xs` is copied just to calculate its length. This is of course unfortunate. Worse, this kind of situation isn't rare. We need some kind of loophole.
 
 Luckily, Neut has a remedy for this kind of situation, as we'll see below.
 

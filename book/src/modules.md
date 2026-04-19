@@ -188,35 +188,11 @@ The field `dependency` defines the dependencies of a module. It should look like
 }
 ```
 
-An example of `dependency`:
-
-```ens
-{
-  // ..
-  dependency {
-    core {
-      digest "ub3MUXVac9F1rebIhl_Crm2_GJ7PzCAekgp8aYH3-mo",
-      mirror [
-        "https://github.com/vekatze/neut-core/raw/main/archive/0-38.tar.zst",
-      ],
-      enable-preset true,
-    },
-    some-package {
-      digest "F_ST8PtL9dLCDWVZ4GpuS7sviUU0_-TUz2s6iw-86KU",
-      mirror [
-        "https://example.com/foobarbuz/packages/22-3.tar.zst",
-      ],
-    },
-  },
-  // ..
-}
-```
-
 The field `digest` specifies the checksum of the tarball of the dependency. The digest is a Base64URL-encoded SHA256 checksum of the tarball. This digest is the "real" name of this dependency and is used as an identifier.
 
 The field `mirror` specifies a list of URLs from which the compiler can fetch the tarball. When running `neut get`, the compiler will try to get the tarball if necessary, using this list from the beginning to the end.
 
-The optional field `enable-preset` specifies whether to import `preset`s automatically, like the Prelude in other languages. This field should only be used (and set to be true) with the core library. For more information, see the explanation of `preset` in this section.
+The optional field `enable-preset` specifies whether to import the dependency's `preset` automatically, like the Prelude in other languages. For more information, see the explanation of `preset` in this section.
 
 The field `dependency` is optional. The default value of `dependency` is `{}`.
 
@@ -250,7 +226,7 @@ The field `cache` is optional. The default value of `cache` is `./cache/`.
 
 ## `source`
 
-The field `source` defines the path of the directory to store source files. It should look like the following:
+The field `source` defines the path to the directory where source files are stored. It should look like the following:
 
 ```ens
 {
@@ -290,7 +266,7 @@ The field `foreign` defines a way to compile external source files. It should lo
 
 The field `input` specifies the list of external source files. The paths are relative to the root of the module.
 
-When running `neut archive`, the compiler adds all the `input` files to the resulting tarballs.
+When running `neut archive`, the compiler adds all the `input` files to the resulting tarball.
 
 ### `output`
 
@@ -392,7 +368,7 @@ In the example above, the current module is expected to have the following files
 
 The field `preset` is used in combination with `enable-preset` in `dependency`.
 
-Suppose we released a module that contains the definition of `preset` as in the above. Also, suppose someone is developing a module `MMM` and they added our module to `MMM`'s dependency:
+Suppose we released a module that contains the `preset` definition shown above. Also, suppose someone is developing a module `MMM` and has added our module to `MMM`'s dependencies:
 
 ```ens
 // module.ens in MMM
@@ -435,7 +411,7 @@ define buz() -> int {
 }
 ```
 
-The field `preset` is expected to be used as a way to realize "preludes" in other languages.
+The field `preset` is expected to be used as a way to provide "preludes" like those in other languages.
 
 The field `preset` is optional. The default value of `preset` is `{}`.
 

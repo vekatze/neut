@@ -29,7 +29,7 @@ cd ./sample
 neut build sample --execute # => "Hello, world!"
 ```
 
-You can also retrieve the resulting binary:
+You can also install the resulting binary and run it directly:
 
 ```sh
 neut build sample --install ./bin # creates a directory `bin` if necessary
@@ -63,7 +63,7 @@ You can change the locations of special directories such as `cache` using `modul
 
 ### module.ens
 
-The content of `module.ens` is something like the following:
+The contents of `module.ens` look something like the following:
 
 ```ens
 {
@@ -101,7 +101,7 @@ The content of `module.ens` is something like the following:
 
 ### Editing Source Files
 
-Let's see the content of `source/sample.nt`:
+Let's see the contents of `source/sample.nt`:
 
 ```neut
 // sample.nt

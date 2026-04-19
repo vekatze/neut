@@ -9,14 +9,14 @@
 - [Top-Level Variables](#top-level-variables)
 - [let](#let)
 
-### Primitive Value
+### Primitive Values
 
 - [Integers](#integers)
 - [Floats](#floats)
 - [Runes](#runes)
 - [Strings](#strings)
 
-### Function
+### Functions
 
 - [(x1: a1, ..., xn: an) -> b](#x1-a1--xn-an---b)
 - [(x1: a1, ..., xn: an) => { e }](#x1-a1--xn-an---e-)
@@ -130,7 +130,7 @@ define sample() -> unit {
 The name of a local variable must satisfy the following conditions:
 
 - It doesn't contain any of ``=()' `\"\n\t:;,<>[]{}/*|&?``
-- It doesn't start with `A, B, .., Z` (the upper case alphabets)
+- It doesn't start with `A, B, .., Z` (uppercase letters)
 
 ### Semantics
 
@@ -361,7 +361,10 @@ The type of an integer is unknown in itself. It must be inferred to be one of th
 
 - `int1`
 - `int2`
-- ...
+- `int4`
+- `int8`
+- `int16`
+- `int32`
 - `int64`
 
 ### Note
@@ -638,7 +641,7 @@ Anonymous functions are compiled into three-word closures. For more, please see 
 
 ### Note
 
-- Anonymous functions are reduced at compile-time when possible. If you would like to avoid this behavior, consider using `define`.
+- Anonymous functions are reduced at compile time when possible. If you would like to avoid this behavior, consider using `define`.
 
 ## `define f(x1: a1, ..., xn: an) -> c { e }`
 
@@ -743,7 +746,7 @@ define use-define() -> int {
 
 ### Note
 
-- Functions defined by term-level `define` aren't inlined at compile-time, even if they contain no recursion.
+- Functions defined by term-level `define` aren't inlined at compile time, even if they contain no recursion.
 
 ## `inline f(x1: a1, ..., xn: an) -> c { e }`
 
@@ -790,7 +793,7 @@ If a term-level `inline` is at layer `n`, then any free variable `x` in it must 
 
 ### Semantics
 
-A term-level `inline` is the same as a term-level `define`, except that the resulting function is always expanded at compile-time.
+A term-level `inline` is the same as a term-level `define`, except that the resulting function is always expanded at compile time.
 
 ### Type
 
@@ -802,7 +805,7 @@ A term-level `inline` is the same as a term-level `define`, except that the resu
 
 ### Note
 
-- Functions defined by term-level `inline` are always inlined at compile-time. If you would like to avoid this behavior, consider using `define`.
+- Functions defined by term-level `inline` are always inlined at compile time. If you would like to avoid this behavior, consider using `define`.
 
 ## `e(e1, ..., en)`
 
@@ -830,7 +833,7 @@ e(e1, ..., en)
 
 ### Semantics
 
-Given a function application `e(e1, ..., en)` the system does the following:
+Given a function application `e(e1, ..., en)`, the system does the following:
 
 1. Computes `e`, `e1`, ..., `en` into values `v`, `v1`, ..., `vn`
 2. Extracts the contents from the closure `v`, obtaining the tuple of its free variables and a function label
@@ -980,7 +983,7 @@ Here, `?Mi`s are metavariables that must be inferred by the type checker.
 
 ### Note
 
-As you can see from its semantics, an `exact` is just a shorthand of a "hole-application" that fills in implicit parameters.
+As you can see from its semantics, an `exact` is just a shorthand for a "hole-application" that fills in implicit parameters.
 
 ## ADT Formation
 
@@ -1173,7 +1176,7 @@ Succ:
   (1, pointer-to-m) // 2-word tuple
 ```
 
-When evaluating `match`, the computer inspects the first element of the "tuple" `n`.
+When evaluating `match`, the runtime inspects the first element of the "tuple" `n`.
 
 ```neut
 define foo(n: my-nat) -> int {
@@ -1187,9 +1190,9 @@ define foo(n: my-nat) -> int {
 }
 ```
 
-If the first element is `0`, which means that we found an ADT value of `Zero`, the computer _frees_ the outer tuple of `(0)`, and then evaluates `100`.
+If the first element is `0`, which means that we found an ADT value of `Zero`, the runtime _frees_ the outer tuple of `(0)`, and then evaluates `100`.
 
-If the first element is `1`, which means that we found an ADT value of `Succ`, the computer gets the pointer to the second element of `n`, binds it to `m`, _frees_ the outer tuple of `(1, pointer-to-m)`, and then evaluates `foo(m)`.
+If the first element is `1`, which means that we found an ADT value of `Succ`, the runtime gets the pointer to the second element of `n`, binds it to `m`, _frees_ the outer tuple of `(1, pointer-to-m)`, and then evaluates `foo(m)`.
 
 ### Type
 
@@ -1198,13 +1201,13 @@ If the first element is `1`, which means that we found an ADT value of `Succ`, t
 ...
 Γ ⊢ en: an
 
-Γ, arg_{1,1}: t_{1,1}, ..., arg_{1, k_{1}}: t{1, k_{1}} ⊢ pat-1: a1
-Γ, arg_{1,1}: t_{1,1}, ..., arg_{1, k_{1}}: t{1, k_{1}} ⊢ body-1: b
+Γ, arg_{1,1}: t_{1,1}, ..., arg_{1, k_{1}}: t_{1, k_{1}} ⊢ pat-1: a1
+Γ, arg_{1,1}: t_{1,1}, ..., arg_{1, k_{1}}: t_{1, k_{1}} ⊢ body-1: b
 
 ...
 
-Γ, arg_{m,1}: t_{m,1}, ..., arg_{m, k_{m}}: t{m, k_{m}} ⊢ pat-m: an
-Γ, arg_{m,1}: t_{m,1}, ..., arg_{m, k_{m}}: t{m, k_{m}} ⊢ body-m: b
+Γ, arg_{m,1}: t_{m,1}, ..., arg_{m, k_{m}}: t_{m, k_{m}} ⊢ pat-m: an
+Γ, arg_{m,1}: t_{m,1}, ..., arg_{m, k_{m}}: t_{m, k_{m}} ⊢ body-m: b
 
 (for all i = 1, ..., m, pat-i is a pattern for e1, ..., en)
 (the sequence pat-1, ..., pat-m is an exhaustive matching against e1, ..., en)
@@ -1366,7 +1369,7 @@ For every type `a`, `&a` is compiled into `base.#.imm`.
 
 ## `box`
 
-`box e` can be used to "lift" the layer of `e`.
+`box {e}` can be used to "lift" the layer of `e`.
 
 ### Example
 
@@ -1422,7 +1425,7 @@ where:
 
 ### Notes on Layers
 
-The body of `define` is defined to be at layer 0:
+The body of `define` is at layer 0:
 
 ```neut
 define some-function(x: int) -> int {
@@ -1432,7 +1435,7 @@ define some-function(x: int) -> int {
 }
 ```
 
-Since `box e` lifts the layer of `e`, if we use `box` at layer 0, the layer of `e` will become -1:
+Since `box {e}` lifts the layer of `e`, if we use `box` at layer 0, the layer of `e` will become -1:
 
 ```neut
 define use-box(x: int) -> +int {
@@ -1444,7 +1447,7 @@ define use-box(x: int) -> +int {
 }
 ```
 
-In layer n, we can only use variables at the layer. Thus, the following is not a valid term:
+In layer n, we can only use variables at the same layer. Thus, the following is not a valid term:
 
 ```neut
 define use-box-error(x: int) -> +int {
@@ -1526,7 +1529,7 @@ You can use `letbox` to "unlift" terms.
 ### Example
 
 ```neut
-define roundtrip(x: +a) -> +a {
+define roundtrip<a>(x: +a) -> +a {
   // here is layer 0
   box {
     // here is layer -1
@@ -1566,7 +1569,7 @@ e2
 ↓
 
 let result = e1;
-cont
+e2
 ```
 
 ### Type
@@ -1585,7 +1588,7 @@ where `x` is a variable at layer `i`.
 Given a term `e1` at layer n + 1, `letbox x = e1; e2` is at layer n:
 
 ```neut
-define roundtrip(x: +a) -> +a {
+define roundtrip<a>(x: +a) -> +a {
   box {
     // here is layer -1 (= n)
     letbox tmp =
@@ -1597,7 +1600,7 @@ define roundtrip(x: +a) -> +a {
 }
 ```
 
-In layer n, we can only use variables at the layer. Thus, the following is not a valid term:
+In layer n, we can only use variables at the same layer. Thus, the following is not a valid term:
 
 ```neut
 define use-letbox-error(x: +int) -> int {
@@ -1702,7 +1705,7 @@ let result = e1;
 let x1 = cast<&a1, a1>(x1);
 ...
 let xn = cast<&an, an>(xn);
-cont
+e2
 ```
 
 ### Type
@@ -1832,13 +1835,13 @@ The semantics of `case` is the same as `match`, except that `case` doesn't consu
 ...
 Γ ⊢ en: an
 
-Γ, arg_{1,1}: t_{1,1}, ..., arg_{1, k_{1}}: t{1, k_{1}} ⊢ pat-1: a1
-Γ, arg_{1,1}: &t_{1,1}, ..., arg_{1, k_{1}}: &t{1, k_{1}} ⊢ body-1: b
+Γ, arg_{1,1}: t_{1,1}, ..., arg_{1, k_{1}}: t_{1, k_{1}} ⊢ pat-1: a1
+Γ, arg_{1,1}: &t_{1,1}, ..., arg_{1, k_{1}}: &t_{1, k_{1}} ⊢ body-1: b
 
 ...
 
-Γ, arg_{m,1}: t_{m,1}, ..., arg_{m, k_{m}}: t{m, k_{m}} ⊢ pat-m: an
-Γ, arg_{m,1}: &t_{m,1}, ..., arg_{m, k_{m}}: &t{m, k_{m}} ⊢ body-m: b
+Γ, arg_{m,1}: t_{m,1}, ..., arg_{m, k_{m}}: t_{m, k_{m}} ⊢ pat-m: an
+Γ, arg_{m,1}: &t_{m,1}, ..., arg_{m, k_{m}}: &t_{m, k_{m}} ⊢ body-m: b
 
 (for all i = 1, ..., m, pat-i is a pattern for e1, ..., en)
 (the sequence pat-1, ..., pat-m is an exhaustive matching against e1, ..., en)
@@ -2066,7 +2069,7 @@ e2
 
 ## `magic`
 
-You can use `magic` to perform weird stuff. Using `magic` is an unsafe operation.
+You can use `magic` to perform low-level operations. Using `magic` is unsafe.
 
 ### Example
 
@@ -2081,7 +2084,7 @@ constant stdin: descriptor {
 
 define malloc-then-free() -> unit {
   // allocates a memory region (stack)
-  let ptr = magic alloca(int64, 2); // allocates (64 / 8) * 2 = 16 byte
+  let ptr = magic alloca(int64, 2); // allocates (64 / 8) * 2 = 16 bytes
 
   // allocates a memory region (heap)
   let size: int = 10;
@@ -2091,7 +2094,7 @@ define malloc-then-free() -> unit {
   let value: int = 123;
   magic store(int, value, ptr); // ← store
 
-  // loads and print a value
+  // loads and prints a value
   let value = magic load(int, ptr); // ← load
   print-int(value); // => 123
 
@@ -2101,7 +2104,7 @@ define malloc-then-free() -> unit {
       get-some-c-constant-using-FFI()
     };
 
-  // frees the pointer and return
+  // frees the pointer
   magic external free(ptr); // ← external
 
   // call types as functions
@@ -2146,9 +2149,9 @@ magic eq-type(type-1, type-2)
 
 magic show-type(some-type)
 
-magic string-cons(rune, text)
+magic string-cons(rune, string)
 
-magic string-uncons(text)
+magic string-uncons(string)
 
 magic compile-error(message)
 ```
@@ -2168,8 +2171,8 @@ The forms
 - `magic inspect-type(some-type)`
 - `magic eq-type(type-1, type-2)`
 - `magic show-type(some-type)`
-- `magic string-cons(rune, text)`
-- `magic string-uncons(text)`
+- `magic string-cons(rune, string)`
+- `magic string-uncons(string)`
 - `magic compile-error(message)`
 
 are compile-time primitives.
@@ -2216,7 +2219,7 @@ These forms can only be used at stage 1 or above. The compiler reports an error 
 
 `magic external func(e1, ..., en)` can be used to call foreign functions (or FFI). See [foreign in Statements](./statements.md#foreign) for more information.
 
-`magic external func(e1, ..., en)(e{n+1}: lowtype1, ..., e{n+m}: lowtypem)` can also be used to call variadic foreign functions like `printf` in C. A use of such variadic `external` can be found in the core library [here](https://github.com/vekatze/neut-core/blob/6ef2fed68a6b0b063e15350e788c82ea9371f6bb/source/string/io.nt#L43).
+`magic external func(e1, ..., en)(e{n+1}: lowtype1, ..., e{n+m}: lowtypem)` can also be used to call variadic foreign functions like `printf` in C.
 
 ### Semantics (call-type)
 
@@ -2246,11 +2249,11 @@ The type of the result of `call-type` is inferred from the context.
 
 ### Semantics (string-cons)
 
-`magic string-cons(rune, text)` prepends `rune` to `text`.
+`magic string-cons(rune, string)` prepends `rune` to `string`.
 
 ### Semantics (string-uncons)
 
-`magic string-uncons(text)` decomposes `text` into either the empty case or a pair of its first rune and the remaining text.
+`magic string-uncons(string)` decomposes `string` into either the empty case or a pair of its first rune and the remaining string.
 
 ### Semantics (compile-error)
 
@@ -2359,15 +2362,15 @@ The type of the result of `call-type` is inferred from the context.
 Γ ⊢ magic show-type(t): &string
 
 
-Γ ⊢ rune: rune
-Γ ⊢ text: &string
+Γ ⊢ r: rune
+Γ ⊢ s: &string
 ------------------------------------------------------
-Γ ⊢ magic string-cons(rune, text): &string
+Γ ⊢ magic string-cons(r, s): &string
 
 
-Γ ⊢ text: &string
+Γ ⊢ s: &string
 ------------------------------------------------------
-Γ ⊢ magic string-uncons(text): either(unit, pair(rune, &string))
+Γ ⊢ magic string-uncons(s): either(unit, pair(rune, &string))
 
 
 Γ ⊢ message: &string
@@ -2397,7 +2400,7 @@ define os-dependent-constant() -> int {
   | linux =>
     1
   | default =>
-    // `2` is returned if target-os != linux
+    // `2` is returned if the target OS isn't Linux
     2
   }
 }
@@ -2427,9 +2430,9 @@ You can also use `default` as a configuration value to represent a fallback case
 
 ### Semantics
 
-Firstly, `introspect key {v1 => e1 | ... | vn => en}` looks up the configuration value `v` of the compiler by `key`. Then it reads the configuration values `v1`, ..., `vn` in this order to find `vk` that is equal to the `v`. If such a `vk` is found, `introspect` executes the corresponding clause `ek`. If no such `vk` is found, `introspect` will report a compilation error.
+First, `introspect key {v1 => e1 | ... | vn => en}` looks up the configuration value `v` of the compiler by `key`. Then it reads the configuration values `v1`, ..., `vn` in this order to find `vk` that is equal to `v`. If such a `vk` is found, `introspect` executes the corresponding clause `ek`. If no such `vk` is found, `introspect` reports a compilation error.
 
-The configuration value `default` is equal to any configuration values.
+The configuration value `default` is equal to any configuration value.
 
 ### Type
 
@@ -2453,7 +2456,7 @@ The configuration value `default` is equal to any configuration values.
 
 ### Note
 
-- The branching of an `introspect` is resolved at compile-time.
+- The branching of an `introspect` is resolved at compile time.
 
 ## `static`
 
@@ -2490,7 +2493,7 @@ static "Hello, world!\n"
 static "\u{1f338} ← Cherry Blossom"
 ```
 
-Below is the list of all the escape sequences in Neut for the literal form:
+Below is a list of all escape sequences available in Neut string literals:
 
 | Escape Sequence | Meaning                        |
 | --------------- | ------------------------------ |
@@ -2589,7 +2592,7 @@ When `admit` exits a program, the exit code is 1.
 
 ## `assert`
 
-You can use `assert` to ensure that a condition is satisfied at run-time.
+You can use `assert` to ensure that a condition is satisfied at runtime.
 
 ### Example
 
@@ -2665,7 +2668,7 @@ N/A
 ### Example
 
 ```neut
-define play-with-let-on() -> int {
+define play-with-on() -> int {
   let xs: list(int) = List[1, 2, 3];
   let len on xs =
     // the type of `xs` is `&list(int)` here

@@ -17,7 +17,7 @@ Below, we'll first introduce the concept of layers, and then see how to use `+a`
 
 ### Layers and Variables
 
-Every term in Neut has an integer called layer. Conceptually, a layer can be seen as the level at which a piece of data lives.
+Every term in Neut has an integer called a layer. Conceptually, a layer can be seen as the level at which a piece of data lives.
 
 The body of a `define` starts at layer 0:
 
@@ -164,7 +164,7 @@ define axiom-T<a>(x: +a) -> a {
 }
 ```
 
-If you tried to use `letbox` instead, you'd get an error because it would result in layer mismatch.
+If you tried to use `letbox` instead, you'd get an error because it would result in a layer mismatch.
 
 ### A Shortcut for Creating Boxes
 
@@ -197,11 +197,11 @@ If you can get `+t` by lifting `e: t`, you can get the same type using `box` ins
 
 ## Desugaring the Two Operations
 
-We've seen the two constructs `let-on` and `*e`. Though they might have initially appeared a bit artificial, they are in fact straightforward applications of the box modality.
+We've seen the two constructs `on` and `*e`. Though they might have initially appeared a bit artificial, they are in fact straightforward applications of the box modality.
 
 ### Desugar: Borrowing
 
-We can now desugar `let-on` as follows:
+We can now desugar `on` as follows:
 
 ```neut
 let x on y, z = e1;
@@ -213,7 +213,7 @@ letbox-T x on y, z = lift {e1};
 e2
 ```
 
-This explains why the result type of a `let-on` had to be restricted to some extent: the restriction is from `lift`.
+This explains why the result type of `on` has to be restricted to some extent: the restriction comes from `lift`.
 
 ### Desugar: Embodying
 
@@ -335,7 +335,7 @@ define backup-parse<a>(transformer: (&binary) -> +a) -> a {
 }
 ```
 
-The `+` specifier asserts that the value to which a call to `transformer` evaluates will be valid on the outer layer (in this case the layer of `zen`, since that is where `backup-parse` has been called). The requirements of the operators that lift values into `+` guarantee that this is the case. In order to make the previous example work, `id-bin` could look like the following:
+The `+` in the result type asserts that the value produced by `transformer` remains valid on the outer layer. The requirements of the operators that lift values into `+` guarantee that this is the case. In order to make the previous example work, `id-bin` could look like the following:
 
 ```neut
 define id-bin(arg: &binary) -> +binary {

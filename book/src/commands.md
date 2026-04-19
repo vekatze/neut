@@ -41,7 +41,7 @@ Some subcommands share command-line options:
 
 ## `neut build`
 
-`neut build` builds the current module and creates executables. It also creates cache files of the source files for faster compilation.
+`neut build` builds the current module and creates executables. It also creates cache files for faster compilation.
 
 `neut build TARGET` builds the target `TARGET` defined in `module.ens`. For example, suppose that the `module.ens` of a module contains the following section:
 
@@ -203,7 +203,7 @@ A ──> B ──> D (1.1)
 └───> C ──> D (1.2)
 ```
 
-Thanks to the `antecedent` information inside `D (1.2)`, the compiler can detect that `D (1.2)` is a newer compatible module of `D (1.1)`. The compiler utilizes this knowledge to rewrite the above relation into:
+Thanks to the `antecedent` information inside `D (1.2)`, the compiler can detect that `D (1.2)` is a newer compatible version of `D (1.1)`. The compiler utilizes this knowledge to rewrite the above relation into:
 
 ```text
 A ──> B ──┐
@@ -215,7 +215,7 @@ The compiler uses this procedure to select the newest compatible modules in the 
 
 <div class="info-block">
 
-This rewriting won't work if the minor "compatible" version `D (1.2)` isn't compatible with `D (1.1)`. This incompatibility is a bug of the library `D (1.2)` and should be fixed by the module author.
+This rewriting won't work if the minor "compatible" version `D (1.2)` isn't compatible with `D (1.1)`. This incompatibility is a bug in the library `D (1.2)` and should be fixed by the module author.
 
 </div>
 
@@ -314,7 +314,7 @@ When the option `--minimize-imports` is set, `format-source` removes all the unu
 
 ## `neut format-ens`
 
-`neut format-ens path/to/source/file.ens` formats the specified ens file and outputs the result to stdout.
+`neut format-ens path/to/file.ens` formats the specified ens file and outputs the result to stdout.
 
 ### `--in-place`
 

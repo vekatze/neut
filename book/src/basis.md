@@ -138,7 +138,7 @@ The expected behavior of the `Cons` clause above would be something like the fol
 4. allocate a memory region using `malloc` to hold the result
 5. store the calculated values to the pointer and return it
 
-However, since the size of `Cons(x, rest)` and `Cons(add-int(x, 1), increment(rest))` are known to be the same at compile-time, the pair of `free` and `malloc` should be able to be optimized away, as follows:
+However, since the size of `Cons(x, rest)` and `Cons(add-int(x, 1), increment(rest))` is known to be the same at compile time, the pair of `free` and `malloc` can be optimized away, as follows:
 
 1. obtain `x` and `rest` from `xs`
 2. calculate `add-int(x, 1)` and `increment(rest)`

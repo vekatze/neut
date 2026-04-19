@@ -11,7 +11,7 @@
 
 ## Types as Closed Functions
 
-Here, we'll see how a type is translated into a function that discards/copies the terms of the type. To see the basic idea, let's take a simple ADT for example:
+Here, we'll see how a type is translated into a function that discards/copies values of the type. To see the basic idea, let's take a simple ADT as an example:
 
 ```neut
 data item {
@@ -201,7 +201,7 @@ Here, the `0` is the discriminant for `Nil`. Similarly, the internal representat
 
 Here, the `1` is the discriminant for `Cons`.
 
-With that in mind, the resource exponential of `list(a)` will be something like the following (a bit lengthy; skip it and just read the succeeding note if you aren't that interested in details):
+With that in mind, the resource exponential of `list(a)` will be something like the following (a bit lengthy; skip it and just read the following note if you aren't that interested in details):
 
 ```neut
 define exp-list(selector, v) {
@@ -315,7 +315,7 @@ let env-type = cls[0]; // get the type of the environment
 let env      = cls[1]; // get the pointer to the environment
 let label    = cls[2]; // get the label to the function
 
-let env-clone = env-type(1, env); // copy the environment using the type of it
+let env-clone = env-type(1, env); // copy the environment using its type
 
 // allocate new memory region for our new closure
 let new-ptr = malloc(mul-int(3, word-size));
@@ -343,7 +343,7 @@ define base.#.cls(action-selector, cls) {
   if action-selector == 0 {
     // discard
 
-    // discard the environment using the type of it
+    // discard the environment using its type
     let env-type = cls[0];
     let env      = cls[1];
     env-type(0, env);
@@ -358,7 +358,7 @@ define base.#.cls(action-selector, cls) {
     let env      = cls[1];
     let label    = cls[2];
 
-    // copy the environment using the type of it
+    // copy the environment using its type
     let env-clone = env-type(1, env);
 
     let new-ptr = malloc(mul-int(3, word-size));

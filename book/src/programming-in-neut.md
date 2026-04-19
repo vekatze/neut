@@ -126,7 +126,7 @@ define id<a: type>(x: a) -> a { // `type` is the type of types
 }
 ```
 
-### Defining Functions in a Body of a Function
+### Defining Functions in the Body of a Function
 
 You can use `=>` to define an anonymous function:
 
@@ -192,7 +192,7 @@ define use-my-func() -> int {
 }
 ```
 
-A lot of primitive functions (from LLVM) are also available. Please see [Primitives](./primitives.md) for more.
+Many primitive functions (from LLVM) are also available. Please see [Primitives](./primitives.md) for more.
 
 ## Algebraic Data Types
 
@@ -257,7 +257,7 @@ define make-config() -> config {
 }
 ```
 
-### Using ADT values
+### Using ADT Values
 
 You can use `match` to destructure ADT values:
 

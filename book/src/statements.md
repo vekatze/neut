@@ -31,7 +31,7 @@ import {
 }
 ```
 
-`import` can only be at the top of a file.
+`import` can only appear at the top of a file.
 
 Every item in `import` is something like the following:
 
@@ -101,7 +101,7 @@ define use-foo() -> int {
 }
 ```
 
-`define` can optionally have implicit type parameters, as in `identity` in the above example. The compiler inserts these type parameters at compile time, so you don't have to write them explicitly:
+`define` can optionally have implicit type parameters, as in `identity` in the example above. The compiler inserts these type parameters at compile time, so you don't have to write them explicitly:
 
 ```neut
 define use-func-with-implicit-arg() -> int {
@@ -113,7 +113,7 @@ define use-func-with-implicit-arg() -> int {
 
 A function with the same name can't be defined in the same file.
 
-All tail-recursive calls in Neut are optimized into loops (thanks to geniuses in the LLVM team).
+All tail-recursive calls in Neut are optimized into loops (thanks to the geniuses on the LLVM team).
 
 Note that statements are order-sensitive as in F#. Thus, the following code results in an error:
 
@@ -140,7 +140,7 @@ inline foo(x: int, y: int) -> int {
 }
 ```
 
-`inline` is the same as `define` except that the definition is always expanded at compile-time. For example, if you write
+`inline` is the same as `define` except that the definition is always expanded at compile time. For example, if you write
 
 ```neut
 define use-inline-foo() -> int {
@@ -264,7 +264,7 @@ You can use the content of an ADT value by using `match` or `case`:
 
 ```neut
 define length<a>(xs: list(a)) -> int {
-  // destruct ADT values using `match`
+  // destructure ADT values using `match`
   match xs {
   | Nil =>
     0
@@ -331,13 +331,13 @@ resource my-type {
 }
 ```
 
-`resource` takes three terms. The first term ("discarder") receives a value of the type and discards it. The second term ("copier") receives a value of the type and returns a clone of the value (keeping the original value intact). The third term is a tag that is returned when calling `magic call-type(my-type, 2, (..))`.
+`resource` takes three terms. The first term ("discarder") receives a value of the type and discards it. The second term ("copier") receives a value of the type and returns a clone of the value (keeping the original value intact). The third term is the size returned when calling `magic call-type(my-type, 2, (..))`.
 
 The type of a discarder is `(a) -> unit` for some `a`. You might want to call functions like `free` in this term.
 
 The type of a copier is `(a) -> a` for some `a`. This `a` must be the same as the `a` used in the discarder. You might want to call functions like `malloc` in this term.
 
-The type of a size is `int`. See also: [Semantics (call-type)](./terms.md#semantics-call-type)
+The third term must have type `int`. See also: [Semantics (call-type)](./terms.md#semantics-call-type)
 
 For example, the following is a definition of a "boxed" integer type with some noisy messages:
 
@@ -564,7 +564,7 @@ define my-func() -> int {
 
 An example project that uses `foreign` can be found [here](https://github.com/vekatze/neut/tree/main/test/misc/foreign).
 
-You can also use LLVM intrinsics. For example, the LLVM langref states that `llvm.sin.*` intrinsic is [available](https://llvm.org/docs/LangRef.html#llvm-sin-intrinsic):
+You can also use LLVM intrinsics. For example, the LLVM LangRef states that the `llvm.sin.*` intrinsic is [available](https://llvm.org/docs/LangRef.html#llvm-sin-intrinsic):
 
 ```llvm
 declare float     @llvm.sin.f32(float  %Val)

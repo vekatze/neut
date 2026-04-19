@@ -37,7 +37,7 @@ unquote {
 }
 ```
 
-Every term in Neut has an integer called stage. A variable defined at stage n can only be used at the same stage. For example, the following code is invalid because the variable `x` is defined at stage 0 but used at stage -1:
+Every term in Neut has an integer called a stage. A variable defined at stage n can only be used at the same stage. For example, the following code is invalid because the variable `x` is defined at stage 0 but used at stage -1:
 
 ```neut
 define bar() -> 'int {
@@ -210,7 +210,7 @@ Here, `eq-simple` inspects `a` at compile time and chooses the implementation ac
 Thus, when we write
 
 ```neut
-define use-eq(x: int, y: int) -> bool {
+define use-eq(x: &int, y: &int) -> bool {
   eq-simple::(x, y)
 }
 ```

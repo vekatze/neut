@@ -8,7 +8,7 @@ Below is an example where Emacs runs `neut zen path/to/file.nt` when `C-c C-c` i
 
 ### Notes for Emacs
 
-The Emacs configuration in the above example looks like the following:
+The Emacs configuration for the example above looks like the following:
 
 ```text
 (defun ext/neut-compile ()
