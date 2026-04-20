@@ -436,7 +436,7 @@ The `inline-limit` specifies a limit here. If the limit is exceeded, the compile
 
 ```text
 /path/to/file.nt:123:45
-Error: Exceeded max recursion depth of 1000 during (..)
+Error: Exceeded max recursion depth of N during (..)
 ```
 
 The field `inline-limit` is optional. The default value of `inline-limit` is `1000000`.

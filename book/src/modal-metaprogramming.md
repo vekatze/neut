@@ -114,7 +114,7 @@ The body of `inline-meta` is reduced only when the body of `define` or `inline` 
 
 `define-meta` is useful when generating code recursively.
 
-A typical situation is that a meta function inspects a type at compile time and generates code by recursively handling its component types (pseudo-code):
+A typical situation is that a meta function inspects a type at compile time and generates code by recursively handling its component types (pseudocode):
 
 ```neut
 define-meta print-data<a>(x: 'a) -> 'unit {

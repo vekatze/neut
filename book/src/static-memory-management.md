@@ -30,7 +30,7 @@ define foo(xs: list(int)) -> list(int) {
 In the code above, `xs` is used three times. Therefore, its content is copied twice:
 
 ```neut
-// after compilation (pseudo-code)
+// after compilation (pseudocode)
 define foo(xs: list(int)) -> list(int) {
   let xs1 = COPY(list(int), xs);
   let xs2 = COPY(list(int), xs);
@@ -54,7 +54,7 @@ define bar(xs: list(int)) -> unit {
 In the code above, `xs` isn't used. Therefore, its content is discarded:
 
 ```neut
-// after compilation (pseudo-code)
+// after compilation (pseudocode)
 define bar(xs: list(int)) -> unit {
   DISCARD(list(int), xs);
   Unit
@@ -159,7 +159,7 @@ define foo() -> int {
 In the code above, the region created by `malloc` never escapes from `foo`. Therefore, the compiler can replace it with a stack slot:
 
 ```neut
-// after optimization (pseudo-code)
+// after optimization (pseudocode)
 define foo() -> int {
   let ptr = alloca(8);
   store-int(42, ptr);
@@ -195,7 +195,7 @@ define use-foo() -> unit {
 Since `foo` returns its result using the ordinary arrow `->`, the result has to be allocated inside `foo` itself:
 
 ```neut
-// after compilation (pseudo-code)
+// after compilation (pseudocode)
 define foo(x: int) -> either(int, bool) {
   if eq-int(x, 0) {
     let tmp = malloc(..);
@@ -251,7 +251,7 @@ define use-foo() -> unit {
 This behaves roughly as follows after compilation:
 
 ```neut
-// after compilation (pseudo-code)
+// after compilation (pseudocode)
 define foo(dest: pointer, x: int) -> void {
   if eq-int(x, 0) {
     let tmp = malloc(..);
@@ -285,7 +285,7 @@ define use-foo() -> unit {
 Now the crucial `malloc`/`free` pairs no longer cross the function boundary. Because of that, malloc-free canceling can optimize them away:
 
 ```neut
-// after malloc-free canceling (pseudo-code)
+// after malloc-free canceling (pseudocode)
 define foo(dest: pointer, x: int) -> void {
   if eq-int(x, 0) {
     let tmp = alloca(..);

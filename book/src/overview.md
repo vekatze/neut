@@ -41,7 +41,7 @@ define foo<a>(xs: my-list(a)) -> int {
 
 ## Static Memory Management
 
-Neut translates a type into a function that can discard/copy the values of the type. By using those functions, the compiler translates programs so that every variable is used exactly once.
+Neut translates a type into a function for discarding and copying values of the type. By using those functions, the compiler translates programs so that every variable is used exactly once.
 
 For example, if a variable is used twice, a translation like the following happens:
 

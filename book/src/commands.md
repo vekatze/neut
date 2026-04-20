@@ -171,6 +171,8 @@ If specified, `NAME` must be `X1-X2-..-Xn`, where all the integers are non-negat
 - `2-1-3`
 - `0-0-0-3`
 
+These names are interpreted using Neut's package-version scheme. Leading zeros are preserved, the first non-zero component is treated as the major version, and the remaining components are compared lexicographically as minor components. For example, `2-2` is compatible with `2-0` and `2-1`, while `1-0` and `0-1-0` belong to different version series.
+
 If you omit `NAME`, `neut archive` automatically selects the next version number by incrementing the newest existing archive. If no archive exists yet, it starts from `0-1-0`.
 
 When running `neut archive NAME`, this command searches the archive directory for all compatible older versions. For example, suppose the archive directory contains the following files:
@@ -180,7 +182,7 @@ When running `neut archive NAME`, this command searches the archive directory fo
 - `2-0.tar.zst`
 - `2-1.tar.zst`
 
-In this case, the command `neut archive 2-2` searches the `archive` directory and gets `2-0` and `2-1` as the older compatible versions of `2-2`. Here, these "older" versions are determined according to [Semantic Versioning](https://semver.org/).
+In this case, the command `neut archive 2-2` searches the `archive` directory and gets `2-0` and `2-1` as the older compatible versions of `2-2`.
 
 This command then does the following:
 

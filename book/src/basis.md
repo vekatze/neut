@@ -2,17 +2,17 @@
 
 ## Table of Contents
 
-- [On Executing Types](./basis.md#on-executing-types)
-- [Free-Malloc Canceling](./basis.md#free-malloc-canceling)
-- [Malloc-Free Canceling](./basis.md#malloc-free-canceling)
-- [Name Resolution](./basis.md#name-resolution)
-- [Leading Bars and Trailing Commas](./basis.md#leading-bars-and-trailing-commas)
-- [Compiler Configuration](./basis.md#compiler-configuration)
-- [Other Basic Facts](./basis.md#other-basic-facts)
+- [On Executing Types](#on-executing-types)
+- [Free-Malloc Canceling](#free-malloc-canceling)
+- [Malloc-Free Canceling](#malloc-free-canceling)
+- [Name Resolution](#name-resolution)
+- [Leading Bars and Trailing Commas](#leading-bars-and-trailing-commas)
+- [Compiler Configuration](#compiler-configuration)
+- [Other Basic Facts](#other-basic-facts)
 
 ## On Executing Types
 
-A type in Neut is compiled into a pointer to a binary function like the following (pseudo-code):
+A type in Neut is compiled into a pointer to a binary function like the following (pseudocode):
 
 ```neut
 define discard-or-copy-value(action-selector, value) {
@@ -38,7 +38,7 @@ define foo(xs: list(int)) -> unit {
 }
 ```
 
-Note that the variable `xs` isn't used. Because of that, the compiler translates the code above into the following (pseudo-code; won't typecheck):
+Note that the variable `xs` isn't used. Because of that, the compiler translates the code above into the following (pseudocode; won't typecheck):
 
 ```neut
 define foo(xs: list(int)) -> unit {
@@ -60,7 +60,7 @@ define foo(!xs: list(int)) -> unit {
 }
 ```
 
-Note that the variable `xs` is used twice. Because of that, the compiler translates the above code into the following (pseudo-code; won't typecheck):
+Note that the variable `xs` is used twice. Because of that, the compiler translates the above code into the following (pseudocode; won't typecheck):
 
 ```neut
 define foo(!xs: list(int)) -> unit {
@@ -80,7 +80,7 @@ The prefix `!` is unnecessary if the variable can be copied for free.
 
 We don't have to discard immediates like integers or floats because their internal representations don't depend on memory-related operations like `malloc` or `free`. Because of that, "discarding" immediate values does nothing. Also, "copying" immediate values means reusing the original values.
 
-More specifically, the type of an immediate is compiled into a pointer to the following function (pseudo-code):
+More specifically, the type of an immediate is compiled into a pointer to the following function (pseudocode):
 
 ```neut
 inline discard-or-copy-immediate(selector, value) {
@@ -203,7 +203,7 @@ define foo() -> int {
 }
 ```
 
-After optimization, this behaves like the following pseudo-code:
+After optimization, this behaves like the following pseudocode:
 
 ```neut
 define foo() -> int {

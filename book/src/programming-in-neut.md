@@ -58,7 +58,7 @@ define hey() -> unit {
 // ↓ (desugar)
 
 define hey() -> unit {
-  let _ = print("a");
+  let _: unit = print("a");
   print("b");
 }
 ```
@@ -310,8 +310,8 @@ If you want to give a name to an existing type expression rather than define new
 You can use `alias` to define a type alias:
 
 ```neut
-alias optional(a) {
-  either(unit, a)
+alias computation(a) {
+  either(my-error, a)
 }
 
 alias status {

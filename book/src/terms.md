@@ -372,6 +372,20 @@ The type of an integer is unknown in itself. It must be inferred to be one of th
 - `int32`
 - `int64`
 
+It can also be inferred as an ADT with no type parameters and exactly one constructor with one field, as long as tracing back from that type eventually reaches an integer type. For example, given
+
+```neut
+data inner {
+| Inner(int)
+}
+
+data wrapper {
+| Wrapper(inner)
+}
+```
+
+Then `42: wrapper` holds.
+
 ### Note
 
 - The type `int` is also available. For more, see [Primitives](./primitives.md#primitive-types).
@@ -406,6 +420,20 @@ The type of a float is unknown in itself. It must be inferred to be one of the f
 - `float16`
 - `float32`
 - `float64`
+
+It can also be inferred as an ADT with no type parameters and exactly one constructor with one field, as long as tracing back from that type eventually reaches a float type. For example, given
+
+```neut
+data inner {
+| Inner(float)
+}
+
+data wrapper {
+| Wrapper(inner)
+}
+```
+
+Then `3.14: wrapper` holds.
 
 ### Note
 

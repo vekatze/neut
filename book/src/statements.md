@@ -363,7 +363,7 @@ resource boxed-int {
   // copier: (pointer) -> pointer
   (v: pointer) => {
     let orig-value = load-int(v);
-    let new-ptr = malloc(1);
+    let new-ptr = malloc(8);
     magic store(int, orig-value, new-ptr);
     new-ptr
   },

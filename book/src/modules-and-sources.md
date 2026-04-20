@@ -190,7 +190,7 @@ neut archive 0-1
 ls ./archive # => 0-1.tar.zst
 ```
 
-The argument of `neut archive` must be something like `0-1`, `0-1-0`, `2-3-1`, or `1-2-3-4-5-6`. The compiler interprets these names as semantic versions.
+The argument of `archive` must be something like `0-1`, `0-1-0`, or `1-2-0-1`. Leading zeros are preserved, the first non-zero component is treated as the major version, and the remaining components are compared as minor components.
 
 You can then upload these tarballs by pushing them to GitHub, for example.
 
@@ -207,7 +207,7 @@ cd new-item
 neut get some-name https://github.com/vekatze/neut-sample/raw/main/archive/0-1-0.tar.zst
 ```
 
-The command `neut get` fetches the tarball from the specified URL and adds it to the current module. You can then refer to that dependency as `some-name` in your module.
+The subcommand `get` fetches the tarball from the specified URL and adds it to the current module. You can then refer to that dependency as `some-name` in your module.
 
 The new dependency information is saved to `module.ens`:
 
