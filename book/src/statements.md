@@ -115,7 +115,7 @@ define use-func-with-implicit-arg() -> int {
 
 A function with the same name can't be defined in the same file.
 
-All tail-recursive calls in Neut are optimized into loops (thanks to the geniuses on the LLVM team).
+All tail-recursive calls in Neut are optimized into loops.
 
 Note that statements are order-sensitive as in F#. Thus, the following code results in an error:
 

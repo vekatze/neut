@@ -370,9 +370,9 @@ Please see [Rapid Prototyping](./rapid-prototyping.md) for an example of `neut z
 
 Suppose that you created a new function deep inside your module.
 
-You can technically create a test function for the function and check its behavior. Or modify the main function to call the new function just to see its behavior.
+You can create a test function for it and check its behavior, or modify the main function to call it, but either approach can be cumbersome.
 
-That can be a bit cumbersome. In such cases, `zen` lets you iterate quickly. Suppose that a file `some-file.nt` contains a function `foo` defined as follows:
+In such cases, `zen` lets you iterate quickly. Suppose that a file `some-file.nt` contains a function `foo` defined as follows:
 
 ```neut
 define foo(x: int) -> int {

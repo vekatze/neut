@@ -201,7 +201,7 @@ Here, the `0` is the discriminant for `Nil`. Similarly, the internal representat
 
 Here, the `1` is the discriminant for `Cons`.
 
-With that in mind, the resource exponential of `list(a)` will be something like the following (a bit lengthy; skip it and just read the following note if you aren't that interested in details):
+With that in mind, the resource exponential of `list(a)` will be something like the following (a bit lengthy; you can skip to the following note if you prefer):
 
 ```neut
 define exp-list(selector, v) {
