@@ -992,7 +992,11 @@ define use-function() -> unit {
 
 ```neut
 e(e1, ..., en)
+
+e<t1, ..., tm>(e1, ..., en)
 ```
+
+If `e` has implicit parameters, you can specify them explicitly using the latter form. For example, if `e: <a>(a) -> unit`, then `e<int>(v)` specifies the implicit parameter `a` as `int`.
 
 ### Semantics
 
