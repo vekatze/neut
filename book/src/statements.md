@@ -632,7 +632,7 @@ When declaring a variadic function, declare only the non-variadic part:
 
 ```neut
 foreign {
-  printf(pointer) -> void,
+  printf(pointer) -> c-int,
 }
 ```
 
@@ -641,8 +641,9 @@ Then, specify the types of variadic arguments when using `magic external`:
 ```neut
 define print(t: &string) -> unit {
   // ..
-  magic external printf(fmt)(len: int, val: pointer)
-  //                         ^^^^^^^^^^^^^^^^^^^^^^
-  //                         passing variadic arguments with types
+  let _ = magic external printf(fmt)(len: int, val: pointer);
+  //                                 ^^^^^^^^^^^^^^^^^^^^^^
+  //                                 passing variadic arguments with types
+  Unit
 }
 ```

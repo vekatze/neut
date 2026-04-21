@@ -465,9 +465,7 @@ The available escape sequences in rune literals are the same as those of the lit
 
 ### Semantics
 
-The value of a rune literal is a Unicode code point encoded in UTF-8.
-
-The underlying representation of a rune is an int32.
+The value of a rune literal is represented as its UTF-8 byte sequence packed into an `int32`.
 
 ### Type
 
