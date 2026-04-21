@@ -1368,29 +1368,28 @@ If the first element is `1`, which means that we found an ADT value of `Succ`, t
 ...
 Γ ⊢ en: an
 
-Γ, arg_{1,1}: t_{1,1}, ..., arg_{1, k_{1}}: t_{1, k_{1}} ⊢ pat_{1,1}: a1
-...
-Γ, arg_{1,1}: t_{1,1}, ..., arg_{1, k_{1}}: t_{1, k_{1}} ⊢ pat_{1,n}: an
-Γ, arg_{1,1}: t_{1,1}, ..., arg_{1, k_{1}}: t_{1, k_{1}} ⊢ body-1: b
+Γ ⊢ patterns_1 ⇐ (a1, ..., an) ⇒ Δ_1
+Γ, Δ_1 ⊢ body-1: b
 
 ...
 
-Γ, arg_{m,1}: t_{m,1}, ..., arg_{m, k_{m}}: t_{m, k_{m}} ⊢ pat_{m,1}: a1
-...
-Γ, arg_{m,1}: t_{m,1}, ..., arg_{m, k_{m}}: t_{m, k_{m}} ⊢ pat_{m,n}: an
-Γ, arg_{m,1}: t_{m,1}, ..., arg_{m, k_{m}}: t_{m, k_{m}} ⊢ body-m: b
+Γ ⊢ patterns_m ⇐ (a1, ..., an) ⇒ Δ_m
+Γ, Δ_m ⊢ body-m: b
 
-(for all i = 1, ..., m, pat_{i,1}, ..., pat_{i,n} is a pattern for e1, ..., en)
-(the sequence (pat_{1,1}, ..., pat_{1,n}), ..., (pat_{m,1}, ..., pat_{m,n}) is an exhaustive matching against e1, ..., en)
+Exhaustive((a1, ..., an), [patterns_1, ..., patterns_m])
 ------------------------------------------------------------------------------
 Γ ⊢ match e1, ..., en {
-    | pat_{1,1}, ..., pat_{1,n} => body-1
+    | patterns_1 => body-1
     ...
-    | pat_{m,1}, ..., pat_{m,n} => body-m
+    | patterns_m => body-m
     }: b
 ```
 
-The above might be a bit overwhelming. Please see the following Note for an example.
+where:
+
+- `Γ ⊢ patterns ⇐ types ⇒ Δ` means that the pattern sequence `patterns` matches values of types `types`, introducing the variable context `Δ`.
+- `Exhaustive(types, clauses)` means that the list of pattern sequences `clauses` is exhaustive for the types `types`.
+- `patterns_i := (pat_{i,1}, ..., pat_{i,n})`
 
 ### Note
 
@@ -1399,14 +1398,13 @@ An example of the application of the typing rule of `match`:
 ```neut
 Γ ⊢ n: my-nat
 
-Γ ⊢ Zero: my-nat // pat_{1,1}
-Γ ⊢ 100: int // body-1
+Γ ⊢ Zero ⇐ my-nat ⇒ ∅ // = Δ_1
+Γ ⊢ 100: int          // body-1
 
-Γ, m: my-nat ⊢ Succ(m): my-nat // pat_{2,1}
-Γ, m: my-nat ⊢ foo(m): int // body-2
+Γ ⊢ Succ(m) ⇐ my-nat ⇒ (m: my-nat) // = Δ_2
+Γ, m: my-nat ⊢ foo(m): int         // body-2
 
-(Zero and Succ(m) are patterns for n)
-(the sequence Zero, Succ(m) is an exhaustive matching against n)
+Exhaustive((my-nat), [Zero, Succ(m)])
 ------------------------------------------------------------------------------
 Γ ⊢ match n {
     | Zero => 100
@@ -1832,27 +1830,29 @@ The semantics of `case` is the same as `match`, except that `case` doesn't consu
 ...
 Γ ⊢ en: an
 
-Γ, arg_{1,1}: t_{1,1}, ..., arg_{1, k_{1}}: t_{1, k_{1}} ⊢ pat_{1,1}: a1
-...
-Γ, arg_{1,1}: t_{1,1}, ..., arg_{1, k_{1}}: t_{1, k_{1}} ⊢ pat_{1,n}: an
-Γ, arg_{1,1}: &t_{1,1}, ..., arg_{1, k_{1}}: &t_{1, k_{1}} ⊢ body-1: b
+Γ ⊢ patterns_1 ⇐ (a1, ..., an) ⇒ Δ_1
+Γ, &Δ_1 ⊢ body-1: b
 
 ...
 
-Γ, arg_{m,1}: t_{m,1}, ..., arg_{m, k_{m}}: t_{m, k_{m}} ⊢ pat_{m,1}: a1
-...
-Γ, arg_{m,1}: t_{m,1}, ..., arg_{m, k_{m}}: t_{m, k_{m}} ⊢ pat_{m,n}: an
-Γ, arg_{m,1}: &t_{m,1}, ..., arg_{m, k_{m}}: &t_{m, k_{m}} ⊢ body-m: b
+Γ ⊢ patterns_m ⇐ (a1, ..., an) ⇒ Δ_m
+Γ, &Δ_m ⊢ body-m: b
 
-(for all i = 1, ..., m, pat_{i,1}, ..., pat_{i,n} is a pattern for e1, ..., en)
-(the sequence (pat_{1,1}, ..., pat_{1,n}), ..., (pat_{m,1}, ..., pat_{m,n}) is an exhaustive matching against e1, ..., en)
+Exhaustive((a1, ..., an), [patterns_1, ..., patterns_m])
 ------------------------------------------------------------------------------
 Γ ⊢ case e1, ..., en {
-    | pat_{1,1}, ..., pat_{1,n} => body-1
+    | patterns_1 => body-1
     ...
-    | pat_{m,1}, ..., pat_{m,n} => body-m
+    | patterns_m => body-m
     }: b
 ```
+
+where:
+
+- `Γ ⊢ patterns ⇐ types ⇒ Δ` means that the pattern sequence `patterns` matches values of types `types`, introducing the variable context `Δ`.
+- `Exhaustive(types, clauses)` means that the list of pattern sequences `clauses` is exhaustive for the types `types`.
+- `patterns_i := (pat_{i,1}, ..., pat_{i,n})`
+- if `Δ` is `x1: t1, ..., xk: tk`, then `&Δ` means `x1: &t1, ..., xk: &tk`.
 
 ### Note
 
@@ -1861,14 +1861,13 @@ An example of the application of the typing rule of `case`:
 ```neut
 Γ ⊢ n: &my-nat
 
-Γ ⊢ Zero: my-nat // pat_{1,1}
-Γ ⊢ 100: int // body-1
+Γ ⊢ Zero ⇐ my-nat ⇒ ∅ // = Δ_1
+Γ ⊢ 100: int          // body-1
 
-Γ, m: my-nat ⊢ Succ(m): my-nat // pat_{2,1}
+Γ ⊢ Succ(m) ⇐ my-nat ⇒ (m: my-nat) // = Δ_2
 Γ, m: &my-nat ⊢ foo-noetic(m): int // body-2
 
-(Zero and Succ(m) are patterns for n)
-(the sequence Zero, Succ(m) is an exhaustive matching against n)
+Exhaustive((my-nat), [Zero, Succ(m)])
 ------------------------------------------------------------------------------
 Γ ⊢ case n {
     | Zero => 100

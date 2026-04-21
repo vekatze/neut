@@ -2,7 +2,7 @@
 
 Neut is a functional programming language with static memory management.
 
-Its key features include:
+## Key Features
 
 - Full λ-calculus support
 - Predictable, type-directed memory management
