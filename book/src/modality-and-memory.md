@@ -307,7 +307,7 @@ define main() -> unit {
   | Left(_) =>
     Unit
   | Right(bytes) =>
-    write-to-file(somefile, bin-to-hex(bytes))
+    write-to-file("path/to/out", bin-to-hex(bytes))
   }
 }
 ```

@@ -65,6 +65,7 @@
 - [let x on y1, ..., yn = e1; e2](#on)
 - [\*e](#e)
 - [e::(e1, ..., en)](#ee1--en-1)
+- [name[x1, ..., xn]](#namex1--xn)
 - [if](#if)
 - [when cond { e }](#when-cond--e-)
 - [e1; e2](#e1-e2)
@@ -1771,13 +1772,13 @@ define extract-value-from-meta(x: +int) -> int {
 `on` doesn't alter variable layers either:
 
 ```neut
-define extract-value-from-meta(x: int) -> int {
+define extract-value-from-meta(x: int) -> +int {
   // here is layer 0
   // x: int (at layer 0)
   letbox-T tmp on x =
     // here is layer 0
     // x: &int (at layer 0)
-    x;
+    box x {x};
   // here is layer 0
   // x: int (at layer 0)
   tmp
@@ -2541,6 +2542,7 @@ The type of the result of `call-type` is inferred from the context.
 Γ ⊢ magic string-uncons(s): either(unit, pair(rune, &string))
 
 
+Γ ⊢ a: type
 Γ ⊢ message: &string
 ------------------------------------------------------
 Γ ⊢ magic compile-error(message): a
@@ -2971,6 +2973,32 @@ e::(e1, ..., en)
 
 unquote {e(quote {e1}, ..., quote {en})}
 ```
+
+### Type
+
+Derived from the desugared form.
+
+## `name[x1, ..., xn]`
+
+You can use `name[x1, ..., xn]` after defining `name` using [`rule-right`](./statements.md#rule-right) or [`rule-left`](./statements.md#rule-left).
+
+### Example
+
+```neut
+define make-list() -> list(int) {
+  List[1, 2, 3]
+}
+```
+
+### Syntax
+
+```neut
+name[x1, ..., xn]
+```
+
+### Semantics
+
+The expansion of `name[x1, ..., xn]` depends on whether `name` was introduced by [rule-right](./statements.md#rule-right) or [rule-left](./statements.md#rule-left).
 
 ### Type
 

@@ -220,15 +220,15 @@ That is, the compiler removes the `malloc`/`free` pair and uses a stack slot ins
 
 ### Resolving Module Aliases
 
-Let's see how the name of a module alias is resolved. Here, the name of a module alias is something like the `core` in `core.string.io.get-line`:
+Let's see how the name of a module alias is resolved. Here, the name of a module alias is something like the `core` in `core.bool.and`:
 
 ```neut
 import {
-  core.string.io,
+  core.bool,
 }
 
-define use-external-module-function() -> string {
-  let value = core.string.io.get-line();
+define use-external-module-function() -> bool {
+  let value = core.bool.and(True, False);
   ...
 }
 ```
@@ -246,11 +246,11 @@ bar-module => "zptXghmyD5druBl8kx2Qrei6O6fDsKCA7z2KoHp1aqA"
 The compiler then resolves aliases as follows:
 
 ```text
-core.string.io.get-line
+core.bool.and
 
 ↓
 
-jIx5FxfoymZ-X0jLXGcALSwK4J7NlR1yCdXqH2ij67o.string.io.get-line
+jIx5FxfoymZ-X0jLXGcALSwK4J7NlR1yCdXqH2ij67o.bool.and
 
 --------------
 
