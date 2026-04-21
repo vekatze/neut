@@ -189,14 +189,14 @@ define-meta eq-simple<a>(x: '&a, y: '&a) -> 'bool {
   match k {
   | Int64 =>
     quote {
-      let x = magic cast<&a, int64>(unquote {x});
-      let y = magic cast<&a, int64>(unquote {y});
+      let x = magic cast(&a, int64, unquote {x});
+      let y = magic cast(&a, int64, unquote {y});
       eq-int64(x, y)
     }
   | Rune =>
     quote {
-      let x = magic cast<&a, rune>(unquote {x});
-      let y = magic cast<&a, rune>(unquote {y});
+      let x = magic cast(&a, rune, unquote {x});
+      let y = magic cast(&a, rune, unquote {y});
       eq-rune(x, y)
     }
   | _ =>

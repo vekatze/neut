@@ -24,4 +24,4 @@
   - [LSP Showcase](./lsp-showcase.md)
   - [Rapid Prototyping](./rapid-prototyping.md)
   - [Editor Setup](./editor-setup.md)
-- [How to Execute Types](./how-to-execute-types.md)
+- [On Executing Types](./on-executing-types.md)

@@ -63,7 +63,7 @@ You can change the locations of special directories such as `cache` using `modul
 
 ### module.ens
 
-The contents of `module.ens` look something like the following:
+The contents of `module.ens` look roughly like the following:
 
 ```ens
 {
@@ -89,13 +89,13 @@ The contents of `module.ens` look something like the following:
 
 `allocator` specifies which allocator is used by the target. By setting it to `"mimalloc"`, you can use mimalloc for that target.
 
-`dependency` specifies the dependencies of a module. Since our running example doesn't do much, the only dependency is `core`, which plays the same role as the Prelude in other languages.
+`dependency` specifies the dependencies of a module. Since our running example is small, the only dependency is `core`, which plays the same role as the Prelude in other languages.
 
 `digest` is the base64url-encoded checksum of a dependency.
 
 `mirror` is a list of URLs of a dependency.
 
-`enable-preset` makes the dependency behave similarly to the Prelude in Haskell. That is, when `enable-preset` is set to `true`, the names specified in the dependency are automatically imported into every file in our module. This field should be set to `true` only for the `core` library.
+`enable-preset` makes the dependency behave similarly to the Prelude in other languages. If enabled, the names provided by that dependency are imported automatically into every file in our module.
 
 ## Basics of Source Files
 
@@ -171,11 +171,11 @@ define main() -> unit {
 }
 ```
 
-Top-level items like `define` are called statements. You'll learn more about them in the next section.
+Top-level items like `define` are called statements. You'll learn more about them on the next page.
 
 <div class="info-block">
 
-As in F#, statements in Neut are order-sensitive. Therefore, if you define `main` before `my-add`, the code won't compile. For forward references, you have to explicitly declare names beforehand using a statement called `nominal`, which we'll see in the next section.
+As in F#, statements in Neut are order-sensitive. Therefore, if you define `main` before `my-add`, the code won't compile. For forward references, you have to declare names explicitly beforehand using a statement called `nominal`, which we'll see on the next page.
 
 </div>
 
@@ -190,7 +190,7 @@ neut archive 0-1
 ls ./archive # => 0-1.tar.zst
 ```
 
-The argument of `neut archive` must be something like `0-1-0`, `2-3-1`, or `1-2-3-4-5-6`. The compiler interprets these names as semantic versions.
+The argument of `neut archive` must be something like `0-1`, `0-1-0`, `2-3-1`, or `1-2-3-4-5-6`. The compiler interprets these names as semantic versions.
 
 You can then upload these tarballs by pushing them to GitHub, for example.
 
@@ -234,7 +234,7 @@ The new dependency information is saved to `module.ens`:
 
 <div class="info-block">
 
-The "real" name of a dependency is the digest of the tarball. Names such as `some-name` are just aliases.
+The canonical identifier of a dependency is the digest of the tarball. Names such as `some-name` are just aliases.
 
 </div>
 
@@ -242,7 +242,7 @@ The "real" name of a dependency is the digest of the tarball. Names such as `som
 
 ### Importing Files in Dependencies
 
-Dependencies can be used in your code, of course:
+You can use dependencies in your code:
 
 ```neut
 // new-item.nt
@@ -319,4 +319,4 @@ define main() -> unit {
 }
 ```
 
-That is, the name of the current module is always `this`.
+In other words, the current module is always referred to as `this`.

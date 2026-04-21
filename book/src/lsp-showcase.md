@@ -1,6 +1,6 @@
 # LSP Showcase
 
-The compiler includes an LSP server. This chapter shows it in action.
+The compiler includes an LSP server. This chapter shows some of its features.
 
 ## Showcase
 

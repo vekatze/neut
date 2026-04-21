@@ -1,4 +1,4 @@
-# How to Execute Types
+# On Executing Types
 
 ## Table of Contents
 
@@ -260,7 +260,7 @@ define foo<a>() -> int {
     (z: a) => {  // lambda
       let foo = x;     // ← x is a free var of this lambda
       let bar = y;     // ← y is also a free var of this lambda
-      let buz = z;
+      let baz = z;
       bar
     };
   0

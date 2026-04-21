@@ -63,13 +63,14 @@ define bar(xs: list(int)) -> unit {
 
 Ignoring the arguments to `COPY`, this translation ensures that each variable occurs linearly (i.e., exactly once). This forms the basis of memory management in Neut.
 
-If you're interested in how Neut implements this translation, see [How to Execute Types](./how-to-execute-types.md).
+If you're interested in how Neut implements this translation, see [On Executing Types](./on-executing-types.md).
 
 ### Avoiding Unintentional Copies
 
 To avoid unintentional copies, the compiler requires the `!` prefix on a variable name when a copy is needed. For example, consider the following code:
 
 ```neut
+// `string` is provided by the core library.
 define make-pair(t: string) -> pair(string, string) {
   Pair(t, t)
 }
@@ -101,19 +102,19 @@ The compiler exploits Neut's static nature to reuse memory. Consider the followi
 
 ```neut
 data int-list {
-| Nil
-| Cons(int, int-list)
+| Int-Nil
+| Int-Cons(int, int-list)
 }
 
 // [1, 5, 9] => [2, 6, 10]
 define increment(xs: int-list) -> int-list {
   match xs {
-  | Nil =>
-    Nil
-  | Cons(y, ys) =>
+  | Int-Nil =>
+    Int-Nil
+  | Int-Cons(y, ys) =>
     let foo = add-int(y, 1);
     let bar = increment(ys);
-    Cons(foo, bar)
+    Int-Cons(foo, bar)
   }
 }
 ```
@@ -138,8 +139,6 @@ Using this knowledge, the compiler translates the code so that it reuses the mem
 3. Store the calculated values to `Cons(y, ys)`
 
 In other words, when a `free` is required, the compiler looks for a `malloc` in the continuation that is the same size and optimizes away such a pair if one exists. The resulting assembly code thus performs in-place updates.
-
-This optimization is called free-malloc canceling.
 
 ## Optimization: Malloc-Free Canceling
 
@@ -167,8 +166,6 @@ define foo() -> int {
   load-int(ptr)
 }
 ```
-
-This optimization is called malloc-free canceling.
 
 ## Destination-Passing Style
 
@@ -349,15 +346,15 @@ define use-length(!xs: list(int)) -> unit {
 }
 ```
 
-Note that the variable `xs` is used twice. This means that the content of `xs` is copied just to calculate its length. This is of course unfortunate. Worse, this kind of situation isn't rare. We need some kind of loophole.
-
-Luckily, Neut has a remedy for this kind of situation, as we'll see below.
+Note that the variable `xs` is used twice. This means that the content of `xs` is copied just to calculate its length. This is wasteful, and worse, this pattern isn't rare. We need a way to avoid it.
 
 ### Introducing Noema Types
 
+Fortunately, there is a remedy for this kind of situation.
+
 For any type `t`, Neut has a type `&t`. We'll call this type the noema type of `t`. We'll call a term `e` a noema if the type of `e` is a noema type.
 
-Unlike ordinary terms, a noema isn't discarded or copied even when used non-linearly. Also, Neut has primitives to read contents from noemata without consuming them. By utilizing these facts, we can avoid the disaster we have just seen.
+Unlike ordinary terms, a noema isn't discarded or copied even when used non-linearly. Also, Neut has primitives to read contents from noemata without consuming them. By using these facts, we can avoid the problem above.
 
 Let's see how we can use noemata, rewriting `use-length` and `length`.
 
@@ -406,7 +403,7 @@ Since `xs` is discarded at `(*)`, using `ys` in `cont` should result in use-afte
 
 <div class="info-block">
 
-This condition might initially appear a bit artificial. In the next section, however, we'll see that it can in fact be understood via modal logic.
+This condition may look a bit artificial at first. On the next page, however, we'll see that it can be understood via modal logic.
 
 </div>
 
@@ -451,7 +448,7 @@ The code doesn't copy `xs` anymore, as you can see from the fact that it no long
 
 ### Using a Noema: Embodying
 
-Incidentally, you can create a value of type `a` from a value of type `&a`, as follows:
+You can also create a value of type `a` from a value of type `&a`, as follows:
 
 ```neut
 define make-pair<a>(x: &a) -> pair(a, a) {

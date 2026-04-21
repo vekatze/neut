@@ -4,10 +4,10 @@
 
 - [import](#import)
 - [define](#define)
-- [define-meta](#define-meta)
-- [constant](#constant)
 - [inline](#inline)
+- [define-meta](#define-meta)
 - [inline-meta](#inline-meta)
+- [constant](#constant)
 - [data](#data)
 - [alias](#alias)
 - [alias-opaque](#alias-opaque)
@@ -25,7 +25,7 @@
 import {
   Qux,
   ZZ,
-  sample.buz,
+  sample.baz,
   this.foo,
   this.foo.bar {some-func, other-func},
 }
@@ -37,7 +37,7 @@ Every item in `import` is something like the following:
 
 - `this.foo`
 - `this.foo.bar {some-func, other-func}`
-- `sample.buz`
+- `sample.baz`
 
 An import item starts from the alias of the module (`this`, `sample`). The alias of the module is specified in `dependency` in `module.ens`. If the file we want to import is inside the current module, we'll write `this`.
 
@@ -303,6 +303,10 @@ define use-config(c: config) -> int {
 alias optional(a: type) {
   either(unit, a)
 }
+
+alias my-type {
+  either(int, bool)
+}
 ```
 
 The body of `alias` can be used wherever a type is expected.
@@ -314,6 +318,10 @@ The body of `alias` can be used wherever a type is expected.
 ```neut
 alias-opaque vector(_: type) {
   _vector-internal
+}
+
+alias-opaque my-type {
+  either(int, bool)
 }
 ```
 

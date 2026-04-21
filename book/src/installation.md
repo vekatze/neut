@@ -19,5 +19,5 @@ If you prefer a manual installation, see [here](./manual-installation.md).
 To uninstall, remove the following:
 
 1. the binary `~/.local/bin/neut`,
-2. `NEUT_CORE_MODULE_URL` and `NEUT_CORE_MODULE_DIGEST` from your shell config, and
+2. related environment variables from your shell config, and
 3. cache directories in your projects (if desired).

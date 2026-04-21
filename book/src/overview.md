@@ -6,9 +6,9 @@ Its key features include:
 
 - Full λ-calculus support
 - Predictable automatic memory management
-- The ability to achieve both of the above without additional type annotations
+- The ability to achieve both of the above without extra type annotations
 
-Neut doesn't use a GC. Instead, it takes a type-directed approach for memory management.
+Neut doesn't use a GC. Instead, it takes a type-directed approach to memory management.
 
 ## Code Example
 
@@ -58,7 +58,7 @@ let (xs1, xs2) = copy-list-a(xs);  // `xs` is used once
 some-func(xs1, xs2)
 ```
 
-If you need more information, see [How to Execute Types](./how-to-execute-types.md).
+If you need more information, see [On Executing Types](./on-executing-types.md).
 
 At this point, one concern is whether operations such as taking the length of a list require copying the entire value. Neut avoids such copy operations by using the _box modality_, achieving something like borrowing. See [Static Memory Management](./static-memory-management.md) and [Modality and Memory](./modality-and-memory.md) for details.
 
@@ -66,7 +66,7 @@ At this point, one concern is whether operations such as taking the length of a 
 
 - Call-by-value
 - Impure
-- Compiles to [LLVM IR](https://llvm.org/docs/LangRef.html) and binary
+- Compiles to LLVM IR and native binaries
 - The type system ≈ System Fω + ADT + recursion + box modality
   - That is, the usual one in functional programming, but a bit generalized
 - Built-in [LSP support](./lsp-showcase.md)

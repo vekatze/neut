@@ -7,6 +7,7 @@ Here, we'll see how to write programs in Neut.
 - [Variables](#variables)
 - [Functions](#functions)
 - [Algebraic Data Types](#algebraic-data-types)
+- [Type Aliases](#type-aliases)
 - [Miscellaneous](#miscellaneous)
 
 ## Variables
@@ -113,12 +114,12 @@ define id<a>(x: a) -> a {
 }
 
 define use-id() -> int {
-  let str = 10;
-  id(str) // calling `id` without specifying `a` explicitly
+  let x = 10;
+  id(x) // calling `id` without specifying `a` explicitly
 }
 ```
 
-Incidentally, you can explicitly write the type of `a`:
+You can also write the type of `a` explicitly:
 
 ```neut
 define id<a: type>(x: a) -> a { // `type` is the type of types
@@ -163,7 +164,7 @@ define foo() -> unit {
 
 <div class="info-block">
 
-The compiler reports an error if you rewrite the example above so that it uses the variable `f` more than once. This behavior prevents unexpected copying of values. You can satisfy the compiler by defining the variable as `!f`. The next section will cover this topic.
+The compiler reports an error if you rewrite the example so that the variable `f` is used more than once. This behavior prevents unexpected copying of values. You can satisfy the compiler by defining the variable as `!f`. We'll cover this topic in more detail on the next page.
 
 </div>
 
@@ -302,6 +303,22 @@ define yo(xs: my-list(int)) -> int {
 }
 ```
 
+## Type Aliases
+
+If you want to give a name to an existing type expression rather than define new constructors, you can use `alias`.
+
+You can use `alias` to define a type alias:
+
+```neut
+alias optional(a) {
+  either(unit, a)
+}
+
+alias status {
+  either(unit, int)
+}
+```
+
 ## Miscellaneous
 
 ### `nominal`
@@ -399,7 +416,7 @@ The type of `assert ".." { .. }` is `unit`.
 
 If you pass `--mode release` to `neut build`, `assert` does nothing.
 
-### Miscellaneous
+### Additional Notes
 
-- Additional syntactic sugar is also available. For more, please see the [language reference](./terms.md#syntactic-sugar).
-- If you want to call foreign functions (FFI), please see [here](./statements.md#foreign).
+- More syntactic sugar is also available. For more, see [Terms](./terms.md).
+- If you want to call foreign functions (FFI), see [Statements](./statements.md#foreign).

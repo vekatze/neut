@@ -203,15 +203,14 @@ define foo() -> int {
 }
 ```
 
-This code is compiled into:
+After optimization, this behaves like the following pseudo-code:
 
-```llvm
-define fastcc ptr @"this.test.foo"(ptr %v0, ptr %v1) {
-  %v2 = alloca i8, i64 8
-  store i64 42, ptr %v2
-  %v3 = load i64, ptr %v2
-  %v4 = inttoptr i64 %v3 to ptr
-  ret ptr %v4
+```neut
+define foo() -> int {
+  let ptr = alloca(8);
+  store-int(42, ptr);
+  let value = load-int(ptr);
+  value
 }
 ```
 
@@ -251,7 +250,7 @@ core.string.io.get-line
 
 ↓
 
-jIx5FxfoymZ-X0jLXGcALSwK4J7NlR1yCdXqH2ij67o=.string.io.get-line
+jIx5FxfoymZ-X0jLXGcALSwK4J7NlR1yCdXqH2ij67o.string.io.get-line
 
 --------------
 
@@ -299,7 +298,7 @@ this.string.io.get-line
 
 ↓
 
-jIx5FxfoymZ-X0jLXGcALSwK4J7NlR1yCdXqH2ij67o=.string.io.get-line
+jIx5FxfoymZ-X0jLXGcALSwK4J7NlR1yCdXqH2ij67o.string.io.get-line
 ```
 
 Thus, the resulting assembly file contains symbols like these.
@@ -341,5 +340,5 @@ The default values are as follows:
 - Neut is call-by-value
 - Neut is impure
 - The type of `main` must be `() -> unit`
-- A module named `core` is treated specially (treated as the "prelude" library)
+- The compiler has built-in references to names under `core`
 - Syntactic constructs like `List[1, 2, 3]` depend on functions in `core`

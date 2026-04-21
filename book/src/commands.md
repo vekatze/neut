@@ -35,13 +35,15 @@ Only the following subcommands can be used outside a module:
 
 ### Shared Command-Line Options
 
-Some subcommands share command-line options:
+Most subcommands share the following command-line options:
 
 - `--no-color` can be used to turn off ANSI colors
+- `--enable-debug-output` prints debug output
+- `--silent` suppresses non-essential output
 
 ## `neut build`
 
-`neut build` builds the current module and creates executables. It also creates cache files for faster compilation.
+`neut build` builds the current module and creates executables. It also writes cache files for faster subsequent builds.
 
 `neut build TARGET` builds the target `TARGET` defined in `module.ens`. For example, suppose that the `module.ens` of a module contains the following section:
 
@@ -81,7 +83,13 @@ neut build hello --install ./bin
 
 ### `--execute`
 
-If you pass `--execute` to `neut build`, the resulting binaries are executed after the build.
+If you pass `--execute` to `neut build`, the resulting binary is executed after the build.
+
+Any extra positional arguments are forwarded to the executable:
+
+```sh
+neut build hello --execute Alice
+```
 
 ### `--install DIR`
 
@@ -93,7 +101,15 @@ By default, `neut build` builds all the source files into object files and then 
 
 ### `--emit`
 
-You can emit LLVM IR by passing `--emit llvm` to `neut build`. In this case, you must also pass `--skip-link`.
+By default, `neut build` emits object files.
+
+You can control the emitted artifacts by passing a comma-separated list to `--emit`:
+
+- `--emit object` emits object files
+- `--emit llvm` emits LLVM IR
+- `--emit object,llvm` emits both
+
+If `--emit` does not include `object`, you must also pass `--skip-link`.
 
 ### `--mode`
 
@@ -120,19 +136,23 @@ define foo() -> unit {
 
 ## `neut check`
 
-`neut check` type-checks all the files in the current module. It also creates cache files of the source files for faster compilation.
+`neut check` type-checks all the files in the current module. It also creates cache files for faster compilation.
+
+### `--full`
+
+If you pass `--full` to `neut check`, the caches of all dependencies are refreshed as well.
 
 ## `neut clean`
 
-`neut clean` removes the cache files in the current module's `cache` directory.
+`neut clean` removes generated build files for the current module and its dependencies.
 
-More specifically, this command removes the following directory in the current module:
+More specifically, this command removes directories like the following under the build cache:
 
 ```text
 (cache-directory)/build/(platform)/(compiler-version)/
 ```
 
-An example of a removed directory:
+For example:
 
 ```text
 cache/build/arm64-darwin/compiler-0.8.0/
@@ -140,18 +160,20 @@ cache/build/arm64-darwin/compiler-0.8.0/
 
 ## `neut archive`
 
-`neut archive VERSION` creates a module tarball that can be used by `neut get`.
+`neut archive [NAME]` creates a module tarball that can be used by `neut get`.
 
 ### Notes on Versions
 
-`VERSION` must be `X1-X2-..-Xn`, where all the integers are non-negative. For example, the following are valid versions:
+If specified, `NAME` must be `X1-X2-..-Xn`, where all the integers are non-negative. For example, the following are valid versions:
 
 - `1-0`
 - `0-1-0`
 - `2-1-3`
 - `0-0-0-3`
 
-When running `neut archive VERSION`, this command searches the archive directory for all compatible older versions. For example, suppose the archive directory contains the following files:
+If you omit `NAME`, `neut archive` automatically selects the next version number by incrementing the newest existing archive. If no archive exists yet, it starts from `0-1-0`.
+
+When running `neut archive NAME`, this command searches the archive directory for all compatible older versions. For example, suppose the archive directory contains the following files:
 
 - `1-0.tar.zst`
 - `1-1.tar.zst`
@@ -253,6 +275,8 @@ So we can adopt the fixed version immediately.
 
 `neut create NAME` creates a directory `./NAME/` and adds files there to start a new project.
 
+You can also specify `--target TARGET_NAME` to choose the initial target name. By default, the initial target name is the same as the module name.
+
 ## `neut get`
 
 `neut get ALIAS URL` fetches and builds the external module specified by `URL` and adds it to the current module as a dependency under the name `ALIAS`.
@@ -334,9 +358,11 @@ define zen() -> unit {
 }
 ```
 
-This command is intended to be used for rapid prototyping.
+This command is intended for rapid prototyping.
 
-Please see [Rapid Prototyping](./rapid-prototyping.md) to see `neut zen` in action.
+Trailing positional arguments are forwarded to the generated executable, just as with `neut build --execute`.
+
+Please see [Rapid Prototyping](./rapid-prototyping.md) for an example of `neut zen` in action.
 
 ### Zen Experience
 
@@ -380,6 +406,8 @@ This can be done even if `some-file.nt` isn't an entry point of the module. You 
 - `textDocument/references` (find references)
 - `textDocument/formatting` (format)
 - `textDocument/hover` (show the type of a symbol)
+- `textDocument/codeAction` (code actions such as minimizing imports)
+- `workspace/executeCommand` (execute code actions)
 
 For more information, please see [LSP Showcase](./lsp-showcase.md) and [Editor Setup](./editor-setup.md).
 

@@ -1,6 +1,6 @@
 # Modality and Memory
 
-Here, we'll see how to interact with the box modality `+`, which enables borrowing in Neut. We'll then see that both `on` and `*e` can be understood as syntactic sugar over this modality.
+Here, we'll see how to interact with the box modality `+`, which provides a way to work with layers in Neut. We'll then see that both `on` and `*e` can be understood as syntactic sugar over this modality.
 
 ## Table of Contents
 
@@ -97,6 +97,7 @@ You can omit the sequence `x1, ..., xn` entirely if no variables need to be copi
 To use a term of type `+a`, use `letbox`:
 
 ```neut
+// `string` is provided by the core library.
 define use-letbox(x: int, y: bool, z: string) -> int {
   // here is layer 0
   // free variables:
@@ -192,12 +193,13 @@ Not all types can be cast using `lift`. Specifically, it can't be used on any ty
 - a type of the form `&a`
 - a type of the form `(a1, ..., an) -> b`
 - a type variable
+- an ADT that can contain any of the above
 
 If you can get `+t` by lifting `e: t`, you can get the same type using `box` instead. In this sense, `lift` is a shortcut for creating boxes.
 
 ## Desugaring the Two Operations
 
-We've seen the two constructs `on` and `*e`. Though they might have initially appeared a bit artificial, they are in fact straightforward applications of the box modality.
+We've seen the two constructs `on` and `*e`. Although they may look a bit artificial at first, they are in fact straightforward applications of the box modality.
 
 ### Desugar: Borrowing
 
@@ -232,7 +234,7 @@ axiom-T(box x {x})
 
 ### Layers and Free Variables
 
-There's one last rule that must be satisfied for memory safety. That is, if a function is defined at layer `n`, then any free variable `x` in the function must satisfy `layer(x) <= n`.
+There is one more rule that must be satisfied for memory safety. If a function is defined at layer `n`, then any free variable `x` in the function must satisfy `layer(x) <= n`.
 
 Without this rule, you could do something like the following:
 
@@ -266,120 +268,58 @@ define main() -> unit {
 
 This example would wrongly allow a function at layer 0 (`★`) to keep a reference to data (`xs`) that, after the outer `letbox` completes, could be deallocated, leading to a use-after-free scenario in the body of the main function. Hence, Neut's layer rules prohibit capturing a higher-layer variable in a lower-layer function.
 
-### Using `+`
+### A More Concrete Example: `+` and Callbacks
 
-The following function parses data and stores backups of said data.
+Compared with `&`, it may be a little less obvious when `+` becomes useful. One such case is the following helper, which reads bytes from a file and passes them to a decoding function:
 
 ```neut
-define backup-parse<a>(transformer: (binary) -> a) -> a {
-  let !input: binary = get-next-input();
-  write-to-file(input-backup, bin-to-hex(input)); // `input` copied
-  transformer(input)
+data error {
+| Error(message: string)
 }
-```
 
-This function might become slow when processing huge chunks of data because of the copy. Rewriting it to use noetic values could look like the following:
-
-```neut
-define backup-parse<a>(transformer: (&binary) -> a) -> a {
-  let input: binary = get-next-input();
-  let result on input = {
-    write-to-file(input-backup, bin-to-hex(input)); // bin-to-hex takes a &binary now, avoiding the copy
-    transformer(input)
-  };
+// `f` only inspects the input, so it takes `&binary`, not `binary`
+define decode-from-file<a>(f: (&binary) -> +either(error, a)) -> either(error, a) {
+  let bytes = read-from-file("path/to/file");
+  letbox-T result on bytes = f(bytes);
   result
 }
 ```
 
-This won't compile because `transformer` contains a free variable `a`. This works as a safety guard: if it compiled, the following scenario would be possible:
+Here, `+` lets the function passed to `decode-from-file` compute a result from borrowed input while still making that result available safely on the outer layer.
+
+Without `+`, one might try to write the following:
 
 ```neut
-define id-bin(arg: &binary) -> &binary {
-  arg
+define keep-bytes(arg: &binary) -> either(error, &binary) {
+  Right(arg)
 }
 
-define backup-parse<a>(transformer: (&binary) -> a) -> a {
-  let input: binary = get-next-input();
-  let result on input = {
-    write-to-file(input-backup, bin-to-hex(input));
-    transformer(input)
-  };
+define decode-from-file<a>(f: (&binary) -> either(error, a)) -> either(error, a) {
+  let bytes = read-from-file("path/to/file");
+  let result on bytes = f(bytes);
+  // `bytes` is freed here
   result
-  // FREE(input)
 }
 
-define zen() -> unit {
-  let joker = backup-parse(id-bin);
-  write-to-file(somefile, bin-to-hex(joker));
-  Unit
-}
-```
-
-The following happens inside `zen`:
-
-1. `backup-parse(id-bin)` evaluates to a reference to (the freed) `input`
-2. `joker` holds the (dangling) reference
-3. `bin-to-hex` takes `joker` as an argument, causing a use-after-free
-
-To satisfy the requirements of the type system, `+` must be used as follows.
-
-```neut
-define backup-parse<a>(transformer: (&binary) -> +a) -> a {
-  let input: binary = get-next-input();
-  letbox-T result on input = {
-    write-to-file(input-backup, bin-to-hex(input));
-    transformer(input)
-  };
-  result
-  // FREE(input)
-}
-```
-
-The `+` in the result type asserts that the value produced by `transformer` remains valid on the outer layer. The requirements of the operators that lift values into `+` guarantee that this is the case. In order to make the previous example work, `id-bin` could look like the following:
-
-```neut
-define id-bin(arg: &binary) -> +binary {
-  box arg { // *arg copied
-    arg
+define main() -> unit {
+  let result = decode-from-file(keep-bytes);
+  match result {
+  | Left(_) =>
+    Unit
+  | Right(bytes) =>
+    write-to-file(somefile, bin-to-hex(bytes))
   }
 }
-
-define backup-parse<a>(transformer: (&binary) -> +a) -> a {
-  let input: binary = get-next-input();
-  letbox-T result on input = {
-    write-to-file(input-backup, bin-to-hex(input));
-    transformer(input)
-  };
-  result
-  // FREE(input)
-}
-
-define zen() -> unit {
-  let joker = backup-parse(id-bin);
-  let _ on joker = write-to-file(somefile, bin-to-hex(joker));
-  Unit
-}
 ```
 
-Lastly, to avoid the newly introduced copy, the following refactor is possible:
+This won't compile because `let result on bytes = ...` is desugared using `lift`, and `lift` does not allow result types that still mention a free type variable such as `a`.
 
-```neut
-define write-to-somefile(arg: &binary) -> +unit { // used to be id-bin
-  write-to-file(somefile, bin-to-hex(arg));
-  box {Unit}
-}
+If it did compile, the following would happen inside `main`:
 
-define backup-parse<a>(transformer: (&binary) -> +a) -> a {
-  let input: binary = get-next-input();
-  letbox-T result on input = {
-    write-to-file(input-backup, bin-to-hex(input));
-    transformer(input)
-  };
-  result
-  // FREE(input)
-}
+1. `decode-from-file(keep-bytes)` evaluates to `Right(bytes)`, where `bytes` is a reference to the local variable `bytes` in `decode-from-file`
+2. `decode-from-file` returns and frees that local variable
+3. `main` uses the dangling reference, causing a use-after-free
 
-define zen() -> unit {
-  backup-parse(write-to-somefile)
-}
-```
+Thus, the version without `+` doesn't work.
+
+The `+` in the result type asserts that the value produced by `f` remains valid on the outer layer. In this way, `+` lets us write a borrowing-based API without forcing the callback result to stay trapped inside the borrowing scope.

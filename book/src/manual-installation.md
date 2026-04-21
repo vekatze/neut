@@ -29,13 +29,7 @@ curl -L -o ~/.local/bin/neut https://github.com/vekatze/neut/releases/latest/dow
 chmod +x ~/.local/bin/neut
 ```
 
-Ensure that `~/.local/bin` is in your `$PATH`.
-
-<div class="info-block">
-
-You can put the binary anywhere you want as long as the location is in your `$PATH`.
-
-</div>
+Ensure that the binary is in your `$PATH`; in the example above, it is placed in `~/.local/bin`.
 
 You can check if the compiler is installed correctly by running `neut version`:
 

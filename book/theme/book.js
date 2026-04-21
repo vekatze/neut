@@ -115,7 +115,7 @@ hljs.registerLanguage("neut", function (hljs) {
       },
       {
         scope: "builtin",
-        begin: "\\*|\\+|\\||->>|->|=>>|=>|'|:|!|,|;|&|=",
+        begin: "\\*|\\+|\\||->>|->|=>>|=>|'|:|!|\\?|,|;|&|=",
       },
       hljs.COMMENT("//", "$"),
     ],

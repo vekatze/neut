@@ -35,15 +35,18 @@
 ### Necessity and Noema
 
 - [+a](#a)
-- ['a](#a-1)
-- [&a](#a-2)
+- [&a](#a-1)
 - [box](#box)
-- [quote](#quote)
 - [letbox](#letbox)
-- [unquote](#unquote)
 - [letbox-T](#letbox-t)
-- [promote](#promote)
 - [case](#case)
+
+### Metaprogramming
+
+- ['a](#a-2)
+- [quote](#quote)
+- [unquote](#unquote)
+- [promote](#promote)
 
 ### Miscellaneous
 
@@ -61,7 +64,7 @@
 
 - [let x on y1, ..., yn = e1; e2](#on)
 - [\*e](#e)
-- [`e::(e1, ..., en)`](#ee1--en-1)
+- [e::(e1, ..., en)](#ee1--en-1)
 - [if](#if)
 - [when cond { e }](#when-cond--e-)
 - [e1; e2](#e1-e2)
@@ -298,27 +301,16 @@ define use-item-2(x: item) -> int {
 ### Syntax
 
 ```neut
-let x = e1; e2
+let p = e1; e2
 
-let x: t = e1; e2
+let p: t = e1; e2
 ```
 
 ### Semantics
 
-`let x = e1; e2` binds the result of `e1` to the variable `x`. This `x` can then be used in `e2`.
+If `p` is a variable `x`, then `let x = e1; e2` binds the result of `e1` to `x` and then evaluates `e2`.
 
-### Type
-
-```neut
-Γ ⊢ e1: a
-Γ, x: a ⊢ e2: b
----------------------
-Γ ⊢ let x = e1; e2: b
-```
-
-### Note
-
-When a pattern is passed, `let` is the following syntactic sugar:
+If `p` is a non-variable pattern, `let p = e1; e2` is the following syntactic sugar:
 
 ```neut
 let pat = x;
@@ -331,6 +323,19 @@ match x {
   cont
 }
 ```
+
+### Type
+
+If `p` is a variable `x`, then:
+
+```neut
+Γ ⊢ e1: a
+Γ, x: a ⊢ e2: b
+---------------------
+Γ ⊢ let x = e1; e2: b
+```
+
+If `p` is a non-variable pattern, the type is derived from the desugared form.
 
 ## Integers
 
@@ -446,7 +451,7 @@ The underlying representation of a rune is an int32.
 
 ### Note
 
-(1) You can write `` `\1234` ``, for example, to represent U+1234 (`` `ሴ` ``).
+(1) You can write `` `\u{1234}` ``, for example, to represent U+1234 (`` `ሴ` ``).
 
 (2) We have the following equalities, for example:
 
@@ -486,7 +491,7 @@ The syntax of a string literal is the same as that of the literal form of [`stat
 
 ### Semantics
 
-A string literal is shorthand for `magic cast(text, &string, static "hello")`.
+If `t` is a string literal, then `t` is shorthand for `magic cast(text, &string, static t)`.
 
 ### Type
 
@@ -557,7 +562,7 @@ The same abbreviations are available when `->` is replaced with `->>`.
 
 ### Semantics
 
-A function type is compiled into a pointer to `base.#.cls`. For more, please see [How to Execute Types](./how-to-execute-types.md).
+A function type is compiled into a pointer to `base.#.cls`. For more, please see [On Executing Types](./on-executing-types.md).
 
 ### Type
 
@@ -648,7 +653,7 @@ For more on layers, please see the section on [box](#box), [letbox](#letbox), an
 
 ### Semantics
 
-Anonymous functions are compiled into three-word closures. For more, please see [How to Execute Types](./how-to-execute-types.md#advanced-function-types).
+Anonymous functions are compiled into three-word closures. For more, please see [On Executing Types](./on-executing-types.md#advanced-function-types).
 
 When `=>>` is used, the closure uses destination-passing style when applied. The same destination-passing scheme is used for `->>` as well. The source-level calling syntax remains the usual one, but the caller passes the result destination to the callee.
 
@@ -950,7 +955,7 @@ define use-function() -> unit {
   //      ^^^^^
   let _ = bar(1);
   //      ^^^^^^
-  let _ = buz("hello", True);
+  let _ = baz("hello", True);
   //      ^^^^^^^^^^^^^^^^^^
   Unit
 }
@@ -1032,7 +1037,7 @@ data config {
   )
 }
 
-inline some-config {
+constant some-config: config {
   Config{
     count := 10,
     colorize := True,
@@ -1210,14 +1215,14 @@ data some-adt {
 }
 
 data other-adt(a: type) {
-| C2(bar: bool, buz: other-adt(a))
+| C2(bar: bool, baz: other-adt(a))
 }
 ```
 
 In this case,
 
 - the type of `C1` is `(foo: int) -> some-adt`, and
-- the type of `C2` is `(bar: bool, buz: other-adt(?M)) -> other-adt(?M)`.
+- the type of `C2` is `(bar: bool, baz: other-adt(?M)) -> other-adt(?M)`.
 
 ## `match`
 
@@ -1399,7 +1404,7 @@ define axiom-T<a>(x: +a) -> a {
 
 ### Semantics
 
-For every type `a`, `+a` is compiled into the same term as `a`.
+Operationally, `+a` has the same runtime representation as `a`.
 
 ### Type
 
@@ -1417,43 +1422,6 @@ For every type `a`, `+a` is compiled into the same term as `a`.
 - `(+a) -> a` (Axiom T)
 
 Note that `+(a) -> b` and `(+a) -> b` are different types.
-
-## `'a`
-
-Given a type `a: type`, `'a` is the type of code that evaluates to a term of type `a`.
-
-### Example
-
-```neut
-define duplicate-code(x: 'int) -> 'pair(int, int) {
-  quote {
-    let y = unquote {x};
-    Pair(y, y)
-  }
-}
-```
-
-### Syntax
-
-```neut
-'a
-```
-
-### Semantics
-
-For every type `a`, `'a` is compiled into the same term as `a`.
-
-### Type
-
-```neut
-Γ ⊢ t: type
-----------------
-Γ ⊢ 't: type
-```
-
-### Note
-
-- Values of type `'a` are expected to be used in combination with `quote`, `unquote`, or `promote`.
 
 ## `&a`
 
@@ -1509,7 +1477,7 @@ For every type `a`, `&a` is compiled into `base.#.imm`.
 ### Example
 
 ```neut
-define use-noema<a>(x: &a, y: &a) -> +a {
+define use-noetic<a>(x: &a, y: &a) -> +a {
   // layer 0
   // - x: &a at layer 0
   // - y: &a at layer 0
@@ -1608,55 +1576,6 @@ define use-box-with-noema(x: &int) -> +int {
 }
 ```
 
-## `quote`
-
-You can use `quote` to create code.
-
-### Example
-
-```neut
-define duplicate-code(x: 'int) -> 'pair(int, int) {
-  quote {
-    let y = unquote {x};
-    Pair(y, y)
-  }
-}
-```
-
-### Syntax
-
-```neut
-quote {
-  e
-}
-```
-
-### Semantics
-
-`quote` is compiled into the same term as its body.
-
-### Type
-
-```neut
-Γ ⊢ⁱ e: a
-----------------------------
-Γ ⊢ⁱ⁺¹ quote {e}: 'a
-```
-
-### Note
-
-The body of `quote` is at one stage lower than the outer context:
-
-```neut
-define make-code() -> 'int {
-  // here is stage 0
-  quote {
-    // here is stage -1
-    10
-  }
-}
-```
-
 ## `letbox`
 
 You can use `letbox` to "unlift" terms.
@@ -1749,54 +1668,6 @@ define use-letbox-error(x: +int) -> int {
 }
 ```
 
-## `unquote`
-
-You can use `unquote` to use code.
-
-### Example
-
-```neut
-define use-code() -> int {
-  unquote {
-    quote {10}
-  }
-}
-```
-
-### Syntax
-
-```neut
-unquote {
-  e
-}
-```
-
-### Semantics
-
-`unquote` is compiled into the same term as its body.
-
-### Type
-
-```neut
-Γ ⊢ⁱ⁺¹ e: 'a
-----------------------------
-Γ ⊢ⁱ unquote {e}: a
-```
-
-### Note
-
-Given a term `e` at stage n + 1, `unquote {e}` is at stage n:
-
-```neut
-define use-code() -> int {
-  // here is stage 0
-  unquote {
-    // here is stage 1
-    quote {10}
-  }
-}
-```
-
 ## `letbox-T`
 
 You can use `letbox-T` to get values from terms of type `+a` without changing layers.
@@ -1885,46 +1756,6 @@ define extract-value-from-meta(x: int) -> int {
 }
 ```
 
-## `promote`
-
-You can use `promote` to create code without changing stages.
-
-### Example
-
-```neut
-define-meta make-message<a>() -> 'unit {
-  let t = magic show-type(a);
-  quote {
-    print(unquote {promote {t}});
-    Unit
-  }
-}
-```
-
-### Syntax
-
-```neut
-promote {
-  e
-}
-```
-
-### Semantics
-
-`promote` is compiled into the same term as its body.
-
-### Type
-
-```neut
-Γ ⊢ⁱ e: a
-----------------------------
-Γ ⊢ⁱ promote {e}: 'a
-```
-
-### Note
-
-Unlike `quote`, `promote` doesn't alter stages.
-
 ## `case`
 
 You can use `case` to inspect noetic ADT values or integers.
@@ -2009,6 +1840,180 @@ An example of the application of the typing rule of `case`:
     | Succ(m) => foo-noetic(m)
     }: int
 ```
+
+## `'a`
+
+Given a type `a: type`, `'a` is the type of code that evaluates to a term of type `a`.
+
+### Example
+
+```neut
+define duplicate-code(x: 'int) -> 'pair(int, int) {
+  quote {
+    let y = unquote {x};
+    Pair(y, y)
+  }
+}
+```
+
+### Syntax
+
+```neut
+'a
+```
+
+### Semantics
+
+For every type `a`, `'a` is compiled into the same term as `a`.
+
+### Type
+
+```neut
+Γ ⊢ t: type
+------------
+Γ ⊢ 't: type
+```
+
+### Note
+
+- Values of type `'a` are expected to be used in combination with `quote`, `unquote`, or `promote`.
+
+## `quote`
+
+You can use `quote` to create code.
+
+### Example
+
+```neut
+define duplicate-code(x: 'int) -> 'pair(int, int) {
+  quote {
+    let y = unquote {x};
+    Pair(y, y)
+  }
+}
+```
+
+### Syntax
+
+```neut
+quote {
+  e
+}
+```
+
+### Semantics
+
+`quote` is compiled into the same term as its body.
+
+### Type
+
+```neut
+Γ ⊢ⁱ e: a
+--------------------
+Γ ⊢ⁱ⁺¹ quote {e}: 'a
+```
+
+### Note
+
+The body of `quote` is at one stage lower than the outer context:
+
+```neut
+define make-code() -> 'int {
+  // here is stage 0
+  quote {
+    // here is stage -1
+    10
+  }
+}
+```
+
+## `unquote`
+
+You can use `unquote` to use code.
+
+### Example
+
+```neut
+define use-code() -> int {
+  unquote {
+    quote {10}
+  }
+}
+```
+
+### Syntax
+
+```neut
+unquote {
+  e
+}
+```
+
+### Semantics
+
+`unquote` is compiled into the same term as its body.
+
+### Type
+
+```neut
+Γ ⊢ⁱ⁺¹ e: 'a
+-------------------
+Γ ⊢ⁱ unquote {e}: a
+```
+
+### Note
+
+Given a term `e` at stage n + 1, `unquote {e}` is at stage n:
+
+```neut
+define use-code() -> int {
+  // here is stage 0
+  unquote {
+    // here is stage 1
+    quote {10}
+  }
+}
+```
+
+## `promote`
+
+You can use `promote` to create code without changing stages.
+
+### Example
+
+```neut
+define-meta make-message<a>() -> 'unit {
+  let t = magic show-type(a);
+  quote {
+    print(unquote {promote {t}});
+    Unit
+  }
+}
+```
+
+### Syntax
+
+```neut
+promote {
+  e
+}
+```
+
+### Semantics
+
+`promote` is compiled into the same term as its body.
+
+### Type
+
+```neut
+Γ ⊢ⁱ e: a
+--------------------
+Γ ⊢ⁱ promote {e}: 'a
+```
+
+### Note
+
+Unlike `quote`, `promote` doesn't alter stages.
 
 ## `lift`
 
@@ -2798,7 +2803,7 @@ N/A
 
 ## `on`
 
-`let x on y = e1; e2` can be used to introduce noetic values in a specific scope.
+`let p on y = e1; e2` can be used to introduce noetic values in a specific scope.
 
 ### Example
 
@@ -2816,19 +2821,23 @@ define play-with-on() -> int {
 ### Syntax
 
 ```neut
-let y on x1, ..., xn = e1;
+let p on x1, ..., xn = e1;
+e2
+
+let p: t on x1, ..., xn = e1;
 e2
 ```
 
 ### Semantics
 
 ```neut
-let result on x1, ..., xn = e1;
+let p on x1, ..., xn = e1;
 e2
 
 // ↓ desugar
 
-letbox-T result on x1, ..., xn = lift {e1};
+letbox-T tmp on x1, ..., xn = lift {e1};
+let p = tmp;
 e2
 ```
 
@@ -2838,7 +2847,7 @@ Derived from the desugared form.
 
 ## `*e`
 
-You can use `*e` to create a non-noetic value from a noetic value.
+You can use `*e` to create an ordinary value from a noetic value.
 
 ### Example
 
@@ -2961,7 +2970,7 @@ define bar(b1: bool, b2: bool) -> unit {
     } else-if b2 {
       "yo"
     } else {
-      "pohe"
+      "baz"
     };
   print(tmp)
 }
@@ -3102,21 +3111,37 @@ define foo() -> either(error, int) {
 ### Syntax
 
 ```neut
-try x = e1;
+try p = e1;
+e2
+
+try p on y1, ..., yn = e1;
 e2
 ```
 
 ### Semantics
 
-`try x = e1; e2` is shorthand for the following:
+`try p = e1; e2` is shorthand for the following:
 
 ```neut
 match e1 {
 | Left(err) =>
   Left(err)
-| Right(x) =>
+| Right(p) =>
   e2
 }
+```
+
+You can also combine `try` with `on`:
+
+```neut
+try p on y1, ..., yn = e1;
+e2
+
+// ↓ desugar
+
+let tmp on y1, ..., yn = e1;
+try p = tmp;
+e2
 ```
 
 ### Type
@@ -3136,7 +3161,7 @@ data either(a, b) {
 
 ## `tie x = e1; e2`
 
-You can use `tie` as a "noetic" `let`.
+You can use `tie` as a noetic `let`.
 
 ### Example
 
@@ -3157,17 +3182,17 @@ define use-noetic-config(c: &config) -> int {
 ### Syntax
 
 ```neut
-tie x = e1;
+tie p = e1;
 e2
 ```
 
 ### Semantics
 
-`tie x = e1; e2` is shorthand for the following:
+`tie p = e1; e2` is shorthand for the following:
 
 ```neut
 case e1 {
-| x =>
+| p =>
   e2
 }
 ```
@@ -3184,7 +3209,7 @@ You can use `pin` to create a value and use it as a noema.
 
 ```neut
 // without `pin`
-define foo() -> unit {
+define foo() -> int {
   let xs = make-list(123);
   let result on xs = some-func(xs);
   let _ = xs;
@@ -3194,7 +3219,7 @@ define foo() -> unit {
 ↓
 
 // with `pin`
-define foo() -> unit {
+define foo() -> int {
   pin xs = make-list(123);
   some-func(xs)
 }
@@ -3204,6 +3229,9 @@ define foo() -> unit {
 
 ```neut
 pin x = e1;
+e2
+
+pin x on y1, ..., yn = e1;
 e2
 ```
 
@@ -3216,6 +3244,20 @@ e2
 ↓
 
 let x = e1;
+let tmp on x = e2;
+let _ = x;
+tmp
+```
+
+You can also combine `pin` with `on`:
+
+```neut
+pin x on y1, ..., yn = e1;
+e2
+
+↓
+
+let x on y1, ..., yn = e1;
 let tmp on x = e2;
 let _ = x;
 tmp

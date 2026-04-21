@@ -26,11 +26,11 @@ The field `target` defines the entry points of a module. It should look like the
   // ..
   target {
     TARGET-1 {
-      main "path/to/source/file-1.nt"
+      main "path/to/source/file-1.nt",
     },
     // ..
     TARGET-N {
-      main "path/to/source/file-n.nt"
+      main "path/to/source/file-n.nt",
     },
   },
   // ..
@@ -47,7 +47,7 @@ Suppose that your module has the following `target` in `module.ens`:
       main "foo.nt",
     },
     bar {
-      main "item/yo.nt"
+      main "item/yo.nt",
     },
   },
   // ..
@@ -252,13 +252,13 @@ The field `foreign` defines a way to compile external source files. It should lo
     ],
     output [
       "foo.o",
-      "bar.o"
+      "bar.o",
     ],
     script [
       "{{clang}} -c -flto=thin -O2 source/foo.c -o {{foreign}}/foo.o",
       "{{clang}} -c -flto=thin -O2 source/bar.c -o {{foreign}}/bar.o",
-    ]
-  }
+    ],
+  },
 }
 ```
 
@@ -299,11 +299,11 @@ The field `foreign` is optional. The default value of `foreign` is:
 }
 ```
 
-An example of `foreign` can be found in the [core library](https://github.com/vekatze/neut-core/blob/0570cd5aa17914bef7021b7e88ca1fa421af721e/module.ens#L10).
+An example of `foreign` can be found in the [core library](https://github.com/vekatze/neut-core/blob/main/module.ens).
 
 <div class="info-block">
 
-The compiler links the resulting foreign object files without any name mangling. You're strongly encouraged to prefix names in your foreign sources with your module name and the major version to avoid name collisions. You can find an example of prefixed names [here](https://github.com/vekatze/neut-core/blob/0570cd5aa17914bef7021b7e88ca1fa421af721e/source/foreign.c).
+The compiler links the resulting foreign object files without any name mangling. You're strongly encouraged to prefix names in your foreign sources with your module name and the major version to avoid name collisions.
 
 </div>
 
@@ -355,7 +355,7 @@ The field `preset` defines the list of names that must be imported implicitly wh
   // ..
   preset {
     foo ["my-func", "other-func"],
-    item.bar ["hoge", "pohe"],
+    item.bar ["baz", "qux"],
   },
   // ..
 }
@@ -364,7 +364,7 @@ The field `preset` defines the list of names that must be imported implicitly wh
 In the example above, the current module is expected to have the following files:
 
 - `(source-dir)/foo.nt` that contains the definitions of `my-func` and `other-func`
-- `(source-dir)/item/bar.nt` that contains the definitions of `hoge` and `pohe`
+- `(source-dir)/item/bar.nt` that contains the definitions of `baz` and `qux`
 
 The field `preset` is used in combination with `enable-preset` in `dependency`.
 
@@ -396,7 +396,7 @@ import {
   sample.foo {my-func},
 }
 
-define buz() -> int {
+define baz() -> int {
   let i = my-func();
   add-int(i, 10)
 }
@@ -405,7 +405,7 @@ define buz() -> int {
 This code is the same as the following since the preset is enabled:
 
 ```neut
-define buz() -> int {
+define baz() -> int {
   let i = my-func();
   add-int(i, 10)
 }
