@@ -220,7 +220,7 @@ The field `dependency` defines the dependencies of a module. It should look like
 
 The field `digest` specifies the checksum of the tarball of the dependency. The digest is a Base64URL-encoded SHA256 checksum of the tarball. This digest is the "real" name of this dependency and is used as an identifier.
 
-The field `mirror` specifies a list of URLs from which the compiler can fetch the tarball. When running `neut get`, the compiler will try to get the tarball if necessary, using this list from the beginning to the end.
+The field `mirror` specifies a list of URLs from which the compiler can fetch the tarball. When fetching the tarball is necessary, the compiler tries these URLs from the beginning to the end.
 
 The optional field `enable-preset` specifies whether to import the dependency's `preset` automatically, like the Prelude in other languages. For more information, see the explanation of `preset` in this section.
 

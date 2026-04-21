@@ -190,9 +190,9 @@ neut archive 0-1
 ls ./archive # => 0-1.tar.zst
 ```
 
-The argument of `archive` must be something like `0-1`, `0-1-0`, or `1-2-0-1`. Leading zeros are preserved, the first non-zero component is treated as the major version, and the remaining components are compared lexicographically as minor components.
+The argument of `archive` must be something like `0-1`, `0-1-0`, or `1-2-0-1`.
 
-You can then upload these tarballs by pushing them to GitHub, for example.
+You can then publish these tarballs on GitHub, for example.
 
 ## Adding Dependency Modules
 

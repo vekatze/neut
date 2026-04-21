@@ -639,11 +639,9 @@ foreign {
 Then, specify the types of variadic arguments when using `magic external`:
 
 ```neut
-define print(t: &string) -> unit {
-  // ..
-  let _ = magic external printf(fmt)(len: int, val: pointer);
+define print-raw(fmt: pointer, len: int, val: pointer) -> c-int {
+  magic external printf(fmt)(len: int, val: pointer)
   //                                 ^^^^^^^^^^^^^^^^^^^^^^
   //                                 passing variadic arguments with types
-  Unit
 }
 ```
