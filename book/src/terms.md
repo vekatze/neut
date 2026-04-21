@@ -996,14 +996,28 @@ e(e1, ..., en)
 
 ### Semantics
 
-Given a function application `e(e1, ..., en)`, the system does the following:
+Given a function application `e(e1, ..., en)`, if `e` has an ordinary function type, it is evaluated as follows:
 
 1. Computes `e`, `e1`, ..., `en` into values `v`, `v1`, ..., `vn`
 2. Extracts the contents from the closure `v`, obtaining the tuple of its free variables and a function label
 3. Deallocates the tuple of the closure `v`
-4. Calls the function label with the tuple and `v1, ..., vn` as arguments
+4. Calls the function label with the tuple and `v1`, ..., `vn` as arguments
 
-If `e` has a destination-passing function type, the surface syntax is still `e(e1, ..., en)`. In that case, the caller first prepares the result destination, passes it as an extra argument to the callee, and then reads the result from that destination. When the size of the result type is non-negative, the destination has that size. Otherwise, the caller uses a one-word temporary slot that stores a pointer to the result.
+If `e` has a noetic function type such as `&(a1, ..., an) -> b`, it is evaluated as follows:
+
+1. Computes `e`, `e1`, ..., `en` into values `v`, `v1`, ..., `vn`
+2. Reads the contents of the closure `v`, obtaining the tuple of its free variables and a function label
+3. Copies all the free variables captured by `e`
+4. Executes the function body using those copies and `v1`, ..., `vn`
+
+If `e` has a destination-passing function type, it is evaluated as follows:
+
+1. Prepares the result destination
+2. Computes `e`, `e1`, ..., `en` into values
+3. Performs the corresponding call above, passing the destination as an extra argument
+4. Reads the result from that destination
+
+When the size of the result type is non-negative, the destination has that size. Otherwise, the caller uses a one-word temporary slot that stores a pointer to the result.
 
 ### Type
 
@@ -1015,7 +1029,11 @@ If `e` has a destination-passing function type, the surface syntax is still `e(e
 
 The `?Mi`s in the above rule are metavariables that must be inferred by the compiler.
 
-The same rule also applies when `e` has type `<α1: a1, .., αn: an>(y1: b1, .., ym: bm) ->> c`.
+The same rule also applies when `e` has type:
+
+- `<α1: a1, .., αn: an>(y1: b1, .., ym: bm) ->> c`
+- `&<α1: a1, .., αn: an>(y1: b1, .., ym: bm) -> c`
+- `&<α1: a1, .., αn: an>(y1: b1, .., ym: bm) ->> c`
 
 ## `e{x1 := e1, ..., xn := en}`
 
