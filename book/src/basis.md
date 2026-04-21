@@ -274,7 +274,7 @@ import {
   this.path.to.file,
 }
 
-define use-my-function() -> string {
+define use-my-function() -> unit {
   let value = this.path.to.file.my-function();
   ...
 }

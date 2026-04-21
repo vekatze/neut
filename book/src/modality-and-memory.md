@@ -134,7 +134,7 @@ e2
 
 ↓ // (compile)
 
-let v  = e1;
+let v = e1;
 e2
 ```
 
