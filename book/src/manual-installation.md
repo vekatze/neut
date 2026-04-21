@@ -18,6 +18,8 @@ export NEUT_CORE_MODULE_DIGEST="2NKQXFEgIty7BrHE163TsVVJLlfbBKnXXbSo7Vsv2Kk"
 Then, download the compiler binary:
 
 ```sh
+mkdir -p ~/.local/bin/
+
 # macOS (arm64)
 curl -L -o ~/.local/bin/neut https://github.com/vekatze/neut/releases/latest/download/neut-arm64-darwin
 # Linux (amd64)

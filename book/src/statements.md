@@ -23,8 +23,6 @@
 
 ```neut
 import {
-  Qux,
-  ZZ,
   sample.baz,
   this.foo,
   this.foo.bar {some-func, other-func},
