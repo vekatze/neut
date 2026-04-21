@@ -187,13 +187,21 @@ data list(a) {
 
 The first thing to note is that the values of an ADT must be able to be discarded/copied using a closed function (since all the types in Neut are compiled into closed functions). This means the information about `a` in `list(a)` must be contained in the values.
 
+The second thing to note is that all the constructors of an ADT share the same allocation size. The runtime reserves enough space for the largest constructor payload, together with the data arguments and the discriminant.
+
+For `list(a)`, this means every value occupies 4 words:
+
+- 1 word for `a`,
+- 1 word for the discriminant,
+- 2 words for the largest constructor payload (`Cons(a, list(a))`).
+
 That is, for example, the internal representation of `Nil` is something like the following:
 
 ```neut
-(a, 0)
+(a, 0, _, _)
 ```
 
-Here, the `0` is the discriminant for `Nil`. Similarly, the internal representation of `Cons(10, xs)` is:
+Here, the `0` is the discriminant for `Nil`. The trailing two words are unused and remain uninitialized. Similarly, the internal representation of `Cons(10, xs)` is:
 
 ```neut
 (a, 1, 10, xs)
@@ -223,10 +231,11 @@ define exp-list(selector, v) {
     let d = get-discriminant(v);
     if d == 0 {
       // copy Nil
-      let ptr = malloc({2-words});
+      let ptr = malloc({4-words});
       let a = v[0];
       store(ptr[0], a);
       store(ptr[1], d);
+      // ptr[2] and ptr[3] stay uninitialized
       ptr
     } else {
       // copy Cons
@@ -244,7 +253,13 @@ define exp-list(selector, v) {
 }
 ```
 
-The point is that the type information in a value is loaded at runtime and used to discard/copy values.
+The point is that the type information in a value is loaded at runtime and used to discard/copy values. Even when a constructor carries fewer fields, the allocation size is still the one determined by the largest constructor, and unused slots are simply left untouched.
+
+<div class="info-block">
+
+This fixed allocation size is important for destination-passing style (`->>`) as well. When a function writes a value of type `list(a)` into a destination buffer, the caller must allocate that buffer from the result type alone, before knowing whether the callee will produce `Nil` or `Cons`. Therefore, the required slot count is determined from the type itself, not from the constructor chosen at runtime.
+
+</div>
 
 ## Advanced: Function Types
 
