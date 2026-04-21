@@ -257,7 +257,7 @@ The point is that the type information in a value is loaded at runtime and used 
 
 <div class="info-block">
 
-This fixed allocation size is important for destination-passing style (`->>`) as well. When a function writes a value of type `list(a)` into a destination buffer, the caller must allocate that buffer from the result type alone, before knowing whether the callee will produce `Nil` or `Cons`. Therefore, the required slot count is determined from the type itself, not from the constructor chosen at runtime.
+A major motivation for this fixed allocation size is destination-passing style (`->>`). By making the size depend only on the type, the compiler can compute the required slot count from the type alone when allocating the destination buffer.
 
 </div>
 
