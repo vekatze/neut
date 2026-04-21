@@ -500,11 +500,12 @@ push-back(push-back(push-back(make(3), a), b), c)
 
 ## `nominal`
 
-`nominal` declares functions for forward references. It should look like the following:
+`nominal` declares top-level items for forward references. It should look like the following:
 
 ```neut
 nominal {
   define is-odd(x: int) -> bool,
+  data stream(a: type),
 }
 ```
 
@@ -536,6 +537,18 @@ define is-odd(x: int) -> bool {
 ```
 
 If a nominal definition isn't followed by a corresponding real definition, the compiler reports an error.
+
+The following kinds of top-level items can be declared in `nominal`:
+
+- `define`
+- `inline`
+- `constant`
+- `define-meta`
+- `inline-meta`
+- `alias`
+- `alias-opaque`
+- `data`
+- `resource`
 
 ## `foreign`
 

@@ -275,7 +275,7 @@ You can also specify `--target TARGET_NAME` to choose the initial target name. B
 
 ## `neut get`
 
-`neut get ALIAS URL` fetches and builds the external module specified by `URL` and adds it to the current module as a dependency under the name `ALIAS`.
+`neut get ALIAS URL` fetches the external module archive specified by `URL` and adds it to the current module under the name `ALIAS`.
 
 ```sh
 neut get some-name https://github.com/USER_NAME/REPO_NAME/raw/main/archive/0-1.tar.zst
@@ -303,6 +303,8 @@ After executing `neut get`, the new dependency information is saved to `module.e
   },
 }
 ```
+
+Then, the compiler type-checks all the related modules, including the fetched module.
 
 The `digest` is the base64url-encoded checksum of the tarball.
 

@@ -323,7 +323,7 @@ alias status {
 
 ### `nominal`
 
-You can use `nominal` for forward references:
+You can use `nominal` for forward references of top-level items:
 
 ```neut
 nominal {
