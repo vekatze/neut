@@ -187,7 +187,7 @@ data list(a) {
 
 The first thing to note is that the values of an ADT must be able to be discarded/copied using a closed function (since all the types in Neut are compiled into closed functions). This means the information about `a` in `list(a)` must be contained in the values.
 
-The second thing to note is that all the constructors of an ADT share the same allocation size. The runtime reserves enough space for the largest constructor payload, together with the data arguments and the discriminant.
+The second thing to note is that all the constructors of an ADT share the same allocation size: the size of its largest constructor.
 
 For `list(a)`, this means every value occupies 4 words:
 
@@ -257,7 +257,7 @@ The point is that the type information in a value is loaded at runtime and used 
 
 <div class="info-block">
 
-A major motivation for this fixed allocation size is destination-passing style (`->>`). By making the size depend only on the type, the compiler can compute the required slot count from the type alone when allocating the destination buffer.
+A major motivation for this fixed allocation size is destination-passing style. By giving each ADT type a fixed size, the caller can allocate a destination buffer of the required size in advance.
 
 </div>
 
