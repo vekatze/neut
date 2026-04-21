@@ -7,11 +7,13 @@ Below is a list of the configurations in `module.ens`.
 ## Table of Contents
 
 - [target](#target)
+- [zen](#zen)
 - [dependency](#dependency)
 - [archive](#archive)
 - [cache](#cache)
 - [source](#source)
 - [foreign](#foreign)
+- [extra-content](#extra-content)
 - [text-file](#text-file)
 - [preset](#preset)
 - [inline-limit](#inline-limit)
@@ -164,6 +166,34 @@ The following values are available:
 
 The field `allocator` is optional. The default value of `allocator` is `"system"`.
 
+## `zen`
+
+The field `zen` defines the configuration used by `neut zen`. It should look like the following:
+
+```ens
+{
+  // ..
+  zen {
+    build-option [
+      "-fsanitize=address",
+    ],
+    allocator "mimalloc",
+  },
+  // ..
+}
+```
+
+The fields available inside `zen` are the same as those available inside each entry of `target`:
+
+- `build-option`
+- `compile-option`
+- `link-option`
+- `allocator`
+
+These fields affect builds performed by `neut zen`, rather than `neut build TARGET`.
+
+The field `zen` is optional. By default, it uses empty build options and the system allocator.
+
 ## `dependency`
 
 The field `dependency` defines the dependencies of a module. It should look like the following:
@@ -306,6 +336,27 @@ An example of `foreign` can be found in the [core library](https://github.com/ve
 The compiler links the resulting foreign object files without any name mangling. You're strongly encouraged to prefix names in your foreign sources with your module name and the major version to avoid name collisions.
 
 </div>
+
+## `extra-content`
+
+The field `extra-content` defines additional files or directories to include when running `neut archive`. It should look like the following:
+
+```ens
+{
+  // ..
+  extra-content [
+    "README.md",
+    "docs/",
+  ],
+  // ..
+}
+```
+
+Each entry must be a path relative to the module root.
+
+If an entry ends with `/`, it is treated as a directory. Otherwise, it is treated as a file.
+
+The field `extra-content` is optional. The default value of `extra-content` is `[]`.
 
 ## `text-file`
 
