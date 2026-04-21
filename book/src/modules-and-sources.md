@@ -95,7 +95,7 @@ The contents of `module.ens` look roughly like the following:
 
 `mirror` is a list of URLs of a dependency.
 
-`enable-preset` makes the dependency behave similarly to the Prelude in other languages. If enabled, the names provided by that dependency are imported automatically into every file in our module.
+`enable-preset` makes the dependency behave similarly to the Prelude in other languages. If enabled, the names listed in the dependency's `preset` are imported automatically into every file in our module.
 
 ## Basics of Source Files
 

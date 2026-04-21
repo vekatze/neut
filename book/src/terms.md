@@ -314,14 +314,14 @@ If `p` is a variable `x`, then `let x = e1; e2` binds the result of `e1` to `x` 
 If `p` is a non-variable pattern, `let p = e1; e2` is the following syntactic sugar:
 
 ```neut
-let pat = x;
-cont
+let p = e1;
+e2
 
 ↓
 
-match x {
-| pat =>
-  cont
+match e1 {
+| p =>
+  e2
 }
 ```
 
@@ -1368,21 +1368,25 @@ If the first element is `1`, which means that we found an ADT value of `Succ`, t
 ...
 Γ ⊢ en: an
 
-Γ, arg_{1,1}: t_{1,1}, ..., arg_{1, k_{1}}: t_{1, k_{1}} ⊢ pat-1: a1
+Γ, arg_{1,1}: t_{1,1}, ..., arg_{1, k_{1}}: t_{1, k_{1}} ⊢ pat_{1,1}: a1
+...
+Γ, arg_{1,1}: t_{1,1}, ..., arg_{1, k_{1}}: t_{1, k_{1}} ⊢ pat_{1,n}: an
 Γ, arg_{1,1}: t_{1,1}, ..., arg_{1, k_{1}}: t_{1, k_{1}} ⊢ body-1: b
 
 ...
 
-Γ, arg_{m,1}: t_{m,1}, ..., arg_{m, k_{m}}: t_{m, k_{m}} ⊢ pat-m: an
+Γ, arg_{m,1}: t_{m,1}, ..., arg_{m, k_{m}}: t_{m, k_{m}} ⊢ pat_{m,1}: a1
+...
+Γ, arg_{m,1}: t_{m,1}, ..., arg_{m, k_{m}}: t_{m, k_{m}} ⊢ pat_{m,n}: an
 Γ, arg_{m,1}: t_{m,1}, ..., arg_{m, k_{m}}: t_{m, k_{m}} ⊢ body-m: b
 
-(for all i = 1, ..., m, pat-i is a pattern for e1, ..., en)
-(the sequence pat-1, ..., pat-m is an exhaustive matching against e1, ..., en)
+(for all i = 1, ..., m, pat_{i,1}, ..., pat_{i,n} is a pattern for e1, ..., en)
+(the sequence (pat_{1,1}, ..., pat_{1,n}), ..., (pat_{m,1}, ..., pat_{m,n}) is an exhaustive matching against e1, ..., en)
 ------------------------------------------------------------------------------
 Γ ⊢ match e1, ..., en {
-    | pat-1 => body-1
+    | pat_{1,1}, ..., pat_{1,n} => body-1
     ...
-    | pat-m => body-m
+    | pat_{m,1}, ..., pat_{m,n} => body-m
     }: b
 ```
 
@@ -1395,10 +1399,10 @@ An example of the application of the typing rule of `match`:
 ```neut
 Γ ⊢ n: my-nat
 
-Γ ⊢ Zero: my-nat // pat-1
+Γ ⊢ Zero: my-nat // pat_{1,1}
 Γ ⊢ 100: int // body-1
 
-Γ, m: my-nat ⊢ Succ(m): my-nat // pat-2
+Γ, m: my-nat ⊢ Succ(m): my-nat // pat_{2,1}
 Γ, m: my-nat ⊢ foo(m): int // body-2
 
 (Zero and Succ(m) are patterns for n)
@@ -1828,21 +1832,25 @@ The semantics of `case` is the same as `match`, except that `case` doesn't consu
 ...
 Γ ⊢ en: an
 
-Γ, arg_{1,1}: t_{1,1}, ..., arg_{1, k_{1}}: t_{1, k_{1}} ⊢ pat-1: a1
+Γ, arg_{1,1}: t_{1,1}, ..., arg_{1, k_{1}}: t_{1, k_{1}} ⊢ pat_{1,1}: a1
+...
+Γ, arg_{1,1}: t_{1,1}, ..., arg_{1, k_{1}}: t_{1, k_{1}} ⊢ pat_{1,n}: an
 Γ, arg_{1,1}: &t_{1,1}, ..., arg_{1, k_{1}}: &t_{1, k_{1}} ⊢ body-1: b
 
 ...
 
-Γ, arg_{m,1}: t_{m,1}, ..., arg_{m, k_{m}}: t_{m, k_{m}} ⊢ pat-m: an
+Γ, arg_{m,1}: t_{m,1}, ..., arg_{m, k_{m}}: t_{m, k_{m}} ⊢ pat_{m,1}: a1
+...
+Γ, arg_{m,1}: t_{m,1}, ..., arg_{m, k_{m}}: t_{m, k_{m}} ⊢ pat_{m,n}: an
 Γ, arg_{m,1}: &t_{m,1}, ..., arg_{m, k_{m}}: &t_{m, k_{m}} ⊢ body-m: b
 
-(for all i = 1, ..., m, pat-i is a pattern for e1, ..., en)
-(the sequence pat-1, ..., pat-m is an exhaustive matching against e1, ..., en)
+(for all i = 1, ..., m, pat_{i,1}, ..., pat_{i,n} is a pattern for e1, ..., en)
+(the sequence (pat_{1,1}, ..., pat_{1,n}), ..., (pat_{m,1}, ..., pat_{m,n}) is an exhaustive matching against e1, ..., en)
 ------------------------------------------------------------------------------
 Γ ⊢ case e1, ..., en {
-    | pat-1 => body-1
+    | pat_{1,1}, ..., pat_{1,n} => body-1
     ...
-    | pat-m => body-m
+    | pat_{m,1}, ..., pat_{m,n} => body-m
     }: b
 ```
 
@@ -1853,10 +1861,10 @@ An example of the application of the typing rule of `case`:
 ```neut
 Γ ⊢ n: &my-nat
 
-Γ ⊢ Zero: my-nat // pat-1
+Γ ⊢ Zero: my-nat // pat_{1,1}
 Γ ⊢ 100: int // body-1
 
-Γ, m: my-nat ⊢ Succ(m): my-nat // pat-2
+Γ, m: my-nat ⊢ Succ(m): my-nat // pat_{2,1}
 Γ, m: &my-nat ⊢ foo-noetic(m): int // body-2
 
 (Zero and Succ(m) are patterns for n)
