@@ -255,7 +255,7 @@ Suppose we have a function like the following:
 ```neut
 define foo<a>() -> int {
   let x: int = 10;
-  let y = type;
+  let y = Unit;
   let f =
     (z: a) => {  // lambda
       let foo = x;     // ← x is a free var of this lambda
@@ -274,7 +274,7 @@ Let's see how the lambda abstraction is compiled.
 First, the compiler collects all the free variables in the lambda. Here, the compiler also collects all the free variables in the types of the free variables. Thus, in this case, the compiler constructs a typed list like the following:
 
 ```neut
-[a: type, x: int, y: type, z: a]
+[a: type, x: int, y: unit, z: a]
 ```
 
 Let's write this as a sequence `x1: t1, ..., xn: tn`. We call such a sequence a closed chain if each type `ti` mentions only earlier variables, that is,
@@ -289,7 +289,7 @@ In the example above, this condition holds because:
 
 - `FreeVars(type) = ∅ ⊆ ∅`
 - `FreeVars(int) = ∅ ⊆ {a}`
-- `FreeVars(type) = ∅ ⊆ {a, x}`
+- `FreeVars(unit) = ∅ ⊆ {a, x}`
 - `FreeVars(a) = {a} ⊆ {a, x, y}`
 
 ### Closure Conversion
@@ -297,9 +297,9 @@ In the example above, this condition holds because:
 We'll use this closed chain to compile a lambda. The internal representation of a closure for the lambda will be a 3-word tuple like the following:
 
 ```text
-(Σ (a: type, x: int, y: type). a , (a, x, y, z), LABEL-TO-FUNCTION-DEFINITION)
- -----------------------------   ------------
- the type of the environment     the closed chain (i.e. environment)
+(Σ (a: type, x: int, y: unit). a , (a, x, y, z), LABEL-TO-FUNCTION-DEFINITION)
+ -----------------------------     ------------
+ the type of the environment       the closed chain (i.e. environment)
 ```
 
 This is more or less the usual closure conversion, except that we now have the types of the free variables in the closure.

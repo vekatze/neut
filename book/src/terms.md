@@ -109,7 +109,6 @@ define sample() -> unit {
 
   // shadowing (not reassignment)
   let x = Unit;
-  let x = type;
   let x =
     (x: bool) => {
       x // x: bool
@@ -153,13 +152,13 @@ If the content of a variable `x` is an immediate value, `x` is compiled into the
 
 ```neut
 import {
-  core.bool {bool},
+  core.bool {and},
 }
 
 define sample() -> unit {
   // using top-level variables
-  let _ = bool; // using an imported top-level name
-  let _ = core.bool.bool; // using the definite description of `core.bool.bool`
+  let _ = and; // using an imported top-level name
+  let _ = core.bool.and; // using the definite description of `core.bool.bool`
   Unit
 }
 ```
@@ -928,8 +927,8 @@ data my-nat {
 | Succ(my-nat)
 }
 
-define use-nat-type() -> type {
-  my-nat
+define use-nat-type() -> my-nat {
+  Zero
 }
 ```
 
