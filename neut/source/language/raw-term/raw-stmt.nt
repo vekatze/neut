@@ -60,7 +60,7 @@ data post-raw-program {
 
 define get-post-raw-stmt-name(stmt: &post-raw-stmt) -> list(pair(&hint, &definite-description)) {
   case stmt {
-  | Post-Raw-Stmt-Define(_, _, Raw-Def {geist := Raw-Geist {loc, name := Pair(n, _)}}) =>
+  | Post-Raw-Stmt-Define(_, _, Raw-Def{geist := Raw-Geist{loc, name := Pair(n, _)}}) =>
     List[Pair(loc, n)]
   }
 }

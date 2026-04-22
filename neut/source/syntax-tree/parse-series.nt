@@ -52,8 +52,8 @@ inline _parse-series-sep-trail<a>(
           Right(singleton(con, sep, leading-comment, v, c, False))
         }
       | Left(_) =>
-        let Series {elems, prefix, container, separator} = empty-series(con, sep);
-        Right(Series {
+        let Series{elems, prefix, container, separator} = empty-series(con, sep);
+        Right(Series{
           elems,
           trailing-comment := leading-comment,
           prefix,
@@ -96,8 +96,8 @@ inline _parse-series-sep-by<a>(
           Right(singleton(con, sep, leading-comment, v, c, has-optional-separator))
         }
       | Left(_) =>
-        let Series {elems, prefix, container, separator} = empty-series(con, sep);
-        Right(Series {
+        let Series{elems, prefix, container, separator} = empty-series(con, sep);
+        Right(Series{
           elems,
           trailing-comment := leading-comment,
           prefix,
@@ -180,9 +180,9 @@ inline parse-series<a>(
   try c1 = delimiter(k, open);
   try se = _parse-series(k, Right(con), sep, c1, p);
   try c2 = delimiter(k, close);
-  let Series {elems, trailing-comment, container, separator, has-optional-separator} = se;
+  let Series{elems, trailing-comment, container, separator, has-optional-separator} = se;
   let se =
-    Series {
+    Series{
       elems,
       trailing-comment,
       prefix,
@@ -215,9 +215,9 @@ inline parse-series-with-loc<a>(
   try se = _parse-series(k, Right(con), sep, c1, p);
   let loc = get-point(k);
   try c2 = delimiter(k, close);
-  let Series {elems, trailing-comment, container, separator, has-optional-separator} = se;
+  let Series{elems, trailing-comment, container, separator, has-optional-separator} = se;
   let se =
-    Series {
+    Series{
       elems,
       trailing-comment,
       prefix,
@@ -237,9 +237,9 @@ inline parse-bare-series<a>(
   let r = Right(Unit); // fixme
   try _ = r;
   try se = _parse-series(k, none, sep, Nil, p);
-  let Series {elems, trailing-comment, container, separator, has-optional-separator} = se;
+  let Series{elems, trailing-comment, container, separator, has-optional-separator} = se;
   let se =
-    Series {
+    Series{
       elems,
       trailing-comment,
       prefix,

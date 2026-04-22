@@ -32,10 +32,10 @@ define _get-newer-source(s: source, m: module) -> app(source) {
     path.path.append(source-dir, rel-source-file-path)
   };
   let _ = source-dir;
-  let Source {source-hint := orig-source-hint} = s;
+  let Source{source-hint := orig-source-hint} = s;
   let b on new-source-file-path = is-regular-file(new-source-file-path);
   let new-source =
-    Source {
+    Source{
       source-hint := orig-source-hint,
       source-module := m,
       file-path := new-source-file-path,
@@ -44,8 +44,8 @@ define _get-newer-source(s: source, m: module) -> app(source) {
     Right(new-source)
   } else {
     let buf = make-string-builder(64);
-    let Source {source-hint, source-module} = new-source;
-    let Module {id} = source-module;
+    let Source{source-hint, source-module} = new-source;
+    let Module{id} = source-module;
     let _ on buf, id = {
       pin rel-source-file-path = rel-source-file-path;
       append-string(buf, "The file `");
@@ -66,9 +66,9 @@ define _get-newer-source(s: source, m: module) -> app(source) {
 }
 
 define shift-to-latest(k: &shift-kit, s: source) -> app(source) {
-  tie _Shift-Kit {antecedent-kit} = k;
+  tie _Shift-Kit{antecedent-kit} = k;
   let mv on s = {
-    tie Source {source-module := Module {id}} = s;
+    tie Source{source-module := Module{id}} = s;
     lookup-module(*antecedent-kit, id)
   };
   match mv {
@@ -80,9 +80,9 @@ define shift-to-latest(k: &shift-kit, s: source) -> app(source) {
 }
 
 define shift-to-latest-module(k: &shift-kit, m: module) -> module {
-  tie _Shift-Kit {antecedent-kit} = k;
+  tie _Shift-Kit{antecedent-kit} = k;
   let mv on m = {
-    tie Module {id} = m;
+    tie Module{id} = m;
     lookup-module(*antecedent-kit, id)
   };
   match mv {

@@ -38,11 +38,11 @@ data module-kit {
 
 define make-module-kit() -> module-kit {
   let cache-map-cell = make-cell(box {empty});
-  _Module-Kit {cache-map-cell}
+  _Module-Kit{cache-map-cell}
 }
 
 define lookup-module(k: &module-kit, path: &string) -> ?module {
-  tie _Module-Kit {cache-map-cell} = k;
+  tie _Module-Kit{cache-map-cell} = k;
   borrow(cache-map-cell, (dict) => {
     match _lookup-string-dict(dict, path) {
     | Left(_) =>
@@ -54,7 +54,7 @@ define lookup-module(k: &module-kit, path: &string) -> ?module {
 }
 
 define insert-to-module-cache-map(k: &module-kit, path: &string, m: module) -> unit {
-  tie _Module-Kit {cache-map-cell} = k;
+  tie _Module-Kit{cache-map-cell} = k;
   mutate(cache-map-cell, (dict) => {
     box {
       letbox dict = dict;
@@ -89,7 +89,7 @@ define _return-directory(path: string) -> app(string) {
 }
 
 define _get-dependency-dir-path(m: &module) -> app(string) {
-  tie Module {id, cache-dir} = m;
+  tie Module{id, cache-dir} = m;
   let module-root-dir = get-module-root-dir(m);
   case id {
   | Library(_) =>
@@ -212,7 +212,7 @@ define source-from-path(m: &module, source-abs-path: string) -> app(source) {
     | Right(_) =>
       Right(source-abs-path)
     };
-  Right(Source {
+  Right(Source{
     source-module := *m,
     file-path := source-abs-path,
     source-hint := none,
@@ -223,11 +223,11 @@ define _get-directory-contents(dir-path: &string) -> system(list(string)) {
   try items = read-directory(dir-path);
   let items =
     filter(items, (i) => {
-      tie Dirent {name} = i;
+      tie Dirent{name} = i;
       and(ne-string(name, "."), ne-string(name, ".."))
     });
   Right(for-each(items, (i) => {
-    let Dirent {name} = i;
+    let Dirent{name} = i;
     pin name = name;
     path.path.append(dir-path, name)
   }))

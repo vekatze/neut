@@ -149,7 +149,7 @@ define _interpret-target(p: pair(&hint, &series(pair(ens-key, ens)))) -> app(dic
         _interpret-source-locator(tmp)
       };
       try clang-option = _interpret-clang-option(v);
-      Right(Pair(*k, Target-Summary {entry-point, clang-option}))
+      Right(Pair(*k, Target-Summary{entry-point, clang-option}))
     });
   Right(core.dictionary.from-list(core.string.ord.as-ord, kvs))
 }
@@ -287,7 +287,7 @@ define _interpret-foreign-dict(module-root-dir: &string, e: &ens) -> app(foreign
       try Pair(_, x) = to-string-N(x);
       Right(*x)
     });
-  Right(Foreign {input, output, script})
+  Right(Foreign{input, output, script})
 }
 
 define _interpret-antecedent(e: &ens) -> app(module-digest) {
@@ -392,7 +392,7 @@ define from-file-path(module-file-path: &string) -> app(module) {
     _interpret-preset-map(tmp)
   };
   let is-library = has-key(key-antecedent, ens);
-  Right(Module {
+  Right(Module{
     id := {
       if is-library {
         get-library-id(module-file-path)

@@ -59,19 +59,19 @@ constant _bar-finished: &string {
 }
 
 define next(p: progress-indicator) -> progress-indicator {
-  let _Progress-Indicator {working-title, completed-title, color, progress} = p;
+  let _Progress-Indicator{working-title, completed-title, color, progress} = p;
   match progress {
   | Left(_) =>
     let progress = none;
-    _Progress-Indicator {working-title, completed-title, color, progress}
+    _Progress-Indicator{working-title, completed-title, color, progress}
   | Right(Pair(i, count)) =>
     let progress = Right(Pair(min-int(add-int(i, 1), count), count));
-    _Progress-Indicator {working-title, completed-title, color, progress}
+    _Progress-Indicator{working-title, completed-title, color, progress}
   }
 }
 
 define render-in-progress(i: frame, p: &progress-indicator) -> color-string {
-  tie _Progress-Indicator {color, progress, working-title} = p;
+  tie _Progress-Indicator{color, progress, working-title} = p;
   let spinner = packed-N(color, _choose-spinner(i));
   let title-prime = join(spinner, Join-TN(" ", packed-N-empty(working-title)));
   case progress {
@@ -90,7 +90,7 @@ define render-in-progress(i: frame, p: &progress-indicator) -> color-string {
 }
 
 define render-finished(p: &progress-indicator) -> color-string {
-  tie _Progress-Indicator {color, completed-title} = p;
+  tie _Progress-Indicator{color, completed-title} = p;
   let check = packed-N(color, "✓ ");
   let title = packed-N-empty(completed-title);
   join(check, join(title, packed-N-empty("\n")))
@@ -98,7 +98,7 @@ define render-finished(p: &progress-indicator) -> color-string {
 
 define zen() -> unit {
   let p =
-    _Progress-Indicator {
+    _Progress-Indicator{
       working-title := *"Working...",
       completed-title := *"Completed",
       color := Vector[Color(Foreground, Color-16(Vivid, Green))],

@@ -11,7 +11,7 @@ data top-candidate-kit {
 
 define make-top-candidate-kit() -> top-candidate-kit {
   let top-candidate-env-ref = make-ref(box {Nil});
-  _Top-Candidate-Kit {top-candidate-env-ref}
+  _Top-Candidate-Kit{top-candidate-env-ref}
 }
 
 define insert(k: &top-candidate-kit, cand: top-candidate) -> unit {

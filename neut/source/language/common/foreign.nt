@@ -17,14 +17,14 @@ alias foreign {
 }
 
 inline base-foreign-sero<a>(!s: sero(a)) -> sero(base-foreign(a)) {
-  let Sero {put := put-xs, get := get-xs} = list-sero(s);
-  Sero {
+  let Sero{put := put-xs, get := get-xs} = list-sero(s);
+  Sero{
     put := {
       (k, v) => {
         tie Foreign(m, n, xs, fct) = v;
-        let Sero {put := put-hint} = hint-sero;
-        let Sero {put := put-external-name} = external-name-sero;
-        let Sero {put := put-fct} = foreign-cod-type-sero(s);
+        let Sero{put := put-hint} = hint-sero;
+        let Sero{put := put-external-name} = external-name-sero;
+        let Sero{put := put-fct} = foreign-cod-type-sero(s);
         put-hint(k, m);
         put-external-name(k, n);
         put-xs(k, xs);
@@ -33,9 +33,9 @@ inline base-foreign-sero<a>(!s: sero(a)) -> sero(base-foreign(a)) {
     },
     get := {
       (k) => {
-        let Sero {get := get-hint} = hint-sero;
-        let Sero {get := get-external-name} = external-name-sero;
-        let Sero {get := get-fct} = foreign-cod-type-sero(s);
+        let Sero{get := get-hint} = hint-sero;
+        let Sero{get := get-external-name} = external-name-sero;
+        let Sero{get := get-fct} = foreign-cod-type-sero(s);
         try m = get-hint(k);
         try n = get-external-name(k);
         try xs = get-xs(k);

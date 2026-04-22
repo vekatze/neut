@@ -87,7 +87,7 @@ define as-conv-op(name: &string, dom-type: &prim-type, cod-type: &prim-type) -> 
 }
 
 constant conv-op-sero: sero(conv-op) {
-  Sero {
+  Sero{
     put := {
       (k, v) => {
         put-int64(k, magic cast(&conv-op, int, v));

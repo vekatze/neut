@@ -15,7 +15,7 @@ data source {
 }
 
 define get-rel-path-from-source-dir(s: &source) -> app(string) {
-  tie Source {source-module, file-path} = s;
+  tie Source{source-module, file-path} = s;
   this.kernel.common.module.get-rel-path-from-source-dir(source-module, file-path)
 }
 

@@ -56,7 +56,7 @@ data definite-description {
 }
 
 constant eq-dd: eq(definite-description) {
-  Eq {
+  Eq{
     equal := {
       (x, y) => {
         tie _Definite-Description(x) = x;
@@ -68,8 +68,8 @@ constant eq-dd: eq(definite-description) {
 }
 
 constant ord-dd: ord(definite-description) {
-  let Ord {compare} = core.string.ord.as-ord;
-  Ord {
+  let Ord{compare} = core.string.ord.as-ord;
+  Ord{
     compare := {
       (x, y) => {
         tie _Definite-Description(x) = x;
@@ -290,7 +290,7 @@ constant llvm-global-locator-string: &string {
 }
 
 constant definite-description-sero: sero(definite-description) {
-  Sero {
+  Sero{
     put := {
       (k, v) => {
         tie _Definite-Description(t) = v;

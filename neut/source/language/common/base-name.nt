@@ -26,10 +26,10 @@ define _get-string(bn: &base-name) -> &string {
 }
 
 constant ord-base-name: ord(base-name) {
-  Ord {
+  Ord{
     compare := {
       (x, y) => {
-        let Ord {compare} = core.string.ord.as-ord;
+        let Ord{compare} = core.string.ord.as-ord;
         compare(_get-string(x), _get-string(y))
       }
     },
@@ -304,7 +304,7 @@ define extend(x: &base-name, y: &base-name) -> base-name {
 }
 
 constant base-name-sero: sero(base-name) {
-  Sero {
+  Sero{
     put := {
       (k, v) => {
         case v {

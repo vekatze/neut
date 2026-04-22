@@ -21,7 +21,7 @@ define is-opaque(o: opacity) -> bool {
 }
 
 constant opacity-sero: sero(opacity) {
-  Sero {
+  Sero{
     put := {
       (k: &put-kit, v: &opacity) => {
         case v {

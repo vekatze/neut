@@ -11,10 +11,10 @@ import {
 }
 
 define _put(k: &put-kit, v: &log-position) -> unit {
-  let Sero {put := !put-string} = string-sero;
-  let Sero {put := !put-int} = int64-sero;
+  let Sero{put := !put-string} = string-sero;
+  let Sero{put := !put-int} = int64-sero;
   case v {
-  | Log-Position {file-path, line, column} =>
+  | Log-Position{file-path, line, column} =>
     put-string(k, file-path);
     put-int(k, line);
     put-int(k, column);
@@ -22,8 +22,8 @@ define _put(k: &put-kit, v: &log-position) -> unit {
 }
 
 define _get(k: &get-kit) -> ?+log-position {
-  let Sero {get := !get-string} = string-sero;
-  let Sero {get := !get-int} = int64-sero;
+  let Sero{get := !get-string} = string-sero;
+  let Sero{get := !get-int} = int64-sero;
   try file-path = get-string(k);
   try line = get-int(k);
   try column = get-int(k);
@@ -31,12 +31,12 @@ define _get(k: &get-kit) -> ?+log-position {
     letbox file-path = file-path;
     letbox line = line;
     letbox column = column;
-    Log-Position {file-path, line, column}
+    Log-Position{file-path, line, column}
   })
 }
 
 constant log-position-sero: sero(log-position) {
-  Sero {
+  Sero{
     put := _put,
     get := _get,
   }
@@ -44,7 +44,7 @@ constant log-position-sero: sero(log-position) {
 
 define zen() -> unit {
   pin val =
-    log-position-from-hint(Hint {
+    log-position-from-hint(Hint{
       file-path := "/path/to/file.txt",
       line := 123,
       column := 42,

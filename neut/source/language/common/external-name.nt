@@ -25,7 +25,7 @@ define append-external-name(b: &string-builder, v: &external-name) -> unit {
 }
 
 constant external-name-sero: sero(external-name) {
-  Sero {
+  Sero{
     put := {
       (k: &put-kit, v: &external-name) => {
         tie External-Name(v) = v;

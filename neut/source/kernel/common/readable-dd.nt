@@ -32,14 +32,14 @@ define readable-dd-by-module(m: &module, dd: &definite-description) -> string {
     };
     extract(buf)
   | Pair(Library(digest), rest) =>
-    tie Module {dependency} = m;
+    tie Module{dependency} = m;
     pin dep-map = to-list(*dependency);
     pin digest = digest;
     pin rest = rest;
     pin finder =
       (p) => {
         tie Pair(_, v) = p;
-        tie Dependency {digest := digest-cand} = v;
+        tie Dependency{digest := digest-cand} = v;
         eq-data::(digest, digest-cand)
       };
     match find(dep-map, finder) {

@@ -14,16 +14,16 @@ data logger-kit {
 }
 
 define _show-time(m: time) -> string {
-  let Time {seconds := s, nanoseconds := ns} = m;
+  let Time{seconds := s, nanoseconds := ns} = m;
   format("{}{}", List[show-int(s), _format-nanoseconds(ns, 6)])
 }
 
 define make-logger-kit(color-kit: color-kit, enable-debug-mode: bool) -> logger-kit {
   let base-time = get-time();
-  _Logger-Kit {color-kit, enable-debug-mode, base-time}
+  _Logger-Kit{color-kit, enable-debug-mode, base-time}
 }
 
 define get-color-kit(k: &logger-kit) -> &color-kit {
-  tie _Logger-Kit {color-kit} = k;
+  tie _Logger-Kit{color-kit} = k;
   color-kit
 }

@@ -26,8 +26,8 @@ define extract-size<a>(size: base-prim-type-size(a)) -> a {
 }
 
 inline base-prim-type-size-sero<a>(x: sero(a)) -> sero(base-prim-type-size(a)) {
-  let Sero {get, put} = x;
-  Sero {
+  let Sero{get, put} = x;
+  Sero{
     put := {
       (k, v) => {
         case v {
@@ -64,16 +64,16 @@ inline base-prim-type-size-sero<a>(x: sero(a)) -> sero(base-prim-type-size(a)) {
 }
 
 constant base-prim-type-sero: sero(base-prim-type) {
-  Sero {
+  Sero{
     put := {
       (k, v) => {
         case v {
         | Int(s) =>
-          let Sero {put} = base-prim-type-size-sero(int-size-sero);
+          let Sero{put} = base-prim-type-size-sero(int-size-sero);
           put-int64(k, 0);
           put(k, s)
         | Float(s) =>
-          let Sero {put} = base-prim-type-size-sero(float-size-sero);
+          let Sero{put} = base-prim-type-size-sero(float-size-sero);
           put-int64(k, 1);
           put(k, s)
         }
@@ -84,11 +84,11 @@ constant base-prim-type-sero: sero(base-prim-type) {
         try tag = get-int64(k);
         match tag {
         | 0 =>
-          let Sero {get} = base-prim-type-size-sero(int-size-sero);
+          let Sero{get} = base-prim-type-size-sero(int-size-sero);
           try v = get(k);
           Right(lift {Int(axiom-T(v))})
         | 1 =>
-          let Sero {get} = base-prim-type-size-sero(float-size-sero);
+          let Sero{get} = base-prim-type-size-sero(float-size-sero);
           try v = get(k);
           Right(lift {Float(axiom-T(v))})
         | _ =>

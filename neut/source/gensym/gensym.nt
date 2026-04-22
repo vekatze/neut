@@ -11,11 +11,11 @@ data gensym-kit {
 
 define make-gensym-kit() -> gensym-kit {
   let counter-ref = make-cell(lift {0});
-  _Gensym-Kit {counter-ref}
+  _Gensym-Kit{counter-ref}
 }
 
 inline new-count(k: &gensym-kit) -> int {
-  tie _Gensym-Kit {counter-ref} = k;
+  tie _Gensym-Kit{counter-ref} = k;
   modify(counter-ref, (x) => {
     let x = axiom-T(x);
     Pair(lift {add-int(x, 1)}, x)
@@ -23,14 +23,14 @@ inline new-count(k: &gensym-kit) -> int {
 }
 
 define set-count(k: &gensym-kit, x: int) -> unit {
-  tie _Gensym-Kit {counter-ref} = k;
+  tie _Gensym-Kit{counter-ref} = k;
   mutate(counter-ref, (_) => {
     lift {x}
   })
 }
 
 define get-count(k: &gensym-kit) -> int {
-  tie _Gensym-Kit {counter-ref} = k;
+  tie _Gensym-Kit{counter-ref} = k;
   borrow(counter-ref, (x) => {
     lift {*x}
   })

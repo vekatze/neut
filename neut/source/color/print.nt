@@ -7,7 +7,7 @@ import {
 }
 
 foreign {
-  dprintf(int, pointer): void,
+  dprintf(int, pointer) -> void,
 }
 
 define _print(d: descriptor, t: &string) -> unit {
@@ -19,7 +19,7 @@ define _print(d: descriptor, t: &string) -> unit {
 }
 
 define print-stdout(k: &color-kit, t: &color-string) -> unit {
-  tie _Color-Kit {colorize-stdout} = k;
+  tie _Color-Kit{colorize-stdout} = k;
   pin t-prime =
     if *colorize-stdout {
       _unpacked(t)
@@ -30,7 +30,7 @@ define print-stdout(k: &color-kit, t: &color-string) -> unit {
 }
 
 define print-stderr(k: &color-kit, t: &color-string) -> unit {
-  tie _Color-Kit {colorize-stderr} = k;
+  tie _Color-Kit{colorize-stderr} = k;
   pin t-prime =
     if *colorize-stderr {
       _unpacked(t)

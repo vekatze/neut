@@ -20,7 +20,7 @@ define module-digest-from-binary(b: &binary) -> module-digest {
 }
 
 constant module-digest-sero: sero(module-digest) {
-  Sero {
+  Sero{
     put := {
       (k, v) => {
         tie Module-Digest(t) = v;

@@ -24,7 +24,7 @@ define string-from-module-id(i: &module-id) -> &string {
 }
 
 constant module-id-ord: ord(module-id) {
-  Ord {
+  Ord{
     compare := {
       (x, y) => {
         case x, y {
@@ -45,7 +45,7 @@ constant module-id-ord: ord(module-id) {
         | Library(_), Base =>
           GT
         | Library(Module-Digest(d1)), Library(Module-Digest(d2)) =>
-          let Ord {compare} = core.string.ord.as-ord;
+          let Ord{compare} = core.string.ord.as-ord;
           compare(d1, d2)
         }
       }
@@ -54,14 +54,14 @@ constant module-id-ord: ord(module-id) {
 }
 
 constant module-id-sero: sero(module-id) {
-  Sero {
+  Sero{
     put := {
       (k, v) => {
         case v {
         | Main =>
           put-int64(k, 0);
         | Library(digest) =>
-          let Sero {put} = module-digest-sero;
+          let Sero{put} = module-digest-sero;
           put-int64(k, 1);
           put(k, digest);
         | Base =>
@@ -76,7 +76,7 @@ constant module-id-sero: sero(module-id) {
         | 0 =>
           Right(box {Main})
         | 1 =>
-          let Sero {get} = module-digest-sero;
+          let Sero{get} = module-digest-sero;
           try digest = get(k);
           Right(box {
             letbox digest = digest;

@@ -13,8 +13,8 @@ data pi-kind {
 }
 
 constant pi-kind-sero: sero(pi-kind) {
-  let Sero {put} = bool-sero;
-  Sero {
+  let Sero{put} = bool-sero;
+  Sero{
     put := {
       (k, v) => {
         case v {
@@ -29,7 +29,7 @@ constant pi-kind-sero: sero(pi-kind) {
     },
     get := {
       (k) => {
-        let Sero {get} = bool-sero;
+        let Sero{get} = bool-sero;
         try tag = get-int64(k);
         try b = get(k);
         if eq-int(tag, 0) {

@@ -21,11 +21,11 @@ data antecedent-kit {
 define make-antecedent-kit() -> antecedent-kit {
   let map-cell = make-cell(box {empty});
   let rev-map-cell = make-cell(box {empty});
-  _Antecedent-Kit {map-cell, rev-map-cell}
+  _Antecedent-Kit{map-cell, rev-map-cell}
 }
 
 define lookup-module(k: &antecedent-kit, x: &module-id) -> ?module {
-  tie _Antecedent-Kit {map-cell} = k;
+  tie _Antecedent-Kit{map-cell} = k;
   let lookup = make-lookup(module-id-ord);
   borrow(map-cell, (dict) => {
     match lookup(dict, x) {
@@ -46,14 +46,14 @@ define _rev-insert(mp: +rev-map, v: +module, k: +module-id) -> +rev-map {
     letbox mp = mp;
     letbox k = k;
     letbox v = v;
-    let Module {id} = v;
+    let Module{id} = v;
     let insert = make-insert-with(module-id-ord, exact core.list.append);
     insert(mp, id, List[k])
   }
 }
 
 define set(k: &antecedent-kit, !mp: +dictionary(module-id, module)) -> unit {
-  tie _Antecedent-Kit {map-cell, rev-map-cell} = k;
+  tie _Antecedent-Kit{map-cell, rev-map-cell} = k;
   mutate(map-cell, (_) => {
     mp
   });
@@ -67,6 +67,6 @@ define set(k: &antecedent-kit, !mp: +dictionary(module-id, module)) -> unit {
 }
 
 define get-reverse-map(k: antecedent-kit) -> +rev-map {
-  let _Antecedent-Kit {rev-map-cell} = k;
+  let _Antecedent-Kit{rev-map-cell} = k;
   extract(rev-map-cell)
 }

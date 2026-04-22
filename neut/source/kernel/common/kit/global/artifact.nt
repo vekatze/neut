@@ -15,7 +15,7 @@ data artifact-kit {
 
 define make-artifact-kit() -> artifact-kit {
   let artifact-map-ref = make-cell(box {core.dictionary.empty});
-  _Artifact-Kit {artifact-map-ref}
+  _Artifact-Kit{artifact-map-ref}
 }
 
 define insert(k: &artifact-kit, path: string, t: artifact-time) -> unit {

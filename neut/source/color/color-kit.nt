@@ -11,7 +11,7 @@ data color-kit {
 }
 
 foreign {
-  isatty(int): int,
+  isatty(int) -> int,
 }
 
 define _is-tty(d: descriptor) -> bool {
@@ -21,7 +21,7 @@ define _is-tty(d: descriptor) -> bool {
 define make-color-kit(should-colorize-stdout: bool, should-colorize-stderr: bool) -> color-kit {
   let colorize-stdout = and(should-colorize-stdout, _is-tty(stdout));
   let colorize-stderr = and(should-colorize-stderr, _is-tty(stderr));
-  _Color-Kit {colorize-stdout, colorize-stderr}
+  _Color-Kit{colorize-stdout, colorize-stderr}
 }
 
 define zen() -> unit {

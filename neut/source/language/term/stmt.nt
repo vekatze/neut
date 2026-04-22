@@ -42,7 +42,7 @@ alias stripped-stmt {
 
 define get-stmt-name(s: &stmt) -> ?pair(&log-position, &definite-description) {
   case s {
-  | Stmt-Define {m, name} =>
+  | Stmt-Define{m, name} =>
     Right(Pair(m, name))
   }
 }
@@ -63,18 +63,18 @@ inline stmt-f-sero<m, a>(!sm: sero(m), !s: sero(a)) -> sero(stmt-f(m, a)) {
   let stmt-kind-sero = base-stmt-kind-sero(definite-description-sero, binder-sero(sm, s), s);
   let imp-params-sero = list-sero(pair-sero(binder-sero(sm, s), either-sero(unit-sero, s)));
   let exp-params-sero = list-sero(binder-sero(sm, s));
-  let Sero {put := !put-a, get := !get-a} = s;
-  let Sero {put := !put-bool, get := !get-bool} = bool-sero;
-  let Sero {put := !put-log-position, get := !get-log-position} = log-position-sero;
-  let Sero {put := !put-dd, get := !get-dd} = definite-description-sero;
-  let Sero {put := !put-sk, get := !get-sk} = stmt-kind-sero;
-  let Sero {put := !put-ip, get := !get-ip} = imp-params-sero;
-  let Sero {put := !put-ep, get := !get-ep} = exp-params-sero;
-  Sero {
+  let Sero{put := !put-a, get := !get-a} = s;
+  let Sero{put := !put-bool, get := !get-bool} = bool-sero;
+  let Sero{put := !put-log-position, get := !get-log-position} = log-position-sero;
+  let Sero{put := !put-dd, get := !get-dd} = definite-description-sero;
+  let Sero{put := !put-sk, get := !get-sk} = stmt-kind-sero;
+  let Sero{put := !put-ip, get := !get-ip} = imp-params-sero;
+  let Sero{put := !put-ep, get := !get-ep} = exp-params-sero;
+  Sero{
     put := {
       (k, v) => {
         case v {
-        | Stmt-Define {b, sk, m, name, imp-params, exp-params, cod, body} =>
+        | Stmt-Define{b, sk, m, name, imp-params, exp-params, cod, body} =>
           put-int64(k, 0);
           put-bool(k, b);
           put-sk(k, sk);

@@ -36,7 +36,7 @@ data key-arg-kit {
 
 define make-key-arg-kit(main-module: &main-module) -> key-arg-kit {
   let key-arg-map-cell = make-cell(box {empty});
-  _Key-Arg-Kit {main-module, key-arg-map-cell}
+  _Key-Arg-Kit{main-module, key-arg-map-cell}
 }
 
 define _is-hole(k: &key) -> bool {
@@ -119,7 +119,7 @@ define insert(
   imp-keys: list(imp-key),
   exp-keys: list(exp-key),
 ) -> app(unit) {
-  tie _Key-Arg-Kit {key-arg-map-cell, main-module} = k;
+  tie _Key-Arg-Kit{key-arg-map-cell, main-module} = k;
   let error-or-unit: either(string, unit) on func-name, imp-keys, exp-keys =
     borrow(key-arg-map-cell, (dict) => {
       match _lookup(dict, func-name) {
@@ -202,7 +202,7 @@ define insert(
 }
 
 define lookup(k: &key-arg-kit, m: hint, data-name: &definite-description) -> app(pair(list(imp-key), list(exp-key))) {
-  tie _Key-Arg-Kit {key-arg-map-cell, main-module} = k;
+  tie _Key-Arg-Kit{key-arg-map-cell, main-module} = k;
   let tmp =
     borrow(key-arg-map-cell, (dict) => {
       match _lookup(dict, data-name) {

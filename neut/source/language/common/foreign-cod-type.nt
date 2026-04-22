@@ -22,8 +22,8 @@ define low-type-from-foreign-cod-type(cod: foreign-cod-type(base-low-type)) -> l
 }
 
 inline foreign-cod-type-sero<a>(s: sero(a)) -> sero(foreign-cod-type(a)) {
-  let Sero {put := put-a, get := get-a} = s;
-  Sero {
+  let Sero{put := put-a, get := get-a} = s;
+  Sero{
     put := {
       (k, v) => {
         case v {

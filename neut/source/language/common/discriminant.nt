@@ -18,7 +18,7 @@ define increment-discriminant(d: discriminant) -> discriminant {
 }
 
 constant discriminant-sero: sero(discriminant) {
-  Sero {
+  Sero{
     put := {
       (k, v) => {
         tie Discriminant(x) = v;

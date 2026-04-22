@@ -28,12 +28,12 @@ data platform-kit {
 }
 
 define get-arch(k: &platform-kit) -> arch {
-  tie _Platform-Kit {arch} = k;
+  tie _Platform-Kit{arch} = k;
   *arch
 }
 
 define get-operating-system(k: &platform-kit) -> operating-system {
-  tie _Platform-Kit {operating-system} = k;
+  tie _Platform-Kit{operating-system} = k;
   *operating-system
 }
 
@@ -44,12 +44,12 @@ define get-platform(k: &platform-kit) -> platform {
 }
 
 define get-data-size(k: &platform-kit) -> data-size {
-  tie _Platform-Kit {base-size} = k;
+  tie _Platform-Kit{base-size} = k;
   *base-size
 }
 
 define get-clang-digest(k: &platform-kit) -> &string {
-  tie _Platform-Kit {clang-digest} = k;
+  tie _Platform-Kit{clang-digest} = k;
   clang-digest
 }
 
@@ -82,7 +82,7 @@ define _get-clang() -> string {
 
 define _calculate-clang-digest(k: &run-process-kit) -> app(string) {
   let clang = _get-clang();
-  let spec = Process-Spec {process := clang, args := List[*"--version"], cwd := none, input := *""};
+  let spec = Process-Spec{process := clang, args := List[*"--version"], cwd := none, input := *""};
   match run-process(k, spec) {
   | Right(v) =>
     let result on v = hash-and-encode(to-binary(v));
@@ -101,7 +101,7 @@ define make-platform-kit(k: &run-process-kit) -> platform-kit {
     let base-size = data-size-from-arch(arch);
     let operating-system = _get-current-operating-system();
     try clang-digest = _calculate-clang-digest(k);
-    Right(_Platform-Kit {
+    Right(_Platform-Kit{
       arch,
       operating-system,
       base-size,
@@ -119,7 +119,7 @@ define get-base-build-dir(k: &platform-kit, m: &module) -> string {
   pin prefix = _get-platform-prefix(k);
   pin version-dir = core.string.append("compiler-", "0.17.22"); // todo
   pin module-root-dir = get-module-root-dir(m);
-  tie Module {cache-dir} = m;
+  tie Module{cache-dir} = m;
   pin tmp = path.path.append(module-root-dir, cache-dir);
   pin tmp = path.path.append(tmp, "build");
   pin tmp = path.path.append(tmp, prefix);

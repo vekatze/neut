@@ -21,6 +21,6 @@ data pointed-block(a) {
 }
 
 define extract<a>(x: block(a)) -> a {
-  let Block {content} = x;
+  let Block{content} = x;
   content
 }

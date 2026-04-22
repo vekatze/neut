@@ -57,8 +57,8 @@ define collect(l: &loc, t: &local-var-tree) -> list(&ident) {
 }
 
 constant local-var-tree-sero: sero(local-var-tree) {
-  let Sero {put := !put-ident, get := !get-ident} = ident-sero;
-  Sero {
+  let Sero{put := !put-ident, get := !get-ident} = ident-sero;
+  Sero{
     put := {
       define loop(k: &put-kit, v: &local-var-tree) -> unit {
         case v {

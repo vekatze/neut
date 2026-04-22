@@ -78,7 +78,7 @@ inline _parse-log-config-opt() -> argot(log-config) {
     try enable-debug-mode = flag("--enable-debug-output")(k);
     try enable-silent-mode = flag("--silent")(k);
     let should-colorize = not(no-color);
-    Right(Log-Config {should-colorize, enable-debug-mode, enable-silent-mode})
+    Right(Log-Config{should-colorize, enable-debug-mode, enable-silent-mode})
   }
 }
 
@@ -144,7 +144,7 @@ inline _parse-get-command() -> argot(command) {
     try log-config = _parse-log-config-opt()(k);
     try module-alias-string = pop-head(k);
     try module-URL-string = pop-head(k);
-    Right(Internal(log-config, Get(Get-Config {module-alias-string, module-URL-string})))
+    Right(Internal(log-config, Get(Get-Config{module-alias-string, module-URL-string})))
   }
 }
 
@@ -155,7 +155,7 @@ inline _parse-zen-command() -> argot(command) {
     try build-mode-string = _parse-build-mode()(k);
     try file-path-string = pop-head(k);
     try args = _consume-all(Nil)(k);
-    Right(Internal(log-config, Zen(Zen-Config {file-path-string, build-mode-string, args})))
+    Right(Internal(log-config, Zen(Zen-Config{file-path-string, build-mode-string, args})))
   }
 }
 
@@ -173,7 +173,7 @@ inline _parse-create-command() -> argot(command) {
     try target-name = optional(string-required("--target"))(k);
     try log-config = _parse-log-config-opt()(k);
     try module-name = pop-head(k);
-    Right(External(log-config, Create(Create-Config {target-name, module-name})))
+    Right(External(log-config, Create(Create-Config{target-name, module-name})))
   }
 }
 
@@ -190,7 +190,7 @@ inline _parse-check-command() -> argot(command) {
     try _ = _parse-argument("check")(k);
     try should-check-all-dependencies = flag("--full")(k);
     try log-config = _parse-log-config-opt()(k);
-    Right(Internal(log-config, Check(Check-Config {should-check-all-dependencies})))
+    Right(Internal(log-config, Check(Check-Config{should-check-all-dependencies})))
   }
 }
 
@@ -199,7 +199,7 @@ inline _parse-archive-command() -> argot(command) {
     try _ = _parse-argument("archive")(k);
     try log-config = _parse-log-config-opt()(k);
     try archive-name = optional(pop-head)(k);
-    Right(Internal(log-config, Archive(Archive-Config {archive-name})))
+    Right(Internal(log-config, Archive(Archive-Config{archive-name})))
   }
 }
 
@@ -210,7 +210,7 @@ inline _parse-format-source-command() -> argot(command) {
     try must-update-in-place = flag("--in-place")(k);
     try log-config = _parse-log-config-opt()(k);
     try file-path-string = pop-head(k);
-    Right(Internal(log-config, Format-Source(Format-Source-Config {
+    Right(Internal(log-config, Format-Source(Format-Source-Config{
       should-minimize-imports,
       must-update-in-place,
       file-path-string,
@@ -224,7 +224,7 @@ inline _parse-format-ens-command() -> argot(command) {
     try must-update-in-place = flag("--in-place")(k);
     try log-config = _parse-log-config-opt()(k);
     try file-path-string = pop-head(k);
-    Right(Internal(log-config, Format-Ens(Format-Ens-Config {
+    Right(Internal(log-config, Format-Ens(Format-Ens-Config{
       must-update-in-place,
       file-path-string,
     })))

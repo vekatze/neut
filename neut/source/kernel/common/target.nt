@@ -23,14 +23,14 @@ data target {
 }
 
 define empty-zen(path: string) -> main-target {
-  Zen(path, Clang-Option {compile-option := List[], link-option := List[]})
+  Zen(path, Clang-Option{compile-option := List[], link-option := List[]})
 }
 
 define get-entry-point-name(t: &main-target) -> base-name {
   case t {
-  | Named {} =>
+  | Named{} =>
     main-name()
-  | Zen {} =>
+  | Zen{} =>
     zen-name()
   }
 }
@@ -39,14 +39,14 @@ define get-compile-option(t: &target) -> list(string) {
   case t {
   | Peripheral =>
     List[]
-  | Peripheral-Single {} =>
+  | Peripheral-Single{} =>
     List[]
   | Main(c) =>
     case c {
     | Named(_, target-summary) =>
-      tie Target-Summary(_, Clang-Option {compile-option}) = target-summary;
+      tie Target-Summary(_, Clang-Option{compile-option}) = target-summary;
       *compile-option
-    | Zen(_, Clang-Option {compile-option}) =>
+    | Zen(_, Clang-Option{compile-option}) =>
       *compile-option
     }
   }
@@ -56,14 +56,14 @@ define get-link-option(t: &target) -> list(string) {
   case t {
   | Peripheral =>
     List[]
-  | Peripheral-Single {} =>
+  | Peripheral-Single{} =>
     List[]
   | Main(c) =>
     case c {
     | Named(_, target-summary) =>
-      tie Target-Summary(_, Clang-Option {link-option}) = target-summary;
+      tie Target-Summary(_, Clang-Option{link-option}) = target-summary;
       *link-option
-    | Zen(_, Clang-Option {link-option}) =>
+    | Zen(_, Clang-Option{link-option}) =>
       *link-option
     }
   }

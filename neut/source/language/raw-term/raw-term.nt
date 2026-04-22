@@ -103,7 +103,7 @@ data loc {
 }
 
 define cmp-loc(p1: &loc, p2: &loc) -> ordering {
-  let Ord {compare := !cmp} = core.int.ord.as-ord;
+  let Ord{compare := !cmp} = core.int.ord.as-ord;
   tie Loc(l1, c1) = p1;
   tie Loc(l2, c2) = p2;
   match cmp(l1, l2) {
@@ -115,7 +115,7 @@ define cmp-loc(p1: &loc, p2: &loc) -> ordering {
 }
 
 constant loc-sero: sero(loc) {
-  Sero {
+  Sero{
     put := {
       (k, v) => {
         tie Loc(l, c) = v;
@@ -166,7 +166,7 @@ alias top-def {
 }
 
 define get-def-name<a>(def: &raw-def(a)) -> &a {
-  tie Raw-Def {geist := Raw-Geist {name := Pair(v, _)}} = def;
+  tie Raw-Def{geist := Raw-Geist{name := Pair(v, _)}} = def;
   v
 }
 

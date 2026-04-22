@@ -110,17 +110,17 @@ define int-from-float-size(x: float-size) -> int {
 }
 
 constant int-size-sero: sero(int-size) {
-  Sero {
+  Sero{
     put := {
       (k: &put-kit, v: &int-size) => {
-        let Sero {put} = int64-sero;
+        let Sero{put} = int64-sero;
         pin v = int-from-int-size(*v);
         put(k, v)
       }
     },
     get := {
       (k: &get-kit) => {
-        let Sero {get} = int64-sero;
+        let Sero{get} = int64-sero;
         try v = get(k);
         match int-size-from-int(data-size-max, axiom-T(v)) {
         | Right(s) =>
@@ -134,17 +134,17 @@ constant int-size-sero: sero(int-size) {
 }
 
 constant float-size-sero: sero(float-size) {
-  Sero {
+  Sero{
     put := {
       (k: &put-kit, v: &float-size) => {
-        let Sero {put} = int64-sero;
+        let Sero{put} = int64-sero;
         pin v = int-from-float-size(*v);
         put(k, v)
       }
     },
     get := {
       (k: &get-kit) => {
-        let Sero {get} = int64-sero;
+        let Sero{get} = int64-sero;
         try v = get(k);
         match float-size-from-int(data-size-max, axiom-T(v)) {
         | Right(s) =>

@@ -165,7 +165,7 @@ define float-cmp-op-from-string(name: &string) -> ?cmp-op {
 }
 
 constant cmp-op-sero: sero(cmp-op) {
-  Sero {
+  Sero{
     put := {
       (k, v) => {
         put-int64(k, magic cast(&cmp-op, int, v));

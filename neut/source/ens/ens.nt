@@ -105,16 +105,16 @@ define eq-ens(e1: &ens, e2: &ens) -> bool {
   | E-String(_, x1), E-String(_, x2) =>
     eq-string(x1, x2)
   | E-List(_, xs1), E-List(_, xs2) =>
-    tie Series {elems := elems1, trailing-comment := tc1, prefix := p1} = xs1;
-    tie Series {elems := elems2, trailing-comment := tc2, prefix := p2} = xs2;
+    tie Series{elems := elems1, trailing-comment := tc1, prefix := p1} = xs1;
+    tie Series{elems := elems2, trailing-comment := tc2, prefix := p2} = xs2;
     all[
       _eq-ens-list(elems1, elems2),
       eq-data::(tc1, tc2),
       eq-data::(p1, p2),
     ]
   | E-Dictionary(_, kvs1), E-Dictionary(_, kvs2) =>
-    tie Series {elems := elems1, trailing-comment := tc1, prefix := p1} = kvs1;
-    tie Series {elems := elems2, trailing-comment := tc2, prefix := p2} = kvs2;
+    tie Series{elems := elems1, trailing-comment := tc1, prefix := p1} = kvs1;
+    tie Series{elems := elems2, trailing-comment := tc2, prefix := p2} = kvs2;
     all[
       _eq-ens-kvs(elems1, elems2),
       eq-data::(tc1, tc2),
@@ -141,7 +141,7 @@ define _lookup<a>(k: &string, kvs: &list(pair(a, pair(pair(hint, string), ens)))
 define has-key(k: &string, e: &ens) -> bool {
   case e {
   | E-Dictionary(_, kvs) =>
-    tie Series {elems} = kvs;
+    tie Series{elems} = kvs;
     match _lookup(k, elems) {
     | Left(_) =>
       False
@@ -169,17 +169,17 @@ define raise-type-error<a>(m: hint, expected-type: ens-type, actual-type: ens-ty
 
 define type-of(e: &ens) -> ens-type {
   case e {
-  | E-Int {} =>
+  | E-Int{} =>
     ET-Int
-  | E-Float {} =>
+  | E-Float{} =>
     ET-Float
-  | E-Bool {} =>
+  | E-Bool{} =>
     ET-Bool
-  | E-String {} =>
+  | E-String{} =>
     ET-String
-  | E-List {} =>
+  | E-List{} =>
     ET-List
-  | E-Dictionary {} =>
+  | E-Dictionary{} =>
     ET-Dictionary
   }
 }
@@ -304,7 +304,7 @@ define to-list-N(e: &ens) -> app(pair(&hint, &series(ens))) {
 
 define access(k: &string, e: &ens) -> app(&ens) {
   try Pair(_, dict) = to-dictionary-N(e);
-  tie Series {elems} = dict;
+  tie Series{elems} = dict;
   match _lookup(k, elems) {
   | Right(v) =>
     Right(v)
@@ -315,7 +315,7 @@ define access(k: &string, e: &ens) -> app(&ens) {
 
 define access-or-default(k: &string, fallback: &ens, e: &ens) -> app(&ens) {
   try Pair(_, dict) = to-dictionary-N(e);
-  tie Series {elems} = dict;
+  tie Series{elems} = dict;
   match _lookup(k, elems) {
   | Right(v) =>
     Right(v)
@@ -410,19 +410,19 @@ define _extract(
 // left-biased merge
 define merge(e1: ens, e2: ens) -> app(ens) {
   match e1, e2 {
-  | E-Int(m, x1), E-Int {} =>
+  | E-Int(m, x1), E-Int{} =>
     Right(E-Int(m, x1))
-  | E-Float(m, x1), E-Float {} =>
+  | E-Float(m, x1), E-Float{} =>
     Right(E-Float(m, x1))
-  | E-Bool(m, x1), E-Bool {} =>
+  | E-Bool(m, x1), E-Bool{} =>
     Right(E-Bool(m, x1))
-  | E-String(m, x1), E-String {} =>
+  | E-String(m, x1), E-String{} =>
     Right(E-String(m, x1))
   | E-List(m, xs1), E-List(_, xs2) =>
     Right(E-List(m, append-left-biased(xs1, xs2)))
   | E-Dictionary(m, s1), E-Dictionary(_, s2) =>
-    let Series {elems := kvs1, trailing-comment, prefix, container, separator, has-optional-separator} = s1;
-    let Series {elems := kvs2} = s2;
+    let Series{elems := kvs1, trailing-comment, prefix, container, separator, has-optional-separator} = s1;
+    let Series{elems := kvs2} = s2;
     let f =
       define merge-dicts(kvs1: _ens-dict, kvs2: _ens-dict) -> app(_ens-dict) {
         match kvs1 {
@@ -441,7 +441,7 @@ define merge(e1: ens, e2: ens) -> app(ens) {
         }
       };
     try elems = f(kvs1, kvs2);
-    Right(E-Dictionary(m, Series {elems, trailing-comment, prefix, container, separator, has-optional-separator}))
+    Right(E-Dictionary(m, Series{elems, trailing-comment, prefix, container, separator, has-optional-separator}))
   | e1, e2 =>
     let t1 on e1 = type-of(e1);
     let t2 on e2 = type-of(e2);
@@ -461,8 +461,8 @@ define dict-from-list<a>(m: a, xs: list(pair(ens-key-f(a), ens-f(a)))) -> ens-f(
 
 define dict-from-list-vertical<a>(m: a, xs: list(pair(ens-key-f(a), ens-f(a)))) -> ens-f(a) {
   let s = this.syntax-tree.series.from-list(Brace, Comma, xs);
-  let Series {elems, trailing-comment, prefix, container, separator} = s;
-  E-Dictionary(m, Series {
+  let Series{elems, trailing-comment, prefix, container, separator} = s;
+  E-Dictionary(m, Series{
     elems,
     trailing-comment,
     prefix,

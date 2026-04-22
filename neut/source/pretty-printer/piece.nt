@@ -78,7 +78,7 @@ define _wrap-by-space(d: doc) -> doc {
 }
 
 define container(content: doc) -> piece {
-  Piece {
+  Piece{
     content,
     single-modifier := _id,
     multi-modifier := _append-newline,
@@ -86,7 +86,7 @@ define container(content: doc) -> piece {
 }
 
 define nested(content: doc) -> piece {
-  Piece {
+  Piece{
     content,
     single-modifier := {
       (d) => {
@@ -102,7 +102,7 @@ define nested(content: doc) -> piece {
 }
 
 define block(content: doc) -> piece {
-  Piece {
+  Piece{
     content,
     single-modifier := {
       (d) => {
@@ -118,7 +118,7 @@ define block(content: doc) -> piece {
 }
 
 define id-or-nest(content: doc) -> piece {
-  Piece {
+  Piece{
     content,
     single-modifier := _id,
     multi-modifier := {
@@ -130,7 +130,7 @@ define id-or-nest(content: doc) -> piece {
 }
 
 define delimiter(content: doc) -> piece {
-  Piece {
+  Piece{
     content,
     single-modifier := _wrap-by-space,
     multi-modifier := _append-newline,
@@ -138,7 +138,7 @@ define delimiter(content: doc) -> piece {
 }
 
 define clause-delimiter(content: doc) -> piece {
-  Piece {
+  Piece{
     content,
     single-modifier := _wrap-by-space,
     multi-modifier := _space-newline,
@@ -146,7 +146,7 @@ define clause-delimiter(content: doc) -> piece {
 }
 
 define parameter(content: doc) -> piece {
-  Piece {
+  Piece{
     content,
     single-modifier := _id,
     multi-modifier := _id,
@@ -154,7 +154,7 @@ define parameter(content: doc) -> piece {
 }
 
 define bare-series(content: doc) -> piece {
-  Piece {
+  Piece{
     content,
     single-modifier := _append-space,
     multi-modifier := {
@@ -166,7 +166,7 @@ define bare-series(content: doc) -> piece {
 }
 
 define let-body(content: doc) -> piece {
-  Piece {
+  Piece{
     content,
     single-modifier := _id,
     multi-modifier := {
@@ -178,7 +178,7 @@ define let-body(content: doc) -> piece {
 }
 
 define before-bare-series(content: doc) -> piece {
-  Piece {
+  Piece{
     content,
     single-modifier := _append-space,
     multi-modifier := _id,
@@ -186,7 +186,7 @@ define before-bare-series(content: doc) -> piece {
 }
 
 define delimiter-left-aligned(content: doc) -> piece {
-  Piece {
+  Piece{
     content,
     single-modifier := _append-space,
     multi-modifier := _append-newline,
@@ -194,7 +194,7 @@ define delimiter-left-aligned(content: doc) -> piece {
 }
 
 define delimiter-bar(content: doc) -> piece {
-  Piece {
+  Piece{
     content,
     single-modifier := _wrap-by-space,
     multi-modifier := {
@@ -206,7 +206,7 @@ define delimiter-bar(content: doc) -> piece {
 }
 
 define horizontal(content: doc) -> piece {
-  Piece {
+  Piece{
     content,
     single-modifier := _append-space,
     multi-modifier := _append-space,
@@ -214,7 +214,7 @@ define horizontal(content: doc) -> piece {
 }
 
 define vertical(content: doc) -> piece {
-  Piece {
+  Piece{
     content,
     single-modifier := _append-newline,
     multi-modifier := _append-newline,
@@ -222,7 +222,7 @@ define vertical(content: doc) -> piece {
 }
 
 define append-comma-if-vertical(content: doc) -> piece {
-  Piece {
+  Piece{
     content,
     single-modifier := _id,
     multi-modifier := {
@@ -234,7 +234,7 @@ define append-comma-if-vertical(content: doc) -> piece {
 }
 
 define inject(content: doc) -> piece {
-  Piece {
+  Piece{
     content,
     single-modifier := _id,
     multi-modifier := _id,

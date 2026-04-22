@@ -12,7 +12,7 @@ data literal {
 }
 
 constant literal-sero: sero(literal) {
-  Sero {
+  Sero{
     put := {
       (k, v) => {
         case v {
@@ -21,7 +21,7 @@ constant literal-sero: sero(literal) {
           put-int64(k, *i);
         | Rune(r) =>
           put-int64(k, 0);
-          let Sero {put} = rune-sero;
+          let Sero{put} = rune-sero;
           put(k, r);
         }
       }
@@ -34,7 +34,7 @@ constant literal-sero: sero(literal) {
           try i = get-int64(k);
           Right(lift {Int(i)})
         | 1 =>
-          let Sero {get} = rune-sero;
+          let Sero{get} = rune-sero;
           try r = get(k);
           Right(lift {Rune(axiom-T(r))})
         | _ =>

@@ -54,7 +54,7 @@ define _clear(pi: &progress-indicator) -> system(unit) {
   try _ = r;
   try _ = core.ansi.write-code(k, Move-Cursor(To-Column(0)));
   try _ = core.ansi.write-code(k, Erase(Line, From-Cursor));
-  tie _Progress-Indicator {progress} = pi;
+  tie _Progress-Indicator{progress} = pi;
   case progress {
   | Left(_) =>
     Right(Unit)
@@ -66,7 +66,7 @@ define _clear(pi: &progress-indicator) -> system(unit) {
 }
 
 define _gensym(k: &progress-indicator-kit) -> int {
-  tie _Progress-Indicator-Kit {counter-ref} = k;
+  tie _Progress-Indicator-Kit{counter-ref} = k;
   modify(counter-ref, (counter) => {
     letbox-T counter = counter;
     Pair(lift {add-int(counter, 1)}, counter)
@@ -80,11 +80,11 @@ define make-progress-indicator-kit(
   let progress-indicator-ref = make-cell(lift {base-progress-indicator});
   let active-ref = make-cell(lift {core.intmap.empty});
   let counter-ref = make-cell(lift {0});
-  _Progress-Indicator-Kit {color-kit, progress-indicator-ref, active-ref, counter-ref}
+  _Progress-Indicator-Kit{color-kit, progress-indicator-ref, active-ref, counter-ref}
 }
 
 define increment(k: &progress-indicator-kit) -> unit {
-  tie _Progress-Indicator-Kit {progress-indicator-ref} = k;
+  tie _Progress-Indicator-Kit{progress-indicator-ref} = k;
   mutate(progress-indicator-ref, (p) => {
     box {
       letbox p = p;
@@ -94,7 +94,7 @@ define increment(k: &progress-indicator-kit) -> unit {
 }
 
 define _render(k: &progress-indicator-kit, id: int, i: frame) -> unit {
-  tie _Progress-Indicator-Kit {color-kit, progress-indicator-ref, active-ref} = k;
+  tie _Progress-Indicator-Kit{color-kit, progress-indicator-ref, active-ref} = k;
   let is-active =
     borrow(active-ref, (active) => {
       match core.intmap.lookup(active, id) {
@@ -126,7 +126,7 @@ define _render(k: &progress-indicator-kit, id: int, i: frame) -> unit {
 }
 
 define start-rendering(k: &progress-indicator-kit) -> renderer {
-  tie _Progress-Indicator-Kit {active-ref} = k;
+  tie _Progress-Indicator-Kit{active-ref} = k;
   let id = _gensym(k);
   mutate(active-ref, (actives) => {
     box {
@@ -139,12 +139,12 @@ define start-rendering(k: &progress-indicator-kit) -> renderer {
     detach(() => {
       _render(k, id, 0)
     });
-  _Renderer {id, renderer-thread := th}
+  _Renderer{id, renderer-thread := th}
 }
 
 define stop-rendering(k: &progress-indicator-kit, r: renderer) -> unit {
-  tie _Progress-Indicator-Kit {active-ref} = k;
-  let _Renderer {id, renderer-thread} = r;
+  tie _Progress-Indicator-Kit{active-ref} = k;
+  let _Renderer{id, renderer-thread} = r;
   mutate(active-ref, (actives) => {
     box {
       letbox actives = actives;
@@ -159,7 +159,7 @@ define zen() -> unit {
   {
     let color-kit = make-color-kit(True, True);
     let p =
-      _Progress-Indicator {
+      _Progress-Indicator{
         working-title := *"Working...",
         completed-title := *"Completed!",
         color := Vector[Color(Foreground, Color-16(Vivid, Green))],
@@ -176,7 +176,7 @@ define zen() -> unit {
   {
     let color-kit = make-color-kit(True, True);
     let p =
-      _Progress-Indicator {
+      _Progress-Indicator{
         working-title := *"Working...",
         completed-title := *"Completed!",
         color := Vector[],

@@ -46,7 +46,7 @@ define get-base-name(path: &string) -> string {
 }
 
 define ensure-not-in-dependency-dir(m: &main-module) -> app(unit) {
-  tie Module {id} = extract-module(m);
+  tie Module{id} = extract-module(m);
   case id {
   | Library(_) =>
     raise-error-prime(*"This command cannot be used under a dependency directory")
@@ -58,7 +58,7 @@ define ensure-not-in-dependency-dir(m: &main-module) -> app(unit) {
 define _get-clang-option-base(t: &main-target, m: &module) -> app(clang-option) {
   case t {
   | Named(name, _) =>
-    tie Module {target} = m;
+    tie Module{target} = m;
     let lookup = make-lookup(core.string.ord.as-ord);
     match lookup(target, name) {
     | Left(_) =>
@@ -70,7 +70,7 @@ define _get-clang-option-base(t: &main-target, m: &module) -> app(clang-option) 
       };
       raise-error-prime(extract(buf))
     | Right(v) =>
-      tie Target-Summary {clang-option} = v;
+      tie Target-Summary{clang-option} = v;
       Right(*clang-option)
     }
   | Zen(_, clang-option) =>
@@ -94,11 +94,11 @@ constant _m: hint {
 }
 
 define _register-build-signature(k: &path-kit, clang-option: clang-option) -> app(string) {
-  tie _Path-Kit {cache-cell, platform-kit, main-module} = k;
+  tie _Path-Kit{cache-cell, platform-kit, main-module} = k;
   let m = extract-module(*main-module);
-  tie Module {location} = m;
+  tie Module{location} = m;
   let clang-digest = get-clang-digest(*platform-kit);
-  let Clang-Option {compile-option, link-option} = clang-option;
+  let Clang-Option{compile-option, link-option} = clang-option;
   let compile-option-string = core.string.intercalate(compile-option, *" ");
   let link-option-string = core.string.intercalate(link-option, *" ");
   try module-ens = read-string-from-path(location);
@@ -119,7 +119,7 @@ define _register-build-signature(k: &path-kit, clang-option: clang-option) -> ap
 }
 
 define _get-build-signature-base(k: &path-kit, t: &main-target) -> app(string) {
-  tie _Path-Kit {cache-cell, main-module} = k;
+  tie _Path-Kit{cache-cell, main-module} = k;
   match clone(cache-cell) {
   | Right(sig) =>
     Right(sig)
@@ -131,7 +131,7 @@ define _get-build-signature-base(k: &path-kit, t: &main-target) -> app(string) {
 }
 
 define _get-build-signature(k: &path-kit, t: &target) -> app(string) {
-  tie _Path-Kit {cache-cell, main-module} = k;
+  tie _Path-Kit{cache-cell, main-module} = k;
   match clone(cache-cell) {
   | Right(sig) =>
     Right(sig)
@@ -143,7 +143,7 @@ define _get-build-signature(k: &path-kit, t: &target) -> app(string) {
 }
 
 define _get-build-dir(k: &path-kit, t: &target, m: &module) -> app(string) {
-  tie _Path-Kit {platform-kit} = k;
+  tie _Path-Kit{platform-kit} = k;
   let base-build-dir = get-base-build-dir(*platform-kit, m);
   try build-signature = _get-build-signature(k, t);
   let build-prefix on build-signature = core.string.append("build-", build-signature);
@@ -155,7 +155,7 @@ define _get-build-dir(k: &path-kit, t: &target, m: &module) -> app(string) {
 }
 
 define _get-build-dir-base(k: &path-kit, t: &main-target, m: &module) -> app(string) {
-  tie _Path-Kit {platform-kit} = k;
+  tie _Path-Kit{platform-kit} = k;
   let base-build-dir = get-base-build-dir(*platform-kit, m);
   try build-signature = _get-build-signature-base(k, t);
   let build-prefix on build-signature = core.string.append("build-", build-signature);
@@ -215,7 +215,7 @@ define _get-zen-entry-dir(k: &path-kit, t: &main-target, m: &module) -> app(stri
 }
 
 define get-executable-output-path(k: &path-kit, mt: &main-target) -> app(string) {
-  tie _Path-Kit {main-module} = k;
+  tie _Path-Kit{main-module} = k;
   let m = extract-module(*main-module);
   case mt {
   | Named(target, _) =>
@@ -247,7 +247,7 @@ define _attach-extension(file: &string, kind: output-kind) -> string {
 }
 
 define output-path-from-source(k: &path-kit, t: &target, kind: output-kind, src: &source) -> app(string) {
-  tie Source {source-module} = src;
+  tie Source{source-module} = src;
   try artifact-dir = _get-artifact-dir(k, t, source-module);
   try rel-path = this.kernel.common.source.get-rel-path-from-source-dir(src);
   let result on artifact-dir, rel-path = {
@@ -262,7 +262,7 @@ define output-path-from-source(k: &path-kit, t: &target, kind: output-kind, src:
 }
 
 define _get-cache-path(k: &path-kit, t: &target, extension: &string, src: &source) -> app(string) {
-  tie Source {source-module} = src;
+  tie Source{source-module} = src;
   try artifact-dir = _get-artifact-dir(k, t, source-module);
   try rel-path = this.kernel.common.source.get-rel-path-from-source-dir(src);
   let result on artifact-dir, rel-path = {
@@ -303,7 +303,7 @@ define get-output-path-for-entry-point(
   kind: output-kind,
   t: &main-target,
 ) -> app(pair(output-kind, string)) {
-  tie _Path-Kit {main-module} = k;
+  tie _Path-Kit{main-module} = k;
   let m = extract-module(*main-module);
   case t {
   | Named(target, _) =>

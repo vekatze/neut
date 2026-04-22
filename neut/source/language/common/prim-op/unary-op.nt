@@ -22,7 +22,7 @@ define unary-op-from-string(name: &string) -> ?unary-op {
 }
 
 constant unary-op-sero: sero(unary-op) {
-  Sero {
+  Sero{
     put := {
       (_, _) => {
         Unit

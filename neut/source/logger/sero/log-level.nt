@@ -10,7 +10,7 @@ import {
 }
 
 define _put(k: &put-kit, v: &log-level) -> unit {
-  let Sero {put} = int8-sero;
+  let Sero{put} = int8-sero;
   case v {
   | Note =>
     pin v = 0;
@@ -28,7 +28,7 @@ define _put(k: &put-kit, v: &log-level) -> unit {
 }
 
 define _get(k: &get-kit) -> ?+log-level {
-  let Sero {get} = int8-sero;
+  let Sero{get} = int8-sero;
   try value = get(k);
   match axiom-T(value) {
   | 0 =>
@@ -45,7 +45,7 @@ define _get(k: &get-kit) -> ?+log-level {
 }
 
 constant log-level-sero: sero(log-level) {
-  Sero {
+  Sero{
     put := _put,
     get := _get,
   }

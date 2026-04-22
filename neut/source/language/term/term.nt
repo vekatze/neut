@@ -14,8 +14,8 @@ alias term {
 }
 
 inline term-f-sero<a>(!s: sero(a)) -> sero(term-f(a)) {
-  let Sero {put := !put-a, get := !get-a} = s;
-  Sero {
+  let Sero{put := !put-a, get := !get-a} = s;
+  Sero{
     put := {
       (k, v) => {
         case v {

@@ -10,15 +10,15 @@ data attr-var-global {
 }
 
 define make-attr-var-global(an: arg-num) -> attr-var-global {
-  Attr-Var-Global {arg-num := an, is-const-like := False}
+  Attr-Var-Global{arg-num := an, is-const-like := False}
 }
 
 constant attr-var-global-sero: sero(attr-var-global) {
-  Sero {
+  Sero{
     put := {
       (k, v) => {
-        let Sero {put := put-arg-num} = arg-num-sero;
-        let Sero {put := put-bool} = bool-sero;
+        let Sero{put := put-arg-num} = arg-num-sero;
+        let Sero{put := put-bool} = bool-sero;
         tie Attr-Var-Global(arg-num, is-const-like) = v;
         put-arg-num(k, arg-num);
         put-bool(k, is-const-like);
@@ -26,8 +26,8 @@ constant attr-var-global-sero: sero(attr-var-global) {
     },
     get := {
       (k) => {
-        let Sero {get := get-arg-num} = arg-num-sero;
-        let Sero {get := get-bool} = bool-sero;
+        let Sero{get := get-arg-num} = arg-num-sero;
+        let Sero{get := get-bool} = bool-sero;
         try arg-num = get-arg-num(k);
         try is-const-like = get-bool(k);
         Right(box {

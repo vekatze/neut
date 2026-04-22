@@ -32,29 +32,29 @@ data series(a) {
 }
 
 inline for-each<a, b>(xs: series(a), f: (a) -> b) -> series(b) {
-  let Series {elems, trailing-comment, prefix, container, separator, has-optional-separator} = xs;
+  let Series{elems, trailing-comment, prefix, container, separator, has-optional-separator} = xs;
   let elems =
     core.list.for-each(elems, (p) => {
       let Pair(c, val) = p;
       let val = f(val);
       Pair(c, val)
     });
-  Series {elems, trailing-comment, prefix, container, separator, has-optional-separator}
+  Series{elems, trailing-comment, prefix, container, separator, has-optional-separator}
 }
 
 inline for-each-E<e, a, b>(xs: series(a), f: (a) -> either(e, b)) -> either(e, series(b)) {
-  let Series {elems, trailing-comment, prefix, container, separator, has-optional-separator} = xs;
+  let Series{elems, trailing-comment, prefix, container, separator, has-optional-separator} = xs;
   try elems =
     core.list.for-each-E(elems, (p) => {
       let Pair(c, val) = p;
       try val = f(val);
       Right(Pair(c, val))
     });
-  Right(Series {elems, trailing-comment, prefix, container, separator, has-optional-separator})
+  Right(Series{elems, trailing-comment, prefix, container, separator, has-optional-separator})
 }
 
 inline empty-series<a>(container: ?container, separator: separator) -> series(a) {
-  Series {
+  Series{
     elems := Nil,
     trailing-comment := Nil,
     prefix := Left(Unit),
@@ -72,7 +72,7 @@ define singleton<a>(
   trailing-comment: comment,
   has-optional-separator: bool,
 ) -> series(a) {
-  Series {
+  Series{
     elems := List[Pair(leading-comment, value)],
     trailing-comment,
     prefix := Left(Unit),
@@ -112,13 +112,13 @@ inline modify-E<e, a, b>(
 }
 
 define uncons<a>(xs: series(a)) -> ?pair(pair(comment, a), series(a)) {
-  let Series {elems, trailing-comment, prefix, container, separator, has-optional-separator} = xs;
+  let Series{elems, trailing-comment, prefix, container, separator, has-optional-separator} = xs;
   match elems {
   | Nil =>
     none
   | Cons(first-elem, rest) =>
     let remaining-series =
-      Series {
+      Series{
         elems := rest,
         trailing-comment,
         prefix,
@@ -131,8 +131,8 @@ define uncons<a>(xs: series(a)) -> ?pair(pair(comment, a), series(a)) {
 }
 
 define cons<a>(elem: pair(comment, a), xs: series(a)) -> series(a) {
-  let Series {elems, trailing-comment, prefix, container, separator, has-optional-separator} = xs;
-  Series {
+  let Series{elems, trailing-comment, prefix, container, separator, has-optional-separator} = xs;
+  Series{
     elems := Cons(elem, elems),
     trailing-comment,
     prefix,
@@ -155,7 +155,7 @@ define from-list<a>(container: container, separator: separator, values: list(a))
     core.list.for-each(values, (v) => {
       Pair(Nil, v)
     });
-  Series {
+  Series{
     elems,
     trailing-comment := Nil,
     prefix := none,
@@ -174,7 +174,7 @@ define from-list-bare<a>(values: list(a)) -> series(a) {
     core.list.for-each(values, (v) => {
       Pair(Nil, v)
     });
-  Series {
+  Series{
     elems,
     trailing-comment := Nil,
     prefix := none,
@@ -202,7 +202,7 @@ define from-list-with-comment<a>(
   values: list(pair(comment, pair(a, comment))),
 ) -> series(a) {
   let Pair(elems, trailing-comment) = _assoc(values, Nil);
-  Series {
+  Series{
     elems,
     trailing-comment,
     prefix := none,
@@ -213,10 +213,10 @@ define from-list-with-comment<a>(
 }
 
 define push-comment<a>(comment: comment, xs: series(a)) -> series(a) {
-  let Series {elems, trailing-comment, prefix, container, separator, has-optional-separator} = xs;
+  let Series{elems, trailing-comment, prefix, container, separator, has-optional-separator} = xs;
   match elems {
   | Nil =>
-    Series {
+    Series{
       elems := Nil,
       trailing-comment := core.list.append(comment, trailing-comment),
       prefix,
@@ -227,7 +227,7 @@ define push-comment<a>(comment: comment, xs: series(a)) -> series(a) {
   | Cons(first-pair, rest) =>
     let Pair(first-comment, first-value) = first-pair;
     let new-first = Pair(core.list.append(comment, first-comment), first-value);
-    Series {
+    Series{
       elems := Cons(new-first, rest),
       trailing-comment,
       prefix,
@@ -239,9 +239,9 @@ define push-comment<a>(comment: comment, xs: series(a)) -> series(a) {
 }
 
 define assoc<a>(xs: series(pair(a, comment))) -> series(a) {
-  let Series {elems, trailing-comment, prefix, container, separator, has-optional-separator} = xs;
+  let Series{elems, trailing-comment, prefix, container, separator, has-optional-separator} = xs;
   let Pair(elems, trailing-comment) = _assoc(elems, trailing-comment);
-  Series {
+  Series{
     elems,
     trailing-comment,
     prefix,
@@ -252,13 +252,13 @@ define assoc<a>(xs: series(pair(a, comment))) -> series(a) {
 }
 
 define join-c<a>(xs: series(pair(comment, a))) -> series(a) {
-  let Series {elems, trailing-comment, prefix, container, separator, has-optional-separator} = xs;
+  let Series{elems, trailing-comment, prefix, container, separator, has-optional-separator} = xs;
   let new-elems =
     core.list.for-each(elems, (e) => {
       let Pair(c1, Pair(c2, v)) = e;
       Pair(core.list.append(c1, c2), v)
     });
-  Series {
+  Series{
     elems := new-elems,
     trailing-comment,
     prefix,
@@ -291,7 +291,7 @@ define get-separator-string(sep: separator) -> &string {
 }
 
 define extract<a>(xs: series(a)) -> list(a) {
-  let Series {elems} = xs;
+  let Series{elems} = xs;
   core.list.for-each(elems, (e) => {
     let Pair(_, v) = e;
     v
@@ -299,12 +299,12 @@ define extract<a>(xs: series(a)) -> list(a) {
 }
 
 define extract-N<a>(xs: &series(a)) -> &list(pair(comment, a)) {
-  tie Series {elems} = xs;
+  tie Series{elems} = xs;
   elems
 }
 
 define is-empty<a>(xs: &series(a)) -> bool {
-  tie Series {elems, trailing-comment} = xs;
+  tie Series{elems, trailing-comment} = xs;
   let b1 = core.list.is-empty(elems);
   let b2 = core.list.is-empty(trailing-comment);
   and(b1, b2)
@@ -315,32 +315,32 @@ define sort-series<a>(
   nes: &(pair(comment, a)) -> +pair(comment, a),
   xs: series(a),
 ) -> series(a) {
-  let Series {elems, trailing-comment, prefix, container, separator, has-optional-separator} = xs;
+  let Series{elems, trailing-comment, prefix, container, separator, has-optional-separator} = xs;
   let elems-vec = core.vector.from-list(elems);
   let elems-vec = core.vector.ord.vector-quicksort(o, nes, elems-vec);
   let elems = core.vector.to-list(elems-vec);
-  Series {elems, trailing-comment, prefix, container, separator, has-optional-separator}
+  Series{elems, trailing-comment, prefix, container, separator, has-optional-separator}
 }
 
 define nub-series<a>(
   e: &eq(pair(comment, a)),
   xs: series(a),
 ) -> series(a) {
-  let Series {elems, trailing-comment, prefix, container, separator, has-optional-separator} = xs;
+  let Series{elems, trailing-comment, prefix, container, separator, has-optional-separator} = xs;
   let elems = core.list.eq.nub(e, elems);
-  Series {elems, trailing-comment, prefix, container, separator, has-optional-separator}
+  Series{elems, trailing-comment, prefix, container, separator, has-optional-separator}
 }
 
 define append-left-biased<a>(xs: series(a), ys: series(a)) -> series(a) {
-  let Series {elems, trailing-comment, prefix, container, separator, has-optional-separator} = xs;
+  let Series{elems, trailing-comment, prefix, container, separator, has-optional-separator} = xs;
   let elems1 = elems;
   let tc1 = trailing-comment;
   let p1 = prefix;
   let c1 = container;
   let sep1 = separator;
   let has-optional-separator-1 = has-optional-separator;
-  let Series {elems, trailing-comment, has-optional-separator} = ys;
-  Series {
+  let Series{elems, trailing-comment, has-optional-separator} = ys;
+  Series{
     elems := core.list.append(elems1, elems),
     trailing-comment := core.list.append(tc1, trailing-comment),
     prefix := p1,
@@ -365,8 +365,8 @@ define _cat-maybe-pairs<a>(pairs: list(pair(comment, ?a))) -> list(pair(comment,
 }
 
 define cat-maybes<a>(xs: series(?a)) -> series(a) {
-  let Series {elems, trailing-comment, prefix, container, separator, has-optional-separator} = xs;
-  Series {
+  let Series{elems, trailing-comment, prefix, container, separator, has-optional-separator} = xs;
+  Series{
     elems := _cat-maybe-pairs(elems),
     trailing-comment,
     prefix,
@@ -395,9 +395,9 @@ define _compress-either<a>(
 }
 
 define compress-either<a>(xs: series(either(comment, a))) -> series(a) {
-  let Series {elems, trailing-comment, prefix, container, separator, has-optional-separator} = xs;
+  let Series{elems, trailing-comment, prefix, container, separator, has-optional-separator} = xs;
   let Pair(trail, elems) = _compress-either(Nil, elems);
-  Series {
+  Series{
     elems,
     trailing-comment := core.list.append(trail, trailing-comment),
     prefix,
@@ -408,9 +408,9 @@ define compress-either<a>(xs: series(either(comment, a))) -> series(a) {
 }
 
 inline filter<a>(xs: series(a), p: (&pair(comment, a)) -> bool) -> series(a) {
-  let Series {elems, trailing-comment, prefix, container, separator, has-optional-separator} = xs;
+  let Series{elems, trailing-comment, prefix, container, separator, has-optional-separator} = xs;
   let elems = core.list.filter(elems, p);
-  Series {
+  Series{
     elems,
     trailing-comment,
     prefix,
@@ -421,7 +421,7 @@ inline filter<a>(xs: series(a), p: (&pair(comment, a)) -> bool) -> series(a) {
 }
 
 define has-comment<a>(xs: &series(a)) -> bool {
-  tie Series {elems, trailing-comment} = xs;
+  tie Series{elems, trailing-comment} = xs;
   if not(core.list.is-empty(trailing-comment)) {
     False
   } else {
@@ -437,6 +437,6 @@ define has-comment<a>(xs: &series(a)) -> bool {
 }
 
 define _get-separator<a>(xs: &series(a)) -> separator {
-  tie Series {separator} = xs;
+  tie Series{separator} = xs;
   *separator
 }

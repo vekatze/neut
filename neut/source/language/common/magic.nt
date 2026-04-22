@@ -21,9 +21,9 @@ data magic-t(t, a) {
 }
 
 inline magic-sero<a>(!s: sero(a)) -> sero(magic-t(base-low-type, a)) {
-  let Sero {put := !put-a, get := !get-a} = s;
-  let Sero {put := !put-blt, get := !get-blt} = base-low-type-sero;
-  Sero {
+  let Sero{put := !put-a, get := !get-a} = s;
+  let Sero{put := !put-blt, get := !get-blt} = base-low-type-sero;
+  Sero{
     put := {
       (k, v) => {
         case v {
@@ -47,11 +47,11 @@ inline magic-sero<a>(!s: sero(a)) -> sero(magic-t(base-low-type, a)) {
           put-blt(k, lt);
           put-a(k, size)
         | External(dom-list, cod, ext-fun-name, args, var-args) =>
-          let Sero {put := put-lts} = list-sero(base-low-type-sero);
-          let Sero {put := put-fct} = foreign-cod-type-sero(base-low-type-sero);
-          let Sero {put := put-external-name} = external-name-sero;
-          let Sero {put := put-args} = list-sero(s);
-          let Sero {put := put-var-args} = list-sero(pair-sero(s, base-low-type-sero));
+          let Sero{put := put-lts} = list-sero(base-low-type-sero);
+          let Sero{put := put-fct} = foreign-cod-type-sero(base-low-type-sero);
+          let Sero{put := put-external-name} = external-name-sero;
+          let Sero{put := put-args} = list-sero(s);
+          let Sero{put := put-var-args} = list-sero(pair-sero(s, base-low-type-sero));
           put-int64(k, 4);
           put-lts(k, dom-list);
           put-fct(k, cod);
@@ -59,7 +59,7 @@ inline magic-sero<a>(!s: sero(a)) -> sero(magic-t(base-low-type, a)) {
           put-args(k, args);
           put-var-args(k, var-args);
         | Global(name, lt) =>
-          let Sero {put := put-external-name} = external-name-sero;
+          let Sero{put := put-external-name} = external-name-sero;
           put-int64(k, 5);
           put-external-name(k, name);
           put-blt(k, lt);
@@ -117,11 +117,11 @@ inline magic-sero<a>(!s: sero(a)) -> sero(magic-t(base-low-type, a)) {
             Alloca(lt, size)
           })
         | 4 =>
-          let Sero {get := get-lts} = list-sero(base-low-type-sero);
-          let Sero {get := get-fct} = foreign-cod-type-sero(base-low-type-sero);
-          let Sero {get := get-external-name} = external-name-sero;
-          let Sero {get := get-args} = list-sero(s);
-          let Sero {get := get-var-args} = list-sero(pair-sero(s, base-low-type-sero));
+          let Sero{get := get-lts} = list-sero(base-low-type-sero);
+          let Sero{get := get-fct} = foreign-cod-type-sero(base-low-type-sero);
+          let Sero{get := get-external-name} = external-name-sero;
+          let Sero{get := get-args} = list-sero(s);
+          let Sero{get := get-var-args} = list-sero(pair-sero(s, base-low-type-sero));
           try dom-list = get-lts(k);
           try cod = get-fct(k);
           try ext-fun-name = get-external-name(k);
@@ -136,7 +136,7 @@ inline magic-sero<a>(!s: sero(a)) -> sero(magic-t(base-low-type, a)) {
             External(dom-list, cod, ext-fun-name, args, var-args)
           })
         | 5 =>
-          let Sero {get := get-external-name} = external-name-sero;
+          let Sero{get := get-external-name} = external-name-sero;
           try name = get-external-name(k);
           try lt = get-blt(k);
           Right(box {
