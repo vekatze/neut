@@ -89,7 +89,7 @@ define opaque<a>(x: a) -> a {
 define test-string() -> unit {
   let _ = opaque("");
   let _ = opaque("test");
-  let _ = opaque("🌟あ♥️a🌕亜\n\u{33}\u{333}\u{1f338}\0\t\n\r\"\\\`");
+  let _ = opaque("🌟あ♥️a🌕亜\n\u{33}\u{333}\u{1F338}\0\t\n\r\"\\\`");
   Unit
 }
 
