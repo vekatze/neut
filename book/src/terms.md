@@ -526,7 +526,7 @@ You can see this by calling the following function:
 ```neut
 define print-star() -> unit {
   // prints "⭐"
-  pin t = core.string.singleton(magic cast(int32, rune, 0xe2ad90));
+  pin t = core.string.singleton(magic cast(int32, rune, 0xE2AD90));
   print-line(t)
 }
 ```
@@ -1922,7 +1922,7 @@ define extract-value-from-meta(x: +int) -> int {
 `on` doesn't alter variable layers either:
 
 ```neut
-define extract-value-from-meta(x: int) -> +int {
+define extract-value-from-meta(x: int) -> int {
   // here is layer 0
   // x: int (at layer 0)
   letbox-T tmp on x =
