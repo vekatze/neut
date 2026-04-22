@@ -23,8 +23,8 @@ data get-module-kit {
 }
 
 define make-get-module-kit(k: &global-kit) -> get-module-kit {
-  tie Global-Kit {gensym-kit, module-kit} = k;
-  Get-Module-Kit {gensym-kit, module-kit}
+  tie Global-Kit{gensym-kit, module-kit} = k;
+  Get-Module-Kit{gensym-kit, module-kit}
 }
 
 define get-module(
@@ -34,7 +34,7 @@ define get-module(
   mid: &module-id,
   locator-string: &string,
 ) -> app(module) {
-  tie Get-Module-Kit {module-kit} = k;
+  tie Get-Module-Kit{module-kit} = k;
   try next-module-file-path = get-module-file-path(m, Right(h), mid);
   pin next-module-file-path = next-module-file-path;
   match lookup-module(*module-kit, next-module-file-path) {
@@ -64,9 +64,9 @@ define get-all-dependencies(
   main-module: &main-module,
   m: &module,
 ) -> app(list(pair(module-alias, module))) {
-  tie Module {dependency} = m;
+  tie Module{dependency} = m;
   for-each-E(to-list(*dependency), (p) => {
-    let Pair(alias, Dependency {digest}) = p;
+    let Pair(alias, Dependency{digest}) = p;
     pin module-id = Library(digest);
     try module-file-path = get-module-file-path(main-module, none, module-id);
     pin m = new-source-hint(module-file-path);

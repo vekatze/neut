@@ -20,12 +20,12 @@ define void-ptr-seq-from-arg-num(an: arg-num) -> list(base-low-type) {
 }
 
 constant base-low-type-sero: sero(base-low-type) {
-  Sero {
+  Sero{
     put := {
       (k, v) => {
         case v {
         | Prim-Num(t) =>
-          let Sero {put} = base-prim-type-sero;
+          let Sero{put} = base-prim-type-sero;
           put-int64(k, 0);
           put(k, t);
         | Pointer =>
@@ -38,7 +38,7 @@ constant base-low-type-sero: sero(base-low-type) {
         try tag = get-int64(k);
         match tag {
         | 0 =>
-          let Sero {get} = base-prim-type-sero;
+          let Sero{get} = base-prim-type-sero;
           try t = get(k);
           Right(box {
             letbox t = t;

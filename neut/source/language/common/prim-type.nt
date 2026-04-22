@@ -14,16 +14,16 @@ data prim-type {
 }
 
 constant prim-type-sero: sero(prim-type) {
-  Sero {
+  Sero{
     put := {
       (k, v) => {
         case v {
         | Int(s) =>
-          let Sero {put} = int-size-sero;
+          let Sero{put} = int-size-sero;
           put-int64(k, 0);
           put(k, s)
         | Float(s) =>
-          let Sero {put} = float-size-sero;
+          let Sero{put} = float-size-sero;
           put-int64(k, 1);
           put(k, s)
         | Rune =>
@@ -38,11 +38,11 @@ constant prim-type-sero: sero(prim-type) {
         try tag = get-int64(k);
         match tag {
         | 0 =>
-          let Sero {get} = int-size-sero;
+          let Sero{get} = int-size-sero;
           try v = get(k);
           Right(lift {Int(axiom-T(v))})
         | 1 =>
-          let Sero {get} = float-size-sero;
+          let Sero{get} = float-size-sero;
           try v = get(k);
           Right(lift {Float(axiom-T(v))})
         | 2 =>

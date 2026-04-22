@@ -35,7 +35,7 @@ define get-rel-path-string(sl: source-locator) -> string {
 }
 
 constant source-locator-sero: sero(source-locator) {
-  Sero {
+  Sero{
     put := {
       (k, v) => {
         tie Source-Locator(x) = v;

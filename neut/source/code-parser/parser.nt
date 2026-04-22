@@ -103,7 +103,7 @@ define parse-comment-item(k: &parser-kit, comment-type: comment-type) -> parsed(
     zonk.parse.take-while((r) => {
       ne-rune(r, `\n`)
     })(k);
-  Right(Comment-Item {comment-string, comment-type})
+  Right(Comment-Item{comment-string, comment-type})
 }
 
 define parse-line-comment(k: &parser-kit) -> parsed(comment-item) {

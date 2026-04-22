@@ -22,7 +22,7 @@ import {
 
 define _make-hint(k: &parser-kit, line: int, column: int) -> hint {
   let file-path = get-context(k);
-  Hint {line, column, file-path, should-save-location := True}
+  Hint{line, column, file-path, should-save-location := True}
 }
 
 define _parse-int(k: &parser-kit) -> parsed(pair(int, comment)) {

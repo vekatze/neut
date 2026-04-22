@@ -13,7 +13,7 @@ data sym-loc-kit {
 
 define make-sym-loc-kit() -> sym-loc-kit {
   let local-var-map-ref = make-ref(box {empty-local-var-tree});
-  Sym-Loc {local-var-map-ref}
+  Sym-Loc{local-var-map-ref}
 }
 
 define insert(k: &sym-loc-kit, x: ident, start: loc, end: loc) -> unit {

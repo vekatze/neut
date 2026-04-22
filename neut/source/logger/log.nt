@@ -27,30 +27,30 @@ define log-position-from-hint(m: hint) -> log-position {
   match m {
   | Hint(file-path, line, column, _) =>
     let file-path = *file-path;
-    Log-Position {file-path, line, column}
+    Log-Position{file-path, line, column}
   | Saved-Hint(file-path, line, column, _) =>
-    Log-Position {file-path, line, column}
+    Log-Position{file-path, line, column}
   }
 }
 
 define get-line(m: &log-position) -> int {
-  tie Log-Position {line} = m;
+  tie Log-Position{line} = m;
   *line
 }
 
 define get-column(m: &log-position) -> int {
-  tie Log-Position {column} = m;
+  tie Log-Position{column} = m;
   *column
 }
 
 define get-file-path(m: &log-position) -> &string {
-  tie Log-Position {file-path} = m;
+  tie Log-Position{file-path} = m;
   file-path
 }
 
 define show-file-pos(m: &log-position) -> string {
   case m {
-  | Log-Position {file-path, line, column} =>
+  | Log-Position{file-path, line, column} =>
     pin line-string = show-int(*line);
     pin column-string = show-int(*column);
     pin xs = List[*file-path, *":", *line-string, *":", *column-string];

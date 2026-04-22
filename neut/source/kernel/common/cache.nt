@@ -66,8 +66,8 @@ define _compress-stmt(s: stmt) -> stripped-stmt {
 }
 
 define compress(c: cache) -> low-cache {
-  let Cache {stmt-list, remark-list, count-snapshot} = c;
-  Low-Cache {
+  let Cache{stmt-list, remark-list, count-snapshot} = c;
+  Low-Cache{
     stmt-list := for-each(stmt-list, _compress-stmt),
     remark-list,
     count-snapshot,
@@ -91,8 +91,8 @@ define _extend-stmt(s: stripped-stmt) -> stmt {
 }
 
 define extend(c: low-cache) -> cache {
-  let Low-Cache {stmt-list, remark-list, count-snapshot} = c;
-  Cache {
+  let Low-Cache{stmt-list, remark-list, count-snapshot} = c;
+  Cache{
     stmt-list := for-each(stmt-list, _extend-stmt),
     remark-list,
     count-snapshot,
@@ -100,12 +100,12 @@ define extend(c: low-cache) -> cache {
 }
 
 constant low-cache-sero: sero(low-cache) {
-  let Sero {put := put-stmts, get := get-stmts} = list-sero(stmt-f-sero(unit-sero, term-f-sero(unit-sero)));
-  let Sero {put := put-remarks, get := get-remarks} = list-sero(log-sero);
-  Sero {
+  let Sero{put := put-stmts, get := get-stmts} = list-sero(stmt-f-sero(unit-sero, term-f-sero(unit-sero)));
+  let Sero{put := put-remarks, get := get-remarks} = list-sero(log-sero);
+  Sero{
     put := {
       (k, v) => {
-        tie Low-Cache {stmt-list, remark-list, count-snapshot} = v;
+        tie Low-Cache{stmt-list, remark-list, count-snapshot} = v;
         put-stmts(k, stmt-list);
         put-remarks(k, remark-list);
         put-int64(k, *count-snapshot);
@@ -120,7 +120,7 @@ constant low-cache-sero: sero(low-cache) {
           letbox stmt-list = stmt-list;
           letbox remark-list = remark-list;
           letbox count-snapshot = lift {count-snapshot};
-          Low-Cache {stmt-list, remark-list, count-snapshot}
+          Low-Cache{stmt-list, remark-list, count-snapshot}
         })
       }
     },
@@ -128,8 +128,8 @@ constant low-cache-sero: sero(low-cache) {
 }
 
 constant location-cache-sero: sero(location-cache) {
-  let Sero {put, get} = location-tree-sero;
-  Sero {
+  let Sero{put, get} = location-tree-sero;
+  Sero{
     put := {
       (k, v) => {
         tie Location-Cache(t) = v;
@@ -149,10 +149,10 @@ constant location-cache-sero: sero(location-cache) {
 }
 
 constant completion-cache-sero: sero(completion-cache) {
-  let Sero {put := put-lvt, get := get-lvt} = local-var-tree-sero;
-  let Sero {put := put-cands, get := get-cands} = list-sero(top-candidate-sero);
-  let Sero {put := put-ris, get := get-ris} = either-sero(unit-sero, raw-import-summary-sero);
-  Sero {
+  let Sero{put := put-lvt, get := get-lvt} = local-var-tree-sero;
+  let Sero{put := put-cands, get := get-cands} = list-sero(top-candidate-sero);
+  let Sero{put := put-ris, get := get-ris} = either-sero(unit-sero, raw-import-summary-sero);
+  Sero{
     put := {
       (k, v) => {
         tie Completion-Cache(t, cands, ris) = v;

@@ -65,8 +65,8 @@ constant empty-location-tree: location-tree {
 }
 
 constant ord-loc: ord(loc) {
-  let Ord {compare := !cmp-int} = core.int.ord.as-ord;
-  Ord {
+  let Ord{compare := !cmp-int} = core.int.ord.as-ord;
+  Ord{
     compare := {
       (l1, l2) => {
         tie Loc(x1, y1) = l1;
@@ -149,7 +149,7 @@ define find-ref(l: &loc, t: location-tree) -> list(pair(string, pair(line, col-i
 }
 
 constant symbol-name-sero: sero(symbol-name) {
-  Sero {
+  Sero{
     put := {
       (k, v) => {
         case v {
@@ -158,13 +158,13 @@ constant symbol-name-sero: sero(symbol-name) {
           put-int64(k, *name);
           put-int64(k, *def-symbol-len);
         | Global(dd, is-const-like) =>
-          let Sero {put := put-dd} = definite-description-sero;
-          let Sero {put := put-bool} = bool-sero;
+          let Sero{put := put-dd} = definite-description-sero;
+          let Sero{put := put-bool} = bool-sero;
           put-int64(k, 1);
           put-dd(k, dd);
           put-bool(k, is-const-like);
         | Foreign(ext-name) =>
-          let Sero {put := put-en} = external-name-sero;
+          let Sero{put := put-en} = external-name-sero;
           put-int64(k, 2);
           put-en(k, ext-name);
         }
@@ -179,8 +179,8 @@ constant symbol-name-sero: sero(symbol-name) {
           try len = get-int64(k);
           Right(lift {Local(name, len)})
         | 1 =>
-          let Sero {get := get-dd} = definite-description-sero;
-          let Sero {get := get-bool} = bool-sero;
+          let Sero{get := get-dd} = definite-description-sero;
+          let Sero{get := get-bool} = bool-sero;
           try dd = get-dd(k);
           try b = get-bool(k);
           Right(box {
@@ -189,7 +189,7 @@ constant symbol-name-sero: sero(symbol-name) {
             Global(dd, b)
           })
         | 2 =>
-          let Sero {get := get-en} = external-name-sero;
+          let Sero{get := get-en} = external-name-sero;
           try ext-name = get-en(k);
           Right(box {
             letbox ext-name = ext-name;
@@ -204,14 +204,14 @@ constant symbol-name-sero: sero(symbol-name) {
 }
 
 constant loc-type-sero: sero(loc-type) {
-  Sero {
+  Sero{
     put := {
       (k, v) => {
         case v {
         | File-Loc =>
           put-int64(k, 0);
         | Symbol-Loc(sym) =>
-          let Sero {put := put-sym} = symbol-name-sero;
+          let Sero{put := put-sym} = symbol-name-sero;
           put-int64(k, 1);
           put-sym(k, sym);
         }
@@ -224,7 +224,7 @@ constant loc-type-sero: sero(loc-type) {
         | 0 =>
           Right(box {File-Loc})
         | 1 =>
-          let Sero {get := get-sym} = symbol-name-sero;
+          let Sero{get := get-sym} = symbol-name-sero;
           try sym = get-sym(k);
           Right(box {
             letbox sym = sym;
@@ -239,9 +239,9 @@ constant loc-type-sero: sero(loc-type) {
 }
 
 inline dictionary-sero<k, v>(sk: sero(k), sv: sero(v)) -> sero(dictionary(k, v)) {
-  let Sero {put := !put-k, get := !get-k} = sk;
-  let Sero {put := !put-v, get := !get-v} = sv;
-  Sero {
+  let Sero{put := !put-k, get := !get-k} = sk;
+  let Sero{put := !put-v, get := !get-v} = sv;
+  Sero{
     put := {
       define loop(k: &put-kit, v: &dictionary(k, v)) -> unit {
         case v {
@@ -286,9 +286,9 @@ inline dictionary-sero<k, v>(sk: sero(k), sv: sero(v)) -> sero(dictionary(k, v))
 }
 
 constant loc-item-sero: sero(loc-item) {
-  let Sero {put, get} = loc-type-sero;
-  let Sero {put := put-log-position, get := get-log-position} = log-position-sero;
-  Sero {
+  let Sero{put, get} = loc-type-sero;
+  let Sero{put := put-log-position, get := get-log-position} = log-position-sero;
+  Sero{
     put := {
       (k, v) => {
         tie Loc-Item(l, Pair(from, to), lt, m) = v;

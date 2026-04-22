@@ -11,16 +11,16 @@ import {
 }
 
 define _put(k: &put-kit, v: &hint) -> unit {
-  let Sero {put := !put-string} = string-sero;
-  let Sero {put := !put-int} = int64-sero;
-  let Sero {put := !put-bool} = bool-sero;
+  let Sero{put := !put-string} = string-sero;
+  let Sero{put := !put-int} = int64-sero;
+  let Sero{put := !put-bool} = bool-sero;
   case v {
-  | Hint {file-path, line, column, should-save-location} =>
+  | Hint{file-path, line, column, should-save-location} =>
     put-string(k, *file-path);
     put-int(k, line);
     put-int(k, column);
     put-bool(k, should-save-location)
-  | Saved-Hint {file-path, line, column, should-save-location} =>
+  | Saved-Hint{file-path, line, column, should-save-location} =>
     put-string(k, file-path);
     put-int(k, line);
     put-int(k, column);
@@ -29,9 +29,9 @@ define _put(k: &put-kit, v: &hint) -> unit {
 }
 
 define _get(k: &get-kit) -> ?+hint {
-  let Sero {get := !get-string} = string-sero;
-  let Sero {get := !get-int} = int64-sero;
-  let Sero {get := !get-bool} = bool-sero;
+  let Sero{get := !get-string} = string-sero;
+  let Sero{get := !get-int} = int64-sero;
+  let Sero{get := !get-bool} = bool-sero;
   try file-path = get-string(k);
   try line = get-int(k);
   try column = get-int(k);
@@ -41,12 +41,12 @@ define _get(k: &get-kit) -> ?+hint {
     letbox line = line;
     letbox column = column;
     letbox should-save-location = should-save-location;
-    Saved-Hint {file-path, line, column, should-save-location}
+    Saved-Hint{file-path, line, column, should-save-location}
   })
 }
 
 constant hint-sero: sero(hint) {
-  Sero {
+  Sero{
     put := _put,
     get := _get,
   }
@@ -54,7 +54,7 @@ constant hint-sero: sero(hint) {
 
 define zen() -> unit {
   pin val =
-    Hint {
+    Hint{
       file-path := "/path/to/file.txt",
       line := 123,
       column := 42,

@@ -44,7 +44,7 @@ data locator-kit {
 }
 
 define _get-source-locator(s: &source) -> app(source-locator) {
-  tie Source {source-module, file-path} = s;
+  tie Source{source-module, file-path} = s;
   pin source-dir = get-source-dir(source-module);
   let rel-file-path = strip-prefix(file-path, source-dir);
   match rel-file-path {
@@ -66,9 +66,9 @@ define _get-source-locator(s: &source) -> app(source-locator) {
 }
 
 define _construct-global-locator(s: &source) -> app(strict-global-locator) {
-  tie Source {source-module := Module {id}} = s;
+  tie Source{source-module := Module{id}} = s;
   try sl = _get-source-locator(s);
-  Right(Strict-Global-Locator {
+  Right(Strict-Global-Locator{
     module-id := *id,
     source-locator := sl,
   })
@@ -79,7 +79,7 @@ define make-locator-kit(env-kit: &env-kit, tag-kit: &tag-kit, s: &source) -> app
   let active-definite-description-dict-ref = make-ref(box {empty});
   let active-static-file-list-ref = make-ref(box {empty});
   let active-global-locator-list = List[cgl, llvm-global-locator()];
-  Right(_Locator-Kit {
+  Right(_Locator-Kit{
     tag-kit,
     env-kit,
     active-definite-description-dict-ref,
@@ -104,7 +104,7 @@ define activate-specified-names(
   sgl: &strict-global-locator,
   lls: list(pair(hint, local-locator)),
 ) -> app(unit) {
-  tie _Locator-Kit {tag-kit, active-definite-description-dict-ref} = k;
+  tie _Locator-Kit{tag-kit, active-definite-description-dict-ref} = k;
   let lookup = make-lookup(ord-dd);
   try _: list(unit) =
     for-each-E(lls, (p) => {
@@ -133,7 +133,7 @@ define activate-specified-names(
               box {none}
             | Right(existing-dd) =>
               let buf = make-string-builder(64);
-              tie Source {source-module} = current-source;
+              tie Source{source-module} = current-source;
               pin dd-string = readable-dd-by-module(source-module, dd);
               pin existing-dd-string = readable-dd-by-module(source-module, existing-dd);
               let _ on buf = {
@@ -168,7 +168,7 @@ define activate-specified-names(
 
 define activate-static-files(k: &locator-kit, m: hint, key: &string, path: &string) -> app(unit) {
   if is-regular-file(path) {
-    tie _Locator-Kit {active-static-file-list-ref} = k;
+    tie _Locator-Kit{active-static-file-list-ref} = k;
     try content = read-string-from-path(path);
     mutate(active-static-file-list-ref, (xs) => {
       box {
@@ -193,7 +193,7 @@ define activate-static-files(k: &locator-kit, m: hint, key: &string, path: &stri
 }
 
 define get-static-file-content(k: &locator-kit, key: &string) -> ?pair(string, string) {
-  tie _Locator-Kit {active-static-file-list-ref} = k;
+  tie _Locator-Kit{active-static-file-list-ref} = k;
   borrow(active-static-file-list-ref, (dict) => {
     match make-lookup(core.string.ord.as-ord)(dict, key) {
     | Left(_) =>
@@ -205,12 +205,12 @@ define get-static-file-content(k: &locator-kit, key: &string) -> ?pair(string, s
 }
 
 define attach-current-locator(k: &locator-kit, bn: &base-name) -> definite-description {
-  tie _Locator-Kit {current-global-locator} = k;
+  tie _Locator-Kit{current-global-locator} = k;
   new-dd(current-global-locator, make-local-locator(*bn))
 }
 
 define _get-imported-referents(k: &locator-kit, ll: &local-locator) -> list(definite-description) {
-  tie _Locator-Kit {active-definite-description-dict-ref} = k;
+  tie _Locator-Kit{active-definite-description-dict-ref} = k;
   borrow(active-definite-description-dict-ref, (dict) => {
     match _lookup-ll(dict, ll) {
     | Left(_) =>
@@ -222,7 +222,7 @@ define _get-imported-referents(k: &locator-kit, ll: &local-locator) -> list(defi
 }
 
 define get-possible-referents(k: &locator-kit, ll: &local-locator) -> list(definite-description) {
-  tie _Locator-Kit {current-global-locator, active-global-locator-list} = k;
+  tie _Locator-Kit{current-global-locator, active-global-locator-list} = k;
   let imported-dds = _get-imported-referents(k, ll);
   let dds =
     for-each-N(active-global-locator-list, (dd) => {

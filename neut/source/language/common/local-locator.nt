@@ -53,10 +53,10 @@ define eq-local-locator(x: &local-locator, y: &local-locator) -> bool {
 }
 
 constant ord-local-locator: ord(local-locator) {
-  Ord {
+  Ord{
     compare := {
       (x, y) => {
-        let Ord {compare} = ord-base-name;
+        let Ord{compare} = ord-base-name;
         tie _Local-Locator(x) = x;
         tie _Local-Locator(y) = y;
         compare(x, y)

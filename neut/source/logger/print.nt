@@ -12,21 +12,21 @@ import {
 }
 
 define print-log(k: &logger-kit, l: &log) -> unit {
-  tie _Logger-Kit {color-kit} = k;
-  tie Log {position, level, content} = l;
+  tie _Logger-Kit{color-kit} = k;
+  tie Log{position, level, content} = l;
   let position-string = _show-position(position);
   let level-string = _show-level(*level);
-  let content-string = _show-content {level := *level, content := *content};
+  let content-string = _show-content{level := *level, content := *content};
   pin log-string = join(position-string, join(level-string, content-string));
   print-stdout(color-kit, log-string)
 }
 
 define print-log-error(k: &logger-kit, l: &log) -> unit {
-  tie _Logger-Kit {color-kit} = k;
-  tie Log {position, level, content} = l;
+  tie _Logger-Kit{color-kit} = k;
+  tie Log{position, level, content} = l;
   let position-string = _show-position(position);
   let level-string = _show-level(*level);
-  let content-string = _show-content {level := *level, content := *content};
+  let content-string = _show-content{level := *level, content := *content};
   pin log-string = join(position-string, join(level-string, content-string));
   print-stderr(color-kit, log-string)
 }
@@ -44,7 +44,7 @@ define print-log-errors(k: &logger-kit, ls: &vector(log)) -> unit {
 }
 
 define _print-log-without-position(k: &logger-kit, l: log-level, content: string) -> unit {
-  pin l = Log {position := none, level := l, content};
+  pin l = Log{position := none, level := l, content};
   print-log(k, l)
 }
 
@@ -57,7 +57,7 @@ define print-warning(k: &logger-kit, content: string) -> unit {
 }
 
 define report(k: &logger-kit, message: string) -> unit {
-  tie _Logger-Kit {color-kit, enable-debug-mode, base-time} = k;
+  tie _Logger-Kit{color-kit, enable-debug-mode, base-time} = k;
   when *enable-debug-mode {
     let current-time = get-time();
     let elapsed-time = sub-time(current-time, *base-time);
@@ -72,7 +72,7 @@ define zen() -> unit {
   pin k = make-logger-kit(color-kit, True);
   let m = log-position-from-hint(new-hint(12, 3456, "/Users/foo/path/to/file.nt"));
   pin l =
-    Log {
+    Log{
       position := Right(m),
       level := Note,
       content := *"Lorem ipsum.\nProin non hendrerit neque, id rhoncus nisi.",

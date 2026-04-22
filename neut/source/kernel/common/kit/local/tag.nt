@@ -28,7 +28,7 @@ data tag-kit {
 
 define make-tag-kit() -> tag-kit {
   let tag-map-ref = make-ref(box {empty-location-tree});
-  _Tag-Kit {tag-map-ref}
+  _Tag-Kit{tag-map-ref}
 }
 
 define get-location-tree(k: tag-kit) -> +location-tree {

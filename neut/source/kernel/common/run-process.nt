@@ -23,7 +23,7 @@ define make-run-process-kit(logger-kit: &logger-kit) -> run-process-kit {
 }
 
 define get-logger-kit(k: &run-process-kit) -> &logger-kit {
-  tie _Run-Process-Kit {logger-kit} = k;
+  tie _Run-Process-Kit{logger-kit} = k;
   *logger-kit
 }
 
@@ -53,7 +53,7 @@ define _indent(t: &string) -> string {
 define _string-from-process-error(pe: process-error) -> string {
   match pe {
   | Command-Execution-Error(Command-Error(cmd-spec, exit-code, err-str)) =>
-    let Process-Spec {process} = cmd-spec;
+    let Process-Spec{process} = cmd-spec;
     let buf = make-string-builder(64);
     pin err-str = err-str;
     pin process = process;
@@ -73,7 +73,7 @@ define _string-from-process-error(pe: process-error) -> string {
 }
 
 define _report-command(k: &run-process-kit, s: &process-spec) -> unit {
-  tie _Run-Process-Kit {logger-kit} = k;
+  tie _Run-Process-Kit{logger-kit} = k;
   let message = {
     pin tmp = vet-doc::(s);
     pin tmp = show-doc(tmp, 65535);
@@ -87,7 +87,7 @@ define run-process(k: &run-process-kit, s: process-spec) -> either(string, strin
   match spawn(s, 1024, 1024) {
   | Left(e) =>
     Left(get-error-message(e))
-  | Right(Process-Result {status, stdout-string, stderr-string}) =>
+  | Right(Process-Result{status, stdout-string, stderr-string}) =>
     match status {
     | Exited(status-code) =>
       if eq-c-int(status-code, 0) {

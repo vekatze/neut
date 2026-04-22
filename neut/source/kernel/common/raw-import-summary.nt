@@ -19,9 +19,9 @@ define from-raw-import(ri: raw-import) -> raw-import-summary {
 }
 
 constant raw-import-summary-sero: sero(raw-import-summary) {
-  let Sero {put := put-items, get := get-items} = list-sero(pair-sero(string-sero, list-sero(string-sero)));
-  let Sero {put := put-loc, get := get-loc} = loc-sero;
-  Sero {
+  let Sero{put := put-items, get := get-items} = list-sero(pair-sero(string-sero, list-sero(string-sero)));
+  let Sero{put := put-loc, get := get-loc} = loc-sero;
+  Sero{
     put := {
       (k, v) => {
         tie Raw-Import-Summary(items, loc) = v;

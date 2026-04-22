@@ -125,7 +125,7 @@ define _is-multi(d: &doc) -> bool {
     False
   | String(_, rest) =>
     _is-multi(rest)
-  | Line {} =>
+  | Line{} =>
     True
   | Inline-Comment(_, rest) =>
     _is-multi(rest)

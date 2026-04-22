@@ -30,12 +30,12 @@ define get-type-info(op: &prim-op) -> pair(list(&prim-type), &prim-type) {
 }
 
 constant prim-op-sero: sero(prim-op) {
-  let Sero {put := !put-unary, get := !get-unary} = unary-op-sero;
-  let Sero {put := !put-binary, get := !get-binary} = binary-op-sero;
-  let Sero {put := !put-cmp, get := !get-cmp} = cmp-op-sero;
-  let Sero {put := !put-conv, get := !get-conv} = conv-op-sero;
-  let Sero {put := !put-pt, get := !get-pt} = prim-type-sero;
-  Sero {
+  let Sero{put := !put-unary, get := !get-unary} = unary-op-sero;
+  let Sero{put := !put-binary, get := !get-binary} = binary-op-sero;
+  let Sero{put := !put-cmp, get := !get-cmp} = cmp-op-sero;
+  let Sero{put := !put-conv, get := !get-conv} = conv-op-sero;
+  let Sero{put := !put-pt, get := !get-pt} = prim-type-sero;
+  Sero{
     put := {
       (k, v) => {
         case v {

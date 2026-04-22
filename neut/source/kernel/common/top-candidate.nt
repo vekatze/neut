@@ -21,7 +21,7 @@ data top-candidate {
 }
 
 constant candidate-kind-sero: sero(candidate-kind) {
-  Sero {
+  Sero{
     put := {
       (k, v) => {
         case v {
@@ -53,11 +53,11 @@ constant candidate-kind-sero: sero(candidate-kind) {
 }
 
 constant top-candidate-sero: sero(top-candidate) {
-  Sero {
+  Sero{
     put := {
       (k, v) => {
-        let Sero {put := put-dd} = definite-description-sero;
-        let Sero {put := put-candidate-kind} = candidate-kind-sero;
+        let Sero{put := put-dd} = definite-description-sero;
+        let Sero{put := put-candidate-kind} = candidate-kind-sero;
         tie Top-Candidate(Loc(line, column), dd, kind) = v;
         put-int64(k, *line);
         put-int64(k, *column);
@@ -67,8 +67,8 @@ constant top-candidate-sero: sero(top-candidate) {
     },
     get := {
       (k) => {
-        let Sero {get := get-dd} = definite-description-sero;
-        let Sero {get := get-candidate-kind} = candidate-kind-sero;
+        let Sero{get := get-dd} = definite-description-sero;
+        let Sero{get := get-candidate-kind} = candidate-kind-sero;
         try line = get-int64(k);
         try column = get-int64(k);
         try dd = get-dd(k);

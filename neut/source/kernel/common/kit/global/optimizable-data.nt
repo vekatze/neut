@@ -13,7 +13,7 @@ data optimizable-data-kit {
 
 define make-optimizable-data-kit() -> optimizable-data-kit {
   let opt-data-map-ref = make-cell(box {core.dictionary.empty});
-  _Optimizable-Data-Kit {opt-data-map-ref}
+  _Optimizable-Data-Kit{opt-data-map-ref}
 }
 
 define insert(k: &optimizable-data-kit, dd: definite-description, od: optimizable-data) -> unit {

@@ -35,7 +35,7 @@ constant _c-decode: (cs: comment) -> doc {
 }
 
 define _decode-prefix<a>(s: &series(a)) -> doc {
-  tie Series {prefix} = s;
+  tie Series{prefix} = s;
   case prefix {
   | Left(_) =>
     Empty
@@ -150,7 +150,7 @@ define _comma-seq(elems: list(pair(comment, doc)), is-vertical: bool, trailing-c
 define _decode(force-vertical: bool, s: &series(doc)) -> doc {
   let prefix = _decode-prefix(s);
   let sep = _get-separator(s);
-  tie Series {container, has-optional-separator, elems, trailing-comment} = s;
+  tie Series{container, has-optional-separator, elems, trailing-comment} = s;
   pin b = this.syntax-tree.series.is-empty(s);
   case container, b {
   | Left(_), True =>
@@ -197,7 +197,7 @@ data clause {
 }
 
 define _is-vertical-series(s: &series(clause)) -> bool {
-  tie Series {has-optional-separator, elems} = s;
+  tie Series{has-optional-separator, elems} = s;
   let has-vertical-content =
     fold-left-N(False, elems, (acc, elem) => {
       if acc {
@@ -240,7 +240,7 @@ define _is-horizontal-elems(elems: &list(pair(comment, doc))) -> bool {
 
 // [single, ..., single, multi, .., multi] <=> True
 define _is-horizontal-series(s: &series(doc)) -> bool {
-  tie Series {trailing-comment, elems, has-optional-separator} = s;
+  tie Series{trailing-comment, elems, has-optional-separator} = s;
   all[
     is-empty(trailing-comment),
     _is-horizontal-elems(elems),
@@ -295,7 +295,7 @@ define _comma-seq-horizontal(elems: list(doc)) -> list(piece) {
 }
 
 define decode-horizontally-if-possible(s: &series(doc)) -> doc {
-  tie Series {separator, container, elems} = s;
+  tie Series{separator, container, elems} = s;
   pin b = _is-horizontal-series(s);
   case separator, container, b {
   | Comma, Right(k), True =>

@@ -23,18 +23,18 @@ define from-lam-kind<m, a>(k: &lam-kind-f(m, a)) -> ?&binder-f(m, a) {
 }
 
 inline lam-kind-sero<m, a>(!sm: sero(m), !s: sero(a)) -> sero(lam-kind-f(m, a)) {
-  let Sero {put := put-a, get := get-a} = s;
-  Sero {
+  let Sero{put := put-a, get := get-a} = s;
+  Sero{
     put := {
       (k, v) => {
         case v {
         | Normal(t, x) =>
-          let Sero {put} = either-sero(_unit-sero, string-sero);
+          let Sero{put} = either-sero(_unit-sero, string-sero);
           put-int64(k, 0);
           put(k, t);
           put-a(k, x);
         | Fix(x) =>
-          let Sero {put := put-binder} = binder-sero(sm, s);
+          let Sero{put := put-binder} = binder-sero(sm, s);
           put-int64(k, 1);
           put-binder(k, x);
         }
@@ -45,7 +45,7 @@ inline lam-kind-sero<m, a>(!sm: sero(m), !s: sero(a)) -> sero(lam-kind-f(m, a)) 
         try tag = get-int64(k);
         match tag {
         | 0 =>
-          let Sero {get} = either-sero(_unit-sero, string-sero);
+          let Sero{get} = either-sero(_unit-sero, string-sero);
           try t = get(k);
           try x = get-a(k);
           Right(box {
@@ -54,7 +54,7 @@ inline lam-kind-sero<m, a>(!sm: sero(m), !s: sero(a)) -> sero(lam-kind-f(m, a)) 
             Normal(t, x)
           })
         | 1 =>
-          let Sero {get := get-binder} = binder-sero(sm, s);
+          let Sero{get := get-binder} = binder-sero(sm, s);
           try b = get-binder(k);
           Right(box {
             letbox b = b;

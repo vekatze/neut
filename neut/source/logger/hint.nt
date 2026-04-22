@@ -36,42 +36,42 @@ define lift-hint(m: hint) -> +hint {
 
 define get-line(m: &hint) -> int {
   case m {
-  | Hint {line} =>
+  | Hint{line} =>
     *line
-  | Saved-Hint {line} =>
+  | Saved-Hint{line} =>
     *line
   }
 }
 
 define get-column(m: &hint) -> int {
   case m {
-  | Hint {column} =>
+  | Hint{column} =>
     *column
-  | Saved-Hint {column} =>
+  | Saved-Hint{column} =>
     *column
   }
 }
 
 define get-file-path(m: &hint) -> &string {
   case m {
-  | Hint {file-path} =>
+  | Hint{file-path} =>
     *file-path
-  | Saved-Hint {file-path} =>
+  | Saved-Hint{file-path} =>
     file-path
   }
 }
 
 define get-should-save-location(m: &hint) -> bool {
   case m {
-  | Hint {should-save-location} =>
+  | Hint{should-save-location} =>
     *should-save-location
-  | Saved-Hint {should-save-location} =>
+  | Saved-Hint{should-save-location} =>
     *should-save-location
   }
 }
 
 define new-hint(line: int, column: int, file-path: &string) -> hint {
-  Hint {
+  Hint{
     file-path,
     line,
     column,
@@ -81,15 +81,15 @@ define new-hint(line: int, column: int, file-path: &string) -> hint {
 
 define blur(m: hint) -> hint {
   match m {
-  | Hint {file-path, line, column} =>
-    Hint {
+  | Hint{file-path, line, column} =>
+    Hint{
       file-path,
       line,
       column,
       should-save-location := False,
     }
-  | Saved-Hint {file-path, line, column} =>
-    Saved-Hint {
+  | Saved-Hint{file-path, line, column} =>
+    Saved-Hint{
       file-path,
       line,
       column,
@@ -99,7 +99,7 @@ define blur(m: hint) -> hint {
 }
 
 constant internal-hint: hint {
-  Hint {
+  Hint{
     file-path := "",
     line := 1,
     column := 1,
@@ -112,7 +112,7 @@ define new-source-hint-N(file-path: &string) -> hint {
 }
 
 define new-source-hint(file-path: string) -> hint {
-  Saved-Hint {
+  Saved-Hint{
     file-path,
     line := 1,
     column := 1,

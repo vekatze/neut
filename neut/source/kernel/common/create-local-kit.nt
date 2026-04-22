@@ -24,10 +24,10 @@ define make-local-kit(
   tk: &tag-kit,
   s: &source,
 ) -> app(local-kit) {
-  tie Global-Kit {env-kit} = k;
+  tie Global-Kit{env-kit} = k;
   try locator-kit = make-locator-kit(*env-kit, tk, s);
   let raw-import-summary-kit = make-raw-import-summary-kit();
   let sym-loc-kit = make-sym-loc-kit();
   let top-candidate-kit = make-top-candidate-kit();
-  Right(_Local-Kit {locator-kit, tag-kit := tk, raw-import-summary-kit, sym-loc-kit, top-candidate-kit})
+  Right(_Local-Kit{locator-kit, tag-kit := tk, raw-import-summary-kit, sym-loc-kit, top-candidate-kit})
 }

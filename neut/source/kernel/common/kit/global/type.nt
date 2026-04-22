@@ -15,11 +15,11 @@ data type-kit {
 
 define make-type-kit() -> type-kit {
   let type-env-cell = make-cell(box {empty});
-  _Type-Kit {type-env-cell}
+  _Type-Kit{type-env-cell}
 }
 
 define insert(k: &type-kit, dd: +definite-description, v: +weak-term) -> unit {
-  tie _Type-Kit {type-env-cell} = k;
+  tie _Type-Kit{type-env-cell} = k;
   mutate(type-env-cell, (dict) => {
     box {
       letbox dict = dict;
@@ -32,7 +32,7 @@ define insert(k: &type-kit, dd: +definite-description, v: +weak-term) -> unit {
 }
 
 define lookup-maybe(k: &type-kit, dd: &definite-description) -> ?weak-term {
-  tie _Type-Kit {type-env-cell} = k;
+  tie _Type-Kit{type-env-cell} = k;
   let lookup = make-lookup(ord-dd);
   borrow(type-env-cell, (dict) => {
     match lookup(dict, dd) {

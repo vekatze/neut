@@ -8,10 +8,10 @@ data module-alias {
 }
 
 constant ord-module-alias: ord(module-alias) {
-  Ord {
+  Ord{
     compare := {
       (x, y) => {
-        let Ord {compare} = ord-base-name;
+        let Ord{compare} = ord-base-name;
         tie Module-Alias(x) = x;
         tie Module-Alias(y) = y;
         compare(x, y)
@@ -38,17 +38,17 @@ define string-from-module-alias(alias: module-alias) -> string {
 }
 
 constant module-alias-sero: sero(module-alias) {
-  Sero {
+  Sero{
     put := {
       (k, v) => {
-        let Sero {put} = base-name-sero;
+        let Sero{put} = base-name-sero;
         tie Module-Alias(base-name) = v;
         put(k, base-name)
       }
     },
     get := {
       (k) => {
-        let Sero {get} = base-name-sero;
+        let Sero{get} = base-name-sero;
         try bn = get(k);
         Right(box {
           letbox bn = bn;

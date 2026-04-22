@@ -9,5 +9,5 @@ import {
 inline get-current-hint(k: &parser-kit) -> hint {
   let Point(line, column) = get-point(k);
   let file-path = get-context(k);
-  Hint {line, column, file-path, should-save-location := True}
+  Hint{line, column, file-path, should-save-location := True}
 }

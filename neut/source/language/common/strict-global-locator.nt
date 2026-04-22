@@ -25,16 +25,16 @@ inline llvm-global-locator() -> strict-global-locator {
 }
 
 define sgl-from-source-locator(sl: source-locator) -> strict-global-locator {
-  Strict-Global-Locator {
+  Strict-Global-Locator{
     module-id := Base,
     source-locator := sl,
   }
 }
 
 constant strict-global-locator-sero: sero(strict-global-locator) {
-  let Sero {put := put-mid, get := get-mid} = module-id-sero;
-  let Sero {put := put-sl, get := get-sl} = source-locator-sero;
-  Sero {
+  let Sero{put := put-mid, get := get-mid} = module-id-sero;
+  let Sero{put := put-sl, get := get-sl} = source-locator-sero;
+  Sero{
     put := {
       (k, v) => {
         tie Strict-Global-Locator(mid, sl) = v;

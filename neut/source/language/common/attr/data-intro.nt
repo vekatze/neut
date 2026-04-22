@@ -19,12 +19,12 @@ data attr-data-intro(name) {
 }
 
 inline attr-data-intro-sero<name>(!name-sero: sero(name)) -> sero(attr-data-intro(name)) {
-  let Sero {put := put-cons-names, get := get-cons-names} = list-sero(pair-sero(name-sero, bool-sero));
-  let Sero {put := put-name, get := get-name} = name-sero;
-  Sero {
+  let Sero{put := put-cons-names, get := get-cons-names} = list-sero(pair-sero(name-sero, bool-sero));
+  let Sero{put := put-name, get := get-name} = name-sero;
+  Sero{
     put := {
       (k, v) => {
-        let Sero {put := put-bool} = bool-sero;
+        let Sero{put := put-bool} = bool-sero;
         tie Attr-Data-Intro(data-name, cons-name-list, Discriminant(discriminant), is-const-like) = v;
         put-name(k, data-name);
         put-cons-names(k, cons-name-list);
@@ -34,7 +34,7 @@ inline attr-data-intro-sero<name>(!name-sero: sero(name)) -> sero(attr-data-intr
     },
     get := {
       (k) => {
-        let Sero {get := get-bool} = bool-sero;
+        let Sero{get := get-bool} = bool-sero;
         try data-name = get-name(k);
         try cons-name-list = get-cons-names(k);
         try discriminant = get-int64(k);

@@ -27,16 +27,16 @@ data get-enabled-preset-kit {
 }
 
 define make-get-enabled-preset-kit(k: &global-kit) -> get-enabled-preset-kit {
-  tie Global-Kit {gensym-kit, module-kit, env-kit} = k;
+  tie Global-Kit{gensym-kit, module-kit, env-kit} = k;
   let env-kit = *env-kit;
-  _Get-Enabled-Preset-Kit {gensym-kit, module-kit, env-kit}
+  _Get-Enabled-Preset-Kit{gensym-kit, module-kit, env-kit}
 }
 
 define _construct-alias-preset-map(kms: list(pair(string, module))) -> alias-preset-map {
   let kms =
     for-each(kms, (km) => {
       let Pair(k, m) = km;
-      let Module {preset-map} = m;
+      let Module{preset-map} = m;
       Pair(k, preset-map)
     });
   core.dictionary.from-list(core.string.ord.as-ord, kms)
@@ -48,8 +48,8 @@ define _adjust-key(p: pair(module-alias, module)) -> pair(string, module) {
 }
 
 define get-enabled-preset(k: &get-enabled-preset-kit, m: &module) -> app(list(pair(string, list(base-name)))) {
-  tie _Get-Enabled-Preset-Kit {gensym-kit, module-kit, env-kit} = k;
-  pin k2 = Get-Module-Kit {gensym-kit := *gensym-kit, module-kit := *module-kit};
+  tie _Get-Enabled-Preset-Kit{gensym-kit, module-kit, env-kit} = k;
+  pin k2 = Get-Module-Kit{gensym-kit := *gensym-kit, module-kit := *module-kit};
   let main-module = get-main-module(*env-kit);
   try depenedencies = get-all-dependencies(k2, main-module, m);
   let visible-module-list = Cons(Pair(default-module-alias(), *m), depenedencies);

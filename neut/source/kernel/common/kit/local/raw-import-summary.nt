@@ -12,7 +12,7 @@ data raw-import-summary-kit {
 
 define make-raw-import-summary-kit() -> raw-import-summary-kit {
   let import-env-ref = make-ref(box {none});
-  _Raw-Import-Summary-Kit {import-env-ref}
+  _Raw-Import-Summary-Kit{import-env-ref}
 }
 
 define set(k: &raw-import-summary-kit, ri: raw-import) -> unit {

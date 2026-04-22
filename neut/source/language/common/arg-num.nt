@@ -33,12 +33,12 @@ define succ-arg-num(x: arg-num) -> arg-num {
 
 define _put(k: &put-kit, v: &arg-num) -> unit {
   tie Arg-Num(x) = v;
-  let Sero {put} = int64-sero;
+  let Sero{put} = int64-sero;
   put(k, x);
 }
 
 define _get(k: &get-kit) -> ?+arg-num {
-  let Sero {get} = int64-sero;
+  let Sero{get} = int64-sero;
   try v = get(k);
   Right(box {
     letbox v = v;
@@ -47,7 +47,7 @@ define _get(k: &get-kit) -> ?+arg-num {
 }
 
 constant arg-num-sero: sero(arg-num) {
-  Sero {
+  Sero{
     put := _put,
     get := _get,
   }

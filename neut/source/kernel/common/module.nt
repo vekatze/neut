@@ -188,18 +188,18 @@ constant key-preset: &string {
 }
 
 define get-module-root-dir(m: &module) -> string {
-  tie Module {location} = m;
+  tie Module{location} = m;
   drop-last(location)
 }
 
 define get-source-dir(m: &module) -> string {
-  tie Module {source-dir} = m;
+  tie Module{source-dir} = m;
   pin tmp = get-module-root-dir(m);
   path.path.append(tmp, source-dir)
 }
 
 define get-archive-dir(m: &module) -> string {
-  tie Module {archive-dir} = m;
+  tie Module{archive-dir} = m;
   pin tmp = get-module-root-dir(m);
   path.path.append(tmp, archive-dir)
 }
@@ -216,9 +216,9 @@ define _values<k, v>(d: &dictionary(k, v)) -> list(&v) {
 }
 
 define get-target-path-list(m: &module) -> list(string) {
-  tie Module {source-dir, target} = m;
+  tie Module{source-dir, target} = m;
   for-each(_values(target), (v) => {
-    tie Target-Summary {entry-point} = v;
+    tie Target-Summary{entry-point} = v;
     let tmp = string-from-source-locator(entry-point);
     let result on tmp = path.path.append(source-dir, tmp);
     let _ = tmp;
@@ -232,15 +232,15 @@ define _lookup-string-dict<v>(d: &dictionary(string, v), k: &string) -> ?&v {
 }
 
 define get-target-path(m: &module, target-key: &string) -> ?string {
-  tie Module {source-dir, target} = m;
+  tie Module{source-dir, target} = m;
   try v = _lookup-string-dict(target, target-key);
-  tie Target-Summary {entry-point} = v;
+  tie Target-Summary{entry-point} = v;
   pin tmp = string-from-source-locator(entry-point);
   Right(path.path.append(source-dir, tmp))
 }
 
 define get-extra-contents(m: &module) -> &list(string) {
-  tie Module {extra-contents} = m;
+  tie Module{extra-contents} = m;
   extra-contents
 }
 
@@ -253,7 +253,7 @@ define _series-from-list<a>(xs: list(a)) -> series(a) {
 }
 
 define _get-target-info(m: &module) -> pair(ens-key, ens) {
-  tie Module {target} = m;
+  tie Module{target} = m;
   let tmp =
     for-each(to-list(*target), (p) => {
       let Pair(target-name, target-summary) = p;
@@ -288,7 +288,7 @@ define _get-target-info(m: &module) -> pair(ens-key, ens) {
 }
 
 define _get-source-dir-info(m: &module) -> ?pair(ens-key, ens) {
-  tie Module {source-dir} = m;
+  tie Module{source-dir} = m;
   if eq-string(source-dir, source-rel-dir) {
     none
   } else {
@@ -297,7 +297,7 @@ define _get-source-dir-info(m: &module) -> ?pair(ens-key, ens) {
 }
 
 define _get-cache-dir-info(m: &module) -> ?pair(ens-key, ens) {
-  tie Module {cache-dir} = m;
+  tie Module{cache-dir} = m;
   if eq-string(cache-dir, cache-rel-dir) {
     none
   } else {
@@ -306,7 +306,7 @@ define _get-cache-dir-info(m: &module) -> ?pair(ens-key, ens) {
 }
 
 define _get-archive-dir-info(m: &module) -> ?pair(ens-key, ens) {
-  tie Module {archive-dir} = m;
+  tie Module{archive-dir} = m;
   if eq-string(archive-dir, archive-rel-dir) {
     none
   } else {
@@ -315,7 +315,7 @@ define _get-archive-dir-info(m: &module) -> ?pair(ens-key, ens) {
 }
 
 define _get-extra-content-info(m: &module) -> ?pair(ens-key, ens) {
-  tie Module {extra-contents} = m;
+  tie Module{extra-contents} = m;
   let extra-content-list =
     for-each-N(extra-contents, (v) => {
       E-String(_m, *v)
@@ -329,7 +329,7 @@ define _get-extra-content-info(m: &module) -> ?pair(ens-key, ens) {
 }
 
 define _get-foreign-info(m: &module) -> ?pair(ens-key, ens) {
-  tie Module {foreign := Foreign {input, output, script}} = m;
+  tie Module{foreign := Foreign{input, output, script}} = m;
   let input-list =
     for-each-N(input, (x) => {
       E-String(_m, *x)
@@ -357,13 +357,13 @@ define _get-foreign-info(m: &module) -> ?pair(ens-key, ens) {
 }
 
 define _get-inline-limit-info(m: &module) -> ?pair(ens-key, ens) {
-  tie Module {inline-limit} = m;
+  tie Module{inline-limit} = m;
   try inline-limit = *inline-limit;
   Right(Pair(Pair(_m, *key-inline-limit), E-Int(_m, inline-limit)))
 }
 
 define _get-preset-map-info(m: &module) -> ?pair(ens-key, ens) {
-  tie Module {preset-map} = m;
+  tie Module{preset-map} = m;
   if eq-int(core.dictionary.size(preset-map), 0) {
     none
   } else {
@@ -381,7 +381,7 @@ define _get-preset-map-info(m: &module) -> ?pair(ens-key, ens) {
 }
 
 define _get-antecedent-info(m: &module) -> ?pair(ens-key, ens) {
-  tie Module {antecedents} = m;
+  tie Module{antecedents} = m;
   if is-empty(antecedents) {
     none
   } else {
@@ -394,13 +394,13 @@ define _get-antecedent-info(m: &module) -> ?pair(ens-key, ens) {
 }
 
 define _get-dependency-info(m: &module) -> ?pair(ens-key, ens) {
-  tie Module {dependency} = m;
+  tie Module{dependency} = m;
   if eq-int(core.dictionary.size(dependency), 0) {
     none
   } else {
     let tmp =
       for-each(to-list(*dependency), (p) => {
-        let Pair(k, Dependency {mirror-list, digest := Module-Digest(d)}) = p;
+        let Pair(k, Dependency{mirror-list, digest := Module-Digest(d)}) = p;
         let url-ens-list =
           for-each(mirror-list, (x) => {
             let Module-URL(x) = x;
@@ -448,7 +448,7 @@ define get-module-id-from-module-path(module-file-path: &string) -> module-id {
 }
 
 define get-target(m: &module, target-name: &string) -> ?main-target {
-  tie Module {target} = m;
+  tie Module{target} = m;
   try target = _lookup-string-dict(target, target-name);
   Right(Named(*target-name, *target))
 }
@@ -471,11 +471,11 @@ define stylize(eq: &eq(pair(comment, ens)), e: ens) -> app(ens) {
 }
 
 define get-alias-list-with-enabled-presets(m: &module) -> list(module-alias) {
-  tie Module {dependency} = m;
+  tie Module{dependency} = m;
   for-each(
     filter(to-list(*dependency), (p) => {
       tie Pair(_, v) = p;
-      tie Dependency {preset-enabled} = v;
+      tie Dependency{preset-enabled} = v;
       *preset-enabled
     }),
     exact first,

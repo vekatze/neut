@@ -21,7 +21,7 @@ define keyword-from-rule-kind(k: rule-kind) -> &string {
 }
 
 constant rule-kind-sero: sero(rule-kind) {
-  Sero {
+  Sero{
     put := {
       (k: &put-kit, v: &rule-kind) => {
         case v {

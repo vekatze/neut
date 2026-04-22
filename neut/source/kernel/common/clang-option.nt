@@ -12,9 +12,9 @@ define make-clang-option(
 ) -> clang-option {
   let compile-option = core.list.append(build-option, compile-option);
   let link-option = core.list.append(build-option, link-option);
-  Clang-Option {compile-option, link-option}
+  Clang-Option{compile-option, link-option}
 }
 
 constant empty-clang-option: clang-option {
-  Clang-Option {compile-option := Nil, link-option := Nil}
+  Clang-Option{compile-option := Nil, link-option := Nil}
 }

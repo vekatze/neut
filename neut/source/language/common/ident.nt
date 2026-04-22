@@ -51,7 +51,7 @@ define is-cartesian(x: &ident) -> bool {
 }
 
 constant ident-sero: sero(ident) {
-  Sero {
+  Sero{
     put := {
       (k, v) => {
         tie I(t, i) = v;

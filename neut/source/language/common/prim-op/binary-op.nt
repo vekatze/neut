@@ -115,7 +115,7 @@ define binary-float-op-from-string(name: &string) -> ?binary-op {
 }
 
 constant binary-op-sero: sero(binary-op) {
-  Sero {
+  Sero{
     put := {
       (k, v) => {
         put-int64(k, magic cast(&binary-op, int, v));

@@ -16,7 +16,7 @@ data global-locator {
 }
 
 define string-from-global-locator(gl: &global-locator) -> string {
-  tie Global-Locator {module-alias, source-locator} = gl;
+  tie Global-Locator{module-alias, source-locator} = gl;
   pin t1 = string-from-module-alias(*module-alias);
   pin t2 = string-from-source-locator(source-locator);
   pin tmp = core.string.append(t1, ns-sep);

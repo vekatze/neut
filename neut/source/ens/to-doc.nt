@@ -20,7 +20,7 @@ import {
 
 define _comment-to-doc(cs: comment) -> list(doc) {
   fold-right(cs, Nil, (c, acc) => {
-    let Comment-Item {comment-string} = c;
+    let Comment-Item{comment-string} = c;
     core.list.append(
       List[line, make-string(*"//"), make-string(comment-string)],
       acc,

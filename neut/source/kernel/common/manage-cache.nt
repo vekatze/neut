@@ -40,8 +40,8 @@ data manage-cache-kit {
 }
 
 define make-manage-cache-kit(k: &global-kit) -> manage-cache-kit {
-  tie Global-Kit {path-kit, artifact-kit} = k;
-  _Manage-Cache-Kit {path-kit, artifact-kit}
+  tie Global-Kit{path-kit, artifact-kit} = k;
+  _Manage-Cache-Kit{path-kit, artifact-kit}
 }
 
 define save-cache(k: &path-kit, t: &target, s: &source, c: cache) -> app(unit) {
@@ -67,15 +67,15 @@ define save-location-cache(k: &path-kit, t: &target, s: &source, c: &location-ca
 }
 
 define load-cache(k: &manage-cache-kit, t: &target, s: &source) -> app(?cache) {
-  tie _Manage-Cache-Kit {path-kit, artifact-kit} = k;
+  tie _Manage-Cache-Kit{path-kit, artifact-kit} = k;
   try cache-path = get-source-cache-path(*path-kit, t, s);
   let has-cache on cache-path = is-regular-file(cache-path);
   if not(has-cache) {
     Right(none)
   } else {
-    tie Source {file-path} = s;
+    tie Source{file-path} = s;
     try artifact-time = lookup(*artifact-kit, file-path);
-    let Artifact-Time {cache-time} = artifact-time;
+    let Artifact-Time{cache-time} = artifact-time;
     match cache-time {
     | Left(_) =>
       Right(none)
@@ -127,7 +127,7 @@ define load-location-cache(k: &path-kit, t: &target, s: &source) -> app(?locatio
 }
 
 define _is-compilation-skippable(t: &artifact-time, ks: &list(output-kind)) -> bool {
-  tie Artifact-Time {llvm-time, object-time} = t;
+  tie Artifact-Time{llvm-time, object-time} = t;
   case ks {
   | Nil =>
     True
@@ -146,8 +146,8 @@ define _is-compilation-skippable(t: &artifact-time, ks: &list(output-kind)) -> b
 }
 
 define needs-compilation(k: &manage-cache-kit, ks: &list(output-kind), s: &source) -> app(bool) {
-  tie _Manage-Cache-Kit {artifact-kit} = k;
-  tie Source {file-path} = s;
+  tie _Manage-Cache-Kit{artifact-kit} = k;
+  tie Source{file-path} = s;
   try t = lookup(*artifact-kit, file-path);
   pin t = t;
   Right(not(_is-compilation-skippable(t, ks)))
