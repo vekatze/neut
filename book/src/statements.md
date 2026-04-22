@@ -388,7 +388,7 @@ resource boxed-int {
 define create-new-boxed-int(x: int) -> boxed-int {
   let new-ptr = malloc(8);
   store-int(x, new-ptr);
-  magic cast(int, boxed-int, new-ptr)
+  magic cast(pointer, boxed-int, new-ptr)
 }
 ```
 
