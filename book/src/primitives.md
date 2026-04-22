@@ -22,10 +22,10 @@ You can also use `int` and `float`. These are just syntactic sugar for `int64` a
 
 These primitive types have a lot of primitive functions from LLVM:
 
-|             | integers                                                      | floats                                                                      |
-| ----------- | ------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| arithmetic  | add, sub, mul, div, rem, udiv, urem, and, or, xor, shl, lshr, ashr | neg, add, sub, mul, div, rem                                                |
-| comparison  | eq, ne, gt, ge, lt, le, ugt, uge, ult, ule                    | eq, gt, ge, lt, le, ne, ord, ueq, ugt, uge, ult, ule, une, uno, false, true |
+|            | integers                                                           | floats                                                                      |
+|------------|--------------------------------------------------------------------|-----------------------------------------------------------------------------|
+| arithmetic | add, sub, mul, div, rem, udiv, urem, and, or, xor, shl, lshr, ashr | neg, add, sub, mul, div, rem                                                |
+| comparison | eq, ne, gt, ge, lt, le, ugt, uge, ult, ule                         | eq, gt, ge, lt, le, ne, ord, ueq, ugt, uge, ult, ule, une, uno, false, true |
 
 For example, `add-int32`, `neg-float64`, `eq-int64`, and `gt-float32` are available.
 

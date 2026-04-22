@@ -186,7 +186,7 @@ The name of a top-level variable is a (possibly) dot-separated sequence of symbo
 
 A top-level variable `f` is compiled into the following 3-word tuple:
 
-```
+```txt
 (base.#.imm, 0, POINTER_TO_FUNCTION(f))
 ```
 
@@ -1074,7 +1074,6 @@ to:
 ```neut
 (x1: a1, ..., xn: an) ->> t
 ```
-
 
 When default arguments are present, the resulting type additionally contains the bracketed default-argument part.
 

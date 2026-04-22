@@ -6,7 +6,7 @@ Below is an example where Emacs runs `neut zen path/to/file.nt` when `C-c C-c` i
 
 ![zen](./image/screencasts/zen.gif "zen")
 
-### Notes for Emacs
+## Notes for Emacs
 
 The Emacs configuration for the example above looks like the following:
 

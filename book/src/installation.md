@@ -12,7 +12,7 @@ Then follow the instructions.
 
 You might also want to [configure your editor](./editor-setup.md).
 
-If you prefer a manual installation, see [here](./manual-installation.md).
+If you prefer a manual installation, see [Manual Installation](./manual-installation.md).
 
 ## Uninstallation
 
