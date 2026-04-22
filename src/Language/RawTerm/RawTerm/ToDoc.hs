@@ -483,7 +483,7 @@ typeToDoc ty =
     _ :< Pi (impArgs, c1) (expArgs, c3) (defaultArgs, c2) piKind c cod _ -> do
       let hasDefault = not (SE.isEmpty defaultArgs)
       let expParamsBase = SE.decode $ fmap piArgToDoc expArgs
-      let defaultParamsBase = decodeDefaultParams defaultArgs
+      let defaultParamsBase = decodeDefaultBinders defaultArgs
       let expParamsWithImp = attachComment c1 expParamsBase
       let defaultParamsWithExpComment =
             if hasDefault
@@ -848,6 +848,12 @@ decodeImpVar (m, k, x, c1, c2, t) = do
   if isHole x
     then attachComment (c1 ++ c2) (typeToDoc t)
     else paramToDoc (m, prefixVarKind k $ D.text x, c1, c2, t)
+
+decodeDefaultBinders :: SE.Series (RawBinder RawType) -> D.Doc
+decodeDefaultBinders defaultBinders =
+  if SE.isEmpty defaultBinders
+    then D.Nil
+    else SE.decode $ fmap piIntroArgToDoc defaultBinders
 
 decodeDefaultParams :: SE.Series (RawBinder RawType, RawTerm) -> D.Doc
 decodeDefaultParams defaultParams =

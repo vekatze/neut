@@ -293,7 +293,7 @@ rawTypePi h = do
   m <- getCurrentHint
   impArgs <- parseImplicitParams h
   expArgs <- seriesParen (choice [try $ varWithMode h >>= preAscription h, typeWithoutIdent h])
-  defaultArgs <- parseDefaultParams h
+  defaultArgs <- parseDefaultTypeParams h
   (piKind, cArrow) <-
     choice
       [ do
@@ -623,6 +623,15 @@ parseDefaultParams h =
   choice
     [ do
         (s, c) <- seriesBracket $ preBinderWithDefault h
+        return (s, c),
+      return (SE.emptySeries (Just SE.Bracket) SE.Comma, [])
+    ]
+
+parseDefaultTypeParams :: Handle -> Parser (SE.Series (RawBinder RT.RawType), C)
+parseDefaultTypeParams h =
+  choice
+    [ do
+        (s, c) <- seriesBracket $ preBinder h
         return (s, c),
       return (SE.emptySeries (Just SE.Bracket) SE.Comma, [])
     ]

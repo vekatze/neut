@@ -149,14 +149,17 @@ simplify h susList constraintList =
           case (expected', actual') of
             (m1 :< WT.Pi piKind1 impArgs1 expArgs1 defaultArgs1 cod1, m2 :< WT.Pi piKind2 impArgs2 expArgs2 defaultArgs2 cod2)
               | piKind1 == piKind2,
-                Just (impBinders, impConstraints) <- createDefaultConstraints impArgs1 defaultArgs1 impArgs2 defaultArgs2,
+                Just impBinders <- zipBinders impArgs1 impArgs2,
+                Just defaultBinders <- zipDefaultBinders defaultArgs1 defaultArgs2,
                 length expArgs1 == length expArgs2 -> do
                   codBinder1 <- liftIO $ asWeakBinder h m1 cod1
                   codBinder2 <- liftIO $ asWeakBinder h m2 cod2
                   let (impBinders1, impBinders2) = unzip impBinders
-                  let impEqs' = map (,orig) impConstraints
-                  cs' <- liftIO $ simplifyBinder h orig (impBinders1 ++ expArgs1 ++ [codBinder1]) (impBinders2 ++ expArgs2 ++ [codBinder2])
-                  simplify h susList $ cs' ++ impEqs' ++ cs
+                  let (defaultBinders1, defaultBinders2) = unzip defaultBinders
+                  let binder1 = impBinders1 ++ expArgs1 ++ defaultBinders1 ++ [codBinder1]
+                  let binder2 = impBinders2 ++ expArgs2 ++ defaultBinders2 ++ [codBinder2]
+                  cs' <- liftIO $ simplifyBinder h orig binder1 binder2
+                  simplify h susList $ cs' ++ cs
             (_ :< WT.Data _ name1 es1, _ :< WT.Data _ name2 es2)
               | name1 == name2,
                 length es1 == length es2 -> do
@@ -458,18 +461,22 @@ substConsArgs h sub consArgs =
       rest' <- substConsArgs h sub' rest
       return $ (m, k, x, t') : rest'
 
-createDefaultConstraints ::
-  [BinderF WT.WeakType] ->
-  [BinderF WT.WeakType] ->
-  [BinderF WT.WeakType] ->
-  [BinderF WT.WeakType] ->
-  Maybe ([(BinderF WT.WeakType, BinderF WT.WeakType)], [C.Constraint])
-createDefaultConstraints impArgs1 defaultArgs1 impArgs2 defaultArgs2 = do
-  let params1 = impArgs1 ++ defaultArgs1
-  let params2 = impArgs2 ++ defaultArgs2
-  if length params1 == length params2
-    then Just (zip params1 params2, [])
+zipBinders :: [BinderF WT.WeakType] -> [BinderF WT.WeakType] -> Maybe [(BinderF WT.WeakType, BinderF WT.WeakType)]
+zipBinders args1 args2 =
+  if length args1 == length args2
+    then Just $ zip args1 args2
     else Nothing
+
+zipDefaultBinders ::
+  [BinderF WT.WeakType] ->
+  [BinderF WT.WeakType] ->
+  Maybe [(BinderF WT.WeakType, BinderF WT.WeakType)]
+zipDefaultBinders defaultArgs1 defaultArgs2 = do
+  defaultBinders <- zipBinders defaultArgs1 defaultArgs2
+  forM defaultBinders $ \(binder1@(_, k1, x1, _), binder2@(_, k2, x2, _)) -> do
+    guard $ k1 == k2
+    guard $ Ident.toText x1 == Ident.toText x2
+    return (binder1, binder2)
 
 increment :: Handle -> Handle
 increment h = do

@@ -24,6 +24,7 @@ module Language.RawTerm.RawTerm
     getDefName,
     emptyArgs,
     emptyImpArgs,
+    emptyDefaultBinders,
     emptyDefaultArgs,
     extractArgs,
     extractImpArgs,
@@ -81,7 +82,7 @@ data RawTypeF a
   | TypeHole HoleID
   | TyVar Name
   | TyApp a C (SE.Series a)
-  | Pi (SE.Series (RawBinder a), C) (Args a) (SE.Series (RawBinder a, RawTerm), C) RawPiKind C a Loc
+  | Pi (SE.Series (RawBinder a), C) (Args a) (SE.Series (RawBinder a), C) RawPiKind C a Loc
   | Data AttrD.Attr DD.DefiniteDescription [a]
   | Box a
   | BoxNoema a
@@ -165,6 +166,10 @@ emptyArgs =
 emptyImpArgs :: (SE.Series (RawBinder RawType), C)
 emptyImpArgs =
   (SE.emptySeries (Just SE.Angle) SE.Comma, [])
+
+emptyDefaultBinders :: (SE.Series (RawBinder RawType), C)
+emptyDefaultBinders =
+  (SE.emptySeries (Just SE.Bracket) SE.Comma, [])
 
 emptyDefaultArgs :: (SE.Series (RawBinder RawType, RawTerm), C)
 emptyDefaultArgs =

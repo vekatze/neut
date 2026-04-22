@@ -2,7 +2,9 @@ module Language.WeakTerm.Eq (eqType) where
 
 import Control.Comonad.Cofree
 import Language.Common.Binder (BinderF)
+import Language.Common.Ident.Reify qualified as Ident
 import Language.WeakTerm.WeakTerm qualified as WT
+
 eqType :: WT.WeakType -> WT.WeakType -> Bool
 eqType (_ :< ty1) (_ :< ty2)
   | WT.Tau <- ty1,
@@ -24,8 +26,8 @@ eqType (_ :< ty1) (_ :< ty2)
     WT.Pi pk2 impArgs2 expArgs2 defaultArgs2 cod2 <- ty2 = do
       let b1 = pk1 == pk2
       let b2 = eqImpArgs impArgs1 impArgs2
-      let b3 = eqBinderType defaultArgs1 defaultArgs2
-      let b4 = eqBinderType (impArgs1 ++ expArgs1 ++ defaultArgs1) (impArgs2 ++ expArgs2 ++ defaultArgs2)
+      let b3 = eqBinderType expArgs1 expArgs2
+      let b4 = eqDefaultBinderType defaultArgs1 defaultArgs2
       let b5 = eqType cod1 cod2
       b1 && b2 && b3 && b4 && b5
   | WT.Data attr1 name1 es1 <- ty1,
@@ -64,6 +66,19 @@ eqImpArgs :: [BinderF WT.WeakType] -> [BinderF WT.WeakType] -> Bool
 eqImpArgs =
   eqBinderType
 
+eqDefaultBinderType :: [BinderF WT.WeakType] -> [BinderF WT.WeakType] -> Bool
+eqDefaultBinderType xts1 xts2
+  | [] <- xts1,
+    [] <- xts2 =
+      True
+  | (_, k1, x1, t1) : rest1 <- xts1,
+    (_, k2, x2, t2) : rest2 <- xts2 = do
+      let b1 = k1 == k2 && Ident.toText x1 == Ident.toText x2
+      let b2 = eqType t1 t2
+      let b3 = eqDefaultBinderType rest1 rest2
+      b1 && b2 && b3
+  | otherwise =
+      False
 
 eqBinderType :: [BinderF WT.WeakType] -> [BinderF WT.WeakType] -> Bool
 eqBinderType xts1 xts2

@@ -133,7 +133,7 @@ inline local-define-default<a>(x: a) -> a {
   g(x)
 }
 
-define takes-default-fun<a>(f: (x: int)[y: either(a, unit) := Right(Unit)] -> int) -> int {
+define takes-default-fun<a>(f: (x: int)[y: either(a, unit)] -> int) -> int {
   f(1)
 }
 
