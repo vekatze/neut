@@ -5,9 +5,9 @@ import Data.List qualified as List
 import Data.Text qualified as T
 import Numeric (readHex)
 
-isLowerHexDigit :: Char -> Bool
-isLowerHexDigit c =
-  isDigit c || (fromIntegral (ord c - ord 'a') :: Word) <= 5
+isUpperHexDigit :: Char -> Bool
+isUpperHexDigit c =
+  isDigit c || (fromIntegral (ord c - ord 'A') :: Word) <= 5
 
 readUnicodeScalarValueMaybe :: T.Text -> Either T.Text Char
 readUnicodeScalarValueMaybe t =
@@ -52,7 +52,7 @@ unquoteText t = do
           Right ["\"", rest]
         'u' -> do
           rest' <- readChar '{' rest
-          let (scalarValueText, rest'') = T.span isLowerHexDigit rest'
+          let (scalarValueText, rest'') = T.span isUpperHexDigit rest'
           rest''' <- readChar '}' rest''
           ch <- readUnicodeScalarValueMaybe scalarValueText
           Right [T.singleton ch, rest''']
