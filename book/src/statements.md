@@ -588,7 +588,7 @@ int64_t neut_myapp_v1_add_const(int64_t value) {
 }
 ```
 
-You can add the field `foreign` to your `module.ens` to compile and link this C source file, as described in [Modules](./modules.md#foreign). Under this setting, the following code can utilize `neut_myapp_v1_add_const`:
+By configuring the `foreign` field in `module.ens` as described in [Modules](./modules.md#foreign), you can use the C function above as follows:
 
 ```neut
 foreign {
@@ -600,8 +600,6 @@ define my-func() -> int {
   magic external neut_myapp_v1_add_const(x)
 }
 ```
-
-An example project that uses `foreign` can be found in [the `test/misc/foreign` directory](https://github.com/vekatze/neut/tree/main/test/misc/foreign).
 
 You can also use LLVM intrinsics. For example, the LLVM LangRef states that the `llvm.sin.*` intrinsic is [available](https://llvm.org/docs/LangRef.html#llvm-sin-intrinsic):
 
