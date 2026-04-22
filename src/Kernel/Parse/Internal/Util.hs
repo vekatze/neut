@@ -205,7 +205,7 @@ readFractionValue numeralSystem text =
       let fractionValue = digitsToFractionRational (base numeralSystem) fractionDigits
       return (fractionValue, fractionRest)
     _ ->
-      return (0, text)
+      Nothing
 
 readDigits :: (Char -> Bool) -> T.Text -> (T.Text, T.Text)
 readDigits =
