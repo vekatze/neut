@@ -345,9 +345,11 @@ If `p` is a non-variable pattern, the type is derived from the desugared form.
 ```neut
 define foo() -> unit {
   let _: int = 100;
-  //           ^^^
-  let _: int16 = 100;
-  //             ^^^
+  let _: int16 = -16;
+  let _: int = +1_000_000;
+  let _: int = 0b1010_1010;
+  let _: int = 0o755;
+  let _: int = 0xDEAD_BEEF;
   Unit
 }
 
@@ -355,7 +357,18 @@ define foo() -> unit {
 
 ### Syntax
 
-`3`, `-16`, `424242`, etc.
+Underscores in integer literals are ignored.
+
+After removing all `_` characters, an integer literal must have one of the following forms:
+
+```text
+[+-]?[0-9]+
+[+-]?0b[01]+
+[+-]?0o[0-7]+
+[+-]?0x[0-9A-F]+
+```
+
+So, for example, `3`, `-16`, `+1_000_000`, `0b1010_1010`, `0o755`, and `0xDEAD_BEEF` are valid integer literals.
 
 ### Semantics
 
@@ -398,9 +411,11 @@ Then `42: wrapper` holds.
 ```neut
 define foo() -> unit {
   let _: float = 3.8;
-  //             ^^^
-  let _: float32 = 3.8;
-  //               ^^^
+  let _: float32 = -0.2329;
+  let _: float = +1_234.5e-2;
+  let _: float = 6.0e23;
+  let _: float = 0x1.Ap2;
+  let _: float = 0x1.8;
   Unit
 }
 
@@ -408,7 +423,23 @@ define foo() -> unit {
 
 ### Syntax
 
-`3.8`, `-0.2329`, etc.
+Underscores in float literals are ignored.
+
+After removing all `_` characters, a decimal floating-point literal must match:
+
+```text
+[+-]?[0-9]+\.[0-9]+(e[+-]?[0-9]+)?
+```
+
+After removing all `_` characters, a hexadecimal floating-point literal must match:
+
+```text
+[+-]?0x[0-9A-F]+\.[0-9A-F]+(p[+-]?[0-9]+)?
+```
+
+So, for example, `3.8`, `-0.2329`, `+1_234.5e-2`, `6.0e23`, `0x1.Ap2`, and `0x1.8` are valid float literals.
+
+In hexadecimal floating-point literals, the `p` exponent is base-2.
 
 ### Semantics
 
