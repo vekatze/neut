@@ -510,7 +510,7 @@ The value of a rune literal is represented as its UTF-8 byte sequence packed int
 
 ### Note
 
-(1) You can write `` `\u{1234}` ``, for example, to represent U+1234 (`` `ሴ` ``).
+(1) You can write `` `\u{12AB}` ``, for example, to represent U+12AB (`` `ካ` ``).
 
 (2) We have the following equalities, for example:
 
@@ -2857,7 +2857,7 @@ define use-static-literal() -> unit {
 static some-file
 static "hello"
 static "Hello, world!\n"
-static "\u{1f338} ← Cherry Blossom"
+static "\u{1F338} ← Cherry Blossom"
 ```
 
 Below is a list of all escape sequences available in Neut string literals:
@@ -2873,7 +2873,7 @@ Below is a list of all escape sequences available in Neut string literals:
 | `` \` ``        | U+0060 (backtick)              |
 | `\u{n}`         | U+n                            |
 
-The `n` in `\u{n}` must be a lowercase hexadecimal number.
+The `n` in `\u{n}` must be an uppercase hexadecimal number.
 
 ### Semantics
 
