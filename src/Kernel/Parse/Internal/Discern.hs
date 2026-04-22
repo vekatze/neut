@@ -95,11 +95,19 @@ import Logger.Log qualified as L
 import Logger.LogLevel qualified as L
 import SyntaxTree.C
 import SyntaxTree.Series qualified as SE
-import Text.Read qualified as R
 
 discernStmtList :: H.Handle -> [PostRawStmt] -> App [WeakStmt]
 discernStmtList h =
   fmap concat . mapM (discernStmt h)
+
+raiseInvalidNumericLiteral :: Hint -> NumericClass -> T.Text -> App a
+raiseInvalidNumericLiteral m numericClass text =
+  raiseError m $
+    "Invalid "
+      <> numericClassToText numericClass
+      <> " literal: `"
+      <> text
+      <> "`"
 
 discernStmt :: H.Handle -> PostRawStmt -> App [WeakStmt]
 discernStmt h stmt = do
@@ -301,32 +309,31 @@ discern h term =
   case term of
     m :< RT.Var name ->
       case name of
-        Var s
-          | Just x <- readIntDecimalMaybe s -> do
+        Var s ->
+          case parseNumericLiteral s of
+            ParsedNumericLiteral (IntegerLiteral x) -> do
               hole <- liftIO $ WT.createTypeHole (H.gensymHandle h) m []
               return $ m :< WT.Prim (WPV.Int hole x)
-          | Just x <- readIntBinaryMaybe s -> do
-              hole <- liftIO $ WT.createTypeHole (H.gensymHandle h) m []
-              return $ m :< WT.Prim (WPV.Int hole x)
-          | Just x <- readIntOctalMaybe s -> do
-              hole <- liftIO $ WT.createTypeHole (H.gensymHandle h) m []
-              return $ m :< WT.Prim (WPV.Int hole x)
-          | Just x <- readIntHexadecimalMaybe s -> do
-              hole <- liftIO $ WT.createTypeHole (H.gensymHandle h) m []
-              return $ m :< WT.Prim (WPV.Int hole x)
-          | Just x <- R.readMaybe (T.unpack s) -> do
+            ParsedNumericLiteral (FloatingLiteral x) -> do
               hole <- liftIO $ WT.createTypeHole (H.gensymHandle h) m []
               return $ m :< WT.Prim (WPV.Float hole x)
-          | Just (mDef, name', layer, stage) <- lookup s (H.nameEnv h) -> do
-              case (layer == H.currentLayer h, stage == H.currentStage h) of
-                (True, True) -> do
-                  liftIO $ Unused.deleteVariable (H.unusedHandle h) name'
-                  liftIO $ Tag.insertLocalVar (H.tagHandle h) m name' mDef
-                  return $ m :< WT.Var name'
-                (False, _) ->
-                  raiseLayerError m (H.currentLayer h) layer
-                (_, False) ->
-                  raiseStageError m (H.currentStage h) stage
+            InvalidNumericLiteral numericClass ->
+              raiseInvalidNumericLiteral m numericClass s
+            NotNumeric ->
+              case lookup s (H.nameEnv h) of
+                Just (mDef, name', layer, stage) ->
+                  case (layer == H.currentLayer h, stage == H.currentStage h) of
+                    (True, True) -> do
+                      liftIO $ Unused.deleteVariable (H.unusedHandle h) name'
+                      liftIO $ Tag.insertLocalVar (H.tagHandle h) m name' mDef
+                      return $ m :< WT.Var name'
+                    (False, _) ->
+                      raiseLayerError m (H.currentLayer h) layer
+                    (_, False) ->
+                      raiseStageError m (H.currentStage h) stage
+                Nothing -> do
+                  (dd, (_, gn)) <- resolveName h m name
+                  interpretGlobalName h m dd gn
         _ -> do
           (dd, (_, gn)) <- resolveName h m name
           interpretGlobalName h m dd gn
@@ -1349,24 +1356,27 @@ discernPattern h layer stage (m, pat) = do
   case pat of
     RP.Var k name -> do
       case name of
-        Var x
-          | Just i <- R.readMaybe (T.unpack x) -> do
+        Var x ->
+          case parseNumericLiteral x of
+            ParsedNumericLiteral (IntegerLiteral i) -> do
               case k of
                 VK.Exp ->
                   raiseError m "Numeric literal cannot be marked with `!`"
                 VK.Normal ->
                   return ((m, PAT.Literal (LI.Int i)), [])
-          | isConsName x && k == VK.Normal -> do
-              (consDD, dataArgNum, consArgNum, disc, isConstLike, _) <- resolveConstructor h m $ Var x
-              unless isConstLike $ do
-                let mainModule = Env.getMainModule (H.envHandle h)
-                let consDD' = readableDD mainModule consDD
-                raiseError m $
-                  "The constructor `" <> consDD' <> "` cannot be used as a constant"
-              return ((m, PAT.Cons (PAT.ConsInfo {args = [], ..})), [])
-          | otherwise -> do
-              x' <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) x
-              return ((m, PAT.Var k x'), [(x, (m, x', layer, stage))])
+            InvalidNumericLiteral numericClass ->
+              raiseInvalidNumericLiteral m numericClass x
+            _ | isConsName x && k == VK.Normal -> do
+                  (consDD, dataArgNum, consArgNum, disc, isConstLike, _) <- resolveConstructor h m $ Var x
+                  unless isConstLike $ do
+                    let mainModule = Env.getMainModule (H.envHandle h)
+                    let consDD' = readableDD mainModule consDD
+                    raiseError m $
+                      "The constructor `" <> consDD' <> "` cannot be used as a constant"
+                  return ((m, PAT.Cons (PAT.ConsInfo {args = [], ..})), [])
+              | otherwise -> do
+                  x' <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) x
+                  return ((m, PAT.Var k x'), [(x, (m, x', layer, stage))])
         Locator l -> do
           case k of
             VK.Exp ->

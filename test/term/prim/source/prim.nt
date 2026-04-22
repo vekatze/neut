@@ -17,9 +17,9 @@ define test-syntax() -> unit {
   let _: int = 0o1234567;
   let _: int = 0o123_456_7;
   let _: int = 0o__123_456_7;
-  let _: int = 0x0123456789abcdef;
-  let _: int = 0x_0123_456_789_abc_def;
-  let _: int = 0x__01234__56789_abc___def;
+  let _: int = 0x0123456789ABCDEF;
+  let _: int = 0x_0123_456_789_ABC_DEF;
+  let _: int = 0x__01234__56789_ABC___DEF;
   let _: float = 3.0;
   Unit
 }

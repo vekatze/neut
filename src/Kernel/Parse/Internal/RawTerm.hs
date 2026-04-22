@@ -37,6 +37,7 @@ import Data.Set qualified as S
 import Data.Text qualified as T
 import Gensym.Handle qualified as Gensym
 import Kernel.Common.Const
+import Kernel.Parse.Internal.Util (isNumericLike)
 import Language.Common.BaseName qualified as BN
 import Language.Common.CreateSymbol (newTextForHole)
 import Language.Common.DefiniteDescription qualified as DD
@@ -59,7 +60,6 @@ import SyntaxTree.ParseSeries
 import SyntaxTree.Series qualified as SE
 import Text.Megaparsec
 import Text.Megaparsec.Char (char)
-import Text.Read qualified as R
 
 newtype Handle = Handle
   { gensymHandle :: Gensym.Handle
@@ -1224,7 +1224,7 @@ interpretVarName m varText = do
     Left _ ->
       return (Var varText)
     Right (gl, ll)
-      | Just _ :: Maybe Double <- R.readMaybe (T.unpack varText) ->
+      | isNumericLike varText ->
           return (Var varText)
       | otherwise ->
           return (Locator (gl, ll))
