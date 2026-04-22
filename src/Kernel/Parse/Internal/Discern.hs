@@ -751,12 +751,11 @@ discernType h ty =
       (defaultArgs', h''') <-
         case rawPiKind of
           RT.PiDataIntro ->
-            discernBinderWithDefaultArgs h'' defaultArgsBase endLoc
+            discernBinder h'' defaultArgsBase endLoc
           _ ->
-            discernTypeBinderWithDefaultArgs h'' defaultArgsBase endLoc
+            discernTypeBinder h'' defaultArgsBase endLoc
       t' <- discernType h''' t
-      let defaultBinders = map fst defaultArgs'
-      forM_ (impArgs' ++ expArgs' ++ defaultBinders) $ \(_, _, x, _) ->
+      forM_ (impArgs' ++ expArgs' ++ defaultArgs') $ \(_, _, x, _) ->
         liftIO (Unused.deleteVariable (H.unusedHandle h''') x)
       let piKind =
             case rawPiKind of
@@ -766,7 +765,7 @@ discernType h ty =
                 PK.DestPass False
               RT.PiDataIntro ->
                 PK.normal
-      return $ m :< WT.Pi piKind impArgs' expArgs' defaultBinders t'
+      return $ m :< WT.Pi piKind impArgs' expArgs' defaultArgs' t'
     m :< RT.Data attr dataName es -> do
       es' <- mapM (discernType h) es
       return $ m :< WT.Data attr dataName es'

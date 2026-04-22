@@ -4,6 +4,7 @@ import Control.Comonad.Cofree
 import Data.Map.Strict qualified as Map
 import Language.Common.Binder (BinderF)
 import Language.Common.Ident (Ident)
+import Language.Common.Ident.Reify qualified as Ident
 import Language.Term.Term qualified as TM
 
 type VarMap = Map.Map Ident Ident
@@ -31,7 +32,7 @@ eqTypeWithEnv env (_ :< type1) (_ :< type2) =
     (TM.Pi pk1 impArgs1 expArgs1 defaultArgs1 cod1, TM.Pi pk2 impArgs2 expArgs2 defaultArgs2 cod2) -> do
       let (envAfterImp, impArgsEq) = eqAndExtendImpArgs env impArgs1 impArgs2
       let (envAfterExp, expArgsEq) = eqAndExtendImpArgs envAfterImp expArgs1 expArgs2
-      let (envAfterDefault, defaultArgsEq) = eqAndExtendImpArgs envAfterExp defaultArgs1 defaultArgs2
+      let (envAfterDefault, defaultArgsEq) = eqAndExtendDefaultArgs envAfterExp defaultArgs1 defaultArgs2
       pk1 == pk2
         && impArgsEq
         && expArgsEq
@@ -64,6 +65,20 @@ eqAndExtendImpArgs env bs1 bs2 =
       let env' = Map.insert x1 x2 env
       let (envFinal, restEq) = eqAndExtendImpArgs env' rest1 rest2
       (envFinal, k1 == k2 && typeEq && restEq)
+    _ ->
+      (env, False)
+
+eqAndExtendDefaultArgs :: VarMap -> [BinderF TM.Type] -> [BinderF TM.Type] -> (VarMap, Bool)
+eqAndExtendDefaultArgs env bs1 bs2 =
+  case (bs1, bs2) of
+    ([], []) ->
+      (env, True)
+    ((_, k1, x1, t1) : rest1, (_, k2, x2, t2) : rest2) -> do
+      let keyEq = Ident.toText x1 == Ident.toText x2
+      let typeEq = eqTypeWithEnv env t1 t2
+      let env' = Map.insert x1 x2 env
+      let (envFinal, restEq) = eqAndExtendDefaultArgs env' rest1 rest2
+      (envFinal, k1 == k2 && keyEq && typeEq && restEq)
     _ ->
       (env, False)
 
