@@ -99,6 +99,16 @@ define use-foo() -> int {
 }
 ```
 
+`define` can also declare default arguments by inserting `[z1: c1 := d1, ..., zk: ck := dk]` between the ordinary parameter list and `->` (or `->>`):
+
+```neut
+define bump(x: int)[step: int := 1] -> int {
+  add-int(x, step)
+}
+```
+
+Such a function has type `(x: int)[step: int] -> int`, and callers can override the default with `bump(10)[step := 5]`. If the caller omits `step`, its default expression is evaluated at the time of the call. The bracketed part may be omitted, and `[]` is also accepted.
+
 `define` also accepts `->>` in place of `->`. Such a function is still called in the usual way, but its compiled code uses destination-passing style. For the details of this behavior, please see the section on [functions in Terms](./terms.md#x1-a1--xn-an---e-).
 
 `define` can optionally have implicit type parameters, as in `identity` in the example above. The compiler inserts these type parameters at compile time, so you don't have to write them explicitly:
@@ -165,6 +175,8 @@ define use-inline-foo() -> int {
 
 `inline` also accepts `->>` in place of `->`. As with `define`, such a function is still called in the usual way, while the compiled code uses destination-passing style. For the details of this behavior, please see the section on [functions in Terms](./terms.md#x1-a1--xn-an---e-).
 
+As with `define`, you can also place a default-argument list in `[]` between the ordinary parameter list and the arrow.
+
 ## `define-meta`
 
 `define-meta` defines a top-level meta function. It should look like the following:
@@ -180,6 +192,8 @@ define-meta make-pair<a, b>(x: 'a, y: 'b) -> 'pair(a, b) {
 ```
 
 `define-meta` starts at stage 1. When evaluating a call to `define-meta`, the compiler first specializes the definition to its type arguments and memoizes the result. This memoization is performed on a per-file basis. This allows `define-meta` to generate recursive code.
+
+As with ordinary functions, `define-meta` can also have default arguments by placing `[]` between the ordinary parameter list and the arrow.
 
 Every explicit parameter of `define-meta` must have a type of the form `'a`:
 
@@ -209,6 +223,8 @@ inline-meta duplicate(x: 'int) -> 'pair(int, int) {
 ```
 
 `inline-meta` is the same as `inline` except that the body starts at stage 1, not 0.
+
+It also supports the same default-argument syntax as `define-meta`.
 
 ## `constant`
 

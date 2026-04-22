@@ -535,7 +535,7 @@ If `t` is a string literal, then `t` is shorthand for `magic cast(text, &string,
 
 ## `(x1: a1, ..., xn: an) -> b`
 
-`(x1: a1, ..., xn: an) -> b` is the type of ordinary functions. Replacing `->` with `->>` yields the type of destination-passing functions.
+`(x1: a1, ..., xn: an) -> b` is the type of ordinary functions. Replacing `->` with `->>` yields the type of destination-passing functions. A function type can also have a bracketed default-argument part after the ordinary parameters, such as `(value: int)[step: int] -> int`.
 
 ### Example
 
@@ -554,6 +554,9 @@ If `t` is a string literal, then `t` is shorthand for `magic cast(text, &string,
 
 // this is equivalent to `<a: _>(x: a) -> a`
 <a>(x: a) -> a
+
+// a function with a default argument named `step`
+(value: int)[step: int] -> int
 ```
 
 ### Syntax
@@ -561,7 +564,11 @@ If `t` is a string literal, then `t` is shorthand for `magic cast(text, &string,
 ```neut
 <x1: a1, ..., xn: an>(y1: b1, ..., ym: bm) -> c
 
+<x1: a1, ..., xn: an>(y1: b1, ..., ym: bm)[z1: c1, ..., zk: ck] -> c
+
 <x1: a1, ..., xn: an>(y1: b1, ..., ym: bm) ->> c
+
+<x1: a1, ..., xn: an>(y1: b1, ..., ym: bm)[z1: c1, ..., zk: ck] ->> c
 ```
 
 The following abbreviations are available:
@@ -587,6 +594,8 @@ The following abbreviations are available:
 
 The same abbreviations are available when `->` is replaced with `->>`.
 
+The bracketed part may be omitted, and `[]` is also accepted. This default-argument part is included in the function type, so both the keys and their order must match during type checking.
+
 ### Semantics
 
 A function type is compiled into a pointer to `base.#.cls`. For more, please see [On Executing Types](./on-executing-types.md).
@@ -594,16 +603,16 @@ A function type is compiled into a pointer to `base.#.cls`. For more, please see
 ### Type
 
 ```neut
-Γ, α1: s1, ..., αn: sn, x1: t1, ..., xm: tm ⊢ u: type
----------------------------------------------------------
-Γ ⊢ <α1: s1, ..., αn: sn>(x1: t1, ..., xm: tm) -> u: type
+Γ, α1: s1, ..., αn: sn, x1: t1, ..., xm: tm, z1: u1, ..., zk: uk ⊢ v: type
+--------------------------------------------------------------------------------
+Γ ⊢ <α1: s1, ..., αn: sn>(x1: t1, ..., xm: tm)[z1: u1, ..., zk: uk] -> v: type
 ```
 
-The same rule applies to `<α1: s1, ..., αn: sn>(x1: t1, ..., xm: tm) ->> u`.
+Omitting the bracketed part means `k = 0`. The same rule applies to `->>`.
 
 ## `(x1: a1, ..., xn: an) => { e }`
 
-`=>` can be used to create an anonymous function. Replacing `=>` with `=>>` yields a destination-passing anonymous function.
+`=>` can be used to create an anonymous function. Replacing `=>` with `=>>` yields a destination-passing anonymous function. You can also insert a default-argument list between the ordinary parameter list and the arrow.
 
 ### Example
 
@@ -632,7 +641,15 @@ define use-function() -> int {
 ### Syntax
 
 ```neut
+(x1: a1, ..., xn: an)[y1: b1 := d1, ..., ym: bm := dm] => {
+  e
+}
+
 (x1: a1, ..., xn: an) => {
+  e
+}
+
+(x1: a1, ..., xn: an)[y1: b1 := d1, ..., ym: bm := dm] =>> {
   e
 }
 
@@ -656,6 +673,16 @@ The following abbreviation is available:
 ```
 
 The same abbreviation is available when `=>` is replaced with `=>>`.
+
+Type annotations inside the default-argument list can also be omitted when they can be inferred. For example,
+
+```neut
+(x: int)[step := 1] => {
+  add-int(x, step)
+}
+```
+
+has type `(x: int)[step: int] -> int`.
 
 If an anonymous function is defined at layer `n`, then any free variable `x` in the function must satisfy `layer(x) <= n`. For example, the following is not a valid term:
 
@@ -771,7 +798,7 @@ define use-foo() -> unit {
 }
 ```
 
-The size of the destination is determined by the value returned by `magic call-type(result-type, 2, ...)`. When the size is non-negative, the caller prepares a destination of that size. Otherwise, the caller uses a one-word temporary slot and passes that to the callee instead.
+The size of the destination is determined by the value returned by `magic call-type(t, 2, ...)`. When the size is non-negative, the caller prepares a destination of that size. Otherwise, the caller uses a one-word temporary slot and passes that to the callee instead.
 
 ### Type
 
@@ -784,13 +811,15 @@ The size of the destination is determined by the value returned by `magic call-t
 
 Replacing `=>` with `=>>` changes the resulting type from `-> u` to `->> u`.
 
+When default arguments are present, the resulting type additionally contains the bracketed default-argument part, and those binders are also available in the body.
+
 ### Note
 
 - Anonymous functions are reduced at compile time when possible. If you would like to avoid this behavior, consider using `define`.
 
 ## `define f(x1: a1, ..., xn: an) -> c { e }`
 
-`define` (at the term-level) can be used to create a function with possible recursion. Replacing `->` with `->>` yields a destination-passing function.
+`define` (at the term-level) can be used to create a function with possible recursion. Replacing `->` with `->>` yields a destination-passing function. As with anonymous functions, you can insert a default-argument list between the ordinary parameter list and the arrow.
 
 ### Example
 
@@ -817,7 +846,15 @@ define name<x1: a1, ..., xn: an>(y1: b1, ..., ym: bm) -> c {
   e
 }
 
+define name<x1: a1, ..., xn: an>(y1: b1, ..., ym: bm)[z1: c1 := e1, ..., zk: ck := ek] -> c {
+  e
+}
+
 define name<x1: a1, ..., xn: an>(y1: b1, ..., ym: bm) ->> c {
+  e
+}
+
+define name<x1: a1, ..., xn: an>(y1: b1, ..., ym: bm)[z1: c1 := e1, ..., zk: ck := ek] ->> c {
   e
 }
 ```
@@ -838,6 +875,8 @@ define name<a1, ..., an>(y1: b1, ..., ym: bm) -> c {e}
 ```
 
 The same abbreviations are available when `->` is replaced with `->>`.
+
+Type annotations inside the default-argument list can be omitted when they can be inferred, as in `define add(x: int)[step := 1] -> int { add-int(x, step) }`.
 
 If a term-level `define` is at layer `n`, then any free variable `x` in it must satisfy `layer(x) <= n`.
 
@@ -897,7 +936,19 @@ When `->>` is used, the lifted function and the resulting closure use destinatio
 Γ ⊢ define f(x1: a1, ..., xn: an) -> t {e}: (x1: a1, ..., xn: an) -> t
 ```
 
-Replacing `->` with `->>` changes the resulting type from `(x1: a1, ..., xn: an) -> t` to `(x1: a1, ..., xn: an) ->> t`.
+Replacing `->` with `->>` changes the resulting type from:
+
+```neut
+(x1: a1, ..., xn: an) -> t
+```
+
+to:
+
+```neut
+(x1: a1, ..., xn: an) ->> t
+```
+
+When default arguments are present, the resulting type additionally contains the bracketed default-argument part.
 
 ### Note
 
@@ -905,7 +956,7 @@ Replacing `->` with `->>` changes the resulting type from `(x1: a1, ..., xn: an)
 
 ## `inline f(x1: a1, ..., xn: an) -> c { e }`
 
-`inline` (at the term-level) can be used to create an inline function. Replacing `->` with `->>` yields a destination-passing inline function.
+`inline` (at the term-level) can be used to create an inline function. Replacing `->` with `->>` yields a destination-passing inline function. The same default-argument syntax as `define` is available here as well.
 
 ### Example
 
@@ -928,7 +979,15 @@ inline name<x1: a1, ..., xn: an>(y1: b1, ..., ym: bm) -> c {
   e
 }
 
+inline name<x1: a1, ..., xn: an>(y1: b1, ..., ym: bm)[z1: c1 := e1, ..., zk: ck := ek] -> c {
+  e
+}
+
 inline name<x1: a1, ..., xn: an>(y1: b1, ..., ym: bm) ->> c {
+  e
+}
+
+inline name<x1: a1, ..., xn: an>(y1: b1, ..., ym: bm)[z1: c1 := e1, ..., zk: ck := ek] ->> c {
   e
 }
 ```
@@ -950,6 +1009,14 @@ inline name<a1, ..., an>(y1: b1, ..., ym: bm) -> c {e}
 
 The same abbreviations are available when `->` is replaced with `->>`.
 
+You can also insert a default-argument list between the ordinary parameter list and the arrow, as in:
+
+```neut
+inline add(x: int)[step: int := 1] -> int {
+  add-int(x, step)
+}
+```
+
 If a term-level `inline` is at layer `n`, then any free variable `x` in it must satisfy `layer(x) <= n`.
 
 ### Semantics
@@ -964,7 +1031,20 @@ A term-level `inline` is the same as a term-level `define`, except that the resu
 Γ ⊢ inline f(x1: a1, ..., xn: an) -> t {e}: (x1: a1, ..., xn: an) -> t
 ```
 
-Replacing `->` with `->>` changes the resulting type from `(x1: a1, ..., xn: an) -> t` to `(x1: a1, ..., xn: an) ->> t`.
+Replacing `->` with `->>` changes the resulting type from:
+
+```neut
+(x1: a1, ..., xn: an) -> t
+```
+
+to:
+
+```neut
+(x1: a1, ..., xn: an) ->> t
+```
+
+
+When default arguments are present, the resulting type additionally contains the bracketed default-argument part.
 
 ### Note
 
@@ -972,7 +1052,7 @@ Replacing `->` with `->>` changes the resulting type from `(x1: a1, ..., xn: an)
 
 ## `e(e1, ..., en)`
 
-Given a function `e` and arguments `e1, ..., en`, we can write `e(e1, ..., en)` to denote a function application.
+Given a function `e` and arguments `e1, ..., en`, we can write `e(e1, ..., en)` to denote a function application. If `e` has default arguments, the application may be followed by a bracketed list of overrides.
 
 ### Example
 
@@ -994,9 +1074,21 @@ define use-function() -> unit {
 e(e1, ..., en)
 
 e<t1, ..., tm>(e1, ..., en)
+
+e(e1, ..., en)[x1 := d1, ..., xk := dk]
+
+e<t1, ..., tm>(e1, ..., en)[x1 := d1, ..., xk := dk]
 ```
 
 If `e` has implicit parameters, you can specify them explicitly using the latter form. For example, if `e: <a>(a) -> unit`, then `e<int>(v)` specifies the implicit parameter `a` as `int`.
+
+If `e` has default arguments, you can override some or all of them by writing
+
+```neut
+[x1 := d1, ..., xk := dk]
+```
+
+after the ordinary argument list. These overrides are matched by key.
 
 ### Semantics
 
@@ -1023,6 +1115,8 @@ If `e` has a destination-passing function type, it is evaluated as follows:
 
 When the size of the result type is non-negative, the destination has that size. Otherwise, the caller uses a one-word temporary slot that stores a pointer to the result.
 
+When a default argument is omitted, its default expression is evaluated at the time of the call. In particular, each call that omits the argument computes a fresh value rather than reusing one from the function definition.
+
 ### Type
 
 ```neut
@@ -1038,6 +1132,8 @@ The same rule also applies when `e` has type:
 - `<α1: a1, .., αn: an>(y1: b1, .., ym: bm) ->> c`
 - `&<α1: a1, .., αn: an>(y1: b1, .., ym: bm) -> c`
 - `&<α1: a1, .., αn: an>(y1: b1, .., ym: bm) ->> c`
+
+When `e` has a default-argument part such as `[z1: c1, .., zk: ck]`, the application may additionally provide `[zi := di]`, and omitted keys use the defaults declared by the function.
 
 ## `e{x1 := e1, ..., xn := en}`
 
