@@ -50,6 +50,7 @@
 
 ### Miscellaneous
 
+- [{e}](#e)
 - [lift](#lift)
 - [pack-type](#pack-type)
 - [unpack-type](#unpack-type)
@@ -63,7 +64,7 @@
 ### Syntactic Sugar
 
 - [let x on y1, ..., yn = e1; e2](#on)
-- [\*e](#e)
+- [\*e](#e-1)
 - [e::(e1, ..., en)](#ee1--en-1)
 - [name[x1, ..., xn]](#namex1--xn)
 - [if](#if)
@@ -2197,6 +2198,48 @@ promote {
 ### Note
 
 Unlike `quote`, `promote` doesn't alter stages.
+
+## `{e}`
+
+`{e}` is a grouped term.
+
+### Example
+
+```neut
+define use-braces() -> int {
+  mul-int({add-int(1, 2)}, 3)
+}
+
+define use-braces-with-let() -> int {
+  let result = {
+    let x = add-int(1, 2);
+    mul-int(x, 3)
+  };
+  result
+}
+```
+
+### Syntax
+
+```neut
+{e}
+```
+
+### Semantics
+
+`{e}` is the same term as `e`. It only groups the enclosed term.
+
+### Type
+
+```neut
+Γ ⊢ e: a
+-----------
+Γ ⊢ {e}: a
+```
+
+### Note
+
+- The same grouping syntax is available in type positions. In other words, `{ t }` can be used to group a type expression.
 
 ## `lift`
 
