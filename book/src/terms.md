@@ -134,7 +134,7 @@ define sample() -> unit {
 
 The name of a local variable must satisfy the following conditions:
 
-- It doesn't contain any of ``=()' `\"\n\t:;,<>[]{}/*|&?``
+- It doesn't contain any of ``=() `\"'\n\t:;,<>[]{}/*+|&?!``
 - It doesn't start with `A, B, .., Z` (uppercase letters)
 
 ### Semantics
@@ -157,7 +157,6 @@ If the content of a variable `x` is an immediate value, `x` is compiled into the
 ### Notes
 
 - The compiler reports unused variables. You can use the name `_` to suppress those.
-- Variables in Neut are immutable. You'll need `core.cell` to achieve mutability.
 
 ## Top-Level Variables
 
@@ -180,7 +179,7 @@ define sample() -> unit {
 
 The name of a top-level variable is a (possibly) dot-separated sequence of symbols, where each symbol must satisfy the following conditions:
 
-- It doesn't contain any of ``=()' `\"\n\t:;,<>[]{}/*|&?``
+- It doesn't contain any of ``=() `\"'\n\t:;,<>[]{}/*+|&?!``
 
 ### Semantics
 
