@@ -5,7 +5,12 @@
 - [import](#import)
 - [define](#define)
 - [inline](#inline)
+- [define-meta](#define-meta)
+- [inline-meta](#inline-meta)
+- [constant](#constant)
 - [data](#data)
+- [alias](#alias)
+- [alias-opaque](#alias-opaque)
 - [resource](#resource)
 - [rule-right](#rule-right)
 - [rule-left](#rule-left)
@@ -18,21 +23,19 @@
 
 ```neut
 import {
-  Qux,
-  ZZ,
-  sample.buz,
+  sample.baz,
   this.foo,
   this.foo.bar {some-func, other-func},
 }
 ```
 
-`import` can only be at the top of a file.
+`import` can only appear at the top of a file.
 
 Every item in `import` is something like the following:
 
 - `this.foo`
 - `this.foo.bar {some-func, other-func}`
-- `sample.buz`
+- `sample.baz`
 
 An import item starts from the alias of the module (`this`, `sample`). The alias of the module is specified in `dependency` in `module.ens`. If the file we want to import is inside the current module, we'll write `this`.
 
@@ -47,7 +50,7 @@ import {
   this.foo.bar {some-func},
 }
 
-define yo(): unit {
+define yo() -> unit {
   some-func(arg-1, arg-2)
 }
 ```
@@ -59,36 +62,31 @@ import {
   this.foo.bar,
 }
 
-define yo(): unit {
+define yo() -> unit {
   this.foo.bar.some-func(arg-1, arg-2)
 }
 ```
 
-You can also list static files in `import`:
+You can also list text files in `import`:
 
 ```neut
 import {
-  static {some-file, other-file}
+  text-file {some-file, other-file}
 }
 ```
 
-For more on static files, please see [the section in Modules](modules.md#static).
+For more on text files, please see [the section in Modules](modules.md#text-file).
 
 ## `define`
 
 `define` defines a function. It should look like the following:
 
 ```neut
-define foo(x: int, y: int): int {
+define foo(x: int, y: int) -> int {
   add-int(x, y)
 }
 
-define identity-1(a: type, x: a): a {
-  x
-}
-
-// a function with an implicit parameter
-define identity-2<a>(x: a): a {
+define identity<a>(x: a) -> a {
   x
 }
 ```
@@ -96,77 +94,45 @@ define identity-2<a>(x: a): a {
 Defined functions can then be used:
 
 ```neut
-define use-foo(): int {
+define use-foo() -> int {
   foo(1, 2)
 }
 ```
 
-`define` can optionally have implicit parameters, as in `identity-2` in the above example. The compiler inserts these implicit parameters at compile time, so you don't have to write them explicitly:
+`define` can also declare default arguments by inserting `[z1: c1 := d1, ..., zk: ck := dk]` between the ordinary parameter list and `->` (or `->>`):
 
 ```neut
-define use-func-with-implicit-arg(): int {
+define bump(x: int)[step: int := 1] -> int {
+  add-int(x, step)
+}
+```
+
+Such a function has type `(x: int)[step: int] -> int`, and callers can override the default with `bump(10)[step := 5]`. If the caller omits `step`, its default expression is evaluated at the time of the call. The bracketed part may be omitted, and `[]` is also accepted.
+
+`define` also accepts `->>` in place of `->`. Such a function is still called in the usual way, but its compiled code uses destination-passing style. For the details of this behavior, please see the section on [functions in Terms](./terms.md#x1-a1--xn-an---e-).
+
+`define` can optionally have implicit type parameters, as in `identity` in the example above. The compiler inserts these type parameters at compile time, so you don't have to write them explicitly:
+
+```neut
+define use-func-with-implicit-arg() -> int {
   let x = 10;
-  let y = identity-1(int, x); // ← explicit version
-  let z = identity-2(x);      // ← implicit version
+  let z = identity(x);
   z
-}
-```
-
-You can also use `define` without any explicit parameters:
-
-```neut
-define foo: int {
-  10
-}
-
-define empty-list<a>: list(a) {
-  Nil
-}
-
-define use-constants(): list(int) {
-  let x = foo;
-  empty-list
-}
-```
-
-The above code is translated into the following during compile time:
-
-```neut
-define foo(): int {
-  10
-}
-
-define empty-list<a>(): list(a) {
-  Nil
-}
-
-define use-constants(): list(int) {
-  let x = foo();
-  empty-list()
-}
-```
-
-The compiler tries to reduce the body of a `define` into a value at compile time if the `define` doesn't have any explicit parameters. The compiler reports an error if it can't get a value. For example, the following should result in an error:
-
-```neut
-define bar: int {
-  print("hello");
-  123
 }
 ```
 
 A function with the same name can't be defined in the same file.
 
-All the tail-recursions in Neut are optimized into loops (thanks to geniuses in the LLVM team).
+All tail-recursive calls in Neut are optimized into loops.
 
 Note that statements are order-sensitive as in F#. Thus, the following code results in an error:
 
 ```neut
-define bar(): int {
+define bar() -> int {
   foo() // `foo` is undefined here
 }
 
-define foo(): int {
+define foo() -> int {
   10
 }
 ```
@@ -178,16 +144,16 @@ You have to use the statement `nominal` explicitly for forward references.
 `inline` defines an inline function. It should look like the following:
 
 ```neut
-inline foo(x: int, y: int): int {
+inline foo(x: int, y: int) -> int {
   print("foo");
   add-int(x, y)
 }
 ```
 
-`inline` is the same as `define` except that the definition is always expanded at compile-time. For example, if you write
+`inline` is the same as `define` except that the definition is always expanded at compile time. For example, if you write
 
 ```neut
-define use-inline-foo(): int {
+define use-inline-foo() -> int {
   let val = foo(10, 20);
   val
 }
@@ -196,7 +162,7 @@ define use-inline-foo(): int {
 The compiler will translate the above code into the following:
 
 ```neut
-define use-inline-foo(): int {
+define use-inline-foo() -> int {
   let val = {
     let x = 10;
     let y = 20;
@@ -207,44 +173,82 @@ define use-inline-foo(): int {
 }
 ```
 
-You can also use `inline` without any explicit parameters:
+`inline` also accepts `->>` in place of `->`. As with `define`, such a function is still called in the usual way, while the compiled code uses destination-passing style. For the details of this behavior, please see the section on [functions in Terms](./terms.md#x1-a1--xn-an---e-).
+
+As with `define`, you can also place a default-argument list in `[]` between the ordinary parameter list and the arrow.
+
+## `define-meta`
+
+`define-meta` defines a top-level meta function. It should look like the following:
 
 ```neut
-inline foo: int {
+define-meta make-pair<a, b>(x: 'a, y: 'b) -> 'pair(a, b) {
+  quote {
+    let x = unquote {x};
+    let y = unquote {y};
+    Pair(x, y)
+  }
+}
+```
+
+`define-meta` starts at stage 1. When evaluating a call to `define-meta`, the compiler first specializes the definition to its type arguments and memoizes the result. This memoization is performed on a per-file basis. This allows `define-meta` to generate recursive code.
+
+As with ordinary functions, `define-meta` can also have default arguments by placing `[]` between the ordinary parameter list and the arrow.
+
+Every explicit parameter of `define-meta` must have a type of the form `'a`:
+
+```neut
+// valid
+define-meta eq-data<a>(x: 'a, y: 'a) -> 'bool {
+  ..
+}
+
+// invalid
+define-meta bad<a>(x: int) -> 'int {
+  ..
+}
+```
+
+## `inline-meta`
+
+`inline-meta` defines an inline meta function. It should look like the following:
+
+```neut
+inline-meta duplicate(x: 'int) -> 'pair(int, int) {
+  quote {
+    let y = unquote {x};
+    Pair(y, y)
+  }
+}
+```
+
+`inline-meta` is the same as `inline` except that the body starts at stage 1, not 0.
+
+It also supports the same default-argument syntax as `define-meta`.
+
+## `constant`
+
+`constant` defines a top-level constant. It should look like the following:
+
+```neut
+constant foo: int {
   10
 }
 
-inline empty-list<a>: list(a) {
+constant empty-list<a>: list(a) {
   Nil
 }
 
-define use-constants(): list(int) {
+define use-constants() -> list(int) {
   let x = foo;
   empty-list
 }
 ```
 
-The above code is translated into the following during compile time:
+The compiler tries to reduce the body of a `constant` into a value at compile time. The compiler reports an error if it can't get a value. For example, the following should result in an error:
 
 ```neut
-inline foo(): int {
-  10
-}
-
-inline empty-list<a>(): list(a) {
-  Nil
-}
-
-define use-constants(): list(int) {
-  let x = foo();
-  empty-list()
-}
-```
-
-The compiler tries to reduce the body of an `inline` into a value at compile time if the `inline` doesn't have any explicit parameters. The compiler reports an error if it can't get a value. For example, the following should result in an error:
-
-```neut
-inline bar: int {
+constant bar: int {
   print("hello");
   123
 }
@@ -268,7 +272,7 @@ data list(a) {
 data config {
 | Config(
     count: int,
-    foo-path: &text,
+    foo-path: &string,
     colorize: bool,
   )
 }
@@ -277,8 +281,8 @@ data config {
 You can use the content of an ADT value by using `match` or `case`:
 
 ```neut
-define length<a>(xs: list(a)): int {
-  // destruct ADT values using `match`
+define length<a>(xs: list(a)) -> int {
+  // destructure ADT values using `match`
   match xs {
   | Nil =>
     0
@@ -287,7 +291,7 @@ define length<a>(xs: list(a)): int {
   }
 }
 
-define length-noetic<a>(xs: &list(a)): int {
+define length-noetic<a>(xs: &list(a)) -> int {
   // read noetic ADT values using `case`
   case xs {
   | Nil =>
@@ -297,12 +301,45 @@ define length-noetic<a>(xs: &list(a)): int {
   }
 }
 
-define use-config(c: config) {
+define use-config(c: config) -> int {
   // pattern-matching in `let` is also possible
-  let Config of {count, some-path} = c;
-  print(count)
+  let Config{count, foo-path} = c;
+  let _ = foo-path;
+  count
 }
 ```
+
+## `alias`
+
+`alias` defines a type alias. It should look like the following:
+
+```neut
+alias optional(a: type) {
+  either(unit, a)
+}
+
+alias my-type {
+  either(int, bool)
+}
+```
+
+The body of `alias` can be used wherever a type is expected.
+
+## `alias-opaque`
+
+`alias-opaque` defines an opaque type alias. It should look like the following:
+
+```neut
+alias-opaque vector(_: type) {
+  _vector-internal
+}
+
+alias-opaque my-type {
+  either(int, bool)
+}
+```
+
+`alias-opaque` can be used when you want to expose a type constructor while hiding its actual body.
 
 ## `resource`
 
@@ -310,53 +347,48 @@ define use-config(c: config) {
 
 ```neut
 resource my-type {
-  function (value: pointer) {
+  (value: pointer) => {
     // .. discard the value ..
   },
-  function (value: pointer) {
-    // .. create a new clone of the value and return it as int ..
+  (value: pointer) => {
+    // .. create a new clone of the value and return it as pointer ..
   },
-  tag, // integer value
+  size, // integer value
 }
 ```
 
-`resource` takes three terms. The first term ("discarder") receives a value of the type and discards it. The second term ("copier") receives a value of the type and returns a clone of the value (keeping the original value intact). The third term is a tag that is returned when calling `magic call-type(my-type, 2, (..))`.
+`resource` takes three terms. The first term ("discarder") receives a value of the type and discards it. The second term ("copier") receives a value of the type and returns a clone of the value (keeping the original value intact). The third term is the size returned when calling `magic call-type(my-type, 2, (..))`. This size is also used when a value of the type is returned from a function written using `->>`: when the size is non-negative, the caller prepares a destination of that size, and otherwise it uses a one-word temporary slot.
 
 The type of a discarder is `(a) -> unit` for some `a`. You might want to call functions like `free` in this term.
 
 The type of a copier is `(a) -> a` for some `a`. This `a` must be the same as the `a` used in the discarder. You might want to call functions like `malloc` in this term.
 
-The type of a tag is `int`. See also: [Semantics (call-type)](./terms.md#semantics-call-type)
+The third term must have type `int`. See also: [Semantics (call-type)](./terms.md#semantics-call-type)
 
 For example, the following is a definition of a "boxed" integer type with some noisy messages:
 
 ```neut
 resource boxed-int {
   // discarder: (pointer) -> unit
-  function (v: pointer) {
+  (v: pointer) => {
     print("discarded!\n");
     free(v)
   },
   // copier: (pointer) -> pointer
-  function (v: pointer) {
+  (v: pointer) => {
     let orig-value = load-int(v);
-    let new-ptr = malloc(1);
+    let new-ptr = malloc(8);
     magic store(int, orig-value, new-ptr);
     new-ptr
   },
-  // You should use `type-tag-to-int(Opaque)` as long as the structure of your
-  // resource type isn't the same as one of the `type-tag` values defined in `core.type-tag`.
-  // If your resource type has the same structure as one of the `type-tag` values, you can
-  // use something like `type-tag-to-int(Int32)` so it can be, for example,
-  // printed using `core.debug.vet: (&a) -> unit`.
-  type-tag-to-int(Opaque),
+  -1,
 }
 
-// provide a way to introduce new boxed integer
-define create-new-boxed-int(x: int): boxed-int {
+// provide a way to introduce a new boxed integer
+define create-new-boxed-int(x: int) -> boxed-int {
   let new-ptr = malloc(8);
   store-int(x, new-ptr);
-  magic cast(int, boxed-int, new-ptr)
+  magic cast(pointer, boxed-int, new-ptr)
 }
 ```
 
@@ -398,13 +430,13 @@ The `List` construct available in the core library is defined using `rule-right`
 
 ```neut
 rule-right List {
-  function leaf<a>(_: int): list(a) {
+  inline leaf<a>(_: int) -> list(a) {
     Nil
   },
-  function node<a>(x: a, acc: list(a)): list(a) {
+  inline node<a>(x: a, acc: list(a)) -> list(a) {
     Cons(x, acc)
   },
-  function root<a>(x: a): a {
+  inline root<a>(x: a) -> a {
     x
   },
 }
@@ -421,7 +453,7 @@ root(node(x, node(y, node(z, leaf(3)))))
 
 ↓
 
-Cons(1, Cons(2, Cons(3, Nil)))
+Cons(x, Cons(y, Cons(z, Nil)))
 ```
 
 ## `rule-left`
@@ -456,13 +488,13 @@ The `Vector` construct available in the core library is defined using `rule-left
 
 ```neut
 rule-left Vector {
-  function leaf<a>(size: int): vector(a) {
+  inline leaf<a>(size: int) -> vector(a) {
     make(size)
   },
-  function node<a>(acc: vector(a), x: a): vector(a) {
+  inline node<a>(acc: vector(a), x: a) -> vector(a) {
     push-back(acc, x)
   },
-  function root<a>(x: a): a {
+  inline root<a>(x: a) -> a {
     x
   },
 }
@@ -475,7 +507,7 @@ Vector[a, b, c]
 
 ↓
 
-root(node(node(node(leaf(3), a), b), c),)
+root(node(node(node(leaf(3), a), b), c))
 
 ↓
 
@@ -484,23 +516,24 @@ push-back(push-back(push-back(make(3), a), b), c)
 
 ## `nominal`
 
-`nominal` declares functions for forward references. It should look like the following:
+`nominal` declares top-level items for forward references. It should look like the following:
 
 ```neut
 nominal {
-  is-odd(x: int): int,
+  define is-odd(x: int) -> bool,
+  data stream(a: type),
 }
 ```
 
-An entry of `nominal` is the same form as found in `define`. Nominal definitions can be used to achieve mutual recursions:
+Nominal definitions can be used to achieve mutual recursion:
 
 ```neut
 nominal {
-  is-odd(x: int): int, // nominal definition of `is-odd`
+  define is-odd(x: int) -> bool, // nominal definition of `is-odd`
 }
 
 // given a non-negative integer `x`, returns true if `x` is even.
-define is-even(x: int): bool {
+define is-even(x: int) -> bool {
   if eq-int(x, 0) {
     True
   } else {
@@ -510,7 +543,7 @@ define is-even(x: int): bool {
 
 // given a non-negative integer `x`, returns true if `x` is odd.
 // ("real" definition of `is-odd`)
-define is-odd(x: int): bool {
+define is-odd(x: int) -> bool {
   if eq-int(x, 0) {
     False
   } else {
@@ -519,7 +552,19 @@ define is-odd(x: int): bool {
 }
 ```
 
-If a nominal definition isn't followed by a real definition, the compiler reports an error.
+If a nominal definition isn't followed by a corresponding real definition, the compiler reports an error.
+
+The following kinds of top-level items can be declared in `nominal`:
+
+- `define`
+- `inline`
+- `constant`
+- `define-meta`
+- `inline-meta`
+- `alias`
+- `alias-opaque`
+- `data`
+- `resource`
 
 ## `foreign`
 
@@ -527,7 +572,7 @@ If a nominal definition isn't followed by a real definition, the compiler report
 
 ```neut
 foreign {
-  neut_myapp_v1_add_const(int): int,
+  neut_myapp_v1_add_const(int) -> int,
 }
 ```
 
@@ -543,22 +588,20 @@ int64_t neut_myapp_v1_add_const(int64_t value) {
 }
 ```
 
-You can add the field `foreign` to your `module.ens` to compile and link this C source file, as written [here](modules.md#foreign). Under this setting, the following code can utilize `neut_myapp_v1_add_const`:
+By configuring the `foreign` field in `module.ens` as described in [Modules](./modules.md#foreign), you can use the C function above as follows:
 
 ```neut
 foreign {
-  neut_myapp_v1_add_const(int): int,
+  neut_myapp_v1_add_const(int) -> int,
 }
 
-define my-func(): int {
+define my-func() -> int {
   let x: int = 10;
   magic external neut_myapp_v1_add_const(x)
 }
 ```
 
-An example project that uses `foreign` can be found [here](https://github.com/vekatze/neut/tree/main/test/misc/foreign).
-
-You can also use LLVM intrinsics. For example, the LLVM langref states that `llvm.sin.*` intrinsic is [available](https://llvm.org/docs/LangRef.html#llvm-sin-intrinsic):
+You can also use LLVM intrinsics. For example, the LLVM LangRef states that the `llvm.sin.*` intrinsic is [available](https://llvm.org/docs/LangRef.html#llvm-sin-intrinsic):
 
 ```llvm
 declare float     @llvm.sin.f32(float  %Val)
@@ -568,14 +611,14 @@ declare fp128     @llvm.sin.f128(fp128 %Val)
 declare ppc_fp128 @llvm.sin.ppcf128(ppc_fp128  %Val)
 ```
 
-Thus, the next is a valid use of `foreign`:
+Thus, the following is a valid use of `foreign`:
 
 ```neut
 foreign {
-  llvm.sin.f64(float): float,
+  llvm.sin.f64(float) -> float,
 }
 
-define sin(x: float): float {
+define sin(x: float) -> float {
   magic external llvm.sin.f64(x)
 }
 ```
@@ -584,15 +627,15 @@ Syscall wrapper functions and library functions are also available:
 
 ```neut
 foreign {
-  exit(c-int): void,
-  sleep(c-int): c-int,
+  exit(c-int) -> void,
+  sleep(c-int) -> c-int,
 }
 ```
 
 Here, the definition of `c-int` is as follows:
 
 ```neut
-inline _c-int: type {
+constant _c-int: type {
   introspect architecture {
   | amd64 =>
     int32
@@ -606,7 +649,7 @@ data c-int {
 }
 ```
 
-The type of each parameter in every foreign entry must be a term that compiles to one of `int{N}`, `float{N}`, or `pointer` during compilation. For example, the `c-int` in `exit(c-int): void` is valid because it compiles to `int32` (thanks to an optimization like Haskell's `newtype`).
+The type of each parameter in every foreign entry must be a term that compiles to one of `int{N}`, `float{N}`, or `pointer` during compilation. For example, the `c-int` in `exit(c-int) -> void` is valid because it compiles to `int32` (thanks to an optimization like Haskell's `newtype`).
 
 The resulting type of every foreign entry must be `void` or a term that compiles to one of `int{N}`, `float{N}`, or `pointer` during compilation.
 
@@ -614,17 +657,16 @@ When declaring a variadic function, declare only the non-variadic part:
 
 ```neut
 foreign {
-  printf(pointer): void,
+  printf(pointer) -> c-int,
 }
 ```
 
 Then, specify the types of variadic arguments when using `magic external`:
 
 ```neut
-define print(t: &text): unit {
-  // ..
+define print-raw(fmt: pointer, len: int, val: pointer) -> c-int {
   magic external printf(fmt)(len: int, val: pointer)
-  //                         ^^^^^^^^^^^^^^^^^^^^^^
-  //                         passing variadic arguments with types
+  //                                 ^^^^^^^^^^^^^^^^^^^^^^
+  //                                 passing variadic arguments with types
 }
 ```

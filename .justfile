@@ -58,24 +58,6 @@ install:
     @just _build-compiler-darwin arm64
     stack install
 
-bench-arm64-darwin:
-    @just build-compiler-arm64-darwin
-    @NEUT={{justfile_directory()}}/bin/neut-arm64-darwin PLATFORM=arm64-darwin {{justfile_directory()}}/bench/script/bench-darwin.sh
-    @echo "\nGenerating graphs..."
-    @sh -c "cd {{justfile_directory()}}/bench/script/render && rm -rf node_modules && npm install && ./node_modules/.bin/ts-node ./main.ts arm64-darwin"
-
-bench-darwin platform:
-    @just _build-native {{platform}}
-    @NEUT={{justfile_directory()}}/bin/neut-{{platform}} PLATFORM={{platform}} {{justfile_directory()}}/bench/script/bench-darwin.sh
-    @echo "\nGenerating graphs..."
-    @sh -c "cd {{justfile_directory()}}/bench/script/render && rm -rf node_modules && npm install && ./node_modules/.bin/ts-node ./main.ts {{platform}}"
-
-bench-linux platform: # platform \in {amd64-linux, arm64-linux}
-    @just _build-native {{platform}}
-    @NEUT={{justfile_directory()}}/bin/neut-{{platform}} PLATFORM={{platform}} {{justfile_directory()}}/bench/script/bench-linux.sh
-    @echo "\nGenerating graphs..."
-    @sh -c "cd {{justfile_directory()}}/bench/script/render && rm -rf node_modules && npm install && ./node_modules/.bin/ts-node ./main.ts {{platform}}"
-
 test:
     @just test-amd64-linux
     @just test-arm64-linux
@@ -96,11 +78,8 @@ test-arm64-darwin:
 test-arm64-darwin-single target:
     @NEUT={{justfile_directory()}}/bin/neut-arm64-darwin TARGET_ARCH=arm64 CLANG_PATH=${NEUT_ARM64_DARWIN_CLANG_PATH} ./test/test-darwin-single.sh ./test/{{target}}
 
-test-bench-darwin:
-    @NEUT={{justfile_directory()}}/bin/neut-arm64-darwin PLATFORM=arm64-darwin {{justfile_directory()}}/bench/script/bench-darwin-mini.sh
-
 update-core new-version:
-    @NEW_VERSION={{new-version}} ./test/update-core.sh ./test/statement ./test/term ./test/misc ./test/pfds ./bench/action
+    @NEW_VERSION={{new-version}} ./test/update-core.sh ./test/statement ./test/term ./test/misc ./test/pfds
 
 release:
     @echo "creating a release: $VERSION"

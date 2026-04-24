@@ -1,3 +1,3 @@
 # Language Reference
 
-In this chapter, you should be able to find all the details of Neut.
+In this chapter, you can find all the details of Neut.

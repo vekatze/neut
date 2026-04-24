@@ -5,9 +5,13 @@
     <title>{{title}}</title>
     <meta name="description" content="{{description}}" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    {{#if favicon_svg}}
+    <link rel="icon" href="{{ resource "favicon.svg" }}">
+    {{else}}
     <link rel="icon" href="data:;base64,iVBORw0KGgo=">
-    <link rel="stylesheet" href="{{path_to_root}}css/general.css" />
-    <link rel="stylesheet" href="{{path_to_root}}highlight.css" />
+    {{/if}}
+    <link rel="stylesheet" href="{{ resource "css/general.css" }}" />
+    <link rel="stylesheet" href="{{ resource "highlight.css" }}" />
     <meta property="og:title" content="{{title}}" />
     <meta property="og:description" content="{{description}}" />
     <meta property="og:url" content="https://vekatze.github.io/neut/{{path}}" />
@@ -41,19 +45,19 @@
           <article id="content-inner">
             {{{content}}}
             <footer id="footer-paginator">
-              {{#previous}}
-              <a rel="prev" href="{{path_to_root}}{{link}}" class="nav previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+              {{#if previous}}
+              <a rel="prev" href="{{path_to_root}}{{previous.link}}" class="nav previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                 ← Previous Page
               </a>
-              {{/previous}}
+              {{/if}}
 
               <div id="footer-spacer"></div>
 
-              {{#next}}
-              <a rel="next" href="{{path_to_root}}{{link}}" class="nav next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+              {{#if next}}
+              <a rel="next" href="{{path_to_root}}{{next.link}}" class="nav next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                 Next Page →
               </a>
-              {{/next}}
+              {{/if}}
             </footer>
           </article>
           <div id="footer-wrapper">
@@ -76,8 +80,8 @@
         </script>
       {{/if}}
 
-      <script src="{{path_to_root}}highlight.js"></script>
-      <script src="{{path_to_root}}book.js"></script>
+      <script src="{{ resource "highlight.js" }}"></script>
+      <script src="{{ resource "book.js" }}"></script>
     </div>
   </body>
 </html>

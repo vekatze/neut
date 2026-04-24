@@ -2,16 +2,17 @@
 
 ## Table of Contents
 
-- [On Executing Types](./basis.md#on-executing-types)
-- [Allocation Canceling](./basis.md#allocation-canceling)
-- [Name Resolution](./basis.md#name-resolution)
-- [Leading Bars and Trailing Commas](./basis.md#leading-bars-and-trailing-commas)
-- [Compiler Configuration](./basis.md#compiler-configuration)
-- [Other Basic Facts](./basis.md#other-basic-facts)
+- [On Executing Types](#on-executing-types)
+- [Free-Malloc Canceling](#free-malloc-canceling)
+- [Malloc-Free Canceling](#malloc-free-canceling)
+- [Name Resolution](#name-resolution)
+- [Leading Bars and Trailing Commas](#leading-bars-and-trailing-commas)
+- [Compiler Configuration](#compiler-configuration)
+- [Other Basic Facts](#other-basic-facts)
 
 ## On Executing Types
 
-A type in Neut is compiled into a pointer to a binary function like the below (pseudo-code):
+A type in Neut is compiled into a pointer to a binary function like the following (pseudocode):
 
 ```neut
 define discard-or-copy-value(action-selector, value) {
@@ -32,15 +33,15 @@ These functions are then used to discard/copy values when necessary.
 Let's see how types are executed when discarding values. For example, consider the following code:
 
 ```neut
-define foo(xs: list(int)): unit {
+define foo(xs: list(int)) -> unit {
   Unit
 }
 ```
 
-Note that the variable `xs` isn't used. Because of that, the compiler translates the code above into the below (pseudo-code; won't typecheck):
+Note that the variable `xs` isn't used. Because of that, the compiler translates the code above into the following (pseudocode; won't typecheck):
 
 ```neut
-define foo(xs: list(int)): unit {
+define foo(xs: list(int)) -> unit {
   let f = list(int);
   f(0, xs); // passing `0` to discard `xs`
   Unit
@@ -54,32 +55,32 @@ Note that the above example executes the type `list(int)` as a function.
 Let's see how types are executed when copying values. For example, consider the following code:
 
 ```neut
-define foo(!xs: list(int)): unit {
-  some-func(!xs, !xs)
+define foo(!xs: list(int)) -> unit {
+  some-func(xs, xs)
 }
 ```
 
-Note that the variable `!xs` is used twice. Because of that, the compiler translates the above code into the below (pseudo-code; won't typecheck):
+Note that the variable `xs` is used twice. Because of that, the compiler translates the above code into the following (pseudocode; won't typecheck):
 
 ```neut
-define foo(!xs: list(int)): unit {
+define foo(!xs: list(int)) -> unit {
   let f = list(int);
-  let xs-clone = f(1, !xs); // passing `1` to copy `xs`
-  some-func(xs-clone, !xs)
+  let xs-clone = f(1, xs); // passing `1` to copy `xs`
+  some-func(xs-clone, xs)
 }
 ```
 
 Note that the above example executes the type `list(int)` as a function.
 
-You must prefix a variable with `!` if the variable needs to be copied. You must also prefix free variables in a term-level `define` with `!` if they cannot be copied for free.
+You must prefix a variable with `!` at its definition site if the variable may need to be copied. Likewise, if a free variable captured by a term-level `define` cannot be copied for free, that free variable must have been defined with the `!` prefix.
 
 The prefix `!` is unnecessary if the variable can be copied for free.
 
 ### On Immediate Values
 
-We don't have to discard immediates like integers or floats because their internal representations don't depend on memory-related operations like `malloc` or `free`. Because of that, "discarding" immediate values does nothing. Also, "copying" immediate values means reusing original values.
+We don't have to discard immediates like integers or floats because their internal representations don't depend on memory-related operations like `malloc` or `free`. Because of that, "discarding" immediate values does nothing. Also, "copying" immediate values means reusing the original values.
 
-More specifically, the type of an immediate is compiled into a pointer to the following function (pseudo-code):
+More specifically, the type of an immediate is compiled into a pointer to the following function (pseudocode):
 
 ```neut
 inline discard-or-copy-immediate(selector, value) {
@@ -91,7 +92,7 @@ inline discard-or-copy-immediate(selector, value) {
 }
 ```
 
-These fake discarding/copying are optimized away at compile-time.
+These fake discard/copy operations are optimized away at compile time.
 
 Also, this function is internally called `"base.#.imm"`. Try compiling your project as follows:
 
@@ -107,7 +108,7 @@ Since every type is translated into a pointer to a function, a type is an immedi
 
 </div>
 
-## Allocation Canceling
+## Free-Malloc Canceling
 
 Thanks to its static nature, memory allocation in Neut can sometimes be optimized away. Consider the following code:
 
@@ -118,7 +119,7 @@ data int-list {
 }
 
 // [1, 5, 9] => [2, 6, 10]
-define increment(xs: int-list): int-list {
+define increment(xs: int-list) -> int-list {
   match xs {
   | Nil =>
     Nil
@@ -134,24 +135,24 @@ The expected behavior of the `Cons` clause above would be something like the fol
 1. obtain `x` and `rest` from `xs`
 2. `free` the outer tuple of `xs`
 3. calculate `add-int(x, 1)` and `increment(rest)`
-4. allocate memory region using `malloc` to return the result
+4. allocate a memory region using `malloc` to hold the result
 5. store the calculated values to the pointer and return it
 
-However, since the size of `Cons(x, rest)` and `Cons(add-int(x, 1), increment(rest))` are known to be the same at compile-time, the pair of `free` and `malloc` should be able to be optimized away, as follows:
+However, since the size of `Cons(x, rest)` and `Cons(add-int(x, 1), increment(rest))` is known to be the same at compile time, the pair of `free` and `malloc` can be optimized away, as follows:
 
 1. obtain `x` and `rest` from `xs`
 2. calculate `add-int(x, 1)` and `increment(rest)`
 3. store the calculated values to `xs` (overwrite)
 
-And Neut does this optimization. When a `free` is required, Neut looks for a `malloc` that is the same size and optimizes away such a pair if one exists. The resulting assembly code thus performs in-place updates.
+Neut performs this optimization. When a `free` is required, Neut looks for a `malloc` of the same size and optimizes away such a pair if one exists. The resulting assembly code thus performs in-place updates.
 
-### Allocation Canceling and Branching
+### Free-Malloc Canceling and Branching
 
-This optimization "penetrates" branching. For example, consider the following:
+This optimization works across branches. For example, consider the following:
 
 ```neut
 // (an `insert` function in bubble sort)
-define insert(v: int, xs: int-list): int-list {
+define insert(v: int, xs: int-list) -> int-list {
   match xs {
   | Nil =>
     // ...
@@ -170,7 +171,7 @@ At point `(X)`, `free` against `xs` is required. However, this `free` can be can
 On the other hand, consider rewriting the code above into something like the following:
 
 ```neut
-define foo(v: int, xs: int-list): int-list {
+define foo(v: int, xs: int-list) -> int-list {
   match xs {
   | Nil =>
     // ...
@@ -184,27 +185,55 @@ define foo(v: int, xs: int-list): int-list {
 }
 ```
 
-At this time, the `free` against `xs` at `(X')` can't be optimized away since there exists a branch (namely, `(Y')`) that doesn't perform `malloc` that is of the same size as `xs`.
+At this point, the `free` against `xs` at `(X')` can't be optimized away since there is a branch (namely, `(Y')`) that doesn't perform a `malloc` of the same size as `xs`.
+
+## Malloc-Free Canceling
+
+Neut also performs the opposite optimization. If a region allocated by `malloc` does not escape and is eventually deallocated by `free`, the compiler replaces that heap allocation with a stack allocation.
+
+As a simple example, consider the following code:
+
+```neut
+define foo() -> int {
+  let ptr = malloc(8);
+  store-int(42, ptr);
+  let value = load-int(ptr);
+  free(ptr);
+  value
+}
+```
+
+After optimization, this behaves like the following pseudocode:
+
+```neut
+define foo() -> int {
+  let ptr = alloca(8);
+  store-int(42, ptr);
+  let value = load-int(ptr);
+  value
+}
+```
+
+That is, the compiler removes the `malloc`/`free` pair and uses a stack slot instead.
 
 ## Name Resolution
 
 ### Resolving Module Aliases
 
-Let's see how the name of a module alias is resolved. Here, the name of a module alias is something like the `core` in `core.text.io.get-line`:
+Let's see how the name of a module alias is resolved. Here, the name of a module alias is something like the `core` in `core.bool.and`:
 
 ```neut
 import {
-  core.text.io,
+  core.bool,
 }
 
-define use-external-module-function(): text {
-           // 🌟
-  let value = core.text.io.get-line();
+define use-external-module-function() -> bool {
+  let value = core.bool.and(True, False);
   ...
 }
 ```
 
-When compiling a module, the compiler reads the field `dependency` in the `module.ens` and adds correspondences like the below to its internal state:
+When compiling a module, the compiler reads the field `dependency` in `module.ens` and adds correspondences like the following to its internal state:
 
 ```neut
 // alias => (the digest of the library)
@@ -214,14 +243,14 @@ bar-module => "zptXghmyD5druBl8kx2Qrei6O6fDsKCA7z2KoHp1aqA"
 ...
 ```
 
-The compiler then resolves aliases like below:
+The compiler then resolves aliases as follows:
 
 ```text
-core.text.io.get-line
+core.bool.and
 
 ↓
 
-jIx5FxfoymZ-X0jLXGcALSwK4J7NlR1yCdXqH2ij67o=.text.io.get-line
+jIx5FxfoymZ-X0jLXGcALSwK4J7NlR1yCdXqH2ij67o.bool.and
 
 --------------
 
@@ -238,42 +267,41 @@ JEpjuzZ0rlqxiVuCnD000jEKIA_Y6ku1L3J139h3M6Q.path.to.some.file.my-function
 
 ### Resolving `this`
 
-Let's see how `this` is resolved. Here, `this` is a component of a global variables, like the below:
+Let's see how `this` is resolved. Here, `this` is a component of a global variable, as in the following example:
 
 ```neut
 import {
   this.path.to.file,
 }
 
-define use-my-function(): text {
-           // 🌟
+define use-my-function() -> unit {
   let value = this.path.to.file.my-function();
   ...
 }
 ```
 
-The first thing to note here is that every module is marked as "main" or "library" when running compilation. The main module is the module in which `neut build` is executed. Library modules are all the other modules that are necessary for compilation.
+The first thing to note here is that every module is marked as "main" or "library" during compilation. The main module is the module in which `neut build` is executed. Library modules are all the other modules that are necessary for compilation.
 
 All the occurrences of `this` in the main module are kept intact during compilation. Thus, the resulting assembly file contains symbols like `this.foo.bar`.
 
-On the other hand, all the occurrences of `this` in a library module are resolved into their corresponding digests. More specifically, when processing a library module, the compiler adds correspondences like the below:
+On the other hand, all occurrences of `this` in a library module are resolved into their corresponding digests. More specifically, when processing a library module, the compiler adds correspondences like the following:
 
 ```neut
 // this => (the digest of the library)
 this => "jIx5FxfoymZ-X0jLXGcALSwK4J7NlR1yCdXqH2ij67o"
 ```
 
-The compiler then resolves `this` like below:
+The compiler then resolves `this` as follows:
 
 ```text
-this.text.io.get-line
+this.string.io.get-line
 
 ↓
 
-jIx5FxfoymZ-X0jLXGcALSwK4J7NlR1yCdXqH2ij67o=.text.io.get-line
+jIx5FxfoymZ-X0jLXGcALSwK4J7NlR1yCdXqH2ij67o.string.io.get-line
 ```
 
-Thus, the resulting assembly file contains symbols like the above.
+Thus, the resulting assembly file contains symbols like these.
 
 ## Leading Bars and Trailing Commas
 
@@ -312,5 +340,5 @@ The default values are as follows:
 - Neut is call-by-value
 - Neut is impure
 - The type of `main` must be `() -> unit`
-- A module named `core` is treated specially (treated as the "prelude" library)
-  - Syntactic constructs like `List[1, 2, 3]` depends on functions in `core`
+- The compiler has built-in references to names under `core`
+- Syntactic constructs like `List[1, 2, 3]` depend on functions in `core`

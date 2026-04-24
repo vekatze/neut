@@ -1,16 +1,14 @@
 # Rapid Prototyping
 
-You can use [the subcommand](./commands.md#neut-zen) `neut zen` to sketch a function.
+You can use the [subcommand](./commands.md#neut-zen) `neut zen` to sketch a function.
 
-Below is an example in which Emacs runs `neut zen path/to/file.nt` when `C-c C-c` is typed:
+Below is an example where Emacs runs `neut zen path/to/file.nt` when `C-c C-c` is pressed:
 
 ![zen](./image/screencasts/zen.gif "zen")
 
-This feels a bit like a scripting language, doesn't it?
+## Notes for Emacs
 
-### Notes for Emacs
-
-The configuration for Emacs in the above example is like the one below:
+The Emacs configuration for the example above looks like the following:
 
 ```text
 (defun ext/neut-compile ()

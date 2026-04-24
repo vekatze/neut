@@ -1,6 +1,6 @@
 # Installation
 
-## Installation
+## Installing the Toolchain
 
 To install the toolchain, execute [the installation script](https://raw.githubusercontent.com/vekatze/neut/main/install.sh):
 
@@ -8,16 +8,16 @@ To install the toolchain, execute [the installation script](https://raw.githubus
 curl -sSL https://raw.githubusercontent.com/vekatze/neut/main/install.sh | bash
 ```
 
-Then please follow the instructions.
+Then follow the instructions.
 
 You might also want to [configure your editor](./editor-setup.md).
 
-If you prefer manual installation, see [here](./manual-installation.md).
+If you prefer a manual installation, see [Manual Installation](./manual-installation.md).
 
 ## Uninstallation
 
-To uninstall,
+To uninstall, remove the following:
 
-1. remove the binary `~/.local/bin/neut`,
-2. remove `NEUT_CORE_MODULE_URL` and `NEUT_CORE_MODULE_DIGEST` in your shell config, and
-3. remove cache directories in your projects (if desired).
+1. the binary `~/.local/bin/neut`,
+2. related environment variables from your shell config, and
+3. cache directories in your projects (if desired).

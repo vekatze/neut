@@ -20,7 +20,7 @@ Let's create a module by running the following command:
 neut create sample
 ```
 
-This command creates a template module `./sample/` that performs "hello world".
+This command creates a template module `./sample/` that prints "Hello, world!".
 
 You can build and execute this module as follows:
 
@@ -29,7 +29,7 @@ cd ./sample
 neut build sample --execute # => "Hello, world!"
 ```
 
-You can also retrieve the resulting binary:
+You can also install the resulting binary and run it directly:
 
 ```sh
 neut build sample --install ./bin # creates a directory `bin` if necessary
@@ -63,13 +63,14 @@ You can change the locations of special directories such as `cache` using `modul
 
 ### module.ens
 
-The content of `module.ens` is something like the following:
+The contents of `module.ens` look roughly like the following:
 
 ```ens
 {
   target {
     sample {
       main "sample.nt",
+      allocator "system",
     },
   },
   dependency {
@@ -86,24 +87,26 @@ The content of `module.ens` is something like the following:
 
 `target` specifies the targets of a module. In the example above, the command `neut build sample` builds the module using the file `source/sample.nt` as its entry point.
 
-`dependency` specifies the dependencies of a module. Since our running example doesn't do much, the only dependency is `core`, which is the same as "prelude" in other languages.
+`allocator` specifies which allocator is used by the target. By setting it to `"mimalloc"`, you can use mimalloc for that target.
+
+`dependency` specifies the dependencies of a module. Since our running example is small, the only dependency is `core`, which plays the same role as the Prelude in other languages.
 
 `digest` is the base64url-encoded checksum of a dependency.
 
 `mirror` is a list of URLs of a dependency.
 
-`enable-preset` makes the dependency behave similarly to the Prelude in Haskell. That is, when `enable-preset` is set to `true`, the names specified in the dependency are automatically imported into every file in our module. This field should be set to `true` only for the `core` library.
+`enable-preset` makes the dependency behave similarly to the Prelude in other languages. If enabled, the names listed in the dependency's `preset` are imported automatically into every file in our module.
 
 ## Basics of Source Files
 
 ### Editing Source Files
 
-Let's see the content of `source/sample.nt`:
+Let's see the contents of `source/sample.nt`:
 
 ```neut
 // sample.nt
 
-define main(): unit {
+define main() -> unit {
   print("Hello, world!\n"); // `print` is defined in `core`
 }
 ```
@@ -113,7 +116,7 @@ The above code defines a function `main` that returns a value of type `unit`. Th
 Let's try editing the code as follows:
 
 ```neut
-define main(): unit {
+define main() -> unit {
   print("Yo\n");
 }
 ```
@@ -137,11 +140,11 @@ import {
   core.int.io {print-int},
 }
 
-define get-int(): int {
+define get-int() -> int {
   42
 }
 
-define main(): unit {
+define main() -> unit {
   print-int(get-int()); // => 42
 }
 ```
@@ -155,24 +158,24 @@ import {
   core.int.io {print-int},
 }
 
-define increment(x: int): int {
+define increment(x: int) -> int {
   add-int(x, 1)
 }
 
-define my-add(x: int, y: int): int {
+define my-add(x: int, y: int) -> int {
   add-int(x, y)
 }
 
-define main(): unit {
+define main() -> unit {
   print-int(my-add(10, increment(10))); // => 21
 }
 ```
 
-Top-level items like `define` are called statements. You’ll learn more about them in the next section.
+Top-level items like `define` are called statements. You'll learn more about them on the next page.
 
 <div class="info-block">
 
-As in F#, statements in Neut are order-sensitive. Therefore, if you define `main` before `my-add`, the code won't compile. For forward references, you have to explicitly declare names beforehand using a statement called `nominal`, which we'll see in the next section.
+As in F#, statements in Neut are order-sensitive. Therefore, if you define `main` before `my-add`, the code won't compile. For forward references, you have to declare names explicitly beforehand using a statement called `nominal`, which we'll see on the next page.
 
 </div>
 
@@ -187,9 +190,9 @@ neut archive 0-1
 ls ./archive # => 0-1.tar.zst
 ```
 
-The argument of `neut archive` must be something like `0-1-0`, `2-3-1`, or `1-2-3-4-5-6`. The compiler interprets these names as semantic versions.
+The argument of `archive` must be something like `0-1`, `0-1-0`, or `1-2-0-1`.
 
-You can then upload these tarballs by pushing them to GitHub, for example.
+You can then publish these tarballs on GitHub, for example.
 
 ## Adding Dependency Modules
 
@@ -204,15 +207,16 @@ cd new-item
 neut get some-name https://github.com/vekatze/neut-sample/raw/main/archive/0-1-0.tar.zst
 ```
 
-The command `neut get` fetches the tarball from the specified URL and adds it to the current module. The module can then be used as `some-name` in your module.
+The subcommand `get` fetches the tarball from the specified URL and adds it to the current module. You can then refer to that dependency as `some-name` in your module.
 
-The information of the newly-added module is saved to `module.ens`:
+The new dependency information is saved to `module.ens`:
 
 ```ens
 {
   target {
     new-item {
       main "new-item.nt",
+      allocator "system",
     },
   },
   dependency {
@@ -230,7 +234,7 @@ The information of the newly-added module is saved to `module.ens`:
 
 <div class="info-block">
 
-The "real" name of a dependency is the digest of the tarball. Names such as `some-name` are just aliases.
+The canonical identifier of a dependency is the digest of the tarball. Names such as `some-name` are just aliases.
 
 </div>
 
@@ -238,7 +242,7 @@ The "real" name of a dependency is the digest of the tarball. Names such as `som
 
 ### Importing Files in Dependencies
 
-Dependencies can be used in your code, of course:
+You can use dependencies in your code:
 
 ```neut
 // new-item.nt
@@ -248,7 +252,7 @@ import {
   some-name.sample {my-add}, // imports `my-add` in `source/sample.nt`
 }
 
-define main(): unit {
+define main() -> unit {
   print-int(my-add(10, 11)); // ← using `my-add`
 }
 ```
@@ -275,7 +279,7 @@ import {
   some-name.sample, // removed `{my-add}`
 }
 
-define main(): unit {
+define main() -> unit {
   // ↓ using the fully-qualified form of `my-add`
   print-int(some-name.sample.my-add(10, 11));
 }
@@ -296,7 +300,7 @@ Let's try creating a new file `new-item/source/foo/greet.nt` with the following 
 ```neut
 // foo/greet.nt
 
-define yo(): unit {
+define yo() -> unit {
   print("Yo");
 }
 ```
@@ -310,9 +314,9 @@ import {
   this.foo.greet {yo},
 }
 
-define main(): unit {
+define main() -> unit {
   yo();
 }
 ```
 
-That is, the name of the current module is always `this`.
+In other words, the current module is always referred to as `this`.

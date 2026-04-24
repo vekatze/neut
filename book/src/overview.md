@@ -2,23 +2,19 @@
 
 Neut is a functional programming language with static memory management.
 
-Its key features include:
+## Key Features
 
-<ul class="star-list">
-  <li>Full λ-calculus support</li>
-  <li>Predictable automatic memory management</li>
-  <li>The ability to achieve both of the above without additional type annotations</li>
-</ul>
+- Full λ-calculus support
+- Predictable, type-directed memory management
+- No extra type annotations needed to achieve both of the above
 
-Neut doesn't use a GC. Instead, it takes a _type-directed approach_ for memory management.
+## Code Example
 
-## What Does it Look Like?
-
-Like the following:
+A typical program looks as follows:
 
 ```neut
 // the obligatory hello world
-define hello(): unit {
+define hello() -> unit {
   print("Hello, world!\n")
 }
 
@@ -29,51 +25,51 @@ data my-list(a) {
 }
 
 // a recursive function with pattern matching
-define noisy-length<a>(xs: my-list(a)): int {
+define foo<a>(xs: my-list(a)) -> int {
   match xs {
   | Nil =>
     0
   | Cons(_, ys) =>
     let my-message = "hey\n";
     print(my-message);
-    add-int(1, noisy-length(ys))
+    add-int(1, foo(ys))
   }
 }
 ```
 
-## Static Memory Management — But How?
+## Static Memory Management
 
-_Neut translates a type into a function_ that can discard/copy the values of the type. By using those functions, the compiler translates programs so that every variable is used exactly once.
+Neut translates a type into a function for discarding and copying values of the type. By using those functions, the compiler translates programs so that every variable is used exactly once.
 
 For example, if a variable is used twice, a translation like the following happens:
 
 ```neut
 // (before)
-let xs: list(a) = List[value-1, value-2];
+let xs: list(a) = make-list();
 some-func(xs, xs) // `xs` is used twice
 
 // ↓
 
 // (after)
-let xs: list(a) = List[value-1, value-2];
+let xs: list(a) = make-list();
 let (xs1, xs2) = copy-list-a(xs);  // `xs` is used once
 some-func(xs1, xs2)
 ```
 
-If you need more information, see [How to Execute Types](./how-to-execute-types.md).
+If you need more information, see [On Executing Types](./on-executing-types.md).
 
-You might wonder: _"So do I have to, for example, copy an entire list just to get its length? Isn't that a tragedy?"_. This topic is covered in [Static Memory Management](./static-memory-management.md) and [Modality and Memory](./modality-and-memory.md). As written there, Neut avoids such copy operations by using the _box modality_, achieving something like borrowing in Rust.
+At this point, one concern is whether operations such as taking the length of a list require copying the entire value. Neut avoids such copy operations by using the _box modality_, achieving something like borrowing. See [Static Memory Management](./static-memory-management.md) and [Modality and Memory](./modality-and-memory.md) for details.
 
 ## Quick List of Other Features
 
-- Call by value
+- Call-by-value
 - Impure
-- Compiles to [LLVM IR](https://llvm.org/docs/LangRef.html) and binary
-- The type system ≈ [CoC](https://en.wikipedia.org/wiki/Calculus_of_constructions) + [ADT](https://en.wikipedia.org/wiki/Algebraic_data_type) + (recursion) + (T-necessity) - (universe hierarchy)
+- Compiles to LLVM IR and native binaries
+- The type system ≈ System Fω + ADT + recursion + box modality
   - That is, the usual one in functional programming, but a bit generalized
-- Built-in [LSP support](./lovely-lsp-showcase.md)
-- Built-in [rapid prototyping experience](./rapid-prototyping.md) like scripting languages
-- Built-in formatter like Go
+- Built-in [LSP support](./lsp-showcase.md)
+- Built-in [rapid prototyping support](./rapid-prototyping.md) as found in scripting languages
+- Built-in formatter
 
 ---
 

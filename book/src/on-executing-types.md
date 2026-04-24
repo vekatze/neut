@@ -1,4 +1,4 @@
-# How to Execute Types
+# On Executing Types
 
 ## Table of Contents
 
@@ -11,7 +11,7 @@
 
 ## Types as Closed Functions
 
-Here, we'll see how a type is translated into a function that discards/copies the terms of the type. To see the basic idea, let's take a simple ADT for example:
+Here, we'll see how a type is translated into a function that discards/copies values of the type. To see the basic idea, let's take a simple ADT as an example:
 
 ```neut
 data item {
@@ -19,7 +19,7 @@ data item {
 }
 ```
 
-The internal representation of `New(10, 20)` is something like the below:
+The internal representation of `New(10, 20)` is something like the following:
 
 ```neut
 New(10, 20)
@@ -52,8 +52,6 @@ store(ptr[1], v[1]); // ptr[1] := v[1]
 ptr
 ```
 
-Not a big deal, right?
-
 ### Combining Discarding/Copying Functions
 
 Using the two procedures above, we can construct a closed function that discards and copies the values of the type `item`:
@@ -77,7 +75,7 @@ define exp-item(selector, v) {
 
 The type `item` is compiled into a pointer to this function.
 
-More generally, a type `a` is translated into a pointer to a closed function like below:
+More generally, a type `a` is translated into a pointer to a closed function like the following:
 
 ```neut
 define exp-a(selector, v) {
@@ -106,7 +104,7 @@ let _ = exp-item(0, x); // discard `x` by passing 0 as `selector`
 print("hello")
 ```
 
-This `exp-item` is also called when a variable is used more than twice:
+This `exp-item` is also called when a variable is used more than once:
 
 ```neut
 let x = New(10, 20);
@@ -131,7 +129,7 @@ This discarding/copying procedure happens _immediately after a variable is defin
 
 ## Immediate Types
 
-Immediates like integers or floats don't have to be discarded or copied since they don't rely on memory-related operations like `malloc` or `free`. This fact is reflected in the resulting function that `int` or `float` are translated into:
+Immediates like integers or floats don't have to be discarded or copied since they don't rely on memory-related operations like `malloc` or `free`. This fact is reflected in the function that `int` and `float` are translated into:
 
 ```neut
 define base.#.imm(selector, value) {
@@ -158,17 +156,17 @@ A type is compiled into a pointer to a closed function. This means that types ar
 Let's see how polymorphic values are copied. Consider the following code:
 
 ```neut
-define foo(a: type, x: a): pair(a, a) {
+define foo<a>(x: a) -> pair(a, a) {
   Pair(x, x)
 }
 ```
 
 The code uses the variable `x` twice. Thus, this `x` must be copied according to the type `a`.
 
-This can be done because the internal representation of `a` is a function that can discard and copy the values of type `a`. Thus, the above code is compiled into something like the below:
+This can be done because the internal representation of `a` is a function that can discard and copy values of type `a`. Thus, the above code is compiled into something like the following:
 
 ```neut
-define foo(a: type, x: a): pair(a, a) {
+define foo<a>(x: a) -> pair(a, a) {
   let x-clone = a(1, x);
   Pair(x, x-clone)
 }
@@ -178,7 +176,7 @@ Thus, we can discard and copy values of polymorphic types.
 
 ## Algebraic Data Types
 
-ADTs like the below also have resource exponentials, of course:
+ADTs like the following also have resource exponentials, of course:
 
 ```neut
 data list(a) {
@@ -189,13 +187,21 @@ data list(a) {
 
 The first thing to note is that the values of an ADT must be able to be discarded/copied using a closed function (since all the types in Neut are compiled into closed functions). This means the information about `a` in `list(a)` must be contained in the values.
 
-That is, for example, the internal representation of `Nil` is something like below:
+The second thing to note is that all the constructors of an ADT share the same allocation size: the size of its largest constructor.
+
+For `list(a)`, this means every value occupies 4 words:
+
+- 1 word for `a`,
+- 1 word for the discriminant,
+- 2 words for the largest constructor payload (`Cons(a, list(a))`).
+
+That is, for example, the internal representation of `Nil` is something like the following:
 
 ```neut
-(a, 0)
+(a, 0, _, _)
 ```
 
-Here, the `0` is the discriminant for `Nil`. Also, that of `Cons(10, xs)` is:
+Here, the `0` is the discriminant for `Nil`. The trailing two words are unused and remain uninitialized. Similarly, the internal representation of `Cons(10, xs)` is:
 
 ```neut
 (a, 1, 10, xs)
@@ -203,7 +209,7 @@ Here, the `0` is the discriminant for `Nil`. Also, that of `Cons(10, xs)` is:
 
 Here, the `1` is the discriminant for `Cons`.
 
-With that in mind, the resource exponential of `list(a)` will be something like the below (A bit lengthy; Skip it and just read the succeeding note if you aren't that interested in details):
+With that in mind, the resource exponential of `list(a)` will be something like the following (a bit lengthy; you can skip to the following note if you prefer):
 
 ```neut
 define exp-list(selector, v) {
@@ -215,20 +221,21 @@ define exp-list(selector, v) {
     } else {
       // discard Cons
       let a = v[0];
-      let cons-head = v[1];
-      let cons-tail = v[2];
+      let cons-head = v[2];
+      let cons-tail = v[3];
       free(v);
-      let () = a(0, v[1]); // ← discard the head of cons using v[0]
-      exp-list(0, v[2])
+      let _ = a(0, cons-head); // ← discard the head of cons using v[0]
+      exp-list(0, cons-tail)
     }
   } else {
     let d = get-discriminant(v);
     if d == 0 {
       // copy Nil
-      let ptr = malloc({2-words});
+      let ptr = malloc({4-words});
       let a = v[0];
       store(ptr[0], a);
       store(ptr[1], d);
+      // ptr[2] and ptr[3] stay uninitialized
       ptr
     } else {
       // copy Cons
@@ -246,65 +253,66 @@ define exp-list(selector, v) {
 }
 ```
 
-The point is that _the type information in a value is loaded at runtime and used to discard/copy values_. This utilization of types is the main point of first-class types in Neut.
+The point is that the type information in a value is loaded at runtime and used to discard/copy values. Even when a constructor carries fewer fields, the allocation size is still the one determined by the largest constructor, and unused slots are simply left untouched.
 
-The main part of this section is now over. What follows is for curious cats.
+<div class="info-block">
+
+A major motivation for this fixed allocation size is destination-passing style. By giving each ADT type a fixed size, the caller can allocate a destination buffer of the required size in advance.
+
+</div>
 
 ## Advanced: Function Types
 
 We'll see how function types like `(int) -> bool` are translated.
 
-Suppose we have a function like the below:
+Suppose we have a function like the following:
 
 ```neut
-define foo(a: type): int {
-  let x: int = 10;
-  let y = type;
+define foo<a>(x: a) -> int {
+  let y = Unit;
   let f =
-    function (z: a) {  // lambda
-      let foo = x;     // ← x is a free var of this lambda
-      let bar = y;     // ← y is also a free var of this lambda
-      let buz = z;
+    (z: int) => {
+      let foo = x; // ← x is a free var of this lambda
+      let bar = y; // ← y is also a free var of this lambda
+      let baz = z;
       bar
     };
   0
 }
 ```
 
-Let's see how the `function` is compiled.
+Let's see how the lambda abstraction is compiled.
 
 ### Extracting a Closed Chain From a Lambda
 
-First, the compiler collects all the free variables in the lambda. Here, the compiler also collects all the free variables in the types of the free variables. Thus, in this case, the compiler constructs a list like below:
+First, the compiler collects all the free variables in the lambda. Here, the compiler also collects all the free variables in the types of those free variables. Thus, in this case, the compiler constructs a typed list like the following:
 
 ```neut
-[a, x, y, z]
+[a: type, x: a, y: unit]
 ```
 
-This list is "closed" in the following sense. Consider annotating all the variables in the list by their variables, like below:
+Let's write this as a sequence `x1: t1, ..., xn: tn`. We call such a sequence a closed chain if each type `ti` mentions only earlier variables, that is,
 
-```neut
-[a: type, x: int, y: type, z: a]
+```text
+FreeVars(ti) ⊆ {x1, ..., x{i-1}}
 ```
 
-This list is closed in that the term
+for every `i`.
 
-```neut
-function (a: type, x: int, y: type, z: a) {
-  Unit
-}
-```
+In the example above, this condition holds because:
 
-contains no free variables. We'll call a list like this a closed chain.
+- `FreeVars(type) = ∅ ⊆ ∅`
+- `FreeVars(a) = {a} ⊆ {a}`
+- `FreeVars(unit) = ∅ ⊆ {a, x}`
 
 ### Closure Conversion
 
 We'll use this closed chain to compile a lambda. The internal representation of a closure for the lambda will be a 3-word tuple like the following:
 
 ```text
-(Σ (a: type, x: int, y: type). a , (a, x, y, z), LABEL-TO-FUNCTION-DEFINITION)
- -----------------------------   ------------
- the type of the environment     the closed chain (i.e. environment)
+(ENVIRONMENT-TYPE, (a, x, y), LABEL-TO-FUNCTION-DEFINITION)
+                   ---------
+                   the closed chain (i.e. environment)
 ```
 
 This is more or less the usual closure conversion, except that we now have the types of the free variables in the closure.
@@ -320,7 +328,7 @@ let env-type = cls[0]; // get the type of the environment
 let env      = cls[1]; // get the pointer to the environment
 let label    = cls[2]; // get the label to the function
 
-let env-clone = env-type(1, env); // copy the environment using the type of it
+let env-clone = env-type(1, env); // copy the environment using its type
 
 // allocate new memory region for our new closure
 let new-ptr = malloc(mul-int(3, word-size));
@@ -333,7 +341,7 @@ store(new-ptr[2], label);     // note that a label is an immediate
 new-ptr // ... and return the new closure
 ```
 
-Discarding a closure can also be done with the same idea: discard the environment using the type information in the closure.
+Discarding a closure can also be done using the same idea: discard the environment using the type information in the closure.
 
 ### Translating a Function Type
 
@@ -348,7 +356,7 @@ define base.#.cls(action-selector, cls) {
   if action-selector == 0 {
     // discard
 
-    // discard the environment using the type of it
+    // discard the environment using its type
     let env-type = cls[0];
     let env      = cls[1];
     env-type(0, env);
@@ -363,7 +371,7 @@ define base.#.cls(action-selector, cls) {
     let env      = cls[1];
     let label    = cls[2];
 
-    // copy the environment using the type of it
+    // copy the environment using its type
     let env-clone = env-type(1, env);
 
     let new-ptr = malloc(mul-int(3, word-size));
@@ -380,6 +388,6 @@ define base.#.cls(action-selector, cls) {
 
 <div class="info-block">
 
-Every function type is translated into this same `base.#.cls`, no matter its argument types and the result types.
+Every function type is translated into this same `base.#.cls`, regardless of its argument and result types.
 
 </div>

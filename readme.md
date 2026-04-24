@@ -9,22 +9,20 @@ Neut is a functional programming language with static memory management.
 ## Key Features
 
 - Full λ-calculus support
-- Predictable automatic memory management
-- The ability to achieve both of the above without extra type annotations
-
-Neut doesn't use a GC. Instead, it takes a type-directed approach to handle resources. It even uses the T-necessity operator to formulate borrowing.
+- Predictable, type-directed memory management
+- No extra type annotations needed to achieve both of the above
 
 ## Basic Characteristics
 
-- Call by value
+- Call-by-value
 - Impure
-- Compiles to [LLVM IR](https://llvm.org/docs/LangRef.html) and binary
-- The type system ≈ [CoC](https://en.wikipedia.org/wiki/Calculus_of_constructions) + [ADT](https://en.wikipedia.org/wiki/Algebraic_data_type) + (recursion) + (T-necessity) - (universe hierarchy)
+- Compiles to LLVM IR and native binaries
+- The type system ≈ System Fω + ADT + recursion + box modality
   - That is, the usual one in functional programming, but a bit generalized
 - Built-in [LSP support](https://vekatze.github.io/neut/lovely-lsp-showcase.html)
-- Built-in [rapid prototyping experience](https://vekatze.github.io/neut/rapid-prototyping.html) like scripting languages
-- Built-in formatter like Go
+- Built-in [rapid prototyping support](https://vekatze.github.io/neut/rapid-prototyping.html) as found in scripting languages
+- Built-in formatter
 
 ## Documentation
 
-Please see: https://vekatze.github.io/neut/
+Please see: <https://vekatze.github.io/neut/>

@@ -195,12 +195,6 @@ ol {
 ul {
   line-height: var(--content-line-height);
 }
-ul.star-list {
-  list-style-type: "🌟";
-}
-ul.star-list > li {
-  padding-left: 8px;
-}
 li.part-title {
   margin-top: 1em;
   margin-bottom: 1em;
@@ -346,31 +340,6 @@ em {
   }
 }
 
-@media (min-width: 900px) {
-  #content h1:before {
-    position: absolute;
-    left: -3rem;
-    /* content: "#"; */
-    /* color: var(--gray-light); */
-    color: var(--gray-deep);
-  }
-
-  #content h2:before {
-    position: absolute;
-    left: -4rem;
-    /* content: "##"; */
-    /* color: var(--gray); */
-    color: var(--gray-deep);
-  }
-
-  #content h3:before {
-    position: absolute;
-    left: -4rem;
-    /* content: "###"; */
-    color: var(--gray-deep);
-  }
-}
-
 #content figure {
   text-align: center;
   margin: 4rem 0;
@@ -436,8 +405,13 @@ em {
 
 /* Inline code */
 
+:not(pre) > code {
+  white-space: nowrap;
+}
+
 :not(pre) > .hljs {
   display: inline;
+  white-space: nowrap;
   padding: 0.1em 0.2em;
   margin: 0 0.3em;
   border: 1px dotted var(--light-blue);
@@ -469,7 +443,6 @@ pre > .buttons button {
   padding: 3px 5px;
   font-size: 14px;
   font-family: var(--main-font);
-
   border-style: dotted;
   border-width: 1px;
   border-color: var(--light-blue);
@@ -490,11 +463,6 @@ pre > code {
   padding: 0rem 1rem;
   background: var(--dark-magenta);
   border: 1px dotted var(--light-magenta);
-}
-
-div.info-block p:before {
-  content: "💡";
-  padding-right: 1rem;
 }
 
 .footnote-definition {

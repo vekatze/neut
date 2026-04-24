@@ -9,10 +9,12 @@
 
 ### Primitive Types
 
-Neut supports integers and floats. More specifically, the following types are supported:
+Neut supports the following primitive types:
 
 - integer types: `int1, int2, int4, int8, int16, int32, int64`
 - float types: `float16, float32, float64`
+- rune type: `rune`
+- text type: `text`
 
 You can also use `int` and `float`. These are just syntactic sugar for `int64` and `float64`, respectively.
 
@@ -20,10 +22,10 @@ You can also use `int` and `float`. These are just syntactic sugar for `int64` a
 
 These primitive types have a lot of primitive functions from LLVM:
 
-|             | integers                                                      | floats                                                                      |
-| ----------- | ------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| arithmetics | add, sub, mul, div, rem, udiv, urem, or, xor, shl, lshr, ashr | neg, add, sub, mul, div, rem                                                |
-| comparison  | eq, ne, gt, ge, lt, le, ugt, uge, ult, ule                    | eq, gt, ge, lt, le, ne, ord, ueq, ugt, uge, ult, ule, une, uno, false, true |
+|            | integers                                                           | floats                                                                      |
+|------------|--------------------------------------------------------------------|-----------------------------------------------------------------------------|
+| arithmetic | add, sub, mul, div, rem, udiv, urem, and, or, xor, shl, lshr, ashr | neg, add, sub, mul, div, rem                                                |
+| comparison | eq, ne, gt, ge, lt, le, ugt, uge, ult, ule                         | eq, gt, ge, lt, le, ne, ord, ueq, ugt, uge, ult, ule, une, uno, false, true |
 
 For example, `add-int32`, `neg-float64`, `eq-int64`, and `gt-float32` are available.
 
@@ -31,7 +33,7 @@ Neut uses LLVM's integer types and float types for its primitive types. Thus, th
 
 For example, `div-int64` interprets its two arguments as signed integers and returns its (signed) result. `udiv-int64` interprets its two arguments as unsigned integers and returns its (unsigned) result. Integer functions prefixed with `u` are for unsigned functions.
 
-The internal representation of the integer types in Neut is the same as that of LLVM. Therefore, they are based on the two's complement representation. That is why Neut doesn't have something like `uadd-int64`. The `u`-prefixed integer functions are there only when we need different behaviors for different signednesses.
+The internal representation of the integer types in Neut is the same as that of LLVM. Therefore, they are based on the two's complement representation. That is why Neut doesn't have something like `uadd-int64`. The `u`-prefixed integer functions are there only when we need different behaviors for signed and unsigned values.
 
 The following conversion functions are also available: `trunc`, `zext`, `sext`, `fptrunc`, `fpext`, `fptoui`, `fptosi`, `uitofp`, and `sitofp`.
 
@@ -47,7 +49,7 @@ Primitive functions for `int` and `float` are also available. For example, you c
 
 ## Core Types and Functions
 
-The [preset](./modules.md#preset) of the core library (something like Prelude in other languages) is imported automatically and provides some types and functions. These types and functions can also be used as primitives. Things like the below are defined in the library:
+The [preset](./modules.md#preset) of the core library (something like the Prelude in other languages) is imported automatically. It provides some types and functions that can also be used as primitives. For example, the following are defined in the library:
 
 ```neut
 data null {}
@@ -78,3 +80,5 @@ data pair(a, b) {
 ```
 
 Functions for those types are also defined in the library. For more, please see [the source of the core library](https://github.com/vekatze/neut-core/tree/main/source).
+
+The core library also defines `string` and functions on it. String literals have type `&string`. In particular, `core.string.from-text` converts `text` to `&string`.

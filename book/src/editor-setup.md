@@ -6,7 +6,7 @@
 
 `neut-mode` is an Emacs major mode for Neut. The mode provides syntax highlighting and automatic indentation. It also provides a way to use the LSP server via `lsp-mode` and `eglot`.
 
-`neut-mode` is available on [Melpa](https://melpa.org/#/neut-mode). You can install the package by:
+`neut-mode` is available on [Melpa](https://melpa.org/#/neut-mode). You can install the package with:
 
 ```text
 M-x package-install RET neut-mode RET
@@ -37,11 +37,11 @@ Below is an example configuration:
 
 You can install `vim-neut` for syntax highlighting and automatic indentation.
 
-The installation process is as usual. Just use your favorite plugin manager like [lazy.nvim](https://github.com/folke/lazy.nvim).
+Install it with your preferred plugin manager, such as [lazy.nvim](https://github.com/folke/lazy.nvim).
 
-If you want to use the built-in LSP client, for example, you can do something like the following:
+If you want to use Neovim's built-in LSP client, you can use a configuration like the following:
 
-```vim
+```lua
 vim.api.nvim_create_autocmd("FileType", {
   desc = "Launch Neut's LSP server",
   pattern = "neut",
@@ -55,12 +55,12 @@ vim.api.nvim_create_autocmd("FileType", {
 })
 ```
 
-The points are as follows:
+Key points:
 
 - Run `neut lsp` to start the LSP server
 - Look for `module.ens` to find the root of a module
 
-You should be able to use any other LSP clients for Neovim.
+Any other LSP client for Neovim should work as well.
 
 ## Vim
 
@@ -68,9 +68,9 @@ You should be able to use any other LSP clients for Neovim.
 
 You can install `vim-neut` for syntax highlighting and automatic indentation.
 
-The installation process is as usual. Just use your favorite plugin manager like [vim-plug](https://github.com/junegunn/vim-plug).
+Install it with your preferred plugin manager, such as [vim-plug](https://github.com/junegunn/vim-plug).
 
-If you want to use [vim-lsp](https://github.com/prabirshrestha/vim-lsp), for example, you can do something like the following:
+If you want to use [vim-lsp](https://github.com/prabirshrestha/vim-lsp), you can use a configuration like the following:
 
 ```vim
 call plug#begin()
@@ -104,12 +104,12 @@ augroup lsp_install
 augroup END
 ```
 
-The points are as follows:
+Key points:
 
 - Run `neut lsp` to start the LSP server
 - Look for `module.ens` to find the root of a module
 
-You should be able to use any other LSP clients for Vim.
+Any other LSP client for Vim should work as well.
 
 ## Visual Studio Code
 
