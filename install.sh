@@ -28,6 +28,27 @@ MAGENTA="${ESC}[1;35m%s${ESC}[m"
 BLUE="${ESC}[1;34m%s${ESC}[m"
 CYAN="${ESC}[1;36m%s${ESC}[m"
 
+is_debian_13_or_later() {
+  if [ ! -r /etc/os-release ]; then
+    return 1
+  fi
+
+  local ID VERSION_ID major_version
+  . /etc/os-release
+
+  if [ "$ID" != "debian" ] || [ -z "$VERSION_ID" ]; then
+    return 1
+  fi
+
+  major_version="${VERSION_ID%%.*}"
+
+  if [[ ! "$major_version" =~ ^[0-9]+$ ]]; then
+    return 1
+  fi
+
+  [ "$major_version" -ge 13 ]
+}
+
 clangs=(
   "clang"
   "clang-15"
@@ -36,6 +57,8 @@ clangs=(
   "clang-18"
   "clang-19"
   "clang-20"
+  "clang-21"
+  "clang-22"
 )
 
 for CLANG in "${clangs[@]}"; do
@@ -82,10 +105,17 @@ fi
 
 if [ $HAS_CLANG -eq 0 ] || [ $HAS_TAR -eq 0 ] || [ $HAS_CURL -eq 0 ] || [ $HAS_ZSTD -eq 0 ]; then
   if command -v apt-get >/dev/null 2>&1; then
+    apt_dependencies=("curl" "tar" "zstd" "lsb-release" "wget" "gnupg")
+
+    if is_debian_13_or_later; then
+      apt_dependencies+=("ca-certificates")
+    else
+      apt_dependencies+=("software-properties-common")
+    fi
+
     printf $BLUE "note: "
     echo "You can install all the dependencies by:"
-    echo "  apt-get install -y --no-install-recommends curl tar zstd lsb-release wget software-properties-common gnupg && bash -c \"\$(wget -O - https://apt.llvm.org/llvm.sh)\" -s 16"
-    # packages from llvm.sh can be uninstalled by: apt remove clang-16 lldb-16 lld-16 clangd-16
+    echo "  apt-get install -y --no-install-recommends ${apt_dependencies[*]} && bash -c \"\$(wget -O - https://apt.llvm.org/llvm.sh)\" -s 21"
   elif command -v pacman >/dev/null 2>&1; then
     printf $BLUE "note: "
     echo "You can install all the dependencies by:"
@@ -148,7 +178,7 @@ echo "export NEUT_CORE_MODULE_DIGEST=\"yNWbpR6FH89l8vrvc2fh4PMZYlLEGtCzBHxT8aZQS
 if command -v apt-get >/dev/null 2>&1; then
   echo "export NEUT_CLANG=$CLANG"
 elif [ "$os" = "Darwin" ] && command -v brew >/dev/null 2>&1 && [ $HAS_CLANG -eq 0 ]; then
-  echo "export NEUT_CLANG=$(brew --prefix)/opt/llvm/bin/clang-N # N == 15, 16, etc."
+  echo "export NEUT_CLANG=$(brew --prefix)/opt/llvm/bin/clang-N # N == 20, 21, etc."
 fi
 
 echo ""
