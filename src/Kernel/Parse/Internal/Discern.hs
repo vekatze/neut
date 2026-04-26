@@ -611,19 +611,18 @@ discern h term =
       unitUnit <- liftEither $ locatorToVarGlobal m coreUnitUnit
       discern h $ foldIf m boolTrue boolFalse whenCond whenBody [] unitUnit
     m :< RT.Admit -> do
-      panic <- liftEither $ locatorToVarGlobal m coreTrickPanic
-      stringType <- liftEither $ locatorToTypeVar m coreString
-      discern h $
-        asOpaqueValue $
-          m
-            :< RT.Annotation
-              L.Warning
-              (AN.Type ())
-              ( m
-                  :< RT.piElim
-                    panic
-                    [m :< RT.NoeticString stringType ("Admitted: " <> T.pack (Hint.toString m) <> "\n")]
-              )
+      stringTypeRaw <- liftEither $ locatorToTypeVar m coreString
+      let messageText = "Admitted: " <> T.pack (Hint.toString m)
+      if isCompileStage h
+        then do
+          stringType <- discernType h stringTypeRaw
+          message' <- discern h $ m :< RT.NoeticString stringTypeRaw messageText
+          let body = m :< WT.Magic (M.WeakMagic $ M.CompileError stringType message')
+          return $ m :< WT.Annotation L.Warning (AN.Type (doNotCare m)) body
+        else do
+          let message' = m :< RT.NoeticString stringTypeRaw (messageText <> "\n")
+          panic <- liftEither $ locatorToVarGlobal m coreTrickPanic
+          discern h $ asOpaqueValue $ m :< RT.Annotation L.Warning (AN.Type ()) (m :< RT.piElim panic [message'])
     m :< RT.Assert _ (mText, message) _ _ (e@(mCond :< _), _) -> do
       assert <- liftEither $ locatorToVarGlobal m coreTrickAssert
       stringType <- liftEither $ locatorToTypeVar m coreString
@@ -1531,6 +1530,10 @@ ensureCompileStage m h target = do
       target
         <> " is only allowed at stage >= 1, but found stage "
         <> T.pack (show stage)
+
+isCompileStage :: H.Handle -> Bool
+isCompileStage h =
+  H.currentStage h >= 1
 
 asOpaqueValue :: RT.RawTerm -> RT.RawTerm
 asOpaqueValue e@(m :< _) =
