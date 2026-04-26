@@ -49,16 +49,66 @@ vim.api.nvim_create_autocmd("FileType", {
     vim.lsp.start({
       name = "neut lsp",
       cmd = { "neut", "lsp" },
+      -- The root of a Neut module is the directory containing `module.ens`.
       root_dir = vim.fs.dirname(vim.fs.find({ "module.ens" }, { upward = true })[1]),
     })
-  end
+  end,
+})
+
+vim.api.nvim_create_autocmd("LspAttach", {
+  callback = function(args)
+    local bufnr = args.buf
+    local client = vim.lsp.get_client_by_id(args.data.client_id)
+    if not client then return end
+
+    -- Format on save.
+    if client:supports_method("textDocument/formatting") then
+      local grp = vim.api.nvim_create_augroup("lsp_format_on_save_" .. bufnr, { clear = true })
+      vim.api.nvim_create_autocmd("BufWritePre", {
+        group = grp,
+        buffer = bufnr,
+        callback = function()
+          vim.lsp.buf.format({ bufnr = bufnr, async = false, id = client.id })
+        end,
+      })
+    end
+
+    -- Highlight references to the symbol under the cursor.
+    if client:supports_method("textDocument/documentHighlight") then
+      local grp = vim.api.nvim_create_augroup("lsp_document_highlight_" .. bufnr, { clear = true })
+      vim.api.nvim_create_autocmd("CursorHold", {
+        group = grp, buffer = bufnr, callback = vim.lsp.buf.document_highlight,
+      })
+      vim.api.nvim_create_autocmd("CursorMoved", {
+        group = grp, buffer = bufnr, callback = vim.lsp.buf.clear_references,
+      })
+    end
+  end,
 })
 ```
 
-Key points:
+For completion, you can either use Neovim's built-in `vim.lsp.completion` or a dedicated completion engine. Below is an example using [nvim-cmp](https://github.com/hrsh7th/nvim-cmp) with [cmp-nvim-lsp](https://github.com/hrsh7th/cmp-nvim-lsp) and [LuaSnip](https://github.com/L3MON4D3/LuaSnip):
 
-- Run `neut lsp` to start the LSP server
-- Look for `module.ens` to find the root of a module
+```lua
+local cmp = require("cmp")
+cmp.setup({
+  snippet = {
+    expand = function(args)
+      require("luasnip").lsp_expand(args.body)
+    end,
+  },
+  sources = {
+    { name = "nvim_lsp" },
+  },
+  mapping = cmp.mapping.preset.insert({
+    ["<C-p>"] = cmp.mapping.select_prev_item(),
+    ["<C-n>"] = cmp.mapping.select_next_item(),
+    ["<C-l>"] = cmp.mapping.complete(),
+    ["<C-e>"] = cmp.mapping.abort(),
+    ["<CR>"] = cmp.mapping.confirm({ select = true }),
+  }),
+})
+```
 
 Any other LSP client for Neovim should work as well.
 
@@ -103,11 +153,6 @@ augroup lsp_install
     " ... (see the readme of vim-lsp)
 augroup END
 ```
-
-Key points:
-
-- Run `neut lsp` to start the LSP server
-- Look for `module.ens` to find the root of a module
 
 Any other LSP client for Vim should work as well.
 
