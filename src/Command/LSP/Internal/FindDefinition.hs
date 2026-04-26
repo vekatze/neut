@@ -32,7 +32,7 @@ findDefinition ::
   (J.HasTextDocument p a1, J.HasUri a1 Uri, J.HasPosition p Position) =>
   Handle ->
   p ->
-  App ((LT.LocType, DefinitionLink), LocationTree)
+  App ((LT.SymbolName, DefinitionLink), LocationTree)
 findDefinition h params = do
   src <- GetSource.getSource (getSourceHandle h) params
   locTree <- GetLocationTree.getLocationTree (getLocationTreeHandle h) src
@@ -43,11 +43,11 @@ _findDefinition ::
   (J.HasPosition p Position) =>
   p ->
   LT.LocationTree ->
-  Maybe (LT.LocType, DefinitionLink)
+  Maybe (LT.SymbolName, DefinitionLink)
 _findDefinition params locationTree = do
   let line = fromEnum (params ^. J.position . J.line) + 1
   let col = fromEnum (params ^. J.position . J.character) + 1
-  (locType, m, _, symbolLen) <- LT.find line col locationTree
+  (symbolName, m, _, symbolLen) <- LT.find line col locationTree
   let defPath = H.metaFileName m
   let (defLine, defCol) = H.metaLocation m
   let defFilePath' = filePathToUri defPath
@@ -55,7 +55,7 @@ _findDefinition params locationTree = do
   let _end = _start {_character = _character _start + fromIntegral symbolLen}
   let range = Range {_start, _end}
   return
-    ( locType,
+    ( symbolName,
       DefinitionLink $
         LocationLink
           { _originSelectionRange = Nothing,

@@ -143,7 +143,7 @@ getSource h mustUpdateTag m sgl locatorText = do
   let nextPath = getSourceDir nextModule </> relPath
   when mustUpdateTag $
     liftIO $
-      Tag.insertFileLoc (tagHandle h) m (T.length locatorText) (newSourceHint nextPath)
+      Tag.insertSourceFile (tagHandle h) m locatorText (newSourceHint nextPath)
   STL.shiftToLatest
     (shiftToLatestHandle h)
     Source.Source
