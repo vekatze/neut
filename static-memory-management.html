@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Static Memory Management - Neut Programming Language</title>
+    <meta name="description" content="A functional programming language with static memory management." />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="favicon-de23e50b.svg">
+    <link rel="stylesheet" href="css/general-d2580039.css" />
+    <link rel="stylesheet" href="highlight-36dc0587.css" />
+    <meta property="og:title" content="Static Memory Management - Neut Programming Language" />
+    <meta property="og:description" content="A functional programming language with static memory management." />
+    <meta property="og:url" content="https://vekatze.github.io/neut/static-memory-management.md" />
+    <meta property="og:type" content="article" />
+  </head>
+  <body>
+    <div id="body-container">
+      <header id="menu-bar">
+        <h1 class="menu-title">
+          <a href="overview.html">
+            Neut Programming Language
+          </a>
+        </h1>
+
+        <div class="right-buttons">
+            <a href="https://github.com/vekatze/neut" class="menubar-item">
+              <span>GitHub</span>
+            </a>
+        </div>
+      </header>
+      <div id="content-box">
+        <aside id="sidebar">
+          <nav class="sidebar-scrollbox">
+            <ol class="chapter"><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="overview.html"><strong aria-hidden="true">1.</strong> Overview</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="installation.html"><strong aria-hidden="true">2.</strong> Installation</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="tutorial.html"><strong aria-hidden="true">3.</strong> Tutorial</a></span><ol class="section"><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="modules-and-sources.html"><strong aria-hidden="true">3.1.</strong> Modules and Sources</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="programming-in-neut.html"><strong aria-hidden="true">3.2.</strong> Programming in Neut</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="static-memory-management.html"><strong aria-hidden="true">3.3.</strong> Static Memory Management</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="modality-and-memory.html"><strong aria-hidden="true">3.4.</strong> Modality and Memory</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="modal-metaprogramming.html"><strong aria-hidden="true">3.5.</strong> Modal Metaprogramming</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="further-examples.html"><strong aria-hidden="true">3.6.</strong> Further Examples</a></span></li></ol><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="language-reference.html"><strong aria-hidden="true">4.</strong> Language Reference</a></span><ol class="section"><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="commands.html"><strong aria-hidden="true">4.1.</strong> Commands</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="modules.html"><strong aria-hidden="true">4.2.</strong> Modules</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="statements.html"><strong aria-hidden="true">4.3.</strong> Statements</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="terms.html"><strong aria-hidden="true">4.4.</strong> Terms</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="primitives.html"><strong aria-hidden="true">4.5.</strong> Primitives</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="basis.html"><strong aria-hidden="true">4.6.</strong> Basis</a></span></li></ol><li class="chapter-item expanded "><li class="part-title">Appendix</li></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="manual-installation.html"><strong aria-hidden="true">5.</strong> Manual Installation</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="development-environment.html"><strong aria-hidden="true">6.</strong> Development Environment</a></span><ol class="section"><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="lsp-showcase.html"><strong aria-hidden="true">6.1.</strong> LSP Showcase</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="rapid-prototyping.html"><strong aria-hidden="true">6.2.</strong> Rapid Prototyping</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="editor-setup.html"><strong aria-hidden="true">6.3.</strong> Editor Setup</a></span></li></ol><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="on-executing-types.html"><strong aria-hidden="true">7.</strong> On Executing Types</a></span></li></ol>
+          </nav>
+        </aside>
+
+        <main id="content" tabindex="0">
+          <article id="content-inner">
+            <h1 id="static-memory-management"><a class="header" href="#static-memory-management">Static Memory Management</a></h1>
+<p>Here, we'll see how memory is managed in Neut. We'll also see some important optimizations.</p>
+<h2 id="table-of-contents"><a class="header" href="#table-of-contents">Table of Contents</a></h2>
+<ul>
+<li><a href="#copying-and-discarding-values">Copying and Discarding Values</a></li>
+<li><a href="#optimization-free-malloc-canceling">Optimization: Free-Malloc Canceling</a></li>
+<li><a href="#optimization-malloc-free-canceling">Optimization: Malloc-Free Canceling</a></li>
+<li><a href="#destination-passing-style">Destination-Passing Style</a></li>
+<li><a href="#optimization-avoiding-unnecessary-copies">Optimization: Avoiding Unnecessary Copies</a></li>
+</ul>
+<h2 id="copying-and-discarding-values"><a class="header" href="#copying-and-discarding-values">Copying and Discarding Values</a></h2>
+<h3 id="inserting-copy-and-discard"><a class="header" href="#inserting-copy-and-discard">Inserting <code>COPY</code> and <code>DISCARD</code></a></h3>
+<p>In Neut, the content of a variable is copied if the variable is used more than once. For example, consider the following code:</p>
+<pre><code class="language-neut">// before compilation (pseudo code)
+define foo(xs: list(int)) -&gt; list(int) {
+  let ys = xs; // using `xs` (1)
+  let zs = xs; // using `xs` (2)
+  some-func(ys);
+  other-func(zs);
+  xs // using `xs` (3)
+}
+</code></pre>
+<p>In the code above, <code>xs</code> is used three times. Therefore, its content is copied twice:</p>
+<pre><code class="language-neut">// after compilation (pseudocode)
+define foo(xs: list(int)) -&gt; list(int) {
+  let xs1 = COPY(list(int), xs);
+  let xs2 = COPY(list(int), xs);
+  let ys = xs1;
+  let zs = xs2;
+  some-func(ys);
+  other-func(zs);
+  xs
+}
+</code></pre>
+<p>Also, the content of a variable is discarded if the variable isn't used. For example, consider the following code:</p>
+<pre><code class="language-neut">// before compilation
+define bar(xs: list(int)) -&gt; unit {
+  Unit
+}
+</code></pre>
+<p>In the code above, <code>xs</code> isn't used. Therefore, its content is discarded:</p>
+<pre><code class="language-neut">// after compilation (pseudocode)
+define bar(xs: list(int)) -&gt; unit {
+  DISCARD(list(int), xs);
+  Unit
+}
+</code></pre>
+<p>Ignoring the arguments to <code>COPY</code>, this translation ensures that each variable occurs linearly (i.e., exactly once). This forms the basis of memory management in Neut.</p>
+<p>If you're interested in how Neut implements this translation, see <a href="./on-executing-types.html">On Executing Types</a>.</p>
+<h3 id="avoiding-unintentional-copies"><a class="header" href="#avoiding-unintentional-copies">Avoiding Unintentional Copies</a></h3>
+<p>To avoid unintentional copies, the compiler requires the <code>!</code> prefix on a variable name when a copy is needed. For example, consider the following code:</p>
+<pre><code class="language-neut">// `string` is provided by the core library.
+define make-pair(t: string) -&gt; pair(string, string) {
+  Pair(t, t)
+}
+</code></pre>
+<p>The compiler rejects this code because the variable <code>t</code> is used twice without being defined with the <code>!</code> prefix.</p>
+<p>You can satisfy the compiler by defining <code>t</code> as <code>!t</code>:</p>
+<pre><code class="language-neut">define make-pair(!t: string) -&gt; pair(string, string) {
+  Pair(t, t)
+}
+</code></pre>
+<p>The <code>!</code> prefix is unnecessary if the variable can be copied for free. For example, consider the following code:</p>
+<pre><code class="language-neut">define make-pair(x: int) -&gt; pair(int, int) {
+  Pair(x, x)
+}
+</code></pre>
+<p>The compiler accepts this code since we can "copy" integers for free (by reusing the same value).</p>
+<h2 id="optimization-free-malloc-canceling"><a class="header" href="#optimization-free-malloc-canceling">Optimization: Free-Malloc Canceling</a></h2>
+<p>The compiler exploits Neut's static nature to reuse memory. Consider the following code:</p>
+<pre><code class="language-neut">data int-list {
+| Int-Nil
+| Int-Cons(int, int-list)
+}
+
+// [1, 5, 9] =&gt; [2, 6, 10]
+define increment(xs: int-list) -&gt; int-list {
+  match xs {
+  | Int-Nil =&gt;
+    Int-Nil
+  | Int-Cons(y, ys) =&gt;
+    let foo = add-int(y, 1);
+    let bar = increment(ys);
+    Int-Cons(foo, bar)
+  }
+}
+</code></pre>
+<p>The naive behavior of the <code>Cons</code> clause in the <code>match</code> would be something like the following:</p>
+<ol>
+<li>Extract <code>y</code> and <code>ys</code> from <code>Cons(y, ys)</code></li>
+<li><code>free</code> the outer tuple of <code>Cons(y, ys)</code></li>
+<li>Calculate <code>foo</code> and <code>bar</code></li>
+<li>Allocate a memory region using <code>malloc</code> to represent the tuple of <code>Cons(foo, bar)</code></li>
+<li>Store the calculated values to the pointer and return it</li>
+</ol>
+<p>Now, note that:</p>
+<ul>
+<li>the outer tuple of <code>Cons(y, ys)</code> will never be used after extracting its contents, and that</li>
+<li>the outer tuples of <code>Cons(y, ys)</code> and <code>Cons(foo, bar)</code> have the same size.</li>
+</ul>
+<p>Using this knowledge, the compiler translates the code so that it reuses the memory region of <code>Cons(y, ys)</code>. More specifically, this <code>Cons</code> clause behaves as follows:</p>
+<ol>
+<li>Obtain <code>y</code> and <code>ys</code> from <code>Cons(y, ys)</code></li>
+<li>Calculate <code>foo</code> and <code>bar</code></li>
+<li>Store the calculated values to <code>Cons(y, ys)</code></li>
+</ol>
+<p>In other words, when a <code>free</code> is required, the compiler looks for a <code>malloc</code> in the continuation that is the same size and optimizes away such a pair if one exists. The resulting assembly code thus performs in-place updates.</p>
+<h2 id="optimization-malloc-free-canceling"><a class="header" href="#optimization-malloc-free-canceling">Optimization: Malloc-Free Canceling</a></h2>
+<p>Neut also performs the opposite optimization. If a region allocated by <code>malloc</code> does not escape and is eventually deallocated by <code>free</code>, the compiler replaces that heap allocation with a stack allocation.</p>
+<p>For example, consider the following code:</p>
+<pre><code class="language-neut">define foo() -&gt; int {
+  let ptr = malloc(8);
+  store-int(42, ptr);
+  let value = load-int(ptr);
+  free(ptr);
+  value
+}
+</code></pre>
+<p>In the code above, the region created by <code>malloc</code> never escapes from <code>foo</code>. Therefore, the compiler can replace it with a stack slot:</p>
+<pre><code class="language-neut">// after optimization (pseudocode)
+define foo() -&gt; int {
+  let ptr = alloca(8);
+  store-int(42, ptr);
+  load-int(ptr)
+}
+</code></pre>
+<h2 id="destination-passing-style"><a class="header" href="#destination-passing-style">Destination-Passing Style</a></h2>
+<p>Malloc-free canceling is especially useful when combined with destination-passing style.</p>
+<p>For example, consider the following code:</p>
+<pre><code class="language-neut">define foo(x: int) -&gt; either(int, bool) {
+  if eq-int(x, 0) {
+    Left(42)
+  } else {
+    Right(True)
+  }
+}
+
+define use-foo() -&gt; unit {
+  match foo(10) {
+  | Left(x) =&gt;
+    cont1
+  | Right(y) =&gt;
+    cont2
+  }
+}
+</code></pre>
+<p>Since <code>foo</code> returns its result using the ordinary arrow <code>-&gt;</code>, the result has to be allocated inside <code>foo</code> itself:</p>
+<pre><code class="language-neut">// after compilation (pseudocode)
+define foo(x: int) -&gt; either(int, bool) {
+  if eq-int(x, 0) {
+    let tmp = malloc(..);
+    // initialize `tmp := Left(42)`
+    tmp
+  } else {
+    let tmp = malloc(..);
+    // initialize `tmp := Right(True)`
+    tmp
+  }
+}
+
+define use-foo() -&gt; unit {
+  let buf = foo(10);
+  match tag(buf) {
+  | 0 =&gt;
+    let x = extract-from-left(buf);
+    free(buf);
+    cont1
+  | _ =&gt;
+    let y = extract-from-right(buf);
+    free(buf);
+    cont2
+  }
+}
+</code></pre>
+<p>In this form, malloc-free canceling does not help much. The memory region created in <code>foo</code> escapes from <code>foo</code>, so <code>foo</code> itself cannot replace that allocation with a stack slot.</p>
+<p>To improve this situation, Neut provides destination-passing style. We write such functions using <code>-&gt;&gt;</code> (and <code>=&gt;&gt;</code> for anonymous functions). A function written in this style can still be called in the usual way, but its compiled code receives the result destination from the caller.</p>
+<p>Rewriting <code>foo</code> in this style, we get:</p>
+<pre><code class="language-neut">define foo(x: int) -&gt;&gt; either(int, bool) {
+  if eq-int(x, 0) {
+    Left(42)
+  } else {
+    Right(True)
+  }
+}
+
+define use-foo() -&gt; unit {
+  match foo(10) {
+  | Left(x) =&gt;
+    cont1
+  | Right(y) =&gt;
+    cont2
+  }
+}
+</code></pre>
+<p>This behaves roughly as follows after compilation:</p>
+<pre><code class="language-neut">// after compilation (pseudocode)
+define foo(dest: pointer, x: int) -&gt; void {
+  if eq-int(x, 0) {
+    let tmp = malloc(..);
+    // initialize `tmp := Left(42)`
+    copy(dest, tmp);
+    free(tmp)
+  } else {
+    let tmp = malloc(..);
+    // initialize `tmp := Right(True)`
+    copy(dest, tmp);
+    free(tmp)
+  }
+}
+
+define use-foo() -&gt; unit {
+  let buf = malloc(..);
+  foo(buf, 10);
+  match tag(buf) {
+  | 0 =&gt;
+    let x = extract-from-left(buf);
+    free(buf);
+    cont1
+  | _ =&gt;
+    let y = extract-from-right(buf);
+    free(buf);
+    cont2
+  }
+}
+</code></pre>
+<p>Now the crucial <code>malloc</code>/<code>free</code> pairs no longer cross the function boundary. Because of that, malloc-free canceling can optimize them away:</p>
+<pre><code class="language-neut">// after malloc-free canceling (pseudocode)
+define foo(dest: pointer, x: int) -&gt; void {
+  if eq-int(x, 0) {
+    let tmp = alloca(..);
+    // initialize `tmp := Left(42)`
+    copy(dest, tmp)
+  } else {
+    let tmp = alloca(..);
+    // initialize `tmp := Right(True)`
+    copy(dest, tmp)
+  }
+}
+
+define use-foo() -&gt; unit {
+  let buf = alloca(..);
+  foo(buf, 10);
+  match tag(buf) {
+  | 0 =&gt;
+    let x = extract-from-left(buf);
+    cont1
+  | _ =&gt;
+    let y = extract-from-right(buf);
+    cont2
+  }
+}
+</code></pre>
+<p>In this way, destination-passing style turns a returned value into caller-managed storage, making malloc-free canceling effective in cases where the ordinary arrow <code>-&gt;</code> would force a heap allocation.</p>
+<div class="info-block">
+<p>For simplicity, the code above keeps <code>tmp = alloca(..)</code> and <code>copy(dest, tmp)</code> separate. In practice, LLVM often optimizes this into ordinary assignments.</p>
+</div>
+
+<h2 id="optimization-avoiding-unnecessary-copies"><a class="header" href="#optimization-avoiding-unnecessary-copies">Optimization: Avoiding Unnecessary Copies</a></h2>
+<h3 id="observing-excessive-copies"><a class="header" href="#observing-excessive-copies">Observing Excessive Copies</a></h3>
+<p>Suppose we've defined a function <code>length</code> as follows:</p>
+<pre><code class="language-neut">define length(xs: list(int)) -&gt; int {
+  match xs {
+  | Nil =&gt;
+    0
+  | Cons(_, ys) =&gt;
+    add-int(1, length(ys))
+  }
+}
+</code></pre>
+<p>Now, consider the following code:</p>
+<pre><code class="language-neut">define use-length(!xs: list(int)) -&gt; unit {
+  let len = length(xs);
+  some-function(len, xs)
+}
+</code></pre>
+<p>Note that the variable <code>xs</code> is used twice. This means that the content of <code>xs</code> is copied just to calculate its length. This is wasteful, and worse, this pattern isn't rare. We need a way to avoid it.</p>
+<h3 id="introducing-noema-types"><a class="header" href="#introducing-noema-types">Introducing Noema Types</a></h3>
+<p>Fortunately, there is a remedy for this kind of situation.</p>
+<p>For any type <code>t</code>, Neut has a type <code>&amp;t</code>. We'll call this type the noema type of <code>t</code>. We'll call a term <code>e</code> a noema if the type of <code>e</code> is a noema type.</p>
+<p>Unlike ordinary terms, a noema isn't discarded or copied even when used non-linearly. Also, Neut has primitives to read contents from noemata without consuming them. By using these facts, we can avoid the problem above.</p>
+<p>Let's see how we can use noemata, rewriting <code>use-length</code> and <code>length</code>.</p>
+<h3 id="creating-a-noema"><a class="header" href="#creating-a-noema">Creating a Noema</a></h3>
+<p>We can create a noema using <code>on</code>:</p>
+<pre><code class="language-neut">define use-length(xs: list(int)) -&gt; unit {
+  // xs: list(int)
+  let len on xs =
+    // xs: &amp;list(int)
+    length(xs);
+  // xs: list(int)
+  some-function(len, xs)
+}
+</code></pre>
+<p><code>on</code> takes a comma-separated list of variables. The variables in the list (<code>xs</code> in this example) are cast to noema types in the body of the <code>let</code>, and cast back to the original types in the continuation.</p>
+<p>Conceptually, <code>on</code> can be seen as the following syntactic sugar:</p>
+<pre><code class="language-neut">let v on x = e;
+cont
+
+// ↓ desugar
+
+let x = unsafe-cast(a, &amp;a, x); // cast: `a` ~&gt; `&amp;a`
+let v = e;                     // (use `&amp;a` in `e`)
+let x = unsafe-cast(&amp;a, a, x); // uncast: `&amp;a` ~&gt; `a`
+cont
+</code></pre>
+<p><code>on</code> has to satisfy a certain condition. Consider the following code:</p>
+<pre><code class="language-neut">// xs: list(int)
+// ...
+let ys on xs = xs;
+let _ = xs; // (*)
+cont
+</code></pre>
+<p>Since <code>xs</code> is discarded at <code>(*)</code>, using <code>ys</code> in <code>cont</code> should result in use-after-free. To prevent this kind of behavior, the compiler rejects code that might contain any noema in the result of <code>on</code>. In this case, since the type of <code>ys</code> is <code>&amp;list(int)</code>, the compiler rejects this code.</p>
+<div class="info-block">
+<p>This condition may look a bit artificial at first. On the next page, however, we'll see that it can be understood via modal logic.</p>
+</div>
+
+<h3 id="using-a-noema-pattern-matching"><a class="header" href="#using-a-noema-pattern-matching">Using a Noema: Pattern Matching</a></h3>
+<p>If <code>t</code> is an ADT, you can view the content of a value <code>e: &amp;t</code> using <code>case</code>:</p>
+<pre><code class="language-neut">define length(xs: &amp;list(int)) -&gt; int {
+  case xs {
+  | Nil =&gt;
+    0
+  | Cons(_, ys) =&gt;
+    add-int(1, length(ys))
+  }
+}
+</code></pre>
+<p><code>case</code> is similar to <code>match</code>. The difference is that, unlike <code>match</code>, <code>case</code> doesn't perform <code>free</code> on its arguments. You can think of <code>case</code> as a read-only version of <code>match</code>.</p>
+<p>Also, note that the newly-bound variables in <code>case</code> are wrapped in <code>&amp;(_)</code>. In the code above, for example, the type of <code>ys</code> is not <code>list(int)</code>, but <code>&amp;list(int)</code>.</p>
+<p>Now, we have new implementations of <code>length</code> and <code>use-length</code>:</p>
+<pre><code class="language-neut">define length(xs: &amp;list(int)) -&gt; int {
+  case xs {
+  | Nil =&gt;
+    0
+  | Cons(_, ys) =&gt;
+    add-int(1, length(ys))
+  }
+}
+
+define use-length(xs: list(int)) -&gt; unit {
+  let len on xs = length(xs);
+  some-function(len, xs)
+}
+</code></pre>
+<p>The code doesn't copy <code>xs</code> anymore, as you can see from the fact that it no longer contains <code>!</code>.</p>
+<h3 id="using-a-noema-embodying"><a class="header" href="#using-a-noema-embodying">Using a Noema: Embodying</a></h3>
+<p>You can also create a value of type <code>a</code> from a value of type <code>&amp;a</code>, as follows:</p>
+<pre><code class="language-neut">define make-pair&lt;a&gt;(x: &amp;a) -&gt; pair(a, a) {
+  Pair(*x, *x)
+}
+</code></pre>
+<p>By writing <code>*e</code>, you can copy the content of the noema <code>e</code>, keeping the content intact.</p>
+
+            <footer id="footer-paginator">
+              <a rel="prev" href="programming-in-neut.html" class="nav previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                ← Previous Page
+              </a>
+
+              <div id="footer-spacer"></div>
+
+              <a rel="next" href="modality-and-memory.html" class="nav next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                Next Page →
+              </a>
+            </footer>
+          </article>
+          <div id="footer-wrapper">
+            <footer id="footer-nav">
+              <ol class="chapter"><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="overview.html"><strong aria-hidden="true">1.</strong> Overview</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="installation.html"><strong aria-hidden="true">2.</strong> Installation</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="tutorial.html"><strong aria-hidden="true">3.</strong> Tutorial</a></span><ol class="section"><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="modules-and-sources.html"><strong aria-hidden="true">3.1.</strong> Modules and Sources</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="programming-in-neut.html"><strong aria-hidden="true">3.2.</strong> Programming in Neut</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="static-memory-management.html"><strong aria-hidden="true">3.3.</strong> Static Memory Management</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="modality-and-memory.html"><strong aria-hidden="true">3.4.</strong> Modality and Memory</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="modal-metaprogramming.html"><strong aria-hidden="true">3.5.</strong> Modal Metaprogramming</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="further-examples.html"><strong aria-hidden="true">3.6.</strong> Further Examples</a></span></li></ol><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="language-reference.html"><strong aria-hidden="true">4.</strong> Language Reference</a></span><ol class="section"><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="commands.html"><strong aria-hidden="true">4.1.</strong> Commands</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="modules.html"><strong aria-hidden="true">4.2.</strong> Modules</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="statements.html"><strong aria-hidden="true">4.3.</strong> Statements</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="terms.html"><strong aria-hidden="true">4.4.</strong> Terms</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="primitives.html"><strong aria-hidden="true">4.5.</strong> Primitives</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="basis.html"><strong aria-hidden="true">4.6.</strong> Basis</a></span></li></ol><li class="chapter-item expanded "><li class="part-title">Appendix</li></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="manual-installation.html"><strong aria-hidden="true">5.</strong> Manual Installation</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="development-environment.html"><strong aria-hidden="true">6.</strong> Development Environment</a></span><ol class="section"><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="lsp-showcase.html"><strong aria-hidden="true">6.1.</strong> LSP Showcase</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="rapid-prototyping.html"><strong aria-hidden="true">6.2.</strong> Rapid Prototyping</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="editor-setup.html"><strong aria-hidden="true">6.3.</strong> Editor Setup</a></span></li></ol><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="on-executing-types.html"><strong aria-hidden="true">7.</strong> On Executing Types</a></span></li></ol>
+            </footer>
+          </div>
+        </main>
+      </div>
+
+
+      <script src="highlight-9efa5fea.js"></script>
+      <script src="book-138bd6c0.js"></script>
+    </div>
+  </body>
+</html>

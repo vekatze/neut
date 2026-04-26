@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Modules and Sources - Neut Programming Language</title>
+    <meta name="description" content="A functional programming language with static memory management." />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="favicon-de23e50b.svg">
+    <link rel="stylesheet" href="css/general-d2580039.css" />
+    <link rel="stylesheet" href="highlight-36dc0587.css" />
+    <meta property="og:title" content="Modules and Sources - Neut Programming Language" />
+    <meta property="og:description" content="A functional programming language with static memory management." />
+    <meta property="og:url" content="https://vekatze.github.io/neut/modules-and-sources.md" />
+    <meta property="og:type" content="article" />
+  </head>
+  <body>
+    <div id="body-container">
+      <header id="menu-bar">
+        <h1 class="menu-title">
+          <a href="overview.html">
+            Neut Programming Language
+          </a>
+        </h1>
+
+        <div class="right-buttons">
+            <a href="https://github.com/vekatze/neut" class="menubar-item">
+              <span>GitHub</span>
+            </a>
+        </div>
+      </header>
+      <div id="content-box">
+        <aside id="sidebar">
+          <nav class="sidebar-scrollbox">
+            <ol class="chapter"><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="overview.html"><strong aria-hidden="true">1.</strong> Overview</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="installation.html"><strong aria-hidden="true">2.</strong> Installation</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="tutorial.html"><strong aria-hidden="true">3.</strong> Tutorial</a></span><ol class="section"><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="modules-and-sources.html"><strong aria-hidden="true">3.1.</strong> Modules and Sources</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="programming-in-neut.html"><strong aria-hidden="true">3.2.</strong> Programming in Neut</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="static-memory-management.html"><strong aria-hidden="true">3.3.</strong> Static Memory Management</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="modality-and-memory.html"><strong aria-hidden="true">3.4.</strong> Modality and Memory</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="modal-metaprogramming.html"><strong aria-hidden="true">3.5.</strong> Modal Metaprogramming</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="further-examples.html"><strong aria-hidden="true">3.6.</strong> Further Examples</a></span></li></ol><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="language-reference.html"><strong aria-hidden="true">4.</strong> Language Reference</a></span><ol class="section"><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="commands.html"><strong aria-hidden="true">4.1.</strong> Commands</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="modules.html"><strong aria-hidden="true">4.2.</strong> Modules</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="statements.html"><strong aria-hidden="true">4.3.</strong> Statements</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="terms.html"><strong aria-hidden="true">4.4.</strong> Terms</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="primitives.html"><strong aria-hidden="true">4.5.</strong> Primitives</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="basis.html"><strong aria-hidden="true">4.6.</strong> Basis</a></span></li></ol><li class="chapter-item expanded "><li class="part-title">Appendix</li></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="manual-installation.html"><strong aria-hidden="true">5.</strong> Manual Installation</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="development-environment.html"><strong aria-hidden="true">6.</strong> Development Environment</a></span><ol class="section"><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="lsp-showcase.html"><strong aria-hidden="true">6.1.</strong> LSP Showcase</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="rapid-prototyping.html"><strong aria-hidden="true">6.2.</strong> Rapid Prototyping</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="editor-setup.html"><strong aria-hidden="true">6.3.</strong> Editor Setup</a></span></li></ol><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="on-executing-types.html"><strong aria-hidden="true">7.</strong> On Executing Types</a></span></li></ol>
+          </nav>
+        </aside>
+
+        <main id="content" tabindex="0">
+          <article id="content-inner">
+            <h1 id="modules-and-sources"><a class="header" href="#modules-and-sources">Modules and Sources</a></h1>
+<p>In this section, we'll see how to use modules in Neut.</p>
+<h2 id="table-of-contents"><a class="header" href="#table-of-contents">Table of Contents</a></h2>
+<ul>
+<li><a href="#basics-of-modules">Basics of Modules</a></li>
+<li><a href="#basics-of-source-files">Basics of Source Files</a></li>
+<li><a href="#publishing-modules">Publishing Modules</a></li>
+<li><a href="#adding-dependency-modules">Adding Dependency Modules</a></li>
+<li><a href="#importing-files">Importing Files</a></li>
+</ul>
+<h2 id="basics-of-modules"><a class="header" href="#basics-of-modules">Basics of Modules</a></h2>
+<h3 id="creating-building-and-executing-a-module"><a class="header" href="#creating-building-and-executing-a-module">Creating, Building, and Executing a Module</a></h3>
+<p>Let's create a module by running the following command:</p>
+<pre><code class="language-sh">neut create sample
+</code></pre>
+<p>This command creates a template module <code>./sample/</code> that prints "Hello, world!".</p>
+<p>You can build and execute this module as follows:</p>
+<pre><code class="language-sh">cd ./sample
+neut build sample --execute # =&gt; "Hello, world!"
+</code></pre>
+<p>You can also install the resulting binary and run it directly:</p>
+<pre><code class="language-sh">neut build sample --install ./bin # creates a directory `bin` if necessary
+./bin/sample # =&gt; "Hello, world!"
+</code></pre>
+<h3 id="structure-of-a-module"><a class="header" href="#structure-of-a-module">Structure of a Module</a></h3>
+<p>The structure of a module is as follows:</p>
+<pre><code class="language-text">sample/
+├── cache/
+│  └── ...
+├── source/
+│  └── sample.nt
+└── module.ens
+</code></pre>
+<p>The directory <code>cache</code> is where object files (binary files) and dependencies are put. You don't normally have to go into the directory.</p>
+<p>The directory <code>source</code> is where source files are put.</p>
+<p>The file <code>module.ens</code> contains meta information about this module, such as dependencies.</p>
+<div class="info-block">
+<p>You can change the locations of special directories such as <code>cache</code> using <code>module.ens</code>. See <a href="./modules.html">Modules</a> for more information.</p>
+</div>
+
+<h3 id="moduleens"><a class="header" href="#moduleens">module.ens</a></h3>
+<p>The contents of <code>module.ens</code> look roughly like the following:</p>
+<pre><code class="language-ens">{
+  target {
+    sample {
+      main "sample.nt",
+      allocator "system",
+    },
+  },
+  dependency {
+    core {
+      digest "(base64url-encoded checksum)",
+      mirror [
+        "https://github.com/.../X-Y-Z.tar.zst",
+      ],
+      enable-preset true,
+    },
+  },
+}
+</code></pre>
+<p><code>target</code> specifies the targets of a module. In the example above, the command <code>neut build sample</code> builds the module using the file <code>source/sample.nt</code> as its entry point.</p>
+<p><code>allocator</code> specifies which allocator is used by the target. By setting it to <code>"mimalloc"</code>, you can use mimalloc for that target.</p>
+<p><code>dependency</code> specifies the dependencies of a module. Since our running example is small, the only dependency is <code>core</code>, which plays the same role as the Prelude in other languages.</p>
+<p><code>digest</code> is the base64url-encoded checksum of a dependency.</p>
+<p><code>mirror</code> is a list of URLs of a dependency.</p>
+<p><code>enable-preset</code> makes the dependency behave similarly to the Prelude in other languages. If enabled, the names listed in the dependency's <code>preset</code> are imported automatically into every file in our module.</p>
+<h2 id="basics-of-source-files"><a class="header" href="#basics-of-source-files">Basics of Source Files</a></h2>
+<h3 id="editing-source-files"><a class="header" href="#editing-source-files">Editing Source Files</a></h3>
+<p>Let's see the contents of <code>source/sample.nt</code>:</p>
+<pre><code class="language-neut">// sample.nt
+
+define main() -&gt; unit {
+  print("Hello, world!\n"); // `print` is defined in `core`
+}
+</code></pre>
+<p>The above code defines a function <code>main</code> that returns a value of type <code>unit</code>. This function prints <code>"Hello, world!\n"</code>.</p>
+<p>Let's try editing the code as follows:</p>
+<pre><code class="language-neut">define main() -&gt; unit {
+  print("Yo\n");
+}
+</code></pre>
+<p>Then, build and execute the project:</p>
+<pre><code class="language-sh">neut build sample --execute # =&gt; Yo
+</code></pre>
+<p>You should be able to see that the result changes accordingly.</p>
+<h3 id="defining-functions"><a class="header" href="#defining-functions">Defining Functions</a></h3>
+<p>You can also define your own functions:</p>
+<pre><code class="language-neut">// sample.nt
+
+import {
+  core.int.io {print-int},
+}
+
+define get-int() -&gt; int {
+  42
+}
+
+define main() -&gt; unit {
+  print-int(get-int()); // =&gt; 42
+}
+</code></pre>
+<p>Functions can also take arguments. Let's rewrite <code>sample.nt</code> as follows:</p>
+<pre><code class="language-neut">// sample.nt
+
+import {
+  core.int.io {print-int},
+}
+
+define increment(x: int) -&gt; int {
+  add-int(x, 1)
+}
+
+define my-add(x: int, y: int) -&gt; int {
+  add-int(x, y)
+}
+
+define main() -&gt; unit {
+  print-int(my-add(10, increment(10))); // =&gt; 21
+}
+</code></pre>
+<p>Top-level items like <code>define</code> are called statements. You'll learn more about them on the next page.</p>
+<div class="info-block">
+<p>As in F#, statements in Neut are order-sensitive. Therefore, if you define <code>main</code> before <code>my-add</code>, the code won't compile. For forward references, you have to declare names explicitly beforehand using a statement called <code>nominal</code>, which we'll see on the next page.</p>
+</div>
+
+<h2 id="publishing-modules"><a class="header" href="#publishing-modules">Publishing Modules</a></h2>
+<p>Let's publish our module so others can use <code>increment</code> and <code>my-add</code>.</p>
+<p>You can create a tarball snapshot of your module using <code>neut archive</code>:</p>
+<pre><code class="language-sh">neut archive 0-1
+ls ./archive # =&gt; 0-1.tar.zst
+</code></pre>
+<p>The argument of <code>archive</code> must be something like <code>0-1</code>, <code>0-1-0</code>, or <code>1-2-0-1</code>.</p>
+<p>You can then publish these tarballs on GitHub, for example.</p>
+<h2 id="adding-dependency-modules"><a class="header" href="#adding-dependency-modules">Adding Dependency Modules</a></h2>
+<p><code>neut get</code> can be used to add dependencies:</p>
+<pre><code class="language-sh"># creates a new module
+neut create new-item
+cd new-item
+
+# adds a sample module that contains `my-add` and `increment` to your module
+neut get some-name https://github.com/vekatze/neut-sample/raw/main/archive/0-1-0.tar.zst
+</code></pre>
+<p>The subcommand <code>get</code> fetches the tarball from the specified URL and adds it to the current module. You can then refer to that dependency as <code>some-name</code> in your module.</p>
+<p>The new dependency information is saved to <code>module.ens</code>:</p>
+<pre><code class="language-ens">{
+  target {
+    new-item {
+      main "new-item.nt",
+      allocator "system",
+    },
+  },
+  dependency {
+    core { .. },
+    // ↓ HERE
+    some-name {
+      digest "..",
+      mirror [
+        "https://github.com/YOUR_NAME/YOUR_REPO_NAME/raw/main/archive/0-1-0.tar.zst",
+      ],
+    },
+  },
+}
+</code></pre>
+<div class="info-block">
+<p>The canonical identifier of a dependency is the digest of the tarball. Names such as <code>some-name</code> are just aliases.</p>
+</div>
+
+<h2 id="importing-files"><a class="header" href="#importing-files">Importing Files</a></h2>
+<h3 id="importing-files-in-dependencies"><a class="header" href="#importing-files-in-dependencies">Importing Files in Dependencies</a></h3>
+<p>You can use dependencies in your code:</p>
+<pre><code class="language-neut">// new-item.nt
+
+import {
+  core.int.io {print-int},
+  some-name.sample {my-add}, // imports `my-add` in `source/sample.nt`
+}
+
+define main() -&gt; unit {
+  print-int(my-add(10, 11)); // ← using `my-add`
+}
+</code></pre>
+<p>Let's focus on <code>import</code>. <code>import</code> consists of lines like the one below:</p>
+<pre><code class="language-neut">some-name.sample {my-add}
+</code></pre>
+<p>The first component of such a line (<code>some-name</code>) is our alias of the dependency.</p>
+<p>What follows (<code>sample</code>) is the relative path to the file from the source directory of the dependency module. Here, you don't have to write the file extension <code>.nt</code>.</p>
+<p>Like <code>{my-add}</code> in the example above, every item of an <code>import</code> can optionally have a list of names. Names in these lists are made available after <code>import</code>.</p>
+<p>You can also use the fully-qualified form of <code>my-add</code>:</p>
+<pre><code class="language-neut">// new-item.nt
+
+import {
+  core.int.io {print-int},
+  some-name.sample, // removed `{my-add}`
+}
+
+define main() -&gt; unit {
+  // ↓ using the fully-qualified form of `my-add`
+  print-int(some-name.sample.my-add(10, 11));
+}
+</code></pre>
+<p>Also, files like <code>source/foo/item.nt</code> in <code>some-name</code> can be imported as follows:</p>
+<pre><code class="language-neut">import {
+  some-name.foo.item,
+}
+</code></pre>
+<h3 id="importing-files-in-the-current-module"><a class="header" href="#importing-files-in-the-current-module">Importing Files in the Current Module</a></h3>
+<p>Let's try creating a new file <code>new-item/source/foo/greet.nt</code> with the following content:</p>
+<pre><code class="language-neut">// foo/greet.nt
+
+define yo() -&gt; unit {
+  print("Yo");
+}
+</code></pre>
+<p>This file can then be used from <code>new-item/source/new-item.nt</code> as follows:</p>
+<pre><code class="language-neut">// new-item.nt
+
+import {
+  this.foo.greet {yo},
+}
+
+define main() -&gt; unit {
+  yo();
+}
+</code></pre>
+<p>In other words, the current module is always referred to as <code>this</code>.</p>
+
+            <footer id="footer-paginator">
+              <a rel="prev" href="tutorial.html" class="nav previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                ← Previous Page
+              </a>
+
+              <div id="footer-spacer"></div>
+
+              <a rel="next" href="programming-in-neut.html" class="nav next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                Next Page →
+              </a>
+            </footer>
+          </article>
+          <div id="footer-wrapper">
+            <footer id="footer-nav">
+              <ol class="chapter"><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="overview.html"><strong aria-hidden="true">1.</strong> Overview</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="installation.html"><strong aria-hidden="true">2.</strong> Installation</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="tutorial.html"><strong aria-hidden="true">3.</strong> Tutorial</a></span><ol class="section"><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="modules-and-sources.html"><strong aria-hidden="true">3.1.</strong> Modules and Sources</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="programming-in-neut.html"><strong aria-hidden="true">3.2.</strong> Programming in Neut</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="static-memory-management.html"><strong aria-hidden="true">3.3.</strong> Static Memory Management</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="modality-and-memory.html"><strong aria-hidden="true">3.4.</strong> Modality and Memory</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="modal-metaprogramming.html"><strong aria-hidden="true">3.5.</strong> Modal Metaprogramming</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="further-examples.html"><strong aria-hidden="true">3.6.</strong> Further Examples</a></span></li></ol><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="language-reference.html"><strong aria-hidden="true">4.</strong> Language Reference</a></span><ol class="section"><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="commands.html"><strong aria-hidden="true">4.1.</strong> Commands</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="modules.html"><strong aria-hidden="true">4.2.</strong> Modules</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="statements.html"><strong aria-hidden="true">4.3.</strong> Statements</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="terms.html"><strong aria-hidden="true">4.4.</strong> Terms</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="primitives.html"><strong aria-hidden="true">4.5.</strong> Primitives</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="basis.html"><strong aria-hidden="true">4.6.</strong> Basis</a></span></li></ol><li class="chapter-item expanded "><li class="part-title">Appendix</li></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="manual-installation.html"><strong aria-hidden="true">5.</strong> Manual Installation</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="development-environment.html"><strong aria-hidden="true">6.</strong> Development Environment</a></span><ol class="section"><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="lsp-showcase.html"><strong aria-hidden="true">6.1.</strong> LSP Showcase</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="rapid-prototyping.html"><strong aria-hidden="true">6.2.</strong> Rapid Prototyping</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="editor-setup.html"><strong aria-hidden="true">6.3.</strong> Editor Setup</a></span></li></ol><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="on-executing-types.html"><strong aria-hidden="true">7.</strong> On Executing Types</a></span></li></ol>
+            </footer>
+          </div>
+        </main>
+      </div>
+
+
+      <script src="highlight-9efa5fea.js"></script>
+      <script src="book-138bd6c0.js"></script>
+    </div>
+  </body>
+</html>

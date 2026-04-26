@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Statements - Neut Programming Language</title>
+    <meta name="description" content="A functional programming language with static memory management." />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="favicon-de23e50b.svg">
+    <link rel="stylesheet" href="css/general-d2580039.css" />
+    <link rel="stylesheet" href="highlight-36dc0587.css" />
+    <meta property="og:title" content="Statements - Neut Programming Language" />
+    <meta property="og:description" content="A functional programming language with static memory management." />
+    <meta property="og:url" content="https://vekatze.github.io/neut/statements.md" />
+    <meta property="og:type" content="article" />
+  </head>
+  <body>
+    <div id="body-container">
+      <header id="menu-bar">
+        <h1 class="menu-title">
+          <a href="overview.html">
+            Neut Programming Language
+          </a>
+        </h1>
+
+        <div class="right-buttons">
+            <a href="https://github.com/vekatze/neut" class="menubar-item">
+              <span>GitHub</span>
+            </a>
+        </div>
+      </header>
+      <div id="content-box">
+        <aside id="sidebar">
+          <nav class="sidebar-scrollbox">
+            <ol class="chapter"><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="overview.html"><strong aria-hidden="true">1.</strong> Overview</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="installation.html"><strong aria-hidden="true">2.</strong> Installation</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="tutorial.html"><strong aria-hidden="true">3.</strong> Tutorial</a></span><ol class="section"><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="modules-and-sources.html"><strong aria-hidden="true">3.1.</strong> Modules and Sources</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="programming-in-neut.html"><strong aria-hidden="true">3.2.</strong> Programming in Neut</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="static-memory-management.html"><strong aria-hidden="true">3.3.</strong> Static Memory Management</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="modality-and-memory.html"><strong aria-hidden="true">3.4.</strong> Modality and Memory</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="modal-metaprogramming.html"><strong aria-hidden="true">3.5.</strong> Modal Metaprogramming</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="further-examples.html"><strong aria-hidden="true">3.6.</strong> Further Examples</a></span></li></ol><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="language-reference.html"><strong aria-hidden="true">4.</strong> Language Reference</a></span><ol class="section"><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="commands.html"><strong aria-hidden="true">4.1.</strong> Commands</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="modules.html"><strong aria-hidden="true">4.2.</strong> Modules</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="statements.html"><strong aria-hidden="true">4.3.</strong> Statements</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="terms.html"><strong aria-hidden="true">4.4.</strong> Terms</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="primitives.html"><strong aria-hidden="true">4.5.</strong> Primitives</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="basis.html"><strong aria-hidden="true">4.6.</strong> Basis</a></span></li></ol><li class="chapter-item expanded "><li class="part-title">Appendix</li></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="manual-installation.html"><strong aria-hidden="true">5.</strong> Manual Installation</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="development-environment.html"><strong aria-hidden="true">6.</strong> Development Environment</a></span><ol class="section"><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="lsp-showcase.html"><strong aria-hidden="true">6.1.</strong> LSP Showcase</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="rapid-prototyping.html"><strong aria-hidden="true">6.2.</strong> Rapid Prototyping</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="editor-setup.html"><strong aria-hidden="true">6.3.</strong> Editor Setup</a></span></li></ol><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="on-executing-types.html"><strong aria-hidden="true">7.</strong> On Executing Types</a></span></li></ol>
+          </nav>
+        </aside>
+
+        <main id="content" tabindex="0">
+          <article id="content-inner">
+            <h1 id="statements"><a class="header" href="#statements">Statements</a></h1>
+<h2 id="table-of-contents"><a class="header" href="#table-of-contents">Table of Contents</a></h2>
+<ul>
+<li><a href="#import">import</a></li>
+<li><a href="#define">define</a></li>
+<li><a href="#inline">inline</a></li>
+<li><a href="#define-meta">define-meta</a></li>
+<li><a href="#inline-meta">inline-meta</a></li>
+<li><a href="#constant">constant</a></li>
+<li><a href="#data">data</a></li>
+<li><a href="#alias">alias</a></li>
+<li><a href="#alias-opaque">alias-opaque</a></li>
+<li><a href="#resource">resource</a></li>
+<li><a href="#rule-right">rule-right</a></li>
+<li><a href="#rule-left">rule-left</a></li>
+<li><a href="#nominal">nominal</a></li>
+<li><a href="#foreign">foreign</a></li>
+</ul>
+<h2 id="import"><a class="header" href="#import"><code>import</code></a></h2>
+<p><code>import</code> imports names from other files. It should look like the following:</p>
+<pre><code class="language-neut">import {
+  sample.baz,
+  this.foo,
+  this.foo.bar {some-func, other-func},
+}
+</code></pre>
+<p><code>import</code> can only appear at the top of a file.</p>
+<p>Every item in <code>import</code> is something like the following:</p>
+<ul>
+<li><code>this.foo</code></li>
+<li><code>this.foo.bar {some-func, other-func}</code></li>
+<li><code>sample.baz</code></li>
+</ul>
+<p>An import item starts from the alias of the module (<code>this</code>, <code>sample</code>). The alias of the module is specified in <code>dependency</code> in <code>module.ens</code>. If the file we want to import is inside the current module, we'll write <code>this</code>.</p>
+<p>The remaining part of the item is the relative path from the source directory. For example, if we want to import <code>(source-dir)/foo/bar</code>, we'll have to write <code>foo.bar</code> after the alias of the module.</p>
+<p>An import item can be constructed by concatenating the alias and the path with <code>.</code>. In the case of <code>this.foo.bar</code>, the alias part is <code>this</code>, and the path part is <code>foo.bar</code>.</p>
+<p>You can specify names in <code>{}</code>. The names specified here can be used without qualifiers:</p>
+<pre><code class="language-neut">import {
+  this.foo.bar {some-func},
+}
+
+define yo() -&gt; unit {
+  some-func(arg-1, arg-2)
+}
+</code></pre>
+<p>Unlisted names must be qualified:</p>
+<pre><code class="language-neut">import {
+  this.foo.bar,
+}
+
+define yo() -&gt; unit {
+  this.foo.bar.some-func(arg-1, arg-2)
+}
+</code></pre>
+<p>You can also list text files in <code>import</code>:</p>
+<pre><code class="language-neut">import {
+  text-file {some-file, other-file}
+}
+</code></pre>
+<p>For more on text files, please see <a href="modules.html#text-file">the section in Modules</a>.</p>
+<h2 id="define"><a class="header" href="#define"><code>define</code></a></h2>
+<p><code>define</code> defines a function. It should look like the following:</p>
+<pre><code class="language-neut">define foo(x: int, y: int) -&gt; int {
+  add-int(x, y)
+}
+
+define identity&lt;a&gt;(x: a) -&gt; a {
+  x
+}
+</code></pre>
+<p>Defined functions can then be used:</p>
+<pre><code class="language-neut">define use-foo() -&gt; int {
+  foo(1, 2)
+}
+</code></pre>
+<p><code>define</code> can also declare default arguments by inserting <code>[z1: c1 := d1, ..., zk: ck := dk]</code> between the ordinary parameter list and <code>-&gt;</code> (or <code>-&gt;&gt;</code>):</p>
+<pre><code class="language-neut">define bump(x: int)[step: int := 1] -&gt; int {
+  add-int(x, step)
+}
+</code></pre>
+<p>Such a function has type <code>(x: int)[step: int] -&gt; int</code>, and callers can override the default with <code>bump(10)[step := 5]</code>. If the caller omits <code>step</code>, its default expression is evaluated at the time of the call. The bracketed part may be omitted, and <code>[]</code> is also accepted.</p>
+<p><code>define</code> also accepts <code>-&gt;&gt;</code> in place of <code>-&gt;</code>. Such a function is still called in the usual way, but its compiled code uses destination-passing style. For the details of this behavior, please see the section on <a href="./terms.html#x1-a1--xn-an---e-">functions in Terms</a>.</p>
+<p><code>define</code> can optionally have implicit type parameters, as in <code>identity</code> in the example above. The compiler inserts these type parameters at compile time, so you don't have to write them explicitly:</p>
+<pre><code class="language-neut">define use-func-with-implicit-arg() -&gt; int {
+  let x = 10;
+  let z = identity(x);
+  z
+}
+</code></pre>
+<p>A function with the same name can't be defined in the same file.</p>
+<p>All tail-recursive calls in Neut are optimized into loops.</p>
+<p>Note that statements are order-sensitive as in F#. Thus, the following code results in an error:</p>
+<pre><code class="language-neut">define bar() -&gt; int {
+  foo() // `foo` is undefined here
+}
+
+define foo() -&gt; int {
+  10
+}
+</code></pre>
+<p>You have to use the statement <code>nominal</code> explicitly for forward references.</p>
+<h2 id="inline"><a class="header" href="#inline"><code>inline</code></a></h2>
+<p><code>inline</code> defines an inline function. It should look like the following:</p>
+<pre><code class="language-neut">inline foo(x: int, y: int) -&gt; int {
+  print("foo");
+  add-int(x, y)
+}
+</code></pre>
+<p><code>inline</code> is the same as <code>define</code> except that the definition is always expanded at compile time. For example, if you write</p>
+<pre><code class="language-neut">define use-inline-foo() -&gt; int {
+  let val = foo(10, 20);
+  val
+}
+</code></pre>
+<p>The compiler will translate the above code into the following:</p>
+<pre><code class="language-neut">define use-inline-foo() -&gt; int {
+  let val = {
+    let x = 10;
+    let y = 20;
+    print("foo");
+    add-int(x, y)
+  };
+  val
+}
+</code></pre>
+<p><code>inline</code> also accepts <code>-&gt;&gt;</code> in place of <code>-&gt;</code>. As with <code>define</code>, such a function is still called in the usual way, while the compiled code uses destination-passing style. For the details of this behavior, please see the section on <a href="./terms.html#x1-a1--xn-an---e-">functions in Terms</a>.</p>
+<p>As with <code>define</code>, you can also place a default-argument list in <code>[]</code> between the ordinary parameter list and the arrow.</p>
+<h2 id="define-meta"><a class="header" href="#define-meta"><code>define-meta</code></a></h2>
+<p><code>define-meta</code> defines a top-level meta function. It should look like the following:</p>
+<pre><code class="language-neut">define-meta make-pair&lt;a, b&gt;(x: 'a, y: 'b) -&gt; 'pair(a, b) {
+  quote {
+    let x = unquote {x};
+    let y = unquote {y};
+    Pair(x, y)
+  }
+}
+</code></pre>
+<p><code>define-meta</code> starts at stage 1. When evaluating a call to <code>define-meta</code>, the compiler first specializes the definition to its type arguments and memoizes the result. This memoization is performed on a per-file basis. This allows <code>define-meta</code> to generate recursive code.</p>
+<p>As with ordinary functions, <code>define-meta</code> can also have default arguments by placing <code>[]</code> between the ordinary parameter list and the arrow.</p>
+<p>Every explicit parameter of <code>define-meta</code> must have a type of the form <code>'a</code>:</p>
+<pre><code class="language-neut">// valid
+define-meta eq-data&lt;a&gt;(x: 'a, y: 'a) -&gt; 'bool {
+  ..
+}
+
+// invalid
+define-meta bad&lt;a&gt;(x: int) -&gt; 'int {
+  ..
+}
+</code></pre>
+<h2 id="inline-meta"><a class="header" href="#inline-meta"><code>inline-meta</code></a></h2>
+<p><code>inline-meta</code> defines an inline meta function. It should look like the following:</p>
+<pre><code class="language-neut">inline-meta duplicate(x: 'int) -&gt; 'pair(int, int) {
+  quote {
+    let y = unquote {x};
+    Pair(y, y)
+  }
+}
+</code></pre>
+<p><code>inline-meta</code> is the same as <code>inline</code> except that the body starts at stage 1, not 0.</p>
+<p>It also supports the same default-argument syntax as <code>define-meta</code>.</p>
+<h2 id="constant"><a class="header" href="#constant"><code>constant</code></a></h2>
+<p><code>constant</code> defines a top-level constant. It should look like the following:</p>
+<pre><code class="language-neut">constant foo: int {
+  10
+}
+
+constant empty-list&lt;a&gt;: list(a) {
+  Nil
+}
+
+define use-constants() -&gt; list(int) {
+  let x = foo;
+  empty-list
+}
+</code></pre>
+<p>The compiler tries to reduce the body of a <code>constant</code> into a value at compile time. The compiler reports an error if it can't get a value. For example, the following should result in an error:</p>
+<pre><code class="language-neut">constant bar: int {
+  print("hello");
+  123
+}
+</code></pre>
+<h2 id="data"><a class="header" href="#data"><code>data</code></a></h2>
+<p><code>data</code> defines an algebraic data type (ADT). It should look like the following:</p>
+<pre><code class="language-neut">data nat {
+| Zero
+| Succ(nat)
+}
+
+data list(a) {
+| Nil
+| Cons(a, list(a))
+}
+
+data config {
+| Config(
+    count: int,
+    foo-path: &amp;string,
+    colorize: bool,
+  )
+}
+</code></pre>
+<p>You can use the content of an ADT value by using <code>match</code> or <code>case</code>:</p>
+<pre><code class="language-neut">define length&lt;a&gt;(xs: list(a)) -&gt; int {
+  // destructure ADT values using `match`
+  match xs {
+  | Nil =&gt;
+    0
+  | Cons(_, ys) =&gt;
+    add-int(1, length(ys))
+  }
+}
+
+define length-noetic&lt;a&gt;(xs: &amp;list(a)) -&gt; int {
+  // read noetic ADT values using `case`
+  case xs {
+  | Nil =&gt;
+    0
+  | Cons(_, ys) =&gt;
+    add-int(1, length-noetic(ys))
+  }
+}
+
+define use-config(c: config) -&gt; int {
+  // pattern-matching in `let` is also possible
+  let Config{count, foo-path} = c;
+  let _ = foo-path;
+  count
+}
+</code></pre>
+<h2 id="alias"><a class="header" href="#alias"><code>alias</code></a></h2>
+<p><code>alias</code> defines a type alias. It should look like the following:</p>
+<pre><code class="language-neut">alias optional(a: type) {
+  either(unit, a)
+}
+
+alias my-type {
+  either(int, bool)
+}
+</code></pre>
+<p>The body of <code>alias</code> can be used wherever a type is expected.</p>
+<h2 id="alias-opaque"><a class="header" href="#alias-opaque"><code>alias-opaque</code></a></h2>
+<p><code>alias-opaque</code> defines an opaque type alias. It should look like the following:</p>
+<pre><code class="language-neut">alias-opaque vector(_: type) {
+  _vector-internal
+}
+
+alias-opaque my-type {
+  either(int, bool)
+}
+</code></pre>
+<p><code>alias-opaque</code> can be used when you want to expose a type constructor while hiding its actual body.</p>
+<h2 id="resource"><a class="header" href="#resource"><code>resource</code></a></h2>
+<p><code>resource</code> defines a new type by specifying how to discard/copy the values of the type. It should look like the following:</p>
+<pre><code class="language-neut">resource my-type {
+  (value: pointer) =&gt; {
+    // .. discard the value ..
+  },
+  (value: pointer) =&gt; {
+    // .. create a new clone of the value and return it as pointer ..
+  },
+  size, // integer value
+}
+</code></pre>
+<p><code>resource</code> takes three terms. The first term ("discarder") receives a value of the type and discards it. The second term ("copier") receives a value of the type and returns a clone of the value (keeping the original value intact). The third term is the size returned when calling <code>magic call-type(my-type, 2, (..))</code>. This size is also used when a value of the type is returned from a function written using <code>-&gt;&gt;</code>: when the size is non-negative, the caller prepares a destination of that size, and otherwise it uses a one-word temporary slot.</p>
+<p>The type of a discarder is <code>(a) -&gt; unit</code> for some <code>a</code>. You might want to call functions like <code>free</code> in this term.</p>
+<p>The type of a copier is <code>(a) -&gt; a</code> for some <code>a</code>. This <code>a</code> must be the same as the <code>a</code> used in the discarder. You might want to call functions like <code>malloc</code> in this term.</p>
+<p>The third term must have type <code>int</code>. See also: <a href="./terms.html#semantics-call-type">Semantics (call-type)</a></p>
+<p>For example, the following is a definition of a "boxed" integer type with some noisy messages:</p>
+<pre><code class="language-neut">resource boxed-int {
+  // discarder: (pointer) -&gt; unit
+  (v: pointer) =&gt; {
+    print("discarded!\n");
+    free(v)
+  },
+  // copier: (pointer) -&gt; pointer
+  (v: pointer) =&gt; {
+    let orig-value = load-int(v);
+    let new-ptr = malloc(8);
+    magic store(int, orig-value, new-ptr);
+    new-ptr
+  },
+  -1,
+}
+
+// provide a way to introduce a new boxed integer
+define create-new-boxed-int(x: int) -&gt; boxed-int {
+  let new-ptr = malloc(8);
+  store-int(x, new-ptr);
+  magic cast(pointer, boxed-int, new-ptr)
+}
+</code></pre>
+<p>A value of type <code>boxed-int</code> prints <code>"discarded!\n"</code> when the value is discarded.</p>
+<p><code>resource</code> can be used to define low-level types like arrays.</p>
+<p>You can find an example usage of <code>resource</code> in the <code>binary.nt</code> in the <a href="https://github.com/vekatze/neut-core/blob/main/source/binary.nt">core library</a>.</p>
+<h2 id="rule-right"><a class="header" href="#rule-right"><code>rule-right</code></a></h2>
+<p><code>rule-right</code> defines a macro-like construct that expands bracketed expressions in a fold-right manner. It should look like the following:</p>
+<pre><code class="language-neut">rule-right name {
+  leaf,
+  node,
+  root,
+}
+</code></pre>
+<p>Once defined, <code>name</code> can be used with square brackets to accept variable-length arguments:</p>
+<pre><code class="language-neut">name[x, y, z, w]
+</code></pre>
+<p>This expands in a fold-right manner to:</p>
+<pre><code class="language-neut">root(node(x, node(y, node(z, node(w, leaf(4))))))
+</code></pre>
+<p>where the <code>4</code> is the length of <code>[x, y, z, w]</code>.</p>
+<h3 id="example-list-construction"><a class="header" href="#example-list-construction">Example: List Construction</a></h3>
+<p>The <code>List</code> construct available in the core library is defined using <code>rule-right</code>:</p>
+<pre><code class="language-neut">rule-right List {
+  inline leaf&lt;a&gt;(_: int) -&gt; list(a) {
+    Nil
+  },
+  inline node&lt;a&gt;(x: a, acc: list(a)) -&gt; list(a) {
+    Cons(x, acc)
+  },
+  inline root&lt;a&gt;(x: a) -&gt; a {
+    x
+  },
+}
+</code></pre>
+<p>With this definition, <code>List[x, y, z]</code> simplifies as follows:</p>
+<pre><code class="language-neut">List[x, y, z]
+
+↓
+
+root(node(x, node(y, node(z, leaf(3)))))
+
+↓
+
+Cons(x, Cons(y, Cons(z, Nil)))
+</code></pre>
+<h2 id="rule-left"><a class="header" href="#rule-left"><code>rule-left</code></a></h2>
+<p><code>rule-left</code> defines a macro-like construct that expands bracketed expressions in a fold-left manner. It should look like the following:</p>
+<pre><code class="language-neut">rule-left name {
+  leaf,
+  node,
+  root,
+}
+</code></pre>
+<p>Once defined, <code>name</code> can be used with square brackets to accept variable-length arguments:</p>
+<pre><code class="language-neut">name[x, y, z, w]
+</code></pre>
+<p>This expands in a fold-left manner to:</p>
+<pre><code class="language-neut">root(node(node(node(node(leaf(4), x), y), z), w))
+</code></pre>
+<p>where the <code>4</code> is the length of <code>[x, y, z, w]</code>.</p>
+<h3 id="example-vector-construction"><a class="header" href="#example-vector-construction">Example: Vector Construction</a></h3>
+<p>The <code>Vector</code> construct available in the core library is defined using <code>rule-left</code>:</p>
+<pre><code class="language-neut">rule-left Vector {
+  inline leaf&lt;a&gt;(size: int) -&gt; vector(a) {
+    make(size)
+  },
+  inline node&lt;a&gt;(acc: vector(a), x: a) -&gt; vector(a) {
+    push-back(acc, x)
+  },
+  inline root&lt;a&gt;(x: a) -&gt; a {
+    x
+  },
+}
+</code></pre>
+<p>With this definition, <code>Vector[a, b, c]</code> simplifies as follows:</p>
+<pre><code class="language-neut">Vector[a, b, c]
+
+↓
+
+root(node(node(node(leaf(3), a), b), c))
+
+↓
+
+push-back(push-back(push-back(make(3), a), b), c)
+</code></pre>
+<h2 id="nominal"><a class="header" href="#nominal"><code>nominal</code></a></h2>
+<p><code>nominal</code> declares top-level items for forward references. It should look like the following:</p>
+<pre><code class="language-neut">nominal {
+  define is-odd(x: int) -&gt; bool,
+  data stream(a: type),
+}
+</code></pre>
+<p>Nominal definitions can be used to achieve mutual recursion:</p>
+<pre><code class="language-neut">nominal {
+  define is-odd(x: int) -&gt; bool, // nominal definition of `is-odd`
+}
+
+// given a non-negative integer `x`, returns true if `x` is even.
+define is-even(x: int) -&gt; bool {
+  if eq-int(x, 0) {
+    True
+  } else {
+    is-odd(sub-int(x, 1)) // ← using nominal definition
+  }
+}
+
+// given a non-negative integer `x`, returns true if `x` is odd.
+// ("real" definition of `is-odd`)
+define is-odd(x: int) -&gt; bool {
+  if eq-int(x, 0) {
+    False
+  } else {
+    is-even(sub-int(x, 1))
+  }
+}
+</code></pre>
+<p>If a nominal definition isn't followed by a corresponding real definition, the compiler reports an error.</p>
+<p>The following kinds of top-level items can be declared in <code>nominal</code>:</p>
+<ul>
+<li><code>define</code></li>
+<li><code>inline</code></li>
+<li><code>constant</code></li>
+<li><code>define-meta</code></li>
+<li><code>inline-meta</code></li>
+<li><code>alias</code></li>
+<li><code>alias-opaque</code></li>
+<li><code>data</code></li>
+<li><code>resource</code></li>
+</ul>
+<h2 id="foreign"><a class="header" href="#foreign"><code>foreign</code></a></h2>
+<p><code>foreign</code> declares functions that are defined in linked objects. It should look like the following:</p>
+<pre><code class="language-neut">foreign {
+  neut_myapp_v1_add_const(int) -&gt; int,
+}
+</code></pre>
+<p>Foreign functions declared here can be called by using <code>magic external(..)</code>.</p>
+<p>Suppose that you have a C source file with the following definition:</p>
+<pre><code class="language-c">// add_const.c
+
+int64_t neut_myapp_v1_add_const(int64_t value) {
+  return value + 100;
+}
+</code></pre>
+<p>By configuring the <code>foreign</code> field in <code>module.ens</code> as described in <a href="./modules.html#foreign">Modules</a>, you can use the C function above as follows:</p>
+<pre><code class="language-neut">foreign {
+  neut_myapp_v1_add_const(int) -&gt; int,
+}
+
+define my-func() -&gt; int {
+  let x: int = 10;
+  magic external neut_myapp_v1_add_const(x)
+}
+</code></pre>
+<p>You can also use LLVM intrinsics. For example, the LLVM LangRef states that the <code>llvm.sin.*</code> intrinsic is <a href="https://llvm.org/docs/LangRef.html#llvm-sin-intrinsic">available</a>:</p>
+<pre><code class="language-llvm">declare float     @llvm.sin.f32(float  %Val)
+declare double    @llvm.sin.f64(double %Val)
+declare x86_fp80  @llvm.sin.f80(x86_fp80  %Val)
+declare fp128     @llvm.sin.f128(fp128 %Val)
+declare ppc_fp128 @llvm.sin.ppcf128(ppc_fp128  %Val)
+</code></pre>
+<p>Thus, the following is a valid use of <code>foreign</code>:</p>
+<pre><code class="language-neut">foreign {
+  llvm.sin.f64(float) -&gt; float,
+}
+
+define sin(x: float) -&gt; float {
+  magic external llvm.sin.f64(x)
+}
+</code></pre>
+<p>Syscall wrapper functions and library functions are also available:</p>
+<pre><code class="language-neut">foreign {
+  exit(c-int) -&gt; void,
+  sleep(c-int) -&gt; c-int,
+}
+</code></pre>
+<p>Here, the definition of <code>c-int</code> is as follows:</p>
+<pre><code class="language-neut">constant _c-int: type {
+  introspect architecture {
+  | amd64 =&gt;
+    int32
+  | arm64 =&gt;
+    int32
+  }
+}
+
+data c-int {
+| C-Int(_c-int)
+}
+</code></pre>
+<p>The type of each parameter in every foreign entry must be a term that compiles to one of <code>int{N}</code>, <code>float{N}</code>, or <code>pointer</code> during compilation. For example, the <code>c-int</code> in <code>exit(c-int) -&gt; void</code> is valid because it compiles to <code>int32</code> (thanks to an optimization like Haskell's <code>newtype</code>).</p>
+<p>The resulting type of every foreign entry must be <code>void</code> or a term that compiles to one of <code>int{N}</code>, <code>float{N}</code>, or <code>pointer</code> during compilation.</p>
+<p>When declaring a variadic function, declare only the non-variadic part:</p>
+<pre><code class="language-neut">foreign {
+  printf(pointer) -&gt; c-int,
+}
+</code></pre>
+<p>Then, specify the types of variadic arguments when using <code>magic external</code>:</p>
+<pre><code class="language-neut">define print-raw(fmt: pointer, len: int, val: pointer) -&gt; c-int {
+  magic external printf(fmt)(len: int, val: pointer)
+  //                                 ^^^^^^^^^^^^^^^^^^^^^^
+  //                                 passing variadic arguments with types
+}
+</code></pre>
+
+            <footer id="footer-paginator">
+              <a rel="prev" href="modules.html" class="nav previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                ← Previous Page
+              </a>
+
+              <div id="footer-spacer"></div>
+
+              <a rel="next" href="terms.html" class="nav next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                Next Page →
+              </a>
+            </footer>
+          </article>
+          <div id="footer-wrapper">
+            <footer id="footer-nav">
+              <ol class="chapter"><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="overview.html"><strong aria-hidden="true">1.</strong> Overview</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="installation.html"><strong aria-hidden="true">2.</strong> Installation</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="tutorial.html"><strong aria-hidden="true">3.</strong> Tutorial</a></span><ol class="section"><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="modules-and-sources.html"><strong aria-hidden="true">3.1.</strong> Modules and Sources</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="programming-in-neut.html"><strong aria-hidden="true">3.2.</strong> Programming in Neut</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="static-memory-management.html"><strong aria-hidden="true">3.3.</strong> Static Memory Management</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="modality-and-memory.html"><strong aria-hidden="true">3.4.</strong> Modality and Memory</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="modal-metaprogramming.html"><strong aria-hidden="true">3.5.</strong> Modal Metaprogramming</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="further-examples.html"><strong aria-hidden="true">3.6.</strong> Further Examples</a></span></li></ol><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="language-reference.html"><strong aria-hidden="true">4.</strong> Language Reference</a></span><ol class="section"><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="commands.html"><strong aria-hidden="true">4.1.</strong> Commands</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="modules.html"><strong aria-hidden="true">4.2.</strong> Modules</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="statements.html"><strong aria-hidden="true">4.3.</strong> Statements</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="terms.html"><strong aria-hidden="true">4.4.</strong> Terms</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="primitives.html"><strong aria-hidden="true">4.5.</strong> Primitives</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="basis.html"><strong aria-hidden="true">4.6.</strong> Basis</a></span></li></ol><li class="chapter-item expanded "><li class="part-title">Appendix</li></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="manual-installation.html"><strong aria-hidden="true">5.</strong> Manual Installation</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="development-environment.html"><strong aria-hidden="true">6.</strong> Development Environment</a></span><ol class="section"><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="lsp-showcase.html"><strong aria-hidden="true">6.1.</strong> LSP Showcase</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="rapid-prototyping.html"><strong aria-hidden="true">6.2.</strong> Rapid Prototyping</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="editor-setup.html"><strong aria-hidden="true">6.3.</strong> Editor Setup</a></span></li></ol><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="on-executing-types.html"><strong aria-hidden="true">7.</strong> On Executing Types</a></span></li></ol>
+            </footer>
+          </div>
+        </main>
+      </div>
+
+
+      <script src="highlight-9efa5fea.js"></script>
+      <script src="book-138bd6c0.js"></script>
+    </div>
+  </body>
+</html>
