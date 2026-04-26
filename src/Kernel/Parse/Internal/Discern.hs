@@ -912,15 +912,18 @@ discernMagic h m magic =
       typeExpr2' <- discernType h typeExpr2
       return $ M.WeakMagic $ M.EqType coreModuleID typeExpr1' typeExpr2'
     RT.ShowType _ (_, (typeExpr, _)) -> do
+      ensureCompileStage m h "inline magic (`show-type`)"
       stringType <- liftEither (locatorToTypeVar m coreString) >>= discernType h
       typeExpr' <- discernType h typeExpr
       return $ M.WeakMagic $ M.ShowType stringType typeExpr'
     RT.StringCons _ (_, (rune, _)) (_, (text, _)) -> do
+      ensureCompileStage m h "inline magic (`string-cons`)"
       stringType <- liftEither (locatorToTypeVar m coreString) >>= discernType h
       rune' <- discern h rune
       text' <- discern h text
       return $ M.WeakMagic $ M.StringCons stringType rune' text'
     RT.StringUncons _ (_, (text, _)) -> do
+      ensureCompileStage m h "inline magic (`string-uncons`)"
       moduleID <- Alias.resolveModuleAlias (H.aliasHandle h) m coreModuleAlias
       text' <- discern h text
       return $ M.WeakMagic $ M.StringUncons moduleID text'
@@ -1366,7 +1369,8 @@ discernPattern h layer stage (m, pat) = do
                   return ((m, PAT.Literal (LI.Int i)), [])
             InvalidNumericLiteral numericClass ->
               raiseInvalidNumericLiteral m numericClass x
-            _ | isConsName x && k == VK.Normal -> do
+            _
+              | isConsName x && k == VK.Normal -> do
                   (consDD, dataArgNum, consArgNum, disc, isConstLike, _) <- resolveConstructor h m $ Var x
                   unless isConstLike $ do
                     let mainModule = Env.getMainModule (H.envHandle h)
