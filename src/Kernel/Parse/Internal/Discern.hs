@@ -649,7 +649,7 @@ discern h term =
           case contentOrNone of
             Just (path, content) -> do
               liftIO $ Unused.deleteStaticFile (H.unusedHandle h) key
-              liftIO $ Tag.insertFileLoc (H.tagHandle h) mKey (T.length key) (newSourceHint path)
+              liftIO $ Tag.insertStaticFile (H.tagHandle h) mKey key (newSourceHint path)
               return $ m :< WT.Prim (WPV.Text content)
             Nothing ->
               raiseError m $ "No such static file is defined: `" <> key <> "`"

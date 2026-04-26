@@ -35,6 +35,7 @@ data SymbolName
   = Local Int DefSymbolLen
   | Global DD.DefiniteDescription IsConstLike
   | Foreign EN.ExternalName
+  | StaticFile T.Text
   deriving (Show, Eq, Generic)
 
 data LocType
@@ -78,6 +79,8 @@ getLength s =
       T.length $ DD.localLocator dd
     Foreign externalName ->
       T.length $ EN.reify externalName
+    StaticFile key ->
+      T.length key
 
 isSymLoc :: LocType -> Bool
 isSymLoc lt =

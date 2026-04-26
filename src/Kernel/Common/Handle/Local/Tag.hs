@@ -8,6 +8,7 @@ module Kernel.Common.Handle.Local.Tag
     insertBinder,
     insertLocator,
     insertExternalName,
+    insertStaticFile,
   )
 where
 
@@ -73,4 +74,10 @@ insertExternalName :: Handle -> Hint -> EN.ExternalName -> Hint -> IO ()
 insertExternalName h mUse externalName mDef = do
   let symbolLoc = LT.SymbolLoc (LT.Foreign externalName)
   let nameLength = T.length $ EN.reify externalName
+  insert h mUse symbolLoc nameLength mDef
+
+insertStaticFile :: Handle -> Hint -> T.Text -> Hint -> IO ()
+insertStaticFile h mUse key mDef = do
+  let symbolLoc = LT.SymbolLoc (LT.StaticFile key)
+  let nameLength = T.length key
   insert h mUse symbolLoc nameLength mDef

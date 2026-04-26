@@ -54,6 +54,8 @@ getSymbolInfo params = do
           return $ toTextType t
         LT.Foreign {} -> do
           liftMaybe Nothing
+        LT.StaticFile {} -> do
+          liftMaybe Nothing
 
 getSymbolLoc :: LT.LocType -> Maybe LT.SymbolName
 getSymbolLoc locType =
