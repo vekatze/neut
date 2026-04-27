@@ -1,6 +1,5 @@
 module Kernel.Common.LocationTree
   ( LocationTree,
-    LocType (..),
     SymbolName (..),
     empty,
     insert,
@@ -35,39 +34,29 @@ data SymbolName
   = Local Int DefSymbolLen
   | Global DD.DefiniteDescription IsConstLike
   | Foreign EN.ExternalName
-  deriving (Show, Eq, Generic)
-
-data LocType
-  = FileLoc
-  | SymbolLoc SymbolName
+  | StaticFile T.Text
+  | SourceFile T.Text
   deriving (Show, Eq, Generic)
 
 instance Binary SymbolName
 
-instance Binary LocType
-
 type LocationTree =
-  M.Map (Line, ColFrom) (Line, ColInterval, LocType, SavedHint)
+  M.Map (Line, ColFrom) (Line, ColInterval, SymbolName, SavedHint)
 
 empty :: LocationTree
 empty =
   M.empty
 
-insert :: LocType -> (Line, ColInterval) -> Hint -> LocationTree -> LocationTree
-insert lt (l, (cFrom, cTo)) m =
-  M.insert (l, cFrom) (l, (cFrom, cTo), lt, SavedHint m)
+insert :: SymbolName -> (Line, ColInterval) -> Hint -> LocationTree -> LocationTree
+insert sym (l, (cFrom, cTo)) m =
+  M.insert (l, cFrom) (l, (cFrom, cTo), sym, SavedHint m)
 
-find :: Line -> Column -> LocationTree -> Maybe (LocType, Hint, ColInterval, DefSymbolLen)
+find :: Line -> Column -> LocationTree -> Maybe (SymbolName, Hint, ColInterval, DefSymbolLen)
 find l c mp = do
-  (line, colInterval@(colFrom, colTo), lt, SavedHint m) <- snd <$> M.lookupLE (l, c) mp
+  (line, colInterval@(_, colTo), sym, SavedHint m) <- snd <$> M.lookupLE (l, c) mp
   if colTo < c || line /= l
     then Nothing
-    else do
-      case lt of
-        FileLoc ->
-          return (lt, m, colInterval, colTo - colFrom)
-        SymbolLoc sym ->
-          return (lt, m, colInterval, getLength sym)
+    else return (sym, m, colInterval, getLength sym)
 
 getLength :: SymbolName -> DefSymbolLen
 getLength s =
@@ -78,19 +67,15 @@ getLength s =
       T.length $ DD.localLocator dd
     Foreign externalName ->
       T.length $ EN.reify externalName
-
-isSymLoc :: LocType -> Bool
-isSymLoc lt =
-  case lt of
-    SymbolLoc _ ->
-      True
-    FileLoc ->
-      False
+    StaticFile key ->
+      T.length key
+    SourceFile locator ->
+      T.length locator
 
 findRef :: Loc -> LocationTree -> [(FilePath, (Line, ColInterval))]
 findRef loc t = do
   let kvs = M.toList t
-  flip mapMaybe kvs $ \((line, _), (_, colInterval, lt, SavedHint m)) -> do
-    if isSymLoc lt && loc == metaLocation m
+  flip mapMaybe kvs $ \((line, _), (_, colInterval, _, SavedHint m)) -> do
+    if loc == metaLocation m
       then return (metaFileName m, (line, colInterval))
       else Nothing

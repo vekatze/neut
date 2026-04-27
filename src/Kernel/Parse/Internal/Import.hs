@@ -101,7 +101,7 @@ interpretImportItemTextFile h currentModule keyList = do
     case Map.lookup key (moduleTextFiles currentModule') of
       Just path -> do
         let fullPath = moduleRootDir </> path
-        liftIO $ Tag.insertFileLoc (tagHandle h) mKey (T.length key) (newSourceHint fullPath)
+        liftIO $ Tag.insertStaticFile (tagHandle h) mKey key (newSourceHint fullPath)
         liftIO $ Unused.insertStaticFile (unusedHandle h) key mKey
         return (key, (mKey, fullPath))
       Nothing ->
@@ -143,7 +143,7 @@ getSource h mustUpdateTag m sgl locatorText = do
   let nextPath = getSourceDir nextModule </> relPath
   when mustUpdateTag $
     liftIO $
-      Tag.insertFileLoc (tagHandle h) m (T.length locatorText) (newSourceHint nextPath)
+      Tag.insertSourceFile (tagHandle h) m locatorText (newSourceHint nextPath)
   STL.shiftToLatest
     (shiftToLatestHandle h)
     Source.Source

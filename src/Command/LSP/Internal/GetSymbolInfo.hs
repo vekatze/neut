@@ -40,8 +40,7 @@ getSymbolInfo params = do
       liftMaybe Nothing
     Just handle -> do
       let findDefHandle = FindDefinition.new h
-      ((locType, _), _) <- FindDefinition.findDefinition findDefHandle params
-      symbolName <- liftMaybe $ getSymbolLoc locType
+      ((symbolName, _), _) <- FindDefinition.findDefinition findDefHandle params
       case symbolName of
         LT.Local varID _ -> do
           weakTypeEnv <- liftIO $ Elaborate.getWeakTypeEnv handle
@@ -54,11 +53,7 @@ getSymbolInfo params = do
           return $ toTextType t
         LT.Foreign {} -> do
           liftMaybe Nothing
-
-getSymbolLoc :: LT.LocType -> Maybe LT.SymbolName
-getSymbolLoc locType =
-  case locType of
-    LT.FileLoc ->
-      Nothing
-    LT.SymbolLoc symbolName ->
-      return symbolName
+        LT.StaticFile {} -> do
+          liftMaybe Nothing
+        LT.SourceFile {} -> do
+          liftMaybe Nothing

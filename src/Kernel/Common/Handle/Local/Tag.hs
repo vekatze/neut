@@ -2,12 +2,13 @@ module Kernel.Common.Handle.Local.Tag
   ( Handle (..),
     new,
     get,
-    insertFileLoc,
     insertLocalVar,
     insertGlobalVar,
     insertBinder,
     insertLocator,
     insertExternalName,
+    insertStaticFile,
+    insertSourceFile,
   )
 where
 
@@ -36,18 +37,11 @@ get :: Handle -> IO LT.LocationTree
 get h =
   readIORef $ _tagMapRef h
 
-insertFileLoc :: Handle -> Hint -> Int -> Hint -> IO ()
-insertFileLoc h mUse nameLength mDef = do
-  when (metaShouldSaveLocation mUse) $ do
-    let (l, c) = metaLocation mUse
-    modifyIORef' (_tagMapRef h) $ LT.insert LT.FileLoc (l, (c, c + nameLength)) mDef
-
 insertLocalVar :: Handle -> Hint -> Ident -> Hint -> IO ()
 insertLocalVar h mUse ident@(I (var, varID)) mDef = do
   unless (isHole ident) $ do
     let nameLength = T.length var
-    let symbolLoc = LT.SymbolLoc (LT.Local varID nameLength)
-    insert h mUse symbolLoc nameLength mDef
+    insert h mUse (LT.Local varID nameLength) nameLength mDef
 
 insertBinder :: Handle -> BinderF a -> IO ()
 insertBinder h (m, _, ident, _) =
@@ -56,21 +50,29 @@ insertBinder h (m, _, ident, _) =
 insertGlobalVar :: Handle -> Hint -> DD.DefiniteDescription -> IsConstLike -> Hint -> IO ()
 insertGlobalVar h mUse dd isConstLike mDef = do
   let nameLength = T.length (DD.localLocator dd)
-  let symbolLoc = LT.SymbolLoc (LT.Global dd isConstLike)
-  insert h mUse symbolLoc nameLength mDef
+  insert h mUse (LT.Global dd isConstLike) nameLength mDef
 
-insert :: Handle -> Hint -> LT.LocType -> Int -> Hint -> IO ()
-insert h mUse locType nameLength mDef = do
+insert :: Handle -> Hint -> LT.SymbolName -> Int -> Hint -> IO ()
+insert h mUse symbolName nameLength mDef = do
   when (metaShouldSaveLocation mUse) $ do
     let (l, c) = metaLocation mUse
-    modifyIORef' (_tagMapRef h) $ LT.insert locType (l, (c, c + nameLength)) mDef
+    modifyIORef' (_tagMapRef h) $ LT.insert symbolName (l, (c, c + nameLength)) mDef
 
 insertLocator :: Handle -> Hint -> DD.DefiniteDescription -> IsConstLike -> Int -> Hint -> IO ()
 insertLocator h mUse dd isConstLike nameLength mDef = do
-  insert h mUse (LT.SymbolLoc (LT.Global dd isConstLike)) nameLength mDef
+  insert h mUse (LT.Global dd isConstLike) nameLength mDef
 
 insertExternalName :: Handle -> Hint -> EN.ExternalName -> Hint -> IO ()
 insertExternalName h mUse externalName mDef = do
-  let symbolLoc = LT.SymbolLoc (LT.Foreign externalName)
   let nameLength = T.length $ EN.reify externalName
-  insert h mUse symbolLoc nameLength mDef
+  insert h mUse (LT.Foreign externalName) nameLength mDef
+
+insertStaticFile :: Handle -> Hint -> T.Text -> Hint -> IO ()
+insertStaticFile h mUse key mDef = do
+  let nameLength = T.length key
+  insert h mUse (LT.StaticFile key) nameLength mDef
+
+insertSourceFile :: Handle -> Hint -> T.Text -> Hint -> IO ()
+insertSourceFile h mUse locator mDef = do
+  let nameLength = T.length locator
+  insert h mUse (LT.SourceFile locator) nameLength mDef
