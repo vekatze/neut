@@ -17,6 +17,8 @@ import Data.List (partition)
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Kernel.Common.Handle.Global.Data qualified as Data
+import Kernel.Common.ReadableDD qualified as ReadableDD
+import Kernel.Common.Source (sourceModule)
 import Kernel.Elaborate.Constraint (SuspendedConstraint)
 import Kernel.Elaborate.Constraint qualified as C
 import Kernel.Elaborate.Internal.Handle.Constraint qualified as Constraint
@@ -39,7 +41,7 @@ import Language.WeakTerm.FreeVars
 import Language.WeakTerm.Holes
 import Language.WeakTerm.Subst (Subst, SubstEntry (..))
 import Language.WeakTerm.Subst qualified as Subst
-import Language.WeakTerm.ToText (toTextType)
+import Language.WeakTerm.ToText (toTextType, toTextTypeWith)
 import Language.WeakTerm.WeakTerm qualified as WT
 import Logger.Hint
 import Logger.Log qualified as L
@@ -88,7 +90,7 @@ constraintToRemark h sub c = do
     C.Eq expected actual -> do
       expected' <- fillAsMuchAsPossible h sub expected
       actual' <- fillAsMuchAsPossible h sub actual
-      return $ L.newLog (WT.metaOfType actual) L.Error $ constructErrorMessageEq actual' expected'
+      return $ L.newLog (WT.metaOfType actual) L.Error $ constructErrorMessageEq h actual' expected'
 
 fillAsMuchAsPossible :: Handle -> THS.TypeHoleSubst -> WT.WeakType -> App WT.WeakType
 fillAsMuchAsPossible h sub e = do
@@ -97,12 +99,51 @@ fillAsMuchAsPossible h sub e = do
     then fillType h sub e' >>= fillAsMuchAsPossible h sub
     else return e'
 
-constructErrorMessageEq :: WT.WeakType -> WT.WeakType -> T.Text
-constructErrorMessageEq found expected =
-  "Expected:\n  "
-    <> toTextType expected
-    <> "\nFound:\n  "
-    <> toTextType found
+constructErrorMessageEq :: Handle -> WT.WeakType -> WT.WeakType -> T.Text
+constructErrorMessageEq h found expected = do
+  let shortExpected = toTextType expected
+  let shortFound = toTextType found
+  if shortExpected == shortFound
+    then do
+      let baseModule = sourceModule (currentSource h)
+      let allDDs = collectGlobalDDs expected ++ collectGlobalDDs found
+      let grouped = Map.fromListWith S.union [(DD.localLocator dd, S.singleton dd) | dd <- allDDs]
+      let needVerbose = S.fromList [dd | (_, dds) <- Map.toList grouped, S.size dds > 1, dd <- S.toList dds]
+      let showDD dd = if S.member dd needVerbose then ReadableDD.readableDD' baseModule dd else DD.localLocator dd
+      "Expected:\n  "
+        <> toTextTypeWith showDD expected
+        <> "\nFound:\n  "
+        <> toTextTypeWith showDD found
+    else
+      "Expected:\n  "
+        <> shortExpected
+        <> "\nFound:\n  "
+        <> shortFound
+
+collectGlobalDDs :: WT.WeakType -> [DD.DefiniteDescription]
+collectGlobalDDs ty =
+  case ty of
+    _ :< WT.TVarGlobal _ dd ->
+      [dd]
+    _ :< WT.TyApp t args ->
+      collectGlobalDDs t ++ concatMap collectGlobalDDs args
+    _ :< WT.Pi _ impArgs expArgs defaultArgs cod ->
+      concatMap (\(_, _, _, t) -> collectGlobalDDs t) (impArgs ++ expArgs ++ defaultArgs)
+        ++ collectGlobalDDs cod
+    _ :< WT.Data _ dd args ->
+      dd : concatMap collectGlobalDDs args
+    _ :< WT.Box t ->
+      collectGlobalDDs t
+    _ :< WT.BoxNoema t ->
+      collectGlobalDDs t
+    _ :< WT.Code t ->
+      collectGlobalDDs t
+    _ :< WT.Resource dd _ ->
+      [dd]
+    _ :< WT.TypeHole _ args ->
+      concatMap collectGlobalDDs args
+    _ ->
+      []
 
 constructErrorMessageActual :: WT.WeakType -> T.Text
 constructErrorMessageActual t =
