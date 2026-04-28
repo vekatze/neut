@@ -10,6 +10,8 @@ import Command.Common.Check qualified as Check
 import Command.Common.Fetch qualified as Fetch
 import Command.LSP.CodeAction qualified as CA
 import Command.LSP.Internal.Complete qualified as Complete
+import Command.LSP.Internal.DocumentState qualified as DocumentState
+import Command.LSP.Internal.DocumentStateStore qualified as DocumentStateStore
 import Command.LSP.Internal.FindDefinition qualified as FindDefinition
 import Command.LSP.Internal.Format qualified as Format
 import Command.LSP.Internal.GetSymbolInfo qualified as GetSymbolInfo
@@ -19,6 +21,7 @@ import Command.LSP.Internal.References qualified as References
 import Command.LSP.Internal.Util (Lsp, getUriParam, report, run)
 import CommandParser.Config.Remark (lspConfig)
 import Control.Lens hiding (Iso)
+import Control.Monad (forM)
 import Control.Monad.IO.Class
 import Data.Map.Strict qualified as M
 import Data.Maybe
@@ -30,11 +33,13 @@ import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Message
 import Language.LSP.Protocol.Types
 import Language.LSP.Server
+import Language.LSP.VFS (virtualFileText)
 import Prettyprinter
 import System.IO (stdin, stdout)
 
 lsp :: IO Int
 lsp = do
+  documentStateStore <- DocumentStateStore.new
   runQuietServer $
     ServerDefinition
       { defaultConfig = (),
@@ -42,7 +47,7 @@ lsp = do
         configSection = "Neut",
         onConfigChange = const $ return (),
         doInitialize = \env _req -> pure $ Right env,
-        staticHandlers = const handlers,
+        staticHandlers = const $ handlers documentStateStore,
         interpretHandler = \env -> Iso (runLspT env) liftIO,
         options = lspOptions
       }
@@ -79,8 +84,18 @@ withGlobalHandle defaultAction cont = do
     Right v ->
       cont v
 
-handlers :: Handlers (Lsp ())
-handlers =
+mapDefinitionLinkFromStore :: DocumentStateStore.DocumentStateStore -> DefinitionLink -> Lsp () (Maybe DefinitionLink)
+mapDefinitionLinkFromStore documentStateStore loc@(DefinitionLink (LocationLink {_targetUri})) = do
+  documentState <- liftIO $ DocumentStateStore.lookupDocumentState documentStateStore _targetUri
+  return $ DocumentState.mapDefinitionLink documentState loc
+
+mapLocationFromStore :: DocumentStateStore.DocumentStateStore -> Location -> Lsp () (Maybe Location)
+mapLocationFromStore documentStateStore loc@Location {_uri} = do
+  documentState <- liftIO $ DocumentStateStore.lookupDocumentState documentStateStore _uri
+  return $ DocumentState.mapLocation documentState loc
+
+handlers :: DocumentStateStore.DocumentStateStore -> Handlers (Lsp ())
+handlers documentStateStore =
   mconcat
     [ notificationHandler SMethod_Initialized $ \_not -> do
         withGlobalHandle (return ()) $ \h -> do
@@ -89,16 +104,31 @@ handlers =
           return (),
       notificationHandler SMethod_WorkspaceDidChangeConfiguration $ \_ -> do
         return (),
-      notificationHandler SMethod_TextDocumentDidOpen $ \_ -> do
+      notificationHandler SMethod_TextDocumentDidOpen $ \notif -> do
+        let uri = notif ^. J.params . J.textDocument . J.uri
+        let bufferText = notif ^. J.params . J.textDocument . J.text
         withGlobalHandle (return ()) $ \h -> do
-          Lint.lint (Lint.new h),
-      notificationHandler SMethod_TextDocumentDidChange $ \_ -> do
-        return (),
-      notificationHandler SMethod_TextDocumentDidSave $ \_ -> do
+          Lint.lint (Lint.new h)
+          liftIO $ DocumentStateStore.rebuildDocumentState h documentStateStore uri bufferText,
+      notificationHandler SMethod_TextDocumentDidChange $ \notif -> do
+        let uri = notif ^. J.params . J.textDocument . J.uri
+        let changes = notif ^. J.params . J.contentChanges
+        bufferTextOrNone <- fmap virtualFileText <$> getVirtualFile (toNormalizedUri uri)
+        liftIO $ DocumentStateStore.updateDocumentState documentStateStore uri changes bufferTextOrNone,
+      notificationHandler SMethod_TextDocumentDidSave $ \notif -> do
+        let uri = notif ^. J.params . J.textDocument . J.uri
         withGlobalHandle (return ()) $ \h -> do
-          Lint.lint (Lint.new h),
-      notificationHandler SMethod_TextDocumentDidClose $ \_ -> do
-        return (),
+          Lint.lint (Lint.new h)
+          liftIO $ do
+            diskTextOrNone <- DocumentStateStore.readSavedText uri
+            case diskTextOrNone of
+              Just diskText ->
+                DocumentStateStore.rebuildDocumentState h documentStateStore uri diskText
+              Nothing ->
+                DocumentStateStore.clearDocumentState documentStateStore uri,
+      notificationHandler SMethod_TextDocumentDidClose $ \notif -> do
+        let uri = notif ^. J.params . J.textDocument . J.uri
+        liftIO $ DocumentStateStore.clearDocumentState documentStateStore uri,
       notificationHandler SMethod_CancelRequest $ \_ -> do
         return (),
       notificationHandler SMethod_SetTrace $ \_ -> do
@@ -116,32 +146,56 @@ handlers =
             Just itemList ->
               responder $ Right $ InL $ List itemList,
       requestHandler SMethod_TextDocumentDefinition $ \req responder -> do
-        withGlobalHandle (responder $ Right $ InR $ InR Null) $ \h -> do
-          let findDefHandle = FindDefinition.new h
-          mLoc <- run h $ FindDefinition.findDefinition findDefHandle (req ^. J.params)
-          case mLoc of
-            Nothing -> do
-              responder $ Right $ InR $ InR Null
-            Just ((_, loc), _) -> do
-              responder $ Right $ InR $ InL $ List [loc],
+        let uri = req ^. J.params . J.textDocument . J.uri
+        documentState <- liftIO $ DocumentStateStore.lookupDocumentState documentStateStore uri
+        case DocumentState.baseParams documentState (req ^. J.params) of
+          Nothing ->
+            responder $ Right $ InR $ InR Null
+          Just baseReqParams ->
+            withGlobalHandle (responder $ Right $ InR $ InR Null) $ \h -> do
+              let findDefHandle = FindDefinition.new h
+              mLoc <- run h $ FindDefinition.findDefinition findDefHandle baseReqParams
+              mappedLocOrNone <- case mLoc of
+                Nothing ->
+                  return Nothing
+                Just ((_, loc), _) ->
+                  mapDefinitionLinkFromStore documentStateStore loc
+              case mappedLocOrNone of
+                Nothing ->
+                  responder $ Right $ InR $ InR Null
+                Just loc ->
+                  responder $ Right $ InR $ InL $ List [loc],
       requestHandler SMethod_TextDocumentDocumentHighlight $ \req responder -> do
-        withGlobalHandle (responder $ Right $ InR Null) $ \h -> do
-          let highlightHandle = Highlight.new h
-          highlightsOrNone <- run h $ Highlight.highlight highlightHandle $ req ^. J.params
-          case highlightsOrNone of
-            Nothing ->
-              responder $ Right $ InR Null
-            Just highlights ->
-              responder $ Right $ InL $ List highlights,
+        let uri = req ^. J.params . J.textDocument . J.uri
+        documentState <- liftIO $ DocumentStateStore.lookupDocumentState documentStateStore uri
+        case DocumentState.baseParams documentState (req ^. J.params) of
+          Nothing ->
+            responder $ Right $ InR Null
+          Just baseReqParams ->
+            withGlobalHandle (responder $ Right $ InR Null) $ \h -> do
+              let highlightHandle = Highlight.new h
+              highlightsOrNone <- run h $ Highlight.highlight highlightHandle baseReqParams
+              case highlightsOrNone of
+                Nothing ->
+                  responder $ Right $ InR Null
+                Just highlights ->
+                  responder $ Right $ InL $ List $ DocumentState.mapHighlights documentState (req ^. J.params . J.position) highlights,
       requestHandler SMethod_TextDocumentReferences $ \req responder -> do
-        withGlobalHandle (responder $ Right $ InR Null) $ \h -> do
-          referencesHandle <- liftIO $ References.new h
-          refsOrNone <- run h $ References.references referencesHandle $ req ^. J.params
-          case refsOrNone of
-            Nothing -> do
-              responder $ Right $ InR Null
-            Just refs -> do
-              responder $ Right $ InL refs,
+        let uri = req ^. J.params . J.textDocument . J.uri
+        documentState <- liftIO $ DocumentStateStore.lookupDocumentState documentStateStore uri
+        case DocumentState.baseParams documentState (req ^. J.params) of
+          Nothing ->
+            responder $ Right $ InR Null
+          Just baseReqParams ->
+            withGlobalHandle (responder $ Right $ InR Null) $ \h -> do
+              referencesHandle <- liftIO $ References.new h
+              refsOrNone <- run h $ References.references referencesHandle baseReqParams
+              case refsOrNone of
+                Nothing ->
+                  responder $ Right $ InR Null
+                Just refs -> do
+                  refs' <- fmap catMaybes $ forM refs $ mapLocationFromStore documentStateStore
+                  responder $ Right $ InL refs',
       requestHandler SMethod_TextDocumentFormatting $ \req responder -> do
         let uri = req ^. (J.params . J.textDocument . J.uri)
         fileOrNone <- getVirtualFile (toNormalizedUri uri)
@@ -151,19 +205,25 @@ handlers =
           let textEditList' = concat $ maybeToList textEditList
           responder $ Right $ InL textEditList',
       requestHandler SMethod_TextDocumentHover $ \req responder -> do
-        withGlobalHandle (responder $ Right $ InR Null) $ \h -> do
-          textOrNone <- run h $ GetSymbolInfo.getSymbolInfo (req ^. J.params)
-          case textOrNone of
-            Nothing ->
-              responder $ Right $ InR Null
-            Just text ->
-              responder $
-                Right $
-                  InL
-                    Hover
-                      { _contents = InL $ MarkupContent {_kind = MarkupKind_PlainText, _value = text},
-                        _range = Nothing
-                      },
+        let uri = req ^. J.params . J.textDocument . J.uri
+        documentState <- liftIO $ DocumentStateStore.lookupDocumentState documentStateStore uri
+        case DocumentState.baseParams documentState (req ^. J.params) of
+          Nothing ->
+            responder $ Right $ InR Null
+          Just baseReqParams ->
+            withGlobalHandle (responder $ Right $ InR Null) $ \h -> do
+              textOrNone <- run h $ GetSymbolInfo.getSymbolInfo baseReqParams
+              case textOrNone of
+                Nothing ->
+                  responder $ Right $ InR Null
+                Just text ->
+                  responder $
+                    Right $
+                      InL
+                        Hover
+                          { _contents = InL $ MarkupContent {_kind = MarkupKind_PlainText, _value = text},
+                            _range = Nothing
+                          },
       requestHandler SMethod_TextDocumentCodeAction $ \req responder -> do
         let uri = req ^. (J.params . J.textDocument . J.uri)
         responder $
