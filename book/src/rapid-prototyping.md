@@ -10,7 +10,7 @@ Below is an example where Emacs runs `neut zen path/to/file.nt` when `C-c C-c` i
 
 The Emacs configuration for the example above looks like the following:
 
-```text
+```lisp
 (defun ext/neut-compile ()
   (interactive)
   (compile (concat "neut zen " (buffer-file-name))))
@@ -20,7 +20,7 @@ The Emacs configuration for the example above looks like the following:
 
 The above example also uses the package `fancy-compilation`:
 
-```text
+```lisp
 (use-package fancy-compilation
   :init
   (fancy-compilation-mode t)
