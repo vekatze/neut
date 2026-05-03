@@ -138,7 +138,9 @@ Using this knowledge, the compiler translates the code so that it reuses the mem
 2. Calculate `foo` and `bar`
 3. Store the calculated values to `Cons(y, ys)`
 
-In other words, when a `free` is required, the compiler looks for a `malloc` in the continuation that is the same size and optimizes away such a pair if one exists. The resulting assembly code thus performs in-place updates.
+In other words, when a `free` is required, the compiler looks for a later `malloc` whose allocation can fit in the freed region and optimizes away such a pair if one exists. The resulting assembly code thus performs in-place updates.
+
+For more precise rules, see [Free-Malloc Canceling](./basis.md#free-malloc-canceling).
 
 ## Optimization: Malloc-Free Canceling
 
@@ -166,6 +168,10 @@ define foo() -> int {
   load-int(ptr)
 }
 ```
+
+Malloc-free canceling is applied before free-malloc canceling.
+
+For more precise rules, see [Malloc-Free Canceling](./basis.md#malloc-free-canceling).
 
 ## Destination-Passing Style
 

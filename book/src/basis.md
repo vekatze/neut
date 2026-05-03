@@ -5,6 +5,7 @@
 - [On Executing Types](#on-executing-types)
 - [Free-Malloc Canceling](#free-malloc-canceling)
 - [Malloc-Free Canceling](#malloc-free-canceling)
+- [Order of Memory Optimizations](#order-of-memory-optimizations)
 - [Name Resolution](#name-resolution)
 - [Leading Bars and Trailing Commas](#leading-bars-and-trailing-commas)
 - [Compiler Configuration](#compiler-configuration)
@@ -144,7 +145,73 @@ However, since the size of `Cons(x, rest)` and `Cons(add-int(x, 1), increment(re
 2. calculate `add-int(x, 1)` and `increment(rest)`
 3. store the calculated values to `xs` (overwrite)
 
-Neut performs this optimization. When a `free` is required, Neut looks for a `malloc` of the same size and optimizes away such a pair if one exists. The resulting assembly code thus performs in-place updates.
+Neut performs this optimization. When a `free` is required, Neut looks for a later `malloc` whose allocation can fit in the freed region and optimizes away such a pair if one exists. The resulting assembly code thus performs in-place updates.
+
+### Size Matching
+
+A known-size `free` can be canceled with a later known-size `malloc` when the freed region is large enough for the allocation.
+
+For example, the following lowered pseudocode can be optimized because the sizes are the same:
+
+```neut
+free(p, 16);
+let q = malloc(16);
+cont
+
+// ↓
+
+let q = p;
+cont
+```
+
+The next one can also be optimized because the freed region is larger than the later allocation:
+
+```neut
+free(p, 16);
+let q = malloc(8);
+cont
+
+// ↓
+
+let q = p;
+cont
+```
+
+### Search Order
+
+When there are multiple possible allocations in the same lowered continuation, the freed region is reused for the earlier suitable allocation.
+
+For example, in the following lowered pseudocode, the region pointed to by `p` is reused for `q`:
+
+```neut
+free(p, 16);
+let q = malloc(16);
+let r = malloc(16);
+cont
+
+// ↓
+
+let q = p;
+let r = malloc(16);
+cont
+```
+
+The compiler doesn't skip `q` and reuse `p` for `r`, since `q` is already a suitable allocation.
+
+The compiler prefers exact size matches over merely compatible ones. Thus, in the following case, the region pointed to by `p` is reused for `r`:
+
+```neut
+free(p, 16);
+let q = malloc(8);
+let r = malloc(16);
+cont
+
+// ↓
+
+let q = malloc(8);
+let r = p;
+cont
+```
 
 ### Free-Malloc Canceling and Branching
 
@@ -166,7 +233,7 @@ define insert(v: int, xs: int-list) -> int-list {
 }
 ```
 
-At point `(X)`, `free` against `xs` is required. However, this `free` can be canceled since `malloc`s of the same size can be found in all the possible branches (here, `(Y)` and `(Z)`). Thus, in the code above, the deallocation of `xs` at `(X)` is removed, and the memory region of `xs` is reused at `(Y)` and `(Z)`, resulting in an in-place update of `xs`.
+At point `(X)`, `free` against `xs` is required. However, this `free` can be canceled since suitable `malloc`s can be found in all the reachable branches (here, `(Y)` and `(Z)`). Thus, in the code above, the deallocation of `xs` at `(X)` is removed, and the memory region of `xs` is reused at `(Y)` and `(Z)`, resulting in an in-place update of `xs`.
 
 On the other hand, consider rewriting the code above into something like the following:
 
@@ -185,7 +252,9 @@ define foo(v: int, xs: int-list) -> int-list {
 }
 ```
 
-At this point, the `free` against `xs` at `(X')` can't be optimized away since there is a branch (namely, `(Y')`) that doesn't perform a `malloc` of the same size as `xs`.
+At this point, the `free` against `xs` at `(X')` can't be optimized away since there is a branch (namely, `(Y')`) that doesn't perform a suitable `malloc`.
+
+The same rule is also applied at branch joins. If a later `malloc` appears after a branch, and each reachable branch frees a suitable region before reaching the join, Neut can pass those freed regions through the join and reuse them for that later `malloc`. Unreachable branches do not prevent this optimization.
 
 ## Malloc-Free Canceling
 
@@ -215,6 +284,45 @@ define foo() -> int {
 ```
 
 That is, the compiler removes the `malloc`/`free` pair and uses a stack slot instead.
+
+This optimization can also work through branch joins. If each reachable branch creates a temporary allocation and the joined result is later freed without escaping, those allocations are candidates for stack allocation.
+
+## Order of Memory Optimizations
+
+Malloc-free canceling is applied before free-malloc canceling. For example, consider the following pseudocode:
+
+```neut
+let tmp = malloc(8);
+store-int(42, tmp);
+let n = load-int(tmp);
+free(tmp, 8);
+free(old, 16);
+let result = malloc(16);
+cont
+```
+
+Malloc-free canceling first rewrites `tmp` into a stack slot:
+
+```neut
+let tmp = alloca(8);
+store-int(42, tmp);
+let n = load-int(tmp);
+free(old, 16);
+let result = malloc(16);
+cont
+```
+
+Then, free-malloc canceling rewrites the later allocation so that `result` uses the region pointed to by `old`:
+
+```neut
+let tmp = alloca(8);
+store-int(42, tmp);
+let n = load-int(tmp);
+let result = old;
+cont
+```
+
+These optimizations are applied within each definition. They do not directly cancel a `malloc` in one definition with a `free` in another definition. This is why destination-passing style can matter: it can move the relevant allocation and deallocation into the same definition.
 
 ## Name Resolution
 
