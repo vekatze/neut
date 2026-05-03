@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Basis - Neut Programming Language</title>
+    <meta name="description" content="A functional programming language with static memory management." />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="favicon-de23e50b.svg">
+    <link rel="stylesheet" href="css/general-d2580039.css" />
+    <link rel="stylesheet" href="highlight-36dc0587.css" />
+    <meta property="og:title" content="Basis - Neut Programming Language" />
+    <meta property="og:description" content="A functional programming language with static memory management." />
+    <meta property="og:url" content="https://vekatze.github.io/neut/basis.md" />
+    <meta property="og:type" content="article" />
+  </head>
+  <body>
+    <div id="body-container">
+      <header id="menu-bar">
+        <h1 class="menu-title">
+          <a href="overview.html">
+            Neut Programming Language
+          </a>
+        </h1>
+
+        <div class="right-buttons">
+            <a href="https://github.com/vekatze/neut" class="menubar-item">
+              <span>GitHub</span>
+            </a>
+        </div>
+      </header>
+      <div id="content-box">
+        <aside id="sidebar">
+          <nav class="sidebar-scrollbox">
+            <ol class="chapter"><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="overview.html"><strong aria-hidden="true">1.</strong> Overview</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="installation.html"><strong aria-hidden="true">2.</strong> Installation</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="tutorial.html"><strong aria-hidden="true">3.</strong> Tutorial</a></span><ol class="section"><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="modules-and-sources.html"><strong aria-hidden="true">3.1.</strong> Modules and Sources</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="programming-in-neut.html"><strong aria-hidden="true">3.2.</strong> Programming in Neut</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="static-memory-management.html"><strong aria-hidden="true">3.3.</strong> Static Memory Management</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="modality-and-memory.html"><strong aria-hidden="true">3.4.</strong> Modality and Memory</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="modal-metaprogramming.html"><strong aria-hidden="true">3.5.</strong> Modal Metaprogramming</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="further-examples.html"><strong aria-hidden="true">3.6.</strong> Further Examples</a></span></li></ol><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="language-reference.html"><strong aria-hidden="true">4.</strong> Language Reference</a></span><ol class="section"><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="commands.html"><strong aria-hidden="true">4.1.</strong> Commands</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="modules.html"><strong aria-hidden="true">4.2.</strong> Modules</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="statements.html"><strong aria-hidden="true">4.3.</strong> Statements</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="terms.html"><strong aria-hidden="true">4.4.</strong> Terms</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="primitives.html"><strong aria-hidden="true">4.5.</strong> Primitives</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="basis.html"><strong aria-hidden="true">4.6.</strong> Basis</a></span></li></ol><li class="chapter-item expanded "><li class="part-title">Appendix</li></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="manual-installation.html"><strong aria-hidden="true">5.</strong> Manual Installation</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="development-environment.html"><strong aria-hidden="true">6.</strong> Development Environment</a></span><ol class="section"><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="lsp-showcase.html"><strong aria-hidden="true">6.1.</strong> LSP Showcase</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="rapid-prototyping.html"><strong aria-hidden="true">6.2.</strong> Rapid Prototyping</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="editor-setup.html"><strong aria-hidden="true">6.3.</strong> Editor Setup</a></span></li></ol><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="on-executing-types.html"><strong aria-hidden="true">7.</strong> On Executing Types</a></span></li></ol>
+          </nav>
+        </aside>
+
+        <main id="content" tabindex="0">
+          <article id="content-inner">
+            <h1 id="basis"><a class="header" href="#basis">Basis</a></h1>
+<h2 id="table-of-contents"><a class="header" href="#table-of-contents">Table of Contents</a></h2>
+<ul>
+<li><a href="#on-executing-types">On Executing Types</a></li>
+<li><a href="#free-malloc-canceling">Free-Malloc Canceling</a></li>
+<li><a href="#malloc-free-canceling">Malloc-Free Canceling</a></li>
+<li><a href="#order-of-memory-optimizations">Order of Memory Optimizations</a></li>
+<li><a href="#name-resolution">Name Resolution</a></li>
+<li><a href="#leading-bars-and-trailing-commas">Leading Bars and Trailing Commas</a></li>
+<li><a href="#compiler-configuration">Compiler Configuration</a></li>
+<li><a href="#other-basic-facts">Other Basic Facts</a></li>
+</ul>
+<h2 id="on-executing-types"><a class="header" href="#on-executing-types">On Executing Types</a></h2>
+<p>A type in Neut is compiled into a pointer to a binary function like the following (pseudocode):</p>
+<pre><code class="language-neut">define discard-or-copy-value(action-selector, value) {
+  if eq-int(action-selector, 0) {
+    discard-value(value);
+    Unit
+  } else {
+    let new-value = copy-value(value);
+    new-value
+  }
+}
+</code></pre>
+<p>These functions are then used to discard/copy values when necessary.</p>
+<h3 id="discarding-values"><a class="header" href="#discarding-values">Discarding Values</a></h3>
+<p>Let's see how types are executed when discarding values. For example, consider the following code:</p>
+<pre><code class="language-neut">define foo(xs: list(int)) -&gt; unit {
+  Unit
+}
+</code></pre>
+<p>Note that the variable <code>xs</code> isn't used. Because of that, the compiler translates the code above into the following (pseudocode; won't typecheck):</p>
+<pre><code class="language-neut">define foo(xs: list(int)) -&gt; unit {
+  let f = list(int);
+  f(0, xs); // passing `0` to discard `xs`
+  Unit
+}
+</code></pre>
+<p>Note that the above example executes the type <code>list(int)</code> as a function.</p>
+<h3 id="copying-values"><a class="header" href="#copying-values">Copying Values</a></h3>
+<p>Let's see how types are executed when copying values. For example, consider the following code:</p>
+<pre><code class="language-neut">define foo(!xs: list(int)) -&gt; unit {
+  some-func(xs, xs)
+}
+</code></pre>
+<p>Note that the variable <code>xs</code> is used twice. Because of that, the compiler translates the above code into the following (pseudocode; won't typecheck):</p>
+<pre><code class="language-neut">define foo(!xs: list(int)) -&gt; unit {
+  let f = list(int);
+  let xs-clone = f(1, xs); // passing `1` to copy `xs`
+  some-func(xs-clone, xs)
+}
+</code></pre>
+<p>Note that the above example executes the type <code>list(int)</code> as a function.</p>
+<p>You must prefix a variable with <code>!</code> at its definition site if the variable may need to be copied. Likewise, if a free variable captured by a term-level <code>define</code> cannot be copied for free, that free variable must have been defined with the <code>!</code> prefix.</p>
+<p>The prefix <code>!</code> is unnecessary if the variable can be copied for free.</p>
+<h3 id="on-immediate-values"><a class="header" href="#on-immediate-values">On Immediate Values</a></h3>
+<p>We don't have to discard immediates like integers or floats because their internal representations don't depend on memory-related operations like <code>malloc</code> or <code>free</code>. Because of that, "discarding" immediate values does nothing. Also, "copying" immediate values means reusing the original values.</p>
+<p>More specifically, the type of an immediate is compiled into a pointer to the following function (pseudocode):</p>
+<pre><code class="language-neut">inline discard-or-copy-immediate(selector, value) {
+  if eq-int(selector, 0) {
+    0     // discard: we have nothing to do on `value`
+  } else {
+    value // copy: we can simply reuse the immediate `value`
+  }
+}
+</code></pre>
+<p>These fake discard/copy operations are optimized away at compile time.</p>
+<p>Also, this function is internally called <code>"base.#.imm"</code>. Try compiling your project as follows:</p>
+<pre><code class="language-sh">neut build TARGET --emit llvm --skip-link
+</code></pre>
+<p>Then, take a peek at the <code>build</code> directory. You'll find the name here and there.</p>
+<div class="info-block">
+<p>Since every type is translated into a pointer to a function, a type is an immediate value. Thus, <code>type</code> is compiled into <code>base.#.imm</code>.</p>
+</div>
+
+<h2 id="free-malloc-canceling"><a class="header" href="#free-malloc-canceling">Free-Malloc Canceling</a></h2>
+<p>Thanks to its static nature, memory allocation in Neut can sometimes be optimized away. Consider the following code:</p>
+<pre><code class="language-neut">data int-list {
+| Nil
+| Cons(int, int-list)
+}
+
+// [1, 5, 9] =&gt; [2, 6, 10]
+define increment(xs: int-list) -&gt; int-list {
+  match xs {
+  | Nil =&gt;
+    Nil
+  // ↓ the `Cons` clause
+  | Cons(x, rest) =&gt;
+    Cons(add-int(x, 1), increment(rest))
+  }
+}
+</code></pre>
+<p>The expected behavior of the <code>Cons</code> clause above would be something like the following:</p>
+<ol>
+<li>obtain <code>x</code> and <code>rest</code> from <code>xs</code></li>
+<li><code>free</code> the outer tuple of <code>xs</code></li>
+<li>calculate <code>add-int(x, 1)</code> and <code>increment(rest)</code></li>
+<li>allocate a memory region using <code>malloc</code> to hold the result</li>
+<li>store the calculated values to the pointer and return it</li>
+</ol>
+<p>However, since the size of <code>Cons(x, rest)</code> and <code>Cons(add-int(x, 1), increment(rest))</code> is known to be the same at compile time, the pair of <code>free</code> and <code>malloc</code> can be optimized away, as follows:</p>
+<ol>
+<li>obtain <code>x</code> and <code>rest</code> from <code>xs</code></li>
+<li>calculate <code>add-int(x, 1)</code> and <code>increment(rest)</code></li>
+<li>store the calculated values to <code>xs</code> (overwrite)</li>
+</ol>
+<p>Neut performs this optimization. When a <code>free</code> is required, Neut looks for a later <code>malloc</code> whose allocation can fit in the freed region and optimizes away such a pair if one exists. The resulting assembly code thus performs in-place updates.</p>
+<h3 id="size-matching"><a class="header" href="#size-matching">Size Matching</a></h3>
+<p>A known-size <code>free</code> can be canceled with a later known-size <code>malloc</code> when the freed region is large enough for the allocation.</p>
+<p>For example, the following lowered pseudocode can be optimized because the sizes are the same:</p>
+<pre><code class="language-neut">free(p, 16);
+let q = malloc(16);
+cont
+
+// ↓
+
+let q = p;
+cont
+</code></pre>
+<p>The next one can also be optimized because the freed region is larger than the later allocation:</p>
+<pre><code class="language-neut">free(p, 16);
+let q = malloc(8);
+cont
+
+// ↓
+
+let q = p;
+cont
+</code></pre>
+<h3 id="search-order"><a class="header" href="#search-order">Search Order</a></h3>
+<p>When there are multiple possible allocations in the same lowered continuation, the freed region is reused for the earlier suitable allocation.</p>
+<p>For example, in the following lowered pseudocode, the region pointed to by <code>p</code> is reused for <code>q</code>:</p>
+<pre><code class="language-neut">free(p, 16);
+let q = malloc(16);
+let r = malloc(16);
+cont
+
+// ↓
+
+let q = p;
+let r = malloc(16);
+cont
+</code></pre>
+<p>The compiler doesn't skip <code>q</code> and reuse <code>p</code> for <code>r</code>, since <code>q</code> is already a suitable allocation.</p>
+<p>The compiler prefers exact size matches over merely compatible ones. Thus, in the following case, the region pointed to by <code>p</code> is reused for <code>r</code>:</p>
+<pre><code class="language-neut">free(p, 16);
+let q = malloc(8);
+let r = malloc(16);
+cont
+
+// ↓
+
+let q = malloc(8);
+let r = p;
+cont
+</code></pre>
+<h3 id="free-malloc-canceling-and-branching"><a class="header" href="#free-malloc-canceling-and-branching">Free-Malloc Canceling and Branching</a></h3>
+<p>This optimization works across branches. For example, consider the following:</p>
+<pre><code class="language-neut">// (an `insert` function in bubble sort)
+define insert(v: int, xs: int-list) -&gt; int-list {
+  match xs {
+  | Nil =&gt;
+    // ...
+  | Cons(y, ys) =&gt;           // (X)
+    if gt-int(v, y) {
+      Cons(y, insert(v, ys)) // (Y)
+    } else {
+      Cons(v, Cons(y, ys))   // (Z)
+    }
+  }
+}
+</code></pre>
+<p>At point <code>(X)</code>, <code>free</code> against <code>xs</code> is required. However, this <code>free</code> can be canceled since suitable <code>malloc</code>s can be found in all the reachable branches (here, <code>(Y)</code> and <code>(Z)</code>). Thus, in the code above, the deallocation of <code>xs</code> at <code>(X)</code> is removed, and the memory region of <code>xs</code> is reused at <code>(Y)</code> and <code>(Z)</code>, resulting in an in-place update of <code>xs</code>.</p>
+<p>On the other hand, consider rewriting the code above into something like the following:</p>
+<pre><code class="language-neut">define foo(v: int, xs: int-list) -&gt; int-list {
+  match xs {
+  | Nil =&gt;
+    // ...
+  | Cons(y, ys) =&gt;         // (X')
+    if gt-int(v, y) {
+      Nil                  // (Y')
+    } else {
+      Cons(v, Cons(y, ys)) // (Z')
+    }
+  }
+}
+</code></pre>
+<p>At this point, the <code>free</code> against <code>xs</code> at <code>(X')</code> can't be optimized away since there is a branch (namely, <code>(Y')</code>) that doesn't perform a suitable <code>malloc</code>.</p>
+<p>The same rule is also applied at branch joins. If a later <code>malloc</code> appears after a branch, and each reachable branch frees a suitable region before reaching the join, Neut can pass those freed regions through the join and reuse them for that later <code>malloc</code>. Unreachable branches do not prevent this optimization.</p>
+<h2 id="malloc-free-canceling"><a class="header" href="#malloc-free-canceling">Malloc-Free Canceling</a></h2>
+<p>Neut also performs the opposite optimization. If a region allocated by <code>malloc</code> does not escape and is eventually deallocated by <code>free</code>, the compiler replaces that heap allocation with a stack allocation.</p>
+<p>As a simple example, consider the following code:</p>
+<pre><code class="language-neut">define foo() -&gt; int {
+  let ptr = malloc(8);
+  store-int(42, ptr);
+  let value = load-int(ptr);
+  free(ptr);
+  value
+}
+</code></pre>
+<p>After optimization, this behaves like the following pseudocode:</p>
+<pre><code class="language-neut">define foo() -&gt; int {
+  let ptr = alloca(8);
+  store-int(42, ptr);
+  let value = load-int(ptr);
+  value
+}
+</code></pre>
+<p>That is, the compiler removes the <code>malloc</code>/<code>free</code> pair and uses a stack slot instead.</p>
+<p>This optimization can also work through branch joins. If each reachable branch creates a temporary allocation and the joined result is later freed without escaping, those allocations are candidates for stack allocation.</p>
+<h2 id="order-of-memory-optimizations"><a class="header" href="#order-of-memory-optimizations">Order of Memory Optimizations</a></h2>
+<p>Malloc-free canceling is applied before free-malloc canceling. For example, consider the following pseudocode:</p>
+<pre><code class="language-neut">let tmp = malloc(8);
+store-int(42, tmp);
+let n = load-int(tmp);
+free(tmp, 8);
+free(old, 16);
+let result = malloc(16);
+cont
+</code></pre>
+<p>Malloc-free canceling first rewrites <code>tmp</code> into a stack slot:</p>
+<pre><code class="language-neut">let tmp = alloca(8);
+store-int(42, tmp);
+let n = load-int(tmp);
+free(old, 16);
+let result = malloc(16);
+cont
+</code></pre>
+<p>Then, free-malloc canceling rewrites the later allocation so that <code>result</code> uses the region pointed to by <code>old</code>:</p>
+<pre><code class="language-neut">let tmp = alloca(8);
+store-int(42, tmp);
+let n = load-int(tmp);
+let result = old;
+cont
+</code></pre>
+<p>These optimizations are applied within each definition. They do not directly cancel a <code>malloc</code> in one definition with a <code>free</code> in another definition. This is why destination-passing style can matter: it can move the relevant allocation and deallocation into the same definition.</p>
+<h2 id="name-resolution"><a class="header" href="#name-resolution">Name Resolution</a></h2>
+<h3 id="resolving-module-aliases"><a class="header" href="#resolving-module-aliases">Resolving Module Aliases</a></h3>
+<p>Let's see how the name of a module alias is resolved. Here, the name of a module alias is something like the <code>core</code> in <code>core.bool.and</code>:</p>
+<pre><code class="language-neut">import {
+  core.bool,
+}
+
+define use-external-module-function() -&gt; bool {
+  let value = core.bool.and(True, False);
+  ...
+}
+</code></pre>
+<p>When compiling a module, the compiler reads the field <code>dependency</code> in <code>module.ens</code> and adds correspondences like the following to its internal state:</p>
+<pre><code class="language-neut">// alias =&gt; (the digest of the library)
+core =&gt; "jIx5FxfoymZ-X0jLXGcALSwK4J7NlR1yCdXqH2ij67o"
+foo-module =&gt; "JEpjuzZ0rlqxiVuCnD000jEKIA_Y6ku1L3J139h3M6Q"
+bar-module =&gt; "zptXghmyD5druBl8kx2Qrei6O6fDsKCA7z2KoHp1aqA"
+...
+</code></pre>
+<p>The compiler then resolves aliases as follows:</p>
+<pre><code class="language-text">core.bool.and
+
+↓
+
+jIx5FxfoymZ-X0jLXGcALSwK4J7NlR1yCdXqH2ij67o.bool.and
+
+--------------
+
+foo-module.path.to.some.file.my-function
+
+↓
+
+JEpjuzZ0rlqxiVuCnD000jEKIA_Y6ku1L3J139h3M6Q.path.to.some.file.my-function
+
+--------------
+
+...
+</code></pre>
+<h3 id="resolving-this"><a class="header" href="#resolving-this">Resolving <code>this</code></a></h3>
+<p>Let's see how <code>this</code> is resolved. Here, <code>this</code> is a component of a global variable, as in the following example:</p>
+<pre><code class="language-neut">import {
+  this.path.to.file,
+}
+
+define use-my-function() -&gt; unit {
+  let value = this.path.to.file.my-function();
+  ...
+}
+</code></pre>
+<p>The first thing to note here is that every module is marked as "main" or "library" during compilation. The main module is the module in which <code>neut build</code> is executed. Library modules are all the other modules that are necessary for compilation.</p>
+<p>All the occurrences of <code>this</code> in the main module are kept intact during compilation. Thus, the resulting assembly file contains symbols like <code>this.foo.bar</code>.</p>
+<p>On the other hand, all occurrences of <code>this</code> in a library module are resolved into their corresponding digests. More specifically, when processing a library module, the compiler adds correspondences like the following:</p>
+<pre><code class="language-neut">// this =&gt; (the digest of the library)
+this =&gt; "jIx5FxfoymZ-X0jLXGcALSwK4J7NlR1yCdXqH2ij67o"
+</code></pre>
+<p>The compiler then resolves <code>this</code> as follows:</p>
+<pre><code class="language-text">this.string.io.get-line
+
+↓
+
+jIx5FxfoymZ-X0jLXGcALSwK4J7NlR1yCdXqH2ij67o.string.io.get-line
+</code></pre>
+<p>Thus, the resulting assembly file contains symbols like these.</p>
+<h2 id="leading-bars-and-trailing-commas"><a class="header" href="#leading-bars-and-trailing-commas">Leading Bars and Trailing Commas</a></h2>
+<h3 id="comma-separated-sequences-and-sequences"><a class="header" href="#comma-separated-sequences-and-sequences">Comma-Separated Sequences (And-Sequences)</a></h3>
+<p>Every comma-separated sequence like <code>a, b, c</code> can have a trailing comma like <code>a, b, c,</code>.</p>
+<p>If a comma-separated sequence has a trailing comma, the sequence is formatted vertically by the built-in formatter.</p>
+<h3 id="bar-separated-sequences-or-sequences"><a class="header" href="#bar-separated-sequences-or-sequences">Bar-Separated Sequences (Or-Sequences)</a></h3>
+<p>Every bar-separated sequence like <code>a | b | c</code> can have a leading bar like <code>| a | b | c</code>.</p>
+<p>If a bar-separated sequence has a leading bar, the sequence is formatted vertically by the built-in formatter.</p>
+<h2 id="compiler-configuration"><a class="header" href="#compiler-configuration">Compiler Configuration</a></h2>
+<p>The behavior of the compiler can be adjusted using the following environment variables:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Environment Variable</th><th>Meaning</th></tr>
+</thead>
+<tbody>
+<tr><td><code>NEUT_CLANG</code></td><td>the command to call <code>clang</code></td></tr>
+<tr><td><code>NEUT_CORE_MODULE_DIGEST</code></td><td>the digest of the core module</td></tr>
+<tr><td><code>NEUT_CORE_MODULE_URL</code></td><td>the URL of the core module</td></tr>
+</tbody>
+</table>
+</div>
+<p>The default values are as follows:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Environment Variable</th><th>Default Value</th></tr>
+</thead>
+<tbody>
+<tr><td><code>NEUT_CLANG</code></td><td><code>clang</code></td></tr>
+<tr><td><code>NEUT_CORE_MODULE_DIGEST</code></td><td>(undefined; you must set one)</td></tr>
+<tr><td><code>NEUT_CORE_MODULE_URL</code></td><td>(undefined; you must set one)</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="other-basic-facts"><a class="header" href="#other-basic-facts">Other Basic Facts</a></h2>
+<ul>
+<li>Neut is call-by-value</li>
+<li>Neut is impure</li>
+<li>The type of <code>main</code> must be <code>() -&gt; unit</code></li>
+<li>The compiler has built-in references to names under <code>core</code></li>
+<li>Syntactic constructs like <code>List[1, 2, 3]</code> depend on functions in <code>core</code></li>
+</ul>
+
+            <footer id="footer-paginator">
+              <a rel="prev" href="primitives.html" class="nav previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                ← Previous Page
+              </a>
+
+              <div id="footer-spacer"></div>
+
+              <a rel="next" href="manual-installation.html" class="nav next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                Next Page →
+              </a>
+            </footer>
+          </article>
+          <div id="footer-wrapper">
+            <footer id="footer-nav">
+              <ol class="chapter"><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="overview.html"><strong aria-hidden="true">1.</strong> Overview</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="installation.html"><strong aria-hidden="true">2.</strong> Installation</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="tutorial.html"><strong aria-hidden="true">3.</strong> Tutorial</a></span><ol class="section"><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="modules-and-sources.html"><strong aria-hidden="true">3.1.</strong> Modules and Sources</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="programming-in-neut.html"><strong aria-hidden="true">3.2.</strong> Programming in Neut</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="static-memory-management.html"><strong aria-hidden="true">3.3.</strong> Static Memory Management</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="modality-and-memory.html"><strong aria-hidden="true">3.4.</strong> Modality and Memory</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="modal-metaprogramming.html"><strong aria-hidden="true">3.5.</strong> Modal Metaprogramming</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="further-examples.html"><strong aria-hidden="true">3.6.</strong> Further Examples</a></span></li></ol><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="language-reference.html"><strong aria-hidden="true">4.</strong> Language Reference</a></span><ol class="section"><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="commands.html"><strong aria-hidden="true">4.1.</strong> Commands</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="modules.html"><strong aria-hidden="true">4.2.</strong> Modules</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="statements.html"><strong aria-hidden="true">4.3.</strong> Statements</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="terms.html"><strong aria-hidden="true">4.4.</strong> Terms</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="primitives.html"><strong aria-hidden="true">4.5.</strong> Primitives</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="basis.html"><strong aria-hidden="true">4.6.</strong> Basis</a></span></li></ol><li class="chapter-item expanded "><li class="part-title">Appendix</li></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="manual-installation.html"><strong aria-hidden="true">5.</strong> Manual Installation</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="development-environment.html"><strong aria-hidden="true">6.</strong> Development Environment</a></span><ol class="section"><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="lsp-showcase.html"><strong aria-hidden="true">6.1.</strong> LSP Showcase</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="rapid-prototyping.html"><strong aria-hidden="true">6.2.</strong> Rapid Prototyping</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="editor-setup.html"><strong aria-hidden="true">6.3.</strong> Editor Setup</a></span></li></ol><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="on-executing-types.html"><strong aria-hidden="true">7.</strong> On Executing Types</a></span></li></ol>
+            </footer>
+          </div>
+        </main>
+      </div>
+
+
+      <script src="highlight-79d26f89.js"></script>
+      <script src="book-138bd6c0.js"></script>
+    </div>
+  </body>
+</html>

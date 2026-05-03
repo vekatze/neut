@@ -1,0 +1,34 @@
+name: Publish Book
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # To push a branch
+      pull-requests: write  # To create a PR from that branch
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+        ref: main
+    - name: Install mdbook
+      run: |
+        mkdir mdbook
+        curl -sSL https://github.com/rust-lang/mdBook/releases/download/v0.5.2/mdbook-v0.5.2-x86_64-unknown-linux-gnu.tar.gz | tar -xz --directory=./mdbook
+        echo `pwd`/mdbook >> $GITHUB_PATH
+    - name: Publish GitHub Pages
+      run: |
+        cd book
+        mdbook build
+        git worktree add gh-pages
+        git config user.name "Publish from CI"
+        git config user.email ""
+        cd gh-pages
+        git update-ref -d refs/heads/gh-pages
+        rm -rf *
+        mv ../dist/* .
+        git add .
+        git commit -m "Publish $GITHUB_SHA to gh-pages"
+        git push --force --set-upstream origin gh-pages

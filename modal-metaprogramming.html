@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Modal Metaprogramming - Neut Programming Language</title>
+    <meta name="description" content="A functional programming language with static memory management." />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="favicon-de23e50b.svg">
+    <link rel="stylesheet" href="css/general-d2580039.css" />
+    <link rel="stylesheet" href="highlight-36dc0587.css" />
+    <meta property="og:title" content="Modal Metaprogramming - Neut Programming Language" />
+    <meta property="og:description" content="A functional programming language with static memory management." />
+    <meta property="og:url" content="https://vekatze.github.io/neut/modal-metaprogramming.md" />
+    <meta property="og:type" content="article" />
+  </head>
+  <body>
+    <div id="body-container">
+      <header id="menu-bar">
+        <h1 class="menu-title">
+          <a href="overview.html">
+            Neut Programming Language
+          </a>
+        </h1>
+
+        <div class="right-buttons">
+            <a href="https://github.com/vekatze/neut" class="menubar-item">
+              <span>GitHub</span>
+            </a>
+        </div>
+      </header>
+      <div id="content-box">
+        <aside id="sidebar">
+          <nav class="sidebar-scrollbox">
+            <ol class="chapter"><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="overview.html"><strong aria-hidden="true">1.</strong> Overview</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="installation.html"><strong aria-hidden="true">2.</strong> Installation</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="tutorial.html"><strong aria-hidden="true">3.</strong> Tutorial</a></span><ol class="section"><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="modules-and-sources.html"><strong aria-hidden="true">3.1.</strong> Modules and Sources</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="programming-in-neut.html"><strong aria-hidden="true">3.2.</strong> Programming in Neut</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="static-memory-management.html"><strong aria-hidden="true">3.3.</strong> Static Memory Management</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="modality-and-memory.html"><strong aria-hidden="true">3.4.</strong> Modality and Memory</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="modal-metaprogramming.html"><strong aria-hidden="true">3.5.</strong> Modal Metaprogramming</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="further-examples.html"><strong aria-hidden="true">3.6.</strong> Further Examples</a></span></li></ol><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="language-reference.html"><strong aria-hidden="true">4.</strong> Language Reference</a></span><ol class="section"><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="commands.html"><strong aria-hidden="true">4.1.</strong> Commands</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="modules.html"><strong aria-hidden="true">4.2.</strong> Modules</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="statements.html"><strong aria-hidden="true">4.3.</strong> Statements</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="terms.html"><strong aria-hidden="true">4.4.</strong> Terms</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="primitives.html"><strong aria-hidden="true">4.5.</strong> Primitives</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="basis.html"><strong aria-hidden="true">4.6.</strong> Basis</a></span></li></ol><li class="chapter-item expanded "><li class="part-title">Appendix</li></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="manual-installation.html"><strong aria-hidden="true">5.</strong> Manual Installation</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="development-environment.html"><strong aria-hidden="true">6.</strong> Development Environment</a></span><ol class="section"><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="lsp-showcase.html"><strong aria-hidden="true">6.1.</strong> LSP Showcase</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="rapid-prototyping.html"><strong aria-hidden="true">6.2.</strong> Rapid Prototyping</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="editor-setup.html"><strong aria-hidden="true">6.3.</strong> Editor Setup</a></span></li></ol><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="on-executing-types.html"><strong aria-hidden="true">7.</strong> On Executing Types</a></span></li></ol>
+          </nav>
+        </aside>
+
+        <main id="content" tabindex="0">
+          <article id="content-inner">
+            <h1 id="modal-metaprogramming"><a class="header" href="#modal-metaprogramming">Modal Metaprogramming</a></h1>
+<p>Here, we'll see how to interact with the code type <code>'a</code>, which enables metaprogramming.</p>
+<h2 id="table-of-contents"><a class="header" href="#table-of-contents">Table of Contents</a></h2>
+<ul>
+<li><a href="#stages-and-the-code-modality">Stages and the Code Modality</a></li>
+<li><a href="#top-level-meta-functions">Top-Level Meta Functions</a></li>
+<li><a href="#compile-time-primitives">Compile-Time Primitives</a></li>
+<li><a href="#more-tools-for-code">More Tools for Code</a></li>
+</ul>
+<h2 id="stages-and-the-code-modality"><a class="header" href="#stages-and-the-code-modality">Stages and the Code Modality</a></h2>
+<p>Neut provides primitives that can only be used at compile time. By using them, we can perform special computations that are not available in ordinary runtime code.</p>
+<p>To describe such compile-time parts of a program, Neut has the code type <code>'a</code> and the concept of <em>stages</em>. They can be understood in much the same way as <code>+a</code> and layers.</p>
+<h3 id="creating-and-using-code"><a class="header" href="#creating-and-using-code">Creating and Using Code</a></h3>
+<p>Given a term <code>e: a</code>, we can construct a term <code>quote {e}: 'a</code> as follows:</p>
+<pre><code class="language-neut">// stage n + 1
+quote {
+  // stage n
+  e
+}
+</code></pre>
+<p>Conversely, given a term <code>e: 'a</code>, we can construct a term <code>unquote {e}: a</code> as follows:</p>
+<pre><code class="language-neut">// stage n
+unquote {
+  // stage n + 1
+  e
+}
+</code></pre>
+<p>Every term in Neut has an integer called a stage. A variable defined at stage n can only be used at the same stage. For example, the following code is invalid because the variable <code>x</code> is defined at stage 0 but used at stage -1:</p>
+<pre><code class="language-neut">define bar() -&gt; 'int {
+  // here is stage 0 (The body of a `define` starts at stage 0)
+  let x = 42; // ← `x` is defined at stage 0
+  quote {
+    // here is stage -1
+    x // ← Error: `x` is used at stage -1 (≠ 0)
+  }
+}
+</code></pre>
+<p>You can use <code>quote</code> and <code>unquote</code> as follows:</p>
+<pre><code class="language-neut">define use-code-1() -&gt; int {
+  // stage 0
+  unquote {
+    // stage 1
+    quote {
+      // stage 0
+      10
+    }
+  }
+}
+
+define use-code-2(x: 'int) -&gt; 'int {
+  // stage 0
+  quote {
+    // stage -1
+    unquote {
+      // stage 0
+      x
+    }
+  }
+}
+</code></pre>
+<h2 id="top-level-meta-functions"><a class="header" href="#top-level-meta-functions">Top-Level Meta Functions</a></h2>
+<p>The language has two statements for top-level meta functions: <code>inline-meta</code> and <code>define-meta</code>.</p>
+<h3 id="inline-meta"><a class="header" href="#inline-meta"><code>inline-meta</code></a></h3>
+<p><code>inline-meta</code> is the simpler one. This is basically the same as <code>inline</code> except that it starts at stage 1, not 0:</p>
+<pre><code class="language-neut">inline-meta duplicate(x: 'int) -&gt; 'pair(int, int) {
+  // stage 1
+  quote {
+    // stage 0
+    let y = unquote {x};
+    Pair(y, y)
+  }
+}
+</code></pre>
+<p>You can also define recursive functions using <code>inline-meta</code>:</p>
+<pre><code class="language-neut">inline-meta calculate-length&lt;a&gt;(xs: list(a)) -&gt; int {
+  match xs {
+  | Nil =&gt;
+    0
+  | Cons(_, ys) =&gt;
+    add-int(1, calculate-length(ys))
+  }
+}
+</code></pre>
+<p>The body of <code>inline-meta</code> is reduced only when the body of <code>define</code> or <code>inline</code> is evaluated.</p>
+<h3 id="define-meta"><a class="header" href="#define-meta"><code>define-meta</code></a></h3>
+<p><code>define-meta</code> is useful when generating code recursively.</p>
+<p>A typical situation is that a meta function inspects a type at compile time and generates code by recursively handling its component types (pseudocode):</p>
+<pre><code class="language-neut">define-meta print-data&lt;a&gt;(x: 'a) -&gt; 'unit {
+  match magic inspect-type(a) {
+  | List(t) =&gt;
+    quote {
+      ..
+      print-data(unquote {..}) // recursively generate code for `t`
+      print-data(unquote {..}) // recursively generate code for `list(t)`
+      ..
+    }
+  | _ =&gt;
+    ..
+  }
+}
+</code></pre>
+<p>Naive compile-time evaluation may diverge in such a situation: while generating code for some type, the meta function may need to generate code for the same type again.</p>
+<p><code>define-meta</code> avoids this by first specializing itself to its type arguments and memoizing the result. This memoization is performed on a per-file basis. When the same type arguments appear again, the memoized function is reused.</p>
+<p>To make this work, <code>define-meta</code> requires every explicit parameter to have a code type:</p>
+<pre><code class="language-neut">// valid
+define-meta good&lt;a&gt;(x: 'a) -&gt; 'int {
+  ..
+}
+
+// invalid
+define-meta bad&lt;a&gt;(x: a) -&gt; 'int {
+  ..
+}
+</code></pre>
+<p>Like <code>inline-meta</code>, its body starts at stage 1.</p>
+<h3 id="calling-meta-functions"><a class="header" href="#calling-meta-functions">Calling Meta Functions</a></h3>
+<p>You can call a meta function by writing <code>foo::(bar, baz)</code>. This is the same as:</p>
+<pre><code class="language-neut">unquote {foo(quote {bar}, quote {baz})}
+</code></pre>
+<p>For example, the following two definitions mean the same thing:</p>
+<pre><code class="language-neut">define use-meta() -&gt; pair(int, int) {
+  duplicate::(10)
+}
+
+define use-meta() -&gt; pair(int, int) {
+  unquote {duplicate(quote {10})}
+}
+</code></pre>
+<h2 id="compile-time-primitives"><a class="header" href="#compile-time-primitives">Compile-Time Primitives</a></h2>
+<p>Neut provides some compile-time primitives that can only be used at stage 1 or above, including:</p>
+<ul>
+<li><code>magic inspect-type(a)</code>, which inspects the type <code>a</code> and returns a structured value</li>
+<li><code>magic compile-error(message)</code>, which immediately causes a compile-time error</li>
+</ul>
+<p>Using these primitives, we can write, for example, functions that behave differently depending on the given types, which would be hard to achieve in ordinary runtime code.</p>
+<p>For example, consider the following meta function:</p>
+<pre><code class="language-neut">define-meta eq-simple&lt;a&gt;(x: '&amp;a, y: '&amp;a) -&gt; 'bool {
+  let k = magic inspect-type(a);
+  match k {
+  | Int64 =&gt;
+    quote {
+      let x = magic cast(&amp;a, int64, unquote {x});
+      let y = magic cast(&amp;a, int64, unquote {y});
+      eq-int64(x, y)
+    }
+  | Rune =&gt;
+    quote {
+      let x = magic cast(&amp;a, rune, unquote {x});
+      let y = magic cast(&amp;a, rune, unquote {y});
+      eq-rune(x, y)
+    }
+  | _ =&gt;
+    magic compile-error("eq-simple doesn't support the given type")
+  }
+}
+</code></pre>
+<p>Here, <code>eq-simple</code> inspects <code>a</code> at compile time and chooses the implementation accordingly.</p>
+<p>Thus, when we write</p>
+<pre><code class="language-neut">define use-eq(x: &amp;int, y: &amp;int) -&gt; bool {
+  eq-simple::(x, y)
+}
+</code></pre>
+<p>the compiler can generate integer equality specialized to <code>int</code>, rather than a generic runtime dispatcher.</p>
+<h2 id="more-tools-for-code"><a class="header" href="#more-tools-for-code">More Tools for Code</a></h2>
+<h3 id="embedding-compile-time-results-into-code"><a class="header" href="#embedding-compile-time-results-into-code">Embedding Compile-Time Results into Code</a></h3>
+<p>Sometimes you want to embed a compile-time calculation result into code without changing the current stage. For this, Neut provides <code>promote</code>:</p>
+<pre><code class="language-neut">define-meta make-message&lt;a&gt;() -&gt; 'unit {
+  let t = magic show-type(a);
+  quote {
+    print(unquote {promote {t}});
+    Unit
+  }
+}
+</code></pre>
+<p><code>promote</code> is a variant of <code>quote</code>. The difference lies in the fact that <code>promote</code> doesn't shift stages:</p>
+<pre><code class="language-neut">// stage n
+promote {
+  // stage n
+  ..
+}
+</code></pre>
+<p><code>promote</code> is useful when a compile-time primitive returns a value that should later appear in runtime code.</p>
+
+            <footer id="footer-paginator">
+              <a rel="prev" href="modality-and-memory.html" class="nav previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                ← Previous Page
+              </a>
+
+              <div id="footer-spacer"></div>
+
+              <a rel="next" href="further-examples.html" class="nav next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                Next Page →
+              </a>
+            </footer>
+          </article>
+          <div id="footer-wrapper">
+            <footer id="footer-nav">
+              <ol class="chapter"><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="overview.html"><strong aria-hidden="true">1.</strong> Overview</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="installation.html"><strong aria-hidden="true">2.</strong> Installation</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="tutorial.html"><strong aria-hidden="true">3.</strong> Tutorial</a></span><ol class="section"><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="modules-and-sources.html"><strong aria-hidden="true">3.1.</strong> Modules and Sources</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="programming-in-neut.html"><strong aria-hidden="true">3.2.</strong> Programming in Neut</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="static-memory-management.html"><strong aria-hidden="true">3.3.</strong> Static Memory Management</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="modality-and-memory.html"><strong aria-hidden="true">3.4.</strong> Modality and Memory</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="modal-metaprogramming.html"><strong aria-hidden="true">3.5.</strong> Modal Metaprogramming</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="further-examples.html"><strong aria-hidden="true">3.6.</strong> Further Examples</a></span></li></ol><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="language-reference.html"><strong aria-hidden="true">4.</strong> Language Reference</a></span><ol class="section"><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="commands.html"><strong aria-hidden="true">4.1.</strong> Commands</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="modules.html"><strong aria-hidden="true">4.2.</strong> Modules</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="statements.html"><strong aria-hidden="true">4.3.</strong> Statements</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="terms.html"><strong aria-hidden="true">4.4.</strong> Terms</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="primitives.html"><strong aria-hidden="true">4.5.</strong> Primitives</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="basis.html"><strong aria-hidden="true">4.6.</strong> Basis</a></span></li></ol><li class="chapter-item expanded "><li class="part-title">Appendix</li></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="manual-installation.html"><strong aria-hidden="true">5.</strong> Manual Installation</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="development-environment.html"><strong aria-hidden="true">6.</strong> Development Environment</a></span><ol class="section"><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="lsp-showcase.html"><strong aria-hidden="true">6.1.</strong> LSP Showcase</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="rapid-prototyping.html"><strong aria-hidden="true">6.2.</strong> Rapid Prototyping</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="editor-setup.html"><strong aria-hidden="true">6.3.</strong> Editor Setup</a></span></li></ol><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="on-executing-types.html"><strong aria-hidden="true">7.</strong> On Executing Types</a></span></li></ol>
+            </footer>
+          </div>
+        </main>
+      </div>
+
+
+      <script src="highlight-79d26f89.js"></script>
+      <script src="book-138bd6c0.js"></script>
+    </div>
+  </body>
+</html>
