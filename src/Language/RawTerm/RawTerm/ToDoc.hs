@@ -234,7 +234,7 @@ toDoc term =
         ]
     _ :< NoeticString _ txt -> do
       D.text $ "\"" <> txt <> "\""
-    _ :< RuneIntro _ r -> do
+    _ :< RuneIntro r -> do
       D.text $ "`" <> T.replace "`" "\\`" (RU.asText r) <> "`"
     _ :< Magic c magic -> do
       case magic of
@@ -443,7 +443,7 @@ toDoc term =
     _ :< Admit ->
       D.text "admit"
     _ :< Assert c1 (_, message) c2 c3 (e, c4) -> do
-      let message' = D.text (T.pack (show message))
+      let message' = D.text $ "\"" <> message <> "\""
       decodeKeywordClause "assert" ((c1, (message', c2)), (c3, (toDoc e, c4)))
     _ :< Introspect c1 key c2 clauseList -> do
       PI.arrange

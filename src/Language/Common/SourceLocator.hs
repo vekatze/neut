@@ -2,6 +2,7 @@ module Language.Common.SourceLocator
   ( SourceLocator (..),
     getRelPathText,
     toText,
+    toBaseNameList,
     fromBaseNameList,
     llvmLocator,
     internalLocator,
@@ -22,6 +23,7 @@ import Data.Hashable
 import Data.Text qualified as T
 import GHC.Generics
 import Language.Common.BaseName qualified as BN
+import Language.Common.Const (nsSep)
 import Path
 
 newtype SourceLocator = SourceLocator {reify :: Path Rel File}
@@ -43,7 +45,11 @@ instance Binary SourceLocator where
 -- fixme: parametrize "/"
 toText :: SourceLocator -> T.Text
 toText (SourceLocator sl) =
-  T.replace "/" "." $ T.pack $ toFilePath sl
+  T.replace "/" nsSep $ T.pack $ toFilePath sl
+
+toBaseNameList :: SourceLocator -> [BN.BaseName]
+toBaseNameList sourceLocator =
+  map BN.fromText $ T.splitOn nsSep $ toText sourceLocator
 
 fromBaseNameList :: [BN.BaseName] -> Maybe SourceLocator
 fromBaseNameList baseNameList = do

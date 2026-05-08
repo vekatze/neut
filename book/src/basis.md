@@ -375,7 +375,7 @@ JEpjuzZ0rlqxiVuCnD000jEKIA_Y6ku1L3J139h3M6Q.path.to.some.file.my-function
 
 ### Resolving `this`
 
-Let's see how `this` is resolved. Here, `this` is a component of a global variable, as in the following example:
+Let's see how `this` is resolved. Here, `this` is a part of a global variable, as in the following example:
 
 ```neut
 import {
@@ -410,6 +410,19 @@ jIx5FxfoymZ-X0jLXGcALSwK4J7NlR1yCdXqH2ij67o.string.io.get-line
 ```
 
 Thus, the resulting assembly file contains symbols like these.
+
+### Prefix-Local Names
+
+Top-level names without `_`-prefixed segments are available from any file that imports the file defining them. For the others, the deepest `_`-prefixed segment determines the required source prefix:
+
+| Full name | Required source prefix |
+| --- | --- |
+| `this.a.b._f` | `this.a.b` |
+| `this.a._b.f` | `this.a` |
+| `this._a.b.f` | `this` |
+| `this._a.b._f` | `this._a.b` |
+
+A name can be used from source files in the same module whose dotted source path starts with its required source prefix. For example, the prefix `this.a` covers `source/a.nt` and files below `source/a/`.
 
 ## Leading Bars and Trailing Commas
 

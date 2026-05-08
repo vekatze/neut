@@ -77,7 +77,8 @@ resolveVarOrErr :: H.Handle -> Hint -> T.Text -> App (Either T.Text (DD.Definite
 resolveVarOrErr h m name = do
   localLocator <- liftEither $ LL.reflect m name
   candList <- liftIO $ Locator.getPossibleReferents (H.locatorHandle h) localLocator
-  candList' <- mapM (NameMap.lookup (H.nameMapHandle h) m) candList
+  let currentLocator = Locator.getCurrentGlobalLocator (H.locatorHandle h)
+  candList' <- mapM (NameMap.lookup (H.nameMapHandle h) m currentLocator) candList
   let foundNameList = Maybe.mapMaybe candFilter $ zip candList candList'
   case foundNameList of
     [] ->
@@ -101,7 +102,8 @@ resolveLocator ::
 resolveLocator h m (gl, ll) shouldInsertTag = do
   sgl <- Alias.resolveAlias (H.aliasHandle h) m gl
   let cand = DD.new sgl ll
-  cand' <- NameMap.lookup (H.nameMapHandle h) m cand
+  let currentLocator = Locator.getCurrentGlobalLocator (H.locatorHandle h)
+  cand' <- NameMap.lookup (H.nameMapHandle h) m currentLocator cand
   let foundName = candFilter (cand, cand')
   case foundName of
     Nothing ->
@@ -120,7 +122,8 @@ resolveDefiniteDescription ::
   DD.DefiniteDescription ->
   App GN.GlobalName
 resolveDefiniteDescription h m dd = do
-  cand' <- NameMap.lookup (H.nameMapHandle h) m dd
+  let currentLocator = Locator.getCurrentGlobalLocator (H.locatorHandle h)
+  cand' <- NameMap.lookup (H.nameMapHandle h) m currentLocator dd
   let foundName = candFilter (dd, cand')
   case foundName of
     Nothing ->

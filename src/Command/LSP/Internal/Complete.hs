@@ -26,6 +26,7 @@ import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.Antecedent qualified as Antecedent
 import Kernel.Common.Handle.Global.Env qualified as Env
 import Kernel.Common.Handle.Global.Path qualified as Path
+import Kernel.Common.Handle.Local.Locator qualified as Locator
 import Kernel.Common.LocalVarTree qualified as LVT
 import Kernel.Common.ManageCache qualified as Cache
 import Kernel.Common.Module
@@ -36,11 +37,14 @@ import Kernel.Common.Target
 import Kernel.Common.TopCandidate
 import Kernel.Unravel.Unravel qualified as Unravel
 import Language.Common.BaseName qualified as BN
+import Language.Common.Availability qualified as AV
 import Language.Common.Const (nsSep)
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.Ident.Reify qualified as Ident
 import Language.Common.ModuleAlias qualified as MA
 import Language.Common.ModuleID qualified as MID
+import Language.Common.SourcePrefix qualified as SP
+import Language.Common.StrictGlobalLocator qualified as SGL
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types
 import Language.LSP.VFS (VirtualFile (..), virtualFileText)
@@ -123,15 +127,25 @@ adjustTopCandidate ::
   [(Source, [TopCandidate])] ->
   App [CompletionItem]
 adjustTopCandidate h summaryOrNone currentSource loc prefixSummary candInfo = do
+  currentGlobalLocator <- Locator.constructGlobalLocator currentSource
   fmap concat $ forM candInfo $ \(candSource, candList) -> do
-    revMap <- liftIO $ Antecedent.getReverseMap (antecedentHandle h)
-    locatorOrNone <- getHumanReadableLocator revMap (sourceModule currentSource) candSource
-    case locatorOrNone of
-      Nothing ->
-        return []
-      Just locator -> do
-        let candIsInCurrentSource = sourceFilePath currentSource == sourceFilePath candSource
-        return $ concatMap (topCandidateToCompletionItem summaryOrNone candIsInCurrentSource prefixSummary locator loc) candList
+    candGlobalLocator <- Locator.constructGlobalLocator candSource
+    if not (SP.canImport currentGlobalLocator candGlobalLocator)
+      then return []
+      else do
+        revMap <- liftIO $ Antecedent.getReverseMap (antecedentHandle h)
+        locatorOrNone <- getHumanReadableLocator revMap (sourceModule currentSource) candSource
+        case locatorOrNone of
+          Nothing ->
+            return []
+          Just locator -> do
+            let candIsInCurrentSource = sourceFilePath currentSource == sourceFilePath candSource
+            let candList' = filter (isAvailableCandidate currentGlobalLocator) candList
+            return $ concatMap (topCandidateToCompletionItem summaryOrNone candIsInCurrentSource prefixSummary locator loc) candList'
+
+isAvailableCandidate :: SGL.StrictGlobalLocator -> TopCandidate -> Bool
+isAvailableCandidate currentGlobalLocator topCandidate =
+  AV.allows currentGlobalLocator (dd topCandidate)
 
 identToCompletionItem :: T.Text -> CompletionItem
 identToCompletionItem x = do

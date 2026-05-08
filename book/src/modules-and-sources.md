@@ -9,6 +9,7 @@ In this section, we'll see how to use modules in Neut.
 - [Publishing Modules](#publishing-modules)
 - [Adding Dependency Modules](#adding-dependency-modules)
 - [Importing Files](#importing-files)
+- [Restricting Top-Level Names](#restricting-top-level-names)
 
 ## Basics of Modules
 
@@ -320,3 +321,22 @@ define main() -> unit {
 ```
 
 In other words, the current module is always referred to as `this`.
+
+## Restricting Top-Level Names
+
+The availability of a top-level name is restricted by its segments that start with `_` as follows:
+
+| Full name | Required prefix |
+| --- | --- |
+| `this.a.b._f` | `this.a.b` |
+| `this.a._b.f` | `this.a` |
+| `this._a.b.f` | `this` |
+| `this._a.b._f` | `this._a.b` |
+| `this.a.b.f` | `""` (empty) |
+
+In other words, the deepest `_`-prefixed segment (if any) determines the required source prefix.
+
+For example:
+
+- `this.a._b.f` is available in `source/a.nt` and files below `source/a/`.
+- `this.a.b.f` is available from anywhere.

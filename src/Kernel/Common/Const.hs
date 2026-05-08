@@ -131,17 +131,13 @@ coreVector :: T.Text
 coreVector =
   core <> nsSep <> "vector"
 
-coreRuneRune :: T.Text
-coreRuneRune =
-  core <> nsSep <> "rune" <> nsSep <> "_Rune"
+coreDebugPanic :: T.Text
+coreDebugPanic =
+  core <> nsSep <> "debug" <> nsSep <> "panic"
 
-coreTrickPanic :: T.Text
-coreTrickPanic =
-  core <> nsSep <> "trick" <> nsSep <> "panic"
-
-coreTrickAssert :: T.Text
-coreTrickAssert =
-  core <> nsSep <> "trick" <> nsSep <> "_assert"
+coreDebugAssert :: T.Text
+coreDebugAssert =
+  core <> nsSep <> "debug" <> nsSep <> "assert"
 
 coreBoxEmbody :: T.Text
 coreBoxEmbody =
