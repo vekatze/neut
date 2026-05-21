@@ -1,10 +1,21 @@
 import {
-  core.debug {vet-doc},
-  core.doc {Chunk, Group, Nest, Seq, doc},
-  core.doc.chunk {Chunk-Choose, Chunk-Empty, Chunk-Join, Chunk-Line, Chunk-Style, Chunk-Style-N, chunk},
+  core.doc {
+    Chunk,
+    Chunk-Choose,
+    Chunk-Empty,
+    Chunk-Join,
+    Chunk-Line,
+    Chunk-Style,
+    Chunk-Style-N,
+    Group,
+    Nest,
+    Seq,
+    chunk,
+    doc,
+  },
   core.doc.show {show-doc},
   core.int.io {print-int-line},
-  core.string.io {print-line},
+  core.show.generic {to-doc},
 }
 
 define _simplify-chunk(x: chunk) -> chunk {
@@ -39,7 +50,7 @@ define _simplify-doc(d: doc) -> doc {
 
 inline-meta vet-simple<a>(x: '&a)[ribbon-length: 'int := quote {50}] -> 'unit {
   quote {
-    let tmp = unquote {vet-doc(x)};
+    let tmp = unquote {to-doc(x)};
     pin tmp = _simplify-doc(tmp);
     pin item = show-doc(tmp, unquote {ribbon-length});
     print(item);

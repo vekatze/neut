@@ -1,13 +1,12 @@
 import {
-  core.file {close, open},
-  core.file.flag,
-  core.file.mode {default-file-mode},
+  core.file.access-mode {Read-Write},
+  core.file.descriptor {close, open},
   core.string.io {read, write},
   core.system {system},
 }
 
 define use-file() -> system(unit) {
-  try file = open("./test", core.file.flag.for-rw, default-file-mode);
+  try file = open("./test", Read-Write);
   try _ = write(file, "hey\n");
   try _ = read(file, 1024);
   close(file)
