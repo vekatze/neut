@@ -1,8 +1,8 @@
 import {
   core.list {for-each},
   core.string {replace},
-  sero.common.get {get-string},
-  sero.common.put {put-string},
+  sero.get-kit {get-string},
+  sero.put-kit {put-string},
   sero.sero {Sero, sero},
   this.language.common.base-name {base-name, string-from-base-name},
   this.language.common.const {ns-sep},

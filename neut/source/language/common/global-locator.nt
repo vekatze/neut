@@ -38,7 +38,7 @@ define global-locator-from-string(m: &hint, t: &string) -> app(global-locator) {
   }
 }
 
-define _global-locator-from-base-name-list(m: &hint, xs: list(base-name)) -> app(global-locator) {
+define global-locator-from-base-name-list(m: &hint, xs: list(base-name)) -> app(global-locator) {
   match xs {
   | Nil =>
     raise-error(*m, *"Empty string cannot be converted into a global locator")

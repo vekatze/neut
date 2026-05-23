@@ -1,11 +1,11 @@
 import {
   core.either {map-right},
   core.list {for-each},
-  sero.common.get {get-int64},
-  sero.common.put {put-int64},
+  sero.get-kit {get-int64},
   sero.instance.either {either-sero},
   sero.instance.list {list-sero},
   sero.instance.unit {unit-sero},
+  sero.put-kit {put-int64},
   sero.sero {Sero, sero},
   this.kernel.common.local-var-tree {local-var-tree, local-var-tree-sero},
   this.kernel.common.location-tree {location-tree, location-tree-sero},

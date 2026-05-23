@@ -1,9 +1,7 @@
 import {
-  sero.common.get {get-int64},
-  sero.common.put {put-int64},
-  sero.get-kit {get-kit},
+  sero.get-kit {get-int64, get-kit},
   sero.instance.list {list-sero},
-  sero.put-kit {put-kit},
+  sero.put-kit {put-int64, put-kit},
   sero.sero {Sero, sero},
   this.language.common.data-size {data-size},
   this.language.common.prim-num-size {Int-Size-8, int-size-from-data-size},

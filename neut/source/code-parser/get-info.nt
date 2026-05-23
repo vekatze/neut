@@ -1,9 +1,7 @@
 import {
   this.code-parser.parser {parser-kit},
   this.logger.hint {Hint, hint},
-  zonk.parse {get-point},
-  zonk.point {Point},
-  zonk.zonk-kit {get-context},
+  zonk.parse {Point, get-context, get-point},
 }
 
 inline get-current-hint(k: &parser-kit) -> hint {

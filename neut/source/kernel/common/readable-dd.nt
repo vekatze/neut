@@ -1,7 +1,8 @@
 import {
   core.dictionary {to-list},
+  core.eq.generic {eq-data},
   core.list {find},
-  core.string-builder {append-string, extract, make-string-builder},
+  core.string.builder {append-string, extract, make-string-builder},
   this.kernel.common.module {Dependency, Module, extract-module, main-module, module},
   this.language.common.base-name {string-from-base-name-N},
   this.language.common.const {ns-sep},

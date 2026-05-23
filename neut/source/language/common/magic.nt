@@ -1,8 +1,8 @@
 import {
-  sero.common.get {get-int64},
-  sero.common.put {put-int64},
+  sero.get-kit {get-int64},
   sero.instance.list {list-sero},
   sero.instance.pair {pair-sero},
+  sero.put-kit {put-int64},
   sero.sero {Sero, sero},
   this.language.common.base-low-type {base-low-type, base-low-type-sero},
   this.language.common.external-name {external-name, external-name-sero},

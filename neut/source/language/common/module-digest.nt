@@ -1,7 +1,7 @@
 import {
   core.binary {binary},
-  sero.common.get {get-string},
-  sero.common.put {put-string},
+  sero.get-kit {get-string},
+  sero.put-kit {put-string},
   sero.sero {Sero, sero},
   this.language.common.digest {hash-and-encode},
 }

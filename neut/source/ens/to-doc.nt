@@ -4,18 +4,15 @@ import {
   core.int.show {show-int},
   core.list {fold-right},
   core.string {drop-while},
-  core.string.io {print-line},
   core.string.show {show-string},
   this.ens.ens {E-Bool, E-Dictionary, E-Float, E-Int, E-List, E-String, ens, ens-key, full-ens},
-  this.ens.parse {_parse-ens},
+  this.ens.parse {parse-ens-raw},
   this.pretty-printer.doc {doc, join, join-doc-list, layout, line, make-string},
   this.syntax-tree.block {Block},
   this.syntax-tree.comment {Comment-Item, comment},
   this.syntax-tree.series {for-each},
   this.syntax-tree.series.to-doc,
-  zonk.error {report},
-  zonk.make-parse-error {make-parse-error},
-  zonk.make-zonk-kit {make-zonk-kit},
+  zonk.parse {make-parse-error, make-zonk-kit, report},
 }
 
 define _comment-to-doc(cs: comment) -> list(doc) {
@@ -84,7 +81,7 @@ define zen() -> unit {
       *"{some-key \"hello\", other-key 123, foo {a true, b false,}, bar [true, false], buz [1, 2, 3,]} // test",
       *"test",
     );
-  match _parse-ens(k) {
+  match parse-ens-raw(k) {
   | Left(e) =>
     pin err = report(make-parse-error(k, e));
     print-line(err)

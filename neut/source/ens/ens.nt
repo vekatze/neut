@@ -1,5 +1,6 @@
 import {
   core.bool {all},
+  core.eq.generic {eq-data},
   this.app.app {app},
   this.app.run {raise-error, string-join},
   this.ens.ens-type {ET-Bool, ET-Dictionary, ET-Float, ET-Int, ET-List, ET-String, ens-type, show-ens-type},

@@ -2,7 +2,7 @@ import {
   core.bool {all, any},
   core.list {fold-left-N, for-each, for-each-N, is-empty},
   core.string {replicate},
-  this.pretty-printer.doc {Empty, _is-multi, doc, indent, join, line, make-string, nest},
+  this.pretty-printer.doc {Empty, doc, indent, is-multi-doc, join, line, make-string, nest},
   this.pretty-printer.piece {
     append-comma-if-vertical,
     arrange,
@@ -204,7 +204,7 @@ define _is-vertical-series(s: &series(clause)) -> bool {
         acc
       } else {
         tie Pair(_, Clause(dom, _, cod)) = elem;
-        or(_is-multi(dom), _is-multi(cod))
+        or(is-multi-doc(dom), is-multi-doc(cod))
       }
     });
   any[
@@ -219,7 +219,7 @@ define __is-horizontal-elems(elems: &list(pair(comment, doc))) -> bool {
   | Nil =>
     True
   | Cons(Pair(c, d), rest) =>
-    let is-multi = or(not(is-empty(c)), _is-multi(d));
+    let is-multi = or(not(is-empty(c)), is-multi-doc(d));
     and(is-multi, __is-horizontal-elems(rest))
   }
 }
@@ -229,7 +229,7 @@ define _is-horizontal-elems(elems: &list(pair(comment, doc))) -> bool {
   | Nil =>
     True
   | Cons(Pair(c, d), rest) =>
-    let is-multi = or(not(is-empty(c)), _is-multi(d));
+    let is-multi = or(not(is-empty(c)), is-multi-doc(d));
     if is-multi {
       __is-horizontal-elems(rest)
     } else {
@@ -251,7 +251,7 @@ define _is-horizontal-series(s: &series(doc)) -> bool {
 define _decode-clause-item-vertical(c: clause) -> doc {
   let Clause(dom, delim, cod) = c;
   pin dom = dom;
-  let dom-layout = match _is-multi(dom) {True => inject | False => horizontal};
+  let dom-layout = match is-multi-doc(dom) {True => inject | False => horizontal};
   arrange(List[
     dom-layout(*dom),
     inject(make-string(*delim)),

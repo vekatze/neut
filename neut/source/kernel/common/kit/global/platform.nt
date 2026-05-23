@@ -82,7 +82,7 @@ define _get-clang() -> string {
 
 define _calculate-clang-digest(k: &run-process-kit) -> app(string) {
   let clang = _get-clang();
-  let spec = Process-Spec{process := clang, args := List[*"--version"], cwd := none, input := *""};
+  let spec = Process-Spec{command := clang, args := List[*"--version"], cwd := none, input := *""};
   match run-process(k, spec) {
   | Right(v) =>
     let result on v = hash-and-encode(to-binary(v));

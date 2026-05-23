@@ -1,5 +1,5 @@
 import {
-  core.ref {make-ref, mutate, ref},
+  core.cell {cell, make-cell, mutate},
   this.kernel.common.location-tree {
     File-Loc,
     Foreign,
@@ -22,18 +22,18 @@ import {
 
 data tag-kit {
 | _Tag-Kit(
-    tag-map-ref: ref(location-tree),
+    tag-map-ref: cell(location-tree),
   )
 }
 
 define make-tag-kit() -> tag-kit {
-  let tag-map-ref = make-ref(box {empty-location-tree});
+  let tag-map-ref = make-cell(box {empty-location-tree});
   _Tag-Kit{tag-map-ref}
 }
 
 define get-location-tree(k: tag-kit) -> +location-tree {
   let _Tag-Kit(ref) = k;
-  core.ref.extract(ref)
+  core.cell.extract(ref)
 }
 
 define insert-file-loc(k: &tag-kit, m-use: &hint, name-length: int, m-def: +log-position) -> unit {

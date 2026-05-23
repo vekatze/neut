@@ -1,9 +1,9 @@
 import {
+  core.debug {panic},
   core.string {split},
-  core.string-builder {append-string, make-string-builder, string-builder},
-  core.trick {panic},
-  sero.common.get {get-string},
-  sero.common.put {put-string},
+  core.string.builder {append-string, make-string-builder, string-builder},
+  sero.get-kit {get-string},
+  sero.put-kit {put-string},
   sero.sero {Sero, sero},
   this.app.app {app},
   this.app.run {raise-error},
@@ -33,7 +33,7 @@ import {
     string-from-base-name,
   },
   this.language.common.const {ns-sep},
-  this.language.common.global-locator {_global-locator-from-base-name-list, global-locator},
+  this.language.common.global-locator {global-locator, global-locator-from-base-name-list},
   this.language.common.local-locator {
     local-locator,
     make-local-locator,
@@ -277,9 +277,9 @@ define get-locator-pair(m: &hint, var-string: &string) -> app(pair(global-locato
       append-string(buf, var-string);
       append-string(buf, "` does not contain a global locator");
     };
-    raise-error(*m, core.string-builder.extract(buf))
+    raise-error(*m, core.string.builder.extract(buf))
   | Right(Pair(init-elems, last-elem)) =>
-    try gl = _global-locator-from-base-name-list(m, init-elems);
+    try gl = global-locator-from-base-name-list(m, init-elems);
     let ll = make-local-locator(last-elem);
     Right(Pair(gl, ll))
   }

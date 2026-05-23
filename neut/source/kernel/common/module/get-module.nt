@@ -1,7 +1,7 @@
 import {
   core.dictionary {to-list},
   core.list {for-each-E},
-  core.string-builder {append-string, make-string-builder},
+  core.string.builder {append-string, make-string-builder},
   path.io {is-regular-file},
   this.app.app {app},
   this.app.run {raise-error},
@@ -51,7 +51,7 @@ define get-module(
           append-string(buf, locator-string);
           append-string(buf, "`");
         };
-        raise-error(*h, core.string-builder.extract(buf))
+        raise-error(*h, core.string.builder.extract(buf))
       };
     try !next-module = from-file-path(next-module-file-path);
     insert-to-module-cache-map(*module-kit, next-module-file-path, next-module);

@@ -13,7 +13,7 @@ import {
     Vivid,
     style,
   },
-  core.string-builder {append-ansi, append-string, extract, make-string-builder},
+  core.string.builder {append-ansi, append-string, extract, make-string-builder},
 }
 
 data color-string {
@@ -39,7 +39,7 @@ define packed-N-empty(t: &string) -> color-string {
   Join-TN(t, Empty)
 }
 
-define _unpacked(t: &color-string) -> string {
+define unpacked(t: &color-string) -> string {
   let b = make-string-builder(64);
   let _ on b = {
     let f =
@@ -71,7 +71,7 @@ define _unpacked(t: &color-string) -> string {
   extract(b)
 }
 
-define _unpacked-uncolored(t: &color-string) -> string {
+define unpacked-uncolored(t: &color-string) -> string {
   let b = make-string-builder(256);
   let _ on b = {
     let f =
@@ -127,10 +127,10 @@ define zen() -> unit {
       *"hello",
       Join(Vector[], *"\n", Empty),
     );
-  pin fragment1 = _unpacked(t);
-  pin fragment2 = _unpacked-uncolored(t);
+  pin fragment1 = unpacked(t);
+  pin fragment2 = unpacked-uncolored(t);
   pin t-prime = packed(Vector[Color(Background, Color-16(Vivid, Red)), Italic], *"sample\n");
-  pin fragment3 = _unpacked(t-prime);
+  pin fragment3 = unpacked(t-prime);
   print(fragment1);
   print(fragment2);
   print(fragment3);

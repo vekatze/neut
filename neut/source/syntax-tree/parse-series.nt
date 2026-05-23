@@ -18,9 +18,7 @@ import {
     series,
     singleton,
   },
-  zonk.make-zonk-kit {make-zonk-kit},
-  zonk.parse {get-point, parsed},
-  zonk.point {point},
+  zonk.parse {get-point, make-zonk-kit, parsed, point},
 }
 
 inline _parse-series-sep-trail<a>(

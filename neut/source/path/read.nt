@@ -1,10 +1,8 @@
 import {
   core.binary {binary},
   core.binary.io,
-  core.file {close, open},
-  core.file.descriptor {stdin},
-  core.file.flag {R},
-  core.file.mode {default-file-mode},
+  core.file.access-mode {Read},
+  core.file.descriptor {close, open, stdin},
   core.system {get-error-message, system},
   this.app.app {app},
   this.app.error {new-error-prime},
@@ -24,7 +22,7 @@ define _read-binary-from-stdin() -> system(binary) {
 define _read-binary-from-path(path: &string) -> system(binary) {
   let r = Right(Unit); // fixme
   try _ = r;
-  try fd = open(path, List[R], default-file-mode);
+  try fd = open(path, Read);
   try content = core.binary.io.read(fd, 4096);
   try _ = close(fd);
   Right(content)

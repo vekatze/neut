@@ -1,7 +1,7 @@
 import {
   core.int.show {show-int},
-  sero.common.get {get-int64, get-string},
-  sero.common.put {put-int64, put-string},
+  sero.get-kit {get-int64, get-string},
+  sero.put-kit {put-int64, put-string},
   sero.sero {Sero, sero},
   this.language.common.const {exp-var-prefix, hole-var-prefix},
 }

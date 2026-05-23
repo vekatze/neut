@@ -1,8 +1,7 @@
 import {
   core.vector {push-back, to-list},
   this.syntax-tree.comment {Comment-Item, Inline-Comment, Line-Comment, comment, comment-item, comment-type},
-  zonk.parse {any-rune, chunk, many, optional, parsed, zonk},
-  zonk.zonk-kit {zonk-kit},
+  zonk.parse {any-rune, chunk, many, optional, parsed, zonk, zonk-kit},
 }
 
 alias parser-kit {

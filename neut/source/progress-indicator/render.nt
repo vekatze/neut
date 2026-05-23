@@ -11,19 +11,19 @@ import {
     To-Column,
     Up,
     Vivid,
-    make-ansi-kit-unbuffered,
   },
-  core.cell {borrow, make-cell, modify, mutate},
+  core.ansi.io {make-ansi-kit-unbuffered, write-code},
   core.control {loop},
   core.file.descriptor {stdout},
-  core.foreign {sleep},
   core.intmap {intmap},
+  core.sync.cell {borrow, cell, make-cell, modify, mutate},
+  core.sync.thread {join, spawn, thread},
   core.system {system},
-  core.thread {attach, detach},
+  core.time {sleep},
   this.color.color-kit {color-kit, make-color-kit},
   this.color.print {print-stdout},
   this.progress-indicator.rule {
-    _Progress-Indicator,
+    Progress-Indicator,
     frame,
     next,
     progress-indicator,
@@ -52,15 +52,15 @@ define _clear(pi: &progress-indicator) -> system(unit) {
   let r = Right(Unit); // fixme
   pin k = make-ansi-kit-unbuffered(stdout);
   try _ = r;
-  try _ = core.ansi.write-code(k, Move-Cursor(To-Column(0)));
-  try _ = core.ansi.write-code(k, Erase(Line, From-Cursor));
-  tie _Progress-Indicator{progress} = pi;
+  try _ = write-code(k, Move-Cursor(To-Column(0)));
+  try _ = write-code(k, Erase(Line, From-Cursor));
+  tie Progress-Indicator{progress} = pi;
   case progress {
   | Left(_) =>
     Right(Unit)
   | Right(_) =>
-    try _ = core.ansi.write-code(k, Move-Cursor(Up(1)));
-    try _ = core.ansi.write-code(k, Erase(Line, From-Cursor));
+    try _ = write-code(k, Move-Cursor(Up(1)));
+    try _ = write-code(k, Erase(Line, From-Cursor));
     Right(Unit)
   }
 }
@@ -136,7 +136,7 @@ define start-rendering(k: &progress-indicator-kit) -> renderer {
     }
   });
   let th =
-    detach(() => {
+    spawn(() => {
       _render(k, id, 0)
     });
   _Renderer{id, renderer-thread := th}
@@ -152,14 +152,14 @@ define stop-rendering(k: &progress-indicator-kit, r: renderer) -> unit {
       core.intmap.delete(actives, id)
     }
   });
-  attach(renderer-thread);
+  join(renderer-thread);
 }
 
 define zen() -> unit {
   {
     let color-kit = make-color-kit(True, True);
     let p =
-      _Progress-Indicator{
+      Progress-Indicator{
         working-title := *"Working...",
         completed-title := *"Completed!",
         color := Vector[Color(Foreground, Color-16(Vivid, Green))],
@@ -176,7 +176,7 @@ define zen() -> unit {
   {
     let color-kit = make-color-kit(True, True);
     let p =
-      _Progress-Indicator{
+      Progress-Indicator{
         working-title := *"Working...",
         completed-title := *"Completed!",
         color := Vector[],

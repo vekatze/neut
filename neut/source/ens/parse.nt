@@ -12,12 +12,18 @@ import {
   this.syntax-tree.comment {comment},
   this.syntax-tree.parse-series {parse-series-brace, parse-series-bracket},
   this.syntax-tree.series {extract-N},
-  zonk.error {report},
-  zonk.make-parse-error,
-  zonk.make-zonk-kit {make-zonk-kit},
-  zonk.parse {attempt, get-point, parsed, report-unexpected-input, zonk},
-  zonk.point {Point},
-  zonk.zonk-kit {get-context},
+  zonk.parse {
+    Point,
+    attempt,
+    get-context,
+    get-point,
+    make-parse-error,
+    make-zonk-kit,
+    parsed,
+    report,
+    report-unexpected-input,
+    zonk,
+  },
 }
 
 define _make-hint(k: &parser-kit, line: int, column: int) -> hint {
@@ -121,7 +127,7 @@ inline _parse-string-ens(line: int, column: int) -> zonk(string, pair(ens, comme
 }
 
 nominal {
-  define _parse-ens(k: &parser-kit) -> parsed(pair(ens, comment)),
+  define parse-ens-raw(k: &parser-kit) -> parsed(pair(ens, comment)),
 }
 
 inline _parse-list(
@@ -131,7 +137,7 @@ inline _parse-list(
   let r = Right(Unit); // fixme
   (k) => {
     try _ = r;
-    try Pair(ens-series, c) = parse-series-bracket(k, exact _parse-ens);
+    try Pair(ens-series, c) = parse-series-bracket(k, exact parse-ens-raw);
     let m = _make-hint(k, line, column);
     Right(Pair(E-List(m, ens-series), c))
   }
@@ -144,7 +150,7 @@ define _parse-key-value-pair(
   try _ = r;
   let m = get-current-hint(k);
   try Pair(key, c-lead) = symbol(k);
-  try Pair(value, c-trail) = _parse-ens(k);
+  try Pair(value, c-trail) = parse-ens-raw(k);
   Right(Pair(Pair(c-lead, Pair(Pair(m, key), value)), c-trail))
 }
 
@@ -183,7 +189,7 @@ rule-right _branch-ens {
   },
 }
 
-define _parse-ens(k: &parser-kit) -> parsed(pair(ens, comment)) {
+define parse-ens-raw(k: &parser-kit) -> parsed(pair(ens, comment)) {
   let r = Right(Unit); // fixme
   try _ = r;
   let Point(line, column) = get-point(k);
@@ -253,11 +259,11 @@ define _validate(e: &ens) -> either(+pair(hint, string), unit) {
 }
 
 define parse-ens(k: &parser-kit) -> app(pair(ens, comment)) {
-  match this.ens.parse._parse-ens(k) {
+  match parse-ens-raw(k) {
   | Right(v) =>
     Right(v)
   | Left(e) =>
-    let message = report(zonk.make-parse-error.make-parse-error(k, e));
+    let message = report(make-parse-error(k, e));
     raise-error-prime(message)
   }
 }
@@ -290,9 +296,9 @@ define zen() -> unit {
   pin v = _parse-string-ens(1, 2)(k);
   _vet-result-ens(v);
   pin k = make-zonk-kit(*"{some-key \"hello\", other-key true} // test", *"test");
-  pin v = _parse-ens(k);
+  pin v = parse-ens-raw(k);
   _vet-result-ens(v);
   pin k = make-zonk-kit(*"{some-key \"hello\", other-key true,} // test", *"test");
-  pin v = _parse-ens(k);
+  pin v = parse-ens-raw(k);
   _vet-result-ens(v);
 }

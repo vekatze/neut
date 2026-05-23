@@ -1,7 +1,7 @@
 import {
   core.dictionary {dictionary, from-list},
   core.list {for-each, for-each-EN},
-  core.string-builder {append-string, make-string-builder},
+  core.string.builder {append-string, make-string-builder},
   path.path {drop-last},
   this.app.app {app},
   this.app.run {raise-error},
@@ -78,7 +78,7 @@ import {
   this.path.ensure-file-existence {ensure-directory-existence, ensure-file-existence},
   this.path.read {read-string-from-path},
   this.syntax-tree.series {Brace, Comma, empty-series, extract-N, series},
-  zonk.make-zonk-kit {make-zonk-kit},
+  zonk.parse {make-zonk-kit},
 }
 
 define _interpret-preset-map(s: &series(pair(ens-key, ens))) -> app(dictionary(locator-name, list(base-name))) {
@@ -95,7 +95,9 @@ define _interpret-preset-map(s: &series(pair(ens-key, ens))) -> app(dictionary(l
         });
       Right(Pair(*k, v))
     });
-  Right(core.dictionary.from-list(core.string.ord.as-ord, items))
+  pin ord = core.string.ord.as-ord;
+  let result = core.dictionary.from-list(ord, items);
+  Right(result)
 }
 
 define _interpret-source-locator(e: &ens) -> app(source-locator) {
@@ -151,7 +153,9 @@ define _interpret-target(p: pair(&hint, &series(pair(ens-key, ens)))) -> app(dic
       try clang-option = _interpret-clang-option(v);
       Right(Pair(*k, Target-Summary{entry-point, clang-option}))
     });
-  Right(core.dictionary.from-list(core.string.ord.as-ord, kvs))
+  pin ord = core.string.ord.as-ord;
+  let result = core.dictionary.from-list(ord, kvs);
+  Right(result)
 }
 
 define _interpret-zen-config(e: &ens) -> app(zen-config) {
@@ -166,7 +170,9 @@ define _interpret-static-files(static-file-dict: &series(pair(ens-key, ens))) ->
       try Pair(_, tmp) = to-string-N(v);
       Right(Pair(*k, *tmp))
     });
-  Right(from-list(core.string.ord.as-ord, kvs))
+  pin ord = core.string.ord.as-ord;
+  let result = from-list(ord, kvs);
+  Right(result)
 }
 
 define _interpret-rel-file-path(e: &ens) -> app(&string) {
@@ -204,7 +210,7 @@ define _interpret-dependency-dict(
             append-string(buf, string-from-base-name-N(bk));
             append-string(buf, "` cannot be used as an alias a module");
           };
-          raise-error(*m, core.string-builder.extract(buf))
+          raise-error(*m, core.string.builder.extract(buf))
         } else {
           Right(Unit)
         };
@@ -240,7 +246,9 @@ define _interpret-dependency-dict(
         Dependency(mirror-list, digest, enable-preset),
       ))
     });
-  Right(from-list(ord-module-alias, kvs))
+  pin ord = ord-module-alias;
+  let result = from-list(ord, kvs);
+  Right(result)
 }
 
 define _interpret-extra-path(module-root-dir: &string, e: &ens) -> app(string) {

@@ -1,11 +1,11 @@
 import {
   core.c-int {eq-c-int},
-  core.debug {vet-doc},
   core.doc.show {show-doc},
   core.list {for-each},
-  core.process {Exited, Process-Result, Process-Spec, process-spec, spawn},
+  core.process {Exited, Process-Result, Process-Spec, process-spec},
+  core.show.generic {to-doc},
   core.string {intercalate, split},
-  core.string-builder {append-int64-UTF8, append-string, make-string-builder},
+  core.string.builder {append-int64-UTF8, append-string, make-string-builder},
   core.system {get-error-message},
   this.color.color-kit {make-color-kit},
   this.logger.logger-kit {logger-kit, make-logger-kit},
@@ -53,20 +53,20 @@ define _indent(t: &string) -> string {
 define _string-from-process-error(pe: process-error) -> string {
   match pe {
   | Command-Execution-Error(Command-Error(cmd-spec, exit-code, err-str)) =>
-    let Process-Spec{process} = cmd-spec;
+    let Process-Spec{command} = cmd-spec;
     let buf = make-string-builder(64);
     pin err-str = err-str;
-    pin process = process;
+    pin command = command;
     let _ on buf = {
       append-string(buf, "The child process `");
-      append-string(buf, process);
+      append-string(buf, command);
       append-string(buf, "` failed with the following message (exit-code = ");
       append-int64-UTF8(buf, exit-code);
       append-string(buf, "):\n");
       pin v = _indent(err-str);
       append-string(buf, v);
     };
-    core.string-builder.extract(buf)
+    core.string.builder.extract(buf)
   | Setup-Error(t) =>
     t
   }
@@ -75,7 +75,7 @@ define _string-from-process-error(pe: process-error) -> string {
 define _report-command(k: &run-process-kit, s: &process-spec) -> unit {
   tie _Run-Process-Kit{logger-kit} = k;
   let message = {
-    pin tmp = vet-doc::(s);
+    pin tmp = to-doc::(s);
     pin tmp = show-doc(tmp, 65535);
     core.string.append("Executing: ", tmp)
   };
@@ -84,7 +84,7 @@ define _report-command(k: &run-process-kit, s: &process-spec) -> unit {
 
 define run-process(k: &run-process-kit, s: process-spec) -> either(string, string) {
   let _ on s = _report-command(k, s);
-  match spawn(s, 1024, 1024) {
+  match core.process.run(s, 1024, 1024) {
   | Left(e) =>
     Left(get-error-message(e))
   | Right(Process-Result{status, stdout-string, stderr-string}) =>

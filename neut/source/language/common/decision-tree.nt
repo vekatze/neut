@@ -1,10 +1,11 @@
 import {
+  core.eq.generic {eq-data},
   core.list {filter-some, for-each-N},
-  sero.common.get {get-int64},
-  sero.common.put {put-int64},
+  sero.get-kit {get-int64},
   sero.instance.bool {bool-sero},
   sero.instance.list {list-sero},
   sero.instance.pair {pair-sero},
+  sero.put-kit {put-int64},
   sero.sero {Sero, sero},
   this.language.common.binder {binder-f, binder-sero},
   this.language.common.definite-description {definite-description, definite-description-sero},

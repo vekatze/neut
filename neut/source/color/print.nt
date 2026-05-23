@@ -1,9 +1,10 @@
 import {
   core.ansi {Blue, Bold, Color, Color-16, Foreground, Vivid},
   core.file.descriptor {descriptor, stderr, stdout},
-  core.string {_get-content-pointer, string-byte-length},
-  this.color.color-kit {_Color-Kit, color-kit, make-color-kit},
-  this.color.string {_unpacked, _unpacked-uncolored, color-string, packed},
+  core.string {byte-length},
+  core.string.pointer {get-content-pointer},
+  this.color.color-kit {Color-Kit, color-kit, make-color-kit},
+  this.color.string {color-string, packed, unpacked, unpacked-uncolored},
 }
 
 foreign {
@@ -11,31 +12,31 @@ foreign {
 }
 
 define _print(d: descriptor, t: &string) -> unit {
-  let fmt = _get-content-pointer("%.*s\0");
-  let len = string-byte-length(t);
-  let val = _get-content-pointer(t);
+  let fmt = get-content-pointer("%.*s\0");
+  let len = byte-length(t);
+  let val = get-content-pointer(t);
   let _ = magic external dprintf(magic cast(descriptor, int, d), fmt)(len: int, val: pointer);
   Unit
 }
 
 define print-stdout(k: &color-kit, t: &color-string) -> unit {
-  tie _Color-Kit{colorize-stdout} = k;
+  tie Color-Kit{colorize-stdout} = k;
   pin t-prime =
     if *colorize-stdout {
-      _unpacked(t)
+      unpacked(t)
     } else {
-      _unpacked-uncolored(t)
+      unpacked-uncolored(t)
     };
   _print(stdout, t-prime)
 }
 
 define print-stderr(k: &color-kit, t: &color-string) -> unit {
-  tie _Color-Kit{colorize-stderr} = k;
+  tie Color-Kit{colorize-stderr} = k;
   pin t-prime =
     if *colorize-stderr {
-      _unpacked(t)
+      unpacked(t)
     } else {
-      _unpacked-uncolored(t)
+      unpacked-uncolored(t)
     };
   _print(stderr, t-prime)
 }

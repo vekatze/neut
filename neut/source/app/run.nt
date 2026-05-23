@@ -1,9 +1,11 @@
 import {
-  core.external {exit},
-  core.foreign {get-cpu-count, sleep},
-  core.string-builder {string-builder},
+  core.c-int {C-Int},
+  core.platform {get-cpu-count},
+  core.process {exit},
+  core.string.builder {string-builder},
+  core.sync.pool,
   core.system {get-error-message, system},
-  core.thread.pool,
+  core.time {sleep},
   this.app.app {app},
   this.app.error {Make-Error, new-critical, new-critical-prime, new-error, new-error-prime},
   this.logger.hint {hint},
@@ -16,14 +18,14 @@ define run<a>(k: &logger-kit, c: app(a)) -> a {
   | Left(Make-Error(xs)) =>
     let _ on xs = print-log-errors(k, xs);
     let _ = xs;
-    exit(1)
+    exit(C-Int(1))
   | Right(v) =>
     v
   }
 }
 
 inline for-each-parallel<a, b>(xs: vector(a), f: (a) -> app(b)) -> app(vector(b)) {
-  let ys = core.thread.pool.for-each-parallel(get-cpu-count(), xs, f);
+  let ys = core.sync.pool.for-each-parallel(get-cpu-count(), xs, f);
   let Pair(errors, results) = core.vector.partition(ys);
   let error-len on errors = core.vector.length(errors);
   if eq-int(error-len, 0) {
@@ -34,7 +36,7 @@ inline for-each-parallel<a, b>(xs: vector(a), f: (a) -> app(b)) -> app(vector(b)
 }
 
 inline for-parallel<a>(xs: vector(a), f: (a) -> app(unit)) -> app(unit) {
-  let ys = core.thread.pool.for-each-parallel(get-cpu-count(), xs, f);
+  let ys = core.sync.pool.for-each-parallel(get-cpu-count(), xs, f);
   let Pair(errors, results) = core.vector.partition(ys);
   let error-len on errors = core.vector.length(errors);
   if eq-int(error-len, 0) {
@@ -72,14 +74,14 @@ define app-from-system<a>(x: system(a)) -> app(a) {
 
 rule-left string-join {
   inline leaf(_: int) -> string-builder {
-    core.string-builder.make-string-builder(16)
+    core.string.builder.make-string-builder(16)
   },
   inline node-left(acc: string-builder, d: &string) -> string-builder {
-    let _ on acc = core.string-builder.append-string(acc, d);
+    let _ on acc = core.string.builder.append-string(acc, d);
     acc
   },
   inline root(x: string-builder) -> string {
-    core.string-builder.extract(x)
+    core.string.builder.extract(x)
   },
 }
 
@@ -88,7 +90,7 @@ define zen() -> unit {
   pin tmp =
     for-each-parallel(core.vector.range(0, num-of-elems), (x) => {
       vet::("sleep");
-      let _ = sleep(1);
+      let _ = sleep(1.0);
       Right(add-int(x, 10))
     });
   vet::(tmp);

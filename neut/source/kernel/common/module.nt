@@ -2,8 +2,8 @@ import {
   core.dictionary {dictionary, to-list},
   core.list {filter, filter-some, for-each, for-each-N, is-empty},
   core.pair {first},
-  core.string {drop-N, length, string-byte-length},
-  core.string-builder {append-string, extract, make-string-builder},
+  core.string {byte-length, drop-N, length},
+  core.string.builder {append-string, extract, make-string-builder},
   path.path {drop-last, take-last},
   this.app.app {app},
   this.app.run {raise-critical-prime},
@@ -204,20 +204,9 @@ define get-archive-dir(m: &module) -> string {
   path.path.append(tmp, archive-dir)
 }
 
-define _values<k, v>(d: &dictionary(k, v)) -> list(&v) {
-  case d {
-  | core.dictionary.Tip =>
-    Nil
-  | core.dictionary.Bin(_, _, v, d1, d2) =>
-    let xs = _values(d1);
-    let ys = _values(d2);
-    core.list.append(xs, Cons(v, ys))
-  }
-}
-
 define get-target-path-list(m: &module) -> list(string) {
   tie Module{source-dir, target} = m;
-  for-each(_values(target), (v) => {
+  for-each(core.dictionary.values(target), (v) => {
     tie Target-Summary{entry-point} = v;
     let tmp = string-from-source-locator(entry-point);
     let result on tmp = path.path.append(source-dir, tmp);
@@ -226,17 +215,23 @@ define get-target-path-list(m: &module) -> list(string) {
   })
 }
 
-define _lookup-string-dict<v>(d: &dictionary(string, v), k: &string) -> ?&v {
-  let lookup = core.dictionary.make-lookup(core.string.ord.as-ord);
-  lookup(d, k)
+define lookup-string-dict<v>(L: &ord(string), d: &dictionary(string, v), k: &string) ->> ?&v {
+  core.dictionary.lookup(L, d, k)
 }
 
 define get-target-path(m: &module, target-key: &string) -> ?string {
   tie Module{source-dir, target} = m;
-  try v = _lookup-string-dict(target, target-key);
-  tie Target-Summary{entry-point} = v;
-  pin tmp = string-from-source-locator(entry-point);
-  Right(path.path.append(source-dir, tmp))
+  pin ord = core.string.ord.as-ord;
+  let result =
+    match lookup-string-dict(ord, target, target-key) {
+    | Left(_) =>
+      none
+    | Right(v) =>
+      tie Target-Summary{entry-point} = v;
+      pin tmp = string-from-source-locator(entry-point);
+      Right(path.path.append(source-dir, tmp))
+    };
+  result
 }
 
 define get-extra-contents(m: &module) -> &list(string) {
@@ -449,8 +444,15 @@ define get-module-id-from-module-path(module-file-path: &string) -> module-id {
 
 define get-target(m: &module, target-name: &string) -> ?main-target {
   tie Module{target} = m;
-  try target = _lookup-string-dict(target, target-name);
-  Right(Named(*target-name, *target))
+  pin ord = core.string.ord.as-ord;
+  let result =
+    match lookup-string-dict(ord, target, target-name) {
+    | Left(_) =>
+      none
+    | Right(target) =>
+      Right(Named(*target-name, *target))
+    };
+  result
 }
 
 define stylize(eq: &eq(pair(comment, ens)), e: ens) -> app(ens) {
@@ -500,7 +502,7 @@ define get-preset-summary(preset-map: preset-map, module-name: &string) -> prese
 
 define _strip-prefix(haystack: &string, prefix: &string) -> ?string {
   let b1 = core.string.eq.eq-prefix(haystack, prefix);
-  let b2 = ge-int(string-byte-length(haystack), string-byte-length(prefix));
+  let b2 = ge-int(byte-length(haystack), byte-length(prefix));
   if and(b1, b2) {
     Right(drop-N(haystack, length(prefix)))
   } else {

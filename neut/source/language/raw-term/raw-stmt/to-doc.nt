@@ -8,7 +8,7 @@ import {
   this.language.raw-term.name {Var},
   this.language.raw-term.raw-stmt {Raw-Program, Raw-Stmt-Define, raw-program, raw-stmt},
   this.language.raw-term.raw-term {for-each-raw-def},
-  this.language.raw-term.raw-term.to-doc {_doc-from-name, doc-from-def},
+  this.language.raw-term.raw-term.to-doc {doc-from-def, doc-from-name},
   this.pretty-printer.doc {Empty, doc, join, layout, line},
   this.syntax-tree.comment {comment},
   this.syntax-tree.comment.to-doc {as-stmt-prefix},
@@ -16,7 +16,7 @@ import {
 
 define _string-name-to-doc(t: string) -> doc {
   pin tmp = Var(t);
-  _doc-from-name(tmp)
+  doc-from-name(tmp)
 }
 
 define _doc-from-stmt(s: raw-stmt) -> doc {

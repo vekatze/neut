@@ -114,20 +114,20 @@ constant core-rune-Rune: &string {
   "core.rune._Rune"
 }
 
-constant core-trick-panic: &string {
-  "core.trick.panic"
+constant core-debug-panic: &string {
+  "core.debug.panic"
 }
 
-constant core-trick-assert: &string {
-  "core.trick._assert"
+constant core-debug-assert: &string {
+  "core.debug.assert"
 }
 
-constant core-thread-detach: &string {
-  "core.thread.detach"
+constant core-sync-thread-spawn: &string {
+  "core.sync.thread.spawn"
 }
 
-constant core-thread-attach: &string {
-  "core.thread.attach"
+constant core-sync-thread-join: &string {
+  "core.sync.thread.join"
 }
 
 constant core-box-embody: &string {

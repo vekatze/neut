@@ -1,9 +1,7 @@
 import {
-  core.string-builder {append-string, string-builder},
-  sero.common.get {get-string},
-  sero.common.put {put-string},
-  sero.get-kit {get-kit},
-  sero.put-kit {put-kit},
+  core.string.builder {append-string, string-builder},
+  sero.get-kit {get-kit, get-string},
+  sero.put-kit {put-kit, put-string},
   sero.sero {Sero, sero},
 }
 

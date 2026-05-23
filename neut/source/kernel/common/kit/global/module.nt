@@ -1,11 +1,12 @@
 import {
-  core.cell {borrow, make-cell, mutate},
   core.control {discard},
-  core.dictionary {dictionary, empty, make-insert},
+  core.dictionary {dictionary, empty},
   core.environment {get-env},
   core.list {filter, for-each, for-each-E},
-  core.string-builder {append-string, extract, make-string-builder},
-  core.string.eq {eq-suffix, strip-prefix},
+  core.string {strip-prefix},
+  core.string.builder {append-string, extract, make-string-builder},
+  core.string.eq {eq-prefix, eq-suffix},
+  core.sync.cell {borrow, cell, make-cell, mutate},
   core.system {get-error-message, system, system-error},
   path.entity.dirent {Dirent},
   path.io {create-directory, is-directory, read-directory},
@@ -15,10 +16,10 @@ import {
   this.kernel.common.const {env-var-core-module-URL, env-var-core-module-digest, module-file, source-file-extension},
   this.kernel.common.module {
     Module,
-    _lookup-string-dict,
     extract-module,
     get-module-root-dir,
     get-source-dir,
+    lookup-string-dict,
     main-module,
     module,
   },
@@ -44,12 +45,15 @@ define make-module-kit() -> module-kit {
 define lookup-module(k: &module-kit, path: &string) -> ?module {
   tie _Module-Kit{cache-map-cell} = k;
   borrow(cache-map-cell, (dict) => {
-    match _lookup-string-dict(dict, path) {
-    | Left(_) =>
-      box {none}
-    | Right(v) =>
-      box v {Right(v)}
-    }
+    pin ord = core.string.ord.as-ord;
+    let result =
+      match lookup-string-dict(ord, dict, path) {
+      | Left(_) =>
+        box {none}
+      | Right(v) =>
+        box v {Right(v)}
+      };
+    result
   })
 }
 
@@ -60,8 +64,8 @@ define insert-to-module-cache-map(k: &module-kit, path: &string, m: module) -> u
       letbox dict = dict;
       letbox path = lift {*path};
       letbox m = lift {m};
-      let insert = make-insert(core.string.ord.as-ord);
-      insert(dict, path, m)
+      pin ord = core.string.ord.as-ord;
+      core.dictionary.insert(ord, dict, path, m)
     }
   })
 }
@@ -166,17 +170,9 @@ data _error-info {
 
 define _ensure-file-module-sanity(m: &module, source-abs-path: &string) -> either(_error-info, unit) {
   let source-dir = get-source-dir(m);
-  let source-rel-path on source-dir = strip-prefix(source-dir, source-abs-path);
-  match source-rel-path {
-  | Left(_) =>
-    let buf = make-string-builder(64);
-    let _ on buf = {
-      append-string(buf, "The file`");
-      append-string(buf, source-abs-path);
-      append-string(buf, "` is not in the source directory current module")
-    };
-    Left(_Message(extract(buf)))
-  | Right(source-rel-path) =>
+  let is-prefixed on source-dir = eq-prefix(source-abs-path, source-dir);
+  if is-prefixed {
+    let source-rel-path on source-dir = strip-prefix(source-dir, *source-abs-path);
     let rel-dir on source-rel-path = drop-last(source-rel-path);
     let _ = source-rel-path;
     let has-sep on rel-dir = core.string.find-string(rel-dir, ns-sep);
@@ -194,6 +190,14 @@ define _ensure-file-module-sanity(m: &module, source-abs-path: &string) -> eithe
     } else {
       Right(Unit)
     }
+  } else {
+    let buf = make-string-builder(64);
+    let _ on buf = {
+      append-string(buf, "The file`");
+      append-string(buf, source-abs-path);
+      append-string(buf, "` is not in the source directory current module")
+    };
+    Left(_Message(extract(buf)))
   }
 }
 

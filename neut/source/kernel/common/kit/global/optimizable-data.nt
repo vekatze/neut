@@ -1,6 +1,6 @@
 import {
-  core.cell {make-cell},
   core.dictionary {dictionary},
+  core.sync.cell {cell, make-cell},
   this.kernel.common.optimizable-data {optimizable-data},
   this.language.common.definite-description {definite-description, ord-dd},
 }
@@ -18,20 +18,22 @@ define make-optimizable-data-kit() -> optimizable-data-kit {
 
 define insert(k: &optimizable-data-kit, dd: definite-description, od: optimizable-data) -> unit {
   tie _Optimizable-Data-Kit(ref) = k;
-  core.cell.mutate(ref, (dict) => {
+  core.sync.cell.mutate(ref, (dict) => {
     box {
       letbox dict = dict;
       letbox dd = lift {dd};
       letbox od = lift {od};
-      core.dictionary.make-insert(ord-dd)(dict, dd, od)
+      pin ord = ord-dd;
+      core.dictionary.insert(ord, dict, dd, od)
     }
   })
 }
 
 define lookup(k: &optimizable-data-kit, dd: &definite-description) -> ?optimizable-data {
   tie _Optimizable-Data-Kit(ref) = k;
-  core.cell.borrow(ref, (dict) => {
-    match core.dictionary.make-lookup(ord-dd)(dict, dd) {
+  core.sync.cell.borrow(ref, (dict) => {
+    pin ord = ord-dd;
+    match core.dictionary.lookup(ord, dict, dd) {
     | Left(_) =>
       lift {none}
     | Right(v) =>

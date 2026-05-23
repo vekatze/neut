@@ -1,12 +1,12 @@
 import {
   argot.argot {argot},
+  argot.argot-kit {make-argot-kit-from-argv},
+  argot.argot-kit.state {pop-head},
   argot.error {Key-Missing, Unexpected-End-Of-Input},
-  argot.make-argot-kit {make-argot-kit-from-argv},
   argot.parse {attempt, branch, end-of-input, optional},
   argot.preset {flag, string-required},
-  argot.state {pop-head},
-  core.external {exit},
-  core.string.io {print-line},
+  core.c-int {C-Int},
+  core.process {exit},
   this.command-parser.command {
     Archive,
     Build,
@@ -269,7 +269,7 @@ define parse-command-or-exit() -> command {
   | Left(_) =>
     // fixme
     print-line("Failed to parse the input");
-    exit(1)
+    exit(C-Int(1))
   }
 }
 

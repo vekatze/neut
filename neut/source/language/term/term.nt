@@ -1,6 +1,6 @@
 import {
-  sero.common.get {get-int64},
-  sero.common.put {put-int64},
+  sero.get-kit {get-int64},
+  sero.put-kit {put-int64},
   sero.sero {Sero, sero},
   this.logger.hint {hint},
 }
