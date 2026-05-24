@@ -1,7 +1,7 @@
 import {
-  core.cell {make-cell},
   core.dictionary {dictionary},
-  core.string-builder {append-string, extract, make-string-builder},
+  core.string.builder {append-string, extract, make-string-builder},
+  core.sync.cell {cell, make-cell},
   this.app.app {app},
   this.app.run {raise-critical-prime},
   this.kernel.common.artifact {artifact-time},
@@ -20,12 +20,13 @@ define make-artifact-kit() -> artifact-kit {
 
 define insert(k: &artifact-kit, path: string, t: artifact-time) -> unit {
   tie _Artifact-Kit(ref) = k;
-  core.cell.mutate(ref, (dict) => {
+  core.sync.cell.mutate(ref, (dict) => {
     box {
       letbox dict = dict;
       letbox path = lift {path};
       letbox t = lift {t};
-      core.dictionary.make-insert(core.string.ord.as-ord)(dict, path, t)
+      pin ord = core.string.ord.as-ord;
+      core.dictionary.insert(ord, dict, path, t)
     }
   })
 }
@@ -33,8 +34,9 @@ define insert(k: &artifact-kit, path: string, t: artifact-time) -> unit {
 define lookup(k: &artifact-kit, path: &string) -> app(artifact-time) {
   tie _Artifact-Kit(ref) = k;
   let tmp: ?artifact-time =
-    core.cell.borrow(ref, (dict) => {
-      match core.dictionary.make-lookup(core.string.ord.as-ord)(dict, path) {
+    core.sync.cell.borrow(ref, (dict) => {
+      pin ord = core.string.ord.as-ord;
+      match core.dictionary.lookup(ord, dict, path) {
       | Left(_) =>
         box {none}
       | Right(v) =>

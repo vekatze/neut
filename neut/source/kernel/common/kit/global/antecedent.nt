@@ -1,8 +1,8 @@
 import {
-  core.cell {borrow, extract, make-cell, mutate},
-  core.dictionary {dictionary, empty, make-insert-with, make-lookup, to-list},
+  core.dictionary {dictionary, empty, to-list},
   core.list {fold-left},
-  core.magic {cast},
+  core.sync.cell {borrow, cell, extract, make-cell, mutate},
+  core.unsafe {cast},
   this.kernel.common.module {Module, module},
   this.language.common.module-id {module-id, module-id-ord},
 }
@@ -26,9 +26,9 @@ define make-antecedent-kit() -> antecedent-kit {
 
 define lookup-module(k: &antecedent-kit, x: &module-id) -> ?module {
   tie _Antecedent-Kit{map-cell} = k;
-  let lookup = make-lookup(module-id-ord);
   borrow(map-cell, (dict) => {
-    match lookup(dict, x) {
+    pin ord = module-id-ord;
+    match core.dictionary.lookup(ord, dict, x) {
     | Left(_) =>
       box {none}
     | Right(v) =>
@@ -47,8 +47,8 @@ define _rev-insert(mp: +rev-map, v: +module, k: +module-id) -> +rev-map {
     letbox k = k;
     letbox v = v;
     let Module{id} = v;
-    let insert = make-insert-with(module-id-ord, exact core.list.append);
-    insert(mp, id, List[k])
+    pin ord = module-id-ord;
+    core.dictionary.insert-with(ord, exact core.list.append, mp, id, List[k])
   }
 }
 

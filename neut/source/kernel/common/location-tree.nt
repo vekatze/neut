@@ -3,11 +3,11 @@ import {
   core.dictionary {dictionary, to-list},
   core.int.ord,
   core.list {filter-some, for-each},
-  sero.common.get {get-int64},
-  sero.common.put {put-int64},
-  sero.get-kit {get-kit},
+  sero.get-kit {get-int64},
   sero.instance.bool {bool-sero},
-  sero.put-kit {put-kit},
+  sero.instance.list {list-sero},
+  sero.instance.pair {pair-sero},
+  sero.put-kit {put-int64},
   sero.sero {Sero, sero},
   this.language.common.definite-description {definite-description, definite-description-sero, local-locator-from-dd},
   this.language.common.external-name {External-Name, external-name, external-name-sero},
@@ -84,7 +84,8 @@ constant ord-loc: ord(loc) {
 
 define insert(lt: loc-type, p: pair(line, col-interval), m: log-position, t: location-tree) -> location-tree {
   let Pair(l, Pair(from, to)) = p;
-  core.dictionary.make-insert(ord-loc)(t, Loc(l, from), Loc-Item(l, Pair(from, to), lt, m))
+  pin ord = ord-loc;
+  core.dictionary.insert(ord, t, Loc(l, from), Loc-Item(l, Pair(from, to), lt, m))
 }
 
 define _get-length(s: &symbol-name) -> def-symbol-len {
@@ -100,23 +101,27 @@ define _get-length(s: &symbol-name) -> def-symbol-len {
 }
 
 data found-loc {
-| Found-Loc(loc-type, &log-position, &col-interval, def-symbol-len)
+| Found-Loc(loc-type, log-position, col-interval, def-symbol-len)
 }
 
 define find(loc: &loc, t: &location-tree) -> ?found-loc {
-  let lookup-LE = core.dictionary.make-lookup-LE(ord-loc);
-  try Pair(_, li) = lookup-LE(t, loc);
-  tie Loc-Item(line, col-interval, lt, m) = li;
-  tie Loc(l, c) = loc;
-  tie Pair(col-from, col-to) = col-interval;
-  if or(lt-int(*col-to, *c), ne-int(*line, *l)) {
+  pin ord = ord-loc;
+  match core.dictionary.lookup-LE(ord, t, loc) {
+  | Left(_) =>
     none
-  } else {
-    case lt {
-    | File-Loc =>
-      Right(Found-Loc(File-Loc, m, col-interval, sub-int(*col-from, *col-to)))
-    | Symbol-Loc(sym) =>
-      Right(Found-Loc(File-Loc, m, col-interval, _get-length(sym)))
+  | Right(Pair(_, li)) =>
+    tie Loc-Item(line, col-interval, lt, m) = li;
+    tie Loc(l, c) = loc;
+    tie Pair(col-from, col-to) = col-interval;
+    if or(lt-int(*col-to, *c), ne-int(*line, *l)) {
+      none
+    } else {
+      case lt {
+      | File-Loc =>
+        Right(Found-Loc(File-Loc, *m, *col-interval, sub-int(*col-from, *col-to)))
+      | Symbol-Loc(sym) =>
+        Right(Found-Loc(Symbol-Loc(*sym), *m, *col-interval, _get-length(sym)))
+      }
     }
   }
 }
@@ -238,53 +243,6 @@ constant loc-type-sero: sero(loc-type) {
   }
 }
 
-inline dictionary-sero<k, v>(sk: sero(k), sv: sero(v)) -> sero(dictionary(k, v)) {
-  let Sero{put := !put-k, get := !get-k} = sk;
-  let Sero{put := !put-v, get := !get-v} = sv;
-  Sero{
-    put := {
-      define loop(k: &put-kit, v: &dictionary(k, v)) -> unit {
-        case v {
-        | core.dictionary.Tip =>
-          put-int64(k, 0);
-        | core.dictionary.Bin(size, key, value, left, right) =>
-          put-int64(k, 1);
-          put-int64(k, *size);
-          put-k(k, key);
-          put-v(k, value);
-          loop(k, left);
-          loop(k, right);
-        }
-      }
-    },
-    get := {
-      define loop(k: &get-kit) -> ?+dictionary(k, v) {
-        try tag = get-int64(k);
-        match tag {
-        | 0 =>
-          Right(box {core.dictionary.Tip})
-        | 1 =>
-          try size = get-int64(k);
-          try key = get-k(k);
-          try value = get-v(k);
-          try left = loop(k);
-          try right = loop(k);
-          Right(box {
-            letbox size = lift {size};
-            letbox key = key;
-            letbox value = value;
-            letbox left = left;
-            letbox right = right;
-            core.dictionary.Bin(size, key, value, left, right)
-          })
-        | _ =>
-          none
-        }
-      }
-    },
-  }
-}
-
 constant loc-item-sero: sero(loc-item) {
   let Sero{put, get} = loc-type-sero;
   let Sero{put := put-log-position, get := get-log-position} = log-position-sero;
@@ -320,5 +278,24 @@ constant loc-item-sero: sero(loc-item) {
 }
 
 constant location-tree-sero: sero(location-tree) {
-  dictionary-sero(loc-sero, loc-item-sero)
+  let Sero{put := !put-list, get := !get-list} = list-sero(pair-sero(loc-sero, loc-item-sero));
+  Sero{
+    put := {
+      (k, v) => {
+        let cloned: location-tree = *v;
+        pin xs = core.dictionary.to-list(cloned);
+        put-list(k, xs)
+      }
+    },
+    get := {
+      (k) => {
+        try xs = get-list(k);
+        Right(box {
+          letbox xs = xs;
+          pin ord = ord-loc;
+          core.dictionary.from-list(ord, xs)
+        })
+      }
+    },
+  }
 }

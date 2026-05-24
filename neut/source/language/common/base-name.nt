@@ -2,9 +2,10 @@ import {
   core.bool {all},
   core.int.show {show-int},
   core.list {for-each-E},
-  core.string {is-empty, string-byte-length},
-  sero.common.get {get-string},
-  sero.common.put {put-string},
+  core.string {byte-length, is-empty},
+  core.string.unsafe {get-rune-unchecked},
+  sero.get-kit {get-string},
+  sero.put-kit {put-string},
   sero.sero {Sero, sero},
   this.app.error {error, new-error, new-error-prime},
   this.language.common.const {ns-sep},
@@ -111,8 +112,8 @@ define string-from-base-name-N(bn: &base-name) -> &string {
 define _get-first-rune(t: &string) -> ?rune {
   let r = Right(Unit); // fixme
   try _ = r;
-  if gt-int(string-byte-length(t), 0) {
-    Right(core.string._get-rune(t, 0))
+  if gt-int(byte-length(t), 0) {
+    Right(get-rune-unchecked(t, 0))
   } else {
     none
   }
@@ -120,8 +121,8 @@ define _get-first-rune(t: &string) -> ?rune {
 
 define is-capitalized(bn: &base-name) -> bool {
   let t = _get-string(bn);
-  if gt-int(string-byte-length(t), 0) {
-    let r = core.string._get-rune(t, 0);
+  if gt-int(byte-length(t), 0) {
+    let r = get-rune-unchecked(t, 0);
     all[le-rune(`A`, r), le-rune(r, `Z`)]
   } else {
     False

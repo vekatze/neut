@@ -6,6 +6,8 @@ module Kernel.Common.Handle.Local.Locator
     getStaticFileContent,
     activateTextFile,
     getPossibleReferents,
+    getCurrentGlobalLocator,
+    constructGlobalLocator,
   )
 where
 
@@ -26,6 +28,7 @@ import Kernel.Common.Module qualified as Module
 import Kernel.Common.ReadableDD
 import Kernel.Common.Source qualified as Source
 import Kernel.Common.TopNameMap (TopNameMap)
+import Language.Common.Availability qualified as AV
 import Language.Common.BaseName qualified as BN
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.LocalLocator qualified as LL
@@ -71,11 +74,14 @@ activateSpecifiedNames ::
   [(Hint, LL.LocalLocator)] ->
   App ()
 activateSpecifiedNames h currentSource topNameMap mustUpdateTag sgl lls = do
+  currentGlobalLocator <- constructGlobalLocator currentSource
   forM_ lls $ \(m, ll) -> do
     let dd = DD.new sgl ll
     case Map.lookup dd topNameMap of
       Nothing ->
-        raiseError m $ "The name `" <> LL.reify ll <> "` is not defined in the module"
+        raiseError m $ "The name `" <> LL.reify ll <> "` is not defined in the file"
+      Just _ | not (AV.allows currentGlobalLocator dd) ->
+        raiseError m $ "The name `" <> LL.reify ll <> "` is not visible from this source"
       Just (mDef, _tag, gn) -> do
         when mustUpdateTag $
           liftIO $

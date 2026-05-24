@@ -1,7 +1,7 @@
 import {
   core.control {loop},
   core.list {fold-left-N},
-  core.string-builder {append-string, extract, make-string-builder, string-builder},
+  core.string.builder {append-string, extract, make-string-builder, string-builder},
 }
 
 data doc {
@@ -119,16 +119,16 @@ define layout(d: doc) -> string {
   extract(b)
 }
 
-define _is-multi(d: &doc) -> bool {
+define is-multi-doc(d: &doc) -> bool {
   case d {
   | Empty =>
     False
   | String(_, rest) =>
-    _is-multi(rest)
+    is-multi-doc(rest)
   | Line{} =>
     True
   | Inline-Comment(_, rest) =>
-    _is-multi(rest)
+    is-multi-doc(rest)
   }
 }
 
@@ -137,7 +137,7 @@ define is-multi(ds: &list(doc)) -> bool {
     if acc {
       True
     } else {
-      _is-multi(d)
+      is-multi-doc(d)
     }
   })
 }

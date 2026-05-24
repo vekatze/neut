@@ -99,7 +99,7 @@ interpret h t source cacheOrContent = do
 
 interpret' :: Handle -> Source.Source -> PostRawProgram -> App ([WeakStmt], [L.Log])
 interpret' h currentSource (PostRawProgram m importList stmtList) = do
-  Import.interpretImport (importHandle h) m currentSource importList >>= activateImport h m
+  Import.interpretImport (importHandle h) m currentSource importList >>= activateImport h m currentSource
   stmtList'' <- Discern.discernStmtList (discernHandle h) stmtList
   NameMap.reportMissingDefinitions (Discern.nameMapHandle (discernHandle h))
   logs1 <- liftIO $ registerUnusedVariableRemarks h
@@ -108,8 +108,8 @@ interpret' h currentSource (PostRawProgram m importList stmtList) = do
   logs4 <- liftIO $ registerUnusedStaticFileRemarks h
   return (stmtList'', logs1 ++ logs2 ++ logs3 ++ logs4)
 
-activateImport :: Handle -> Hint -> [ImportItem] -> App ()
-activateImport h m sourceInfoList = do
+activateImport :: Handle -> Hint -> Source.Source -> [ImportItem] -> App ()
+activateImport h m currentSource sourceInfoList = do
   forM_ sourceInfoList $ \importItem -> do
     case importItem of
       ImportItem source aliasInfoList -> do
@@ -117,7 +117,7 @@ activateImport h m sourceInfoList = do
         namesInSource <- GlobalNameMap.lookup (globalNameMapHandle h) m path
         liftIO $ NameMap.activateTopLevelNames (nameMapHandle h) namesInSource
         forM_ aliasInfoList $ \aliasInfo ->
-          Alias.activateAliasInfo (aliasHandle h) source namesInSource aliasInfo
+          Alias.activateAliasInfo (aliasHandle h) currentSource namesInSource aliasInfo
       TextFileKey pathList -> do
         forM_ pathList $ \(key, (mKey, path)) -> do
           Locator.activateTextFile (locatorHandle h) mKey key path

@@ -1,6 +1,6 @@
 import {
   core.dictionary {dictionary},
-  core.string-builder {append-string, make-string-builder},
+  core.string.builder {append-string, make-string-builder},
   path.io {is-regular-file},
   path.path,
   this.app.app {app},
@@ -55,7 +55,7 @@ define _get-newer-source(s: source, m: module) -> app(source) {
       append-string(buf, "``");
     };
     let _ = id;
-    let message = core.string-builder.extract(buf);
+    let message = core.string.builder.extract(buf);
     match source-hint {
     | Left(_) =>
       raise-error-prime(message)

@@ -1,7 +1,7 @@
 import {
   core.box {axiom-T},
-  core.cell {clone, make-cell, mutate},
   core.list {length},
+  core.sync.cell {cell, clone, make-cell, mutate},
 }
 
 define test-syntax() -> unit {

@@ -4,7 +4,7 @@ import {
   core.list {for-each-N},
   this.color.string {Empty, color-string, join, packed, packed-N-empty, packed-empty},
   this.logger.hint {Hint, Saved-Hint, hint},
-  this.logger.log-level {_log-level-to-pad, _log-level-to-string, _log-level-to-tone, log-level},
+  this.logger.log-level {log-level, log-level-to-pad, log-level-to-string, log-level-to-tone},
 }
 
 data log-position {
@@ -58,7 +58,7 @@ define show-file-pos(m: &log-position) -> string {
   }
 }
 
-define _show-position(h: &?log-position) -> color-string {
+define show-position(h: &?log-position) -> color-string {
   case h {
   | Left(_) =>
     Empty
@@ -67,18 +67,18 @@ define _show-position(h: &?log-position) -> color-string {
   }
 }
 
-define _show-level(l: log-level) -> color-string {
-  packed(_log-level-to-tone(l), core.string.append(_log-level-to-string(l), ": "))
+define show-level(l: log-level) -> color-string {
+  packed(log-level-to-tone(l), core.string.append(log-level-to-string(l), ": "))
 }
 
-define _show-content(level: log-level, content: string) -> color-string {
+define show-content(level: log-level, content: string) -> color-string {
   let adjusted-content = {
     let lines on content = core.string.split(content, "\n");
     match lines {
     | Nil =>
       packed-empty(content)
     | Cons(head, tail) =>
-      let pad = _log-level-to-pad(level);
+      let pad = log-level-to-pad(level);
       let tail-prime on tail, pad =
         for-each-N(tail, (t) => {
           core.string.append(pad, t)

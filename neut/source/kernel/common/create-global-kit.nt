@@ -1,6 +1,6 @@
 import {
-  core.cell {make-cell},
   core.dictionary {dictionary, empty},
+  core.sync.cell {cell, make-cell},
   this.color.color-kit {color-kit},
   this.gensym.gensym {gensym-kit, make-gensym-kit},
   this.kernel.common.import {import-item},

@@ -6,7 +6,7 @@ import {
   this.language.raw-term.raw-ident {is-hole},
   this.language.raw-term.raw-term {Elem, Hole, Raw-Def, Raw-Geist, Tau, elem, raw-def, raw-geist, raw-term},
   this.logger.hint {hint},
-  this.pretty-printer.doc {Empty, _is-multi, doc, indent, join, line, make-string, nest},
+  this.pretty-printer.doc {Empty, doc, indent, is-multi-doc, join, line, make-string, nest},
   this.pretty-printer.piece {arrange, horizontal, inject, parameter},
   this.syntax-tree.comment {comment},
   this.syntax-tree.comment.to-doc {as-prefix, as-suffix},
@@ -36,7 +36,7 @@ define _decode-block(x: elem(doc)) -> doc {
   ]
 }
 
-define _doc-from-name(n: &name) -> doc {
+define doc-from-name(n: &name) -> doc {
   case n {
   | Var(var) =>
     if is-hole(var) {
@@ -50,7 +50,7 @@ define _doc-from-name(n: &name) -> doc {
 }
 
 define type-annot(t: doc) -> doc {
-  let b on t = _is-multi(t);
+  let b on t = is-multi-doc(t);
   if b {
     join[make-string(*":"), line, t]
   } else {
@@ -80,7 +80,7 @@ define _param-to-doc(p: _param) -> doc {
 define _imp-param-to-doc(x: pair(raw-binder(raw-term), ?raw-term)) -> doc {
   let Pair(Raw-Binder(m, x, c1, c2, t), maybe-default) = x;
   pin tmp = Var(x);
-  let x = _doc-from-name(tmp);
+  let x = doc-from-name(tmp);
   let base-param = _param-to-doc(_Param(m, x, c1, c2, t));
   match maybe-default {
   | Left(_) =>
@@ -98,7 +98,7 @@ define _imp-param-to-doc(x: pair(raw-binder(raw-term), ?raw-term)) -> doc {
 define _exp-param-to-doc(x: raw-binder(raw-term)) -> doc {
   let Raw-Binder(m, x, c1, c2, t) = x;
   pin tmp = Var(x);
-  let x = _doc-from-name(tmp);
+  let x = doc-from-name(tmp);
   _param-to-doc(_Param(m, x, c1, c2, t))
 }
 

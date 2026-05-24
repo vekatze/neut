@@ -1,5 +1,5 @@
 import {
-  core.string-builder {append-string, extract, make-string-builder},
+  core.string.builder {append-string, extract, make-string-builder},
   path.io {get-current-directory, is-regular-file},
   path.path {drop-last},
   this.app.app {app},

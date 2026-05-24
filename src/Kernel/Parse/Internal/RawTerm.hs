@@ -1252,26 +1252,16 @@ rawTermRuneIntro :: Parser (RT.RawTerm, C)
 rawTermRuneIntro = do
   m <- getCurrentHint
   (s, c) <- rune
-  runeCons <- lift $ locatorToVarGlobal (blur m) coreRuneRune
   case RU.make s of
     Right r ->
-      return (m :< RT.RuneIntro runeCons r, c)
+      return (m :< RT.RuneIntro r, c)
     Left e ->
       lift $ raiseError m e
-
-locatorToVarGlobal :: Hint -> T.Text -> App RT.RawTerm
-locatorToVarGlobal m text = do
-  (gl, ll) <- liftEither $ DD.getLocatorPair (blur m) text
-  return $ rawVar (blur m) (Locator (gl, ll))
 
 locatorToTypeVar :: Hint -> T.Text -> App RT.RawType
 locatorToTypeVar m text = do
   (gl, ll) <- liftEither $ DD.getLocatorPair (blur m) text
   return $ blur m :< RT.TyVar (Locator (gl, ll))
-
-rawVar :: Hint -> Name -> RT.RawTerm
-rawVar m name =
-  m :< RT.Var name
 
 var :: Handle -> Parser ((Hint, T.Text), C)
 var h = do

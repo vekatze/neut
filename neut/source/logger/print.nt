@@ -5,28 +5,28 @@ import {
   this.color.print {print-stderr, print-stdout},
   this.color.string {join, packed, packed-empty},
   this.logger.hint {new-hint},
-  this.logger.log {Log, _show-content, _show-level, _show-position, log, log-position-from-hint},
+  this.logger.log {Log, log, log-position-from-hint, show-content, show-level, show-position},
   this.logger.log-level {Note, Warning, log-level},
-  this.logger.logger-kit {_Logger-Kit, _show-time, logger-kit, make-logger-kit},
+  this.logger.logger-kit {Logger-Kit, logger-kit, make-logger-kit, show-time},
   time.time {get-time, sub-time},
 }
 
 define print-log(k: &logger-kit, l: &log) -> unit {
-  tie _Logger-Kit{color-kit} = k;
+  tie Logger-Kit{color-kit} = k;
   tie Log{position, level, content} = l;
-  let position-string = _show-position(position);
-  let level-string = _show-level(*level);
-  let content-string = _show-content{level := *level, content := *content};
+  let position-string = show-position(position);
+  let level-string = show-level(*level);
+  let content-string = show-content{level := *level, content := *content};
   pin log-string = join(position-string, join(level-string, content-string));
   print-stdout(color-kit, log-string)
 }
 
 define print-log-error(k: &logger-kit, l: &log) -> unit {
-  tie _Logger-Kit{color-kit} = k;
+  tie Logger-Kit{color-kit} = k;
   tie Log{position, level, content} = l;
-  let position-string = _show-position(position);
-  let level-string = _show-level(*level);
-  let content-string = _show-content{level := *level, content := *content};
+  let position-string = show-position(position);
+  let level-string = show-level(*level);
+  let content-string = show-content{level := *level, content := *content};
   pin log-string = join(position-string, join(level-string, content-string));
   print-stderr(color-kit, log-string)
 }
@@ -57,11 +57,11 @@ define print-warning(k: &logger-kit, content: string) -> unit {
 }
 
 define report(k: &logger-kit, message: string) -> unit {
-  tie _Logger-Kit{color-kit, enable-debug-mode, base-time} = k;
+  tie Logger-Kit{color-kit, enable-debug-mode, base-time} = k;
   when *enable-debug-mode {
     let current-time = get-time();
     let elapsed-time = sub-time(current-time, *base-time);
-    let time-string = packed(Vector[Color(Foreground, Color-16(Vivid, Black))], _show-time(elapsed-time));
+    let time-string = packed(Vector[Color(Foreground, Color-16(Vivid, Black))], show-time(elapsed-time));
     pin debug-string = join(time-string, join(packed-empty(*" "), join(packed-empty(message), packed-empty(*"\n"))));
     print-stderr(color-kit, debug-string)
   }

@@ -1,16 +1,16 @@
 import {
-  core.ref {make-ref, mutate, ref},
+  core.cell {cell, make-cell, mutate},
   this.kernel.common.top-candidate {top-candidate},
 }
 
 data top-candidate-kit {
 | _Top-Candidate-Kit(
-    top-candidate-env-ref: ref(list(top-candidate)),
+    top-candidate-env-ref: cell(list(top-candidate)),
   )
 }
 
 define make-top-candidate-kit() -> top-candidate-kit {
-  let top-candidate-env-ref = make-ref(box {Nil});
+  let top-candidate-env-ref = make-cell(box {Nil});
   _Top-Candidate-Kit{top-candidate-env-ref}
 }
 
@@ -27,5 +27,5 @@ define insert(k: &top-candidate-kit, cand: top-candidate) -> unit {
 
 define get(k: top-candidate-kit) -> +list(top-candidate) {
   let _Top-Candidate-Kit(ref) = k;
-  core.ref.extract(ref)
+  core.cell.extract(ref)
 }

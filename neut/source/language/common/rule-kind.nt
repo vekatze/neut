@@ -1,8 +1,6 @@
 import {
-  sero.common.get {get-int64},
-  sero.common.put {put-int64},
-  sero.get-kit {get-kit},
-  sero.put-kit {put-kit},
+  sero.get-kit {get-int64, get-kit},
+  sero.put-kit {put-int64, put-kit},
   sero.sero {Sero, sero},
 }
 

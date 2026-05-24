@@ -1,6 +1,6 @@
 import {
   core.box {axiom-T},
-  core.cell {borrow, make-cell, modify, mutate},
+  core.sync.cell {borrow, cell, make-cell, modify, mutate},
 }
 
 data gensym-kit {

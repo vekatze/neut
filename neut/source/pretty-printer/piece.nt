@@ -1,6 +1,6 @@
 import {
   core.list {fold-left-N, for-each},
-  this.pretty-printer.doc {Empty, _is-multi, doc, indent, join, join-doc-list, line, make-string, nest},
+  this.pretty-printer.doc {Empty, doc, indent, is-multi-doc, join, join-doc-list, line, make-string, nest},
 }
 
 data piece {
@@ -47,7 +47,7 @@ define arrange(ps: list(piece)) -> doc {
         acc
       } else {
         tie Piece(c, _, _) = p;
-        _is-multi(c)
+        is-multi-doc(c)
       }
     });
   if b {

@@ -1,29 +1,26 @@
 import {
-  core.int.show {show-int},
-  core.string {format},
   this.color.color-kit {color-kit},
-  time.time {Time, _format-nanoseconds, get-time, time},
+  time.time {get-time, time},
 }
 
 data logger-kit {
-| _Logger-Kit(
+| Logger-Kit(
     color-kit: color-kit,
     enable-debug-mode: bool,
     base-time: time,
   )
 }
 
-define _show-time(m: time) -> string {
-  let Time{seconds := s, nanoseconds := ns} = m;
-  format("{}{}", List[show-int(s), _format-nanoseconds(ns, 6)])
+define show-time(m: time) -> string {
+  time.time.show-time(m, 6)
 }
 
 define make-logger-kit(color-kit: color-kit, enable-debug-mode: bool) -> logger-kit {
   let base-time = get-time();
-  _Logger-Kit{color-kit, enable-debug-mode, base-time}
+  Logger-Kit{color-kit, enable-debug-mode, base-time}
 }
 
 define get-color-kit(k: &logger-kit) -> &color-kit {
-  tie _Logger-Kit{color-kit} = k;
+  tie Logger-Kit{color-kit} = k;
   color-kit
 }

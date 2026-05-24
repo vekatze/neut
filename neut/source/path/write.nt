@@ -1,8 +1,8 @@
 import {
   core.binary {binary},
   core.binary.io,
-  core.file {close, open},
-  core.file.flag {Create, W},
+  core.file.access-mode {Write},
+  core.file.descriptor {close, open},
   core.file.mode {default-file-mode},
   core.string {to-binary},
   core.system {system},
@@ -11,7 +11,7 @@ import {
 define _write-binary-to-path(path: &string, content: &binary) -> system(unit) {
   let r = Right(Unit); // fixme (use destpass)
   try _ = r;
-  try fd = open(path, List[W, Create], default-file-mode);
+  try fd = open(path, Write)[create := Right(default-file-mode), truncate := True];
   try _ = core.binary.io.write(fd, content);
   try _ = close(fd);
   Right(Unit)

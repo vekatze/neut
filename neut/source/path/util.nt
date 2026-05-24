@@ -1,5 +1,5 @@
 import {
-  core.string-builder {append-string, make-string-builder},
+  core.string.builder {append-string, make-string-builder},
   path.path {split-extension},
   this.app.app {app},
   this.app.run {raise-error-prime},
@@ -19,6 +19,6 @@ define remove-extension(path: &string) -> app(string) {
       append-string(buf, path);
       append-string(buf, "` is invalid")
     };
-    raise-error-prime(core.string-builder.extract(buf))
+    raise-error-prime(core.string.builder.extract(buf))
   }
 }

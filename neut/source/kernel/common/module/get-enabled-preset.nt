@@ -1,5 +1,5 @@
 import {
-  core.dictionary {make-lookup},
+  core.dictionary,
   core.list {concat, for-each},
   this.app.app {app},
   this.gensym.gensym {gensym-kit},
@@ -39,7 +39,8 @@ define _construct-alias-preset-map(kms: list(pair(string, module))) -> alias-pre
       let Module{preset-map} = m;
       Pair(k, preset-map)
     });
-  core.dictionary.from-list(core.string.ord.as-ord, kms)
+  pin ord = core.string.ord.as-ord;
+  core.dictionary.from-list(ord, kms)
 }
 
 define _adjust-key(p: pair(module-alias, module)) -> pair(string, module) {
@@ -58,7 +59,8 @@ define get-enabled-preset(k: &get-enabled-preset-kit, m: &module) -> app(list(pa
   pin alias-preset-map = _construct-alias-preset-map(alias-preset-info);
   Right(concat(for-each(alias-list, (a) => {
     pin a = string-from-module-alias(a);
-    match make-lookup(core.string.ord.as-ord)(alias-preset-map, a) {
+    pin ord = core.string.ord.as-ord;
+    match core.dictionary.lookup(ord, alias-preset-map, a) {
     | Left(_) =>
       List[]
     | Right(preset-map) =>

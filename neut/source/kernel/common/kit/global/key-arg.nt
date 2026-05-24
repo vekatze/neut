@@ -1,9 +1,9 @@
 import {
-  core.cell {borrow, make-cell, mutate},
-  core.dictionary {dictionary, empty, make-insert, make-lookup},
+  core.dictionary {dictionary, empty},
   core.list {for-each-N, length},
-  core.string-builder {append-int64-UTF8, append-string, extract, make-string-builder, string-builder},
+  core.string.builder {append-int64-UTF8, append-string, extract, make-string-builder, string-builder},
   core.string.eq {eq-prefix},
+  core.sync.cell {borrow, cell, make-cell, mutate},
   this.app.app {app},
   this.app.run {raise-error},
   this.kernel.common.const {hole-var-prefix},
@@ -106,9 +106,8 @@ define show-key-list(ks: &list(key)) -> string {
   core.string.intercalate(tmp, *"\n")
 }
 
-define _lookup(dict: &dictionary(definite-description, _key-arg-value), dd: &definite-description) -> ?&_key-arg-value {
-  let lookup = make-lookup(ord-dd);
-  lookup(dict, dd)
+define _lookup(L: &ord(definite-description), dict: &dictionary(definite-description, _key-arg-value), dd: &definite-description) ->> ?&_key-arg-value {
+  core.dictionary.lookup(L, dict, dd)
 }
 
 define insert(
@@ -122,65 +121,68 @@ define insert(
   tie _Key-Arg-Kit{key-arg-map-cell, main-module} = k;
   let error-or-unit: either(string, unit) on func-name, imp-keys, exp-keys =
     borrow(key-arg-map-cell, (dict) => {
-      match _lookup(dict, func-name) {
-      | Left(_) =>
-        box {Right(Unit)}
-      | Right(v) =>
-        tie _Key-Arg-Value(is-const-like-v, imp-keys-v, exp-keys-v) = v;
-        if and(is-const-like, not(*is-const-like-v)) {
-          let func-name = readable-dd(*main-module, func-name);
-          let buf = make-string-builder(64);
-          let _ on buf, func-name = {
-            append-string(buf, "`");
-            append-string(buf, func-name);
-            append-string(buf, "` is declared as a function, but defined as a constant-like term.");
-          };
-          let _ = func-name;
-          lift {Left(extract(buf))}
-        } else-if and(not(is-const-like), *is-const-like-v) {
-          let func-name = readable-dd(*main-module, func-name);
-          let buf = make-string-builder(64);
-          let _ on buf, func-name = {
-            append-string(buf, "`");
-            append-string(buf, func-name);
-            append-string(buf, "` is declared as a constant-like term, but defined as a function.");
-          };
-          let _ = func-name;
-          lift {Left(extract(buf))}
-        } else-if ne-int(length(imp-keys), length(imp-keys-v)) {
-          let func-name = readable-dd(*main-module, func-name);
-          let buf = make-string-builder(64);
-          let _ on buf, func-name = {
-            append-string(buf, "The arity `");
-            append-string(buf, func-name);
-            append-string(buf, "` is declared as ");
-            append-int64-UTF8(buf, length(imp-keys-v));
-            append-string(buf, ", but defined as");
-            append-int64-UTF8(buf, length(imp-keys));
-            append-string(buf, ".");
-          };
-          let _ = func-name;
-          lift {Left(extract(buf))}
-        } else-if ne-int(length(exp-keys), length(exp-keys-v)) {
-          let func-name = readable-dd(*main-module, func-name);
-          let buf = make-string-builder(64);
-          let _ on buf, func-name = {
-            pin exp-keys-list = _string-from-keys(exp-keys);
-            pin exp-keys-v-list = _string-from-keys(exp-keys);
-            append-string(buf, "The explicit key sequence `");
-            append-string(buf, func-name);
-            append-string(buf, "` is declared as ");
-            append-string(buf, exp-keys-v-list);
-            append-string(buf, ", but defined as");
-            append-string(buf, exp-keys-list);
-            append-string(buf, ".");
-          };
-          let _ = func-name;
-          lift {Left(extract(buf))}
-        } else {
+      pin ord = ord-dd;
+      let result =
+        match _lookup(ord, dict, func-name) {
+        | Left(_) =>
           box {Right(Unit)}
-        }
-      }
+        | Right(v) =>
+          tie _Key-Arg-Value(is-const-like-v, imp-keys-v, exp-keys-v) = v;
+          if and(is-const-like, not(*is-const-like-v)) {
+            let func-name = readable-dd(*main-module, func-name);
+            let buf = make-string-builder(64);
+            let _ on buf, func-name = {
+              append-string(buf, "`");
+              append-string(buf, func-name);
+              append-string(buf, "` is declared as a function, but defined as a constant-like term.");
+            };
+            let _ = func-name;
+            lift {Left(extract(buf))}
+          } else-if and(not(is-const-like), *is-const-like-v) {
+            let func-name = readable-dd(*main-module, func-name);
+            let buf = make-string-builder(64);
+            let _ on buf, func-name = {
+              append-string(buf, "`");
+              append-string(buf, func-name);
+              append-string(buf, "` is declared as a constant-like term, but defined as a function.");
+            };
+            let _ = func-name;
+            lift {Left(extract(buf))}
+          } else-if ne-int(length(imp-keys), length(imp-keys-v)) {
+            let func-name = readable-dd(*main-module, func-name);
+            let buf = make-string-builder(64);
+            let _ on buf, func-name = {
+              append-string(buf, "The arity `");
+              append-string(buf, func-name);
+              append-string(buf, "` is declared as ");
+              append-int64-UTF8(buf, length(imp-keys-v));
+              append-string(buf, ", but defined as");
+              append-int64-UTF8(buf, length(imp-keys));
+              append-string(buf, ".");
+            };
+            let _ = func-name;
+            lift {Left(extract(buf))}
+          } else-if ne-int(length(exp-keys), length(exp-keys-v)) {
+            let func-name = readable-dd(*main-module, func-name);
+            let buf = make-string-builder(64);
+            let _ on buf, func-name = {
+              pin exp-keys-list = _string-from-keys(exp-keys);
+              pin exp-keys-v-list = _string-from-keys(exp-keys);
+              append-string(buf, "The explicit key sequence `");
+              append-string(buf, func-name);
+              append-string(buf, "` is declared as ");
+              append-string(buf, exp-keys-v-list);
+              append-string(buf, ", but defined as");
+              append-string(buf, exp-keys-list);
+              append-string(buf, ".");
+            };
+            let _ = func-name;
+            lift {Left(extract(buf))}
+          } else {
+            box {Right(Unit)}
+          }
+        };
+      result
     });
   match error-or-unit {
   | Left(message) =>
@@ -189,12 +191,12 @@ define insert(
     mutate(key-arg-map-cell, (dict) => {
       box {
         letbox dict = dict;
-        let insert = make-insert(ord-dd);
         letbox func-name = lift {func-name};
         letbox is-const-like = lift {is-const-like};
         letbox imp-keys = lift {imp-keys};
         letbox exp-keys = lift {exp-keys};
-        insert(dict, func-name, _Key-Arg-Value(is-const-like, imp-keys, exp-keys))
+        pin ord = ord-dd;
+        core.dictionary.insert(ord, dict, func-name, _Key-Arg-Value(is-const-like, imp-keys, exp-keys))
       }
     });
     Right(Unit)
@@ -205,13 +207,16 @@ define lookup(k: &key-arg-kit, m: hint, data-name: &definite-description) -> app
   tie _Key-Arg-Kit{key-arg-map-cell, main-module} = k;
   let tmp =
     borrow(key-arg-map-cell, (dict) => {
-      match _lookup(dict, data-name) {
-      | Left(_) =>
-        lift {Left(Unit)}
-      | Right(v) =>
-        tie _Key-Arg-Value(_, imp-keys, exp-keys) = v;
-        box imp-keys, exp-keys {Right(Pair(imp-keys, exp-keys))}
-      }
+      pin ord = ord-dd;
+      let result =
+        match _lookup(ord, dict, data-name) {
+        | Left(_) =>
+          lift {Left(Unit)}
+        | Right(v) =>
+          tie _Key-Arg-Value(_, imp-keys, exp-keys) = v;
+          box imp-keys, exp-keys {Right(Pair(imp-keys, exp-keys))}
+        };
+      result
     });
   match tmp {
   | Left(Unit) =>

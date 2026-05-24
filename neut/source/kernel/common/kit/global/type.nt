@@ -1,10 +1,10 @@
 import {
-  core.cell {borrow, make-cell, mutate},
-  core.dictionary {dictionary, empty, make-insert, make-lookup},
-  core.string-builder {append-string, extract, make-string-builder},
+  core.dictionary {dictionary, empty},
+  core.string.builder {append-string, extract, make-string-builder},
+  core.sync.cell {borrow, cell, make-cell, mutate},
   this.app.app {app},
   this.app.run {raise-critical},
-  this.language.common.definite-description {definite-description, ord-dd, string-from-dd},
+  this.language.common.definite-description {definite-description, string-from-dd},
   this.language.weak-term.weak-term {weak-term},
   this.logger.hint {hint},
 }
@@ -18,34 +18,61 @@ define make-type-kit() -> type-kit {
   _Type-Kit{type-env-cell}
 }
 
-define insert(k: &type-kit, dd: +definite-description, v: +weak-term) -> unit {
+define _insert(
+  L: &ord(definite-description),
+  env: dictionary(definite-description, weak-term),
+  dd: definite-description,
+  v: weak-term,
+) -> dictionary(definite-description, weak-term) {
+  core.dictionary.insert(L, env, dd, v)
+}
+
+define insert(L: &&ord(definite-description), k: &type-kit, dd: +definite-description, v: +weak-term) -> unit {
   tie _Type-Kit{type-env-cell} = k;
-  mutate(type-env-cell, (dict) => {
-    box {
-      letbox dict = dict;
-      let insert = make-insert(ord-dd);
+  mutate(type-env-cell, (env) => {
+    box L {
+      letbox env = env;
       letbox dd = dd;
       letbox v = v;
-      insert(dict, dd, v)
+      _insert(L, env, dd, v)
     }
   })
 }
 
-define lookup-maybe(k: &type-kit, dd: &definite-description) -> ?weak-term {
+define _lookup-maybe(
+  L: &ord(definite-description),
+  env: &dictionary(definite-description, weak-term),
+  dd: &definite-description,
+) ->> ?&weak-term {
+  core.dictionary.lookup(L, env, dd)
+}
+
+define lookup<a>(
+  L: &ord(definite-description),
+  k: &type-kit,
+  dd: &definite-description,
+  not-found: +a,
+  found: (&weak-term) -> +a,
+) -> a {
   tie _Type-Kit{type-env-cell} = k;
-  let lookup = make-lookup(ord-dd);
-  borrow(type-env-cell, (dict) => {
-    match lookup(dict, dd) {
+  borrow(type-env-cell, (env) => {
+    match _lookup-maybe(L, env, dd) {
     | Left(_) =>
-      box {none}
+      not-found
     | Right(v) =>
-      box v {Right(v)}
+      found(v)
     }
   })
 }
 
-define lookup(k: &type-kit, m: hint, dd: &definite-description) -> app(weak-term) {
-  match lookup-maybe(k, dd) {
+define lookup-maybe-copy(L: &ord(definite-description), k: &type-kit, dd: &definite-description) -> ?weak-term {
+  lookup(L, k, dd, box {none}, (v) => {
+    box v {Right(v)}
+  })
+}
+
+define lookup-copy(L: &ord(definite-description), k: &type-kit, m: hint, dd: &definite-description) -> app(weak-term) {
+  match lookup-maybe-copy(L, k, dd) {
   | Left(_) =>
     let buf = make-string-builder(64);
     let _ on buf = {

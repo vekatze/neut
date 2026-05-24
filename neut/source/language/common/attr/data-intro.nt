@@ -1,9 +1,9 @@
 import {
-  sero.common.get {get-int64},
-  sero.common.put {put-int64},
+  sero.get-kit {get-int64},
   sero.instance.bool {bool-sero},
   sero.instance.list {list-sero},
   sero.instance.pair {pair-sero},
+  sero.put-kit {put-int64},
   sero.sero {Sero, sero},
   this.language.common.discriminant {Discriminant, discriminant},
   this.language.common.is-const-like {is-const-like},

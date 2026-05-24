@@ -1,5 +1,6 @@
 import {
   core.null {null},
+  core.sync.thread {thread},
 }
 
 define test-syntax() -> type {

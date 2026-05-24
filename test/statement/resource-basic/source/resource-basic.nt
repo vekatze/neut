@@ -1,7 +1,7 @@
 import {
   core.c-size {C-Size},
-  core.external {free, malloc},
-  core.memory {load-int, store-int},
+  core.memory {malloc},
+  core.memory.unsafe {free, load-int, store-int},
 }
 
 resource noisy-boxed-int {

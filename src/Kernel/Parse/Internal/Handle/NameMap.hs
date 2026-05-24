@@ -35,6 +35,7 @@ import Language.Common.IsConstLike
 import Language.Common.NominalTag
 import Language.Common.PrimOp.FromText qualified as PrimOp
 import Language.Common.PrimType.FromText qualified as PT
+import Language.Common.StrictGlobalLocator qualified as SGL
 import Language.Common.StmtKind qualified as SK
 import Language.RawTerm.RawStmt
 import Language.RawTerm.RawTerm qualified as RT
@@ -85,11 +86,11 @@ registerGeist h tag RT.RawGeist {..} = do
       then GN.TopLevelFuncTerm argNum isConstLike (isDestPassingTag tag) (isMacroTag tag)
       else GN.TopLevelFuncType argNum isConstLike False
 
-lookup :: Handle -> Hint.Hint -> DD.DefiniteDescription -> App (Maybe (Hint, GN.GlobalName))
-lookup h m name = do
+lookup :: Handle -> Hint.Hint -> SGL.StrictGlobalLocator -> DD.DefiniteDescription -> App (Maybe (Hint, GN.GlobalName))
+lookup h m currentLocator name = do
   nameMap <- liftIO $ readIORef (nameMapRef h)
   let dataSize = Platform.getDataSize (platformHandle h)
-  case Map.lookup name nameMap of
+  case lookupAvailable currentLocator name nameMap of
     Just (mFound, _tag, gn) -> do
       liftIO $ Unused.deleteGlobalLocator (unusedHandle h) $ DD.globalLocator name
       return $ Just (mFound, gn)

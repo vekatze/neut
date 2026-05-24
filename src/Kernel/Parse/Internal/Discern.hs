@@ -580,7 +580,7 @@ discern h term =
           discern h $
             bind startLoc endLoc mxt e1 $
               m :< RT.LetOn (RT.Plain True) [] resultParam [] x' [] e2 [] startLoc [] (m2' :< RT.Var resultVar) endLoc
-    m :< RT.RuneIntro _ r -> do
+    m :< RT.RuneIntro r -> do
       return $ m :< WT.Prim (WPV.Rune r)
     m :< RT.Magic _ magic -> do
       magic' <- discernMagic h m magic
@@ -621,10 +621,10 @@ discern h term =
           return $ m :< WT.Annotation L.Warning (AN.Type (doNotCare m)) body
         else do
           let message' = m :< RT.NoeticString stringTypeRaw (messageText <> "\n")
-          panic <- liftEither $ locatorToVarGlobal m coreTrickPanic
+          panic <- liftEither $ locatorToVarGlobal m coreDebugPanic
           discern h $ asOpaqueValue $ m :< RT.Annotation L.Warning (AN.Type ()) (m :< RT.piElim panic [message'])
     m :< RT.Assert _ (mText, message) _ _ (e@(mCond :< _), _) -> do
-      assert <- liftEither $ locatorToVarGlobal m coreTrickAssert
+      assert <- liftEither $ locatorToVarGlobal m coreDebugAssert
       stringType <- liftEither $ locatorToTypeVar m coreString
       let fullMessage = T.pack (Hint.toString m) <> "\nAssertion failure: " <> message <> "\n"
       cod <- liftIO $ RT.createTypeHole (H.gensymHandle h) (blur m)

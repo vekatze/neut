@@ -1,8 +1,8 @@
 import {
-  core.cell {clone, make-cell, mutate},
-  core.dictionary {make-lookup},
+  core.dictionary,
   core.string {to-binary},
-  core.string-builder {append-string, extract, make-string-builder},
+  core.string.builder {append-string, extract, make-string-builder},
+  core.sync.cell {cell, clone, make-cell, mutate},
   path.io {get-modification-time, is-regular-file},
   path.path {split-extension, take-last},
   this.app.app {app},
@@ -59,8 +59,8 @@ define _get-clang-option-base(t: &main-target, m: &module) -> app(clang-option) 
   case t {
   | Named(name, _) =>
     tie Module{target} = m;
-    let lookup = make-lookup(core.string.ord.as-ord);
-    match lookup(target, name) {
+    pin ord = core.string.ord.as-ord;
+    match core.dictionary.lookup(ord, target, name) {
     | Left(_) =>
       let buf = make-string-builder(64);
       let _ on buf = {

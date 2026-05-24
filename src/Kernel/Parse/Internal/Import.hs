@@ -37,6 +37,7 @@ import Language.Common.LocalLocator qualified as LL
 import Language.Common.ModuleAlias (ModuleAlias (ModuleAlias))
 import Language.Common.ModuleID (ModuleID)
 import Language.Common.SourceLocator qualified as SL
+import Language.Common.SourcePrefix qualified as SP
 import Language.Common.StrictGlobalLocator qualified as SGL
 import Language.RawTerm.RawStmt
 import Logger.Hint
@@ -139,6 +140,7 @@ getSource h mustUpdateTag m sgl locatorText = do
   let h' = GetModule.Handle {gensymHandle = gensymHandle h, moduleHandle = moduleHandle h}
   let mainModule = Env.getMainModule (envHandle h)
   nextModule <- GetModule.getModule h' mainModule m (SGL.moduleID sgl) locatorText
+  ensureSourceImportability h m sgl locatorText
   relPath <- addExtension sourceFileExtension $ SL.reify $ SGL.sourceLocator sgl
   let nextPath = getSourceDir nextModule </> relPath
   when mustUpdateTag $
@@ -151,6 +153,17 @@ getSource h mustUpdateTag m sgl locatorText = do
         Source.sourceFilePath = nextPath,
         Source.sourceHint = Just m
       }
+
+ensureSourceImportability ::
+  Handle ->
+  Hint ->
+  SGL.StrictGlobalLocator ->
+  LocatorText ->
+  App ()
+ensureSourceImportability h m sgl locatorText = do
+  let currentGlobalLocator = Locator.getCurrentGlobalLocator (locatorHandle h)
+  unless (SP.canImport currentGlobalLocator sgl) $
+    raiseError m $ "The source `" <> locatorText <> "` is not visible from this source"
 
 interpretPreset :: Handle -> Hint -> Module -> App [ImportItem]
 interpretPreset h m currentModule = do

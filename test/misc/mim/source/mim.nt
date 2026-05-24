@@ -1,5 +1,6 @@
 import {
-  core.external {free, malloc, realloc},
+  core.memory {malloc},
+  core.memory.unsafe {free, realloc},
 }
 
 define basics(ptr: pointer) -> unit {

@@ -1,4 +1,5 @@
 import {
+  core.sync.thread {thread},
   this.pi-keyword,
   this.pi-term,
 }
