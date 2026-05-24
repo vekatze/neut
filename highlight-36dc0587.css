@@ -1,0 +1,101 @@
+/*
+ * An increased contrast highlighting scheme loosely based on the
+ * "Base16 Atelier Dune Light" theme by Bram de Haan
+ * (http://atelierbram.github.io/syntax-highlighting/atelier-schemes/dune)
+ * Original Base16 color scheme by Chris Kempson
+ * (https://github.com/chriskempson/base16)
+ */
+
+/* Comment */
+.hljs-comment,
+.hljs-quote {
+  color: var(--nibi);
+  background-color: var(--dark-blue);
+  /* color: #575757; */
+}
+
+.hljs-definition {
+  color: var(--light-yellow);
+  background-color: var(--dark-yellow);
+}
+
+/* Red */
+.hljs-variable,
+.hljs-template-variable,
+.hljs-attribute,
+.hljs-tag,
+.hljs-name,
+.hljs-regexp,
+.hljs-link,
+.hljs-name,
+.hljs-selector-id,
+.hljs-selector-class {
+  color: #d70025;
+}
+
+.hljs-number,
+.hljs-meta,
+.hljs-literal,
+.hljs-type,
+.hljs-constructor,
+.hljs-params {
+  color: var(--light-green);
+  background-color: var(--dark-green);
+}
+
+.hljs-builtin {
+  color: var(--light-magenta);
+  background-color: var(--dark-magenta);
+}
+
+.hljs-string,
+.hljs-symbol,
+.hljs-bullet {
+  color: var(--light-orange);
+  background-color: var(--dark-orange);
+}
+
+.hljs-warning {
+  font-weight: bold;
+  color: var(--mid-orange);
+  background-color: var(--dark-orange);
+}
+
+.hljs-title,
+.hljs-section {
+  color: var(--light-magenta);
+  background-color: var(--dark-magenta);
+}
+
+.hljs-keyword,
+.hljs-letbox-T,
+.hljs-selector-tag,
+.hljs-name {
+  color: var(--light-blue);
+  background-color: var(--dark-blue);
+}
+
+.hljs {
+  display: block;
+  overflow-x: auto;
+  background: var(--sumi);
+  color: var(--fg);
+}
+
+.hljs-emphasis {
+  font-style: italic;
+}
+
+.hljs-strong {
+  font-weight: bold;
+}
+
+.hljs-addition {
+  color: #22863a;
+  background-color: #f0fff4;
+}
+
+.hljs-deletion {
+  color: #b31d28;
+  background-color: #ffeef0;
+}

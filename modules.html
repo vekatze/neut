@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Modules - Neut Programming Language</title>
+    <meta name="description" content="A functional programming language with static memory management." />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="favicon-de23e50b.svg">
+    <link rel="stylesheet" href="css/general-d2580039.css" />
+    <link rel="stylesheet" href="highlight-36dc0587.css" />
+    <meta property="og:title" content="Modules - Neut Programming Language" />
+    <meta property="og:description" content="A functional programming language with static memory management." />
+    <meta property="og:url" content="https://vekatze.github.io/neut/modules.md" />
+    <meta property="og:type" content="article" />
+  </head>
+  <body>
+    <div id="body-container">
+      <header id="menu-bar">
+        <h1 class="menu-title">
+          <a href="overview.html">
+            Neut Programming Language
+          </a>
+        </h1>
+
+        <div class="right-buttons">
+            <a href="https://github.com/vekatze/neut" class="menubar-item">
+              <span>GitHub</span>
+            </a>
+        </div>
+      </header>
+      <div id="content-box">
+        <aside id="sidebar">
+          <nav class="sidebar-scrollbox">
+            <ol class="chapter"><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="overview.html"><strong aria-hidden="true">1.</strong> Overview</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="installation.html"><strong aria-hidden="true">2.</strong> Installation</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="tutorial.html"><strong aria-hidden="true">3.</strong> Tutorial</a></span><ol class="section"><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="modules-and-sources.html"><strong aria-hidden="true">3.1.</strong> Modules and Sources</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="programming-in-neut.html"><strong aria-hidden="true">3.2.</strong> Programming in Neut</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="static-memory-management.html"><strong aria-hidden="true">3.3.</strong> Static Memory Management</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="modality-and-memory.html"><strong aria-hidden="true">3.4.</strong> Modality and Memory</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="modal-metaprogramming.html"><strong aria-hidden="true">3.5.</strong> Modal Metaprogramming</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="further-examples.html"><strong aria-hidden="true">3.6.</strong> Further Examples</a></span></li></ol><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="language-reference.html"><strong aria-hidden="true">4.</strong> Language Reference</a></span><ol class="section"><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="commands.html"><strong aria-hidden="true">4.1.</strong> Commands</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="modules.html"><strong aria-hidden="true">4.2.</strong> Modules</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="statements.html"><strong aria-hidden="true">4.3.</strong> Statements</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="terms.html"><strong aria-hidden="true">4.4.</strong> Terms</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="primitives.html"><strong aria-hidden="true">4.5.</strong> Primitives</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="basis.html"><strong aria-hidden="true">4.6.</strong> Basis</a></span></li></ol><li class="chapter-item expanded "><li class="part-title">Appendix</li></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="manual-installation.html"><strong aria-hidden="true">5.</strong> Manual Installation</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="development-environment.html"><strong aria-hidden="true">6.</strong> Development Environment</a></span><ol class="section"><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="lsp-showcase.html"><strong aria-hidden="true">6.1.</strong> LSP Showcase</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="rapid-prototyping.html"><strong aria-hidden="true">6.2.</strong> Rapid Prototyping</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="editor-setup.html"><strong aria-hidden="true">6.3.</strong> Editor Setup</a></span></li></ol><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="on-executing-types.html"><strong aria-hidden="true">7.</strong> On Executing Types</a></span></li></ol>
+          </nav>
+        </aside>
+
+        <main id="content" tabindex="0">
+          <article id="content-inner">
+            <h1 id="modules"><a class="header" href="#modules">Modules</a></h1>
+<p>A directory (including all its children) is a <em>module</em> if it contains a file named <code>module.ens</code>.</p>
+<p>Below is a list of the configurations in <code>module.ens</code>.</p>
+<h2 id="table-of-contents"><a class="header" href="#table-of-contents">Table of Contents</a></h2>
+<ul>
+<li><a href="#target">target</a></li>
+<li><a href="#zen">zen</a></li>
+<li><a href="#dependency">dependency</a></li>
+<li><a href="#archive">archive</a></li>
+<li><a href="#cache">cache</a></li>
+<li><a href="#source">source</a></li>
+<li><a href="#foreign">foreign</a></li>
+<li><a href="#extra-content">extra-content</a></li>
+<li><a href="#text-file">text-file</a></li>
+<li><a href="#preset">preset</a></li>
+<li><a href="#inline-limit">inline-limit</a></li>
+<li><a href="#antecedent">antecedent</a></li>
+</ul>
+<h2 id="target"><a class="header" href="#target"><code>target</code></a></h2>
+<p>The field <code>target</code> defines the entry points of a module. It should look like the following:</p>
+<pre><code class="language-ens">{
+  // ..
+  target {
+    TARGET-1 {
+      main "path/to/source/file-1.nt",
+    },
+    // ..
+    TARGET-N {
+      main "path/to/source/file-n.nt",
+    },
+  },
+  // ..
+}
+</code></pre>
+<p>Suppose that your module has the following <code>target</code> in <code>module.ens</code>:</p>
+<pre><code class="language-ens">{
+  // ..
+  target {
+    foo {
+      main "foo.nt",
+    },
+    bar {
+      main "item/yo.nt",
+    },
+  },
+  // ..
+}
+</code></pre>
+<p>In this case, your module has two targets: <code>foo</code> and <code>bar</code>. The entry point of <code>foo</code> is the <code>main</code> function in <code>(source-dir)/foo.nt</code>. The entry point of <code>bar</code> is the <code>main</code> function in <code>(source-dir)/item/yo.nt</code>.</p>
+<p>The names in <code>target</code> can be specified when running <code>neut build</code>. For example, given the above definition of <code>target</code>, you can run <code>neut build foo</code>.</p>
+<p>The names of targets are also used as the names of executables. For example, if you run <code>neut build foo --install ./bin/</code>, an executable named <code>foo</code> will be created under the directory <code>./bin/</code>.</p>
+<p>The field <code>target</code> is optional. The default value of <code>target</code> is <code>{}</code>.</p>
+<h3 id="compile-option"><a class="header" href="#compile-option"><code>compile-option</code></a></h3>
+<p>You can add <code>compile-option</code> to a target as follows:</p>
+<pre><code class="language-ens">{
+  target {
+    foo {
+      main "foo.nt",
+      // ↓ here
+      compile-option [
+        "-g",
+        "-O0",
+        "-fsanitize=address",
+        "$SOME_ENV_VAR",
+        "$(some-command arg)",
+      ],
+    },
+  },
+}
+</code></pre>
+<p>The compiler passes the options specified here to <code>clang</code> when compiling LLVM IRs into object files.</p>
+<p>In <code>compile-option</code>, you can use environment variables and shell interpolations.</p>
+<p>The field <code>compile-option</code> is optional. The default value of <code>compile-option</code> is <code>[]</code>.</p>
+<h3 id="link-option"><a class="header" href="#link-option"><code>link-option</code></a></h3>
+<p>You can add <code>link-option</code> to a target as follows:</p>
+<pre><code class="language-ens">{
+  target {
+    foo {
+      main "foo.nt",
+      // ↓ here
+      link-option [
+        "-g",
+        "-O0",
+        "$SOME_ENV_VAR",
+        "$(some-command)",
+      ],
+    },
+  },
+}
+</code></pre>
+<p>The compiler passes the options specified here to <code>clang</code> when linking object files.</p>
+<p>In <code>link-option</code>, you can use environment variables and shell interpolations.</p>
+<p>The field <code>link-option</code> is optional. The default value of <code>link-option</code> is <code>[]</code>.</p>
+<h3 id="build-option"><a class="header" href="#build-option"><code>build-option</code></a></h3>
+<p>You can add <code>build-option</code> to a target as follows:</p>
+<pre><code class="language-ens">{
+  target {
+    foo {
+      main "foo.nt",
+      // ↓ here
+      build-option [
+        "$(pkg-config openssl --libs --cflags)",
+        // ...
+      ],
+    },
+  },
+}
+</code></pre>
+<p>Adding an element to <code>build-option</code> is the same as adding the element to both <code>compile-option</code> and <code>link-option</code>.</p>
+<p>In <code>build-option</code>, you can use environment variables and shell interpolations.</p>
+<p>The field <code>build-option</code> is optional. The default value of <code>build-option</code> is <code>[]</code>.</p>
+<h3 id="allocator"><a class="header" href="#allocator"><code>allocator</code></a></h3>
+<p>The field <code>allocator</code> specifies which allocator is used by the target:</p>
+<pre><code class="language-ens">{
+  target {
+    foo {
+      main "foo.nt",
+      allocator "mimalloc",
+    },
+  },
+}
+</code></pre>
+<p>The following values are available:</p>
+<ul>
+<li><code>"system"</code>: the system allocator</li>
+<li><code>"mimalloc"</code>: mimalloc</li>
+</ul>
+<p>The field <code>allocator</code> is optional. The default value of <code>allocator</code> is <code>"system"</code>.</p>
+<h2 id="zen"><a class="header" href="#zen"><code>zen</code></a></h2>
+<p>The field <code>zen</code> defines the configuration used by <code>neut zen</code>. It should look like the following:</p>
+<pre><code class="language-ens">{
+  // ..
+  zen {
+    build-option [
+      "-fsanitize=address",
+    ],
+    allocator "mimalloc",
+  },
+  // ..
+}
+</code></pre>
+<p>The fields available inside <code>zen</code> are the same as those available inside each entry of <code>target</code>:</p>
+<ul>
+<li><code>build-option</code></li>
+<li><code>compile-option</code></li>
+<li><code>link-option</code></li>
+<li><code>allocator</code></li>
+</ul>
+<p>These fields affect builds performed by <code>neut zen</code>, rather than <code>neut build TARGET</code>.</p>
+<p>The field <code>zen</code> is optional. By default, it uses empty build options and the system allocator.</p>
+<h2 id="dependency"><a class="header" href="#dependency"><code>dependency</code></a></h2>
+<p>The field <code>dependency</code> defines the dependencies of a module. It should look like the following:</p>
+<pre><code class="language-ens">{
+  // ..
+  dependency {
+    foo {
+      digest "(base64url-encoded sha256 checksum)",
+      mirror [
+        "URL-1",
+        // ..
+        "URL-N",
+      ],
+      enable-preset &lt;true | false&gt;, // ← optional field
+    },
+    // ..
+    bar { .. },
+  },
+  // ..
+}
+</code></pre>
+<p>The field <code>digest</code> specifies the checksum of the tarball of the dependency. The digest is a Base64URL-encoded SHA256 checksum of the tarball. This digest is the "real" name of this dependency and is used as an identifier.</p>
+<p>The field <code>mirror</code> specifies a list of URLs from which the compiler can fetch the tarball. When fetching the tarball is necessary, the compiler tries these URLs from the beginning to the end.</p>
+<p>The optional field <code>enable-preset</code> specifies whether to import the dependency's <code>preset</code> automatically, like the Prelude in other languages. For more information, see the explanation of <code>preset</code> in this section.</p>
+<p>The field <code>dependency</code> is optional. The default value of <code>dependency</code> is <code>{}</code>.</p>
+<h2 id="archive"><a class="header" href="#archive"><code>archive</code></a></h2>
+<p>The field <code>archive</code> defines the path of the directory into which the subcommand <code>neut archive</code> stores tarballs. It should look like the following:</p>
+<pre><code class="language-ens">{
+  // ..
+  archive "my-archive",
+  // ..
+}
+</code></pre>
+<p>The field <code>archive</code> is optional. The default value of <code>archive</code> is <code>./archive/</code>.</p>
+<h2 id="cache"><a class="header" href="#cache"><code>cache</code></a></h2>
+<p>The field <code>cache</code> defines the path of the directory in which to store object files, executables, dependencies, etc. It should look like the following:</p>
+<pre><code class="language-ens">{
+  // ..
+  cache ".cache",
+  // ..
+}
+</code></pre>
+<p>The field <code>cache</code> is optional. The default value of <code>cache</code> is <code>./cache/</code>.</p>
+<h2 id="source"><a class="header" href="#source"><code>source</code></a></h2>
+<p>The field <code>source</code> defines the path to the directory where source files are stored. It should look like the following:</p>
+<pre><code class="language-ens">{
+  // ..
+  source ".",
+  // ..
+}
+</code></pre>
+<p>The field <code>source</code> is optional. The default value of <code>source</code> is <code>./source/</code>.</p>
+<h2 id="foreign"><a class="header" href="#foreign"><code>foreign</code></a></h2>
+<p>The field <code>foreign</code> defines a way to compile external source files. It should look like the following:</p>
+<pre><code class="language-ens">{
+  // ..
+  foreign {
+    input [
+      "source/foo.c",
+      "source/bar.c",
+    ],
+    output [
+      "foo.o",
+      "bar.o",
+    ],
+    script [
+      "{{clang}} -c -flto=thin -O2 source/foo.c -o {{foreign}}/foo.o",
+      "{{clang}} -c -flto=thin -O2 source/bar.c -o {{foreign}}/bar.o",
+    ],
+  },
+}
+</code></pre>
+<h3 id="input"><a class="header" href="#input"><code>input</code></a></h3>
+<p>The field <code>input</code> specifies the list of external source files. The paths are relative to the root of the module.</p>
+<p>When running <code>neut archive</code>, the compiler adds all the <code>input</code> files to the resulting tarball.</p>
+<h3 id="output"><a class="header" href="#output"><code>output</code></a></h3>
+<p>The field <code>output</code> specifies the output files produced from foreign source files. The paths are relative to a directory named the <em>foreign directory</em>. You can find the foreign directory in the build directory.</p>
+<p>When running <code>neut build</code>, the compiler links all the <code>output</code> files in the foreign directory (in addition to Neut's "domestic" object files).</p>
+<h3 id="script"><a class="header" href="#script"><code>script</code></a></h3>
+<p>The field <code>script</code> specifies how to compile external source files. When running <code>neut build</code>, the compiler executes the specified commands immediately after resolving all the <code>import</code>s.</p>
+<p>In the field <code>script</code>, you can use the following placeholders:</p>
+<ul>
+<li><code>{{clang}}</code>: The <code>clang</code> used by the compiler</li>
+<li><code>{{foreign}}</code>: The foreign directory</li>
+</ul>
+<p>The compiler skips running the <code>script</code> if all the files in <code>output</code> are newer than <code>input</code>.</p>
+<p>When running the <code>script</code>, the compiler sets the current working directory to the module's root directory.</p>
+<h3 id="notes"><a class="header" href="#notes">Notes</a></h3>
+<p>The field <code>foreign</code> is optional. The default value of <code>foreign</code> is:</p>
+<pre><code class="language-ens">{
+  input [],
+  output [],
+  script [],
+}
+</code></pre>
+<p>An example of <code>foreign</code> can be found in the <a href="https://github.com/vekatze/neut-core/blob/main/module.ens">core library</a>.</p>
+<div class="info-block">
+<p>The compiler links the resulting foreign object files without any name mangling. You're strongly encouraged to prefix names in your foreign sources with your module name and the major version to avoid name collisions.</p>
+</div>
+
+<h2 id="extra-content"><a class="header" href="#extra-content"><code>extra-content</code></a></h2>
+<p>The field <code>extra-content</code> defines additional files or directories to include when running <code>neut archive</code>. It should look like the following:</p>
+<pre><code class="language-ens">{
+  // ..
+  extra-content [
+    "README.md",
+    "docs/",
+  ],
+  // ..
+}
+</code></pre>
+<p>Each entry must be a path relative to the module root.</p>
+<p>If an entry ends with <code>/</code>, it is treated as a directory. Otherwise, it is treated as a file.</p>
+<p>The field <code>extra-content</code> is optional. The default value of <code>extra-content</code> is <code>[]</code>.</p>
+<h2 id="text-file"><a class="header" href="#text-file"><code>text-file</code></a></h2>
+<p>The field <code>text-file</code> defines the list of text files that can be embedded into source files at compile time. It should look like the following:</p>
+<pre><code class="language-ens">{
+  // ..
+  text-file {
+    some-file "relative/path/from/the/module/root/to/some-file.txt",
+    other-file "relative/path/from/the/module/root/to/other-file.txt",
+  },
+  // ..
+}
+</code></pre>
+<p>You can use the keys defined here in source files using <code>import</code> and <code>static</code>:</p>
+<pre><code class="language-neut">// foo.nt
+
+import {
+  // ..
+  core.string {from-text},
+  text-file {some-file, other-file},
+  // ..
+}
+
+define use-some-file() -&gt; unit {
+  print(from-text(static some-file));
+  print(from-text(static other-file))
+}
+</code></pre>
+<p>After specifying a key for a text file in <code>import</code>, you can use <code>static</code> to embed the file's content into the source file at compile time. Here, <code>static</code> assumes that the encoding of the file is UTF-8. For the term-level details of <code>static</code> and <code>text</code>, see <a href="./terms.html#static">Terms</a> and <a href="./primitives.html#primitive-types">Primitives</a>.</p>
+<p>The compiler triggers recompilation when necessary by comparing the modification times of static resources and source files. In the code above, for example, the compiler recompiles <code>foo.nt</code> if you modify the content of <code>some-file.txt</code>.</p>
+<p>The field <code>text-file</code> is optional. The default value of <code>text-file</code> is <code>{}</code>.</p>
+<h2 id="preset"><a class="header" href="#preset"><code>preset</code></a></h2>
+<p>The field <code>preset</code> defines the list of names that must be imported implicitly when the module is used as a dependency. It should look like the following:</p>
+<pre><code class="language-ens">{
+  // ..
+  preset {
+    foo ["my-func", "other-func"],
+    item.bar ["baz", "qux"],
+  },
+  // ..
+}
+</code></pre>
+<p>In the example above, the current module is expected to have the following files:</p>
+<ul>
+<li><code>(source-dir)/foo.nt</code> that contains the definitions of <code>my-func</code> and <code>other-func</code></li>
+<li><code>(source-dir)/item/bar.nt</code> that contains the definitions of <code>baz</code> and <code>qux</code></li>
+</ul>
+<p>The field <code>preset</code> is used in combination with <code>enable-preset</code> in <code>dependency</code>.</p>
+<p>Suppose we released a module that contains the <code>preset</code> definition shown above. Also, suppose someone is developing a module <code>MMM</code> and has added our module to <code>MMM</code>'s dependencies:</p>
+<pre><code class="language-ens">// module.ens in MMM
+
+{
+  // ..
+  dependency {
+    sample {
+      digest "BASE64_URL_ENCODED_SHA256_CHECKSUM",
+      mirror ["SOME_URL"],
+      enable-preset true,
+    },
+    // ..
+  },
+  // ..
+}
+</code></pre>
+<p>In this case, source files in <code>MMM</code> automatically import our preset names because <code>enable-preset</code> is <code>true</code>.</p>
+<p>As an example, suppose a file in <code>MMM</code> contains an <code>import</code> like the following:</p>
+<pre><code class="language-neut">import {
+  sample.foo {my-func},
+}
+
+define baz() -&gt; int {
+  let i = my-func();
+  add-int(i, 10)
+}
+</code></pre>
+<p>This code is the same as the following since the preset is enabled:</p>
+<pre><code class="language-neut">define baz() -&gt; int {
+  let i = my-func();
+  add-int(i, 10)
+}
+</code></pre>
+<p>The field <code>preset</code> is expected to be used as a way to provide "preludes" like those in other languages.</p>
+<p>The field <code>preset</code> is optional. The default value of <code>preset</code> is <code>{}</code>.</p>
+<h2 id="inline-limit"><a class="header" href="#inline-limit"><code>inline-limit</code></a></h2>
+<p>The field <code>inline-limit</code> defines the limit on recursion performed during compilation. It should look like the following:</p>
+<pre><code class="language-ens">{
+  // ..
+  inline-limit 100000,
+  // ..
+}
+</code></pre>
+<p>During compilation, the compiler performs possibly recursive computation when:</p>
+<ul>
+<li>type-checking, and</li>
+<li>expanding the definitions of inline functions.</li>
+</ul>
+<p>The <code>inline-limit</code> specifies a limit here. If the limit is exceeded, the compiler reports an error like the following:</p>
+<pre><code class="language-text">/path/to/file.nt:123:45
+Error: Exceeded max recursion depth of N during (..)
+</code></pre>
+<p>The field <code>inline-limit</code> is optional. The default value of <code>inline-limit</code> is <code>1000000</code>.</p>
+<h2 id="antecedent"><a class="header" href="#antecedent"><code>antecedent</code></a></h2>
+<p>The <em>internal</em> field <code>antecedent</code> defines the list of older compatible versions. This field should look like the following:</p>
+<pre><code class="language-ens">{
+  // ..
+  antecedent [
+    "Bp8RulJ-XGTL9Eovre0yQupJpeS3lGNk8Q6QQYua7ag",
+    // ..
+    "zptXghmyD5druBl8kx2Qrei6O6fDsKCA7z2KoHp1aqA",
+  ],
+  // ..
+}
+</code></pre>
+<p>This information is used to select the newest compatible version of the module. For more information, see the explanation on <code>neut archive</code> in <a href="./commands.html">Commands</a>.</p>
+<p>The field <code>antecedent</code> is optional. The default value of <code>antecedent</code> is <code>[]</code>.</p>
+<p>This field must be modified <em>only by the compiler</em>. If you modify this field manually, the behavior of the compiler is undefined.</p>
+<div class="info-block">
+<p>Internally, the compiler treats a module as a library if and only if the module's <code>module.ens</code> contains the key <code>antecedent</code>.</p>
+</div>
+
+
+            <footer id="footer-paginator">
+              <a rel="prev" href="commands.html" class="nav previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                ← Previous Page
+              </a>
+
+              <div id="footer-spacer"></div>
+
+              <a rel="next" href="statements.html" class="nav next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                Next Page →
+              </a>
+            </footer>
+          </article>
+          <div id="footer-wrapper">
+            <footer id="footer-nav">
+              <ol class="chapter"><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="overview.html"><strong aria-hidden="true">1.</strong> Overview</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="installation.html"><strong aria-hidden="true">2.</strong> Installation</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="tutorial.html"><strong aria-hidden="true">3.</strong> Tutorial</a></span><ol class="section"><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="modules-and-sources.html"><strong aria-hidden="true">3.1.</strong> Modules and Sources</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="programming-in-neut.html"><strong aria-hidden="true">3.2.</strong> Programming in Neut</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="static-memory-management.html"><strong aria-hidden="true">3.3.</strong> Static Memory Management</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="modality-and-memory.html"><strong aria-hidden="true">3.4.</strong> Modality and Memory</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="modal-metaprogramming.html"><strong aria-hidden="true">3.5.</strong> Modal Metaprogramming</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="further-examples.html"><strong aria-hidden="true">3.6.</strong> Further Examples</a></span></li></ol><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="language-reference.html"><strong aria-hidden="true">4.</strong> Language Reference</a></span><ol class="section"><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="commands.html"><strong aria-hidden="true">4.1.</strong> Commands</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="modules.html"><strong aria-hidden="true">4.2.</strong> Modules</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="statements.html"><strong aria-hidden="true">4.3.</strong> Statements</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="terms.html"><strong aria-hidden="true">4.4.</strong> Terms</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="primitives.html"><strong aria-hidden="true">4.5.</strong> Primitives</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="basis.html"><strong aria-hidden="true">4.6.</strong> Basis</a></span></li></ol><li class="chapter-item expanded "><li class="part-title">Appendix</li></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="manual-installation.html"><strong aria-hidden="true">5.</strong> Manual Installation</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="development-environment.html"><strong aria-hidden="true">6.</strong> Development Environment</a></span><ol class="section"><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="lsp-showcase.html"><strong aria-hidden="true">6.1.</strong> LSP Showcase</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="rapid-prototyping.html"><strong aria-hidden="true">6.2.</strong> Rapid Prototyping</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="editor-setup.html"><strong aria-hidden="true">6.3.</strong> Editor Setup</a></span></li></ol><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="on-executing-types.html"><strong aria-hidden="true">7.</strong> On Executing Types</a></span></li></ol>
+            </footer>
+          </div>
+        </main>
+      </div>
+
+
+      <script src="highlight-79d26f89.js"></script>
+      <script src="book-138bd6c0.js"></script>
+    </div>
+  </body>
+</html>
