@@ -36,4 +36,5 @@ create h cfg = do
   Create.createNewProject (createHandle h) (moduleName cfg) newModule
   h' <- liftIO $ Global.new (remarkCfg h) (Just $ moduleLocation newModule)
   Fetch.insertCoreDependency (Fetch.new h')
-  void $ Check.checkAll (Check.new h')
+  h'' <- liftIO $ Global.new (remarkCfg h) (Just $ moduleLocation newModule)
+  void $ Check.checkAllOrFail (Check.new h'')
