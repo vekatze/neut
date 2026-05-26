@@ -45,4 +45,4 @@ get h cfg = do
   Clean.clean (cleanHandle h)
   Fetch.insertDependency (fetchHandle h) (moduleAliasText cfg) (ModuleURL $ moduleURLText cfg)
   h' <- liftIO $ Global.new (remarkCfg h) Nothing
-  void $ Check.checkAll (Check.new h')
+  void $ Check.checkAllOrFail (Check.new h')

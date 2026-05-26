@@ -2,9 +2,10 @@ module Command.Common.Check
   ( Handle,
     new,
     check,
-    checkModule,
+    checkOrFail,
     checkSingle,
     checkAll,
+    checkAllOrFail,
   )
 where
 
@@ -12,6 +13,7 @@ import App.App (App)
 import App.Error qualified as E
 import App.Run (forP, runApp)
 import Control.Monad
+import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.IO.Class
 import Data.Text qualified as T
 import Kernel.Common.Cache
@@ -52,17 +54,36 @@ check h = do
   let M.MainModule mainModule = Env.getMainModule (Global.envHandle (globalHandle h))
   liftIO $ _check h Peripheral mainModule
 
+checkOrFail :: Handle -> App [Log]
+checkOrFail h = do
+  logs <- check h
+  throwIfFailure logs
+  return logs
+
 checkModule :: Handle -> M.Module -> IO [Log]
-checkModule h baseModule = do
-  _check h Peripheral baseModule
+checkModule h = do
+  _check h Peripheral
 
 checkAll :: Handle -> App [Log]
 checkAll h = do
   let mainModule = Env.getMainModule (Global.envHandle (globalHandle h))
   let getModuleHandle = GetModule.new (globalHandle h)
   deps <- GetModule.getAllDependencies getModuleHandle mainModule (extractModule mainModule)
-  forM_ deps $ \(_, m) -> liftIO $ checkModule h m
-  liftIO $ checkModule h (extractModule mainModule)
+  depLogs <- fmap concat $ forM deps $ \(_, m) -> liftIO $ checkModule h m
+  mainLogs <- liftIO $ checkModule h (extractModule mainModule)
+  return $ depLogs <> mainLogs
+
+checkAllOrFail :: Handle -> App [Log]
+checkAllOrFail h = do
+  logs <- checkAll h
+  throwIfFailure logs
+  return logs
+
+throwIfFailure :: [Log] -> App ()
+throwIfFailure logs = do
+  when (any L.isFailure logs) $
+    throwError $
+      E.MakeError logs
 
 checkSingle :: Handle -> M.Module -> Path Abs File -> App (Maybe Elaborate.Handle)
 checkSingle h baseModule path = do

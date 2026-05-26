@@ -1,5 +1,6 @@
 module Logger.Log
   ( Log (..),
+    isFailure,
     newLog,
     _logLevelToText,
     _logLevelToSGR,
@@ -21,6 +22,16 @@ data Log = Log
   deriving (Show, Generic)
 
 instance Binary Log
+
+isFailure :: Log -> Bool
+isFailure logItem = do
+  case logLevel logItem of
+    Error ->
+      True
+    Critical ->
+      True
+    _ ->
+      False
 
 _logLevelToText :: LogLevel -> T.Text
 _logLevelToText level =

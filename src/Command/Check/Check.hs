@@ -28,8 +28,8 @@ check h cfg = do
   let checkHandle = Check.new (globalHandle h)
   logs <-
     if shouldCheckAllDependencies cfg
-      then Check.checkAll checkHandle
-      else Check.check checkHandle
+      then Check.checkAllOrFail checkHandle
+      else Check.checkOrFail checkHandle
   liftIO $ Logger.printErrorList (Global.loggerHandle (globalHandle h)) logs
 
 setup :: Handle -> App ()
