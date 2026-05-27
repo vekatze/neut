@@ -28,6 +28,8 @@ import Kernel.Common.Handle.Local.Tag qualified as Tag
 import Kernel.Common.ReadableDD
 import Kernel.Common.TopNameMap
 import Kernel.Parse.Internal.Handle.Unused qualified as Unused
+import Kernel.Parse.Internal.Handle.UnusedTopLevelName qualified as UnusedTopLevelName
+import Kernel.Parse.Internal.Handle.UsedTopLevelName qualified as UsedTopLevelName
 import Language.Common.ArgNum qualified as AN
 import Language.Common.DataInfo qualified as DI
 import Language.Common.DefiniteDescription qualified as DD
@@ -52,6 +54,8 @@ data Handle = Handle
     platformHandle :: Platform.Handle,
     tagHandle :: Tag.Handle,
     unusedHandle :: Unused.Handle,
+    usedTopLevelNameHandle :: UsedTopLevelName.Handle,
+    unusedTopLevelNameHandle :: UnusedTopLevelName.Handle,
     nameMapRef :: IORef TopNameMap,
     geistMapRef :: IORef (Map.HashMap DD.DefiniteDescription (Hint, IsConstLike))
   }
@@ -59,8 +63,8 @@ data Handle = Handle
 type NameEntry =
   (DD.DefiniteDescription, TopNameInfo)
 
-new :: Global.Handle -> Unused.Handle -> Tag.Handle -> IO Handle
-new (Global.Handle {..}) unusedHandle tagHandle = do
+new :: Global.Handle -> Unused.Handle -> UsedTopLevelName.Handle -> Tag.Handle -> IO Handle
+new (Global.Handle {..}) unusedHandle usedTopLevelNameHandle tagHandle = do
   nameMapRef <- newIORef Map.empty
   geistMapRef <- newIORef Map.empty
   return $ Handle {..}
@@ -93,6 +97,8 @@ lookup h m currentLocator name = do
   case lookupAvailable currentLocator name nameMap of
     Just (mFound, _tag, gn) -> do
       liftIO $ Unused.deleteGlobalLocator (unusedHandle h) $ DD.globalLocator name
+      liftIO $ UsedTopLevelName.insert (usedTopLevelNameHandle h) name
+      liftIO $ UnusedTopLevelName.delete (unusedTopLevelNameHandle h) name
       return $ Just (mFound, gn)
     Nothing
       | Just primType <- PT.fromDefiniteDescription dataSize name ->

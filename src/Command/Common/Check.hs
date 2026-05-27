@@ -31,6 +31,7 @@ import Kernel.Elaborate.Elaborate qualified as Elaborate
 import Kernel.Elaborate.Internal.Handle.Elaborate qualified as Elaborate
 import Kernel.Load.Load qualified as Load
 import Kernel.Parse.Interpret qualified as Interpret
+import Kernel.Parse.Internal.Handle.UnusedTopLevelName qualified as UnusedTopLevelName
 import Kernel.Parse.Parse qualified as Parse
 import Kernel.Unravel.Unravel qualified as Unravel
 import Language.WeakTerm.WeakStmt (WeakStmt)
@@ -103,6 +104,7 @@ _check h target baseModule = do
       return (localHandle, (source, item))
     forM_ cacheOrStmtList $ \(localHandle, (source, cacheOrContent)) -> do
       checkSource h localHandle target source cacheOrContent
+    registerUnusedTopLevelNameRemarks h
 
 _check' :: Handle -> Target -> M.Module -> App (Maybe Elaborate.Handle)
 _check' h target baseModule = do
@@ -116,12 +118,15 @@ _check' h target baseModule = do
     item <- Interpret.interpret interpretHandle target source cacheOrProg
     return (localHandle, (source, item))
   case unsnoc cacheOrStmtList of
-    Nothing ->
+    Nothing -> do
+      registerUnusedTopLevelNameRemarks h
       return Nothing
     Just (deps, (rootLocalHandle, (rootSource, rootCacheOrContent))) -> do
       forM_ deps $ \(localHandle, (source, cacheOrContent)) -> do
         checkSource h localHandle target source cacheOrContent
-      Just <$> checkSource h rootLocalHandle target rootSource rootCacheOrContent
+      result <- Just <$> checkSource h rootLocalHandle target rootSource rootCacheOrContent
+      registerUnusedTopLevelNameRemarks h
+      return result
 
 checkSource :: Handle -> Local.Handle -> Target -> Source -> (Either Cache [WeakStmt], [Log]) -> App Elaborate.Handle
 checkSource h localHandle target source (cacheOrStmtList, logs) = do
@@ -131,6 +136,11 @@ checkSource h localHandle target source (cacheOrStmtList, logs) = do
       "Checking: " <> T.pack (toFilePath $ sourceFilePath source)
   void $ Elaborate.elaborate elaborateHandle target logs cacheOrStmtList
   return elaborateHandle
+
+registerUnusedTopLevelNameRemarks :: Handle -> App ()
+registerUnusedTopLevelNameRemarks h = do
+  logs <- liftIO $ UnusedTopLevelName.flushRemarks $ Global.unusedTopLevelNameHandle $ globalHandle h
+  liftIO $ GlobalRemark.insert (Global.globalRemarkHandle $ globalHandle h) logs
 
 unsnoc :: [a] -> Maybe ([a], a)
 unsnoc =

@@ -26,6 +26,7 @@ import Kernel.Parse.Internal.Discern.Data (defineData)
 import Kernel.Parse.Internal.Discern.Variadic (defineVariadic)
 import Kernel.Parse.Internal.Handle.GlobalNameMap qualified as GlobalNameMap
 import Kernel.Parse.Internal.Handle.NameMap qualified as NameMap
+import Kernel.Parse.Internal.Handle.UnusedTopLevelName qualified as UnusedTopLevelName
 import Kernel.Parse.Internal.Program qualified as Parse
 import Kernel.Parse.Internal.RawTerm qualified as ParseRT
 import Language.Common.ArgNum qualified as AN
@@ -43,6 +44,7 @@ import SyntaxTree.Series qualified as SE
 data Handle = Handle
   { parseHandle :: ParseRT.Handle,
     globalNameMapHandle :: GlobalNameMap.Handle,
+    unusedTopLevelNameHandle :: UnusedTopLevelName.Handle,
     keyArgHandle :: KeyArg.Handle,
     optDataHandle :: OptimizableData.Handle
   }
@@ -53,6 +55,7 @@ new ::
 new globalHandle = do
   let parseHandle = ParseRT.new (Global.gensymHandle globalHandle)
   let globalNameMapHandle = Global.globalNameMapHandle globalHandle
+  let unusedTopLevelNameHandle = Global.unusedTopLevelNameHandle globalHandle
   let keyArgHandle = Global.keyArgHandle globalHandle
   let optDataHandle = Global.optDataHandle globalHandle
   Handle {..}
@@ -63,6 +66,7 @@ parse ::
   App [(Local.Handle, (Source, Either Cache PostRawProgram))]
 parse h contentSeq = do
   let parseHandle = new h
+  liftIO $ UnusedTopLevelName.clear (unusedTopLevelNameHandle parseHandle)
   cacheOrProgList <- forP contentSeq $ \(source, cacheOrContent) -> do
     prog <- parse' parseHandle source cacheOrContent
     localHandle <- Local.new h source
@@ -181,6 +185,8 @@ saveTopLevelNames :: Handle -> Source.Source -> [(DD.DefiniteDescription, (Hint,
 saveTopLevelNames h source nameArrowList = do
   let nameMap = Map.fromList nameArrowList
   GlobalNameMap.insert (globalNameMapHandle h) (Source.sourceFilePath source) nameMap
+  forM_ nameArrowList $ \(dd, (m, _, gn)) ->
+    UnusedTopLevelName.insert (unusedTopLevelNameHandle h) dd m gn
   registerOptDataInfo h nameArrowList
 
 registerKeyArg :: Handle -> PostRawStmt -> App ()

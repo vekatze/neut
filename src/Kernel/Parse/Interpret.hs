@@ -59,13 +59,14 @@ new ::
   IO Handle
 new globalHandle localHandle currentModule = do
   let unusedHandle = Local.unusedHandle localHandle
+  let usedTopLevelNameHandle = Local.usedTopLevelNameHandle localHandle
   let pathHandle = Global.pathHandle globalHandle
   let importHandle = Import.new globalHandle localHandle
   let globalNameMapHandle = Global.globalNameMapHandle globalHandle
   let aliasHandle = Local.aliasHandle localHandle
   let locatorHandle = Local.locatorHandle localHandle
   let tagHandle = Local.tagHandle localHandle
-  nameMapHandle <- NameMap.new globalHandle unusedHandle tagHandle
+  nameMapHandle <- NameMap.new globalHandle unusedHandle usedTopLevelNameHandle tagHandle
   let symLocHandle = Local.symLocHandle localHandle
   let topCandidateHandle = Local.topCandidateHandle localHandle
   let rawImportSummaryHandle = Local.rawImportSummaryHandle localHandle

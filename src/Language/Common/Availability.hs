@@ -1,5 +1,6 @@
 module Language.Common.Availability
   ( allows,
+    isRestricted,
   )
 where
 
@@ -21,3 +22,12 @@ allows currentLocator dd = do
       True
     Just owner ->
       defModuleID == SGL.moduleID currentLocator && owner `SP.contains` SGL.sourceLocator currentLocator
+
+isRestricted :: DD.DefiniteDescription -> Bool
+isRestricted dd = do
+  let (_, rest) = DD.unconsDD dd
+  case SP.internalOwnerOf $ map BN.fromText $ T.splitOn nsSep rest of
+    Nothing ->
+      False
+    Just _ ->
+      True

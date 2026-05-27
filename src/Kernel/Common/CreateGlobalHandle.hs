@@ -32,6 +32,7 @@ import Kernel.Elaborate.Internal.Handle.TypeDef qualified as TypeDef
 import Kernel.Elaborate.Internal.Handle.WeakDef qualified as WeakDef
 import Kernel.Elaborate.Internal.Handle.WeakTypeDef qualified as WeakTypeDef
 import Kernel.Parse.Internal.Handle.GlobalNameMap qualified as GlobalNameMap
+import Kernel.Parse.Internal.Handle.UnusedTopLevelName qualified as UnusedTopLevelName
 import Language.Common.ModuleID qualified as MID
 import Logger.CreateHandle qualified as Logger
 import Logger.Handle qualified as Logger
@@ -57,6 +58,7 @@ data Handle = Handle
     weakTypeDefHandle :: WeakTypeDef.Handle,
     typeDefHandle :: TypeDef.Handle,
     globalNameMapHandle :: GlobalNameMap.Handle,
+    unusedTopLevelNameHandle :: UnusedTopLevelName.Handle,
     presetCacheRef :: IORef (Map.HashMap MID.ModuleID [ImportItem])
   }
 
@@ -96,5 +98,6 @@ newOrError cfg moduleFilePathOrNone = do
       typeDefHandle <- TypeDef.new
       antecedentHandle <- Antecedent.new
       globalNameMapHandle <- GlobalNameMap.new
+      unusedTopLevelNameHandle <- UnusedTopLevelName.new
       presetCacheRef <- newIORef Map.empty
       return $ Right $ Handle {..}
