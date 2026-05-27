@@ -69,6 +69,7 @@
 - [name[x1, ..., xn]](#namex1--xn)
 - [if](#if)
 - [when cond { e }](#when-cond--e-)
+- [with h { e }](#with-h--e-)
 - [e1; e2](#e1-e2)
 - [try x = e1; e2](#try-x--e1-e2)
 - [tie x = e1; e2](#tie-x--e1-e2)
@@ -1469,6 +1470,8 @@ match e1, ..., en {
 }
 ```
 
+The scrutinees `e1, ..., en` are restricted terms. At the top level of a scrutinee, grouped terms like `{e}` and key-argument applications like `foo{...}` are not accepted. Bind such a term with `let` before matching on it.
+
 ### Semantics
 
 The semantics of `match` is the same as the semantics of ordinary pattern matching, except that ADT values are _consumed_ after branching.
@@ -1966,6 +1969,8 @@ case e1, ..., en {
   body-m
 }
 ```
+
+The scrutinees `e1, ..., en` are restricted terms. At the top level of a scrutinee, grouped terms like `{e}` and key-argument applications like `foo{...}` are not accepted. Bind such a term with `let` before using `case`.
 
 ### Semantics
 
@@ -3233,6 +3238,8 @@ define bar(b1: bool, b2: bool) -> unit {
 if b1 { e1 } else-if b2 { e2 }  ... else-if b_{n-1} { e_{n-1} } else { en }
 ```
 
+The conditions `b1, ..., b_{n-1}` are restricted terms. At the top level of a condition, grouped terms like `{e}` and key-argument applications like `foo{...}` are not accepted. Bind such a term with `let` before using it as a condition.
+
 ### Semantics
 
 `if` is the following syntactic sugar:
@@ -3284,6 +3291,8 @@ when cond {
 }
 ```
 
+The condition `cond` is a restricted term. At the top level of the condition, grouped terms like `{e}` and key-argument applications like `foo{...}` are not accepted. Bind such a term with `let` before using it as a condition.
+
 ### Semantics
 
 `when` is the following syntactic sugar:
@@ -3301,6 +3310,75 @@ if cond {
   Unit
 }
 ```
+
+### Type
+
+Derived from the desugared form.
+
+## `with h { e }`
+
+You can use `with` to interpret `bind` expressions in its body.
+
+### Example
+
+```neut
+define and-then<a, b, err>(
+  x: either(err, a),
+  f: (a) -> either(err, b),
+) -> either(err, b) {
+  match x {
+  | Left(e) =>
+    Left(e)
+  | Right(v) =>
+    f(v)
+  }
+}
+
+define add-if-both-succeed(x: either(unit, int), y: either(unit, int)) -> either(unit, int) {
+  with and-then {
+    bind a = x;
+    bind b = y;
+    Right(add-int(a, b))
+  }
+}
+```
+
+### Syntax
+
+```neut
+with h {
+  e
+}
+```
+
+The head term `h` is a restricted term. At the top level of the head term, grouped terms like `{e}` and key-argument applications like `foo{...}` are not accepted. Bind such a term with `let` before using it as the head term.
+
+Inside `with`, `bind` can be used as follows:
+
+```neut
+bind x = e1;
+e2
+
+bind x: t = e1;
+e2
+```
+
+### Semantics
+
+`with h { e }` evaluates `e` after replacing each `bind` with an application of `h`. For example:
+
+```neut
+with h {
+  bind x = e1;
+  e2
+}
+
+↓
+
+h(with h {e1}, (x) => {with h {e2}})
+```
+
+`bind` can only be used inside `with`.
 
 ### Type
 

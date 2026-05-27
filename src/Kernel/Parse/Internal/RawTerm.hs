@@ -200,13 +200,17 @@ rawTermBase :: TermMode -> Handle -> Hint -> T.Text -> C -> Parser (RT.RawTerm, 
 rawTermBase mode h m headSymbol c = do
   if T.null headSymbol
     then do
-      choice
-        [ rawTermBrace h,
-          rawTermLambda h,
-          rawTermTextIntro,
-          rawTermRuneIntro,
-          rawTermEmbody h
-        ]
+      let parsers =
+            [ rawTermLambda h,
+              rawTermTextIntro,
+              rawTermRuneIntro,
+              rawTermEmbody h
+            ]
+      case mode of
+        Partial ->
+          choice parsers
+        Full ->
+          choice $ rawTermBrace h : parsers
     else do
       name <- interpretVarName m headSymbol
       choice
