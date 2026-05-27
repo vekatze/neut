@@ -25,13 +25,14 @@ _decode forceVertical series = do
       D.Nil
     (Nothing, _) -> do
       let isVertical = forceVertical || hasOptionalSeparator series || hasComment series
+      let arranger = if isVertical then PI.arrangeVertical else PI.arrange
       let intercalate =
             case sep of
               Bar -> barSeq
               Comma -> commaSeq
       PI.arrange
         [ PI.inject prefix',
-          PI.inject $ PI.arrange $ intercalate (elems series) isVertical (trailingComment series)
+          PI.inject $ arranger $ intercalate (elems series) isVertical (trailingComment series)
         ]
     (Just k, _) -> do
       let (open, close) = getContainerPair k
