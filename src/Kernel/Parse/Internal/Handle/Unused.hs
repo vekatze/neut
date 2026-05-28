@@ -5,14 +5,17 @@ module Kernel.Parse.Internal.Handle.Unused
     insertLocalLocator,
     insertStaticFile,
     insertVariable,
+    insertForeign,
     deleteGlobalLocator,
     deleteLocalLocator,
     deleteStaticFile,
     deleteVariable,
+    deleteForeign,
     getGlobalLocator,
     getLocalLocator,
     getStaticFile,
     getVariable,
+    getForeign,
     getUnusedLocators,
   )
 where
@@ -23,6 +26,7 @@ import Data.IORef
 import Data.IntMap qualified as IntMap
 import Data.Text qualified as T
 import Kernel.Parse.VarDefKind
+import Language.Common.ExternalName qualified as EN
 import Language.Common.Ident
 import Language.Common.Ident.Reify
 import Language.Common.LocalLocator qualified as LL
@@ -36,7 +40,8 @@ data Handle = Handle
     unusedLocalLocatorMapRef :: IORef (Map.HashMap LL.LocalLocator Hint),
     unusedPresetMapRef :: IORef (Map.HashMap T.Text Hint),
     unusedStaticFileMapRef :: IORef (Map.HashMap T.Text Hint),
-    unusedVariableMapRef :: IORef (IntMap.IntMap (Hint, Ident, VarDefKind))
+    unusedVariableMapRef :: IORef (IntMap.IntMap (Hint, Ident, VarDefKind)),
+    unusedForeignMapRef :: IORef (Map.HashMap EN.ExternalName Hint)
   }
 
 new :: IO Handle
@@ -46,6 +51,7 @@ new = do
   unusedPresetMapRef <- newIORef Map.empty
   unusedStaticFileMapRef <- newIORef Map.empty
   unusedVariableMapRef <- newIORef IntMap.empty
+  unusedForeignMapRef <- newIORef Map.empty
   return $ Handle {..}
 
 insertGlobalLocator :: Handle -> T.Text -> Hint -> T.Text -> IO ()
@@ -64,6 +70,10 @@ insertVariable :: Handle -> Hint -> Ident -> VarDefKind -> IO ()
 insertVariable h m x k =
   modifyIORef' (unusedVariableMapRef h) $ IntMap.insert (toInt x) (m, x, k)
 
+insertForeign :: Handle -> EN.ExternalName -> Hint -> IO ()
+insertForeign h name m =
+  modifyIORef' (unusedForeignMapRef h) $ Map.insert name m
+
 deleteGlobalLocator :: Handle -> T.Text -> IO ()
 deleteGlobalLocator h sglText =
   modifyIORef' (unusedGlobalLocatorMapRef h) $ Map.delete sglText
@@ -79,6 +89,10 @@ deleteStaticFile h ll =
 deleteVariable :: Handle -> Ident -> IO ()
 deleteVariable h x = do
   modifyIORef' (unusedVariableMapRef h) $ IntMap.delete (toInt x)
+
+deleteForeign :: Handle -> EN.ExternalName -> IO ()
+deleteForeign h name =
+  modifyIORef' (unusedForeignMapRef h) $ Map.delete name
 
 getGlobalLocator :: Handle -> IO UnusedGlobalLocators
 getGlobalLocator h = do
@@ -99,6 +113,11 @@ getVariable :: Handle -> IO [(Hint, Ident, VarDefKind)]
 getVariable h = do
   vars <- readIORef (unusedVariableMapRef h)
   return $ filter (\(_, var, _) -> not (isHole var)) $ IntMap.elems vars
+
+getForeign :: Handle -> IO [(EN.ExternalName, Hint)]
+getForeign h = do
+  uenv <- readIORef (unusedForeignMapRef h)
+  return $ Map.toList uenv
 
 getUnusedLocators :: Handle -> IO (UnusedGlobalLocators, UnusedLocalLocators)
 getUnusedLocators h = do

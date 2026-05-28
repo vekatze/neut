@@ -871,6 +871,7 @@ discernMagic h m magic =
       ensureRuntimeStage m h "runtime magic (`external`)"
       mDef <- PreDecl.lookup (H.preDeclHandle h) m funcName
       liftIO $ Tag.insertExternalName (H.tagHandle h) mUse funcName mDef
+      liftIO $ Unused.deleteForeign (H.unusedHandle h) funcName
       let domList = []
       let cod = FCT.Void
       args' <- mapM (discern h) $ SE.extract args
@@ -1548,6 +1549,7 @@ interpretForeignItem h (RawForeignItemF m name _ lts _ _ cod) = do
   let lts' = SE.extract lts
   Tag.insertExternalName (H.tagHandle h) m name m
   PreDecl.insert (H.preDeclHandle h) name m
+  Unused.insertForeign (H.unusedHandle h) name m
   return $ F.Foreign m name lts' cod
 
 selectDefaultKeyArgs :: [DefaultKey] -> Map.HashMap Key a -> DefaultArgs.DefaultArgs a
