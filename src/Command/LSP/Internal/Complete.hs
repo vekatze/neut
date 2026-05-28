@@ -36,8 +36,8 @@ import Kernel.Common.Source
 import Kernel.Common.Target
 import Kernel.Common.TopCandidate
 import Kernel.Unravel.Unravel qualified as Unravel
-import Language.Common.BaseName qualified as BN
 import Language.Common.Availability qualified as AV
+import Language.Common.BaseName qualified as BN
 import Language.Common.Const (nsSep)
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.Ident.Reify qualified as Ident
@@ -128,6 +128,7 @@ adjustTopCandidate ::
   App [CompletionItem]
 adjustTopCandidate h summaryOrNone currentSource loc prefixSummary candInfo = do
   currentGlobalLocator <- Locator.constructGlobalLocator currentSource
+  let localDefSet = collectLocalDefSet currentSource candInfo
   fmap concat $ forM candInfo $ \(candSource, candList) -> do
     candGlobalLocator <- Locator.constructGlobalLocator candSource
     if not (SP.canImport currentGlobalLocator candGlobalLocator)
@@ -141,7 +142,15 @@ adjustTopCandidate h summaryOrNone currentSource loc prefixSummary candInfo = do
           Just locator -> do
             let candIsInCurrentSource = sourceFilePath currentSource == sourceFilePath candSource
             let candList' = filter (isAvailableCandidate currentGlobalLocator) candList
-            return $ concatMap (topCandidateToCompletionItem summaryOrNone candIsInCurrentSource prefixSummary locator loc) candList'
+            return $ concatMap (topCandidateToCompletionItem summaryOrNone candIsInCurrentSource localDefSet prefixSummary locator loc) candList'
+
+collectLocalDefSet :: Source -> [(Source, [TopCandidate])] -> S.Set T.Text
+collectLocalDefSet currentSource candInfo = do
+  let extract (candSource, candList) =
+        if sourceFilePath candSource == sourceFilePath currentSource
+          then map (DD.localLocator . dd) candList
+          else []
+  S.fromList $ concatMap extract candInfo
 
 isAvailableCandidate :: SGL.StrictGlobalLocator -> TopCandidate -> Bool
 isAvailableCandidate currentGlobalLocator topCandidate =
@@ -155,20 +164,22 @@ identToCompletionItem x = do
 topCandidateToCompletionItem ::
   Maybe RawImportSummary ->
   Bool ->
+  S.Set T.Text ->
   FastPresetSummary ->
   T.Text ->
   Loc ->
   TopCandidate ->
   [CompletionItem]
-topCandidateToCompletionItem importSummaryOrNone candIsInCurrentSource presetSummary locator cursorLoc topCandidate = do
+topCandidateToCompletionItem importSummaryOrNone candIsInCurrentSource localDefSet presetSummary locator cursorLoc topCandidate = do
   if candIsInCurrentSource && cursorLoc < loc topCandidate
     then []
     else do
       let baseDD = dd topCandidate
       let ll = DD.localLocator baseDD
       let fullyQualified = FullyQualified locator ll
-      let bare = Bare locator ll
-      let cands = filter (isProperCand importSummaryOrNone) [fullyQualified, bare]
+      let bareCollidesWithLocal = not candIsInCurrentSource && S.member ll localDefSet
+      let short = if bareCollidesWithLocal then LocallyShadowed locator ll else Bare locator ll
+      let cands = filter (isProperCand importSummaryOrNone) [fullyQualified, short]
       flip map cands $ \cand -> do
         let inPresetImport = isInPresetImport presetSummary cand
         let needsTextEdit = not candIsInCurrentSource && not inPresetImport
@@ -176,12 +187,13 @@ topCandidateToCompletionItem importSummaryOrNone candIsInCurrentSource presetSum
         let CompletionItem {..} = toCompletionItem $ reifyCand cand
         let _kind = Just $ fromCandidateKind $ kind topCandidate
         let _labelDetails = Just CompletionItemLabelDetails {_description = Just ("in " <> locator), _detail = Nothing}
-        CompletionItem {_kind, _labelDetails, _additionalTextEdits = textEditOrNone, ..}
+        CompletionItem {_kind, _labelDetails, _insertText = candInsertText cand, _additionalTextEdits = textEditOrNone, ..}
 
 data Cand
   = FullyQualified T.Text T.Text
   | Prefixed T.Text T.Text
   | Bare T.Text T.Text
+  | LocallyShadowed T.Text T.Text
 
 isProperCand :: Maybe RawImportSummary -> Cand -> Bool
 isProperCand summaryOrNone cand =
@@ -208,6 +220,8 @@ isVisibleCand cand =
       not ("_" `T.isPrefixOf` ll)
     FullyQualified gl ll -> do
       ("this." `T.isPrefixOf` gl) || (not ("._" `T.isInfixOf` gl) && not ("_" `T.isPrefixOf` ll))
+    LocallyShadowed gl ll -> do
+      ("this." `T.isPrefixOf` gl) || (not ("._" `T.isInfixOf` gl) && not ("_" `T.isPrefixOf` ll))
 
 shouldRemoveLocatorPair :: (T.Text, T.Text) -> [(T.Text, [T.Text])] -> Bool
 shouldRemoveLocatorPair (gl, ll) summary = do
@@ -223,6 +237,8 @@ isInPresetImport :: FastPresetSummary -> Cand -> Bool
 isInPresetImport presetSummary cand =
   case cand of
     FullyQualified locator _ ->
+      S.member locator (aliasSet presetSummary)
+    LocallyShadowed locator _ ->
       S.member locator (aliasSet presetSummary)
     Prefixed {} ->
       False
@@ -258,11 +274,23 @@ reifyCand cand =
       prefix <> nsSep <> ll
     Bare _ ll ->
       ll
+    LocallyShadowed _ ll ->
+      ll
+
+candInsertText :: Cand -> Maybe T.Text
+candInsertText cand =
+  case cand of
+    LocallyShadowed gl ll ->
+      Just $ gl <> nsSep <> ll
+    _ ->
+      Nothing
 
 isAlreadyImported :: [(T.Text, [T.Text])] -> Cand -> Bool
 isAlreadyImported summary cand =
   case cand of
     FullyQualified gl _ ->
+      gl `elem` map fst summary
+    LocallyShadowed gl _ ->
       gl `elem` map fst summary
     Prefixed prefix _ ->
       prefix `elem` map fst summary
@@ -273,6 +301,8 @@ constructEditText :: Cand -> T.Text
 constructEditText cand =
   case cand of
     FullyQualified gl _ ->
+      "  " <> gl <> ","
+    LocallyShadowed gl _ ->
       "  " <> gl <> ","
     Prefixed prefix _ ->
       "  " <> prefix <> ","
