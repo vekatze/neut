@@ -15,6 +15,7 @@ import Kernel.Common.LocalVarTree qualified as LVT
 import Kernel.Common.LocationTree qualified as LT
 import Kernel.Common.RawImportSummary
 import Kernel.Common.TopCandidate (TopCandidate)
+import Language.Common.DefiniteDescription qualified as DD
 import Language.Term.Compress qualified as TM
 import Language.Term.Extend qualified as TM
 import Language.Term.Stmt qualified as Stmt
@@ -23,6 +24,7 @@ import Logger.Log
 data Cache = Cache
   { stmtList :: [Stmt.Stmt],
     remarkList :: [Log],
+    globalReferenceList :: [DD.DefiniteDescription],
     countSnapshot :: Int
   }
   deriving (Generic)
@@ -30,6 +32,7 @@ data Cache = Cache
 data LowCache = LowCache
   { stmtList' :: [Stmt.StrippedStmt],
     remarkList' :: [Log],
+    globalReferenceList' :: [DD.DefiniteDescription],
     countSnapshot' :: Int
   }
   deriving (Generic)
@@ -57,6 +60,7 @@ compress cache =
   LowCache
     { stmtList' = map compressStmt (stmtList cache),
       remarkList' = remarkList cache,
+      globalReferenceList' = globalReferenceList cache,
       countSnapshot' = countSnapshot cache
     }
 
@@ -65,6 +69,7 @@ extend cache =
   Cache
     { stmtList = map extendStmt (stmtList' cache),
       remarkList = remarkList' cache,
+      globalReferenceList = globalReferenceList' cache,
       countSnapshot = countSnapshot' cache
     }
 

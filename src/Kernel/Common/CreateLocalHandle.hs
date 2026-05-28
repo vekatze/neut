@@ -17,9 +17,11 @@ import Kernel.Elaborate.Internal.Handle.WeakDecl qualified as WeakDecl
 import Kernel.Parse.Internal.Handle.Alias qualified as Alias
 import Kernel.Parse.Internal.Handle.PreDecl qualified as PreDecl
 import Kernel.Parse.Internal.Handle.Unused qualified as Unused
+import Kernel.Parse.Internal.Handle.UsedTopLevelName qualified as UsedTopLevelName
 
 data Handle = Handle
   { unusedHandle :: Unused.Handle,
+    usedTopLevelNameHandle :: UsedTopLevelName.Handle,
     aliasHandle :: Alias.Handle,
     locatorHandle :: Locator.Handle,
     tagHandle :: Tag.Handle,
@@ -35,6 +37,7 @@ new h source = do
   let envHandle = Global.envHandle h
   let antecedentHandle = Global.antecedentHandle h
   unusedHandle <- liftIO Unused.new
+  usedTopLevelNameHandle <- liftIO UsedTopLevelName.new
   tagHandle <- liftIO Tag.new
   locatorHandle <- Locator.new envHandle tagHandle source
   aliasHandle <- liftIO $ Alias.new antecedentHandle locatorHandle envHandle source

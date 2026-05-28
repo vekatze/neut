@@ -22,6 +22,7 @@ import Data.Text qualified as T
 import Gensym.Trick qualified as Gensym
 import Kernel.Common.Cache qualified as Cache
 import Kernel.Common.Const (holeLiteral)
+import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.Data qualified as Data
 import Kernel.Common.Handle.Global.GlobalRemark qualified as GlobalRemark
 import Kernel.Common.Handle.Global.KeyArg qualified as KeyArg
@@ -42,6 +43,8 @@ import Kernel.Elaborate.Internal.Handle.WeakTypeDef qualified as WeakTypeDef
 import Kernel.Elaborate.Internal.Infer qualified as Infer
 import Kernel.Elaborate.Internal.Unify qualified as Unify
 import Kernel.Elaborate.TypeHoleSubst qualified as THS
+import Kernel.Parse.Internal.Handle.UnusedTopLevelName qualified as UnusedTopLevelName
+import Kernel.Parse.Internal.Handle.UsedTopLevelName qualified as UsedTopLevelName
 import Language.Common.Annotation qualified as AN
 import Language.Common.Attr.Lam qualified as AttrL
 import Language.Common.BaseLowType qualified as BLT
@@ -92,12 +95,16 @@ elaborate h t logs cacheOrStmt = do
   case cacheOrStmt of
     Left cache -> do
       let stmtList = Cache.stmtList cache
+      liftIO $
+        UnusedTopLevelName.deleteMany (Global.unusedTopLevelNameHandle $ globalHandle h) $
+          Cache.globalReferenceList cache
       forM_ stmtList $ insertStmt h
       liftIO $ GlobalRemark.insert (globalRemarkHandle h) logs
       liftIO $ Gensym.setCount (gensymHandle h) $ Cache.countSnapshot cache
       return stmtList
     Right stmtList -> do
-      analyzeStmtList h stmtList >>= synthesizeStmtList h t logs
+      globalReferenceList <- liftIO $ UsedTopLevelName.get (usedTopLevelNameHandle h)
+      analyzeStmtList h stmtList >>= synthesizeStmtList h t logs globalReferenceList
 
 analyzeStmtList :: Handle -> [WeakStmt] -> App [WeakStmt]
 analyzeStmtList h stmtList = do
@@ -106,8 +113,8 @@ analyzeStmtList h stmtList = do
     insertWeakStmt h stmt'
     return stmt'
 
-synthesizeStmtList :: Handle -> Target -> [L.Log] -> [WeakStmt] -> App [Stmt]
-synthesizeStmtList h t logs stmtList = do
+synthesizeStmtList :: Handle -> Target -> [L.Log] -> [DD.DefiniteDescription] -> [WeakStmt] -> App [Stmt]
+synthesizeStmtList h t logs globalReferenceList stmtList = do
   -- mapM_ (liftIO . viewStmt) stmtList
   liftIO (Constraint.get (constraintHandle h)) >>= Unify.unify h >>= liftIO . Hole.setTypeSubst (holeHandle h)
   (stmtList', affineErrorList) <- bimap concat concat . unzip <$> mapM (elaborateStmt h) stmtList
@@ -123,6 +130,7 @@ synthesizeStmtList h t logs stmtList = do
     Cache.Cache
       { Cache.stmtList = stmtList'',
         Cache.remarkList = logs',
+        Cache.globalReferenceList = globalReferenceList,
         Cache.countSnapshot = countSnapshot
       }
   liftIO $ GlobalRemark.insert (globalRemarkHandle h) logs'

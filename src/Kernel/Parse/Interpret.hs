@@ -30,6 +30,7 @@ import Kernel.Parse.Internal.Handle.NameMap qualified as NameMap
 import Kernel.Parse.Internal.Handle.Unused qualified as Unused
 import Kernel.Parse.Internal.Import qualified as Import
 import Kernel.Parse.VarDefKind
+import Language.Common.ExternalName qualified as EN
 import Language.Common.Ident.Reify
 import Language.Common.LocalLocator qualified as LL
 import Language.RawTerm.RawStmt
@@ -59,13 +60,14 @@ new ::
   IO Handle
 new globalHandle localHandle currentModule = do
   let unusedHandle = Local.unusedHandle localHandle
+  let usedTopLevelNameHandle = Local.usedTopLevelNameHandle localHandle
   let pathHandle = Global.pathHandle globalHandle
   let importHandle = Import.new globalHandle localHandle
   let globalNameMapHandle = Global.globalNameMapHandle globalHandle
   let aliasHandle = Local.aliasHandle localHandle
   let locatorHandle = Local.locatorHandle localHandle
   let tagHandle = Local.tagHandle localHandle
-  nameMapHandle <- NameMap.new globalHandle unusedHandle tagHandle
+  nameMapHandle <- NameMap.new globalHandle unusedHandle usedTopLevelNameHandle tagHandle
   let symLocHandle = Local.symLocHandle localHandle
   let topCandidateHandle = Local.topCandidateHandle localHandle
   let rawImportSummaryHandle = Local.rawImportSummaryHandle localHandle
@@ -106,7 +108,8 @@ interpret' h currentSource (PostRawProgram m importList stmtList) = do
   logs2 <- liftIO $ registerUnusedGlobalLocatorRemarks h
   logs3 <- liftIO $ registerUnusedLocalLocatorRemarks h
   logs4 <- liftIO $ registerUnusedStaticFileRemarks h
-  return (stmtList'', logs1 ++ logs2 ++ logs3 ++ logs4)
+  logs5 <- liftIO $ registerUnusedForeignRemarks h
+  return (stmtList'', logs1 ++ logs2 ++ logs3 ++ logs4 ++ logs5)
 
 activateImport :: Handle -> Hint -> Source.Source -> [ImportItem] -> App ()
 activateImport h m currentSource sourceInfoList = do
@@ -158,3 +161,10 @@ registerUnusedStaticFileRemarks h = do
   return $ flip map unusedStaticFiles $ \(k, m) ->
     L.newLog m L.Warning $
       "Imported but not used: `" <> k <> "`"
+
+registerUnusedForeignRemarks :: Handle -> IO [L.Log]
+registerUnusedForeignRemarks h = do
+  unusedForeigns <- Unused.getForeign (unusedHandle h)
+  return $ flip map unusedForeigns $ \(name, m) ->
+    L.newLog m L.Warning $
+      "Declared but not used: `" <> EN.reify name <> "`"

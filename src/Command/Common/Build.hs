@@ -48,6 +48,7 @@ import Kernel.Emit.Emit qualified as Emit
 import Kernel.Load.Load qualified as Load
 import Kernel.Lower.Lower qualified as Lower
 import Kernel.Parse.Interpret qualified as Interpret
+import Kernel.Parse.Internal.Handle.UnusedTopLevelName qualified as UnusedTopLevelName
 import Kernel.Parse.Parse qualified as Parse
 import Kernel.Unravel.Unravel qualified as Unravel
 import Language.Common.ModuleID qualified as MID
@@ -152,6 +153,7 @@ compile h target outputKindList contentSeq = do
           virtualCode <- Lower.lower lowerHandle stmtList' auxStmtList
           emit h hp currentTime target outputKindList (Right source) virtualCode
       else return Nothing
+  registerUnusedTopLevelNameRemarks h
   entryPointVirtualCode <- compileEntryPoint h target outputKindList
   entryPointAsync <- forM entryPointVirtualCode $ \(src, code) -> liftIO $ do
     async $ runApp $ emit h hp currentTime target outputKindList src code
@@ -160,6 +162,11 @@ compile h target outputKindList contentSeq = do
   if null errors
     then return ()
     else throwError $ E.join errors
+
+registerUnusedTopLevelNameRemarks :: Handle -> App ()
+registerUnusedTopLevelNameRemarks h = do
+  logs <- liftIO $ UnusedTopLevelName.flushRemarks $ Global.unusedTopLevelNameHandle $ globalHandle h
+  liftIO $ GlobalRemark.insert (Global.globalRemarkHandle $ globalHandle h) logs
 
 getCompletedTitle :: Int -> T.Text
 getCompletedTitle numOfItems = do

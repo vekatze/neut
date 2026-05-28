@@ -24,11 +24,11 @@ printLog =
 
 printLogList :: Handle -> [L.Log] -> IO ()
 printLogList h logList = do
-  foldr ((>>) . printLog h) (return ()) logList
+  foldr ((>>) . printLog h) (return ()) $ L.sortByPosition logList
 
 printErrorList :: Handle -> [L.Log] -> IO ()
 printErrorList h logList = do
-  foldr ((>>) . printErrorIO h) (return ()) logList
+  foldr ((>>) . printErrorIO h) (return ()) $ L.sortByPosition logList
 
 printNote' :: Handle -> T.Text -> IO ()
 printNote' h =

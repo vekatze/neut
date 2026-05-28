@@ -2,12 +2,14 @@ module Logger.Log
   ( Log (..),
     isFailure,
     newLog,
+    sortByPosition,
     _logLevelToText,
     _logLevelToSGR,
   )
 where
 
 import Data.Binary (Binary)
+import Data.List qualified as List
 import Data.Text qualified as T
 import GHC.Generics (Generic)
 import Logger.Hint
@@ -64,3 +66,15 @@ newLog m level text = do
       logLevel = level,
       content = text
     }
+
+sortByPosition :: [Log] -> [Log]
+sortByPosition =
+  List.sortOn logPositionKey
+
+logPositionKey :: Log -> (Int, FilePath, Line, Column)
+logPositionKey logItem = do
+  case position logItem of
+    Just (SavedHint Hint {metaFileName, metaLocation = (line, column)}) ->
+      (1, metaFileName, line, column)
+    Nothing ->
+      (0, "", 0, 0)
