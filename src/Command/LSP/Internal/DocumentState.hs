@@ -1,15 +1,17 @@
 module Command.LSP.Internal.DocumentState
   ( DocumentState (..),
     fromTexts,
-    applyContentChange,
+    reapply,
     baseParams,
     mapHighlights,
     mapLocation,
     mapDefinitionLink,
+    mapDiagnostic,
   )
 where
 
 import Control.Lens ((&), (.~), (^.))
+import Data.Foldable (foldlM)
 import Data.Maybe (mapMaybe, maybeToList)
 import Data.Text qualified as T
 import Language.LSP.Protocol.Lens qualified as J
@@ -184,6 +186,14 @@ applyContentChange o (TextDocumentContentChangeEvent change) =
     InR TextDocumentContentChangeWholeDocument {_text = newBufferText} ->
       Just $ fromTexts (baseText o) newBufferText
 
+reapply :: DocumentState -> [TextDocumentContentChangeEvent] -> Maybe T.Text -> Maybe DocumentState
+reapply documentState changes bufferTextOrNone =
+  case foldlM applyContentChange documentState changes of
+    Just updated ->
+      Just updated
+    Nothing ->
+      fromTexts (baseText documentState) <$> bufferTextOrNone
+
 bufferToBasePosition :: DocumentState -> Position -> Maybe Position
 bufferToBasePosition o pos = do
   index <- positionToIndex (bufferText o) pos
@@ -249,3 +259,8 @@ mapDefinitionLink documentState link = do
       tr <- baseToBufferRange ds _targetRange
       tsr <- baseToBufferRange ds _targetSelectionRange
       return $ DefinitionLink $ ll {_targetRange = tr, _targetSelectionRange = tsr}
+
+mapDiagnostic :: DocumentState -> Diagnostic -> Maybe Diagnostic
+mapDiagnostic ds diag = do
+  r <- baseToBufferRange ds (diag ^. J.range)
+  return $ diag & J.range .~ r
