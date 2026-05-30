@@ -16,7 +16,6 @@ import Command.LSP.Internal.Source.Reflect qualified as SourceReflect
 import Control.Applicative ((<|>))
 import Control.Monad.IO.Class (liftIO)
 import Data.ByteString qualified as B
-import Data.Foldable (foldlM)
 import Data.IORef
 import Data.Map.Strict qualified as M
 import Data.Text qualified as T
@@ -51,11 +50,7 @@ updateDocumentState documentStateStore uri changes bufferTextOrNone = do
   let nuri = toNormalizedUri uri
   documentStateOrNone <- case M.lookup nuri documentStateMap of
     Just documentState ->
-      case foldlM DocumentState.applyContentChange documentState changes of
-        Just updated ->
-          return $ Just updated
-        Nothing ->
-          resolveDocumentState documentStateStore uri bufferTextOrNone Nothing
+      return $ DocumentState.reapply documentState changes bufferTextOrNone
     Nothing ->
       resolveDocumentState documentStateStore uri bufferTextOrNone Nothing
   writeDocumentState documentStateStore uri documentStateOrNone

@@ -10,6 +10,7 @@ import Command.Common.Check qualified as Check
 import Command.Common.Fetch qualified as Fetch
 import Command.LSP.CodeAction qualified as CA
 import Command.LSP.Internal.Complete qualified as Complete
+import Command.LSP.Internal.DiagnosticStore qualified as DiagnosticStore
 import Command.LSP.Internal.DocumentState qualified as DocumentState
 import Command.LSP.Internal.DocumentStateStore qualified as DocumentStateStore
 import Command.LSP.Internal.FindDefinition qualified as FindDefinition
@@ -18,7 +19,8 @@ import Command.LSP.Internal.GetSymbolInfo qualified as GetSymbolInfo
 import Command.LSP.Internal.Highlight qualified as Highlight
 import Command.LSP.Internal.Lint qualified as Lint
 import Command.LSP.Internal.References qualified as References
-import Command.LSP.Internal.Util (Lsp, getUriParam, report, run)
+import Command.LSP.Internal.Util (Lsp, LspState, getUriParam, report, republishDiagnostics, run)
+import Command.LSP.Internal.Util qualified as Util
 import CommandParser.Config.Remark (lspConfig)
 import Control.Lens hiding (Iso)
 import Control.Monad (forM)
@@ -40,6 +42,8 @@ import System.IO (stdin, stdout)
 lsp :: IO Int
 lsp = do
   documentStateStore <- DocumentStateStore.new
+  diagnosticStore <- DiagnosticStore.new
+  let lspState = Util.LspState {Util.documentStateStore = documentStateStore, Util.diagnosticStore = diagnosticStore}
   runQuietServer $
     ServerDefinition
       { defaultConfig = (),
@@ -47,7 +51,7 @@ lsp = do
         configSection = "Neut",
         onConfigChange = const $ return (),
         doInitialize = \env _req -> pure $ Right env,
-        staticHandlers = const $ handlers documentStateStore,
+        staticHandlers = const $ handlers lspState,
         interpretHandler = \env -> Iso (runLspT env) liftIO,
         options = lspOptions
       }
@@ -74,12 +78,12 @@ prettyMsg :: (Pretty a) => WithSeverity a -> Doc ann
 prettyMsg l =
   "[" <> viaShow (L.getSeverity l) <> "] " <> pretty (L.getMsg l)
 
-withGlobalHandle :: Lsp () () -> (Global.Handle -> Lsp () ()) -> Lsp () ()
-withGlobalHandle defaultAction cont = do
+withGlobalHandle :: LspState -> Lsp () () -> (Global.Handle -> Lsp () ()) -> Lsp () ()
+withGlobalHandle lspState defaultAction cont = do
   vOrErr <- liftIO $ Global.newOrError lspConfig Nothing
   case vOrErr of
     Left (_, E.MakeError errors) -> do
-      report errors
+      report lspState errors
       defaultAction
     Right v ->
       cont v
@@ -94,31 +98,36 @@ mapLocationFromStore documentStateStore loc@Location {_uri} = do
   documentState <- liftIO $ DocumentStateStore.lookupDocumentState documentStateStore _uri
   return $ DocumentState.mapLocation documentState loc
 
-handlers :: DocumentStateStore.DocumentStateStore -> Handlers (Lsp ())
-handlers documentStateStore =
+handlers :: LspState -> Handlers (Lsp ())
+handlers lspState = do
+  let documentStateStore = Util.documentStateStore lspState
+  let diagnosticStore = Util.diagnosticStore lspState
   mconcat
     [ notificationHandler SMethod_Initialized $ \_not -> do
-        withGlobalHandle (return ()) $ \h -> do
+        withGlobalHandle lspState (return ()) $ \h -> do
           let fetchHandle = Fetch.new h
-          _ <- run h $ Fetch.fetch fetchHandle (Env.getMainModule (Global.envHandle h))
+          _ <- run lspState h $ Fetch.fetch fetchHandle (Env.getMainModule (Global.envHandle h))
           return (),
       notificationHandler SMethod_WorkspaceDidChangeConfiguration $ \_ -> do
         return (),
       notificationHandler SMethod_TextDocumentDidOpen $ \notif -> do
         let uri = notif ^. J.params . J.textDocument . J.uri
         let bufferText = notif ^. J.params . J.textDocument . J.text
-        withGlobalHandle (return ()) $ \h -> do
-          Lint.lint (Lint.new h)
+        withGlobalHandle lspState (return ()) $ \h -> do
+          Lint.lint (Lint.new h lspState)
           liftIO $ DocumentStateStore.rebuildDocumentState h documentStateStore uri bufferText,
       notificationHandler SMethod_TextDocumentDidChange $ \notif -> do
         let uri = notif ^. J.params . J.textDocument . J.uri
         let changes = notif ^. J.params . J.contentChanges
         bufferTextOrNone <- fmap virtualFileText <$> getVirtualFile (toNormalizedUri uri)
-        liftIO $ DocumentStateStore.updateDocumentState documentStateStore uri changes bufferTextOrNone,
+        liftIO $ do
+          DocumentStateStore.updateDocumentState documentStateStore uri changes bufferTextOrNone
+          DiagnosticStore.applyContentChanges diagnosticStore (toNormalizedUri uri) changes bufferTextOrNone
+        republishDiagnostics lspState uri,
       notificationHandler SMethod_TextDocumentDidSave $ \notif -> do
         let uri = notif ^. J.params . J.textDocument . J.uri
-        withGlobalHandle (return ()) $ \h -> do
-          Lint.lint (Lint.new h)
+        withGlobalHandle lspState (return ()) $ \h -> do
+          Lint.lint (Lint.new h lspState)
           liftIO $ do
             diskTextOrNone <- DocumentStateStore.readSavedText uri
             case diskTextOrNone of
@@ -137,9 +146,9 @@ handlers documentStateStore =
         let uri = req ^. (J.params . J.textDocument . J.uri)
         let pos = req ^. (J.params . J.position)
         fileOrNone <- getVirtualFile (toNormalizedUri uri)
-        withGlobalHandle (responder $ Right $ InL $ List []) $ \h -> do
+        withGlobalHandle lspState (responder $ Right $ InL $ List []) $ \h -> do
           completeHandle <- liftIO $ Complete.new h
-          itemListOrNone <- run h $ Complete.complete completeHandle uri pos fileOrNone
+          itemListOrNone <- run lspState h $ Complete.complete completeHandle uri pos fileOrNone
           case itemListOrNone of
             Nothing ->
               responder $ Right $ InL $ List []
@@ -152,9 +161,9 @@ handlers documentStateStore =
           Nothing ->
             responder $ Right $ InR $ InR Null
           Just baseReqParams ->
-            withGlobalHandle (responder $ Right $ InR $ InR Null) $ \h -> do
+            withGlobalHandle lspState (responder $ Right $ InR $ InR Null) $ \h -> do
               let findDefHandle = FindDefinition.new h
-              mLoc <- run h $ FindDefinition.findDefinition findDefHandle baseReqParams
+              mLoc <- run lspState h $ FindDefinition.findDefinition findDefHandle baseReqParams
               mappedLocOrNone <- case mLoc of
                 Nothing ->
                   return Nothing
@@ -172,9 +181,9 @@ handlers documentStateStore =
           Nothing ->
             responder $ Right $ InR Null
           Just baseReqParams ->
-            withGlobalHandle (responder $ Right $ InR Null) $ \h -> do
+            withGlobalHandle lspState (responder $ Right $ InR Null) $ \h -> do
               let highlightHandle = Highlight.new h
-              highlightsOrNone <- run h $ Highlight.highlight highlightHandle baseReqParams
+              highlightsOrNone <- run lspState h $ Highlight.highlight highlightHandle baseReqParams
               case highlightsOrNone of
                 Nothing ->
                   responder $ Right $ InR Null
@@ -187,9 +196,9 @@ handlers documentStateStore =
           Nothing ->
             responder $ Right $ InR Null
           Just baseReqParams ->
-            withGlobalHandle (responder $ Right $ InR Null) $ \h -> do
+            withGlobalHandle lspState (responder $ Right $ InR Null) $ \h -> do
               referencesHandle <- liftIO $ References.new h
-              refsOrNone <- run h $ References.references referencesHandle baseReqParams
+              refsOrNone <- run lspState h $ References.references referencesHandle baseReqParams
               case refsOrNone of
                 Nothing ->
                   responder $ Right $ InR Null
@@ -199,9 +208,9 @@ handlers documentStateStore =
       requestHandler SMethod_TextDocumentFormatting $ \req responder -> do
         let uri = req ^. (J.params . J.textDocument . J.uri)
         fileOrNone <- getVirtualFile (toNormalizedUri uri)
-        withGlobalHandle (responder $ Right $ InL []) $ \h -> do
+        withGlobalHandle lspState (responder $ Right $ InL []) $ \h -> do
           let formatHandle = Format.new h
-          textEditList <- run h $ Format.format formatHandle False uri fileOrNone
+          textEditList <- run lspState h $ Format.format formatHandle False uri fileOrNone
           let textEditList' = concat $ maybeToList textEditList
           responder $ Right $ InL textEditList',
       requestHandler SMethod_TextDocumentHover $ \req responder -> do
@@ -211,8 +220,8 @@ handlers documentStateStore =
           Nothing ->
             responder $ Right $ InR Null
           Just baseReqParams ->
-            withGlobalHandle (responder $ Right $ InR Null) $ \h -> do
-              textOrNone <- run h $ GetSymbolInfo.getSymbolInfo baseReqParams
+            withGlobalHandle lspState (responder $ Right $ InR Null) $ \h -> do
+              textOrNone <- run lspState h $ GetSymbolInfo.getSymbolInfo baseReqParams
               case textOrNone of
                 Nothing ->
                   responder $ Right $ InR Null
@@ -242,9 +251,9 @@ handlers documentStateStore =
                     responder $ Right $ InR Null
                   Just uri -> do
                     fileOrNone <- getVirtualFile (toNormalizedUri uri)
-                    withGlobalHandle (responder $ Right $ InR Null) $ \h -> do
+                    withGlobalHandle lspState (responder $ Right $ InR Null) $ \h -> do
                       let formatHandle = Format.new h
-                      textEditList <- run h $ Format.format formatHandle True uri fileOrNone
+                      textEditList <- run lspState h $ Format.format formatHandle True uri fileOrNone
                       let textEditList' = concat $ maybeToList textEditList
                       let editParams =
                             ApplyWorkspaceEditParams (Just CA.minimizeImportsCommandTitle) $
@@ -252,9 +261,9 @@ handlers documentStateStore =
                       _ <- sendRequest SMethod_WorkspaceApplyEdit editParams (const (pure ()))
                       responder $ Right $ InR Null
             | commandName == CA.refreshCacheCommandName -> do
-                withGlobalHandle (responder $ Right $ InR Null) $ \h -> do
+                withGlobalHandle lspState (responder $ Right $ InR Null) $ \h -> do
                   let checkHandle = Check.new h
-                  _ <- run h $ Check.checkAll checkHandle
+                  _ <- run lspState h $ Check.checkAll checkHandle
                   responder $ Right $ InR Null
           _ ->
             responder $ Right $ InR Null
