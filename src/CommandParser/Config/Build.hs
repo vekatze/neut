@@ -8,6 +8,5 @@ data Config = Config
     shouldSkipLink :: Bool,
     shouldExecute :: Bool,
     installDir :: Maybe FilePath,
-    buildModeString :: String,
     args :: [String]
   }

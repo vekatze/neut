@@ -17,7 +17,6 @@ import Data.Text qualified as T
 import Data.Vector qualified as V
 import Gensym.Gensym qualified as Gensym
 import Kernel.Common.Arch qualified as Arch
-import Kernel.Common.BuildMode qualified as BM
 import Kernel.Common.Const
 import Kernel.Common.GlobalName qualified as GN
 import Kernel.Common.Handle.Global.Env qualified as Env
@@ -623,15 +622,6 @@ discern h term =
           let message' = m :< RT.NoeticString stringTypeRaw (messageText <> "\n")
           panic <- liftEither $ locatorToVarGlobal m coreDebugPanic
           discern h $ asOpaqueValue $ m :< RT.Annotation L.Warning (AN.Type ()) (m :< RT.piElim panic [message'])
-    m :< RT.Assert _ (mText, message) _ _ (e@(mCond :< _), _) -> do
-      assert <- liftEither $ locatorToVarGlobal m coreDebugAssert
-      stringType <- liftEither $ locatorToTypeVar m coreString
-      let fullMessage = T.pack (Hint.toString m) <> "\nAssertion failure: " <> message <> "\n"
-      cod <- liftIO $ RT.createTypeHole (H.gensymHandle h) (blur m)
-      assertVar' <- discern h assert
-      textTerm' <- discern h (mText :< RT.NoeticString stringType fullMessage)
-      lam' <- discern h $ RT.lam fakeLoc mCond [] cod e
-      return $ m :< WT.PiElim PEK.Normal assertVar' ImpArgs.Unspecified [textTerm', lam'] (DefaultArgs.ByKey [])
     m :< RT.Introspect _ key _ clauseList -> do
       value <- getIntrospectiveValue h m key
       clause <- lookupIntrospectiveClause m value $ SE.extract clauseList
@@ -1005,15 +995,12 @@ lookupIntrospectiveClause m value clauseList =
 
 getIntrospectiveValue :: H.Handle -> Hint -> T.Text -> App T.Text
 getIntrospectiveValue h m key = do
-  bm <- liftIO $ Env.getBuildMode (H.envHandle h)
   let p = Platform.getPlatform (H.platformHandle h)
   case key of
     "architecture" ->
       return $ Arch.reify (Platform.arch p)
     "operating-system" ->
       return $ OS.reify (Platform.os p)
-    "build-mode" ->
-      return $ BM.reify bm
     _ ->
       raiseError m $ "No such introspective value is defined: " <> key
 

@@ -181,8 +181,6 @@ rawTerm' h m headSymbol c = do
       rawTermCodeElim h m c
     "pack-type" -> do
       rawTermTauIntro h m c
-    "assert" -> do
-      rawTermAssert h m c
     "exact" -> do
       rawTermPiElimExact h m c
     "if" -> do
@@ -1099,13 +1097,6 @@ rawTypeOption h = do
 rawTermAdmit :: Hint -> C -> Parser (RT.RawTerm, C)
 rawTermAdmit m c = do
   return (m :< RT.Admit, c)
-
-rawTermAssert :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
-rawTermAssert h m c1 = do
-  mText <- getCurrentHint
-  (message, c2) <- string
-  (c3, (e, c)) <- betweenBrace $ rawExpr h
-  return (m :< RT.Assert c1 (mText, message) c2 c3 e, c)
 
 keyValueArgs :: Parser (a, C) -> Parser (SE.Series a, C)
 keyValueArgs p = do

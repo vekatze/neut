@@ -442,9 +442,6 @@ toDoc term =
       D.join [toDoc e1, D.text ";"]
     _ :< Admit ->
       D.text "admit"
-    _ :< Assert c1 (_, message) c2 c3 (e, c4) -> do
-      let message' = D.text $ "\"" <> message <> "\""
-      decodeKeywordClause "assert" ((c1, (message', c2)), (c3, (toDoc e, c4)))
     _ :< Introspect c1 key c2 clauseList -> do
       PI.arrange
         [ PI.horizontal $ attachComment (c1 ++ c2) $ D.text "introspect",

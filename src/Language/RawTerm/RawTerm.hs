@@ -141,7 +141,6 @@ data RawTermF a
   | Seq (a, C) C a
   | SeqEnd a
   | Admit
-  | Assert C (Hint, T.Text) C C (a, C)
   | Introspect C T.Text C (SE.Series (Maybe T.Text, C, a))
   | Static C Hint StaticItem
   | NoeticString RawType T.Text

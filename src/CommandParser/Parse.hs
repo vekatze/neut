@@ -44,7 +44,6 @@ parseBuildOpt :: Parser Command
 parseBuildOpt = do
   targetName <- argument str $ mconcat [metavar "TARGET", help "The build target"]
   installDir <- optional $ strOption $ mconcat [long "install", metavar "DIRECTORY", help "Install the resulting binary to this directory"]
-  buildModeString <- parseBuildModeOpt
   remarkCfg <- remarkConfigOpt
   outputKindTextList <- outputKindTextListOpt
   shouldSkipLink <- shouldSkipLinkOpt
@@ -59,7 +58,6 @@ parseBuildOpt = do
             Build.shouldSkipLink = shouldSkipLink,
             Build.shouldExecute = shouldExecute,
             Build.installDir = installDir,
-            Build.buildModeString = buildModeString,
             Build.args = rest
           }
 
@@ -88,14 +86,12 @@ parseZenOpt :: Parser Command
 parseZenOpt = do
   inputFilePath <- argument str (mconcat [metavar "INPUT", help "The path of input file"])
   remarkCfg <- remarkConfigOpt
-  buildModeString <- parseBuildModeOpt
   rest <- (many . strArgument) (metavar "args")
   pure $
     Internal remarkCfg $
       CommandParser.Command.Zen $
         Zen.Config
           { Zen.filePathString = inputFilePath,
-            Zen.buildModeString = buildModeString,
             Zen.args = rest
           }
 
@@ -203,10 +199,6 @@ outputKindTextListReader :: ReadM [T.Text]
 outputKindTextListReader =
   eitherReader $ \input ->
     return $ T.splitOn "," $ T.pack input
-
-parseBuildModeOpt :: Parser String
-parseBuildModeOpt = do
-  strOption $ mconcat [long "mode", metavar "MODE", help "develop, release", value "develop"]
 
 shouldSkipLinkOpt :: Parser Bool
 shouldSkipLinkOpt =

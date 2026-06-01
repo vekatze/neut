@@ -392,30 +392,6 @@ define my-complex-function(x: int, y: bool) -> int {
 }
 ```
 
-### `assert`
-
-You can use `assert` as follows:
-
-```neut
-define fact(n: int) -> int {
-  assert "n must be non-negative" {
-    ge-int(n, 0)
-  };
-  if eq-int(n, 0) {
-    1
-  } else {
-    let next = sub-int(n, 1);
-    mul-int(n, fact(next))
-  }
-}
-```
-
-The type of `assert ".." { .. }` is `unit`.
-
-`assert` checks if a given condition is satisfied. If the condition is `True`, it does nothing. Otherwise, it reports that the assertion has failed and exits the program with exit code `1`.
-
-If you pass `--mode release` to `neut build`, `assert` does nothing.
-
 ### Additional Notes
 
 - More syntactic sugar is also available. For more, see [Terms](./terms.md).

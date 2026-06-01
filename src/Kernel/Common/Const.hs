@@ -135,10 +135,6 @@ coreDebugPanic :: T.Text
 coreDebugPanic =
   core <> nsSep <> "debug" <> nsSep <> "panic"
 
-coreDebugAssert :: T.Text
-coreDebugAssert =
-  core <> nsSep <> "debug" <> nsSep <> "assert"
-
 coreBoxEmbody :: T.Text
 coreBoxEmbody =
   core <> nsSep <> "box" <> nsSep <> "embody"

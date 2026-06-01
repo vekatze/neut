@@ -111,29 +111,6 @@ You can control the emitted artifacts by passing a comma-separated list to `--em
 
 If `--emit` does not include `object`, you must also pass `--skip-link`.
 
-### `--mode`
-
-You can pass `--mode {develop,release}` as follows:
-
-```sh
-neut build my-app --mode release
-```
-
-If you don't specify `--mode`, the mode defaults to `develop`.
-
-The value passed here can be obtained from source files by using `introspect`:
-
-```neut
-define foo() -> unit {
-  introspect build-mode {
-  | release =>
-    // ..
-  | develop =>
-    // ..
-  }
-}
-```
-
 ## `neut check`
 
 `neut check` type-checks all the files in the current module. It also creates cache files for faster compilation.
