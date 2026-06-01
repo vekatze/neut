@@ -2756,7 +2756,7 @@ You can use `introspect key {..}` to introspect the compiler's configuration.
 
 ```neut
 define arch-dependent-constant() -> int {
-  introspect architecture {
+  introspect target-arch {
   | arm64 =>
     1
   | amd64 =>
@@ -2765,7 +2765,7 @@ define arch-dependent-constant() -> int {
 }
 
 define os-dependent-constant() -> int {
-  introspect operating-system {
+  introspect target-os {
   | linux =>
     1
   | default =>
@@ -2789,10 +2789,10 @@ introspect key {
 
 You can use the following configuration `key`s and configuration `value`s:
 
-| Configuration Key  | Configuration Value    |
-| ------------------ | ---------------------- |
-| `architecture`     | `amd64` or `arm64`     |
-| `operating-system` | `linux` or `darwin`    |
+| Configuration Key      | Configuration Value |
+| ---------------------- | ------------------- |
+| `target-arch`          | `amd64` or `arm64`  |
+| `target-os`            | `linux` or `darwin` |
 
 You can also use `default` as a configuration value to represent a fallback case.
 

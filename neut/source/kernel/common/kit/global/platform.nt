@@ -54,7 +54,7 @@ define get-clang-digest(k: &platform-kit) -> &string {
 }
 
 define _get-current-arch() -> arch {
-  introspect architecture {
+  introspect target-arch {
   | amd64 =>
     this.kernel.common.arch.Amd64
   | arm64 =>
@@ -63,7 +63,7 @@ define _get-current-arch() -> arch {
 }
 
 define _get-current-operating-system() -> operating-system {
-  introspect operating-system {
+  introspect target-os {
   | linux =>
     this.kernel.common.operating-system.Linux
   | darwin =>

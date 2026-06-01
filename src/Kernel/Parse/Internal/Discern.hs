@@ -997,9 +997,9 @@ getIntrospectiveValue :: H.Handle -> Hint -> T.Text -> App T.Text
 getIntrospectiveValue h m key = do
   let p = Platform.getPlatform (H.platformHandle h)
   case key of
-    "architecture" ->
+    "target-arch" ->
       return $ Arch.reify (Platform.arch p)
-    "operating-system" ->
+    "target-os" ->
       return $ OS.reify (Platform.os p)
     _ ->
       raiseError m $ "No such introspective value is defined: " <> key

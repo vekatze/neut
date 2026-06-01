@@ -636,7 +636,7 @@ Here, the definition of `c-int` is as follows:
 
 ```neut
 constant _c-int: type {
-  introspect architecture {
+  introspect target-arch {
   | amd64 =>
     int32
   | arm64 =>
