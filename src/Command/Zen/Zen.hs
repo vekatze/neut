@@ -10,10 +10,7 @@ import App.App (App)
 import Command.Common.Build qualified as Build
 import Command.Common.Fetch qualified as Fetch
 import CommandParser.Config.Zen
-import Control.Monad.Except (liftEither)
-import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Maybe
-import Kernel.Common.BuildMode qualified as BM
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.Env qualified as Env
 import Kernel.Common.Handle.Global.Path qualified as Path
@@ -60,9 +57,7 @@ toBuildConfig cfg = do
     }
 
 setup :: Handle -> Config -> App ()
-setup h cfg = do
+setup h _ = do
   let mainModule = Env.getMainModule (envHandle h)
   Path.ensureNotInDependencyDir mainModule
-  buildMode <- liftEither $ BM.fromString $ buildModeString cfg
-  liftIO $ Env.setBuildMode (envHandle h) buildMode
   Fetch.fetch (fetchHandle h) mainModule

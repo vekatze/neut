@@ -62,7 +62,6 @@ hljs.registerLanguage("neut", function (hljs) {
       ].join(" "),
       builtin: [
         "_",
-        "assert",
         "include-text",
         "magic",
         "static",

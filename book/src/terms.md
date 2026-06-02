@@ -58,7 +58,6 @@
 - [introspect](#introspect)
 - [static](#static)
 - [admit](#admit)
-- [assert](#assert)
 - [\_](#_)
 
 ### Syntactic Sugar
@@ -2757,7 +2756,7 @@ You can use `introspect key {..}` to introspect the compiler's configuration.
 
 ```neut
 define arch-dependent-constant() -> int {
-  introspect architecture {
+  introspect target-arch {
   | arm64 =>
     1
   | amd64 =>
@@ -2766,7 +2765,7 @@ define arch-dependent-constant() -> int {
 }
 
 define os-dependent-constant() -> int {
-  introspect operating-system {
+  introspect target-os {
   | linux =>
     1
   | default =>
@@ -2790,11 +2789,10 @@ introspect key {
 
 You can use the following configuration `key`s and configuration `value`s:
 
-| Configuration Key  | Configuration Value    |
-| ------------------ | ---------------------- |
-| `architecture`     | `amd64` or `arm64`     |
-| `operating-system` | `linux` or `darwin`    |
-| `build-mode`       | `develop` or `release` |
+| Configuration Key      | Configuration Value |
+| ---------------------- | ------------------- |
+| `target-arch`          | `amd64` or `arm64`  |
+| `target-os`            | `linux` or `darwin` |
 
 You can also use `default` as a configuration value to represent a fallback case.
 
@@ -2959,47 +2957,6 @@ When `admit` exits a program, the exit code is 1.
 
 - `admit` is the `undefined` in Haskell.
 - `admit` is intended to be used ephemerally during development.
-
-## `assert`
-
-You can use `assert` to ensure that a condition is satisfied at runtime.
-
-### Example
-
-```neut
-define fact(n: int) -> int {
-  assert "the input must be non-negative" {
-    ge-int(n, 0)
-  };
-  if eq-int(n, 0) {
-    1
-  } else {
-    mul-int(n, fact(sub-int(n, 1)))
-  }
-}
-```
-
-### Syntax
-
-```neut
-assert "any-string" {
-  e
-}
-```
-
-### Semantics
-
-If the [build mode](./commands.md#--mode) is `release`, `assert` does nothing.
-
-Otherwise, `assert "description" { condition }` evaluates `condition` and checks if it is `True`. If it is `True`, the `assert` simply evaluates to `Unit`. Otherwise, it reports that the assertion `"description"` failed and exits the execution of the program with the exit code `1`.
-
-### Type
-
-```neut
-Γ ⊢ condition: bool
---------------------------------------------
-Γ ⊢ assert "description" { condition }: unit
-```
 
 ## `_`
 

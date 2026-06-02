@@ -14,9 +14,7 @@ import Command.Common.Fetch qualified as Fetch
 import CommandParser.Config.Build
 import Control.Monad
 import Control.Monad.Except (liftEither)
-import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Text qualified as T
-import Kernel.Common.BuildMode qualified as BM
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.Env qualified as Env
 import Kernel.Common.Handle.Global.Path qualified as Path
@@ -49,8 +47,6 @@ setup h cfg = do
   ensureSetupSanity cfg
   let mainModule = Env.getMainModule (Global.envHandle (globalHandle h))
   Path.ensureNotInDependencyDir mainModule
-  buildMode <- liftEither $ BM.fromString $ buildModeString cfg
-  liftIO $ Env.setBuildMode (Global.envHandle (globalHandle h)) buildMode
   let fetchHandle = Fetch.new (globalHandle h)
   Fetch.fetch fetchHandle mainModule
 

@@ -1,10 +1,8 @@
 module Kernel.Common.Handle.Global.Env
   ( Handle (..),
     new,
-    getBuildMode,
     getMainModule,
     getSilentMode,
-    setBuildMode,
     getMainDefiniteDescriptionByTarget,
     getAllocatorByTarget,
   )
@@ -14,10 +12,8 @@ import App.App (App)
 import App.Error qualified as E
 import App.Run (raiseCritical', raiseError', runApp)
 import Data.HashMap.Strict qualified as Map
-import Data.IORef
 import Data.Text qualified as T
 import Kernel.Common.Allocator (Allocator)
-import Kernel.Common.BuildMode qualified as BM
 import Kernel.Common.Module
 import Kernel.Common.Module qualified as Module
 import Kernel.Common.Module.FromPath qualified as ModuleReflect
@@ -32,8 +28,7 @@ import Language.Common.StrictGlobalLocator qualified as SGL
 import Path
 
 data Handle = Handle
-  { _buildModeRef :: IORef BM.BuildMode,
-    _enableSilentMode :: Bool,
+  { _enableSilentMode :: Bool,
     _mainModule :: MainModule
   }
 
@@ -47,7 +42,6 @@ getSilentMode =
 
 new :: Bool -> Maybe (Path Abs File) -> IO (Either E.Error Handle)
 new _enableSilentMode moduleFilePathOrNone = do
-  _buildModeRef <- newIORef BM.Develop
   runApp $ do
     _mainModule <-
       MainModule
@@ -57,14 +51,6 @@ new _enableSilentMode moduleFilePathOrNone = do
           Nothing -> do
             ModuleReflect.fromCurrentPath
     return $ Handle {..}
-
-setBuildMode :: Handle -> BM.BuildMode -> IO ()
-setBuildMode h =
-  writeIORef (_buildModeRef h)
-
-getBuildMode :: Handle -> IO BM.BuildMode
-getBuildMode h =
-  readIORef (_buildModeRef h)
 
 getMainDefiniteDescriptionByTarget :: Handle -> Target.MainTarget -> App DD.DefiniteDescription
 getMainDefiniteDescriptionByTarget h targetOrZen = do
