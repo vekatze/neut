@@ -118,7 +118,7 @@ data RawTermF a
   | PiElim a C (Maybe (SE.Series RawType)) C (SE.Series a) C (Maybe (SE.Series (Hint, Key, C, C, a)))
   | PiElimByKey Name C (Maybe (SE.Series RawType)) C (SE.Series (Hint, Key, C, C, a)) -- auxiliary syntax for key-call
   | PiElimRule Name C (SE.Series a)
-  | PiElimMeta Name C (Maybe (SE.Series RawType)) C (SE.Series a)
+  | PiElimMeta Name C (Maybe (SE.Series RawType)) C (SE.Series a) C (Maybe (SE.Series (Hint, Key, C, C, a)))
   | PiElimExact C a
   | DataIntro AttrDI.Attr DD.DefiniteDescription [RawType] [a] -- (attr, consName, dataArgs, consArgs)
   | DataElim C N.IsNoetic (SE.Series a) (SE.Series (RP.RawPatternRow a))

@@ -222,7 +222,12 @@ rawTermBase mode h m headSymbol c = do
                   return (m :< RT.PiElimByKey name c mImpArgs cImpArgs kvs, c')
             let parseMeta = do
                   (es, c') <- metaPiElim $ rawTerm h
-                  return (m :< RT.PiElimMeta name c mImpArgs cImpArgs es, c')
+                  mDefaultArgs <- optional $ seriesBracket $ rawTermKeyValuePair h
+                  case mDefaultArgs of
+                    Nothing ->
+                      return (m :< RT.PiElimMeta name c mImpArgs cImpArgs es [] Nothing, c')
+                    Just (defaultArgs, cDefaultArgs) ->
+                      return (m :< RT.PiElimMeta name c mImpArgs cImpArgs es c' (Just defaultArgs), cDefaultArgs)
             let parseCont =
                   rawTermPiElimContWithImp h (m :< RT.Var name, c) mImpArgs cImpArgs
             case mode of
