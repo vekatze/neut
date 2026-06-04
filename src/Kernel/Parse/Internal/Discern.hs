@@ -8,6 +8,7 @@ import Control.Monad
 import Control.Monad.Except (MonadError (throwError), liftEither)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Containers.ListUtils qualified as ListUtils
+import Data.Functor ((<&>))
 import Data.HashMap.Strict qualified as Map
 import Data.List ((\\))
 import Data.List qualified as List
@@ -434,10 +435,12 @@ discern h term =
         FoldRight -> do
           foldedTerm <- buildFoldRight nodeTM (args ++ [leafTM])
           discern h (m :< RT.piElim rootTM [foldedTerm])
-    m :< RT.PiElimMeta name _ mImpArgs _ es -> do
+    m :< RT.PiElimMeta name _ mImpArgs _ es _ mDefaultArgs -> do
       let var = m :< RT.Var name
-      let args = fmap (\e -> m :< RT.CodeIntro CodeVariantK [] [] (e, [])) es
-      discern h $ m :< RT.CodeElim [] [] (m :< RT.PiElim var [] mImpArgs [] args [] Nothing, [])
+      let quote e = m :< RT.CodeIntro CodeVariantK [] [] (e, [])
+      let args = fmap quote es
+      let defaultArgs = mDefaultArgs <&> fmap (\(mx, k, c1, c2, e) -> (mx, k, c1, c2, quote e))
+      discern h $ m :< RT.CodeElim [] [] (m :< RT.PiElim var [] mImpArgs [] args [] defaultArgs, [])
     m :< RT.PiElimExact _ e -> do
       e' <- discern h e
       return $ m :< WT.PiElimExact e'

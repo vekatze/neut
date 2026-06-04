@@ -3117,18 +3117,29 @@ define use-meta() -> pair(int, bool) {
 
 ```neut
 e::(e1, ..., en)
+e::(e1, ..., en)[x1 := d1, ..., xk := dk]
 ```
 
 ### Semantics
-
-`e::(e1, ..., en)` is the following syntactic sugar:
 
 ```neut
 e::(e1, ..., en)
 
 ↓
 
-unquote {e(quote {e1}, ..., quote {en})}
+unquote {
+  e(quote {e1}, ..., quote {en})
+}
+
+---
+
+e::(e1, ..., en)[x1 := d1, ..., xk := dk]
+
+↓
+
+unquote {
+  e(quote {e1}, ..., quote {en})[x1 := quote {d1}, ..., xk := quote {dk}]
+}
 ```
 
 ### Type

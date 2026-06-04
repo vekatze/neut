@@ -169,15 +169,14 @@ define call-inline-default() -> unit {
 }
 
 define-meta default-meta(x: 'int)[n: 'int := quote {0}] -> 'int {
-  quote {
-    let _ = unquote {n};
-    unquote {x}
-  }
+  quote {add-int(unquote {x}, unquote {n})}
 }
 
 define use-default-meta() -> unit {
   let result = default-meta::(1);
-  print-int-line(result)
+  print-int-line(result);
+  let result-overridden = default-meta::(1)[n := 41];
+  print-int-line(result-overridden)
 }
 
 define main() -> unit {

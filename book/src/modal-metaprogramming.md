@@ -172,6 +172,18 @@ define use-meta() -> pair(int, int) {
 }
 ```
 
+If the meta function has default arguments, you can override them as follows:
+
+```neut
+foo::(bar, baz)[width := 80]
+```
+
+This is the same as:
+
+```neut
+unquote {foo(quote {bar}, quote {baz})[width := quote {80}]}
+```
+
 ## Compile-Time Primitives
 
 Neut provides some compile-time primitives that can only be used at stage 1 or above, including:
