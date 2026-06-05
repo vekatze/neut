@@ -1110,7 +1110,7 @@ e(e1, ..., en)[x1 := d1, ..., xk := dk]
 e<t1, ..., tm>(e1, ..., en)[x1 := d1, ..., xk := dk]
 ```
 
-If `e` has implicit parameters, you can specify them explicitly using the latter form. For example, if `e: <a>(a) -> unit`, then `e<int>(v)` specifies the implicit parameter `a` as `int`.
+If `e` has implicit parameters, you can specify them explicitly using angle brackets. For example, if `e: <a>(a) -> unit`, then `e<int>(v)` specifies the implicit parameter `a` as `int`.
 
 If `e` has default arguments, you can override some or all of them by writing
 

@@ -610,7 +610,7 @@ parseConstantGeist h nameParser = do
   impArgs <- parseImplicitParams h
   let isConstLike = True
   let expArgs = (SE.emptySeries (Just SE.Paren) SE.Comma, [])
-  defaultArgs <- parseDefaultParams h
+  let defaultArgs = (SE.emptySeries (Just SE.Bracket) SE.Comma, [])
   c2 <- delimiter ":"
   (cod, c) <- rawType h
   let isDestPassing = False

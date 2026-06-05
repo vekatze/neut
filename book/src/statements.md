@@ -241,6 +241,7 @@ constant empty-list<a>: list(a) {
 
 define use-constants() -> list(int) {
   let x = foo;
+  let _ = x;
   empty-list
 }
 ```
