@@ -152,8 +152,8 @@ extendStmtKindType stmtKind =
       Alias
     AliasOpaque ->
       AliasOpaque
-    Data name args consInfoList ->
-      Data name (map extendBinder args) (map (second extendConsInfo) consInfoList)
+    Data name args consInfoList isNominal ->
+      Data name (map extendBinder args) (map (second extendConsInfo) consInfoList) isNominal
 
 extendConsInfo ::
   DI.ConsInfo (BinderF (Cofree TM.TypeF ())) ->

@@ -278,7 +278,7 @@ insertWeakStmt h stmt = do
 registerDataTypeStmt :: Handle -> DD.DefiniteDescription -> SK.StmtKindType TM.Type -> App ()
 registerDataTypeStmt h dataName stmtKind =
   case stmtKind of
-    SK.Data _ dataArgs consInfoList ->
+    SK.Data _ dataArgs consInfoList _ ->
       liftIO $
         Data.insert
           (dataHandle h)
@@ -293,7 +293,7 @@ registerDataTypeStmt h dataName stmtKind =
 registerWeakDataTypeStmt :: Handle -> DD.DefiniteDescription -> SK.StmtKindType WT.WeakType -> App ()
 registerWeakDataTypeStmt h dataName stmtKind =
   case stmtKind of
-    SK.Data _ dataArgs consInfoList ->
+    SK.Data _ dataArgs consInfoList _ ->
       liftIO $
         Data.insertWeak
           (dataHandle h)
@@ -346,14 +346,14 @@ elaborateStmtKindType h stmtKind =
       return SK.Alias
     SK.AliasOpaque ->
       return SK.AliasOpaque
-    SK.Data dataName dataArgs consInfoList -> do
+    SK.Data dataName dataArgs consInfoList isNominal -> do
       dataArgs' <- mapM (elaborateWeakBinder h) dataArgs
       dataArgs'' <- mapM (inlineBinder h) dataArgs'
       consInfoList' <- forM consInfoList $ \(savedHint, consInfo) -> do
         consArgs' <- mapM (elaborateWeakBinder h) (DI.consArgs consInfo)
         consArgs'' <- mapM (inlineBinder h) consArgs'
         return (savedHint, consInfo {DI.consArgs = consArgs''})
-      return $ SK.Data dataName dataArgs'' consInfoList'
+      return $ SK.Data dataName dataArgs'' consInfoList' isNominal
 
 elaborate' :: Handle -> WT.WeakTerm -> App TM.Term
 elaborate' h term = do

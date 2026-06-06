@@ -5,7 +5,9 @@ module Kernel.Clarify.Internal.Utility
     returnIntComp,
     returnByteSizeComp,
     toAffineApp,
+    toAffineAppWith,
     toRelevantApp,
+    toRelevantAppWith,
     bindLet,
     bindLetWithReducibility,
     irreducibleBindLet,
@@ -47,16 +49,26 @@ new gensymHandle substHandle auxEnvHandle baseSize = do
 --   exp @ (0, x)
 toAffineApp :: Handle -> C.Value -> C.Comp -> IO C.Comp
 toAffineApp h v t = do
+  toAffineAppWith h False v t
+
+toAffineAppWith :: Handle -> C.ForceInline -> C.Value -> C.Comp -> IO C.Comp
+toAffineAppWith h forceInline v t = do
   (expVarName, expVar) <- Gensym.createVar (gensymHandle h) "exp"
-  return $ C.UpElim True expVarName t (C.PiElimDownElim False expVar [C.Int (dataSizeToIntSize (baseSize h)) 0, v])
+  let switch = C.Int (dataSizeToIntSize (baseSize h)) 0
+  return $ C.UpElim True expVarName t (C.PiElimDownElim forceInline expVar [switch, v])
 
 -- toRelevantApp h x t ~>
 --   bind exp := t in
 --   exp @ (1, x)
 toRelevantApp :: Handle -> C.Value -> C.Comp -> IO C.Comp
 toRelevantApp h v t = do
+  toRelevantAppWith h False v t
+
+toRelevantAppWith :: Handle -> C.ForceInline -> C.Value -> C.Comp -> IO C.Comp
+toRelevantAppWith h forceInline v t = do
   (expVarName, expVar) <- Gensym.createVar (gensymHandle h) "exp"
-  return $ C.UpElim True expVarName t (C.PiElimDownElim False expVar [C.Int (dataSizeToIntSize (baseSize h)) 1, v])
+  let switch = C.Int (dataSizeToIntSize (baseSize h)) 1
+  return $ C.UpElim True expVarName t (C.PiElimDownElim forceInline expVar [switch, v])
 
 bindLet :: [(Ident, C.Comp)] -> C.Comp -> C.Comp
 bindLet =
