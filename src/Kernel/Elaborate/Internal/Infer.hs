@@ -184,12 +184,12 @@ inferStmtKindType h stmtKind =
       return SK.Alias
     SK.AliasOpaque ->
       return SK.AliasOpaque
-    SK.Data dataName dataArgs consInfoList -> do
+    SK.Data dataName dataArgs consInfoList isNominal -> do
       (dataArgs', varEnv) <- inferBinder' h dataArgs
       consInfoList' <- forM consInfoList $ \(savedHint, consInfo) -> do
         (consArgs', _) <- inferBinder' varEnv (DI.consArgs consInfo)
         return (savedHint, consInfo {DI.consArgs = consArgs'})
-      return $ SK.Data dataName dataArgs' consInfoList'
+      return $ SK.Data dataName dataArgs' consInfoList' isNominal
 
 getIntType :: Platform.Handle -> Hint -> App WT.WeakType
 getIntType h m = do

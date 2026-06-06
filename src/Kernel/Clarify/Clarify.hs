@@ -18,6 +18,7 @@ import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Containers.ListUtils (nubOrd)
+import Data.HashMap.Strict qualified as Map
 import Data.IntMap qualified as IntMap
 import Data.Maybe
 import Data.Text qualified as T
@@ -26,13 +27,14 @@ import Gensym.Handle qualified as Gensym
 import Kernel.Clarify.Internal.Handle.AuxEnv qualified as AuxEnv
 import Kernel.Clarify.Internal.Linearize qualified as Linearize
 import Kernel.Clarify.Internal.Sigma qualified as Sigma
-import Kernel.Clarify.Internal.Utility (toRelevantApp)
+import Kernel.Clarify.Internal.Utility (toRelevantAppWith)
 import Kernel.Clarify.Internal.Utility qualified as Utility
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.Data qualified as Data
 import Kernel.Common.Handle.Global.OptimizableData qualified as OptimizableData
 import Kernel.Common.Handle.Global.Platform qualified as Platform
 import Kernel.Common.Handle.Global.Type qualified as Type
+import Kernel.Elaborate.Internal.Handle.TypeDef qualified as TypeDef
 import Kernel.Common.OptimizableData qualified as OD
 import Language.Common.ArgNum qualified as AN
 import Language.Common.Attr.DataIntro qualified as AttrDI
@@ -90,7 +92,8 @@ data Handle = Handle
     reduceHandle :: Reduce.Handle,
     substHandle :: Subst.Handle,
     baseSize :: DS.DataSize,
-    typeHandle :: Type.Handle
+    typeHandle :: Type.Handle,
+    typeDefHandle :: TypeDef.Handle
   }
 
 data Context = Context
@@ -122,6 +125,32 @@ new (Global.Handle {..}) = do
   let sigmaHandle = Sigma.new gensymHandle linearizeHandle utilityHandle
   return $ Handle {..}
 
+newReduceOnlyHandle :: Handle -> IO Handle
+newReduceOnlyHandle h = do
+  auxEnvHandle' <- AuxEnv.new
+  let gensymHandle' = gensymHandle h
+  let baseSize' = baseSize h
+  let compSubstHandle = CompSubst.new gensymHandle'
+  let utilityHandle' = Utility.new gensymHandle' compSubstHandle auxEnvHandle' baseSize'
+  let linearizeHandle' = Linearize.new gensymHandle' utilityHandle'
+  let sigmaHandle' = Sigma.new gensymHandle' linearizeHandle' utilityHandle'
+  let reduceHandle' = Reduce.new compSubstHandle gensymHandle' mempty
+  return $
+    Handle
+      { gensymHandle = gensymHandle',
+        linearizeHandle = linearizeHandle',
+        utilityHandle = utilityHandle',
+        auxEnvHandle = auxEnvHandle',
+        sigmaHandle = sigmaHandle',
+        dataHandle = dataHandle h,
+        optDataHandle = optDataHandle h,
+        reduceHandle = reduceHandle',
+        substHandle = substHandle h,
+        baseSize = baseSize',
+        typeHandle = typeHandle h,
+        typeDefHandle = typeDefHandle h
+      }
+
 newAuxReduceHandle :: Gensym.Handle -> C.DefMap -> IO Reduce.Handle
 newAuxReduceHandle gensymHandle defMap = do
   let compSubstHandle = CompSubst.new gensymHandle
@@ -135,7 +164,9 @@ clarify h stmtList = do
     auxEnv <- liftIO $ AuxEnv.toCompStmtList <$> AuxEnv.get (auxEnvHandle h)
     return (stmtList', auxEnv)
   baseAuxEnv <- liftIO $ makeBaseAuxEnv (sigmaHandle h)
-  let defMap = C.toDefMap (auxEnv ++ baseAuxEnv)
+  importedTypeDefList <- clarifyImportedTypeDefList h filteredStmtList
+  let inlineableTypeDefList = mapMaybe inlineableTypeDef $ zip filteredStmtList stmtList'
+  let defMap = C.toDefMap (importedTypeDefList ++ inlineableTypeDefList ++ auxEnv ++ baseAuxEnv)
   auxReduceHandle <- liftIO $ newAuxReduceHandle (gensymHandle h) defMap
   stmtList'' <- forM stmtList' $ \stmt -> do
     case stmt of
@@ -162,6 +193,60 @@ clarify h stmtList = do
       C.Foreign {} ->
         return stmt
   return (stmtList'', auxEnv', defMap)
+
+inlineableTypeDef :: (Stmt, C.CompStmt) -> Maybe C.CompStmt
+inlineableTypeDef (sourceStmt, compStmt) = do
+  case sourceStmt of
+    StmtDefineType {} -> do
+      (opacity, _, _) <- C.fromCompStmt compStmt
+      if opacity == O.Clear
+        then return compStmt
+        else Nothing
+    _ ->
+      Nothing
+
+clarifyImportedTypeDefList :: Handle -> [Stmt] -> App [C.CompStmt]
+clarifyImportedTypeDefList h stmtList = do
+  typeDefMap <- liftIO $ TypeDef.get' (typeDefHandle h)
+  reduceOnlyHandle <- liftIO $ newReduceOnlyHandle h
+  let currentTypeNameList = mapMaybe stmtTypeDefName stmtList
+  let typeDefList = filter (not . isCurrentTypeDef currentTypeNameList) $ Map.toList typeDefMap
+  stmtList' <- mapM (uncurry $ clarifyImportedTypeDef reduceOnlyHandle) typeDefList
+  auxEnv <- liftIO $ AuxEnv.toCompStmtList <$> AuxEnv.get (auxEnvHandle reduceOnlyHandle)
+  return $ stmtList' ++ auxEnv
+
+stmtTypeDefName :: Stmt -> Maybe DD.DefiniteDescription
+stmtTypeDefName stmt =
+  case stmt of
+    StmtDefineType _ _ _ name _ _ _ _ _ ->
+      Just name
+    _ ->
+      Nothing
+
+isCurrentTypeDef :: [DD.DefiniteDescription] -> (DD.DefiniteDescription, TypeDef.TypeDefInfo) -> Bool
+isCurrentTypeDef currentTypeNameList (name, _) =
+  elem name currentTypeNameList
+
+clarifyImportedTypeDef :: Handle -> DD.DefiniteDescription -> TypeDef.TypeDefInfo -> App C.CompStmt
+clarifyImportedTypeDef h name typeDefInfo = do
+  dataInfoOrNone <- liftIO $ Data.lookup (dataHandle h) name
+  case dataInfoOrNone of
+    Just dataInfo ->
+      clarifyDataTypeDef h name (DI.dataArgs dataInfo) (DI.consInfoList dataInfo)
+    Nothing ->
+      clarifyAliasTypeDef h name typeDefInfo
+
+clarifyAliasTypeDef :: Handle -> DD.DefiniteDescription -> TypeDef.TypeDefInfo -> App C.CompStmt
+clarifyAliasTypeDef h name typeDefInfo = do
+  let binders = TypeDef.typeDefBinders typeDefInfo
+  let body = TypeDef.typeDefBody typeDefInfo
+  let context = newContext name
+  binders' <- dropFst <$> clarifyBinder h context binders
+  envArg <- liftIO $ makeEnvArg h
+  switchArg <- liftIO $ makeSwitchArg h
+  let binders'' = binders' ++ [envArg, switchArg]
+  body' <- clarifyStmtDefineTypeBody h (extendContext binders context) binders'' body
+  return $ C.Def name O.Clear (map fst binders'') body'
 
 data MainHandle = MainHandle
   { mainAuxEnvHandle :: AuxEnv.Handle,
@@ -223,39 +308,25 @@ clarifyStmt h stmt =
           codType' <- clarifyType h context' codType
           destParam <- liftIO $ makeDestParam h
           e'' <- liftIO $ toDestPassing h destParam codType' e'
-          e''' <- liftIO $ Linearize.linearize (linearizeHandle h) xts'' e''
+          e''' <- liftIO $ Linearize.linearizeUser (linearizeHandle h) xts'' e''
           return $ C.DefVoid f (SK.toLowOpacityTerm stmtKind) (destParam : map fst xts'') e'''
         else do
           e' <- clarifyStmtDefineBody h context' xts'' e
           return $ C.Def f (SK.toLowOpacityTerm stmtKind) (map fst xts'') e'
-    StmtDefineType _ stmtKind (SavedHint m) f impArgs expArgs defaultArgs _ body -> do
+    StmtDefineType _ stmtKind (SavedHint _) f impArgs expArgs defaultArgs _ body -> do
       let context = newContext f
       defaultValues <- registerDefaultFunctions h context f [] impArgs defaultArgs
       liftIO $ registerDefaultEnvType h f defaultValues
       let xts = impArgs ++ expArgs ++ map fst defaultArgs
-      xts' <- dropFst <$> clarifyBinder h context xts
-      envArg <- liftIO $ makeEnvArg h
-      switchArg <- liftIO $ makeSwitchArg h
-      let xts'' = xts' ++ [envArg, switchArg]
       case stmtKind of
-        SK.Data name dataArgs consInfoList -> do
-          od <- liftIO $ OptimizableData.lookup (optDataHandle h) name
-          case od of
-            Just OD.Enum -> do
-              liftIO (Sigma.returnSigmaEnumS4 (sigmaHandle h) name O.Clear)
-                >>= clarifyStmtDefineBody' h name xts''
-            Just OD.Unary
-              | [(_, DI.ConsInfo {DI.consArgs = [(_, _, _, t)]})] <- consInfoList -> do
-                  (dataArgs', t') <- clarifyTypeBinderBody h (newContext name) dataArgs t
-                  return $ C.Def f O.Clear (map fst $ dataArgs' ++ [envArg, switchArg]) t'
-              | otherwise ->
-                  raiseCritical m "Found a broken unary data"
-            _ -> do
-              let totalSlotCount = getDataSlotCount dataArgs consInfoList
-              dataInfo' <- mapM (clarifyDataClause h (newContext name) totalSlotCount dataArgs . snd) consInfoList
-              liftIO (Sigma.returnSigmaDataS4 (sigmaHandle h) name O.Opaque totalSlotCount dataInfo')
-                >>= clarifyStmtDefineBody' h name xts''
+        SK.Data name dataArgs consInfoList _ -> do
+          let consInfoList' = map snd consInfoList
+          clarifyDataTypeDef h name dataArgs consInfoList'
         _ -> do
+          xts' <- dropFst <$> clarifyBinder h context xts
+          envArg <- liftIO $ makeEnvArg h
+          switchArg <- liftIO $ makeSwitchArg h
+          let xts'' = xts' ++ [envArg, switchArg]
           let context' = extendContext xts context
           body' <- clarifyStmtDefineTypeBody h context' xts'' body
           return $ C.Def f (SK.toLowOpacityType stmtKind) (map fst xts'') body'
@@ -388,22 +459,6 @@ clarifyBinderBody h context xts e =
       (binder, e') <- clarifyBinderBody h (extendContext [(m, k, x, t)] context) rest e
       return ((x, t') : binder, e')
 
-clarifyTypeBinderBody ::
-  Handle ->
-  Context ->
-  [BinderF TM.Type] ->
-  TM.Type ->
-  App ([(Ident, C.Comp)], C.Comp)
-clarifyTypeBinderBody h context xts t =
-  case xts of
-    [] -> do
-      t' <- clarifyType h context t
-      return ([], t')
-    (m, k, x, t1) : rest -> do
-      t1' <- clarifyType h context t1
-      (binder, t') <- clarifyTypeBinderBody h (extendContext [(m, k, x, t1)] context) rest t
-      return ((x, t1') : binder, t')
-
 clarifyStmtDefineBody ::
   Handle ->
   Context ->
@@ -412,7 +467,7 @@ clarifyStmtDefineBody ::
   App C.Comp
 clarifyStmtDefineBody h context xts e = do
   clarifyTerm h context e
-    >>= liftIO . Linearize.linearize (linearizeHandle h) xts
+    >>= liftIO . Linearize.linearizeUser (linearizeHandle h) xts
 
 clarifyStmtDefineTypeBody ::
   Handle ->
@@ -506,7 +561,7 @@ clarifyTerm h context term =
     _ :< TM.Let opacity mxt@(_, _, x, _) e1 e2 -> do
       e2' <- clarifyTerm h (extendContext [mxt] context) e2
       mxts' <- dropFst <$> clarifyBinder h context [mxt]
-      e2'' <- liftIO $ Linearize.linearize (linearizeHandle h) mxts' e2'
+      e2'' <- liftIO $ Linearize.linearizeUser (linearizeHandle h) mxts' e2'
       e1' <- clarifyTerm h context e1
       return $ Utility.bindLetWithReducibility (not $ isOpaque opacity) [(x, e1')] e2''
     m :< TM.Prim primValue ->
@@ -585,9 +640,9 @@ embody h context xets cont =
     (mxt@(_, _, x, t), e) : rest -> do
       t' <- clarifyType h context t
       (valueVarName, value, valueVar) <- clarifyPlus h context e
-      relApp <- liftIO $ toRelevantApp (utilityHandle h) valueVar t'
+      relApp <- liftIO $ toRelevantAppWith (utilityHandle h) True valueVar t'
       cont' <- embody h (extendContext [mxt] context) rest cont
-      cont'' <- liftIO $ Linearize.linearize (linearizeHandle h) [(x, t')] cont'
+      cont'' <- liftIO $ Linearize.linearizeUser (linearizeHandle h) [(x, t')] cont'
       return $ Utility.bindLet [(valueVarName, value), (x, relApp)] cont''
 
 type Size =
@@ -595,16 +650,39 @@ type Size =
 
 type DataArgsMap = IntMap.IntMap ([(Ident, TM.Type)], Size)
 
-getDataSlotCount ::
-  [BinderF TM.Type] ->
-  [DI.StmtConsInfo (BinderF TM.Type)] ->
-  Int
-getDataSlotCount dataArgs consInfoList =
-  1 + length dataArgs + foldr max 0 (map (length . DI.consArgs . snd) consInfoList)
-
 getDataSlotCount' :: [t] -> [DI.ConsInfo (BinderF TM.Type)] -> Int
 getDataSlotCount' dataArgs consInfoList =
   1 + length dataArgs + foldr (max . length . DI.consArgs) 0 consInfoList
+
+clarifyDataTypeDef ::
+  Handle ->
+  DD.DefiniteDescription ->
+  [BinderF TM.Type] ->
+  [DI.ConsInfo (BinderF TM.Type)] ->
+  App C.CompStmt
+clarifyDataTypeDef h name dataArgs consInfoList = do
+  let context = newContext name
+  dataArgs' <- dropFst <$> clarifyBinder h context dataArgs
+  envArg <- liftIO $ makeEnvArg h
+  switchArg <- liftIO $ makeSwitchArg h
+  let xts = dataArgs' ++ [envArg, switchArg]
+  od <- liftIO $ OptimizableData.lookup (optDataHandle h) name
+  case od of
+    Just OD.Enum ->
+      liftIO (Sigma.returnSigmaEnumS4 (sigmaHandle h) name O.Clear)
+        >>= clarifyStmtDefineBody' h name xts
+    Just OD.Unary -> do
+      case consInfoList of
+        [DI.ConsInfo {DI.consArgs = [(_, _, _, t)]}] -> do
+          t' <- clarifyType h (extendContext dataArgs context) t
+          return $ C.Def name O.Clear (map fst xts) t'
+        _ ->
+          raiseCritical' $ "Found a broken unary data metadata for `" <> DD.reify name <> "`"
+    _ -> do
+      let totalSlotCount = getDataSlotCount' dataArgs consInfoList
+      dataInfo' <- mapM (clarifyDataClause h context totalSlotCount dataArgs) consInfoList
+      liftIO (Sigma.returnSigmaDataS4 (sigmaHandle h) name O.Opaque totalSlotCount dataInfo')
+        >>= clarifyStmtDefineBody' h name xts
 
 getDataSlotCountFromType :: Handle -> TM.Type -> App Int
 getDataSlotCountFromType h t =
@@ -751,7 +829,7 @@ tidyCursorList h context dataArgsMap consumedCursorList cont =
           let (dataArgVars, dataTypes) = unzip dataArgs
           dataTypes' <- mapM (clarifyType h context) dataTypes
           (cont', chain) <- tidyCursorList h context dataArgsMap rest cont
-          tmp <- liftIO $ Linearize.linearize (linearizeHandle h) (zip dataArgVars dataTypes') $ do
+          tmp <- liftIO $ Linearize.linearizeUser (linearizeHandle h) (zip dataArgVars dataTypes') $ do
             C.Free (C.VarLocal cursor) (Just cursorSize) cont'
           let newChain = zipWith (\x t@(m :< _) -> (m, VK.Normal, x, t)) dataArgVars dataTypes
           return (tmp, newChain ++ chain)
@@ -814,7 +892,7 @@ clarifyCase h context isNoetic dataArgsMap cursor cursorType decisionCase = do
 alignFreeVariable :: Handle -> Context -> [BinderF TM.Type] -> C.Comp -> App C.Comp
 alignFreeVariable h context fvs e = do
   fvs' <- dropFst <$> clarifyBinder h context fvs
-  liftIO $ Linearize.linearize (linearizeHandle h) fvs' e
+  liftIO $ Linearize.linearizeUser (linearizeHandle h) fvs' e
 
 clarifyMagic :: Handle -> Context -> M.Magic BLT.BaseLowType TM.Type TM.Term -> App C.Comp
 clarifyMagic h context der = do
@@ -941,10 +1019,10 @@ clarifyLambda h context attrL@(AttrL.Attr {lamKind, identity}) fvs impArgs expAr
             codType' <- clarifyType h (extendContext appArgs $ newContext liftedName) codType
             destParam <- liftIO $ makeDestParam h
             liftedBody'' <- liftIO $ toDestPassing h destParam codType' liftedBody'
-            liftedBody''' <- liftIO $ Linearize.linearize (linearizeHandle h) liftedArgs liftedBody''
+            liftedBody''' <- liftIO $ Linearize.linearizeUser (linearizeHandle h) liftedArgs liftedBody''
             liftIO $ AuxEnv.insert (auxEnvHandle h) liftedName (C.DefVoid liftedName O.Opaque (destParam : params) liftedBody''')
           else do
-            liftedBody'' <- liftIO $ Linearize.linearize (linearizeHandle h) liftedArgs liftedBody'
+            liftedBody'' <- liftIO $ Linearize.linearizeUser (linearizeHandle h) liftedArgs liftedBody'
             liftIO $ AuxEnv.insert (auxEnvHandle h) liftedName (C.Def liftedName O.Opaque params liftedBody'')
       liftIO $ registerDefaultEnvType h liftedName []
       clarifyTerm h context lamApp
@@ -1031,7 +1109,7 @@ registerClosure h name opacity isDestPassing codType xts fvs e = do
   hole <- Gensym.newIdentFromText (gensymHandle h) "_"
   destParam <- makeDestParam h
   e' <- if isDestPassing then toDestPassing h destParam codType e else return e
-  e'' <- liftIO $ Linearize.linearize (linearizeHandle h) (fvs ++ xts) e'
+  e'' <- liftIO $ Linearize.linearizeUser (linearizeHandle h) (fvs ++ xts) e'
   normalPrefix <- lambdaPrefixNormal h fvs slotVarList envVar
   noeticPrefix <- lambdaPrefixNoetic h fvs slotVarList envVar
   let allocList =

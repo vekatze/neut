@@ -257,7 +257,7 @@ discernStmtKindType h stmtKind =
       return SK.Alias
     SK.AliasOpaque ->
       return SK.AliasOpaque
-    SK.Data dataName dataArgs consInfoList -> do
+    SK.Data dataName dataArgs consInfoList isNominal -> do
       (dataArgs', h') <- discernTypeBinder' h dataArgs
       let discernConsInfo (savedHint, consInfo) = do
             (consArgs', h'') <- discernBinder' h' (DI.consArgs consInfo)
@@ -265,7 +265,7 @@ discernStmtKindType h stmtKind =
       (consInfoList', hList) <- mapAndUnzipM discernConsInfo consInfoList
       forM_ (concatMap H.nameEnv hList) $ \(_, (_, newVar, _, _)) -> do
         liftIO $ Unused.deleteVariable (H.unusedHandle h') newVar
-      return $ SK.Data dataName dataArgs' consInfoList'
+      return $ SK.Data dataName dataArgs' consInfoList' isNominal
 
 getUnitType :: H.Handle -> Hint -> App WT.WeakType
 getUnitType h m = do

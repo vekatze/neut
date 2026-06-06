@@ -4,6 +4,7 @@ module Kernel.Clarify.Internal.Linearize
   ( Handle (..),
     new,
     linearize,
+    linearizeUser,
   )
 where
 
@@ -22,6 +23,10 @@ type Occurrence = Ident
 type ActiveSet = IntSet.IntSet
 
 type OccMap = IntMap.IntMap [Occurrence]
+
+data ResourceOpMode
+  = NormalResourceOp
+  | ForceResourceOp
 
 data Handle = Handle
   { gensymHandle :: Gensym.Handle,
@@ -42,12 +47,29 @@ linearize ::
   C.Comp -> -- a term that can contain non-linear occurrences of xi
   IO C.Comp -- a term in which all the variables in the closed chain occur linearly
 linearize h binder e = do
+  linearizeWith h NormalResourceOp binder e
+
+linearizeUser ::
+  Handle ->
+  [(Ident, C.Comp)] ->
+  C.Comp ->
+  IO C.Comp
+linearizeUser h binder e = do
+  linearizeWith h ForceResourceOp binder e
+
+linearizeWith ::
+  Handle ->
+  ResourceOpMode ->
+  [(Ident, C.Comp)] ->
+  C.Comp ->
+  IO C.Comp
+linearizeWith h resourceOpMode binder e = do
   let activeAll = IntSet.fromList $ map (toInt . fst) binder
   (occMap, e') <- distinguishComp h activeAll e
-  wrapBinders h activeAll (reverse binder) e' occMap
+  wrapBinders h resourceOpMode activeAll (reverse binder) e' occMap
 
-wrapBinders :: Handle -> ActiveSet -> [(Ident, C.Comp)] -> C.Comp -> OccMap -> IO C.Comp
-wrapBinders h activeSet binderEntries body bodyOccMap =
+wrapBinders :: Handle -> ResourceOpMode -> ActiveSet -> [(Ident, C.Comp)] -> C.Comp -> OccMap -> IO C.Comp
+wrapBinders h resourceOpMode activeSet binderEntries body bodyOccMap =
   case binderEntries of
     [] ->
       return body
@@ -57,22 +79,33 @@ wrapBinders h activeSet binderEntries body bodyOccMap =
         [] -> do
           hole <- Gensym.newIdentFromText (gensymHandle h) "unit"
           (headerOccMap, t') <- distinguishComp h activeSet' binderType
-          discardUnusedVar <- Utility.toAffineApp (utilityHandle h) (C.VarLocal binderName) t'
+          let forceInline = resourceOpModeToForceInline resourceOpMode
+          discardUnusedVar <-
+            Utility.toAffineAppWith (utilityHandle h) forceInline (C.VarLocal binderName) t'
           let occMap' = appendOccMaps headerOccMap (IntMap.delete (toInt binderName) bodyOccMap)
           let term' = C.UpElim True hole discardUnusedVar body
-          wrapBinders h activeSet' rest term' occMap'
+          wrapBinders h resourceOpMode activeSet' rest term' occMap'
         [z] -> do
           let term' = C.UpElim True z (C.UpIntro (C.VarLocal binderName)) body
-          wrapBinders h activeSet' rest term' (IntMap.delete (toInt binderName) bodyOccMap)
+          wrapBinders h resourceOpMode activeSet' rest term' (IntMap.delete (toInt binderName) bodyOccMap)
         z : zs -> do
           localName <- Gensym.newIdentFromText (gensymHandle h) $ toText binderName <> "-local"
-          (headerOccMap, headerTerm) <- insertHeader h activeSet' localName z zs binderType body
+          (headerOccMap, headerTerm) <- insertHeader h resourceOpMode activeSet' localName z zs binderType body
           let occMap' = appendOccMaps headerOccMap (IntMap.delete (toInt binderName) bodyOccMap)
           let term' = C.UpElim False localName (C.UpIntro (C.VarLocal binderName)) headerTerm
-          wrapBinders h activeSet' rest term' occMap'
+          wrapBinders h resourceOpMode activeSet' rest term' occMap'
+
+resourceOpModeToForceInline :: ResourceOpMode -> C.ForceInline
+resourceOpModeToForceInline resourceOpMode =
+  case resourceOpMode of
+    NormalResourceOp ->
+      False
+    ForceResourceOp ->
+      True
 
 insertHeader ::
   Handle ->
+  ResourceOpMode ->
   ActiveSet ->
   Ident ->
   Occurrence ->
@@ -80,14 +113,16 @@ insertHeader ::
   C.Comp ->
   C.Comp ->
   IO (OccMap, C.Comp)
-insertHeader h activeSet localName z1 zs t e =
+insertHeader h resourceOpMode activeSet localName z1 zs t e =
   case zs of
     [] ->
       return (IntMap.empty, C.UpElim True z1 (C.UpIntro (C.VarLocal localName)) e)
     z2 : rest -> do
-      (restOccMap, e') <- insertHeader h activeSet localName z2 rest t e
+      (restOccMap, e') <- insertHeader h resourceOpMode activeSet localName z2 rest t e
       (copyOccMap, t') <- distinguishComp h activeSet t
-      copyRelevantVar <- Utility.toRelevantApp (utilityHandle h) (C.VarLocal localName) t'
+      let forceInline = resourceOpModeToForceInline resourceOpMode
+      copyRelevantVar <-
+        Utility.toRelevantAppWith (utilityHandle h) forceInline (C.VarLocal localName) t'
       return (appendOccMaps copyOccMap restOccMap, C.UpElim True z1 copyRelevantVar e')
 
 distinguishComp :: Handle -> ActiveSet -> C.Comp -> IO (OccMap, C.Comp)

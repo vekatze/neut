@@ -19,6 +19,7 @@ import Language.Common.Binder
 import Language.Common.DataInfo qualified as DI
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.Discriminant qualified as D
+import Language.Common.IsNominal (IsNominal)
 import Language.Common.Opacity qualified as O
 
 data BaseStmtKindTerm name binder t
@@ -36,7 +37,7 @@ data BaseStmtKindTerm name binder t
 data BaseStmtKindType binder
   = Alias
   | AliasOpaque
-  | Data DD.DefiniteDescription [binder] [DI.StmtConsInfo binder]
+  | Data DD.DefiniteDescription [binder] [DI.StmtConsInfo binder] IsNominal
   deriving (Generic)
 
 instance (Binary name, Binary x, Binary t) => Binary (BaseStmtKindTerm name x t)
