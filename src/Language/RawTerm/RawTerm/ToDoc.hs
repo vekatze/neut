@@ -7,6 +7,7 @@ module Language.RawTerm.RawTerm.ToDoc
     typeAnnot,
     decodeArgs',
     decodeArgsMaybe,
+    decodeConsArgsMaybe,
     decodeDef,
     decodeTypeDef,
     decGeist,
@@ -19,6 +20,7 @@ import Control.Comonad.Cofree
 import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
 import Language.Common.Attr.Data qualified as AttrD
+import Language.Common.DataInfo (FieldHint (..))
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.ExternalName qualified as EN
 import Language.Common.Opacity qualified as O
@@ -633,6 +635,22 @@ decodeArgsMaybe mArgs = do
       D.Nil
     Just args ->
       decodeArgs (args, [])
+
+decodeConsArgsMaybe :: Maybe (SE.Series (FieldHint, RawBinder RawType)) -> D.Doc
+decodeConsArgsMaybe mArgs =
+  case mArgs of
+    Nothing ->
+      D.Nil
+    Just args ->
+      SE.decode $ fmap consArgToDoc args
+
+consArgToDoc :: (FieldHint, RawBinder RawType) -> D.Doc
+consArgToDoc (hint, binder) =
+  case hint of
+    FieldMixed ->
+      D.join [piArgToDoc binder, D.text " mix"]
+    FieldAuto ->
+      piArgToDoc binder
 
 decodeArgs' :: Args RawType -> D.Doc
 decodeArgs' (series, c) = do

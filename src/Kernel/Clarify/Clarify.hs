@@ -21,6 +21,7 @@ import Data.Containers.ListUtils (nubOrd)
 import Data.HashMap.Strict qualified as Map
 import Data.IntMap qualified as IntMap
 import Data.Maybe
+import Data.Set qualified as S
 import Data.Text qualified as T
 import Gensym.Gensym qualified as Gensym
 import Gensym.Handle qualified as Gensym
@@ -33,9 +34,10 @@ import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.Data qualified as Data
 import Kernel.Common.Handle.Global.OptimizableData qualified as OptimizableData
 import Kernel.Common.Handle.Global.Platform qualified as Platform
+import Kernel.Common.Handle.Global.Resource qualified as Resource
 import Kernel.Common.Handle.Global.Type qualified as Type
-import Kernel.Elaborate.Internal.Handle.TypeDef qualified as TypeDef
 import Kernel.Common.OptimizableData qualified as OD
+import Kernel.Elaborate.Internal.Handle.TypeDef qualified as TypeDef
 import Language.Common.ArgNum qualified as AN
 import Language.Common.Attr.DataIntro qualified as AttrDI
 import Language.Common.Attr.Lam qualified as AttrL
@@ -89,6 +91,7 @@ data Handle = Handle
     sigmaHandle :: Sigma.Handle,
     dataHandle :: Data.Handle,
     optDataHandle :: OptimizableData.Handle,
+    resourceHandle :: Resource.Handle,
     reduceHandle :: Reduce.Handle,
     substHandle :: Subst.Handle,
     baseSize :: DS.DataSize,
@@ -144,6 +147,7 @@ newReduceOnlyHandle h = do
         sigmaHandle = sigmaHandle',
         dataHandle = dataHandle h,
         optDataHandle = optDataHandle h,
+        resourceHandle = resourceHandle h,
         reduceHandle = reduceHandle',
         substHandle = substHandle h,
         baseSize = baseSize',
@@ -335,7 +339,7 @@ clarifyStmt h stmt =
       let context = newContext liftedName
       switch <- liftIO $ Gensym.createVar (gensymHandle h) "switch"
       arg@(argVarName, _) <- liftIO $ Gensym.createVar (gensymHandle h) "arg"
-      size <- clarifyTerm h context resourceSize
+      size <- clarifyResourceSize h resourceSize
       discard <- clarifyTerm h context (m :< TM.PiElim PEK.Normal discarder [] [m :< TM.Var argVarName] [])
       copy <- clarifyTerm h context (m :< TM.PiElim PEK.Normal copier [] [m :< TM.Var argVarName] [])
       let resourceSpec = Utility.ResourceSpec {switch, arg, discard, copy, size, defaultValues = []}
@@ -531,13 +535,22 @@ clarifyTerm h context term =
         _ -> do
           (zs1, es1, xs1) <- unzip3 <$> mapM (clarifyTypePlus h context) dataArgs
           (zs2, es2, xs2) <- unzip3 <$> mapM (clarifyPlus h context) consArgs
-          consInfoList <- lookupDataInfo h m dataName
-          let totalSlotCount = getDataSlotCount' xs1 consInfoList
+          dataInfo <- lookupDataEntry h m dataName
+          let totalSlotCount = DI.dataTotalSlotCount (DI.dataArgs dataInfo) (DI.consInfoList dataInfo)
+          consInfo <- getConsInfoByDiscriminant h m discriminant (DI.consInfoList dataInfo)
+          fieldStorageList <- fieldStoragesOfConsInfo h context consInfo
+          when (length fieldStorageList /= length xs2) $
+            raiseCritical m "Found a constructor layout arity mismatch"
+          let header =
+                if DI.headerSlotCount (DI.consInfoList dataInfo) == 0
+                  then []
+                  else [C.Int (dataSizeToIntSize (baseSize h)) (D.reify discriminant)]
+          packedBody <- liftIO $ Sigma.flattenFields (gensymHandle h) (zip fieldStorageList xs2) $ \payloadSlots ->
+            C.UpIntro $
+              C.SigmaIntro totalSlotCount $
+                header ++ xs1 ++ payloadSlots
           return $
-            Utility.bindLet (zip zs1 es1 ++ zip zs2 es2) $
-              C.UpIntro $
-                C.SigmaIntro totalSlotCount $
-                  C.Int (dataSizeToIntSize (baseSize h)) (D.reify discriminant) : (xs1 ++ xs2)
+            Utility.bindLet (zip zs1 es1 ++ zip zs2 es2) packedBody
     m :< TM.DataElim isNoetic xets tree -> do
       let (xs, es, _) = unzip3 xets
       let mxts = map (\x -> (m, VK.Normal, x, m :< TM.Tau)) xs
@@ -650,9 +663,19 @@ type Size =
 
 type DataArgsMap = IntMap.IntMap ([(Ident, TM.Type)], Size)
 
-getDataSlotCount' :: [t] -> [DI.ConsInfo (BinderF TM.Type)] -> Int
-getDataSlotCount' dataArgs consInfoList =
-  1 + length dataArgs + foldr (max . length . DI.consArgs) 0 consInfoList
+fieldStoragesOfConsInfo ::
+  Handle ->
+  Context ->
+  DI.ConsInfo (BinderF TM.Type) ->
+  App [Sigma.FieldLayout]
+fieldStoragesOfConsInfo h context consInfo = do
+  forM (zip (DI.consArgLayouts consInfo) (DI.consArgs consInfo)) $ \(layout, (_, _, _, t)) -> do
+    fieldType <- clarifyType h context t
+    case layout of
+      DI.LayoutDirect ->
+        return $ Sigma.Direct fieldType
+      DI.LayoutFlattened slotCount ->
+        return $ Sigma.Flattened fieldType slotCount
 
 clarifyDataTypeDef ::
   Handle ->
@@ -679,17 +702,23 @@ clarifyDataTypeDef h name dataArgs consInfoList = do
         _ ->
           raiseCritical' $ "Found a broken unary data metadata for `" <> DD.reify name <> "`"
     _ -> do
-      let totalSlotCount = getDataSlotCount' dataArgs consInfoList
-      dataInfo' <- mapM (clarifyDataClause h context totalSlotCount dataArgs) consInfoList
+      let totalSlotCount = DI.dataTotalSlotCount dataArgs consInfoList
+      let headerSize = DI.headerSlotCount consInfoList
+      dataInfo' <- mapM (clarifyDataClause h context name headerSize totalSlotCount dataArgs) consInfoList
       liftIO (Sigma.returnSigmaDataS4 (sigmaHandle h) name O.Opaque totalSlotCount dataInfo')
         >>= clarifyStmtDefineBody' h name xts
 
 getDataSlotCountFromType :: Handle -> TM.Type -> App Int
 getDataSlotCountFromType h t =
   case t of
-    m :< TM.Data _ dataName dataArgs -> do
-      consInfoList <- lookupDataInfo h m dataName
-      return $ getDataSlotCount' dataArgs consInfoList
+    m :< TM.Data _ dataName _ -> do
+      dataInfo <- lookupDataEntry h m dataName
+      return $ DI.dataTotalSlotCount (DI.dataArgs dataInfo) (DI.consInfoList dataInfo)
+    _ :< TM.TyApp t' _ ->
+      getDataSlotCountFromType h t'
+    m :< TM.TVarGlobal _ dataName -> do
+      dataInfo <- lookupDataEntry h m dataName
+      return $ DI.dataTotalSlotCount (DI.dataArgs dataInfo) (DI.consInfoList dataInfo)
     m :< _ ->
       raiseCritical m "Clarify.getDataSlotCountFromType"
 
@@ -700,18 +729,23 @@ dataSlotCountToByteSize h slotCount =
 clarifyDataClause ::
   Handle ->
   Context ->
+  DD.DefiniteDescription ->
+  Int ->
   Int ->
   [BinderF TM.Type] ->
   DI.ConsInfo (BinderF TM.Type) ->
   App Sigma.DataConstructorInfo
-clarifyDataClause h context totalSlotCount dataArgsVal consInfo = do
-  args <- dropFst <$> clarifyBinder h context (dataArgsVal ++ DI.consArgs consInfo)
-  let (dataArgs', consArgs') = splitAt (length dataArgsVal) args
+clarifyDataClause h context dataName headerSize totalSlotCount dataArgsVal consInfo = do
+  dataArgs' <- dropFst <$> clarifyBinder h context dataArgsVal
+  let context' = extendContext dataArgsVal context
+  fieldStorages <- fieldStoragesOfConsInfo h context' consInfo
+  let consArgs' = zip (map (\(_, _, x, _) -> x) (DI.consArgs consInfo)) fieldStorages
   return $
     Sigma.DataConstructorInfo
       { Sigma.discriminant = DI.discriminant consInfo,
         Sigma.dataArgs = dataArgs',
         Sigma.consArgs = consArgs',
+        Sigma.headerSize = headerSize,
         Sigma.totalSlotCount = totalSlotCount
       }
 
@@ -751,12 +785,16 @@ clarifyDecisionTree h context isNoetic dataArgsMap tree =
         Just OD.Unary -> do
           return (getFirstClause fallbackClause' clauseList'', newChain)
         _ -> do
-          (disc, discVar) <- liftIO $ Gensym.createVar (gensymHandle h) "disc"
-          enumElim <- liftIO $ Utility.getEnumElim (utilityHandle h) idents discVar fallbackClause' (zip enumCaseList clauseList'')
-          return
-            ( C.UpElim True disc (C.Primitive (C.Magic (LM.Load BLT.Pointer (C.VarLocal cursor)))) enumElim,
-              newChain
-            )
+          (_, dataInfo) <- lookupDataEntryFromType h m cursorType
+          if DI.headerSlotCount (DI.consInfoList dataInfo) == 0
+            then return (getFirstClause fallbackClause' clauseList'', newChain)
+            else do
+              (disc, discVar) <- liftIO $ Gensym.createVar (gensymHandle h) "disc"
+              enumElim <- liftIO $ Utility.getEnumElim (utilityHandle h) idents discVar fallbackClause' (zip enumCaseList clauseList'')
+              return
+                ( C.UpElim True disc (C.Primitive (C.Magic (LM.Load BLT.Pointer (C.VarLocal cursor)))) enumElim,
+                  newChain
+                )
 
 getFirstClause :: C.Comp -> [C.Comp] -> C.Comp
 getFirstClause fallbackClause clauseList =
@@ -782,10 +820,20 @@ getClauseDataGroup h term =
     _ ->
       raiseCritical' "Clarify.isEnumType"
 
-lookupDataInfo :: Handle -> Hint -> DD.DefiniteDescription -> App [DI.ConsInfo (BinderF TM.Type)]
-lookupDataInfo h m dataName = do
-  dataInfo <- lookupDataEntry h m dataName
-  return $ DI.consInfoList dataInfo
+getConsInfoByDiscriminant ::
+  Handle ->
+  Hint ->
+  D.Discriminant ->
+  [DI.ConsInfo (BinderF TM.Type)] ->
+  App (DI.ConsInfo (BinderF TM.Type))
+getConsInfoByDiscriminant h m discriminant consInfoList = do
+  case consInfoList of
+    [] ->
+      raiseCritical m "Could not find constructor metadata by discriminant"
+    consInfo : rest -> do
+      if DI.discriminant consInfo == discriminant
+        then return consInfo
+        else getConsInfoByDiscriminant h m discriminant rest
 
 lookupDataEntry :: Handle -> Hint -> DD.DefiniteDescription -> App (DI.DataInfo (BinderF TM.Type))
 lookupDataEntry h m dataName = do
@@ -795,6 +843,24 @@ lookupDataEntry h m dataName = do
       return dataInfo
     Nothing ->
       raiseCritical m $ "Could not find constructor metadata for `" <> DD.reify dataName <> "`"
+
+lookupDataEntryFromType ::
+  Handle ->
+  Hint ->
+  TM.Type ->
+  App (DD.DefiniteDescription, DI.DataInfo (BinderF TM.Type))
+lookupDataEntryFromType h m t =
+  case t of
+    _ :< TM.Data _ dataName _ -> do
+      dataInfo <- lookupDataEntry h m dataName
+      return (dataName, dataInfo)
+    _ :< TM.TyApp t' _ ->
+      lookupDataEntryFromType h m t'
+    _ :< TM.TVarGlobal _ dataName -> do
+      dataInfo <- lookupDataEntry h m dataName
+      return (dataName, dataInfo)
+    _ ->
+      raiseCritical m "Could not find data metadata from case cursor type"
 
 specializeUnaryDataType ::
   Handle ->
@@ -878,16 +944,38 @@ clarifyCase h context isNoetic dataArgsMap cursor cursorType decisionCase = do
           | otherwise ->
               raiseCritical' "Found a non-unary consArgs for unary ADT"
         _ -> do
-          discriminantVar <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "discriminant"
-          return
-            ( EC.Int (D.reify disc),
-              C.SigmaElim
-                False
-                (discriminantVar : dataArgVars ++ map (\(_, _, x, _) -> x) consArgs)
-                (C.VarLocal cursor)
-                body',
-              chain
-            )
+          (dataName, dataInfo) <- lookupDataEntryFromType h mCons cursorType
+          layoutConsInfo <- getConsInfoByDiscriminant h mCons disc (DI.consInfoList dataInfo)
+          when (length (DI.consArgs layoutConsInfo) /= length consArgs) $
+            raiseCritical mCons "Found a constructor layout arity mismatch"
+          let fieldLayoutContext = extendContext (DI.dataArgs dataInfo) context
+          fieldStorageList <- fieldStoragesOfConsInfo h fieldLayoutContext layoutConsInfo
+          let consArgIdents = map (\(_, _, x, _) -> x) consArgs
+          let totalSlots = cursorSize `div` (DS.reify (baseSize h) `div` 8)
+          headerVars <-
+            if DI.headerSlotCount (DI.consInfoList dataInfo) == 0
+              then return []
+              else do
+                discriminantVar <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "discriminant"
+                return [discriminantVar]
+          if isNoetic
+            then do
+              let firstFieldStart = length headerVars + length dataArgVars
+              let bodyInPlace = Sigma.bindFieldsInPlace (C.VarLocal cursor) totalSlots firstFieldStart (zip consArgIdents fieldStorageList) body'
+              return
+                ( EC.Int (D.reify disc),
+                  C.SigmaElim False 0 totalSlots (headerVars ++ dataArgVars) (C.VarLocal cursor) bodyInPlace,
+                  chain
+                )
+            else do
+              fieldSlotList <- liftIO $ Sigma.makeFieldSlotVars (gensymHandle h) (zip consArgIdents fieldStorageList)
+              let fieldSlotVars = concatMap Sigma.fieldSlotVars fieldSlotList
+              let bodyWithFields = Sigma.bindFieldValues fieldSlotList body'
+              return
+                ( EC.Int (D.reify disc),
+                  C.SigmaElim False 0 totalSlots (headerVars ++ dataArgVars ++ fieldSlotVars) (C.VarLocal cursor) bodyWithFields,
+                  chain
+                )
 
 alignFreeVariable :: Handle -> Context -> [BinderF TM.Type] -> C.Comp -> App C.Comp
 alignFreeVariable h context fvs e = do
@@ -1039,6 +1127,16 @@ clarifyPlus h context e = do
   (varName, var) <- liftIO $ Gensym.createVar (gensymHandle h) "var"
   return (varName, e', var)
 
+clarifyResourceSize :: Handle -> TM.Term -> App C.Comp
+clarifyResourceSize h resourceSize@(m :< _) = do
+  case Resource.layoutOf resourceSize of
+    Just Resource.Direct ->
+      return $ Utility.returnIntComp (utilityHandle h) (-1)
+    Just (Resource.Flattened wordCount) ->
+      return $ Utility.returnByteSizeComp (utilityHandle h) (toInteger wordCount)
+    Nothing ->
+      raiseCritical m "clarifyResourceSize: the resource size was not reduced to an integer"
+
 clarifyTypePlus :: Handle -> Context -> TM.Type -> App (Ident, C.Comp, C.Value)
 clarifyTypePlus h context t = do
   t' <- clarifyType h context t
@@ -1143,7 +1241,7 @@ callClosure h kind e impArgs expArgs defaultArgs = do
   callComp <- buildCall h kind lamVar args
   return $
     Utility.bindLet [(closureVarName, e)] $
-      C.SigmaElim (not $ PEK.isNoetic kind) [envTypeVarName, envVarName, lamVarName] closureVar $
+      C.sigmaElim (not $ PEK.isNoetic kind) [envTypeVarName, envVarName, lamVarName] closureVar $
         Utility.bindLet (zip (impNames ++ expNames ++ defNames) (impComps ++ expComps ++ defComps)) callComp
 
 resolveDefaultTriple ::
@@ -1231,7 +1329,7 @@ lambdaPrefixNormal ::
   IO C.Comp
 lambdaPrefixNormal h fvs slotVarList envVar = do
   body <- storeValuesInSlots h (map (C.VarLocal . fst) fvs) slotVarList
-  return $ C.SigmaElim True (map fst fvs) envVar body
+  return $ C.sigmaElim True (map fst fvs) envVar body
 
 lambdaPrefixNoetic ::
   Handle ->
@@ -1245,7 +1343,7 @@ lambdaPrefixNoetic h fvs slotVarList envVar = do
   (varNameList, varList) <- mapAndUnzipM (const $ Gensym.createVar (gensymHandle h) "pair") fvs
   storeBody <- storeValuesInSlots h varList slotVarList
   body <- Linearize.linearize (linearizeHandle h) fvs $ Utility.bindLet (zip varNameList as) storeBody
-  return $ C.SigmaElim False (map fst fvs) envVar body
+  return $ C.sigmaElim False (map fst fvs) envVar body
 
 storeValuesInSlots ::
   Handle ->

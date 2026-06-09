@@ -208,15 +208,14 @@ lowerComp h term =
         =<< lowerValues h (zip argVars ds)
         =<< cast h castFuncVar func LT.Pointer
         =<< return (LC.TailCall LT.Pointer castFunc (map (LT.Pointer,) argValues))
-    C.SigmaElim shouldDeallocate xs v e -> do
+    C.SigmaElim shouldDeallocate offset slotCount xs v e -> do
       (sigmaVar, sigma) <- liftIO $ newValueLocal h "sigma"
       (elemVars, elems) <- mapAndUnzipM (const $ liftIO $ newValueLocal h "elem") xs
-      let numOfElems = length xs
-      let baseType = LT.Array numOfElems LT.Pointer
+      let baseType = LT.Array slotCount LT.Pointer
       lowerValue h sigmaVar v
-        =<< return . getElemPtrList sigma elemVars baseType
+        =<< return . getElemPtrListFrom offset sigma elemVars baseType
         =<< loadElements h sigma (zip xs (map (,LT.Pointer) elems))
-        =<< liftIO . freeIfNecessary h shouldDeallocate sigma (length xs)
+        =<< liftIO . freeIfNecessary h shouldDeallocate sigma slotCount
         =<< lowerComp h e
     C.UpIntro d -> do
       (resultVar, resultValue) <- liftIO $ newValueLocal h "result"
@@ -738,7 +737,11 @@ getElemPtr var value valueType indexList cont = do
 
 getElemPtrList :: LC.Value -> [Ident] -> LT.LowType -> LC.Comp -> LC.Comp
 getElemPtrList basePointer vars baseType cont = do
-  let f (var, i) = getElemPtr var basePointer baseType [0, toInteger i]
+  getElemPtrListFrom 0 basePointer vars baseType cont
+
+getElemPtrListFrom :: Int -> LC.Value -> [Ident] -> LT.LowType -> LC.Comp -> LC.Comp
+getElemPtrListFrom offset basePointer vars baseType cont = do
+  let f (var, i) = getElemPtr var basePointer baseType [0, toInteger $ offset + i]
   foldr f cont (zip vars [0 :: Int ..])
 
 data AggType

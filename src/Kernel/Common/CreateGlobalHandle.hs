@@ -25,6 +25,7 @@ import Kernel.Common.Handle.Global.Module qualified as Module
 import Kernel.Common.Handle.Global.OptimizableData qualified as OptimizableData
 import Kernel.Common.Handle.Global.Path qualified as Path
 import Kernel.Common.Handle.Global.Platform qualified as Platform
+import Kernel.Common.Handle.Global.Resource qualified as Resource
 import Kernel.Common.Handle.Global.Type qualified as Type
 import Kernel.Common.Import
 import Kernel.Elaborate.Internal.Handle.Def qualified as Definition
@@ -52,6 +53,7 @@ data Handle = Handle
     moduleHandle :: Module.Handle,
     optDataHandle :: OptimizableData.Handle,
     pathHandle :: Path.Handle,
+    resourceHandle :: Resource.Handle,
     loggerHandle :: Logger.Handle,
     typeHandle :: Type.Handle,
     weakDefHandle :: WeakDef.Handle,
@@ -86,6 +88,7 @@ newOrError cfg moduleFilePathOrNone = do
       Logger.setModuleDir loggerHandle mainModule
       keyArgHandle <- KeyArg.new mainModule
       optDataHandle <- OptimizableData.new
+      resourceHandle <- Resource.new
       typeHandle <- Type.new
       dataHandle <- Data.new
       pathHandle <- Path.new mainModule platformHandle loggerHandle

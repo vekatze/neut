@@ -13,6 +13,7 @@ import Control.Monad.Trans
 import Data.Text qualified as T
 import Kernel.Parse.Internal.RawTerm
 import Language.Common.BaseName qualified as BN
+import Language.Common.DataInfo (FieldHint (..))
 import Language.Common.ExternalName qualified as EN
 import Language.Common.ForeignCodType qualified as F
 import Language.Common.LocalLocator qualified as LL
@@ -299,7 +300,7 @@ parseDefineDataClause h = do
   (expArgs, endLoc, c2) <- parseConsArgs h
   return (RawConsInfo {loc, name, expArgs, endLoc}, c1 ++ c2)
 
-parseConsArgs :: Handle -> Parser (Maybe (SE.Series (RawBinder RT.RawType)), Loc, C)
+parseConsArgs :: Handle -> Parser (Maybe (SE.Series (FieldHint, RawBinder RT.RawType)), Loc, C)
 parseConsArgs h = do
   choice
     [ do
@@ -310,8 +311,18 @@ parseConsArgs h = do
         return (Nothing, loc, [])
     ]
 
-parseDefineDataClauseArg :: Handle -> Parser (RawBinder RT.RawType, C)
+parseDefineDataClauseArg :: Handle -> Parser ((FieldHint, RawBinder RT.RawType), C)
 parseDefineDataClauseArg h = do
+  (binder, c) <- parseDataClauseArgBinder h
+  mMixed <- optional $ keyword "mix"
+  case mMixed of
+    Just _ ->
+      return ((FieldMixed, binder), c)
+    Nothing ->
+      return ((FieldAuto, binder), c)
+
+parseDataClauseArgBinder :: Handle -> Parser (RawBinder RT.RawType, C)
+parseDataClauseArgBinder h = do
   choice
     [ try $ varWithMode h >>= preAscription h,
       typeWithoutIdent h

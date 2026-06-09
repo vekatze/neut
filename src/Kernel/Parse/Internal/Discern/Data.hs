@@ -75,7 +75,9 @@ modifyConsInfo d consInfoList =
         DI.ConsInfo
           { DI.consName = name consInfo,
             DI.isConstLike = isConstLikeConsInfo consInfo,
-            DI.consArgs = expArgsExtracted,
+            DI.consArgs = map snd expArgsExtracted,
+            DI.consArgHints = map fst expArgsExtracted,
+            DI.consArgLayouts = [], -- filled by Elaborate
             DI.discriminant = d
           }
         )
@@ -95,7 +97,7 @@ parseDefineDataConstructor dataType dataName dataArgs consInfoList discriminant 
     consInfo : rest -> do
       let dataArgs' = RT.extractArgs dataArgs
       let dataArgs'' = map identPlusToVar dataArgs'
-      let expConsArgs = maybe [] SE.extract (expArgs consInfo)
+      let expConsArgs = map snd $ maybe [] SE.extract (expArgs consInfo)
       let expConsArgs' = map adjustExpConsArg expConsArgs
       let m = loc consInfo
       let attr = AttrDI.Attr {dataName, discriminant, isConstLike = isConstLikeConsInfo consInfo}
@@ -104,7 +106,7 @@ parseDefineDataConstructor dataType dataName dataArgs consInfoList discriminant 
               then dataType
               else do
                 let emptyImpArgs = (SE.emptySeriesAC, [])
-                let expArgsWithEmpty = (fromMaybe SE.emptySeriesPC (expArgs consInfo), [])
+                let expArgsWithEmpty = (maybe SE.emptySeriesPC (fmap snd) (expArgs consInfo), [])
                 let emptyDefArgs = RT.emptyDefaultBinders
                 m :< RT.Pi emptyImpArgs expArgsWithEmpty emptyDefArgs RT.PiDataIntro [] dataType (endLoc consInfo)
       let consBody =

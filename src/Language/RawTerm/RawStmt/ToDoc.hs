@@ -287,7 +287,7 @@ decDataArgs argsOrNone =
 decConsInfo :: RawConsInfo BN.BaseName -> D.Doc
 decConsInfo (RawConsInfo {name = consName, expArgs}) = do
   let consName' = D.text (BN.reify consName)
-  D.join [consName', RT.decodeArgsMaybe expArgs]
+  D.join [consName', RT.decodeConsArgsMaybe expArgs]
 
 decNominalGeist :: (NominalTag, RT.RawGeist BN.BaseName, Loc) -> D.Doc
 decNominalGeist (tag, geist, _) = do

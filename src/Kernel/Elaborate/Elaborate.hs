@@ -26,8 +26,11 @@ import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.Data qualified as Data
 import Kernel.Common.Handle.Global.GlobalRemark qualified as GlobalRemark
 import Kernel.Common.Handle.Global.KeyArg qualified as KeyArg
+import Kernel.Common.Handle.Global.OptimizableData qualified as OptimizableData
+import Kernel.Common.Handle.Global.Resource qualified as Resource
 import Kernel.Common.Handle.Global.Type qualified as Type
 import Kernel.Common.ManageCache qualified as Cache
+import Kernel.Common.OptimizableData qualified as OD
 import Kernel.Common.Target hiding (Main)
 import Kernel.Elaborate.Internal.EnsureAffinity qualified as EnsureAffinity
 import Kernel.Elaborate.Internal.Handle.Constraint qualified as Constraint
@@ -75,6 +78,7 @@ import Language.LowComp.DeclarationName qualified as DN
 import Language.Term.Inline qualified as Inline
 import Language.Term.PrimValue qualified as PV
 import Language.Term.Stmt
+import Language.Term.Subst qualified as TmSubst
 import Language.Term.Term qualified as TM
 import Language.Term.Weaken
 import Language.WeakTerm.Subst (SubstEntry (..))
@@ -208,6 +212,11 @@ elaborateStmt h stmt = do
       discarder'' <- inline h m discarder'
       copier'' <- inline h m copier'
       resourceSize'' <- inline h m resourceSize'
+      case Resource.layoutOf resourceSize'' of
+        Just _ ->
+          return ()
+        Nothing ->
+          raiseError m "Could not reduce the size of this resource into an integer"
       unitType'' <- inlineType h m unitType'
       let result = StmtDefineResource (SavedHint m) dd resourceID unitType'' discarder'' copier'' resourceSize''
       insertStmt h result
@@ -246,9 +255,14 @@ insertStmt h stmt = do
       liftIO $ Type.insert' (typeHandle h) f $ weakenType $ m :< TM.Pi (PK.Normal isConstLike) impArgs expArgs (map fst defaultArgs) t
       liftIO $ TypeDef.insert' (typeDefHandle h) (SK.toOpacityType stmtKind) f allBinders body
       registerDataTypeStmt h f stmtKind
-    StmtDefineResource (SavedHint m) dd resourceID _ _ _ _ -> do
+    StmtDefineResource (SavedHint m) dd resourceID _ _ _ resourceSize -> do
       liftIO $ Type.insert' (typeHandle h) dd $ weakenType (m :< TM.Pi (PK.Normal True) [] [] [] (m :< TM.Tau))
       liftIO $ TypeDef.insert' (typeDefHandle h) (SK.toOpacityType SK.Alias) dd [] (m :< TM.Resource dd resourceID)
+      case Resource.layoutOf resourceSize of
+        Just resourceSize' ->
+          liftIO $ Resource.insert (Global.resourceHandle $ globalHandle h) dd resourceSize'
+        Nothing ->
+          return ()
     StmtVariadic {} ->
       return ()
     StmtForeign _ -> do
@@ -352,8 +366,79 @@ elaborateStmtKindType h stmtKind =
       consInfoList' <- forM consInfoList $ \(savedHint, consInfo) -> do
         consArgs' <- mapM (elaborateWeakBinder h) (DI.consArgs consInfo)
         consArgs'' <- mapM (inlineBinder h) consArgs'
-        return (savedHint, consInfo {DI.consArgs = consArgs''})
+        layouts <- forM (zip (DI.consArgHints consInfo) consArgs'') $ \(hint, binder) -> do
+          resolveFieldLayout h hint binder
+        return (savedHint, consInfo {DI.consArgs = consArgs'', DI.consArgLayouts = layouts})
       return $ SK.Data dataName dataArgs'' consInfoList' isNominal
+
+resolveFieldLayout :: Handle -> DI.FieldHint -> BinderF TM.Type -> App DI.FieldLayout
+resolveFieldLayout h hint (m, _, _, t) =
+  case hint of
+    DI.FieldAuto ->
+      return DI.LayoutDirect
+    DI.FieldMixed ->
+      resolveMixed h S.empty m t
+
+resolveMixed :: Handle -> S.Set DD.DefiniteDescription -> Hint -> TM.Type -> App DI.FieldLayout
+resolveMixed h visited m ty =
+  case ty of
+    _ :< TM.Data _ dataName dataArgs -> do
+      optDataOrNone <- liftIO $ OptimizableData.lookup (optDataHandle h) dataName
+      case optDataOrNone of
+        Just OD.Enum ->
+          raiseError m $ "the type `" <> DD.reify dataName <> "` is an enum and cannot be mixed"
+        Just OD.Unary ->
+          if S.member dataName visited
+            then raiseError m $ cannotMixRecursiveMessage dataName
+            else do
+              innerType <- specializeUnaryDataType h m dataName dataArgs
+              resolveMixed h (S.insert dataName visited) m innerType
+        Nothing ->
+          if S.member dataName visited
+            then raiseError m $ cannotMixRecursiveMessage dataName
+            else do
+              dataInfo <- lookupDataInfoFull h m dataName
+              return $ DI.LayoutFlattened $ DI.dataTotalSlotCount (DI.dataArgs dataInfo) (DI.consInfoList dataInfo)
+    _ :< TM.Resource dataName _ -> do
+      resourceSizeOrNone <- liftIO $ Resource.lookup (Global.resourceHandle (globalHandle h)) dataName
+      case resourceSizeOrNone of
+        Just (Resource.Flattened slotCount) ->
+          return $ DI.LayoutFlattened slotCount
+        Just Resource.Direct ->
+          raiseError m $ "the resource `" <> DD.reify dataName <> "` has no fixed size and cannot be mixed"
+        Nothing ->
+          raiseError m $ "could not find the size of the resource `" <> DD.reify dataName <> "`"
+    _ :< TM.Pi {} ->
+      return $ DI.LayoutFlattened DI.closureSlotCount
+    _ ->
+      raiseError m "the type of this field cannot be mixed"
+
+cannotMixRecursiveMessage :: DD.DefiniteDescription -> T.Text
+cannotMixRecursiveMessage dataName =
+  "the recursive type `" <> DD.reify dataName <> "` cannot be mixed"
+
+lookupDataInfoFull :: Handle -> Hint -> DD.DefiniteDescription -> App (DI.DataInfo (BinderF TM.Type))
+lookupDataInfoFull h m dataName = do
+  dataInfoOrNone <- liftIO $ Data.lookup (dataHandle h) dataName
+  case dataInfoOrNone of
+    Just dataInfo ->
+      return dataInfo
+    Nothing ->
+      raiseError m $ "could not find the layout of the type `" <> DD.reify dataName <> "`"
+
+specializeUnaryDataType :: Handle -> Hint -> DD.DefiniteDescription -> [TM.Type] -> App TM.Type
+specializeUnaryDataType h m dataName dataArgs = do
+  dataInfo <- lookupDataInfoFull h m dataName
+  let dataBinders = DI.dataArgs dataInfo
+  when (length dataBinders /= length dataArgs) $ do
+    raiseError m $ "arity mismatch while mixing the unary type `" <> DD.reify dataName <> "`"
+  let binderIds = map (\(_, _, x, _) -> x) dataBinders
+  let sub = IntMap.fromList $ zip (map Ident.toInt binderIds) (map TmSubst.Type dataArgs)
+  case DI.consInfoList dataInfo of
+    [DI.ConsInfo {DI.consArgs = [(_, _, _, t)]}] ->
+      liftIO $ TmSubst.substType (TmSubst.new (gensymHandle h)) sub t
+    _ ->
+      raiseError m $ "broken unary metadata for `" <> DD.reify dataName <> "`"
 
 elaborate' :: Handle -> WT.WeakTerm -> App TM.Term
 elaborate' h term = do
