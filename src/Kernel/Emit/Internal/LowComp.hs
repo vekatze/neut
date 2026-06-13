@@ -75,7 +75,7 @@ emitLowComp h lowComp =
                       emitLowType codType,
                       emitValue f <> showArgsWithSRet args
                     ]
-          ret <- emitLowComp h LC.ReturnVoid
+          ret <- emitLowComp (h {goalLabel = Nothing}) LC.ReturnVoid
           return $ op <> ret
         _ -> do
           tmp <- Gensym.newIdentFromText (gensymHandle h) "tmp"
@@ -88,7 +88,7 @@ emitLowComp h lowComp =
                       emitLowType codType,
                       emitValue f <> showArgs args
                     ]
-          ret <- emitLowComp h $ LC.Return (LC.VarLocal tmp)
+          ret <- emitLowComp (h {goalLabel = Nothing}) $ LC.Return (LC.VarLocal tmp)
           return $ op <> ret
     LC.Switch d lowType defaultBranch branchList phiTargets cont -> do
       defaultLabel <- Gensym.newIdentFromText (gensymHandle h) "default"
@@ -128,9 +128,12 @@ emitLowComp h lowComp =
               flip map (zip phiTargets phiValueListList) $ \(phiTarget, values) -> do
                 let phiOp = unwordsL ["phi", emitLowType LT.Pointer, emitPhiList $ zip values reachableLabels]
                 emitOp $ emitValue (LC.VarLocal phiTarget) <> " = " <> phiOp
-        let phiOpStr = concat phiOpList
-        a <- emitLowComp (h {currentLabel = Just goalLabel}) cont
-        return $ emitLabel (emitIdentAsLabel goalLabel) : phiOpStr <> a
+        if null phiBranchList && not (null phiTargets)
+          then return $ emitLabel (emitIdentAsLabel goalLabel) : emitOp "unreachable"
+          else do
+            let phiOpStr = concat phiOpList
+            a <- emitLowComp (h {currentLabel = Just goalLabel}) cont
+            return $ emitLabel (emitIdentAsLabel goalLabel) : phiOpStr <> a
       return $ switchOpStr <> concat blockAsmList <> goalBlock
     LC.Cont op cont -> do
       let lowOp = emitLowOp (emitOpHandle h) "" op
