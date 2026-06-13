@@ -21,7 +21,6 @@ import Data.Containers.ListUtils (nubOrd)
 import Data.HashMap.Strict qualified as Map
 import Data.IntMap qualified as IntMap
 import Data.Maybe
-import Data.Set qualified as S
 import Data.Text qualified as T
 import Gensym.Gensym qualified as Gensym
 import Gensym.Handle qualified as Gensym
@@ -229,7 +228,7 @@ stmtTypeDefName stmt =
 
 isCurrentTypeDef :: [DD.DefiniteDescription] -> (DD.DefiniteDescription, TypeDef.TypeDefInfo) -> Bool
 isCurrentTypeDef currentTypeNameList (name, _) =
-  elem name currentTypeNameList
+  name `elem` currentTypeNameList
 
 clarifyImportedTypeDef :: Handle -> DD.DefiniteDescription -> TypeDef.TypeDefInfo -> App C.CompStmt
 clarifyImportedTypeDef h name typeDefInfo = do
@@ -704,7 +703,7 @@ clarifyDataTypeDef h name dataArgs consInfoList = do
     _ -> do
       let totalSlotCount = DI.dataTotalSlotCount dataArgs consInfoList
       let headerSize = DI.headerSlotCount consInfoList
-      dataInfo' <- mapM (clarifyDataClause h context name headerSize totalSlotCount dataArgs) consInfoList
+      dataInfo' <- mapM (clarifyDataClause h context headerSize totalSlotCount dataArgs) consInfoList
       liftIO (Sigma.returnSigmaDataS4 (sigmaHandle h) name O.Opaque totalSlotCount dataInfo')
         >>= clarifyStmtDefineBody' h name xts
 
@@ -729,13 +728,12 @@ dataSlotCountToByteSize h slotCount =
 clarifyDataClause ::
   Handle ->
   Context ->
-  DD.DefiniteDescription ->
   Int ->
   Int ->
   [BinderF TM.Type] ->
   DI.ConsInfo (BinderF TM.Type) ->
   App Sigma.DataConstructorInfo
-clarifyDataClause h context dataName headerSize totalSlotCount dataArgsVal consInfo = do
+clarifyDataClause h context headerSize totalSlotCount dataArgsVal consInfo = do
   dataArgs' <- dropFst <$> clarifyBinder h context dataArgsVal
   let context' = extendContext dataArgsVal context
   fieldStorages <- fieldStoragesOfConsInfo h context' consInfo
@@ -944,7 +942,7 @@ clarifyCase h context isNoetic dataArgsMap cursor cursorType decisionCase = do
           | otherwise ->
               raiseCritical' "Found a non-unary consArgs for unary ADT"
         _ -> do
-          (dataName, dataInfo) <- lookupDataEntryFromType h mCons cursorType
+          (_, dataInfo) <- lookupDataEntryFromType h mCons cursorType
           layoutConsInfo <- getConsInfoByDiscriminant h mCons disc (DI.consInfoList dataInfo)
           when (length (DI.consArgs layoutConsInfo) /= length consArgs) $
             raiseCritical mCons "Found a constructor layout arity mismatch"
