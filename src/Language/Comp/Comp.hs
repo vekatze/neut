@@ -16,6 +16,7 @@ module Language.Comp.Comp
     intValue1,
     mulInt64,
     sigmaIntro,
+    sigmaElim,
     isUnreachable,
     null,
   )
@@ -76,7 +77,7 @@ type Label =
 
 data Comp
   = PiElimDownElim ForceInline Value [Value] -- ((force v) v1 ... vn)
-  | SigmaElim ShouldDeallocate [Ident] Value Comp
+  | SigmaElim ShouldDeallocate Int Int [Ident] Value Comp -- offset, allocation slot count
   | UpIntro Value
   | UpIntroVoid
   | UpElim IsReducible Ident Comp Comp
@@ -93,9 +94,9 @@ instance Show Comp where
     case c of
       PiElimDownElim _ v vs ->
         show v ++ "@(" ++ intercalate "," (map show vs) ++ ")"
-      SigmaElim b xs v cont -> do
+      SigmaElim b offset size xs v cont -> do
         let h = if b then "let" else "let-noetic"
-        h ++ " (" ++ intercalate "," (map show xs) ++ ") = " ++ show v ++ "\n" ++ show cont
+        h ++ "<" ++ show offset ++ ", " ++ show size ++ "> (" ++ intercalate "," (map show xs) ++ ") = " ++ show v ++ "\n" ++ show cont
       UpIntro v ->
         "return " ++ show v
       UpIntroVoid ->
@@ -196,12 +197,16 @@ sigmaIntro :: [Value] -> Value
 sigmaIntro vs =
   SigmaIntro (length vs) vs
 
+sigmaElim :: ShouldDeallocate -> [Ident] -> Value -> Comp -> Comp
+sigmaElim shouldDeallocate xs =
+  SigmaElim shouldDeallocate 0 (length xs) xs
+
 isUnreachable :: Comp -> Bool
 isUnreachable comp =
   case comp of
     PiElimDownElim {} ->
       False
-    SigmaElim _ _ _ cont ->
+    SigmaElim _ _ _ _ _ cont ->
       isUnreachable cont
     UpIntro {} ->
       False

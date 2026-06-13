@@ -22,7 +22,6 @@
 /* Red */
 .hljs-variable,
 .hljs-template-variable,
-.hljs-attribute,
 .hljs-tag,
 .hljs-name,
 .hljs-regexp,
@@ -31,6 +30,11 @@
 .hljs-selector-id,
 .hljs-selector-class {
   color: #d70025;
+}
+
+.hljs-attribute {
+  color: var(--light-green);
+  background-color: var(--dark-green);
 }
 
 .hljs-number,

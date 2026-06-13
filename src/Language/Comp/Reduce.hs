@@ -51,7 +51,7 @@ reduce h term = do
               return $ C.PiElimDownElim forceInline v' ds'
         _ ->
           return $ C.PiElimDownElim forceInline v' ds'
-    C.SigmaElim shouldDeallocate xs v e -> do
+    C.SigmaElim shouldDeallocate offset size xs v e -> do
       let v' = Subst.substValue (subst h) v
       if not shouldDeallocate
         then do
@@ -62,12 +62,13 @@ reduce h term = do
             C.Unreachable ->
               return C.Unreachable
             _ ->
-              return $ C.SigmaElim shouldDeallocate xs' v' e'
+              return $ C.SigmaElim shouldDeallocate offset size xs' v' e'
         else do
           case v' of
             C.SigmaIntro _ ds
-              | length ds == length xs -> do
-                  let h' = unionSubst h (IntMap.fromList (zip (map Ident.toInt xs) ds))
+              | length ds >= offset + length xs -> do
+                  let ds' = take (length xs) $ drop offset ds
+                  let h' = unionSubst h (IntMap.fromList (zip (map Ident.toInt xs) ds'))
                   reduce h' e
             _ -> do
               xs' <- mapM (Gensym.newIdentFromIdent (gensymHandle h)) xs
@@ -75,9 +76,11 @@ reduce h term = do
               e' <- reduce h' e
               case e' of
                 C.UpIntro (C.SigmaIntro _ ds)
-                  | Just ys <- mapM extractIdent ds,
+                  | offset == 0,
+                    length xs == size,
+                    Just ys <- mapM extractIdent ds,
                     xs' == ys ->
-                      return $ C.UpIntro v -- eta-reduce
+                      return $ C.UpIntro v -- eta-reduce (full read only)
                 C.Unreachable ->
                   return C.Unreachable
                 _ ->
@@ -85,7 +88,7 @@ reduce h term = do
                     [] ->
                       return e'
                     _ ->
-                      return $ C.SigmaElim shouldDeallocate xs' v' e'
+                      return $ C.SigmaElim shouldDeallocate offset size xs' v' e'
     C.UpIntro d -> do
       return $ C.UpIntro $ Subst.substValue (subst h) d
     C.UpIntroVoid -> do
@@ -101,10 +104,10 @@ reduce h term = do
           -- commutative conversion
           e2' <- reduce h e2
           reduce h $ C.UpElim isReducible' y ey1 $ C.UpElim isReducible x ey2 e2'
-        C.SigmaElim b ys vy ey -> do
+        C.SigmaElim b offset size ys vy ey -> do
           -- commutative conversion
           e2' <- reduce h e2
-          reduce h $ C.SigmaElim b ys vy $ C.UpElim isReducible x ey e2'
+          reduce h $ C.SigmaElim b offset size ys vy $ C.UpElim isReducible x ey e2'
         C.Unreachable ->
           return C.Unreachable
         _ -> do
@@ -179,8 +182,8 @@ reduce h term = do
           reduce h $ C.UpElim flag x e1 (C.WriteToDest dest' sizeComp' e2 cont')
         C.UpElimCallVoid f vs e ->
           reduce h $ C.UpElimCallVoid f vs (C.WriteToDest dest' sizeComp' e cont')
-        C.SigmaElim shouldDeallocate ys v e ->
-          reduce h $ C.SigmaElim shouldDeallocate ys v (C.WriteToDest dest' sizeComp' e cont')
+        C.SigmaElim shouldDeallocate offset size ys v e ->
+          reduce h $ C.SigmaElim shouldDeallocate offset size ys v (C.WriteToDest dest' sizeComp' e cont')
         C.Free x size e ->
           reduce h $ C.Free x size (C.WriteToDest dest' sizeComp' e cont')
         C.EnumElim fvInfo disc defaultBranch caseList -> do
@@ -236,9 +239,9 @@ graftVoid e cont =
   case e of
     C.UpIntroVoid ->
       return cont
-    C.SigmaElim flag ys v e2 -> do
+    C.SigmaElim flag offset size ys v e2 -> do
       e2' <- graftVoid e2 cont
-      return $ C.SigmaElim flag ys v e2'
+      return $ C.SigmaElim flag offset size ys v e2'
     C.UpElim flag x e1 e2 -> do
       e2' <- graftVoid e2 cont
       return $ C.UpElim flag x e1 e2'

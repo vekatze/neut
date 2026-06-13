@@ -7,6 +7,7 @@ module Language.Comp.Subst
   )
 where
 
+import Control.Monad (forM)
 import Data.IntMap qualified as IntMap
 import Gensym.Handle qualified as Gensym
 import Language.Common.CreateSymbol qualified as Gensym
@@ -32,12 +33,12 @@ substComp h sub term =
       let v' = substValue sub v
       let ds' = map (substValue sub) ds
       return $ C.PiElimDownElim forceInline v' ds'
-    C.SigmaElim b xs v e -> do
+    C.SigmaElim b offset size xs v e -> do
       let v' = substValue sub v
       xs' <- mapM (Gensym.newIdentFromIdent (gensymHandle h)) xs
       let sub' = IntMap.union (IntMap.fromList (zip (map Ident.toInt xs) (map C.VarLocal xs'))) sub
       e' <- substComp h sub' e
-      return $ C.SigmaElim b xs' v' e'
+      return $ C.SigmaElim b offset size xs' v' e'
     C.UpIntro v -> do
       let v' = substValue sub v
       return $ C.UpIntro v'
@@ -60,12 +61,9 @@ substComp h sub term =
       let sub' = foldr IntMap.delete sub is
       let v' = substValue sub v
       defaultBranch' <- substComp h sub' defaultBranch
-      branchList' <-
-        mapM
-          (\(tag, branch) -> do
-             branch' <- substComp h sub' branch
-             return (tag, branch'))
-          branchList
+      branchList' <- forM branchList $ \(tag, branch) -> do
+        branch' <- substComp h sub' branch
+        return (tag, branch')
       return $ C.EnumElim (zip is ds') v' defaultBranch' branchList'
     C.DestCall sizeComp f vs -> do
       sizeComp' <- substComp h sub sizeComp

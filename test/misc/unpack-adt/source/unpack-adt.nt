@@ -1,0 +1,830 @@
+import {
+  core.c-size {C-Size},
+  core.int.io {print-int-line},
+  core.memory {malloc},
+  core.memory.unsafe {free, load-int, store-int},
+  core.pointer {shift},
+  core.word {size},
+}
+
+data point {
+| Point(x: int, y: int)
+}
+
+data entity {
+| Entity(point mix, point mix)
+}
+
+resource pair-res {
+  (v: pointer) => {
+    free(v)
+  },
+  (v: pointer) => {
+    let p = malloc(C-Size(mul-int(2, size)));
+    store-int(load-int(v), p);
+    store-int(load-int(shift(v, size)), shift(p, size));
+    p
+  },
+  2,
+}
+
+data holder {
+| Holder(pair-res mix, int)
+}
+
+nominal {
+  data tree,
+  define sum-tree(t: tree) -> int,
+  define sum-tree-noetic(t: &tree) -> int,
+}
+
+data forest {
+| FLeaf(int, int)
+| FNode(tree, int)
+}
+
+data tree {
+| TLeaf(int, int)
+| TNode(forest mix, int)
+}
+
+data my-item-a {
+| My-Item-A(tree mix, int)
+}
+
+data my-item-b {
+| My-Item-B(forest mix, int)
+}
+
+data int-list {
+| LNil
+| LCons(int, int-list)
+}
+
+data list-holder {
+| LHolder(int-list mix, int)
+}
+
+data shape {
+| Circle(int)
+| Rect(int, int)
+| Dot
+}
+
+data scene {
+| Scene(shape mix, shape mix)
+}
+
+data color {
+| Red
+| Green
+| Blue
+}
+
+data tagged {
+| Tagged(color, int)
+}
+
+data inner {
+| Inner(int, int)
+}
+
+data middle {
+| Middle(inner mix, int)
+}
+
+data outer {
+| Outer(middle mix, middle mix)
+}
+
+data wrap(a) {
+| Wrap(a, point mix)
+}
+
+define sum-point(p: point) -> int {
+  let Point(x, y) = p;
+  add-int(x, y)
+}
+
+define sum-entity(e: entity) -> int {
+  let Entity(p, q) = e;
+  add-int(sum-point(p), sum-point(q))
+}
+
+define sum-discard(e: entity) -> int {
+  let Entity(_, q) = e;
+  sum-point(q)
+}
+
+define sum-copy(e: entity) -> int {
+  let Entity(_, !q) = e;
+  let a = sum-point(q);
+  let b = sum-point(q);
+  add-int(a, b)
+}
+
+define make-pair-res(x: int, y: int) -> pair-res {
+  let p = malloc(C-Size(mul-int(2, size)));
+  store-int(x, p);
+  store-int(y, shift(p, size));
+  magic cast(pointer, pair-res, p)
+}
+
+define sum-pair-res(r: pair-res) -> int {
+  let result on r = {
+    let p = magic cast(&pair-res, pointer, r);
+    add-int(load-int(p), load-int(shift(p, size)))
+  };
+  let _ = r;
+  result
+}
+
+define sum-pair-res-copy(r: pair-res) -> int {
+  let !rr = r;
+  add-int(sum-pair-res(rr), sum-pair-res(rr))
+}
+
+define sum-holder(h: holder) -> int {
+  let Holder(r, z) = h;
+  add-int(sum-pair-res(r), z)
+}
+
+define sum-holder-copy(h: holder) -> int {
+  let !hh = h;
+  add-int(sum-holder(hh), sum-holder(hh))
+}
+
+define copy-extracted-res(h: holder) -> int {
+  let Holder(r, z) = h;
+  add-int(sum-pair-res-copy(r), z)
+}
+
+define sum-forest(f: forest) -> int {
+  match f {
+  | FLeaf(a, b) =>
+    add-int(a, b)
+  | FNode(t, n) =>
+    add-int(sum-tree(t), n)
+  }
+}
+
+define sum-tree(t: tree) -> int {
+  match t {
+  | TLeaf(a, b) =>
+    add-int(a, b)
+  | TNode(f, n) =>
+    add-int(sum-forest(f), n)
+  }
+}
+
+define sum-tree-copy(t: tree) -> int {
+  let !tt = t;
+  add-int(sum-tree(tt), sum-tree(tt))
+}
+
+define sum-forest-copy(f: forest) -> int {
+  let !ff = f;
+  add-int(sum-forest(ff), sum-forest(ff))
+}
+
+define sum-my-item-a(x: my-item-a) -> int {
+  let My-Item-A(t, n) = x;
+  add-int(sum-tree(t), n)
+}
+
+define sum-my-item-b(x: my-item-b) -> int {
+  let My-Item-B(f, n) = x;
+  add-int(sum-forest(f), n)
+}
+
+define snd-of-tree(t: tree) -> int {
+  match t {
+  | TLeaf(_, b) =>
+    b
+  | TNode(_, n) =>
+    n
+  }
+}
+
+define copy-extracted-forest(t: tree) -> int {
+  match t {
+  | TLeaf(a, b) =>
+    add-int(a, b)
+  | TNode(f, n) =>
+    add-int(sum-forest-copy(f), n)
+  }
+}
+
+define rewrap-forest(t: tree) -> int {
+  match t {
+  | TLeaf(a, b) =>
+    add-int(a, b)
+  | TNode(f, _) =>
+    sum-tree(TNode(f, 100))
+  }
+}
+
+define cancel-tree(n: int) -> int {
+  match TNode(FNode(TLeaf(n, 20), 1), 2) {
+  | TLeaf(_, _) =>
+    0
+  | TNode(f, m) =>
+    match f {
+    | FLeaf(_, _) =>
+      0
+    | FNode(t2, k) =>
+      match t2 {
+      | TLeaf(a, b) =>
+        add-int(add-int(add-int(a, b), k), m)
+      | TNode(_, _) =>
+        0
+      }
+    }
+  }
+}
+
+define sum-list(xs: int-list) -> int {
+  match xs {
+  | LNil =>
+    0
+  | LCons(x, rest) =>
+    add-int(x, sum-list(rest))
+  }
+}
+
+define sum-list-copy(xs: int-list) -> int {
+  let !ys = xs;
+  add-int(sum-list(ys), sum-list(ys))
+}
+
+define sum-list-holder(h: list-holder) -> int {
+  let LHolder(xs, n) = h;
+  add-int(sum-list(xs), n)
+}
+
+define area(s: shape) -> int {
+  match s {
+  | Circle(r) =>
+    mul-int(r, r)
+  | Rect(w, h) =>
+    mul-int(w, h)
+  | Dot =>
+    0
+  }
+}
+
+define area-sum(sc: scene) -> int {
+  let Scene(a, b) = sc;
+  add-int(area(a), area(b))
+}
+
+define area-sum-copy(sc: scene) -> int {
+  let !sc2 = sc;
+  add-int(area-sum(sc2), area-sum(sc2))
+}
+
+define snd-of-scene(sc: scene) -> int {
+  let Scene(_, b) = sc;
+  area(b)
+}
+
+define cancel-scene(n: int) -> int {
+  let Scene(a, b) = Scene(Circle(n), Rect(4, 5));
+  let x =
+    match a {
+    | Circle(r) =>
+      mul-int(r, r)
+    | Rect(w, h) =>
+      mul-int(w, h)
+    | Dot =>
+      0
+    };
+  let y =
+    match b {
+    | Circle(r) =>
+      mul-int(r, r)
+    | Rect(w, h) =>
+      mul-int(w, h)
+    | Dot =>
+      0
+    };
+  add-int(x, y)
+}
+
+define color-code(c: color) -> int {
+  match c {
+  | Red =>
+    1
+  | Green =>
+    2
+  | Blue =>
+    3
+  }
+}
+
+define tagged-sum(t: tagged) -> int {
+  let Tagged(c, n) = t;
+  add-int(color-code(c), n)
+}
+
+define sum-middle(m: middle) -> int {
+  let Middle(i, n) = m;
+  let Inner(a, b) = i;
+  add-int(add-int(a, b), n)
+}
+
+define sum-outer(o: outer) -> int {
+  let Outer(m1, m2) = o;
+  add-int(sum-middle(m1), sum-middle(m2))
+}
+
+define snd-of-outer(o: outer) -> int {
+  let Outer(_, m2) = o;
+  sum-middle(m2)
+}
+
+define cancel-entity(n: int) -> int {
+  let Entity(p, q) = Entity(Point(n, 2), Point(3, 4));
+  let Point(a, b) = p;
+  let Point(c, d) = q;
+  add-int(add-int(a, b), add-int(c, d))
+}
+
+define sum-point-noetic(p: &point) -> int {
+  case p {
+  | Point(x, y) =>
+    add-int(*x, *y)
+  }
+}
+
+define sum-entity-noetic(e: &entity) -> int {
+  case e {
+  | Entity(p, q) =>
+    add-int(sum-point-noetic(p), sum-point-noetic(q))
+  }
+}
+
+define borrow-entity(e: entity) -> int {
+  let s on e = sum-entity-noetic(e);
+  add-int(s, sum-entity(e))
+}
+
+define sum-forest-noetic(f: &forest) -> int {
+  case f {
+  | FLeaf(a, b) =>
+    add-int(*a, *b)
+  | FNode(t, n) =>
+    add-int(sum-tree-noetic(t), *n)
+  }
+}
+
+define sum-tree-noetic(t: &tree) -> int {
+  case t {
+  | TLeaf(a, b) =>
+    add-int(*a, *b)
+  | TNode(f, n) =>
+    add-int(sum-forest-noetic(f), *n)
+  }
+}
+
+define borrow-tree(t: tree) -> int {
+  let s on t = sum-tree-noetic(t);
+  add-int(s, sum-tree(t))
+}
+
+define sum-middle-noetic(m: &middle) -> int {
+  tie Middle(i, n) = m;
+  tie Inner(a, b) = i;
+  add-int(add-int(*a, *b), *n)
+}
+
+define get-middle-noema(o: &outer) -> &middle {
+  tie Outer(m, _) = o;
+  m
+}
+
+define borrow-escaped-middle(o: outer) -> int {
+  let s on o = sum-middle-noetic(get-middle-noema(o));
+  add-int(s, sum-outer(o))
+}
+
+define sum-wrap(w: wrap(int)) -> int {
+  let Wrap(x, p) = w;
+  add-int(x, sum-point(p))
+}
+
+define sum-wrap-noetic(w: &wrap(int)) -> int {
+  case w {
+  | Wrap(x, p) =>
+    add-int(*x, sum-point-noetic(p))
+  }
+}
+
+define borrow-wrap(w: wrap(int)) -> int {
+  let s on w = sum-wrap-noetic(w);
+  add-int(s, sum-wrap(w))
+}
+
+data my-either(a, b) {
+| My-Left(a)
+| My-Right(b)
+}
+
+data config {
+| Config(int, my-either(int, point) mix)
+}
+
+define make-config() -> config {
+  Config(3, My-Left(10))
+}
+
+define sum-config(c: config) -> int {
+  let Config(n, e) = c;
+  match e {
+  | My-Left(x) =>
+    add-int(n, x)
+  | My-Right(p) =>
+    add-int(n, sum-point(p))
+  }
+}
+
+define sum-config-noetic(c: &config) -> int {
+  case c {
+  | Config(n, e) =>
+    case e {
+    | My-Left(x) =>
+      add-int(*n, *x)
+    | My-Right(p) =>
+      add-int(*n, sum-point-noetic(p))
+    }
+  }
+}
+
+define borrow-config(c: config) -> int {
+  let s on c = sum-config-noetic(c);
+  add-int(s, sum-config(c))
+}
+
+define sum-config-copy(c: config) -> int {
+  let !cc = c;
+  add-int(sum-config(cc), sum-config(cc))
+}
+
+data boxed-fn {
+| BoxedFn(int, (int) -> int mix)
+}
+
+define make-boxed(base: int) -> boxed-fn {
+  BoxedFn(base, (x: int) => {
+    add-int(x, base)
+  })
+}
+
+define apply-boxed(b: boxed-fn, x: int) -> int {
+  let BoxedFn(n, f) = b;
+  add-int(n, f(x))
+}
+
+define discard-boxed-fn(b: boxed-fn) -> int {
+  let BoxedFn(n, _) = b;
+  n
+}
+
+define apply-boxed-copy(b: boxed-fn, x: int) -> int {
+  let !bb = b;
+  add-int(apply-boxed(bb, x), apply-boxed(bb, x))
+}
+
+define apply-boxed-noetic(b: &boxed-fn, x: int) -> int {
+  case b {
+  | BoxedFn(n, f) =>
+    let g = *f;
+    add-int(*n, g(x))
+  }
+}
+
+define apply-boxed-borrow(b: boxed-fn, x: int) -> int {
+  let s on b = apply-boxed-noetic(b, x);
+  add-int(s, apply-boxed(b, x))
+}
+
+define clone-second-point-noetic(e: &entity) -> int {
+  tie Entity(_, q) = e;
+  let q-owned = *q;
+  let Point(a, b) = q-owned;
+  add-int(a, b)
+}
+
+define clone-second-point(e: entity) -> int {
+  let s on e = clone-second-point-noetic(e);
+  add-int(s, sum-entity(e))
+}
+
+define clone-forest-noetic(t: &tree) -> int {
+  case t {
+  | TLeaf(a, b) =>
+    add-int(*a, *b)
+  | TNode(f, _) =>
+    sum-forest(*f)
+  }
+}
+
+define clone-forest(t: tree) -> int {
+  let s on t = clone-forest-noetic(t);
+  add-int(s, sum-tree(t))
+}
+
+define clone-res-noetic(h: &holder) -> int {
+  tie Holder(r, _) = h;
+  sum-pair-res(*r)
+}
+
+define clone-res(h: holder) -> int {
+  let s on h = clone-res-noetic(h);
+  add-int(s, sum-holder(h))
+}
+
+define area-noetic(s: &shape) -> int {
+  case s {
+  | Circle(r) =>
+    mul-int(*r, *r)
+  | Rect(w, h) =>
+    mul-int(*w, *h)
+  | Dot =>
+    0
+  }
+}
+
+define scene-noetic(sc: &scene) -> int {
+  tie Scene(a, b) = sc;
+  add-int(area-noetic(a), area-noetic(b))
+}
+
+define borrow-scene(sc: scene) -> int {
+  let s on sc = scene-noetic(sc);
+  add-int(s, area-sum(sc))
+}
+
+define sum-entity-copy(e: entity) -> int {
+  let !ee = e;
+  add-int(sum-entity(ee), sum-entity(ee))
+}
+
+define sum-outer-copy(o: outer) -> int {
+  let !oo = o;
+  add-int(sum-outer(oo), sum-outer(oo))
+}
+
+define sum-wrap-copy(w: wrap(int)) -> int {
+  let !ww = w;
+  add-int(sum-wrap(ww), sum-wrap(ww))
+}
+
+define sum-inner-noetic(i: &inner) -> int {
+  tie Inner(a, b) = i;
+  add-int(*a, *b)
+}
+
+define get-inner-noema(o: &outer) -> &inner {
+  tie Outer(m, _) = o;
+  tie Middle(i, _) = m;
+  i
+}
+
+define borrow-escaped-inner(o: outer) -> int {
+  let s on o = sum-inner-noetic(get-inner-noema(o));
+  add-int(s, sum-outer(o))
+}
+
+define make-entity-dps(a: int, b: int) ->> entity {
+  Entity(Point(a, 1), Point(b, 2))
+}
+
+define make-tree-dps(x: int) ->> tree {
+  TNode(FNode(TLeaf(x, 20), 1), 2)
+}
+
+define make-holder-dps(a: int, b: int) ->> holder {
+  Holder(make-pair-res(a, b), 7)
+}
+
+define accumulate-entity(n: int, acc: entity) ->> entity {
+  if eq-int(n, 0) {
+    acc
+  } else {
+    let Entity(p, q) = acc;
+    let Point(px, py) = p;
+    accumulate-entity(sub-int(n, 1), Entity(Point(add-int(px, 1), py), q))
+  }
+}
+
+data item {
+| Item(bool, unit)
+}
+
+data wrapper(a) {
+| Wrapper(a)
+}
+
+data boxed-config {
+| BoxedConfig(int, wrapper(item) mix)
+}
+
+define item-to-int(it: item) -> int {
+  let Item(b, u) = it;
+  let _ = u;
+  if b {
+    1
+  } else {
+    0
+  }
+}
+
+define sum-boxed-config(c: boxed-config) -> int {
+  let BoxedConfig(n, w) = c;
+  let Wrapper(it) = w;
+  add-int(n, item-to-int(it))
+}
+
+define discard-boxed-config(c: boxed-config) -> int {
+  let BoxedConfig(n, _) = c;
+  n
+}
+
+define sum-boxed-config-copy(c: boxed-config) -> int {
+  let !cc = c;
+  add-int(sum-boxed-config(cc), sum-boxed-config(cc))
+}
+
+define sum-boxed-config-noetic(c: &boxed-config) -> int {
+  case c {
+  | BoxedConfig(n, w) =>
+    case w {
+    | Wrapper(it) =>
+      case it {
+      | Item(b, _) =>
+        add-int(*n, if *b {
+          1
+        } else {
+          0
+        })
+      }
+    }
+  }
+}
+
+define borrow-boxed-config(c: boxed-config) -> int {
+  let s on c = sum-boxed-config-noetic(c);
+  add-int(s, sum-boxed-config(c))
+}
+
+data wrapped-shape {
+| WrappedShape(wrapper(shape) mix, int)
+}
+
+define sum-wrapped-shape(ws: wrapped-shape) -> int {
+  let WrappedShape(w, n) = ws;
+  let Wrapper(s) = w;
+  add-int(area(s), n)
+}
+
+define sum-wrapped-shape-copy(ws: wrapped-shape) -> int {
+  let !w = ws;
+  add-int(sum-wrapped-shape(w), sum-wrapped-shape(w))
+}
+
+define sum-wrapped-shape-noetic(ws: &wrapped-shape) -> int {
+  case ws {
+  | WrappedShape(w, n) =>
+    case w {
+    | Wrapper(s) =>
+      add-int(area-noetic(s), *n)
+    }
+  }
+}
+
+define borrow-wrapped-shape(ws: wrapped-shape) -> int {
+  let s on ws = sum-wrapped-shape-noetic(ws);
+  add-int(s, sum-wrapped-shape(ws))
+}
+
+data ubox-flat {
+| UFlat(point mix, int)
+}
+
+data ubox-box {
+| UBox(point, int)
+}
+
+define uflat-read-snd(c: ubox-flat) -> int {
+  let r on c = {
+    let p = magic cast(&ubox-flat, pointer, c);
+    load-int(shift(p, size))
+  };
+  let _ = c;
+  r
+}
+
+define ubox-read-snd(c: ubox-box) -> int {
+  let r on c = {
+    let p = magic cast(&ubox-box, pointer, c);
+    load-int(shift(p, size))
+  };
+  let _ = c;
+  r
+}
+
+define main() -> unit {
+  // single-constructor flattening: read / discard / copy
+  print-int-line(sum-entity(Entity(Point(1, 2), Point(3, 4))));
+  print-int-line(sum-discard(Entity(Point(1, 2), Point(3, 4))));
+  print-int-line(sum-copy(Entity(Point(1, 2), Point(3, 4))));
+  // resource flattening: read / copy whole / copy the extracted resource
+  print-int-line(sum-holder(Holder(make-pair-res(5, 6), 7)));
+  print-int-line(sum-holder-copy(Holder(make-pair-res(5, 6), 7)));
+  print-int-line(copy-extracted-res(Holder(make-pair-res(5, 6), 7)));
+  // multi-constructor flattening (mutual recursion): read / copy / discard
+  print-int-line(sum-tree(TNode(FNode(TLeaf(1, 20), 1), 2)));
+  print-int-line(sum-tree-copy(TNode(FNode(TLeaf(1, 20), 1), 2)));
+  print-int-line(snd-of-tree(TNode(FNode(TLeaf(3, 99), 5), 8)));
+  // mutual recursion with a non-base-case value embedded in a flattening parent
+  print-int-line(sum-tree(TNode(FNode(TNode(FLeaf(1, 2), 3), 4), 5)));
+  print-int-line(sum-tree-copy(TNode(FNode(TNode(FLeaf(1, 2), 3), 4), 5)));
+  // a mutually-recursive type flattened into an outside type (defined after both):
+  print-int-line(sum-my-item-a(My-Item-A(TNode(FNode(TLeaf(1, 2), 3), 4), 5)));
+  print-int-line(sum-my-item-b(My-Item-B(FNode(TLeaf(1, 2), 3), 4)));
+  // copy / re-embed a value extracted out of a flattened field
+  print-int-line(copy-extracted-forest(TNode(FNode(TLeaf(1, 20), 1), 2)));
+  print-int-line(rewrap-forest(TNode(FNode(TLeaf(1, 20), 1), 2)));
+  // recursive type (direct self-field): read / copy / mixed-into-parent
+  print-int-line(sum-list(LCons(1, LCons(2, LCons(3, LNil)))));
+  print-int-line(sum-list-copy(LCons(1, LCons(2, LCons(3, LNil)))));
+  print-int-line(sum-list-holder(LHolder(LCons(10, LCons(20, LNil)), 5)));
+  // padding (uneven constructors): each constructor / flattened / copy / discard
+  print-int-line(area(Circle(3)));
+  print-int-line(area(Rect(4, 5)));
+  print-int-line(area(Dot));
+  print-int-line(area-sum(Scene(Circle(3), Rect(4, 5))));
+  print-int-line(area-sum-copy(Scene(Circle(3), Rect(4, 5))));
+  print-int-line(snd-of-scene(Scene(Rect(4, 5), Circle(3))));
+  // enum-valued field (direct integer)
+  print-int-line(tagged-sum(Tagged(Green, 40)));
+  // multi-level single-constructor flattening: read / discard
+  print-int-line(sum-outer(Outer(Middle(Inner(1, 2), 3), Middle(Inner(4, 5), 6))));
+  print-int-line(snd-of-outer(Outer(Middle(Inner(1, 2), 3), Middle(Inner(4, 5), 6))));
+  // cancel: construct and immediately destruct in one scope (SigmaElimAt vs SigmaIntro)
+  print-int-line(cancel-entity(1));
+  print-int-line(cancel-tree(5));
+  print-int-line(cancel-scene(3));
+  // borrow: read a flattened value noetically via `case`/`on`, then reuse it owned
+  print-int-line(borrow-entity(Entity(Point(1, 2), Point(3, 4))));
+  print-int-line(borrow-tree(TNode(FNode(TLeaf(1, 20), 1), 2)));
+  // borrow a flattened field as a noema that escapes its accessor (in-place, no copy)
+  print-int-line(borrow-escaped-middle(Outer(Middle(Inner(1, 2), 3), Middle(Inner(4, 5), 6))));
+  // polymorphic type read noetically (dataArg offset shifts the field positions)
+  print-int-line(borrow-wrap(Wrap(5, Point(1, 2))));
+  // clone (`*`) a flattened single-constructor field out of a borrow (overlapping disc slot)
+  print-int-line(clone-second-point(Entity(Point(1, 2), Point(3, 4))));
+  // clone (`*`) a flattened multi-constructor field out of a borrow
+  print-int-line(clone-forest(TNode(FNode(TLeaf(1, 20), 1), 2)));
+  // clone (`*`) a flattened resource out of a borrow
+  print-int-line(clone-res(Holder(make-pair-res(5, 6), 7)));
+  // borrow padded multi-constructor values (scene of shapes)
+  print-int-line(borrow-scene(Scene(Circle(3), Rect(4, 5))));
+  // copy a value with flattened single-constructor fields (in-place copy, overlapping disc)
+  print-int-line(sum-entity-copy(Entity(Point(1, 2), Point(3, 4))));
+  // copy a multi-level single-constructor flattened value
+  print-int-line(sum-outer-copy(Outer(Middle(Inner(1, 2), 3), Middle(Inner(4, 5), 6))));
+  // copy a polymorphic value that flattens a concrete field
+  print-int-line(sum-wrap-copy(Wrap(5, Point(1, 2))));
+  // escape a 2-level-deep flattened noema (compounded in-place offsets)
+  print-int-line(borrow-escaped-inner(Outer(Middle(Inner(1, 2), 3), Middle(Inner(4, 5), 6))));
+  // destination-passing (`->>`) construction of flattened values: single-ctor / multi-ctor+padding / resource
+  print-int-line(sum-entity(make-entity-dps(10, 20)));
+  print-int-line(sum-tree(make-tree-dps(1)));
+  print-int-line(sum-holder(make-holder-dps(5, 6)));
+  // tail-recursive destination-passing that reads+rebuilds a flattened value each step (dest reuse)
+  print-int-line(sum-entity(accumulate-entity(5, Entity(Point(0, 7), Point(8, 9)))));
+  // polymorphic type instantiated with concrete types, flattened into a parent: read / borrow / copy
+  print-int-line(sum-config(Config(10, My-Left(3))));
+  print-int-line(sum-config(Config(100, My-Right(Point(7, 8)))));
+  print-int-line(borrow-config(Config(1, My-Left(2))));
+  print-int-line(sum-config-copy(Config(100, My-Right(Point(7, 8)))));
+  // closure field (three-word tuple) mixed into a parent: read / discard / copy / borrow
+  print-int-line(apply-boxed(make-boxed(10), 5));
+  print-int-line(discard-boxed-fn(make-boxed(7)));
+  print-int-line(apply-boxed-copy(make-boxed(10), 5));
+  print-int-line(apply-boxed-borrow(make-boxed(100), 3));
+  // unary type pierced when flattening into a parent: read / discard / copy / borrow
+  print-int-line(sum-boxed-config(BoxedConfig(10, Wrapper(Item(True, Unit)))));
+  print-int-line(discard-boxed-config(BoxedConfig(10, Wrapper(Item(True, Unit)))));
+  print-int-line(sum-boxed-config-copy(BoxedConfig(10, Wrapper(Item(True, Unit)))));
+  print-int-line(borrow-boxed-config(BoxedConfig(5, Wrapper(Item(False, Unit)))));
+  // unary wrapping a multi-constructor type, pierced into a parent: read / copy / borrow
+  print-int-line(sum-wrapped-shape(WrappedShape(Wrapper(Rect(4, 5)), 100)));
+  print-int-line(sum-wrapped-shape-copy(WrappedShape(Wrapper(Rect(4, 5)), 100)));
+  print-int-line(borrow-wrapped-shape(WrappedShape(Wrapper(Circle(3)), 7)));
+  // layout check: `mix` flattens (2nd word is the inner field), default keeps it boxed (2nd word is the int)
+  print-int-line(uflat-read-snd(UFlat(Point(3, 4), 5)));
+  print-int-line(ubox-read-snd(UBox(Point(3, 4), 5)));
+}

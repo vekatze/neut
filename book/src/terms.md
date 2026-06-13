@@ -829,7 +829,7 @@ define use-foo() -> unit {
 }
 ```
 
-The size of the destination is determined by the value returned by `magic call-type(t, 2, ...)`. When the size is non-negative, the caller prepares a destination of that size. Otherwise, the caller uses a one-word temporary slot and passes that to the callee instead.
+The size of the destination is determined by the word count returned by `magic call-type(t, 2, ...)`. When the word count is non-negative, the caller prepares a destination of that many machine words. Otherwise, the caller uses a one-word temporary slot and passes that to the callee instead.
 
 ### Type
 
@@ -1143,7 +1143,7 @@ If `e` has a destination-passing function type, it is evaluated as follows:
 3. Performs the corresponding call above, passing the destination as an extra argument
 4. Reads the result from that destination
 
-When the size of the result type is non-negative, the destination has that size. Otherwise, the caller uses a one-word temporary slot that stores a pointer to the result.
+When the word count of the result type is non-negative, the destination has that many machine words. Otherwise, the caller uses a one-word temporary slot that stores a pointer to the result.
 
 When a default argument is omitted, its default expression is evaluated at the time of the call. In particular, each call that omits the argument computes a fresh value rather than reusing one from the function definition.
 
@@ -2599,7 +2599,7 @@ Neut compiles types into functions. The first argument of such a function is usu
 
 `magic call-type(some-type, 1, value)` copies `value` and returns a new value.
 
-`magic call-type(some-type, 2, value)` returns the size of a value in words. This value is used when calling a function in destination-passing style. If it is non-negative, the caller prepares a destination of that size. Otherwise, the caller uses a one-word temporary slot. For `resource` types, this size is given by the third term of the `resource` definition.
+`magic call-type(some-type, 2, value)` returns the size of a value as a machine-word count.
 
 The type of the result of `call-type` is inferred from the context.
 

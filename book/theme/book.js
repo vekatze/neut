@@ -75,6 +75,9 @@ hljs.registerLanguage("neut", function (hljs) {
         "type",
         "void",
       ],
+      attribute: [
+        "mix",
+      ],
     },
     contains: [
       {

@@ -27,6 +27,7 @@ import Language.Common.ForeignCodType qualified as F
 import Language.Common.LocalLocator qualified as LL
 import Language.Common.NominalTag
 import Language.Common.RuleKind
+import Language.Common.DataInfo (FieldHint)
 import Language.Common.StmtKind qualified as SK
 import Language.RawTerm.RawBinder
 import Language.RawTerm.RawTerm qualified as RT
@@ -43,7 +44,7 @@ type RawProgram =
 data RawConsInfo a = RawConsInfo
   { loc :: Hint,
     name :: a,
-    expArgs :: Maybe (SE.Series (RawBinder RT.RawType)),
+    expArgs :: Maybe (SE.Series (FieldHint, RawBinder RT.RawType)),
     endLoc :: Loc
   }
 

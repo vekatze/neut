@@ -310,6 +310,134 @@ define use-config(c: config) -> int {
 }
 ```
 
+### Memory Representation
+
+All the constructors of an ADT share the same allocation size: the size of its largest constructor. Each value stores a discriminant that identifies its constructor, followed by the constructor's fields.
+
+For example, consider the following code:
+
+```neut
+data list(a) {
+| Nil
+| Cons(a, list(a))
+}
+```
+
+For `list(a)`, every value occupies 4 words:
+
+- 1 word for the discriminant,
+- 1 word for `a`,
+- 2 words for the largest constructor payload (`Cons(a, list(a))`).
+
+So the internal representation of `Nil` is:
+
+```neut
+(0, a, _, _)
+```
+
+Here `0` is the discriminant for `Nil`, and the trailing two words are unused and remain uninitialized. Likewise, `Cons(10, xs)` is represented as:
+
+```neut
+(1, a, 10, xs)
+```
+
+where `1` is the discriminant for `Cons`. Even when a constructor carries fewer fields, the allocation size is still the one determined by the largest constructor; the unused slots are simply left untouched.
+
+<div class="info-block">
+
+A major motivation for this fixed allocation size is destination-passing style. By giving each ADT type a fixed size, the caller can allocate a destination buffer of the required size in advance.
+
+</div>
+
+#### Single-Constructor Types
+
+When an ADT has just one constructor, its values carry no discriminant at all.
+
+```neut
+data point {
+| Point(x: int, y: int)
+}
+```
+
+Since `point` has a single constructor, the internal representation of `Point(10, 20)` is simply:
+
+```neut
+(10, 20)
+```
+
+rather than the `(0, 10, 20)` we would get if a discriminant were stored.
+
+#### Mixing Nested Fields
+
+Consider the following code:
+
+```neut
+data point {
+| Point(x: int, y: int)
+}
+
+data entity {
+| Entity(point, point)
+}
+```
+
+By default, `Entity(Point(1, 2), Point(3, 4))` is compiled into a pointer to:
+
+```neut
+(ptr1, ptr2)
+```
+
+where:
+
+- `ptr1` points to `(1, 2)`,
+- `ptr2` points to `(3, 4)`.
+
+You can mix the content of `point` into `entity` by:
+
+```neut
+data entity {
+| Entity(point mix, point)
+}
+```
+
+In this case, `Entity(Point(1, 2), Point(3, 4))` is compiled into a pointer to:
+
+```
+(1, 2, ptr2)
+```
+
+where `ptr2` points to `(3, 4)`.
+
+Taking a mixed field out with `match` or `let` repacks it into a fresh allocation:
+
+```neut
+let Entity(p, q) = e;
+cont
+
+// ↓ (compile)
+
+// repack `p` from `e` into a fresh allocation
+let p = malloc({2-words});
+store(p[0], e[0]);  // x1
+store(p[1], e[1]);  // y1
+// q isn't mixed
+let q = e[2];
+cont
+```
+
+Reading it through a noema with `case` or `tie` does no repacking. `p` and `q` become interior pointers into `e`, with no allocation:
+
+```neut
+tie Entity(p, q) = e;
+cont
+
+// ↓ (compile)
+
+// (`p` and `q` point directly into `e`'s words; no malloc)
+```
+
+`mix` can also be used with a `resource` type when the resource has a fixed non-negative size.
+
 ## `alias`
 
 `alias` defines a type alias. It should look like the following:
@@ -358,13 +486,13 @@ resource my-type {
 }
 ```
 
-`resource` takes three terms. The first term ("discarder") receives a value of the type and discards it. The second term ("copier") receives a value of the type and returns a clone of the value (keeping the original value intact). The third term is the size returned when calling `magic call-type(my-type, 2, (..))`. This size is also used when a value of the type is returned from a function written using `->>`: when the size is non-negative, the caller prepares a destination of that size, and otherwise it uses a one-word temporary slot.
+`resource` takes three terms. The first term ("discarder") receives a value of the type and discards it. The second term ("copier") receives a value of the type and returns a clone of the value (keeping the original value intact). The third term must reduce to an integer at compile time. It is the size (the machine-word count) returned when calling `magic call-type(my-type, 2, (..))`.
 
 The type of a discarder is `(a) -> unit` for some `a`. You might want to call functions like `free` in this term.
 
 The type of a copier is `(a) -> a` for some `a`. This `a` must be the same as the `a` used in the discarder. You might want to call functions like `malloc` in this term.
 
-The third term must have type `int`. See also: [Semantics (call-type)](./terms.md#semantics-call-type)
+The third term must have type `int`.
 
 For example, the following is a definition of a "boxed" integer type with some noisy messages:
 

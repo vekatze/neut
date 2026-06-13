@@ -176,7 +176,7 @@ Thus, we can discard and copy values of polymorphic types.
 
 ## Algebraic Data Types
 
-ADTs like the following also have resource exponentials, of course:
+ADTs also have resource exponentials, of course. Consider the following type:
 
 ```neut
 data list(a) {
@@ -185,31 +185,14 @@ data list(a) {
 }
 ```
 
-The first thing to note is that the values of an ADT must be able to be discarded/copied using a closed function (since all the types in Neut are compiled into closed functions). This means the information about `a` in `list(a)` must be contained in the values.
-
-The second thing to note is that all the constructors of an ADT share the same allocation size: the size of its largest constructor.
-
-For `list(a)`, this means every value occupies 4 words:
-
-- 1 word for `a`,
-- 1 word for the discriminant,
-- 2 words for the largest constructor payload (`Cons(a, list(a))`).
-
-That is, for example, the internal representation of `Nil` is something like the following:
+For `list(a)`, every value occupies 4 words: a discriminant, one word for `a`, and two words for the largest payload (`Cons(a, list(a))`). For example, `Nil` and `Cons(10, xs)` are represented as follows:
 
 ```neut
-(a, 0, _, _)
+(0, a, _, _)   // Nil: `0` is the discriminant; the trailing words are unused
+(1, a, 10, xs) // Cons(10, xs): `1` is the discriminant
 ```
 
-Here, the `0` is the discriminant for `Nil`. The trailing two words are unused and remain uninitialized. Similarly, the internal representation of `Cons(10, xs)` is:
-
-```neut
-(a, 1, 10, xs)
-```
-
-Here, the `1` is the discriminant for `Cons`.
-
-With that in mind, the resource exponential of `list(a)` will be something like the following (a bit lengthy; you can skip to the following note if you prefer):
+`list(a)` is therefore compiled into something like the following (a bit lengthy; you can skip to the following note if you prefer):
 
 ```neut
 define exp-list(selector, v) {
@@ -220,11 +203,11 @@ define exp-list(selector, v) {
       free(v)
     } else {
       // discard Cons
-      let a = v[0];
+      let a = v[1];
       let cons-head = v[2];
       let cons-tail = v[3];
       free(v);
-      let _ = a(0, cons-head); // ← discard the head of cons using v[0]
+      let _ = a(0, cons-head); // ← discard the head of cons using v[1]
       exp-list(0, cons-tail)
     }
   } else {
@@ -232,19 +215,19 @@ define exp-list(selector, v) {
     if d == 0 {
       // copy Nil
       let ptr = malloc({4-words});
-      let a = v[0];
-      store(ptr[0], a);
-      store(ptr[1], d);
+      let a = v[1];
+      store(ptr[0], d);
+      store(ptr[1], a);
       // ptr[2] and ptr[3] stay uninitialized
       ptr
     } else {
       // copy Cons
       let ptr = malloc({4-words});
-      let a = v[0];
-      let cons-head-copy = a(1, v[2]); // ← copy the head of cons using v[0]
+      let a = v[1];
+      let cons-head-copy = a(1, v[2]); // ← copy the head of cons using v[1]
       let cons-tail-copy = exp-list(1, v[3]);
-      store(ptr[0], a);
-      store(ptr[1], d);
+      store(ptr[0], d);
+      store(ptr[1], a);
       store(ptr[2], cons-head-copy);
       store(ptr[3], cons-tail-copy);
       ptr
@@ -253,13 +236,7 @@ define exp-list(selector, v) {
 }
 ```
 
-The point is that the type information in a value is loaded at runtime and used to discard/copy values. Even when a constructor carries fewer fields, the allocation size is still the one determined by the largest constructor, and unused slots are simply left untouched.
-
-<div class="info-block">
-
-A major motivation for this fixed allocation size is destination-passing style. By giving each ADT type a fixed size, the caller can allocate a destination buffer of the required size in advance.
-
-</div>
+The point is that the type information in a value is loaded at runtime and used to discard/copy values. Even when a constructor carries fewer fields, the resource exponential still works on the fixed-size layout, leaving the unused slots untouched.
 
 ## Advanced: Function Types
 
