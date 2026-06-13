@@ -323,7 +323,7 @@ clarifyStmt h stmt =
       liftIO $ registerDefaultEnvType h f defaultValues
       let xts = impArgs ++ expArgs ++ map fst defaultArgs
       case stmtKind of
-        SK.Data name dataArgs consInfoList _ -> do
+        SK.Data name dataArgs consInfoList _ _ -> do
           let consInfoList' = map snd consInfoList
           clarifyDataTypeDef h name dataArgs consInfoList'
         _ -> do

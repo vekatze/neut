@@ -37,7 +37,7 @@ data BaseStmtKindTerm name binder t
 data BaseStmtKindType binder
   = Alias
   | AliasOpaque
-  | Data DD.DefiniteDescription [binder] [DI.StmtConsInfo binder] IsNominal
+  | Data DD.DefiniteDescription [binder] [DI.StmtConsInfo binder] IsNominal Bool
   deriving (Generic)
 
 instance (Binary name, Binary x, Binary t) => Binary (BaseStmtKindTerm name x t)

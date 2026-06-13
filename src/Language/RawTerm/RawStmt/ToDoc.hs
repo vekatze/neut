@@ -209,10 +209,11 @@ decStmt stmt =
             TransparentAlias -> "alias"
             OpaqueAlias -> "alias-opaque"
       RT.decodeTypeDef (RT.nameToDoc . N.Var) keyword c (fmap BN.reify def)
-    RawStmtDefineData c1 _ (dataName, c2) argsOrNone consInfo _ -> do
+    RawStmtDefineData c1 shouldOptimize _ (dataName, c2) argsOrNone consInfo _ -> do
+      let keyword = if shouldOptimize then "data " else "data-raw "
       attachStmtComment (c1 ++ c2) $
         D.join
-          [ D.text "data ",
+          [ D.text keyword,
             D.text (BN.reify dataName),
             decDataArgs argsOrNone,
             D.text " ",

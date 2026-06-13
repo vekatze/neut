@@ -116,9 +116,9 @@ collectNominalDecls stmt =
 markNominalData :: [DD.DefiniteDescription] -> PostRawStmt -> PostRawStmt
 markNominalData nominalNameList stmt =
   case stmt of
-    PostRawStmtDefineType c (SK.Data dataName dataArgs consInfoList _) def
+    PostRawStmtDefineType c (SK.Data dataName dataArgs consInfoList _ shouldOptimize) def
       | dataName `elem` nominalNameList ->
-          PostRawStmtDefineType c (SK.Data dataName dataArgs consInfoList True) def
+          PostRawStmtDefineType c (SK.Data dataName dataArgs consInfoList True shouldOptimize) def
     _ ->
       stmt
 
@@ -135,10 +135,10 @@ postprocess' h stmt = do
             TransparentAlias -> SK.Alias
             OpaqueAlias -> SK.AliasOpaque
       [PostRawStmtDefineType c stmtKind (rawDef {RT.typeGeist = geist'})]
-    RawStmtDefineData _ m (name, _) args consInfo loc -> do
+    RawStmtDefineData _ shouldOptimize m (name, _) args consInfo loc -> do
       let name' = Locator.attachCurrentLocator h name
       let consInfo' = fmap (liftRawCons h) consInfo
-      defineData m name' args (SE.extract consInfo') loc
+      defineData m shouldOptimize name' args (SE.extract consInfo') loc
     RawStmtDefineResource c m (name, c1) (c2, discarder) (c3, copier) (c4, resourceSize) c5 -> do
       let name' = Locator.attachCurrentLocator h name
       [PostRawStmtDefineResource c m (name', c1) (c2, discarder) (c3, copier) (c4, resourceSize) c5]
@@ -194,18 +194,20 @@ registerTopLevelNames h source cacheOrContent = do
       let stmtList = Cache.stmtList cache
       let nameArrowList = NameMap.getGlobalNames' stmtList
       let nominalNameList = concatMap nominalDataNameFromStmt stmtList
-      liftIO $ saveTopLevelNames h source nominalNameList nameArrowList
+      let rawDataNameList = concatMap rawDataNameFromStmt stmtList
+      liftIO $ saveTopLevelNames h source nominalNameList rawDataNameList nameArrowList
       forM_ stmtList $ registerKeyArg' h
     Right (PostRawProgram _ _ stmtList) -> do
       let nameArrowList = NameMap.getGlobalNames stmtList
       let nominalNameList = concatMap nominalDataNameFromPostStmt stmtList
-      liftIO $ saveTopLevelNames h source nominalNameList nameArrowList
+      let rawDataNameList = concatMap rawDataNameFromPostStmt stmtList
+      liftIO $ saveTopLevelNames h source nominalNameList rawDataNameList nameArrowList
       forM_ stmtList $ registerKeyArg h
 
 nominalDataNameFromStmt :: Stmt -> [DD.DefiniteDescription]
 nominalDataNameFromStmt stmt =
   case stmt of
-    StmtDefineType _ (SK.Data dataName _ _ True) _ _ _ _ _ _ _ ->
+    StmtDefineType _ (SK.Data dataName _ _ True _) _ _ _ _ _ _ _ ->
       [dataName]
     _ ->
       []
@@ -213,18 +215,34 @@ nominalDataNameFromStmt stmt =
 nominalDataNameFromPostStmt :: PostRawStmt -> [DD.DefiniteDescription]
 nominalDataNameFromPostStmt stmt =
   case stmt of
-    PostRawStmtDefineType _ (SK.Data dataName _ _ True) _ ->
+    PostRawStmtDefineType _ (SK.Data dataName _ _ True _) _ ->
       [dataName]
     _ ->
       []
 
-saveTopLevelNames :: Handle -> Source.Source -> [DD.DefiniteDescription] -> [(DD.DefiniteDescription, (Hint, Maybe NT.NominalTag, GN.GlobalName))] -> IO ()
-saveTopLevelNames h source nominalNameList nameArrowList = do
+rawDataNameFromStmt :: Stmt -> [DD.DefiniteDescription]
+rawDataNameFromStmt stmt =
+  case stmt of
+    StmtDefineType _ (SK.Data dataName _ _ _ False) _ _ _ _ _ _ _ ->
+      [dataName]
+    _ ->
+      []
+
+rawDataNameFromPostStmt :: PostRawStmt -> [DD.DefiniteDescription]
+rawDataNameFromPostStmt stmt =
+  case stmt of
+    PostRawStmtDefineType _ (SK.Data dataName _ _ _ False) _ ->
+      [dataName]
+    _ ->
+      []
+
+saveTopLevelNames :: Handle -> Source.Source -> [DD.DefiniteDescription] -> [DD.DefiniteDescription] -> [(DD.DefiniteDescription, (Hint, Maybe NT.NominalTag, GN.GlobalName))] -> IO ()
+saveTopLevelNames h source nominalNameList rawDataNameList nameArrowList = do
   let nameMap = Map.fromList nameArrowList
   GlobalNameMap.insert (globalNameMapHandle h) (Source.sourceFilePath source) nameMap
   forM_ nameArrowList $ \(dd, (m, _, gn)) ->
     UnusedTopLevelName.insert (unusedTopLevelNameHandle h) dd m gn
-  registerOptDataInfo h nominalNameList nameArrowList
+  registerOptDataInfo h nominalNameList rawDataNameList nameArrowList
 
 registerKeyArg :: Handle -> PostRawStmt -> App ()
 registerKeyArg h stmt = do
@@ -278,17 +296,29 @@ registerKeyArg' h stmt = do
     StmtForeign {} ->
       return ()
 
-registerOptDataInfo :: Handle -> [DD.DefiniteDescription] -> [(DD.DefiniteDescription, (Hint, Maybe NT.NominalTag, GN.GlobalName))] -> IO ()
-registerOptDataInfo h nominalNameList nameArrowList = do
+registerOptDataInfo :: Handle -> [DD.DefiniteDescription] -> [DD.DefiniteDescription] -> [(DD.DefiniteDescription, (Hint, Maybe NT.NominalTag, GN.GlobalName))] -> IO ()
+registerOptDataInfo h nominalNameList rawDataNameList nameArrowList = do
   forM_ nameArrowList $ \(dd, (_, _, gn)) -> do
     case gn of
       GN.Data dataArgNum consNameArrowList _ -> do
-        if dd `elem` nominalNameList
+        if dd `elem` rawDataNameList
           then return ()
-          else registerAsUnaryIfNecessary h dd consNameArrowList
-        registerAsEnumIfNecessary h dd dataArgNum consNameArrowList
+          else registerOptDataInfo' h nominalNameList dd dataArgNum consNameArrowList
       _ ->
         return ()
+
+registerOptDataInfo' ::
+  Handle ->
+  [DD.DefiniteDescription] ->
+  DD.DefiniteDescription ->
+  AN.ArgNum ->
+  [(DD.DefiniteDescription, (Hint, GN.GlobalName))] ->
+  IO ()
+registerOptDataInfo' h nominalNameList dd dataArgNum consNameArrowList = do
+  if dd `elem` nominalNameList
+    then return ()
+    else registerAsUnaryIfNecessary h dd consNameArrowList
+  registerAsEnumIfNecessary h dd dataArgNum consNameArrowList
 
 registerAsUnaryIfNecessary ::
   Handle ->

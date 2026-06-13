@@ -70,6 +70,7 @@ data BaseRawStmt name
       (RT.RawTypeDef name)
   | RawStmtDefineData
       C
+      Bool
       Hint
       (name, C)
       (Maybe (RT.Args RT.RawType))
