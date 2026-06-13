@@ -150,12 +150,23 @@ getPhiList comp =
       getPhiList cont
     Cont _ cont ->
       getPhiList cont
-    Switch _ _ _ _ _ cont ->
-      getPhiList cont
+    Switch _ _ defaultBranch caseList _ cont -> do
+      let branchList = defaultBranch : map snd caseList
+      if any reachesJoin branchList
+        then getPhiList cont
+        else Nothing
     TailCall {} ->
       Nothing
     Unreachable ->
       Nothing
+
+reachesJoin :: Comp -> Bool
+reachesJoin comp =
+  case getPhiList comp of
+    Just _ ->
+      True
+    Nothing ->
+      False
 
 getReturnValue :: Comp -> Maybe Value
 getReturnValue comp =

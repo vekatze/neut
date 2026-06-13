@@ -79,6 +79,10 @@ data Handle = Handle
     referencedNameSet :: IORef (S.Set DD.DefiniteDescription)
   }
 
+data TailPosition
+  = TailPosition
+  | NonTailPosition
+
 new :: Global.Handle -> Target -> C.DefMap -> App Handle
 new (Global.Handle {..}) target defMap = do
   allocator <- Env.getAllocatorByTarget envHandle target
@@ -196,6 +200,10 @@ constructMainTerm h mainName = do
 
 lowerComp :: Handle -> C.Comp -> App LC.Comp
 lowerComp h term =
+  lowerCompWith h TailPosition term
+
+lowerCompWith :: Handle -> TailPosition -> C.Comp -> App LC.Comp
+lowerCompWith h tailPosition term =
   case term of
     C.Primitive theta -> do
       (resultVar, resultValue) <- liftIO $ newValueLocal h "result"
@@ -204,10 +212,18 @@ lowerComp h term =
       (funcVar, func) <- liftIO $ newValueLocal h "func"
       (castFuncVar, castFunc) <- liftIO $ newValueLocal h "func"
       (argVars, argValues) <- mapAndUnzipM (const $ liftIO $ newValueLocal h "arg") ds
-      lowerValue h funcVar v
-        =<< lowerValues h (zip argVars ds)
-        =<< cast h castFuncVar func LT.Pointer
-        =<< return (LC.TailCall LT.Pointer castFunc (map (LT.Pointer,) argValues))
+      case tailPosition of
+        TailPosition ->
+          lowerValue h funcVar v
+            =<< lowerValues h (zip argVars ds)
+            =<< cast h castFuncVar func LT.Pointer
+            =<< return (LC.TailCall LT.Pointer castFunc (map (LT.Pointer,) argValues))
+        NonTailPosition -> do
+          (resultVar, resultValue) <- liftIO $ newValueLocal h "result"
+          lowerValue h funcVar v
+            =<< lowerValues h (zip argVars ds)
+            =<< cast h castFuncVar func LT.Pointer
+            =<< return (LC.Let resultVar (LC.Call LT.Pointer castFunc (map (LT.Pointer,) argValues)) (LC.Return resultValue))
     C.SigmaElim shouldDeallocate offset slotCount xs v e -> do
       (sigmaVar, sigma) <- liftIO $ newValueLocal h "sigma"
       (elemVars, elems) <- mapAndUnzipM (const $ liftIO $ newValueLocal h "elem") xs
@@ -216,21 +232,21 @@ lowerComp h term =
         =<< return . getElemPtrListFrom offset sigma elemVars baseType
         =<< loadElements h sigma (zip xs (map (,LT.Pointer) elems))
         =<< liftIO . freeIfNecessary h shouldDeallocate sigma slotCount
-        =<< lowerComp h e
+        =<< lowerCompWith h tailPosition e
     C.UpIntro d -> do
       (resultVar, resultValue) <- liftIO $ newValueLocal h "result"
       lowerValue h resultVar d (LC.Return resultValue)
     C.UpIntroVoid ->
       return LC.ReturnVoid
     C.UpElim _ x e1 e2 -> do
-      e1' <- lowerComp h e1
-      e2' <- lowerComp h e2
+      e1' <- lowerCompWith h NonTailPosition e1
+      e2' <- lowerCompWith h tailPosition e2
       return $ commConv x e1' e2'
     C.UpElimCallVoid f ds e2 -> do
       (funcVar, func) <- liftIO $ newValueLocal h "func"
       (castFuncVar, castFunc) <- liftIO $ newValueLocal h "func"
       (argVars, argValues) <- mapAndUnzipM (const $ liftIO $ newValueLocal h "arg") ds
-      e2' <- lowerComp h e2
+      e2' <- lowerCompWith h tailPosition e2
       lowerValue h funcVar f
         =<< lowerValues h (zip argVars ds)
         =<< cast h castFuncVar func LT.Pointer
@@ -240,11 +256,11 @@ lowerComp h term =
       defaultBranch' <- liftIO $ Subst.subst (substHandle h) sub defaultBranch >>= Reduce.reduce (reduceHandle h)
       let (keys, clauses) = unzip branchList
       clauses' <- liftIO $ mapM (Subst.subst (substHandle h) sub >=> Reduce.reduce (reduceHandle h)) clauses
-      defaultCase <- lowerEnumBranch h defaultBranch'
+      defaultCase <- lowerEnumBranch h tailPosition defaultBranch'
       caseList <-
         mapM
           ( \(tag, branch) -> do
-              branch' <- lowerEnumBranch h branch
+              branch' <- lowerEnumBranch h tailPosition branch
               return (enumCaseToInteger tag, branch')
           )
           (zip keys clauses')
@@ -257,17 +273,17 @@ lowerComp h term =
       sizeComp' <- liftIO $ Reduce.reduce (reduceHandle h) sizeComp
       liftIO (materializeDestCall h sizeComp' f ds)
         >>= liftIO . Reduce.reduce (reduceHandle h)
-        >>= lowerComp h
+        >>= lowerCompWith h tailPosition
     C.WriteToDest dest sizeComp result cont ->
       liftIO (materializeWriteToDest h dest sizeComp result cont)
         >>= liftIO . Reduce.reduce (reduceHandle h)
-        >>= lowerComp h
+        >>= lowerCompWith h tailPosition
     C.Free x size cont -> do
       freeID <- liftIO $ Gensym.newCount (gensymHandle h)
       (ptrVar, ptr) <- liftIO $ newValueLocal h "ptr"
       lowerValue h ptrVar x
         =<< return . LC.Cont (LC.Free ptr size freeID)
-        =<< lowerComp h cont
+        =<< lowerCompWith h tailPosition cont
     C.Unreachable ->
       return LC.Unreachable
 
@@ -346,11 +362,15 @@ materializeWriteToDest h dest sizeComp result cont = do
       C.UpElim True sizeName sizeComp $
         C.UpElim True ignoredBranch branch cont
 
-lowerEnumBranch :: Handle -> C.Comp -> App LC.Comp
-lowerEnumBranch h branch = do
-  lowBranch <- lowerComp h branch
+lowerEnumBranch :: Handle -> TailPosition -> C.Comp -> App LC.Comp
+lowerEnumBranch h tailPosition branch = do
+  lowBranch <- lowerCompWith h tailPosition branch
   (phiName, phiVar) <- liftIO $ newValueLocal h "phi"
-  return $ commConv phiName lowBranch (LC.Phi [phiVar])
+  case tailPosition of
+    TailPosition ->
+      return $ commConvTail phiName lowBranch (LC.Phi [phiVar])
+    NonTailPosition ->
+      return $ commConv phiName lowBranch (LC.Phi [phiVar])
 
 enumCaseToInteger :: EC.EnumCase -> Integer
 enumCaseToInteger enumCase =
@@ -782,6 +802,29 @@ commConv x lowComp cont2 =
       LC.Switch d t defaultCase caseList phiVars cont'
     LC.TailCall codType d ds ->
       LC.Let x (LC.Call codType d ds) cont2
+    LC.Unreachable ->
+      LC.Unreachable
+    LC.Phi _ ->
+      LC.Unreachable -- shouldn't occur
+
+commConvTail :: Ident -> LC.Comp -> LC.Comp -> LC.Comp
+commConvTail x lowComp cont2 =
+  case lowComp of
+    LC.Return d ->
+      LC.Let x (LC.nop d) cont2
+    LC.ReturnVoid ->
+      LC.Unreachable -- shouldn't occur
+    LC.Let y op cont1 -> do
+      let cont = commConvTail x cont1 cont2
+      LC.Let y op cont
+    LC.Cont op cont1 -> do
+      let cont = commConvTail x cont1 cont2
+      LC.Cont op cont
+    LC.Switch d t defaultCase caseList phiVars cont -> do
+      let cont' = commConvTail x cont cont2
+      LC.Switch d t defaultCase caseList phiVars cont'
+    LC.TailCall {} ->
+      lowComp
     LC.Unreachable ->
       LC.Unreachable
     LC.Phi _ ->
