@@ -145,8 +145,10 @@ mergeIncomingEdit o editRegionStart editRegionEnd newChunk = do
   let minBufferStart = minimum $ editRegionStart : map bufferStart touched
   let maxBufferEnd = maximum $ editRegionEnd : map bufferEnd touched
   let delta = T.length newChunk - (editRegionEnd - editRegionStart)
-  mergedBaseStart <- convertBackward (patches o) minBufferStart
-  mergedBaseEnd <- convertBackward (patches o) maxBufferEnd
+  convertedBaseStart <- convertBackward (patches o) minBufferStart
+  convertedBaseEnd <- convertBackward (patches o) maxBufferEnd
+  let mergedBaseStart = minimum $ convertedBaseStart : map baseStart touched
+  let mergedBaseEnd = maximum $ convertedBaseEnd : map baseEnd touched
   let shiftedAfter = map (shiftBuffer delta) after
   let mergedEdit =
         Patch
