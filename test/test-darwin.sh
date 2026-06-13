@@ -1,11 +1,30 @@
 #!/bin/zsh
 
+setopt no_bg_nice
+
 base_dir=$(pwd)
 
 SCRIPT_DIR=$(cd "$(dirname "$0")"; pwd)
 LSAN_FILE=$SCRIPT_DIR/lsan.supp
 
 pids=()
+exit_code=0
+max_jobs=${NEUT_TEST_JOBS:-0}
+
+if ! [[ $max_jobs =~ '^[0-9]+$' ]]; then
+  echo "NEUT_TEST_JOBS must be a non-negative integer"
+  exit 1
+fi
+
+wait_one() {
+  pid=$pids[1]
+  shift pids
+  wait $pid
+  result=$?
+  if [ $result -ne 0 ]; then
+    exit_code=$result
+  fi
+}
 
 for target_dir in "$@"; do
   cd $base_dir
@@ -33,18 +52,17 @@ for target_dir in "$@"; do
       exit $exit_code
     ) &
     pids+=($!)
+    if [ $max_jobs -gt 0 ]; then
+      while [ ${#pids[@]} -ge $max_jobs ]; do
+        wait_one
+      done
+    fi
     cd ..
   done
 done
 
-exit_code=0
-
-for pid in $pids; do
-  wait $pid
-  result=$?
-  if [ $result -ne 0 ]; then
-    exit_code=$result
-  fi
+while [ ${#pids[@]} -gt 0 ]; do
+  wait_one
 done
 
 exit $exit_code
