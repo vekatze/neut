@@ -9,6 +9,7 @@
 - [inline-meta](#inline-meta)
 - [constant](#constant)
 - [data](#data)
+- [data-raw](#data-raw)
 - [alias](#alias)
 - [alias-opaque](#alias-opaque)
 - [resource](#resource)
@@ -437,6 +438,18 @@ cont
 ```
 
 `mix` can also be used with a `resource` type when the resource has a fixed non-negative size.
+
+## `data-raw`
+
+`data-raw` defines an ADT with the same syntax as `data`, but disables ADT-specific representation optimizations such as enum optimization and single-constructor unary optimization.
+
+```neut
+data-raw boxed-int {
+| Boxed-Int(int)
+}
+```
+
+Use `data-raw` when you need the ordinary ADT representation even for ADTs that `data` would otherwise optimize.
 
 ## `alias`
 

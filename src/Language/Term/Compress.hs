@@ -144,8 +144,8 @@ compressStmtKindType stmtKind =
       Alias
     AliasOpaque ->
       AliasOpaque
-    Data name args consInfoList isNominal ->
-      Data name (map compressBinder args) (map (second compressConsInfo) consInfoList) isNominal
+    Data name args consInfoList isNominal shouldOptimize ->
+      Data name (map compressBinder args) (map (second compressConsInfo) consInfoList) isNominal shouldOptimize
 
 compressConsInfo ::
   DI.ConsInfo (BinderF TM.Type) ->

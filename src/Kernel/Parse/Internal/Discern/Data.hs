@@ -19,16 +19,17 @@ import SyntaxTree.Series qualified as SE
 
 defineData ::
   Hint ->
+  Bool ->
   DD.DefiniteDescription ->
   Maybe (RT.Args RT.RawType) ->
   [RawConsInfo DD.DefiniteDescription] ->
   Loc ->
   [PostRawStmt]
-defineData m dataName dataArgsOrNone consInfoList loc = do
+defineData m shouldOptimize dataName dataArgsOrNone consInfoList loc = do
   let dataArgs = modifyDataArgs dataArgsOrNone
   let dataArgs' = fromMaybe RT.emptyArgs dataArgsOrNone
   let consInfoList' = modifyConsInfo D.zero consInfoList
-  let stmtKind = SK.Data dataName dataArgs consInfoList' False
+  let stmtKind = SK.Data dataName dataArgs consInfoList' False shouldOptimize
   let isConstLike = isNothing dataArgsOrNone
   let dataType = constructDataType m dataName isConstLike dataArgs
   let geist =

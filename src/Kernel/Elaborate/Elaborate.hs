@@ -292,7 +292,7 @@ insertWeakStmt h stmt = do
 registerDataTypeStmt :: Handle -> DD.DefiniteDescription -> SK.StmtKindType TM.Type -> App ()
 registerDataTypeStmt h dataName stmtKind =
   case stmtKind of
-    SK.Data _ dataArgs consInfoList _ ->
+    SK.Data _ dataArgs consInfoList _ _ ->
       liftIO $
         Data.insert
           (dataHandle h)
@@ -307,7 +307,7 @@ registerDataTypeStmt h dataName stmtKind =
 registerWeakDataTypeStmt :: Handle -> DD.DefiniteDescription -> SK.StmtKindType WT.WeakType -> App ()
 registerWeakDataTypeStmt h dataName stmtKind =
   case stmtKind of
-    SK.Data _ dataArgs consInfoList _ ->
+    SK.Data _ dataArgs consInfoList _ _ ->
       liftIO $
         Data.insertWeak
           (dataHandle h)
@@ -360,7 +360,7 @@ elaborateStmtKindType h stmtKind =
       return SK.Alias
     SK.AliasOpaque ->
       return SK.AliasOpaque
-    SK.Data dataName dataArgs consInfoList isNominal -> do
+    SK.Data dataName dataArgs consInfoList isNominal shouldOptimize -> do
       dataArgs' <- mapM (elaborateWeakBinder h) dataArgs
       dataArgs'' <- mapM (inlineBinder h) dataArgs'
       consInfoList' <- forM consInfoList $ \(savedHint, consInfo) -> do
@@ -369,7 +369,7 @@ elaborateStmtKindType h stmtKind =
         layouts <- forM (zip (DI.consArgHints consInfo) consArgs'') $ \(hint, binder) -> do
           resolveFieldLayout h hint binder
         return (savedHint, consInfo {DI.consArgs = consArgs'', DI.consArgLayouts = layouts})
-      return $ SK.Data dataName dataArgs'' consInfoList' isNominal
+      return $ SK.Data dataName dataArgs'' consInfoList' isNominal shouldOptimize
 
 resolveFieldLayout :: Handle -> DI.FieldHint -> BinderF TM.Type -> App DI.FieldLayout
 resolveFieldLayout h hint (m, _, _, t) =
