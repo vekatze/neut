@@ -21,12 +21,12 @@ instance Show LowType where
 
 instance Binary LowType
 
-textType :: DataSize -> Int -> LowType
-textType baseSize len =
+textType :: DataSize -> LowType
+textType baseSize =
   Struct
     [ PrimNum $ PT.Int $ dataSizeToIntSize baseSize,
       PrimNum $ PT.Int $ dataSizeToIntSize baseSize,
-      textTypeInner len
+      Pointer
     ]
 
 textTypeInner :: Int -> LowType

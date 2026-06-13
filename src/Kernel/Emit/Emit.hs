@@ -64,7 +64,7 @@ emitLowCodeInfo :: Handle -> LC.LowCodeInfo -> IO ([Builder], [Builder])
 emitLowCodeInfo h (declEnv, defList, staticTextList) = do
   let declStrList = emitDeclarations declEnv
   let baseSize = Platform.getDataSize (Global.platformHandle (globalHandle h))
-  let staticTextList' = map (emitStaticText baseSize) staticTextList
+  let staticTextList' = concatMap (emitStaticText baseSize) staticTextList
   defStrList <- concat <$> mapM (emitDefinitions h) defList
   return (declStrList <> staticTextList', defStrList)
 
@@ -102,26 +102,36 @@ emitGlobalExt name lt =
 
 type StaticTextInfo = (T.Text, (Builder, Int))
 
-emitStaticText :: DS.DataSize -> StaticTextInfo -> Builder
+emitStaticText :: DS.DataSize -> StaticTextInfo -> [Builder]
 emitStaticText baseSize (from, (text, len)) = do
-  "@"
-    <> TE.encodeUtf8Builder ("\"" <> from <> "\"")
-    <> " = private unnamed_addr constant "
-    <> emitLowType (LT.textType baseSize len)
-    <> " {"
-    <> "i"
-    <> intDec (DS.reify baseSize)
-    <> " 0, "
-    <> "i"
-    <> intDec (DS.reify baseSize)
-    <> " "
-    <> intDec len
-    <> ", "
-    <> emitLowType (LT.textTypeInner len)
-    <> " c\""
-    <> text
-    <> "\""
-    <> "}"
+  let headerName = TE.encodeUtf8Builder ("\"" <> from <> "\"")
+  let payloadName = TE.encodeUtf8Builder ("\"" <> from <> ".payload\"")
+  let wordType = "i" <> intDec (DS.reify baseSize)
+  let payloadType = emitLowType (LT.textTypeInner len)
+  let payload =
+        "@"
+          <> payloadName
+          <> " = private unnamed_addr constant "
+          <> payloadType
+          <> " c\""
+          <> text
+          <> "\""
+  let header =
+        "@"
+          <> headerName
+          <> " = private unnamed_addr constant "
+          <> emitLowType (LT.textType baseSize)
+          <> " {"
+          <> wordType
+          <> " 0, "
+          <> wordType
+          <> " "
+          <> intDec len
+          <> ", ptr "
+          <> "@"
+          <> payloadName
+          <> "}"
+  [payload, header]
 
 emitDeclarations :: DN.DeclEnv -> [Builder]
 emitDeclarations declEnv = do
