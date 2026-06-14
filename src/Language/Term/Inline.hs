@@ -309,8 +309,13 @@ inline' h term = do
         PV.NoeticString stringType text -> do
           stringType' <- inlineType' h stringType
           return $ m :< TM.Prim (PV.NoeticString stringType' text)
+        PV.NoeticBinary binaryType bytes -> do
+          binaryType' <- inlineType' h binaryType
+          return $ m :< TM.Prim (PV.NoeticBinary binaryType' bytes)
         PV.Text text ->
           return $ m :< TM.Prim (PV.Text text)
+        PV.Blob bytes ->
+          return $ m :< TM.Prim (PV.Blob bytes)
         PV.Rune {} ->
           return term
     m :< TM.Magic magic -> do

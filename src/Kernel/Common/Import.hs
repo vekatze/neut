@@ -8,4 +8,4 @@ import Path
 
 data ImportItem
   = ImportItem Source.Source [AI.AliasInfo]
-  | TextFileKey [(T.Text, (Hint, Path Abs File))]
+  | StaticFileKey [(T.Text, (Hint, Path Abs File))]

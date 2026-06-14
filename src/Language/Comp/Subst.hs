@@ -96,7 +96,7 @@ substValue sub term =
           term
     C.VarGlobal {} ->
       term
-    C.VarStaticText {} ->
+    C.VarStaticBytes {} ->
       term
     C.SigmaIntro size vs -> do
       let vs' = map (substValue sub) vs

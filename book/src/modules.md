@@ -14,7 +14,7 @@ Below is a list of the configurations in `module.ens`.
 - [source](#source)
 - [foreign](#foreign)
 - [extra-content](#extra-content)
-- [text-file](#text-file)
+- [static-file](#static-file)
 - [preset](#preset)
 - [inline-limit](#inline-limit)
 - [antecedent](#antecedent)
@@ -358,14 +358,14 @@ If an entry ends with `/`, it is treated as a directory. Otherwise, it is treate
 
 The field `extra-content` is optional. The default value of `extra-content` is `[]`.
 
-## `text-file`
+## `static-file`
 
-The field `text-file` defines the list of text files that can be embedded into source files at compile time. It should look like the following:
+The field `static-file` defines the list of static files that can be embedded into source files at compile time. It should look like the following:
 
 ```ens
 {
   // ..
-  text-file {
+  static-file {
     some-file "relative/path/from/the/module/root/to/some-file.txt",
     other-file "relative/path/from/the/module/root/to/other-file.txt",
   },
@@ -381,7 +381,7 @@ You can use the keys defined here in source files using `import` and `static`:
 import {
   // ..
   core.string {from-text},
-  text-file {some-file, other-file},
+  static-file {some-file, other-file},
   // ..
 }
 
@@ -391,11 +391,11 @@ define use-some-file() -> unit {
 }
 ```
 
-After specifying a key for a text file in `import`, you can use `static` to embed the file's content into the source file at compile time. Here, `static` assumes that the encoding of the file is UTF-8. For the term-level details of `static` and `text`, see [Terms](./terms.md#static) and [Primitives](./primitives.md#primitive-types).
+After specifying a key for a static file in `import`, you can use `static` to embed the file's content into the source file at compile time. `static` is resolved as `text`, `blob`, `&string`, or `&binary` according to the surrounding type context; UTF-8 is required only when it resolves as `text` or `&string`. For the term-level details of `static`, see [Terms](./terms.md#static) and [Primitives](./primitives.md#primitive-types).
 
 The compiler triggers recompilation when necessary by comparing the modification times of static resources and source files. In the code above, for example, the compiler recompiles `foo.nt` if you modify the content of `some-file.txt`.
 
-The field `text-file` is optional. The default value of `text-file` is `{}`.
+The field `static-file` is optional. The default value of `static-file` is `{}`.
 
 ## `preset`
 

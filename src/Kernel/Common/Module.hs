@@ -28,7 +28,7 @@ module Kernel.Common.Module
     keyMirror,
     keyPreset,
     keySource,
-    keyTextFile,
+    keyStaticFile,
     keyTarget,
     keyZen,
     getSourceDir,
@@ -116,7 +116,7 @@ data Module = Module
     moduleAntecedents :: [ModuleDigest],
     moduleLocation :: Path Abs File,
     moduleForeign :: Foreign,
-    moduleTextFiles :: Map.HashMap T.Text (Path Rel File),
+    moduleStaticFiles :: Map.HashMap T.Text (Path Rel File),
     moduleInlineLimit :: Maybe Int,
     modulePresetMap :: PresetMap
   }
@@ -194,9 +194,9 @@ keyAntecedent :: T.Text
 keyAntecedent =
   "antecedent"
 
-keyTextFile :: T.Text
-keyTextFile =
-  "text-file"
+keyStaticFile :: T.Text
+keyStaticFile =
+  "static-file"
 
 keyForeign :: T.Text
 keyForeign =

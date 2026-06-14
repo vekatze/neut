@@ -149,7 +149,7 @@ define unbalanced-freevars-in-branches<a>(t: &term(a)) -> term(a) {
     }
   | App(t1, _) =>
     let _ = g;
-    let !k =
+    let !k: () -> term(&string) =
       if False {
         h
       } else {

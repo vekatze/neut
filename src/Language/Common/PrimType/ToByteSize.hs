@@ -15,6 +15,8 @@ primTypeToByteSize dataSize primType =
       4
     PT.Text ->
       fromIntegral $ DS.reify dataSize `div` 8
+    PT.Blob ->
+      fromIntegral $ DS.reify dataSize `div` 8
     PT.Pointer ->
       fromIntegral $ DS.reify dataSize `div` 8
 

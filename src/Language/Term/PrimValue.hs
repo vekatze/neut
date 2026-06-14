@@ -4,6 +4,7 @@ module Language.Term.PrimValue
 where
 
 import Data.Binary
+import Data.ByteString qualified as BS
 import Data.Text qualified as T
 import GHC.Generics (Generic)
 import Language.Common.PrimNumSize
@@ -15,7 +16,9 @@ data PrimValue a
   | Float a FloatSize Double
   | Op PrimOp
   | NoeticString a T.Text
+  | NoeticBinary a BS.ByteString
   | Text T.Text
+  | Blob BS.ByteString
   | Rune RU.Rune
   deriving (Show, Generic)
 

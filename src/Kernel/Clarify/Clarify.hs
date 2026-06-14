@@ -23,6 +23,7 @@ import Data.IntMap qualified as IntMap
 import Data.Maybe
 import Data.Set qualified as S
 import Data.Text qualified as T
+import Data.Text.Encoding qualified as TE
 import Gensym.Gensym qualified as Gensym
 import Gensym.Handle qualified as Gensym
 import Kernel.Clarify.Internal.Handle.AuxEnv qualified as AuxEnv
@@ -613,9 +614,13 @@ clarifyTerm h context term =
         PV.Op op -> do
           clarifyPrimOp h context op m
         PV.NoeticString _ text ->
-          return $ C.UpIntro $ C.VarStaticText text
+          return $ C.UpIntro $ C.VarStaticBytes $ TE.encodeUtf8 text
+        PV.NoeticBinary _ bytes ->
+          return $ C.UpIntro $ C.VarStaticBytes bytes
         PV.Text text ->
-          return $ C.UpIntro $ C.VarStaticText text
+          return $ C.UpIntro $ C.VarStaticBytes $ TE.encodeUtf8 text
+        PV.Blob bytes ->
+          return $ C.UpIntro $ C.VarStaticBytes bytes
         PV.Rune r -> do
           let t = fromPrimNum m (PT.Int PNS.IntSize32)
           clarifyTerm h context $ m :< TM.Prim (PV.Int t PNS.IntSize32 (RU.asInt r))

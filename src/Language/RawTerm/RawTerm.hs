@@ -143,14 +143,13 @@ data RawTermF a
   | Admit
   | Introspect C T.Text C (SE.Series (Maybe T.Text, C, a))
   | Static C Hint StaticItem
-  | NoeticString RawType T.Text
+  | String T.Text
   | With (KeywordClause a)
   | Brace C (a, C)
   | Int Integer
 
 data StaticItem
-  = TextFileKey T.Text
-  | TextContent T.Text
+  = StaticFileKey T.Text
 
 type PatParam a =
   (Hint, RP.RawPattern, C, C, a)

@@ -218,8 +218,12 @@ weakenPrimValue prim =
       WPV.Op op
     PV.NoeticString t text ->
       WPV.NoeticString (weakenType t) text
+    PV.NoeticBinary t bytes ->
+      WPV.NoeticBinary (weakenType t) bytes
     PV.Text text ->
       WPV.Text text
+    PV.Blob bytes ->
+      WPV.Blob bytes
     PV.Rune r ->
       WPV.Rune r
 

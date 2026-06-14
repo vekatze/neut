@@ -11,6 +11,8 @@ define test-syntax() -> unit {
   let _ = pack-type {float32};
   let _ = pack-type {float64};
   let _ = pack-type {float};
+  let _ = pack-type {text};
+  let _ = pack-type {blob};
   let _: int = 3;
   let _: int = 0b1100;
   let _: int = 0b_1100_0010_0000;
@@ -87,9 +89,13 @@ define opaque<a>(x: a) -> a {
 }
 
 define test-string() -> unit {
-  let _ = opaque("");
-  let _ = opaque("test");
-  let _ = opaque("🌟あ♥️a🌕亜\n\u{33}\u{333}\u{1F338}\0\t\n\r\"\\\`");
+  let _: text = opaque("");
+  let _: text = opaque("test");
+  let _: text = opaque("🌟あ♥️a🌕亜\n\u{33}\u{333}\u{1F338}\0\t\n\r\"\\\`");
+  let _: text = "utf-8";
+  let _: blob = "\x{FF}\0A";
+  let _: &string = "borrowed string";
+  let _: &binary = "\x{FF}\0A";
   Unit
 }
 

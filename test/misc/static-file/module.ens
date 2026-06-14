@@ -7,14 +7,14 @@
       ],
     },
   },
-  text-file {
+  static-file {
     some-file "expected",
   },
   dependency {
     core {
-      digest "GKmi5E12FLZUuCxhHX2f65YsMYnGwrS6U6maZlhUhh4",
+      digest "yuUKFiEFXHOJIgCT8mLjczed0yHk6X6ZsGRhaOTJ8aU",
       mirror [
-        "https://github.com/vekatze/neut-core/raw/main/archive/0-55-3.tar.zst",
+        "https://github.com/vekatze/neut-core/raw/main/archive/0-55-8.tar.zst",
       ],
       enable-preset true,
     },

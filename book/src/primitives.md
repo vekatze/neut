@@ -15,6 +15,7 @@ Neut supports the following primitive types:
 - float types: `float16, float32, float64`
 - rune type: `rune`
 - text type: `text`
+- blob type: `blob`
 
 You can also use `int` and `float`. These are just syntactic sugar for `int64` and `float64`, respectively.
 
@@ -81,4 +82,7 @@ data pair(a, b) {
 
 Functions for those types are also defined in the library. For more, please see [the source of the core library](https://github.com/vekatze/neut-core/tree/main/source).
 
-The core library also defines `string` and functions on it. String literals have type `&string`. In particular, `core.string.from-text` converts `text` to `&string`.
+The core library also defines `string`, `binary`, and functions on them. String literals are inferred as `text`, `blob`, `&string`, or `&binary` depending on the surrounding type context. In particular,
+
+- `core.binary.from-blob` converts `blob` to `&binary`,
+- `core.string.from-text` converts `text` to `&string`.

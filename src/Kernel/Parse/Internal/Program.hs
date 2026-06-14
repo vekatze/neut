@@ -50,9 +50,9 @@ parseSingleImport = do
     mImportItem <- getCurrentHint
     locator <- symbol
     case fst locator of
-      "text-file" -> do
+      "static-file" -> do
         (ks, c) <- parseStaticKeyList
-        return (RawTextFileKey m c1 ks, c)
+        return (RawStaticFileKey m c1 ks, c)
       _ -> do
         (lls, c) <- parseLocalLocatorList'
         return (RawImportItem mImportItem locator lls, c)

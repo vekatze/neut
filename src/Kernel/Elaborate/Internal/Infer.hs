@@ -351,11 +351,19 @@ infer h term =
         WPV.Op op -> do
           primOpType <- liftIO $ primOpToType h m op
           return (m :< WT.Prim prim, primOpType)
+        WPV.String coreModuleID t text -> do
+          t' <- inferType (h {varEnv = []}) t
+          return (m :< WT.Prim (WPV.String coreModuleID t' text), t')
         WPV.NoeticString t text -> do
           t' <- inferType (h {varEnv = []}) t
           return (m :< WT.Prim (WPV.NoeticString t' text), m :< WT.BoxNoema t')
+        WPV.NoeticBinary t bytes -> do
+          t' <- inferType (h {varEnv = []}) t
+          return (m :< WT.Prim (WPV.NoeticBinary t' bytes), m :< WT.BoxNoema t')
         WPV.Text text -> do
           return (m :< WT.Prim (WPV.Text text), m :< WT.PrimType PT.Text)
+        WPV.Blob bytes -> do
+          return (m :< WT.Prim (WPV.Blob bytes), m :< WT.PrimType PT.Blob)
         WPV.Rune _ -> do
           return (m :< WT.Prim prim, m :< WT.PrimType PT.Rune)
     m :< WT.Magic (M.WeakMagic magic) -> do

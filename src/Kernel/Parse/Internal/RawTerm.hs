@@ -31,7 +31,6 @@ import CodeParser.GetInfo
 import CodeParser.Parser
 import Control.Comonad.Cofree
 import Control.Monad
-import Control.Monad.Except (liftEither)
 import Control.Monad.Trans
 import Data.Maybe (fromMaybe)
 import Data.Set qualified as S
@@ -1223,14 +1222,8 @@ rawTermIntrospectiveClause h = do
 rawTermStatic :: Hint -> C -> Parser (RT.RawTerm, C)
 rawTermStatic m c1 = do
   mKey <- getCurrentHint
-  choice
-    [ do
-        (s, c) <- string
-        return (m :< RT.Static c1 mKey (RT.TextContent s), c),
-      do
-        (key, c) <- symbol
-        return (m :< RT.Static c1 mKey (RT.TextFileKey key), c)
-    ]
+  (key, c) <- symbol
+  return (m :< RT.Static c1 mKey (RT.StaticFileKey key), c)
 
 interpretVarName :: Hint -> T.Text -> Parser Name
 interpretVarName m varText = do
@@ -1255,8 +1248,7 @@ rawTermTextIntro :: Parser (RT.RawTerm, C)
 rawTermTextIntro = do
   m <- getCurrentHint
   (s, c) <- string
-  stringType <- lift $ locatorToTypeVar (blur m) coreString
-  return (m :< RT.NoeticString stringType s, c)
+  return (m :< RT.String s, c)
 
 rawTypeRune :: Hint -> C -> Parser (RT.RawType, C)
 rawTypeRune m c = do
@@ -1271,11 +1263,6 @@ rawTermRuneIntro = do
       return (m :< RT.RuneIntro r, c)
     Left e ->
       lift $ raiseError m e
-
-locatorToTypeVar :: Hint -> T.Text -> App RT.RawType
-locatorToTypeVar m text = do
-  (gl, ll) <- liftEither $ DD.getLocatorPair (blur m) text
-  return $ blur m :< RT.TyVar (Locator (gl, ll))
 
 var :: Handle -> Parser ((Hint, T.Text), C)
 var h = do

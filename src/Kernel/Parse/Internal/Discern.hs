@@ -618,11 +618,11 @@ discern h term =
       if isCompileStage h
         then do
           stringType <- discernType h stringTypeRaw
-          message' <- discern h $ m :< RT.NoeticString stringTypeRaw messageText
+          message' <- discern h $ m :< RT.String messageText
           let body = m :< WT.Magic (M.WeakMagic $ M.CompileError stringType message')
           return $ m :< WT.Annotation L.Warning (AN.Type (doNotCare m)) body
         else do
-          let message' = m :< RT.NoeticString stringTypeRaw (messageText <> "\n")
+          let message' = m :< RT.String (messageText <> "\n")
           panic <- liftEither $ locatorToVarGlobal m coreDebugPanic
           discern h $ asOpaqueValue $ m :< RT.Annotation L.Warning (AN.Type ()) (m :< RT.piElim panic [message'])
     m :< RT.Introspect _ key _ clauseList -> do
@@ -631,28 +631,27 @@ discern h term =
       discern h clause
     m :< RT.Static _ mKey staticItem -> do
       case staticItem of
-        RT.TextContent content -> do
-          case parseText content of
-            Left reason ->
-              raiseError m $ "Could not interpret the following as a text: " <> content <> "\nReason: " <> reason
-            Right str' -> do
-              return $ m :< WT.Prim (WPV.Text str')
-        RT.TextFileKey key -> do
+        RT.StaticFileKey key -> do
           contentOrNone <- liftIO $ Locator.getStaticFileContent (H.locatorHandle h) key
           case contentOrNone of
             Just (path, content) -> do
               liftIO $ Unused.deleteStaticFile (H.unusedHandle h) key
               liftIO $ Tag.insertStaticFile (H.tagHandle h) mKey key (newSourceHint path)
-              return $ m :< WT.Prim (WPV.Text content)
+              ensureStringLiteralTypes h m
+              coreModuleID <- Alias.resolveModuleAlias (H.aliasHandle h) m coreModuleAlias
+              hole <- liftIO $ WT.createTypeHole (H.gensymHandle h) m []
+              return $ m :< WT.Prim (WPV.String coreModuleID hole content)
             Nothing ->
               raiseError m $ "No such static file is defined: `" <> key <> "`"
-    m :< RT.NoeticString s str -> do
-      s' <- discernType h s
-      case parseText str of
+    m :< RT.String str -> do
+      case parseBytes str of
         Left reason ->
           raiseError m $ "Could not interpret the following as a string: " <> str <> "\nReason: " <> reason
-        Right str' -> do
-          return $ m :< WT.Prim (WPV.NoeticString s' str')
+        Right bytes -> do
+          ensureStringLiteralTypes h m
+          coreModuleID <- Alias.resolveModuleAlias (H.aliasHandle h) m coreModuleAlias
+          hole <- liftIO $ WT.createTypeHole (H.gensymHandle h) m []
+          return $ m :< WT.Prim (WPV.String coreModuleID hole bytes)
     m :< RT.With withClause -> do
       let (binder, body) = RT.extractFromKeywordClause withClause
       case body of
@@ -1440,6 +1439,13 @@ constructDefaultKeyMap :: H.Handle -> Hint -> [Key] -> IO (Map.HashMap Key (Hint
 constructDefaultKeyMap h m keyList = do
   names <- mapM (const $ Gensym.newTextForHole (H.gensymHandle h)) keyList
   return $ Map.fromList $ zipWith (\k v -> (k, (m, RP.Var VK.Normal (Var v)))) keyList names
+
+ensureStringLiteralTypes :: H.Handle -> Hint -> App ()
+ensureStringLiteralTypes h m = do
+  stringName <- liftEither $ locatorToName m coreString
+  binaryName <- liftEither $ locatorToName m coreBinary
+  void $ resolveName h (blur m) stringName
+  void $ resolveName h (blur m) binaryName
 
 locatorToName :: Hint -> T.Text -> Either E.Error Name
 locatorToName m text = do

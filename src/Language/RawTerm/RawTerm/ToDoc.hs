@@ -247,7 +247,7 @@ toDoc term =
           D.line,
           attachComment c5 $ toDoc e2
         ]
-    _ :< NoeticString _ txt -> do
+    _ :< String txt -> do
       D.text $ "\"" <> txt <> "\""
     _ :< RuneIntro r -> do
       D.text $ "`" <> T.replace "`" "\\`" (RU.asText r) <> "`"
@@ -468,10 +468,8 @@ toDoc term =
         [ PI.horizontal $ attachComment c1 $ D.text "static",
           PI.inject $
             case staticItem of
-              RT.TextFileKey path ->
+              RT.StaticFileKey path ->
                 D.text path
-              RT.TextContent content ->
-                D.text $ "\"" <> content <> "\""
         ]
     _ :< Brace c1 (e, c2) -> do
       decodeBrace False c1 e c2

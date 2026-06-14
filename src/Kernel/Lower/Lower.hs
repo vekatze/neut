@@ -13,9 +13,9 @@ module Kernel.Lower.Lower
 where
 
 import App.App (App)
-import Codec.Binary.UTF8.String
 import Control.Monad
 import Control.Monad.Writer.Lazy
+import Data.ByteString qualified as BS
 import Data.ByteString.Builder
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
@@ -662,13 +662,12 @@ lowerValue h resultVar v cont =
       uncast h resultVar (LC.VarGlobal globalName) LT.Pointer cont
     C.VarLocal y ->
       return $ LC.Let resultVar (LC.nop $ LC.VarLocal y) cont
-    C.VarStaticText text -> do
-      let i8s = encode $ T.unpack text
-      let len = length i8s
+    C.VarStaticBytes bytes -> do
+      let len = BS.length bytes
       i <- liftIO $ Gensym.newCount (gensymHandle h)
-      let name = "text;" <> T.pack (show i)
-      let encodedText = foldMap (\w -> "\\" <> word8HexFixed w) i8s
-      liftIO $ insertStaticText h name encodedText len
+      let name = "bytes;" <> T.pack (show i)
+      let encodedBytes = foldMap (\w -> "\\" <> word8HexFixed w) (BS.unpack bytes)
+      liftIO $ insertStaticText h name encodedBytes len
       uncast h resultVar (LC.VarTextName name) LT.Pointer cont
     C.SigmaIntro size ds -> do
       let arrayType = AggTypeArray size LT.Pointer

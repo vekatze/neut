@@ -9,6 +9,7 @@ data PrimType
   | Float FloatSize
   | Rune
   | Text
+  | Blob
   | Pointer
   deriving (Show, G.Generic, Eq, Ord)
 
