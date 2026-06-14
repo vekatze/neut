@@ -75,6 +75,22 @@ fieldSlotCount field =
     Flattened _ slotCount ->
       slotCount
 
+toAffineFieldApp :: Handle -> Ident -> FieldLayout -> IO C.Comp
+toAffineFieldApp h x field =
+  case field of
+    Direct t ->
+      Utility.toAffineApp (utilityHandle h) (C.VarLocal x) t
+    Flattened t _ ->
+      Utility.toAffineAppWith (utilityHandle h) True (C.VarLocal x) t
+
+toRelevantFieldApp :: Handle -> Ident -> FieldLayout -> IO C.Comp
+toRelevantFieldApp h x field =
+  case field of
+    Direct t ->
+      Utility.toRelevantApp (utilityHandle h) (C.VarLocal x) t
+    Flattened t _ ->
+      Utility.toRelevantAppWith (utilityHandle h) True (C.VarLocal x) t
+
 data FieldSlots
   = DirectSlot Ident Ident
   | FlattenedSlots Ident [Ident]
@@ -268,21 +284,25 @@ sigmaBinder4 h info v = do
   headerEntries <- makeHeaderEntries h (headerSize info)
   let n = length headerEntries
   let dataArgEntries = dataArgs info
-  let fieldEntries = map (\(x, field) -> (x, fieldType field)) (consArgs info)
+  let fields = consArgs info
+  let fieldEntries = map (\(x, field) -> (x, fieldType field)) fields
   let readEntries = headerEntries ++ dataArgEntries
   let valueEntries = readEntries ++ fieldEntries
-  as <- forM valueEntries $ \(x, t) -> do
+  readApps <- forM readEntries $ \(x, t) -> do
     Utility.toRelevantApp (utilityHandle h) (C.VarLocal x) t
+  fieldApps <- forM fields $ \(x, field) -> do
+    toRelevantFieldApp h x field
+  let as = readApps ++ fieldApps
   (copyNames, copyValues) <- mapAndUnzipM (const $ Gensym.createVar (gensymHandle h) "pair") valueEntries
   let copiedHeader = take n copyValues
   let copiedDataArgs = take (length dataArgEntries) $ drop n copyValues
   bodyAfterFlatten <- do
-    let fields = zip (map snd (consArgs info)) (drop (n + length dataArgEntries) copyValues)
-    flattenFields (gensymHandle h) fields $ \resultSlots ->
+    let fieldValues = zip (map snd fields) (drop (n + length dataArgEntries) copyValues)
+    flattenFields (gensymHandle h) fieldValues $ \resultSlots ->
       C.UpIntro $ C.SigmaIntro (totalSlotCount info) (copiedHeader ++ copiedDataArgs ++ resultSlots)
   let bodyBase = Utility.bindLet (zip copyNames as) bodyAfterFlatten
   let fieldStart = n + length dataArgEntries
-  let bodyWithFields = bindFieldsInPlace v (totalSlotCount info) fieldStart (consArgs info) bodyBase
+  let bodyWithFields = bindFieldsInPlace v (totalSlotCount info) fieldStart fields bodyBase
   body' <- Linearize.linearize (linearizeHandle h) readEntries bodyWithFields
   return $ C.SigmaElim False 0 (totalSlotCount info) (map fst headerEntries ++ map fst (dataArgs info)) v body'
 
@@ -293,11 +313,15 @@ sigmaBinderT h info v = do
   let fieldSlotNames = concatMap fieldSlotVars fieldSlots
   let readVars = map fst headerEntries ++ map fst (dataArgs info) ++ fieldSlotNames
   let dataArgEntries = dataArgs info
-  let fieldEntries = map (\(x, field) -> (x, fieldType field)) (consArgs info)
+  let fields = consArgs info
+  let fieldEntries = map (\(x, field) -> (x, fieldType field)) fields
   let readEntries = headerEntries ++ dataArgEntries
   let valueEntries = readEntries ++ fieldEntries
-  as <- forM valueEntries $ \(x, t) -> do
+  readApps <- forM readEntries $ \(x, t) -> do
     Utility.toAffineApp (utilityHandle h) (C.VarLocal x) t
+  fieldApps <- forM fields $ \(x, field) -> do
+    toAffineFieldApp h x field
+  let as = readApps ++ fieldApps
   holes <- mapM (const $ Gensym.newIdentFromText (gensymHandle h) "arg") valueEntries
   let bodyBase = Utility.bindLet (zip holes as) $ C.UpIntro C.null
   let bodyWithFields = bindFieldValues fieldSlots bodyBase
