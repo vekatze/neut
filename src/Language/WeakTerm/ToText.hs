@@ -350,7 +350,7 @@ showPrimValue primValue =
           T.pack (show name)
         PO.PrimConvOp name _ _ ->
           T.pack (show name)
-    WPV.String _ bytes ->
+    WPV.String _ _ bytes ->
       T.pack $ show $ BS.unpack bytes
     WPV.NoeticString _ text ->
       T.pack $ show text

@@ -12,6 +12,7 @@ import Data.Binary
 import Data.ByteString qualified as BS
 import Data.Text qualified as T
 import GHC.Generics (Generic)
+import Language.Common.ModuleID qualified as MID
 import Language.Common.PrimOp
 import Language.Common.PrimOp.BinaryOp
 import Language.Common.PrimOp.CmpOp
@@ -23,7 +24,7 @@ data WeakPrimValue a
   = Int a Integer
   | Float a Double
   | Op PrimOp
-  | String a BS.ByteString
+  | String MID.ModuleID a BS.ByteString
   | NoeticString a T.Text
   | NoeticBinary a BS.ByteString
   | Text T.Text
@@ -42,8 +43,8 @@ instance Functor WeakPrimValue where
         Float (f t) v
       Op op ->
         Op op
-      String t text ->
-        String (f t) text
+      String coreModuleID t bytes ->
+        String coreModuleID (f t) bytes
       NoeticString t text ->
         NoeticString (f t) text
       NoeticBinary t bytes ->
@@ -64,7 +65,7 @@ instance Foldable WeakPrimValue where
         f t
       Op _ ->
         mempty
-      String t _ ->
+      String _ t _ ->
         f t
       NoeticString t _ ->
         f t
@@ -86,8 +87,8 @@ instance Traversable WeakPrimValue where
         Float <$> f t <*> pure v
       Op op ->
         pure $ Op op
-      String t text ->
-        String <$> f t <*> pure text
+      String coreModuleID t bytes ->
+        String coreModuleID <$> f t <*> pure bytes
       NoeticString t text ->
         NoeticString <$> f t <*> pure text
       NoeticBinary t bytes ->

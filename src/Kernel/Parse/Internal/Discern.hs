@@ -645,8 +645,10 @@ discern h term =
         Left reason ->
           raiseError m $ "Could not interpret the following as a string: " <> str <> "\nReason: " <> reason
         Right bytes -> do
+          ensureStringLiteralTypes h m
+          coreModuleID <- Alias.resolveModuleAlias (H.aliasHandle h) m coreModuleAlias
           hole <- liftIO $ WT.createTypeHole (H.gensymHandle h) m []
-          return $ m :< WT.Prim (WPV.String hole bytes)
+          return $ m :< WT.Prim (WPV.String coreModuleID hole bytes)
     m :< RT.With withClause -> do
       let (binder, body) = RT.extractFromKeywordClause withClause
       case body of
@@ -1434,6 +1436,13 @@ constructDefaultKeyMap :: H.Handle -> Hint -> [Key] -> IO (Map.HashMap Key (Hint
 constructDefaultKeyMap h m keyList = do
   names <- mapM (const $ Gensym.newTextForHole (H.gensymHandle h)) keyList
   return $ Map.fromList $ zipWith (\k v -> (k, (m, RP.Var VK.Normal (Var v)))) keyList names
+
+ensureStringLiteralTypes :: H.Handle -> Hint -> App ()
+ensureStringLiteralTypes h m = do
+  stringName <- liftEither $ locatorToName m coreString
+  binaryName <- liftEither $ locatorToName m coreBinary
+  void $ resolveName h (blur m) stringName
+  void $ resolveName h (blur m) binaryName
 
 locatorToName :: Hint -> T.Text -> Either E.Error Name
 locatorToName m text = do

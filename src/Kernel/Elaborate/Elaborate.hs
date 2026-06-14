@@ -53,8 +53,8 @@ import Kernel.Parse.Internal.Handle.UnusedTopLevelName qualified as UnusedTopLev
 import Kernel.Parse.Internal.Handle.UsedTopLevelName qualified as UsedTopLevelName
 import Language.Common.Annotation qualified as AN
 import Language.Common.Attr.Lam qualified as AttrL
-import Language.Common.BaseName qualified as BN
 import Language.Common.BaseLowType qualified as BLT
+import Language.Common.BaseName qualified as BN
 import Language.Common.BasePrimType qualified as BPT
 import Language.Common.Binder
 import Language.Common.CreateSymbol qualified as Gensym
@@ -73,11 +73,14 @@ import Language.Common.IsConstLike (IsConstLike)
 import Language.Common.LamKind qualified as LK
 import Language.Common.LowMagic qualified as LM
 import Language.Common.Magic qualified as M
+import Language.Common.ModuleID qualified as MID
 import Language.Common.PiElimKind qualified as PEK
 import Language.Common.PiKind qualified as PK
 import Language.Common.PrimNumSize
 import Language.Common.PrimType qualified as PT
+import Language.Common.SourceLocator qualified as SL
 import Language.Common.StmtKind qualified as SK
+import Language.Common.StrictGlobalLocator qualified as SGL
 import Language.Common.Text.Util (decodeUtf8Bytes)
 import Language.LowComp.DeclarationName qualified as DN
 import Language.Term.Inline qualified as Inline
@@ -712,8 +715,8 @@ elaboratePrimValue h m primValue =
       return $ PV.Float t' size x
     WPV.Op op ->
       return $ PV.Op op
-    WPV.String t text -> do
-      strictifyStringLiteral h m text t
+    WPV.String coreModuleID t bytes -> do
+      strictifyStringLiteral h m coreModuleID bytes t
     WPV.NoeticString t text -> do
       t' <- elaborateType h t
       return $ PV.NoeticString t' text
@@ -785,8 +788,10 @@ strictifyFloatType h m x t = do
     _ :< _ ->
       raiseNonFloatType m x (weakenType t')
 
-strictifyStringLiteral :: Handle -> Hint -> BS.ByteString -> WT.WeakType -> App (PV.PrimValue TM.Type)
-strictifyStringLiteral h m bytes t = do
+strictifyStringLiteral :: Handle -> Hint -> MID.ModuleID -> BS.ByteString -> WT.WeakType -> App (PV.PrimValue TM.Type)
+strictifyStringLiteral h m coreModuleID bytes t = do
+  let stringDD = makeCoreStringDD coreModuleID
+  let binaryDD = makeCoreBinaryDD coreModuleID
   t' <- reduceWeakType h t >>= elaborateType h
   case t' of
     _ :< TM.PrimType PT.Text -> do
@@ -794,12 +799,16 @@ strictifyStringLiteral h m bytes t = do
       return $ PV.Text text
     _ :< TM.PrimType PT.Blob -> do
       return $ PV.Blob bytes
-    _ :< TM.BoxNoema inner
-      | isStringObjectType inner -> do
+    _ :< TM.BoxNoema inner -> do
+      inner' <- reduceWeakType h (weakenType inner) >>= elaborateType h
+      if isStringObjectType stringDD inner'
+        then do
           text <- decodeStringLiteralBytes m bytes
-          return $ PV.NoeticString inner text
-      | isBinaryObjectType inner -> do
-          return $ PV.NoeticBinary inner bytes
+          return $ PV.NoeticString inner' text
+        else
+          if isBinaryObjectType binaryDD inner'
+            then return $ PV.NoeticBinary inner bytes
+            else raiseNonStringType m bytes (weakenType t')
     _ :< _ ->
       raiseNonStringType m bytes (weakenType t')
 
@@ -811,35 +820,31 @@ decodeStringLiteralBytes m bytes = do
     Left reason ->
       raiseError m $ "This string literal is not valid UTF-8.\nReason: " <> reason
 
-isStringObjectType :: TM.Type -> Bool
-isStringObjectType t =
+isStringObjectType :: DD.DefiniteDescription -> TM.Type -> Bool
+isStringObjectType stringDD t =
   case t of
-    _ :< TM.TVar x ->
-      Ident.toText x == BN.reify BN.stringType
-    _ :< TM.TVarGlobal _ dd ->
-      DD.localLocator dd == BN.reify BN.stringType
-    _ :< TM.TyApp inner [] ->
-      isStringObjectType inner
     _ :< TM.Data _ dd [] ->
-      DD.localLocator dd == BN.reify BN.stringType
+      dd == stringDD
     _ ->
       False
 
-isBinaryObjectType :: TM.Type -> Bool
-isBinaryObjectType t =
+isBinaryObjectType :: DD.DefiniteDescription -> TM.Type -> Bool
+isBinaryObjectType binaryDD t =
   case t of
-    _ :< TM.TVar x ->
-      Ident.toText x == BN.reify BN.binary
-    _ :< TM.TVarGlobal _ dd ->
-      DD.localLocator dd == BN.reify BN.binary
-    _ :< TM.TyApp inner [] ->
-      isBinaryObjectType inner
-    _ :< TM.Data _ dd [] ->
-      DD.localLocator dd == BN.reify BN.binary
     _ :< TM.Resource dd _ ->
-      DD.localLocator dd == BN.reify BN.binary
+      dd == binaryDD
     _ ->
       False
+
+makeCoreStringDD :: MID.ModuleID -> DD.DefiniteDescription
+makeCoreStringDD moduleID = do
+  let stringSGL = SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.stringLocator}
+  DD.newByGlobalLocator stringSGL BN.stringType
+
+makeCoreBinaryDD :: MID.ModuleID -> DD.DefiniteDescription
+makeCoreBinaryDD moduleID = do
+  let binarySGL = SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.binaryLocator}
+  DD.newByGlobalLocator binarySGL BN.binary
 
 elaborateWeakBinder :: Handle -> BinderF WT.WeakType -> App (BinderF TM.Type)
 elaborateWeakBinder h (m, k, x, t) = do
