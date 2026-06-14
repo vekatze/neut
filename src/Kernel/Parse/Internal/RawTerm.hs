@@ -11,6 +11,7 @@ module Kernel.Parse.Internal.RawTerm
     parseDef,
     parseAliasDef,
     parseGeist,
+    parseNominalGeist,
     parseAliasGeist,
     parseResourceGeist,
     parseConstantDef,
@@ -545,14 +546,28 @@ parseAliasDef h nameParser = do
       c
     )
 
+data DefaultArgsMode
+  = ParseDefaultArgs
+  | NoDefaultArgs
+
 parseGeist :: Handle -> Parser (a, C) -> Parser (RT.RawGeist a, C)
-parseGeist h nameParser = do
+parseGeist =
+  parseGeistWith ParseDefaultArgs
+
+parseNominalGeist :: Handle -> Parser (a, C) -> Parser (RT.RawGeist a, C)
+parseNominalGeist =
+  parseGeistWith NoDefaultArgs
+
+parseGeistWith :: DefaultArgsMode -> Handle -> Parser (a, C) -> Parser (RT.RawGeist a, C)
+parseGeistWith mode h nameParser = do
   loc <- getCurrentHint
   name <- nameParser
   impArgs <- parseImplicitParams h
   let isConstLike = False
   expArgs@(expSeries, _) <- seriesParen $ mandatoryBinder h
-  defaultArgs <- parseDefaultParams h
+  defaultArgs <- case mode of
+    ParseDefaultArgs -> parseDefaultParams h
+    NoDefaultArgs -> return RT.emptyDefaultArgs
   lift $ ensureArgumentLinearity S.empty $ map (\(mx, _, x, _, _, _) -> (mx, x)) $ SE.extract expSeries
   (isDestPassing, c2, (cod, c)) <- parseDefInfoCod h
   return (RT.RawGeist {loc, name, isConstLike, isDestPassing, impArgs, defaultArgs, expArgs, cod = (c2, cod)}, c)
@@ -562,19 +577,18 @@ parseAliasGeist h nameParser = do
   loc <- getCurrentHint
   (name', c1) <- nameParser
   impArgs <- parseImplicitParams h
-  (isConstLike, expArgs@(expSeries, _), defaultArgs) <- do
+  (isConstLike, expArgs@(expSeries, _)) <- do
     choice
       [ do
           expDomArgList <- seriesParen $ preBinder h
-          defaultArgs <- parseDefaultParams h
-          return (False, expDomArgList, defaultArgs),
-        return (True, (SE.emptySeries (Just SE.Paren) SE.Comma, []), (SE.emptySeries (Just SE.Bracket) SE.Comma, []))
+          return (False, expDomArgList),
+        return (True, (SE.emptySeries (Just SE.Paren) SE.Comma, []))
       ]
   lift $ ensureArgumentLinearity S.empty $ map (\(mx, _, x, _, _, _) -> (mx, x)) $ SE.extract expSeries
   m <- getCurrentHint
   let cod = m :< RT.Tau
   let isDestPassing = False
-  return (RT.RawGeist {loc, name = (name', c1), isConstLike, isDestPassing, impArgs, defaultArgs, expArgs, cod = ([], cod)}, [])
+  return (RT.RawGeist {loc, name = (name', c1), isConstLike, isDestPassing, impArgs, defaultArgs = RT.emptyDefaultArgs, expArgs, cod = ([], cod)}, [])
 
 parseResourceGeist :: Parser (a, C) -> Parser (RT.RawGeist a, C)
 parseResourceGeist nameParser = do
