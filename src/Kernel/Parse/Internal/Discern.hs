@@ -641,12 +641,12 @@ discern h term =
             Nothing ->
               raiseError m $ "No such static file is defined: `" <> key <> "`"
     m :< RT.String str -> do
-      case parseText str of
+      case parseBytes str of
         Left reason ->
           raiseError m $ "Could not interpret the following as a string: " <> str <> "\nReason: " <> reason
-        Right str' -> do
+        Right bytes -> do
           hole <- liftIO $ WT.createTypeHole (H.gensymHandle h) m []
-          return $ m :< WT.Prim (WPV.String hole str')
+          return $ m :< WT.Prim (WPV.String hole bytes)
     m :< RT.NoeticString s str -> do
       s' <- discernType h s
       case parseText str of

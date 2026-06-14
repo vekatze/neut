@@ -9,6 +9,7 @@ module Language.WeakTerm.WeakPrimValue
 where
 
 import Data.Binary
+import Data.ByteString qualified as BS
 import Data.Text qualified as T
 import GHC.Generics (Generic)
 import Language.Common.PrimOp
@@ -22,8 +23,9 @@ data WeakPrimValue a
   = Int a Integer
   | Float a Double
   | Op PrimOp
-  | String a T.Text
+  | String a BS.ByteString
   | NoeticString a T.Text
+  | NoeticBinary a BS.ByteString
   | Text T.Text
   | Rune RU.Rune
   deriving (Show, Generic)
@@ -43,6 +45,8 @@ instance Functor WeakPrimValue where
         String (f t) text
       NoeticString t text ->
         NoeticString (f t) text
+      NoeticBinary t bytes ->
+        NoeticBinary (f t) bytes
       Text text ->
         Text text
       Rune r ->
@@ -60,6 +64,8 @@ instance Foldable WeakPrimValue where
       String t _ ->
         f t
       NoeticString t _ ->
+        f t
+      NoeticBinary t _ ->
         f t
       Text _ ->
         mempty
@@ -79,6 +85,8 @@ instance Traversable WeakPrimValue where
         String <$> f t <*> pure text
       NoeticString t text ->
         NoeticString <$> f t <*> pure text
+      NoeticBinary t bytes ->
+        NoeticBinary <$> f t <*> pure bytes
       Text text ->
         pure $ Text text
       Rune r ->

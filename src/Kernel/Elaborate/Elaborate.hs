@@ -15,10 +15,12 @@ import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.IO.Class
 import Data.Bifunctor
 import Data.Bitraversable (bimapM)
+import Data.ByteString qualified as BS
 import Data.IORef
 import Data.IntMap qualified as IntMap
 import Data.Set qualified as S
 import Data.Text qualified as T
+import Data.Text.Encoding qualified as TE
 import Gensym.Trick qualified as Gensym
 import Kernel.Common.Cache qualified as Cache
 import Kernel.Common.Const (holeLiteral)
@@ -715,6 +717,9 @@ elaboratePrimValue h m primValue =
     WPV.NoeticString t text -> do
       t' <- elaborateType h t
       return $ PV.NoeticString t' text
+    WPV.NoeticBinary t bytes -> do
+      t' <- elaborateType h t
+      return $ PV.NoeticBinary t' bytes
     WPV.Text text ->
       return $ PV.Text text
     WPV.Rune r ->
@@ -778,17 +783,29 @@ strictifyFloatType h m x t = do
     _ :< _ ->
       raiseNonFloatType m x (weakenType t')
 
-strictifyStringLiteral :: Handle -> Hint -> T.Text -> WT.WeakType -> App (PV.PrimValue TM.Type)
-strictifyStringLiteral h m text t = do
+strictifyStringLiteral :: Handle -> Hint -> BS.ByteString -> WT.WeakType -> App (PV.PrimValue TM.Type)
+strictifyStringLiteral h m bytes t = do
   t' <- reduceWeakType h t >>= elaborateType h
   case t' of
     _ :< TM.PrimType PT.Text -> do
+      text <- decodeStringLiteralBytes m bytes
       return $ PV.Text text
     _ :< TM.BoxNoema inner
       | isStringObjectType inner -> do
+          text <- decodeStringLiteralBytes m bytes
           return $ PV.NoeticString inner text
+      | isBinaryObjectType inner -> do
+          return $ PV.NoeticBinary inner bytes
     _ :< _ ->
-      raiseNonStringType m text (weakenType t')
+      raiseNonStringType m bytes (weakenType t')
+
+decodeStringLiteralBytes :: Hint -> BS.ByteString -> App T.Text
+decodeStringLiteralBytes m bytes = do
+  case TE.decodeUtf8' bytes of
+    Right text ->
+      return text
+    Left err ->
+      raiseError m $ "This string literal is not valid UTF-8: " <> T.pack (show err)
 
 isStringObjectType :: TM.Type -> Bool
 isStringObjectType t =
@@ -801,6 +818,20 @@ isStringObjectType t =
       isStringObjectType inner
     _ :< TM.Data _ dd [] ->
       DD.localLocator dd == BN.reify BN.stringType
+    _ ->
+      False
+
+isBinaryObjectType :: TM.Type -> Bool
+isBinaryObjectType t =
+  case t of
+    _ :< TM.TVar x ->
+      Ident.toText x == BN.reify BN.binary
+    _ :< TM.TVarGlobal _ dd ->
+      DD.localLocator dd == BN.reify BN.binary
+    _ :< TM.TyApp inner [] ->
+      isBinaryObjectType inner
+    _ :< TM.Data _ dd [] ->
+      DD.localLocator dd == BN.reify BN.binary
     _ ->
       False
 
@@ -987,12 +1018,12 @@ raiseNonFloatType m x t = do
       <> "` is a float, but its type is: "
       <> toTextType t
 
-raiseNonStringType :: Hint -> T.Text -> WT.WeakType -> App a
-raiseNonStringType m text t = do
+raiseNonStringType :: Hint -> BS.ByteString -> WT.WeakType -> App a
+raiseNonStringType m bytes t = do
   raiseError m $
     "The term `"
-      <> T.pack (show text)
-      <> "` is a string, but its type is: "
+      <> T.pack (show bytes)
+      <> "` is a string literal, but its type is neither text, &string, nor &binary: "
       <> toTextType t
 
 raiseLiteralNonExhaustivePatternMatching :: Hint -> App a

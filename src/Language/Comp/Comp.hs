@@ -26,6 +26,7 @@ import Data.HashMap.Strict qualified as Map
 import Data.IntMap qualified as IntMap
 import Data.List (intercalate)
 import Data.Maybe (mapMaybe)
+import Data.ByteString qualified as BS
 import Data.Text qualified as T
 import Language.Common.ArgNum
 import Language.Common.BaseLowType
@@ -47,6 +48,7 @@ data Value
   = VarLocal Ident
   | VarGlobal DD.DefiniteDescription ArgNum (FCT.ForeignCodType BaseLowType)
   | VarStaticText T.Text
+  | VarStaticBytes BS.ByteString
   | SigmaIntro Int [Value]
   | Int IntSize Integer
   | Float FloatSize Double
@@ -61,6 +63,8 @@ instance Show Value where
         T.unpack $ DD.reify dd
       VarStaticText dd ->
         T.unpack $ "\"" <> dd <> "\""
+      VarStaticBytes bytes ->
+        show $ BS.unpack bytes
       SigmaIntro size vs ->
         "[" ++ show size ++ "](" ++ intercalate ", " (map show vs) ++ ")"
       Language.Comp.Comp.Int _ i ->

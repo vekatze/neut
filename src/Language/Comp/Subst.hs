@@ -98,6 +98,8 @@ substValue sub term =
       term
     C.VarStaticText {} ->
       term
+    C.VarStaticBytes {} ->
+      term
     C.SigmaIntro size vs -> do
       let vs' = map (substValue sub) vs
       C.SigmaIntro size vs'

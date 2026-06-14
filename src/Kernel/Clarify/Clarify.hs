@@ -614,6 +614,8 @@ clarifyTerm h context term =
           clarifyPrimOp h context op m
         PV.NoeticString _ text ->
           return $ C.UpIntro $ C.VarStaticText text
+        PV.NoeticBinary _ bytes ->
+          return $ C.UpIntro $ C.VarStaticBytes bytes
         PV.Text text ->
           return $ C.UpIntro $ C.VarStaticText text
         PV.Rune r -> do

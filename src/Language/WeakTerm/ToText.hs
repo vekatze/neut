@@ -7,6 +7,7 @@ module Language.WeakTerm.ToText
 where
 
 import Control.Comonad.Cofree
+import Data.ByteString qualified as BS
 import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
 import Kernel.Common.Module (Module)
@@ -349,10 +350,12 @@ showPrimValue primValue =
           T.pack (show name)
         PO.PrimConvOp name _ _ ->
           T.pack (show name)
-    WPV.String _ text ->
-      T.pack $ show text
+    WPV.String _ bytes ->
+      T.pack $ show $ BS.unpack bytes
     WPV.NoeticString _ text ->
       T.pack $ show text
+    WPV.NoeticBinary _ bytes ->
+      T.pack $ show $ BS.unpack bytes
     WPV.Text text ->
       T.pack $ show text
     WPV.Rune r ->

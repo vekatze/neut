@@ -64,6 +64,8 @@ freeVarsWithHints term =
       case prim of
         PV.NoeticString t _ ->
           freeVarsWithHintsType t
+        PV.NoeticBinary t _ ->
+          freeVarsWithHintsType t
         PV.Text _ ->
           mempty
         PV.Int t _ _ ->
