@@ -647,7 +647,7 @@ decodeConsArgsMaybe mArgs =
 consArgToDoc :: (FieldHint, RawBinder RawType) -> D.Doc
 consArgToDoc (hint, binder) =
   case hint of
-    FieldMixed ->
+    FieldMixed _ ->
       D.join [piArgToDoc binder, D.text " mix"]
     FieldAuto ->
       piArgToDoc binder

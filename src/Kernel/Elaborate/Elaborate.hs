@@ -31,6 +31,8 @@ import Kernel.Common.Handle.Global.Resource qualified as Resource
 import Kernel.Common.Handle.Global.Type qualified as Type
 import Kernel.Common.ManageCache qualified as Cache
 import Kernel.Common.OptimizableData qualified as OD
+import Kernel.Common.ReadableDD qualified as ReadableDD
+import Kernel.Common.Source qualified as Source
 import Kernel.Common.Target hiding (Main)
 import Kernel.Elaborate.Internal.EnsureAffinity qualified as EnsureAffinity
 import Kernel.Elaborate.Internal.Handle.Constraint qualified as Constraint
@@ -372,12 +374,12 @@ elaborateStmtKindType h stmtKind =
       return $ SK.Data dataName dataArgs'' consInfoList' isNominal shouldOptimize
 
 resolveFieldLayout :: Handle -> DI.FieldHint -> BinderF TM.Type -> App DI.FieldLayout
-resolveFieldLayout h hint (m, _, _, t) =
+resolveFieldLayout h hint (_, _, _, t) =
   case hint of
     DI.FieldAuto ->
       return DI.LayoutDirect
-    DI.FieldMixed ->
-      resolveMixed h S.empty m t
+    DI.FieldMixed mMix ->
+      resolveMixed h S.empty mMix t
 
 resolveMixed :: Handle -> S.Set DD.DefiniteDescription -> Hint -> TM.Type -> App DI.FieldLayout
 resolveMixed h visited m ty =
@@ -386,16 +388,16 @@ resolveMixed h visited m ty =
       optDataOrNone <- liftIO $ OptimizableData.lookup (optDataHandle h) dataName
       case optDataOrNone of
         Just OD.Enum ->
-          raiseError m $ "the type `" <> DD.reify dataName <> "` is an enum and cannot be mixed"
+          raiseError m $ "the type `" <> showDD h dataName <> "` is an enum and cannot be mixed"
         Just OD.Unary ->
           if S.member dataName visited
-            then raiseError m $ cannotMixRecursiveMessage dataName
+            then raiseError m $ cannotMixRecursiveMessage h dataName
             else do
               innerType <- specializeUnaryDataType h m dataName dataArgs
               resolveMixed h (S.insert dataName visited) m innerType
         Nothing ->
           if S.member dataName visited
-            then raiseError m $ cannotMixRecursiveMessage dataName
+            then raiseError m $ cannotMixRecursiveMessage h dataName
             else do
               dataInfo <- lookupDataInfoFull h m dataName
               return $ DI.LayoutFlattened $ DI.dataTotalSlotCount (DI.dataArgs dataInfo) (DI.consInfoList dataInfo)
@@ -405,17 +407,37 @@ resolveMixed h visited m ty =
         Just (Resource.Flattened slotCount) ->
           return $ DI.LayoutFlattened slotCount
         Just Resource.Direct ->
-          raiseError m $ "the resource `" <> DD.reify dataName <> "` has no fixed size and cannot be mixed"
+          raiseError m $ "the resource `" <> showDD h dataName <> "` has no fixed size and cannot be mixed"
         Nothing ->
-          raiseError m $ "could not find the size of the resource `" <> DD.reify dataName <> "`"
+          raiseError m $ "could not find the size of the resource `" <> showDD h dataName <> "`"
     _ :< TM.Pi {} ->
       return $ DI.LayoutFlattened DI.closureSlotCount
-    _ ->
-      raiseError m "the type of this field cannot be mixed"
+    _ :< TM.Tau ->
+      cannotMixFieldType m "the type universe"
+    _ :< TM.TVar {} ->
+      cannotMixFieldType m "a type variable"
+    _ :< TM.TVarGlobal {} ->
+      cannotMixFieldType m "a nominal type"
+    _ :< TM.TyApp {} ->
+      cannotMixFieldType m "a nominal type"
+    _ :< TM.Box {} ->
+      cannotMixFieldType m "a box type"
+    _ :< TM.BoxNoema {} ->
+      cannotMixFieldType m "a noema type"
+    _ :< TM.Code {} ->
+      cannotMixFieldType m "a code type"
+    _ :< TM.PrimType {} ->
+      cannotMixFieldType m "a primitive type"
+    _ :< TM.Void ->
+      cannotMixFieldType m "the void type"
 
-cannotMixRecursiveMessage :: DD.DefiniteDescription -> T.Text
-cannotMixRecursiveMessage dataName =
-  "the recursive type `" <> DD.reify dataName <> "` cannot be mixed"
+cannotMixFieldType :: Hint -> T.Text -> App a
+cannotMixFieldType m typeDesc =
+  raiseError m $ typeDesc <> " cannot be mixed"
+
+cannotMixRecursiveMessage :: Handle -> DD.DefiniteDescription -> T.Text
+cannotMixRecursiveMessage h dataName =
+  "the recursive type `" <> showDD h dataName <> "` cannot be mixed"
 
 lookupDataInfoFull :: Handle -> Hint -> DD.DefiniteDescription -> App (DI.DataInfo (BinderF TM.Type))
 lookupDataInfoFull h m dataName = do
@@ -424,21 +446,25 @@ lookupDataInfoFull h m dataName = do
     Just dataInfo ->
       return dataInfo
     Nothing ->
-      raiseError m $ "could not find the layout of the type `" <> DD.reify dataName <> "`"
+      raiseError m $ "could not find the layout of the type `" <> showDD h dataName <> "`"
 
 specializeUnaryDataType :: Handle -> Hint -> DD.DefiniteDescription -> [TM.Type] -> App TM.Type
 specializeUnaryDataType h m dataName dataArgs = do
   dataInfo <- lookupDataInfoFull h m dataName
   let dataBinders = DI.dataArgs dataInfo
   when (length dataBinders /= length dataArgs) $ do
-    raiseError m $ "arity mismatch while mixing the unary type `" <> DD.reify dataName <> "`"
+    raiseError m $ "arity mismatch while mixing the unary type `" <> showDD h dataName <> "`"
   let binderIds = map (\(_, _, x, _) -> x) dataBinders
   let sub = IntMap.fromList $ zip (map Ident.toInt binderIds) (map TmSubst.Type dataArgs)
   case DI.consInfoList dataInfo of
     [DI.ConsInfo {DI.consArgs = [(_, _, _, t)]}] ->
       liftIO $ TmSubst.substType (TmSubst.new (gensymHandle h)) sub t
     _ ->
-      raiseError m $ "broken unary metadata for `" <> DD.reify dataName <> "`"
+      raiseError m $ "broken unary metadata for `" <> showDD h dataName <> "`"
+
+showDD :: Handle -> DD.DefiniteDescription -> T.Text
+showDD h =
+  ReadableDD.readableDD' (Source.sourceModule (currentSource h))
 
 elaborate' :: Handle -> WT.WeakTerm -> App TM.Term
 elaborate' h term = do

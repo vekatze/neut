@@ -324,10 +324,13 @@ parseConsArgs h = do
 parseDefineDataClauseArg :: Handle -> Parser ((FieldHint, RawBinder RT.RawType), C)
 parseDefineDataClauseArg h = do
   (binder, c) <- parseDataClauseArgBinder h
-  mMixed <- optional $ keyword "mix"
+  mMixed <- optional $ do
+    mMix <- getCurrentHint
+    cMix <- keyword "mix"
+    return (mMix, cMix)
   case mMixed of
-    Just _ ->
-      return ((FieldMixed, binder), c)
+    Just (mMix, cMix) ->
+      return ((FieldMixed mMix, binder), c ++ cMix)
     Nothing ->
       return ((FieldAuto, binder), c)
 
