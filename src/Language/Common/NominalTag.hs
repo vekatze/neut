@@ -22,6 +22,7 @@ data NominalTag
   | Alias
   | AliasOpaque
   | Data
+  | DataRaw
   | Resource
   deriving (Eq, Ord, Show, Generic)
 
@@ -50,6 +51,8 @@ nominalTagToText tag =
       "alias-opaque"
     Data ->
       "data"
+    DataRaw ->
+      "data-raw"
     Resource ->
       "resource"
 
@@ -75,6 +78,8 @@ isTermTag tag =
     AliasOpaque ->
       False
     Data ->
+      False
+    DataRaw ->
       False
     Resource ->
       False

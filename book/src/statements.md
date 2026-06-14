@@ -706,7 +706,10 @@ The following kinds of top-level items can be declared in `nominal`:
 - `alias`
 - `alias-opaque`
 - `data`
+- `data-raw`
 - `resource`
+
+Default arguments can't be used in `nominal`.
 
 ## `foreign`
 

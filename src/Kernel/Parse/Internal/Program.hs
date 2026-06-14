@@ -268,6 +268,11 @@ parseNominalEntry h =
         loc <- getCurrentLoc
         return ((Data, geist, loc), cTag ++ cGeist),
       do
+        cTag <- keyword "data-raw"
+        (geist, cGeist) <- parseNominalData h
+        loc <- getCurrentLoc
+        return ((DataRaw, geist, loc), cTag ++ cGeist),
+      do
         cTag <- keyword "resource"
         (geist, cGeist) <- parseResourceGeist baseName
         loc <- getCurrentLoc
