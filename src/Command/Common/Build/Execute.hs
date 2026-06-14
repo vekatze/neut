@@ -12,6 +12,7 @@ import Kernel.Common.Handle.Global.Path qualified as Path
 import Kernel.Common.RunProcess qualified as RunProcess
 import Kernel.Common.Target
 import Path
+import System.Exit (ExitCode (..), exitWith)
 
 data Handle = Handle
   { pathHandle :: Path.Handle,
@@ -26,5 +27,9 @@ new (Global.Handle {..}) = do
 execute :: Handle -> MainTarget -> [String] -> App ()
 execute h target args = do
   outputPath <- Path.getExecutableOutputPath (pathHandle h) target
-  _ <- liftIO $ RunProcess.runProcess (runProcessHandle h) (toFilePath outputPath) args
-  return ()
+  exitCode <- liftIO $ RunProcess.runProcess (runProcessHandle h) (toFilePath outputPath) args
+  case exitCode of
+    ExitSuccess ->
+      return ()
+    ExitFailure {} ->
+      liftIO $ exitWith exitCode
