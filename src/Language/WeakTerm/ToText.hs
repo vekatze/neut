@@ -358,6 +358,8 @@ showPrimValue primValue =
       T.pack $ show $ BS.unpack bytes
     WPV.Text text ->
       T.pack $ show text
+    WPV.Blob bytes ->
+      T.pack $ show $ BS.unpack bytes
     WPV.Rune r ->
       "`" <> T.replace "`" "\\`" (RU.asText r) <> "`"
 

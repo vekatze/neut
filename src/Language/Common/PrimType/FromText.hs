@@ -23,6 +23,8 @@ fromText dataSize name
       Just $ PT.Float floatSize
   | name == textTypeName =
       Just PT.Text
+  | name == blobTypeName =
+      Just PT.Blob
   | otherwise =
       Nothing
 
@@ -66,3 +68,6 @@ asLowFloat dataSize s =
 
 textTypeName :: T.Text
 textTypeName = "text"
+
+blobTypeName :: T.Text
+blobTypeName = "blob"

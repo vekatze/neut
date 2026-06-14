@@ -18,6 +18,7 @@ data PrimValue a
   | NoeticString a T.Text
   | NoeticBinary a BS.ByteString
   | Text T.Text
+  | Blob BS.ByteString
   | Rune RU.Rune
   deriving (Show, Generic)
 

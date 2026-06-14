@@ -15,5 +15,7 @@ toText primNum =
       "rune"
     PT.Text ->
       "text"
+    PT.Blob ->
+      "blob"
     PT.Pointer ->
       "pointer"

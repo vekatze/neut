@@ -20,5 +20,7 @@ emitPrimType lowType =
       emitPrimType $ PT.Int IntSize32
     PT.Text ->
       "ptr"
+    PT.Blob ->
+      "ptr"
     PT.Pointer ->
       "ptr"

@@ -68,6 +68,8 @@ freeVarsWithHints term =
           freeVarsWithHintsType t
         PV.Text _ ->
           mempty
+        PV.Blob _ ->
+          mempty
         PV.Int t _ _ ->
           freeVarsWithHintsType t
         PV.Float t _ _ ->

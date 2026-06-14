@@ -362,6 +362,8 @@ infer h term =
           return (m :< WT.Prim (WPV.NoeticBinary t' bytes), m :< WT.BoxNoema t')
         WPV.Text text -> do
           return (m :< WT.Prim (WPV.Text text), m :< WT.PrimType PT.Text)
+        WPV.Blob bytes -> do
+          return (m :< WT.Prim (WPV.Blob bytes), m :< WT.PrimType PT.Blob)
         WPV.Rune _ -> do
           return (m :< WT.Prim prim, m :< WT.PrimType PT.Rune)
     m :< WT.Magic (M.WeakMagic magic) -> do

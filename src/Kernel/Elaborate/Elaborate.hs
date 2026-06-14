@@ -722,6 +722,8 @@ elaboratePrimValue h m primValue =
       return $ PV.NoeticBinary t' bytes
     WPV.Text text ->
       return $ PV.Text text
+    WPV.Blob bytes ->
+      return $ PV.Blob bytes
     WPV.Rune r ->
       return $ PV.Rune r
 
@@ -790,6 +792,8 @@ strictifyStringLiteral h m bytes t = do
     _ :< TM.PrimType PT.Text -> do
       text <- decodeStringLiteralBytes m bytes
       return $ PV.Text text
+    _ :< TM.PrimType PT.Blob -> do
+      return $ PV.Blob bytes
     _ :< TM.BoxNoema inner
       | isStringObjectType inner -> do
           text <- decodeStringLiteralBytes m bytes
@@ -831,6 +835,8 @@ isBinaryObjectType t =
     _ :< TM.TyApp inner [] ->
       isBinaryObjectType inner
     _ :< TM.Data _ dd [] ->
+      DD.localLocator dd == BN.reify BN.binary
+    _ :< TM.Resource dd _ ->
       DD.localLocator dd == BN.reify BN.binary
     _ ->
       False
@@ -1023,7 +1029,7 @@ raiseNonStringType m bytes t = do
   raiseError m $
     "The term `"
       <> T.pack (show bytes)
-      <> "` is a string literal, but its type is neither text, &string, nor &binary: "
+      <> "` is a string literal, but its type is neither text, blob, &string, nor &binary: "
       <> toTextType t
 
 raiseLiteralNonExhaustivePatternMatching :: Hint -> App a

@@ -314,6 +314,8 @@ inline' h term = do
           return $ m :< TM.Prim (PV.NoeticBinary binaryType' bytes)
         PV.Text text ->
           return $ m :< TM.Prim (PV.Text text)
+        PV.Blob bytes ->
+          return $ m :< TM.Prim (PV.Blob bytes)
         PV.Rune {} ->
           return term
     m :< TM.Magic magic -> do

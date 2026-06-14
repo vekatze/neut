@@ -67,6 +67,8 @@ freeVars term =
           freeVarsType t
         PV.Text _ ->
           mempty
+        PV.Blob _ ->
+          mempty
         PV.Int t _ _ ->
           freeVarsType t
         PV.Float t _ _ ->

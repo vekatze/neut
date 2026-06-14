@@ -27,6 +27,7 @@ data WeakPrimValue a
   | NoeticString a T.Text
   | NoeticBinary a BS.ByteString
   | Text T.Text
+  | Blob BS.ByteString
   | Rune RU.Rune
   deriving (Show, Generic)
 
@@ -49,6 +50,8 @@ instance Functor WeakPrimValue where
         NoeticBinary (f t) bytes
       Text text ->
         Text text
+      Blob bytes ->
+        Blob bytes
       Rune r ->
         Rune r
 
@@ -68,6 +71,8 @@ instance Foldable WeakPrimValue where
       NoeticBinary t _ ->
         f t
       Text _ ->
+        mempty
+      Blob _ ->
         mempty
       Rune _ ->
         mempty
@@ -89,6 +94,8 @@ instance Traversable WeakPrimValue where
         NoeticBinary <$> f t <*> pure bytes
       Text text ->
         pure $ Text text
+      Blob bytes ->
+        pure $ Blob bytes
       Rune r ->
         pure $ Rune r
 

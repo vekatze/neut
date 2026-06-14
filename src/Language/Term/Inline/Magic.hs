@@ -87,6 +87,10 @@ evaluateInspectType h m moduleID typeExpr = do
       returnTypeValueIntValue m moduleID (TypeValue.fromIntSize size)
     _ :< TM.PrimType (PT.Float size) ->
       returnTypeValueIntValue m moduleID (TypeValue.fromFloatSize size)
+    _ :< TM.PrimType PT.Text ->
+      returnTypeValueIntValue m moduleID TypeValue.Opaque
+    _ :< TM.PrimType PT.Blob ->
+      returnTypeValueIntValue m moduleID TypeValue.Opaque
     _ :< TM.PrimType PT.Pointer ->
       returnTypeValueIntValue m moduleID TypeValue.Pointer
     _ :< TM.PrimType PT.Rune ->

@@ -619,6 +619,8 @@ clarifyTerm h context term =
           return $ C.UpIntro $ C.VarStaticBytes bytes
         PV.Text text ->
           return $ C.UpIntro $ C.VarStaticBytes $ TE.encodeUtf8 text
+        PV.Blob bytes ->
+          return $ C.UpIntro $ C.VarStaticBytes bytes
         PV.Rune r -> do
           let t = fromPrimNum m (PT.Int PNS.IntSize32)
           clarifyTerm h context $ m :< TM.Prim (PV.Int t PNS.IntSize32 (RU.asInt r))
