@@ -20,6 +20,7 @@ import Kernel.Common.Handle.Global.Artifact qualified as Artifact
 import Kernel.Common.Handle.Global.Data qualified as Data
 import Kernel.Common.Handle.Global.Env qualified as Env
 import Kernel.Common.Handle.Global.GlobalRemark qualified as GlobalRemark
+import Kernel.Common.Handle.Global.ImportedTypeDefCache qualified as ImportedTypeDefCache
 import Kernel.Common.Handle.Global.KeyArg qualified as KeyArg
 import Kernel.Common.Handle.Global.Module qualified as Module
 import Kernel.Common.Handle.Global.OptimizableData qualified as OptimizableData
@@ -49,6 +50,7 @@ data Handle = Handle
     envHandle :: Env.Handle,
     gensymHandle :: Gensym.Handle,
     globalRemarkHandle :: GlobalRemark.Handle,
+    importedTypeDefCacheHandle :: ImportedTypeDefCache.Handle,
     keyArgHandle :: KeyArg.Handle,
     moduleHandle :: Module.Handle,
     optDataHandle :: OptimizableData.Handle,
@@ -99,6 +101,7 @@ newOrError cfg moduleFilePathOrNone = do
       weakTypeDefHandle <- WeakTypeDef.new
       defHandle <- Definition.new
       typeDefHandle <- TypeDef.new
+      importedTypeDefCacheHandle <- ImportedTypeDefCache.new
       antecedentHandle <- Antecedent.new
       globalNameMapHandle <- GlobalNameMap.new
       unusedTopLevelNameHandle <- UnusedTopLevelName.new

@@ -21,6 +21,7 @@ import Data.Containers.ListUtils (nubOrd)
 import Data.HashMap.Strict qualified as Map
 import Data.IntMap qualified as IntMap
 import Data.Maybe
+import Data.Set qualified as S
 import Data.Text qualified as T
 import Gensym.Gensym qualified as Gensym
 import Gensym.Handle qualified as Gensym
@@ -31,6 +32,7 @@ import Kernel.Clarify.Internal.Utility (toRelevantAppWith)
 import Kernel.Clarify.Internal.Utility qualified as Utility
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.Data qualified as Data
+import Kernel.Common.Handle.Global.ImportedTypeDefCache qualified as ImportedTypeDefCache
 import Kernel.Common.Handle.Global.OptimizableData qualified as OptimizableData
 import Kernel.Common.Handle.Global.Platform qualified as Platform
 import Kernel.Common.Handle.Global.Resource qualified as Resource
@@ -95,7 +97,8 @@ data Handle = Handle
     substHandle :: Subst.Handle,
     baseSize :: DS.DataSize,
     typeHandle :: Type.Handle,
-    typeDefHandle :: TypeDef.Handle
+    typeDefHandle :: TypeDef.Handle,
+    importedTypeDefCacheHandle :: ImportedTypeDefCache.Handle
   }
 
 data Context = Context
@@ -151,7 +154,8 @@ newReduceOnlyHandle h = do
         substHandle = substHandle h,
         baseSize = baseSize',
         typeHandle = typeHandle h,
-        typeDefHandle = typeDefHandle h
+        typeDefHandle = typeDefHandle h,
+        importedTypeDefCacheHandle = importedTypeDefCacheHandle h
       }
 
 newAuxReduceHandle :: Gensym.Handle -> C.DefMap -> IO Reduce.Handle
@@ -211,12 +215,36 @@ inlineableTypeDef (sourceStmt, compStmt) = do
 clarifyImportedTypeDefList :: Handle -> [Stmt] -> App [C.CompStmt]
 clarifyImportedTypeDefList h stmtList = do
   typeDefMap <- liftIO $ TypeDef.get' (typeDefHandle h)
-  reduceOnlyHandle <- liftIO $ newReduceOnlyHandle h
   let currentTypeNameList = mapMaybe stmtTypeDefName stmtList
   let typeDefList = filter (not . isCurrentTypeDef currentTypeNameList) $ Map.toList typeDefMap
-  stmtList' <- mapM (uncurry $ clarifyImportedTypeDef reduceOnlyHandle) typeDefList
-  auxEnv <- liftIO $ AuxEnv.toCompStmtList <$> AuxEnv.get (auxEnvHandle reduceOnlyHandle)
-  return $ stmtList' ++ auxEnv
+  stmtList' <- mapM (uncurry $ clarifyImportedTypeDefCached h) typeDefList
+  return $ deduplicateCompStmtList $ concat stmtList'
+
+deduplicateCompStmtList :: [C.CompStmt] -> [C.CompStmt]
+deduplicateCompStmtList stmtList =
+  reverse $ deduplicateCompStmtList' S.empty [] stmtList
+
+deduplicateCompStmtList' :: S.Set DD.DefiniteDescription -> [C.CompStmt] -> [C.CompStmt] -> [C.CompStmt]
+deduplicateCompStmtList' nameSet acc stmtList =
+  case stmtList of
+    [] ->
+      acc
+    stmt : rest -> do
+      case C.getCompStmtName stmt of
+        Nothing ->
+          deduplicateCompStmtList' nameSet (stmt : acc) rest
+        Just name ->
+          if S.member name nameSet
+            then deduplicateCompStmtList' nameSet acc rest
+            else deduplicateCompStmtList' (S.insert name nameSet) (stmt : acc) rest
+
+clarifyImportedTypeDefCached :: Handle -> DD.DefiniteDescription -> TypeDef.TypeDefInfo -> App [C.CompStmt]
+clarifyImportedTypeDefCached h name typeDefInfo =
+  ImportedTypeDefCache.getOrInsert (importedTypeDefCacheHandle h) name $ do
+    reduceOnlyHandle <- liftIO $ newReduceOnlyHandle h
+    stmt <- clarifyImportedTypeDef reduceOnlyHandle name typeDefInfo
+    auxEnv <- liftIO $ AuxEnv.toCompStmtList <$> AuxEnv.get (auxEnvHandle reduceOnlyHandle)
+    return $ stmt : auxEnv
 
 stmtTypeDefName :: Stmt -> Maybe DD.DefiniteDescription
 stmtTypeDefName stmt =
