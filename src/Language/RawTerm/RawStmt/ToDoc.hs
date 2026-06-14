@@ -314,6 +314,8 @@ decNominalGeist (tag, geist, _) = do
           RT.decTypeGeist (D.text . BN.reify) geist
         Data ->
           RT.decTypeGeist (D.text . BN.reify) geist
+        DataRaw ->
+          RT.decTypeGeist (D.text . BN.reify) geist
         Resource ->
           RT.decTypeGeist (D.text . BN.reify) geist
   PI.arrange

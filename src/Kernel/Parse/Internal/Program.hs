@@ -227,13 +227,13 @@ parseNominalEntry h =
   choice
     [ do
         cTag <- keyword "define"
-        (geist, cGeist) <- parseGeist h baseName
+        (geist, cGeist) <- parseNominalGeist h baseName
         loc <- getCurrentLoc
         let kind = if RT.isDestPassing geist then DestPassing else Define
         return ((kind, geist, loc), cTag ++ cGeist),
       do
         cTag <- keyword "inline"
-        (geist, cGeist) <- parseGeist h baseName
+        (geist, cGeist) <- parseNominalGeist h baseName
         loc <- getCurrentLoc
         let kind = if RT.isDestPassing geist then DestPassingInline else Inline
         return ((kind, geist, loc), cTag ++ cGeist),
@@ -244,12 +244,12 @@ parseNominalEntry h =
         return ((Constant, geist, loc), cTag ++ cGeist),
       do
         cTag <- keyword "define-meta"
-        (geist, cGeist) <- parseGeist h baseName
+        (geist, cGeist) <- parseNominalGeist h baseName
         loc <- getCurrentLoc
         return ((Macro, geist, loc), cTag ++ cGeist),
       do
         cTag <- keyword "inline-meta"
-        (geist, cGeist) <- parseGeist h baseName
+        (geist, cGeist) <- parseNominalGeist h baseName
         loc <- getCurrentLoc
         return ((MacroInline, geist, loc), cTag ++ cGeist),
       do
@@ -267,6 +267,11 @@ parseNominalEntry h =
         (geist, cGeist) <- parseNominalData h
         loc <- getCurrentLoc
         return ((Data, geist, loc), cTag ++ cGeist),
+      do
+        cTag <- keyword "data-raw"
+        (geist, cGeist) <- parseNominalData h
+        loc <- getCurrentLoc
+        return ((DataRaw, geist, loc), cTag ++ cGeist),
       do
         cTag <- keyword "resource"
         (geist, cGeist) <- parseResourceGeist baseName

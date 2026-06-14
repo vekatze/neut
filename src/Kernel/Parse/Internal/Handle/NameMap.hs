@@ -351,5 +351,7 @@ stmtKindTypeToNominalTag stmtKind =
       Just Alias
     SK.AliasOpaque ->
       Just AliasOpaque
-    SK.Data {} ->
-      Just Data
+    SK.Data _ _ _ _ shouldOptimize ->
+      if shouldOptimize
+        then Just Data
+        else Just DataRaw
