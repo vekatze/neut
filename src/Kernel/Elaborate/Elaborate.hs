@@ -255,8 +255,8 @@ insertStmt h stmt = do
     StmtDefineType isConstLike stmtKind (SavedHint m) f impArgs expArgs defaultArgs t body -> do
       let allBinders = impArgs ++ expArgs ++ map fst defaultArgs
       liftIO $ Type.insert' (typeHandle h) f $ weakenType $ m :< TM.Pi (PK.Normal isConstLike) impArgs expArgs (map fst defaultArgs) t
-      liftIO $ TypeDef.insert' (typeDefHandle h) (SK.toOpacityType stmtKind) f allBinders body
       registerDataTypeStmt h f stmtKind
+      liftIO $ TypeDef.insert' (typeDefHandle h) (SK.toOpacityType stmtKind) f allBinders body
     StmtDefineResource (SavedHint m) dd resourceID _ _ _ resourceSize -> do
       liftIO $ Type.insert' (typeHandle h) dd $ weakenType (m :< TM.Pi (PK.Normal True) [] [] [] (m :< TM.Tau))
       liftIO $ TypeDef.insert' (typeDefHandle h) (SK.toOpacityType SK.Alias) dd [] (m :< TM.Resource dd resourceID)
