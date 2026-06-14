@@ -249,8 +249,6 @@ toDoc term =
         ]
     _ :< String txt -> do
       D.text $ "\"" <> txt <> "\""
-    _ :< NoeticString _ txt -> do
-      D.text $ "\"" <> txt <> "\""
     _ :< RuneIntro r -> do
       D.text $ "`" <> T.replace "`" "\\`" (RU.asText r) <> "`"
     _ :< Magic c magic -> do

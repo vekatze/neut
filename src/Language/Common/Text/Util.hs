@@ -1,5 +1,6 @@
 module Language.Common.Text.Util
-  ( parseBytes,
+  ( decodeUtf8Bytes,
+    parseBytes,
     parseText,
   )
 where
@@ -10,7 +11,8 @@ import Data.ByteString.Lazy qualified as LBS
 import Data.Char
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
-import Numeric (readHex)
+import Data.Word (Word8)
+import Numeric (readHex, showHex)
 
 isUpperHexDigit :: Char -> Bool
 isUpperHexDigit c =
@@ -102,11 +104,111 @@ parseBytes t = do
   builder <- parseBytes' mempty t
   return $ LBS.toStrict $ Builder.toLazyByteString builder
 
+isContinuationByte :: Word8 -> Bool
+isContinuationByte w =
+  0x80 <= w && w <= 0xBF
+
+formatByte :: Word8 -> T.Text
+formatByte w = do
+  let hex = T.pack $ map toUpper $ showHexByte w
+  "0x" <> T.replicate (2 - T.length hex) "0" <> hex
+
+showHexByte :: Word8 -> String
+showHexByte w =
+  case showHex (fromIntegral w :: Int) "" of
+    [] ->
+      "0"
+    hex ->
+      hex
+
+readContinuationByte :: Int -> [Word8] -> Either T.Text (Word8, [Word8])
+readContinuationByte offset ws = do
+  case ws of
+    [] ->
+      Left $ "Invalid UTF-8 byte sequence at byte offset " <> T.pack (show offset) <> ": unexpected end of string literal"
+    w : rest
+      | isContinuationByte w ->
+          return (w, rest)
+      | otherwise ->
+          Left $
+            "Invalid UTF-8 byte sequence at byte offset "
+              <> T.pack (show offset)
+              <> ": expected a continuation byte, but got "
+              <> formatByte w
+
+readBoundedContinuationByte :: Int -> Word8 -> Word8 -> [Word8] -> Either T.Text [Word8]
+readBoundedContinuationByte offset lower upper ws = do
+  (w, rest) <- readContinuationByte offset ws
+  if lower <= w && w <= upper
+    then return rest
+    else
+      Left $
+        "Invalid UTF-8 byte sequence at byte offset "
+          <> T.pack (show offset)
+          <> ": expected a byte in "
+          <> formatByte lower
+          <> ".."
+          <> formatByte upper
+          <> ", but got "
+          <> formatByte w
+
+consumeContinuationBytes :: Int -> Int -> [Word8] -> Either T.Text [Word8]
+consumeContinuationBytes offset count ws = do
+  if count <= 0
+    then return ws
+    else do
+      (_, rest) <- readContinuationByte offset ws
+      consumeContinuationBytes (offset + 1) (count - 1) rest
+
+validateUtf8Bytes' :: Int -> [Word8] -> Either T.Text ()
+validateUtf8Bytes' offset ws = do
+  case ws of
+    [] ->
+      return ()
+    w : rest
+      | w <= 0x7F ->
+          validateUtf8Bytes' (offset + 1) rest
+      | 0xC2 <= w && w <= 0xDF -> do
+          rest' <- consumeContinuationBytes (offset + 1) 1 rest
+          validateUtf8Bytes' (offset + 2) rest'
+      | w == 0xE0 -> do
+          rest' <- readBoundedContinuationByte (offset + 1) 0xA0 0xBF rest
+          rest'' <- consumeContinuationBytes (offset + 2) 1 rest'
+          validateUtf8Bytes' (offset + 3) rest''
+      | 0xE1 <= w && w <= 0xEC -> do
+          rest' <- consumeContinuationBytes (offset + 1) 2 rest
+          validateUtf8Bytes' (offset + 3) rest'
+      | w == 0xED -> do
+          rest' <- readBoundedContinuationByte (offset + 1) 0x80 0x9F rest
+          rest'' <- consumeContinuationBytes (offset + 2) 1 rest'
+          validateUtf8Bytes' (offset + 3) rest''
+      | 0xEE <= w && w <= 0xEF -> do
+          rest' <- consumeContinuationBytes (offset + 1) 2 rest
+          validateUtf8Bytes' (offset + 3) rest'
+      | w == 0xF0 -> do
+          rest' <- readBoundedContinuationByte (offset + 1) 0x90 0xBF rest
+          rest'' <- consumeContinuationBytes (offset + 2) 2 rest'
+          validateUtf8Bytes' (offset + 4) rest''
+      | 0xF1 <= w && w <= 0xF3 -> do
+          rest' <- consumeContinuationBytes (offset + 1) 3 rest
+          validateUtf8Bytes' (offset + 4) rest'
+      | w == 0xF4 -> do
+          rest' <- readBoundedContinuationByte (offset + 1) 0x80 0x8F rest
+          rest'' <- consumeContinuationBytes (offset + 2) 2 rest'
+          validateUtf8Bytes' (offset + 4) rest''
+      | otherwise ->
+          Left $
+            "Invalid UTF-8 byte sequence at byte offset "
+              <> T.pack (show offset)
+              <> ": invalid leading byte "
+              <> formatByte w
+
+decodeUtf8Bytes :: BS.ByteString -> Either T.Text T.Text
+decodeUtf8Bytes bytes = do
+  validateUtf8Bytes' 0 $ BS.unpack bytes
+  return $ TE.decodeUtf8 bytes
+
 parseText :: T.Text -> Either T.Text T.Text
 parseText t = do
   bytes <- parseBytes t
-  case TE.decodeUtf8' bytes of
-    Right text ->
-      return text
-    Left err ->
-      Left $ T.pack $ show err
+  decodeUtf8Bytes bytes

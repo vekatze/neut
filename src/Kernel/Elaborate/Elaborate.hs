@@ -20,7 +20,6 @@ import Data.IORef
 import Data.IntMap qualified as IntMap
 import Data.Set qualified as S
 import Data.Text qualified as T
-import Data.Text.Encoding qualified as TE
 import Gensym.Trick qualified as Gensym
 import Kernel.Common.Cache qualified as Cache
 import Kernel.Common.Const (holeLiteral)
@@ -79,6 +78,7 @@ import Language.Common.PiKind qualified as PK
 import Language.Common.PrimNumSize
 import Language.Common.PrimType qualified as PT
 import Language.Common.StmtKind qualified as SK
+import Language.Common.Text.Util (decodeUtf8Bytes)
 import Language.LowComp.DeclarationName qualified as DN
 import Language.Term.Inline qualified as Inline
 import Language.Term.PrimValue qualified as PV
@@ -801,11 +801,11 @@ strictifyStringLiteral h m bytes t = do
 
 decodeStringLiteralBytes :: Hint -> BS.ByteString -> App T.Text
 decodeStringLiteralBytes m bytes = do
-  case TE.decodeUtf8' bytes of
+  case decodeUtf8Bytes bytes of
     Right text ->
       return text
-    Left err ->
-      raiseError m $ "This string literal is not valid UTF-8: " <> T.pack (show err)
+    Left reason ->
+      raiseError m $ "This string literal is not valid UTF-8.\nReason: " <> reason
 
 isStringObjectType :: TM.Type -> Bool
 isStringObjectType t =

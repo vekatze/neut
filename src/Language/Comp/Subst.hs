@@ -96,8 +96,6 @@ substValue sub term =
           term
     C.VarGlobal {} ->
       term
-    C.VarStaticText {} ->
-      term
     C.VarStaticBytes {} ->
       term
     C.SigmaIntro size vs -> do

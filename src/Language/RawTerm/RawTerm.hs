@@ -144,7 +144,6 @@ data RawTermF a
   | Introspect C T.Text C (SE.Series (Maybe T.Text, C, a))
   | Static C Hint StaticItem
   | String T.Text
-  | NoeticString RawType T.Text
   | With (KeywordClause a)
   | Brace C (a, C)
   | Int Integer

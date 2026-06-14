@@ -618,11 +618,11 @@ discern h term =
       if isCompileStage h
         then do
           stringType <- discernType h stringTypeRaw
-          message' <- discern h $ m :< RT.NoeticString stringTypeRaw messageText
+          message' <- discern h $ m :< RT.String messageText
           let body = m :< WT.Magic (M.WeakMagic $ M.CompileError stringType message')
           return $ m :< WT.Annotation L.Warning (AN.Type (doNotCare m)) body
         else do
-          let message' = m :< RT.NoeticString stringTypeRaw (messageText <> "\n")
+          let message' = m :< RT.String (messageText <> "\n")
           panic <- liftEither $ locatorToVarGlobal m coreDebugPanic
           discern h $ asOpaqueValue $ m :< RT.Annotation L.Warning (AN.Type ()) (m :< RT.piElim panic [message'])
     m :< RT.Introspect _ key _ clauseList -> do
@@ -647,13 +647,6 @@ discern h term =
         Right bytes -> do
           hole <- liftIO $ WT.createTypeHole (H.gensymHandle h) m []
           return $ m :< WT.Prim (WPV.String hole bytes)
-    m :< RT.NoeticString s str -> do
-      s' <- discernType h s
-      case parseText str of
-        Left reason ->
-          raiseError m $ "Could not interpret the following as a string: " <> str <> "\nReason: " <> reason
-        Right str' -> do
-          return $ m :< WT.Prim (WPV.NoeticString s' str')
     m :< RT.With withClause -> do
       let (binder, body) = RT.extractFromKeywordClause withClause
       case body of
