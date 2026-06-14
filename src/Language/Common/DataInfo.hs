@@ -36,7 +36,7 @@ data ConsInfo binder = ConsInfo
 
 data FieldHint
   = FieldAuto
-  | FieldMixed
+  | FieldMixed Hint
   deriving (Show, Eq, Generic)
 
 instance Binary FieldHint
