@@ -12,8 +12,8 @@ import App.App (App)
 import App.Run (raiseError)
 import Control.Comonad.Cofree
 import Control.Monad.IO.Class
-import Data.IntMap qualified as IntMap
 import Data.IORef (readIORef)
+import Data.IntMap qualified as IntMap
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NE
 import Data.Text qualified as T
