@@ -631,12 +631,6 @@ discern h term =
       discern h clause
     m :< RT.Static _ mKey staticItem -> do
       case staticItem of
-        RT.TextContent content -> do
-          case parseText content of
-            Left reason ->
-              raiseError m $ "Could not interpret the following as a text: " <> content <> "\nReason: " <> reason
-            Right str' -> do
-              return $ m :< WT.Prim (WPV.Text str')
         RT.TextFileKey key -> do
           contentOrNone <- liftIO $ Locator.getStaticFileContent (H.locatorHandle h) key
           case contentOrNone of
@@ -646,6 +640,13 @@ discern h term =
               return $ m :< WT.Prim (WPV.Text content)
             Nothing ->
               raiseError m $ "No such static file is defined: `" <> key <> "`"
+    m :< RT.String str -> do
+      case parseText str of
+        Left reason ->
+          raiseError m $ "Could not interpret the following as a string: " <> str <> "\nReason: " <> reason
+        Right str' -> do
+          hole <- liftIO $ WT.createTypeHole (H.gensymHandle h) m []
+          return $ m :< WT.Prim (WPV.String hole str')
     m :< RT.NoeticString s str -> do
       s' <- discernType h s
       case parseText str of

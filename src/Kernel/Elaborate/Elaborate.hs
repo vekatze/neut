@@ -52,6 +52,7 @@ import Kernel.Parse.Internal.Handle.UnusedTopLevelName qualified as UnusedTopLev
 import Kernel.Parse.Internal.Handle.UsedTopLevelName qualified as UsedTopLevelName
 import Language.Common.Annotation qualified as AN
 import Language.Common.Attr.Lam qualified as AttrL
+import Language.Common.BaseName qualified as BN
 import Language.Common.BaseLowType qualified as BLT
 import Language.Common.BasePrimType qualified as BPT
 import Language.Common.Binder
@@ -709,6 +710,8 @@ elaboratePrimValue h m primValue =
       return $ PV.Float t' size x
     WPV.Op op ->
       return $ PV.Op op
+    WPV.String t text -> do
+      strictifyStringLiteral h m text t
     WPV.NoeticString t text -> do
       t' <- elaborateType h t
       return $ PV.NoeticString t' text
@@ -774,6 +777,32 @@ strictifyFloatType h m x t = do
           raiseNonFloatType m x (weakenType t')
     _ :< _ ->
       raiseNonFloatType m x (weakenType t')
+
+strictifyStringLiteral :: Handle -> Hint -> T.Text -> WT.WeakType -> App (PV.PrimValue TM.Type)
+strictifyStringLiteral h m text t = do
+  t' <- reduceWeakType h t >>= elaborateType h
+  case t' of
+    _ :< TM.PrimType PT.Text -> do
+      return $ PV.Text text
+    _ :< TM.BoxNoema inner
+      | isStringObjectType inner -> do
+          return $ PV.NoeticString inner text
+    _ :< _ ->
+      raiseNonStringType m text (weakenType t')
+
+isStringObjectType :: TM.Type -> Bool
+isStringObjectType t =
+  case t of
+    _ :< TM.TVar x ->
+      Ident.toText x == BN.reify BN.stringType
+    _ :< TM.TVarGlobal _ dd ->
+      DD.localLocator dd == BN.reify BN.stringType
+    _ :< TM.TyApp inner [] ->
+      isStringObjectType inner
+    _ :< TM.Data _ dd [] ->
+      DD.localLocator dd == BN.reify BN.stringType
+    _ ->
+      False
 
 elaborateWeakBinder :: Handle -> BinderF WT.WeakType -> App (BinderF TM.Type)
 elaborateWeakBinder h (m, k, x, t) = do
@@ -956,6 +985,14 @@ raiseNonFloatType m x t = do
     "The term `"
       <> T.pack (show x)
       <> "` is a float, but its type is: "
+      <> toTextType t
+
+raiseNonStringType :: Hint -> T.Text -> WT.WeakType -> App a
+raiseNonStringType m text t = do
+  raiseError m $
+    "The term `"
+      <> T.pack (show text)
+      <> "` is a string, but its type is: "
       <> toTextType t
 
 raiseLiteralNonExhaustivePatternMatching :: Hint -> App a

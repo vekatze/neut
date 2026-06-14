@@ -247,6 +247,8 @@ toDoc term =
           D.line,
           attachComment c5 $ toDoc e2
         ]
+    _ :< String txt -> do
+      D.text $ "\"" <> txt <> "\""
     _ :< NoeticString _ txt -> do
       D.text $ "\"" <> txt <> "\""
     _ :< RuneIntro r -> do
@@ -470,8 +472,6 @@ toDoc term =
             case staticItem of
               RT.TextFileKey path ->
                 D.text path
-              RT.TextContent content ->
-                D.text $ "\"" <> content <> "\""
         ]
     _ :< Brace c1 (e, c2) -> do
       decodeBrace False c1 e c2
