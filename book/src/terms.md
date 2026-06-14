@@ -492,7 +492,7 @@ define foo() -> unit {
 
 `` `A` ``, `` `\n` ``, `` `\u{123}` ``, etc.
 
-The available escape sequences in rune literals are the same as those of the literal form of [`static`](./terms.md#static).
+The available escape sequences in rune literals are the same as those of [string literals](./terms.md#strings).
 
 ### Semantics
 
@@ -536,7 +536,13 @@ define print-star() -> unit {
 
 ```neut
 define foo() -> unit {
+  let _: text = "test";
+  //            ^^^^^^
   let _: &string = "test";
+  //               ^^^^^^
+  let _: blob = "\x{FF}";
+  //            ^^^^^^
+  let _: &binary = "\x{FF}";
   //               ^^^^^^
   Unit
 }
@@ -545,24 +551,64 @@ define foo() -> unit {
 
 ### Syntax
 
-The syntax of a string literal is the same as that of the literal form of [`static`](#static).
+```neut
+"hello"
+"Hello, world!\n"
+"\u{1F338} ← Cherry Blossom"
+"\x{FF}"
+```
+
+Below is a list of all escape sequences available in Neut string literals:
+
+| Escape Sequence | Meaning                        |
+| --------------- | ------------------------------ |
+| `\0`            | U+0000 (null character)        |
+| `\t`            | U+0009 (horizontal tab)        |
+| `\n`            | U+000A (line feed)             |
+| `\r`            | U+000D (carriage return)       |
+| `\"`            | U+0022 (double quotation mark) |
+| `\\`            | U+005C (backslash)             |
+| `` \` ``        | U+0060 (backtick)              |
+| `\x{n}`         | byte with hexadecimal value n  |
+| `\u{n}`         | U+n                            |
+
+The `n` in `\x{n}` and `\u{n}` must be an uppercase hexadecimal number. For `\x{n}`, the value must be in the byte range `0` to `FF`.
 
 ### Semantics
 
-If `t` is a string literal, then `t` is shorthand for `magic cast(text, &string, static t)`.
+A string literal is resolved as `text`, `blob`, `&string`, or `&binary` according to the surrounding type context.
+
+When the resolved type is `text` or `&string`, the literal bytes must be valid UTF-8. When the resolved type is `blob` or `&binary`, any byte sequence is allowed. In particular, `\x{n}` can be used to write bytes that are not valid UTF-8.
+
+When the resolved type is `&string` or `&binary`, the literal is compiled as a static value and cast to that type.
 
 ### Type
 
 ```neut
 (Γ is a context)
 (t is a string literal)
------------------------
+--------------------------
+Γ ⊢ t: text
+
+(Γ is a context)
+(t is a string literal)
+--------------------------
+Γ ⊢ t: blob
+
+(Γ is a context)
+(t is a string literal)
+--------------------------
 Γ ⊢ t: &string
+
+(Γ is a context)
+(t is a string literal)
+--------------------------
+Γ ⊢ t: &binary
 ```
 
 ### Note
 
-- For the exact syntax and internal representation of the literal part, see [`static`](#static).
+- A string literal whose type cannot be inferred as `text`, `blob`, `&string`, or `&binary` is rejected.
 
 ## `(x1: a1, ..., xn: an) -> b`
 
@@ -2365,7 +2411,7 @@ define lift-either(x: either(bool, unit)) -> +either(bool, unit) {
 
 `lift` is there only for convenience.
 
-One useful example is `text`: since `static` has type `text`, you can lift embedded text directly. If you first convert it to `&string` using `core.string.from-text`, it is no longer liftable.
+A useful case is static data: primitive types such as `text` and `blob` are liftable, whereas noetic types such as `&string` and `&binary` are not.
 
 ## `pack-type`
 
@@ -2828,14 +2874,14 @@ The configuration value `default` is equal to any configuration value.
 
 ## `static`
 
-You can use `static` to create a value of type `text`.
+You can use `static` to embed file content as `text`, `blob`, `&string`, or `&binary`.
 
 ### Example
 
 ```neut
 import {
   core.string {from-text},
-  text-file {some-file},
+  static-file {some-file},
 }
 
 define use-some-file() -> unit {
@@ -2844,8 +2890,8 @@ define use-some-file() -> unit {
   print(s)
 }
 
-define use-static-literal() -> unit {
-  let t: text = static "hello";
+define use-string-literal() -> unit {
+  let t: text = "hello";
   let s: &string = "hello";
   print(from-text(t));
   print(s)
@@ -2856,35 +2902,15 @@ define use-static-literal() -> unit {
 
 ```neut
 static some-file
-static "hello"
-static "Hello, world!\n"
-static "\u{1F338} ← Cherry Blossom"
 ```
-
-Below is a list of all escape sequences available in Neut string literals:
-
-| Escape Sequence | Meaning                        |
-| --------------- | ------------------------------ |
-| `\0`            | U+0000 (null character)        |
-| `\t`            | U+0009 (horizontal tab)        |
-| `\n`            | U+000A (line feed)             |
-| `\r`            | U+000D (carriage return)       |
-| `\"`            | U+0022 (double quotation mark) |
-| `\\`            | U+005C (backslash)             |
-| `` \` ``        | U+0060 (backtick)              |
-| `\u{n}`         | U+n                            |
-
-The `n` in `\u{n}` must be an uppercase hexadecimal number.
 
 ### Semantics
 
 The compiler expands `static foo` into the content of `foo` at compile time.
 
-If `foo` isn't a key of a UTF-8 text file, `static foo` reports a compilation error.
+If `foo` isn't a key of a static file, `static foo` reports a compilation error.
 
-The expression `static "hello"` creates a value of type `text` from the given string literal.
-
-A static literal is compiled into a pointer to a tuple like the following:
+A string literal or `static` term whose type is resolved as `text`, `blob`, `&string`, or `&binary` is compiled into a pointer to a tuple like the following:
 
 ```text
 (0, length-of-string, array-of-characters)
@@ -2896,26 +2922,22 @@ This tuple is static. More specifically, a global constant like the following is
 @"text-hello" = private unnamed_addr constant {i64, i64, [5 x i8]} {i64 0, i64 5, [5 x i8] c"hello"}
 ```
 
-And a term like `static "hello": text` is compiled into `ptr @"text-hello"`.
+And a term like `"hello": text` or `static hello-file: text` is compiled into such a pointer.
+
+When the resolved type is `text` or `&string`, the embedded bytes must be valid UTF-8. When the resolved type is `blob` or `&binary`, any byte sequence is allowed.
 
 ### Type
 
 ```neut
 (Γ is a context)
-(k is a text file's key)
---------------------------------------------
-Γ ⊢ static k: text
-
-(Γ is a context)
-(s is a string literal)
--------------------------------------------
-Γ ⊢ static s: text
+(k is a static file's key)
+Γ ⊢ static k: text | blob | &string | &binary
 ```
 
 ### Note
 
-- Since `text` is primitive, `static` can be lifted.
-- You may also want to read [the section on text files in Modules](modules.md#text-file).
+- Since `text` and `blob` are primitive, `static` can be lifted when its resolved type is `text` or `blob`.
+- You may also want to read [the section on static files in Modules](modules.md#static-file).
 
 ## `admit`
 
