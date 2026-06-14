@@ -60,8 +60,8 @@ define implicit-2<a, b>(x: a, y: b) -> pair(a, b) {
 
 define main() -> unit {
   let _ = is-even(12345);
-  let _ = implicit-1("hello");
-  let _ = implicit-2("hello", pack-type {type});
+  let _: &binary = implicit-1("hello");
+  let _: pair(blob, type) = implicit-2("hello", pack-type {type});
   let local-func-with-imp-args =
     <a>(x: a) => {
       x

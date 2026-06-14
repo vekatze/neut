@@ -200,7 +200,7 @@ define unbalanced-freevars-in-branches<a>(!t: term(a)) -> term(a) {
     }
   | App(t1, _) =>
     let _ = g;
-    let !k =
+    let !k: () -> term(&string) =
       if False {
         h
       } else {
@@ -310,9 +310,9 @@ define test-resource() -> unit {
 }
 
 define test-match() -> unit {
-  let !t1 = Var("text");
-  let !t2 = Abs("foo", Var("foo"));
-  let !t3 = App(Abs("foo", Var("foo")), Var("buz"));
+  let !t1: term(&string) = Var("text");
+  let !t2: term(&string) = Abs("foo", Var("foo"));
+  let !t3: term(&string) = App(Abs("foo", Var("foo")), Var("buz"));
   let _ = local-completeness(t1);
   let _ = local-completeness(t2);
   let _ = local-completeness(t3);

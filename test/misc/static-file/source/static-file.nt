@@ -1,6 +1,7 @@
 import {
+  core.binary,
   core.string {from-text},
-  text-file {some-file},
+  static-file {some-file},
 }
 
 define main() -> unit {
