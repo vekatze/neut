@@ -631,13 +631,16 @@ discern h term =
       discern h clause
     m :< RT.Static _ mKey staticItem -> do
       case staticItem of
-        RT.TextFileKey key -> do
+        RT.StaticFileKey key -> do
           contentOrNone <- liftIO $ Locator.getStaticFileContent (H.locatorHandle h) key
           case contentOrNone of
             Just (path, content) -> do
               liftIO $ Unused.deleteStaticFile (H.unusedHandle h) key
               liftIO $ Tag.insertStaticFile (H.tagHandle h) mKey key (newSourceHint path)
-              return $ m :< WT.Prim (WPV.Text content)
+              ensureStringLiteralTypes h m
+              coreModuleID <- Alias.resolveModuleAlias (H.aliasHandle h) m coreModuleAlias
+              hole <- liftIO $ WT.createTypeHole (H.gensymHandle h) m []
+              return $ m :< WT.Prim (WPV.String coreModuleID hole content)
             Nothing ->
               raiseError m $ "No such static file is defined: `" <> key <> "`"
     m :< RT.String str -> do

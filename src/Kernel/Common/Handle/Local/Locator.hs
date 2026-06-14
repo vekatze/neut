@@ -4,7 +4,7 @@ module Kernel.Common.Handle.Local.Locator
     attachCurrentLocator,
     activateSpecifiedNames,
     getStaticFileContent,
-    activateTextFile,
+    activateStaticFile,
     getPossibleReferents,
     getCurrentGlobalLocator,
     constructGlobalLocator,
@@ -15,6 +15,7 @@ import App.App (App)
 import App.Run (raiseError, raiseError')
 import Control.Monad
 import Control.Monad.IO.Class
+import Data.ByteString qualified as BS
 import Data.Containers.ListUtils qualified as ListUtils
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
@@ -37,7 +38,6 @@ import Language.Common.StrictGlobalLocator qualified as SGL
 import Logger.Hint
 import Path
 import Path.IO
-import Path.Read (readTextFromPath)
 
 -- the structure of a name of a global variable:
 --
@@ -51,7 +51,7 @@ data Handle = Handle
   { _tagHandle :: Tag.Handle,
     _envHandle :: Env.Handle,
     _activeDefiniteDescriptionListRef :: IORef (Map.HashMap LL.LocalLocator DD.DefiniteDescription),
-    _activeTextFileMapRef :: IORef (Map.HashMap T.Text (Path Abs File, T.Text)),
+    _activeStaticFileMapRef :: IORef (Map.HashMap T.Text (Path Abs File, BS.ByteString)),
     _activeGlobalLocatorList :: [SGL.StrictGlobalLocator],
     _currentGlobalLocator :: SGL.StrictGlobalLocator
   }
@@ -60,7 +60,7 @@ new :: Env.Handle -> Tag.Handle -> Source.Source -> App Handle
 new _envHandle _tagHandle source = do
   cgl <- constructGlobalLocator source
   _activeDefiniteDescriptionListRef <- liftIO $ newIORef Map.empty
-  _activeTextFileMapRef <- liftIO $ newIORef Map.empty
+  _activeStaticFileMapRef <- liftIO $ newIORef Map.empty
   let _activeGlobalLocatorList = [cgl, SGL.llvmGlobalLocator]
   let _currentGlobalLocator = cgl
   return $ Handle {..}
@@ -80,8 +80,9 @@ activateSpecifiedNames h currentSource topNameMap mustUpdateTag sgl lls = do
     case Map.lookup dd topNameMap of
       Nothing ->
         raiseError m $ "The name `" <> LL.reify ll <> "` is not defined in the file"
-      Just _ | not (AV.allows currentGlobalLocator dd) ->
-        raiseError m $ "The name `" <> LL.reify ll <> "` is not visible from this source"
+      Just _
+        | not (AV.allows currentGlobalLocator dd) ->
+            raiseError m $ "The name `" <> LL.reify ll <> "` is not visible from this source"
       Just (mDef, _tag, gn) -> do
         when mustUpdateTag $
           liftIO $
@@ -102,20 +103,20 @@ activateSpecifiedNames h currentSource topNameMap mustUpdateTag sgl lls = do
           _ ->
             liftIO $ modifyIORef' (_activeDefiniteDescriptionListRef h) $ Map.insert ll dd
 
-activateTextFile :: Handle -> Hint -> T.Text -> Path Abs File -> App ()
-activateTextFile h m key path = do
+activateStaticFile :: Handle -> Hint -> T.Text -> Path Abs File -> App ()
+activateStaticFile h m key path = do
   b <- doesFileExist path
   if b
     then do
-      content <- readTextFromPath path
-      liftIO $ modifyIORef' (_activeTextFileMapRef h) $ Map.insert key (path, content)
+      content <- liftIO $ BS.readFile $ toFilePath path
+      liftIO $ modifyIORef' (_activeStaticFileMapRef h) $ Map.insert key (path, content)
     else
       raiseError m $
-        "The text file `" <> key <> "` does not exist at: " <> T.pack (toFilePath path)
+        "The static file `" <> key <> "` does not exist at: " <> T.pack (toFilePath path)
 
-getStaticFileContent :: Handle -> T.Text -> IO (Maybe (Path Abs File, T.Text))
+getStaticFileContent :: Handle -> T.Text -> IO (Maybe (Path Abs File, BS.ByteString))
 getStaticFileContent h key = do
-  activeStaticFileList <- readIORef (_activeTextFileMapRef h)
+  activeStaticFileList <- readIORef (_activeStaticFileMapRef h)
   return $ Map.lookup key activeStaticFileList
 
 attachCurrentLocator ::

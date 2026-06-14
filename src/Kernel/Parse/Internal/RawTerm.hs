@@ -1223,7 +1223,7 @@ rawTermStatic :: Hint -> C -> Parser (RT.RawTerm, C)
 rawTermStatic m c1 = do
   mKey <- getCurrentHint
   (key, c) <- symbol
-  return (m :< RT.Static c1 mKey (RT.TextFileKey key), c)
+  return (m :< RT.Static c1 mKey (RT.StaticFileKey key), c)
 
 interpretVarName :: Hint -> T.Text -> Parser Name
 interpretVarName m varText = do

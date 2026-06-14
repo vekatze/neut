@@ -149,7 +149,7 @@ data RawTermF a
   | Int Integer
 
 data StaticItem
-  = TextFileKey T.Text
+  = StaticFileKey T.Text
 
 type PatParam a =
   (Hint, RP.RawPattern, C, C, a)

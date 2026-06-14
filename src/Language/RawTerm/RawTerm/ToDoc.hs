@@ -468,7 +468,7 @@ toDoc term =
         [ PI.horizontal $ attachComment c1 $ D.text "static",
           PI.inject $
             case staticItem of
-              RT.TextFileKey path ->
+              RT.StaticFileKey path ->
                 D.text path
         ]
     _ :< Brace c1 (e, c2) -> do
