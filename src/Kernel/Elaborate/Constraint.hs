@@ -17,8 +17,6 @@ import Language.WeakTerm.WeakTerm qualified as WT
 
 data Constraint
   = Eq WT.WeakType WT.WeakType -- (expected-type, actual-type)
-  | Actual WT.WeakType
-  | Integer WT.WeakType
 
 type MetaVarSet =
   S.Set HID.HoleID
@@ -31,10 +29,6 @@ showConstraint constraint =
   case constraint of
     Eq expected actual ->
       ToText.toTextType expected <> " == " <> ToText.toTextType actual
-    Actual t ->
-      "actual " <> ToText.toTextType t
-    Integer t ->
-      "integer " <> ToText.toTextType t
 
 showConstraints :: [Constraint] -> T.Text
 showConstraints constraints =

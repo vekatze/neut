@@ -4,8 +4,6 @@ module Kernel.Elaborate.Internal.Handle.Constraint
     get,
     set,
     insert,
-    insertActualityConstraint,
-    insertIntegerConstraint,
     getSuspendedConstraints,
     setSuspendedConstraints,
   )
@@ -29,14 +27,6 @@ new = do
 insert :: Handle -> WT.WeakType -> WT.WeakType -> IO ()
 insert h expected actual = do
   modifyIORef' (constraintEnvRef h) $ (:) (C.Eq expected actual)
-
-insertActualityConstraint :: Handle -> WT.WeakType -> IO ()
-insertActualityConstraint h t = do
-  modifyIORef' (constraintEnvRef h) $ (:) (C.Actual t)
-
-insertIntegerConstraint :: Handle -> WT.WeakType -> IO ()
-insertIntegerConstraint h t = do
-  modifyIORef' (constraintEnvRef h) $ (:) (C.Integer t)
 
 get :: Handle -> IO [C.Constraint]
 get h = do

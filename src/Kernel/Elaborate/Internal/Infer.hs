@@ -293,10 +293,9 @@ infer h term =
       letSeq' <- inferQuoteSeq h letSeq FromNoema
       (e', t) <- infer h e
       return (m :< WT.BoxIntro letSeq' e', m :< WT.Box t)
-    m :< WT.BoxIntroLift e -> do
+    m :< WT.BoxIntroLift _ e -> do
       (e', t) <- infer h e
-      liftIO $ Constraint.insertActualityConstraint (constraintHandle h) t
-      return (m :< WT.BoxIntroLift e', m :< WT.Box t)
+      return (m :< WT.BoxIntroLift (Just t) e', m :< WT.Box t)
     m :< WT.BoxElim castSeq mxt e1 uncastSeq e2 -> do
       castSeq' <- inferQuoteSeq h castSeq ToNoema
       (e1', t1) <- infer h e1
@@ -324,19 +323,13 @@ infer h term =
       let h' = extendHandle (mx, VK.Normal, x, tau) h
       (e2', t2') <- infer h' e2
       return (m :< WT.TauElim (mx, x) e1' e2', t2')
-    _ :< WT.Actual e -> do
+    m :< WT.Actual _ e -> do
       (e', t') <- infer h e
-      liftIO $ Constraint.insertActualityConstraint (constraintHandle h) t'
-      return (e', t')
+      return (m :< WT.Actual (Just t') e', t')
     m :< WT.Let opacity (mx, k, x, t) e1 e2 -> do
       (e1', t1') <- infer h e1
       t' <- inferType h t >>= resolveType h
       liftIO $ WeakType.insert (weakTypeHandle h) x t'
-      case opacity of
-        WT.Noetic ->
-          liftIO $ Constraint.insertActualityConstraint (constraintHandle h) t'
-        _ ->
-          return ()
       liftIO $ Constraint.insert (constraintHandle h) t' t1'
       (e2', t2') <- infer h e2
       return (m :< WT.Let opacity (mx, k, x, t') e1' e2', t2')
@@ -814,7 +807,7 @@ inferClause h cursorType decisionCase =
       (cont', tCont) <- inferDecisionTree mPat h cont
       case literal of
         L.Int _ ->
-          liftIO $ Constraint.insertIntegerConstraint (constraintHandle h) cursorType
+          return ()
         L.Rune _ ->
           liftIO $ Constraint.insert (constraintHandle h) cursorType (mPat :< WT.PrimType PT.Rune)
       return (DT.LiteralCase mPat literal cont', tCont)

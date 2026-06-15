@@ -6,6 +6,7 @@ module Language.Term.Inline.Handle
     DefInfo (..),
     DefKind (..),
     SpecializationEntry (..),
+    ResidualCheck (..),
   )
 where
 
@@ -53,6 +54,10 @@ data SpecializationEntry = SpecializationEntry
 type SpecializationTable =
   Map.HashMap DD.DefiniteDescription [SpecializationEntry]
 
+data ResidualCheck
+  = CheckActuality Hint TM.Type
+  | CheckInteger Hint TM.Type
+
 data Handle = Handle
   { substHandle :: Subst.Handle,
     refreshHandle :: Refresh.Handle,
@@ -64,6 +69,8 @@ data Handle = Handle
     location :: Hint,
     specializationTable :: IORef SpecializationTable,
     pendingSpecializationDefs :: IORef [Stmt.Stmt],
+    residualCheckList :: IORef [ResidualCheck],
+    shouldEmitResidualChecks :: Bool,
     macroCallStack :: IORef [(DD.DefiniteDescription, Hint)],
     gensymHandle :: GensymHandle.Handle
   }

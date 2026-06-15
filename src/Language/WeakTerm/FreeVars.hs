@@ -45,7 +45,7 @@ freeVars term =
     _ :< WT.BoxIntro letSeq e -> do
       let (mxts, es) = unzip letSeq
       freeVarsBinders mxts (S.unions $ map freeVars (e : es))
-    _ :< WT.BoxIntroLift e ->
+    _ :< WT.BoxIntroLift _ e ->
       freeVars e
     _ :< WT.BoxElim castSeq mxt e1 uncastSeq e2 -> do
       let (xts, es) = unzip $ castSeq ++ [(mxt, e1)] ++ uncastSeq
@@ -58,7 +58,7 @@ freeVars term =
       S.empty
     _ :< WT.TauElim (_, x) e1 e2 ->
       S.union (freeVars e1) (S.delete x (freeVars e2))
-    _ :< WT.Actual e ->
+    _ :< WT.Actual _ e ->
       freeVars e
     _ :< WT.Let _ mxt e1 e2 -> do
       let set1 = freeVars e1
@@ -183,7 +183,7 @@ freeVarsAll term =
     _ :< WT.BoxIntro letSeq e -> do
       let (mxts, es) = unzip letSeq
       freeVarsBindersType mxts (S.unions $ map freeVarsAll (e : es))
-    _ :< WT.BoxIntroLift e ->
+    _ :< WT.BoxIntroLift _ e ->
       freeVarsAll e
     _ :< WT.BoxElim castSeq mxt e1 uncastSeq e2 -> do
       let (xts, es) = unzip $ castSeq ++ [(mxt, e1)] ++ uncastSeq
@@ -194,7 +194,7 @@ freeVarsAll term =
       freeVarsAll e
     _ :< WT.TauIntro ty ->
       freeVarsType ty
-    _ :< WT.Actual e ->
+    _ :< WT.Actual _ e ->
       freeVarsAll e
     _ :< WT.Let _ mxt e1 e2 -> do
       let set1 = freeVarsAll e1

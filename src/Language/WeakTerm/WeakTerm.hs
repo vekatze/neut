@@ -70,13 +70,13 @@ data WeakTermF a
   | DataIntro AttrDI.Attr DD.DefiniteDescription [WeakType] [a]
   | DataElim N.IsNoetic [(Ident, a, WeakType)] (DT.DecisionTree WeakType a)
   | BoxIntro [(BinderF WeakType, a)] a
-  | BoxIntroLift a
+  | BoxIntroLift (Maybe WeakType) a
   | BoxElim [(BinderF WeakType, a)] (BinderF WeakType) a [(BinderF WeakType, a)] a
   | CodeIntro a
   | CodeElim a
   | TauIntro WeakType
   | TauElim (Hint, Ident) a a
-  | Actual a
+  | Actual (Maybe WeakType) a
   | Let LetOpacity (BinderF WeakType) a a
   | Prim (WPV.WeakPrimValue WeakType)
   | Magic (WeakMagic WeakType WeakType a)

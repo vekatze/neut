@@ -35,6 +35,8 @@ compress term =
       () :< TM.DataElim isNoetic (zip3 os es' ts) tree'
     _ :< TM.BoxIntro letSeq e ->
       () :< TM.BoxIntro (map compressLet letSeq) (compress e)
+    _ :< TM.BoxIntroLift t e ->
+      () :< TM.BoxIntroLift t (compress e)
     _ :< TM.BoxElim castSeq mxt e1 uncastSeq e2 ->
       () :< TM.BoxElim (map compressLet castSeq) mxt (compress e1) (map compressLet uncastSeq) (compress e2)
     _ :< TM.CodeIntro e ->
@@ -45,6 +47,8 @@ compress term =
       () :< TM.TauIntro ty
     _ :< TM.TauElim (mx, x) e1 e2 ->
       () :< TM.TauElim (mx, x) (compress e1) (compress e2)
+    _ :< TM.Actual t e ->
+      () :< TM.Actual t (compress e)
     _ :< TM.Let opacity mxt e1 e2 ->
       () :< TM.Let opacity mxt (compress e1) (compress e2)
     _ :< TM.Prim prim ->

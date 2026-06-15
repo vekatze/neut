@@ -44,6 +44,8 @@ freeVars term =
     _ :< TM.BoxIntro letSeq e -> do
       let (xts, es) = unzip letSeq
       freeVarsBinderType xts (S.unions $ map freeVars (e : es))
+    _ :< TM.BoxIntroLift t e ->
+      S.union (freeVarsType t) (freeVars e)
     _ :< TM.BoxElim castSeq mxt e1 uncastSeq e2 -> do
       let (xts, es) = unzip $ castSeq ++ [(mxt, e1)] ++ uncastSeq
       freeVarsBinderType xts (S.unions $ map freeVars $ es ++ [e2])
@@ -55,6 +57,8 @@ freeVars term =
       freeVarsType ty
     _ :< TM.TauElim (_, x) e1 e2 ->
       S.union (freeVars e1) (S.delete x (freeVars e2))
+    _ :< TM.Actual t e ->
+      S.union (freeVarsType t) (freeVars e)
     _ :< TM.Let _ mxt e1 e2 -> do
       let set1 = freeVars e1
       let set2 = freeVarsBinderType [mxt] (freeVars e2)

@@ -42,6 +42,7 @@ hljs.registerLanguage("neut", function (hljs) {
         "let",
         "letbox",
         "letbox-T",
+        "lift",
         "match",
         "nominal",
         "of",

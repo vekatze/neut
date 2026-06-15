@@ -78,6 +78,10 @@ refresh h term =
       letSeq' <- mapM (refreshLet h) letSeq
       e' <- refresh h e
       return $ m :< TM.BoxIntro letSeq' e'
+    m :< TM.BoxIntroLift t e -> do
+      t' <- refreshType h t
+      e' <- refresh h e
+      return $ m :< TM.BoxIntroLift t' e'
     m :< TM.BoxElim castSeq mxt e1 uncastSeq e2 -> do
       castSeq' <- mapM (refreshLet h) castSeq
       (mxt', e1') <- refreshLet h (mxt, e1)
@@ -97,6 +101,10 @@ refresh h term =
       e1' <- refresh h e1
       e2' <- refresh h e2
       return $ m :< TM.TauElim mx e1' e2'
+    m :< TM.Actual t e -> do
+      t' <- refreshType h t
+      e' <- refresh h e
+      return $ m :< TM.Actual t' e'
     m :< TM.Let opacity mxt e1 e2 -> do
       e1' <- refresh h e1
       ([mxt'], e2') <- refresh' h [mxt] e2

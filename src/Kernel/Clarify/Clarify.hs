@@ -587,6 +587,8 @@ clarifyTerm h context term =
       return $ Utility.irreducibleBindLet (zip xs es') tree'
     _ :< TM.BoxIntro letSeq e -> do
       embody h context letSeq e
+    _ :< TM.BoxIntroLift _ e -> do
+      clarifyTerm h context e
     _ :< TM.BoxElim castSeq mxt e1 uncastSeq e2 -> do
       clarifyTerm h context $
         TM.fromLetSeqOpaque castSeq $
@@ -599,6 +601,8 @@ clarifyTerm h context term =
       clarifyType h context ty
     m :< TM.TauElim (mx, x) e1 e2 -> do
       clarifyTerm h context $ m :< TM.Let O.Clear (mx, VK.Normal, x, mx :< TM.Tau) e1 e2
+    _ :< TM.Actual _ e -> do
+      clarifyTerm h context e
     _ :< TM.Let opacity mxt@(_, _, x, _) e1 e2 -> do
       e2' <- clarifyTerm h (extendContext [mxt] context) e2
       mxts' <- dropFst <$> clarifyBinder h context [mxt]
