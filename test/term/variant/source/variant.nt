@@ -96,6 +96,20 @@ data my-enum {
 | Bar
 }
 
+define either-bind<a, b>(x: either(unit, a), f: (a) -> either(unit, b)) -> either(unit, b) {
+  match x {
+  | Left(_) =>
+    Left(Unit)
+  | Right(value) =>
+    f(value)
+  }
+}
+
+define unit-bind(x: unit, f: (unit) -> unit) -> unit {
+  let _ = x;
+  f(Unit)
+}
+
 define using-if() -> int {
   let _ =
     if True {
@@ -117,6 +131,56 @@ define using-if() -> int {
     2
   } else {
     3
+  }
+}
+
+define with-bind-through-if(cond: bool) -> either(unit, int) {
+  with either-bind {
+    if cond {
+      bind x = Right(10);
+      Right(add-int(x, 1))
+    } else-if False {
+      bind x = Right(20);
+      Right(add-int(x, 2))
+    } else {
+      bind x = Right(30);
+      Right(add-int(x, 3))
+    }
+  }
+}
+
+define with-bind-through-when(cond: bool) -> unit {
+  with unit-bind {
+    when cond {
+      bind _ = Unit;
+      Unit
+    }
+  }
+}
+
+define with-bind-through-match(xs: list(int)) -> either(unit, int) {
+  with either-bind {
+    match xs {
+    | Nil =>
+      bind x = Right(0);
+      Right(x)
+    | Cons(x, _) =>
+      bind y = Right(x);
+      Right(add-int(y, 1))
+    }
+  }
+}
+
+define with-bind-through-case(xs: &list(int)) -> either(unit, int) {
+  with either-bind {
+    case xs {
+    | Nil =>
+      bind x = Right(0);
+      Right(x)
+    | Cons(x, _) =>
+      bind y = Right(*x);
+      Right(add-int(y, 1))
+    }
   }
 }
 
@@ -337,6 +401,10 @@ define test-match() -> unit {
   let _ on n = literal-match-N(n);
   let _ = literal-match-in-cons(xs);
   let _ on !xs = literal-match-in-cons-N(xs);
+  let _ = with-bind-through-if(True);
+  with-bind-through-when(True);
+  let _ = with-bind-through-match(xs);
+  let _ on !xs = with-bind-through-case(xs);
   let _ = n;
   let _ = xs;
   let _: list(int) = use-struct(list-monoid());

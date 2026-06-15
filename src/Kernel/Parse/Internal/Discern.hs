@@ -654,10 +654,17 @@ discern h term =
           return $ m :< WT.Prim (WPV.String coreModuleID hole bytes)
     m :< RT.With withClause -> do
       let (binder, body) = RT.extractFromKeywordClause withClause
+      let withBody e = m :< RT.With (([], (binder, [])), ([], (e, [])))
+      let withELBody (c1, (branch, c2)) =
+            (c1, (withBody branch, c2))
+      let withKeywordBody ((c1, (cond, c2)), (c3, (branch, c4))) =
+            ((c1, (cond, c2)), (c3, (withBody branch, c4)))
+      let withPatternRowBody (patArgs, c, branch) =
+            (patArgs, c, withBody branch)
       case body of
         mLet :< RT.Let letKind c1 mxt@(mPat, pat, c2, c3, t) c c4 e1 c5 startLoc c6 e2 endLoc -> do
-          let e1' = m :< RT.With (([], (binder, [])), ([], (e1, [])))
-          let e2' = m :< RT.With (([], (binder, [])), ([], (e2, [])))
+          let e1' = withBody e1
+          let e2' = withBody e2
           case letKind of
             RT.Bind -> do
               tmpVar <- liftIO $ Gensym.newText (H.gensymHandle h)
@@ -687,26 +694,37 @@ discern h term =
             _ -> do
               discern h $ mLet :< RT.Let letKind c1 mxt c c4 e1' c5 startLoc c6 e2' endLoc
         mLet :< RT.LetOn letKind c1 mxt c2 mys c3 e1 c4 startLoc c5 e2 endLoc -> do
-          let e1' = m :< RT.With (([], (binder, [])), ([], (e1, [])))
-          let e2' = m :< RT.With (([], (binder, [])), ([], (e2, [])))
+          let e1' = withBody e1
+          let e2' = withBody e2
           discern h $ mLet :< RT.LetOn letKind c1 mxt c2 mys c3 e1' c4 startLoc c5 e2' endLoc
         mTau :< RT.TauElim c1 mxt c2 e1 c3 startLoc c4 e2 endLoc -> do
-          let e1' = m :< RT.With (([], (binder, [])), ([], (e1, [])))
-          let e2' = m :< RT.With (([], (binder, [])), ([], (e2, [])))
+          let e1' = withBody e1
+          let e2' = withBody e2
           discern h $ mTau :< RT.TauElim c1 mxt c2 e1' c3 startLoc c4 e2' endLoc
         mBox :< RT.BoxElim nesVariant mustIgnoreRelayedVars c1 mxt c2 mys c3 e1 c4 startLoc c5 e2 endLoc -> do
-          let e1' = m :< RT.With (([], (binder, [])), ([], (e1, [])))
-          let e2' = m :< RT.With (([], (binder, [])), ([], (e2, [])))
+          let e1' = withBody e1
+          let e2' = withBody e2
           discern h $
             mBox :< RT.BoxElim nesVariant mustIgnoreRelayedVars c1 mxt c2 mys c3 e1' c4 startLoc c5 e2' endLoc
         mSeq :< RT.Seq (e1, c1) c2 e2 -> do
-          let e1' = m :< RT.With (([], (binder, [])), ([], (e1, [])))
-          let e2' = m :< RT.With (([], (binder, [])), ([], (e2, [])))
+          let e1' = withBody e1
+          let e2' = withBody e2
           discern h $ mSeq :< RT.Seq (e1', c1) c2 e2'
         mPin :< RT.Pin c1 mxt c2 mys c3 e1 c4 startLoc c5 e2 endLoc -> do
-          let e1' = m :< RT.With (([], (binder, [])), ([], (e1, [])))
-          let e2' = m :< RT.With (([], (binder, [])), ([], (e2, [])))
+          let e1' = withBody e1
+          let e2' = withBody e2
           discern h $ mPin :< RT.Pin c1 mxt c2 mys c3 e1' c4 startLoc c5 e2' endLoc
+        mIf :< RT.If ifClause elseIfClauseList elseBody -> do
+          let ifClause' = withKeywordBody ifClause
+          let elseIfClauseList' = map withKeywordBody elseIfClauseList
+          let elseBody' = withELBody elseBody
+          discern h $ mIf :< RT.If ifClause' elseIfClauseList' elseBody'
+        mWhen :< RT.When whenClause -> do
+          let whenClause' = withKeywordBody whenClause
+          discern h $ mWhen :< RT.When whenClause'
+        mDataElim :< RT.DataElim c isNoetic es patternRowList -> do
+          let patternRowList' = fmap withPatternRowBody patternRowList
+          discern h $ mDataElim :< RT.DataElim c isNoetic es patternRowList'
         _ ->
           discern h body
     _ :< RT.Brace _ (e, _) ->
