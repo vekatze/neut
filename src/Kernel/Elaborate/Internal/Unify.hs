@@ -6,7 +6,6 @@ where
 
 import App.App (App)
 import App.Error qualified as E
-import App.Run (raiseCritical)
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.Except (MonadError (throwError))
@@ -16,7 +15,6 @@ import Data.IntMap qualified as IntMap
 import Data.List (partition)
 import Data.Set qualified as S
 import Data.Text qualified as T
-import Kernel.Common.Handle.Global.Data qualified as Data
 import Kernel.Common.ReadableDD qualified as ReadableDD
 import Kernel.Common.Source (sourceModule)
 import Kernel.Elaborate.Constraint (SuspendedConstraint)
@@ -29,12 +27,10 @@ import Kernel.Elaborate.Stuck qualified as Stuck
 import Kernel.Elaborate.TypeHoleSubst qualified as THS
 import Language.Common.Binder
 import Language.Common.CreateSymbol qualified as Gensym
-import Language.Common.DataInfo qualified as DI
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.HoleID qualified as HID
 import Language.Common.Ident
 import Language.Common.Ident.Reify qualified as Ident
-import Language.Common.PrimType qualified as PT
 import Language.Common.VarKind qualified as VK
 import Language.WeakTerm.Eq qualified as WT
 import Language.WeakTerm.FreeVars
@@ -81,12 +77,6 @@ throwTypeErrors h susList = do
 constraintToRemark :: Handle -> THS.TypeHoleSubst -> C.Constraint -> App L.Log
 constraintToRemark h sub c = do
   case c of
-    C.Actual t -> do
-      t' <- fillAsMuchAsPossible h sub t
-      return $ L.newLog (WT.metaOfType t) L.Error $ constructErrorMessageActual t'
-    C.Integer t -> do
-      t' <- fillAsMuchAsPossible h sub t
-      return $ L.newLog (WT.metaOfType t) L.Error $ constructErrorMessageInteger t'
     C.Eq expected actual -> do
       expected' <- fillAsMuchAsPossible h sub expected
       actual' <- fillAsMuchAsPossible h sub actual
@@ -145,18 +135,6 @@ collectGlobalDDs ty =
     _ ->
       []
 
-constructErrorMessageActual :: WT.WeakType -> T.Text
-constructErrorMessageActual t =
-  "A term of the following type might be noetic:\n  "
-    <> toTextType t
-
-constructErrorMessageInteger :: WT.WeakType -> T.Text
-constructErrorMessageInteger t =
-  "Expected:\n  "
-    <> "an integer type"
-    <> "\nFound:\n  "
-    <> toTextType t
-
 detectPossibleInfiniteLoop :: Handle -> C.Constraint -> App ()
 detectPossibleInfiniteLoop h c = do
   let Handle {inlineLimit, currentStep} = h
@@ -174,12 +152,6 @@ simplify h susList constraintList =
   case constraintList of
     [] ->
       return susList
-    (C.Actual t, orig) : cs -> do
-      susList' <- simplifyActual h (WT.metaOfType t) S.empty t orig
-      simplify h (susList' ++ susList) cs
-    (C.Integer t, orig) : cs -> do
-      susList' <- simplifyInteger h (WT.metaOfType t) t orig
-      simplify h (susList' ++ susList) cs
     headConstraint@(C.Eq expected actual, orig) : cs -> do
       detectPossibleInfiniteLoop h orig
       expected' <- reduceType h expected
@@ -369,115 +341,6 @@ toLinearIdentSet' xs acc =
       | otherwise ->
           toLinearIdentSet' rest (S.insert x acc)
 
-simplifyActual ::
-  Handle ->
-  Hint ->
-  S.Set DD.DefiniteDescription ->
-  WT.WeakType ->
-  C.Constraint ->
-  App [SuspendedConstraint]
-simplifyActual h m dataNameSet t orig = do
-  detectPossibleInfiniteLoop h orig
-  t' <- reduceType h t
-  case t' of
-    _ :< WT.Tau -> do
-      return []
-    _ :< WT.Data _ dataName dataArgs -> do
-      let dataNameSet' = S.insert dataName dataNameSet
-      constraintsFromDataArgs <- fmap concat $ forM dataArgs $ \dataArg ->
-        simplifyActual h m dataNameSet' dataArg orig
-      dataConsArgsList <-
-        if S.member dataName dataNameSet
-          then return []
-          else getConsArgTypes h m dataName dataArgs
-      constraintsFromDataConsArgs <- fmap concat $ forM dataConsArgsList $ \dataConsArgs -> do
-        fmap concat $ forM dataConsArgs $ \(_, _, _, consArg) -> do
-          simplifyActual h m dataNameSet' consArg orig
-      return $ constraintsFromDataArgs ++ constraintsFromDataConsArgs
-    _ :< WT.Box t'' -> do
-      simplifyActual h m dataNameSet t'' orig
-    _ :< WT.PrimType {} -> do
-      return []
-    _ :< WT.Void -> do
-      return []
-    _ :< WT.Resource {} -> do
-      return []
-    _ -> do
-      sub <- liftIO $ Hole.getTypeSubst (holeHandle h)
-      let fmvs = holesType t'
-      case lookupAnyType (S.toList fmvs) sub of
-        Just (hole, (xs, body)) -> do
-          let s = THS.singleton hole xs body
-          t'' <- fillType h s t'
-          simplifyActual h m dataNameSet t'' orig
-        Nothing -> do
-          defMap <- liftIO $ WeakTypeDef.read' (weakTypeDefHandle h)
-          case Stuck.asStuckedType t' of
-            Just (Stuck.VarGlobal dd, evalCtx)
-              | Just lam <- Map.lookup dd defMap -> do
-                  let h' = increment h
-                  mt'' <- liftIO $ Stuck.resume (substHandle h) lam evalCtx
-                  case mt'' of
-                    Just t'' -> do
-                      simplifyActual h' m dataNameSet t'' orig
-                    Nothing -> do
-                      return [C.SuspendedConstraint (fmvs, (C.Actual t', orig))]
-            _ -> do
-              return [C.SuspendedConstraint (fmvs, (C.Actual t', orig))]
-
-getConsArgTypes ::
-  Handle ->
-  Hint ->
-  DD.DefiniteDescription ->
-  [WT.WeakType] ->
-  App [[BinderF WT.WeakType]]
-getConsArgTypes h m dataName dataArgs = do
-  dataInfoOrNone <- liftIO $ Data.lookupWeak (dataHandle h) dataName
-  case dataInfoOrNone of
-    Just DI.DataInfo {DI.dataArgs = dataBinders, DI.consInfoList = consInfoList}
-      | length dataBinders == length dataArgs -> do
-          let binderIds = map (\(_, _, x, _) -> x) dataBinders
-          let sub = IntMap.fromList $ zip (map Ident.toInt binderIds) (map Type dataArgs)
-          liftIO $ mapM (substConsArgs h sub . DI.consArgs) consInfoList
-      | otherwise ->
-          raiseCritical m $ "Could not specialize constructor metadata for `" <> DD.reify dataName <> "` due to arity mismatch"
-    Nothing ->
-      raiseCritical m $ "Could not find constructor metadata for `" <> DD.reify dataName <> "`"
-
-simplifyInteger ::
-  Handle ->
-  Hint ->
-  WT.WeakType ->
-  C.Constraint ->
-  App [SuspendedConstraint]
-simplifyInteger h m t orig = do
-  detectPossibleInfiniteLoop h orig
-  t' <- reduceType h t
-  case t' of
-    _ :< WT.PrimType (PT.Int _) -> do
-      return []
-    _ -> do
-      sub <- liftIO $ Hole.getTypeSubst (holeHandle h)
-      let fmvs = holesType t'
-      case lookupAnyType (S.toList fmvs) sub of
-        Just (hole, (xs, body)) -> do
-          t'' <- fillType h (THS.singleton hole xs body) t'
-          simplifyInteger h m t'' orig
-        Nothing -> do
-          defMap <- liftIO $ WeakTypeDef.read' (weakTypeDefHandle h)
-          case Stuck.asStuckedType t' of
-            Just (Stuck.VarGlobal dd, evalCtx)
-              | Just lam <- Map.lookup dd defMap -> do
-                  let h' = increment h
-                  mt'' <- liftIO $ Stuck.resume (substHandle h) lam evalCtx
-                  case mt'' of
-                    Just t'' -> do
-                      simplifyInteger h' m t'' orig
-                    Nothing -> do
-                      return [C.SuspendedConstraint (fmvs, (C.Integer t', orig))]
-            _ -> do
-              return [C.SuspendedConstraint (fmvs, (C.Integer t', orig))]
-
 lookupAnyType :: [HID.HoleID] -> THS.TypeHoleSubst -> Maybe (HID.HoleID, ([Ident], WT.WeakType))
 lookupAnyType is sub =
   case is of
@@ -489,18 +352,6 @@ lookupAnyType is sub =
           Just (j, v)
         _ ->
           lookupAnyType js sub
-
-substConsArgs :: Handle -> Subst -> [BinderF WT.WeakType] -> IO [BinderF WT.WeakType]
-substConsArgs h sub consArgs =
-  case consArgs of
-    [] ->
-      return []
-    (m, k, x, t) : rest -> do
-      t' <- Subst.substType (substHandle h) sub t
-      let opaque = m :< WT.Tau -- allow `a` in `Cons(a: type, x: a)`
-      let sub' = IntMap.insert (Ident.toInt x) (Type opaque) sub
-      rest' <- substConsArgs h sub' rest
-      return $ (m, k, x, t') : rest'
 
 zipBinders :: [BinderF WT.WeakType] -> [BinderF WT.WeakType] -> Maybe [(BinderF WT.WeakType, BinderF WT.WeakType)]
 zipBinders args1 args2 =

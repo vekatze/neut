@@ -97,6 +97,7 @@ import Language.WeakTerm.WeakStmt
 import Language.WeakTerm.WeakTerm qualified as WT
 import Logger.Hint
 import Logger.Log qualified as L
+import Logger.LogLevel qualified as LL
 
 getWeakTypeEnv :: Handle -> IO WeakType.WeakTypeEnv
 getWeakTypeEnv h =
@@ -134,6 +135,10 @@ synthesizeStmtList h t logs globalReferenceList stmtList = do
     throwError $ E.MakeError affineErrorList
   generatedStmtList <- liftIO $ reverse <$> readIORef (pendingSpecializationDefs h)
   let stmtList'' = stmtList' ++ generatedStmtList
+  residualCheckList' <- liftIO $ reverse <$> readIORef (residualCheckList h)
+  residualErrorList <- concat <$> mapM (checkResidualCheck h) residualCheckList'
+  unless (null residualErrorList) $ do
+    throwError $ E.MakeError residualErrorList
   -- mapM_ (liftIO . viewStmt . weakenStmt) stmtList'
   countSnapshot <- liftIO $ Gensym.getCount (gensymHandle h)
   localLogs <- liftIO $ LocalLogs.get (localLogsHandle h)
@@ -162,11 +167,11 @@ elaborateStmt h stmt = do
       codType' <- elaborateType h codType
       let mDefKind = stmtKindToDefKind stmtKind defaultArgs'
       e' <- elaborate' h e
-      defaultArgsForSelf <- forM defaultArgs' $ \(binder, value) -> do
-        value' <- inline h m value
-        return (binder, value')
       case mDefKind of
-        Just Inline.NoInline ->
+        Just Inline.NoInline -> do
+          defaultArgsForSelf <- forM defaultArgs' $ \(binder, value) -> do
+            value' <- inline h m value
+            return (binder, value')
           liftIO $ Definition.insert' (defHandle h) x impArgs' expArgs' defaultArgsForSelf e' codType' mDefKind
         _ ->
           return ()
@@ -181,7 +186,10 @@ elaborateStmt h stmt = do
       impArgs'' <- mapM (inlineBinder h) impArgs'
       defaultArgs'' <- forM defaultArgs' $ \(binder, value) -> do
         binder' <- inlineBinder h binder
-        value' <- inline h m value
+        value' <-
+          if SK.isMacroStmtKind stmtKind
+            then inlineWithoutResidualChecks h m value
+            else inline h m value
         return (binder', value')
       expArgs'' <- mapM (inlineBinder h) expArgs'
       codType'' <- inlineType h m codType'
@@ -251,6 +259,90 @@ elaborateGeist h (G.Geist {..}) = do
   expArgs' <- mapM (elaborateWeakBinder h) expArgs
   cod' <- elaborateType h cod
   return $ G.Geist {impArgs = impArgs', defaultArgs = defaultArgs', expArgs = expArgs', cod = cod', ..}
+
+checkResidualCheck :: Handle -> Inline.ResidualCheck -> App [L.Log]
+checkResidualCheck h check =
+  case check of
+    Inline.CheckActuality m t ->
+      checkActualityType h m S.empty t
+    Inline.CheckInteger m t ->
+      checkIntegerCursorType h m t
+
+checkActualityType :: Handle -> Hint -> S.Set DD.DefiniteDescription -> TM.Type -> App [L.Log]
+checkActualityType h m dataNameSet t = do
+  t' <- inlineType h m t
+  case t' of
+    _ :< TM.Tau ->
+      return []
+    _ :< TM.Data _ dataName dataArgs -> do
+      let dataNameSet' = S.insert dataName dataNameSet
+      logsFromArgs <- concat <$> mapM (checkActualityType h m dataNameSet') dataArgs
+      if S.member dataName dataNameSet
+        then return logsFromArgs
+        else do
+          dataConsArgsList <- getActualityConsArgTypes h m dataName dataArgs
+          logsFromCons <- fmap concat $ forM dataConsArgsList $ \dataConsArgs -> do
+            fmap concat $ forM dataConsArgs $ \(_, _, _, consArg) -> do
+              checkActualityType h m dataNameSet' consArg
+          return $ logsFromArgs ++ logsFromCons
+    _ :< TM.Box tInner ->
+      checkActualityType h m dataNameSet tInner
+    _ :< TM.PrimType {} ->
+      return []
+    _ :< TM.Void ->
+      return []
+    _ :< TM.Resource {} ->
+      return []
+    _ ->
+      return
+        [ L.newLog m LL.Error $
+            "A term of the following type might be noetic:\n  "
+              <> toTextType (weakenType t')
+        ]
+
+getActualityConsArgTypes ::
+  Handle ->
+  Hint ->
+  DD.DefiniteDescription ->
+  [TM.Type] ->
+  App [[BinderF TM.Type]]
+getActualityConsArgTypes h m dataName dataArgs = do
+  dataInfo <- lookupDataInfoFull h m dataName
+  let dataBinders = DI.dataArgs dataInfo
+  if length dataBinders == length dataArgs
+    then do
+      let binderIds = map (\(_, _, x, _) -> x) dataBinders
+      let sub = IntMap.fromList $ zip (map Ident.toInt binderIds) (map TmSubst.Type dataArgs)
+      forM (DI.consInfoList dataInfo) $ \consInfo -> do
+        liftIO $ substActualityConsArgs h sub (DI.consArgs consInfo)
+    else
+      raiseCritical m $ "Could not specialize constructor metadata for `" <> DD.reify dataName <> "` due to arity mismatch"
+
+substActualityConsArgs :: Handle -> TmSubst.Subst -> [BinderF TM.Type] -> IO [BinderF TM.Type]
+substActualityConsArgs h sub consArgs =
+  case consArgs of
+    [] ->
+      return []
+    (m, k, x, t) : rest -> do
+      let substHandle' = TmSubst.new (gensymHandle h)
+      t' <- TmSubst.substType substHandle' sub t
+      let opaque = m :< TM.Tau
+      let sub' = IntMap.insert (Ident.toInt x) (TmSubst.Type opaque) sub
+      rest' <- substActualityConsArgs h sub' rest
+      return $ (m, k, x, t') : rest'
+
+checkIntegerCursorType :: Handle -> Hint -> TM.Type -> App [L.Log]
+checkIntegerCursorType h m t = do
+  t' <- inlineType h m t
+  case t' of
+    _ :< TM.PrimType (PT.Int _) ->
+      return []
+    _ ->
+      return
+        [ L.newLog m LL.Error $
+            "Expected:\n  an integer type\nFound:\n  "
+              <> toTextType (weakenType t')
+        ]
 
 insertStmt :: Handle -> Stmt -> App ()
 insertStmt h stmt = do
@@ -529,8 +621,10 @@ elaborate' h term = do
       letSeq' <- mapM (elaborateLet h) letSeq
       e' <- elaborate' h e
       return $ m :< TM.BoxIntro letSeq' e'
-    _ :< WT.BoxIntroLift e -> do
-      elaborate' h e
+    m :< WT.BoxIntroLift mt e -> do
+      e' <- elaborate' h e
+      t <- elaborateActualityMarkerType h m mt
+      return $ m :< TM.BoxIntroLift t e'
     m :< WT.BoxElim castSeq mxt e1 uncastSeq e2 -> do
       castSeq' <- mapM (elaborateLet h) castSeq
       mxt' <- elaborateWeakBinder h mxt
@@ -551,13 +645,20 @@ elaborate' h term = do
       e1' <- elaborate' h e1
       e2' <- elaborate' h e2
       return $ m :< TM.TauElim (mx, x) e1' e2'
-    _ :< WT.Actual e -> do
-      elaborate' h e
+    m :< WT.Actual mt e -> do
+      e' <- elaborate' h e
+      t <- elaborateActualityMarkerType h m mt
+      return $ m :< TM.Actual t e'
     m :< WT.Let opacity (mx, k, x, t) e1 e2 -> do
       e1' <- elaborate' h e1
       t' <- reduceWeakType h t >>= elaborateType h
       e2' <- elaborate' h e2
-      return $ m :< TM.Let (WT.reifyOpacity opacity) (mx, k, x, t') e1' e2'
+      let letTerm = m :< TM.Let (WT.reifyOpacity opacity) (mx, k, x, t') e1' e2'
+      case opacity of
+        WT.Noetic ->
+          return $ m :< TM.Actual t' letTerm
+        _ ->
+          return letTerm
     m :< WT.Prim primValue -> do
       primValue' <- elaboratePrimValue h m primValue
       return $ m :< TM.Prim primValue'
@@ -659,6 +760,14 @@ elaborate' h term = do
           let typeRemark = L.newLog m remarkLevel message
           liftIO $ LocalLogs.insert (localLogsHandle h) typeRemark
           return e'
+
+elaborateActualityMarkerType :: Handle -> Hint -> Maybe WT.WeakType -> App TM.Type
+elaborateActualityMarkerType h m mt =
+  case mt of
+    Just t ->
+      elaborateType h t
+    Nothing ->
+      raiseCritical m "Found an untyped actuality marker during elaboration"
 
 elaborateType :: Handle -> WT.WeakType -> App TM.Type
 elaborateType h ty =
@@ -855,7 +964,7 @@ inlineType :: Handle -> Hint -> TM.Type -> App TM.Type
 inlineType h m t = do
   dmap <- liftIO $ Definition.get' (defHandle h)
   typeDefMap <- liftIO $ TypeDef.get' (typeDefHandle h)
-  inlineHandle <- liftIO $ Inline.new (gensymHandle h) dmap typeDefMap (dataHandle h) m (inlineLimit h) (specializationTable h) (pendingSpecializationDefs h)
+  inlineHandle <- liftIO $ Inline.new (gensymHandle h) dmap typeDefMap (dataHandle h) m (inlineLimit h) (specializationTable h) (pendingSpecializationDefs h) (residualCheckList h) False
   Inline.inlineType inlineHandle t
 
 elaborateLet :: Handle -> (BinderF WT.WeakType, WT.WeakTerm) -> App (BinderF TM.Type, TM.Term)
@@ -951,7 +1060,7 @@ elaborateDecisionTree h ctx mOrig m tree =
       return DT.Unreachable
     DT.Switch (cursor, cursorType) (fallbackClause, clauseList) -> do
       cursorType' <- reduceWeakType h cursorType >>= elaborateType h
-      switchSpec <- getSwitchSpec h m cursorType'
+      switchSpec <- getSwitchSpecForCaseList h m cursorType' clauseList
       case switchSpec of
         LiteralSwitch -> do
           when (DT.isUnreachable fallbackClause) $ do
@@ -1063,6 +1172,20 @@ getSwitchSpec h m cursorType = do
       raiseError m $
         "This term is expected to be an ADT value or a literal, but found:\n"
           <> toTextType (weakenType cursorType)
+
+getSwitchSpecForCaseList :: Handle -> Hint -> TM.Type -> [DT.Case t a] -> App SwitchSpec
+getSwitchSpecForCaseList h m cursorType caseList =
+  if any isLiteralCase caseList
+    then return LiteralSwitch
+    else getSwitchSpec h m cursorType
+
+isLiteralCase :: DT.Case t a -> Bool
+isLiteralCase decisionCase =
+  case decisionCase of
+    DT.LiteralCase {} ->
+      True
+    _ ->
+      False
 
 reduceWeakType :: Handle -> WT.WeakType -> App WT.WeakType
 reduceWeakType h t = do

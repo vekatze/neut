@@ -72,11 +72,13 @@ data TermF a
   | DataIntro AttrDI.Attr DD.DefiniteDescription [Type] [a]
   | DataElim N.IsNoetic [(Ident, a, Type)] (DT.DecisionTree Type a)
   | BoxIntro [(BinderF Type, a)] a
+  | BoxIntroLift Type a
   | BoxElim [(BinderF Type, a)] (BinderF Type) a [(BinderF Type, a)] a
   | CodeIntro a
   | CodeElim a
   | TauIntro Type
   | TauElim (Hint, Ident) a a
+  | Actual Type a
   | Let O.Opacity (BinderF Type) a a
   | Prim (PV.PrimValue Type)
   | Magic (Magic BLT.BaseLowType Type a)
@@ -114,6 +116,10 @@ isValue term =
       True
     _ :< TauIntro _ ->
       True
+    _ :< BoxIntroLift _ e ->
+      isValue e
+    _ :< Actual _ e ->
+      isValue e
     _ :< Prim {} ->
       True
     _ :< Magic (LowMagic (LM.OpaqueValue _)) ->

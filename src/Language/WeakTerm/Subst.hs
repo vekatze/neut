@@ -120,9 +120,10 @@ subst h sub term =
       (letSeq', sub') <- substLetSeq h sub letSeq
       e' <- subst h sub' e
       return $ m :< WT.BoxIntro letSeq' e'
-    m :< WT.BoxIntroLift e -> do
+    m :< WT.BoxIntroLift mt e -> do
+      mt' <- traverse (substType h sub) mt
       e' <- subst h sub e
-      return $ m :< WT.BoxIntroLift e'
+      return $ m :< WT.BoxIntroLift mt' e'
     m :< WT.BoxElim castSeq mxt e1 uncastSeq e2 -> do
       (castSeq', sub1) <- substLetSeq h sub castSeq
       ((mxt', e1'), sub2) <- substLet h sub1 (mxt, e1)
@@ -144,9 +145,10 @@ subst h sub term =
       let sub' = IntMap.insert (Ident.toInt x) (Var x') sub
       e2' <- subst h sub' e2
       return $ m :< WT.TauElim (mx, x') e1' e2'
-    m :< WT.Actual e -> do
+    m :< WT.Actual mt e -> do
+      mt' <- traverse (substType h sub) mt
       e' <- subst h sub e
-      return $ m :< WT.Actual e'
+      return $ m :< WT.Actual mt' e'
     m :< WT.Let opacity mxt e1 e2 -> do
       e1' <- subst h sub e1
       (mxt', _, e2') <- subst'' h sub mxt [] e2

@@ -114,6 +114,10 @@ subst h sub term =
       (letSeq', sub') <- substLetSeq h sub letSeq
       e' <- subst h sub' e
       return $ m :< TM.BoxIntro letSeq' e'
+    m :< TM.BoxIntroLift t e -> do
+      t' <- substType h sub t
+      e' <- subst h sub e
+      return $ m :< TM.BoxIntroLift t' e'
     m :< TM.BoxElim castSeq mxt e1 uncastSeq e2 -> do
       (castSeq', sub1) <- substLetSeq h sub castSeq
       ((mxt', e1'), sub2) <- substLet h sub1 (mxt, e1)
@@ -135,6 +139,10 @@ subst h sub term =
       let sub' = IntMap.insert (Ident.toInt x) (Var x') sub
       e2' <- subst h sub' e2
       return $ m :< TM.TauElim (mx, x') e1' e2'
+    m :< TM.Actual t e -> do
+      t' <- substType h sub t
+      e' <- subst h sub e
+      return $ m :< TM.Actual t' e'
     m :< TM.Let opacity mxt e1 e2 -> do
       e1' <- subst h sub e1
       ([mxt'], e2') <- subst' h sub [mxt] e2

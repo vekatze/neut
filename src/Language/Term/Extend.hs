@@ -43,6 +43,8 @@ extend term =
        in _m :< TM.DataElim isNoetic (zip3 os es' ts) tree'
     () :< TM.BoxIntro letSeq e ->
       _m :< TM.BoxIntro (map extendLet letSeq) (extend e)
+    () :< TM.BoxIntroLift t e ->
+      _m :< TM.BoxIntroLift t (extend e)
     () :< TM.BoxElim castSeq mxt e1 uncastSeq e2 ->
       _m :< TM.BoxElim (map extendLet castSeq) mxt (extend e1) (map extendLet uncastSeq) (extend e2)
     () :< TM.CodeIntro e ->
@@ -53,6 +55,8 @@ extend term =
       _m :< TM.TauIntro ty
     () :< TM.TauElim (mx, x) e1 e2 ->
       _m :< TM.TauElim (mx, x) (extend e1) (extend e2)
+    () :< TM.Actual t e ->
+      _m :< TM.Actual t (extend e)
     () :< TM.Let opacity mxt e1 e2 ->
       _m :< TM.Let opacity mxt (extend e1) (extend e2)
     () :< TM.Prim prim ->

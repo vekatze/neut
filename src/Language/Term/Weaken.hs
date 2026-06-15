@@ -94,6 +94,8 @@ weaken term =
       m :< WT.DataElim isNoetic (zip3 os es' ts') tree'
     m :< TM.BoxIntro letSeq e -> do
       m :< WT.BoxIntro (map weakenLet letSeq) (weaken e)
+    m :< TM.BoxIntroLift t e ->
+      m :< WT.BoxIntroLift (Just $ weakenType t) (weaken e)
     m :< TM.BoxElim castSeq mxt e1 uncastSeq e2 -> do
       let castSeq' = map weakenLet castSeq
       let (mxt', e1') = weakenLet (mxt, e1)
@@ -108,6 +110,8 @@ weaken term =
       m :< WT.TauIntro (weakenType ty)
     m :< TM.TauElim mx e1 e2 ->
       m :< WT.TauElim mx (weaken e1) (weaken e2)
+    m :< TM.Actual t e ->
+      m :< WT.Actual (Just $ weakenType t) (weaken e)
     m :< TM.Let opacity mxt e1 e2 ->
       m :< WT.Let (reflectOpacity opacity) (weakenTypeBinder mxt) (weaken e1) (weaken e2)
     m :< TM.Prim prim ->

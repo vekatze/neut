@@ -4,6 +4,7 @@ module Kernel.Elaborate.Internal.Handle.Elaborate
     reduceType,
     fillType,
     inline,
+    inlineWithoutResidualChecks,
     inlineBinder,
   )
 where
@@ -75,7 +76,8 @@ data Handle = Handle
     currentStep :: Int,
     varEnv :: BoundVarEnv,
     specializationTable :: IORef InlineHandle.SpecializationTable,
-    pendingSpecializationDefs :: IORef [Stmt.Stmt]
+    pendingSpecializationDefs :: IORef [Stmt.Stmt],
+    residualCheckList :: IORef [Inline.ResidualCheck]
   }
 
 type BoundVarEnv = [BinderF WT.WeakType]
@@ -92,6 +94,7 @@ new globalHandle@(Global.Handle {..}) (Local.Handle {..}) currentSource = do
   let currentStep = 0
   specializationTable <- newIORef mempty
   pendingSpecializationDefs <- newIORef []
+  residualCheckList <- newIORef []
   return $ Handle {..}
 
 reduceType :: Handle -> WT.WeakType -> App WT.WeakType
@@ -107,16 +110,24 @@ fillType h sub t = do
   Fill.fillType fillHandle sub t
 
 inline :: Handle -> Hint -> TM.Term -> App TM.Term
-inline h m e = do
+inline h m e =
+  inline' h m True e
+
+inlineWithoutResidualChecks :: Handle -> Hint -> TM.Term -> App TM.Term
+inlineWithoutResidualChecks h m e =
+  inline' h m False e
+
+inline' :: Handle -> Hint -> Bool -> TM.Term -> App TM.Term
+inline' h m shouldEmitResidualChecks e = do
   dmap <- liftIO $ Definition.get' (defHandle h)
   typeDefMap <- liftIO $ TypeDef.get' (typeDefHandle h)
-  inlineHandle <- liftIO $ Inline.new (gensymHandle h) dmap typeDefMap (dataHandle h) m (inlineLimit h) (specializationTable h) (pendingSpecializationDefs h)
+  inlineHandle <- liftIO $ Inline.new (gensymHandle h) dmap typeDefMap (dataHandle h) m (inlineLimit h) (specializationTable h) (pendingSpecializationDefs h) (residualCheckList h) shouldEmitResidualChecks
   Inline.inline inlineHandle e
 
 inlineBinder :: Handle -> BinderF TM.Type -> App (BinderF TM.Type)
 inlineBinder h (m, k, x, t) = do
   dmap <- liftIO $ Definition.get' (defHandle h)
   typeDefMap <- liftIO $ TypeDef.get' (typeDefHandle h)
-  inlineHandle <- liftIO $ Inline.new (gensymHandle h) dmap typeDefMap (dataHandle h) m (inlineLimit h) (specializationTable h) (pendingSpecializationDefs h)
+  inlineHandle <- liftIO $ Inline.new (gensymHandle h) dmap typeDefMap (dataHandle h) m (inlineLimit h) (specializationTable h) (pendingSpecializationDefs h) (residualCheckList h) False
   t' <- Inline.inlineType inlineHandle t
   return (m, k, x, t')

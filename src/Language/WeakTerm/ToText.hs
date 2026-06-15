@@ -98,7 +98,7 @@ toText term =
     _ :< WT.BoxIntro letSeq t -> do
       let kes = map (\((_, _, x, _), e) -> (x, e)) letSeq
       "box " <> T.intercalate ", " (map (\(k, e) -> inParen $ Ident.toText k <> ", " <> toText e) kes) <> inBrace (toText t)
-    _ :< WT.BoxIntroLift e ->
+    _ :< WT.BoxIntroLift _ e ->
       "lift " <> inBrace (toText e)
     _ :< WT.BoxElim castSeq (_, k, x, t) e1 _ e2 -> do
       let ks = map (\((_, _, y, _), _) -> y) castSeq
@@ -120,7 +120,7 @@ toText term =
       "pack-type" <> inParen (toTextType ty)
     _ :< WT.TauElim (_, x) e1 e2 ->
       "unpack-type " <> showVariable x <> " = " <> toText e1 <> "; " <> toText e2
-    _ :< WT.Actual e ->
+    _ :< WT.Actual _ e ->
       "ACTUAL(" <> toText e <> ")"
     _ :< WT.Let opacity (_, k, x, t) e1 e2 -> do
       case opacity of

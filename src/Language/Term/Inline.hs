@@ -5,6 +5,7 @@ module Language.Term.Inline
     inlineType,
     DefInfo (..),
     DefKind (..),
+    ResidualCheck (..),
   )
 where
 
@@ -52,8 +53,8 @@ import Language.Term.Subst qualified as Subst
 import Language.Term.Term qualified as TM
 import Logger.Hint
 
-new :: GensymHandle.Handle -> DefMap -> TypeDefMap -> Data.Handle -> Hint -> Int -> IORef SpecializationTable -> IORef [Stmt.Stmt] -> IO Handle
-new gensymHandle dmap typeDefMap dataHandle location inlineLimit specializationTable pendingSpecializationDefs = do
+new :: GensymHandle.Handle -> DefMap -> TypeDefMap -> Data.Handle -> Hint -> Int -> IORef SpecializationTable -> IORef [Stmt.Stmt] -> IORef [ResidualCheck] -> Bool -> IO Handle
+new gensymHandle dmap typeDefMap dataHandle location inlineLimit specializationTable pendingSpecializationDefs residualCheckList shouldEmitResidualChecks = do
   let substHandle = Subst.new gensymHandle
   let refreshHandle = Refresh.new gensymHandle
   currentStepRef <- liftIO $ newIORef 0
@@ -257,6 +258,11 @@ inline' h term = do
       es' <- mapM (inline' h) es
       e' <- inline' h e
       return $ m :< TM.BoxIntro (zip xts' es') e'
+    m :< TM.BoxIntroLift t e -> do
+      t' <- inlineType' h t
+      e' <- inline' h e
+      emitActualityCheck h m t'
+      return $ m :< TM.BoxIntroLift t' e'
     m :< TM.BoxElim castSeq mxt e1 uncastSeq e2 -> do
       castSeq' <- mapM (bimapM (inlineTypeBinder h) (inline' h)) castSeq
       (mxt', e1') <- bimapM (inlineTypeBinder h) (inline' h) (mxt, e1)
@@ -285,6 +291,11 @@ inline' h term = do
         _ -> do
           e2' <- inline' h e2
           return $ m :< TM.TauElim (mx, x) e1' e2'
+    m :< TM.Actual t e -> do
+      t' <- inlineType' h t
+      e' <- inline' h e
+      emitActualityCheck h m t'
+      return $ m :< TM.Actual t' e'
     m :< TM.Let opacity mxt@(_, _, x, _) e1 e2 -> do
       e1' <- inline' h e1
       case opacity of
@@ -470,25 +481,28 @@ inlineDecisionTree h tree =
       return DT.Unreachable
     DT.Switch (cursorVar, cursor) clauseList -> do
       cursor' <- inlineType' h cursor
-      clauseList' <- inlineCaseList h clauseList
+      clauseList' <- inlineCaseList h cursor' clauseList
       return $ DT.Switch (cursorVar, cursor') clauseList'
 
 inlineCaseList ::
   Handle ->
+  TM.Type ->
   DT.CaseList TM.Type TM.Term ->
   App (DT.CaseList TM.Type TM.Term)
-inlineCaseList h (fallbackTree, clauseList) = do
+inlineCaseList h cursorType (fallbackTree, clauseList) = do
   fallbackTree' <- inlineDecisionTree h fallbackTree
-  clauseList' <- mapM (inlineCase h) clauseList
+  clauseList' <- mapM (inlineCase h cursorType) clauseList
   return (fallbackTree', clauseList')
 
 inlineCase ::
   Handle ->
+  TM.Type ->
   DT.Case TM.Type TM.Term ->
   App (DT.Case TM.Type TM.Term)
-inlineCase h decisionCase = do
+inlineCase h cursorType decisionCase = do
   case decisionCase of
     DT.LiteralCase mPat i cont -> do
+      emitIntegerCheck h mPat cursorType i
       cont' <- inlineDecisionTree h cont
       return $ DT.LiteralCase mPat i cont'
     DT.ConsCase record@(DT.ConsCaseRecord {..}) -> do
@@ -504,6 +518,35 @@ inlineCase h decisionCase = do
               DT.consArgs = consArgs',
               DT.cont = cont'
             }
+
+emitActualityCheck :: Handle -> Hint -> TM.Type -> App ()
+emitActualityCheck h m t = do
+  when (shouldEmitResidualChecks h) $ do
+    mReport <- getReportHint h m
+    emitResidualCheck h $ CheckActuality mReport t
+
+emitIntegerCheck :: Handle -> Hint -> TM.Type -> L.Literal -> App ()
+emitIntegerCheck h m t literal =
+  case literal of
+    L.Int _ -> do
+      when (shouldEmitResidualChecks h) $ do
+        mReport <- getReportHint h m
+        emitResidualCheck h $ CheckInteger mReport t
+    L.Rune _ ->
+      return ()
+
+emitResidualCheck :: Handle -> ResidualCheck -> App ()
+emitResidualCheck h check = do
+  liftIO $ modifyIORef' (residualCheckList h) (check :)
+
+getReportHint :: Handle -> Hint -> App Hint
+getReportHint h m = do
+  stack <- liftIO $ readIORef (macroCallStack h)
+  case stack of
+    (_, mReport) : _ ->
+      return mReport
+    [] ->
+      return m
 
 findClause ::
   D.Discriminant ->

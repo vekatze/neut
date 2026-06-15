@@ -475,7 +475,7 @@ discern h term =
     m :< RT.BoxIntroLift _ _ (body, _) -> do
       ensureRuntimeStage m h "meta operation (`lift`)"
       body' <- discern h body
-      return $ m :< WT.BoxIntroLift body'
+      return $ m :< WT.BoxIntroLift Nothing body'
     m :< RT.BoxElim nv mustIgnoreRelayedVars _ (mx, pat, c1, c2, t) _ mys _ e1 _ startLoc _ e2 endLoc -> do
       ensureRuntimeStage m h "meta operation (`letbox`)"
       case nv of
