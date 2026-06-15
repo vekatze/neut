@@ -184,6 +184,26 @@ This is the same as:
 unquote {foo(quote {bar}, quote {baz})[width := quote {80}]}
 ```
 
+### Delayed Checks in Specialized Code
+
+The requirement of `lift` is checked against the specialized generated code, not the generic meta function body. This allows the following pattern:
+
+```neut
+define-meta lift-value<a>(x: 'a) -> '+a {
+  quote {
+    let y = unquote {x};
+    lift {y} // `lift`ing `y: a`
+  }
+}
+
+define use-meta() -> +unit {
+  lift-value::(Unit)
+}
+
+```
+
+`lift-value` typechecks even though it uses `lift` on `y: a`, since it is a meta function. Later, `use-meta` specializes it with `a := unit`, and `unit` is liftable, so `use-meta` is well-typed. Conversely, specializing with `a := &string` would be a type error, since `&string` is not liftable.
+
 ## Compile-Time Primitives
 
 Neut provides some compile-time primitives that can only be used at stage 1 or above, including:
