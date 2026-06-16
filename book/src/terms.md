@@ -2557,6 +2557,8 @@ magic external func-name(e1, ..., en)(vararg-1: lowtype-1, ..., vararg-n: lowtyp
 
 magic call-type(some-type, switch, arg)
 
+magic assert-mixable(some-type)
+
 magic inspect-type(some-type)
 
 magic eq-type(type-1, type-2)
@@ -2582,6 +2584,7 @@ You can also use `int` and `float` as a lowtype. These are just syntactic sugar 
 
 The forms
 
+- `magic assert-mixable(some-type)`
 - `magic inspect-type(some-type)`
 - `magic eq-type(type-1, type-2)`
 - `magic show-type(some-type)`
@@ -2648,6 +2651,12 @@ Neut compiles types into functions. The first argument of such a function is usu
 `magic call-type(some-type, 2, value)` returns the size of a value as a machine-word count.
 
 The type of the result of `call-type` is inferred from the context.
+
+### Semantics (assert-mixable)
+
+`magic assert-mixable(some-type)` checks that `some-type` can be used as a `mix` field in a `data` declaration. If `some-type` cannot be mixed, the compiler reports an error. This can be used, for example, to implement unboxed vectors.
+
+See [Memory Representation in Statements](./statements.md#memory-representation) for the representation of mixed fields.
 
 ### Semantics (inspect-type)
 
@@ -2758,6 +2767,11 @@ The type of the result of `call-type` is inferred from the context.
 Γ ⊢ arg: s
 ------------------------------------------------------
 Γ ⊢ magic call-type(t, switch, arg): u
+
+
+Γ ⊢ t: type
+------------------------------------------------------
+Γ ⊢ magic assert-mixable(t): unit
 
 
 Γ ⊢ t: type
