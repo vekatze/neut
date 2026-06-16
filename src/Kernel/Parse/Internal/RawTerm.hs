@@ -736,6 +736,7 @@ rawTermMagic h m c = do
       rawTermMagicInspectType h m c,
       rawTermMagicEqType h m c,
       rawTermMagicShowType h m c,
+      rawTermMagicAssertMixable h m c,
       rawTermMagicStringCons h m c,
       rawTermMagicStringUncons h m c,
       rawTermMagicCompileError h m c
@@ -885,6 +886,12 @@ rawTermMagicShowType h m c = do
   rawTermMagicBase "show-type" $ do
     typeExpr <- rawType h
     return $ \c1 c2 -> m :< RT.Magic c (RT.ShowType c1 (c2, typeExpr))
+
+rawTermMagicAssertMixable :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
+rawTermMagicAssertMixable h m c = do
+  rawTermMagicBase "assert-mixable" $ do
+    typeExpr <- rawType h
+    return $ \c1 c2 -> m :< RT.Magic c (RT.AssertMixable c1 (c2, typeExpr))
 
 rawTermMagicStringCons :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermMagicStringCons h m c = do

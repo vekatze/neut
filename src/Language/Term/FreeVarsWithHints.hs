@@ -165,6 +165,8 @@ freeVarsWithHintsMagic magic =
       S.union (freeVarsWithHintsType typeExpr1) (freeVarsWithHintsType typeExpr2)
     M.ShowType stringTypeExpr typeExpr ->
       S.union (freeVarsWithHintsType stringTypeExpr) (freeVarsWithHintsType typeExpr)
+    M.AssertMixable _ unitTypeExpr typeExpr ->
+      S.union (freeVarsWithHintsType unitTypeExpr) (freeVarsWithHintsType typeExpr)
     M.StringCons stringTypeExpr rune text ->
       S.unions [freeVarsWithHintsType stringTypeExpr, freeVarsWithHints rune, freeVarsWithHints text]
     M.StringUncons _ text ->

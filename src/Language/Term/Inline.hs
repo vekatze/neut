@@ -367,6 +367,10 @@ inline' h term = do
           stringTypeExpr' <- inlineType' h stringTypeExpr
           typeExpr' <- inlineType' h typeExpr
           Magic.evaluateShowType m stringTypeExpr' typeExpr'
+        M.AssertMixable mid _ typeExpr -> do
+          typeExpr' <- inlineType' h typeExpr
+          emitMixableCheck h m typeExpr'
+          return $ Magic.constructUnitTerm m mid
         M.StringCons stringTypeExpr rune text -> do
           stringTypeExpr' <- inlineType' h stringTypeExpr
           rune' <- inline' h rune
@@ -534,6 +538,12 @@ emitIntegerCheck h m t literal =
         emitResidualCheck h $ CheckInteger mReport t
     L.Rune _ ->
       return ()
+
+emitMixableCheck :: Handle -> Hint -> TM.Type -> App ()
+emitMixableCheck h m t = do
+  when (shouldEmitResidualChecks h) $ do
+    mReport <- getReportHint h m
+    emitResidualCheck h $ CheckMixable mReport t
 
 emitResidualCheck :: Handle -> ResidualCheck -> App ()
 emitResidualCheck h check = do

@@ -429,6 +429,8 @@ showMagic' h (M.WeakMagic magic) =
       "magic eq-type" <> inParen (toTextType' h typeExpr1 <> ", " <> toTextType' h typeExpr2)
     M.ShowType stringTypeExpr typeExpr ->
       "magic show-type" <> inParen (toTextType' h stringTypeExpr <> ", " <> toTextType' h typeExpr)
+    M.AssertMixable _ unitTypeExpr typeExpr ->
+      "magic assert-mixable" <> inParen (toTextType' h unitTypeExpr <> ", " <> toTextType' h typeExpr)
     M.StringCons stringTypeExpr rune text ->
       "magic text-cons" <> inParen (toTextType' h stringTypeExpr <> ", " <> toText rune <> ", " <> toText text)
     M.StringUncons _ text ->

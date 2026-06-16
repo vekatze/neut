@@ -926,6 +926,12 @@ discernMagic h m magic =
       stringType <- liftEither (locatorToTypeVar m coreString) >>= discernType h
       typeExpr' <- discernType h typeExpr
       return $ M.WeakMagic $ M.ShowType stringType typeExpr'
+    RT.AssertMixable _ (_, (typeExpr, _)) -> do
+      ensureCompileStage m h "inline magic (`assert-mixable`)"
+      moduleID <- Alias.resolveModuleAlias (H.aliasHandle h) m coreModuleAlias
+      unitType <- liftEither (locatorToTypeVar m coreUnit) >>= discernType h
+      typeExpr' <- discernType h typeExpr
+      return $ M.WeakMagic $ M.AssertMixable moduleID unitType typeExpr'
     RT.StringCons _ (_, (rune, _)) (_, (text, _)) -> do
       ensureCompileStage m h "inline magic (`string-cons`)"
       stringType <- liftEither (locatorToTypeVar m coreString) >>= discernType h

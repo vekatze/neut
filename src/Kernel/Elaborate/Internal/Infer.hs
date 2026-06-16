@@ -458,6 +458,10 @@ infer h term =
           stringTypeExpr' <- inferType h stringTypeExpr
           typeExpr' <- inferType h typeExpr
           return (m :< WT.Magic (M.WeakMagic $ M.ShowType stringTypeExpr' typeExpr'), m :< WT.BoxNoema stringTypeExpr')
+        M.AssertMixable moduleID unitTypeExpr typeExpr -> do
+          unitTypeExpr' <- inferType h unitTypeExpr
+          typeExpr' <- inferType h typeExpr
+          return (m :< WT.Magic (M.WeakMagic $ M.AssertMixable moduleID unitTypeExpr' typeExpr'), unitTypeExpr')
         M.StringCons stringTypeExpr rune text -> do
           stringTypeExpr' <- inferType h stringTypeExpr
           (rune', runeType) <- infer h rune

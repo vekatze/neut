@@ -274,6 +274,10 @@ analyze h term = do
           cs1 <- analyzeType h stringTypeExpr
           cs2 <- analyzeType h typeExpr
           return $ cs1 ++ cs2
+        M.AssertMixable _ unitTypeExpr typeExpr -> do
+          cs1 <- analyzeType h unitTypeExpr
+          cs2 <- analyzeType h typeExpr
+          return $ cs1 ++ cs2
         M.StringCons stringTypeExpr rune text -> do
           cs1 <- analyzeType h stringTypeExpr
           cs2 <- analyze h rune
