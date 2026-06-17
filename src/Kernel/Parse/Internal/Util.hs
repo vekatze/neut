@@ -14,6 +14,7 @@ import Data.List (find)
 import Data.Maybe (isJust)
 import Data.Ratio ((%))
 import Data.Text qualified as T
+import GHC.Float (castWord64ToDouble)
 
 data NumericClass
   = BinaryInt
@@ -63,6 +64,8 @@ numericClassToText numericClass =
 
 parseNumericLiteral :: T.Text -> NumericParseResult
 parseNumericLiteral text
+  | Just value <- readSpecialFloatingMaybe normalizedText =
+      ParsedNumericLiteral $ FloatingLiteral value
   | isHexadecimalFloatCandidate unsignedText =
       parseFloatingLiteral HexadecimalFloat (readFloatingMaybe hexadecimalSystem 'p' 2) normalizedText
   | Just (numericClass, numeralSystem) <- find (\(_, system) -> hasPrefix system unsignedText) prefixedIntegerSystems =
@@ -75,7 +78,21 @@ parseNumericLiteral text
       NotNumeric
   where
     normalizedText = dropUnderscores text
-    unsignedText = dropOptionalSign normalizedText
+    unsignedText = dropOptionalMinus normalizedText
+
+readSpecialFloatingMaybe :: T.Text -> Maybe Double
+readSpecialFloatingMaybe text = do
+  let (suffix, sign) = readMinusSign text
+  case suffix of
+    "inf" ->
+      return $ fromIntegral sign * (1 / 0)
+    "nan"
+      | sign < 0 ->
+          return $ castWord64ToDouble 0xfff8000000000000
+      | otherwise ->
+          return $ castWord64ToDouble 0x7ff8000000000000
+    _ ->
+      Nothing
 
 parseIntegerLiteral :: NumericClass -> NumeralSystem -> T.Text -> NumericParseResult
 parseIntegerLiteral numericClass numeralSystem text =
@@ -97,9 +114,9 @@ hasPrefix :: NumeralSystem -> T.Text -> Bool
 hasPrefix numeralSystem =
   T.isPrefixOf (prefix numeralSystem)
 
-dropOptionalSign :: T.Text -> T.Text
-dropOptionalSign =
-  fst . readIntegerSign
+dropOptionalMinus :: T.Text -> T.Text
+dropOptionalMinus =
+  fst . readMinusSign
 
 readIntMaybe :: NumeralSystem -> T.Text -> Maybe Integer
 readIntMaybe numeralSystem text = do
@@ -123,11 +140,9 @@ readFloatingMaybe numeralSystem exponentMarker exponentBase text = do
   guard $ isFiniteDouble doubleValue
   return doubleValue
 
-readIntegerSign :: T.Text -> (T.Text, Integer)
-readIntegerSign text =
+readMinusSign :: T.Text -> (T.Text, Integer)
+readMinusSign text =
   case T.uncons text of
-    Just ('+', rest) ->
-      (rest, 1)
     Just ('-', rest) ->
       (rest, -1)
     _ ->
@@ -140,7 +155,7 @@ dropUnderscores =
 readSignedSuffix :: NumeralSystem -> T.Text -> Maybe (T.Text, Integer)
 readSignedSuffix numeralSystem text = do
   let normalizedText = dropUnderscores text
-  let (suffix, sign) = readIntegerSign normalizedText
+  let (suffix, sign) = readMinusSign normalizedText
   suffix' <- T.stripPrefix (prefix numeralSystem) suffix
   return (suffix', sign)
 
@@ -182,7 +197,7 @@ parseExponentWithMarker marker text =
     Just (c, rest)
       | c == marker -> do
           guard $ not $ T.null rest
-          let (rest', sign) = readIntegerSign rest
+          let (rest', sign) = readMinusSign rest
           let (digits, exponentRest) = readDigits isDigit rest'
           guard $ not $ T.null digits
           let value = digitsToInteger 10 $ map digitToInteger $ T.unpack digits
