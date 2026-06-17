@@ -1,5 +1,6 @@
 import {
   core.c-int {c-int, from-c-int},
+  core.debug {assert},
   core.int.io {print-int-line},
 }
 
@@ -19,6 +20,295 @@ define buz() -> my-float {
   123.456
 }
 
+define bits-float64(x: float) -> int64 {
+  magic cast(float64, int64, x)
+}
+
+define bits-float32(x: float32) -> int32 {
+  magic cast(float32, int32, x)
+}
+
+define bits-float16(x: float16) -> int16 {
+  magic cast(float16, int16, x)
+}
+
+define assert-not(label: &string, cond: bool) -> unit {
+  assert(label, not(cond))
+}
+
+define expect-bits64(label: &string, actual: float, expected: int64) -> unit {
+  assert(label, eq-int64(bits-float64(actual), expected))
+}
+
+define expect-bits32(label: &string, actual: float32, expected: int32) -> unit {
+  assert(label, eq-int32(bits-float32(actual), expected))
+}
+
+define expect-bits16(label: &string, actual: float16, expected: int16) -> unit {
+  assert(label, eq-int16(bits-float16(actual), expected))
+}
+
+define test-float64-representation() -> unit {
+  expect-bits64("float64: 0", 0.0, 0);
+  expect-bits64("float64: -0", -0.0, 0x8000000000000000);
+  expect-bits64("float64: inf", inf, 0x7FF0000000000000);
+  expect-bits64("float64: -inf", -inf, 0xFFF0000000000000);
+  expect-bits64("float64: qnan", nan, 0x7FF8000000000000);
+  expect-bits64("float64: -qnan", -nan, 0xFFF8000000000000);
+  expect-bits64("float64: min normal", 0x1.0p-1022, 0x0010000000000000);
+  expect-bits64("float64: min subnormal", 0x0.0000000000001p-1022, 0x0000000000000001);
+  expect-bits64("float64: half min subnormal rounds to 0", 0x0.00000000000008p-1022, 0);
+  expect-bits64("float64: negative half min subnormal rounds to -0", -0x0.00000000000008p-1022, 0x8000000000000000);
+  expect-bits64("float64: max finite", 0x1.FFFFFFFFFFFFFp1023, 0x7FEFFFFFFFFFFFFF);
+  expect-bits64("float64: tie to even down", 0x1.00000000000008p0, 0x3FF0000000000000);
+  expect-bits64("float64: tie to even up", 0x1.00000000000018p0, 0x3FF0000000000002)
+}
+
+define test-float32-representation() -> unit {
+  expect-bits32("float32: 0", 0.0, 0);
+  expect-bits32("float32: -0", -0.0, 0x80000000);
+  expect-bits32("float32: inf", inf, 0x7F800000);
+  expect-bits32("float32: -inf", -inf, 0xFF800000);
+  expect-bits32("float32: qnan", nan, 0x7FC00000);
+  expect-bits32("float32: -qnan", -nan, 0xFFC00000);
+  expect-bits32("float32: min normal", 0x1.0p-126, 0x00800000);
+  expect-bits32("float32: min subnormal", 0x1.0p-149, 0x00000001);
+  expect-bits32("float32: half min subnormal rounds to 0", 0x1.0p-150, 0);
+  expect-bits32("float32: negative half min subnormal rounds to -0", -0x1.0p-150, 0x80000000);
+  expect-bits32("float32: max finite", 0x1.FFFFFEp127, 0x7F7FFFFF);
+  expect-bits32("float32: tie to even down", 0x1.000001p0, 0x3F800000);
+  expect-bits32("float32: tie to even up", 0x1.000003p0, 0x3F800002)
+}
+
+define test-float16-representation() -> unit {
+  expect-bits16("float16: 0", 0.0, 0);
+  expect-bits16("float16: -0", -0.0, 0x8000);
+  expect-bits16("float16: inf", inf, 0x7C00);
+  expect-bits16("float16: -inf", -inf, 0xFC00);
+  expect-bits16("float16: qnan", nan, 0x7E00);
+  expect-bits16("float16: -qnan", -nan, 0xFE00);
+  expect-bits16("float16: min normal", 0x1.0p-14, 0x0400);
+  expect-bits16("float16: min subnormal", 0x1.0p-24, 0x0001);
+  expect-bits16("float16: half min subnormal rounds to 0", 0x1.0p-25, 0);
+  expect-bits16("float16: max finite", 0x1.FFCp15, 0x7BFF);
+  expect-bits16("float16: 65505 rounds to max finite", 65505.0, 0x7BFF);
+  expect-bits16("float16: 65519 rounds to max finite", 65519.0, 0x7BFF);
+  expect-bits16("float16: 65520 rounds to inf", 65520.0, 0x7C00);
+  expect-bits16("float16: -65505 rounds to -max finite", -65505.0, 0xFBFF);
+  expect-bits16("float16: -65519 rounds to -max finite", -65519.0, 0xFBFF);
+  expect-bits16("float16: -65520 rounds to -inf", -65520.0, 0xFC00);
+  expect-bits16("float16: tie to even down", 0x1.002p0, 0x3C00);
+  expect-bits16("float16: tie to even up", 0x1.006p0, 0x3C02)
+}
+
+define test-float64-ops() -> unit {
+  expect-bits64("float64: 1 / 0 = inf", div-float(1.0, 0.0), 0x7FF0000000000000);
+  expect-bits64("float64: 1 / -0 = -inf", div-float(1.0, -0.0), 0xFFF0000000000000);
+  expect-bits64("float64: -1 / inf = -0", div-float(-1.0, inf), 0x8000000000000000);
+  expect-bits64("float64: neg 0 = -0", neg-float(0.0), 0x8000000000000000);
+  expect-bits64("float64: neg -0 = 0", neg-float(-0.0), 0);
+  expect-bits64("float64: finite add", add-float(1.5, 2.25), 0x400E000000000000);
+  expect-bits64("float64: finite sub", sub-float(1.0, 1.5), 0xBFE0000000000000);
+  expect-bits64("float64: finite mul", mul-float(1.5, -2.0), 0xC008000000000000);
+  expect-bits64("float64: finite div rounds", div-float(7.0, 3.0), 0x4002AAAAAAAAAAAB);
+  expect-bits64("float64: 0 + -0 = 0", add-float(0.0, -0.0), 0);
+  expect-bits64("float64: -0 + -0 = -0", add-float(-0.0, -0.0), 0x8000000000000000);
+  expect-bits64("float64: 0 * -1 = -0", mul-float(0.0, -1.0), 0x8000000000000000);
+  expect-bits64("float64: -0 * -1 = 0", mul-float(-0.0, -1.0), 0);
+  expect-bits64("float64: 0 / -1 = -0", div-float(0.0, -1.0), 0x8000000000000000);
+  expect-bits64("float64: -0 / -1 = 0", div-float(-0.0, -1.0), 0);
+  expect-bits64("float64: sub exact zero keeps negative sign", sub-float(-0.0, 0.0), 0x8000000000000000);
+  expect-bits64("float64: rem keeps dividend sign", rem-float(5.5, 2.0), 0x3FF8000000000000);
+  expect-bits64("float64: -rem keeps dividend sign", rem-float(-5.5, 2.0), 0xBFF8000000000000);
+  expect-bits64("float64: rem exact zero", rem-float(4.0, 2.0), 0);
+  expect-bits64("float64: -rem exact zero", rem-float(-4.0, 2.0), 0x8000000000000000);
+  expect-bits64("float64: finite rem inf = dividend", rem-float(1.0, inf), 0x3FF0000000000000);
+  expect-bits64("float64: 0 rem finite = 0", rem-float(0.0, 3.0), 0);
+  expect-bits64("float64: -0 rem finite = -0", rem-float(-0.0, 3.0), 0x8000000000000000);
+  expect-bits64("float64: rem ignores divisor sign for result sign", rem-float(5.0, -2.0), 0x3FF0000000000000);
+  expect-bits64("float64: negative rem with negative divisor", rem-float(-5.0, -2.0), 0xBFF0000000000000);
+  expect-bits64("float64: rem with overflowing quotient", rem-float(0x1.FFFFFFFFFFFFFp1023, 0x0.0000000000001p-1022), 0);
+  expect-bits64("float64: exact cancellation exposes low bits", sub-float(add-float(0x1.0p53, 1.0), 0x1.0p53), 0);
+  expect-bits64("float64: half ulp addition rounds to even", add-float(1.0, 0x1.0p-53), 0x3FF0000000000000);
+  expect-bits64("float64: above half ulp addition rounds up", add-float(1.0, 0x1.0000000000001p-53), 0x3FF0000000000001);
+  expect-bits64("float64: overflow becomes inf", mul-float(0x1.0p1023, 2.0), 0x7FF0000000000000);
+  expect-bits64("float64: negative overflow becomes -inf", mul-float(-0x1.0p1023, 2.0), 0xFFF0000000000000);
+  expect-bits64("float64: subnormal addition reaches min normal", add-float(0x0.FFFFFFFFFFFFFp-1022, 0x0.0000000000001p-1022), 0x0010000000000000);
+  expect-bits64("float64: min subnormal underflows to 0", div-float(0x0.0000000000001p-1022, 2.0), 0);
+  expect-bits64("float64: negative min subnormal underflows to -0", div-float(-0x0.0000000000001p-1022, 2.0), 0x8000000000000000);
+  assert("float64: 0 == -0", eq-float(0.0, -0.0));
+  assert-not("float64: 0 is not < -0", lt-float(0.0, -0.0));
+  assert-not("float64: 0 is not > -0", gt-float(0.0, -0.0));
+  assert("float64: 0 / 0 is NaN", uno-float(div-float(0.0, 0.0), 0.0));
+  assert("float64: inf / inf is NaN", uno-float(div-float(inf, inf), 0.0));
+  assert("float64: rem by zero is NaN", uno-float(rem-float(1.0, 0.0), 0.0));
+  assert("float64: rem of inf is NaN", uno-float(rem-float(inf, 2.0), 0.0));
+  assert("float64: rem NaN dividend is NaN", uno-float(rem-float(nan, 2.0), 0.0));
+  assert("float64: rem NaN divisor is NaN", uno-float(rem-float(2.0, nan), 0.0));
+  assert("float64: inf + -inf is NaN", uno-float(add-float(inf, -inf), 0.0));
+  assert("float64: inf * 0 is NaN", uno-float(mul-float(inf, 0.0), 0.0));
+  assert-not("float64: ordered eq rejects NaN", eq-float(nan, nan));
+  assert-not("float64: ordered ne rejects NaN", ne-float(nan, 0.0));
+  assert-not("float64: ordered gt rejects NaN", gt-float(nan, 0.0));
+  assert("float64: unordered eq accepts NaN", ueq-float(nan, 0.0));
+  assert("float64: unordered ne accepts NaN", une-float(nan, 0.0));
+  assert("float64: unordered gt accepts NaN", ugt-float(nan, 0.0));
+  assert-not("float64: ord rejects NaN", ord-float(nan, 0.0));
+  assert("float64: uno accepts NaN", uno-float(nan, 0.0));
+  assert-not("float64: false predicate stays false", false-float(nan, 0.0));
+  assert("float64: true predicate stays true", true-float(nan, 0.0))
+}
+
+define test-float32-ops() -> unit {
+  expect-bits32("float32: 1 / 0 = inf", div-float32(1.0, 0.0), 0x7F800000);
+  expect-bits32("float32: 1 / -0 = -inf", div-float32(1.0, -0.0), 0xFF800000);
+  expect-bits32("float32: -1 / inf = -0", div-float32(-1.0, inf), 0x80000000);
+  expect-bits32("float32: neg 0 = -0", neg-float32(0.0), 0x80000000);
+  expect-bits32("float32: neg -0 = 0", neg-float32(-0.0), 0);
+  expect-bits32("float32: finite add", add-float32(1.5, 2.25), 0x40700000);
+  expect-bits32("float32: finite sub", sub-float32(1.0, 1.5), 0xBF000000);
+  expect-bits32("float32: finite mul", mul-float32(1.5, -2.0), 0xC0400000);
+  expect-bits32("float32: finite div rounds", div-float32(7.0, 3.0), 0x40155555);
+  expect-bits32("float32: 0 + -0 = 0", add-float32(0.0, -0.0), 0);
+  expect-bits32("float32: -0 + -0 = -0", add-float32(-0.0, -0.0), 0x80000000);
+  expect-bits32("float32: 0 * -1 = -0", mul-float32(0.0, -1.0), 0x80000000);
+  expect-bits32("float32: -0 * -1 = 0", mul-float32(-0.0, -1.0), 0);
+  expect-bits32("float32: 0 / -1 = -0", div-float32(0.0, -1.0), 0x80000000);
+  expect-bits32("float32: -0 / -1 = 0", div-float32(-0.0, -1.0), 0);
+  expect-bits32("float32: sub exact zero keeps negative sign", sub-float32(-0.0, 0.0), 0x80000000);
+  expect-bits32("float32: rem keeps dividend sign", rem-float32(5.5, 2.0), 0x3FC00000);
+  expect-bits32("float32: -rem keeps dividend sign", rem-float32(-5.5, 2.0), 0xBFC00000);
+  expect-bits32("float32: rem exact zero", rem-float32(4.0, 2.0), 0);
+  expect-bits32("float32: -rem exact zero", rem-float32(-4.0, 2.0), 0x80000000);
+  expect-bits32("float32: finite rem inf = dividend", rem-float32(1.0, inf), 0x3F800000);
+  expect-bits32("float32: 0 rem finite = 0", rem-float32(0.0, 3.0), 0);
+  expect-bits32("float32: -0 rem finite = -0", rem-float32(-0.0, 3.0), 0x80000000);
+  expect-bits32("float32: rem ignores divisor sign for result sign", rem-float32(5.0, -2.0), 0x3F800000);
+  expect-bits32("float32: negative rem with negative divisor", rem-float32(-5.0, -2.0), 0xBF800000);
+  expect-bits32("float32: large add absorbs low bit", sub-float32(add-float32(0x1.0p24, 1.0), 0x1.0p24), 0);
+  expect-bits32("float32: half ulp addition rounds to even", add-float32(1.0, 0x1.0p-24), 0x3F800000);
+  expect-bits32("float32: above half ulp addition rounds up", add-float32(1.0, 0x1.000002p-24), 0x3F800001);
+  expect-bits32("float32: operands round before mul", mul-float32(0x1.000001p0, 0x1.000001p0), 0x3F800000);
+  expect-bits32("float32: multiplication rounds once to zero low bit", sub-float32(mul-float32(0x1.000002p0, 0x1.000002p0), 1.0), 0x34800000);
+  expect-bits32("float32: overflow becomes inf", mul-float32(0x1.0p127, 2.0), 0x7F800000);
+  expect-bits32("float32: negative overflow becomes -inf", mul-float32(-0x1.0p127, 2.0), 0xFF800000);
+  expect-bits32("float32: subnormal addition reaches min normal", add-float32(0x1.FFFFFCp-127, 0x1.0p-149), 0x00800000);
+  expect-bits32("float32: min subnormal underflows to 0", div-float32(0x1.0p-149, 2.0), 0);
+  expect-bits32("float32: negative min subnormal underflows to -0", div-float32(-0x1.0p-149, 2.0), 0x80000000);
+  assert("float32: literal operands round before eq", eq-float32(0x1.000001p0, 1.0));
+  assert("float32: 0 == -0", eq-float32(0.0, -0.0));
+  assert("float32: 0 / 0 is NaN", uno-float32(div-float32(0.0, 0.0), 0.0));
+  assert("float32: inf / inf is NaN", uno-float32(div-float32(inf, inf), 0.0));
+  assert("float32: rem by zero is NaN", uno-float32(rem-float32(1.0, 0.0), 0.0));
+  assert("float32: rem of inf is NaN", uno-float32(rem-float32(inf, 2.0), 0.0));
+  assert("float32: rem NaN dividend is NaN", uno-float32(rem-float32(nan, 2.0), 0.0));
+  assert("float32: rem NaN divisor is NaN", uno-float32(rem-float32(2.0, nan), 0.0));
+  assert("float32: inf + -inf is NaN", uno-float32(add-float32(inf, -inf), 0.0));
+  assert-not("float32: ordered eq rejects NaN", eq-float32(nan, nan));
+  assert-not("float32: ordered ne rejects NaN", ne-float32(nan, 0.0));
+  assert-not("float32: ordered gt rejects NaN", gt-float32(nan, 0.0));
+  assert("float32: unordered eq accepts NaN", ueq-float32(nan, 0.0));
+  assert("float32: unordered ne accepts NaN", une-float32(nan, 0.0));
+  assert("float32: unordered gt accepts NaN", ugt-float32(nan, 0.0));
+  assert-not("float32: ord rejects NaN", ord-float32(nan, 0.0));
+  assert-not("float32: false predicate stays false", false-float32(nan, 0.0));
+  assert("float32: true predicate stays true", true-float32(nan, 0.0));
+  expect-bits32("float32: fptrunc preserves -0", fptrunc-float64-float32(-0.0), 0x80000000);
+  expect-bits32("float32: fptrunc inf", fptrunc-float64-float32(inf), 0x7F800000);
+  expect-bits32("float32: fptrunc -inf", fptrunc-float64-float32(-inf), 0xFF800000);
+  expect-bits32("float32: fptrunc min subnormal", fptrunc-float64-float32(0x1.0p-149), 0x00000001);
+  expect-bits32("float32: fptrunc half min subnormal to 0", fptrunc-float64-float32(0x1.0p-150), 0);
+  expect-bits32("float32: fptrunc negative half min subnormal to -0", fptrunc-float64-float32(-0x1.0p-150), 0x80000000);
+  expect-bits32("float32: fptrunc overflow to inf", fptrunc-float64-float32(0x1.0p128), 0x7F800000);
+  assert("float32: fptrunc qnan", eq-int32(bits-float32(fptrunc-float64-float32(nan)), 0x7FC00000));
+  assert("float32: fptrunc -qnan", eq-int32(bits-float32(fptrunc-float64-float32(-nan)), 0xFFC00000));
+  expect-bits64("float32: fpext preserves -0", fpext-float32-float64(-0.0), 0x8000000000000000);
+  expect-bits64("float32: fpext min subnormal", fpext-float32-float64(0x1.0p-149), 0x36A0000000000000);
+  expect-bits64("float32: fpext min normal", fpext-float32-float64(0x1.0p-126), 0x3810000000000000)
+}
+
+define test-float16-ops() -> unit {
+  expect-bits16("float16: 1 / 0 = inf", div-float16(1.0, 0.0), 0x7C00);
+  expect-bits16("float16: 1 / -0 = -inf", div-float16(1.0, -0.0), 0xFC00);
+  expect-bits16("float16: -1 / inf = -0", div-float16(-1.0, inf), 0x8000);
+  expect-bits16("float16: neg 0 = -0", neg-float16(0.0), 0x8000);
+  expect-bits16("float16: neg -0 = 0", neg-float16(-0.0), 0);
+  expect-bits16("float16: finite add", add-float16(1.5, 2.25), 0x4380);
+  expect-bits16("float16: finite sub", sub-float16(1.0, 1.5), 0xB800);
+  expect-bits16("float16: finite mul", mul-float16(1.5, -2.0), 0xC200);
+  expect-bits16("float16: finite div rounds", div-float16(7.0, 3.0), 0x40AB);
+  expect-bits16("float16: 0 + -0 = 0", add-float16(0.0, -0.0), 0);
+  expect-bits16("float16: -0 + -0 = -0", add-float16(-0.0, -0.0), 0x8000);
+  expect-bits16("float16: 0 * -1 = -0", mul-float16(0.0, -1.0), 0x8000);
+  expect-bits16("float16: -0 * -1 = 0", mul-float16(-0.0, -1.0), 0);
+  expect-bits16("float16: 0 / -1 = -0", div-float16(0.0, -1.0), 0x8000);
+  expect-bits16("float16: -0 / -1 = 0", div-float16(-0.0, -1.0), 0);
+  expect-bits16("float16: sub exact zero keeps negative sign", sub-float16(-0.0, 0.0), 0x8000);
+  expect-bits16("float16: rem keeps dividend sign", rem-float16(5.5, 2.0), 0x3E00);
+  expect-bits16("float16: -rem keeps dividend sign", rem-float16(-5.5, 2.0), 0xBE00);
+  expect-bits16("float16: rem exact zero", rem-float16(4.0, 2.0), 0);
+  expect-bits16("float16: -rem exact zero", rem-float16(-4.0, 2.0), 0x8000);
+  expect-bits16("float16: finite rem inf = dividend", rem-float16(1.0, inf), 0x3C00);
+  expect-bits16("float16: 0 rem finite = 0", rem-float16(0.0, 3.0), 0);
+  expect-bits16("float16: -0 rem finite = -0", rem-float16(-0.0, 3.0), 0x8000);
+  expect-bits16("float16: rem ignores divisor sign for result sign", rem-float16(5.0, -2.0), 0x3C00);
+  expect-bits16("float16: negative rem with negative divisor", rem-float16(-5.0, -2.0), 0xBC00);
+  expect-bits16("float16: large add absorbs low bit", sub-float16(add-float16(0x1.0p11, 1.0), 0x1.0p11), 0);
+  expect-bits16("float16: half ulp addition rounds to even", add-float16(1.0, 0x1.0p-11), 0x3C00);
+  expect-bits16("float16: above half ulp addition rounds up", add-float16(1.0, 0x1.004p-11), 0x3C01);
+  expect-bits16("float16: operands round before mul", mul-float16(0x1.002p0, 0x1.002p0), 0x3C00);
+  expect-bits16("float16: multiplication rounds once", sub-float16(mul-float16(0x1.004p0, 0x1.004p0), 1.0), 0x1800);
+  expect-bits16("float16: add below overflow threshold", add-float16(65504.0, 15.0), 0x7BFF);
+  expect-bits16("float16: add at overflow threshold", add-float16(65504.0, 16.0), 0x7C00);
+  expect-bits16("float16: negative add below overflow threshold", add-float16(-65504.0, -15.0), 0xFBFF);
+  expect-bits16("float16: negative add at overflow threshold", add-float16(-65504.0, -16.0), 0xFC00);
+  expect-bits16("float16: overflow becomes inf", mul-float16(0x1.0p15, 2.0), 0x7C00);
+  expect-bits16("float16: negative overflow becomes -inf", mul-float16(-0x1.0p15, 2.0), 0xFC00);
+  expect-bits16("float16: subnormal addition reaches min normal", add-float16(0x1.FF8p-15, 0x1.0p-24), 0x0400);
+  expect-bits16("float16: min subnormal underflows to 0", div-float16(0x1.0p-24, 2.0), 0);
+  expect-bits16("float16: negative min subnormal underflows to -0", div-float16(-0x1.0p-24, 2.0), 0x8000);
+  assert("float16: literal operands round before eq", eq-float16(0x1.002p0, 1.0));
+  assert("float16: 0 == -0", eq-float16(0.0, -0.0));
+  assert("float16: 0 / 0 is NaN", uno-float16(div-float16(0.0, 0.0), 0.0));
+  assert("float16: inf / inf is NaN", uno-float16(div-float16(inf, inf), 0.0));
+  assert("float16: rem by zero is NaN", uno-float16(rem-float16(1.0, 0.0), 0.0));
+  assert("float16: rem of inf is NaN", uno-float16(rem-float16(inf, 2.0), 0.0));
+  assert("float16: rem NaN dividend is NaN", uno-float16(rem-float16(nan, 2.0), 0.0));
+  assert("float16: rem NaN divisor is NaN", uno-float16(rem-float16(2.0, nan), 0.0));
+  assert("float16: inf + -inf is NaN", uno-float16(add-float16(inf, -inf), 0.0));
+  assert-not("float16: ordered eq rejects NaN", eq-float16(nan, nan));
+  assert-not("float16: ordered ne rejects NaN", ne-float16(nan, 0.0));
+  assert-not("float16: ordered gt rejects NaN", gt-float16(nan, 0.0));
+  assert("float16: unordered eq accepts NaN", ueq-float16(nan, 0.0));
+  assert("float16: unordered ne accepts NaN", une-float16(nan, 0.0));
+  assert("float16: unordered gt accepts NaN", ugt-float16(nan, 0.0));
+  assert-not("float16: ord rejects NaN", ord-float16(nan, 0.0));
+  assert-not("float16: false predicate stays false", false-float16(nan, 0.0));
+  assert("float16: true predicate stays true", true-float16(nan, 0.0));
+  expect-bits16("float16: fptrunc preserves -0", fptrunc-float64-float16(-0.0), 0x8000);
+  expect-bits16("float16: fptrunc inf", fptrunc-float64-float16(inf), 0x7C00);
+  expect-bits16("float16: fptrunc -inf", fptrunc-float64-float16(-inf), 0xFC00);
+  expect-bits16("float16: fptrunc min subnormal", fptrunc-float64-float16(0x1.0p-24), 0x0001);
+  expect-bits16("float16: fptrunc half min subnormal to 0", fptrunc-float64-float16(0x1.0p-25), 0);
+  expect-bits16("float16: fptrunc negative half min subnormal to -0", fptrunc-float64-float16(-0x1.0p-25), 0x8000);
+  expect-bits16("float16: fptrunc overflow to inf", fptrunc-float64-float16(65520.0), 0x7C00);
+  assert("float16: fptrunc qnan", eq-int16(bits-float16(fptrunc-float64-float16(nan)), 0x7E00));
+  assert("float16: fptrunc -qnan", eq-int16(bits-float16(fptrunc-float64-float16(-nan)), 0xFE00));
+  expect-bits64("float16: fpext preserves -0", fpext-float16-float64(-0.0), 0x8000000000000000);
+  expect-bits64("float16: fpext min subnormal", fpext-float16-float64(0x1.0p-24), 0x3E70000000000000);
+  expect-bits64("float16: fpext min normal", fpext-float16-float64(0x1.0p-14), 0x3F10000000000000)
+}
+
+define test-ieee754-floats() -> unit {
+  test-float64-representation();
+  test-float32-representation();
+  test-float16-representation();
+  test-float64-ops();
+  test-float32-ops();
+  test-float16-ops()
+}
+
 define main() -> unit {
+  test-ieee754-floats();
   print-int-line(from-c-int(foo()));
 }
