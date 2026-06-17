@@ -76,6 +76,12 @@ hljs.registerLanguage("neut", function (hljs) {
         "type",
         "void",
       ],
+      constant: [
+        "-inf",
+        "-nan",
+        "inf",
+        "nan",
+      ],
       attribute: [
         "mix",
       ],

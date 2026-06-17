@@ -41,6 +41,7 @@
 .hljs-meta,
 .hljs-literal,
 .hljs-type,
+.hljs-constant,
 .hljs-constructor,
 .hljs-params {
   color: var(--light-green);
