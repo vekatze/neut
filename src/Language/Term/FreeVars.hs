@@ -164,6 +164,8 @@ freeVarsMagic magic =
       S.union (freeVarsType typeExpr1) (freeVarsType typeExpr2)
     M.ShowType stringTypeExpr typeExpr ->
       S.union (freeVarsType stringTypeExpr) (freeVarsType typeExpr)
+    M.AssertMixable _ unitTypeExpr typeExpr ->
+      S.union (freeVarsType unitTypeExpr) (freeVarsType typeExpr)
     M.StringCons stringTypeExpr rune text ->
       S.unions [freeVarsType stringTypeExpr, freeVars rune, freeVars text]
     M.StringUncons _ text ->

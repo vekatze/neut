@@ -18,6 +18,7 @@ data Magic lt ty a
   | InspectType MID.ModuleID ty ty -- typeValueExpr, e (both types)
   | EqType MID.ModuleID ty ty
   | ShowType ty ty
+  | AssertMixable MID.ModuleID ty ty -- unitTypeExpr, targetTypeExpr
   | StringCons ty a a
   | StringUncons MID.ModuleID a
   | CompileError ty a
@@ -44,6 +45,8 @@ instance Functor (Magic lt ty) where
         EqType mid t1 t2
       ShowType stringTypeExpr typeExpr ->
         ShowType stringTypeExpr typeExpr
+      AssertMixable mid unitTypeExpr typeExpr ->
+        AssertMixable mid unitTypeExpr typeExpr
       StringCons stringTypeExpr rune text ->
         StringCons stringTypeExpr (f rune) (f text)
       StringUncons mid text ->
@@ -69,6 +72,8 @@ instance Foldable (Magic lt ty) where
       EqType {} ->
         mempty
       ShowType {} ->
+        mempty
+      AssertMixable {} ->
         mempty
       StringCons _ rune text ->
         f rune <> f text
@@ -96,6 +101,8 @@ instance Traversable (Magic lt ty) where
         pure $ EqType mid t1 t2
       ShowType stringTypeExpr typeExpr ->
         pure $ ShowType stringTypeExpr typeExpr
+      AssertMixable mid unitTypeExpr typeExpr ->
+        pure $ AssertMixable mid unitTypeExpr typeExpr
       StringCons stringTypeExpr rune text ->
         StringCons stringTypeExpr <$> f rune <*> f text
       StringUncons mid text ->

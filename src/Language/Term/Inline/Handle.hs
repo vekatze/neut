@@ -57,6 +57,7 @@ type SpecializationTable =
 data ResidualCheck
   = CheckActuality Hint TM.Type
   | CheckInteger Hint TM.Type
+  | CheckMixable Hint TM.Type
 
 data Handle = Handle
   { substHandle :: Subst.Handle,

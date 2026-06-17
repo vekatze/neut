@@ -1092,6 +1092,8 @@ clarifyMagic h context der = do
       error "EqType should be evaluated during inline expansion"
     M.ShowType _ _ ->
       error "ShowType should be evaluated during inline expansion"
+    M.AssertMixable {} ->
+      error "AssertMixable should be evaluated during inline expansion"
     M.StringCons {} ->
       error "StringCons should be evaluated during inline expansion"
     M.StringUncons _ _ ->

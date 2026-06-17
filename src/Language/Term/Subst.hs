@@ -405,6 +405,10 @@ substMagic h sub magic =
       stringTypeExpr' <- substType h sub stringTypeExpr
       typeExpr' <- substType h sub typeExpr
       return $ M.ShowType stringTypeExpr' typeExpr'
+    M.AssertMixable moduleID unitTypeExpr typeExpr -> do
+      unitTypeExpr' <- substType h sub unitTypeExpr
+      typeExpr' <- substType h sub typeExpr
+      return $ M.AssertMixable moduleID unitTypeExpr' typeExpr'
     M.StringCons stringTypeExpr rune text -> do
       stringTypeExpr' <- substType h sub stringTypeExpr
       rune' <- subst h sub rune

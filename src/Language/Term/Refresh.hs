@@ -151,6 +151,10 @@ refreshMagic h magic =
       stringTypeExpr' <- refreshType h stringTypeExpr
       typeExpr' <- refreshType h typeExpr
       return $ M.ShowType stringTypeExpr' typeExpr'
+    M.AssertMixable moduleID unitTypeExpr typeExpr -> do
+      unitTypeExpr' <- refreshType h unitTypeExpr
+      typeExpr' <- refreshType h typeExpr
+      return $ M.AssertMixable moduleID unitTypeExpr' typeExpr'
     M.StringCons stringTypeExpr rune text -> do
       stringTypeExpr' <- refreshType h stringTypeExpr
       rune' <- refresh h rune

@@ -267,6 +267,8 @@ checkResidualCheck h check =
       checkActualityType h m S.empty t
     Inline.CheckInteger m t ->
       checkIntegerCursorType h m t
+    Inline.CheckMixable m t ->
+      checkMixableType h m t
 
 checkActualityType :: Handle -> Hint -> S.Set DD.DefiniteDescription -> TM.Type -> App [L.Log]
 checkActualityType h m dataNameSet t = do
@@ -343,6 +345,16 @@ checkIntegerCursorType h m t = do
             "Expected:\n  an integer type\nFound:\n  "
               <> toTextType (weakenType t')
         ]
+
+checkMixableType :: Handle -> Hint -> TM.Type -> App [L.Log]
+checkMixableType h m t = do
+  t' <- inlineType h m t
+  result <- resolveMixedOrError h S.empty m t'
+  case result of
+    Right _ ->
+      return []
+    Left message ->
+      return [L.newLog m LL.Error message]
 
 insertStmt :: Handle -> Stmt -> App ()
 insertStmt h stmt = do
@@ -480,58 +492,67 @@ resolveFieldLayout h hint (_, _, _, t) =
       resolveMixed h S.empty mMix t
 
 resolveMixed :: Handle -> S.Set DD.DefiniteDescription -> Hint -> TM.Type -> App DI.FieldLayout
-resolveMixed h visited m ty =
+resolveMixed h visited m ty = do
+  result <- resolveMixedOrError h visited m ty
+  case result of
+    Right layout ->
+      return layout
+    Left message ->
+      raiseError m message
+
+resolveMixedOrError :: Handle -> S.Set DD.DefiniteDescription -> Hint -> TM.Type -> App (Either T.Text DI.FieldLayout)
+resolveMixedOrError h visited m ty =
   case ty of
     _ :< TM.Data _ dataName dataArgs -> do
       optDataOrNone <- liftIO $ OptimizableData.lookup (optDataHandle h) dataName
       case optDataOrNone of
         Just OD.Enum ->
-          raiseError m $ "the type `" <> showDD h dataName <> "` is an enum and cannot be mixed"
+          return $ Left $ "the type `" <> showDD h dataName <> "` is an enum and cannot be mixed"
         Just OD.Unary ->
           if S.member dataName visited
-            then raiseError m $ cannotMixRecursiveMessage h dataName
+            then return $ Left $ cannotMixRecursiveMessage h dataName
             else do
               innerType <- specializeUnaryDataType h m dataName dataArgs
-              resolveMixed h (S.insert dataName visited) m innerType
+              resolveMixedOrError h (S.insert dataName visited) m innerType
         Nothing ->
           if S.member dataName visited
-            then raiseError m $ cannotMixRecursiveMessage h dataName
+            then return $ Left $ cannotMixRecursiveMessage h dataName
             else do
               dataInfo <- lookupDataInfoFull h m dataName
-              return $ DI.LayoutFlattened $ DI.dataTotalSlotCount (DI.dataArgs dataInfo) (DI.consInfoList dataInfo)
+              return $ Right $ DI.LayoutFlattened $ DI.dataTotalSlotCount (DI.dataArgs dataInfo) (DI.consInfoList dataInfo)
     _ :< TM.Resource dataName _ -> do
       resourceSizeOrNone <- liftIO $ Resource.lookup (Global.resourceHandle (globalHandle h)) dataName
       case resourceSizeOrNone of
         Just (Resource.Flattened slotCount) ->
-          return $ DI.LayoutFlattened slotCount
+          return $ Right $ DI.LayoutFlattened slotCount
         Just Resource.Direct ->
-          raiseError m $ "the resource `" <> showDD h dataName <> "` has no fixed size and cannot be mixed"
+          return $ Left $ "the resource `" <> showDD h dataName <> "` has no fixed size and cannot be mixed"
         Nothing ->
-          raiseError m $ "could not find the size of the resource `" <> showDD h dataName <> "`"
+          return $ Left $ "could not find the size of the resource `" <> showDD h dataName <> "`"
     _ :< TM.Pi {} ->
-      return $ DI.LayoutFlattened DI.closureSlotCount
+      return $ Right $ DI.LayoutFlattened DI.closureSlotCount
     _ :< TM.Tau ->
-      cannotMixFieldType m "the type universe"
+      cannotMixFieldType "the type universe"
     _ :< TM.TVar {} ->
-      cannotMixFieldType m "a type variable"
+      cannotMixFieldType "a type variable"
     _ :< TM.TVarGlobal {} ->
-      cannotMixFieldType m "a nominal type"
+      cannotMixFieldType "a nominal type"
     _ :< TM.TyApp {} ->
-      cannotMixFieldType m "a nominal type"
+      cannotMixFieldType "a nominal type"
     _ :< TM.Box {} ->
-      cannotMixFieldType m "a box type"
+      cannotMixFieldType "a box type"
     _ :< TM.BoxNoema {} ->
-      cannotMixFieldType m "a noema type"
+      cannotMixFieldType "a noema type"
     _ :< TM.Code {} ->
-      cannotMixFieldType m "a code type"
+      cannotMixFieldType "a code type"
     _ :< TM.PrimType {} ->
-      cannotMixFieldType m "a primitive type"
+      cannotMixFieldType "a primitive type"
     _ :< TM.Void ->
-      cannotMixFieldType m "the void type"
+      cannotMixFieldType "the void type"
 
-cannotMixFieldType :: Hint -> T.Text -> App a
-cannotMixFieldType m typeDesc =
-  raiseError m $ typeDesc <> " cannot be mixed"
+cannotMixFieldType :: T.Text -> App (Either T.Text DI.FieldLayout)
+cannotMixFieldType typeDesc =
+  return $ Left $ typeDesc <> " cannot be mixed"
 
 cannotMixRecursiveMessage :: Handle -> DD.DefiniteDescription -> T.Text
 cannotMixRecursiveMessage h dataName =
@@ -739,6 +760,10 @@ elaborate' h term = do
           stringTypeExpr' <- elaborateType h stringTypeExpr
           typeExpr' <- elaborateType h typeExpr
           return $ m :< TM.Magic (M.ShowType stringTypeExpr' typeExpr')
+        M.AssertMixable moduleID unitTypeExpr typeExpr -> do
+          unitTypeExpr' <- elaborateType h unitTypeExpr
+          typeExpr' <- elaborateType h typeExpr
+          return $ m :< TM.Magic (M.AssertMixable moduleID unitTypeExpr' typeExpr')
         M.StringCons stringTypeExpr rune text -> do
           stringTypeExpr' <- elaborateType h stringTypeExpr
           rune' <- elaborate' h rune

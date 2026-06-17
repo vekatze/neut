@@ -188,6 +188,8 @@ weakenMagic m magic = do
       M.WeakMagic $ M.EqType moduleID (weakenType typeExpr1) (weakenType typeExpr2)
     M.ShowType stringTypeExpr typeExpr ->
       M.WeakMagic $ M.ShowType (weakenType stringTypeExpr) (weakenType typeExpr)
+    M.AssertMixable moduleID unitTypeExpr typeExpr ->
+      M.WeakMagic $ M.AssertMixable moduleID (weakenType unitTypeExpr) (weakenType typeExpr)
     M.StringCons stringTypeExpr rune text ->
       M.WeakMagic $ M.StringCons (weakenType stringTypeExpr) (weaken rune) (weaken text)
     M.StringUncons mid text ->

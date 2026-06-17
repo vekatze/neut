@@ -410,6 +410,11 @@ toDoc term =
             [ attachComment (c ++ c1) $ D.text "magic show-type",
               SE.decode $ SE.fromListWithComment (Just SE.Paren) SE.Comma [(c2, (typeToDoc typeExpr, c3))]
             ]
+        AssertMixable c1 (c2, (typeExpr, c3)) -> do
+          D.join
+            [ attachComment (c ++ c1) $ D.text "magic assert-mixable",
+              SE.decode $ SE.fromListWithComment (Just SE.Paren) SE.Comma [(c2, (typeToDoc typeExpr, c3))]
+            ]
         StringCons c1 (c2, (rune, c3)) (c4, (text, c5)) -> do
           D.join
             [ attachComment (c ++ c1) $ D.text "magic string-cons",

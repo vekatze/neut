@@ -1,7 +1,7 @@
 {
   target {
-    unary {
-      main "unary.nt",
+    meta-residual {
+      main "meta-residual.nt",
       build-option [
         "-fsanitize=address",
       ],

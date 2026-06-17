@@ -199,6 +199,8 @@ reduce h term = do
       case prim of
         C.Magic (LM.Cast _ _ value) ->
           return $ C.UpIntro $ Subst.substValue (subst h) value
+        C.Magic (LM.CallType func arg1 arg2) -> do
+          reduce h $ C.PiElimDownElim True func [arg1, arg2]
         _ ->
           return $ C.Primitive $ Subst.substPrimitive (subst h) prim
     C.Free x size cont -> do
