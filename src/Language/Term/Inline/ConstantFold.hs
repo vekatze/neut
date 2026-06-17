@@ -15,6 +15,7 @@ import Language.Common.PrimType qualified as PT
 import Language.Term.PrimValue qualified as PV
 import Language.Term.Term qualified as TM
 import Logger.Hint
+import Numeric.Half
 
 bitMask :: PNS.IntSize -> Integer
 bitMask size =
@@ -77,7 +78,7 @@ evaluateBinaryOp m binOp dom arg1 arg2 =
       result <- applyIntBinaryOp size binOp val1 val2
       return $ m :< TM.Prim (PV.Int intType1 size result)
     (PT.Float size, _ :< TM.Prim (PV.Float floatType1 _ val1), _ :< TM.Prim (PV.Float _ _ val2)) -> do
-      result <- applyFloatBinaryOp binOp val1 val2
+      result <- applyFloatBinaryOp size binOp val1 val2
       return $ m :< TM.Prim (PV.Float floatType1 size result)
     _ ->
       Nothing
@@ -86,7 +87,7 @@ evaluateUnaryOp :: Hint -> UnOp.UnaryOp -> PT.PrimType -> TM.Term -> Maybe TM.Te
 evaluateUnaryOp m unOp dom arg =
   case (dom, arg) of
     (PT.Float size, _ :< TM.Prim (PV.Float floatType _ val)) -> do
-      result <- applyFloatUnaryOp unOp val
+      result <- applyFloatUnaryOp size unOp val
       return $ m :< TM.Prim (PV.Float floatType size result)
     _ ->
       Nothing
@@ -99,8 +100,8 @@ evaluateCmpOp m cmpOp dom arg1 arg2 =
       let resultInt = if result then 1 else 0
       let i1 = m :< TM.PrimType (PT.Int PNS.IntSize1)
       return $ m :< TM.Prim (PV.Int i1 PNS.IntSize1 resultInt)
-    (PT.Float _, _ :< TM.Prim (PV.Float _ _ val1), _ :< TM.Prim (PV.Float _ _ val2)) -> do
-      result <- applyFloatCmpOp cmpOp val1 val2
+    (PT.Float size, _ :< TM.Prim (PV.Float _ _ val1), _ :< TM.Prim (PV.Float _ _ val2)) -> do
+      result <- applyFloatCmpOp size cmpOp val1 val2
       let resultInt = if result then 1 else 0
       let i1 = m :< TM.PrimType (PT.Int PNS.IntSize1)
       return $ m :< TM.Prim (PV.Int i1 PNS.IntSize1 resultInt)
@@ -158,8 +159,15 @@ applyIntBinaryOp size op val1 val2 =
     _ ->
       Nothing
 
-applyFloatBinaryOp :: BinOp.BinaryOp -> Double -> Double -> Maybe Double
-applyFloatBinaryOp op val1 val2 =
+applyFloatBinaryOp :: PNS.FloatSize -> BinOp.BinaryOp -> Double -> Double -> Maybe Double
+applyFloatBinaryOp size op val1 val2 = do
+  let val1' = roundFloat size val1
+  let val2' = roundFloat size val2
+  result <- applyFloatBinaryOp' op val1' val2'
+  return $ roundFloat size result
+
+applyFloatBinaryOp' :: BinOp.BinaryOp -> Double -> Double -> Maybe Double
+applyFloatBinaryOp' op val1 val2 =
   case op of
     BinOp.FAdd ->
       Just (val1 + val2)
@@ -169,16 +177,56 @@ applyFloatBinaryOp op val1 val2 =
       Just (val1 * val2)
     BinOp.FDiv ->
       Just (val1 / val2)
-    BinOp.FRem ->
-      Just (val1 - fromIntegral (floor (val1 / val2) :: Integer) * val2)
+    BinOp.FRem
+      | isFiniteDouble val1 && isFiniteDouble val2 && val2 /= 0 -> do
+          let quotientSource = val1 / val2
+          if isFiniteDouble quotientSource
+            then do
+              let quotient = truncate quotientSource :: Integer
+              let remainder = val1 - fromIntegral quotient * val2
+              Just $ restoreNegativeZero val1 remainder
+            else
+              Nothing
     _ ->
       Nothing
 
-applyFloatUnaryOp :: UnOp.UnaryOp -> Double -> Maybe Double
-applyFloatUnaryOp op val =
+applyFloatUnaryOp :: PNS.FloatSize -> UnOp.UnaryOp -> Double -> Maybe Double
+applyFloatUnaryOp size op val = do
+  let val' = roundFloat size val
   case op of
     UnOp.FNeg ->
-      Just (-val)
+      Just $ roundFloat size (-val')
+
+roundFloat :: PNS.FloatSize -> Double -> Double
+roundFloat size value =
+  case size of
+    PNS.FloatSize16
+      | isNaN value || isInfinite value ->
+          value
+      | abs value >= halfOverflowThreshold ->
+          if value < 0 then -1 / 0 else 1 / 0
+      | otherwise -> do
+          let rounded = realToFrac (realToFrac value :: Half)
+          restoreNegativeZero value rounded
+    PNS.FloatSize32 -> do
+      let rounded = realToFrac (realToFrac value :: Float)
+      restoreNegativeZero value rounded
+    PNS.FloatSize64 ->
+      value
+
+restoreNegativeZero :: Double -> Double -> Double
+restoreNegativeZero original rounded =
+  if rounded == 0 && (original < 0 || isNegativeZero original)
+    then -0.0
+    else rounded
+
+isFiniteDouble :: Double -> Bool
+isFiniteDouble value =
+  not (isInfinite value || isNaN value)
+
+halfOverflowThreshold :: Double
+halfOverflowThreshold =
+  65520
 
 applyIntCmpOp :: PNS.IntSize -> CmpOp.CmpOp -> Integer -> Integer -> Maybe Bool
 applyIntCmpOp size op val1 val2 =
@@ -206,37 +254,40 @@ applyIntCmpOp size op val1 val2 =
     _ ->
       Nothing
 
-applyFloatCmpOp :: CmpOp.CmpOp -> Double -> Double -> Maybe Bool
-applyFloatCmpOp op val1 val2 =
+applyFloatCmpOp :: PNS.FloatSize -> CmpOp.CmpOp -> Double -> Double -> Maybe Bool
+applyFloatCmpOp size op val1 val2 = do
+  let val1' = roundFloat size val1
+  let val2' = roundFloat size val2
+  let unordered = isNaN val1' || isNaN val2'
   case op of
     CmpOp.FOEq ->
-      Just (val1 == val2)
+      Just (not unordered && val1' == val2')
     CmpOp.FONe ->
-      Just (val1 /= val2)
+      Just (not unordered && val1' /= val2')
     CmpOp.FOGt ->
-      Just (val1 > val2)
+      Just (not unordered && val1' > val2')
     CmpOp.FOGe ->
-      Just (val1 >= val2)
+      Just (not unordered && val1' >= val2')
     CmpOp.FOLt ->
-      Just (val1 < val2)
+      Just (not unordered && val1' < val2')
     CmpOp.FOLe ->
-      Just (val1 <= val2)
+      Just (not unordered && val1' <= val2')
     CmpOp.FUEq ->
-      Just (val1 == val2 || isNaN val1 || isNaN val2)
+      Just (unordered || val1' == val2')
     CmpOp.FUNe ->
-      Just (val1 /= val2 || isNaN val1 || isNaN val2)
+      Just (unordered || val1' /= val2')
     CmpOp.FUGt ->
-      Just (val1 > val2 || isNaN val1 || isNaN val2)
+      Just (unordered || val1' > val2')
     CmpOp.FUGe ->
-      Just (val1 >= val2 || isNaN val1 || isNaN val2)
+      Just (unordered || val1' >= val2')
     CmpOp.FULt ->
-      Just (val1 < val2 || isNaN val1 || isNaN val2)
+      Just (unordered || val1' < val2')
     CmpOp.FULe ->
-      Just (val1 <= val2 || isNaN val1 || isNaN val2)
+      Just (unordered || val1' <= val2')
     CmpOp.FOrd ->
-      Just (not (isNaN val1 || isNaN val2))
+      Just (not unordered)
     CmpOp.FUno ->
-      Just (isNaN val1 || isNaN val2)
+      Just unordered
     CmpOp.FTrue ->
       Just True
     CmpOp.FFalse ->
