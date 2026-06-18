@@ -414,7 +414,9 @@ define foo() -> unit {
   let _: float32 = -0.2329;
   let _: float = 1_234.5e-2;
   let _: float = 6.0e23;
+  let _: float = 6e23;
   let _: float = 0x1.Ap2;
+  let _: float = 0x1p4;
   let _: float = 0x1.8;
   let _: float = inf;
   let _: float = -nan;
@@ -427,19 +429,23 @@ define foo() -> unit {
 
 Underscores in float literals are ignored.
 
-After removing all `_` characters, a decimal floating-point literal must match:
+After removing all `_` characters, a decimal floating-point literal must match one of the following:
 
 ```text
--?[0-9]+\.[0-9]+(e-?[0-9]+)?
+-?[0-9]+e-?[0-9]+
+-?[0-9]+\.[0-9]+
+-?[0-9]+\.[0-9]+e-?[0-9]+
 ```
 
-After removing all `_` characters, a hexadecimal floating-point literal must match:
+After removing all `_` characters, a hexadecimal floating-point literal must match one of the following:
 
 ```text
--?0x[0-9A-F]+\.[0-9A-F]+(p-?[0-9]+)?
+-?0x[0-9A-F]+p-?[0-9]+
+-?0x[0-9A-F]+\.[0-9A-F]+
+-?0x[0-9A-F]+\.[0-9A-F]+p-?[0-9]+
 ```
 
-So, for example, `3.8`, `-0.2329`, `1_234.5e-2`, `6.0e23`, `0x1.Ap2`, and `0x1.8` are valid float literals.
+So, for example, `3.8`, `-0.2329`, `1_234.5e-2`, `6.0e23`, `6e23`, `0x1.Ap2`, `0x1p4`, and `0x1.8` are valid float literals.
 
 In hexadecimal floating-point literals, the `p` exponent is base-2.
 
