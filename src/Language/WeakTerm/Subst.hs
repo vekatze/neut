@@ -452,6 +452,12 @@ substMagic h sub (WeakMagic magic) = do
       typeExpr' <- substType h sub typeExpr
       msg' <- subst h sub msg
       return $ M.CompileError typeExpr' msg'
+    M.GetOriginFileName ->
+      return M.GetOriginFileName
+    M.GetOriginLine ->
+      return M.GetOriginLine
+    M.GetOriginColumn ->
+      return M.GetOriginColumn
   return $ WeakMagic magic'
 
 substLowMagic :: Handle -> Subst -> LM.LowMagic WT.WeakType WT.WeakType WT.WeakTerm -> IO (LM.LowMagic WT.WeakType WT.WeakType WT.WeakTerm)

@@ -494,6 +494,14 @@ infer h term =
           liftIO $ Constraint.insert (constraintHandle h) (m :< WT.BoxNoema typeExpr') msgType
           resultType <- liftIO $ newTypeHole h m (varEnv h)
           return (m :< WT.Magic (M.WeakMagic $ M.CompileError typeExpr' msg'), resultType)
+        M.GetOriginFileName -> do
+          return (m :< WT.Magic (M.WeakMagic M.GetOriginFileName), m :< WT.PrimType PT.Text)
+        M.GetOriginLine -> do
+          intType <- getIntType (platformHandle h) m
+          return (m :< WT.Magic (M.WeakMagic M.GetOriginLine), intType)
+        M.GetOriginColumn -> do
+          intType <- getIntType (platformHandle h) m
+          return (m :< WT.Magic (M.WeakMagic M.GetOriginColumn), intType)
     m :< WT.Annotation logLevel annot e -> do
       (e', t) <- infer h e
       case annot of

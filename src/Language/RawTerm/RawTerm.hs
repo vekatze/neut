@@ -338,6 +338,9 @@ data RawMagic
   | StringCons C (EL RawTerm) (EL RawTerm)
   | StringUncons C (EL RawTerm)
   | CompileError C (EL RawTerm)
+  | GetOriginFileName C C
+  | GetOriginLine C C
+  | GetOriginColumn C C
 
 -- elem
 type EL a =

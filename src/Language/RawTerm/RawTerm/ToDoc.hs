@@ -436,6 +436,21 @@ toDoc term =
             [ attachComment (c ++ c1) $ D.text "magic compile-error",
               SE.decode $ SE.fromListWithComment (Just SE.Paren) SE.Comma [(c2, (toDoc msg, c3))]
             ]
+        GetOriginFileName c1 _c2 -> do
+          D.join
+            [ attachComment (c ++ c1) $ D.text "magic get-origin-file-name",
+              SE.decode $ SE.fromListWithComment (Just SE.Paren) SE.Comma ([] :: [(C, (D.Doc, C))])
+            ]
+        GetOriginLine c1 _c2 -> do
+          D.join
+            [ attachComment (c ++ c1) $ D.text "magic get-origin-line",
+              SE.decode $ SE.fromListWithComment (Just SE.Paren) SE.Comma ([] :: [(C, (D.Doc, C))])
+            ]
+        GetOriginColumn c1 _c2 -> do
+          D.join
+            [ attachComment (c ++ c1) $ D.text "magic get-origin-column",
+              SE.decode $ SE.fromListWithComment (Just SE.Paren) SE.Comma ([] :: [(C, (D.Doc, C))])
+            ]
     _ :< Annotation {} -> do
       D.text "<annot>"
     _ :< If ifClause elseIfClauseList elseBody -> do

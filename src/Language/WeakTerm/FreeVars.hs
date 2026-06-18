@@ -130,6 +130,12 @@ freeVarsMagicTerm (M.WeakMagic magic) =
       freeVars text
     M.CompileError _ msg ->
       freeVars msg
+    M.GetOriginFileName ->
+      S.empty
+    M.GetOriginLine ->
+      S.empty
+    M.GetOriginColumn ->
+      S.empty
 
 freeVarsLowMagicTerm :: LM.LowMagic WT.WeakType WT.WeakType WT.WeakTerm -> S.Set Ident
 freeVarsLowMagicTerm lowMagic =
@@ -307,6 +313,12 @@ freeVarsMagic (M.WeakMagic magic) =
       freeVarsAll text
     M.CompileError typeExpr msg ->
       S.union (freeVarsType typeExpr) (freeVarsAll msg)
+    M.GetOriginFileName ->
+      S.empty
+    M.GetOriginLine ->
+      S.empty
+    M.GetOriginColumn ->
+      S.empty
 
 freeVarsLowMagic :: LM.LowMagic WT.WeakType WT.WeakType WT.WeakTerm -> S.Set Ident
 freeVarsLowMagic lowMagic =

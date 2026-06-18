@@ -437,6 +437,12 @@ showMagic' h (M.WeakMagic magic) =
       "magic text-uncons" <> inParen (toText text)
     M.CompileError typeExpr msg ->
       "magic compile-error" <> inParen (toTextType' h typeExpr <> ", " <> toText msg)
+    M.GetOriginFileName ->
+      "magic get-origin-file-name()"
+    M.GetOriginLine ->
+      "magic get-origin-line()"
+    M.GetOriginColumn ->
+      "magic get-origin-column()"
 
 showLowMagic' :: Handle -> LM.LowMagic WT.WeakType WT.WeakType WT.WeakTerm -> T.Text
 showLowMagic' h lowMagic =

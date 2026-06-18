@@ -196,6 +196,12 @@ weakenMagic m magic = do
       M.WeakMagic $ M.StringUncons mid (weaken text)
     M.CompileError typeExpr msg ->
       M.WeakMagic $ M.CompileError (weakenType typeExpr) (weaken msg)
+    M.GetOriginFileName ->
+      M.WeakMagic M.GetOriginFileName
+    M.GetOriginLine ->
+      M.WeakMagic M.GetOriginLine
+    M.GetOriginColumn ->
+      M.WeakMagic M.GetOriginColumn
 
 weakenTypeBinder :: BinderF TM.Type -> BinderF WT.WeakType
 weakenTypeBinder (m, k, x, t) =

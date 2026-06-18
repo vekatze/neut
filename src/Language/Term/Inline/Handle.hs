@@ -16,6 +16,7 @@ import Gensym.Handle qualified as GensymHandle
 import Kernel.Common.Handle.Global.Data qualified as Data
 import Kernel.Elaborate.Internal.Handle.TypeDef qualified as TypeDef
 import Language.Common.Binder
+import Language.Common.DataSize qualified as DS
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Term.Refresh qualified as Refresh
 import Language.Term.Stmt qualified as Stmt
@@ -73,5 +74,7 @@ data Handle = Handle
     residualCheckList :: IORef [ResidualCheck],
     shouldEmitResidualChecks :: Bool,
     macroCallStack :: IORef [(DD.DefiniteDescription, Hint)],
-    gensymHandle :: GensymHandle.Handle
+    gensymHandle :: GensymHandle.Handle,
+    baseSize :: DS.DataSize,
+    insideDefineMeta :: Bool
   }
