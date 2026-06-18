@@ -5,6 +5,9 @@ module Language.Term.Inline.Magic
     evaluateStringCons,
     evaluateStringUncons,
     evaluateCompileError,
+    evaluateGetOriginFileName,
+    evaluateGetOriginLine,
+    evaluateGetOriginColumn,
     constructUnitTerm,
   )
 where
@@ -12,6 +15,7 @@ where
 import App.App (App)
 import App.Run (raiseError)
 import Control.Comonad.Cofree
+import Control.Monad (when)
 import Control.Monad.IO.Class
 import Data.IORef (readIORef)
 import Data.IntMap qualified as IntMap
@@ -33,6 +37,7 @@ import Language.Common.Ident.Reify qualified as Ident
 import Language.Common.IsConstLike (IsConstLike)
 import Language.Common.ModuleID qualified as MID
 import Language.Common.PiElimKind qualified as PEK
+import Language.Common.PrimNumSize (dataSizeToIntSize)
 import Language.Common.PrimType qualified as PT
 import Language.Common.Rune qualified as Rune
 import Language.Common.SourceLocator qualified as SL
@@ -44,7 +49,7 @@ import Language.Term.Subst qualified as Subst
 import Language.Term.Term qualified as TM
 import Language.Term.Weaken (weakenType)
 import Language.WeakTerm.ToText (toTextType)
-import Logger.Hint (Hint, showFilePos)
+import Logger.Hint (Hint (..), showFilePos)
 
 evaluateInspectType :: Handle -> Hint -> MID.ModuleID -> TM.Type -> App TM.Term
 evaluateInspectType h m moduleID typeExpr = do
@@ -407,6 +412,40 @@ evaluateCompileError h m msg = do
       reportMacroError h m messageText
     _ ->
       raiseError m "compile-error requires a static string message"
+
+evaluateGetOriginFileName :: Handle -> Hint -> App TM.Term
+evaluateGetOriginFileName h m = do
+  origin <- getOriginHint h m
+  return $ m :< TM.Prim (PV.Text (T.pack $ metaFileName origin))
+
+evaluateGetOriginLine :: Handle -> Hint -> App TM.Term
+evaluateGetOriginLine h m = do
+  origin <- getOriginHint h m
+  let (line, _) = metaLocation origin
+  returnOriginInt h m line
+
+evaluateGetOriginColumn :: Handle -> Hint -> App TM.Term
+evaluateGetOriginColumn h m = do
+  origin <- getOriginHint h m
+  let (_, column) = metaLocation origin
+  returnOriginInt h m column
+
+getOriginHint :: Handle -> Hint -> App Hint
+getOriginHint h m = do
+  when (insideDefineMeta h) $ do
+    reportMacroError h m "Origin reification cannot be used while evaluating define-meta"
+  stack <- liftIO $ getMacroCallStack h
+  case reverse stack of
+    (_, origin) : _ ->
+      return origin
+    [] ->
+      return m
+
+returnOriginInt :: Handle -> Hint -> Int -> App TM.Term
+returnOriginInt h m value = do
+  let intSize = dataSizeToIntSize (baseSize h)
+  let intType = m :< TM.PrimType (PT.Int intSize)
+  return $ m :< TM.Prim (PV.Int intType intSize (toInteger value))
 
 reportMacroError :: Handle -> Hint -> T.Text -> App a
 reportMacroError h m message = do

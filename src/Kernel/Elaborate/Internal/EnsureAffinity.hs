@@ -289,6 +289,12 @@ analyze h term = do
           cs1 <- analyzeType h typeExpr
           cs2 <- analyze h msg
           return $ cs1 ++ cs2
+        M.GetOriginFileName ->
+          return []
+        M.GetOriginLine ->
+          return []
+        M.GetOriginColumn ->
+          return []
 
 analyzeType :: Handle -> TM.Type -> App [AffineConstraint]
 analyzeType h ty =

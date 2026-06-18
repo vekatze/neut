@@ -172,6 +172,12 @@ freeVarsMagic magic =
       freeVars text
     M.CompileError typeExpr msg ->
       S.union (freeVarsType typeExpr) (freeVars msg)
+    M.GetOriginFileName ->
+      S.empty
+    M.GetOriginLine ->
+      S.empty
+    M.GetOriginColumn ->
+      S.empty
 
 freeVarsLowMagic :: LM.LowMagic BLT.BaseLowType TM.Type TM.Term -> S.Set Ident
 freeVarsLowMagic lowMagic =

@@ -22,6 +22,9 @@ data Magic lt ty a
   | StringCons ty a a
   | StringUncons MID.ModuleID a
   | CompileError ty a
+  | GetOriginFileName
+  | GetOriginLine
+  | GetOriginColumn
   deriving (Show, Eq, G.Generic)
 
 instance (Binary lt, Binary ty, Binary a) => Binary (Magic lt ty a)
@@ -53,6 +56,12 @@ instance Functor (Magic lt ty) where
         StringUncons mid (f text)
       CompileError typeExpr msg ->
         CompileError typeExpr (f msg)
+      GetOriginFileName ->
+        GetOriginFileName
+      GetOriginLine ->
+        GetOriginLine
+      GetOriginColumn ->
+        GetOriginColumn
 
 instance Foldable (Magic lt ty) where
   foldMap f der =
@@ -81,6 +90,12 @@ instance Foldable (Magic lt ty) where
         f text
       CompileError _ msg ->
         f msg
+      GetOriginFileName ->
+        mempty
+      GetOriginLine ->
+        mempty
+      GetOriginColumn ->
+        mempty
 
 instance Traversable (Magic lt ty) where
   traverse f der =
@@ -109,5 +124,11 @@ instance Traversable (Magic lt ty) where
         StringUncons mid <$> f text
       CompileError typeExpr msg ->
         CompileError typeExpr <$> f msg
+      GetOriginFileName ->
+        pure GetOriginFileName
+      GetOriginLine ->
+        pure GetOriginLine
+      GetOriginColumn ->
+        pure GetOriginColumn
 
 newtype WeakMagic lt ty a = WeakMagic (Magic lt ty a)

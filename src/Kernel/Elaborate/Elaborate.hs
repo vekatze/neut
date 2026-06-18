@@ -28,6 +28,7 @@ import Kernel.Common.Handle.Global.Data qualified as Data
 import Kernel.Common.Handle.Global.GlobalRemark qualified as GlobalRemark
 import Kernel.Common.Handle.Global.KeyArg qualified as KeyArg
 import Kernel.Common.Handle.Global.OptimizableData qualified as OptimizableData
+import Kernel.Common.Handle.Global.Platform qualified as Platform
 import Kernel.Common.Handle.Global.Resource qualified as Resource
 import Kernel.Common.Handle.Global.Type qualified as Type
 import Kernel.Common.ManageCache qualified as Cache
@@ -776,6 +777,12 @@ elaborate' h term = do
           typeExpr' <- elaborateType h typeExpr
           msg' <- elaborate' h msg
           return $ m :< TM.Magic (M.CompileError typeExpr' msg')
+        M.GetOriginFileName -> do
+          return $ m :< TM.Magic M.GetOriginFileName
+        M.GetOriginLine -> do
+          return $ m :< TM.Magic M.GetOriginLine
+        M.GetOriginColumn -> do
+          return $ m :< TM.Magic M.GetOriginColumn
     m :< WT.Annotation remarkLevel annot e -> do
       e' <- elaborate' h e
       case annot of
@@ -983,7 +990,8 @@ inlineType :: Handle -> Hint -> TM.Type -> App TM.Type
 inlineType h m t = do
   dmap <- liftIO $ Definition.get' (defHandle h)
   typeDefMap <- liftIO $ TypeDef.get' (typeDefHandle h)
-  inlineHandle <- liftIO $ Inline.new (gensymHandle h) dmap typeDefMap (dataHandle h) m (inlineLimit h) (specializationTable h) (pendingSpecializationDefs h) (residualCheckList h) False
+  let baseSize = Platform.getDataSize (platformHandle h)
+  inlineHandle <- liftIO $ Inline.new (gensymHandle h) dmap typeDefMap (dataHandle h) baseSize m (inlineLimit h) (specializationTable h) (pendingSpecializationDefs h) (residualCheckList h) False
   Inline.inlineType inlineHandle t
 
 elaborateLet :: Handle -> (BinderF WT.WeakType, WT.WeakTerm) -> App (BinderF TM.Type, TM.Term)

@@ -421,6 +421,12 @@ substMagic h sub magic =
       typeExpr' <- substType h sub typeExpr
       msg' <- subst h sub msg
       return $ M.CompileError typeExpr' msg'
+    M.GetOriginFileName ->
+      return M.GetOriginFileName
+    M.GetOriginLine ->
+      return M.GetOriginLine
+    M.GetOriginColumn ->
+      return M.GetOriginColumn
 
 substLowMagic :: Handle -> Subst -> LM.LowMagic BLT.BaseLowType TM.Type TM.Term -> IO (LM.LowMagic BLT.BaseLowType TM.Type TM.Term)
 substLowMagic h sub lowMagic =

@@ -167,6 +167,12 @@ refreshMagic h magic =
       typeExpr' <- refreshType h typeExpr
       msg' <- refresh h msg
       return $ M.CompileError typeExpr' msg'
+    M.GetOriginFileName ->
+      return M.GetOriginFileName
+    M.GetOriginLine ->
+      return M.GetOriginLine
+    M.GetOriginColumn ->
+      return M.GetOriginColumn
 
 refreshLowMagic :: Handle -> LM.LowMagic BLT.BaseLowType TM.Type TM.Term -> IO (LM.LowMagic BLT.BaseLowType TM.Type TM.Term)
 refreshLowMagic h lowMagic =

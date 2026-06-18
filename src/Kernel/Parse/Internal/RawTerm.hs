@@ -739,7 +739,10 @@ rawTermMagic h m c = do
       rawTermMagicAssertMixable h m c,
       rawTermMagicStringCons h m c,
       rawTermMagicStringUncons h m c,
-      rawTermMagicCompileError h m c
+      rawTermMagicCompileError h m c,
+      rawTermMagicGetOriginFileName h m c,
+      rawTermMagicGetOriginLine h m c,
+      rawTermMagicGetOriginColumn h m c
     ]
 
 rawTermMagicBase :: T.Text -> Parser (C -> C -> a) -> Parser (a, C)
@@ -912,6 +915,21 @@ rawTermMagicCompileError h m c = do
   rawTermMagicBase "compile-error" $ do
     msgTerm <- rawTerm h
     return $ \c1 c2 -> m :< RT.Magic c (RT.CompileError c1 (c2, msgTerm))
+
+rawTermMagicGetOriginFileName :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
+rawTermMagicGetOriginFileName _ m c = do
+  rawTermMagicBase "get-origin-file-name" $ do
+    return $ \c1 c2 -> m :< RT.Magic c (RT.GetOriginFileName c1 c2)
+
+rawTermMagicGetOriginLine :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
+rawTermMagicGetOriginLine _ m c = do
+  rawTermMagicBase "get-origin-line" $ do
+    return $ \c1 c2 -> m :< RT.Magic c (RT.GetOriginLine c1 c2)
+
+rawTermMagicGetOriginColumn :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
+rawTermMagicGetOriginColumn _ m c = do
+  rawTermMagicBase "get-origin-column" $ do
+    return $ \c1 c2 -> m :< RT.Magic c (RT.GetOriginColumn c1 c2)
 
 rawTermMatch :: Handle -> Hint -> C -> Bool -> Parser (RT.RawTerm, C)
 rawTermMatch h m c1 isNoetic = do

@@ -121,13 +121,15 @@ inline' :: Handle -> Hint -> Bool -> TM.Term -> App TM.Term
 inline' h m shouldEmitResidualChecks e = do
   dmap <- liftIO $ Definition.get' (defHandle h)
   typeDefMap <- liftIO $ TypeDef.get' (typeDefHandle h)
-  inlineHandle <- liftIO $ Inline.new (gensymHandle h) dmap typeDefMap (dataHandle h) m (inlineLimit h) (specializationTable h) (pendingSpecializationDefs h) (residualCheckList h) shouldEmitResidualChecks
+  let baseSize = Platform.getDataSize (platformHandle h)
+  inlineHandle <- liftIO $ Inline.new (gensymHandle h) dmap typeDefMap (dataHandle h) baseSize m (inlineLimit h) (specializationTable h) (pendingSpecializationDefs h) (residualCheckList h) shouldEmitResidualChecks
   Inline.inline inlineHandle e
 
 inlineBinder :: Handle -> BinderF TM.Type -> App (BinderF TM.Type)
 inlineBinder h (m, k, x, t) = do
   dmap <- liftIO $ Definition.get' (defHandle h)
   typeDefMap <- liftIO $ TypeDef.get' (typeDefHandle h)
-  inlineHandle <- liftIO $ Inline.new (gensymHandle h) dmap typeDefMap (dataHandle h) m (inlineLimit h) (specializationTable h) (pendingSpecializationDefs h) (residualCheckList h) False
+  let baseSize = Platform.getDataSize (platformHandle h)
+  inlineHandle <- liftIO $ Inline.new (gensymHandle h) dmap typeDefMap (dataHandle h) baseSize m (inlineLimit h) (specializationTable h) (pendingSpecializationDefs h) (residualCheckList h) False
   t' <- Inline.inlineType inlineHandle t
   return (m, k, x, t')

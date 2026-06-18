@@ -948,6 +948,15 @@ discernMagic h m magic =
       stringType <- liftEither (locatorToTypeVar m coreString) >>= discernType h
       msg' <- discern h msg
       return $ M.WeakMagic $ M.CompileError stringType msg'
+    RT.GetOriginFileName {} -> do
+      ensureCompileStage m h "inline magic (`get-origin-file-name`)"
+      return $ M.WeakMagic M.GetOriginFileName
+    RT.GetOriginLine {} -> do
+      ensureCompileStage m h "inline magic (`get-origin-line`)"
+      return $ M.WeakMagic M.GetOriginLine
+    RT.GetOriginColumn {} -> do
+      ensureCompileStage m h "inline magic (`get-origin-column`)"
+      return $ M.WeakMagic M.GetOriginColumn
 
 modifyLetContinuation ::
   H.Handle ->

@@ -1100,6 +1100,12 @@ clarifyMagic h context der = do
       error "StringUncons should be evaluated during inline expansion"
     M.CompileError {} ->
       error "CompileError should be evaluated during inline expansion"
+    M.GetOriginFileName ->
+      error "GetOriginFileName should be evaluated during inline expansion"
+    M.GetOriginLine ->
+      error "GetOriginLine should be evaluated during inline expansion"
+    M.GetOriginColumn ->
+      error "GetOriginColumn should be evaluated during inline expansion"
 
 clarifyLambda ::
   Handle ->

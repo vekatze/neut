@@ -30,6 +30,7 @@ import Language.Common.Attr.Lam qualified as AttrL
 import Language.Common.Attr.VarGlobal qualified as AttrVG
 import Language.Common.BaseLowType qualified as BLT
 import Language.Common.Binder
+import Language.Common.DataSize qualified as DS
 import Language.Common.DecisionTree qualified as DT
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.Discriminant qualified as D
@@ -53,12 +54,13 @@ import Language.Term.Subst qualified as Subst
 import Language.Term.Term qualified as TM
 import Logger.Hint
 
-new :: GensymHandle.Handle -> DefMap -> TypeDefMap -> Data.Handle -> Hint -> Int -> IORef SpecializationTable -> IORef [Stmt.Stmt] -> IORef [ResidualCheck] -> Bool -> IO Handle
-new gensymHandle dmap typeDefMap dataHandle location inlineLimit specializationTable pendingSpecializationDefs residualCheckList shouldEmitResidualChecks = do
+new :: GensymHandle.Handle -> DefMap -> TypeDefMap -> Data.Handle -> DS.DataSize -> Hint -> Int -> IORef SpecializationTable -> IORef [Stmt.Stmt] -> IORef [ResidualCheck] -> Bool -> IO Handle
+new gensymHandle dmap typeDefMap dataHandle baseSize location inlineLimit specializationTable pendingSpecializationDefs residualCheckList shouldEmitResidualChecks = do
   let substHandle = Subst.new gensymHandle
   let refreshHandle = Refresh.new gensymHandle
   currentStepRef <- liftIO $ newIORef 0
   macroCallStack <- liftIO $ newIORef []
+  let insideDefineMeta = False
   return $ Handle {..}
 
 inline :: Handle -> TM.Term -> App TM.Term
@@ -173,7 +175,8 @@ inline' h term = do
                                   specializedName <- createSpecializationName h dd
                                   codType' <- liftIO $ Subst.substType (substHandle h) subType codType
                                   beginSpecialization h dd impArgs' specializedName
-                                  body'' <- tracer $ liftIO (Refresh.refresh (refreshHandle h) body') >>= inline h
+                                  let hDefineMeta = h {insideDefineMeta = True}
+                                  body'' <- tracer $ liftIO (Refresh.refresh (refreshHandle h) body') >>= inline hDefineMeta
                                   let stmt =
                                         Stmt.StmtDefine
                                           False
@@ -382,6 +385,12 @@ inline' h term = do
         M.CompileError _ msg -> do
           msg' <- inline' h msg
           Magic.evaluateCompileError h m msg'
+        M.GetOriginFileName -> do
+          Magic.evaluateGetOriginFileName h m
+        M.GetOriginLine -> do
+          Magic.evaluateGetOriginLine h m
+        M.GetOriginColumn -> do
+          Magic.evaluateGetOriginColumn h m
 
 inlineType' :: Handle -> TM.Type -> App TM.Type
 inlineType' h ty =

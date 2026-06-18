@@ -1,10 +1,8 @@
 {
   target {
-    tau {
-      main "tau.nt",
-      build-option [
-        "-fsanitize=address",
-      ],
+    meta {
+      main "meta.nt",
+      allocator "system",
     },
   },
   dependency {
