@@ -838,12 +838,8 @@ elaboratePrimValue :: Handle -> Hint -> WPV.WeakPrimValue WT.WeakType -> App (PV
 elaboratePrimValue h m primValue =
   case primValue of
     WPV.Int t x -> do
-      (size, t') <- strictifyDecimalType h m x t
-      case size of
-        Right intSize ->
-          return $ PV.Int t' intSize x
-        Left floatSize ->
-          return $ PV.Float t' floatSize (fromInteger x)
+      (intSize, t') <- strictifyDecimalType h m x t
+      return $ PV.Int t' intSize x
     WPV.Float t x -> do
       (size, t') <- strictifyFloatType h m x t
       return $ PV.Float t' size x
@@ -888,14 +884,12 @@ strictify' h m t = do
     _ :< _ ->
       raiseNonStrictType m (weakenType t')
 
-strictifyDecimalType :: Handle -> Hint -> Integer -> WT.WeakType -> App (Either FloatSize IntSize, TM.Type)
+strictifyDecimalType :: Handle -> Hint -> Integer -> WT.WeakType -> App (IntSize, TM.Type)
 strictifyDecimalType h m x t = do
   t' <- reduceWeakType h t >>= elaborateType h
   case t' of
     _ :< TM.PrimType (PT.Int size) ->
-      return (Right size, t')
-    _ :< TM.PrimType (PT.Float size) ->
-      return (Left size, t')
+      return (size, t')
     _ :< TM.Data _ dataName [] -> do
       consInfoList <- lookupDataInfo h m dataName
       case consInfoList of
