@@ -8,7 +8,6 @@ module Language.WeakTerm.WeakPrimValue
   )
 where
 
-import Data.Binary
 import Data.ByteString qualified as BS
 import Data.Text qualified as T
 import GHC.Generics (Generic)
@@ -31,8 +30,6 @@ data WeakPrimValue a
   | Blob BS.ByteString
   | Rune RU.Rune
   deriving (Show, Generic)
-
-instance (Binary a) => Binary (WeakPrimValue a)
 
 instance Functor WeakPrimValue where
   fmap f primValue =
