@@ -1,0 +1,21 @@
+import {
+  core.debug {assert},
+  core.int.io {print-int-line},
+  core.string {from-text},
+  core.string.eq {eq-suffix},
+}
+
+inline-meta emit-origin-inner() -> 'unit {
+  let filename: text = magic get-origin-file-name();
+  let line = magic get-origin-line();
+  let column = magic get-origin-column();
+  quote {
+    let filename = unquote {promote {filename}};
+    assert(
+      "`filename` ends with \"meta/source/meta.nt\"",
+      eq-suffix(from-text(filename), "meta/source/meta.nt"),
+    );
+    print-int-line(unquote {promote {line}});
+    print-int-line(unquote {promote {column}})
+  }
+}

@@ -1,0 +1,24 @@
+import {
+  core.int.io {print-int-line},
+  this.other,
+}
+
+inline-meta emit-origin-outer() -> 'unit {
+  quote {this.other.emit-origin-inner::()}
+}
+
+define main() -> unit {
+  emit-origin-outer::();
+  print-int-line(unquote {
+    let line = magic get-origin-line();
+    promote {line}
+  });
+  print-int-line(unquote {
+    let column = magic get-origin-column();
+    promote {column}
+  })
+}
+
+define zen() -> unit {
+  main()
+}

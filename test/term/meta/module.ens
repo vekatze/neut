@@ -1,0 +1,17 @@
+{
+  target {
+    meta {
+      main "meta.nt",
+      allocator "system",
+    },
+  },
+  dependency {
+    core {
+      digest "iUqDfUBLzE6p6t2JtMabBsQKFFH6JgzTI5SFAGDNjiA",
+      mirror [
+        "https://github.com/vekatze/neut-core/raw/main/archive/0-55-12.tar.zst",
+      ],
+      enable-preset true,
+    },
+  },
+}
