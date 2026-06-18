@@ -78,7 +78,7 @@ define use-code-2(x: 'int) -> 'int {
 
 ## Top-Level Meta Functions
 
-The language has two statements for top-level meta functions: `inline-meta` and `define-meta`.
+The language has statements for top-level meta functions: `inline-meta`, `define-meta`, and `constant-meta`.
 
 ### `inline-meta`
 
@@ -151,6 +151,34 @@ define-meta bad<a>(x: a) -> 'int {
 ```
 
 Like `inline-meta`, its body starts at stage 1.
+
+### `constant-meta`
+
+`constant-meta` is an inline-like meta definition that introduces a top-level constant whose type is the annotated code type:
+
+```neut
+constant-meta foo: 'int {
+  quote {10}
+}
+
+define use-meta-constant() -> int {
+  foo
+}
+```
+
+Explicit type arguments can be written on the meta constant:
+
+```neut
+constant-meta bar<a>: 'int {
+  quote {20}
+}
+
+define use-meta-constant() -> int {
+  bar<int>
+}
+```
+
+Like `define-meta`, `constant-meta` requires its type to be of the form `'a`.
 
 ### Calling Meta Functions
 

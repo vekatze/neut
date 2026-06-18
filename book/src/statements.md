@@ -8,6 +8,7 @@
 - [define-meta](#define-meta)
 - [inline-meta](#inline-meta)
 - [constant](#constant)
+- [constant-meta](#constant-meta)
 - [data](#data)
 - [data-raw](#data-raw)
 - [alias](#alias)
@@ -261,6 +262,7 @@ constant empty-list<a>: list(a) {
 define use-constants() -> list(int) {
   let x = foo;
   let _ = x;
+  let _ = empty-list<bool>;
   empty-list
 }
 ```
@@ -271,6 +273,57 @@ The compiler tries to reduce the body of a `constant` into a value at compile ti
 constant bar: int {
   print("hello");
   123
+}
+```
+
+## `constant-meta`
+
+`constant-meta` defines a top-level meta constant. It should look like the following:
+
+```neut
+constant-meta foo: 'int {
+  quote {10}
+}
+
+constant-meta bar<a>: 'int {
+  quote {20}
+}
+
+define use-meta-constants() -> unit {
+  print-int-line(foo);
+  print-int-line(bar<int>)
+}
+```
+
+`constant-meta` is the following syntax sugar:
+
+```neut
+constant-meta foo: 'int {
+  quote {10}
+}
+
+constant-meta bar<a>: 'int {
+  quote {20}
+}
+
+define use-meta-constants() -> unit {
+  print-int-line(foo);
+  print-int-line(bar<int>)
+}
+
+↓
+
+inline-meta foo(): 'int {
+  quote {10}
+}
+
+inline-meta bar<a>(): 'int {
+  quote {20}
+}
+
+define use-meta-constants() -> unit {
+  print-int-line(foo::());
+  print-int-line(bar<int>::())
 }
 ```
 
