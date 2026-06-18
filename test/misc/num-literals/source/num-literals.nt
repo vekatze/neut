@@ -13,7 +13,7 @@ data my-float {
 }
 
 define bar() -> my-float {
-  123
+  123.0
 }
 
 define buz() -> my-float {
@@ -99,6 +99,12 @@ define test-float16-representation() -> unit {
   expect-bits16("float16: -65520 rounds to -inf", -65520.0, 0xFC00);
   expect-bits16("float16: tie to even down", 0x1.002p0, 0x3C00);
   expect-bits16("float16: tie to even up", 0x1.006p0, 0x3C02)
+}
+
+define test-expanded-float-literals() -> unit {
+  expect-bits64("float64: decimal exponent without fraction", 3e2, 0x4072C00000000000);
+  expect-bits64("float64: decimal fraction with exponent", 3.14e2, 0x4073A00000000000);
+  expect-bits64("float64: hexadecimal exponent without fraction", 0x1p4, 0x4030000000000000)
 }
 
 define test-float64-ops() -> unit {
@@ -303,6 +309,7 @@ define test-ieee754-floats() -> unit {
   test-float64-representation();
   test-float32-representation();
   test-float16-representation();
+  test-expanded-float-literals();
   test-float64-ops();
   test-float32-ops();
   test-float16-ops()

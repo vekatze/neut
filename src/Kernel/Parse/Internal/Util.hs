@@ -130,8 +130,9 @@ readFloatingMaybe numeralSystem exponentMarker exponentBase text = do
   (suffix, sign) <- readSignedSuffix numeralSystem text
   (wholeDigits, rest) <- readRequiredDigitValues numeralSystem suffix
   let wholeValue = digitsToRational (base numeralSystem) wholeDigits
-  (fractionValue, rest') <- readFractionValue numeralSystem rest
-  (exponentSign, exponentValue, exponentRest) <- parseExponentWithMarker exponentMarker rest'
+  (hasFraction, fractionValue, rest') <- readOptionalFractionValue numeralSystem rest
+  (hasExponent, exponentSign, exponentValue, exponentRest) <- parseExponentWithMarker exponentMarker rest'
+  guard $ hasFraction || hasExponent
   guard $ T.null exponentRest
   let mantissaValue = wholeValue + fractionValue
   let exponentScale = exponentToScale exponentBase exponentSign exponentValue
@@ -191,7 +192,7 @@ isHexadecimalFloatMarker :: Char -> Bool
 isHexadecimalFloatMarker c =
   c == '.' || c == 'p'
 
-parseExponentWithMarker :: Char -> T.Text -> Maybe (Integer, Integer, T.Text)
+parseExponentWithMarker :: Char -> T.Text -> Maybe (Bool, Integer, Integer, T.Text)
 parseExponentWithMarker marker text =
   case T.uncons text of
     Just (c, rest)
@@ -201,9 +202,9 @@ parseExponentWithMarker marker text =
           let (digits, exponentRest) = readDigits isDigit rest'
           guard $ not $ T.null digits
           let value = digitsToInteger 10 $ map digitToInteger $ T.unpack digits
-          return (sign, value, exponentRest)
+          return (True, sign, value, exponentRest)
     _ ->
-      return (1, 0, text)
+      return (False, 1, 0, text)
 
 readRequiredDigitValues :: NumeralSystem -> T.Text -> Maybe ([Integer], T.Text)
 readRequiredDigitValues numeralSystem text = do
@@ -212,15 +213,15 @@ readRequiredDigitValues numeralSystem text = do
   digits <- mapM (digitValue numeralSystem) $ T.unpack digitChars
   return (digits, rest)
 
-readFractionValue :: NumeralSystem -> T.Text -> Maybe (Rational, T.Text)
-readFractionValue numeralSystem text =
+readOptionalFractionValue :: NumeralSystem -> T.Text -> Maybe (Bool, Rational, T.Text)
+readOptionalFractionValue numeralSystem text =
   case T.uncons text of
     Just ('.', fractionText) -> do
       (fractionDigits, fractionRest) <- readRequiredDigitValues numeralSystem fractionText
       let fractionValue = digitsToFractionRational (base numeralSystem) fractionDigits
-      return (fractionValue, fractionRest)
+      return (True, fractionValue, fractionRest)
     _ ->
-      Nothing
+      return (False, 0, text)
 
 readDigits :: (Char -> Bool) -> T.Text -> (T.Text, T.Text)
 readDigits =
