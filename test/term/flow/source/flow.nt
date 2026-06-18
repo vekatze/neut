@@ -135,13 +135,13 @@ define test-behavior() -> unit {
   let tmp on ch-clone = {
     let f = {
       spawn(() => {
-        let _ = sleep(1);
+        let _ = sleep(1.0);
         send(ch-clone, lift {3})
       })
     };
     let g = {
       spawn(() => {
-        let _ = sleep(1);
+        let _ = sleep(1.0);
         send(ch-clone, lift {4})
       })
     };
