@@ -7,6 +7,18 @@ inline-meta emit-origin-outer() -> 'unit {
   quote {this.other.emit-origin-inner::()}
 }
 
+constant-meta cm-inner: 'int {
+  quote {21}
+}
+
+constant-meta cm-outer: 'int {
+  quote {cm-inner}
+}
+
+constant-meta cm-param<_>: 'int {
+  quote {22}
+}
+
 define main() -> unit {
   emit-origin-outer::();
   print-int-line(unquote {
@@ -16,7 +28,10 @@ define main() -> unit {
   print-int-line(unquote {
     let column = magic get-origin-column();
     promote {column}
-  })
+  });
+  print-int-line(cm-inner);
+  print-int-line(cm-outer);
+  print-int-line(cm-param<int>);
 }
 
 define zen() -> unit {

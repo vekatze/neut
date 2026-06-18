@@ -58,7 +58,18 @@ define implicit-2<a, b>(x: a, y: b) -> pair(a, b) {
   Pair(x, y)
 }
 
+constant foo: int {
+  23
+}
+
+constant bar<_>: int {
+  23
+}
+
 define main() -> unit {
+  let _ = foo;
+  let _ = bar<int>;
+  let _ = bar<bool>;
   let _ = is-even(12345);
   let _: &binary = implicit-1("hello");
   let _: pair(blob, type) = implicit-2("hello", pack-type {type});
