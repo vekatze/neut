@@ -2589,6 +2589,12 @@ magic string-cons(rune, string)
 magic string-uncons(string)
 
 magic compile-error(message)
+
+magic get-origin-file-name()
+
+magic get-origin-line()
+
+magic get-origin-column()
 ```
 
 A "lowtype" is a term that reduces to one of the following:
@@ -2610,10 +2616,13 @@ The forms
 - `magic string-cons(rune, string)`
 - `magic string-uncons(string)`
 - `magic compile-error(message)`
+- `magic get-origin-file-name()`
+- `magic get-origin-line()`
+- `magic get-origin-column()`
 
 are compile-time primitives.
 
-These forms can only be used at stage 1 or above. The compiler reports an error if they are used below stage 1. They are resolved during compile-time evaluation and can therefore be used in `inline-meta` or `define-meta`.
+These forms can only be used at stage 1 or above. The compiler reports an error if they are used below stage 1. They are resolved during compile-time evaluation and can therefore be used in `inline-meta` or `define-meta`, except that the `get-origin-*` forms cannot be used while evaluating `define-meta`.
 
 ### Semantics (cast)
 
@@ -2700,6 +2709,18 @@ See [Memory Representation in Statements](./statements.md#memory-representation)
 ### Semantics (compile-error)
 
 `magic compile-error(message)` reports a compile-time error with the given message when evaluated.
+
+### Semantics (get-origin-file-name)
+
+`magic get-origin-file-name()` returns the file name of the outermost meta-function call site that started the current macro expansion. If no meta-function expansion is active, it returns the file name of the magic expression itself.
+
+### Semantics (get-origin-line)
+
+`magic get-origin-line()` returns the 1-based line number of the outermost meta-function call site that started the current macro expansion. If no meta-function expansion is active, it returns the line number of the magic expression itself.
+
+### Semantics (get-origin-column)
+
+`magic get-origin-column()` returns the 1-based column number of the outermost meta-function call site that started the current macro expansion. If no meta-function expansion is active, it returns the column number of the magic expression itself.
 
 ### Type
 
@@ -2824,6 +2845,18 @@ See [Memory Representation in Statements](./statements.md#memory-representation)
 Γ ⊢ message: &string
 ------------------------------------------------------
 Γ ⊢ magic compile-error(message): a
+
+
+------------------------------------------------------
+Γ ⊢ magic get-origin-file-name(): text
+
+
+------------------------------------------------------
+Γ ⊢ magic get-origin-line(): int
+
+
+------------------------------------------------------
+Γ ⊢ magic get-origin-column(): int
 
 ```
 
