@@ -65,6 +65,7 @@ parseStmt h = do
       parseDataRaw h,
       parseData h,
       parseInline h,
+      parseConstantMeta h,
       parseConstant h,
       parseMacro h,
       parseMacroInline h,
@@ -185,6 +186,15 @@ parseConstant h = do
   checkNotMainOrZen defName m "constant"
   return (RawStmtDefineTerm c1 SK.Constant def, c)
 
+parseConstantMeta :: Handle -> Parser (RawStmt, C)
+parseConstantMeta h = do
+  c1 <- keyword "constant-meta"
+  (def, c) <- parseConstantDef h baseName
+  let defName = RT.getDefName def
+  let m = RT.loc $ RT.geist def
+  checkNotMainOrZen defName m "constant-meta"
+  return (RawStmtDefineTerm c1 SK.ConstantMeta def, c)
+
 parseAlias :: Handle -> Parser (RawStmt, C)
 parseAlias h = do
   c1 <- keyword "alias"
@@ -237,6 +247,11 @@ parseNominalEntry h =
         loc <- getCurrentLoc
         let kind = if RT.isDestPassing geist then DestPassingInline else Inline
         return ((kind, geist, loc), cTag ++ cGeist),
+      do
+        cTag <- keyword "constant-meta"
+        (geist, cGeist) <- parseConstantGeist h baseName
+        loc <- getCurrentLoc
+        return ((ConstantMeta, geist, loc), cTag ++ cGeist),
       do
         cTag <- keyword "constant"
         (geist, cGeist) <- parseConstantGeist h baseName

@@ -17,6 +17,7 @@ data NominalTag
   | DestPassingInline
   | Inline
   | Constant
+  | ConstantMeta
   | Macro
   | MacroInline
   | Alias
@@ -41,6 +42,8 @@ nominalTagToText tag =
       "inline"
     Constant ->
       "constant"
+    ConstantMeta ->
+      "constant-meta"
     Macro ->
       "define-meta"
     MacroInline ->
@@ -69,6 +72,8 @@ isTermTag tag =
       True
     Constant ->
       True
+    ConstantMeta ->
+      True
     Macro ->
       True
     MacroInline ->
@@ -91,6 +96,8 @@ isMacroTag tag =
       True
     MacroInline ->
       True
+    ConstantMeta ->
+      False
     _ ->
       False
 

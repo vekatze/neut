@@ -3,6 +3,7 @@ module Kernel.Parse.Internal.Discern.Name
     resolveConstructor,
     resolveLocator,
     interpretGlobalName,
+    interpretMetaConstant,
     interpretGlobalTypeName,
     interpretRuleName,
     resolveDefiniteDescription,
@@ -159,8 +160,14 @@ interpretGlobalName :: H.Handle -> Hint -> DD.DefiniteDescription -> GN.GlobalNa
 interpretGlobalName h m dd gn = do
   let dd' = readableDD' (H.currentModule h) dd
   case gn of
-    GN.TopLevelFuncTerm argNum isConstLike isDestPassing isMacro -> do
-      ensureTopLevelStage m h dd isMacro
+    GN.TopLevelFuncTerm argNum isConstLike isDestPassing -> do
+      ensureRuntimeTermStage m h dd
+      return $ interpretTopLevelFuncTerm m dd argNum isConstLike isDestPassing
+    GN.TopLevelMetaTerm _ True ->
+      interpretMetaConstant h m dd gn ImpArgs.Unspecified
+    GN.TopLevelMetaTerm argNum isConstLike -> do
+      ensureMetaTermStage m h dd
+      let isDestPassing = False
       return $ interpretTopLevelFuncTerm m dd argNum isConstLike isDestPassing
     GN.TopLevelFuncType {} -> do
       raiseError m $ "`" <> dd' <> "` is a type name and cannot appear in term position"
@@ -182,10 +189,26 @@ interpretGlobalName h m dd gn = do
     GN.Rule _ ->
       raiseError m $ "`" <> dd' <> "` must be used with arguments"
 
+interpretMetaConstant ::
+  H.Handle ->
+  Hint ->
+  DD.DefiniteDescription ->
+  GN.GlobalName ->
+  ImpArgs.ImpArgs WT.WeakType ->
+  App WT.WeakTerm
+interpretMetaConstant h m dd gn impArgs = do
+  let h' = h {H.currentStage = H.currentStage h + 1}
+  callee <- interpretGlobalName h' m dd $ GN.toMetaFunction gn
+  let defaultArgs = DefaultArgs.ByKey []
+  let call = m :< WT.PiElim PEK.Normal callee impArgs [] defaultArgs
+  return $ m :< WT.CodeElim call
+
 interpretGlobalTypeName :: Hint -> DD.DefiniteDescription -> GN.GlobalName -> App WT.WeakType
 interpretGlobalTypeName m dd gn = do
   case gn of
     GN.TopLevelFuncTerm {} -> do
+      raiseError m $ "`" <> DD.reify dd <> "` is a term name and cannot appear in type position"
+    GN.TopLevelMetaTerm {} -> do
       raiseError m $ "`" <> DD.reify dd <> "` is a term name and cannot appear in type position"
     GN.TopLevelFuncType argNum isConstLike _ -> do
       return $ interpretTopLevelFuncType m dd argNum isConstLike
@@ -234,27 +257,29 @@ interpretTopLevelFuncType m dd argNum isConstLike = do
     then m :< WT.TyApp (m :< WT.TVarGlobal attr dd) []
     else m :< WT.TVarGlobal attr dd
 
-ensureTopLevelStage :: Hint -> H.Handle -> DD.DefiniteDescription -> Bool -> App ()
-ensureTopLevelStage m h dd isMacro = do
+ensureRuntimeTermStage :: Hint -> H.Handle -> DD.DefiniteDescription -> App ()
+ensureRuntimeTermStage m h dd = do
   let stage = H.currentStage h
   let dd' = readableDD' (H.currentModule h) dd
-  if isMacro
-    then do
-      when (stage < 1) $ do
-        raiseError m $
-          "`"
-            <> dd'
-            <> "` is a meta definition and can only be used at stage >= 1 (current stage: "
-            <> T.pack (show stage)
-            <> ")"
-    else do
-      when (stage > 0) $ do
-        raiseError m $
-          "`"
-            <> dd'
-            <> "` is a runtime definition and can only be used at stage <= 0 (current stage: "
-            <> T.pack (show stage)
-            <> ")"
+  when (stage > 0) $ do
+    raiseError m $
+      "`"
+        <> dd'
+        <> "` is a runtime definition and can only be used at stage <= 0 (current stage: "
+        <> T.pack (show stage)
+        <> ")"
+
+ensureMetaTermStage :: Hint -> H.Handle -> DD.DefiniteDescription -> App ()
+ensureMetaTermStage m h dd = do
+  let stage = H.currentStage h
+  let dd' = readableDD' (H.currentModule h) dd
+  when (stage < 1) $ do
+    raiseError m $
+      "`"
+        <> dd'
+        <> "` is a meta definition and can only be used at stage >= 1 (current stage: "
+        <> T.pack (show stage)
+        <> ")"
 
 castFromIntToBool :: H.Handle -> WT.WeakTerm -> App WT.WeakTerm
 castFromIntToBool h e@(m :< _) = do

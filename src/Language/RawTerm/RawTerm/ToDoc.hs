@@ -92,6 +92,11 @@ toDoc term =
               PI.inject $ expArgsDoc c2,
               PI.inject $ attachComment c3 $ decPiElimKey defaultArgs
             ]
+    _ :< PiElimImplicit name c impArgs -> do
+      PI.arrange
+        [ PI.inject $ nameToDoc name,
+          PI.inject $ attachComment c $ SE.decodeHorizontallyIfPossible $ fmap typeToDoc impArgs
+        ]
     _ :< PiElimByKey name c mImpArgs c2 kvs -> do
       case mImpArgs of
         Nothing ->

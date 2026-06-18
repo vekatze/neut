@@ -34,6 +34,7 @@ import Language.Common.ArgNum qualified as AN
 import Language.Common.DataInfo qualified as DI
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.IsConstLike
+import Language.Common.IsDestPassing
 import Language.Common.NominalTag
 import Language.Common.PrimOp.FromText qualified as PrimOp
 import Language.Common.PrimType.FromText qualified as PT
@@ -87,7 +88,7 @@ registerGeist h tag RT.RawGeist {..} = do
   liftIO $ insertToGeistMap h name' loc isConstLike
   liftIO $ insertToNameMap h name' loc (Just tag) $ do
     if isTermTag tag
-      then GN.TopLevelFuncTerm argNum isConstLike (isDestPassingTag tag) (isMacroTag tag)
+      then nominalTagToGlobalName tag argNum isConstLike (isDestPassingTag tag)
       else GN.TopLevelFuncType argNum isConstLike False
 
 lookup :: Handle -> Hint.Hint -> SGL.StrictGlobalLocator -> DD.DefiniteDescription -> App (Maybe (Hint, GN.GlobalName))
@@ -229,8 +230,8 @@ getGlobalNamesFromDefTerm stmtKind geist = do
   let allArgNum = AN.fromInt $ length impArgs + length defaultArgs + length expArgs
   case stmtKindTermToNominalTag stmtKind of
     Just tag -> do
-      let isMacro = stmtKindTermIsMacro stmtKind
-      [(name, (m, Just tag, GN.TopLevelFuncTerm allArgNum isConstLike (isDestPassingTag tag) isMacro))]
+      let gn = stmtKindTermToGlobalName stmtKind allArgNum isConstLike (isDestPassingTag tag)
+      [(name, (m, Just tag, gn))]
     Nothing ->
       []
 
@@ -269,8 +270,8 @@ _getGlobalNames' stmt = do
       let allArgNum = AN.fromInt $ length $ impArgs ++ defaultBinders ++ expArgs
       case stmtKindTermToNominalTag stmtKind of
         Just tag -> do
-          let isMacro = stmtKindTermIsMacro stmtKind
-          [(name, (m, Just tag, GN.TopLevelFuncTerm allArgNum isConstLike (isDestPassingTag tag) isMacro))]
+          let gn = stmtKindTermToGlobalName stmtKind allArgNum isConstLike (isDestPassingTag tag)
+          [(name, (m, Just tag, gn))]
         Nothing ->
           []
     StmtDefineType isConstLike stmtKind (SavedHint m) name impArgs expArgs defaultArgs _ _ -> do
@@ -325,6 +326,8 @@ stmtKindTermToNominalTag stmtKind =
       Just Inline
     SK.Constant ->
       Just Constant
+    SK.ConstantMeta ->
+      Just ConstantMeta
     SK.Macro ->
       Just Macro
     SK.MacroInline ->
@@ -334,15 +337,39 @@ stmtKindTermToNominalTag stmtKind =
     SK.DataIntro {} ->
       Nothing
 
-stmtKindTermIsMacro :: SK.BaseStmtKindTerm name binder t -> Bool
-stmtKindTermIsMacro stmtKind =
+stmtKindTermToGlobalName ::
+  SK.BaseStmtKindTerm name binder t ->
+  AN.ArgNum ->
+  IsConstLike ->
+  IsDestPassing ->
+  GN.GlobalName
+stmtKindTermToGlobalName stmtKind argNum isConstLike isDestPassing =
   case stmtKind of
+    SK.ConstantMeta ->
+      GN.TopLevelMetaTerm argNum isConstLike
     SK.Macro ->
-      True
+      GN.TopLevelMetaTerm argNum isConstLike
     SK.MacroInline ->
-      True
+      GN.TopLevelMetaTerm argNum isConstLike
     _ ->
-      False
+      GN.TopLevelFuncTerm argNum isConstLike isDestPassing
+
+nominalTagToGlobalName ::
+  NominalTag ->
+  AN.ArgNum ->
+  IsConstLike ->
+  IsDestPassing ->
+  GN.GlobalName
+nominalTagToGlobalName tag argNum isConstLike isDestPassing =
+  case tag of
+    ConstantMeta ->
+      GN.TopLevelMetaTerm argNum isConstLike
+    Macro ->
+      GN.TopLevelMetaTerm argNum isConstLike
+    MacroInline ->
+      GN.TopLevelMetaTerm argNum isConstLike
+    _ ->
+      GN.TopLevelFuncTerm argNum isConstLike isDestPassing
 
 stmtKindTypeToNominalTag :: SK.BaseStmtKindType binder -> Maybe NominalTag
 stmtKindTypeToNominalTag stmtKind =

@@ -87,6 +87,8 @@ inferStmt h stmt =
         SK.Macro -> do
           forM_ (expArgs' ++ map fst defaultArgs') $ \(mx, _, _, t) ->
             checkIsCodeType h''' mx t
+        SK.ConstantMeta -> do
+          checkIsCodeType h''' m codType'
         _ ->
           return ()
       liftIO $ insertType h''' x $ m :< WT.Pi (PK.fromStmtKind stmtKind isConstLike) impArgs' expArgs' defaultBinders codType'
@@ -165,6 +167,8 @@ inferStmtKindTerm h stmtKind =
       return SK.Inline
     SK.Constant ->
       return SK.Constant
+    SK.ConstantMeta ->
+      return SK.ConstantMeta
     SK.Macro ->
       return SK.Macro
     SK.MacroInline ->

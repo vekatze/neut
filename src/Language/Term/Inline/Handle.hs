@@ -29,6 +29,7 @@ data DefKind
   | Inline
   | Macro
   | MacroInline
+  | ConstantMeta
   | DataIntro
   deriving (Eq, Show)
 
