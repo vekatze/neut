@@ -132,6 +132,8 @@ compressStmtKindTerm stmtKind =
       Inline
     Constant ->
       Constant
+    ConstantMeta ->
+      ConstantMeta
     Macro ->
       Macro
     MacroInline ->

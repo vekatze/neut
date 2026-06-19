@@ -12,7 +12,7 @@ import Data.Functor ((<&>))
 import Data.HashMap.Strict qualified as Map
 import Data.List ((\\))
 import Data.List qualified as List
-import Data.Maybe (mapMaybe)
+import Data.Maybe (isJust, mapMaybe)
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Vector qualified as V
@@ -234,6 +234,8 @@ discernStmtKindTerm h stmtKind m =
       return SK.Inline
     SK.Constant ->
       return SK.Constant
+    SK.ConstantMeta ->
+      return SK.ConstantMeta
     SK.Macro ->
       return SK.Macro
     SK.MacroInline ->
@@ -285,6 +287,8 @@ toCandidateKindTerm stmtKind =
       Function
     SK.Constant ->
       Function
+    SK.ConstantMeta ->
+      Function
     SK.Macro ->
       Function
     SK.MacroInline ->
@@ -303,6 +307,14 @@ toCandidateKindType stmtKind =
       Function
     SK.Data {} ->
       Function
+
+isLocalVar :: H.Handle -> Name -> Bool
+isLocalVar h name =
+  case name of
+    Var s ->
+      isJust $ lookup s (H.nameEnv h)
+    _ ->
+      False
 
 discern :: H.Handle -> RT.RawTerm -> App WT.WeakTerm
 discern h term =
@@ -392,6 +404,22 @@ discern h term =
           vs' <- mapM (discern h) vs
           return $ DefaultArgs.ByKey (zip ks vs')
       return $ m :< WT.PiElim kind e' impArgs' expArgs' defaultArgs'
+    m :< RT.PiElimImplicit name _ impArgs -> do
+      if isLocalVar h name
+        then do
+          e' <- discern h $ m :< RT.Var name
+          impArgs' <- mapM (discernType h) $ SE.extract impArgs
+          return $ m :< WT.PiElim PEK.Normal e' (ImpArgs.FullySpecified impArgs') [] (DefaultArgs.ByKey [])
+        else do
+          (dd, (_, gn)) <- resolveName h m name
+          if GN.isMetaConstant gn
+            then do
+              impArgs' <- mapM (discernType h) $ SE.extract impArgs
+              interpretMetaConstant h m dd gn $ ImpArgs.FullySpecified impArgs'
+            else do
+              impArgs' <- mapM (discernType h) $ SE.extract impArgs
+              func <- interpretGlobalName h m dd $ GN.disableConstLikeFlag gn
+              return $ m :< WT.PiElim PEK.Normal func (ImpArgs.FullySpecified impArgs') [] (DefaultArgs.ByKey [])
     m :< RT.PiElimByKey name _ mImpArgs _ kvs -> do
       let kind = PEK.Normal -- overwritten later in `infer`
       (dd, (_, gn)) <- resolveName h m name

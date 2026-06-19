@@ -3,6 +3,8 @@ module Kernel.Common.GlobalName
     getIsConstLike,
     hasNoArgs,
     disableConstLikeFlag,
+    isMetaConstant,
+    toMetaFunction,
   )
 where
 
@@ -18,7 +20,8 @@ import Language.Common.RuleKind (RuleKind)
 import Logger.Hint
 
 data GlobalName
-  = TopLevelFuncTerm ArgNum IsConstLike IsDestPassing Bool
+  = TopLevelFuncTerm ArgNum IsConstLike IsDestPassing
+  | TopLevelMetaTerm ArgNum IsConstLike
   | TopLevelFuncType ArgNum IsConstLike Bool
   | PrimType PT.PrimType
   | PrimOp PrimOp
@@ -30,7 +33,9 @@ data GlobalName
 getIsConstLike :: GlobalName -> IsConstLike
 getIsConstLike gn =
   case gn of
-    TopLevelFuncTerm _ isConstLike _ _ ->
+    TopLevelFuncTerm _ isConstLike _ ->
+      isConstLike
+    TopLevelMetaTerm _ isConstLike ->
       isConstLike
     TopLevelFuncType _ isConstLike _ ->
       isConstLike
@@ -44,7 +49,9 @@ getIsConstLike gn =
 hasNoArgs :: GlobalName -> Bool
 hasNoArgs gn =
   case gn of
-    TopLevelFuncTerm argNum _ _ _ ->
+    TopLevelFuncTerm argNum _ _ ->
+      argNum == fromInt 0
+    TopLevelMetaTerm argNum _ ->
       argNum == fromInt 0
     TopLevelFuncType argNum _ _ ->
       argNum == fromInt 0
@@ -62,13 +69,31 @@ hasNoArgs gn =
 disableConstLikeFlag :: GlobalName -> GlobalName
 disableConstLikeFlag gn =
   case gn of
-    TopLevelFuncTerm argNum _ isDestPassing isMacro ->
-      TopLevelFuncTerm argNum False isDestPassing isMacro
+    TopLevelFuncTerm argNum _ isDestPassing ->
+      TopLevelFuncTerm argNum False isDestPassing
+    TopLevelMetaTerm argNum _ ->
+      TopLevelMetaTerm argNum False
     TopLevelFuncType argNum _ isMacro ->
       TopLevelFuncType argNum False isMacro
     Data argNum consInfo _ ->
       Data argNum consInfo False
     DataIntro dataArgNum consArgNum discriminant False ->
       DataIntro dataArgNum consArgNum discriminant False
+    _ ->
+      gn
+
+isMetaConstant :: GlobalName -> Bool
+isMetaConstant gn =
+  case gn of
+    TopLevelMetaTerm _ True ->
+      True
+    _ ->
+      False
+
+toMetaFunction :: GlobalName -> GlobalName
+toMetaFunction gn =
+  case gn of
+    TopLevelMetaTerm argNum True ->
+      TopLevelMetaTerm argNum False
     _ ->
       gn

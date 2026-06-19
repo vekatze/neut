@@ -168,6 +168,8 @@ liftStmtKindTerm _h stmtKind = do
       SK.Inline
     SK.Constant ->
       SK.Constant
+    SK.ConstantMeta ->
+      SK.ConstantMeta
     SK.Macro ->
       SK.Macro
     SK.MacroInline ->

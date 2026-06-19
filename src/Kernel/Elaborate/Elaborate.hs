@@ -194,7 +194,7 @@ elaborateStmt h stmt = do
         return (binder', value')
       expArgs'' <- mapM (inlineBinder h) expArgs'
       codType'' <- inlineType h m codType'
-      when isConstLike $ do
+      when (isConstLike && not (isConstantMetaStmtKind stmtKind)) $ do
         unless (TM.isValue e'') $ do
           raiseError m "Could not reduce the body of this definition into a constant"
       let result = StmtDefine isConstLike stmtKind' (SavedHint m) x impArgs'' expArgs'' defaultArgs'' codType'' e''
@@ -454,6 +454,8 @@ elaborateStmtKindTerm h stmtKind =
       return SK.Inline
     SK.Constant ->
       return SK.Constant
+    SK.ConstantMeta ->
+      return SK.ConstantMeta
     SK.Macro ->
       return SK.Macro
     SK.MacroInline ->
@@ -1265,6 +1267,8 @@ stmtKindToDefKind stmtKind defaultArgs =
       Just Inline.Inline
     SK.Constant ->
       Just Inline.Inline
+    SK.ConstantMeta ->
+      Just Inline.ConstantMeta
     SK.Macro ->
       Just Inline.Macro
     SK.MacroInline ->
@@ -1275,6 +1279,14 @@ stmtKindToDefKind stmtKind defaultArgs =
       if null defaultArgs
         then Nothing
         else Just Inline.NoInline
+
+isConstantMetaStmtKind :: SK.StmtKindTerm a -> Bool
+isConstantMetaStmtKind stmtKind =
+  case stmtKind of
+    SK.ConstantMeta ->
+      True
+    _ ->
+      False
 
 -- viewStmt :: WeakStmt -> IO ()
 -- viewStmt stmt = do

@@ -229,7 +229,7 @@ rawTermBase mode h m headSymbol c = do
                     Just (defaultArgs, cDefaultArgs) ->
                       return (m :< RT.PiElimMeta name c mImpArgs cImpArgs es c' (Just defaultArgs), cDefaultArgs)
             let parseCont =
-                  rawTermPiElimContWithImp h (m :< RT.Var name, c) mImpArgs cImpArgs
+                  rawTermPiElimContWithImp h m name c mImpArgs cImpArgs
             case mode of
               Full ->
                 choice [parseByKey, parseMeta, parseCont]
@@ -244,24 +244,32 @@ rawTermPiElimCont h (e@(m :< _), c) = do
 
 rawTermPiElimContWithImp ::
   Handle ->
-  (RT.RawTerm, C) ->
+  Hint ->
+  Name ->
+  C ->
   Maybe (SE.Series RT.RawType) ->
   C ->
   Parser (RT.RawTerm, C)
-rawTermPiElimContWithImp h (e@(m :< _), c) mImpArgs cImpArgs =
+rawTermPiElimContWithImp h m name c mImpArgs cImpArgs = do
+  let e = m :< RT.Var name
   case mImpArgs of
     Nothing ->
       rawTermPiElimCont h (e, c)
     Just impArgs -> do
-      (expArgs, c2) <- seriesParen (rawTerm h)
-      mDefaultArgs <- optional $ seriesBracket $ rawTermKeyValuePair h
-      let (args, c3) = case mDefaultArgs of
-            Nothing ->
-              ((Just impArgs, cImpArgs, expArgs, c2, Nothing), [])
-            Just (defaultArgs, c4) ->
-              ((Just impArgs, cImpArgs, expArgs, c2, Just defaultArgs), c4)
-      rest <- many $ rawTermPiElimArgs h
-      return $ foldPiElim m (e, c) ((args, c3) : rest)
+      choice
+        [ do
+            (expArgs, c2) <- seriesParen (rawTerm h)
+            mDefaultArgs <- optional $ seriesBracket $ rawTermKeyValuePair h
+            let (args, c3) = case mDefaultArgs of
+                  Nothing ->
+                    ((Just impArgs, cImpArgs, expArgs, c2, Nothing), [])
+                  Just (defaultArgs, c4) ->
+                    ((Just impArgs, cImpArgs, expArgs, c2, Just defaultArgs), c4)
+            rest <- many $ rawTermPiElimArgs h
+            return $ foldPiElim m (e, c) ((args, c3) : rest),
+          do
+            return (m :< RT.PiElimImplicit name cImpArgs impArgs, [])
+        ]
 
 type PiElimDefaultArgs =
   SE.Series (Hint, Key, C, C, RT.RawTerm)

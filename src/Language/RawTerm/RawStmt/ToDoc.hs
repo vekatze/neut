@@ -196,6 +196,8 @@ decStmt stmt =
             else RT.decodeDef (RT.nameToDoc . N.Var) "inline" c (fmap BN.reify def)
         SK.Constant ->
           RT.decodeDef (RT.nameToDoc . N.Var) "constant" c (fmap BN.reify def)
+        SK.ConstantMeta ->
+          RT.decodeDef (RT.nameToDoc . N.Var) "constant-meta" c (fmap BN.reify def)
         SK.Macro ->
           RT.decodeDef (RT.nameToDoc . N.Var) "define-meta" c (fmap BN.reify def)
         SK.MacroInline ->
@@ -307,6 +309,8 @@ decNominalGeist (tag, geist, _) = do
         MacroInline ->
           RT.decGeist (D.text . BN.reify) geist
         Constant ->
+          RT.decGeist (D.text . BN.reify) geist
+        ConstantMeta ->
           RT.decGeist (D.text . BN.reify) geist
         Alias ->
           RT.decTypeGeist (D.text . BN.reify) geist

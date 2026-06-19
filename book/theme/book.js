@@ -23,6 +23,7 @@ hljs.registerLanguage("neut", function (hljs) {
         "box",
         "case",
         "constant",
+        "constant-meta",
         "data",
         "default",
         "define",
@@ -99,7 +100,7 @@ hljs.registerLanguage("neut", function (hljs) {
       },
       {
         begin: [
-          /(define|inline|define-meta|inline-meta|alias|alias-opaque|constant|data|resource)/,
+          /(define|inline|define-meta|inline-meta|alias|alias-opaque|constant-meta|constant|data|resource)/,
           /\s+/,
           /[\w-]+/,
         ],

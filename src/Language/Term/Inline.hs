@@ -728,6 +728,8 @@ isMacroDef dk =
       True
     MacroInline ->
       True
+    ConstantMeta ->
+      True
     _ ->
       False
 

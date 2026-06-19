@@ -8,6 +8,8 @@ module Language.Common.StmtKind
     toLowOpacityTerm,
     toLowOpacityType,
     isMacroStmtKind,
+    startsAtStage1,
+    isMetaOnlyStmtKind,
     isInlineStmtKind,
     isDestPassingStmtKind,
   )
@@ -28,6 +30,7 @@ data BaseStmtKindTerm name binder t
   | DestPassingInline
   | Inline
   | Constant
+  | ConstantMeta
   | Macro
   | MacroInline
   | Main t
@@ -63,6 +66,8 @@ toOpacityTerm stmtKind =
       O.Clear
     Constant ->
       O.Clear
+    ConstantMeta ->
+      O.Clear
     Macro ->
       O.Clear
     MacroInline ->
@@ -95,6 +100,8 @@ toLowOpacityTerm stmtKind =
       O.Opaque
     Constant ->
       O.Opaque
+    ConstantMeta ->
+      O.Opaque
     Macro ->
       O.Opaque
     MacroInline ->
@@ -116,6 +123,22 @@ toLowOpacityType stmtKind =
 
 isMacroStmtKind :: BaseStmtKindTerm name binder t -> Bool
 isMacroStmtKind stmtKind =
+  startsAtStage1 stmtKind
+
+startsAtStage1 :: BaseStmtKindTerm name binder t -> Bool
+startsAtStage1 stmtKind =
+  case stmtKind of
+    ConstantMeta ->
+      True
+    Macro ->
+      True
+    MacroInline ->
+      True
+    _ ->
+      False
+
+isMetaOnlyStmtKind :: BaseStmtKindTerm name binder t -> Bool
+isMetaOnlyStmtKind stmtKind =
   case stmtKind of
     Macro ->
       True
@@ -137,6 +160,8 @@ isInlineStmtKind stmtKind =
       False -- fixme: should be true
     Constant ->
       False
+    ConstantMeta ->
+      True
     Macro ->
       True
     MacroInline ->
