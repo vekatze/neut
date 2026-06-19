@@ -153,7 +153,8 @@ compile h target outputKindList contentSeq = do
           virtualCode <- Lower.lower lowerHandle stmtList' auxStmtList
           emit h hp currentTime target outputKindList (Right source) virtualCode
       else return Nothing
-  registerUnusedTopLevelNameRemarks h
+  when (shouldRegisterUnusedTopLevelNameRemarks target) $
+    registerUnusedTopLevelNameRemarks h
   entryPointVirtualCode <- compileEntryPoint h target outputKindList
   entryPointAsync <- forM entryPointVirtualCode $ \(src, code) -> liftIO $ do
     async $ runApp $ emit h hp currentTime target outputKindList src code
@@ -167,6 +168,16 @@ registerUnusedTopLevelNameRemarks :: Handle -> App ()
 registerUnusedTopLevelNameRemarks h = do
   logs <- liftIO $ UnusedTopLevelName.flushRemarks $ Global.unusedTopLevelNameHandle $ globalHandle h
   liftIO $ GlobalRemark.insert (Global.globalRemarkHandle $ globalHandle h) logs
+
+shouldRegisterUnusedTopLevelNameRemarks :: Target -> Bool
+shouldRegisterUnusedTopLevelNameRemarks target = do
+  case target of
+    Peripheral {} ->
+      True
+    PeripheralSingle {} ->
+      False
+    Main {} ->
+      False
 
 getCompletedTitle :: Int -> T.Text
 getCompletedTitle numOfItems = do
