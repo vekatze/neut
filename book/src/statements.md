@@ -508,7 +508,7 @@ cont
 // (`p` and `q` point directly into `e`'s words; no malloc)
 ```
 
-`mix` can also be used with a `resource` type when the resource has a fixed non-negative size.
+`mix` can also be used with a `resource` type when the resource has a fixed non-negative byte size. The mixed field uses the minimum number of words that can contain those bytes.
 
 ## `data-raw`
 
@@ -570,7 +570,7 @@ resource my-type {
 }
 ```
 
-`resource` takes three terms. The first term ("discarder") receives a value of the type and discards it. The second term ("copier") receives a value of the type and returns a clone of the value (keeping the original value intact). The third term must reduce to an integer at compile time. It is the size (the machine-word count) returned when calling `magic call-type(my-type, 2, (..))`.
+`resource` takes three terms. The first term ("discarder") receives a value of the type and discards it. The second term ("copier") receives a value of the type and returns a clone of the value (keeping the original value intact). The third term must reduce to an integer at compile time. It is the size of the flattened representation in bytes, and is returned as-is when calling `magic call-type(my-type, 2, (..))`.
 
 The type of a discarder is `(a) -> unit` for some `a`. You might want to call functions like `free` in this term.
 
