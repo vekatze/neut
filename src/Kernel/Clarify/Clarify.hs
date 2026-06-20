@@ -1175,8 +1175,8 @@ clarifyResourceSize h resourceSize@(m :< _) = do
   case Resource.layoutOf resourceSize of
     Just Resource.Direct ->
       return $ Utility.returnIntComp (utilityHandle h) (-1)
-    Just (Resource.Flattened wordCount) ->
-      return $ Utility.returnByteSizeComp (utilityHandle h) (toInteger wordCount)
+    Just (Resource.Flattened byteSize) ->
+      return $ Utility.returnIntComp (utilityHandle h) (toInteger byteSize)
     Nothing ->
       raiseCritical m "clarifyResourceSize: the resource size was not reduced to an integer"
 
