@@ -34,6 +34,8 @@ module Language.Common.BaseName
     unitType,
     constructor,
     constructorType,
+    field,
+    fieldType,
     pair,
     pairType,
     stringType,
@@ -207,6 +209,14 @@ constructor =
 constructorType :: BaseName
 constructorType =
   MakeBaseName "constructor"
+
+field :: BaseName
+field =
+  MakeBaseName "Field"
+
+fieldType :: BaseName
+fieldType =
+  MakeBaseName "field"
 
 pair :: BaseName
 pair =
