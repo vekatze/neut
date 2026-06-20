@@ -49,7 +49,7 @@ import Language.Term.Subst qualified as Subst
 import Language.Term.Term qualified as TM
 import Language.Term.Weaken (weakenType)
 import Language.WeakTerm.ToText (toTextType)
-import Logger.Hint (Hint (..), showFilePos)
+import Logger.Hint (Hint (..), showFilePosRelative)
 
 evaluateInspectType :: Handle -> Hint -> MID.ModuleID -> TM.Type -> App TM.Term
 evaluateInspectType h m moduleID typeExpr = do
@@ -371,7 +371,7 @@ evaluateStringCons h m stringTypeExpr rune text = do
       let newText = T.cons (Rune.asChar r) textValue
       return $ m :< TM.Prim (PV.NoeticString stringTypeExpr newText)
     _ ->
-      reportMacroError h m "text-cons requires a rune literal and a static text literal"
+      reportMacroError h m "string-cons requires a rune literal and a static text literal"
 
 evaluateStringUncons :: Handle -> Hint -> MID.ModuleID -> TM.Term -> App TM.Term
 evaluateStringUncons h m moduleID text = do
@@ -403,7 +403,7 @@ evaluateStringUncons h m moduleID text = do
           let pair = m :< TM.PiElim PEK.Normal (m :< TM.PiElim PEK.Normal pairVar [runeType, m :< TM.BoxNoema stringTypeExpr] [] []) [] [runeValue, restText] []
           return $ m :< TM.PiElim PEK.Normal (m :< TM.PiElim PEK.Normal rightVar [unitTypeVar, pairType] [] []) [] [pair] []
     _ ->
-      reportMacroError h m "text-uncons requires a static string literal"
+      reportMacroError h m "string-uncons requires a static string literal"
 
 evaluateCompileError :: Handle -> Hint -> TM.Term -> App a
 evaluateCompileError h m msg = do
@@ -415,28 +415,28 @@ evaluateCompileError h m msg = do
 
 evaluateGetOriginFileName :: Handle -> Hint -> App TM.Term
 evaluateGetOriginFileName h m = do
-  origin <- getOriginHint h m
+  origin <- getOriginHint h m "get-origin-file-name"
   return $ m :< TM.Prim (PV.Text (T.pack $ metaFileName origin))
 
 evaluateGetOriginLine :: Handle -> Hint -> App TM.Term
 evaluateGetOriginLine h m = do
-  origin <- getOriginHint h m
+  origin <- getOriginHint h m "get-origin-line"
   let (line, _) = metaLocation origin
   returnOriginInt h m line
 
 evaluateGetOriginColumn :: Handle -> Hint -> App TM.Term
 evaluateGetOriginColumn h m = do
-  origin <- getOriginHint h m
+  origin <- getOriginHint h m "get-origin-column"
   let (_, column) = metaLocation origin
   returnOriginInt h m column
 
-getOriginHint :: Handle -> Hint -> App Hint
-getOriginHint h m = do
+getOriginHint :: Handle -> Hint -> T.Text -> App Hint
+getOriginHint h m magicName = do
   when (insideDefineMeta h) $ do
-    reportMacroError h m "Origin reification cannot be used while evaluating define-meta"
+    reportDefineMetaError h m $ magicName <> " cannot be used while evaluating define-meta"
   stack <- liftIO $ getMacroCallStack h
   case reverse stack of
-    (_, origin) : _ ->
+    (_, _, origin) : _ ->
       return origin
     [] ->
       return m
@@ -448,25 +448,43 @@ returnOriginInt h m value = do
   return $ m :< TM.Prim (PV.Int intType intSize (toInteger value))
 
 reportMacroError :: Handle -> Hint -> T.Text -> App a
-reportMacroError h m message = do
+reportMacroError =
+  reportMacroError' False
+
+reportDefineMetaError :: Handle -> Hint -> T.Text -> App a
+reportDefineMetaError =
+  reportMacroError' True
+
+reportMacroError' :: Bool -> Handle -> Hint -> T.Text -> App a
+reportMacroError' highlightDefineMeta h m message = do
   ms <- liftIO $ getMacroCallStack h
-  let trace = formatMacroTrace ms
-  let hints = map snd ms
+  let trace = formatMacroTrace highlightDefineMeta (mainModuleDir h) ms
+  let hints = map (\(_, _, hint) -> hint) ms
   let hintStack = NE.reverse $ m :| hints
   raiseError (NE.head hintStack) $ message <> "\n\n" <> trace
 
-getMacroCallStack :: Handle -> IO [(DD.DefiniteDescription, Hint)]
+getMacroCallStack :: Handle -> IO [(DD.DefiniteDescription, DefKind, Hint)]
 getMacroCallStack h = do
   let Handle {macroCallStack} = h
   readIORef macroCallStack
 
-formatMacroTrace :: [(DD.DefiniteDescription, Hint)] -> T.Text
-formatMacroTrace stack =
+formatMacroTrace :: Bool -> T.Text -> [(DD.DefiniteDescription, DefKind, Hint)] -> T.Text
+formatMacroTrace highlightDefineMeta moduleDir stack =
   case reverse stack of
     [] ->
       ""
-    (dd, m) : rest -> do
-      let firstLine = "    " <> DD.localLocator dd <> " (" <> T.pack (showFilePos m) <> ")"
-      let restLines = map (\(dd', m') -> "  → " <> DD.localLocator dd' <> " (" <> T.pack (showFilePos m') <> ")") rest
+    frame : rest -> do
+      let firstLine = "    " <> formatMacroFrame highlightDefineMeta moduleDir frame
+      let restLines = map (\frame' -> "  → " <> formatMacroFrame highlightDefineMeta moduleDir frame') rest
       let allLines = firstLine : restLines
       "Trace:\n" <> T.intercalate "\n" allLines
+
+formatMacroFrame :: Bool -> T.Text -> (DD.DefiniteDescription, DefKind, Hint) -> T.Text
+formatMacroFrame highlightDefineMeta moduleDir (dd, defKind, m) = do
+  let base = DD.localLocator dd <> " (" <> showFilePosRelative moduleDir m <> ")"
+  case defKind of
+    Macro
+      | highlightDefineMeta ->
+          base <> " [define-meta]"
+    _ ->
+      base

@@ -10,10 +10,13 @@ module Logger.Hint
     newSourceHint,
     fakeLoc,
     showFilePos,
+    showFilePosRelative,
   )
 where
 
 import Data.Binary
+import Data.Maybe (fromMaybe)
+import Data.Text qualified as T
 import GHC.Generics
 import Path
 
@@ -93,3 +96,9 @@ fakeLoc =
 showFilePos :: Hint -> String
 showFilePos (Hint {metaFileName, metaLocation = (l, c)}) =
   metaFileName ++ ":" ++ show l ++ ":" ++ show c
+
+showFilePosRelative :: T.Text -> Hint -> T.Text
+showFilePosRelative moduleDir (Hint {metaFileName, metaLocation = (l, c)}) = do
+  let filePath = T.pack metaFileName
+  let filePath' = fromMaybe filePath (T.stripPrefix moduleDir filePath)
+  filePath' <> ":" <> T.pack (show l) <> ":" <> T.pack (show c)

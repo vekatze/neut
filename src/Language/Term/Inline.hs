@@ -54,8 +54,8 @@ import Language.Term.Subst qualified as Subst
 import Language.Term.Term qualified as TM
 import Logger.Hint
 
-new :: GensymHandle.Handle -> DefMap -> TypeDefMap -> Data.Handle -> DS.DataSize -> Hint -> Int -> IORef SpecializationTable -> IORef [Stmt.Stmt] -> IORef [ResidualCheck] -> Bool -> IO Handle
-new gensymHandle dmap typeDefMap dataHandle baseSize location inlineLimit specializationTable pendingSpecializationDefs residualCheckList shouldEmitResidualChecks = do
+new :: GensymHandle.Handle -> DefMap -> TypeDefMap -> Data.Handle -> DS.DataSize -> Hint -> Int -> IORef SpecializationTable -> IORef [Stmt.Stmt] -> IORef [ResidualCheck] -> Bool -> T.Text -> IO Handle
+new gensymHandle dmap typeDefMap dataHandle baseSize location inlineLimit specializationTable pendingSpecializationDefs residualCheckList shouldEmitResidualChecks mainModuleDir = do
   let substHandle = Subst.new gensymHandle
   let refreshHandle = Refresh.new gensymHandle
   currentStepRef <- liftIO $ newIORef 0
@@ -163,7 +163,7 @@ inline' h term = do
                       if PEK.isNoetic kind' || not (canInlineDefKind defKind)
                         then return (rebuildWithDefaults defaultArgsFilled)
                         else do
-                          let tracer = if isMacroDef defKind then withMacroHint h dd m else id
+                          let tracer = if isMacroDef defKind then withMacroHint h dd defKind m else id
                           case defKind of
                             Macro -> do
                               mSpecializedName <- lookupSpecialization h dd impArgs'
@@ -196,12 +196,14 @@ inline' h term = do
                                   let expIds = map (\(_, _, x, _) -> x) expParams
                                   let subTerm = IntMap.fromList $ zip (map Ident.toInt expIds) (map Subst.Term expArgsAll)
                                   let sub = IntMap.union subTerm subType
-                                  _ :< body' <- liftIO $ Subst.subst (substHandle h) sub body
-                                  body'' <- liftIO $ Refresh.refresh (refreshHandle h) $ m :< body'
+                                  mBody :< body' <- liftIO $ Subst.subst (substHandle h) sub body
+                                  let mResult = if isMacroDef defKind then mBody else m
+                                  body'' <- liftIO $ Refresh.refresh (refreshHandle h) $ mResult :< body'
                                   tracer $ inline' h body''
                                 else do
-                                  (expParams', _ :< body') <- liftIO $ Subst.subst' (substHandle h) subType expParams body
-                                  body'' <- liftIO $ Refresh.refresh (refreshHandle h) $ m :< body'
+                                  (expParams', mBody :< body') <- liftIO $ Subst.subst' (substHandle h) subType expParams body
+                                  let mResult = if isMacroDef defKind then mBody else m
+                                  body'' <- liftIO $ Refresh.refresh (refreshHandle h) $ mResult :< body'
                                   tracer $ inline' h $ bind (zip expParams' expArgsAll) body''
         (_ :< TM.Prim (PV.Op op))
           | PEK.isNormal kind' -> do
@@ -562,7 +564,7 @@ getReportHint :: Handle -> Hint -> App Hint
 getReportHint h m = do
   stack <- liftIO $ readIORef (macroCallStack h)
   case stack of
-    (_, mReport) : _ ->
+    (_, _, mReport) : _ ->
       return mReport
     [] ->
       return m
@@ -695,10 +697,10 @@ applySpecialization m specializedName expArgsAll = do
   let attr = AttrVG.new (AN.fromInt $ length expArgsAll)
   m :< TM.PiElim PEK.Normal (m :< TM.VarGlobal attr specializedName) [] expArgsAll []
 
-withMacroHint :: Handle -> DD.DefiniteDescription -> Hint -> App a -> App a
-withMacroHint h dd hint action = do
+withMacroHint :: Handle -> DD.DefiniteDescription -> DefKind -> Hint -> App a -> App a
+withMacroHint h dd defKind hint action = do
   let Handle {macroCallStack} = h
-  liftIO $ modifyIORef' macroCallStack ((dd, hint) :)
+  liftIO $ modifyIORef' macroCallStack ((dd, defKind, hint) :)
   result <- action
   liftIO $ modifyIORef' macroCallStack (drop 1)
   return result

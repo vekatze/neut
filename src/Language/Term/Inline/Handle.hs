@@ -12,6 +12,7 @@ where
 
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
+import Data.Text qualified as T
 import Gensym.Handle qualified as GensymHandle
 import Kernel.Common.Handle.Global.Data qualified as Data
 import Kernel.Elaborate.Internal.Handle.TypeDef qualified as TypeDef
@@ -74,8 +75,9 @@ data Handle = Handle
     pendingSpecializationDefs :: IORef [Stmt.Stmt],
     residualCheckList :: IORef [ResidualCheck],
     shouldEmitResidualChecks :: Bool,
-    macroCallStack :: IORef [(DD.DefiniteDescription, Hint)],
+    macroCallStack :: IORef [(DD.DefiniteDescription, DefKind, Hint)],
     gensymHandle :: GensymHandle.Handle,
     baseSize :: DS.DataSize,
-    insideDefineMeta :: Bool
+    insideDefineMeta :: Bool,
+    mainModuleDir :: T.Text
   }
