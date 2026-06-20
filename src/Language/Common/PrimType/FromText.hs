@@ -25,11 +25,10 @@ fromText dataSize name
       Just PT.Text
   | name == blobTypeName =
       Just PT.Blob
+  | name == runeTypeName =
+      Just PT.Rune
   | otherwise =
       Nothing
-
-intTypeName :: T.Text
-intTypeName = "int"
 
 asLowInt :: DS.DataSize -> T.Text -> Maybe IntSize
 asLowInt dataSize s =
@@ -66,8 +65,14 @@ asLowFloat dataSize s =
           | otherwise ->
               Nothing
 
+intTypeName :: T.Text
+intTypeName = "int"
+
 textTypeName :: T.Text
 textTypeName = "text"
 
 blobTypeName :: T.Text
 blobTypeName = "blob"
+
+runeTypeName :: T.Text
+runeTypeName = "rune"

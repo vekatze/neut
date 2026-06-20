@@ -78,6 +78,7 @@ data Handle = Handle
     macroCallStack :: IORef [(DD.DefiniteDescription, DefKind, Hint)],
     gensymHandle :: GensymHandle.Handle,
     baseSize :: DS.DataSize,
+    currentStage :: Int,
     insideDefineMeta :: Bool,
     mainModuleDir :: T.Text
   }

@@ -1,5 +1,6 @@
 module Kernel.Common.TypeValue
   ( TypeValue (..),
+    Field,
     Constructor,
     toTypeTag,
     fromIntSize,
@@ -9,6 +10,7 @@ where
 
 import Data.Text qualified as T
 import Kernel.Common.TypeTag qualified as TT
+import Language.Common.DataInfo qualified as DI
 import Language.Common.IsConstLike (IsConstLike)
 import Language.Common.PrimNumSize
 import Language.Term.Term qualified as TM
@@ -22,8 +24,11 @@ type ParamName =
 type DataName =
   T.Text
 
+type Field =
+  (ParamName, TM.Type, DI.FieldLayout)
+
 type Constructor =
-  (ConstructorName, IsConstLike, [(ParamName, TM.Type)])
+  (ConstructorName, IsConstLike, [Field])
 
 data TypeValue
   = Opaque

@@ -5,6 +5,34 @@ base_dir=$(pwd)
 SCRIPT_DIR=$(cd "$(dirname "$0")"; pwd)
 
 pids=()
+exit_code=0
+
+detect_job_count() {
+  if command -v nproc > /dev/null 2>&1; then
+    nproc
+  elif command -v getconf > /dev/null 2>&1; then
+    getconf _NPROCESSORS_ONLN
+  else
+    echo 1
+  fi
+}
+
+max_jobs=${NEUT_TEST_JOBS:-$(detect_job_count)}
+
+if ! [[ $max_jobs =~ ^[1-9][0-9]*$ ]]; then
+  echo "NEUT_TEST_JOBS must be a positive integer"
+  exit 1
+fi
+
+wait_one() {
+  pid=${pids[0]}
+  pids=("${pids[@]:1}")
+  wait $pid
+  result=$?
+  if [ $result -ne 0 ]; then
+    exit_code=$result
+  fi
+}
 
 for target_dir in "$@"; do
   cd $base_dir
@@ -33,18 +61,15 @@ for target_dir in "$@"; do
       exit $exit_code
     ) &
     pids+=($!)
+    while [ ${#pids[@]} -ge $max_jobs ]; do
+      wait_one
+    done
     cd ..
   done
 done
 
-exit_code=0
-
-for pid in $pids; do
-  wait $pid
-  result=$?
-  if [ $result -ne 0 ]; then
-    exit_code=$result
-  fi
+while [ ${#pids[@]} -gt 0 ]; do
+  wait_one
 done
 
 exit $exit_code

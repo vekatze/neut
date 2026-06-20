@@ -12,6 +12,7 @@ import Language.Common.PrimOp.BinaryOp qualified as BinOp
 import Language.Common.PrimOp.CmpOp qualified as CmpOp
 import Language.Common.PrimOp.UnaryOp qualified as UnOp
 import Language.Common.PrimType qualified as PT
+import Language.Common.Rune qualified as Rune
 import Language.Term.PrimValue qualified as PV
 import Language.Term.Term qualified as TM
 import Logger.Hint
@@ -102,6 +103,11 @@ evaluateCmpOp m cmpOp dom arg1 arg2 =
       return $ m :< TM.Prim (PV.Int i1 PNS.IntSize1 resultInt)
     (PT.Float size, _ :< TM.Prim (PV.Float _ _ val1), _ :< TM.Prim (PV.Float _ _ val2)) -> do
       result <- applyFloatCmpOp size cmpOp val1 val2
+      let resultInt = if result then 1 else 0
+      let i1 = m :< TM.PrimType (PT.Int PNS.IntSize1)
+      return $ m :< TM.Prim (PV.Int i1 PNS.IntSize1 resultInt)
+    (PT.Rune, _ :< TM.Prim (PV.Rune val1), _ :< TM.Prim (PV.Rune val2)) -> do
+      result <- applyIntCmpOp PNS.IntSize32 cmpOp (Rune.asInt val1) (Rune.asInt val2)
       let resultInt = if result then 1 else 0
       let i1 = m :< TM.PrimType (PT.Int PNS.IntSize1)
       return $ m :< TM.Prim (PV.Int i1 PNS.IntSize1 resultInt)

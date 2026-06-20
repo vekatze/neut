@@ -61,6 +61,7 @@ import Language.Common.BasePrimType qualified as BPT
 import Language.Common.Binder
 import Language.Common.CreateSymbol qualified as Gensym
 import Language.Common.DataInfo qualified as DI
+import Language.Common.DataSize qualified as DS
 import Language.Common.DecisionTree qualified as DT
 import Language.Common.DefaultArgs qualified as DefaultArgs
 import Language.Common.DefiniteDescription qualified as DD
@@ -527,8 +528,8 @@ resolveMixedOrError h visited m ty =
     _ :< TM.Resource dataName _ -> do
       resourceSizeOrNone <- liftIO $ Resource.lookup (Global.resourceHandle (globalHandle h)) dataName
       case resourceSizeOrNone of
-        Just (Resource.Flattened slotCount) ->
-          return $ Right $ DI.LayoutFlattened slotCount
+        Just (Resource.Flattened byteSize) ->
+          return $ resourceByteSizeToFieldLayout h byteSize
         Just Resource.Direct ->
           return $ Left $ "the resource `" <> showDD h dataName <> "` has no fixed size and cannot be mixed"
         Nothing ->
@@ -561,6 +562,12 @@ cannotMixFieldType typeDesc =
 cannotMixRecursiveMessage :: Handle -> DD.DefiniteDescription -> T.Text
 cannotMixRecursiveMessage h dataName =
   "the recursive type `" <> showDD h dataName <> "` cannot be mixed"
+
+resourceByteSizeToFieldLayout :: Handle -> Int -> Either T.Text DI.FieldLayout
+resourceByteSizeToFieldLayout h byteSize = do
+  let wordSize = DS.reify (Platform.getDataSize (platformHandle h)) `div` 8
+  let slotCount = (byteSize + wordSize - 1) `div` wordSize
+  Right $ DI.LayoutFlattened slotCount
 
 lookupDataInfoFull :: Handle -> Hint -> DD.DefiniteDescription -> App (DI.DataInfo (BinderF TM.Type))
 lookupDataInfoFull h m dataName = do

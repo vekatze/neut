@@ -55,9 +55,9 @@ evaluateInspectType :: Handle -> Hint -> MID.ModuleID -> TM.Type -> App TM.Term
 evaluateInspectType h m moduleID typeExpr = do
   case typeExpr of
     _ :< TM.Tau ->
-      returnTypeValueIntValue m moduleID TypeValue.Type
+      returnTypeValueIntValue h m moduleID TypeValue.Type
     _ :< TM.Pi {} ->
-      returnTypeValueIntValue m moduleID TypeValue.Function
+      returnTypeValueIntValue h m moduleID TypeValue.Function
     _ :< TM.Data _ dataName dataArgs -> do
       DI.DataInfo {DI.dataArgs = dataArgBinders, DI.consInfoList = consInfoListRaw} <- lookupDataInfo h m dataName
       consInfoList <- specializeConsInfoList h m dataName dataArgBinders dataArgs consInfoListRaw
@@ -67,50 +67,50 @@ evaluateInspectType h m moduleID typeExpr = do
             then do
               case dataArgs of
                 [dataArg] ->
-                  returnTypeValueIntValue m moduleID $ TypeValue.Vector dataArg
+                  returnTypeValueIntValue h m moduleID $ TypeValue.Vector dataArg
                 _ -> do
                   let len = length dataArgs
                   reportMacroError h m $
                     "inspect-type: `vector` expects 1 argument, but got " <> T.pack (show len) <> " arguments."
-            else returnTypeValueIntValue m moduleID $ TypeValue.Wrapper arg
+            else returnTypeValueIntValue h m moduleID $ TypeValue.Wrapper arg
         _ -> do
           let consInfoList' = map consToTypeValue consInfoList
           let isEnum = all (\consInfo -> DI.isConstLike consInfo && null (DI.consArgs consInfo)) consInfoList
           if isEnum && not (null consInfoList)
             then do
               let enumConsNames = map (DD.localLocator . DI.consName) consInfoList
-              returnTypeValueIntValue m moduleID $ TypeValue.Enum enumConsNames
+              returnTypeValueIntValue h m moduleID $ TypeValue.Enum enumConsNames
             else do
               let dataNameText = DD.localLocator dataName
-              returnTypeValueIntValue m moduleID $ TypeValue.Algebraic dataNameText dataArgs consInfoList'
+              returnTypeValueIntValue h m moduleID $ TypeValue.Algebraic dataNameText dataArgs consInfoList'
     _ :< TM.BoxNoema t ->
-      returnTypeValueIntValue m moduleID $ TypeValue.Noema t
+      returnTypeValueIntValue h m moduleID $ TypeValue.Noema t
     _ :< TM.Box t ->
-      returnTypeValueIntValue m moduleID $ TypeValue.BoxT t
+      returnTypeValueIntValue h m moduleID $ TypeValue.BoxT t
     _ :< TM.Code _ ->
-      returnTypeValueIntValue m moduleID TypeValue.Opaque
+      returnTypeValueIntValue h m moduleID TypeValue.Opaque
     _ :< TM.PrimType (PT.Int size) ->
-      returnTypeValueIntValue m moduleID (TypeValue.fromIntSize size)
+      returnTypeValueIntValue h m moduleID (TypeValue.fromIntSize size)
     _ :< TM.PrimType (PT.Float size) ->
-      returnTypeValueIntValue m moduleID (TypeValue.fromFloatSize size)
+      returnTypeValueIntValue h m moduleID (TypeValue.fromFloatSize size)
     _ :< TM.PrimType PT.Text ->
-      returnTypeValueIntValue m moduleID TypeValue.Opaque
+      returnTypeValueIntValue h m moduleID TypeValue.Opaque
     _ :< TM.PrimType PT.Blob ->
-      returnTypeValueIntValue m moduleID TypeValue.Opaque
+      returnTypeValueIntValue h m moduleID TypeValue.Opaque
     _ :< TM.PrimType PT.Pointer ->
-      returnTypeValueIntValue m moduleID TypeValue.Pointer
+      returnTypeValueIntValue h m moduleID TypeValue.Pointer
     _ :< TM.PrimType PT.Rune ->
-      returnTypeValueIntValue m moduleID TypeValue.Rune
+      returnTypeValueIntValue h m moduleID TypeValue.Rune
     _ :< TM.Resource name _ -> do
       let binarySGL = SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.binaryLocator}
       let binaryDD = DD.newByGlobalLocator binarySGL BN.binary
       if name == binaryDD
-        then returnTypeValueIntValue m moduleID TypeValue.Binary
-        else returnTypeValueIntValue m moduleID TypeValue.Opaque
+        then returnTypeValueIntValue h m moduleID TypeValue.Binary
+        else returnTypeValueIntValue h m moduleID TypeValue.Opaque
     _ :< TM.TVarGlobal _ _ -> do
-      returnTypeValueIntValue m moduleID TypeValue.Opaque
+      returnTypeValueIntValue h m moduleID TypeValue.Opaque
     _ :< TM.TyApp (_ :< TM.TVarGlobal _ _) _ -> do
-      returnTypeValueIntValue m moduleID TypeValue.Opaque
+      returnTypeValueIntValue h m moduleID TypeValue.Opaque
     _ -> do
       reportMacroError h m $
         "inspect-type: unable to determine type value for this type expression. Got: "
@@ -136,9 +136,9 @@ makeVectorDD moduleID = do
 
 consToTypeValue ::
   DI.ConsInfo (BinderF TM.Type) ->
-  (T.Text, IsConstLike, [(T.Text, TM.Type)])
+  TypeValue.Constructor
 consToTypeValue consInfo = do
-  let params = map (\(_, _, x, t) -> (Ident.toText x, t)) (DI.consArgs consInfo)
+  let params = zipWith (\(_, _, x, t) layout -> (Ident.toText x, t, layout)) (DI.consArgs consInfo) (DI.consArgLayouts consInfo)
   (DD.localLocator (DI.consName consInfo), DI.isConstLike consInfo, params)
 
 isConstTypeTag :: TypeTag.TypeTag -> Bool
@@ -168,8 +168,8 @@ makeAttrDI typeValueSGL typeTag = do
   let discriminant = D.MakeDiscriminant $ TypeTag.typeTagToInteger typeTag
   return $ AttrDI.Attr {dataName, discriminant, isConstLike = isConstTypeTag typeTag}
 
-returnTypeValueIntValue :: Hint -> MID.ModuleID -> TypeValue.TypeValue -> App TM.Term
-returnTypeValueIntValue m moduleID typeValue = do
+returnTypeValueIntValue :: Handle -> Hint -> MID.ModuleID -> TypeValue.TypeValue -> App TM.Term
+returnTypeValueIntValue h m moduleID typeValue = do
   let typeValueSGL = SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.typeValueLocator}
   attr <- makeAttrDI typeValueSGL $ TypeValue.toTypeTag typeValue
   let tag = TypeValue.toTypeTag typeValue
@@ -180,7 +180,7 @@ returnTypeValueIntValue m moduleID typeValue = do
       let stringType = makeTextTypeExpr m moduleID
       let dataNameTerm = m :< TM.Prim (PV.NoeticString stringType dataName)
       dataArgsTerm <- constructListTerm m listSgl dataArgs
-      consInfoTerm <- constructConstructorInfoListTerm m moduleID consInfoList
+      consInfoTerm <- constructConstructorInfoListTerm h m moduleID consInfoList
       return $ m :< TM.DataIntro attr consName [] [dataNameTerm, dataArgsTerm, consInfoTerm]
     TypeValue.Enum consNames -> do
       let listSgl = makeListSGL moduleID
@@ -252,26 +252,17 @@ makeConstructorTypeExpr m moduleID = do
   let constructorTypeDD = DD.newByGlobalLocator constructorSgl BN.constructorType
   m :< TM.TVarGlobal (AttrVG.Attr {argNum = AN.zero, isConstLike = True, isDestPassing = False}) constructorTypeDD
 
-makePairTypeExpr :: Hint -> MID.ModuleID -> TM.Type -> TM.Type -> TM.Type
-makePairTypeExpr m moduleID leftType rightType = do
-  let pairSgl = SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.pairLocator}
-  let pairTypeDD = DD.newByGlobalLocator pairSgl BN.pairType
-  let pairTypeVar = m :< TM.TVarGlobal (AttrVG.Attr {argNum = AN.fromInt 4, isConstLike = False, isDestPassing = False}) pairTypeDD
-  m :< TM.TyApp pairTypeVar [leftType, rightType]
+makeFieldTypeExpr :: Hint -> MID.ModuleID -> TM.Type
+makeFieldTypeExpr m moduleID = do
+  let constructorSgl = makeConstructorSGL moduleID
+  let fieldTypeDD = DD.newByGlobalLocator constructorSgl BN.fieldType
+  m :< TM.TVarGlobal (AttrVG.Attr {argNum = AN.zero, isConstLike = True, isDestPassing = False}) fieldTypeDD
 
 makeTextTypeExpr :: Hint -> MID.ModuleID -> TM.Type
 makeTextTypeExpr m moduleID = do
   let textSgl = SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.stringLocator}
   let stringTypeDD = DD.newByGlobalLocator textSgl BN.stringType
   m :< TM.TVarGlobal (AttrVG.Attr {argNum = AN.zero, isConstLike = True, isDestPassing = False}) stringTypeDD
-
-constructPairTerm :: Hint -> MID.ModuleID -> TM.Type -> TM.Type -> TM.Term -> TM.Term -> App TM.Term
-constructPairTerm m moduleID leftType rightType leftTerm rightTerm = do
-  let pairSgl = SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.pairLocator}
-  let dataName = DD.newByGlobalLocator pairSgl BN.pairType
-  let consName = DD.newByGlobalLocator pairSgl BN.pair
-  let attr = AttrDI.Attr {dataName, discriminant = D.zero, isConstLike = False}
-  return $ m :< TM.DataIntro attr consName [leftType, rightType] [leftTerm, rightTerm]
 
 constructBoolTerm :: Hint -> MID.ModuleID -> IsConstLike -> TM.Term
 constructBoolTerm hint moduleID value = do
@@ -287,32 +278,34 @@ constructBoolTerm hint moduleID value = do
   hint :< TM.DataIntro attr consName [] []
 
 constructConstructorInfoListTerm ::
+  Handle ->
   Hint ->
   MID.ModuleID ->
-  [(T.Text, IsConstLike, [(T.Text, TM.Type)])] ->
+  [TypeValue.Constructor] ->
   App TM.Term
-constructConstructorInfoListTerm hint moduleID consInfoList = do
+constructConstructorInfoListTerm h hint moduleID consInfoList = do
   let listSgl = makeListSGL moduleID
   let constructorType = makeConstructorTypeExpr hint moduleID
-  consInfoTerms <- mapM (constructConstructorTerm hint moduleID) consInfoList
+  consInfoTerms <- mapM (constructConstructorTerm h hint moduleID) consInfoList
   constructListTermFromTerms hint listSgl constructorType consInfoTerms
 
 constructConstructorTerm ::
+  Handle ->
   Hint ->
   MID.ModuleID ->
-  (T.Text, IsConstLike, [(T.Text, TM.Type)]) ->
+  TypeValue.Constructor ->
   App TM.Term
-constructConstructorTerm m moduleID (consName, isConstLike, params) = do
+constructConstructorTerm h m moduleID (consName, isConstLike, params) = do
   let constructorSgl = makeConstructorSGL moduleID
   let listSgl = makeListSGL moduleID
   let constructorTypeDD = DD.newByGlobalLocator constructorSgl BN.constructorType
   let consDD = DD.newByGlobalLocator constructorSgl BN.constructor
   let stringType = makeTextTypeExpr m moduleID
-  let paramPairType = makePairTypeExpr m moduleID (m :< TM.BoxNoema stringType) (m :< TM.Tau)
+  let fieldType = makeFieldTypeExpr m moduleID
   let attr = AttrDI.Attr {dataName = constructorTypeDD, discriminant = D.zero, isConstLike = False}
   let consNameText = m :< TM.Prim (PV.NoeticString stringType consName)
-  paramTerms <- mapM (constructParamPairTerm m moduleID stringType) params
-  paramListTerm <- constructListTermFromTerms m listSgl paramPairType paramTerms
+  fieldTerms <- mapM (constructFieldTerm h m moduleID stringType) params
+  paramListTerm <- constructListTermFromTerms m listSgl fieldType fieldTerms
   let boolTerm = constructBoolTerm m moduleID isConstLike
   return $ m :< TM.DataIntro attr consDD [] [consNameText, boolTerm, paramListTerm]
 
@@ -346,18 +339,43 @@ specializeConsInfoList h m dataName dataBinders dataArgs consInfoList
 
 specializeConsInfo :: Handle -> Subst.Subst -> DI.ConsInfo (BinderF TM.Type) -> App (DI.ConsInfo (BinderF TM.Type))
 specializeConsInfo h sub consInfo = do
+  let specializeConsArg (mx, k, x, t) = do
+        t' <- liftIO $ Subst.substType (substHandle h) sub t
+        return (mx, k, x, t')
   consArgs' <- mapM specializeConsArg (DI.consArgs consInfo)
   return $ consInfo {DI.consArgs = consArgs'}
-  where
-    specializeConsArg (mx, k, x, t) = do
-      t' <- liftIO $ Subst.substType (substHandle h) sub t
-      return (mx, k, x, t')
 
-constructParamPairTerm :: Hint -> MID.ModuleID -> TM.Type -> (T.Text, TM.Type) -> App TM.Term
-constructParamPairTerm m moduleID stringType (paramName, paramType) = do
+constructFieldTerm :: Handle -> Hint -> MID.ModuleID -> TM.Type -> TypeValue.Field -> App TM.Term
+constructFieldTerm h m moduleID stringType (paramName, paramType, layout) = do
+  let constructorSgl = makeConstructorSGL moduleID
+  let fieldTypeDD = DD.newByGlobalLocator constructorSgl BN.fieldType
+  let fieldDD = DD.newByGlobalLocator constructorSgl BN.field
   let nameTerm = m :< TM.Prim (PV.NoeticString stringType paramName)
   let typeTerm = m :< TM.TauIntro paramType
-  constructPairTerm m moduleID (m :< TM.BoxNoema stringType) (m :< TM.Tau) nameTerm typeTerm
+  let attr = AttrDI.Attr {dataName = fieldTypeDD, discriminant = D.zero, isConstLike = False}
+  layoutTerm <- constructFieldLayoutTerm h m moduleID layout
+  return $ m :< TM.DataIntro attr fieldDD [] [nameTerm, typeTerm, layoutTerm]
+
+constructFieldLayoutTerm :: Handle -> Hint -> MID.ModuleID -> DI.FieldLayout -> App TM.Term
+constructFieldLayoutTerm h m moduleID layout = do
+  let constructorSgl = makeConstructorSGL moduleID
+  let fieldLayoutTypeDD = DD.newByGlobalLocator constructorSgl BN.fieldLayout
+  case layout of
+    DI.LayoutDirect -> do
+      let directDD = DD.newByGlobalLocator constructorSgl BN.direct
+      let attr = AttrDI.Attr {dataName = fieldLayoutTypeDD, discriminant = D.zero, isConstLike = True}
+      return $ m :< TM.DataIntro attr directDD [] []
+    DI.LayoutFlattened slotCount -> do
+      let mixedDD = DD.newByGlobalLocator constructorSgl BN.mixed
+      let attr = AttrDI.Attr {dataName = fieldLayoutTypeDD, discriminant = D.increment D.zero, isConstLike = False}
+      let slotCountTerm = constructIntTerm h m slotCount
+      return $ m :< TM.DataIntro attr mixedDD [] [slotCountTerm]
+
+constructIntTerm :: Handle -> Hint -> Int -> TM.Term
+constructIntTerm h m value = do
+  let intSize = dataSizeToIntSize (baseSize h)
+  let intType = m :< TM.PrimType (PT.Int intSize)
+  m :< TM.Prim (PV.Int intType intSize (toInteger value))
 
 evaluateShowType :: Hint -> TM.Type -> TM.Type -> App TM.Term
 evaluateShowType m stringTypeExpr typeExpr = do

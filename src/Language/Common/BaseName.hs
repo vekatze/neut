@@ -25,6 +25,7 @@ module Language.Common.BaseName
     nil,
     consName,
     typeValue,
+    fieldLayout,
     binary,
     vector,
     left,
@@ -34,6 +35,10 @@ module Language.Common.BaseName
     unitType,
     constructor,
     constructorType,
+    field,
+    fieldType,
+    direct,
+    mixed,
     pair,
     pairType,
     stringType,
@@ -176,6 +181,10 @@ typeValue :: BaseName
 typeValue =
   MakeBaseName "type-value"
 
+fieldLayout :: BaseName
+fieldLayout =
+  MakeBaseName "field-layout"
+
 binary :: BaseName
 binary =
   MakeBaseName "binary"
@@ -207,6 +216,22 @@ constructor =
 constructorType :: BaseName
 constructorType =
   MakeBaseName "constructor"
+
+field :: BaseName
+field =
+  MakeBaseName "Field"
+
+fieldType :: BaseName
+fieldType =
+  MakeBaseName "field"
+
+direct :: BaseName
+direct =
+  MakeBaseName "Direct"
+
+mixed :: BaseName
+mixed =
+  MakeBaseName "Mixed"
 
 pair :: BaseName
 pair =
