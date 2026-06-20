@@ -60,6 +60,7 @@ new gensymHandle dmap typeDefMap dataHandle baseSize location inlineLimit specia
   let refreshHandle = Refresh.new gensymHandle
   currentStepRef <- liftIO $ newIORef 0
   macroCallStack <- liftIO $ newIORef []
+  let currentStage = 0
   let insideDefineMeta = False
   return $ Handle {..}
 
@@ -96,7 +97,7 @@ inline' h term = do
       impArgs' <- mapM (inlineTypeBinder h) impArgs
       expArgs' <- mapM (inlineTypeBinder h) expArgs
       defaultArgs' <- mapM (bimapM (inlineTypeBinder h) (inline' h)) defaultArgs
-      e' <- inline' h e
+      e' <- if currentStage h >= 1 then return e else inline' h e
       case lamKind of
         LK.Fix opacity isDestPassing (mx, k, x, codType) -> do
           codType' <- inlineType' h codType
@@ -175,7 +176,7 @@ inline' h term = do
                                   specializedName <- createSpecializationName h dd
                                   codType' <- liftIO $ Subst.substType (substHandle h) subType codType
                                   beginSpecialization h dd impArgs' specializedName
-                                  let hDefineMeta = h {insideDefineMeta = True}
+                                  let hDefineMeta = h {currentStage = 1, insideDefineMeta = True}
                                   body'' <- tracer $ liftIO (Refresh.refresh (refreshHandle h) body') >>= inline hDefineMeta
                                   let stmt =
                                         Stmt.StmtDefine
@@ -275,10 +276,12 @@ inline' h term = do
       e2' <- inline' h e2
       return $ m :< TM.BoxElim castSeq' mxt' e1' uncastSeq' e2'
     m :< TM.CodeIntro e -> do
-      e' <- inline' h e
+      let hInner = h {currentStage = currentStage h - 1}
+      e' <- inline' hInner e
       return $ m :< TM.CodeIntro e'
     m :< TM.CodeElim e -> do
-      e' <- inline' h e
+      let hInner = h {currentStage = currentStage h + 1}
+      e' <- inline' hInner e
       case e' of
         _ :< TM.CodeIntro e'' ->
           inline' h e''
