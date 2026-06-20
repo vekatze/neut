@@ -43,6 +43,9 @@ fromText dataSize name
               return $ PrimBinaryOp op primType primType
           | Just op <- asFloatCmpOp opStr ->
               return $ PrimCmpOp op primType (PT.Int IntSize1)
+        PT.Rune
+          | Just op <- asRuneCmpOp opStr ->
+              return $ PrimCmpOp op primType (PT.Int IntSize1)
         _ ->
           Nothing
   | otherwise =

@@ -1,6 +1,7 @@
 module Language.Common.PrimOp.CmpOp
   ( CmpOp (..),
     asIntCmpOp,
+    asRuneCmpOp,
     asFloatCmpOp,
   )
 where
@@ -126,6 +127,24 @@ asIntCmpOp name =
     "ult" ->
       return ULt
     "ule" ->
+      return ULe
+    _ ->
+      Nothing
+
+asRuneCmpOp :: T.Text -> Maybe CmpOp
+asRuneCmpOp name =
+  case name of
+    "eq" ->
+      return Eq
+    "ne" ->
+      return Ne
+    "gt" ->
+      return UGt
+    "ge" ->
+      return UGe
+    "lt" ->
+      return ULt
+    "le" ->
       return ULe
     _ ->
       Nothing
