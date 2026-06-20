@@ -12,6 +12,7 @@ where
 import App.App (App)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.IORef
+import Data.Text qualified as T
 import Data.Maybe (fromMaybe)
 import Gensym.Handle qualified as Gensym
 import Kernel.Common.Const (defaultInlineLimit)
@@ -122,7 +123,8 @@ inline' h m shouldEmitResidualChecks e = do
   dmap <- liftIO $ Definition.get' (defHandle h)
   typeDefMap <- liftIO $ TypeDef.get' (typeDefHandle h)
   let baseSize = Platform.getDataSize (platformHandle h)
-  inlineHandle <- liftIO $ Inline.new (gensymHandle h) dmap typeDefMap (dataHandle h) baseSize m (inlineLimit h) (specializationTable h) (pendingSpecializationDefs h) (residualCheckList h) shouldEmitResidualChecks
+  let mainModuleDir = T.pack $ Env.getMainModuleDir (envHandle h)
+  inlineHandle <- liftIO $ Inline.new (gensymHandle h) dmap typeDefMap (dataHandle h) baseSize m (inlineLimit h) (specializationTable h) (pendingSpecializationDefs h) (residualCheckList h) shouldEmitResidualChecks mainModuleDir
   Inline.inline inlineHandle e
 
 inlineBinder :: Handle -> BinderF TM.Type -> App (BinderF TM.Type)
@@ -130,6 +132,7 @@ inlineBinder h (m, k, x, t) = do
   dmap <- liftIO $ Definition.get' (defHandle h)
   typeDefMap <- liftIO $ TypeDef.get' (typeDefHandle h)
   let baseSize = Platform.getDataSize (platformHandle h)
-  inlineHandle <- liftIO $ Inline.new (gensymHandle h) dmap typeDefMap (dataHandle h) baseSize m (inlineLimit h) (specializationTable h) (pendingSpecializationDefs h) (residualCheckList h) False
+  let mainModuleDir = T.pack $ Env.getMainModuleDir (envHandle h)
+  inlineHandle <- liftIO $ Inline.new (gensymHandle h) dmap typeDefMap (dataHandle h) baseSize m (inlineLimit h) (specializationTable h) (pendingSpecializationDefs h) (residualCheckList h) False mainModuleDir
   t' <- Inline.inlineType inlineHandle t
   return (m, k, x, t')

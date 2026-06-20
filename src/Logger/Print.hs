@@ -10,7 +10,6 @@ where
 import Color.Print qualified as Color
 import Color.Text qualified as Color
 import Data.IORef (readIORef)
-import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
 import Logger.Handle (Handle (..))
 import Logger.Hint
@@ -86,9 +85,3 @@ stylizeLogText str pad = do
       str
     l : rest ->
       T.intercalate "\n" $ l : map (pad <>) rest
-
-showFilePosRelative :: T.Text -> Hint -> T.Text
-showFilePosRelative moduleDir Hint {metaFileName, metaLocation = (l, c)} = do
-  let filePath = T.pack metaFileName
-  let filePath' = fromMaybe filePath (T.stripPrefix moduleDir filePath)
-  filePath' <> ":" <> T.pack (show l) <> ":" <> T.pack (show c)

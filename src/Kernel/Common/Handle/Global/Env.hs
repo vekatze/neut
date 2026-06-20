@@ -2,6 +2,7 @@ module Kernel.Common.Handle.Global.Env
   ( Handle (..),
     new,
     getMainModule,
+    getMainModuleDir,
     getSilentMode,
     getMainDefiniteDescriptionByTarget,
     getAllocatorByTarget,
@@ -35,6 +36,10 @@ data Handle = Handle
 getMainModule :: Handle -> MainModule
 getMainModule =
   _mainModule
+
+getMainModuleDir :: Handle -> FilePath
+getMainModuleDir h =
+  toFilePath $ getModuleRootDir $ extractModule $ getMainModule h
 
 getSilentMode :: Handle -> Bool
 getSilentMode =
