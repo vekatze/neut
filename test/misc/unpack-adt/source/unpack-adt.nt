@@ -25,7 +25,7 @@ resource pair-res {
     store-int(load-int(shift(v, size)), shift(p, size));
     p
   },
-  2,
+  16,
 }
 
 data holder {
