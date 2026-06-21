@@ -474,11 +474,12 @@ inlineLowMagic h lowMagic =
     LM.OpaqueValue e -> do
       e' <- inline' h e
       return $ LM.OpaqueValue e'
-    LM.CallType func arg1 arg2 -> do
+    LM.CallType func arg1 arg2 arg3 -> do
       func' <- inline' h func
       arg1' <- inline' h arg1
       arg2' <- inline' h arg2
-      return $ LM.CallType func' arg1' arg2'
+      arg3' <- inline' h arg3
+      return $ LM.CallType func' arg1' arg2' arg3'
 
 inlineTypeBinder :: Handle -> BinderF TM.Type -> App (BinderF TM.Type)
 inlineTypeBinder h (m, k, x, t) = do

@@ -876,7 +876,9 @@ rawTermMagicCallType h m c = do
     arg1 <- rawTerm h
     c4 <- delimiter ","
     arg2 <- rawTerm h
-    return $ \c1 c2 -> m :< RT.Magic c (RT.CallType c1 (c2, func) (c3, arg1) (c4, arg2))
+    c5 <- delimiter ","
+    arg3 <- rawTerm h
+    return $ \c1 c2 -> m :< RT.Magic c (RT.CallType c1 (c2, func) (c3, arg1) (c4, arg2) (c5, arg3))
 
 rawTermMagicInspectType :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermMagicInspectType h m c = do

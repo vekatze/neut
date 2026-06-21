@@ -239,11 +239,12 @@ analyze h term = do
               return []
             LM.OpaqueValue e ->
               analyze h e
-            LM.CallType func arg1 arg2 -> do
+            LM.CallType func arg1 arg2 arg3 -> do
               cs1 <- analyze h func
               cs2 <- analyze h arg1
               cs3 <- analyze h arg2
-              return $ cs1 ++ cs2 ++ cs3
+              cs4 <- analyze h arg3
+              return $ cs1 ++ cs2 ++ cs3 ++ cs4
         M.Calloc sizeType num size -> do
           cs1 <- analyzeType h sizeType
           cs2 <- analyze h num

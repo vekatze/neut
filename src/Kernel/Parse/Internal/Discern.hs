@@ -930,12 +930,13 @@ discernMagic h m magic =
       ensureRuntimeStage m h "runtime magic (`opaque-value`)"
       e' <- discern h e
       return $ M.WeakMagic $ M.LowMagic $ LM.OpaqueValue e'
-    RT.CallType _ (_, (func, _)) (_, (arg1, _)) (_, (arg2, _)) -> do
+    RT.CallType _ (_, (func, _)) (_, (arg1, _)) (_, (arg2, _)) (_, (arg3, _)) -> do
       ensureRuntimeStage m h "runtime magic (`call-type`)"
       func' <- discern h func
       arg1' <- discern h arg1
       arg2' <- discern h arg2
-      return $ M.WeakMagic $ M.LowMagic $ LM.CallType func' arg1' arg2'
+      arg3' <- discern h arg3
+      return $ M.WeakMagic $ M.LowMagic $ LM.CallType func' arg1' arg2' arg3'
     RT.InspectType (_, (typeExpr, _)) -> do
       ensureCompileStage m h "inline magic (`inspect-type`)"
       coreModuleID <- Alias.resolveModuleAlias (H.aliasHandle h) m coreModuleAlias

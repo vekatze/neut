@@ -736,11 +736,12 @@ elaborate' h term = do
             LM.OpaqueValue e -> do
               e' <- elaborate' h e
               return $ m :< TM.Magic (M.LowMagic $ LM.OpaqueValue e')
-            LM.CallType func arg1 arg2 -> do
+            LM.CallType func arg1 arg2 arg3 -> do
               func' <- elaborate' h func
               arg1' <- elaborate' h arg1
               arg2' <- elaborate' h arg2
-              return $ m :< TM.Magic (M.LowMagic $ LM.CallType func' arg1' arg2')
+              arg3' <- elaborate' h arg3
+              return $ m :< TM.Magic (M.LowMagic $ LM.CallType func' arg1' arg2' arg3')
         M.Calloc sizeType num size -> do
           sizeType' <- elaborateType h sizeType
           num' <- elaborate' h num
@@ -887,6 +888,8 @@ strictify' h m t = do
   case t' of
     _ :< TM.PrimType (PT.Int size) ->
       return $ BLT.PrimNum $ BPT.Int $ BPT.Explicit size
+    _ :< TM.PrimType PT.Rune ->
+      return $ BLT.PrimNum $ BPT.Int $ BPT.Explicit IntSize32
     _ :< TM.PrimType (PT.Float size) ->
       return $ BLT.PrimNum $ BPT.Float $ BPT.Explicit size
     _ :< TM.PrimType PT.Pointer ->

@@ -156,8 +156,8 @@ freeVarsLowMagicTerm lowMagic =
       S.empty
     LM.OpaqueValue e ->
       freeVars e
-    LM.CallType _ arg1 arg2 ->
-      S.union (freeVars arg1) (freeVars arg2)
+    LM.CallType _ arg1 arg2 arg3 ->
+      S.unions [freeVars arg1, freeVars arg2, freeVars arg3]
 
 freeVarsAll :: WT.WeakTerm -> S.Set Ident
 freeVarsAll term =
@@ -343,5 +343,5 @@ freeVarsLowMagic lowMagic =
       freeVarsType t
     LM.OpaqueValue e ->
       freeVarsAll e
-    LM.CallType func arg1 arg2 ->
-      S.unions [freeVarsAll func, freeVarsAll arg1, freeVarsAll arg2]
+    LM.CallType func arg1 arg2 arg3 ->
+      S.unions [freeVarsAll func, freeVarsAll arg1, freeVarsAll arg2, freeVarsAll arg3]

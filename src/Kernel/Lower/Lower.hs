@@ -509,17 +509,20 @@ lowerCompPrimitive h resultVar codeOp cont =
           uncast h resultVar (LC.VarExternal name) t' cont
         LM.OpaqueValue e ->
           lowerValue h resultVar e cont
-        LM.CallType func arg1 arg2 -> do
+        LM.CallType func arg1 arg2 arg3 -> do
           (funcVar, funcValue) <- liftIO $ newValueLocal h "func"
           (arg1Var, arg1Value) <- liftIO $ newValueLocal h "arg1"
           (arg2Var, arg2Value) <- liftIO $ newValueLocal h "arg2"
+          (arg3Var, arg3Value) <- liftIO $ newValueLocal h "arg3"
           let arg1Type = LT.Pointer
           let arg2Type = LT.Pointer
+          let arg3Type = LT.Pointer
           let resultType = LT.Pointer
           lowerValue h funcVar func
             =<< lowerValue h arg1Var arg1
             =<< lowerValue h arg2Var arg2
-            =<< return . LC.Let resultVar (LC.Call resultType funcValue [(arg1Type, arg1Value), (arg2Type, arg2Value)])
+            =<< lowerValue h arg3Var arg3
+            =<< return . LC.Let resultVar (LC.Call resultType funcValue [(arg1Type, arg1Value), (arg2Type, arg2Value), (arg3Type, arg3Value)])
             =<< return cont
 
 lowerCompPrimOp :: Handle -> Ident -> PrimOp -> [C.Value] -> LC.Comp -> App LC.Comp
@@ -555,6 +558,8 @@ cast h var v lowType cont = do
   case lowType of
     LT.PrimNum (PT.Int _) -> do
       return $ LC.Let var (LC.PointerToInt v lowType) cont
+    LT.PrimNum PT.Rune -> do
+      return $ LC.Let var (LC.PointerToInt v lowType) cont
     LT.PrimNum (PT.Float size) -> do
       let floatType = LT.PrimNum $ PT.Float size
       let intType = LT.PrimNum $ PT.Int $ floatSizeToIntSize size
@@ -569,6 +574,8 @@ uncast :: Handle -> Ident -> LC.Value -> LT.LowType -> LC.Comp -> App LC.Comp
 uncast h var castedValue lowType cont = do
   case lowType of
     LT.PrimNum (PT.Int _) ->
+      return $ LC.Let var (LC.IntToPointer castedValue lowType) cont
+    LT.PrimNum PT.Rune ->
       return $ LC.Let var (LC.IntToPointer castedValue lowType) cont
     LT.PrimNum (PT.Float i) -> do
       let floatType = LT.PrimNum $ PT.Float i

@@ -460,8 +460,9 @@ substLowMagic h sub lowMagic =
       return $ LM.Global name t
     LM.OpaqueValue e ->
       LM.OpaqueValue <$> subst h sub e
-    LM.CallType func arg1 arg2 -> do
+    LM.CallType func arg1 arg2 arg3 -> do
       func' <- subst h sub func
       arg1' <- subst h sub arg1
       arg2' <- subst h sub arg2
-      return $ LM.CallType func' arg1' arg2'
+      arg3' <- subst h sub arg3
+      return $ LM.CallType func' arg1' arg2' arg3'

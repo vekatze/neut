@@ -172,8 +172,8 @@ weakenMagic m magic = do
               LM.Global name (WT.fromBaseLowType m t)
             LM.OpaqueValue e ->
               LM.OpaqueValue (weaken e)
-            LM.CallType func arg1 arg2 ->
-              LM.CallType (weaken func) (weaken arg1) (weaken arg2)
+            LM.CallType func arg1 arg2 arg3 ->
+              LM.CallType (weaken func) (weaken arg1) (weaken arg2) (weaken arg3)
     M.Calloc sizeType num size ->
       M.WeakMagic $ M.Calloc (weakenType sizeType) (weaken num) (weaken size)
     M.Malloc sizeType size ->
