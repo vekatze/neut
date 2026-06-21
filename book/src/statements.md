@@ -560,21 +560,21 @@ alias-opaque my-type {
 
 ```neut
 resource my-type {
-  (value: pointer) => {
+  (value: pointer, should-release: int) => {
     // .. discard the value ..
   },
-  (value: pointer) => {
-    // .. create a new clone of the value and return it as pointer ..
+  (value: pointer, dest: pointer) => {
+    // .. copy the value ..
   },
   size, // integer value
 }
 ```
 
-`resource` takes three terms. The first term ("discarder") receives a value of the type and discards it. The second term ("copier") receives a value of the type and returns a clone of the value (keeping the original value intact). The third term must reduce to an integer at compile time. It is the size of the flattened representation in bytes, and is returned as-is when calling `magic call-type(my-type, 2, (..))`.
+`resource` takes three terms. The first term ("discarder") receives a value of the type and a `should-release` flag, then discards it. The second term ("copier") receives a value of the type and an optional destination pointer. The third term must reduce to an integer at compile time. It is the size of the flattened representation in bytes, and is returned as-is when calling `magic call-type(my-type, 2, null, null)`.
 
-The type of a discarder is `(a) -> unit` for some `a`. You might want to call functions like `free` in this term.
+The type of a discarder is `(pointer, int) -> unit`. The value is passed as a pointer; cast it to the intended representation inside the discarder. If `should-release` is `0`, it must destroy the contents without releasing the outer storage. If `should-release` is `1`, it performs the ordinary owned discard. For a resource whose size is negative, `should-release` is always `1`.
 
-The type of a copier is `(a) -> a` for some `a`. This `a` must be the same as the `a` used in the discarder. You might want to call functions like `malloc` in this term.
+The type of a copier is `(pointer, pointer) -> pointer`. If the destination pointer is `null`, the copier returns an owned copy. If the destination pointer is not `null`, the copier writes the copy into the destination; the return value is unspecified and must be ignored. For a resource whose size is negative, the destination is always `null`.
 
 The third term must have type `int`.
 
@@ -582,17 +582,22 @@ For example, the following is a definition of a "boxed" integer type with some n
 
 ```neut
 resource boxed-int {
-  // discarder: (pointer) -> unit
-  (v: pointer) => {
+  // discarder: (pointer, int) -> unit
+  (v: pointer, should-release: int) => {
     print("discarded!\n");
     free(v)
   },
-  // copier: (pointer) -> pointer
-  (v: pointer) => {
+  // copier: (pointer, pointer) -> pointer
+  (v: pointer, dest: pointer) => {
     let orig-value = load-int(v);
     let new-ptr = malloc(8);
     magic store(int, orig-value, new-ptr);
-    new-ptr
+    if is-null-pointer(dest) {
+      new-ptr
+    } else {
+      store-pointer(new-ptr, dest);
+      null-pointer // this return value is ignored
+    }
   },
   -1,
 }
