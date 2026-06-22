@@ -123,9 +123,8 @@ inline' h term = do
             else do
               let impIds = map (\(_, _, x, _) -> x) impBinders
               let subType = IntMap.fromList $ zip (map Ident.toInt impIds) (map Subst.Type impArgs')
-              let defaultArgsRaw = fillDefaultArgs defaultArgs' (map snd defBinders)
-              defaultArgsFilled <- liftIO $ mapM (Subst.subst (substHandle h) subType) defaultArgsRaw
               let expParams = expBinders ++ map fst defBinders
+              defaultArgsFilled <- liftIO $ fillDefaultArgs (substHandle h) subType expBinders expArgs' defBinders defaultArgs'
               let expArgsAll = expArgs' ++ defaultArgsFilled
               if length expParams /= length expArgsAll
                 then return (m :< TM.PiElim kind' e' impArgs' expArgs' defaultArgs')
@@ -155,8 +154,7 @@ inline' h term = do
                   let impIds = map (\(_, _, x, _) -> x) impParams
                   let subType = IntMap.fromList $ zip (map Ident.toInt impIds) (map Subst.Type impArgs')
                   let expParams = expBinders ++ map fst defDefaults
-                  let defaultArgsRaw = fillDefaultArgs defaultArgs' (map snd defDefaults)
-                  defaultArgsFilled <- liftIO $ mapM (Subst.subst (substHandle h) subType) defaultArgsRaw
+                  defaultArgsFilled <- liftIO $ fillDefaultArgs (substHandle h) subType expBinders expArgs' defDefaults defaultArgs'
                   let expArgsAll = expArgs' ++ defaultArgsFilled
                   if length expParams /= length expArgsAll
                     then return (m :< TM.PiElim kind' e' impArgs' expArgs' defaultArgs')
@@ -646,11 +644,36 @@ lookupSplit' cursor acc oets =
         else lookupSplit' cursor (oet : acc) rest
 
 fillDefaultArgs ::
-  [Maybe TM.Term] ->
+  Subst.Handle ->
+  Subst.Subst ->
+  [BinderF TM.Type] ->
   [TM.Term] ->
-  [TM.Term]
-fillDefaultArgs overrides defaults = do
-  zipWith (flip fromMaybe) overrides defaults
+  [(BinderF TM.Type, TM.Term)] ->
+  [Maybe TM.Term] ->
+  IO [TM.Term]
+fillDefaultArgs substHandle sub expBinders expArgs defBinders overrides = do
+  let expIds = map (\(_, _, x, _) -> x) expBinders
+  let expSub = IntMap.fromList $ zip (map Ident.toInt expIds) (map Subst.Term expArgs)
+  fillDefaultArgs' substHandle (IntMap.union expSub sub) defBinders overrides
+
+fillDefaultArgs' ::
+  Subst.Handle ->
+  Subst.Subst ->
+  [(BinderF TM.Type, TM.Term)] ->
+  [Maybe TM.Term] ->
+  IO [TM.Term]
+fillDefaultArgs' substHandle sub defBinders overrides =
+  case (defBinders, overrides) of
+    ([], []) ->
+      return []
+    (((_, _, x, _), defaultValue) : rest, override : overrideRest) -> do
+      let rawValue = fromMaybe defaultValue override
+      value <- Subst.subst substHandle sub rawValue
+      let sub' = IntMap.insert (Ident.toInt x) (Subst.Term value) sub
+      rest' <- fillDefaultArgs' substHandle sub' rest overrideRest
+      return (value : rest')
+    _ ->
+      return []
 
 bind :: [(BinderF TM.Type, TM.Term)] -> TM.Term -> TM.Term
 bind binder cont =
