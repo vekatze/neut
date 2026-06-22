@@ -1,4 +1,5 @@
 import {
+  core.debug {assert, panic},
   core.doc {
     Chunk,
     Chunk-Choose,
@@ -16,6 +17,7 @@ import {
   core.doc.show {show-doc},
   core.int.io {print-int-line},
   core.show.generic {to-doc},
+  core.vector {access, from-list, length},
 }
 
 define _simplify-chunk(x: chunk) -> chunk {
@@ -168,6 +170,90 @@ define call-inline-default() -> unit {
   print-int-line(v2);
 }
 
+define expect-int(label: &string, actual: int, expected: int) -> unit {
+  assert(label, eq-int(actual, expected))
+}
+
+define expect-vector-2(label: &string, xs: &vector(int), x0: int, x1: int) -> unit {
+  expect-int(label, length(xs), 2);
+  match access(xs, 0) {
+  | Left(_) =>
+    panic(label)
+  | Right(actual) =>
+    expect-int(label, *actual, x0)
+  };
+  match access(xs, 1) {
+  | Left(_) =>
+    panic(label)
+  | Right(actual) =>
+    expect-int(label, *actual, x1)
+  }
+}
+
+define dependent-default-top(x: int)[
+  base: int := add-int(x, 1),
+  step: int := add-int(base, x),
+  result: int := add-int(step, base),
+] -> int {
+  result
+}
+
+define call-dependent-default-top() -> unit {
+  expect-int("dependent-default-top: all omitted\n", dependent-default-top(3), 11);
+  expect-int("dependent-default-top: first override flows forward\n", dependent-default-top(3)[base := 10], 23);
+  expect-int("dependent-default-top: middle override keeps earlier default\n", dependent-default-top(3)[step := 20], 24);
+  expect-int("dependent-default-top: last override wins\n", dependent-default-top(3)[result := 30], 30);
+  expect-int("dependent-default-top: sparse overrides\n", dependent-default-top(3)[base := 10, result := 40], 40)
+}
+
+define stepper(x: int)[step: int := 1] -> int {
+  add-int(x, step)
+}
+
+define higher-order-default(f: (x: int)[step: int] -> int)[
+  arg: int := 5,
+  step: int := add-int(arg, 2),
+  result: int := f(arg)[step],
+] -> int {
+  result
+}
+
+define call-higher-order-default() -> unit {
+  expect-int("higher-order-default: all omitted\n", higher-order-default(stepper), 12);
+  expect-int("higher-order-default: explicit arg feeds later defaults\n", higher-order-default(stepper)[arg := 10], 22);
+  expect-int("higher-order-default: explicit step feeds function default call\n", higher-order-default(stepper)[step := 2], 7);
+  expect-int("higher-order-default: explicit result wins\n", higher-order-default(stepper)[result := 99], 99)
+}
+
+define call-local-dependent-defaults(anchor: int) -> unit {
+  let !f =
+    (x)[
+      lo: int := add-int(anchor, x),
+      hi: int := add-int(lo, x),
+      total: int := add-int(lo, hi),
+    ] => {
+      total
+    };
+  expect-int("local dependent defaults: all omitted\n", f(2), 20);
+  expect-int("local dependent defaults: first override\n", f(2)[lo := 10], 22);
+  expect-int("local dependent defaults: last override\n", f(2)[total := 50], 50)
+}
+
+inline inline-dependent-default(x: int)[
+  y: int := add-int(x, 1),
+  z: int := mul-int(y, 2),
+  w: int := add-int(z, y),
+] -> int {
+  add-int(w, x)
+}
+
+define call-inline-dependent-default() -> unit {
+  expect-int("inline dependent defaults: all omitted\n", inline-dependent-default(4), 19);
+  expect-int("inline dependent defaults: first override\n", inline-dependent-default(4)[y := 10], 34);
+  expect-int("inline dependent defaults: middle override\n", inline-dependent-default(4)[z := 7], 16);
+  expect-int("inline dependent defaults: last override\n", inline-dependent-default(4)[w := 8], 12)
+}
+
 define-meta default-meta(x: 'int)[n: 'int := quote {0}] -> 'int {
   quote {add-int(unquote {x}, unquote {n})}
 }
@@ -179,6 +265,60 @@ define use-default-meta() -> unit {
   print-int-line(result-overridden)
 }
 
+inline-meta meta-add(x: 'int, y: 'int) -> 'int {
+  quote {add-int(unquote {x}, unquote {y})}
+}
+
+define-meta dependent-default-meta(x: 'int)[
+  lo: 'int := quote {add-int(unquote {x}, 2)},
+  hi: 'int := meta-add(lo, x),
+  total: 'int := quote {add-int(unquote {lo}, unquote {hi})},
+] -> 'int {
+  quote {add-int(unquote {total}, 100)}
+}
+
+inline-meta inline-dependent-default-meta(x: 'int)[
+  delta: 'int := quote {add-int(unquote {x}, 1)},
+  answer: 'int := meta-add(x, delta),
+] -> 'int {
+  quote {add-int(unquote {answer}, 2000)}
+}
+
+inline-meta vector-from-defaults(lo: 'int, hi: 'int) -> 'vector(int) {
+  quote {
+    let lo0 = unquote {lo};
+    let hi0 = unquote {hi};
+    from-list(Cons(lo0, Cons(hi0, Nil)))
+  }
+}
+
+define-meta dependent-default-vector(seed: 'int)[
+  lo: 'int := quote {sub-int(unquote {seed}, 1)},
+  hi: 'int := quote {add-int(unquote {lo}, 4)},
+  expected-lo: 'int := lo,
+  expected-hi: 'int := hi,
+  xs: 'vector(int) := vector-from-defaults(expected-lo, expected-hi),
+] -> 'unit {
+  quote {
+    pin xs = unquote {xs};
+    expect-vector-2("dependent-default-vector\n", xs, unquote {expected-lo}, unquote {expected-hi})
+  }
+}
+
+define use-dependent-default-meta() -> unit {
+  expect-int("dependent-default-meta: all omitted\n", dependent-default-meta::(3), 113);
+  expect-int("dependent-default-meta: first override flows forward\n", dependent-default-meta::(3)[lo := 10], 123);
+  expect-int("dependent-default-meta: middle override keeps earlier default\n", dependent-default-meta::(3)[hi := 20], 125);
+  expect-int("dependent-default-meta: last override wins\n", dependent-default-meta::(3)[total := 30], 130);
+  expect-int("inline-dependent-default-meta: all omitted\n", inline-dependent-default-meta::(3), 2007);
+  expect-int("inline-dependent-default-meta: first default override\n", inline-dependent-default-meta::(3)[delta := 10], 2013);
+  expect-int("inline-dependent-default-meta: second default override\n", inline-dependent-default-meta::(3)[answer := 20], 2020);
+  dependent-default-vector::(10);
+  dependent-default-vector::(10)[lo := 40];
+  dependent-default-vector::(10)[hi := 50];
+  dependent-default-vector::(10)[expected-lo := 1, expected-hi := 2, xs := from-list(Cons(1, Cons(2, Nil)))]
+}
+
 define main() -> unit {
   call-default-top();
   call-default-list();
@@ -188,6 +328,11 @@ define main() -> unit {
   print-line(v);
   call-inline-default();
   use-default-meta();
+  call-dependent-default-top();
+  call-higher-order-default();
+  call-local-dependent-defaults(7);
+  call-inline-dependent-default();
+  use-dependent-default-meta();
 }
 
 define zen() -> unit {

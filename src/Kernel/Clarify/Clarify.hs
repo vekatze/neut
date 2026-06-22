@@ -326,7 +326,7 @@ clarifyStmt h stmt =
   case stmt of
     StmtDefine _ stmtKind _ f impArgs expArgs defaultArgs codType e -> do
       let context = newContext f
-      defaultValues <- registerDefaultFunctions h context f [] impArgs defaultArgs
+      defaultValues <- registerDefaultFunctions h context f [] impArgs expArgs defaultArgs
       liftIO $ registerDefaultEnvType h f defaultValues
       let xts = impArgs ++ expArgs ++ map fst defaultArgs
       xts' <- dropFst <$> clarifyBinder h context xts
@@ -347,7 +347,7 @@ clarifyStmt h stmt =
           return $ C.Def f (SK.toLowOpacityTerm stmtKind) (map fst xts'') e'
     StmtDefineType _ stmtKind (SavedHint _) f impArgs expArgs defaultArgs _ body -> do
       let context = newContext f
-      defaultValues <- registerDefaultFunctions h context f [] impArgs defaultArgs
+      defaultValues <- registerDefaultFunctions h context f [] impArgs expArgs defaultArgs
       liftIO $ registerDefaultEnvType h f defaultValues
       let xts = impArgs ++ expArgs ++ map fst defaultArgs
       case stmtKind of
@@ -456,26 +456,46 @@ registerDefaultFunctions ::
   DD.DefiniteDescription ->
   [BinderF TM.Type] ->
   [BinderF TM.Type] ->
+  [BinderF TM.Type] ->
   [(BinderF TM.Type, TM.Term)] ->
   App [C.Value]
-registerDefaultFunctions h context name fvs impArgs defaultArgs =
+registerDefaultFunctions h context name fvs impArgs expArgs defaultArgs =
   case defaultArgs of
     [] ->
       return []
     _ -> do
-      let context' = extendContext (fvs ++ impArgs) context
-      fvs' <- dropFst <$> clarifyBinder h context fvs
-      impArgs' <- dropFst <$> clarifyBinder h context impArgs
-      let argNum = AN.fromInt (length impArgs' + 2)
-      forM (zip [0 ..] defaultArgs) $ \(i, ((_, _, _, codType), value)) -> do
-        let labelName = defaultLabelName name i
-        isAlreadyRegistered <- liftIO $ AuxEnv.checkIfAlreadyRegistered (auxEnvHandle h) labelName
-        unless isAlreadyRegistered $ do
-          let labelContext = setCurrentFunction labelName context'
-          codType' <- clarifyType h labelContext codType
-          body <- clarifyTerm h labelContext value
-          liftIO $ registerClosure h labelName O.Clear False codType' impArgs' fvs' body
-        return $ C.VarGlobal labelName argNum (FCT.Cod BLT.Pointer)
+      fvsAndFixedArgs <- dropFst <$> clarifyBinder h context (fvs ++ impArgs ++ expArgs)
+      let fvs' = take (length fvs) fvsAndFixedArgs
+      let fixedArgs = drop (length fvs) fvsAndFixedArgs
+      let context' = extendContext (fvs ++ impArgs ++ expArgs) context
+      registerDefaultFunctions' h context' name fvs' fixedArgs 0 defaultArgs
+
+registerDefaultFunctions' ::
+  Handle ->
+  Context ->
+  DD.DefiniteDescription ->
+  [(Ident, C.Comp)] ->
+  [(Ident, C.Comp)] ->
+  Int ->
+  [(BinderF TM.Type, TM.Term)] ->
+  App [C.Value]
+registerDefaultFunctions' h context name fvs args index defaultArgs =
+  case defaultArgs of
+    [] ->
+      return []
+    (binder@(_, _, x, codType), value) : rest -> do
+      let labelName = defaultLabelName name index
+      let labelContext = setCurrentFunction labelName context
+      codType' <- clarifyType h labelContext codType
+      isAlreadyRegistered <- liftIO $ AuxEnv.checkIfAlreadyRegistered (auxEnvHandle h) labelName
+      unless isAlreadyRegistered $ do
+        body <- clarifyTerm h labelContext value
+        liftIO $ registerClosure h labelName O.Clear False codType' args fvs body
+      let argNum = AN.fromInt (length args + 2)
+      let labelValue = C.VarGlobal labelName argNum (FCT.Cod BLT.Pointer)
+      let context' = extendContext [binder] context
+      restValues <- registerDefaultFunctions' h context' name fvs (args ++ [(x, codType')]) (index + 1) rest
+      return (labelValue : restValues)
 
 clarifyBinderBody ::
   Handle ->
@@ -1162,7 +1182,7 @@ clarifyLambda h context attrL@(AttrL.Attr {lamKind, identity}) fvs impArgs expAr
       clarifyTerm h context lamApp
     LK.Normal mName isDestPassing codType -> do
       let name = DD.getLambdaDD (currentFunction context) mName identity
-      defaultValues <- registerDefaultFunctions h context name fvs impArgs defaultArgs
+      defaultValues <- registerDefaultFunctions h context name fvs impArgs expArgs defaultArgs
       let lambdaContext = setCurrentFunction name $ extendContext (catMaybes [AttrL.fromAttr attrL] ++ mxts) context
       e' <- clarifyTerm h lambdaContext e
       returnClosure h context identity mName O.Clear isDestPassing codType fvs mxts defaultValues e'
@@ -1281,7 +1301,7 @@ callClosure h kind e impArgs expArgs defaultArgs = do
   let (impNames, impComps, impVals) = unzip3 impArgs
   let (expNames, expComps, expVals) = unzip3 expArgs
   ((closureVarName, closureVar), envTypeVarName, (envVarName, envVar), (lamVarName, lamVar)) <- newClosureNames h
-  defaultTriples <- forM (zip [0 ..] defaultArgs) $ resolveDefaultTriple h envTypeVarName envVar impVals
+  defaultTriples <- resolveDefaultTriples h envTypeVarName envVar (impVals ++ expVals) defaultArgs
   let (defNames, defComps, defVals) = unzip3 defaultTriples
   let args = impVals ++ expVals ++ defVals ++ [envVar, flag]
   callComp <- buildCall h kind lamVar args
@@ -1297,7 +1317,7 @@ resolveDefaultTriple ::
   [C.Value] ->
   (Int, Maybe (Ident, C.Comp, C.Value)) ->
   IO (Ident, C.Comp, C.Value)
-resolveDefaultTriple h envTypeVarName envVar impVals (i, mOverride) =
+resolveDefaultTriple h envTypeVarName envVar prefixVals (i, mOverride) =
   case mOverride of
     Just triple ->
       return triple
@@ -1306,9 +1326,37 @@ resolveDefaultTriple h envTypeVarName envVar impVals (i, mOverride) =
       let labelComp = C.PiElimDownElim False (C.VarLocal envTypeVarName) [intTerm h (i + 3), C.null, C.null]
       defaultComp <-
         Utility.bindLet [(labelName, labelComp)]
-          <$> callDefaultLabel h envTypeVarName envVar impVals labelVar
+          <$> callDefaultLabel h envTypeVarName envVar prefixVals labelVar
       (defaultName, defaultVar) <- Gensym.createVar (gensymHandle h) "arg"
       return (defaultName, defaultComp, defaultVar)
+
+resolveDefaultTriples ::
+  Handle ->
+  Ident ->
+  C.Value ->
+  [C.Value] ->
+  [Maybe (Ident, C.Comp, C.Value)] ->
+  IO [(Ident, C.Comp, C.Value)]
+resolveDefaultTriples h envTypeVarName envVar fixedVals =
+  resolveDefaultTriples' h envTypeVarName envVar fixedVals [] 0
+
+resolveDefaultTriples' ::
+  Handle ->
+  Ident ->
+  C.Value ->
+  [C.Value] ->
+  [C.Value] ->
+  Int ->
+  [Maybe (Ident, C.Comp, C.Value)] ->
+  IO [(Ident, C.Comp, C.Value)]
+resolveDefaultTriples' h envTypeVarName envVar fixedVals prevDefaultVals index defaultArgs =
+  case defaultArgs of
+    [] ->
+      return []
+    mOverride : rest -> do
+      triple@(_, _, value) <- resolveDefaultTriple h envTypeVarName envVar (fixedVals ++ prevDefaultVals) (index, mOverride)
+      restTriples <- resolveDefaultTriples' h envTypeVarName envVar fixedVals (prevDefaultVals ++ [value]) (index + 1) rest
+      return (triple : restTriples)
 
 buildCall ::
   Handle ->
@@ -1342,12 +1390,12 @@ callDefaultLabel ::
   [C.Value] ->
   C.Value ->
   IO C.Comp
-callDefaultLabel h envTypeVarName envVar impVals labelVar = do
+callDefaultLabel h envTypeVarName envVar prefixVals labelVar = do
   (envCopyName, envCopyVar) <- Gensym.createVar (gensymHandle h) "env"
   let envCopyComp = C.PiElimDownElim False (C.VarLocal envTypeVarName) [intTerm h (1 :: Int), envVar, C.null]
   return $
     Utility.bindLet [(envCopyName, envCopyComp)] $
-      C.PiElimDownElim False labelVar (impVals ++ [envCopyVar, C.intValue0])
+      C.PiElimDownElim False labelVar (prefixVals ++ [envCopyVar, C.intValue0])
 
 newClosureNames :: Handle -> IO ((Ident, C.Value), Ident, (Ident, C.Value), (Ident, C.Value))
 newClosureNames h = do
