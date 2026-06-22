@@ -53,42 +53,31 @@ reduce h term = do
           return $ C.PiElimDownElim forceInline v' ds'
     C.SigmaElim shouldDeallocate offset size xs v e -> do
       let v' = Subst.substValue (subst h) v
-      if not shouldDeallocate
-        then do
+      case v' of
+        C.SigmaIntro _ ds
+          | length ds >= offset + length xs -> do
+              let ds' = take (length xs) $ drop offset ds
+              let h' = unionSubst h (IntMap.fromList (zip (map Ident.toInt xs) ds'))
+              reduce h' e
+        _ -> do
           xs' <- mapM (Gensym.newIdentFromIdent (gensymHandle h)) xs
           let h' = unionSubst h (IntMap.fromList (zip (map Ident.toInt xs) (map C.VarLocal xs')))
           e' <- reduce h' e
           case e' of
+            C.UpIntro (C.SigmaIntro _ ds)
+              | offset == 0,
+                length xs == size,
+                Just ys <- mapM extractIdent ds,
+                xs' == ys ->
+                  return $ C.UpIntro v -- eta-reduce (full read only)
             C.Unreachable ->
               return C.Unreachable
             _ ->
-              return $ C.SigmaElim shouldDeallocate offset size xs' v' e'
-        else do
-          case v' of
-            C.SigmaIntro _ ds
-              | length ds >= offset + length xs -> do
-                  let ds' = take (length xs) $ drop offset ds
-                  let h' = unionSubst h (IntMap.fromList (zip (map Ident.toInt xs) ds'))
-                  reduce h' e
-            _ -> do
-              xs' <- mapM (Gensym.newIdentFromIdent (gensymHandle h)) xs
-              let h' = unionSubst h (IntMap.fromList (zip (map Ident.toInt xs) (map C.VarLocal xs')))
-              e' <- reduce h' e
-              case e' of
-                C.UpIntro (C.SigmaIntro _ ds)
-                  | offset == 0,
-                    length xs == size,
-                    Just ys <- mapM extractIdent ds,
-                    xs' == ys ->
-                      return $ C.UpIntro v -- eta-reduce (full read only)
-                C.Unreachable ->
-                  return C.Unreachable
+              case xs' of
+                [] ->
+                  return e'
                 _ ->
-                  case xs' of
-                    [] ->
-                      return e'
-                    _ ->
-                      return $ C.SigmaElim shouldDeallocate offset size xs' v' e'
+                  return $ C.SigmaElim shouldDeallocate offset size xs' v' e'
     C.UpIntro d -> do
       return $ C.UpIntro $ Subst.substValue (subst h) d
     C.UpIntroVoid -> do
@@ -154,8 +143,8 @@ reduce h term = do
     C.EnumElim fvInfo v defaultBranch ces -> do
       let fvInfo' = substFvInfo h fvInfo
       let v' = Subst.substValue (subst h) v
-      case v' of
-        C.Int _ l
+      case valueToEnumInt v' of
+        Just l
           | Just body <- lookup (EC.Int (fromInteger l)) ces -> do
               reduce (unionSubst h $ IntMap.fromList fvInfo') body
           | otherwise -> do
@@ -199,8 +188,8 @@ reduce h term = do
       case prim of
         C.Magic (LM.Cast _ _ value) ->
           return $ C.UpIntro $ Subst.substValue (subst h) value
-        C.Magic (LM.CallType func arg1 arg2) -> do
-          reduce h $ C.PiElimDownElim True func [arg1, arg2]
+        C.Magic (LM.CallType func arg1 arg2 arg3) -> do
+          reduce h $ C.PiElimDownElim True func [arg1, arg2, arg3]
         _ ->
           return $ C.Primitive $ Subst.substPrimitive (subst h) prim
     C.Free x size cont -> do
@@ -227,6 +216,16 @@ substFvInfo h fvInfo = do
   let (is, ds) = unzip fvInfo
   let ds' = map (Subst.substValue (subst h)) ds
   zip is ds'
+
+valueToEnumInt :: C.Value -> Maybe Integer
+valueToEnumInt value = do
+  case value of
+    C.Int _ l ->
+      Just l
+    C.SigmaIntro 0 [] ->
+      Just 0
+    _ ->
+      Nothing
 
 graftVoidReduce :: Handle -> C.Comp -> C.Comp -> IO C.Comp
 graftVoidReduce h e cont = do

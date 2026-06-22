@@ -25,10 +25,10 @@ zero :: ArgNum
 zero =
   MakeArgNum {reify = 0}
 
--- S4@(switch, target)
+-- S4@(switch, target, extra)
 argNumS4 :: ArgNum
 argNumS4 =
-  MakeArgNum 2
+  MakeArgNum 3
 
 add :: ArgNum -> ArgNum -> ArgNum
 add (MakeArgNum i1) (MakeArgNum i2) =

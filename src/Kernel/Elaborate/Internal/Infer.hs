@@ -114,14 +114,15 @@ inferStmt h stmt =
       stmtKind' <- inferStmtKindType h''' stmtKind
       return $ WeakStmtDefineType isConstLike stmtKind' m x impArgs' expArgs' defaultArgs' codType' body'
     WeakStmtDefineResource m dd resourceID unitType discarder copier resourceSize -> do
-      (discarder', _) <- infer h discarder
-      (copier', _) <- infer h copier
+      (discarder', discarderType) <- infer h discarder
+      (copier', copierType) <- infer h copier
       (resourceSize', resourceSizeType) <- infer h resourceSize
       intType <- getIntType (platformHandle h) m
       unitType' <- inferType h unitType
       let piType = m :< WT.Pi (PK.Normal True) [] [] [] (m :< WT.Tau)
       liftIO $ Constraint.insert (constraintHandle h) intType resourceSizeType
       liftIO $ insertType h dd piType
+      constrainResourceHandlers h m unitType' discarderType copierType
       return $ WeakStmtDefineResource m dd resourceID unitType' discarder' copier' resourceSize'
     WeakStmtVariadic kind m dd -> do
       return $ WeakStmtVariadic kind m dd
@@ -207,6 +208,33 @@ getMainUnitType stmtKind =
       return unitType
     _ ->
       Nothing
+
+constrainResourceHandlers ::
+  Handle ->
+  Hint ->
+  WT.WeakType ->
+  WT.WeakType ->
+  WT.WeakType ->
+  App ()
+constrainResourceHandlers h m unitType discarderType copierType = do
+  valueForDiscard <- liftIO $ Gensym.newIdentForHole (gensymHandle h)
+  shouldRelease <- liftIO $ Gensym.newIdentForHole (gensymHandle h)
+  valueForCopy <- liftIO $ Gensym.newIdentForHole (gensymHandle h)
+  dest <- liftIO $ Gensym.newIdentForHole (gensymHandle h)
+  intType <- getIntType (platformHandle h) m
+  let pointerType = m :< WT.PrimType PT.Pointer
+  let discardParams =
+        [ (m, VK.Normal, valueForDiscard, pointerType),
+          (m, VK.Normal, shouldRelease, intType)
+        ]
+  let copyParams =
+        [ (m, VK.Normal, valueForCopy, pointerType),
+          (m, VK.Normal, dest, pointerType)
+        ]
+  let expectedDiscarder = m :< WT.Pi PK.normal [] discardParams [] unitType
+  let expectedCopier = m :< WT.Pi PK.normal [] copyParams [] pointerType
+  liftIO $ Constraint.insert (constraintHandle h) expectedDiscarder discarderType
+  liftIO $ Constraint.insert (constraintHandle h) expectedCopier copierType
 
 extendHandle :: BinderF WT.WeakType -> Handle -> Handle
 extendHandle (mx, k, x, t) h =
@@ -414,14 +442,15 @@ infer h term =
             LM.OpaqueValue e -> do
               (e', t) <- infer h e
               return (m :< WT.Magic (M.WeakMagic $ M.LowMagic $ LM.OpaqueValue e'), t)
-            LM.CallType func arg1 arg2 -> do
+            LM.CallType func arg1 arg2 arg3 -> do
               (func', _) <- infer h func
               (arg1', t1) <- infer h arg1
               (arg2', _) <- infer h arg2
+              (arg3', _) <- infer h arg3
               intType <- getIntType (platformHandle h) m
               liftIO $ Constraint.insert (constraintHandle h) intType t1
               resultType <- liftIO $ newTypeHole h m (varEnv h)
-              return (m :< WT.Magic (M.WeakMagic $ M.LowMagic $ LM.CallType func' arg1' arg2'), resultType)
+              return (m :< WT.Magic (M.WeakMagic $ M.LowMagic $ LM.CallType func' arg1' arg2' arg3'), resultType)
         M.Calloc sizeType num size -> do
           sizeType' <- inferType h sizeType
           (num', actualNumType) <- infer h num

@@ -894,7 +894,7 @@ define use-foo() -> unit {
 }
 ```
 
-The size of the destination is determined by the byte size returned by `magic call-type(t, 2, ...)`. When the byte size is non-negative, the caller prepares a destination of that many bytes. Otherwise, the caller uses a one-word temporary slot and passes that to the callee instead.
+The size of the destination is determined by the byte size returned by `magic call-type(t, 2, null, null)`. When the byte size is non-negative, the caller prepares a destination of that many bytes. Otherwise, the caller uses a one-word temporary slot and passes that to the callee instead.
 
 ### Type
 
@@ -2542,7 +2542,7 @@ define malloc-then-free() -> unit {
 
   // call types as functions
   let t: string = *"hello";
-  magic call-type(string, 0, t); // ← call-type (discard)
+  magic call-type(string, 0, t, add-int(0, 1)); // ← call-type (discard)
 
   Unit
 }
@@ -2574,7 +2574,7 @@ magic external func-name(e1, ..., en)
 
 magic external func-name(e1, ..., en)(vararg-1: lowtype-1, ..., vararg-n: lowtype-n)
 
-magic call-type(some-type, switch, arg)
+magic call-type(some-type, switch, arg, extra)
 
 magic assert-mixable(some-type)
 
@@ -2668,15 +2668,13 @@ These forms can only be used at stage 1 or above. The compiler reports an error 
 
 ### Semantics (call-type)
 
-Neut compiles types into functions. The first argument of such a function is usually 0 or 1, but we can actually pass other integers using `call-type`.
+`magic call-type(some-type, switch, arg, extra)` treats `some-type` as a function pointer and calls `some-type(switch, arg, extra)`.
 
-`magic call-type(some-type, switch, arg)` treats `some-type` as a function pointer and calls `some-type(switch, arg)`.
+`magic call-type(some-type, 0, value, should-release)` discards `value`. If `should-release` is `0`, the contents are destroyed without releasing the outer storage. If `should-release` is `1`, the value is discarded as an owned value.
 
-`magic call-type(some-type, 0, value)` discards `value`.
+`magic call-type(some-type, 1, value, dest)` copies `value`. If `dest` is `null`, it returns an owned copy. Otherwise, it writes the copy into `dest`; the return value is unspecified and must be ignored.
 
-`magic call-type(some-type, 1, value)` copies `value` and returns a new value.
-
-`magic call-type(some-type, 2, value)` returns the size of a value in bytes.
+`magic call-type(some-type, 2, null, null)` returns the fixed-size placed representation size in bytes, or a negative value when the type has no fixed-size placed representation.
 
 The type of the result of `call-type` is inferred from the context.
 
@@ -2805,8 +2803,9 @@ See [Memory Representation in Statements](./statements.md#memory-representation)
 Γ ⊢ t: type
 Γ ⊢ switch: int
 Γ ⊢ arg: s
+Γ ⊢ extra: r
 ------------------------------------------------------
-Γ ⊢ magic call-type(t, switch, arg): u
+Γ ⊢ magic call-type(t, switch, arg, extra): u
 
 
 Γ ⊢ t: type

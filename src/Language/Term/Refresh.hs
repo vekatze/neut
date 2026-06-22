@@ -207,11 +207,12 @@ refreshLowMagic h lowMagic =
     LM.OpaqueValue e -> do
       e' <- refresh h e
       return $ LM.OpaqueValue e'
-    LM.CallType func arg1 arg2 -> do
+    LM.CallType func arg1 arg2 arg3 -> do
       func' <- refresh h func
       arg1' <- refresh h arg1
       arg2' <- refresh h arg2
-      return $ LM.CallType func' arg1' arg2'
+      arg3' <- refresh h arg3
+      return $ LM.CallType func' arg1' arg2' arg3'
 
 refreshType :: Handle -> TM.Type -> IO TM.Type
 refreshType h ty =

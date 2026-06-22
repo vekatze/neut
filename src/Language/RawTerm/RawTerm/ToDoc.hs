@@ -382,7 +382,7 @@ toDoc term =
             [ attachComment (c ++ c1) $ D.text "magic opaque-value ",
               decodeBrace True c2 e c3
             ]
-        CallType c1 func arg1 arg2 -> do
+        CallType c1 func arg1 arg2 arg3 -> do
           D.join
             [ attachComment (c ++ c1) $ D.text "magic call-type",
               SE.decode $
@@ -391,7 +391,8 @@ toDoc term =
                   SE.Comma
                   [ RT.mapEL toDoc func,
                     RT.mapEL toDoc arg1,
-                    RT.mapEL toDoc arg2
+                    RT.mapEL toDoc arg2,
+                    RT.mapEL toDoc arg3
                   ]
             ]
         InspectType (c1, (e, c2)) -> do

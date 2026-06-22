@@ -297,10 +297,11 @@ distinguishPrimitiveAcc h activeSet term !occMap =
         LM.OpaqueValue e -> do
           (occMap', e') <- distinguishValueAcc h activeSet e occMap
           return (occMap', C.Magic (LM.OpaqueValue e'))
-        LM.CallType func arg1 arg2 -> do
+        LM.CallType func arg1 arg2 arg3 -> do
           (occMap1, arg1') <- distinguishValueAcc h activeSet arg1 occMap
           (occMap2, arg2') <- distinguishValueAcc h activeSet arg2 occMap1
-          return (occMap2, C.Magic (LM.CallType func arg1' arg2'))
+          (occMap3, arg3') <- distinguishValueAcc h activeSet arg3 occMap2
+          return (occMap3, C.Magic (LM.CallType func arg1' arg2' arg3'))
 
 distinguishVarArgListAcc :: Handle -> ActiveSet -> [(C.Value, t)] -> OccMap -> IO (OccMap, [(C.Value, t)])
 distinguishVarArgListAcc h activeSet varArgAndTypeList !occMap =

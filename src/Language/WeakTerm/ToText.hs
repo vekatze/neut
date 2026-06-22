@@ -480,8 +480,8 @@ showLowMagic' h lowMagic =
       "magic global " <> T.pack (show name) <> ": " <> toTextType' h t
     LM.OpaqueValue e ->
       "magic opaque" <> inParen (toText e)
-    LM.CallType func arg1 arg2 ->
-      "magic call-type" <> inParen (toText func <> ", " <> toText arg1 <> ", " <> toText arg2)
+    LM.CallType func arg1 arg2 arg3 ->
+      "magic call-type" <> inParen (toText func <> ", " <> toText arg1 <> ", " <> toText arg2 <> ", " <> toText arg3)
 
 showForeignCodType' :: Handle -> FCT.ForeignCodType WT.WeakType -> T.Text
 showForeignCodType' h cod =

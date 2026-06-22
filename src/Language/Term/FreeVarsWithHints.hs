@@ -199,5 +199,5 @@ freeVarsWithHintsLowMagic lowMagic =
       S.empty
     LM.OpaqueValue e ->
       freeVarsWithHints e
-    LM.CallType func arg1 arg2 ->
-      S.unions [freeVarsWithHints func, freeVarsWithHints arg1, freeVarsWithHints arg2]
+    LM.CallType func arg1 arg2 arg3 ->
+      S.unions [freeVarsWithHints func, freeVarsWithHints arg1, freeVarsWithHints arg2, freeVarsWithHints arg3]

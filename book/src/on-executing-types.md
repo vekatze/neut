@@ -11,7 +11,7 @@
 
 ## Types as Closed Functions
 
-Here, we'll see how a type is translated into a function that discards/copies values of the type. To see the basic idea, let's take a simple ADT as an example:
+Here, we'll see how a type is translated into a function that discards, copies, and reports the size of values of the type. To see the basic idea, let's take a simple ADT as an example:
 
 ```neut
 data item {
@@ -42,7 +42,7 @@ A value `v` of type `item` can be discarded as follows:
 free(v)
 ```
 
-The value `v` can be copied as follows:
+The value `v` can be copied into newly allocated owned storage as follows:
 
 ```neut
 // copy `v`, keeping the original `v` intact
@@ -54,35 +54,47 @@ ptr
 
 ### Combining Discarding/Copying Functions
 
-Using the two procedures above, we can construct a closed function that discards and copies the values of the type `item`:
+Using the procedures above, we can construct a closed function that discards, copies, and reports the size of values of the type `item`. The copy operation either returns an owned copy or writes into caller-supplied storage:
 
 ```neut
-define exp-item(selector, v) {
+define exp-item(selector, v, extra) {
   if selector == 0 {
     // discard
-    free(v)
-  } else {
-    // copy `v`
-    let ptr = malloc({2-words});
+    if extra == 1 {
+      free(v)
+    }
+  } else if selector == 1 {
+    // copy
+    let ptr =
+      if extra == null {
+        malloc({2-words})
+      } else {
+        extra
+      };
     store(ptr[0], v[0]);
     store(ptr[1], v[1]);
     ptr
+  } else {
+    // size
+    {2-words}
   }
 }
 ```
 
-`exp-item(selector, v)` discards `v` if `selector` is 0. Otherwise, this function creates a copy of `v` and then returns it, keeping the original `v` intact.
+`exp-item(selector, v, extra)` discards `v` if `selector` is 0, copies `v` if `selector` is 1, and reports the size of `item` if `selector` is 2. The `extra` argument controls whether discard releases outer storage and whether copy allocates owned storage or writes into caller-supplied storage. The return value of non-null-destination copy is ignored.
 
 The type `item` is compiled into a pointer to this function.
 
 More generally, a type `a` is translated into a pointer to a closed function like the following:
 
 ```neut
-define exp-a(selector, v) {
+define exp-a(selector, v, extra) {
   if selector == 0 {
-    // a procedure that discards `v`
+    // a procedure that destroys `v`; `extra` decides whether to release outer storage
+  } else if selector == 1 {
+    // a procedure that copies `v`; `extra` selects owned or caller-supplied storage
   } else {
-    // a procedure that copies `v` (keeping the original `v` intact)
+    // a procedure that reports the size of values of type `a`
   }
 }
 ```
@@ -100,7 +112,7 @@ print("hello") // `x` isn't used
 // ↓ (compile)
 
 let x = New(10, 20);
-let _ = exp-item(0, x); // discard `x` by passing 0 as `selector`
+let _ = exp-item(0, x, 1); // discard `x` by passing 0 as `selector`
 print("hello")
 ```
 
@@ -115,7 +127,7 @@ cont(a, b)
 // ↓ (compile)
 
 let x = New(10, 20);
-let x-copy = exp-item(1, x); // copy `x` by passing 1 as `selector`
+let x-copy = exp-item(1, x, null); // copy `x` by passing 1 as `selector`
 let a = foo(x-copy);
 let b = bar(x);
 cont(a, b)
@@ -132,18 +144,22 @@ This discarding/copying procedure happens _immediately after a variable is defin
 Immediates like integers or floats don't have to be discarded or copied since they don't rely on memory-related operations like `malloc` or `free`. This fact is reflected in the function that `int` and `float` are translated into:
 
 ```neut
-define base.#.imm(selector, value) {
+define base.#.imm(selector, value, extra) {
   if selector == 0 {
     0 // "discarding" doesn't have to do anything
-  } else {
+  } else if selector == 1 {
     value // "copying" simply reuses the original value
+  } else {
+    -1 // immediates don't have fixed-size placed storage of their own
   }
 }
 ```
 
+Immediates report a negative size. A type with a negative size never uses `extra`: it owns no releasable storage to discard, and is never copied into caller-supplied storage.
+
 Immediate types are compiled into this function. Noema types like `&list(int)` are also translated into this function.
 
-Uses of `base.#.imm` like `base.#.imm(1, some-value)` are optimized away by inlining.
+Uses of `base.#.imm` like `base.#.imm(1, some-value, null)` are optimized away by inlining.
 
 <div class="info-block">
 
@@ -163,11 +179,11 @@ define foo<a>(x: a) -> pair(a, a) {
 
 The code uses the variable `x` twice. Thus, this `x` must be copied according to the type `a`.
 
-This can be done because the internal representation of `a` is a function that can discard and copy values of type `a`. Thus, the above code is compiled into something like the following:
+This can be done because the internal representation of `a` is a function that can discard, copy, and report the size of values of type `a`. Thus, the above code is compiled into something like the following:
 
 ```neut
 define foo<a>(x: a) -> pair(a, a) {
-  let x-clone = a(1, x);
+  let x-clone = a(1, x, null);
   Pair(x, x-clone)
 }
 ```
@@ -195,26 +211,35 @@ For `list(a)`, every value occupies 4 words: a discriminant, one word for `a`, a
 `list(a)` is therefore compiled into something like the following (a bit lengthy; you can skip to the following note if you prefer):
 
 ```neut
-define exp-list(selector, v) {
+define exp-list(selector, v, extra) {
   if selector == 0 {
     let d = get-discriminant(v);
     if d == 0 {
       // discard Nil
-      free(v)
+      if extra == 1 {
+        free(v)
+      }
     } else {
       // discard Cons
       let a = v[1];
       let cons-head = v[2];
       let cons-tail = v[3];
-      free(v);
-      let _ = a(0, cons-head); // ← discard the head of cons using v[1]
-      exp-list(0, cons-tail)
+      let _ = a(0, cons-head, 1); // ← discard the head of cons using v[1]
+      exp-list(0, cons-tail, 1);
+      if extra == 1 {
+        free(v)
+      }
     }
-  } else {
+  } else if selector == 1 {
     let d = get-discriminant(v);
+    let ptr =
+      if extra == null {
+        malloc({4-words})
+      } else {
+        extra
+      };
     if d == 0 {
       // copy Nil
-      let ptr = malloc({4-words});
       let a = v[1];
       store(ptr[0], d);
       store(ptr[1], a);
@@ -222,21 +247,22 @@ define exp-list(selector, v) {
       ptr
     } else {
       // copy Cons
-      let ptr = malloc({4-words});
       let a = v[1];
-      let cons-head-copy = a(1, v[2]); // ← copy the head of cons using v[1]
-      let cons-tail-copy = exp-list(1, v[3]);
+      let cons-head-copy = a(1, v[2], null); // ← copy the head of cons using v[1]
+      let cons-tail-copy = exp-list(1, v[3], null);
       store(ptr[0], d);
       store(ptr[1], a);
       store(ptr[2], cons-head-copy);
       store(ptr[3], cons-tail-copy);
       ptr
     }
+  } else {
+    {4-words}
   }
 }
 ```
 
-The point is that the type information in a value is loaded at runtime and used to discard/copy values. Even when a constructor carries fewer fields, the resource exponential still works on the fixed-size layout, leaving the unused slots untouched.
+The point is that the type information in a value is loaded at runtime and used to discard/copy values. The same resource exponential also reports the fixed size used by the type. Even when a constructor carries fewer fields, the resource exponential still works on the fixed-size layout, leaving the unused slots untouched.
 
 ## Advanced: Function Types
 
@@ -296,7 +322,7 @@ This is more or less the usual closure conversion, except that we now have the t
 
 ### Discarding/Copying a Closure
 
-Knowing its internal representation, we can now discard/copy a closure. To copy a closure, we can do the following:
+Knowing its internal representation, we can now discard/copy a closure. To make an owned copy of a closure, we can do the following:
 
 ```neut
 // copy a closure `cls`
@@ -305,7 +331,7 @@ let env-type = cls[0]; // get the type of the environment
 let env      = cls[1]; // get the pointer to the environment
 let label    = cls[2]; // get the label to the function
 
-let env-clone = env-type(1, env); // copy the environment using its type
+let env-clone = env-type(1, env, null); // copy the environment using its type
 
 // allocate new memory region for our new closure
 let new-ptr = malloc(mul-int(3, word-size));
@@ -329,18 +355,20 @@ This leads us to translate the function type as follows:
 
 // ↓
 
-define base.#.cls(action-selector, cls) {
+define base.#.cls(action-selector, cls, extra) {
   if action-selector == 0 {
     // discard
 
     // discard the environment using its type
     let env-type = cls[0];
     let env      = cls[1];
-    env-type(0, env);
+    env-type(0, env, 1);
 
     // discard the tuple of the closure
-    free(cls)
-  } else {
+    if extra == 1 {
+      free(cls)
+    }
+  } else if action-selector == 1 {
     // copy
 
     // get the original values
@@ -349,16 +377,22 @@ define base.#.cls(action-selector, cls) {
     let label    = cls[2];
 
     // copy the environment using its type
-    let env-clone = env-type(1, env);
+    let env-clone = env-type(1, env, null);
 
-    let new-ptr = malloc(mul-int(3, word-size));
+    let new-ptr =
+      if extra == null {
+        malloc(mul-int(3, word-size))
+      } else {
+        extra
+      };
     // copy the original values
     store(new-ptr[0], env-type);
     store(new-ptr[1], env-clone);
     store(new-ptr[2], label);
 
-    // ... and return the new closure
     new-ptr
+  } else {
+    mul-int(3, word-size)
   }
 }
 ```

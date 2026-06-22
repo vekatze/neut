@@ -3,7 +3,7 @@ import {
   core.int.io {print-int-line},
   core.memory {malloc},
   core.memory.unsafe {free, load-int, store-int},
-  core.pointer {shift},
+  core.pointer {is-null-pointer, shift},
   core.word {size},
 }
 
@@ -16,11 +16,20 @@ data entity {
 }
 
 resource pair-res {
-  (v: pointer) => {
-    free(v)
+  (v: pointer, should-release: int) => {
+    if eq-int(should-release, 1) {
+      free(v)
+    } else {
+      Unit
+    }
   },
-  (v: pointer) => {
-    let p = malloc(C-Size(mul-int(2, size)));
+  (v: pointer, dest: pointer) => {
+    let p =
+      if is-null-pointer(dest) {
+        malloc(C-Size(mul-int(2, size)))
+      } else {
+        dest
+      };
     store-int(load-int(v), p);
     store-int(load-int(shift(v, size)), shift(p, size));
     p

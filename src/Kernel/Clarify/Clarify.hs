@@ -367,10 +367,11 @@ clarifyStmt h stmt =
       let context = newContext liftedName
       switch <- liftIO $ Gensym.createVar (gensymHandle h) "switch"
       arg@(argVarName, _) <- liftIO $ Gensym.createVar (gensymHandle h) "arg"
+      extra@(extraVarName, _) <- liftIO $ Gensym.createVar (gensymHandle h) "extra"
       size <- clarifyResourceSize h resourceSize
-      discard <- clarifyTerm h context (m :< TM.PiElim PEK.Normal discarder [] [m :< TM.Var argVarName] [])
-      copy <- clarifyTerm h context (m :< TM.PiElim PEK.Normal copier [] [m :< TM.Var argVarName] [])
-      let resourceSpec = Utility.ResourceSpec {switch, arg, discard, copy, size, defaultValues = []}
+      discard <- clarifyTerm h context (m :< TM.PiElim PEK.Normal discarder [] [m :< TM.Var argVarName, m :< TM.Var extraVarName] [])
+      copy <- clarifyTerm h context (m :< TM.PiElim PEK.Normal copier [] [m :< TM.Var argVarName, m :< TM.Var extraVarName] [])
+      let resourceSpec = Utility.ResourceSpec {switch, arg, extra, discard, copy, size, defaultValues = []}
       liftIO $ Utility.registerSwitcher (utilityHandle h) O.Clear liftedName resourceSpec
       return $ C.Def dd O.Clear [] (C.UpIntro $ C.VarGlobal liftedName AN.argNumS4 (FCT.Cod BLT.Pointer))
     StmtVariadic {} -> do
@@ -395,7 +396,7 @@ makeDestParam h = do
 getSizeComp :: Handle -> C.Comp -> IO C.Comp
 getSizeComp h codType = do
   (typeName, typeVar) <- Gensym.createVar (gensymHandle h) "type"
-  return $ C.UpElim True typeName codType (C.PiElimDownElim True typeVar [intTerm h (2 :: Int), C.null])
+  return $ C.UpElim True typeName codType (C.PiElimDownElim True typeVar [intTerm h (2 :: Int), C.null, C.null])
 
 toDestPassing :: Handle -> Ident -> C.Comp -> C.Comp -> IO C.Comp
 toDestPassing h dest codType e = do
@@ -443,9 +444,10 @@ registerDefaultEnvType h name defaultValues = do
     unless isAlreadyRegistered $ do
       switch <- Gensym.createVar (gensymHandle h) "switch"
       arg@(_, argVar) <- Gensym.createVar (gensymHandle h) "arg"
+      extra <- Gensym.createVar (gensymHandle h) "extra"
       let discard = C.UpIntro C.null
       let copy = C.UpIntro argVar
-      let resourceSpec = Utility.ResourceSpec {switch, arg, discard, copy, size = Utility.returnIntComp (utilityHandle h) (-1), defaultValues}
+      let resourceSpec = Utility.ResourceSpec {switch, arg, extra, discard, copy, size = Utility.returnIntComp (utilityHandle h) (-1), defaultValues}
       Utility.registerSwitcher (utilityHandle h) O.Clear envTypeName resourceSpec
 
 registerDefaultFunctions ::
@@ -1057,13 +1059,14 @@ clarifyMagic h context der = do
           return $ C.Primitive (C.Magic (LM.Global name lt))
         LM.OpaqueValue e ->
           clarifyTerm h context e
-        LM.CallType func arg1 arg2 -> do
+        LM.CallType func arg1 arg2 arg3 -> do
           (funcVarName, func', funcVar) <- clarifyPlus h context func
           (arg1VarName, arg1', arg1Var) <- clarifyPlus h context arg1
           (arg2VarName, arg2', arg2Var) <- clarifyPlus h context arg2
+          (arg3VarName, arg3', arg3Var) <- clarifyPlus h context arg3
           return $
-            Utility.bindLet [(funcVarName, func'), (arg1VarName, arg1'), (arg2VarName, arg2')] $
-              C.Primitive (C.Magic (LM.CallType funcVar arg1Var arg2Var))
+            Utility.bindLet [(funcVarName, func'), (arg1VarName, arg1'), (arg2VarName, arg2'), (arg3VarName, arg3')] $
+              C.Primitive (C.Magic (LM.CallType funcVar arg1Var arg2Var arg3Var))
     M.Calloc _ num size -> do
       (numVarName, num', numVar) <- clarifyPlus h context num
       (sizeVarName, size', sizeVar) <- clarifyPlus h context size
@@ -1300,7 +1303,7 @@ resolveDefaultTriple h envTypeVarName envVar impVals (i, mOverride) =
       return triple
     Nothing -> do
       (labelName, labelVar) <- Gensym.createVar (gensymHandle h) "label"
-      let labelComp = C.PiElimDownElim False (C.VarLocal envTypeVarName) [intTerm h (i + 3), C.null]
+      let labelComp = C.PiElimDownElim False (C.VarLocal envTypeVarName) [intTerm h (i + 3), C.null, C.null]
       defaultComp <-
         Utility.bindLet [(labelName, labelComp)]
           <$> callDefaultLabel h envTypeVarName envVar impVals labelVar
@@ -1341,7 +1344,7 @@ callDefaultLabel ::
   IO C.Comp
 callDefaultLabel h envTypeVarName envVar impVals labelVar = do
   (envCopyName, envCopyVar) <- Gensym.createVar (gensymHandle h) "env"
-  let envCopyComp = C.PiElimDownElim False (C.VarLocal envTypeVarName) [intTerm h (1 :: Int), envVar]
+  let envCopyComp = C.PiElimDownElim False (C.VarLocal envTypeVarName) [intTerm h (1 :: Int), envVar, C.null]
   return $
     Utility.bindLet [(envCopyName, envCopyComp)] $
       C.PiElimDownElim False labelVar (impVals ++ [envCopyVar, C.intValue0])

@@ -2,12 +2,15 @@ module Kernel.Clarify.Internal.Utility
   ( Handle,
     ResourceSpec (..),
     new,
+    wordCountToByteSize,
     returnIntComp,
     returnByteSizeComp,
     toAffineApp,
     toAffineAppWith,
+    toDropInPlaceAppWith,
     toRelevantApp,
     toRelevantAppWith,
+    toCopyIntoApp,
     bindLet,
     bindLetWithReducibility,
     irreducibleBindLet,
@@ -46,7 +49,7 @@ new gensymHandle substHandle auxEnvHandle baseSize = do
 
 -- toAffineApp h x t ~>
 --   bind exp := t in
---   exp @ (0, x)
+--   exp @ (0, x, 1)
 toAffineApp :: Handle -> C.Value -> C.Comp -> IO C.Comp
 toAffineApp h v t = do
   toAffineAppWith h False v t
@@ -55,11 +58,19 @@ toAffineAppWith :: Handle -> C.ForceInline -> C.Value -> C.Comp -> IO C.Comp
 toAffineAppWith h forceInline v t = do
   (expVarName, expVar) <- Gensym.createVar (gensymHandle h) "exp"
   let switch = C.Int (dataSizeToIntSize (baseSize h)) 0
-  return $ C.UpElim True expVarName t (C.PiElimDownElim forceInline expVar [switch, v])
+  let shouldRelease = C.Int (dataSizeToIntSize (baseSize h)) 1
+  return $ C.UpElim True expVarName t (C.PiElimDownElim forceInline expVar [switch, v, shouldRelease])
+
+toDropInPlaceAppWith :: Handle -> C.ForceInline -> C.Value -> C.Comp -> IO C.Comp
+toDropInPlaceAppWith h forceInline v t = do
+  (expVarName, expVar) <- Gensym.createVar (gensymHandle h) "exp"
+  let switch = C.Int (dataSizeToIntSize (baseSize h)) 0
+  let shouldRelease = C.Int (dataSizeToIntSize (baseSize h)) 0
+  return $ C.UpElim True expVarName t (C.PiElimDownElim forceInline expVar [switch, v, shouldRelease])
 
 -- toRelevantApp h x t ~>
 --   bind exp := t in
---   exp @ (1, x)
+--   exp @ (1, x, null)
 toRelevantApp :: Handle -> C.Value -> C.Comp -> IO C.Comp
 toRelevantApp h v t = do
   toRelevantAppWith h False v t
@@ -68,7 +79,17 @@ toRelevantAppWith :: Handle -> C.ForceInline -> C.Value -> C.Comp -> IO C.Comp
 toRelevantAppWith h forceInline v t = do
   (expVarName, expVar) <- Gensym.createVar (gensymHandle h) "exp"
   let switch = C.Int (dataSizeToIntSize (baseSize h)) 1
-  return $ C.UpElim True expVarName t (C.PiElimDownElim forceInline expVar [switch, v])
+  return $ C.UpElim True expVarName t (C.PiElimDownElim forceInline expVar [switch, v, C.null])
+
+toCopyIntoApp :: Handle -> C.Value -> C.Value -> C.Comp -> IO C.Comp
+toCopyIntoApp h source dest t = do
+  toCopyIntoAppWith h False source dest t
+
+toCopyIntoAppWith :: Handle -> C.ForceInline -> C.Value -> C.Value -> C.Comp -> IO C.Comp
+toCopyIntoAppWith h forceInline source dest t = do
+  (expVarName, expVar) <- Gensym.createVar (gensymHandle h) "exp"
+  let switch = C.Int (dataSizeToIntSize (baseSize h)) 1
+  return $ C.UpElim True expVarName t (C.PiElimDownElim forceInline expVar [switch, source, dest])
 
 bindLet :: [(Ident, C.Comp)] -> C.Comp -> C.Comp
 bindLet =
@@ -93,10 +114,11 @@ makeSwitcher ::
 makeSwitcher h resourceSpec = do
   let ResourceSpec {discard, copy, size, defaultValues} = resourceSpec
   let (argVarName, _) = arg resourceSpec
+  let (extraVarName, _) = extra resourceSpec
   let (switchVarName, switchVar) = switch resourceSpec
   let defaultCases = zipWith (\i v -> (EC.Int i, C.UpIntro v)) [3 ..] defaultValues
-  enumElim <- getEnumElim h [argVarName] switchVar discard ((EC.Int 1, copy) : (EC.Int 2, size) : defaultCases)
-  return ([switchVarName, argVarName], enumElim)
+  enumElim <- getEnumElim h [argVarName, extraVarName] switchVar discard ((EC.Int 1, copy) : (EC.Int 2, size) : defaultCases)
+  return ([switchVarName, argVarName, extraVarName], enumElim)
 
 makeSwitcherStmt ::
   Handle ->
@@ -111,6 +133,7 @@ makeSwitcherStmt h opacity name resourceSpec = do
 data ResourceSpec = ResourceSpec
   { switch :: (Ident, C.Value),
     arg :: (Ident, C.Value),
+    extra :: (Ident, C.Value),
     discard :: C.Comp,
     copy :: C.Comp,
     size :: C.Comp,
@@ -121,9 +144,13 @@ returnIntComp :: Handle -> Integer -> C.Comp
 returnIntComp h value =
   C.UpIntro $ C.Int (dataSizeToIntSize (baseSize h)) value
 
+wordCountToByteSize :: Handle -> Integer -> Integer
+wordCountToByteSize h wordCount =
+  wordCount * toInteger (DS.reify (baseSize h) `div` 8)
+
 returnByteSizeComp :: Handle -> Integer -> C.Comp
 returnByteSizeComp h wordCount =
-  returnIntComp h $ wordCount * toInteger (DS.reify (baseSize h) `div` 8)
+  returnIntComp h $ wordCountToByteSize h wordCount
 
 registerSwitcher ::
   Handle ->
