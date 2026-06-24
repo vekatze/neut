@@ -86,6 +86,8 @@ inferStmt h stmt =
       codType' <- inferType h''' codType
       case stmtKind of
         SK.Macro -> do
+          unless (null defaultArgs') $ do
+            raiseError m "`define-meta` cannot have default arguments; use an `inline-meta` wrapper instead"
           forM_ (expArgs' ++ map fst defaultArgs') $ \(mx, _, _, t) ->
             checkIsCodeType h''' mx t
           checkIsCodeType h''' m codType'
@@ -126,6 +128,9 @@ inferStmt h stmt =
       liftIO $ insertType h dd piType
       constrainResourceHandlers h m unitType' discarderType copierType
       return $ WeakStmtDefineResource m dd resourceID unitType' discarder' copier' resourceSize'
+    WeakStmtTrope m name defineMetaList -> do
+      defineMetaList' <- mapM (inferDefineMeta h) defineMetaList
+      return $ WeakStmtTrope m name defineMetaList'
     WeakStmtVariadic kind m dd -> do
       return $ WeakStmtVariadic kind m dd
     WeakStmtNominal m geistList -> do
@@ -135,6 +140,40 @@ inferStmt h stmt =
       return $ WeakStmtNominal m geistList'
     WeakStmtForeign foreignList ->
       return $ WeakStmtForeign foreignList
+
+inferDefineMeta :: Handle -> WeakDefineMeta -> App WeakDefineMeta
+inferDefineMeta h defineMeta = do
+  let m = weakDefineMetaLoc defineMeta
+  targetArgs' <- mapM (inferType h) $ weakDefineMetaTargetArgs defineMeta
+  targetType <- Type.lookup' (typeHandle h) m (weakDefineMetaTarget defineMeta)
+  targetType' <- resolveType h targetType
+  (expectedExpArgs, expectedCod) <-
+    case targetType' of
+      _ :< WT.Pi _ impParams expParams defaultParams cod -> do
+        unless (null defaultParams) $ do
+          raiseError m "The target of a `define-meta` in a `trope` cannot have default arguments"
+        ensureImplicitArityCorrectness h (m :< WT.VarGlobal (AttrVG.new AN.zero) (weakDefineMetaTarget defineMeta)) (length impParams) (length targetArgs')
+        targetArgsWithKinds <- mapM (inferTypeWithKind h) targetArgs'
+        subType <- inferArgsTypes h IntMap.empty m targetArgsWithKinds impParams
+        (expParams', subType') <- substTypeBinder h subType expParams
+        cod' <- liftIO $ Subst.substType (substHandle h) subType' cod
+        return (expParams', cod')
+      _ ->
+        raiseError m $ "Expected a `define-meta` target, but got: " <> toTextType targetType'
+  (expArgs', h') <- inferBinder' h $ weakDefineMetaExpArgs defineMeta
+  cod' <- inferType h' $ weakDefineMetaCod defineMeta
+  let expectedHelperType = m :< WT.Pi PK.normal [] expectedExpArgs [] expectedCod
+  let actualHelperType = m :< WT.Pi PK.normal [] expArgs' [] cod'
+  liftIO $ Constraint.insert (constraintHandle h') expectedHelperType actualHelperType
+  (body', bodyType) <- infer h' $ weakDefineMetaBody defineMeta
+  liftIO $ Constraint.insert (constraintHandle h') cod' bodyType
+  return
+    defineMeta
+      { weakDefineMetaTargetArgs = targetArgs',
+        weakDefineMetaExpArgs = expArgs',
+        weakDefineMetaCod = cod',
+        weakDefineMetaBody = body'
+      }
 
 inferGeist :: Handle -> NominalTag -> G.Geist WT.WeakType WT.WeakTerm -> App (G.Geist WT.WeakType WT.WeakTerm)
 inferGeist h tag (G.Geist {..}) = do
@@ -371,6 +410,9 @@ infer h term =
       liftIO $ Constraint.insert (constraintHandle h) t' t1'
       (e2', t2') <- infer h e2
       return (m :< WT.Let opacity (mx, k, x, t') e1' e2', t2')
+    m :< WT.Invoke tropeNames body -> do
+      (body', bodyType) <- infer h body
+      return (m :< WT.Invoke tropeNames body', bodyType)
     m :< WT.Prim prim ->
       case prim of
         WPV.Int t v -> do

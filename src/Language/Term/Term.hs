@@ -80,6 +80,7 @@ data TermF a
   | TauElim (Hint, Ident) a a
   | Actual Type a
   | Let O.Opacity (BinderF Type) a a
+  | Invoke [DD.DefiniteDescription] a
   | Prim (PV.PrimValue Type)
   | Magic (Magic BLT.BaseLowType Type a)
   deriving (Generic)

@@ -16,6 +16,7 @@ import Control.Monad.IO.Class
 import Data.Bifunctor
 import Data.Bitraversable (bimapM)
 import Data.ByteString qualified as BS
+import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.IntMap qualified as IntMap
 import Data.Set qualified as S
@@ -31,6 +32,7 @@ import Kernel.Common.Handle.Global.OptimizableData qualified as OptimizableData
 import Kernel.Common.Handle.Global.Platform qualified as Platform
 import Kernel.Common.Handle.Global.Resource qualified as Resource
 import Kernel.Common.Handle.Global.Type qualified as Type
+import Kernel.Common.Handle.Local.Tag qualified as Tag
 import Kernel.Common.ManageCache qualified as Cache
 import Kernel.Common.OptimizableData qualified as OD
 import Kernel.Common.ReadableDD qualified as ReadableDD
@@ -42,6 +44,7 @@ import Kernel.Elaborate.Internal.Handle.Def qualified as Definition
 import Kernel.Elaborate.Internal.Handle.Elaborate
 import Kernel.Elaborate.Internal.Handle.Hole qualified as Hole
 import Kernel.Elaborate.Internal.Handle.LocalLogs qualified as LocalLogs
+import Kernel.Elaborate.Internal.Handle.Trope qualified as Trope
 import Kernel.Elaborate.Internal.Handle.TypeDef qualified as TypeDef
 import Kernel.Elaborate.Internal.Handle.WeakDecl qualified as WeakDecl
 import Kernel.Elaborate.Internal.Handle.WeakDef qualified as WeakDef
@@ -152,6 +155,8 @@ synthesizeStmtList h t logs globalReferenceList stmtList = do
         Cache.globalReferenceList = globalReferenceList,
         Cache.countSnapshot = countSnapshot
       }
+  tmap <- liftIO $ Tag.get (tagHandle h)
+  Cache.saveLocationCache (pathHandle h) t (currentSource h) $ Cache.LocationCache tmap
   liftIO $ GlobalRemark.insert (globalRemarkHandle h) logs'
   return stmtList''
 
@@ -181,20 +186,22 @@ elaborateStmt h stmt = do
         affHandle <- liftIO $ EnsureAffinity.new h
         let dummyAttr = AttrL.Attr {lamKind = LK.Normal Nothing False codType', identity = 0}
         EnsureAffinity.ensureAffinity affHandle $ m :< TM.PiIntro dummyAttr impArgs' expArgs' defaultArgs' e'
-      e'' <-
-        if not $ SK.isMacroStmtKind stmtKind
-          then inline h m e'
-          else return e'
-      impArgs'' <- mapM (inlineBinder h) impArgs'
-      defaultArgs'' <- forM defaultArgs' $ \(binder, value) -> do
-        binder' <- inlineBinder h binder
-        value' <-
-          if SK.isMacroStmtKind stmtKind
-            then inlineWithoutResidualChecks h m value
-            else inline h m value
-        return (binder', value')
-      expArgs'' <- mapM (inlineBinder h) expArgs'
-      codType'' <- inlineType h m codType'
+      (impArgs'', defaultArgs'', expArgs'', codType'', e'') <- withFreshSpecializationTable h $ do
+        e'' <-
+          if not $ SK.isMacroStmtKind stmtKind
+            then inline h m e'
+            else return e'
+        impArgs'' <- mapM (inlineBinder h) impArgs'
+        defaultArgs'' <- forM defaultArgs' $ \(binder, value) -> do
+          binder' <- inlineBinder h binder
+          value' <-
+            if SK.isMacroStmtKind stmtKind
+              then inlineWithoutResidualChecks h m value
+              else inline h m value
+          return (binder', value')
+        expArgs'' <- mapM (inlineBinder h) expArgs'
+        codType'' <- inlineType h m codType'
+        return (impArgs'', defaultArgs'', expArgs'', codType'', e'')
       when (isConstLike && not (isConstantMetaStmtKind stmtKind)) $ do
         unless (TM.isValue e'') $ do
           raiseError m "Could not reduce the body of this definition into a constant"
@@ -239,6 +246,11 @@ elaborateStmt h stmt = do
       let result = StmtDefineResource (SavedHint m) dd resourceID unitType'' discarder'' copier'' resourceSize''
       insertStmt h result
       return ([result], [])
+    WeakStmtTrope m name defineMetaList -> do
+      defineMetaList' <- mapM (elaborateDefineMeta h) defineMetaList
+      let tropeStmt = StmtTrope (SavedHint m) name defineMetaList'
+      insertStmt h tropeStmt
+      return ([tropeStmt], [])
     WeakStmtVariadic kind m dd -> do
       return ([StmtVariadic kind (SavedHint m) dd], [])
     WeakStmtNominal _ geistList -> do
@@ -261,6 +273,40 @@ elaborateGeist h (G.Geist {..}) = do
   expArgs' <- mapM (elaborateWeakBinder h) expArgs
   cod' <- elaborateType h cod
   return $ G.Geist {impArgs = impArgs', defaultArgs = defaultArgs', expArgs = expArgs', cod = cod', ..}
+
+elaborateDefineMeta :: Handle -> WeakDefineMeta -> App DefineMeta
+elaborateDefineMeta h defineMeta = do
+  let m = weakDefineMetaLoc defineMeta
+  ensureDefineMetaTarget h m (weakDefineMetaTarget defineMeta)
+  targetArgs' <- mapM (elaborateType h) $ weakDefineMetaTargetArgs defineMeta
+  targetArgs'' <- mapM (inlineType h m) targetArgs'
+  expArgs' <- mapM (elaborateWeakBinder h) $ weakDefineMetaExpArgs defineMeta
+  codType' <- elaborateType h $ weakDefineMetaCod defineMeta
+  body' <- elaborate' h $ weakDefineMetaBody defineMeta
+  expArgs'' <- mapM (inlineBinder h) expArgs'
+  codType'' <- inlineType h m codType'
+  return
+    DefineMeta
+      { defineMetaLoc = SavedHint m,
+        defineMetaTargetName = weakDefineMetaTarget defineMeta,
+        defineMetaTargetArgs = targetArgs'',
+        defineMetaExpArgs = expArgs'',
+        defineMetaCodType = codType'',
+        defineMetaBody = body',
+        defineMetaHelperName = weakDefineMetaHelperName defineMeta
+      }
+
+ensureDefineMetaTarget :: Handle -> Hint -> DD.DefiniteDescription -> App ()
+ensureDefineMetaTarget h m targetName = do
+  dmap <- liftIO $ Definition.get' (defHandle h)
+  case Map.lookup targetName dmap of
+    Just defInfo
+      | Inline.defKind defInfo == Inline.Macro ->
+          return ()
+      | otherwise ->
+          raiseError m $ "`" <> showDD h targetName <> "` is not a `define-meta` definition"
+    Nothing ->
+      raiseError m $ "`" <> showDD h targetName <> "` is not available as a `define-meta` definition"
 
 checkResidualCheck :: Handle -> Inline.ResidualCheck -> App [L.Log]
 checkResidualCheck h check =
@@ -377,6 +423,8 @@ insertStmt h stmt = do
           liftIO $ Resource.insert (Global.resourceHandle $ globalHandle h) dd resourceSize'
         Nothing ->
           return ()
+    StmtTrope _ name defineMetaList -> do
+      liftIO $ Trope.insert (tropeHandle h) name defineMetaList
     StmtVariadic {} ->
       return ()
     StmtForeign _ -> do
@@ -395,6 +443,8 @@ insertWeakStmt h stmt = do
     WeakStmtDefineResource m dd resourceID _ _ _ _ -> do
       let resourceType = m :< WT.Resource dd resourceID
       liftIO $ WeakTypeDef.insert' (weakTypeDefHandle h) (SK.toOpacityType SK.Alias) dd [] resourceType
+    WeakStmtTrope {} -> do
+      return ()
     WeakStmtNominal {} -> do
       return ()
     WeakStmtVariadic {} -> do
@@ -690,6 +740,9 @@ elaborate' h term = do
           return $ m :< TM.Actual t' letTerm
         _ ->
           return letTerm
+    m :< WT.Invoke tropeNames body -> do
+      body' <- elaborate' h body
+      return $ m :< TM.Invoke tropeNames body'
     m :< WT.Prim primValue -> do
       primValue' <- elaboratePrimValue h m primValue
       return $ m :< TM.Prim primValue'
@@ -1000,6 +1053,14 @@ inlineType h m t = do
   env <- liftIO $ inlineEnv h
   inlineHandle <- liftIO $ Inline.new env m False
   Inline.inlineType inlineHandle t
+
+withFreshSpecializationTable :: Handle -> App a -> App a
+withFreshSpecializationTable h action = do
+  oldTable <- liftIO $ readIORef (specializationTable h)
+  liftIO $ writeIORef (specializationTable h) mempty
+  result <- action
+  liftIO $ writeIORef (specializationTable h) oldTable
+  return result
 
 elaborateLet :: Handle -> (BinderF WT.WeakType, WT.WeakTerm) -> App (BinderF TM.Type, TM.Term)
 elaborateLet h (xt, e) = do

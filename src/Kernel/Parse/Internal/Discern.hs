@@ -173,6 +173,15 @@ discernStmt h stmt = do
       liftIO $ TopCandidate.insert (H.topCandidateHandle h) $ do
         TopCandidate {loc = metaLocation m, dd = dd, kind = Constant}
       return [WeakStmtDefineResource m dd resourceID unitType discarder' copier' resourceSize']
+    PostRawStmtTrope _ m (dd, _) defineMetaList _ -> do
+      registerTopLevelName h stmt
+      let h' = h {H.currentStage = 1}
+      defineMetaList' <- mapM (discernDefineMeta h') $ SE.extract defineMetaList
+      liftIO $ Tag.insertGlobalVar (H.tagHandle h) m dd False m
+      when (metaShouldSaveLocation m) $ do
+        liftIO $ TopCandidate.insert (H.topCandidateHandle h) $ do
+          TopCandidate {loc = metaLocation m, dd = dd, kind = Function}
+      return [WeakStmtTrope m dd defineMetaList']
     PostRawStmtVariadic kind m dd -> do
       registerTopLevelName h stmt
       liftIO $ Tag.insertGlobalVar (H.tagHandle h) m dd True m
@@ -190,6 +199,34 @@ discernStmt h stmt = do
       foreignList'' <- mapM (mapM (discernType h)) foreignList'
       foreign' <- liftIO $ interpretForeign h foreignList''
       return [WeakStmtForeign foreign']
+
+discernDefineMeta :: H.Handle -> PostRawDefineMeta -> App WeakDefineMeta
+discernDefineMeta h defineMeta = do
+  let m = postDefineMetaLoc defineMeta
+  targetName <- resolveDefineMetaTargetName h m $ fst $ postDefineMetaTarget defineMeta
+  targetArgs <- mapM (discernType h) $ SE.extract $ fst $ postDefineMetaTargetArgs defineMeta
+  (expArgs, h') <- discernBinder h (RT.extractArgs $ postDefineMetaExpArgs defineMeta) (postDefineMetaEndLoc defineMeta)
+  cod <- discernType h' $ snd $ postDefineMetaCod defineMeta
+  body <- discern h' $ postDefineMetaBody defineMeta
+  return
+    WeakDefineMeta
+      { weakDefineMetaLoc = m,
+        weakDefineMetaTarget = targetName,
+        weakDefineMetaTargetArgs = targetArgs,
+        weakDefineMetaExpArgs = expArgs,
+        weakDefineMetaCod = cod,
+        weakDefineMetaBody = body,
+        weakDefineMetaHelperName = postDefineMetaHelperName defineMeta
+      }
+
+resolveDefineMetaTargetName :: H.Handle -> Hint -> Name -> App DD.DefiniteDescription
+resolveDefineMetaTargetName h m name = do
+  (dd, (_, gn)) <- resolveName h m name
+  case gn of
+    GN.TopLevelMetaTerm {} ->
+      return dd
+    _ ->
+      raiseError m $ "`" <> DD.reify dd <> "` is not a meta definition"
 
 discernGeist :: H.Handle -> Loc -> RT.RawGeist DD.DefiniteDescription -> App (G.Geist WT.WeakType WT.WeakTerm)
 discernGeist h endLoc geist = do
@@ -614,6 +651,10 @@ discern h term =
           discern h $
             bind startLoc endLoc mxt e1 $
               m :< RT.LetOn (RT.Plain True) [] resultParam [] x' [] e2 [] startLoc [] (m2' :< RT.Var resultVar) endLoc
+    m :< RT.Invoke _ tropeSeries _ body -> do
+      tropeNames <- mapM (resolveTropeName h) $ SE.extract tropeSeries
+      body' <- discern h body
+      return $ m :< WT.Invoke tropeNames body'
     m :< RT.RuneIntro r -> do
       return $ m :< WT.Prim (WPV.Rune r)
     m :< RT.Magic _ magic -> do
@@ -762,6 +803,15 @@ discern h term =
     m :< RT.Int i -> do
       let intType = m :< WT.PrimType (PT.Int IntSize64)
       return $ m :< WT.Prim (WPV.Int intType i)
+
+resolveTropeName :: H.Handle -> (Hint, Name) -> App DD.DefiniteDescription
+resolveTropeName h (m, name) = do
+  (dd, (_, gn)) <- resolveName h m name
+  case gn of
+    GN.Trope ->
+      return dd
+    _ ->
+      raiseError m $ "`" <> DD.reify dd <> "` is not a trope"
 
 discernType :: H.Handle -> RT.RawType -> App WT.WeakType
 discernType h ty =

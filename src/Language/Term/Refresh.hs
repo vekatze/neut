@@ -109,6 +109,9 @@ refresh h term =
       e1' <- refresh h e1
       ([mxt'], e2') <- refresh' h [mxt] e2
       return $ m :< TM.Let opacity mxt' e1' e2'
+    m :< TM.Invoke tropeNames body -> do
+      body' <- refresh h body
+      return $ m :< TM.Invoke tropeNames body'
     _ :< TM.Prim _ ->
       return term
     m :< TM.Magic der -> do

@@ -75,6 +75,8 @@ chainOf' tenv term =
       let xs1 = chainOf' tenv e1
       let xs2 = chainOfBinder tenv [mxt] [e2]
       xs1 ++ xs2
+    _ :< TM.Invoke _ body ->
+      chainOf' tenv body
     _ :< TM.Prim _ ->
       []
     _ :< TM.Magic der ->

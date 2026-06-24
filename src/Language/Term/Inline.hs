@@ -10,7 +10,7 @@ module Language.Term.Inline
 where
 
 import App.App (App)
-import App.Run (raiseError)
+import App.Run (raiseCritical, raiseError)
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.IO.Class
@@ -21,6 +21,7 @@ import Data.IntMap qualified as IntMap
 import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
 import Gensym.Gensym qualified as Gensym
+import Kernel.Common.Handle.Local.Tag qualified as Tag
 import Kernel.Elaborate.Internal.Handle.TypeDef qualified as TypeDef
 import Language.Common.ArgNum qualified as AN
 import Language.Common.Attr.DataIntro qualified as AttrDI
@@ -67,6 +68,7 @@ new env location shouldEmitResidualChecks = do
   let currentStage = initialStage
   let insideDefineMeta = False
   let localMetaMemo = []
+  let activeDefineMetaList = []
   return $ Handle {..}
 
 inline :: Handle -> TM.Term -> App TM.Term
@@ -164,14 +166,14 @@ inline' h term = do
                     (expParams', _ :< body') <- liftIO $ Subst.subst' (substHandle h) sub expParams body
                     body'' <- liftIO $ Refresh.refresh (refreshHandle h) $ m :< body'
                     inline' h $ bind (zip expParams' expArgsAll) body''
-        (_ :< TM.VarGlobal _ dd)
+        (mUse :< TM.VarGlobal _ dd)
           | Just defInfo <- Map.lookup dd dmap -> do
               let DefInfo {defImpBinders, defExpBinders, defDefaultArgs, defBody, codType, defKind} = defInfo
               let canReduce = canInlineDefKind defKind
               reduceApplication defImpBinders defExpBinders defDefaultArgs canReduce $ \subType expParams expArgsAll ->
                 case defKind of
                   Macro ->
-                    specializeMacro h m dd defKind subType impArgs' expParams defBody codType expArgsAll
+                    specializeMacro h m mUse dd defKind subType impArgs' expParams defBody codType expArgsAll
                   _ -> do
                     let tracer = if isMacroDef defKind then withMacroHint h dd defKind m else id
                     if all TM.isValue expArgsAll
@@ -304,6 +306,9 @@ inline' h term = do
           mxt' <- inlineTypeBinder h mxt
           e2' <- inline' h e2
           return $ m :< TM.Let opacity mxt' e1' e2'
+    m :< TM.Invoke tropeNames body -> do
+      defineMetaList <- activateTropes h m tropeNames
+      inline' (h {activeDefineMetaList = defineMetaList ++ activeDefineMetaList h}) body
     m :< TM.Prim prim -> do
       case prim of
         PV.Int intType size value -> do
@@ -703,6 +708,38 @@ lookupSpecializationEntry typeArgs =
           | otherwise ->
               go rest
 
+lookupActiveDefineMeta :: Handle -> DD.DefiniteDescription -> [TM.Type] -> App (Maybe Stmt.DefineMeta)
+lookupActiveDefineMeta h targetName targetArgs = do
+  let go defineMetaList =
+        case defineMetaList of
+          [] ->
+            Nothing
+          defineMeta : rest
+            | Stmt.defineMetaTargetName defineMeta == targetName,
+              TermEq.eqTypes (Stmt.defineMetaTargetArgs defineMeta) targetArgs ->
+                Just defineMeta
+            | otherwise ->
+                go rest
+  return $ go $ activeDefineMetaList h
+
+retargetTag :: Handle -> Hint -> Stmt.DefineMeta -> App ()
+retargetTag h mUse activeDefineMeta = do
+  let SavedHint mDef = Stmt.defineMetaLoc activeDefineMeta
+  liftIO $ Tag.retarget (tagHandle h) mUse mDef
+
+activateTropes :: Handle -> Hint -> [DD.DefiniteDescription] -> App [Stmt.DefineMeta]
+activateTropes h m tropeNames = do
+  defineMetaLists <- mapM (lookupTrope h m) tropeNames
+  return $ reverse $ concat defineMetaLists
+
+lookupTrope :: Handle -> Hint -> DD.DefiniteDescription -> App [Stmt.DefineMeta]
+lookupTrope h m tropeName = do
+  case Map.lookup tropeName (tropeMap h) of
+    Just defineMetaList ->
+      return defineMetaList
+    Nothing ->
+      raiseCritical m $ "Unknown trope: `" <> DD.reify tropeName <> "`"
+
 createSpecializationName :: Handle -> DD.DefiniteDescription -> App DD.DefiniteDescription
 createSpecializationName h dd = do
   identity <- liftIO $ Gensym.newCount (gensymHandle h)
@@ -724,6 +761,7 @@ withMacroHint h dd defKind hint action = do
 specializeMacro ::
   Handle ->
   Hint ->
+  Hint ->
   DD.DefiniteDescription ->
   DefKind ->
   Subst.Subst ->
@@ -733,32 +771,53 @@ specializeMacro ::
   TM.Type ->
   [TM.Term] ->
   App TM.Term
-specializeMacro h m dd defKind subType impArgs' expParams body codType expArgsAll = do
-  let tracer = withMacroHint h dd defKind m
-  mSpecializedName <- lookupSpecialization h dd impArgs'
-  case mSpecializedName of
-    Just specializedName ->
-      return $ applySpecialization m specializedName expArgsAll
+specializeMacro h m mUse dd defKind subType impArgs' expParams body codType expArgsAll = do
+  mActiveDefineMeta <- lookupActiveDefineMeta h dd impArgs'
+  case mActiveDefineMeta of
+    Just activeDefineMeta -> do
+      retargetTag h mUse activeDefineMeta
+      let helperName = Stmt.defineMetaHelperName activeDefineMeta
+      mSpecializedName <- lookupSpecialization h helperName impArgs'
+      case mSpecializedName of
+        Just specializedName ->
+          return $ applySpecialization m specializedName expArgsAll
+        Nothing -> do
+          let expParams' = Stmt.defineMetaExpArgs activeDefineMeta
+          let body' = Stmt.defineMetaBody activeDefineMeta
+          let codType' = Stmt.defineMetaCodType activeDefineMeta
+          specializeMacroBody h m dd defKind helperName impArgs' IntMap.empty expParams' body' codType' expArgsAll
     Nothing -> do
-      (expBinders', body') <- liftIO $ Subst.subst' (substHandle h) subType expParams body
-      specializedName <- createSpecializationName h dd
-      codType' <- liftIO $ Subst.substType (substHandle h) subType codType
-      beginSpecialization h dd impArgs' specializedName
-      let hDefineMeta = h {currentStage = 1, initialStage = 1, insideDefineMeta = True}
-      body'' <- tracer $ liftIO (Refresh.refresh (refreshHandle h) body') >>= inline hDefineMeta
-      let stmt =
-            Stmt.StmtDefine
-              False
-              SK.Define
-              (SavedHint m)
-              specializedName
-              []
-              expBinders'
-              []
-              codType'
-              body''
-      completeSpecialization h stmt
-      return $ applySpecialization m specializedName expArgsAll
+      mSpecializedName <- lookupSpecialization h dd impArgs'
+      case mSpecializedName of
+        Just specializedName ->
+          return $ applySpecialization m specializedName expArgsAll
+        Nothing -> do
+          specializeMacroBody h m dd defKind dd impArgs' subType expParams body codType expArgsAll
+
+specializeMacroBody ::
+  Handle ->
+  Hint ->
+  DD.DefiniteDescription ->
+  DefKind ->
+  DD.DefiniteDescription ->
+  [TM.Type] ->
+  Subst.Subst ->
+  [BinderF TM.Type] ->
+  TM.Term ->
+  TM.Type ->
+  [TM.Term] ->
+  App TM.Term
+specializeMacroBody h m dd defKind specializationKey impArgs' subType expParams body codType expArgsAll = do
+  let tracer = withMacroHint h dd defKind m
+  (expBinders', body') <- liftIO $ Subst.subst' (substHandle h) subType expParams body
+  specializedName <- createSpecializationName h specializationKey
+  codType' <- liftIO $ Subst.substType (substHandle h) subType codType
+  beginSpecialization h specializationKey impArgs' specializedName
+  let hDefineMeta = h {currentStage = 1, initialStage = 1, insideDefineMeta = True}
+  body'' <- tracer $ liftIO (Refresh.refresh (refreshHandle h) body') >>= inline hDefineMeta
+  let stmt = Stmt.StmtDefine False SK.Define (SavedHint m) specializedName [] expBinders' [] codType' body''
+  completeSpecialization h stmt
+  return $ applySpecialization m specializedName expArgsAll
 
 specializeLocalMeta ::
   Handle ->

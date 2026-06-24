@@ -64,6 +64,8 @@ freeVarsWithHints term =
       let set1 = freeVarsWithHints e1
       let set2 = freeVarsWithHintsBinderType [mxt] (freeVarsWithHints e2)
       S.union set1 set2
+    _ :< TM.Invoke _ body ->
+      freeVarsWithHints body
     _ :< TM.Prim prim ->
       case prim of
         PV.NoeticString t _ ->

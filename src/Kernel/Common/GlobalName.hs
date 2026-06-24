@@ -28,6 +28,7 @@ data GlobalName
   | Data ArgNum [(DD.DefiniteDescription, (Hint, GlobalName))] IsConstLike
   | DataIntro ArgNum ArgNum D.Discriminant IsConstLike
   | Rule RuleKind
+  | Trope
   deriving (Generic)
 
 getIsConstLike :: GlobalName -> IsConstLike
@@ -43,6 +44,8 @@ getIsConstLike gn =
       isConstLike
     DataIntro _ _ _ isConstLike ->
       isConstLike
+    Trope ->
+      False
     _ ->
       False
 
@@ -60,6 +63,8 @@ hasNoArgs gn =
     DataIntro dataArgNum consArgNum _ _ ->
       dataArgNum == fromInt 0 && consArgNum == fromInt 0
     Rule {} ->
+      False
+    Trope ->
       False
     PrimType _ ->
       True
@@ -79,6 +84,8 @@ disableConstLikeFlag gn =
       Data argNum consInfo False
     DataIntro dataArgNum consArgNum discriminant False ->
       DataIntro dataArgNum consArgNum discriminant False
+    Trope ->
+      Trope
     _ ->
       gn
 

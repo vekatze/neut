@@ -6,6 +6,7 @@ module Language.Term.Inline.Handle
     DefInfo (..),
     DefKind (..),
     SpecializationEntry (..),
+    TropeMap,
     ResidualCheck (..),
   )
 where
@@ -15,6 +16,7 @@ import Data.IORef
 import Data.Text qualified as T
 import Gensym.Handle qualified as GensymHandle
 import Kernel.Common.Handle.Global.Data qualified as Data
+import Kernel.Common.Handle.Local.Tag qualified as Tag
 import Kernel.Elaborate.Internal.Handle.TypeDef qualified as TypeDef
 import Language.Common.Binder
 import Language.Common.DataSize qualified as DS
@@ -50,6 +52,9 @@ type DefMap =
 type TypeDefMap =
   TypeDef.TypeDefMap
 
+type TropeMap =
+  Map.HashMap DD.DefiniteDescription [Stmt.DefineMeta]
+
 data SpecializationEntry = SpecializationEntry
   { specializationTypeArgs :: [TM.Type],
     specializationName :: DD.DefiniteDescription
@@ -69,6 +74,8 @@ data Handle = Handle
     dmap :: DefMap,
     localMetaDefMap :: IORef (Map.HashMap DD.DefiniteDescription DefInfo),
     typeDefMap :: TypeDefMap,
+    tropeMap :: TropeMap,
+    tagHandle :: Tag.Handle,
     dataHandle :: Data.Handle,
     inlineLimit :: Int,
     currentStepRef :: IORef Int,
@@ -84,5 +91,6 @@ data Handle = Handle
     initialStage :: Int,
     insideDefineMeta :: Bool,
     localMetaMemo :: [(DD.DefiniteDescription, [TM.Type], Ident)],
+    activeDefineMetaList :: [Stmt.DefineMeta],
     mainModuleDir :: T.Text
   }

@@ -8,6 +8,7 @@ module Kernel.Common.Cache
   )
 where
 
+import Control.Comonad.Cofree
 import Data.Bifunctor
 import Data.Binary
 import GHC.Generics
@@ -19,6 +20,7 @@ import Language.Common.DefiniteDescription qualified as DD
 import Language.Term.Compress qualified as TM
 import Language.Term.Extend qualified as TM
 import Language.Term.Stmt qualified as Stmt
+import Language.Term.Term qualified as Term
 import Logger.Log
 
 data Cache = Cache
@@ -98,6 +100,8 @@ compressStmt stmt =
       let copier' = TM.compress copier
       let resourceSize' = TM.compress resourceSize
       Stmt.StmtDefineResource m name resourceID unitType' discarder' copier' resourceSize'
+    Stmt.StmtTrope m name defineMetaList -> do
+      Stmt.StmtTrope m name $ map compressDefineMeta defineMetaList
     Stmt.StmtVariadic kind m name -> do
       Stmt.StmtVariadic kind m name
     Stmt.StmtForeign foreignList ->
@@ -128,7 +132,27 @@ extendStmt stmt =
       let copier' = TM.extend copier
       let resourceSize' = TM.extend resourceSize
       Stmt.StmtDefineResource m name resourceID unitType' discarder' copier' resourceSize'
+    Stmt.StmtTrope m name defineMetaList -> do
+      Stmt.StmtTrope m name $ map extendDefineMeta defineMetaList
     Stmt.StmtVariadic kind m name -> do
       Stmt.StmtVariadic kind m name
     Stmt.StmtForeign foreignList ->
       Stmt.StmtForeign foreignList
+
+compressDefineMeta :: Stmt.DefineMetaF Term.Type Term.Term -> Stmt.DefineMetaF (Cofree Term.TypeF ()) (Cofree Term.TermF ())
+compressDefineMeta defineMeta =
+  defineMeta
+    { Stmt.defineMetaTargetArgs = map TM.compressType $ Stmt.defineMetaTargetArgs defineMeta,
+      Stmt.defineMetaExpArgs = map TM.compressBinder $ Stmt.defineMetaExpArgs defineMeta,
+      Stmt.defineMetaCodType = TM.compressType $ Stmt.defineMetaCodType defineMeta,
+      Stmt.defineMetaBody = TM.compress $ Stmt.defineMetaBody defineMeta
+    }
+
+extendDefineMeta :: Stmt.DefineMetaF (Cofree Term.TypeF ()) (Cofree Term.TermF ()) -> Stmt.DefineMetaF Term.Type Term.Term
+extendDefineMeta defineMeta =
+  defineMeta
+    { Stmt.defineMetaTargetArgs = map TM.extendType $ Stmt.defineMetaTargetArgs defineMeta,
+      Stmt.defineMetaExpArgs = map TM.extendBinder $ Stmt.defineMetaExpArgs defineMeta,
+      Stmt.defineMetaCodType = TM.extendType $ Stmt.defineMetaCodType defineMeta,
+      Stmt.defineMetaBody = TM.extend $ Stmt.defineMetaBody defineMeta
+    }

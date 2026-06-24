@@ -15,7 +15,6 @@ import Kernel.Common.Handle.Global.Path qualified as Path
 import Kernel.Common.Handle.Local.Locator qualified as Locator
 import Kernel.Common.Handle.Local.RawImportSummary qualified as RawImportSummary
 import Kernel.Common.Handle.Local.SymLoc qualified as SymLoc
-import Kernel.Common.Handle.Local.Tag qualified as Tag
 import Kernel.Common.Handle.Local.TopCandidate qualified as TopCandidate
 import Kernel.Common.Import
 import Kernel.Common.ManageCache qualified as Cache
@@ -86,8 +85,6 @@ interpret h t source cacheOrContent = do
       return (Left cache, Cache.remarkList cache)
     Right prog -> do
       (prog', logs) <- interpret' h source prog
-      tmap <- liftIO $ Tag.get (Discern.tagHandle (discernHandle h))
-      Cache.saveLocationCache (pathHandle h) t source $ Cache.LocationCache tmap
       localVarTree <- liftIO $ SymLoc.get (symLocHandle h)
       topCandidate <- liftIO $ TopCandidate.get (topCandidateHandle h)
       rawImportSummary <- liftIO $ RawImportSummary.get (rawImportSummaryHandle h)

@@ -9,6 +9,9 @@ module Kernel.Parse.Internal.RawTerm
     preAscription,
     preBinder,
     ArrowMode (..),
+    mandatoryBinder,
+    betweenBrace',
+    interpretVarName,
     parseDef,
     parseAliasDef,
     parseGeist,
@@ -83,6 +86,8 @@ rawExpr h = do
           rawTermBoxElim h m variant c
         Nothing ->
           case headSymbol of
+            "invoke" ->
+              rawTermInvoke h m c
             "unpack-type" ->
               rawTermTauElim h m c
             "pin" ->
@@ -198,6 +203,17 @@ rawTerm' h m headSymbol c = do
       rawTermAdmit m c
     _ -> do
       rawTermBase Full h m headSymbol c
+
+rawTermInvoke :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
+rawTermInvoke h m c1 = do
+  tropes <- bareSeries SE.Comma $ do
+    mTrope <- getCurrentHint
+    (nameText, cName) <- symbol
+    name <- interpretVarName mTrope nameText
+    return ((mTrope, name), cName)
+  c2 <- delimiter ";"
+  (body, c) <- rawExpr h
+  return (m :< RT.Invoke c1 tropes c2 body, c)
 
 rawTermBase :: TermMode -> Handle -> Hint -> T.Text -> C -> Parser (RT.RawTerm, C)
 rawTermBase mode h m headSymbol c = do

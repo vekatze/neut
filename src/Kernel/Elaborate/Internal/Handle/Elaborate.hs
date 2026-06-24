@@ -27,12 +27,14 @@ import Kernel.Common.Handle.Global.OptimizableData qualified as OptimizableData
 import Kernel.Common.Handle.Global.Path qualified as Path
 import Kernel.Common.Handle.Global.Platform qualified as Platform
 import Kernel.Common.Handle.Global.Type qualified as Type
+import Kernel.Common.Handle.Local.Tag qualified as Tag
 import Kernel.Common.Module (Module (moduleInlineLimit))
 import Kernel.Common.Source
 import Kernel.Elaborate.Internal.Handle.Constraint qualified as Constraint
 import Kernel.Elaborate.Internal.Handle.Def qualified as Definition
 import Kernel.Elaborate.Internal.Handle.Hole qualified as Hole
 import Kernel.Elaborate.Internal.Handle.LocalLogs qualified as LocalLogs
+import Kernel.Elaborate.Internal.Handle.Trope qualified as Trope
 import Kernel.Elaborate.Internal.Handle.TypeDef qualified as TypeDef
 import Kernel.Elaborate.Internal.Handle.WeakDecl qualified as WeakDecl
 import Kernel.Elaborate.Internal.Handle.WeakDef qualified as WeakDef
@@ -65,6 +67,8 @@ data Handle = Handle
     typeHandle :: Type.Handle,
     weakDeclHandle :: WeakDecl.Handle,
     defHandle :: Definition.Handle,
+    tropeHandle :: Trope.Handle,
+    tagHandle :: Tag.Handle,
     typeDefHandle :: TypeDef.Handle,
     gensymHandle :: Gensym.Handle,
     keyArgHandle :: KeyArg.Handle,
@@ -124,6 +128,7 @@ inlineEnv :: Handle -> IO InlineEnv.Env
 inlineEnv h = do
   dmap <- Definition.get' (defHandle h)
   typeDefMap <- TypeDef.get' (typeDefHandle h)
+  tropeMap <- Trope.get (tropeHandle h)
   let baseSize = Platform.getDataSize (platformHandle h)
   let mainModuleDir = T.pack $ Env.getMainModuleDir (envHandle h)
   return $
@@ -131,6 +136,8 @@ inlineEnv h = do
       { InlineEnv.gensymHandle = gensymHandle h,
         InlineEnv.dmap = dmap,
         InlineEnv.typeDefMap = typeDefMap,
+        InlineEnv.tropeMap = tropeMap,
+        InlineEnv.tagHandle = tagHandle h,
         InlineEnv.dataHandle = dataHandle h,
         InlineEnv.baseSize = baseSize,
         InlineEnv.inlineLimit = inlineLimit h,

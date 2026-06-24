@@ -30,6 +30,7 @@ import Kernel.Common.Handle.Global.Resource qualified as Resource
 import Kernel.Common.Handle.Global.Type qualified as Type
 import Kernel.Common.Import
 import Kernel.Elaborate.Internal.Handle.Def qualified as Definition
+import Kernel.Elaborate.Internal.Handle.Trope qualified as Trope
 import Kernel.Elaborate.Internal.Handle.TypeDef qualified as TypeDef
 import Kernel.Elaborate.Internal.Handle.WeakDef qualified as WeakDef
 import Kernel.Elaborate.Internal.Handle.WeakTypeDef qualified as WeakTypeDef
@@ -47,6 +48,7 @@ data Handle = Handle
     platformHandle :: Platform.Handle,
     dataHandle :: Data.Handle,
     defHandle :: Definition.Handle,
+    tropeHandle :: Trope.Handle,
     envHandle :: Env.Handle,
     gensymHandle :: Gensym.Handle,
     globalRemarkHandle :: GlobalRemark.Handle,
@@ -100,6 +102,7 @@ newOrError cfg moduleFilePathOrNone = do
       weakDefHandle <- WeakDef.new gensymHandle
       weakTypeDefHandle <- WeakTypeDef.new
       defHandle <- Definition.new
+      tropeHandle <- Trope.new
       typeDefHandle <- TypeDef.new
       importedTypeDefCacheHandle <- ImportedTypeDefCache.new
       antecedentHandle <- Antecedent.new

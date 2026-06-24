@@ -51,6 +51,8 @@ compress term =
       () :< TM.Actual t (compress e)
     _ :< TM.Let opacity mxt e1 e2 ->
       () :< TM.Let opacity mxt (compress e1) (compress e2)
+    _ :< TM.Invoke tropeNames body ->
+      () :< TM.Invoke tropeNames (compress body)
     _ :< TM.Prim prim ->
       () :< TM.Prim prim
     _ :< TM.Magic der ->

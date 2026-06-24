@@ -147,6 +147,9 @@ subst h sub term =
       e1' <- subst h sub e1
       ([mxt'], e2') <- subst' h sub [mxt] e2
       return $ m :< TM.Let opacity mxt' e1' e2'
+    m :< TM.Invoke tropeNames body -> do
+      body' <- subst h sub body
+      return $ m :< TM.Invoke tropeNames body'
     _ :< TM.Prim _ ->
       return term
     m :< TM.Magic der -> do

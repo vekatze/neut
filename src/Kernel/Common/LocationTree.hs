@@ -3,6 +3,7 @@ module Kernel.Common.LocationTree
     SymbolName (..),
     empty,
     insert,
+    retarget,
     find,
     findRef,
   )
@@ -50,6 +51,10 @@ empty =
 insert :: SymbolName -> (Line, ColInterval) -> Hint -> LocationTree -> LocationTree
 insert sym (l, (cFrom, cTo)) m =
   M.insert (l, cFrom) (l, (cFrom, cTo), sym, SavedHint m)
+
+retarget :: (Line, ColFrom) -> Hint -> LocationTree -> LocationTree
+retarget key m =
+  M.adjust (\(line, interval, sym, _) -> (line, interval, sym, SavedHint m)) key
 
 find :: Line -> Column -> LocationTree -> Maybe (SymbolName, Hint, ColInterval, DefSymbolLen)
 find l c mp = do

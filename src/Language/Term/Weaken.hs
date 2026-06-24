@@ -56,10 +56,25 @@ weakenStmt stmt = do
       let resourceSize' = weaken resourceSize
       let unitType' = weakenType unitType
       WeakStmtDefineResource m name resourceID unitType' discarder' copier' resourceSize'
+    StmtTrope (SavedHint m) name defineMetaList -> do
+      WeakStmtTrope m name $ map weakenDefineMeta defineMetaList
     StmtVariadic kind (SavedHint m) name -> do
       WeakStmtVariadic kind m name
     StmtForeign foreignList ->
       WeakStmtForeign $ map weakenForeign foreignList
+
+weakenDefineMeta :: DefineMeta -> WeakDefineMeta
+weakenDefineMeta defineMeta = do
+  let SavedHint m = defineMetaLoc defineMeta
+  WeakDefineMeta
+    { weakDefineMetaLoc = m,
+      weakDefineMetaTarget = defineMetaTargetName defineMeta,
+      weakDefineMetaTargetArgs = map weakenType $ defineMetaTargetArgs defineMeta,
+      weakDefineMetaExpArgs = map weakenTypeBinder $ defineMetaExpArgs defineMeta,
+      weakDefineMetaCod = weakenType $ defineMetaCodType defineMeta,
+      weakDefineMetaBody = weaken $ defineMetaBody defineMeta,
+      weakDefineMetaHelperName = defineMetaHelperName defineMeta
+    }
 
 weaken :: TM.Term -> WT.WeakTerm
 weaken term =
@@ -114,6 +129,8 @@ weaken term =
       m :< WT.Actual (Just $ weakenType t) (weaken e)
     m :< TM.Let opacity mxt e1 e2 ->
       m :< WT.Let (reflectOpacity opacity) (weakenTypeBinder mxt) (weaken e1) (weaken e2)
+    m :< TM.Invoke tropeNames body ->
+      m :< WT.Invoke tropeNames (weaken body)
     m :< TM.Prim prim ->
       m :< WT.Prim (weakenPrimValue prim)
     m :< TM.Magic magic -> do
