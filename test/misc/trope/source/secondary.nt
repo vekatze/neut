@@ -1,0 +1,81 @@
+import {
+  this.base-file {announce, chain, combine, describe, stamp},
+}
+
+constant secondary-bool-string: &string {
+  "secondary-bool"
+}
+
+constant secondary-int-string: &string {
+  "secondary-int"
+}
+
+constant secondary-list-int-string: &string {
+  "secondary-list-int"
+}
+
+constant secondary-describe-bool-string: &string {
+  "secondary-describe-bool"
+}
+
+constant secondary-describe-int-string: &string {
+  "secondary-describe-int"
+}
+
+constant secondary-stamp-bool-string: &string {
+  "secondary-stamp-bool"
+}
+
+constant secondary-stamp-int-string: &string {
+  "secondary-stamp-int"
+}
+
+constant secondary-combine-bool-int-string: &string {
+  "secondary-combine-bool-int"
+}
+
+constant secondary-combine-int-bool-string: &string {
+  "secondary-combine-int-bool"
+}
+
+trope secondary {
+  define-meta announce<bool>(_: 'bool) -> '&string {
+    quote {secondary-bool-string}
+  }
+
+  define-meta announce<int>(_: 'int) -> '&string {
+    quote {secondary-int-string}
+  }
+
+  define-meta announce<list(int)>(_: 'list(int)) -> '&string {
+    quote {secondary-list-int-string}
+  }
+
+  define-meta describe<bool>(_: 'bool) -> '&string {
+    quote {secondary-describe-bool-string}
+  }
+
+  define-meta describe<int>(_: 'int) -> '&string {
+    quote {secondary-describe-int-string}
+  }
+
+  define-meta stamp<bool>() -> '&string {
+    quote {secondary-stamp-bool-string}
+  }
+
+  define-meta stamp<int>() -> '&string {
+    quote {secondary-stamp-int-string}
+  }
+
+  define-meta combine<bool, int>(_: 'bool, _: 'int) -> '&string {
+    quote {secondary-combine-bool-int-string}
+  }
+
+  define-meta combine<int, bool>(_: 'int, _: 'bool) -> '&string {
+    quote {secondary-combine-int-bool-string}
+  }
+
+  define-meta chain<int>(x: 'int) -> '&string {
+    describe(x)
+  }
+}
