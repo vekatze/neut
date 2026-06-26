@@ -22,6 +22,8 @@
 - [(x1: a1, ..., xn: an) => { e }](#x1-a1--xn-an---e-)
 - [define f(x1: a1, ..., xn: an) -> c { e }](#define-fx1-a1--xn-an---c--e-)
 - [inline f(x1: a1, ..., xn: an) -> c { e }](#inline-fx1-a1--xn-an---c--e-)
+- [define-meta f(x1: a1, ..., xn: an) -> c { e }](#define-meta-fx1-a1--xn-an---c--e-)
+- [inline-meta f(x1: a1, ..., xn: an) -> c { e }](#inline-meta-fx1-a1--xn-an---c--e-)
 - [e(e1, ..., en)](#ee1--en)
 - [e{x1 := e1, ..., xn := en}](#ex1--e1--xn--en)
 - [exact e](#exact-e)
@@ -1145,6 +1147,90 @@ When default arguments are present, the resulting type additionally contains the
 
 - Functions defined by term-level `inline` are always inlined at compile time. If you would like to avoid this behavior, consider using `define`.
 
+## `define-meta f(x1: a1, ..., xn: an) -> c { e }`
+
+`define-meta` (at the term-level) is the meta counterpart of the term-level `define`. Unlike the [top-level `define-meta`](statements.md#define-meta), it can capture free variables.
+
+### Example
+
+```neut
+inline-meta with-base(c: 'int) -> 'int {
+  let f =
+    define-meta go(x: 'int) -> 'int {
+      quote {add-int(unquote {c}, unquote {x})}
+    };
+  f(quote {1})
+}
+```
+
+### Syntax
+
+```neut
+define-meta name<x1: a1, ..., xn: an>(y1: b1, ..., ym: bm) -> c {
+  e
+}
+```
+
+### Semantics
+
+The same as the [top-level `define-meta`](statements.md#define-meta), except that `e` may capture free variables.
+
+### Type
+
+```neut
+Γ, x1: 'a1, ..., xn: 'an, f: (x1: 'a1, ..., xn: 'an) -> t ⊢ e: 't
+---------------------------------------------------------------------------------
+Γ ⊢ define-meta f(x1: 'a1, ..., xn: 'an) -> 't {e}: (x1: 'a1, ..., xn: 'an) -> 't
+```
+
+### Note
+
+- A term-level `define-meta` is usable only at stage `n >= 1`. For stage `n <= 0`, use `define`.
+
+## `inline-meta f(x1: a1, ..., xn: an) -> c { e }`
+
+`inline-meta` (at the term-level) is the meta counterpart of the term-level `inline`. Unlike the [top-level `inline-meta`](statements.md#inline-meta), it can capture free variables.
+
+### Example
+
+```neut
+inline-meta double(x: 'int) -> 'int {
+  let f =
+    inline-meta twice(y: 'int) -> 'int {
+      quote {mul-int(2, unquote {y})}
+    };
+  f(x)
+}
+```
+
+### Syntax
+
+```neut
+inline-meta name<x1: a1, ..., xn: an>(y1: b1, ..., ym: bm) -> c {
+  e
+}
+
+inline-meta name<x1: a1, ..., xn: an>(y1: b1, ..., ym: bm)[z1: c1 := e1, ..., zk: ck := ek] -> c {
+  e
+}
+```
+
+### Semantics
+
+The same as a term-level `define-meta`, except that the body is expanded at compile time instead of being specialized and memoized.
+
+### Type
+
+```neut
+Γ, x1: a1, ..., xn: an, f: (x1: a1, ..., xn: an) -> t ⊢ e: t
+---------------------------------------------------------------------------
+Γ ⊢ inline-meta f(x1: a1, ..., xn: an) -> t {e}: (x1: a1, ..., xn: an) -> t
+```
+
+### Note
+
+- A term-level `inline-meta` is usable only at stage `n >= 1`. For stage `n <= 0`, use `inline`.
+
 ## `e(e1, ..., en)`
 
 Given a function `e` and arguments `e1, ..., en`, we can write `e(e1, ..., en)` to denote a function application. If `e` has default arguments, the application may be followed by a bracketed list of overrides.
@@ -2155,6 +2241,8 @@ quote {
 ### Semantics
 
 `quote` is compiled into the same term as its body.
+
+The body of `quote` is not reduced at compile time; it is kept as written and reduced only where an `unquote` inside it is reached.
 
 ### Type
 

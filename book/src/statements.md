@@ -637,7 +637,23 @@ name[x, y, z, w]
 This expands in a fold-right manner to:
 
 ```neut
-root(node(x, node(y, node(z, node(w, leaf(4))))))
+unquote {
+  root(
+    node(
+      quote {x},
+      node(
+        quote {y},
+        node(
+          quote {z},
+          node(
+            quote {w},
+            leaf(4)
+          )
+        )
+      )
+    )
+  )
+}
 ```
 
 where the `4` is the length of `[x, y, z, w]`.
@@ -648,13 +664,15 @@ The `List` construct available in the core library is defined using `rule-right`
 
 ```neut
 rule-right List {
-  inline leaf<a>(_: int) -> list(a) {
-    Nil
+  inline-meta leaf<a>(_: int) -> 'list(a) {
+    quote {Nil}
   },
-  inline node<a>(x: a, acc: list(a)) -> list(a) {
-    Cons(x, acc)
+  inline-meta node<a>(x: 'a, acc: 'list(a)) -> 'list(a) {
+    quote {
+      Cons(unquote {x}, unquote {acc})
+    }
   },
-  inline root<a>(x: a) -> a {
+  inline-meta root<a>(x: 'list(a)) -> 'list(a) {
     x
   },
 }
@@ -667,7 +685,7 @@ List[x, y, z]
 
 ↓
 
-root(node(x, node(y, node(z, leaf(3)))))
+unquote {root(node(quote {x}, node(quote {y}, node(quote {z}, leaf(3)))))}
 
 ↓
 
@@ -686,7 +704,7 @@ rule-left name {
 }
 ```
 
-Once defined, `name` can be used with square brackets to accept variable-length arguments:
+As with `rule-right`, `leaf`, `node`, and `root` must be meta functions that assemble code. Once defined, `name` can be used with square brackets to accept variable-length arguments:
 
 ```neut
 name[x, y, z, w]
@@ -695,10 +713,26 @@ name[x, y, z, w]
 This expands in a fold-left manner to:
 
 ```neut
-root(node(node(node(node(leaf(4), x), y), z), w))
+unquote {
+  root(
+    node(
+      node(
+        node(
+          node(
+            leaf(4),
+            quote {x}
+          ),
+          quote {y}
+        ),
+        quote {z}
+      ),
+      quote {w}
+    )
+  )
+}
 ```
 
-where the `4` is the length of `[x, y, z, w]`.
+where the `4` is the length of `[x, y, z, w]`. As with `rule-right`, `name[..]` can be used at any stage.
 
 ### Example: Vector Construction
 
@@ -706,13 +740,13 @@ The `Vector` construct available in the core library is defined using `rule-left
 
 ```neut
 rule-left Vector {
-  inline leaf<a>(size: int) -> vector(a) {
-    make(size)
+  inline-meta leaf<a>(size: int) -> 'vector(a) {
+    quote {make(unquote {promote {size}})}
   },
-  inline node<a>(acc: vector(a), x: a) -> vector(a) {
-    push-back(acc, x)
+  inline-meta node<a>(acc: 'vector(a), x: 'a) -> 'vector(a) {
+    quote {push-back(unquote {acc}, unquote {x})}
   },
-  inline root<a>(x: a) -> a {
+  inline-meta root<a>(x: 'vector(a)) -> 'vector(a) {
     x
   },
 }
@@ -725,7 +759,7 @@ Vector[a, b, c]
 
 ↓
 
-root(node(node(node(leaf(3), a), b), c))
+unquote {root(node(node(node(leaf(3), quote {a}), quote {b}), quote {c}))}
 
 ↓
 

@@ -90,7 +90,7 @@ hljs.registerLanguage("neut", function (hljs) {
     contains: [
       {
         begin: [
-          /\s/,
+          /(?<![\w-])/,
           /[A-Z][a-z0-9A-Z-]*/,
           /[^\w-=<>]/
         ],
