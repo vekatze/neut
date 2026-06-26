@@ -64,7 +64,8 @@ new gensymHandle dmap typeDefMap dataHandle baseSize location inlineLimit specia
   currentStepRef <- liftIO $ newIORef 0
   macroCallStack <- liftIO $ newIORef []
   localMetaDefMap <- liftIO $ newIORef Map.empty
-  let currentStage = 0
+  let initialStage = 0
+  let currentStage = initialStage
   let insideDefineMeta = False
   let localMetaMemo = []
   return $ Handle {..}
@@ -81,6 +82,10 @@ incrementStep :: Handle -> IO ()
 incrementStep h = do
   let Handle {currentStepRef} = h
   modifyIORef' currentStepRef (+ 1)
+
+isActive :: Handle -> Bool
+isActive h =
+  currentStage h >= initialStage h
 
 detectPossibleInfiniteLoop :: Handle -> App ()
 detectPossibleInfiniteLoop h = do
@@ -124,7 +129,7 @@ inline' h term = do
       let rebuildWithDefaults defaultArgsFilled =
             m :< TM.PiElim kind' e' impArgs' expArgs' (map Just defaultArgsFilled)
       let reduceApplication impParams expBinders defDefaults canReduce reduce =
-            if length impParams /= length impArgs'
+            if not (isActive h) || length impParams /= length impArgs'
               then return residual
               else do
                 let impIds = map (\(_, _, x, _) -> x) impParams
@@ -189,7 +194,8 @@ inline' h term = do
               reduceApplication defImpBinders defExpBinders defDefaultArgs True $ \subType expParams expArgsAll ->
                 specializeLocalMeta h m dd subType impArgs' expParams defBody codType expArgsAll
         (_ :< TM.Prim (PV.Op op))
-          | PEK.isNormal kind' -> do
+          | isActive h,
+            PEK.isNormal kind' -> do
               case ConstantFold.evaluatePrimOp m op expArgs' of
                 Just result -> do
                   return result
@@ -206,7 +212,7 @@ inline' h term = do
       es' <- mapM (inline' h) es
       ts' <- mapM (inlineType' h) ts
       let oets' = zip3 os es' ts'
-      if isNoetic
+      if isNoetic || not (isActive h)
         then do
           decisionTree' <- inlineDecisionTree h decisionTree
           return $ m :< TM.DataElim isNoetic oets' decisionTree'
@@ -275,9 +281,10 @@ inline' h term = do
     m :< TM.TauElim (mx, x) e1 e2 -> do
       e1' <- inline' h e1
       case e1' of
-        _ :< TM.TauIntro ty -> do
-          let sub = IntMap.singleton (Ident.toInt x) (Subst.Type ty)
-          liftIO (Subst.subst (substHandle h) sub e2) >>= inline' h
+        _ :< TM.TauIntro ty
+          | isActive h -> do
+              let sub = IntMap.singleton (Ident.toInt x) (Subst.Type ty)
+              liftIO (Subst.subst (substHandle h) sub e2) >>= inline' h
         _ -> do
           e2' <- inline' h e2
           return $ m :< TM.TauElim (mx, x) e1' e2'
@@ -290,7 +297,8 @@ inline' h term = do
       e1' <- inline' h e1
       case opacity of
         O.Clear
-          | TM.isValue e1' -> do
+          | isActive h,
+            TM.isValue e1' -> do
               let sub = IntMap.singleton (Ident.toInt x) (Subst.Term e1')
               liftIO (Subst.subst (substHandle h) sub e2) >>= inline' h
         _ -> do
@@ -739,7 +747,7 @@ specializeMacro h m dd defKind subType impArgs' expParams body codType expArgsAl
       specializedName <- createSpecializationName h dd
       codType' <- liftIO $ Subst.substType (substHandle h) subType codType
       beginSpecialization h dd impArgs' specializedName
-      let hDefineMeta = h {currentStage = 1, insideDefineMeta = True}
+      let hDefineMeta = h {currentStage = 1, initialStage = 1, insideDefineMeta = True}
       body'' <- tracer $ liftIO (Refresh.refresh (refreshHandle h) body') >>= inline hDefineMeta
       let stmt =
             Stmt.StmtDefine
@@ -774,7 +782,7 @@ specializeLocalMeta h m dd subType impArgs' expParams body codType expArgsAll = 
       specSelfId <- liftIO $ Sym.newIdentFromText (gensymHandle h) "meta-spec"
       (expParams', body') <- liftIO $ Subst.subst' (substHandle h) subType expParams body
       codType' <- liftIO $ Subst.substType (substHandle h) subType codType
-      let hInner = h {currentStage = 1, insideDefineMeta = True, localMetaMemo = (dd, impArgs', specSelfId) : localMetaMemo h}
+      let hInner = h {currentStage = 1, initialStage = 1, insideDefineMeta = True, localMetaMemo = (dd, impArgs', specSelfId) : localMetaMemo h}
       body'' <- liftIO (Refresh.refresh (refreshHandle h) body') >>= inline hInner
       lamID <- liftIO $ Gensym.newCount (gensymHandle h)
       let fixAttr = AttrL.Attr {lamKind = LK.Fix LDK.Define False (m, VK.Normal, specSelfId, codType'), identity = lamID}

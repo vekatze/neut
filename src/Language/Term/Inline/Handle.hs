@@ -81,6 +81,7 @@ data Handle = Handle
     gensymHandle :: GensymHandle.Handle,
     baseSize :: DS.DataSize,
     currentStage :: Int,
+    initialStage :: Int,
     insideDefineMeta :: Bool,
     localMetaMemo :: [(DD.DefiniteDescription, [TM.Type], Ident)],
     mainModuleDir :: T.Text
