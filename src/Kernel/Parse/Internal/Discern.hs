@@ -457,14 +457,16 @@ discern h term =
       let leafTM = m :< RT.piElim (RT.force (m :< RT.VarGlobal leafDD leafGN)) [size]
       let nodeTM = RT.force (m :< RT.VarGlobal nodeDD nodeGN)
       let rootTM = RT.force (m :< RT.VarGlobal rootDD rootGN)
-      let args = SE.extract es
+      let quoteArg e@(me :< _) = me :< RT.CodeIntro CodeVariantK [] [] (e, [])
+      let args = map quoteArg $ SE.extract es
+      let unquote e = m :< RT.CodeElim [] [] (e, [])
       case kind of
         FoldLeft -> do
           foldedTerm <- buildFoldLeft nodeTM (leafTM : args)
-          discern h (m :< RT.piElim rootTM [foldedTerm])
+          discern h (unquote (m :< RT.piElim rootTM [foldedTerm]))
         FoldRight -> do
           foldedTerm <- buildFoldRight nodeTM (args ++ [leafTM])
-          discern h (m :< RT.piElim rootTM [foldedTerm])
+          discern h (unquote (m :< RT.piElim rootTM [foldedTerm]))
     m :< RT.PiElimMeta name _ mImpArgs _ es _ mDefaultArgs -> do
       let var = m :< RT.Var name
       let quote e = m :< RT.CodeIntro CodeVariantK [] [] (e, [])
