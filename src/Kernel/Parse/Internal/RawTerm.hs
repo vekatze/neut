@@ -42,7 +42,7 @@ import Language.Common.BaseName qualified as BN
 import Language.Common.CreateSymbol (newTextForHole)
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.ExternalName qualified as EN
-import Language.Common.Opacity qualified as O
+import Language.Common.LocalDefKind qualified as LDK
 import Language.Common.Rune qualified as RU
 import Language.Common.VarKind qualified as VK
 import Language.RawTerm.CreateHole qualified as RT
@@ -156,9 +156,13 @@ rawTerm' :: Handle -> Hint -> T.Text -> C -> Parser (RT.RawTerm, C)
 rawTerm' h m headSymbol c = do
   case headSymbol of
     "define" -> do
-      rawTermDefine h O.Opaque m c
+      rawTermDefine h LDK.Define m c
     "inline" -> do
-      rawTermDefine h O.Clear m c
+      rawTermDefine h LDK.Inline m c
+    "define-meta" -> do
+      rawTermDefine h LDK.DefineMeta m c
+    "inline-meta" -> do
+      rawTermDefine h LDK.InlineMeta m c
     "introspect" -> do
       rawTermIntrospect h m c
     "static" -> do
@@ -711,13 +715,13 @@ parseDefInfoCod h = do
   t <- rawType h
   return (isDestPassing, c, t)
 
-rawTermDefine :: Handle -> O.Opacity -> Hint -> C -> Parser (RT.RawTerm, C)
-rawTermDefine h opacity m c0 = do
+rawTermDefine :: Handle -> LDK.LocalDefKind -> Hint -> C -> Parser (RT.RawTerm, C)
+rawTermDefine h kind m c0 = do
   (defInfo, c) <- parseDef h $ do
     (name, c1) <- baseName
     name' <- liftIO $ adjustHoleVar h name
     return (name', c1)
-  return (m :< RT.PiIntroFix opacity c0 defInfo, c)
+  return (m :< RT.PiIntroFix kind c0 defInfo, c)
 
 adjustHoleVar :: Handle -> BN.BaseName -> IO T.Text
 adjustHoleVar h bn = do

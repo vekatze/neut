@@ -78,13 +78,13 @@ subst h sub term =
         else do
           newLamID <- liftIO $ Gensym.newCount (gensymHandle h)
           case lamKind of
-            LK.Fix opacity isDestPassing xt -> do
+            LK.Fix kind isDestPassing xt -> do
               (impArgs', sub') <- subst' h sub impArgs
               (expArgs', sub'') <- subst' h sub' expArgs
               (defaultArgs', sub''') <- substDefaultArgs h sub'' defaultArgs
               ([xt'], sub'''') <- subst' h sub''' [xt]
               e' <- subst h sub'''' e
-              let fixAttr = AttrL.Attr {lamKind = LK.Fix opacity isDestPassing xt', identity = newLamID}
+              let fixAttr = AttrL.Attr {lamKind = LK.Fix kind isDestPassing xt', identity = newLamID}
               return (m :< WT.PiIntro fixAttr impArgs' expArgs' defaultArgs' e')
             LK.Normal mName isDestPassing codType -> do
               (impArgs', sub') <- subst' h sub impArgs

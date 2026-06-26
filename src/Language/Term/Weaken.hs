@@ -216,8 +216,8 @@ weakenAttr AttrL.Attr {lamKind, identity} =
   case lamKind of
     LK.Normal name isDestPassing codType ->
       AttrL.Attr {lamKind = LK.Normal name isDestPassing (weakenType codType), identity}
-    LK.Fix opacity isDestPassing xt ->
-      AttrL.Attr {lamKind = LK.Fix opacity isDestPassing (weakenTypeBinder xt), identity}
+    LK.Fix kind isDestPassing xt ->
+      AttrL.Attr {lamKind = LK.Fix kind isDestPassing (weakenTypeBinder xt), identity}
 
 weakenPrimValue :: PV.PrimValue TM.Type -> WPV.WeakPrimValue WT.WeakType
 weakenPrimValue prim =

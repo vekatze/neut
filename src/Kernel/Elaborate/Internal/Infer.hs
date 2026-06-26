@@ -51,6 +51,7 @@ import Language.Common.Ident.Reify qualified as Ident
 import Language.Common.ImpArgs qualified as ImpArgs
 import Language.Common.LamKind qualified as LK
 import Language.Common.Literal qualified as L
+import Language.Common.LocalDefKind qualified as LDK
 import Language.Common.LowMagic qualified as LM
 import Language.Common.Magic qualified as M
 import Language.Common.NominalTag (NominalTag)
@@ -87,6 +88,7 @@ inferStmt h stmt =
         SK.Macro -> do
           forM_ (expArgs' ++ map fst defaultArgs') $ \(mx, _, _, t) ->
             checkIsCodeType h''' mx t
+          checkIsCodeType h''' m codType'
         SK.ConstantMeta -> do
           checkIsCodeType h''' m codType'
         _ ->
@@ -251,12 +253,16 @@ infer h term =
       return (term, m :< t)
     m :< WT.PiIntro attr@(AttrL.Attr {lamKind}) impArgs expArgs defaultArgs e -> do
       case lamKind of
-        LK.Fix opacity isDestPassing (mx, k, x, codType) -> do
+        LK.Fix kind isDestPassing (mx, k, x, codType) -> do
           (impArgs', h') <- inferImpBinder h impArgs
           (expArgs', h'') <- inferBinder' h' expArgs
           (defaultArgs', h''') <- inferImpBinderWithDefaults h'' defaultArgs
           let defaultBinders = map fst defaultArgs'
           codType' <- inferType h''' codType
+          when (kind == LDK.DefineMeta) $ do
+            forM_ (expArgs' ++ defaultBinders) $ \(mp, _, _, t) ->
+              checkIsCodeType h''' mp t
+            checkIsCodeType h''' mx codType'
           let piKind =
                 if isDestPassing
                   then PK.DestPass False
@@ -265,7 +271,7 @@ infer h term =
           liftIO $ WeakType.insert (weakTypeHandle h) x piType
           (e', tBody) <- infer h''' e
           liftIO $ Constraint.insert (constraintHandle h''') codType' tBody
-          let term' = m :< WT.PiIntro (attr {AttrL.lamKind = LK.Fix opacity isDestPassing (mx, k, x, codType')}) impArgs' expArgs' defaultArgs' e'
+          let term' = m :< WT.PiIntro (attr {AttrL.lamKind = LK.Fix kind isDestPassing (mx, k, x, codType')}) impArgs' expArgs' defaultArgs' e'
           return (term', piType)
         LK.Normal name isDestPassing codType -> do
           (impArgs', h') <- inferImpBinder h impArgs
@@ -614,7 +620,6 @@ inferTypeWithKind h ty =
           holeType <- liftIO $ WT.createTypeHole (gensymHandle h) m holeArgs
           liftIO $ Hole.insert (holeHandle h) rawHoleID holeTerm holeType
           return (holeTerm, holeType)
-
 
 inferImpBinder :: Handle -> [BinderF WT.WeakType] -> App ([BinderF WT.WeakType], Handle)
 inferImpBinder h binderList =
