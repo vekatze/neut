@@ -62,6 +62,7 @@ import Language.Common.Ident.Reify qualified as Ident
 import Language.Common.ImpArgs qualified as ImpArgs
 import Language.Common.LamKind qualified as LK
 import Language.Common.Literal qualified as LI
+import Language.Common.LocalDefKind qualified as LDK
 import Language.Common.LowMagic qualified as LM
 import Language.Common.Magic qualified as M
 import Language.Common.ModuleAlias (coreModuleAlias)
@@ -365,7 +366,8 @@ discern h term =
       ensureLayerClosedness m h''' body'
       let isDestPassing = RT.isDestPassing geist
       return $ m :< WT.PiIntro (AttrL.normal' name isDestPassing lamID codType') impArgs' expArgs' defaultArgs' body'
-    m :< RT.PiIntroFix opacity _ (RT.RawDef {geist, body, endLoc}) -> do
+    m :< RT.PiIntroFix kind _ (RT.RawDef {geist, body, endLoc}) -> do
+      ensureLocalDefStage m h kind
       let isDestPassing = RT.isDestPassing geist
       let impArgs = RT.extractImpArgs $ RT.impArgs geist
       let defaultArgs = SE.extract $ fst $ RT.defaultArgs geist
@@ -384,7 +386,7 @@ discern h term =
       liftIO $ Tag.insertBinder (H.tagHandle h) mxt'
       lamID <- liftIO $ Gensym.newCount (H.gensymHandle h)
       ensureLayerClosedness m h'''' body'
-      return $ m :< WT.PiIntro (AttrL.Attr {lamKind = LK.Fix opacity isDestPassing mxt', identity = lamID}) impArgs' expArgs' defaultArgs' body'
+      return $ m :< WT.PiIntro (AttrL.Attr {lamKind = LK.Fix kind isDestPassing mxt', identity = lamID}) impArgs' expArgs' defaultArgs' body'
     m :< RT.PiElim e _ mImpArgs _ expArgs _ mDefaultArgs -> do
       let kind = PEK.Normal -- overwritten later in `infer`
       e' <- discern h e
@@ -455,14 +457,16 @@ discern h term =
       let leafTM = m :< RT.piElim (RT.force (m :< RT.VarGlobal leafDD leafGN)) [size]
       let nodeTM = RT.force (m :< RT.VarGlobal nodeDD nodeGN)
       let rootTM = RT.force (m :< RT.VarGlobal rootDD rootGN)
-      let args = SE.extract es
+      let quoteArg e@(me :< _) = me :< RT.CodeIntro CodeVariantK [] [] (e, [])
+      let args = map quoteArg $ SE.extract es
+      let unquote e = m :< RT.CodeElim [] [] (e, [])
       case kind of
         FoldLeft -> do
           foldedTerm <- buildFoldLeft nodeTM (leafTM : args)
-          discern h (m :< RT.piElim rootTM [foldedTerm])
+          discern h (unquote (m :< RT.piElim rootTM [foldedTerm]))
         FoldRight -> do
           foldedTerm <- buildFoldRight nodeTM (args ++ [leafTM])
-          discern h (m :< RT.piElim rootTM [foldedTerm])
+          discern h (unquote (m :< RT.piElim rootTM [foldedTerm]))
     m :< RT.PiElimMeta name _ mImpArgs _ es _ mDefaultArgs -> do
       let var = m :< RT.Var name
       let quote e = m :< RT.CodeIntro CodeVariantK [] [] (e, [])
@@ -1593,6 +1597,12 @@ ensureCompileStage m h target = do
 isCompileStage :: H.Handle -> Bool
 isCompileStage h =
   H.currentStage h >= 1
+
+ensureLocalDefStage :: Hint -> H.Handle -> LDK.LocalDefKind -> App ()
+ensureLocalDefStage m h kind =
+  if LDK.isMeta kind
+    then ensureCompileStage m h $ "`" <> LDK.keyword kind <> "`"
+    else ensureRuntimeStage m h $ "`" <> LDK.keyword kind <> "`"
 
 asOpaqueValue :: RT.RawTerm -> RT.RawTerm
 asOpaqueValue e@(m :< _) =

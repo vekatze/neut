@@ -21,8 +21,6 @@ import Data.IntMap qualified as IntMap
 import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
 import Gensym.Gensym qualified as Gensym
-import Gensym.Handle qualified as GensymHandle
-import Kernel.Common.Handle.Global.Data qualified as Data
 import Kernel.Elaborate.Internal.Handle.TypeDef qualified as TypeDef
 import Language.Common.ArgNum qualified as AN
 import Language.Common.Attr.DataIntro qualified as AttrDI
@@ -30,7 +28,7 @@ import Language.Common.Attr.Lam qualified as AttrL
 import Language.Common.Attr.VarGlobal qualified as AttrVG
 import Language.Common.BaseLowType qualified as BLT
 import Language.Common.Binder
-import Language.Common.DataSize qualified as DS
+import Language.Common.CreateSymbol qualified as Sym
 import Language.Common.DecisionTree qualified as DT
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.Discriminant qualified as D
@@ -38,13 +36,16 @@ import Language.Common.Ident
 import Language.Common.Ident.Reify qualified as Ident
 import Language.Common.LamKind qualified as LK
 import Language.Common.Literal qualified as L
+import Language.Common.LocalDefKind qualified as LDK
 import Language.Common.LowMagic qualified as LM
 import Language.Common.Magic qualified as M
 import Language.Common.Opacity qualified as O
 import Language.Common.PiElimKind qualified as PEK
 import Language.Common.StmtKind qualified as SK
+import Language.Common.VarKind qualified as VK
 import Language.Term.Eq qualified as TermEq
 import Language.Term.Inline.ConstantFold qualified as ConstantFold
+import Language.Term.Inline.Env qualified as Env
 import Language.Term.Inline.Handle
 import Language.Term.Inline.Magic qualified as Magic
 import Language.Term.PrimValue qualified as PV
@@ -54,14 +55,18 @@ import Language.Term.Subst qualified as Subst
 import Language.Term.Term qualified as TM
 import Logger.Hint
 
-new :: GensymHandle.Handle -> DefMap -> TypeDefMap -> Data.Handle -> DS.DataSize -> Hint -> Int -> IORef SpecializationTable -> IORef [Stmt.Stmt] -> IORef [ResidualCheck] -> Bool -> T.Text -> IO Handle
-new gensymHandle dmap typeDefMap dataHandle baseSize location inlineLimit specializationTable pendingSpecializationDefs residualCheckList shouldEmitResidualChecks mainModuleDir = do
+new :: Env.Env -> Hint -> Bool -> IO Handle
+new env location shouldEmitResidualChecks = do
+  let Env.Env {..} = env
   let substHandle = Subst.new gensymHandle
   let refreshHandle = Refresh.new gensymHandle
   currentStepRef <- liftIO $ newIORef 0
   macroCallStack <- liftIO $ newIORef []
-  let currentStage = 0
+  localMetaDefMap <- liftIO $ newIORef Map.empty
+  let initialStage = 0
+  let currentStage = initialStage
   let insideDefineMeta = False
+  let localMetaMemo = []
   return $ Handle {..}
 
 inline :: Handle -> TM.Term -> App TM.Term
@@ -76,6 +81,10 @@ incrementStep :: Handle -> IO ()
 incrementStep h = do
   let Handle {currentStepRef} = h
   modifyIORef' currentStepRef (+ 1)
+
+isActive :: Handle -> Bool
+isActive h =
+  currentStage h >= initialStage h
 
 detectPossibleInfiniteLoop :: Handle -> App ()
 detectPossibleInfiniteLoop h = do
@@ -99,9 +108,9 @@ inline' h term = do
       defaultArgs' <- mapM (bimapM (inlineTypeBinder h) (inline' h)) defaultArgs
       e' <- if currentStage h >= 1 then return e else inline' h e
       case lamKind of
-        LK.Fix opacity isDestPassing (mx, k, x, codType) -> do
+        LK.Fix kind isDestPassing (mx, k, x, codType) -> do
           codType' <- inlineType' h codType
-          let attr' = attr {AttrL.lamKind = LK.Fix opacity isDestPassing (mx, k, x, codType')}
+          let attr' = attr {AttrL.lamKind = LK.Fix kind isDestPassing (mx, k, x, codType')}
           return (m :< TM.PiIntro attr' impArgs' expArgs' defaultArgs' e')
         LK.Normal mName isDestPassing codType -> do
           codType' <- inlineType' h codType
@@ -114,105 +123,85 @@ inline' h term = do
       expArgs' <- mapM (inline' h) expArgs
       defaultArgs' <- mapM (traverse (inline' h)) defaultArgs
       let Handle {dmap} = h
+      localDefMap <- liftIO $ readIORef (localMetaDefMap h)
+      let residual = m :< TM.PiElim kind' e' impArgs' expArgs' defaultArgs'
       let rebuildWithDefaults defaultArgsFilled =
             m :< TM.PiElim kind' e' impArgs' expArgs' (map Just defaultArgsFilled)
+      let reduceApplication impParams expBinders defDefaults canReduce reduce =
+            if not (isActive h) || length impParams /= length impArgs'
+              then return residual
+              else do
+                let impIds = map (\(_, _, x, _) -> x) impParams
+                let subType = IntMap.fromList $ zip (map Ident.toInt impIds) (map Subst.Type impArgs')
+                let expParams = expBinders ++ map fst defDefaults
+                defaultArgsFilled <- liftIO $ fillDefaultArgs (substHandle h) subType expBinders expArgs' defDefaults defaultArgs'
+                let expArgsAll = expArgs' ++ defaultArgsFilled
+                if length expParams /= length expArgsAll
+                  then return residual
+                  else
+                    if PEK.isNoetic kind' || not canReduce
+                      then return (rebuildWithDefaults defaultArgsFilled)
+                      else reduce subType expParams expArgsAll
       case e' of
-        (_ :< TM.PiIntro (AttrL.Attr {lamKind}) impBinders expBinders defBinders body) -> do
-          if length impBinders /= length impArgs'
-            then return (m :< TM.PiElim kind' e' impArgs' expArgs' defaultArgs')
-            else do
-              let impIds = map (\(_, _, x, _) -> x) impBinders
-              let subType = IntMap.fromList $ zip (map Ident.toInt impIds) (map Subst.Type impArgs')
-              let expParams = expBinders ++ map fst defBinders
-              defaultArgsFilled <- liftIO $ fillDefaultArgs (substHandle h) subType expBinders expArgs' defBinders defaultArgs'
-              let expArgsAll = expArgs' ++ defaultArgsFilled
-              if length expParams /= length expArgsAll
-                then return (m :< TM.PiElim kind' e' impArgs' expArgs' defaultArgs')
-                else
-                  if PEK.isNoetic kind' || not (canReduceByLamKind lamKind)
-                    then return (rebuildWithDefaults defaultArgsFilled)
-                    else do
-                      let subSelf = selfSubstForLamKind lamKind e'
-                      let expIds = map (\(_, _, x, _) -> x) expParams
-                      let subTerm = IntMap.fromList $ zip (map Ident.toInt expIds) (map Subst.Term expArgsAll)
-                      if all TM.isValue expArgsAll
-                        then do
-                          let sub = IntMap.unions [subSelf, subType, subTerm]
-                          _ :< body' <- liftIO $ Subst.subst (substHandle h) sub body
-                          inline' h $ m :< body'
-                        else do
-                          let sub = IntMap.unions [subSelf, subType]
-                          (expParams', _ :< body') <- liftIO $ Subst.subst' (substHandle h) sub expParams body
-                          body'' <- liftIO $ Refresh.refresh (refreshHandle h) $ m :< body'
-                          inline' h $ bind (zip expParams' expArgsAll) body''
+        (_ :< TM.PiIntro attr@(AttrL.Attr {lamKind, identity}) impBinders expBinders defBinders body) -> do
+          let canReduce = isLocalDefineMeta lamKind || canReduceByLamKind lamKind
+          reduceApplication impBinders expBinders defBinders canReduce $ \subType expParams expArgsAll ->
+            if isLocalDefineMeta lamKind
+              then do
+                (g, defInfo) <- registerLocalMeta h m identity attr impBinders expBinders defBinders body
+                specializeLocalMeta h m g subType impArgs' expParams (defBody defInfo) (codType defInfo) expArgsAll
+              else do
+                let subSelf = selfSubstForLamKind lamKind e'
+                let expIds = map (\(_, _, x, _) -> x) expParams
+                let subTerm = IntMap.fromList $ zip (map Ident.toInt expIds) (map Subst.Term expArgsAll)
+                if all TM.isValue expArgsAll
+                  then do
+                    let sub = IntMap.unions [subSelf, subType, subTerm]
+                    _ :< body' <- liftIO $ Subst.subst (substHandle h) sub body
+                    inline' h $ m :< body'
+                  else do
+                    let sub = IntMap.unions [subSelf, subType]
+                    (expParams', _ :< body') <- liftIO $ Subst.subst' (substHandle h) sub expParams body
+                    body'' <- liftIO $ Refresh.refresh (refreshHandle h) $ m :< body'
+                    inline' h $ bind (zip expParams' expArgsAll) body''
         (_ :< TM.VarGlobal _ dd)
           | Just defInfo <- Map.lookup dd dmap -> do
-              let DefInfo {defImpBinders = impParams, defExpBinders = expBinders, defDefaultArgs = defDefaults, defBody = body, codType, defKind} = defInfo
-              if length impParams /= length impArgs'
-                then return (m :< TM.PiElim kind' e' impArgs' expArgs' defaultArgs')
-                else do
-                  let impIds = map (\(_, _, x, _) -> x) impParams
-                  let subType = IntMap.fromList $ zip (map Ident.toInt impIds) (map Subst.Type impArgs')
-                  let expParams = expBinders ++ map fst defDefaults
-                  defaultArgsFilled <- liftIO $ fillDefaultArgs (substHandle h) subType expBinders expArgs' defDefaults defaultArgs'
-                  let expArgsAll = expArgs' ++ defaultArgsFilled
-                  if length expParams /= length expArgsAll
-                    then return (m :< TM.PiElim kind' e' impArgs' expArgs' defaultArgs')
-                    else
-                      if PEK.isNoetic kind' || not (canInlineDefKind defKind)
-                        then return (rebuildWithDefaults defaultArgsFilled)
-                        else do
-                          let tracer = if isMacroDef defKind then withMacroHint h dd defKind m else id
-                          case defKind of
-                            Macro -> do
-                              mSpecializedName <- lookupSpecialization h dd impArgs'
-                              case mSpecializedName of
-                                Just specializedName -> do
-                                  return $ applySpecialization m specializedName expArgsAll
-                                Nothing -> do
-                                  (expBinders', body') <- liftIO $ Subst.subst' (substHandle h) subType expParams body
-                                  specializedName <- createSpecializationName h dd
-                                  codType' <- liftIO $ Subst.substType (substHandle h) subType codType
-                                  beginSpecialization h dd impArgs' specializedName
-                                  let hDefineMeta = h {currentStage = 1, insideDefineMeta = True}
-                                  body'' <- tracer $ liftIO (Refresh.refresh (refreshHandle h) body') >>= inline hDefineMeta
-                                  let stmt =
-                                        Stmt.StmtDefine
-                                          False
-                                          SK.Define
-                                          (SavedHint m)
-                                          specializedName
-                                          []
-                                          expBinders'
-                                          []
-                                          codType'
-                                          body''
-                                  completeSpecialization h stmt
-                                  return $ applySpecialization m specializedName expArgsAll
-                            _ -> do
-                              if all TM.isValue expArgsAll
-                                then do
-                                  let expIds = map (\(_, _, x, _) -> x) expParams
-                                  let subTerm = IntMap.fromList $ zip (map Ident.toInt expIds) (map Subst.Term expArgsAll)
-                                  let sub = IntMap.union subTerm subType
-                                  mBody :< body' <- liftIO $ Subst.subst (substHandle h) sub body
-                                  let mResult = if isMacroDef defKind then mBody else m
-                                  body'' <- liftIO $ Refresh.refresh (refreshHandle h) $ mResult :< body'
-                                  tracer $ inline' h body''
-                                else do
-                                  (expParams', mBody :< body') <- liftIO $ Subst.subst' (substHandle h) subType expParams body
-                                  let mResult = if isMacroDef defKind then mBody else m
-                                  body'' <- liftIO $ Refresh.refresh (refreshHandle h) $ mResult :< body'
-                                  tracer $ inline' h $ bind (zip expParams' expArgsAll) body''
+              let DefInfo {defImpBinders, defExpBinders, defDefaultArgs, defBody, codType, defKind} = defInfo
+              let canReduce = canInlineDefKind defKind
+              reduceApplication defImpBinders defExpBinders defDefaultArgs canReduce $ \subType expParams expArgsAll ->
+                case defKind of
+                  Macro ->
+                    specializeMacro h m dd defKind subType impArgs' expParams defBody codType expArgsAll
+                  _ -> do
+                    let tracer = if isMacroDef defKind then withMacroHint h dd defKind m else id
+                    if all TM.isValue expArgsAll
+                      then do
+                        let expIds = map (\(_, _, x, _) -> x) expParams
+                        let subTerm = IntMap.fromList $ zip (map Ident.toInt expIds) (map Subst.Term expArgsAll)
+                        let sub = IntMap.union subTerm subType
+                        mBody :< body' <- liftIO $ Subst.subst (substHandle h) sub defBody
+                        let mResult = if isMacroDef defKind then mBody else m
+                        body'' <- liftIO $ Refresh.refresh (refreshHandle h) $ mResult :< body'
+                        tracer $ inline' h body''
+                      else do
+                        (expParams', mBody :< body') <- liftIO $ Subst.subst' (substHandle h) subType expParams defBody
+                        let mResult = if isMacroDef defKind then mBody else m
+                        body'' <- liftIO $ Refresh.refresh (refreshHandle h) $ mResult :< body'
+                        tracer $ inline' h $ bind (zip expParams' expArgsAll) body''
+          | Just defInfo <- Map.lookup dd localDefMap -> do
+              let DefInfo {defImpBinders, defExpBinders, defDefaultArgs, defBody, codType} = defInfo
+              reduceApplication defImpBinders defExpBinders defDefaultArgs True $ \subType expParams expArgsAll ->
+                specializeLocalMeta h m dd subType impArgs' expParams defBody codType expArgsAll
         (_ :< TM.Prim (PV.Op op))
-          | PEK.isNormal kind' -> do
+          | isActive h,
+            PEK.isNormal kind' -> do
               case ConstantFold.evaluatePrimOp m op expArgs' of
                 Just result -> do
                   return result
                 Nothing ->
-                  return (m :< TM.PiElim kind' e' impArgs' expArgs' defaultArgs')
+                  return residual
         _ ->
-          return (m :< TM.PiElim kind' e' impArgs' expArgs' defaultArgs')
+          return residual
     m :< TM.DataIntro attr consName dataArgs consArgs -> do
       dataArgs' <- mapM (inlineType' h) dataArgs
       consArgs' <- mapM (inline' h) consArgs
@@ -222,7 +211,7 @@ inline' h term = do
       es' <- mapM (inline' h) es
       ts' <- mapM (inlineType' h) ts
       let oets' = zip3 os es' ts'
-      if isNoetic
+      if isNoetic || not (isActive h)
         then do
           decisionTree' <- inlineDecisionTree h decisionTree
           return $ m :< TM.DataElim isNoetic oets' decisionTree'
@@ -291,9 +280,10 @@ inline' h term = do
     m :< TM.TauElim (mx, x) e1 e2 -> do
       e1' <- inline' h e1
       case e1' of
-        _ :< TM.TauIntro ty -> do
-          let sub = IntMap.singleton (Ident.toInt x) (Subst.Type ty)
-          liftIO (Subst.subst (substHandle h) sub e2) >>= inline' h
+        _ :< TM.TauIntro ty
+          | isActive h -> do
+              let sub = IntMap.singleton (Ident.toInt x) (Subst.Type ty)
+              liftIO (Subst.subst (substHandle h) sub e2) >>= inline' h
         _ -> do
           e2' <- inline' h e2
           return $ m :< TM.TauElim (mx, x) e1' e2'
@@ -306,7 +296,8 @@ inline' h term = do
       e1' <- inline' h e1
       case opacity of
         O.Clear
-          | TM.isValue e1' -> do
+          | isActive h,
+            TM.isValue e1' -> do
               let sub = IntMap.singleton (Ident.toInt x) (Subst.Term e1')
               liftIO (Subst.subst (substHandle h) sub e2) >>= inline' h
         _ -> do
@@ -732,21 +723,146 @@ withMacroHint h dd defKind hint action = do
   liftIO $ modifyIORef' macroCallStack (drop 1)
   return result
 
+specializeMacro ::
+  Handle ->
+  Hint ->
+  DD.DefiniteDescription ->
+  DefKind ->
+  Subst.Subst ->
+  [TM.Type] ->
+  [BinderF TM.Type] ->
+  TM.Term ->
+  TM.Type ->
+  [TM.Term] ->
+  App TM.Term
+specializeMacro h m dd defKind subType impArgs' expParams body codType expArgsAll = do
+  let tracer = withMacroHint h dd defKind m
+  mSpecializedName <- lookupSpecialization h dd impArgs'
+  case mSpecializedName of
+    Just specializedName ->
+      return $ applySpecialization m specializedName expArgsAll
+    Nothing -> do
+      (expBinders', body') <- liftIO $ Subst.subst' (substHandle h) subType expParams body
+      specializedName <- createSpecializationName h dd
+      codType' <- liftIO $ Subst.substType (substHandle h) subType codType
+      beginSpecialization h dd impArgs' specializedName
+      let hDefineMeta = h {currentStage = 1, initialStage = 1, insideDefineMeta = True}
+      body'' <- tracer $ liftIO (Refresh.refresh (refreshHandle h) body') >>= inline hDefineMeta
+      let stmt =
+            Stmt.StmtDefine
+              False
+              SK.Define
+              (SavedHint m)
+              specializedName
+              []
+              expBinders'
+              []
+              codType'
+              body''
+      completeSpecialization h stmt
+      return $ applySpecialization m specializedName expArgsAll
+
+specializeLocalMeta ::
+  Handle ->
+  Hint ->
+  DD.DefiniteDescription ->
+  Subst.Subst ->
+  [TM.Type] ->
+  [BinderF TM.Type] ->
+  TM.Term ->
+  TM.Type ->
+  [TM.Term] ->
+  App TM.Term
+specializeLocalMeta h m dd subType impArgs' expParams body codType expArgsAll = do
+  case lookupLocalMeta dd impArgs' (localMetaMemo h) of
+    Just specSelfId ->
+      return $ m :< TM.PiElim PEK.Normal (m :< TM.Var specSelfId) [] expArgsAll []
+    Nothing -> do
+      specSelfId <- liftIO $ Sym.newIdentFromText (gensymHandle h) "meta-spec"
+      (expParams', body') <- liftIO $ Subst.subst' (substHandle h) subType expParams body
+      codType' <- liftIO $ Subst.substType (substHandle h) subType codType
+      let hInner = h {currentStage = 1, initialStage = 1, insideDefineMeta = True, localMetaMemo = (dd, impArgs', specSelfId) : localMetaMemo h}
+      body'' <- liftIO (Refresh.refresh (refreshHandle h) body') >>= inline hInner
+      lamID <- liftIO $ Gensym.newCount (gensymHandle h)
+      let fixAttr = AttrL.Attr {lamKind = LK.Fix LDK.Define False (m, VK.Normal, specSelfId, codType'), identity = lamID}
+      let fixLam = m :< TM.PiIntro fixAttr [] expParams' [] body''
+      return $ m :< TM.PiElim PEK.Normal fixLam [] expArgsAll []
+
+lookupLocalMeta :: DD.DefiniteDescription -> [TM.Type] -> [(DD.DefiniteDescription, [TM.Type], Ident)] -> Maybe Ident
+lookupLocalMeta dd typeArgs memo =
+  case memo of
+    [] ->
+      Nothing
+    (dd', typeArgs', specSelfId) : rest
+      | dd == dd' && TermEq.eqTypes typeArgs' typeArgs ->
+          Just specSelfId
+      | otherwise ->
+          lookupLocalMeta dd typeArgs rest
+
+isLocalDefineMeta :: LK.LamKindF a -> Bool
+isLocalDefineMeta lamKind =
+  case lamKind of
+    LK.Fix LDK.DefineMeta _ _ ->
+      True
+    _ ->
+      False
+
+registerLocalMeta ::
+  Handle ->
+  Hint ->
+  Int ->
+  AttrL.Attr TM.Type ->
+  [BinderF TM.Type] ->
+  [BinderF TM.Type] ->
+  [(BinderF TM.Type, TM.Term)] ->
+  TM.Term ->
+  App (DD.DefiniteDescription, DefInfo)
+registerLocalMeta h m identity attr impBinders expBinders defBinders body = do
+  let g = DD.getLocalMetaDD identity
+  defMap <- liftIO $ readIORef (localMetaDefMap h)
+  case Map.lookup g defMap of
+    Just defInfo ->
+      return (g, defInfo)
+    Nothing -> do
+      let codType = case AttrL.lamKind attr of
+            LK.Fix _ _ (_, _, _, t) -> t
+            LK.Normal _ _ t -> t
+      let selfArgNum = AN.fromInt $ length impBinders + length expBinders + length defBinders
+      let gTerm = m :< TM.VarGlobal (AttrVG.new selfArgNum) g
+      body' <- case AttrL.fromAttr attr of
+        Just (_, _, selfId, _) -> do
+          let sub = IntMap.singleton (Ident.toInt selfId) (Subst.Term gTerm)
+          liftIO $ Subst.subst (substHandle h) sub body
+        Nothing ->
+          return body
+      let defInfo =
+            DefInfo
+              { defImpBinders = impBinders,
+                defExpBinders = expBinders,
+                defDefaultArgs = defBinders,
+                defBody = body',
+                codType = codType,
+                defKind = Macro
+              }
+      liftIO $ modifyIORef' (localMetaDefMap h) $ Map.insert g defInfo
+      return (g, defInfo)
+
 canReduceByLamKind :: LK.LamKindF a -> Bool
 canReduceByLamKind lamKind =
   case lamKind of
     LK.Normal {} ->
       True
-    LK.Fix O.Clear False _ ->
-      True
+    LK.Fix kind False _ ->
+      not $ O.isOpaque $ LDK.toOpacity kind
     _ ->
       False
 
 selfSubstForLamKind :: LK.LamKindF a -> TM.Term -> Subst.Subst
 selfSubstForLamKind lamKind selfTerm =
   case lamKind of
-    LK.Fix O.Clear False (_, _, selfIdent, _) ->
-      IntMap.singleton (Ident.toInt selfIdent) (Subst.Term selfTerm)
+    LK.Fix kind False (_, _, selfIdent, _)
+      | not $ O.isOpaque $ LDK.toOpacity kind ->
+          IntMap.singleton (Ident.toInt selfIdent) (Subst.Term selfTerm)
     _ ->
       IntMap.empty
 

@@ -54,8 +54,8 @@ import Language.Common.ExternalName qualified as EN
 import Language.Common.HoleID
 import Language.Common.IsConstLike
 import Language.Common.IsDestPassing
+import Language.Common.LocalDefKind qualified as LDK
 import Language.Common.Noema qualified as N
-import Language.Common.Opacity qualified as O
 import Language.Common.Rune qualified as R
 import Language.Common.VarKind (VarKind)
 import Language.RawTerm.Key
@@ -114,7 +114,7 @@ data RawTermF a
   = Var Name
   | VarGlobal DD.DefiniteDescription GN.GlobalName
   | PiIntro C FuncInfo
-  | PiIntroFix O.Opacity C DefInfo
+  | PiIntroFix LDK.LocalDefKind C DefInfo
   | PiElim a C (Maybe (SE.Series RawType)) C (SE.Series a) C (Maybe (SE.Series (Hint, Key, C, C, a)))
   | PiElimImplicit Name C (SE.Series RawType)
   | PiElimByKey Name C (Maybe (SE.Series RawType)) C (SE.Series (Hint, Key, C, C, a)) -- auxiliary syntax for key-call

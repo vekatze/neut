@@ -23,7 +23,7 @@ import Language.Common.Attr.Data qualified as AttrD
 import Language.Common.DataInfo (FieldHint (..))
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.ExternalName qualified as EN
-import Language.Common.Opacity qualified as O
+import Language.Common.LocalDefKind qualified as LDK
 import Language.Common.Rune qualified as RU
 import Language.Common.VarKind qualified as VK
 import Language.RawTerm.Key
@@ -56,14 +56,8 @@ toDoc term =
           decodeDef (const $ D.text name) "inline" c def
         Nothing ->
           decodeLambda c def
-    _ :< PiIntroFix opacity c def -> do
-      let keyword =
-            case opacity of
-              O.Opaque ->
-                "define"
-              O.Clear ->
-                "inline"
-      decodeDef (nameToDoc . N.Var) keyword c def
+    _ :< PiIntroFix kind c def -> do
+      decodeDef (nameToDoc . N.Var) (LDK.keyword kind) c def
     _ :< PiElim e c1 mImpArgs c2 expArgs c3 mDefaultArgs -> do
       let expArgsDoc c =
             attachComment c $ SE.decodeHorizontallyIfPossible $ fmap toDoc expArgs

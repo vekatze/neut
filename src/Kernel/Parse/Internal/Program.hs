@@ -134,7 +134,7 @@ checkNotMainOrZen defName m keywordName = do
 parseDefine :: Handle -> Parser (RawStmt, C)
 parseDefine h = do
   c1 <- keyword "define"
-  (def, c) <- parseDef h baseName
+  (def, c) <- parseDef ArrowObject h baseName
   let defName = RT.getDefName def
   let isDestPassing = RT.isDestPassing $ RT.geist def
   if defName == BN.mainName || defName == BN.zenName
@@ -151,7 +151,7 @@ parseDefine h = do
 parseMacro :: Handle -> Parser (RawStmt, C)
 parseMacro h = do
   c1 <- keyword "define-meta"
-  (def, c) <- parseDef h baseName
+  (def, c) <- parseDef ArrowMeta h baseName
   let defName = RT.getDefName def
   let m = RT.loc $ RT.geist def
   checkNotMainOrZen defName m "define-meta"
@@ -160,7 +160,7 @@ parseMacro h = do
 parseMacroInline :: Handle -> Parser (RawStmt, C)
 parseMacroInline h = do
   c1 <- keyword "inline-meta"
-  (def, c) <- parseDef h baseName
+  (def, c) <- parseDef ArrowMeta h baseName
   let defName = RT.getDefName def
   let m = RT.loc $ RT.geist def
   checkNotMainOrZen defName m "inline-meta"
@@ -169,7 +169,7 @@ parseMacroInline h = do
 parseInline :: Handle -> Parser (RawStmt, C)
 parseInline h = do
   c1 <- keyword "inline"
-  (def, c) <- parseDef h baseName
+  (def, c) <- parseDef ArrowObject h baseName
   let defName = RT.getDefName def
   let m = RT.loc $ RT.geist def
   checkNotMainOrZen defName m "inline"
@@ -237,13 +237,13 @@ parseNominalEntry h =
   choice
     [ do
         cTag <- keyword "define"
-        (geist, cGeist) <- parseNominalGeist h baseName
+        (geist, cGeist) <- parseNominalGeist ArrowObject h baseName
         loc <- getCurrentLoc
         let kind = if RT.isDestPassing geist then DestPassing else Define
         return ((kind, geist, loc), cTag ++ cGeist),
       do
         cTag <- keyword "inline"
-        (geist, cGeist) <- parseNominalGeist h baseName
+        (geist, cGeist) <- parseNominalGeist ArrowObject h baseName
         loc <- getCurrentLoc
         let kind = if RT.isDestPassing geist then DestPassingInline else Inline
         return ((kind, geist, loc), cTag ++ cGeist),
@@ -259,12 +259,12 @@ parseNominalEntry h =
         return ((Constant, geist, loc), cTag ++ cGeist),
       do
         cTag <- keyword "define-meta"
-        (geist, cGeist) <- parseNominalGeist h baseName
+        (geist, cGeist) <- parseNominalGeist ArrowMeta h baseName
         loc <- getCurrentLoc
         return ((Macro, geist, loc), cTag ++ cGeist),
       do
         cTag <- keyword "inline-meta"
-        (geist, cGeist) <- parseNominalGeist h baseName
+        (geist, cGeist) <- parseNominalGeist ArrowMeta h baseName
         loc <- getCurrentLoc
         return ((MacroInline, geist, loc), cTag ++ cGeist),
       do

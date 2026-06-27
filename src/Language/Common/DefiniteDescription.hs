@@ -13,6 +13,7 @@ module Language.Common.DefiniteDescription
     getLambdaDD,
     getMuDD,
     getKnotDD,
+    getLocalMetaDD,
     imm,
     baseTypes,
     cls,
@@ -117,6 +118,10 @@ getMuDD dd x i =
 getKnotDD :: DefiniteDescription -> Int -> DefiniteDescription
 getKnotDD dd i =
   MakeDefiniteDescription {reify = reify dd <> ";" <> T.pack (show i)}
+
+getLocalMetaDD :: Int -> DefiniteDescription
+getLocalMetaDD i =
+  MakeDefiniteDescription {reify = ";meta;" <> T.pack (show i)}
 
 unconsDD :: DefiniteDescription -> (MID.ModuleID, T.Text)
 unconsDD dd = do

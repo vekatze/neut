@@ -26,6 +26,7 @@ import Language.Common.Ident
 import Language.Common.Ident.Reify qualified as Ident
 import Language.Common.ImpArgs qualified as ImpArgs
 import Language.Common.LamKind qualified as LK
+import Language.Common.LocalDefKind qualified as LDK
 import Language.Common.LowMagic qualified as LM
 import Language.Common.Magic qualified as M
 import Language.Common.Opacity qualified as O
@@ -49,12 +50,10 @@ toText term =
       DD.localLocator x
     _ :< WT.PiIntro attr impArgs expArgs defaultArgs e -> do
       case attr of
-        AttrL.Attr {lamKind = LK.Fix opacity isDestPassing (_, k, x, codType)} ->
+        AttrL.Attr {lamKind = LK.Fix kind isDestPassing (_, k, x, codType)} ->
           ( if isDestPassing
-              then "define-dest-passing "
-              else case opacity of
-                O.Opaque -> "define "
-                O.Clear -> "inline "
+              then LDK.keyword kind <> "-dest-passing "
+              else LDK.keyword kind <> " "
           )
             <> showVarWithKind k x
             <> showImpArgs impArgs

@@ -19,6 +19,7 @@ import Kernel.Elaborate.Internal.Handle.TypeDef qualified as TypeDef
 import Language.Common.Binder
 import Language.Common.DataSize qualified as DS
 import Language.Common.DefiniteDescription qualified as DD
+import Language.Common.Ident (Ident)
 import Language.Term.Refresh qualified as Refresh
 import Language.Term.Stmt qualified as Stmt
 import Language.Term.Subst qualified as Subst
@@ -66,6 +67,7 @@ data Handle = Handle
   { substHandle :: Subst.Handle,
     refreshHandle :: Refresh.Handle,
     dmap :: DefMap,
+    localMetaDefMap :: IORef (Map.HashMap DD.DefiniteDescription DefInfo),
     typeDefMap :: TypeDefMap,
     dataHandle :: Data.Handle,
     inlineLimit :: Int,
@@ -79,6 +81,8 @@ data Handle = Handle
     gensymHandle :: GensymHandle.Handle,
     baseSize :: DS.DataSize,
     currentStage :: Int,
+    initialStage :: Int,
     insideDefineMeta :: Bool,
+    localMetaMemo :: [(DD.DefiniteDescription, [TM.Type], Ident)],
     mainModuleDir :: T.Text
   }

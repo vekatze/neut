@@ -9,11 +9,11 @@ import Data.Text qualified as T
 import GHC.Generics
 import Language.Common.Binder
 import Language.Common.IsDestPassing
-import Language.Common.Opacity qualified as O
+import Language.Common.LocalDefKind (LocalDefKind)
 
 data LamKindF a
   = Normal (Maybe T.Text) IsDestPassing a
-  | Fix O.Opacity IsDestPassing (BinderF a)
+  | Fix LocalDefKind IsDestPassing (BinderF a)
   deriving (Show, Generic)
 
 instance (Binary a) => Binary (LamKindF a)
