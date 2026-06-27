@@ -493,27 +493,22 @@ infer h term =
           let boolTypeVar = m :< WT.TVarGlobal (AttrVG.Attr {argNum = AN.zero, isConstLike = True, isDestPassing = False}) boolTypeDD
           let boolType = m :< WT.TyApp boolTypeVar []
           return (m :< WT.Magic (M.WeakMagic $ M.EqType moduleID typeExpr1' typeExpr2'), boolType)
-        M.ShowType stringTypeExpr typeExpr -> do
-          stringTypeExpr' <- inferType h stringTypeExpr
+        M.ShowType typeExpr -> do
           typeExpr' <- inferType h typeExpr
-          return (m :< WT.Magic (M.WeakMagic $ M.ShowType stringTypeExpr' typeExpr'), m :< WT.BoxNoema stringTypeExpr')
+          return (m :< WT.Magic (M.WeakMagic $ M.ShowType typeExpr'), m :< WT.PrimType PT.Text)
         M.AssertMixable moduleID unitTypeExpr typeExpr -> do
           unitTypeExpr' <- inferType h unitTypeExpr
           typeExpr' <- inferType h typeExpr
           return (m :< WT.Magic (M.WeakMagic $ M.AssertMixable moduleID unitTypeExpr' typeExpr'), unitTypeExpr')
-        M.StringCons stringTypeExpr rune text -> do
-          stringTypeExpr' <- inferType h stringTypeExpr
+        M.TextCons rune text -> do
           (rune', runeType) <- infer h rune
-          (text', stringType) <- infer h text
+          (text', textType) <- infer h text
           liftIO $ Constraint.insert (constraintHandle h) (m :< WT.PrimType PT.Rune) runeType
-          liftIO $ Constraint.insert (constraintHandle h) (m :< WT.BoxNoema stringTypeExpr') stringType
-          return (m :< WT.Magic (M.WeakMagic $ M.StringCons stringTypeExpr' rune' text'), m :< WT.BoxNoema stringTypeExpr')
-        M.StringUncons moduleID text -> do
-          (text', stringType) <- infer h text
-          let textSGL = SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.stringLocator}
-          let textDD = DD.newByGlobalLocator textSGL BN.stringType
-          let expected = m :< WT.TVarGlobal (AttrVG.Attr {argNum = AN.zero, isConstLike = True, isDestPassing = False}) textDD
-          liftIO $ Constraint.insert (constraintHandle h) (m :< WT.BoxNoema expected) stringType
+          liftIO $ Constraint.insert (constraintHandle h) (m :< WT.PrimType PT.Text) textType
+          return (m :< WT.Magic (M.WeakMagic $ M.TextCons rune' text'), m :< WT.PrimType PT.Text)
+        M.TextUncons moduleID text -> do
+          (text', textType) <- infer h text
+          liftIO $ Constraint.insert (constraintHandle h) (m :< WT.PrimType PT.Text) textType
           let eitherSGL = SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.eitherLocator}
           let unitSGL = SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.unitLocator}
           let pairSGL = SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.pairLocator}
@@ -524,15 +519,15 @@ infer h term =
           let unitTypeVar = m :< WT.TVarGlobal (AttrVG.Attr {argNum = AN.zero, isConstLike = True, isDestPassing = False}) unitTypeDD
           let pairTypeVar = m :< WT.TVarGlobal (AttrVG.Attr {argNum = AN.fromInt 4, isConstLike = False, isDestPassing = False}) pairTypeDD
           let runeType = m :< WT.PrimType PT.Rune
-          let pairType = m :< WT.TyApp pairTypeVar [runeType, stringType]
+          let textType' = m :< WT.PrimType PT.Text
+          let pairType = m :< WT.TyApp pairTypeVar [runeType, textType']
           let eitherType = m :< WT.TyApp eitherTypeVar [unitTypeVar, pairType]
-          return (m :< WT.Magic (M.WeakMagic $ M.StringUncons moduleID text'), eitherType)
-        M.CompileError typeExpr msg -> do
-          typeExpr' <- inferType h typeExpr
+          return (m :< WT.Magic (M.WeakMagic $ M.TextUncons moduleID text'), eitherType)
+        M.CompileError msg -> do
           (msg', msgType) <- infer h msg
-          liftIO $ Constraint.insert (constraintHandle h) (m :< WT.BoxNoema typeExpr') msgType
+          liftIO $ Constraint.insert (constraintHandle h) (m :< WT.PrimType PT.Text) msgType
           resultType <- liftIO $ newTypeHole h m (varEnv h)
-          return (m :< WT.Magic (M.WeakMagic $ M.CompileError typeExpr' msg'), resultType)
+          return (m :< WT.Magic (M.WeakMagic $ M.CompileError msg'), resultType)
         M.GetOriginFileName -> do
           return (m :< WT.Magic (M.WeakMagic M.GetOriginFileName), m :< WT.PrimType PT.Text)
         M.GetOriginLine -> do

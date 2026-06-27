@@ -767,26 +767,23 @@ elaborate' h term = do
           typeExpr1' <- elaborateType h typeExpr1
           typeExpr2' <- elaborateType h typeExpr2
           return $ m :< TM.Magic (M.EqType moduleID typeExpr1' typeExpr2')
-        M.ShowType stringTypeExpr typeExpr -> do
-          stringTypeExpr' <- elaborateType h stringTypeExpr
+        M.ShowType typeExpr -> do
           typeExpr' <- elaborateType h typeExpr
-          return $ m :< TM.Magic (M.ShowType stringTypeExpr' typeExpr')
+          return $ m :< TM.Magic (M.ShowType typeExpr')
         M.AssertMixable moduleID unitTypeExpr typeExpr -> do
           unitTypeExpr' <- elaborateType h unitTypeExpr
           typeExpr' <- elaborateType h typeExpr
           return $ m :< TM.Magic (M.AssertMixable moduleID unitTypeExpr' typeExpr')
-        M.StringCons stringTypeExpr rune text -> do
-          stringTypeExpr' <- elaborateType h stringTypeExpr
+        M.TextCons rune text -> do
           rune' <- elaborate' h rune
           text' <- elaborate' h text
-          return $ m :< TM.Magic (M.StringCons stringTypeExpr' rune' text')
-        M.StringUncons mid text -> do
+          return $ m :< TM.Magic (M.TextCons rune' text')
+        M.TextUncons mid text -> do
           text' <- elaborate' h text
-          return $ m :< TM.Magic (M.StringUncons mid text')
-        M.CompileError typeExpr msg -> do
-          typeExpr' <- elaborateType h typeExpr
+          return $ m :< TM.Magic (M.TextUncons mid text')
+        M.CompileError msg -> do
           msg' <- elaborate' h msg
-          return $ m :< TM.Magic (M.CompileError typeExpr' msg')
+          return $ m :< TM.Magic (M.CompileError msg')
         M.GetOriginFileName -> do
           return $ m :< TM.Magic M.GetOriginFileName
         M.GetOriginLine -> do

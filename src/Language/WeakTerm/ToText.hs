@@ -29,7 +29,6 @@ import Language.Common.LamKind qualified as LK
 import Language.Common.LocalDefKind qualified as LDK
 import Language.Common.LowMagic qualified as LM
 import Language.Common.Magic qualified as M
-import Language.Common.Opacity qualified as O
 import Language.Common.PiKind qualified as PK
 import Language.Common.PrimOp qualified as PO
 import Language.Common.PrimType.ToText qualified as PT
@@ -38,8 +37,8 @@ import Language.Common.VarKind qualified as VK
 import Language.WeakTerm.WeakPrimValue qualified as WPV
 import Language.WeakTerm.WeakTerm qualified as WT
 
-newtype Handle =
-  Handle {showDD :: DD.DefiniteDescription -> T.Text}
+newtype Handle
+  = Handle {showDD :: DD.DefiniteDescription -> T.Text}
 
 toText :: WT.WeakTerm -> T.Text
 toText term =
@@ -426,16 +425,16 @@ showMagic' h (M.WeakMagic magic) =
       "magic inspect-type" <> inParen (toTextType' h typeValueExpr <> ", " <> toTextType' h e)
     M.EqType _ typeExpr1 typeExpr2 ->
       "magic eq-type" <> inParen (toTextType' h typeExpr1 <> ", " <> toTextType' h typeExpr2)
-    M.ShowType stringTypeExpr typeExpr ->
-      "magic show-type" <> inParen (toTextType' h stringTypeExpr <> ", " <> toTextType' h typeExpr)
+    M.ShowType typeExpr ->
+      "magic show-type" <> inParen (toTextType' h typeExpr)
     M.AssertMixable _ unitTypeExpr typeExpr ->
       "magic assert-mixable" <> inParen (toTextType' h unitTypeExpr <> ", " <> toTextType' h typeExpr)
-    M.StringCons stringTypeExpr rune text ->
-      "magic text-cons" <> inParen (toTextType' h stringTypeExpr <> ", " <> toText rune <> ", " <> toText text)
-    M.StringUncons _ text ->
+    M.TextCons rune text ->
+      "magic text-cons" <> inParen (toText rune <> ", " <> toText text)
+    M.TextUncons _ text ->
       "magic text-uncons" <> inParen (toText text)
-    M.CompileError typeExpr msg ->
-      "magic compile-error" <> inParen (toTextType' h typeExpr <> ", " <> toText msg)
+    M.CompileError msg ->
+      "magic compile-error" <> inParen (toText msg)
     M.GetOriginFileName ->
       "magic get-origin-file-name()"
     M.GetOriginLine ->

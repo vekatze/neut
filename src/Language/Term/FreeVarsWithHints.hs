@@ -163,16 +163,16 @@ freeVarsWithHintsMagic magic =
       S.union (freeVarsWithHintsType typeValueExpr) (freeVarsWithHintsType e)
     M.EqType _ typeExpr1 typeExpr2 ->
       S.union (freeVarsWithHintsType typeExpr1) (freeVarsWithHintsType typeExpr2)
-    M.ShowType stringTypeExpr typeExpr ->
-      S.union (freeVarsWithHintsType stringTypeExpr) (freeVarsWithHintsType typeExpr)
+    M.ShowType typeExpr ->
+      freeVarsWithHintsType typeExpr
     M.AssertMixable _ unitTypeExpr typeExpr ->
       S.union (freeVarsWithHintsType unitTypeExpr) (freeVarsWithHintsType typeExpr)
-    M.StringCons stringTypeExpr rune text ->
-      S.unions [freeVarsWithHintsType stringTypeExpr, freeVarsWithHints rune, freeVarsWithHints text]
-    M.StringUncons _ text ->
+    M.TextCons rune text ->
+      S.union (freeVarsWithHints rune) (freeVarsWithHints text)
+    M.TextUncons _ text ->
       freeVarsWithHints text
-    M.CompileError typeExpr msg ->
-      S.union (freeVarsWithHintsType typeExpr) (freeVarsWithHints msg)
+    M.CompileError msg ->
+      freeVarsWithHints msg
     M.GetOriginFileName ->
       S.empty
     M.GetOriginLine ->

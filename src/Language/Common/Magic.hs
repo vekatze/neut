@@ -17,11 +17,11 @@ data Magic lt ty a
   | Free ty a -- Free unitType ptr
   | InspectType MID.ModuleID ty ty -- typeValueExpr, e (both types)
   | EqType MID.ModuleID ty ty
-  | ShowType ty ty
+  | ShowType ty -- typeExpr
   | AssertMixable MID.ModuleID ty ty -- unitTypeExpr, targetTypeExpr
-  | StringCons ty a a
-  | StringUncons MID.ModuleID a
-  | CompileError ty a
+  | TextCons a a -- rune, text
+  | TextUncons MID.ModuleID a -- text
+  | CompileError a -- msg
   | GetOriginFileName
   | GetOriginLine
   | GetOriginColumn
@@ -46,16 +46,16 @@ instance Functor (Magic lt ty) where
         InspectType mid typeValueExpr e
       EqType mid t1 t2 ->
         EqType mid t1 t2
-      ShowType stringTypeExpr typeExpr ->
-        ShowType stringTypeExpr typeExpr
+      ShowType typeExpr ->
+        ShowType typeExpr
       AssertMixable mid unitTypeExpr typeExpr ->
         AssertMixable mid unitTypeExpr typeExpr
-      StringCons stringTypeExpr rune text ->
-        StringCons stringTypeExpr (f rune) (f text)
-      StringUncons mid text ->
-        StringUncons mid (f text)
-      CompileError typeExpr msg ->
-        CompileError typeExpr (f msg)
+      TextCons rune text ->
+        TextCons (f rune) (f text)
+      TextUncons mid text ->
+        TextUncons mid (f text)
+      CompileError msg ->
+        CompileError (f msg)
       GetOriginFileName ->
         GetOriginFileName
       GetOriginLine ->
@@ -84,11 +84,11 @@ instance Foldable (Magic lt ty) where
         mempty
       AssertMixable {} ->
         mempty
-      StringCons _ rune text ->
+      TextCons rune text ->
         f rune <> f text
-      StringUncons _ text ->
+      TextUncons _ text ->
         f text
-      CompileError _ msg ->
+      CompileError msg ->
         f msg
       GetOriginFileName ->
         mempty
@@ -114,16 +114,16 @@ instance Traversable (Magic lt ty) where
         pure $ InspectType mid typeValueExpr e
       EqType mid t1 t2 ->
         pure $ EqType mid t1 t2
-      ShowType stringTypeExpr typeExpr ->
-        pure $ ShowType stringTypeExpr typeExpr
+      ShowType typeExpr ->
+        pure $ ShowType typeExpr
       AssertMixable mid unitTypeExpr typeExpr ->
         pure $ AssertMixable mid unitTypeExpr typeExpr
-      StringCons stringTypeExpr rune text ->
-        StringCons stringTypeExpr <$> f rune <*> f text
-      StringUncons mid text ->
-        StringUncons mid <$> f text
-      CompileError typeExpr msg ->
-        CompileError typeExpr <$> f msg
+      TextCons rune text ->
+        TextCons <$> f rune <*> f text
+      TextUncons mid text ->
+        TextUncons mid <$> f text
+      CompileError msg ->
+        CompileError <$> f msg
       GetOriginFileName ->
         pure GetOriginFileName
       GetOriginLine ->
