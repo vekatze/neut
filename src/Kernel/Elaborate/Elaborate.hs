@@ -26,7 +26,6 @@ import Kernel.Common.Const (holeLiteral)
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.Data qualified as Data
 import Kernel.Common.Handle.Global.GlobalRemark qualified as GlobalRemark
-import Kernel.Common.Handle.Global.Env qualified as Env
 import Kernel.Common.Handle.Global.KeyArg qualified as KeyArg
 import Kernel.Common.Handle.Global.OptimizableData qualified as OptimizableData
 import Kernel.Common.Handle.Global.Platform qualified as Platform
@@ -1001,11 +1000,8 @@ elaborateWeakBinder h (m, k, x, t) = do
 
 inlineType :: Handle -> Hint -> TM.Type -> App TM.Type
 inlineType h m t = do
-  dmap <- liftIO $ Definition.get' (defHandle h)
-  typeDefMap <- liftIO $ TypeDef.get' (typeDefHandle h)
-  let baseSize = Platform.getDataSize (platformHandle h)
-  let mainModuleDir = T.pack $ Env.getMainModuleDir (envHandle h)
-  inlineHandle <- liftIO $ Inline.new (gensymHandle h) dmap typeDefMap (dataHandle h) baseSize m (inlineLimit h) (specializationTable h) (pendingSpecializationDefs h) (residualCheckList h) False mainModuleDir
+  env <- liftIO $ inlineEnv h
+  inlineHandle <- liftIO $ Inline.new env m False
   Inline.inlineType inlineHandle t
 
 elaborateLet :: Handle -> (BinderF WT.WeakType, WT.WeakTerm) -> App (BinderF TM.Type, TM.Term)

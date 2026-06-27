@@ -6,19 +6,20 @@ module Kernel.Elaborate.Internal.Handle.Elaborate
     inline,
     inlineWithoutResidualChecks,
     inlineBinder,
+    inlineEnv,
   )
 where
 
 import App.App (App)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.IORef
-import Data.Text qualified as T
 import Data.Maybe (fromMaybe)
+import Data.Text qualified as T
 import Gensym.Handle qualified as Gensym
 import Kernel.Common.Const (defaultInlineLimit)
 import Kernel.Common.CreateGlobalHandle qualified as Global
-import Kernel.Common.Handle.Global.Data qualified as Data
 import Kernel.Common.CreateLocalHandle qualified as Local
+import Kernel.Common.Handle.Global.Data qualified as Data
 import Kernel.Common.Handle.Global.Env qualified as Env
 import Kernel.Common.Handle.Global.GlobalRemark qualified as GlobalRemark
 import Kernel.Common.Handle.Global.KeyArg qualified as KeyArg
@@ -42,6 +43,7 @@ import Kernel.Elaborate.TypeHoleSubst qualified as THS
 import Kernel.Parse.Internal.Handle.UsedTopLevelName qualified as UsedTopLevelName
 import Language.Common.Binder
 import Language.Term.Inline qualified as Inline
+import Language.Term.Inline.Env qualified as InlineEnv
 import Language.Term.Inline.Handle qualified as InlineHandle
 import Language.Term.Stmt qualified as Stmt
 import Language.Term.Term qualified as TM
@@ -111,28 +113,42 @@ fillType h sub t = do
   Fill.fillType fillHandle sub t
 
 inline :: Handle -> Hint -> TM.Term -> App TM.Term
-inline h m e =
-  inline' h m True e
+inline h m =
+  inline' h m True
 
 inlineWithoutResidualChecks :: Handle -> Hint -> TM.Term -> App TM.Term
-inlineWithoutResidualChecks h m e =
-  inline' h m False e
+inlineWithoutResidualChecks h m =
+  inline' h m False
+
+inlineEnv :: Handle -> IO InlineEnv.Env
+inlineEnv h = do
+  dmap <- Definition.get' (defHandle h)
+  typeDefMap <- TypeDef.get' (typeDefHandle h)
+  let baseSize = Platform.getDataSize (platformHandle h)
+  let mainModuleDir = T.pack $ Env.getMainModuleDir (envHandle h)
+  return $
+    InlineEnv.Env
+      { InlineEnv.gensymHandle = gensymHandle h,
+        InlineEnv.dmap = dmap,
+        InlineEnv.typeDefMap = typeDefMap,
+        InlineEnv.dataHandle = dataHandle h,
+        InlineEnv.baseSize = baseSize,
+        InlineEnv.inlineLimit = inlineLimit h,
+        InlineEnv.specializationTable = specializationTable h,
+        InlineEnv.pendingSpecializationDefs = pendingSpecializationDefs h,
+        InlineEnv.residualCheckList = residualCheckList h,
+        InlineEnv.mainModuleDir = mainModuleDir
+      }
 
 inline' :: Handle -> Hint -> Bool -> TM.Term -> App TM.Term
 inline' h m shouldEmitResidualChecks e = do
-  dmap <- liftIO $ Definition.get' (defHandle h)
-  typeDefMap <- liftIO $ TypeDef.get' (typeDefHandle h)
-  let baseSize = Platform.getDataSize (platformHandle h)
-  let mainModuleDir = T.pack $ Env.getMainModuleDir (envHandle h)
-  inlineHandle <- liftIO $ Inline.new (gensymHandle h) dmap typeDefMap (dataHandle h) baseSize m (inlineLimit h) (specializationTable h) (pendingSpecializationDefs h) (residualCheckList h) shouldEmitResidualChecks mainModuleDir
+  env <- liftIO $ inlineEnv h
+  inlineHandle <- liftIO $ Inline.new env m shouldEmitResidualChecks
   Inline.inline inlineHandle e
 
 inlineBinder :: Handle -> BinderF TM.Type -> App (BinderF TM.Type)
 inlineBinder h (m, k, x, t) = do
-  dmap <- liftIO $ Definition.get' (defHandle h)
-  typeDefMap <- liftIO $ TypeDef.get' (typeDefHandle h)
-  let baseSize = Platform.getDataSize (platformHandle h)
-  let mainModuleDir = T.pack $ Env.getMainModuleDir (envHandle h)
-  inlineHandle <- liftIO $ Inline.new (gensymHandle h) dmap typeDefMap (dataHandle h) baseSize m (inlineLimit h) (specializationTable h) (pendingSpecializationDefs h) (residualCheckList h) False mainModuleDir
+  env <- liftIO $ inlineEnv h
+  inlineHandle <- liftIO $ Inline.new env m False
   t' <- Inline.inlineType inlineHandle t
   return (m, k, x, t')

@@ -21,8 +21,6 @@ import Data.IntMap qualified as IntMap
 import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
 import Gensym.Gensym qualified as Gensym
-import Gensym.Handle qualified as GensymHandle
-import Kernel.Common.Handle.Global.Data qualified as Data
 import Kernel.Elaborate.Internal.Handle.TypeDef qualified as TypeDef
 import Language.Common.ArgNum qualified as AN
 import Language.Common.Attr.DataIntro qualified as AttrDI
@@ -31,7 +29,6 @@ import Language.Common.Attr.VarGlobal qualified as AttrVG
 import Language.Common.BaseLowType qualified as BLT
 import Language.Common.Binder
 import Language.Common.CreateSymbol qualified as Sym
-import Language.Common.DataSize qualified as DS
 import Language.Common.DecisionTree qualified as DT
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.Discriminant qualified as D
@@ -48,6 +45,7 @@ import Language.Common.StmtKind qualified as SK
 import Language.Common.VarKind qualified as VK
 import Language.Term.Eq qualified as TermEq
 import Language.Term.Inline.ConstantFold qualified as ConstantFold
+import Language.Term.Inline.Env qualified as Env
 import Language.Term.Inline.Handle
 import Language.Term.Inline.Magic qualified as Magic
 import Language.Term.PrimValue qualified as PV
@@ -57,8 +55,9 @@ import Language.Term.Subst qualified as Subst
 import Language.Term.Term qualified as TM
 import Logger.Hint
 
-new :: GensymHandle.Handle -> DefMap -> TypeDefMap -> Data.Handle -> DS.DataSize -> Hint -> Int -> IORef SpecializationTable -> IORef [Stmt.Stmt] -> IORef [ResidualCheck] -> Bool -> T.Text -> IO Handle
-new gensymHandle dmap typeDefMap dataHandle baseSize location inlineLimit specializationTable pendingSpecializationDefs residualCheckList shouldEmitResidualChecks mainModuleDir = do
+new :: Env.Env -> Hint -> Bool -> IO Handle
+new env location shouldEmitResidualChecks = do
+  let Env.Env {..} = env
   let substHandle = Subst.new gensymHandle
   let refreshHandle = Refresh.new gensymHandle
   currentStepRef <- liftIO $ newIORef 0
