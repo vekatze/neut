@@ -271,25 +271,20 @@ analyze h term = do
           cs1 <- analyzeType h typeExpr1
           cs2 <- analyzeType h typeExpr2
           return $ cs1 ++ cs2
-        M.ShowType stringTypeExpr typeExpr -> do
-          cs1 <- analyzeType h stringTypeExpr
-          cs2 <- analyzeType h typeExpr
-          return $ cs1 ++ cs2
+        M.ShowType typeExpr -> do
+          analyzeType h typeExpr
         M.AssertMixable _ unitTypeExpr typeExpr -> do
           cs1 <- analyzeType h unitTypeExpr
           cs2 <- analyzeType h typeExpr
           return $ cs1 ++ cs2
-        M.StringCons stringTypeExpr rune text -> do
-          cs1 <- analyzeType h stringTypeExpr
-          cs2 <- analyze h rune
-          cs3 <- analyze h text
-          return $ cs1 ++ cs2 ++ cs3
-        M.StringUncons _ text -> do
-          analyze h text
-        M.CompileError typeExpr msg -> do
-          cs1 <- analyzeType h typeExpr
-          cs2 <- analyze h msg
+        M.TextCons rune text -> do
+          cs1 <- analyze h rune
+          cs2 <- analyze h text
           return $ cs1 ++ cs2
+        M.TextUncons _ text -> do
+          analyze h text
+        M.CompileError msg -> do
+          analyze h msg
         M.GetOriginFileName ->
           return []
         M.GetOriginLine ->

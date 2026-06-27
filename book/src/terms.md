@@ -2672,9 +2672,9 @@ magic eq-type(type-1, type-2)
 
 magic show-type(some-type)
 
-magic string-cons(rune, string)
+magic text-cons(rune, text)
 
-magic string-uncons(string)
+magic text-uncons(text)
 
 magic compile-error(message)
 
@@ -2701,8 +2701,8 @@ The forms
 - `magic inspect-type(some-type)`
 - `magic eq-type(type-1, type-2)`
 - `magic show-type(some-type)`
-- `magic string-cons(rune, string)`
-- `magic string-uncons(string)`
+- `magic text-cons(rune, text)`
+- `magic text-uncons(text)`
 - `magic compile-error(message)`
 - `magic get-origin-file-name()`
 - `magic get-origin-line()`
@@ -2782,15 +2782,15 @@ See [Memory Representation in Statements](./statements.md#memory-representation)
 
 ### Semantics (show-type)
 
-`magic show-type(some-type)` returns a string representation of the given type.
+`magic show-type(some-type)` returns a `text` representation of the given type.
 
-### Semantics (string-cons)
+### Semantics (text-cons)
 
-`magic string-cons(rune, string)` prepends `rune` to `string`.
+`magic text-cons(rune, text)` prepends `rune` to `text`.
 
-### Semantics (string-uncons)
+### Semantics (text-uncons)
 
-`magic string-uncons(string)` decomposes `string` into either the empty case or a pair of its first rune and the remaining string.
+`magic text-uncons(text)` decomposes `text` into either the empty case or a pair of its first rune and the remaining text.
 
 ### Semantics (compile-error)
 
@@ -2914,22 +2914,22 @@ See [Memory Representation in Statements](./statements.md#memory-representation)
 
 Γ ⊢ t: type
 ------------------------------------------------------
-Γ ⊢ magic show-type(t): &string
+Γ ⊢ magic show-type(t): text
 
 
 Γ ⊢ r: rune
-Γ ⊢ s: &string
+Γ ⊢ s: text
 ------------------------------------------------------
-Γ ⊢ magic string-cons(r, s): &string
+Γ ⊢ magic text-cons(r, s): text
 
 
-Γ ⊢ s: &string
+Γ ⊢ s: text
 ------------------------------------------------------
-Γ ⊢ magic string-uncons(s): either(unit, pair(rune, &string))
+Γ ⊢ magic text-uncons(s): either(unit, pair(rune, text))
 
 
 Γ ⊢ a: type
-Γ ⊢ message: &string
+Γ ⊢ message: text
 ------------------------------------------------------
 Γ ⊢ magic compile-error(message): a
 

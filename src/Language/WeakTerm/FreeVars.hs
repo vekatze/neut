@@ -124,11 +124,11 @@ freeVarsMagicTerm (M.WeakMagic magic) =
       S.empty
     M.AssertMixable {} ->
       S.empty
-    M.StringCons _ rune text ->
+    M.TextCons rune text ->
       S.union (freeVars rune) (freeVars text)
-    M.StringUncons _ text ->
+    M.TextUncons _ text ->
       freeVars text
-    M.CompileError _ msg ->
+    M.CompileError msg ->
       freeVars msg
     M.GetOriginFileName ->
       S.empty
@@ -303,16 +303,16 @@ freeVarsMagic (M.WeakMagic magic) =
       S.union (freeVarsType typeValueExpr) (freeVarsType e)
     M.EqType _ typeExpr1 typeExpr2 ->
       S.union (freeVarsType typeExpr1) (freeVarsType typeExpr2)
-    M.ShowType stringTypeExpr typeExpr ->
-      S.union (freeVarsType stringTypeExpr) (freeVarsType typeExpr)
+    M.ShowType typeExpr ->
+      freeVarsType typeExpr
     M.AssertMixable _ unitTypeExpr typeExpr ->
       S.union (freeVarsType unitTypeExpr) (freeVarsType typeExpr)
-    M.StringCons stringTypeExpr rune text ->
-      S.unions [freeVarsType stringTypeExpr, freeVarsAll rune, freeVarsAll text]
-    M.StringUncons _ text ->
+    M.TextCons rune text ->
+      S.union (freeVarsAll rune) (freeVarsAll text)
+    M.TextUncons _ text ->
       freeVarsAll text
-    M.CompileError typeExpr msg ->
-      S.union (freeVarsType typeExpr) (freeVarsAll msg)
+    M.CompileError msg ->
+      freeVarsAll msg
     M.GetOriginFileName ->
       S.empty
     M.GetOriginLine ->

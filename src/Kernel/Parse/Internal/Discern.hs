@@ -645,13 +645,11 @@ discern h term =
       unitUnit <- liftEither $ locatorToVarGlobal m coreUnitUnit
       discern h $ foldIf m boolTrue boolFalse whenCond whenBody [] unitUnit
     m :< RT.Admit -> do
-      stringTypeRaw <- liftEither $ locatorToTypeVar m coreString
       let messageText = "Admitted: " <> T.pack (Hint.toString m)
       if isCompileStage h
         then do
-          stringType <- discernType h stringTypeRaw
           message' <- discern h $ m :< RT.String messageText
-          let body = m :< WT.Magic (M.WeakMagic $ M.CompileError stringType message')
+          let body = m :< WT.Magic (M.WeakMagic $ M.CompileError message')
           return $ m :< WT.Annotation L.Warning (AN.Type (doNotCare m)) body
         else do
           let message' = m :< RT.String (messageText <> "\n")
@@ -956,31 +954,28 @@ discernMagic h m magic =
       return $ M.WeakMagic $ M.EqType coreModuleID typeExpr1' typeExpr2'
     RT.ShowType _ (_, (typeExpr, _)) -> do
       ensureCompileStage m h "inline magic (`show-type`)"
-      stringType <- liftEither (locatorToTypeVar m coreString) >>= discernType h
       typeExpr' <- discernType h typeExpr
-      return $ M.WeakMagic $ M.ShowType stringType typeExpr'
+      return $ M.WeakMagic $ M.ShowType typeExpr'
     RT.AssertMixable _ (_, (typeExpr, _)) -> do
       ensureCompileStage m h "inline magic (`assert-mixable`)"
       moduleID <- Alias.resolveModuleAlias (H.aliasHandle h) m coreModuleAlias
       unitType <- liftEither (locatorToTypeVar m coreUnit) >>= discernType h
       typeExpr' <- discernType h typeExpr
       return $ M.WeakMagic $ M.AssertMixable moduleID unitType typeExpr'
-    RT.StringCons _ (_, (rune, _)) (_, (text, _)) -> do
-      ensureCompileStage m h "inline magic (`string-cons`)"
-      stringType <- liftEither (locatorToTypeVar m coreString) >>= discernType h
+    RT.TextCons _ (_, (rune, _)) (_, (text, _)) -> do
+      ensureCompileStage m h "inline magic (`text-cons`)"
       rune' <- discern h rune
       text' <- discern h text
-      return $ M.WeakMagic $ M.StringCons stringType rune' text'
-    RT.StringUncons _ (_, (text, _)) -> do
-      ensureCompileStage m h "inline magic (`string-uncons`)"
+      return $ M.WeakMagic $ M.TextCons rune' text'
+    RT.TextUncons _ (_, (text, _)) -> do
+      ensureCompileStage m h "inline magic (`text-uncons`)"
       moduleID <- Alias.resolveModuleAlias (H.aliasHandle h) m coreModuleAlias
       text' <- discern h text
-      return $ M.WeakMagic $ M.StringUncons moduleID text'
+      return $ M.WeakMagic $ M.TextUncons moduleID text'
     RT.CompileError _ (_, (msg, _)) -> do
       ensureCompileStage m h "inline magic (`compile-error`)"
-      stringType <- liftEither (locatorToTypeVar m coreString) >>= discernType h
       msg' <- discern h msg
-      return $ M.WeakMagic $ M.CompileError stringType msg'
+      return $ M.WeakMagic $ M.CompileError msg'
     RT.GetOriginFileName {} -> do
       ensureCompileStage m h "inline magic (`get-origin-file-name`)"
       return $ M.WeakMagic M.GetOriginFileName

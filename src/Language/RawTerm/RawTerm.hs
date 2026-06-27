@@ -336,8 +336,8 @@ data RawMagic
   | EqType (EL RawType) (EL RawType)
   | ShowType C (EL RawType)
   | AssertMixable C (EL RawType)
-  | StringCons C (EL RawTerm) (EL RawTerm)
-  | StringUncons C (EL RawTerm)
+  | TextCons C (EL RawTerm) (EL RawTerm)
+  | TextUncons C (EL RawTerm)
   | CompileError C (EL RawTerm)
   | GetOriginFileName C C
   | GetOriginLine C C

@@ -401,26 +401,23 @@ substMagic h sub magic =
       typeExpr1' <- substType h sub typeExpr1
       typeExpr2' <- substType h sub typeExpr2
       return $ M.EqType moduleID typeExpr1' typeExpr2'
-    M.ShowType stringTypeExpr typeExpr -> do
-      stringTypeExpr' <- substType h sub stringTypeExpr
+    M.ShowType typeExpr -> do
       typeExpr' <- substType h sub typeExpr
-      return $ M.ShowType stringTypeExpr' typeExpr'
+      return $ M.ShowType typeExpr'
     M.AssertMixable moduleID unitTypeExpr typeExpr -> do
       unitTypeExpr' <- substType h sub unitTypeExpr
       typeExpr' <- substType h sub typeExpr
       return $ M.AssertMixable moduleID unitTypeExpr' typeExpr'
-    M.StringCons stringTypeExpr rune text -> do
-      stringTypeExpr' <- substType h sub stringTypeExpr
+    M.TextCons rune text -> do
       rune' <- subst h sub rune
       text' <- subst h sub text
-      return $ M.StringCons stringTypeExpr' rune' text'
-    M.StringUncons mid text -> do
+      return $ M.TextCons rune' text'
+    M.TextUncons mid text -> do
       text' <- subst h sub text
-      return $ M.StringUncons mid text'
-    M.CompileError typeExpr msg -> do
-      typeExpr' <- substType h sub typeExpr
+      return $ M.TextUncons mid text'
+    M.CompileError msg -> do
       msg' <- subst h sub msg
-      return $ M.CompileError typeExpr' msg'
+      return $ M.CompileError msg'
     M.GetOriginFileName ->
       return M.GetOriginFileName
     M.GetOriginLine ->

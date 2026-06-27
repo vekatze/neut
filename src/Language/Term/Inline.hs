@@ -360,23 +360,21 @@ inline' h term = do
           typeExpr1' <- inlineType' h typeExpr1
           typeExpr2' <- inlineType' h typeExpr2
           Magic.evaluateEqType m moduleID typeExpr1' typeExpr2'
-        M.ShowType stringTypeExpr typeExpr -> do
-          stringTypeExpr' <- inlineType' h stringTypeExpr
+        M.ShowType typeExpr -> do
           typeExpr' <- inlineType' h typeExpr
-          Magic.evaluateShowType m stringTypeExpr' typeExpr'
+          Magic.evaluateShowType m typeExpr'
         M.AssertMixable mid _ typeExpr -> do
           typeExpr' <- inlineType' h typeExpr
           emitMixableCheck h m typeExpr'
           return $ Magic.constructUnitTerm m mid
-        M.StringCons stringTypeExpr rune text -> do
-          stringTypeExpr' <- inlineType' h stringTypeExpr
+        M.TextCons rune text -> do
           rune' <- inline' h rune
           text' <- inline' h text
-          Magic.evaluateStringCons h m stringTypeExpr' rune' text'
-        M.StringUncons mid text -> do
+          Magic.evaluateTextCons h m rune' text'
+        M.TextUncons mid text -> do
           text' <- inline' h text
-          Magic.evaluateStringUncons h m mid text' >>= inline' h
-        M.CompileError _ msg -> do
+          Magic.evaluateTextUncons h m mid text' >>= inline' h
+        M.CompileError msg -> do
           msg' <- inline' h msg
           Magic.evaluateCompileError h m msg'
         M.GetOriginFileName -> do

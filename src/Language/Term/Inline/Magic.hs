@@ -2,8 +2,8 @@ module Language.Term.Inline.Magic
   ( evaluateInspectType,
     evaluateEqType,
     evaluateShowType,
-    evaluateStringCons,
-    evaluateStringUncons,
+    evaluateTextCons,
+    evaluateTextUncons,
     evaluateCompileError,
     evaluateGetOriginFileName,
     evaluateGetOriginLine,
@@ -377,24 +377,24 @@ constructIntTerm h m value = do
   let intType = m :< TM.PrimType (PT.Int intSize)
   m :< TM.Prim (PV.Int intType intSize (toInteger value))
 
-evaluateShowType :: Hint -> TM.Type -> TM.Type -> App TM.Term
-evaluateShowType m stringTypeExpr typeExpr = do
+evaluateShowType :: Hint -> TM.Type -> App TM.Term
+evaluateShowType m typeExpr = do
   let typeText = toTextType $ weakenType typeExpr
-  return $ m :< TM.Prim (PV.NoeticString stringTypeExpr typeText)
+  return $ m :< TM.Prim (PV.Text typeText)
 
-evaluateStringCons :: Handle -> Hint -> TM.Type -> TM.Term -> TM.Term -> App TM.Term
-evaluateStringCons h m stringTypeExpr rune text = do
+evaluateTextCons :: Handle -> Hint -> TM.Term -> TM.Term -> App TM.Term
+evaluateTextCons h m rune text = do
   case (rune, text) of
-    (_ :< TM.Prim (PV.Rune r), _ :< TM.Prim (PV.NoeticString _ textValue)) -> do
+    (_ :< TM.Prim (PV.Rune r), _ :< TM.Prim (PV.Text textValue)) -> do
       let newText = T.cons (Rune.asChar r) textValue
-      return $ m :< TM.Prim (PV.NoeticString stringTypeExpr newText)
+      return $ m :< TM.Prim (PV.Text newText)
     _ ->
-      reportMacroError h m "string-cons requires a rune literal and a static text literal"
+      reportMacroError h m "text-cons requires a rune literal and a static text literal"
 
-evaluateStringUncons :: Handle -> Hint -> MID.ModuleID -> TM.Term -> App TM.Term
-evaluateStringUncons h m moduleID text = do
+evaluateTextUncons :: Handle -> Hint -> MID.ModuleID -> TM.Term -> App TM.Term
+evaluateTextUncons h m moduleID text = do
   case text of
-    _ :< TM.Prim (PV.NoeticString stringTypeExpr textValue) -> do
+    _ :< TM.Prim (PV.Text textValue) -> do
       let eitherSGL = SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.eitherLocator}
       let unitSGL = SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.unitLocator}
       let pairSGL = SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.pairLocator}
@@ -403,7 +403,8 @@ evaluateStringUncons h m moduleID text = do
       let unitTypeVar = m :< TM.TVarGlobal (AttrVG.Attr {argNum = AN.zero, isConstLike = True, isDestPassing = False}) unitTypeDD
       let pairTypeVar = m :< TM.TVarGlobal (AttrVG.Attr {argNum = AN.fromInt 4, isConstLike = False, isDestPassing = False}) pairTypeDD
       let runeType = m :< TM.PrimType PT.Rune
-      let pairType = m :< TM.TyApp pairTypeVar [runeType, m :< TM.BoxNoema stringTypeExpr]
+      let textType = m :< TM.PrimType PT.Text
+      let pairType = m :< TM.TyApp pairTypeVar [runeType, textType]
       case T.uncons textValue of
         Nothing -> do
           let leftDD = DD.newByGlobalLocator eitherSGL BN.left
@@ -417,19 +418,19 @@ evaluateStringUncons h m moduleID text = do
           let rightVar = m :< TM.VarGlobal (AttrVG.Attr {argNum = AN.fromInt 3, isConstLike = False, isDestPassing = False}) rightDD
           let pairVar = m :< TM.VarGlobal (AttrVG.Attr {argNum = AN.fromInt 4, isConstLike = False, isDestPassing = False}) pairDD
           let runeValue = m :< TM.Prim (PV.Rune (Rune.fromChar c))
-          let restText = m :< TM.Prim (PV.NoeticString stringTypeExpr rest)
-          let pair = m :< TM.PiElim PEK.Normal (m :< TM.PiElim PEK.Normal pairVar [runeType, m :< TM.BoxNoema stringTypeExpr] [] []) [] [runeValue, restText] []
+          let restText = m :< TM.Prim (PV.Text rest)
+          let pair = m :< TM.PiElim PEK.Normal (m :< TM.PiElim PEK.Normal pairVar [runeType, textType] [] []) [] [runeValue, restText] []
           return $ m :< TM.PiElim PEK.Normal (m :< TM.PiElim PEK.Normal rightVar [unitTypeVar, pairType] [] []) [] [pair] []
     _ ->
-      reportMacroError h m "string-uncons requires a static string literal"
+      reportMacroError h m "text-uncons requires a static text literal"
 
 evaluateCompileError :: Handle -> Hint -> TM.Term -> App a
 evaluateCompileError h m msg = do
   case msg of
-    _ :< TM.Prim (PV.NoeticString _ messageText) -> do
+    _ :< TM.Prim (PV.Text messageText) -> do
       reportMacroError h m messageText
     _ ->
-      raiseError m "compile-error requires a static string message"
+      raiseError m "compile-error requires a static text message"
 
 evaluateGetOriginFileName :: Handle -> Hint -> App TM.Term
 evaluateGetOriginFileName h m = do

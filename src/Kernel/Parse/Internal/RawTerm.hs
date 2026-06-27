@@ -763,8 +763,8 @@ rawTermMagic h m c = do
       rawTermMagicEqType h m c,
       rawTermMagicShowType h m c,
       rawTermMagicAssertMixable h m c,
-      rawTermMagicStringCons h m c,
-      rawTermMagicStringUncons h m c,
+      rawTermMagicTextCons h m c,
+      rawTermMagicTextUncons h m c,
       rawTermMagicCompileError h m c,
       rawTermMagicGetOriginFileName h m c,
       rawTermMagicGetOriginLine h m c,
@@ -924,19 +924,19 @@ rawTermMagicAssertMixable h m c = do
     typeExpr <- rawType h
     return $ \c1 c2 -> m :< RT.Magic c (RT.AssertMixable c1 (c2, typeExpr))
 
-rawTermMagicStringCons :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
-rawTermMagicStringCons h m c = do
-  rawTermMagicBase "string-cons" $ do
+rawTermMagicTextCons :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
+rawTermMagicTextCons h m c = do
+  rawTermMagicBase "text-cons" $ do
     runeTerm <- rawTerm h
     c3 <- delimiter ","
     textTerm <- rawTerm h
-    return $ \c1 c2 -> m :< RT.Magic c (RT.StringCons c1 (c2, runeTerm) (c3, textTerm))
+    return $ \c1 c2 -> m :< RT.Magic c (RT.TextCons c1 (c2, runeTerm) (c3, textTerm))
 
-rawTermMagicStringUncons :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
-rawTermMagicStringUncons h m c = do
-  rawTermMagicBase "string-uncons" $ do
+rawTermMagicTextUncons :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
+rawTermMagicTextUncons h m c = do
+  rawTermMagicBase "text-uncons" $ do
     textTerm <- rawTerm h
-    return $ \c1 c2 -> m :< RT.Magic c (RT.StringUncons c1 (c2, textTerm))
+    return $ \c1 c2 -> m :< RT.Magic c (RT.TextUncons c1 (c2, textTerm))
 
 rawTermMagicCompileError :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermMagicCompileError h m c = do
