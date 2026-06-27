@@ -6,6 +6,7 @@ Here, we'll see how to interact with the code type `'a`, which enables metaprogr
 
 - [Stages and the Code Modality](#stages-and-the-code-modality)
 - [Top-Level Meta Functions](#top-level-meta-functions)
+- [Custom Specializations](#custom-specializations)
 - [Compile-Time Primitives](#compile-time-primitives)
 - [More Tools for Code](#more-tools-for-code)
 
@@ -231,6 +232,45 @@ define use-meta() -> +unit {
 ```
 
 `lift-value` typechecks even though it uses `lift` on `y: a`, since it is a meta function. Later, `use-meta` specializes it with `a := unit`, and `unit` is liftable, so `use-meta` is well-typed. Conversely, specializing with `a := &string` would be a type error, since `&string` is not liftable.
+
+## Custom Specializations
+
+A `trope` groups custom specializations of top-level `define-meta` functions:
+
+```neut
+define-meta print<a>(x: '&a) -> 'unit {
+  quote {print("<value>")}
+}
+
+trope terse {
+  define-meta print<bool>(x: '&bool) -> 'unit { // a := bool
+    quote {print("<bool>")}
+  }
+
+  define-meta print<int>(x: '&int) -> 'unit { // a := int
+    quote {print("<int>")}
+  }
+
+  ...
+}
+```
+
+The `define-meta` entries in a `trope` are used only where the `trope` is enabled by `invoke`:
+
+```neut
+define example() -> unit {
+  print::(True); // -> "<value>"
+  let _ = {
+    invoke terse;
+    print::(True) // -> "<bool>"
+  };
+  print::(True) // -> "<value>"
+}
+```
+
+Inside `invoke`, a matching entry behaves like a pre-registered memoized specialization.
+
+When several entries match the same meta function and type arguments, the later entry takes priority.
 
 ## Compile-Time Primitives
 

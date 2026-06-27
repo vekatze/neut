@@ -49,6 +49,7 @@
 - [quote](#quote)
 - [unquote](#unquote)
 - [promote](#promote)
+- [invoke](#invoke)
 
 ### Miscellaneous
 
@@ -2353,6 +2354,59 @@ promote {
 ### Note
 
 Unlike `quote`, `promote` doesn't alter stages.
+
+## `invoke`
+
+You can use `invoke` to enable tropes while evaluating a term.
+
+### Example
+
+```neut
+define-meta print<a>(x: '&a) -> 'unit {
+  ..
+}
+
+trope terse {
+  define-meta print<bool>(x: '&bool) -> 'unit {
+    quote {
+      let b = unquote {x};
+      if b {
+        quote {print-line("T")}
+      } else {
+        quote {print-line("F")}
+      }
+    }
+  }
+}
+
+define use-trope() -> unit {
+  print::(True); // -> "True"
+  let _ = {
+    invoke terse;
+    print::(True) // -> "T"
+  };
+  print::(True) // -> "True"
+}
+```
+
+### Syntax
+
+```neut
+invoke name-1, ..., name-n;
+e
+```
+
+### Semantics
+
+`invoke name-1, ..., name-n; e` evaluates `e` with the given tropes enabled. The enabled tropes affect calls to `define-meta` functions. This effect is scoped to `e`.
+
+Matching entries are treated as pre-registered memoized specializations while evaluating `e`.
+
+If multiple tropes provide matching entries, the later trope takes priority.
+
+### Type
+
+Derived from `e`.
 
 ## `{e}`
 
