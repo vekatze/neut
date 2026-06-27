@@ -8,6 +8,7 @@ module Kernel.Parse.Internal.RawTerm
     varWithMode,
     preAscription,
     preBinder,
+    ArrowMode (..),
     parseDef,
     parseAliasDef,
     parseGeist,
@@ -527,9 +528,9 @@ rawTypeIntrospectiveClause h = do
     then return ((Just s, cKey ++ cArrow, body), c)
     else return ((Nothing, cKey ++ cArrow, body), c)
 
-parseDef :: Handle -> Parser (a, C) -> Parser (RT.RawDef a, C)
-parseDef h nameParser = do
-  (geist, c1) <- parseGeist h nameParser
+parseDef :: ArrowMode -> Handle -> Parser (a, C) -> Parser (RT.RawDef a, C)
+parseDef arrowMode h nameParser = do
+  (geist, c1) <- parseGeistWith arrowMode ParseDefaultArgs h nameParser
   (c2, ((e, c3), loc, c)) <- betweenBrace' $ rawExpr h
   return
     ( RT.RawDef
@@ -561,16 +562,20 @@ data DefaultArgsMode
   = ParseDefaultArgs
   | NoDefaultArgs
 
+data ArrowMode
+  = ArrowMeta
+  | ArrowObject
+
 parseGeist :: Handle -> Parser (a, C) -> Parser (RT.RawGeist a, C)
 parseGeist =
-  parseGeistWith ParseDefaultArgs
+  parseGeistWith ArrowObject ParseDefaultArgs
 
-parseNominalGeist :: Handle -> Parser (a, C) -> Parser (RT.RawGeist a, C)
-parseNominalGeist =
-  parseGeistWith NoDefaultArgs
+parseNominalGeist :: ArrowMode -> Handle -> Parser (a, C) -> Parser (RT.RawGeist a, C)
+parseNominalGeist arrowMode =
+  parseGeistWith arrowMode NoDefaultArgs
 
-parseGeistWith :: DefaultArgsMode -> Handle -> Parser (a, C) -> Parser (RT.RawGeist a, C)
-parseGeistWith mode h nameParser = do
+parseGeistWith :: ArrowMode -> DefaultArgsMode -> Handle -> Parser (a, C) -> Parser (RT.RawGeist a, C)
+parseGeistWith arrowMode mode h nameParser = do
   loc <- getCurrentHint
   name <- nameParser
   impArgs <- parseImplicitParams h
@@ -580,7 +585,7 @@ parseGeistWith mode h nameParser = do
     ParseDefaultArgs -> parseDefaultParams h
     NoDefaultArgs -> return RT.emptyDefaultArgs
   lift $ ensureArgumentLinearity S.empty $ map (\(mx, _, x, _, _, _) -> (mx, x)) $ SE.extract expSeries
-  (isDestPassing, c2, (cod, c)) <- parseDefInfoCod h
+  (isDestPassing, c2, (cod, c)) <- parseDefInfoCod arrowMode h
   return (RT.RawGeist {loc, name, isConstLike, isDestPassing, impArgs, defaultArgs, expArgs, cod = (c2, cod)}, c)
 
 parseAliasGeist :: Handle -> Parser (a, C) -> Parser (RT.RawGeist a, C)
@@ -701,23 +706,32 @@ ensureArgumentLinearity foundVarSet vs =
       | otherwise ->
           ensureArgumentLinearity (S.insert name foundVarSet) rest
 
-parseDefInfoCod :: Handle -> Parser (Bool, C, (RT.RawType, C))
-parseDefInfoCod h = do
+parseDefInfoCod :: ArrowMode -> Handle -> Parser (Bool, C, (RT.RawType, C))
+parseDefInfoCod arrowMode h = do
   (isDestPassing, c) <-
-    choice
-      [ do
-          c <- delimiter "->>"
-          return (True, c),
-        do
-          c <- delimiter "->"
-          return (False, c)
-      ]
+    case arrowMode of
+      ArrowMeta -> do
+        c <- delimiter "->"
+        return (False, c)
+      ArrowObject ->
+        choice
+          [ do
+              c <- delimiter "->>"
+              return (True, c),
+            do
+              c <- delimiter "->"
+              return (False, c)
+          ]
   t <- rawType h
   return (isDestPassing, c, t)
 
 rawTermDefine :: Handle -> LDK.LocalDefKind -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermDefine h kind m c0 = do
-  (defInfo, c) <- parseDef h $ do
+  let arrowMode = case kind of
+        LDK.DefineMeta -> ArrowMeta
+        LDK.InlineMeta -> ArrowMeta
+        _ -> ArrowObject
+  (defInfo, c) <- parseDef arrowMode h $ do
     (name, c1) <- baseName
     name' <- liftIO $ adjustHoleVar h name
     return (name', c1)
