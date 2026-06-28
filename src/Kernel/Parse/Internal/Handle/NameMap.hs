@@ -213,6 +213,8 @@ _getGlobalNames stmt = do
       []
     PostRawStmtDefineResource _ m (name, _) _ _ _ _ -> do
       [(name, (m, Just Resource, GN.TopLevelFuncType AN.zero True False))]
+    PostRawStmtTrope _ m (name, _) _ _ -> do
+      [(name, (m, Nothing, GN.Trope))]
     PostRawStmtForeign {} ->
       []
 
@@ -289,6 +291,8 @@ _getGlobalNames' stmt = do
           (dataName, (m, mTag, GN.Data dataArgNum (map stripTag consNameArrowList) isConstLike)) : consNameArrowList
     StmtDefineResource (SavedHint m) name _ _ _ _ _ -> do
       [(name, (m, Nothing, GN.TopLevelFuncType AN.argNumS4 True False))]
+    StmtTrope (SavedHint m) name _ -> do
+      [(name, (m, Nothing, GN.Trope))]
     StmtVariadic kind (SavedHint m) name -> do
       [(name, (m, Nothing, GN.Rule kind))]
     StmtForeign {} ->

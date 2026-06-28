@@ -9,6 +9,7 @@ module Kernel.Common.Handle.Local.Tag
     insertExternalName,
     insertStaticFile,
     insertSourceFile,
+    retarget,
   )
 where
 
@@ -76,3 +77,9 @@ insertSourceFile :: Handle -> Hint -> T.Text -> Hint -> IO ()
 insertSourceFile h mUse locator mDef = do
   let nameLength = T.length locator
   insert h mUse (LT.SourceFile locator) nameLength mDef
+
+retarget :: Handle -> Hint -> Hint -> IO ()
+retarget h mUse mDef = do
+  when (metaShouldSaveLocation mUse) $ do
+    let (l, c) = metaLocation mUse
+    modifyIORef' (_tagMapRef h) $ LT.retarget (l, c) mDef

@@ -1,0 +1,60 @@
+constant default-announce-string: &string {
+  "default"
+}
+
+constant default-describe-string: &string {
+  "describe-default"
+}
+
+constant default-stamp-string: &string {
+  "stamp-default"
+}
+
+constant default-combine-string: &string {
+  "combine-default"
+}
+
+constant default-chain-string: &string {
+  "chain-default"
+}
+
+constant default-cascade-string: &string {
+  "cascade-default"
+}
+
+constant default-probe-string: &string {
+  "probe-default"
+}
+
+define-meta announce<a>(_: 'a) -> '&string {
+  quote {default-announce-string}
+}
+
+define-meta describe<a>(_: 'a) -> '&string {
+  quote {default-describe-string}
+}
+
+define-meta stamp<a>() -> '&string {
+  let _ = magic show-type(a);
+  quote {default-stamp-string}
+}
+
+define-meta combine<a, b>(_: 'a, _: 'b) -> '&string {
+  quote {default-combine-string}
+}
+
+define-meta chain<a>(_: 'a) -> '&string {
+  quote {default-chain-string}
+}
+
+define-meta cascade<a>(_: 'a) -> '&string {
+  quote {default-cascade-string}
+}
+
+define-meta probe<a>(_: 'a) -> '&string {
+  quote {default-probe-string}
+}
+
+define-meta relay<a>(x: 'a) -> '&string {
+  describe(x)
+}

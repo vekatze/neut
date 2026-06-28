@@ -1,0 +1,390 @@
+import {
+  core.debug {assert},
+  this.base-file {
+    announce,
+    cascade,
+    chain,
+    combine,
+    default-announce-string,
+    default-cascade-string,
+    default-chain-string,
+    default-combine-string,
+    default-describe-string,
+    default-probe-string,
+    default-stamp-string,
+    describe,
+    probe,
+    relay,
+    stamp,
+  },
+  this.primary {
+    primary,
+    primary-bool-second-string,
+    primary-combine-bool-int-string,
+    primary-combine-list-bool-string,
+    primary-describe-bool-string,
+    primary-describe-list-int-string,
+    primary-int-string,
+    primary-list-int-string,
+    primary-stamp-bool-string,
+  },
+  this.secondary {
+    secondary,
+    secondary-bool-string,
+    secondary-combine-bool-int-string,
+    secondary-combine-int-bool-string,
+    secondary-describe-bool-string,
+    secondary-describe-int-string,
+    secondary-int-string,
+    secondary-list-int-string,
+    secondary-stamp-bool-string,
+    secondary-stamp-int-string,
+  },
+}
+
+constant local-bool-string: &string {
+  "local-bool"
+}
+
+constant local-list-int-string: &string {
+  "local-list-int"
+}
+
+constant local-describe-int-string: &string {
+  "local-describe-int"
+}
+
+constant local-describe-list-int-string: &string {
+  "local-describe-list-int"
+}
+
+constant local-stamp-int-string: &string {
+  "local-stamp-int"
+}
+
+constant local-combine-bool-int-string: &string {
+  "local-combine-bool-int"
+}
+
+constant local-combine-int-bool-string: &string {
+  "local-combine-int-bool"
+}
+
+constant override-bool-string: &string {
+  "override"
+}
+
+constant override-describe-bool-string: &string {
+  "override-describe-bool"
+}
+
+constant override-stamp-bool-string: &string {
+  "override-stamp-bool"
+}
+
+constant override-combine-bool-int-string: &string {
+  "override-combine-bool-int"
+}
+
+trope override {
+  define-meta announce<bool>(_: 'bool) -> '&string {
+    quote {override-bool-string}
+  }
+
+  define-meta describe<bool>(_: 'bool) -> '&string {
+    quote {override-describe-bool-string}
+  }
+
+  define-meta stamp<bool>() -> '&string {
+    quote {override-stamp-bool-string}
+  }
+
+  define-meta combine<bool, int>(_: 'bool, _: 'int) -> '&string {
+    quote {override-combine-bool-int-string}
+  }
+
+  define-meta chain<bool>(x: 'bool) -> '&string {
+    describe(x)
+  }
+}
+
+trope local {
+  define-meta announce<bool>(_: 'bool) -> '&string {
+    quote {local-bool-string}
+  }
+
+  define-meta announce<list(int)>(_: 'list(int)) -> '&string {
+    quote {local-list-int-string}
+  }
+
+  define-meta describe<int>(_: 'int) -> '&string {
+    quote {local-describe-int-string}
+  }
+
+  define-meta describe<list(int)>(_: 'list(int)) -> '&string {
+    quote {local-describe-list-int-string}
+  }
+
+  define-meta stamp<int>() -> '&string {
+    quote {local-stamp-int-string}
+  }
+
+  define-meta combine<bool, int>(_: 'bool, _: 'int) -> '&string {
+    quote {local-combine-bool-int-string}
+  }
+
+  define-meta combine<int, bool>(_: 'int, _: 'bool) -> '&string {
+    quote {local-combine-int-bool-string}
+  }
+
+  define-meta chain<bool>(x: 'bool) -> '&string {
+    describe(x)
+  }
+}
+
+define expect(label: &string, actual: &string, expected: &string) -> unit {
+  assert(label, eq-string(actual, expected))
+}
+
+define plain-call() -> unit {
+  expect("[]: plain-call: announce bool", announce::(True), default-announce-string);
+  expect("[]: plain-call: describe bool", describe::(True), default-describe-string);
+  expect("[]: plain-call: stamp bool", stamp<bool>::(), default-stamp-string);
+  expect("[]: plain-call: combine bool int", combine<bool, int>::(True, 1), default-combine-string);
+  expect("[]: plain-call: chain bool", chain::(True), default-chain-string)
+}
+
+define primary-call() -> unit {
+  invoke primary;
+  expect("[primary]: primary-call: announce bool", announce::(True), primary-bool-second-string);
+  expect("[primary]: primary-call: describe bool", describe::(True), primary-describe-bool-string);
+  expect("[primary]: primary-call: stamp bool", stamp<bool>::(), primary-stamp-bool-string);
+  expect("[primary]: primary-call: combine bool int", combine<bool, int>::(True, 1), primary-combine-bool-int-string);
+  expect("[primary]: primary-call: chain bool", chain::(True), primary-describe-bool-string)
+}
+
+define dd-memo-default-first() -> unit {
+  expect("[dd-memo] default-first: outside", relay::(True), default-describe-string);
+  {
+    invoke primary;
+    expect("[dd-memo] default-first: inside reuses default", relay::(True), default-describe-string)
+  }
+}
+
+define dd-memo-invoke-first() -> unit {
+  {
+    invoke primary;
+    expect("[dd-memo] invoke-first: inside", relay::(True), primary-describe-bool-string)
+  };
+  expect("[dd-memo] invoke-first: outside reuses capture", relay::(True), primary-describe-bool-string)
+}
+
+inline leak-probe() -> &string {
+  invoke local;
+  relay::(True)
+}
+
+define no-invoke-leak-across-inline() -> unit {
+  expect("[leak] plain", leak-probe(), default-describe-string);
+  {
+    invoke secondary;
+    expect("[leak] under invoke secondary", leak-probe(), default-describe-string)
+  }
+}
+
+define-meta meta-internal-invoke<a>(x: 'a) -> '&string {
+  invoke local;
+  describe(x)
+}
+
+inline-meta inline-meta-internal-invoke<a>(x: 'a) -> '&string {
+  invoke local;
+  describe(x)
+}
+
+define meta-invoke-plain() -> unit {
+  expect("[meta] define-meta plain", meta-internal-invoke::(True), default-describe-string)
+}
+
+define meta-invoke-under-secondary() -> unit {
+  invoke secondary;
+  expect("[meta] define-meta under secondary", meta-internal-invoke::(True), secondary-describe-bool-string)
+}
+
+define inline-meta-invoke-plain() -> unit {
+  expect("[meta] inline-meta plain", inline-meta-internal-invoke::(True), default-describe-string)
+}
+
+define inline-meta-invoke-under-secondary() -> unit {
+  invoke secondary;
+  expect("[meta] inline-meta under secondary", inline-meta-internal-invoke::(True), secondary-describe-bool-string)
+}
+
+define-meta invoke-setter<a>(x: 'a) -> '&string {
+  invoke secondary;
+  describe(x)
+}
+
+define invoke-does-not-persist() -> unit {
+  let _ = invoke-setter::(True);
+  expect("[persist] after macro call", describe::(True), default-describe-string)
+}
+
+define main() -> unit {
+  invoke-does-not-persist();
+  meta-invoke-plain();
+  meta-invoke-under-secondary();
+  inline-meta-invoke-plain();
+  inline-meta-invoke-under-secondary();
+  no-invoke-leak-across-inline();
+  expect("[]: announce bool", announce::(True), default-announce-string);
+  expect("[]: describe bool", describe::(True), default-describe-string);
+  expect("[]: stamp bool", stamp<bool>::(), default-stamp-string);
+  expect("[]: stamp int", stamp<int>::(), default-stamp-string);
+  expect("[]: announce int", announce<int>::(1), default-announce-string);
+  expect("[]: describe int", describe<int>::(1), default-describe-string);
+  expect("[]: combine bool int", combine<bool, int>::(True, 1), default-combine-string);
+  expect("[]: chain bool", chain::(True), default-chain-string);
+  expect("[]: cascade bool", cascade::(True), default-cascade-string);
+  expect("[]: combine int bool", combine<int, bool>::(1, True), default-combine-string);
+  expect("[]: chain int", chain<int>::(1), default-chain-string);
+  expect("[]: announce list int", announce<list(int)>::(List[1, 2]), default-announce-string);
+  expect("[]: describe list int", describe<list(int)>::(List[1, 2]), default-describe-string);
+  expect("[]: combine list bool", combine<list(int), bool>::(List[1, 2], True), default-combine-string);
+  expect("[]: probe bool", probe::(True), default-probe-string);
+  plain-call();
+  primary-call();
+  dd-memo-default-first();
+  dd-memo-invoke-first();
+  {
+    invoke primary;
+    expect("[primary]: announce bool", announce::(True), primary-bool-second-string);
+    expect("[primary]: describe bool", describe::(True), primary-describe-bool-string);
+    expect("[primary]: stamp bool", stamp<bool>::(), primary-stamp-bool-string);
+    expect("[primary]: stamp int", stamp<int>::(), default-stamp-string);
+    expect("[primary]: announce int", announce<int>::(1), primary-int-string);
+    expect("[primary]: describe int", describe<int>::(1), default-describe-string);
+    expect("[primary]: combine bool int", combine<bool, int>::(True, 1), primary-combine-bool-int-string);
+    expect("[primary]: chain bool", chain::(True), primary-describe-bool-string);
+    expect("[primary]: cascade bool", cascade::(True), primary-describe-bool-string);
+    expect("[primary]: combine int bool", combine<int, bool>::(1, True), default-combine-string);
+    expect("[primary]: chain int", chain<int>::(1), default-chain-string);
+    expect("[primary]: announce list int", announce<list(int)>::(List[1, 2]), primary-list-int-string);
+    expect("[primary]: describe list int", describe<list(int)>::(List[1, 2]), primary-describe-list-int-string);
+    expect("[primary]: combine list bool", combine<list(int), bool>::(List[1, 2], True), primary-combine-list-bool-string);
+    expect("[primary]: announce unit", announce<unit>::(Unit), default-announce-string);
+    expect("[primary]: describe unit", describe<unit>::(Unit), default-describe-string);
+    plain-call();
+    {
+      invoke secondary;
+      expect("[primary, secondary]: announce bool", announce::(True), secondary-bool-string);
+      expect("[primary, secondary]: describe bool", describe::(True), secondary-describe-bool-string);
+      expect("[primary, secondary]: stamp bool", stamp<bool>::(), secondary-stamp-bool-string);
+      expect("[primary, secondary]: stamp int", stamp<int>::(), secondary-stamp-int-string);
+      expect("[primary, secondary]: announce int", announce<int>::(1), secondary-int-string);
+      expect("[primary, secondary]: describe int", describe<int>::(1), secondary-describe-int-string);
+      expect("[primary, secondary]: combine bool int", combine<bool, int>::(True, 1), secondary-combine-bool-int-string);
+      expect("[primary, secondary]: chain bool", chain::(True), primary-describe-bool-string);
+      expect("[primary, secondary]: cascade bool", cascade::(True), primary-describe-bool-string);
+      expect("[primary, secondary]: combine int bool", combine<int, bool>::(1, True), secondary-combine-int-bool-string);
+      expect("[primary, secondary]: chain int", chain<int>::(1), secondary-describe-int-string);
+      expect("[primary, secondary]: announce list int", announce<list(int)>::(List[1, 2]), secondary-list-int-string);
+      expect("[primary, secondary]: describe list int", describe<list(int)>::(List[1, 2]), primary-describe-list-int-string);
+      expect("[primary, secondary]: combine list bool", combine<list(int), bool>::(List[1, 2], True), primary-combine-list-bool-string);
+      expect("[primary, secondary]: probe bool first specialized here", probe::(True), secondary-describe-bool-string);
+      {
+        invoke local;
+        expect("[primary, secondary, local]: announce bool", announce::(True), local-bool-string);
+        expect("[primary, secondary, local]: describe bool", describe::(True), secondary-describe-bool-string);
+        expect("[primary, secondary, local]: stamp bool", stamp<bool>::(), secondary-stamp-bool-string);
+        expect("[primary, secondary, local]: stamp int", stamp<int>::(), local-stamp-int-string);
+        expect("[primary, secondary, local]: announce int", announce<int>::(1), secondary-int-string);
+        expect("[primary, secondary, local]: describe int", this.base-file.describe<int>::(1), local-describe-int-string);
+        expect("[primary, secondary, local]: combine bool int", combine<bool, int>::(True, 1), local-combine-bool-int-string);
+        expect("[primary, secondary, local]: chain bool", chain::(True), secondary-describe-bool-string);
+        expect("[primary, secondary, local]: cascade bool", cascade::(True), primary-describe-bool-string);
+        expect("[primary, secondary, local]: combine int bool", combine<int, bool>::(1, True), local-combine-int-bool-string);
+        expect("[primary, secondary, local]: chain int", chain<int>::(1), secondary-describe-int-string);
+        expect("[primary, secondary, local]: announce list int", announce<list(int)>::(List[1, 2]), local-list-int-string);
+        expect("[primary, secondary, local]: describe list int", describe<list(int)>::(List[1, 2]), local-describe-list-int-string);
+        expect("[primary, secondary, local]: combine list bool", combine<list(int), bool>::(List[1, 2], True), primary-combine-list-bool-string)
+      };
+      expect("[primary, secondary]: after local: announce bool", announce::(True), secondary-bool-string);
+      expect("[primary, secondary]: after local: describe bool", describe::(True), secondary-describe-bool-string);
+      expect("[primary, secondary]: after local: stamp bool", stamp<bool>::(), secondary-stamp-bool-string);
+      expect("[primary, secondary]: after local: combine bool int", combine<bool, int>::(True, 1), secondary-combine-bool-int-string);
+      expect("[primary, secondary]: after local: chain bool", chain::(True), primary-describe-bool-string)
+    };
+    expect("[primary]: after secondary: announce bool", announce::(True), primary-bool-second-string);
+    expect("[primary]: after secondary: describe bool", describe::(True), primary-describe-bool-string);
+    expect("[primary]: after secondary: stamp bool", stamp<bool>::(), primary-stamp-bool-string);
+    expect("[primary]: after secondary: combine bool int", combine<bool, int>::(True, 1), primary-combine-bool-int-string);
+    expect("[primary]: after secondary: chain bool", chain::(True), primary-describe-bool-string)
+  };
+  expect("[]: after primary: announce bool", announce::(True), default-announce-string);
+  expect("[]: after primary: describe bool", describe::(True), default-describe-string);
+  expect("[]: after primary: stamp bool", stamp<bool>::(), default-stamp-string);
+  expect("[]: after primary: combine bool int", combine<bool, int>::(True, 1), default-combine-string);
+  expect("[]: after primary: chain bool", chain::(True), default-chain-string);
+  {
+    invoke primary, secondary;
+    expect("[primary, secondary]: same invoke: announce bool", announce::(True), secondary-bool-string);
+    expect("[primary, secondary]: same invoke: describe bool", describe::(True), secondary-describe-bool-string);
+    expect("[primary, secondary]: same invoke: stamp bool", stamp<bool>::(), secondary-stamp-bool-string);
+    expect("[primary, secondary]: same invoke: combine bool int", combine<bool, int>::(True, 1), secondary-combine-bool-int-string);
+    expect("[primary, secondary]: same invoke: chain bool", chain::(True), primary-describe-bool-string)
+  };
+  {
+    invoke secondary, primary;
+    expect("[secondary, primary]: same invoke: announce bool", announce::(True), primary-bool-second-string);
+    expect("[secondary, primary]: same invoke: describe bool", describe::(True), primary-describe-bool-string);
+    expect("[secondary, primary]: same invoke: stamp bool", stamp<bool>::(), primary-stamp-bool-string);
+    expect("[secondary, primary]: same invoke: combine bool int", combine<bool, int>::(True, 1), primary-combine-bool-int-string);
+    expect("[secondary, primary]: same invoke: chain bool", chain::(True), primary-describe-bool-string)
+  };
+  {
+    invoke secondary;
+    invoke primary;
+    expect("[secondary, primary]: nested invoke: announce bool", announce::(True), primary-bool-second-string);
+    expect("[secondary, primary]: nested invoke: describe bool", describe::(True), primary-describe-bool-string);
+    expect("[secondary, primary]: nested invoke: stamp bool", stamp<bool>::(), primary-stamp-bool-string);
+    expect("[secondary, primary]: nested invoke: combine bool int", combine<bool, int>::(True, 1), primary-combine-bool-int-string);
+    expect("[secondary, primary]: nested invoke: chain bool", chain::(True), primary-describe-bool-string)
+  };
+  {
+    invoke primary;
+    invoke secondary;
+    expect("[primary, secondary]: nested invoke: announce bool", announce::(True), secondary-bool-string);
+    expect("[primary, secondary]: nested invoke: describe bool", describe::(True), secondary-describe-bool-string);
+    expect("[primary, secondary]: nested invoke: stamp bool", stamp<bool>::(), secondary-stamp-bool-string);
+    expect("[primary, secondary]: nested invoke: combine bool int", combine<bool, int>::(True, 1), secondary-combine-bool-int-string);
+    expect("[primary, secondary]: nested invoke: chain bool", chain::(True), primary-describe-bool-string)
+  };
+  {
+    invoke primary;
+    invoke primary;
+    expect("[primary, primary]: repeated invoke: announce bool", announce::(True), primary-bool-second-string);
+    expect("[primary, primary]: repeated invoke: describe bool", describe::(True), primary-describe-bool-string);
+    expect("[primary, primary]: repeated invoke: stamp bool", stamp<bool>::(), primary-stamp-bool-string);
+    expect("[primary, primary]: repeated invoke: combine bool int", combine<bool, int>::(True, 1), primary-combine-bool-int-string);
+    expect("[primary, primary]: repeated invoke: chain bool", chain::(True), primary-describe-bool-string)
+  };
+  {
+    invoke override;
+    expect("[override]: announce bool", announce::(True), override-bool-string);
+    expect("[override]: describe bool", describe::(True), override-describe-bool-string);
+    expect("[override]: stamp bool", stamp<bool>::(), override-stamp-bool-string);
+    expect("[override]: combine bool int", combine<bool, int>::(True, 1), override-combine-bool-int-string);
+    expect("[override]: chain bool", chain::(True), override-describe-bool-string)
+  };
+  expect("[]: final: announce bool", announce::(True), default-announce-string);
+  expect("[]: final: describe bool", describe::(True), default-describe-string);
+  expect("[]: final: stamp bool", stamp<bool>::(), default-stamp-string);
+  expect("[]: final: combine bool int", combine<bool, int>::(True, 1), default-combine-string);
+  expect("[]: final: chain bool", chain::(True), default-chain-string);
+  expect("[]: final: announce int", announce<int>::(1), default-announce-string);
+  expect("[]: final: describe int", describe<int>::(1), default-describe-string);
+  expect("[]: final: stamp int", stamp<int>::(), default-stamp-string);
+  expect("[]: final: combine int bool", combine<int, bool>::(1, True), default-combine-string);
+  expect("[]: final: chain int", chain<int>::(1), default-chain-string)
+}

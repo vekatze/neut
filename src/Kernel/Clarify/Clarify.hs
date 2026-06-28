@@ -374,6 +374,8 @@ clarifyStmt h stmt =
       let resourceSpec = Utility.ResourceSpec {switch, arg, extra, discard, copy, size, defaultValues = []}
       liftIO $ Utility.registerSwitcher (utilityHandle h) O.Clear liftedName resourceSpec
       return $ C.Def dd O.Clear [] (C.UpIntro $ C.VarGlobal liftedName AN.argNumS4 (FCT.Cod BLT.Pointer))
+    StmtTrope {} -> do
+      return $ C.Foreign [] -- nop
     StmtVariadic {} -> do
       return $ C.Foreign [] -- nop
     StmtForeign foreignList ->
@@ -631,6 +633,8 @@ clarifyTerm h context term =
       e2'' <- liftIO $ Linearize.linearizeUser (linearizeHandle h) mxts' e2'
       e1' <- clarifyTerm h context e1
       return $ Utility.bindLetWithReducibility (not $ isOpaque opacity) [(x, e1')] e2''
+    _ :< TM.Invoke _ body -> do
+      clarifyTerm h context body
     m :< TM.Prim primValue ->
       case primValue of
         PV.Int _ size l ->

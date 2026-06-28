@@ -1,5 +1,6 @@
 module Language.WeakTerm.WeakStmt
   ( WeakStmt (..),
+    WeakDefineMeta (..),
     WeakStmtKindTerm,
     WeakStmtKindType,
     WeakForeign,
@@ -55,6 +56,20 @@ data WeakStmt
       WT.WeakTerm -- discarder
       WT.WeakTerm -- copier
       WT.WeakTerm -- resourceSize
+  | WeakStmtTrope
+      Hint
+      DD.DefiniteDescription
+      [WeakDefineMeta]
   | WeakStmtVariadic RuleKind Hint DD.DefiniteDescription
   | WeakStmtNominal Hint [(NominalTag, G.Geist WT.WeakType WT.WeakTerm)]
   | WeakStmtForeign [WT.WeakForeign]
+
+data WeakDefineMeta = WeakDefineMeta
+  { weakDefineMetaLoc :: Hint,
+    weakDefineMetaTarget :: DD.DefiniteDescription,
+    weakDefineMetaTargetArgs :: [WT.WeakType],
+    weakDefineMetaExpArgs :: [BinderF WT.WeakType],
+    weakDefineMetaCod :: WT.WeakType,
+    weakDefineMetaBody :: WT.WeakTerm,
+    weakDefineMetaHelperName :: DD.DefiniteDescription
+  }

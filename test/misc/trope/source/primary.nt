@@ -1,0 +1,89 @@
+import {
+  this.base-file {announce, cascade, chain, combine, describe, probe, stamp},
+}
+
+constant primary-bool-first-string: &string {
+  "primary-first"
+}
+
+constant primary-bool-second-string: &string {
+  "primary-bool-second"
+}
+
+constant primary-int-string: &string {
+  "primary-int"
+}
+
+constant primary-list-int-string: &string {
+  "primary-list-int"
+}
+
+constant primary-describe-bool-string: &string {
+  "primary-describe-bool"
+}
+
+constant primary-describe-list-int-string: &string {
+  "primary-describe-list-int"
+}
+
+constant primary-stamp-bool-string: &string {
+  "primary-stamp-bool"
+}
+
+constant primary-combine-bool-int-string: &string {
+  "primary-combine-bool-int"
+}
+
+constant primary-combine-list-bool-string: &string {
+  "primary-combine-list-bool"
+}
+
+trope primary {
+  define-meta announce<bool>(_: 'bool) -> '&string {
+    quote {primary-bool-first-string}
+  }
+
+  define-meta announce<int>(_: 'int) -> '&string {
+    quote {primary-int-string}
+  }
+
+  define-meta announce<list(int)>(_: 'list(int)) -> '&string {
+    quote {primary-list-int-string}
+  }
+
+  define-meta announce<bool>(_: 'bool) -> '&string {
+    quote {primary-bool-second-string}
+  }
+
+  define-meta describe<bool>(_: 'bool) -> '&string {
+    quote {primary-describe-bool-string}
+  }
+
+  define-meta describe<list(int)>(_: 'list(int)) -> '&string {
+    quote {primary-describe-list-int-string}
+  }
+
+  define-meta stamp<bool>() -> '&string {
+    quote {primary-stamp-bool-string}
+  }
+
+  define-meta combine<bool, int>(_: 'bool, _: 'int) -> '&string {
+    quote {primary-combine-bool-int-string}
+  }
+
+  define-meta combine<list(int), bool>(_: 'list(int), _: 'bool) -> '&string {
+    quote {primary-combine-list-bool-string}
+  }
+
+  define-meta chain<bool>(x: 'bool) -> '&string {
+    describe(x)
+  }
+
+  define-meta cascade<bool>(x: 'bool) -> '&string {
+    quote {describe::(unquote {x})}
+  }
+
+  define-meta probe<bool>(x: 'bool) -> '&string {
+    describe(x)
+  }
+}

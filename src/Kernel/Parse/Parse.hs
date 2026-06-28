@@ -142,6 +142,21 @@ postprocess' h stmt = do
     RawStmtDefineResource c m (name, c1) (c2, discarder) (c3, copier) (c4, resourceSize) c5 -> do
       let name' = Locator.attachCurrentLocator h name
       [PostRawStmtDefineResource c m (name', c1) (c2, discarder) (c3, copier) (c4, resourceSize) c5]
+    RawStmtTrope c m (name, c1) defineMetaList loc -> do
+      let name' = Locator.attachCurrentLocator h name
+      let liftDefineMeta index (RawDefineMeta defineMetaLoc' defineMetaTarget' defineMetaTargetArgs' defineMetaExpArgs' defineMetaCod' defineMetaBody' defineMetaEndLoc') = do
+            PostRawDefineMeta
+              { postDefineMetaLoc = defineMetaLoc',
+                postDefineMetaTarget = defineMetaTarget',
+                postDefineMetaTargetArgs = defineMetaTargetArgs',
+                postDefineMetaExpArgs = defineMetaExpArgs',
+                postDefineMetaCod = defineMetaCod',
+                postDefineMetaBody = defineMetaBody',
+                postDefineMetaEndLoc = defineMetaEndLoc',
+                postDefineMetaHelperName = DD.getKnotDD name' index
+              }
+      let defineMetaElems = zipWith (\index (comment, defineMeta) -> (comment, liftDefineMeta index defineMeta)) [0 ..] (SE.elems defineMetaList)
+      [PostRawStmtTrope c m (name', c1) (defineMetaList {SE.elems = defineMetaElems}) loc]
     RawStmtVariadic kind _ m (name, _) (_, leaf, leafType) (_, node, nodeType) (_, root, rootType) _ loc -> do
       let name' = Locator.attachCurrentLocator h name
       defineVariadic kind m name' (leaf, leafType) (node, nodeType) (root, rootType) loc
@@ -271,6 +286,8 @@ registerKeyArg h stmt = do
       return ()
     PostRawStmtDefineResource {} -> do
       return ()
+    PostRawStmtTrope {} -> do
+      return ()
     PostRawStmtVariadic {} -> do
       return ()
     PostRawStmtForeign {} ->
@@ -292,6 +309,8 @@ registerKeyArg' h stmt = do
     StmtDefineType {} ->
       return ()
     StmtDefineResource {} ->
+      return ()
+    StmtTrope {} ->
       return ()
     StmtVariadic {} ->
       return ()

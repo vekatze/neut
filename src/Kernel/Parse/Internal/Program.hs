@@ -71,6 +71,7 @@ parseStmt h = do
       parseMacroInline h,
       parseAlias h,
       parseAliasOpaque h,
+      parseTrope h,
       parseNominal h,
       parseResource h,
       parseVariadic h FoldLeft,
@@ -224,6 +225,54 @@ parseData' h c1 shouldOptimize = do
   dataArgsOrNone <- parseDataArgs h
   (consSeries, loc, c) <- seriesBraceList' $ parseDefineDataClause h
   return (RawStmtDefineData c1 shouldOptimize m (dataName, c2) dataArgsOrNone consSeries loc, c)
+
+parseTrope :: Handle -> Parser (RawStmt, C)
+parseTrope h = do
+  c1 <- keyword "trope"
+  m <- getCurrentHint
+  name <- baseName
+  (defineMetaList, loc, c) <- parseDefineMetaBlock h
+  return (RawStmtTrope c1 m name defineMetaList loc, c)
+
+parseDefineMetaBlock :: Handle -> Parser (SE.Series (RawDefineMeta Name), Loc, C)
+parseDefineMetaBlock h = do
+  c1 <- delimiter "{"
+  entries <- many $ parseDefineMeta h
+  loc <- getCurrentLoc
+  c2 <- delimiter "}"
+  let defineMetaSeries =
+        case entries of
+          [] ->
+            (SE.emptySeries (Just SE.Brace) SE.Comma)
+              { SE.trailingComment = c1
+              }
+          entry : rest ->
+            SE.fromListWithComment (Just SE.Brace) SE.Comma $ (c1, entry) : map ([],) rest
+  return (defineMetaSeries, loc, c2)
+
+parseDefineMeta :: Handle -> Parser (RawDefineMeta Name, C)
+parseDefineMeta h = do
+  c1 <- keyword "define-meta"
+  m <- getCurrentHint
+  mTarget <- getCurrentHint
+  (targetText, cTarget) <- symbol
+  target <- interpretVarName mTarget targetText
+  targetArgs <- seriesAngle $ rawType h
+  expArgs <- seriesParen $ mandatoryBinder h
+  (_, cArrow, cod) <- parseDefInfoCod ArrowMeta h
+  (c2, ((body, _), loc, c)) <- betweenBrace' $ rawExpr h
+  return
+    ( RawDefineMeta
+        { defineMetaLoc = m,
+          defineMetaTarget = (target, cTarget),
+          defineMetaTargetArgs = targetArgs,
+          defineMetaExpArgs = expArgs,
+          defineMetaCod = (cArrow, fst cod),
+          defineMetaBody = body,
+          defineMetaEndLoc = loc
+        },
+      c1 ++ c2 ++ c
+    )
 
 parseNominal :: Handle -> Parser (RawStmt, C)
 parseNominal h = do

@@ -7,6 +7,7 @@ import Data.IORef
 import Data.Text qualified as T
 import Gensym.Handle qualified as GensymHandle
 import Kernel.Common.Handle.Global.Data qualified as Data
+import Kernel.Common.Handle.Local.Tag qualified as Tag
 import Language.Common.DataSize qualified as DS
 import Language.Term.Inline.Handle
 import Language.Term.Stmt qualified as Stmt
@@ -15,6 +16,8 @@ data Env = Env
   { gensymHandle :: GensymHandle.Handle,
     dmap :: DefMap,
     typeDefMap :: TypeDefMap,
+    tropeMap :: TropeMap,
+    tagHandle :: Tag.Handle,
     dataHandle :: Data.Handle,
     baseSize :: DS.DataSize,
     inlineLimit :: Int,

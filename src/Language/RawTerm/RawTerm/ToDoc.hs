@@ -246,6 +246,17 @@ toDoc term =
           D.line,
           attachComment c5 $ toDoc e2
         ]
+    _ :< Invoke c1 tropeNames c2 body -> do
+      D.join
+        [ PI.arrange
+            [ PI.beforeBareSeries $ attachComment c1 $ D.text "invoke",
+              PI.bareSeriesWithoutSpace $ SE.decodeHorizontallyIfPossible $ fmap (nameToDoc . snd) tropeNames,
+              PI.inject $ D.text ";",
+              PI.inject $ C.asSuffix c2
+            ],
+          D.line,
+          toDoc body
+        ]
     _ :< String txt -> do
       D.text $ "\"" <> txt <> "\""
     _ :< RuneIntro r -> do

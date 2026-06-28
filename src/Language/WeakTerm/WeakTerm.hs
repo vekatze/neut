@@ -78,6 +78,7 @@ data WeakTermF a
   | TauElim (Hint, Ident) a a
   | Actual (Maybe WeakType) a
   | Let LetOpacity (BinderF WeakType) a a
+  | Invoke [DD.DefiniteDescription] a
   | Prim (WPV.WeakPrimValue WeakType)
   | Magic (WeakMagic WeakType WeakType a)
   | Annotation LogLevel (AN.Annotation WeakType) a

@@ -153,6 +153,9 @@ subst h sub term =
       e1' <- subst h sub e1
       (mxt', _, e2') <- subst'' h sub mxt [] e2
       return $ m :< WT.Let opacity mxt' e1' e2'
+    m :< WT.Invoke tropeNames body -> do
+      body' <- subst h sub body
+      return $ m :< WT.Invoke tropeNames body'
     m :< WT.Prim prim -> do
       prim' <- mapM (substType h sub) prim
       return $ m :< WT.Prim prim'

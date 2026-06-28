@@ -171,6 +171,8 @@ interpretGlobalName h m dd gn = do
       return $ interpretTopLevelFuncTerm m dd argNum isConstLike isDestPassing
     GN.TopLevelFuncType {} -> do
       raiseError m $ "`" <> dd' <> "` is a type name and cannot appear in term position"
+    GN.Trope ->
+      raiseError m $ "`" <> dd' <> "` is a trope and can only be used by `invoke`"
     GN.Data {} ->
       raiseError m $ "`" <> dd' <> "` is a type name and cannot appear in term position"
     GN.DataIntro dataArgNum consArgNum _ isConstLike -> do
@@ -222,6 +224,8 @@ interpretGlobalTypeName m dd gn = do
       raiseError m $ "`" <> DD.reify dd <> "` is not a type"
     GN.Rule {} ->
       raiseError m $ "`" <> DD.reify dd <> "` is not a type"
+    GN.Trope ->
+      raiseError m $ "`" <> DD.reify dd <> "` is a trope and cannot appear in type position"
 
 interpretRuleName :: Hint -> DD.DefiniteDescription -> GN.GlobalName -> App RuleKind
 interpretRuleName m dd gn = do

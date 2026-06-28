@@ -9,6 +9,8 @@ module Language.RawTerm.RawStmt
     RawStmtKindType,
     AliasKind (..),
     RawConsInfo (..),
+    RawDefineMeta (..),
+    PostRawDefineMeta (..),
     RawImport (..),
     RawImportItem (..),
     compareImportItem,
@@ -29,6 +31,7 @@ import Language.Common.NominalTag
 import Language.Common.RuleKind
 import Language.Common.DataInfo (FieldHint)
 import Language.Common.StmtKind qualified as SK
+import Language.RawTerm.Name qualified as N
 import Language.RawTerm.RawBinder
 import Language.RawTerm.RawTerm qualified as RT
 import Logger.Hint
@@ -46,6 +49,16 @@ data RawConsInfo a = RawConsInfo
     name :: a,
     expArgs :: Maybe (SE.Series (FieldHint, RawBinder RT.RawType)),
     endLoc :: Loc
+  }
+
+data RawDefineMeta name = RawDefineMeta
+  { defineMetaLoc :: Hint,
+    defineMetaTarget :: (name, C),
+    defineMetaTargetArgs :: (SE.Series RT.RawType, C),
+    defineMetaExpArgs :: RT.Args RT.RawType,
+    defineMetaCod :: (C, RT.RawType),
+    defineMetaBody :: RT.RawTerm,
+    defineMetaEndLoc :: Loc
   }
 
 type RawStmtKindTerm a =
@@ -84,6 +97,7 @@ data BaseRawStmt name
       (C, RT.RawTerm) -- copier
       (C, RT.RawTerm) -- resourceSize
       C
+  | RawStmtTrope C Hint (name, C) (SE.Series (RawDefineMeta N.Name)) Loc
   | RawStmtVariadic
       RuleKind
       C
@@ -123,12 +137,29 @@ data PostRawStmt
       (C, RT.RawTerm) -- copier
       (C, RT.RawTerm) -- resourceSize
       C
+  | PostRawStmtTrope
+      C
+      Hint
+      (DD.DefiniteDescription, C)
+      (SE.Series PostRawDefineMeta)
+      Loc
   | PostRawStmtVariadic
       RuleKind
       Hint
       DD.DefiniteDescription
   | PostRawStmtNominal C Hint (SE.Series (NominalTag, RT.RawGeist DD.DefiniteDescription, Loc))
   | PostRawStmtForeign C (SE.Series RawForeignItem)
+
+data PostRawDefineMeta = PostRawDefineMeta
+  { postDefineMetaLoc :: Hint,
+    postDefineMetaTarget :: (N.Name, C),
+    postDefineMetaTargetArgs :: (SE.Series RT.RawType, C),
+    postDefineMetaExpArgs :: RT.Args RT.RawType,
+    postDefineMetaCod :: (C, RT.RawType),
+    postDefineMetaBody :: RT.RawTerm,
+    postDefineMetaEndLoc :: Loc,
+    postDefineMetaHelperName :: DD.DefiniteDescription
+  }
 
 data RawImportItem
   = RawImportItem Hint (T.Text, C) (SE.Series (Hint, LL.LocalLocator))

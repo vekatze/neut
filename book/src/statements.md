@@ -6,6 +6,7 @@
 - [define](#define)
 - [inline](#inline)
 - [define-meta](#define-meta)
+- [trope](#trope)
 - [inline-meta](#inline-meta)
 - [constant](#constant)
 - [constant-meta](#constant-meta)
@@ -228,6 +229,28 @@ define use-meta() -> +unit {
 ```
 
 `lift-value` typechecks even though it uses `lift` on `y: a`, since it is a meta function. Later, `use-meta` specializes it with `a := unit`, and `unit` is liftable, so `use-meta` is well-typed. Conversely, specializing with `a := &string` would be a type error, since `&string` is not liftable.
+
+## `trope`
+
+`trope` defines custom specializations of top-level `define-meta` functions. It should look like the following:
+
+```neut
+trope terse {
+  define-meta print<bool>(x: '&bool) -> 'unit {
+    quote {print("<bool>")}
+  }
+
+  define-meta print<int>(x: '&int) -> 'unit {
+    quote {print("<int>")}
+  }
+}
+```
+
+Each entry must target a top-level `define-meta` function, and its type arguments must be written explicitly. The target function must not have default arguments. The body of each entry starts at stage 1, as with ordinary `define-meta`.
+
+When a `trope` is enabled, its entries are available as pre-registered memoized specializations.
+
+Entries in a `trope` are ordered. If multiple entries match the same meta function and type arguments, the later entry is used.
 
 ## `inline-meta`
 

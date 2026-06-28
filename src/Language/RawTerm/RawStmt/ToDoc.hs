@@ -237,6 +237,13 @@ decStmt stmt =
             PI.horizontal $ D.text $ BN.reify name,
             PI.inject $ SE.decode $ fmap RT.toDoc series
           ]
+    RawStmtTrope c1 _ (name, c2) defineMetaList _ -> do
+      attachStmtComment (c1 ++ c2) $
+        PI.arrange
+          [ PI.horizontal $ D.text "trope",
+            PI.horizontal $ D.text $ BN.reify name,
+            PI.inject $ decDefineMetaBlock defineMetaList
+          ]
     RawStmtVariadic kind c1 _ (name, c2) (ct, leaf, _) (cn, node, _) (cr, root, _) trailingComment _ -> do
       let k = ruleKindToKeyword kind
       let series =
@@ -278,6 +285,58 @@ decForeignItem (RawForeignItemF _ funcName _ args _ _ cod) = do
           FCT.Void ->
             D.text "void"
   D.join [D.text (EN.reify funcName), args', D.text " -> ", cod']
+
+decDefineMeta :: C -> RawDefineMeta N.Name -> D.Doc
+decDefineMeta c defineMeta =
+  RT.decodeDef (decDefineMetaTarget defineMeta) "define-meta" c $ defineMetaToDef defineMeta
+
+decDefineMetaTarget :: RawDefineMeta N.Name -> N.Name -> D.Doc
+decDefineMetaTarget defineMeta name = do
+  let (targetArgs, c) = defineMetaTargetArgs defineMeta
+  PI.arrange
+    [ PI.inject $ RT.nameToDoc name,
+      PI.inject $ RT.attachComment c $ SE.decodeHorizontallyIfPossible $ fmap RT.typeToDoc targetArgs
+    ]
+
+defineMetaToDef :: RawDefineMeta N.Name -> RT.RawDef N.Name
+defineMetaToDef defineMeta = do
+  let geist =
+        RT.RawGeist
+          { RT.loc = defineMetaLoc defineMeta,
+            RT.name = defineMetaTarget defineMeta,
+            RT.isConstLike = False,
+            RT.isDestPassing = False,
+            RT.impArgs = (SE.emptySeriesAC, []),
+            RT.expArgs = defineMetaExpArgs defineMeta,
+            RT.defaultArgs = RT.emptyDefaultArgs,
+            RT.cod = defineMetaCod defineMeta
+          }
+  RT.RawDef
+    { RT.geist = geist,
+      RT.leadingComment = [],
+      RT.body = defineMetaBody defineMeta,
+      RT.trailingComment = [],
+      RT.endLoc = defineMetaEndLoc defineMeta
+    }
+
+decDefineMetaBlock :: SE.Series (RawDefineMeta N.Name) -> D.Doc
+decDefineMetaBlock defineMetaList = do
+  D.join
+    [ D.text "{",
+      D.nest D.indent $ D.join [D.line, decDefineMetaItems $ SE.elems defineMetaList, C.asSuffix $ SE.trailingComment defineMetaList],
+      D.line,
+      D.text "}"
+    ]
+
+decDefineMetaItems :: [(C, RawDefineMeta N.Name)] -> D.Doc
+decDefineMetaItems entries =
+  case entries of
+    [] ->
+      D.Nil
+    [(c, defineMeta)] ->
+      decDefineMeta c defineMeta
+    (c, defineMeta) : rest ->
+      D.join [decDefineMeta c defineMeta, D.line, D.line, decDefineMetaItems rest]
 
 decDataArgs :: Maybe (RT.Args RT.RawType) -> D.Doc
 decDataArgs argsOrNone =

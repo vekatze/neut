@@ -254,7 +254,7 @@ define call-inline-dependent-default() -> unit {
   expect-int("inline dependent defaults: last override\n", inline-dependent-default(4)[w := 8], 12)
 }
 
-define-meta default-meta(x: 'int)[n: 'int := quote {0}] -> 'int {
+inline-meta default-meta(x: 'int)[n: 'int := quote {0}] -> 'int {
   quote {add-int(unquote {x}, unquote {n})}
 }
 
@@ -269,7 +269,7 @@ inline-meta meta-add(x: 'int, y: 'int) -> 'int {
   quote {add-int(unquote {x}, unquote {y})}
 }
 
-define-meta dependent-default-meta(x: 'int)[
+inline-meta dependent-default-meta(x: 'int)[
   lo: 'int := quote {add-int(unquote {x}, 2)},
   hi: 'int := meta-add(lo, x),
   total: 'int := quote {add-int(unquote {lo}, unquote {hi})},
@@ -292,7 +292,7 @@ inline-meta vector-from-defaults(lo: 'int, hi: 'int) -> 'vector(int) {
   }
 }
 
-define-meta dependent-default-vector(seed: 'int)[
+inline-meta dependent-default-vector(seed: 'int)[
   lo: 'int := quote {sub-int(unquote {seed}, 1)},
   hi: 'int := quote {add-int(unquote {lo}, 4)},
   expected-lo: 'int := lo,

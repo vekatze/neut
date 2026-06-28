@@ -126,6 +126,8 @@ toText term =
           "tie " <> showVarWithKind k x <> ": " <> toTextType t <> " = " <> toText e1 <> "; " <> toText e2
         _ ->
           "let " <> showVarWithKind k x <> ": " <> toTextType t <> " = " <> toText e1 <> "; " <> toText e2
+    _ :< WT.Invoke tropeNames body ->
+      "invoke " <> T.intercalate ", " (map DD.localLocator tropeNames) <> "; " <> toText body
     _ :< WT.Prim primValue ->
       showPrimValue primValue
     _ :< WT.Magic magic -> do

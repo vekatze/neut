@@ -210,6 +210,8 @@ analyze h term = do
       (cs1, h') <- analyzeLet h [(mxt, e1)]
       cs2 <- analyze h' e2
       return $ cs1 ++ cs2
+    _ :< TM.Invoke _ body -> do
+      analyze h body
     _ :< TM.Prim {} -> do
       return []
     _ :< TM.Magic magic -> do
