@@ -5,6 +5,7 @@ module Kernel.Common.Handle.Global.Platform
     getDataSize,
     getPlatform,
     getClang,
+    getClangTargetTriple,
     getClangDigest,
     getBaseBuildDir,
     ensureExecutables,
@@ -40,6 +41,7 @@ import System.Process (CmdSpec (RawCommand))
 data Handle = Handle
   { _arch :: Arch.Arch,
     _os :: O.OS,
+    _clangTargetTriple :: String,
     _clangDigest :: T.Text,
     _baseSize :: DS.DataSize
   }
@@ -66,12 +68,17 @@ getClangDigest :: Handle -> T.Text
 getClangDigest =
   _clangDigest
 
+getClangTargetTriple :: Handle -> String
+getClangTargetTriple =
+  _clangTargetTriple
+
 new :: Logger.Handle -> IO Handle
 new loggerHandle = do
   run loggerHandle $ do
     _arch <- getArch' Nothing
-    _baseSize <- Arch.dataSizeOf <$> getArch' Nothing
     _os <- getOS' Nothing
+    _clangTargetTriple <- resolveClangTargetTriple _arch _os
+    let _baseSize = Arch.dataSizeOf _arch
     _clangDigest <- calculateClangDigest loggerHandle
     return $ Handle {..}
 
@@ -115,6 +122,19 @@ getClang = do
       return clang
     Nothing -> do
       return "clang"
+
+resolveClangTargetTriple :: Arch.Arch -> O.OS -> App String
+resolveClangTargetTriple arch os = do
+  case (arch, os) of
+    (Arch.Amd64, O.Linux) ->
+      return "x86_64-unknown-linux-gnu"
+    (Arch.Arm64, O.Linux) ->
+      return "aarch64-unknown-linux-gnu"
+    (Arch.Arm64, O.Darwin) ->
+      return "arm64-apple-darwin"
+    _ -> do
+      let p = P.Platform {P.arch = arch, P.os = os}
+      raiseError' $ "Unsupported target platform: " <> P.reify p
 
 calculateClangDigest :: Logger.Handle -> App T.Text
 calculateClangDigest h = do

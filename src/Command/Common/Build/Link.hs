@@ -34,6 +34,7 @@ data Handle = Handle
   { loggerHandle :: Logger.Handle,
     envHandle :: Env.Handle,
     pathHandle :: Path.Handle,
+    platformHandle :: Platform.Handle,
     colorHandle :: Color.Handle
   }
 
@@ -109,14 +110,16 @@ getAllocatorLibraryIfNecessary h target = do
 link'' :: Handle -> [String] -> [Path Abs File] -> Path Abs File -> App ()
 link'' h clangOptions objectPathList outputPath = do
   clang <- liftIO Platform.getClang
+  let targetTriple = Platform.getClangTargetTriple (platformHandle h)
   ensureDir $ parent outputPath
   let runProcessHandle = RunProcess.new (loggerHandle h)
-  RunProcess.run runProcessHandle clang $ clangLinkOpt objectPathList outputPath (unwords clangOptions)
+  RunProcess.run runProcessHandle clang $ clangLinkOpt targetTriple objectPathList outputPath clangOptions
 
-clangLinkOpt :: [Path Abs File] -> Path Abs File -> String -> [String]
-clangLinkOpt objectPathList outputPath additionalOptionStr = do
+clangLinkOpt :: String -> [Path Abs File] -> Path Abs File -> [String] -> [String]
+clangLinkOpt targetTriple objectPathList outputPath additionalOptions = do
   let pathList = map toFilePath objectPathList
-  [ "-Wno-override-module",
+  [ "-target",
+    targetTriple,
     "-O2",
     "-flto=thin",
     "-pthread",
@@ -124,5 +127,5 @@ clangLinkOpt objectPathList outputPath additionalOptionStr = do
     "-o",
     toFilePath outputPath
     ]
-    ++ words additionalOptionStr
+    ++ additionalOptions
     ++ pathList
