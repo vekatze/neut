@@ -7,7 +7,7 @@ module ProgressIndicator.ProgressIndicator
   )
 where
 
-import Color.Text qualified as Color
+import Console.Text qualified as Console
 import Data.Text qualified as T
 import System.Console.ANSI
 
@@ -21,27 +21,27 @@ data ProgressBar = ProgressBar
 type Frame =
   Int
 
-renderInProgress :: Frame -> ProgressBar -> Color.Text
+renderInProgress :: Frame -> ProgressBar -> Console.Text
 renderInProgress frame progressBar = do
-  let spinner = Color.pack (color progressBar) $ chooseSpinner frame
-  let title' = spinner <> " " <> Color.pack' (workingTitle progressBar)
+  let spinner = Console.pack (color progressBar) $ chooseSpinner frame
+  let title' = spinner <> " " <> Console.pack' (workingTitle progressBar)
   case progress progressBar of
     Nothing -> do
       title'
     Just (current, size) -> do
       let frac :: Float = fromIntegral current / fromIntegral size
       let pivot = floor $ fromIntegral barLength * frac
-      let prefix = Color.pack (color progressBar) $ T.replicate pivot barFinished
-      let suffix = Color.pack' $ T.replicate (barLength - pivot) barInProgress
+      let prefix = Console.pack (color progressBar) $ T.replicate pivot barFinished
+      let suffix = Console.pack' $ T.replicate (barLength - pivot) barInProgress
       let bar = prefix <> suffix
-      let current' = Color.pack' $ T.pack (show current)
-      let size' = Color.pack' $ T.pack (show size)
+      let current' = Console.pack' $ T.pack (show current)
+      let size' = Console.pack' $ T.pack (show size)
       title' <> "\n  " <> bar <> " " <> current' <> "/" <> size'
 
-renderFinished :: ProgressBar -> Color.Text
+renderFinished :: ProgressBar -> Console.Text
 renderFinished progressBar = do
-  let check = Color.pack (color progressBar) "✓" <> " "
-  check <> Color.pack' (completedTitle progressBar) <> "\n"
+  let check = Console.pack (color progressBar) "✓" <> " "
+  check <> Console.pack' (completedTitle progressBar) <> "\n"
 
 next :: ProgressBar -> ProgressBar
 next progressBar = do

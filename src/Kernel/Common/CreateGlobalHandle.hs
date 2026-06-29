@@ -7,9 +7,9 @@ where
 
 import App.Error qualified as E
 import App.Run (run)
-import Color.CreateHandle qualified as Color
-import Color.Handle qualified as Color
 import CommandParser.Config.Remark qualified as Remark
+import Console.CreateHandle qualified as Console
+import Console.Handle qualified as Console
 import Control.Monad.Except (MonadError (throwError))
 import Data.HashMap.Strict qualified as Map
 import Data.IORef (IORef, newIORef)
@@ -44,7 +44,7 @@ import Path
 data Handle = Handle
   { artifactHandle :: Artifact.Handle,
     antecedentHandle :: Antecedent.Handle,
-    colorHandle :: Color.Handle,
+    consoleHandle :: Console.Handle,
     platformHandle :: Platform.Handle,
     dataHandle :: Data.Handle,
     defHandle :: Definition.Handle,
@@ -79,8 +79,8 @@ new cfg moduleFilePathOrNone = do
 
 newOrError :: Remark.Config -> Maybe (Path Abs File) -> IO (Either (Logger.Handle, E.Error) Handle)
 newOrError cfg moduleFilePathOrNone = do
-  colorHandle <- Color.createHandle (Remark.shouldColorize cfg) (Remark.shouldColorize cfg)
-  loggerHandle <- Logger.createHandle colorHandle (Remark.enableDebugMode cfg)
+  consoleHandle <- Console.createHandle (Remark.shouldColorize cfg) (Remark.shouldColorize cfg)
+  loggerHandle <- Logger.createHandle consoleHandle (Remark.enableDebugMode cfg)
   gensymHandle <- Gensym.createHandle
   platformHandle <- Platform.new loggerHandle
   envHandleOrError <- Env.new (Remark.enableSilentMode cfg) moduleFilePathOrNone

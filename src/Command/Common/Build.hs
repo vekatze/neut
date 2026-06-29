@@ -126,13 +126,13 @@ compile h target outputKindList contentSeq = do
   bs <- mapM (needsCompilation cacheHandle outputKindList . fst) contentSeq
   c <- getEntryPointCompilationCount h target outputKindList
   let numOfItems = length (filter id bs) + c
-  let colorHandle = Global.colorHandle (globalHandle h)
+  let consoleHandle = Global.consoleHandle (globalHandle h)
   currentTime <- liftIO getCurrentTime
   let color = [SetColor Foreground Vivid Green]
   let workingTitle = getWorkingTitle numOfItems
   let completedTitle = getCompletedTitle numOfItems
   let silentMode = Env.getSilentMode (Global.envHandle (globalHandle h))
-  hp <- liftIO $ Indicator.new colorHandle silentMode (Just numOfItems) workingTitle completedTitle color
+  hp <- liftIO $ Indicator.new consoleHandle silentMode (Just numOfItems) workingTitle completedTitle color
   cacheOrProgList <- Parse.parse (globalHandle h) contentSeq
   cacheOrStmtList <- forP cacheOrProgList $ \(localHandle, (source, cacheOrProg)) -> do
     interpretHandle <- liftIO $ Interpret.new (globalHandle h) localHandle (sourceModule source)

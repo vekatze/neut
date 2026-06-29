@@ -1,7 +1,6 @@
 module Main (main) where
 
 import App.Run (run)
-import Color.CreateHandle qualified as Color
 import Command.Archive.Archive qualified as Archive
 import Command.Build.Build qualified as Build
 import Command.Check.Check qualified as Check
@@ -17,6 +16,7 @@ import Command.Zen.Zen qualified as Zen
 import CommandParser.Command qualified as C
 import CommandParser.Config.Remark qualified as Remark
 import CommandParser.Parse qualified as CommandParser
+import Console.CreateHandle qualified as Console
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.Platform (ensureExecutables)
@@ -31,8 +31,8 @@ main = do
     C.External loggerConfig cmd -> do
       let shouldColorize = Remark.shouldColorize loggerConfig
       let enableDebugMode = Remark.enableDebugMode loggerConfig
-      colorHandle <- Color.createHandle shouldColorize shouldColorize
-      loggerHandle <- Logger.createHandle colorHandle enableDebugMode
+      consoleHandle <- Console.createHandle shouldColorize shouldColorize
+      loggerHandle <- Logger.createHandle consoleHandle enableDebugMode
       run loggerHandle $ do
         case cmd of
           C.Create cfg -> do

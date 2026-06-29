@@ -6,9 +6,9 @@ module ProgressIndicator.ShowProgress
   )
 where
 
-import Color.Handle qualified as Color
-import Color.Print qualified as Color
-import Color.Text qualified as Color
+import Console.Handle qualified as Console
+import Console.Print qualified as Console
+import Console.Text qualified as Console
 import Data.IORef (IORef, atomicModifyIORef', newIORef, readIORef)
 import Data.Text qualified as T
 import ProgressIndicator.Handle
@@ -18,10 +18,10 @@ import System.IO hiding (Handle)
 import UnliftIO.Async
 import UnliftIO.Concurrent (threadDelay)
 
-new :: Color.Handle -> Bool -> Maybe Int -> T.Text -> T.Text -> [SGR] -> IO Handle
-new colorHandle silentMode numOfItems workingTitle completedTitle color = do
-  case (silentMode, numOfItems) of
-    (True, _) ->
+new :: Console.Handle -> Bool -> Maybe Int -> T.Text -> T.Text -> [SGR] -> IO Handle
+new consoleHandle silentMode numOfItems workingTitle completedTitle color = do
+  case (shouldShowProgress consoleHandle silentMode, numOfItems) of
+    (False, _) ->
       return Nothing
     (_, Just i)
       | i <= 0 ->
@@ -35,8 +35,12 @@ new colorHandle silentMode numOfItems workingTitle completedTitle color = do
             return $ Just (0, v)
       let progressBar = ProgressBar {workingTitle, completedTitle, color, progress}
       progressBarRef <- newIORef progressBar
-      renderThread <- async (render colorHandle 0 progressBarRef)
-      return $ Just $ Handle {colorHandle, progressBarRef, renderThread}
+      renderThread <- async (render consoleHandle 0 progressBarRef)
+      return $ Just $ Handle {consoleHandle, progressBarRef, renderThread}
+
+shouldShowProgress :: Console.Handle -> Bool -> Bool
+shouldShowProgress consoleHandle silentMode = do
+  not silentMode && Console.supportsInteractiveOutput consoleHandle
 
 increment :: Handle -> IO ()
 increment mh = do
@@ -47,13 +51,13 @@ increment mh = do
       atomicModifyIORef' (progressBarRef h) $ \progressBar -> do
         (next progressBar, ())
 
-render :: Color.Handle -> Frame -> IORef ProgressBar -> IO ()
-render colorHandle i ref = do
+render :: Console.Handle -> Frame -> IORef ProgressBar -> IO ()
+render consoleHandle i ref = do
   progressBar <- readIORef ref
-  Color.printStdOut colorHandle $ renderInProgress i progressBar <> Color.pack' "\n"
+  Console.printStdOut consoleHandle $ renderInProgress i progressBar <> Console.pack' "\n"
   threadDelay 33333 -- 2F
   clear ref
-  render colorHandle (i + 1) ref
+  render consoleHandle (i + 1) ref
 
 clear :: IORef ProgressBar -> IO ()
 clear ref = do
@@ -78,4 +82,4 @@ close mh = do
       cancel (renderThread h)
       clear (progressBarRef h)
       progressBar <- readIORef (progressBarRef h)
-      Color.printStdOut (colorHandle h) $ renderFinished progressBar
+      Console.printStdOut (consoleHandle h) $ renderFinished progressBar
