@@ -1384,6 +1384,28 @@ define use-foo() -> unit {
 }
 ```
 
+When this notation is used with an ADT constructor, you can use the pseudo-field `..` to fill the unspecified fields from an existing value:
+
+```neut
+data point {
+| Point(x: int, y: int)
+}
+
+define update-point(p: point) -> point {
+  Point{x := 42, .. := p}
+}
+
+// ↓ desugar
+//
+// define update-point(p: point) -> point {
+//   let Point{y := orig-y} = p;
+//   Point{x := 42, y := orig-y}
+// }
+
+```
+
+The pseudo-field `..` is not an actual field of the constructor, and it can be specified at most once.
+
 ## `exact e`
 
 Given a function `e`, `exact e` supplies all the implicit parameters of `e` by inserting holes.
