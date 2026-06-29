@@ -416,7 +416,20 @@ define test-match() -> unit {
   Unit
 }
 
+data point {
+| Point(x: int, y: int)
+}
+
+define test-syntax() -> unit {
+  let p1 = Point{x := 1, y := 2};
+  let p2 = Point{x := 42, .. := p1};
+  let p3 = Point{.. := p2};
+  let _ = Point{x := 3, y := 4, .. := p3};
+  Unit
+}
+
 define main() -> unit {
+  test-syntax();
   test-resource();
   test-match()
 }
