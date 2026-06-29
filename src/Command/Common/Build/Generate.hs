@@ -30,6 +30,7 @@ import System.Process (CmdSpec (RawCommand))
 data Handle = Handle
   { loggerHandle :: Logger.Handle,
     pathHandle :: Path.Handle,
+    platformHandle :: Platform.Handle,
     runProcessHandle :: RunProcess.Handle
   }
 
@@ -91,7 +92,8 @@ generateAsm' h llvmCode path = do
 generateObject' :: Handle -> [ClangOption] -> L.ByteString -> Path Abs File -> App ()
 generateObject' h additionalClangOptions llvm outputPath = do
   clang <- liftIO Platform.getClang
-  let optionList = clangBaseOpt outputPath ++ additionalClangOptions
+  let targetTriple = Platform.getClangTargetTriple (platformHandle h)
+  let optionList = clangBaseOpt targetTriple outputPath ++ additionalClangOptions
   let spec =
         RunProcess.Spec
           { cmdspec = RawCommand clang optionList,
@@ -104,10 +106,11 @@ generateObject' h additionalClangOptions llvm outputPath = do
     Left err ->
       throwError $ newError' err
 
-clangBaseOpt :: Path Abs File -> [String]
-clangBaseOpt outputPath =
+clangBaseOpt :: String -> Path Abs File -> [String]
+clangBaseOpt targetTriple outputPath =
   [ "-xir",
-    "-Wno-override-module",
+    "-target",
+    targetTriple,
     "-O2",
     "-flto=thin",
     "-c",
