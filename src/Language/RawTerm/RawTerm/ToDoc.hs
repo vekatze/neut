@@ -91,18 +91,18 @@ toDoc term =
         [ PI.inject $ nameToDoc name,
           PI.inject $ attachComment c $ SE.decodeHorizontallyIfPossible $ fmap typeToDoc impArgs
         ]
-    _ :< PiElimByKey name c mImpArgs c2 kvs -> do
+    _ :< PiElimByKey name c mImpArgs c2 kvs restArg -> do
       case mImpArgs of
         Nothing ->
           PI.arrange
             [ PI.inject $ attachComment (map toLineComment c) $ nameToDoc name,
-              PI.inject $ decPiElimKey kvs
+              PI.inject $ decPiElimKeyWithRest kvs restArg
             ]
         Just impArgs ->
           PI.arrange
             [ PI.inject $ attachComment (map toLineComment $ c ++ c2) $ nameToDoc name,
               PI.inject $ SE.decodeHorizontallyIfPossible $ fmap typeToDoc impArgs,
-              PI.inject $ decPiElimKey kvs
+              PI.inject $ decPiElimKeyWithRest kvs restArg
             ]
     _ :< PiElimRule name c es -> do
       PI.arrange
@@ -971,6 +971,15 @@ decPiElimKey :: SE.Series (Hint, Key, C, C, RawTerm) -> D.Doc
 decPiElimKey kvs = do
   let kvs' = fmap decPiElimKeyItem kvs
   SE.decode $ fmap decPiElimKeyItem' kvs'
+
+decPiElimKeyWithRest :: SE.Series (Hint, Key, C, C, RawTerm) -> Maybe (Hint, C, C, RawTerm) -> D.Doc
+decPiElimKeyWithRest kvs restArg = do
+  let restElem = case restArg of
+        Nothing ->
+          []
+        Just (m, c1, c2, e) ->
+          [(c1, (m, "..", [], c2, e))]
+  decPiElimKey $ kvs {SE.elems = SE.elems kvs ++ restElem}
 
 type Rhymed =
   Bool

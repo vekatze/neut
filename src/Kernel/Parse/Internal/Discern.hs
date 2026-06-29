@@ -459,28 +459,12 @@ discern h term =
               impArgs' <- mapM (discernType h) $ SE.extract impArgs
               func <- interpretGlobalName h m dd $ GN.disableConstLikeFlag gn
               return $ m :< WT.PiElim PEK.Normal func (ImpArgs.FullySpecified impArgs') [] (DefaultArgs.ByKey [])
-    m :< RT.PiElimByKey name _ mImpArgs _ kvs -> do
-      let kind = PEK.Normal -- overwritten later in `infer`
-      (dd, (_, gn)) <- resolveName h m name
-      _ :< func <- interpretGlobalName h m dd (GN.disableConstLikeFlag gn)
-      let (ks, vs) = unzip $ map (\(_, k, _, _, v) -> (k, v)) $ SE.extract kvs
-      ensureFieldLinearity m ks S.empty S.empty
-      (impKeys, expKeys, defaultKeys) <- KeyArg.lookup (H.keyArgHandle h) m dd
-      when (any (`elem` impKeys) ks) $ do
-        raiseError m "Implicit key arguments must be specified via explicit type arguments"
-      impArgs' <- case mImpArgs of
+    m :< RT.PiElimByKey name _ mImpArgs _ kvs restArg -> do
+      case restArg of
         Nothing ->
-          return ImpArgs.Unspecified
-        Just impArgs -> do
-          impArgs' <- mapM (discernType h) $ SE.extract impArgs
-          return $ ImpArgs.FullySpecified impArgs'
-      let keyMap = Map.fromList $ zip ks (repeat ())
-      checkRedundancy m (expKeys ++ defaultKeys) keyMap
-      vs' <- mapM (discern h) vs
-      let expKvs = Map.fromList $ zip ks vs'
-      expArgs <- resolveExpKeys h m expKeys expKvs
-      let defaultArgs = selectDefaultKeyArgs defaultKeys expKvs
-      return $ m :< WT.PiElim kind (m :< func) impArgs' expArgs defaultArgs
+          discernPiElimByKeyPlain h m name mImpArgs kvs
+        Just restArg' ->
+          discernRecordUpdate h m name mImpArgs kvs restArg'
     m :< RT.PiElimRule name _ es -> do
       (dd, (_, gn)) <- resolveName h m name
       kind <- interpretRuleName m dd gn
@@ -1166,6 +1150,62 @@ foldIf m true false ifCond ifBody elseIfList elseBody =
 doNotCare :: Hint -> WT.WeakType
 doNotCare m =
   m :< WT.Tau
+
+discernPiElimByKeyPlain ::
+  H.Handle ->
+  Hint ->
+  Name ->
+  Maybe (SE.Series RT.RawType) ->
+  SE.Series (Hint, Key, C, C, RT.RawTerm) ->
+  App WT.WeakTerm
+discernPiElimByKeyPlain h m name mImpArgs kvs = do
+  let kind = PEK.Normal -- overwritten later in `infer`
+  (dd, (_, gn)) <- resolveName h m name
+  _ :< func <- interpretGlobalName h m dd (GN.disableConstLikeFlag gn)
+  let (ks, vs) = unzip $ map (\(_, k, _, _, v) -> (k, v)) $ SE.extract kvs
+  ensureFieldLinearity m ks S.empty S.empty
+  (impKeys, expKeys, defaultKeys) <- KeyArg.lookup (H.keyArgHandle h) m dd
+  when (any (`elem` impKeys) ks) $ do
+    raiseError m "Implicit key arguments must be specified via explicit type arguments"
+  impArgs' <- case mImpArgs of
+    Nothing ->
+      return ImpArgs.Unspecified
+    Just impArgs -> do
+      impArgs' <- mapM (discernType h) $ SE.extract impArgs
+      return $ ImpArgs.FullySpecified impArgs'
+  let keyMap = Map.fromList $ zip ks (repeat ())
+  checkRedundancy m (expKeys ++ defaultKeys) keyMap
+  vs' <- mapM (discern h) vs
+  let expKvs = Map.fromList $ zip ks vs'
+  expArgs <- resolveExpKeys h m expKeys expKvs
+  let defaultArgs = selectDefaultKeyArgs defaultKeys expKvs
+  return $ m :< WT.PiElim kind (m :< func) impArgs' expArgs defaultArgs
+
+discernRecordUpdate ::
+  H.Handle ->
+  Hint ->
+  Name ->
+  Maybe (SE.Series RT.RawType) ->
+  SE.Series (Hint, Key, C, C, RT.RawTerm) ->
+  (Hint, C, C, RT.RawTerm) ->
+  App WT.WeakTerm
+discernRecordUpdate h m name mImpArgs kvs (mRest, _, _, restValue) = do
+  let m' = blur m
+  (dd, _) <- resolveName h m' name
+  let specifiedKeys = map (\(_, k, _, _, _) -> k) $ SE.extract kvs
+  (_, expKeys, _) <- KeyArg.lookup (H.keyArgHandle h) m' dd
+  missingPairs <- forM (expKeys \\ specifiedKeys) $ \key -> do
+    value <- liftIO $ Gensym.newTextFromText (H.gensymHandle h) key
+    return (key, value)
+  let mRest' = blur mRest
+  restType <- liftIO $ RT.createTypeHole (H.gensymHandle h) mRest'
+  let restPatternItems = map (\(key, value) -> (key, (mRest', [], RP.Var VK.Normal (Var value)))) missingPairs
+  let restPattern = RP.Cons name [] (RP.Of $ SE.fromList SE.Brace SE.Comma restPatternItems)
+  let patParam = (mRest', restPattern, [], [], restType)
+  let missingFields = map (\(key, value) -> (m', key, [], [], m' :< RT.Var (Var value))) missingPairs
+  let bodyFields = SE.fromList SE.Brace SE.Comma $ SE.extract kvs ++ missingFields
+  let body = m :< RT.PiElimByKey name [] mImpArgs [] bodyFields Nothing
+  discern h $ m' :< RT.Let (RT.Plain False) [] patParam [] [] restValue [] fakeLoc [] body fakeLoc
 
 discernLet ::
   H.Handle ->

@@ -239,8 +239,9 @@ rawTermBase mode h m headSymbol c = do
           do
             (mImpArgs, cImpArgs) <- parseImplicitArgsMaybe h
             let parseByKey = do
-                  (kvs, c') <- keyValueArgs $ rawTermKeyValuePair h
-                  return (m :< RT.PiElimByKey name c mImpArgs cImpArgs kvs, c')
+                  (fieldsWithRest, c') <- keyValueArgs $ rawTermKeyValuePair h
+                  (fields, restArg) <- lift $ extractRestArg fieldsWithRest
+                  return (m :< RT.PiElimByKey name c mImpArgs cImpArgs fields restArg, c')
             let parseMeta = do
                   (es, c') <- metaPiElim $ rawTerm h
                   mDefaultArgs <- optional $ seriesBracket $ rawTermKeyValuePair h
@@ -384,7 +385,8 @@ rawTermLambda h = do
 
 rawTermKeyValuePair :: Handle -> Parser ((Hint, Key, C, C, RT.RawTerm), C)
 rawTermKeyValuePair h = do
-  ((m, key), c1) <- var h
+  m <- getCurrentHint
+  (key, c1) <- symbol
   choice
     [ do
         c2 <- delimiter ":="
@@ -393,6 +395,31 @@ rawTermKeyValuePair h = do
       do
         return ((m, key, c1, [], m :< RT.Var (Var key)), [])
     ]
+
+extractRestArg ::
+  SE.Series (Hint, Key, C, C, RT.RawTerm) ->
+  App (SE.Series (Hint, Key, C, C, RT.RawTerm), Maybe (Hint, C, C, RT.RawTerm))
+extractRestArg fieldSeries =
+  extractRestArg' fieldSeries (SE.elems fieldSeries) [] Nothing
+
+extractRestArg' ::
+  SE.Series (Hint, Key, C, C, RT.RawTerm) ->
+  [(C, (Hint, Key, C, C, RT.RawTerm))] ->
+  [(C, (Hint, Key, C, C, RT.RawTerm))] ->
+  Maybe (Hint, C, C, RT.RawTerm) ->
+  App (SE.Series (Hint, Key, C, C, RT.RawTerm), Maybe (Hint, C, C, RT.RawTerm))
+extractRestArg' fieldSeries elems acc restArg = do
+  case elems of
+    [] ->
+      return (fieldSeries {SE.elems = reverse acc}, restArg)
+    (c, (m, "..", c1, c2, value)) : rest -> do
+      case restArg of
+        Just (_, _, _, _) ->
+          raiseError m "The pseudo-field `..` can be specified at most once"
+        Nothing ->
+          extractRestArg' fieldSeries rest acc $ Just (m, c, c1 ++ c2, value)
+    entry : rest ->
+      extractRestArg' fieldSeries rest (entry : acc) restArg
 
 rawTermLet :: Handle -> Hint -> RT.LetKind -> C -> Parser (RT.RawTerm, C)
 rawTermLet h mLet letKind c1 = do
