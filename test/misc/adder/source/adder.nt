@@ -13,3 +13,13 @@ define make-adder(x: int) -> (int) -> int {
 define main() -> unit {
   print-int-line(make-adder(3)(7));
 }
+
+define-meta use-switch(k: 'int, !x: 'string) -> 'unit {
+  let _: 'string = magic make-switch(k, x, List[Pair(1, x)]);
+  quote {Unit}
+}
+
+define hello() -> unit {
+  // let str = use-switch::(10, *"hello");
+  Unit
+}
