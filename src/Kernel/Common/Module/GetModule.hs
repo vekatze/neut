@@ -12,8 +12,6 @@ import Control.Monad
 import Control.Monad.IO.Unlift (MonadIO (liftIO))
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
-import Gensym.Handle qualified as Gensym
-import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.Module qualified as Module
 import Kernel.Common.Module
 import Kernel.Common.Module.FromPath qualified as ModuleReflect
@@ -22,13 +20,12 @@ import Language.Common.ModuleID qualified as MID
 import Logger.Hint qualified as H
 import Path.IO
 
-data Handle = Handle
-  { gensymHandle :: Gensym.Handle,
-    moduleHandle :: Module.Handle
+newtype Handle = Handle
+  { moduleHandle :: Module.Handle
   }
 
-new :: Global.Handle -> Handle
-new (Global.Handle {..}) = do
+new :: Module.Handle -> Handle
+new moduleHandle = do
   Handle {..}
 
 getModule ::

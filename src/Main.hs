@@ -31,7 +31,7 @@ main = do
     C.External loggerConfig cmd -> do
       let shouldColorize = Remark.shouldColorize loggerConfig
       let enableDebugMode = Remark.enableDebugMode loggerConfig
-      consoleHandle <- Console.createHandle shouldColorize shouldColorize
+      consoleHandle <- Console.createHandle shouldColorize shouldColorize (Remark.reportMode loggerConfig)
       loggerHandle <- Logger.createHandle consoleHandle enableDebugMode
       run loggerHandle $ do
         case cmd of

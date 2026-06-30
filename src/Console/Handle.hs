@@ -1,19 +1,24 @@
 module Console.Handle
   ( Handle (..),
+    ReportMode (..),
     stdoutSupportsANSI,
     stderrSupportsANSI,
     shouldColorizeStdout,
     shouldColorizeStderr,
+    getReportMode,
     supportsInteractiveOutput,
   )
 where
+
+import Console.ReportMode
 
 data Handle = InternalHandle
   { _stdoutIsTTY :: Bool,
     _stderrIsTTY :: Bool,
     _termIsDumb :: Bool,
     _shouldColorizeStdoutByUser :: Bool,
-    _shouldColorizeStderrByUser :: Bool
+    _shouldColorizeStderrByUser :: Bool,
+    _reportModeByUser :: ReportMode
   }
 
 stdoutSupportsANSI :: Handle -> Bool
@@ -31,6 +36,16 @@ shouldColorizeStdout h = do
 shouldColorizeStderr :: Handle -> Bool
 shouldColorizeStderr h = do
   _shouldColorizeStderrByUser h && stderrSupportsANSI h
+
+getReportMode :: Handle -> ReportMode
+getReportMode h = do
+  case _reportModeByUser h of
+    AutoReport -> do
+      if supportsInteractiveOutput h
+        then FancyReport
+        else PlainReport
+    mode ->
+      mode
 
 supportsInteractiveOutput :: Handle -> Bool
 supportsInteractiveOutput h = do

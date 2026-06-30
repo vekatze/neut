@@ -137,7 +137,7 @@ interpretImportItem h mustUpdateTag m locatorText localLocatorList = do
 
 getSource :: Handle -> AI.MustUpdateTag -> Hint -> SGL.StrictGlobalLocator -> LocatorText -> App Source.Source
 getSource h mustUpdateTag m sgl locatorText = do
-  let h' = GetModule.Handle {gensymHandle = gensymHandle h, moduleHandle = moduleHandle h}
+  let h' = GetModule.Handle {moduleHandle = moduleHandle h}
   let mainModule = Env.getMainModule (envHandle h)
   nextModule <- GetModule.getModule h' mainModule m (SGL.moduleID sgl) locatorText
   ensureSourceImportability h m sgl locatorText
@@ -163,7 +163,8 @@ ensureSourceImportability ::
 ensureSourceImportability h m sgl locatorText = do
   let currentGlobalLocator = Locator.getCurrentGlobalLocator (locatorHandle h)
   unless (SP.canImport currentGlobalLocator sgl) $
-    raiseError m $ "The source `" <> locatorText <> "` is not visible from this source"
+    raiseError m $
+      "The source `" <> locatorText <> "` is not visible from this source"
 
 interpretPreset :: Handle -> Hint -> Module -> App [ImportItem]
 interpretPreset h m currentModule = do

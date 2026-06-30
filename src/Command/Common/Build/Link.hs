@@ -65,8 +65,7 @@ link' h target sourceList = do
   let numOfObjects = length objects
   let workingTitle = getWorkingTitle numOfObjects
   let completedTitle = getCompletedTitle numOfObjects
-  let silentMode = Env.getSilentMode (envHandle h)
-  progressBarHandle <- liftIO $ Indicator.new (consoleHandle h) silentMode Nothing workingTitle completedTitle barColor
+  progressBarHandle <- liftIO $ Indicator.new (consoleHandle h) Nothing workingTitle completedTitle barColor
   link'' h clangOptions objects outputPath
   liftIO $ Indicator.close progressBarHandle
 

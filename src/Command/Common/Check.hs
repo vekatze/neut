@@ -68,7 +68,7 @@ checkModule h = do
 checkAll :: Handle -> App [Log]
 checkAll h = do
   let mainModule = Env.getMainModule (Global.envHandle (globalHandle h))
-  let getModuleHandle = GetModule.new (globalHandle h)
+  let getModuleHandle = GetModule.new $ Global.moduleHandle $ globalHandle h
   deps <- GetModule.getAllDependencies getModuleHandle mainModule (extractModule mainModule)
   depLogs <- fmap concat $ forM deps $ \(_, m) -> liftIO $ checkModule h m
   mainLogs <- liftIO $ checkModule h (extractModule mainModule)

@@ -9,6 +9,7 @@ where
 import Console.Handle qualified as Console
 import Console.Print qualified as Console
 import Console.Text qualified as Console
+import Control.Concurrent.MVar
 import Data.IORef (IORef, atomicModifyIORef', newIORef, readIORef)
 import Data.Text qualified as T
 import ProgressIndicator.Handle
@@ -18,10 +19,11 @@ import System.IO hiding (Handle)
 import UnliftIO.Async
 import UnliftIO.Concurrent (threadDelay)
 
-new :: Console.Handle -> Bool -> Maybe Int -> T.Text -> T.Text -> [SGR] -> IO Handle
-new consoleHandle silentMode numOfItems workingTitle completedTitle color = do
-  case (shouldShowProgress consoleHandle silentMode, numOfItems) of
-    (False, _) ->
+new :: Console.Handle -> Maybe Int -> T.Text -> T.Text -> [SGR] -> IO Handle
+new consoleHandle numOfItems workingTitle completedTitle color = do
+  let reportMode = Console.getReportMode consoleHandle
+  case (reportMode, numOfItems) of
+    (Console.NoReport, _) ->
       return Nothing
     (_, Just i)
       | i <= 0 ->
@@ -35,43 +37,77 @@ new consoleHandle silentMode numOfItems workingTitle completedTitle color = do
             return $ Just (0, v)
       let progressBar = ProgressBar {workingTitle, completedTitle, color, progress}
       progressBarRef <- newIORef progressBar
-      renderThread <- async (render consoleHandle 0 progressBarRef)
-      return $ Just $ Handle {consoleHandle, progressBarRef, renderThread}
+      printLock <- newMVar ()
+      case reportMode of
+        Console.PlainReport -> do
+          Console.printStdErr consoleHandle $ Console.pack' workingTitle <> Console.pack' "\n"
+          return $ Just $ Handle {consoleHandle, progressBarRef, printLock, reportMode, renderThread = Nothing}
+        Console.FancyReport -> do
+          renderThread <- Just <$> async (render consoleHandle 0 progressBarRef)
+          return $ Just $ Handle {consoleHandle, progressBarRef, printLock, reportMode, renderThread}
+        Console.AutoReport ->
+          return Nothing
 
-shouldShowProgress :: Console.Handle -> Bool -> Bool
-shouldShowProgress consoleHandle silentMode = do
-  not silentMode && Console.supportsInteractiveOutput consoleHandle
-
-increment :: Handle -> IO ()
-increment mh = do
+increment :: Handle -> T.Text -> IO ()
+increment mh label = do
   case mh of
     Nothing ->
       return ()
     Just h -> do
-      atomicModifyIORef' (progressBarRef h) $ \progressBar -> do
-        (next progressBar, ())
+      withMVar (printLock h) $ \_ -> do
+        progressBar <-
+          atomicModifyIORef' (progressBarRef h) $ \progressBar -> do
+            let progressBar' = next progressBar
+            (progressBar', progressBar')
+        case reportMode h of
+          Console.PlainReport ->
+            printPlainProgress h label progressBar
+          _ ->
+            return ()
+
+printPlainProgress :: InnerHandle -> T.Text -> ProgressBar -> IO ()
+printPlainProgress h label progressBar = do
+  case progress progressBar of
+    Nothing ->
+      return ()
+    Just (current, size) -> do
+      let sizeText = T.pack (show size)
+      let currentText = padLeft (T.length sizeText) ' ' $ T.pack (show current)
+      Console.printStdErr (consoleHandle h) $
+        Console.pack' "["
+          <> Console.pack' currentText
+          <> Console.pack' "/"
+          <> Console.pack' sizeText
+          <> Console.pack' "] "
+          <> Console.pack' label
+          <> Console.pack' "\n"
+
+padLeft :: Int -> Char -> T.Text -> T.Text
+padLeft width c text = do
+  let paddingWidth = max 0 $ width - T.length text
+  T.replicate paddingWidth (T.singleton c) <> text
 
 render :: Console.Handle -> Frame -> IORef ProgressBar -> IO ()
 render consoleHandle i ref = do
   progressBar <- readIORef ref
-  Console.printStdOut consoleHandle $ renderInProgress i progressBar <> Console.pack' "\n"
+  Console.printStdErr consoleHandle $ renderInProgress i progressBar <> Console.pack' "\n"
   threadDelay 33333 -- 2F
   clear ref
   render consoleHandle (i + 1) ref
 
 clear :: IORef ProgressBar -> IO ()
 clear ref = do
-  hSetCursorColumn stdout 0
-  hClearFromCursorToLineEnd stdout
-  hCursorUpLine stdout 1
-  hClearFromCursorToLineEnd stdout
+  hSetCursorColumn stderr 0
+  hClearFromCursorToLineEnd stderr
+  hCursorUpLine stderr 1
+  hClearFromCursorToLineEnd stderr
   progressBar <- readIORef ref
   case progress progressBar of
     Nothing ->
       return ()
     Just _ -> do
-      hCursorUpLine stdout 1
-      hClearFromCursorToLineEnd stdout
+      hCursorUpLine stderr 1
+      hClearFromCursorToLineEnd stderr
 
 close :: Handle -> IO ()
 close mh = do
@@ -79,7 +115,17 @@ close mh = do
     Nothing ->
       return ()
     Just h -> do
-      cancel (renderThread h)
-      clear (progressBarRef h)
+      case renderThread h of
+        Nothing ->
+          return ()
+        Just thread -> do
+          cancel thread
+          clear (progressBarRef h)
       progressBar <- readIORef (progressBarRef h)
-      Console.printStdOut (consoleHandle h) $ renderFinished progressBar
+      case reportMode h of
+        Console.PlainReport ->
+          Console.printStdErr (consoleHandle h) $ Console.pack' (completedTitle progressBar) <> Console.pack' "\n"
+        Console.FancyReport ->
+          Console.printStdErr (consoleHandle h) $ renderFinished progressBar
+        _ ->
+          return ()

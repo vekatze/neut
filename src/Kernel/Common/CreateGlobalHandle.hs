@@ -23,6 +23,7 @@ import Kernel.Common.Handle.Global.GlobalRemark qualified as GlobalRemark
 import Kernel.Common.Handle.Global.ImportedTypeDefCache qualified as ImportedTypeDefCache
 import Kernel.Common.Handle.Global.KeyArg qualified as KeyArg
 import Kernel.Common.Handle.Global.Module qualified as Module
+import Kernel.Common.Handle.Global.ModulePath qualified as ModulePath
 import Kernel.Common.Handle.Global.OptimizableData qualified as OptimizableData
 import Kernel.Common.Handle.Global.Path qualified as Path
 import Kernel.Common.Handle.Global.Platform qualified as Platform
@@ -55,6 +56,7 @@ data Handle = Handle
     importedTypeDefCacheHandle :: ImportedTypeDefCache.Handle,
     keyArgHandle :: KeyArg.Handle,
     moduleHandle :: Module.Handle,
+    modulePathHandle :: ModulePath.Handle,
     optDataHandle :: OptimizableData.Handle,
     pathHandle :: Path.Handle,
     resourceHandle :: Resource.Handle,
@@ -79,11 +81,11 @@ new cfg moduleFilePathOrNone = do
 
 newOrError :: Remark.Config -> Maybe (Path Abs File) -> IO (Either (Logger.Handle, E.Error) Handle)
 newOrError cfg moduleFilePathOrNone = do
-  consoleHandle <- Console.createHandle (Remark.shouldColorize cfg) (Remark.shouldColorize cfg)
+  consoleHandle <- Console.createHandle (Remark.shouldColorize cfg) (Remark.shouldColorize cfg) (Remark.reportMode cfg)
   loggerHandle <- Logger.createHandle consoleHandle (Remark.enableDebugMode cfg)
   gensymHandle <- Gensym.createHandle
   platformHandle <- Platform.new loggerHandle
-  envHandleOrError <- Env.new (Remark.enableSilentMode cfg) moduleFilePathOrNone
+  envHandleOrError <- Env.new moduleFilePathOrNone
   case envHandleOrError of
     Left errors ->
       return $ Left (loggerHandle, errors)
@@ -99,13 +101,14 @@ newOrError cfg moduleFilePathOrNone = do
       globalRemarkHandle <- GlobalRemark.new
       artifactHandle <- Artifact.new
       moduleHandle <- Module.new
+      antecedentHandle <- Antecedent.new
+      modulePathHandle <- ModulePath.new moduleHandle antecedentHandle mainModule
       weakDefHandle <- WeakDef.new gensymHandle
       weakTypeDefHandle <- WeakTypeDef.new
       defHandle <- Definition.new
       tropeHandle <- Trope.new
       typeDefHandle <- TypeDef.new
       importedTypeDefCacheHandle <- ImportedTypeDefCache.new
-      antecedentHandle <- Antecedent.new
       globalNameMapHandle <- GlobalNameMap.new
       unusedTopLevelNameHandle <- UnusedTopLevelName.new
       presetCacheRef <- newIORef Map.empty

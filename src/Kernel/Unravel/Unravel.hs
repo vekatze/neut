@@ -27,6 +27,7 @@ import Kernel.Common.Handle.Global.Antecedent qualified as Antecedent
 import Kernel.Common.Handle.Global.Artifact qualified as Artifact
 import Kernel.Common.Handle.Global.Env (getMainModule)
 import Kernel.Common.Handle.Global.Module qualified as Module
+import Kernel.Common.Handle.Global.ModulePath qualified as ModulePath
 import Kernel.Common.Handle.Global.Path qualified as Path
 import Kernel.Common.Import
 import Kernel.Common.Module
@@ -111,10 +112,14 @@ unravel' h t source = do
 registerShiftMap :: Handle -> App ()
 registerShiftMap h = do
   axis <- liftIO newAxis
-  let m = extractModule $ getMainModule (Global.envHandle (globalHandle h))
+  let mainModule = getMainModule (Global.envHandle (globalHandle h))
+  let m = extractModule mainModule
   arrowList <- unravelAntecedentArrow h axis m
   cAxis <- liftIO newCAxis
-  compressMap cAxis (Map.fromList arrowList) arrowList >>= liftIO . Antecedent.set (Global.antecedentHandle (globalHandle h))
+  compressedMap <- compressMap cAxis (Map.fromList arrowList) arrowList
+  liftIO $ Antecedent.set (Global.antecedentHandle (globalHandle h)) compressedMap
+  modulePathMap <- ModulePath.build (Global.modulePathHandle (globalHandle h))
+  liftIO $ ModulePath.set (Global.modulePathHandle (globalHandle h)) modulePathMap
 
 type VisitMap =
   Map.HashMap (Path Abs File) VI.VisitInfo
