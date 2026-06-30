@@ -12,6 +12,7 @@ import CommandParser.Config.Get qualified as Get
 import CommandParser.Config.Remark qualified as Remark
 import CommandParser.Config.Version qualified as Version
 import CommandParser.Config.Zen qualified as Zen
+import Console.ReportMode qualified as ReportMode
 import Data.Text qualified as T
 import Options.Applicative
 
@@ -182,13 +183,38 @@ remarkConfigOpt :: Parser Remark.Config
 remarkConfigOpt = do
   shouldColorize <- colorizeOpt
   enableDebugMode <- flag False True (mconcat [long "enable-debug-output", help "Set this to print debug info"])
-  enableSilentMode <- flag False True (mconcat [long "silent", help "Set this to enable silent mode"])
+  reportMode <- reportModeOpt
   pure
     Remark.Config
       { Remark.shouldColorize = shouldColorize,
         Remark.enableDebugMode = enableDebugMode,
-        Remark.enableSilentMode = enableSilentMode
+        Remark.reportMode = reportMode
       }
+
+reportModeOpt :: Parser ReportMode.ReportMode
+reportModeOpt = do
+  option reportModeReader $
+    mconcat
+      [ long "report",
+        metavar "MODE",
+        help "Set report output style (auto, none, plain, fancy)",
+        value ReportMode.AutoReport
+      ]
+
+reportModeReader :: ReadM ReportMode.ReportMode
+reportModeReader =
+  eitherReader $ \input -> do
+    case input of
+      "auto" ->
+        return ReportMode.AutoReport
+      "none" ->
+        return ReportMode.NoReport
+      "plain" ->
+        return ReportMode.PlainReport
+      "fancy" ->
+        return ReportMode.FancyReport
+      _ ->
+        Left "MODE must be one of: auto, none, plain, fancy"
 
 outputKindTextListOpt :: Parser [T.Text]
 outputKindTextListOpt = do

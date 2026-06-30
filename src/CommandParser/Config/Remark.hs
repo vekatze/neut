@@ -4,10 +4,12 @@ module CommandParser.Config.Remark
   )
 where
 
+import Console.ReportMode
+
 data Config = Config
   { shouldColorize :: Bool,
     enableDebugMode :: Bool,
-    enableSilentMode :: Bool
+    reportMode :: ReportMode
   }
 
 lspConfig :: Config
@@ -15,5 +17,5 @@ lspConfig =
   Config
     { shouldColorize = False,
       enableDebugMode = False,
-      enableSilentMode = False
+      reportMode = NoReport
     }

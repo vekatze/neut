@@ -7,8 +7,8 @@ module Logger.Print
   )
 where
 
-import Color.Print qualified as Color
-import Color.Text qualified as Color
+import Console.Print qualified as Console
+import Console.Text qualified as Console
 import Data.IORef (readIORef)
 import Data.Text qualified as T
 import Logger.Handle (Handle (..))
@@ -45,28 +45,28 @@ printLogIO :: Handle -> L.Log -> IO ()
 printLogIO h l = do
   locText <- getLogLocation h $ L.position l
   let levelText = getLogLevel (L.logLevel l)
-  let logText = Color.pack' $ getLogText (L.content l) (logLevelToPad (L.logLevel l))
-  Color.printStdOut (_colorHandle h) $ locText <> levelText <> logText
+  let logText = Console.pack' $ getLogText (L.content l) (logLevelToPad (L.logLevel l))
+  Console.printStdOut (_consoleHandle h) $ locText <> levelText <> logText
 
 printErrorIO :: Handle -> L.Log -> IO ()
 printErrorIO h l = do
   locText <- getLogLocation h $ L.position l
   let levelText = getLogLevel (L.logLevel l)
-  let logText = Color.pack' $ getLogText (L.content l) (logLevelToPad (L.logLevel l))
-  Color.printStdErr (_colorHandle h) $ locText <> levelText <> logText
+  let logText = Console.pack' $ getLogText (L.content l) (logLevelToPad (L.logLevel l))
+  Console.printStdErr (_consoleHandle h) $ locText <> levelText <> logText
 
-getLogLocation :: Handle -> Maybe SavedHint -> IO Color.Text
+getLogLocation :: Handle -> Maybe SavedHint -> IO Console.Text
 getLogLocation h mpos = do
   case mpos of
     Just (SavedHint pos) -> do
       moduleDir <- readIORef (_moduleDirRef h)
-      return . Color.pack [SetConsoleIntensity BoldIntensity] $ showFilePosRelative moduleDir pos <> "\n"
+      return . Console.pack [SetConsoleIntensity BoldIntensity] $ showFilePosRelative moduleDir pos <> "\n"
     _ ->
-      return Color.empty
+      return Console.empty
 
-getLogLevel :: L.LogLevel -> Color.Text
+getLogLevel :: L.LogLevel -> Console.Text
 getLogLevel l =
-  Color.pack (L._logLevelToSGR l) (L._logLevelToText l <> ": ")
+  Console.pack (L._logLevelToSGR l) (L._logLevelToText l <> ": ")
 
 getLogText :: T.Text -> T.Text -> T.Text
 getLogText str padComp = do

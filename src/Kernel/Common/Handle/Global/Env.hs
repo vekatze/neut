@@ -3,7 +3,6 @@ module Kernel.Common.Handle.Global.Env
     new,
     getMainModule,
     getMainModuleDir,
-    getSilentMode,
     getMainDefiniteDescriptionByTarget,
     getAllocatorByTarget,
   )
@@ -29,8 +28,7 @@ import Language.Common.StrictGlobalLocator qualified as SGL
 import Path
 
 data Handle = Handle
-  { _enableSilentMode :: Bool,
-    _mainModule :: MainModule
+  { _mainModule :: MainModule
   }
 
 getMainModule :: Handle -> MainModule
@@ -41,12 +39,8 @@ getMainModuleDir :: Handle -> FilePath
 getMainModuleDir h =
   toFilePath $ getModuleRootDir $ extractModule $ getMainModule h
 
-getSilentMode :: Handle -> Bool
-getSilentMode =
-  _enableSilentMode
-
-new :: Bool -> Maybe (Path Abs File) -> IO (Either E.Error Handle)
-new _enableSilentMode moduleFilePathOrNone = do
+new :: Maybe (Path Abs File) -> IO (Either E.Error Handle)
+new moduleFilePathOrNone = do
   runApp $ do
     _mainModule <-
       MainModule

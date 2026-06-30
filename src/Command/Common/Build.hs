@@ -29,8 +29,8 @@ import Kernel.Clarify.Clarify qualified as Clarify
 import Kernel.Common.Cache
 import Kernel.Common.ClangOption qualified as CL
 import Kernel.Common.CreateGlobalHandle qualified as Global
-import Kernel.Common.Handle.Global.Env qualified as Env
 import Kernel.Common.Handle.Global.GlobalRemark qualified as GlobalRemark
+import Kernel.Common.Handle.Global.ModulePath qualified as ModulePath
 import Kernel.Common.Handle.Global.Path qualified as Path
 import Kernel.Common.Handle.Global.Platform qualified as Platform
 import Kernel.Common.ManageCache (needsCompilation)
@@ -126,13 +126,12 @@ compile h target outputKindList contentSeq = do
   bs <- mapM (needsCompilation cacheHandle outputKindList . fst) contentSeq
   c <- getEntryPointCompilationCount h target outputKindList
   let numOfItems = length (filter id bs) + c
-  let colorHandle = Global.colorHandle (globalHandle h)
+  let consoleHandle = Global.consoleHandle (globalHandle h)
   currentTime <- liftIO getCurrentTime
   let color = [SetColor Foreground Vivid Green]
   let workingTitle = getWorkingTitle numOfItems
   let completedTitle = getCompletedTitle numOfItems
-  let silentMode = Env.getSilentMode (Global.envHandle (globalHandle h))
-  hp <- liftIO $ Indicator.new colorHandle silentMode (Just numOfItems) workingTitle completedTitle color
+  hp <- liftIO $ Indicator.new consoleHandle (Just numOfItems) workingTitle completedTitle color
   cacheOrProgList <- Parse.parse (globalHandle h) contentSeq
   cacheOrStmtList <- forP cacheOrProgList $ \(localHandle, (source, cacheOrProg)) -> do
     interpretHandle <- liftIO $ Interpret.new (globalHandle h) localHandle (sourceModule source)
@@ -209,7 +208,17 @@ emit h progressBar currentTime target outputKindList src code = do
         Gen.generateObject llvmHandle target clangOptions currentTime src llvmIR'
       OK.LLVM -> do
         Gen.generateAsm llvmHandle target currentTime src llvmIR'
-  liftIO $ Indicator.increment progressBar
+  progressLabel <- liftIO $ getProgressLabel h src
+  liftIO $ Indicator.increment progressBar progressLabel
+
+getProgressLabel :: Handle -> Either MainTarget Source -> IO T.Text
+getProgressLabel h src = do
+  case src of
+    Left _ ->
+      return "entrypoint"
+    Right source -> do
+      modulePathMap <- ModulePath.get $ Global.modulePathHandle $ globalHandle h
+      ModulePath.renderSource modulePathMap source
 
 getEntryPointCompilationCount :: Handle -> Target -> [OutputKind] -> App Int
 getEntryPointCompilationCount h target outputKindList = do

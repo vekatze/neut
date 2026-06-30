@@ -63,7 +63,7 @@ data Handle = Handle
 new :: Global.Handle -> IO Handle
 new globalHandle@(Global.Handle {..}) = do
   unravelHandle <- liftIO $ Unravel.new globalHandle
-  let getModuleHandle = GetModule.new globalHandle
+  let getModuleHandle = GetModule.new moduleHandle
   let sourceReflectHandle = SourceReflect.new globalHandle
   let gacHandle = GAC.new globalHandle
   return $ Handle {..}

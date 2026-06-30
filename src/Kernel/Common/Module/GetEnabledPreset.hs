@@ -30,7 +30,7 @@ new (Global.Handle {..}) = do
 
 getEnabledPreset :: Handle -> Module -> App [(T.Text, [BN.BaseName])]
 getEnabledPreset h baseModule = do
-  let h' = GetModule.Handle {gensymHandle = gensymHandle h, moduleHandle = moduleHandle h}
+  let h' = GetModule.Handle {moduleHandle = moduleHandle h}
   let mainModule = Env.getMainModule (envHandle h)
   dependencies <- GetModule.getAllDependencies h' mainModule baseModule
   let visibleModuleList = (MA.defaultModuleAlias, baseModule) : dependencies

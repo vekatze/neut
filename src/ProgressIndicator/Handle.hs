@@ -1,6 +1,7 @@
 module ProgressIndicator.Handle (Handle, InnerHandle (..)) where
 
-import Color.Handle qualified as Color
+import Console.Handle qualified as Console
+import Control.Concurrent.MVar
 import Data.IORef (IORef)
 import ProgressIndicator.ProgressIndicator (ProgressBar)
 import UnliftIO.Async
@@ -9,7 +10,9 @@ type Handle =
   Maybe InnerHandle
 
 data InnerHandle = Handle
-  { colorHandle :: Color.Handle,
+  { consoleHandle :: Console.Handle,
     progressBarRef :: IORef ProgressBar,
-    renderThread :: Async ()
+    printLock :: MVar (),
+    reportMode :: Console.ReportMode,
+    renderThread :: Maybe (Async ())
   }

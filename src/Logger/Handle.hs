@@ -5,7 +5,7 @@ module Logger.Handle
   )
 where
 
-import Color.Handle qualified as Color
+import Console.Handle qualified as Console
 import Data.IORef
 import Data.Text qualified as T
 import Data.Time
@@ -14,7 +14,7 @@ import Path (parent, toFilePath)
 import Text.Printf (printf)
 
 data Handle = InternalHandle
-  { _colorHandle :: Color.Handle,
+  { _consoleHandle :: Console.Handle,
     _enableDebugMode :: Bool,
     _baseTime :: UTCTime,
     _moduleDirRef :: IORef T.Text

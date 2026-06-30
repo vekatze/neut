@@ -1,4 +1,4 @@
-module Color.Text
+module Console.Text
   ( Text,
     empty,
     pack,

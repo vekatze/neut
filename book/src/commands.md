@@ -39,7 +39,7 @@ Most subcommands share the following command-line options:
 
 - `--no-color` can be used to turn off ANSI colors
 - `--enable-debug-output` prints debug output
-- `--silent` suppresses non-essential output
+- `--report MODE` sets report output style (`auto`, `none`, `plain`, or `fancy`)
 
 ## `neut build`
 

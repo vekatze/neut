@@ -6,7 +6,7 @@ module Command.Common.Build.Link
 where
 
 import App.App (App)
-import Color.Handle qualified as Color
+import Console.Handle qualified as Console
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.ByteString qualified as B
 import Data.Containers.ListUtils (nubOrdOn)
@@ -35,7 +35,7 @@ data Handle = Handle
     envHandle :: Env.Handle,
     pathHandle :: Path.Handle,
     platformHandle :: Platform.Handle,
-    colorHandle :: Color.Handle
+    consoleHandle :: Console.Handle
   }
 
 new :: Global.Handle -> Handle
@@ -65,8 +65,7 @@ link' h target sourceList = do
   let numOfObjects = length objects
   let workingTitle = getWorkingTitle numOfObjects
   let completedTitle = getCompletedTitle numOfObjects
-  let silentMode = Env.getSilentMode (envHandle h)
-  progressBarHandle <- liftIO $ Indicator.new (colorHandle h) silentMode Nothing workingTitle completedTitle barColor
+  progressBarHandle <- liftIO $ Indicator.new (consoleHandle h) Nothing workingTitle completedTitle barColor
   link'' h clangOptions objects outputPath
   liftIO $ Indicator.close progressBarHandle
 
