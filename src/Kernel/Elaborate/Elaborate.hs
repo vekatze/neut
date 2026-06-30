@@ -834,6 +834,11 @@ elaborate' h term = do
         M.TextUncons mid text -> do
           text' <- elaborate' h text
           return $ m :< TM.Magic (M.TextUncons mid text')
+        M.MakeSwitch mid key fallback clauses -> do
+          key' <- elaborate' h key
+          fallback' <- elaborate' h fallback
+          clauses' <- elaborate' h clauses
+          return $ m :< TM.Magic (M.MakeSwitch mid key' fallback' clauses')
         M.CompileError msg -> do
           msg' <- elaborate' h msg
           return $ m :< TM.Magic (M.CompileError msg')

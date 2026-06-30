@@ -339,6 +339,7 @@ data RawMagic
   | AssertMixable C (EL RawType)
   | TextCons C (EL RawTerm) (EL RawTerm)
   | TextUncons C (EL RawTerm)
+  | MakeSwitch C (EL RawTerm) (EL RawTerm) (EL RawTerm)
   | CompileError C (EL RawTerm)
   | GetOriginFileName C C
   | GetOriginLine C C

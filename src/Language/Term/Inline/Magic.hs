@@ -4,6 +4,7 @@ module Language.Term.Inline.Magic
     evaluateShowType,
     evaluateTextCons,
     evaluateTextUncons,
+    evaluateMakeSwitch,
     evaluateCompileError,
     evaluateGetOriginFileName,
     evaluateGetOriginLine,
@@ -30,11 +31,14 @@ import Language.Common.Attr.DataIntro qualified as AttrDI
 import Language.Common.Attr.VarGlobal qualified as AttrVG
 import Language.Common.BaseName qualified as BN
 import Language.Common.Binder (BinderF)
+import Language.Common.CreateSymbol qualified as Gensym
 import Language.Common.DataInfo qualified as DI
+import Language.Common.DecisionTree qualified as DT
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.Discriminant qualified as D
 import Language.Common.Ident.Reify qualified as Ident
 import Language.Common.IsConstLike (IsConstLike)
+import Language.Common.Literal qualified as L
 import Language.Common.ModuleID qualified as MID
 import Language.Common.PiElimKind qualified as PEK
 import Language.Common.PrimNumSize (dataSizeToIntSize)
@@ -401,7 +405,7 @@ evaluateTextUncons h m moduleID text = do
       let unitTypeDD = DD.newByGlobalLocator unitSGL BN.unitType
       let pairTypeDD = DD.newByGlobalLocator pairSGL BN.pairType
       let unitTypeVar = m :< TM.TVarGlobal (AttrVG.Attr {argNum = AN.zero, isConstLike = True, isDestPassing = False}) unitTypeDD
-      let pairTypeVar = m :< TM.TVarGlobal (AttrVG.Attr {argNum = AN.fromInt 4, isConstLike = False, isDestPassing = False}) pairTypeDD
+      let pairTypeVar = m :< TM.TVarGlobal (AttrVG.Attr {argNum = AN.fromInt 2, isConstLike = False, isDestPassing = False}) pairTypeDD
       let runeType = m :< TM.PrimType PT.Rune
       let textType = m :< TM.PrimType PT.Text
       let pairType = m :< TM.TyApp pairTypeVar [runeType, textType]
@@ -423,6 +427,104 @@ evaluateTextUncons h m moduleID text = do
           return $ m :< TM.PiElim PEK.Normal (m :< TM.PiElim PEK.Normal rightVar [unitTypeVar, pairType] [] []) [] [pair] []
     _ ->
       reportMacroError h m "text-uncons requires a static text literal"
+
+data SwitchClause = SwitchClause Integer TM.Term
+
+evaluateMakeSwitch :: Handle -> Hint -> MID.ModuleID -> TM.Term -> TM.Term -> TM.Term -> App TM.Term
+evaluateMakeSwitch h m moduleID key fallback clausesTerm = do
+  clauses <- collectSwitchClauses h m moduleID clausesTerm
+  case clauses of
+    [] ->
+      return fallback
+    _ -> do
+      case asCodeIntTerm key of
+        Just keyValue -> do
+          return $ selectSwitchClause keyValue fallback clauses
+        Nothing -> do
+          cursor <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "switch-key"
+          let intType = m :< TM.PrimType (PT.Int (dataSizeToIntSize (baseSize h)))
+          let fallbackTree = makeSwitchLeaf m fallback
+          let caseList = map (makeSwitchClause m) clauses
+          let tree = DT.Switch (cursor, intType) (fallbackTree, caseList)
+          let keyElim = m :< TM.CodeElim key
+          return $ m :< TM.CodeIntro (m :< TM.DataElim False [(cursor, keyElim, intType)] tree)
+
+collectSwitchClauses :: Handle -> Hint -> MID.ModuleID -> TM.Term -> App [SwitchClause]
+collectSwitchClauses h m moduleID term = do
+  case term of
+    _ :< TM.DataIntro _ consName _ []
+      | consName == coreListNilByModule moduleID ->
+          return []
+    _ :< TM.DataIntro _ consName _ [clauseTerm, rest]
+      | consName == coreListConsByModule moduleID -> do
+          clause <- destructSwitchClause h m moduleID clauseTerm
+          restClauses <- collectSwitchClauses h m moduleID rest
+          return $ clause : restClauses
+    _ ->
+      reportMacroError h m "make-switch requires clauses to reduce to a static list of `Pair(int, code)` values"
+
+destructSwitchClause :: Handle -> Hint -> MID.ModuleID -> TM.Term -> App SwitchClause
+destructSwitchClause h m moduleID term = do
+  case term of
+    _ :< TM.DataIntro _ consName _ [key, body]
+      | consName == corePairByModule moduleID -> do
+          case asIntTerm key of
+            Just keyValue ->
+              return $ SwitchClause keyValue body
+            Nothing ->
+              reportMacroError h m "make-switch requires every clause key to reduce to a static integer literal"
+    _ ->
+      reportMacroError h m "make-switch requires every clause to reduce to `Pair(int, code)`"
+
+selectSwitchClause :: Integer -> TM.Term -> [SwitchClause] -> TM.Term
+selectSwitchClause keyValue fallback clauses =
+  case clauses of
+    [] ->
+      fallback
+    SwitchClause key body : rest -> do
+      if key == keyValue
+        then body
+        else selectSwitchClause keyValue fallback rest
+
+makeSwitchLeaf :: Hint -> TM.Term -> DT.DecisionTree TM.Type TM.Term
+makeSwitchLeaf m body =
+  DT.Leaf [] [] (m :< TM.CodeElim body)
+
+makeSwitchClause :: Hint -> SwitchClause -> DT.Case TM.Type TM.Term
+makeSwitchClause m (SwitchClause key body) =
+  DT.LiteralCase m (L.Int key) (makeSwitchLeaf m body)
+
+asCodeIntTerm :: TM.Term -> Maybe Integer
+asCodeIntTerm term =
+  case term of
+    _ :< TM.CodeIntro body ->
+      asIntTerm body
+    _ ->
+      Nothing
+
+asIntTerm :: TM.Term -> Maybe Integer
+asIntTerm term =
+  case term of
+    _ :< TM.Prim (PV.Int _ _ value) ->
+      Just value
+    _ ->
+      Nothing
+
+coreListNilByModule :: MID.ModuleID -> DD.DefiniteDescription
+coreListNilByModule moduleID =
+  DD.newByGlobalLocator (coreSGL moduleID SL.listLocator) BN.nil
+
+coreListConsByModule :: MID.ModuleID -> DD.DefiniteDescription
+coreListConsByModule moduleID =
+  DD.newByGlobalLocator (coreSGL moduleID SL.listLocator) BN.consName
+
+corePairByModule :: MID.ModuleID -> DD.DefiniteDescription
+corePairByModule moduleID =
+  DD.newByGlobalLocator (coreSGL moduleID SL.pairLocator) BN.pair
+
+coreSGL :: MID.ModuleID -> SL.SourceLocator -> SGL.StrictGlobalLocator
+coreSGL moduleID sourceLocator =
+  SGL.StrictGlobalLocator {moduleID, sourceLocator}
 
 evaluateCompileError :: Handle -> Hint -> TM.Term -> App a
 evaluateCompileError h m msg = do

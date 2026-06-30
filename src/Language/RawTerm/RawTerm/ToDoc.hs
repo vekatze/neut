@@ -442,6 +442,18 @@ toDoc term =
             [ attachComment (c ++ c1) $ D.text "magic text-uncons",
               SE.decode $ SE.fromListWithComment (Just SE.Paren) SE.Comma [(c2, (toDoc text, c3))]
             ]
+        MakeSwitch c1 key fallback clauses -> do
+          D.join
+            [ attachComment (c ++ c1) $ D.text "magic make-switch",
+              SE.decode $
+                SE.fromListWithComment
+                  (Just SE.Paren)
+                  SE.Comma
+                  [ RT.mapEL toDoc key,
+                    RT.mapEL toDoc fallback,
+                    RT.mapEL toDoc clauses
+                  ]
+            ]
         CompileError c1 (c2, (msg, c3)) -> do
           D.join
             [ attachComment (c ++ c1) $ D.text "magic compile-error",

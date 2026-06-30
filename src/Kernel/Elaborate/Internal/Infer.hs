@@ -54,6 +54,7 @@ import Language.Common.Literal qualified as L
 import Language.Common.LocalDefKind qualified as LDK
 import Language.Common.LowMagic qualified as LM
 import Language.Common.Magic qualified as M
+import Language.Common.ModuleID qualified as MID
 import Language.Common.NominalTag (NominalTag)
 import Language.Common.PiElimKind qualified as PEK
 import Language.Common.PiKind qualified as PK
@@ -241,6 +242,22 @@ getIntType :: Platform.Handle -> Hint -> App WT.WeakType
 getIntType h m = do
   let baseSize = Platform.getDataSize h
   return $ WT.intTypeBySize m baseSize
+
+makeWeakCoreType :: Hint -> MID.ModuleID -> SL.SourceLocator -> BN.BaseName -> AN.ArgNum -> [WT.WeakType] -> WT.WeakType
+makeWeakCoreType m moduleID sourceLocator baseName argNum args = do
+  let sgl = SGL.StrictGlobalLocator {moduleID, sourceLocator}
+  let typeName = DD.newByGlobalLocator sgl baseName
+  let attr = AttrVG.Attr {argNum, isConstLike = False, isDestPassing = False}
+  let typeVar = m :< WT.TVarGlobal attr typeName
+  m :< WT.TyApp typeVar args
+
+makeWeakListType :: Hint -> MID.ModuleID -> WT.WeakType -> WT.WeakType
+makeWeakListType m moduleID elemType =
+  makeWeakCoreType m moduleID SL.listLocator BN.list (AN.fromInt 1) [elemType]
+
+makeWeakPairType :: Hint -> MID.ModuleID -> WT.WeakType -> WT.WeakType -> WT.WeakType
+makeWeakPairType m moduleID leftType rightType =
+  makeWeakCoreType m moduleID SL.pairLocator BN.pairType (AN.fromInt 2) [leftType, rightType]
 
 getMainUnitType :: SK.StmtKindTerm WT.WeakType -> Maybe WT.WeakType
 getMainUnitType stmtKind =
@@ -557,14 +574,27 @@ infer h term =
           let eitherTypeDD = DD.newByGlobalLocator eitherSGL BN.eitherType
           let unitTypeDD = DD.newByGlobalLocator unitSGL BN.unitType
           let pairTypeDD = DD.newByGlobalLocator pairSGL BN.pairType
-          let eitherTypeVar = m :< WT.TVarGlobal (AttrVG.Attr {argNum = AN.fromInt 3, isConstLike = False, isDestPassing = False}) eitherTypeDD
+          let eitherTypeVar = m :< WT.TVarGlobal (AttrVG.Attr {argNum = AN.fromInt 2, isConstLike = False, isDestPassing = False}) eitherTypeDD
           let unitTypeVar = m :< WT.TVarGlobal (AttrVG.Attr {argNum = AN.zero, isConstLike = True, isDestPassing = False}) unitTypeDD
-          let pairTypeVar = m :< WT.TVarGlobal (AttrVG.Attr {argNum = AN.fromInt 4, isConstLike = False, isDestPassing = False}) pairTypeDD
+          let pairTypeVar = m :< WT.TVarGlobal (AttrVG.Attr {argNum = AN.fromInt 2, isConstLike = False, isDestPassing = False}) pairTypeDD
           let runeType = m :< WT.PrimType PT.Rune
           let textType' = m :< WT.PrimType PT.Text
           let pairType = m :< WT.TyApp pairTypeVar [runeType, textType']
           let eitherType = m :< WT.TyApp eitherTypeVar [unitTypeVar, pairType]
           return (m :< WT.Magic (M.WeakMagic $ M.TextUncons moduleID text'), eitherType)
+        M.MakeSwitch moduleID key fallback clauses -> do
+          intType <- getIntType (platformHandle h) m
+          (key', keyType) <- infer h key
+          (fallback', fallbackType) <- infer h fallback
+          (clauses', clausesType) <- infer h clauses
+          let codeIntType = m :< WT.Code intType
+          let clauseType = makeWeakPairType m moduleID intType fallbackType
+          let expectedClausesType = makeWeakListType m moduleID clauseType
+          hole <- liftIO $ newTypeHole h m (varEnv h)
+          liftIO $ Constraint.insert (constraintHandle h) codeIntType keyType
+          liftIO $ Constraint.insert (constraintHandle h) expectedClausesType clausesType
+          liftIO $ Constraint.insert (constraintHandle h) (m :< WT.Code hole) fallbackType
+          return (m :< WT.Magic (M.WeakMagic $ M.MakeSwitch moduleID key' fallback' clauses'), fallbackType)
         M.CompileError msg -> do
           (msg', msgType) <- infer h msg
           liftIO $ Constraint.insert (constraintHandle h) (m :< WT.PrimType PT.Text) msgType

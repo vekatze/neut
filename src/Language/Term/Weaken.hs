@@ -211,6 +211,8 @@ weakenMagic m magic = do
       M.WeakMagic $ M.TextCons (weaken rune) (weaken text)
     M.TextUncons mid text ->
       M.WeakMagic $ M.TextUncons mid (weaken text)
+    M.MakeSwitch mid key fallback clauses ->
+      M.WeakMagic $ M.MakeSwitch mid (weaken key) (weaken fallback) (weaken clauses)
     M.CompileError msg ->
       M.WeakMagic $ M.CompileError (weaken msg)
     M.GetOriginFileName ->

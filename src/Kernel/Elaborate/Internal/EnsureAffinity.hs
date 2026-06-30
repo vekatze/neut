@@ -285,6 +285,11 @@ analyze h term = do
           return $ cs1 ++ cs2
         M.TextUncons _ text -> do
           analyze h text
+        M.MakeSwitch _ key fallback clauses -> do
+          cs1 <- analyze h key
+          cs2 <- analyze h fallback
+          cs3 <- analyze h clauses
+          return $ cs1 ++ cs2 ++ cs3
         M.CompileError msg -> do
           analyze h msg
         M.GetOriginFileName ->

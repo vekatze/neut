@@ -1125,6 +1125,8 @@ clarifyMagic h context der = do
       error "TextCons should be evaluated during inline expansion"
     M.TextUncons _ _ ->
       error "TextUncons should be evaluated during inline expansion"
+    M.MakeSwitch {} ->
+      error "MakeSwitch should be evaluated during inline expansion"
     M.CompileError {} ->
       error "CompileError should be evaluated during inline expansion"
     M.GetOriginFileName ->

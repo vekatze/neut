@@ -130,6 +130,8 @@ freeVarsMagicTerm (M.WeakMagic magic) =
       S.union (freeVars rune) (freeVars text)
     M.TextUncons _ text ->
       freeVars text
+    M.MakeSwitch _ key fallback clauses ->
+      S.unions [freeVars key, freeVars fallback, freeVars clauses]
     M.CompileError msg ->
       freeVars msg
     M.GetOriginFileName ->
@@ -315,6 +317,8 @@ freeVarsMagic (M.WeakMagic magic) =
       S.union (freeVarsAll rune) (freeVarsAll text)
     M.TextUncons _ text ->
       freeVarsAll text
+    M.MakeSwitch _ key fallback clauses ->
+      S.unions [freeVarsAll key, freeVarsAll fallback, freeVarsAll clauses]
     M.CompileError msg ->
       freeVarsAll msg
     M.GetOriginFileName ->

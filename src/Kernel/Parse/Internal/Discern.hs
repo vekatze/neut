@@ -1006,6 +1006,13 @@ discernMagic h m magic =
       moduleID <- Alias.resolveModuleAlias (H.aliasHandle h) m coreModuleAlias
       text' <- discern h text
       return $ M.WeakMagic $ M.TextUncons moduleID text'
+    RT.MakeSwitch _ (_, (key, _)) (_, (fallback, _)) (_, (clauses, _)) -> do
+      ensureCompileStage m h "inline magic (`make-switch`)"
+      moduleID <- Alias.resolveModuleAlias (H.aliasHandle h) m coreModuleAlias
+      key' <- discern h key
+      fallback' <- discern h fallback
+      clauses' <- discern h clauses
+      return $ M.WeakMagic $ M.MakeSwitch moduleID key' fallback' clauses'
     RT.CompileError _ (_, (msg, _)) -> do
       ensureCompileStage m h "inline magic (`compile-error`)"
       msg' <- discern h msg

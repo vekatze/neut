@@ -379,6 +379,11 @@ inline' h term = do
         M.TextUncons mid text -> do
           text' <- inline' h text
           Magic.evaluateTextUncons h m mid text' >>= inline' h
+        M.MakeSwitch mid key fallback clauses -> do
+          key' <- inline' h key
+          fallback' <- inline' h fallback
+          clauses' <- inline' h clauses
+          Magic.evaluateMakeSwitch h m mid key' fallback' clauses' >>= inline' h
         M.CompileError msg -> do
           msg' <- inline' h msg
           Magic.evaluateCompileError h m msg'
