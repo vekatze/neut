@@ -164,6 +164,11 @@ refreshMagic h magic =
     M.TextUncons mid text -> do
       text' <- refresh h text
       return $ M.TextUncons mid text'
+    M.MakeSwitch mid key fallback clauses -> do
+      key' <- refresh h key
+      fallback' <- refresh h fallback
+      clauses' <- refresh h clauses
+      return $ M.MakeSwitch mid key' fallback' clauses'
     M.CompileError msg -> do
       msg' <- refresh h msg
       return $ M.CompileError msg'

@@ -808,6 +808,7 @@ rawTermMagic h m c = do
       rawTermMagicAssertMixable h m c,
       rawTermMagicTextCons h m c,
       rawTermMagicTextUncons h m c,
+      rawTermMagicMakeSwitch h m c,
       rawTermMagicCompileError h m c,
       rawTermMagicGetOriginFileName h m c,
       rawTermMagicGetOriginLine h m c,
@@ -980,6 +981,16 @@ rawTermMagicTextUncons h m c = do
   rawTermMagicBase "text-uncons" $ do
     textTerm <- rawTerm h
     return $ \c1 c2 -> m :< RT.Magic c (RT.TextUncons c1 (c2, textTerm))
+
+rawTermMagicMakeSwitch :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
+rawTermMagicMakeSwitch h m c = do
+  rawTermMagicBase "make-switch" $ do
+    keyTerm <- rawTerm h
+    c3 <- delimiter ","
+    fallbackTerm <- rawTerm h
+    c4 <- delimiter ","
+    clausesTerm <- rawTerm h
+    return $ \c1 c2 -> m :< RT.Magic c (RT.MakeSwitch c1 (c2, keyTerm) (c3, fallbackTerm) (c4, clausesTerm))
 
 rawTermMagicCompileError :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermMagicCompileError h m c = do

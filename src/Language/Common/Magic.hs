@@ -21,6 +21,7 @@ data Magic lt ty a
   | AssertMixable MID.ModuleID ty ty -- unitTypeExpr, targetTypeExpr
   | TextCons a a -- rune, text
   | TextUncons MID.ModuleID a -- text
+  | MakeSwitch MID.ModuleID a a a -- key, fallback, clauses
   | CompileError a -- msg
   | GetOriginFileName
   | GetOriginLine
@@ -54,6 +55,8 @@ instance Functor (Magic lt ty) where
         TextCons (f rune) (f text)
       TextUncons mid text ->
         TextUncons mid (f text)
+      MakeSwitch mid key fallback clauses ->
+        MakeSwitch mid (f key) (f fallback) (f clauses)
       CompileError msg ->
         CompileError (f msg)
       GetOriginFileName ->
@@ -88,6 +91,8 @@ instance Foldable (Magic lt ty) where
         f rune <> f text
       TextUncons _ text ->
         f text
+      MakeSwitch _ key fallback clauses ->
+        f key <> f fallback <> f clauses
       CompileError msg ->
         f msg
       GetOriginFileName ->
@@ -122,6 +127,8 @@ instance Traversable (Magic lt ty) where
         TextCons <$> f rune <*> f text
       TextUncons mid text ->
         TextUncons mid <$> f text
+      MakeSwitch mid key fallback clauses ->
+        MakeSwitch mid <$> f key <*> f fallback <*> f clauses
       CompileError msg ->
         CompileError <$> f msg
       GetOriginFileName ->

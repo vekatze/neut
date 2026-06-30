@@ -435,6 +435,8 @@ showMagic' h (M.WeakMagic magic) =
       "magic text-cons" <> inParen (toText rune <> ", " <> toText text)
     M.TextUncons _ text ->
       "magic text-uncons" <> inParen (toText text)
+    M.MakeSwitch _ key fallback clauses ->
+      "magic make-switch" <> inParen (toText key <> ", " <> toText fallback <> ", " <> toText clauses)
     M.CompileError msg ->
       "magic compile-error" <> inParen (toText msg)
     M.GetOriginFileName ->

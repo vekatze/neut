@@ -173,6 +173,8 @@ freeVarsWithHintsMagic magic =
       S.union (freeVarsWithHints rune) (freeVarsWithHints text)
     M.TextUncons _ text ->
       freeVarsWithHints text
+    M.MakeSwitch _ key fallback clauses ->
+      S.unions [freeVarsWithHints key, freeVarsWithHints fallback, freeVarsWithHints clauses]
     M.CompileError msg ->
       freeVarsWithHints msg
     M.GetOriginFileName ->

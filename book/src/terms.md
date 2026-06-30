@@ -2752,6 +2752,8 @@ magic text-cons(rune, text)
 
 magic text-uncons(text)
 
+magic make-switch(key, fallback, clauses)
+
 magic compile-error(message)
 
 magic get-origin-file-name()
@@ -2779,6 +2781,7 @@ The forms
 - `magic show-type(some-type)`
 - `magic text-cons(rune, text)`
 - `magic text-uncons(text)`
+- `magic make-switch(key, fallback, clauses)`
 - `magic compile-error(message)`
 - `magic get-origin-file-name()`
 - `magic get-origin-line()`
@@ -2867,6 +2870,16 @@ See [Memory Representation in Statements](./statements.md#memory-representation)
 ### Semantics (text-uncons)
 
 `magic text-uncons(text)` decomposes `text` into either the empty case or a pair of its first rune and the remaining text.
+
+### Semantics (make-switch)
+
+`magic make-switch(key, fallback, clauses)` constructs code for an integer switch at compile time.
+
+If `key` reduces to an integer literal at compile time, `make-switch` returns the selected clause code, or `fallback` when no label matches. Otherwise, it returns code equivalent to an integer `match` whose branches are built from `clauses`.
+
+When multiple clauses have the same label, the first matching clause is selected, as in `match`.
+
+Since clauses are represented as an ordinary `list`, variables used in multiple clauses may need to be marked with `!` even when the generated runtime code does not copy them.
 
 ### Semantics (compile-error)
 
@@ -3002,6 +3015,13 @@ See [Memory Representation in Statements](./statements.md#memory-representation)
 Γ ⊢ s: text
 ------------------------------------------------------
 Γ ⊢ magic text-uncons(s): either(unit, pair(rune, text))
+
+
+Γ ⊢ key: 'int
+Γ ⊢ fallback: 'a
+Γ ⊢ clauses: list(pair(int, 'a))
+------------------------------------------------------
+Γ ⊢ magic make-switch(key, fallback, clauses): 'a
 
 
 Γ ⊢ a: type

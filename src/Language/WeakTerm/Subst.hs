@@ -449,6 +449,11 @@ substMagic h sub (WeakMagic magic) = do
     M.TextUncons mid text -> do
       text' <- subst h sub text
       return $ M.TextUncons mid text'
+    M.MakeSwitch mid key fallback clauses -> do
+      key' <- subst h sub key
+      fallback' <- subst h sub fallback
+      clauses' <- subst h sub clauses
+      return $ M.MakeSwitch mid key' fallback' clauses'
     M.CompileError msg -> do
       msg' <- subst h sub msg
       return $ M.CompileError msg'

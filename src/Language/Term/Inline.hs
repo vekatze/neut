@@ -130,7 +130,7 @@ inline' h term = do
       let rebuildWithDefaults defaultArgsFilled =
             m :< TM.PiElim kind' e' impArgs' expArgs' (map Just defaultArgsFilled)
       let reduceApplication impParams expBinders defDefaults canReduce reduce =
-            if not (isActive h) || length impParams /= length impArgs'
+            if length impParams /= length impArgs'
               then return residual
               else do
                 let impIds = map (\(_, _, x, _) -> x) impParams
@@ -162,10 +162,13 @@ inline' h term = do
                     _ :< body' <- liftIO $ Subst.subst (substHandle h) sub body
                     inline' h $ m :< body'
                   else do
-                    let sub = IntMap.unions [subSelf, subType]
-                    (expParams', _ :< body') <- liftIO $ Subst.subst' (substHandle h) sub expParams body
-                    body'' <- liftIO $ Refresh.refresh (refreshHandle h) $ m :< body'
-                    inline' h $ bind (zip expParams' expArgsAll) body''
+                    if not (isActive h)
+                      then return residual
+                      else do
+                        let sub = IntMap.unions [subSelf, subType]
+                        (expParams', _ :< body') <- liftIO $ Subst.subst' (substHandle h) sub expParams body
+                        body'' <- liftIO $ Refresh.refresh (refreshHandle h) $ m :< body'
+                        inline' h $ bind (zip expParams' expArgsAll) body''
         (mUse :< TM.VarGlobal _ dd)
           | Just defInfo <- Map.lookup dd dmap -> do
               let DefInfo {defImpBinders, defExpBinders, defDefaultArgs, defBody, codType, defKind} = defInfo
@@ -186,17 +189,19 @@ inline' h term = do
                         body'' <- liftIO $ Refresh.refresh (refreshHandle h) $ mResult :< body'
                         tracer $ inline' h body''
                       else do
-                        (expParams', mBody :< body') <- liftIO $ Subst.subst' (substHandle h) subType expParams defBody
-                        let mResult = if isMacroDef defKind then mBody else m
-                        body'' <- liftIO $ Refresh.refresh (refreshHandle h) $ mResult :< body'
-                        tracer $ inline' h $ bind (zip expParams' expArgsAll) body''
+                        if not (isActive h)
+                          then return residual
+                          else do
+                            (expParams', mBody :< body') <- liftIO $ Subst.subst' (substHandle h) subType expParams defBody
+                            let mResult = if isMacroDef defKind then mBody else m
+                            body'' <- liftIO $ Refresh.refresh (refreshHandle h) $ mResult :< body'
+                            tracer $ inline' h $ bind (zip expParams' expArgsAll) body''
           | Just defInfo <- Map.lookup dd localDefMap -> do
               let DefInfo {defImpBinders, defExpBinders, defDefaultArgs, defBody, codType} = defInfo
               reduceApplication defImpBinders defExpBinders defDefaultArgs True $ \subType expParams expArgsAll ->
                 specializeLocalMeta h m dd subType impArgs' expParams defBody codType expArgsAll
         (_ :< TM.Prim (PV.Op op))
-          | isActive h,
-            PEK.isNormal kind' -> do
+          | PEK.isNormal kind' -> do
               case ConstantFold.evaluatePrimOp m op expArgs' of
                 Just result -> do
                   return result
@@ -213,7 +218,7 @@ inline' h term = do
       es' <- mapM (inline' h) es
       ts' <- mapM (inlineType' h) ts
       let oets' = zip3 os es' ts'
-      if isNoetic || not (isActive h)
+      if isNoetic
         then do
           decisionTree' <- inlineDecisionTree h decisionTree
           return $ m :< TM.DataElim isNoetic oets' decisionTree'
@@ -282,10 +287,9 @@ inline' h term = do
     m :< TM.TauElim (mx, x) e1 e2 -> do
       e1' <- inline' h e1
       case e1' of
-        _ :< TM.TauIntro ty
-          | isActive h -> do
-              let sub = IntMap.singleton (Ident.toInt x) (Subst.Type ty)
-              liftIO (Subst.subst (substHandle h) sub e2) >>= inline' h
+        _ :< TM.TauIntro ty -> do
+          let sub = IntMap.singleton (Ident.toInt x) (Subst.Type ty)
+          liftIO (Subst.subst (substHandle h) sub e2) >>= inline' h
         _ -> do
           e2' <- inline' h e2
           return $ m :< TM.TauElim (mx, x) e1' e2'
@@ -298,8 +302,7 @@ inline' h term = do
       e1' <- inline' h e1
       case opacity of
         O.Clear
-          | isActive h,
-            TM.isValue e1' -> do
+          | TM.isValue e1' -> do
               let sub = IntMap.singleton (Ident.toInt x) (Subst.Term e1')
               liftIO (Subst.subst (substHandle h) sub e2) >>= inline' h
         _ -> do
@@ -379,6 +382,11 @@ inline' h term = do
         M.TextUncons mid text -> do
           text' <- inline' h text
           Magic.evaluateTextUncons h m mid text' >>= inline' h
+        M.MakeSwitch mid key fallback clauses -> do
+          key' <- inline' h key
+          fallback' <- inline' h fallback
+          clauses' <- inline' h clauses
+          Magic.evaluateMakeSwitch h m mid key' fallback' clauses' >>= inline' h
         M.CompileError msg -> do
           msg' <- inline' h msg
           Magic.evaluateCompileError h m msg'
