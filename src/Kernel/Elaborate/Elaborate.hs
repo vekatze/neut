@@ -52,6 +52,7 @@ import Kernel.Elaborate.Internal.Handle.WeakType qualified as WeakType
 import Kernel.Elaborate.Internal.Handle.WeakTypeDef qualified as WeakTypeDef
 import Kernel.Elaborate.Internal.Infer qualified as Infer
 import Kernel.Elaborate.Internal.Unify qualified as Unify
+import Kernel.Elaborate.PublicSignature qualified as PublicSignature
 import Kernel.Elaborate.TypeHoleSubst qualified as THS
 import Kernel.Parse.Internal.Handle.UnusedTopLevelName qualified as UnusedTopLevelName
 import Kernel.Parse.Internal.Handle.UsedTopLevelName qualified as UsedTopLevelName
@@ -205,6 +206,8 @@ elaborateStmt h stmt = do
       when (isConstLike && not (isConstantMetaStmtKind stmtKind)) $ do
         unless (TM.isValue e'') $ do
           raiseError m "Could not reduce the body of this definition into a constant"
+      PublicSignature.checkStmt (Source.sourceModule $ currentSource h) $
+        StmtDefine isConstLike stmtKind' (SavedHint m) x impArgs' expArgs' defaultArgs' codType' e'
       let result = StmtDefine isConstLike stmtKind' (SavedHint m) x impArgs'' expArgs'' defaultArgs'' codType'' e''
       insertStmt h result
       return ([result], remarks)
@@ -226,6 +229,8 @@ elaborateStmt h stmt = do
       expArgs'' <- mapM (inlineBinder h) expArgs'
       codType'' <- inlineType h m codType'
       body'' <- inlineType h m body'
+      PublicSignature.checkStmt (Source.sourceModule $ currentSource h) $
+        StmtDefineType isConstLike stmtKind' (SavedHint m) x impArgs' expArgs' defaultArgs' codType' body'
       let result = StmtDefineType isConstLike stmtKind' (SavedHint m) x impArgs'' expArgs'' defaultArgs'' codType'' body''
       insertStmt h result
       return ([result], [])
@@ -247,14 +252,15 @@ elaborateStmt h stmt = do
       insertStmt h result
       return ([result], [])
     WeakStmtTrope m name defineMetaList -> do
-      defineMetaList' <- mapM (elaborateDefineMeta h) defineMetaList
+      defineMetaList' <- mapM (elaborateDefineMeta h name) defineMetaList
       let tropeStmt = StmtTrope (SavedHint m) name defineMetaList'
       insertStmt h tropeStmt
       return ([tropeStmt], [])
     WeakStmtVariadic kind m dd -> do
       return ([StmtVariadic kind (SavedHint m) dd], [])
     WeakStmtNominal _ geistList -> do
-      mapM_ (elaborateGeist h . snd) geistList
+      geistList' <- mapM (elaborateGeist h . snd) geistList
+      mapM_ (PublicSignature.checkGeist (Source.sourceModule $ currentSource h)) geistList'
       return ([], [])
     WeakStmtForeign foreignList -> do
       foreignList' <- forM foreignList $ \(F.Foreign m externalName domList cod) -> do
@@ -274,15 +280,25 @@ elaborateGeist h (G.Geist {..}) = do
   cod' <- elaborateType h cod
   return $ G.Geist {impArgs = impArgs', defaultArgs = defaultArgs', expArgs = expArgs', cod = cod', ..}
 
-elaborateDefineMeta :: Handle -> WeakDefineMeta -> App DefineMeta
-elaborateDefineMeta h defineMeta = do
+elaborateDefineMeta :: Handle -> DD.DefiniteDescription -> WeakDefineMeta -> App DefineMeta
+elaborateDefineMeta h ownerName defineMeta = do
   let m = weakDefineMetaLoc defineMeta
   ensureDefineMetaTarget h m (weakDefineMetaTarget defineMeta)
   targetArgs' <- mapM (elaborateType h) $ weakDefineMetaTargetArgs defineMeta
-  targetArgs'' <- mapM (inlineType h m) targetArgs'
   expArgs' <- mapM (elaborateWeakBinder h) $ weakDefineMetaExpArgs defineMeta
   codType' <- elaborateType h $ weakDefineMetaCod defineMeta
   body' <- elaborate' h $ weakDefineMetaBody defineMeta
+  PublicSignature.checkDefineMeta (Source.sourceModule $ currentSource h) ownerName $
+    DefineMeta
+      { defineMetaLoc = SavedHint m,
+        defineMetaTargetName = weakDefineMetaTarget defineMeta,
+        defineMetaTargetArgs = targetArgs',
+        defineMetaExpArgs = expArgs',
+        defineMetaCodType = codType',
+        defineMetaBody = body',
+        defineMetaHelperName = weakDefineMetaHelperName defineMeta
+      }
+  targetArgs'' <- mapM (inlineType h m) targetArgs'
   expArgs'' <- mapM (inlineBinder h) expArgs'
   codType'' <- inlineType h m codType'
   return
