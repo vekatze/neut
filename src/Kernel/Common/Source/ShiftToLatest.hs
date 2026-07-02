@@ -3,6 +3,7 @@ module Kernel.Common.Source.ShiftToLatest
     new,
     shiftToLatest,
     shiftToLatestModule,
+    shiftToLatestModuleID,
     ShiftMap,
   )
 where
@@ -47,6 +48,15 @@ shiftToLatestModule h m = do
       return m
     Just newModule -> do
       return newModule
+
+shiftToLatestModuleID :: Handle -> MID.ModuleID -> IO MID.ModuleID
+shiftToLatestModuleID h mid = do
+  shiftMap <- Antecedent.get (antecedentHandle h)
+  case Map.lookup mid shiftMap of
+    Nothing ->
+      return mid
+    Just newModule ->
+      return $ moduleID newModule
 
 getNewerSource :: Source.Source -> Module -> App Source.Source
 getNewerSource source newModule = do

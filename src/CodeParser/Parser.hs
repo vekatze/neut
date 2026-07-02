@@ -9,6 +9,7 @@ module CodeParser.Parser
     lexeme,
     delimiter,
     string,
+    locatorSymbol,
     symbol,
     symbol',
   )
@@ -139,6 +140,30 @@ symbol = do
 symbol' :: Parser (T.Text, C)
 symbol' = do
   lexeme $ takeWhileP Nothing (`S.notMember` nonSymbolCharSet)
+
+{-# INLINE isLocatorSymbolChar #-}
+isLocatorSymbolChar :: Char -> Bool
+isLocatorSymbolChar c =
+  c `S.notMember` nonSymbolCharSet
+
+locatorTextSuffix :: Parser T.Text
+locatorTextSuffix = do
+  input <- getInput
+  if "::" `T.isPrefixOf` input
+    then locatorText
+    else return ""
+
+locatorText :: Parser T.Text
+locatorText = do
+  input <- getInput
+  lead <- if "::" `T.isPrefixOf` input then delimiter "::" >> return "::" else return ""
+  prefix <- takeWhile1P Nothing isLocatorSymbolChar
+  suffix <- locatorTextSuffix
+  return $ lead <> prefix <> suffix
+
+locatorSymbol :: Parser (T.Text, C)
+locatorSymbol =
+  lexeme locatorText
 
 string :: Parser (T.Text, C)
 string =

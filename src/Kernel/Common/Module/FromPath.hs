@@ -161,14 +161,7 @@ interpretDependencyDict ::
   App (Map.HashMap ModuleAlias Dependency)
 interpretDependencyDict (m, dep) = do
   items <- forM dep $ \(k, ens) -> do
-    k' <- liftEither $ BN.reflect m k
-    when (BN.isCapitalized k') $ do
-      raiseError m $ "Module aliases cannot be capitalized, but found: " <> BN.reify k'
-    when (S.member k' BN.reservedAlias) $
-      raiseError m $
-        "The reserved name `"
-          <> BN.reify k'
-          <> "` cannot be used as an alias of a module"
+    k' <- interpretModuleAlias m k
     (_, urlEnsSeries) <- liftEither $ E.access keyMirror ens >>= E.toList
     urlList <- liftEither $ mapM (E.toString >=> return . snd) $ SE.extract urlEnsSeries
     (_, digest) <- liftEither $ E.access keyDigest ens >>= E.toString
@@ -183,7 +176,40 @@ interpretDependencyDict (m, dep) = do
             dependencyPresetEnabled = enablePreset
           }
       )
-  return $ Map.fromList $ SE.extract items
+  let itemList = SE.extract items
+  ensureNoDependencyAliasCollision m itemList
+  return $ Map.fromList itemList
+
+interpretModuleAlias :: H.Hint -> T.Text -> App BN.BaseName
+interpretModuleAlias m rawAlias = do
+  alias <- liftEither $ BN.reflect m rawAlias
+  when (BN.isCapitalized alias) $ do
+    raiseError m $ "Module aliases cannot be capitalized, but found: " <> BN.reify alias
+  when (S.member alias BN.reservedAlias) $
+    raiseError m $
+      "The reserved name `"
+        <> BN.reify alias
+        <> "` cannot be used as an alias of a module"
+  return alias
+
+ensureNoDependencyAliasCollision :: H.Hint -> [(ModuleAlias, Dependency)] -> App ()
+ensureNoDependencyAliasCollision m itemList = do
+  let directAliasList = map fst itemList
+  ensureNoDuplicateAliases m directAliasList
+
+ensureNoDuplicateAliases :: H.Hint -> [ModuleAlias] -> App ()
+ensureNoDuplicateAliases m aliasList =
+  ensureNoDuplicateAliasTexts m S.empty $ map (BN.reify . extract) aliasList
+
+ensureNoDuplicateAliasTexts :: H.Hint -> S.Set T.Text -> [T.Text] -> App ()
+ensureNoDuplicateAliasTexts m seen aliasList =
+  case aliasList of
+    [] ->
+      return ()
+    alias : rest -> do
+      when (S.member alias seen) $
+        raiseError m $ "Duplicate module alias: " <> alias
+      ensureNoDuplicateAliasTexts m (S.insert alias seen) rest
 
 interpretExtraPath :: Path Abs Dir -> E.Ens -> App (SomePath Rel)
 interpretExtraPath moduleRootDir entity = do

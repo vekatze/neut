@@ -13,6 +13,7 @@ import Console.Handle qualified as Console
 import Control.Monad.Except (MonadError (throwError))
 import Data.HashMap.Strict qualified as Map
 import Data.IORef (IORef, newIORef)
+import Data.Set qualified as S
 import Gensym.CreateHandle qualified as Gensym
 import Gensym.Handle qualified as Gensym
 import Kernel.Common.Handle.Global.Antecedent qualified as Antecedent
@@ -67,6 +68,7 @@ data Handle = Handle
     typeDefHandle :: TypeDef.Handle,
     globalNameMapHandle :: GlobalNameMap.Handle,
     unusedTopLevelNameHandle :: UnusedTopLevelName.Handle,
+    publicModuleReachabilityRef :: IORef (Map.HashMap MID.ModuleID (S.Set MID.ModuleID)),
     presetCacheRef :: IORef (Map.HashMap MID.ModuleID [ImportItem])
   }
 
@@ -111,5 +113,6 @@ newOrError cfg moduleFilePathOrNone = do
       importedTypeDefCacheHandle <- ImportedTypeDefCache.new
       globalNameMapHandle <- GlobalNameMap.new
       unusedTopLevelNameHandle <- UnusedTopLevelName.new
+      publicModuleReachabilityRef <- newIORef Map.empty
       presetCacheRef <- newIORef Map.empty
       return $ Right $ Handle {..}

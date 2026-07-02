@@ -35,6 +35,7 @@ import CodeParser.GetInfo
 import CodeParser.Parser
 import Control.Comonad.Cofree
 import Control.Monad
+import Control.Monad.Error.Class (throwError)
 import Control.Monad.Trans
 import Data.Maybe (fromMaybe)
 import Data.Set qualified as S
@@ -143,8 +144,9 @@ rawType' h m headSymbol c =
       rawTypeIntrospect h m c
     "_" ->
       rawTypeHole h m c
-    _ ->
-      if T.null headSymbol
+    _ -> do
+      (nameText, c') <- extendLocatorSuffix headSymbol c
+      if T.null nameText
         then do
           choice
             [ rawTypeBrace h,
@@ -155,8 +157,8 @@ rawType' h m headSymbol c =
               rawTypeOption h
             ]
         else do
-          name <- interpretTypeName m headSymbol
-          rawTypeTyAppCont h (m :< RT.TyVar name, c)
+          name <- interpretTypeName m nameText
+          rawTypeTyAppCont h (m :< RT.TyVar name, c')
 
 rawTerm' :: Handle -> Hint -> T.Text -> C -> Parser (RT.RawTerm, C)
 rawTerm' h m headSymbol c = do
@@ -208,7 +210,7 @@ rawTermInvoke :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermInvoke h m c1 = do
   tropes <- bareSeries SE.Comma $ do
     mTrope <- getCurrentHint
-    (nameText, cName) <- symbol
+    (nameText, cName) <- symbolWithLocatorSuffix
     name <- interpretVarName mTrope nameText
     return ((mTrope, name), cName)
   c2 <- delimiter ";"
@@ -217,7 +219,8 @@ rawTermInvoke h m c1 = do
 
 rawTermBase :: TermMode -> Handle -> Hint -> T.Text -> C -> Parser (RT.RawTerm, C)
 rawTermBase mode h m headSymbol c = do
-  if T.null headSymbol
+  (nameText, nameC, hasMetaDelimiter) <- extendTermLocatorSuffix headSymbol c
+  if T.null nameText
     then do
       let parsers =
             [ rawTermLambda h,
@@ -231,33 +234,39 @@ rawTermBase mode h m headSymbol c = do
         Full ->
           choice $ rawTermBrace h : parsers
     else do
-      name <- interpretVarName m headSymbol
-      choice
-        [ do
-            (es, c') <- seriesBracket $ rawTerm h
-            return (m :< RT.PiElimRule name c es, c'),
-          do
-            (mImpArgs, cImpArgs) <- parseImplicitArgsMaybe h
-            let parseByKey = do
-                  (fieldsWithRest, c') <- keyValueArgs $ rawTermKeyValuePair h
-                  (fields, restArg) <- lift $ extractRestArg fieldsWithRest
-                  return (m :< RT.PiElimByKey name c mImpArgs cImpArgs fields restArg, c')
-            let parseMeta = do
-                  (es, c') <- metaPiElim $ rawTerm h
-                  mDefaultArgs <- optional $ seriesBracket $ rawTermKeyValuePair h
-                  case mDefaultArgs of
-                    Nothing ->
-                      return (m :< RT.PiElimMeta name c mImpArgs cImpArgs es [] Nothing, c')
-                    Just (defaultArgs, cDefaultArgs) ->
-                      return (m :< RT.PiElimMeta name c mImpArgs cImpArgs es c' (Just defaultArgs), cDefaultArgs)
-            let parseCont =
-                  rawTermPiElimContWithImp h m name c mImpArgs cImpArgs
-            case mode of
-              Full ->
-                choice [parseByKey, parseMeta, parseCont]
-              Partial ->
-                choice [parseMeta, parseCont]
-        ]
+      name <- interpretVarName m nameText
+      (mImpArgs, cImpArgs) <- parseImplicitArgsMaybe h
+      if hasMetaDelimiter
+        then
+          choice
+            [ do
+                (es, cArgs) <- seriesParen $ rawTerm h
+                mDefaultArgs <- optional $ seriesBracket $ rawTermKeyValuePair h
+                case mDefaultArgs of
+                  Nothing ->
+                    return (m :< RT.PiElimMeta name nameC mImpArgs cImpArgs es [] Nothing, cArgs)
+                  Just (defaultArgs, cDefaultArgs) ->
+                    return (m :< RT.PiElimMeta name nameC mImpArgs cImpArgs es cArgs (Just defaultArgs), cDefaultArgs),
+              do
+                (es, cArgs) <- seriesBracket $ rawTerm h
+                case mImpArgs of
+                  Nothing ->
+                    return (m :< RT.PiElimRule name nameC es, cArgs)
+                  Just _ ->
+                    lift $ raiseError m "Rule application cannot take implicit type arguments"
+            ]
+        else do
+          let parseByKey = do
+                (fieldsWithRest, cArgs) <- keyValueArgs $ rawTermKeyValuePair h
+                (fields, restArg) <- lift $ extractRestArg fieldsWithRest
+                return (m :< RT.PiElimByKey name nameC mImpArgs cImpArgs fields restArg, cArgs)
+          let parseCont =
+                rawTermPiElimContWithImp h m name nameC mImpArgs cImpArgs
+          case mode of
+            Full ->
+              choice [parseByKey, parseCont]
+            Partial ->
+              parseCont
 
 rawTermPiElimCont :: Handle -> (RT.RawTerm, C) -> Parser (RT.RawTerm, C)
 rawTermPiElimCont h (e@(m :< _), c) = do
@@ -1044,16 +1053,18 @@ rawTermPattern h = do
   mBang <- optional $ delimiter "!"
   m <- getCurrentHint
   (headSymbol, c) <- symbol'
-  headSymbol' <-
-    if headSymbol /= "_"
-      then return headSymbol
-      else liftIO $ newTextForHole (gensymHandle h)
+  (headSymbol', c') <-
+    if headSymbol == "_"
+      then do
+        hole <- liftIO $ newTextForHole (gensymHandle h)
+        return (hole, c)
+      else extendLocatorSuffix headSymbol c
   let k =
         case mBang of
           Just _ -> VK.Exp
           Nothing -> VK.Normal
-  let c' = maybe [] id mBang ++ c
-  rawTermPatternBasic h m k headSymbol' c'
+  let c'' = fromMaybe [] mBang ++ c'
+  rawTermPatternBasic h m k headSymbol' c''
 
 rawTermPatternBasic :: Handle -> Hint -> VK.VarKind -> T.Text -> C -> Parser ((Hint, RP.RawPattern), C)
 rawTermPatternBasic h m k headSymbol c = do
@@ -1227,11 +1238,6 @@ keyValueArgs :: Parser (a, C) -> Parser (SE.Series a, C)
 keyValueArgs p = do
   series Nothing SE.Brace SE.Comma p
 
-metaPiElim :: Parser (a, C) -> Parser (SE.Series a, C)
-metaPiElim p = do
-  c1 <- delimiter "::"
-  series (Just ("::", c1)) SE.Paren SE.Comma p
-
 foldPiElim ::
   Hint ->
   (RT.RawTerm, C) ->
@@ -1334,10 +1340,15 @@ rawTermStatic m c1 = do
 
 interpretVarName :: Hint -> T.Text -> Parser Name
 interpretVarName m varText = do
-  case DD.getLocatorPair m varText of
-    Left _ ->
+  case DD.getLocatorPairMaybe m varText of
+    Left err
+      | T.any (== ':') varText ->
+          lift $ throwError err
+      | otherwise ->
+          return (Var varText)
+    Right Nothing ->
       return (Var varText)
-    Right (gl, ll)
+    Right (Just (gl, ll))
       | isNumericLike varText ->
           return (Var varText)
       | otherwise ->
@@ -1345,10 +1356,15 @@ interpretVarName m varText = do
 
 interpretTypeName :: Hint -> T.Text -> Parser Name
 interpretTypeName m varText = do
-  case DD.getLocatorPair m varText of
-    Left _ ->
+  case DD.getLocatorPairMaybe m varText of
+    Left err
+      | T.any (== ':') varText ->
+          lift $ throwError err
+      | otherwise ->
+          return (Var varText)
+    Right Nothing ->
       return (Var varText)
-    Right (gl, ll) ->
+    Right (Just (gl, ll)) ->
       return (Locator (gl, ll))
 
 rawTermTextIntro :: Parser (RT.RawTerm, C)
@@ -1370,6 +1386,37 @@ rawTermRuneIntro = do
       return (m :< RT.RuneIntro r, c)
     Left e ->
       lift $ raiseError m e
+
+symbolWithLocatorSuffix :: Parser (T.Text, C)
+symbolWithLocatorSuffix = do
+  (headSymbol, c) <- symbol
+  extendLocatorSuffix headSymbol c
+
+extendTermLocatorSuffix :: T.Text -> C -> Parser (T.Text, C, Bool)
+extendTermLocatorSuffix headSymbol c = do
+  mSep <- optional $ delimiter routeSep
+  case mSep of
+    Nothing ->
+      return (headSymbol, c, False)
+    Just cSep -> do
+      (suffix, cSuffix) <- symbol'
+      if T.null suffix
+        then do
+          return (headSymbol, c <> cSep <> cSuffix, True)
+        else do
+          (suffix', cRest, hasMetaDelimiter) <- extendTermLocatorSuffix suffix cSuffix
+          return (headSymbol <> routeSep <> suffix', c <> cSep <> cRest, hasMetaDelimiter)
+
+extendLocatorSuffix :: T.Text -> C -> Parser (T.Text, C)
+extendLocatorSuffix headSymbol c = do
+  mSep <- optional $ delimiter routeSep
+  case mSep of
+    Nothing ->
+      return (headSymbol, c)
+    Just cSep -> do
+      (suffix, cSuffix) <- symbol
+      (suffix', cRest) <- extendLocatorSuffix suffix cSuffix
+      return (headSymbol <> routeSep <> suffix', c <> cSep <> cRest)
 
 var :: Handle -> Parser ((Hint, T.Text), C)
 var h = do

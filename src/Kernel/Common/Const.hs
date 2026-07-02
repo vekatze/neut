@@ -23,6 +23,10 @@ nsSep :: T.Text
 nsSep =
   T.singleton nsSepChar
 
+routeSep :: T.Text
+routeSep =
+  "::"
+
 verSep :: T.Text
 verSep =
   "-"
@@ -89,63 +93,63 @@ core =
 
 coreUnit :: T.Text
 coreUnit =
-  core <> nsSep <> "unit" <> nsSep <> "unit"
+  core <> routeSep <> "unit" <> nsSep <> "unit"
 
 coreUnitUnit :: T.Text
 coreUnitUnit =
-  core <> nsSep <> "unit" <> nsSep <> "Unit"
+  core <> routeSep <> "unit" <> nsSep <> "Unit"
 
 coreBool :: T.Text
 coreBool =
-  core <> nsSep <> "bool" <> nsSep <> "bool"
+  core <> routeSep <> "bool" <> nsSep <> "bool"
 
 coreBoolTrue :: T.Text
 coreBoolTrue =
-  core <> nsSep <> "bool" <> nsSep <> "True"
+  core <> routeSep <> "bool" <> nsSep <> "True"
 
 coreBoolFalse :: T.Text
 coreBoolFalse =
-  core <> nsSep <> "bool" <> nsSep <> "False"
+  core <> routeSep <> "bool" <> nsSep <> "False"
 
 coreEither :: T.Text
 coreEither =
-  core <> nsSep <> "either" <> nsSep <> "either"
+  core <> routeSep <> "either" <> nsSep <> "either"
 
 coreEitherLeft :: T.Text
 coreEitherLeft =
-  core <> nsSep <> "either" <> nsSep <> "Left"
+  core <> routeSep <> "either" <> nsSep <> "Left"
 
 coreEitherRight :: T.Text
 coreEitherRight =
-  core <> nsSep <> "either" <> nsSep <> "Right"
+  core <> routeSep <> "either" <> nsSep <> "Right"
 
 coreString :: T.Text
 coreString =
-  core <> nsSep <> "string" <> nsSep <> "string"
+  core <> routeSep <> "string" <> nsSep <> "string"
 
 coreBinary :: T.Text
 coreBinary =
-  core <> nsSep <> "binary" <> nsSep <> "binary"
+  core <> routeSep <> "binary" <> nsSep <> "binary"
 
 coreCSize :: T.Text
 coreCSize =
-  core <> nsSep <> "c-size" <> nsSep <> "c-size"
+  core <> routeSep <> "c-size" <> nsSep <> "c-size"
 
 coreVector :: T.Text
 coreVector =
-  core <> nsSep <> "vector"
+  core <> routeSep <> "vector"
 
 coreDebugPanic :: T.Text
 coreDebugPanic =
-  core <> nsSep <> "debug" <> nsSep <> "panic"
+  core <> routeSep <> "debug" <> nsSep <> "panic"
 
 coreBoxEmbody :: T.Text
 coreBoxEmbody =
-  core <> nsSep <> "box" <> nsSep <> "embody"
+  core <> routeSep <> "box" <> nsSep <> "embody"
 
 coreTypeValueTypeValue :: T.Text
 coreTypeValueTypeValue =
-  core <> nsSep <> "type-value" <> nsSep <> "type-value"
+  core <> routeSep <> "type-value" <> nsSep <> "type-value"
 
 holeLiteral :: T.Text
 holeLiteral =

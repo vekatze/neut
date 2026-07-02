@@ -10,6 +10,10 @@ nsSep :: T.Text
 nsSep =
   T.singleton nsSepChar
 
+routeSep :: T.Text
+routeSep =
+  "::"
+
 holeVarPrefix :: T.Text
 holeVarPrefix =
   "{}"

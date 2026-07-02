@@ -19,10 +19,13 @@ import Data.Containers.ListUtils (nubOrd)
 import Data.HashMap.Strict qualified as Map
 import Data.List (sort, (!?))
 import Data.List.NonEmpty qualified as NE
+import Data.Maybe (catMaybes)
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Kernel.Common.Cache qualified as Cache
+import Kernel.Common.Const (sourceFileExtension)
 import Kernel.Common.CreateGlobalHandle qualified as Global
+import Kernel.Common.CreateLocalHandle qualified as Local
 import Kernel.Common.Handle.Global.Antecedent qualified as Antecedent
 import Kernel.Common.Handle.Global.Env qualified as Env
 import Kernel.Common.Handle.Global.Path qualified as Path
@@ -35,23 +38,28 @@ import Kernel.Common.RawImportSummary
 import Kernel.Common.Source
 import Kernel.Common.Target
 import Kernel.Common.TopCandidate
+import Kernel.Parse.Internal.Handle.Alias qualified as Alias
 import Kernel.Unravel.Unravel qualified as Unravel
 import Language.Common.Availability qualified as AV
 import Language.Common.BaseName qualified as BN
-import Language.Common.Const (nsSep)
+import Language.Common.Const (nsSep, routeSep)
 import Language.Common.DefiniteDescription qualified as DD
+import Language.Common.GlobalLocator qualified as GL
 import Language.Common.Ident.Reify qualified as Ident
 import Language.Common.ModuleAlias qualified as MA
 import Language.Common.ModuleID qualified as MID
+import Language.Common.SourceLocator qualified as SL
 import Language.Common.SourcePrefix qualified as SP
 import Language.Common.StrictGlobalLocator qualified as SGL
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types
 import Language.LSP.VFS (VirtualFile (..), virtualFileText)
 import Logger.Hint
+import Path (addExtension, (</>))
 
 data Handle = Handle
-  { unravelHandle :: Unravel.Handle,
+  { globalHandle :: Global.Handle,
+    unravelHandle :: Unravel.Handle,
     pathHandle :: Path.Handle,
     antecedentHandle :: Antecedent.Handle,
     getModuleHandle :: GetModule.Handle,
@@ -108,7 +116,11 @@ getGlobalCompletionItems h currentSource loc = do
   let impLoc = getImportLoc importSummaryOrNone
   if loc < impLoc
     then return []
-    else adjustTopCandidate h importSummaryOrNone currentSource loc aliasPresetMap globalVarList
+    else do
+      directItems <- adjustTopCandidate h importSummaryOrNone currentSource loc aliasPresetMap globalVarList
+      let localDefSet = collectLocalDefSet currentSource globalVarList
+      importedItems <- getImportedSourceCompletionItems h importSummaryOrNone currentSource loc aliasPresetMap localDefSet
+      return $ directItems ++ importedItems
 
 getImportLoc :: Maybe RawImportSummary -> Loc
 getImportLoc importOrNone =
@@ -141,8 +153,63 @@ adjustTopCandidate h summaryOrNone currentSource loc prefixSummary candInfo = do
             return []
           Just locator -> do
             let candIsInCurrentSource = sourceFilePath currentSource == sourceFilePath candSource
+            let candIsInCurrentModule = moduleID (sourceModule currentSource) == moduleID (sourceModule candSource)
             let candList' = filter (isAvailableCandidate currentGlobalLocator) candList
-            return $ concatMap (topCandidateToCompletionItem summaryOrNone candIsInCurrentSource localDefSet prefixSummary locator loc) candList'
+            return $ concatMap (topCandidateToCompletionItem summaryOrNone candIsInCurrentSource candIsInCurrentModule localDefSet prefixSummary locator loc) candList'
+
+getImportedSourceCompletionItems ::
+  Handle ->
+  Maybe RawImportSummary ->
+  Source ->
+  Loc ->
+  FastPresetSummary ->
+  S.Set T.Text ->
+  App [CompletionItem]
+getImportedSourceCompletionItems h summaryOrNone currentSource loc prefixSummary localDefSet = do
+  case summaryOrNone of
+    Nothing ->
+      return []
+    Just (entries, _) -> do
+      localHandle <- Local.new (globalHandle h) currentSource
+      let aliasHandle = Local.aliasHandle localHandle
+      currentGlobalLocator <- Locator.constructGlobalLocator currentSource
+      let locatorTextList = nubOrd $ map fst entries
+      resolvedList <- fmap catMaybes $ forM locatorTextList $ \locatorText -> do
+        sourceOrNone <- resolveImportedSource h aliasHandle currentSource locatorText
+        return $ fmap (\candSource -> (candSource, locatorText)) sourceOrNone
+      fmap concat $ forP resolvedList $ \(candSource, locatorText) -> do
+        candListOrNone <- loadTopCandidates h candSource
+        case candListOrNone of
+          Nothing ->
+            return []
+          Just candList -> do
+            let candIsInCurrentSource = sourceFilePath currentSource == sourceFilePath candSource
+            let candIsInCurrentModule = moduleID (sourceModule currentSource) == moduleID (sourceModule candSource)
+            let candList' = filter (isAvailableCandidate currentGlobalLocator) candList
+            return $ concatMap (topCandidateToCompletionItem summaryOrNone candIsInCurrentSource candIsInCurrentModule localDefSet prefixSummary locatorText loc) candList'
+
+resolveImportedSource :: Handle -> Alias.Handle -> Source -> T.Text -> App (Maybe Source)
+resolveImportedSource h aliasHandle currentSource locatorText = do
+  let m = newSourceHint (sourceFilePath currentSource)
+  outcome <- liftIO $ runApp $ do
+    gl <- liftEither $ GL.reflect m locatorText
+    sgl <- Alias.resolveAlias aliasHandle m gl
+    let mainModule = Env.getMainModule (envHandle h)
+    candModule <- GetModule.getModule (getModuleHandle h) mainModule m (SGL.moduleID sgl) locatorText
+    relPath <- addExtension sourceFileExtension $ SL.reify $ SGL.sourceLocator sgl
+    return
+      Source
+        { sourceModule = candModule,
+          sourceFilePath = getSourceDir candModule </> relPath,
+          sourceHint = Just m
+        }
+  return $ either (const Nothing) Just outcome
+
+loadTopCandidates :: Handle -> Source -> App (Maybe [TopCandidate])
+loadTopCandidates h candSource = do
+  cachePath <- Path.getSourceCompletionCachePath (pathHandle h) Peripheral candSource
+  cacheOrNone <- Cache.loadCompletionCacheOptimistically cachePath
+  return $ fmap Cache.topCandidate cacheOrNone
 
 collectLocalDefSet :: Source -> [(Source, [TopCandidate])] -> S.Set T.Text
 collectLocalDefSet currentSource candInfo = do
@@ -164,13 +231,14 @@ identToCompletionItem x = do
 topCandidateToCompletionItem ::
   Maybe RawImportSummary ->
   Bool ->
+  Bool ->
   S.Set T.Text ->
   FastPresetSummary ->
   T.Text ->
   Loc ->
   TopCandidate ->
   [CompletionItem]
-topCandidateToCompletionItem importSummaryOrNone candIsInCurrentSource localDefSet presetSummary locator cursorLoc topCandidate = do
+topCandidateToCompletionItem importSummaryOrNone candIsInCurrentSource candIsInCurrentModule localDefSet presetSummary locator cursorLoc topCandidate = do
   if candIsInCurrentSource && cursorLoc < loc topCandidate
     then []
     else do
@@ -179,7 +247,7 @@ topCandidateToCompletionItem importSummaryOrNone candIsInCurrentSource localDefS
       let fullyQualified = FullyQualified locator ll
       let bareCollidesWithLocal = not candIsInCurrentSource && S.member ll localDefSet
       let short = if bareCollidesWithLocal then LocallyShadowed locator ll else Bare locator ll
-      let cands = filter (isProperCand importSummaryOrNone) [fullyQualified, short]
+      let cands = filter (isProperCand importSummaryOrNone candIsInCurrentModule) [fullyQualified, short]
       flip map cands $ \cand -> do
         let inPresetImport = isInPresetImport presetSummary cand
         let needsTextEdit = not candIsInCurrentSource && not inPresetImport
@@ -195,9 +263,9 @@ data Cand
   | Bare T.Text T.Text
   | LocallyShadowed T.Text T.Text
 
-isProperCand :: Maybe RawImportSummary -> Cand -> Bool
-isProperCand summaryOrNone cand =
-  not (isAmbiguousCand summaryOrNone cand) && isVisibleCand cand
+isProperCand :: Maybe RawImportSummary -> Bool -> Cand -> Bool
+isProperCand summaryOrNone candIsInCurrentModule cand =
+  not (isAmbiguousCand summaryOrNone cand) && isVisibleCand candIsInCurrentModule cand
 
 isAmbiguousCand :: Maybe RawImportSummary -> Cand -> Bool
 isAmbiguousCand summaryOrNone cand = do
@@ -211,17 +279,28 @@ isAmbiguousCand summaryOrNone cand = do
     _ ->
       False
 
-isVisibleCand :: Cand -> Bool
-isVisibleCand cand =
-  case cand of
-    Bare gl ll -> do
-      ("this." `T.isPrefixOf` gl) || (not ("._" `T.isInfixOf` gl) && not ("_" `T.isPrefixOf` ll))
-    Prefixed _ ll ->
-      not ("_" `T.isPrefixOf` ll)
-    FullyQualified gl ll -> do
-      ("this." `T.isPrefixOf` gl) || (not ("._" `T.isInfixOf` gl) && not ("_" `T.isPrefixOf` ll))
-    LocallyShadowed gl ll -> do
-      ("this." `T.isPrefixOf` gl) || (not ("._" `T.isInfixOf` gl) && not ("_" `T.isPrefixOf` ll))
+isVisibleCand :: Bool -> Cand -> Bool
+isVisibleCand candIsInCurrentModule cand =
+  if candIsInCurrentModule
+    then True
+    else do
+      case cand of
+        Bare gl ll ->
+          isVisibleGlobalLocator gl && isVisibleLocalLocator ll
+        Prefixed _ ll ->
+          isVisibleLocalLocator ll
+        FullyQualified gl ll ->
+          isVisibleGlobalLocator gl && isVisibleLocalLocator ll
+        LocallyShadowed gl ll ->
+          isVisibleGlobalLocator gl && isVisibleLocalLocator ll
+
+isVisibleGlobalLocator :: T.Text -> Bool
+isVisibleGlobalLocator gl =
+  not ("._" `T.isInfixOf` gl)
+
+isVisibleLocalLocator :: T.Text -> Bool
+isVisibleLocalLocator ll =
+  not ("_" `T.isPrefixOf` ll)
 
 shouldRemoveLocatorPair :: (T.Text, T.Text) -> [(T.Text, [T.Text])] -> Bool
 shouldRemoveLocatorPair (gl, ll) summary = do
@@ -345,8 +424,8 @@ getAllTopCandidate :: Handle -> Module -> App ([(Source, [TopCandidate])], FastP
 getAllTopCandidate h baseModule = do
   let mainModule = Env.getMainModule (envHandle h)
   dependencies <- GetModule.getAllDependencies (getModuleHandle h) mainModule baseModule
-  let visibleModuleList = (MA.defaultModuleAlias, baseModule) : dependencies
-  (candListList, aliasPresetInfo) <- unzip <$> forP visibleModuleList (getAllTopCandidate' h)
+  baseCandList <- getModuleTopCandidates h baseModule
+  (candListList, aliasPresetInfo) <- unzip <$> forP dependencies (getAllTopCandidate' h)
   let aliasList = getAliasListWithEnabledPresets baseModule
   let aliasPresetMap = constructAliasPresetMap aliasPresetInfo
   let presetSummary =
@@ -357,7 +436,7 @@ getAllTopCandidate h baseModule = do
               []
             Just presetMap ->
               reifyPresetMap (MA.reify alias) presetMap
-  return (concat candListList, fromPresetSummary presetSummary)
+  return (baseCandList ++ concat candListList, fromPresetSummary presetSummary)
 
 data FastPresetSummary = FastPresetSummary
   { presetMap :: Map.HashMap T.Text (S.Set T.Text),
@@ -377,8 +456,13 @@ constructAliasPresetMap =
 
 getAllTopCandidate' :: Handle -> (MA.ModuleAlias, Module) -> App ([(Source, [TopCandidate])], (T.Text, Module))
 getAllTopCandidate' h (alias, candModule) = do
+  candidates <- getModuleTopCandidates h candModule
+  return (candidates, (MA.reify alias, candModule))
+
+getModuleTopCandidates :: Handle -> Module -> App [(Source, [TopCandidate])]
+getModuleTopCandidates h candModule = do
   cacheSeq <- GAC.getAllCompletionCachesInModule (gacHandle h) candModule
-  return (map (second Cache.topCandidate) cacheSeq, (MA.reify alias, candModule))
+  return $ map (second Cache.topCandidate) cacheSeq
 
 fromCandidateKind :: CandidateKind -> CompletionItemKind
 fromCandidateKind candidateKind =
@@ -400,9 +484,9 @@ _getHumanReadableLocator :: Antecedent.RevMap -> Module -> MID.ModuleID -> T.Tex
 _getHumanReadableLocator revMap baseModule sourceModuleID baseReadableLocator = do
   case sourceModuleID of
     MID.Main -> do
-      Just $ "this" <> nsSep <> baseReadableLocator
+      Just baseReadableLocator
     MID.Base -> do
-      Just $ "base" <> nsSep <> baseReadableLocator
+      Just $ "base" <> routeSep <> baseReadableLocator
     MID.Library digest -> do
       let digestMap = getDigestMap baseModule
       case Map.lookup digest digestMap of
@@ -414,7 +498,7 @@ _getHumanReadableLocator revMap baseModule sourceModuleID baseReadableLocator = 
               Nothing
         Just aliasList -> do
           let alias = BN.reify $ MA.extract $ NE.head aliasList
-          Just $ alias <> nsSep <> baseReadableLocator
+          Just $ alias <> routeSep <> baseReadableLocator
 
 _getHumanReadableLocator' :: Antecedent.RevMap -> Module -> [MID.ModuleID] -> T.Text -> Maybe T.Text
 _getHumanReadableLocator' revMap baseModule midList baseReadableLocator = do

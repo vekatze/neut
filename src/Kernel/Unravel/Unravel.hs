@@ -16,8 +16,10 @@ import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Foldable
 import Data.HashMap.Strict qualified as Map
-import Data.IORef (IORef, modifyIORef', newIORef, readIORef)
+import Data.IORef (IORef, modifyIORef', newIORef, readIORef, writeIORef)
+import Data.Maybe (mapMaybe)
 import Data.Sequence as Seq (Seq, empty, (><), (|>))
+import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Time
 import Kernel.Common.Artifact qualified as A
@@ -39,6 +41,7 @@ import Kernel.Common.Target
 import Kernel.Parse.Internal.Import qualified as Import
 import Kernel.Parse.Internal.Program (parseImport)
 import Kernel.Unravel.VisitInfo qualified as VI
+import Language.Common.ModuleAlias qualified as MA
 import Language.Common.ModuleID qualified as MID
 import Logger.Debug qualified as Logger
 import Logger.Hint
@@ -55,6 +58,12 @@ type LLVMTime =
 
 type ObjectTime =
   Maybe UTCTime
+
+type PublicEdgeMap =
+  Map.HashMap MID.ModuleID (S.Set MID.ModuleID)
+
+type PublicReachabilityMap =
+  Map.HashMap MID.ModuleID (S.Set MID.ModuleID)
 
 data Handle = Handle
   { globalHandle :: Global.Handle,
@@ -115,11 +124,99 @@ registerShiftMap h = do
   let mainModule = getMainModule (Global.envHandle (globalHandle h))
   let m = extractModule mainModule
   arrowList <- unravelAntecedentArrow h axis m
+  moduleList <- liftIO $ readIORef $ moduleListRef axis
   cAxis <- liftIO newCAxis
   compressedMap <- compressMap cAxis (Map.fromList arrowList) arrowList
+  ensureNoCompatibleDependencyAliasCollision compressedMap moduleList
+  let publicReachabilityMap = buildPublicReachabilityMap compressedMap moduleList
+  liftIO $ writeIORef (Global.publicModuleReachabilityRef (globalHandle h)) publicReachabilityMap
   liftIO $ Antecedent.set (Global.antecedentHandle (globalHandle h)) compressedMap
   modulePathMap <- ModulePath.build (Global.modulePathHandle (globalHandle h))
   liftIO $ ModulePath.set (Global.modulePathHandle (globalHandle h)) modulePathMap
+
+buildPublicReachabilityMap :: Map.HashMap MID.ModuleID Module -> [Module] -> PublicReachabilityMap
+buildPublicReachabilityMap compressedMap moduleList = do
+  let edgeMap = Map.fromListWith S.union $ map (publicEdgeEntry compressedMap) moduleList
+  closePublicEdgeMap edgeMap
+
+publicEdgeEntry :: Map.HashMap MID.ModuleID Module -> Module -> (MID.ModuleID, S.Set MID.ModuleID)
+publicEdgeEntry compressedMap currentModule = do
+  let currentModule' = getCanonicalModule compressedMap currentModule
+  let publicDependencyIDList = collectPublicDependencyIDs compressedMap currentModule'
+  (moduleID currentModule', S.fromList publicDependencyIDList)
+
+closePublicEdgeMap :: PublicEdgeMap -> PublicReachabilityMap
+closePublicEdgeMap reachabilityMap = do
+  let reachabilityMap' = Map.map (expandPublicReachability reachabilityMap) reachabilityMap
+  if reachabilityMap' == reachabilityMap
+    then reachabilityMap
+    else closePublicEdgeMap reachabilityMap'
+
+expandPublicReachability :: PublicReachabilityMap -> S.Set MID.ModuleID -> S.Set MID.ModuleID
+expandPublicReachability reachabilityMap reachableSet =
+  S.foldl' (includePublicReachable reachabilityMap) reachableSet reachableSet
+
+includePublicReachable :: PublicReachabilityMap -> S.Set MID.ModuleID -> MID.ModuleID -> S.Set MID.ModuleID
+includePublicReachable reachabilityMap reachableSet moduleID =
+  S.union reachableSet $ Map.lookupDefault S.empty moduleID reachabilityMap
+
+collectPublicDependencyIDs :: Map.HashMap MID.ModuleID Module -> Module -> [MID.ModuleID]
+collectPublicDependencyIDs compressedMap currentModule = do
+  let dependencyList = Map.toList $ moduleDependency currentModule
+  flip mapMaybe dependencyList $ \(moduleAlias, dependency) -> do
+    if MA.isPrivate moduleAlias
+      then Nothing
+      else do
+        let dependencyID = MID.Library $ dependencyDigest dependency
+        return $ getCanonicalModuleID compressedMap dependencyID
+
+getCanonicalModule :: Map.HashMap MID.ModuleID Module -> Module -> Module
+getCanonicalModule compressedMap currentModule = do
+  let currentModuleID = moduleID currentModule
+  case Map.lookup currentModuleID compressedMap of
+    Just latestModule ->
+      latestModule
+    Nothing ->
+      currentModule
+
+ensureNoCompatibleDependencyAliasCollision :: Map.HashMap MID.ModuleID Module -> [Module] -> App ()
+ensureNoCompatibleDependencyAliasCollision compressedMap moduleList =
+  forM_ moduleList $ \currentModule -> do
+    let dependencyList = Map.toList $ moduleDependency currentModule
+    ensureNoDirectCompatibleDependencyAliasCollision' currentModule compressedMap Map.empty dependencyList
+
+ensureNoDirectCompatibleDependencyAliasCollision' ::
+  Module ->
+  Map.HashMap MID.ModuleID Module ->
+  Map.HashMap MID.ModuleID MA.ModuleAlias ->
+  [(MA.ModuleAlias, Dependency)] ->
+  App ()
+ensureNoDirectCompatibleDependencyAliasCollision' currentModule compressedMap seen dependencyList = do
+  case dependencyList of
+    [] ->
+      return ()
+    (moduleAlias, dependency) : rest -> do
+      let dependencyID = MID.Library $ dependencyDigest dependency
+      let canonicalID = getCanonicalModuleID compressedMap dependencyID
+      case Map.lookup canonicalID seen of
+        Just existingAlias ->
+          raiseError' $
+            "Dependency aliases `"
+              <> MA.reify existingAlias
+              <> "` and `"
+              <> MA.reify moduleAlias
+              <> "` in module `"
+              <> MID.reify (moduleID currentModule)
+              <> "` point to the same compatible module `"
+              <> MID.reify canonicalID
+              <> "`"
+        Nothing -> do
+          let seen' = Map.insert canonicalID moduleAlias seen
+          ensureNoDirectCompatibleDependencyAliasCollision' currentModule compressedMap seen' rest
+
+getCanonicalModuleID :: Map.HashMap MID.ModuleID Module -> MID.ModuleID -> MID.ModuleID
+getCanonicalModuleID compressedMap dependencyID =
+  maybe dependencyID moduleID (Map.lookup dependencyID compressedMap)
 
 type VisitMap =
   Map.HashMap (Path Abs File) VI.VisitInfo
@@ -128,11 +225,13 @@ newAxis :: IO Axis
 newAxis = do
   visitMapRef <- liftIO $ newIORef Map.empty
   traceListRef <- liftIO $ newIORef []
+  moduleListRef <- liftIO $ newIORef []
   return Axis {..}
 
 data Axis = Axis
   { visitMapRef :: IORef VisitMap,
-    traceListRef :: IORef [Path Abs File]
+    traceListRef :: IORef [Path Abs File],
+    moduleListRef :: IORef [Module]
   }
 
 unravelAntecedentArrow :: Handle -> Axis -> Module -> App [(MID.ModuleID, Module)]
@@ -149,6 +248,7 @@ unravelAntecedentArrow h axis currentModule = do
     Nothing -> do
       liftIO $ modifyIORef' (visitMapRef axis) $ Map.insert path VI.Active
       liftIO $ modifyIORef' (traceListRef axis) $ (:) path
+      liftIO $ modifyIORef' (moduleListRef axis) $ (:) currentModule
       let children = map (MID.Library . dependencyDigest . snd) $ Map.toList $ moduleDependency currentModule
       arrows <- fmap concat $ forM children $ \moduleID -> do
         path' <- Module.getModuleFilePath mainModule Nothing moduleID

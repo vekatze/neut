@@ -1,6 +1,5 @@
 module Language.Common.BaseName
   ( BaseName,
-    bySplit,
     reify,
     reflect,
     reflect',
@@ -12,7 +11,6 @@ module Language.Common.BaseName
     mainName,
     zenName,
     fromText,
-    this,
     base,
     core,
     imm,
@@ -50,6 +48,7 @@ module Language.Common.BaseName
 where
 
 import App.Error
+import Control.Monad
 import Data.Binary
 import Data.Char (isUpper)
 import Data.Hashable
@@ -70,15 +69,10 @@ instance Binary BaseName
 
 instance Hashable BaseName
 
-bySplit :: H.Hint -> T.Text -> Either Error [BaseName]
-bySplit m name = do
-  let cand = map MakeBaseName $ T.split (nsSepChar ==) name
-  if empty `notElem` cand
-    then return $ map MakeBaseName $ T.split (nsSepChar ==) name
-    else Left (newError m $ "No succeeding dots are allowed here: " <> name)
-
 reflect :: H.Hint -> T.Text -> Either Error BaseName
 reflect m rawTxt = do
+  when (T.any (== ':') rawTxt) $ do
+    Left $ newError m $ "Invalid name: " <> rawTxt
   case map MakeBaseName $ T.split (nsSepChar ==) rawTxt of
     [baseName] ->
       return baseName
@@ -87,6 +81,8 @@ reflect m rawTxt = do
 
 reflect' :: T.Text -> Either Error BaseName
 reflect' rawTxt = do
+  when (T.any (== ':') rawTxt) $ do
+    Left $ newError' $ "Invalid name: " <> rawTxt
   case map MakeBaseName $ T.split (nsSepChar ==) rawTxt of
     [baseName] ->
       return baseName
@@ -100,14 +96,6 @@ isCapitalized (MakeBaseName bn) =
       False
     Just (c, _) ->
       isUpper c
-
-empty :: BaseName
-empty =
-  MakeBaseName ""
-
-this :: BaseName
-this =
-  MakeBaseName "this"
 
 base :: BaseName
 base =
@@ -326,6 +314,4 @@ fromText txt =
 reservedAlias :: S.Set BaseName
 reservedAlias =
   S.fromList
-    [ this,
-      base
-    ]
+    [base]

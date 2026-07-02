@@ -48,7 +48,7 @@ parseSingleImport = do
   m <- getCurrentHint
   (importItems, loc, c) <- seriesBrace' $ do
     mImportItem <- getCurrentHint
-    locator <- symbol
+    locator <- locatorSymbol
     case fst locator of
       "static-file" -> do
         (ks, c) <- parseStaticKeyList

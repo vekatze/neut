@@ -33,8 +33,7 @@ getEnabledPreset h baseModule = do
   let h' = GetModule.Handle {moduleHandle = moduleHandle h}
   let mainModule = Env.getMainModule (envHandle h)
   dependencies <- GetModule.getAllDependencies h' mainModule baseModule
-  let visibleModuleList = (MA.defaultModuleAlias, baseModule) : dependencies
-  let aliasPresetInfo = map getAllTopCandidate' visibleModuleList
+  let aliasPresetInfo = map getAllTopCandidate' dependencies
   let aliasList = getAliasListWithEnabledPresets baseModule
   let aliasPresetMap = constructAliasPresetMap aliasPresetInfo
   return $ concat $ flip map aliasList $ \alias -> do

@@ -233,24 +233,13 @@ addDependencyToModuleFile h alias dep = do
 
 makeDependencyEns :: Hint -> ModuleAlias -> M.Dependency -> E.Ens
 makeDependencyEns m alias dep = do
-  let digest = M.dependencyDigest dep
-  let mirrorList = M.dependencyMirrorList dep
-  let enablePreset = M.dependencyPresetEnabled dep
-  let preset = if enablePreset then Just (keyEnablePreset, m :< E.Bool enablePreset) else Nothing
-  let mirrorList' = SE.fromList SE.Bracket SE.Comma $ map (\(ModuleURL mirror) -> m :< E.String mirror) mirrorList
   SE.dictFromList
     m
     [ ( keyDependency,
         SE.dictFromList
           m
           [ ( BN.reify $ extract alias,
-              SE.dictFromList
-                m
-                ( [ (keyDigest, m :< E.String (MD.reify digest)),
-                    (keyMirror, m :< E.List (mirrorList' {hasOptionalSeparator = True}))
-                  ]
-                    ++ maybeToList preset
-                )
+              SE.dictFromList m $ makeDependencyFieldList m dep
             )
           ]
       )
@@ -265,6 +254,10 @@ updateDependencyInModuleFile h mainModuleFileLoc alias dep = do
 
 makeDependencyEns' :: Hint -> M.Dependency -> E.Ens
 makeDependencyEns' m dep = do
+  SE.dictFromList m $ makeDependencyFieldList m dep
+
+makeDependencyFieldList :: Hint -> M.Dependency -> [(T.Text, E.Ens)]
+makeDependencyFieldList m dep = do
   let digest = M.dependencyDigest dep
   let mirrorList = M.dependencyMirrorList dep
   let mirrorList' = SE.fromList SE.Bracket SE.Comma $ map (\(ModuleURL mirror) -> m :< E.String mirror) mirrorList
@@ -273,9 +266,7 @@ makeDependencyEns' m dep = do
         if enablePreset
           then Just (keyEnablePreset, m :< E.Bool enablePreset)
           else Nothing
-  SE.dictFromList
-    m
-    $ [ (keyDigest, m :< E.String (MD.reify digest)),
-        (keyMirror, m :< E.List (mirrorList' {hasOptionalSeparator = True}))
-      ]
-      ++ catMaybes [enablePresetField]
+  [ (keyDigest, m :< E.String (MD.reify digest)),
+    (keyMirror, m :< E.List (mirrorList' {hasOptionalSeparator = True}))
+    ]
+    ++ catMaybes [enablePresetField]

@@ -18,10 +18,10 @@ import Data.IntMap qualified as IntMap
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Gensym.Gensym qualified as Gensym
-import Kernel.Common.Handle.Global.Env qualified as Env
+import Kernel.Common.CreateGlobalHandle qualified as Global
+import Kernel.Common.Handle.Global.ModulePath qualified as ModulePath
 import Kernel.Common.Handle.Global.Platform qualified as Platform
 import Kernel.Common.Handle.Global.Type qualified as Type
-import Kernel.Common.ReadableDD
 import Kernel.Elaborate.Internal.Handle.Constraint qualified as Constraint
 import Kernel.Elaborate.Internal.Handle.Elaborate
 import Kernel.Elaborate.Internal.Handle.Hole qualified as Hole
@@ -1013,8 +1013,7 @@ ensureArityCorrectness h function expected found = do
   when (expected /= found) $ do
     case function of
       m :< WT.VarGlobal _ name -> do
-        let mainModule = Env.getMainModule (envHandle h)
-        let name' = readableDD mainModule name
+        name' <- readableDDCached h name
         raiseError m $
           "The function `"
             <> name'
@@ -1036,8 +1035,7 @@ ensureImplicitArityCorrectness h function expected found = do
   when (expected /= found) $ do
     case function of
       m :< WT.VarGlobal _ name -> do
-        let mainModule = Env.getMainModule (envHandle h)
-        let name' = readableDD mainModule name
+        name' <- readableDDCached h name
         raiseError m $
           "The function `"
             <> name'
@@ -1053,6 +1051,11 @@ ensureImplicitArityCorrectness h function expected found = do
             <> " implicit arguments, but found "
             <> T.pack (show found)
             <> "."
+
+readableDDCached :: Handle -> DD.DefiniteDescription -> App T.Text
+readableDDCached h dd = do
+  modulePathMap <- liftIO $ ModulePath.get (Global.modulePathHandle (globalHandle h))
+  return $ ModulePath.renderDD modulePathMap dd
 
 ensureDefaultKeyLinearity :: Hint -> [T.Text] -> App ()
 ensureDefaultKeyLinearity m ks = do

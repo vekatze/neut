@@ -6,6 +6,8 @@ import Data.Text qualified as T
 import Language.Common.BaseName qualified as BN
 import Language.Common.ExternalName qualified as EN
 import Language.Common.ForeignCodType qualified as FCT
+import Language.Common.Const (routeSep)
+import Language.Common.GlobalLocator qualified as GL
 import Language.Common.LocalLocator qualified as LL
 import Language.Common.NominalTag
 import Language.Common.RuleKind (ruleKindToKeyword)
@@ -61,7 +63,7 @@ decImport importInfo importStmt = do
     then Nothing
     else do
       let (RawImport c _ importItemList _) = importStmt
-      let importItemList' = SE.compressEither $ fmap (filterImport importInfo) importItemList
+      let importItemList' = normalizeImportItem <$> SE.compressEither (fmap (filterImport importInfo) importItemList)
       let importItemList'' = SE.assoc $ decImportItem <$> sortImport importItemList'
       if SE.isEmpty importItemList''
         then Nothing
@@ -115,8 +117,36 @@ filterLocalLocator names (m, ll) =
 
 sortImport :: SE.Series RawImportItem -> SE.Series RawImportItem
 sortImport series = do
-  let series' = SE.sortSeriesBy compareImportItem series
+  let series' = SE.sortSeriesBy compareImport series
   nubLocalLocators . sortLocalLocators <$> series' {SE.elems = mergeAdjacentImport (SE.elems series')}
+
+compareImport :: RawImportItem -> RawImportItem -> Ordering
+compareImport item1 item2 =
+  case (item1, item2) of
+    (RawImportItem _ (loc1, _) _, RawImportItem _ (loc2, _) _) ->
+      compare (importSortKey loc1) (importSortKey loc2)
+    (RawImportItem {}, RawStaticFileKey {}) ->
+      LT
+    (RawStaticFileKey {}, RawImportItem {}) ->
+      GT
+    (RawStaticFileKey {}, RawStaticFileKey {}) ->
+      EQ
+
+importSortKey :: T.Text -> (Bool, T.Text)
+importSortKey loc =
+  (not (T.isInfixOf routeSep loc), loc)
+
+normalizeImportItem :: RawImportItem -> RawImportItem
+normalizeImportItem item =
+  case item of
+    RawImportItem m (loc, c) args ->
+      RawImportItem m (normalizeLocator m loc, c) args
+    RawStaticFileKey {} ->
+      item
+
+normalizeLocator :: Hint -> T.Text -> T.Text
+normalizeLocator m loc =
+  either (const loc) GL.reify (GL.reflect m loc)
 
 mergeAdjacentImport :: [(C, RawImportItem)] -> [(C, RawImportItem)]
 mergeAdjacentImport importList = do

@@ -24,7 +24,7 @@ reify :: ModuleID -> T.Text
 reify moduleID =
   case moduleID of
     Main ->
-      "this"
+      "main"
     Library digest ->
       MD.reify digest
     Base ->

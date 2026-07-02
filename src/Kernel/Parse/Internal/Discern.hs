@@ -467,7 +467,11 @@ discern h term =
           discernRecordUpdate h m name mImpArgs kvs restArg'
     m :< RT.PiElimRule name _ es -> do
       (dd, (_, gn)) <- resolveName h m name
-      kind <- interpretRuleName m dd gn
+      kind <- case gn of
+        GN.Rule kind ->
+          return kind
+        _ ->
+          raiseError m $ "`" <> DD.reify dd <> "` is not a rule"
       let leafDD = DD.getLeafDD dd
       let nodeDD = DD.getNodeDD dd
       let rootDD = DD.getRootDD dd
@@ -489,11 +493,20 @@ discern h term =
           foldedTerm <- buildFoldRight nodeTM (args ++ [leafTM])
           discern h (unquote (m :< RT.piElim rootTM [foldedTerm]))
     m :< RT.PiElimMeta name _ mImpArgs _ es _ mDefaultArgs -> do
-      let var = m :< RT.Var name
+      headTerm <-
+        if isLocalVar h name
+          then return $ m :< RT.Var name
+          else do
+            (dd, (_, gn)) <- resolveName h m name
+            case gn of
+              GN.Rule {} ->
+                raiseError m $ "`" <> DD.reify dd <> "` is a rule and must be used with `::[...]`"
+              _ ->
+                return $ m :< RT.VarGlobal dd gn
       let quote e = m :< RT.CodeIntro CodeVariantK [] [] (e, [])
       let args = fmap quote es
       let defaultArgs = mDefaultArgs <&> fmap (\(mx, k, c1, c2, e) -> (mx, k, c1, c2, quote e))
-      discern h $ m :< RT.CodeElim [] [] (m :< RT.PiElim var [] mImpArgs [] args [] defaultArgs, [])
+      discern h $ m :< RT.CodeElim [] [] (m :< RT.PiElim headTerm [] mImpArgs [] args [] defaultArgs, [])
     m :< RT.PiElimExact _ e -> do
       e' <- discern h e
       return $ m :< WT.PiElimExact e'

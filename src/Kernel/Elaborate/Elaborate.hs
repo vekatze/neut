@@ -206,7 +206,7 @@ elaborateStmt h stmt = do
       when (isConstLike && not (isConstantMetaStmtKind stmtKind)) $ do
         unless (TM.isValue e'') $ do
           raiseError m "Could not reduce the body of this definition into a constant"
-      PublicSignature.checkStmt (Source.sourceModule $ currentSource h) $
+      PublicSignature.checkStmt (globalHandle h) (Source.sourceModule $ currentSource h) $
         StmtDefine isConstLike stmtKind' (SavedHint m) x impArgs' expArgs' defaultArgs' codType' e'
       let result = StmtDefine isConstLike stmtKind' (SavedHint m) x impArgs'' expArgs'' defaultArgs'' codType'' e''
       insertStmt h result
@@ -229,7 +229,7 @@ elaborateStmt h stmt = do
       expArgs'' <- mapM (inlineBinder h) expArgs'
       codType'' <- inlineType h m codType'
       body'' <- inlineType h m body'
-      PublicSignature.checkStmt (Source.sourceModule $ currentSource h) $
+      PublicSignature.checkStmt (globalHandle h) (Source.sourceModule $ currentSource h) $
         StmtDefineType isConstLike stmtKind' (SavedHint m) x impArgs' expArgs' defaultArgs' codType' body'
       let result = StmtDefineType isConstLike stmtKind' (SavedHint m) x impArgs'' expArgs'' defaultArgs'' codType'' body''
       insertStmt h result
@@ -260,7 +260,7 @@ elaborateStmt h stmt = do
       return ([StmtVariadic kind (SavedHint m) dd], [])
     WeakStmtNominal _ geistList -> do
       geistList' <- mapM (elaborateGeist h . snd) geistList
-      mapM_ (PublicSignature.checkGeist (Source.sourceModule $ currentSource h)) geistList'
+      mapM_ (PublicSignature.checkGeist (globalHandle h) (Source.sourceModule $ currentSource h)) geistList'
       return ([], [])
     WeakStmtForeign foreignList -> do
       foreignList' <- forM foreignList $ \(F.Foreign m externalName domList cod) -> do
@@ -288,7 +288,7 @@ elaborateDefineMeta h ownerName defineMeta = do
   expArgs' <- mapM (elaborateWeakBinder h) $ weakDefineMetaExpArgs defineMeta
   codType' <- elaborateType h $ weakDefineMetaCod defineMeta
   body' <- elaborate' h $ weakDefineMetaBody defineMeta
-  PublicSignature.checkDefineMeta (Source.sourceModule $ currentSource h) ownerName $
+  PublicSignature.checkDefineMeta (globalHandle h) (Source.sourceModule $ currentSource h) ownerName $
     DefineMeta
       { defineMetaLoc = SavedHint m,
         defineMetaTargetName = weakDefineMetaTarget defineMeta,

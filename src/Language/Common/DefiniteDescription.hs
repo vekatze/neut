@@ -4,6 +4,7 @@ module Language.Common.DefiniteDescription
     localLocator,
     globalLocator,
     getLocatorPair,
+    getLocatorPairMaybe,
     newByGlobalLocator,
     getFormDD,
     getNodeDD,
@@ -77,8 +78,8 @@ wrapWithQuote :: T.Text -> T.Text
 wrapWithQuote x =
   "\"" <> x <> "\""
 
--- this.foo.bar
--- ~> this.foo.bar#form
+-- main.foo.bar
+-- ~> main.foo.bar#form
 appendLocalName :: DefiniteDescription -> BN.BaseName -> DefiniteDescription
 appendLocalName dd name = do
   MakeDefiniteDescription
@@ -129,7 +130,7 @@ unconsDD dd = do
   case nameList of
     headElem : rest ->
       case headElem of
-        "this" ->
+        "main" ->
           (MID.Main, T.intercalate nsSep rest)
         "base" ->
           (MID.Base, T.intercalate nsSep rest)
@@ -189,6 +190,18 @@ getLocatorPair m varText = do
       gl <- GL.reflect m $ T.intercalate "." initElems
       ll <- LL.reflect m lastElem
       return (gl, ll)
+
+getLocatorPairMaybe :: H.Hint -> T.Text -> Either Error (Maybe (GL.GlobalLocator, LL.LocalLocator))
+getLocatorPairMaybe m varText = do
+  if T.any isLocatorSyntaxChar varText
+    then do
+      locatorPair <- getLocatorPair m varText
+      return $ Just locatorPair
+    else return Nothing
+
+isLocatorSyntaxChar :: Char -> Bool
+isLocatorSyntaxChar c =
+  c == '.' || c == ':'
 
 llvmGlobalLocator :: T.Text
 llvmGlobalLocator =
