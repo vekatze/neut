@@ -326,35 +326,60 @@ These optimizations are applied within each definition. They do not directly can
 
 ## Name Resolution
 
-### Resolving Module Aliases
+### Resolving Module Routes
 
-Let's see how the name of a module alias is resolved. Here, the name of a module alias is something like the `core` in `core.bool.and`:
+A fully-qualified top-level name contains a module route, a source path, and a top-level name:
+
+```text
+module.route::source.path.name
+```
+
+The route can be empty. An empty route means the current module:
+
+```text
+::bool.and
+```
+
+The leading `::` for the current module can be omitted:
 
 ```neut
 import {
-  core.bool,
+  bool,
 }
 
-define use-external-module-function() -> bool {
-  let value = core.bool.and(True, False);
+define use-local-function() -> bool {
+  let value = bool.and(True, False); // short for `::bool.and(True, False)`
   ...
 }
 ```
 
-When compiling a module, the compiler reads the field `dependency` in `module.ens` and adds correspondences like the following to its internal state:
+For dependencies, the route is written before `::`. For example, `core` is the route in `core::bool.and`, and `foo-module.bar-module` is the route in `foo-module.bar-module::path.to.file.f`:
 
 ```neut
-// alias => (the digest of the library)
+import {
+  core::bool,
+}
+
+define use-external-module-function() -> bool {
+  let value = core::bool.and(True, False);
+  ...
+}
+```
+
+When compiling a module, the compiler reads the field `dependency` in `module.ens` and uses correspondences like the following:
+
+```neut
+// dependency alias => (the digest of the library)
 core => "jIx5FxfoymZ-X0jLXGcALSwK4J7NlR1yCdXqH2ij67o"
 foo-module => "JEpjuzZ0rlqxiVuCnD000jEKIA_Y6ku1L3J139h3M6Q"
 bar-module => "zptXghmyD5druBl8kx2Qrei6O6fDsKCA7z2KoHp1aqA"
 ...
 ```
 
-The compiler then resolves aliases as follows:
+The compiler then resolves module routes as follows:
 
 ```text
-core.bool.and
+core::bool.and
 
 ↓
 
@@ -362,7 +387,15 @@ jIx5FxfoymZ-X0jLXGcALSwK4J7NlR1yCdXqH2ij67o.bool.and
 
 --------------
 
-foo-module.path.to.some.file.my-function
+foo-module.bar-module::path.to.some.file.my-function
+
+↓
+
+(the digest of foo-module's public dependency bar-module).path.to.some.file.my-function
+
+--------------
+
+foo-module::path.to.some.file.my-function
 
 ↓
 
@@ -373,56 +406,23 @@ JEpjuzZ0rlqxiVuCnD000jEKIA_Y6ku1L3J139h3M6Q.path.to.some.file.my-function
 ...
 ```
 
-### Resolving `this`
-
-Let's see how `this` is resolved. Here, `this` is a part of a global variable, as in the following example:
-
-```neut
-import {
-  this.path.to.file,
-}
-
-define use-my-function() -> unit {
-  let value = this.path.to.file.my-function();
-  ...
-}
-```
-
-The first thing to note here is that every module is marked as "main" or "library" during compilation. The main module is the module in which `neut build` is executed. Library modules are all the other modules that are necessary for compilation.
-
-All the occurrences of `this` in the main module are kept intact during compilation. Thus, the resulting assembly file contains symbols like `this.foo.bar`.
-
-On the other hand, all occurrences of `this` in a library module are resolved into their corresponding digests. More specifically, when processing a library module, the compiler adds correspondences like the following:
-
-```neut
-// this => (the digest of the library)
-this => "jIx5FxfoymZ-X0jLXGcALSwK4J7NlR1yCdXqH2ij67o"
-```
-
-The compiler then resolves `this` as follows:
-
-```text
-this.string.io.get-line
-
-↓
-
-jIx5FxfoymZ-X0jLXGcALSwK4J7NlR1yCdXqH2ij67o.string.io.get-line
-```
-
-Thus, the resulting assembly file contains symbols like these.
+Route segments after the first one must be dependency aliases of the previous module that are visible from the module where the route is written. Visibility is governed by the prefix-local rule below.
 
 ### Prefix-Local Names
 
-Top-level names without `_`-prefixed segments are available from any file that imports the file defining them. For the others, the deepest `_`-prefixed segment determines the required source prefix:
+Every qualified name has a required prefix. It is the part before the deepest `_`-prefixed segment. If there is no `_`-prefixed segment, the required prefix is empty:
 
-| Full name | Required source prefix |
+| Full name | Required prefix |
 | --- | --- |
-| `this.a.b._f` | `this.a.b` |
-| `this.a._b.f` | `this.a` |
-| `this._a.b.f` | `this` |
-| `this._a.b._f` | `this._a.b` |
+| `a.b._f` | `a.b` |
+| `a._b.f` | `a` |
+| `_a.b.f` | `""` (empty) |
+| `_a.b._f` | `_a.b` |
+| `a.b.f` | `""` (empty) |
 
-A name can be used from source files in the same module whose dotted source path starts with its required source prefix. For example, the prefix `this.a` covers `source/a.nt` and files below `source/a/`.
+A name can be used from source files in the same module whose dotted source path starts with its required prefix. The empty prefix covers the whole module. For example, the prefix `a` covers `source/a.nt` and files below `source/a/`.
+
+Dependency aliases are handled in the same way. For example, a name under `foo._http::client` is restricted by its `_http` segment.
 
 ## Leading Bars and Trailing Commas
 
@@ -462,4 +462,4 @@ The default values are as follows:
 - Neut is impure
 - The type of `main` must be `() -> unit`
 - The compiler has built-in references to names under `core`
-- Syntactic constructs like `List[1, 2, 3]` depend on functions in `core`
+- Syntactic constructs like `List::[1, 2, 3]` depend on functions in `core`

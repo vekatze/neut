@@ -84,5 +84,5 @@ Functions for those types are also defined in the library. For more, please see 
 
 The core library also defines `string`, `binary`, and functions on them. String literals are inferred as `text`, `blob`, `&string`, or `&binary` depending on the surrounding type context. In particular,
 
-- `core.binary.from-blob` converts `blob` to `&binary`,
-- `core.string.from-text` converts `text` to `&string`.
+- `core::binary.from-blob` converts `blob` to `&binary`,
+- `core::string.from-text` converts `text` to `&string`.
