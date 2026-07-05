@@ -1,6 +1,6 @@
 import {
-  core.bool.io {print-bool-line},
-  core.int.io {print-int, print-int-line},
+  core::bool.io {print-bool-line},
+  core::int.io {print-int, print-int-line},
 }
 
 define my-loop-func(x: int) ->> either(int, bool) {

@@ -1,5 +1,5 @@
 import {
-  core.int.io {print-int-line},
+  core::int.io {print-int-line},
 }
 
 data heap(a) {
@@ -106,9 +106,9 @@ define compare-int-list(xs: list(int), ys: list(int)) -> ordering {
 
 define main() -> unit {
   let h: heap(list(int)) = Leaf;
-  let h = insert(compare-int-list, List[1, 2], h);
-  let h = insert(compare-int-list, List[10], h);
-  let h = insert(compare-int-list, List[5], h);
+  let h = insert(compare-int-list, List::[1, 2], h);
+  let h = insert(compare-int-list, List::[10], h);
+  let h = insert(compare-int-list, List::[5], h);
   // v1 = 3
   let v1 on h =
     match find-min(h) {
@@ -127,8 +127,8 @@ define main() -> unit {
     | Left(_) =>
       3
     | Right(h) =>
-      let h = insert(compare-int-list, List[4, 8], h);
-      let h = insert(compare-int-list, List[1, 1], h);
+      let h = insert(compare-int-list, List::[4, 8], h);
+      let h = insert(compare-int-list, List::[1, 1], h);
       // v2 = 2
       let v2 on h =
         match find-min(h) {

@@ -1,6 +1,6 @@
 import {
-  core.int.io {print-int-line},
-  core.list {reverse},
+  core::int.io {print-int-line},
+  core::list {reverse},
 }
 
 data queue(a) {
@@ -8,7 +8,7 @@ data queue(a) {
 }
 
 define empty<a>() -> queue(a) {
-  Queue(List[], List[])
+  Queue(List::[], List::[])
 }
 
 define head<a>(q: &queue(a)) -> ?a {
@@ -23,7 +23,7 @@ define head<a>(q: &queue(a)) -> ?a {
 define sanitize<a>(q: queue(a)) -> queue(a) {
   match q {
   | Queue(Nil, ys) =>
-    Queue(reverse(ys), List[])
+    Queue(reverse(ys), List::[])
   | q =>
     q
   }
@@ -54,9 +54,9 @@ define sum(xs: &list(int)) -> int {
 
 define main() -> unit {
   let q: queue(list(int)) = empty();
-  let q = snoc(List[2], q);
-  let q = snoc(List[5], q);
-  let q = snoc(List[1], q);
+  let q = snoc(List::[2], q);
+  let q = snoc(List::[5], q);
+  let q = snoc(List::[1], q);
   // v1 == 2
   let v1 on q =
     match head(q) {
@@ -73,8 +73,8 @@ define main() -> unit {
     | Left(_) =>
       1
     | Right(q) =>
-      let q = snoc(List[3], q);
-      let q = snoc(List[8], q);
+      let q = snoc(List::[3], q);
+      let q = snoc(List::[8], q);
       // v2 = 5
       let v2 on q =
         match head(q) {

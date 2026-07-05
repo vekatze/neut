@@ -1,8 +1,8 @@
 import {
-  core.box {axiom-T},
-  core.int.io {print-int-line},
-  core.list {length},
-  core.sync.cell {borrow, cell, make-cell, mutate},
+  core::box {axiom-T},
+  core::int.io {print-int-line},
+  core::list {length},
+  core::sync.cell {borrow, cell, make-cell, mutate},
 }
 
 define bar(xs-cell: &cell(list(int))) -> unit {

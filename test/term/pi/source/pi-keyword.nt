@@ -1,5 +1,5 @@
 import {
-  core.null {null},
+  core::null {null},
 }
 
 define foo(

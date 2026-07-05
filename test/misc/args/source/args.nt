@@ -1,6 +1,6 @@
 import {
-  core.int.io {print-int-line},
-  core.process {get-argc, get-argv},
+  core::int.io {print-int-line},
+  core::process {get-argc, get-argv},
 }
 
 define main() -> unit {

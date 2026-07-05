@@ -1,7 +1,7 @@
 import {
-  core.c-size {C-Size},
-  core.memory {malloc},
-  core.memory.unsafe {free, load-int, store-int},
+  core::c-size {C-Size},
+  core::memory {malloc},
+  core::memory.unsafe {free, load-int, store-int},
 }
 
 resource noisy-boxed-int {

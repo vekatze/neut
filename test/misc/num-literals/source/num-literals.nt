@@ -1,7 +1,7 @@
 import {
-  core.c-int {c-int, from-c-int},
-  core.debug {assert},
-  core.int.io {print-int-line},
+  core::c-int {c-int, from-c-int},
+  core::debug {assert},
+  core::int.io {print-int-line},
 }
 
 define foo() -> c-int {

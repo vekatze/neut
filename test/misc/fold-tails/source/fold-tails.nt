@@ -1,6 +1,6 @@
 import {
-  core.int.io {print-int-line},
-  core.list {for-each},
+  core::int.io {print-int-line},
+  core::list {for-each},
 }
 
 data nat {

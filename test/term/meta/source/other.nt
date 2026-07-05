@@ -1,8 +1,8 @@
 import {
-  core.debug {assert},
-  core.int.io {print-int-line},
-  core.string {from-text},
-  core.string.eq {eq-suffix},
+  core::debug {assert},
+  core::int.io {print-int-line},
+  core::string {from-text},
+  core::string.eq {eq-suffix},
 }
 
 inline-meta emit-origin-inner() -> 'unit {

@@ -1,10 +1,10 @@
 import {
-  core.array {access, length, make, pop-back, pop-front, push-back, push-front, put, to-list, with-slice},
-  core.array.unsafe {put-unchecked},
-  core.box {axiom-T},
-  core.cell {cell, clone, extract, make-cell, mutate},
-  core.debug {assert, panic},
-  core.int.io {print-int-line},
+  core::array {access, length, make, pop-back, pop-front, push-back, push-front, put, to-list, with-slice},
+  core::array.unsafe {put-unchecked},
+  core::box {axiom-T},
+  core::cell {cell, clone, extract, make-cell, mutate},
+  core::debug {assert, panic},
+  core::int.io {print-int-line},
 }
 
 define-meta make-boxed-pair<a>(x: 'a) -> 'pair(+a, +a) {
@@ -515,8 +515,8 @@ define test-array() -> unit {
 define main() -> unit {
   use-unit-lift();
   use-int-lift();
-  print-int-line(classify-int<int>::(0));
-  print-int-line(classify-int<int32>::(1));
-  print-int-line(classify-int<int16>::(2));
+  print-int-line(classify-int::<int>(0));
+  print-int-line(classify-int::<int32>(1));
+  print-int-line(classify-int::<int16>(2));
   test-array();
 }

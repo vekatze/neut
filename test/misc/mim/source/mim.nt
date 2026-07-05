@@ -1,6 +1,6 @@
 import {
-  core.memory {malloc},
-  core.memory.unsafe {free, realloc},
+  core::memory {malloc},
+  core::memory.unsafe {free, realloc},
 }
 
 define basics(ptr: pointer) -> unit {

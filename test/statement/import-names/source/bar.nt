@@ -1,5 +1,5 @@
 import {
-  this.foo {some-func},
+  foo {some-func},
 }
 
 define other-func-X() -> unit {

@@ -1,14 +1,14 @@
 import {
-  core.box {axiom-T},
-  core.list {length},
-  core.sync.cell {cell, clone, make-cell, mutate},
+  core::box {axiom-T},
+  core::list {length},
+  core::sync.cell {cell, clone, make-cell, mutate},
 }
 
 define test-syntax() -> unit {
   let _ = pack-type {&list(type)};
   let _ = pack-type {&list(&list(type))};
   let _ = pack-type {(&type, &list((&list(type)) -> &list(type))) -> &list(type)};
-  let xs: list(int) = List[1, 2, 3];
+  let xs: list(int) = List::[1, 2, 3];
   let _ on xs = {
     let _ on xs = {
       let l1 = length(*xs);
