@@ -1,5 +1,5 @@
 import {
-  core.int.io {print-int-line},
+  core::int.io {print-int-line},
 }
 
 data finite-map(a, b) {
@@ -67,11 +67,11 @@ define compare-int(x: int, y: int) -> ordering {
 
 define main() -> unit {
   let Finite-Map{empty, insert := !insert, lookup} = make-finite-map(compare-int);
-  let mymap = insert(1, List[pack-type {type}], empty);
-  let mymap = insert(2, List[pack-type {type}, pack-type {type}], mymap);
-  let mymap = insert(2, List[pack-type {type}, pack-type {type}], mymap);
-  let mymap = insert(2, List[pack-type {int}], mymap);
-  let !mymap = insert(3, List[pack-type {() -> int}], mymap);
+  let mymap = insert(1, List::[pack-type {type}], empty);
+  let mymap = insert(2, List::[pack-type {type}, pack-type {type}], mymap);
+  let mymap = insert(2, List::[pack-type {type}, pack-type {type}], mymap);
+  let mymap = insert(2, List::[pack-type {int}], mymap);
+  let !mymap = insert(3, List::[pack-type {() -> int}], mymap);
   let _ = mymap;
   let _ = mymap;
   let result on !mymap =

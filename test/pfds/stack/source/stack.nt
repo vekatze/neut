@@ -1,8 +1,8 @@
 import {
-  core.bool {False, True, bool},
-  core.either {Right, none},
-  core.int.io {print-int-line},
-  core.unit {unit},
+  core::bool {False, True, bool},
+  core::either {Right, none},
+  core::int.io {print-int-line},
+  core::unit {unit},
 }
 
 data stack(a) {

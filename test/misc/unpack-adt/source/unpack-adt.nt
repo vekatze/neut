@@ -1,10 +1,10 @@
 import {
-  core.c-size {C-Size},
-  core.int.io {print-int-line},
-  core.memory {malloc},
-  core.memory.unsafe {free, load-int, store-int},
-  core.pointer {is-null-pointer, shift},
-  core.word {size},
+  core::c-size {C-Size},
+  core::int.io {print-int-line},
+  core::memory {malloc},
+  core::memory.unsafe {free, load-int, store-int},
+  core::pointer {is-null-pointer, shift},
+  core::word {size},
 }
 
 data point {

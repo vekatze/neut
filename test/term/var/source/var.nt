@@ -7,8 +7,8 @@ define test() -> type {
   let x = pack-type {type};
   let _ = x;
   // definite description in current module
-  let _ = this.var.test;
-  let _ = pack-type {core.vector.vector(int)};
+  let _ = var.test;
+  let _ = pack-type {core::vector.vector(int)};
   // non-ascii long name
   let もの思へば沢の蛍も我が身よりあくがれ出づる魂かとぞ見る = pack-type {type};
   let _ = identity<type>(もの思へば沢の蛍も我が身よりあくがれ出づる魂かとぞ見る);

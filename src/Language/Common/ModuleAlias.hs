@@ -1,8 +1,8 @@
 module Language.Common.ModuleAlias
   ( ModuleAlias (..),
-    defaultModuleAlias,
     coreModuleAlias,
     baseModuleAlias,
+    isPrivate,
     reify,
   )
 where
@@ -20,10 +20,6 @@ instance Hashable ModuleAlias
 
 instance Binary ModuleAlias
 
-defaultModuleAlias :: ModuleAlias
-defaultModuleAlias =
-  ModuleAlias BN.this
-
 coreModuleAlias :: ModuleAlias
 coreModuleAlias =
   ModuleAlias BN.core
@@ -35,3 +31,7 @@ baseModuleAlias =
 reify :: ModuleAlias -> T.Text
 reify alias =
   BN.reify (extract alias)
+
+isPrivate :: ModuleAlias -> Bool
+isPrivate alias =
+  "_" `T.isPrefixOf` reify alias

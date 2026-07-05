@@ -1,5 +1,5 @@
 import {
-  core.int.io {print-int-line},
+  core::int.io {print-int-line},
 }
 
 // random access list via numerical representation
@@ -36,7 +36,7 @@ define join<a>(t1: tree(a), t2: tree(a)) -> tree(a) {
 define cons-tree<a>(t: tree(a), ts: R-list(a)) -> R-list(a) {
   match ts {
   | New(Nil) =>
-    New(List[DigitOne(t)])
+    New(List::[DigitOne(t)])
   | New(Cons(DigitZero, rest)) =>
     New(Cons(DigitOne(t), rest))
   | New(Cons(DigitOne(t0), rest)) =>
@@ -55,7 +55,7 @@ define uncons-tree<a>(ts: R-list(a)) -> ?pair(tree(a), R-list(a)) {
   | Nil =>
     none
   | Cons(DigitOne(y), Nil) =>
-    Right(Pair(y, New(List[])))
+    Right(Pair(y, New(List::[])))
   | Cons(DigitOne(y), rest) =>
     Right(Pair(y, New(Cons(DigitZero, rest))))
   | Cons(DigitZero, rest) =>

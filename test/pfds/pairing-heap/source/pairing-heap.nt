@@ -1,5 +1,5 @@
 import {
-  core.int.io {print-int-line},
+  core::int.io {print-int-line},
 }
 
 data heap(a) {
@@ -33,7 +33,7 @@ define merge<a>(cmp: (a, a) -> ordering, h1: heap(a), h2: heap(a)) -> heap(a) {
 }
 
 define insert<a>(cmp: (a, a) -> ordering, x: a, h: heap(a)) -> heap(a) {
-  merge(cmp, Node(x, List[]), h)
+  merge(cmp, Node(x, List::[]), h)
 }
 
 define merge-pairs<a>(!cmp: (a, a) -> ordering, hs: list(heap(a))) -> heap(a) {

@@ -1,8 +1,8 @@
 import {
-  core.file.access-mode {Read-Write},
-  core.file.descriptor {close, open},
-  core.string.io {read, write},
-  core.system {system},
+  core::file.access-mode {Read-Write},
+  core::file.descriptor {close, open},
+  core::string.io {read, write},
+  core::system {system},
 }
 
 define use-file() -> system(unit) {

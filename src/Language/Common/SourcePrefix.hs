@@ -3,6 +3,7 @@ module Language.Common.SourcePrefix
     canImport,
     contains,
     internalOwnerOf,
+    isPrefixOf,
   )
 where
 
@@ -25,6 +26,10 @@ instance Hashable SourcePrefix
 contains :: SourcePrefix -> SL.SourceLocator -> Bool
 contains (SourcePrefix prefix) sourceLocator = do
   prefix `List.isPrefixOf` SL.toBaseNameList sourceLocator
+
+isPrefixOf :: SourcePrefix -> SourcePrefix -> Bool
+isPrefixOf (SourcePrefix smaller) (SourcePrefix larger) =
+  smaller `List.isPrefixOf` larger
 
 internalOwner :: SL.SourceLocator -> Maybe SourcePrefix
 internalOwner sourceLocator = do

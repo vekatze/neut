@@ -1,5 +1,5 @@
 import {
-  this.base-file {announce, cascade, chain, combine, describe, probe, stamp},
+  base-file {announce, cascade, chain, combine, describe, probe, stamp},
 }
 
 constant primary-bool-first-string: &string {

@@ -363,7 +363,13 @@ getDependencyInfo someModule = do
         let urlEnsList = map (\(ModuleURL url) -> _m :< E.String url) urlList
         let digestEns = _m :< E.String digest
         let mirrorEns = _m :< E.List (seriesFromList urlEnsList)
-        E.dictFromListVertical _m [(keyDigest, digestEns), (keyMirror, mirrorEns)]
+        let enablePresetEns =
+              if dependencyPresetEnabled dep
+                then Just (keyEnablePreset, _m :< E.Bool True)
+                else Nothing
+        E.dictFromListVertical _m $
+          [(keyDigest, digestEns), (keyMirror, mirrorEns)]
+            ++ maybeToList enablePresetEns
   let dependency' = Map.mapKeys (\(MA.ModuleAlias key) -> BN.reify key) dependency
   if Map.null dependency'
     then Nothing
@@ -467,7 +473,7 @@ reifyPresetMap :: T.Text -> PresetMap -> PresetSummary
 reifyPresetMap moduleName presetMap = do
   let presetList = Map.toList presetMap
   flip map presetList $ \(loc, lls) -> do
-    (moduleName <> nsSep <> loc, lls)
+    (moduleName <> routeSep <> loc, lls)
 
 getRelPathFromSourceDir :: (MonadThrow m) => Module -> Path Abs File -> m (Path Rel File)
 getRelPathFromSourceDir baseModule path = do

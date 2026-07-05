@@ -138,7 +138,7 @@ You can also define your own functions:
 // sample.nt
 
 import {
-  core.int.io {print-int},
+  core::int.io {print-int},
 }
 
 define get-int() -> int {
@@ -156,7 +156,7 @@ Functions can also take arguments. Let's rewrite `sample.nt` as follows:
 // sample.nt
 
 import {
-  core.int.io {print-int},
+  core::int.io {print-int},
 }
 
 define increment(x: int) -> int {
@@ -205,10 +205,10 @@ neut create new-item
 cd new-item
 
 # adds a sample module that contains `my-add` and `increment` to your module
-neut get some-name https://github.com/vekatze/neut-sample/raw/main/archive/0-1-0.tar.zst
+neut get util https://github.com/vekatze/neut-sample/raw/main/archive/0-1-0.tar.zst
 ```
 
-The subcommand `get` fetches the tarball from the specified URL and adds it to the current module. You can then refer to that dependency as `some-name` in your module.
+The subcommand `get` fetches the tarball from the specified URL and adds it to the current module. You can then refer to that dependency as `util` in your module.
 
 The new dependency information is saved to `module.ens`:
 
@@ -223,7 +223,7 @@ The new dependency information is saved to `module.ens`:
   dependency {
     core { .. },
     // ↓ HERE
-    some-name {
+    util {
       digest "..",
       mirror [
         "https://github.com/YOUR_NAME/YOUR_REPO_NAME/raw/main/archive/0-1-0.tar.zst",
@@ -235,68 +235,23 @@ The new dependency information is saved to `module.ens`:
 
 <div class="info-block">
 
-The canonical identifier of a dependency is the digest of the tarball. Names such as `some-name` are just aliases.
+The canonical identifier of a dependency is the digest of the tarball. Names such as `util` are just aliases.
 
 </div>
 
 ## Importing Files
 
-### Importing Files in Dependencies
-
-You can use dependencies in your code:
-
-```neut
-// new-item.nt
-
-import {
-  core.int.io {print-int},
-  some-name.sample {my-add}, // imports `my-add` in `source/sample.nt`
-}
-
-define main() -> unit {
-  print-int(my-add(10, 11)); // ← using `my-add`
-}
-```
-
-Let's focus on `import`. `import` consists of lines like the one below:
-
-```neut
-some-name.sample {my-add}
-```
-
-The first component of such a line (`some-name`) is our alias of the dependency.
-
-What follows (`sample`) is the relative path to the file from the source directory of the dependency module. Here, you don't have to write the file extension `.nt`.
-
-Like `{my-add}` in the example above, every item of an `import` can optionally have a list of names. Names in these lists are made available after `import`.
-
-You can also use the fully-qualified form of `my-add`:
-
-```neut
-// new-item.nt
-
-import {
-  core.int.io {print-int},
-  some-name.sample, // removed `{my-add}`
-}
-
-define main() -> unit {
-  // ↓ using the fully-qualified form of `my-add`
-  print-int(some-name.sample.my-add(10, 11));
-}
-```
-
-Also, files like `source/foo/item.nt` in `some-name` can be imported as follows:
-
-```neut
-import {
-  some-name.foo.item,
-}
-```
-
 ### Importing Files in the Current Module
 
-Let's try creating a new file `new-item/source/foo/greet.nt` with the following content:
+Let's try creating two files:
+
+```neut
+// item.nt
+
+define hi() -> unit {
+  print("Hi");
+}
+```
 
 ```neut
 // foo/greet.nt
@@ -306,37 +261,160 @@ define yo() -> unit {
 }
 ```
 
-This file can then be used from `new-item/source/new-item.nt` as follows:
+These files can then be used from `new-item/source/new-item.nt` as follows:
 
 ```neut
 // new-item.nt
 
 import {
-  this.foo.greet {yo},
+  item {hi},
+  foo.greet {yo},
 }
 
 define main() -> unit {
+  hi();
   yo();
 }
 ```
 
-In other words, the current module is always referred to as `this`.
+In other words, a file in the current module is imported through its path from the source directory.
+
+### Importing Files in Dependencies
+
+Now let's use the dependency we added above:
+
+```neut
+// new-item.nt
+
+import {
+  core::int.io {print-int},
+  util::sample {my-add}, // imports `my-add` in util's `source/sample.nt`
+}
+
+define main() -> unit {
+  print-int(my-add(10, 11)); // ← using `my-add`
+}
+```
+
+The general form of a fully-qualified name in a dependency is:
+
+```text
+route::path.to.file.name
+```
+
+The `route` part is a module route. It is a dot-separated sequence of dependency aliases, such as `util` or `foo.http`. The `path.to.file` part is the path from the source directory of the last dependency module.
+
+Thus, `util::sample.my-add` refers to `my-add` in `source/sample.nt` of the dependency `util`.
+
+Every item of an `import` can optionally have a list of names, as in `util::sample {my-add}`. Names in these lists are made available after `import`.
+
+You can also use the fully-qualified form:
+
+```neut
+// new-item.nt
+
+import {
+  core::int.io {print-int},
+  util::sample, // removed `{my-add}`
+}
+
+define main() -> unit {
+  // ↓ using the fully-qualified form of `my-add`
+  print-int(util::sample.my-add(10, 11));
+}
+```
+
+Also, files like `source/foo/item.nt` in `util` can be imported as follows:
+
+```neut
+import {
+  util::foo.item,
+}
+```
+
+Dependency aliases can be chained. For example, if the current module depends on `foo`, and `foo` depends on `http`, then the current module can use files in `http` as follows:
+
+```neut
+import {
+  foo.http::client {request},
+}
+```
+
+You can also use the fully-qualified form:
+
+```neut
+define main() -> unit {
+  foo.http::client.request()
+}
+```
+
+Module routes are always relative to the module where they are written. If a public signature in `foo` mentions `http.json::some-file.some-type`, then a user of `foo` sees the same type through `foo.http.json::some-file.some-type`.
 
 ## Restricting Top-Level Names
 
-The availability of a top-level name is restricted by its segments that start with `_` as follows:
+### Required Prefixes
+
+Every top-level name has a required prefix. It is the part before the deepest `_`-prefixed segment. If there is no `_`-prefixed segment, the required prefix is empty:
 
 | Full name | Required prefix |
 | --- | --- |
-| `this.a.b._f` | `this.a.b` |
-| `this.a._b.f` | `this.a` |
-| `this._a.b.f` | `this` |
-| `this._a.b._f` | `this._a.b` |
-| `this.a.b.f` | `""` (empty) |
+| `a.b._f` | `a.b` |
+| `a._b.f` | `a` |
+| `_a.b.f` | `""` (empty) |
+| `_a.b._f` | `_a.b` |
+| `a.b.f` | `""` (empty) |
 
-In other words, the deepest `_`-prefixed segment (if any) determines the required source prefix.
+A top-level name is available from source files whose dotted source path starts with its required prefix. The empty prefix covers the whole module. For example:
 
-For example:
+- `a._b.f` is available in `source/a.nt` and files below `source/a/`.
+- `a.b._f` is available in `source/a/b.nt` and files below `source/a/b/`.
+- `_a.b.f` is available inside the current module.
+- `a.b.f` is available inside the current module.
 
-- `this.a._b.f` is available in `source/a.nt` and files below `source/a/`.
-- `this.a.b.f` is available from anywhere.
+### Exposed Names
+
+A top-level item can't be more public than the names it exposes. For example:
+
+```neut
+data _secret {}
+
+// Error: `expose` is more public than `_secret`
+define expose(x: _secret) -> unit {
+  Unit
+}
+```
+
+### Private Dependencies
+
+Dependency aliases are also components of qualified names, so the same prefix rule applies to them. This gives a way to name an implementation-only dependency: start its alias with `_`.
+
+```ens
+{
+  dependency {
+    _http {
+      digest "..",
+      mirror [".."],
+    },
+  },
+}
+```
+
+Such a dependency can be used inside the module that declares it:
+
+```neut
+import {
+  _http::client {request},
+}
+```
+
+Here, `_http::client.request` is available inside the module that declares `_http`.
+
+On the other hand, suppose another module depends on this module through the alias `foo` and tries to write:
+
+```neut
+import {
+  foo._http::client {request},
+}
+```
+
+This import is rejected because the `_http` component restricts where the qualified name can be used.

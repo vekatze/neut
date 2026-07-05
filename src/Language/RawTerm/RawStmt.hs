@@ -13,7 +13,6 @@ module Language.RawTerm.RawStmt
     PostRawDefineMeta (..),
     RawImport (..),
     RawImportItem (..),
-    compareImportItem,
     isImportEmpty,
     mergeImportList,
     RawForeignItemF (..),
@@ -164,18 +163,6 @@ data PostRawDefineMeta = PostRawDefineMeta
 data RawImportItem
   = RawImportItem Hint (T.Text, C) (SE.Series (Hint, LL.LocalLocator))
   | RawStaticFileKey Hint C (SE.Series (Hint, T.Text))
-
-compareImportItem :: RawImportItem -> RawImportItem -> Ordering
-compareImportItem item1 item2 = do
-  case (item1, item2) of
-    (RawImportItem _ locator1 _, RawImportItem _ locator2 _) ->
-      compare locator1 locator2
-    (RawImportItem {}, RawStaticFileKey {}) ->
-      LT
-    (RawStaticFileKey {}, RawImportItem {}) ->
-      GT
-    (RawStaticFileKey {}, RawStaticFileKey {}) ->
-      EQ
 
 data RawForeignItemF a
   = RawForeignItemF Hint EN.ExternalName C (SE.Series a) C C (F.ForeignCodType a)

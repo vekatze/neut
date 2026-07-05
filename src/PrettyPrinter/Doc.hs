@@ -92,7 +92,13 @@ layoutDirect doc =
     Text t x ->
       t <> layoutDirect x
     Line i x ->
-      "\n" <> T.replicate i " " <> layoutDirect x
+      case x of
+        Line {} ->
+          "\n" <> layoutDirect x
+        Nil ->
+          "\n"
+        _ ->
+          "\n" <> T.replicate i " " <> layoutDirect x
     InlineComment t x ->
       t <> layoutDirect x
 

@@ -67,8 +67,8 @@
 
 - [let x on y1, ..., yn = e1; e2](#on)
 - [\*e](#e-1)
-- [e::(e1, ..., en)](#ee1--en-1)
-- [name[x1, ..., xn]](#namex1--xn)
+- [name::(e1, ..., en)](#namee1--en)
+- [name::[e1, ..., en]](#namee1--en-1)
 - [if](#if)
 - [when cond { e }](#when-cond--e-)
 - [with h { e }](#with-h--e-)
@@ -167,22 +167,45 @@ If the content of a variable `x` is an immediate value, `x` is compiled into the
 
 ```neut
 import {
-  core.bool {and},
+  core::bool {and},
 }
 
 define sample() -> unit {
   // using top-level variables
   let _ = and; // using an imported top-level name
-  let _ = core.bool.and; // using the fully qualified name `core.bool.and`
+  let _ = core::bool.and; // using the fully qualified name `core::bool.and`
+  let _ = some-module.public-dep::item.f; // using a public module route
   Unit
 }
 ```
 
 ### Syntax
 
-The name of a top-level variable is a (possibly) dot-separated sequence of symbols, where each symbol must satisfy the following conditions:
+The name of a top-level variable has the following form:
 
-- It doesn't contain any of ``=() `\"'\n\t:;,<>[]{}/*+|&?!``
+```text
+global-locator.name
+```
+
+The full form of `global-locator` is:
+
+```text
+module.route::path.to.file
+```
+
+The module route can be empty. An empty route means the current module:
+
+```text
+::path.to.file
+```
+
+When the route is empty, the leading `::` can be omitted:
+
+```text
+path.to.file
+```
+
+For example, `item.f` is short for `::item.f`, and refers to `f` in `source/item.nt` of the current module. `core::bool.and` refers to `and` in `source/bool.nt` of `core`.
 
 ### Semantics
 
@@ -225,14 +248,14 @@ define get-increment() -> (int) -> int {
 ```llvm
 ; (build-dir)/path/to/sample.ll
 
-define fastcc ptr @"this.sample.increment"(ptr %_1) {
+define fastcc ptr @"main.sample.increment"(ptr %_1) {
   %_2 = ptrtoint ptr %_1 to i64
   %_3 = add i64 %_2, 1
   %_4 = inttoptr i64 %_3 to ptr
   ret ptr %_4
 }
 
-define fastcc ptr @"this.sample.get-increment"() {
+define fastcc ptr @"main.sample.get-increment"() {
   ; `increment` in `get-increment` is lowered to the following code:
 
   ; calculate the size of 3-word tuples
@@ -246,7 +269,7 @@ define fastcc ptr @"this.sample.get-increment"() {
   %_6 = getelementptr [3 x ptr], ptr %_3, i32 0, i32 2
   store ptr @"base.#.imm", ptr %_4            ; tuple[0] = `base.#.imm`
   store ptr null, ptr %_5                     ; tuple[1] = null
-  store ptr @"this.sample.increment", ptr %_6 ; tuple[2] = (function pointer)
+  store ptr @"main.sample.increment", ptr %_6 ; tuple[2] = (function pointer)
   ; return the pointer to the tuple
   ret ptr %_3
 }
@@ -547,7 +570,7 @@ You can see this by calling the following function:
 ```neut
 define print-star() -> unit {
   // prints "⭐"
-  pin t = core.string.singleton(magic cast(int32, rune, 0xE2AD90));
+  pin t = core::string.singleton(magic cast(int32, rune, 0xE2AD90));
   print-line(t)
 }
 ```
@@ -3129,7 +3152,7 @@ You can use `static` to embed file content as `text`, `blob`, `&string`, or `&bi
 
 ```neut
 import {
-  core.string {from-text},
+  core::string {from-text},
   static-file {some-file},
 }
 
@@ -3267,7 +3290,7 @@ N/A
 
 ```neut
 define play-with-on() -> int {
-  let xs: list(int) = List[1, 2, 3];
+  let xs: list(int) = List::[1, 2, 3];
   let len on xs =
     // the type of `xs` is `&list(int)` here
     length(xs);
@@ -3339,7 +3362,7 @@ embody(e)
 where the function `embody` is defined in the core library as follows:
 
 ```neut
-// core.box
+// core::box
 
 // □A -> A (Axiom T)
 inline axiom-T<a>(x: +a) -> a {
@@ -3364,9 +3387,9 @@ This clone is created by copying the content along the type `a`.
 
 The original content is kept intact.
 
-## `e::(e1, ..., en)`
+## `name::(e1, ..., en)`
 
-You can use `e::(e1, ..., en)` to call a meta function.
+You can use `name::(e1, ..., en)` to call a fixed-arity meta function.
 
 ### Example
 
@@ -3387,29 +3410,31 @@ define use-meta() -> pair(int, bool) {
 ### Syntax
 
 ```neut
-e::(e1, ..., en)
-e::(e1, ..., en)[x1 := d1, ..., xk := dk]
+name::(e1, ..., en)
+name::(e1, ..., en)[y1 := d1, ..., yk := dk]
+name::<t1, ..., tm>(e1, ..., en)
+name::<t1, ..., tm>(e1, ..., en)[y1 := d1, ..., yk := dk]
 ```
 
 ### Semantics
 
 ```neut
-e::(e1, ..., en)
+name::(e1, ..., en)
 
 ↓
 
 unquote {
-  e(quote {e1}, ..., quote {en})
+  name(quote {e1}, ..., quote {en})
 }
 
 ---
 
-e::(e1, ..., en)[x1 := d1, ..., xk := dk]
+name::(e1, ..., en)[y1 := d1, ..., yk := dk]
 
 ↓
 
 unquote {
-  e(quote {e1}, ..., quote {en})[x1 := quote {d1}, ..., xk := quote {dk}]
+  name(quote {e1}, ..., quote {en})[y1 := quote {d1}, ..., yk := quote {dk}]
 }
 ```
 
@@ -3417,27 +3442,27 @@ unquote {
 
 Derived from the desugared form.
 
-## `name[x1, ..., xn]`
+## `name::[e1, ..., en]`
 
-You can use `name[x1, ..., xn]` after defining `name` using [`rule-right`](./statements.md#rule-right) or [`rule-left`](./statements.md#rule-left).
+You can use `name::[e1, ..., en]` to apply a variable-length rule, after defining `name` using [`rule-right`](./statements.md#rule-right) or [`rule-left`](./statements.md#rule-left).
 
 ### Example
 
 ```neut
 define make-list() -> list(int) {
-  List[1, 2, 3]
+  List::[1, 2, 3]
 }
 ```
 
 ### Syntax
 
 ```neut
-name[x1, ..., xn]
+name::[e1, ..., en]
 ```
 
 ### Semantics
 
-The expansion of `name[x1, ..., xn]` depends on whether `name` was introduced by [rule-right](./statements.md#rule-right) or [rule-left](./statements.md#rule-left).
+The expansion of `name::[e1, ..., en]` depends on whether `name` was introduced by [rule-right](./statements.md#rule-right) or [rule-left](./statements.md#rule-left).
 
 ### Type
 

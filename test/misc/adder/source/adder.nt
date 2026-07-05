@@ -1,5 +1,5 @@
 import {
-  core.int.io {print-int-line},
+  core::int.io {print-int-line},
 }
 
 define make-adder(x: int) -> (int) -> int {
@@ -15,7 +15,7 @@ define main() -> unit {
 }
 
 define-meta use-switch(k: 'int, !x: 'string) -> 'unit {
-  let _: 'string = magic make-switch(k, x, List[Pair(1, x)]);
+  let _: 'string = magic make-switch(k, x, List::[Pair(1, x)]);
   quote {Unit}
 }
 

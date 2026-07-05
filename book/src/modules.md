@@ -224,6 +224,10 @@ The field `mirror` specifies a list of URLs from which the compiler can fetch th
 
 The optional field `enable-preset` specifies whether to import the dependency's `preset` automatically, like the Prelude in other languages. For more information, see the explanation of `preset` in this section.
 
+Dependency aliases are components of qualified names. For example, if module `foo` depends on `bar`, users of `foo` can write names like `foo.bar::some-file.some-type` when that route is visible.
+
+The usual `_`-prefix rule applies to dependency aliases as well. An alias that starts with `_` is useful for implementation-only dependencies.
+
 The field `dependency` is optional. The default value of `dependency` is `{}`.
 
 ## `archive`
@@ -380,7 +384,7 @@ You can use the keys defined here in source files using `import` and `static`:
 
 import {
   // ..
-  core.string {from-text},
+  core::string {from-text},
   static-file {some-file, other-file},
   // ..
 }
@@ -444,7 +448,7 @@ As an example, suppose a file in `MMM` contains an `import` like the following:
 
 ```neut
 import {
-  sample.foo {my-func},
+  sample::foo {my-func},
 }
 
 define baz() -> int {

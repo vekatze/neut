@@ -5,7 +5,6 @@ module Kernel.Parse.Internal.Discern.Name
     interpretGlobalName,
     interpretMetaConstant,
     interpretGlobalTypeName,
-    interpretRuleName,
     resolveDefiniteDescription,
   )
 where
@@ -46,7 +45,6 @@ import Language.Common.PiKind qualified as PK
 import Language.Common.PrimNumSize qualified as PNS
 import Language.Common.PrimOp qualified as PO
 import Language.Common.PrimType qualified as PT
-import Language.Common.RuleKind (RuleKind)
 import Language.Common.VarKind qualified as VK
 import Language.RawTerm.Locator qualified as L
 import Language.RawTerm.Name
@@ -114,7 +112,8 @@ resolveLocator h m (gl, ll) shouldInsertTag = do
         let glLen = T.length $ GL.reify gl
         let llLen = T.length $ LL.reify ll
         let sepLen = T.length C.nsSep
-        liftIO $ Tag.insertLocator (H.tagHandle h) m dd (GN.getIsConstLike gn) (glLen + llLen + sepLen) mDef
+        let locatorLen = glLen + llLen + sepLen
+        liftIO $ Tag.insertLocator (H.tagHandle h) m dd (GN.getIsConstLike gn) locatorLen mDef
       return globalVar
 
 resolveDefiniteDescription ::
@@ -226,14 +225,6 @@ interpretGlobalTypeName m dd gn = do
       raiseError m $ "`" <> DD.reify dd <> "` is not a type"
     GN.Trope ->
       raiseError m $ "`" <> DD.reify dd <> "` is a trope and cannot appear in type position"
-
-interpretRuleName :: Hint -> DD.DefiniteDescription -> GN.GlobalName -> App RuleKind
-interpretRuleName m dd gn = do
-  case gn of
-    GN.Rule kind ->
-      return kind
-    _ -> do
-      raiseError m $ "`" <> DD.reify dd <> "` is not a macro"
 
 interpretTopLevelFuncTerm ::
   Hint ->

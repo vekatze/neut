@@ -1,5 +1,5 @@
 import {
-  core.int.io {print-int-line},
+  core::int.io {print-int-line},
 }
 
 data color {

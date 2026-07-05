@@ -13,6 +13,7 @@ import Kernel.Common.Handle.Local.SymLoc qualified as SymLoc
 import Kernel.Common.Handle.Local.Tag qualified as Tag
 import Kernel.Common.Handle.Local.TopCandidate qualified as TopCandidate
 import Kernel.Common.Source qualified as Source
+import Kernel.Common.Source.ShiftToLatest qualified as STL
 import Kernel.Elaborate.Internal.Handle.WeakDecl qualified as WeakDecl
 import Kernel.Parse.Internal.Handle.Alias qualified as Alias
 import Kernel.Parse.Internal.Handle.PreDecl qualified as PreDecl
@@ -36,11 +37,12 @@ new :: Global.Handle -> Source.Source -> App Handle
 new h source = do
   let envHandle = Global.envHandle h
   let antecedentHandle = Global.antecedentHandle h
+  let shiftToLatestHandle = STL.new antecedentHandle
   unusedHandle <- liftIO Unused.new
   usedTopLevelNameHandle <- liftIO UsedTopLevelName.new
   tagHandle <- liftIO Tag.new
   locatorHandle <- Locator.new envHandle tagHandle source
-  aliasHandle <- liftIO $ Alias.new antecedentHandle locatorHandle envHandle source
+  aliasHandle <- liftIO $ Alias.new shiftToLatestHandle locatorHandle envHandle (Global.moduleHandle h) source
   rawImportSummaryHandle <- liftIO RawImportSummary.new
   symLocHandle <- liftIO SymLoc.new
   topCandidateHandle <- liftIO TopCandidate.new

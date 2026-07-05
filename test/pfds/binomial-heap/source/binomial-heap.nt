@@ -1,6 +1,6 @@
 import {
-  core.int.io {print-int-line},
-  core.list {reverse},
+  core::int.io {print-int-line},
+  core::list {reverse},
 }
 
 data tree(a) {
@@ -35,7 +35,7 @@ define rank<a>(t: &tree(a)) -> int {
 define insert-tree<a>(cmp: &(a, a) -> ordering, t: tree(a), h: heap(a)) -> heap(a) {
   match h {
   | Nil =>
-    List[t]
+    List::[t]
   | Cons(t1, rest) =>
     let r on t = rank<a>(t);
     let r1 on t1 = rank<a>(t1);

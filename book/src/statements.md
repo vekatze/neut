@@ -26,9 +26,10 @@
 
 ```neut
 import {
-  sample.baz,
-  this.foo,
-  this.foo.bar {some-func, other-func},
+  sample::baz,
+  sample.another-module::foo,
+  foo,
+  foo.bar {some-func, other-func},
 }
 ```
 
@@ -36,21 +37,43 @@ import {
 
 Every item in `import` is something like the following:
 
-- `this.foo`
-- `this.foo.bar {some-func, other-func}`
-- `sample.baz`
+- `foo`
+- `foo.bar {some-func, other-func}`
+- `sample::baz`
+- `sample.another-module::foo`
 
-An import item starts from the alias of the module (`this`, `sample`). The alias of the module is specified in `dependency` in `module.ens`. If the file we want to import is inside the current module, we'll write `this`.
+The full form of an import item is:
 
-The remaining part of the item is the relative path from the source directory. For example, if we want to import `(source-dir)/foo/bar`, we'll have to write `foo.bar` after the alias of the module.
+```text
+module.route::source.path
+module.route::source.path {name-1, name-2}
+```
 
-An import item can be constructed by concatenating the alias and the path with `.`. In the case of `this.foo.bar`, the alias part is `this`, and the path part is `foo.bar`.
+The module route can be empty. An empty route means the current module:
+
+```text
+::foo
+::foo.bar {some-func, other-func}
+```
+
+When the route is empty, the leading `::` can be omitted:
+
+```text
+foo
+foo.bar {some-func, other-func}
+```
+
+Module routes are dot-separated aliases. For example, `sample.another-module::foo` imports `foo.nt` from a public dependency `another-module` of `sample`.
+
+The source path is the relative path from the source directory. For example, if we want to import `(source-dir)/foo/bar`, we'll have to write `foo.bar`.
+
+In the case of `foo.bar`, the route is empty and the source path is `foo.bar`. In the case of `sample.another-module::foo`, the route is `sample.another-module`, and the source path is `foo`.
 
 You can specify names in `{}`. The names specified here can be used without qualifiers:
 
 ```neut
 import {
-  this.foo.bar {some-func},
+  foo.bar {some-func},
 }
 
 define yo() -> unit {
@@ -62,11 +85,23 @@ Unlisted names must be qualified:
 
 ```neut
 import {
-  this.foo.bar,
+  foo.bar,
 }
 
 define yo() -> unit {
-  this.foo.bar.some-func(arg-1, arg-2)
+  foo.bar.some-func(arg-1, arg-2)
+}
+```
+
+When the route has multiple segments, the same route is used in the fully-qualified name:
+
+```neut
+import {
+  sample.another-module::foo,
+}
+
+define yo() -> unit {
+  sample.another-module::foo.some-func(arg-1, arg-2)
 }
 ```
 
@@ -346,7 +381,7 @@ inline-meta bar<a>(): 'int {
 
 define use-meta-constants() -> unit {
   print-int-line(foo::());
-  print-int-line(bar<int>::())
+  print-int-line(bar::<int>())
 }
 ```
 
@@ -641,7 +676,7 @@ You can find an example usage of `resource` in the `binary.nt` in the [core libr
 
 ## `rule-right`
 
-`rule-right` defines a macro-like construct that expands bracketed expressions in a fold-right manner. It should look like the following:
+`rule-right` defines a variable-length rule application that expands in a fold-right manner. It should look like the following:
 
 ```neut
 rule-right name {
@@ -651,10 +686,10 @@ rule-right name {
 }
 ```
 
-Once defined, `name` can be used with square brackets to accept variable-length arguments:
+Once defined, `name` can be used with `::[...]`:
 
 ```neut
-name[x, y, z, w]
+name::[x, y, z, w]
 ```
 
 This expands in a fold-right manner to:
@@ -701,10 +736,10 @@ rule-right List {
 }
 ```
 
-With this definition, `List[x, y, z]` simplifies as follows:
+With this definition, `List::[x, y, z]` simplifies as follows:
 
 ```neut
-List[x, y, z]
+List::[x, y, z]
 
 ↓
 
@@ -717,7 +752,7 @@ Cons(x, Cons(y, Cons(z, Nil)))
 
 ## `rule-left`
 
-`rule-left` defines a macro-like construct that expands bracketed expressions in a fold-left manner. It should look like the following:
+`rule-left` defines a variable-length rule application that expands in a fold-left manner. It should look like the following:
 
 ```neut
 rule-left name {
@@ -727,10 +762,10 @@ rule-left name {
 }
 ```
 
-As with `rule-right`, `leaf`, `node`, and `root` must be meta functions that assemble code. Once defined, `name` can be used with square brackets to accept variable-length arguments:
+As with `rule-right`, `leaf`, `node`, and `root` must be meta functions that assemble code. Once defined, `name` can be used with `::[...]`:
 
 ```neut
-name[x, y, z, w]
+name::[x, y, z, w]
 ```
 
 This expands in a fold-left manner to:
@@ -755,7 +790,7 @@ unquote {
 }
 ```
 
-where the `4` is the length of `[x, y, z, w]`. As with `rule-right`, `name[..]` can be used at any stage.
+where the `4` is the length of `[x, y, z, w]`. As with `rule-right`, `name::[..]` can be used at any stage.
 
 ### Example: Vector Construction
 
@@ -775,10 +810,10 @@ rule-left Vector {
 }
 ```
 
-With this definition, `Vector[a, b, c]` simplifies as follows:
+With this definition, `Vector::[a, b, c]` simplifies as follows:
 
 ```neut
-Vector[a, b, c]
+Vector::[a, b, c]
 
 ↓
 

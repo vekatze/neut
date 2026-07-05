@@ -56,6 +56,7 @@ hljs.registerLanguage("neut", function (hljs) {
         "rule-left",
         "rule-right",
         "tie",
+        "trope",
         "try",
         "unpack-type",
         "unquote",
@@ -92,7 +93,7 @@ hljs.registerLanguage("neut", function (hljs) {
         begin: [
           /(?<![\w-])/,
           /[A-Z][a-z0-9A-Z-]*/,
-          /[^\w-=<>]/
+          /(?=[^\w-=<>])/
         ],
         beginScope: {
           2: "constructor"
@@ -100,7 +101,7 @@ hljs.registerLanguage("neut", function (hljs) {
       },
       {
         begin: [
-          /(define|inline|define-meta|inline-meta|alias|alias-opaque|constant-meta|constant|data|resource)/,
+          /(define|inline|define-meta|inline-meta|alias|alias-opaque|constant-meta|constant|data|resource|trope)/,
           /\s+/,
           /[\w-]+/,
         ],

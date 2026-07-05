@@ -6,7 +6,7 @@ module Kernel.Parse.Internal.Import
 where
 
 import App.App (App)
-import App.Run (raiseCritical, raiseError)
+import App.Run (raiseError)
 import Control.Monad
 import Control.Monad.Except (liftEither)
 import Control.Monad.IO.Class
@@ -32,9 +32,8 @@ import Kernel.Common.Source.ShiftToLatest qualified as STL
 import Kernel.Parse.Internal.Handle.Alias qualified as Alias
 import Kernel.Parse.Internal.Handle.GlobalNameMap qualified as GlobalNameMap
 import Kernel.Parse.Internal.Handle.Unused qualified as Unused
-import Language.Common.BaseName qualified as BN
+import Language.Common.GlobalLocator qualified as GL
 import Language.Common.LocalLocator qualified as LL
-import Language.Common.ModuleAlias (ModuleAlias (ModuleAlias))
 import Language.Common.ModuleID (ModuleID)
 import Language.Common.SourceLocator qualified as SL
 import Language.Common.SourcePrefix qualified as SP
@@ -117,23 +116,18 @@ interpretImportItem ::
   [(Hint, LL.LocalLocator)] ->
   App [ImportItem]
 interpretImportItem h mustUpdateTag m locatorText localLocatorList = do
-  baseNameList <- liftEither $ BN.bySplit m locatorText
-  case baseNameList of
-    [] ->
-      raiseCritical m "Scene.Parse.Import: empty parse locator"
-    aliasText : locator ->
-      case SL.fromBaseNameList locator of
-        Nothing ->
-          raiseError m $ "Could not parse the locator: " <> locatorText
-        Just sourceLocator -> do
-          let moduleAlias = ModuleAlias aliasText
-          sgl <- Alias.resolveLocatorAlias (aliasHandle h) m moduleAlias sourceLocator
-          when mustUpdateTag $ do
-            liftIO $ Unused.insertGlobalLocator (unusedHandle h) (SGL.reify sgl) m locatorText
-            forM_ localLocatorList $ \(ml, ll) ->
-              liftIO $ Unused.insertLocalLocator (unusedHandle h) ll ml
-          source <- getSource h mustUpdateTag m sgl locatorText
-          return [ImportItem source [AI.Use mustUpdateTag sgl localLocatorList]]
+  sgl <- resolveImportLocator h m locatorText
+  when mustUpdateTag $ do
+    liftIO $ Unused.insertGlobalLocator (unusedHandle h) (SGL.reify sgl) m locatorText
+    forM_ localLocatorList $ \(ml, ll) ->
+      liftIO $ Unused.insertLocalLocator (unusedHandle h) ll ml
+  source <- getSource h mustUpdateTag m sgl locatorText
+  return [ImportItem source [AI.Use mustUpdateTag sgl localLocatorList]]
+
+resolveImportLocator :: Handle -> Hint -> LocatorText -> App SGL.StrictGlobalLocator
+resolveImportLocator h m locatorText = do
+  gl <- liftEither $ GL.reflect m locatorText
+  Alias.resolveAlias (aliasHandle h) m gl
 
 getSource :: Handle -> AI.MustUpdateTag -> Hint -> SGL.StrictGlobalLocator -> LocatorText -> App Source.Source
 getSource h mustUpdateTag m sgl locatorText = do

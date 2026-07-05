@@ -1,6 +1,5 @@
 import {
-  core.binary,
-  core.string {from-text},
+  core::string {from-text},
   static-file {some-file},
 }
 

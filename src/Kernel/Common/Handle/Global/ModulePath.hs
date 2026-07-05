@@ -58,9 +58,9 @@ set h =
 
 build :: Handle -> App ModulePathMap
 build h = do
-  let initialMap = Map.fromList [(MID.Main, ["this"]), (MID.Base, ["base"])]
+  let initialMap = Map.fromList [(MID.Main, []), (MID.Base, ["base"])]
   let shiftToLatestHandle = STL.new (_antecedentHandle h)
-  build' (_moduleHandle h) shiftToLatestHandle (_mainModule h) initialMap [(M.extractModule (_mainModule h), ["this"])]
+  build' (_moduleHandle h) shiftToLatestHandle (_mainModule h) initialMap [(M.extractModule (_mainModule h), [])]
 
 build' ::
   ModuleHandle.Handle ->
@@ -115,7 +115,7 @@ directModulePathMap baseModule = do
   let dependencyPathList =
         flip map dependencyList $ \(alias, dependency) -> do
           (MID.Library (M.dependencyDigest dependency), [MA.reify alias])
-  Map.fromList $ [ (MID.Main, ["this"]), (MID.Base, ["base"])] <> dependencyPathList
+  Map.fromList $ [(MID.Main, []), (MID.Base, ["base"])] <> dependencyPathList
 
 renderDD :: ModulePathMap -> DD.DefiniteDescription -> T.Text
 renderDD modulePathMap dd = do
@@ -138,13 +138,10 @@ renderPathWithLocator :: ModulePath -> T.Text -> T.Text
 renderPathWithLocator modulePath locator = do
   if T.null locator
     then renderModulePath modulePath
-    else do
-      case reverse modulePath of
-        [] ->
-          locator
-        lastSegment : restRev -> do
-          let rest = reverse restRev
-          renderModulePath (rest <> [lastSegment <> nsSep <> locator])
+    else
+      if null modulePath
+        then locator
+        else T.intercalate nsSep modulePath <> routeSep <> locator
 
 renderModulePath :: ModulePath -> T.Text
 renderModulePath =

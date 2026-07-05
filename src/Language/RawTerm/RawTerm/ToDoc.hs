@@ -106,33 +106,33 @@ toDoc term =
             ]
     _ :< PiElimRule name c es -> do
       PI.arrange
-        [ PI.inject $ attachComment c $ nameToDoc name,
+        [ PI.inject $ attachComment c $ metaNameToDoc name,
           PI.inject $ SE.decodeHorizontallyIfPossible $ fmap toDoc es
         ]
     _ :< PiElimMeta name c mImpArgs c2 es c3 mDefaultArgs -> do
       case (mImpArgs, mDefaultArgs) of
         (Nothing, Nothing) ->
           PI.arrange
-            [ PI.inject $ attachComment c $ nameToDoc name,
+            [ PI.inject $ attachComment c $ metaNameToDoc name,
               PI.inject $ SE.decodeHorizontallyIfPossible $ fmap toDoc es
             ]
         (Just impArgs, Nothing) ->
           PI.arrange
-            [ PI.inject $ nameToDoc name,
-              PI.inject $ attachComment c $ SE.decodeHorizontallyIfPossible $ fmap typeToDoc impArgs,
-              PI.inject $ attachComment c2 $ SE.decodeHorizontallyIfPossible $ fmap toDoc es
+            [ PI.inject $ attachComment c $ metaNameToDoc name,
+              PI.inject $ attachComment c2 $ SE.decodeHorizontallyIfPossible $ fmap typeToDoc impArgs,
+              PI.inject $ SE.decodeHorizontallyIfPossible $ fmap toDoc es
             ]
         (Nothing, Just defaultArgs) ->
           PI.arrange
-            [ PI.inject $ attachComment c $ nameToDoc name,
+            [ PI.inject $ attachComment c $ metaNameToDoc name,
               PI.inject $ SE.decodeHorizontallyIfPossible $ fmap toDoc es,
               PI.inject $ attachComment c3 $ decPiElimKey defaultArgs
             ]
         (Just impArgs, Just defaultArgs) ->
           PI.arrange
-            [ PI.inject $ nameToDoc name,
-              PI.inject $ attachComment c $ SE.decodeHorizontallyIfPossible $ fmap typeToDoc impArgs,
-              PI.inject $ attachComment c2 $ SE.decodeHorizontallyIfPossible $ fmap toDoc es,
+            [ PI.inject $ attachComment c $ metaNameToDoc name,
+              PI.inject $ attachComment c2 $ SE.decodeHorizontallyIfPossible $ fmap typeToDoc impArgs,
+              PI.inject $ SE.decodeHorizontallyIfPossible $ fmap toDoc es,
               PI.inject $ attachComment c3 $ decPiElimKey defaultArgs
             ]
     _ :< PiElimExact c e ->
@@ -962,6 +962,10 @@ nameToDoc varOrLocator =
         else D.text var
     N.Locator locator ->
       D.text $ Locator.reify locator
+
+metaNameToDoc :: N.Name -> D.Doc
+metaNameToDoc name =
+  D.join [nameToDoc name, D.text "::"]
 
 isMultiLine :: [D.Doc] -> Bool
 isMultiLine docList =

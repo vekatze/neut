@@ -1,8 +1,8 @@
 import {
-  core.list {length},
-  core.sync.channel {channel, make-channel, receive, send},
-  core.sync.thread {join, spawn, thread},
-  core.time {sleep},
+  core::list {length},
+  core::sync.channel {channel, make-channel, receive, send},
+  core::sync.thread {join, spawn, thread},
+  core::time {sleep},
 }
 
 define test-syntax() -> unit {
@@ -107,16 +107,16 @@ define test-behavior() -> unit {
   let _ on ch = {
     let fl1 = {
       spawn(() => {
-        let xs = some-list(1000, List[]);
-        let fs = send-all(xs, ch, List[]);
+        let xs = some-list(1000, List::[]);
+        let fs = send-all(xs, ch, List::[]);
         receive-one-by-one(fs, ch);
         Unit
       })
     };
     let fl2 = {
       spawn(() => {
-        let xs = some-list(1000, List[]);
-        let fs = send-all(xs, ch, List[]);
+        let xs = some-list(1000, List::[]);
+        let fs = send-all(xs, ch, List::[]);
         receive-all-at-once(fs, ch);
         Unit
       })

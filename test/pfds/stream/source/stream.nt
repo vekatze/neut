@@ -1,6 +1,6 @@
 import {
-  core.bool,
-  core.unit {Unit, unit},
+  core::bool,
+  core::unit {Unit, unit},
 }
 
 nominal {
