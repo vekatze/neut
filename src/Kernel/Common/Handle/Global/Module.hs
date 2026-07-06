@@ -10,7 +10,6 @@ module Kernel.Common.Handle.Global.Module
     sourceFromPath,
     getAllSourcePathInModule,
     getAllSourceInModule,
-    _hasSourceExtension,
   )
 where
 
@@ -31,6 +30,7 @@ import Language.Common.ModuleID qualified as MID
 import Logger.Hint (newSourceHint)
 import Logger.Hint qualified as H
 import Path
+import Path.Collect (hasExtension)
 import Path.IO
 import System.Environment
 import System.FilePath (splitDirectories)
@@ -38,15 +38,6 @@ import System.FilePath (splitDirectories)
 newtype Handle = Handle
   { _moduleCacheMapRef :: IORef (Map.HashMap (Path Abs File) Module)
   }
-
-_hasSourceExtension :: Path a File -> Bool
-_hasSourceExtension path =
-  case splitExtension path of
-    Just (_, ext)
-      | ext == sourceFileExtension ->
-          True
-    _ ->
-      False
 
 new :: IO Handle
 new = do
@@ -134,7 +125,7 @@ ensureFileModuleSanity filePath baseModule = do
 getAllSourcePathInModule :: Module -> App [Path Abs File]
 getAllSourcePathInModule baseModule = do
   (_, filePathList) <- listDirRecur (getSourceDir baseModule)
-  return $ filter _hasSourceExtension filePathList
+  return $ filter (hasExtension sourceFileExtension) filePathList
 
 dropLast :: [a] -> [a]
 dropLast xs =

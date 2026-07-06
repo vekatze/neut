@@ -10,8 +10,7 @@ import CommandParser.Config.Build qualified as Build
 import CommandParser.Config.Check qualified as Check
 import CommandParser.Config.Clean qualified as Clean
 import CommandParser.Config.Create qualified as Create
-import CommandParser.Config.FormatEns qualified as FormatEns
-import CommandParser.Config.FormatSource qualified as FormatSource
+import CommandParser.Config.Format qualified as Format
 import CommandParser.Config.Get qualified as Get
 import CommandParser.Config.Remark qualified as Remark
 import CommandParser.Config.Version qualified as Version
@@ -22,8 +21,7 @@ data InternalCommand
   | Build Build.Config
   | Check Check.Config
   | Clean Clean.Config
-  | FormatSource FormatSource.Config
-  | FormatEns FormatEns.Config
+  | Format Format.Config
   | Get Get.Config
   | Zen Zen.Config
 

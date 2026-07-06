@@ -6,12 +6,12 @@ import CommandParser.Config.Build qualified as Build
 import CommandParser.Config.Check qualified as Check
 import CommandParser.Config.Clean qualified as Clean
 import CommandParser.Config.Create qualified as Create
-import CommandParser.Config.FormatEns qualified as FormatEns
-import CommandParser.Config.FormatSource qualified as FormatSource
+import CommandParser.Config.Format qualified as Format
 import CommandParser.Config.Get qualified as Get
 import CommandParser.Config.Remark qualified as Remark
 import CommandParser.Config.Version qualified as Version
 import CommandParser.Config.Zen qualified as Zen
+import Console.FormatMode qualified as FormatMode
 import Console.ReportMode qualified as ReportMode
 import Data.Text qualified as T
 import Options.Applicative
@@ -30,8 +30,7 @@ parseOpt = do
         cmd "archive" parseArchiveOpt "package a tarball",
         cmd "create" parseCreateOpt "create a new module",
         cmd "get" parseGetOpt "add or update a dependency",
-        cmd "format-source" parseFormatSourceOpt "format a source file",
-        cmd "format-ens" parseFormatEnsOpt "format an ens file",
+        cmd "format" parseFormatOpt "format a source file",
         cmd "zen" parseZenOpt "execute `zen` of given file",
         cmd "lsp" parseLSPOpt "start the LSP server",
         cmd "version" parseVersionOpt "show version info"
@@ -151,33 +150,56 @@ parseArchiveOpt = do
           { Archive.getArchiveName = archiveName
           }
 
-parseFormatSourceOpt :: Parser Command
-parseFormatSourceOpt = do
-  inputFilePath <- argument str (mconcat [metavar "INPUT", help "The path of input file"])
-  inPlaceOpt <- flag False True (mconcat [long "in-place", help "Set this to perform in-place update"])
+parseFormatOpt :: Parser Command
+parseFormatOpt = do
+  inputFilePathList <- many (argument str (mconcat [metavar "INPUT ...", help "Input files or directories"]))
+  formatModeValue <- formatModeOpt
+  stdinFilePathValue <- stdinFilePathOpt
   shouldMinimizeImports <- flag False True (mconcat [long "minimize-imports", help "Set this to remove unused items in `import {..}`"])
   remarkCfg <- remarkConfigOpt
   pure $
     Internal remarkCfg $
-      FormatSource $
-        FormatSource.Config
-          { FormatSource.filePathString = inputFilePath,
-            FormatSource.mustUpdateInPlace = inPlaceOpt,
-            FormatSource.shouldMinimizeImports = shouldMinimizeImports
+      Format $
+        Format.Config
+          { Format.filePathStringList = inputFilePathList,
+            Format.formatMode = formatModeValue,
+            Format.stdinFilePath = stdinFilePathValue,
+            Format.shouldMinimizeImports = shouldMinimizeImports
           }
 
-parseFormatEnsOpt :: Parser Command
-parseFormatEnsOpt = do
-  inputFilePath <- argument str (mconcat [metavar "INPUT", help "The path of input file"])
-  inPlaceOpt <- flag False True (mconcat [long "in-place", help "Set this to perform in-place update"])
-  remarkCfg <- remarkConfigOpt
-  pure $
-    Internal remarkCfg $
-      FormatEns $
-        FormatEns.Config
-          { FormatEns.filePathString = inputFilePath,
-            FormatEns.mustUpdateInPlace = inPlaceOpt
-          }
+formatModeOpt :: Parser FormatMode.FormatMode
+formatModeOpt = do
+  option formatModeReader $
+    mconcat
+      [ short 'm',
+        long "mode",
+        metavar "MODE",
+        help "Set this to specify the behavior of the command (check, stdout, write)",
+        value FormatMode.Check
+      ]
+
+formatModeReader :: ReadM FormatMode.FormatMode
+formatModeReader =
+  eitherReader $ \input ->
+    case input of
+      "check" ->
+        return FormatMode.Check
+      "stdout" ->
+        return FormatMode.Stdout
+      "write" ->
+        return FormatMode.Write
+      _ ->
+        Left "MODE must be one of: check, stdout, write"
+
+stdinFilePathOpt :: Parser (Maybe FilePath)
+stdinFilePathOpt =
+  optional $
+    strOption $
+      mconcat
+        [ long "stdin",
+          metavar "FILEPATH",
+          help "Set this to read the content of FILEPATH from stdin instead of the actual file, and print the formatted result to stdout"
+        ]
 
 remarkConfigOpt :: Parser Remark.Config
 remarkConfigOpt = do
@@ -196,7 +218,7 @@ reportModeOpt = do
   option reportModeReader $
     mconcat
       [ long "report",
-        metavar "MODE",
+        metavar "STYLE",
         help "Set report output style (auto, none, plain, fancy)",
         value ReportMode.AutoReport
       ]
@@ -214,7 +236,7 @@ reportModeReader =
       "fancy" ->
         return ReportMode.FancyReport
       _ ->
-        Left "MODE must be one of: auto, none, plain, fancy"
+        Left "STYLE must be one of: auto, none, plain, fancy"
 
 outputKindTextListOpt :: Parser [T.Text]
 outputKindTextListOpt = do

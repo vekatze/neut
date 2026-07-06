@@ -43,6 +43,7 @@ module Kernel.Common.Module
     getRelPathFromSourceDir,
     _m,
     getModuleRootDir,
+    getRelativePathFromModuleRoot,
     getTarget,
     stylize,
     extractModule,
@@ -56,7 +57,7 @@ import Control.Monad.Catch
 import Data.HashMap.Strict qualified as Map
 import Data.List (sort)
 import Data.List.NonEmpty qualified as NE
-import Data.Maybe (catMaybes, maybeToList)
+import Data.Maybe (catMaybes, fromMaybe, maybeToList)
 import Data.Text qualified as T
 import Ens.Ens qualified as E
 import Kernel.Common.Allocator qualified as Allocator
@@ -245,6 +246,12 @@ getArchiveDir baseModule =
 getModuleRootDir :: Module -> Path Abs Dir
 getModuleRootDir baseModule =
   parent $ moduleLocation baseModule
+
+getRelativePathFromModuleRoot :: Module -> Path Abs File -> T.Text
+getRelativePathFromModuleRoot baseModule path = do
+  let rootDirText = T.pack $ toFilePath $ getModuleRootDir baseModule
+  let pathText = T.pack $ toFilePath path
+  fromMaybe pathText $ T.stripPrefix rootDirText pathText
 
 getDigestMap :: Module -> Map.HashMap ModuleDigest (NE.NonEmpty MA.ModuleAlias)
 getDigestMap baseModule = do
