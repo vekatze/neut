@@ -7,8 +7,7 @@ import Command.Check.Check qualified as Check
 import Command.Clean.Clean qualified as Clean
 import Command.Common.SaveModule qualified as SaveModule
 import Command.Create.Create qualified as Create
-import Command.FormatEns.FormatEns qualified as FormatEns
-import Command.FormatSource.FormatSource qualified as FormatSource
+import Command.Format.Format qualified as Format
 import Command.Get.Get qualified as Get
 import Command.LSP.LSP qualified as LSP
 import Command.Version.Version qualified as Version
@@ -60,9 +59,7 @@ main = do
           C.Get cfg -> do
             getHandle <- liftIO $ Get.new h loggerConfig
             Get.get getHandle cfg
-          C.FormatSource cfg -> do
-            FormatSource.format (FormatSource.new h) cfg
-          C.FormatEns cfg -> do
-            FormatEns.format cfg
+          C.Format cfg -> do
+            Format.format (Format.new h) cfg
           C.Zen cfg -> do
             Zen.zen (Zen.new h cfg) cfg

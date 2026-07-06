@@ -1,7 +1,6 @@
 module Path.Read
   ( readTextFromPath,
-    readTextFromPathOrStdin,
-    isStdin,
+    readTextFromStdin,
   )
 where
 
@@ -18,16 +17,10 @@ readTextFromPath path = do
   ensureFileExistence' path
   decodeUtf8 <$> liftIO (readByteString path)
 
-readTextFromPathOrStdin :: Path Abs File -> App T.Text
-readTextFromPathOrStdin path = do
-  if isStdin path
-    then decodeUtf8 <$> liftIO B.getContents
-    else readTextFromPath path
+readTextFromStdin :: App T.Text
+readTextFromStdin = do
+  decodeUtf8 <$> liftIO B.getContents
 
 readByteString :: Path Abs File -> IO B.ByteString
 readByteString path =
   B.readFile $ toFilePath path
-
-isStdin :: Path Abs File -> Bool
-isStdin path =
-  toFilePath (filename path) == "-"
