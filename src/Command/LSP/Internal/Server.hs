@@ -222,6 +222,7 @@ handlers lspState = do
           Just baseReqParams ->
             withGlobalHandle lspState (responder $ Right $ InR Null) $ \h -> do
               textOrNone <- run lspState h $ GetSymbolInfo.getSymbolInfo baseReqParams
+              liftIO $ DocumentStateStore.refreshDocumentStates h documentStateStore
               case textOrNone of
                 Nothing ->
                   responder $ Right $ InR Null
@@ -264,6 +265,7 @@ handlers lspState = do
                 withGlobalHandle lspState (responder $ Right $ InR Null) $ \h -> do
                   let checkHandle = Check.new h
                   _ <- run lspState h $ Check.checkAll checkHandle
+                  liftIO $ DocumentStateStore.refreshDocumentStates h documentStateStore
                   responder $ Right $ InR Null
           _ ->
             responder $ Right $ InR Null
