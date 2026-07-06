@@ -6,6 +6,7 @@ module Kernel.Common.Handle.Global.Path
     getExecutableOutputPath,
     getForeignDir,
     getAllocatorDir,
+    getLtoCacheDir,
     getInstallDir,
     sourceToOutputPath,
     getSourceCachePath,
@@ -174,6 +175,13 @@ getAllocatorDir h t baseModule = do
   let allocatorDir = buildDir </> allocatorRelDir
   P.ensureDir allocatorDir
   return allocatorDir
+
+getLtoCacheDir :: Handle -> Target.Target -> Module -> App (Path Abs Dir)
+getLtoCacheDir h t baseModule = do
+  buildDir <- getBuildDir h t baseModule
+  let ltoCacheDir = buildDir </> ltoRelDir
+  P.ensureDir ltoCacheDir
+  return ltoCacheDir
 
 getEntryDir :: Handle -> Target.Target -> Module -> App (Path Abs Dir)
 getEntryDir h t baseModule = do

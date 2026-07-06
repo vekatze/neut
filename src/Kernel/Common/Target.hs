@@ -70,16 +70,10 @@ getCompileOption target =
         Zen _ zenConfig ->
           map T.unpack $ CL.compileOption (Z.clangOption zenConfig)
 
-getLinkOption :: Target -> [String]
+getLinkOption :: MainTarget -> [String]
 getLinkOption target =
   case target of
-    Peripheral {} ->
-      []
-    PeripheralSingle {} ->
-      []
-    Main c ->
-      case c of
-        Named _ targetSummary ->
-          map T.unpack $ CL.linkOption (clangOption targetSummary)
-        Zen _ zenConfig ->
-          map T.unpack $ CL.linkOption (Z.clangOption zenConfig)
+    Named _ targetSummary ->
+      map T.unpack $ CL.linkOption (clangOption targetSummary)
+    Zen _ zenConfig ->
+      map T.unpack $ CL.linkOption (Z.clangOption zenConfig)
