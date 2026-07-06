@@ -3,6 +3,7 @@ module Command.LSP.Internal.DocumentStateStore
     new,
     lookupDocumentState,
     rebuildDocumentState,
+    refreshDocumentStates,
     updateDocumentState,
     clearDocumentState,
     readSavedText,
@@ -14,6 +15,7 @@ import App.Run (runApp)
 import Command.LSP.Internal.DocumentState qualified as DocumentState
 import Command.LSP.Internal.Source.Reflect qualified as SourceReflect
 import Control.Applicative ((<|>))
+import Control.Monad (forM_, when)
 import Control.Monad.IO.Class (liftIO)
 import Data.ByteString qualified as B
 import Data.IORef
@@ -43,6 +45,18 @@ rebuildDocumentState :: Global.Handle -> DocumentStateStore -> Uri -> T.Text -> 
 rebuildDocumentState gh documentStateStore uri bufferText = do
   preferredBaseTextOrNone <- readBaseTextIfCacheFresh gh uri
   storeResolvedDocumentState documentStateStore uri (Just bufferText) preferredBaseTextOrNone
+
+refreshDocumentStates :: Global.Handle -> DocumentStateStore -> IO ()
+refreshDocumentStates gh documentStateStore = do
+  documentStateMap <- readIORef documentStateStore
+  forM_ (M.toList documentStateMap) $ \(nuri, documentState) -> do
+    let uri = fromNormalizedUri nuri
+    baseTextOrNone <- readBaseTextIfCacheFresh gh uri
+    forM_ baseTextOrNone $ \baseText ->
+      when (baseText /= DocumentState.baseText documentState) $
+        writeDocumentState documentStateStore uri $
+          Just $
+            DocumentState.fromTexts baseText (DocumentState.bufferText documentState)
 
 updateDocumentState :: DocumentStateStore -> Uri -> [TextDocumentContentChangeEvent] -> Maybe T.Text -> IO ()
 updateDocumentState documentStateStore uri changes bufferTextOrNone = do
