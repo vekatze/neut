@@ -11,8 +11,7 @@ The `neut` command has subcommands like `neut build`, `neut get`, etc. This sect
 - [neut archive](#neut-archive)
 - [neut create](#neut-create)
 - [neut get](#neut-get)
-- [neut format-source](#neut-format-source)
-- [neut format-ens](#neut-format-ens)
+- [neut format](#neut-format)
 - [neut zen](#neut-zen)
 - [neut lsp](#neut-lsp)
 - [neut version](#neut-version)
@@ -299,25 +298,35 @@ You can remove a dependency in the ens file to "remove" the module from your mod
 
 You can import dependencies from source files. See the notes on `import` in [Statements](./statements.md#import) for information on how to use definitions in external dependencies.
 
-## `neut format-source`
+## `neut format`
 
-`neut format-source path/to/source/file.nt` formats the specified source file and outputs the result to stdout.
+`neut format [INPUT ...]` formats source files and ens files:
 
-### `--in-place`
+```sh
+neut format path/to/file.nt path/to/dir/
+```
 
-When the option `--in-place` is set, `format-source` performs an in-place update.
+Each `INPUT` can be a file or a directory.
+
+By default, `neut format` just checks whether the given files are already formatted. If some files aren't, their paths are printed and the command exits with a nonzero status.
+
+### `--mode MODE`
+
+`--mode` / `-m` controls what `neut format` does with the formatting result. `MODE` must be one of the following:
+
+- `check` checks if the given files are formatted. If some files aren't, their paths are printed and the command exits with a nonzero status.
+- `stdout` prints the formatted result to stdout.
+- `write` performs an in-place update.
+
+The default value of `--mode` is `check`.
+
+### `--stdin FILEPATH`
+
+`--stdin FILEPATH` reads the content to format from stdin instead of `FILEPATH` itself, and prints the formatted result to stdout. `FILEPATH` is still used to decide the file type (`.nt` or `.ens`).
 
 ### `--minimize-imports`
 
-When the option `--minimize-imports` is set, `format-source` removes all the unused items in `import {..}`.
-
-## `neut format-ens`
-
-`neut format-ens path/to/file.ens` formats the specified ens file and outputs the result to stdout.
-
-### `--in-place`
-
-When the option `--in-place` is set, `format-ens` performs an in-place update.
+When the option `--minimize-imports` is set, `neut format` removes all the unused items in `import {..}` of the given source files.
 
 ## `neut zen`
 
