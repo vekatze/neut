@@ -385,18 +385,18 @@ expandClangOptions h target =
 
 expandOptions :: Handle -> [T.Text] -> App [T.Text]
 expandOptions h textList =
-  map T.strip <$> mapM (expandText h) textList
+  concat <$> mapM (expandText h) textList
 
-expandText :: Handle -> T.Text -> App T.Text
+expandText :: Handle -> T.Text -> App [T.Text]
 expandText h t = do
   let spec =
         RunProcess.Spec
-          { cmdspec = RawCommand "sh" ["-c", unwords [T.unpack "printf", "%s", "\"" ++ T.unpack t ++ "\""]],
+          { cmdspec = RawCommand "sh" ["-c", "printf '%s\\n' " ++ T.unpack t],
             cwd = Nothing
           }
   output <- liftIO $ RunProcess.run01 (runProcessHandle h) spec
   case output of
     Right value ->
-      return $ decodeUtf8 value
+      return $ filter (not . T.null) $ T.lines $ decodeUtf8 value
     Left err ->
       throwError $ newError' err
