@@ -596,7 +596,7 @@ discern h term =
       return $ m :< WT.TauElim (mx, x') e1' e2'
     m :< RT.Embody e -> do
       ensureRuntimeStage m h "meta operation (`*`)"
-      embodyVar <- liftEither $ locatorToVarGlobal m coreBoxEmbody
+      embodyVar <- liftEither $ locatorToVarGlobal m coreLayerEmbody
       discern h $ m :< RT.piElim embodyVar [e]
     m :< RT.Let letKind _ (mx, pat, c1, c2, t) _ _ e1 _ startLoc _ e2 endLoc -> do
       discernLet h m letKind (mx, pat, c1, c2, t) e1 e2 startLoc endLoc
