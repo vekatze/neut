@@ -29,9 +29,8 @@ main = do
   case userCommand of
     C.External loggerConfig cmd -> do
       let shouldColorize = Remark.shouldColorize loggerConfig
-      let enableDebugMode = Remark.enableDebugMode loggerConfig
       consoleHandle <- Console.createHandle shouldColorize shouldColorize (Remark.reportMode loggerConfig)
-      loggerHandle <- Logger.createHandle consoleHandle enableDebugMode
+      loggerHandle <- Logger.createHandle consoleHandle
       run loggerHandle $ do
         case cmd of
           C.Create cfg -> do

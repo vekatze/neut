@@ -204,12 +204,10 @@ stdinFilePathOpt =
 remarkConfigOpt :: Parser Remark.Config
 remarkConfigOpt = do
   shouldColorize <- colorizeOpt
-  enableDebugMode <- flag False True (mconcat [long "enable-debug-output", help "Set this to print debug info"])
   reportMode <- reportModeOpt
   pure
     Remark.Config
       { Remark.shouldColorize = shouldColorize,
-        Remark.enableDebugMode = enableDebugMode,
         Remark.reportMode = reportMode
       }
 
@@ -235,8 +233,10 @@ reportModeReader =
         return ReportMode.PlainReport
       "fancy" ->
         return ReportMode.FancyReport
+      "debug" ->
+        return ReportMode.DebugReport
       _ ->
-        Left "STYLE must be one of: auto, none, plain, fancy"
+        Left "STYLE must be one of: auto, none, plain, fancy, debug"
 
 outputKindTextListOpt :: Parser [T.Text]
 outputKindTextListOpt = do

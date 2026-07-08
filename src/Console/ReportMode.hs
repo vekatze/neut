@@ -8,4 +8,5 @@ data ReportMode
   | NoReport
   | PlainReport
   | FancyReport
+  | DebugReport
   deriving (Eq)

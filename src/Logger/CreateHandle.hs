@@ -5,8 +5,8 @@ import Data.IORef (newIORef)
 import Data.Time
 import Logger.Handle (Handle (..))
 
-createHandle :: Console.Handle -> Bool -> IO Handle
-createHandle _consoleHandle _enableDebugMode = do
+createHandle :: Console.Handle -> IO Handle
+createHandle _consoleHandle = do
   _baseTime <- getCurrentTime
   _moduleDirRef <- newIORef ""
-  return $ InternalHandle {_consoleHandle, _enableDebugMode, _baseTime, _moduleDirRef}
+  return $ InternalHandle {_consoleHandle, _baseTime, _moduleDirRef}

@@ -6,6 +6,7 @@ module Console.Handle
     shouldColorizeStdout,
     shouldColorizeStderr,
     getReportMode,
+    isDebugMode,
     supportsInteractiveOutput,
   )
 where
@@ -50,3 +51,11 @@ getReportMode h = do
 supportsInteractiveOutput :: Handle -> Bool
 supportsInteractiveOutput h = do
   stdoutSupportsANSI h && stderrSupportsANSI h
+
+isDebugMode :: Handle -> Bool
+isDebugMode h =
+  case getReportMode h of
+    DebugReport ->
+      True
+    _ ->
+      False

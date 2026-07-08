@@ -12,6 +12,8 @@ import Console.Text qualified as Console
 import Control.Concurrent.MVar
 import Data.IORef (IORef, atomicModifyIORef', newIORef, readIORef)
 import Data.Text qualified as T
+import Logger.Debug qualified as Logger
+import Logger.Handle qualified as Logger
 import ProgressIndicator.Handle
 import ProgressIndicator.ProgressIndicator
 import System.Console.ANSI
@@ -19,8 +21,8 @@ import System.IO hiding (Handle)
 import UnliftIO.Async
 import UnliftIO.Concurrent (threadDelay)
 
-new :: Console.Handle -> Maybe Int -> T.Text -> T.Text -> [SGR] -> IO Handle
-new consoleHandle numOfItems workingTitle completedTitle color = do
+new :: Console.Handle -> Logger.Handle -> Maybe Int -> T.Text -> T.Text -> [SGR] -> IO Handle
+new consoleHandle loggerHandle numOfItems workingTitle completedTitle color = do
   let reportMode = Console.getReportMode consoleHandle
   case (reportMode, numOfItems) of
     (Console.NoReport, _) ->
@@ -41,10 +43,13 @@ new consoleHandle numOfItems workingTitle completedTitle color = do
       case reportMode of
         Console.PlainReport -> do
           Console.printStdErr consoleHandle $ Console.pack' workingTitle <> Console.pack' "\n"
-          return $ Just $ Handle {consoleHandle, progressBarRef, printLock, reportMode, renderThread = Nothing}
+          return $ Just $ Handle {consoleHandle, loggerHandle, progressBarRef, printLock, reportMode, renderThread = Nothing}
         Console.FancyReport -> do
           renderThread <- Just <$> async (render consoleHandle 0 progressBarRef)
-          return $ Just $ Handle {consoleHandle, progressBarRef, printLock, reportMode, renderThread}
+          return $ Just $ Handle {consoleHandle, loggerHandle, progressBarRef, printLock, reportMode, renderThread}
+        Console.DebugReport -> do
+          Console.printStdErr consoleHandle $ Console.pack' workingTitle <> Console.pack' "\n"
+          return $ Just $ Handle {consoleHandle, loggerHandle, progressBarRef, printLock, reportMode, renderThread = Nothing}
         Console.AutoReport ->
           return Nothing
 
@@ -62,6 +67,8 @@ increment mh label = do
         case reportMode h of
           Console.PlainReport ->
             printPlainProgress h label progressBar
+          Console.DebugReport ->
+            Logger.report (loggerHandle h) $ "Compiled: " <> label
           _ ->
             return ()
 
