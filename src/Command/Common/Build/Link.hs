@@ -76,7 +76,7 @@ link' h target sourceList = do
   let numOfObjects = length objects
   let workingTitle = getWorkingTitle numOfObjects
   let completedTitle = getCompletedTitle numOfObjects
-  progressBarHandle <- liftIO $ Indicator.new (consoleHandle h) Nothing workingTitle completedTitle barColor
+  progressBarHandle <- liftIO $ Indicator.new (consoleHandle h) (loggerHandle h) Nothing workingTitle completedTitle barColor
   let runProcessHandle = RunProcess.new (loggerHandle h)
   RunProcess.run runProcessHandle clang linkOptions
   liftIO $ Indicator.close progressBarHandle

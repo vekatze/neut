@@ -84,7 +84,7 @@ new cfg moduleFilePathOrNone = do
 newOrError :: Remark.Config -> Maybe (Path Abs File) -> IO (Either (Logger.Handle, E.Error) Handle)
 newOrError cfg moduleFilePathOrNone = do
   consoleHandle <- Console.createHandle (Remark.shouldColorize cfg) (Remark.shouldColorize cfg) (Remark.reportMode cfg)
-  loggerHandle <- Logger.createHandle consoleHandle (Remark.enableDebugMode cfg)
+  loggerHandle <- Logger.createHandle consoleHandle
   gensymHandle <- Gensym.createHandle
   platformHandle <- Platform.new loggerHandle
   envHandleOrError <- Env.new moduleFilePathOrNone

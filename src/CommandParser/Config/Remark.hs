@@ -8,14 +8,12 @@ import Console.ReportMode
 
 data Config = Config
   { shouldColorize :: Bool,
-    enableDebugMode :: Bool,
-    reportMode :: ReportMode
+    reportMode :: Maybe ReportMode
   }
 
 lspConfig :: Config
 lspConfig =
   Config
     { shouldColorize = False,
-      enableDebugMode = False,
-      reportMode = NoReport
+      reportMode = Just NoReport
     }

@@ -37,8 +37,7 @@ Only the following subcommands can be used outside a module:
 Most subcommands share the following command-line options:
 
 - `--no-color` can be used to turn off ANSI colors
-- `--enable-debug-output` prints debug output
-- `--report MODE` sets report output style (`auto`, `none`, `plain`, or `fancy`)
+- `--report MODE` sets report output style (`none`, `plain`, `fancy`, or `debug`)
 
 ## `neut build`
 

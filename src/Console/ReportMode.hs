@@ -4,8 +4,8 @@ module Console.ReportMode
 where
 
 data ReportMode
-  = AutoReport
-  | NoReport
+  = NoReport
   | PlainReport
   | FancyReport
+  | DebugReport
   deriving (Eq)

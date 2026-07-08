@@ -15,7 +15,6 @@ import Text.Printf (printf)
 
 data Handle = InternalHandle
   { _consoleHandle :: Console.Handle,
-    _enableDebugMode :: Bool,
     _baseTime :: UTCTime,
     _moduleDirRef :: IORef T.Text
   }

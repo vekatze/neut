@@ -47,8 +47,8 @@ import Kernel.Elaborate.Internal.Handle.Elaborate qualified as Elaborate
 import Kernel.Emit.Emit qualified as Emit
 import Kernel.Load.Load qualified as Load
 import Kernel.Lower.Lower qualified as Lower
-import Kernel.Parse.Interpret qualified as Interpret
 import Kernel.Parse.Internal.Handle.UnusedTopLevelName qualified as UnusedTopLevelName
+import Kernel.Parse.Interpret qualified as Interpret
 import Kernel.Parse.Parse qualified as Parse
 import Kernel.Unravel.Unravel qualified as Unravel
 import Language.Common.ModuleID qualified as MID
@@ -127,11 +127,12 @@ compile h target outputKindList contentSeq = do
   c <- getEntryPointCompilationCount h target outputKindList
   let numOfItems = length (filter id bs) + c
   let consoleHandle = Global.consoleHandle (globalHandle h)
+  let loggerHandle = Global.loggerHandle (globalHandle h)
   currentTime <- liftIO getCurrentTime
   let color = [SetColor Foreground Vivid Green]
   let workingTitle = getWorkingTitle numOfItems
   let completedTitle = getCompletedTitle numOfItems
-  hp <- liftIO $ Indicator.new consoleHandle (Just numOfItems) workingTitle completedTitle color
+  hp <- liftIO $ Indicator.new consoleHandle loggerHandle (Just numOfItems) workingTitle completedTitle color
   cacheOrProgList <- Parse.parse (globalHandle h) contentSeq
   cacheOrStmtList <- forP cacheOrProgList $ \(localHandle, (source, cacheOrProg)) -> do
     interpretHandle <- liftIO $ Interpret.new (globalHandle h) localHandle (sourceModule source)
