@@ -12,6 +12,7 @@ module Language.Common.StmtKind
     isMetaOnlyStmtKind,
     isInlineStmtKind,
     isDestPassingStmtKind,
+    isOpaqueTypeStmtKind,
   )
 where
 
@@ -177,6 +178,14 @@ isDestPassingStmtKind stmtKind =
     DestPassing ->
       True
     DestPassingInline ->
+      True
+    _ ->
+      False
+
+isOpaqueTypeStmtKind :: BaseStmtKindType binder -> Bool
+isOpaqueTypeStmtKind stmtKind =
+  case stmtKind of
+    AliasOpaque ->
       True
     _ ->
       False

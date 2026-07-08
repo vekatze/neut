@@ -139,6 +139,7 @@ synthesizeStmtList h t logs globalReferenceList stmtList = do
   (stmtList', affineErrorList) <- bimap concat concat . unzip <$> mapM (elaborateStmt h) stmtList
   unless (null affineErrorList) $ do
     throwError $ E.MakeError affineErrorList
+  mapM_ (detectCyclicTypes h) stmtList'
   generatedStmtList <- liftIO $ reverse <$> readIORef (pendingSpecializationDefs h)
   let stmtList'' = stmtList' ++ generatedStmtList
   residualCheckList' <- liftIO $ reverse <$> readIORef (residualCheckList h)
@@ -656,6 +657,49 @@ specializeUnaryDataType h m dataName dataArgs = do
       liftIO $ TmSubst.substType (TmSubst.new (gensymHandle h)) sub t
     _ ->
       raiseError m $ "broken unary metadata for `" <> showDD h dataName <> "`"
+
+detectCyclicTypes :: Handle -> Stmt -> App ()
+detectCyclicTypes h stmt =
+  case stmt of
+    StmtDefineType _ stmtKind (SavedHint m) name _ _ _ _ t
+      | not $ SK.isOpaqueTypeStmtKind stmtKind ->
+          detectCyclicType' h m name S.empty t
+    _ ->
+      return ()
+
+detectCyclicType' ::
+  Handle ->
+  Hint ->
+  DD.DefiniteDescription ->
+  S.Set DD.DefiniteDescription ->
+  TM.Type ->
+  App ()
+detectCyclicType' h m seed visited t = do
+  t' <- inlineType h m t
+  case t' of
+    _ :< TM.Box t'' ->
+      detectCyclicType' h m seed visited t''
+    _ :< TM.Code t'' ->
+      detectCyclicType' h m seed visited t''
+    _ :< TM.Data _ name args -> do
+      od <- liftIO $ OptimizableData.lookup (optDataHandle h) name
+      case od of
+        Just OD.Enum ->
+          return ()
+        Just OD.Unary -> do
+          if S.member name visited
+            then raiseError m $ recursiveTypeMessage h seed
+            else do
+              innerType <- specializeUnaryDataType h m name args
+              detectCyclicType' h m seed (S.insert name visited) innerType
+        Nothing ->
+          mapM_ (detectCyclicType' h m seed visited) args
+    _ ->
+      return ()
+
+recursiveTypeMessage :: Handle -> DD.DefiniteDescription -> T.Text
+recursiveTypeMessage h name =
+  "the type `" <> showDD h name <> "` expands endlessly"
 
 showDD :: Handle -> DD.DefiniteDescription -> T.Text
 showDD h =
