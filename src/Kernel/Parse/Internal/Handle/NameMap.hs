@@ -38,8 +38,8 @@ import Language.Common.IsDestPassing
 import Language.Common.NominalTag
 import Language.Common.PrimOp.FromText qualified as PrimOp
 import Language.Common.PrimType.FromText qualified as PT
-import Language.Common.StrictGlobalLocator qualified as SGL
 import Language.Common.StmtKind qualified as SK
+import Language.Common.StrictGlobalLocator qualified as SGL
 import Language.RawTerm.RawStmt
 import Language.RawTerm.RawTerm qualified as RT
 import Language.Term.Stmt
@@ -255,7 +255,7 @@ getGlobalNamesFromDefType stmtKind geist = do
       [(name, (m, mTag, GN.TopLevelFuncType allArgNum isConstLike False))]
     SK.AliasOpaque ->
       [(name, (m, mTag, GN.TopLevelFuncType allArgNum isConstLike False))]
-    SK.Data dataName dataArgs consInfoList _ _ -> do
+    SK.Data dataName dataArgs consInfoList _ -> do
       let dataArgNum = AN.fromInt $ length dataArgs
       let consNameArrowList = map (toConsNameArrow dataArgNum) consInfoList
       (dataName, (m, mTag, GN.Data dataArgNum (map stripTag consNameArrowList) isConstLike)) : consNameArrowList
@@ -285,7 +285,7 @@ _getGlobalNames' stmt = do
           [(name, (m, mTag, GN.TopLevelFuncType allArgNum isConstLike False))]
         SK.AliasOpaque ->
           [(name, (m, mTag, GN.TopLevelFuncType allArgNum isConstLike False))]
-        SK.Data dataName dataArgs consInfoList _ _ -> do
+        SK.Data dataName dataArgs consInfoList _ -> do
           let dataArgNum = AN.fromInt $ length dataArgs
           let consNameArrowList = map (toConsNameArrow dataArgNum) consInfoList
           (dataName, (m, mTag, GN.Data dataArgNum (map stripTag consNameArrowList) isConstLike)) : consNameArrowList
@@ -382,7 +382,5 @@ stmtKindTypeToNominalTag stmtKind =
       Just Alias
     SK.AliasOpaque ->
       Just AliasOpaque
-    SK.Data _ _ _ _ shouldOptimize ->
-      if shouldOptimize
-        then Just Data
-        else Just DataRaw
+    SK.Data _ _ _ _ ->
+      Just Data

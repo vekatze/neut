@@ -116,9 +116,9 @@ collectNominalDecls stmt =
 markNominalData :: [DD.DefiniteDescription] -> PostRawStmt -> PostRawStmt
 markNominalData nominalNameList stmt =
   case stmt of
-    PostRawStmtDefineType c (SK.Data dataName dataArgs consInfoList _ shouldOptimize) def
+    PostRawStmtDefineType c (SK.Data dataName dataArgs consInfoList _) def
       | dataName `elem` nominalNameList ->
-          PostRawStmtDefineType c (SK.Data dataName dataArgs consInfoList True shouldOptimize) def
+          PostRawStmtDefineType c (SK.Data dataName dataArgs consInfoList True) def
     _ ->
       stmt
 
@@ -135,10 +135,10 @@ postprocess' h stmt = do
             TransparentAlias -> SK.Alias
             OpaqueAlias -> SK.AliasOpaque
       [PostRawStmtDefineType c stmtKind (rawDef {RT.typeGeist = geist'})]
-    RawStmtDefineData _ shouldOptimize m (name, _) args consInfo loc -> do
+    RawStmtDefineData _ m (name, _) args consInfo loc -> do
       let name' = Locator.attachCurrentLocator h name
       let consInfo' = fmap (liftRawCons h) consInfo
-      defineData m shouldOptimize name' args (SE.extract consInfo') loc
+      defineData m name' args (SE.extract consInfo') loc
     RawStmtDefineResource c m (name, c1) (c2, discarder) (c3, copier) (c4, resourceSize) c5 -> do
       let name' = Locator.attachCurrentLocator h name
       [PostRawStmtDefineResource c m (name', c1) (c2, discarder) (c3, copier) (c4, resourceSize) c5]
@@ -222,7 +222,7 @@ registerTopLevelNames h source cacheOrContent = do
 rawDataNameFromStmt :: Stmt -> [DD.DefiniteDescription]
 rawDataNameFromStmt stmt =
   case stmt of
-    StmtDefineType _ (SK.Data dataName _ _ _ False) _ _ _ _ _ _ _ ->
+    StmtDefineType _ (SK.Data dataName _ _ _) _ _ _ _ _ _ _ ->
       [dataName]
     _ ->
       []
@@ -230,7 +230,7 @@ rawDataNameFromStmt stmt =
 rawDataNameFromPostStmt :: PostRawStmt -> [DD.DefiniteDescription]
 rawDataNameFromPostStmt stmt =
   case stmt of
-    PostRawStmtDefineType _ (SK.Data dataName _ _ _ False) _ ->
+    PostRawStmtDefineType _ (SK.Data dataName _ _ _) _ ->
       [dataName]
     _ ->
       []
