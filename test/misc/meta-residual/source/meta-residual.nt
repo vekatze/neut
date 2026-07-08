@@ -1,10 +1,10 @@
 import {
   core::array {access, length, make, pop-back, pop-front, push-back, push-front, put, to-list, with-slice},
   core::array.unsafe {put-unchecked},
-  core::box {axiom-T},
   core::cell {cell, clone, extract, make-cell, mutate},
   core::debug {assert, panic},
   core::int.io {print-int-line},
+  core::layer {axiom-T},
 }
 
 define-meta make-boxed-pair<a>(x: 'a) -> 'pair(+a, +a) {

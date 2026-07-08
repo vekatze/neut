@@ -75,7 +75,7 @@ data foo {
 }
 
 data bar {
-| Bar(foo)
+| Bar(foo, foo)
 }
 
 define buz(c: &config) -> &string {
