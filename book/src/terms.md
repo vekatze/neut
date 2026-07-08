@@ -3362,7 +3362,7 @@ embody(e)
 where the function `embody` is defined in the core library as follows:
 
 ```neut
-// core::box
+// core::layer
 
 // □A -> A (Axiom T)
 inline axiom-T<a>(x: +a) -> a {
