@@ -19,7 +19,7 @@ data Handle = InternalHandle
     _termIsDumb :: Bool,
     _shouldColorizeStdoutByUser :: Bool,
     _shouldColorizeStderrByUser :: Bool,
-    _reportModeByUser :: ReportMode
+    _reportModeByUser :: Maybe ReportMode
   }
 
 stdoutSupportsANSI :: Handle -> Bool
@@ -41,11 +41,11 @@ shouldColorizeStderr h = do
 getReportMode :: Handle -> ReportMode
 getReportMode h = do
   case _reportModeByUser h of
-    AutoReport -> do
+    Nothing -> do
       if supportsInteractiveOutput h
         then FancyReport
         else PlainReport
-    mode ->
+    Just mode ->
       mode
 
 supportsInteractiveOutput :: Handle -> Bool

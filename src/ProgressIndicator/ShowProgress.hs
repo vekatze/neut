@@ -50,8 +50,6 @@ new consoleHandle loggerHandle numOfItems workingTitle completedTitle color = do
         Console.DebugReport -> do
           Console.printStdErr consoleHandle $ Console.pack' workingTitle <> Console.pack' "\n"
           return $ Just $ Handle {consoleHandle, loggerHandle, progressBarRef, printLock, reportMode, renderThread = Nothing}
-        Console.AutoReport ->
-          return Nothing
 
 increment :: Handle -> T.Text -> IO ()
 increment mh label = do

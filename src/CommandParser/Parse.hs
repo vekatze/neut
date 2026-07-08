@@ -211,32 +211,32 @@ remarkConfigOpt = do
         Remark.reportMode = reportMode
       }
 
-reportModeOpt :: Parser ReportMode.ReportMode
+reportModeOpt :: Parser (Maybe ReportMode.ReportMode)
 reportModeOpt = do
   option reportModeReader $
     mconcat
       [ long "report",
         metavar "STYLE",
-        help "Set report output style (auto, none, plain, fancy)",
-        value ReportMode.AutoReport
+        help "Set report output style (none, plain, fancy, debug)",
+        value Nothing
       ]
 
-reportModeReader :: ReadM ReportMode.ReportMode
+reportModeReader :: ReadM (Maybe ReportMode.ReportMode)
 reportModeReader =
   eitherReader $ \input -> do
     case input of
       "auto" ->
-        return ReportMode.AutoReport
+        return Nothing
       "none" ->
-        return ReportMode.NoReport
+        return $ Just ReportMode.NoReport
       "plain" ->
-        return ReportMode.PlainReport
+        return $ Just ReportMode.PlainReport
       "fancy" ->
-        return ReportMode.FancyReport
+        return $ Just ReportMode.FancyReport
       "debug" ->
-        return ReportMode.DebugReport
+        return $ Just ReportMode.DebugReport
       _ ->
-        Left "STYLE must be one of: auto, none, plain, fancy, debug"
+        Left "STYLE must be one of:  none, plain, fancy, debug"
 
 outputKindTextListOpt :: Parser [T.Text]
 outputKindTextListOpt = do

@@ -8,12 +8,12 @@ import Console.ReportMode
 
 data Config = Config
   { shouldColorize :: Bool,
-    reportMode :: ReportMode
+    reportMode :: Maybe ReportMode
   }
 
 lspConfig :: Config
 lspConfig =
   Config
     { shouldColorize = False,
-      reportMode = NoReport
+      reportMode = Just NoReport
     }
