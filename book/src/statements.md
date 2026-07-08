@@ -11,7 +11,6 @@
 - [constant](#constant)
 - [constant-meta](#constant-meta)
 - [data](#data)
-- [data-raw](#data-raw)
 - [alias](#alias)
 - [alias-opaque](#alias-opaque)
 - [resource](#resource)
@@ -568,34 +567,6 @@ cont
 
 `mix` can also be used with a `resource` type when the resource has a fixed non-negative byte size. The mixed field uses the minimum number of words that can contain those bytes.
 
-## `data-raw`
-
-`data-raw` defines an ADT with the same syntax as `data`, but disables ADT-specific representation optimizations such as enum optimization and single-constructor unary optimization.
-
-```neut
-data-raw boxed-int {
-| Boxed-Int(int)
-}
-```
-
-Use `data-raw` when you need the ordinary ADT representation even for ADTs that `data` would otherwise optimize.
-
-## `alias`
-
-`alias` defines a type alias. It should look like the following:
-
-```neut
-alias optional(a: type) {
-  either(unit, a)
-}
-
-alias my-type {
-  either(int, bool)
-}
-```
-
-The body of `alias` can be used wherever a type is expected.
-
 ## `alias-opaque`
 
 `alias-opaque` defines an opaque type alias. It should look like the following:
@@ -874,7 +845,6 @@ The following kinds of top-level items can be declared in `nominal`:
 - `alias`
 - `alias-opaque`
 - `data`
-- `data-raw`
 - `resource`
 
 Default arguments can't be used in `nominal`.

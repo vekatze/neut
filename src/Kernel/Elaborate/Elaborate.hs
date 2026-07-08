@@ -139,6 +139,7 @@ synthesizeStmtList h t logs globalReferenceList stmtList = do
   (stmtList', affineErrorList) <- bimap concat concat . unzip <$> mapM (elaborateStmt h) stmtList
   unless (null affineErrorList) $ do
     throwError $ E.MakeError affineErrorList
+  mapM_ (detectCyclicTypes h) stmtList'
   generatedStmtList <- liftIO $ reverse <$> readIORef (pendingSpecializationDefs h)
   let stmtList'' = stmtList' ++ generatedStmtList
   residualCheckList' <- liftIO $ reverse <$> readIORef (residualCheckList h)
@@ -472,7 +473,7 @@ insertWeakStmt h stmt = do
 registerDataTypeStmt :: Handle -> DD.DefiniteDescription -> SK.StmtKindType TM.Type -> App ()
 registerDataTypeStmt h dataName stmtKind =
   case stmtKind of
-    SK.Data _ dataArgs consInfoList _ _ ->
+    SK.Data _ dataArgs consInfoList _ ->
       liftIO $
         Data.insert
           (dataHandle h)
@@ -487,7 +488,7 @@ registerDataTypeStmt h dataName stmtKind =
 registerWeakDataTypeStmt :: Handle -> DD.DefiniteDescription -> SK.StmtKindType WT.WeakType -> App ()
 registerWeakDataTypeStmt h dataName stmtKind =
   case stmtKind of
-    SK.Data _ dataArgs consInfoList _ _ ->
+    SK.Data _ dataArgs consInfoList _ ->
       liftIO $
         Data.insertWeak
           (dataHandle h)
@@ -542,7 +543,7 @@ elaborateStmtKindType h stmtKind =
       return SK.Alias
     SK.AliasOpaque ->
       return SK.AliasOpaque
-    SK.Data dataName dataArgs consInfoList isNominal shouldOptimize -> do
+    SK.Data dataName dataArgs consInfoList isNominal -> do
       dataArgs' <- mapM (elaborateWeakBinder h) dataArgs
       dataArgs'' <- mapM (inlineBinder h) dataArgs'
       consInfoList' <- forM consInfoList $ \(savedHint, consInfo) -> do
@@ -551,7 +552,7 @@ elaborateStmtKindType h stmtKind =
         layouts <- forM (zip (DI.consArgHints consInfo) consArgs'') $ \(hint, binder) -> do
           resolveFieldLayout h hint binder
         return (savedHint, consInfo {DI.consArgs = consArgs'', DI.consArgLayouts = layouts})
-      return $ SK.Data dataName dataArgs'' consInfoList' isNominal shouldOptimize
+      return $ SK.Data dataName dataArgs'' consInfoList' isNominal
 
 resolveFieldLayout :: Handle -> DI.FieldHint -> BinderF TM.Type -> App DI.FieldLayout
 resolveFieldLayout h hint (_, _, _, t) =
@@ -656,6 +657,49 @@ specializeUnaryDataType h m dataName dataArgs = do
       liftIO $ TmSubst.substType (TmSubst.new (gensymHandle h)) sub t
     _ ->
       raiseError m $ "broken unary metadata for `" <> showDD h dataName <> "`"
+
+detectCyclicTypes :: Handle -> Stmt -> App ()
+detectCyclicTypes h stmt =
+  case stmt of
+    StmtDefineType _ stmtKind (SavedHint m) name _ _ _ _ t
+      | not $ SK.isOpaqueTypeStmtKind stmtKind ->
+          detectCyclicType' h m name S.empty t
+    _ ->
+      return ()
+
+detectCyclicType' ::
+  Handle ->
+  Hint ->
+  DD.DefiniteDescription ->
+  S.Set DD.DefiniteDescription ->
+  TM.Type ->
+  App ()
+detectCyclicType' h m seed visited t = do
+  t' <- inlineType h m t
+  case t' of
+    _ :< TM.Box t'' ->
+      detectCyclicType' h m seed visited t''
+    _ :< TM.Code t'' ->
+      detectCyclicType' h m seed visited t''
+    _ :< TM.Data _ name args -> do
+      od <- liftIO $ OptimizableData.lookup (optDataHandle h) name
+      case od of
+        Just OD.Enum ->
+          return ()
+        Just OD.Unary -> do
+          if S.member name visited
+            then raiseError m $ recursiveTypeMessage h seed
+            else do
+              innerType <- specializeUnaryDataType h m name args
+              detectCyclicType' h m seed (S.insert name visited) innerType
+        Nothing ->
+          mapM_ (detectCyclicType' h m seed visited) args
+    _ ->
+      return ()
+
+recursiveTypeMessage :: Handle -> DD.DefiniteDescription -> T.Text
+recursiveTypeMessage h name =
+  "the type `" <> showDD h name <> "` expands endlessly"
 
 showDD :: Handle -> DD.DefiniteDescription -> T.Text
 showDD h =

@@ -62,7 +62,6 @@ parseStmt :: Handle -> Parser (RawStmt, C)
 parseStmt h = do
   choice
     [ parseDefine h,
-      parseDataRaw h,
       parseData h,
       parseInline h,
       parseConstantMeta h,
@@ -211,20 +210,11 @@ parseAliasOpaque h = do
 parseData :: Handle -> Parser (RawStmt, C)
 parseData h = do
   c1 <- keyword "data"
-  parseData' h c1 True
-
-parseDataRaw :: Handle -> Parser (RawStmt, C)
-parseDataRaw h = do
-  c1 <- keyword "data-raw"
-  parseData' h c1 False
-
-parseData' :: Handle -> C -> Bool -> Parser (RawStmt, C)
-parseData' h c1 shouldOptimize = do
   m <- getCurrentHint
   (dataName, c2) <- baseName
   dataArgsOrNone <- parseDataArgs h
   (consSeries, loc, c) <- seriesBraceList' $ parseDefineDataClause h
-  return (RawStmtDefineData c1 shouldOptimize m (dataName, c2) dataArgsOrNone consSeries loc, c)
+  return (RawStmtDefineData c1 m (dataName, c2) dataArgsOrNone consSeries loc, c)
 
 parseTrope :: Handle -> Parser (RawStmt, C)
 parseTrope h = do
@@ -331,11 +321,6 @@ parseNominalEntry h =
         (geist, cGeist) <- parseNominalData h
         loc <- getCurrentLoc
         return ((Data, geist, loc), cTag ++ cGeist),
-      do
-        cTag <- keyword "data-raw"
-        (geist, cGeist) <- parseNominalData h
-        loc <- getCurrentLoc
-        return ((DataRaw, geist, loc), cTag ++ cGeist),
       do
         cTag <- keyword "resource"
         (geist, cGeist) <- parseResourceGeist baseName

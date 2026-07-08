@@ -297,7 +297,7 @@ discernStmtKindType h stmtKind =
       return SK.Alias
     SK.AliasOpaque ->
       return SK.AliasOpaque
-    SK.Data dataName dataArgs consInfoList isNominal shouldOptimize -> do
+    SK.Data dataName dataArgs consInfoList isNominal -> do
       (dataArgs', h') <- discernTypeBinder' h dataArgs
       let discernConsInfo (savedHint, consInfo) = do
             (consArgs', h'') <- discernBinder' h' (DI.consArgs consInfo)
@@ -305,7 +305,7 @@ discernStmtKindType h stmtKind =
       (consInfoList', hList) <- mapAndUnzipM discernConsInfo consInfoList
       forM_ (concatMap H.nameEnv hList) $ \(_, (_, newVar, _, _)) -> do
         liftIO $ Unused.deleteVariable (H.unusedHandle h') newVar
-      return $ SK.Data dataName dataArgs' consInfoList' isNominal shouldOptimize
+      return $ SK.Data dataName dataArgs' consInfoList' isNominal
 
 getUnitType :: H.Handle -> Hint -> App WT.WeakType
 getUnitType h m = do
@@ -596,7 +596,7 @@ discern h term =
       return $ m :< WT.TauElim (mx, x') e1' e2'
     m :< RT.Embody e -> do
       ensureRuntimeStage m h "meta operation (`*`)"
-      embodyVar <- liftEither $ locatorToVarGlobal m coreBoxEmbody
+      embodyVar <- liftEither $ locatorToVarGlobal m coreLayerEmbody
       discern h $ m :< RT.piElim embodyVar [e]
     m :< RT.Let letKind _ (mx, pat, c1, c2, t) _ _ e1 _ startLoc _ e2 endLoc -> do
       discernLet h m letKind (mx, pat, c1, c2, t) e1 e2 startLoc endLoc

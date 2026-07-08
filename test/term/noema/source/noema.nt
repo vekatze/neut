@@ -1,5 +1,5 @@
 import {
-  core::box {axiom-T},
+  core::layer {axiom-T},
   core::list {length},
   core::sync.cell {cell, clone, make-cell, mutate},
 }

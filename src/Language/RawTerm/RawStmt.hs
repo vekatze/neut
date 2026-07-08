@@ -22,13 +22,13 @@ where
 
 import Data.Text qualified as T
 import Language.Common.BaseName qualified as BN
+import Language.Common.DataInfo (FieldHint)
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.ExternalName qualified as EN
 import Language.Common.ForeignCodType qualified as F
 import Language.Common.LocalLocator qualified as LL
 import Language.Common.NominalTag
 import Language.Common.RuleKind
-import Language.Common.DataInfo (FieldHint)
 import Language.Common.StmtKind qualified as SK
 import Language.RawTerm.Name qualified as N
 import Language.RawTerm.RawBinder
@@ -82,7 +82,6 @@ data BaseRawStmt name
       (RT.RawTypeDef name)
   | RawStmtDefineData
       C
-      Bool
       Hint
       (name, C)
       (Maybe (RT.Args RT.RawType))

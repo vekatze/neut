@@ -328,11 +328,11 @@ weakenStmtKindType stmtKind =
       Alias
     AliasOpaque ->
       AliasOpaque
-    Data dataName dataArgs consInfoList isNominal shouldOptimize -> do
+    Data dataName dataArgs consInfoList isNominal -> do
       let dataArgs' = map weakenTypeBinder dataArgs
       let weakenConsInfo consInfo = consInfo {DI.consArgs = map weakenTypeBinder (DI.consArgs consInfo)}
       let consInfoList' = map (second weakenConsInfo) consInfoList
-      Data dataName dataArgs' consInfoList' isNominal shouldOptimize
+      Data dataName dataArgs' consInfoList' isNominal
 
 weakenForeign :: F.Foreign -> WT.WeakForeign
 weakenForeign foreignItem@(F.Foreign m _ _ _) =

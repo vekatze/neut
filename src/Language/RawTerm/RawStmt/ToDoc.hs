@@ -4,9 +4,9 @@ import Control.Monad
 import Data.Bifunctor
 import Data.Text qualified as T
 import Language.Common.BaseName qualified as BN
+import Language.Common.Const (routeSep)
 import Language.Common.ExternalName qualified as EN
 import Language.Common.ForeignCodType qualified as FCT
-import Language.Common.Const (routeSep)
 import Language.Common.GlobalLocator qualified as GL
 import Language.Common.LocalLocator qualified as LL
 import Language.Common.NominalTag
@@ -241,11 +241,10 @@ decStmt stmt =
             TransparentAlias -> "alias"
             OpaqueAlias -> "alias-opaque"
       RT.decodeTypeDef (RT.nameToDoc . N.Var) keyword c (fmap BN.reify def)
-    RawStmtDefineData c1 shouldOptimize _ (dataName, c2) argsOrNone consInfo _ -> do
-      let keyword = if shouldOptimize then "data " else "data-raw "
+    RawStmtDefineData c1 _ (dataName, c2) argsOrNone consInfo _ -> do
       attachStmtComment (c1 ++ c2) $
         D.join
-          [ D.text keyword,
+          [ D.text "data ",
             D.text (BN.reify dataName),
             decDataArgs argsOrNone,
             D.text " ",
@@ -406,8 +405,6 @@ decNominalGeist (tag, geist, _) = do
         AliasOpaque ->
           RT.decTypeGeist (D.text . BN.reify) geist
         Data ->
-          RT.decTypeGeist (D.text . BN.reify) geist
-        DataRaw ->
           RT.decTypeGeist (D.text . BN.reify) geist
         Resource ->
           RT.decTypeGeist (D.text . BN.reify) geist

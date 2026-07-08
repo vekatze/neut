@@ -147,9 +147,9 @@ coreDebugPanic :: T.Text
 coreDebugPanic =
   core <> routeSep <> "debug" <> nsSep <> "panic"
 
-coreBoxEmbody :: T.Text
-coreBoxEmbody =
-  core <> routeSep <> "box" <> nsSep <> "embody"
+coreLayerEmbody :: T.Text
+coreLayerEmbody =
+  core <> routeSep <> "layer" <> nsSep <> "embody"
 
 coreTypeValueTypeValue :: T.Text
 coreTypeValueTypeValue =

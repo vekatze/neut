@@ -398,7 +398,9 @@ inline' h term = do
           Magic.evaluateGetOriginColumn h m
 
 inlineType' :: Handle -> TM.Type -> App TM.Type
-inlineType' h ty =
+inlineType' h ty = do
+  detectPossibleInfiniteLoop h
+  liftIO $ incrementStep h
   case ty of
     _ :< TM.Tau ->
       return ty
@@ -407,6 +409,7 @@ inlineType' h ty =
     _ :< TM.TVarGlobal {} ->
       return ty
     m :< TM.TyApp t args -> do
+      t' <- inlineType' h t
       case t of
         _ :< TM.TVarGlobal _ dd
           | Just typeDefInfo <- Map.lookup dd (typeDefMap h),
@@ -418,7 +421,6 @@ inlineType' h ty =
               body' <- liftIO $ Subst.substType (substHandle h) subType body
               inlineType' h body'
         _ -> do
-          t' <- inlineType' h t
           args' <- mapM (inlineType' h) args
           return $ m :< TM.TyApp t' args'
     m :< TM.Pi piKind impArgs expArgs defaultArgs cod -> do

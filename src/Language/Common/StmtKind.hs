@@ -12,6 +12,7 @@ module Language.Common.StmtKind
     isMetaOnlyStmtKind,
     isInlineStmtKind,
     isDestPassingStmtKind,
+    isOpaqueTypeStmtKind,
   )
 where
 
@@ -40,7 +41,7 @@ data BaseStmtKindTerm name binder t
 data BaseStmtKindType binder
   = Alias
   | AliasOpaque
-  | Data DD.DefiniteDescription [binder] [DI.StmtConsInfo binder] IsNominal Bool
+  | Data DD.DefiniteDescription [binder] [DI.StmtConsInfo binder] IsNominal
   deriving (Generic)
 
 instance (Binary name, Binary x, Binary t) => Binary (BaseStmtKindTerm name x t)
@@ -177,6 +178,14 @@ isDestPassingStmtKind stmtKind =
     DestPassing ->
       True
     DestPassingInline ->
+      True
+    _ ->
+      False
+
+isOpaqueTypeStmtKind :: BaseStmtKindType binder -> Bool
+isOpaqueTypeStmtKind stmtKind =
+  case stmtKind of
+    AliasOpaque ->
       True
     _ ->
       False

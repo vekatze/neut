@@ -1,6 +1,6 @@
 import {
-  core::box {axiom-T},
   core::int.io {print-int-line},
+  core::layer {axiom-T},
   core::list {length},
   core::sync.cell {borrow, cell, make-cell, mutate},
 }
