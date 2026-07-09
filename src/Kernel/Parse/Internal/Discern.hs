@@ -503,7 +503,7 @@ discern h term =
                 raiseError m $ "`" <> DD.reify dd <> "` is a rule and must be used with `::[...]`"
               _ ->
                 return $ m :< RT.VarGlobal dd gn
-      let quote e = m :< RT.CodeIntro CodeVariantK [] [] (e, [])
+      let quote e@(me :< _) = me :< RT.CodeIntro CodeVariantK [] [] (e, [])
       let args = fmap quote es
       let defaultArgs = mDefaultArgs <&> fmap (\(mx, k, c1, c2, e) -> (mx, k, c1, c2, quote e))
       discern h $ m :< RT.CodeElim [] [] (m :< RT.PiElim headTerm [] mImpArgs [] args [] defaultArgs, [])
