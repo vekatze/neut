@@ -1,7 +1,6 @@
 module Kernel.Common.ReadableDD
   ( readableDD,
     readableDD',
-    readableDDWith,
   )
 where
 
