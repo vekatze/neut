@@ -1773,10 +1773,17 @@ buildFoldLeft func@(mFunc :< _) argList =
       let headTerm = mFunc :< RT.piElim func [firstArg, secondArg]
       buildFoldLeft func $ headTerm : restArgs
 
+ensureLocalVar :: Hint -> T.Text -> App ()
+ensureLocalVar m s = do
+  when (isConsName s) $ do
+    raiseError m "Local variables cannot be capitalized"
+
 extendVar :: H.Handle -> Hint -> Ident -> App H.Handle
 extendVar h m newVar = do
+  ensureLocalVar m (Ident.toText newVar)
   liftIO $ H.extend' h m newVar VDK.Normal
 
 extendTypeVar :: H.Handle -> Hint -> Ident -> App H.Handle
 extendTypeVar h m newVar = do
+  ensureLocalVar m (Ident.toText newVar)
   liftIO $ H.extendType' h m newVar VDK.Normal
