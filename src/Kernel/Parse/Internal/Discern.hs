@@ -416,7 +416,7 @@ discern h term =
       (defaultArgs', h''') <- discernBinderWithDefaultArgs h'' defaultArgs endLoc
       codType' <- discernType h''' $ snd $ RT.cod geist
       x' <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) x
-      h'''' <- liftIO $ H.extend' h''' mx x' VDK.Normal
+      h'''' <- extendVar h''' mx x'
       liftIO $ Unused.deleteVariable (H.unusedHandle h) x'
       body' <- discern h'''' body
       let mxt' = (mx, VK.Normal, x', codType')
@@ -591,7 +591,7 @@ discern h term =
     m :< RT.TauElim _ (mx, x, _) _ e1 _ _ _ e2 _ -> do
       e1' <- discern h e1
       x' <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) x
-      h' <- liftIO $ H.extendType' h mx x' VDK.Normal
+      h' <- extendTypeVar h mx x'
       e2' <- discern h' e2
       return $ m :< WT.TauElim (mx, x') e1' e2'
     m :< RT.Embody e -> do
@@ -1322,7 +1322,7 @@ discernImpArgs h binder endLoc =
     (mx, k, x, _, _, t) : xts -> do
       t' <- discernType h t
       x' <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) x
-      h' <- liftIO $ H.extendType' h mx x' VDK.Normal
+      h' <- extendTypeVar h mx x'
       (xts', h'') <- discernImpArgs h' xts endLoc
       liftIO $ Tag.insertBinder (H.tagHandle h'') (mx, k, x', t')
       liftIO $ SymLoc.insert (H.symLocHandle h'') x' (metaLocation mx) endLoc
@@ -1340,7 +1340,7 @@ discernBinder h binder endLoc =
     (mx, k, x, _, _, t) : xts -> do
       t' <- discernType h t
       x' <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) x
-      h' <- liftIO $ H.extend' h mx x' VDK.Normal
+      h' <- extendVar h mx x'
       (xts', h'') <- discernBinder h' xts endLoc
       liftIO $ Tag.insertBinder (H.tagHandle h'') (mx, k, x', t')
       liftIO $ SymLoc.insert (H.symLocHandle h'') x' (metaLocation mx) endLoc
@@ -1358,7 +1358,7 @@ discernTypeBinder h binder endLoc =
     (mx, k, x, _, _, t) : xts -> do
       t' <- discernType h t
       x' <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) x
-      h' <- liftIO $ H.extendType' h mx x' VDK.Normal
+      h' <- extendTypeVar h mx x'
       (xts', h'') <- discernTypeBinder h' xts endLoc
       liftIO $ Tag.insertBinder (H.tagHandle h'') (mx, k, x', t')
       liftIO $ SymLoc.insert (H.symLocHandle h'') x' (metaLocation mx) endLoc
@@ -1377,7 +1377,7 @@ discernBinderWithDefaultArgs h binder endLoc =
       t' <- discernType h t
       defaultValue' <- discern h defaultValue
       x' <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) x
-      h' <- liftIO $ H.extend' h mx x' VDK.Normal
+      h' <- extendVar h mx x'
       (xts', h'') <- discernBinderWithDefaultArgs h' xts endLoc
       liftIO $ Tag.insertBinder (H.tagHandle h'') (mx, k, x', t')
       liftIO $ SymLoc.insert (H.symLocHandle h'') x' (metaLocation mx) endLoc
@@ -1396,7 +1396,7 @@ discernTypeBinderWithDefaultArgs h binder endLoc =
       t' <- discernType h t
       defaultValue' <- discern h {H.nameEnv = []} defaultValue
       x' <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) x
-      h' <- liftIO $ H.extendType' h mx x' VDK.Normal
+      h' <- extendTypeVar h mx x'
       (xts', h'') <- discernTypeBinderWithDefaultArgs h' xts endLoc
       liftIO $ Tag.insertBinder (H.tagHandle h'') (mx, k, x', t')
       liftIO $ SymLoc.insert (H.symLocHandle h'') x' (metaLocation mx) endLoc
@@ -1413,7 +1413,7 @@ discernBinder' h binder =
     (mx, k, x, _, _, t) : xts -> do
       t' <- discernType h t
       x' <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) x
-      h' <- liftIO $ H.extend' h mx x' VDK.Normal
+      h' <- extendVar h mx x'
       (xts', h'') <- discernBinder' h' xts
       liftIO $ Tag.insertBinder (H.tagHandle h) (mx, k, x', t')
       return ((mx, k, x', t') : xts', h'')
@@ -1429,7 +1429,7 @@ discernTypeBinder' h binder =
     (mx, k, x, _, _, t) : xts -> do
       t' <- discernType h t
       x' <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) x
-      h' <- liftIO $ H.extendType' h mx x' VDK.Normal
+      h' <- extendTypeVar h mx x'
       (xts', h'') <- discernTypeBinder' h' xts
       liftIO $ Tag.insertBinder (H.tagHandle h) (mx, k, x', t')
       return ((mx, k, x', t') : xts', h'')
@@ -1444,7 +1444,7 @@ discernBinderWithBody' ::
 discernBinderWithBody' h (mx, k, x, _, _, codType) startLoc endLoc e = do
   codType' <- discernType h codType
   x' <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) x
-  h'' <- liftIO $ H.extend' h mx x' VDK.Normal
+  h'' <- extendVar h mx x'
   e' <- discern h'' e
   liftIO $ SymLoc.insert (H.symLocHandle h'') x' startLoc endLoc
   return ((mx, k, x', codType'), e')
@@ -1772,3 +1772,18 @@ buildFoldLeft func@(mFunc :< _) argList =
     (firstArg : secondArg : restArgs) -> do
       let headTerm = mFunc :< RT.piElim func [firstArg, secondArg]
       buildFoldLeft func $ headTerm : restArgs
+
+ensureLocalVar :: Hint -> T.Text -> App ()
+ensureLocalVar m s = do
+  when (isConsName s) $ do
+    raiseError m "Local variables cannot be capitalized"
+
+extendVar :: H.Handle -> Hint -> Ident -> App H.Handle
+extendVar h m newVar = do
+  ensureLocalVar m (Ident.toText newVar)
+  liftIO $ H.extend' h m newVar VDK.Normal
+
+extendTypeVar :: H.Handle -> Hint -> Ident -> App H.Handle
+extendTypeVar h m newVar = do
+  ensureLocalVar m (Ident.toText newVar)
+  liftIO $ H.extendType' h m newVar VDK.Normal

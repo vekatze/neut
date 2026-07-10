@@ -3,13 +3,13 @@ import {
 }
 
 define foo(
-  FOO: bool,
+  foo: bool,
   a: type,
   🌟🌟🌟: type,
   竹の葉に霰ふるなりさらさらに独りは寝べき心地こそせね: int,
 ) -> type {
   let _ = 竹の葉に霰ふるなりさらさらに独りは寝べき心地こそせね;
-  if FOO {
+  if foo {
     unpack-type a = a;
     unpack-type 🌟🌟🌟 = 🌟🌟🌟;
     pack-type {(a) -> 🌟🌟🌟}
@@ -28,7 +28,7 @@ define test-syntax() -> unit {
   let _ =
     foo{
       a := pack-type {int},
-      FOO := True,
+      foo := True,
       🌟🌟🌟 := pack-type {list(null)},
       竹の葉に霰ふるなりさらさらに独りは寝べき心地こそせね := {
         let x = 10;
@@ -40,7 +40,7 @@ define test-syntax() -> unit {
     foo{
       a := pack-type {int},
       🌟🌟🌟 := pack-type {list(null)},
-      FOO := False,
+      foo := False,
       竹の葉に霰ふるなりさらさらに独りは寝べき心地こそせね := {
         let x = 10;
         let y = 20;
@@ -59,10 +59,10 @@ define test-syntax() -> unit {
           },
           a := pack-type {int},
           🌟🌟🌟 := pack-type {list(null)},
-          FOO := True,
+          foo := True,
         }
       },
-      FOO := False,
+      foo := False,
       竹の葉に霰ふるなりさらさらに独りは寝べき心地こそせね := {
         let x = 10;
         let y = 20;
