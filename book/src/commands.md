@@ -4,7 +4,6 @@ The `neut` command has subcommands like `neut build`, `neut get`, etc. This sect
 
 ## Table of Contents
 
-- [Common Notes](#common-notes)
 - [neut build](#neut-build)
 - [neut check](#neut-check)
 - [neut clean](#neut-clean)
@@ -15,29 +14,7 @@ The `neut` command has subcommands like `neut build`, `neut get`, etc. This sect
 - [neut zen](#neut-zen)
 - [neut lsp](#neut-lsp)
 - [neut version](#neut-version)
-
-## Common Notes
-
-### Subcommands and Modules
-
-Most of the subcommands of `neut` must be executed inside a module. If you execute such a subcommand outside a module, the command will emit an error like the one below:
-
-```sh
-neut build foo
-#=> Error: Couldn't find a module file (Context: /Users/foo/Desktop)
-```
-
-Only the following subcommands can be used outside a module:
-
-- `neut create`
-- `neut version`
-
-### Shared Command-Line Options
-
-Most subcommands share the following command-line options:
-
-- `--no-color` can be used to turn off ANSI colors
-- `--report MODE` sets report output style (`none`, `plain`, `fancy`, or `debug`)
+- [Common Notes](#common-notes)
 
 ## `neut build`
 
@@ -404,3 +381,62 @@ For more information, please see [LSP Showcase](./lsp-showcase.md) and [Editor S
 neut version
 #=> X.Y.Z
 ```
+
+## Common Notes
+
+### Subcommands and Modules
+
+Most `neut` subcommands must be executed inside a module. Otherwise, the command emits an error such as:
+
+```sh
+neut build foo
+#=> Error: Couldn't find a module file (Context: /Users/foo/Desktop)
+```
+
+Only the following subcommands can be used outside a module:
+
+- `neut create`
+- `neut version`
+
+### Shared Command-Line Options
+
+Most subcommands share the following command-line options:
+
+- `--no-color` can be used to turn off ANSI colors
+- `--report MODE` sets report mode (`none`, `plain`, `fancy`, or `trace=ITEMS`)
+
+### `--report trace=ITEMS`
+
+You can trace selected definitions using `--report trace=ITEMS`:
+
+```sh
+# print terms for `myfile` in source/myfile.nt
+neut build app --report trace=myfile,@term
+
+# print terms for `read` and `write` in source/parser.nt
+neut build app --report trace=parser.read,parser.write,@term
+
+# print low-level code and LLVM IR for `encode` in source/codec.nt
+neut build app --report trace=codec.encode,@lowcomp,@llvm
+
+# print polarized terms for `map` in the `core` dependency
+neut build app --report trace=core::list.map,@comp
+
+# print terms before elaboration for `validate` in source/checker.nt
+neut check --report trace=checker.validate,@preterm
+```
+
+Each bare item such as `myfile` or `parser.read` selects a definition prefix; list multiple bare items to select multiple prefixes.
+
+The available intermediate representations are:
+
+- `@preterm`: terms before elaboration
+- `@term`: terms
+- `@precomp`: polarized terms before optimization
+- `@comp`: polarized terms
+- `@lowcomp`: low-level code
+- `@llvm`: LLVM IR
+
+You can also specify `@activity` to print compiler activity logs.
+
+Selecting an intermediate representation bypasses source caches.
