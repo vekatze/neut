@@ -15,6 +15,7 @@ import Command.Common.Build.Execute qualified as Execute
 import Command.Common.Build.Generate qualified as Gen
 import Command.Common.Build.Install qualified as Install
 import Command.Common.Build.Link qualified as Link
+import Console.Handle qualified as Console
 import Control.Monad
 import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.IO.Class
@@ -33,7 +34,6 @@ import Kernel.Common.Handle.Global.GlobalRemark qualified as GlobalRemark
 import Kernel.Common.Handle.Global.ModulePath qualified as ModulePath
 import Kernel.Common.Handle.Global.Path qualified as Path
 import Kernel.Common.Handle.Global.Platform qualified as Platform
-import Kernel.Common.ManageCache (needsCompilation)
 import Kernel.Common.ManageCache qualified as Cache
 import Kernel.Common.Module qualified as M
 import Kernel.Common.OutputKind
@@ -41,6 +41,7 @@ import Kernel.Common.OutputKind qualified as OK
 import Kernel.Common.RunProcess qualified as RunProcess
 import Kernel.Common.Source
 import Kernel.Common.Target
+import Kernel.Common.Trace qualified as Trace
 import Kernel.Common.ZenConfig qualified as Z
 import Kernel.Elaborate.Elaborate qualified as Elaborate
 import Kernel.Elaborate.Internal.Handle.Elaborate qualified as Elaborate
@@ -99,13 +100,19 @@ buildTarget :: Handle -> M.MainModule -> Target -> App ()
 buildTarget h (M.MainModule baseModule) target = do
   liftIO $ Logger.report (Global.loggerHandle (globalHandle h)) $ "Building: " <> T.pack (show target)
   target' <- expandClangOptions h target
+  liftIO $
+    Logger.report (Global.loggerHandle (globalHandle h)) $
+      "Build configuration: target=" <> T.pack (show target') <> ", outputs=" <> T.pack (show $ _outputKindList h) <> ", skip-link=" <> T.pack (show $ _shouldSkipLink h) <> ", execute=" <> T.pack (show $ _shouldExecute h)
   unravelHandle <- liftIO $ Unravel.new (globalHandle h)
   (artifactTime, dependenceSeq) <- Unravel.unravel unravelHandle baseModule target'
+  modulePathMap <- liftIO $ ModulePath.get $ Global.modulePathHandle $ globalHandle h
+  let traceReport = Console.getTraceConfig $ Global.consoleHandle $ globalHandle h
+  traceConfig <- either raiseError' return $ Trace.new modulePathMap traceReport
   let moduleList = nubOrdOn M.moduleID $ map sourceModule dependenceSeq
   didPerformForeignCompilation <- compileForeign h target moduleList
   let loadHandle = Load.new (globalHandle h)
-  contentSeq <- Load.load loadHandle target dependenceSeq
-  compile h target' (_outputKindList h) contentSeq
+  contentSeq <- Load.load loadHandle (Trace.isEnabled traceConfig) target dependenceSeq
+  compile h traceConfig target' (_outputKindList h) contentSeq
   liftIO $
     GlobalRemark.get (Global.globalRemarkHandle (globalHandle h))
       >>= Logger.printLogList (Global.loggerHandle (globalHandle h))
@@ -120,10 +127,17 @@ buildTarget h (M.MainModule baseModule) target = do
       execute h (_shouldExecute h) ct (_executeArgs h)
       install h (_installDir h) ct
 
-compile :: Handle -> Target -> [OutputKind] -> [(Source, Either Cache T.Text)] -> App ()
-compile h target outputKindList contentSeq = do
+compile :: Handle -> Trace.Config -> Target -> [OutputKind] -> [(Source, Either Cache T.Text)] -> App ()
+compile h traceConfig target outputKindList contentSeq = do
   let cacheHandle = Cache.new (globalHandle h)
-  bs <- mapM (needsCompilation cacheHandle outputKindList . fst) contentSeq
+  bs <- mapM (needsCodeGeneration cacheHandle . fst) contentSeq
+  forM_ (zip contentSeq bs) $ \((source, _), shouldGenerateCode) -> do
+    let sourcePath = T.pack $ toFilePath $ sourceFilePath source
+    let message =
+          if shouldGenerateCode
+            then "Scheduling code generation: " <> sourcePath
+            else "Skipping code generation: " <> sourcePath <> " (requested outputs are fresh)"
+    liftIO $ Logger.report (Global.loggerHandle (globalHandle h)) message
   c <- getEntryPointCompilationCount h target outputKindList
   let numOfItems = length (filter id bs) + c
   let consoleHandle = Global.consoleHandle (globalHandle h)
@@ -135,21 +149,25 @@ compile h target outputKindList contentSeq = do
   hp <- liftIO $ Indicator.new consoleHandle loggerHandle (Just numOfItems) workingTitle completedTitle color
   cacheOrProgList <- Parse.parse (globalHandle h) contentSeq
   cacheOrStmtList <- forP cacheOrProgList $ \(localHandle, (source, cacheOrProg)) -> do
+    liftIO $ Logger.report (Global.loggerHandle (globalHandle h)) $ "Interpreting: " <> T.pack (toFilePath $ sourceFilePath source)
     interpretHandle <- liftIO $ Interpret.new (globalHandle h) localHandle (sourceModule source)
     item <- Interpret.interpret interpretHandle target source cacheOrProg
     return (localHandle, (source, item))
   contentAsync <- fmap catMaybes $ forM cacheOrStmtList $ \(localHandle, (source, (cacheOrStmt, logs))) -> do
-    elaborateHandle <- liftIO $ Elaborate.new (globalHandle h) localHandle source
+    liftIO $ Logger.report (Global.loggerHandle (globalHandle h)) $ "Elaborating: " <> T.pack (toFilePath $ sourceFilePath source)
+    elaborateHandle <- liftIO $ Elaborate.new (globalHandle h) traceConfig localHandle source
     let ensureMainHandle = EnsureMain.new (Global.envHandle (globalHandle h))
     stmtList <- Elaborate.elaborate elaborateHandle target logs cacheOrStmt
     EnsureMain.ensureMain ensureMainHandle target source (map snd $ getStmtName stmtList)
-    b <- Cache.needsCompilation cacheHandle outputKindList source
+    b <- needsCodeGeneration cacheHandle source
     if b
       then do
         fmap Just $ liftIO $ async $ runApp $ do
-          clarifyHandle <- liftIO $ Clarify.new (globalHandle h)
+          liftIO $ Logger.report (Global.loggerHandle (globalHandle h)) $ "Clarifying: " <> T.pack (toFilePath $ sourceFilePath source)
+          clarifyHandle <- liftIO $ Clarify.new (globalHandle h) traceConfig
           (stmtList', auxStmtList, defMap) <- Clarify.clarify clarifyHandle stmtList
-          lowerHandle <- Lower.new (globalHandle h) target defMap
+          liftIO $ Logger.report (Global.loggerHandle (globalHandle h)) $ "Lowering: " <> T.pack (toFilePath $ sourceFilePath source)
+          lowerHandle <- Lower.new (globalHandle h) traceConfig target defMap
           virtualCode <- Lower.lower lowerHandle stmtList' auxStmtList
           emit h hp currentTime target outputKindList (Right source) virtualCode
       else return Nothing
@@ -163,6 +181,11 @@ compile h target outputKindList contentSeq = do
   if null errors
     then return ()
     else throwError $ E.join errors
+  where
+    needsCodeGeneration cacheHandle source = do
+      if Trace.isEnabled traceConfig
+        then return True
+        else Cache.needsCompilation cacheHandle outputKindList source
 
 registerUnusedTopLevelNameRemarks :: Handle -> App ()
 registerUnusedTopLevelNameRemarks h = do
@@ -241,17 +264,28 @@ compileEntryPoint h target outputKindList = do
     PeripheralSingle {} ->
       return []
     Main t -> do
+      traceConfig <- newTraceConfig h
       let pathHandle = Global.pathHandle (globalHandle h)
       b <- Cache.isEntryPointCompilationSkippable pathHandle t outputKindList
       if b
-        then return []
+        then do
+          liftIO $ Logger.report (Global.loggerHandle (globalHandle h)) $ "Skipping entry-point code generation: " <> T.pack (show t) <> " (requested outputs are fresh)"
+          return []
         else do
+          liftIO $ Logger.report (Global.loggerHandle (globalHandle h)) $ "Generating entry point: " <> T.pack (show t)
           clarifyMainHandle <- liftIO $ Clarify.newMain (globalHandle h)
           (stmtList, defMap) <- liftIO $ Clarify.clarifyEntryPoint clarifyMainHandle
-          lowerHandle <- Lower.new (globalHandle h) target defMap
+          liftIO $ Logger.report (Global.loggerHandle (globalHandle h)) $ "Lowering entry point: " <> T.pack (show t)
+          lowerHandle <- Lower.new (globalHandle h) traceConfig target defMap
           mainVirtualCode <-
             Lower.lowerEntryPoint lowerHandle t stmtList
           return [(Left t, mainVirtualCode)]
+
+newTraceConfig :: Handle -> App Trace.Config
+newTraceConfig h = do
+  modulePathMap <- liftIO $ ModulePath.get $ Global.modulePathHandle $ globalHandle h
+  let traceReport = Console.getTraceConfig $ Global.consoleHandle $ globalHandle h
+  either raiseError' return $ Trace.new modulePathMap traceReport
 
 execute :: Handle -> Bool -> MainTarget -> [String] -> App ()
 execute h shouldExecute target args = do
@@ -275,10 +309,6 @@ compileForeign' :: Handle -> Target -> UTCTime -> M.Module -> App Bool
 compileForeign' h t currentTime m = do
   sub <- getForeignSubst h t m
   let cmdList = M.script $ M.moduleForeign m
-  unless (null cmdList) $ do
-    liftIO $
-      Logger.report (Global.loggerHandle (globalHandle h)) $
-        "Performing foreign compilation of `" <> MID.reify (M.moduleID m) <> "` with " <> T.pack (show sub)
   let moduleRootDir = M.getModuleRootDir m
   foreignDir <- Path.getForeignDir (Global.pathHandle (globalHandle h)) t m
   inputPathList <- fmap concat $ mapM (getInputPathList moduleRootDir) $ M.input $ M.moduleForeign m
@@ -296,6 +326,10 @@ compileForeign' h t currentTime m = do
           return False
     _ -> do
       let cmdList' = map (naiveReplace sub) cmdList
+      unless (null cmdList') $ do
+        liftIO $
+          Logger.report (Global.loggerHandle (globalHandle h)) $
+            "Performing foreign compilation of `" <> MID.reify (M.moduleID m) <> "` with " <> T.pack (show sub)
       forM_ cmdList' $ \cmd -> do
         let spec =
               RunProcess.Spec

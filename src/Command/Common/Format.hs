@@ -66,7 +66,7 @@ _formatSource h shouldMinimizeImports filePath fileContent = do
       unravelHandle <- liftIO $ Unravel.new (globalHandle h)
       let loadHandle = Load.new (globalHandle h)
       (_, dependenceSeq) <- Unravel.unravel unravelHandle mainModule $ Main (emptyZen filePath)
-      contentSeq <- Load.load loadHandle Peripheral dependenceSeq
+      contentSeq <- Load.load loadHandle False Peripheral dependenceSeq
       cacheOrProgList <- Parse.parse (globalHandle h) (_replaceLast fileContent contentSeq)
       case unsnoc cacheOrProgList of
         Nothing ->

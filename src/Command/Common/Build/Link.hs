@@ -52,9 +52,12 @@ link h target shouldSkipLink didPerformForeignCompilation artifactTime sourceLis
   executablePath <- Path.getExecutableOutputPath (pathHandle h) target
   isExecutableAvailable <- doesFileExist executablePath
   let freshExecutableAvailable = isJust (A.objectTime artifactTime) && isExecutableAvailable
-  if shouldSkipLink || (not didPerformForeignCompilation && freshExecutableAvailable)
-    then liftIO $ Logger.report (loggerHandle h) "Skipped linking object files"
-    else link' h target sourceList
+  if shouldSkipLink
+    then liftIO $ Logger.report (loggerHandle h) "Skipped linking object files (--skip-link was specified)"
+    else
+      if not didPerformForeignCompilation && freshExecutableAvailable
+        then liftIO $ Logger.report (loggerHandle h) "Skipped linking object files (the executable is fresh)"
+        else link' h target sourceList
 
 link' :: Handle -> MainTarget -> [Source.Source] -> App ()
 link' h target sourceList = do

@@ -11,7 +11,8 @@ where
 
 import App.App (App)
 import App.Error qualified as E
-import App.Run (forP, runApp)
+import App.Run (forP, raiseError', runApp)
+import Console.Handle qualified as Console
 import Control.Monad
 import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.IO.Class
@@ -21,12 +22,14 @@ import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.CreateLocalHandle qualified as Local
 import Kernel.Common.Handle.Global.Env qualified as Env
 import Kernel.Common.Handle.Global.GlobalRemark qualified as GlobalRemark
+import Kernel.Common.Handle.Global.ModulePath qualified as ModulePath
 import Kernel.Common.Module (extractModule)
 import Kernel.Common.Module qualified as M
 import Kernel.Common.Module.GetModule qualified as GetModule
 import Kernel.Common.Source (Source (sourceFilePath))
 import Kernel.Common.Source qualified as Source
 import Kernel.Common.Target
+import Kernel.Common.Trace qualified as Trace
 import Kernel.Elaborate.Elaborate qualified as Elaborate
 import Kernel.Elaborate.Internal.Handle.Elaborate qualified as Elaborate
 import Kernel.Load.Load qualified as Load
@@ -40,7 +43,7 @@ import Logger.Log
 import Logger.Log qualified as L
 import Path
 
-newtype Handle = Handle
+data Handle = Handle
   { globalHandle :: Global.Handle
   }
 
@@ -96,14 +99,18 @@ _check h target baseModule = do
     let loadHandle = Load.new (globalHandle h)
     unravelHandle <- liftIO $ Unravel.new (globalHandle h)
     (_, dependenceSeq) <- Unravel.unravel unravelHandle baseModule target
-    contentSeq <- Load.load loadHandle target dependenceSeq
+    traceConfig <- newTraceConfig h
+    contentSeq <- Load.load loadHandle (Trace.isEnabled traceConfig) target dependenceSeq
     cacheOrProgList <- Parse.parse (globalHandle h) contentSeq
     cacheOrStmtList <- forP cacheOrProgList $ \(localHandle, (source, cacheOrProg)) -> do
+      liftIO $
+        Logger.report (Global.loggerHandle (globalHandle h)) $
+          "Interpreting: " <> T.pack (toFilePath $ Source.sourceFilePath source)
       interpretHandle <- liftIO $ Interpret.new (globalHandle h) localHandle (Source.sourceModule source)
       item <- Interpret.interpret interpretHandle target source cacheOrProg
       return (localHandle, (source, item))
     forM_ cacheOrStmtList $ \(localHandle, (source, cacheOrContent)) -> do
-      checkSource h localHandle target source cacheOrContent
+      checkSource h traceConfig localHandle target source cacheOrContent
     registerUnusedTopLevelNameRemarks h
 
 _check' :: Handle -> Target -> M.Module -> App (Maybe Elaborate.Handle)
@@ -111,9 +118,13 @@ _check' h target baseModule = do
   unravelHandle <- liftIO $ Unravel.new (globalHandle h)
   let loadHandle = Load.new (globalHandle h)
   (_, dependenceSeq) <- Unravel.unravel unravelHandle baseModule target
-  contentSeq <- Load.load loadHandle target dependenceSeq
+  traceConfig <- newTraceConfig h
+  contentSeq <- Load.load loadHandle (Trace.isEnabled traceConfig) target dependenceSeq
   cacheOrProgList <- Parse.parse (globalHandle h) contentSeq
   cacheOrStmtList <- forP cacheOrProgList $ \(localHandle, (source, cacheOrProg)) -> do
+    liftIO $
+      Logger.report (Global.loggerHandle (globalHandle h)) $
+        "Interpreting: " <> T.pack (toFilePath $ Source.sourceFilePath source)
     interpretHandle <- liftIO $ Interpret.new (globalHandle h) localHandle (Source.sourceModule source)
     item <- Interpret.interpret interpretHandle target source cacheOrProg
     return (localHandle, (source, item))
@@ -123,19 +134,25 @@ _check' h target baseModule = do
       return Nothing
     Just (deps, (rootLocalHandle, (rootSource, rootCacheOrContent))) -> do
       forM_ deps $ \(localHandle, (source, cacheOrContent)) -> do
-        checkSource h localHandle target source cacheOrContent
-      result <- Just <$> checkSource h rootLocalHandle target rootSource rootCacheOrContent
+        checkSource h traceConfig localHandle target source cacheOrContent
+      result <- Just <$> checkSource h traceConfig rootLocalHandle target rootSource rootCacheOrContent
       registerUnusedTopLevelNameRemarks h
       return result
 
-checkSource :: Handle -> Local.Handle -> Target -> Source -> (Either Cache [WeakStmt], [Log]) -> App Elaborate.Handle
-checkSource h localHandle target source (cacheOrStmtList, logs) = do
-  elaborateHandle <- liftIO $ Elaborate.new (globalHandle h) localHandle source
+checkSource :: Handle -> Trace.Config -> Local.Handle -> Target -> Source -> (Either Cache [WeakStmt], [Log]) -> App Elaborate.Handle
+checkSource h traceConfig localHandle target source (cacheOrStmtList, logs) = do
+  elaborateHandle <- liftIO $ Elaborate.new (globalHandle h) traceConfig localHandle source
   liftIO $
     Logger.report (Global.loggerHandle (globalHandle h)) $
       "Checking: " <> T.pack (toFilePath $ sourceFilePath source)
   void $ Elaborate.elaborate elaborateHandle target logs cacheOrStmtList
   return elaborateHandle
+
+newTraceConfig :: Handle -> App Trace.Config
+newTraceConfig h = do
+  modulePathMap <- liftIO $ ModulePath.get $ Global.modulePathHandle $ globalHandle h
+  let traceReport = Console.getTraceConfig $ Global.consoleHandle $ globalHandle h
+  either raiseError' return $ Trace.new modulePathMap traceReport
 
 registerUnusedTopLevelNameRemarks :: Handle -> App ()
 registerUnusedTopLevelNameRemarks h = do

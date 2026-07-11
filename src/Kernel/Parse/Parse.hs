@@ -38,6 +38,7 @@ import Language.Common.StmtKind qualified as SK
 import Language.RawTerm.RawStmt
 import Language.RawTerm.RawTerm qualified as RT
 import Language.Term.Stmt
+import Logger.Debug qualified as Logger
 import Logger.Hint
 import SyntaxTree.Series qualified as SE
 
@@ -68,6 +69,11 @@ parse h contentSeq = do
   let parseHandle = new h
   liftIO $ UnusedTopLevelName.clear (unusedTopLevelNameHandle parseHandle)
   cacheOrProgList <- forP contentSeq $ \(source, cacheOrContent) -> do
+    case cacheOrContent of
+      Left _ ->
+        return ()
+      Right _ ->
+        liftIO $ Logger.report (Global.loggerHandle h) $ "Parsing: " <> T.pack (show $ Source.sourceFilePath source)
     prog <- parse' parseHandle source cacheOrContent
     localHandle <- Local.new h source
     let locatorHandle = Local.locatorHandle localHandle

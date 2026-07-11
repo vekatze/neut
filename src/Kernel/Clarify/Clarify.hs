@@ -14,6 +14,7 @@ where
 
 import App.App (App)
 import App.Run (raiseCritical, raiseCritical')
+import Console.ReportMode qualified as Report
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
@@ -39,6 +40,7 @@ import Kernel.Common.Handle.Global.Platform qualified as Platform
 import Kernel.Common.Handle.Global.Resource qualified as Resource
 import Kernel.Common.Handle.Global.Type qualified as Type
 import Kernel.Common.OptimizableData qualified as OD
+import Kernel.Common.Trace qualified as Trace
 import Kernel.Elaborate.Internal.Handle.TypeDef qualified as TypeDef
 import Language.Common.ArgNum qualified as AN
 import Language.Common.Attr.DataIntro qualified as AttrDI
@@ -83,6 +85,8 @@ import Language.Term.Stmt (Stmt, StmtF (..), isMacroStmt)
 import Language.Term.Subst qualified as Subst
 import Language.Term.Term qualified as TM
 import Language.WeakTerm.WeakTerm qualified as WT
+import Logger.Debug qualified as Logger
+import Logger.Handle qualified as Logger
 import Logger.Hint
 
 data Handle = Handle
@@ -99,7 +103,9 @@ data Handle = Handle
     baseSize :: DS.DataSize,
     typeHandle :: Type.Handle,
     typeDefHandle :: TypeDef.Handle,
-    importedTypeDefCacheHandle :: ImportedTypeDefCache.Handle
+    importedTypeDefCacheHandle :: ImportedTypeDefCache.Handle,
+    traceConfig :: Trace.Config,
+    loggerHandle :: Logger.Handle
   }
 
 data Context = Context
@@ -119,8 +125,8 @@ setCurrentFunction :: DD.DefiniteDescription -> Context -> Context
 setCurrentFunction currentFunction context =
   context {currentFunction}
 
-new :: Global.Handle -> IO Handle
-new (Global.Handle {..}) = do
+new :: Global.Handle -> Trace.Config -> IO Handle
+new (Global.Handle {..}) traceConfig = do
   let baseSize = Platform.getDataSize platformHandle
   auxEnvHandle <- AuxEnv.new
   let substHandle = Subst.new gensymHandle
@@ -156,7 +162,9 @@ newReduceOnlyHandle h = do
         baseSize = baseSize',
         typeHandle = typeHandle h,
         typeDefHandle = typeDefHandle h,
-        importedTypeDefCacheHandle = importedTypeDefCacheHandle h
+        importedTypeDefCacheHandle = importedTypeDefCacheHandle h,
+        traceConfig = traceConfig h,
+        loggerHandle = loggerHandle h
       }
 
 newAuxReduceHandle :: Gensym.Handle -> C.DefMap -> IO Reduce.Handle
@@ -171,6 +179,7 @@ clarify h stmtList = do
     stmtList' <- mapM (clarifyStmt h) filteredStmtList
     auxEnv <- liftIO $ AuxEnv.toCompStmtList <$> AuxEnv.get (auxEnvHandle h)
     return (stmtList', auxEnv)
+  liftIO $ mapM_ (reportTrace h Report.PreCompPhase "precomp") (stmtList' ++ auxEnv)
   baseAuxEnv <- liftIO $ makeBaseAuxEnv (sigmaHandle h)
   importedTypeDefList <- clarifyImportedTypeDefList h filteredStmtList
   let inlineableTypeDefList = mapMaybe inlineableTypeDef $ zip filteredStmtList stmtList'
@@ -180,10 +189,6 @@ clarify h stmtList = do
     case stmt of
       C.Def x opacity args e -> do
         e' <- liftIO $ Reduce.reduce auxReduceHandle e
-        -- liftIO $ putStrLn $ T.unpack "==================="
-        -- liftIO $ putStrLn $ T.unpack $ DD.reify x
-        -- liftIO $ putStrLn $ T.unpack $ T.pack $ show args
-        -- liftIO $ putStrLn $ T.unpack $ T.pack $ show e'
         return $ C.Def x opacity args e'
       C.DefVoid x opacity args e -> do
         e' <- liftIO $ Reduce.reduce auxReduceHandle e
@@ -200,7 +205,38 @@ clarify h stmtList = do
         return $ C.DefVoid x opacity args e'
       C.Foreign {} ->
         return stmt
+  liftIO $ mapM_ (reportTrace h Report.CompPhase "comp") (stmtList'' ++ auxEnv')
   return (stmtList'', auxEnv', defMap)
+
+reportTrace :: Handle -> Report.TracePhase -> T.Text -> C.CompStmt -> IO ()
+reportTrace h phase stage stmt = do
+  case C.getCompStmtName stmt of
+    Nothing ->
+      return ()
+    Just name -> do
+      when (Trace.matches (traceConfig h) phase name) $ Logger.trace (loggerHandle h) $ "[" <> stage <> "] " <> renderCompStmt stmt
+
+renderCompStmt :: C.CompStmt -> T.Text
+renderCompStmt stmt = do
+  case stmt of
+    C.Def name opacity args body ->
+      renderCompDefinition (if isOpaque opacity then "define" else "inline") name args body
+    C.DefVoid name opacity args body ->
+      renderCompDefinition (if isOpaque opacity then "define-void" else "inline-void") name args body
+    C.Foreign {} ->
+      "foreign declaration"
+
+renderCompDefinition :: T.Text -> DD.DefiniteDescription -> [Ident] -> C.Comp -> T.Text
+renderCompDefinition keyword name args body =
+  "\n"
+    <> keyword
+    <> " "
+    <> DD.localLocator name
+    <> "("
+    <> T.intercalate ", " (map Ident.toText' args)
+    <> ") {\n"
+    <> C.renderComp 1 body
+    <> "\n}"
 
 inlineableTypeDef :: (Stmt, C.CompStmt) -> Maybe C.CompStmt
 inlineableTypeDef (sourceStmt, compStmt) = do

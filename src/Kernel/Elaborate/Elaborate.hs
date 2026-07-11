@@ -9,6 +9,7 @@ where
 import App.App (App)
 import App.Error qualified as E
 import App.Run (raiseCritical, raiseError)
+import Console.ReportMode qualified as Report
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.Except (MonadError (throwError))
@@ -38,6 +39,7 @@ import Kernel.Common.OptimizableData qualified as OD
 import Kernel.Common.ReadableDD qualified as ReadableDD
 import Kernel.Common.Source qualified as Source
 import Kernel.Common.Target hiding (Main)
+import Kernel.Common.Trace qualified as Trace
 import Kernel.Elaborate.Internal.EnsureAffinity qualified as EnsureAffinity
 import Kernel.Elaborate.Internal.Handle.Constraint qualified as Constraint
 import Kernel.Elaborate.Internal.Handle.Def qualified as Definition
@@ -98,9 +100,11 @@ import Language.Term.Weaken
 import Language.WeakTerm.Subst (SubstEntry (..))
 import Language.WeakTerm.Subst qualified as Subst
 import Language.WeakTerm.ToText
+import Language.WeakTerm.ToText qualified as Weak
 import Language.WeakTerm.WeakPrimValue qualified as WPV
 import Language.WeakTerm.WeakStmt
 import Language.WeakTerm.WeakTerm qualified as WT
+import Logger.Debug qualified as Logger
 import Logger.Hint
 import Logger.Log qualified as L
 import Logger.LogLevel qualified as LL
@@ -128,17 +132,73 @@ elaborate h t logs cacheOrStmt = do
 analyzeStmtList :: Handle -> [WeakStmt] -> App [WeakStmt]
 analyzeStmtList h stmtList = do
   forM stmtList $ \stmt -> do
+    liftIO $ reportTrace h Report.PreTermPhase "preterm" stmt
     stmt' <- Infer.inferStmt h stmt
     insertWeakStmt h stmt'
     return stmt'
 
+reportTrace :: Handle -> Report.TracePhase -> T.Text -> WeakStmt -> IO ()
+reportTrace h phase stage stmt = do
+  case stmt of
+    WeakStmtDefineTerm _ stmtKind _ name _ expArgs _ cod body
+      | Trace.matches (traceConfig h) phase name ->
+          Logger.trace (Global.loggerHandle $ globalHandle h) $
+            "[" <> stage <> "]\n" <> toTextDefinition stmtKind name expArgs cod body
+    _ ->
+      return ()
+
+toTextDefinition ::
+  SK.StmtKindTerm WT.WeakType ->
+  DD.DefiniteDescription ->
+  [BinderF WT.WeakType] ->
+  WT.WeakType ->
+  WT.WeakTerm ->
+  T.Text
+toTextDefinition stmtKind name expArgs cod body =
+  toTextStmtKind stmtKind
+    <> " "
+    <> DD.localLocator name
+    <> "("
+    <> T.intercalate ", " (map toTextBinder expArgs)
+    <> ") "
+    <> toTextArrow stmtKind
+    <> " "
+    <> Weak.toTextType cod
+    <> " {\n"
+    <> Weak.toTextIndented (Weak.Kit 1 True) body
+    <> "\n}"
+
+toTextStmtKind :: SK.StmtKindTerm WT.WeakType -> T.Text
+toTextStmtKind stmtKind =
+  case stmtKind of
+    SK.Define -> "define"
+    SK.DestPassing -> "define"
+    SK.DestPassingInline -> "inline"
+    SK.Inline -> "inline"
+    SK.Constant -> "constant"
+    SK.ConstantMeta -> "constant-meta"
+    SK.Macro -> "define-meta"
+    SK.MacroInline -> "inline-meta"
+    SK.Main _ -> "define"
+    SK.DataIntro _ _ _ _ -> "define"
+
+toTextArrow :: SK.StmtKindTerm WT.WeakType -> T.Text
+toTextArrow stmtKind =
+  if SK.isDestPassingStmtKind stmtKind
+    then "->>"
+    else "->"
+
+toTextBinder :: BinderF WT.WeakType -> T.Text
+toTextBinder (_, _, x, ty) =
+  Ident.toText' x <> ": " <> Weak.toTextType ty
+
 synthesizeStmtList :: Handle -> Target -> [L.Log] -> [DD.DefiniteDescription] -> [WeakStmt] -> App [Stmt]
 synthesizeStmtList h t logs globalReferenceList stmtList = do
-  -- mapM_ (liftIO . viewStmt) stmtList
   liftIO (Constraint.get (constraintHandle h)) >>= Unify.unify h >>= liftIO . Hole.setTypeSubst (holeHandle h)
   (stmtList', affineErrorList) <- bimap concat concat . unzip <$> mapM (elaborateStmt h) stmtList
   unless (null affineErrorList) $ do
     throwError $ E.MakeError affineErrorList
+  liftIO $ mapM_ (reportTrace h Report.TermPhase "term" . weakenStmt) stmtList'
   mapM_ (detectCyclicTypes h) stmtList'
   generatedStmtList <- liftIO $ reverse <$> readIORef (pendingSpecializationDefs h)
   let stmtList'' = stmtList' ++ generatedStmtList
@@ -146,7 +206,6 @@ synthesizeStmtList h t logs globalReferenceList stmtList = do
   residualErrorList <- concat <$> mapM (checkResidualCheck h) residualCheckList'
   unless (null residualErrorList) $ do
     throwError $ E.MakeError residualErrorList
-  -- mapM_ (liftIO . viewStmt . weakenStmt) stmtList'
   countSnapshot <- liftIO $ Gensym.getCount (gensymHandle h)
   localLogs <- liftIO $ LocalLogs.get (localLogsHandle h)
   let logs' = logs ++ localLogs
@@ -1418,13 +1477,3 @@ isConstantMetaStmtKind stmtKind =
       True
     _ ->
       False
-
--- viewStmt :: WeakStmt -> IO ()
--- viewStmt stmt = do
---   case stmt of
---     WeakStmtDefineTerm _ _ m x impArgs expArgs defArgs codType e -> do
---       let defArgs' = map fst defArgs
---       let attr = AttrL.Attr {lamKind = LK.Normal Nothing codType, identity = 0}
---       putStrLn $ T.unpack $ DD.reify x <> "\n" <> toTextType (m :< WT.Pi (PK.Normal False) impArgs expArgs defArgs' codType) <> "\n" <> toText (m :< WT.PiIntro attr impArgs expArgs defArgs e)
---     _ ->
---       return ()

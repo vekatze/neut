@@ -13,6 +13,7 @@ module Kernel.Lower.Lower
 where
 
 import App.App (App)
+import Console.ReportMode qualified as Report
 import Control.Monad
 import Control.Monad.Writer.Lazy
 import Data.ByteString qualified as BS
@@ -33,6 +34,7 @@ import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.Env qualified as Env
 import Kernel.Common.Handle.Global.Platform qualified as Platform
 import Kernel.Common.Target
+import Kernel.Common.Trace qualified as Trace
 import Kernel.Lower.CoercionCancel qualified as CoercionCancel
 import Kernel.Lower.DeadLetElim qualified as DeadLetElim
 import Kernel.Lower.FreeMallocCancel qualified as FreeMallocCancel
@@ -63,7 +65,10 @@ import Language.Comp.Reduce qualified as Reduce
 import Language.Comp.Subst qualified as Subst
 import Language.LowComp.DeclarationName qualified as DN
 import Language.LowComp.LowComp qualified as LC
+import Language.LowComp.Render qualified as LCR
 import Logger.Hint (internalHint)
+import Logger.Debug qualified as Logger
+import Logger.Handle qualified as Logger
 
 data Handle = Handle
   { allocator :: Allocator,
@@ -76,15 +81,17 @@ data Handle = Handle
     declEnv :: IORef DN.DeclEnv,
     staticTextList :: IORef [(T.Text, (Builder, Int))],
     definedNameSet :: IORef (S.Set DD.DefiniteDescription),
-    referencedNameSet :: IORef (S.Set DD.DefiniteDescription)
+    referencedNameSet :: IORef (S.Set DD.DefiniteDescription),
+    traceConfig :: Trace.Config,
+    loggerHandle :: Logger.Handle
   }
 
 data TailPosition
   = TailPosition
   | NonTailPosition
 
-new :: Global.Handle -> Target -> C.DefMap -> App Handle
-new (Global.Handle {..}) target defMap = do
+new :: Global.Handle -> Trace.Config -> Target -> C.DefMap -> App Handle
+new (Global.Handle {..}) traceConfig target defMap = do
   allocator <- Env.getAllocatorByTarget envHandle target
   let arch = Platform.getArch platformHandle
   let baseSize = Platform.getDataSize platformHandle
@@ -141,13 +148,20 @@ lowerStmt h stmt = do
     C.Def name _ args e -> do
       e0 <- lowerComp h e
       e' <- liftIO $ optimize h e0
+      reportTrace h name (name, LC.DefContent LT.Pointer args e')
       return $ Just (name, LC.DefContent LT.Pointer args e')
     C.DefVoid name _ args e -> do
       e0 <- lowerComp h e
       e' <- liftIO $ optimize h e0
+      reportTrace h name (name, LC.DefContent LT.Void args e')
       return $ Just (name, LC.DefContent LT.Void args e')
     C.Foreign {} -> do
       return Nothing
+
+reportTrace :: Handle -> DD.DefiniteDescription -> LC.Def -> App ()
+reportTrace h name def = do
+  when (Trace.matches (traceConfig h) Report.LowCompPhase name) $ do
+    liftIO $ Logger.trace (loggerHandle h) $ "[lowcomp]\n" <> LCR.renderDef def
 
 registerInternalNames :: Handle -> [C.CompStmt] -> IO ()
 registerInternalNames h stmtList =

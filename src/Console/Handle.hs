@@ -6,7 +6,9 @@ module Console.Handle
     shouldColorizeStdout,
     shouldColorizeStderr,
     getReportMode,
-    isDebugMode,
+    getTraceConfig,
+    isActivityMode,
+    isTraceMode,
     supportsInteractiveOutput,
   )
 where
@@ -52,10 +54,22 @@ supportsInteractiveOutput :: Handle -> Bool
 supportsInteractiveOutput h = do
   stdoutSupportsANSI h && stderrSupportsANSI h
 
-isDebugMode :: Handle -> Bool
-isDebugMode h =
+getTraceConfig :: Handle -> TraceConfig
+getTraceConfig h = do
   case getReportMode h of
-    DebugReport ->
+    TraceReport traceConfig ->
+      traceConfig
+    _ ->
+      emptyTraceConfig
+
+isActivityMode :: Handle -> Bool
+isActivityMode h = do
+  shouldReportActivity $ getTraceConfig h
+
+isTraceMode :: Handle -> Bool
+isTraceMode h =
+  case getReportMode h of
+    TraceReport _ ->
       True
     _ ->
       False

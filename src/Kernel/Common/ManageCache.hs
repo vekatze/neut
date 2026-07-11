@@ -17,6 +17,7 @@ import App.App (App)
 import Control.Monad.IO.Class
 import Data.Binary
 import Data.Maybe
+import Data.Text qualified as T
 import Kernel.Common.Artifact qualified as A
 import Kernel.Common.Cache qualified as Cache
 import Kernel.Common.CreateGlobalHandle qualified as Global
@@ -25,12 +26,15 @@ import Kernel.Common.Handle.Global.Path qualified as Path
 import Kernel.Common.OutputKind qualified as OK
 import Kernel.Common.Source qualified as Source
 import Kernel.Common.Target
+import Logger.Debug qualified as Logger
+import Logger.Handle qualified as Logger
 import Path
 import Path.IO
 
 data Handle = Handle
   { pathHandle :: Path.Handle,
-    artifactHandle :: Artifact.Handle
+    artifactHandle :: Artifact.Handle,
+    loggerHandle :: Logger.Handle
   }
 
 new :: Global.Handle -> Handle
@@ -60,20 +64,29 @@ loadCache h t source = do
   cachePath <- Path.getSourceCachePath (pathHandle h) t source
   hasCache <- doesFileExist cachePath
   if not hasCache
-    then return Nothing
+    then do
+      liftIO $ Logger.report (loggerHandle h) $ "Cache miss: " <> renderSource source <> " (cache file is missing)"
+      return Nothing
     else do
       artifactTime <- Artifact.lookup (artifactHandle h) (Source.sourceFilePath source)
       case A.cacheTime artifactTime of
-        Nothing ->
+        Nothing -> do
+          liftIO $ Logger.report (loggerHandle h) $ "Cache miss: " <> renderSource source <> " (cache is stale)"
           return Nothing
         _ -> do
           dataOrErr <- liftIO $ decodeFileOrFail (toFilePath cachePath)
           case dataOrErr of
             Left _ -> do
+              liftIO $ Logger.report (loggerHandle h) $ "Cache miss: " <> renderSource source <> " (cache file is invalid and will be removed)"
               removeFile cachePath
               return Nothing
-            Right content ->
+            Right content -> do
+              liftIO $ Logger.report (loggerHandle h) $ "Cache hit: " <> renderSource source
               return $ Just $ Cache.extend content
+
+renderSource :: Source.Source -> T.Text
+renderSource source =
+  T.pack $ toFilePath $ Source.sourceFilePath source
 
 loadCompletionCacheOptimistically :: Path Abs File -> App (Maybe Cache.CompletionCache)
 loadCompletionCacheOptimistically cachePath = do

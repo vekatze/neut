@@ -51,9 +51,9 @@ toBuildConfig cfg = do
   Build.Config
     { outputKindList = [Object],
       shouldSkipLink = False,
-      shouldExecute = True,
-      installDir = Nothing,
-      executeArgs = args cfg
+    shouldExecute = True,
+    installDir = Nothing,
+    executeArgs = args cfg
     }
 
 setup :: Handle -> Config -> App ()

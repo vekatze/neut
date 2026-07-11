@@ -11,6 +11,7 @@ module Kernel.Emit.LowValue
 where
 
 import Data.ByteString.Builder
+import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
 import Data.Word
 import GHC.Float
@@ -111,8 +112,12 @@ emitHexWord width bits = do
   string8 $ "u0x" <> padding <> hex
 
 emitIdentAsLabel :: Ident -> Builder
-emitIdentAsLabel (I (_, i)) =
-  "L" <> intDec i
+emitIdentAsLabel (I (name, i)) =
+  case T.stripPrefix "switch-label:" name of
+    Just labelName ->
+      TE.encodeUtf8Builder labelName
+    Nothing ->
+      "L" <> intDec i
 
 emitIdentAsLabelVar :: Ident -> Builder
 emitIdentAsLabelVar x =

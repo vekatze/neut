@@ -30,6 +30,7 @@ import Kernel.Common.Handle.Global.Type qualified as Type
 import Kernel.Common.Handle.Local.Tag qualified as Tag
 import Kernel.Common.Module (Module (moduleInlineLimit))
 import Kernel.Common.Source
+import Kernel.Common.Trace qualified as Trace
 import Kernel.Elaborate.Internal.Handle.Constraint qualified as Constraint
 import Kernel.Elaborate.Internal.Handle.Def qualified as Definition
 import Kernel.Elaborate.Internal.Handle.Hole qualified as Hole
@@ -85,12 +86,13 @@ data Handle = Handle
     specializationTable :: IORef InlineHandle.SpecializationTable,
     pendingSpecializationDefs :: IORef [Stmt.Stmt],
     residualCheckList :: IORef [Inline.ResidualCheck]
+    , traceConfig :: Trace.Config
   }
 
 type BoundVarEnv = [BinderF WT.WeakType]
 
-new :: Global.Handle -> Local.Handle -> Source -> IO Handle
-new globalHandle@(Global.Handle {..}) (Local.Handle {..}) currentSource = do
+new :: Global.Handle -> Trace.Config -> Local.Handle -> Source -> IO Handle
+new globalHandle@(Global.Handle {..}) traceConfig (Local.Handle {..}) currentSource = do
   localLogsHandle <- LocalLogs.new
   let substHandle = Subst.new gensymHandle
   let inlineLimit = fromMaybe defaultInlineLimit $ moduleInlineLimit (sourceModule currentSource)
