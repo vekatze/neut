@@ -99,6 +99,9 @@ buildTarget :: Handle -> M.MainModule -> Target -> App ()
 buildTarget h (M.MainModule baseModule) target = do
   liftIO $ Logger.report (Global.loggerHandle (globalHandle h)) $ "Building: " <> T.pack (show target)
   target' <- expandClangOptions h target
+  liftIO $
+    Logger.report (Global.loggerHandle (globalHandle h)) $
+      "Build configuration: target=" <> T.pack (show target') <> ", outputs=" <> T.pack (show $ _outputKindList h) <> ", skip-link=" <> T.pack (show $ _shouldSkipLink h) <> ", execute=" <> T.pack (show $ _shouldExecute h)
   unravelHandle <- liftIO $ Unravel.new (globalHandle h)
   (artifactTime, dependenceSeq) <- Unravel.unravel unravelHandle baseModule target'
   let moduleList = nubOrdOn M.moduleID $ map sourceModule dependenceSeq
@@ -124,6 +127,13 @@ compile :: Handle -> Target -> [OutputKind] -> [(Source, Either Cache T.Text)] -
 compile h target outputKindList contentSeq = do
   let cacheHandle = Cache.new (globalHandle h)
   bs <- mapM (needsCompilation cacheHandle outputKindList . fst) contentSeq
+  forM_ (zip contentSeq bs) $ \((source, _), needsCodeGeneration) -> do
+    let sourcePath = T.pack $ toFilePath $ sourceFilePath source
+    let message =
+          if needsCodeGeneration
+            then "Scheduling code generation: " <> sourcePath
+            else "Skipping code generation: " <> sourcePath <> " (requested outputs are fresh)"
+    liftIO $ Logger.report (Global.loggerHandle (globalHandle h)) message
   c <- getEntryPointCompilationCount h target outputKindList
   let numOfItems = length (filter id bs) + c
   let consoleHandle = Global.consoleHandle (globalHandle h)
@@ -135,10 +145,12 @@ compile h target outputKindList contentSeq = do
   hp <- liftIO $ Indicator.new consoleHandle loggerHandle (Just numOfItems) workingTitle completedTitle color
   cacheOrProgList <- Parse.parse (globalHandle h) contentSeq
   cacheOrStmtList <- forP cacheOrProgList $ \(localHandle, (source, cacheOrProg)) -> do
+    liftIO $ Logger.report (Global.loggerHandle (globalHandle h)) $ "Interpreting: " <> T.pack (toFilePath $ sourceFilePath source)
     interpretHandle <- liftIO $ Interpret.new (globalHandle h) localHandle (sourceModule source)
     item <- Interpret.interpret interpretHandle target source cacheOrProg
     return (localHandle, (source, item))
   contentAsync <- fmap catMaybes $ forM cacheOrStmtList $ \(localHandle, (source, (cacheOrStmt, logs))) -> do
+    liftIO $ Logger.report (Global.loggerHandle (globalHandle h)) $ "Elaborating: " <> T.pack (toFilePath $ sourceFilePath source)
     elaborateHandle <- liftIO $ Elaborate.new (globalHandle h) localHandle source
     let ensureMainHandle = EnsureMain.new (Global.envHandle (globalHandle h))
     stmtList <- Elaborate.elaborate elaborateHandle target logs cacheOrStmt
@@ -147,8 +159,10 @@ compile h target outputKindList contentSeq = do
     if b
       then do
         fmap Just $ liftIO $ async $ runApp $ do
+          liftIO $ Logger.report (Global.loggerHandle (globalHandle h)) $ "Clarifying: " <> T.pack (toFilePath $ sourceFilePath source)
           clarifyHandle <- liftIO $ Clarify.new (globalHandle h)
           (stmtList', auxStmtList, defMap) <- Clarify.clarify clarifyHandle stmtList
+          liftIO $ Logger.report (Global.loggerHandle (globalHandle h)) $ "Lowering: " <> T.pack (toFilePath $ sourceFilePath source)
           lowerHandle <- Lower.new (globalHandle h) target defMap
           virtualCode <- Lower.lower lowerHandle stmtList' auxStmtList
           emit h hp currentTime target outputKindList (Right source) virtualCode
@@ -244,10 +258,14 @@ compileEntryPoint h target outputKindList = do
       let pathHandle = Global.pathHandle (globalHandle h)
       b <- Cache.isEntryPointCompilationSkippable pathHandle t outputKindList
       if b
-        then return []
+        then do
+          liftIO $ Logger.report (Global.loggerHandle (globalHandle h)) $ "Skipping entry-point code generation: " <> T.pack (show t) <> " (requested outputs are fresh)"
+          return []
         else do
+          liftIO $ Logger.report (Global.loggerHandle (globalHandle h)) $ "Generating entry point: " <> T.pack (show t)
           clarifyMainHandle <- liftIO $ Clarify.newMain (globalHandle h)
           (stmtList, defMap) <- liftIO $ Clarify.clarifyEntryPoint clarifyMainHandle
+          liftIO $ Logger.report (Global.loggerHandle (globalHandle h)) $ "Lowering entry point: " <> T.pack (show t)
           lowerHandle <- Lower.new (globalHandle h) target defMap
           mainVirtualCode <-
             Lower.lowerEntryPoint lowerHandle t stmtList
@@ -275,10 +293,6 @@ compileForeign' :: Handle -> Target -> UTCTime -> M.Module -> App Bool
 compileForeign' h t currentTime m = do
   sub <- getForeignSubst h t m
   let cmdList = M.script $ M.moduleForeign m
-  unless (null cmdList) $ do
-    liftIO $
-      Logger.report (Global.loggerHandle (globalHandle h)) $
-        "Performing foreign compilation of `" <> MID.reify (M.moduleID m) <> "` with " <> T.pack (show sub)
   let moduleRootDir = M.getModuleRootDir m
   foreignDir <- Path.getForeignDir (Global.pathHandle (globalHandle h)) t m
   inputPathList <- fmap concat $ mapM (getInputPathList moduleRootDir) $ M.input $ M.moduleForeign m
@@ -296,6 +310,10 @@ compileForeign' h t currentTime m = do
           return False
     _ -> do
       let cmdList' = map (naiveReplace sub) cmdList
+      unless (null cmdList') $ do
+        liftIO $
+          Logger.report (Global.loggerHandle (globalHandle h)) $
+            "Performing foreign compilation of `" <> MID.reify (M.moduleID m) <> "` with " <> T.pack (show sub)
       forM_ cmdList' $ \cmd -> do
         let spec =
               RunProcess.Spec

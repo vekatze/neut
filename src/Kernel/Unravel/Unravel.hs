@@ -116,7 +116,20 @@ unravel' h t source = do
   (artifactTime, sourceSeq) <- unravel'' h t source
   let sourceList = toList sourceSeq
   forM_ sourceSeq Source.ensureSourceExistence
+  reportResolvedSources h sourceList
   return (artifactTime, sourceList)
+
+reportResolvedSources ::
+  Handle ->
+  [Source.Source] ->
+  App
+    ()
+    reportResolvedSources
+    h
+    sourceList = do
+    let header = "Resolved " <> T.pack (show $ length sourceList) <> " source files:"
+    let body = T.unlines $ map (T.pack . toFilePath . Source.sourceFilePath) sourceList
+    liftIO $ Logger.report (Global.loggerHandle (globalHandle h)) $ header <> "\n" <> body
 
 registerShiftMap :: Handle -> App ()
 registerShiftMap h = do
@@ -343,7 +356,9 @@ unravelFoundational h t baseModule = do
   (artifactTimeList, seqList) <- mapAndUnzipM (unravel'' h t) children'
   baseArtifactTime <- liftIO artifactTimeFromCurrentTime
   let artifactTime = getArtifactTime artifactTimeList baseArtifactTime
-  return (artifactTime, toList $ foldl' (><) Seq.empty seqList)
+  let sourceList = toList $ foldl' (><) Seq.empty seqList
+  reportResolvedSources h sourceList
+  return (artifactTime, sourceList)
 
 getArtifactTime :: [A.ArtifactTime] -> A.ArtifactTime -> A.ArtifactTime
 getArtifactTime artifactTimeList artifactTime = do

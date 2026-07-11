@@ -99,6 +99,9 @@ _check h target baseModule = do
     contentSeq <- Load.load loadHandle target dependenceSeq
     cacheOrProgList <- Parse.parse (globalHandle h) contentSeq
     cacheOrStmtList <- forP cacheOrProgList $ \(localHandle, (source, cacheOrProg)) -> do
+      liftIO $
+        Logger.report (Global.loggerHandle (globalHandle h)) $
+          "Interpreting: " <> T.pack (toFilePath $ Source.sourceFilePath source)
       interpretHandle <- liftIO $ Interpret.new (globalHandle h) localHandle (Source.sourceModule source)
       item <- Interpret.interpret interpretHandle target source cacheOrProg
       return (localHandle, (source, item))
@@ -114,6 +117,9 @@ _check' h target baseModule = do
   contentSeq <- Load.load loadHandle target dependenceSeq
   cacheOrProgList <- Parse.parse (globalHandle h) contentSeq
   cacheOrStmtList <- forP cacheOrProgList $ \(localHandle, (source, cacheOrProg)) -> do
+    liftIO $
+      Logger.report (Global.loggerHandle (globalHandle h)) $
+        "Interpreting: " <> T.pack (toFilePath $ Source.sourceFilePath source)
     interpretHandle <- liftIO $ Interpret.new (globalHandle h) localHandle (Source.sourceModule source)
     item <- Interpret.interpret interpretHandle target source cacheOrProg
     return (localHandle, (source, item))
