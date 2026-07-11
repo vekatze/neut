@@ -67,6 +67,10 @@ entryRelDir :: Path Rel Dir
 entryRelDir =
   $(mkRelDir "entry")
 
+linkRelDir :: Path Rel Dir
+linkRelDir =
+  $(mkRelDir "link")
+
 executableRelDir :: Path Rel Dir
 executableRelDir =
   $(mkRelDir "executable")
