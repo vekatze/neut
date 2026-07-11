@@ -126,16 +126,16 @@ getLocalMetaDD i =
 
 unconsDD :: DefiniteDescription -> (MID.ModuleID, T.Text)
 unconsDD dd = do
-  let nameList = T.splitOn nsSep (reify dd)
+  let nameList = T.splitOn routeSep (reify dd)
   case nameList of
-    headElem : rest ->
-      case headElem of
-        "main" ->
-          (MID.Main, T.intercalate nsSep rest)
+    [route, locator] ->
+      case route of
+        "" ->
+          (MID.Main, locator)
         "base" ->
-          (MID.Base, T.intercalate nsSep rest)
+          (MID.Base, locator)
         _ ->
-          (MID.Library (MD.ModuleDigest headElem), T.intercalate nsSep rest)
+          (MID.Library (MD.ModuleDigest route), locator)
     _ ->
       error "Rule.DefiniteDescription.moduleID"
 
@@ -205,4 +205,4 @@ isLocatorSyntaxChar c =
 
 llvmGlobalLocator :: T.Text
 llvmGlobalLocator =
-  "base.llvm"
+  "base::llvm"
