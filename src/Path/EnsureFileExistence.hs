@@ -1,6 +1,7 @@
 module Path.EnsureFileExistence
   ( ensureFileExistence,
     ensureFileExistence',
+    ensureSourceFileExistence,
   )
 where
 
@@ -13,19 +14,22 @@ import Path.IO
 
 ensureFileExistence :: Path Abs File -> Hint -> App ()
 ensureFileExistence path m = do
-  _ensureFileExistence path (Just m)
+  _ensureFileExistence path (Just m) $ "No such file exists: " <> T.pack (toFilePath path)
 
 ensureFileExistence' :: Path Abs File -> App ()
 ensureFileExistence' path = do
-  _ensureFileExistence path Nothing
+  _ensureFileExistence path Nothing $ "No such file exists: " <> T.pack (toFilePath path)
 
-_ensureFileExistence :: Path Abs File -> Maybe Hint -> App ()
-_ensureFileExistence path mHint = do
+ensureSourceFileExistence :: Path Abs File -> Hint -> T.Text -> App ()
+ensureSourceFileExistence path m locator = do
+  _ensureFileExistence path (Just m) $ "No such source file exists: " <> locator
+
+_ensureFileExistence :: Path Abs File -> Maybe Hint -> T.Text -> App ()
+_ensureFileExistence path mHint message = do
   fileExists <- doesFileExist path
   if fileExists
     then return ()
     else do
-      let message = T.pack $ "No such file exists: " <> toFilePath path
       case mHint of
         Just m ->
           raiseError m message

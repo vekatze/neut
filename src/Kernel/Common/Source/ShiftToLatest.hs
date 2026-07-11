@@ -9,17 +9,14 @@ module Kernel.Common.Source.ShiftToLatest
 where
 
 import App.App (App)
-import App.Run (raiseError, raiseError')
 import Control.Monad.IO.Class
 import Data.HashMap.Strict qualified as Map
-import Data.Text qualified as T
 import Kernel.Common.Handle.Global.Antecedent qualified as Antecedent
 import Kernel.Common.Module
 import Kernel.Common.Source (Source (sourceModule))
 import Kernel.Common.Source qualified as Source
 import Language.Common.ModuleID qualified as MID
-import Path
-import Path.IO
+import Path ((</>))
 
 type ShiftMap = Map.HashMap MID.ModuleID Module
 
@@ -66,25 +63,8 @@ getNewerSource source newModule = do
         Source.Source
           { sourceFilePath = newSourceFilePath,
             sourceModule = newModule,
-            sourceHint = Source.sourceHint source
+            sourceHint = Source.sourceHint source,
+            sourceImportLocator = Source.sourceImportLocator source
           }
-  b <- doesFileExist newSourceFilePath
-  if b
-    then return newSource
-    else do
-      relPath <- Source.getRelPathFromSourceDir source
-      case Source.sourceHint source of
-        Nothing -> do
-          raiseError' $
-            "The file `"
-              <> T.pack (toFilePath relPath)
-              <> "` is missing in the module `"
-              <> MID.reify (moduleID newModule)
-              <> "`"
-        Just m -> do
-          raiseError m $
-            "The file `"
-              <> T.pack (toFilePath relPath)
-              <> "` is missing in the module `"
-              <> MID.reify (moduleID newModule)
-              <> "`"
+  Source.ensureSourceExistence newSource
+  return newSource

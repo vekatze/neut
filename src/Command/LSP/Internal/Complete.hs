@@ -201,7 +201,8 @@ resolveImportedSource h aliasHandle currentSource locatorText = do
       Source
         { sourceModule = candModule,
           sourceFilePath = getSourceDir candModule </> relPath,
-          sourceHint = Just m
+          sourceHint = Just m,
+          sourceImportLocator = Just locatorText
         }
   return $ either (const Nothing) Just outcome
 

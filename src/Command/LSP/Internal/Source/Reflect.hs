@@ -31,7 +31,8 @@ reflect h srcPath = do
       Source
         { sourceFilePath = srcPath',
           sourceModule = m,
-          sourceHint = Nothing
+          sourceHint = Nothing,
+          sourceImportLocator = Nothing
         }
 
 getModule :: Handle -> Path Abs File -> App Module

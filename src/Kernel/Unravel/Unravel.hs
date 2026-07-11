@@ -46,7 +46,7 @@ import Language.Common.ModuleID qualified as MID
 import Logger.Debug qualified as Logger
 import Logger.Hint
 import Path
-import Path.EnsureFileExistence (ensureFileExistence, ensureFileExistence')
+import Path.EnsureFileExistence (ensureFileExistence)
 import Path.IO
 import Path.Read (readTextFromPath)
 
@@ -115,7 +115,7 @@ unravel' h t source = do
   registerShiftMap h
   (artifactTime, sourceSeq) <- unravel'' h t source
   let sourceList = toList sourceSeq
-  forM_ sourceSeq ensureSourceExistence
+  forM_ sourceSeq Source.ensureSourceExistence
   return (artifactTime, sourceList)
 
 registerShiftMap :: Handle -> App ()
@@ -452,7 +452,7 @@ getChildren h currentSource = do
 
 parseSourceHeader :: Handle -> Local.Handle -> Source.Source -> App [ImportItem]
 parseSourceHeader h localHandle currentSource = do
-  ensureSourceExistence currentSource
+  Source.ensureSourceExistence currentSource
   let filePath = Source.sourceFilePath currentSource
   fileContent <- readTextFromPath filePath
   (_, importList) <- runParser filePath fileContent False parseImport
@@ -536,12 +536,3 @@ artifactTimeFromCurrentTime = do
         llvmTime = Just now,
         objectTime = Just now
       }
-
-ensureSourceExistence :: Source.Source -> App ()
-ensureSourceExistence source = do
-  let path = Source.sourceFilePath source
-  case Source.sourceHint source of
-    Just m ->
-      ensureFileExistence path m
-    Nothing ->
-      ensureFileExistence' path
