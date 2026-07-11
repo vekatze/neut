@@ -1,5 +1,5 @@
 module CommandParser.Config.Check (Config (..)) where
 
-newtype Config = Config
+data Config = Config
   { shouldCheckAllDependencies :: Bool
   }

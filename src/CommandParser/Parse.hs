@@ -216,27 +216,31 @@ reportModeOpt = do
   option reportModeReader $
     mconcat
       [ long "report",
-        metavar "STYLE",
-        help "Set report output style (none, plain, fancy, debug)",
+        metavar "MODE",
+        help "Set report mode (none, plain, fancy, trace=ITEMS)",
         value Nothing
       ]
 
 reportModeReader :: ReadM (Maybe ReportMode.ReportMode)
 reportModeReader =
   eitherReader $ \input -> do
-    case input of
-      "auto" ->
-        return Nothing
+  case input of
       "none" ->
         return $ Just ReportMode.NoReport
       "plain" ->
         return $ Just ReportMode.PlainReport
       "fancy" ->
         return $ Just ReportMode.FancyReport
-      "debug" ->
-        return $ Just ReportMode.DebugReport
       _ ->
-        Left "STYLE must be one of:  none, plain, fancy, debug"
+        case T.stripPrefix "trace=" $ T.pack input of
+          Just traceText ->
+            case ReportMode.parseTraceConfig traceText of
+              Left err ->
+                Left $ T.unpack err
+              Right traceConfig ->
+                return $ Just $ ReportMode.TraceReport traceConfig
+          Nothing ->
+            Left "MODE must be one of: none, plain, fancy, trace=ITEMS"
 
 outputKindTextListOpt :: Parser [T.Text]
 outputKindTextListOpt = do

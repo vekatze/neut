@@ -2,6 +2,7 @@ module Language.Comp.Comp
   ( Value (..),
     ForceInline,
     Comp (..),
+    renderComp,
     Primitive (..),
     CompStmt (..),
     SubstValue,
@@ -22,12 +23,14 @@ module Language.Comp.Comp
   )
 where
 
-import Data.HashMap.Strict qualified as Map
 import Data.ByteString qualified as BS
+import Data.HashMap.Strict qualified as Map
 import Data.IntMap qualified as IntMap
-import Data.List (intercalate)
+import Data.List (intersperse)
 import Data.Maybe (mapMaybe)
 import Data.Text qualified as T
+import Data.Text.Lazy qualified as TL
+import Data.Text.Lazy.Builder qualified as B
 import Language.Common.ArgNum
 import Language.Common.BaseLowType
 import Language.Common.DefiniteDescription qualified as DD
@@ -63,7 +66,7 @@ instance Show Value where
       VarStaticBytes bytes ->
         show $ BS.unpack bytes
       SigmaIntro size vs ->
-        "[" ++ show size ++ "](" ++ intercalate ", " (map show vs) ++ ")"
+        T.unpack $ renderValueText (SigmaIntro size vs)
       Language.Comp.Comp.Int _ i ->
         show i
       Language.Comp.Comp.Float _ f ->
@@ -92,43 +95,136 @@ data Comp
 
 instance Show Comp where
   show c =
-    case c of
-      PiElimDownElim _ v vs ->
-        show v ++ "@(" ++ intercalate "," (map show vs) ++ ")"
-      SigmaElim b offset size xs v cont -> do
-        let h = if b then "let" else "let-noetic"
-        h ++ "<" ++ show offset ++ ", " ++ show size ++ "> (" ++ intercalate "," (map show xs) ++ ") = " ++ show v ++ "\n" ++ show cont
-      UpIntro v ->
-        "return " ++ show v
-      UpIntroVoid ->
-        "return-void"
-      UpElim isReducible x c1 c2 -> do
-        let modifier = if isReducible then "" else "*"
-        "let" ++ modifier ++ " " ++ show x ++ " = " ++ show c1 ++ "\n" ++ show c2
-      UpElimCallVoid f vs cont ->
-        "call-void " ++ show f ++ "@(" ++ intercalate "," (map show vs) ++ ")\n" ++ show cont
-      EnumElim sub v c1 caseList -> do
-        "switch "
-          ++ show sub
-          ++ " "
-          ++ show v
-          ++ "\n<default>\n"
-          ++ show c1
-          ++ unwords (map showEnumCase caseList)
-      DestCall sizeComp f vs ->
-        "dest-call<" ++ show sizeComp ++ ">" ++ show f ++ "@(" ++ intercalate "," (map show vs) ++ ")"
-      WriteToDest dest sizeComp result cont ->
-        "write-to-dest(" ++ show dest ++ ")\n<size-comp>\n" ++ show sizeComp ++ "\n<result>\n" ++ show result ++ "\n<cont>\n" ++ show cont
-      Primitive prim ->
-        "(" ++ show prim ++ ")"
-      Free x size cont ->
-        "free(" ++ show x ++ ", " ++ show size ++ ")\n" ++ show cont
-      Unreachable ->
-        "⊥"
+    T.unpack $ renderComp 0 c
 
-showEnumCase :: (EnumCase, Comp) -> String
-showEnumCase (ec, c) = do
-  "\n<" ++ show ec ++ ">\n" ++ show c
+renderComp :: Int -> Comp -> T.Text
+renderComp level comp =
+  TL.toStrict $ B.toLazyText $ renderCompBuilder level comp
+
+renderCompBuilder :: Int -> Comp -> B.Builder
+renderCompBuilder level comp =
+  case comp of
+    PiElimDownElim forceInline v vs ->
+      indent level <> btext (if forceInline then "force " else "") <> bshow v <> btext "@("
+        <> bintercalate (map bshow vs) <> btext ")"
+    SigmaElim shouldDeallocate offset size xs v cont ->
+      indent level <> btext (if shouldDeallocate then "let" else "let-noetic") <> btext "<"
+        <> bshow offset <> btext ", " <> bshow size <> btext "> ("
+        <> bintercalate (map bshow xs) <> btext ") = " <> bshow v <> btext "\n"
+        <> renderCompBuilder (continuationLevel level) cont
+    UpIntro v ->
+      indent level <> btext "return " <> bshow v
+    UpIntroVoid ->
+      indent level <> btext "return-void"
+    UpElim isReducible x c1 c2 ->
+      renderCompBinding
+        level
+        (btext "let" <> btext (if isReducible then "" else "*") <> btext " " <> bshow x <> btext " =")
+        c1
+        c2
+    UpElimCallVoid f vs cont ->
+      indent level <> btext "call-void " <> bshow f <> btext "@("
+        <> bintercalate (map bshow vs) <> btext ")\n"
+        <> renderCompBuilder (continuationLevel level) cont
+    EnumElim substitution v defaultBranch caseList ->
+      indent level <> btext "switch " <> bshow substitution <> btext " " <> bshow v <> btext " {"
+        <> mconcat (map (renderEnumCase level) caseList) <> btext "\n" <> indent level
+        <> btext "| default =>\n" <> renderCompBuilder (level + 1) defaultBranch
+        <> btext "\n" <> indent level <> btext "}"
+    DestCall sizeComp f vs ->
+      indent level <> btext "dest-call " <> bshow f <> btext "@("
+        <> bintercalate (map bshow vs) <> btext ") {\n" <> indent (level + 1)
+        <> btext "size-comp:\n" <> renderCompBuilder (level + 2) sizeComp
+        <> btext "\n" <> indent level <> btext "}"
+    WriteToDest dest sizeComp result cont ->
+      indent level <> btext "write-to-dest " <> bshow dest <> btext " {\n"
+        <> renderCompSection (level + 1) "size-comp" sizeComp
+        <> renderCompSection (level + 1) "result" result
+        <> renderCompSection (level + 1) "cont" cont <> indent level <> btext "}"
+    Primitive prim ->
+      indent level <> btext "(" <> bshow prim <> btext ")"
+    Free x size cont ->
+      indent level <> btext "free(" <> bshow x <> btext ", " <> bshow size <> btext ")\n"
+        <> renderCompBuilder (continuationLevel level) cont
+    Unreachable ->
+      indent level <> btext "⊥"
+
+renderCompBinding :: Int -> B.Builder -> Comp -> Comp -> B.Builder
+renderCompBinding level header value cont =
+  case renderCompInline value of
+    Just valueText ->
+      indent level <> header <> btext " " <> valueText <> btext "\n"
+        <> renderCompBuilder (continuationLevel level) cont
+    Nothing ->
+      indent level <> header <> btext "\n" <> renderCompBuilder (level + 1) value
+        <> btext "\n" <> renderCompBuilder (continuationLevel level) cont
+
+renderCompInline :: Comp -> Maybe B.Builder
+renderCompInline comp =
+  case comp of
+    PiElimDownElim forceInline v vs ->
+      Just $ btext (if forceInline then "force " else "") <> bshow v <> btext "@("
+        <> bintercalate (map bshow vs) <> btext ")"
+    UpIntro v ->
+      Just $ btext "return " <> bshow v
+    UpIntroVoid ->
+      Just $ btext "return-void"
+    Primitive prim ->
+      Just $ btext "(" <> bshow prim <> btext ")"
+    Unreachable ->
+      Just $ btext "⊥"
+    _ ->
+      Nothing
+
+renderEnumCase :: Int -> (EnumCase, Comp) -> B.Builder
+renderEnumCase level (enumCase, comp) =
+  btext "\n" <> indent level <> btext "| <" <> bshow enumCase <> btext "> =>\n"
+    <> renderCompBuilder (level + 1) comp
+
+renderCompSection :: Int -> String -> Comp -> B.Builder
+renderCompSection level label comp =
+  btext "\n" <> indent level <> btext label <> btext ":\n"
+    <> renderCompBuilder (level + 1) comp
+
+indent :: Int -> B.Builder
+indent level =
+  B.fromText $ T.replicate (level * 2) " "
+
+btext :: String -> B.Builder
+btext =
+  B.fromString
+
+bshow :: Show a => a -> B.Builder
+bshow =
+  B.fromString . show
+
+bintercalate :: [B.Builder] -> B.Builder
+bintercalate =
+  mconcat . intersperse (btext ", ")
+
+renderValueText :: Value -> T.Text
+renderValueText value =
+  TL.toStrict $ B.toLazyText $ renderValueBuilder value
+
+renderValueBuilder :: Value -> B.Builder
+renderValueBuilder value =
+  case value of
+    VarLocal x ->
+      B.fromText $ toText' x
+    VarGlobal dd _ _ ->
+      B.fromText $ DD.reify dd
+    VarStaticBytes bytes ->
+      B.fromString $ show $ BS.unpack bytes
+    SigmaIntro size vs ->
+      B.fromString "[" <> B.fromString (show size) <> B.fromString "](" <> mconcat (intersperse (B.fromString ", ") (map renderValueBuilder vs)) <> B.fromString ")"
+    Language.Comp.Comp.Int _ i ->
+      B.fromString $ show i
+    Language.Comp.Comp.Float _ f ->
+      B.fromString $ show f
+
+continuationLevel :: Int -> Int
+continuationLevel level =
+  if level == 0 then 1 else level
 
 type ShouldDeallocate = Bool
 

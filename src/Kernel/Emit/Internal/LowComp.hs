@@ -12,6 +12,7 @@ import Data.IORef
 import Data.IntMap qualified as IntMap
 import Data.List (transpose)
 import Data.Maybe (mapMaybe)
+import Data.Text qualified as T
 import Gensym.Handle qualified as Gensym
 import Kernel.Common.Allocator (AllocatorSpec)
 import Kernel.Common.CreateGlobalHandle qualified as Global
@@ -22,6 +23,7 @@ import Kernel.Emit.LowType
 import Kernel.Emit.LowValue
 import Language.Common.CreateSymbol qualified as Gensym
 import Language.Common.Ident
+import Language.Common.Ident.Reify qualified as Ident
 import Language.Common.Ident.Reify
 import Language.Common.LowType qualified as LT
 import Language.LowComp.LowComp qualified as LC
@@ -91,8 +93,9 @@ emitLowComp h lowComp =
           ret <- emitLowComp (h {goalLabel = Nothing}) $ LC.Return (LC.VarLocal tmp)
           return $ op <> ret
     LC.Switch d lowType defaultBranch branchList phiTargets cont -> do
-      defaultLabel <- Gensym.newIdentFromText (gensymHandle h) "default"
-      labelList <- mapM (const $ Gensym.newIdentFromText (gensymHandle h) "case") branchList
+      switchID <- Gensym.newIdentFromText (gensymHandle h) "switch"
+      labelList <- mapM (newSwitchCaseLabel (gensymHandle h) switchID) [0 .. length branchList - 1]
+      defaultLabel <- newSwitchSpecialLabel (gensymHandle h) switchID "d"
       let switchOpStr =
             emitOp $
               unwordsL
@@ -103,8 +106,8 @@ emitLowComp h lowComp =
                   emitIdentAsLabelVar defaultLabel,
                   showBranchList lowType $ zip (map fst branchList) labelList
                 ]
-      let labelBranchList = (defaultLabel, defaultBranch) : zip labelList (map snd branchList)
-      goalLabel <- Gensym.newIdentFromText (gensymHandle h) "goal"
+      let labelBranchList = zip labelList (map snd branchList) ++ [(defaultLabel, defaultBranch)]
+      goalLabel <- newSwitchSpecialLabel (gensymHandle h) switchID "g"
       case currentLabel h of
         Nothing ->
           return ()
@@ -145,6 +148,18 @@ emitLowComp h lowComp =
       return $ lowOp <> a
     LC.Unreachable -> do
       return $ emitOp "unreachable"
+
+newSwitchCaseLabel :: Gensym.Handle -> Ident -> Int -> IO Ident
+newSwitchCaseLabel gensymHandle switchID caseIndex = do
+  Gensym.newIdentFromText gensymHandle $ switchLabelPrefix switchID <> "c" <> T.pack (show caseIndex)
+
+newSwitchSpecialLabel :: Gensym.Handle -> Ident -> T.Text -> IO Ident
+newSwitchSpecialLabel gensymHandle switchID suffix = do
+  Gensym.newIdentFromText gensymHandle $ switchLabelPrefix switchID <> suffix
+
+switchLabelPrefix :: Ident -> T.Text
+switchLabelPrefix switchID =
+  "switch-label:s" <> T.pack (show (Ident.toInt switchID))
 
 resolveLabelList :: IntMap.IntMap Ident -> [Ident] -> [Ident]
 resolveLabelList labelMapRef xs =

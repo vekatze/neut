@@ -10,6 +10,7 @@ import Console.Handle qualified as Console
 import Console.Print qualified as Console
 import Console.Text qualified as Console
 import Control.Concurrent.MVar
+import Control.Monad (when)
 import Data.IORef (IORef, atomicModifyIORef', newIORef, readIORef)
 import Data.Text qualified as T
 import Logger.Debug qualified as Logger
@@ -26,6 +27,8 @@ new consoleHandle loggerHandle numOfItems workingTitle completedTitle color = do
   let reportMode = Console.getReportMode consoleHandle
   case (reportMode, numOfItems) of
     (Console.NoReport, _) ->
+      return Nothing
+    (Console.TraceReport _, _) ->
       return Nothing
     (_, Just i)
       | i <= 0 ->
@@ -47,9 +50,6 @@ new consoleHandle loggerHandle numOfItems workingTitle completedTitle color = do
         Console.FancyReport -> do
           renderThread <- Just <$> async (render consoleHandle 0 progressBarRef)
           return $ Just $ Handle {consoleHandle, loggerHandle, progressBarRef, printLock, reportMode, renderThread}
-        Console.DebugReport -> do
-          Console.printStdErr consoleHandle $ Console.pack' workingTitle <> Console.pack' "\n"
-          return $ Just $ Handle {consoleHandle, loggerHandle, progressBarRef, printLock, reportMode, renderThread = Nothing}
 
 increment :: Handle -> T.Text -> IO ()
 increment mh label = do
@@ -65,10 +65,9 @@ increment mh label = do
         case reportMode h of
           Console.PlainReport ->
             printPlainProgress h label progressBar
-          Console.DebugReport ->
-            Logger.report (loggerHandle h) $ "Compiled: " <> label
           _ ->
-            return ()
+            when (Console.isActivityMode $ consoleHandle h) $
+              Logger.report (loggerHandle h) $ "Compiled: " <> label
 
 printPlainProgress :: InnerHandle -> T.Text -> ProgressBar -> IO ()
 printPlainProgress h label progressBar = do

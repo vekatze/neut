@@ -122,14 +122,11 @@ unravel' h t source = do
 reportResolvedSources ::
   Handle ->
   [Source.Source] ->
-  App
-    ()
-    reportResolvedSources
-    h
-    sourceList = do
-    let header = "Resolved " <> T.pack (show $ length sourceList) <> " source files:"
-    let body = T.unlines $ map (T.pack . toFilePath . Source.sourceFilePath) sourceList
-    liftIO $ Logger.report (Global.loggerHandle (globalHandle h)) $ header <> "\n" <> body
+  App ()
+reportResolvedSources h sourceList = do
+  let header = "Resolved " <> T.pack (show $ length sourceList) <> " source files:"
+  let body = T.unlines $ map (T.pack . toFilePath . Source.sourceFilePath) sourceList
+  liftIO $ Logger.report (Global.loggerHandle (globalHandle h)) $ header <> "\n" <> body
 
 registerShiftMap :: Handle -> App ()
 registerShiftMap h = do

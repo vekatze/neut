@@ -6,6 +6,11 @@ module Kernel.Emit.Emit
 where
 
 import App.App (App)
+import App.Run (raiseError')
+import Console.Handle qualified as Console
+import Console.ReportMode qualified as Report
+import Control.Monad (when)
+import Control.Monad.IO.Class (liftIO)
 import Data.ByteString.Builder
 import Data.ByteString.Builder qualified as L
 import Data.ByteString.Lazy qualified as L
@@ -19,8 +24,10 @@ import Kernel.Common.Allocator (Allocator, allocatorSpec)
 import Kernel.Common.Const
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.Env qualified as Env
+import Kernel.Common.Handle.Global.ModulePath qualified as ModulePath
 import Kernel.Common.Handle.Global.Platform qualified as Platform
 import Kernel.Common.Target (Target)
+import Kernel.Common.Trace qualified as Trace
 import Kernel.Emit.Builder
 import Kernel.Emit.Internal.LowComp qualified as EmitLowComp
 import Kernel.Emit.LowType
@@ -36,15 +43,20 @@ import Language.Common.LowType.FromBaseLowType qualified as LT
 import Language.LowComp.DeclarationName qualified as DN
 import Language.LowComp.LowComp qualified as LC
 import Language.LowComp.Reduce qualified as Reduce
+import Logger.Debug qualified as Logger
 
 data Handle = Handle
   { globalHandle :: Global.Handle,
-    allocator :: Allocator
+    allocator :: Allocator,
+    traceConfig :: Trace.Config
   }
 
 new :: Global.Handle -> Target -> App Handle
 new globalHandle target = do
   allocator <- Env.getAllocatorByTarget (Global.envHandle globalHandle) target
+  modulePathMap <- liftIO $ ModulePath.get $ Global.modulePathHandle globalHandle
+  let traceReport = Console.getTraceConfig $ Global.consoleHandle globalHandle
+  traceConfig <- either raiseError' return $ Trace.new modulePathMap traceReport
   return $ Handle {..}
 
 emit :: Handle -> LC.LowCode -> IO L.ByteString
@@ -151,12 +163,12 @@ emitDefinitions h (name, LC.DefContent {codType = codType, args = args, body = b
             showFuncArgsWithSRet $ map (emitValue . LC.VarLocal) args'
           _ ->
             showFuncArgs $ map (emitValue . LC.VarLocal) args'
-  emitDefinition h' (emitLowType codType) (DD.toBuilder name) args'' body'
+  emitDefinition h' (Just name) (emitLowType codType) (DD.toBuilder name) args'' body'
 
 emitMain :: Handle -> LC.DefContent -> IO [Builder]
 emitMain h (LC.DefContent {codType = codType, args = args, body = body}) = do
   let args' = showFuncArgs $ map (emitValue . LC.VarLocal) args
-  emitDefinition h (emitLowType codType) "main" args' body
+  emitDefinition h Nothing (emitLowType codType) "main" args' body
 
 declToBuilder :: (DN.DeclarationName, ([BLT.BaseLowType], FCT.ForeignCodType BLT.BaseLowType)) -> Builder
 declToBuilder (name, (dom, cod)) = do
@@ -169,13 +181,21 @@ declToBuilder (name, (dom, cod)) = do
     <> unwordsC (map (emitLowType . LT.fromBaseLowType) dom)
     <> ")"
 
-emitDefinition :: Handle -> Builder -> Builder -> Builder -> LC.Comp -> IO [Builder]
-emitDefinition h retType name args asm = do
+emitDefinition :: Handle -> Maybe DD.DefiniteDescription -> Builder -> Builder -> Builder -> LC.Comp -> IO [Builder]
+emitDefinition h maybeName retType name args asm = do
   let header = sig retType name args <> " {"
   emitLowCompHandle <- EmitLowComp.new (globalHandle h) retType (allocatorSpec $ allocator h)
   content <- EmitLowComp.emitLowComp emitLowCompHandle asm
   let footer = "}"
-  return $ [header] <> content <> [footer]
+  let definition = [header] <> content <> [footer]
+  case maybeName of
+    Just traceName ->
+      when (Trace.matches (traceConfig h) Report.LLVMPhase traceName) $ do
+        Logger.trace (Global.loggerHandle (globalHandle h)) $
+          "[llvm]\n" <> TE.decodeUtf8 (L.toStrict $ L.toLazyByteString $ unlinesL definition)
+    Nothing ->
+      return ()
+  return definition
 
 sig :: Builder -> Builder -> Builder -> Builder
 sig retType name args =
