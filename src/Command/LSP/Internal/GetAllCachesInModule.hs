@@ -39,7 +39,7 @@ getLocationCache :: Handle -> Module -> Path Abs File -> App (Maybe (Source, Loc
 getLocationCache h baseModule filePath = do
   source <-
     STL.shiftToLatest (shiftToLatestHandle h) $
-      Source {sourceFilePath = filePath, sourceModule = baseModule, sourceHint = Nothing}
+      Source {sourceFilePath = filePath, sourceModule = baseModule, sourceHint = Nothing, sourceImportLocator = Nothing}
   cacheOrNone <- Cache.loadLocationCache (pathHandle h) Peripheral source
   case cacheOrNone of
     Nothing ->
@@ -56,7 +56,7 @@ getCompletionCache :: Handle -> Module -> Path Abs File -> App (Maybe (Source, C
 getCompletionCache h baseModule filePath = do
   source <-
     STL.shiftToLatest (shiftToLatestHandle h) $
-      Source {sourceFilePath = filePath, sourceModule = baseModule, sourceHint = Nothing}
+      Source {sourceFilePath = filePath, sourceModule = baseModule, sourceHint = Nothing, sourceImportLocator = Nothing}
   cachePath <- Path.getSourceCompletionCachePath (pathHandle h) Peripheral source
   cacheOrNone <- Cache.loadCompletionCacheOptimistically cachePath
   case cacheOrNone of

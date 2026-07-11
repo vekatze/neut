@@ -145,7 +145,8 @@ getSource h mustUpdateTag m sgl locatorText = do
     Source.Source
       { Source.sourceModule = nextModule,
         Source.sourceFilePath = nextPath,
-        Source.sourceHint = Just m
+        Source.sourceHint = Just m,
+        Source.sourceImportLocator = Just locatorText
       }
 
 ensureSourceImportability ::

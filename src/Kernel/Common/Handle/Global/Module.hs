@@ -98,7 +98,8 @@ sourceFromPath baseModule path = do
     Source.Source
       { Source.sourceModule = baseModule,
         Source.sourceFilePath = path,
-        Source.sourceHint = Nothing
+        Source.sourceHint = Nothing,
+        Source.sourceImportLocator = Nothing
       }
 
 ensureFileModuleSanity :: Path Abs File -> Module -> App ()
