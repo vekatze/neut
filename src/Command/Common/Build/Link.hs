@@ -13,6 +13,7 @@ import Data.Containers.ListUtils (nubOrdOn)
 import Data.Maybe
 import Data.Text qualified as T
 import Data.Text.Encoding (decodeUtf8Lenient)
+import Data.Text.IO qualified as TIO
 import Kernel.Common.Allocator (Allocator (Mimalloc), mimallocArchive)
 import Kernel.Common.Artifact qualified as A
 import Kernel.Common.CreateGlobalHandle qualified as Global
@@ -72,7 +73,10 @@ link' h target sourceList = do
   let baseModule = extractModule $ Env.getMainModule (envHandle h)
   ltoCacheDir <- Path.getLtoCacheDir (pathHandle h) (Main target) baseModule
   ltoOption <- liftIO $ getLtoOption h clang userLinkOptions ltoCacheDir
-  let linkOptions = clangLinkOpt targetTriple objects outputPath (ltoOption ++ userLinkOptions)
+  linkResponseFilePath <- Path.getLinkResponseFilePath (pathHandle h) target
+  writeLinkResponseFile linkResponseFilePath objects
+  liftIO $ Logger.report (loggerHandle h) $ "Created a response file at: " <> T.pack (toFilePath linkResponseFilePath)
+  let linkOptions = clangLinkOpt targetTriple linkResponseFilePath outputPath (ltoOption ++ userLinkOptions)
   let numOfObjects = length objects
   let workingTitle = getWorkingTitle numOfObjects
   let completedTitle = getCompletedTitle numOfObjects
@@ -183,9 +187,28 @@ getAllocatorLibraryIfNecessary h target = do
     _ ->
       return Nothing
 
-clangLinkOpt :: String -> [Path Abs File] -> Path Abs File -> [String] -> [String]
-clangLinkOpt targetTriple objectPathList outputPath additionalOptions = do
-  let pathList = map toFilePath objectPathList
+writeLinkResponseFile :: Path Abs File -> [Path Abs File] -> App ()
+writeLinkResponseFile responseFilePath objectPathList = do
+  let responseFileContent = T.unlines $ map (quoteResponseFileArgument . toFilePath) objectPathList
+  liftIO $ TIO.writeFile (toFilePath responseFilePath) responseFileContent
+
+quoteResponseFileArgument :: FilePath -> T.Text
+quoteResponseFileArgument path = do
+  let pathText = T.pack path
+  "\"" <> T.concatMap escapeResponseFileChar pathText <> "\""
+
+escapeResponseFileChar :: Char -> T.Text
+escapeResponseFileChar c =
+  case c of
+    '\\' ->
+      "\\\\"
+    '"' ->
+      "\\\""
+    _ ->
+      T.singleton c
+
+clangLinkOpt :: String -> Path Abs File -> Path Abs File -> [String] -> [String]
+clangLinkOpt targetTriple linkResponseFilePath outputPath additionalOptions = do
   [ "-target",
     targetTriple,
     "-O2",
@@ -194,6 +217,6 @@ clangLinkOpt targetTriple objectPathList outputPath additionalOptions = do
     "-o",
     toFilePath outputPath
     ]
-    ++ pathList
+    ++ ["@" ++ toFilePath linkResponseFilePath]
     ++ additionalOptions
     ++ ["-lm"]

@@ -7,6 +7,7 @@ module Kernel.Common.Handle.Global.Path
     getForeignDir,
     getAllocatorDir,
     getLtoCacheDir,
+    getLinkResponseFilePath,
     getInstallDir,
     sourceToOutputPath,
     getSourceCachePath,
@@ -182,6 +183,29 @@ getLtoCacheDir h t baseModule = do
   let ltoCacheDir = buildDir </> ltoRelDir
   P.ensureDir ltoCacheDir
   return ltoCacheDir
+
+getLinkResponseFilePath :: Handle -> Target.MainTarget -> App (Path Abs File)
+getLinkResponseFilePath h mainTarget = do
+  let baseModule = extractModule $ _mainModule h
+  relativeResponseFilePath <-
+    case mainTarget of
+      Target.Named target _ ->
+        P.parseRelFile $ T.unpack target
+      Target.Zen path _ -> do
+        relPath <- getRelPathFromSourceDir baseModule path
+        (relPathWithoutExtension, _) <- P.splitExtension relPath
+        return relPathWithoutExtension
+  linkDir <- getLinkDir h (Target.Main mainTarget) baseModule
+  responseFilePath <- P.addExtension ".rsp" $ linkDir </> relativeResponseFilePath
+  P.ensureDir $ P.parent responseFilePath
+  return responseFilePath
+
+getLinkDir :: Handle -> Target.Target -> Module -> App (Path Abs Dir)
+getLinkDir h t baseModule = do
+  buildDir <- getBuildDir h t baseModule
+  let linkDir = buildDir </> linkRelDir
+  P.ensureDir linkDir
+  return linkDir
 
 getEntryDir :: Handle -> Target.Target -> Module -> App (Path Abs Dir)
 getEntryDir h t baseModule = do

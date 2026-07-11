@@ -315,6 +315,7 @@ The field `script` specifies how to compile external source files. When running 
 In the field `script`, you can use the following placeholders:
 
 - `{{clang}}`: The `clang` used by the compiler
+- `{{module-root}}`: The root directory of the module
 - `{{foreign}}`: The foreign directory
 
 The compiler skips running the `script` if all the files in `output` are newer than `input`.

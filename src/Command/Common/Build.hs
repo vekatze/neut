@@ -334,10 +334,14 @@ getForeignSubst h t m = do
   clang <- liftIO Platform.getClang
   foreignDir <- Path.getForeignDir (Global.pathHandle (globalHandle h)) t m
   return
-    [ ("{{module-root}}", T.pack $ toFilePath $ M.getModuleRootDir m),
-      ("{{clang}}", T.pack clang),
-      ("{{foreign}}", T.pack $ toFilePath foreignDir)
+    [ ("{{module-root}}", shellQuote $ T.pack $ toFilePath $ M.getModuleRootDir m),
+      ("{{clang}}", shellQuote $ T.pack clang),
+      ("{{foreign}}", shellQuote $ T.pack $ toFilePath foreignDir)
     ]
+
+shellQuote :: T.Text -> T.Text
+shellQuote text =
+  "'" <> T.replace "'" "'\\''" text <> "'"
 
 getInputPathList :: Path Abs Dir -> M.SomePath Rel -> App [Path Abs File]
 getInputPathList moduleRootDir =
