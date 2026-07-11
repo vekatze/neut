@@ -567,6 +567,25 @@ cont
 
 `mix` can also be used with a `resource` type when the resource has a fixed non-negative byte size. The mixed field uses the minimum number of words that can contain those bytes.
 
+## `alias`
+
+`alias` defines a type alias. It should look like the following:
+
+```neut
+alias my-type {
+  int
+}
+
+alias mylist(a) {
+  list(a)
+}
+
+define use-my-type(xs: &mylist(int), y: my-type) -> my-type {
+  let len = core::list.length(xs);
+  add-int(len, y) // well-typed
+}
+```
+
 ## `alias-opaque`
 
 `alias-opaque` defines an opaque type alias. It should look like the following:
