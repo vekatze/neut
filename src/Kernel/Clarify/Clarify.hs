@@ -650,25 +650,19 @@ clarifyTerm h context term =
     _ :< TM.BoxIntroLift _ e -> do
       clarifyTerm h context e
     _ :< TM.BoxElim castSeq mxt e1 uncastSeq e2 -> do
-      clarifyTerm h context $
-        TM.fromLetSeqOpaque castSeq $
-          TM.fromLetSeq ((mxt, e1) : uncastSeq) e2
+      let opaqueLetSeq = map (\(mxt', e) -> (False, mxt', e)) castSeq
+      let clearLetSeq = (True, mxt, e1) : map (\(mxt', e) -> (True, mxt', e)) uncastSeq
+      clarifyLetSeq h context (opaqueLetSeq ++ clearLetSeq) e2
     _ :< TM.CodeIntro e -> do
       clarifyTerm h context e
     _ :< TM.CodeElim e -> do
       clarifyTerm h context e
     _ :< TM.TauIntro ty -> do
       clarifyType h context ty
-    m :< TM.TauElim (mx, x) e1 e2 -> do
-      clarifyTerm h context $ m :< TM.Let O.Clear (mx, VK.Normal, x, mx :< TM.Tau) e1 e2
-    _ :< TM.Actual _ e -> do
-      clarifyTerm h context e
-    _ :< TM.Let opacity mxt@(_, _, x, _) e1 e2 -> do
-      e2' <- clarifyTerm h (extendContext [mxt] context) e2
-      mxts' <- dropFst <$> clarifyBinder h context [mxt]
-      e2'' <- liftIO $ Linearize.linearizeUser (linearizeHandle h) mxts' e2'
-      e1' <- clarifyTerm h context e1
-      return $ Utility.bindLetWithReducibility (not $ isOpaque opacity) [(x, e1')] e2''
+    _ :< TM.TauElim (mx, x) e1 e2 -> do
+      clarifyLet h context (mx, VK.Normal, x, mx :< TM.Tau) e1 e2
+    _ :< TM.Let mxt e1 e2 ->
+      clarifyLet h context mxt e1 e2
     _ :< TM.Invoke _ body -> do
       clarifyTerm h context body
     m :< TM.Prim primValue ->
@@ -755,6 +749,27 @@ embody h context xets cont =
       cont' <- embody h (extendContext [mxt] context) rest cont
       cont'' <- liftIO $ Linearize.linearizeUser (linearizeHandle h) [(x, t')] cont'
       return $ Utility.bindLet [(valueVarName, value), (x, relApp)] cont''
+
+clarifyLet :: Handle -> Context -> BinderF TM.Type -> TM.Term -> TM.Term -> App C.Comp
+clarifyLet h context mxt e1 e2 = do
+  e2' <- clarifyTerm h (extendContext [mxt] context) e2
+  clarifyLetBody h context True mxt e1 e2'
+
+clarifyLetSeq :: Handle -> Context -> [(C.IsReducible, BinderF TM.Type, TM.Term)] -> TM.Term -> App C.Comp
+clarifyLetSeq h context letSeq cont =
+  case letSeq of
+    [] ->
+      clarifyTerm h context cont
+    (opacity, mxt, e1) : rest -> do
+      e2' <- clarifyLetSeq h (extendContext [mxt] context) rest cont
+      clarifyLetBody h context opacity mxt e1 e2'
+
+clarifyLetBody :: Handle -> Context -> C.IsReducible -> BinderF TM.Type -> TM.Term -> C.Comp -> App C.Comp
+clarifyLetBody h context isReducible mxt@(_, _, x, _) e1 e2 = do
+  mxts' <- dropFst <$> clarifyBinder h context [mxt]
+  e2' <- liftIO $ Linearize.linearizeUser (linearizeHandle h) mxts' e2
+  e1' <- clarifyTerm h context e1
+  return $ Utility.bindLetWithReducibility isReducible [(x, e1')] e2'
 
 type Size =
   Int

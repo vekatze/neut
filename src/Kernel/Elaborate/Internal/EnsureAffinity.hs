@@ -202,11 +202,7 @@ analyze h term = do
       (cs1, h') <- analyzeLet h [(mxt, e1)]
       cs2 <- analyze h' e2
       return $ cs1 ++ cs2
-    _ :< TM.Actual t e -> do
-      cs1 <- analyzeType h t
-      cs2 <- analyze h e
-      return $ cs1 ++ cs2
-    _ :< TM.Let _ mxt e1 e2 -> do
+    _ :< TM.Let mxt e1 e2 -> do
       (cs1, h') <- analyzeLet h [(mxt, e1)]
       cs2 <- analyze h' e2
       return $ cs1 ++ cs2

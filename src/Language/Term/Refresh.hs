@@ -101,14 +101,10 @@ refresh h term =
       e1' <- refresh h e1
       e2' <- refresh h e2
       return $ m :< TM.TauElim mx e1' e2'
-    m :< TM.Actual t e -> do
-      t' <- refreshType h t
-      e' <- refresh h e
-      return $ m :< TM.Actual t' e'
-    m :< TM.Let opacity mxt e1 e2 -> do
+    m :< TM.Let mxt e1 e2 -> do
       e1' <- refresh h e1
       ([mxt'], e2') <- refresh' h [mxt] e2
-      return $ m :< TM.Let opacity mxt' e1' e2'
+      return $ m :< TM.Let mxt' e1' e2'
     m :< TM.Invoke tropeNames body -> do
       body' <- refresh h body
       return $ m :< TM.Invoke tropeNames body'

@@ -55,10 +55,8 @@ extend term =
       _m :< TM.TauIntro ty
     () :< TM.TauElim (mx, x) e1 e2 ->
       _m :< TM.TauElim (mx, x) (extend e1) (extend e2)
-    () :< TM.Actual t e ->
-      _m :< TM.Actual t (extend e)
-    () :< TM.Let opacity mxt e1 e2 ->
-      _m :< TM.Let opacity mxt (extend e1) (extend e2)
+    () :< TM.Let mxt e1 e2 ->
+      _m :< TM.Let mxt (extend e1) (extend e2)
     () :< TM.Invoke tropeNames body ->
       _m :< TM.Invoke tropeNames (extend body)
     () :< TM.Prim prim ->

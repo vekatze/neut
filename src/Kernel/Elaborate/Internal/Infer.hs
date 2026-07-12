@@ -417,16 +417,13 @@ infer h term =
       let h' = extendHandle (mx, VK.Normal, x, tau) h
       (e2', t2') <- infer h' e2
       return (m :< WT.TauElim (mx, x) e1' e2', t2')
-    m :< WT.Actual _ e -> do
-      (e', t') <- infer h e
-      return (m :< WT.Actual (Just t') e', t')
-    m :< WT.Let opacity (mx, k, x, t) e1 e2 -> do
+    m :< WT.Let (mx, k, x, t) e1 e2 -> do
       (e1', t1') <- infer h e1
       t' <- inferType h t >>= resolveType h
       liftIO $ WeakType.insert (weakTypeHandle h) x t'
       liftIO $ Constraint.insert (constraintHandle h) t' t1'
       (e2', t2') <- infer h e2
-      return (m :< WT.Let opacity (mx, k, x, t') e1' e2', t2')
+      return (m :< WT.Let (mx, k, x, t') e1' e2', t2')
     m :< WT.Invoke tropeNames body -> do
       (body', bodyType) <- infer h body
       return (m :< WT.Invoke tropeNames body', bodyType)

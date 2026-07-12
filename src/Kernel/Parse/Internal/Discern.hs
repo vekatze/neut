@@ -1243,13 +1243,12 @@ discernLet ::
   Loc ->
   App WT.WeakTerm
 discernLet h m letKind (mx, pat, c1, c2, t) e1@(m1 :< _) e2 startLoc endLoc = do
-  let opacity = WT.Clear
   let discernLet' isNoetic = do
         e1' <- discern h e1
         (k, x, e2') <- modifyLetContinuation h (mx, pat) isNoetic e2
         (mxt', e2'') <- discernBinderWithBody' h (mx, k, x, c1, c2, t) startLoc endLoc e2'
         liftIO $ Tag.insertBinder (H.tagHandle h) mxt'
-        return $ m :< WT.Let opacity mxt' e1' e2''
+        return $ m :< WT.Let mxt' e1' e2''
   case letKind of
     RT.Plain _ -> do
       discernLet' False
@@ -1266,7 +1265,7 @@ discernLet h m letKind (mx, pat, c1, c2, t) e1@(m1 :< _) e2 startLoc endLoc = do
       tmpVar <- liftIO $ Gensym.newText (H.gensymHandle h)
       eitherCont <- constructEitherBinder h m mx m1 pat tmpVar e2
       (mxt', eitherCont') <- discernBinderWithBody' h (mx, VK.Normal, tmpVar, c1, c2, eitherType) startLoc endLoc eitherCont
-      return $ m :< WT.Let opacity mxt' e1' eitherCont'
+      return $ m :< WT.Let mxt' e1' eitherCont'
 
 constructEitherBinder ::
   H.Handle ->

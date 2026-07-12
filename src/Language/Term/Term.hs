@@ -7,7 +7,6 @@ module Language.Term.Term
     insTypeEnv,
     isValue,
     fromLetSeq,
-    fromLetSeqOpaque,
   )
 where
 
@@ -28,7 +27,6 @@ import Language.Common.Ident.Reify
 import Language.Common.LowMagic qualified as LM
 import Language.Common.Magic
 import Language.Common.Noema qualified as N
-import Language.Common.Opacity qualified as O
 import Language.Common.PiElimKind qualified as PEK
 import Language.Common.PiKind (PiKind)
 import Language.Common.PrimType qualified as PT
@@ -78,8 +76,7 @@ data TermF a
   | CodeElim a
   | TauIntro Type
   | TauElim (Hint, Ident) a a
-  | Actual Type a
-  | Let O.Opacity (BinderF Type) a a
+  | Let (BinderF Type) a a
   | Invoke [DD.DefiniteDescription] a
   | Prim (PV.PrimValue Type)
   | Magic (Magic BLT.BaseLowType Type a)
@@ -119,8 +116,6 @@ isValue term =
       True
     _ :< BoxIntroLift _ e ->
       isValue e
-    _ :< Actual _ e ->
-      isValue e
     _ :< Prim {} ->
       True
     _ :< Magic (LowMagic (LM.OpaqueValue _)) ->
@@ -134,12 +129,4 @@ fromLetSeq xts cont =
     [] ->
       cont
     (mxt@(m, _, _, _), e) : rest ->
-      m :< Let O.Clear mxt e (fromLetSeq rest cont)
-
-fromLetSeqOpaque :: [(BinderF Type, Term)] -> Term -> Term
-fromLetSeqOpaque xts cont =
-  case xts of
-    [] ->
-      cont
-    (mxt@(m, _, _, _), e) : rest ->
-      m :< Let O.Opaque mxt e (fromLetSeq rest cont)
+      m :< Let mxt e (fromLetSeq rest cont)

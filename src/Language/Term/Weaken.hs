@@ -27,7 +27,6 @@ import Language.Term.Stmt
 import Language.Term.Term qualified as TM
 import Language.WeakTerm.WeakPrimValue qualified as WPV
 import Language.WeakTerm.WeakStmt
-import Language.WeakTerm.WeakTerm (reflectOpacity)
 import Language.WeakTerm.WeakTerm qualified as WT
 import Logger.Hint
 
@@ -125,10 +124,8 @@ weaken term =
       m :< WT.TauIntro (weakenType ty)
     m :< TM.TauElim mx e1 e2 ->
       m :< WT.TauElim mx (weaken e1) (weaken e2)
-    m :< TM.Actual t e ->
-      m :< WT.Actual (Just $ weakenType t) (weaken e)
-    m :< TM.Let opacity mxt e1 e2 ->
-      m :< WT.Let (reflectOpacity opacity) (weakenTypeBinder mxt) (weaken e1) (weaken e2)
+    m :< TM.Let mxt e1 e2 ->
+      m :< WT.Let (weakenTypeBinder mxt) (weaken e1) (weaken e2)
     m :< TM.Invoke tropeNames body ->
       m :< WT.Invoke tropeNames (weaken body)
     m :< TM.Prim prim ->

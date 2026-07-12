@@ -96,10 +96,8 @@ toTextIndented kit term =
       indentText (level kit) ("pack-type" <> inParen (toTextType ty))
     _ :< WT.TauElim (_, x) e1 e2 ->
       indentText (level kit) ("unpack-type " <> showVariable (distinctVars kit) x <> " = " <> toTextIndented (atLevel kit 0) e1 <> "; " <> toTextIndented (atLevel kit 0) e2)
-    _ :< WT.Actual _ e ->
-      indentText (level kit) ("ACTUAL(" <> toTextIndented (atLevel kit 0) e <> ")")
-    _ :< WT.Let opacity (_, k, x, t) e1 e2 ->
-      renderTermLet kit opacity k x t e1 e2
+    _ :< WT.Let (_, k, x, t) e1 e2 ->
+      renderTermLet kit k x t e1 e2
     _ :< WT.Invoke tropeNames body ->
       indentText (level kit) ("invoke " <> T.intercalate ", " (map DD.localLocator tropeNames) <> "; " <> toTextIndented (atLevel kit 0) body)
     _ :< WT.Prim primValue ->
@@ -264,11 +262,11 @@ renderConstructorArg :: Bool -> BinderF WT.WeakType -> T.Text
 renderConstructorArg distinct (_, _, x, _) =
   showVariable distinct x
 
-renderTermLet :: Kit -> WT.LetOpacity -> VK.VarKind -> Ident -> WT.WeakType -> WT.WeakTerm -> WT.WeakTerm -> T.Text
-renderTermLet kit opacity k x t e1 e2 =
+renderTermLet :: Kit -> VK.VarKind -> Ident -> WT.WeakType -> WT.WeakTerm -> WT.WeakTerm -> T.Text
+renderTermLet kit k x t e1 e2 =
   renderTermBinding
     kit
-    ((case opacity of WT.Noetic -> "tie "; _ -> "let ") <> showVarWithKind (distinctVars kit) k x <> ": " <> toTextType t <> " =")
+    ("let " <> showVarWithKind (distinctVars kit) k x <> ": " <> toTextType t <> " =")
     e1
     e2
 
