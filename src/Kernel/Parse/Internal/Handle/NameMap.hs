@@ -5,6 +5,7 @@ module Kernel.Parse.Internal.Handle.NameMap
     registerGeist,
     reportMissingDefinitions,
     activateTopLevelNames,
+    withCurrentTopLevelName,
     lookup,
     getGlobalNames,
     getGlobalNames',
@@ -58,7 +59,8 @@ data Handle = Handle
     usedTopLevelNameHandle :: UsedTopLevelName.Handle,
     unusedTopLevelNameHandle :: UnusedTopLevelName.Handle,
     nameMapRef :: IORef TopNameMap,
-    geistMapRef :: IORef (Map.HashMap DD.DefiniteDescription (Hint, IsConstLike))
+    geistMapRef :: IORef (Map.HashMap DD.DefiniteDescription (Hint, IsConstLike)),
+    currentTopLevelName :: Maybe DD.DefiniteDescription
   }
 
 type NameEntry =
@@ -68,7 +70,12 @@ new :: Global.Handle -> Unused.Handle -> UsedTopLevelName.Handle -> Tag.Handle -
 new (Global.Handle {..}) unusedHandle usedTopLevelNameHandle tagHandle = do
   nameMapRef <- newIORef Map.empty
   geistMapRef <- newIORef Map.empty
+  let currentTopLevelName = Nothing
   return $ Handle {..}
+
+withCurrentTopLevelName :: Maybe DD.DefiniteDescription -> Handle -> Handle
+withCurrentTopLevelName currentTopLevelName h =
+  h {currentTopLevelName}
 
 insert :: Handle -> [NameEntry] -> App ()
 insert h nameArrowList = do
@@ -99,7 +106,7 @@ lookup h m currentLocator name = do
     Just (mFound, _tag, gn) -> do
       liftIO $ Unused.deleteGlobalLocator (unusedHandle h) $ DD.globalLocator name
       liftIO $ UsedTopLevelName.insert (usedTopLevelNameHandle h) name
-      liftIO $ UnusedTopLevelName.delete (unusedTopLevelNameHandle h) name
+      liftIO $ UnusedTopLevelName.recordReference (unusedTopLevelNameHandle h) (currentTopLevelName h) name
       return $ Just (mFound, gn)
     Nothing
       | Just primType <- PT.fromDefiniteDescription dataSize name ->
@@ -382,5 +389,5 @@ stmtKindTypeToNominalTag stmtKind =
       Just Alias
     SK.AliasOpaque ->
       Just AliasOpaque
-    SK.Data _ _ _ _ ->
+    SK.Data {} ->
       Just Data

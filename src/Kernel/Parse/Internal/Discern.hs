@@ -115,14 +115,15 @@ discernStmt h stmt = do
   case stmt of
     PostRawStmtDefineTerm _ stmtKind (RT.RawDef {geist, body, endLoc}) -> do
       registerTopLevelName h stmt
+      let functionName = fst $ RT.name geist
       let baseStage = if SK.isMacroStmtKind stmtKind then 1 else 0
-      let h' = h {H.currentStage = baseStage}
+      let nameMapHandle' = NameMap.withCurrentTopLevelName (Just functionName) (H.nameMapHandle h)
+      let h' = h {H.currentStage = baseStage, H.nameMapHandle = nameMapHandle'}
       let impArgs = RT.extractImpArgs $ RT.impArgs geist
       let defaultArgs = SE.extract $ fst $ RT.defaultArgs geist
       let expArgs = RT.extractArgs $ RT.expArgs geist
       let (_, codType) = RT.cod geist
       let m = RT.loc geist
-      let functionName = fst $ RT.name geist
       let isConstLike = RT.isConstLike geist
       (impArgs', nenv) <- discernImpArgs h' impArgs endLoc
       (expArgs', nenv') <- discernBinder nenv expArgs endLoc
@@ -140,7 +141,6 @@ discernStmt h stmt = do
       return [WeakStmtDefineTerm isConstLike stmtKind' m functionName impArgs' expArgs' defaultArgs' codType' body']
     PostRawStmtDefineType _ stmtKind (RT.RawTypeDef {typeGeist, typeBody, typeEndLoc}) -> do
       registerTopLevelName h stmt
-      let h' = h {H.currentStage = 0}
       let impArgs = RT.extractImpArgs $ RT.impArgs typeGeist
       let defaultArgs = SE.extract $ fst $ RT.defaultArgs typeGeist
       let expArgs = RT.extractArgs $ RT.expArgs typeGeist
@@ -148,6 +148,8 @@ discernStmt h stmt = do
       let m = RT.loc typeGeist
       let functionName = fst $ RT.name typeGeist
       let isConstLike = RT.isConstLike typeGeist
+      let nameMapHandle' = NameMap.withCurrentTopLevelName (Just functionName) (H.nameMapHandle h)
+      let h' = h {H.currentStage = 0, H.nameMapHandle = nameMapHandle'}
       (impArgs', nenv) <- discernImpArgs h' impArgs typeEndLoc
       (expArgs', nenv') <- discernTypeBinder nenv expArgs typeEndLoc
       (defaultArgs', nenv'') <- discernTypeBinderWithDefaultArgs nenv' defaultArgs typeEndLoc
@@ -164,18 +166,21 @@ discernStmt h stmt = do
       return [WeakStmtDefineType isConstLike stmtKind' m functionName impArgs' expArgs' defaultArgs' codType' body']
     PostRawStmtDefineResource _ m (dd, _) (_, discarder) (_, copier) (_, resourceSize) _ -> do
       registerTopLevelName h stmt
-      unitType <- liftEither (locatorToTypeVar m coreUnit) >>= discernType h
-      resourceID <- liftIO $ Gensym.newCount (H.gensymHandle h)
-      discarder' <- discern h discarder
-      copier' <- discern h copier
-      resourceSize' <- discern h resourceSize
-      liftIO $ Tag.insertGlobalVar (H.tagHandle h) m dd True m
-      liftIO $ TopCandidate.insert (H.topCandidateHandle h) $ do
+      let nameMapHandle' = NameMap.withCurrentTopLevelName (Just dd) (H.nameMapHandle h)
+      let h' = h {H.nameMapHandle = nameMapHandle'}
+      unitType <- liftEither (locatorToTypeVar m coreUnit) >>= discernType h'
+      resourceID <- liftIO $ Gensym.newCount (H.gensymHandle h')
+      discarder' <- discern h' discarder
+      copier' <- discern h' copier
+      resourceSize' <- discern h' resourceSize
+      liftIO $ Tag.insertGlobalVar (H.tagHandle h') m dd True m
+      liftIO $ TopCandidate.insert (H.topCandidateHandle h') $ do
         TopCandidate {loc = metaLocation m, dd = dd, kind = Constant}
       return [WeakStmtDefineResource m dd resourceID unitType discarder' copier' resourceSize']
     PostRawStmtTrope _ m (dd, _) defineMetaList _ -> do
       registerTopLevelName h stmt
-      let h' = h {H.currentStage = 1}
+      let nameMapHandle' = NameMap.withCurrentTopLevelName (Just dd) (H.nameMapHandle h)
+      let h' = h {H.currentStage = 1, H.nameMapHandle = nameMapHandle'}
       defineMetaList' <- mapM (discernDefineMeta h') $ SE.extract defineMetaList
       liftIO $ Tag.insertGlobalVar (H.tagHandle h) m dd False m
       when (metaShouldSaveLocation m) $ do
