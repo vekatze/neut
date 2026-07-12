@@ -9,7 +9,6 @@ import App.App (App)
 import Data.Bifunctor (second)
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
-import Gensym.Handle qualified as Gensym
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.Env qualified as Env
 import Kernel.Common.Handle.Global.Module qualified as Module
@@ -19,8 +18,7 @@ import Language.Common.BaseName qualified as BN
 import Language.Common.ModuleAlias qualified as MA
 
 data Handle = Handle
-  { gensymHandle :: Gensym.Handle,
-    moduleHandle :: Module.Handle,
+  { moduleHandle :: Module.Handle,
     envHandle :: Env.Handle
   }
 

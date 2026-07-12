@@ -56,13 +56,14 @@ data Handle = Handle
   }
 
 new ::
+  Gensym.Handle ->
   Global.Handle ->
   Local.Handle ->
   NameMap.Handle ->
   ModulePath.ModulePathMap ->
   Module.Module ->
   Handle
-new (Global.Handle {..}) (Local.Handle {..}) nameMapHandle modulePathMap currentModule = do
+new gensymHandle (Global.Handle {..}) (Local.Handle {..}) nameMapHandle modulePathMap currentModule = do
   let nameEnv = empty
   let typeNameEnv = empty
   let currentLayer = 0

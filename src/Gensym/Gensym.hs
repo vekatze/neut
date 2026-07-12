@@ -5,5 +5,7 @@ import Gensym.Handle
 
 {-# INLINE newCount #-}
 newCount :: Handle -> IO Int
-newCount h =
-  atomicModifyIORef' (_counterRef h) (\x -> (x + 1, x))
+newCount h = do
+  count <- readIORef (_counterRef h)
+  writeIORef (_counterRef h) $! count + 1
+  return count

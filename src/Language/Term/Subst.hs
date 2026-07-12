@@ -5,6 +5,8 @@ module Language.Term.Subst
     Subst,
     subst,
     substType,
+    refresh,
+    refreshType,
     subst',
     subst'',
     substDecisionTree,
@@ -41,12 +43,14 @@ data SubstEntry
 type Subst =
   IntMap.IntMap SubstEntry
 
-newtype Handle = Handle
-  { gensymHandle :: Gensym.Handle
+data Handle = Handle
+  { gensymHandle :: Gensym.Handle,
+    shouldRefreshBinders :: Bool
   }
 
 new :: Gensym.Handle -> Handle
 new gensymHandle = do
+  let shouldRefreshBinders = False
   Handle {..}
 
 subst :: Handle -> Subst -> TM.Term -> IO TM.Term
@@ -70,7 +74,7 @@ subst h sub term =
     m :< TM.PiIntro (AttrL.Attr {lamKind}) impArgs expArgs defaultArgs e -> do
       let fvs = S.map Ident.toInt $ TM.freeVars term
       let subDomSet = S.fromList $ IntMap.keys sub
-      if S.intersection fvs subDomSet == S.empty
+      if not (shouldRefreshBinders h) && S.intersection fvs subDomSet == S.empty
         then return term
         else do
           newLamID <- liftIO $ Gensym.newCount (gensymHandle h)
@@ -152,6 +156,10 @@ subst h sub term =
       der' <- substMagic h sub der
       return (m :< TM.Magic der')
 
+refresh :: Handle -> TM.Term -> IO TM.Term
+refresh h =
+  subst (h {shouldRefreshBinders = True}) IntMap.empty
+
 substType :: Handle -> Subst -> TM.Type -> IO TM.Type
 substType h sub ty =
   case ty of
@@ -200,6 +208,10 @@ substType h sub ty =
       return ty
     m :< TM.Resource dd resourceID -> do
       return $ m :< TM.Resource dd resourceID
+
+refreshType :: Handle -> TM.Type -> IO TM.Type
+refreshType h =
+  substType (h {shouldRefreshBinders = True}) IntMap.empty
 
 substBinder ::
   Handle ->

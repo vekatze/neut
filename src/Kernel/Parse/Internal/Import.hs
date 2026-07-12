@@ -63,10 +63,11 @@ data Handle = Handle
   }
 
 new ::
+  Gensym.Handle ->
   Global.Handle ->
   Local.Handle ->
   Handle
-new globalHandle@(Global.Handle {..}) (Local.Handle {..}) = do
+new gensymHandle globalHandle@(Global.Handle {..}) (Local.Handle {..}) = do
   let getEnabledPresetHandle = GetEnabledPreset.new globalHandle
   let shiftToLatestHandle = STL.new antecedentHandle
   Handle {..}

@@ -22,6 +22,7 @@ import Data.Sequence as Seq (Seq, empty, (><), (|>))
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Time
+import Gensym.CreateHandle qualified as Gensym
 import Kernel.Common.Artifact qualified as A
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.CreateLocalHandle qualified as Local
@@ -469,7 +470,8 @@ parseSourceHeader h localHandle currentSource = do
   fileContent <- readTextFromPath filePath
   (_, importList) <- runParser filePath fileContent False parseImport
   let m = newSourceHint filePath
-  let importHandle = Import.new (globalHandle h) localHandle
+  gensymHandle <- liftIO Gensym.createHandle
+  let importHandle = Import.new gensymHandle (globalHandle h) localHandle
   Import.interpretImport importHandle m currentSource importList
 
 getSourceChildrenMap :: Handle -> IO (Map.HashMap (Path Abs File) [ImportItem])

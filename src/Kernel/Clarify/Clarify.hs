@@ -127,8 +127,8 @@ setCurrentFunction :: DD.DefiniteDescription -> Context -> Context
 setCurrentFunction currentFunction context =
   context {currentFunction}
 
-new :: Global.Handle -> Trace.Config -> IO Handle
-new (Global.Handle {..}) traceConfig = do
+new :: Gensym.Handle -> Global.Handle -> Trace.Config -> IO Handle
+new gensymHandle (Global.Handle {..}) traceConfig = do
   modulePathMap <- ModulePath.get modulePathHandle
   let baseSize = Platform.getDataSize platformHandle
   auxEnvHandle <- AuxEnv.new
@@ -327,8 +327,8 @@ data MainHandle = MainHandle
     mainGensymHandle :: Gensym.Handle
   }
 
-newMain :: Global.Handle -> IO MainHandle
-newMain Global.Handle {..} = do
+newMain :: Gensym.Handle -> Global.Handle -> IO MainHandle
+newMain gensymHandle Global.Handle {..} = do
   mainAuxEnvHandle <- AuxEnv.new
   let baseSize = Platform.getDataSize platformHandle
   let compSubstHandle = CompSubst.new gensymHandle

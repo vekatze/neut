@@ -8,6 +8,7 @@ where
 import App.App (App)
 import Control.Monad
 import Control.Monad.IO.Class
+import Gensym.Handle qualified as Gensym
 import Kernel.Common.Cache qualified as Cache
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.CreateLocalHandle qualified as Local
@@ -54,15 +55,16 @@ data Handle = Handle
   }
 
 new ::
+  Gensym.Handle ->
   Global.Handle ->
   Local.Handle ->
   Module.Module ->
   IO Handle
-new globalHandle localHandle currentModule = do
+new gensymHandle globalHandle localHandle currentModule = do
   let unusedHandle = Local.unusedHandle localHandle
   let usedTopLevelNameHandle = Local.usedTopLevelNameHandle localHandle
   let pathHandle = Global.pathHandle globalHandle
-  let importHandle = Import.new globalHandle localHandle
+  let importHandle = Import.new gensymHandle globalHandle localHandle
   let globalNameMapHandle = Global.globalNameMapHandle globalHandle
   let aliasHandle = Local.aliasHandle localHandle
   let locatorHandle = Local.locatorHandle localHandle
@@ -72,7 +74,7 @@ new globalHandle localHandle currentModule = do
   let topCandidateHandle = Local.topCandidateHandle localHandle
   let rawImportSummaryHandle = Local.rawImportSummaryHandle localHandle
   modulePathMap <- liftIO $ ModulePath.get $ Global.modulePathHandle globalHandle
-  let discernHandle = Discern.new globalHandle localHandle nameMapHandle modulePathMap currentModule
+  let discernHandle = Discern.new gensymHandle globalHandle localHandle nameMapHandle modulePathMap currentModule
   return $ Handle {..}
 
 interpret ::

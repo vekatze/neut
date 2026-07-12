@@ -46,7 +46,7 @@ matches config modulePathMap phase dd = do
   case mainModule config of
     Nothing ->
       False
-    Just mainModule' ->
+    Just _ ->
       phase `elem` phaseList config
         && any (`isPrefixOfLocator` ModulePath.renderCanonicalDD modulePathMap dd) (prefixList config)
 

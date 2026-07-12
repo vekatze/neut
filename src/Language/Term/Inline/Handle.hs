@@ -23,7 +23,6 @@ import Language.Common.Binder
 import Language.Common.DataSize qualified as DS
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.Ident (Ident)
-import Language.Term.Refresh qualified as Refresh
 import Language.Term.Stmt qualified as Stmt
 import Language.Term.Subst qualified as Subst
 import Language.Term.Term qualified as TM
@@ -71,7 +70,6 @@ data ResidualCheck
 
 data Handle = Handle
   { substHandle :: Subst.Handle,
-    refreshHandle :: Refresh.Handle,
     dmap :: DefMap,
     localMetaDefMap :: IORef (Map.HashMap DD.DefiniteDescription DefInfo),
     typeDefMap :: TypeDefMap,

@@ -2,6 +2,8 @@ module Language.Comp.Subst
   ( Handle,
     new,
     subst,
+    refresh,
+    instantiate,
     substValue,
     substPrimitive,
   )
@@ -25,6 +27,14 @@ new gensymHandle = do
 subst :: Handle -> C.SubstValue -> C.Comp -> IO C.Comp
 subst =
   substComp
+
+refresh :: Handle -> C.Comp -> IO C.Comp
+refresh h =
+  subst h IntMap.empty
+
+instantiate :: Handle -> C.SubstValue -> C.Comp -> IO C.Comp
+instantiate =
+  subst
 
 substComp :: Handle -> C.SubstValue -> C.Comp -> IO C.Comp
 substComp h sub term =

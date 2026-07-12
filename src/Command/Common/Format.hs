@@ -13,6 +13,7 @@ import CodeParser.Parser (runParser)
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Text qualified as T
+import Gensym.CreateHandle qualified as Gensym
 import Ens.Parse qualified as EnsParse
 import Ens.ToDoc qualified as Ens
 import Kernel.Common.CreateGlobalHandle qualified as Global
@@ -59,7 +60,8 @@ type ShouldMinimizeImports =
 _formatSource :: Handle -> ShouldMinimizeImports -> Path Abs File -> T.Text -> App T.Text
 _formatSource h shouldMinimizeImports filePath fileContent = do
   let MainModule mainModule = Env.getMainModule (Global.envHandle (globalHandle h))
-  let parseCoreHandle = ParseRT.new (Global.gensymHandle (globalHandle h))
+  gensymHandle <- liftIO Gensym.createHandle
+  let parseCoreHandle = ParseRT.new gensymHandle
   let getEnabledPresetHandle = GetEnabledPreset.new (globalHandle h)
   if shouldMinimizeImports
     then do
@@ -71,8 +73,8 @@ _formatSource h shouldMinimizeImports filePath fileContent = do
       case unsnoc cacheOrProgList of
         Nothing ->
           raiseError' "Nothing to format"
-        Just (_, (rootLocalHandle, (rootSource, rootCacheOrProg))) -> do
-          interpretHandle <- liftIO $ Interpret.new (globalHandle h) rootLocalHandle (Source.sourceModule rootSource)
+        Just (_, (rootGensymHandle, rootLocalHandle, (rootSource, rootCacheOrProg))) -> do
+          interpretHandle <- liftIO $ Interpret.new rootGensymHandle (globalHandle h) rootLocalHandle (Source.sourceModule rootSource)
           _ <- Interpret.interpret interpretHandle Peripheral rootSource rootCacheOrProg
           let unusedHandle = Local.unusedHandle rootLocalHandle
           (unusedGlobalLocators, unusedLocalLocators) <- liftIO $ Unused.getUnusedLocators unusedHandle

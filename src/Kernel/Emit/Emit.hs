@@ -19,6 +19,7 @@ import Data.List qualified as List
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
 import Gensym.CreateHandle qualified as Gensym
+import Gensym.Handle qualified as GensymHandle
 import Kernel.Common.Allocator (Allocator, allocatorSpec)
 import Kernel.Common.Const
 import Kernel.Common.CreateGlobalHandle qualified as Global
@@ -45,13 +46,14 @@ import Language.LowComp.Reduce qualified as Reduce
 import Logger.Debug qualified as Logger
 
 data Handle = Handle
-  { globalHandle :: Global.Handle,
+  { gensymHandle :: GensymHandle.Handle,
+    globalHandle :: Global.Handle,
     allocator :: Allocator,
     traceConfig :: Trace.Config
   }
 
-new :: Global.Handle -> Target -> App Handle
-new globalHandle target = do
+new :: GensymHandle.Handle -> Global.Handle -> Target -> App Handle
+new gensymHandle globalHandle target = do
   allocator <- Env.getAllocatorByTarget (Global.envHandle globalHandle) target
   let traceReport = Console.getTraceConfig $ Global.consoleHandle globalHandle
   traceConfig <- either raiseError' return $ Trace.new (Env.getMainModule $ Global.envHandle globalHandle) traceReport
@@ -149,11 +151,10 @@ emitDeclarations declEnv = do
 
 emitDefinitions :: Handle -> LC.Def -> IO [Builder]
 emitDefinitions h (name, LC.DefContent {codType = codType, args = args, body = body}) = do
-  gensymHandle <- Gensym.createHandle
-  let h' = h {globalHandle = (globalHandle h) {Global.gensymHandle = gensymHandle}}
-  args' <- mapM (Gensym.newIdentFromIdent (Global.gensymHandle (globalHandle h'))) args
+  definitionGensymHandle <- Gensym.createHandle
+  args' <- mapM (Gensym.newIdentFromIdent definitionGensymHandle) args
   let sub = IntMap.fromList $ zipWith (\from to -> (toInt from, LC.VarLocal to)) args args'
-  let reduceHandle = Reduce.new (Global.gensymHandle (globalHandle h'))
+  let reduceHandle = Reduce.new definitionGensymHandle
   body' <- Reduce.reduce reduceHandle sub body
   let args'' =
         case codType of
@@ -161,12 +162,12 @@ emitDefinitions h (name, LC.DefContent {codType = codType, args = args, body = b
             showFuncArgsWithSRet $ map (emitValue . LC.VarLocal) args'
           _ ->
             showFuncArgs $ map (emitValue . LC.VarLocal) args'
-  emitDefinition h' (Just name) (emitLowType codType) (DD.toBuilder name) args'' body'
+  emitDefinition h definitionGensymHandle (Just name) (emitLowType codType) (DD.toBuilder name) args'' body'
 
 emitMain :: Handle -> LC.DefContent -> IO [Builder]
 emitMain h (LC.DefContent {codType = codType, args = args, body = body}) = do
   let args' = showFuncArgs $ map (emitValue . LC.VarLocal) args
-  emitDefinition h Nothing (emitLowType codType) "main" args' body
+  emitDefinition h (gensymHandle h) Nothing (emitLowType codType) "main" args' body
 
 declToBuilder :: (DN.DeclarationName, ([BLT.BaseLowType], FCT.ForeignCodType BLT.BaseLowType)) -> Builder
 declToBuilder (name, (dom, cod)) = do
@@ -179,10 +180,10 @@ declToBuilder (name, (dom, cod)) = do
     <> unwordsC (map (emitLowType . LT.fromBaseLowType) dom)
     <> ")"
 
-emitDefinition :: Handle -> Maybe DD.DefiniteDescription -> Builder -> Builder -> Builder -> LC.Comp -> IO [Builder]
-emitDefinition h maybeName retType name args asm = do
+emitDefinition :: Handle -> GensymHandle.Handle -> Maybe DD.DefiniteDescription -> Builder -> Builder -> Builder -> LC.Comp -> IO [Builder]
+emitDefinition h gensymHandle maybeName retType name args asm = do
   let header = sig retType name args <> " {"
-  emitLowCompHandle <- EmitLowComp.new (globalHandle h) retType (allocatorSpec $ allocator h)
+  emitLowCompHandle <- EmitLowComp.new gensymHandle (globalHandle h) retType (allocatorSpec $ allocator h)
   content <- EmitLowComp.emitLowComp emitLowCompHandle asm
   let footer = "}"
   let definition = [header] <> content <> [footer]

@@ -10,7 +10,7 @@ import Control.Comonad.Cofree
 import Control.Monad
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
-import Gensym.Gensym qualified as Gensym
+import Gensym.Gensym qualified as GensymCount
 import Gensym.Handle qualified as Gensym
 import Language.Common.Attr.Lam qualified as AttrL
 import Language.Common.Binder
@@ -24,18 +24,18 @@ import Prelude hiding (lookup, read)
 type DefMap =
   Map.HashMap DD.DefiniteDescription WeakTerm
 
-data Handle = Handle
-  { gensymHandle :: Gensym.Handle,
-    weakDefMapRef :: IORef (Map.HashMap DD.DefiniteDescription WT.WeakTerm)
+newtype Handle = Handle
+  { weakDefMapRef :: IORef (Map.HashMap DD.DefiniteDescription WT.WeakTerm)
   }
 
-new :: Gensym.Handle -> IO Handle
-new gensymHandle = do
+new :: IO Handle
+new = do
   weakDefMapRef <- newIORef Map.empty
   return $ Handle {..}
 
 insert' ::
   Handle ->
+  Gensym.Handle ->
   O.Opacity ->
   Bool ->
   Hint ->
@@ -46,8 +46,8 @@ insert' ::
   WeakType ->
   WeakTerm ->
   IO ()
-insert' h opacity isDestPassing m name impArgs expArgs defaultArgs codType e =
+insert' h gensymHandle opacity isDestPassing m name impArgs expArgs defaultArgs codType e =
   when (opacity == O.Clear) $ do
-    i <- Gensym.newCount (gensymHandle h)
+    i <- GensymCount.newCount gensymHandle
     modifyIORef' (weakDefMapRef h) $
       Map.insert name (m :< WT.PiIntro (AttrL.normal' (Just $ DD.localLocator name) isDestPassing i codType) impArgs expArgs defaultArgs e)
