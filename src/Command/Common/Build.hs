@@ -26,6 +26,8 @@ import Data.Maybe
 import Data.Text qualified as T
 import Data.Text.Encoding (decodeUtf8)
 import Data.Time
+import Gensym.CreateHandle qualified as Gensym
+import Gensym.Handle qualified as Gensym
 import Kernel.Clarify.Clarify qualified as Clarify
 import Kernel.Common.Cache
 import Kernel.Common.ClangOption qualified as CL
@@ -148,14 +150,14 @@ compile h traceConfig target outputKindList contentSeq = do
   let completedTitle = getCompletedTitle numOfItems
   hp <- liftIO $ Indicator.new consoleHandle loggerHandle (Just numOfItems) workingTitle completedTitle color
   cacheOrProgList <- Parse.parse (globalHandle h) contentSeq
-  cacheOrStmtList <- forP cacheOrProgList $ \(localHandle, (source, cacheOrProg)) -> do
+  cacheOrStmtList <- forP cacheOrProgList $ \(gensymHandle, localHandle, (source, cacheOrProg)) -> do
     liftIO $ Logger.report (Global.loggerHandle (globalHandle h)) $ "Interpreting: " <> T.pack (toFilePath $ sourceFilePath source)
-    interpretHandle <- liftIO $ Interpret.new (globalHandle h) localHandle (sourceModule source)
+    interpretHandle <- liftIO $ Interpret.new gensymHandle (globalHandle h) localHandle (sourceModule source)
     item <- Interpret.interpret interpretHandle target source cacheOrProg
-    return (localHandle, (source, item))
-  contentAsync <- fmap catMaybes $ forM cacheOrStmtList $ \(localHandle, (source, (cacheOrStmt, logs))) -> do
+    return (gensymHandle, localHandle, (source, item))
+  contentAsync <- fmap catMaybes $ forM cacheOrStmtList $ \(gensymHandle, localHandle, (source, (cacheOrStmt, logs))) -> do
     liftIO $ Logger.report (Global.loggerHandle (globalHandle h)) $ "Elaborating: " <> T.pack (toFilePath $ sourceFilePath source)
-    elaborateHandle <- liftIO $ Elaborate.new (globalHandle h) traceConfig localHandle source
+    elaborateHandle <- liftIO $ Elaborate.new gensymHandle (globalHandle h) traceConfig localHandle source
     let ensureMainHandle = EnsureMain.new (Global.envHandle (globalHandle h))
     stmtList <- Elaborate.elaborate elaborateHandle target logs cacheOrStmt
     EnsureMain.ensureMain ensureMainHandle target source (map snd $ getStmtName stmtList)
@@ -164,18 +166,18 @@ compile h traceConfig target outputKindList contentSeq = do
       then do
         fmap Just $ liftIO $ async $ runApp $ do
           liftIO $ Logger.report (Global.loggerHandle (globalHandle h)) $ "Clarifying: " <> T.pack (toFilePath $ sourceFilePath source)
-          clarifyHandle <- liftIO $ Clarify.new (globalHandle h) traceConfig
+          clarifyHandle <- liftIO $ Clarify.new gensymHandle (globalHandle h) traceConfig
           (stmtList', auxStmtList, defMap) <- Clarify.clarify clarifyHandle stmtList
           liftIO $ Logger.report (Global.loggerHandle (globalHandle h)) $ "Lowering: " <> T.pack (toFilePath $ sourceFilePath source)
-          lowerHandle <- Lower.new (globalHandle h) traceConfig target defMap
+          lowerHandle <- Lower.new gensymHandle (globalHandle h) traceConfig target defMap
           virtualCode <- Lower.lower lowerHandle stmtList' auxStmtList
-          emit h hp currentTime target outputKindList (Right source) virtualCode
+          emit h gensymHandle hp currentTime target outputKindList (Right source) virtualCode
       else return Nothing
   when (shouldRegisterUnusedTopLevelNameRemarks target) $
     registerUnusedTopLevelNameRemarks h
   entryPointVirtualCode <- compileEntryPoint h target outputKindList
-  entryPointAsync <- forM entryPointVirtualCode $ \(src, code) -> liftIO $ do
-    async $ runApp $ emit h hp currentTime target outputKindList src code
+  entryPointAsync <- forM entryPointVirtualCode $ \(gensymHandle, src, code) -> liftIO $ do
+    async $ runApp $ emit h gensymHandle hp currentTime target outputKindList src code
   errors <- fmap lefts $ mapM wait $ entryPointAsync ++ contentAsync
   liftIO $ Indicator.close hp
   if null errors
@@ -215,6 +217,7 @@ getWorkingTitle numOfItems = do
 
 emit ::
   Handle ->
+  Gensym.Handle ->
   Indicator.Handle ->
   UTCTime ->
   Target ->
@@ -222,8 +225,8 @@ emit ::
   Either MainTarget Source ->
   LC.LowCode ->
   App ()
-emit h progressBar currentTime target outputKindList src code = do
-  emitHandle <- Emit.new (globalHandle h) target
+emit h gensymHandle progressBar currentTime target outputKindList src code = do
+  emitHandle <- Emit.new gensymHandle (globalHandle h) target
   let llvmHandle = Gen.new (globalHandle h)
   let clangOptions = getCompileOption target
   llvmIR' <- liftIO $ Emit.emit emitHandle code
@@ -257,7 +260,7 @@ getEntryPointCompilationCount h target outputKindList = do
       b <- Cache.isEntryPointCompilationSkippable pathHandle t outputKindList
       return $ if b then 0 else 1
 
-compileEntryPoint :: Handle -> Target -> [OutputKind] -> App [(Either MainTarget Source, LC.LowCode)]
+compileEntryPoint :: Handle -> Target -> [OutputKind] -> App [(Gensym.Handle, Either MainTarget Source, LC.LowCode)]
 compileEntryPoint h target outputKindList = do
   case target of
     Peripheral {} ->
@@ -265,6 +268,7 @@ compileEntryPoint h target outputKindList = do
     PeripheralSingle {} ->
       return []
     Main t -> do
+      gensymHandle <- liftIO Gensym.createHandle
       traceConfig <- newTraceConfig h
       let pathHandle = Global.pathHandle (globalHandle h)
       b <- Cache.isEntryPointCompilationSkippable pathHandle t outputKindList
@@ -274,13 +278,13 @@ compileEntryPoint h target outputKindList = do
           return []
         else do
           liftIO $ Logger.report (Global.loggerHandle (globalHandle h)) $ "Generating entry point: " <> T.pack (show t)
-          clarifyMainHandle <- liftIO $ Clarify.newMain (globalHandle h)
+          clarifyMainHandle <- liftIO $ Clarify.newMain gensymHandle (globalHandle h)
           (stmtList, defMap) <- liftIO $ Clarify.clarifyEntryPoint clarifyMainHandle
           liftIO $ Logger.report (Global.loggerHandle (globalHandle h)) $ "Lowering entry point: " <> T.pack (show t)
-          lowerHandle <- Lower.new (globalHandle h) traceConfig target defMap
+          lowerHandle <- Lower.new gensymHandle (globalHandle h) traceConfig target defMap
           mainVirtualCode <-
             Lower.lowerEntryPoint lowerHandle t stmtList
-          return [(Left t, mainVirtualCode)]
+          return [(gensymHandle, Left t, mainVirtualCode)]
 
 newTraceConfig :: Handle -> App Trace.Config
 newTraceConfig h = do

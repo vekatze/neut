@@ -105,12 +105,24 @@ renderCompBuilder :: Int -> Comp -> B.Builder
 renderCompBuilder level comp =
   case comp of
     PiElimDownElim forceInline v vs ->
-      indent level <> btext (if forceInline then "force " else "") <> bshow v <> btext "@("
-        <> bintercalate (map bshow vs) <> btext ")"
+      indent level
+        <> btext (if forceInline then "force " else "")
+        <> bshow v
+        <> btext "("
+        <> bintercalate (map bshow vs)
+        <> btext ")"
     SigmaElim shouldDeallocate offset size xs v cont ->
-      indent level <> btext (if shouldDeallocate then "let" else "let-noetic") <> btext "<"
-        <> bshow offset <> btext ", " <> bshow size <> btext "> ("
-        <> bintercalate (map bshow xs) <> btext ") = " <> bshow v <> btext "\n"
+      indent level
+        <> btext (if shouldDeallocate then "let" else "let-noetic")
+        <> btext "<"
+        <> bshow offset
+        <> btext ", "
+        <> bshow size
+        <> btext "> ("
+        <> bintercalate (map bshow xs)
+        <> btext ") = "
+        <> bshow v
+        <> btext "\n"
         <> renderCompBuilder (continuationLevel level) cont
     UpIntro v ->
       indent level <> btext "return " <> bshow v
@@ -123,28 +135,60 @@ renderCompBuilder level comp =
         c1
         c2
     UpElimCallVoid f vs cont ->
-      indent level <> btext "call-void " <> bshow f <> btext "@("
-        <> bintercalate (map bshow vs) <> btext ")\n"
+      indent level
+        <> btext "call-void "
+        <> bshow f
+        <> btext "("
+        <> bintercalate (map bshow vs)
+        <> btext ")\n"
         <> renderCompBuilder (continuationLevel level) cont
     EnumElim substitution v defaultBranch caseList ->
-      indent level <> btext "switch " <> bshow substitution <> btext " " <> bshow v <> btext " {"
-        <> mconcat (map (renderEnumCase level) caseList) <> btext "\n" <> indent level
-        <> btext "| default =>\n" <> renderCompBuilder (level + 1) defaultBranch
-        <> btext "\n" <> indent level <> btext "}"
+      indent level
+        <> btext "switch "
+        <> bshow substitution
+        <> btext " "
+        <> bshow v
+        <> btext " {"
+        <> mconcat (map (renderEnumCase level) caseList)
+        <> btext "\n"
+        <> indent level
+        <> btext "| default =>\n"
+        <> renderCompBuilder (level + 1) defaultBranch
+        <> btext "\n"
+        <> indent level
+        <> btext "}"
     DestCall sizeComp f vs ->
-      indent level <> btext "dest-call " <> bshow f <> btext "@("
-        <> bintercalate (map bshow vs) <> btext ") {\n" <> indent (level + 1)
-        <> btext "size-comp:\n" <> renderCompBuilder (level + 2) sizeComp
-        <> btext "\n" <> indent level <> btext "}"
+      indent level
+        <> btext "dest-call "
+        <> bshow f
+        <> btext "("
+        <> bintercalate (map bshow vs)
+        <> btext ") {\n"
+        <> indent (level + 1)
+        <> btext "size-comp:\n"
+        <> renderCompBuilder (level + 2) sizeComp
+        <> btext "\n"
+        <> indent level
+        <> btext "}"
     WriteToDest dest sizeComp result cont ->
-      indent level <> btext "write-to-dest " <> bshow dest <> btext " {\n"
+      indent level
+        <> btext "write-to-dest "
+        <> bshow dest
+        <> btext " {\n"
         <> renderCompSection (level + 1) "size-comp" sizeComp
         <> renderCompSection (level + 1) "result" result
-        <> renderCompSection (level + 1) "cont" cont <> indent level <> btext "}"
+        <> renderCompSection (level + 1) "cont" cont
+        <> indent level
+        <> btext "}"
     Primitive prim ->
       indent level <> btext "(" <> bshow prim <> btext ")"
     Free x size cont ->
-      indent level <> btext "free(" <> bshow x <> btext ", " <> bshow size <> btext ")\n"
+      indent level
+        <> btext "free("
+        <> bshow x
+        <> btext ", "
+        <> bshow size
+        <> btext ")\n"
         <> renderCompBuilder (continuationLevel level) cont
     Unreachable ->
       indent level <> btext "⊥"
@@ -153,18 +197,30 @@ renderCompBinding :: Int -> B.Builder -> Comp -> Comp -> B.Builder
 renderCompBinding level header value cont =
   case renderCompInline value of
     Just valueText ->
-      indent level <> header <> btext " " <> valueText <> btext "\n"
+      indent level
+        <> header
+        <> btext " "
+        <> valueText
+        <> btext "\n"
         <> renderCompBuilder (continuationLevel level) cont
     Nothing ->
-      indent level <> header <> btext "\n" <> renderCompBuilder (level + 1) value
-        <> btext "\n" <> renderCompBuilder (continuationLevel level) cont
+      indent level
+        <> header
+        <> btext "\n"
+        <> renderCompBuilder (level + 1) value
+        <> btext "\n"
+        <> renderCompBuilder (continuationLevel level) cont
 
 renderCompInline :: Comp -> Maybe B.Builder
 renderCompInline comp =
   case comp of
     PiElimDownElim forceInline v vs ->
-      Just $ btext (if forceInline then "force " else "") <> bshow v <> btext "@("
-        <> bintercalate (map bshow vs) <> btext ")"
+      Just $
+        btext (if forceInline then "force " else "")
+          <> bshow v
+          <> btext "("
+          <> bintercalate (map bshow vs)
+          <> btext ")"
     UpIntro v ->
       Just $ btext "return " <> bshow v
     UpIntroVoid ->
@@ -178,12 +234,19 @@ renderCompInline comp =
 
 renderEnumCase :: Int -> (EnumCase, Comp) -> B.Builder
 renderEnumCase level (enumCase, comp) =
-  btext "\n" <> indent level <> btext "| <" <> bshow enumCase <> btext "> =>\n"
+  btext "\n"
+    <> indent level
+    <> btext "| <"
+    <> bshow enumCase
+    <> btext "> =>\n"
     <> renderCompBuilder (level + 1) comp
 
 renderCompSection :: Int -> String -> Comp -> B.Builder
 renderCompSection level label comp =
-  btext "\n" <> indent level <> btext label <> btext ":\n"
+  btext "\n"
+    <> indent level
+    <> btext label
+    <> btext ":\n"
     <> renderCompBuilder (level + 1) comp
 
 indent :: Int -> B.Builder
@@ -194,7 +257,7 @@ btext :: String -> B.Builder
 btext =
   B.fromString
 
-bshow :: Show a => a -> B.Builder
+bshow :: (Show a) => a -> B.Builder
 bshow =
   B.fromString . show
 

@@ -50,7 +50,6 @@ import Language.Term.Inline.Env qualified as Env
 import Language.Term.Inline.Handle
 import Language.Term.Inline.Magic qualified as Magic
 import Language.Term.PrimValue qualified as PV
-import Language.Term.Refresh qualified as Refresh
 import Language.Term.Stmt qualified as Stmt
 import Language.Term.Subst qualified as Subst
 import Language.Term.Term qualified as TM
@@ -60,7 +59,6 @@ new :: Env.Env -> Hint -> Bool -> IO Handle
 new env location shouldEmitResidualChecks = do
   let Env.Env {..} = env
   let substHandle = Subst.new gensymHandle
-  let refreshHandle = Refresh.new gensymHandle
   currentStepRef <- liftIO $ newIORef 0
   macroCallStack <- liftIO $ newIORef []
   localMetaDefMap <- liftIO $ newIORef Map.empty
@@ -167,7 +165,7 @@ inline' h term = do
                       else do
                         let sub = IntMap.unions [subSelf, subType]
                         (expParams', _ :< body') <- liftIO $ Subst.subst' (substHandle h) sub expParams body
-                        body'' <- liftIO $ Refresh.refresh (refreshHandle h) $ m :< body'
+                        body'' <- liftIO $ Subst.refresh (substHandle h) $ m :< body'
                         inline' h $ bind (zip expParams' expArgsAll) body''
         (mUse :< TM.VarGlobal _ dd)
           | Just defInfo <- Map.lookup dd dmap -> do
@@ -186,7 +184,7 @@ inline' h term = do
                         let sub = IntMap.union subTerm subType
                         mBody :< body' <- liftIO $ Subst.subst (substHandle h) sub defBody
                         let mResult = if isMacroDef defKind then mBody else m
-                        body'' <- liftIO $ Refresh.refresh (refreshHandle h) $ mResult :< body'
+                        body'' <- liftIO $ Subst.refresh (substHandle h) $ mResult :< body'
                         tracer $ inline' h body''
                       else do
                         if not (isActive h)
@@ -194,7 +192,7 @@ inline' h term = do
                           else do
                             (expParams', mBody :< body') <- liftIO $ Subst.subst' (substHandle h) subType expParams defBody
                             let mResult = if isMacroDef defKind then mBody else m
-                            body'' <- liftIO $ Refresh.refresh (refreshHandle h) $ mResult :< body'
+                            body'' <- liftIO $ Subst.refresh (substHandle h) $ mResult :< body'
                             tracer $ inline' h $ bind (zip expParams' expArgsAll) body''
           | Just defInfo <- Map.lookup dd localDefMap -> do
               let DefInfo {defImpBinders, defExpBinders, defDefaultArgs, defBody, codType} = defInfo
@@ -818,7 +816,7 @@ specializeMacroBody h m dd defKind specializationKey impArgs' subType expParams 
   codType' <- liftIO $ Subst.substType (substHandle h) subType codType
   beginSpecialization h specializationKey impArgs' specializedName
   let hDefineMeta = h {currentStage = 1, initialStage = 1, insideDefineMeta = True}
-  body'' <- tracer $ liftIO (Refresh.refresh (refreshHandle h) body') >>= inline hDefineMeta
+  body'' <- tracer $ liftIO (Subst.refresh (substHandle h) body') >>= inline hDefineMeta
   let stmt = Stmt.StmtDefine False SK.Define (SavedHint m) specializedName [] expBinders' [] codType' body''
   completeSpecialization h stmt
   return $ applySpecialization m specializedName expArgsAll
@@ -843,7 +841,7 @@ specializeLocalMeta h m dd subType impArgs' expParams body codType expArgsAll = 
       (expParams', body') <- liftIO $ Subst.subst' (substHandle h) subType expParams body
       codType' <- liftIO $ Subst.substType (substHandle h) subType codType
       let hInner = h {currentStage = 1, initialStage = 1, insideDefineMeta = True, localMetaMemo = (dd, impArgs', specSelfId) : localMetaMemo h}
-      body'' <- liftIO (Refresh.refresh (refreshHandle h) body') >>= inline hInner
+      body'' <- liftIO (Subst.refresh (substHandle h) body') >>= inline hInner
       lamID <- liftIO $ Gensym.newCount (gensymHandle h)
       let fixAttr = AttrL.Attr {lamKind = LK.Fix LDK.Define False (m, VK.Normal, specSelfId, codType'), identity = lamID}
       let fixLam = m :< TM.PiIntro fixAttr [] expParams' [] body''

@@ -92,8 +92,8 @@ data TailPosition
   = TailPosition
   | NonTailPosition
 
-new :: Global.Handle -> Trace.Config -> Target -> C.DefMap -> App Handle
-new (Global.Handle {..}) traceConfig target defMap = do
+new :: Gensym.Handle -> Global.Handle -> Trace.Config -> Target -> C.DefMap -> App Handle
+new gensymHandle (Global.Handle {..}) traceConfig target defMap = do
   allocator <- Env.getAllocatorByTarget envHandle target
   let arch = Platform.getArch platformHandle
   let baseSize = Platform.getDataSize platformHandle

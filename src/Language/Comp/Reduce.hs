@@ -45,8 +45,7 @@ reduce h term = do
           case Map.lookup x (defMap h) of
             Just (opacity, xs, body)
               | forceInline || opacity == O.Clear -> do
-                  let sub = IntMap.fromList (zip (map Ident.toInt xs) ds')
-                  reduce (unionSubst h sub) body
+                  instantiate h xs ds' body
             _ ->
               return $ C.PiElimDownElim forceInline v' ds'
         _ ->
@@ -120,9 +119,9 @@ reduce h term = do
           case Map.lookup x (defMap h) of
             Just (opacity, xs, body)
               | opacity == O.Clear -> do
-                  let sub = IntMap.fromList (zip (map Ident.toInt xs) vs')
-                  body' <- reduce (unionSubst h sub) body
-                  graftVoidReduce h body' e2
+                  body' <- instantiate h xs vs' body
+                  e2' <- reduce h e2
+                  graftVoidReduce (h {subst = IntMap.empty}) body' e2'
             _ -> do
               e2' <- reduce h e2
               case e2' of
@@ -234,6 +233,13 @@ graftVoidReduce h e cont = do
       reduce h e'
     Nothing ->
       return e
+
+instantiate :: Handle -> [Ident] -> [C.Value] -> C.Comp -> IO C.Comp
+instantiate h xs values body = do
+  let formalSubst = IntMap.fromList $ zip (map Ident.toInt xs) values
+  let fullSubst = IntMap.union formalSubst (subst h)
+  body' <- Subst.instantiate (substHandle h) fullSubst body
+  reduce (h {subst = IntMap.empty}) body'
 
 graftVoid :: C.Comp -> C.Comp -> Maybe C.Comp
 graftVoid e cont =

@@ -5,7 +5,7 @@ import Gensym.Handle
 
 setCount :: Handle -> Int -> IO ()
 setCount h countSnapshot = do
-  atomicModifyIORef' (_counterRef h) (\x -> (max x countSnapshot, ()))
+  modifyIORef' (_counterRef h) $ \x -> max x countSnapshot
 
 getCount :: Handle -> IO Int
 getCount h =

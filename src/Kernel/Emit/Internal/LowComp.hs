@@ -40,14 +40,13 @@ data Handle = Handle
     labelMapRef :: IORef (IntMap.IntMap Ident)
   }
 
-new :: Global.Handle -> Builder -> AllocatorSpec -> IO Handle
-new globalHandle retType allocatorSpec = do
+new :: Gensym.Handle -> Global.Handle -> Builder -> AllocatorSpec -> IO Handle
+new gensymHandle globalHandle retType allocatorSpec = do
   let currentLabel = Nothing
   let goalLabel = Nothing
   labelMapRef <- liftIO $ newIORef IntMap.empty
   let baseSize = Platform.getDataSize (Global.platformHandle globalHandle)
   let emitOpHandle = EmitOp.new baseSize allocatorSpec
-  let gensymHandle = Global.gensymHandle globalHandle
   return $ Handle {..}
 
 emitLowComp :: Handle -> LC.Comp -> IO [Builder]

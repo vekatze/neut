@@ -125,17 +125,17 @@ lambdaName :: Maybe T.Text -> Int -> BaseName
 lambdaName mName i =
   case mName of
     Just name ->
-      MakeBaseName $ name <> ";" <> T.pack (show i)
+      MakeBaseName $ name <> "." <> T.pack (show i)
     Nothing ->
-      MakeBaseName $ "lam;" <> T.pack (show i)
+      MakeBaseName $ "lam." <> T.pack (show i)
 
 muName :: Ident -> Int -> BaseName
 muName x i =
-  MakeBaseName $ toText x <> ";" <> T.pack (show i)
+  MakeBaseName $ toText x <> "." <> T.pack (show i)
 
 resourceName :: Int -> BaseName
 resourceName i =
-  MakeBaseName $ "resource;" <> T.pack (show i)
+  MakeBaseName $ "resource." <> T.pack (show i)
 
 form :: BaseName
 form =

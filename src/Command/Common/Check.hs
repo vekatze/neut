@@ -17,6 +17,7 @@ import Control.Monad
 import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.IO.Class
 import Data.Text qualified as T
+import Gensym.Handle qualified as Gensym
 import Kernel.Common.Cache
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.CreateLocalHandle qualified as Local
@@ -102,15 +103,15 @@ _check h target baseModule = do
     traceConfig <- newTraceConfig h
     contentSeq <- Load.load loadHandle (Trace.isEnabled traceConfig) target dependenceSeq
     cacheOrProgList <- Parse.parse (globalHandle h) contentSeq
-    cacheOrStmtList <- forP cacheOrProgList $ \(localHandle, (source, cacheOrProg)) -> do
+    cacheOrStmtList <- forP cacheOrProgList $ \(gensymHandle, localHandle, (source, cacheOrProg)) -> do
       liftIO $
         Logger.report (Global.loggerHandle (globalHandle h)) $
           "Interpreting: " <> T.pack (toFilePath $ Source.sourceFilePath source)
-      interpretHandle <- liftIO $ Interpret.new (globalHandle h) localHandle (Source.sourceModule source)
+      interpretHandle <- liftIO $ Interpret.new gensymHandle (globalHandle h) localHandle (Source.sourceModule source)
       item <- Interpret.interpret interpretHandle target source cacheOrProg
-      return (localHandle, (source, item))
-    forM_ cacheOrStmtList $ \(localHandle, (source, cacheOrContent)) -> do
-      checkSource h traceConfig localHandle target source cacheOrContent
+      return (gensymHandle, localHandle, (source, item))
+    forM_ cacheOrStmtList $ \(gensymHandle, localHandle, (source, cacheOrContent)) -> do
+      checkSource h gensymHandle traceConfig localHandle target source cacheOrContent
     registerUnusedTopLevelNameRemarks h
 
 _check' :: Handle -> Target -> M.Module -> App (Maybe Elaborate.Handle)
@@ -121,27 +122,27 @@ _check' h target baseModule = do
   traceConfig <- newTraceConfig h
   contentSeq <- Load.load loadHandle (Trace.isEnabled traceConfig) target dependenceSeq
   cacheOrProgList <- Parse.parse (globalHandle h) contentSeq
-  cacheOrStmtList <- forP cacheOrProgList $ \(localHandle, (source, cacheOrProg)) -> do
+  cacheOrStmtList <- forP cacheOrProgList $ \(gensymHandle, localHandle, (source, cacheOrProg)) -> do
     liftIO $
       Logger.report (Global.loggerHandle (globalHandle h)) $
         "Interpreting: " <> T.pack (toFilePath $ Source.sourceFilePath source)
-    interpretHandle <- liftIO $ Interpret.new (globalHandle h) localHandle (Source.sourceModule source)
+    interpretHandle <- liftIO $ Interpret.new gensymHandle (globalHandle h) localHandle (Source.sourceModule source)
     item <- Interpret.interpret interpretHandle target source cacheOrProg
-    return (localHandle, (source, item))
+    return (gensymHandle, localHandle, (source, item))
   case unsnoc cacheOrStmtList of
     Nothing -> do
       registerUnusedTopLevelNameRemarks h
       return Nothing
-    Just (deps, (rootLocalHandle, (rootSource, rootCacheOrContent))) -> do
-      forM_ deps $ \(localHandle, (source, cacheOrContent)) -> do
-        checkSource h traceConfig localHandle target source cacheOrContent
-      result <- Just <$> checkSource h traceConfig rootLocalHandle target rootSource rootCacheOrContent
+    Just (deps, (rootGensymHandle, rootLocalHandle, (rootSource, rootCacheOrContent))) -> do
+      forM_ deps $ \(gensymHandle, localHandle, (source, cacheOrContent)) -> do
+        checkSource h gensymHandle traceConfig localHandle target source cacheOrContent
+      result <- Just <$> checkSource h rootGensymHandle traceConfig rootLocalHandle target rootSource rootCacheOrContent
       registerUnusedTopLevelNameRemarks h
       return result
 
-checkSource :: Handle -> Trace.Config -> Local.Handle -> Target -> Source -> (Either Cache [WeakStmt], [Log]) -> App Elaborate.Handle
-checkSource h traceConfig localHandle target source (cacheOrStmtList, logs) = do
-  elaborateHandle <- liftIO $ Elaborate.new (globalHandle h) traceConfig localHandle source
+checkSource :: Handle -> Gensym.Handle -> Trace.Config -> Local.Handle -> Target -> Source -> (Either Cache [WeakStmt], [Log]) -> App Elaborate.Handle
+checkSource h gensymHandle traceConfig localHandle target source (cacheOrStmtList, logs) = do
+  elaborateHandle <- liftIO $ Elaborate.new gensymHandle (globalHandle h) traceConfig localHandle source
   liftIO $
     Logger.report (Global.loggerHandle (globalHandle h)) $
       "Checking: " <> T.pack (toFilePath $ sourceFilePath source)

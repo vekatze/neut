@@ -95,7 +95,7 @@ inline discard-or-copy-immediate(selector, value) {
 
 These fake discard/copy operations are optimized away at compile time.
 
-Also, this function is internally called `"base.#.imm"`. Try compiling your project as follows:
+Also, this function is internally called `"base::#.imm"`. Try compiling your project as follows:
 
 ```sh
 neut build TARGET --emit llvm --skip-link
@@ -105,7 +105,7 @@ Then, take a peek at the `build` directory. You'll find the name here and there.
 
 <div class="info-block">
 
-Since every type is translated into a pointer to a function, a type is an immediate value. Thus, `type` is compiled into `base.#.imm`.
+Since every type is translated into a pointer to a function, a type is an immediate value. Thus, `type` is compiled into `base::#.imm`.
 
 </div>
 

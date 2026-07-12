@@ -11,6 +11,8 @@ import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
+import Gensym.CreateHandle qualified as Gensym
+import Gensym.Handle qualified as Gensym
 import Kernel.Common.Cache (Cache)
 import Kernel.Common.Cache qualified as Cache
 import Kernel.Common.CreateGlobalHandle qualified as Global
@@ -51,10 +53,11 @@ data Handle = Handle
   }
 
 new ::
+  Gensym.Handle ->
   Global.Handle ->
   Handle
-new globalHandle = do
-  let parseHandle = ParseRT.new (Global.gensymHandle globalHandle)
+new gensymHandle globalHandle = do
+  let parseHandle = ParseRT.new gensymHandle
   let globalNameMapHandle = Global.globalNameMapHandle globalHandle
   let unusedTopLevelNameHandle = Global.unusedTopLevelNameHandle globalHandle
   let keyArgHandle = Global.keyArgHandle globalHandle
@@ -64,21 +67,24 @@ new globalHandle = do
 parse ::
   Global.Handle ->
   [(Source, Either Cache T.Text)] ->
-  App [(Local.Handle, (Source, Either Cache PostRawProgram))]
+  App [(Gensym.Handle, Local.Handle, (Source, Either Cache PostRawProgram))]
 parse h contentSeq = do
-  let parseHandle = new h
+  parseGensymHandle <- liftIO Gensym.createHandle
+  let parseHandle = new parseGensymHandle h
   liftIO $ UnusedTopLevelName.clear (unusedTopLevelNameHandle parseHandle)
   cacheOrProgList <- forP contentSeq $ \(source, cacheOrContent) -> do
+    gensymHandle <- liftIO Gensym.createHandle
+    let unitParseHandle = new gensymHandle h
     case cacheOrContent of
       Left _ ->
         return ()
       Right _ ->
         liftIO $ Logger.report (Global.loggerHandle h) $ "Parsing: " <> T.pack (show $ Source.sourceFilePath source)
-    prog <- parse' parseHandle source cacheOrContent
+    prog <- parse' unitParseHandle source cacheOrContent
     localHandle <- Local.new h source
     let locatorHandle = Local.locatorHandle localHandle
-    return (localHandle, (source, fmap (postprocess locatorHandle) prog))
-  forP_ cacheOrProgList $ \(_, (source, cacheOrProg)) -> do
+    return (gensymHandle, localHandle, (source, fmap (postprocess locatorHandle) prog))
+  forP_ cacheOrProgList $ \(_, _, (source, cacheOrProg)) -> do
     registerTopLevelNames parseHandle source cacheOrProg
   return cacheOrProgList
 

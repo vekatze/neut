@@ -92,8 +92,8 @@ data Handle = Handle
 
 type BoundVarEnv = [BinderF WT.WeakType]
 
-new :: Global.Handle -> Trace.Config -> Local.Handle -> Source -> IO Handle
-new globalHandle@(Global.Handle {..}) traceConfig (Local.Handle {..}) currentSource = do
+new :: Gensym.Handle -> Global.Handle -> Trace.Config -> Local.Handle -> Source -> IO Handle
+new gensymHandle globalHandle@(Global.Handle {..}) traceConfig (Local.Handle {..}) currentSource = do
   modulePathMap <- ModulePath.get modulePathHandle
   localLogsHandle <- LocalLogs.new
   let substHandle = Subst.new gensymHandle
@@ -116,7 +116,7 @@ reduceType h t = do
 fillType :: Handle -> THS.TypeHoleSubst -> WT.WeakType -> App WT.WeakType
 fillType h sub t = do
   reduceHandle <- liftIO $ Reduce.new (substHandle h) (WT.metaOfType t) (inlineLimit h)
-  let substHandle = Subst.new (Global.gensymHandle (globalHandle h))
+  let substHandle = Subst.new (gensymHandle h)
   let fillHandle = Fill.new substHandle reduceHandle
   Fill.fillType fillHandle sub t
 

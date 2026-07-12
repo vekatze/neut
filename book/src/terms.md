@@ -98,7 +98,7 @@ type
 
 ### Semantics
 
-`type` is compiled into a pointer to `base.#.imm`.
+`type` is compiled into a pointer to `base::#.imm`.
 
 ### Type
 
@@ -212,7 +212,7 @@ For example, `item.f` is short for `::item.f`, and refers to `f` in `source/item
 A top-level variable `f` is compiled into the following 3-word tuple:
 
 ```txt
-(base.#.imm, 0, POINTER_TO_FUNCTION(f))
+(base::#.imm, 0, POINTER_TO_FUNCTION(f))
 ```
 
 See the Note below for a more detailed explanation.
@@ -267,7 +267,7 @@ define fastcc ptr @"main.sample.get-increment"() {
   %_4 = getelementptr [3 x ptr], ptr %_3, i32 0, i32 0
   %_5 = getelementptr [3 x ptr], ptr %_3, i32 0, i32 1
   %_6 = getelementptr [3 x ptr], ptr %_3, i32 0, i32 2
-  store ptr @"base.#.imm", ptr %_4            ; tuple[0] = `base.#.imm`
+  store ptr @"base::#.imm", ptr %_4            ; tuple[0] = `base::#.imm`
   store ptr null, ptr %_5                     ; tuple[1] = null
   store ptr @"main.sample.increment", ptr %_6 ; tuple[2] = (function pointer)
   ; return the pointer to the tuple
@@ -720,7 +720,7 @@ The bracketed part may be omitted, and `[]` is also accepted. This default-argum
 
 ### Semantics
 
-A function type is compiled into a pointer to `base.#.cls`. For more, please see [On Executing Types](./on-executing-types.md).
+A function type is compiled into a pointer to `base::#.cls`. For more, please see [On Executing Types](./on-executing-types.md).
 
 ### Type
 
@@ -1829,7 +1829,7 @@ define foo-noetic(n: &my-nat) -> int {
 
 ### Semantics
 
-For every type `a`, `&a` is compiled into `base.#.imm`.
+For every type `a`, `&a` is compiled into `base::#.imm`.
 
 ### Type
 
@@ -1843,7 +1843,7 @@ For every type `a`, `&a` is compiled into `base.#.imm`.
 
 - Values of type `&a` can be created using `on`.
 - Values of type `&a` are expected to be used in combination with `case` or `*e`.
-- Since `&a` is compiled into `base.#.imm`, values of type `&a` aren't discarded or copied even when used non-linearly.
+- Since `&a` is compiled into `base::#.imm`, values of type `&a` aren't discarded or copied even when used non-linearly.
 - See the Note of [box](#box) to see the relation between `&a` and `+a`
 
 ## `box`

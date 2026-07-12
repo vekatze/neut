@@ -14,8 +14,6 @@ import Control.Monad.Except (MonadError (throwError))
 import Data.HashMap.Strict qualified as Map
 import Data.IORef (IORef, newIORef)
 import Data.Set qualified as S
-import Gensym.CreateHandle qualified as Gensym
-import Gensym.Handle qualified as Gensym
 import Kernel.Common.Handle.Global.Antecedent qualified as Antecedent
 import Kernel.Common.Handle.Global.Artifact qualified as Artifact
 import Kernel.Common.Handle.Global.Data qualified as Data
@@ -52,7 +50,6 @@ data Handle = Handle
     defHandle :: Definition.Handle,
     tropeHandle :: Trope.Handle,
     envHandle :: Env.Handle,
-    gensymHandle :: Gensym.Handle,
     globalRemarkHandle :: GlobalRemark.Handle,
     importedTypeDefCacheHandle :: ImportedTypeDefCache.Handle,
     keyArgHandle :: KeyArg.Handle,
@@ -85,7 +82,6 @@ newOrError :: Remark.Config -> Maybe (Path Abs File) -> IO (Either (Logger.Handl
 newOrError cfg moduleFilePathOrNone = do
   consoleHandle <- Console.createHandle (Remark.shouldColorize cfg) (Remark.shouldColorize cfg) (Remark.reportMode cfg)
   loggerHandle <- Logger.createHandle consoleHandle
-  gensymHandle <- Gensym.createHandle
   platformHandle <- Platform.new loggerHandle
   envHandleOrError <- Env.new moduleFilePathOrNone
   case envHandleOrError of
@@ -105,7 +101,7 @@ newOrError cfg moduleFilePathOrNone = do
       antecedentHandle <- Antecedent.new
       modulePathHandle <- ModulePath.new moduleHandle antecedentHandle mainModule
       keyArgHandle <- KeyArg.new mainModule modulePathHandle
-      weakDefHandle <- WeakDef.new gensymHandle
+      weakDefHandle <- WeakDef.new
       weakTypeDefHandle <- WeakTypeDef.new
       defHandle <- Definition.new
       tropeHandle <- Trope.new
