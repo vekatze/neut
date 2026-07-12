@@ -68,13 +68,15 @@ substComp h sub term =
     C.EnumElim fvInfo v defaultBranch branchList -> do
       let (is, ds) = unzip fvInfo
       let ds' = map (substValue sub) ds
-      let sub' = foldr IntMap.delete sub is
       let v' = substValue sub v
+      xs <- mapM (const $ Gensym.newIdentFromText (gensymHandle h) "fv") is
+      let renaming = IntMap.fromList $ zip is (map C.VarLocal xs)
+      let sub' = IntMap.union renaming sub
       defaultBranch' <- substComp h sub' defaultBranch
       branchList' <- forM branchList $ \(tag, branch) -> do
         branch' <- substComp h sub' branch
         return (tag, branch')
-      return $ C.EnumElim (zip is ds') v' defaultBranch' branchList'
+      return $ C.EnumElim (zip (map Ident.toInt xs) ds') v' defaultBranch' branchList'
     C.DestCall sizeComp f vs -> do
       sizeComp' <- substComp h sub sizeComp
       let f' = substValue sub f
