@@ -48,7 +48,7 @@ matches config modulePathMap phase dd = do
       False
     Just mainModule' ->
       phase `elem` phaseList config
-        && any (`isPrefixOfLocator` ModulePath.renderDD modulePathMap dd) (prefixList config)
+        && any (`isPrefixOfLocator` ModulePath.renderCanonicalDD modulePathMap dd) (prefixList config)
 
 isPrefixOfLocator :: T.Text -> T.Text -> Bool
 isPrefixOfLocator prefix name = do
