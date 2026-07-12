@@ -3,10 +3,7 @@ module Language.WeakTerm.WeakTerm
     WeakTermF (..),
     WeakType,
     WeakTypeF (..),
-    LetOpacity (..),
     WeakForeign,
-    reifyOpacity,
-    reflectOpacity,
     intTypeBySize,
     metaOfType,
     fromLetSeq,
@@ -33,7 +30,6 @@ import Language.Common.Ident
 import Language.Common.ImpArgs qualified as ImpArgs
 import Language.Common.Magic (WeakMagic (..))
 import Language.Common.Noema qualified as N
-import Language.Common.Opacity qualified as O
 import Language.Common.PiElimKind qualified as PEK
 import Language.Common.PiKind (PiKind)
 import Language.Common.PrimNumSize
@@ -76,36 +72,11 @@ data WeakTermF a
   | CodeElim a
   | TauIntro WeakType
   | TauElim (Hint, Ident) a a
-  | Actual (Maybe WeakType) a
-  | Let LetOpacity (BinderF WeakType) a a
+  | Let (BinderF WeakType) a a
   | Invoke [DD.DefiniteDescription] a
   | Prim (WPV.WeakPrimValue WeakType)
   | Magic (WeakMagic WeakType WeakType a)
   | Annotation LogLevel (AN.Annotation WeakType) a
-
-data LetOpacity
-  = Opaque
-  | Clear
-  | Noetic
-  deriving (Show, Eq)
-
-reifyOpacity :: LetOpacity -> O.Opacity
-reifyOpacity letOpacity =
-  case letOpacity of
-    Opaque ->
-      O.Opaque
-    Clear ->
-      O.Clear
-    Noetic ->
-      O.Clear
-
-reflectOpacity :: O.Opacity -> LetOpacity
-reflectOpacity opacity =
-  case opacity of
-    O.Opaque ->
-      Opaque
-    O.Clear ->
-      Clear
 
 intTypeBySize :: Hint -> DataSize -> WeakType
 intTypeBySize m size =
@@ -121,7 +92,7 @@ fromLetSeq xts cont =
     [] ->
       cont
     (mxt@(m, _, _, _), e) : rest ->
-      m :< Let Clear mxt e (fromLetSeq rest cont)
+      m :< Let mxt e (fromLetSeq rest cont)
 
 fromBaseLowType :: Hint -> BLT.BaseLowType -> WeakType
 fromBaseLowType m lt =

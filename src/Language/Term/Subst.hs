@@ -139,14 +139,10 @@ subst h sub term =
       let sub' = IntMap.insert (Ident.toInt x) (Var x') sub
       e2' <- subst h sub' e2
       return $ m :< TM.TauElim (mx, x') e1' e2'
-    m :< TM.Actual t e -> do
-      t' <- substType h sub t
-      e' <- subst h sub e
-      return $ m :< TM.Actual t' e'
-    m :< TM.Let opacity mxt e1 e2 -> do
+    m :< TM.Let mxt e1 e2 -> do
       e1' <- subst h sub e1
       ([mxt'], e2') <- subst' h sub [mxt] e2
-      return $ m :< TM.Let opacity mxt' e1' e2'
+      return $ m :< TM.Let mxt' e1' e2'
     m :< TM.Invoke tropeNames body -> do
       body' <- subst h sub body
       return $ m :< TM.Invoke tropeNames body'

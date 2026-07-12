@@ -293,22 +293,16 @@ inline' h term = do
         _ -> do
           e2' <- inline' h e2
           return $ m :< TM.TauElim (mx, x) e1' e2'
-    m :< TM.Actual t e -> do
-      t' <- inlineType' h t
-      e' <- inline' h e
-      emitActualityCheck h m t'
-      return $ m :< TM.Actual t' e'
-    m :< TM.Let opacity mxt@(_, _, x, _) e1 e2 -> do
+    m :< TM.Let mxt@(_, _, x, _) e1 e2 -> do
       e1' <- inline' h e1
-      case opacity of
-        O.Clear
-          | TM.isValue e1' -> do
-              let sub = IntMap.singleton (Ident.toInt x) (Subst.Term e1')
-              liftIO (Subst.subst (substHandle h) sub e2) >>= inline' h
-        _ -> do
+      if TM.isValue e1'
+        then do
+          let sub = IntMap.singleton (Ident.toInt x) (Subst.Term e1')
+          liftIO (Subst.subst (substHandle h) sub e2) >>= inline' h
+        else do
           mxt' <- inlineTypeBinder h mxt
           e2' <- inline' h e2
-          return $ m :< TM.Let opacity mxt' e1' e2'
+          return $ m :< TM.Let mxt' e1' e2'
     m :< TM.Invoke tropeNames body -> do
       defineMetaList <- activateTropes h m tropeNames
       inline' (h {activeDefineMetaList = defineMetaList ++ activeDefineMetaList h}) body
@@ -685,7 +679,7 @@ bind binder cont =
     [] ->
       cont
     ((m, k, x, t), e1) : rest -> do
-      m :< TM.Let O.Clear (m, k, x, t) e1 (bind rest cont)
+      m :< TM.Let (m, k, x, t) e1 (bind rest cont)
 
 beginSpecialization :: Handle -> DD.DefiniteDescription -> [TM.Type] -> DD.DefiniteDescription -> App ()
 beginSpecialization h dd typeArgs specializedName = do

@@ -47,10 +47,8 @@ compress term =
       () :< TM.TauIntro ty
     _ :< TM.TauElim (mx, x) e1 e2 ->
       () :< TM.TauElim (mx, x) (compress e1) (compress e2)
-    _ :< TM.Actual t e ->
-      () :< TM.Actual t (compress e)
-    _ :< TM.Let opacity mxt e1 e2 ->
-      () :< TM.Let opacity mxt (compress e1) (compress e2)
+    _ :< TM.Let mxt e1 e2 ->
+      () :< TM.Let mxt (compress e1) (compress e2)
     _ :< TM.Invoke tropeNames body ->
       () :< TM.Invoke tropeNames (compress body)
     _ :< TM.Prim prim ->

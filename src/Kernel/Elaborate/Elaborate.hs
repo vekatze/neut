@@ -845,20 +845,11 @@ elaborate' h term = do
       e1' <- elaborate' h e1
       e2' <- elaborate' h e2
       return $ m :< TM.TauElim (mx, x) e1' e2'
-    m :< WT.Actual mt e -> do
-      e' <- elaborate' h e
-      t <- elaborateActualityMarkerType h m mt
-      return $ m :< TM.Actual t e'
-    m :< WT.Let opacity (mx, k, x, t) e1 e2 -> do
+    m :< WT.Let (mx, k, x, t) e1 e2 -> do
       e1' <- elaborate' h e1
       t' <- reduceWeakType h t >>= elaborateType h
       e2' <- elaborate' h e2
-      let letTerm = m :< TM.Let (WT.reifyOpacity opacity) (mx, k, x, t') e1' e2'
-      case opacity of
-        WT.Noetic ->
-          return $ m :< TM.Actual t' letTerm
-        _ ->
-          return letTerm
+      return $ m :< TM.Let (mx, k, x, t') e1' e2'
     m :< WT.Invoke tropeNames body -> do
       body' <- elaborate' h body
       return $ m :< TM.Invoke tropeNames body'

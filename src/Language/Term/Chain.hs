@@ -69,9 +69,7 @@ chainOf' tenv term =
       let mxt = (mx, VK.Normal, x, mx :< TM.Tau)
       let xs2 = chainOfBinder tenv [mxt] [e2]
       xs1 ++ xs2
-    _ :< TM.Actual t e ->
-      chainOfType tenv t ++ chainOf' tenv e
-    _ :< TM.Let _ mxt e1 e2 -> do
+    _ :< TM.Let mxt e1 e2 -> do
       let xs1 = chainOf' tenv e1
       let xs2 = chainOfBinder tenv [mxt] [e2]
       xs1 ++ xs2

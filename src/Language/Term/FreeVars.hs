@@ -57,9 +57,7 @@ freeVars term =
       freeVarsType ty
     _ :< TM.TauElim (_, x) e1 e2 ->
       S.union (freeVars e1) (S.delete x (freeVars e2))
-    _ :< TM.Actual t e ->
-      S.union (freeVarsType t) (freeVars e)
-    _ :< TM.Let _ mxt e1 e2 -> do
+    _ :< TM.Let mxt e1 e2 -> do
       let set1 = freeVars e1
       let set2 = freeVarsBinderType [mxt] (freeVars e2)
       S.union set1 set2
