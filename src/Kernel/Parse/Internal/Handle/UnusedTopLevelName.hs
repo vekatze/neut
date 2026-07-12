@@ -17,6 +17,8 @@ import Data.List qualified as List
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Kernel.Common.GlobalName qualified as GN
+import Kernel.Common.Handle.Global.ModulePath qualified as ModulePath
+import Kernel.Common.Module qualified as Module
 import Language.Common.Availability qualified as AV
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.ModuleID qualified as MID
@@ -25,14 +27,15 @@ import Logger.Log qualified as L
 import Logger.LogLevel qualified as L
 
 data Handle = Handle
-  { unusedTopLevelNameMapRef :: IORef (Map.HashMap DD.DefiniteDescription Hint),
+  { mainModule :: Module.MainModule,
+    unusedTopLevelNameMapRef :: IORef (Map.HashMap DD.DefiniteDescription Hint),
     constructorOwnerMapRef :: IORef (Map.HashMap DD.DefiniteDescription DD.DefiniteDescription),
     referenceMapRef :: IORef (Map.HashMap DD.DefiniteDescription (S.Set DD.DefiniteDescription)),
     externalReferenceSetRef :: IORef (S.Set DD.DefiniteDescription)
   }
 
-new :: IO Handle
-new = do
+new :: Module.MainModule -> IO Handle
+new mainModule = do
   unusedTopLevelNameMapRef <- newIORef Map.empty
   constructorOwnerMapRef <- newIORef Map.empty
   referenceMapRef <- newIORef Map.empty
@@ -90,8 +93,8 @@ deleteMany :: Handle -> [DD.DefiniteDescription] -> IO ()
 deleteMany h =
   mapM_ (delete h)
 
-flushRemarks :: Handle -> IO [L.Log]
-flushRemarks h = do
+flushRemarks :: ModulePath.ModulePathMap -> Handle -> IO [L.Log]
+flushRemarks modulePathMap h = do
   unusedTopLevelNameMap <- readIORef (unusedTopLevelNameMapRef h)
   referenceMap <- readIORef (referenceMapRef h)
   recordedExternalReferenceSet <- readIORef (externalReferenceSetRef h)
@@ -103,7 +106,7 @@ flushRemarks h = do
   let unusedTopLevelNames = List.sort $ filter (shouldReportUnused . fst) unreachableTopLevelNames
   return $ flip map unusedTopLevelNames $ \(dd, m) ->
     L.newLog m L.Warning $
-      "Defined but not used: `" <> DD.reify dd <> "`"
+      "Defined but not used: `" <> ModulePath.renderDD modulePathMap dd <> "`"
 
 isExternalReference ::
   Map.HashMap DD.DefiniteDescription Hint ->

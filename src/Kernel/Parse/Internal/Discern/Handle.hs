@@ -15,6 +15,7 @@ import Kernel.Common.Handle.Global.Env qualified as Env
 import Kernel.Common.Handle.Global.KeyArg qualified as KeyArg
 import Kernel.Common.Handle.Global.OptimizableData qualified as OptimizableData
 import Kernel.Common.Handle.Global.Platform qualified as Platform
+import Kernel.Common.Handle.Global.ModulePath qualified as ModulePath
 import Kernel.Common.Handle.Local.Locator qualified as Locator
 import Kernel.Common.Handle.Local.SymLoc qualified as SymLoc
 import Kernel.Common.Handle.Local.Tag qualified as Tag
@@ -45,6 +46,7 @@ data Handle = Handle
     optDataHandle :: OptimizableData.Handle,
     unusedHandle :: Unused.Handle,
     envHandle :: Env.Handle,
+    modulePathMap :: ModulePath.ModulePathMap,
     platformHandle :: Platform.Handle,
     currentModule :: Module.Module,
     nameEnv :: NominalEnv,
@@ -57,9 +59,10 @@ new ::
   Global.Handle ->
   Local.Handle ->
   NameMap.Handle ->
+  ModulePath.ModulePathMap ->
   Module.Module ->
   Handle
-new (Global.Handle {..}) (Local.Handle {..}) nameMapHandle currentModule = do
+new (Global.Handle {..}) (Local.Handle {..}) nameMapHandle modulePathMap currentModule = do
   let nameEnv = empty
   let typeNameEnv = empty
   let currentLayer = 0

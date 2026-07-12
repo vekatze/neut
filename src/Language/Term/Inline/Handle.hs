@@ -13,10 +13,11 @@ where
 
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
-import Data.Text qualified as T
 import Gensym.Handle qualified as GensymHandle
 import Kernel.Common.Handle.Global.Data qualified as Data
 import Kernel.Common.Handle.Local.Tag qualified as Tag
+import Kernel.Common.Module qualified as Module
+import Kernel.Common.Handle.Global.ModulePath qualified as ModulePath
 import Kernel.Elaborate.Internal.Handle.TypeDef qualified as TypeDef
 import Language.Common.Binder
 import Language.Common.DataSize qualified as DS
@@ -92,5 +93,6 @@ data Handle = Handle
     insideDefineMeta :: Bool,
     localMetaMemo :: [(DD.DefiniteDescription, [TM.Type], Ident)],
     activeDefineMetaList :: [Stmt.DefineMeta],
-    mainModuleDir :: T.Text
+    mainModule :: Module.MainModule,
+    modulePathMap :: ModulePath.ModulePathMap
   }

@@ -24,9 +24,10 @@ import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.GlobalName (getIsConstLike)
 import Kernel.Common.GlobalName qualified as GN
 import Kernel.Common.Handle.Global.Env qualified as Env
+import Kernel.Common.Handle.Global.ModulePath (renderDD)
+import Kernel.Common.Handle.Global.ModulePath qualified as ModulePath
 import Kernel.Common.Handle.Global.Platform qualified as Platform
 import Kernel.Common.Handle.Local.Tag qualified as Tag
-import Kernel.Common.ReadableDD
 import Kernel.Common.TopNameMap
 import Kernel.Parse.Internal.Handle.Unused qualified as Unused
 import Kernel.Parse.Internal.Handle.UnusedTopLevelName qualified as UnusedTopLevelName
@@ -53,6 +54,7 @@ import Prelude hiding (lookup)
 
 data Handle = Handle
   { envHandle :: Env.Handle,
+    modulePathMap :: ModulePath.ModulePathMap,
     platformHandle :: Platform.Handle,
     tagHandle :: Tag.Handle,
     unusedHandle :: Unused.Handle,
@@ -68,6 +70,7 @@ type NameEntry =
 
 new :: Global.Handle -> Unused.Handle -> UsedTopLevelName.Handle -> Tag.Handle -> IO Handle
 new (Global.Handle {..}) unusedHandle usedTopLevelNameHandle tagHandle = do
+  modulePathMap <- ModulePath.get modulePathHandle
   nameMapRef <- newIORef Map.empty
   geistMapRef <- newIORef Map.empty
   let currentTopLevelName = Nothing
@@ -122,12 +125,10 @@ ensureDefFreshness h m name mTag isConstLike = do
   topNameMap <- liftIO $ readIORef (nameMapRef h)
   case (Map.lookup name gmap, Map.lookup name topNameMap) of
     (Just _, Nothing) -> do
-      let mainModule = Env.getMainModule (envHandle h)
-      let name' = readableDD mainModule name
+      let name' = renderDD (modulePathMap h) name
       raiseCritical m $ "`" <> name' <> "` is defined nominally but not registered in the top name map"
     (Just (mGeist, isConstLike'), Just (_, mNominalTag, _)) -> do
-      let mainModule = Env.getMainModule (envHandle h)
-      let name' = readableDD mainModule name
+      let name' = renderDD (modulePathMap h) name
       nominalTag <-
         case mNominalTag of
           Just tag ->
@@ -159,8 +160,7 @@ ensureDefFreshness h m name mTag isConstLike = do
           liftIO $ removeFromDefNameMap h name
           liftIO $ Tag.insertGlobalVar (tagHandle h) mGeist name isConstLike m
     (Nothing, Just _) -> do
-      let mainModule = Env.getMainModule (envHandle h)
-      let name' = readableDD mainModule name
+      let name' = renderDD (modulePathMap h) name
       raiseError m $ "`" <> name' <> "` is already defined"
     (Nothing, Nothing) ->
       return ()
@@ -169,8 +169,7 @@ ensureGeistFreshness :: Handle -> Hint.Hint -> DD.DefiniteDescription -> App ()
 ensureGeistFreshness h m name = do
   geistMap <- liftIO $ readIORef (geistMapRef h)
   when (Map.member name geistMap) $ do
-    let mainModule = Env.getMainModule (envHandle h)
-    let name' = readableDD mainModule name
+    let name' = renderDD (modulePathMap h) name
     raiseError m $ "`" <> name' <> "` is already defined"
 
 reportMissingDefinitions :: Handle -> App ()

@@ -1051,7 +1051,7 @@ ensureImplicitArityCorrectness h function expected found = do
 
 readableDDCached :: Handle -> DD.DefiniteDescription -> App T.Text
 readableDDCached h dd = do
-  modulePathMap <- liftIO $ ModulePath.get (Global.modulePathHandle (globalHandle h))
+  modulePathMap <- liftIO $ ModulePath.get $ Global.modulePathHandle (globalHandle h)
   return $ ModulePath.renderDD modulePathMap dd
 
 ensureDefaultKeyLinearity :: Hint -> [T.Text] -> App ()

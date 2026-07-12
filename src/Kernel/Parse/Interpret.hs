@@ -11,6 +11,7 @@ import Control.Monad.IO.Class
 import Kernel.Common.Cache qualified as Cache
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.CreateLocalHandle qualified as Local
+import Kernel.Common.Handle.Global.ModulePath qualified as ModulePath
 import Kernel.Common.Handle.Global.Path qualified as Path
 import Kernel.Common.Handle.Local.Locator qualified as Locator
 import Kernel.Common.Handle.Local.RawImportSummary qualified as RawImportSummary
@@ -70,7 +71,8 @@ new globalHandle localHandle currentModule = do
   let symLocHandle = Local.symLocHandle localHandle
   let topCandidateHandle = Local.topCandidateHandle localHandle
   let rawImportSummaryHandle = Local.rawImportSummaryHandle localHandle
-  let discernHandle = Discern.new globalHandle localHandle nameMapHandle currentModule
+  modulePathMap <- liftIO $ ModulePath.get $ Global.modulePathHandle globalHandle
+  let discernHandle = Discern.new globalHandle localHandle nameMapHandle modulePathMap currentModule
   return $ Handle {..}
 
 interpret ::

@@ -34,6 +34,7 @@ import Kernel.Clarify.Internal.Utility (toRelevantAppWith)
 import Kernel.Clarify.Internal.Utility qualified as Utility
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.Data qualified as Data
+import Kernel.Common.Handle.Global.ModulePath qualified as ModulePath
 import Kernel.Common.Handle.Global.ImportedTypeDefCache qualified as ImportedTypeDefCache
 import Kernel.Common.Handle.Global.OptimizableData qualified as OptimizableData
 import Kernel.Common.Handle.Global.Platform qualified as Platform
@@ -91,6 +92,7 @@ import Logger.Hint
 
 data Handle = Handle
   { gensymHandle :: Gensym.Handle,
+    modulePathMap :: ModulePath.ModulePathMap,
     linearizeHandle :: Linearize.Handle,
     utilityHandle :: Utility.Handle,
     auxEnvHandle :: AuxEnv.Handle,
@@ -127,6 +129,7 @@ setCurrentFunction currentFunction context =
 
 new :: Global.Handle -> Trace.Config -> IO Handle
 new (Global.Handle {..}) traceConfig = do
+  modulePathMap <- ModulePath.get modulePathHandle
   let baseSize = Platform.getDataSize platformHandle
   auxEnvHandle <- AuxEnv.new
   let substHandle = Subst.new gensymHandle
@@ -150,6 +153,7 @@ newReduceOnlyHandle h = do
   return $
     Handle
       { gensymHandle = gensymHandle',
+        modulePathMap = modulePathMap h,
         linearizeHandle = linearizeHandle',
         utilityHandle = utilityHandle',
         auxEnvHandle = auxEnvHandle',
@@ -210,11 +214,12 @@ clarify h stmtList = do
 
 reportTrace :: Handle -> Report.TracePhase -> T.Text -> C.CompStmt -> IO ()
 reportTrace h phase stage stmt = do
+  let pathMap = modulePathMap h
   case C.getCompStmtName stmt of
     Nothing ->
       return ()
     Just name -> do
-      when (Trace.matches (traceConfig h) phase name) $ Logger.trace (loggerHandle h) $ "[" <> stage <> "] " <> renderCompStmt stmt
+      when (Trace.matches (traceConfig h) pathMap phase name) $ Logger.trace (loggerHandle h) $ "[" <> stage <> "] " <> renderCompStmt stmt
 
 renderCompStmt :: C.CompStmt -> T.Text
 renderCompStmt stmt = do

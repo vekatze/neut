@@ -14,7 +14,6 @@ import App.App (App)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.IORef
 import Data.Maybe (fromMaybe)
-import Data.Text qualified as T
 import Gensym.Handle qualified as Gensym
 import Kernel.Common.Const (defaultInlineLimit)
 import Kernel.Common.CreateGlobalHandle qualified as Global
@@ -23,6 +22,7 @@ import Kernel.Common.Handle.Global.Data qualified as Data
 import Kernel.Common.Handle.Global.Env qualified as Env
 import Kernel.Common.Handle.Global.GlobalRemark qualified as GlobalRemark
 import Kernel.Common.Handle.Global.KeyArg qualified as KeyArg
+import Kernel.Common.Handle.Global.ModulePath qualified as ModulePath
 import Kernel.Common.Handle.Global.OptimizableData qualified as OptimizableData
 import Kernel.Common.Handle.Global.Path qualified as Path
 import Kernel.Common.Handle.Global.Platform qualified as Platform
@@ -57,6 +57,7 @@ import Logger.Hint (Hint)
 
 data Handle = Handle
   { globalHandle :: Global.Handle,
+    modulePathMap :: ModulePath.ModulePathMap,
     envHandle :: Env.Handle,
     platformHandle :: Platform.Handle,
     weakDefHandle :: WeakDef.Handle,
@@ -85,14 +86,15 @@ data Handle = Handle
     varEnv :: BoundVarEnv,
     specializationTable :: IORef InlineHandle.SpecializationTable,
     pendingSpecializationDefs :: IORef [Stmt.Stmt],
-    residualCheckList :: IORef [Inline.ResidualCheck]
-    , traceConfig :: Trace.Config
+    residualCheckList :: IORef [Inline.ResidualCheck],
+    traceConfig :: Trace.Config
   }
 
 type BoundVarEnv = [BinderF WT.WeakType]
 
 new :: Global.Handle -> Trace.Config -> Local.Handle -> Source -> IO Handle
 new globalHandle@(Global.Handle {..}) traceConfig (Local.Handle {..}) currentSource = do
+  modulePathMap <- ModulePath.get modulePathHandle
   localLogsHandle <- LocalLogs.new
   let substHandle = Subst.new gensymHandle
   let inlineLimit = fromMaybe defaultInlineLimit $ moduleInlineLimit (sourceModule currentSource)
@@ -132,7 +134,7 @@ inlineEnv h = do
   typeDefMap <- TypeDef.get' (typeDefHandle h)
   tropeMap <- Trope.get (tropeHandle h)
   let baseSize = Platform.getDataSize (platformHandle h)
-  let mainModuleDir = T.pack $ Env.getMainModuleDir (envHandle h)
+  let mainModule = Env.getMainModule (envHandle h)
   return $
     InlineEnv.Env
       { InlineEnv.gensymHandle = gensymHandle h,
@@ -146,7 +148,8 @@ inlineEnv h = do
         InlineEnv.specializationTable = specializationTable h,
         InlineEnv.pendingSpecializationDefs = pendingSpecializationDefs h,
         InlineEnv.residualCheckList = residualCheckList h,
-        InlineEnv.mainModuleDir = mainModuleDir
+        InlineEnv.mainModule = mainModule,
+        InlineEnv.modulePathMap = modulePathMap h
       }
 
 inline' :: Handle -> Hint -> Bool -> TM.Term -> App TM.Term

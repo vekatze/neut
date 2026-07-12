@@ -94,7 +94,6 @@ newOrError cfg moduleFilePathOrNone = do
     Right envHandle -> do
       let mainModule = Env.getMainModule envHandle
       Logger.setModuleDir loggerHandle mainModule
-      keyArgHandle <- KeyArg.new mainModule
       optDataHandle <- OptimizableData.new
       resourceHandle <- Resource.new
       typeHandle <- Type.new
@@ -105,6 +104,7 @@ newOrError cfg moduleFilePathOrNone = do
       moduleHandle <- Module.new
       antecedentHandle <- Antecedent.new
       modulePathHandle <- ModulePath.new moduleHandle antecedentHandle mainModule
+      keyArgHandle <- KeyArg.new mainModule modulePathHandle
       weakDefHandle <- WeakDef.new gensymHandle
       weakTypeDefHandle <- WeakTypeDef.new
       defHandle <- Definition.new
@@ -112,7 +112,7 @@ newOrError cfg moduleFilePathOrNone = do
       typeDefHandle <- TypeDef.new
       importedTypeDefCacheHandle <- ImportedTypeDefCache.new
       globalNameMapHandle <- GlobalNameMap.new
-      unusedTopLevelNameHandle <- UnusedTopLevelName.new
+      unusedTopLevelNameHandle <- UnusedTopLevelName.new mainModule
       publicModuleReachabilityRef <- newIORef Map.empty
       presetCacheRef <- newIORef Map.empty
       return $ Right $ Handle {..}

@@ -10,8 +10,7 @@ where
 import Control.Comonad.Cofree
 import Data.ByteString qualified as BS
 import Data.Text qualified as T
-import Kernel.Common.Module (Module)
-import Kernel.Common.ReadableDD qualified as ReadableDD
+import Kernel.Common.Handle.Global.ModulePath qualified as ModulePath
 import Language.Common.Attr.Data qualified as AttrD
 import Language.Common.Attr.DataIntro qualified as AttrDI
 import Language.Common.Attr.Lam qualified as AttrL
@@ -314,9 +313,9 @@ toTextType :: WT.WeakType -> T.Text
 toTextType =
   toTextType' (Handle DD.localLocator)
 
-toTextTypeVerbose :: Module -> WT.WeakType -> T.Text
-toTextTypeVerbose baseModule =
-  toTextType' (Handle (ReadableDD.readableDD' baseModule))
+toTextTypeVerbose :: ModulePath.ModulePathMap -> WT.WeakType -> T.Text
+toTextTypeVerbose modulePathMap =
+  toTextType' (Handle (ModulePath.renderDD modulePathMap))
 
 toTextTypeWith :: (DD.DefiniteDescription -> T.Text) -> WT.WeakType -> T.Text
 toTextTypeWith f =

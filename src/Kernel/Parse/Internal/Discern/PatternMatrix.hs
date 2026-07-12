@@ -12,9 +12,8 @@ import Control.Monad.Except (liftEither)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Text qualified as T
 import Data.Vector qualified as V
-import Kernel.Common.Handle.Global.Env qualified as Env
+import Kernel.Common.Handle.Global.ModulePath (renderDD)
 import Kernel.Common.Handle.Local.Tag qualified as Tag
-import Kernel.Common.ReadableDD
 import Kernel.Parse.Internal.Discern.Fallback qualified as PATF
 import Kernel.Parse.Internal.Discern.Handle qualified as H
 import Kernel.Parse.Internal.Discern.Noema
@@ -149,8 +148,7 @@ ensurePatternSanity h (m, pat) =
     PAT.Cons consInfo -> do
       let argNum = length (PAT.args consInfo)
       when (argNum /= AN.reify (PAT.consArgNum consInfo)) $ do
-        let mainModule = Env.getMainModule (H.envHandle h)
-        let consDD' = readableDD mainModule $ PAT.consDD consInfo
+        let consDD' = renderDD (H.modulePathMap h) $ PAT.consDD consInfo
         raiseError m $
           "The constructor `"
             <> consDD'

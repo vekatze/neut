@@ -20,9 +20,9 @@ import Gensym.Gensym qualified as Gensym
 import Kernel.Common.Arch qualified as Arch
 import Kernel.Common.Const
 import Kernel.Common.GlobalName qualified as GN
-import Kernel.Common.Handle.Global.Env qualified as Env
 import Kernel.Common.Handle.Global.KeyArg (DefaultKey, ExpKey, _showKeyList)
 import Kernel.Common.Handle.Global.KeyArg qualified as KeyArg
+import Kernel.Common.Handle.Global.ModulePath (renderDD)
 import Kernel.Common.Handle.Global.Platform qualified as Platform
 import Kernel.Common.Handle.Local.Locator qualified as Locator
 import Kernel.Common.Handle.Local.SymLoc qualified as SymLoc
@@ -30,7 +30,6 @@ import Kernel.Common.Handle.Local.Tag qualified as Tag
 import Kernel.Common.Handle.Local.TopCandidate qualified as TopCandidate
 import Kernel.Common.OS qualified as OS
 import Kernel.Common.Platform qualified as Platform
-import Kernel.Common.ReadableDD
 import Kernel.Common.TopCandidate
 import Kernel.Parse.Internal.Discern.Handle qualified as H
 import Kernel.Parse.Internal.Discern.Name
@@ -231,7 +230,7 @@ resolveDefineMetaTargetName h m name = do
     GN.TopLevelMetaTerm {} ->
       return dd
     _ ->
-      raiseError m $ "`" <> DD.reify dd <> "` is not a meta definition"
+      raiseError m $ "`" <> renderDD (H.modulePathMap h) dd <> "` is not a meta definition"
 
 discernGeist :: H.Handle -> Loc -> RT.RawGeist DD.DefiniteDescription -> App (G.Geist WT.WeakType WT.WeakTerm)
 discernGeist h endLoc geist = do
@@ -476,7 +475,7 @@ discern h term =
         GN.Rule kind ->
           return kind
         _ ->
-          raiseError m $ "`" <> DD.reify dd <> "` is not a rule"
+          raiseError m $ "`" <> renderDD (H.modulePathMap h) dd <> "` is not a rule"
       let leafDD = DD.getLeafDD dd
       let nodeDD = DD.getNodeDD dd
       let rootDD = DD.getRootDD dd
@@ -505,7 +504,7 @@ discern h term =
             (dd, (_, gn)) <- resolveName h m name
             case gn of
               GN.Rule {} ->
-                raiseError m $ "`" <> DD.reify dd <> "` is a rule and must be used with `::[...]`"
+                raiseError m $ "`" <> renderDD (H.modulePathMap h) dd <> "` is a rule and must be used with `::[...]`"
               _ ->
                 return $ m :< RT.VarGlobal dd gn
       let quote e@(me :< _) = me :< RT.CodeIntro CodeVariantK [] [] (e, [])
@@ -813,7 +812,7 @@ resolveTropeName h (m, name) = do
     GN.Trope ->
       return dd
     _ ->
-      raiseError m $ "`" <> DD.reify dd <> "` is not a trope"
+      raiseError m $ "`" <> renderDD (H.modulePathMap h) dd <> "` is not a trope"
 
 discernType :: H.Handle -> RT.RawType -> App WT.WeakType
 discernType h ty =
@@ -831,7 +830,7 @@ discernType h ty =
               return $ m :< WT.TVar name'
         _ -> do
           (dd, (_, gn)) <- resolveName h m name
-          interpretGlobalTypeName m dd gn
+          interpretGlobalTypeName h m dd gn
     m :< RT.TyApp t _ args -> do
       t' <- discernType h t
       args' <- mapM (discernType h) $ SE.extract args
@@ -1537,8 +1536,7 @@ discernPattern h layer stage (m, pat) = do
               | isConsName x && k == VK.Normal -> do
                   (consDD, dataArgNum, consArgNum, disc, isConstLike, _) <- resolveConstructor h m $ Var x
                   unless isConstLike $ do
-                    let mainModule = Env.getMainModule (H.envHandle h)
-                    let consDD' = readableDD mainModule consDD
+                    let consDD' = renderDD (H.modulePathMap h) consDD
                     raiseError m $
                       "The constructor `" <> consDD' <> "` cannot be used as a constant"
                   return ((m, PAT.Cons (PAT.ConsInfo {args = [], ..})), [])
@@ -1564,8 +1562,7 @@ discernPattern h layer stage (m, pat) = do
                           }
                   return ((m, PAT.Cons consInfo), [])
                 _ -> do
-                  let mainModule = Env.getMainModule (H.envHandle h)
-                  let dd' = readableDD mainModule dd
+                  let dd' = renderDD (H.modulePathMap h) dd
                   raiseError m $
                     "The symbol `" <> dd' <> "` is not defined as a constuctor"
     RP.Cons cons _ mArgs -> do

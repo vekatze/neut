@@ -32,6 +32,7 @@ import Kernel.Common.Arch qualified as A
 import Kernel.Common.Const
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.Env qualified as Env
+import Kernel.Common.Handle.Global.ModulePath qualified as ModulePath
 import Kernel.Common.Handle.Global.Platform qualified as Platform
 import Kernel.Common.Target
 import Kernel.Common.Trace qualified as Trace
@@ -72,6 +73,7 @@ import Logger.Handle qualified as Logger
 
 data Handle = Handle
   { allocator :: Allocator,
+    modulePathHandle :: ModulePath.Handle,
     arch :: Arch,
     baseSize :: DS.DataSize,
     gensymHandle :: Gensym.Handle,
@@ -160,7 +162,8 @@ lowerStmt h stmt = do
 
 reportTrace :: Handle -> DD.DefiniteDescription -> LC.Def -> App ()
 reportTrace h name def = do
-  when (Trace.matches (traceConfig h) Report.LowCompPhase name) $ do
+  modulePathMap <- liftIO $ ModulePath.get $ modulePathHandle h
+  when (Trace.matches (traceConfig h) modulePathMap Report.LowCompPhase name) $ do
     liftIO $ Logger.trace (loggerHandle h) $ "[lowcomp]\n" <> LCR.renderDef def
 
 registerInternalNames :: Handle -> [C.CompStmt] -> IO ()

@@ -15,8 +15,8 @@ import Data.IORef
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Kernel.Common.CreateGlobalHandle qualified as Global
+import Kernel.Common.Handle.Global.ModulePath qualified as ModulePath
 import Kernel.Common.Module qualified as Module
-import Kernel.Common.ReadableDD qualified as ReadableDD
 import Language.Common.Availability qualified as AV
 import Language.Common.Binder
 import Language.Common.DefiniteDescription qualified as DD
@@ -79,10 +79,10 @@ checkSignatureTypeList globalHandle baseModule ownerName typeList = do
   when (isSourceLevelName ownerName) $
     forM_ (concatMap collectTypeDDs typeList) $ \(m, depName) -> do
       unless (AV.allowsAsSignatureDependency ownerName depName) $
-        raiseSignatureVisibilityError baseModule m ownerName depName
+        raiseSignatureVisibilityError globalHandle m ownerName depName
       isReachable <- isPubliclyReachableFrom globalHandle m baseModule depName
       unless isReachable $
-        raiseSignatureVisibilityError baseModule m ownerName depName
+        raiseSignatureVisibilityError globalHandle m ownerName depName
 
 isPubliclyReachableFrom ::
   Global.Handle ->
@@ -145,14 +145,15 @@ collectTypeDDs typ =
       [(m, name)]
 
 raiseSignatureVisibilityError ::
-  Module.Module ->
+  Global.Handle ->
   Hint ->
   DD.DefiniteDescription ->
   DD.DefiniteDescription ->
   App a
-raiseSignatureVisibilityError baseModule m ownerName depName = do
-  let ownerName' = ReadableDD.readableDD' baseModule ownerName
-  let depName' = ReadableDD.readableDD' baseModule depName
+raiseSignatureVisibilityError globalHandle m ownerName depName = do
+  modulePathMap <- liftIO $ ModulePath.get $ Global.modulePathHandle globalHandle
+  let ownerName' = ModulePath.renderDD modulePathMap ownerName
+  let depName' = ModulePath.renderDD modulePathMap depName
   raiseError m $
     "`"
       <> ownerName'

@@ -6,8 +6,8 @@ module Kernel.Common.Handle.Global.ModulePath
     get,
     set,
     build,
-    directModulePathMap,
     renderDD,
+    renderVerboseDD,
     renderSource,
   )
 where
@@ -109,20 +109,25 @@ getSortedDependencyList currentModule = do
   let dependencyList = Map.toList $ M.moduleDependency currentModule
   sortOn (MA.reify . fst) dependencyList
 
-directModulePathMap :: M.Module -> ModulePathMap
-directModulePathMap baseModule = do
-  let dependencyList = getSortedDependencyList baseModule
-  let dependencyPathList =
-        flip map dependencyList $ \(alias, dependency) -> do
-          (MID.Library (M.dependencyDigest dependency), [MA.reify alias])
-  Map.fromList $ [(MID.Main, []), (MID.Base, ["base"])] <> dependencyPathList
-
 renderDD :: ModulePathMap -> DD.DefiniteDescription -> T.Text
-renderDD modulePathMap dd = do
+renderDD =
+  renderDDWith True
+
+renderVerboseDD :: ModulePathMap -> DD.DefiniteDescription -> T.Text
+renderVerboseDD =
+  renderDDWith False
+
+renderDDWith :: Bool -> ModulePathMap -> DD.DefiniteDescription -> T.Text
+renderDDWith abbreviate modulePathMap dd = do
   let (moduleID, locator) = DD.unconsDD dd
   case Map.lookup moduleID modulePathMap of
+    Just []
+      | abbreviate ->
+          DD.localLocator dd
+      | otherwise ->
+          locator
     Just modulePath ->
-      renderPathWithLocator modulePath locator
+      T.intercalate nsSep modulePath <> routeSep <> locator
     Nothing ->
       DD.reify dd
 
@@ -133,19 +138,6 @@ renderSource modulePathMap source = do
   let modulePath = Map.lookupDefault [MID.reify moduleID] moduleID modulePathMap
   locator <- Source.getBaseReadableLocator source
   return $ renderLastSegmentWithLocator modulePath locator
-
-renderPathWithLocator :: ModulePath -> T.Text -> T.Text
-renderPathWithLocator modulePath locator = do
-  if T.null locator
-    then renderModulePath modulePath
-    else
-      if null modulePath
-        then locator
-        else T.intercalate nsSep modulePath <> routeSep <> locator
-
-renderModulePath :: ModulePath -> T.Text
-renderModulePath =
-  T.intercalate " -> "
 
 renderLastSegmentWithLocator :: ModulePath -> T.Text -> T.Text
 renderLastSegmentWithLocator modulePath locator = do
