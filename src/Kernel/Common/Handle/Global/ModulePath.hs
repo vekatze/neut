@@ -7,7 +7,7 @@ module Kernel.Common.Handle.Global.ModulePath
     set,
     build,
     renderDD,
-    renderVerboseDD,
+    renderCanonicalDD,
     renderSource,
   )
 where
@@ -113,8 +113,8 @@ renderDD :: ModulePathMap -> DD.DefiniteDescription -> T.Text
 renderDD =
   renderDDWith True
 
-renderVerboseDD :: ModulePathMap -> DD.DefiniteDescription -> T.Text
-renderVerboseDD =
+renderCanonicalDD :: ModulePathMap -> DD.DefiniteDescription -> T.Text
+renderCanonicalDD =
   renderDDWith False
 
 renderDDWith :: Bool -> ModulePathMap -> DD.DefiniteDescription -> T.Text

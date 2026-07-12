@@ -20,7 +20,7 @@ import Data.Maybe qualified as Maybe
 import Data.Text qualified as T
 import Kernel.Common.Const qualified as C
 import Kernel.Common.GlobalName qualified as GN
-import Kernel.Common.Handle.Global.ModulePath (renderDD, renderVerboseDD)
+import Kernel.Common.Handle.Global.ModulePath (renderCanonicalDD, renderDD)
 import Kernel.Common.Handle.Local.Locator qualified as Locator
 import Kernel.Common.Handle.Local.Tag qualified as Tag
 import Kernel.Parse.Internal.Discern.Handle qualified as H
@@ -92,7 +92,7 @@ resolveVarOrErr h m name = do
       let foundNameList' =
             if length (List.nub abbreviatedList) == length abbreviatedList
               then abbreviatedList
-              else map (renderVerboseDD $ H.modulePathMap h) ddList
+              else map (renderCanonicalDD $ H.modulePathMap h) ddList
       let candInfo = T.concat $ map ("\n- " <>) foundNameList'
       return $ Left $ "This `" <> name <> "` is ambiguous since it could refer to:" <> candInfo
 
