@@ -23,7 +23,6 @@ where
 
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
-import Gensym.Gensym qualified as Gensym
 import Gensym.Handle qualified as Gensym
 import Kernel.Clarify.Internal.Linearize qualified as Linearize
 import Kernel.Clarify.Internal.Utility (ResourceSpec (..))
@@ -247,8 +246,7 @@ closureEnvS4 h closureName mxts defaultValues =
       | null defaultValues ->
           return immediateS4 -- performance optimization; not necessary for correctness
     _ -> do
-      i <- Gensym.newCount (gensymHandle h)
-      let name = DD.getClosureEnvDD closureName i
+      let name = DD.getClosureEnvDD closureName
       resourceSpec <- makeSigmaResourceSpec h mxts
       let resourceSpec' = resourceSpec {defaultValues}
       liftIO $ Utility.registerSwitcher (utilityHandle h) O.Clear name resourceSpec'

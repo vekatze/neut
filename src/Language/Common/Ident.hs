@@ -22,7 +22,7 @@ instance Ord Ident where
 
 instance Show Ident where
   show (I (s, i)) =
-    T.unpack s ++ "-" ++ show i
+    T.unpack s ++ "_" ++ show i
 
 instance Binary Ident
 

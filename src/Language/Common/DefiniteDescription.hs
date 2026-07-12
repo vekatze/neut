@@ -102,10 +102,10 @@ getRootDD :: DefiniteDescription -> DefiniteDescription
 getRootDD dd =
   appendLocalName dd BN.root
 
-getClosureEnvDD :: DefiniteDescription -> Int -> DefiniteDescription
-getClosureEnvDD closureName i =
+getClosureEnvDD :: DefiniteDescription -> DefiniteDescription
+getClosureEnvDD closureName =
   MakeDefiniteDescription
-    { reify = reify closureName <> ";env;" <> T.pack (show i)
+    { reify = reify closureName <> "#env"
     }
 
 getLambdaDD :: DefiniteDescription -> Maybe T.Text -> Int -> DefiniteDescription
@@ -118,11 +118,11 @@ getMuDD dd x i =
 
 getKnotDD :: DefiniteDescription -> Int -> DefiniteDescription
 getKnotDD dd i =
-  MakeDefiniteDescription {reify = reify dd <> ";" <> T.pack (show i)}
+  MakeDefiniteDescription {reify = reify dd <> "#knot." <> T.pack (show i)}
 
 getLocalMetaDD :: Int -> DefiniteDescription
 getLocalMetaDD i =
-  MakeDefiniteDescription {reify = ";meta;" <> T.pack (show i)}
+  MakeDefiniteDescription {reify = "#meta." <> T.pack (show i)}
 
 unconsDD :: DefiniteDescription -> (MID.ModuleID, T.Text)
 unconsDD dd = do

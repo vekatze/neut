@@ -20,6 +20,7 @@ import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Containers.ListUtils (nubOrd)
 import Data.HashMap.Strict qualified as Map
+import Data.IORef
 import Data.IntMap qualified as IntMap
 import Data.Maybe
 import Data.Set qualified as S
@@ -34,8 +35,8 @@ import Kernel.Clarify.Internal.Utility (toRelevantAppWith)
 import Kernel.Clarify.Internal.Utility qualified as Utility
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.Data qualified as Data
-import Kernel.Common.Handle.Global.ModulePath qualified as ModulePath
 import Kernel.Common.Handle.Global.ImportedTypeDefCache qualified as ImportedTypeDefCache
+import Kernel.Common.Handle.Global.ModulePath qualified as ModulePath
 import Kernel.Common.Handle.Global.OptimizableData qualified as OptimizableData
 import Kernel.Common.Handle.Global.Platform qualified as Platform
 import Kernel.Common.Handle.Global.Resource qualified as Resource
@@ -106,6 +107,7 @@ data Handle = Handle
     typeHandle :: Type.Handle,
     typeDefHandle :: TypeDef.Handle,
     importedTypeDefCacheHandle :: ImportedTypeDefCache.Handle,
+    closureNameSupplyRef :: IORef (Map.HashMap DD.DefiniteDescription Int),
     traceConfig :: Trace.Config,
     loggerHandle :: Logger.Handle
   }
@@ -138,6 +140,7 @@ new gensymHandle (Global.Handle {..}) traceConfig = do
   let utilityHandle = Utility.new gensymHandle compSubstHandle auxEnvHandle baseSize
   let linearizeHandle = Linearize.new gensymHandle utilityHandle
   let sigmaHandle = Sigma.new gensymHandle linearizeHandle utilityHandle
+  closureNameSupplyRef <- newIORef Map.empty
   return $ Handle {..}
 
 newReduceOnlyHandle :: Handle -> IO Handle
@@ -167,6 +170,7 @@ newReduceOnlyHandle h = do
         typeHandle = typeHandle h,
         typeDefHandle = typeDefHandle h,
         importedTypeDefCacheHandle = importedTypeDefCacheHandle h,
+        closureNameSupplyRef = closureNameSupplyRef h,
         traceConfig = traceConfig h,
         loggerHandle = loggerHandle h
       }
@@ -219,7 +223,8 @@ reportTrace h phase stage stmt = do
     Nothing ->
       return ()
     Just name -> do
-      when (Trace.matches (traceConfig h) pathMap phase name) $ Logger.trace (loggerHandle h) $ "[" <> stage <> "] " <> renderCompStmt stmt
+      when (Trace.matches (traceConfig h) pathMap phase name) $ do
+        Logger.trace (loggerHandle h) $ "[" <> stage <> "] " <> renderCompStmt stmt
 
 renderCompStmt :: C.CompStmt -> T.Text
 renderCompStmt stmt = do
@@ -236,7 +241,7 @@ renderCompDefinition keyword name args body =
   "\n"
     <> keyword
     <> " "
-    <> DD.localLocator name
+    <> DD.reify name
     <> "("
     <> T.intercalate ", " (map Ident.toText' args)
     <> ") {\n"
@@ -1202,11 +1207,12 @@ clarifyLambda ::
   [(BinderF TM.Type, TM.Term)] ->
   TM.Term ->
   App C.Comp
-clarifyLambda h context attrL@(AttrL.Attr {lamKind, identity}) fvs impArgs expArgs defaultArgs e@(m :< _) = do
+clarifyLambda h context attrL@(AttrL.Attr {lamKind}) fvs impArgs expArgs defaultArgs e@(m :< _) = do
   let mxts = impArgs ++ expArgs ++ map fst defaultArgs
+  closureID <- liftIO $ freshClosureID h (currentFunction context)
   case lamKind of
     LK.Fix _ isDestPassing (_, _k, recFuncName, codType) -> do
-      let liftedName = DD.getMuDD (currentFunction context) recFuncName identity
+      let liftedName = DD.getMuDD (currentFunction context) recFuncName closureID
       let appArgs = fvs ++ mxts
       let appArgs' = map (\(mx, _, x, _) -> mx :< TM.Var x) appArgs
       let argNum = AN.fromInt $ length appArgs'
@@ -1243,11 +1249,11 @@ clarifyLambda h context attrL@(AttrL.Attr {lamKind, identity}) fvs impArgs expAr
       liftIO $ registerDefaultEnvType h liftedName []
       clarifyTerm h context lamApp
     LK.Normal mName isDestPassing codType -> do
-      let name = DD.getLambdaDD (currentFunction context) mName identity
+      let name = DD.getLambdaDD (currentFunction context) mName closureID
       defaultValues <- registerDefaultFunctions h context name fvs impArgs expArgs defaultArgs
       let lambdaContext = setCurrentFunction name $ extendContext (catMaybes [AttrL.fromAttr attrL] ++ mxts) context
       e' <- clarifyTerm h lambdaContext e
-      returnClosure h context identity mName O.Clear isDestPassing codType fvs mxts defaultValues e'
+      returnClosure h context closureID mName O.Clear isDestPassing codType fvs mxts defaultValues e'
 
 clarifyPlus :: Handle -> Context -> TM.Term -> App (Ident, C.Comp, C.Value)
 clarifyPlus h context e = do
@@ -1287,8 +1293,16 @@ clarifyPrimOp h context op m = do
   let argTypeList = map (fromPrimNum m) domList
   (xs, varList) <- liftIO $ mapAndUnzipM (const (Gensym.createVar (gensymHandle h) "prim")) domList
   let mxts = zipWith (\x t -> (m, VK.Normal, x, t)) xs argTypeList
-  lamID <- liftIO $ Gensym.newCount (gensymHandle h)
-  returnClosure h context lamID (Just "primOp") O.Clear False (fromPrimNum m codType) [] mxts [] $ C.Primitive (C.PrimOp op varList)
+  closureID <- liftIO $ freshClosureID h (currentFunction context)
+  returnClosure h context closureID (Just "primOp") O.Clear False (fromPrimNum m codType) [] mxts [] $ C.Primitive (C.PrimOp op varList)
+
+freshClosureID :: Handle -> DD.DefiniteDescription -> IO Int
+freshClosureID h owner = do
+  supply <- readIORef (closureNameSupplyRef h)
+  let closureID = Map.lookupDefault 0 owner supply
+  let supply' = Map.insert owner (closureID + 1) supply
+  writeIORef (closureNameSupplyRef h) supply'
+  return closureID
 
 returnClosure ::
   Handle ->

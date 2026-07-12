@@ -15,7 +15,7 @@ toText (I (s, _)) =
 {-# INLINE toText' #-}
 toText' :: Ident -> T.Text
 toText' (I (s, i)) =
-  s <> "-" <> T.pack (show i)
+  s <> "_" <> T.pack (show i)
 
 toInt :: Ident -> Int
 toInt (I (_, i)) =
