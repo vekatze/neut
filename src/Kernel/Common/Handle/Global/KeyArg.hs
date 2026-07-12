@@ -18,8 +18,9 @@ import Control.Monad.IO.Class
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.Text qualified as T
+import Kernel.Common.Handle.Global.ModulePath (renderDD)
+import Kernel.Common.Handle.Global.ModulePath qualified as ModulePath
 import Kernel.Common.Module
-import Kernel.Common.ReadableDD
 import Language.Common.Const (holeVarPrefix)
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.IsConstLike
@@ -38,6 +39,7 @@ type DefaultKey =
 
 data Handle = Handle
   { _mainModule :: MainModule,
+    _modulePathHandle :: ModulePath.Handle,
     _keyArgMapRef :: IORef (Map.HashMap DD.DefiniteDescription (IsConstLike, ([ImpKey], [ExpKey], [DefaultKey])))
   }
 
@@ -88,13 +90,14 @@ _showKeyList :: [Key] -> T.Text
 _showKeyList ks =
   T.intercalate "\n" $ map ("- " <>) ks
 
-new :: MainModule -> IO Handle
-new _mainModule = do
+new :: MainModule -> ModulePath.Handle -> IO Handle
+new _mainModule _modulePathHandle = do
   _keyArgMapRef <- newIORef Map.empty
   return $ Handle {..}
 
 insert :: Handle -> Hint -> DD.DefiniteDescription -> IsConstLike -> [ImpKey] -> [ExpKey] -> [DefaultKey] -> App ()
 insert h m funcName isConstLike impKeys expKeys defaultKeys = do
+  modulePathMap <- liftIO $ ModulePath.get (_modulePathHandle h)
   kmap <- liftIO $ readIORef (_keyArgMapRef h)
   case Map.lookup funcName kmap of
     Nothing ->
@@ -102,20 +105,20 @@ insert h m funcName isConstLike impKeys expKeys defaultKeys = do
     Just (isConstLike', (impKeys', expKeys', defaultKeys'))
       | isConstLike,
         not isConstLike' -> do
-          let funcName' = readableDD (_mainModule h) funcName
+          let funcName' = renderDD modulePathMap funcName
           raiseError m $
             "`"
               <> funcName'
               <> "` is declared as a function, but defined as a constant-like term."
       | not isConstLike,
         isConstLike' -> do
-          let funcName' = readableDD (_mainModule h) funcName
+          let funcName' = renderDD modulePathMap funcName
           raiseError m $
             "`"
               <> funcName'
               <> "` is declared as a constant-like term, but defined as a function."
       | length impKeys /= length impKeys' -> do
-          let funcName' = readableDD (_mainModule h) funcName
+          let funcName' = renderDD modulePathMap funcName
           raiseError m $
             "The arity of `"
               <> funcName'
@@ -125,7 +128,7 @@ insert h m funcName isConstLike impKeys expKeys defaultKeys = do
               <> T.pack (show $ length impKeys)
               <> "."
       | not $ _eqKeys defaultKeys defaultKeys' -> do
-          let funcName' = readableDD (_mainModule h) funcName
+          let funcName' = renderDD modulePathMap funcName
           raiseError m $
             "The default key sequence of `"
               <> funcName'
@@ -135,7 +138,7 @@ insert h m funcName isConstLike impKeys expKeys defaultKeys = do
               <> _showKeys defaultKeys
               <> "`."
       | not $ _eqKeys expKeys expKeys' -> do
-          let funcName' = readableDD (_mainModule h) funcName
+          let funcName' = renderDD modulePathMap funcName
           raiseError m $
             "The explicit key sequence of `"
               <> funcName'
@@ -151,10 +154,11 @@ insert h m funcName isConstLike impKeys expKeys defaultKeys = do
 
 lookup :: Handle -> Hint -> DD.DefiniteDescription -> App ([ImpKey], [ExpKey], [DefaultKey])
 lookup h m dataName = do
+  modulePathMap <- liftIO $ ModulePath.get (_modulePathHandle h)
   keyArgMap <- liftIO $ readIORef (_keyArgMapRef h)
   case Map.lookup dataName keyArgMap of
     Just (_, impExpKeys) ->
       return impExpKeys
     Nothing -> do
-      let dataName' = readableDD (_mainModule h) dataName
+      let dataName' = renderDD modulePathMap dataName
       raiseError m $ "No such function is defined: " <> dataName'

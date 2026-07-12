@@ -24,9 +24,10 @@ import Data.Text qualified as T
 import Kernel.Common.AliasInfo (MustUpdateTag)
 import Kernel.Common.GlobalName qualified as GN
 import Kernel.Common.Handle.Global.Env qualified as Env
+import Kernel.Common.Handle.Global.ModulePath (renderDD)
+import Kernel.Common.Handle.Global.ModulePath qualified as ModulePath
 import Kernel.Common.Handle.Local.Tag qualified as Tag
 import Kernel.Common.Module qualified as Module
-import Kernel.Common.ReadableDD
 import Kernel.Common.Source qualified as Source
 import Kernel.Common.TopNameMap (TopNameMap)
 import Language.Common.Availability qualified as AV
@@ -50,14 +51,15 @@ import Path.IO
 data Handle = Handle
   { _tagHandle :: Tag.Handle,
     _envHandle :: Env.Handle,
+    _modulePathMap :: ModulePath.ModulePathMap,
     _activeDefiniteDescriptionListRef :: IORef (Map.HashMap LL.LocalLocator DD.DefiniteDescription),
     _activeStaticFileMapRef :: IORef (Map.HashMap T.Text (Path Abs File, BS.ByteString)),
     _activeGlobalLocatorList :: [SGL.StrictGlobalLocator],
     _currentGlobalLocator :: SGL.StrictGlobalLocator
   }
 
-new :: Env.Handle -> Tag.Handle -> Source.Source -> App Handle
-new _envHandle _tagHandle source = do
+new :: Env.Handle -> Tag.Handle -> ModulePath.ModulePathMap -> Source.Source -> App Handle
+new _envHandle _tagHandle _modulePathMap source = do
   cgl <- constructGlobalLocator source
   _activeDefiniteDescriptionListRef <- liftIO $ newIORef Map.empty
   _activeStaticFileMapRef <- liftIO $ newIORef Map.empty
@@ -91,8 +93,8 @@ activateSpecifiedNames h currentSource topNameMap mustUpdateTag sgl lls = do
         case Map.lookup ll activeDefiniteDescriptionList of
           Just existingDD
             | dd /= existingDD -> do
-                let dd' = readableDD' (Source.sourceModule currentSource) dd
-                let existingDD' = readableDD' (Source.sourceModule currentSource) existingDD
+                let dd' = renderDD (_modulePathMap h) dd
+                let existingDD' = renderDD (_modulePathMap h) existingDD
                 raiseError m $
                   "This `"
                     <> LL.reify ll

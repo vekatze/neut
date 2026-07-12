@@ -24,6 +24,8 @@ import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NE
 import Data.Text qualified as T
 import Kernel.Common.Handle.Global.Data qualified as Data
+import Kernel.Common.Handle.Global.ModulePath qualified as ModulePath
+import Kernel.Common.Module qualified as Module
 import Kernel.Common.TypeTag qualified as TypeTag
 import Kernel.Common.TypeValue qualified as TypeValue
 import Language.Common.ArgNum qualified as AN
@@ -54,6 +56,7 @@ import Language.Term.Term qualified as TM
 import Language.Term.Weaken (weakenType)
 import Language.WeakTerm.ToText (toTextType)
 import Logger.Hint (Hint (..), showFilePosRelative)
+import Path (toFilePath)
 
 evaluateInspectType :: Handle -> Hint -> MID.ModuleID -> TM.Type -> App TM.Term
 evaluateInspectType h m moduleID typeExpr = do
@@ -311,7 +314,7 @@ lookupDataInfo h m dataName = do
     Just dataInfo ->
       return dataInfo
     Nothing ->
-      reportMacroError h m $ "inspect-type: constructor metadata for `" <> DD.reify dataName <> "` is unavailable."
+      reportMacroError h m $ "inspect-type: constructor metadata for `" <> ModulePath.renderDD (modulePathMap h) dataName <> "` is unavailable."
 
 specializeConsInfoList ::
   Handle ->
@@ -329,7 +332,7 @@ specializeConsInfoList h m dataName dataBinders dataArgs consInfoList
   | otherwise =
       reportMacroError h m $
         "inspect-type: arity mismatch while specializing constructor metadata for `"
-          <> DD.reify dataName
+          <> ModulePath.renderDD (modulePathMap h) dataName
           <> "`."
 
 specializeConsInfo :: Handle -> Subst.Subst -> DI.ConsInfo (BinderF TM.Type) -> App (DI.ConsInfo (BinderF TM.Type))
@@ -570,7 +573,8 @@ reportDefineMetaError =
 reportMacroError' :: Bool -> Handle -> Hint -> T.Text -> App a
 reportMacroError' highlightDefineMeta h m message = do
   ms <- liftIO $ getMacroCallStack h
-  let trace = formatMacroTrace highlightDefineMeta (mainModuleDir h) ms
+  let moduleDir = T.pack $ toFilePath $ Module.getModuleRootDir $ Module.extractModule (mainModule h)
+  let trace = formatMacroTrace highlightDefineMeta moduleDir ms
   let hints = map (\(_, _, hint) -> hint) ms
   let hintStack = NE.reverse $ m :| hints
   raiseError (NE.head hintStack) $ message <> "\n\n" <> trace

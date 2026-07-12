@@ -15,8 +15,7 @@ import Data.IntMap qualified as IntMap
 import Data.List (partition)
 import Data.Set qualified as S
 import Data.Text qualified as T
-import Kernel.Common.ReadableDD qualified as ReadableDD
-import Kernel.Common.Source (sourceModule)
+import Kernel.Common.Handle.Global.ModulePath qualified as ModulePath
 import Kernel.Elaborate.Constraint (SuspendedConstraint)
 import Kernel.Elaborate.Constraint qualified as C
 import Kernel.Elaborate.Internal.Handle.Constraint qualified as Constraint
@@ -95,11 +94,11 @@ constructErrorMessageEq h found expected = do
   let shortFound = toTextType found
   if shortExpected == shortFound
     then do
-      let baseModule = sourceModule (currentSource h)
       let allDDs = collectGlobalDDs expected ++ collectGlobalDDs found
       let grouped = Map.fromListWith S.union [(DD.localLocator dd, S.singleton dd) | dd <- allDDs]
       let needVerbose = S.fromList [dd | (_, dds) <- Map.toList grouped, S.size dds > 1, dd <- S.toList dds]
-      let showDD dd = if S.member dd needVerbose then ReadableDD.readableDD' baseModule dd else DD.localLocator dd
+      let pathMap = modulePathMap h
+      let showDD dd = if S.member dd needVerbose then ModulePath.renderDD pathMap dd else DD.localLocator dd
       "Expected:\n  "
         <> toTextTypeWith showDD expected
         <> "\nFound:\n  "

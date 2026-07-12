@@ -8,6 +8,7 @@ import App.App (App)
 import Control.Monad.IO.Class
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Local.Locator qualified as Locator
+import Kernel.Common.Handle.Global.ModulePath qualified as ModulePath
 import Kernel.Common.Handle.Local.RawImportSummary qualified as RawImportSummary
 import Kernel.Common.Handle.Local.SymLoc qualified as SymLoc
 import Kernel.Common.Handle.Local.Tag qualified as Tag
@@ -41,7 +42,8 @@ new h source = do
   unusedHandle <- liftIO Unused.new
   usedTopLevelNameHandle <- liftIO UsedTopLevelName.new
   tagHandle <- liftIO Tag.new
-  locatorHandle <- Locator.new envHandle tagHandle source
+  modulePathMap <- liftIO $ ModulePath.get $ Global.modulePathHandle h
+  locatorHandle <- Locator.new envHandle tagHandle modulePathMap source
   aliasHandle <- liftIO $ Alias.new shiftToLatestHandle locatorHandle envHandle (Global.moduleHandle h) source
   rawImportSummaryHandle <- liftIO RawImportSummary.new
   symLocHandle <- liftIO SymLoc.new

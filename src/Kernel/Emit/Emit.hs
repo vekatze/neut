@@ -10,7 +10,6 @@ import App.Run (raiseError')
 import Console.Handle qualified as Console
 import Console.ReportMode qualified as Report
 import Control.Monad (when)
-import Control.Monad.IO.Class (liftIO)
 import Data.ByteString.Builder
 import Data.ByteString.Builder qualified as L
 import Data.ByteString.Lazy qualified as L
@@ -54,9 +53,8 @@ data Handle = Handle
 new :: Global.Handle -> Target -> App Handle
 new globalHandle target = do
   allocator <- Env.getAllocatorByTarget (Global.envHandle globalHandle) target
-  modulePathMap <- liftIO $ ModulePath.get $ Global.modulePathHandle globalHandle
   let traceReport = Console.getTraceConfig $ Global.consoleHandle globalHandle
-  traceConfig <- either raiseError' return $ Trace.new modulePathMap traceReport
+  traceConfig <- either raiseError' return $ Trace.new (Env.getMainModule $ Global.envHandle globalHandle) traceReport
   return $ Handle {..}
 
 emit :: Handle -> LC.LowCode -> IO L.ByteString
@@ -189,8 +187,9 @@ emitDefinition h maybeName retType name args asm = do
   let footer = "}"
   let definition = [header] <> content <> [footer]
   case maybeName of
-    Just traceName ->
-      when (Trace.matches (traceConfig h) Report.LLVMPhase traceName) $ do
+    Just traceName -> do
+      modulePathMap <- ModulePath.get $ Global.modulePathHandle (globalHandle h)
+      when (Trace.matches (traceConfig h) modulePathMap Report.LLVMPhase traceName) $ do
         Logger.trace (Global.loggerHandle (globalHandle h)) $
           "[llvm]\n" <> TE.decodeUtf8 (L.toStrict $ L.toLazyByteString $ unlinesL definition)
     Nothing ->

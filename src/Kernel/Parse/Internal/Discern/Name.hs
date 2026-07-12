@@ -15,14 +15,14 @@ import Control.Comonad.Cofree hiding (section)
 import Control.Monad
 import Control.Monad.Except (liftEither)
 import Control.Monad.IO.Class (MonadIO (liftIO))
+import Data.List qualified as List
 import Data.Maybe qualified as Maybe
 import Data.Text qualified as T
 import Kernel.Common.Const qualified as C
 import Kernel.Common.GlobalName qualified as GN
-import Kernel.Common.Handle.Global.Env qualified as Env
+import Kernel.Common.Handle.Global.ModulePath (renderDD, renderVerboseDD)
 import Kernel.Common.Handle.Local.Locator qualified as Locator
 import Kernel.Common.Handle.Local.Tag qualified as Tag
-import Kernel.Common.ReadableDD
 import Kernel.Parse.Internal.Discern.Handle qualified as H
 import Kernel.Parse.Internal.Handle.Alias qualified as Alias
 import Kernel.Parse.Internal.Handle.NameMap qualified as NameMap
@@ -87,8 +87,12 @@ resolveVarOrErr h m name = do
       liftIO $ Unused.deleteLocalLocator (H.unusedHandle h) localLocator
       return $ Right globalVar
     _ -> do
-      let mainModule = Env.getMainModule (H.envHandle h)
-      let foundNameList' = map (readableDD mainModule . fst) foundNameList
+      let ddList = map fst foundNameList
+      let abbreviatedList = map (renderDD $ H.modulePathMap h) ddList
+      let foundNameList' =
+            if length (List.nub abbreviatedList) == length abbreviatedList
+              then abbreviatedList
+              else map (renderVerboseDD $ H.modulePathMap h) ddList
       let candInfo = T.concat $ map ("\n- " <>) foundNameList'
       return $ Left $ "This `" <> name <> "` is ambiguous since it could refer to:" <> candInfo
 
@@ -142,7 +146,7 @@ resolveConstructor h m s = do
     Just v ->
       return v
     Nothing ->
-      raiseError m $ "`" <> DD.reify dd <> "` is not a constructor"
+      raiseError m $ "`" <> renderDD (H.modulePathMap h) dd <> "` is not a constructor"
 
 resolveConstructorMaybe ::
   DD.DefiniteDescription ->
@@ -157,7 +161,7 @@ resolveConstructorMaybe dd gn = do
 
 interpretGlobalName :: H.Handle -> Hint -> DD.DefiniteDescription -> GN.GlobalName -> App WT.WeakTerm
 interpretGlobalName h m dd gn = do
-  let dd' = readableDD' (H.currentModule h) dd
+  let dd' = renderDD (H.modulePathMap h) dd
   case gn of
     GN.TopLevelFuncTerm argNum isConstLike isDestPassing -> do
       ensureRuntimeTermStage m h dd
@@ -204,27 +208,28 @@ interpretMetaConstant h m dd gn impArgs = do
   let call = m :< WT.PiElim PEK.Normal callee impArgs [] defaultArgs
   return $ m :< WT.CodeElim call
 
-interpretGlobalTypeName :: Hint -> DD.DefiniteDescription -> GN.GlobalName -> App WT.WeakType
-interpretGlobalTypeName m dd gn = do
+interpretGlobalTypeName :: H.Handle -> Hint -> DD.DefiniteDescription -> GN.GlobalName -> App WT.WeakType
+interpretGlobalTypeName h m dd gn = do
+  let dd' = renderDD (H.modulePathMap h) dd
   case gn of
     GN.TopLevelFuncTerm {} -> do
-      raiseError m $ "`" <> DD.reify dd <> "` is a term name and cannot appear in type position"
+      raiseError m $ "`" <> dd' <> "` is a term name and cannot appear in type position"
     GN.TopLevelMetaTerm {} -> do
-      raiseError m $ "`" <> DD.reify dd <> "` is a term name and cannot appear in type position"
+      raiseError m $ "`" <> dd' <> "` is a term name and cannot appear in type position"
     GN.TopLevelFuncType argNum isConstLike _ -> do
       return $ interpretTopLevelFuncType m dd argNum isConstLike
     GN.Data argNum _ isConstLike ->
       return $ interpretTopLevelFuncType m dd argNum isConstLike
     GN.DataIntro {} ->
-      raiseError m $ "`" <> DD.reify dd <> "` is a constructor and cannot appear in type position"
+      raiseError m $ "`" <> dd' <> "` is a constructor and cannot appear in type position"
     GN.PrimType primNum ->
       return $ m :< WT.PrimType primNum
     GN.PrimOp {} ->
-      raiseError m $ "`" <> DD.reify dd <> "` is not a type"
+      raiseError m $ "`" <> dd' <> "` is not a type"
     GN.Rule {} ->
-      raiseError m $ "`" <> DD.reify dd <> "` is not a type"
+      raiseError m $ "`" <> dd' <> "` is not a type"
     GN.Trope ->
-      raiseError m $ "`" <> DD.reify dd <> "` is a trope and cannot appear in type position"
+      raiseError m $ "`" <> dd' <> "` is a trope and cannot appear in type position"
 
 interpretTopLevelFuncTerm ::
   Hint ->
@@ -255,7 +260,7 @@ interpretTopLevelFuncType m dd argNum isConstLike = do
 ensureRuntimeTermStage :: Hint -> H.Handle -> DD.DefiniteDescription -> App ()
 ensureRuntimeTermStage m h dd = do
   let stage = H.currentStage h
-  let dd' = readableDD' (H.currentModule h) dd
+  let dd' = renderDD (H.modulePathMap h) dd
   when (stage > 0) $ do
     raiseError m $
       "`"
@@ -267,7 +272,7 @@ ensureRuntimeTermStage m h dd = do
 ensureMetaTermStage :: Hint -> H.Handle -> DD.DefiniteDescription -> App ()
 ensureMetaTermStage m h dd = do
   let stage = H.currentStage h
-  let dd' = readableDD' (H.currentModule h) dd
+  let dd' = renderDD (H.modulePathMap h) dd
   when (stage < 1) $ do
     raiseError m $
       "`"
@@ -281,7 +286,7 @@ castFromIntToBool h e@(m :< _) = do
   let i1 = m :< WT.PrimType (PT.Int PNS.IntSize1)
   l <- liftEither $ DD.getLocatorPair m C.coreBool
   (dd, (_, gn)) <- resolveLocator h m l False
-  bool <- interpretGlobalTypeName m dd gn
+  bool <- interpretGlobalTypeName h m dd gn
   t <- liftIO $ WT.createTypeHole (H.gensymHandle h) m []
   x1 <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) "arg"
   x2 <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) "arg"

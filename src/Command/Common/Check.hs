@@ -33,8 +33,8 @@ import Kernel.Common.Trace qualified as Trace
 import Kernel.Elaborate.Elaborate qualified as Elaborate
 import Kernel.Elaborate.Internal.Handle.Elaborate qualified as Elaborate
 import Kernel.Load.Load qualified as Load
-import Kernel.Parse.Interpret qualified as Interpret
 import Kernel.Parse.Internal.Handle.UnusedTopLevelName qualified as UnusedTopLevelName
+import Kernel.Parse.Interpret qualified as Interpret
 import Kernel.Parse.Parse qualified as Parse
 import Kernel.Unravel.Unravel qualified as Unravel
 import Language.WeakTerm.WeakStmt (WeakStmt)
@@ -43,7 +43,7 @@ import Logger.Log
 import Logger.Log qualified as L
 import Path
 
-data Handle = Handle
+newtype Handle = Handle
   { globalHandle :: Global.Handle
   }
 
@@ -150,13 +150,13 @@ checkSource h traceConfig localHandle target source (cacheOrStmtList, logs) = do
 
 newTraceConfig :: Handle -> App Trace.Config
 newTraceConfig h = do
-  modulePathMap <- liftIO $ ModulePath.get $ Global.modulePathHandle $ globalHandle h
   let traceReport = Console.getTraceConfig $ Global.consoleHandle $ globalHandle h
-  either raiseError' return $ Trace.new modulePathMap traceReport
+  either raiseError' return $ Trace.new (Env.getMainModule $ Global.envHandle $ globalHandle h) traceReport
 
 registerUnusedTopLevelNameRemarks :: Handle -> App ()
 registerUnusedTopLevelNameRemarks h = do
-  logs <- liftIO $ UnusedTopLevelName.flushRemarks $ Global.unusedTopLevelNameHandle $ globalHandle h
+  modulePathMap <- liftIO $ ModulePath.get $ Global.modulePathHandle $ globalHandle h
+  logs <- liftIO $ UnusedTopLevelName.flushRemarks modulePathMap $ Global.unusedTopLevelNameHandle $ globalHandle h
   liftIO $ GlobalRemark.insert (Global.globalRemarkHandle $ globalHandle h) logs
 
 unsnoc :: [a] -> Maybe ([a], a)

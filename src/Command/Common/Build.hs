@@ -30,6 +30,7 @@ import Kernel.Clarify.Clarify qualified as Clarify
 import Kernel.Common.Cache
 import Kernel.Common.ClangOption qualified as CL
 import Kernel.Common.CreateGlobalHandle qualified as Global
+import Kernel.Common.Handle.Global.Env qualified as Env
 import Kernel.Common.Handle.Global.GlobalRemark qualified as GlobalRemark
 import Kernel.Common.Handle.Global.ModulePath qualified as ModulePath
 import Kernel.Common.Handle.Global.Path qualified as Path
@@ -105,9 +106,8 @@ buildTarget h (M.MainModule baseModule) target = do
       "Build configuration: target=" <> T.pack (show target') <> ", outputs=" <> T.pack (show $ _outputKindList h) <> ", skip-link=" <> T.pack (show $ _shouldSkipLink h) <> ", execute=" <> T.pack (show $ _shouldExecute h)
   unravelHandle <- liftIO $ Unravel.new (globalHandle h)
   (artifactTime, dependenceSeq) <- Unravel.unravel unravelHandle baseModule target'
-  modulePathMap <- liftIO $ ModulePath.get $ Global.modulePathHandle $ globalHandle h
   let traceReport = Console.getTraceConfig $ Global.consoleHandle $ globalHandle h
-  traceConfig <- either raiseError' return $ Trace.new modulePathMap traceReport
+  traceConfig <- either raiseError' return $ Trace.new (Env.getMainModule $ Global.envHandle $ globalHandle h) traceReport
   let moduleList = nubOrdOn M.moduleID $ map sourceModule dependenceSeq
   didPerformForeignCompilation <- compileForeign h target moduleList
   let loadHandle = Load.new (globalHandle h)
@@ -189,7 +189,8 @@ compile h traceConfig target outputKindList contentSeq = do
 
 registerUnusedTopLevelNameRemarks :: Handle -> App ()
 registerUnusedTopLevelNameRemarks h = do
-  logs <- liftIO $ UnusedTopLevelName.flushRemarks $ Global.unusedTopLevelNameHandle $ globalHandle h
+  modulePathMap <- liftIO $ ModulePath.get $ Global.modulePathHandle $ globalHandle h
+  logs <- liftIO $ UnusedTopLevelName.flushRemarks modulePathMap $ Global.unusedTopLevelNameHandle $ globalHandle h
   liftIO $ GlobalRemark.insert (Global.globalRemarkHandle $ globalHandle h) logs
 
 shouldRegisterUnusedTopLevelNameRemarks :: Target -> Bool
@@ -283,9 +284,8 @@ compileEntryPoint h target outputKindList = do
 
 newTraceConfig :: Handle -> App Trace.Config
 newTraceConfig h = do
-  modulePathMap <- liftIO $ ModulePath.get $ Global.modulePathHandle $ globalHandle h
   let traceReport = Console.getTraceConfig $ Global.consoleHandle $ globalHandle h
-  either raiseError' return $ Trace.new modulePathMap traceReport
+  either raiseError' return $ Trace.new (Env.getMainModule $ Global.envHandle $ globalHandle h) traceReport
 
 execute :: Handle -> Bool -> MainTarget -> [String] -> App ()
 execute h shouldExecute target args = do

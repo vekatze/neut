@@ -29,6 +29,7 @@ import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.Data qualified as Data
 import Kernel.Common.Handle.Global.GlobalRemark qualified as GlobalRemark
 import Kernel.Common.Handle.Global.KeyArg qualified as KeyArg
+import Kernel.Common.Handle.Global.ModulePath qualified as ModulePath
 import Kernel.Common.Handle.Global.OptimizableData qualified as OptimizableData
 import Kernel.Common.Handle.Global.Platform qualified as Platform
 import Kernel.Common.Handle.Global.Resource qualified as Resource
@@ -36,7 +37,6 @@ import Kernel.Common.Handle.Global.Type qualified as Type
 import Kernel.Common.Handle.Local.Tag qualified as Tag
 import Kernel.Common.ManageCache qualified as Cache
 import Kernel.Common.OptimizableData qualified as OD
-import Kernel.Common.ReadableDD qualified as ReadableDD
 import Kernel.Common.Source qualified as Source
 import Kernel.Common.Target hiding (Main)
 import Kernel.Common.Trace qualified as Trace
@@ -139,9 +139,10 @@ analyzeStmtList h stmtList = do
 
 reportTrace :: Handle -> Report.TracePhase -> T.Text -> WeakStmt -> IO ()
 reportTrace h phase stage stmt = do
+  modulePathMap <- ModulePath.get $ Global.modulePathHandle (globalHandle h)
   case stmt of
     WeakStmtDefineTerm _ stmtKind _ name _ expArgs _ cod body
-      | Trace.matches (traceConfig h) phase name ->
+      | Trace.matches (traceConfig h) modulePathMap phase name ->
           Logger.trace (Global.loggerHandle $ globalHandle h) $
             "[" <> stage <> "]\n" <> toTextDefinition stmtKind name expArgs cod body
     _ ->
@@ -762,7 +763,7 @@ recursiveTypeMessage h name =
 
 showDD :: Handle -> DD.DefiniteDescription -> T.Text
 showDD h =
-  ReadableDD.readableDD' (Source.sourceModule (currentSource h))
+  ModulePath.renderDD (modulePathMap h)
 
 elaborate' :: Handle -> WT.WeakTerm -> App TM.Term
 elaborate' h term = do

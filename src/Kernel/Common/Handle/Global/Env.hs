@@ -27,7 +27,7 @@ import Language.Common.SourceLocator qualified as SL
 import Language.Common.StrictGlobalLocator qualified as SGL
 import Path
 
-data Handle = Handle
+newtype Handle = Handle
   { _mainModule :: MainModule
   }
 
