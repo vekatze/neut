@@ -137,12 +137,6 @@ renderSource modulePathMap source = do
   let moduleID = M.moduleID sourceModule
   let modulePath = Map.lookupDefault [MID.reify moduleID] moduleID modulePathMap
   locator <- Source.getBaseReadableLocator source
-  return $ renderLastSegmentWithLocator modulePath locator
-
-renderLastSegmentWithLocator :: ModulePath -> T.Text -> T.Text
-renderLastSegmentWithLocator modulePath locator = do
-  case reverse modulePath of
-    [] ->
-      locator
-    lastSegment : _ ->
-      lastSegment <> nsSep <> locator
+  if null modulePath
+    then return locator
+    else return $ T.intercalate nsSep modulePath <> routeSep <> locator
