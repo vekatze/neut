@@ -7,6 +7,7 @@ where
 
 import Data.HashMap.Strict qualified as Map
 import Data.IntMap qualified as IntMap
+import Data.List (foldl')
 import Gensym.Handle qualified as Gensym
 import Language.Common.CreateSymbol qualified as Gensym
 import Language.Common.Ident
@@ -31,8 +32,12 @@ new substHandle gensymHandle defMap = do
 
 unionSubst :: Handle -> C.SubstValue -> Handle
 unionSubst (Handle {..}) newSubst = do
-  let subst' = IntMap.union newSubst subst
+  let subst' = IntMap.foldlWithKey' insertSubst subst newSubst
   Handle {subst = subst', ..}
+
+insertSubst :: C.SubstValue -> Int -> C.Value -> C.SubstValue
+insertSubst currentSubst ident value = do
+  IntMap.insert ident value currentSubst
 
 reduce :: Handle -> C.Comp -> IO C.Comp
 reduce h term = do
@@ -52,65 +57,14 @@ reduce h term = do
           return $ C.PiElimDownElim forceInline v' ds'
     C.SigmaElim shouldDeallocate offset size xs v e -> do
       let v' = Subst.substValue (subst h) v
-      case v' of
-        C.SigmaIntro _ ds
-          | length ds >= offset + length xs -> do
-              let ds' = take (length xs) $ drop offset ds
-              let h' = unionSubst h (IntMap.fromList (zip (map Ident.toInt xs) ds'))
-              reduce h' e
-        _ -> do
-          xs' <- mapM (Gensym.newIdentFromIdent (gensymHandle h)) xs
-          let h' = unionSubst h (IntMap.fromList (zip (map Ident.toInt xs) (map C.VarLocal xs')))
-          e' <- reduce h' e
-          case e' of
-            C.UpIntro (C.SigmaIntro _ ds)
-              | offset == 0,
-                length xs == size,
-                Just ys <- mapM extractIdent ds,
-                xs' == ys ->
-                  return $ C.UpIntro v -- eta-reduce (full read only)
-            C.Unreachable ->
-              return C.Unreachable
-            _ ->
-              case xs' of
-                [] ->
-                  return e'
-                _ ->
-                  return $ C.SigmaElim shouldDeallocate offset size xs' v' e'
+      reduceSigmaElim h shouldDeallocate offset size xs v' e
     C.UpIntro d -> do
       return $ C.UpIntro $ Subst.substValue (subst h) d
     C.UpIntroVoid -> do
       return C.UpIntroVoid
     C.UpElim isReducible x e1 e2 -> do
       e1' <- reduce h e1
-      case e1' of
-        C.UpIntro v
-          | isReducible -> do
-              let h' = unionSubst h $ IntMap.singleton (Ident.toInt x) v
-              reduce h' e2
-        C.UpElim isReducible' y ey1 ey2 -> do
-          -- commutative conversion
-          e2' <- reduce h e2
-          reduce h $ C.UpElim isReducible' y ey1 $ C.UpElim isReducible x ey2 e2'
-        C.SigmaElim b offset size ys vy ey -> do
-          -- commutative conversion
-          e2' <- reduce h e2
-          reduce h $ C.SigmaElim b offset size ys vy $ C.UpElim isReducible x ey e2'
-        C.Unreachable ->
-          return C.Unreachable
-        _ -> do
-          x' <- Gensym.newIdentFromIdent (gensymHandle h) x
-          let h' = unionSubst h $ IntMap.singleton (Ident.toInt x) (C.VarLocal x')
-          e2' <- reduce h' e2
-          case e2' of
-            C.Unreachable ->
-              return C.Unreachable
-            C.UpIntro (C.VarLocal y)
-              | x' == y,
-                isReducible ->
-                  return e1' -- eta-reduce
-            _ ->
-              return $ C.UpElim isReducible x' e1' e2'
+      reduceUpElim h isReducible x e1' e2
     C.UpElimCallVoid f vs e2 -> do
       let f' = Subst.substValue (subst h) f
       let vs' = map (Subst.substValue (subst h)) vs
@@ -178,7 +132,9 @@ reduce h term = do
           let defaultBranch' = rewriteWriteToDestBranch dest' sizeComp' defaultBranch
           let caseList' = map (\(tag, branch) -> (tag, rewriteWriteToDestBranch dest' sizeComp' branch)) caseList
           ignoredVar <- Gensym.newIdentFromText (gensymHandle h) "_"
-          reduce h $ C.UpElim True ignoredVar (C.EnumElim fvInfo disc defaultBranch' caseList') cont'
+          let rewritten = C.UpElim True ignoredVar (C.EnumElim fvInfo disc defaultBranch' caseList') cont'
+          refreshed <- Subst.refresh (substHandle h) rewritten
+          reduce h refreshed
         C.Unreachable ->
           return C.Unreachable
         _ ->
@@ -201,6 +157,75 @@ reduce h term = do
           return $ C.Free x' size cont'
     C.Unreachable -> do
       return C.Unreachable
+
+reduceSigmaElim :: Handle -> Bool -> Int -> Int -> [Ident] -> C.Value -> C.Comp -> IO C.Comp
+reduceSigmaElim h shouldDeallocate offset size xs v e = do
+  case v of
+    C.SigmaIntro _ ds
+      | length ds >= offset + length xs -> do
+          let ds' = take (length xs) $ drop offset ds
+          let h' = unionSubst h (IntMap.fromList (zip (map Ident.toInt xs) ds'))
+          reduce h' e
+    _ -> do
+      let h' = deleteSubstList h xs
+      e' <- reduce h' e
+      case e' of
+        C.UpIntro (C.SigmaIntro _ ds)
+          | offset == 0,
+            length xs == size,
+            Just ys <- mapM extractIdent ds,
+            xs == ys ->
+              return $ C.UpIntro v
+        C.Unreachable ->
+          return C.Unreachable
+        _ -> do
+          case xs of
+            [] ->
+              return e'
+            _ ->
+              return $ C.SigmaElim shouldDeallocate offset size xs v e'
+
+reduceUpElim :: Handle -> C.IsReducible -> Ident -> C.Comp -> C.Comp -> IO C.Comp
+reduceUpElim h isReducible x e1 e2 = do
+  case e1 of
+    C.UpIntro v
+      | isReducible -> do
+          let h' = unionSubst h $ IntMap.singleton (Ident.toInt x) v
+          reduce h' e2
+    C.UpElim isReducible' y ey1 ey2 -> do
+      e2' <- reduce h e2
+      reduceUpElim h isReducible' y ey1 $ C.UpElim isReducible x ey2 e2'
+    C.SigmaElim shouldDeallocate offset size ys vy ey -> do
+      e2' <- reduce h e2
+      reduceSigmaElim h shouldDeallocate offset size ys vy $ C.UpElim isReducible x ey e2'
+    C.Unreachable ->
+      return C.Unreachable
+    _ -> do
+      let h' = deleteSubst h x
+      e2' <- reduce h' e2
+      case e2' of
+        C.Unreachable ->
+          return C.Unreachable
+        C.UpIntro (C.VarLocal y)
+          | x == y,
+            isReducible ->
+              return e1
+        _ ->
+          return $ C.UpElim isReducible x e1 e2'
+
+deleteSubst :: Handle -> Ident -> Handle
+deleteSubst h ident = do
+  let subst' = IntMap.delete (Ident.toInt ident) (subst h)
+  h {subst = subst'}
+
+deleteSubstList :: Handle -> [Ident] -> Handle
+deleteSubstList h identList = do
+  let subst' = foldl' deleteSubstByIdent (subst h) identList
+  h {subst = subst'}
+
+deleteSubstByIdent :: C.SubstValue -> Ident -> C.SubstValue
+deleteSubstByIdent currentSubst ident = do
+  IntMap.delete (Ident.toInt ident) currentSubst
 
 rewriteWriteToDestBranch ::
   C.Value ->
@@ -229,8 +254,9 @@ valueToEnumInt value = do
 graftVoidReduce :: Handle -> C.Comp -> C.Comp -> IO C.Comp
 graftVoidReduce h e cont = do
   case graftVoid e cont of
-    Just e' ->
-      reduce h e'
+    Just e' -> do
+      refreshed <- Subst.refresh (substHandle h) e'
+      reduce h refreshed
     Nothing ->
       return e
 
