@@ -68,6 +68,7 @@
 - [let x on y1, ..., yn = e1; e2](#on)
 - [\*e](#e-1)
 - [name::(e1, ..., en)](#namee1--en)
+- [name::{x1 := e1, ..., xn := en}](#namex1--e1--xn--en)
 - [name::[e1, ..., en]](#namee1--en-1)
 - [if](#if)
 - [when cond { e }](#when-cond--e-)
@@ -3441,6 +3442,63 @@ unquote {
 ### Type
 
 Derived from the desugared form.
+
+## `name::{x1 := e1, ..., xn := en}`
+
+`name::{x1 := e1, ..., xn := en}` is an alternative notation for calling a fixed-arity meta function. Arguments are matched by name, so their order does not matter.
+
+### Example
+
+```neut
+define-meta make-pair<a, b>(left: 'a, right: 'b) -> 'pair(a, b) {
+  quote {
+    let left = unquote {left};
+    let right = unquote {right};
+    Pair(left, right)
+  }
+}
+
+define use-meta() -> pair(int, bool) {
+  make-pair::{right := True, left := 10}
+}
+```
+
+### Syntax
+
+```neut
+name::{x1 := e1, ..., xn := en}
+name::<t1, ..., tm>{x1 := e1, ..., xn := en}
+```
+
+### Semantics
+
+```neut
+name::{x1 := e1, ..., xn := en}
+
+↓
+
+unquote {
+  name{x1 := quote {e1}, ..., xn := quote {en}}
+}
+
+---
+
+name::<t1, ..., tm>{x1 := e1, ..., xn := en}
+
+↓
+
+unquote {
+  name<t1, ..., tm>{x1 := quote {e1}, ..., xn := quote {en}}
+}
+```
+
+### Type
+
+Derived from the desugared form.
+
+### Note
+
+As with ordinary keyword application, if an argument is a variable with the same name as the parameter, you can use the shorthand `name::{x1, ..., xn}`.
 
 ## `name::[e1, ..., en]`
 
