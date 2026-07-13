@@ -79,7 +79,17 @@ evaluateInspectType h m moduleID typeExpr = do
                   let len = length dataArgs
                   reportMacroError h m $
                     "inspect-type: `vector` expects 1 argument, but got " <> T.pack (show len) <> " arguments."
-            else returnTypeValueIntValue h m moduleID $ TypeValue.Wrapper arg
+            else do
+              if dataName == makeArrayDD moduleID
+                then do
+                  case dataArgs of
+                    [dataArg] ->
+                      returnTypeValueIntValue h m moduleID $ TypeValue.Array dataArg
+                    _ -> do
+                      let len = length dataArgs
+                      reportMacroError h m $
+                        "inspect-type: `array` expects 1 argument, but got " <> T.pack (show len) <> " arguments."
+                else returnTypeValueIntValue h m moduleID $ TypeValue.Wrapper arg
         _ -> do
           let consInfoList' = map consToTypeValue consInfoList
           let isEnum = all (\consInfo -> DI.isConstLike consInfo && null (DI.consArgs consInfo)) consInfoList
@@ -141,6 +151,11 @@ makeVectorDD moduleID = do
   let vectorSGL = SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.vectorLocator}
   DD.newByGlobalLocator vectorSGL BN.vector
 
+makeArrayDD :: MID.ModuleID -> DD.DefiniteDescription
+makeArrayDD moduleID = do
+  let arraySGL = SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.arrayLocator}
+  DD.newByGlobalLocator arraySGL BN.array
+
 consToTypeValue ::
   DI.ConsInfo (BinderF TM.Type) ->
   TypeValue.Constructor
@@ -152,6 +167,8 @@ isConstTypeTag :: TypeTag.TypeTag -> Bool
 isConstTypeTag tt =
   case tt of
     TypeTag.Vector ->
+      False
+    TypeTag.Array ->
       False
     TypeTag.Algebraic ->
       False
@@ -195,6 +212,8 @@ returnTypeValueIntValue h m moduleID typeValue = do
       namesListTerm <- constructListTermFromTerms m listSgl elemType nameTerms
       return $ m :< TM.DataIntro attr consName [] [namesListTerm]
     TypeValue.Vector t -> do
+      return $ m :< TM.DataIntro attr consName [] [m :< TM.TauIntro t]
+    TypeValue.Array t -> do
       return $ m :< TM.DataIntro attr consName [] [m :< TM.TauIntro t]
     TypeValue.Wrapper t -> do
       return $ m :< TM.DataIntro attr consName [] [m :< TM.TauIntro t]
