@@ -9,6 +9,7 @@ module Language.Common.SourceLocator
     typeValueLocator,
     binaryLocator,
     vectorLocator,
+    arrayLocator,
     eitherLocator,
     pairLocator,
     unitLocator,
@@ -79,6 +80,10 @@ binaryLocator =
 vectorLocator :: SourceLocator
 vectorLocator =
   SourceLocator $(mkRelFile "vector")
+
+arrayLocator :: SourceLocator
+arrayLocator =
+  SourceLocator $(mkRelFile "array")
 
 listLocator :: SourceLocator
 listLocator =

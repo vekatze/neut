@@ -26,6 +26,7 @@ module Language.Common.BaseName
     fieldLayout,
     binary,
     vector,
+    array,
     left,
     right,
     eitherType,
@@ -181,6 +182,10 @@ vector :: BaseName
 vector =
   MakeBaseName "vector"
 
+array :: BaseName
+array =
+  MakeBaseName "array"
+
 left :: BaseName
 left =
   MakeBaseName "Left"
@@ -294,6 +299,8 @@ fromTypeTag tt =
       MakeBaseName "Binary"
     TT.Vector ->
       MakeBaseName "Vector"
+    TT.Array ->
+      MakeBaseName "Array"
     TT.Wrapper ->
       MakeBaseName "Wrapper"
     TT.BoxT ->

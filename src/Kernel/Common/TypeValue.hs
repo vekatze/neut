@@ -52,6 +52,7 @@ data TypeValue
   | Rune
   | Binary
   | Vector TM.Type
+  | Array TM.Type
   | Wrapper TM.Type
   | BoxT TM.Type
 
@@ -100,6 +101,8 @@ toTypeTag tv =
       TT.Binary
     Vector _ ->
       TT.Vector
+    Array _ ->
+      TT.Array
     Wrapper _ ->
       TT.Wrapper
     BoxT _ ->
