@@ -16,6 +16,7 @@ import Command.Common.Build.Generate qualified as Gen
 import Command.Common.Build.Install qualified as Install
 import Command.Common.Build.Link qualified as Link
 import Console.Handle qualified as Console
+import Control.Concurrent (getNumCapabilities)
 import Control.Monad
 import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.IO.Class
@@ -131,8 +132,15 @@ buildTarget h (M.MainModule baseModule) target = do
 
 compile :: Handle -> Trace.Config -> Target -> [OutputKind] -> [(Source, Either Cache T.Text)] -> App ()
 compile h traceConfig target outputKindList contentSeq = do
+  withSystemTempDir "neut-object" $ \stagingDir -> do
+    compile' h traceConfig target outputKindList contentSeq stagingDir
+
+compile' :: Handle -> Trace.Config -> Target -> [OutputKind] -> [(Source, Either Cache T.Text)] -> Path Abs Dir -> App ()
+compile' h traceConfig target outputKindList contentSeq stagingDir = do
+  numCapabilities <- liftIO getNumCapabilities
+  generateHandle <- liftIO $ Gen.new (globalHandle h) stagingDir numCapabilities
   let cacheHandle = Cache.new (globalHandle h)
-  bs <- mapM (needsCodeGeneration cacheHandle . fst) contentSeq
+  bs <- mapM (needsCodeGeneration traceConfig cacheHandle outputKindList . fst) contentSeq
   forM_ (zip contentSeq bs) $ \((source, _), shouldGenerateCode) -> do
     let sourcePath = T.pack $ toFilePath $ sourceFilePath source
     let message =
@@ -161,7 +169,7 @@ compile h traceConfig target outputKindList contentSeq = do
     let ensureMainHandle = EnsureMain.new (Global.envHandle (globalHandle h))
     stmtList <- Elaborate.elaborate elaborateHandle target logs cacheOrStmt
     EnsureMain.ensureMain ensureMainHandle target source (map snd $ getStmtName stmtList)
-    b <- needsCodeGeneration cacheHandle source
+    b <- needsCodeGeneration traceConfig cacheHandle outputKindList source
     if b
       then do
         fmap Just $ liftIO $ async $ runApp $ do
@@ -171,23 +179,31 @@ compile h traceConfig target outputKindList contentSeq = do
           liftIO $ Logger.report (Global.loggerHandle (globalHandle h)) $ "Lowering: " <> T.pack (toFilePath $ sourceFilePath source)
           lowerHandle <- Lower.new gensymHandle (globalHandle h) traceConfig target defMap
           virtualCode <- Lower.lower lowerHandle stmtList' auxStmtList
-          emit h gensymHandle hp currentTime target outputKindList (Right source) virtualCode
+          emit h generateHandle gensymHandle hp currentTime target outputKindList (Right source) virtualCode
       else return Nothing
   when (shouldRegisterUnusedTopLevelNameRemarks target) $
     registerUnusedTopLevelNameRemarks h
   entryPointVirtualCode <- compileEntryPoint h target outputKindList
   entryPointAsync <- forM entryPointVirtualCode $ \(gensymHandle, src, code) -> liftIO $ do
-    async $ runApp $ emit h gensymHandle hp currentTime target outputKindList src code
+    async $ runApp $ emit h generateHandle gensymHandle hp currentTime target outputKindList src code
   errors <- fmap lefts $ mapM wait $ entryPointAsync ++ contentAsync
+  objectErrors <-
+    if null errors
+      then do
+        result <- liftIO $ runApp $ Gen.flushObjects generateHandle
+        return $ lefts [result]
+      else return []
   liftIO $ Indicator.close hp
-  if null errors
+  let allErrors = errors <> objectErrors
+  if null allErrors
     then return ()
-    else throwError $ E.join errors
-  where
-    needsCodeGeneration cacheHandle source = do
-      if Trace.isEnabled traceConfig
-        then return True
-        else Cache.needsCompilation cacheHandle outputKindList source
+    else throwError $ E.join allErrors
+
+needsCodeGeneration :: Trace.Config -> Cache.Handle -> [OutputKind] -> Source -> App Bool
+needsCodeGeneration traceConfig cacheHandle outputKindList source = do
+  if Trace.isEnabled traceConfig
+    then return True
+    else Cache.needsCompilation cacheHandle outputKindList source
 
 registerUnusedTopLevelNameRemarks :: Handle -> App ()
 registerUnusedTopLevelNameRemarks h = do
@@ -217,6 +233,7 @@ getWorkingTitle numOfItems = do
 
 emit ::
   Handle ->
+  Gen.Handle ->
   Gensym.Handle ->
   Indicator.Handle ->
   UTCTime ->
@@ -225,18 +242,17 @@ emit ::
   Either MainTarget Source ->
   LC.LowCode ->
   App ()
-emit h gensymHandle progressBar currentTime target outputKindList src code = do
+emit h generateHandle gensymHandle progressBar currentTime target outputKindList src code = do
   emitHandle <- Emit.new gensymHandle (globalHandle h) target
-  let llvmHandle = Gen.new (globalHandle h)
   let clangOptions = getCompileOption target
   llvmIR' <- liftIO $ Emit.emit emitHandle code
+  progressLabel <- liftIO $ getProgressLabel h src
   forM_ outputKindList $ \outputKind -> do
     case outputKind of
       OK.Object -> do
-        Gen.generateObject llvmHandle target clangOptions currentTime src llvmIR'
+        Gen.generateObject generateHandle target clangOptions currentTime progressLabel src llvmIR'
       OK.LLVM -> do
-        Gen.generateAsm llvmHandle target currentTime src llvmIR'
-  progressLabel <- liftIO $ getProgressLabel h src
+        Gen.generateAsm generateHandle target currentTime src llvmIR'
   liftIO $ Indicator.increment progressBar progressLabel
 
 getProgressLabel :: Handle -> Either MainTarget Source -> IO T.Text

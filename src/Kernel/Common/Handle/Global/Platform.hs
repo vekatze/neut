@@ -37,6 +37,7 @@ import System.Directory
 import System.Environment (lookupEnv)
 import System.Info qualified as SI
 import System.Process (CmdSpec (RawCommand))
+import Text.ParserCombinators.ReadP (readP_to_S)
 
 data Handle = Handle
   { _arch :: Arch.Arch,
@@ -79,7 +80,7 @@ new loggerHandle = do
     _os <- getOS' Nothing
     _clangTargetTriple <- resolveClangTargetTriple _arch _os
     let _baseSize = Arch.dataSizeOf _arch
-    _clangDigest <- calculateClangDigest loggerHandle
+    _clangDigest <- calculateClangDigest loggerHandle _clangTargetTriple
     return $ Handle {..}
 
 getArch' :: Maybe Hint -> App Arch.Arch
@@ -130,14 +131,56 @@ resolveClangTargetTriple arch os = do
       return "x86_64-unknown-linux-gnu"
     (Arch.Arm64, O.Linux) ->
       return "aarch64-unknown-linux-gnu"
-    (Arch.Arm64, O.Darwin) ->
-      return "arm64-apple-darwin"
+    (Arch.Arm64, O.Darwin) -> do
+      deploymentTarget <- resolveMacOSDeploymentTarget
+      return $ "arm64-apple-macosx" <> deploymentTarget
     _ -> do
       let p = P.Platform {P.arch = arch, P.os = os}
       raiseError' $ "Unsupported target platform: " <> P.reify p
 
-calculateClangDigest :: Logger.Handle -> App T.Text
-calculateClangDigest h = do
+resolveMacOSDeploymentTarget :: App String
+resolveMacOSDeploymentTarget = do
+  mDeploymentTarget <- liftIO $ lookupEnv "MACOSX_DEPLOYMENT_TARGET"
+  case mDeploymentTarget of
+    Nothing ->
+      return "11.0.0"
+    Just deploymentTarget ->
+      normalizeMacOSDeploymentTarget deploymentTarget
+
+normalizeMacOSDeploymentTarget :: String -> App String
+normalizeMacOSDeploymentTarget deploymentTarget = do
+  let parsedVersionList =
+        [ parsedVersion
+          | (parsedVersion, rest) <- readP_to_S V.parseVersion deploymentTarget,
+            null rest
+        ]
+  case parsedVersionList of
+    [parsedVersion] -> do
+      let componentList = V.versionBranch parsedVersion
+      case componentList of
+        [major] ->
+          validateMacOSDeploymentTarget deploymentTarget [major, 0, 0]
+        [major, minor] ->
+          validateMacOSDeploymentTarget deploymentTarget [major, minor, 0]
+        [major, minor, patch] ->
+          validateMacOSDeploymentTarget deploymentTarget [major, minor, patch]
+        _ ->
+          invalidMacOSDeploymentTarget deploymentTarget
+    _ ->
+      invalidMacOSDeploymentTarget deploymentTarget
+
+validateMacOSDeploymentTarget :: String -> [Int] -> App String
+validateMacOSDeploymentTarget original componentList = do
+  if componentList < [11, 0, 0]
+    then raiseError' $ "MACOSX_DEPLOYMENT_TARGET must be at least 11.0 for arm64: " <> T.pack original
+    else return $ V.showVersion $ V.makeVersion componentList
+
+invalidMacOSDeploymentTarget :: String -> App a
+invalidMacOSDeploymentTarget deploymentTarget =
+  raiseError' $ "Invalid MACOSX_DEPLOYMENT_TARGET: " <> T.pack deploymentTarget
+
+calculateClangDigest :: Logger.Handle -> String -> App T.Text
+calculateClangDigest h targetTriple = do
   clang <- liftIO getClang
   let spec = RunProcess.Spec {cmdspec = RawCommand clang ["--version"], cwd = Nothing}
   let h' = RunProcess.new h
@@ -145,7 +188,8 @@ calculateClangDigest h = do
   case output of
     Right value -> do
       liftIO $ Logger.report h $ "Clang info:\n" <> decodeUtf8 value
-      return $ decodeUtf8 $ hashAndEncode value
+      let targetInfo = encodeUtf8 $ "\nTarget triple: " <> T.pack targetTriple
+      return $ decodeUtf8 $ hashAndEncode $ value <> targetInfo
     Left err ->
       throwError $ newError' err
 
