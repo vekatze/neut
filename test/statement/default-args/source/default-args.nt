@@ -1,5 +1,5 @@
 import {
-  core::debug {assert, panic},
+  core::debug {assert},
   core::doc {
     Chunk,
     Chunk-Choose,
@@ -7,7 +7,7 @@ import {
     Chunk-Join,
     Chunk-Line,
     Chunk-Style,
-    Chunk-Style-N,
+    Chunk-Style-Text,
     Group,
     Nest,
     Seq,
@@ -30,7 +30,7 @@ define _simplify-chunk(x: chunk) -> chunk {
     horizontal
   | Chunk-Style(_) =>
     Chunk-Empty
-  | Chunk-Style-N(_) =>
+  | Chunk-Style-Text(_) =>
     Chunk-Empty
   | x =>
     x
@@ -52,7 +52,7 @@ define _simplify-doc(d: doc) -> doc {
 
 inline-meta vet-simple<a>(x: '&a)[ribbon-length: 'int := quote {50}] -> 'unit {
   quote {
-    let tmp = unquote {to-doc(x)};
+    let tmp = unquote {to-doc(x, quote {False})};
     pin tmp = _simplify-doc(tmp);
     pin item = show-doc(tmp, unquote {ribbon-length});
     print(item);
