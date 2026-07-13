@@ -19,6 +19,14 @@ constant-meta cm-param<_>: 'int {
   quote {22}
 }
 
+inline-meta emit-keyword-args(key1: 'int, key2: 'int, key3: 'int) -> 'unit {
+  quote {
+    print-int-line(unquote {key1});
+    print-int-line(unquote {key2});
+    print-int-line(unquote {key3});
+  }
+}
+
 define main() -> unit {
   emit-origin-outer::();
   print-int-line(unquote {
@@ -32,6 +40,7 @@ define main() -> unit {
   print-int-line(cm-inner);
   print-int-line(cm-outer);
   print-int-line(cm-param<int>);
+  emit-keyword-args::{key3 := 33, key2 := 32, key1 := 31};
 }
 
 define zen() -> unit {
