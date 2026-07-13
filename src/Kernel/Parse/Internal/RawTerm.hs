@@ -253,7 +253,10 @@ rawTermBase mode h m headSymbol c = do
                   Nothing ->
                     return (m :< RT.PiElimRule name nameC es, cArgs)
                   Just _ ->
-                    lift $ raiseError m "Rule application cannot take implicit type arguments"
+                    lift $ raiseError m "Rule application cannot take implicit type arguments",
+              do
+                (kvs, cArgs) <- keyValueArgs $ rawTermKeyValuePair h
+                return (m :< RT.PiElimMetaByKey name nameC mImpArgs cImpArgs kvs, cArgs)
             ]
         else do
           let parseByKey = do
