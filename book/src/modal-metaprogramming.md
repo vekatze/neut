@@ -201,6 +201,18 @@ define use-meta() -> pair(int, int) {
 }
 ```
 
+You can also specify arguments by name. Their order does not matter:
+
+```neut
+foo::{key3 := c, key2 := b, key1 := a}
+```
+
+This is the same as:
+
+```neut
+unquote {foo{key3 := quote {c}, key2 := quote {b}, key1 := quote {a}}}
+```
+
 If the meta function has default arguments, you can override them as follows:
 
 ```neut

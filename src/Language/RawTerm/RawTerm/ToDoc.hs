@@ -135,6 +135,19 @@ toDoc term =
               PI.inject $ SE.decodeHorizontallyIfPossible $ fmap toDoc es,
               PI.inject $ attachComment c3 $ decPiElimKey defaultArgs
             ]
+    _ :< PiElimMetaByKey name c mImpArgs c2 kvs -> do
+      case mImpArgs of
+        Nothing ->
+          PI.arrange
+            [ PI.inject $ attachComment (map toLineComment c) $ metaNameToDoc name,
+              PI.inject $ decPiElimKey kvs
+            ]
+        Just impArgs ->
+          PI.arrange
+            [ PI.inject $ attachComment (map toLineComment $ c ++ c2) $ metaNameToDoc name,
+              PI.inject $ SE.decodeHorizontallyIfPossible $ fmap typeToDoc impArgs,
+              PI.inject $ decPiElimKey kvs
+            ]
     _ :< PiElimExact c e ->
       PI.arrange
         [ PI.delimiterLeftAligned $ D.text "exact",

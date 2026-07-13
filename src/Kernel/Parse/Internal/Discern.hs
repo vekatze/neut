@@ -511,6 +511,11 @@ discern h term =
       let args = fmap quote es
       let defaultArgs = mDefaultArgs <&> fmap (\(mx, k, c1, c2, e) -> (mx, k, c1, c2, quote e))
       discern h $ m :< RT.CodeElim [] [] (m :< RT.PiElim headTerm [] mImpArgs [] args [] defaultArgs, [])
+    m :< RT.PiElimMetaByKey name _ mImpArgs _ kvs -> do
+      let quote (mx, k, c1, c2, e@(me :< _)) = (mx, k, c1, c2, me :< RT.CodeIntro RT.CodeVariantK [] [] (e, []))
+      let args = fmap quote kvs
+      let call = m :< RT.PiElimByKey name [] mImpArgs [] args Nothing
+      discern h $ m :< RT.CodeElim [] [] (call, [])
     m :< RT.PiElimExact _ e -> do
       e' <- discern h e
       return $ m :< WT.PiElimExact e'
