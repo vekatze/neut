@@ -64,13 +64,21 @@ emit h lowCode = do
   case lowCode of
     LC.LowCodeMain mainDef lowCodeInfo -> do
       main <- emitMain h mainDef
+      let moduleHeader = emitModuleHeader h
       let argDef = emitArgDef
       (header, body) <- emitLowCodeInfo h lowCodeInfo
-      return $ buildByteString $ header ++ argDef ++ main ++ body
+      return $ buildByteString $ moduleHeader ++ header ++ argDef ++ main ++ body
     LC.LowCodeNormal lowCodeInfo -> do
+      let moduleHeader = emitModuleHeader h
       let argDecl = emitArgDecl
       (header, body) <- emitLowCodeInfo h lowCodeInfo
-      return $ buildByteString $ header ++ argDecl ++ body
+      return $ buildByteString $ moduleHeader ++ header ++ argDecl ++ body
+
+emitModuleHeader :: Handle -> [Builder]
+emitModuleHeader h = do
+  let platformHandle = Global.platformHandle $ globalHandle h
+  let targetTriple = Platform.getClangTargetTriple platformHandle
+  ["target triple = \"" <> TE.encodeUtf8Builder (T.pack targetTriple) <> "\""]
 
 emitLowCodeInfo :: Handle -> LC.LowCodeInfo -> IO ([Builder], [Builder])
 emitLowCodeInfo h (declEnv, defList, staticTextList) = do

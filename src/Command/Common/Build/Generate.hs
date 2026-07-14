@@ -2,15 +2,21 @@ module Command.Common.Build.Generate
   ( Handle,
     new,
     generateObject,
+    flushObjects,
     generateAsm,
   )
 where
 
 import App.App (App)
 import App.Error (newError')
+import App.Run (forP_)
+import Control.Monad (forM_)
 import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.IO.Class
 import Data.ByteString.Lazy qualified as L
+import Data.Char (isAlphaNum, isAscii)
+import Data.IORef
+import Data.Map.Strict qualified as Map
 import Data.Text qualified as T
 import Data.Time.Clock
 import Kernel.Common.CreateGlobalHandle qualified as Global
@@ -31,13 +37,27 @@ data Handle = Handle
   { loggerHandle :: Logger.Handle,
     pathHandle :: Path.Handle,
     platformHandle :: Platform.Handle,
-    runProcessHandle :: RunProcess.Handle
+    runProcessHandle :: RunProcess.Handle,
+    stagingDir :: Path Abs Dir,
+    numCapabilities :: Int,
+    nextObjectIndexRef :: IORef Int,
+    pendingObjectListRef :: IORef [PendingObject]
   }
 
-new :: Global.Handle -> Handle
-new (Global.Handle {..}) = do
+data PendingObject = PendingObject
+  { stagingLLVMPath :: Path Rel File,
+    stagingObjectPath :: Path Rel File,
+    finalObjectPath :: Path Abs File,
+    objectTimeStamp :: UTCTime,
+    additionalClangOptions :: [ClangOption]
+  }
+
+new :: Global.Handle -> Path Abs Dir -> Int -> IO Handle
+new (Global.Handle {..}) stagingDir numCapabilities = do
   let runProcessHandle = RunProcess.new loggerHandle
-  Handle {..}
+  nextObjectIndexRef <- newIORef 0
+  pendingObjectListRef <- newIORef []
+  return $ Handle {..}
 
 type ClangOption = String
 
@@ -48,21 +68,20 @@ generateObject ::
   Target ->
   [ClangOption] ->
   UTCTime ->
+  T.Text ->
   Either MainTarget Source ->
   L.ByteString ->
   App ()
-generateObject h target clangOptions timeStamp sourceOrNone llvmCode = do
+generateObject h target clangOptions timeStamp sourceLabel sourceOrNone llvmCode = do
   case sourceOrNone of
     Right source -> do
       (_, outputPath) <- Path.attachOutputPath (pathHandle h) target OK.Object source
       ensureDir $ parent outputPath
-      generateObject' h clangOptions llvmCode outputPath
-      setModificationTime outputPath timeStamp
+      stageObject h sourceLabel clangOptions llvmCode outputPath timeStamp
     Left mainTarget -> do
       (_, outputPath) <- Path.getOutputPathForEntryPoint (pathHandle h) OK.Object mainTarget
       ensureDir $ parent outputPath
-      generateObject' h clangOptions llvmCode outputPath
-      setModificationTime outputPath timeStamp
+      stageObject h sourceLabel clangOptions llvmCode outputPath timeStamp
 
 generateAsm ::
   Handle ->
@@ -89,32 +108,83 @@ generateAsm' h llvmCode path = do
   liftIO $ Logger.report (loggerHandle h) $ "Saving: " <> T.pack (toFilePath path)
   liftIO $ writeLazyByteString path llvmCode
 
-generateObject' :: Handle -> [ClangOption] -> L.ByteString -> Path Abs File -> App ()
-generateObject' h additionalClangOptions llvm outputPath = do
+stageObject :: Handle -> T.Text -> [ClangOption] -> L.ByteString -> Path Abs File -> UTCTime -> App ()
+stageObject h sourceLabel additionalClangOptions llvm outputPath timeStamp = do
+  objectIndex <- liftIO $ atomicModifyIORef' (nextObjectIndexRef h) $ \index -> (index + 1, index)
+  let stagingBaseName = makeStagingBaseName objectIndex sourceLabel
+  llvmPath <- parseRelFile $ stagingBaseName <> ".ll"
+  objectPath <- parseRelFile $ stagingBaseName <> ".o"
+  liftIO $ writeLazyByteString (stagingDir h </> llvmPath) llvm
+  let pendingObject =
+        PendingObject
+          { stagingLLVMPath = llvmPath,
+            stagingObjectPath = objectPath,
+            finalObjectPath = outputPath,
+            objectTimeStamp = timeStamp,
+            additionalClangOptions
+          }
+  liftIO $ atomicModifyIORef' (pendingObjectListRef h) $ \pendingList -> (pendingObject : pendingList, ())
+
+makeStagingBaseName :: Int -> T.Text -> String
+makeStagingBaseName objectIndex sourceLabel = do
+  let normalizedLabel = T.take 120 $ T.map normalizeStagingFileNameChar sourceLabel
+  let label = if T.null normalizedLabel then "object" else T.unpack normalizedLabel
+  show objectIndex <> "-" <> label
+
+normalizeStagingFileNameChar :: Char -> Char
+normalizeStagingFileNameChar char
+  | isAscii char && (isAlphaNum char || char `elem` ("-_." :: String)) =
+      char
+  | otherwise =
+      '#'
+
+flushObjects :: Handle -> App ()
+flushObjects h = do
+  pendingObjectList <- liftIO $ readIORef (pendingObjectListRef h)
+  let objectMap = Map.fromListWith (<>) $ map (\object -> (additionalClangOptions object, [object])) pendingObjectList
+  forM_ (Map.toList objectMap) $ \(clangOptions, objectList) -> do
+    let batchSize = max 1 $ ceilingDiv (length objectList) (numCapabilities h)
+    forP_ (chunksOf batchSize objectList) $ compileObjectBatch h clangOptions
+
+compileObjectBatch :: Handle -> [ClangOption] -> [PendingObject] -> App ()
+compileObjectBatch h clangOptions objectList = do
   clang <- liftIO Platform.getClang
   let targetTriple = Platform.getClangTargetTriple (platformHandle h)
-  let optionList = clangBaseOpt targetTriple outputPath ++ additionalClangOptions
+  let inputPathList = map (toFilePath . stagingLLVMPath) objectList
+  let optionList = clangBaseOpt targetTriple ++ clangOptions ++ inputPathList
   let spec =
         RunProcess.Spec
           { cmdspec = RawCommand clang optionList,
-            cwd = Nothing
+            cwd = Just $ toFilePath $ stagingDir h
           }
-  value <- liftIO (RunProcess.run10 (runProcessHandle h) spec (RunProcess.Lazy llvm))
+  value <- liftIO $ RunProcess.run00 (runProcessHandle h) spec
   case value of
-    Right _ ->
-      return ()
+    Right _ -> do
+      forM_ objectList $ \object -> do
+        copyFile (stagingDir h </> stagingObjectPath object) (finalObjectPath object)
+        setModificationTime (finalObjectPath object) (objectTimeStamp object)
     Left err ->
       throwError $ newError' err
 
-clangBaseOpt :: String -> Path Abs File -> [String]
-clangBaseOpt targetTriple outputPath =
+clangBaseOpt :: String -> [String]
+clangBaseOpt targetTriple =
   [ "-xir",
     "-target",
     targetTriple,
     "-O2",
     "-flto=thin",
-    "-c",
-    "-",
-    "-o",
-    toFilePath outputPath
+    "-c"
   ]
+
+ceilingDiv :: Int -> Int -> Int
+ceilingDiv numerator denominator =
+  (numerator + denominator - 1) `div` denominator
+
+chunksOf :: Int -> [a] -> [[a]]
+chunksOf size xs = do
+  case xs of
+    [] ->
+      []
+    _ -> do
+      let (chunk, rest) = splitAt size xs
+      chunk : chunksOf size rest
