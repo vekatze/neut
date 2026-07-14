@@ -1,5 +1,7 @@
 module Language.Common.SourceLocator
-  ( SourceLocator (..),
+  ( SourceLocator,
+    fromPath,
+    reify,
     getRelPathText,
     toText,
     toBaseNameList,
@@ -25,6 +27,7 @@ import Data.Text qualified as T
 import GHC.Generics
 import Language.Common.BaseName qualified as BN
 import Language.Common.Const (nsSep)
+import Language.Common.NamePath qualified as NP
 import Path
 
 newtype SourceLocator = SourceLocator {reify :: Path Rel File}
@@ -41,7 +44,18 @@ instance Binary SourceLocator where
         return path
       Nothing ->
         fail $ "Could not parse given path: " <> filePath
-    return $ SourceLocator path
+    case fromPath path of
+      Just sourceLocator ->
+        return sourceLocator
+      Nothing ->
+        fail $ "Reserved source path: " <> filePath
+
+fromPath :: Path Rel File -> Maybe SourceLocator
+fromPath path = do
+  let sourceLocator = SourceLocator path
+  if BN.this `elem` toBaseNameList sourceLocator
+    then Nothing
+    else Just sourceLocator
 
 -- fixme: parametrize "/"
 toText :: SourceLocator -> T.Text
@@ -54,7 +68,7 @@ toBaseNameList sourceLocator =
 
 fromBaseNameList :: [BN.BaseName] -> Maybe SourceLocator
 fromBaseNameList baseNameList = do
-  path <- parseRelFile $ T.unpack $ T.intercalate "/" $ map BN.reify baseNameList
+  path <- parseRelFile $ T.unpack $ T.intercalate "/" $ map BN.reify $ NP.normalize baseNameList
   return $ SourceLocator path
 
 getRelPathText :: SourceLocator -> T.Text

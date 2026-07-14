@@ -3,6 +3,7 @@ module Language.Common.SourcePrefix
     canImport,
     contains,
     internalOwnerOf,
+    internalPrefixOf,
     isPrefixOf,
   )
 where
@@ -37,14 +38,15 @@ internalOwner sourceLocator = do
 
 internalOwnerOf :: [BN.BaseName] -> Maybe SourcePrefix
 internalOwnerOf baseNameList =
-  snd $ List.foldl' step ([], Nothing) baseNameList
-  where
-    step (prefix, owner) baseName = do
-      let owner' =
-            if isInternalBaseName baseName
-              then Just $ SourcePrefix prefix
-              else owner
-      (prefix ++ [baseName], owner')
+  SourcePrefix <$> internalPrefixOf baseNameList
+
+internalPrefixOf :: [BN.BaseName] -> Maybe [BN.BaseName]
+internalPrefixOf baseNameList = do
+  case [i | (i, baseName) <- zip [0 ..] baseNameList, isInternalBaseName baseName] of
+    [] ->
+      Nothing
+    indices ->
+      Just $ take (last indices) baseNameList
 
 canImport :: SGL.StrictGlobalLocator -> SGL.StrictGlobalLocator -> Bool
 canImport current target =

@@ -33,6 +33,7 @@ import Kernel.Parse.Internal.Handle.Unused qualified as Unused
 import Kernel.Parse.Internal.Handle.UnusedTopLevelName qualified as UnusedTopLevelName
 import Kernel.Parse.Internal.Handle.UsedTopLevelName qualified as UsedTopLevelName
 import Language.Common.ArgNum qualified as AN
+import Language.Common.BaseName qualified as BN
 import Language.Common.DataInfo qualified as DI
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.IsConstLike
@@ -101,23 +102,25 @@ registerGeist h tag RT.RawGeist {..} = do
       then nominalTagToGlobalName tag argNum isConstLike (isDestPassingTag tag)
       else GN.TopLevelFuncType argNum isConstLike False
 
-lookup :: Handle -> Hint.Hint -> SGL.StrictGlobalLocator -> DD.DefiniteDescription -> App (Maybe (Hint, GN.GlobalName))
-lookup h m currentLocator name = do
+lookup :: Handle -> Hint.Hint -> SGL.StrictGlobalLocator -> [BN.BaseName] -> DD.DefiniteDescription -> App (LookupResult (Hint, GN.GlobalName))
+lookup h m currentLocator bodyContext name = do
   nameMap <- liftIO $ readIORef (nameMapRef h)
   let dataSize = Platform.getDataSize (platformHandle h)
-  case lookupAvailable currentLocator name nameMap of
-    Just (mFound, _tag, gn) -> do
+  case lookupAvailable currentLocator bodyContext name nameMap of
+    Found (mFound, _tag, gn) -> do
       liftIO $ Unused.deleteGlobalLocator (unusedHandle h) $ DD.globalLocator name
       liftIO $ UsedTopLevelName.insert (usedTopLevelNameHandle h) name
       liftIO $ UnusedTopLevelName.recordReference (unusedTopLevelNameHandle h) (currentTopLevelName h) name
-      return $ Just (mFound, gn)
-    Nothing
+      return $ Found (mFound, gn)
+    Hidden ->
+      return Hidden
+    Missing
       | Just primType <- PT.fromDefiniteDescription dataSize name ->
-          return $ Just (m, GN.PrimType primType)
+          return $ Found (m, GN.PrimType primType)
       | Just primOp <- PrimOp.fromDefiniteDescription dataSize name ->
-          return $ Just (m, GN.PrimOp primOp)
+          return $ Found (m, GN.PrimOp primOp)
       | otherwise -> do
-          return Nothing
+          return Missing
 
 ensureDefFreshness :: Handle -> Hint.Hint -> DD.DefiniteDescription -> Maybe NominalTag -> Bool -> App ()
 ensureDefFreshness h m name mTag isConstLike = do
@@ -223,6 +226,8 @@ _getGlobalNames stmt = do
       [(name, (m, Nothing, GN.Trope))]
     PostRawStmtForeign {} ->
       []
+    PostRawStmtNamespace m name children ->
+      (name, (m, Nothing, GN.Namespace)) : concatMap _getGlobalNames children
 
 getGlobalNamesFromDefTerm ::
   RawStmtKindTerm DD.DefiniteDescription ->
@@ -303,6 +308,8 @@ _getGlobalNames' stmt = do
       [(name, (m, Nothing, GN.Rule kind))]
     StmtForeign {} ->
       []
+    StmtNamespace (SavedHint m) name ->
+      [(name, (m, Nothing, GN.Namespace))]
 
 toConsNameArrow ::
   AN.ArgNum ->

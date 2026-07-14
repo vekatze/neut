@@ -1,10 +1,17 @@
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+
 module Language.Common.DefiniteDescription
-  ( DefiniteDescription (..),
+  ( DefiniteDescription,
+    reify,
     new,
     localLocator,
     globalLocator,
-    getLocatorPair,
-    getLocatorPairMaybe,
+    bodySegments,
+    baseNameText,
+    extendBody,
+    appendText,
+    strictGlobalLocator,
+    globalParts,
     newByGlobalLocator,
     getFormDD,
     getNodeDD,
@@ -25,44 +32,64 @@ module Language.Common.DefiniteDescription
   )
 where
 
-import App.Error
 import Data.Binary
 import Data.ByteString.Builder
 import Data.Hashable
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
-import GHC.Generics
 import Language.Common.BaseName qualified as BN
 import Language.Common.Const
-import Language.Common.GlobalLocator qualified as GL
 import Language.Common.Ident
-import Language.Common.List (initLast)
 import Language.Common.LocalLocator qualified as LL
 import Language.Common.ModuleDigest qualified as MD
 import Language.Common.ModuleID qualified as MID
 import Language.Common.SourceLocator qualified as SL
 import Language.Common.StrictGlobalLocator qualified as SGL
-import Logger.Hint qualified as H
 
-newtype DefiniteDescription = MakeDefiniteDescription {reify :: T.Text}
-  deriving (Generic, Show)
+-- the textual form of a definite description is:
+--
+--     module.path::source.path::body.path
+--
+-- where `::` separates the three chunks and `.` separates segments in a chunk.
+newtype DefiniteDescription
+  = MakeDefiniteDescription {reify :: T.Text}
+  deriving (Show, Eq, Ord, Binary, Hashable)
 
-instance Eq DefiniteDescription where
-  dd1 == dd2 = do
-    reify dd1 == reify dd2
+make :: SGL.StrictGlobalLocator -> LL.LocalLocator -> T.Text -> DefiniteDescription
+make gl body suffix =
+  MakeDefiniteDescription $ SGL.reify gl <> doubleColon <> LL.reify body <> suffix
 
-instance Ord DefiniteDescription where
-  compare dd1 dd2 = compare (reify dd1) (reify dd2)
+reflectModuleID :: T.Text -> MID.ModuleID
+reflectModuleID modulePathText = do
+  case modulePathText of
+    "this" ->
+      MID.Main
+    "base" ->
+      MID.Base
+    _ ->
+      MID.Library $ MD.ModuleDigest modulePathText
 
-instance Binary DefiniteDescription
+globalParts :: DefiniteDescription -> Maybe (T.Text, T.Text, T.Text)
+globalParts (MakeDefiniteDescription text) = do
+  let (modulePathText, moduleRest) = T.breakOn doubleColon text
+  if T.null moduleRest
+    then Nothing
+    else do
+      let sourceAndBody = T.drop (T.length doubleColon) moduleRest
+      let (sourceText, sourceRest) = T.breakOn doubleColon sourceAndBody
+      if T.null sourceRest
+        then Nothing
+        else do
+          let bodyText = T.drop (T.length doubleColon) sourceRest
+          return (modulePathText, sourceText, bodyText)
 
-instance Hashable DefiniteDescription
+splitBodySuffix :: T.Text -> (T.Text, T.Text)
+splitBodySuffix =
+  T.breakOn "#"
 
 new :: SGL.StrictGlobalLocator -> LL.LocalLocator -> DefiniteDescription
 new gl ll =
-  MakeDefiniteDescription
-    { reify = SGL.reify gl <> nsSep <> LL.reify ll
-    }
+  make gl ll ""
 
 newByGlobalLocator :: SGL.StrictGlobalLocator -> BN.BaseName -> DefiniteDescription
 newByGlobalLocator gl name = do
@@ -82,9 +109,11 @@ wrapWithQuote x =
 -- ~> main.foo.bar#form
 appendLocalName :: DefiniteDescription -> BN.BaseName -> DefiniteDescription
 appendLocalName dd name = do
-  MakeDefiniteDescription
-    { reify = reify dd <> "#" <> BN.reify name
-    }
+  appendText dd $ "#" <> BN.reify name
+
+appendText :: DefiniteDescription -> T.Text -> DefiniteDescription
+appendText (MakeDefiniteDescription text) suffix =
+  MakeDefiniteDescription $ text <> suffix
 
 getFormDD :: DefiniteDescription -> DefiniteDescription
 getFormDD dd =
@@ -104,9 +133,7 @@ getRootDD dd =
 
 getClosureEnvDD :: DefiniteDescription -> DefiniteDescription
 getClosureEnvDD closureName =
-  MakeDefiniteDescription
-    { reify = reify closureName <> "#env"
-    }
+  appendText closureName "#env"
 
 getLambdaDD :: DefiniteDescription -> Maybe T.Text -> Int -> DefiniteDescription
 getLambdaDD dd mName i =
@@ -118,49 +145,89 @@ getMuDD dd x i =
 
 getKnotDD :: DefiniteDescription -> Int -> DefiniteDescription
 getKnotDD dd i =
-  MakeDefiniteDescription {reify = reify dd <> "#knot." <> T.pack (show i)}
+  appendText dd $ "#knot." <> T.pack (show i)
 
 getLocalMetaDD :: Int -> DefiniteDescription
 getLocalMetaDD i =
-  MakeDefiniteDescription {reify = "#meta." <> T.pack (show i)}
+  MakeDefiniteDescription $ "#meta." <> T.pack (show i)
 
 unconsDD :: DefiniteDescription -> (MID.ModuleID, T.Text)
 unconsDD dd = do
-  let nameList = T.splitOn routeSep (reify dd)
-  case nameList of
-    [route, locator] ->
-      case route of
-        "" ->
-          (MID.Main, locator)
-        "base" ->
-          (MID.Base, locator)
-        _ ->
-          (MID.Library (MD.ModuleDigest route), locator)
-    _ ->
-      error "Rule.DefiniteDescription.moduleID"
+  case globalParts dd of
+    Just (modulePathText, sourceText, bodyText) ->
+      (reflectModuleID modulePathText, sourceText <> doubleColon <> bodyText)
+    Nothing ->
+      error $ "Language.Common.DefiniteDescription.unconsDD: local name: " <> T.unpack (reify dd)
 
+-- module.path::source.path (the textual form of the strict global locator)
 globalLocator :: DefiniteDescription -> T.Text
 globalLocator dd = do
-  let nameList = T.splitOn nsSep (reify dd)
-  case initLast nameList of
-    Just (xs, _) ->
-      T.intercalate nsSep xs
-    _ ->
-      error "Rule.DefiniteDescription.globalLocator"
+  case globalParts dd of
+    Just (modulePathText, sourceText, _) ->
+      modulePathText <> doubleColon <> sourceText
+    Nothing ->
+      error $ "Language.Common.DefiniteDescription.globalLocator: local name: " <> T.unpack (reify dd)
 
+strictGlobalLocator :: DefiniteDescription -> SGL.StrictGlobalLocator
+strictGlobalLocator dd = do
+  case globalParts dd of
+    Just (modulePathText, sourceText, _) -> do
+      let sourceSegments = map BN.fromText $ T.splitOn nsSep sourceText
+      case SL.fromBaseNameList sourceSegments of
+        Just sourceLocator ->
+          SGL.new (reflectModuleID modulePathText) sourceLocator
+        Nothing ->
+          error $ "Language.Common.DefiniteDescription.strictGlobalLocator: invalid source path: " <> T.unpack sourceText
+    Nothing ->
+      error $ "Language.Common.DefiniteDescription.strictGlobalLocator: local name: " <> T.unpack (reify dd)
+
+-- the in-file body path of the name (e.g. `ns.func` in `module::src::ns.func`)
 localLocator :: DefiniteDescription -> T.Text
 localLocator dd = do
-  let nameList = T.splitOn "." (reify dd)
-  case initLast nameList of
-    Just (_, result) ->
-      result
-    _ ->
-      error "Rule.DefiniteDescription.localLocator"
+  case globalParts dd of
+    Just (_, _, bodyText) ->
+      bodyText
+    Nothing ->
+      reify dd
+
+bodySegments :: DefiniteDescription -> [BN.BaseName]
+bodySegments dd = do
+  case globalParts dd of
+    Just (_, _, bodyWithSuffix) -> do
+      let (bodyText, _) = splitBodySuffix bodyWithSuffix
+      map BN.fromText $ T.splitOn nsSep bodyText
+    Nothing ->
+      map BN.fromText $ T.splitOn nsSep $ reify dd
+
+baseNameText :: DefiniteDescription -> T.Text
+baseNameText dd = do
+  case globalParts dd of
+    Just (_, _, bodyWithSuffix) -> do
+      let (bodyText, suffix) = splitBodySuffix bodyWithSuffix
+      case reverse $ T.splitOn nsSep bodyText of
+        baseName : _ ->
+          baseName <> suffix
+        [] ->
+          error "Language.Common.DefiniteDescription.baseNameText: empty body path"
+    Nothing ->
+      reify dd
+
+extendBody :: DefiniteDescription -> [BN.BaseName] -> DefiniteDescription
+extendBody dd rest = do
+  case (globalParts dd, rest) of
+    (_, []) ->
+      dd
+    (Just (modulePathText, sourceText, bodyWithSuffix), _) -> do
+      let (bodyText, suffix) = splitBodySuffix bodyWithSuffix
+      let extension = T.intercalate nsSep $ map BN.reify rest
+      MakeDefiniteDescription $ modulePathText <> doubleColon <> sourceText <> doubleColon <> bodyText <> nsSep <> extension <> suffix
+    (Nothing, _) ->
+      dd
 
 makeResourceName :: DefiniteDescription -> Int -> DefiniteDescription
 makeResourceName baseDD resourceID = do
-  let gl = globalLocator baseDD
-  MakeDefiniteDescription $ gl <> nsSep <> BN.reify (BN.resourceName resourceID)
+  let resourceDD = newByGlobalLocator (strictGlobalLocator baseDD) BN.resource
+  appendText resourceDD $ "#" <> T.pack (show resourceID)
 
 imm :: DefiniteDescription
 imm =
@@ -177,31 +244,6 @@ cls =
 toBuilder :: DefiniteDescription -> Builder
 toBuilder dd =
   TE.encodeUtf8Builder $ toLowName dd
-
-getLocatorPair :: H.Hint -> T.Text -> Either Error (GL.GlobalLocator, LL.LocalLocator)
-getLocatorPair m varText = do
-  let nameList = T.splitOn "." varText
-  case initLast nameList of
-    Nothing ->
-      Left $ newError m "Rule.DefiniteDescription.getLocatorPair: empty variable name"
-    Just ([], _) ->
-      Left $ newError m $ "The symbol `" <> varText <> "` does not contain a global locator"
-    Just (initElems, lastElem) -> do
-      gl <- GL.reflect m $ T.intercalate "." initElems
-      ll <- LL.reflect m lastElem
-      return (gl, ll)
-
-getLocatorPairMaybe :: H.Hint -> T.Text -> Either Error (Maybe (GL.GlobalLocator, LL.LocalLocator))
-getLocatorPairMaybe m varText = do
-  if T.any isLocatorSyntaxChar varText
-    then do
-      locatorPair <- getLocatorPair m varText
-      return $ Just locatorPair
-    else return Nothing
-
-isLocatorSyntaxChar :: Char -> Bool
-isLocatorSyntaxChar c =
-  c == '.' || c == ':'
 
 llvmGlobalLocator :: T.Text
 llvmGlobalLocator =

@@ -1,6 +1,7 @@
 module Kernel.Common.TopNameMap
   ( TopNameInfo,
     TopNameMap,
+    LookupResult (..),
     lookupAvailable,
   )
 where
@@ -8,6 +9,7 @@ where
 import Data.HashMap.Strict qualified as Map
 import Kernel.Common.GlobalName qualified as GN
 import Language.Common.Availability qualified as AV
+import Language.Common.BaseName qualified as BN
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.NominalTag qualified as NT
 import Language.Common.StrictGlobalLocator qualified as SGL
@@ -19,9 +21,19 @@ type TopNameInfo =
 type TopNameMap =
   Map.HashMap DD.DefiniteDescription TopNameInfo
 
-lookupAvailable :: SGL.StrictGlobalLocator -> DD.DefiniteDescription -> TopNameMap -> Maybe TopNameInfo
-lookupAvailable currentLocator dd topNameMap = do
-  info <- Map.lookup dd topNameMap
-  if AV.allows currentLocator dd
-    then return info
-    else Nothing
+data LookupResult a
+  = Found a
+  | Hidden
+  | Missing
+  deriving (Functor)
+
+lookupAvailable :: SGL.StrictGlobalLocator -> [BN.BaseName] -> DD.DefiniteDescription -> TopNameMap -> LookupResult TopNameInfo
+lookupAvailable currentLocator currentBodyContext dd topNameMap = do
+  case Map.lookup dd topNameMap of
+    Nothing ->
+      Missing
+    Just info
+      | AV.allows currentLocator currentBodyContext dd ->
+          Found info
+      | otherwise ->
+          Hidden

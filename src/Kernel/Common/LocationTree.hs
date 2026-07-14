@@ -6,6 +6,7 @@ module Kernel.Common.LocationTree
     retarget,
     find,
     findRef,
+    findSymbolRef,
   )
 where
 
@@ -32,11 +33,13 @@ type ColInterval =
   (ColFrom, ColTo)
 
 data SymbolName
-  = Local Int DefSymbolLen
+  = Local Int DefSymbolLen FilePath Loc
   | Global DD.DefiniteDescription IsConstLike
   | Foreign EN.ExternalName
+  | NamespaceView FilePath Loc
   | StaticFile T.Text
   | SourceFile T.Text
+  | ModuleFile FilePath
   deriving (Show, Eq, Generic)
 
 instance Binary SymbolName
@@ -61,26 +64,32 @@ find l c mp = do
   (line, colInterval@(_, colTo), sym, SavedHint m) <- snd <$> M.lookupLE (l, c) mp
   if colTo < c || line /= l
     then Nothing
-    else return (sym, m, colInterval, getLength sym)
+    else return (sym, m, colInterval, getDefinitionLength sym)
 
-getLength :: SymbolName -> DefSymbolLen
-getLength s =
+getDefinitionLength :: SymbolName -> DefSymbolLen
+getDefinitionLength s =
   case s of
-    Local _ len ->
+    Local _ len _ _ ->
       len
     Global dd _ ->
-      T.length $ DD.localLocator dd
+      T.length $ DD.baseNameText dd
     Foreign externalName ->
       T.length $ EN.reify externalName
-    StaticFile key ->
-      T.length key
-    SourceFile locator ->
-      T.length locator
+    _ ->
+      0
 
 findRef :: Loc -> LocationTree -> [(FilePath, (Line, ColInterval))]
 findRef loc t = do
   let kvs = M.toList t
   flip mapMaybe kvs $ \((line, _), (_, colInterval, _, SavedHint m)) -> do
     if loc == metaLocation m
+      then return (metaFileName m, (line, colInterval))
+      else Nothing
+
+findSymbolRef :: SymbolName -> LocationTree -> [(FilePath, (Line, ColInterval))]
+findSymbolRef symbolName t = do
+  let kvs = M.toList t
+  flip mapMaybe kvs $ \((line, _), (_, colInterval, symbolName', SavedHint m)) -> do
+    if symbolName == symbolName'
       then return (metaFileName m, (line, colInterval))
       else Nothing

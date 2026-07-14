@@ -56,6 +56,11 @@ constructDefaultModule moduleName mTargetName = do
   currentDir <- getCurrentDir
   moduleRootDir <- resolveDir currentDir $ T.unpack moduleName
   mainFile <- parseRelFile $ T.unpack targetName <> sourceFileExtension
+  sourceLocator <- case SL.fromPath mainFile of
+    Just locator ->
+      return locator
+    Nothing ->
+      raiseError' $ "The source path `" <> targetName <> "` contains the reserved segment `this`"
   return $
     Module
       { moduleID = MID.Main,
@@ -66,7 +71,7 @@ constructDefaultModule moduleName mTargetName = do
           Map.fromList
             [ ( targetName,
                 TargetSummary
-                  { entryPoint = SL.SourceLocator mainFile,
+                  { entryPoint = sourceLocator,
                     clangOption = CL.empty,
                     allocator = defaultAllocator
                   }

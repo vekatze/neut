@@ -42,7 +42,7 @@ import Kernel.Parse.Internal.Handle.Alias qualified as Alias
 import Kernel.Unravel.Unravel qualified as Unravel
 import Language.Common.Availability qualified as AV
 import Language.Common.BaseName qualified as BN
-import Language.Common.Const (nsSep, routeSep)
+import Language.Common.Const (doubleColon, nsSep)
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.GlobalLocator qualified as GL
 import Language.Common.Ident.Reify qualified as Ident
@@ -155,7 +155,9 @@ adjustTopCandidate h summaryOrNone currentSource loc prefixSummary candInfo = do
             let candIsInCurrentSource = sourceFilePath currentSource == sourceFilePath candSource
             let candIsInCurrentModule = moduleID (sourceModule currentSource) == moduleID (sourceModule candSource)
             let candList' = filter (isAvailableCandidate currentGlobalLocator) candList
-            return $ concatMap (topCandidateToCompletionItem summaryOrNone candIsInCurrentSource candIsInCurrentModule localDefSet prefixSummary locator loc) candList'
+            if hasImportForLocator summaryOrNone locator
+              then return []
+              else return $ concatMap (topCandidateToCompletionItem summaryOrNone candIsInCurrentSource candIsInCurrentModule localDefSet prefixSummary locator loc) candList'
 
 getImportedSourceCompletionItems ::
   Handle ->
@@ -173,11 +175,11 @@ getImportedSourceCompletionItems h summaryOrNone currentSource loc prefixSummary
       localHandle <- Local.new (globalHandle h) currentSource
       let aliasHandle = Local.aliasHandle localHandle
       currentGlobalLocator <- Locator.constructGlobalLocator currentSource
-      let locatorTextList = nubOrd $ map fst entries
-      resolvedList <- fmap catMaybes $ forM locatorTextList $ \locatorText -> do
+      resolvedList <- fmap catMaybes $ forM entries $ \entry -> do
+        let locatorText = importLocator entry
         sourceOrNone <- resolveImportedSource h aliasHandle currentSource locatorText
-        return $ fmap (\candSource -> (candSource, locatorText)) sourceOrNone
-      fmap concat $ forP resolvedList $ \(candSource, locatorText) -> do
+        return $ fmap (\candSource -> (candSource, entry)) sourceOrNone
+      fmap concat $ forP resolvedList $ \(candSource, entry) -> do
         candListOrNone <- loadTopCandidates h candSource
         case candListOrNone of
           Nothing ->
@@ -186,7 +188,15 @@ getImportedSourceCompletionItems h summaryOrNone currentSource loc prefixSummary
             let candIsInCurrentSource = sourceFilePath currentSource == sourceFilePath candSource
             let candIsInCurrentModule = moduleID (sourceModule currentSource) == moduleID (sourceModule candSource)
             let candList' = filter (isAvailableCandidate currentGlobalLocator) candList
-            return $ concatMap (topCandidateToCompletionItem summaryOrNone candIsInCurrentSource candIsInCurrentModule localDefSet prefixSummary locatorText loc) candList'
+            return $ concatMap (importedTopCandidateToCompletionItem summaryOrNone entry candIsInCurrentSource candIsInCurrentModule localDefSet prefixSummary loc) candList'
+
+hasImportForLocator :: Maybe RawImportSummary -> T.Text -> Bool
+hasImportForLocator summaryOrNone locator =
+  case summaryOrNone of
+    Nothing ->
+      False
+    Just (summary, _) ->
+      any ((locator ==) . importLocator) summary
 
 resolveImportedSource :: Handle -> Alias.Handle -> Source -> T.Text -> App (Maybe Source)
 resolveImportedSource h aliasHandle currentSource locatorText = do
@@ -222,7 +232,7 @@ collectLocalDefSet currentSource candInfo = do
 
 isAvailableCandidate :: SGL.StrictGlobalLocator -> TopCandidate -> Bool
 isAvailableCandidate currentGlobalLocator topCandidate =
-  AV.allows currentGlobalLocator (dd topCandidate)
+  AV.allows currentGlobalLocator [] (dd topCandidate)
 
 identToCompletionItem :: T.Text -> CompletionItem
 identToCompletionItem x = do
@@ -245,24 +255,138 @@ topCandidateToCompletionItem importSummaryOrNone candIsInCurrentSource candIsInC
     else do
       let baseDD = dd topCandidate
       let ll = DD.localLocator baseDD
-      let fullyQualified = FullyQualified locator ll
+      let qualifier = Address locator
+      let fullyQualified = Qualified qualifier ll
       let bareCollidesWithLocal = not candIsInCurrentSource && S.member ll localDefSet
-      let short = if bareCollidesWithLocal then LocallyShadowed locator ll else Bare locator ll
+      let short = if bareCollidesWithLocal then LocallyShadowed qualifier ll else Bare locator ll
       let cands = filter (isProperCand importSummaryOrNone candIsInCurrentModule) [fullyQualified, short]
       flip map cands $ \cand -> do
         let inPresetImport = isInPresetImport presetSummary cand
         let needsTextEdit = not candIsInCurrentSource && not inPresetImport
         let textEditOrNone = if needsTextEdit then interpretCand importSummaryOrNone cand else Nothing
-        let CompletionItem {..} = toCompletionItem $ reifyCand cand
-        let _kind = Just $ fromCandidateKind $ kind topCandidate
-        let _labelDetails = Just CompletionItemLabelDetails {_description = Just ("in " <> locator), _detail = Nothing}
-        CompletionItem {_kind, _labelDetails, _insertText = candInsertText cand, _additionalTextEdits = textEditOrNone, ..}
+        completionItemFromCandidate locator topCandidate cand textEditOrNone
+
+importedTopCandidateToCompletionItem ::
+  Maybe RawImportSummary ->
+  RawImportSummaryItem ->
+  Bool ->
+  Bool ->
+  S.Set T.Text ->
+  FastPresetSummary ->
+  Loc ->
+  TopCandidate ->
+  [CompletionItem]
+importedTopCandidateToCompletionItem summaryOrNone entry candIsInCurrentSource candIsInCurrentModule localDefSet presetSummary cursorLoc topCandidate = do
+  if candIsInCurrentSource && cursorLoc < loc topCandidate
+    then []
+    else do
+      let name = DD.localLocator $ dd topCandidate
+      let qualifiers = importQualifiers entry
+      let qualifier = NE.head qualifiers
+      let visibleLocator = qualifierText qualifier
+      let qualifiedItems = concatMap (qualifiedCompletionItem candIsInCurrentModule topCandidate name) $ NE.toList qualifiers
+      let namespaceItems = importedNamespaceMemberCompletionItems entry candIsInCurrentModule topCandidate name
+      let mkBare importAlias =
+            if not candIsInCurrentSource && S.member importAlias localDefSet
+              then LocallyShadowed qualifier importAlias
+              else Bare visibleLocator importAlias
+      let bareItems = importedBareCompletionItem summaryOrNone entry name candIsInCurrentModule presetSummary topCandidate mkBare
+      qualifiedItems ++ namespaceItems ++ bareItems
+
+qualifiedCompletionItem :: Bool -> TopCandidate -> T.Text -> Qualifier -> [CompletionItem]
+qualifiedCompletionItem candIsInCurrentModule topCandidate name qualifier = do
+  let fullyQualified = Qualified qualifier name
+  if isVisibleCand candIsInCurrentModule fullyQualified
+    then [completionItemFromCandidate (qualifierText qualifier) topCandidate fullyQualified Nothing]
+    else []
+
+importedNamespaceMemberCompletionItems :: RawImportSummaryItem -> Bool -> TopCandidate -> T.Text -> [CompletionItem]
+importedNamespaceMemberCompletionItems entry candIsInCurrentModule topCandidate name = do
+  (importAlias, memberName) <- importedNamespaceMembers entry name
+  qualifiedCompletionItem candIsInCurrentModule topCandidate memberName $ ImportAlias importAlias
+
+importedNamespaceMembers :: RawImportSummaryItem -> T.Text -> [(T.Text, T.Text)]
+importedNamespaceMembers entry name = do
+  SummaryEntry (Just importedName) importAlias <- importEntries entry
+  let namespacePrefix = importedName <> nsSep
+  case T.stripPrefix namespacePrefix name of
+    Just memberName ->
+      [(importAlias, memberName)]
+    Nothing ->
+      []
+
+importedBareCompletionItem ::
+  Maybe RawImportSummary ->
+  RawImportSummaryItem ->
+  T.Text ->
+  Bool ->
+  FastPresetSummary ->
+  TopCandidate ->
+  (T.Text -> Cand) ->
+  [CompletionItem]
+importedBareCompletionItem summaryOrNone entry name candIsInCurrentModule presetSummary topCandidate mkBare = do
+  case importAliasesFor entry name of
+    [] -> do
+      if not (null (namespaceImportAliases entry)) || not (null (importedNamespaceMembers entry name))
+        then []
+        else do
+          let cand = mkBare name
+          if not (isVisibleCand candIsInCurrentModule cand)
+            then []
+            else do
+              let inPresetImport = isInPresetImport presetSummary cand
+              let textEditOrNone = if inPresetImport then Nothing else interpretCand summaryOrNone cand
+              [completionItemFromCandidate (importLocator entry) topCandidate cand textEditOrNone]
+    candidateAliases ->
+      flip concatMap candidateAliases $ \importAlias -> do
+        let cand = mkBare importAlias
+        if isVisibleCand candIsInCurrentModule cand
+          then [completionItemFromCandidate (visibleImportLocator entry) topCandidate cand Nothing]
+          else []
+
+namespaceImportAliases :: RawImportSummaryItem -> [T.Text]
+namespaceImportAliases entry =
+  [importAlias | SummaryEntry Nothing importAlias <- importEntries entry]
+
+importBareNames :: RawImportSummaryItem -> [T.Text]
+importBareNames entry =
+  [name | SummaryEntry (Just name) importAlias <- importEntries entry, name == importAlias]
+
+importAliases :: RawImportSummaryItem -> [T.Text]
+importAliases entry =
+  [importAlias | SummaryEntry _ importAlias <- importEntries entry]
+
+importAliasesFor :: RawImportSummaryItem -> T.Text -> [T.Text]
+importAliasesFor entry name =
+  [importAlias | SummaryEntry (Just name') importAlias <- importEntries entry, name' == name]
+
+importQualifiers :: RawImportSummaryItem -> NE.NonEmpty Qualifier
+importQualifiers entry =
+  case namespaceImportAliases entry of
+    [] ->
+      Address (importLocator entry) NE.:| []
+    importAlias : rest ->
+      ImportAlias importAlias NE.:| map ImportAlias rest
+
+visibleImportLocator :: RawImportSummaryItem -> T.Text
+visibleImportLocator entry =
+  qualifierText $ NE.head $ importQualifiers entry
+
+completionItemFromCandidate :: T.Text -> TopCandidate -> Cand -> Maybe [TextEdit] -> CompletionItem
+completionItemFromCandidate locator topCandidate cand textEditOrNone = do
+  let CompletionItem {..} = toCompletionItem $ reifyCand cand
+  let _kind = Just $ fromCandidateKind $ kind topCandidate
+  let _labelDetails = Just CompletionItemLabelDetails {_description = Just ("in " <> locator), _detail = Nothing}
+  CompletionItem {_kind, _labelDetails, _insertText = candInsertText cand, _additionalTextEdits = textEditOrNone, ..}
+
+data Qualifier
+  = Address T.Text
+  | ImportAlias T.Text
 
 data Cand
-  = FullyQualified T.Text T.Text
-  | Prefixed T.Text T.Text
+  = Qualified Qualifier T.Text
   | Bare T.Text T.Text
-  | LocallyShadowed T.Text T.Text
+  | LocallyShadowed Qualifier T.Text
 
 isProperCand :: Maybe RawImportSummary -> Bool -> Cand -> Bool
 isProperCand summaryOrNone candIsInCurrentModule cand =
@@ -288,12 +412,18 @@ isVisibleCand candIsInCurrentModule cand =
       case cand of
         Bare gl ll ->
           isVisibleGlobalLocator gl && isVisibleLocalLocator ll
-        Prefixed _ ll ->
-          isVisibleLocalLocator ll
-        FullyQualified gl ll ->
-          isVisibleGlobalLocator gl && isVisibleLocalLocator ll
-        LocallyShadowed gl ll ->
-          isVisibleGlobalLocator gl && isVisibleLocalLocator ll
+        Qualified qualifier ll ->
+          isVisibleQualifier qualifier && isVisibleLocalLocator ll
+        LocallyShadowed qualifier ll ->
+          isVisibleQualifier qualifier && isVisibleLocalLocator ll
+
+isVisibleQualifier :: Qualifier -> Bool
+isVisibleQualifier qualifier =
+  case qualifier of
+    Address locator ->
+      isVisibleGlobalLocator locator
+    ImportAlias _ ->
+      True
 
 isVisibleGlobalLocator :: T.Text -> Bool
 isVisibleGlobalLocator gl =
@@ -303,25 +433,17 @@ isVisibleLocalLocator :: T.Text -> Bool
 isVisibleLocalLocator ll =
   not ("_" `T.isPrefixOf` ll)
 
-shouldRemoveLocatorPair :: (T.Text, T.Text) -> [(T.Text, [T.Text])] -> Bool
-shouldRemoveLocatorPair (gl, ll) summary = do
-  case summary of
-    [] ->
-      False
-    (gl', lls) : rest -> do
-      let b1 = gl /= gl' && ll `elem` lls
-      let b2 = shouldRemoveLocatorPair (gl, ll) rest
-      b1 || b2
+shouldRemoveLocatorPair :: (T.Text, T.Text) -> [RawImportSummaryItem] -> Bool
+shouldRemoveLocatorPair (gl, ll) =
+  any (\entry -> gl /= visibleImportLocator entry && ll `elem` importAliases entry)
 
 isInPresetImport :: FastPresetSummary -> Cand -> Bool
 isInPresetImport presetSummary cand =
   case cand of
-    FullyQualified locator _ ->
-      S.member locator (aliasSet presetSummary)
-    LocallyShadowed locator _ ->
-      S.member locator (aliasSet presetSummary)
-    Prefixed {} ->
-      False
+    Qualified qualifier _ ->
+      S.member (qualifierText qualifier) (aliasSet presetSummary)
+    LocallyShadowed qualifier _ ->
+      S.member (qualifierText qualifier) (aliasSet presetSummary)
     Bare locator ll ->
       case Map.lookup locator (presetMap presetSummary) of
         Nothing ->
@@ -348,10 +470,8 @@ interpretCand' cand = do
 reifyCand :: Cand -> T.Text
 reifyCand cand =
   case cand of
-    FullyQualified gl ll ->
-      gl <> nsSep <> ll
-    Prefixed prefix ll ->
-      prefix <> nsSep <> ll
+    Qualified qualifier ll ->
+      qualify qualifier ll
     Bare _ ll ->
       ll
     LocallyShadowed _ ll ->
@@ -360,34 +480,46 @@ reifyCand cand =
 candInsertText :: Cand -> Maybe T.Text
 candInsertText cand =
   case cand of
-    LocallyShadowed gl ll ->
-      Just $ gl <> nsSep <> ll
+    LocallyShadowed qualifier ll ->
+      Just $ qualify qualifier ll
     _ ->
       Nothing
 
-isAlreadyImported :: [(T.Text, [T.Text])] -> Cand -> Bool
+isAlreadyImported :: [RawImportSummaryItem] -> Cand -> Bool
 isAlreadyImported summary cand =
   case cand of
-    FullyQualified gl _ ->
-      gl `elem` map fst summary
-    LocallyShadowed gl _ ->
-      gl `elem` map fst summary
-    Prefixed prefix _ ->
-      prefix `elem` map fst summary
+    Qualified qualifier _ ->
+      qualifierText qualifier `elem` map visibleImportLocator summary
+    LocallyShadowed qualifier _ ->
+      qualifierText qualifier `elem` map visibleImportLocator summary
     Bare _ ll ->
-      ll `elem` concatMap snd summary
+      ll `elem` concatMap importBareNames summary
 
 constructEditText :: Cand -> T.Text
 constructEditText cand =
   case cand of
-    FullyQualified gl _ ->
-      "  " <> gl <> ","
-    LocallyShadowed gl _ ->
-      "  " <> gl <> ","
-    Prefixed prefix _ ->
-      "  " <> prefix <> ","
+    Qualified qualifier _ ->
+      "  " <> qualifierText qualifier <> ","
+    LocallyShadowed qualifier _ ->
+      "  " <> qualifierText qualifier <> ","
     Bare gl ll -> do
       "  " <> gl <> " {" <> ll <> "}" <> ","
+
+qualifierText :: Qualifier -> T.Text
+qualifierText qualifier =
+  case qualifier of
+    Address locator ->
+      locator
+    ImportAlias name ->
+      name
+
+qualify :: Qualifier -> T.Text -> T.Text
+qualify qualifier name =
+  case qualifier of
+    Address locator ->
+      locator <> doubleColon <> name
+    ImportAlias importAlias ->
+      importAlias <> nsSep <> name
 
 inImportBlock :: T.Text -> T.Text
 inImportBlock text =
@@ -485,9 +617,9 @@ _getHumanReadableLocator :: Antecedent.RevMap -> Module -> MID.ModuleID -> T.Tex
 _getHumanReadableLocator revMap baseModule sourceModuleID baseReadableLocator = do
   case sourceModuleID of
     MID.Main -> do
-      Just baseReadableLocator
+      Just $ MA.reify MA.thisModuleAlias <> doubleColon <> baseReadableLocator
     MID.Base -> do
-      Just $ "base" <> routeSep <> baseReadableLocator
+      Just $ "base" <> doubleColon <> baseReadableLocator
     MID.Library digest -> do
       let digestMap = getDigestMap baseModule
       case Map.lookup digest digestMap of
@@ -499,7 +631,7 @@ _getHumanReadableLocator revMap baseModule sourceModuleID baseReadableLocator = 
               Nothing
         Just aliasList -> do
           let alias = BN.reify $ MA.extract $ NE.head aliasList
-          Just $ alias <> routeSep <> baseReadableLocator
+          Just $ alias <> doubleColon <> baseReadableLocator
 
 _getHumanReadableLocator' :: Antecedent.RevMap -> Module -> [MID.ModuleID] -> T.Text -> Maybe T.Text
 _getHumanReadableLocator' revMap baseModule midList baseReadableLocator = do

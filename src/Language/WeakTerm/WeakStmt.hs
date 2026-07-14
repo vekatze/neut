@@ -63,6 +63,7 @@ data WeakStmt
   | WeakStmtVariadic RuleKind Hint DD.DefiniteDescription
   | WeakStmtNominal Hint [(NominalTag, G.Geist WT.WeakType WT.WeakTerm)]
   | WeakStmtForeign [WT.WeakForeign]
+  | WeakStmtNamespace Hint DD.DefiniteDescription
 
 data WeakDefineMeta = WeakDefineMeta
   { weakDefineMetaLoc :: Hint,

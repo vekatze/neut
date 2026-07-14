@@ -112,7 +112,7 @@ parseSource h source cacheOrContent = do
 
 postprocess :: Locator.Handle -> RawProgram -> PostRawProgram
 postprocess h (RawProgram m importList stmtList) = do
-  let stmtList' = concatMap (postprocess' h . fst) stmtList
+  let stmtList' = concatMap (postprocess' h [] . fst) stmtList
   let nominalNameList = concatMap collectNominalDecls stmtList'
   let stmtList'' = map (markNominalData nominalNameList) stmtList'
   PostRawProgram m importList stmtList''
@@ -122,6 +122,8 @@ collectNominalDecls stmt =
   case stmt of
     PostRawStmtNominal _ _ geistList ->
       flip map (SE.extract geistList) $ \(_, geist, _) -> fst $ RT.name geist
+    PostRawStmtNamespace _ _ children ->
+      concatMap collectNominalDecls children
     _ ->
       []
 
@@ -131,31 +133,33 @@ markNominalData nominalNameList stmt =
     PostRawStmtDefineType c (SK.Data dataName dataArgs consInfoList _) def
       | dataName `elem` nominalNameList ->
           PostRawStmtDefineType c (SK.Data dataName dataArgs consInfoList True) def
+    PostRawStmtNamespace m name children ->
+      PostRawStmtNamespace m name (map (markNominalData nominalNameList) children)
     _ ->
       stmt
 
-postprocess' :: Locator.Handle -> RawStmt -> [PostRawStmt]
-postprocess' h stmt = do
+postprocess' :: Locator.Handle -> [BN.BaseName] -> RawStmt -> [PostRawStmt]
+postprocess' h nsPath stmt = do
   case stmt of
     RawStmtDefineTerm c stmtKind rawDef@(RT.RawDef {geist}) -> do
-      let geist' = liftGeist h geist
-      let stmtKind' = liftStmtKindTerm h stmtKind
+      let geist' = liftGeist h nsPath geist
+      let stmtKind' = liftStmtKindTerm h nsPath stmtKind
       [PostRawStmtDefineTerm c stmtKind' (rawDef {RT.geist = geist'})]
     RawStmtDefineType c aliasKind rawDef@(RT.RawTypeDef {typeGeist}) -> do
-      let geist' = liftGeist h typeGeist
+      let geist' = liftGeist h nsPath typeGeist
       let stmtKind = case aliasKind of
             TransparentAlias -> SK.Alias
             OpaqueAlias -> SK.AliasOpaque
       [PostRawStmtDefineType c stmtKind (rawDef {RT.typeGeist = geist'})]
     RawStmtDefineData _ m (name, _) args consInfo loc -> do
-      let name' = Locator.attachCurrentLocator h name
-      let consInfo' = fmap (liftRawCons h) consInfo
+      let name' = Locator.attachCurrentLocatorWithin h nsPath name
+      let consInfo' = fmap (liftRawCons h nsPath) consInfo
       defineData m name' args (SE.extract consInfo') loc
     RawStmtDefineResource c m (name, c1) (c2, discarder) (c3, copier) (c4, resourceSize) c5 -> do
-      let name' = Locator.attachCurrentLocator h name
+      let name' = Locator.attachCurrentLocatorWithin h nsPath name
       [PostRawStmtDefineResource c m (name', c1) (c2, discarder) (c3, copier) (c4, resourceSize) c5]
     RawStmtTrope c m (name, c1) defineMetaList loc -> do
-      let name' = Locator.attachCurrentLocator h name
+      let name' = Locator.attachCurrentLocatorWithin h nsPath name
       let liftDefineMeta index (RawDefineMeta defineMetaLoc' defineMetaTarget' defineMetaTargetArgs' defineMetaExpArgs' defineMetaCod' defineMetaBody' defineMetaEndLoc') = do
             PostRawDefineMeta
               { postDefineMetaLoc = defineMetaLoc',
@@ -170,20 +174,24 @@ postprocess' h stmt = do
       let defineMetaElems = zipWith (\index (comment, defineMeta) -> (comment, liftDefineMeta index defineMeta)) [0 ..] (SE.elems defineMetaList)
       [PostRawStmtTrope c m (name', c1) (defineMetaList {SE.elems = defineMetaElems}) loc]
     RawStmtVariadic kind _ m (name, _) (_, leaf, leafType) (_, node, nodeType) (_, root, rootType) _ loc -> do
-      let name' = Locator.attachCurrentLocator h name
+      let name' = Locator.attachCurrentLocatorWithin h nsPath name
       defineVariadic kind m name' (leaf, leafType) (node, nodeType) (root, rootType) loc
     RawStmtNominal c m geistList -> do
-      let geistList' = fmap (\(tag, geist, endLoc) -> (tag, liftGeist h geist, endLoc)) geistList
+      let geistList' = fmap (\(tag, geist, endLoc) -> (tag, liftGeist h nsPath geist, endLoc)) geistList
       [PostRawStmtNominal c m geistList']
     RawStmtForeign m foreignList -> do
       [PostRawStmtForeign m foreignList]
+    RawStmtNamespace _ m (name, _) _ children _ -> do
+      let name' = Locator.attachCurrentLocatorWithin h nsPath name
+      let children' = concatMap (postprocess' h (nsPath ++ [name]) . fst) children
+      [PostRawStmtNamespace m name' children']
 
-liftGeist :: Locator.Handle -> RT.RawGeist BN.BaseName -> RT.RawGeist DD.DefiniteDescription
-liftGeist h geist = do
-  fmap (Locator.attachCurrentLocator h) geist
+liftGeist :: Locator.Handle -> [BN.BaseName] -> RT.RawGeist BN.BaseName -> RT.RawGeist DD.DefiniteDescription
+liftGeist h nsPath geist = do
+  fmap (Locator.attachCurrentLocatorWithin h nsPath) geist
 
-liftStmtKindTerm :: Locator.Handle -> RawStmtKindTerm BN.BaseName -> RawStmtKindTerm DD.DefiniteDescription
-liftStmtKindTerm _h stmtKind = do
+liftStmtKindTerm :: Locator.Handle -> [BN.BaseName] -> RawStmtKindTerm BN.BaseName -> RawStmtKindTerm DD.DefiniteDescription
+liftStmtKindTerm _h nsPath stmtKind = do
   case stmtKind of
     SK.Define ->
       SK.Define
@@ -204,12 +212,12 @@ liftStmtKindTerm _h stmtKind = do
     SK.Main t ->
       SK.Main t
     SK.DataIntro name dataArgs expConsArgs discriminant -> do
-      let name' = Locator.attachCurrentLocator _h name
+      let name' = Locator.attachCurrentLocatorWithin _h nsPath name
       SK.DataIntro name' dataArgs expConsArgs discriminant
 
-liftRawCons :: Locator.Handle -> RawConsInfo BN.BaseName -> RawConsInfo DD.DefiniteDescription
-liftRawCons h (RawConsInfo {loc, name, expArgs, endLoc}) = do
-  let name' = Locator.attachCurrentLocator h name
+liftRawCons :: Locator.Handle -> [BN.BaseName] -> RawConsInfo BN.BaseName -> RawConsInfo DD.DefiniteDescription
+liftRawCons h nsPath (RawConsInfo {loc, name, expArgs, endLoc}) = do
+  let name' = Locator.attachCurrentLocatorWithin h nsPath name
   RawConsInfo {loc, name = name', expArgs, endLoc}
 
 registerTopLevelNames ::
@@ -238,7 +246,11 @@ saveTopLevelNames h source nameArrowList = do
   let nameMap = Map.fromList nameArrowList
   GlobalNameMap.insert (globalNameMapHandle h) (Source.sourceFilePath source) nameMap
   forM_ nameArrowList $ \(dd, (m, _, gn)) ->
-    UnusedTopLevelName.insert (unusedTopLevelNameHandle h) dd m gn
+    case gn of
+      GN.Namespace ->
+        return ()
+      _ ->
+        UnusedTopLevelName.insert (unusedTopLevelNameHandle h) dd m gn
   registerOptDataInfo h nameArrowList
 
 registerKeyArg :: Handle -> PostRawStmt -> App ()
@@ -272,6 +284,8 @@ registerKeyArg h stmt = do
       return ()
     PostRawStmtForeign {} ->
       return ()
+    PostRawStmtNamespace _ _ children ->
+      forM_ children $ registerKeyArg h
 
 registerKeyArg' :: Handle -> Stmt -> App ()
 registerKeyArg' h stmt = do
@@ -295,6 +309,8 @@ registerKeyArg' h stmt = do
     StmtVariadic {} ->
       return ()
     StmtForeign {} ->
+      return ()
+    StmtNamespace {} ->
       return ()
 
 registerOptDataInfo ::

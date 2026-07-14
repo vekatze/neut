@@ -86,8 +86,13 @@ getAllocatorByTarget h target =
 
 relPathToDD :: Path Rel File -> BN.BaseName -> App DD.DefiniteDescription
 relPathToDD relPath baseName = do
-  sourceLocator <- SL.SourceLocator <$> removeExtension relPath
-  let sgl = SGL.StrictGlobalLocator {moduleID = MID.Main, sourceLocator = sourceLocator}
+  relPath' <- removeExtension relPath
+  sourceLocator <- case SL.fromPath relPath' of
+    Just locator ->
+      return locator
+    Nothing ->
+      raiseError' $ "The source path `" <> T.pack (toFilePath relPath) <> "` contains the reserved segment `this`"
+  let sgl = SGL.new MID.Main sourceLocator
   let ll = LL.new baseName
   return $ DD.new sgl ll
 

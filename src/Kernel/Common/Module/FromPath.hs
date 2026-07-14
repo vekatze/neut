@@ -142,10 +142,13 @@ interpretSourceLocator :: E.Ens -> App SL.SourceLocator
 interpretSourceLocator ens = do
   (m, pathString) <- liftEither $ E.toString ens
   case parseRelFile $ T.unpack pathString of
-    Just relPath ->
-      return $ SL.SourceLocator relPath
+    Just relPath
+      | Just sourceLocator <- SL.fromPath relPath ->
+          return sourceLocator
     Nothing ->
       raiseError m $ "Invalid file path: " <> pathString
+    _ ->
+      raiseError m $ "The source path `" <> pathString <> "` contains the reserved segment `this`"
 
 interpretRelFilePath :: E.Ens -> App (Path Rel File)
 interpretRelFilePath ens = do

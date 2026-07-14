@@ -75,6 +75,7 @@ data StmtF t a
   | StmtTrope SavedHint DD.DefiniteDescription [DefineMetaF t a]
   | StmtVariadic RuleKind SavedHint DD.DefiniteDescription
   | StmtForeign [F.Foreign]
+  | StmtNamespace SavedHint DD.DefiniteDescription
   deriving (Generic)
 
 type Stmt = StmtF TM.Type TM.Term
@@ -102,6 +103,8 @@ getStmtName' stmt =
       return (m, name)
     StmtForeign _ ->
       Nothing
+    StmtNamespace (SavedHint m) name ->
+      return (m, name)
 
 isMacroStmt :: Stmt -> Bool
 isMacroStmt stmt =

@@ -42,7 +42,7 @@ getSymbolInfo params = do
       let findDefHandle = FindDefinition.new h
       ((symbolName, _), _) <- FindDefinition.findDefinition findDefHandle params
       case symbolName of
-        LT.Local varID _ -> do
+        LT.Local varID _ _ _ -> do
           weakTypeEnv <- liftIO $ Elaborate.getWeakTypeEnv handle
           t <- liftMaybe $ IntMap.lookup varID weakTypeEnv
           t' <- Elaborate.elaborateType handle t
@@ -52,6 +52,10 @@ getSymbolInfo params = do
           t <- lift (liftIO $ Type.lookupMaybe' typeHandle dd) >>= liftMaybe
           return $ toTextType t
         LT.Foreign {} -> do
+          liftMaybe Nothing
+        LT.NamespaceView {} -> do
+          liftMaybe Nothing
+        LT.ModuleFile {} -> do
           liftMaybe Nothing
         LT.StaticFile {} -> do
           liftMaybe Nothing

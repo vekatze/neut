@@ -11,7 +11,7 @@ module Kernel.Parse.Internal.RawTerm
     ArrowMode (..),
     mandatoryBinder,
     betweenBrace',
-    interpretVarName,
+    interpretName,
     parseDef,
     parseAliasDef,
     parseGeist,
@@ -45,14 +45,14 @@ import Kernel.Common.Const
 import Kernel.Parse.Internal.Util (isNumericLike)
 import Language.Common.BaseName qualified as BN
 import Language.Common.CreateSymbol (newTextForHole)
-import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.ExternalName qualified as EN
 import Language.Common.LocalDefKind qualified as LDK
 import Language.Common.Rune qualified as RU
 import Language.Common.VarKind qualified as VK
 import Language.RawTerm.CreateHole qualified as RT
 import Language.RawTerm.Key
-import Language.RawTerm.Name
+import Language.RawTerm.Name (Name (..))
+import Language.RawTerm.Name qualified as N
 import Language.RawTerm.NecessityVariant qualified as NV
 import Language.RawTerm.RawBinder
 import Language.RawTerm.RawIdent
@@ -157,7 +157,7 @@ rawType' h m headSymbol c =
               rawTypeOption h
             ]
         else do
-          name <- interpretTypeName m nameText
+          name <- interpretNameText m nameText
           rawTypeTyAppCont h (m :< RT.TyVar name, c')
 
 rawTerm' :: Handle -> Hint -> T.Text -> C -> Parser (RT.RawTerm, C)
@@ -211,7 +211,7 @@ rawTermInvoke h m c1 = do
   tropes <- bareSeries SE.Comma $ do
     mTrope <- getCurrentHint
     (nameText, cName) <- symbolWithLocatorSuffix
-    name <- interpretVarName mTrope nameText
+    name <- interpretName mTrope nameText
     return ((mTrope, name), cName)
   c2 <- delimiter ";"
   (body, c) <- rawExpr h
@@ -234,7 +234,7 @@ rawTermBase mode h m headSymbol c = do
         Full ->
           choice $ rawTermBrace h : parsers
     else do
-      name <- interpretVarName m nameText
+      name <- interpretName m nameText
       (mImpArgs, cImpArgs) <- parseImplicitArgsMaybe h
       if hasMetaDelimiter
         then
@@ -405,7 +405,7 @@ rawTermKeyValuePair h = do
         (value, c) <- rawTerm h
         return ((m, key, c1, c2, value), c),
       do
-        return ((m, key, c1, [], m :< RT.Var (Var key)), [])
+        return ((m, key, c1, [], m :< RT.Var (Bare key)), [])
     ]
 
 extractRestArg ::
@@ -1087,18 +1087,20 @@ rawTermPatternRuneIntro m c1 = do
 rawTermPatternConsOrVar :: Handle -> Hint -> VK.VarKind -> T.Text -> C -> Parser ((Hint, RP.RawPattern), C)
 rawTermPatternConsOrVar h m k headSymbol c1 = do
   if k == VK.Exp
-    then return ((m, RP.Var k (Var headSymbol)), c1)
+    then do
+      ensureNotIdentityName m headSymbol
+      return ((m, RP.Var k (Bare headSymbol)), c1)
     else do
-      varOrLocator <- interpretVarName m headSymbol
+      name <- interpretName m headSymbol
       choice
         [ do
             (patArgs, c) <- seriesParen $ rawTermPattern h
-            return ((m, RP.Cons varOrLocator c1 (RP.Paren patArgs)), c),
+            return ((m, RP.Cons name c1 (RP.Paren patArgs)), c),
           do
             (kvs, c) <- keyValueArgs $ rawTermPatternKeyValuePair h
-            return ((m, RP.Cons varOrLocator c1 (RP.Of kvs)), c),
+            return ((m, RP.Cons name c1 (RP.Of kvs)), c),
           do
-            return ((m, RP.Var k varOrLocator), c1)
+            return ((m, RP.Var k name), c1)
         ]
 
 rawTermPatternKeyValuePair :: Handle -> Parser ((Key, (Hint, C, RP.RawPattern)), C)
@@ -1111,7 +1113,7 @@ rawTermPatternKeyValuePair h = do
         ((mTo, to), c) <- rawTermPattern h
         return ((from, (mTo, c1 ++ c2, to)), c),
       do
-        return ((from, (mFrom, [], RP.Var VK.Normal (Var from))), []) -- record rhyming
+        return ((from, (mFrom, [], RP.Var VK.Normal (Bare from))), []) -- record rhyming
     ]
 
 rawTermIf :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
@@ -1341,34 +1343,20 @@ rawTermStatic m c1 = do
   (key, c) <- symbol
   return (m :< RT.Static c1 mKey (RT.StaticFileKey key), c)
 
-interpretVarName :: Hint -> T.Text -> Parser Name
-interpretVarName m varText = do
-  case DD.getLocatorPairMaybe m varText of
-    Left err
-      | T.any (== ':') varText ->
-          lift $ throwError err
-      | otherwise ->
-          return (Var varText)
-    Right Nothing ->
-      return (Var varText)
-    Right (Just (gl, ll))
-      | isNumericLike varText ->
-          return (Var varText)
-      | otherwise ->
-          return (Locator (gl, ll))
+interpretName :: Hint -> T.Text -> Parser Name
+interpretName m varText
+  | isNumericLike varText =
+      return (Bare varText)
+  | otherwise =
+      interpretNameText m varText
 
-interpretTypeName :: Hint -> T.Text -> Parser Name
-interpretTypeName m varText = do
-  case DD.getLocatorPairMaybe m varText of
-    Left err
-      | T.any (== ':') varText ->
-          lift $ throwError err
-      | otherwise ->
-          return (Var varText)
-    Right Nothing ->
-      return (Var varText)
-    Right (Just (gl, ll)) ->
-      return (Locator (gl, ll))
+interpretNameText :: Hint -> T.Text -> Parser Name
+interpretNameText m nameText = do
+  case N.reflect m nameText of
+    Left err ->
+      lift $ throwError err
+    Right name ->
+      return name
 
 rawTermTextIntro :: Parser (RT.RawTerm, C)
 rawTermTextIntro = do
@@ -1397,7 +1385,7 @@ symbolWithLocatorSuffix = do
 
 extendTermLocatorSuffix :: T.Text -> C -> Parser (T.Text, C, Bool)
 extendTermLocatorSuffix headSymbol c = do
-  mSep <- optional $ delimiter routeSep
+  mSep <- optional $ delimiter doubleColon
   case mSep of
     Nothing ->
       return (headSymbol, c, False)
@@ -1408,23 +1396,24 @@ extendTermLocatorSuffix headSymbol c = do
           return (headSymbol, c <> cSep <> cSuffix, True)
         else do
           (suffix', cRest, hasMetaDelimiter) <- extendTermLocatorSuffix suffix cSuffix
-          return (headSymbol <> routeSep <> suffix', c <> cSep <> cRest, hasMetaDelimiter)
+          return (headSymbol <> doubleColon <> suffix', c <> cSep <> cRest, hasMetaDelimiter)
 
 extendLocatorSuffix :: T.Text -> C -> Parser (T.Text, C)
 extendLocatorSuffix headSymbol c = do
-  mSep <- optional $ delimiter routeSep
+  mSep <- optional $ delimiter doubleColon
   case mSep of
     Nothing ->
       return (headSymbol, c)
     Just cSep -> do
       (suffix, cSuffix) <- symbol
       (suffix', cRest) <- extendLocatorSuffix suffix cSuffix
-      return (headSymbol <> routeSep <> suffix', c <> cSep <> cRest)
+      return (headSymbol <> doubleColon <> suffix', c <> cSep <> cRest)
 
 var :: Handle -> Parser ((Hint, T.Text), C)
 var h = do
   m <- getCurrentHint
   (x, c) <- symbol
+  ensureNotIdentityName m x
   if x /= "_"
     then return ((m, x), c)
     else do
@@ -1436,6 +1425,7 @@ varWithMode h = do
   mBang <- optional $ delimiter "!"
   m <- getCurrentHint
   (x, c) <- symbol
+  ensureNotIdentityName m x
   let k =
         case mBang of
           Just _ ->
@@ -1451,9 +1441,19 @@ varWithMode h = do
 
 baseName :: Parser (BN.BaseName, C)
 baseName = do
-  lexeme $ do
-    bn <- takeWhile1P Nothing (`S.notMember` nonBaseNameCharSet)
-    return $ BN.fromText bn
+  m <- getCurrentHint
+  (rawName, c) <- lexeme $ takeWhile1P Nothing (`S.notMember` nonBaseNameCharSet)
+  case BN.reflect m rawName of
+    Left err ->
+      lift $ throwError err
+    Right name -> do
+      ensureNotIdentityName m rawName
+      return (name, c)
+
+ensureNotIdentityName :: Hint -> T.Text -> Parser ()
+ensureNotIdentityName m name = do
+  when (name == BN.reify BN.this) $ do
+    lift $ raiseError m "`this` is reserved"
 
 keyword :: T.Text -> Parser C
 keyword expected = do

@@ -125,9 +125,9 @@ renderDDWith abbreviate modulePathMap dd = do
       | abbreviate ->
           DD.localLocator dd
       | otherwise ->
-          locator
+          MA.reify MA.thisModuleAlias <> doubleColon <> locator
     Just modulePath ->
-      T.intercalate nsSep modulePath <> routeSep <> locator
+      T.intercalate nsSep modulePath <> doubleColon <> locator
     Nothing ->
       DD.reify dd
 
@@ -139,4 +139,4 @@ renderSource modulePathMap source = do
   locator <- Source.getBaseReadableLocator source
   if null modulePath
     then return locator
-    else return $ T.intercalate nsSep modulePath <> routeSep <> locator
+    else return $ T.intercalate nsSep modulePath <> doubleColon <> locator

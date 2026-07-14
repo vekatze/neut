@@ -426,6 +426,8 @@ clarifyStmt h stmt =
       return $ C.Foreign [] -- nop
     StmtForeign foreignList ->
       return $ C.Foreign foreignList
+    StmtNamespace {} -> do
+      return $ C.Foreign [] -- nop
 
 makeEnvArg :: Handle -> IO (Ident, C.Comp)
 makeEnvArg h = do
@@ -453,7 +455,7 @@ toDestPassing h dest codType e = do
 
 defaultEnvTypeName :: DD.DefiniteDescription -> DD.DefiniteDescription
 defaultEnvTypeName dd =
-  DD.MakeDefiniteDescription {DD.reify = DD.reify dd <> "#default-env"}
+  DD.appendText dd "#default-env"
 
 hasDefaultArgs :: Handle -> DD.DefiniteDescription -> IO Bool
 hasDefaultArgs h name = do
@@ -482,7 +484,7 @@ getGlobalRefInfo AttrVG.Attr {argNum, isDestPassing} =
 
 defaultLabelName :: DD.DefiniteDescription -> Int -> DD.DefiniteDescription
 defaultLabelName dd index =
-  DD.MakeDefiniteDescription {DD.reify = DD.reify dd <> "#default" <> T.pack (show index)}
+  DD.appendText dd $ "#default" <> T.pack (show index)
 
 registerDefaultEnvType :: Handle -> DD.DefiniteDescription -> [C.Value] -> IO ()
 registerDefaultEnvType h name defaultValues = do

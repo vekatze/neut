@@ -29,6 +29,7 @@ import Kernel.Parse.Layer
 import Kernel.Parse.NominalEnv
 import Kernel.Parse.Stage
 import Kernel.Parse.VarDefKind
+import Language.Common.BaseName qualified as BN
 import Language.Common.Ident
 import Language.Common.Ident.Reify qualified as Ident
 import Logger.Hint
@@ -49,6 +50,7 @@ data Handle = Handle
     modulePathMap :: ModulePath.ModulePathMap,
     platformHandle :: Platform.Handle,
     currentModule :: Module.Module,
+    nsPath :: [BN.BaseName],
     nameEnv :: NominalEnv,
     typeNameEnv :: NominalEnv,
     currentLayer :: Layer,
@@ -64,6 +66,7 @@ new ::
   Module.Module ->
   Handle
 new gensymHandle (Global.Handle {..}) (Local.Handle {..}) nameMapHandle modulePathMap currentModule = do
+  let nsPath = []
   let nameEnv = empty
   let typeNameEnv = empty
   let currentLayer = 0

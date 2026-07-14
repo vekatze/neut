@@ -480,7 +480,7 @@ reifyPresetMap :: T.Text -> PresetMap -> PresetSummary
 reifyPresetMap moduleName presetMap = do
   let presetList = Map.toList presetMap
   flip map presetList $ \(loc, lls) -> do
-    (moduleName <> routeSep <> loc, lls)
+    (moduleName <> doubleColon <> loc, lls)
 
 getRelPathFromSourceDir :: (MonadThrow m) => Module -> Path Abs File -> m (Path Rel File)
 getRelPathFromSourceDir baseModule path = do

@@ -28,10 +28,10 @@ highlight ::
   p ->
   App [DocumentHighlight]
 highlight h params = do
-  ((_, defLink@(DefinitionLink (LocationLink {_targetRange, _targetUri}))), locTree) <-
+  ((symbolName, DefinitionLink (LocationLink {_targetRange, _targetUri})), locTree) <-
     FindDefinition.findDefinition (findDefinitionHandle h) params
   let reqUri = params ^. J.textDocument . J.uri
-  let refs = LSP.findReferences defLink locTree
+  let refs = LSP.findReferences symbolName locTree
   if reqUri /= _targetUri
     then return refs
     else do

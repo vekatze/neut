@@ -141,6 +141,8 @@ inferStmt h stmt =
       return $ WeakStmtNominal m geistList'
     WeakStmtForeign foreignList ->
       return $ WeakStmtForeign foreignList
+    WeakStmtNamespace m dd ->
+      return $ WeakStmtNamespace m dd
 
 inferDefineMeta :: Handle -> WeakDefineMeta -> App WeakDefineMeta
 inferDefineMeta h defineMeta = do
@@ -245,7 +247,7 @@ getIntType h m = do
 
 makeWeakCoreType :: Hint -> MID.ModuleID -> SL.SourceLocator -> BN.BaseName -> AN.ArgNum -> [WT.WeakType] -> WT.WeakType
 makeWeakCoreType m moduleID sourceLocator baseName argNum args = do
-  let sgl = SGL.StrictGlobalLocator {moduleID, sourceLocator}
+  let sgl = SGL.new moduleID sourceLocator
   let typeName = DD.newByGlobalLocator sgl baseName
   let attr = AttrVG.Attr {argNum, isConstLike = False, isDestPassing = False}
   let typeVar = m :< WT.TVarGlobal attr typeName
@@ -544,7 +546,7 @@ infer h term =
         M.EqType moduleID typeExpr1 typeExpr2 -> do
           typeExpr1' <- inferType h typeExpr1
           typeExpr2' <- inferType h typeExpr2
-          let boolSGL = SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.boolLocator}
+          let boolSGL = SGL.new moduleID SL.boolLocator
           let boolTypeDD = DD.newByGlobalLocator boolSGL BN.boolType
           let boolTypeVar = m :< WT.TVarGlobal (AttrVG.Attr {argNum = AN.zero, isConstLike = True, isDestPassing = False}) boolTypeDD
           let boolType = m :< WT.TyApp boolTypeVar []
@@ -565,9 +567,9 @@ infer h term =
         M.TextUncons moduleID text -> do
           (text', textType) <- infer h text
           liftIO $ Constraint.insert (constraintHandle h) (m :< WT.PrimType PT.Text) textType
-          let eitherSGL = SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.eitherLocator}
-          let unitSGL = SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.unitLocator}
-          let pairSGL = SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.pairLocator}
+          let eitherSGL = SGL.new moduleID SL.eitherLocator
+          let unitSGL = SGL.new moduleID SL.unitLocator
+          let pairSGL = SGL.new moduleID SL.pairLocator
           let eitherTypeDD = DD.newByGlobalLocator eitherSGL BN.eitherType
           let unitTypeDD = DD.newByGlobalLocator unitSGL BN.unitType
           let pairTypeDD = DD.newByGlobalLocator pairSGL BN.pairType

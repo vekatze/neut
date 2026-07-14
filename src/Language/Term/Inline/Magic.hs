@@ -119,7 +119,7 @@ evaluateInspectType h m moduleID typeExpr = do
     _ :< TM.PrimType PT.Rune ->
       returnTypeValueIntValue h m moduleID TypeValue.Rune
     _ :< TM.Resource name _ -> do
-      let binarySGL = SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.binaryLocator}
+      let binarySGL = SGL.new moduleID SL.binaryLocator
       let binaryDD = DD.newByGlobalLocator binarySGL BN.binary
       if name == binaryDD
         then returnTypeValueIntValue h m moduleID TypeValue.Binary
@@ -140,7 +140,7 @@ evaluateEqType m moduleID typeExpr1 typeExpr2 = do
 
 constructUnitTerm :: Hint -> MID.ModuleID -> TM.Term
 constructUnitTerm m moduleID = do
-  let unitSGL = SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.unitLocator}
+  let unitSGL = SGL.new moduleID SL.unitLocator
   let unitTypeDD = DD.newByGlobalLocator unitSGL BN.unitType
   let unitDD = DD.newByGlobalLocator unitSGL BN.unit
   let attr = AttrDI.Attr {dataName = unitTypeDD, discriminant = D.zero, isConstLike = True}
@@ -148,12 +148,12 @@ constructUnitTerm m moduleID = do
 
 makeVectorDD :: MID.ModuleID -> DD.DefiniteDescription
 makeVectorDD moduleID = do
-  let vectorSGL = SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.vectorLocator}
+  let vectorSGL = SGL.new moduleID SL.vectorLocator
   DD.newByGlobalLocator vectorSGL BN.vector
 
 makeArrayDD :: MID.ModuleID -> DD.DefiniteDescription
 makeArrayDD moduleID = do
-  let arraySGL = SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.arrayLocator}
+  let arraySGL = SGL.new moduleID SL.arrayLocator
   DD.newByGlobalLocator arraySGL BN.array
 
 consToTypeValue ::
@@ -194,7 +194,7 @@ makeAttrDI typeValueSGL typeTag = do
 
 returnTypeValueIntValue :: Handle -> Hint -> MID.ModuleID -> TypeValue.TypeValue -> App TM.Term
 returnTypeValueIntValue h m moduleID typeValue = do
-  let typeValueSGL = SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.typeValueLocator}
+  let typeValueSGL = SGL.new moduleID SL.typeValueLocator
   attr <- makeAttrDI typeValueSGL $ TypeValue.toTypeTag typeValue
   let tag = TypeValue.toTypeTag typeValue
   let consName = DD.newByGlobalLocator typeValueSGL (BN.fromTypeTag tag)
@@ -264,11 +264,11 @@ coreListCons sglList =
 
 makeListSGL :: MID.ModuleID -> SGL.StrictGlobalLocator
 makeListSGL moduleID =
-  SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.listLocator}
+  SGL.new moduleID SL.listLocator
 
 makeConstructorSGL :: MID.ModuleID -> SGL.StrictGlobalLocator
 makeConstructorSGL moduleID =
-  SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.typeValueLocator}
+  SGL.new moduleID SL.typeValueLocator
 
 makeConstructorTypeExpr :: Hint -> MID.ModuleID -> TM.Type
 makeConstructorTypeExpr m moduleID = do
@@ -284,7 +284,7 @@ makeFieldTypeExpr m moduleID = do
 
 constructBoolTerm :: Hint -> MID.ModuleID -> IsConstLike -> TM.Term
 constructBoolTerm hint moduleID value = do
-  let boolSgl = SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.boolLocator}
+  let boolSgl = SGL.new moduleID SL.boolLocator
   let boolTypeDD = DD.newByGlobalLocator boolSgl BN.boolType
   let trueDD = DD.newByGlobalLocator boolSgl BN.trueConstructor
   let falseDD = DD.newByGlobalLocator boolSgl BN.falseConstructor
@@ -412,9 +412,9 @@ evaluateTextUncons :: Handle -> Hint -> MID.ModuleID -> TM.Term -> App TM.Term
 evaluateTextUncons h m moduleID text = do
   case text of
     _ :< TM.Prim (PV.Text textValue) -> do
-      let eitherSGL = SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.eitherLocator}
-      let unitSGL = SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.unitLocator}
-      let pairSGL = SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.pairLocator}
+      let eitherSGL = SGL.new moduleID SL.eitherLocator
+      let unitSGL = SGL.new moduleID SL.unitLocator
+      let pairSGL = SGL.new moduleID SL.pairLocator
       let unitTypeDD = DD.newByGlobalLocator unitSGL BN.unitType
       let pairTypeDD = DD.newByGlobalLocator pairSGL BN.pairType
       let unitTypeVar = m :< TM.TVarGlobal (AttrVG.Attr {argNum = AN.zero, isConstLike = True, isDestPassing = False}) unitTypeDD
@@ -537,7 +537,7 @@ corePairByModule moduleID =
 
 coreSGL :: MID.ModuleID -> SL.SourceLocator -> SGL.StrictGlobalLocator
 coreSGL moduleID sourceLocator =
-  SGL.StrictGlobalLocator {moduleID, sourceLocator}
+  SGL.new moduleID sourceLocator
 
 evaluateCompileError :: Handle -> Hint -> TM.Term -> App a
 evaluateCompileError h m msg = do

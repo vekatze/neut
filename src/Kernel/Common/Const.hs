@@ -23,8 +23,8 @@ nsSep :: T.Text
 nsSep =
   T.singleton nsSepChar
 
-routeSep :: T.Text
-routeSep =
+doubleColon :: T.Text
+doubleColon =
   "::"
 
 verSep :: T.Text
@@ -101,63 +101,63 @@ core =
 
 coreUnit :: T.Text
 coreUnit =
-  core <> routeSep <> "unit" <> nsSep <> "unit"
+  core <> doubleColon <> "unit" <> doubleColon <> "unit"
 
 coreUnitUnit :: T.Text
 coreUnitUnit =
-  core <> routeSep <> "unit" <> nsSep <> "Unit"
+  core <> doubleColon <> "unit" <> doubleColon <> "Unit"
 
 coreBool :: T.Text
 coreBool =
-  core <> routeSep <> "bool" <> nsSep <> "bool"
+  core <> doubleColon <> "bool" <> doubleColon <> "bool"
 
 coreBoolTrue :: T.Text
 coreBoolTrue =
-  core <> routeSep <> "bool" <> nsSep <> "True"
+  core <> doubleColon <> "bool" <> doubleColon <> "True"
 
 coreBoolFalse :: T.Text
 coreBoolFalse =
-  core <> routeSep <> "bool" <> nsSep <> "False"
+  core <> doubleColon <> "bool" <> doubleColon <> "False"
 
 coreEither :: T.Text
 coreEither =
-  core <> routeSep <> "either" <> nsSep <> "either"
+  core <> doubleColon <> "either" <> doubleColon <> "either"
 
 coreEitherLeft :: T.Text
 coreEitherLeft =
-  core <> routeSep <> "either" <> nsSep <> "Left"
+  core <> doubleColon <> "either" <> doubleColon <> "Left"
 
 coreEitherRight :: T.Text
 coreEitherRight =
-  core <> routeSep <> "either" <> nsSep <> "Right"
+  core <> doubleColon <> "either" <> doubleColon <> "Right"
 
 coreString :: T.Text
 coreString =
-  core <> routeSep <> "string" <> nsSep <> "string"
+  core <> doubleColon <> "string" <> doubleColon <> "string"
 
 coreBinary :: T.Text
 coreBinary =
-  core <> routeSep <> "binary" <> nsSep <> "binary"
+  core <> doubleColon <> "binary" <> doubleColon <> "binary"
 
 coreCSize :: T.Text
 coreCSize =
-  core <> routeSep <> "c-size" <> nsSep <> "c-size"
+  core <> doubleColon <> "c-size" <> doubleColon <> "c-size"
 
 coreVector :: T.Text
 coreVector =
-  core <> routeSep <> "vector"
+  core <> doubleColon <> "vector"
 
 coreDebugPanic :: T.Text
 coreDebugPanic =
-  core <> routeSep <> "debug" <> nsSep <> "panic"
+  core <> doubleColon <> "debug" <> doubleColon <> "panic"
 
 coreLayerEmbody :: T.Text
 coreLayerEmbody =
-  core <> routeSep <> "layer" <> nsSep <> "embody"
+  core <> doubleColon <> "layer" <> doubleColon <> "embody"
 
 coreTypeValueTypeValue :: T.Text
 coreTypeValueTypeValue =
-  core <> routeSep <> "type-value" <> nsSep <> "type-value"
+  core <> doubleColon <> "type-value" <> doubleColon <> "type-value"
 
 holeLiteral :: T.Text
 holeLiteral =

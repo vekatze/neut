@@ -57,7 +57,7 @@ toDoc term =
         Nothing ->
           decodeLambda c def
     _ :< PiIntroFix kind c def -> do
-      decodeDef (nameToDoc . N.Var) (LDK.keyword kind) c def
+      decodeDef (nameToDoc . N.Bare) (LDK.keyword kind) c def
     _ :< PiElim e c1 mImpArgs c2 expArgs c3 mDefaultArgs -> do
       let expArgsDoc c =
             attachComment c $ SE.decodeHorizontallyIfPossible $ fmap toDoc expArgs
@@ -754,17 +754,17 @@ piArgToDoc (m, k, x, c1, c2, t) = do
 
 piIntroArgToDoc :: RawBinder RawType -> D.Doc
 piIntroArgToDoc (m, k, x, c1, c2, t) = do
-  let x' = prefixVarKind k $ nameToDoc $ N.Var x
+  let x' = prefixVarKind k $ nameToDoc $ N.Bare x
   paramToDoc (m, x', c1, c2, t)
 
 defParamToDoc :: RawBinder RawType -> D.Doc
 defParamToDoc (m, k, x, c1, c2, t) = do
-  let x' = prefixVarKind k $ nameToDoc $ N.Var x
+  let x' = prefixVarKind k $ nameToDoc $ N.Bare x
   paramToDoc' (m, x', c1, c2, typeToDoc t)
 
 piIntroArgWithDefaultToDoc :: (RawBinder RawType, RawTerm) -> D.Doc
 piIntroArgWithDefaultToDoc ((m, k, x, c1, c2, t), defaultValue) = do
-  let x' = prefixVarKind k $ nameToDoc $ N.Var x
+  let x' = prefixVarKind k $ nameToDoc $ N.Bare x
   let baseParam = paramToDoc (m, x', c1, c2, t)
   D.join [baseParam, D.text " := ", toDoc defaultValue]
 
@@ -969,10 +969,12 @@ typeAnnot t = do
 nameToDoc :: N.Name -> D.Doc
 nameToDoc varOrLocator =
   case varOrLocator of
-    N.Var var ->
+    N.Bare var ->
       if isHole var
         then D.text "_"
         else D.text var
+    N.Dotted {} ->
+      D.text $ N.showName varOrLocator
     N.Locator locator ->
       D.text $ Locator.reify locator
 
@@ -1016,7 +1018,7 @@ type Rhymed =
 decPiElimKeyItem :: (Hint, Key, C, C, RawTerm) -> (Key, C, Rhymed, RawTerm)
 decPiElimKeyItem (_, k, c1, c2, e) =
   case e of
-    _ :< Var (N.Var k')
+    _ :< Var (N.Bare k')
       | k == k' ->
           (k, c1 ++ c2, True, e)
     _ ->
@@ -1083,7 +1085,7 @@ decodePattern pat = do
 decodePatternKeyValue :: (Key, (Hint, C, RP.RawPattern)) -> D.Doc
 decodePatternKeyValue (k, (_, c, v)) = do
   case v of
-    RP.Var VK.Normal (N.Var k')
+    RP.Var VK.Normal (N.Bare k')
       | k == k' ->
           D.text k
     _ ->
