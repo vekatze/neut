@@ -22,17 +22,15 @@ import Path
 
 data Handle = Handle
   { envHandle :: Env.Handle,
-    packageVersionHandle :: PV.Handle,
     archiveHandle :: Archive.Handle
   }
 
 new :: Global.Handle -> Handle
 new globalHandle = do
   let envHandle = Global.envHandle globalHandle
-  let packageVersionHandle = PV.new (Global.loggerHandle globalHandle)
   let runProcessHandle = RunProcess.new (Global.loggerHandle globalHandle)
   let saveModuleHandle = SaveModule.new (Global.loggerHandle globalHandle)
-  let archiveHandle = Archive.new runProcessHandle saveModuleHandle envHandle
+  let archiveHandle = Archive.new runProcessHandle saveModuleHandle envHandle (Global.loggerHandle globalHandle)
   Handle {..}
 
 archive :: Handle -> Config -> App ()
@@ -40,7 +38,7 @@ archive h cfg = do
   let mainModule = Env.getMainModule (envHandle h)
   Path.ensureNotInDependencyDir mainModule
   packageVersion <-
-    maybe (PV.chooseNewVersion (packageVersionHandle h) mainModule) (PV.reflect mainModule) (getArchiveName cfg)
+    maybe (PV.chooseNewVersion mainModule) (PV.reflect mainModule) (getArchiveName cfg)
   archiveEns <- makeArchiveEns packageVersion mainModule
   let (moduleRootDir, contents) = collectModuleFiles mainModule
   Archive.archive (archiveHandle h) packageVersion archiveEns moduleRootDir contents
