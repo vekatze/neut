@@ -411,22 +411,22 @@ You can trace selected definitions using `--report trace=ITEMS`:
 
 ```sh
 # print terms for `myfile` in source/myfile.nt
-neut build app --report trace=myfile,@term
+neut build app --report trace=this::myfile,@term
 
 # print terms for `read` and `write` in source/parser.nt
-neut build app --report trace=parser.read,parser.write,@term
+neut build app --report trace=this::parser::read,this::parser::write,@term
 
 # print low-level code and LLVM IR for `encode` in source/codec.nt
-neut build app --report trace=codec.encode,@lowcomp,@llvm
+neut build app --report trace=this::codec::encode,@lowcomp,@llvm
 
 # print polarized terms for `map` in the `core` dependency
-neut build app --report trace=core::list.map,@comp
+neut build app --report trace=core::list::map,@comp
 
 # print terms before elaboration for `validate` in source/checker.nt
-neut check --report trace=checker.validate,@preterm
+neut check --report trace=this::checker::validate,@preterm
 ```
 
-Each bare item such as `myfile` or `parser.read` selects a definition prefix; list multiple bare items to select multiple prefixes.
+Each locator item selects a module, source, or body prefix; list multiple locator items to select multiple prefixes.
 
 The available intermediate representations are:
 

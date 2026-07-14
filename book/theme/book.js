@@ -19,6 +19,7 @@ hljs.registerLanguage("neut", function (hljs) {
       keyword: [
         "alias",
         "alias-opaque",
+        "as",
         "attach",
         "box",
         "case",
@@ -45,6 +46,7 @@ hljs.registerLanguage("neut", function (hljs) {
         "letbox-T",
         "lift",
         "match",
+        "namespace",
         "nominal",
         "of",
         "on",
@@ -101,7 +103,7 @@ hljs.registerLanguage("neut", function (hljs) {
       },
       {
         begin: [
-          /(define|inline|define-meta|inline-meta|alias|alias-opaque|constant-meta|constant|data|resource|trope)/,
+          /(define|inline|define-meta|inline-meta|alias|alias-opaque|constant-meta|constant|data|resource|trope|namespace)/,
           /\s+/,
           /[\w-]+/,
         ],

@@ -267,8 +267,8 @@ These files can then be used from `new-item/source/new-item.nt` as follows:
 // new-item.nt
 
 import {
-  item {hi},
-  foo.greet {yo},
+  this::item {hi},
+  this::foo.greet {yo},
 }
 
 define main() -> unit {
@@ -299,12 +299,12 @@ define main() -> unit {
 The general form of a fully-qualified name in a dependency is:
 
 ```text
-route::path.to.file.name
+module.path::source.path::body.path
 ```
 
-The `route` part is a module route. It is a dot-separated sequence of dependency aliases, such as `util` or `foo.http`. The `path.to.file` part is the path from the source directory of the last dependency module.
+The `module.path` part is a dot-separated sequence of dependency aliases, such as `util` or `foo.http`. The `source.path` part is the path from the source directory of the last dependency module. The `body.path` part is the path to a name inside the file.
 
-Thus, `util::sample.my-add` refers to `my-add` in `source/sample.nt` of the dependency `util`.
+Thus, `util::sample::my-add` refers to `my-add` in `source/sample.nt` of the dependency `util`.
 
 Every item of an `import` can optionally have a list of names, as in `util::sample {my-add}`. Names in these lists are made available after `import`.
 
@@ -320,7 +320,20 @@ import {
 
 define main() -> unit {
   // ↓ using the fully-qualified form of `my-add`
-  print-int(util::sample.my-add(10, 11));
+  print-int(util::sample::my-add(10, 11));
+}
+```
+
+A file can also be imported as a namespace, using the entry `* as name`:
+
+```neut
+import {
+  core::int.io {print-int},
+  util::sample {* as s},
+}
+
+define main() -> unit {
+  print-int(s.my-add(10, 11));
 }
 ```
 
@@ -344,32 +357,33 @@ You can also use the fully-qualified form:
 
 ```neut
 define main() -> unit {
-  foo.http::client.request()
+  foo.http::client::request()
 }
 ```
 
-Module routes are always relative to the module where they are written. If a public signature in `foo` mentions `http.json::some-file.some-type`, then a user of `foo` sees the same type through `foo.http.json::some-file.some-type`.
+Module paths are always relative to the module where they are written. If a public signature in `foo` mentions `http.json::some-file::some-type`, then a user of `foo` sees the same type through `foo.http.json::some-file::some-type`.
 
 ## Restricting Top-Level Names
 
 ### Required Prefixes
 
-Every top-level name has a required prefix. It is the part before the deepest `_`-prefixed segment. If there is no `_`-prefixed segment, the required prefix is empty:
+An `_`-prefixed segment restricts a name to a required prefix. To find it, normalize identity segments, take the part before the deepest `_`-prefixed segment, and remove the separator immediately before that segment. The result uses the same component notation as an ordinary name and never ends in `.` or `::`.
 
 | Full name | Required prefix |
 | --- | --- |
-| `a.b._f` | `a.b` |
-| `a._b.f` | `a` |
-| `_a.b.f` | `""` (empty) |
-| `_a.b._f` | `_a.b` |
-| `a.b.f` | `""` (empty) |
+| `this::a.b::f` | none |
+| `this::_a.b::f` | `this` |
+| `this::a._b::f` | `this::a` |
+| `this::a.b::_f` | `this::a.b` |
+| `this::a.b::ns._f` | `this::a.b::ns` |
 
-A top-level name is available from source files whose dotted source path starts with its required prefix. The empty prefix covers the whole module. For example:
+A name is available at positions that start with its required prefix. Module paths, source paths, and body paths retain their boundaries during this comparison. For example:
 
-- `a._b.f` is available in `source/a.nt` and files below `source/a/`.
-- `a.b._f` is available in `source/a/b.nt` and files below `source/a/b/`.
-- `_a.b.f` is available inside the current module.
-- `a.b.f` is available inside the current module.
+- `this::a.b::f` is available from anywhere.
+- `this::_a.b::f` is available inside the defining module.
+- `this::a._b::f` is available in `source/a.nt` and files below `source/a/`.
+- `this::a.b::_f` is available in `source/a/b.nt` and files below `source/a/b/`.
+- `this::a.b::ns._f` is available inside namespace `ns` and its children in `source/a/b.nt`.
 
 ### Exposed Names
 
@@ -407,7 +421,7 @@ import {
 }
 ```
 
-Here, `_http::client.request` is available inside the module that declares `_http`.
+Here, `_http::client::request` is available inside the module that declares `_http`.
 
 On the other hand, suppose another module depends on this module through the alias `foo` and tries to write:
 

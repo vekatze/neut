@@ -3,6 +3,7 @@
 ## Table of Contents
 
 - [import](#import)
+- [namespace](#namespace)
 - [define](#define)
 - [inline](#inline)
 - [define-meta](#define-meta)
@@ -27,8 +28,10 @@
 import {
   sample::baz,
   sample.another-module::foo,
-  foo,
-  foo.bar {some-func, other-func},
+  util::somefile {* as f},
+  this::foo,
+  this::foo.bar {some-func, other-func},
+  this::foo.baz {* as baz, some-name, other-name as another-name},
 }
 ```
 
@@ -36,43 +39,36 @@ import {
 
 Every item in `import` is something like the following:
 
-- `foo`
-- `foo.bar {some-func, other-func}`
+- `this::foo`
+- `this::foo.bar {some-func, other-func}`
 - `sample::baz`
 - `sample.another-module::foo`
+- `this::foo.baz {* as baz, some-name}`
 
 The full form of an import item is:
 
 ```text
-module.route::source.path
-module.route::source.path {name-1, name-2}
+module.path::source.path
+module.path::source.path {entry-1, ..., entry-n}
 ```
 
-The module route can be empty. An empty route means the current module:
+where each entry is one of the following:
 
 ```text
-::foo
-::foo.bar {some-func, other-func}
+name
+name as local-name
+* as local-name
 ```
 
-When the route is empty, the leading `::` can be omitted:
+Module paths are dot-separated dependency aliases, with `this` as the identity element. For example, `sample.another-module::foo` imports `foo.nt` from a public dependency `another-module` of `sample`.
 
-```text
-foo
-foo.bar {some-func, other-func}
-```
+Source paths are the relative paths from the source directories. For example, if we want to import `(source-dir)/foo/bar.nt`, we'll have to write `foo.bar`.
 
-Module routes are dot-separated aliases. For example, `sample.another-module::foo` imports `foo.nt` from a public dependency `another-module` of `sample`.
-
-The source path is the relative path from the source directory. For example, if we want to import `(source-dir)/foo/bar`, we'll have to write `foo.bar`.
-
-In the case of `foo.bar`, the route is empty and the source path is `foo.bar`. In the case of `sample.another-module::foo`, the route is `sample.another-module`, and the source path is `foo`.
-
-You can specify names in `{}`. The names specified here can be used without qualifiers:
+Each entry in `{}` introduces an import alias. An entry `name` introduces the same name as an implicit import alias and makes it usable without qualifiers:
 
 ```neut
 import {
-  foo.bar {some-func},
+  this::foo.bar {some-func},
 }
 
 define yo() -> unit {
@@ -84,15 +80,61 @@ Unlisted names must be qualified:
 
 ```neut
 import {
-  foo.bar,
+  this::foo.bar,
 }
 
 define yo() -> unit {
-  foo.bar.some-func(arg-1, arg-2)
+  this::foo.bar::some-func(arg-1, arg-2)
 }
 ```
 
-When the route has multiple segments, the same route is used in the fully-qualified name:
+An entry `name as local-name` introduces the explicitly chosen import alias:
+
+```neut
+import {
+  this::foo.bar {some-func as f},
+}
+
+define yo() -> unit {
+  f(arg-1, arg-2)
+}
+```
+
+An entry `* as local-name` imports the whole file as a namespace under the explicitly chosen import alias:
+
+```neut
+import {
+  this::foo.bar {* as bar},
+}
+
+define yo() -> unit {
+  bar.some-func(arg-1, arg-2); // == this::foo.bar::some-func(arg-1, arg-2)
+}
+```
+
+All import aliases share the same name environment as the names defined in the current file:
+
+```neut
+// error
+import {
+  this::foo {* as f},
+  this::bar {* as f},
+}
+
+// error
+import {
+  this::bar {f},
+  this::foo {* as f},
+}
+
+// error
+import {
+  this::bar {f},
+  this::foo {some-name as f},
+}
+```
+
+When the module path has multiple segments, the same path is used in the fully-qualified name:
 
 ```neut
 import {
@@ -100,7 +142,7 @@ import {
 }
 
 define yo() -> unit {
-  sample.another-module::foo.some-func(arg-1, arg-2)
+  sample.another-module::foo::some-func(arg-1, arg-2)
 }
 ```
 
@@ -113,6 +155,43 @@ import {
 ```
 
 For more on static files, please see [the section in Modules](modules.md#static-file).
+
+## `namespace`
+
+`namespace` groups names inside a file:
+
+```neut
+// arithmetic.nt
+
+namespace integer {
+  define add(x: int, y: int) -> int {
+    add-int(x, y)
+  }
+
+  namespace checked {
+    define increment(x: int) -> int {
+      add(x, 1)
+    }
+  }
+}
+```
+
+The names above can be imported and used as follows:
+
+```neut
+import {
+  this::arithmetic {integer},
+}
+
+define example() -> int {
+  let x = integer.add(1, 2);
+  integer.checked.increment(x)
+}
+```
+
+Namespaces can contain the ordinary statement forms and can be nested. Namespace bodies follow the usual statement order. In the example, `increment` can use the earlier `add`, but not a later member.
+
+Moving a definition into a namespace changes its name; `integer.add` and a file-level `add` are different definitions.
 
 ## `define`
 
@@ -581,7 +660,7 @@ alias mylist(a) {
 }
 
 define use-my-type(xs: &mylist(int), y: my-type) -> my-type {
-  let len = core::list.length(xs);
+  let len = core::list::length(xs);
   add-int(len, y) // well-typed
 }
 ```
