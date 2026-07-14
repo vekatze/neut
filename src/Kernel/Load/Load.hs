@@ -7,6 +7,7 @@ where
 
 import App.App (App)
 import App.Run (forP)
+import Control.Monad
 import Data.Text qualified as T
 import Kernel.Common.Cache qualified as Cache
 import Kernel.Common.CreateGlobalHandle qualified as Global
@@ -29,16 +30,18 @@ new globalHandle@(Global.Handle {..}) = do
   Handle {..}
 
 load :: Handle -> Bool -> Target -> [Source.Source] -> App [(Source.Source, Either Cache.Cache T.Text)]
-load h shouldIgnoreCache target dependenceSeq = do
+load h isTraceEnabled target dependenceSeq = do
   liftIO $ Logger.report (loggerHandle h) "Loading source files and caches"
+  when isTraceEnabled $ do
+    liftIO $ Logger.trace (loggerHandle h) "Trace is enabled; caches will be ignored"
   forP dependenceSeq $ \source -> do
-    cacheOrContent <- _load shouldIgnoreCache (cacheHandle h) target source
+    cacheOrContent <- _load isTraceEnabled (cacheHandle h) target source
     return (source, cacheOrContent)
 
 _load :: Bool -> Cache.Handle -> Target -> Source.Source -> App (Either Cache.Cache T.Text)
-_load shouldIgnoreCache h t source = do
+_load isTraceEnabled h t source = do
   mCache <-
-    if shouldIgnoreCache
+    if isTraceEnabled
       then return Nothing
       else Cache.loadCache h t source
   case mCache of
