@@ -1,3 +1,9 @@
 define some-func() -> unit {
   Unit
 }
+
+namespace sample {
+  define run() -> unit {
+    some-func()
+  }
+}

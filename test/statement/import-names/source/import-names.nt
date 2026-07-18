@@ -1,10 +1,19 @@
 import {
-  bar {other-func-X, other-func-Y},
-  foo {some-func},
+  this::bar {other-func-X, other-func-Y},
+  this::foo {
+    * as foo-file,
+    sample,
+    some-func,
+    some-func as renamed-func,
+  },
 }
 
 define main() -> unit {
   let _ = some-func;
   let _ = other-func-X;
-  other-func-Y()
+  other-func-Y();
+  renamed-func();
+  foo-file.some-func();
+  sample.run();
+  foo-file.sample.run()
 }

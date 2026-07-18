@@ -346,7 +346,7 @@ define list-monoid<a>() -> monoid(list(a)) {
   Monoid{
     m-op := {
       (xs, ys) => {
-        core::list.append(xs, ys)
+        core::list::append(xs, ys)
       }
     },
     m-empty := Nil,

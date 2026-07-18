@@ -1,5 +1,5 @@
 import {
-  base-file {announce, chain, combine, describe, stamp},
+  this::base-file {announce, chain, combine, describe, stamp},
 }
 
 constant secondary-bool-string: &string {

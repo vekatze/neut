@@ -1,6 +1,6 @@
 import {
   core::debug {assert},
-  base-file {
+  this::base-file {
     announce,
     cascade,
     chain,
@@ -17,7 +17,7 @@ import {
     relay,
     stamp,
   },
-  primary {
+  this::primary {
     primary,
     primary-bool-second-string,
     primary-combine-bool-int-string,
@@ -28,7 +28,7 @@ import {
     primary-list-int-string,
     primary-stamp-bool-string,
   },
-  secondary {
+  this::secondary {
     secondary,
     secondary-bool-string,
     secondary-combine-bool-int-string,
@@ -299,7 +299,7 @@ define main() -> unit {
         expect("[primary, secondary, local]: stamp bool", stamp::<bool>(), secondary-stamp-bool-string);
         expect("[primary, secondary, local]: stamp int", stamp::<int>(), local-stamp-int-string);
         expect("[primary, secondary, local]: announce int", announce::<int>(1), secondary-int-string);
-        expect("[primary, secondary, local]: describe int", base-file.describe::<int>(1), local-describe-int-string);
+        expect("[primary, secondary, local]: describe int", this::base-file::describe::<int>(1), local-describe-int-string);
         expect("[primary, secondary, local]: combine bool int", combine::<bool, int>(True, 1), local-combine-bool-int-string);
         expect("[primary, secondary, local]: chain bool", chain::(True), secondary-describe-bool-string);
         expect("[primary, secondary, local]: cascade bool", cascade::(True), primary-describe-bool-string);
