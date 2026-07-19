@@ -78,7 +78,7 @@ The contents of `module.ens` look roughly like the following:
     core {
       digest "(base64url-encoded checksum)",
       mirror [
-        "https://github.com/.../X-Y-Z.tar.zst",
+        "https://github.com/.../X.Y.Z.tar.zst",
       ],
       enable-preset true,
     },
@@ -187,11 +187,11 @@ Let's publish our module so others can use `increment` and `my-add`.
 You can create a tarball snapshot of your module using `neut archive`:
 
 ```sh
-neut archive 0-1
-ls ./archive # => 0-1.tar.zst
+neut archive 0.1
+ls ./archive # => 0.1.tar.zst
 ```
 
-The argument of `archive` must be something like `0-1`, `0-1-0`, or `1-2-0-1`.
+The argument of `archive` must be something like `0.1`, `0.1.0`, or `1.2.0.1`.
 
 You can then publish these tarballs on GitHub, for example.
 
@@ -205,7 +205,7 @@ neut create new-item
 cd new-item
 
 # adds a sample module that contains `my-add` and `increment` to your module
-neut get util https://github.com/vekatze/neut-sample/raw/main/archive/0-1-0.tar.zst
+neut get util https://github.com/vekatze/neut-sample/raw/main/archive/0.1.0.tar.zst
 ```
 
 The subcommand `get` fetches the tarball from the specified URL and adds it to the current module. You can then refer to that dependency as `util` in your module.
@@ -226,7 +226,7 @@ The new dependency information is saved to `module.ens`:
     util {
       digest "..",
       mirror [
-        "https://github.com/YOUR_NAME/YOUR_REPO_NAME/raw/main/archive/0-1-0.tar.zst",
+        "https://github.com/YOUR_NAME/YOUR_REPO_NAME/raw/main/archive/0.1.0.tar.zst",
       ],
     },
   },

@@ -29,7 +29,7 @@ doubleColon =
 
 verSep :: T.Text
 verSep =
-  "-"
+  "."
 
 envVarCoreModuleURL :: String
 envVarCoreModuleURL =

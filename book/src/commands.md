@@ -116,41 +116,41 @@ cache/build/arm64-darwin/compiler-0.8.0/
 
 ### Notes on Versions
 
-If specified, `NAME` must be `X1-X2-..-Xn`, where all the integers are non-negative. For example, the following are valid versions:
+If specified, `NAME` must be a dot-separated sequence of non-negative integers. For example, the following are valid versions:
 
-- `1-0`
-- `0-1-0`
-- `2-1-3`
-- `0-0-0-3`
+- `1.0`
+- `0.1.0`
+- `2.1.3`
+- `0.0.0.3`
 
-If you omit `NAME`, `neut archive` automatically selects the next version number by incrementing the newest existing archive. If no archive exists yet, it starts from `0-1-0`.
+If you omit `NAME`, `neut archive` automatically selects the next version number by incrementing the newest existing archive. If no archive exists yet, it starts from `0.1.0`.
 
 `neut archive NAME` searches the archive directory for all compatible older versions. For example, suppose the archive directory contains the following files:
 
-- `1-0.tar.zst`
-- `1-1.tar.zst`
-- `2-0.tar.zst`
-- `2-1.tar.zst`
+- `1.0.tar.zst`
+- `1.1.tar.zst`
+- `2.0.tar.zst`
+- `2.1.tar.zst`
 
-In this case, the command `neut archive 2-2` searches the `archive` directory and finds `2-0` and `2-1` as the older compatible versions of `2-2`.
+In this case, the command `neut archive 2.2` searches the `archive` directory and finds `2.0` and `2.1` as the older compatible versions of `2.2`.
 
-Here, two versions are considered compatible only if they have the same number of leading zeros and the same first non-zero component; the remaining components are compared lexicographically. Thus, `2-2` is compatible with `2-0` and `2-1`, whereas `1-0` and `0-1-0` are not compatible.
+Here, two versions are considered compatible only if they have the same number of leading zeros and the same first non-zero component; the remaining components are compared lexicographically. Thus, `2.2` is compatible with `2.0` and `2.1`, whereas `1.0` and `0.1.0` are not compatible.
 
 This command then does the following:
 
 1. Computes all the digests of these older compatible tarballs
 2. Creates a new `module.ens` that contains the list of the older digests
-3. Packs the ens file and the other required files to create a tarball `2-2.tar.zst`
+3. Packs the ens file and the other required files to create a tarball `2.2.tar.zst`
 
-The digest information inside `module.ens` of `2-2.tar.zst` should look as follows:
+The digest information inside `module.ens` of `2.2.tar.zst` should look as follows:
 
 ```ens
 {
   target {..},
   dependency {..},
   antecedent [
-    "Bp8RulJ-XGTL9Eovre0yQupJpeS3lGNk8Q6QQYua7ag", // ← digest of 2-0.tar.zst
-    "zptXghmyD5druBl8kx2Qrei6O6fDsKCA7z2KoHp1aqA", // ← digest of 2-1.tar.zst
+    "Bp8RulJ-XGTL9Eovre0yQupJpeS3lGNk8Q6QQYua7ag", // ← digest of 2.0.tar.zst
+    "zptXghmyD5druBl8kx2Qrei6O6fDsKCA7z2KoHp1aqA", // ← digest of 2.1.tar.zst
   ],
 }
 ```
@@ -230,7 +230,7 @@ You can also specify `--target TARGET_NAME` to choose the initial target name. B
 `neut get ALIAS URL` fetches the external module archive specified by `URL` and adds it to the current module under the name `ALIAS`.
 
 ```sh
-neut get some-name https://github.com/USER_NAME/REPO_NAME/raw/main/archive/0-1.tar.zst
+neut get some-name https://github.com/USER_NAME/REPO_NAME/raw/main/archive/0.1.tar.zst
 ```
 
 Here, the `URL` must be the URL of an archive that was created by `neut archive`.
@@ -248,7 +248,7 @@ After executing `neut get`, the new dependency information is saved to `module.e
     some-name {
       digest "xNmQu6It81lGBy1sKvk5_jE4Qt8w8KgkVgGj0RBbbrk",
       mirror [
-        "https://github.com/USER_NAME/REPO_NAME/raw/main/archive/0-1.tar.zst",
+        "https://github.com/USER_NAME/REPO_NAME/raw/main/archive/0.1.tar.zst",
       ],
     },
     // ..

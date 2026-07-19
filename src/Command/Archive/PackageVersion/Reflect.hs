@@ -14,7 +14,7 @@ reflect :: MainModule -> T.Text -> App PV.PackageVersion
 reflect mainModule versionText = do
   case PV.reflect versionText of
     Nothing ->
-      raiseError' "The version must be something like X-Y-Z"
+      raiseError' "The version must be something like X.Y.Z"
     Just packageVersion -> do
       ensureNewVersionSanity mainModule packageVersion
       return packageVersion
