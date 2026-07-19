@@ -224,7 +224,9 @@ The field `mirror` specifies a list of URLs from which the compiler can fetch th
 
 The optional field `enable-preset` specifies whether to import the dependency's `preset` automatically, like the Prelude in other languages. For more information, see the explanation of `preset` in this section.
 
-Dependency aliases are components of qualified names. For example, if module `foo` depends on `bar`, users of `foo` can write names like `foo.bar::some-file.some-type` when that route is visible.
+Dependency aliases are components of qualified names. For example, if module `foo` depends on `bar`, users of `foo` can write names like `foo.bar::some-file::some-type` when that module path is visible.
+
+`this` is reserved for the identity path and can't be used as a dependency alias.
 
 The usual `_`-prefix rule applies to dependency aliases as well. An alias that starts with `_` is useful for implementation-only dependencies.
 

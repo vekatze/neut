@@ -35,7 +35,7 @@ parseProgram :: Handle -> Parser RawProgram
 parseProgram h = do
   m <- getCurrentHint
   importList <- parseImport
-  stmtList <- many $ parseStmt h
+  stmtList <- many $ parseStmt False h
   return $ RawProgram m importList stmtList
 
 parseImport :: Parser [(RawImport, C)]
@@ -54,34 +54,46 @@ parseSingleImport = do
         (ks, c) <- parseStaticKeyList
         return (RawStaticFileKey m c1 ks, c)
       _ -> do
-        (lls, c) <- parseLocalLocatorList'
-        return (RawImportItem mImportItem locator lls, c)
+        (entries, c) <- parseImportEntryList
+        return (RawImportItem mImportItem locator entries, c)
   return (RawImport c1 m importItems loc, c)
 
-parseStmt :: Handle -> Parser (RawStmt, C)
-parseStmt h = do
+parseStmt :: Bool -> Handle -> Parser (RawStmt, C)
+parseStmt isInNamespace h = do
   choice
-    [ parseDefine h,
+    [ parseDefine isInNamespace h,
       parseData h,
-      parseInline h,
-      parseConstantMeta h,
-      parseConstant h,
-      parseMacro h,
-      parseMacroInline h,
+      parseInline isInNamespace h,
+      parseConstantMeta isInNamespace h,
+      parseConstant isInNamespace h,
+      parseMacro isInNamespace h,
+      parseMacroInline isInNamespace h,
       parseAlias h,
       parseAliasOpaque h,
       parseTrope h,
       parseNominal h,
+      parseNamespace h,
       parseResource h,
       parseVariadic h FoldLeft,
       parseVariadic h FoldRight,
       parseForeign h
     ]
 
-parseLocalLocatorList' :: Parser (SE.Series (Hint, LL.LocalLocator), C)
-parseLocalLocatorList' = do
+parseNamespace :: Handle -> Parser (RawStmt, C)
+parseNamespace h = do
+  c1 <- keyword "namespace"
+  m <- getCurrentHint
+  (name, c2) <- baseName
+  c3 <- delimiter "{"
+  stmtList <- many $ parseStmt True h
+  loc <- getCurrentLoc
+  c <- delimiter "}"
+  return (RawStmtNamespace c1 m (name, c2) c3 stmtList loc, c)
+
+parseImportEntryList :: Parser (SE.Series RawImportEntry, C)
+parseImportEntryList = do
   choice
-    [ seriesBrace parseLocalLocator,
+    [ seriesBrace parseImportEntry,
       return (SE.emptySeries (Just SE.Brace) SE.Comma, [])
     ]
 
@@ -95,11 +107,30 @@ parseStaticKeyList = do
       return (SE.emptySeries (Just SE.Brace) SE.Comma, [])
     ]
 
-parseLocalLocator :: Parser ((Hint, LL.LocalLocator), C)
-parseLocalLocator = do
+parseImportEntry :: Parser (RawImportEntry, C)
+parseImportEntry = do
   m <- getCurrentHint
-  (ll, c) <- baseName
-  return ((m, LL.new ll), c)
+  choice
+    [ do
+        c1 <- delimiter "*"
+        (asClause, c) <- parseAsClause c1
+        return (RawImportWildcard m asClause, c),
+      do
+        (name, c1) <- baseName
+        asClauseOrNone <- optional $ parseAsClause c1
+        case asClauseOrNone of
+          Just (asClause, c) ->
+            return (RawImportName m (LL.new name) (Just asClause), c)
+          Nothing ->
+            return (RawImportName m (LL.new name) Nothing, c1)
+    ]
+
+parseAsClause :: C -> Parser (RawAsClause, C)
+parseAsClause precedingComment = do
+  aliasKeywordComment <- keyword "as"
+  m <- getCurrentHint
+  (importAlias, trailingComment) <- baseName
+  return (RawAsClause precedingComment aliasKeywordComment m importAlias, trailingComment)
 
 parseForeign :: Handle -> Parser (RawStmt, C)
 parseForeign h = do
@@ -124,20 +155,21 @@ parseForeignItem h = do
       ]
   return (RawForeignItemF m (EN.ExternalName funcName) c1 domList c2 c3 cod, c)
 
-checkNotMainOrZen :: BN.BaseName -> Hint -> T.Text -> Parser ()
-checkNotMainOrZen defName m keywordName = do
-  when (defName == BN.mainName) $ do
-    lift $ raiseError m $ "`main` must be defined using `define`, not `" <> keywordName <> "`"
-  when (defName == BN.zenName) $ do
-    lift $ raiseError m $ "`zen` must be defined using `define`, not `" <> keywordName <> "`"
+checkNotMainOrZen :: Bool -> BN.BaseName -> Hint -> T.Text -> Parser ()
+checkNotMainOrZen isInNamespace defName m keywordName = do
+  unless isInNamespace $ do
+    when (defName == BN.mainName) $ do
+      lift $ raiseError m $ "`main` must be defined using `define`, not `" <> keywordName <> "`"
+    when (defName == BN.zenName) $ do
+      lift $ raiseError m $ "`zen` must be defined using `define`, not `" <> keywordName <> "`"
 
-parseDefine :: Handle -> Parser (RawStmt, C)
-parseDefine h = do
+parseDefine :: Bool -> Handle -> Parser (RawStmt, C)
+parseDefine isInNamespace h = do
   c1 <- keyword "define"
   (def, c) <- parseDef ArrowObject h baseName
   let defName = RT.getDefName def
   let isDestPassing = RT.isDestPassing $ RT.geist def
-  if defName == BN.mainName || defName == BN.zenName
+  if not isInNamespace && (defName == BN.mainName || defName == BN.zenName)
     then do
       let m = RT.loc $ RT.geist def
       if isDestPassing
@@ -148,51 +180,51 @@ parseDefine h = do
         then return (RawStmtDefineTerm c1 SK.DestPassing def, c)
         else return (RawStmtDefineTerm c1 SK.Define def, c)
 
-parseMacro :: Handle -> Parser (RawStmt, C)
-parseMacro h = do
+parseMacro :: Bool -> Handle -> Parser (RawStmt, C)
+parseMacro isInNamespace h = do
   c1 <- keyword "define-meta"
   (def, c) <- parseDef ArrowMeta h baseName
   let defName = RT.getDefName def
   let m = RT.loc $ RT.geist def
-  checkNotMainOrZen defName m "define-meta"
+  checkNotMainOrZen isInNamespace defName m "define-meta"
   return (RawStmtDefineTerm c1 SK.Macro def, c)
 
-parseMacroInline :: Handle -> Parser (RawStmt, C)
-parseMacroInline h = do
+parseMacroInline :: Bool -> Handle -> Parser (RawStmt, C)
+parseMacroInline isInNamespace h = do
   c1 <- keyword "inline-meta"
   (def, c) <- parseDef ArrowMeta h baseName
   let defName = RT.getDefName def
   let m = RT.loc $ RT.geist def
-  checkNotMainOrZen defName m "inline-meta"
+  checkNotMainOrZen isInNamespace defName m "inline-meta"
   return (RawStmtDefineTerm c1 SK.MacroInline def, c)
 
-parseInline :: Handle -> Parser (RawStmt, C)
-parseInline h = do
+parseInline :: Bool -> Handle -> Parser (RawStmt, C)
+parseInline isInNamespace h = do
   c1 <- keyword "inline"
   (def, c) <- parseDef ArrowObject h baseName
   let defName = RT.getDefName def
   let m = RT.loc $ RT.geist def
-  checkNotMainOrZen defName m "inline"
+  checkNotMainOrZen isInNamespace defName m "inline"
   if RT.isDestPassing $ RT.geist def
     then return (RawStmtDefineTerm c1 SK.DestPassingInline def, c)
     else return (RawStmtDefineTerm c1 SK.Inline def, c)
 
-parseConstant :: Handle -> Parser (RawStmt, C)
-parseConstant h = do
+parseConstant :: Bool -> Handle -> Parser (RawStmt, C)
+parseConstant isInNamespace h = do
   c1 <- keyword "constant"
   (def, c) <- parseConstantDef h baseName
   let defName = RT.getDefName def
   let m = RT.loc $ RT.geist def
-  checkNotMainOrZen defName m "constant"
+  checkNotMainOrZen isInNamespace defName m "constant"
   return (RawStmtDefineTerm c1 SK.Constant def, c)
 
-parseConstantMeta :: Handle -> Parser (RawStmt, C)
-parseConstantMeta h = do
+parseConstantMeta :: Bool -> Handle -> Parser (RawStmt, C)
+parseConstantMeta isInNamespace h = do
   c1 <- keyword "constant-meta"
   (def, c) <- parseConstantDef h baseName
   let defName = RT.getDefName def
   let m = RT.loc $ RT.geist def
-  checkNotMainOrZen defName m "constant-meta"
+  checkNotMainOrZen isInNamespace defName m "constant-meta"
   return (RawStmtDefineTerm c1 SK.ConstantMeta def, c)
 
 parseAlias :: Handle -> Parser (RawStmt, C)
@@ -246,7 +278,7 @@ parseDefineMeta h = do
   m <- getCurrentHint
   mTarget <- getCurrentHint
   (targetText, cTarget) <- symbol
-  target <- interpretVarName mTarget targetText
+  target <- interpretName mTarget targetText
   targetArgs <- seriesAngle $ rawType h
   expArgs <- seriesParen $ mandatoryBinder h
   (_, cArrow, cod) <- parseDefInfoCod ArrowMeta h

@@ -2,6 +2,7 @@ module Language.Common.ModuleAlias
   ( ModuleAlias (..),
     coreModuleAlias,
     baseModuleAlias,
+    thisModuleAlias,
     isPrivate,
     reify,
   )
@@ -27,6 +28,10 @@ coreModuleAlias =
 baseModuleAlias :: ModuleAlias
 baseModuleAlias =
   ModuleAlias BN.base
+
+thisModuleAlias :: ModuleAlias
+thisModuleAlias =
+  ModuleAlias BN.this
 
 reify :: ModuleAlias -> T.Text
 reify alias =

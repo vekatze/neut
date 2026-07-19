@@ -61,6 +61,8 @@ weakenStmt stmt = do
       WeakStmtVariadic kind m name
     StmtForeign foreignList ->
       WeakStmtForeign $ map weakenForeign foreignList
+    StmtNamespace (SavedHint m) dd ->
+      WeakStmtNamespace m dd
 
 weakenDefineMeta :: DefineMeta -> WeakDefineMeta
 weakenDefineMeta defineMeta = do

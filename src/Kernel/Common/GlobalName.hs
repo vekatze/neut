@@ -29,6 +29,7 @@ data GlobalName
   | DataIntro ArgNum ArgNum D.Discriminant IsConstLike
   | Rule RuleKind
   | Trope
+  | Namespace
   deriving (Generic)
 
 getIsConstLike :: GlobalName -> IsConstLike
@@ -65,6 +66,8 @@ hasNoArgs gn =
     Rule {} ->
       False
     Trope ->
+      False
+    Namespace ->
       False
     PrimType _ ->
       True

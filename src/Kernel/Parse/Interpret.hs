@@ -116,12 +116,12 @@ activateImport :: Handle -> Hint -> Source.Source -> [ImportItem] -> App ()
 activateImport h m currentSource sourceInfoList = do
   forM_ sourceInfoList $ \importItem -> do
     case importItem of
-      ImportItem source aliasInfoList -> do
+      ImportItem source importUseList -> do
         let path = Source.sourceFilePath source
         namesInSource <- GlobalNameMap.lookup (globalNameMapHandle h) m path
         liftIO $ NameMap.activateTopLevelNames (nameMapHandle h) namesInSource
-        forM_ aliasInfoList $ \aliasInfo ->
-          Alias.activateAliasInfo (aliasHandle h) currentSource namesInSource aliasInfo
+        forM_ importUseList $ \importUse ->
+          Alias.activateImportUse (aliasHandle h) currentSource namesInSource importUse
       StaticFileKey pathList -> do
         forM_ pathList $ \(key, (mKey, path)) -> do
           Locator.activateStaticFile (locatorHandle h) mKey key path

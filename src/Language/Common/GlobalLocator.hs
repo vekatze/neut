@@ -2,7 +2,7 @@ module Language.Common.GlobalLocator
   ( GlobalLocator (..),
     reify,
     reflect,
-    reflectModuleRoute,
+    reflectModulePath,
   )
 where
 
@@ -20,7 +20,7 @@ import Language.Common.SourceLocator qualified as SL
 import Logger.Hint qualified as H
 
 data GlobalLocator = GlobalLocator
-  { moduleRoute :: [ModuleAlias],
+  { modulePath :: [ModuleAlias],
     sourceLocator :: SL.SourceLocator
   }
   deriving (Generic, Show, Eq)
@@ -30,26 +30,21 @@ instance Binary GlobalLocator
 instance Hashable GlobalLocator
 
 reify :: GlobalLocator -> T.Text
-reify gl =
-  case gl of
-    GlobalLocator {moduleRoute = [], sourceLocator} ->
-      SL.toText sourceLocator
-    GlobalLocator {moduleRoute, sourceLocator} ->
-      T.intercalate nsSep (map MA.reify moduleRoute) <> routeSep <> SL.toText sourceLocator
+reify GlobalLocator {modulePath, sourceLocator} = do
+  let modulePathText = case modulePath of
+        [] -> MA.reify MA.thisModuleAlias
+        _ -> T.intercalate nsSep $ map MA.reify modulePath
+  modulePathText <> doubleColon <> SL.toText sourceLocator
 
 reflect :: H.Hint -> T.Text -> Either Error GlobalLocator
 reflect m rawTxt = do
-  case T.splitOn routeSep rawTxt of
-    [sourceText]
-      | not (T.isInfixOf ":" sourceText) -> do
-          sourceLocator <- reflectSourceLocator m rawTxt sourceText
-          return GlobalLocator {moduleRoute = [], sourceLocator}
-    [routeText, sourceText]
-      | not (T.isInfixOf ":" routeText),
+  case T.splitOn doubleColon rawTxt of
+    [modulePathText, sourceText]
+      | not (T.isInfixOf ":" modulePathText),
         not (T.isInfixOf ":" sourceText) -> do
-          moduleRoute <- reflectModuleRoute m routeText
+          modulePath <- reflectModulePath m modulePathText
           sourceLocator <- reflectSourceLocator m rawTxt sourceText
-          return GlobalLocator {moduleRoute, sourceLocator}
+          return GlobalLocator {modulePath, sourceLocator}
     _ ->
       Left $ newError m $ "Invalid global locator: `" <> rawTxt <> "`"
 
@@ -66,18 +61,19 @@ reflectSourceLocatorFromList m rawTxt sourceTextList = do
     Nothing ->
       Left $ newError m $ "Invalid global locator: `" <> rawTxt <> "`"
 
-reflectModuleRoute :: H.Hint -> T.Text -> Either Error [ModuleAlias]
-reflectModuleRoute m routeText =
-  reflectModuleRouteComponents m routeText $ T.splitOn nsSep routeText
+reflectModulePath :: H.Hint -> T.Text -> Either Error [ModuleAlias]
+reflectModulePath m modulePathText =
+  reflectModulePathComponents m modulePathText $ T.splitOn nsSep modulePathText
 
-reflectModuleRouteComponents :: H.Hint -> T.Text -> [T.Text] -> Either Error [ModuleAlias]
-reflectModuleRouteComponents m routeText routeTextList =
-  case routeTextList of
-    [""] ->
-      return []
-    _ ->
-      forM routeTextList $ \aliasText -> do
+reflectModulePathComponents :: H.Hint -> T.Text -> [T.Text] -> Either Error [ModuleAlias]
+reflectModulePathComponents m modulePathText modulePathTextList =
+  case modulePathTextList of
+    [] ->
+      Left $ newError m $ "Invalid module path: `" <> modulePathText <> "`"
+    _ -> do
+      aliases <- forM modulePathTextList $ \aliasText -> do
         when (T.null aliasText) $ do
-          Left $ newError m $ "Invalid module route: `" <> routeText <> "`"
+          Left $ newError m $ "Invalid module path: `" <> modulePathText <> "`"
         alias <- BN.reflect m aliasText
         return $ ModuleAlias alias
+      return $ filter (/= MA.thisModuleAlias) aliases

@@ -144,7 +144,7 @@ This discarding/copying procedure happens _immediately after a variable is defin
 Immediates like integers or floats don't have to be discarded or copied since they don't rely on memory-related operations like `malloc` or `free`. This fact is reflected in the function that `int` and `float` are translated into:
 
 ```neut
-define base::#.imm(selector, value, extra) {
+define base::#::imm(selector, value, extra) {
   if selector == 0 {
     0 // "discarding" doesn't have to do anything
   } else if selector == 1 {
@@ -159,11 +159,11 @@ Immediates report a negative size. A type with a negative size never uses `extra
 
 Immediate types are compiled into this function. Noema types like `&list(int)` are also translated into this function.
 
-Uses of `base::#.imm` like `base::#.imm(1, some-value, null)` are optimized away by inlining.
+Uses of `base::#::imm` like `base::#::imm(1, some-value, null)` are optimized away by inlining.
 
 <div class="info-block">
 
-A type is compiled into a pointer to a closed function. This means that types are immediate values. Because of that, the type of types (`type`) is also compiled into `base::#.imm`.
+A type is compiled into a pointer to a closed function. This means that types are immediate values. Because of that, the type of types (`type`) is also compiled into `base::#::imm`.
 
 </div>
 
@@ -355,7 +355,7 @@ This leads us to translate the function type as follows:
 
 // ↓
 
-define base::#.cls(action-selector, cls, extra) {
+define base::#::cls(action-selector, cls, extra) {
   if action-selector == 0 {
     // discard
 
@@ -399,6 +399,6 @@ define base::#.cls(action-selector, cls, extra) {
 
 <div class="info-block">
 
-Every function type is translated into this same `base::#.cls`, regardless of its argument and result types.
+Every function type is translated into this same `base::#::cls`, regardless of its argument and result types.
 
 </div>

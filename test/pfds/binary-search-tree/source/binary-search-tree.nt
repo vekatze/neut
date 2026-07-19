@@ -55,7 +55,7 @@ define make-set-signature<a>(!compare: (&a, &a) -> ordering) -> set-signature(a)
 }
 
 define main() -> unit {
-  let Ord{compare} = core::int.ord.as-ord;
+  let Ord{compare} = core::int.ord::as-ord;
   let int-set-signature = make-set-signature<int>(compare);
   match int-set-signature {
   | Set{insert := !insert, member, empty} =>

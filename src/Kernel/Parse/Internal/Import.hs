@@ -14,7 +14,6 @@ import Data.HashMap.Strict qualified as Map
 import Data.IORef (IORef, modifyIORef', readIORef)
 import Data.Text qualified as T
 import Gensym.Handle qualified as Gensym
-import Kernel.Common.AliasInfo qualified as AI
 import Kernel.Common.Const
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.CreateLocalHandle qualified as Local
@@ -24,6 +23,7 @@ import Kernel.Common.Handle.Local.Locator qualified as Locator
 import Kernel.Common.Handle.Local.RawImportSummary qualified as RawImportSummary
 import Kernel.Common.Handle.Local.Tag qualified as Tag
 import Kernel.Common.Import (ImportItem (..))
+import Kernel.Common.Import qualified as I
 import Kernel.Common.Module
 import Kernel.Common.Module.GetEnabledPreset qualified as GetEnabledPreset
 import Kernel.Common.Module.GetModule qualified as GetModule
@@ -32,12 +32,14 @@ import Kernel.Common.Source.ShiftToLatest qualified as STL
 import Kernel.Parse.Internal.Handle.Alias qualified as Alias
 import Kernel.Parse.Internal.Handle.GlobalNameMap qualified as GlobalNameMap
 import Kernel.Parse.Internal.Handle.Unused qualified as Unused
+import Language.Common.BaseName qualified as BN
 import Language.Common.GlobalLocator qualified as GL
 import Language.Common.LocalLocator qualified as LL
 import Language.Common.ModuleID (ModuleID)
 import Language.Common.SourceLocator qualified as SL
 import Language.Common.SourcePrefix qualified as SP
 import Language.Common.StrictGlobalLocator qualified as SGL
+import Language.RawTerm.Name (isConsName)
 import Language.RawTerm.RawStmt
 import Logger.Hint
 import Path
@@ -82,9 +84,9 @@ interpretImport h m currentSource importList = do
       liftIO $ RawImportSummary.set (rawImportSummaryHandle h) importList'
       importItemList' <- fmap concat $ forM (SE.extract importItemList) $ \rawImportItem -> do
         case rawImportItem of
-          RawImportItem mItem (locatorText, _) localLocatorList -> do
-            let localLocatorList' = SE.extract localLocatorList
-            interpretImportItem h True mItem locatorText localLocatorList'
+          RawImportItem mItem (locatorText, _) entrySeries -> do
+            let entries = map interpretRawEntry $ SE.extract entrySeries
+            interpretImportItem h True mItem locatorText entries
           RawStaticFileKey _ _ keys -> do
             let keys' = SE.extract keys
             interpretImportItemStaticFile h (Source.sourceModule currentSource) keys'
@@ -109,28 +111,54 @@ interpretImportItemStaticFile h currentModule keyList = do
         raiseError mKey $ "No such static file is defined: " <> key
   return [StaticFileKey pathList]
 
+interpretRawEntry :: RawImportEntry -> I.ImportedEntry
+interpretRawEntry entry =
+  case entry of
+    RawImportName m ll Nothing ->
+      I.ImportedName m ll Nothing
+    RawImportName m ll (Just (RawAsClause _ _ mAs importAlias)) ->
+      I.ImportedName m ll $ Just (mAs, importAlias)
+    RawImportWildcard _ (RawAsClause _ _ mAs importAlias) ->
+      I.NamespaceView mAs importAlias
+
 interpretImportItem ::
   Handle ->
-  AI.MustUpdateTag ->
+  I.MustUpdateTag ->
   Hint ->
   LocatorText ->
-  [(Hint, LL.LocalLocator)] ->
+  [I.ImportedEntry] ->
   App [ImportItem]
-interpretImportItem h mustUpdateTag m locatorText localLocatorList = do
-  sgl <- resolveImportLocator h m locatorText
+interpretImportItem h mustUpdateTag m locatorText entries = do
+  gl <- liftEither $ GL.reflect m locatorText
+  sgl <- Alias.resolveAlias (aliasHandle h) m gl
+  forM_ entries ensureImportAliasConsistency
   when mustUpdateTag $ do
     liftIO $ Unused.insertGlobalLocator (unusedHandle h) (SGL.reify sgl) m locatorText
-    forM_ localLocatorList $ \(ml, ll) ->
-      liftIO $ Unused.insertLocalLocator (unusedHandle h) ll ml
+    forM_ entries $ \entry ->
+      case entry of
+        I.ImportedName mImportedName ll explicitAliasOrNone -> do
+          let (mImportAlias, importAlias) = maybe (mImportedName, LL.baseName ll) id explicitAliasOrNone
+          liftIO $ Unused.insertLocalLocator (unusedHandle h) (LL.new importAlias) mImportAlias
+        I.NamespaceView mImportAlias importAlias ->
+          liftIO $ Unused.insertLocalLocator (unusedHandle h) (LL.new importAlias) mImportAlias
   source <- getSource h mustUpdateTag m sgl locatorText
-  return [ImportItem source [AI.Use mustUpdateTag sgl localLocatorList]]
+  return [ImportItem source [I.ImportUse mustUpdateTag sgl entries]]
 
-resolveImportLocator :: Handle -> Hint -> LocatorText -> App SGL.StrictGlobalLocator
-resolveImportLocator h m locatorText = do
-  gl <- liftEither $ GL.reflect m locatorText
-  Alias.resolveAlias (aliasHandle h) m gl
+ensureImportAliasConsistency :: I.ImportedEntry -> App ()
+ensureImportAliasConsistency entry =
+  case entry of
+    I.ImportedName _ ll (Just (mImportAlias, importAlias))
+      | isConsName (BN.reify (LL.baseName ll)) /= isConsName (BN.reify importAlias) ->
+          raiseError mImportAlias $
+            "The import alias `"
+              <> BN.reify importAlias
+              <> "` must be capitalized like `"
+              <> BN.reify (LL.baseName ll)
+              <> "`"
+    _ ->
+      return ()
 
-getSource :: Handle -> AI.MustUpdateTag -> Hint -> SGL.StrictGlobalLocator -> LocatorText -> App Source.Source
+getSource :: Handle -> I.MustUpdateTag -> Hint -> SGL.StrictGlobalLocator -> LocatorText -> App Source.Source
 getSource h mustUpdateTag m sgl locatorText = do
   let h' = GetModule.Handle {moduleHandle = moduleHandle h}
   let mainModule = Env.getMainModule (envHandle h)
@@ -138,9 +166,15 @@ getSource h mustUpdateTag m sgl locatorText = do
   ensureSourceImportability h m sgl locatorText
   relPath <- addExtension sourceFileExtension $ SL.reify $ SGL.sourceLocator sgl
   let nextPath = getSourceDir nextModule </> relPath
-  when mustUpdateTag $
-    liftIO $
-      Tag.insertSourceFile (tagHandle h) m locatorText (newSourceHint nextPath)
+  when mustUpdateTag $ do
+    case T.splitOn doubleColon locatorText of
+      [modulePathText, sourceText] -> do
+        liftIO $ Tag.insertModuleFile (tagHandle h) m modulePathText (moduleLocation nextModule)
+        let (line, column) = metaLocation m
+        let sourceHint = m {metaLocation = (line, column + T.length modulePathText + T.length doubleColon)}
+        liftIO $ Tag.insertResolvedSourceFile (tagHandle h) sourceHint sourceText (SGL.reify sgl) (newSourceHint nextPath)
+      _ ->
+        raiseError m $ "Invalid global locator: `" <> locatorText <> "`"
   STL.shiftToLatest
     (shiftToLatestHandle h)
     Source.Source
@@ -170,8 +204,8 @@ interpretPreset h m currentModule = do
       return items
     Nothing -> do
       presetInfo <- GetEnabledPreset.getEnabledPreset (getEnabledPresetHandle h) currentModule
-      items <- fmap concat $ forM presetInfo $ \(locatorText, presetLocalLocatorList) -> do
-        let presetLocalLocatorList' = map ((m,) . LL.new) presetLocalLocatorList
-        interpretImportItem h False m locatorText presetLocalLocatorList'
+      items <- fmap concat $ forM presetInfo $ \(locatorText, presetNameList) -> do
+        let entries = map (\name -> I.ImportedName m (LL.new name) Nothing) presetNameList
+        interpretImportItem h False m locatorText entries
       liftIO $ modifyIORef' (presetCacheRef h) $ Map.insert (moduleID currentModule) items
       return items

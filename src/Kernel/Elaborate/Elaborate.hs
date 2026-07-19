@@ -329,6 +329,8 @@ elaborateStmt h stmt = do
         cod' <- mapM (strictify h) cod
         return $ F.Foreign m externalName domList' cod'
       return ([StmtForeign foreignList'], [])
+    WeakStmtNamespace m dd -> do
+      return ([StmtNamespace (SavedHint m) dd], [])
 
 elaborateGeist :: Handle -> G.Geist WT.WeakType WT.WeakTerm -> App (G.Geist TM.Type TM.Term)
 elaborateGeist h (G.Geist {..}) = do
@@ -506,6 +508,8 @@ insertStmt h stmt = do
       return ()
     StmtForeign _ -> do
       return ()
+    StmtNamespace {} ->
+      return ()
   insertWeakStmt h $ weakenStmt stmt
 
 insertWeakStmt :: Handle -> WeakStmt -> App ()
@@ -529,6 +533,8 @@ insertWeakStmt h stmt = do
     WeakStmtForeign foreignList ->
       forM_ foreignList $ \(F.Foreign _ externalName domList cod) -> do
         liftIO $ WeakDecl.insert (weakDeclHandle h) (DN.Ext externalName) domList cod
+    WeakStmtNamespace {} -> do
+      return ()
 
 registerDataTypeStmt :: Handle -> DD.DefiniteDescription -> SK.StmtKindType TM.Type -> App ()
 registerDataTypeStmt h dataName stmtKind =
@@ -1151,12 +1157,12 @@ isBinaryObjectType binaryDD t =
 
 makeCoreStringDD :: MID.ModuleID -> DD.DefiniteDescription
 makeCoreStringDD moduleID = do
-  let stringSGL = SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.stringLocator}
+  let stringSGL = SGL.new moduleID SL.stringLocator
   DD.newByGlobalLocator stringSGL BN.stringType
 
 makeCoreBinaryDD :: MID.ModuleID -> DD.DefiniteDescription
 makeCoreBinaryDD moduleID = do
-  let binarySGL = SGL.StrictGlobalLocator {moduleID, sourceLocator = SL.binaryLocator}
+  let binarySGL = SGL.new moduleID SL.binaryLocator
   DD.newByGlobalLocator binarySGL BN.binary
 
 elaborateWeakBinder :: Handle -> BinderF WT.WeakType -> App (BinderF TM.Type)

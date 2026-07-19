@@ -13,6 +13,8 @@ module Language.RawTerm.RawStmt
     PostRawDefineMeta (..),
     RawImport (..),
     RawImportItem (..),
+    RawImportEntry (..),
+    RawAsClause (..),
     isImportEmpty,
     mergeImportList,
     RawForeignItemF (..),
@@ -108,6 +110,7 @@ data BaseRawStmt name
       Loc
   | RawStmtNominal C Hint (SE.Series (NominalTag, RT.RawGeist name, Loc))
   | RawStmtForeign C (SE.Series RawForeignItem)
+  | RawStmtNamespace C Hint (name, C) C [(BaseRawStmt name, C)] Loc
 
 type RawStmt =
   BaseRawStmt BN.BaseName
@@ -147,6 +150,7 @@ data PostRawStmt
       DD.DefiniteDescription
   | PostRawStmtNominal C Hint (SE.Series (NominalTag, RT.RawGeist DD.DefiniteDescription, Loc))
   | PostRawStmtForeign C (SE.Series RawForeignItem)
+  | PostRawStmtNamespace Hint DD.DefiniteDescription [PostRawStmt]
 
 data PostRawDefineMeta = PostRawDefineMeta
   { postDefineMetaLoc :: Hint,
@@ -160,8 +164,15 @@ data PostRawDefineMeta = PostRawDefineMeta
   }
 
 data RawImportItem
-  = RawImportItem Hint (T.Text, C) (SE.Series (Hint, LL.LocalLocator))
+  = RawImportItem Hint (T.Text, C) (SE.Series RawImportEntry)
   | RawStaticFileKey Hint C (SE.Series (Hint, T.Text))
+
+data RawImportEntry
+  = RawImportName Hint LL.LocalLocator (Maybe RawAsClause)
+  | RawImportWildcard Hint RawAsClause
+
+data RawAsClause
+  = RawAsClause C C Hint BN.BaseName
 
 data RawForeignItemF a
   = RawForeignItemF Hint EN.ExternalName C (SE.Series a) C C (F.ForeignCodType a)

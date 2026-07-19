@@ -43,7 +43,7 @@ new h source = do
   usedTopLevelNameHandle <- liftIO UsedTopLevelName.new
   tagHandle <- liftIO Tag.new
   modulePathMap <- liftIO $ ModulePath.get $ Global.modulePathHandle h
-  locatorHandle <- Locator.new envHandle tagHandle modulePathMap source
+  locatorHandle <- Locator.new tagHandle modulePathMap source
   aliasHandle <- liftIO $ Alias.new shiftToLatestHandle locatorHandle envHandle (Global.moduleHandle h) source
   rawImportSummaryHandle <- liftIO RawImportSummary.new
   symLocHandle <- liftIO SymLoc.new

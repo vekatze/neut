@@ -2,8 +2,9 @@ module Kernel.Parse.Internal.Handle.Alias
   ( Handle,
     new,
     resolveAlias,
+    getModuleLocation,
     resolveModuleAlias,
-    activateAliasInfo,
+    activateImportUse,
   )
 where
 
@@ -13,7 +14,7 @@ import Control.Monad
 import Control.Monad.IO.Class
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
-import Kernel.Common.AliasInfo
+import Kernel.Common.Import (ImportUse (..))
 import Kernel.Common.Handle.Global.Env qualified as Env
 import Kernel.Common.Handle.Global.Module qualified as ModuleHandle
 import Kernel.Common.Handle.Local.Locator qualified as Locator
@@ -28,6 +29,7 @@ import Language.Common.ModuleAlias
 import Language.Common.ModuleID qualified as MID
 import Language.Common.StrictGlobalLocator qualified as SGL
 import Logger.Hint
+import Path (Abs, File, Path)
 
 data Handle = Handle
   { shiftToLatestHandle :: STL.Handle,
@@ -35,13 +37,13 @@ data Handle = Handle
     envHandle :: Env.Handle,
     moduleHandle :: ModuleHandle.Handle,
     currentModule :: Module,
-    moduleRouteCacheRef :: IORef (Map.HashMap [ModuleAlias] MID.ModuleID)
+    modulePathCacheRef :: IORef (Map.HashMap [ModuleAlias] MID.ModuleID)
   }
 
 new :: STL.Handle -> Locator.Handle -> Env.Handle -> ModuleHandle.Handle -> Source.Source -> IO Handle
 new shiftToLatestHandle locatorHandle envHandle moduleHandle source = do
   let currentModule = Source.sourceModule source
-  moduleRouteCacheRef <- newIORef Map.empty
+  modulePathCacheRef <- newIORef Map.empty
   return $ Handle {..}
 
 resolveAlias ::
@@ -51,28 +53,24 @@ resolveAlias ::
   App SGL.StrictGlobalLocator
 resolveAlias h m gl = do
   case gl of
-    GL.GlobalLocator {moduleRoute, sourceLocator} -> do
-      moduleID <- resolveModuleRoute h m moduleRoute
-      return
-        SGL.StrictGlobalLocator
-          { SGL.moduleID = moduleID,
-            SGL.sourceLocator = sourceLocator
-          }
+    GL.GlobalLocator {modulePath, sourceLocator} -> do
+      moduleID <- resolveModulePath h m modulePath
+      return $ SGL.new moduleID sourceLocator
 
-resolveModuleRoute :: Handle -> Hint -> [ModuleAlias] -> App MID.ModuleID
-resolveModuleRoute h m moduleRoute = do
-  cache <- liftIO $ readIORef (moduleRouteCacheRef h)
-  case Map.lookup moduleRoute cache of
-    Just cachedRoute ->
-      return cachedRoute
+resolveModulePath :: Handle -> Hint -> [ModuleAlias] -> App MID.ModuleID
+resolveModulePath h m modulePath = do
+  cache <- liftIO $ readIORef (modulePathCacheRef h)
+  case Map.lookup modulePath cache of
+    Just cachedModuleID ->
+      return cachedModuleID
     Nothing -> do
-      result <- resolveModuleRouteFrom h m (currentModule h) 0 moduleRoute
-      liftIO $ modifyIORef' (moduleRouteCacheRef h) $ Map.insert moduleRoute result
+      result <- resolveModulePathFrom h m (currentModule h) 0 modulePath
+      liftIO $ modifyIORef' (modulePathCacheRef h) $ Map.insert modulePath result
       return result
 
-resolveModuleRouteFrom :: Handle -> Hint -> Module -> Int -> [ModuleAlias] -> App MID.ModuleID
-resolveModuleRouteFrom h m baseModule depth route =
-  case route of
+resolveModulePathFrom :: Handle -> Hint -> Module -> Int -> [ModuleAlias] -> App MID.ModuleID
+resolveModulePathFrom h m baseModule depth modulePath =
+  case modulePath of
     [] ->
       return $ moduleID baseModule
     moduleAlias : rest -> do
@@ -85,7 +83,15 @@ resolveModuleRouteFrom h m baseModule depth route =
           return nextModuleID
         _ -> do
           nextModule <- getModuleByID h m nextModuleID
-          resolveModuleRouteFrom h m nextModule (depth + 1) rest
+          resolveModulePathFrom h m nextModule (depth + 1) rest
+
+getModuleLocation :: Handle -> Hint -> MID.ModuleID -> App (Path Abs File)
+getModuleLocation h m moduleID = do
+  case moduleID of
+    MID.Base ->
+      return $ moduleLocation $ extractModule $ Env.getMainModule $ envHandle h
+    _ ->
+      ModuleHandle.getModuleFilePath (Env.getMainModule $ envHandle h) (Just m) moduleID
 
 resolveModuleAliasIn :: Handle -> Hint -> Module -> ModuleAlias -> App MID.ModuleID
 resolveModuleAliasIn h m baseModule moduleAlias = do
@@ -115,10 +121,10 @@ getModuleByID h m moduleID = do
 
 resolveModuleAlias :: Handle -> Hint -> ModuleAlias -> App MID.ModuleID
 resolveModuleAlias h m moduleAlias =
-  resolveModuleRoute h m [moduleAlias]
+  resolveModulePath h m [moduleAlias]
 
-activateAliasInfo :: Handle -> Source.Source -> TopNameMap -> AliasInfo -> App ()
-activateAliasInfo h source topNameMap aliasInfo =
-  case aliasInfo of
-    Use shouldUpdateTag strictGlobalLocator localLocatorList ->
-      Locator.activateSpecifiedNames (locatorHandle h) source topNameMap shouldUpdateTag strictGlobalLocator localLocatorList
+activateImportUse :: Handle -> Source.Source -> TopNameMap -> ImportUse -> App ()
+activateImportUse h source topNameMap importUse =
+  case importUse of
+    ImportUse shouldUpdateTag strictGlobalLocator entries ->
+      Locator.activateImportedEntries (locatorHandle h) source topNameMap shouldUpdateTag strictGlobalLocator entries

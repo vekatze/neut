@@ -4,11 +4,12 @@ import Control.Monad
 import Data.Bifunctor
 import Data.Text qualified as T
 import Language.Common.BaseName qualified as BN
-import Language.Common.Const (routeSep)
+import Language.Common.Const (doubleColon)
 import Language.Common.ExternalName qualified as EN
 import Language.Common.ForeignCodType qualified as FCT
 import Language.Common.GlobalLocator qualified as GL
 import Language.Common.LocalLocator qualified as LL
+import Language.Common.ModuleAlias qualified as MA
 import Language.Common.NominalTag
 import Language.Common.RuleKind (ruleKindToKeyword)
 import Language.Common.StmtKind qualified as SK
@@ -84,41 +85,57 @@ filterUnused importInfo rawImportItem = do
   case rawImportItem of
     RawStaticFileKey {} ->
       return rawImportItem
-    RawImportItem m (loc, c) lls -> do
+    RawImportItem m (loc, c) entries -> do
       if isUsedGL (unusedGlobalLocators importInfo) loc
         then do
-          let lls' = SE.filter (isUsedLL (unusedLocalLocators importInfo) . snd) lls
-          return $ RawImportItem m (loc, c) lls'
+          let entries' = SE.filter (entryIsUsed importInfo) entries
+          return $ RawImportItem m (loc, c) entries'
         else Left c
+
+entryIsUsed :: ImportInfo -> RawImportEntry -> Bool
+entryIsUsed importInfo entry =
+  case entry of
+    RawImportName _ ll asClauseOrNone ->
+      isUsedLL (unusedLocalLocators importInfo) $ LL.new $ importEntryAlias ll asClauseOrNone
+    RawImportWildcard _ (RawAsClause _ _ _ importAlias) ->
+      isUsedLL (unusedLocalLocators importInfo) $ LL.new importAlias
+
+importEntryAlias :: LL.LocalLocator -> Maybe RawAsClause -> BN.BaseName
+importEntryAlias ll asClauseOrNone =
+  case asClauseOrNone of
+    Nothing ->
+      LL.baseName ll
+    Just (RawAsClause _ _ _ importAlias) ->
+      importAlias
 
 filterPreset :: ImportInfo -> RawImportItem -> Either C RawImportItem
 filterPreset importInfo item = do
   case item of
     RawStaticFileKey {} ->
       return item
-    RawImportItem m (loc, c) lls -> do
+    RawImportItem m (loc, c) entries -> do
       case lookup loc (presetNames importInfo) of
         Nothing ->
           return item
         Just names -> do
-          if SE.isEmpty lls
+          let entries' = SE.catMaybes $ fmap (filterPresetEntry names) entries
+          if SE.isEmpty entries'
             then Left c
-            else do
-              let lls' = SE.catMaybes $ fmap (filterLocalLocator names) lls
-              if SE.isEmpty lls'
-                then Left c
-                else return $ RawImportItem m (loc, c) lls'
+            else return $ RawImportItem m (loc, c) entries'
 
-filterLocalLocator :: [BN.BaseName] -> (Hint, LL.LocalLocator) -> Maybe (Hint, LL.LocalLocator)
-filterLocalLocator names (m, ll) =
-  if LL.baseName ll `elem` names
-    then Nothing
-    else return (m, ll)
+filterPresetEntry :: [BN.BaseName] -> RawImportEntry -> Maybe RawImportEntry
+filterPresetEntry names entry =
+  case entry of
+    RawImportName _ ll Nothing
+      | LL.baseName ll `elem` names ->
+          Nothing
+    _ ->
+      Just entry
 
 sortImport :: SE.Series RawImportItem -> SE.Series RawImportItem
 sortImport series = do
   let series' = SE.sortSeriesBy compareImport series
-  nubLocalLocators . sortLocalLocators <$> series' {SE.elems = mergeAdjacentImport (SE.elems series')}
+  nubImportEntries . sortImportEntries <$> series' {SE.elems = mergeAdjacentImport (SE.elems series')}
 
 compareImport :: RawImportItem -> RawImportItem -> Ordering
 compareImport item1 item2 =
@@ -134,13 +151,13 @@ compareImport item1 item2 =
 
 importSortKey :: T.Text -> (Bool, T.Text)
 importSortKey loc =
-  (not (T.isInfixOf routeSep loc), loc)
+  ((MA.reify MA.thisModuleAlias <> doubleColon) `T.isPrefixOf` loc, loc)
 
 normalizeImportItem :: RawImportItem -> RawImportItem
 normalizeImportItem item =
   case item of
-    RawImportItem m (loc, c) args ->
-      RawImportItem m (normalizeLocator m loc, c) args
+    RawImportItem m (loc, c) entries ->
+      RawImportItem m (normalizeLocator m loc, c) entries
     RawStaticFileKey {} ->
       item
 
@@ -160,30 +177,38 @@ mergeAdjacentImport importList = do
         (RawStaticFileKey m1 c1' ks1, RawStaticFileKey _ c2' ks2) -> do
           let item = RawStaticFileKey m1 (c1' ++ c2') (SE.appendLeftBiased ks1 ks2)
           mergeAdjacentImport $ (c1 ++ c2, item) : rest
-        (RawImportItem m1 (locator1, c1') localLocatorList1, RawImportItem _ (locator2, c2') localLocatorList2)
+        (RawImportItem m1 (locator1, c1') entries1, RawImportItem _ (locator2, c2') entries2)
           | locator1 == locator2 -> do
-              let localLocatorList = SE.appendLeftBiased localLocatorList1 localLocatorList2
-              let item = RawImportItem m1 (locator1, c1' ++ c2') localLocatorList
+              let entries = SE.appendLeftBiased entries1 entries2
+              let item = RawImportItem m1 (locator1, c1' ++ c2') entries
               mergeAdjacentImport $ (c1 ++ c2, item) : rest
         _ ->
           (c1, item1) : mergeAdjacentImport ((c2, item2) : rest)
 
-sortLocalLocators :: RawImportItem -> RawImportItem
-sortLocalLocators rawImportItem = do
+importEntryKey :: RawImportEntry -> (Int, T.Text, T.Text)
+importEntryKey entry =
+  case entry of
+    RawImportWildcard _ (RawAsClause _ _ _ importAlias) ->
+      (0, BN.reify importAlias, "")
+    RawImportName _ ll asClauseOrNone ->
+      (1, LL.reify ll, maybe "" (\(RawAsClause _ _ _ importAlias) -> BN.reify importAlias) asClauseOrNone)
+
+sortImportEntries :: RawImportItem -> RawImportItem
+sortImportEntries rawImportItem = do
   case rawImportItem of
-    RawImportItem m locator localLocators -> do
-      let cmp (_, x) (_, y) = compare x y
-      RawImportItem m locator $ SE.sortSeriesBy cmp localLocators
+    RawImportItem m locator entries -> do
+      let cmp x y = compare (importEntryKey x) (importEntryKey y)
+      RawImportItem m locator $ SE.sortSeriesBy cmp entries
     RawStaticFileKey m c ks -> do
       let cmp (_, x) (_, y) = compare x y
       RawStaticFileKey m c $ SE.sortSeriesBy cmp ks
 
-nubLocalLocators :: RawImportItem -> RawImportItem
-nubLocalLocators rawImportItem = do
+nubImportEntries :: RawImportItem -> RawImportItem
+nubImportEntries rawImportItem = do
   case rawImportItem of
-    RawImportItem m locator localLocators -> do
-      let eq (_, x) (_, y) = x == y
-      RawImportItem m locator $ SE.nubSeriesBy eq localLocators
+    RawImportItem m locator entries -> do
+      let eq x y = importEntryKey x == importEntryKey y
+      RawImportItem m locator $ SE.nubSeriesBy eq entries
     RawStaticFileKey m c ks -> do
       let eq (_, x) (_, y) = x == y
       RawStaticFileKey m c $ SE.nubSeriesBy eq ks
@@ -191,13 +216,13 @@ nubLocalLocators rawImportItem = do
 decImportItem :: RawImportItem -> (D.Doc, C)
 decImportItem rawImportItem = do
   case rawImportItem of
-    RawImportItem _ (item, c) args -> do
-      if SE.isEmpty args
-        then (D.join [D.text item], c)
+    RawImportItem _ (item, c) entries -> do
+      if SE.isEmpty entries
+        then (D.text item, c)
         else do
-          let args' = SE.pushComment c args
-          let args'' = SE.decode $ fmap decImportItemLocator args'
-          (D.join [D.text item, D.text " ", args''], [])
+          let entries' = SE.pushComment c entries
+          let entries'' = SE.decode $ fmap decImportEntry entries'
+          (D.join [D.text item, D.text " ", entries''], [])
     RawStaticFileKey _ c ks -> do
       if SE.isEmpty ks
         then (D.Nil, c)
@@ -205,9 +230,29 @@ decImportItem rawImportItem = do
           let ks' = D.text . snd <$> SE.pushComment c ks
           (D.join [D.text "static-file", D.text " ", SE.decode ks'], [])
 
-decImportItemLocator :: (a, LL.LocalLocator) -> D.Doc
-decImportItemLocator (_, l) =
-  D.text (LL.reify l)
+decImportEntry :: RawImportEntry -> D.Doc
+decImportEntry entry =
+  case entry of
+    RawImportName _ ll asClauseOrNone ->
+      decEntryAsClause (LL.reify ll) asClauseOrNone
+    RawImportWildcard _ asClause ->
+      decEntryAsClause "*" (Just asClause)
+
+decEntryAsClause :: T.Text -> Maybe RawAsClause -> D.Doc
+decEntryAsClause original asClauseOrNone =
+  case asClauseOrNone of
+    Nothing ->
+      D.text original
+    Just (RawAsClause beforeAs afterAs _ importAlias) -> do
+      let beforeAsDoc =
+            if null beforeAs
+              then D.text " as"
+              else D.join [C.asSuffix beforeAs, D.line, D.text "as"]
+      let afterAsDoc =
+            if null afterAs
+              then D.text " "
+              else D.join [C.asSuffix afterAs, D.line]
+      D.join [D.text original, beforeAsDoc, afterAsDoc, D.text (BN.reify importAlias)]
 
 decStmt :: RawStmt -> D.Doc
 decStmt stmt =
@@ -215,32 +260,32 @@ decStmt stmt =
     RawStmtDefineTerm c stmtKind def -> do
       case stmtKind of
         SK.Define ->
-          RT.decodeDef (RT.nameToDoc . N.Var) "define" c (fmap BN.reify def)
+          RT.decodeDef (RT.nameToDoc . N.Bare) "define" c (fmap BN.reify def)
         SK.DestPassing ->
-          RT.decodeDef (RT.nameToDoc . N.Var) "define" c (fmap BN.reify def)
+          RT.decodeDef (RT.nameToDoc . N.Bare) "define" c (fmap BN.reify def)
         SK.DestPassingInline ->
-          RT.decodeDef (RT.nameToDoc . N.Var) "inline" c (fmap BN.reify def)
+          RT.decodeDef (RT.nameToDoc . N.Bare) "inline" c (fmap BN.reify def)
         SK.Inline ->
           if RT.isConstLike (RT.geist def)
-            then RT.decodeDef (RT.nameToDoc . N.Var) "constant" c (fmap BN.reify def)
-            else RT.decodeDef (RT.nameToDoc . N.Var) "inline" c (fmap BN.reify def)
+            then RT.decodeDef (RT.nameToDoc . N.Bare) "constant" c (fmap BN.reify def)
+            else RT.decodeDef (RT.nameToDoc . N.Bare) "inline" c (fmap BN.reify def)
         SK.Constant ->
-          RT.decodeDef (RT.nameToDoc . N.Var) "constant" c (fmap BN.reify def)
+          RT.decodeDef (RT.nameToDoc . N.Bare) "constant" c (fmap BN.reify def)
         SK.ConstantMeta ->
-          RT.decodeDef (RT.nameToDoc . N.Var) "constant-meta" c (fmap BN.reify def)
+          RT.decodeDef (RT.nameToDoc . N.Bare) "constant-meta" c (fmap BN.reify def)
         SK.Macro ->
-          RT.decodeDef (RT.nameToDoc . N.Var) "define-meta" c (fmap BN.reify def)
+          RT.decodeDef (RT.nameToDoc . N.Bare) "define-meta" c (fmap BN.reify def)
         SK.MacroInline ->
-          RT.decodeDef (RT.nameToDoc . N.Var) "inline-meta" c (fmap BN.reify def)
+          RT.decodeDef (RT.nameToDoc . N.Bare) "inline-meta" c (fmap BN.reify def)
         SK.Main _ ->
-          RT.decodeDef (RT.nameToDoc . N.Var) "define" c (fmap BN.reify def)
+          RT.decodeDef (RT.nameToDoc . N.Bare) "define" c (fmap BN.reify def)
         _ ->
-          RT.decodeDef (RT.nameToDoc . N.Var) "define" c (fmap BN.reify def)
+          RT.decodeDef (RT.nameToDoc . N.Bare) "define" c (fmap BN.reify def)
     RawStmtDefineType c aliasKind def -> do
       let keyword = case aliasKind of
             TransparentAlias -> "alias"
             OpaqueAlias -> "alias-opaque"
-      RT.decodeTypeDef (RT.nameToDoc . N.Var) keyword c (fmap BN.reify def)
+      RT.decodeTypeDef (RT.nameToDoc . N.Bare) keyword c (fmap BN.reify def)
     RawStmtDefineData c1 _ (dataName, c2) argsOrNone consInfo _ -> do
       attachStmtComment (c1 ++ c2) $
         D.join
@@ -303,6 +348,26 @@ decStmt stmt =
           [ D.text "foreign ",
             foreignList'
           ]
+    RawStmtNamespace c1 _ (name, c2) c3 stmtList _ -> do
+      attachStmtComment (c1 ++ c2) $
+        D.join
+          [ D.text "namespace ",
+            D.text (BN.reify name),
+            D.text " {",
+            D.nest D.indent $ D.join [D.line, decNamespaceBody c3 stmtList],
+            D.line,
+            D.text "}"
+          ]
+
+decNamespaceBody :: C -> [(RawStmt, C)] -> D.Doc
+decNamespaceBody c stmtList =
+  case stmtList of
+    [] ->
+      attachStmtComment c D.Nil
+    [(stmt, c')] ->
+      attachStmtComment c $ D.join [decStmt stmt, C.asSuffix c']
+    (stmt, c') : rest ->
+      attachStmtComment c $ D.join [decStmt stmt, D.line, D.line, decNamespaceBody c' rest]
 
 decForeignItem :: RawForeignItem -> D.Doc
 decForeignItem (RawForeignItemF _ funcName _ args _ _ cod) = do

@@ -106,6 +106,8 @@ compressStmt stmt =
       Stmt.StmtVariadic kind m name
     Stmt.StmtForeign foreignList ->
       Stmt.StmtForeign foreignList
+    Stmt.StmtNamespace m name ->
+      Stmt.StmtNamespace m name
 
 extendStmt :: Stmt.StrippedStmt -> Stmt.Stmt
 extendStmt stmt =
@@ -138,6 +140,8 @@ extendStmt stmt =
       Stmt.StmtVariadic kind m name
     Stmt.StmtForeign foreignList ->
       Stmt.StmtForeign foreignList
+    Stmt.StmtNamespace m name ->
+      Stmt.StmtNamespace m name
 
 compressDefineMeta :: Stmt.DefineMetaF Term.Type Term.Term -> Stmt.DefineMetaF (Cofree Term.TypeF ()) (Cofree Term.TermF ())
 compressDefineMeta defineMeta =

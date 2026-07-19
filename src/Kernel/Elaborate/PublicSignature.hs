@@ -45,6 +45,8 @@ checkStmt globalHandle baseModule stmt =
       return ()
     Stmt.StmtForeign _ ->
       return ()
+    Stmt.StmtNamespace {} ->
+      return ()
 
 checkGeist :: Global.Handle -> Module.Module -> G.Geist TM.Type TM.Term -> App ()
 checkGeist globalHandle baseModule geist = do

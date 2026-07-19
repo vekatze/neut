@@ -45,10 +45,10 @@ references ::
 references h params = do
   Unravel.registerShiftMap (unravelHandle h)
   currentSource <- GetSource.getSource (getSourceHandle h) params
-  ((_, defLink), _) <- FindDefinition.findDefinition (findDefinitionHandle h) params
+  ((symbolName, _), _) <- FindDefinition.findDefinition (findDefinitionHandle h) params
   cacheSeq <- GAC.getAllLocationCachesInModule (gacHandle h) $ sourceModule currentSource
   fmap concat $ lift $ pooledForConcurrently cacheSeq $ \(path, cache) -> do
-    let refList = LSP.findReferences defLink (Cache.locationTree cache)
+    let refList = LSP.findReferences symbolName (Cache.locationTree cache)
     return $ map (toLocation $ sourceFilePath path) refList
 
 toLocation :: Path Abs File -> DocumentHighlight -> Location

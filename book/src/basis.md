@@ -95,7 +95,7 @@ inline discard-or-copy-immediate(selector, value) {
 
 These fake discard/copy operations are optimized away at compile time.
 
-Also, this function is internally called `"base::#.imm"`. Try compiling your project as follows:
+Also, this function is internally called `"base::#::imm"`. Try compiling your project as follows:
 
 ```sh
 neut build TARGET --emit llvm --skip-link
@@ -105,7 +105,7 @@ Then, take a peek at the `build` directory. You'll find the name here and there.
 
 <div class="info-block">
 
-Since every type is translated into a pointer to a function, a type is an immediate value. Thus, `type` is compiled into `base::#.imm`.
+Since every type is translated into a pointer to a function, a type is an immediate value. Thus, `type` is compiled into `base::#::imm`.
 
 </div>
 
@@ -326,45 +326,45 @@ These optimizations are applied within each definition. They do not directly can
 
 ## Name Resolution
 
-### Resolving Module Routes
+### Resolving Names
 
-A fully-qualified top-level name contains a module route, a source path, and a top-level name:
-
-```text
-module.route::source.path.name
-```
-
-The route can be empty. An empty route means the current module:
+A name reference has one of the following forms:
 
 ```text
-::bool.and
+body.path
+module.path::source.path::body.path
 ```
 
-The leading `::` for the current module can be omitted:
+`this` denotes the identity path to the current module:
 
 ```neut
-import {
-  bool,
-}
-
-define use-local-function() -> bool {
-  let value = bool.and(True, False); // short for `::bool.and(True, False)`
-  ...
-}
+and                        // locally available bare name
+logic.and                  // dotted name rooted in the local name environment
+this::bool::and            // `and` in this module's source/bool.nt
+core::bool::and            // `and` in core's source/bool.nt
 ```
 
-For dependencies, the route is written before `::`. For example, `core` is the route in `core::bool.and`, and `foo-module.bar-module` is the route in `foo-module.bar-module::path.to.file.f`:
+`this` is the written form of an identity path in every chunk. It can be inserted at any point without changing the path:
 
-```neut
-import {
-  core::bool,
-}
-
-define use-external-module-function() -> bool {
-  let value = core::bool.and(True, False);
-  ...
-}
+```text
+this.core = core.this = core
+this.bool.this = bool
+this::this.bool.this::this.and.this = this::bool::and
 ```
+
+Because `this` denotes identity paths, it is reserved as a source segment, namespace name, definition name, import alias, and local binder.
+
+An identity-only chunk makes the root of that chunk explicit. This distinguishes the following prefix regions:
+
+| Prefix | Region |
+| --- | --- |
+| `this` | the current module and its dependency paths |
+| `this::this` | every source in the current module |
+| `this::a.b` | `source/a/b.nt` and sources below `source/a/b/` |
+| `this::a.b::this` | only `source/a/b.nt` |
+| `this::a.b::ns` | namespace `ns` and its children in `source/a/b.nt` |
+
+The local name environment contains lexical bindings, earlier names in the current file, import aliases, imported namespaces, and namespace views created with `as`.
 
 When compiling a module, the compiler reads the field `dependency` in `module.ens` and uses correspondences like the following:
 
@@ -376,53 +376,53 @@ bar-module => "zptXghmyD5druBl8kx2Qrei6O6fDsKCA7z2KoHp1aqA"
 ...
 ```
 
-The compiler then resolves module routes as follows:
+The compiler then resolves module paths as follows:
 
 ```text
-core::bool.and
+core::bool::and
 
 ↓
 
-jIx5FxfoymZ-X0jLXGcALSwK4J7NlR1yCdXqH2ij67o.bool.and
+jIx5FxfoymZ-X0jLXGcALSwK4J7NlR1yCdXqH2ij67o::bool::and
 
 --------------
 
-foo-module.bar-module::path.to.some.file.my-function
+foo-module.bar-module::path.to.some.file::my-function
 
 ↓
 
-(the digest of foo-module's public dependency bar-module).path.to.some.file.my-function
+(the digest of foo-module's public dependency bar-module)::path.to.some.file::my-function
 
 --------------
 
-foo-module::path.to.some.file.my-function
+foo-module::path.to.some.file::my-function
 
 ↓
 
-JEpjuzZ0rlqxiVuCnD000jEKIA_Y6ku1L3J139h3M6Q.path.to.some.file.my-function
+JEpjuzZ0rlqxiVuCnD000jEKIA_Y6ku1L3J139h3M6Q::path.to.some.file::my-function
 
 --------------
 
 ...
 ```
 
-Route segments after the first one must be dependency aliases of the previous module that are visible from the module where the route is written. Visibility is governed by the prefix-local rule below.
+Module path segments after the first one must be dependency aliases of the previous module that are visible from the module where the path is written. Visibility is governed by the prefix-local rule below.
 
 ### Prefix-Local Names
 
-Every qualified name has a required prefix. It is the part before the deepest `_`-prefixed segment. If there is no `_`-prefixed segment, the required prefix is empty:
+An `_`-prefixed segment restricts a name to a required prefix. Take the part before the deepest `_`-prefixed segment and remove the separator immediately before that segment:
 
-| Full name | Required prefix |
-| --- | --- |
-| `a.b._f` | `a.b` |
-| `a._b.f` | `a` |
-| `_a.b.f` | `""` (empty) |
-| `_a.b._f` | `_a.b` |
-| `a.b.f` | `""` (empty) |
+| Name | Required prefix | Available from |
+| --- | --- | --- |
+| `this::a.b::f` | none | anywhere |
+| `this::_a.b::f` | `this` | files below `source/` |
+| `this::a._b::f` | `this::a` | `source/a.nt` and files below `source/a/` |
+| `this::a.b::_f` | `this::a.b` | `source/a/b.nt` and files below `source/a/b/` |
+| `this::a.b::ns._f` | `this::a.b::ns` | namespace `ns` and its children in `source/a/b.nt` |
 
-A name can be used from source files in the same module whose dotted source path starts with its required prefix. The empty prefix covers the whole module. For example, the prefix `a` covers `source/a.nt` and files below `source/a/`.
+Prefix comparison still respects the `::` boundary. Thus, namespace `ns` in `source/a/b.nt` belongs below `this::a.b::ns`, while `source/a/b/ns.nt` belongs below `this::a.b.ns`; the two remain distinct.
 
-Dependency aliases are handled in the same way. For example, a name under `foo._http::client` is restricted by its `_http` segment.
+Dependency aliases follow the same `_` rule. A name under `foo._http::client::request` is restricted by `_http`.
 
 ## Leading Bars and Trailing Commas
 

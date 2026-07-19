@@ -1,7 +1,7 @@
 import {
   core::sync.thread {thread},
-  pi-keyword,
-  pi-term,
+  this::pi-keyword,
+  this::pi-term,
 }
 
 define test-syntax() -> unit {
@@ -71,7 +71,7 @@ define test-resource() -> unit {
 define main() -> unit {
   test-syntax();
   test-resource();
-  pi-term.test-syntax();
-  pi-term.test-resource();
-  pi-keyword.test-syntax()
+  this::pi-term::test-syntax();
+  this::pi-term::test-resource();
+  this::pi-keyword::test-syntax()
 }

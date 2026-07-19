@@ -6,9 +6,11 @@ module Kernel.Common.Handle.Local.Tag
     insertGlobalVar,
     insertBinder,
     insertLocator,
+    insertNamespaceView,
+    insertModuleFile,
     insertExternalName,
     insertStaticFile,
-    insertSourceFile,
+    insertResolvedSourceFile,
     retarget,
   )
 where
@@ -23,6 +25,7 @@ import Language.Common.ExternalName qualified as EN
 import Language.Common.Ident
 import Language.Common.IsConstLike
 import Logger.Hint
+import Path (Abs, File, Path, toFilePath)
 import Prelude hiding (lookup, read)
 
 newtype Handle = Handle
@@ -42,7 +45,8 @@ insertLocalVar :: Handle -> Hint -> Ident -> Hint -> IO ()
 insertLocalVar h mUse ident@(I (var, varID)) mDef = do
   unless (isHole ident) $ do
     let nameLength = T.length var
-    insert h mUse (LT.Local varID nameLength) nameLength mDef
+    let symbolName = LT.Local varID nameLength (metaFileName mDef) (metaLocation mDef)
+    insert h mUse symbolName nameLength mDef
 
 insertBinder :: Handle -> BinderF a -> IO ()
 insertBinder h (m, _, ident, _) =
@@ -50,7 +54,7 @@ insertBinder h (m, _, ident, _) =
 
 insertGlobalVar :: Handle -> Hint -> DD.DefiniteDescription -> IsConstLike -> Hint -> IO ()
 insertGlobalVar h mUse dd isConstLike mDef = do
-  let nameLength = T.length (DD.localLocator dd)
+  let nameLength = T.length (DD.baseNameText dd)
   insert h mUse (LT.Global dd isConstLike) nameLength mDef
 
 insert :: Handle -> Hint -> LT.SymbolName -> Int -> Hint -> IO ()
@@ -63,6 +67,16 @@ insertLocator :: Handle -> Hint -> DD.DefiniteDescription -> IsConstLike -> Int 
 insertLocator h mUse dd isConstLike nameLength mDef = do
   insert h mUse (LT.Global dd isConstLike) nameLength mDef
 
+insertNamespaceView :: Handle -> Hint -> T.Text -> Hint -> Hint -> IO ()
+insertNamespaceView h mUse importAliasText mImportAlias mDef = do
+  let symbolName = LT.NamespaceView (metaFileName mImportAlias) (metaLocation mImportAlias)
+  insert h mUse symbolName (T.length importAliasText) mDef
+
+insertModuleFile :: Handle -> Hint -> T.Text -> Path Abs File -> IO ()
+insertModuleFile h mUse modulePathText path = do
+  let symbolName = LT.ModuleFile $ toFilePath path
+  insert h mUse symbolName (T.length modulePathText) (newSourceHint path)
+
 insertExternalName :: Handle -> Hint -> EN.ExternalName -> Hint -> IO ()
 insertExternalName h mUse externalName mDef = do
   let nameLength = T.length $ EN.reify externalName
@@ -73,10 +87,9 @@ insertStaticFile h mUse key mDef = do
   let nameLength = T.length key
   insert h mUse (LT.StaticFile key) nameLength mDef
 
-insertSourceFile :: Handle -> Hint -> T.Text -> Hint -> IO ()
-insertSourceFile h mUse locator mDef = do
-  let nameLength = T.length locator
-  insert h mUse (LT.SourceFile locator) nameLength mDef
+insertResolvedSourceFile :: Handle -> Hint -> T.Text -> T.Text -> Hint -> IO ()
+insertResolvedSourceFile h mUse sourceText resolvedLocator mDef = do
+  insert h mUse (LT.SourceFile resolvedLocator) (T.length sourceText) mDef
 
 retarget :: Handle -> Hint -> Hint -> IO ()
 retarget h mUse mDef = do

@@ -99,7 +99,7 @@ type
 
 ### Semantics
 
-`type` is compiled into a pointer to `base::#.imm`.
+`type` is compiled into a pointer to `base::#::imm`.
 
 ### Type
 
@@ -169,51 +169,35 @@ If the content of a variable `x` is an immediate value, `x` is compiled into the
 ```neut
 import {
   core::bool {and},
+  some-module.public-dep::item,
 }
 
 define sample() -> unit {
   // using top-level variables
   let _ = and; // using an imported top-level name
-  let _ = core::bool.and; // using the fully qualified name `core::bool.and`
-  let _ = some-module.public-dep::item.f; // using a public module route
+  let _ = core::bool::and; // using the fully qualified name `core::bool::and`
+  let _ = some-module.public-dep::item::f; // using a public module path
   Unit
 }
 ```
 
 ### Syntax
 
-The name of a top-level variable has the following form:
-
 ```text
-global-locator.name
+body.path
+module.path::source.path::body.path
 ```
 
-The full form of `global-locator` is:
+`body.path` denotes a dot-separated path inside a source file; it can also consist of a single segment, as in `and`.
 
-```text
-module.route::path.to.file
-```
-
-The module route can be empty. An empty route means the current module:
-
-```text
-::path.to.file
-```
-
-When the route is empty, the leading `::` can be omitted:
-
-```text
-path.to.file
-```
-
-For example, `item.f` is short for `::item.f`, and refers to `f` in `source/item.nt` of the current module. `core::bool.and` refers to `and` in `source/bool.nt` of `core`.
+Without `::`, the path is resolved through the local name environment. The three chunks of a fully qualified address are separated by `::`; see [Name Resolution](basis.md#name-resolution) for details.
 
 ### Semantics
 
 A top-level variable `f` is compiled into the following 3-word tuple:
 
 ```txt
-(base::#.imm, 0, POINTER_TO_FUNCTION(f))
+(base::#::imm, 0, POINTER_TO_FUNCTION(f))
 ```
 
 See the Note below for a more detailed explanation.
@@ -249,14 +233,14 @@ define get-increment() -> (int) -> int {
 ```llvm
 ; (build-dir)/path/to/sample.ll
 
-define fastcc ptr @"main.sample.increment"(ptr %_1) {
+define fastcc ptr @"this::sample::increment"(ptr %_1) {
   %_2 = ptrtoint ptr %_1 to i64
   %_3 = add i64 %_2, 1
   %_4 = inttoptr i64 %_3 to ptr
   ret ptr %_4
 }
 
-define fastcc ptr @"main.sample.get-increment"() {
+define fastcc ptr @"this::sample::get-increment"() {
   ; `increment` in `get-increment` is lowered to the following code:
 
   ; calculate the size of 3-word tuples
@@ -268,9 +252,9 @@ define fastcc ptr @"main.sample.get-increment"() {
   %_4 = getelementptr [3 x ptr], ptr %_3, i32 0, i32 0
   %_5 = getelementptr [3 x ptr], ptr %_3, i32 0, i32 1
   %_6 = getelementptr [3 x ptr], ptr %_3, i32 0, i32 2
-  store ptr @"base::#.imm", ptr %_4            ; tuple[0] = `base::#.imm`
+  store ptr @"base::#::imm", ptr %_4            ; tuple[0] = `base::#::imm`
   store ptr null, ptr %_5                     ; tuple[1] = null
-  store ptr @"main.sample.increment", ptr %_6 ; tuple[2] = (function pointer)
+  store ptr @"this::sample::increment", ptr %_6 ; tuple[2] = (function pointer)
   ; return the pointer to the tuple
   ret ptr %_3
 }
@@ -571,7 +555,7 @@ You can see this by calling the following function:
 ```neut
 define print-star() -> unit {
   // prints "⭐"
-  pin t = core::string.singleton(magic cast(int32, rune, 0xE2AD90));
+  pin t = core::string::singleton(magic cast(int32, rune, 0xE2AD90));
   print-line(t)
 }
 ```
@@ -721,7 +705,7 @@ The bracketed part may be omitted, and `[]` is also accepted. This default-argum
 
 ### Semantics
 
-A function type is compiled into a pointer to `base::#.cls`. For more, please see [On Executing Types](./on-executing-types.md).
+A function type is compiled into a pointer to `base::#::cls`. For more, please see [On Executing Types](./on-executing-types.md).
 
 ### Type
 
@@ -1830,7 +1814,7 @@ define foo-noetic(n: &my-nat) -> int {
 
 ### Semantics
 
-For every type `a`, `&a` is compiled into `base::#.imm`.
+For every type `a`, `&a` is compiled into `base::#::imm`.
 
 ### Type
 
@@ -1844,7 +1828,7 @@ For every type `a`, `&a` is compiled into `base::#.imm`.
 
 - Values of type `&a` can be created using `on`.
 - Values of type `&a` are expected to be used in combination with `case` or `*e`.
-- Since `&a` is compiled into `base::#.imm`, values of type `&a` aren't discarded or copied even when used non-linearly.
+- Since `&a` is compiled into `base::#::imm`, values of type `&a` aren't discarded or copied even when used non-linearly.
 - See the Note of [box](#box) to see the relation between `&a` and `+a`
 
 ## `box`

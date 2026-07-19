@@ -48,6 +48,7 @@ import Kernel.Parse.Stage
 import Kernel.Parse.VarDefKind qualified as VDK
 import Language.Common.Annotation qualified as AN
 import Language.Common.Attr.Lam qualified as AttrL
+import Language.Common.BaseName qualified as BN
 import Language.Common.Binder
 import Language.Common.CreateSymbol qualified as Gensym
 import Language.Common.DataInfo qualified as DI
@@ -76,6 +77,7 @@ import Language.Common.Text.Util
 import Language.Common.VarKind qualified as VK
 import Language.RawTerm.CreateHole qualified as RT
 import Language.RawTerm.Key
+import Language.RawTerm.Locator qualified as L
 import Language.RawTerm.Name
 import Language.RawTerm.NecessityVariant
 import Language.RawTerm.RawBinder
@@ -203,6 +205,11 @@ discernStmt h stmt = do
       foreignList'' <- mapM (mapM (discernType h)) foreignList'
       foreign' <- liftIO $ interpretForeign h foreignList''
       return [WeakStmtForeign foreign']
+    PostRawStmtNamespace m dd children -> do
+      registerNamespaceName h m dd
+      let h' = h {H.nsPath = DD.bodySegments dd}
+      children' <- discernStmtList h' children
+      return $ WeakStmtNamespace m dd : children'
 
 discernDefineMeta :: H.Handle -> PostRawDefineMeta -> App WeakDefineMeta
 discernDefineMeta h defineMeta = do
@@ -261,7 +268,33 @@ discernGeist h endLoc geist = do
 registerTopLevelName :: H.Handle -> PostRawStmt -> App ()
 registerTopLevelName h stmt = do
   let arrow = NameMap.getGlobalNames [stmt]
+  forM_ arrow $ \(dd, (m, _, _)) -> ensureNotReservedByImport h m dd
   NameMap.insert (H.nameMapHandle h) arrow
+
+registerNamespaceName :: H.Handle -> Hint -> DD.DefiniteDescription -> App ()
+registerNamespaceName h m dd = do
+  ensureNotReservedByImport h m dd
+  NameMap.insert (H.nameMapHandle h) [(dd, (m, Nothing, GN.Namespace))]
+  liftIO $ Tag.insertGlobalVar (H.tagHandle h) m dd (GN.getIsConstLike GN.Namespace) m
+
+-- a file-level name must not collide with a name that an import has
+-- already introduced into the import environment
+ensureNotReservedByImport :: H.Handle -> Hint -> DD.DefiniteDescription -> App ()
+ensureNotReservedByImport h m dd = do
+  case DD.bodySegments dd of
+    [baseName] -> do
+      bindingOrNone <- liftIO $ Locator.lookupImportBinding (H.locatorHandle h) baseName
+      case bindingOrNone of
+        Just (Locator.ImportedName _ _) ->
+          raiseError m $
+            "The name `" <> BN.reify baseName <> "` is already reserved by an import"
+        Just (Locator.NamespaceView _ _) ->
+          raiseError m $
+            "The name `" <> BN.reify baseName <> "` is already used as an alias"
+        Nothing ->
+          return ()
+    _ ->
+      return ()
 
 discernStmtKindTerm :: H.Handle -> RawStmtKindTerm DD.DefiniteDescription -> Hint -> App (SK.StmtKindTerm WT.WeakType)
 discernStmtKindTerm h stmtKind m =
@@ -353,7 +386,7 @@ toCandidateKindType stmtKind =
 isLocalVar :: H.Handle -> Name -> Bool
 isLocalVar h name =
   case name of
-    Var s ->
+    Bare s ->
       isJust $ lookup s (H.nameEnv h)
     _ ->
       False
@@ -363,7 +396,7 @@ discern h term =
   case term of
     m :< RT.Var name ->
       case name of
-        Var s ->
+        Bare s ->
           case parseNumericLiteral s of
             ParsedNumericLiteral (IntegerLiteral x) -> do
               hole <- liftIO $ WT.createTypeHole (H.gensymHandle h) m []
@@ -562,7 +595,7 @@ discern h term =
       let mxt = (mx, VK.Normal, tmp, c1, c2, t)
       let m' = blur m
       let patParam = (mx, pat, [], [], t)
-      let e2' = m' :< RT.Let (RT.Plain False) [] patParam [] [] (m' :< RT.Var (Var tmp)) [] startLoc [] e2 endLoc
+      let e2' = m' :< RT.Let (RT.Plain False) [] patParam [] [] (m' :< RT.Var (Bare tmp)) [] startLoc [] e2 endLoc
       -- inner
       ysOuter <- forM (SE.extract mys) $ \(my, k, y) -> do
         (mDef, (mUse, y')) <- discernIdent my h y
@@ -622,7 +655,7 @@ discern h term =
         RT.Try -> do
           let m1' = blur m1
           tmpType <- liftIO $ RT.createTypeHole (H.gensymHandle h) m1'
-          tmpVar <- liftIO $ Var <$> Gensym.newTextFromText (H.gensymHandle h) "tmp"
+          tmpVar <- liftIO $ Bare <$> Gensym.newTextFromText (H.gensymHandle h) "tmp"
           let m' = blur m
           discern h $
             m
@@ -643,12 +676,12 @@ discern h term =
       let m2' = blur m2
       let x' = SE.fromListWithComment Nothing SE.Comma [([], ((mx, VK.Normal, x), []))]
       resultType <- liftIO $ RT.createTypeHole (H.gensymHandle h) m2'
-      resultVar <- liftIO $ Var <$> Gensym.newTextFromText (H.gensymHandle h) "tmp-pin"
+      resultVar <- liftIO $ Bare <$> Gensym.newTextFromText (H.gensymHandle h) "tmp-pin"
       let resultParam = (m2', RP.Var VK.Normal resultVar, [], [], resultType)
       let isNoetic = not $ null $ SE.extract mys
       if isNoetic
         then do
-          let mxt' = (mx, RP.Var VK.Normal (Var x), [], [], t)
+          let mxt' = (mx, RP.Var VK.Normal (Bare x), [], [], t)
           let outerLet cont = m :< RT.LetOn (RT.Plain False) [] mxt' [] mys [] e1 [] startLoc [] cont endLoc
           discern h $
             outerLet $
@@ -759,7 +792,7 @@ discern h term =
                   ( m
                       :< RT.piElim
                         binder
-                        [ m' :< RT.Var (Var tmpVar),
+                        [ m' :< RT.Var (Bare tmpVar),
                           RT.lam
                             startLoc
                             m'
@@ -828,13 +861,13 @@ discernType h ty =
       return $ m :< WT.TypeHole k []
     m :< RT.TyVar name -> do
       case name of
-        Var s
+        Bare s
           | Just (mDef, name', _, _) <- lookup s (H.typeNameEnv h) -> do
               liftIO $ Unused.deleteVariable (H.unusedHandle h) name'
               liftIO $ Tag.insertLocalVar (H.tagHandle h) m name' mDef
               return $ m :< WT.TVar name'
         _ -> do
-          (dd, (_, gn)) <- resolveName h m name
+          (dd, (_, gn)) <- resolveTypeName h m name
           interpretGlobalTypeName h m dd gn
     m :< RT.TyApp t _ args -> do
       t' <- discernType h t
@@ -1057,7 +1090,7 @@ modifyLetContinuation ::
   App (VK.VarKind, RawIdent, RT.RawTerm)
 modifyLetContinuation h pat isNoetic cont@(mCont :< _) =
   case pat of
-    (_, RP.Var k (Var x))
+    (_, RP.Var k (Bare x))
       | not (isConsName x) ->
           return (k, x, cont)
     _ -> do
@@ -1069,7 +1102,7 @@ modifyLetContinuation h pat isNoetic cont@(mCont :< _) =
             :< RT.DataElim
               []
               isNoetic
-              (SE.fromList'' [mCont :< RT.Var (Var tmp)])
+              (SE.fromList'' [mCont :< RT.Var (Bare tmp)])
               (SE.fromList SE.Brace SE.Bar [(SE.fromList'' [pat], [], cont)])
         )
 
@@ -1096,7 +1129,7 @@ bind' mustIgnoreRelayedVars loc endLoc (m, _, x, c1, c2, t) e cont =
     :< RT.Let
       (RT.Plain mustIgnoreRelayedVars)
       []
-      (m, RP.Var VK.Normal (Var x), c1, c2, t)
+      (m, RP.Var VK.Normal (Bare x), c1, c2, t)
       []
       []
       e
@@ -1228,10 +1261,10 @@ discernRecordUpdate h m name mImpArgs kvs (mRest, _, _, restValue) = do
     return (key, value)
   let mRest' = blur mRest
   restType <- liftIO $ RT.createTypeHole (H.gensymHandle h) mRest'
-  let restPatternItems = map (\(key, value) -> (key, (mRest', [], RP.Var VK.Normal (Var value)))) missingPairs
+  let restPatternItems = map (\(key, value) -> (key, (mRest', [], RP.Var VK.Normal (Bare value)))) missingPairs
   let restPattern = RP.Cons name [] (RP.Of $ SE.fromList SE.Brace SE.Comma restPatternItems)
   let patParam = (mRest', restPattern, [], [], restType)
-  let missingFields = map (\(key, value) -> (m', key, [], [], m' :< RT.Var (Var value))) missingPairs
+  let missingFields = map (\(key, value) -> (m', key, [], [], m' :< RT.Var (Bare value))) missingPairs
   let bodyFields = SE.fromList SE.Brace SE.Comma $ SE.extract kvs ++ missingFields
   let body = m :< RT.PiElimByKey name [] mImpArgs [] bodyFields Nothing
   discern h $ m' :< RT.Let (RT.Plain False) [] patParam [] [] restValue [] fakeLoc [] body fakeLoc
@@ -1294,16 +1327,16 @@ constructEitherBinder h m mx m1 pat tmpVar cont = do
           cont
         )
   let shortClause =
-        ( SE.fromList'' [(m', RP.Cons eitherL [] (RP.Paren (SE.fromList' [(m', RP.Var VK.Normal (Var earlyRetVar))])))],
+        ( SE.fromList'' [(m', RP.Cons eitherL [] (RP.Paren (SE.fromList' [(m', RP.Var VK.Normal (Bare earlyRetVar))])))],
           [],
-          m' :< RT.piElim eitherVarL [m' :< RT.Var (Var earlyRetVar)]
+          m' :< RT.piElim eitherVarL [m' :< RT.Var (Bare earlyRetVar)]
         )
   return $
     m'
       :< RT.DataElim
         []
         False
-        (SE.fromList'' [m1' :< RT.Var (Var tmpVar)])
+        (SE.fromList'' [m1' :< RT.Var (Bare tmpVar)])
         (SE.fromList SE.Brace SE.Bar [longClause, shortClause])
 
 discernIdent :: Hint -> H.Handle -> RawIdent -> App (Hint, (Hint, Ident))
@@ -1527,7 +1560,7 @@ discernPattern h layer stage (m, pat) = do
   case pat of
     RP.Var k name -> do
       case name of
-        Var x ->
+        Bare x ->
           case parseNumericLiteral x of
             ParsedNumericLiteral (IntegerLiteral i) -> do
               case k of
@@ -1539,7 +1572,7 @@ discernPattern h layer stage (m, pat) = do
               raiseInvalidNumericLiteral m numericClass x
             _
               | isConsName x && k == VK.Normal -> do
-                  (consDD, dataArgNum, consArgNum, disc, isConstLike, _) <- resolveConstructor h m $ Var x
+                  (consDD, dataArgNum, consArgNum, disc, isConstLike, _) <- resolveConstructor h m $ Bare x
                   unless isConstLike $ do
                     let consDD' = renderDD (H.modulePathMap h) consDD
                     raiseError m $
@@ -1548,12 +1581,12 @@ discernPattern h layer stage (m, pat) = do
               | otherwise -> do
                   x' <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) x
                   return ((m, PAT.Var k x'), [(x, (m, x', layer, stage))])
-        Locator l -> do
+        _ -> do
           case k of
             VK.Exp ->
               raiseError m "Locator patterns cannot be marked with `!`"
             VK.Normal -> do
-              (dd, gn) <- resolveName h m $ Locator l
+              (dd, gn) <- resolveName h m name
               case gn of
                 (_, GN.DataIntro dataArgNum consArgNum disc isConstLike) -> do
                   let consInfo =
@@ -1615,7 +1648,7 @@ discernPattern h layer stage (m, pat) = do
 constructDefaultKeyMap :: H.Handle -> Hint -> [Key] -> IO (Map.HashMap Key (Hint, RP.RawPattern))
 constructDefaultKeyMap h m keyList = do
   names <- mapM (const $ Gensym.newTextForHole (H.gensymHandle h)) keyList
-  return $ Map.fromList $ zipWith (\k v -> (k, (m, RP.Var VK.Normal (Var v)))) keyList names
+  return $ Map.fromList $ zipWith (\k v -> (k, (m, RP.Var VK.Normal (Bare v)))) keyList names
 
 ensureStringLiteralTypes :: H.Handle -> Hint -> App ()
 ensureStringLiteralTypes h m = do
@@ -1626,18 +1659,17 @@ ensureStringLiteralTypes h m = do
 
 locatorToName :: Hint -> T.Text -> Either E.Error Name
 locatorToName m text = do
-  (gl, ll) <- DD.getLocatorPair m text
-  return $ Locator (gl, ll)
+  Locator <$> L.reflect m text
 
 locatorToVarGlobal :: Hint -> T.Text -> Either E.Error RT.RawTerm
 locatorToVarGlobal m text = do
-  (gl, ll) <- DD.getLocatorPair (blur m) text
-  return $ blur m :< RT.Var (Locator (gl, ll))
+  l <- L.reflect (blur m) text
+  return $ blur m :< RT.Var (Locator l)
 
 locatorToTypeVar :: Hint -> T.Text -> Either E.Error RT.RawType
 locatorToTypeVar m text = do
-  (gl, ll) <- DD.getLocatorPair (blur m) text
-  return $ blur m :< RT.TyVar (Locator (gl, ll))
+  l <- L.reflect (blur m) text
+  return $ blur m :< RT.TyVar (Locator l)
 
 getLayer :: Hint -> H.Handle -> Ident -> App Layer
 getLayer m h x =

@@ -7,12 +7,13 @@ module Language.Common.BaseName
     form,
     lambdaName,
     muName,
-    resourceName,
+    resource,
     mainName,
     zenName,
     fromText,
     base,
     core,
+    this,
     imm,
     cls,
     reservedAlias,
@@ -72,7 +73,7 @@ instance Hashable BaseName
 
 reflect :: H.Hint -> T.Text -> Either Error BaseName
 reflect m rawTxt = do
-  when (T.any (== ':') rawTxt) $ do
+  when (T.any (`elem` ['#', ':']) rawTxt) $ do
     Left $ newError m $ "Invalid name: " <> rawTxt
   case map MakeBaseName $ T.split (nsSepChar ==) rawTxt of
     [baseName] ->
@@ -82,7 +83,7 @@ reflect m rawTxt = do
 
 reflect' :: T.Text -> Either Error BaseName
 reflect' rawTxt = do
-  when (T.any (== ':') rawTxt) $ do
+  when (T.any (`elem` ['#', ':']) rawTxt) $ do
     Left $ newError' $ "Invalid name: " <> rawTxt
   case map MakeBaseName $ T.split (nsSepChar ==) rawTxt of
     [baseName] ->
@@ -105,6 +106,10 @@ base =
 core :: BaseName
 core =
   MakeBaseName "core"
+
+this :: BaseName
+this =
+  MakeBaseName "this"
 
 mainName :: BaseName
 mainName =
@@ -134,9 +139,9 @@ muName :: Ident -> Int -> BaseName
 muName x i =
   MakeBaseName $ toText x <> "." <> T.pack (show i)
 
-resourceName :: Int -> BaseName
-resourceName i =
-  MakeBaseName $ "resource." <> T.pack (show i)
+resource :: BaseName
+resource =
+  MakeBaseName "resource"
 
 form :: BaseName
 form =
@@ -321,4 +326,6 @@ fromText txt =
 reservedAlias :: S.Set BaseName
 reservedAlias =
   S.fromList
-    [base]
+    [ base,
+      this
+    ]
