@@ -164,12 +164,7 @@ emitDefinitions h (name, LC.DefContent {codType = codType, args = args, body = b
   let sub = IntMap.fromList $ zipWith (\from to -> (toInt from, LC.VarLocal to)) args args'
   let reduceHandle = Reduce.new definitionGensymHandle
   body' <- Reduce.reduce reduceHandle sub body
-  let args'' =
-        case codType of
-          LT.Void ->
-            showFuncArgsWithSRet $ map (emitValue . LC.VarLocal) args'
-          _ ->
-            showFuncArgs $ map (emitValue . LC.VarLocal) args'
+  let args'' = showFuncArgs $ map (emitValue . LC.VarLocal) args'
   emitDefinition h definitionGensymHandle (Just name) (emitLowType codType) (DD.toBuilder name) args'' body'
 
 emitMain :: Handle -> LC.DefContent -> IO [Builder]
