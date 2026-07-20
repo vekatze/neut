@@ -26,9 +26,7 @@ import Data.Set qualified as S
 import Data.Text qualified as T
 import Gensym.Gensym qualified as Gensym
 import Gensym.Handle qualified as Gensym
-import Kernel.Common.Allocator (Allocator, AllocatorSpec (..), allocatorSpec)
-import Kernel.Common.Arch
-import Kernel.Common.Arch qualified as A
+import Kernel.Common.Allocator (Allocator, AllocatorSpec (..), allocatorForeignList, allocatorSpec)
 import Kernel.Common.Const
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.Env qualified as Env
@@ -67,14 +65,12 @@ import Language.Comp.Subst qualified as Subst
 import Language.LowComp.DeclarationName qualified as DN
 import Language.LowComp.LowComp qualified as LC
 import Language.LowComp.Render qualified as LCR
-import Logger.Hint (internalHint)
 import Logger.Debug qualified as Logger
 import Logger.Handle qualified as Logger
 
 data Handle = Handle
   { allocator :: Allocator,
     modulePathHandle :: ModulePath.Handle,
-    arch :: Arch,
     baseSize :: DS.DataSize,
     gensymHandle :: Gensym.Handle,
     envHandle :: Env.Handle,
@@ -95,19 +91,18 @@ data TailPosition
 new :: Gensym.Handle -> Global.Handle -> Trace.Config -> Target -> C.DefMap -> App Handle
 new gensymHandle (Global.Handle {..}) traceConfig target defMap = do
   allocator <- Env.getAllocatorByTarget envHandle target
-  let arch = Platform.getArch platformHandle
   let baseSize = Platform.getDataSize platformHandle
   let substHandle = Subst.new gensymHandle
   let reduceHandle = Reduce.new substHandle gensymHandle defMap
-  declEnv <- liftIO $ newIORef $ makeBaseDeclEnv arch (allocatorSpec allocator)
+  declEnv <- liftIO $ newIORef $ makeBaseDeclEnv baseSize (allocatorSpec allocator)
   staticTextList <- liftIO $ newIORef []
   definedNameSet <- liftIO $ newIORef S.empty
   referencedNameSet <- liftIO $ newIORef S.empty
   return $ Handle {..}
 
-makeBaseDeclEnv :: Arch -> AllocatorSpec -> DN.DeclEnv
-makeBaseDeclEnv arch spec = do
-  Map.fromList $ flip map (defaultForeignList arch spec) $ \(F.Foreign _ name domList cod) -> do
+makeBaseDeclEnv :: DS.DataSize -> AllocatorSpec -> DN.DeclEnv
+makeBaseDeclEnv dataSize spec = do
+  Map.fromList $ flip map (allocatorForeignList dataSize spec) $ \(_, F.Foreign _ name domList cod) -> do
     (DN.Ext name, (domList, cod))
 
 lower :: Handle -> [C.CompStmt] -> [C.CompStmt] -> App LC.LowCode
@@ -150,13 +145,15 @@ lowerStmt h stmt = do
     C.Def name _ args e -> do
       e0 <- lowerComp h e
       e' <- liftIO $ optimize h e0
-      reportTrace h name (name, LC.DefContent LT.Pointer args e')
-      return $ Just (name, LC.DefContent LT.Pointer args e')
+      let def = LC.DefContent LT.Pointer args e'
+      reportTrace h name (name, def)
+      return $ Just (name, def)
     C.DefVoid name _ args e -> do
       e0 <- lowerComp h e
       e' <- liftIO $ optimize h e0
-      reportTrace h name (name, LC.DefContent LT.Void args e')
-      return $ Just (name, LC.DefContent LT.Void args e')
+      let def = LC.DefContent LT.Void args e'
+      reportTrace h name (name, def)
+      return $ Just (name, def)
     C.Foreign {} -> do
       return Nothing
 
@@ -314,7 +311,7 @@ materializeDestCall h sizeComp f ds = do
         C.UpElim
           True
           immediateDestName
-          (C.Primitive $ C.Alloc $ C.Int IntSize64 (toInteger $ DS.reify (baseSize h) `div` 8))
+          (C.Primitive $ C.Alloc $ C.Int IntSize64 (toInteger $ DS.reifyBytes (baseSize h)))
           ( C.UpElimCallVoid
               f
               (immediateDestVar : ds)
@@ -322,7 +319,7 @@ materializeDestCall h sizeComp f ds = do
                   True
                   immediateResultName
                   (C.Primitive $ C.Magic $ LM.Load BLT.Pointer immediateDestVar)
-                  (C.Free immediateDestVar (Just (DS.reify (baseSize h) `div` 8)) (C.UpIntro immediateResultVar))
+                  (C.Free immediateDestVar (Just (DS.reifyBytes (baseSize h))) (C.UpIntro immediateResultVar))
               )
           )
   let boxedBody size =
@@ -736,7 +733,7 @@ freeIfNecessary h shouldDeallocate pointer len cont = do
 
 wordCountToByteSize :: Handle -> Int -> Int
 wordCountToByteSize h wordCount =
-  wordCount * (DS.reify (baseSize h) `div` 8)
+  wordCount * DS.reifyBytes (baseSize h)
 
 -- returns Nothing iff the branch list is empty
 newValueLocal :: Handle -> T.Text -> IO (Ident, LC.Value)
@@ -746,7 +743,7 @@ newValueLocal h name = do
 
 insDeclEnv :: Handle -> DN.DeclarationName -> AN.ArgNum -> FCT.ForeignCodType BLT.BaseLowType -> IO ()
 insDeclEnv h k argNum cod = do
-  modifyIORef' (declEnv h) $ Map.insert k (BLT.toVoidPtrSeq argNum, cod)
+  insDeclEnv' h k (BLT.toVoidPtrSeq argNum) cod
 
 insDeclEnv' :: Handle -> DN.DeclarationName -> [BLT.BaseLowType] -> FCT.ForeignCodType BLT.BaseLowType -> IO ()
 insDeclEnv' h k domList cod = do
@@ -852,18 +849,6 @@ commConvTail x lowComp cont2 =
       LC.Unreachable
     LC.Phi _ ->
       LC.Unreachable -- shouldn't occur
-
-defaultForeignList :: A.Arch -> AllocatorSpec -> [F.Foreign]
-defaultForeignList arch spec =
-  [ F.Foreign internalHint (EN.ExternalName $ callocName spec) [getWordType arch, getWordType arch] (FCT.Cod BLT.Pointer),
-    F.Foreign internalHint (EN.ExternalName $ mallocName spec) [getWordType arch] (FCT.Cod BLT.Pointer),
-    F.Foreign internalHint (EN.ExternalName $ reallocName spec) [BLT.Pointer, getWordType arch] (FCT.Cod BLT.Pointer),
-    F.Foreign internalHint (EN.ExternalName $ freeName spec) [BLT.Pointer] FCT.Void
-  ]
-
-getWordType :: A.Arch -> BLT.BaseLowType
-getWordType arch =
-  BLT.PrimNum $ BPT.Int $ BPT.Explicit $ dataSizeToIntSize $ A.dataSizeOf arch
 
 memcpyExternal :: C.Value -> C.Value -> C.Value -> C.Primitive
 memcpyExternal dest src byteCount = do

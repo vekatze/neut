@@ -13,6 +13,7 @@ import Kernel.Emit.LowType
 import Kernel.Emit.LowValue
 import Kernel.Emit.PrimType
 import Language.Common.DataSize (DataSize)
+import Language.Common.DataSize qualified as DS
 import Language.Common.LowType qualified as LT
 import Language.Common.PrimNumSize
 import Language.Common.PrimOp
@@ -21,20 +22,22 @@ import Language.LowComp.LowComp qualified as LC
 
 data Handle = Handle
   { intType :: LT.LowType,
+    stackSlotAlignment :: Int,
     allocatorSpec :: AllocatorSpec
   }
 
 new :: DataSize -> AllocatorSpec -> Handle
 new baseSize allocatorSpec = do
   let intType = LT.PrimNum $ PT.Int $ dataSizeToIntSize baseSize
+  let stackSlotAlignment = DS.reifyBytes baseSize
   Handle {..}
 
 emitLowOp :: Handle -> LC.Op -> Builder
 emitLowOp ax lowOp =
   case lowOp of
     LC.Call codType d ds -> do
-      let renderedArgs = showArgs ds
-      unwordsL ["call fastcc", emitLowType codType, emitValue d <> renderedArgs]
+      let renderedArgs = showInternalArgs ds
+      unwordsL ["call fastcc", emitInternalReturnType codType, emitValue d <> renderedArgs]
     LC.MagicCall funcType d ds ->
       unwordsL ["call", emitLowType funcType, emitValue d <> showArgs ds]
     LC.GetElementPtr (basePtr, n) is ->
@@ -72,6 +75,8 @@ emitLowOp ax lowOp =
           emitLowType (LC.stackElemType stackAllocInfo) <> ",",
           emitLowType (LC.stackIndexType stackAllocInfo),
           emitStackSize (LC.stackSize stackAllocInfo)
+            <> ", align "
+            <> intDec (stackSlotAlignment ax)
         ]
     LC.StackLifetimeStart {} ->
       ""
@@ -79,7 +84,7 @@ emitLowOp ax lowOp =
       ""
     LC.Calloc num size -> do
       unwordsL
-        [ "call fastcc",
+        [ "call",
           "ptr",
           "@"
             <> TE.encodeUtf8Builder (callocName $ allocatorSpec ax)
@@ -95,7 +100,7 @@ emitLowOp ax lowOp =
         ]
     LC.Alloc size _ -> do
       unwordsL
-        [ "call fastcc",
+        [ "call",
           "ptr",
           "@"
             <> TE.encodeUtf8Builder (mallocName $ allocatorSpec ax)
@@ -107,7 +112,7 @@ emitLowOp ax lowOp =
         ]
     LC.Realloc ptr size -> do
       unwordsL
-        [ "call fastcc",
+        [ "call",
           "ptr",
           "@"
             <> TE.encodeUtf8Builder (reallocName $ allocatorSpec ax)
@@ -121,7 +126,7 @@ emitLowOp ax lowOp =
         ]
     LC.Free d _ _ -> do
       unwordsL
-        [ "call fastcc",
+        [ "call",
           "void",
           "@"
             <> TE.encodeUtf8Builder (freeName $ allocatorSpec ax)

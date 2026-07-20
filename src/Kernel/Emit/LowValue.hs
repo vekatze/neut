@@ -4,7 +4,10 @@ module Kernel.Emit.LowValue
     emitIdentAsLabel,
     emitIdentAsLabelVar,
     showArgs,
+    showInternalArgs,
     showFuncArgs,
+    showInternalFuncArgs,
+    internalArgAttributes,
   )
 where
 
@@ -79,7 +82,7 @@ emitFloat size x =
         then emitFloatBitcast "i64" 16 (castDoubleToWord64 x) "double"
         else doubleDec x
 
-emitFloatBitcast :: Integral a => Builder -> Int -> a -> Builder -> Builder
+emitFloatBitcast :: (Integral a) => Builder -> Int -> a -> Builder -> Builder
 emitFloatBitcast intType width bits floatType =
   "bitcast (" <> intType <> " " <> emitHexWord width bits <> " to " <> floatType <> ")"
 
@@ -103,7 +106,7 @@ halfOverflowThreshold :: Double
 halfOverflowThreshold =
   65520
 
-emitHexWord :: Integral a => Int -> a -> Builder
+emitHexWord :: (Integral a) => Int -> a -> Builder
 emitHexWord width bits = do
   let hex = showHex bits ""
   let padding = replicate (width - length hex) '0'
@@ -125,9 +128,19 @@ showArgs :: [(LT.LowType, LC.Value)] -> Builder
 showArgs tds =
   showLocals $ map showArg tds
 
+showInternalArgs :: [(LT.LowType, LC.Value)] -> Builder
+showInternalArgs tds =
+  showLocals $ map showInternalArg tds
+
 showArg :: (LT.LowType, LC.Value) -> Builder
 showArg (t, d) =
   emitLowType t <> " " <> emitValue d
+
+showInternalArg :: (LT.LowType, LC.Value) -> Builder
+showInternalArg (t, d) =
+  attachAttributes (emitLowType t) (internalArgAttributes t)
+    <> " "
+    <> emitValue d
 
 showLocals :: [Builder] -> Builder
 showLocals ds =
@@ -136,3 +149,15 @@ showLocals ds =
 showFuncArgs :: [Builder] -> Builder
 showFuncArgs ds =
   "(" <> unwordsC (map ("ptr " <>) ds) <> ")"
+
+showInternalFuncArgs :: [Builder] -> Builder
+showInternalFuncArgs ds =
+  showLocals $ map (\arg -> attachAttributes "ptr" (internalArgAttributes LT.Pointer) <> " " <> arg) ds
+
+internalArgAttributes :: LT.LowType -> [Builder]
+internalArgAttributes argType =
+  case argType of
+    LT.Pointer ->
+      ["noundef"]
+    _ ->
+      []

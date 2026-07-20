@@ -10,13 +10,13 @@ lowTypeToByteSize dataSize lowType =
     LT.PrimNum primType ->
       primTypeToByteSize dataSize primType
     LT.Pointer ->
-      fromIntegral $ DS.reify dataSize `div` 8
+      fromIntegral $ DS.reifyBytes dataSize
     LT.Array len elemType ->
       fromIntegral len * lowTypeToByteSize dataSize elemType
     LT.Struct ts ->
       sum $ map (lowTypeToByteSize dataSize) ts
     LT.Function {} ->
-      fromIntegral $ DS.reify dataSize `div` 8
+      fromIntegral $ DS.reifyBytes dataSize
     LT.Void ->
       0
     LT.VarArgs ->
