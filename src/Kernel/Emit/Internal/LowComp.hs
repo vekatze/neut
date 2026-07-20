@@ -23,8 +23,8 @@ import Kernel.Emit.LowType
 import Kernel.Emit.LowValue
 import Language.Common.CreateSymbol qualified as Gensym
 import Language.Common.Ident
-import Language.Common.Ident.Reify qualified as Ident
 import Language.Common.Ident.Reify
+import Language.Common.Ident.Reify qualified as Ident
 import Language.Common.LowType qualified as LT
 import Language.LowComp.LowComp qualified as LC
 
@@ -73,8 +73,8 @@ emitLowComp h lowComp =
                 emitOp $
                   unwordsL
                     [ "tail call fastcc",
-                      emitLowType codType,
-                      emitValue f <> showArgs args
+                      emitInternalReturnType codType,
+                      emitValue f <> showInternalArgs args
                     ]
           ret <- emitLowComp (h {goalLabel = Nothing}) LC.ReturnVoid
           return $ op <> ret
@@ -86,8 +86,8 @@ emitLowComp h lowComp =
                     [ emitValue (LC.VarLocal tmp),
                       "=",
                       "tail call fastcc",
-                      emitLowType codType,
-                      emitValue f <> showArgs args
+                      emitInternalReturnType codType,
+                      emitValue f <> showInternalArgs args
                     ]
           ret <- emitLowComp (h {goalLabel = Nothing}) $ LC.Return (LC.VarLocal tmp)
           return $ op <> ret

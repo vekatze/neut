@@ -849,7 +849,7 @@ getDataSlotCountFromType h t =
 
 dataSlotCountToByteSize :: Handle -> Int -> Int
 dataSlotCountToByteSize h slotCount =
-  slotCount * (DS.reify (baseSize h) `div` 8)
+  slotCount * DS.reifyBytes (baseSize h)
 
 clarifyDataClause ::
   Handle ->
@@ -1075,7 +1075,7 @@ clarifyCase h context isNoetic dataArgsMap cursor cursorType decisionCase = do
           let fieldLayoutContext = extendContext (DI.dataArgs dataInfo) context
           fieldStorageList <- fieldStoragesOfConsInfo h fieldLayoutContext layoutConsInfo
           let consArgIdents = map (\(_, _, x, _) -> x) consArgs
-          let totalSlots = cursorSize `div` (DS.reify (baseSize h) `div` 8)
+          let totalSlots = cursorSize `div` DS.reifyBytes (baseSize h)
           headerVars <-
             if DI.headerSlotCount (DI.consInfoList dataInfo) == 0
               then return []

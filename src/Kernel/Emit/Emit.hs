@@ -16,11 +16,12 @@ import Data.ByteString.Lazy qualified as L
 import Data.HashMap.Strict qualified as HashMap
 import Data.IntMap qualified as IntMap
 import Data.List qualified as List
+import Data.Maybe (listToMaybe, mapMaybe)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
 import Gensym.CreateHandle qualified as Gensym
 import Gensym.Handle qualified as GensymHandle
-import Kernel.Common.Allocator (Allocator, allocatorSpec)
+import Kernel.Common.Allocator (Allocator, AllocatorKind (..), allocatorFamily, allocatorForeignList, allocatorSpec)
 import Kernel.Common.Const
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.Env qualified as Env
@@ -36,6 +37,7 @@ import Language.Common.BaseLowType qualified as BLT
 import Language.Common.CreateSymbol qualified as Gensym
 import Language.Common.DataSize qualified as DS
 import Language.Common.DefiniteDescription qualified as DD
+import Language.Common.Foreign qualified as F
 import Language.Common.ForeignCodType qualified as FCT
 import Language.Common.Ident.Reify
 import Language.Common.LowType qualified as LT
@@ -82,7 +84,7 @@ emitModuleHeader h = do
 
 emitLowCodeInfo :: Handle -> LC.LowCodeInfo -> IO ([Builder], [Builder])
 emitLowCodeInfo h (declEnv, defList, staticTextList) = do
-  let declStrList = emitDeclarations declEnv
+  let declStrList = emitDeclarations h declEnv
   let baseSize = Platform.getDataSize (Global.platformHandle (globalHandle h))
   let staticTextList' = concatMap (emitStaticText baseSize) staticTextList
   defStrList <- concat <$> mapM (emitDefinitions h) defList
@@ -153,9 +155,9 @@ emitStaticText baseSize (from, (text, len)) = do
           <> "}"
   [payload, header]
 
-emitDeclarations :: DN.DeclEnv -> [Builder]
-emitDeclarations declEnv = do
-  map declToBuilder $ List.sort $ HashMap.toList declEnv
+emitDeclarations :: Handle -> DN.DeclEnv -> [Builder]
+emitDeclarations h declEnv = do
+  map (declToBuilder h) $ List.sort $ HashMap.toList declEnv
 
 emitDefinitions :: Handle -> LC.Def -> IO [Builder]
 emitDefinitions h (name, LC.DefContent {codType = codType, args = args, body = body}) = do
@@ -164,29 +166,104 @@ emitDefinitions h (name, LC.DefContent {codType = codType, args = args, body = b
   let sub = IntMap.fromList $ zipWith (\from to -> (toInt from, LC.VarLocal to)) args args'
   let reduceHandle = Reduce.new definitionGensymHandle
   body' <- Reduce.reduce reduceHandle sub body
-  let args'' = showFuncArgs $ map (emitValue . LC.VarLocal) args'
-  emitDefinition h definitionGensymHandle (Just name) (emitLowType codType) (DD.toBuilder name) args'' body'
+  let args'' = showInternalFuncArgs $ map (emitValue . LC.VarLocal) args'
+  emitDefinition h definitionGensymHandle True (Just name) codType (DD.toBuilder name) args'' body'
 
 emitMain :: Handle -> LC.DefContent -> IO [Builder]
 emitMain h (LC.DefContent {codType = codType, args = args, body = body}) = do
   let args' = showFuncArgs $ map (emitValue . LC.VarLocal) args
-  emitDefinition h (gensymHandle h) Nothing (emitLowType codType) "main" args' body
+  emitDefinition h (gensymHandle h) False Nothing codType "main" args' body
 
-declToBuilder :: (DN.DeclarationName, ([BLT.BaseLowType], FCT.ForeignCodType BLT.BaseLowType)) -> Builder
-declToBuilder (name, (dom, cod)) = do
-  let name' = DN.toBuilder name
-  "declare "
-    <> emitLowType (FCT.fromForeignCodType cod)
-    <> " @"
-    <> name'
-    <> "("
-    <> unwordsC (map (emitLowType . LT.fromBaseLowType) dom)
-    <> ")"
+declToBuilder :: Handle -> (DN.DeclarationName, ([BLT.BaseLowType], FCT.ForeignCodType BLT.BaseLowType)) -> Builder
+declToBuilder h (name, (dom, cod)) = do
+  let codType = FCT.fromForeignCodType cod
+  let isInternal =
+        case name of
+          DN.In {} ->
+            True
+          DN.Ext {} ->
+            False
+  let maybeKind = allocatorKindOf h name dom cod
+  let callConvAttributes = if isInternal then ["fastcc"] else []
+  let returnType = if isInternal then emitInternalReturnType codType else emitLowType codType
+  let returnAttributes = maybe [] allocatorReturnAttributes maybeKind
+  let signature =
+        returnType
+          <> " @"
+          <> DN.toBuilder name
+          <> emitDeclarationArgs isInternal maybeKind dom
+  attachAttributes "declare" $
+    callConvAttributes
+      ++ returnAttributes
+      ++ [signature]
+      ++ maybe [] (allocatorFunctionAttributes (allocator h)) maybeKind
 
-emitDefinition :: Handle -> GensymHandle.Handle -> Maybe DD.DefiniteDescription -> Builder -> Builder -> Builder -> LC.Comp -> IO [Builder]
-emitDefinition h gensymHandle maybeName retType name args asm = do
-  let header = sig retType name args <> " {"
-  emitLowCompHandle <- EmitLowComp.new gensymHandle (globalHandle h) retType (allocatorSpec $ allocator h)
+emitDeclarationArgs :: Bool -> Maybe AllocatorKind -> [BLT.BaseLowType] -> Builder
+emitDeclarationArgs isInternal maybeKind dom = do
+  let renderArg index t = do
+        let attributes =
+              if isInternal
+                then internalArgAttributes t
+                else maybe [] (`allocatorArgAttributes` index) maybeKind
+        attachAttributes (emitLowType t) attributes
+  "(" <> unwordsC (zipWith renderArg [0 ..] (map LT.fromBaseLowType dom)) <> ")"
+
+allocatorKindOf ::
+  Handle ->
+  DN.DeclarationName ->
+  [BLT.BaseLowType] ->
+  FCT.ForeignCodType BLT.BaseLowType ->
+  Maybe AllocatorKind
+allocatorKindOf h name dom cod = do
+  let dataSize = Platform.getDataSize $ Global.platformHandle $ globalHandle h
+  let foreignList = allocatorForeignList dataSize (allocatorSpec $ allocator h)
+  let matches (kind, F.Foreign _ allocatorName expectedDom expectedCod) =
+        if DN.Ext allocatorName == name && dom == expectedDom && cod == expectedCod
+          then Just kind
+          else Nothing
+  listToMaybe $ mapMaybe matches foreignList
+
+allocatorReturnAttributes :: AllocatorKind -> [Builder]
+allocatorReturnAttributes kind =
+  case kind of
+    Free ->
+      []
+    _ ->
+      ["noalias", "noundef"]
+
+allocatorArgAttributes :: AllocatorKind -> Int -> [Builder]
+allocatorArgAttributes kind index = do
+  let isAllocPtr =
+        case kind of
+          Realloc ->
+            index == 0
+          Free ->
+            index == 0
+          _ ->
+            False
+  if isAllocPtr
+    then ["allocptr", "noundef"]
+    else ["noundef"]
+
+allocatorFunctionAttributes :: Allocator -> AllocatorKind -> [Builder]
+allocatorFunctionAttributes allocator kind = do
+  let effects =
+        case kind of
+          Malloc ->
+            ["allocsize(0)", "allockind(\"alloc,uninitialized\")", "memory(inaccessiblemem: readwrite)"]
+          Calloc ->
+            ["allocsize(0,1)", "allockind(\"alloc,zeroed\")", "memory(inaccessiblemem: readwrite)"]
+          Realloc ->
+            ["allocsize(1)", "allockind(\"realloc\")", "memory(argmem: readwrite, inaccessiblemem: readwrite)"]
+          Free ->
+            ["allockind(\"free\")", "memory(argmem: readwrite, inaccessiblemem: readwrite)"]
+  let family = TE.encodeUtf8Builder $ allocatorFamily allocator
+  ["nounwind", "willreturn"] ++ effects ++ ["\"alloc-family\"=\"" <> family <> "\""]
+
+emitDefinition :: Handle -> GensymHandle.Handle -> Bool -> Maybe DD.DefiniteDescription -> LT.LowType -> Builder -> Builder -> LC.Comp -> IO [Builder]
+emitDefinition h gensymHandle isInternal maybeName retType name args asm = do
+  let header = sig isInternal retType name args <> " {"
+  emitLowCompHandle <- EmitLowComp.new gensymHandle (globalHandle h) (emitLowType retType) (allocatorSpec $ allocator h)
   content <- EmitLowComp.emitLowComp emitLowCompHandle asm
   let footer = "}"
   let definition = [header] <> content <> [footer]
@@ -200,6 +277,8 @@ emitDefinition h gensymHandle maybeName retType name args asm = do
       return ()
   return definition
 
-sig :: Builder -> Builder -> Builder -> Builder
-sig retType name args =
-  "define fastcc " <> retType <> " @" <> name <> args
+sig :: Bool -> LT.LowType -> Builder -> Builder -> Builder
+sig isInternal retType name args = do
+  let callConvAttributes = if isInternal then ["fastcc"] else []
+  let returnType = if isInternal then emitInternalReturnType retType else emitLowType retType
+  attachAttributes "define" $ callConvAttributes ++ [returnType <> " @" <> name <> args]

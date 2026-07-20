@@ -1,6 +1,7 @@
 module Language.Common.DataSize
   ( DataSize (..),
     reify,
+    reifyBytes,
   )
 where
 
@@ -13,3 +14,7 @@ reify dataSize =
   case dataSize of
     DataSize64 ->
       64
+
+reifyBytes :: DataSize -> Int
+reifyBytes dataSize =
+  reify dataSize `div` 8

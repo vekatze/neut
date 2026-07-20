@@ -146,7 +146,7 @@ returnIntComp h value =
 
 wordCountToByteSize :: Handle -> Integer -> Integer
 wordCountToByteSize h wordCount =
-  wordCount * toInteger (DS.reify (baseSize h) `div` 8)
+  wordCount * toInteger (DS.reifyBytes (baseSize h))
 
 returnByteSizeComp :: Handle -> Integer -> C.Comp
 returnByteSizeComp h wordCount =

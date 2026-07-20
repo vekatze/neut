@@ -1,4 +1,8 @@
-module Kernel.Emit.LowType (emitLowType) where
+module Kernel.Emit.LowType
+  ( emitLowType,
+    emitInternalReturnType,
+  )
+where
 
 import Data.ByteString.Builder
 import Kernel.Emit.Builder
@@ -22,3 +26,11 @@ emitLowType lowType =
       "void"
     LT.VarArgs ->
       "..."
+
+emitInternalReturnType :: LT.LowType -> Builder
+emitInternalReturnType codType =
+  case codType of
+    LT.Pointer ->
+      "noundef ptr"
+    _ ->
+      emitLowType codType

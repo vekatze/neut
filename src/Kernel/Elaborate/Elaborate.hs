@@ -697,7 +697,7 @@ cannotMixRecursiveMessage h dataName =
 
 resourceByteSizeToFieldLayout :: Handle -> Int -> Either T.Text DI.FieldLayout
 resourceByteSizeToFieldLayout h byteSize = do
-  let wordSize = DS.reify (Platform.getDataSize (platformHandle h)) `div` 8
+  let wordSize = DS.reifyBytes (Platform.getDataSize (platformHandle h))
   let slotCount = (byteSize + wordSize - 1) `div` wordSize
   Right $ DI.LayoutFlattened slotCount
 

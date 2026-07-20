@@ -2,6 +2,7 @@ module Kernel.Emit.Builder
   ( unwordsC,
     unwordsL,
     unlinesL,
+    attachAttributes,
   )
 where
 
@@ -31,3 +32,7 @@ unwordsL =
 unlinesL :: [Builder] -> Builder
 unlinesL =
   _intercalate "\n"
+
+attachAttributes :: Builder -> [Builder] -> Builder
+attachAttributes base attributes =
+  unwordsL $ base : attributes

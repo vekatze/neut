@@ -14,11 +14,11 @@ primTypeToByteSize dataSize primType =
     PT.Rune ->
       4
     PT.Text ->
-      fromIntegral $ DS.reify dataSize `div` 8
+      fromIntegral $ DS.reifyBytes dataSize
     PT.Blob ->
-      fromIntegral $ DS.reify dataSize `div` 8
+      fromIntegral $ DS.reifyBytes dataSize
     PT.Pointer ->
-      fromIntegral $ DS.reify dataSize `div` 8
+      fromIntegral $ DS.reifyBytes dataSize
 
 bitSizeToByteSize :: Int -> Integer
 bitSizeToByteSize bitSize =
