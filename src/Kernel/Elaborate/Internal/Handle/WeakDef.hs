@@ -49,5 +49,5 @@ insert' ::
 insert' h gensymHandle opacity isDestPassing m name impArgs expArgs defaultArgs codType e =
   when (opacity == O.Clear) $ do
     i <- GensymCount.newCount gensymHandle
-    modifyIORef' (weakDefMapRef h) $
-      Map.insert name (m :< WT.PiIntro (AttrL.normal' (Just $ DD.localLocator name) isDestPassing i codType) impArgs expArgs defaultArgs e)
+    atomicModifyIORef' (weakDefMapRef h) $ \mp ->
+      (Map.insert name (m :< WT.PiIntro (AttrL.normal' (Just $ DD.localLocator name) isDestPassing i codType) impArgs expArgs defaultArgs e) mp, ())

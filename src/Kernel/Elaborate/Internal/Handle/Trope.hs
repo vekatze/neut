@@ -26,7 +26,8 @@ new = do
 
 insert :: Handle -> DD.DefiniteDescription -> [Stmt.DefineMeta] -> IO ()
 insert h name defineMetaList = do
-  modifyIORef' (tropeMapRef h) $ Map.insert name defineMetaList
+  atomicModifyIORef' (tropeMapRef h) $ \mp ->
+    (Map.insert name defineMetaList mp, ())
 
 get :: Handle -> IO TropeMap
 get h =

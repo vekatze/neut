@@ -1,5 +1,6 @@
 module Kernel.Parse.Parse
   ( Handle,
+    getSourcePath,
     parse,
   )
 where
@@ -42,6 +43,7 @@ import Language.RawTerm.RawTerm qualified as RT
 import Language.Term.Stmt
 import Logger.Debug qualified as Logger
 import Logger.Hint
+import Path
 import SyntaxTree.Series qualified as SE
 
 data Handle = Handle
@@ -64,10 +66,17 @@ new gensymHandle globalHandle = do
   let optDataHandle = Global.optDataHandle globalHandle
   Handle {..}
 
+type SourceUnit a =
+  (Gensym.Handle, Local.Handle, (Source, a))
+
+getSourcePath :: SourceUnit a -> Path Abs File
+getSourcePath (_, _, (source, _)) =
+  Source.sourceFilePath source
+
 parse ::
   Global.Handle ->
   [(Source, Either Cache T.Text)] ->
-  App [(Gensym.Handle, Local.Handle, (Source, Either Cache PostRawProgram))]
+  App [SourceUnit (Either Cache PostRawProgram)]
 parse h contentSeq = do
   parseGensymHandle <- liftIO Gensym.createHandle
   let parseHandle = new parseGensymHandle h

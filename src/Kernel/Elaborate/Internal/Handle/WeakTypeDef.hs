@@ -34,8 +34,8 @@ new = do
 insert' :: Handle -> O.Opacity -> DD.DefiniteDescription -> [BinderF WT.WeakType] -> WT.WeakType -> IO ()
 insert' h opacity name binders body =
   when (opacity == O.Clear) $ do
-    modifyIORef' (typeDefMapRef h) $
-      Map.insert name (TypeDef {typeDefBinders = binders, typeDefBody = body})
+    atomicModifyIORef' (typeDefMapRef h) $ \mp ->
+      (Map.insert name (TypeDef {typeDefBinders = binders, typeDefBody = body}) mp, ())
 
 lookup' :: Handle -> DD.DefiniteDescription -> IO (Maybe TypeDef)
 lookup' h name = do
