@@ -20,7 +20,8 @@ new = do
 
 insert :: Handle -> [L.Log] -> IO ()
 insert h remarkList = do
-  modifyIORef' (_globalRemarkListRef h) $ (++) remarkList
+  atomicModifyIORef' (_globalRemarkListRef h) $ \logs ->
+    (remarkList ++ logs, ())
 
 get :: Handle -> IO [L.Log]
 get h = do

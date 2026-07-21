@@ -37,8 +37,8 @@ insert' :: Handle -> O.Opacity -> DD.DefiniteDescription -> [BinderF TM.Type] ->
 insert' h opacity name binders body =
   when (opacity == O.Clear) $ do
     let typeDefInfo = TypeDefInfo {typeDefBinders = binders, typeDefBody = body}
-    modifyIORef' (typeDefMapRef h) $
-      Map.insert name typeDefInfo
+    atomicModifyIORef' (typeDefMapRef h) $ \mp ->
+      (Map.insert name typeDefInfo mp, ())
 
 get' :: Handle -> IO TypeDefMap
 get' h =

@@ -4,6 +4,7 @@ module Kernel.Unravel.Unravel
     unravel,
     unravelFromFile,
     registerShiftMap,
+    getSourceDependencyMap,
     unravel',
     unravelModule,
   )
@@ -38,6 +39,7 @@ import Kernel.Common.Module.FromPath qualified as ModuleReflect
 import Kernel.Common.OutputKind qualified as OK
 import Kernel.Common.Source qualified as Source
 import Kernel.Common.Source.ShiftToLatest qualified as STL
+import Kernel.Common.SourceDependencyMap (SourceDependencyMap)
 import Kernel.Common.Target
 import Kernel.Parse.Internal.Import qualified as Import
 import Kernel.Parse.Internal.Program (parseImport)
@@ -128,6 +130,25 @@ reportResolvedSources h sourceList = do
   let header = "Resolved " <> T.pack (show $ length sourceList) <> " source files:"
   let body = T.unlines $ map (T.pack . toFilePath . Source.sourceFilePath) sourceList
   liftIO $ Logger.report (Global.loggerHandle (globalHandle h)) $ header <> "\n" <> body
+
+getSourceDependencyMap :: Handle -> [Source.Source] -> IO SourceDependencyMap
+getSourceDependencyMap h sourceList = do
+  sourceChildrenMap <- getSourceChildrenMap h
+  return $ Map.fromList $ map (getSourceDependencies sourceChildrenMap) sourceList
+
+getSourceDependencies :: Map.HashMap (Path Abs File) [ImportItem] -> Source.Source -> (Path Abs File, [Path Abs File])
+getSourceDependencies sourceChildrenMap source = do
+  let sourcePath = Source.sourceFilePath source
+  let children = Map.lookupDefault [] sourcePath sourceChildrenMap
+  (sourcePath, mapMaybe getSourceDependency children)
+
+getSourceDependency :: ImportItem -> Maybe (Path Abs File)
+getSourceDependency importItem = do
+  case importItem of
+    ImportItem source _ ->
+      Just $ Source.sourceFilePath source
+    StaticFileKey {} ->
+      Nothing
 
 registerShiftMap :: Handle -> App ()
 registerShiftMap h = do

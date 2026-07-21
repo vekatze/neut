@@ -15,6 +15,7 @@ import Command.Common.Build.Execute qualified as Execute
 import Command.Common.Build.Generate qualified as Gen
 import Command.Common.Build.Install qualified as Install
 import Command.Common.Build.Link qualified as Link
+import Command.Common.Dependency qualified as Dependency
 import Console.Handle qualified as Console
 import Control.Concurrent (getNumCapabilities)
 import Control.Monad
@@ -44,6 +45,7 @@ import Kernel.Common.OutputKind
 import Kernel.Common.OutputKind qualified as OK
 import Kernel.Common.RunProcess qualified as RunProcess
 import Kernel.Common.Source
+import Kernel.Common.SourceDependencyMap (SourceDependencyMap)
 import Kernel.Common.Target
 import Kernel.Common.Trace qualified as Trace
 import Kernel.Common.ZenConfig qualified as Z
@@ -109,13 +111,15 @@ buildTarget h (M.MainModule baseModule) target = do
       "Build configuration: target=" <> T.pack (show target') <> ", outputs=" <> T.pack (show $ _outputKindList h) <> ", skip-link=" <> T.pack (show $ _shouldSkipLink h) <> ", execute=" <> T.pack (show $ _shouldExecute h)
   unravelHandle <- liftIO $ Unravel.new (globalHandle h)
   (artifactTime, dependenceSeq) <- Unravel.unravel unravelHandle baseModule target'
+  sourceDependencyMap <- liftIO $ Unravel.getSourceDependencyMap unravelHandle dependenceSeq
   let traceReport = Console.getTraceConfig $ Global.consoleHandle $ globalHandle h
   traceConfig <- either raiseError' return $ Trace.new (Env.getMainModule $ Global.envHandle $ globalHandle h) traceReport
   let moduleList = nubOrdOn M.moduleID $ map sourceModule dependenceSeq
   didPerformForeignCompilation <- compileForeign h target moduleList
   let loadHandle = Load.new (globalHandle h)
   contentSeq <- Load.load loadHandle (Trace.isEnabled traceConfig) target dependenceSeq
-  compile h traceConfig target' (_outputKindList h) contentSeq
+  withSystemTempDir "neut-object" $ \stagingDir -> do
+    compile h traceConfig target (_outputKindList h) sourceDependencyMap contentSeq stagingDir
   liftIO $
     GlobalRemark.get (Global.globalRemarkHandle (globalHandle h))
       >>= Logger.printLogList (Global.loggerHandle (globalHandle h))
@@ -130,13 +134,16 @@ buildTarget h (M.MainModule baseModule) target = do
       execute h (_shouldExecute h) ct (_executeArgs h)
       install h (_installDir h) ct
 
-compile :: Handle -> Trace.Config -> Target -> [OutputKind] -> [(Source, Either Cache T.Text)] -> App ()
-compile h traceConfig target outputKindList contentSeq = do
-  withSystemTempDir "neut-object" $ \stagingDir -> do
-    compile' h traceConfig target outputKindList contentSeq stagingDir
-
-compile' :: Handle -> Trace.Config -> Target -> [OutputKind] -> [(Source, Either Cache T.Text)] -> Path Abs Dir -> App ()
-compile' h traceConfig target outputKindList contentSeq stagingDir = do
+compile ::
+  Handle ->
+  Trace.Config ->
+  Target ->
+  [OutputKind] ->
+  SourceDependencyMap ->
+  [(Source, Either Cache T.Text)] ->
+  Path Abs Dir ->
+  App ()
+compile h traceConfig target outputKindList sourceDependencyMap contentSeq stagingDir = do
   numCapabilities <- liftIO getNumCapabilities
   generateHandle <- liftIO $ Gen.new (globalHandle h) stagingDir numCapabilities
   let cacheHandle = Cache.new (globalHandle h)
@@ -163,7 +170,7 @@ compile' h traceConfig target outputKindList contentSeq stagingDir = do
     interpretHandle <- liftIO $ Interpret.new gensymHandle (globalHandle h) localHandle (sourceModule source)
     item <- Interpret.interpret interpretHandle target source cacheOrProg
     return (gensymHandle, localHandle, (source, item))
-  contentAsync <- fmap catMaybes $ forM cacheOrStmtList $ \(gensymHandle, localHandle, (source, (cacheOrStmt, logs))) -> do
+  contentAsync <- fmap catMaybes $ Dependency.run numCapabilities sourceDependencyMap Parse.getSourcePath cacheOrStmtList $ \(gensymHandle, localHandle, (source, (cacheOrStmt, logs))) -> do
     liftIO $ Logger.report (Global.loggerHandle (globalHandle h)) $ "Elaborating: " <> T.pack (toFilePath $ sourceFilePath source)
     elaborateHandle <- liftIO $ Elaborate.new gensymHandle (globalHandle h) traceConfig localHandle source
     let ensureMainHandle = EnsureMain.new (Global.envHandle (globalHandle h))

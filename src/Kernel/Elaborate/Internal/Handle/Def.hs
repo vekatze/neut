@@ -45,7 +45,8 @@ insert' h name impArgs expArgs defaultArgs e typ mDefKind =
                 Inline.codType = typ,
                 Inline.defKind = defKind
               }
-      modifyIORef' (defMapRef h) $ Map.insert name defInfo
+      atomicModifyIORef' (defMapRef h) $ \mp ->
+        (Map.insert name defInfo mp, ())
     Nothing ->
       return ()
 

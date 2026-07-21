@@ -29,7 +29,8 @@ new = do
 
 insert' :: Handle -> DD.DefiniteDescription -> WeakType -> IO ()
 insert' h k v = do
-  modifyIORef' (_typeEnvRef h) $ Map.insert k v
+  atomicModifyIORef' (_typeEnvRef h) $ \mp ->
+    (Map.insert k v mp, ())
 
 lookup' :: Handle -> Hint -> DD.DefiniteDescription -> App WeakType
 lookup' h m k = do

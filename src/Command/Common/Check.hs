@@ -12,7 +12,9 @@ where
 import App.App (App)
 import App.Error qualified as E
 import App.Run (forP, raiseError', runApp)
+import Command.Common.Dependency qualified as Dependency
 import Console.Handle qualified as Console
+import Control.Concurrent (getNumCapabilities)
 import Control.Monad
 import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.IO.Class
@@ -100,6 +102,7 @@ _check h target baseModule = do
     let loadHandle = Load.new (globalHandle h)
     unravelHandle <- liftIO $ Unravel.new (globalHandle h)
     (_, dependenceSeq) <- Unravel.unravel unravelHandle baseModule target
+    sourceDependencyMap <- liftIO $ Unravel.getSourceDependencyMap unravelHandle dependenceSeq
     traceConfig <- newTraceConfig h
     contentSeq <- Load.load loadHandle (Trace.isEnabled traceConfig) target dependenceSeq
     cacheOrProgList <- Parse.parse (globalHandle h) contentSeq
@@ -110,7 +113,8 @@ _check h target baseModule = do
       interpretHandle <- liftIO $ Interpret.new gensymHandle (globalHandle h) localHandle (Source.sourceModule source)
       item <- Interpret.interpret interpretHandle target source cacheOrProg
       return (gensymHandle, localHandle, (source, item))
-    forM_ cacheOrStmtList $ \(gensymHandle, localHandle, (source, cacheOrContent)) -> do
+    numCapabilities <- liftIO getNumCapabilities
+    void $ Dependency.run numCapabilities sourceDependencyMap Parse.getSourcePath cacheOrStmtList $ \(gensymHandle, localHandle, (source, cacheOrContent)) -> do
       checkSource h gensymHandle traceConfig localHandle target source cacheOrContent
     registerUnusedTopLevelNameRemarks h
 
@@ -119,6 +123,7 @@ _check' h target baseModule = do
   unravelHandle <- liftIO $ Unravel.new (globalHandle h)
   let loadHandle = Load.new (globalHandle h)
   (_, dependenceSeq) <- Unravel.unravel unravelHandle baseModule target
+  sourceDependencyMap <- liftIO $ Unravel.getSourceDependencyMap unravelHandle dependenceSeq
   traceConfig <- newTraceConfig h
   contentSeq <- Load.load loadHandle (Trace.isEnabled traceConfig) target dependenceSeq
   cacheOrProgList <- Parse.parse (globalHandle h) contentSeq
@@ -134,7 +139,8 @@ _check' h target baseModule = do
       registerUnusedTopLevelNameRemarks h
       return Nothing
     Just (deps, (rootGensymHandle, rootLocalHandle, (rootSource, rootCacheOrContent))) -> do
-      forM_ deps $ \(gensymHandle, localHandle, (source, cacheOrContent)) -> do
+      numCapabilities <- liftIO getNumCapabilities
+      void $ Dependency.run numCapabilities sourceDependencyMap Parse.getSourcePath deps $ \(gensymHandle, localHandle, (source, cacheOrContent)) -> do
         checkSource h gensymHandle traceConfig localHandle target source cacheOrContent
       result <- Just <$> checkSource h rootGensymHandle traceConfig rootLocalHandle target rootSource rootCacheOrContent
       registerUnusedTopLevelNameRemarks h
