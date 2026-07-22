@@ -4,6 +4,7 @@ module Kernel.Elaborate.Internal.Handle.Elaborate
     reduceType,
     fillType,
     inline,
+    inlineDefinition,
     inlineWithoutResidualChecks,
     inlineBinder,
     inlineEnv,
@@ -122,11 +123,15 @@ fillType h sub t = do
 
 inline :: Handle -> Hint -> TM.Term -> App TM.Term
 inline h m =
+  inline' h m True True
+
+inlineDefinition :: Handle -> Hint -> Bool -> TM.Term -> App TM.Term
+inlineDefinition h m =
   inline' h m True
 
 inlineWithoutResidualChecks :: Handle -> Hint -> TM.Term -> App TM.Term
 inlineWithoutResidualChecks h m =
-  inline' h m False
+  inline' h m False True
 
 inlineEnv :: Handle -> IO InlineEnv.Env
 inlineEnv h = do
@@ -149,18 +154,19 @@ inlineEnv h = do
         InlineEnv.pendingSpecializationDefs = pendingSpecializationDefs h,
         InlineEnv.residualCheckList = residualCheckList h,
         InlineEnv.mainModule = mainModule,
-        InlineEnv.modulePathMap = modulePathMap h
+        InlineEnv.modulePathMap = modulePathMap h,
+        InlineEnv.traceHandle = Global.termTraceHandle (globalHandle h)
       }
 
-inline' :: Handle -> Hint -> Bool -> TM.Term -> App TM.Term
-inline' h m shouldEmitResidualChecks e = do
+inline' :: Handle -> Hint -> Bool -> Bool -> TM.Term -> App TM.Term
+inline' h m shouldEmitResidualChecks traceEnabled e = do
   env <- liftIO $ inlineEnv h
-  inlineHandle <- liftIO $ Inline.new env m shouldEmitResidualChecks
+  inlineHandle <- liftIO $ Inline.new env m shouldEmitResidualChecks traceEnabled
   Inline.inline inlineHandle e
 
 inlineBinder :: Handle -> BinderF TM.Type -> App (BinderF TM.Type)
 inlineBinder h (m, k, x, t) = do
   env <- liftIO $ inlineEnv h
-  inlineHandle <- liftIO $ Inline.new env m False
+  inlineHandle <- liftIO $ Inline.new env m False False
   t' <- Inline.inlineType inlineHandle t
   return (m, k, x, t')

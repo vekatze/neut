@@ -25,7 +25,7 @@ freeVars term =
       let impBinders = impArgs ++ expArgs
       let defaultVars = S.unions $ map freeVars $ map snd defaultArgs
       S.union defaultVars (freeVarsBinderType (impBinders ++ map fst defaultArgs ++ catMaybes [AttrL.fromAttr k]) (freeVars e))
-    _ :< TM.PiElim _ e impArgs expArgs defaultArgs -> do
+    _ :< TM.PiElim _ _ e impArgs expArgs defaultArgs -> do
       let xs = freeVars e
       let ys1 = S.unions $ map freeVarsType impArgs
       let ys2 = S.unions $ map freeVars expArgs
@@ -35,27 +35,27 @@ freeVars term =
       let xs1 = S.unions $ map freeVarsType dataArgs
       let xs2 = S.unions $ map freeVars consArgs
       S.union xs1 xs2
-    m :< TM.DataElim _ oets decisionTree -> do
+    m :< TM.DataElim _ _ oets decisionTree -> do
       let (os, es, ts) = unzip3 oets
       let xs1 = S.unions $ map freeVars es
       let binder = zipWith (\o t -> (m, VK.Normal, o, t)) os ts
       let xs2 = freeVarsBinderType binder (freeVarsDecisionTree decisionTree)
       S.union xs1 xs2
-    _ :< TM.BoxIntro letSeq e -> do
+    _ :< TM.BoxIntro _ letSeq e -> do
       let (xts, es) = unzip letSeq
       freeVarsBinderType xts (S.unions $ map freeVars (e : es))
     _ :< TM.BoxIntroLift t e ->
       S.union (freeVarsType t) (freeVars e)
-    _ :< TM.BoxElim castSeq mxt e1 uncastSeq e2 -> do
+    _ :< TM.BoxElim _ castSeq mxt e1 uncastSeq e2 -> do
       let (xts, es) = unzip $ castSeq ++ [(mxt, e1)] ++ uncastSeq
       freeVarsBinderType xts (S.unions $ map freeVars $ es ++ [e2])
     _ :< TM.CodeIntro e ->
       freeVars e
-    _ :< TM.CodeElim e ->
+    _ :< TM.CodeElim _ e ->
       freeVars e
     _ :< TM.TauIntro ty ->
       freeVarsType ty
-    _ :< TM.TauElim (_, x) e1 e2 ->
+    _ :< TM.TauElim _ (_, x) e1 e2 ->
       S.union (freeVars e1) (S.delete x (freeVars e2))
     _ :< TM.Let mxt e1 e2 -> do
       let set1 = freeVars e1
@@ -79,7 +79,7 @@ freeVars term =
           freeVarsType t
         _ ->
           S.empty
-    _ :< TM.Magic der ->
+    _ :< TM.Magic _ der ->
       freeVarsMagic der
 
 freeVarsType :: TM.Type -> S.Set Ident

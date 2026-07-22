@@ -1,5 +1,7 @@
 module Language.Term.Compress
   ( compress,
+    compressCollect,
+    compressDiscardingTrace,
     compressType,
     compressBinder,
     compressStmtKindTerm,
@@ -8,53 +10,114 @@ module Language.Term.Compress
 where
 
 import Control.Comonad.Cofree
+import Control.Monad
+import Control.Monad.State.Strict
 import Data.Bifunctor (second)
+import Data.IntSet qualified as IntSet
 import Language.Common.Binder
 import Language.Common.DataInfo qualified as DI
 import Language.Common.DecisionTree qualified as DT
 import Language.Common.StmtKind
 import Language.Term.Term qualified as TM
+import Language.Term.TraceID (TraceID (..), noTrace)
+
+data TraceMode
+  = PreserveTrace
+  | DiscardTrace
 
 compress :: TM.Term -> Cofree TM.TermF ()
 compress term =
+  evalState (compressCollect term) IntSet.empty
+
+compressCollect :: TM.Term -> State IntSet.IntSet (Cofree TM.TermF ())
+compressCollect =
+  compressWithTrace PreserveTrace
+
+compressDiscardingTrace :: TM.Term -> State IntSet.IntSet (Cofree TM.TermF ())
+compressDiscardingTrace =
+  compressWithTrace DiscardTrace
+
+compressWithTrace :: TraceMode -> TM.Term -> State IntSet.IntSet (Cofree TM.TermF ())
+compressWithTrace traceMode term = do
   case term of
-    _ :< TM.Var x ->
-      () :< TM.Var x
-    _ :< TM.VarGlobal g argNum ->
-      () :< TM.VarGlobal g argNum
-    _ :< TM.PiIntro attr impArgs expArgs defaultArgs e ->
-      () :< TM.PiIntro attr impArgs expArgs (map compressDefaultArg defaultArgs) (compress e)
-    _ :< TM.PiElim b e impArgs expArgs defaultArgs ->
-      () :< TM.PiElim b (compress e) impArgs (map compress expArgs) (map (fmap compress) defaultArgs)
-    _ :< TM.DataIntro attr consName dataArgs consArgs ->
-      () :< TM.DataIntro attr consName dataArgs (map compress consArgs)
-    _ :< TM.DataElim isNoetic oets tree -> do
+    _ :< TM.Var x -> do
+      return $ () :< TM.Var x
+    _ :< TM.VarGlobal g argNum -> do
+      return $ () :< TM.VarGlobal g argNum
+    _ :< TM.PiIntro attr impArgs expArgs defaultArgs e -> do
+      defaultArgs' <- mapM (compressDefaultArg traceMode) defaultArgs
+      e' <- compressWithTrace traceMode e
+      return $ () :< TM.PiIntro attr impArgs expArgs defaultArgs' e'
+    _ :< TM.PiElim traceID b e impArgs expArgs defaultArgs -> do
+      traceID' <- prepareTraceID traceMode traceID
+      e' <- compressWithTrace traceMode e
+      expArgs' <- mapM (compressWithTrace traceMode) expArgs
+      defaultArgs' <- mapM (traverse $ compressWithTrace traceMode) defaultArgs
+      return $ () :< TM.PiElim traceID' b e' impArgs expArgs' defaultArgs'
+    _ :< TM.DataIntro attr consName dataArgs consArgs -> do
+      consArgs' <- mapM (compressWithTrace traceMode) consArgs
+      return $ () :< TM.DataIntro attr consName dataArgs consArgs'
+    _ :< TM.DataElim traceID isNoetic oets tree -> do
+      traceID' <- prepareTraceID traceMode traceID
       let (os, es, ts) = unzip3 oets
-      let es' = map compress es
-      let tree' = compressDecisionTree tree
-      () :< TM.DataElim isNoetic (zip3 os es' ts) tree'
-    _ :< TM.BoxIntro letSeq e ->
-      () :< TM.BoxIntro (map compressLet letSeq) (compress e)
-    _ :< TM.BoxIntroLift t e ->
-      () :< TM.BoxIntroLift t (compress e)
-    _ :< TM.BoxElim castSeq mxt e1 uncastSeq e2 ->
-      () :< TM.BoxElim (map compressLet castSeq) mxt (compress e1) (map compressLet uncastSeq) (compress e2)
-    _ :< TM.CodeIntro e ->
-      () :< TM.CodeIntro (compress e)
-    _ :< TM.CodeElim e ->
-      () :< TM.CodeElim (compress e)
-    _ :< TM.TauIntro ty ->
-      () :< TM.TauIntro ty
-    _ :< TM.TauElim (mx, x) e1 e2 ->
-      () :< TM.TauElim (mx, x) (compress e1) (compress e2)
-    _ :< TM.Let mxt e1 e2 ->
-      () :< TM.Let mxt (compress e1) (compress e2)
-    _ :< TM.Invoke tropeNames body ->
-      () :< TM.Invoke tropeNames (compress body)
-    _ :< TM.Prim prim ->
-      () :< TM.Prim prim
-    _ :< TM.Magic der ->
-      () :< TM.Magic (fmap compress der)
+      es' <- mapM (compressWithTrace traceMode) es
+      tree' <- compressDecisionTree traceMode tree
+      return $ () :< TM.DataElim traceID' isNoetic (zip3 os es' ts) tree'
+    _ :< TM.BoxIntro traceID letSeq e -> do
+      traceID' <- prepareTraceID traceMode traceID
+      letSeq' <- mapM (compressLet traceMode) letSeq
+      e' <- compressWithTrace traceMode e
+      return $ () :< TM.BoxIntro traceID' letSeq' e'
+    _ :< TM.BoxIntroLift t e -> do
+      e' <- compressWithTrace traceMode e
+      return $ () :< TM.BoxIntroLift t e'
+    _ :< TM.BoxElim traceID castSeq mxt e1 uncastSeq e2 -> do
+      traceID' <- prepareTraceID traceMode traceID
+      castSeq' <- mapM (compressLet traceMode) castSeq
+      e1' <- compressWithTrace traceMode e1
+      uncastSeq' <- mapM (compressLet traceMode) uncastSeq
+      e2' <- compressWithTrace traceMode e2
+      return $ () :< TM.BoxElim traceID' castSeq' mxt e1' uncastSeq' e2'
+    _ :< TM.CodeIntro e -> do
+      e' <- compressWithTrace traceMode e
+      return $ () :< TM.CodeIntro e'
+    _ :< TM.CodeElim traceID e -> do
+      traceID' <- prepareTraceID traceMode traceID
+      e' <- compressWithTrace traceMode e
+      return $ () :< TM.CodeElim traceID' e'
+    _ :< TM.TauIntro ty -> do
+      return $ () :< TM.TauIntro ty
+    _ :< TM.TauElim traceID (mx, x) e1 e2 -> do
+      traceID' <- prepareTraceID traceMode traceID
+      e1' <- compressWithTrace traceMode e1
+      e2' <- compressWithTrace traceMode e2
+      return $ () :< TM.TauElim traceID' (mx, x) e1' e2'
+    _ :< TM.Let mxt e1 e2 -> do
+      e1' <- compressWithTrace traceMode e1
+      e2' <- compressWithTrace traceMode e2
+      return $ () :< TM.Let mxt e1' e2'
+    _ :< TM.Invoke tropeNames body -> do
+      body' <- compressWithTrace traceMode body
+      return $ () :< TM.Invoke tropeNames body'
+    _ :< TM.Prim prim -> do
+      return $ () :< TM.Prim prim
+    _ :< TM.Magic traceID der -> do
+      traceID' <- prepareTraceID traceMode traceID
+      der' <- mapM (compressWithTrace traceMode) der
+      return $ () :< TM.Magic traceID' der'
+
+prepareTraceID :: TraceMode -> TraceID -> State IntSet.IntSet TraceID
+prepareTraceID traceMode traceID = do
+  case traceMode of
+    PreserveTrace -> do
+      collectTraceID traceID
+      return traceID
+    DiscardTrace ->
+      return noTrace
+
+collectTraceID :: TraceID -> State IntSet.IntSet ()
+collectTraceID (TraceID rawID) = do
+  when (rawID /= 0) $ modify' $ IntSet.insert rawID
 
 compressType :: TM.Type -> Cofree TM.TypeF ()
 compressType ty =
@@ -88,36 +151,42 @@ compressBinder :: BinderF TM.Type -> BinderF (Cofree TM.TypeF ())
 compressBinder (m, k, x, t) =
   (m, k, x, compressType t)
 
-compressDefaultArg :: (BinderF TM.Type, TM.Term) -> (BinderF TM.Type, Cofree TM.TermF ())
-compressDefaultArg (binder, e) = (binder, compress e)
+compressDefaultArg :: TraceMode -> (BinderF TM.Type, TM.Term) -> State IntSet.IntSet (BinderF TM.Type, Cofree TM.TermF ())
+compressDefaultArg traceMode (binder, e) = do
+  e' <- compressWithTrace traceMode e
+  return (binder, e')
 
-compressLet :: (BinderF TM.Type, TM.Term) -> (BinderF TM.Type, Cofree TM.TermF ())
-compressLet (binder, e) = (binder, compress e)
+compressLet :: TraceMode -> (BinderF TM.Type, TM.Term) -> State IntSet.IntSet (BinderF TM.Type, Cofree TM.TermF ())
+compressLet = compressDefaultArg
 
-compressDecisionTree :: DT.DecisionTree TM.Type TM.Term -> DT.DecisionTree TM.Type (Cofree TM.TermF ())
-compressDecisionTree tree =
+compressDecisionTree :: TraceMode -> DT.DecisionTree TM.Type TM.Term -> State IntSet.IntSet (DT.DecisionTree TM.Type (Cofree TM.TermF ()))
+compressDecisionTree traceMode tree = do
   case tree of
-    DT.Leaf xs letSeq e ->
-      DT.Leaf xs (map compressLet letSeq) (compress e)
+    DT.Leaf xs letSeq e -> do
+      letSeq' <- mapM (compressLet traceMode) letSeq
+      e' <- compressWithTrace traceMode e
+      return $ DT.Leaf xs letSeq' e'
     DT.Unreachable ->
-      DT.Unreachable
-    DT.Switch cursor caseList ->
-      DT.Switch cursor (compressCaseList caseList)
+      return DT.Unreachable
+    DT.Switch cursor caseList -> do
+      caseList' <- compressCaseList traceMode caseList
+      return $ DT.Switch cursor caseList'
 
-compressCaseList :: DT.CaseList TM.Type TM.Term -> DT.CaseList TM.Type (Cofree TM.TermF ())
-compressCaseList (fallbackClause, clauseList) =
-  (compressDecisionTree fallbackClause, map compressCase clauseList)
+compressCaseList :: TraceMode -> DT.CaseList TM.Type TM.Term -> State IntSet.IntSet (DT.CaseList TM.Type (Cofree TM.TermF ()))
+compressCaseList traceMode (fallbackClause, clauseList) = do
+  fallbackClause' <- compressDecisionTree traceMode fallbackClause
+  clauseList' <- mapM (compressCase traceMode) clauseList
+  return (fallbackClause', clauseList')
 
-compressCase :: DT.Case TM.Type TM.Term -> DT.Case TM.Type (Cofree TM.TermF ())
-compressCase decisionCase =
+compressCase :: TraceMode -> DT.Case TM.Type TM.Term -> State IntSet.IntSet (DT.Case TM.Type (Cofree TM.TermF ()))
+compressCase traceMode decisionCase = do
   case decisionCase of
-    DT.LiteralCase mPat i cont ->
-      DT.LiteralCase mPat i (compressDecisionTree cont)
-    DT.ConsCase record@(DT.ConsCaseRecord {..}) ->
-      DT.ConsCase $
-        record
-          { DT.cont = compressDecisionTree cont
-          }
+    DT.LiteralCase mPat i cont -> do
+      cont' <- compressDecisionTree traceMode cont
+      return $ DT.LiteralCase mPat i cont'
+    DT.ConsCase record@(DT.ConsCaseRecord {..}) -> do
+      cont' <- compressDecisionTree traceMode cont
+      return $ DT.ConsCase record {DT.cont = cont'}
 
 compressStmtKindTerm :: StmtKindTerm TM.Type -> StmtKindTerm (Cofree TM.TypeF ())
 compressStmtKindTerm stmtKind =

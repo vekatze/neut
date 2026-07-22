@@ -91,7 +91,7 @@ weaken term =
       let defaultArgs' = map (bimap weakenTypeBinder weaken) defaultArgs
       let e' = weaken e
       m :< WT.PiIntro attr' impArgs' expArgs' defaultArgs' e'
-    m :< TM.PiElim b e impArgs expArgs defaultArgs -> do
+    m :< TM.PiElim _ b e impArgs expArgs defaultArgs -> do
       let b' = PEK.mapArg weakenType b
       let e' = weaken e
       let impArgs' = ImpArgs.FullySpecified $ map weakenType impArgs
@@ -102,17 +102,17 @@ weaken term =
       let dataArgs' = map weakenType dataArgs
       let consArgs' = map weaken consArgs
       m :< WT.DataIntro attr consName dataArgs' consArgs'
-    m :< TM.DataElim isNoetic oets tree -> do
+    m :< TM.DataElim _ isNoetic oets tree -> do
       let (os, es, ts) = unzip3 oets
       let es' = map weaken es
       let ts' = map weakenType ts
       let tree' = weakenDecisionTree tree
       m :< WT.DataElim isNoetic (zip3 os es' ts') tree'
-    m :< TM.BoxIntro letSeq e -> do
+    m :< TM.BoxIntro _ letSeq e -> do
       m :< WT.BoxIntro (map weakenLet letSeq) (weaken e)
     m :< TM.BoxIntroLift t e ->
       m :< WT.BoxIntroLift (Just $ weakenType t) (weaken e)
-    m :< TM.BoxElim castSeq mxt e1 uncastSeq e2 -> do
+    m :< TM.BoxElim _ castSeq mxt e1 uncastSeq e2 -> do
       let castSeq' = map weakenLet castSeq
       let (mxt', e1') = weakenLet (mxt, e1)
       let uncastSeq' = map weakenLet uncastSeq
@@ -120,11 +120,11 @@ weaken term =
       m :< WT.BoxElim castSeq' mxt' e1' uncastSeq' e2'
     m :< TM.CodeIntro e ->
       m :< WT.CodeIntro (weaken e)
-    m :< TM.CodeElim e ->
+    m :< TM.CodeElim _ e ->
       m :< WT.CodeElim (weaken e)
     m :< TM.TauIntro ty ->
       m :< WT.TauIntro (weakenType ty)
-    m :< TM.TauElim mx e1 e2 ->
+    m :< TM.TauElim _ mx e1 e2 ->
       m :< WT.TauElim mx (weaken e1) (weaken e2)
     m :< TM.Let mxt e1 e2 ->
       m :< WT.Let (weakenTypeBinder mxt) (weaken e1) (weaken e2)
@@ -132,7 +132,7 @@ weaken term =
       m :< WT.Invoke tropeNames (weaken body)
     m :< TM.Prim prim ->
       m :< WT.Prim (weakenPrimValue prim)
-    m :< TM.Magic magic -> do
+    m :< TM.Magic _ magic -> do
       m :< WT.Magic (weakenMagic m magic)
 
 weakenType :: TM.Type -> WT.WeakType

@@ -36,7 +36,7 @@ chainOf' tenv term =
       let xs1 = concatMap (chainOf' tenv . snd) defaultArgs
       let xs2 = chainOfBinder tenv (impArgs ++ expArgs ++ map fst defaultArgs ++ catMaybes [AttrL.fromAttr attr]) [e]
       xs1 ++ xs2
-    _ :< TM.PiElim _ e impArgs expArgs defaultArgs -> do
+    _ :< TM.PiElim _ _ e impArgs expArgs defaultArgs -> do
       let xs1 = chainOf' tenv e
       let xs2 = concatMap (chainOfType tenv) impArgs
       let xs3 = concatMap (chainOf' tenv) expArgs
@@ -44,27 +44,27 @@ chainOf' tenv term =
       xs1 ++ xs2 ++ xs3 ++ xs4
     _ :< TM.DataIntro _ _ dataArgs consArgs -> do
       concatMap (chainOfType tenv) dataArgs ++ concatMap (chainOf' tenv) consArgs
-    m :< TM.DataElim _ xets tree -> do
+    m :< TM.DataElim _ _ xets tree -> do
       let (xs, es, ts) = unzip3 xets
       let xs1 = concatMap (chainOf' tenv) es
       let mxts = zipWith (\x t -> (m, VK.Normal, x, t)) xs ts
       let xs2 = chainOfDecisionTree' tenv m mxts tree
       xs1 ++ xs2
-    _ :< TM.BoxIntro letSeq e -> do
+    _ :< TM.BoxIntro _ letSeq e -> do
       let (xts, es) = unzip letSeq
       chainOfBinder tenv xts (e : es)
     _ :< TM.BoxIntroLift t e ->
       chainOfType tenv t ++ chainOf' tenv e
-    _ :< TM.BoxElim castSeq mxt e1 uncastSeq e2 -> do
+    _ :< TM.BoxElim _ castSeq mxt e1 uncastSeq e2 -> do
       let (xts, es) = unzip $ castSeq ++ [(mxt, e1)] ++ uncastSeq
       chainOfBinder tenv xts (es ++ [e2])
     _ :< TM.CodeIntro e ->
       chainOf' tenv e
-    _ :< TM.CodeElim e ->
+    _ :< TM.CodeElim _ e ->
       chainOf' tenv e
     _ :< TM.TauIntro ty ->
       chainOfType tenv ty
-    _ :< TM.TauElim (mx, x) e1 e2 -> do
+    _ :< TM.TauElim _ (mx, x) e1 e2 -> do
       let xs1 = chainOf' tenv e1
       let mxt = (mx, VK.Normal, x, mx :< TM.Tau)
       let xs2 = chainOfBinder tenv [mxt] [e2]
@@ -77,7 +77,7 @@ chainOf' tenv term =
       chainOf' tenv body
     _ :< TM.Prim _ ->
       []
-    _ :< TM.Magic der ->
+    _ :< TM.Magic _ der ->
       foldMap (chainOf' tenv) der
 
 chainOfType :: TM.TypeEnv -> TM.Type -> [BinderF TM.Type]

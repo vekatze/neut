@@ -4,10 +4,14 @@ module Language.Term.Subst
     SubstEntry (..),
     Subst,
     subst,
+    substAndRefresh,
+    substAndRefreshWithTrace,
     substType,
     refresh,
     refreshType,
     subst',
+    substAndRefresh',
+    substAndRefreshWithTrace',
     subst'',
     substDecisionTree,
   )
@@ -16,7 +20,7 @@ where
 import Control.Comonad.Cofree
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.IntMap qualified as IntMap
-import Data.Maybe (mapMaybe)
+import Data.Maybe (isNothing, mapMaybe)
 import Data.Set qualified as S
 import Gensym.Gensym qualified as Gensym
 import Gensym.Handle qualified as Gensym
@@ -34,6 +38,9 @@ import Language.Common.PiElimKind qualified as PEK
 import Language.Common.VarKind qualified as VK
 import Language.Term.FreeVars qualified as TM
 import Language.Term.Term qualified as TM
+import Language.Term.Trace qualified as Trace
+import Language.Term.TraceSites qualified as TraceSites
+import Logger.Hint (Hint)
 
 data SubstEntry
   = Var Ident
@@ -45,12 +52,14 @@ type Subst =
 
 data Handle = Handle
   { gensymHandle :: Gensym.Handle,
-    shouldRefreshBinders :: Bool
+    shouldRefreshBinders :: Bool,
+    traceMapper :: Maybe Trace.Remapping
   }
 
 new :: Gensym.Handle -> Handle
 new gensymHandle = do
   let shouldRefreshBinders = False
+  let traceMapper = Nothing
   Handle {..}
 
 subst :: Handle -> Subst -> TM.Term -> IO TM.Term
@@ -66,7 +75,7 @@ subst h sub term =
             Type (_ :< TM.TVar x') ->
               return $ m :< TM.Var x'
             Type _ ->
-              return term
+              return $ m :< TM.Var x
       | otherwise ->
           return term
     _ :< TM.VarGlobal {} ->
@@ -74,7 +83,7 @@ subst h sub term =
     m :< TM.PiIntro (AttrL.Attr {lamKind}) impArgs expArgs defaultArgs e -> do
       let fvs = S.map Ident.toInt $ TM.freeVars term
       let subDomSet = S.fromList $ IntMap.keys sub
-      if not (shouldRefreshBinders h) && S.intersection fvs subDomSet == S.empty
+      if not (shouldRefreshBinders h) && isNothing (traceMapper h) && S.intersection fvs subDomSet == S.empty
         then return term
         else do
           newLamID <- liftIO $ Gensym.newCount (gensymHandle h)
@@ -86,7 +95,7 @@ subst h sub term =
               ([xt'], sub'''') <- substBinder h sub''' [xt]
               e' <- subst h sub'''' e
               let fixAttr = AttrL.Attr {lamKind = LK.Fix kind isDestPassing xt', identity = newLamID}
-              return (m :< TM.PiIntro fixAttr impArgs' expArgs' defaultArgs' e')
+              return $ m :< TM.PiIntro fixAttr impArgs' expArgs' defaultArgs' e'
             LK.Normal name isDestPassing codType -> do
               (impArgs', sub') <- substBinder h sub impArgs
               (expArgs', sub'') <- substBinder h sub' expArgs
@@ -94,55 +103,55 @@ subst h sub term =
               codType' <- substType h sub''' codType
               e' <- subst h sub''' e
               let lamAttr = AttrL.Attr {lamKind = LK.Normal name isDestPassing codType', identity = newLamID}
-              return (m :< TM.PiIntro lamAttr impArgs' expArgs' defaultArgs' e')
-    m :< TM.PiElim b e impArgs expArgs defaultArgs -> do
+              return $ m :< TM.PiIntro lamAttr impArgs' expArgs' defaultArgs' e'
+    m :< TM.PiElim traceID b e impArgs expArgs defaultArgs -> do
       b' <- PEK.traverseArg (substType h sub) b
       e' <- subst h sub e
       impArgs' <- mapM (substType h sub) impArgs
       expArgs' <- mapM (subst h sub) expArgs
       defaultArgs' <- mapM (traverse (subst h sub)) defaultArgs
-      return (m :< TM.PiElim b' e' impArgs' expArgs' defaultArgs')
+      rebuild h m $ TM.PiElim traceID b' e' impArgs' expArgs' defaultArgs'
     m :< TM.DataIntro attr consName dataArgs consArgs -> do
       dataArgs' <- mapM (substType h sub) dataArgs
       consArgs' <- mapM (subst h sub) consArgs
       return $ m :< TM.DataIntro attr consName dataArgs' consArgs'
-    m :< TM.DataElim isNoetic oets decisionTree -> do
+    m :< TM.DataElim traceID isNoetic oets decisionTree -> do
       let (os, es, ts) = unzip3 oets
       es' <- mapM (subst h sub) es
       let binder = zipWith (\o t -> (m, VK.Normal, o, t)) os ts
       (binder', decisionTree') <- subst'' h sub binder decisionTree
       let os' = map (\(_, _, o, _) -> o) binder'
       let ts' = map (\(_, _, _, t) -> t) binder'
-      return $ m :< TM.DataElim isNoetic (zip3 os' es' ts') decisionTree'
-    m :< TM.BoxIntro letSeq e -> do
+      rebuild h m $ TM.DataElim traceID isNoetic (zip3 os' es' ts') decisionTree'
+    m :< TM.BoxIntro traceID letSeq e -> do
       (letSeq', sub') <- substLetSeq h sub letSeq
       e' <- subst h sub' e
-      return $ m :< TM.BoxIntro letSeq' e'
+      rebuild h m $ TM.BoxIntro traceID letSeq' e'
     m :< TM.BoxIntroLift t e -> do
       t' <- substType h sub t
       e' <- subst h sub e
       return $ m :< TM.BoxIntroLift t' e'
-    m :< TM.BoxElim castSeq mxt e1 uncastSeq e2 -> do
+    m :< TM.BoxElim traceID castSeq mxt e1 uncastSeq e2 -> do
       (castSeq', sub1) <- substLetSeq h sub castSeq
       ((mxt', e1'), sub2) <- substLet h sub1 (mxt, e1)
       (uncastSeq', sub3) <- substLetSeq h sub2 uncastSeq
       e2' <- subst h sub3 e2
-      return $ m :< TM.BoxElim castSeq' mxt' e1' uncastSeq' e2'
+      rebuild h m $ TM.BoxElim traceID castSeq' mxt' e1' uncastSeq' e2'
     m :< TM.CodeIntro e -> do
       e' <- subst h sub e
       return $ m :< TM.CodeIntro e'
-    m :< TM.CodeElim e -> do
+    m :< TM.CodeElim traceID e -> do
       e' <- subst h sub e
-      return $ m :< TM.CodeElim e'
+      rebuild h m $ TM.CodeElim traceID e'
     m :< TM.TauIntro ty -> do
       ty' <- substType h sub ty
       return $ m :< TM.TauIntro ty'
-    m :< TM.TauElim (mx, x) e1 e2 -> do
+    m :< TM.TauElim traceID (mx, x) e1 e2 -> do
       e1' <- subst h sub e1
       x' <- liftIO $ Gensym.newIdentFromIdent (gensymHandle h) x
       let sub' = IntMap.insert (Ident.toInt x) (Var x') sub
       e2' <- subst h sub' e2
-      return $ m :< TM.TauElim (mx, x') e1' e2'
+      rebuild h m $ TM.TauElim traceID (mx, x') e1' e2'
     m :< TM.Let mxt e1 e2 -> do
       e1' <- subst h sub e1
       ([mxt'], e2') <- subst' h sub [mxt] e2
@@ -150,15 +159,31 @@ subst h sub term =
     m :< TM.Invoke tropeNames body -> do
       body' <- subst h sub body
       return $ m :< TM.Invoke tropeNames body'
-    _ :< TM.Prim _ ->
+    _ :< TM.Prim {} ->
       return term
-    m :< TM.Magic der -> do
+    m :< TM.Magic traceID der -> do
       der' <- substMagic h sub der
-      return (m :< TM.Magic der')
+      rebuild h m $ TM.Magic traceID der'
+
+rebuild :: Handle -> Hint -> TM.TermF TM.Term -> IO TM.Term
+rebuild h m node = do
+  case traceMapper h of
+    Nothing -> return $ m :< node
+    Just remapping -> do
+      let node' = TraceSites.setTraceID (Trace.remapOrKeep remapping $ TraceSites.traceIDOf node) node
+      return $ m :< node'
 
 refresh :: Handle -> TM.Term -> IO TM.Term
 refresh h =
   subst (h {shouldRefreshBinders = True}) IntMap.empty
+
+substAndRefresh :: Handle -> Subst -> TM.Term -> IO TM.Term
+substAndRefresh h =
+  subst (h {shouldRefreshBinders = True})
+
+substAndRefreshWithTrace :: Handle -> Trace.Remapping -> Subst -> TM.Term -> IO TM.Term
+substAndRefreshWithTrace h remapping =
+  subst (h {shouldRefreshBinders = True, traceMapper = Just remapping})
 
 substType :: Handle -> Subst -> TM.Type -> IO TM.Type
 substType h sub ty =
@@ -263,6 +288,14 @@ subst' h sub binder e =
       let sub' = IntMap.insert (Ident.toInt x) (Var x') sub
       (xts', e') <- subst' h sub' xts e
       return ((m, k, x', t') : xts', e')
+
+substAndRefresh' :: Handle -> Subst -> [BinderF TM.Type] -> TM.Term -> IO ([BinderF TM.Type], TM.Term)
+substAndRefresh' h =
+  subst' (h {shouldRefreshBinders = True})
+
+substAndRefreshWithTrace' :: Handle -> Trace.Remapping -> Subst -> [BinderF TM.Type] -> TM.Term -> IO ([BinderF TM.Type], TM.Term)
+substAndRefreshWithTrace' h remapping =
+  subst' (h {shouldRefreshBinders = True, traceMapper = Just remapping})
 
 subst'' ::
   Handle ->

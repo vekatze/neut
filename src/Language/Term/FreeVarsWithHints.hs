@@ -26,7 +26,7 @@ freeVarsWithHints term =
       let impBinders = impArgs ++ expArgs
       let defaultVars = S.unions $ map freeVarsWithHints $ map snd defaultArgs
       S.union defaultVars (freeVarsWithHintsBinderType (impBinders ++ map fst defaultArgs ++ catMaybes [AttrL.fromAttr k]) (freeVarsWithHints e))
-    _ :< TM.PiElim _ e impArgs expArgs defaultArgs -> do
+    _ :< TM.PiElim _ _ e impArgs expArgs defaultArgs -> do
       let xs = freeVarsWithHints e
       let ys1 = S.unions $ map freeVarsWithHintsType impArgs
       let ys2 = S.unions $ map freeVarsWithHints expArgs
@@ -36,27 +36,27 @@ freeVarsWithHints term =
       let xs1 = S.unions $ map freeVarsWithHintsType dataArgs
       let xs2 = S.unions $ map freeVarsWithHints consArgs
       S.union xs1 xs2
-    m :< TM.DataElim _ oets decisionTree -> do
+    m :< TM.DataElim _ _ oets decisionTree -> do
       let (os, es, ts) = unzip3 oets
       let xs1 = S.unions $ map freeVarsWithHints es
       let binder = zipWith (\o t -> (m, VK.Normal, o, t)) os ts
       let xs2 = freeVarsWithHintsBinderType binder (freeVarsWithHintsDecisionTree decisionTree)
       S.union xs1 xs2
-    _ :< TM.BoxIntro letSeq e -> do
+    _ :< TM.BoxIntro _ letSeq e -> do
       let (xts, es) = unzip letSeq
       freeVarsWithHintsBinderType xts (S.unions $ map freeVarsWithHints (e : es))
     _ :< TM.BoxIntroLift t e ->
       S.union (freeVarsWithHintsType t) (freeVarsWithHints e)
-    _ :< TM.BoxElim castSeq mxt e1 uncastSeq e2 -> do
+    _ :< TM.BoxElim _ castSeq mxt e1 uncastSeq e2 -> do
       let (xts, es) = unzip $ castSeq ++ [(mxt, e1)] ++ uncastSeq
       freeVarsWithHintsBinderType xts (S.unions $ map freeVarsWithHints $ es ++ [e2])
     _ :< TM.CodeIntro e ->
       freeVarsWithHints e
-    _ :< TM.CodeElim e ->
+    _ :< TM.CodeElim _ e ->
       freeVarsWithHints e
     _ :< TM.TauIntro ty ->
       freeVarsWithHintsType ty
-    _ :< TM.TauElim (m, x) e1 e2 ->
+    _ :< TM.TauElim _ (m, x) e1 e2 ->
       S.union (freeVarsWithHints e1) (S.delete (m, x) (freeVarsWithHints e2))
     _ :< TM.Let mxt e1 e2 -> do
       let set1 = freeVarsWithHints e1
@@ -80,7 +80,7 @@ freeVarsWithHints term =
           freeVarsWithHintsType t
         _ ->
           S.empty
-    _ :< TM.Magic der ->
+    _ :< TM.Magic _ der ->
       freeVarsWithHintsMagic der
 
 freeVarsWithHintsType :: TM.Type -> S.Set (Hint, Ident)

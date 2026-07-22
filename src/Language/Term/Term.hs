@@ -31,6 +31,7 @@ import Language.Common.PiElimKind qualified as PEK
 import Language.Common.PiKind (PiKind)
 import Language.Common.PrimType qualified as PT
 import Language.Term.PrimValue qualified as PV
+import Language.Term.TraceID (TraceID)
 import Logger.Hint
 
 -- Type representation
@@ -66,20 +67,20 @@ data TermF a
   = Var Ident
   | VarGlobal AttrVG.Attr DD.DefiniteDescription
   | PiIntro (AttrL.Attr Type) [BinderF Type] [BinderF Type] [(BinderF Type, a)] a
-  | PiElim (PEK.PiElimKind Type) a [Type] [a] [Maybe a]
+  | PiElim TraceID (PEK.PiElimKind Type) a [Type] [a] [Maybe a]
   | DataIntro AttrDI.Attr DD.DefiniteDescription [Type] [a]
-  | DataElim N.IsNoetic [(Ident, a, Type)] (DT.DecisionTree Type a)
-  | BoxIntro [(BinderF Type, a)] a
+  | DataElim TraceID N.IsNoetic [(Ident, a, Type)] (DT.DecisionTree Type a)
+  | BoxIntro TraceID [(BinderF Type, a)] a
   | BoxIntroLift Type a
-  | BoxElim [(BinderF Type, a)] (BinderF Type) a [(BinderF Type, a)] a
+  | BoxElim TraceID [(BinderF Type, a)] (BinderF Type) a [(BinderF Type, a)] a
   | CodeIntro a
-  | CodeElim a
+  | CodeElim TraceID a
   | TauIntro Type
-  | TauElim (Hint, Ident) a a
+  | TauElim TraceID (Hint, Ident) a a
   | Let (BinderF Type) a a
   | Invoke [DD.DefiniteDescription] a
   | Prim (PV.PrimValue Type)
-  | Magic (Magic BLT.BaseLowType Type a)
+  | Magic TraceID (Magic BLT.BaseLowType Type a)
   deriving (Generic)
 
 instance (Binary a) => Binary (TermF a)
@@ -118,7 +119,7 @@ isValue term =
       isValue e
     _ :< Prim {} ->
       True
-    _ :< Magic (LowMagic (LM.OpaqueValue _)) ->
+    _ :< Magic _ (LowMagic (LM.OpaqueValue _)) ->
       True
     _ ->
       False

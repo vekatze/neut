@@ -12,6 +12,7 @@ import Kernel.Common.Module qualified as Module
 import Language.Common.DataSize qualified as DS
 import Language.Term.Inline.Handle
 import Language.Term.Stmt qualified as Stmt
+import Language.Term.Trace qualified as Trace
 
 data Env = Env
   { gensymHandle :: GensymHandle.Handle,
@@ -26,5 +27,6 @@ data Env = Env
     pendingSpecializationDefs :: IORef [Stmt.Stmt],
     residualCheckList :: IORef [ResidualCheck],
     mainModule :: Module.MainModule,
-    modulePathMap :: ModulePath.ModulePathMap
+    modulePathMap :: ModulePath.ModulePathMap,
+    traceHandle :: Trace.Handle
   }
