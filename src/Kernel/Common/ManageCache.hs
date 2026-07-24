@@ -26,6 +26,7 @@ import Kernel.Common.Handle.Global.Path qualified as Path
 import Kernel.Common.OutputKind qualified as OK
 import Kernel.Common.Source qualified as Source
 import Kernel.Common.Target
+import Language.Term.Trace qualified as TermTrace
 import Logger.Debug qualified as Logger
 import Logger.Handle qualified as Logger
 import Path
@@ -34,18 +35,20 @@ import Path.IO
 data Handle = Handle
   { pathHandle :: Path.Handle,
     artifactHandle :: Artifact.Handle,
-    loggerHandle :: Logger.Handle
+    loggerHandle :: Logger.Handle,
+    termTraceHandle :: TermTrace.Handle
   }
 
 new :: Global.Handle -> Handle
 new (Global.Handle {..}) =
   Handle {..}
 
-saveCache :: Path.Handle -> Target -> Source.Source -> Cache.Cache -> App ()
-saveCache h t source cache = do
+saveCache :: Global.Handle -> Path.Handle -> Target -> Source.Source -> Cache.Cache -> App ()
+saveCache globalHandle h t source cache = do
   cachePath <- Path.getSourceCachePath h t source
   ensureDir $ parent cachePath
-  liftIO $ encodeFile (toFilePath cachePath) $ Cache.compress cache
+  lowCache <- liftIO $ Cache.compress (Global.termTraceHandle globalHandle) cache
+  liftIO $ encodeFile (toFilePath cachePath) lowCache
 
 saveCompletionCache :: Path.Handle -> Target -> Source.Source -> Cache.CompletionCache -> App ()
 saveCompletionCache h t source cache = do
@@ -82,7 +85,8 @@ loadCache h t source = do
               return Nothing
             Right content -> do
               liftIO $ Logger.report (loggerHandle h) $ "Cache hit: " <> renderSource source
-              return $ Just $ Cache.extend content
+              cache <- liftIO $ Cache.extend (termTraceHandle h) content
+              return $ Just cache
 
 renderSource :: Source.Source -> T.Text
 renderSource source =

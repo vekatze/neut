@@ -53,6 +53,7 @@ import Language.Term.Inline.Handle
 import Language.Term.PrimValue qualified as PV
 import Language.Term.Subst qualified as Subst
 import Language.Term.Term qualified as TM
+import Language.Term.TraceID (noTrace)
 import Language.Term.Weaken (weakenType)
 import Language.WeakTerm.ToText (toTextType)
 import Logger.Hint (Hint (..), showFilePosRelative)
@@ -428,7 +429,7 @@ evaluateTextUncons h m moduleID text = do
           let unitDD = DD.newByGlobalLocator unitSGL BN.unit
           let leftVar = m :< TM.VarGlobal (AttrVG.Attr {argNum = AN.fromInt 3, isConstLike = False, isDestPassing = False}) leftDD
           let unitVar = m :< TM.VarGlobal (AttrVG.Attr {argNum = AN.zero, isConstLike = True, isDestPassing = False}) unitDD
-          return $ m :< TM.PiElim PEK.Normal (m :< TM.PiElim PEK.Normal leftVar [unitTypeVar, pairType] [] []) [] [unitVar] []
+          return $ m :< TM.PiElim noTrace PEK.Normal (m :< TM.PiElim noTrace PEK.Normal leftVar [unitTypeVar, pairType] [] []) [] [unitVar] []
         Just (c, rest) -> do
           let rightDD = DD.newByGlobalLocator eitherSGL BN.right
           let pairDD = DD.newByGlobalLocator pairSGL BN.pair
@@ -436,8 +437,8 @@ evaluateTextUncons h m moduleID text = do
           let pairVar = m :< TM.VarGlobal (AttrVG.Attr {argNum = AN.fromInt 4, isConstLike = False, isDestPassing = False}) pairDD
           let runeValue = m :< TM.Prim (PV.Rune (Rune.fromChar c))
           let restText = m :< TM.Prim (PV.Text rest)
-          let pair = m :< TM.PiElim PEK.Normal (m :< TM.PiElim PEK.Normal pairVar [runeType, textType] [] []) [] [runeValue, restText] []
-          return $ m :< TM.PiElim PEK.Normal (m :< TM.PiElim PEK.Normal rightVar [unitTypeVar, pairType] [] []) [] [pair] []
+          let pair = m :< TM.PiElim noTrace PEK.Normal (m :< TM.PiElim noTrace PEK.Normal pairVar [runeType, textType] [] []) [] [runeValue, restText] []
+          return $ m :< TM.PiElim noTrace PEK.Normal (m :< TM.PiElim noTrace PEK.Normal rightVar [unitTypeVar, pairType] [] []) [] [pair] []
     _ ->
       reportMacroError h m "text-uncons requires a static text literal"
 
@@ -459,8 +460,8 @@ evaluateMakeSwitch h m moduleID key fallback clausesTerm = do
           let fallbackTree = makeSwitchLeaf m fallback
           let caseList = map (makeSwitchClause m) clauses
           let tree = DT.Switch (cursor, intType) (fallbackTree, caseList)
-          let keyElim = m :< TM.CodeElim key
-          return $ m :< TM.CodeIntro (m :< TM.DataElim False [(cursor, keyElim, intType)] tree)
+          let keyElim = m :< TM.CodeElim noTrace key
+          return $ m :< TM.CodeIntro (m :< TM.DataElim noTrace False [(cursor, keyElim, intType)] tree)
 
 collectSwitchClauses :: Handle -> Hint -> MID.ModuleID -> TM.Term -> App [SwitchClause]
 collectSwitchClauses h m moduleID term = do
@@ -501,7 +502,7 @@ selectSwitchClause keyValue fallback clauses =
 
 makeSwitchLeaf :: Hint -> TM.Term -> DT.DecisionTree TM.Type TM.Term
 makeSwitchLeaf m body =
-  DT.Leaf [] [] (m :< TM.CodeElim body)
+  DT.Leaf [] [] (m :< TM.CodeElim noTrace body)
 
 makeSwitchClause :: Hint -> SwitchClause -> DT.Case TM.Type TM.Term
 makeSwitchClause m (SwitchClause key body) =

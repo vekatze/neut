@@ -12,6 +12,7 @@ module Language.Term.Inline.Handle
 where
 
 import Data.HashMap.Strict qualified as Map
+import Data.IntSet qualified as IntSet
 import Data.IORef
 import Gensym.Handle qualified as GensymHandle
 import Kernel.Common.Handle.Global.Data qualified as Data
@@ -26,6 +27,7 @@ import Language.Common.Ident (Ident)
 import Language.Term.Stmt qualified as Stmt
 import Language.Term.Subst qualified as Subst
 import Language.Term.Term qualified as TM
+import Language.Term.Trace qualified as Trace
 import Logger.Hint
 
 data DefKind
@@ -43,7 +45,8 @@ data DefInfo = DefInfo
     defDefaultArgs :: [(BinderF TM.Type, TM.Term)],
     defBody :: TM.Term,
     codType :: TM.Type,
-    defKind :: DefKind
+    defKind :: DefKind,
+    traceSiteIDs :: IntSet.IntSet
   }
 
 type DefMap =
@@ -83,6 +86,7 @@ data Handle = Handle
     pendingSpecializationDefs :: IORef [Stmt.Stmt],
     residualCheckList :: IORef [ResidualCheck],
     shouldEmitResidualChecks :: Bool,
+    traceEnabled :: Bool,
     macroCallStack :: IORef [(DD.DefiniteDescription, DefKind, Hint)],
     gensymHandle :: GensymHandle.Handle,
     baseSize :: DS.DataSize,
@@ -92,5 +96,6 @@ data Handle = Handle
     localMetaMemo :: [(DD.DefiniteDescription, [TM.Type], Ident)],
     activeDefineMetaList :: [Stmt.DefineMeta],
     mainModule :: Module.MainModule,
-    modulePathMap :: ModulePath.ModulePathMap
+    modulePathMap :: ModulePath.ModulePathMap,
+    traceHandle :: Trace.Handle
   }

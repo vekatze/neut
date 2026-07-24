@@ -162,7 +162,7 @@ analyze h term = do
           cs4 <- analyzeType h'' codType
           cs5 <- analyze h'' e
           return $ cs1 ++ cs2 ++ cs3 ++ cs4 ++ cs5
-    _ :< TM.PiElim _ e impArgs expArgs defaultArgs -> do
+    _ :< TM.PiElim _ _ e impArgs expArgs defaultArgs -> do
       cs <- analyze h e
       css1 <- mapM (analyzeType h) impArgs
       css2 <- mapM (analyze h) expArgs
@@ -172,14 +172,14 @@ analyze h term = do
       css1 <- mapM (analyzeType $ deactivateExpCheck h) dataArgs
       css2 <- mapM (analyze $ deactivateExpCheck h) consArgs
       return $ concat css1 ++ concat css2
-    m :< TM.DataElim _ oets tree -> do
+    m :< TM.DataElim _ _ oets tree -> do
       let (os, es, ts) = unzip3 oets
       cs1 <- concat <$> mapM (analyze h) es
       cs2 <- concat <$> mapM (analyzeType h) ts
       let mots = zipWith (\o t -> (m, VK.Normal, o, t)) os ts
       cs3 <- analyzeDecisionTree (extendHandle' mots h) tree
       return $ cs1 ++ cs2 ++ cs3
-    _ :< TM.BoxIntro letSeq e -> do
+    _ :< TM.BoxIntro _ letSeq e -> do
       (cs1, h') <- analyzeLet h letSeq
       cs2 <- analyze h' e
       return $ cs1 ++ cs2
@@ -187,17 +187,17 @@ analyze h term = do
       cs1 <- analyzeType h t
       cs2 <- analyze h e
       return $ cs1 ++ cs2
-    _ :< TM.BoxElim castSeq mxt e1 uncastSeq e2 -> do
+    _ :< TM.BoxElim _ castSeq mxt e1 uncastSeq e2 -> do
       (cs, h') <- analyzeLet h $ castSeq ++ [(mxt, e1)] ++ uncastSeq
       cs' <- analyze h' e2
       return $ cs ++ cs'
     _ :< TM.CodeIntro e -> do
       analyze h e
-    _ :< TM.CodeElim e -> do
+    _ :< TM.CodeElim _ e -> do
       analyze h e
     _ :< TM.TauIntro ty -> do
       analyzeType h ty
-    _ :< TM.TauElim (mx, x) e1 e2 -> do
+    _ :< TM.TauElim _ (mx, x) e1 e2 -> do
       let mxt = (mx, VK.Normal, x, mx :< TM.Tau)
       (cs1, h') <- analyzeLet h [(mxt, e1)]
       cs2 <- analyze h' e2
@@ -210,7 +210,7 @@ analyze h term = do
       analyze h body
     _ :< TM.Prim {} -> do
       return []
-    _ :< TM.Magic magic -> do
+    _ :< TM.Magic _ magic -> do
       case magic of
         M.LowMagic lowMagic ->
           case lowMagic of

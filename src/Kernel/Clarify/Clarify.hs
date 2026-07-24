@@ -86,6 +86,7 @@ import Language.Term.PrimValue qualified as PV
 import Language.Term.Stmt (Stmt, StmtF (..), isMacroStmt)
 import Language.Term.Subst qualified as Subst
 import Language.Term.Term qualified as TM
+import Language.Term.TraceID (noTrace)
 import Language.WeakTerm.WeakTerm qualified as WT
 import Logger.Debug qualified as Logger
 import Logger.Handle qualified as Logger
@@ -415,8 +416,8 @@ clarifyStmt h stmt =
       arg@(argVarName, _) <- liftIO $ Gensym.createVar (gensymHandle h) "arg"
       extra@(extraVarName, _) <- liftIO $ Gensym.createVar (gensymHandle h) "extra"
       size <- clarifyResourceSize h resourceSize
-      discard <- clarifyTerm h context (m :< TM.PiElim PEK.Normal discarder [] [m :< TM.Var argVarName, m :< TM.Var extraVarName] [])
-      copy <- clarifyTerm h context (m :< TM.PiElim PEK.Normal copier [] [m :< TM.Var argVarName, m :< TM.Var extraVarName] [])
+      discard <- clarifyTerm h context (m :< TM.PiElim noTrace PEK.Normal discarder [] [m :< TM.Var argVarName, m :< TM.Var extraVarName] [])
+      copy <- clarifyTerm h context (m :< TM.PiElim noTrace PEK.Normal copier [] [m :< TM.Var argVarName, m :< TM.Var extraVarName] [])
       let resourceSpec = Utility.ResourceSpec {switch, arg, extra, discard, copy, size, defaultValues = []}
       liftIO $ Utility.registerSwitcher (utilityHandle h) O.Clear liftedName resourceSpec
       return $ C.Def dd O.Clear [] (C.UpIntro $ C.VarGlobal liftedName AN.argNumS4 (FCT.Cod BLT.Pointer))
@@ -610,7 +611,7 @@ clarifyTerm h context term =
             ]
     _ :< TM.PiIntro attr impArgs expArgs defaultArgs e -> do
       clarifyLambda h context attr (TM.chainOf (typeEnv context) [term]) impArgs expArgs defaultArgs e
-    _ :< TM.PiElim kind e impArgs expArgs defaultArgs -> do
+    _ :< TM.PiElim _ kind e impArgs expArgs defaultArgs -> do
       kind' <- PEK.traverseArg (clarifyType h context) kind
       impArgs' <- mapM (clarifyTypePlus h context) impArgs
       expArgs' <- mapM (clarifyPlus h context) expArgs
@@ -651,27 +652,27 @@ clarifyTerm h context term =
                 header ++ xs1 ++ payloadSlots
           return $
             Utility.bindLet (zip zs1 es1 ++ zip zs2 es2) packedBody
-    m :< TM.DataElim isNoetic xets tree -> do
+    m :< TM.DataElim _ isNoetic xets tree -> do
       let (xs, es, _) = unzip3 xets
       let mxts = map (\x -> (m, VK.Normal, x, m :< TM.Tau)) xs
       es' <- mapM (clarifyTerm h context) es
       (tree', _) <- clarifyDecisionTree h (extendContext mxts context) isNoetic IntMap.empty tree
       return $ Utility.irreducibleBindLet (zip xs es') tree'
-    _ :< TM.BoxIntro letSeq e -> do
+    _ :< TM.BoxIntro _ letSeq e -> do
       embody h context letSeq e
     _ :< TM.BoxIntroLift _ e -> do
       clarifyTerm h context e
-    _ :< TM.BoxElim castSeq mxt e1 uncastSeq e2 -> do
+    _ :< TM.BoxElim _ castSeq mxt e1 uncastSeq e2 -> do
       let opaqueLetSeq = map (\(mxt', e) -> (False, mxt', e)) castSeq
       let clearLetSeq = (True, mxt, e1) : map (\(mxt', e) -> (True, mxt', e)) uncastSeq
       clarifyLetSeq h context (opaqueLetSeq ++ clearLetSeq) e2
     _ :< TM.CodeIntro e -> do
       clarifyTerm h context e
-    _ :< TM.CodeElim e -> do
+    _ :< TM.CodeElim _ e -> do
       clarifyTerm h context e
     _ :< TM.TauIntro ty -> do
       clarifyType h context ty
-    _ :< TM.TauElim (mx, x) e1 e2 -> do
+    _ :< TM.TauElim _ (mx, x) e1 e2 -> do
       clarifyLet h context (mx, VK.Normal, x, mx :< TM.Tau) e1 e2
     _ :< TM.Let mxt e1 e2 ->
       clarifyLet h context mxt e1 e2
@@ -696,7 +697,7 @@ clarifyTerm h context term =
         PV.Rune r -> do
           let t = fromPrimNum m (PT.Int PNS.IntSize32)
           clarifyTerm h context $ m :< TM.Prim (PV.Int t PNS.IntSize32 (RU.asInt r))
-    _ :< TM.Magic der -> do
+    _ :< TM.Magic _ der -> do
       clarifyMagic h context der
 
 clarifyType :: Handle -> Context -> TM.Type -> App C.Comp
@@ -1230,7 +1231,7 @@ clarifyLambda h context attrL@(AttrL.Attr {lamKind}) fvs impArgs expArgs default
                 impArgs
                 expArgs
                 defaultArgs
-                (m :< TM.PiElim piElimKind (m :< TM.VarGlobal attr liftedName) [] appArgs' [])
+                (m :< TM.PiElim noTrace piElimKind (m :< TM.VarGlobal attr liftedName) [] appArgs' [])
       isAlreadyRegistered <- liftIO $ AuxEnv.checkIfAlreadyRegistered (auxEnvHandle h) liftedName
       unless isAlreadyRegistered $ do
         liftedBody <- liftIO $ Subst.subst (substHandle h) (IntMap.fromList [(Ident.toInt recFuncName, Subst.Term lamApp)]) e

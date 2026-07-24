@@ -8,7 +8,6 @@ module Language.Common.StmtKind
     toLowOpacityTerm,
     toLowOpacityType,
     isMacroStmtKind,
-    startsAtStage1,
     isMetaOnlyStmtKind,
     isInlineStmtKind,
     isDestPassingStmtKind,
@@ -124,10 +123,6 @@ toLowOpacityType stmtKind =
 
 isMacroStmtKind :: BaseStmtKindTerm name binder t -> Bool
 isMacroStmtKind stmtKind =
-  startsAtStage1 stmtKind
-
-startsAtStage1 :: BaseStmtKindTerm name binder t -> Bool
-startsAtStage1 stmtKind =
   case stmtKind of
     ConstantMeta ->
       True

@@ -20,6 +20,8 @@ import Data.ByteString qualified as BS
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.IntMap qualified as IntMap
+import Data.IntSet qualified as IntSet
+import Data.Maybe (fromMaybe)
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Gensym.Trick qualified as Gensym
@@ -55,6 +57,7 @@ import Kernel.Elaborate.Internal.Handle.WeakTypeDef qualified as WeakTypeDef
 import Kernel.Elaborate.Internal.Infer qualified as Infer
 import Kernel.Elaborate.Internal.Unify qualified as Unify
 import Kernel.Elaborate.PublicSignature qualified as PublicSignature
+import Kernel.Elaborate.Trace qualified as ElaborateTrace
 import Kernel.Elaborate.TypeHoleSubst qualified as THS
 import Kernel.Parse.Internal.Handle.UnusedTopLevelName qualified as UnusedTopLevelName
 import Kernel.Parse.Internal.Handle.UsedTopLevelName qualified as UsedTopLevelName
@@ -96,6 +99,9 @@ import Language.Term.PrimValue qualified as PV
 import Language.Term.Stmt
 import Language.Term.Subst qualified as TmSubst
 import Language.Term.Term qualified as TM
+import Language.Term.Trace qualified as TermTrace
+import Language.Term.TraceID (noTrace)
+import Language.Term.TraceSites qualified as TraceSites
 import Language.Term.Weaken
 import Language.WeakTerm.Subst (SubstEntry (..))
 import Language.WeakTerm.Subst qualified as Subst
@@ -109,10 +115,6 @@ import Logger.Hint
 import Logger.Log qualified as L
 import Logger.LogLevel qualified as LL
 
-getWeakTypeEnv :: Handle -> IO WeakType.WeakTypeEnv
-getWeakTypeEnv h =
-  WeakType.get $ weakTypeHandle h
-
 elaborate :: Handle -> Target -> [L.Log] -> Either Cache.Cache [WeakStmt] -> App [Stmt]
 elaborate h t logs cacheOrStmt = do
   case cacheOrStmt of
@@ -121,7 +123,11 @@ elaborate h t logs cacheOrStmt = do
       liftIO $
         UnusedTopLevelName.deleteMany (Global.unusedTopLevelNameHandle $ globalHandle h) $
           Cache.globalReferenceList cache
-      forM_ stmtList $ insertStmt h
+      case Cache.knownTraceSiteIDs cache of
+        Just traceSiteIDs ->
+          zipWithM_ (\stmt ids -> insertStmtWithTraceSites h (Just ids) stmt) stmtList traceSiteIDs
+        Nothing ->
+          forM_ stmtList $ insertStmt h
       liftIO $ GlobalRemark.insert (globalRemarkHandle h) logs
       liftIO $ Gensym.setCount (gensymHandle h) $ Cache.countSnapshot cache
       return stmtList
@@ -172,16 +178,26 @@ toTextDefinition stmtKind name expArgs cod body =
 toTextStmtKind :: SK.StmtKindTerm WT.WeakType -> T.Text
 toTextStmtKind stmtKind =
   case stmtKind of
-    SK.Define -> "define"
-    SK.DestPassing -> "define"
-    SK.DestPassingInline -> "inline"
-    SK.Inline -> "inline"
-    SK.Constant -> "constant"
-    SK.ConstantMeta -> "constant-meta"
-    SK.Macro -> "define-meta"
-    SK.MacroInline -> "inline-meta"
-    SK.Main _ -> "define"
-    SK.DataIntro _ _ _ _ -> "define"
+    SK.Define ->
+      "define"
+    SK.DestPassing ->
+      "define"
+    SK.DestPassingInline ->
+      "inline"
+    SK.Inline ->
+      "inline"
+    SK.Constant ->
+      "constant"
+    SK.ConstantMeta ->
+      "constant-meta"
+    SK.Macro ->
+      "define-meta"
+    SK.MacroInline ->
+      "inline-meta"
+    SK.Main _ ->
+      "define"
+    SK.DataIntro {} ->
+      "define"
 
 toTextArrow :: SK.StmtKindTerm WT.WeakType -> T.Text
 toTextArrow stmtKind =
@@ -210,9 +226,10 @@ synthesizeStmtList h t logs globalReferenceList stmtList = do
   countSnapshot <- liftIO $ Gensym.getCount (gensymHandle h)
   localLogs <- liftIO $ LocalLogs.get (localLogsHandle h)
   let logs' = logs ++ localLogs
-  Cache.saveCache (pathHandle h) t (currentSource h) $
+  Cache.saveCache (globalHandle h) (pathHandle h) t (currentSource h) $
     Cache.Cache
       { Cache.stmtList = stmtList'',
+        Cache.knownTraceSiteIDs = Nothing,
         Cache.remarkList = logs',
         Cache.globalReferenceList = globalReferenceList,
         Cache.countSnapshot = countSnapshot
@@ -241,7 +258,7 @@ elaborateStmt h stmt = do
           defaultArgsForSelf <- forM defaultArgs' $ \(binder, value) -> do
             value' <- inline h m value
             return (binder, value')
-          liftIO $ Definition.insert' (defHandle h) x impArgs' expArgs' defaultArgsForSelf e' codType' mDefKind
+          liftIO $ Definition.insert' (defHandle h) x impArgs' expArgs' defaultArgsForSelf e' codType' mDefKind IntSet.empty
         _ ->
           return ()
       remarks <- do
@@ -251,7 +268,7 @@ elaborateStmt h stmt = do
       (impArgs'', defaultArgs'', expArgs'', codType'', e'') <- withFreshSpecializationTable h $ do
         e'' <-
           if not $ SK.isMacroStmtKind stmtKind
-            then inline h m e'
+            then inlineDefinition h m (shouldTraceDefinition mDefKind) e'
             else return e'
         impArgs'' <- mapM (inlineBinder h) impArgs'
         defaultArgs'' <- forM defaultArgs' $ \(binder, value) -> do
@@ -264,13 +281,16 @@ elaborateStmt h stmt = do
         expArgs'' <- mapM (inlineBinder h) expArgs'
         codType'' <- inlineType h m codType'
         return (impArgs'', defaultArgs'', expArgs'', codType'', e'')
+      (eFinal, traceSiteIDs) <- liftIO $ prepareDefinitionTrace (Global.termTraceHandle $ globalHandle h) mDefKind e''
       when (isConstLike && not (isConstantMetaStmtKind stmtKind)) $ do
-        unless (TM.isValue e'') $ do
-          raiseError m "Could not reduce the body of this definition into a constant"
+        let bodyHint = case e' of
+              bodyMeta :< _ -> bodyMeta
+        forM_ (TraceSites.findBlocker eFinal) $ \blocker ->
+          reportConstantEvaluationFailure h x bodyHint blocker
       PublicSignature.checkStmt (globalHandle h) (Source.sourceModule $ currentSource h) $
         StmtDefine isConstLike stmtKind' (SavedHint m) x impArgs' expArgs' defaultArgs' codType' e'
-      let result = StmtDefine isConstLike stmtKind' (SavedHint m) x impArgs'' expArgs'' defaultArgs'' codType'' e''
-      insertStmt h result
+      let result = StmtDefine isConstLike stmtKind' (SavedHint m) x impArgs'' expArgs'' defaultArgs'' codType'' eFinal
+      insertStmtWithTraceSites h (Just traceSiteIDs) result
       return ([result], remarks)
     WeakStmtDefineType isConstLike stmtKind m x impArgs expArgs defaultArgs codType body -> do
       stmtKind' <- elaborateStmtKindType h stmtKind
@@ -374,6 +394,15 @@ elaborateDefineMeta h ownerName defineMeta = do
         defineMetaBody = body',
         defineMetaHelperName = weakDefineMetaHelperName defineMeta
       }
+
+reportConstantEvaluationFailure :: Handle -> DD.DefiniteDescription -> Hint -> TraceSites.Blocker -> App a
+reportConstantEvaluationFailure h constantName bodyHint blocker = do
+  traceBlock <- liftIO $ ElaborateTrace.renderFailureTrace h constantName bodyHint blocker
+  raiseError bodyHint $
+    "Expected a compile-time value, but got "
+      <> TraceSites.describeBlocker blocker
+      <> ":\n\n"
+      <> traceBlock
 
 ensureDefineMetaTarget :: Handle -> Hint -> DD.DefiniteDescription -> App ()
 ensureDefineMetaTarget h m targetName = do
@@ -485,10 +514,15 @@ checkMixableType h m t = do
 
 insertStmt :: Handle -> Stmt -> App ()
 insertStmt h stmt = do
+  insertStmtWithTraceSites h Nothing stmt
+
+insertStmtWithTraceSites :: Handle -> Maybe IntSet.IntSet -> Stmt -> App ()
+insertStmtWithTraceSites h knownTraceSiteIDs stmt = do
   case stmt of
     StmtDefine isConstLike stmtKind (SavedHint m) f impArgs expArgs defaultArgs t e -> do
       liftIO $ Type.insert' (typeHandle h) f $ weakenType $ m :< TM.Pi (PK.fromStmtKind stmtKind isConstLike) impArgs expArgs (map fst defaultArgs) t
-      liftIO $ Definition.insert' (defHandle h) f impArgs expArgs defaultArgs e t (stmtKindToDefKind stmtKind defaultArgs)
+      let traceSiteIDs = fromMaybe (TraceSites.traceIDSet e) knownTraceSiteIDs
+      liftIO $ Definition.insert' (defHandle h) f impArgs expArgs defaultArgs e t (stmtKindToDefKind stmtKind defaultArgs) traceSiteIDs
     StmtDefineType isConstLike stmtKind (SavedHint m) f impArgs expArgs defaultArgs t body -> do
       let allBinders = impArgs ++ expArgs ++ map fst defaultArgs
       liftIO $ Type.insert' (typeHandle h) f $ weakenType $ m :< TM.Pi (PK.Normal isConstLike) impArgs expArgs (map fst defaultArgs) t
@@ -799,7 +833,7 @@ elaborate' h term = do
           mapM (traverse (elaborate' h)) args
         DefaultArgs.ByKey _ ->
           raiseCritical m "Scene.Elaborate.elaborate': found a remaining `ByKey` default argument"
-      return $ m :< TM.PiElim b' e' impArgs'' expArgs' defaultArgs'
+      return $ m :< TM.PiElim noTrace b' e' impArgs'' expArgs' defaultArgs'
     m :< WT.PiElimExact {} -> do
       raiseCritical m "Scene.Elaborate.elaborate': found a remaining `exact`"
     m :< WT.DataIntro attr consName dataArgs consArgs -> do
@@ -823,11 +857,11 @@ elaborate' h term = do
             ConsSwitch consList -> do
               unless (null consList) $
                 raiseEmptyNonExhaustivePatternMatching m
-      return $ m :< TM.DataElim isNoetic (zip3 os es' ts') tree'
+      return $ m :< TM.DataElim noTrace isNoetic (zip3 os es' ts') tree'
     m :< WT.BoxIntro letSeq e -> do
       letSeq' <- mapM (elaborateLet h) letSeq
       e' <- elaborate' h e
-      return $ m :< TM.BoxIntro letSeq' e'
+      return $ m :< TM.BoxIntro noTrace letSeq' e'
     m :< WT.BoxIntroLift mt e -> do
       e' <- elaborate' h e
       t <- elaborateActualityMarkerType h m mt
@@ -838,20 +872,20 @@ elaborate' h term = do
       e1' <- elaborate' h e1
       uncastSeq' <- mapM (elaborateLet h) uncastSeq
       e2' <- elaborate' h e2
-      return $ m :< TM.BoxElim castSeq' mxt' e1' uncastSeq' e2'
+      return $ m :< TM.BoxElim noTrace castSeq' mxt' e1' uncastSeq' e2'
     m :< WT.CodeIntro e -> do
       e' <- elaborate' h e
       return $ m :< TM.CodeIntro e'
     m :< WT.CodeElim e -> do
       e' <- elaborate' h e
-      return $ m :< TM.CodeElim e'
+      return $ m :< TM.CodeElim noTrace e'
     m :< WT.TauIntro ty -> do
       ty' <- elaborateType h ty
       return $ m :< TM.TauIntro ty'
     m :< WT.TauElim (mx, x) e1 e2 -> do
       e1' <- elaborate' h e1
       e2' <- elaborate' h e2
-      return $ m :< TM.TauElim (mx, x) e1' e2'
+      return $ m :< TM.TauElim noTrace (mx, x) e1' e2'
     m :< WT.Let (mx, k, x, t) e1 e2 -> do
       e1' <- elaborate' h e1
       t' <- reduceWeakType h t >>= elaborateType h
@@ -879,92 +913,92 @@ elaborate' h term = do
               let (vArgs, vTypes) = unzip varArgs
               vArgs' <- mapM (elaborate' h) vArgs
               vTypes' <- mapM (strictify h) vTypes
-              return $ m :< TM.Magic (M.LowMagic $ LM.External domList' cod' name args' (zip vArgs' vTypes'))
+              return $ m :< TM.Magic noTrace (M.LowMagic $ LM.External domList' cod' name args' (zip vArgs' vTypes'))
             LM.Cast from to value -> do
               from' <- elaborateType h from
               to' <- elaborateType h to
               value' <- elaborate' h value
-              return $ m :< TM.Magic (M.LowMagic $ LM.Cast from' to' value')
+              return $ m :< TM.Magic noTrace (M.LowMagic $ LM.Cast from' to' value')
             LM.Store t unit value pointer -> do
               t' <- strictify h t
               unit' <- elaborateType h unit
               value' <- elaborate' h value
               pointer' <- elaborate' h pointer
-              return $ m :< TM.Magic (M.LowMagic $ LM.Store t' unit' value' pointer')
+              return $ m :< TM.Magic noTrace (M.LowMagic $ LM.Store t' unit' value' pointer')
             LM.Load t pointer -> do
               t' <- strictify h t
               pointer' <- elaborate' h pointer
-              return $ m :< TM.Magic (M.LowMagic $ LM.Load t' pointer')
+              return $ m :< TM.Magic noTrace (M.LowMagic $ LM.Load t' pointer')
             LM.Alloca t size -> do
               t' <- strictify h t
               size' <- elaborate' h size
-              return $ m :< TM.Magic (M.LowMagic $ LM.Alloca t' size')
+              return $ m :< TM.Magic noTrace (M.LowMagic $ LM.Alloca t' size')
             LM.Global name t -> do
               t' <- strictify h t
-              return $ m :< TM.Magic (M.LowMagic $ LM.Global name t')
+              return $ m :< TM.Magic noTrace (M.LowMagic $ LM.Global name t')
             LM.OpaqueValue e -> do
               e' <- elaborate' h e
-              return $ m :< TM.Magic (M.LowMagic $ LM.OpaqueValue e')
+              return $ m :< TM.Magic noTrace (M.LowMagic $ LM.OpaqueValue e')
             LM.CallType func arg1 arg2 arg3 -> do
               func' <- elaborate' h func
               arg1' <- elaborate' h arg1
               arg2' <- elaborate' h arg2
               arg3' <- elaborate' h arg3
-              return $ m :< TM.Magic (M.LowMagic $ LM.CallType func' arg1' arg2' arg3')
+              return $ m :< TM.Magic noTrace (M.LowMagic $ LM.CallType func' arg1' arg2' arg3')
         M.Calloc sizeType num size -> do
           sizeType' <- elaborateType h sizeType
           num' <- elaborate' h num
           size' <- elaborate' h size
-          return $ m :< TM.Magic (M.Calloc sizeType' num' size')
+          return $ m :< TM.Magic noTrace (M.Calloc sizeType' num' size')
         M.Malloc sizeType size -> do
           sizeType' <- elaborateType h sizeType
           size' <- elaborate' h size
-          return $ m :< TM.Magic (M.Malloc sizeType' size')
+          return $ m :< TM.Magic noTrace (M.Malloc sizeType' size')
         M.Realloc sizeType ptr size -> do
           sizeType' <- elaborateType h sizeType
           ptr' <- elaborate' h ptr
           size' <- elaborate' h size
-          return $ m :< TM.Magic (M.Realloc sizeType' ptr' size')
+          return $ m :< TM.Magic noTrace (M.Realloc sizeType' ptr' size')
         M.Free unitType ptr -> do
           unitType' <- elaborateType h unitType
           ptr' <- elaborate' h ptr
-          return $ m :< TM.Magic (M.Free unitType' ptr')
+          return $ m :< TM.Magic noTrace (M.Free unitType' ptr')
         M.InspectType mid typeValueExpr typeExpr -> do
           typeValueExpr' <- elaborateType h typeValueExpr
           typeExpr' <- elaborateType h typeExpr
-          return $ m :< TM.Magic (M.InspectType mid typeValueExpr' typeExpr')
+          return $ m :< TM.Magic noTrace (M.InspectType mid typeValueExpr' typeExpr')
         M.EqType moduleID typeExpr1 typeExpr2 -> do
           typeExpr1' <- elaborateType h typeExpr1
           typeExpr2' <- elaborateType h typeExpr2
-          return $ m :< TM.Magic (M.EqType moduleID typeExpr1' typeExpr2')
+          return $ m :< TM.Magic noTrace (M.EqType moduleID typeExpr1' typeExpr2')
         M.ShowType typeExpr -> do
           typeExpr' <- elaborateType h typeExpr
-          return $ m :< TM.Magic (M.ShowType typeExpr')
+          return $ m :< TM.Magic noTrace (M.ShowType typeExpr')
         M.AssertMixable moduleID unitTypeExpr typeExpr -> do
           unitTypeExpr' <- elaborateType h unitTypeExpr
           typeExpr' <- elaborateType h typeExpr
-          return $ m :< TM.Magic (M.AssertMixable moduleID unitTypeExpr' typeExpr')
+          return $ m :< TM.Magic noTrace (M.AssertMixable moduleID unitTypeExpr' typeExpr')
         M.TextCons rune text -> do
           rune' <- elaborate' h rune
           text' <- elaborate' h text
-          return $ m :< TM.Magic (M.TextCons rune' text')
+          return $ m :< TM.Magic noTrace (M.TextCons rune' text')
         M.TextUncons mid text -> do
           text' <- elaborate' h text
-          return $ m :< TM.Magic (M.TextUncons mid text')
+          return $ m :< TM.Magic noTrace (M.TextUncons mid text')
         M.MakeSwitch mid key fallback clauses -> do
           key' <- elaborate' h key
           fallback' <- elaborate' h fallback
           clauses' <- elaborate' h clauses
-          return $ m :< TM.Magic (M.MakeSwitch mid key' fallback' clauses')
+          return $ m :< TM.Magic noTrace (M.MakeSwitch mid key' fallback' clauses')
         M.CompileError msg -> do
           msg' <- elaborate' h msg
-          return $ m :< TM.Magic (M.CompileError msg')
+          return $ m :< TM.Magic noTrace (M.CompileError msg')
         M.GetOriginFileName -> do
-          return $ m :< TM.Magic M.GetOriginFileName
+          return $ m :< TM.Magic noTrace M.GetOriginFileName
         M.GetOriginLine -> do
-          return $ m :< TM.Magic M.GetOriginLine
+          return $ m :< TM.Magic noTrace M.GetOriginLine
         M.GetOriginColumn -> do
-          return $ m :< TM.Magic M.GetOriginColumn
+          return $ m :< TM.Magic noTrace M.GetOriginColumn
     m :< WT.Annotation remarkLevel annot e -> do
       e' <- elaborate' h e
       case annot of
@@ -1173,7 +1207,7 @@ elaborateWeakBinder h (m, k, x, t) = do
 inlineType :: Handle -> Hint -> TM.Type -> App TM.Type
 inlineType h m t = do
   env <- liftIO $ inlineEnv h
-  inlineHandle <- liftIO $ Inline.new env m False
+  inlineHandle <- liftIO $ Inline.new env m False False
   Inline.inlineType inlineHandle t
 
 withFreshSpecializationTable :: Handle -> App a -> App a
@@ -1468,6 +1502,42 @@ stmtKindToDefKind stmtKind defaultArgs =
         then Nothing
         else Just Inline.NoInline
 
+prepareDefinitionTrace :: TermTrace.Handle -> Maybe Inline.DefKind -> TM.Term -> IO (TM.Term, IntSet.IntSet)
+prepareDefinitionTrace traceHandle mDefKind term = do
+  case mDefKind of
+    Just Inline.Inline ->
+      return (term, TraceSites.traceIDSet term)
+    Just Inline.Macro ->
+      return (term, IntSet.empty)
+    Just Inline.MacroInline ->
+      TraceSites.annotate traceHandle term
+    Just Inline.ConstantMeta ->
+      TraceSites.annotate traceHandle term
+    Just Inline.DataIntro ->
+      return (term, TraceSites.traceIDSet term)
+    Just Inline.NoInline ->
+      return (term, IntSet.empty)
+    Nothing ->
+      return (term, IntSet.empty)
+
+shouldTraceDefinition :: Maybe Inline.DefKind -> Bool
+shouldTraceDefinition mDefKind = do
+  case mDefKind of
+    Just Inline.Inline ->
+      True
+    Just Inline.Macro ->
+      False
+    Just Inline.MacroInline ->
+      True
+    Just Inline.ConstantMeta ->
+      True
+    Just Inline.DataIntro ->
+      True
+    Just Inline.NoInline ->
+      False
+    Nothing ->
+      False
+
 isConstantMetaStmtKind :: SK.StmtKindTerm a -> Bool
 isConstantMetaStmtKind stmtKind =
   case stmtKind of
@@ -1475,3 +1545,7 @@ isConstantMetaStmtKind stmtKind =
       True
     _ ->
       False
+
+getWeakTypeEnv :: Handle -> IO WeakType.WeakTypeEnv
+getWeakTypeEnv h =
+  WeakType.get $ weakTypeHandle h

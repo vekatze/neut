@@ -8,6 +8,7 @@ where
 
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
+import Data.IntSet qualified as IntSet
 import Language.Common.Binder
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Term.Inline qualified as Inline
@@ -32,8 +33,9 @@ insert' ::
   TM.Term ->
   TM.Type ->
   Maybe Inline.DefKind ->
+  IntSet.IntSet ->
   IO ()
-insert' h name impArgs expArgs defaultArgs e typ mDefKind =
+insert' h name impArgs expArgs defaultArgs e typ mDefKind traceSiteIDs =
   case mDefKind of
     Just defKind -> do
       let defInfo =
@@ -43,7 +45,8 @@ insert' h name impArgs expArgs defaultArgs e typ mDefKind =
                 Inline.defDefaultArgs = defaultArgs,
                 Inline.defBody = e,
                 Inline.codType = typ,
-                Inline.defKind = defKind
+                Inline.defKind = defKind,
+                Inline.traceSiteIDs = traceSiteIDs
               }
       atomicModifyIORef' (defMapRef h) $ \mp ->
         (Map.insert name defInfo mp, ())

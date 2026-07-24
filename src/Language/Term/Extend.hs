@@ -14,6 +14,7 @@ import Language.Common.DataInfo qualified as DI
 import Language.Common.DecisionTree qualified as DT
 import Language.Common.StmtKind
 import Language.Term.Term qualified as TM
+import Language.Term.Trace qualified as Trace
 import Logger.Hint (Hint, internalHint)
 
 {-# INLINE _m #-}
@@ -21,48 +22,74 @@ _m :: Hint
 _m =
   internalHint
 
--- | Extend a compressed term (with () annotation) to a full term (with Hint annotation)
--- Note: Types inside TermF are already TM.Type (with Hint), only the term annotation changes
-extend :: Cofree TM.TermF () -> TM.Term
-extend term =
+extend :: Trace.Remapping -> Cofree TM.TermF () -> TM.Term
+extend remapping term =
   case term of
     () :< TM.Var x ->
       _m :< TM.Var x
     () :< TM.VarGlobal g argNum ->
       _m :< TM.VarGlobal g argNum
-    () :< TM.PiIntro attr impArgs expArgs defaultArgs e ->
-      _m :< TM.PiIntro attr impArgs expArgs (map extendDefaultArg defaultArgs) (extend e)
-    () :< TM.PiElim b e impArgs expArgs defaultArgs ->
-      _m :< TM.PiElim b (extend e) impArgs (map extend expArgs) (map (fmap extend) defaultArgs)
-    () :< TM.DataIntro attr consName dataArgs consArgs ->
-      _m :< TM.DataIntro attr consName dataArgs (map extend consArgs)
-    () :< TM.DataElim isNoetic oets tree ->
+    () :< TM.PiIntro attr impArgs expArgs defaultArgs e -> do
+      let defaultArgs' = map (extendDefaultArg remapping) defaultArgs
+      let e' = extend remapping e
+      _m :< TM.PiIntro attr impArgs expArgs defaultArgs' e'
+    () :< TM.PiElim traceID b e impArgs expArgs defaultArgs -> do
+      let traceID' = Trace.remapOrDrop remapping traceID
+      let e' = extend remapping e
+      let expArgs' = map (extend remapping) expArgs
+      let defaultArgs' = map (fmap (extend remapping)) defaultArgs
+      _m :< TM.PiElim traceID' b e' impArgs expArgs' defaultArgs'
+    () :< TM.DataIntro attr consName dataArgs consArgs -> do
+      let consArgs' = map (extend remapping) consArgs
+      _m :< TM.DataIntro attr consName dataArgs consArgs'
+    () :< TM.DataElim traceID isNoetic oets tree -> do
+      let traceID' = Trace.remapOrDrop remapping traceID
       let (os, es, ts) = unzip3 oets
-          es' = map extend es
-          tree' = extendDecisionTree tree
-       in _m :< TM.DataElim isNoetic (zip3 os es' ts) tree'
-    () :< TM.BoxIntro letSeq e ->
-      _m :< TM.BoxIntro (map extendLet letSeq) (extend e)
-    () :< TM.BoxIntroLift t e ->
-      _m :< TM.BoxIntroLift t (extend e)
-    () :< TM.BoxElim castSeq mxt e1 uncastSeq e2 ->
-      _m :< TM.BoxElim (map extendLet castSeq) mxt (extend e1) (map extendLet uncastSeq) (extend e2)
-    () :< TM.CodeIntro e ->
-      _m :< TM.CodeIntro (extend e)
-    () :< TM.CodeElim e ->
-      _m :< TM.CodeElim (extend e)
+      let es' = map (extend remapping) es
+      let tree' = extendDecisionTree remapping tree
+      _m :< TM.DataElim traceID' isNoetic (zip3 os es' ts) tree'
+    () :< TM.BoxIntro traceID letSeq e -> do
+      let traceID' = Trace.remapOrDrop remapping traceID
+      let letSeq' = map (extendLet remapping) letSeq
+      let e' = extend remapping e
+      _m :< TM.BoxIntro traceID' letSeq' e'
+    () :< TM.BoxIntroLift t e -> do
+      let e' = extend remapping e
+      _m :< TM.BoxIntroLift t e'
+    () :< TM.BoxElim traceID castSeq mxt e1 uncastSeq e2 -> do
+      let traceID' = Trace.remapOrDrop remapping traceID
+      let castSeq' = map (extendLet remapping) castSeq
+      let e1' = extend remapping e1
+      let uncastSeq' = map (extendLet remapping) uncastSeq
+      let e2' = extend remapping e2
+      _m :< TM.BoxElim traceID' castSeq' mxt e1' uncastSeq' e2'
+    () :< TM.CodeIntro e -> do
+      let e' = extend remapping e
+      _m :< TM.CodeIntro e'
+    () :< TM.CodeElim traceID e -> do
+      let traceID' = Trace.remapOrDrop remapping traceID
+      let e' = extend remapping e
+      _m :< TM.CodeElim traceID' e'
     () :< TM.TauIntro ty ->
       _m :< TM.TauIntro ty
-    () :< TM.TauElim (mx, x) e1 e2 ->
-      _m :< TM.TauElim (mx, x) (extend e1) (extend e2)
-    () :< TM.Let mxt e1 e2 ->
-      _m :< TM.Let mxt (extend e1) (extend e2)
-    () :< TM.Invoke tropeNames body ->
-      _m :< TM.Invoke tropeNames (extend body)
+    () :< TM.TauElim traceID (mx, x) e1 e2 -> do
+      let traceID' = Trace.remapOrDrop remapping traceID
+      let e1' = extend remapping e1
+      let e2' = extend remapping e2
+      _m :< TM.TauElim traceID' (mx, x) e1' e2'
+    () :< TM.Let mxt e1 e2 -> do
+      let e1' = extend remapping e1
+      let e2' = extend remapping e2
+      _m :< TM.Let mxt e1' e2'
+    () :< TM.Invoke tropeNames body -> do
+      let body' = extend remapping body
+      _m :< TM.Invoke tropeNames body'
     () :< TM.Prim prim ->
       _m :< TM.Prim prim
-    () :< TM.Magic der ->
-      _m :< TM.Magic (fmap extend der)
+    () :< TM.Magic traceID der -> do
+      let traceID' = Trace.remapOrDrop remapping traceID
+      let der' = fmap (extend remapping) der
+      _m :< TM.Magic traceID' der'
 
 extendType :: Cofree TM.TypeF () -> TM.Type
 extendType ty =
@@ -96,36 +123,42 @@ extendBinder :: BinderF (Cofree TM.TypeF ()) -> BinderF TM.Type
 extendBinder (m, k, x, t) =
   (m, k, x, extendType t)
 
-extendDefaultArg :: (BinderF TM.Type, Cofree TM.TermF ()) -> (BinderF TM.Type, TM.Term)
-extendDefaultArg (binder, e) = (binder, extend e)
+extendDefaultArg :: Trace.Remapping -> (BinderF TM.Type, Cofree TM.TermF ()) -> (BinderF TM.Type, TM.Term)
+extendDefaultArg remapping (binder, e) =
+  (binder, extend remapping e)
 
-extendLet :: (BinderF TM.Type, Cofree TM.TermF ()) -> (BinderF TM.Type, TM.Term)
-extendLet (binder, e) = (binder, extend e)
+extendLet :: Trace.Remapping -> (BinderF TM.Type, Cofree TM.TermF ()) -> (BinderF TM.Type, TM.Term)
+extendLet =
+  extendDefaultArg
 
-extendDecisionTree :: DT.DecisionTree TM.Type (Cofree TM.TermF ()) -> DT.DecisionTree TM.Type TM.Term
-extendDecisionTree tree =
+extendDecisionTree :: Trace.Remapping -> DT.DecisionTree TM.Type (Cofree TM.TermF ()) -> DT.DecisionTree TM.Type TM.Term
+extendDecisionTree remapping tree =
   case tree of
-    DT.Leaf xs letSeq e ->
-      DT.Leaf xs (map extendLet letSeq) (extend e)
+    DT.Leaf xs letSeq e -> do
+      let letSeq' = map (extendLet remapping) letSeq
+      let e' = extend remapping e
+      DT.Leaf xs letSeq' e'
     DT.Unreachable ->
       DT.Unreachable
-    DT.Switch cursor caseList ->
-      DT.Switch cursor (extendCaseList caseList)
+    DT.Switch cursor caseList -> do
+      let caseList' = extendCaseList remapping caseList
+      DT.Switch cursor caseList'
 
-extendCaseList :: DT.CaseList TM.Type (Cofree TM.TermF ()) -> DT.CaseList TM.Type TM.Term
-extendCaseList (fallbackClause, clauseList) =
-  (extendDecisionTree fallbackClause, map extendCase clauseList)
+extendCaseList :: Trace.Remapping -> DT.CaseList TM.Type (Cofree TM.TermF ()) -> DT.CaseList TM.Type TM.Term
+extendCaseList remapping (fallbackClause, clauseList) = do
+  let fallbackClause' = extendDecisionTree remapping fallbackClause
+  let clauseList' = map (extendCase remapping) clauseList
+  (fallbackClause', clauseList')
 
-extendCase :: DT.Case TM.Type (Cofree TM.TermF ()) -> DT.Case TM.Type TM.Term
-extendCase decisionCase =
+extendCase :: Trace.Remapping -> DT.Case TM.Type (Cofree TM.TermF ()) -> DT.Case TM.Type TM.Term
+extendCase remapping decisionCase =
   case decisionCase of
-    DT.LiteralCase mPat i cont ->
-      DT.LiteralCase mPat i (extendDecisionTree cont)
-    DT.ConsCase record@(DT.ConsCaseRecord {..}) ->
-      DT.ConsCase $
-        record
-          { DT.cont = extendDecisionTree cont
-          }
+    DT.LiteralCase mPat i cont -> do
+      let cont' = extendDecisionTree remapping cont
+      DT.LiteralCase mPat i cont'
+    DT.ConsCase record@(DT.ConsCaseRecord {..}) -> do
+      let cont' = extendDecisionTree remapping cont
+      DT.ConsCase record {DT.cont = cont'}
 
 extendStmtKindTerm :: StmtKindTerm (Cofree TM.TypeF ()) -> StmtKindTerm TM.Type
 extendStmtKindTerm stmtKind =

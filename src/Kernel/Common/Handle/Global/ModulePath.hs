@@ -9,6 +9,7 @@ module Kernel.Common.Handle.Global.ModulePath
     renderDD,
     renderCanonicalDD,
     renderSource,
+    renderCanonicalSource,
   )
 where
 
@@ -133,10 +134,22 @@ renderDDWith abbreviate modulePathMap dd = do
 
 renderSource :: ModulePathMap -> Source.Source -> IO T.Text
 renderSource modulePathMap source = do
+  renderSourceWith True modulePathMap source
+
+renderCanonicalSource :: ModulePathMap -> Source.Source -> IO T.Text
+renderCanonicalSource modulePathMap source = do
+  renderSourceWith False modulePathMap source
+
+renderSourceWith :: Bool -> ModulePathMap -> Source.Source -> IO T.Text
+renderSourceWith abbreviate modulePathMap source = do
   let sourceModule = Source.sourceModule source
   let moduleID = M.moduleID sourceModule
   let modulePath = Map.lookupDefault [MID.reify moduleID] moduleID modulePathMap
   locator <- Source.getBaseReadableLocator source
-  if null modulePath
-    then return locator
-    else return $ T.intercalate nsSep modulePath <> doubleColon <> locator
+  case (abbreviate, modulePath) of
+    (True, []) ->
+      return locator
+    (_, []) ->
+      return $ MA.reify MA.thisModuleAlias <> doubleColon <> locator
+    (_, _) ->
+      return $ T.intercalate nsSep modulePath <> doubleColon <> locator
