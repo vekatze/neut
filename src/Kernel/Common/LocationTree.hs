@@ -3,7 +3,8 @@ module Kernel.Common.LocationTree
     SymbolName (..),
     empty,
     insert,
-    retarget,
+    resolve,
+    union,
     find,
     findRef,
     findSymbolRef,
@@ -55,9 +56,17 @@ insert :: SymbolName -> (Line, ColInterval) -> Hint -> LocationTree -> LocationT
 insert sym (l, (cFrom, cTo)) m =
   M.insert (l, cFrom) (l, (cFrom, cTo), sym, SavedHint m)
 
-retarget :: (Line, ColFrom) -> Hint -> LocationTree -> LocationTree
-retarget key m =
-  M.adjust (\(line, interval, sym, _) -> (line, interval, sym, SavedHint m)) key
+resolve :: (Line, ColFrom) -> Hint -> LocationTree -> LocationTree -> LocationTree
+resolve key m suspended real =
+  case M.lookup key suspended of
+    Just (line, interval, sym, _) ->
+      M.insert key (line, interval, sym, SavedHint m) real
+    Nothing ->
+      real
+
+union :: LocationTree -> LocationTree -> LocationTree
+union =
+  M.union
 
 find :: Line -> Column -> LocationTree -> Maybe (SymbolName, Hint, ColInterval, DefSymbolLen)
 find l c mp = do
