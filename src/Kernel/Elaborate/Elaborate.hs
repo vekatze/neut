@@ -12,7 +12,7 @@ import App.Run (raiseCritical, raiseError)
 import Console.ReportMode qualified as Report
 import Control.Comonad.Cofree
 import Control.Monad
-import Control.Monad.Except (MonadError (throwError))
+import Control.Monad.Except (MonadError (catchError, throwError))
 import Control.Monad.IO.Class
 import Data.Bifunctor
 import Data.Bitraversable (bimapM)
@@ -133,7 +133,15 @@ elaborate h t logs cacheOrStmt = do
       return stmtList
     Right stmtList -> do
       globalReferenceList <- liftIO $ UsedTopLevelName.get (usedTopLevelNameHandle h)
-      analyzeStmtList h stmtList >>= synthesizeStmtList h t logs globalReferenceList
+      let action = analyzeStmtList h stmtList >>= synthesizeStmtList h t logs globalReferenceList
+      catchError action $ \e -> do
+        saveLocationTree h t
+        throwError e
+
+saveLocationTree :: Handle -> Target -> App ()
+saveLocationTree h t = do
+  tmap <- liftIO $ Tag.get (tagHandle h)
+  Cache.saveLocationCache (pathHandle h) t (currentSource h) $ Cache.LocationCache tmap
 
 analyzeStmtList :: Handle -> [WeakStmt] -> App [WeakStmt]
 analyzeStmtList h stmtList = do
@@ -234,8 +242,8 @@ synthesizeStmtList h t logs globalReferenceList stmtList = do
         Cache.globalReferenceList = globalReferenceList,
         Cache.countSnapshot = countSnapshot
       }
-  tmap <- liftIO $ Tag.get (tagHandle h)
-  Cache.saveLocationCache (pathHandle h) t (currentSource h) $ Cache.LocationCache tmap
+  liftIO $ Tag.flushSuspended (tagHandle h)
+  saveLocationTree h t
   liftIO $ GlobalRemark.insert (globalRemarkHandle h) logs'
   return stmtList''
 

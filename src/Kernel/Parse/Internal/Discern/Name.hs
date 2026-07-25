@@ -141,9 +141,17 @@ finalizeResolution ::
 finalizeResolution h m localLocator mImportAlias globalVar@(dd, (mDef, gn)) = do
   let len = T.length $ LL.reify localLocator
   let mDef' = maybe mDef id mImportAlias
-  liftIO $ Tag.insertLocator (H.tagHandle h) m dd (GN.getIsConstLike gn) len mDef'
+  liftIO $ insertLocatorTag h m dd gn len mDef'
   liftIO $ Unused.deleteLocalLocator (H.unusedHandle h) localLocator
   return $ Right globalVar
+
+insertLocatorTag :: H.Handle -> Hint -> DD.DefiniteDescription -> GN.GlobalName -> Int -> Hint -> IO ()
+insertLocatorTag h m dd gn nameLength mDef =
+  case gn of
+    GN.TopLevelMetaTerm {} ->
+      Tag.insertLocatorSuspended (H.tagHandle h) m dd (GN.getIsConstLike gn) nameLength mDef
+    _ ->
+      Tag.insertLocator (H.tagHandle h) m dd (GN.getIsConstLike gn) nameLength mDef
 
 lookupOwnName :: H.Handle -> Hint -> LL.LocalLocator -> App (Maybe (DD.DefiniteDescription, (Hint, GN.GlobalName)))
 lookupOwnName h m ll = do
@@ -249,7 +257,7 @@ resolveNamespaceMember h m headText rest resolverOrNone dd = do
       case resolverOrNone of
         Nothing -> do
           let nameLen = T.length $ showDottedName headText rest
-          liftIO $ Tag.insertLocator (H.tagHandle h) m dd' (GN.getIsConstLike gn) nameLen mDef
+          liftIO $ insertLocatorTag h m dd' gn nameLen mDef
         Just resolveMemberDD ->
           insertMemberTags h m (T.length headText + T.length C.nsSep) [] rest resolveMemberDD (dd', mDef, gn)
       return $ Right globalVar

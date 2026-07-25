@@ -6,12 +6,14 @@ module Kernel.Common.Handle.Local.Tag
     insertGlobalVar,
     insertBinder,
     insertLocator,
+    insertLocatorSuspended,
     insertNamespaceView,
     insertModuleFile,
     insertExternalName,
     insertStaticFile,
     insertResolvedSourceFile,
     retarget,
+    flushSuspended,
   )
 where
 
@@ -28,13 +30,15 @@ import Logger.Hint
 import Path (Abs, File, Path, toFilePath)
 import Prelude hiding (lookup, read)
 
-newtype Handle = Handle
-  { _tagMapRef :: IORef LT.LocationTree
+data Handle = Handle
+  { _tagMapRef :: IORef LT.LocationTree,
+    _suspendedRef :: IORef LT.LocationTree
   }
 
 new :: IO Handle
 new = do
   _tagMapRef <- newIORef LT.empty
+  _suspendedRef <- newIORef LT.empty
   return $ Handle {..}
 
 get :: Handle -> IO LT.LocationTree
@@ -58,14 +62,26 @@ insertGlobalVar h mUse dd isConstLike mDef = do
   insert h mUse (LT.Global dd isConstLike) nameLength mDef
 
 insert :: Handle -> Hint -> LT.SymbolName -> Int -> Hint -> IO ()
-insert h mUse symbolName nameLength mDef = do
+insert h =
+  insertInto (_tagMapRef h)
+
+insertSuspended :: Handle -> Hint -> LT.SymbolName -> Int -> Hint -> IO ()
+insertSuspended h =
+  insertInto (_suspendedRef h)
+
+insertInto :: IORef LT.LocationTree -> Hint -> LT.SymbolName -> Int -> Hint -> IO ()
+insertInto ref mUse symbolName nameLength mDef = do
   when (metaShouldSaveLocation mUse) $ do
     let (l, c) = metaLocation mUse
-    modifyIORef' (_tagMapRef h) $ LT.insert symbolName (l, (c, c + nameLength)) mDef
+    modifyIORef' ref $ LT.insert symbolName (l, (c, c + nameLength)) mDef
 
 insertLocator :: Handle -> Hint -> DD.DefiniteDescription -> IsConstLike -> Int -> Hint -> IO ()
 insertLocator h mUse dd isConstLike nameLength mDef = do
   insert h mUse (LT.Global dd isConstLike) nameLength mDef
+
+insertLocatorSuspended :: Handle -> Hint -> DD.DefiniteDescription -> IsConstLike -> Int -> Hint -> IO ()
+insertLocatorSuspended h mUse dd isConstLike nameLength mDef = do
+  insertSuspended h mUse (LT.Global dd isConstLike) nameLength mDef
 
 insertNamespaceView :: Handle -> Hint -> T.Text -> Hint -> Hint -> IO ()
 insertNamespaceView h mUse importAliasText mImportAlias mDef = do
@@ -95,4 +111,10 @@ retarget :: Handle -> Hint -> Hint -> IO ()
 retarget h mUse mDef = do
   when (metaShouldSaveLocation mUse) $ do
     let (l, c) = metaLocation mUse
-    modifyIORef' (_tagMapRef h) $ LT.retarget (l, c) mDef
+    suspended <- readIORef (_suspendedRef h)
+    modifyIORef' (_tagMapRef h) $ LT.resolve (l, c) mDef suspended
+
+flushSuspended :: Handle -> IO ()
+flushSuspended h = do
+  suspended <- readIORef (_suspendedRef h)
+  modifyIORef' (_tagMapRef h) $ \real -> LT.union real suspended -- left-biased
