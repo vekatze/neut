@@ -26,14 +26,18 @@ reflect :: Handle -> FilePath -> App (Maybe Source)
 reflect h srcPath = do
   srcPath' <- parseAbsFile srcPath
   m <- getModule h srcPath'
-  return $
-    Just
-      Source
-        { sourceFilePath = srcPath',
-          sourceModule = m,
-          sourceHint = Nothing,
-          sourceImportLocator = Nothing
-        }
+  if isProperPrefixOf (getSourceDir m) srcPath'
+    then
+      return $
+        Just
+          Source
+            { sourceFilePath = srcPath',
+              sourceModule = m,
+              sourceHint = Nothing,
+              sourceImportLocator = Nothing
+            }
+    else
+      return Nothing
 
 getModule :: Handle -> Path Abs File -> App Module
 getModule h srcPath = do

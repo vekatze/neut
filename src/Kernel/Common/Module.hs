@@ -485,7 +485,11 @@ reifyPresetMap moduleName presetMap = do
 getRelPathFromSourceDir :: (MonadThrow m) => Module -> Path Abs File -> m (Path Rel File)
 getRelPathFromSourceDir baseModule path = do
   let sourceDir = getSourceDir baseModule
-  stripProperPrefix sourceDir path
+  case stripProperPrefix sourceDir path of
+    Just relPath ->
+      return relPath
+    Nothing ->
+      throwM $ userError $ "the source file `" <> toFilePath path <> "` is not located in the source directory `" <> toFilePath sourceDir <> "`"
 
 seriesFromList :: [a] -> SE.Series a
 seriesFromList =
