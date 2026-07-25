@@ -287,12 +287,15 @@ deduplicateCompStmtList' nameSet acc stmtList =
             else deduplicateCompStmtList' (S.insert name nameSet) (stmt : acc) rest
 
 clarifyImportedTypeDefCached :: Handle -> DD.DefiniteDescription -> TypeDef.TypeDefInfo -> App [C.CompStmt]
-clarifyImportedTypeDefCached h name typeDefInfo =
-  ImportedTypeDefCache.getOrInsert (importedTypeDefCacheHandle h) name $ do
-    reduceOnlyHandle <- liftIO $ newReduceOnlyHandle h
-    stmt <- clarifyImportedTypeDef reduceOnlyHandle name typeDefInfo
-    auxEnv <- liftIO $ AuxEnv.toCompStmtList <$> AuxEnv.get (auxEnvHandle reduceOnlyHandle)
-    return $ stmt : auxEnv
+clarifyImportedTypeDefCached h name typeDefInfo = do
+  stmtList <-
+    ImportedTypeDefCache.getOrInsert (importedTypeDefCacheHandle h) name $ do
+      reduceOnlyHandle <- liftIO $ newReduceOnlyHandle h
+      stmt <- clarifyImportedTypeDef reduceOnlyHandle name typeDefInfo
+      auxEnv <- liftIO $ AuxEnv.toCompStmtList <$> AuxEnv.get (auxEnvHandle reduceOnlyHandle)
+      return $ stmt : auxEnv
+  let compSubstHandle = CompSubst.new (gensymHandle h)
+  liftIO $ mapM (CompSubst.refreshStmt compSubstHandle) stmtList
 
 stmtTypeDefName :: Stmt -> Maybe DD.DefiniteDescription
 stmtTypeDefName stmt =

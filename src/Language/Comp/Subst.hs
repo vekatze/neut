@@ -3,6 +3,7 @@ module Language.Comp.Subst
     new,
     subst,
     refresh,
+    refreshStmt,
     instantiate,
     substValue,
     substPrimitive,
@@ -13,6 +14,7 @@ import Control.Monad (forM)
 import Data.IntMap qualified as IntMap
 import Gensym.Handle qualified as Gensym
 import Language.Common.CreateSymbol qualified as Gensym
+import Language.Common.Ident (Ident)
 import Language.Common.Ident.Reify qualified as Ident
 import Language.Comp.Comp qualified as C
 
@@ -31,6 +33,26 @@ subst =
 refresh :: Handle -> C.Comp -> IO C.Comp
 refresh h =
   subst h IntMap.empty
+
+refreshStmt :: Handle -> C.CompStmt -> IO C.CompStmt
+refreshStmt h stmt = do
+  case stmt of
+    C.Def name opacity xs body -> do
+      (xs', sub) <- refreshBinders h xs
+      body' <- substComp h sub body
+      return $ C.Def name opacity xs' body'
+    C.DefVoid name opacity xs body -> do
+      (xs', sub) <- refreshBinders h xs
+      body' <- substComp h sub body
+      return $ C.DefVoid name opacity xs' body'
+    C.Foreign {} ->
+      return stmt
+
+refreshBinders :: Handle -> [Ident] -> IO ([Ident], C.SubstValue)
+refreshBinders h xs = do
+  xs' <- mapM (Gensym.newIdentFromIdent (gensymHandle h)) xs
+  let sub = IntMap.fromList $ zip (map Ident.toInt xs) (map C.VarLocal xs')
+  return (xs', sub)
 
 instantiate :: Handle -> C.SubstValue -> C.Comp -> IO C.Comp
 instantiate =
