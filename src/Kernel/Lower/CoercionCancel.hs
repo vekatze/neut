@@ -34,8 +34,6 @@ rewriteComp env lowComp =
   case lowComp of
     LC.Return value ->
       LC.Return (rewriteValue env value)
-    LC.ReturnVoid ->
-      LC.ReturnVoid
     LC.Let x op cont -> do
       let op' = rewriteOp env op
       let cont' = rewriteComp (insertCoercionStep env x op') cont
@@ -51,8 +49,8 @@ rewriteComp env lowComp =
       let caseBranches' = map (rewriteComp env) caseBranches
       let cont' = rewriteComp env cont
       LC.Switch value' lowType defaultBranch' (zip caseTags caseBranches') phiTargets cont'
-    LC.TailCall codType value valueList ->
-      LC.TailCall codType (rewriteValue env value) (map (rewriteTypedValue env) valueList)
+    LC.TailCall mustTail codType value valueList ->
+      LC.TailCall mustTail codType (rewriteValue env value) (map (rewriteTypedValue env) valueList)
     LC.Unreachable ->
       LC.Unreachable
     LC.Phi valueList -> do
@@ -62,8 +60,8 @@ rewriteComp env lowComp =
 rewriteOp :: Env -> LC.Op -> LC.Op
 rewriteOp env op =
   case op of
-    LC.Call codType value valueList ->
-      LC.Call codType (rewriteValue env value) (map (rewriteTypedValue env) valueList)
+    LC.Call isPure codType value valueList ->
+      LC.Call isPure codType (rewriteValue env value) (map (rewriteTypedValue env) valueList)
     LC.MagicCall codType value valueList ->
       LC.MagicCall codType (rewriteValue env value) (map (rewriteTypedValue env) valueList)
     LC.GetElementPtr (value, lowType) valueList ->

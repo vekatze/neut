@@ -20,6 +20,7 @@ import Language.Common.Attr.VarGlobal qualified as AttrVG
 import Language.Common.BaseLowType qualified as BLT
 import Language.Common.BasePrimType qualified as BPT
 import Language.Common.Binder
+import Language.Common.CallConvSpec qualified as CCS
 import Language.Common.DataSize (DataSize)
 import Language.Common.DecisionTree qualified as DT
 import Language.Common.DefaultArgs qualified as DefaultArgs
@@ -30,7 +31,6 @@ import Language.Common.Ident
 import Language.Common.ImpArgs qualified as ImpArgs
 import Language.Common.Magic (WeakMagic (..))
 import Language.Common.Noema qualified as N
-import Language.Common.PiElimKind qualified as PEK
 import Language.Common.PiKind (PiKind)
 import Language.Common.PrimNumSize
 import Language.Common.PrimType qualified as PT
@@ -61,7 +61,7 @@ data WeakTermF a
   = Var Ident
   | VarGlobal AttrVG.Attr DD.DefiniteDescription
   | PiIntro (AttrL.Attr WeakType) [BinderF WeakType] [BinderF WeakType] [(BinderF WeakType, WeakTerm)] a
-  | PiElim (PEK.PiElimKind WeakType) a (ImpArgs.ImpArgs WeakType) [a] (DefaultArgs.DefaultArgs a)
+  | PiElim (CCS.CallConvSpec WeakType) a (ImpArgs.ImpArgs WeakType) [a] (DefaultArgs.DefaultArgs a)
   | PiElimExact a
   | DataIntro AttrDI.Attr DD.DefiniteDescription [WeakType] [a]
   | DataElim N.IsNoetic [(Ident, a, WeakType)] (DT.DecisionTree WeakType a)

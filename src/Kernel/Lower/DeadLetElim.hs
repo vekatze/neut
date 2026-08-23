@@ -18,8 +18,6 @@ rewriteComp demand lowComp =
   case lowComp of
     LC.Return value ->
       (usedValueSet value, LC.Return value)
-    LC.ReturnVoid ->
-      (IntSet.empty, LC.ReturnVoid)
     LC.Let x op cont -> do
       let (liveCont, cont') = rewriteComp demand cont
       let liveAfterDef = IntSet.delete (toInt x) liveCont
@@ -48,7 +46,7 @@ rewriteComp demand lowComp =
             IntSet.unions $
               usedValueSet value : liveBeforeSwitch : liveDefault : liveCaseList
       (liveSet, LC.Switch value lowType defaultBranch' (zip caseTags caseBranches') phiTargets' cont')
-    LC.TailCall _ value typedValueList ->
+    LC.TailCall _ _ value typedValueList ->
       (IntSet.unions $ usedValueSet value : map (usedValueSet . snd) typedValueList, lowComp)
     LC.Unreachable ->
       (IntSet.empty, LC.Unreachable)
@@ -81,13 +79,15 @@ isDiscardable op =
       True
     LC.PrimOp {} ->
       True
+    LC.Call isPure _ _ _ ->
+      isPure
     _ ->
       False
 
 usedOpSet :: LC.Op -> IntSet.IntSet
 usedOpSet op =
   case op of
-    LC.Call _ value typedValueList ->
+    LC.Call _ _ value typedValueList ->
       IntSet.unions $ usedValueSet value : map (usedValueSet . snd) typedValueList
     LC.MagicCall _ value typedValueList ->
       IntSet.unions $ usedValueSet value : map (usedValueSet . snd) typedValueList

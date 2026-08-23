@@ -76,6 +76,8 @@ type IsReducible = Bool
 
 type ForceInline = Bool
 
+type ShouldDeallocate = Bool
+
 type Label =
   Ident
 
@@ -83,14 +85,12 @@ data Comp
   = PiElimDownElim ForceInline Value [Value] -- ((force v) v1 ... vn)
   | SigmaElim ShouldDeallocate Int Int [Ident] Value Comp -- offset, allocation slot count
   | UpIntro Value
-  | UpIntroVoid
   | UpElim IsReducible Ident Comp Comp
-  | UpElimCallVoid Value [Value] Comp
   | EnumElim [(Int, Value)] Value Comp [(EnumCase, Comp)]
-  | DestCall Comp Value [Value]
-  | WriteToDest Value Comp Comp Comp
+  | OutputProvide Value Comp Comp -- dest, size, result
+  | OutputRequest Comp Value [Value] -- size, callee, args
   | Primitive Primitive
-  | Free Value (Maybe Int) Comp -- number of bytes to deallocate
+  | Free Value (Maybe Int) Comp -- pointer, number of bytes to deallocate
   | Unreachable
 
 instance Show Comp where
@@ -126,22 +126,12 @@ renderCompBuilder level comp =
         <> renderCompBuilder (continuationLevel level) cont
     UpIntro v ->
       indent level <> btext "return " <> bshow v
-    UpIntroVoid ->
-      indent level <> btext "return-void"
     UpElim isReducible x c1 c2 ->
       renderCompBinding
         level
         (btext "let" <> btext (if isReducible then "" else "*") <> btext " " <> bshow x <> btext " =")
         c1
         c2
-    UpElimCallVoid f vs cont ->
-      indent level
-        <> btext "call-void "
-        <> bshow f
-        <> btext "("
-        <> bintercalate (map bshow vs)
-        <> btext ")\n"
-        <> renderCompBuilder (continuationLevel level) cont
     EnumElim substitution v defaultBranch caseList ->
       indent level
         <> btext "switch "
@@ -157,9 +147,18 @@ renderCompBuilder level comp =
         <> btext "\n"
         <> indent level
         <> btext "}"
-    DestCall sizeComp f vs ->
+    OutputProvide dest sizeComp result ->
       indent level
-        <> btext "dest-call "
+        <> btext "output-provide "
+        <> bshow dest
+        <> btext " {\n"
+        <> renderCompSection (level + 1) "size-comp" sizeComp
+        <> renderCompSection (level + 1) "result" result
+        <> indent level
+        <> btext "}"
+    OutputRequest sizeComp f vs ->
+      indent level
+        <> btext "output-request "
         <> bshow f
         <> btext "("
         <> bintercalate (map bshow vs)
@@ -168,16 +167,6 @@ renderCompBuilder level comp =
         <> btext "size-comp:\n"
         <> renderCompBuilder (level + 2) sizeComp
         <> btext "\n"
-        <> indent level
-        <> btext "}"
-    WriteToDest dest sizeComp result cont ->
-      indent level
-        <> btext "write-to-dest "
-        <> bshow dest
-        <> btext " {\n"
-        <> renderCompSection (level + 1) "size-comp" sizeComp
-        <> renderCompSection (level + 1) "result" result
-        <> renderCompSection (level + 1) "cont" cont
         <> indent level
         <> btext "}"
     Primitive prim ->
@@ -223,8 +212,6 @@ renderCompInline comp =
           <> btext ")"
     UpIntro v ->
       Just $ btext "return " <> bshow v
-    UpIntroVoid ->
-      Just $ btext "return-void"
     Primitive prim ->
       Just $ btext "(" <> bshow prim <> btext ")"
     Unreachable ->
@@ -289,8 +276,6 @@ continuationLevel :: Int -> Int
 continuationLevel level =
   if level == 0 then 1 else level
 
-type ShouldDeallocate = Bool
-
 data Primitive
   = PrimOp PrimOp [Value]
   | ShiftPointer Value Integer Integer -- (ptr, num-of-elems, index)
@@ -306,15 +291,12 @@ type SubstValue =
 
 data CompStmt
   = Def DD.DefiniteDescription Opacity [Ident] Comp
-  | DefVoid DD.DefiniteDescription Opacity [Ident] Comp
   | Foreign [F.Foreign]
 
 fromCompStmt :: CompStmt -> Maybe (Opacity, [Ident], Comp)
 fromCompStmt cs =
   case cs of
     Def _ opacity xs body ->
-      Just (opacity, xs, body)
-    DefVoid _ opacity xs body ->
       Just (opacity, xs, body)
     Foreign {} ->
       Nothing
@@ -323,8 +305,6 @@ getCompStmtName :: CompStmt -> Maybe DD.DefiniteDescription
 getCompStmtName stmt =
   case stmt of
     Def name _ _ _ ->
-      Just name
-    DefVoid name _ _ _ ->
       Just name
     Foreign {} ->
       Nothing
@@ -370,18 +350,14 @@ isUnreachable comp =
       isUnreachable cont
     UpIntro {} ->
       False
-    UpIntroVoid ->
-      False
     UpElim _ _ e1 e2 ->
       isUnreachable e1 || isUnreachable e2
-    UpElimCallVoid _ _ e ->
-      isUnreachable e
     EnumElim _ _ defaultBranch branchList ->
       isUnreachable defaultBranch && all (isUnreachable . snd) branchList
-    DestCall {} ->
+    OutputProvide _ _ result ->
+      isUnreachable result
+    OutputRequest {} ->
       False
-    WriteToDest _ _ result cont ->
-      isUnreachable result || isUnreachable cont
     Primitive {} ->
       False
     Free _ _ cont ->

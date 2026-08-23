@@ -12,6 +12,8 @@ import Data.Bifunctor
 import Language.Common.Attr.Lam qualified as AttrL
 import Language.Common.BaseLowType qualified as BLT
 import Language.Common.Binder
+import Language.Common.CallConv qualified as CC
+import Language.Common.CallConvSpec qualified as CCS
 import Language.Common.DataInfo qualified as DI
 import Language.Common.DecisionTree qualified as DT
 import Language.Common.DefaultArgs qualified as DefaultArgs
@@ -20,7 +22,6 @@ import Language.Common.ImpArgs qualified as ImpArgs
 import Language.Common.LamKind qualified as LK
 import Language.Common.LowMagic qualified as LM
 import Language.Common.Magic qualified as M
-import Language.Common.PiElimKind qualified as PEK
 import Language.Common.StmtKind
 import Language.Term.PrimValue qualified as PV
 import Language.Term.Stmt
@@ -92,12 +93,12 @@ weaken term =
       let e' = weaken e
       m :< WT.PiIntro attr' impArgs' expArgs' defaultArgs' e'
     m :< TM.PiElim _ b e impArgs expArgs defaultArgs -> do
-      let b' = PEK.mapArg weakenType b
+      let spec = CCS.Inferred $ CC.mapTypes weakenType b
       let e' = weaken e
       let impArgs' = ImpArgs.FullySpecified $ map weakenType impArgs
       let expArgs' = map weaken expArgs
       let defaultArgs' = map (fmap weaken) defaultArgs
-      m :< WT.PiElim b' e' impArgs' expArgs' (DefaultArgs.Aligned defaultArgs')
+      m :< WT.PiElim spec e' impArgs' expArgs' (DefaultArgs.Aligned defaultArgs')
     m :< TM.DataIntro attr consName dataArgs consArgs -> do
       let dataArgs' = map weakenType dataArgs
       let consArgs' = map weaken consArgs
@@ -204,8 +205,6 @@ weakenMagic m magic = do
       M.WeakMagic $ M.EqType moduleID (weakenType typeExpr1) (weakenType typeExpr2)
     M.ShowType typeExpr ->
       M.WeakMagic $ M.ShowType (weakenType typeExpr)
-    M.AssertMixable moduleID unitTypeExpr typeExpr ->
-      M.WeakMagic $ M.AssertMixable moduleID (weakenType unitTypeExpr) (weakenType typeExpr)
     M.TextCons rune text ->
       M.WeakMagic $ M.TextCons (weaken rune) (weaken text)
     M.TextUncons mid text ->

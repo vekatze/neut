@@ -40,8 +40,6 @@ analyze lowComp =
   case lowComp of
     LC.Return {} ->
       mempty
-    LC.ReturnVoid ->
-      mempty
     LC.Let x op cont -> do
       let axis = analyze cont
       case op of
@@ -70,8 +68,6 @@ collectFreeIDs :: S.Set Ident -> LC.Comp -> Maybe IntSet.IntSet
 collectFreeIDs aliases lowComp =
   case lowComp of
     LC.Return {} ->
-      Nothing
-    LC.ReturnVoid ->
       Nothing
     LC.Let x op cont ->
       case getAliasSource op of
@@ -150,8 +146,6 @@ collectBranchResultOrigin env lowComp =
   case lowComp of
     LC.Return {} ->
       Nothing
-    LC.ReturnVoid ->
-      Nothing
     LC.Let x op cont -> do
       let env' = Map.insert x (getOrigin env op) env
       collectBranchResultOrigin env' cont
@@ -225,8 +219,6 @@ cancelMallocFree :: Axis -> LC.Comp -> LC.Comp
 cancelMallocFree axis lowComp =
   case lowComp of
     LC.Return {} ->
-      lowComp
-    LC.ReturnVoid ->
       lowComp
     LC.Let x op cont -> do
       let cont' = cancelMallocFree axis cont

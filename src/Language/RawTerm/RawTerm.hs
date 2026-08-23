@@ -10,6 +10,7 @@ module Language.RawTerm.RawTerm
     TopGeist,
     LetKind (..),
     RawMagic (..),
+    MarkedArg,
     StaticItem (..),
     KeywordClause,
     EL,
@@ -49,6 +50,7 @@ import Language.Common.Annotation qualified as Annot
 import Language.Common.Attr.Data qualified as AttrD
 import Language.Common.Attr.DataIntro qualified as AttrDI
 import Language.Common.BaseName qualified as BN
+import Language.Common.CallSite
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.ExternalName qualified as EN
 import Language.Common.HoleID
@@ -110,14 +112,16 @@ codeVariantToKeyword v =
     CodeVariantC ->
       "promote"
 
+type MarkedArg a = (a, IsSourceArg)
+
 data RawTermF a
   = Var Name
   | VarGlobal DD.DefiniteDescription GN.GlobalName
   | PiIntro C FuncInfo
   | PiIntroFix LDK.LocalDefKind C DefInfo
-  | PiElim a C (Maybe (SE.Series RawType)) C (SE.Series a) C (Maybe (SE.Series (Hint, Key, C, C, a)))
+  | PiElim a C (Maybe (SE.Series RawType)) IsDestCall C (SE.Series (MarkedArg a)) C (Maybe (SE.Series (Hint, Key, C, C, a)))
   | PiElimImplicit Name C (SE.Series RawType)
-  | PiElimByKey Name C (Maybe (SE.Series RawType)) C (SE.Series (Hint, Key, C, C, a)) (Maybe (Hint, C, C, a)) -- auxiliary syntax for key-call
+  | PiElimByKey Name C (Maybe (SE.Series RawType)) IsDestCall C (SE.Series (Hint, Key, C, C, MarkedArg a)) (Maybe (Hint, C, C, a)) -- auxiliary syntax for key-call
   | PiElimRule Name C (SE.Series a)
   | PiElimMeta Name C (Maybe (SE.Series RawType)) C (SE.Series a) C (Maybe (SE.Series (Hint, Key, C, C, a)))
   | PiElimMetaByKey Name C (Maybe (SE.Series RawType)) C (SE.Series (Hint, Key, C, C, a))
@@ -260,7 +264,7 @@ force e@(m :< _) =
 
 piElim :: a -> [a] -> RawTermF a
 piElim e es =
-  PiElim e [] Nothing [] (SE.fromList' es) [] Nothing
+  PiElim e [] Nothing False [] (SE.fromList' (map (,False) es)) [] Nothing
 
 lam :: Loc -> Hint -> [(RawBinder RawType, C)] -> RawType -> RawTerm -> RawTerm
 lam loc m varList codType e =
@@ -319,7 +323,7 @@ letKindFromText t =
       Nothing
 
 type VarArg =
-  (Hint, RawTerm, C, C, RawType)
+  (Hint, RawType, C, RawTerm)
 
 data RawMagic
   = Cast C (EL RawType) (EL RawType) (EL RawTerm) (Maybe C)
@@ -337,7 +341,6 @@ data RawMagic
   | InspectType (EL RawType)
   | EqType (EL RawType) (EL RawType)
   | ShowType C (EL RawType)
-  | AssertMixable C (EL RawType)
   | TextCons C (EL RawTerm) (EL RawTerm)
   | TextUncons C (EL RawTerm)
   | MakeSwitch C (EL RawTerm) (EL RawTerm) (EL RawTerm)

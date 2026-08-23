@@ -320,7 +320,8 @@ toConsNameArrow dataArgNum (SavedHint m, consInfo) = do
   let consDD = DI.consName consInfo
   let discriminant = DI.discriminant consInfo
   let isConstLikeCons = DI.isConstLike consInfo
-  (consDD, (m, Nothing, GN.DataIntro dataArgNum consArgNum discriminant isConstLikeCons))
+  let sourceFlags = map DI.isFieldMixed $ DI.consArgHints consInfo
+  (consDD, (m, Nothing, GN.DataIntro dataArgNum consArgNum discriminant isConstLikeCons sourceFlags))
 
 geistToRemark :: DD.DefiniteDescription -> (Hint, a) -> Log
 geistToRemark dd (m, _) =

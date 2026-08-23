@@ -27,6 +27,7 @@ import Gensym.Handle qualified as Gensym
 import Language.Common.Attr.Lam qualified as AttrL
 import Language.Common.BaseLowType qualified as BLT
 import Language.Common.Binder
+import Language.Common.CallConv qualified as CC
 import Language.Common.CreateSymbol qualified as Gensym
 import Language.Common.DecisionTree qualified as DT
 import Language.Common.Ident
@@ -34,7 +35,6 @@ import Language.Common.Ident.Reify qualified as Ident
 import Language.Common.LamKind qualified as LK
 import Language.Common.LowMagic qualified as LM
 import Language.Common.Magic qualified as M
-import Language.Common.PiElimKind qualified as PEK
 import Language.Common.VarKind qualified as VK
 import Language.Term.FreeVars qualified as TM
 import Language.Term.Term qualified as TM
@@ -105,7 +105,7 @@ subst h sub term =
               let lamAttr = AttrL.Attr {lamKind = LK.Normal name isDestPassing codType', identity = newLamID}
               return $ m :< TM.PiIntro lamAttr impArgs' expArgs' defaultArgs' e'
     m :< TM.PiElim traceID b e impArgs expArgs defaultArgs -> do
-      b' <- PEK.traverseArg (substType h sub) b
+      b' <- CC.traverseTypes (substType h sub) b
       e' <- subst h sub e
       impArgs' <- mapM (substType h sub) impArgs
       expArgs' <- mapM (subst h sub) expArgs
@@ -118,7 +118,7 @@ subst h sub term =
     m :< TM.DataElim traceID isNoetic oets decisionTree -> do
       let (os, es, ts) = unzip3 oets
       es' <- mapM (subst h sub) es
-      let binder = zipWith (\o t -> (m, VK.Normal, o, t)) os ts
+      let binder = zipWith (\o t -> (m, VK.normal, o, t)) os ts
       (binder', decisionTree') <- subst'' h sub binder decisionTree
       let os' = map (\(_, _, o, _) -> o) binder'
       let ts' = map (\(_, _, _, t) -> t) binder'
@@ -448,10 +448,6 @@ substMagic h sub magic =
     M.ShowType typeExpr -> do
       typeExpr' <- substType h sub typeExpr
       return $ M.ShowType typeExpr'
-    M.AssertMixable moduleID unitTypeExpr typeExpr -> do
-      unitTypeExpr' <- substType h sub unitTypeExpr
-      typeExpr' <- substType h sub typeExpr
-      return $ M.AssertMixable moduleID unitTypeExpr' typeExpr'
     M.TextCons rune text -> do
       rune' <- subst h sub rune
       text' <- subst h sub text

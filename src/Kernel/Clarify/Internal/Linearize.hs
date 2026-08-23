@@ -168,9 +168,6 @@ distinguishValuesAcc h activeSet ds !occMap =
 distinguishCompAcc :: Handle -> ActiveSet -> C.Comp -> OccMap -> IO (OccMap, C.Comp)
 distinguishCompAcc h activeSet term !occMap =
   case term of
-    C.Primitive theta -> do
-      (occMap', theta') <- distinguishPrimitiveAcc h activeSet theta occMap
-      return (occMap', C.Primitive theta')
     C.PiElimDownElim forceInline d ds -> do
       (occMap1, d') <- distinguishValueAcc h activeSet d occMap
       (occMap2, ds') <- distinguishValuesAcc h activeSet ds occMap1
@@ -186,8 +183,6 @@ distinguishCompAcc h activeSet term !occMap =
     C.UpIntro d -> do
       (occMap', d') <- distinguishValueAcc h activeSet d occMap
       return (occMap', C.UpIntro d')
-    C.UpIntroVoid ->
-      return (occMap, C.UpIntroVoid)
     C.UpElim isReducible x e1 e2 -> do
       (occMap1, e1') <- distinguishCompAcc h activeSet e1 occMap
       let activeSet' = IntSet.delete (toInt x) activeSet
@@ -196,11 +191,6 @@ distinguishCompAcc h activeSet term !occMap =
         else do
           (occMap2, e2') <- distinguishCompAcc h activeSet' e2 occMap1
           return (occMap2, C.UpElim isReducible x e1' e2')
-    C.UpElimCallVoid f ds e2 -> do
-      (occMap1, f') <- distinguishValueAcc h activeSet f occMap
-      (occMap2, ds') <- distinguishValuesAcc h activeSet ds occMap1
-      (occMap3, e2') <- distinguishCompAcc h activeSet e2 occMap2
-      return (occMap3, C.UpElimCallVoid f' ds' e2')
     C.EnumElim fvInfo d defaultBranch branchList -> do
       (occMap1, fvInfo') <- distinguishFVInfoAcc h activeSet fvInfo occMap
       (occMap2, d') <- distinguishValueAcc h activeSet d occMap1
@@ -211,17 +201,19 @@ distinguishCompAcc h activeSet term !occMap =
           (occMap3, defaultBranch') <- distinguishCompAcc h activeSet' defaultBranch occMap2
           (occMap4, branchList') <- distinguishBranchListAcc h activeSet' branchList occMap3
           return (occMap4, C.EnumElim fvInfo' d' defaultBranch' branchList')
-    C.DestCall sizeComp f ds -> do
-      (occMap1, sizeComp') <- distinguishCompAcc h activeSet sizeComp occMap
-      (occMap2, f') <- distinguishValueAcc h activeSet f occMap1
-      (occMap3, ds') <- distinguishValuesAcc h activeSet ds occMap2
-      return (occMap3, C.DestCall sizeComp' f' ds')
-    C.WriteToDest dest sizeComp result cont -> do
+    C.OutputProvide dest sizeComp result -> do
       (occMap1, dest') <- distinguishValueAcc h activeSet dest occMap
       (occMap2, sizeComp') <- distinguishCompAcc h activeSet sizeComp occMap1
       (occMap3, result') <- distinguishCompAcc h activeSet result occMap2
-      (occMap4, cont') <- distinguishCompAcc h activeSet cont occMap3
-      return (occMap4, C.WriteToDest dest' sizeComp' result' cont')
+      return (occMap3, C.OutputProvide dest' sizeComp' result')
+    C.OutputRequest sizeComp f ds -> do
+      (occMap1, sizeComp') <- distinguishCompAcc h activeSet sizeComp occMap
+      (occMap2, f') <- distinguishValueAcc h activeSet f occMap1
+      (occMap3, ds') <- distinguishValuesAcc h activeSet ds occMap2
+      return (occMap3, C.OutputRequest sizeComp' f' ds')
+    C.Primitive theta -> do
+      (occMap', theta') <- distinguishPrimitiveAcc h activeSet theta occMap
+      return (occMap', C.Primitive theta')
     C.Free x size cont -> do
       (occMap1, x') <- distinguishValueAcc h activeSet x occMap
       (occMap2, cont') <- distinguishCompAcc h activeSet cont occMap1

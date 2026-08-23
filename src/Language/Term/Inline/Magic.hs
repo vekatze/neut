@@ -33,6 +33,7 @@ import Language.Common.Attr.DataIntro qualified as AttrDI
 import Language.Common.Attr.VarGlobal qualified as AttrVG
 import Language.Common.BaseName qualified as BN
 import Language.Common.Binder (BinderF)
+import Language.Common.CallConv qualified as CC
 import Language.Common.CreateSymbol qualified as Gensym
 import Language.Common.DataInfo qualified as DI
 import Language.Common.DecisionTree qualified as DT
@@ -42,7 +43,6 @@ import Language.Common.Ident.Reify qualified as Ident
 import Language.Common.IsConstLike (IsConstLike)
 import Language.Common.Literal qualified as L
 import Language.Common.ModuleID qualified as MID
-import Language.Common.PiElimKind qualified as PEK
 import Language.Common.PrimNumSize (dataSizeToIntSize)
 import Language.Common.PrimType qualified as PT
 import Language.Common.Rune qualified as Rune
@@ -429,7 +429,7 @@ evaluateTextUncons h m moduleID text = do
           let unitDD = DD.newByGlobalLocator unitSGL BN.unit
           let leftVar = m :< TM.VarGlobal (AttrVG.Attr {argNum = AN.fromInt 3, isConstLike = False, isDestPassing = False}) leftDD
           let unitVar = m :< TM.VarGlobal (AttrVG.Attr {argNum = AN.zero, isConstLike = True, isDestPassing = False}) unitDD
-          return $ m :< TM.PiElim noTrace PEK.Normal (m :< TM.PiElim noTrace PEK.Normal leftVar [unitTypeVar, pairType] [] []) [] [unitVar] []
+          return $ m :< TM.PiElim noTrace CC.normal (m :< TM.PiElim noTrace CC.normal leftVar [unitTypeVar, pairType] [] []) [] [unitVar] []
         Just (c, rest) -> do
           let rightDD = DD.newByGlobalLocator eitherSGL BN.right
           let pairDD = DD.newByGlobalLocator pairSGL BN.pair
@@ -437,8 +437,8 @@ evaluateTextUncons h m moduleID text = do
           let pairVar = m :< TM.VarGlobal (AttrVG.Attr {argNum = AN.fromInt 4, isConstLike = False, isDestPassing = False}) pairDD
           let runeValue = m :< TM.Prim (PV.Rune (Rune.fromChar c))
           let restText = m :< TM.Prim (PV.Text rest)
-          let pair = m :< TM.PiElim noTrace PEK.Normal (m :< TM.PiElim noTrace PEK.Normal pairVar [runeType, textType] [] []) [] [runeValue, restText] []
-          return $ m :< TM.PiElim noTrace PEK.Normal (m :< TM.PiElim noTrace PEK.Normal rightVar [unitTypeVar, pairType] [] []) [] [pair] []
+          let pair = m :< TM.PiElim noTrace CC.normal (m :< TM.PiElim noTrace CC.normal pairVar [runeType, textType] [] []) [] [runeValue, restText] []
+          return $ m :< TM.PiElim noTrace CC.normal (m :< TM.PiElim noTrace CC.normal rightVar [unitTypeVar, pairType] [] []) [] [pair] []
     _ ->
       reportMacroError h m "text-uncons requires a static text literal"
 

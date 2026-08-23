@@ -80,6 +80,7 @@ data Handle = Handle
     staticTextList :: IORef [(T.Text, (Builder, Int))],
     definedNameSet :: IORef (S.Set DD.DefiniteDescription),
     referencedNameSet :: IORef (S.Set DD.DefiniteDescription),
+    currentSignature :: Maybe (Int, FCT.ForeignCodType BLT.BaseLowType),
     traceConfig :: Trace.Config,
     loggerHandle :: Logger.Handle
   }
@@ -98,6 +99,7 @@ new gensymHandle (Global.Handle {..}) traceConfig target defMap = do
   staticTextList <- liftIO $ newIORef []
   definedNameSet <- liftIO $ newIORef S.empty
   referencedNameSet <- liftIO $ newIORef S.empty
+  let currentSignature = Nothing
   return $ Handle {..}
 
 makeBaseDeclEnv :: DS.DataSize -> AllocatorSpec -> DN.DeclEnv
@@ -143,15 +145,9 @@ lowerStmt :: Handle -> C.CompStmt -> App (Maybe LC.Def)
 lowerStmt h stmt = do
   case stmt of
     C.Def name _ args e -> do
-      e0 <- lowerComp h e
+      e0 <- lowerComp (h {currentSignature = Just (length args, FCT.Cod BLT.Pointer)}) e
       e' <- liftIO $ optimize h e0
       let def = LC.DefContent LT.Pointer args e'
-      reportTrace h name (name, def)
-      return $ Just (name, def)
-    C.DefVoid name _ args e -> do
-      e0 <- lowerComp h e
-      e' <- liftIO $ optimize h e0
-      let def = LC.DefContent LT.Void args e'
       reportTrace h name (name, def)
       return $ Just (name, def)
     C.Foreign {} -> do
@@ -168,8 +164,6 @@ registerInternalNames h stmtList =
   forM_ stmtList $ \stmt -> do
     case stmt of
       C.Def name _ _ _ -> do
-        modifyIORef' (definedNameSet h) $ S.insert name
-      C.DefVoid name _ _ _ -> do
         modifyIORef' (definedNameSet h) $ S.insert name
       C.Foreign foreignList ->
         forM_ foreignList $ \(F.Foreign _ name domList cod) -> do
@@ -207,22 +201,27 @@ constructMainTerm h mainName = do
   let mainTerm =
         LC.Cont (LC.Store LT.Pointer (LC.VarLocal argc) argcGlobal) $
           LC.Cont (LC.Store LT.Pointer (LC.VarLocal argv) argvGlobal) $
-            LC.Cont (LC.Call LT.Pointer (LC.VarGlobal mainName) []) $
+            LC.Cont (LC.Call False LT.Pointer (LC.VarGlobal mainName) []) $
               LC.Return (LC.Int 0)
   let mainType = LT.PrimNum $ PT.Int $ dataSizeToIntSize (baseSize h)
   return $ LC.DefContent mainType [argc, argv] mainTerm
 
+hasMatchingSignature :: Handle -> C.Value -> [C.Value] -> Bool
+hasMatchingSignature h callee args =
+  case (currentSignature h, callee) of
+    (Just (arity, cod), C.VarGlobal _ calleeArgNum calleeCod) ->
+      arity == length args && cod == calleeCod && AN.reify calleeArgNum == length args
+    _ ->
+      False
+
 lowerComp :: Handle -> C.Comp -> App LC.Comp
-lowerComp h term =
-  lowerCompWith h TailPosition term
+lowerComp h =
+  lowerCompWith h TailPosition
 
 lowerCompWith :: Handle -> TailPosition -> C.Comp -> App LC.Comp
 lowerCompWith h tailPosition term =
   case term of
-    C.Primitive theta -> do
-      (resultVar, resultValue) <- liftIO $ newValueLocal h "result"
-      lowerCompPrimitive h resultVar theta (LC.Return resultValue)
-    C.PiElimDownElim _ v ds -> do
+    C.PiElimDownElim forceInline v ds -> do
       (funcVar, func) <- liftIO $ newValueLocal h "func"
       (castFuncVar, castFunc) <- liftIO $ newValueLocal h "func"
       (argVars, argValues) <- mapAndUnzipM (const $ liftIO $ newValueLocal h "arg") ds
@@ -231,40 +230,31 @@ lowerCompWith h tailPosition term =
           lowerValue h funcVar v
             =<< lowerValues h (zip argVars ds)
             =<< cast h castFuncVar func LT.Pointer
-            =<< return (LC.TailCall LT.Pointer castFunc (map (LT.Pointer,) argValues))
+            =<< return (LC.TailCall (hasMatchingSignature h v ds) LT.Pointer castFunc (map (LT.Pointer,) argValues))
         NonTailPosition -> do
           (resultVar, resultValue) <- liftIO $ newValueLocal h "result"
+          let isPure = isSizeQuery forceInline ds
           lowerValue h funcVar v
             =<< lowerValues h (zip argVars ds)
             =<< cast h castFuncVar func LT.Pointer
-            =<< return (LC.Let resultVar (LC.Call LT.Pointer castFunc (map (LT.Pointer,) argValues)) (LC.Return resultValue))
+            =<< return (LC.Let resultVar (LC.Call isPure LT.Pointer castFunc (map (LT.Pointer,) argValues)) (LC.Return resultValue))
     C.SigmaElim shouldDeallocate offset slotCount xs v e -> do
       (sigmaVar, sigma) <- liftIO $ newValueLocal h "sigma"
       (elemVars, elems) <- mapAndUnzipM (const $ liftIO $ newValueLocal h "elem") xs
       let baseType = LT.Array slotCount LT.Pointer
+      body <- lowerCompWith h tailPosition e
+      afterRead <- liftIO $ freeIfNecessary h shouldDeallocate sigma slotCount body
       lowerValue h sigmaVar v
         =<< return . getElemPtrListFrom offset sigma elemVars baseType
         =<< loadElements h sigma (zip xs (map (,LT.Pointer) elems))
-        =<< liftIO . freeIfNecessary h shouldDeallocate sigma slotCount
-        =<< lowerCompWith h tailPosition e
+        =<< return afterRead
     C.UpIntro d -> do
       (resultVar, resultValue) <- liftIO $ newValueLocal h "result"
       lowerValue h resultVar d (LC.Return resultValue)
-    C.UpIntroVoid ->
-      return LC.ReturnVoid
     C.UpElim _ x e1 e2 -> do
       e1' <- lowerCompWith h NonTailPosition e1
       e2' <- lowerCompWith h tailPosition e2
       return $ commConv x e1' e2'
-    C.UpElimCallVoid f ds e2 -> do
-      (funcVar, func) <- liftIO $ newValueLocal h "func"
-      (castFuncVar, castFunc) <- liftIO $ newValueLocal h "func"
-      (argVars, argValues) <- mapAndUnzipM (const $ liftIO $ newValueLocal h "arg") ds
-      e2' <- lowerCompWith h tailPosition e2
-      lowerValue h funcVar f
-        =<< lowerValues h (zip argVars ds)
-        =<< cast h castFuncVar func LT.Pointer
-        =<< return (LC.Cont (LC.Call LT.Void castFunc (map (LT.Pointer,) argValues)) e2')
     C.EnumElim fvInfo v defaultBranch branchList -> do
       let sub = IntMap.fromList fvInfo
       defaultBranch' <- liftIO $ Subst.subst (substHandle h) sub defaultBranch >>= Reduce.reduce (reduceHandle h)
@@ -283,15 +273,18 @@ lowerCompWith h tailPosition term =
       (castVar, castValue) <- liftIO $ newValueLocal h "cast"
       lowerValueLetCast h castVar v t
         =<< return (LC.Switch castValue t defaultCase caseList [phiName] (LC.Return phiValue))
-    C.DestCall sizeComp f ds -> do
+    C.OutputProvide dest sizeComp result ->
+      liftIO (placeResult h dest sizeComp result)
+        >>= liftIO . Reduce.reduce (reduceHandle h)
+        >>= lowerCompWith h tailPosition
+    C.OutputRequest sizeComp f ds -> do
       sizeComp' <- liftIO $ Reduce.reduce (reduceHandle h) sizeComp
-      liftIO (materializeDestCall h sizeComp' f ds)
+      liftIO (materializeOutputRequest h tailPosition sizeComp' f ds)
         >>= liftIO . Reduce.reduce (reduceHandle h)
         >>= lowerCompWith h tailPosition
-    C.WriteToDest dest sizeComp result cont ->
-      liftIO (materializeWriteToDest h dest sizeComp result cont)
-        >>= liftIO . Reduce.reduce (reduceHandle h)
-        >>= lowerCompWith h tailPosition
+    C.Primitive theta -> do
+      (resultVar, resultValue) <- liftIO $ newValueLocal h "result"
+      lowerCompPrimitive h resultVar theta (LC.Return resultValue)
     C.Free x size cont -> do
       freeID <- liftIO $ Gensym.newCount (gensymHandle h)
       (ptrVar, ptr) <- liftIO $ newValueLocal h "ptr"
@@ -301,80 +294,49 @@ lowerCompWith h tailPosition term =
     C.Unreachable ->
       return LC.Unreachable
 
-materializeDestCall :: Handle -> C.Comp -> C.Value -> [C.Value] -> IO C.Comp
-materializeDestCall h sizeComp f ds = do
-  (sizeName, sizeVar) <- createVar (gensymHandle h) "size"
-  (immediateDestName, immediateDestVar) <- createVar (gensymHandle h) "dest"
-  (immediateResultName, immediateResultVar) <- createVar (gensymHandle h) "result"
-  (boxedDestName, boxedDestVar) <- createVar (gensymHandle h) "dest"
-  let immediateBody =
-        C.UpElim
-          True
-          immediateDestName
-          (C.Primitive $ C.Alloc $ C.Int IntSize64 (toInteger $ DS.reifyBytes (baseSize h)))
-          ( C.UpElimCallVoid
-              f
-              (immediateDestVar : ds)
-              ( C.UpElim
-                  True
-                  immediateResultName
-                  (C.Primitive $ C.Magic $ LM.Load BLT.Pointer immediateDestVar)
-                  (C.Free immediateDestVar (Just (DS.reifyBytes (baseSize h))) (C.UpIntro immediateResultVar))
-              )
-          )
-  let boxedBody size =
-        C.UpElim
-          True
-          boxedDestName
-          (C.Primitive $ C.Alloc size)
-          (C.UpElimCallVoid f (boxedDestVar : ds) (C.UpIntro boxedDestVar))
-  case sizeComp of
-    C.UpIntro (C.Int _ v) -> do
-      if v < 0
-        then return immediateBody
-        else return $ boxedBody $ C.Int IntSize64 v
-    _ -> do
-      return $
-        C.UpElim
-          True
-          sizeName
-          sizeComp
-          ( C.EnumElim
-              []
-              sizeVar
-              (boxedBody sizeVar)
-              [(EC.Int (-1), immediateBody)]
-          )
+isSizeQuery :: C.ForceInline -> [C.Value] -> Bool
+isSizeQuery forceInline ds =
+  case ds of
+    [C.Int _ 2, _, _] ->
+      forceInline
+    _ ->
+      False
 
-materializeWriteToDest :: Handle -> C.Value -> C.Comp -> C.Comp -> C.Comp -> IO C.Comp
-materializeWriteToDest h dest sizeComp result cont = do
-  (resultName, resultVar) <- createVar (gensymHandle h) "result"
-  (sizeName, sizeVar) <- createVar (gensymHandle h) "size"
-  (ignoredImmediate, _) <- createVar (gensymHandle h) "_"
-  (ignoredBoxed, _) <- createVar (gensymHandle h) "_"
-  (ignoredBranch, _) <- createVar (gensymHandle h) "_"
-  let immediateBranch =
-        C.UpElim
-          True
-          ignoredImmediate
-          (C.Primitive $ C.Magic $ LM.Store BLT.Pointer C.null resultVar dest)
-          (C.UpIntro C.null)
-  let boxedBranch =
-        C.UpElim
-          True
-          ignoredBoxed
-          (C.Primitive $ C.Memcpy dest resultVar sizeVar)
-          (C.Free resultVar (Just 0) (C.UpIntro C.null))
-  let branch =
-        C.EnumElim
-          []
-          sizeVar
-          boxedBranch
-          [(EC.Int (-1), immediateBranch)]
-  return $
-    C.UpElim False resultName result $
-      C.UpElim True sizeName sizeComp $
-        C.UpElim True ignoredBranch branch cont
+withSizeValue :: Handle -> C.Comp -> (C.Value -> IO C.Comp) -> IO C.Comp
+withSizeValue h sizeComp k =
+  case sizeComp of
+    C.UpIntro size@(C.Int _ _) ->
+      k size
+    _ -> do
+      (sizeName, sizeVar) <- createVar (gensymHandle h) "size"
+      body <- k sizeVar
+      return $ C.UpElim True sizeName sizeComp body
+
+materializeOutputRequest :: Handle -> TailPosition -> C.Comp -> C.Value -> [C.Value] -> IO C.Comp
+materializeOutputRequest h tailPosition sizeComp f ds = do
+  withSizeValue h sizeComp $ \size -> do
+    (destName, destVar) <- createVar (gensymHandle h) "dest"
+    let call = C.PiElimDownElim False f (destVar : ds)
+    body <-
+      case tailPosition of
+        TailPosition ->
+          return call
+        NonTailPosition -> do
+          (ignored, _) <- createVar (gensymHandle h) "_"
+          return $
+            C.UpElim True ignored call $
+              C.UpIntro destVar
+    return $ C.UpElim True destName (C.Primitive $ C.Alloc size) body
+
+placeResult :: Handle -> C.Value -> C.Comp -> C.Comp -> IO C.Comp
+placeResult h dest sizeComp result = do
+  (valueName, valueVar) <- createVar (gensymHandle h) "value"
+  (ignored, _) <- createVar (gensymHandle h) "_"
+  body <- withSizeValue h sizeComp $ \size ->
+    return $
+      C.UpElim True ignored (C.Primitive $ C.Memcpy dest valueVar size) $
+        C.Free valueVar Nothing (C.UpIntro dest)
+  return $ C.UpElim False valueName result body
 
 lowerEnumBranch :: Handle -> TailPosition -> C.Comp -> App LC.Comp
 lowerEnumBranch h tailPosition branch = do
@@ -532,11 +494,12 @@ lowerCompPrimitive h resultVar codeOp cont =
           let arg2Type = LT.Pointer
           let arg3Type = LT.Pointer
           let resultType = LT.Pointer
+          let isPure = isSizeQuery True [arg1, arg2, arg3]
           lowerValue h funcVar func
             =<< lowerValue h arg1Var arg1
             =<< lowerValue h arg2Var arg2
             =<< lowerValue h arg3Var arg3
-            =<< return . LC.Let resultVar (LC.Call resultType funcValue [(arg1Type, arg1Value), (arg2Type, arg2Value), (arg3Type, arg3Value)])
+            =<< return . LC.Let resultVar (LC.Call isPure resultType funcValue [(arg1Type, arg1Value), (arg2Type, arg2Value), (arg3Type, arg3Value)])
             =<< return cont
 
 lowerCompPrimOp :: Handle -> Ident -> PrimOp -> [C.Value] -> LC.Comp -> App LC.Comp
@@ -723,12 +686,12 @@ lowerValueLetCast h resultVar v lowType cont = do
     =<< cast h resultVar tmpValue lowType cont
 
 freeIfNecessary :: Handle -> Bool -> LC.Value -> Int -> LC.Comp -> IO LC.Comp
-freeIfNecessary h shouldDeallocate pointer len cont = do
+freeIfNecessary h shouldDeallocate pointer slotCount cont =
   if shouldDeallocate
     then do
       freeID <- Gensym.newCount (gensymHandle h)
-      return $ LC.Cont (LC.Free pointer (Just (wordCountToByteSize h len)) freeID) cont
-    else do
+      return $ LC.Cont (LC.Free pointer (Just (wordCountToByteSize h slotCount)) freeID) cont
+    else
       return cont
 
 wordCountToByteSize :: Handle -> Int -> Int
@@ -809,8 +772,6 @@ commConv x lowComp cont2 =
   case lowComp of
     LC.Return d ->
       LC.Let x (LC.nop d) cont2
-    LC.ReturnVoid ->
-      LC.Unreachable -- shouldn't occur
     LC.Let y op cont1 -> do
       let cont = commConv x cont1 cont2
       LC.Let y op cont
@@ -820,8 +781,8 @@ commConv x lowComp cont2 =
     LC.Switch d t defaultCase caseList phiVars cont -> do
       let cont' = commConv x cont cont2
       LC.Switch d t defaultCase caseList phiVars cont'
-    LC.TailCall codType d ds ->
-      LC.Let x (LC.Call codType d ds) cont2
+    LC.TailCall _ codType d ds ->
+      LC.Let x (LC.Call False codType d ds) cont2
     LC.Unreachable ->
       LC.Unreachable
     LC.Phi _ ->
@@ -832,8 +793,6 @@ commConvTail x lowComp cont2 =
   case lowComp of
     LC.Return d ->
       LC.Let x (LC.nop d) cont2
-    LC.ReturnVoid ->
-      LC.Unreachable -- shouldn't occur
     LC.Let y op cont1 -> do
       let cont = commConvTail x cont1 cont2
       LC.Let y op cont

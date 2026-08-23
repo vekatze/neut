@@ -35,9 +35,10 @@ new baseSize allocatorSpec = do
 emitLowOp :: Handle -> LC.Op -> Builder
 emitLowOp ax lowOp =
   case lowOp of
-    LC.Call codType d ds -> do
+    LC.Call isPure codType d ds -> do
       let renderedArgs = showInternalArgs ds
-      unwordsL ["call fastcc", emitInternalReturnType codType, emitValue d <> renderedArgs]
+      let attributes = if isPure then ["nounwind willreturn memory(read)"] else []
+      unwordsL $ ["call fastcc", emitInternalReturnType codType, emitValue d <> renderedArgs] <> attributes
     LC.MagicCall funcType d ds ->
       unwordsL ["call", emitLowType funcType, emitValue d <> showArgs ds]
     LC.GetElementPtr (basePtr, n) is ->

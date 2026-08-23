@@ -161,6 +161,9 @@ simplify h susList constraintList =
           case (expected', actual') of
             (m1 :< WT.Pi piKind1 impArgs1 expArgs1 defaultArgs1 cod1, m2 :< WT.Pi piKind2 impArgs2 expArgs2 defaultArgs2 cod2)
               | piKind1 == piKind2,
+                -- `source` is part of the type, and unification on it is exact.
+                map isSourceBinder expArgs1 == map isSourceBinder expArgs2,
+                map isSizedBinder impArgs1 == map isSizedBinder impArgs2,
                 Just impBinders <- zipBinders impArgs1 impArgs2,
                 Just defaultBinders <- zipDefaultBinders defaultArgs1 defaultArgs2,
                 length expArgs1 == length expArgs2 -> do
@@ -314,7 +317,7 @@ simplifyBinder' h orig sub args1 args2 =
 asWeakBinder :: Handle -> Hint -> WT.WeakType -> IO (BinderF WT.WeakType)
 asWeakBinder h m t = do
   x <- Gensym.newIdentFromText (gensymHandle h) "hole"
-  return (m, VK.Normal, x, t)
+  return (m, VK.normal, x, t)
 
 asIdentType :: WT.WeakType -> Maybe Ident
 asIdentType e =
@@ -351,6 +354,14 @@ lookupAnyType is sub =
           Just (j, v)
         _ ->
           lookupAnyType js sub
+
+isSourceBinder :: BinderF WT.WeakType -> Bool
+isSourceBinder (_, k, _, _) =
+  VK.isSource k
+
+isSizedBinder :: BinderF WT.WeakType -> Bool
+isSizedBinder (_, k, _, _) =
+  VK.isSized k
 
 zipBinders :: [BinderF WT.WeakType] -> [BinderF WT.WeakType] -> Maybe [(BinderF WT.WeakType, BinderF WT.WeakType)]
 zipBinders args1 args2 =

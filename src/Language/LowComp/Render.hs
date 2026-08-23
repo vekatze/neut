@@ -27,8 +27,6 @@ renderComp level comp =
   case comp of
     LC.Return value ->
       line level ("return " <> renderValue value)
-    LC.ReturnVoid ->
-      line level "return-void"
     LC.Let x op cont ->
       line level ("let " <> toText' x <> " = " <> renderOp op) <> renderComp level cont
     LC.Cont op cont ->
@@ -40,7 +38,7 @@ renderComp level comp =
         <> renderComp (level + 1) defaultBranch
         <> line level "}"
         <> renderComp level cont
-    LC.TailCall lowType value args ->
+    LC.TailCall _ lowType value args ->
       line level ("tail-call " <> renderLowType lowType <> " " <> renderValue value <> renderArgs args)
     LC.Unreachable ->
       line level "⊥"
@@ -54,8 +52,9 @@ renderCase level (key, branch) =
 renderOp :: LC.Op -> Text
 renderOp op =
   case op of
-    LC.Call codType value args ->
-      "call " <> renderLowType codType <> " " <> renderValue value <> renderArgs args
+    LC.Call isPure codType value args -> do
+      let prefix = if isPure then "pure-call " else "call "
+      prefix <> renderLowType codType <> " " <> renderValue value <> renderArgs args
     LC.MagicCall codType value args ->
       "magic-call " <> renderLowType codType <> " " <> renderValue value <> renderArgs args
     LC.GetElementPtr (base, baseType) indices ->

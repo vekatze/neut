@@ -1,6 +1,7 @@
 module Kernel.Parse.Internal.Discern.Name
   ( resolveName,
     resolveTypeName,
+    ResolvedCons (..),
     resolveConstructor,
     resolveLocator,
     interpretGlobalName,
@@ -31,8 +32,10 @@ import Kernel.Parse.Internal.Handle.NameMap qualified as NameMap
 import Kernel.Parse.Internal.Handle.Unused qualified as Unused
 import Kernel.Parse.NominalEnv (NominalEnv)
 import Language.Common.ArgNum qualified as AN
+import Language.Common.CallSite (IsSourceArg)
 import Language.Common.Attr.VarGlobal qualified as AttrVG
 import Language.Common.BaseName qualified as BN
+import Language.Common.CallConvSpec qualified as CCS
 import Language.Common.CreateSymbol qualified as Gensym
 import Language.Common.DefaultArgs qualified as DefaultArgs
 import Language.Common.DefiniteDescription qualified as DD
@@ -43,7 +46,6 @@ import Language.Common.IsDestPassing
 import Language.Common.LocalLocator qualified as LL
 import Language.Common.LowMagic qualified as LM
 import Language.Common.Magic qualified as M
-import Language.Common.PiElimKind qualified as PEK
 import Language.Common.PiKind qualified as PK
 import Language.Common.PrimNumSize qualified as PNS
 import Language.Common.PrimOp qualified as PO
@@ -371,11 +373,16 @@ resolveDefiniteDescription h m dd = do
     _ ->
       raiseCritical m $ "Undefined definite description: " <> DD.reify dd
 
-resolveConstructor ::
-  H.Handle ->
-  Hint ->
-  Name ->
-  App (DD.DefiniteDescription, AN.ArgNum, AN.ArgNum, D.Discriminant, IsConstLike, Maybe GN.GlobalName)
+data ResolvedCons = ResolvedCons
+  { consDD :: DD.DefiniteDescription,
+    dataArgNum :: AN.ArgNum,
+    consArgNum :: AN.ArgNum,
+    disc :: D.Discriminant,
+    isConstLike :: IsConstLike,
+    consSourceFlags :: [IsSourceArg]
+  }
+
+resolveConstructor :: H.Handle -> Hint -> Name -> App ResolvedCons
 resolveConstructor h m s = do
   (dd, (_, gn)) <- resolveName h m s
   case resolveConstructorMaybe dd gn of
@@ -384,14 +391,11 @@ resolveConstructor h m s = do
     Nothing ->
       raiseError m $ "`" <> renderDD (H.modulePathMap h) dd <> "` is not a constructor"
 
-resolveConstructorMaybe ::
-  DD.DefiniteDescription ->
-  GN.GlobalName ->
-  Maybe (DD.DefiniteDescription, AN.ArgNum, AN.ArgNum, D.Discriminant, IsConstLike, Maybe GN.GlobalName)
+resolveConstructorMaybe :: DD.DefiniteDescription -> GN.GlobalName -> Maybe ResolvedCons
 resolveConstructorMaybe dd gn = do
   case gn of
-    GN.DataIntro dataArgNum consArgNum disc isConstLike ->
-      Just (dd, dataArgNum, consArgNum, disc, isConstLike, Nothing)
+    GN.DataIntro dataArgNum consArgNum disc isConstLike consSourceFlags ->
+      Just $ ResolvedCons {consDD = dd, ..}
     _ ->
       Nothing
 
@@ -416,11 +420,11 @@ interpretGlobalName h m dd gn = do
       raiseError m $ "`" <> dd' <> "` is a namespace and cannot appear in term position"
     GN.Data {} ->
       raiseError m $ "`" <> dd' <> "` is a type name and cannot appear in term position"
-    GN.DataIntro dataArgNum consArgNum _ isConstLike -> do
+    GN.DataIntro dataArgNum consArgNum _ isConstLike _ -> do
       let argNum = AN.add dataArgNum consArgNum
       let isDestPassing = False
       let attr = AttrVG.Attr {..}
-      return $ m :< WT.PiElim PEK.Normal (m :< WT.VarGlobal attr dd) ImpArgs.Unspecified [] (DefaultArgs.ByKey [])
+      return $ m :< WT.PiElim (CCS.AsMarked False []) (m :< WT.VarGlobal attr dd) ImpArgs.Unspecified [] (DefaultArgs.ByKey [])
     GN.PrimType _ ->
       raiseError m $ "`" <> dd' <> "` is a type name and cannot appear in term position"
     GN.PrimOp primOp ->
@@ -443,7 +447,7 @@ interpretMetaConstant h m dd gn impArgs = do
   let h' = h {H.currentStage = H.currentStage h + 1}
   callee <- interpretGlobalName h' m dd $ GN.toMetaFunction gn
   let defaultArgs = DefaultArgs.ByKey []
-  let call = m :< WT.PiElim PEK.Normal callee impArgs [] defaultArgs
+  let call = m :< WT.PiElim (CCS.AsMarked False []) callee impArgs [] defaultArgs
   return $ m :< WT.CodeElim call
 
 interpretGlobalTypeName :: H.Handle -> Hint -> DD.DefiniteDescription -> GN.GlobalName -> App WT.WeakType
@@ -481,7 +485,7 @@ interpretTopLevelFuncTerm ::
 interpretTopLevelFuncTerm m dd argNum isConstLike isDestPassing = do
   let attr = AttrVG.Attr {..}
   if isConstLike
-    then m :< WT.PiElim PEK.Normal (m :< WT.VarGlobal attr dd) ImpArgs.Unspecified [] (DefaultArgs.ByKey [])
+    then m :< WT.PiElim (CCS.AsMarked False []) (m :< WT.VarGlobal attr dd) ImpArgs.Unspecified [] (DefaultArgs.ByKey [])
     else m :< WT.VarGlobal attr dd
 
 interpretTopLevelFuncType ::
@@ -530,5 +534,5 @@ castFromIntToBool h e@(m :< _) = do
   t <- liftIO $ WT.createTypeHole (H.gensymHandle h) m []
   x1 <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) "arg"
   x2 <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) "arg"
-  let cmpOpType cod = m :< WT.Pi PK.normal [] [(m, VK.Normal, x1, t), (m, VK.Normal, x2, t)] [] cod
+  let cmpOpType cod = m :< WT.Pi PK.normal [] [(m, VK.normal, x1, t), (m, VK.normal, x2, t)] [] cod
   return $ m :< WT.Magic (M.WeakMagic $ M.LowMagic $ LM.Cast (cmpOpType i1) (cmpOpType bool) e)

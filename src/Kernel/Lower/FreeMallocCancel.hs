@@ -16,8 +16,6 @@ freeMallocCancel matchMode gensymHandle lowComp =
   case lowComp of
     LC.Return {} ->
       pure lowComp
-    LC.ReturnVoid ->
-      pure lowComp
     LC.Let x op cont -> do
       LC.Let x op <$> freeMallocCancel matchMode gensymHandle cont
     LC.Cont op cont -> do
@@ -48,8 +46,6 @@ consumeAlloc :: MatchMode -> Ident -> Int -> LC.Comp -> Maybe LC.Comp
 consumeAlloc matchMode ptr size lowComp =
   case lowComp of
     LC.Return {} ->
-      Nothing
-    LC.ReturnVoid ->
       Nothing
     LC.Let x op cont ->
       case op of
@@ -160,8 +156,6 @@ captureFirstFree matchMode gensymHandle size lowComp =
     LC.Unreachable ->
       pure $ Just $ deadCapture LC.Unreachable
     LC.Return {} ->
-      pure $ Just $ pendingCapture lowComp
-    LC.ReturnVoid ->
       pure $ Just $ pendingCapture lowComp
     LC.Phi {} ->
       pure $ Just $ pendingCapture lowComp

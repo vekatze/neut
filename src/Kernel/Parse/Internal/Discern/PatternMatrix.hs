@@ -106,7 +106,7 @@ alignConsArgs h binder =
       t <- WT.createTypeHole (H.gensymHandle h) mx []
       let h' = H.extendWithoutInsert h mx x
       (xts', h'') <- alignConsArgs h' xts
-      return ((mx, VK.Normal, x, t) : xts', h'')
+      return ((mx, VK.normal, x, t) : xts', h'')
 
 asLetSeq ::
   H.Handle ->

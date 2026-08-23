@@ -9,7 +9,6 @@ import Data.HashMap.Strict qualified as Map
 import Data.IntMap qualified as IntMap
 import Data.List (foldl')
 import Gensym.Handle qualified as Gensym
-import Language.Common.CreateSymbol qualified as Gensym
 import Language.Common.Ident
 import Language.Common.Ident.Reify qualified as Ident
 import Language.Common.LowMagic qualified as LM
@@ -60,36 +59,9 @@ reduce h term = do
       reduceSigmaElim h shouldDeallocate offset size xs v' e
     C.UpIntro d -> do
       return $ C.UpIntro $ Subst.substValue (subst h) d
-    C.UpIntroVoid -> do
-      return C.UpIntroVoid
     C.UpElim isReducible x e1 e2 -> do
       e1' <- reduce h e1
       reduceUpElim h isReducible x e1' e2
-    C.UpElimCallVoid f vs e2 -> do
-      let f' = Subst.substValue (subst h) f
-      let vs' = map (Subst.substValue (subst h)) vs
-      case f' of
-        C.VarGlobal x _ _ -> do
-          case Map.lookup x (defMap h) of
-            Just (opacity, xs, body)
-              | opacity == O.Clear -> do
-                  body' <- instantiate h xs vs' body
-                  e2' <- reduce h e2
-                  graftVoidReduce (h {subst = IntMap.empty}) body' e2'
-            _ -> do
-              e2' <- reduce h e2
-              case e2' of
-                C.Unreachable ->
-                  return C.Unreachable
-                _ ->
-                  return $ C.UpElimCallVoid f' vs' e2'
-        _ -> do
-          e2' <- reduce h e2
-          case e2' of
-            C.Unreachable ->
-              return C.Unreachable
-            _ ->
-              return $ C.UpElimCallVoid f' vs' e2'
     C.EnumElim fvInfo _ defaultBranch [] -> do
       let fvInfo' = substFvInfo h fvInfo
       reduce (unionSubst h $ IntMap.fromList fvInfo') defaultBranch
@@ -107,38 +79,16 @@ reduce h term = do
           defaultBranch' <- reduce h defaultBranch
           es' <- mapM (reduce h) es
           return $ C.EnumElim fvInfo' v' defaultBranch' (zip cs es')
-    C.DestCall sizeComp f vs -> do
-      sizeComp' <- reduce h sizeComp
-      let f' = Subst.substValue (subst h) f
-      let vs' = map (Subst.substValue (subst h)) vs
-      return $ C.DestCall sizeComp' f' vs'
-    C.WriteToDest dest sizeComp result cont -> do
+    C.OutputProvide dest sizeComp result -> do
       let dest' = Subst.substValue (subst h) dest
       sizeComp' <- reduce h sizeComp
       result' <- reduce h result
-      cont' <- reduce h cont
-      case result' of
-        C.DestCall _ f args ->
-          reduce h $ C.UpElimCallVoid f (dest' : args) cont'
-        C.UpElim flag x e1 e2 ->
-          reduce h $ C.UpElim flag x e1 (C.WriteToDest dest' sizeComp' e2 cont')
-        C.UpElimCallVoid f vs e ->
-          reduce h $ C.UpElimCallVoid f vs (C.WriteToDest dest' sizeComp' e cont')
-        C.SigmaElim shouldDeallocate offset size ys v e ->
-          reduce h $ C.SigmaElim shouldDeallocate offset size ys v (C.WriteToDest dest' sizeComp' e cont')
-        C.Free x size e ->
-          reduce h $ C.Free x size (C.WriteToDest dest' sizeComp' e cont')
-        C.EnumElim fvInfo disc defaultBranch caseList -> do
-          let defaultBranch' = rewriteWriteToDestBranch dest' sizeComp' defaultBranch
-          let caseList' = map (\(tag, branch) -> (tag, rewriteWriteToDestBranch dest' sizeComp' branch)) caseList
-          ignoredVar <- Gensym.newIdentFromText (gensymHandle h) "_"
-          let rewritten = C.UpElim True ignoredVar (C.EnumElim fvInfo disc defaultBranch' caseList') cont'
-          refreshed <- Subst.refresh (substHandle h) rewritten
-          reduce h refreshed
-        C.Unreachable ->
-          return C.Unreachable
-        _ ->
-          return $ C.WriteToDest dest' sizeComp' result' cont'
+      reduceOutputProvide h dest' sizeComp' result'
+    C.OutputRequest sizeComp f vs -> do
+      sizeComp' <- reduce h sizeComp
+      let f' = Subst.substValue (subst h) f
+      let vs' = map (Subst.substValue (subst h)) vs
+      return $ C.OutputRequest sizeComp' f' vs'
     C.Primitive prim -> do
       case prim of
         C.Magic (LM.Cast _ _ value) ->
@@ -185,6 +135,32 @@ reduceSigmaElim h shouldDeallocate offset size xs v e = do
             _ ->
               return $ C.SigmaElim shouldDeallocate offset size xs v e'
 
+reduceOutputProvide :: Handle -> C.Value -> C.Comp -> C.Comp -> IO C.Comp
+reduceOutputProvide h dest sizeComp result = do
+  case result of
+    C.OutputRequest _ f args ->
+      reduce h $ C.PiElimDownElim False f (dest : args)
+    C.UpElim flag x e1 e2 ->
+      reduce h $ C.UpElim flag x e1 (C.OutputProvide dest sizeComp e2)
+    C.SigmaElim shouldDeallocate offset size ys v e ->
+      reduce h $ C.SigmaElim shouldDeallocate offset size ys v (C.OutputProvide dest sizeComp e)
+    C.Free x size e ->
+      reduce h $ C.Free x size (C.OutputProvide dest sizeComp e)
+    C.EnumElim fvInfo disc defaultBranch caseList -> do
+      let wrap branch = C.OutputProvide dest sizeComp branch
+      let rewritten =
+            C.EnumElim
+              fvInfo
+              disc
+              (wrap defaultBranch)
+              (map (fmap wrap) caseList)
+      refreshed <- Subst.refresh (substHandle h) rewritten
+      reduce h refreshed
+    C.Unreachable ->
+      return C.Unreachable
+    _ ->
+      return $ C.OutputProvide dest sizeComp result
+
 reduceUpElim :: Handle -> C.IsReducible -> Ident -> C.Comp -> C.Comp -> IO C.Comp
 reduceUpElim h isReducible x e1 e2 = do
   case e1 of
@@ -227,14 +203,6 @@ deleteSubstByIdent :: C.SubstValue -> Ident -> C.SubstValue
 deleteSubstByIdent currentSubst ident = do
   IntMap.delete (Ident.toInt ident) currentSubst
 
-rewriteWriteToDestBranch ::
-  C.Value ->
-  C.Comp ->
-  C.Comp ->
-  C.Comp
-rewriteWriteToDestBranch dest sizeComp branch =
-  C.WriteToDest dest sizeComp branch (C.UpIntro C.null)
-
 substFvInfo :: Handle -> [(Int, C.Value)] -> [(Int, C.Value)]
 substFvInfo h fvInfo = do
   let (is, ds) = unzip fvInfo
@@ -251,55 +219,12 @@ valueToEnumInt value = do
     _ ->
       Nothing
 
-graftVoidReduce :: Handle -> C.Comp -> C.Comp -> IO C.Comp
-graftVoidReduce h e cont = do
-  case graftVoid e cont of
-    Just e' -> do
-      refreshed <- Subst.refresh (substHandle h) e'
-      reduce h refreshed
-    Nothing ->
-      return e
-
 instantiate :: Handle -> [Ident] -> [C.Value] -> C.Comp -> IO C.Comp
 instantiate h xs values body = do
   let formalSubst = IntMap.fromList $ zip (map Ident.toInt xs) values
   let fullSubst = IntMap.union formalSubst (subst h)
   body' <- Subst.instantiate (substHandle h) fullSubst body
   reduce (h {subst = IntMap.empty}) body'
-
-graftVoid :: C.Comp -> C.Comp -> Maybe C.Comp
-graftVoid e cont =
-  case e of
-    C.UpIntroVoid ->
-      return cont
-    C.SigmaElim flag offset size ys v e2 -> do
-      e2' <- graftVoid e2 cont
-      return $ C.SigmaElim flag offset size ys v e2'
-    C.UpElim flag x e1 e2 -> do
-      e2' <- graftVoid e2 cont
-      return $ C.UpElim flag x e1 e2'
-    C.UpElimCallVoid f vs e2 -> do
-      e2' <- graftVoid e2 cont
-      return $ C.UpElimCallVoid f vs e2'
-    C.EnumElim fvInfo v defaultBranch branchList -> do
-      defaultBranch' <- graftVoid defaultBranch cont
-      let graftCase (tag, branch) = do
-            branch' <- graftVoid branch cont
-            return (tag, branch')
-      branchList' <- mapM graftCase branchList
-      return $ C.EnumElim fvInfo v defaultBranch' branchList'
-    C.DestCall {} ->
-      Nothing
-    C.WriteToDest dest sizeComp result e2 -> do
-      e2' <- graftVoid e2 cont
-      return $ C.WriteToDest dest sizeComp result e2'
-    C.Free v size e2 -> do
-      e2' <- graftVoid e2 cont
-      return $ C.Free v size e2'
-    C.Unreachable ->
-      return C.Unreachable
-    _ ->
-      Nothing
 
 extractIdent :: C.Value -> Maybe Ident
 extractIdent term =

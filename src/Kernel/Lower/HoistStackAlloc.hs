@@ -50,8 +50,6 @@ collectHoistableSlotMap dataSize lowComp =
   case lowComp of
     LC.Return {} ->
       IntMap.empty
-    LC.ReturnVoid ->
-      IntMap.empty
     LC.Let _ op cont ->
       case op of
         LC.StackAlloc stackAllocInfo ->
@@ -93,8 +91,6 @@ analyzeConflicts :: IntMap.IntMap HoistableSlot -> ActiveSlotSet -> LC.Comp -> (
 analyzeConflicts slotMap active lowComp =
   case lowComp of
     LC.Return {} ->
-      (Just active, IntMap.empty)
-    LC.ReturnVoid ->
       (Just active, IntMap.empty)
     LC.Let _ _ cont ->
       analyzeConflicts slotMap active cont
@@ -213,8 +209,6 @@ rewriteComp ::
 rewriteComp slotAssignment physicalSlotIdentMap lowComp =
   case lowComp of
     LC.Return {} ->
-      lowComp
-    LC.ReturnVoid ->
       lowComp
     LC.Let x op cont -> do
       let cont' = rewriteComp slotAssignment physicalSlotIdentMap cont

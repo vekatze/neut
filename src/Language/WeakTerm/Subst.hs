@@ -20,6 +20,7 @@ import Gensym.Handle qualified as Gensym
 import Language.Common.Annotation qualified as AN
 import Language.Common.Attr.Lam qualified as AttrL
 import Language.Common.Binder
+import Language.Common.CallConvSpec qualified as CCS
 import Language.Common.CreateSymbol qualified as Gensym
 import Language.Common.DecisionTree qualified as DT
 import Language.Common.DefaultArgs qualified as DefaultArgs
@@ -31,7 +32,6 @@ import Language.Common.LamKind qualified as LK
 import Language.Common.LowMagic qualified as LM
 import Language.Common.Magic (WeakMagic (..))
 import Language.Common.Magic qualified as M
-import Language.Common.PiElimKind qualified as PEK
 import Language.Common.VarKind qualified as VK
 import Language.WeakTerm.FreeVars qualified as WT
 import Language.WeakTerm.WeakTerm qualified as WT
@@ -94,13 +94,13 @@ subst h sub term =
               e' <- subst h sub''' e
               let lamAttr = AttrL.Attr {lamKind = LK.Normal mName isDestPassing codType', identity = newLamID}
               return (m :< WT.PiIntro lamAttr impArgs' expArgs' defaultArgs' e')
-    m :< WT.PiElim b e impArgs expArgs defaultArgs -> do
-      b' <- PEK.traverseArg (substType h sub) b
+    m :< WT.PiElim spec e impArgs expArgs defaultArgs -> do
+      spec' <- CCS.traverseTypes (substType h sub) spec
       e' <- subst h sub e
       impArgs' <- ImpArgs.traverseImpArgs (substType h sub) impArgs
       defaultArgs' <- DefaultArgs.traverseDefaultArgs (subst h sub) defaultArgs
       expArgs' <- mapM (subst h sub) expArgs
-      return $ m :< WT.PiElim b' e' impArgs' expArgs' defaultArgs'
+      return $ m :< WT.PiElim spec' e' impArgs' expArgs' defaultArgs'
     m :< WT.PiElimExact e -> do
       e' <- subst h sub e
       return $ m :< WT.PiElimExact e'
@@ -111,7 +111,7 @@ subst h sub term =
     m :< WT.DataElim isNoetic oets decisionTree -> do
       let (os, es, ts) = unzip3 oets
       es' <- mapM (subst h sub) es
-      let binder = zipWith (\o t -> (m, VK.Normal, o, t)) os ts
+      let binder = zipWith (\o t -> (m, VK.normal, o, t)) os ts
       (binder', decisionTree') <- subst''' h sub binder decisionTree
       let os' = map (\(_, _, o, _) -> o) binder'
       let ts' = map (\(_, _, _, t) -> t) binder'
@@ -434,10 +434,6 @@ substMagic h sub (WeakMagic magic) = do
     M.ShowType typeExpr -> do
       typeExpr' <- substType h sub typeExpr
       return $ M.ShowType typeExpr'
-    M.AssertMixable moduleID unitTypeExpr typeExpr -> do
-      unitTypeExpr' <- substType h sub unitTypeExpr
-      typeExpr' <- substType h sub typeExpr
-      return $ M.AssertMixable moduleID unitTypeExpr' typeExpr'
     M.TextCons rune text -> do
       rune' <- subst h sub rune
       text' <- subst h sub text
