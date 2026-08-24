@@ -48,8 +48,8 @@ data point {
 }
 
 data complex-item {
-| Wide(point mix, item mix, point mix, bool, int)
-| Narrow(item mix, point mix)
+| Wide(~point, ~item, ~point, bool, int)
+| Narrow(~item, ~point)
 | Empty
 }
 
@@ -95,7 +95,7 @@ define _point-code(p: point) -> int {
 
 define _complex-code-N(x: &complex-item) -> int {
   case x {
-  | Wide(p1, it, p2, b, n) =>
+  | Wide(~p1, ~it, ~p2, b, n) =>
     add-int(
       add-int(
         add-int(mul-int(_point-code-N(p1), 100000), mul-int(_item-code-N(it), 10)),
@@ -107,7 +107,7 @@ define _complex-code-N(x: &complex-item) -> int {
         sub-int(0, *n)
       },
     )
-  | Narrow(it, p) =>
+  | Narrow(~it, ~p) =>
     add-int(mul-int(_item-code-N(it), 10000), _point-code-N(p))
   | Empty =>
     -777
@@ -116,7 +116,7 @@ define _complex-code-N(x: &complex-item) -> int {
 
 define _complex-code(x: complex-item) -> int {
   match x {
-  | Wide(p1, it, p2, b, n) =>
+  | Wide(~p1, ~it, ~p2, b, n) =>
     add-int(
       add-int(
         add-int(mul-int(_point-code(p1), 100000), mul-int(_item-code(it), 10)),
@@ -128,7 +128,7 @@ define _complex-code(x: complex-item) -> int {
         sub-int(0, n)
       },
     )
-  | Narrow(it, p) =>
+  | Narrow(~it, ~p) =>
     add-int(mul-int(_item-code(it), 10000), _point-code(p))
   | Empty =>
     -777
@@ -136,7 +136,7 @@ define _complex-code(x: complex-item) -> int {
 }
 
 define _expect-item(label: &string, xs: &array(item), index: int, expected: int) -> unit {
-  match access(xs, index) {
+  match access@(xs, index) {
   | Left(_) =>
     panic(label)
   | Right(actual) =>
@@ -145,7 +145,7 @@ define _expect-item(label: &string, xs: &array(item), index: int, expected: int)
 }
 
 define _expect-complex(label: &string, xs: &array(complex-item), index: int, expected: int) -> unit {
-  match access(xs, index) {
+  match access@(xs, index) {
   | Left(_) =>
     panic(label)
   | Right(actual) =>
@@ -154,7 +154,7 @@ define _expect-complex(label: &string, xs: &array(complex-item), index: int, exp
 }
 
 define _expect-cell(label: &string, xs: &array(cell(int)), index: int, expected: int) -> unit {
-  match access(xs, index) {
+  match access@(xs, index) {
   | Left(_) =>
     panic(label)
   | Right(actual) =>
@@ -163,7 +163,7 @@ define _expect-cell(label: &string, xs: &array(cell(int)), index: int, expected:
 }
 
 define _mutate-cell-at(label: &string, xs: &array(cell(int)), index: int, delta: int) -> unit {
-  match access(xs, index) {
+  match access@(xs, index) {
   | Left(_) =>
     panic(label)
   | Right(actual) =>
@@ -174,7 +174,7 @@ define _mutate-cell-at(label: &string, xs: &array(cell(int)), index: int, delta:
 }
 
 define _expect-no-access(label: &string, xs: &array(item), index: int) -> unit {
-  match access(xs, index) {
+  match access@(xs, index) {
   | Left(_) =>
     Unit
   | Right(_) =>
@@ -183,7 +183,7 @@ define _expect-no-access(label: &string, xs: &array(item), index: int) -> unit {
 }
 
 define _clone-at(label: &string, xs: &array(item), index: int) -> item {
-  match access(xs, index) {
+  match access@(xs, index) {
   | Left(_) =>
     panic(label)
   | Right(actual) =>
@@ -197,32 +197,32 @@ define _clone-at(label: &string, xs: &array(item), index: int) -> item {
 }
 
 define _clone-complex-at(label: &string, xs: &array(complex-item), index: int) -> complex-item {
-  match access(xs, index) {
+  match access@(xs, index) {
   | Left(_) =>
     panic(label)
   | Right(actual) =>
     case actual {
-    | Wide(p1, it, p2, b, n) =>
+    | Wide(~p1, ~it, ~p2, b, n) =>
       case p1 {
       | Point(x1, y1) =>
         case p2 {
         | Point(x2, y2) =>
           case it {
           | Foo(v) =>
-            Wide(Point(*x1, *y1), Foo(*v), Point(*x2, *y2), *b, *n)
+            Wide(~Point(*x1, *y1), ~Foo(*v), ~Point(*x2, *y2), *b, *n)
           | Bar(v) =>
-            Wide(Point(*x1, *y1), Bar(*v), Point(*x2, *y2), *b, *n)
+            Wide(~Point(*x1, *y1), ~Bar(*v), ~Point(*x2, *y2), *b, *n)
           }
         }
       }
-    | Narrow(it, p) =>
+    | Narrow(~it, ~p) =>
       case p {
       | Point(x, y) =>
         case it {
         | Foo(v) =>
-          Narrow(Foo(*v), Point(*x, *y))
+          Narrow(~Foo(*v), ~Point(*x, *y))
         | Bar(v) =>
-          Narrow(Bar(*v), Point(*x, *y))
+          Narrow(~Bar(*v), ~Point(*x, *y))
         }
       }
     | Empty =>
@@ -280,10 +280,10 @@ define _expect-materialized-copy(
 ) -> unit {
   with-slice(source, start, size, (slice) => {
     lift {
-      let copied: array(item) = make::(3);
-      let copied = push-back(copied, _clone-at(label, slice, 0));
-      let copied = push-back(copied, _clone-at(label, slice, 1));
-      pin copied = push-back(copied, _clone-at(label, slice, 2));
+      let copied: array(item) = make(3);
+      let copied = push-back(copied, ~_clone-at(label, slice, 0));
+      let copied = push-back(copied, ~_clone-at(label, slice, 1));
+      pin copied = push-back(copied, ~_clone-at(label, slice, 2));
       assert(label, eq-int(length(copied), 3));
       _expect-item(label, copied, 0, x0);
       _expect-item(label, copied, 1, x1);
@@ -324,12 +324,12 @@ define _test-complex-array() -> unit {
   let c2 = -777;
   let c3 = add-int(add-int(add-int(mul-int(708, 100000), mul-int(1001, 10)), 910), sub-int(0, 11));
   let c4 = add-int(mul-int(12, 10000), 1314);
-  let xs: array(complex-item) = make::(0);
-  let xs = push-back(xs, Wide(Point(1, 2), Foo(7), Point(3, 4), True, 5));
-  let xs = push-back(xs, Narrow(Bar(True), Point(5, 6)));
-  let xs = push-back(xs, Empty);
-  let xs = push-front(xs, Wide(Point(7, 8), Bar(False), Point(9, 10), False, 11));
-  let !xs = push-front(xs, Narrow(Foo(12), Point(13, 14)));
+  let xs: array(complex-item) = make(0);
+  let xs = push-back(xs, ~Wide(~Point(1, 2), ~Foo(7), ~Point(3, 4), True, 5));
+  let xs = push-back(xs, ~Narrow(~Bar(True), ~Point(5, 6)));
+  let xs = push-back(xs, ~Empty);
+  let xs = push-front(xs, ~Wide(~Point(7, 8), ~Bar(False), ~Point(9, 10), False, 11));
+  let xs = push-front(xs, ~Narrow(~Foo(12), ~Point(13, 14)));
   let _ on !xs = {
     assert("array.complex: length\n", eq-int(length(xs), 5));
     _expect-complex("array.complex: front\n", xs, 0, c4);
@@ -340,10 +340,10 @@ define _test-complex-array() -> unit {
     _expect-complex-slice("array.complex: slice\n", xs, 1, 3, c3, c0, c1);
     with-slice(xs, 1, 3, (slice) => {
       lift {
-        let copied: array(complex-item) = make::(0);
-        let copied = push-back(copied, _clone-complex-at("array.complex: clone 0\n", slice, 0));
-        let copied = push-back(copied, _clone-complex-at("array.complex: clone 1\n", slice, 1));
-        let copied = push-back(copied, _clone-complex-at("array.complex: clone 2\n", slice, 2));
+        let copied: array(complex-item) = make(0);
+        let copied = push-back(copied, ~_clone-complex-at("array.complex: clone 0\n", slice, 0));
+        let copied = push-back(copied, ~_clone-complex-at("array.complex: clone 1\n", slice, 1));
+        let copied = push-back(copied, ~_clone-complex-at("array.complex: clone 2\n", slice, 2));
         let _ on copied = {
           _expect-complex("array.complex: materialized clone 0\n", copied, 0, c3);
           _expect-complex("array.complex: materialized clone 1\n", copied, 1, c0);
@@ -354,17 +354,17 @@ define _test-complex-array() -> unit {
       }
     })
   };
-  let !clone-xs = xs;
-  let _ on !xs, !clone-xs = {
+  let clone-xs = xs;
+  let _ on xs, clone-xs = {
     _expect-complex("array.complex: copied source\n", xs, 2, c0);
     _expect-complex("array.complex: copied clone\n", clone-xs, 1, c3)
   };
-  match pop-front(xs) {
+  match pop-front@(xs) {
   | Left(_) =>
     panic("array.complex: pop-front\n")
   | Right(Pair(front, rest)) =>
     assert("array.complex: popped front\n", eq-int(_complex-code(front), c4));
-    match pop-back(rest) {
+    match pop-back@(rest) {
     | Left(_) =>
       panic("array.complex: pop-back\n")
     | Right(Pair(rest, back)) =>
@@ -384,11 +384,11 @@ define _test-complex-array() -> unit {
 }
 
 define _test-cell-array() -> unit {
-  let xs: array(cell(int)) = make::(-1);
-  let xs = push-front(xs, make-cell(lift {20}));
-  let xs = push-front(xs, make-cell(lift {10}));
-  let xs = push-back(xs, make-cell(lift {30}));
-  let !xs = push-back(xs, make-cell(lift {40}));
+  let xs: array(cell(int)) = make(-1);
+  let xs = push-front(xs, ~make-cell(lift {20}));
+  let xs = push-front(xs, ~make-cell(lift {10}));
+  let xs = push-back(xs, ~make-cell(lift {30}));
+  let xs = push-back(xs, ~make-cell(lift {40}));
   let _ on !xs = {
     assert("array.cell: length\n", eq-int(length(xs), 4));
     _expect-cell("array.cell: front\n", xs, 0, 10);
@@ -400,18 +400,18 @@ define _test-cell-array() -> unit {
     _expect-cell("array.cell: mutated front\n", xs, 0, 110);
     _expect-cell("array.cell: mutated back\n", xs, 3, 35)
   };
-  let !copied = xs;
-  let _ on !xs = _mutate-cell-at("array.cell: mutate copied source\n", xs, 1, 1000);
-  let _ on !xs, !copied = {
+  let copied = xs;
+  let _ on xs = _mutate-cell-at("array.cell: mutate copied source\n", xs, 1, 1000);
+  let _ on xs, copied = {
     _expect-cell("array.cell: source after copy mutation\n", xs, 1, 1020);
     _expect-cell("array.cell: clone remains independent\n", copied, 1, 20)
   };
-  match pop-front(xs) {
+  match pop-front@(xs) {
   | Left(_) =>
     panic("array.cell: pop-front\n")
   | Right(Pair(front, rest)) =>
     assert("array.cell: pop-front value\n", eq-int(axiom-T(extract(front)), 110));
-    match pop-back(rest) {
+    match pop-back@(rest) {
     | Left(_) =>
       panic("array.cell: pop-back\n")
     | Right(Pair(rest, back)) =>
@@ -430,10 +430,10 @@ define _test-cell-array() -> unit {
 }
 
 define _test-put() -> unit {
-  let xs: array(item) = make::(0);
-  let xs = push-back(xs, Foo(1));
-  let xs = push-back(xs, Bar(True));
-  let xs = push-back(xs, Foo(3));
+  let xs: array(item) = make(0);
+  let xs = push-back(xs, ~Foo(1));
+  let xs = push-back(xs, ~Bar(True));
+  let xs = push-back(xs, ~Foo(3));
   let xs = put::(xs, 1, Foo(22));
   let xs = put::(xs, -1, Bar(False));
   let xs = put-unchecked::(xs, 0, Bar(False));
@@ -442,9 +442,9 @@ define _test-put() -> unit {
   _expect-item("array.put: unchecked front overwritten\n", xs, 0, 1001);
   _expect-item("array.put: middle overwritten\n", xs, 1, 22);
   _expect-item("array.put: out-of-range ignored\n", xs, 2, 3);
-  let cs: array(cell(int)) = make::(0);
-  let cs = push-back(cs, make-cell(lift {10}));
-  let cs = push-back(cs, make-cell(lift {20}));
+  let cs: array(cell(int)) = make(0);
+  let cs = push-back(cs, ~make-cell(lift {10}));
+  let cs = push-back(cs, ~make-cell(lift {20}));
   let cs = put::(cs, 1, make-cell(lift {99}));
   let cs = put::(cs, 4, make-cell(lift {77}));
   let cs = put-unchecked::(cs, 0, make-cell(lift {42}));
@@ -456,13 +456,13 @@ define _test-put() -> unit {
 }
 
 define test-array() -> unit {
-  let xs: array(item) = make::(0);
-  let xs = push-back(xs, Foo(20));
-  let xs = push-back(xs, Bar(True));
-  let xs = push-back(xs, Foo(40));
-  let xs = push-front(xs, Foo(10));
-  let xs = push-back(xs, Bar(False));
-  pin xs = push-front(xs, Foo(0));
+  let xs: array(item) = make(0);
+  let xs = push-back(xs, ~Foo(20));
+  let xs = push-back(xs, ~Bar(True));
+  let xs = push-back(xs, ~Foo(40));
+  let xs = push-front(xs, ~Foo(10));
+  let xs = push-back(xs, ~Bar(False));
+  pin xs = push-front(xs, ~Foo(0));
   assert("array: length after front/back growth\n", eq-int(length(xs), 6));
   _expect-item("array: front growth\n", xs, 0, 0);
   _expect-item("array: middle ADT value\n", xs, 3, 1000);
@@ -474,23 +474,23 @@ define test-array() -> unit {
   _expect-item("array: copied clone\n", xs-clone, 4, 40);
   let _ = xs;
   let _ = xs-clone;
-  let ys: array(item) = make::(3);
-  let ys = push-back(ys, Foo(1));
-  let ys = push-back(ys, Bar(True));
-  let ys = push-back(ys, Foo(3));
+  let ys: array(item) = make(3);
+  let ys = push-back(ys, ~Foo(1));
+  let ys = push-back(ys, ~Bar(True));
+  let ys = push-back(ys, ~Foo(3));
   let zs = to-list(ys);
   _expect-list("array.to-list/from-list\n", zs, 1, 1000, 3);
-  let ws: array(item) = make::(-2);
-  let ws = push-front(ws, Foo(2));
-  let ws = push-front(ws, Foo(1));
-  let ws = push-back(ws, Bar(True));
-  let ws = push-back(ws, Foo(4));
-  match pop-front(ws) {
+  let ws: array(item) = make(-2);
+  let ws = push-front(ws, ~Foo(2));
+  let ws = push-front(ws, ~Foo(1));
+  let ws = push-back(ws, ~Bar(True));
+  let ws = push-back(ws, ~Foo(4));
+  match pop-front@(ws) {
   | Left(_) =>
     panic("array.pop-front\n")
   | Right(Pair(front, rest)) =>
     assert("array.pop-front value\n", eq-int(_item-code(front), 1));
-    match pop-back(rest) {
+    match pop-back@(rest) {
     | Left(_) =>
       panic("array.pop-back\n")
     | Right(Pair(rest, back)) =>
@@ -504,7 +504,7 @@ define test-array() -> unit {
       Unit
     }
   };
-  let empty: array(item) = make::(0);
+  let empty: array(item) = make(0);
   let _ on empty = _expect-no-access("array.access: empty\n", empty, 0);
   let _ = empty;
   _test-complex-array();

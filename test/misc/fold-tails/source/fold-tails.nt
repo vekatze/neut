@@ -53,7 +53,7 @@ define fold-r<a, b>(!f: (b, a) -> a, acc: a, xs: list(b)) -> a {
   }
 }
 
-define tails<a>(!xs: list(a)) -> list(list(a)) {
+define tails<a>(xs: list(a)) -> list(list(a)) {
   match xs {
   | Nil =>
     Cons(Nil, Nil)

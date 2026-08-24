@@ -43,7 +43,7 @@ define test-item1() -> unit {
   let _ = value;
   let _ = value;
   let _ = use-item1(value);
-  let _ on !value = {
+  let _ on value = {
     let _ = use-item1-noetic(value);
     Unit
   };
@@ -71,7 +71,7 @@ define test-item2() -> unit {
   let _ = value;
   let _ = value;
   let _ = use-item2<list(int)>(value);
-  let _ on !value = {
+  let _ on value = {
     let _ = use-item2-noetic<list(int)>(value);
     Unit
   };
@@ -103,7 +103,7 @@ define test-item3() -> unit {
   let _ = value;
   let _ = value;
   let _ = use-item3<int, list(int)>(value, 1);
-  let _ on !value = {
+  let _ on value = {
     let _ = use-item3-noetic<int, list(int)>(value, 1);
     Unit
   };
@@ -131,7 +131,7 @@ define test-item4() -> unit {
   let _ = value;
   let _ = value;
   let _ = use-item4(value);
-  let _ on !value = {
+  let _ on value = {
     let _ = use-item4-noetic(value);
     Unit
   };

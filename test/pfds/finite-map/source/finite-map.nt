@@ -74,7 +74,7 @@ define main() -> unit {
   let !mymap = insert(3, List::[pack-type {() -> int}], mymap);
   let _ = mymap;
   let _ = mymap;
-  let result on !mymap =
+  let result on mymap =
     match lookup(2, mymap) {
     | Left(_) =>
       1

@@ -6,10 +6,10 @@ import {
 }
 
 define use-file() -> system(unit) {
-  try file = open("./test", Read-Write);
-  try _ = write(file, "hey\n");
-  try _ = read(file, 1024);
-  close(file)
+  try file = open@("./test", Read-Write);
+  try _ = write@(file, "hey\n");
+  try _ = read@(file, 1024);
+  close@(file)
 }
 
 define main() -> unit {
