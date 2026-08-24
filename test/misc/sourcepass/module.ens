@@ -1,0 +1,19 @@
+{
+  target {
+    sourcepass {
+      main "sourcepass.nt",
+      build-option [
+        "-fsanitize=address",
+      ],
+    },
+  },
+  dependency {
+    core {
+      digest "v5ZueFMAkJl9q3gU5dHupMJr5Wb30PHzmcDgL8_padI",
+      mirror [
+        "https://github.com/vekatze/neut-core/raw/main/archive/0.56.1.tar.zst",
+      ],
+      enable-preset true,
+    },
+  },
+}
