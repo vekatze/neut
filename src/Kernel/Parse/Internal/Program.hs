@@ -20,6 +20,7 @@ import Language.Common.LocalLocator qualified as LL
 import Language.Common.NominalTag
 import Language.Common.RuleKind
 import Language.Common.StmtKind qualified as SK
+import Language.Common.VarKind qualified as VK
 import Language.RawTerm.CreateHole qualified as RT
 import Language.RawTerm.Name
 import Language.RawTerm.RawBinder
@@ -173,7 +174,7 @@ parseDefine isInNamespace h = do
     then do
       let m = RT.loc $ RT.geist def
       if isDestPassing
-        then lift $ raiseError m "`main` and `zen` cannot use `->>`"
+        then lift $ raiseError m "`main` and `zen` cannot be destination-passing"
         else return (RawStmtDefineTerm c1 (SK.Main ()) def, c)
     else
       if isDestPassing
@@ -280,8 +281,8 @@ parseDefineMeta h = do
   (targetText, cTarget) <- symbol
   target <- interpretName mTarget targetText
   targetArgs <- seriesAngle $ rawType h
-  expArgs <- seriesParen $ mandatoryBinder h
-  (_, cArrow, cod) <- parseDefInfoCod ArrowMeta h
+  expArgs <- seriesParen $ mandatoryBinder h SourceAdmissible
+  (cArrow, cod) <- parseDefInfoCod h
   (c2, ((body, _), loc, c)) <- betweenBrace' $ rawExpr h
   return
     ( RawDefineMeta
@@ -383,7 +384,7 @@ parseNominalData h = do
 parseDataArgs :: Handle -> Parser (Maybe (RT.Args RT.RawType))
 parseDataArgs h = do
   choice
-    [ Just <$> try (seriesParen $ preBinder h),
+    [ Just <$> try (seriesParen $ preBinder h SourceInadmissible),
       return Nothing
     ]
 
@@ -409,23 +410,14 @@ parseConsArgs h = do
 
 parseDefineDataClauseArg :: Handle -> Parser ((FieldHint, RawBinder RT.RawType), C)
 parseDefineDataClauseArg h = do
-  (binder, c) <- parseDataClauseArgBinder h
-  mMixed <- optional $ do
-    mMix <- getCurrentHint
-    cMix <- keyword "mix"
-    return (mMix, cMix)
-  case mMixed of
-    Just (mMix, cMix) ->
-      return ((FieldMixed mMix, binder), c ++ cMix)
-    Nothing ->
-      return ((FieldAuto, binder), c)
+  (binder@(mx, k, _, _, _, _), c) <- parseDataClauseArgBinder h
+  if VK.isSource k
+    then return ((FieldMixed mx, binder), c)
+    else return ((FieldAuto, binder), c)
 
 parseDataClauseArgBinder :: Handle -> Parser (RawBinder RT.RawType, C)
 parseDataClauseArgBinder h = do
-  choice
-    [ try $ varWithMode h >>= preAscription h,
-      typeWithoutIdent h
-    ]
+  binderOrType h SourceAdmissible
 
 parseResource :: Handle -> Parser (RawStmt, C)
 parseResource h = do

@@ -6,6 +6,7 @@ import Data.Set qualified as S
 import Language.Common.Attr.Lam qualified as AttrL
 import Language.Common.BaseLowType qualified as BLT
 import Language.Common.Binder
+import Language.Common.CallConv qualified as CC
 import Language.Common.DecisionTree qualified as DT
 import Language.Common.Ident
 import Language.Common.LowMagic qualified as LM
@@ -26,12 +27,13 @@ freeVarsWithHints term =
       let impBinders = impArgs ++ expArgs
       let defaultVars = S.unions $ map freeVarsWithHints $ map snd defaultArgs
       S.union defaultVars (freeVarsWithHintsBinderType (impBinders ++ map fst defaultArgs ++ catMaybes [AttrL.fromAttr k]) (freeVarsWithHints e))
-    _ :< TM.PiElim _ _ e impArgs expArgs defaultArgs -> do
+    _ :< TM.PiElim _ conv e impArgs expArgs defaultArgs -> do
       let xs = freeVarsWithHints e
+      let ys0 = S.unions $ map freeVarsWithHintsType (CC.types conv)
       let ys1 = S.unions $ map freeVarsWithHintsType impArgs
       let ys2 = S.unions $ map freeVarsWithHints expArgs
       let ys3 = S.unions $ map freeVarsWithHints (catMaybes defaultArgs)
-      S.unions [xs, ys1, ys2, ys3]
+      S.unions [xs, ys0, ys1, ys2, ys3]
     _ :< TM.DataIntro _ _ dataArgs consArgs -> do
       let xs1 = S.unions $ map freeVarsWithHintsType dataArgs
       let xs2 = S.unions $ map freeVarsWithHints consArgs
@@ -39,7 +41,7 @@ freeVarsWithHints term =
     m :< TM.DataElim _ _ oets decisionTree -> do
       let (os, es, ts) = unzip3 oets
       let xs1 = S.unions $ map freeVarsWithHints es
-      let binder = zipWith (\o t -> (m, VK.Normal, o, t)) os ts
+      let binder = zipWith (\o t -> (m, VK.normal, o, t)) os ts
       let xs2 = freeVarsWithHintsBinderType binder (freeVarsWithHintsDecisionTree decisionTree)
       S.union xs1 xs2
     _ :< TM.BoxIntro _ letSeq e -> do
@@ -165,8 +167,6 @@ freeVarsWithHintsMagic magic =
       S.union (freeVarsWithHintsType typeExpr1) (freeVarsWithHintsType typeExpr2)
     M.ShowType typeExpr ->
       freeVarsWithHintsType typeExpr
-    M.AssertMixable _ unitTypeExpr typeExpr ->
-      S.union (freeVarsWithHintsType unitTypeExpr) (freeVarsWithHintsType typeExpr)
     M.TextCons rune text ->
       S.union (freeVarsWithHints rune) (freeVarsWithHints text)
     M.TextUncons _ text ->

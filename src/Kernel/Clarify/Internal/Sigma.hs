@@ -58,14 +58,6 @@ data FieldLayout
   = Direct C.Comp
   | Flattened C.Comp Int
 
-fieldType :: FieldLayout -> C.Comp
-fieldType field =
-  case field of
-    Direct t ->
-      t
-    Flattened t _ ->
-      t
-
 fieldSlotCount :: FieldLayout -> Int
 fieldSlotCount field =
   case field of
@@ -77,14 +69,6 @@ fieldSlotCount field =
 data FieldSlots
   = DirectSlot Ident Ident
   | FlattenedSlots Ident [Ident]
-
-fieldSlotArgName :: FieldSlots -> Ident
-fieldSlotArgName fieldSlots =
-  case fieldSlots of
-    DirectSlot x _ ->
-      x
-    FlattenedSlots x _ ->
-      x
 
 fieldSlotVars :: FieldSlots -> [Ident]
 fieldSlotVars fieldSlots =
@@ -334,14 +318,9 @@ sigmaData4 h dataInfo arg dest = do
 sigmaBinderT :: Handle -> DataConstructorInfo -> C.Value -> C.Value -> IO C.Comp
 sigmaBinderT h info shouldRelease v = do
   headerEntries <- makeHeaderEntries h (headerSize info)
-  fieldSlots <- makeFieldSlotVars (gensymHandle h) (consArgs info)
-  let fieldSlotNames = concatMap fieldSlotVars fieldSlots
-  let readVars = map fst headerEntries ++ map fst (dataArgs info) ++ fieldSlotNames
   let dataArgEntries = dataArgs info
   let fields = consArgs info
-  let fieldEntries = map (\(x, field) -> (x, fieldType field)) fields
   let readEntries = headerEntries ++ dataArgEntries
-  let valueEntries = readEntries ++ fieldEntries
   readApps <- forM readEntries $ \(x, t) -> do
     Utility.toAffineApp (utilityHandle h) (C.VarLocal x) t
   fieldApps <- forM fields $ \(x, field) -> do
@@ -351,12 +330,13 @@ sigmaBinderT h info shouldRelease v = do
       Flattened t _ ->
         Utility.toDropInPlaceAppWith (utilityHandle h) True (C.VarLocal x) t
   let as = readApps ++ fieldApps
-  holes <- mapM (const $ Gensym.newIdentFromText (gensymHandle h) "arg") valueEntries
+  holes <- mapM (const $ Gensym.newIdentFromText (gensymHandle h) "arg") as
   cont <- freeOuterStorageIfRequested h shouldRelease v (totalSlotCount info) (C.UpIntro C.null)
   let bodyBase = Utility.bindLet (zip holes as) cont
-  let bodyWithFields = bindFieldValues fieldSlots bodyBase
+  let fieldStart = length headerEntries + length dataArgEntries
+  let bodyWithFields = bindFieldsInPlace v (totalSlotCount info) fieldStart fields bodyBase
   body' <- Linearize.linearize (linearizeHandle h) readEntries bodyWithFields
-  return $ C.SigmaElim False 0 (totalSlotCount info) readVars v body'
+  return $ C.SigmaElim False 0 (totalSlotCount info) (map fst readEntries) v body'
 
 -- copier of one data constructor into dest (layout: [disc | a1..ak | field1..fieldm]).
 -- sigmaBinder4 info dest v   ~>
@@ -430,13 +410,11 @@ bindFieldValues fieldSlots body =
     [] ->
       body
     entry : rest -> do
-      let value =
-            case entry of
-              DirectSlot _ slot ->
-                C.VarLocal slot
-              FlattenedSlots _ slots ->
-                C.SigmaIntro (length slots) (map C.VarLocal slots)
-      C.UpElim True (fieldSlotArgName entry) (C.UpIntro value) (bindFieldValues rest body)
+      case entry of
+        DirectSlot x slot ->
+          C.UpElim True x (C.UpIntro (C.VarLocal slot)) (bindFieldValues rest body)
+        FlattenedSlots x slots ->
+          C.UpElim False x (C.UpIntro (C.SigmaIntro (length slots) (map C.VarLocal slots))) (bindFieldValues rest body)
 
 bindFieldsInPlace :: C.Value -> Int -> Int -> [(Ident, FieldLayout)] -> C.Comp -> C.Comp
 bindFieldsInPlace v totalSlots fieldStart fields body =

@@ -54,7 +54,7 @@ define test-resource(xs: list(int)) -> unit {
       let !ys = xs;
       discard(ys);
       discard(ys);
-      let len on !ys = length(ys);
+      let len on ys = length(ys);
       discard(ys);
       len
     };

@@ -293,8 +293,6 @@ describeMagic magic = do
       "magic eq-type"
     M.ShowType {} ->
       "magic show-type"
-    M.AssertMixable {} ->
-      "magic assert-mixable"
     M.TextCons {} ->
       "magic text-cons"
     M.TextUncons {} ->

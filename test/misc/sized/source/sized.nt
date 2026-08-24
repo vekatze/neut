@@ -1,0 +1,133 @@
+import {
+  core::int.io {print-int-line},
+}
+
+data shape {
+| Circle(r: int)
+| Rect(w: int, h: int)
+}
+
+data pair-of-shapes {
+| Pair-Of-Shapes(shape, shape)
+}
+
+define shape-area-owned(s: shape) -> int {
+  match s {
+  | Circle(r) =>
+    r
+  | Rect(w, h) =>
+    mul-int(w, h)
+  }
+}
+
+define shape-area(s: &shape) -> int {
+  case s {
+  | Circle(r) =>
+    *r
+  | Rect(w, h) =>
+    mul-int(*w, *h)
+  }
+}
+
+define pair-sum(p: &pair-of-shapes) -> int {
+  case p {
+  | Pair-Of-Shapes(x, y) =>
+    add-int(shape-area(x), shape-area(y))
+  }
+}
+
+define call-int-fn(f: &(int) -> int) -> int {
+  f(10)
+}
+
+define increment(n: int) -> int {
+  add-int(n, 1)
+}
+
+define consume<sized a>(~x: a, f: (&a) -> int) -> int {
+  pin x = x;
+  f(x)
+}
+
+define produce@<sized a>(make: () -> a) -> a {
+  make()
+}
+
+define relay-source<sized a>(~x: a, f: (&a) -> int) -> int {
+  consume(~x, f)
+}
+
+define relay-dest@<sized a>(make: () -> a) -> a {
+  produce@(make)
+}
+
+define round-trip@<sized a>(~x: a) -> a {
+  x
+}
+
+define use-data() -> int {
+  add-int(consume(~Rect(3, 4), shape-area), relay-source(~Circle(5), shape-area))
+}
+
+define use-nested-data() -> int {
+  consume(~Pair-Of-Shapes(Rect(2, 3), Circle(4)), pair-sum)
+}
+
+define use-closure-source() -> int {
+  consume<(int) -> int>(~increment, call-int-fn)
+}
+
+define use-data-dest() -> int {
+  shape-area-owned(produce@(() => {
+    Rect(6, 7)
+  }))
+}
+
+define use-nested-data-dest() -> int {
+  pin p =
+    relay-dest@(() => {
+      Pair-Of-Shapes(Circle(8), Rect(2, 2))
+    });
+  pair-sum(p)
+}
+
+define use-closure-dest() -> int {
+  let f =
+    produce@(() => {
+      increment
+    });
+  f(41)
+}
+
+define use-round-trip() -> int {
+  shape-area-owned(round-trip@(~Rect(5, 5)))
+}
+
+define sum-both<sized a, sized b>(~x: a, f: (&a) -> int, ~y: b, g: (&b) -> int) -> int {
+  pin x = x;
+  pin y = y;
+  add-int(f(x), g(y))
+}
+
+define use-mixed-widths() -> int {
+  sum-both(~Circle(1), shape-area, ~Pair-Of-Shapes(Rect(2, 2), Circle(3)), pair-sum)
+}
+
+define main() -> unit {
+  print("use-data\n");
+  print-int-line(use-data());
+  print("use-nested-data\n");
+  print-int-line(use-nested-data());
+  print("use-closure-source\n");
+  print-int-line(use-closure-source());
+  print("use-data-dest\n");
+  print-int-line(use-data-dest());
+  print("use-nested-data-dest\n");
+  print-int-line(use-nested-data-dest());
+  print("use-closure-dest\n");
+  print-int-line(use-closure-dest());
+  print("use-round-trip\n");
+  print-int-line(use-round-trip());
+  print("use-mixed-widths\n");
+  print-int-line(use-mixed-widths())
+}

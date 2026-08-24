@@ -29,8 +29,6 @@ reduce' h sub lowComp = do
   case lowComp of
     LC.Return d ->
       return $ LC.Return $ substLowValue sub d
-    LC.ReturnVoid ->
-      return LC.ReturnVoid
     LC.Let x op cont -> do
       let op' = substOp sub op
       x' <- Gensym.newIdentFromIdent (gensymHandle h) x
@@ -51,11 +49,11 @@ reduce' h sub lowComp = do
       let sub' = IntMap.union newSub sub
       cont' <- reduce' h sub' cont
       return $ LC.Switch d' t defaultBranch' (zip cs es') phiList' cont'
-    LC.TailCall codType d tds -> do
+    LC.TailCall mustTail codType d tds -> do
       let d' = substLowValue sub d
       let (ts, ds) = unzip tds
       let ds' = map (substLowValue sub) ds
-      return $ LC.TailCall codType d' (zip ts ds')
+      return $ LC.TailCall mustTail codType d' (zip ts ds')
     LC.Unreachable ->
       return LC.Unreachable
     LC.Phi ds -> do

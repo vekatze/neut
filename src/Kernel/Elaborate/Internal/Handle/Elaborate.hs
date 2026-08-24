@@ -1,5 +1,7 @@
 module Kernel.Elaborate.Internal.Handle.Elaborate
   ( Handle (..),
+    SizedSite (..),
+    SizedObligation (..),
     new,
     reduceType,
     fillType,
@@ -14,6 +16,7 @@ where
 import App.App (App)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.IORef
+import Data.IntSet qualified as IntSet
 import Data.Maybe (fromMaybe)
 import Gensym.Handle qualified as Gensym
 import Kernel.Common.Const (defaultInlineLimit)
@@ -87,11 +90,21 @@ data Handle = Handle
     varEnv :: BoundVarEnv,
     specializationTable :: IORef InlineHandle.SpecializationTable,
     pendingSpecializationDefs :: IORef [Stmt.Stmt],
-    residualCheckList :: IORef [Inline.ResidualCheck],
+    residualCheckList :: IORef [InlineHandle.ResidualCheck],
+    sizedTypeVars :: IORef IntSet.IntSet,
+    sizedObligations :: IORef [SizedObligation],
     traceConfig :: Trace.Config
   }
 
 type BoundVarEnv = [BinderF WT.WeakType]
+
+data SizedSite
+  = SourceSlot
+  | Destination
+  | Instantiation
+
+data SizedObligation
+  = SizedObligation SizedSite Hint WT.WeakType
 
 new :: Gensym.Handle -> Global.Handle -> Trace.Config -> Local.Handle -> Source -> IO Handle
 new gensymHandle globalHandle@(Global.Handle {..}) traceConfig (Local.Handle {..}) currentSource = do
@@ -107,6 +120,8 @@ new gensymHandle globalHandle@(Global.Handle {..}) traceConfig (Local.Handle {..
   specializationTable <- newIORef mempty
   pendingSpecializationDefs <- newIORef []
   residualCheckList <- newIORef []
+  sizedTypeVars <- newIORef IntSet.empty
+  sizedObligations <- newIORef []
   return $ Handle {..}
 
 reduceType :: Handle -> WT.WeakType -> App WT.WeakType

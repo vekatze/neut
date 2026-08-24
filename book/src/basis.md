@@ -73,9 +73,9 @@ define foo(!xs: list(int)) -> unit {
 
 Note that the above example executes the type `list(int)` as a function.
 
-You must prefix a variable with `!` at its definition site if the variable may need to be copied. Likewise, if a free variable captured by a term-level `define` cannot be copied for free, that free variable must have been defined with the `!` prefix.
+You must prefix a variable with `!` at its definition site if the variable needs to be copied. Likewise, if a free variable captured by a term-level `define` cannot be copied for free, that free variable must have been defined with the `!` prefix.
 
-The prefix `!` is unnecessary if the variable can be copied for free.
+The compiler also rejects a `!` on a variable that isn't copied, that is, on a variable that no execution path uses more than once, and on a variable that can be copied for free.
 
 ### On Immediate Values
 
@@ -322,7 +322,7 @@ let result = old;
 cont
 ```
 
-These optimizations are applied within each definition. They do not directly cancel a `malloc` in one definition with a `free` in another definition. This is why destination-passing style can matter: it can move the relevant allocation and deallocation into the same definition.
+These optimizations are applied within each definition. This is why the calling-convention marks `@` and `~` can matter: they move the relevant allocation and deallocation into the same definition.
 
 ## Name Resolution
 

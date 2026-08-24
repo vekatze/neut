@@ -1,11 +1,7 @@
 module Language.Term.Inline
-  ( Handle,
-    new,
+  ( new,
     inline,
     inlineType,
-    DefInfo (..),
-    DefKind (..),
-    ResidualCheck (..),
   )
 where
 
@@ -30,6 +26,7 @@ import Language.Common.Attr.Lam qualified as AttrL
 import Language.Common.Attr.VarGlobal qualified as AttrVG
 import Language.Common.BaseLowType qualified as BLT
 import Language.Common.Binder
+import Language.Common.CallConv qualified as CC
 import Language.Common.CreateSymbol qualified as Sym
 import Language.Common.DecisionTree qualified as DT
 import Language.Common.DefiniteDescription qualified as DD
@@ -42,7 +39,6 @@ import Language.Common.LocalDefKind qualified as LDK
 import Language.Common.LowMagic qualified as LM
 import Language.Common.Magic qualified as M
 import Language.Common.Opacity qualified as O
-import Language.Common.PiElimKind qualified as PEK
 import Language.Common.StmtKind qualified as SK
 import Language.Common.VarKind qualified as VK
 import Language.Term.Eq qualified as TermEq
@@ -124,17 +120,17 @@ inline' h rawTerm = do
           codType' <- inlineType' h codType
           let attr' = attr {AttrL.lamKind = LK.Normal mName isDestPassing codType'}
           return (m :< TM.PiIntro attr' impArgs' expArgs' defaultArgs' e')
-    m :< TM.PiElim callTraceID kind e impArgs expArgs defaultArgs -> do
-      kind' <- PEK.traverseArg (inlineType' h) kind
+    m :< TM.PiElim callTraceID conv e impArgs expArgs defaultArgs -> do
+      conv' <- CC.traverseTypes (inlineType' h) conv
       e' <- inline' h e
       impArgs' <- mapM (inlineType' h) impArgs
       expArgs' <- mapM (inline' h) expArgs
       defaultArgs' <- mapM (traverse (inline' h)) defaultArgs
       let Handle {dmap} = h
       localDefMap <- liftIO $ readIORef (localMetaDefMap h)
-      let residual = m :< TM.PiElim callTraceID kind' e' impArgs' expArgs' defaultArgs'
+      let residual = m :< TM.PiElim callTraceID conv' e' impArgs' expArgs' defaultArgs'
       let rebuildWithDefaults defaultArgsFilled =
-            m :< TM.PiElim callTraceID kind' e' impArgs' expArgs' (map Just defaultArgsFilled)
+            m :< TM.PiElim callTraceID conv' e' impArgs' expArgs' (map Just defaultArgsFilled)
       let reduceApplication mDefaultCallee impParams expBinders defDefaults canReduce reduce =
             if length impParams /= length impArgs'
               then registerResidual h residual
@@ -148,7 +144,7 @@ inline' h rawTerm = do
                 if length expParams /= length expArgsAll
                   then registerResidual h residual
                   else
-                    if PEK.isNoetic kind' || not canReduce
+                    if CC.isNoetic conv' || not canReduce
                       then registerResidual h (rebuildWithDefaults defaultArgsFilled)
                       else reduce subType expParams expArgsAll
       case e' of
@@ -209,7 +205,7 @@ inline' h rawTerm = do
               reduceApplication Nothing defImpBinders defExpBinders defDefaultArgs True $ \subType expParams expArgsAll ->
                 specializeLocalMeta h m dd subType impArgs' expParams defBody codType expArgsAll
         (_ :< TM.Prim (PV.Op op))
-          | PEK.isNormal kind' -> do
+          | CC.isNormal conv' -> do
               case ConstantFold.evaluatePrimOp m op expArgs' of
                 Just result -> do
                   return result
@@ -373,10 +369,6 @@ inline' h rawTerm = do
         M.ShowType typeExpr -> do
           typeExpr' <- inlineType' h typeExpr
           Magic.evaluateShowType m typeExpr'
-        M.AssertMixable mid _ typeExpr -> do
-          typeExpr' <- inlineType' h typeExpr
-          emitMixableCheck h m typeExpr'
-          return $ Magic.constructUnitTerm m mid
         M.TextCons rune text -> do
           rune' <- inline' h rune
           text' <- inline' h text
@@ -563,12 +555,6 @@ emitIntegerCheck h m t literal =
         emitResidualCheck h $ CheckInteger mReport t
     L.Rune _ ->
       return ()
-
-emitMixableCheck :: Handle -> Hint -> TM.Type -> App ()
-emitMixableCheck h m t = do
-  when (shouldEmitResidualChecks h) $ do
-    mReport <- getReportHint h m
-    emitResidualCheck h $ CheckMixable mReport t
 
 emitResidualCheck :: Handle -> ResidualCheck -> App ()
 emitResidualCheck h check = do
@@ -840,7 +826,7 @@ createSpecializationName h dd = do
 applySpecialization :: Hint -> TraceID -> DD.DefiniteDescription -> [TM.Term] -> TM.Term
 applySpecialization m traceID specializedName expArgsAll = do
   let attr = AttrVG.new (AN.fromInt $ length expArgsAll)
-  m :< TM.PiElim traceID PEK.Normal (m :< TM.VarGlobal attr specializedName) [] expArgsAll []
+  m :< TM.PiElim traceID CC.normal (m :< TM.VarGlobal attr specializedName) [] expArgsAll []
 
 withMacroHint :: Handle -> DD.DefiniteDescription -> DefKind -> Hint -> App a -> App a
 withMacroHint h dd defKind hint action = do
@@ -927,7 +913,7 @@ specializeLocalMeta ::
 specializeLocalMeta h m dd subType impArgs' expParams body codType expArgsAll = do
   case lookupLocalMeta dd impArgs' (localMetaMemo h) of
     Just specSelfId ->
-      return $ m :< TM.PiElim noTrace PEK.Normal (m :< TM.Var specSelfId) [] expArgsAll []
+      return $ m :< TM.PiElim noTrace CC.normal (m :< TM.Var specSelfId) [] expArgsAll []
     Nothing -> do
       specSelfId <- liftIO $ Sym.newIdentFromText (gensymHandle h) "meta-spec"
       (expParams', body') <- liftIO $ Subst.subst' (substHandle h) subType expParams body
@@ -935,9 +921,9 @@ specializeLocalMeta h m dd subType impArgs' expParams body codType expArgsAll = 
       let hInner = (enterOpaqueDefineMetaBody h) {localMetaMemo = (dd, impArgs', specSelfId) : localMetaMemo h}
       body'' <- liftIO (Subst.refresh (substHandle h) body') >>= inline hInner
       lamID <- liftIO $ Gensym.newCount (gensymHandle h)
-      let fixAttr = AttrL.Attr {lamKind = LK.Fix LDK.Define False (m, VK.Normal, specSelfId, codType'), identity = lamID}
+      let fixAttr = AttrL.Attr {lamKind = LK.Fix LDK.Define False (m, VK.normal, specSelfId, codType'), identity = lamID}
       let fixLam = m :< TM.PiIntro fixAttr [] expParams' [] body''
-      return $ m :< TM.PiElim noTrace PEK.Normal fixLam [] expArgsAll []
+      return $ m :< TM.PiElim noTrace CC.normal fixLam [] expArgsAll []
 
 lookupLocalMeta :: DD.DefiniteDescription -> [TM.Type] -> [(DD.DefiniteDescription, [TM.Type], Ident)] -> Maybe Ident
 lookupLocalMeta dd typeArgs memo =

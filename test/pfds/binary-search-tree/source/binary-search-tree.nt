@@ -16,12 +16,12 @@ define make-set-signature<a>(!compare: (&a, &a) -> ordering) -> set-signature(a)
   Set{
     empty := Leaf,
     insert := {
-      define insert(!new-value: a, haystack: set(a)) -> set(a) {
+      define insert(new-value: a, haystack: set(a)) -> set(a) {
         match haystack {
         | Leaf =>
           Node(Leaf, new-value, Leaf)
-        | Node(left, !x, right) =>
-          let b on !new-value, !x = compare(new-value, x);
+        | Node(left, x, right) =>
+          let b on new-value, x = compare(new-value, x);
           match b {
           | LT =>
             Node(insert(new-value, left), x, right)
@@ -34,12 +34,12 @@ define make-set-signature<a>(!compare: (&a, &a) -> ordering) -> set-signature(a)
       }
     },
     member := {
-      define member(!needle: a, haystack: &set(a)) -> bool {
+      define member(needle: a, haystack: &set(a)) -> bool {
         case haystack {
         | Leaf =>
           False
         | Node(left, x, right) =>
-          let b on !needle = compare(needle, x);
+          let b on needle = compare(needle, x);
           match b {
           | LT =>
             member(needle, left)

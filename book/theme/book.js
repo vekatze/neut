@@ -76,6 +76,7 @@ hljs.registerLanguage("neut", function (hljs) {
         "meta",
         "pointer",
         "rune",
+        "sized",
         "thread",
         "type",
         "void",
@@ -85,9 +86,6 @@ hljs.registerLanguage("neut", function (hljs) {
         "-nan",
         "inf",
         "nan",
-      ],
-      attribute: [
-        "mix",
       ],
     },
     contains: [
@@ -127,8 +125,12 @@ hljs.registerLanguage("neut", function (hljs) {
         begin: "admit",
       },
       {
+        scope: "keyword",
+        begin: "~|@",
+      },
+      {
         scope: "builtin",
-        begin: "\\*|\\+|\\||->>|->|=>>|=>|'|:|!|\\?|,|;|&|=",
+        begin: "\\*|\\+|\\||->|=>|'|:|!|\\?|,|;|&|=",
       },
       hljs.COMMENT("//", "$"),
     ],

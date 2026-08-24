@@ -34,7 +34,7 @@ define test-syntax() -> unit {
   // let _ = xs;
   let ys = xs;
   let zs = xs;
-  let _ on !xs, ys, zs = {
+  let _ on xs, ys, zs = {
     let v1 = length(xs);
     let v2 = length(ys);
     let v3 = length(zs);
@@ -60,7 +60,7 @@ data my-enum {
 define nested-enum-match(t: &term(my-enum)) -> term(my-enum) {
   let val =
     case t {
-    | App(Abs(x, !t), Var(e)) =>
+    | App(Abs(x, t), Var(e)) =>
       let _ = Var(e);
       let !t = *t;
       let _ = t;

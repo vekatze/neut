@@ -138,7 +138,7 @@ define sample() -> unit {
 
 The name of a local variable must satisfy the following conditions:
 
-- It doesn't contain any of ``=() `\"'\n\t:;,<>[]{}/*+|&?!``
+- It doesn't contain any of ``=() `\"'\n\t:;,<>[]{}/*+|&?!#@~``
 - It doesn't start with `A, B, .., Z` (uppercase letters)
 
 ### Semantics
@@ -642,7 +642,7 @@ When the resolved type is `&string` or `&binary`, the literal is compiled as a s
 
 ## `(x1: a1, ..., xn: an) -> b`
 
-`(x1: a1, ..., xn: an) -> b` is the type of ordinary functions. Replacing `->` with `->>` yields the type of destination-passing functions. A function type can also have a bracketed default-argument part after the ordinary parameters, such as `(value: int)[step: int] -> int`.
+`(x1: a1, ..., xn: an) -> b` is the type of functions.
 
 ### Example
 
@@ -651,16 +651,28 @@ When the resolved type is `&string` or `&binary`, the literal is compiled as a s
 (value: int) -> bool
 
 // a destination-passing function that returns `either(int, bool)`
-(value: int) ->> either(int, bool)
+@(value: int) -> either(int, bool)
+
+// a function whose parameter `x` is source-passing
+(~x: item, k: int) -> int
+
+// a function that uses both conventions
+@(~x: item, k: int) -> item
 
 // this is equivalent to `(_: int) -> bool`:
 (int) -> bool
+
+// `~` precedes the type when the name is elided
+(~item, int) -> int
 
 // using a type variable
 <a: type>(x: a) -> a
 
 // this is equivalent to `<a: _>(x: a) -> a`
 <a>(x: a) -> a
+
+// `a` ranges over the types that can be stored inline, so `~x: a` is allowed
+<sized a>(xs: array(a), ~x: a) -> array(a)
 
 // a function with a default argument named `step`
 (value: int)[step: int] -> int
@@ -673,9 +685,25 @@ When the resolved type is `&string` or `&binary`, the literal is compiled as a s
 
 <x1: a1, ..., xn: an>(y1: b1, ..., ym: bm)[z1: c1, ..., zk: ck] -> c
 
-<x1: a1, ..., xn: an>(y1: b1, ..., ym: bm) ->> c
+@<x1: a1, ..., xn: an>(y1: b1, ..., ym: bm) -> c
 
-<x1: a1, ..., xn: an>(y1: b1, ..., ym: bm)[z1: c1, ..., zk: ck] ->> c
+@<x1: a1, ..., xn: an>(y1: b1, ..., ym: bm)[z1: c1, ..., zk: ck] -> c
+```
+
+An ordinary parameter can carry `~`. It precedes the name, or the type when the name is elided:
+
+```neut
+~y: b
+
+~b
+```
+
+An implicit parameter can carry `sized`. It precedes the name:
+
+```neut
+sized a: type
+
+sized a
 ```
 
 The following abbreviations are available:
@@ -699,9 +727,11 @@ The following abbreviations are available:
 // <a1: _, ..., an: _>(y1: b1, ..., ym: bm) -> c
 ```
 
-The same abbreviations are available when `->` is replaced with `->>`.
+The same abbreviations are available when `@` or `~` is used.
 
 The bracketed part may be omitted, and `[]` is also accepted. This default-argument part is included in the function type, so both the keys and their order must match during type checking.
+
+`~` can only be used on an ordinary parameter. It is available only at a run-time stage (stage 0 or below).
 
 ### Semantics
 
@@ -715,11 +745,31 @@ A function type is compiled into a pointer to `base::#::cls`. For more, please s
 Γ ⊢ <α1: s1, ..., αn: sn>(x1: t1, ..., xm: tm)[z1: u1, ..., zk: uk] -> v: type
 ```
 
-Omitting the bracketed part means `k = 0`. The same rule applies to `->>`.
+Omitting the bracketed part means `k = 0`. The same rule applies when `@` or `~` is used.
+
+The marks are part of the type, and the following are all distinct:
+
+```neut
+(x: a) -> b
+
+@(x: a) -> b
+
+(~x: a) -> b
+```
+
+The type of a `~` parameter and the result type of a `@` function must be sized: the width of their values' storage must be determined by the type alone. A type variable is sized only when its binder carries `sized`:
+
+```neut
+<a>(~x: a) -> int // rejected: nothing guarantees that `a` is sized
+
+<sized a>(~x: a) -> int // accepted
+```
+
+`sized` is part of the type as well, so `<sized a>(x: a) -> a` and `<a>(x: a) -> a` are different types.
 
 ## `(x1: a1, ..., xn: an) => { e }`
 
-`=>` can be used to create an anonymous function. Replacing `=>` with `=>>` yields a destination-passing anonymous function. You can also insert a default-argument list between the ordinary parameter list and the arrow.
+`=>` can be used to create an anonymous function.
 
 ### Example
 
@@ -735,13 +785,18 @@ define use-function() -> int {
       x
     };
   let step =
-    (x: int) =>> {
+    @(x: int) => {
       Pair(x, add-int(x, 1))
     };
+  let sum =
+    (~p: pair(int, int)) => {
+      let Pair(a, b) = p;
+      add-int(a, b)
+    };
   let result = f(10, 20);
-  let _ = id(42);
-  let Pair(a, b) = step(10);
-  add-int(result, add-int(a, b))
+  let _: int = id(42);
+  let Pair(a, b) = step@(10);
+  add-int(result, add-int(a, add-int(b, sum(~Pair(1, 2)))))
 }
 ```
 
@@ -756,11 +811,8 @@ define use-function() -> int {
   e
 }
 
-(x1: a1, ..., xn: an)[y1: b1 := d1, ..., ym: bm := dm] =>> {
-  e
-}
-
-(x1: a1, ..., xn: an) =>> {
+// `@` in front of the parameter list, `~` on a parameter; each can appear independently
+@(~x1: a1, ..., xn: an) => {
   e
 }
 
@@ -779,7 +831,7 @@ The following abbreviation is available:
 // (x1: _, ..., xn: _) => { e }
 ```
 
-The same abbreviation is available when `=>` is replaced with `=>>`.
+The same abbreviation is available when the marks are used.
 
 Type annotations inside the default-argument list can also be omitted when they can be inferred. For example,
 
@@ -816,96 +868,12 @@ For more on layers, please see the section on [box](#box), [letbox](#letbox), an
 
 Anonymous functions are compiled into three-word closures. For more, please see [On Executing Types](./on-executing-types.md#advanced-function-types).
 
-When `=>>` is used, the closure uses destination-passing style when applied. The same destination-passing scheme is used for `->>` as well. The source-level calling syntax remains the usual one, but the caller passes the result destination to the callee.
+A call site carries the same marks as the definition:
 
-This is useful when combined with malloc-free canceling. For example, if a function returns an ADT value using the ordinary arrow `->`, then the function itself has to allocate that result. With `->>`, the allocation choice moves to the caller, so temporary heap allocations can often be removed.
+- `@` in front of the parameter list means that the caller passes the place the result is written into (destination-passing style).
+- `~` on a parameter means that the caller passes the place that argument is read from (source-passing style).
 
-For example, consider the following definitions:
-
-```neut
-define foo(x: int) ->> either(int, bool) {
-  if eq-int(x, 0) {
-    Left(42)
-  } else {
-    Right(True)
-  }
-}
-
-define use-foo() -> unit {
-  match foo(10) {
-  | Left(x) =>
-    cont1
-  | Right(y) =>
-    cont2
-  }
-}
-```
-
-These behave roughly as follows after compilation:
-
-```neut
-// pseudocode
-define foo(dest: pointer, x: int) -> void {
-  if eq-int(x, 0) {
-    let tmp = malloc(..);
-    // initialize `tmp := Left(42)`
-    copy(dest, tmp);
-    free(tmp)
-  } else {
-    let tmp = malloc(..);
-    // initialize `tmp := Right(True)`
-    copy(dest, tmp);
-    free(tmp)
-  }
-}
-
-define use-foo() -> unit {
-  let buf = malloc(..);
-  foo(buf, 10);
-  match tag(buf) {
-  | 0 =>
-    let x = extract-from-left(buf);
-    free(buf);
-    cont1
-  | _ =>
-    let y = extract-from-right(buf);
-    free(buf);
-    cont2
-  }
-}
-```
-
-After malloc-free canceling, this can be simplified further:
-
-```neut
-// pseudocode
-define foo(dest: pointer, x: int) -> void {
-  if eq-int(x, 0) {
-    let tmp = alloca(..);
-    // initialize `tmp := Left(42)`
-    copy(dest, tmp)
-  } else {
-    let tmp = alloca(..);
-    // initialize `tmp := Right(True)`
-    copy(dest, tmp)
-  }
-}
-
-define use-foo() -> unit {
-  let buf = alloca(..);
-  foo(buf, 10);
-  match tag(buf) {
-  | 0 =>
-    let x = extract-from-left(buf);
-    cont1
-  | _ =>
-    let y = extract-from-right(buf);
-    cont2
-  }
-}
-```
-
-The size of the destination is determined by the byte size returned by `magic call-type(t, 2, null, null)`. When the byte size is non-negative, the caller prepares a destination of that many bytes. Otherwise, the caller uses a one-word temporary slot and passes that to the callee instead.
+For the evaluation steps, see [`e(e1, ..., en)`](#ee1--en).
 
 ### Type
 
@@ -916,7 +884,7 @@ The size of the destination is determined by the byte size returned by `magic ca
 
 ```
 
-Replacing `=>` with `=>>` changes the resulting type from `-> u` to `->> u`.
+The marks appear in the resulting function type: `@` on the parameter list prefixes the type with `@`, and `~` on a parameter stays on that parameter.
 
 When default arguments are present, the resulting type additionally contains the bracketed default-argument part, and those binders are also available in the body.
 
@@ -926,7 +894,7 @@ When default arguments are present, the resulting type additionally contains the
 
 ## `define f(x1: a1, ..., xn: an) -> c { e }`
 
-`define` (at the term-level) can be used to create a function with possible recursion. Replacing `->` with `->>` yields a destination-passing function. As with anonymous functions, you can insert a default-argument list between the ordinary parameter list and the arrow.
+`define` (at the term-level) can be used to create a function with possible recursion.
 
 ### Example
 
@@ -957,11 +925,8 @@ define name<x1: a1, ..., xn: an>(y1: b1, ..., ym: bm)[z1: c1 := e1, ..., zk: ck 
   e
 }
 
-define name<x1: a1, ..., xn: an>(y1: b1, ..., ym: bm) ->> c {
-  e
-}
-
-define name<x1: a1, ..., xn: an>(y1: b1, ..., ym: bm)[z1: c1 := e1, ..., zk: ck := ek] ->> c {
+// `@` between the name and the parameter list, `~` on a parameter; each can appear independently
+define name@<x1: a1, ..., xn: an>(~y1: b1, ..., ym: bm) -> c {
   e
 }
 ```
@@ -981,7 +946,7 @@ define name<a1, ..., an>(y1: b1, ..., ym: bm) -> c {e}
 // define name<a1: _, ..., an: _>(y1: b1, ..., ym: bm) -> c {e}
 ```
 
-The same abbreviations are available when `->` is replaced with `->>`.
+The same abbreviations are available when the marks are used.
 
 Type annotations inside the default-argument list can be omitted when they can be inferred, as in `define add(x: int)[step := 1] -> int { add-int(x, step) }`.
 
@@ -1033,7 +998,7 @@ define use-define() -> int {
 }
 ```
 
-When `->>` is used, the lifted function and the resulting closure use destination-passing style. The function is still called as usual. For the details of this behavior, please see the section on [anonymous functions](#x1-a1--xn-an---e-).
+The calling-convention marks behave as they do for [anonymous functions](#x1-a1--xn-an---e-): `@` between the name and the parameter list makes the function use destination-passing style, and `~` on a parameter makes that parameter source-passing. For the evaluation steps, see [`e(e1, ..., en)`](#ee1--en).
 
 ### Type
 
@@ -1043,17 +1008,7 @@ When `->>` is used, the lifted function and the resulting closure use destinatio
 Γ ⊢ define f(x1: a1, ..., xn: an) -> t {e}: (x1: a1, ..., xn: an) -> t
 ```
 
-Replacing `->` with `->>` changes the resulting type from:
-
-```neut
-(x1: a1, ..., xn: an) -> t
-```
-
-to:
-
-```neut
-(x1: a1, ..., xn: an) ->> t
-```
+The marks appear in the resulting type: putting `@` in front of the parameter list turns it into `@(x1: a1, ..., xn: an) -> t`, and `~` on a parameter stays on that parameter, as in `(~x1: a1, ..., xn: an) -> t`.
 
 When default arguments are present, the resulting type additionally contains the bracketed default-argument part.
 
@@ -1063,7 +1018,7 @@ When default arguments are present, the resulting type additionally contains the
 
 ## `inline f(x1: a1, ..., xn: an) -> c { e }`
 
-`inline` (at the term-level) can be used to create an inline function. Replacing `->` with `->>` yields a destination-passing inline function. The same default-argument syntax as `define` is available here as well.
+`inline` (at the term-level) can be used to create an inline function. It takes the same calling-convention marks as a term-level `define`. The same default-argument syntax as `define` is available here as well.
 
 ### Example
 
@@ -1090,11 +1045,8 @@ inline name<x1: a1, ..., xn: an>(y1: b1, ..., ym: bm)[z1: c1 := e1, ..., zk: ck 
   e
 }
 
-inline name<x1: a1, ..., xn: an>(y1: b1, ..., ym: bm) ->> c {
-  e
-}
-
-inline name<x1: a1, ..., xn: an>(y1: b1, ..., ym: bm)[z1: c1 := e1, ..., zk: ck := ek] ->> c {
+// `@` between the name and the parameter list, `~` on a parameter; each can appear independently
+inline name@<x1: a1, ..., xn: an>(~y1: b1, ..., ym: bm) -> c {
   e
 }
 ```
@@ -1114,7 +1066,7 @@ inline name<a1, ..., an>(y1: b1, ..., ym: bm) -> c {e}
 // inline name<a1: _, ..., an: _>(y1: b1, ..., ym: bm) -> c {e}
 ```
 
-The same abbreviations are available when `->` is replaced with `->>`.
+The same abbreviations are available when the marks are used.
 
 You can also insert a default-argument list between the ordinary parameter list and the arrow, as in:
 
@@ -1128,7 +1080,7 @@ If a term-level `inline` is at layer `n`, then any free variable `x` in it must 
 
 ### Semantics
 
-A term-level `inline` is the same as a term-level `define`, except that the resulting function is always expanded at compile time. When `->>` is used, the inlined function uses destination-passing style. For the details of this behavior, please see the section on [anonymous functions](#x1-a1--xn-an---e-).
+A term-level `inline` is the same as a term-level `define`, except that the resulting function is always expanded at compile time. The calling-convention marks behave as they do for [anonymous functions](#x1-a1--xn-an---e-).
 
 ### Type
 
@@ -1138,17 +1090,7 @@ A term-level `inline` is the same as a term-level `define`, except that the resu
 Γ ⊢ inline f(x1: a1, ..., xn: an) -> t {e}: (x1: a1, ..., xn: an) -> t
 ```
 
-Replacing `->` with `->>` changes the resulting type from:
-
-```neut
-(x1: a1, ..., xn: an) -> t
-```
-
-to:
-
-```neut
-(x1: a1, ..., xn: an) ->> t
-```
+The marks appear in the resulting type, exactly as with a term-level `define`.
 
 When default arguments are present, the resulting type additionally contains the bracketed default-argument part.
 
@@ -1244,6 +1186,8 @@ The same as a term-level `define-meta`, except that the body is expanded at comp
 
 Given a function `e` and arguments `e1, ..., en`, we can write `e(e1, ..., en)` to denote a function application. If `e` has default arguments, the application may be followed by a bracketed list of overrides.
 
+An application also carries the calling convention of `e`. A call to a function whose type has `@` is written `e@(e1, ..., en)`, and an argument for a parameter that has `~` is written `~ei`. Both marks are determined by the type of `e`.
+
 ### Example
 
 ```neut
@@ -1255,6 +1199,11 @@ define use-function() -> unit {
   let _ = baz("hello", True);
   //      ^^^^^^^^^^^^^^^^^^
   Unit
+}
+
+// `scale` has `@`, and the parameter of `weigh` has `~`
+define use-marks() -> int {
+  weigh(~scale@(Item(5, 3), 2))
 }
 ```
 
@@ -1280,6 +1229,31 @@ If `e` has default arguments, you can override some or all of them by writing
 
 after the ordinary argument list. These overrides are matched by key.
 
+If the type of `e` has `@`, the mark stands between `e` and the argument list, in front of the implicit arguments. It belongs to an argument list, so a curried call marks the list it applies to:
+
+```neut
+e@(e1, ..., en)
+
+e@<t1, ..., tm>(e1, ..., en)
+
+e(x)@(y)
+```
+
+If a parameter of `e` has `~`, the corresponding argument carries `~` as well:
+
+```neut
+e(e1, ..., ~ei, ..., en)
+```
+
+Any expression can be supplied. In a call by key, the mark precedes the key:
+
+```neut
+e{~x := e1, y := e2}
+e{~x}   // pun: the same as `~x := x`
+```
+
+A single call can carry both marks, as in `f@(~e1, e2)`.
+
 ### Semantics
 
 Given a function application `e(e1, ..., en)`, if `e` has an ordinary function type, it is evaluated as follows:
@@ -1296,14 +1270,23 @@ If `e` has a noetic function type such as `&(a1, ..., an) -> b`, it is evaluated
 3. Copies all the free variables captured by `e`
 4. Executes the function body using those copies and `v1`, ..., `vn`
 
-If `e` has a destination-passing function type, it is evaluated as follows:
+If the call is written `e@(e1, ..., en)`, it is evaluated as follows:
 
 1. Prepares the result destination
 2. Computes `e`, `e1`, ..., `en` into values
 3. Performs the corresponding call above, passing the destination as an extra argument
 4. Reads the result from that destination
 
-When the byte size of the result type is non-negative, the destination has that many bytes. Otherwise, the caller uses a one-word temporary slot that stores a pointer to the result.
+The destination has the byte size of the result type.
+
+An argument written `~ei` is evaluated as follows:
+
+1. Computes `ei` into a value
+2. Passes that value, keeping ownership of its storage
+3. Allocates a cell of the size of the parameter type at the entry of the callee and copies that storage into it
+4. Releases the storage after the call returns
+
+The parameter is then an ordinary value inside the callee. The size of the storage is obtained by executing the parameter type, as with a destination. Since work remains after the call, a call that supplies a `~` argument is never a tail call.
 
 When a default argument is omitted, its default expression is evaluated at the time of the call. In particular, each call that omits the argument computes a fresh value rather than reusing one from the function definition.
 
@@ -1319,11 +1302,17 @@ The `?Mi`s in the above rule are metavariables that must be inferred by the comp
 
 The same rule also applies when `e` has type:
 
-- `<α1: a1, .., αn: an>(y1: b1, .., ym: bm) ->> c`
+- `@<α1: a1, .., αn: an>(y1: b1, .., ym: bm) -> c`
 - `&<α1: a1, .., αn: an>(y1: b1, .., ym: bm) -> c`
-- `&<α1: a1, .., αn: an>(y1: b1, .., ym: bm) ->> c`
+- `&@<α1: a1, .., αn: an>(y1: b1, .., ym: bm) -> c`
 
 When `e` has a default-argument part such as `[z1: c1, .., zk: ck]`, the application may additionally provide `[zi := di]`, and omitted keys use the defaults declared by the function.
+
+### Note
+
+- A mark that the type of `e` doesn't ask for is rejected, and a missing mark is rejected as well.
+- The result type of a `@` function and the type of a `~` parameter must be a type that can be stored inline, which is the same condition that a `~` field of a `data` must satisfy. Please see [`data` in Statements](./statements.md#data).
+- `~` cannot be attached to the pseudo-field `..` of a record update, since it names no parameter.
 
 ## `e{x1 := e1, ..., xn := en}`
 
@@ -1652,6 +1641,8 @@ match e1, ..., en {
 ```
 
 The scrutinees `e1, ..., en` are restricted terms. At the top level of a scrutinee, grouped terms like `{e}` and key-argument applications like `foo{...}` are not accepted. Bind such a term with `let` before matching on it.
+
+A pattern that binds a `~` field of a constructor carries the same `~`, as in `| Entity(~p, q) =>`. The mark belongs to the field, so `case`, `tie` and `let` write it the same way, and a wildcard carries it too, as in `| Entity(~_, q) =>`.
 
 ### Semantics
 
@@ -2160,9 +2151,9 @@ The semantics of `case` is the same as `match`, except that `case` doesn't consu
 ### Type
 
 ```neut
-Γ ⊢ e1: a1
+Γ ⊢ e1: &a1
 ...
-Γ ⊢ en: an
+Γ ⊢ en: &an
 
 Γ ⊢ patterns_1 ⇐ (a1, ..., an) ⇒ Δ_1
 Γ, &Δ_1 ⊢ body-1: b
@@ -2748,8 +2739,6 @@ magic external func-name(e1, ..., en)(vararg-1: lowtype-1, ..., vararg-n: lowtyp
 
 magic call-type(some-type, switch, arg, extra)
 
-magic assert-mixable(some-type)
-
 magic inspect-type(some-type)
 
 magic eq-type(type-1, type-2)
@@ -2783,7 +2772,6 @@ You can also use `int` and `float` as a lowtype. These are just syntactic sugar 
 
 The forms
 
-- `magic assert-mixable(some-type)`
 - `magic inspect-type(some-type)`
 - `magic eq-type(type-1, type-2)`
 - `magic show-type(some-type)`
@@ -2852,12 +2840,6 @@ These forms can only be used at stage 1 or above. The compiler reports an error 
 `magic call-type(some-type, 2, null, null)` returns the fixed-size placed representation size in bytes, or a negative value when the type has no fixed-size placed representation.
 
 The type of the result of `call-type` is inferred from the context.
-
-### Semantics (assert-mixable)
-
-`magic assert-mixable(some-type)` checks that `some-type` can be used as a `mix` field in a `data` declaration. If `some-type` cannot be mixed, the compiler reports an error. This can be used, for example, to implement unboxed vectors.
-
-See [Memory Representation in Statements](./statements.md#memory-representation) for the representation of mixed fields.
 
 ### Semantics (inspect-type)
 
@@ -2991,11 +2973,6 @@ Since clauses are represented as an ordinary `list`, variables used in multiple 
 Γ ⊢ extra: r
 ------------------------------------------------------
 Γ ⊢ magic call-type(t, switch, arg, extra): u
-
-
-Γ ⊢ t: type
-------------------------------------------------------
-Γ ⊢ magic assert-mixable(t): unit
 
 
 Γ ⊢ t: type

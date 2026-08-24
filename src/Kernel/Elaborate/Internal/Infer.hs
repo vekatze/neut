@@ -14,7 +14,9 @@ import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.HashMap.Strict qualified as Map
+import Data.IORef
 import Data.IntMap qualified as IntMap
+import Data.IntSet qualified as IntSet
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Gensym.Gensym qualified as Gensym
@@ -38,6 +40,9 @@ import Language.Common.Attr.Lam qualified as AttrL
 import Language.Common.Attr.VarGlobal qualified as AttrVG
 import Language.Common.BaseName qualified as BN
 import Language.Common.Binder
+import Language.Common.CallConv qualified as CC
+import Language.Common.CallConvSpec qualified as CCS
+import Language.Common.CallSite (IsDestCall, IsSourceArg)
 import Language.Common.CreateSymbol qualified as Gensym
 import Language.Common.DataInfo qualified as DI
 import Language.Common.DecisionTree qualified as DT
@@ -46,7 +51,7 @@ import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.ForeignCodType qualified as FCT
 import Language.Common.Geist qualified as G
 import Language.Common.HoleID qualified as HID
-import Language.Common.Ident (isHole)
+import Language.Common.Ident (Ident, isHole)
 import Language.Common.Ident.Reify qualified as Ident
 import Language.Common.ImpArgs qualified as ImpArgs
 import Language.Common.LamKind qualified as LK
@@ -56,7 +61,6 @@ import Language.Common.LowMagic qualified as LM
 import Language.Common.Magic qualified as M
 import Language.Common.ModuleID qualified as MID
 import Language.Common.NominalTag (NominalTag)
-import Language.Common.PiElimKind qualified as PEK
 import Language.Common.PiKind qualified as PK
 import Language.Common.PrimOp
 import Language.Common.PrimType qualified as PT
@@ -96,6 +100,8 @@ inferStmt h stmt =
           checkIsCodeType h''' m codType'
         _ ->
           return ()
+      when (SK.isDestPassingStmtKind stmtKind) $ do
+        requireSized h Destination m codType'
       liftIO $ insertType h''' x $ m :< WT.Pi (PK.fromStmtKind stmtKind isConstLike) impArgs' expArgs' defaultBinders codType'
       stmtKind' <- inferStmtKindTerm h''' stmtKind
       (e', te) <- infer h''' e
@@ -158,6 +164,7 @@ inferDefineMeta h defineMeta = do
         ensureImplicitArityCorrectness h (m :< WT.VarGlobal (AttrVG.new AN.zero) (weakDefineMetaTarget defineMeta)) (length impParams) (length targetArgs')
         targetArgsWithKinds <- mapM (inferTypeWithKind h) targetArgs'
         subType <- inferArgsTypes h IntMap.empty m targetArgsWithKinds impParams
+        requireSizedForInstantiation h m impParams targetArgs'
         (expParams', subType') <- substTypeBinder h subType expParams
         cod' <- liftIO $ Subst.substType (substHandle h) subType' cod
         return (expParams', cod')
@@ -186,6 +193,7 @@ inferGeist h tag (G.Geist {..}) = do
   let defaultBinders = map fst defaultArgs'
   cod' <- inferType h''' cod
   let kind = PK.fromNominalTag tag isConstLike
+  requireSizedForDestination h kind loc cod'
   liftIO $ insertType h''' name $ loc :< WT.Pi kind impArgs' expArgs' defaultBinders cod'
   return $ G.Geist {impArgs = impArgs', defaultArgs = defaultArgs', expArgs = expArgs', cod = cod', ..}
 
@@ -284,12 +292,12 @@ constrainResourceHandlers h m unitType discarderType copierType = do
   intType <- getIntType (platformHandle h) m
   let pointerType = m :< WT.PrimType PT.Pointer
   let discardParams =
-        [ (m, VK.Normal, valueForDiscard, pointerType),
-          (m, VK.Normal, shouldRelease, intType)
+        [ (m, VK.normal, valueForDiscard, pointerType),
+          (m, VK.normal, shouldRelease, intType)
         ]
   let copyParams =
-        [ (m, VK.Normal, valueForCopy, pointerType),
-          (m, VK.Normal, dest, pointerType)
+        [ (m, VK.normal, valueForCopy, pointerType),
+          (m, VK.normal, dest, pointerType)
         ]
   let expectedDiscarder = m :< WT.Pi PK.normal [] discardParams [] unitType
   let expectedCopier = m :< WT.Pi PK.normal [] copyParams [] pointerType
@@ -325,6 +333,7 @@ infer h term =
                 if isDestPassing
                   then PK.DestPass False
                   else PK.normal
+          requireSizedForDestination h piKind mx codType'
           let piType = m :< WT.Pi piKind impArgs' expArgs' defaultBinders codType'
           liftIO $ WeakType.insert (weakTypeHandle h) x piType
           (e', tBody) <- infer h''' e
@@ -343,14 +352,16 @@ infer h term =
                 if isDestPassing
                   then PK.DestPass False
                   else PK.normal
+          requireSizedForDestination h piKind m codType'
           let term' = m :< WT.PiIntro (attr {AttrL.lamKind = LK.Normal name isDestPassing codType'}) impArgs' expArgs' defaultArgs' e'
           return (term', m :< WT.Pi piKind impArgs' expArgs' defaultBinders t')
-    m :< WT.PiElim _ e impArgs expArgs defaultArgs -> do
+    m :< WT.PiElim spec e impArgs expArgs defaultArgs -> do
       etl <- infer h e
       impArgs' <- ImpArgs.traverseImpArgs (inferType h) impArgs
       defaultArgs' <- DefaultArgs.traverseDefaultArgs (infer h) defaultArgs
       expArgs' <- mapM (infer h) expArgs
-      inferPiElim h m etl impArgs' defaultArgs' expArgs'
+      let (isDestCall, sourceArgs) = CCS.marks (length expArgs) spec
+      inferPiElim h m etl impArgs' defaultArgs' expArgs' sourceArgs isDestCall
     m :< WT.PiElimExact e -> do
       (e', t) <- infer h e
       t' <- resolveType h t
@@ -370,8 +381,9 @@ infer h term =
                   _ ->
                     False
           let attr = AttrL.Attr {lamKind = LK.Normal Nothing isDestPassing codType', identity = lamID}
-          let piElimKind = PEK.fromPiKind piKind codType'
-          infer h $ m :< WT.PiIntro attr [] expArgs' [] (m :< WT.PiElim piElimKind e' (ImpArgs.FullySpecified impArgs') expArgs'' (DefaultArgs.ByKey []))
+          let sourceArgs = map (\(_, k, _, _) -> VK.isSource k) expArgs'
+          let spec = CCS.AsMarked isDestPassing sourceArgs
+          infer h $ m :< WT.PiIntro attr [] expArgs' [] (m :< WT.PiElim spec e' (ImpArgs.FullySpecified impArgs') expArgs'' (DefaultArgs.ByKey []))
         _ ->
           raiseError m $ "Expected a function type, but got: " <> toTextType t'
     m :< WT.DataIntro attr@(AttrDI.Attr {..}) consName dataArgs consArgs -> do
@@ -416,7 +428,7 @@ infer h term =
       let tau = mx :< WT.Tau
       liftIO $ Constraint.insert (constraintHandle h) tau t1'
       liftIO $ WeakType.insert (weakTypeHandle h) x tau
-      let h' = extendHandle (mx, VK.Normal, x, tau) h
+      let h' = extendHandle (mx, VK.normal, x, tau) h
       (e2', t2') <- infer h' e2
       return (m :< WT.TauElim (mx, x) e1' e2', t2')
     m :< WT.Let (mx, k, x, t) e1 e2 -> do
@@ -554,10 +566,6 @@ infer h term =
         M.ShowType typeExpr -> do
           typeExpr' <- inferType h typeExpr
           return (m :< WT.Magic (M.WeakMagic $ M.ShowType typeExpr'), m :< WT.PrimType PT.Text)
-        M.AssertMixable moduleID unitTypeExpr typeExpr -> do
-          unitTypeExpr' <- inferType h unitTypeExpr
-          typeExpr' <- inferType h typeExpr
-          return (m :< WT.Magic (M.WeakMagic $ M.AssertMixable moduleID unitTypeExpr' typeExpr'), unitTypeExpr')
         M.TextCons rune text -> do
           (rune', runeType) <- infer h rune
           (text', textType) <- infer h text
@@ -655,6 +663,7 @@ inferTypeWithKind h ty =
       (expArgs', h'') <- inferBinder' h' expArgs
       (defaultArgs', h''') <- inferBinder' h'' defaultArgs
       t' <- inferType h''' t
+      requireSizedForDestination h piKind m t'
       return (m :< WT.Pi piKind impArgs' expArgs' defaultArgs' t', m :< WT.Tau)
     m :< WT.Data attr name es -> do
       (es', _) <- mapAndUnzipM (inferTypeWithKind h) es
@@ -694,6 +703,8 @@ inferImpBinder h binderList =
       return ([], h)
     (mx, k, x, t) : rest -> do
       t' <- inferType h t
+      when (VK.isSized k) $ do
+        declareSized h mx x t'
       liftIO $ WeakType.insert (weakTypeHandle h) x t'
       let h' = extendHandle (mx, k, x, t') h
       (rest', h'') <- inferImpBinder h' rest
@@ -719,6 +730,8 @@ inferBinder' h binder =
       return ([], h)
     (mx, k, x, t) : xts -> do
       t' <- inferType h t
+      when (VK.isSource k) $ do
+        requireSized h SourceSlot mx t'
       liftIO $ WeakType.insert (weakTypeHandle h) x t'
       (xts', h') <- inferBinder' h xts
       return ((mx, k, x, t') : xts', h')
@@ -797,14 +810,18 @@ inferPiElim ::
   ImpArgs.ImpArgs WT.WeakType ->
   DefaultArgs.DefaultArgs (WT.WeakTerm, WT.WeakType) ->
   [(WT.WeakTerm, WT.WeakType)] ->
+  [IsSourceArg] ->
+  IsDestCall ->
   App (WT.WeakTerm, WT.WeakType)
-inferPiElim h m (e, t) impArgs defaultArgsSpec expArgs = do
+inferPiElim h m (e, t) impArgs defaultArgsSpec expArgs sourceArgs isDestCall = do
   t' <- resolveType h t
   case t' of
     _ :< WT.Pi piKind impArgsParam expParams defaultParams cod -> do
-      inferCore (PEK.fromPiKind piKind) impArgsParam expParams defaultParams cod
-    _ :< WT.BoxNoema (_ :< WT.Pi piKind impArgsParam expParams defaultParams cod) ->
-      inferCore (PEK.fromNoeticPiKind piKind) impArgsParam expParams defaultParams cod
+      ensureDestMarkAgreement m piKind isDestCall
+      inferCore (CC.fromPiKind piKind) impArgsParam expParams defaultParams cod
+    _ :< WT.BoxNoema (_ :< WT.Pi piKind impArgsParam expParams defaultParams cod) -> do
+      ensureDestMarkAgreement m piKind isDestCall
+      inferCore (CC.fromNoeticPiKind piKind) impArgsParam expParams defaultParams cod
     _ ->
       raiseError m $ "Expected a function type, but got: " <> toTextType t'
   where
@@ -818,6 +835,18 @@ inferPiElim h m (e, t) impArgs defaultArgsSpec expArgs = do
           mapM (inferTypeWithKind h) impArgs'
       subType <- inferArgsTypes h IntMap.empty m impArgsTyped impArgsParam
       let impArgs' = map fst impArgsTyped
+      requireSizedForInstantiation h m impArgsParam impArgs'
+      let hasSourceSlot = any (\(_, k, _, _) -> VK.isSource k) expParams
+      when (hasSourceSlot || or sourceArgs) $
+        forM_ (zip3 expParams sourceArgs expArgs) $ \(param, isSourceArg, (argTerm, _)) ->
+          ensureSourceMarkAgreement param isSourceArg argTerm
+      argumentConventions <-
+        if hasSourceSlot
+          then do
+            (expParams', _) <- substTypeBinder h subType expParams
+            return $ map sourceArgumentConvention expParams'
+          else
+            return []
       let expArgs' = map fst expArgs
       _ :< cod' <- inferArgsTerms h subType m expArgs expParams cod
       defaultArgsOverrides <- resolveDefaultOverrides e defaultParams defaultArgsSpec
@@ -830,8 +859,42 @@ inferPiElim h m (e, t) impArgs defaultArgsSpec expArgs = do
           Nothing ->
             return ()
       let defaultArgsAligned = DefaultArgs.Aligned (map (fmap fst) defaultArgsOverrides)
-      let kind = mkKind (m :< cod')
-      return (m :< WT.PiElim kind e (ImpArgs.FullySpecified impArgs') expArgs' defaultArgsAligned, m :< cod')
+      let conv = CC.withArguments argumentConventions $ mkKind (m :< cod')
+      return (m :< WT.PiElim (CCS.Inferred conv) e (ImpArgs.FullySpecified impArgs') expArgs' defaultArgsAligned, m :< cod')
+
+sourceArgumentConvention :: BinderF WT.WeakType -> CC.Argument WT.WeakType
+sourceArgumentConvention (_, k, _, slotType) =
+  if VK.isSource k
+    then CC.Source slotType
+    else CC.Plain
+
+ensureDestMarkAgreement :: Hint -> PK.PiKind -> IsDestCall -> App ()
+ensureDestMarkAgreement m piKind isDestCall = do
+  let isDestPassing = case piKind of
+        PK.DestPass _ ->
+          True
+        _ ->
+          False
+  case (isDestPassing, isDestCall) of
+    (True, False) ->
+      raiseError m "This function passes its result through a destination, so its argument list must be introduced with `@`"
+    (False, True) ->
+      raiseError m "This function returns its result, so its argument list must not be introduced with `@`"
+    _ ->
+      return ()
+
+ensureSourceMarkAgreement :: BinderF WT.WeakType -> IsSourceArg -> WT.WeakTerm -> App ()
+ensureSourceMarkAgreement (_, k, x, _) isSourceArg (mArg :< _) = do
+  let name = if isHole x then "_" else Ident.toText x
+  case (VK.isSource k, isSourceArg) of
+    (True, False) ->
+      raiseError mArg $
+        "The parameter `" <> name <> "` is a source-passing slot, so this argument must be marked with `~`"
+    (False, True) ->
+      raiseError mArg $
+        "The parameter `" <> name <> "` is an ordinary parameter, so this argument must not be marked with `~`"
+    _ ->
+      return ()
 
 createImpArgFromParam ::
   Handle ->
@@ -936,13 +999,13 @@ inferClause h cursorType decisionCase =
       let isDestPassing = False
       let attr = AttrVG.Attr {..}
       let dataArgs' = ImpArgs.FullySpecified $ map fst typedDataArgs'
-      consTerm@(_, consType) <- infer h $ m :< WT.PiElim PEK.Normal (m :< WT.VarGlobal attr consDD) dataArgs' [] (DefaultArgs.ByKey [])
+      consTerm@(_, consType) <- infer h $ m :< WT.PiElim (CCS.AsMarked False []) (m :< WT.VarGlobal attr consDD) dataArgs' [] (DefaultArgs.ByKey [])
       if isConstLike
         then liftIO $ Constraint.insert (constraintHandle h) cursorType consType
         else do
           let impConsArgs = ImpArgs.FullySpecified []
           let expConsArgs = map (\(mx, _, x, t) -> (mx :< WT.Var x, t)) consArgs'
-          (_, tPat) <- inferPiElim h m consTerm impConsArgs (DefaultArgs.ByKey []) expConsArgs
+          (_, tPat) <- inferPiElim h m consTerm impConsArgs (DefaultArgs.ByKey []) expConsArgs [] False
           liftIO $ Constraint.insert (constraintHandle h) cursorType tPat
       (cont', tCont) <- inferDecisionTree m h cont
       return
@@ -1091,7 +1154,7 @@ primOpToType h m op = do
   let (domList, cod) = getTypeInfo op
   xs <- mapM (const (Gensym.newIdentFromText (gensymHandle h) "_")) domList
   let domList' = map (\pt -> m :< WT.PrimType pt) domList
-  let xts = zipWith (\x t -> (m, VK.Normal, x, t)) xs domList'
+  let xts = zipWith (\x t -> (m, VK.normal, x, t)) xs domList'
   let cod' = m :< WT.PrimType cod
   return $ m :< WT.Pi PK.normal [] xts [] cod'
 
@@ -1099,6 +1162,29 @@ checkIsCodeType :: Handle -> Hint -> WT.WeakType -> App ()
 checkIsCodeType h m t = do
   tInner <- liftIO $ newTypeHole h m (varEnv h)
   liftIO $ Constraint.insert (constraintHandle h) (m :< WT.Code tInner) t
+
+declareSized :: Handle -> Hint -> Ident -> WT.WeakType -> App ()
+declareSized h m x kind = do
+  liftIO $ Constraint.insert (constraintHandle h) (m :< WT.Tau) kind
+  liftIO $ modifyIORef' (sizedTypeVars h) $ IntSet.insert (Ident.toInt x)
+
+requireSized :: Handle -> SizedSite -> Hint -> WT.WeakType -> App ()
+requireSized h site m t = do
+  liftIO $ modifyIORef' (sizedObligations h) (SizedObligation site m t :)
+
+requireSizedForDestination :: Handle -> PK.PiKind -> Hint -> WT.WeakType -> App ()
+requireSizedForDestination h piKind m cod =
+  case piKind of
+    PK.DestPass _ ->
+      requireSized h Destination m cod
+    _ ->
+      return ()
+
+requireSizedForInstantiation :: Handle -> Hint -> [BinderF WT.WeakType] -> [WT.WeakType] -> App ()
+requireSizedForInstantiation h m params args =
+  forM_ (zip params args) $ \((_, k, _, _), t) ->
+    when (VK.isSized k) $ do
+      requireSized h Instantiation m t
 
 substTypeBinder :: Handle -> Subst.Subst -> [BinderF WT.WeakType] -> App ([BinderF WT.WeakType], Subst.Subst)
 substTypeBinder h sub mxts = do

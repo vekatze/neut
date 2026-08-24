@@ -78,7 +78,7 @@ define main() -> unit {
   let zs = Cons(30, Cons(20, ys));
   let !zs = update(zs, 1, 20000);
   let _ = suffixes(zs);
-  let calc on !zs, !xs = {
+  let calc on zs, xs = {
     let b = is-empty(zs);
     let _ = is-empty(xs);
     let _ = head(zs);

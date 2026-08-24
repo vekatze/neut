@@ -58,39 +58,26 @@ emitLowComp h lowComp =
           return $ emitOp $ unwordsL ["ret", retType h, emitValue d]
         Just joinLabel ->
           return $ emitOp $ unwordsL ["br", "label", emitIdentAsLabelVar joinLabel]
-    LC.ReturnVoid -> do
-      return $ emitOp "ret void"
     LC.Phi _ -> do
       case goalLabel h of
         Nothing ->
           error $ "compiler bug: no goal label is found for the block `" <> show (currentLabel h) <> "`"
         Just joinLabel ->
           return $ emitOp $ unwordsL ["br", "label", emitIdentAsLabelVar joinLabel]
-    LC.TailCall codType f args -> do
-      case codType of
-        LT.Void -> do
-          let op =
-                emitOp $
-                  unwordsL
-                    [ "tail call fastcc",
-                      emitInternalReturnType codType,
-                      emitValue f <> showInternalArgs args
-                    ]
-          ret <- emitLowComp (h {goalLabel = Nothing}) LC.ReturnVoid
-          return $ op <> ret
-        _ -> do
-          tmp <- Gensym.newIdentFromText (gensymHandle h) "tmp"
-          let op =
-                emitOp $
-                  unwordsL
-                    [ emitValue (LC.VarLocal tmp),
-                      "=",
-                      "tail call fastcc",
-                      emitInternalReturnType codType,
-                      emitValue f <> showInternalArgs args
-                    ]
-          ret <- emitLowComp (h {goalLabel = Nothing}) $ LC.Return (LC.VarLocal tmp)
-          return $ op <> ret
+    LC.TailCall mustTail codType f args -> do
+      let tailMarker = if mustTail then "musttail call fastcc" else "tail call fastcc"
+      tmp <- Gensym.newIdentFromText (gensymHandle h) "tmp"
+      let op =
+            emitOp $
+              unwordsL
+                [ emitValue (LC.VarLocal tmp),
+                  "=",
+                  tailMarker,
+                  emitInternalReturnType codType,
+                  emitValue f <> showInternalArgs args
+                ]
+      ret <- emitLowComp (h {goalLabel = Nothing}) $ LC.Return (LC.VarLocal tmp)
+      return $ op <> ret
     LC.Switch d lowType defaultBranch branchList phiTargets cont -> do
       switchID <- Gensym.newIdentFromText (gensymHandle h) "switch"
       labelList <- mapM (newSwitchCaseLabel (gensymHandle h) switchID) [0 .. length branchList - 1]

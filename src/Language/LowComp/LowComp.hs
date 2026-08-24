@@ -61,15 +61,17 @@ instance Show Value where
 type Label =
   Ident
 
+type MustTail =
+  Bool
+
 data Comp
   = Return Value -- UpIntro
-  | ReturnVoid -- UpIntroVoid
   | Let Ident Op Comp -- UpElim
   -- `CompCont` is `CompLet` that discards the result of Op. This `CompCont` is required separately
   -- since LLVM doesn't allow us to write something like `%foo = store i32 3, i32* %ptr`.
   | Cont Op Comp
   | Switch Value LowType Comp [(Integer, Comp)] [Ident] Comp
-  | TailCall LowType Value [(LowType, Value)] -- tail call
+  | TailCall MustTail LowType Value [(LowType, Value)]
   | Unreachable -- for empty case analysis
   | Phi [Value]
   deriving (Show)
@@ -83,6 +85,9 @@ type FreeID =
 type StackSlotID =
   Int
 
+type IsPure =
+  Bool
+
 data StackAllocInfo = StackAllocInfo
   { stackSlotID :: StackSlotID,
     stackElemType :: LowType,
@@ -92,7 +97,7 @@ data StackAllocInfo = StackAllocInfo
   deriving (Show)
 
 data Op
-  = Call LowType Value [(LowType, Value)] -- non-tail call
+  = Call IsPure LowType Value [(LowType, Value)]
   | MagicCall LowType Value [(LowType, Value)] -- non-tail call (external)
   | GetElementPtr
       (Value, LowType) -- (base pointer, the type of base pointer)
@@ -144,8 +149,6 @@ getPhiList comp =
       return vs
     Return {} ->
       Nothing
-    ReturnVoid ->
-      Nothing
     Let _ _ cont ->
       getPhiList cont
     Cont _ cont ->
@@ -173,8 +176,6 @@ getReturnValue comp =
   case comp of
     Return v ->
       return v
-    ReturnVoid ->
-      Nothing
     Let _ _ cont ->
       getReturnValue cont
     Cont _ cont ->

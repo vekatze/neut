@@ -3,6 +3,7 @@ module Language.Common.DataInfo
     ConsInfo (..),
     FieldHint (..),
     FieldLayout (..),
+    isFieldMixed,
     StmtConsInfo,
     fieldLayoutSlotCount,
     headerSlotCount,
@@ -40,6 +41,14 @@ data FieldHint
   deriving (Show, Eq, Generic)
 
 instance Binary FieldHint
+
+isFieldMixed :: FieldHint -> Bool
+isFieldMixed hint =
+  case hint of
+    FieldAuto ->
+      False
+    FieldMixed _ ->
+      True
 
 data FieldLayout
   = LayoutDirect

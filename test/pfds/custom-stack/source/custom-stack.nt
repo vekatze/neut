@@ -48,7 +48,7 @@ define main() -> unit {
     });
   let ys = C(v, xs);
   let zs = C(v, C(v, ys));
-  let calc on zs, !xs = {
+  let calc on zs, xs = {
     let _ = is-empty(zs);
     let _ = is-empty(xs);
     let h = head(zs);

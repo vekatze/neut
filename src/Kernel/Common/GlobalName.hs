@@ -10,6 +10,7 @@ where
 
 import GHC.Generics (Generic)
 import Language.Common.ArgNum
+import Language.Common.CallSite (IsSourceArg)
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.Discriminant qualified as D
 import Language.Common.IsConstLike
@@ -26,7 +27,7 @@ data GlobalName
   | PrimType PT.PrimType
   | PrimOp PrimOp
   | Data ArgNum [(DD.DefiniteDescription, (Hint, GlobalName))] IsConstLike
-  | DataIntro ArgNum ArgNum D.Discriminant IsConstLike
+  | DataIntro ArgNum ArgNum D.Discriminant IsConstLike [IsSourceArg]
   | Rule RuleKind
   | Trope
   | Namespace
@@ -43,7 +44,7 @@ getIsConstLike gn =
       isConstLike
     Data _ _ isConstLike ->
       isConstLike
-    DataIntro _ _ _ isConstLike ->
+    DataIntro _ _ _ isConstLike _ ->
       isConstLike
     Trope ->
       False
@@ -61,7 +62,7 @@ hasNoArgs gn =
       argNum == fromInt 0
     Data argNum _ _ ->
       argNum == fromInt 0
-    DataIntro dataArgNum consArgNum _ _ ->
+    DataIntro dataArgNum consArgNum _ _ _ ->
       dataArgNum == fromInt 0 && consArgNum == fromInt 0
     Rule {} ->
       False
@@ -85,8 +86,8 @@ disableConstLikeFlag gn =
       TopLevelFuncType argNum False isMacro
     Data argNum consInfo _ ->
       Data argNum consInfo False
-    DataIntro dataArgNum consArgNum discriminant False ->
-      DataIntro dataArgNum consArgNum discriminant False
+    DataIntro dataArgNum consArgNum discriminant False sourceFlags ->
+      DataIntro dataArgNum consArgNum discriminant False sourceFlags
     Trope ->
       Trope
     _ ->

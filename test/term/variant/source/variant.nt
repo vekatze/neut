@@ -404,7 +404,7 @@ define test-match() -> unit {
   let _ = with-bind-through-if(True);
   with-bind-through-when(True);
   let _ = with-bind-through-match(xs);
-  let _ on !xs = with-bind-through-case(xs);
+  let _ on xs = with-bind-through-case(xs);
   let _ = n;
   let _ = xs;
   let _: list(int) = use-struct(list-monoid());

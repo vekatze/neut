@@ -57,12 +57,14 @@ data Handle = Handle
   { elaborateHandle :: Elaborate.Handle,
     varEnv :: VarEnv,
     foundVarSetRef :: IORef (IntMap.IntMap Bool),
+    expBinderListRef :: IORef [(Hint, Ident, TM.Type)],
     mustPerformExpCheck :: Bool
   }
 
 new :: Elaborate.Handle -> IO Handle
 new elaborateHandle = do
   foundVarSetRef <- liftIO $ newIORef IntMap.empty
+  expBinderListRef <- liftIO $ newIORef []
   let mustPerformExpCheck = True
   let varEnv = IntMap.empty
   return $ Handle {..}
@@ -70,7 +72,29 @@ new elaborateHandle = do
 ensureAffinity :: Handle -> TM.Term -> App [L.Log]
 ensureAffinity h e = do
   cs <- analyze h e
-  synthesize h $ map (bimap weakenType weakenType) cs
+  logs <- synthesize h $ map (bimap weakenType weakenType) cs
+  expLogs <- checkExpBinders h
+  return $ logs ++ expLogs
+
+checkExpBinders :: Handle -> App [L.Log]
+checkExpBinders h = do
+  foundVarSet <- liftIO $ readIORef $ foundVarSetRef h
+  expBinderList <- liftIO $ readIORef $ expBinderListRef h
+  fmap concat $ forM (reverse expBinderList) $ \(m, x, t) -> do
+    if not $ IntMap.findWithDefault False (toInt x) foundVarSet
+      then return [L.newLog m L.Error $ "The variable `" <> toText x <> "` is not copied, so it must not be declared with `!`"]
+      else do
+        let weakType = weakenType t
+        copyErrorList <- simplifyAffine h S.empty (weakType, weakType)
+        if null copyErrorList
+          then return [L.newLog m L.Error $ "The variable `" <> toText x <> "` can be copied for free, so it must not be declared with `!`"]
+          else return []
+
+registerExpBinder :: Handle -> BinderF TM.Type -> App ()
+registerExpBinder h (mx, k, x, t) =
+  when (VK.isExp k) $
+    liftIO $
+      modifyIORef' (expBinderListRef h) ((mx, x, t) :)
 
 extendHandle :: BinderF TM.Type -> Handle -> Handle
 extendHandle (_, k, x, t) h = do
@@ -118,19 +142,19 @@ analyzeVar h m x = do
     then return []
     else do
       varKind <- lookupVarKind (varEnv h) m x
-      if VK.isExp varKind
-        then return []
-        else do
-          boolOrNone <- liftIO $ isExistingVar x h
-          case boolOrNone of
-            Nothing -> do
-              liftIO $ insertVar x h
-              return []
-            Just alreadyRegistered ->
-              if alreadyRegistered
+      boolOrNone <- liftIO $ isExistingVar x h
+      case boolOrNone of
+        Nothing -> do
+          liftIO $ insertVar x h
+          return []
+        Just alreadyRegistered ->
+          if alreadyRegistered
+            then return []
+            else do
+              liftIO $ insertRelevantVar x h
+              if VK.isExp varKind
                 then return []
                 else do
-                  liftIO $ insertRelevantVar x h
                   _ :< t <- lookupTypeEnv (varEnv h) m x
                   return [(m :< t, m :< t)]
 
@@ -152,7 +176,7 @@ analyze h term = do
           let piKind = if isDestPassing then PK.DestPass False else PK.normal
           let piType = m :< TM.Pi piKind impArgs expArgs (map fst defaultArgs) codType
           liftIO $ insertRelevantVar x h''
-          cs5 <- analyze (extendHandle (mx, VK.Normal, x, piType) h'') e
+          cs5 <- analyze (extendHandle (mx, VK.normal, x, piType) h'') e
           css <- forM (S.toList $ freeVarsWithHints term) $ uncurry (analyzeVar h)
           return $ cs1 ++ cs2 ++ cs3 ++ cs4 ++ cs5 ++ concat css
         LK.Normal _ _ codType -> do
@@ -176,7 +200,7 @@ analyze h term = do
       let (os, es, ts) = unzip3 oets
       cs1 <- concat <$> mapM (analyze h) es
       cs2 <- concat <$> mapM (analyzeType h) ts
-      let mots = zipWith (\o t -> (m, VK.Normal, o, t)) os ts
+      let mots = zipWith (\o t -> (m, VK.normal, o, t)) os ts
       cs3 <- analyzeDecisionTree (extendHandle' mots h) tree
       return $ cs1 ++ cs2 ++ cs3
     _ :< TM.BoxIntro _ letSeq e -> do
@@ -198,7 +222,7 @@ analyze h term = do
     _ :< TM.TauIntro ty -> do
       analyzeType h ty
     _ :< TM.TauElim _ (mx, x) e1 e2 -> do
-      let mxt = (mx, VK.Normal, x, mx :< TM.Tau)
+      let mxt = (mx, VK.normal, x, mx :< TM.Tau)
       (cs1, h') <- analyzeLet h [(mxt, e1)]
       cs2 <- analyze h' e2
       return $ cs1 ++ cs2
@@ -271,10 +295,6 @@ analyze h term = do
           return $ cs1 ++ cs2
         M.ShowType typeExpr -> do
           analyzeType h typeExpr
-        M.AssertMixable _ unitTypeExpr typeExpr -> do
-          cs1 <- analyzeType h unitTypeExpr
-          cs2 <- analyzeType h typeExpr
-          return $ cs1 ++ cs2
         M.TextCons rune text -> do
           cs1 <- analyze h rune
           cs2 <- analyze h text
@@ -309,11 +329,9 @@ analyzeType h ty =
       css <- mapM (analyzeType h) args
       return $ cs0 ++ concat css
     _ :< TM.Pi _ impArgs expArgs defaultArgs t -> do
-      let impBinders = impArgs ++ expArgs ++ defaultArgs
-      (cs1, h') <- analyzeBinder h impBinders
-      (cs2, h'') <- analyzeBinder h' expArgs
-      cs3 <- analyzeType h'' t
-      return $ cs1 ++ cs2 ++ cs3
+      (cs1, h') <- analyzeTypeBinder h (impArgs ++ expArgs ++ defaultArgs)
+      cs2 <- analyzeType h' t
+      return $ cs1 ++ cs2
     _ :< TM.Data _ _ es -> do
       css <- mapM (analyzeType $ deactivateExpCheck h) es
       return $ concat css
@@ -338,9 +356,23 @@ analyzeBinder h binder =
   case binder of
     [] -> do
       return ([], h)
-    ((mx, k, x, t) : xts) -> do
+    (mxt@(mx, k, x, t) : xts) -> do
+      registerExpBinder h mxt
       cs <- analyzeType h t
       (cs', h') <- analyzeBinder (extendHandle (mx, k, x, t) h) xts
+      return (cs ++ cs', h')
+
+analyzeTypeBinder ::
+  Handle ->
+  [BinderF TM.Type] ->
+  App ([AffineConstraint], Handle)
+analyzeTypeBinder h binder =
+  case binder of
+    [] -> do
+      return ([], h)
+    (mx, k, x, t) : xts -> do
+      cs <- analyzeType h t
+      (cs', h') <- analyzeTypeBinder (extendHandle (mx, k, x, t) h) xts
       return (cs ++ cs', h')
 
 analyzeLet ::
@@ -351,7 +383,8 @@ analyzeLet h xtes =
   case xtes of
     [] ->
       return ([], h)
-    ((m, k, x, t), e) : rest -> do
+    (mxt@(m, k, x, t), e) : rest -> do
+      registerExpBinder h mxt
       cs0 <- analyzeType h t
       cs1 <- analyze h e
       (cs', h') <- analyzeLet (extendHandle (m, k, x, t) h) rest

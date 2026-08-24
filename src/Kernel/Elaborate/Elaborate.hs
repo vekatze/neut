@@ -17,6 +17,7 @@ import Control.Monad.IO.Class
 import Data.Bifunctor
 import Data.Bitraversable (bimapM)
 import Data.ByteString qualified as BS
+import Data.Containers.ListUtils (nubOrdOn)
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.IntMap qualified as IntMap
@@ -67,6 +68,8 @@ import Language.Common.BaseLowType qualified as BLT
 import Language.Common.BaseName qualified as BN
 import Language.Common.BasePrimType qualified as BPT
 import Language.Common.Binder
+import Language.Common.CallConv qualified as CC
+import Language.Common.CallConvSpec qualified as CCS
 import Language.Common.CreateSymbol qualified as Gensym
 import Language.Common.DataInfo qualified as DI
 import Language.Common.DataSize qualified as DS
@@ -85,7 +88,6 @@ import Language.Common.LamKind qualified as LK
 import Language.Common.LowMagic qualified as LM
 import Language.Common.Magic qualified as M
 import Language.Common.ModuleID qualified as MID
-import Language.Common.PiElimKind qualified as PEK
 import Language.Common.PiKind qualified as PK
 import Language.Common.PrimNumSize
 import Language.Common.PrimType qualified as PT
@@ -95,6 +97,7 @@ import Language.Common.StrictGlobalLocator qualified as SGL
 import Language.Common.Text.Util (decodeUtf8Bytes)
 import Language.LowComp.DeclarationName qualified as DN
 import Language.Term.Inline qualified as Inline
+import Language.Term.Inline.Handle qualified as InlineHandle
 import Language.Term.PrimValue qualified as PV
 import Language.Term.Stmt
 import Language.Term.Subst qualified as TmSubst
@@ -173,11 +176,10 @@ toTextDefinition stmtKind name expArgs cod body =
   toTextStmtKind stmtKind
     <> " "
     <> DD.localLocator name
+    <> toTextDestMark stmtKind
     <> "("
     <> T.intercalate ", " (map toTextBinder expArgs)
-    <> ") "
-    <> toTextArrow stmtKind
-    <> " "
+    <> ") -> "
     <> Weak.toTextType cod
     <> " {\n"
     <> Weak.toTextIndented (Weak.Kit 1 True) body
@@ -207,11 +209,11 @@ toTextStmtKind stmtKind =
     SK.DataIntro {} ->
       "define"
 
-toTextArrow :: SK.StmtKindTerm WT.WeakType -> T.Text
-toTextArrow stmtKind =
+toTextDestMark :: SK.StmtKindTerm WT.WeakType -> T.Text
+toTextDestMark stmtKind =
   if SK.isDestPassingStmtKind stmtKind
-    then "->>"
-    else "->"
+    then "@"
+    else ""
 
 toTextBinder :: BinderF WT.WeakType -> T.Text
 toTextBinder (_, _, x, ty) =
@@ -221,16 +223,20 @@ synthesizeStmtList :: Handle -> Target -> [L.Log] -> [DD.DefiniteDescription] ->
 synthesizeStmtList h t logs globalReferenceList stmtList = do
   liftIO (Constraint.get (constraintHandle h)) >>= Unify.unify h >>= liftIO . Hole.setTypeSubst (holeHandle h)
   (stmtList', affineErrorList) <- bimap concat concat . unzip <$> mapM (elaborateStmt h) stmtList
-  unless (null affineErrorList) $ do
-    throwError $ E.MakeError affineErrorList
+  let affineErrorList' = nubOrdOn (\lg -> (fmap logPosition (L.position lg), L.content lg)) affineErrorList
+  unless (null affineErrorList') $ do
+    throwError $ E.MakeError affineErrorList'
   liftIO $ mapM_ (reportTrace h Report.TermPhase "term" . weakenStmt) stmtList'
   mapM_ (detectCyclicTypes h) stmtList'
   generatedStmtList <- liftIO $ reverse <$> readIORef (pendingSpecializationDefs h)
   let stmtList'' = stmtList' ++ generatedStmtList
+  sizedObligationList <- liftIO $ reverse <$> readIORef (sizedObligations h)
+  sizedErrorList <- concat <$> mapM (checkSizedObligation h) sizedObligationList
   residualCheckList' <- liftIO $ reverse <$> readIORef (residualCheckList h)
   residualErrorList <- concat <$> mapM (checkResidualCheck h) residualCheckList'
-  unless (null residualErrorList) $ do
-    throwError $ E.MakeError residualErrorList
+  let residualErrorList' = nubOrdOn (\lg -> (fmap logPosition (L.position lg), L.content lg)) (sizedErrorList ++ residualErrorList)
+  unless (null residualErrorList') $ do
+    throwError $ E.MakeError residualErrorList'
   countSnapshot <- liftIO $ Gensym.getCount (gensymHandle h)
   localLogs <- liftIO $ LocalLogs.get (localLogsHandle h)
   let logs' = logs ++ localLogs
@@ -262,7 +268,7 @@ elaborateStmt h stmt = do
       let mDefKind = stmtKindToDefKind stmtKind defaultArgs'
       e' <- elaborate' h e
       case mDefKind of
-        Just Inline.NoInline -> do
+        Just InlineHandle.NoInline -> do
           defaultArgsForSelf <- forM defaultArgs' $ \(binder, value) -> do
             value' <- inline h m value
             return (binder, value')
@@ -417,22 +423,24 @@ ensureDefineMetaTarget h m targetName = do
   dmap <- liftIO $ Definition.get' (defHandle h)
   case Map.lookup targetName dmap of
     Just defInfo
-      | Inline.defKind defInfo == Inline.Macro ->
+      | InlineHandle.defKind defInfo == InlineHandle.Macro ->
           return ()
       | otherwise ->
           raiseError m $ "`" <> showDD h targetName <> "` is not a `define-meta` definition"
     Nothing ->
       raiseError m $ "`" <> showDD h targetName <> "` is not available as a `define-meta` definition"
 
-checkResidualCheck :: Handle -> Inline.ResidualCheck -> App [L.Log]
+logPosition :: SavedHint -> (FilePath, Loc)
+logPosition (SavedHint m) =
+  (metaFileName m, metaLocation m)
+
+checkResidualCheck :: Handle -> InlineHandle.ResidualCheck -> App [L.Log]
 checkResidualCheck h check =
   case check of
-    Inline.CheckActuality m t ->
+    InlineHandle.CheckActuality m t ->
       checkActualityType h m S.empty t
-    Inline.CheckInteger m t ->
+    InlineHandle.CheckInteger m t ->
       checkIntegerCursorType h m t
-    Inline.CheckMixable m t ->
-      checkMixableType h m t
 
 checkActualityType :: Handle -> Hint -> S.Set DD.DefiniteDescription -> TM.Type -> App [L.Log]
 checkActualityType h m dataNameSet t = do
@@ -510,15 +518,24 @@ checkIntegerCursorType h m t = do
               <> toTextType (weakenType t')
         ]
 
-checkMixableType :: Handle -> Hint -> TM.Type -> App [L.Log]
-checkMixableType h m t = do
-  t' <- inlineType h m t
+checkSizedObligation :: Handle -> SizedObligation -> App [L.Log]
+checkSizedObligation h (SizedObligation site m t) = do
+  t' <- elaborateType h t >>= inlineType h m
   result <- resolveMixedOrError h S.empty m t'
   case result of
     Right _ ->
       return []
-    Left message ->
-      return [L.newLog m LL.Error message]
+    Left message -> do
+      let explanation =
+            case site of
+              SourceSlot ->
+                "A source-passing slot cannot have this type: " <> message <> "."
+              Destination ->
+                "A destination cannot have this type: " <> message <> "."
+              Instantiation ->
+                "A `sized` parameter cannot be instantiated with this type: " <> message <> "."
+      return
+        [L.newLog m LL.Error explanation]
 
 insertStmt :: Handle -> Stmt -> App ()
 insertStmt h stmt = do
@@ -667,26 +684,28 @@ resolveFieldLayout h hint (_, _, _, t) =
   case hint of
     DI.FieldAuto ->
       return DI.LayoutDirect
-    DI.FieldMixed mMix ->
-      resolveMixed h S.empty mMix t
+    DI.FieldMixed mSized -> do
+      result <- resolveMixedOrError h S.empty mSized t
+      case result of
+        Right (StaticSlots slotCount) ->
+          return $ DI.LayoutFlattened slotCount
+        Right RuntimeSlots ->
+          raiseError mSized "a type variable cannot be stored inline in a `data` field"
+        Left message ->
+          raiseError mSized message
 
-resolveMixed :: Handle -> S.Set DD.DefiniteDescription -> Hint -> TM.Type -> App DI.FieldLayout
-resolveMixed h visited m ty = do
-  result <- resolveMixedOrError h visited m ty
-  case result of
-    Right layout ->
-      return layout
-    Left message ->
-      raiseError m message
+data SlotCount
+  = StaticSlots Int
+  | RuntimeSlots
 
-resolveMixedOrError :: Handle -> S.Set DD.DefiniteDescription -> Hint -> TM.Type -> App (Either T.Text DI.FieldLayout)
+resolveMixedOrError :: Handle -> S.Set DD.DefiniteDescription -> Hint -> TM.Type -> App (Either T.Text SlotCount)
 resolveMixedOrError h visited m ty =
   case ty of
     _ :< TM.Data _ dataName dataArgs -> do
       optDataOrNone <- liftIO $ OptimizableData.lookup (optDataHandle h) dataName
       case optDataOrNone of
         Just OD.Enum ->
-          return $ Left $ "the type `" <> showDD h dataName <> "` is an enum and cannot be mixed"
+          return $ Left $ "the type `" <> showDD h dataName <> "` is an enum and cannot be stored inline"
         Just OD.Unary ->
           if S.member dataName visited
             then return $ Left $ cannotMixRecursiveMessage h dataName
@@ -698,22 +717,25 @@ resolveMixedOrError h visited m ty =
             then return $ Left $ cannotMixRecursiveMessage h dataName
             else do
               dataInfo <- lookupDataInfoFull h m dataName
-              return $ Right $ DI.LayoutFlattened $ DI.dataTotalSlotCount (DI.dataArgs dataInfo) (DI.consInfoList dataInfo)
+              return $ Right $ StaticSlots $ DI.dataTotalSlotCount (DI.dataArgs dataInfo) (DI.consInfoList dataInfo)
     _ :< TM.Resource dataName _ -> do
       resourceSizeOrNone <- liftIO $ Resource.lookup (Global.resourceHandle (globalHandle h)) dataName
       case resourceSizeOrNone of
         Just (Resource.Flattened byteSize) ->
-          return $ resourceByteSizeToFieldLayout h byteSize
+          return $ resourceByteSizeToSlotCount h byteSize
         Just Resource.Direct ->
-          return $ Left $ "the resource `" <> showDD h dataName <> "` has no fixed size and cannot be mixed"
+          return $ Left $ "the resource `" <> showDD h dataName <> "` has no fixed size and cannot be stored inline"
         Nothing ->
           return $ Left $ "could not find the size of the resource `" <> showDD h dataName <> "`"
     _ :< TM.Pi {} ->
-      return $ Right $ DI.LayoutFlattened DI.closureSlotCount
+      return $ Right $ StaticSlots DI.closureSlotCount
     _ :< TM.Tau ->
       cannotMixFieldType "the type universe"
-    _ :< TM.TVar {} ->
-      cannotMixFieldType "a type variable"
+    _ :< TM.TVar x -> do
+      sizedTypeVarSet <- liftIO $ readIORef (sizedTypeVars h)
+      if IntSet.member (Ident.toInt x) sizedTypeVarSet
+        then return $ Right RuntimeSlots
+        else return $ Left $ "the type variable `" <> Ident.toText x <> "` is not declared `sized`"
     _ :< TM.TVarGlobal {} ->
       cannotMixFieldType "a nominal type"
     _ :< TM.TyApp {} ->
@@ -729,19 +751,19 @@ resolveMixedOrError h visited m ty =
     _ :< TM.Void ->
       cannotMixFieldType "the void type"
 
-cannotMixFieldType :: T.Text -> App (Either T.Text DI.FieldLayout)
+cannotMixFieldType :: T.Text -> App (Either T.Text SlotCount)
 cannotMixFieldType typeDesc =
-  return $ Left $ typeDesc <> " cannot be mixed"
+  return $ Left $ typeDesc <> " cannot be stored inline"
 
 cannotMixRecursiveMessage :: Handle -> DD.DefiniteDescription -> T.Text
 cannotMixRecursiveMessage h dataName =
-  "the recursive type `" <> showDD h dataName <> "` cannot be mixed"
+  "the recursive type `" <> showDD h dataName <> "` cannot be stored inline"
 
-resourceByteSizeToFieldLayout :: Handle -> Int -> Either T.Text DI.FieldLayout
-resourceByteSizeToFieldLayout h byteSize = do
+resourceByteSizeToSlotCount :: Handle -> Int -> Either T.Text SlotCount
+resourceByteSizeToSlotCount h byteSize = do
   let wordSize = DS.reifyBytes (Platform.getDataSize (platformHandle h))
   let slotCount = (byteSize + wordSize - 1) `div` wordSize
-  Right $ DI.LayoutFlattened slotCount
+  Right $ StaticSlots slotCount
 
 lookupDataInfoFull :: Handle -> Hint -> DD.DefiniteDescription -> App (DI.DataInfo (BinderF TM.Type))
 lookupDataInfoFull h m dataName = do
@@ -757,7 +779,7 @@ specializeUnaryDataType h m dataName dataArgs = do
   dataInfo <- lookupDataInfoFull h m dataName
   let dataBinders = DI.dataArgs dataInfo
   when (length dataBinders /= length dataArgs) $ do
-    raiseError m $ "arity mismatch while mixing the unary type `" <> showDD h dataName <> "`"
+    raiseError m $ "arity mismatch while resolving the layout of the unary type `" <> showDD h dataName <> "`"
   let binderIds = map (\(_, _, x, _) -> x) dataBinders
   let sub = IntMap.fromList $ zip (map Ident.toInt binderIds) (map TmSubst.Type dataArgs)
   case DI.consInfoList dataInfo of
@@ -830,8 +852,12 @@ elaborate' h term = do
       expArgs' <- mapM (elaborateWeakBinder h) expArgs
       e' <- elaborate' h e
       return $ m :< TM.PiIntro kind' impArgs' expArgs' defaultArgs' e'
-    m :< WT.PiElim b e impArgs expArgs defaultArgs -> do
-      b' <- PEK.traverseArg (elaborateType h) b
+    m :< WT.PiElim spec e impArgs expArgs defaultArgs -> do
+      conv <- case spec of
+        CCS.Inferred conv ->
+          CC.traverseTypes (elaborateType h) conv
+        CCS.AsMarked {} ->
+          raiseCritical m "Scene.Elaborate.elaborate': found an unresolved calling convention"
       e' <- elaborate' h e
       let impArgs' = ImpArgs.extract impArgs
       impArgs'' <- mapM (elaborateType h) impArgs'
@@ -841,7 +867,7 @@ elaborate' h term = do
           mapM (traverse (elaborate' h)) args
         DefaultArgs.ByKey _ ->
           raiseCritical m "Scene.Elaborate.elaborate': found a remaining `ByKey` default argument"
-      return $ m :< TM.PiElim noTrace b' e' impArgs'' expArgs' defaultArgs'
+      return $ m :< TM.PiElim noTrace conv e' impArgs'' expArgs' defaultArgs'
     m :< WT.PiElimExact {} -> do
       raiseCritical m "Scene.Elaborate.elaborate': found a remaining `exact`"
     m :< WT.DataIntro attr consName dataArgs consArgs -> do
@@ -982,10 +1008,6 @@ elaborate' h term = do
         M.ShowType typeExpr -> do
           typeExpr' <- elaborateType h typeExpr
           return $ m :< TM.Magic noTrace (M.ShowType typeExpr')
-        M.AssertMixable moduleID unitTypeExpr typeExpr -> do
-          unitTypeExpr' <- elaborateType h unitTypeExpr
-          typeExpr' <- elaborateType h typeExpr
-          return $ m :< TM.Magic noTrace (M.AssertMixable moduleID unitTypeExpr' typeExpr')
         M.TextCons rune text -> do
           rune' <- elaborate' h rune
           text' <- elaborate' h text
@@ -1484,64 +1506,64 @@ fillHole h m holeID es = do
       | otherwise ->
           raiseError m "Arity mismatch"
 
-stmtKindToDefKind :: SK.StmtKindTerm a -> [(binder, b)] -> Maybe Inline.DefKind
+stmtKindToDefKind :: SK.StmtKindTerm a -> [(binder, b)] -> Maybe InlineHandle.DefKind
 stmtKindToDefKind stmtKind defaultArgs =
   case stmtKind of
     SK.DestPassing ->
       if null defaultArgs
         then Nothing
-        else Just Inline.NoInline
+        else Just InlineHandle.NoInline
     SK.DestPassingInline ->
-      Just Inline.Inline
+      Just InlineHandle.Inline
     SK.Inline ->
-      Just Inline.Inline
+      Just InlineHandle.Inline
     SK.Constant ->
-      Just Inline.Inline
+      Just InlineHandle.Inline
     SK.ConstantMeta ->
-      Just Inline.ConstantMeta
+      Just InlineHandle.ConstantMeta
     SK.Macro ->
-      Just Inline.Macro
+      Just InlineHandle.Macro
     SK.MacroInline ->
-      Just Inline.MacroInline
+      Just InlineHandle.MacroInline
     SK.DataIntro {} ->
-      Just Inline.DataIntro
+      Just InlineHandle.DataIntro
     _ ->
       if null defaultArgs
         then Nothing
-        else Just Inline.NoInline
+        else Just InlineHandle.NoInline
 
-prepareDefinitionTrace :: TermTrace.Handle -> Maybe Inline.DefKind -> TM.Term -> IO (TM.Term, IntSet.IntSet)
+prepareDefinitionTrace :: TermTrace.Handle -> Maybe InlineHandle.DefKind -> TM.Term -> IO (TM.Term, IntSet.IntSet)
 prepareDefinitionTrace traceHandle mDefKind term = do
   case mDefKind of
-    Just Inline.Inline ->
+    Just InlineHandle.Inline ->
       return (term, TraceSites.traceIDSet term)
-    Just Inline.Macro ->
+    Just InlineHandle.Macro ->
       return (term, IntSet.empty)
-    Just Inline.MacroInline ->
+    Just InlineHandle.MacroInline ->
       TraceSites.annotate traceHandle term
-    Just Inline.ConstantMeta ->
+    Just InlineHandle.ConstantMeta ->
       TraceSites.annotate traceHandle term
-    Just Inline.DataIntro ->
+    Just InlineHandle.DataIntro ->
       return (term, TraceSites.traceIDSet term)
-    Just Inline.NoInline ->
+    Just InlineHandle.NoInline ->
       return (term, IntSet.empty)
     Nothing ->
       return (term, IntSet.empty)
 
-shouldTraceDefinition :: Maybe Inline.DefKind -> Bool
+shouldTraceDefinition :: Maybe InlineHandle.DefKind -> Bool
 shouldTraceDefinition mDefKind = do
   case mDefKind of
-    Just Inline.Inline ->
+    Just InlineHandle.Inline ->
       True
-    Just Inline.Macro ->
+    Just InlineHandle.Macro ->
       False
-    Just Inline.MacroInline ->
+    Just InlineHandle.MacroInline ->
       True
-    Just Inline.ConstantMeta ->
+    Just InlineHandle.ConstantMeta ->
       True
-    Just Inline.DataIntro ->
+    Just InlineHandle.DataIntro ->
       True
-    Just Inline.NoInline ->
+    Just InlineHandle.NoInline ->
       False
     Nothing ->
       False

@@ -176,13 +176,13 @@ define expect-int(label: &string, actual: int, expected: int) -> unit {
 
 define expect-vector-2(label: &string, xs: &vector(int), x0: int, x1: int) -> unit {
   expect-int(label, length(xs), 2);
-  match access(xs, 0) {
+  match access@(xs, 0) {
   | Left(_) =>
     panic(label)
   | Right(actual) =>
     expect-int(label, *actual, x0)
   };
-  match access(xs, 1) {
+  match access@(xs, 1) {
   | Left(_) =>
     panic(label)
   | Right(actual) =>

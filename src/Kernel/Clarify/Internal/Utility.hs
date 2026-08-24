@@ -13,7 +13,6 @@ module Kernel.Clarify.Internal.Utility
     toCopyIntoApp,
     bindLet,
     bindLetWithReducibility,
-    irreducibleBindLet,
     registerSwitcher,
     makeSwitcherStmt,
     getEnumElim,
@@ -58,15 +57,13 @@ toAffineAppWith :: Handle -> C.ForceInline -> C.Value -> C.Comp -> IO C.Comp
 toAffineAppWith h forceInline v t = do
   (expVarName, expVar) <- Gensym.createVar (gensymHandle h) "exp"
   let switch = C.Int (dataSizeToIntSize (baseSize h)) 0
-  let shouldRelease = C.Int (dataSizeToIntSize (baseSize h)) 1
-  return $ C.UpElim True expVarName t (C.PiElimDownElim forceInline expVar [switch, v, shouldRelease])
+  return $ C.UpElim True expVarName t (C.PiElimDownElim forceInline expVar [switch, v, C.intValue1])
 
 toDropInPlaceAppWith :: Handle -> C.ForceInline -> C.Value -> C.Comp -> IO C.Comp
 toDropInPlaceAppWith h forceInline v t = do
   (expVarName, expVar) <- Gensym.createVar (gensymHandle h) "exp"
   let switch = C.Int (dataSizeToIntSize (baseSize h)) 0
-  let shouldRelease = C.Int (dataSizeToIntSize (baseSize h)) 0
-  return $ C.UpElim True expVarName t (C.PiElimDownElim forceInline expVar [switch, v, shouldRelease])
+  return $ C.UpElim True expVarName t (C.PiElimDownElim forceInline expVar [switch, v, C.intValue0])
 
 -- toRelevantApp h x t ~>
 --   bind exp := t in
@@ -94,10 +91,6 @@ toCopyIntoAppWith h forceInline source dest t = do
 bindLet :: [(Ident, C.Comp)] -> C.Comp -> C.Comp
 bindLet =
   bindLetWithReducibility True
-
-irreducibleBindLet :: [(Ident, C.Comp)] -> C.Comp -> C.Comp
-irreducibleBindLet =
-  bindLetWithReducibility False
 
 bindLetWithReducibility :: C.IsReducible -> [(Ident, C.Comp)] -> C.Comp -> C.Comp
 bindLetWithReducibility isReducible binder cont =

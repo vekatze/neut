@@ -6,6 +6,7 @@ import Data.Set qualified as S
 import Language.Common.Annotation qualified as AN
 import Language.Common.Attr.Lam qualified as AttrL
 import Language.Common.Binder
+import Language.Common.CallConvSpec qualified as CCS
 import Language.Common.DecisionTree qualified as DT
 import Language.Common.DefaultArgs qualified as DefaultArgs
 import Language.Common.ForeignCodType qualified as FCT
@@ -39,7 +40,7 @@ freeVars term =
     m :< WT.DataElim _ oets decisionTree -> do
       let (os, es, ts) = unzip3 oets
       let xs1 = S.unions $ map freeVars es
-      let binder = zipWith (\o t -> (m, VK.Normal, o, t)) os ts
+      let binder = zipWith (\o t -> (m, VK.normal, o, t)) os ts
       let xs2 = freeVarsBinders binder (freeVarsDecisionTreeTerm decisionTree)
       S.union xs1 xs2
     _ :< WT.BoxIntro letSeq e -> do
@@ -122,8 +123,6 @@ freeVarsMagicTerm (M.WeakMagic magic) =
       S.empty
     M.ShowType {} ->
       S.empty
-    M.AssertMixable {} ->
-      S.empty
     M.TextCons rune text ->
       S.union (freeVars rune) (freeVars text)
     M.TextUncons _ text ->
@@ -172,12 +171,13 @@ freeVarsAll term =
       let impBinders = impArgs ++ expArgs
       let defaultVars = S.unions $ map freeVarsAll $ map snd defaultArgs
       S.union defaultVars (freeVarsBindersType (impBinders ++ map fst defaultArgs ++ catMaybes [AttrL.fromAttr k]) (freeVarsAll e))
-    _ :< WT.PiElim _ e impArgs expArgs defaultArgs -> do
+    _ :< WT.PiElim spec e impArgs expArgs defaultArgs -> do
       let xs = freeVarsAll e
+      let ys0 = S.unions $ map freeVarsType (CCS.types spec)
       let ys1 = S.unions $ map freeVarsType (ImpArgs.extract impArgs)
       let ys2 = S.unions $ map freeVarsAll (DefaultArgs.extract defaultArgs)
       let ys3 = S.unions $ map freeVarsAll expArgs
-      S.unions [xs, ys1, ys2, ys3]
+      S.unions [xs, ys0, ys1, ys2, ys3]
     _ :< WT.PiElimExact e -> do
       freeVarsAll e
     _ :< WT.DataIntro _ _ dataArgs consArgs -> do
@@ -187,7 +187,7 @@ freeVarsAll term =
     m :< WT.DataElim _ oets decisionTree -> do
       let (os, es, ts) = unzip3 oets
       let xs1 = S.unions $ map freeVarsAll es
-      let binder = zipWith (\o t -> (m, VK.Normal, o, t)) os ts
+      let binder = zipWith (\o t -> (m, VK.normal, o, t)) os ts
       let xs2 = freeVarsBindersType binder (freeVarsDecisionTree decisionTree)
       S.union xs1 xs2
     _ :< WT.BoxIntro letSeq e -> do
@@ -307,8 +307,6 @@ freeVarsMagic (M.WeakMagic magic) =
       S.union (freeVarsType typeExpr1) (freeVarsType typeExpr2)
     M.ShowType typeExpr ->
       freeVarsType typeExpr
-    M.AssertMixable _ unitTypeExpr typeExpr ->
-      S.union (freeVarsType unitTypeExpr) (freeVarsType typeExpr)
     M.TextCons rune text ->
       S.union (freeVarsAll rune) (freeVarsAll text)
     M.TextUncons _ text ->

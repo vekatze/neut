@@ -128,20 +128,20 @@ define test-behavior() -> unit {
   let ch = make-channel();
   let !ch: channel(int) = ch;
   let _ = ch;
-  let _ on !ch = send(ch, lift {1});
+  let _ on ch = send(ch, lift {1});
   let ch = ch;
   let ch-clone = ch;
   let _ on ch-clone = send(ch-clone, lift {1});
   let tmp on ch-clone = {
     let f = {
       spawn(() => {
-        let _ = sleep(1.0);
+        let _ = sleep@(1.0);
         send(ch-clone, lift {3})
       })
     };
     let g = {
       spawn(() => {
-        let _ = sleep(1.0);
+        let _ = sleep@(1.0);
         send(ch-clone, lift {4})
       })
     };

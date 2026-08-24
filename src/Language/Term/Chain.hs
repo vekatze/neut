@@ -13,6 +13,7 @@ import Data.Maybe
 import Data.Text qualified as T
 import Language.Common.Attr.Lam qualified as AttrL
 import Language.Common.Binder
+import Language.Common.CallConv qualified as CC
 import Language.Common.DecisionTree qualified as DT
 import Language.Common.Ident
 import Language.Common.Ident.Reify qualified as Ident
@@ -36,18 +37,19 @@ chainOf' tenv term =
       let xs1 = concatMap (chainOf' tenv . snd) defaultArgs
       let xs2 = chainOfBinder tenv (impArgs ++ expArgs ++ map fst defaultArgs ++ catMaybes [AttrL.fromAttr attr]) [e]
       xs1 ++ xs2
-    _ :< TM.PiElim _ _ e impArgs expArgs defaultArgs -> do
+    _ :< TM.PiElim _ conv e impArgs expArgs defaultArgs -> do
       let xs1 = chainOf' tenv e
+      let xs0 = concatMap (chainOfType tenv) (CC.types conv)
       let xs2 = concatMap (chainOfType tenv) impArgs
       let xs3 = concatMap (chainOf' tenv) expArgs
       let xs4 = concatMap (chainOf' tenv) (catMaybes defaultArgs)
-      xs1 ++ xs2 ++ xs3 ++ xs4
+      xs0 ++ xs1 ++ xs2 ++ xs3 ++ xs4
     _ :< TM.DataIntro _ _ dataArgs consArgs -> do
       concatMap (chainOfType tenv) dataArgs ++ concatMap (chainOf' tenv) consArgs
     m :< TM.DataElim _ _ xets tree -> do
       let (xs, es, ts) = unzip3 xets
       let xs1 = concatMap (chainOf' tenv) es
-      let mxts = zipWith (\x t -> (m, VK.Normal, x, t)) xs ts
+      let mxts = zipWith (\x t -> (m, VK.normal, x, t)) xs ts
       let xs2 = chainOfDecisionTree' tenv m mxts tree
       xs1 ++ xs2
     _ :< TM.BoxIntro _ letSeq e -> do
@@ -66,7 +68,7 @@ chainOf' tenv term =
       chainOfType tenv ty
     _ :< TM.TauElim _ (mx, x) e1 e2 -> do
       let xs1 = chainOf' tenv e1
-      let mxt = (mx, VK.Normal, x, mx :< TM.Tau)
+      let mxt = (mx, VK.normal, x, mx :< TM.Tau)
       let xs2 = chainOfBinder tenv [mxt] [e2]
       xs1 ++ xs2
     _ :< TM.Let mxt e1 e2 -> do
@@ -135,7 +137,7 @@ chainOfDecisionTree tenv m tree =
       []
     DT.Switch (cursor, _) caseList ->
       -- the cursor must be treated as an immediate
-      (m, VK.Normal, cursor, m :< TM.Tau) : chainOfCaseList tenv m caseList
+      (m, VK.normal, cursor, m :< TM.Tau) : chainOfCaseList tenv m caseList
 
 chainOfDecisionTree' :: TM.TypeEnv -> Hint -> [BinderF TM.Type] -> DT.DecisionTree TM.Type TM.Term -> [BinderF TM.Type]
 chainOfDecisionTree' tenv m xts tree =
@@ -179,6 +181,6 @@ chainOfVar tenv m x = do
   case IntMap.lookup (Ident.toInt x) tenv of
     Just t -> do
       let xts = chainOfType tenv t
-      xts ++ [(m, VK.Normal, x, t)]
+      xts ++ [(m, VK.normal, x, t)]
     _ ->
       error $ T.unpack $ "[critical] chainOfVar: " <> Ident.toText' x <> "\n" <> T.pack (toString m)

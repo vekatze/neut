@@ -6,6 +6,7 @@ import Data.Set qualified as S
 import Language.Common.Attr.Lam qualified as AttrL
 import Language.Common.BaseLowType qualified as BLT
 import Language.Common.Binder
+import Language.Common.CallConv qualified as CC
 import Language.Common.DecisionTree qualified as DT
 import Language.Common.Ident
 import Language.Common.LowMagic qualified as LM
@@ -25,12 +26,13 @@ freeVars term =
       let impBinders = impArgs ++ expArgs
       let defaultVars = S.unions $ map freeVars $ map snd defaultArgs
       S.union defaultVars (freeVarsBinderType (impBinders ++ map fst defaultArgs ++ catMaybes [AttrL.fromAttr k]) (freeVars e))
-    _ :< TM.PiElim _ _ e impArgs expArgs defaultArgs -> do
+    _ :< TM.PiElim _ conv e impArgs expArgs defaultArgs -> do
       let xs = freeVars e
+      let ys0 = S.unions $ map freeVarsType (CC.types conv)
       let ys1 = S.unions $ map freeVarsType impArgs
       let ys2 = S.unions $ map freeVars expArgs
       let ys3 = S.unions $ map freeVars (catMaybes defaultArgs)
-      S.unions [xs, ys1, ys2, ys3]
+      S.unions [xs, ys0, ys1, ys2, ys3]
     _ :< TM.DataIntro _ _ dataArgs consArgs -> do
       let xs1 = S.unions $ map freeVarsType dataArgs
       let xs2 = S.unions $ map freeVars consArgs
@@ -38,7 +40,7 @@ freeVars term =
     m :< TM.DataElim _ _ oets decisionTree -> do
       let (os, es, ts) = unzip3 oets
       let xs1 = S.unions $ map freeVars es
-      let binder = zipWith (\o t -> (m, VK.Normal, o, t)) os ts
+      let binder = zipWith (\o t -> (m, VK.normal, o, t)) os ts
       let xs2 = freeVarsBinderType binder (freeVarsDecisionTree decisionTree)
       S.union xs1 xs2
     _ :< TM.BoxIntro _ letSeq e -> do
@@ -164,8 +166,6 @@ freeVarsMagic magic =
       S.union (freeVarsType typeExpr1) (freeVarsType typeExpr2)
     M.ShowType typeExpr ->
       freeVarsType typeExpr
-    M.AssertMixable _ unitTypeExpr typeExpr ->
-      S.union (freeVarsType unitTypeExpr) (freeVarsType typeExpr)
     M.TextCons rune text ->
       S.union (freeVars rune) (freeVars text)
     M.TextUncons _ text ->

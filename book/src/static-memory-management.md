@@ -8,6 +8,8 @@ Here, we'll see how memory is managed in Neut. We'll also see some important opt
 - [Optimization: Free-Malloc Canceling](#optimization-free-malloc-canceling)
 - [Optimization: Malloc-Free Canceling](#optimization-malloc-free-canceling)
 - [Destination-Passing Style](#destination-passing-style)
+- [Source-Passing Style](#source-passing-style)
+- [What Can Travel Through a Mark](#what-can-travel-through-a-mark)
 - [Optimization: Avoiding Unnecessary Copies](#optimization-avoiding-unnecessary-copies)
 
 ## Copying and Discarding Values
@@ -86,7 +88,25 @@ define make-pair(!t: string) -> pair(string, string) {
 }
 ```
 
-The `!` prefix is unnecessary if the variable can be copied for free. For example, consider the following code:
+The compiler also rejects a `!` on a variable that isn't copied. For example, consider the following code:
+
+```neut
+define identity(!t: string) -> string {
+  t
+}
+```
+
+The compiler rejects this code because `t` is used only once, so no copy takes place.
+
+The prefix is an error also when the variable can be copied for free, since no copy takes place there either:
+
+```neut
+define make-pair(!x: int) -> pair(int, int) {
+  Pair(x, x)
+}
+```
+
+The compiler rejects this code, and accepts it without the prefix:
 
 ```neut
 define make-pair(x: int) -> pair(int, int) {
@@ -94,7 +114,7 @@ define make-pair(x: int) -> pair(int, int) {
 }
 ```
 
-The compiler accepts this code since we can "copy" integers for free (by reusing the same value).
+We can "copy" integers for free (by reusing the same value), so `x` can be used twice as it is.
 
 ## Optimization: Free-Malloc Canceling
 
@@ -231,12 +251,12 @@ define use-foo() -> unit {
 
 In this form, malloc-free canceling does not help much. The memory region created in `foo` escapes from `foo`, so `foo` itself cannot replace that allocation with a stack slot.
 
-To improve this situation, Neut provides destination-passing style. We write such functions using `->>` (and `=>>` for anonymous functions). A function written in this style can still be called in the usual way, but its compiled code receives the result destination from the caller.
+To improve this situation, Neut provides destination-passing style. We write such functions by putting `@` in front of the parameter list. A call to such a function carries the same `@`, and the compiled code receives the result destination from the caller.
 
 Rewriting `foo` in this style, we get:
 
 ```neut
-define foo(x: int) ->> either(int, bool) {
+define foo@(x: int) -> either(int, bool) {
   if eq-int(x, 0) {
     Left(42)
   } else {
@@ -245,7 +265,7 @@ define foo(x: int) ->> either(int, bool) {
 }
 
 define use-foo() -> unit {
-  match foo(10) {
+  match foo@(10) {
   | Left(x) =>
     cont1
   | Right(y) =>
@@ -325,6 +345,183 @@ In this way, destination-passing style turns a returned value into caller-manage
 For simplicity, the code above keeps `tmp = alloca(..)` and `copy(dest, tmp)` separate. In practice, LLVM often optimizes this into ordinary assignments.
 
 </div>
+
+## Source-Passing Style
+
+Destination-passing style moves the placement of a result. The same idea applies to an argument.
+
+For example, consider the following code:
+
+```neut
+data shape {
+| Circle(r: int)
+| Rect(w: int, h: int)
+}
+
+define area(s: shape) -> int {
+  match s {
+  | Circle(r) =>
+    r
+  | Rect(w, h) =>
+    mul-int(w, h)
+  }
+}
+
+define use-area() -> int {
+  area(Rect(3, 4))
+}
+```
+
+Since `area` takes its argument in the usual way, the caller has to allocate the value and hand over the region:
+
+```neut
+// after compilation (pseudocode)
+define area(s: pointer) -> int {
+  match tag(s) {
+  | 0 =>
+    let r = extract-from-circle(s);
+    free(s);
+    r
+  | _ =>
+    let (w, h) = extract-from-rect(s);
+    free(s);
+    mul-int(w, h)
+  }
+}
+
+define use-area() -> int {
+  let tmp = malloc(..);
+  // initialize `tmp := Rect(3, 4)`
+  area(tmp)
+}
+```
+
+Here again, malloc-free canceling does not help. The `malloc` is in `use-area` and the `free` is in `area`, so the pair crosses the function boundary.
+
+To improve this situation, Neut provides source-passing style. We write such a parameter by prefixing it with `~`. The compiled code of such a function receives that argument as a region the callee reads it from, rather than as a value the callee already owns. A call site marks the argument with the same `~`.
+
+Rewriting `area` in this style, we get:
+
+```neut
+define area(~s: shape) -> int {
+  match s {
+  | Circle(r) =>
+    r
+  | Rect(w, h) =>
+    mul-int(w, h)
+  }
+}
+
+define use-area() -> int {
+  area(~Rect(3, 4))
+}
+```
+
+This behaves roughly as follows after compilation:
+
+```neut
+// after compilation (pseudocode)
+define area(src: pointer) -> int {
+  let s = malloc(..);
+  copy(s, src);
+  match tag(s) {
+  | 0 =>
+    let r = extract-from-circle(s);
+    free(s);
+    r
+  | _ =>
+    let (w, h) = extract-from-rect(s);
+    free(s);
+    mul-int(w, h)
+  }
+}
+
+define use-area() -> int {
+  let tmp = malloc(..);
+  // initialize `tmp := Rect(3, 4)`
+  let r = area(tmp);
+  free(tmp);
+  r
+}
+```
+
+The caller hands the region it built to the callee and releases it after the call returns. The callee builds its own value out of the region it was handed. Both `malloc`/`free` pairs now sit inside a single function, so malloc-free canceling can optimize them away:
+
+```neut
+// after malloc-free canceling (pseudocode)
+define area(src: pointer) -> int {
+  let s = alloca(..);
+  copy(s, src);
+  match tag(s) {
+  | 0 =>
+    let r = extract-from-circle(s);
+    r
+  | _ =>
+    let (w, h) = extract-from-rect(s);
+    mul-int(w, h)
+  }
+}
+
+define use-area() -> int {
+  let tmp = alloca(..);
+  // initialize `tmp := Rect(3, 4)`
+  area(tmp)
+}
+```
+
+Note that a call that supplies a `~` argument is never a tail call, since the region the caller hands over lives in its own frame, which a tail call would discard.
+
+## What Can Travel Through a Mark
+
+A mark moves the content of a cell from one side of a call to the other: `~` moves an argument's content into the callee, and `@` moves a result's content back to the caller. A type whose values have no such content can use neither mark:
+
+```neut
+define want-int(~n: int) -> int { // error: a primitive type cannot be stored inline
+  n
+}
+
+define produce-int@() -> int { // error: a primitive type cannot be stored inline
+  42
+}
+```
+
+A type qualifies when its values own a cell of a width that the type alone determines:
+
+- a `data` that stores something in its cell,
+- a function type,
+- a `resource` with a fixed non-negative byte size.
+
+Such a type is called sized. A primitive like `int` is not sized since its values are bare words that own no cell, and a `string` is not sized since the width of its storage varies from value to value.
+
+The type of a `~` parameter and the result type of a `@` function must be sized. The check runs where the mark is declared, so both definitions above are rejected at their marks.
+
+A type variable satisfies the condition only when it is declared `sized`:
+
+```neut
+define consume<sized a>(~x: a, f: (a) -> int) -> int {
+  f(x)
+}
+
+define generate@<sized a>(make: () -> a) -> a {
+  make()
+}
+```
+
+Each call that instantiates a `sized` variable is checked against the type it supplies: `consume` and `generate` work at `shape` and are rejected at `int`.
+
+Inside `consume`, `a` is known to own a cell, so `x` can be passed on through another `~`. Without `sized`, the same call is rejected, since nothing guarantees that `a` owns a cell:
+
+```neut
+// error: the type variable `a` is not declared `sized`
+define forward<a>(x: a, f: (a) -> int) -> int {
+  consume(~x, f)
+}
+
+// this is fine
+define forward<sized a>(x: a, f: (a) -> int) -> int {
+  consume(~x, f)
+}
+```
 
 ## Optimization: Avoiding Unnecessary Copies
 

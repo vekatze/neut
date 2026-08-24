@@ -20,6 +20,7 @@ import Language.Common.Attr.Lam qualified as AttrL
 import Language.Common.Attr.VarGlobal qualified as AttrVG
 import Language.Common.BaseLowType qualified as BLT
 import Language.Common.Binder
+import Language.Common.CallConv qualified as CC
 import Language.Common.DecisionTree qualified as DT
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.Ident
@@ -27,7 +28,6 @@ import Language.Common.Ident.Reify
 import Language.Common.LowMagic qualified as LM
 import Language.Common.Magic
 import Language.Common.Noema qualified as N
-import Language.Common.PiElimKind qualified as PEK
 import Language.Common.PiKind (PiKind)
 import Language.Common.PrimType qualified as PT
 import Language.Term.PrimValue qualified as PV
@@ -67,7 +67,7 @@ data TermF a
   = Var Ident
   | VarGlobal AttrVG.Attr DD.DefiniteDescription
   | PiIntro (AttrL.Attr Type) [BinderF Type] [BinderF Type] [(BinderF Type, a)] a
-  | PiElim TraceID (PEK.PiElimKind Type) a [Type] [a] [Maybe a]
+  | PiElim TraceID (CC.CallConv Type) a [Type] [a] [Maybe a]
   | DataIntro AttrDI.Attr DD.DefiniteDescription [Type] [a]
   | DataElim TraceID N.IsNoetic [(Ident, a, Type)] (DT.DecisionTree Type a)
   | BoxIntro TraceID [(BinderF Type, a)] a

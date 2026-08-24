@@ -16,6 +16,8 @@ import Language.Common.Attr.DataIntro qualified as AttrDI
 import Language.Common.Attr.Lam qualified as AttrL
 import Language.Common.Attr.VarGlobal qualified as AttrVG
 import Language.Common.Binder
+import Language.Common.CallConvSpec qualified as CCS
+import Language.Common.CallSite (IsSourceArg)
 import Language.Common.DecisionTree qualified as DT
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.ForeignCodType qualified as FCT
@@ -53,13 +55,13 @@ toTextIndented kit term =
       indentText (level kit) (DD.localLocator x)
     _ :< WT.PiIntro attr impArgs expArgs defaultArgs e ->
       renderPiIntro kit attr impArgs expArgs defaultArgs e
-    _ :< WT.PiElim _ e impArgs expArgs _ ->
+    _ :< WT.PiElim spec e impArgs expArgs _ ->
       if isIndentedApplication e
-        then renderIndentedApplication kit e impArgs expArgs
+        then renderIndentedApplication kit e impArgs spec expArgs
         else
           indentText
             (level kit)
-            (toTextIndented (atLevel kit 0) e <> renderImpArgs impArgs <> inParen (T.intercalate ", " (map (toTextIndented (atLevel kit 0)) expArgs)))
+            (toTextIndented (atLevel kit 0) e <> renderImpArgs impArgs <> renderArgs kit spec expArgs)
     _ :< WT.PiElimExact e ->
       indentText (level kit) ("exact " <> toTextIndented (atLevel kit 0) e)
     _ :< WT.DataIntro (AttrDI.Attr {..}) consName _ consArgs ->
@@ -130,11 +132,22 @@ isIndentedApplication term =
     _ ->
       False
 
-renderIndentedApplication :: Kit -> WT.WeakTerm -> ImpArgs.ImpArgs WT.WeakType -> [WT.WeakTerm] -> T.Text
-renderIndentedApplication kit function impArgs expArgs =
+renderIndentedApplication :: Kit -> WT.WeakTerm -> ImpArgs.ImpArgs WT.WeakType -> CCS.CallConvSpec WT.WeakType -> [WT.WeakTerm] -> T.Text
+renderIndentedApplication kit function impArgs spec expArgs =
   toTextIndented kit function
     <> renderImpArgs impArgs
-    <> inParen (T.intercalate ", " (map (toTextIndented (atLevel kit 0)) expArgs))
+    <> renderArgs kit spec expArgs
+
+renderArgs :: Kit -> CCS.CallConvSpec WT.WeakType -> [WT.WeakTerm] -> T.Text
+renderArgs kit spec expArgs = do
+  let (isDestCall, sourceArgs) = CCS.marks (length expArgs) spec
+  let destMark = if isDestCall then "!" else ""
+  destMark <> inParen (T.intercalate ", " (zipWith (renderArg kit) expArgs sourceArgs))
+
+renderArg :: Kit -> WT.WeakTerm -> IsSourceArg -> T.Text
+renderArg kit arg isSourceArg = do
+  let sourceMark = if isSourceArg then "~" else ""
+  sourceMark <> toTextIndented (atLevel kit 0) arg
 
 renderImpArgs :: ImpArgs.ImpArgs WT.WeakType -> T.Text
 renderImpArgs impArgs =
@@ -161,16 +174,18 @@ renderPiIntroHeader distinct attr impArgs expArgs defaultArgs =
       LDK.keyword kind
         <> " "
         <> showVarWithKind distinct k x
+        <> (if isDestPassing then "@" else "")
         <> showSourceImpArgs distinct impArgs
         <> inParen (showFnDomArgList distinct expArgs)
         <> showDefaultArgs defaultArgs
-        <> (if isDestPassing then " ->> " else " -> ")
+        <> " -> "
         <> toTextType codType
     LK.Normal _ isDestPassing _ ->
-      showSourceImpArgs distinct impArgs
+      (if isDestPassing then "@" else "")
+        <> showSourceImpArgs distinct impArgs
         <> inParen (showFnDomArgList distinct expArgs)
         <> showDefaultArgs defaultArgs
-        <> (if isDestPassing then " =>>" else " =>")
+        <> " =>"
 
 showSourceImpArgs :: Bool -> [BinderF WT.WeakType] -> T.Text
 showSourceImpArgs distinct impArgs =
@@ -346,7 +361,7 @@ toTextType' h ty =
         PK.DestPass isConstLike ->
           if isConstLike
             then showImpArgsForAll' h impArgs defaultArgs <> toTextType' h cod
-            else showImpArgs impArgs <> inParen (showDomArgList' h expArgs) <> showDefaultBinders' h defaultArgs <> " ->> " <> toTextType' h cod
+            else "@" <> showImpArgs impArgs <> inParen (showDomArgList' h expArgs) <> showDefaultBinders' h defaultArgs <> " -> " <> toTextType' h cod
         PK.DataIntro _ -> do
           showImpArgsForAll' h impArgs defaultArgs <> toTextType' h cod
     _ :< WT.Data (AttrD.Attr {..}) name es -> do
@@ -459,9 +474,15 @@ inAngleBracket :: T.Text -> T.Text
 inAngleBracket s =
   "<" <> s <> ">"
 
-showDomArg' :: Handle -> BinderF WT.WeakType -> T.Text
-showDomArg' h (_, _, _, t) =
-  toTextType' h t
+showDomArg' :: Handle -> Bool -> BinderF WT.WeakType -> T.Text
+showDomArg' h anyNamed (_, k, x, t) =
+  if anyNamed
+    then showVarWithKind False k x <> ": " <> toTextType' h t
+    else varKindPrefix k <> toTextType' h t
+
+anyNamedDomArg :: [BinderF WT.WeakType] -> Bool
+anyNamedDomArg =
+  any (\(_, _, x, _) -> not (isHole x))
 
 showFnDomArg :: Bool -> BinderF WT.WeakType -> T.Text
 showFnDomArg distinct (_, k, x, t) =
@@ -469,13 +490,15 @@ showFnDomArg distinct (_, k, x, t) =
 
 showVarWithKind :: Bool -> VK.VarKind -> Ident -> T.Text
 showVarWithKind distinct k x =
-  case k of
-    VK.Exp -> "!" <> showVariable distinct x
-    VK.Normal -> showVariable distinct x
+  varKindPrefix k <> showVariable distinct x
+
+varKindPrefix :: VK.VarKind -> T.Text
+varKindPrefix k =
+  (if VK.isSized k then "sized " else "") <> (if VK.isSource k then "~" else "") <> (if VK.isExp k then "!" else "")
 
 showDomArgList' :: Handle -> [BinderF WT.WeakType] -> T.Text
 showDomArgList' h mxts =
-  T.intercalate ", " $ map (showDomArg' h) mxts
+  T.intercalate ", " $ map (showDomArg' h (anyNamedDomArg mxts)) mxts
 
 showApp :: T.Text -> [T.Text] -> T.Text
 showApp e es =
@@ -544,8 +567,6 @@ showMagic' h (M.WeakMagic magic) =
       "magic eq-type" <> inParen (toTextType' h typeExpr1 <> ", " <> toTextType' h typeExpr2)
     M.ShowType typeExpr ->
       "magic show-type" <> inParen (toTextType' h typeExpr)
-    M.AssertMixable _ unitTypeExpr typeExpr ->
-      "magic assert-mixable" <> inParen (toTextType' h unitTypeExpr <> ", " <> toTextType' h typeExpr)
     M.TextCons rune text ->
       "magic text-cons" <> inParen (toTextIndented (Kit 0 False) rune <> ", " <> toTextIndented (Kit 0 False) text)
     M.TextUncons _ text ->
@@ -585,7 +606,7 @@ showLowMagic' h lowMagic =
       let domStr = T.intercalate ", " (map (toTextType' h) domList)
       let codStr = showForeignCodType' h cod
       let argsStr = T.intercalate ", " (map (toTextIndented (Kit 0 False)) args)
-      let varArgsStr = T.intercalate ", " (map (\(a, t) -> toTextIndented (Kit 0 False) a <> ": " <> toTextType' h t) varArgs)
+      let varArgsStr = T.intercalate ", " (map (\(a, t) -> toTextType' h t <> " " <> toTextIndented (Kit 0 False) a) varArgs)
       let allArgs = if null varArgs then argsStr else argsStr <> ", " <> varArgsStr
       "magic external "
         <> T.pack (show extFunName)

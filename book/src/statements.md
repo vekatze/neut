@@ -215,7 +215,7 @@ define use-foo() -> int {
 }
 ```
 
-`define` can also declare default arguments by inserting `[z1: c1 := d1, ..., zk: ck := dk]` between the ordinary parameter list and `->` (or `->>`):
+`define` can also declare default arguments by inserting `[z1: c1 := d1, ..., zk: ck := dk]` between the ordinary parameter list and `->`:
 
 ```neut
 define bump(x: int)[step: int := 1] -> int {
@@ -224,8 +224,6 @@ define bump(x: int)[step: int := 1] -> int {
 ```
 
 Such a function has type `(x: int)[step: int] -> int`, and callers can override the default with `bump(10)[step := 5]`. If the caller omits `step`, its default expression is evaluated at the time of the call. The bracketed part may be omitted, and `[]` is also accepted.
-
-`define` also accepts `->>` in place of `->`. Such a function is still called in the usual way, but its compiled code uses destination-passing style. For the details of this behavior, please see the section on [functions in Terms](./terms.md#x1-a1--xn-an---e-).
 
 `define` can optionally have implicit type parameters, as in `identity` in the example above. The compiler inserts these type parameters at compile time, so you don't have to write them explicitly:
 
@@ -239,9 +237,7 @@ define use-func-with-implicit-arg() -> int {
 
 A function with the same name can't be defined in the same file.
 
-All tail-recursive calls in Neut are optimized into loops.
-
-Note that statements are order-sensitive as in F#. Thus, the following code results in an error:
+Statements are order-sensitive as in F#. Thus, the following code results in an error:
 
 ```neut
 define bar() -> int {
@@ -254,6 +250,86 @@ define foo() -> int {
 ```
 
 You have to use the statement `nominal` explicitly for forward references.
+
+A `define` also records the calling convention of the function. `@` between the name and the parameter list means that the caller provides the place the result is written into (destination-passing style):
+
+```neut
+define scale@(it: item, k: int) -> item {
+  body
+}
+
+define use-scale() -> item {
+  scale@(Item(42), 10)
+}
+
+// ↓ compile (pseudo-code)
+
+define scale(dst: pointer, it: item, k: int) -> item {
+  let result = body;
+  memcpy(dst, result);
+  free(result);
+  dst
+}
+
+define use-scale() -> item {
+  let dst = malloc(size(item));
+  scale(dst, Item(42), 10)
+}
+
+```
+
+`~` in front of a parameter means that the caller provides the place that argument is read from (source-passing style):
+
+```neut
+define area(~s: shape) -> int {
+  match s {
+  | Circle(r) =>
+    r
+  | Rect(w, h) =>
+    mul-int(w, h)
+  }
+}
+
+define use-area() -> int {
+  area(~Circle(42))
+}
+
+// ↓ compile (pseudo-code)
+
+define area(s-src: pointer) -> int {
+  let s = malloc(size(shape));
+  memcpy(s, s-src);
+  match s {
+  | Circle(r) =>
+    r
+  | Rect(w, h) =>
+    mul-int(w, h)
+  }
+}
+
+define use-area() -> int {
+  let val = Circle(42);
+  let src = malloc(size(shape));
+  src[i] := val[i]
+  let result = area(src);
+  free(src);
+  result
+}
+```
+
+The marks are part of the function type, so `@(a) -> b` and `(a) -> b` are different types, and so are `(~x: a) -> b` and `(x: a) -> b`.
+
+The type of a `~` parameter and the result type of a `@` function must be a type that can be stored inline. A type variable in such a position must be declared `sized`:
+
+```neut
+define push-back<sized a>(xs: array(a), ~x: a) -> array(a) {
+  // ...
+}
+```
+
+`sized a` means that `a` can only be instantiated with a type that can be stored inline, so `push-back(xs, ~Item(1))` is accepted and `push-back(xs, ~1)` is rejected.
+
+Every tail-recursive call in Neut is optimized into loops as long as it isn't a source-passing style function.
 
 ## `inline`
 
@@ -289,7 +365,7 @@ define use-inline-foo() -> int {
 }
 ```
 
-`inline` also accepts `->>` in place of `->`. As with `define`, such a function is still called in the usual way, while the compiled code uses destination-passing style. For the details of this behavior, please see the section on [functions in Terms](./terms.md#x1-a1--xn-an---e-).
+`inline` records a calling convention in the same way as `define`. For the details of this behavior, please see the section on [functions in Terms](./terms.md#x1-a1--xn-an---e-).
 
 As with `define`, you can also place a default-argument list in `[]` between the ordinary parameter list and the arrow.
 
@@ -575,7 +651,7 @@ Since `point` has a single constructor, the internal representation of `Point(10
 
 rather than the `(0, 10, 20)` we would get if a discriminant were stored.
 
-#### Mixing Nested Fields
+#### Storing Fields Inline
 
 Consider the following code:
 
@@ -600,15 +676,15 @@ where:
 - `ptr1` points to `(1, 2)`,
 - `ptr2` points to `(3, 4)`.
 
-You can mix the content of `point` into `entity` by:
+You can store the content of `point` inline in `entity` by:
 
 ```neut
 data entity {
-| Entity(point mix, point)
+| Entity(~point, point)
 }
 ```
 
-In this case, `Entity(Point(1, 2), Point(3, 4))` is compiled into a pointer to:
+A constructor is an ordinary function, so a marked field is filled by a marked argument. In this case, `Entity(~Point(1, 2), Point(3, 4))` is compiled into a pointer to:
 
 ```
 (1, 2, ptr2)
@@ -616,10 +692,10 @@ In this case, `Entity(Point(1, 2), Point(3, 4))` is compiled into a pointer to:
 
 where `ptr2` points to `(3, 4)`.
 
-Taking a mixed field out with `match` or `let` repacks it into a fresh allocation:
+A pattern carries the mark as well, so the two sides of a constructor read alike:
 
 ```neut
-let Entity(p, q) = e;
+let Entity(~p, q) = e;
 cont
 
 // ↓ (compile)
@@ -628,15 +704,17 @@ cont
 let p = malloc({2-words});
 store(p[0], e[0]);  // x1
 store(p[1], e[1]);  // y1
-// q isn't mixed
+// q isn't stored inline
 let q = e[2];
 cont
 ```
 
-Reading it through a noema with `case` or `tie` does no repacking. `p` and `q` become interior pointers into `e`, with no allocation:
+Taking such a field out with `match` or `let` repacks it into a fresh allocation, as above.
+
+Reading it through a noema with `case` or `tie` does no repacking: `p` and `q` become interior pointers into `e`, with no allocation. The mark is written the same way in both, since it describes the field rather than the way the field is read:
 
 ```neut
-tie Entity(p, q) = e;
+tie Entity(~p, q) = e;
 cont
 
 // ↓ (compile)
@@ -644,7 +722,9 @@ cont
 // (`p` and `q` point directly into `e`'s words; no malloc)
 ```
 
-`mix` can also be used with a `resource` type when the resource has a fixed non-negative byte size. The mixed field uses the minimum number of words that can contain those bytes.
+The same mark can also be used with a `resource` type when the resource has a fixed non-negative byte size. The field then uses the minimum number of words that can contain those bytes.
+
+The mark is the same one that is used for a source-passing parameter. For the details, please see [function types in Terms](./terms.md#x1-a1--xn-an---b).
 
 ## `alias`
 

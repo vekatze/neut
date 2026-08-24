@@ -41,10 +41,6 @@ refreshStmt h stmt = do
       (xs', sub) <- refreshBinders h xs
       body' <- substComp h sub body
       return $ C.Def name opacity xs' body'
-    C.DefVoid name opacity xs body -> do
-      (xs', sub) <- refreshBinders h xs
-      body' <- substComp h sub body
-      return $ C.DefVoid name opacity xs' body'
     C.Foreign {} ->
       return stmt
 
@@ -65,28 +61,21 @@ substComp h sub term =
       let v' = substValue sub v
       let ds' = map (substValue sub) ds
       return $ C.PiElimDownElim forceInline v' ds'
-    C.SigmaElim b offset size xs v e -> do
+    C.SigmaElim shouldDeallocate offset size xs v e -> do
       let v' = substValue sub v
       xs' <- mapM (Gensym.newIdentFromIdent (gensymHandle h)) xs
       let sub' = IntMap.union (IntMap.fromList (zip (map Ident.toInt xs) (map C.VarLocal xs'))) sub
       e' <- substComp h sub' e
-      return $ C.SigmaElim b offset size xs' v' e'
+      return $ C.SigmaElim shouldDeallocate offset size xs' v' e'
     C.UpIntro v -> do
       let v' = substValue sub v
       return $ C.UpIntro v'
-    C.UpIntroVoid ->
-      return C.UpIntroVoid
     C.UpElim isReducible x e1 e2 -> do
       e1' <- substComp h sub e1
       x' <- Gensym.newIdentFromIdent (gensymHandle h) x
       let sub' = IntMap.insert (Ident.toInt x) (C.VarLocal x') sub
       e2' <- substComp h sub' e2
       return $ C.UpElim isReducible x' e1' e2'
-    C.UpElimCallVoid f vs e2 -> do
-      let f' = substValue sub f
-      let vs' = map (substValue sub) vs
-      e2' <- substComp h sub e2
-      return $ C.UpElimCallVoid f' vs' e2'
     C.EnumElim fvInfo v defaultBranch branchList -> do
       let (is, ds) = unzip fvInfo
       let ds' = map (substValue sub) ds
@@ -99,17 +88,16 @@ substComp h sub term =
         branch' <- substComp h sub' branch
         return (tag, branch')
       return $ C.EnumElim (zip (map Ident.toInt xs) ds') v' defaultBranch' branchList'
-    C.DestCall sizeComp f vs -> do
-      sizeComp' <- substComp h sub sizeComp
-      let f' = substValue sub f
-      let vs' = map (substValue sub) vs
-      return $ C.DestCall sizeComp' f' vs'
-    C.WriteToDest dest sizeComp result cont -> do
+    C.OutputProvide dest sizeComp result -> do
       let dest' = substValue sub dest
       sizeComp' <- substComp h sub sizeComp
       result' <- substComp h sub result
-      cont' <- substComp h sub cont
-      return $ C.WriteToDest dest' sizeComp' result' cont'
+      return $ C.OutputProvide dest' sizeComp' result'
+    C.OutputRequest sizeComp f vs -> do
+      sizeComp' <- substComp h sub sizeComp
+      let f' = substValue sub f
+      let vs' = map (substValue sub) vs
+      return $ C.OutputRequest sizeComp' f' vs'
     C.Primitive theta -> do
       let theta' = substPrimitive sub theta
       return $ C.Primitive theta'

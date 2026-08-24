@@ -1,0 +1,214 @@
+import {
+  core::int.io {print-int-line},
+}
+
+data shape {
+| Circle(r: int)
+| Rect(w: int, h: int)
+}
+
+data wide {
+| Wide(a: int, b: int, c: int, d: int)
+}
+
+data stamped {
+| Stamped(~shape, int)
+}
+
+define shape-area(s: &shape) -> int {
+  case s {
+  | Circle(r) =>
+    *r
+  | Rect(w, h) =>
+    mul-int(*w, *h)
+  }
+}
+
+define wide-sum(w: &wide) -> int {
+  case w {
+  | Wide(a, b, c, d) =>
+    add-int(add-int(*a, *b), add-int(*c, *d))
+  }
+}
+
+define increment(n: int) -> int {
+  add-int(n, 1)
+}
+
+define area(~s: shape) -> int {
+  match s {
+  | Circle(r) =>
+    r
+  | Rect(w, h) =>
+    mul-int(w, h)
+  }
+}
+
+define use-area() -> int {
+  area(~Rect(3, 4))
+}
+
+define use-area-by-key() -> int {
+  area{~s := Circle(7)}
+}
+
+define use-area-pun(s: shape) -> int {
+  area{~s}
+}
+
+define forward(~s: shape) -> int {
+  area(~s)
+}
+
+define peek(~s: shape) -> int {
+  let v on s = shape-area(s);
+  add-int(v, area(~s))
+}
+
+define keep(~s: shape) -> shape {
+  s
+}
+
+define use-keep() -> int {
+  area(~keep(~Circle(9)))
+}
+
+define twice(~!s: shape) -> int {
+  add-int(area(~s), area(~s))
+}
+
+define stamp@(~s: shape, k: int) -> stamped {
+  Stamped(~s, k)
+}
+
+define use-stamp() -> int {
+  let Stamped(~s, k) = stamp@(~Rect(2, 5), 7);
+  add-int(area(~s), k)
+}
+
+define stamped-sum(x: &stamped) -> int {
+  case x {
+  | Stamped(~s, k) =>
+    add-int(shape-area(s), *k)
+  }
+}
+
+define use-stamped-noetic() -> int {
+  pin x = Stamped(~Circle(4), 6);
+  stamped-sum(x)
+}
+
+define consume<sized a>(~x: a, f: (&a) -> int) -> int {
+  pin x = x;
+  f(x)
+}
+
+define use-consume() -> int {
+  add-int(consume(~Rect(3, 4), shape-area), consume(~Wide(1, 2, 3, 4), wide-sum))
+}
+
+define relay<sized a>(~x: a, f: (&a) -> int) -> int {
+  consume(~x, f)
+}
+
+define use-relay() -> int {
+  relay(~Circle(11), shape-area)
+}
+
+define apply-int-fn(~f: (int) -> int, n: int) -> int {
+  f(n)
+}
+
+define use-apply-int-fn() -> int {
+  apply-int-fn(~increment, 41)
+}
+
+define apply-source(g: (~s: shape) -> int) -> int {
+  g(~Rect(3, 3))
+}
+
+define use-lambda-source() -> int {
+  apply-source((~s: shape) => {
+    add-int(area(~s), 1)
+  })
+}
+
+define local-source(base: int) -> int {
+  let go =
+    define go(~s: shape, n: int) -> int {
+      match n {
+      | 0 =>
+        add-int(area(~s), base)
+      | _ =>
+        go(~Rect(2, n), sub-int(n, 1))
+      }
+    };
+  go(~Circle(5), 3)
+}
+
+define local-inline-source(k: int) -> int {
+  let f =
+    inline f(~s: shape) -> int {
+      add-int(area(~s), k)
+    };
+  f(~Rect(2, 6))
+}
+
+define build-sum(n: int, acc: int) -> int {
+  match n {
+  | 0 =>
+    acc
+  | _ =>
+    build-sum(sub-int(n, 1), add-int(acc, area(~Rect(2, n))))
+  }
+}
+
+define scale-area(~s: shape)[bias: int := 100] -> int {
+  add-int(area(~s), bias)
+}
+
+define first-of<sized a>(~x: a, f: (&a) -> int, g: (&a) -> int) -> int {
+  pin x = x;
+  add-int(f(x), g(x))
+}
+
+define main() -> unit {
+  print("use-area\n");
+  print-int-line(use-area());
+  print("use-area-by-key\n");
+  print-int-line(use-area-by-key());
+  print("use-area-pun\n");
+  print-int-line(use-area-pun(Rect(5, 6)));
+  print("forward\n");
+  print-int-line(forward(~Rect(4, 4)));
+  print("peek\n");
+  print-int-line(peek(~Rect(3, 5)));
+  print("use-keep\n");
+  print-int-line(use-keep());
+  print("twice\n");
+  print-int-line(twice(~Rect(3, 3)));
+  print("use-stamp\n");
+  print-int-line(use-stamp());
+  print("use-stamped-noetic\n");
+  print-int-line(use-stamped-noetic());
+  print("use-consume\n");
+  print-int-line(use-consume());
+  print("use-relay\n");
+  print-int-line(use-relay());
+  print("use-apply-int-fn\n");
+  print-int-line(use-apply-int-fn());
+  print("use-lambda-source\n");
+  print-int-line(use-lambda-source());
+  print("local-source\n");
+  print-int-line(local-source(1000));
+  print("local-inline-source\n");
+  print-int-line(local-inline-source(7));
+  print("build-sum\n");
+  print-int-line(build-sum(4, 0));
+  print("scale-area\n");
+  print-int-line(scale-area(~Circle(3)));
+  print("scale-area-override\n");
+  print-int-line(scale-area(~Circle(3))[bias := 1]);
+  print("first-of\n");
+  print-int-line(first-of(~Rect(2, 7), shape-area, shape-area))
+}
