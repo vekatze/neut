@@ -163,7 +163,7 @@ simplify h susList constraintList =
               | piKind1 == piKind2,
                 -- `source` is part of the type, and unification on it is exact.
                 map isSourceBinder expArgs1 == map isSourceBinder expArgs2,
-                map isSizedBinder impArgs1 == map isSizedBinder impArgs2,
+                map binderTypeAttrs impArgs1 == map binderTypeAttrs impArgs2,
                 Just impBinders <- zipBinders impArgs1 impArgs2,
                 Just defaultBinders <- zipDefaultBinders defaultArgs1 defaultArgs2,
                 length expArgs1 == length expArgs2 -> do
@@ -359,9 +359,9 @@ isSourceBinder :: BinderF WT.WeakType -> Bool
 isSourceBinder (_, k, _, _) =
   VK.isSource k
 
-isSizedBinder :: BinderF WT.WeakType -> Bool
-isSizedBinder (_, k, _, _) =
-  VK.isSized k
+binderTypeAttrs :: BinderF WT.WeakType -> [VK.TypeAttr]
+binderTypeAttrs (_, k, _, _) =
+  VK.attrList k
 
 zipBinders :: [BinderF WT.WeakType] -> [BinderF WT.WeakType] -> Maybe [(BinderF WT.WeakType, BinderF WT.WeakType)]
 zipBinders args1 args2 =

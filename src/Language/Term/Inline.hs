@@ -55,8 +55,8 @@ import Language.Term.TraceID
 import Language.Term.TraceSites qualified as TraceSites
 import Logger.Hint
 
-new :: Env.Env -> Hint -> Bool -> Bool -> IO Handle
-new env location shouldEmitResidualChecks traceEnabled = do
+new :: Env.Env -> Hint -> Bool -> IO Handle
+new env location traceEnabled = do
   let Env.Env {..} = env
   let substHandle = Subst.new gensymHandle
   currentStepRef <- liftIO $ newIORef 0
@@ -265,7 +265,6 @@ inline' h rawTerm = do
     m :< TM.BoxIntroLift t e -> do
       t' <- inlineType' h t
       e' <- inline' h e
-      emitActualityCheck h m t'
       return $ m :< TM.BoxIntroLift t' e'
     m :< TM.BoxElim traceID castSeq mxt e1 uncastSeq e2 -> do
       castSeq' <- mapM (bimapM (inlineTypeBinder h) (inline' h)) castSeq
@@ -502,28 +501,25 @@ inlineDecisionTree h tree =
       return DT.Unreachable
     DT.Switch (cursorVar, cursor) clauseList -> do
       cursor' <- inlineType' h cursor
-      clauseList' <- inlineCaseList h cursor' clauseList
+      clauseList' <- inlineCaseList h clauseList
       return $ DT.Switch (cursorVar, cursor') clauseList'
 
 inlineCaseList ::
   Handle ->
-  TM.Type ->
   DT.CaseList TM.Type TM.Term ->
   App (DT.CaseList TM.Type TM.Term)
-inlineCaseList h cursorType (fallbackTree, clauseList) = do
+inlineCaseList h (fallbackTree, clauseList) = do
   fallbackTree' <- inlineDecisionTree h fallbackTree
-  clauseList' <- mapM (inlineCase h cursorType) clauseList
+  clauseList' <- mapM (inlineCase h) clauseList
   return (fallbackTree', clauseList')
 
 inlineCase ::
   Handle ->
-  TM.Type ->
   DT.Case TM.Type TM.Term ->
   App (DT.Case TM.Type TM.Term)
-inlineCase h cursorType decisionCase = do
+inlineCase h decisionCase = do
   case decisionCase of
     DT.LiteralCase mPat i cont -> do
-      emitIntegerCheck h mPat cursorType i
       cont' <- inlineDecisionTree h cont
       return $ DT.LiteralCase mPat i cont'
     DT.ConsCase record@(DT.ConsCaseRecord {..}) -> do
@@ -539,35 +535,6 @@ inlineCase h cursorType decisionCase = do
               DT.consArgs = consArgs',
               DT.cont = cont'
             }
-
-emitActualityCheck :: Handle -> Hint -> TM.Type -> App ()
-emitActualityCheck h m t = do
-  when (shouldEmitResidualChecks h) $ do
-    mReport <- getReportHint h m
-    emitResidualCheck h $ CheckActuality mReport t
-
-emitIntegerCheck :: Handle -> Hint -> TM.Type -> L.Literal -> App ()
-emitIntegerCheck h m t literal =
-  case literal of
-    L.Int _ -> do
-      when (shouldEmitResidualChecks h) $ do
-        mReport <- getReportHint h m
-        emitResidualCheck h $ CheckInteger mReport t
-    L.Rune _ ->
-      return ()
-
-emitResidualCheck :: Handle -> ResidualCheck -> App ()
-emitResidualCheck h check = do
-  liftIO $ modifyIORef' (residualCheckList h) (check :)
-
-getReportHint :: Handle -> Hint -> App Hint
-getReportHint h m = do
-  stack <- liftIO $ readIORef (macroCallStack h)
-  case stack of
-    (_, _, mReport) : _ ->
-      return mReport
-    [] ->
-      return m
 
 findClause ::
   D.Discriminant ->

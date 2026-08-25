@@ -1,13 +1,12 @@
 module Kernel.Elaborate.Internal.Handle.Elaborate
   ( Handle (..),
-    SizedSite (..),
-    SizedObligation (..),
+    ObligationSite (..),
+    TypeObligation (..),
     new,
     reduceType,
     fillType,
     inline,
     inlineDefinition,
-    inlineWithoutResidualChecks,
     inlineBinder,
     inlineEnv,
   )
@@ -16,8 +15,9 @@ where
 import App.App (App)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.IORef
-import Data.IntSet qualified as IntSet
+import Data.IntMap qualified as IntMap
 import Data.Maybe (fromMaybe)
+import Data.Set qualified as S
 import Gensym.Handle qualified as Gensym
 import Kernel.Common.Const (defaultInlineLimit)
 import Kernel.Common.CreateGlobalHandle qualified as Global
@@ -49,6 +49,7 @@ import Kernel.Elaborate.Internal.WeakTerm.Fill qualified as Fill
 import Kernel.Elaborate.TypeHoleSubst qualified as THS
 import Kernel.Parse.Internal.Handle.UsedTopLevelName qualified as UsedTopLevelName
 import Language.Common.Binder
+import Language.Common.VarKind qualified as VK
 import Language.Term.Inline qualified as Inline
 import Language.Term.Inline.Env qualified as InlineEnv
 import Language.Term.Inline.Handle qualified as InlineHandle
@@ -90,21 +91,22 @@ data Handle = Handle
     varEnv :: BoundVarEnv,
     specializationTable :: IORef InlineHandle.SpecializationTable,
     pendingSpecializationDefs :: IORef [Stmt.Stmt],
-    residualCheckList :: IORef [InlineHandle.ResidualCheck],
-    sizedTypeVars :: IORef IntSet.IntSet,
-    sizedObligations :: IORef [SizedObligation],
+    attributedTypeVars :: IORef (IntMap.IntMap (S.Set VK.TypeAttr)),
+    typeObligations :: IORef [TypeObligation],
     traceConfig :: Trace.Config
   }
 
 type BoundVarEnv = [BinderF WT.WeakType]
 
-data SizedSite
+data ObligationSite
   = SourceSlot
   | Destination
   | Instantiation
+  | LiftTarget
+  | LiteralPattern
 
-data SizedObligation
-  = SizedObligation SizedSite Hint WT.WeakType
+data TypeObligation
+  = TypeObligation VK.TypeAttr ObligationSite Hint WT.WeakType
 
 new :: Gensym.Handle -> Global.Handle -> Trace.Config -> Local.Handle -> Source -> IO Handle
 new gensymHandle globalHandle@(Global.Handle {..}) traceConfig (Local.Handle {..}) currentSource = do
@@ -119,9 +121,8 @@ new gensymHandle globalHandle@(Global.Handle {..}) traceConfig (Local.Handle {..
   let currentStep = 0
   specializationTable <- newIORef mempty
   pendingSpecializationDefs <- newIORef []
-  residualCheckList <- newIORef []
-  sizedTypeVars <- newIORef IntSet.empty
-  sizedObligations <- newIORef []
+  attributedTypeVars <- newIORef IntMap.empty
+  typeObligations <- newIORef []
   return $ Handle {..}
 
 reduceType :: Handle -> WT.WeakType -> App WT.WeakType
@@ -138,15 +139,7 @@ fillType h sub t = do
 
 inline :: Handle -> Hint -> TM.Term -> App TM.Term
 inline h m =
-  inline' h m True True
-
-inlineDefinition :: Handle -> Hint -> Bool -> TM.Term -> App TM.Term
-inlineDefinition h m =
-  inline' h m True
-
-inlineWithoutResidualChecks :: Handle -> Hint -> TM.Term -> App TM.Term
-inlineWithoutResidualChecks h m =
-  inline' h m False True
+  inlineDefinition h m True
 
 inlineEnv :: Handle -> IO InlineEnv.Env
 inlineEnv h = do
@@ -167,21 +160,20 @@ inlineEnv h = do
         InlineEnv.inlineLimit = inlineLimit h,
         InlineEnv.specializationTable = specializationTable h,
         InlineEnv.pendingSpecializationDefs = pendingSpecializationDefs h,
-        InlineEnv.residualCheckList = residualCheckList h,
         InlineEnv.mainModule = mainModule,
         InlineEnv.modulePathMap = modulePathMap h,
         InlineEnv.traceHandle = Global.termTraceHandle (globalHandle h)
       }
 
-inline' :: Handle -> Hint -> Bool -> Bool -> TM.Term -> App TM.Term
-inline' h m shouldEmitResidualChecks traceEnabled e = do
+inlineDefinition :: Handle -> Hint -> Bool -> TM.Term -> App TM.Term
+inlineDefinition h m traceEnabled e = do
   env <- liftIO $ inlineEnv h
-  inlineHandle <- liftIO $ Inline.new env m shouldEmitResidualChecks traceEnabled
+  inlineHandle <- liftIO $ Inline.new env m traceEnabled
   Inline.inline inlineHandle e
 
 inlineBinder :: Handle -> BinderF TM.Type -> App (BinderF TM.Type)
 inlineBinder h (m, k, x, t) = do
   env <- liftIO $ inlineEnv h
-  inlineHandle <- liftIO $ Inline.new env m False False
+  inlineHandle <- liftIO $ Inline.new env m False
   t' <- Inline.inlineType inlineHandle t
   return (m, k, x, t')

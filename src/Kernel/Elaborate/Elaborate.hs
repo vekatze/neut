@@ -95,6 +95,7 @@ import Language.Common.SourceLocator qualified as SL
 import Language.Common.StmtKind qualified as SK
 import Language.Common.StrictGlobalLocator qualified as SGL
 import Language.Common.Text.Util (decodeUtf8Bytes)
+import Language.Common.VarKind qualified as VK
 import Language.LowComp.DeclarationName qualified as DN
 import Language.Term.Inline qualified as Inline
 import Language.Term.Inline.Handle qualified as InlineHandle
@@ -230,13 +231,11 @@ synthesizeStmtList h t logs globalReferenceList stmtList = do
   mapM_ (detectCyclicTypes h) stmtList'
   generatedStmtList <- liftIO $ reverse <$> readIORef (pendingSpecializationDefs h)
   let stmtList'' = stmtList' ++ generatedStmtList
-  sizedObligationList <- liftIO $ reverse <$> readIORef (sizedObligations h)
-  sizedErrorList <- concat <$> mapM (checkSizedObligation h) sizedObligationList
-  residualCheckList' <- liftIO $ reverse <$> readIORef (residualCheckList h)
-  residualErrorList <- concat <$> mapM (checkResidualCheck h) residualCheckList'
-  let residualErrorList' = nubOrdOn (\lg -> (fmap logPosition (L.position lg), L.content lg)) (sizedErrorList ++ residualErrorList)
-  unless (null residualErrorList') $ do
-    throwError $ E.MakeError residualErrorList'
+  typeObligationList <- liftIO $ reverse <$> readIORef (typeObligations h)
+  obligationErrorList <- concat <$> mapM (checkTypeObligation h) typeObligationList
+  let obligationErrorList' = nubOrdOn (\lg -> (fmap logPosition (L.position lg), L.content lg)) obligationErrorList
+  unless (null obligationErrorList') $ do
+    throwError $ E.MakeError obligationErrorList'
   countSnapshot <- liftIO $ Gensym.getCount (gensymHandle h)
   localLogs <- liftIO $ LocalLogs.get (localLogsHandle h)
   let logs' = logs ++ localLogs
@@ -287,10 +286,7 @@ elaborateStmt h stmt = do
         impArgs'' <- mapM (inlineBinder h) impArgs'
         defaultArgs'' <- forM defaultArgs' $ \(binder, value) -> do
           binder' <- inlineBinder h binder
-          value' <-
-            if SK.isMacroStmtKind stmtKind
-              then inlineWithoutResidualChecks h m value
-              else inline h m value
+          value' <- inline h m value
           return (binder', value')
         expArgs'' <- mapM (inlineBinder h) expArgs'
         codType'' <- inlineType h m codType'
@@ -434,45 +430,96 @@ logPosition :: SavedHint -> (FilePath, Loc)
 logPosition (SavedHint m) =
   (metaFileName m, metaLocation m)
 
-checkResidualCheck :: Handle -> InlineHandle.ResidualCheck -> App [L.Log]
-checkResidualCheck h check =
-  case check of
-    InlineHandle.CheckActuality m t ->
-      checkActualityType h m S.empty t
-    InlineHandle.CheckInteger m t ->
-      checkIntegerCursorType h m t
+checkTypeObligation :: Handle -> TypeObligation -> App [L.Log]
+checkTypeObligation h (TypeObligation attr site m t) = do
+  t' <- elaborateType h t >>= inlineType h m
+  result <- checkTypeAttr h attr m t'
+  case result of
+    Right () ->
+      return []
+    Left message ->
+      return [L.newLog m LL.Error $ obligationErrorMessage attr site message]
 
-checkActualityType :: Handle -> Hint -> S.Set DD.DefiniteDescription -> TM.Type -> App [L.Log]
-checkActualityType h m dataNameSet t = do
+checkTypeAttr :: Handle -> VK.TypeAttr -> Hint -> TM.Type -> App (Either T.Text ())
+checkTypeAttr h attr m t =
+  case attr of
+    VK.Sized ->
+      fmap (const ()) <$> resolveMixedOrError h S.empty m t
+    VK.Actual ->
+      checkActualityType h S.empty m t
+    VK.Integer ->
+      checkIntegerType h t
+
+obligationErrorMessage :: VK.TypeAttr -> ObligationSite -> T.Text -> T.Text
+obligationErrorMessage attr site message =
+  case site of
+    SourceSlot ->
+      "A source-passing slot cannot have this type: " <> message <> "."
+    Destination ->
+      "A destination cannot have this type: " <> message <> "."
+    Instantiation ->
+      "A parameter declared `" <> VK.reifyAttr attr <> "` cannot be instantiated with this type: " <> message <> "."
+    LiftTarget ->
+      "`lift` cannot be used on this type: " <> message <> "."
+    LiteralPattern ->
+      "An integer pattern cannot be used against this type: " <> message <> "."
+
+hasTypeAttr :: Handle -> VK.TypeAttr -> Ident -> App Bool
+hasTypeAttr h attr x = do
+  attrMap <- liftIO $ readIORef (attributedTypeVars h)
+  return $ maybe False (S.member attr) $ IntMap.lookup (Ident.toInt x) attrMap
+
+undeclaredTypeVarMessage :: VK.TypeAttr -> Ident -> T.Text
+undeclaredTypeVarMessage attr x =
+  "the type variable `" <> Ident.toText x <> "` is not declared `" <> VK.reifyAttr attr <> "`"
+
+checkActualityType :: Handle -> S.Set DD.DefiniteDescription -> Hint -> TM.Type -> App (Either T.Text ())
+checkActualityType h dataNameSet m t = do
   t' <- inlineType h m t
   case t' of
     _ :< TM.Tau ->
-      return []
+      return $ Right ()
     _ :< TM.Data _ dataName dataArgs -> do
       let dataNameSet' = S.insert dataName dataNameSet
-      logsFromArgs <- concat <$> mapM (checkActualityType h m dataNameSet') dataArgs
-      if S.member dataName dataNameSet
-        then return logsFromArgs
-        else do
-          dataConsArgsList <- getActualityConsArgTypes h m dataName dataArgs
-          logsFromCons <- fmap concat $ forM dataConsArgsList $ \dataConsArgs -> do
-            fmap concat $ forM dataConsArgs $ \(_, _, _, consArg) -> do
-              checkActualityType h m dataNameSet' consArg
-          return $ logsFromArgs ++ logsFromCons
+      resultFromArgs <- checkActualityTypeList h dataNameSet' m dataArgs
+      case resultFromArgs of
+        Left message ->
+          return $ Left message
+        Right ()
+          | S.member dataName dataNameSet ->
+              return $ Right ()
+          | otherwise -> do
+              dataConsArgsList <- getActualityConsArgTypes h m dataName dataArgs
+              let consArgTypes = map (\(_, _, _, consArg) -> consArg) $ concat dataConsArgsList
+              checkActualityTypeList h dataNameSet' m consArgTypes
     _ :< TM.Box tInner ->
-      checkActualityType h m dataNameSet tInner
+      checkActualityType h dataNameSet m tInner
     _ :< TM.PrimType {} ->
-      return []
+      return $ Right ()
     _ :< TM.Void ->
-      return []
+      return $ Right ()
     _ :< TM.Resource {} ->
-      return []
+      return $ Right ()
+    _ :< TM.TVar x -> do
+      isActual <- hasTypeAttr h VK.Actual x
+      if isActual
+        then return $ Right ()
+        else return $ Left $ undeclaredTypeVarMessage VK.Actual x
     _ ->
-      return
-        [ L.newLog m LL.Error $
-            "A term of the following type might be noetic:\n  "
-              <> toTextType (weakenType t')
-        ]
+      return $ Left $ "a term of the type `" <> toTextType (weakenType t') <> "` might be noetic"
+
+checkActualityTypeList :: Handle -> S.Set DD.DefiniteDescription -> Hint -> [TM.Type] -> App (Either T.Text ())
+checkActualityTypeList h dataNameSet m ts =
+  case ts of
+    [] ->
+      return $ Right ()
+    t : rest -> do
+      result <- checkActualityType h dataNameSet m t
+      case result of
+        Left message ->
+          return $ Left message
+        Right () ->
+          checkActualityTypeList h dataNameSet m rest
 
 getActualityConsArgTypes ::
   Handle ->
@@ -505,37 +552,18 @@ substActualityConsArgs h sub consArgs =
       rest' <- substActualityConsArgs h sub' rest
       return $ (m, k, x, t') : rest'
 
-checkIntegerCursorType :: Handle -> Hint -> TM.Type -> App [L.Log]
-checkIntegerCursorType h m t = do
-  t' <- inlineType h m t
-  case t' of
+checkIntegerType :: Handle -> TM.Type -> App (Either T.Text ())
+checkIntegerType h t =
+  case t of
     _ :< TM.PrimType (PT.Int _) ->
-      return []
+      return $ Right ()
+    _ :< TM.TVar x -> do
+      isInteger <- hasTypeAttr h VK.Integer x
+      if isInteger
+        then return $ Right ()
+        else return $ Left $ undeclaredTypeVarMessage VK.Integer x
     _ ->
-      return
-        [ L.newLog m LL.Error $
-            "Expected:\n  an integer type\nFound:\n  "
-              <> toTextType (weakenType t')
-        ]
-
-checkSizedObligation :: Handle -> SizedObligation -> App [L.Log]
-checkSizedObligation h (SizedObligation site m t) = do
-  t' <- elaborateType h t >>= inlineType h m
-  result <- resolveMixedOrError h S.empty m t'
-  case result of
-    Right _ ->
-      return []
-    Left message -> do
-      let explanation =
-            case site of
-              SourceSlot ->
-                "A source-passing slot cannot have this type: " <> message <> "."
-              Destination ->
-                "A destination cannot have this type: " <> message <> "."
-              Instantiation ->
-                "A `sized` parameter cannot be instantiated with this type: " <> message <> "."
-      return
-        [L.newLog m LL.Error explanation]
+      return $ Left $ "the type `" <> toTextType (weakenType t) <> "` is not an integer type"
 
 insertStmt :: Handle -> Stmt -> App ()
 insertStmt h stmt = do
@@ -732,10 +760,10 @@ resolveMixedOrError h visited m ty =
     _ :< TM.Tau ->
       cannotMixFieldType "the type universe"
     _ :< TM.TVar x -> do
-      sizedTypeVarSet <- liftIO $ readIORef (sizedTypeVars h)
-      if IntSet.member (Ident.toInt x) sizedTypeVarSet
+      isSized <- hasTypeAttr h VK.Sized x
+      if isSized
         then return $ Right RuntimeSlots
-        else return $ Left $ "the type variable `" <> Ident.toText x <> "` is not declared `sized`"
+        else return $ Left $ undeclaredTypeVarMessage VK.Sized x
     _ :< TM.TVarGlobal {} ->
       cannotMixFieldType "a nominal type"
     _ :< TM.TyApp {} ->
@@ -1237,7 +1265,7 @@ elaborateWeakBinder h (m, k, x, t) = do
 inlineType :: Handle -> Hint -> TM.Type -> App TM.Type
 inlineType h m t = do
   env <- liftIO $ inlineEnv h
-  inlineHandle <- liftIO $ Inline.new env m False False
+  inlineHandle <- liftIO $ Inline.new env m False
   Inline.inlineType inlineHandle t
 
 withFreshSpecializationTable :: Handle -> App a -> App a

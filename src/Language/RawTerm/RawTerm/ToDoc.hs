@@ -780,7 +780,8 @@ prefixVarKind :: VK.VarKind -> D.Doc -> D.Doc
 prefixVarKind k doc = do
   let named = if VK.isExp k then D.join [D.text "!", doc] else doc
   let marked = if VK.isSource k then D.join [D.text "~", named] else named
-  if VK.isSized k then D.join [D.text "sized ", marked] else marked
+  let attrPrefixes = map (\attr -> D.text (VK.reifyAttr attr <> " ")) (VK.attrList k)
+  D.join $ attrPrefixes ++ [marked]
 
 isDestPassingPiKind :: RT.RawPiKind -> Bool
 isDestPassingPiKind piKind =

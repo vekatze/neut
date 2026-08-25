@@ -16,7 +16,6 @@ import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.IntMap qualified as IntMap
-import Data.IntSet qualified as IntSet
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Gensym.Gensym qualified as Gensym
@@ -101,7 +100,7 @@ inferStmt h stmt =
         _ ->
           return ()
       when (SK.isDestPassingStmtKind stmtKind) $ do
-        requireSized h Destination m codType'
+        require h VK.Sized Destination m codType'
       liftIO $ insertType h''' x $ m :< WT.Pi (PK.fromStmtKind stmtKind isConstLike) impArgs' expArgs' defaultBinders codType'
       stmtKind' <- inferStmtKindTerm h''' stmtKind
       (e', te) <- infer h''' e
@@ -164,7 +163,7 @@ inferDefineMeta h defineMeta = do
         ensureImplicitArityCorrectness h (m :< WT.VarGlobal (AttrVG.new AN.zero) (weakDefineMetaTarget defineMeta)) (length impParams) (length targetArgs')
         targetArgsWithKinds <- mapM (inferTypeWithKind h) targetArgs'
         subType <- inferArgsTypes h IntMap.empty m targetArgsWithKinds impParams
-        requireSizedForInstantiation h m impParams targetArgs'
+        requireAttrsForInstantiation h m impParams targetArgs'
         (expParams', subType') <- substTypeBinder h subType expParams
         cod' <- liftIO $ Subst.substType (substHandle h) subType' cod
         return (expParams', cod')
@@ -403,6 +402,7 @@ infer h term =
       return (m :< WT.BoxIntro letSeq' e', m :< WT.Box t)
     m :< WT.BoxIntroLift _ e -> do
       (e', t) <- infer h e
+      require h VK.Actual LiftTarget m t
       return (m :< WT.BoxIntroLift (Just t) e', m :< WT.Box t)
     m :< WT.BoxElim castSeq mxt e1 uncastSeq e2 -> do
       castSeq' <- inferQuoteSeq h castSeq ToNoema
@@ -703,8 +703,7 @@ inferImpBinder h binderList =
       return ([], h)
     (mx, k, x, t) : rest -> do
       t' <- inferType h t
-      when (VK.isSized k) $ do
-        declareSized h mx x t'
+      declareTypeAttrs h mx k x t'
       liftIO $ WeakType.insert (weakTypeHandle h) x t'
       let h' = extendHandle (mx, k, x, t') h
       (rest', h'') <- inferImpBinder h' rest
@@ -731,7 +730,7 @@ inferBinder' h binder =
     (mx, k, x, t) : xts -> do
       t' <- inferType h t
       when (VK.isSource k) $ do
-        requireSized h SourceSlot mx t'
+        require h VK.Sized SourceSlot mx t'
       liftIO $ WeakType.insert (weakTypeHandle h) x t'
       (xts', h') <- inferBinder' h xts
       return ((mx, k, x, t') : xts', h')
@@ -835,7 +834,7 @@ inferPiElim h m (e, t) impArgs defaultArgsSpec expArgs sourceArgs isDestCall = d
           mapM (inferTypeWithKind h) impArgs'
       subType <- inferArgsTypes h IntMap.empty m impArgsTyped impArgsParam
       let impArgs' = map fst impArgsTyped
-      requireSizedForInstantiation h m impArgsParam impArgs'
+      requireAttrsForInstantiation h m impArgsParam impArgs'
       let hasSourceSlot = any (\(_, k, _, _) -> VK.isSource k) expParams
       when (hasSourceSlot || or sourceArgs) $
         forM_ (zip3 expParams sourceArgs expArgs) $ \(param, isSourceArg, (argTerm, _)) ->
@@ -986,7 +985,7 @@ inferClause h cursorType decisionCase =
       (cont', tCont) <- inferDecisionTree mPat h cont
       case literal of
         L.Int _ ->
-          return ()
+          require h VK.Integer LiteralPattern mPat cursorType
         L.Rune _ ->
           liftIO $ Constraint.insert (constraintHandle h) cursorType (mPat :< WT.PrimType PT.Rune)
       return (DT.LiteralCase mPat literal cont', tCont)
@@ -1163,28 +1162,34 @@ checkIsCodeType h m t = do
   tInner <- liftIO $ newTypeHole h m (varEnv h)
   liftIO $ Constraint.insert (constraintHandle h) (m :< WT.Code tInner) t
 
-declareSized :: Handle -> Hint -> Ident -> WT.WeakType -> App ()
-declareSized h m x kind = do
-  liftIO $ Constraint.insert (constraintHandle h) (m :< WT.Tau) kind
-  liftIO $ modifyIORef' (sizedTypeVars h) $ IntSet.insert (Ident.toInt x)
+declareTypeAttrs :: Handle -> Hint -> VK.VarKind -> Ident -> WT.WeakType -> App ()
+declareTypeAttrs h m k x kind = do
+  let attrs = closedTypeAttrs k
+  unless (S.null attrs) $ do
+    liftIO $ Constraint.insert (constraintHandle h) (m :< WT.Tau) kind
+    liftIO $ modifyIORef' (attributedTypeVars h) $ IntMap.insertWith S.union (Ident.toInt x) attrs
 
-requireSized :: Handle -> SizedSite -> Hint -> WT.WeakType -> App ()
-requireSized h site m t = do
-  liftIO $ modifyIORef' (sizedObligations h) (SizedObligation site m t :)
+closedTypeAttrs :: VK.VarKind -> S.Set VK.TypeAttr
+closedTypeAttrs k =
+  S.unions $ map VK.attrClosure $ VK.attrList k
+
+require :: Handle -> VK.TypeAttr -> ObligationSite -> Hint -> WT.WeakType -> App ()
+require h attr site m t = do
+  liftIO $ modifyIORef' (typeObligations h) (TypeObligation attr site m t :)
 
 requireSizedForDestination :: Handle -> PK.PiKind -> Hint -> WT.WeakType -> App ()
 requireSizedForDestination h piKind m cod =
   case piKind of
     PK.DestPass _ ->
-      requireSized h Destination m cod
+      require h VK.Sized Destination m cod
     _ ->
       return ()
 
-requireSizedForInstantiation :: Handle -> Hint -> [BinderF WT.WeakType] -> [WT.WeakType] -> App ()
-requireSizedForInstantiation h m params args =
+requireAttrsForInstantiation :: Handle -> Hint -> [BinderF WT.WeakType] -> [WT.WeakType] -> App ()
+requireAttrsForInstantiation h m params args =
   forM_ (zip params args) $ \((_, k, _, _), t) ->
-    when (VK.isSized k) $ do
-      requireSized h Instantiation m t
+    forM_ (S.toAscList (closedTypeAttrs k)) $ \attr -> do
+      require h attr Instantiation m t
 
 substTypeBinder :: Handle -> Subst.Subst -> [BinderF WT.WeakType] -> App ([BinderF WT.WeakType], Subst.Subst)
 substTypeBinder h sub mxts = do

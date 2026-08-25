@@ -192,10 +192,32 @@ Not all types can be cast using `lift`. Specifically, it can't be used on any ty
 
 - a type of the form `&a`
 - a type of the form `(a1, ..., an) -> b`
-- a type variable
+- a type variable that isn't declared `actual`
 - an ADT that can contain any of the above
 
+A type that satisfies this condition is called actual.
+
 If you can get `+t` by lifting `e: t`, you can get the same type using `box` instead. In this sense, `lift` is a shortcut for creating boxes.
+
+### Lifting a Type Variable
+
+A type variable is actual only when its binder declares it so:
+
+```neut
+// error: the type variable `a` is not declared `actual`
+define box-value<a>(x: a) -> +a {
+  lift {x}
+}
+
+// this is fine
+define box-value<actual a>(x: a) -> +a {
+  lift {x}
+}
+```
+
+`actual a` means that `a` can only be instantiated with an actual type. Each call that instantiates such a variable is checked against the type it supplies, so `box-value(True)` is accepted, whereas passing a value of type `&string` is rejected.
+
+This mirrors the `sized` declaration in [Static Memory Management](./static-memory-management.md#what-can-travel-through-a-mark): a declaration on a type variable restricts what callers can supply, and in exchange lets the body rely on it.
 
 ## Desugaring the Two Operations
 
@@ -310,9 +332,9 @@ define main() -> unit {
     write-to-file("path/to/out", bin-to-hex(bytes))
   }
 }
-```
+    ```
 
-This won't compile because `let result on bytes = ...` is desugared using `lift`, and `lift` does not allow result types that still mention a free type variable such as `a`.
+This won't compile because `let result on bytes = ...` is desugared using `lift`, and `a` isn't declared `actual`. Declaring it wouldn't help either: `keep-bytes` instantiates `a` with `&binary`, and a noema type is never actual.
 
 If it did compile, the following would happen inside `main`:
 
@@ -323,3 +345,24 @@ If it did compile, the following would happen inside `main`:
 Thus, the version without `+` doesn't work.
 
 The `+` in the result type asserts that the value produced by `f` remains valid on the outer layer. In this way, `+` lets us write a borrowing-based API without forcing the callback result to stay trapped inside the borrowing scope.
+
+### An Alternative: `actual` Instead of `+`
+
+`+` isn't the only way out here. The problem is that `a` might be a noema, so we can also rule that out directly and let the callback return a plain value:
+
+```neut
+define decode-from-file<actual a>(f: (&binary) -> either(error, a)) -> either(error, a) {
+  let bytes = read-from-file("path/to/file");
+  let result on bytes = f(bytes);
+  result
+}
+```
+
+This compiles, since `let ... on ...` is desugared using `lift`, and `actual a` is exactly what `lift` asks for. `keep-bytes` is still rejected, only now at the call site: `&binary` can't instantiate an `actual` variable.
+
+The two solutions differ in who carries the obligation, and in how much they allow:
+
+- `actual a` constrains the type argument, so the callback stays an ordinary function. In exchange, `a` can never be a function type, since function types aren't actual either.
+- `+` leaves `a` unconstrained and instead asks the callback to hand back a value that is already valid on the outer layer. The callback boxes the value itself, so `a` can be a function type here.
+
+`actual` is the simpler choice when the results are plain data. `+` is the one to reach for when the callback should decide how its result crosses the layer.

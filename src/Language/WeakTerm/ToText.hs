@@ -494,7 +494,9 @@ showVarWithKind distinct k x =
 
 varKindPrefix :: VK.VarKind -> T.Text
 varKindPrefix k =
-  (if VK.isSized k then "sized " else "") <> (if VK.isSource k then "~" else "") <> (if VK.isExp k then "!" else "")
+  T.concat (map (\attr -> VK.reifyAttr attr <> " ") (VK.attrList k))
+    <> (if VK.isSource k then "~" else "")
+    <> (if VK.isExp k then "!" else "")
 
 showDomArgList' :: Handle -> [BinderF WT.WeakType] -> T.Text
 showDomArgList' h mxts =

@@ -1,7 +1,7 @@
 {
   target {
-    meta-residual {
-      main "meta-residual.nt",
+    meta-type-attrs {
+      main "meta-type-attrs.nt",
       build-option [
         "-fsanitize=address",
       ],

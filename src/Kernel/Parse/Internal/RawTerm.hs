@@ -772,10 +772,10 @@ parseImplicitArgsMaybe h =
 
 parseImplicitParam :: Handle -> Parser (RawBinder RT.RawType, C)
 parseImplicitParam h = do
-  (isSized, cSized) <- sizedMark
+  (attrs, cAttr) <- typeAttrMarks
   ((m, k, x), varC) <- binderName h
-  let k' = if isSized then VK.withSized k else k
-  let c = cSized ++ varC
+  let k' = foldr VK.withAttr k attrs
+  let c = cAttr ++ varC
   choice
     [ do
         c1 <- ascription
@@ -786,10 +786,17 @@ parseImplicitParam h = do
         return ((m, k', x, c, [], hole), [])
     ]
 
-sizedMark :: Parser (Bool, C)
-sizedMark = do
-  mSized <- optional $ keyword "sized"
-  return (isJust mSized, fromMaybe [] mSized)
+typeAttrMarks :: Parser ([VK.TypeAttr], C)
+typeAttrMarks = do
+  results <- many typeAttrMark
+  let (attrs, cs) = unzip results
+  return (attrs, concat cs)
+
+typeAttrMark :: Parser (VK.TypeAttr, C)
+typeAttrMark =
+  choice $ flip map [minBound .. maxBound] $ \attr -> do
+    c <- keyword (VK.reifyAttr attr)
+    return (attr, c)
 
 ensureArgumentLinearity :: S.Set RawIdent -> [(Hint, RawIdent)] -> App ()
 ensureArgumentLinearity foundVarSet vs =
