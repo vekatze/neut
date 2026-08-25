@@ -211,6 +211,8 @@ analyze h term = do
       cs1 <- analyzeType h t
       cs2 <- analyze h e
       return $ cs1 ++ cs2
+    _ :< TM.EmbedIntro e -> do
+      analyze h e
     _ :< TM.BoxElim _ castSeq mxt e1 uncastSeq e2 -> do
       (cs, h') <- analyzeLet h $ castSeq ++ [(mxt, e1)] ++ uncastSeq
       cs' <- analyze h' e2
@@ -338,6 +340,8 @@ analyzeType h ty =
     _ :< TM.Box t -> do
       analyzeType h t
     _ :< TM.BoxNoema t -> do
+      analyzeType h t
+    _ :< TM.Embed t -> do
       analyzeType h t
     _ :< TM.Code t -> do
       analyzeType h t
@@ -507,6 +511,8 @@ simplifyAffine h dataNameSet (t, orig@(m :< _)) = do
     _ :< WT.Box tBox ->
       simplifyAffine h dataNameSet (tBox, orig)
     _ :< WT.BoxNoema {} ->
+      return []
+    _ :< WT.Embed {} ->
       return []
     _ :< WT.Code tCode ->
       simplifyAffine h dataNameSet (tCode, orig)

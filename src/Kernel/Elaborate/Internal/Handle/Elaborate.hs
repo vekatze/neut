@@ -49,6 +49,7 @@ import Kernel.Elaborate.Internal.WeakTerm.Fill qualified as Fill
 import Kernel.Elaborate.TypeHoleSubst qualified as THS
 import Kernel.Parse.Internal.Handle.UsedTopLevelName qualified as UsedTopLevelName
 import Language.Common.Binder
+import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.VarKind qualified as VK
 import Language.Term.Inline qualified as Inline
 import Language.Term.Inline.Env qualified as InlineEnv
@@ -93,6 +94,8 @@ data Handle = Handle
     pendingSpecializationDefs :: IORef [Stmt.Stmt],
     attributedTypeVars :: IORef (IntMap.IntMap (S.Set VK.TypeAttr)),
     typeObligations :: IORef [TypeObligation],
+    embeddingDefs :: IORef (S.Set DD.DefiniteDescription),
+    currentDefinition :: Maybe DD.DefiniteDescription,
     traceConfig :: Trace.Config
   }
 
@@ -123,6 +126,8 @@ new gensymHandle globalHandle@(Global.Handle {..}) traceConfig (Local.Handle {..
   pendingSpecializationDefs <- newIORef []
   attributedTypeVars <- newIORef IntMap.empty
   typeObligations <- newIORef []
+  embeddingDefs <- newIORef S.empty
+  let currentDefinition = Nothing
   return $ Handle {..}
 
 reduceType :: Handle -> WT.WeakType -> App WT.WeakType

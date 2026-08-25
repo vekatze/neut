@@ -48,6 +48,8 @@ freeVars term =
       freeVarsBinders mxts (S.unions $ map freeVars (e : es))
     _ :< WT.BoxIntroLift _ e ->
       freeVars e
+    _ :< WT.EmbedIntro e ->
+      freeVars e
     _ :< WT.BoxElim castSeq mxt e1 uncastSeq e2 -> do
       let (xts, es) = unzip $ castSeq ++ [(mxt, e1)] ++ uncastSeq
       freeVarsBinders xts (S.unions $ map freeVars $ es ++ [e2])
@@ -195,6 +197,8 @@ freeVarsAll term =
       freeVarsBindersType mxts (S.unions $ map freeVarsAll (e : es))
     _ :< WT.BoxIntroLift _ e ->
       freeVarsAll e
+    _ :< WT.EmbedIntro e ->
+      freeVarsAll e
     _ :< WT.BoxElim castSeq mxt e1 uncastSeq e2 -> do
       let (xts, es) = unzip $ castSeq ++ [(mxt, e1)] ++ uncastSeq
       freeVarsBindersType xts (S.unions $ map freeVarsAll $ es ++ [e2])
@@ -241,6 +245,8 @@ freeVarsType ty =
     _ :< WT.Box t ->
       freeVarsType t
     _ :< WT.BoxNoema t ->
+      freeVarsType t
+    _ :< WT.Embed t ->
       freeVarsType t
     _ :< WT.Code t ->
       freeVarsType t

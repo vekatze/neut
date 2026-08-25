@@ -14,7 +14,6 @@ import Kernel.Common.Handle.Global.ModulePath qualified as ModulePath
 import Kernel.Common.Module qualified as Module
 import Kernel.Common.Source qualified as Source
 import Kernel.Elaborate.Internal.Handle.Elaborate qualified as ElaborateHandle
-import Language.Common.DefiniteDescription qualified as DD
 import Language.Term.Trace qualified as TermTrace
 import Language.Term.TraceSites qualified as TraceSites
 import Logger.Hint
@@ -37,14 +36,13 @@ data RenderStep = RenderStep
     renderStepAnnotation :: Maybe T.Text
   }
 
-renderFailureTrace :: ElaborateHandle.Handle -> DD.DefiniteDescription -> Hint -> TraceSites.Blocker -> IO T.Text
-renderFailureTrace h constantName bodyHint blocker = do
+renderFailureTrace :: ElaborateHandle.Handle -> T.Text -> Hint -> TraceSites.Blocker -> IO T.Text
+renderFailureTrace h headLabel bodyHint blocker = do
   blockerPath <- TermTrace.resolve (Global.termTraceHandle $ ElaborateHandle.globalHandle h) (TraceSites.blockerTraceID blocker)
   frameInfos <- collectFrameInfos h $ TermTrace.frames blockerPath
   let blockerHint = maybe bodyHint savedToHint $ TermTrace.sourceSite blockerPath
   let blockerLabel = TraceSites.describeTraceBlocker blocker
-  let constantNameText = TraceSites.sourceLevelName constantName
-  let steps = buildSteps constantNameText frameInfos blockerHint blockerLabel
+  let steps = buildSteps headLabel frameInfos blockerHint blockerLabel
   let moduleDir = T.pack $ Env.getMainModuleDir (ElaborateHandle.envHandle h)
   modulePathMap <- ModulePath.get $ Global.modulePathHandle (ElaborateHandle.globalHandle h)
   moduleCacheMap <- GlobalModule.getModuleCacheMap $ Global.moduleHandle (ElaborateHandle.globalHandle h)
@@ -53,13 +51,13 @@ renderFailureTrace h constantName bodyHint blocker = do
   renderSourceTrace moduleDir modulePathMap modules steps
 
 buildSteps :: T.Text -> [FrameInfo] -> Hint -> T.Text -> [RenderStep]
-buildSteps constantNameText frameInfos blockerHint blockerLabel =
+buildSteps headLabel frameInfos blockerHint blockerLabel =
   case frameInfos of
     [] ->
-      [RenderStep blockerHint (HeadTitle constantNameText) (Just blockerLabel)]
+      [RenderStep blockerHint (HeadTitle headLabel) (Just blockerLabel)]
     _ -> do
       let hints = map frameInfoHint frameInfos ++ [blockerHint]
-      let titles = HeadTitle constantNameText : map frameInfoTitle frameInfos
+      let titles = HeadTitle headLabel : map frameInfoTitle frameInfos
       let annotations = replicate (length frameInfos) Nothing ++ [Just blockerLabel]
       zipWith3 RenderStep hints titles annotations
 
@@ -167,8 +165,8 @@ renderTraceStep moduleDir modulePathMap modules fileMap lineWidth step = do
 renderTitle :: Title -> T.Text -> T.Text
 renderTitle title locator =
   case title of
-    HeadTitle name ->
-      "   constant " <> name <> " -- " <> locator
+    HeadTitle headLabel ->
+      "   " <> headLabel <> " -- " <> locator
     FrameTitle kind name ->
       "=> " <> kind <> " " <> name <> " -- " <> locator
     DefaultArgTitle ->

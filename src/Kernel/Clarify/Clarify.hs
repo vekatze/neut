@@ -692,6 +692,8 @@ clarifyTerm h context term =
       embody h context letSeq e
     _ :< TM.BoxIntroLift _ e -> do
       clarifyTerm h context e
+    _ :< TM.EmbedIntro e -> do
+      C.UpIntro <$> clarifyStaticValue h context e
     _ :< TM.BoxElim _ castSeq mxt e1 uncastSeq e2 -> do
       let opaqueLetSeq = map (\(mxt', e) -> (False, mxt', e)) castSeq
       let clearLetSeq = (True, mxt, e1) : map (\(mxt', e) -> (True, mxt', e)) uncastSeq
@@ -771,6 +773,8 @@ clarifyType h context ty =
       clarifyType h context t
     _ :< TM.BoxNoema {} ->
       return Sigma.returnImmediateS4
+    _ :< TM.Embed {} ->
+      return Sigma.returnImmediateS4
     _ :< TM.Code t -> do
       clarifyType h context t
     _ :< TM.PrimType {} ->
@@ -832,6 +836,159 @@ fieldStoragesOfConsInfo h context consInfo = do
         return $ Sigma.Direct fieldType
       DI.LayoutFlattened slotCount ->
         return $ Sigma.Flattened fieldType slotCount
+
+clarifyStaticValue :: Handle -> Context -> TM.Term -> App C.Value
+clarifyStaticValue h context term =
+  case term of
+    m :< TM.DataIntro (AttrDI.Attr {..}) consName dataArgs consArgs -> do
+      od <- liftIO $ OptimizableData.lookup (optDataHandle h) consName
+      case od of
+        Just OD.Enum ->
+          return $ C.Int (dataSizeToIntSize (baseSize h)) (D.reify discriminant)
+        Just OD.Unary
+          | [e] <- consArgs ->
+              clarifyStaticValue h context e
+          | otherwise ->
+              raiseCritical m "Found a malformed unary data in Clarify.clarifyStaticValue"
+        _ -> do
+          dataArgSlots <- mapM (staticTypeRep h) dataArgs
+          consArgSlots <- mapM (clarifyStaticValue h context) consArgs
+          dataInfo <- lookupDataEntry h m dataName
+          let totalSlotCount = DI.dataTotalSlotCount (DI.dataArgs dataInfo) (DI.consInfoList dataInfo)
+          consInfo <- getConsInfoByDiscriminant h m discriminant (DI.consInfoList dataInfo)
+          fieldStorageList <- fieldStoragesOfConsInfo h context consInfo
+          when (length fieldStorageList /= length consArgSlots) $
+            raiseCritical m "Found a constructor layout arity mismatch"
+          payloadSlots <- concat <$> mapM (uncurry $ flattenStaticField m) (zip fieldStorageList consArgSlots)
+          let header =
+                if DI.headerSlotCount (DI.consInfoList dataInfo) == 0
+                  then []
+                  else [C.Int (dataSizeToIntSize (baseSize h)) (D.reify discriminant)]
+          label <- liftIO $ newStaticDataLabel h
+          return $ C.StaticSigmaIntro label totalSlotCount $ header ++ dataArgSlots ++ payloadSlots
+    m :< TM.PiIntro {} ->
+      clarifyStaticClosure h context m term
+    m :< TM.VarGlobal {} ->
+      clarifyStaticClosure h context m term
+    _ :< TM.BoxIntroLift _ e ->
+      clarifyStaticValue h context e
+    _ :< TM.EmbedIntro e ->
+      clarifyStaticValue h context e
+    _ :< TM.CodeIntro e ->
+      clarifyStaticValue h context e
+    _ :< TM.CodeElim _ e ->
+      clarifyStaticValue h context e
+    _ :< TM.Invoke _ e ->
+      clarifyStaticValue h context e
+    _ :< TM.Magic _ (M.LowMagic (LM.OpaqueValue e)) ->
+      clarifyStaticValue h context e
+    _ :< TM.TauIntro ty ->
+      staticTypeRep h ty
+    m :< TM.Prim primValue ->
+      case primValue of
+        PV.Int _ size l ->
+          return $ C.Int size l
+        PV.Float _ size l ->
+          return $ C.Float size l
+        PV.NoeticString _ text ->
+          return $ C.VarStaticBytes $ TE.encodeUtf8 text
+        PV.NoeticBinary _ bytes ->
+          return $ C.VarStaticBytes bytes
+        PV.Text text ->
+          return $ C.VarStaticBytes $ TE.encodeUtf8 text
+        PV.Blob bytes ->
+          return $ C.VarStaticBytes bytes
+        PV.Rune r ->
+          return $ C.Int PNS.IntSize32 (RU.asInt r)
+        PV.Op {} ->
+          raiseNonStaticValue m
+    m :< _ ->
+      raiseNonStaticValue m
+
+clarifyStaticClosure :: Handle -> Context -> Hint -> TM.Term -> App C.Value
+clarifyStaticClosure h context m term = do
+  closure <- clarifyTerm h context term
+  case closure of
+    C.UpIntro (C.SigmaIntro size slots) -> do
+      slots' <- mapM (staticSlotOf m) slots
+      label <- liftIO $ newStaticDataLabel h
+      return $ C.StaticSigmaIntro label size slots'
+    _ ->
+      raiseNonStaticValue m
+
+staticSlotOf :: Hint -> C.Value -> App C.Value
+staticSlotOf m v =
+  case v of
+    C.VarGlobal {} ->
+      return v
+    C.VarStaticBytes {} ->
+      return v
+    C.StaticSigmaIntro {} ->
+      return v
+    C.Int {} ->
+      return v
+    C.Float {} ->
+      return v
+    C.SigmaIntro 0 [] ->
+      return v
+    _ ->
+      raiseNonStaticValue m
+
+flattenStaticField :: Hint -> Sigma.FieldLayout -> C.Value -> App [C.Value]
+flattenStaticField m field value =
+  case field of
+    Sigma.Direct _ ->
+      return [value]
+    Sigma.Flattened _ slotCount ->
+      case value of
+        C.StaticSigmaIntro _ slotCount' slots
+          | slotCount == slotCount' ->
+              return $ slots ++ replicate (slotCount - length slots) C.null
+        _ ->
+          raiseCritical m "Found an inlined field of an unexpected static layout"
+
+staticTypeRep :: Handle -> TM.Type -> App C.Value
+staticTypeRep h ty =
+  case ty of
+    _ :< TM.Tau ->
+      return Sigma.immediateS4
+    _ :< TM.Pi {} ->
+      return Sigma.closureS4
+    m :< TM.Data _ name dataArgs -> do
+      od <- liftIO $ OptimizableData.lookup (optDataHandle h) name
+      case od of
+        Just OD.Enum ->
+          return Sigma.immediateS4
+        Just OD.Unary -> do
+          specializedArgType <- specializeUnaryDataType h m name dataArgs
+          staticTypeRep h specializedArgType
+        _ ->
+          return $ C.VarGlobal (DD.getFormDD name) AN.argNumS4 (FCT.Cod BLT.Pointer)
+    _ :< TM.Box t ->
+      staticTypeRep h t
+    _ :< TM.BoxNoema {} ->
+      return Sigma.immediateS4
+    _ :< TM.Embed {} ->
+      return Sigma.immediateS4
+    _ :< TM.Code t ->
+      staticTypeRep h t
+    _ :< TM.PrimType {} ->
+      return Sigma.immediateS4
+    _ :< TM.Void ->
+      return Sigma.immediateS4
+    _ :< TM.Resource dd resourceID ->
+      return $ C.VarGlobal (DD.makeResourceName dd resourceID) AN.argNumS4 (FCT.Cod BLT.Pointer)
+    m :< _ ->
+      raiseCritical m "Found an unevaluated type inside an embedded value"
+
+newStaticDataLabel :: Handle -> IO T.Text
+newStaticDataLabel h = do
+  i <- Gensym.newCount (gensymHandle h)
+  return $ "static;" <> T.pack (show i)
+
+raiseNonStaticValue :: Hint -> App a
+raiseNonStaticValue m =
+  raiseCritical m "Found a non-static term inside an embedded value"
 
 clarifyDataTypeDef ::
   Handle ->

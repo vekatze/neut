@@ -125,6 +125,8 @@ collectGlobalDDs ty =
       collectGlobalDDs t
     _ :< WT.BoxNoema t ->
       collectGlobalDDs t
+    _ :< WT.Embed t ->
+      collectGlobalDDs t
     _ :< WT.Code t ->
       collectGlobalDDs t
     _ :< WT.Resource dd _ ->
@@ -183,6 +185,8 @@ simplify h susList constraintList =
             (_ :< WT.Box t1, _ :< WT.Box t2) ->
               simplify h susList $ (C.Eq t1 t2, orig) : cs
             (_ :< WT.BoxNoema t1, _ :< WT.BoxNoema t2) ->
+              simplify h susList $ (C.Eq t1 t2, orig) : cs
+            (_ :< WT.Embed t1, _ :< WT.Embed t2) ->
               simplify h susList $ (C.Eq t1 t2, orig) : cs
             (_ :< WT.Code t1, _ :< WT.Code t2) ->
               simplify h susList $ (C.Eq t1 t2, orig) : cs

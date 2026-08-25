@@ -48,6 +48,7 @@ data TypeF a
   | Data AttrD.Attr DD.DefiniteDescription [a]
   | Box a
   | BoxNoema a
+  | Embed a
   | Code a
   | PrimType PT.PrimType
   | Void
@@ -72,6 +73,7 @@ data TermF a
   | DataElim TraceID N.IsNoetic [(Ident, a, Type)] (DT.DecisionTree Type a)
   | BoxIntro TraceID [(BinderF Type, a)] a
   | BoxIntroLift Type a
+  | EmbedIntro a
   | BoxElim TraceID [(BinderF Type, a)] (BinderF Type) a [(BinderF Type, a)] a
   | CodeIntro a
   | CodeElim TraceID a
@@ -117,6 +119,8 @@ isValue term =
       True
     _ :< BoxIntroLift _ e ->
       isValue e
+    _ :< EmbedIntro _ ->
+      True
     _ :< Prim {} ->
       True
     _ :< Magic _ (LowMagic (LM.OpaqueValue _)) ->

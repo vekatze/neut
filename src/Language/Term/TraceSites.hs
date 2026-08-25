@@ -26,6 +26,7 @@ import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.ExternalName qualified as EN
 import Language.Common.LowMagic qualified as LM
 import Language.Common.Magic qualified as M
+import Language.Term.Children (termChildren)
 import Language.Term.Term qualified as TM
 import Language.Term.Trace qualified as Trace
 import Language.Term.TraceID
@@ -139,6 +140,8 @@ findBlocker (_ :< node) =
     TM.DataIntro _ _ _ args ->
       firstBlocker args
     TM.BoxIntroLift _ child ->
+      findBlocker child
+    TM.EmbedIntro child ->
       findBlocker child
     TM.PiElim traceID _ callee _ args defaults ->
       firstBlocker (callee : args ++ foldMap toList defaults)
@@ -335,6 +338,8 @@ isTraceRoot node = do
       False
     TM.BoxIntroLift {} ->
       False
+    TM.EmbedIntro {} ->
+      False
     TM.CodeIntro {} ->
       False
     TM.TauIntro {} ->
@@ -393,6 +398,9 @@ forNodeM node recur = do
     TM.BoxIntroLift ty child -> do
       child' <- recur child
       return $ TM.BoxIntroLift ty child'
+    TM.EmbedIntro child -> do
+      child' <- recur child
+      return $ TM.EmbedIntro child'
     TM.BoxElim traceID castSeq binder value uncastSeq body -> do
       castSeq' <- forM castSeq (bimapM return recur)
       value' <- recur value
@@ -439,59 +447,3 @@ forCaseM decisionCase recur = do
     DT.ConsCase record -> do
       cont' <- forDecisionTreeM (DT.cont record) recur
       return $ DT.ConsCase record {DT.cont = cont'}
-
-termChildren :: TM.TermF TM.Term -> [TM.Term]
-termChildren node = do
-  case node of
-    TM.Var {} ->
-      []
-    TM.VarGlobal {} ->
-      []
-    TM.PiIntro _ _ _ defaultArgs body ->
-      map snd defaultArgs ++ [body]
-    TM.PiElim _ _ callee _ args defaults ->
-      callee : args ++ foldMap toList defaults
-    TM.DataIntro _ _ _ args ->
-      args
-    TM.DataElim _ _ oets tree ->
-      map (\(_, e, _) -> e) oets ++ decisionTreeTerms tree
-    TM.BoxIntro _ letSeq body ->
-      map snd letSeq ++ [body]
-    TM.BoxIntroLift _ child ->
-      [child]
-    TM.BoxElim _ castSeq _ value uncastSeq body ->
-      map snd castSeq ++ [value] ++ map snd uncastSeq ++ [body]
-    TM.CodeIntro body ->
-      [body]
-    TM.CodeElim _ body ->
-      [body]
-    TM.TauIntro _ ->
-      []
-    TM.TauElim _ _ value body ->
-      [value, body]
-    TM.Let _ value body ->
-      [value, body]
-    TM.Invoke _ body ->
-      [body]
-    TM.Prim _ ->
-      []
-    TM.Magic _ magic ->
-      toList magic
-
-decisionTreeTerms :: DT.DecisionTree t TM.Term -> [TM.Term]
-decisionTreeTerms tree = do
-  case tree of
-    DT.Leaf _ letSeq body ->
-      map snd letSeq ++ [body]
-    DT.Unreachable ->
-      []
-    DT.Switch _ (fallback, cases) ->
-      decisionTreeTerms fallback ++ foldMap caseTerms cases
-
-caseTerms :: DT.Case t TM.Term -> [TM.Term]
-caseTerms decisionCase = do
-  case decisionCase of
-    DT.LiteralCase _ _ cont ->
-      decisionTreeTerms cont
-    DT.ConsCase record ->
-      decisionTreeTerms $ DT.cont record

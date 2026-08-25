@@ -56,6 +56,9 @@ extend remapping term =
     () :< TM.BoxIntroLift t e -> do
       let e' = extend remapping e
       _m :< TM.BoxIntroLift t e'
+    () :< TM.EmbedIntro e -> do
+      let e' = extend remapping e
+      _m :< TM.EmbedIntro e'
     () :< TM.BoxElim traceID castSeq mxt e1 uncastSeq e2 -> do
       let traceID' = Trace.remapOrDrop remapping traceID
       let castSeq' = map (extendLet remapping) castSeq
@@ -110,6 +113,8 @@ extendType ty =
       _m :< TM.Box (extendType t)
     () :< TM.BoxNoema t ->
       _m :< TM.BoxNoema (extendType t)
+    () :< TM.Embed t ->
+      _m :< TM.Embed (extendType t)
     () :< TM.Code t ->
       _m :< TM.Code (extendType t)
     () :< TM.PrimType pt ->

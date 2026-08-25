@@ -58,6 +58,9 @@ fillType h holeSubst ty =
     m :< WT.BoxNoema t -> do
       t' <- fillType h holeSubst t
       return $ m :< WT.BoxNoema t'
+    m :< WT.Embed t -> do
+      t' <- fillType h holeSubst t
+      return $ m :< WT.Embed t'
     m :< WT.Code t -> do
       t' <- fillType h holeSubst t
       return $ m :< WT.Code t'

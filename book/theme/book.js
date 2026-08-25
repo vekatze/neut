@@ -32,6 +32,7 @@ hljs.registerLanguage("neut", function (hljs) {
         "detach",
         "else",
         "else-if",
+        "embed",
         "exact",
         "foreign",
         "function",
@@ -132,7 +133,7 @@ hljs.registerLanguage("neut", function (hljs) {
       },
       {
         scope: "builtin",
-        begin: "\\*|\\+|\\||->|=>|'|:|!|\\?|,|;|&|=",
+        begin: "\\*|\\+|\\||->|=>|'|:|!|\\?|,|;|&|\\$|=",
       },
       hljs.COMMENT("//", "$"),
     ],

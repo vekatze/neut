@@ -568,6 +568,10 @@ discern h term =
       ensureRuntimeStage m h "meta operation (`lift`)"
       body' <- discern h body
       return $ m :< WT.BoxIntroLift Nothing body'
+    m :< RT.EmbedIntro _ _ (body, _) -> do
+      ensureRuntimeStage m h "meta operation (`embed`)"
+      body' <- discern h body
+      return $ m :< WT.EmbedIntro body'
     m :< RT.BoxElim nv mustIgnoreRelayedVars _ (mx, pat, c1, c2, t) _ mys _ e1 _ startLoc _ e2 endLoc -> do
       ensureRuntimeStage m h "meta operation (`letbox`)"
       case nv of
@@ -896,6 +900,9 @@ discernType h ty =
     m :< RT.BoxNoema t -> do
       t' <- discernType h t
       return $ m :< WT.BoxNoema t'
+    m :< RT.Embed t -> do
+      t' <- discernType h t
+      return $ m :< WT.Embed t'
     m :< RT.Code t -> do
       t' <- discernType h t
       return $ m :< WT.Code t'

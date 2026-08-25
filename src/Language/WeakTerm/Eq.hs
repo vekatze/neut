@@ -42,6 +42,9 @@ eqType (_ :< ty1) (_ :< ty2)
   | WT.BoxNoema t1 <- ty1,
     WT.BoxNoema t2 <- ty2 =
       eqType t1 t2
+  | WT.Embed t1 <- ty1,
+    WT.Embed t2 <- ty2 =
+      eqType t1 t2
   | WT.Code t1 <- ty1,
     WT.Code t2 <- ty2 =
       eqType t1 t2

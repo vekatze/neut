@@ -103,7 +103,7 @@ inferStmt h stmt =
         require h VK.Sized Destination m codType'
       liftIO $ insertType h''' x $ m :< WT.Pi (PK.fromStmtKind stmtKind isConstLike) impArgs' expArgs' defaultBinders codType'
       stmtKind' <- inferStmtKindTerm h''' stmtKind
-      (e', te) <- infer h''' e
+      (e', te) <- infer (h''' {currentDefinition = Just x}) e
       liftIO $ Constraint.insert (constraintHandle h''') codType' te
       case getMainUnitType stmtKind of
         Just unitType -> do
@@ -404,6 +404,10 @@ infer h term =
       (e', t) <- infer h e
       require h VK.Actual LiftTarget m t
       return (m :< WT.BoxIntroLift (Just t) e', m :< WT.Box t)
+    m :< WT.EmbedIntro e -> do
+      liftIO $ forM_ (currentDefinition h) $ \x -> modifyIORef' (embeddingDefs h) $ S.insert x
+      (e', t) <- infer h e
+      return (m :< WT.EmbedIntro e', m :< WT.Embed t)
     m :< WT.BoxElim castSeq mxt e1 uncastSeq e2 -> do
       castSeq' <- inferQuoteSeq h castSeq ToNoema
       (e1', t1) <- infer h e1
@@ -674,6 +678,9 @@ inferTypeWithKind h ty =
     m :< WT.BoxNoema t -> do
       t' <- inferType h t
       return (m :< WT.BoxNoema t', m :< WT.Tau)
+    m :< WT.Embed t -> do
+      t' <- inferType h t
+      return (m :< WT.Embed t', m :< WT.Tau)
     m :< WT.Code t -> do
       t' <- inferType h t
       return (m :< WT.Code t', m :< WT.Tau)

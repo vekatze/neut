@@ -8,6 +8,8 @@ module Language.LowComp.LowComp
     StackAllocInfo (..),
     LowCode (..),
     LowCodeInfo,
+    StaticData (..),
+    StaticDataInfo,
     Def,
     DefContent (..),
     Label,
@@ -130,13 +132,22 @@ data DefContent = DefContent
   }
 
 type LowCodeInfo =
-  (DN.DeclEnv, [Def], [StaticTextInfo])
+  (DN.DeclEnv, [Def], [StaticTextInfo], [StaticDataInfo])
 
 data LowCode
   = LowCodeMain DefContent LowCodeInfo
   | LowCodeNormal LowCodeInfo
 
 type StaticTextInfo = (T.Text, (Builder, Int))
+
+data StaticData
+  = StaticInt LowType Integer
+  | StaticFloat FloatSize Double
+  | StaticSymbol T.Text
+  | StaticGlobal DD.DefiniteDescription
+  | StaticNull
+
+type StaticDataInfo = (T.Text, [StaticData])
 
 nop :: Value -> Op
 nop v =

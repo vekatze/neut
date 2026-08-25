@@ -5,6 +5,7 @@ module Language.Common.PrimNumSize
     dataSizeToFloatSize,
     intToIntSize,
     intToFloatSize,
+    floatSizeToIntSize,
   )
 where
 
@@ -81,3 +82,13 @@ intToFloatSize dataSize size =
           return FloatSize64
         _ ->
           Nothing
+
+floatSizeToIntSize :: FloatSize -> IntSize
+floatSizeToIntSize floatSize =
+  case floatSize of
+    FloatSize16 ->
+      IntSize16
+    FloatSize32 ->
+      IntSize32
+    FloatSize64 ->
+      IntSize64

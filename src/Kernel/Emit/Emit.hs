@@ -42,6 +42,8 @@ import Language.Common.ForeignCodType qualified as FCT
 import Language.Common.Ident.Reify
 import Language.Common.LowType qualified as LT
 import Language.Common.LowType.FromBaseLowType qualified as LT
+import Language.Common.PrimNumSize (floatSizeToIntSize)
+import Language.Common.PrimType qualified as PT
 import Language.LowComp.DeclarationName qualified as DN
 import Language.LowComp.LowComp qualified as LC
 import Language.LowComp.Reduce qualified as Reduce
@@ -83,12 +85,13 @@ emitModuleHeader h = do
   ["target triple = \"" <> TE.encodeUtf8Builder (T.pack targetTriple) <> "\""]
 
 emitLowCodeInfo :: Handle -> LC.LowCodeInfo -> IO ([Builder], [Builder])
-emitLowCodeInfo h (declEnv, defList, staticTextList) = do
+emitLowCodeInfo h (declEnv, defList, staticTextList, staticDataList) = do
   let declStrList = emitDeclarations h declEnv
   let baseSize = Platform.getDataSize (Global.platformHandle (globalHandle h))
   let staticTextList' = concatMap (emitStaticText baseSize) staticTextList
+  let staticDataList' = map emitStaticData staticDataList
   defStrList <- concat <$> mapM (emitDefinitions h) defList
-  return (declStrList <> staticTextList', defStrList)
+  return (declStrList <> staticTextList' <> staticDataList', defStrList)
 
 emitArgDecl :: [Builder]
 emitArgDecl = do
@@ -123,6 +126,42 @@ emitGlobalExt name lt =
     <> emitLowType lt
 
 type StaticTextInfo = (T.Text, (Builder, Int))
+
+emitStaticData :: LC.StaticDataInfo -> Builder
+emitStaticData (name, slots) = do
+  let arrayType = "[" <> intDec (length slots) <> " x ptr]"
+  "@"
+    <> TE.encodeUtf8Builder ("\"" <> name <> "\"")
+    <> " = private unnamed_addr constant "
+    <> arrayType
+    <> " ["
+    <> unwordsC (map emitStaticSlot slots)
+    <> "]"
+
+emitStaticSlot :: LC.StaticData -> Builder
+emitStaticSlot slot =
+  "ptr "
+    <> case slot of
+      LC.StaticNull ->
+        "null"
+      LC.StaticSymbol name ->
+        "@" <> TE.encodeUtf8Builder ("\"" <> name <> "\"")
+      LC.StaticGlobal dd ->
+        "@" <> DD.toBuilder dd
+      LC.StaticInt intType value ->
+        "inttoptr (" <> emitLowType intType <> " " <> integerDec value <> " to ptr)"
+      LC.StaticFloat size value -> do
+        let intType = emitLowType (LT.PrimNum (PT.Int (floatSizeToIntSize size)))
+        let floatType = emitLowType (LT.PrimNum (PT.Float size))
+        "inttoptr ("
+          <> intType
+          <> " bitcast ("
+          <> floatType
+          <> " "
+          <> emitFloat size value
+          <> " to "
+          <> intType
+          <> ") to ptr)"
 
 emitStaticText :: DS.DataSize -> StaticTextInfo -> [Builder]
 emitStaticText baseSize (from, (text, len)) = do

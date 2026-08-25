@@ -13,6 +13,7 @@ module Kernel.Lower.Lower
 where
 
 import App.App (App)
+import App.Run (raiseCritical')
 import Console.ReportMode qualified as Report
 import Control.Monad
 import Control.Monad.Writer.Lazy
@@ -78,6 +79,7 @@ data Handle = Handle
     substHandle :: Subst.Handle,
     declEnv :: IORef DN.DeclEnv,
     staticTextList :: IORef [(T.Text, (Builder, Int))],
+    staticDataMap :: IORef (Map.HashMap T.Text [LC.StaticData]),
     definedNameSet :: IORef (S.Set DD.DefiniteDescription),
     referencedNameSet :: IORef (S.Set DD.DefiniteDescription),
     currentSignature :: Maybe (Int, FCT.ForeignCodType BLT.BaseLowType),
@@ -97,6 +99,7 @@ new gensymHandle (Global.Handle {..}) traceConfig target defMap = do
   let reduceHandle = Reduce.new substHandle gensymHandle defMap
   declEnv <- liftIO $ newIORef $ makeBaseDeclEnv baseSize (allocatorSpec allocator)
   staticTextList <- liftIO $ newIORef []
+  staticDataMap <- liftIO $ newIORef Map.empty
   definedNameSet <- liftIO $ newIORef S.empty
   referencedNameSet <- liftIO $ newIORef S.empty
   let currentSignature = Nothing
@@ -130,7 +133,8 @@ summarize :: Handle -> [LC.Def] -> IO LC.LowCodeInfo
 summarize h stmtList = do
   declEnv <- readIORef $ declEnv h
   staticTextList <- readIORef $ staticTextList h
-  return (declEnv, stmtList, staticTextList)
+  staticDataMap <- readIORef $ staticDataMap h
+  return (declEnv, stmtList, staticTextList, Map.toList staticDataMap)
 
 optimize :: Handle -> LC.Comp -> IO LC.Comp
 optimize h = do
@@ -520,16 +524,6 @@ lowerValueLetCastPrimArgs h xdts cont =
       lowerValueLetCast h x d (LT.PrimNum t)
         =<< lowerValueLetCastPrimArgs h rest cont
 
-floatSizeToIntSize :: FloatSize -> IntSize
-floatSizeToIntSize floatSize =
-  case floatSize of
-    FloatSize16 ->
-      IntSize16
-    FloatSize32 ->
-      IntSize32
-    FloatSize64 ->
-      IntSize64
-
 cast :: Handle -> Ident -> LC.Value -> LT.LowType -> LC.Comp -> App LC.Comp
 cast h var v lowType cont = do
   case lowType of
@@ -647,11 +641,10 @@ lowerValue h resultVar v cont =
     C.VarLocal y ->
       return $ LC.Let resultVar (LC.nop $ LC.VarLocal y) cont
     C.VarStaticBytes bytes -> do
-      let len = BS.length bytes
-      i <- liftIO $ Gensym.newCount (gensymHandle h)
-      let name = "bytes;" <> T.pack (show i)
-      let encodedBytes = foldMap (\w -> "\\" <> word8HexFixed w) (BS.unpack bytes)
-      liftIO $ insertStaticText h name encodedBytes len
+      name <- liftIO $ registerStaticBytes h bytes
+      uncast h resultVar (LC.VarTextName name) LT.Pointer cont
+    C.StaticSigmaIntro name size ds -> do
+      lowerStaticSigma h name size ds
       uncast h resultVar (LC.VarTextName name) LT.Pointer cont
     C.SigmaIntro size ds -> do
       let arrayType = AggTypeArray size LT.Pointer
@@ -720,6 +713,53 @@ member h k = do
 insertStaticText :: Handle -> T.Text -> Builder -> Int -> IO ()
 insertStaticText h name text len =
   modifyIORef' (staticTextList h) $ (:) (name, (text, len))
+
+insertStaticData :: Handle -> T.Text -> [LC.StaticData] -> IO ()
+insertStaticData h name slots =
+  modifyIORef' (staticDataMap h) $ Map.insert name slots
+
+hasStaticData :: Handle -> T.Text -> IO Bool
+hasStaticData h name = do
+  Map.member name <$> readIORef (staticDataMap h)
+
+registerStaticBytes :: Handle -> BS.ByteString -> IO T.Text
+registerStaticBytes h bytes = do
+  i <- Gensym.newCount (gensymHandle h)
+  let name = "bytes;" <> T.pack (show i)
+  let encodedBytes = foldMap (\w -> "\\" <> word8HexFixed w) (BS.unpack bytes)
+  insertStaticText h name encodedBytes (BS.length bytes)
+  return name
+
+lowerStaticSigma :: Handle -> T.Text -> Int -> [C.Value] -> App ()
+lowerStaticSigma h name size ds = do
+  alreadyEmitted <- liftIO $ hasStaticData h name
+  unless alreadyEmitted $ do
+    liftIO $ insertStaticData h name []
+    slots <- mapM (lowerStaticSlot h) ds
+    liftIO $ insertStaticData h name $ slots ++ replicate (size - length slots) LC.StaticNull
+
+lowerStaticSlot :: Handle -> C.Value -> App LC.StaticData
+lowerStaticSlot h v =
+  case v of
+    C.StaticSigmaIntro name size ds -> do
+      lowerStaticSigma h name size ds
+      return $ LC.StaticSymbol name
+    C.SigmaIntro 0 [] ->
+      return LC.StaticNull
+    C.VarStaticBytes bytes -> do
+      LC.StaticSymbol <$> liftIO (registerStaticBytes h bytes)
+    C.VarGlobal globalName argNum cod -> do
+      liftIO $ insertReferencedName h globalName
+      lowNameSet <- liftIO $ getDefinedNameSet h
+      unless (S.member globalName lowNameSet) $ do
+        liftIO $ insDeclEnv h (DN.In globalName) argNum cod
+      return $ LC.StaticGlobal globalName
+    C.Int size l ->
+      return $ LC.StaticInt (LT.PrimNum (PT.Int size)) l
+    C.Float size f ->
+      return $ LC.StaticFloat size f
+    _ ->
+      raiseCritical' "Found a non-static value inside an embedded value"
 
 getDefinedNameSet :: Handle -> IO (S.Set DD.DefiniteDescription)
 getDefinedNameSet h = do

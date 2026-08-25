@@ -113,6 +113,8 @@ weaken term =
       m :< WT.BoxIntro (map weakenLet letSeq) (weaken e)
     m :< TM.BoxIntroLift t e ->
       m :< WT.BoxIntroLift (Just $ weakenType t) (weaken e)
+    m :< TM.EmbedIntro e ->
+      m :< WT.EmbedIntro (weaken e)
     m :< TM.BoxElim _ castSeq mxt e1 uncastSeq e2 -> do
       let castSeq' = map weakenLet castSeq
       let (mxt', e1') = weakenLet (mxt, e1)
@@ -156,6 +158,8 @@ weakenType ty =
       m :< WT.Box (weakenType t)
     m :< TM.BoxNoema t ->
       m :< WT.BoxNoema (weakenType t)
+    m :< TM.Embed t ->
+      m :< WT.Embed (weakenType t)
     m :< TM.Code t ->
       m :< WT.Code (weakenType t)
     m :< TM.PrimType pt ->

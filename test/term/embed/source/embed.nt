@@ -1,0 +1,709 @@
+import {
+  core::int.io {print-int-line},
+  core::rune {to-int},
+  core::string {from-text, length},
+}
+
+inline view<a>(x: $a) -> &a {
+  magic cast($a, &a, x)
+}
+
+data color {
+| Red
+| Green
+| Blue
+}
+
+data direction {
+| North
+| East
+| South
+| West
+}
+
+data shape {
+| Circle(r: int)
+| Rect(w: int, h: int)
+}
+
+data wrapper(a) {
+| Wrapper(a)
+}
+
+data tagged {
+| Tagged(name: text, value: int, kind: color)
+}
+
+data inlined {
+| Inlined(~fst: shape, snd: int)
+}
+
+data holder {
+| Holder(table: $list(int), label: text)
+}
+
+data floating {
+| Floating(f: float, g: float32)
+}
+
+data boxed-fn {
+| Boxed-Fn(~f: (int) -> int, tag: int)
+}
+
+data runic {
+| Runic(c: rune, n: int)
+}
+
+data bytes-pair {
+| Bytes-Pair(t: text, b: blob)
+}
+
+data noetic-pair {
+| Noetic-Pair(s: &string, n: int)
+}
+
+data has-embedded-fn {
+| Has-Embedded-Fn(f: $(int) -> int, n: int)
+}
+
+data heap-holder {
+| Heap-Holder(stat: $list(int), dyn: list(int))
+}
+
+data sized-holder {
+| Sized-Holder(~inner: holder, extra: int)
+}
+
+data deep {
+| Deep(rows: list(list(int)), flag: either(int, bool))
+}
+
+define sum-list(xs: &list(int)) -> int {
+  case xs {
+  | Nil =>
+    0
+  | Cons(y, ys) =>
+    add-int(*y, sum-list(ys))
+  }
+}
+
+define sum-list-owned(xs: list(int)) -> int {
+  match xs {
+  | Nil =>
+    0
+  | Cons(y, ys) =>
+    add-int(y, sum-list-owned(ys))
+  }
+}
+
+define count-list<a>(xs: &list(a)) -> int {
+  case xs {
+  | Nil =>
+    0
+  | Cons(_, ys) =>
+    add-int(1, count-list(ys))
+  }
+}
+
+define sum-rows(xs: &list(list(int))) -> int {
+  case xs {
+  | Nil =>
+    0
+  | Cons(y, ys) =>
+    add-int(sum-list(y), sum-rows(ys))
+  }
+}
+
+define shape-area(s: &shape) -> int {
+  case s {
+  | Circle(r) =>
+    mul-int(3, mul-int(*r, *r))
+  | Rect(w, h) =>
+    mul-int(*w, *h)
+  }
+}
+
+define sum-areas(ss: &list(shape)) -> int {
+  case ss {
+  | Nil =>
+    0
+  | Cons(y, ys) =>
+    add-int(shape-area(y), sum-areas(ys))
+  }
+}
+
+define sum-lengths(ts: &list(&string)) -> int {
+  case ts {
+  | Nil =>
+    0
+  | Cons(y, ys) =>
+    add-int(length(*y), sum-lengths(ys))
+  }
+}
+
+define color-index(c: &color) -> int {
+  case c {
+  | Red =>
+    0
+  | Green =>
+    1
+  | Blue =>
+    2
+  }
+}
+
+define direction-index(d: &direction) -> int {
+  case d {
+  | North =>
+    0
+  | East =>
+    1
+  | South =>
+    2
+  | West =>
+    3
+  }
+}
+
+define apply-all(fs: &list((int) -> int), n: int) -> int {
+  case fs {
+  | Nil =>
+    0
+  | Cons(f, rest) =>
+    add-int(f(n), apply-all(rest, n))
+  }
+}
+
+define holder-sum(x: &heap-holder) -> int {
+  case x {
+  | Heap-Holder(stat, dyn) =>
+    add-int(sum-list(view(*stat)), sum-list(dyn))
+  }
+}
+
+define triple(n: int) -> int {
+  mul-int(3, n)
+}
+
+inline doubled(xs: list(int)) -> list(int) {
+  match xs {
+  | Nil =>
+    Nil
+  | Cons(y, ys) =>
+    Cons(mul-int(2, y), doubled(ys))
+  }
+}
+
+define test-primitives() -> unit {
+  let i: $int = embed {42};
+  let j: $int64 = embed {7};
+  let f: $float = embed {1.5};
+  let g: $float32 = embed {2.5};
+  let t: $text = embed {"hello"};
+  let b: $blob = embed {"\x{00}\x{FF}ab"};
+  let s: $&string = embed {"noetic"};
+  let c: $rune = embed {`A`};
+  print-int-line(*view(i));
+  print-int-line(*view(j));
+  print-int-line(fptosi-float-int(*view(f)));
+  print-int-line(fptosi-float32-int(*view(g)));
+  print-int-line(length(from-text(*view(t))));
+  print-int-line(core::binary::length(core::binary::from-blob(*view(b))));
+  print-int-line(length(*view(s)));
+  print-int-line(to-int(*view(c)));
+  Unit
+}
+
+define test-affinity() -> unit {
+  let xs: $list(int) = embed {List::[1, 2, 3]};
+  let _ = xs;
+  let _ = xs;
+  print-int-line(sum-list(view(xs)));
+  print-int-line(sum-list(view(xs)));
+  Unit
+}
+
+define test-clone() -> unit {
+  let xs: $list(int) = embed {List::[4, 5, 6]};
+  let ys = *view(xs);
+  print-int-line(sum-list-owned(ys));
+  let zs = *view(xs);
+  let _ = zs;
+  Unit
+}
+
+define test-enum() -> unit {
+  print-int-line(color-index(view(embed {Blue})));
+  print-int-line(color-index(view(embed {Red})));
+  print-int-line(direction-index(view(embed {West})));
+  print-int-line(direction-index(view(embed {North})));
+  Unit
+}
+
+define test-unary() -> unit {
+  let v: $wrapper(list(int)) = embed {Wrapper(List::[1, 2, 3, 4])};
+  case view(v) {
+  | Wrapper(xs) =>
+    print-int-line(sum-list(xs))
+  }
+}
+
+define test-nested() -> unit {
+  let ss: $list(shape) = embed {List::[Circle(2), Rect(3, 4), Circle(1)]};
+  print-int-line(sum-areas(view(ss)));
+  Unit
+}
+
+define test-deep() -> unit {
+  let d: $deep = embed {Deep(List::[List::[1, 2], List::[3], Nil], Left(9))};
+  case view(d) {
+  | Deep(rows, flag) =>
+    print-int-line(sum-rows(rows));
+    case flag {
+    | Left(n) =>
+      print-int-line(*n)
+    | Right(_) =>
+      print-int-line(0)
+    }
+  }
+}
+
+define test-long-list() -> unit {
+  let xs: $list(int) = embed {List::[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]};
+  print-int-line(sum-list(view(xs)));
+  print-int-line(count-list(view(xs)));
+  Unit
+}
+
+define test-text-field() -> unit {
+  let t: $tagged = embed {Tagged("hello", 42, Green)};
+  case view(t) {
+  | Tagged(name, value, kind) =>
+    print-int-line(length(from-text(*name)));
+    print-int-line(*value);
+    print-int-line(color-index(kind))
+  }
+}
+
+define test-bytes-field() -> unit {
+  let v: $bytes-pair = embed {Bytes-Pair("abc", "\x{00}\x{01}\x{02}\x{03}")};
+  case view(v) {
+  | Bytes-Pair(t, b) =>
+    print-int-line(length(from-text(*t)));
+    print-int-line(core::binary::length(core::binary::from-blob(*b)))
+  }
+}
+
+define test-rune-field() -> unit {
+  let v: $runic = embed {Runic(`z`, 5)};
+  case view(v) {
+  | Runic(c, n) =>
+    print-int-line(to-int(*c));
+    print-int-line(*n)
+  }
+}
+
+define test-noetic-element() -> unit {
+  let ts: $list(&string) = embed {List::["a", "bcd", "ef"]};
+  print-int-line(sum-lengths(view(ts)));
+  let v: $noetic-pair = embed {Noetic-Pair("wxyz", 3)};
+  case view(v) {
+  | Noetic-Pair(s, n) =>
+    print-int-line(length(*s));
+    print-int-line(*n)
+  }
+}
+
+define test-inlined-field() -> unit {
+  let v: $inlined = embed {Inlined(~Rect(3, 4), 7)};
+  case view(v) {
+  | Inlined(~fst, snd) =>
+    print-int-line(shape-area(fst));
+    print-int-line(*snd)
+  }
+}
+
+define test-embedded-field() -> unit {
+  let v: $holder = embed {Holder(embed {List::[9, 8]}, "tab")};
+  case view(v) {
+  | Holder(table, label) =>
+    print-int-line(sum-list(view(*table)));
+    print-int-line(length(from-text(*label)))
+  }
+}
+
+define test-double-embed() -> unit {
+  let v: $$list(int) = embed {embed {List::[5, 5, 5]}};
+  print-int-line(sum-list(view(*view(v))));
+  Unit
+}
+
+define test-float-field() -> unit {
+  let v: $floating = embed {Floating(1.5, 2.5)};
+  case view(v) {
+  | Floating(f, g) =>
+    print-int-line(fptosi-float-int(*f));
+    print-int-line(fptosi-float32-int(*g))
+  }
+}
+
+define test-computed() -> unit {
+  let xs: $list(int) = embed {doubled(List::[1, 2, 3])};
+  print-int-line(sum-list(view(xs)));
+  Unit
+}
+
+define test-let-bound() -> unit {
+  let ys: $list(int) =
+    embed {
+      let base = List::[10, 20];
+      Cons(30, base)
+    };
+  print-int-line(sum-list(view(ys)));
+  Unit
+}
+
+define test-transparent-forms() -> unit {
+  let a: $+list(int) = embed {lift {List::[1, 2]}};
+  letbox-T a2 = magic cast($+list(int), +list(int), a);
+  print-int-line(sum-list(view(magic cast(list(int), $list(int), a2))));
+  let b: $int = embed {unquote {quote {7}}};
+  print-int-line(*view(b));
+  let c: $int =
+    embed {
+      magic opaque-value {
+        9
+      }
+    };
+  print-int-line(*view(c));
+  Unit
+}
+
+define test-branching() -> unit {
+  let xs: $list(int) =
+    embed {
+      if gt-int(3, 2) {
+        List::[1, 1]
+      } else {
+        List::[9, 9, 9]
+      }
+    };
+  print-int-line(sum-list(view(xs)));
+  print-int-line(count-list(view(xs)));
+  Unit
+}
+
+define test-function() -> unit {
+  let f: $(int) -> int =
+    embed {
+      (x) => {
+        add-int(x, 1)
+      }
+    };
+  let _ = f;
+  print-int-line(view(f)(10));
+  print-int-line(view(f)(20));
+  let g = *view(f);
+  print-int-line(g(30));
+  Unit
+}
+
+define test-multi-arg-function() -> unit {
+  let f: $(int, int, int) -> int =
+    embed {
+      (x, y, z) => {
+        add-int(mul-int(x, y), z)
+      }
+    };
+  print-int-line(view(f)(2, 3, 4));
+  Unit
+}
+
+define test-global-function() -> unit {
+  let f: $(int) -> int = embed {triple};
+  print-int-line(view(f)(5));
+  Unit
+}
+
+define test-recursive-function() -> unit {
+  let f: $(int) -> int =
+    embed {
+      define go(n: int) -> int {
+        if le-int(n, 0) {
+          0
+        } else {
+          add-int(n, go(sub-int(n, 1)))
+        }
+      }
+    };
+  print-int-line(view(f)(10));
+  Unit
+}
+
+define test-default-args() -> unit {
+  let f =
+    embed {
+      define go(n: int)[bump: int := 7] -> int {
+        add-int(n, bump)
+      }
+    };
+  print-int-line(view(f)(1));
+  print-int-line(view(f)(1)[bump := 100]);
+  Unit
+}
+
+define test-function-list() -> unit {
+  let fs: $list((int) -> int) =
+    embed {
+      List::[triple, (x) => {
+        add-int(x, 100)
+      }]
+    };
+  print-int-line(apply-all(view(fs), 2));
+  Unit
+}
+
+define test-function-field() -> unit {
+  let v: $boxed-fn =
+    embed {
+      Boxed-Fn(
+        ~(x) => {
+          mul-int(x, x)
+        },
+        9,
+      )
+    };
+  case view(v) {
+  | Boxed-Fn(~f, tag) =>
+    print-int-line(f(7));
+    print-int-line(*tag)
+  }
+}
+
+define test-function-returning-function() -> unit {
+  let f: $(int) -> (int) -> int =
+    embed {
+      (n) => {
+        (m) => {
+          add-int(n, m)
+        }
+      }
+    };
+  let g = view(f)(4);
+  print-int-line(g(5));
+  Unit
+}
+
+define test-embed-in-lambda() -> unit {
+  let f: $(int) -> int =
+    embed {
+      (n) => {
+        let table: $list(int) = embed {List::[1, 2, 3]};
+        add-int(n, sum-list(view(table)))
+      }
+    };
+  print-int-line(view(f)(10));
+  Unit
+}
+
+define test-unary-chain() -> unit {
+  let v: $wrapper(wrapper(wrapper(list(int)))) = embed {Wrapper(Wrapper(Wrapper(List::[1, 2, 5])))};
+  case view(v) {
+  | Wrapper(w1) =>
+    case w1 {
+    | Wrapper(w2) =>
+      case w2 {
+      | Wrapper(xs) =>
+        print-int-line(sum-list(xs))
+      }
+    }
+  }
+}
+
+define test-match-in-embed() -> unit {
+  let xs: $list(int) =
+    embed {
+      let e: either(int, bool) = Left(3);
+      match e {
+      | Left(n) =>
+        List::[n, mul-int(n, n)]
+      | Right(_) =>
+        Nil
+      }
+    };
+  print-int-line(sum-list(view(xs)));
+  Unit
+}
+
+define test-embedded-in-sized-field() -> unit {
+  let v: $sized-holder = embed {Sized-Holder(~Holder(embed {List::[4, 4]}, "ab"), 6)};
+  case view(v) {
+  | Sized-Holder(~inner, extra) =>
+    case inner {
+    | Holder(table, label) =>
+      print-int-line(sum-list(view(*table)));
+      print-int-line(length(from-text(*label)))
+    };
+    print-int-line(*extra)
+  }
+}
+
+define test-packed-type() -> unit {
+  let t: $type = embed {pack-type {int}};
+  unpack-type a = magic cast($type, type, t);
+  let x: a = magic cast(int, a, 11);
+  print-int-line(magic cast(a, int, x));
+  Unit
+}
+
+define test-packed-type-variants() -> unit {
+  let t1: $type = embed {pack-type {list(int)}};
+  let t2: $type = embed {pack-type {(int) -> int}};
+  let t3: $type = embed {pack-type {&list(int)}};
+  let t4: $type = embed {pack-type {$list(int)}};
+  let t5: $type = embed {pack-type {type}};
+  let _ = t2;
+  let _ = t3;
+  let _ = t4;
+  let _ = t5;
+  unpack-type a = magic cast($type, type, t1);
+  let xs: a = magic cast(list(int), a, List::[1, 2, 3]);
+  print-int-line(sum-list-owned(magic cast(a, list(int), xs)));
+  Unit
+}
+
+define test-quoted() -> unit {
+  let q: $'list(int) = embed {quote {Cons(1, Cons(2, Cons(3, Cons(4, Nil))))}};
+  print-int-line(sum-list(magic cast($'list(int), &list(int), q)));
+  Unit
+}
+
+define test-lift() -> unit {
+  let xs: $list(int) = embed {List::[7, 7, 7]};
+  letbox-T ys = lift {xs};
+  print-int-line(sum-list(view(ys)));
+  Unit
+}
+
+define test-lift-non-actual() -> unit {
+  let s: $&string = embed {"abcd"};
+  letbox-T s2 = lift {s};
+  print-int-line(length(*view(s2)));
+  let f: $(int) -> int =
+    embed {
+      (x) => {
+        add-int(x, 1)
+      }
+    };
+  letbox-T f2 = lift {f};
+  print-int-line(view(f2)(5));
+  let v: has-embedded-fn = Has-Embedded-Fn(f, 2);
+  letbox-T v2 = lift {v};
+  match v2 {
+  | Has-Embedded-Fn(g, n) =>
+    print-int-line(view(g)(n))
+  }
+}
+
+define test-box() -> unit {
+  let xs: $list(int) = embed {List::[2, 4]};
+  letbox-T ys on xs = box xs {xs};
+  print-int-line(sum-list(view(ys)));
+  print-int-line(sum-list(view(xs)));
+  Unit
+}
+
+define test-heap-holder() -> unit {
+  let !hh: heap-holder = Heap-Holder(embed {List::[9, 9]}, List::[1, 2, 3]);
+  let a = hh;
+  let b = hh;
+  let _ on a = {
+    print-int-line(holder-sum(a));
+    Unit
+  };
+  let _ on b = {
+    print-int-line(holder-sum(b));
+    Unit
+  };
+  let _ = a;
+  let _ = b;
+  Unit
+}
+
+define test-heap-list-of-embedded() -> unit {
+  let xs: $list(int) = embed {List::[1, 2]};
+  let ys: list($list(int)) = List::[xs, xs, xs];
+  let _ on ys = {
+    print-int-line(count-list(ys));
+    Unit
+  };
+  let _ = ys;
+  Unit
+}
+
+constant base-table: list(int) {
+  List::[100, 200, 300]
+}
+
+constant static-table: $list(int) {
+  embed {base-table}
+}
+
+constant derived-table: $list(int) {
+  embed {Cons(1, base-table)}
+}
+
+define take-embedded(x: $list(int)) -> int {
+  add-int(sum-list(view(x)), sum-list(view(x)))
+}
+
+define test-statements() -> unit {
+  print-int-line(sum-list(view(static-table)));
+  print-int-line(take-embedded(embed {List::[1, 2]}));
+  print-int-line(sum-list(view(derived-table)));
+  Unit
+}
+
+define main() -> unit {
+  test-primitives();
+  test-affinity();
+  test-clone();
+  test-enum();
+  test-unary();
+  test-nested();
+  test-deep();
+  test-long-list();
+  test-text-field();
+  test-bytes-field();
+  test-rune-field();
+  test-noetic-element();
+  test-inlined-field();
+  test-embedded-field();
+  test-double-embed();
+  test-float-field();
+  test-unary-chain();
+  test-match-in-embed();
+  test-embedded-in-sized-field();
+  test-computed();
+  test-let-bound();
+  test-branching();
+  test-transparent-forms();
+  test-function();
+  test-multi-arg-function();
+  test-global-function();
+  test-recursive-function();
+  test-default-args();
+  test-function-list();
+  test-function-field();
+  test-function-returning-function();
+  test-embed-in-lambda();
+  test-packed-type();
+  test-packed-type-variants();
+  test-quoted();
+  test-lift();
+  test-lift-non-actual();
+  test-box();
+  test-heap-holder();
+  test-heap-list-of-embedded();
+  test-statements()
+}

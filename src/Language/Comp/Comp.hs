@@ -52,6 +52,7 @@ data Value
   | VarGlobal DD.DefiniteDescription ArgNum (FCT.ForeignCodType BaseLowType)
   | VarStaticBytes BS.ByteString
   | SigmaIntro Int [Value]
+  | StaticSigmaIntro T.Text Int [Value]
   | Int IntSize Integer
   | Float FloatSize Double
   deriving (Eq)
@@ -67,6 +68,8 @@ instance Show Value where
         show $ BS.unpack bytes
       SigmaIntro size vs ->
         T.unpack $ renderValueText (SigmaIntro size vs)
+      StaticSigmaIntro name size vs ->
+        T.unpack $ renderValueText (StaticSigmaIntro name size vs)
       Language.Comp.Comp.Int _ i ->
         show i
       Language.Comp.Comp.Float _ f ->
@@ -267,6 +270,8 @@ renderValueBuilder value =
       B.fromString $ show $ BS.unpack bytes
     SigmaIntro size vs ->
       B.fromString "[" <> B.fromString (show size) <> B.fromString "](" <> mconcat (intersperse (B.fromString ", ") (map renderValueBuilder vs)) <> B.fromString ")"
+    StaticSigmaIntro name size vs ->
+      B.fromText name <> B.fromString "[" <> B.fromString (show size) <> B.fromString "](" <> mconcat (intersperse (B.fromString ", ") (map renderValueBuilder vs)) <> B.fromString ")"
     Language.Comp.Comp.Int _ i ->
       B.fromString $ show i
     Language.Comp.Comp.Float _ f ->

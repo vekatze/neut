@@ -123,6 +123,8 @@ substValue sub term =
     C.SigmaIntro size vs -> do
       let vs' = map (substValue sub) vs
       C.SigmaIntro size vs'
+    C.StaticSigmaIntro {} ->
+      term
     C.Int {} ->
       term
     C.Float {} ->

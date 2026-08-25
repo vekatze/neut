@@ -78,6 +78,8 @@ toTextIndented kit term =
           <> inBrace (toTextIndented (atLevel kit 0) t)
     _ :< WT.BoxIntroLift _ e ->
       indentText (level kit) ("lift " <> inBrace (toTextIndented (atLevel kit 0) e))
+    _ :< WT.EmbedIntro e ->
+      indentText (level kit) ("embed " <> inBrace (toTextIndented (atLevel kit 0) e))
     _ :< WT.BoxElim castSeq (_, k, x, t) e1 _ e2 ->
       indentText (level kit) $
         "letbox "
@@ -372,6 +374,8 @@ toTextType' h ty =
       "+" <> toTextType' h t
     _ :< WT.BoxNoema t ->
       "&" <> toTextType' h t
+    _ :< WT.Embed t ->
+      "$" <> toTextType' h t
     _ :< WT.Code t ->
       "'" <> toTextType' h t
     _ :< WT.PrimType pt ->

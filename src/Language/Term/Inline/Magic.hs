@@ -103,6 +103,8 @@ evaluateInspectType h m moduleID typeExpr = do
               returnTypeValueIntValue h m moduleID $ TypeValue.Algebraic dataNameText dataArgs consInfoList'
     _ :< TM.BoxNoema t ->
       returnTypeValueIntValue h m moduleID $ TypeValue.Noema t
+    _ :< TM.Embed _ ->
+      returnTypeValueIntValue h m moduleID TypeValue.Opaque
     _ :< TM.Box t ->
       returnTypeValueIntValue h m moduleID $ TypeValue.BoxT t
     _ :< TM.Code _ ->

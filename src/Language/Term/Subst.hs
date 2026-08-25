@@ -131,6 +131,9 @@ subst h sub term =
       t' <- substType h sub t
       e' <- subst h sub e
       return $ m :< TM.BoxIntroLift t' e'
+    m :< TM.EmbedIntro e -> do
+      e' <- subst h sub e
+      return $ m :< TM.EmbedIntro e'
     m :< TM.BoxElim traceID castSeq mxt e1 uncastSeq e2 -> do
       (castSeq', sub1) <- substLetSeq h sub castSeq
       ((mxt', e1'), sub2) <- substLet h sub1 (mxt, e1)
@@ -224,6 +227,9 @@ substType h sub ty =
     m :< TM.BoxNoema t -> do
       t' <- substType h sub t
       return $ m :< TM.BoxNoema t'
+    m :< TM.Embed t -> do
+      t' <- substType h sub t
+      return $ m :< TM.Embed t'
     m :< TM.Code t -> do
       t' <- substType h sub t
       return $ m :< TM.Code t'
