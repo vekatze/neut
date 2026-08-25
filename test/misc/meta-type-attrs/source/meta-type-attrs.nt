@@ -2,19 +2,19 @@ import {
   core::array {access, length, make, pop-back, pop-front, push-back, push-front, put, to-list, with-slice},
   core::array.unsafe {put-unchecked},
   core::cell {cell, clone, extract, make-cell, mutate},
-  core::debug {assert, panic},
+  core::debug {assert},
   core::int.io {print-int-line},
   core::layer {axiom-T},
 }
 
-define-meta make-boxed-pair<a>(x: 'a) -> 'pair(+a, +a) {
+define-meta make-boxed-pair<actual a>(x: 'a) -> 'pair(+a, +a) {
   quote {
     let !y = unquote {x};
     Pair(lift {y}, lift {y})
   }
 }
 
-define-meta classify-int<a>(x: 'a) -> 'int {
+define-meta classify-int<integer a>(x: 'a) -> 'int {
   quote {
     let y = unquote {x};
     match y {
@@ -64,6 +64,26 @@ define _item-code(x: item) -> int {
       1001
     }
   }
+}
+
+define _box-value<actual a>(x: a) -> +a {
+  lift {x}
+}
+
+define _relay-box-value<actual a>(x: a) -> +a {
+  _box-value(x)
+}
+
+define _unbox-item(x: +item) -> int {
+  letbox-T y = x;
+  _item-code(y)
+}
+
+define use-actual-define() -> unit {
+  letbox-T n: int = _box-value(7);
+  assert("define.actual: primitive\n", eq-int(n, 7));
+  assert("define.actual: adt\n", eq-int(_unbox-item(_box-value(Foo(3))), 3));
+  assert("define.actual: relayed\n", eq-int(_unbox-item(_relay-box-value(Bar(True))), 1000))
 }
 
 define _item-code-N(x: &item) -> int {
@@ -139,8 +159,8 @@ define _expect-item(label: &string, xs: &array(item), index: int, expected: int)
   match access@(xs, index) {
   | Left(_) =>
     panic(label)
-  | Right(actual) =>
-    assert(label, eq-int(_item-code-N(actual), expected))
+  | Right(elem) =>
+    assert(label, eq-int(_item-code-N(elem), expected))
   }
 }
 
@@ -148,8 +168,8 @@ define _expect-complex(label: &string, xs: &array(complex-item), index: int, exp
   match access@(xs, index) {
   | Left(_) =>
     panic(label)
-  | Right(actual) =>
-    assert(label, eq-int(_complex-code-N(actual), expected))
+  | Right(elem) =>
+    assert(label, eq-int(_complex-code-N(elem), expected))
   }
 }
 
@@ -157,8 +177,8 @@ define _expect-cell(label: &string, xs: &array(cell(int)), index: int, expected:
   match access@(xs, index) {
   | Left(_) =>
     panic(label)
-  | Right(actual) =>
-    assert(label, eq-int(clone(actual), expected))
+  | Right(elem) =>
+    assert(label, eq-int(clone(elem), expected))
   }
 }
 
@@ -166,8 +186,8 @@ define _mutate-cell-at(label: &string, xs: &array(cell(int)), index: int, delta:
   match access@(xs, index) {
   | Left(_) =>
     panic(label)
-  | Right(actual) =>
-    mutate(actual, (x) => {
+  | Right(elem) =>
+    mutate(elem, (x) => {
       lift {add-int(axiom-T(x), delta)}
     })
   }
@@ -186,8 +206,8 @@ define _clone-at(label: &string, xs: &array(item), index: int) -> item {
   match access@(xs, index) {
   | Left(_) =>
     panic(label)
-  | Right(actual) =>
-    case actual {
+  | Right(elem) =>
+    case elem {
     | Foo(n) =>
       Foo(*n)
     | Bar(b) =>
@@ -200,8 +220,8 @@ define _clone-complex-at(label: &string, xs: &array(complex-item), index: int) -
   match access@(xs, index) {
   | Left(_) =>
     panic(label)
-  | Right(actual) =>
-    case actual {
+  | Right(elem) =>
+    case elem {
     | Wide(~p1, ~it, ~p2, b, n) =>
       case p1 {
       | Point(x1, y1) =>
@@ -515,6 +535,7 @@ define test-array() -> unit {
 define main() -> unit {
   use-unit-lift();
   use-int-lift();
+  use-actual-define();
   print-int-line(classify-int::<int>(0));
   print-int-line(classify-int::<int32>(1));
   print-int-line(classify-int::<int16>(2));

@@ -25,7 +25,6 @@ data Env = Env
     inlineLimit :: Int,
     specializationTable :: IORef SpecializationTable,
     pendingSpecializationDefs :: IORef [Stmt.Stmt],
-    residualCheckList :: IORef [ResidualCheck],
     mainModule :: Module.MainModule,
     modulePathMap :: ModulePath.ModulePathMap,
     traceHandle :: Trace.Handle

@@ -698,13 +698,17 @@ An ordinary parameter can carry `~`. It precedes the name, or the type when the 
 ~b
 ```
 
-An implicit parameter can carry `sized`. It precedes the name:
+An implicit parameter can carry attributes. They precede the name:
 
 ```neut
 sized a: type
 
-sized a
+actual a
+
+integer a
 ```
+
+The available attributes are `sized`, `actual`, and `integer`. Each of them narrows the types that the parameter can be instantiated with, and in exchange lets the body use the parameter where the corresponding condition is required.
 
 The following abbreviations are available:
 
@@ -765,7 +769,17 @@ The type of a `~` parameter and the result type of a `@` function must be sized:
 <sized a>(~x: a) -> int // accepted
 ```
 
-`sized` is part of the type as well, so `<sized a>(x: a) -> a` and `<a>(x: a) -> a` are different types.
+`actual` and `integer` work in the same way. A type variable can be `lift`ed only when it is declared `actual`, and it can be matched against an integer pattern only when it is declared `integer`. `integer` implies `actual`:
+
+```neut
+// `lift {x}` is available in the body
+<actual a>(x: a) -> +a
+
+// `match x { | 0 => .. }` is available in the body
+<integer a>(x: a) -> int
+```
+
+The attributes are part of the type as well, so `<sized a>(x: a) -> a` and `<a>(x: a) -> a` are different types.
 
 ## `(x1: a1, ..., xn: an) => { e }`
 
@@ -1643,6 +1657,30 @@ match e1, ..., en {
 The scrutinees `e1, ..., en` are restricted terms. At the top level of a scrutinee, grouped terms like `{e}` and key-argument applications like `foo{...}` are not accepted. Bind such a term with `let` before matching on it.
 
 A pattern that binds a `~` field of a constructor carries the same `~`, as in `| Entity(~p, q) =>`. The mark belongs to the field, so `case`, `tie` and `let` write it the same way, and a wildcard carries it too, as in `| Entity(~_, q) =>`.
+
+An integer pattern requires its scrutinee to have an integer type. A type variable can be matched against an integer pattern only when it is declared `integer`:
+
+```neut
+// error: the type variable `a` is not declared `integer`
+define classify<a>(x: a) -> int {
+  match x {
+  | 0 =>
+    11
+  | _ =>
+    22
+  }
+}
+
+// this is fine
+define classify<integer a>(x: a) -> int {
+  match x {
+  | 0 =>
+    11
+  | _ =>
+    22
+  }
+}
+```
 
 ### Semantics
 
@@ -2522,7 +2560,7 @@ e
 
 Here, an "actual" type is a type that satisfies all the following conditions:
 
-- It doesn't contain any free variables
+- Every type variable in it is declared `actual`
 - It doesn't contain any noetic types
 - It doesn't contain any function types
 - It doesn't contain any "dubious" ADTs
@@ -2594,6 +2632,20 @@ define lift-either(x: either(bool, unit)) -> +either(bool, unit) {
 `lift` is there only for convenience.
 
 A useful case is static data: primitive types such as `text` and `blob` are liftable, whereas noetic types such as `&string` and `&binary` are not.
+
+(3) A type variable is actual only when its binder carries `actual`:
+
+```neut
+define lift-value<a>(x: a) -> +a {
+  lift {x} // error: the type variable `a` is not declared `actual`
+}
+
+define lift-value<actual a>(x: a) -> +a {
+  lift {x} // accepted
+}
+```
+
+Each call that instantiates an `actual` variable is checked against the type it supplies, so `lift-value(1)` is accepted, whereas calling it with a value of type `&string` is rejected.
 
 ## `pack-type`
 

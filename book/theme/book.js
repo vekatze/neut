@@ -73,6 +73,8 @@ hljs.registerLanguage("neut", function (hljs) {
         "this",
       ],
       type: [
+        "actual",
+        "integer",
         "meta",
         "pointer",
         "rune",
