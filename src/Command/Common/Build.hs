@@ -115,11 +115,11 @@ buildTarget h (M.MainModule baseModule) target = do
   let traceReport = Console.getTraceConfig $ Global.consoleHandle $ globalHandle h
   traceConfig <- either raiseError' return $ Trace.new (Env.getMainModule $ Global.envHandle $ globalHandle h) traceReport
   let moduleList = nubOrdOn M.moduleID $ map sourceModule dependenceSeq
-  didPerformForeignCompilation <- compileForeign h target moduleList
+  didPerformForeignCompilation <- compileForeign h target' moduleList
   let loadHandle = Load.new (globalHandle h)
-  contentSeq <- Load.load loadHandle (Trace.isEnabled traceConfig) target dependenceSeq
+  contentSeq <- Load.load loadHandle (Trace.isEnabled traceConfig) target' dependenceSeq
   withSystemTempDir "neut-object" $ \stagingDir -> do
-    compile h traceConfig target (_outputKindList h) sourceDependencyMap contentSeq stagingDir
+    compile h traceConfig target' (_outputKindList h) sourceDependencyMap contentSeq stagingDir
   liftIO $
     GlobalRemark.get (Global.globalRemarkHandle (globalHandle h))
       >>= Logger.printLogList (Global.loggerHandle (globalHandle h))
