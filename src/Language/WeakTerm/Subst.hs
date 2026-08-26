@@ -142,12 +142,12 @@ subst h sub term =
     m :< WT.TauIntro ty -> do
       ty' <- substType h sub ty
       return $ m :< WT.TauIntro ty'
-    m :< WT.TauElim (mx, x) e1 e2 -> do
+    m :< WT.TauElim (mx, k, x) e1 e2 -> do
       e1' <- subst h sub e1
       x' <- liftIO $ Gensym.newIdentFromIdent (gensymHandle h) x
       let sub' = IntMap.insert (Ident.toInt x) (Var x') sub
       e2' <- subst h sub' e2
-      return $ m :< WT.TauElim (mx, x') e1' e2'
+      return $ m :< WT.TauElim (mx, k, x') e1' e2'
     m :< WT.Let mxt e1 e2 -> do
       e1' <- subst h sub e1
       (mxt', _, e2') <- subst'' h sub mxt [] e2

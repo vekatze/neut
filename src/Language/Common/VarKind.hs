@@ -9,6 +9,7 @@ module Language.Common.VarKind
     attrList,
     attrClosure,
     reifyAttr,
+    reifyUnsafeAttr,
   )
 where
 
@@ -77,3 +78,7 @@ reifyAttr attr =
       "actual"
     Integer ->
       "integer"
+
+reifyUnsafeAttr :: TypeAttr -> T.Text
+reifyUnsafeAttr attr =
+  "unsafe-" <> reifyAttr attr

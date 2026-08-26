@@ -60,7 +60,7 @@ freeVarsWithHints term =
       freeVarsWithHints e
     _ :< TM.TauIntro ty ->
       freeVarsWithHintsType ty
-    _ :< TM.TauElim _ (m, x) e1 e2 ->
+    _ :< TM.TauElim _ (m, _, x) e1 e2 ->
       S.union (freeVarsWithHints e1) (S.delete (m, x) (freeVarsWithHints e2))
     _ :< TM.Let mxt e1 e2 -> do
       let set1 = freeVarsWithHints e1

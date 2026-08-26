@@ -223,7 +223,7 @@ analyze h term = do
       analyze h e
     _ :< TM.TauIntro ty -> do
       analyzeType h ty
-    _ :< TM.TauElim _ (mx, x) e1 e2 -> do
+    _ :< TM.TauElim _ (mx, _, x) e1 e2 -> do
       let mxt = (mx, VK.normal, x, mx :< TM.Tau)
       (cs1, h') <- analyzeLet h [(mxt, e1)]
       cs2 <- analyze h' e2

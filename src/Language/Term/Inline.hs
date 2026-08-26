@@ -288,7 +288,7 @@ inline' h rawTerm = do
     m :< TM.TauIntro ty -> do
       ty' <- inlineType' h ty
       return $ m :< TM.TauIntro ty'
-    m :< TM.TauElim traceID (mx, x) e1 e2 -> do
+    m :< TM.TauElim traceID (mx, k, x) e1 e2 -> do
       e1' <- inline' h e1
       case e1' of
         _ :< TM.TauIntro ty -> do
@@ -296,7 +296,7 @@ inline' h rawTerm = do
           liftIO (Subst.subst (substHandle h) sub e2) >>= inline' h
         _ -> do
           e2' <- inline' h e2
-          registerResidual h $ m :< TM.TauElim traceID (mx, x) e1' e2'
+          registerResidual h $ m :< TM.TauElim traceID (mx, k, x) e1' e2'
     m :< TM.Let mxt@(_, _, x, _) e1 e2 -> do
       e1' <- inline' h e1
       if TM.isValue e1'

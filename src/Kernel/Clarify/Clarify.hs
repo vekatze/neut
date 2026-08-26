@@ -704,7 +704,7 @@ clarifyTerm h context term =
       clarifyTerm h context e
     _ :< TM.TauIntro ty -> do
       clarifyType h context ty
-    _ :< TM.TauElim _ (mx, x) e1 e2 -> do
+    _ :< TM.TauElim _ (mx, _, x) e1 e2 -> do
       clarifyLet h context (mx, VK.normal, x, mx :< TM.Tau) e1 e2
     _ :< TM.Let mxt e1 e2 ->
       clarifyLet h context mxt e1 e2

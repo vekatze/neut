@@ -149,12 +149,12 @@ subst h sub term =
     m :< TM.TauIntro ty -> do
       ty' <- substType h sub ty
       return $ m :< TM.TauIntro ty'
-    m :< TM.TauElim traceID (mx, x) e1 e2 -> do
+    m :< TM.TauElim traceID (mx, k, x) e1 e2 -> do
       e1' <- subst h sub e1
       x' <- liftIO $ Gensym.newIdentFromIdent (gensymHandle h) x
       let sub' = IntMap.insert (Ident.toInt x) (Var x') sub
       e2' <- subst h sub' e2
-      rebuild h m $ TM.TauElim traceID (mx, x') e1' e2'
+      rebuild h m $ TM.TauElim traceID (mx, k, x') e1' e2'
     m :< TM.Let mxt e1 e2 -> do
       e1' <- subst h sub e1
       ([mxt'], e2') <- subst' h sub [mxt] e2

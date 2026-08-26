@@ -103,6 +103,17 @@ define use-round-trip() -> int {
   shape-area-owned(round-trip@(~Rect(5, 5)))
 }
 
+define round-trip-via-type-value(ty: type, s: shape) -> int {
+  unpack-type unsafe-sized a = ty;
+  let s = magic cast(shape, a, s);
+  let s = round-trip@<a>(~s);
+  shape-area-owned(magic cast(a, shape, s))
+}
+
+define use-unsafe-sized() -> int {
+  round-trip-via-type-value(pack-type {shape}, Rect(6, 7))
+}
+
 define sum-both<sized a, sized b>(~x: a, f: (&a) -> int, ~y: b, g: (&b) -> int) -> int {
   pin x = x;
   pin y = y;
@@ -129,5 +140,7 @@ define main() -> unit {
   print("use-round-trip\n");
   print-int-line(use-round-trip());
   print("use-mixed-widths\n");
-  print-int-line(use-mixed-widths())
+  print-int-line(use-mixed-widths());
+  print("use-unsafe-sized\n");
+  print-int-line(use-unsafe-sized())
 }

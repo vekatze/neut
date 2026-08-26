@@ -211,11 +211,11 @@ toDoc term =
         [ PI.horizontal $ attachComment c1 $ D.text "pack-type",
           PI.inject $ decodeBrace' False c2 (typeToDoc ty) c3
         ]
-    _ :< TauElim c1 (_, x, c2) c3 e1 c4 _ c5 e2 _ -> do
+    _ :< TauElim c1 (_, k, x, c2) c3 e1 c4 _ c5 e2 _ -> do
       D.join
         [ PI.arrange
             [ PI.beforeBareSeries $ D.text "unpack-type",
-              PI.bareSeries $ attachComment (c1 ++ c2) $ D.text x
+              PI.bareSeries $ attachComment (c1 ++ c2) $ prefixUnsafeTypeAttrs k $ D.text x
             ],
           PI.arrange
             [ PI.beforeBareSeries $ attachComment [] $ D.text "=",
@@ -782,6 +782,11 @@ paramToDoc' (_, x, c1, c2, t) = do
     [ PI.parameter x,
       PI.inject $ attachComment (c1 ++ c2) $ typeAnnotOf t
     ]
+
+prefixUnsafeTypeAttrs :: VK.VarKind -> D.Doc -> D.Doc
+prefixUnsafeTypeAttrs k doc = do
+  let attrPrefixes = map (\attr -> D.text (VK.reifyUnsafeAttr attr <> " ")) (VK.attrList k)
+  D.join $ attrPrefixes ++ [doc]
 
 prefixVarKind :: VK.VarKind -> D.Doc -> D.Doc
 prefixVarKind k doc = do

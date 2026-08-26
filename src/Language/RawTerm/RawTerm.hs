@@ -136,7 +136,7 @@ data RawTermF a
   | CodeIntro CodeVariant C C (a, C)
   | CodeElim C C (a, C)
   | TauIntro C (EL RawType)
-  | TauElim C (Hint, RawIdent, C) C a C Loc C a Loc
+  | TauElim C (Hint, VarKind, RawIdent, C) C a C Loc C a Loc
   | Embody a
   | Let LetKind C (PatParam RawType) C C a C Loc C a Loc
   | LetOn LetKind C (PatParam RawType) C (SE.Series (Hint, VarKind, RawIdent)) C a C Loc C a Loc
