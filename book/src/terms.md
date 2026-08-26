@@ -2770,12 +2770,27 @@ define use-unpack-type(arg: type) -> type {
 }
 ```
 
+The bound variable can carry attributes. They precede the name:
+
+```neut
+define use-unsafe-sized(arg: type, x: pointer) -> pointer {
+  unpack-type unsafe-sized a = arg;
+  let x = magic cast(pointer, a, x);
+  magic cast(a, pointer, round-trip@(~x))
+}
+```
+
 ### Syntax
 
 ```neut
 unpack-type a = e1;
 e2
+
+unpack-type unsafe-sized a = e1;
+e2
 ```
+
+The available attributes are `unsafe-sized`, `unsafe-actual`, and `unsafe-integer`. Each of them corresponds to the same-named attribute without the `unsafe-` prefix in [function types](#x1-a1--xn-an---b), and grants the bound variable exactly what that attribute grants.
 
 ### Semantics
 
@@ -2789,6 +2804,8 @@ e2
 ----------------------------
 Γ ⊢ unpack-type α = e1; e2: b
 ```
+
+An attribute on `α` doesn't change this rule. It only records the attribute on `α` for the rest of `e2`.
 
 ## `magic`
 

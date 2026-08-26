@@ -538,14 +538,16 @@ rawTermPin h m c1 = do
 
 rawTermTauElim :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermTauElim h m c1 = do
+  (attrs, cAttr) <- unsafeTypeAttrMarks
   ((mx, x), c2) <- var h
+  let k = foldr VK.withAttr VK.normal attrs
   c3 <- delimiter "="
   (e1, c4) <- rawTerm h
   loc <- getCurrentLoc
   c5 <- delimiter ";"
   (e2, c) <- rawExpr h
   endLoc <- getCurrentLoc
-  return (m :< RT.TauElim c1 (mx, x, c2) c3 e1 c4 loc c5 e2 endLoc, c)
+  return (m :< RT.TauElim (c1 ++ cAttr) (mx, k, x, c2) c3 e1 c4 loc c5 e2 endLoc, c)
 
 rawTermLetVarAscription :: Handle -> Hint -> Parser (C, (RT.RawType, C))
 rawTermLetVarAscription h m = do
@@ -799,6 +801,18 @@ typeAttrMark :: Parser (VK.TypeAttr, C)
 typeAttrMark =
   choice $ flip map [minBound .. maxBound] $ \attr -> do
     c <- keyword (VK.reifyAttr attr)
+    return (attr, c)
+
+unsafeTypeAttrMarks :: Parser ([VK.TypeAttr], C)
+unsafeTypeAttrMarks = do
+  results <- many unsafeTypeAttrMark
+  let (attrs, cs) = unzip results
+  return (attrs, concat cs)
+
+unsafeTypeAttrMark :: Parser (VK.TypeAttr, C)
+unsafeTypeAttrMark =
+  choice $ flip map [minBound .. maxBound] $ \attr -> do
+    c <- keyword (VK.reifyUnsafeAttr attr)
     return (attr, c)
 
 ensureArgumentLinearity :: S.Set RawIdent -> [(Hint, RawIdent)] -> App ()

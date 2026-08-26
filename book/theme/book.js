@@ -82,6 +82,9 @@ hljs.registerLanguage("neut", function (hljs) {
         "sized",
         "thread",
         "type",
+        "unsafe-actual",
+        "unsafe-integer",
+        "unsafe-sized",
         "void",
       ],
       constant: [

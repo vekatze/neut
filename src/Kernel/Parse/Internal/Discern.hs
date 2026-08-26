@@ -619,12 +619,12 @@ discern h term =
     m :< RT.TauIntro _ (_, (ty, _)) -> do
       ty' <- discernType h ty
       return $ m :< WT.TauIntro ty'
-    m :< RT.TauElim _ (mx, x, _) _ e1 _ _ _ e2 _ -> do
+    m :< RT.TauElim _ (mx, k, x, _) _ e1 _ _ _ e2 _ -> do
       e1' <- discern h e1
       x' <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) x
       h' <- extendTypeVar h mx x'
       e2' <- discern h' e2
-      return $ m :< WT.TauElim (mx, x') e1' e2'
+      return $ m :< WT.TauElim (mx, k, x') e1' e2'
     m :< RT.Embody e -> do
       ensureRuntimeStage m h "meta operation (`*`)"
       embodyVar <- liftEither $ locatorToVarGlobal m coreLayerEmbody

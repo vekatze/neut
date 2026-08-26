@@ -30,6 +30,7 @@ import Language.Common.Magic
 import Language.Common.Noema qualified as N
 import Language.Common.PiKind (PiKind)
 import Language.Common.PrimType qualified as PT
+import Language.Common.VarKind qualified as VK
 import Language.Term.PrimValue qualified as PV
 import Language.Term.TraceID (TraceID)
 import Logger.Hint
@@ -78,7 +79,7 @@ data TermF a
   | CodeIntro a
   | CodeElim TraceID a
   | TauIntro Type
-  | TauElim TraceID (Hint, Ident) a a
+  | TauElim TraceID (Hint, VK.VarKind, Ident) a a
   | Let (BinderF Type) a a
   | Invoke [DD.DefiniteDescription] a
   | Prim (PV.PrimValue Type)

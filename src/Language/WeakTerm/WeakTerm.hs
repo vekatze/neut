@@ -34,6 +34,7 @@ import Language.Common.Noema qualified as N
 import Language.Common.PiKind (PiKind)
 import Language.Common.PrimNumSize
 import Language.Common.PrimType qualified as PT
+import Language.Common.VarKind qualified as VK
 import Language.WeakTerm.WeakPrimValue qualified as WPV
 import Logger.Hint
 import Logger.LogLevel
@@ -73,7 +74,7 @@ data WeakTermF a
   | CodeIntro a
   | CodeElim a
   | TauIntro WeakType
-  | TauElim (Hint, Ident) a a
+  | TauElim (Hint, VK.VarKind, Ident) a a
   | Let (BinderF WeakType) a a
   | Invoke [DD.DefiniteDescription] a
   | Prim (WPV.WeakPrimValue WeakType)

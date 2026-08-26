@@ -90,11 +90,11 @@ compressWithTrace traceMode term = do
       return $ () :< TM.CodeElim traceID' e'
     _ :< TM.TauIntro ty -> do
       return $ () :< TM.TauIntro ty
-    _ :< TM.TauElim traceID (mx, x) e1 e2 -> do
+    _ :< TM.TauElim traceID (mx, k, x) e1 e2 -> do
       traceID' <- prepareTraceID traceMode traceID
       e1' <- compressWithTrace traceMode e1
       e2' <- compressWithTrace traceMode e2
-      return $ () :< TM.TauElim traceID' (mx, x) e1' e2'
+      return $ () :< TM.TauElim traceID' (mx, k, x) e1' e2'
     _ :< TM.Let mxt e1 e2 -> do
       e1' <- compressWithTrace traceMode e1
       e2' <- compressWithTrace traceMode e2

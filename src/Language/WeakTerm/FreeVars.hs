@@ -59,7 +59,7 @@ freeVars term =
       freeVars e
     _ :< WT.TauIntro _ ->
       S.empty
-    _ :< WT.TauElim (_, x) e1 e2 ->
+    _ :< WT.TauElim (_, _, x) e1 e2 ->
       S.union (freeVars e1) (S.delete x (freeVars e2))
     _ :< WT.Let mxt e1 e2 -> do
       let set1 = freeVars e1
@@ -212,7 +212,7 @@ freeVarsAll term =
       let set1 = freeVarsAll e1
       let set2 = freeVarsBindersType [mxt] (freeVarsAll e2)
       S.union set1 set2
-    _ :< WT.TauElim (_, x) e1 e2 ->
+    _ :< WT.TauElim (_, _, x) e1 e2 ->
       S.union (freeVarsAll e1) (S.delete x (freeVarsAll e2))
     _ :< WT.Invoke _ body ->
       freeVarsAll body

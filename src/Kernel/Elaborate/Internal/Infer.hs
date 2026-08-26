@@ -427,14 +427,15 @@ infer h term =
     m :< WT.TauIntro ty -> do
       ty' <- inferType h ty
       return (m :< WT.TauIntro ty', m :< WT.Tau)
-    m :< WT.TauElim (mx, x) e1 e2 -> do
+    m :< WT.TauElim (mx, k, x) e1 e2 -> do
       (e1', t1') <- infer h e1
       let tau = mx :< WT.Tau
       liftIO $ Constraint.insert (constraintHandle h) tau t1'
       liftIO $ WeakType.insert (weakTypeHandle h) x tau
-      let h' = extendHandle (mx, VK.normal, x, tau) h
+      declareTypeAttrs h mx k x tau
+      let h' = extendHandle (mx, k, x, tau) h
       (e2', t2') <- infer h' e2
-      return (m :< WT.TauElim (mx, x) e1' e2', t2')
+      return (m :< WT.TauElim (mx, k, x) e1' e2', t2')
     m :< WT.Let (mx, k, x, t) e1 e2 -> do
       (e1', t1') <- infer h e1
       t' <- inferType h t >>= resolveType h

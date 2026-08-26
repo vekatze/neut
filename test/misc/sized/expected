@@ -14,3 +14,5 @@ use-round-trip
 25
 use-mixed-widths
 8
+use-unsafe-sized
+42

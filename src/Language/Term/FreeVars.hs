@@ -59,7 +59,7 @@ freeVars term =
       freeVars e
     _ :< TM.TauIntro ty ->
       freeVarsType ty
-    _ :< TM.TauElim _ (_, x) e1 e2 ->
+    _ :< TM.TauElim _ (_, _, x) e1 e2 ->
       S.union (freeVars e1) (S.delete x (freeVars e2))
     _ :< TM.Let mxt e1 e2 -> do
       let set1 = freeVars e1

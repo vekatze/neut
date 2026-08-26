@@ -68,7 +68,7 @@ chainOf' tenv term =
       chainOf' tenv e
     _ :< TM.TauIntro ty ->
       chainOfType tenv ty
-    _ :< TM.TauElim _ (mx, x) e1 e2 -> do
+    _ :< TM.TauElim _ (mx, _, x) e1 e2 -> do
       let xs1 = chainOf' tenv e1
       let mxt = (mx, VK.normal, x, mx :< TM.Tau)
       let xs2 = chainOfBinder tenv [mxt] [e2]

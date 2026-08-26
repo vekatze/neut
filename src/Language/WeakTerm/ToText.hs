@@ -97,7 +97,7 @@ toTextIndented kit term =
       indentText (level kit) ("unquote " <> inBrace (toTextIndented (atLevel kit 0) e))
     _ :< WT.TauIntro ty ->
       indentText (level kit) ("pack-type" <> inParen (toTextType ty))
-    _ :< WT.TauElim (_, x) e1 e2 ->
+    _ :< WT.TauElim (_, _, x) e1 e2 ->
       indentText (level kit) ("unpack-type " <> showVariable (distinctVars kit) x <> " = " <> toTextIndented (atLevel kit 0) e1 <> "; " <> toTextIndented (atLevel kit 0) e2)
     _ :< WT.Let (_, k, x, t) e1 e2 ->
       renderTermLet kit k x t e1 e2

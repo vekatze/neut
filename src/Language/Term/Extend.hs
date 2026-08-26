@@ -75,11 +75,11 @@ extend remapping term =
       _m :< TM.CodeElim traceID' e'
     () :< TM.TauIntro ty ->
       _m :< TM.TauIntro ty
-    () :< TM.TauElim traceID (mx, x) e1 e2 -> do
+    () :< TM.TauElim traceID (mx, k, x) e1 e2 -> do
       let traceID' = Trace.remapOrDrop remapping traceID
       let e1' = extend remapping e1
       let e2' = extend remapping e2
-      _m :< TM.TauElim traceID' (mx, x) e1' e2'
+      _m :< TM.TauElim traceID' (mx, k, x) e1' e2'
     () :< TM.Let mxt e1 e2 -> do
       let e1' = extend remapping e1
       let e2' = extend remapping e2

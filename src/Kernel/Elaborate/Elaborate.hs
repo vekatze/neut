@@ -916,10 +916,10 @@ elaborate' h term = do
     m :< WT.TauIntro ty -> do
       ty' <- elaborateType h ty
       return $ m :< TM.TauIntro ty'
-    m :< WT.TauElim (mx, x) e1 e2 -> do
+    m :< WT.TauElim (mx, k, x) e1 e2 -> do
       e1' <- elaborate' h e1
       e2' <- elaborate' h e2
-      return $ m :< TM.TauElim noTrace (mx, x) e1' e2'
+      return $ m :< TM.TauElim noTrace (mx, k, x) e1' e2'
     m :< WT.Let (mx, k, x, t) e1 e2 -> do
       e1' <- elaborate' h e1
       t' <- reduceWeakType h t >>= elaborateType h
