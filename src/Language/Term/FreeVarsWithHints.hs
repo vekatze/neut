@@ -49,6 +49,8 @@ freeVarsWithHints term =
       freeVarsWithHintsBinderType xts (S.unions $ map freeVarsWithHints (e : es))
     _ :< TM.BoxIntroLift t e ->
       S.union (freeVarsWithHintsType t) (freeVarsWithHints e)
+    _ :< TM.EmbedIntro e ->
+      freeVarsWithHints e
     _ :< TM.BoxElim _ castSeq mxt e1 uncastSeq e2 -> do
       let (xts, es) = unzip $ castSeq ++ [(mxt, e1)] ++ uncastSeq
       freeVarsWithHintsBinderType xts (S.unions $ map freeVarsWithHints $ es ++ [e2])
@@ -103,6 +105,8 @@ freeVarsWithHintsType ty =
     _ :< TM.Box t ->
       freeVarsWithHintsType t
     _ :< TM.BoxNoema t ->
+      freeVarsWithHintsType t
+    _ :< TM.Embed t ->
       freeVarsWithHintsType t
     _ :< TM.Code t ->
       freeVarsWithHintsType t

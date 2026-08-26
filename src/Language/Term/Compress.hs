@@ -71,6 +71,9 @@ compressWithTrace traceMode term = do
     _ :< TM.BoxIntroLift t e -> do
       e' <- compressWithTrace traceMode e
       return $ () :< TM.BoxIntroLift t e'
+    _ :< TM.EmbedIntro e -> do
+      e' <- compressWithTrace traceMode e
+      return $ () :< TM.EmbedIntro e'
     _ :< TM.BoxElim traceID castSeq mxt e1 uncastSeq e2 -> do
       traceID' <- prepareTraceID traceMode traceID
       castSeq' <- mapM (compressLet traceMode) castSeq
@@ -138,6 +141,8 @@ compressType ty =
       () :< TM.Box (compressType t)
     _ :< TM.BoxNoema t ->
       () :< TM.BoxNoema (compressType t)
+    _ :< TM.Embed t ->
+      () :< TM.Embed (compressType t)
     _ :< TM.Code t ->
       () :< TM.Code (compressType t)
     _ :< TM.PrimType pt ->

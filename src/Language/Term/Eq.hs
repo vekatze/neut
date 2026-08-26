@@ -44,6 +44,8 @@ eqTypeWithEnv env (_ :< type1) (_ :< type2) =
       eqTypeWithEnv env t1 t2
     (TM.BoxNoema t1, TM.BoxNoema t2) ->
       eqTypeWithEnv env t1 t2
+    (TM.Embed t1, TM.Embed t2) ->
+      eqTypeWithEnv env t1 t2
     (TM.Code t1, TM.Code t2) ->
       eqTypeWithEnv env t1 t2
     (TM.PrimType pt1, TM.PrimType pt2) ->

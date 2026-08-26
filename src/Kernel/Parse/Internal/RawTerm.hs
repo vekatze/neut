@@ -154,6 +154,7 @@ rawType' h m headSymbol c =
               rawTypePi h,
               rawTypeBox h,
               rawTypeBoxNoema h,
+              rawTypeEmbed h,
               rawTypeCode h,
               rawTypeOption h
             ]
@@ -186,6 +187,8 @@ rawTerm' h m headSymbol c = do
       rawTermBoxIntro h m c
     "lift" -> do
       rawTermBoxIntroLift h m c
+    "embed" -> do
+      rawTermEmbedIntro h m c
     "quote" -> do
       rawTermCodeIntro h RT.CodeVariantK m c
     "promote" ->
@@ -1239,6 +1242,11 @@ rawTermBoxIntroLift h m c1 = do
   (c2, (e, c)) <- betweenBrace $ rawExpr h
   return (m :< RT.BoxIntroLift c1 c2 e, c)
 
+rawTermEmbedIntro :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
+rawTermEmbedIntro h m c1 = do
+  (c2, (e, c)) <- betweenBrace $ rawExpr h
+  return (m :< RT.EmbedIntro c1 c2 e, c)
+
 rawTermCodeIntro :: Handle -> RT.CodeVariant -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermCodeIntro h codeVariant m c1 = do
   (c2, (e, c)) <- betweenBrace $ rawExpr h
@@ -1267,6 +1275,13 @@ rawTypeBoxNoema h = do
   c1 <- delimiter "&"
   (t, c) <- rawType h
   return (m :< RT.BoxNoema t, c1 ++ c)
+
+rawTypeEmbed :: Handle -> Parser (RT.RawType, C)
+rawTypeEmbed h = do
+  m <- getCurrentHint
+  c1 <- delimiter "$"
+  (t, c) <- rawType h
+  return (m :< RT.Embed t, c1 ++ c)
 
 rawTypeCode :: Handle -> Parser (RT.RawType, C)
 rawTypeCode h = do

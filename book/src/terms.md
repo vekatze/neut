@@ -55,6 +55,8 @@
 
 - [{e}](#e)
 - [lift](#lift)
+- [$a](#a-3)
+- [embed](#embed)
 - [pack-type](#pack-type)
 - [unpack-type](#unpack-type)
 - [magic](#magic)
@@ -138,7 +140,7 @@ define sample() -> unit {
 
 The name of a local variable must satisfy the following conditions:
 
-- It doesn't contain any of ``=() `\"'\n\t:;,<>[]{}/*+|&?!#@~``
+- It doesn't contain any of ``=() `\"'\n\t:;,<>[]{}/*+|&?!#@~$``
 - It doesn't start with `A, B, .., Z` (uppercase letters)
 
 ### Semantics
@@ -2565,6 +2567,8 @@ Here, an "actual" type is a type that satisfies all the following conditions:
 - It doesn't contain any function types
 - It doesn't contain any "dubious" ADTs
 
+The conditions above don't look inside `$`. That is, `$t` is an actual type for every `t`, even when `t` is noetic or functional.
+
 Here, a "dubious" ADT is something like the following:
 
 ```neut
@@ -2646,6 +2650,77 @@ define lift-value<actual a>(x: a) -> +a {
 ```
 
 Each call that instantiates an `actual` variable is checked against the type it supplies, so `lift-value(1)` is accepted, whereas calling it with a value of type `&string` is rejected.
+
+## `$a`
+
+Given a type `a: type`, `$a` is the type of compile-time values over `a`.
+
+### Example
+
+```neut
+define keywords() -> $list(text) {
+  embed {List::["define", "inline", "data"]}
+}
+```
+
+### Syntax
+
+```neut
+$t
+```
+
+### Semantics
+
+For every type `a`, `$a` is compiled into `base::#::imm`.
+
+### Type
+
+```neut
+Γ ⊢ t: type
+------------
+Γ ⊢ $t: type
+```
+
+### Note
+
+- `$t` is an ["actual"](#lift) type for every `t`.
+- A value of type `$a` is immutable and lives for the whole run of the program, so it can be shared across threads without any synchronization.
+
+## `embed`
+
+You can use `embed` to lay out a compile-time value in the resulting binary.
+
+### Example
+
+```neut
+define keywords() -> $list(text) {
+  embed {List::["define", "inline", "data"]}
+}
+```
+
+### Syntax
+
+```neut
+embed {e}
+```
+
+### Semantics
+
+The compiler reduces the body of `embed` at compile time and compiles the result into a value that has the same runtime representation as `e`, except that whatever would be allocated on the heap is laid out as a constant in the resulting binary instead.
+
+### Type
+
+```neut
+Γ ⊢ e: a
+(e is a compile-time value)
+---------------------------
+Γ ⊢ embed {e}: $a
+```
+
+Here, a "compile-time value" is a term whose reduced form satisfies all the following conditions:
+
+- It is evaluated to the end, including the types in it
+- It has no free variables, including free type variables
 
 ## `pack-type`
 

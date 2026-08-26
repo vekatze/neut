@@ -176,6 +176,11 @@ toDoc term =
         [ PI.horizontal $ attachComment c1 $ D.text "lift",
           PI.inject $ toDoc $ m :< Brace c2 (e, c3)
         ]
+    m :< EmbedIntro c1 c2 (e, c3) -> do
+      PI.arrange
+        [ PI.horizontal $ attachComment c1 $ D.text "embed",
+          PI.inject $ toDoc $ m :< Brace c2 (e, c3)
+        ]
     _ :< BoxElim nv _ c1 mxt c2 noeticVarList c3 e c4 _ c5 cont _ -> do
       let keyword = showNecessityVariant nv
       D.join
@@ -575,6 +580,8 @@ typeToDoc ty =
       D.join [D.text "+", typeToDoc t]
     _ :< BoxNoema t ->
       D.join [D.text "&", typeToDoc t]
+    _ :< Embed t ->
+      D.join [D.text "$", typeToDoc t]
     _ :< Code t -> do
       D.join [D.text "'", typeToDoc t]
     _ :< Rune ->

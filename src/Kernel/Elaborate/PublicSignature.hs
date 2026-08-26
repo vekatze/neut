@@ -137,6 +137,8 @@ collectTypeDDs typ =
       collectTypeDDs t
     _ :< TM.BoxNoema t ->
       collectTypeDDs t
+    _ :< TM.Embed t ->
+      collectTypeDDs t
     _ :< TM.Code t ->
       collectTypeDDs t
     _ :< TM.PrimType {} ->

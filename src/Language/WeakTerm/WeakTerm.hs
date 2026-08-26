@@ -49,6 +49,7 @@ data WeakTypeF a
   | Data AttrD.Attr DD.DefiniteDescription [a]
   | Box a
   | BoxNoema a
+  | Embed a
   | Code a
   | PrimType PT.PrimType
   | Void
@@ -67,6 +68,7 @@ data WeakTermF a
   | DataElim N.IsNoetic [(Ident, a, WeakType)] (DT.DecisionTree WeakType a)
   | BoxIntro [(BinderF WeakType, a)] a
   | BoxIntroLift (Maybe WeakType) a
+  | EmbedIntro a
   | BoxElim [(BinderF WeakType, a)] (BinderF WeakType) a [(BinderF WeakType, a)] a
   | CodeIntro a
   | CodeElim a

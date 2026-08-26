@@ -57,6 +57,8 @@ chainOf' tenv term =
       chainOfBinder tenv xts (e : es)
     _ :< TM.BoxIntroLift t e ->
       chainOfType tenv t ++ chainOf' tenv e
+    _ :< TM.EmbedIntro e ->
+      chainOf' tenv e
     _ :< TM.BoxElim _ castSeq mxt e1 uncastSeq e2 -> do
       let (xts, es) = unzip $ castSeq ++ [(mxt, e1)] ++ uncastSeq
       chainOfBinder tenv xts (es ++ [e2])
@@ -100,6 +102,8 @@ chainOfType tenv ty =
     _ :< TM.Box t ->
       chainOfType tenv t
     _ :< TM.BoxNoema t ->
+      chainOfType tenv t
+    _ :< TM.Embed t ->
       chainOfType tenv t
     _ :< TM.Code t ->
       chainOfType tenv t

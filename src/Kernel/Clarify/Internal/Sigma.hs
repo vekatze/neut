@@ -9,6 +9,7 @@ module Kernel.Clarify.Internal.Sigma
     makeImmediateS4,
     makeClosureS4,
     immediateS4,
+    closureS4,
     returnImmediateS4,
     returnClosureS4,
     closureEnvS4,
@@ -116,6 +117,10 @@ returnClosureS4 = do
 immediateS4 :: C.Value
 immediateS4 =
   globalPointer DD.imm AN.argNumS4
+
+closureS4 :: C.Value
+closureS4 =
+  globalPointer DD.cls AN.argNumS4
 
 makeSigmaResourceSpec :: Handle -> [(Ident, C.Comp)] -> IO ResourceSpec
 makeSigmaResourceSpec h xts = do

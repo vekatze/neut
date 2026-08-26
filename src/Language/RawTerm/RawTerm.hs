@@ -88,6 +88,7 @@ data RawTypeF a
   | Data AttrD.Attr DD.DefiniteDescription [a]
   | Box a
   | BoxNoema a
+  | Embed a
   | Code a
   | Rune
   | Pointer
@@ -130,6 +131,7 @@ data RawTermF a
   | DataElim C N.IsNoetic (SE.Series a) (SE.Series (RP.RawPatternRow a))
   | BoxIntro C C (SE.Series (Hint, VarKind, RawIdent)) (a, C)
   | BoxIntroLift C C (a, C)
+  | EmbedIntro C C (a, C)
   | BoxElim NecessityVariant Bool C (PatParam RawType) C (SE.Series (Hint, VarKind, RawIdent)) C a C Loc C a Loc
   | CodeIntro CodeVariant C C (a, C)
   | CodeElim C C (a, C)

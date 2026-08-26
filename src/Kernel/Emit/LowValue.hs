@@ -1,5 +1,6 @@
 module Kernel.Emit.LowValue
   ( emitValue,
+    emitFloat,
     emitIdentAsVar,
     emitIdentAsLabel,
     emitIdentAsLabelVar,

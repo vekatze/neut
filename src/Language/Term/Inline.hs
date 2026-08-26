@@ -162,15 +162,15 @@ inline' h rawTerm = do
                 if all TM.isValue expArgsAll
                   then do
                     let sub = IntMap.unions [subSelf, subType, subTerm]
-                    _ :< body' <- liftIO $ Subst.subst (substHandle h) sub body
-                    inline' h $ m :< body'
+                    body' <- liftIO $ Subst.subst (substHandle h) sub body
+                    inline' h body'
                   else do
                     if not (isActive h)
                       then registerResidual h residual
                       else do
                         let sub = IntMap.unions [subSelf, subType]
-                        (expParams', _ :< body') <- liftIO $ Subst.substAndRefresh' (substHandle h) sub expParams body
-                        inline' h $ bind (zip expParams' expArgsAll) (m :< body')
+                        (expParams', body') <- liftIO $ Subst.substAndRefresh' (substHandle h) sub expParams body
+                        inline' h $ bind (zip expParams' expArgsAll) body'
         (mUse :< TM.VarGlobal _ dd)
           | Just defInfo <- Map.lookup dd dmap -> do
               let DefInfo {defImpBinders, defExpBinders, defDefaultArgs, defBody, codType, defKind, traceSiteIDs} = defInfo
@@ -189,17 +189,15 @@ inline' h rawTerm = do
                         let expIds = map (\(_, _, x, _) -> x) expParams
                         let subTerm = IntMap.fromList $ zip (map Ident.toInt expIds) (map Subst.Term expArgsAll)
                         let sub = IntMap.union subTerm subType
-                        mBody :< body' <- instantiateDefinition h remapTrace sub defBody
-                        let mResult = if isMacroDef defKind then mBody else m
-                        tracer $ inline' h $ mResult :< body'
+                        body' <- instantiateDefinition h remapTrace sub defBody
+                        tracer $ inline' h body'
                       else do
                         if not (isActive h)
                           then registerResidual h residual
                           else do
                             remapTrace <- prepareDefinitionTraceRemapping h dd defKind traceSiteIDs m callTraceID
-                            (expParams', mBody :< body') <- instantiateDefinition' h remapTrace subType expParams defBody
-                            let mResult = if isMacroDef defKind then mBody else m
-                            tracer $ inline' h $ bind (zip expParams' expArgsAll) (mResult :< body')
+                            (expParams', body') <- instantiateDefinition' h remapTrace subType expParams defBody
+                            tracer $ inline' h $ bind (zip expParams' expArgsAll) body'
           | Just defInfo <- Map.lookup dd localDefMap -> do
               let DefInfo {defImpBinders, defExpBinders, defDefaultArgs, defBody, codType} = defInfo
               reduceApplication Nothing defImpBinders defExpBinders defDefaultArgs True $ \subType expParams expArgsAll ->
@@ -266,6 +264,9 @@ inline' h rawTerm = do
       t' <- inlineType' h t
       e' <- inline' h e
       return $ m :< TM.BoxIntroLift t' e'
+    m :< TM.EmbedIntro e -> do
+      e' <- inline' h e
+      return $ m :< TM.EmbedIntro e'
     m :< TM.BoxElim traceID castSeq mxt e1 uncastSeq e2 -> do
       castSeq' <- mapM (bimapM (inlineTypeBinder h) (inline' h)) castSeq
       (mxt', e1') <- bimapM (inlineTypeBinder h) (inline' h) (mxt, e1)
@@ -437,6 +438,9 @@ inlineType' h ty = do
     m :< TM.BoxNoema t -> do
       t' <- inlineType' h t
       return $ m :< TM.BoxNoema t'
+    m :< TM.Embed t -> do
+      t' <- inlineType' h t
+      return $ m :< TM.Embed t'
     m :< TM.Code t -> do
       t' <- inlineType' h t
       return $ m :< TM.Code t'

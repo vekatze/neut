@@ -44,6 +44,7 @@ import Kernel.Common.Source qualified as Source
 import Kernel.Common.Target hiding (Main)
 import Kernel.Common.Trace qualified as Trace
 import Kernel.Elaborate.Internal.EnsureAffinity qualified as EnsureAffinity
+import Kernel.Elaborate.Internal.EnsureEmbeddable (ensureEmbeddable)
 import Kernel.Elaborate.Internal.Handle.Constraint qualified as Constraint
 import Kernel.Elaborate.Internal.Handle.Def qualified as Definition
 import Kernel.Elaborate.Internal.Handle.Elaborate
@@ -56,6 +57,8 @@ import Kernel.Elaborate.Internal.Handle.WeakDef qualified as WeakDef
 import Kernel.Elaborate.Internal.Handle.WeakType qualified as WeakType
 import Kernel.Elaborate.Internal.Handle.WeakTypeDef qualified as WeakTypeDef
 import Kernel.Elaborate.Internal.Infer qualified as Infer
+import Kernel.Elaborate.Internal.TypeUtil (inlineType)
+import Kernel.Elaborate.Internal.TypeUtil qualified as TypeUtil
 import Kernel.Elaborate.Internal.Unify qualified as Unify
 import Kernel.Elaborate.PublicSignature qualified as PublicSignature
 import Kernel.Elaborate.Trace qualified as ElaborateTrace
@@ -97,7 +100,6 @@ import Language.Common.StrictGlobalLocator qualified as SGL
 import Language.Common.Text.Util (decodeUtf8Bytes)
 import Language.Common.VarKind qualified as VK
 import Language.LowComp.DeclarationName qualified as DN
-import Language.Term.Inline qualified as Inline
 import Language.Term.Inline.Handle qualified as InlineHandle
 import Language.Term.PrimValue qualified as PV
 import Language.Term.Stmt
@@ -278,10 +280,11 @@ elaborateStmt h stmt = do
         affHandle <- liftIO $ EnsureAffinity.new h
         let dummyAttr = AttrL.Attr {lamKind = LK.Normal Nothing False codType', identity = 0}
         EnsureAffinity.ensureAffinity affHandle $ m :< TM.PiIntro dummyAttr impArgs' expArgs' defaultArgs' e'
+      usesEmbed <- liftIO $ S.member x <$> readIORef (embeddingDefs h)
       (impArgs'', defaultArgs'', expArgs'', codType'', e'') <- withFreshSpecializationTable h $ do
         e'' <-
           if not $ SK.isMacroStmtKind stmtKind
-            then inlineDefinition h m (shouldTraceDefinition mDefKind) e'
+            then inlineDefinition h m (shouldTraceDefinition mDefKind || usesEmbed) e'
             else return e'
         impArgs'' <- mapM (inlineBinder h) impArgs'
         defaultArgs'' <- forM defaultArgs' $ \(binder, value) -> do
@@ -292,6 +295,8 @@ elaborateStmt h stmt = do
         codType'' <- inlineType h m codType'
         return (impArgs'', defaultArgs'', expArgs'', codType'', e'')
       (eFinal, traceSiteIDs) <- liftIO $ prepareDefinitionTrace (Global.termTraceHandle $ globalHandle h) mDefKind e''
+      unless (SK.isMacroStmtKind stmtKind) $ do
+        ensureEmbeddable h (toTextStmtKind stmtKind <> " " <> TraceSites.sourceLevelName x) eFinal
       when (isConstLike && not (isConstantMetaStmtKind stmtKind)) $ do
         let bodyHint = case e' of
               bodyMeta :< _ -> bodyMeta
@@ -407,7 +412,7 @@ elaborateDefineMeta h ownerName defineMeta = do
 
 reportConstantEvaluationFailure :: Handle -> DD.DefiniteDescription -> Hint -> TraceSites.Blocker -> App a
 reportConstantEvaluationFailure h constantName bodyHint blocker = do
-  traceBlock <- liftIO $ ElaborateTrace.renderFailureTrace h constantName bodyHint blocker
+  traceBlock <- liftIO $ ElaborateTrace.renderFailureTrace h ("constant " <> TraceSites.sourceLevelName constantName) bodyHint blocker
   raiseError bodyHint $
     "Expected a compile-time value, but got "
       <> TraceSites.describeBlocker blocker
@@ -489,11 +494,13 @@ checkActualityType h dataNameSet m t = do
           | S.member dataName dataNameSet ->
               return $ Right ()
           | otherwise -> do
-              dataConsArgsList <- getActualityConsArgTypes h m dataName dataArgs
+              dataConsArgsList <- TypeUtil.getConsArgTypes h m dataName dataArgs
               let consArgTypes = map (\(_, _, _, consArg) -> consArg) $ concat dataConsArgsList
               checkActualityTypeList h dataNameSet' m consArgTypes
     _ :< TM.Box tInner ->
       checkActualityType h dataNameSet m tInner
+    _ :< TM.Embed _ ->
+      return $ Right ()
     _ :< TM.PrimType {} ->
       return $ Right ()
     _ :< TM.Void ->
@@ -520,37 +527,6 @@ checkActualityTypeList h dataNameSet m ts =
           return $ Left message
         Right () ->
           checkActualityTypeList h dataNameSet m rest
-
-getActualityConsArgTypes ::
-  Handle ->
-  Hint ->
-  DD.DefiniteDescription ->
-  [TM.Type] ->
-  App [[BinderF TM.Type]]
-getActualityConsArgTypes h m dataName dataArgs = do
-  dataInfo <- lookupDataInfoFull h m dataName
-  let dataBinders = DI.dataArgs dataInfo
-  if length dataBinders == length dataArgs
-    then do
-      let binderIds = map (\(_, _, x, _) -> x) dataBinders
-      let sub = IntMap.fromList $ zip (map Ident.toInt binderIds) (map TmSubst.Type dataArgs)
-      forM (DI.consInfoList dataInfo) $ \consInfo -> do
-        liftIO $ substActualityConsArgs h sub (DI.consArgs consInfo)
-    else
-      raiseCritical m $ "Could not specialize constructor metadata for `" <> DD.reify dataName <> "` due to arity mismatch"
-
-substActualityConsArgs :: Handle -> TmSubst.Subst -> [BinderF TM.Type] -> IO [BinderF TM.Type]
-substActualityConsArgs h sub consArgs =
-  case consArgs of
-    [] ->
-      return []
-    (m, k, x, t) : rest -> do
-      let substHandle' = TmSubst.new (gensymHandle h)
-      t' <- TmSubst.substType substHandle' sub t
-      let opaque = m :< TM.Tau
-      let sub' = IntMap.insert (Ident.toInt x) (TmSubst.Type opaque) sub
-      rest' <- substActualityConsArgs h sub' rest
-      return $ (m, k, x, t') : rest'
 
 checkIntegerType :: Handle -> TM.Type -> App (Either T.Text ())
 checkIntegerType h t =
@@ -744,7 +720,7 @@ resolveMixedOrError h visited m ty =
           if S.member dataName visited
             then return $ Left $ cannotMixRecursiveMessage h dataName
             else do
-              dataInfo <- lookupDataInfoFull h m dataName
+              dataInfo <- TypeUtil.lookupDataInfoFull h m dataName
               return $ Right $ StaticSlots $ DI.dataTotalSlotCount (DI.dataArgs dataInfo) (DI.consInfoList dataInfo)
     _ :< TM.Resource dataName _ -> do
       resourceSizeOrNone <- liftIO $ Resource.lookup (Global.resourceHandle (globalHandle h)) dataName
@@ -772,6 +748,8 @@ resolveMixedOrError h visited m ty =
       cannotMixFieldType "a box type"
     _ :< TM.BoxNoema {} ->
       cannotMixFieldType "a noema type"
+    _ :< TM.Embed {} ->
+      cannotMixFieldType "an embedded value type"
     _ :< TM.Code {} ->
       cannotMixFieldType "a code type"
     _ :< TM.PrimType {} ->
@@ -793,18 +771,9 @@ resourceByteSizeToSlotCount h byteSize = do
   let slotCount = (byteSize + wordSize - 1) `div` wordSize
   Right $ StaticSlots slotCount
 
-lookupDataInfoFull :: Handle -> Hint -> DD.DefiniteDescription -> App (DI.DataInfo (BinderF TM.Type))
-lookupDataInfoFull h m dataName = do
-  dataInfoOrNone <- liftIO $ Data.lookup (dataHandle h) dataName
-  case dataInfoOrNone of
-    Just dataInfo ->
-      return dataInfo
-    Nothing ->
-      raiseError m $ "could not find the layout of the type `" <> showDD h dataName <> "`"
-
 specializeUnaryDataType :: Handle -> Hint -> DD.DefiniteDescription -> [TM.Type] -> App TM.Type
 specializeUnaryDataType h m dataName dataArgs = do
-  dataInfo <- lookupDataInfoFull h m dataName
+  dataInfo <- TypeUtil.lookupDataInfoFull h m dataName
   let dataBinders = DI.dataArgs dataInfo
   when (length dataBinders /= length dataArgs) $ do
     raiseError m $ "arity mismatch while resolving the layout of the unary type `" <> showDD h dataName <> "`"
@@ -928,6 +897,9 @@ elaborate' h term = do
       e' <- elaborate' h e
       t <- elaborateActualityMarkerType h m mt
       return $ m :< TM.BoxIntroLift t e'
+    m :< WT.EmbedIntro e -> do
+      e' <- elaborate' h e
+      return $ m :< TM.EmbedIntro e'
     m :< WT.BoxElim castSeq mxt e1 uncastSeq e2 -> do
       castSeq' <- mapM (elaborateLet h) castSeq
       mxt' <- elaborateWeakBinder h mxt
@@ -1103,6 +1075,9 @@ elaborateType h ty =
     m :< WT.BoxNoema t -> do
       t' <- elaborateType h t
       return $ m :< TM.BoxNoema t'
+    m :< WT.Embed t -> do
+      t' <- elaborateType h t
+      return $ m :< TM.Embed t'
     m :< WT.Code t -> do
       t' <- elaborateType h t
       return $ m :< TM.Code t'
@@ -1261,12 +1236,6 @@ elaborateWeakBinder :: Handle -> BinderF WT.WeakType -> App (BinderF TM.Type)
 elaborateWeakBinder h (m, k, x, t) = do
   t' <- elaborateType h t
   return (m, k, x, t')
-
-inlineType :: Handle -> Hint -> TM.Type -> App TM.Type
-inlineType h m t = do
-  env <- liftIO $ inlineEnv h
-  inlineHandle <- liftIO $ Inline.new env m False
-  Inline.inlineType inlineHandle t
 
 withFreshSpecializationTable :: Handle -> App a -> App a
 withFreshSpecializationTable h action = do

@@ -25,6 +25,8 @@ holesType ty =
       holesType t
     _ :< WT.BoxNoema t ->
       holesType t
+    _ :< WT.Embed t ->
+      holesType t
     _ :< WT.Code t ->
       holesType t
     _ :< WT.PrimType {} ->

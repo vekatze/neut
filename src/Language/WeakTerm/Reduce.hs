@@ -65,6 +65,9 @@ reduceType h ty = do
     m :< WT.BoxNoema t -> do
       t' <- reduceType h t
       return $ m :< WT.BoxNoema t'
+    m :< WT.Embed t -> do
+      t' <- reduceType h t
+      return $ m :< WT.Embed t'
     m :< WT.Code t -> do
       t' <- reduceType h t
       return $ m :< WT.Code t'

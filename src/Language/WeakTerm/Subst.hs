@@ -124,6 +124,9 @@ subst h sub term =
       mt' <- traverse (substType h sub) mt
       e' <- subst h sub e
       return $ m :< WT.BoxIntroLift mt' e'
+    m :< WT.EmbedIntro e -> do
+      e' <- subst h sub e
+      return $ m :< WT.EmbedIntro e'
     m :< WT.BoxElim castSeq mxt e1 uncastSeq e2 -> do
       (castSeq', sub1) <- substLetSeq h sub castSeq
       ((mxt', e1'), sub2) <- substLet h sub1 (mxt, e1)
@@ -204,6 +207,9 @@ substType h sub ty =
     m :< WT.BoxNoema t -> do
       t' <- substType h sub t
       return $ m :< WT.BoxNoema t'
+    m :< WT.Embed t -> do
+      t' <- substType h sub t
+      return $ m :< WT.Embed t'
     m :< WT.Code t -> do
       t' <- substType h sub t
       return $ m :< WT.Code t'
