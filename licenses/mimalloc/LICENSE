@@ -1,10 +1,4 @@
-# Third-Party Licenses
-
-## mimalloc
-
-Source: <https://github.com/microsoft/mimalloc>
-
-License: MIT
+MIT License
 
 Copyright (c) 2018-2025 Microsoft Corporation, Daan Leijen
 

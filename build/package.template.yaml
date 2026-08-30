@@ -3,7 +3,16 @@ version: 0
 license: MIT
 license-file:
 - license.md
-- licenses.md
+- licenses/binaryen/LICENSE
+- licenses/llvm/LICENSE.TXT
+- licenses/mimalloc/LICENSE
+- licenses/wasi-libc/LICENSE
+- licenses/wasi-libc/LICENSE-APACHE
+- licenses/wasi-libc/LICENSE-APACHE-LLVM
+- licenses/wasi-libc/LICENSE-MIT
+- licenses/wasi-libc/fts/musl-fts/COPYING
+- licenses/wasi-libc/libc-bottom-half/cloudlibc/LICENSE
+- licenses/wasi-libc/libc-top-half/musl/COPYRIGHT
 author: "vekatze"
 maintainer: "vekatze@icloud.com"
 

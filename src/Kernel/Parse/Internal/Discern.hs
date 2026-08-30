@@ -858,7 +858,6 @@ discern h term =
     _ :< RT.Brace _ (e, _) ->
       discern h e
     m :< RT.Int i -> do
-      let baseSize = Platform.getDataSize (H.platformHandle h)
       let intType = m :< WT.PrimType (PT.Int slotIntSize)
       return $ m :< WT.Prim (WPV.Int intType i)
 

@@ -22,7 +22,7 @@ import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.IntMap qualified as IntMap
 import Data.IntSet qualified as IntSet
-import Data.Maybe (fromMaybe, isJust)
+import Data.Maybe (fromMaybe)
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Gensym.Trick qualified as Gensym
@@ -35,7 +35,6 @@ import Kernel.Common.Handle.Global.GlobalRemark qualified as GlobalRemark
 import Kernel.Common.Handle.Global.KeyArg qualified as KeyArg
 import Kernel.Common.Handle.Global.ModulePath qualified as ModulePath
 import Kernel.Common.Handle.Global.OptimizableData qualified as OptimizableData
-import Kernel.Common.Handle.Global.Platform qualified as Platform
 import Kernel.Common.Handle.Global.Resource qualified as Resource
 import Kernel.Common.Handle.Global.Type qualified as Type
 import Kernel.Common.Handle.Local.Tag qualified as Tag
@@ -77,7 +76,6 @@ import Language.Common.CallConv qualified as CC
 import Language.Common.CallConvSpec qualified as CCS
 import Language.Common.CreateSymbol qualified as Gensym
 import Language.Common.DataInfo qualified as DI
-import Language.Common.DataSize qualified as DS
 import Language.Common.DecisionTree qualified as DT
 import Language.Common.DefaultArgs qualified as DefaultArgs
 import Language.Common.DefiniteDescription qualified as DD
@@ -719,7 +717,7 @@ elaborateStmtKindType h stmtKind =
       return $ SK.Data dataName dataArgs'' consInfoList' isNominal
 
 resolveFieldLayout :: Handle -> DI.FieldHint -> BinderF TM.Type -> App DI.FieldLayout
-resolveFieldLayout h hint (mBinder, _, _, t) =
+resolveFieldLayout h hint (_, _, _, t) =
   case hint of
     DI.FieldAuto ->
       return DI.LayoutDirect
@@ -761,7 +759,7 @@ resolveMixedOrError h visited m ty =
       resourceSizeOrNone <- liftIO $ Resource.lookup (Global.resourceHandle (globalHandle h)) dataName
       case resourceSizeOrNone of
         Just (Resource.Flattened byteSize) ->
-          return $ resourceByteSizeToSlotCount h byteSize
+          return $ resourceByteSizeToSlotCount byteSize
         Just Resource.Direct ->
           return $ Left $ "the resource `" <> showDD h dataName <> "` has no fixed size and cannot be stored inline"
         Nothing ->
@@ -800,8 +798,8 @@ cannotMixRecursiveMessage :: Handle -> DD.DefiniteDescription -> T.Text
 cannotMixRecursiveMessage h dataName =
   "the recursive type `" <> showDD h dataName <> "` cannot be stored inline"
 
-resourceByteSizeToSlotCount :: Handle -> Int -> Either T.Text SlotCount
-resourceByteSizeToSlotCount h byteSize = do
+resourceByteSizeToSlotCount :: Int -> Either T.Text SlotCount
+resourceByteSizeToSlotCount byteSize = do
   let slotCount = (byteSize + slotByteSize - 1) `div` slotByteSize
   Right $ StaticSlots slotCount
 

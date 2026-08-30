@@ -63,6 +63,7 @@ import Language.Common.ModuleID qualified as MID
 import Language.LowComp.LowComp qualified as LC
 import Language.Term.Stmt (getStmtName)
 import Logger.Debug qualified as Logger
+import Logger.Handle qualified as LoggerHandle
 import Logger.Print qualified as Logger
 import Path
 import Path.IO
@@ -399,14 +400,24 @@ naiveReplace sub t =
 
 getForeignSubst :: Handle -> Target -> M.Module -> App [(T.Text, T.Text)]
 getForeignSubst h t m = do
-  clang <- liftIO Platform.getClang
-  let targetTriple = Platform.getClangTargetTriple (Global.platformHandle (globalHandle h))
+  clangCommand <- liftIO $ getForeignClangCommand (Global.loggerHandle (globalHandle h)) (Global.platformHandle (globalHandle h))
   foreignDir <- Path.getForeignDir (Global.pathHandle (globalHandle h)) t m
   return
     [ ("{{module-root}}", shellQuote $ T.pack $ toFilePath $ M.getModuleRootDir m),
-      ("{{clang}}", T.unwords $ map (shellQuote . T.pack) [clang, "-target", targetTriple]),
+      ("{{clang}}", clangCommand),
       ("{{foreign}}", shellQuote $ T.pack $ toFilePath foreignDir)
     ]
+
+getForeignClangCommand :: LoggerHandle.Handle -> Platform.Handle -> IO T.Text
+getForeignClangCommand loggerHandle platformHandle = do
+  let clang = Platform.getClang platformHandle
+  let targetTriple = Platform.getClangTargetTriple platformHandle
+  sysrootOption <- Platform.getSysrootOption loggerHandle platformHandle
+  let toolchainOption = Platform.getToolchainOption platformHandle
+  return $
+    T.unwords $
+      map (shellQuote . T.pack) $
+        [clang, "-target", targetTriple] ++ sysrootOption ++ toolchainOption
 
 shellQuote :: T.Text -> T.Text
 shellQuote text =

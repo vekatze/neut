@@ -7,6 +7,7 @@ module Kernel.Common.Allocator
     allocatorSpec,
     allocatorFamily,
     allocatorForeignList,
+    allocatorLinkOption,
     mimallocArchive,
   )
 where
@@ -16,6 +17,7 @@ import Data.FileEmbed (embedFile, makeRelativeToProject)
 import Data.Hashable
 import Data.Text qualified as T
 import GHC.Generics (Generic)
+import Kernel.Common.Arch qualified as Arch
 import Language.Common.BaseLowType qualified as BLT
 import Language.Common.BasePrimType qualified as BPT
 import Language.Common.DataSize qualified as DS
@@ -44,9 +46,21 @@ showAllocator allocator =
     System ->
       "system"
 
-mimallocArchive :: ByteString
-mimallocArchive =
+mimallocArchive :: Arch.Arch -> ByteString
+mimallocArchive arch =
+  case arch of
+    Arch.Wasm32 ->
+      mimallocArchiveWasm32
+    _ ->
+      mimallocArchiveHost
+
+mimallocArchiveHost :: ByteString
+mimallocArchiveHost =
   $(makeRelativeToProject "cache/mimalloc/out/release/libmimalloc.a" >>= embedFile)
+
+mimallocArchiveWasm32 :: ByteString
+mimallocArchiveWasm32 =
+  $(makeRelativeToProject "cache/mimalloc/out/wasm32/libmimalloc.a" >>= embedFile)
 
 data AllocatorSpec = AllocatorSpec
   { mallocName :: T.Text,
@@ -72,6 +86,14 @@ allocatorSpec allocator =
           callocName = "calloc",
           freeName = "free"
         }
+
+allocatorLinkOption :: Arch.Arch -> Allocator -> [String]
+allocatorLinkOption arch allocator =
+  case (arch, allocator) of
+    (Arch.Wasm32, Mimalloc) ->
+      ["-lwasi-emulated-process-clocks"]
+    _ ->
+      []
 
 allocatorFamily :: Allocator -> T.Text
 allocatorFamily allocator =

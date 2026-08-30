@@ -39,9 +39,9 @@ envVarCoreModuleDigest :: String
 envVarCoreModuleDigest =
   "NEUT_CORE_MODULE_DIGEST"
 
-envVarClang :: String
-envVarClang =
-  "NEUT_CLANG"
+envVarHome :: String
+envVarHome =
+  "NEUT_HOME"
 
 moduleFile :: Path Rel File
 moduleFile =
