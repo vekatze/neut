@@ -19,6 +19,7 @@ import Kernel.Common.ClangOption qualified as CL
 import Kernel.Common.Const
 import Kernel.Common.Handle.Global.Platform qualified as Platform
 import Kernel.Common.Module
+import Kernel.Common.Platform qualified as P
 import Kernel.Common.Target
 import Kernel.Common.ZenConfig
 import Language.Common.ModuleID qualified as MID
@@ -73,11 +74,13 @@ constructDefaultModule moduleName mTargetName = do
                 TargetSummary
                   { entryPoint = sourceLocator,
                     clangOption = CL.empty,
-                    allocator = defaultAllocator
+                    allocator = defaultAllocator,
+                    platform = P.SelectHost,
+                    executeCommand = Nothing
                   }
               )
             ],
-        moduleZenConfig = ZenConfig {clangOption = CL.empty, allocator = defaultAllocator},
+        moduleZenConfig = ZenConfig {clangOption = CL.empty, allocator = defaultAllocator, platform = P.SelectHost, executeCommand = Nothing},
         moduleDependency = Map.empty,
         moduleExtraContents = [],
         moduleAntecedents = [],

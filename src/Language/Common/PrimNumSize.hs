@@ -36,12 +36,16 @@ instance Binary FloatSize
 dataSizeToIntSize :: DS.DataSize -> IntSize
 dataSizeToIntSize dataSize =
   case dataSize of
+    DS.DataSize32 ->
+      IntSize32
     DS.DataSize64 ->
       IntSize64
 
 dataSizeToFloatSize :: DS.DataSize -> FloatSize
 dataSizeToFloatSize dataSize =
   case dataSize of
+    DS.DataSize32 ->
+      FloatSize32
     DS.DataSize64 ->
       FloatSize64
 

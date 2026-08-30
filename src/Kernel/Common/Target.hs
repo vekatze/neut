@@ -6,6 +6,7 @@ module Kernel.Common.Target
     getEntryPointName,
     getCompileOption,
     getLinkOption,
+    getExecuteCommand,
   )
 where
 
@@ -14,6 +15,7 @@ import Data.Text qualified as T
 import GHC.Generics (Generic)
 import Kernel.Common.Allocator (Allocator, defaultAllocator)
 import Kernel.Common.ClangOption qualified as CL
+import Kernel.Common.Platform qualified as P
 import Kernel.Common.ZenConfig (ZenConfig)
 import Kernel.Common.ZenConfig qualified as Z
 import Language.Common.BaseName qualified as BN
@@ -29,7 +31,9 @@ data Target
 data TargetSummary = TargetSummary
   { entryPoint :: SL.SourceLocator,
     clangOption :: CL.ClangOption,
-    allocator :: Allocator
+    allocator :: Allocator,
+    platform :: P.PlatformSelector,
+    executeCommand :: Maybe [T.Text]
   }
   deriving (Show, Eq, Generic)
 
@@ -46,7 +50,7 @@ instance Hashable MainTarget
 
 emptyZen :: Path Abs File -> MainTarget
 emptyZen path =
-  Zen path $ Z.ZenConfig {clangOption = CL.empty, allocator = defaultAllocator}
+  Zen path $ Z.ZenConfig {clangOption = CL.empty, allocator = defaultAllocator, platform = P.SelectHost, executeCommand = Nothing}
 
 getEntryPointName :: MainTarget -> BN.BaseName
 getEntryPointName target =
@@ -77,3 +81,11 @@ getLinkOption target =
       map T.unpack $ CL.linkOption (clangOption targetSummary)
     Zen _ zenConfig ->
       map T.unpack $ CL.linkOption (Z.clangOption zenConfig)
+
+getExecuteCommand :: MainTarget -> Maybe [T.Text]
+getExecuteCommand target =
+  case target of
+    Named _ targetSummary ->
+      executeCommand targetSummary
+    Zen _ zenConfig ->
+      Z.executeCommand zenConfig

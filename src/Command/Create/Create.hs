@@ -16,6 +16,7 @@ import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.Platform qualified as Platform
+import Kernel.Common.Platform qualified as P
 import Kernel.Common.Module (moduleLocation)
 import Logger.Handle qualified as Logger
 
@@ -26,7 +27,7 @@ data Handle = Handle
 
 new :: Remark.Config -> Logger.Handle -> SaveModule.Handle -> IO Handle
 new remarkCfg loggerHandle saveModuleHandle = do
-  platformHandle <- Platform.new loggerHandle
+  platformHandle <- Platform.new loggerHandle P.SelectHost
   createHandle <- Create.new saveModuleHandle loggerHandle platformHandle
   return $ Handle {..}
 
@@ -34,7 +35,7 @@ create :: Handle -> Config -> App ()
 create h cfg = do
   newModule <- Create.constructDefaultModule (moduleName cfg) (targetName cfg)
   Create.createNewProject (createHandle h) (moduleName cfg) newModule
-  h' <- liftIO $ Global.new (remarkCfg h) (Just $ moduleLocation newModule)
+  h' <- liftIO $ Global.new (remarkCfg h) (Just $ moduleLocation newModule) Nothing
   Fetch.insertCoreDependency (Fetch.new h')
-  h'' <- liftIO $ Global.new (remarkCfg h) (Just $ moduleLocation newModule)
+  h'' <- liftIO $ Global.new (remarkCfg h) (Just $ moduleLocation newModule) Nothing
   void $ Check.checkAllOrFail (Check.new h'')

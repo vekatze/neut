@@ -73,11 +73,17 @@ getClangTargetTriple :: Handle -> String
 getClangTargetTriple =
   _clangTargetTriple
 
-new :: Logger.Handle -> IO Handle
-new loggerHandle = do
+new :: Logger.Handle -> P.PlatformSelector -> IO Handle
+new loggerHandle selector = do
   run loggerHandle $ do
-    _arch <- getArch' Nothing
-    _os <- getOS' Nothing
+    (_arch, _os) <-
+      case selector of
+        P.SelectHost -> do
+          hostArch <- getArch' Nothing
+          hostOS <- getOS' Nothing
+          return (hostArch, hostOS)
+        P.SelectWasm32 ->
+          return (Arch.Wasm32, O.Wasi)
     _clangTargetTriple <- resolveClangTargetTriple _arch _os
     let _baseSize = Arch.dataSizeOf _arch
     _clangDigest <- calculateClangDigest loggerHandle _clangTargetTriple
@@ -134,6 +140,8 @@ resolveClangTargetTriple arch os = do
     (Arch.Arm64, O.Darwin) -> do
       deploymentTarget <- resolveMacOSDeploymentTarget
       return $ "arm64-apple-macosx" <> deploymentTarget
+    (Arch.Wasm32, O.Wasi) ->
+      return "wasm32-unknown-wasip1"
     _ -> do
       let p = P.Platform {P.arch = arch, P.os = os}
       raiseError' $ "Unsupported target platform: " <> P.reify p

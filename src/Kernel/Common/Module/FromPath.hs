@@ -22,6 +22,7 @@ import Kernel.Common.Const (archiveRelDir, cacheRelDir, sourceRelDir)
 import Kernel.Common.Module
 import Kernel.Common.Module.FindModuleFile
 import Kernel.Common.ModuleURL
+import Kernel.Common.Platform qualified as P
 import Kernel.Common.Target
 import Kernel.Common.ZenConfig (ZenConfig (..))
 import Language.Common.BaseName qualified as BN
@@ -99,8 +100,29 @@ interpretTarget (_, targetDict) = do
     entryPoint <- liftEither (E.access keyMain v) >>= interpretSourceLocator
     clangOption <- interpretClangOption v
     allocator <- interpretAllocator v
-    return (k, TargetSummary {entryPoint, clangOption, allocator})
+    platform <- interpretPlatform v
+    executeCommand <- interpretExecuteCommand v
+    return (k, TargetSummary {entryPoint, clangOption, allocator, platform, executeCommand})
   return $ Map.fromList kvs
+
+interpretExecuteCommand :: E.Ens -> App (Maybe [T.Text])
+interpretExecuteCommand ens = do
+  if E.hasKey keyExecute ens
+    then do
+      (_, executeEnsSeries) <- liftEither $ E.access keyExecute ens >>= E.toList
+      executeCommand <- liftEither $ mapM (E.toString >=> return . snd) $ SE.extract executeEnsSeries
+      return $ Just executeCommand
+    else return Nothing
+
+interpretPlatform :: E.Ens -> App P.PlatformSelector
+interpretPlatform ens = do
+  platformEns <- liftEither $ E.access' keyPlatform (E.String $ P.reifySelector P.SelectHost) ens
+  (m, platformText) <- liftEither $ E.toString platformEns
+  case P.reflectSelector platformText of
+    Just selector ->
+      return selector
+    Nothing ->
+      raiseError m $ "Unknown platform: " <> platformText
 
 interpretAllocator :: E.Ens -> App Allocator
 interpretAllocator ens = do
@@ -118,7 +140,9 @@ interpretZenConfig :: E.Ens -> App ZenConfig
 interpretZenConfig zenDict = do
   clangOption <- interpretClangOption zenDict
   allocator <- interpretAllocator zenDict
-  return $ ZenConfig {clangOption, allocator}
+  platform <- interpretPlatform zenDict
+  executeCommand <- interpretExecuteCommand zenDict
+  return $ ZenConfig {clangOption, allocator, platform, executeCommand}
 
 interpretClangOption :: E.Ens -> App CL.ClangOption
 interpretClangOption v = do

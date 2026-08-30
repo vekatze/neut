@@ -113,6 +113,8 @@ getLtoOption h clang userLinkOptions ltoCacheDir = do
   case P.os (Platform.getPlatform (platformHandle h)) of
     OS.Darwin ->
       return ["-Xlinker", "-cache_path_lto", "-Xlinker", cacheDir]
+    OS.Wasi ->
+      return $ getLtoCacheOption LldFamily cacheDir
     OS.Linux ->
       case findUserSpecifiedLinker userLinkOptions of
         Just linker ->

@@ -80,7 +80,7 @@ prettyMsg l =
 
 withGlobalHandle :: LspState -> Lsp () () -> (Global.Handle -> Lsp () ()) -> Lsp () ()
 withGlobalHandle lspState defaultAction cont = do
-  vOrErr <- liftIO $ Global.newOrError lspConfig Nothing
+  vOrErr <- liftIO $ Global.newOrError lspConfig Nothing Nothing
   case vOrErr of
     Left (_, E.MakeError errors) -> do
       report lspState errors

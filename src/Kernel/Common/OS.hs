@@ -9,6 +9,7 @@ import Data.Text qualified as T
 data OS
   = Linux
   | Darwin
+  | Wasi
 
 reify :: OS -> T.Text
 reify os =
@@ -17,3 +18,5 @@ reify os =
       "linux"
     Darwin ->
       "darwin"
+    Wasi ->
+      "wasi"
