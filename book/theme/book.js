@@ -34,6 +34,7 @@ hljs.registerLanguage("neut", function (hljs) {
         "else-if",
         "embed",
         "exact",
+        "expose",
         "foreign",
         "function",
         "if",
@@ -55,6 +56,7 @@ hljs.registerLanguage("neut", function (hljs) {
         "pin",
         "promote",
         "quote",
+        "require",
         "resource",
         "rule-left",
         "rule-right",
@@ -71,7 +73,7 @@ hljs.registerLanguage("neut", function (hljs) {
         "include-text",
         "magic",
         "static",
-        "this",
+        "static-file",
       ],
       type: [
         "actual",
@@ -127,7 +129,8 @@ hljs.registerLanguage("neut", function (hljs) {
         end: '`',
         contains: [hljs.BACKSLASH_ESCAPE],
       },
-      { scope: "warning",
+      {
+        scope: "warning",
         begin: "admit",
       },
       {
@@ -149,7 +152,8 @@ hljs.registerLanguage("ens", function (hljs) {
       $pattern: /[\w-]+/,
     },
     contains: [
-      { scope: "type",
+      {
+        scope: "type",
         begin: "true|false",
       },
       {
@@ -185,7 +189,8 @@ hljs.registerLanguage("llvm", function (hljs) {
       ].join(" "),
     },
     contains: [
-      { scope: "type",
+      {
+        scope: "type",
         begin: "\\bptr\\b|i64|i8|float|double|x86_fp80|fp128|ppc_fp128",
       },
       {
@@ -211,10 +216,10 @@ hljs.registerLanguage("llvm", function (hljs) {
   });
 
   let code_nodes = Array.from(document.querySelectorAll("code"))
-  // Don't highlight `inline code` blocks in headers.
-      .filter(function (node) {
-        return !node.parentElement.classList.contains("header");
-      });
+    // Don't highlight `inline code` blocks in headers.
+    .filter(function (node) {
+      return !node.parentElement.classList.contains("header");
+    });
 
   code_nodes.forEach(function (block) {
     hljs.highlightElement(block);
@@ -231,20 +236,20 @@ hljs.registerLanguage("llvm", function (hljs) {
     }
 
     switch (e.key) {
-    case "ArrowRight":
-      e.preventDefault();
-      var nextButton = document.querySelector(".nav.next");
-      if (nextButton) {
-        window.location.href = nextButton.href;
-      }
-      break;
-    case "ArrowLeft":
-      e.preventDefault();
-      var previousButton = document.querySelector(".nav.previous");
-      if (previousButton) {
-        window.location.href = previousButton.href;
-      }
-      break;
+      case "ArrowRight":
+        e.preventDefault();
+        var nextButton = document.querySelector(".nav.next");
+        if (nextButton) {
+          window.location.href = nextButton.href;
+        }
+        break;
+      case "ArrowLeft":
+        e.preventDefault();
+        var previousButton = document.querySelector(".nav.previous");
+        if (previousButton) {
+          window.location.href = previousButton.href;
+        }
+        break;
     }
   });
 })();

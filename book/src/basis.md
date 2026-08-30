@@ -442,19 +442,21 @@ If a bar-separated sequence has a leading bar, the sequence is formatted vertica
 
 The behavior of the compiler can be adjusted using the following environment variables:
 
-| Environment Variable      | Meaning                       |
-| ------------------------- | ----------------------------- |
-| `NEUT_CLANG`              | the command to call `clang`   |
-| `NEUT_CORE_MODULE_DIGEST` | the digest of the core module |
-| `NEUT_CORE_MODULE_URL`    | the URL of the core module    |
+| Environment Variable      | Meaning                                      |
+| ------------------------- | -------------------------------------------- |
+| `NEUT_CORE_MODULE_DIGEST` | the digest of the core module                |
+| `NEUT_CORE_MODULE_URL`    | the URL of the core module                   |
+| `NEUT_HOME`               | the directory the compiler keeps its data in |
 
 The default values are as follows:
 
 | Environment Variable      | Default Value                 |
 | ------------------------- | ----------------------------- |
-| `NEUT_CLANG`              | `clang`                       |
 | `NEUT_CORE_MODULE_DIGEST` | (undefined; you must set one) |
 | `NEUT_CORE_MODULE_URL`    | (undefined; you must set one) |
+| `NEUT_HOME`               | `$XDG_DATA_HOME/neut`         |
+
+Every build uses the toolchain installed beside the compiler. It carries `clang`, the linkers, and the wasi sysroot. The compiler looks for it at `$NEUT_HOME/toolchain/(host platform)`.
 
 ## Other Basic Facts
 

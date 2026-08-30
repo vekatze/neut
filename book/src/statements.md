@@ -3,6 +3,7 @@
 ## Table of Contents
 
 - [import](#import)
+- [require](#require)
 - [namespace](#namespace)
 - [define](#define)
 - [inline](#inline)
@@ -19,6 +20,7 @@
 - [rule-left](#rule-left)
 - [nominal](#nominal)
 - [foreign](#foreign)
+- [expose](#expose)
 
 ## `import`
 
@@ -146,6 +148,32 @@ define yo() -> unit {
 }
 ```
 
+An item can also be a choice between two groups of items, made according to a capability:
+
+```neut
+import {
+  if thread {
+    core::sync.pool {for-each-parallel},
+  } else {
+    this::serial {for-each-parallel},
+  },
+}
+```
+
+If the platform of the target provides the capability, the `if` branch is taken; otherwise the `else` branch is. Both branches are mandatory.
+
+Both branches must introduce the same names, and those names must have the same types. The following cannot appear inside a branch:
+
+- a name that has no type, such as a namespace
+- an item with no `{}`
+- a static file
+
+A source that a branch imports cannot be named in full. For example, the `else` branch above imports `this::serial`, but `this::serial::for-each-parallel` cannot be written anywhere in the file; you must use `for-each-parallel` instead.
+
+A branch can contain any number of items, including further choices.
+
+The branch that is not taken is still read and type-checked. The files it names are not compiled or linked.
+
 You can also list static files in `import`:
 
 ```neut
@@ -155,6 +183,44 @@ import {
 ```
 
 For more on static files, please see [the section in Modules](modules.md#static-file).
+
+## `require`
+
+`require` declares the capabilities that a file needs. It should look like the following:
+
+```neut
+require {
+  thread,
+}
+```
+
+It exists to catch a mismatch before anything is compiled. Without it, code written for threads on a platform that has none would surface as linker errors naming missing symbols, for example.
+
+`require` can only appear at the top of a file. `require` and `import` can be written there in any order.
+
+The following capabilities exist:
+
+- `thread`: threads, with the mutexes and condition variables that go with them
+- `subprocess`: child processes
+- `javascript`: a JavaScript host to reach
+
+Which capabilities a platform provides is part of the definition of that platform. See [platform](./modules.md#platform).
+
+`require { thread }` says that the file is meant for a platform where threads exist. It introduces nothing into the file and gives it nothing to work with. Threads themselves come from a library, such as `core::sync`.
+
+`neut build` rejects a target whose platform doesn't provide a required capability:
+
+```text
+source/flow.nt:3:3
+Error: `thread` is not available on wasm32:
+            this::flow
+         ~> core::sync.channel
+         ~> core::sync._posix
+```
+
+The chain shows how the build reached the file that declares the requirement. The error points at the import that led out of the module being built.
+
+`require` can only be used when `universal` is `false`.
 
 ## `namespace`
 
@@ -1084,6 +1150,8 @@ constant _c-int: type {
     int32
   | arm64 =>
     int32
+  | wasm32 =>
+    int32
   }
 }
 
@@ -1112,4 +1180,61 @@ define print-raw(fmt: pointer, len: int, val: pointer) -> c-int {
   //                                 ^^^^^^^^^^^^^^^^^^^^^^
   //                                 passing variadic arguments with types
 }
+```
+
+## `expose`
+
+`expose` makes functions in the current file callable from outside Neut. It should look like the following:
+
+```neut
+define add-const(x: int) -> int {
+  add-int(x, 100)
+}
+
+expose {
+  add-const as my_app_add_const,
+}
+```
+
+The wrapper is then called from C as follows:
+
+```c
+int64_t my_app_add_const(int64_t x);
+
+int64_t y = my_app_add_const(7); // 107
+```
+
+Each entry names a function defined in the same file, optionally followed by `as` and its external name. Without `as`, the name of the function is used. No two functions can be exposed under the same external name.
+
+The compiler emits a wrapper with the C calling convention for each entry. On native targets, the external name becomes a public symbol. On wasm targets, it also becomes a wasm export.
+
+Every parameter of the wrapper and its result are 64-bit integers. A pointer is zero-extended to that width.
+
+The wrapper takes the parameter list of the compiled function, so `expose` publishes the calling convention as well:
+
+- a type parameter becomes a leading parameter
+- a default argument becomes an ordinary parameter, with no default
+- a destination-passing function (one written with `@`) takes its destination first, and returns it
+
+A destination-passing function, for example:
+
+```neut
+data pair-of-int {
+| Pair-Of-Int(int, int)
+}
+
+define make@(x: int) -> pair-of-int {
+  Pair-Of-Int(x, x)
+}
+
+expose {
+  make as my_app_make,
+}
+```
+
+```c
+int64_t my_app_make(int64_t destination, int64_t x);
+
+int64_t storage[2];
+my_app_make((int64_t)storage, 7);
 ```

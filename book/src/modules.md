@@ -16,6 +16,7 @@ Below is a list of the configurations in `module.ens`.
 - [extra-content](#extra-content)
 - [static-file](#static-file)
 - [preset](#preset)
+- [universal](#universal)
 - [inline-limit](#inline-limit)
 - [antecedent](#antecedent)
 
@@ -166,6 +167,66 @@ The following values are available:
 
 The field `allocator` is optional. The default value of `allocator` is `"system"`.
 
+### `platform`
+
+The field `platform` specifies the platform for which the target is built:
+
+```ens
+{
+  target {
+    foo {
+      main "foo.nt",
+      platform "wasm32",
+    },
+  },
+}
+```
+
+The following values are available:
+
+- `"host"`: the platform on which the compiler is running
+- `"wasm32"`: 32-bit WebAssembly for a WASI runtime (wasm32-unknown-wasip1)
+- `"web"`: the same WebAssembly, for a JavaScript host
+
+Every platform provides a fixed set of [capabilities](./statements.md#require):
+
+| Platform   | Capabilities           |
+| ---------- | ---------------------- |
+| `"host"`   | `thread`, `subprocess` |
+| `"wasm32"` | (none)                 |
+| `"web"`    | `javascript`           |
+
+The field `platform` is optional. The default value of `platform` is `"host"`.
+
+### `execute`
+
+The field `execute` specifies how `neut build TARGET --execute` runs the build artifact:
+
+```ens
+{
+  target {
+    foo {
+      main "foo.nt",
+      platform "wasm32",
+      execute [
+        "wasmtime",
+        "{{executable}}",
+      ],
+    },
+  },
+}
+```
+
+The value is an argument list. It is executed directly, without a shell. Arguments passed after `--execute` are appended to it.
+
+In the field `execute`, you can use the following placeholders:
+
+- `{{executable}}`: the path of the build artifact
+- `{{module-root}}`: the root directory of the current module
+- `{{module:ALIAS}}`: the root directory of the dependency whose alias is `ALIAS`
+
+The field `execute` is optional. Without it, `--execute` runs the build artifact directly.
+
 ## `zen`
 
 The field `zen` defines the configuration used by `neut zen`. It should look like the following:
@@ -189,8 +250,12 @@ The fields available inside `zen` are the same as those available inside each en
 - `compile-option`
 - `link-option`
 - `allocator`
+- `platform`
+- `execute`
 
 These fields affect builds performed by `neut zen`, rather than `neut build TARGET`.
+
+`neut check` and the LSP server also use the `platform` given here.
 
 The field `zen` is optional. By default, it uses empty build options and the system allocator.
 
@@ -316,9 +381,11 @@ The field `script` specifies how to compile external source files. When running 
 
 In the field `script`, you can use the following placeholders:
 
-- `{{clang}}`: The `clang` used by the compiler
+- `{{clang}}`: The `clang` used by the compiler, aimed at the platform of the target
 - `{{module-root}}`: The root directory of the module
 - `{{foreign}}`: The foreign directory
+
+`{{clang}}` expands to a command, not a path. It carries the options that select the platform, such as `-target` and the sysroot.
 
 The compiler skips running the `script` if all the files in `output` are newer than `input`.
 
@@ -472,6 +539,31 @@ define baz() -> int {
 The field `preset` is expected to be used as a way to provide "preludes" like those in other languages.
 
 The field `preset` is optional. The default value of `preset` is `{}`.
+
+## `universal`
+
+The field `universal` declares whether the module must work on every platform. It should look like the following:
+
+```ens
+{
+  // ..
+  universal false,
+  // ..
+}
+```
+
+A module that declares `universal true` must build under every set of capabilities that a platform provides:
+
+```text
+source/worker.nt:2:3
+Error: A universal module cannot require `thread`
+```
+
+The declaration covers what the module inherits through `import`, not only what it declares with `require` itself.
+
+For more on capabilities, see [require](./statements.md#require).
+
+The field `universal` is optional. The default value of `universal` is `true`.
 
 ## `inline-limit`
 
