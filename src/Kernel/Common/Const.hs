@@ -151,10 +151,6 @@ coreDebugPanic :: T.Text
 coreDebugPanic =
   core <> doubleColon <> "debug" <> doubleColon <> "panic"
 
-coreLayerEmbody :: T.Text
-coreLayerEmbody =
-  core <> doubleColon <> "layer" <> doubleColon <> "embody"
-
 coreTypeValueTypeValue :: T.Text
 coreTypeValueTypeValue =
   core <> doubleColon <> "type-value" <> doubleColon <> "type-value"
