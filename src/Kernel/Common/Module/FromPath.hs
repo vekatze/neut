@@ -58,6 +58,7 @@ fromFilePath moduleFilePath = do
   foreignDictEns <- liftEither $ E.access' keyForeign (emptyForeign m) ens
   foreignDict <- interpretForeignDict (parent moduleFilePath) foreignDictEns
   let mInlineLimit = interpretInlineLimit $ E.access keyInlineLimit ens
+  (_, universal) <- liftEither $ E.access' keyUniversal (E.Bool True) ens >>= E.toBool
   (mPreset, presetEns) <- liftEither $ E.access' keyPreset E.emptyDict ens >>= E.toDictionary
   presetMap <- liftEither $ interpretPresetMap mPreset presetEns
   let isLibrary = E.hasKey keyAntecedent ens
@@ -76,6 +77,7 @@ fromFilePath moduleFilePath = do
         moduleStaticFiles = staticFileMap,
         moduleForeign = foreignDict,
         moduleInlineLimit = mInlineLimit,
+        moduleUniversal = universal,
         modulePresetMap = presetMap
       }
 

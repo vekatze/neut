@@ -56,33 +56,33 @@ new ::
 new globalHandle = do
   Handle {..}
 
-check :: Handle -> App [Log]
-check h = do
+check :: Handle -> Maybe MainTarget -> App [Log]
+check h mainTarget = do
   let M.MainModule mainModule = Env.getMainModule (Global.envHandle (globalHandle h))
-  liftIO $ _check h Peripheral mainModule
+  liftIO $ _check h Peripheral mainTarget mainModule
 
-checkOrFail :: Handle -> App [Log]
-checkOrFail h = do
-  logs <- check h
+checkOrFail :: Handle -> Maybe MainTarget -> App [Log]
+checkOrFail h mainTarget = do
+  logs <- check h mainTarget
   throwIfFailure logs
   return logs
 
-checkModule :: Handle -> M.Module -> IO [Log]
-checkModule h = do
-  _check h Peripheral
+checkModule :: Handle -> Maybe MainTarget -> M.Module -> IO [Log]
+checkModule h mainTarget = do
+  _check h Peripheral mainTarget
 
-checkAll :: Handle -> App [Log]
-checkAll h = do
+checkAll :: Handle -> Maybe MainTarget -> App [Log]
+checkAll h mainTarget = do
   let mainModule = Env.getMainModule (Global.envHandle (globalHandle h))
   let getModuleHandle = GetModule.new $ Global.moduleHandle $ globalHandle h
   deps <- GetModule.getAllDependencies getModuleHandle mainModule (extractModule mainModule)
-  depLogs <- fmap concat $ forM deps $ \(_, m) -> liftIO $ checkModule h m
-  mainLogs <- liftIO $ checkModule h (extractModule mainModule)
+  depLogs <- fmap concat $ forM deps $ \(_, m) -> liftIO $ checkModule h Nothing m
+  mainLogs <- liftIO $ checkModule h mainTarget (extractModule mainModule)
   return $ depLogs <> mainLogs
 
-checkAllOrFail :: Handle -> App [Log]
-checkAllOrFail h = do
-  logs <- checkAll h
+checkAllOrFail :: Handle -> Maybe MainTarget -> App [Log]
+checkAllOrFail h mainTarget = do
+  logs <- checkAll h mainTarget
   throwIfFailure logs
   return logs
 
@@ -96,12 +96,13 @@ checkSingle :: Handle -> M.Module -> Path Abs File -> App (Maybe Elaborate.Handl
 checkSingle h baseModule path = do
   _check' h (PeripheralSingle path) baseModule
 
-_check :: Handle -> Target -> M.Module -> IO [Log]
-_check h target baseModule = do
+_check :: Handle -> Target -> Maybe MainTarget -> M.Module -> IO [Log]
+_check h target mainTarget baseModule = do
   collectLogs (Global.globalRemarkHandle (globalHandle h)) $ do
     let loadHandle = Load.new (globalHandle h)
     unravelHandle <- liftIO $ Unravel.new (globalHandle h)
-    (_, dependenceSeq) <- Unravel.unravel unravelHandle baseModule target
+    dependenceSeq <- Unravel.resultSourceList <$> Unravel.unravel unravelHandle baseModule target
+    forM_ mainTarget $ Unravel.checkTargetCapabilities unravelHandle baseModule
     sourceDependencyMap <- liftIO $ Unravel.getSourceDependencyMap unravelHandle dependenceSeq
     traceConfig <- newTraceConfig h
     contentSeq <- Load.load loadHandle (Trace.isEnabled traceConfig) target dependenceSeq
@@ -122,7 +123,7 @@ _check' :: Handle -> Target -> M.Module -> App (Maybe Elaborate.Handle)
 _check' h target baseModule = do
   unravelHandle <- liftIO $ Unravel.new (globalHandle h)
   let loadHandle = Load.new (globalHandle h)
-  (_, dependenceSeq) <- Unravel.unravel unravelHandle baseModule target
+  dependenceSeq <- Unravel.resultSourceList <$> Unravel.unravel unravelHandle baseModule target
   sourceDependencyMap <- liftIO $ Unravel.getSourceDependencyMap unravelHandle dependenceSeq
   traceConfig <- newTraceConfig h
   contentSeq <- Load.load loadHandle (Trace.isEnabled traceConfig) target dependenceSeq

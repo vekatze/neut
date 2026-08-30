@@ -23,6 +23,7 @@ module Kernel.Common.Module
     keyForeignOutput,
     keyForeignScript,
     keyInlineLimit,
+    keyUniversal,
     keyLinkOption,
     keyMain,
     keyExecute,
@@ -122,6 +123,7 @@ data Module = Module
     moduleForeign :: Foreign,
     moduleStaticFiles :: Map.HashMap T.Text (Path Rel File),
     moduleInlineLimit :: Maybe Int,
+    moduleUniversal :: Bool,
     modulePresetMap :: PresetMap
   }
   deriving (Show)
@@ -225,6 +227,10 @@ keyForeignOutput =
 keyForeignScript :: T.Text
 keyForeignScript =
   "script"
+
+keyUniversal :: T.Text
+keyUniversal =
+  "universal"
 
 keyInlineLimit :: T.Text
 keyInlineLimit =

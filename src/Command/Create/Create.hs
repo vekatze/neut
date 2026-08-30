@@ -38,4 +38,4 @@ create h cfg = do
   h' <- liftIO $ Global.new (remarkCfg h) (Just $ moduleLocation newModule) Nothing
   Fetch.insertCoreDependency (Fetch.new h')
   h'' <- liftIO $ Global.new (remarkCfg h) (Just $ moduleLocation newModule) Nothing
-  void $ Check.checkAllOrFail (Check.new h'')
+  void $ Check.checkAllOrFail (Check.new h'') Nothing

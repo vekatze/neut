@@ -322,6 +322,13 @@ insertMemberTag h m columnOffset name dd mDef gn = do
   let memberLen = T.length $ BN.reify name
   liftIO $ Tag.insertLocator (H.tagHandle h) memberHint dd (GN.getIsConstLike gn) memberLen mDef
 
+ensureSourceIsNamable :: H.Handle -> Hint -> L.Locator -> SGL.StrictGlobalLocator -> App ()
+ensureSourceIsNamable h m locator sgl = do
+  isConditional <- liftIO $ Locator.isConditionalSource (H.locatorHandle h) sgl
+  when isConditional $
+    raiseError m $
+      "`" <> L.reify locator <> "` names a source that is imported under a capability"
+
 resolveLocator ::
   H.Handle ->
   Hint ->
@@ -334,6 +341,7 @@ resolveLocator h m locator shouldInsertTag = do
   let modulePathText = L.modulePathText locator
   let sourceText = L.sourceText locator
   sgl <- Alias.resolveAlias (H.aliasHandle h) m gl
+  ensureSourceIsNamable h m locator sgl
   let cand = DD.new sgl ll
   lookupResult <- lookupNameMap h m cand
   case lookupResult of

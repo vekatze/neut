@@ -264,7 +264,7 @@ handlers lspState = do
             | commandName == CA.refreshCacheCommandName -> do
                 withGlobalHandle lspState (responder $ Right $ InR Null) $ \h -> do
                   let checkHandle = Check.new h
-                  _ <- run lspState h $ Check.checkAll checkHandle
+                  _ <- run lspState h $ Check.checkAll checkHandle Nothing
                   liftIO $ DocumentStateStore.refreshDocumentStates h documentStateStore
                   responder $ Right $ InR Null
           _ ->

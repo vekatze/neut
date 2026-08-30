@@ -45,6 +45,7 @@ import Kernel.Elaborate.Internal.Handle.WeakDecl qualified as WeakDecl
 import Kernel.Elaborate.Internal.Handle.WeakDef qualified as WeakDef
 import Kernel.Elaborate.Internal.Handle.WeakType qualified as WeakType
 import Kernel.Elaborate.Internal.Handle.WeakTypeDef qualified as WeakTypeDef
+import Kernel.Parse.Internal.Handle.BranchAgreement qualified as BranchAgreement
 import Kernel.Elaborate.Internal.WeakTerm.Fill qualified as Fill
 import Kernel.Elaborate.TypeHoleSubst qualified as THS
 import Kernel.Parse.Internal.Handle.UsedTopLevelName qualified as UsedTopLevelName
@@ -74,6 +75,7 @@ data Handle = Handle
     substHandle :: Subst.Handle,
     typeHandle :: Type.Handle,
     weakDeclHandle :: WeakDecl.Handle,
+    branchAgreementHandle :: BranchAgreement.Handle,
     defHandle :: Definition.Handle,
     tropeHandle :: Trope.Handle,
     tagHandle :: Tag.Handle,

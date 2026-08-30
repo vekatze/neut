@@ -88,6 +88,7 @@ constructDefaultModule moduleName mTargetName = do
         moduleStaticFiles = Map.empty,
         moduleForeign = Foreign {input = [], output = [], script = []},
         moduleInlineLimit = Nothing,
+        moduleUniversal = True,
         modulePresetMap = Map.empty
       }
 

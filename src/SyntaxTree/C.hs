@@ -3,6 +3,7 @@ module SyntaxTree.C
     Comment (..),
     CommentType (..),
     toLineComment,
+    joinComments,
   )
 where
 
@@ -25,3 +26,11 @@ type C = [Comment]
 toLineComment :: Comment -> Comment
 toLineComment c =
   c {commentType = LineComment}
+
+joinComments :: C -> C -> C
+joinComments c1 c2 =
+  case c1 of
+    [] ->
+      c2
+    _ ->
+      c1 ++ map toLineComment c2

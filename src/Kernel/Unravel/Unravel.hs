@@ -1,8 +1,10 @@
 module Kernel.Unravel.Unravel
   ( Handle,
+    Result (..),
     new,
     unravel,
     unravelFromFile,
+    checkTargetCapabilities,
     registerShiftMap,
     getSourceDependencyMap,
     unravel',
@@ -25,6 +27,7 @@ import Data.Text qualified as T
 import Data.Time
 import Gensym.CreateHandle qualified as Gensym
 import Kernel.Common.Artifact qualified as A
+import Kernel.Common.Capability qualified as Capability
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.CreateLocalHandle qualified as Local
 import Kernel.Common.Handle.Global.Antecedent qualified as Antecedent
@@ -40,12 +43,16 @@ import Kernel.Common.OutputKind qualified as OK
 import Kernel.Common.Source qualified as Source
 import Kernel.Common.Source.ShiftToLatest qualified as STL
 import Kernel.Common.SourceDependencyMap (SourceDependencyMap)
+import Kernel.Common.Handle.Global.Platform qualified as Platform
+import Kernel.Common.Platform qualified as P
 import Kernel.Common.Target
 import Kernel.Parse.Internal.Import qualified as Import
-import Kernel.Parse.Internal.Program (parseImport)
+import Kernel.Parse.Internal.Program (parseHeader)
 import Kernel.Unravel.VisitInfo qualified as VI
 import Language.Common.ModuleAlias qualified as MA
 import Language.Common.ModuleID qualified as MID
+import Language.RawTerm.RawStmt (RawRequire (..), RawRequireItem (..))
+import SyntaxTree.Series qualified as SE
 import Logger.Debug qualified as Logger
 import Logger.Hint
 import Path
@@ -73,54 +80,76 @@ data Handle = Handle
     visitEnvRef :: IORef (Map.HashMap (Path Abs File) VI.VisitInfo),
     traceSourceListRef :: IORef [Source.Source],
     sourceChildrenMapRef :: IORef (Map.HashMap (Path Abs File) [ImportItem]),
-    presetCacheRef :: IORef (Map.HashMap MID.ModuleID [ImportItem])
+    sourceRequireMapRef :: IORef (Map.HashMap (Path Abs File) [(Hint, Capability.Capability)])
   }
+
+data Result = Result
+  { resultArtifactTime :: A.ArtifactTime,
+    resultSourceList :: [Source.Source],
+    resultLiveSourceSet :: S.Set (Path Abs File)
+  }
+
+data Demand
+  = ByPlatform
+  | ByUniversality
 
 new :: Global.Handle -> IO Handle
 new globalHandle = do
   visitEnvRef <- newIORef Map.empty
   traceSourceListRef <- newIORef []
   sourceChildrenMapRef <- newIORef Map.empty
-  presetCacheRef <- newIORef Map.empty
+  sourceRequireMapRef <- newIORef Map.empty
   return $ Handle {..}
 
-unravel :: Handle -> Module -> Target -> App (A.ArtifactTime, [Source.Source])
+unravel :: Handle -> Module -> Target -> App Result
 unravel h baseModule t = do
   liftIO $ Logger.report (Global.loggerHandle (globalHandle h)) "Resolving file dependencies"
   case t of
     Main t' -> do
-      case t' of
-        Zen path _ ->
-          unravelFromFile h t baseModule path
-        Named targetName _ -> do
-          case getTargetPath baseModule targetName of
-            Nothing ->
-              raiseError' $ "No such target is defined: `" <> targetName <> "`"
-            Just path -> do
-              unravelFromFile h t baseModule path
+      path <- entryPointPath baseModule t'
+      unravelFromFile h t baseModule path
     Peripheral -> do
       registerShiftMap h
       unravelFoundational h t baseModule
     PeripheralSingle path -> do
       unravelFromFile h t baseModule path
 
+entryPointPath :: Module -> MainTarget -> App (Path Abs File)
+entryPointPath baseModule mainTarget =
+  case mainTarget of
+    Zen path _ ->
+      return path
+    Named targetName _ ->
+      case getTargetPath baseModule targetName of
+        Just path ->
+          return path
+        Nothing ->
+          raiseError' $ "No such target is defined: `" <> targetName <> "`"
+
+checkTargetCapabilities :: Handle -> Module -> MainTarget -> App ()
+checkTargetCapabilities h baseModule mainTarget = do
+  path <- entryPointPath baseModule mainTarget
+  source <- Module.sourceFromPath baseModule path
+  void $ checkCapabilities h (Main mainTarget) baseModule [source]
+
 unravelFromFile ::
   Handle ->
   Target ->
   Module ->
   Path Abs File ->
-  App (A.ArtifactTime, [Source.Source])
+  App Result
 unravelFromFile h t baseModule path = do
-  Module.sourceFromPath baseModule path >>= unravel' h t
+  Module.sourceFromPath baseModule path >>= unravel' h t baseModule
 
-unravel' :: Handle -> Target -> Source.Source -> App (A.ArtifactTime, [Source.Source])
-unravel' h t source = do
+unravel' :: Handle -> Target -> Module -> Source.Source -> App Result
+unravel' h t baseModule source = do
   registerShiftMap h
   (artifactTime, sourceSeq) <- unravel'' h t source
   let sourceList = toList sourceSeq
   forM_ sourceSeq Source.ensureSourceExistence
   reportResolvedSources h sourceList
-  return (artifactTime, sourceList)
+  liveSourceSet <- checkCapabilities h t baseModule [source]
+  return $ Result artifactTime sourceList liveSourceSet
 
 reportResolvedSources ::
   Handle ->
@@ -145,7 +174,7 @@ getSourceDependencies sourceChildrenMap source = do
 getSourceDependency :: ImportItem -> Maybe (Path Abs File)
 getSourceDependency importItem = do
   case importItem of
-    ImportItem source _ ->
+    ImportItem _ source _ ->
       Just $ Source.sourceFilePath source
     StaticFileKey {} ->
       Nothing
@@ -334,11 +363,16 @@ unravel'' h t source = do
       liftIO $ insertToVisitEnv h path VI.Active
       liftIO $ pushToTraceSourceList h source
       children <- getChildren h source
-      (artifactTimeList, seqList) <- mapAndUnzipM (unravelImportItem h t) children
+      results <- forM children $ \item -> do
+        (childArtifactTime, childSeq) <- unravelImportItem h t item
+        return (item, childArtifactTime, childSeq)
       _ <- liftIO $ popFromTraceSourceList h
       liftIO $ insertToVisitEnv h path VI.Finish
       baseArtifactTime <- getBaseArtifactTime (Global.pathHandle (globalHandle h)) t source
-      let artifactTime = getArtifactTime artifactTimeList baseArtifactTime
+      let artifactTimeList = [childTime | (_, childTime, _) <- results]
+      let liveArtifactTimeList = [childTime | (item, childTime, _) <- results, isItemLiveIn (targetEnvironment h) item]
+      let seqList = [childSeq | (_, _, childSeq) <- results]
+      let artifactTime = getArtifactTime artifactTimeList liveArtifactTimeList baseArtifactTime
       liftIO $ Artifact.insert (Global.artifactHandle (globalHandle h)) (Source.sourceFilePath source) artifactTime
       return (artifactTime, foldl' (><) Seq.empty seqList |> source)
 
@@ -357,7 +391,7 @@ popFromTraceSourceList h =
 unravelImportItem :: Handle -> Target -> ImportItem -> App (A.ArtifactTime, Seq Source.Source)
 unravelImportItem h t importItem = do
   case importItem of
-    ImportItem source _ ->
+    ImportItem _ source _ ->
       unravel'' h t source
     StaticFileKey staticFileList -> do
       let pathList = map snd staticFileList
@@ -367,23 +401,24 @@ unravelImportItem h t importItem = do
       let newestArtifactTime = maximum $ map A.inject itemModTime
       return (newestArtifactTime, Seq.empty)
 
-unravelFoundational :: Handle -> Target -> Module -> App (A.ArtifactTime, [Source.Source])
+unravelFoundational :: Handle -> Target -> Module -> App Result
 unravelFoundational h t baseModule = do
   let shiftToLatestHandle = STL.new (Global.antecedentHandle (globalHandle h))
   children <- Module.getAllSourceInModule baseModule
   children' <- mapM (STL.shiftToLatest shiftToLatestHandle) children
   (artifactTimeList, seqList) <- mapAndUnzipM (unravel'' h t) children'
   baseArtifactTime <- liftIO artifactTimeFromCurrentTime
-  let artifactTime = getArtifactTime artifactTimeList baseArtifactTime
+  let artifactTime = getArtifactTime artifactTimeList artifactTimeList baseArtifactTime
   let sourceList = toList $ foldl' (><) Seq.empty seqList
   reportResolvedSources h sourceList
-  return (artifactTime, sourceList)
+  liveSourceSet <- checkCapabilities h t baseModule children'
+  return $ Result artifactTime sourceList liveSourceSet
 
-getArtifactTime :: [A.ArtifactTime] -> A.ArtifactTime -> A.ArtifactTime
-getArtifactTime artifactTimeList artifactTime = do
+getArtifactTime :: [A.ArtifactTime] -> [A.ArtifactTime] -> A.ArtifactTime -> A.ArtifactTime
+getArtifactTime artifactTimeList liveArtifactTimeList artifactTime = do
   let cacheTime = getItemTime' (map A.cacheTime artifactTimeList) $ A.cacheTime artifactTime
-  let llvmTime = getItemTime' (map A.llvmTime artifactTimeList) $ A.llvmTime artifactTime
-  let objectTime = getItemTime' (map A.objectTime artifactTimeList) $ A.objectTime artifactTime
+  let llvmTime = getItemTime' (map A.llvmTime liveArtifactTimeList) $ A.llvmTime artifactTime
+  let objectTime = getItemTime' (map A.objectTime liveArtifactTimeList) $ A.objectTime artifactTime
   A.ArtifactTime {cacheTime, llvmTime, objectTime}
 
 getBaseArtifactTime :: Path.Handle -> Target -> Source.Source -> App A.ArtifactTime
@@ -489,11 +524,109 @@ parseSourceHeader h localHandle currentSource = do
   Source.ensureSourceExistence currentSource
   let filePath = Source.sourceFilePath currentSource
   fileContent <- readTextFromPath filePath
-  (_, importList) <- runParser filePath fileContent False parseImport
+  (_, (importList, requireList)) <- runParser filePath fileContent False parseHeader
+  requiredList <- mapM interpretRequireItem $ concatMap (SE.extract . requireItemsOf . fst) requireList
+  liftIO $ modifyIORef' (sourceRequireMapRef h) $ Map.insert filePath requiredList
   let m = newSourceHint filePath
   gensymHandle <- liftIO Gensym.createHandle
   let importHandle = Import.new gensymHandle (globalHandle h) localHandle
   Import.interpretImport importHandle m currentSource importList
+
+requireItemsOf :: RawRequire -> SE.Series RawRequireItem
+requireItemsOf (RawRequire _ _ requireItems _) =
+  requireItems
+
+interpretRequireItem :: RawRequireItem -> App (Hint, Capability.Capability)
+interpretRequireItem (RawRequireItem m name) = do
+  case Capability.reflect name of
+    Just capability ->
+      return (m, capability)
+    Nothing ->
+      raiseError m $ "No such capability exists: `" <> name <> "`"
+
+targetEnvironment :: Handle -> S.Set Capability.Capability
+targetEnvironment h = do
+  let platform = Platform.getPlatform (Global.platformHandle (globalHandle h))
+  Capability.providedBy (P.os platform)
+
+demandList :: Handle -> Target -> Module -> [(Demand, S.Set Capability.Capability)]
+demandList h t baseModule =
+  if moduleUniversal baseModule
+    then map ((,) ByUniversality) Capability.everySubset
+    else case t of
+      Main _ ->
+        [(ByPlatform, targetEnvironment h)]
+      _ ->
+        []
+
+checkCapabilities :: Handle -> Target -> Module -> [Source.Source] -> App (S.Set (Path Abs File))
+checkCapabilities h t baseModule roots = do
+  forM_ (demandList h t baseModule) $ \(demand, environment) ->
+    void $ walkReachable h environment (ensureCapabilitiesAreProvided h demand environment) roots
+  walkReachable h (targetEnvironment h) (\_ _ -> return ()) roots
+
+walkReachable ::
+  Handle ->
+  S.Set Capability.Capability ->
+  ([Source.Source] -> Source.Source -> App ()) ->
+  [Source.Source] ->
+  App (S.Set (Path Abs File))
+walkReachable h environment visit roots = do
+  sourceChildrenMap <- liftIO $ getSourceChildrenMap h
+  visitedRef <- liftIO $ newIORef S.empty
+  let go trace source = do
+        let path = Source.sourceFilePath source
+        visited <- liftIO $ readIORef visitedRef
+        unless (S.member path visited) $ do
+          liftIO $ modifyIORef' visitedRef $ S.insert path
+          visit (reverse trace) source
+          forM_ (Map.lookupDefault [] path sourceChildrenMap) $ \child ->
+            case child of
+              ImportItem liveness childSource _
+                | isLiveIn environment liveness ->
+                    go (source : trace) childSource
+              _ ->
+                return ()
+  mapM_ (go []) roots
+  liftIO $ readIORef visitedRef
+
+ensureCapabilitiesAreProvided :: Handle -> Demand -> S.Set Capability.Capability -> [Source.Source] -> Source.Source -> App ()
+ensureCapabilitiesAreProvided h demand environment importChain source = do
+  requireMap <- liftIO $ readIORef (sourceRequireMapRef h)
+  let requiredList = Map.lookupDefault [] (Source.sourceFilePath source) requireMap
+  forM_ requiredList $ \(m, capability) -> do
+    unless (S.member capability environment) $ do
+      let (blamed, trace) = blame h m $ importChain ++ [source]
+      modulePathMap <- liftIO $ ModulePath.get (Global.modulePathHandle (globalHandle h))
+      traceText <- liftIO $ mapM (ModulePath.renderCanonicalSource modulePathMap) trace
+      raiseError blamed $
+        renderUnavailable demand (Global.platformHandle (globalHandle h)) capability
+          <> renderTrace traceText
+
+blame :: Handle -> Hint -> [Source.Source] -> (Hint, [Source.Source])
+blame h m trace = do
+  let mainModuleID = moduleID $ extractModule $ getMainModule (Global.envHandle (globalHandle h))
+  let isInside source = moduleID (Source.sourceModule source) == mainModuleID
+  case span isInside trace of
+    (inside@(_ : _), outside@(firstOutside : _))
+      | Just importHint <- Source.sourceHint firstOutside ->
+          (importHint, last inside : outside)
+    _ ->
+      (m, [])
+
+renderTrace :: [T.Text] -> T.Text
+renderTrace traceText =
+  if null traceText
+    then ""
+    else ":\n" <> showCycle traceText
+
+renderUnavailable :: Demand -> Platform.Handle -> Capability.Capability -> T.Text
+renderUnavailable demand platformHandle capability =
+  case demand of
+    ByPlatform ->
+      "`" <> Capability.reify capability <> "` is not available on " <> P.reify (Platform.getPlatform platformHandle)
+    ByUniversality ->
+      "A universal module cannot require `" <> Capability.reify capability <> "`"
 
 getSourceChildrenMap :: Handle -> IO (Map.HashMap (Path Abs File) [ImportItem])
 getSourceChildrenMap h =

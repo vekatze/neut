@@ -35,12 +35,38 @@ data ImportInfo = ImportInfo
   }
 
 pp :: ImportInfo -> (C, RawProgram) -> T.Text
-pp importInfo (c1, RawProgram m importList stmtList) = do
-  let (importList', c2) = mergeImportList m importList
+pp importInfo (c1, RawProgram m importList requireList stmtList) = do
+  let (requireList', c2) = mergeRequireList m requireList
+  let (importList', c3) = mergeImportList m importList
+  let requireOrNone' = decRequire requireList'
   let importOrNone' = decImport importInfo importList'
   let stmtList' = map (first (Just . decStmt)) stmtList
-  let program' = (importOrNone', c2) : stmtList'
+  let program' = (requireOrNone', c2) : (importOrNone', c3) : stmtList'
   D.layout $ decTopDocList c1 program'
+
+decRequire :: RawRequire -> Maybe D.Doc
+decRequire (RawRequire c _ requireItemList _) = do
+  if SE.isEmpty requireItemList
+    then Nothing
+    else
+      return $
+        attachStmtComment c $
+          D.join
+            [ D.text "require ",
+              SE.decode $ SE.assoc $ decRequireItem <$> sortRequire requireItemList
+            ]
+
+sortRequire :: SE.Series RawRequireItem -> SE.Series RawRequireItem
+sortRequire =
+  SE.sortSeriesBy compareRequire
+
+compareRequire :: RawRequireItem -> RawRequireItem -> Ordering
+compareRequire (RawRequireItem _ name1) (RawRequireItem _ name2) =
+  compare name1 name2
+
+decRequireItem :: RawRequireItem -> (D.Doc, C)
+decRequireItem (RawRequireItem _ name) =
+  (D.text name, [])
 
 decTopDocList :: C -> [(Maybe D.Doc, C)] -> D.Doc
 decTopDocList c docList =
@@ -85,6 +111,8 @@ filterUnused importInfo rawImportItem = do
   case rawImportItem of
     RawStaticFileKey {} ->
       return rawImportItem
+    RawConditionalImport {} ->
+      return rawImportItem
     RawImportItem m (loc, c) entries -> do
       if isUsedGL (unusedGlobalLocators importInfo) loc
         then do
@@ -112,6 +140,8 @@ filterPreset :: ImportInfo -> RawImportItem -> Either C RawImportItem
 filterPreset importInfo item = do
   case item of
     RawStaticFileKey {} ->
+      return item
+    RawConditionalImport {} ->
       return item
     RawImportItem m (loc, c) entries -> do
       case lookup loc (presetNames importInfo) of
@@ -146,6 +176,12 @@ compareImport item1 item2 =
       LT
     (RawStaticFileKey {}, RawImportItem {}) ->
       GT
+    (RawConditionalImport _ _ (_, cap1, _) _ _ _, RawConditionalImport _ _ (_, cap2, _) _ _ _) ->
+      compare cap1 cap2
+    (RawConditionalImport {}, _) ->
+      GT
+    (_, RawConditionalImport {}) ->
+      LT
     (RawStaticFileKey {}, RawStaticFileKey {}) ->
       EQ
 
@@ -160,6 +196,8 @@ normalizeImportItem item =
       RawImportItem m (normalizeLocator m loc, c) entries
     RawStaticFileKey {} ->
       item
+    RawConditionalImport m cIf capability (thenSeries, cThen) cElse elseSeries ->
+      RawConditionalImport m cIf capability (normalizeImportItem <$> thenSeries, cThen) cElse (normalizeImportItem <$> elseSeries)
 
 normalizeLocator :: Hint -> T.Text -> T.Text
 normalizeLocator m loc =
@@ -202,6 +240,8 @@ sortImportEntries rawImportItem = do
     RawStaticFileKey m c ks -> do
       let cmp (_, x) (_, y) = compare x y
       RawStaticFileKey m c $ SE.sortSeriesBy cmp ks
+    RawConditionalImport m cIf capability (thenSeries, cThen) cElse elseSeries ->
+      RawConditionalImport m cIf capability (sortImport thenSeries, cThen) cElse (sortImport elseSeries)
 
 nubImportEntries :: RawImportItem -> RawImportItem
 nubImportEntries rawImportItem = do
@@ -212,6 +252,8 @@ nubImportEntries rawImportItem = do
     RawStaticFileKey m c ks -> do
       let eq (_, x) (_, y) = x == y
       RawStaticFileKey m c $ SE.nubSeriesBy eq ks
+    RawConditionalImport {} ->
+      rawImportItem
 
 decImportItem :: RawImportItem -> (D.Doc, C)
 decImportItem rawImportItem = do
@@ -229,6 +271,19 @@ decImportItem rawImportItem = do
         else do
           let ks' = D.text . snd <$> SE.pushComment c ks
           (D.join [D.text "static-file", D.text " ", SE.decode ks'], [])
+    RawConditionalImport _ cIf (_, capability, cCapability) (thenSeries, cThen) cElse elseSeries -> do
+      let thenDoc = SE.decode $ SE.assoc $ decImportItem <$> SE.pushComment cCapability thenSeries
+      let elseDoc = SE.decode $ SE.assoc $ decImportItem <$> SE.pushComment (joinComments cThen cElse) elseSeries
+      let doc =
+            D.join
+              [ D.text "if ",
+                D.text capability,
+                D.text " ",
+                thenDoc,
+                D.text " else ",
+                elseDoc
+              ]
+      (attachStmtComment cIf doc, [])
 
 decImportEntry :: RawImportEntry -> D.Doc
 decImportEntry entry =

@@ -57,6 +57,7 @@ import Kernel.Elaborate.Internal.Handle.WeakDecl qualified as WeakDecl
 import Kernel.Elaborate.Internal.Handle.WeakDef qualified as WeakDef
 import Kernel.Elaborate.Internal.Handle.WeakType qualified as WeakType
 import Kernel.Elaborate.Internal.Handle.WeakTypeDef qualified as WeakTypeDef
+import Kernel.Parse.Internal.Handle.BranchAgreement qualified as BranchAgreement
 import Kernel.Elaborate.Internal.Infer qualified as Infer
 import Kernel.Elaborate.Internal.TypeUtil (inlineType)
 import Kernel.Elaborate.Internal.TypeUtil qualified as TypeUtil
@@ -153,11 +154,31 @@ saveLocationTree h t = do
 
 analyzeStmtList :: Handle -> [WeakStmt] -> App [WeakStmt]
 analyzeStmtList h stmtList = do
+  requireBranchAgreement h
   forM stmtList $ \stmt -> do
     liftIO $ reportTrace h Report.PreTermPhase "preterm" stmt
     stmt' <- Infer.inferStmt h stmt
     insertWeakStmt h stmt'
     return stmt'
+
+requireBranchAgreement :: Handle -> App ()
+requireBranchAgreement h = do
+  obligationList <- liftIO $ BranchAgreement.get (branchAgreementHandle h)
+  forM_ obligationList $ \obligation -> do
+    thenType <- liftIO $ Type.lookupMaybe' (typeHandle h) $ BranchAgreement.thenName obligation
+    elseType <- liftIO $ Type.lookupMaybe' (typeHandle h) $ BranchAgreement.elseName obligation
+    case (thenType, elseType) of
+      (Just t1, Just t2) ->
+        liftIO $ Constraint.insert (constraintHandle h) t1 t2
+      (Nothing, _) ->
+        raiseTypelessBranch h obligation $ BranchAgreement.thenName obligation
+      (_, Nothing) ->
+        raiseTypelessBranch h obligation $ BranchAgreement.elseName obligation
+
+raiseTypelessBranch :: Handle -> BranchAgreement.Obligation -> DD.DefiniteDescription -> App ()
+raiseTypelessBranch h obligation dd = do
+  raiseError (BranchAgreement.obligationHint obligation) $
+    "A name without a type cannot be supplied by a conditional import: `" <> ModulePath.renderDD (modulePathMap h) dd <> "`"
 
 reportTrace :: Handle -> Report.TracePhase -> T.Text -> WeakStmt -> IO ()
 reportTrace h phase stage stmt = do

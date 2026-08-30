@@ -120,11 +120,11 @@ parseSource h source cacheOrContent = do
       return $ Right $ snd prog
 
 postprocess :: Locator.Handle -> RawProgram -> PostRawProgram
-postprocess h (RawProgram m importList stmtList) = do
+postprocess h (RawProgram m importList requireList stmtList) = do
   let stmtList' = concatMap (postprocess' h [] . fst) stmtList
   let nominalNameList = concatMap collectNominalDecls stmtList'
   let stmtList'' = map (markNominalData nominalNameList) stmtList'
-  PostRawProgram m importList stmtList''
+  PostRawProgram m importList requireList stmtList''
 
 collectNominalDecls :: PostRawStmt -> [DD.DefiniteDescription]
 collectNominalDecls stmt =
@@ -243,7 +243,7 @@ registerTopLevelNames h source cacheOrContent = do
       let nameArrowList = NameMap.getGlobalNames' stmtList
       liftIO $ saveTopLevelNames h source nameArrowList
       forM_ stmtList $ registerKeyArg' h
-    Right (PostRawProgram _ _ stmtList) -> do
+    Right (PostRawProgram _ _ _ stmtList) -> do
       let nameArrowList = NameMap.getGlobalNames stmtList
       liftIO $ saveTopLevelNames h source nameArrowList
       forM_ stmtList $ registerKeyArg h

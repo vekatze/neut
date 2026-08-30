@@ -17,6 +17,7 @@ import Kernel.Common.Source qualified as Source
 import Kernel.Common.Source.ShiftToLatest qualified as STL
 import Kernel.Elaborate.Internal.Handle.WeakDecl qualified as WeakDecl
 import Kernel.Parse.Internal.Handle.Alias qualified as Alias
+import Kernel.Parse.Internal.Handle.BranchAgreement qualified as BranchAgreement
 import Kernel.Parse.Internal.Handle.PreDecl qualified as PreDecl
 import Kernel.Parse.Internal.Handle.Unused qualified as Unused
 import Kernel.Parse.Internal.Handle.UsedTopLevelName qualified as UsedTopLevelName
@@ -31,7 +32,8 @@ data Handle = Handle
     symLocHandle :: SymLoc.Handle,
     topCandidateHandle :: TopCandidate.Handle,
     preDeclHandle :: PreDecl.Handle,
-    weakDeclHandle :: WeakDecl.Handle
+    weakDeclHandle :: WeakDecl.Handle,
+    branchAgreementHandle :: BranchAgreement.Handle
   }
 
 new :: Global.Handle -> Source.Source -> App Handle
@@ -50,4 +52,5 @@ new h source = do
   topCandidateHandle <- liftIO TopCandidate.new
   preDeclHandle <- liftIO PreDecl.new
   weakDeclHandle <- liftIO WeakDecl.new
+  branchAgreementHandle <- liftIO BranchAgreement.new
   return $ Handle {..}

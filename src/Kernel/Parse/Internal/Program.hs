@@ -1,10 +1,12 @@
 module Kernel.Parse.Internal.Program
   ( parseProgram,
+    parseHeader,
     parseImport,
   )
 where
 
 import App.Run (raiseError)
+import Data.Either (lefts, rights)
 import CodeParser.GetInfo
 import CodeParser.Parser
 import Control.Comonad.Cofree
@@ -35,29 +37,64 @@ import Text.Megaparsec
 parseProgram :: Handle -> Parser RawProgram
 parseProgram h = do
   m <- getCurrentHint
-  importList <- parseImport
+  (importList, requireList) <- parseHeader
   stmtList <- many $ parseStmt False h
-  return $ RawProgram m importList stmtList
+  return $ RawProgram m importList requireList stmtList
+
+parseHeader :: Parser ([(RawImport, C)], [(RawRequire, C)])
+parseHeader = do
+  headerList <- many $ choice [Left <$> parseSingleImport, Right <$> parseSingleRequire]
+  return (lefts headerList, rights headerList)
 
 parseImport :: Parser [(RawImport, C)]
 parseImport =
-  many parseSingleImport
+  fst <$> parseHeader
+
+parseSingleRequire :: Parser (RawRequire, C)
+parseSingleRequire = do
+  c1 <- keyword "require"
+  m <- getCurrentHint
+  (requireItems, loc, c) <- seriesBrace' parseRequireItem
+  return (RawRequire c1 m requireItems loc, c)
+
+parseRequireItem :: Parser (RawRequireItem, C)
+parseRequireItem = do
+  m <- getCurrentHint
+  (name, c) <- symbol
+  return (RawRequireItem m name, c)
 
 parseSingleImport :: Parser (RawImport, C)
 parseSingleImport = do
   c1 <- keyword "import"
   m <- getCurrentHint
-  (importItems, loc, c) <- seriesBrace' $ do
-    mImportItem <- getCurrentHint
-    locator <- locatorSymbol
-    case fst locator of
-      "static-file" -> do
-        (ks, c) <- parseStaticKeyList
-        return (RawStaticFileKey m c1 ks, c)
-      _ -> do
-        (entries, c) <- parseImportEntryList
-        return (RawImportItem mImportItem locator entries, c)
+  (importItems, loc, c) <- seriesBrace' $ parseImportItem m c1
   return (RawImport c1 m importItems loc, c)
+
+parseImportItem :: Hint -> C -> Parser (RawImportItem, C)
+parseImportItem m c1 = do
+  choice
+    [ parseConditionalImport m c1,
+      do
+        mImportItem <- getCurrentHint
+        locator <- locatorSymbol
+        case fst locator of
+          "static-file" -> do
+            (ks, c) <- parseStaticKeyList
+            return (RawStaticFileKey mImportItem c1 ks, c)
+          _ -> do
+            (entries, c) <- parseImportEntryList
+            return (RawImportItem mImportItem locator entries, c)
+    ]
+
+parseConditionalImport :: Hint -> C -> Parser (RawImportItem, C)
+parseConditionalImport m c1 = do
+  cIf <- keyword "if"
+  mCapability <- getCurrentHint
+  (capability, cCapability) <- symbol
+  (thenSeries, _, cThen) <- seriesBrace' $ parseImportItem m c1
+  cElse <- keyword "else"
+  (elseSeries, _, c) <- seriesBrace' $ parseImportItem m c1
+  return (RawConditionalImport mCapability cIf (mCapability, capability, cCapability) (thenSeries, cThen) cElse elseSeries, c)
 
 parseStmt :: Bool -> Handle -> Parser (RawStmt, C)
 parseStmt isInNamespace h = do
