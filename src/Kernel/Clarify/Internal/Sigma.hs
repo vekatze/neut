@@ -31,6 +31,7 @@ import Kernel.Clarify.Internal.Utility qualified as Utility
 import Language.Common.ArgNum qualified as AN
 import Language.Common.BaseLowType qualified as BLT
 import Language.Common.CreateSymbol qualified as Gensym
+import Language.Common.DataInfo qualified as DI
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.Discriminant qualified as D
 import Language.Common.ForeignCodType qualified as FCT
@@ -55,17 +56,14 @@ data DataConstructorInfo = DataConstructorInfo
     totalSlotCount :: Int
   }
 
-data FieldLayout
-  = Direct C.Comp
-  | Flattened C.Comp Int
+data FieldLayout = FieldLayout
+  { fieldType :: C.Comp,
+    fieldShape :: DI.FieldLayout
+  }
 
 fieldSlotCount :: FieldLayout -> Int
-fieldSlotCount field =
-  case field of
-    Direct _ ->
-      1
-    Flattened _ slotCount ->
-      slotCount
+fieldSlotCount =
+  DI.fieldLayoutSlotCount . fieldShape
 
 data FieldSlots
   = DirectSlot Ident Ident
@@ -329,17 +327,17 @@ sigmaBinderT h info shouldRelease v = do
   readApps <- forM readEntries $ \(x, t) -> do
     Utility.toAffineApp (utilityHandle h) (C.VarLocal x) t
   fieldApps <- forM fields $ \(x, field) -> do
-    case field of
-      Direct t ->
-        Utility.toAffineApp (utilityHandle h) (C.VarLocal x) t
-      Flattened t _ ->
-        Utility.toDropInPlaceAppWith (utilityHandle h) True (C.VarLocal x) t
+    case fieldShape field of
+      DI.LayoutDirect ->
+        Utility.toAffineApp (utilityHandle h) (C.VarLocal x) (fieldType field)
+      DI.LayoutFlattened _ ->
+        Utility.toDropInPlaceAppWith (utilityHandle h) True (C.VarLocal x) (fieldType field)
   let as = readApps ++ fieldApps
   holes <- mapM (const $ Gensym.newIdentFromText (gensymHandle h) "arg") as
   cont <- freeOuterStorageIfRequested h shouldRelease v (totalSlotCount info) (C.UpIntro C.null)
   let bodyBase = Utility.bindLet (zip holes as) cont
   let fieldStart = length headerEntries + length dataArgEntries
-  let bodyWithFields = bindFieldsInPlace v (totalSlotCount info) fieldStart fields bodyBase
+  let bodyWithFields = bindFieldsInPlace v (totalSlotCount info) fieldStart (map (fmap fieldShape) fields) bodyBase
   body' <- Linearize.linearize (linearizeHandle h) readEntries bodyWithFields
   return $ C.SigmaElim False 0 (totalSlotCount info) (map fst readEntries) v body'
 
@@ -362,7 +360,7 @@ sigmaBinder4 h info dest v = do
   fieldCopies <- copyFieldsInto h dest (totalSlotCount info) (n + length dataArgEntries) fields
   holes <- mapM (const $ Gensym.newIdentFromText (gensymHandle h) "_") (readCopies ++ fieldCopies)
   let bodyBase = Utility.bindLet (zip holes (readCopies ++ fieldCopies)) $ C.UpIntro C.null
-  let bodyWithFields = bindFieldsInPlace v (totalSlotCount info) (n + length dataArgEntries) fields bodyBase
+  let bodyWithFields = bindFieldsInPlace v (totalSlotCount info) (n + length dataArgEntries) (map (fmap fieldShape) fields) bodyBase
   body' <- Linearize.linearize (linearizeHandle h) readEntries bodyWithFields
   return $ C.SigmaElim False 0 (totalSlotCount info) (map fst headerEntries ++ map fst (dataArgs info)) v body'
 
@@ -381,18 +379,18 @@ copyFieldsInto h dest totalSlots cursor fields = do
       return []
     (x, field) : rest -> do
       copy <-
-        case field of
-          Direct t -> do
-            copyDirectValueIntoSlot h dest totalSlots cursor x t
-          Flattened t _ -> do
+        case fieldShape field of
+          DI.LayoutDirect -> do
+            copyDirectValueIntoSlot h dest totalSlots cursor x (fieldType field)
+          DI.LayoutFlattened _ -> do
             destSlotName <- Gensym.newIdentFromText (gensymHandle h) "dest-slot"
             let destSlot = C.Primitive $ C.ShiftPointer dest (toInteger totalSlots) (toInteger cursor)
-            placedCopy <- Utility.toCopyIntoApp (utilityHandle h) (C.VarLocal x) (C.VarLocal destSlotName) t
+            placedCopy <- Utility.toCopyIntoApp (utilityHandle h) (C.VarLocal x) (C.VarLocal destSlotName) (fieldType field)
             return $ C.UpElim True destSlotName destSlot placedCopy
       rest' <- copyFieldsInto h dest totalSlots (cursor + fieldSlotCount field) rest
       return $ copy : rest'
 
-makeFieldSlotVars :: Gensym.Handle -> [(Ident, FieldLayout)] -> IO [FieldSlots]
+makeFieldSlotVars :: Gensym.Handle -> [(Ident, DI.FieldLayout)] -> IO [FieldSlots]
 makeFieldSlotVars gensymHandle fields =
   case fields of
     [] ->
@@ -400,10 +398,10 @@ makeFieldSlotVars gensymHandle fields =
     (x, field) : rest -> do
       entry <-
         case field of
-          Direct _ -> do
+          DI.LayoutDirect -> do
             slot <- Gensym.newIdentFromText gensymHandle "field"
             return $ DirectSlot x slot
-          Flattened _ slotCount -> do
+          DI.LayoutFlattened slotCount -> do
             slots <- mapM (const $ Gensym.newIdentFromText gensymHandle "field") [1 .. slotCount]
             return $ FlattenedSlots x slots
       rest' <- makeFieldSlotVars gensymHandle rest
@@ -421,29 +419,29 @@ bindFieldValues fieldSlots body =
         FlattenedSlots x slots ->
           C.UpElim False x (C.UpIntro (C.SigmaIntro (length slots) (map C.VarLocal slots))) (bindFieldValues rest body)
 
-bindFieldsInPlace :: C.Value -> Int -> Int -> [(Ident, FieldLayout)] -> C.Comp -> C.Comp
+bindFieldsInPlace :: C.Value -> Int -> Int -> [(Ident, DI.FieldLayout)] -> C.Comp -> C.Comp
 bindFieldsInPlace v totalSlots fieldStart fields body =
   case fields of
     [] ->
       body
     (x, field) : rest -> do
-      let rest' = bindFieldsInPlace v totalSlots (fieldStart + fieldSlotCount field) rest body
+      let rest' = bindFieldsInPlace v totalSlots (fieldStart + DI.fieldLayoutSlotCount field) rest body
       case field of
-        Direct _ ->
+        DI.LayoutDirect ->
           C.SigmaElim False fieldStart totalSlots [x] v rest'
-        Flattened _ _ ->
+        DI.LayoutFlattened _ ->
           C.UpElim True x (C.Primitive (C.ShiftPointer v (toInteger totalSlots) (toInteger fieldStart))) rest'
 
-flattenFields :: Gensym.Handle -> [(FieldLayout, C.Value)] -> ([C.Value] -> C.Comp) -> IO C.Comp
+flattenFields :: Gensym.Handle -> [(DI.FieldLayout, C.Value)] -> ([C.Value] -> C.Comp) -> IO C.Comp
 flattenFields gensymHandle fields cont =
   case fields of
     [] ->
       return $ cont []
     (field, value) : rest -> do
       case field of
-        Direct _ ->
+        DI.LayoutDirect ->
           flattenFields gensymHandle rest $ \restSlots -> cont (value : restSlots)
-        Flattened _ slotCount -> do
+        DI.LayoutFlattened slotCount -> do
           slotNames <- mapM (const $ Gensym.newIdentFromText gensymHandle "field") [1 .. slotCount]
           let slotValues = map C.VarLocal slotNames
           body <- flattenFields gensymHandle rest $ \restSlots -> cont (slotValues ++ restSlots)

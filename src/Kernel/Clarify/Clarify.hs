@@ -700,7 +700,7 @@ clarifyTerm h context term =
           dataInfo <- lookupDataEntry h m dataName
           let totalSlotCount = DI.dataTotalSlotCount (DI.dataArgs dataInfo) (DI.consInfoList dataInfo)
           consInfo <- getConsInfoByDiscriminant h m discriminant (DI.consInfoList dataInfo)
-          fieldStorageList <- fieldStoragesOfConsInfo h context consInfo
+          let fieldStorageList = DI.consArgLayouts consInfo
           when (length fieldStorageList /= length xs2) $
             raiseCritical m "Found a constructor layout arity mismatch"
           let header =
@@ -862,11 +862,7 @@ fieldStoragesOfConsInfo ::
 fieldStoragesOfConsInfo h context consInfo = do
   forM (zip (DI.consArgLayouts consInfo) (DI.consArgs consInfo)) $ \(layout, (_, _, _, t)) -> do
     fieldType <- clarifyType h context t
-    case layout of
-      DI.LayoutDirect ->
-        return $ Sigma.Direct fieldType
-      DI.LayoutFlattened slotCount ->
-        return $ Sigma.Flattened fieldType slotCount
+    return $ Sigma.FieldLayout {Sigma.fieldType = fieldType, Sigma.fieldShape = layout}
 
 clarifyStaticValue :: Handle -> Context -> TM.Term -> App C.Value
 clarifyStaticValue h context term =
@@ -887,7 +883,7 @@ clarifyStaticValue h context term =
           dataInfo <- lookupDataEntry h m dataName
           let totalSlotCount = DI.dataTotalSlotCount (DI.dataArgs dataInfo) (DI.consInfoList dataInfo)
           consInfo <- getConsInfoByDiscriminant h m discriminant (DI.consInfoList dataInfo)
-          fieldStorageList <- fieldStoragesOfConsInfo h context consInfo
+          let fieldStorageList = DI.consArgLayouts consInfo
           when (length fieldStorageList /= length consArgSlots) $
             raiseCritical m "Found a constructor layout arity mismatch"
           payloadSlots <- concat <$> mapM (uncurry $ flattenStaticField m) (zip fieldStorageList consArgSlots)
@@ -965,12 +961,12 @@ staticSlotOf m v =
     _ ->
       raiseNonStaticValue m
 
-flattenStaticField :: Hint -> Sigma.FieldLayout -> C.Value -> App [C.Value]
+flattenStaticField :: Hint -> DI.FieldLayout -> C.Value -> App [C.Value]
 flattenStaticField m field value =
   case field of
-    Sigma.Direct _ ->
+    DI.LayoutDirect ->
       return [value]
-    Sigma.Flattened _ slotCount ->
+    DI.LayoutFlattened slotCount ->
       case value of
         C.StaticSigmaIntro _ slotCount' slots
           | slotCount == slotCount' ->
@@ -1292,8 +1288,7 @@ clarifyCase h context isNoetic dataArgsMap cursor cursorType decisionCase = do
           layoutConsInfo <- getConsInfoByDiscriminant h mCons disc (DI.consInfoList dataInfo)
           when (length (DI.consArgs layoutConsInfo) /= length consArgs) $
             raiseCritical mCons "Found a constructor layout arity mismatch"
-          let fieldLayoutContext = extendContext (DI.dataArgs dataInfo) context
-          fieldStorageList <- fieldStoragesOfConsInfo h fieldLayoutContext layoutConsInfo
+          let fieldStorageList = DI.consArgLayouts layoutConsInfo
           let consArgIdents = map (\(_, _, x, _) -> x) consArgs
           let totalSlots = cursorSize `div` DS.reifyBytes (baseSize h)
           headerVars <-
