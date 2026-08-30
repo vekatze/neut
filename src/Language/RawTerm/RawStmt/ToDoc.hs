@@ -348,6 +348,13 @@ decStmt stmt =
           [ D.text "foreign ",
             foreignList'
           ]
+    RawStmtExpose c exposeList -> do
+      let exposeList' = SE.decode $ fmap decExposeItem exposeList
+      attachStmtComment c $
+        D.join
+          [ D.text "expose ",
+            exposeList'
+          ]
     RawStmtNamespace c1 _ (name, c2) c3 stmtList _ -> do
       attachStmtComment (c1 ++ c2) $
         D.join
@@ -368,6 +375,14 @@ decNamespaceBody c stmtList =
       attachStmtComment c $ D.join [decStmt stmt, C.asSuffix c']
     (stmt, c') : rest ->
       attachStmtComment c $ D.join [decStmt stmt, D.line, D.line, decNamespaceBody c' rest]
+
+decExposeItem :: RawExposeItem -> D.Doc
+decExposeItem (RawExposeItem _ (name, _) asClause) = do
+  case asClause of
+    Nothing ->
+      D.text (N.showName name)
+    Just (_, (EN.ExternalName extName, _)) ->
+      D.join [D.text (N.showName name), D.text " as ", D.text extName]
 
 decForeignItem :: RawForeignItem -> D.Doc
 decForeignItem (RawForeignItemF _ funcName _ args _ _ cod) = do

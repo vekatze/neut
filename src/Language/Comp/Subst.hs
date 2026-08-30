@@ -43,6 +43,8 @@ refreshStmt h stmt = do
       return $ C.Def name opacity xs' body'
     C.Foreign {} ->
       return stmt
+    C.Expose {} ->
+      return stmt
 
 refreshBinders :: Handle -> [Ident] -> IO ([Ident], C.SubstValue)
 refreshBinders h xs = do

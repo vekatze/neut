@@ -12,6 +12,7 @@ module Kernel.Parse.Internal.RawTerm
     mandatoryBinder,
     betweenBrace',
     interpretName,
+    symbolWithLocatorSuffix,
     parseDef,
     parseAliasDef,
     parseGeist,

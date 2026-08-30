@@ -77,7 +77,8 @@ parseStmt isInNamespace h = do
       parseResource h,
       parseVariadic h FoldLeft,
       parseVariadic h FoldRight,
-      parseForeign h
+      parseForeign h,
+      parseExpose
     ]
 
 parseNamespace :: Handle -> Parser (RawStmt, C)
@@ -155,6 +156,25 @@ parseForeignItem h = do
           return (F.Cod lt, c)
       ]
   return (RawForeignItemF m (EN.ExternalName funcName) c1 domList c2 c3 cod, c)
+
+parseExpose :: Parser (RawStmt, C)
+parseExpose = do
+  c1 <- keyword "expose"
+  (val, c) <- seriesBrace parseExposeItem
+  return (RawStmtExpose c1 val, c)
+
+parseExposeItem :: Parser (RawExposeItem, C)
+parseExposeItem = do
+  m <- getCurrentHint
+  (nameText, c1) <- symbolWithLocatorSuffix
+  name <- interpretName m nameText
+  choice
+    [ do
+        c2 <- keyword "as"
+        (extName, c) <- symbol
+        return (RawExposeItem m (name, c1) (Just (c2, (EN.ExternalName extName, []))), c),
+      return (RawExposeItem m (name, c1) Nothing, c1)
+    ]
 
 checkNotMainOrZen :: Bool -> BN.BaseName -> Hint -> T.Text -> Parser ()
 checkNotMainOrZen isInNamespace defName m keywordName = do

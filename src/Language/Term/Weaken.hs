@@ -62,6 +62,8 @@ weakenStmt stmt = do
       WeakStmtVariadic kind m name
     StmtForeign foreignList ->
       WeakStmtForeign $ map weakenForeign foreignList
+    StmtExpose exportList ->
+      WeakStmtExpose $ map (\(SavedHint m, dd, extName) -> (m, dd, extName)) exportList
     StmtNamespace (SavedHint m) dd ->
       WeakStmtNamespace m dd
 

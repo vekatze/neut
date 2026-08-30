@@ -226,6 +226,8 @@ _getGlobalNames stmt = do
       [(name, (m, Nothing, GN.Trope))]
     PostRawStmtForeign {} ->
       []
+    PostRawStmtExpose {} ->
+      []
     PostRawStmtNamespace m name children ->
       (name, (m, Nothing, GN.Namespace)) : concatMap _getGlobalNames children
 
@@ -307,6 +309,8 @@ _getGlobalNames' stmt = do
     StmtVariadic kind (SavedHint m) name -> do
       [(name, (m, Nothing, GN.Rule kind))]
     StmtForeign {} ->
+      []
+    StmtExpose {} ->
       []
     StmtNamespace (SavedHint m) name ->
       [(name, (m, Nothing, GN.Namespace))]

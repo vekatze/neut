@@ -9,6 +9,7 @@ where
 
 import Language.Common.Binder
 import Language.Common.DefiniteDescription qualified as DD
+import Language.Common.ExternalName qualified as EN
 import Language.Common.Foreign qualified as F
 import Language.Common.Geist qualified as G
 import Language.Common.IsConstLike
@@ -63,6 +64,7 @@ data WeakStmt
   | WeakStmtVariadic RuleKind Hint DD.DefiniteDescription
   | WeakStmtNominal Hint [(NominalTag, G.Geist WT.WeakType WT.WeakTerm)]
   | WeakStmtForeign [WT.WeakForeign]
+  | WeakStmtExpose [(Hint, DD.DefiniteDescription, EN.ExternalName)]
   | WeakStmtNamespace Hint DD.DefiniteDescription
 
 data WeakDefineMeta = WeakDefineMeta

@@ -19,6 +19,7 @@ module Language.RawTerm.RawStmt
     mergeImportList,
     RawForeignItemF (..),
     RawForeignItem,
+    RawExposeItem (..),
   )
 where
 
@@ -110,6 +111,7 @@ data BaseRawStmt name
       Loc
   | RawStmtNominal C Hint (SE.Series (NominalTag, RT.RawGeist name, Loc))
   | RawStmtForeign C (SE.Series RawForeignItem)
+  | RawStmtExpose C (SE.Series RawExposeItem)
   | RawStmtNamespace C Hint (name, C) C [(BaseRawStmt name, C)] Loc
 
 type RawStmt =
@@ -150,6 +152,7 @@ data PostRawStmt
       DD.DefiniteDescription
   | PostRawStmtNominal C Hint (SE.Series (NominalTag, RT.RawGeist DD.DefiniteDescription, Loc))
   | PostRawStmtForeign C (SE.Series RawForeignItem)
+  | PostRawStmtExpose C [RawExposeItem]
   | PostRawStmtNamespace Hint DD.DefiniteDescription [PostRawStmt]
 
 data PostRawDefineMeta = PostRawDefineMeta
@@ -180,6 +183,9 @@ data RawForeignItemF a
 
 type RawForeignItem =
   RawForeignItemF RT.RawType
+
+data RawExposeItem
+  = RawExposeItem Hint (N.Name, C) (Maybe (C, (EN.ExternalName, C)))
 
 isImportEmpty :: RawImport -> Bool
 isImportEmpty rawImport =

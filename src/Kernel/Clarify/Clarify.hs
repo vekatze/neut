@@ -201,12 +201,16 @@ clarify h stmtList = do
         return $ C.Def x opacity args e'
       C.Foreign {} ->
         return stmt
+      C.Expose {} ->
+        return stmt
   auxEnv' <- forM auxEnv $ \stmt -> do
     case stmt of
       C.Def x opacity args e -> do
         e' <- liftIO $ Reduce.reduce auxReduceHandle e
         return $ C.Def x opacity args e'
       C.Foreign {} ->
+        return stmt
+      C.Expose {} ->
         return stmt
   liftIO $ mapM_ (reportTrace h Report.CompPhase "comp") (stmtList'' ++ auxEnv')
   return (stmtList'', auxEnv', defMap)
@@ -228,6 +232,8 @@ renderCompStmt stmt = do
       renderCompDefinition (if isOpaque opacity then "define" else "inline") name args body
     C.Foreign {} ->
       "foreign declaration"
+    C.Expose {} ->
+      "export declaration"
 
 renderCompDefinition :: T.Text -> DD.DefiniteDescription -> [Ident] -> C.Comp -> T.Text
 renderCompDefinition keyword name args body =
@@ -383,6 +389,8 @@ clarifyEntryPoint h = do
         return $ C.Def x opacity args e'
       C.Foreign {} ->
         return stmt
+      C.Expose {} ->
+        return stmt
   return (stmtList, defMap)
 
 makeBaseAuxEnv :: Sigma.Handle -> IO [C.CompStmt]
@@ -450,6 +458,8 @@ clarifyStmt h stmt =
       return $ C.Foreign [] -- nop
     StmtForeign foreignList ->
       return $ C.Foreign foreignList
+    StmtExpose exportList ->
+      return $ C.Expose $ map (\(SavedHint m, dd, extName) -> (m, dd, extName)) exportList
     StmtNamespace {} -> do
       return $ C.Foreign [] -- nop
 

@@ -190,6 +190,8 @@ postprocess' h nsPath stmt = do
       [PostRawStmtNominal c m geistList']
     RawStmtForeign m foreignList -> do
       [PostRawStmtForeign m foreignList]
+    RawStmtExpose c exportList -> do
+      [PostRawStmtExpose c (SE.extract exportList)]
     RawStmtNamespace _ m (name, _) _ children _ -> do
       let name' = Locator.attachCurrentLocatorWithin h nsPath name
       let children' = concatMap (postprocess' h (nsPath ++ [name]) . fst) children
@@ -293,6 +295,8 @@ registerKeyArg h stmt = do
       return ()
     PostRawStmtForeign {} ->
       return ()
+    PostRawStmtExpose {} ->
+      return ()
     PostRawStmtNamespace _ _ children ->
       forM_ children $ registerKeyArg h
 
@@ -318,6 +322,8 @@ registerKeyArg' h stmt = do
     StmtVariadic {} ->
       return ()
     StmtForeign {} ->
+      return ()
+    StmtExpose {} ->
       return ()
     StmtNamespace {} ->
       return ()

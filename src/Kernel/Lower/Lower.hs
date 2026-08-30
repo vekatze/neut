@@ -13,7 +13,7 @@ module Kernel.Lower.Lower
 where
 
 import App.App (App)
-import App.Run (raiseCritical')
+import App.Run (raiseCritical, raiseCritical')
 import Console.ReportMode qualified as Report
 import Control.Monad
 import Control.Monad.Writer.Lazy
@@ -82,6 +82,8 @@ data Handle = Handle
     staticDataMap :: IORef (Map.HashMap T.Text [LC.StaticData]),
     definedNameSet :: IORef (S.Set DD.DefiniteDescription),
     referencedNameSet :: IORef (S.Set DD.DefiniteDescription),
+    fileDefArityRef :: IORef (Map.HashMap DD.DefiniteDescription Int),
+    exportListRef :: IORef [LC.ExportInfo],
     currentSignature :: Maybe (Int, FCT.ForeignCodType BLT.BaseLowType),
     traceConfig :: Trace.Config,
     loggerHandle :: Logger.Handle
@@ -102,6 +104,8 @@ new gensymHandle (Global.Handle {..}) traceConfig target defMap = do
   staticDataMap <- liftIO $ newIORef Map.empty
   definedNameSet <- liftIO $ newIORef S.empty
   referencedNameSet <- liftIO $ newIORef S.empty
+  exportListRef <- liftIO $ newIORef []
+  fileDefArityRef <- liftIO $ newIORef Map.empty
   let currentSignature = Nothing
   return $ Handle {..}
 
@@ -134,7 +138,8 @@ summarize h stmtList = do
   declEnv <- readIORef $ declEnv h
   staticTextList <- readIORef $ staticTextList h
   staticDataMap <- readIORef $ staticDataMap h
-  return (declEnv, stmtList, staticTextList, Map.toList staticDataMap)
+  exportList <- readIORef $ exportListRef h
+  return (declEnv, stmtList, staticTextList, Map.toList staticDataMap, exportList)
 
 optimize :: Handle -> LC.Comp -> IO LC.Comp
 optimize h = do
@@ -156,6 +161,17 @@ lowerStmt h stmt = do
       return $ Just (name, def)
     C.Foreign {} -> do
       return Nothing
+    C.Expose exposeList -> do
+      arityMap <- liftIO $ readIORef (fileDefArityRef h)
+      forM_ exposeList $ \(m, dd, extName) -> do
+        case Map.lookup dd arityMap of
+          Nothing ->
+            raiseCritical m "The target of this `expose` is not defined in this file"
+          Just arity -> do
+            let visibleArity = arity - LC.internalTrailingArgCount
+            liftIO $ insertReferencedName h dd
+            liftIO $ modifyIORef' (exportListRef h) $ (:) (extName, dd, visibleArity)
+      return Nothing
 
 reportTrace :: Handle -> DD.DefiniteDescription -> LC.Def -> App ()
 reportTrace h name def = do
@@ -167,11 +183,14 @@ registerInternalNames :: Handle -> [C.CompStmt] -> IO ()
 registerInternalNames h stmtList =
   forM_ stmtList $ \stmt -> do
     case stmt of
-      C.Def name _ _ _ -> do
+      C.Def name _ defArgs _ -> do
         modifyIORef' (definedNameSet h) $ S.insert name
+        modifyIORef' (fileDefArityRef h) $ Map.insert name (length defArgs)
       C.Foreign foreignList ->
         forM_ foreignList $ \(F.Foreign _ name domList cod) -> do
           insDeclEnv' h (DN.Ext name) domList cod
+      C.Expose {} ->
+        return ()
 
 lowerAuxStmtList :: Handle -> S.Set DD.DefiniteDescription -> [C.CompStmt] -> App [LC.Def]
 lowerAuxStmtList h auxNameSet auxStmtList =

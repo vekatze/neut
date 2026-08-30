@@ -34,6 +34,7 @@ import Data.Text.Lazy.Builder qualified as B
 import Language.Common.ArgNum
 import Language.Common.BaseLowType
 import Language.Common.DefiniteDescription qualified as DD
+import Language.Common.ExternalName qualified as EN
 import Language.Common.Foreign qualified as F
 import Language.Common.ForeignCodType qualified as FCT
 import Language.Common.Ident
@@ -43,6 +44,7 @@ import Language.Common.Opacity
 import Language.Common.PrimNumSize
 import Language.Common.PrimOp
 import Language.Common.PrimOp.BinaryOp qualified as BOp
+import Logger.Hint (Hint)
 import Language.Common.PrimType qualified as PT
 import Language.Comp.EnumCase hiding (Int)
 import Prelude hiding (null)
@@ -297,6 +299,7 @@ type SubstValue =
 data CompStmt
   = Def DD.DefiniteDescription Opacity [Ident] Comp
   | Foreign [F.Foreign]
+  | Expose [(Hint, DD.DefiniteDescription, EN.ExternalName)]
 
 fromCompStmt :: CompStmt -> Maybe (Opacity, [Ident], Comp)
 fromCompStmt cs =
@@ -305,6 +308,8 @@ fromCompStmt cs =
       Just (opacity, xs, body)
     Foreign {} ->
       Nothing
+    Expose {} ->
+      Nothing
 
 getCompStmtName :: CompStmt -> Maybe DD.DefiniteDescription
 getCompStmtName stmt =
@@ -312,6 +317,8 @@ getCompStmtName stmt =
     Def name _ _ _ ->
       Just name
     Foreign {} ->
+      Nothing
+    Expose {} ->
       Nothing
 
 fromDefTuple :: (DD.DefiniteDescription, (Opacity, [Ident], Comp)) -> CompStmt

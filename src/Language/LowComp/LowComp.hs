@@ -8,6 +8,8 @@ module Language.LowComp.LowComp
     StackAllocInfo (..),
     LowCode (..),
     LowCodeInfo,
+    ExportInfo,
+    internalTrailingArgCount,
     StaticData (..),
     StaticDataInfo,
     Def,
@@ -132,7 +134,14 @@ data DefContent = DefContent
   }
 
 type LowCodeInfo =
-  (DN.DeclEnv, [Def], [StaticTextInfo], [StaticDataInfo])
+  (DN.DeclEnv, [Def], [StaticTextInfo], [StaticDataInfo], [ExportInfo])
+
+type ExportInfo =
+  (EN.ExternalName, DD.DefiniteDescription, Int)
+
+internalTrailingArgCount :: Int
+internalTrailingArgCount =
+  2
 
 data LowCode
   = LowCodeMain DefContent LowCodeInfo

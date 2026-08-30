@@ -18,6 +18,7 @@ import Kernel.Common.Handle.Global.Antecedent qualified as Antecedent
 import Kernel.Common.Handle.Global.Artifact qualified as Artifact
 import Kernel.Common.Handle.Global.Data qualified as Data
 import Kernel.Common.Handle.Global.Env qualified as Env
+import Kernel.Common.Handle.Global.Expose qualified as Expose
 import Kernel.Common.Handle.Global.GlobalRemark qualified as GlobalRemark
 import Kernel.Common.Handle.Global.ImportedTypeDefCache qualified as ImportedTypeDefCache
 import Kernel.Common.Handle.Global.KeyArg qualified as KeyArg
@@ -63,6 +64,7 @@ data Handle = Handle
     optDataHandle :: OptimizableData.Handle,
     pathHandle :: Path.Handle,
     resourceHandle :: Resource.Handle,
+    exposeHandle :: Expose.Handle,
     loggerHandle :: Logger.Handle,
     typeHandle :: Type.Handle,
     weakDefHandle :: WeakDef.Handle,
@@ -107,6 +109,7 @@ newHandle _ consoleHandle loggerHandle envHandle selector = do
   Logger.setModuleDir loggerHandle mainModule
   optDataHandle <- OptimizableData.new
   resourceHandle <- Resource.new
+  exposeHandle <- Expose.new
   typeHandle <- Type.new
   dataHandle <- Data.new
   pathHandle <- Path.new mainModule platformHandle loggerHandle

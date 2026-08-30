@@ -146,6 +146,8 @@ inferStmt h stmt =
       return $ WeakStmtNominal m geistList'
     WeakStmtForeign foreignList ->
       return $ WeakStmtForeign foreignList
+    WeakStmtExpose exportList ->
+      return $ WeakStmtExpose exportList
     WeakStmtNamespace m dd ->
       return $ WeakStmtNamespace m dd
 

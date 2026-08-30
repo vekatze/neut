@@ -90,13 +90,44 @@ emitModuleHeader h = do
   ["target triple = \"" <> TE.encodeUtf8Builder (T.pack targetTriple) <> "\""]
 
 emitLowCodeInfo :: Handle -> LC.LowCodeInfo -> IO ([Builder], [Builder])
-emitLowCodeInfo h (declEnv, defList, staticTextList, staticDataList) = do
+emitLowCodeInfo h (declEnv, defList, staticTextList, staticDataList, exportList) = do
   let declStrList = emitDeclarations h declEnv
   let baseSize = Platform.getDataSize (Global.platformHandle (globalHandle h))
   let staticTextList' = concatMap (emitStaticText baseSize) staticTextList
   let staticDataList' = map emitStaticData staticDataList
   defStrList <- concat <$> mapM (emitDefinitions h) defList
-  return (declStrList <> staticTextList' <> staticDataList', defStrList)
+  let exportStrList = concatMap (emitExport h) exportList ++ emitExportRoots exportList
+  return (declStrList <> staticTextList' <> staticDataList', defStrList <> exportStrList)
+
+emitExport :: Handle -> LC.ExportInfo -> [Builder]
+emitExport h (EN.ExternalName extName, dd, arity) = do
+  let name' = TE.encodeUtf8Builder extName
+  let argList = map (\i -> "%a" <> intDec i) [0 .. arity - 1]
+  let params = unwordsC (map ("ptr " <>) argList)
+  let trailingArgs = replicate LC.internalTrailingArgCount "ptr null"
+  let callArgs = unwordsC (map ("ptr noundef " <>) argList ++ trailingArgs)
+  let exportAttributes =
+        case getArch h of
+          Arch.Wasm32 ->
+            ["\"wasm-export-name\"=\"" <> name' <> "\""]
+          _ ->
+            []
+  let attrs = mconcat $ map (" " <>) $ exportAttributes ++ archFunctionAttributes (getArch h)
+  [ "define ptr @\"" <> name' <> "\"(" <> params <> ")" <> attrs <> " {",
+    "  %ret = tail call fastcc ptr @" <> DD.toBuilder dd <> "(" <> callArgs <> ")",
+    "  ret ptr %ret",
+    "}"
+    ]
+
+emitExportRoots :: [LC.ExportInfo] -> [Builder]
+emitExportRoots exportList =
+  case exportList of
+    [] ->
+      []
+    _ -> do
+      let names = map (\(EN.ExternalName extName, _, _) -> "ptr @\"" <> TE.encodeUtf8Builder extName <> "\"") exportList
+      let arrayType = "[" <> intDec (length exportList) <> " x ptr]"
+      ["@llvm.used = appending global " <> arrayType <> " [" <> unwordsC names <> "], section \"llvm.metadata\""]
 
 emitArgDecl :: [Builder]
 emitArgDecl = do

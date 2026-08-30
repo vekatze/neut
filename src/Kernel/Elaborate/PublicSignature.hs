@@ -45,6 +45,8 @@ checkStmt globalHandle baseModule stmt =
       return ()
     Stmt.StmtForeign _ ->
       return ()
+    Stmt.StmtExpose {} ->
+      return ()
     Stmt.StmtNamespace {} ->
       return ()
 

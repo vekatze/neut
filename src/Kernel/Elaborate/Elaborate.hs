@@ -30,6 +30,7 @@ import Kernel.Common.Cache qualified as Cache
 import Kernel.Common.Const (holeLiteral)
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.Data qualified as Data
+import Kernel.Common.Handle.Global.Expose qualified as Expose
 import Kernel.Common.Handle.Global.GlobalRemark qualified as GlobalRemark
 import Kernel.Common.Handle.Global.KeyArg qualified as KeyArg
 import Kernel.Common.Handle.Global.ModulePath qualified as ModulePath
@@ -364,6 +365,11 @@ elaborateStmt h stmt = do
         cod' <- mapM (strictify h) cod
         return $ F.Foreign m externalName domList' cod'
       return ([StmtForeign foreignList'], [])
+    WeakStmtExpose exportList -> do
+      let exportList2 = map (\(m, dd, extName) -> (SavedHint m, dd, extName)) exportList
+      let result = StmtExpose exportList2
+      insertStmt h result
+      return ([result], [])
     WeakStmtNamespace m dd -> do
       return ([StmtNamespace (SavedHint m) dd], [])
 
@@ -571,6 +577,9 @@ insertStmtWithTraceSites h knownTraceSiteIDs stmt = do
       return ()
     StmtForeign _ -> do
       return ()
+    StmtExpose exportList ->
+      forM_ exportList $ \(SavedHint m, dd, extName) ->
+        Expose.insert (Global.exposeHandle (globalHandle h)) m dd extName
     StmtNamespace {} ->
       return ()
   insertWeakStmt h $ weakenStmt stmt
@@ -596,6 +605,8 @@ insertWeakStmt h stmt = do
     WeakStmtForeign foreignList ->
       forM_ foreignList $ \(F.Foreign _ externalName domList cod) -> do
         liftIO $ WeakDecl.insert (weakDeclHandle h) (DN.Ext externalName) domList cod
+    WeakStmtExpose {} -> do
+      return ()
     WeakStmtNamespace {} -> do
       return ()
 
