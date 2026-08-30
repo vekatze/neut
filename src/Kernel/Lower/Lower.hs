@@ -108,7 +108,7 @@ new gensymHandle (Global.Handle {..}) traceConfig target defMap = do
 makeBaseDeclEnv :: DS.DataSize -> AllocatorSpec -> DN.DeclEnv
 makeBaseDeclEnv dataSize spec = do
   Map.fromList $ flip map (allocatorForeignList dataSize spec) $ \(_, F.Foreign _ name domList cod) -> do
-    (DN.Ext name, (domList, cod))
+    (DN.Ext name, (domList, cod, DN.Fixed))
 
 lower :: Handle -> [C.CompStmt] -> [C.CompStmt] -> App LC.LowCode
 lower h stmtList auxStmtList = do
@@ -138,7 +138,7 @@ summarize h stmtList = do
 
 optimize :: Handle -> LC.Comp -> IO LC.Comp
 optimize h = do
-  return . MallocFreeCancel.mallocFreeCancel
+  return . MallocFreeCancel.mallocFreeCancel (baseSize h)
     >=> FreeMallocCancel.freeMallocCancel FreeMallocCancel.Exact (gensymHandle h)
     >=> FreeMallocCancel.freeMallocCancel FreeMallocCancel.Compatible (gensymHandle h)
     >=> HoistStackAlloc.hoistStackAlloc (gensymHandle h) (baseSize h)
@@ -463,9 +463,13 @@ lowerCompPrimitive h resultVar codeOp cont =
                 =<< return . LC.Cont (LC.StackLifetimeStart stackSlotID)
                 =<< uncast h resultVar ptrValue LT.Pointer cont
         LM.External domList cod name fixedArgs varArgAndTypeList -> do
-          alreadyRegistered <- liftIO $ member h (DN.Ext name)
-          unless alreadyRegistered $ do
-            liftIO $ insDeclEnv' h (DN.Ext name) domList cod
+          if null varArgAndTypeList
+            then do
+              alreadyRegistered <- liftIO $ member h (DN.Ext name)
+              unless alreadyRegistered $ do
+                liftIO $ insDeclEnv' h (DN.Ext name) domList cod
+            else do
+              liftIO $ insDeclEnvVariadic h (DN.Ext name) domList cod
           let (varArgs, varTypes) = unzip varArgAndTypeList
           let argCaster = map LT.fromBaseLowType $ domList ++ varTypes
           let suffix = if null varArgs then [] else [LT.VarArgs]
@@ -703,7 +707,11 @@ insDeclEnv h k argNum cod = do
 
 insDeclEnv' :: Handle -> DN.DeclarationName -> [BLT.BaseLowType] -> FCT.ForeignCodType BLT.BaseLowType -> IO ()
 insDeclEnv' h k domList cod = do
-  modifyIORef' (declEnv h) $ Map.insert k (domList, cod)
+  modifyIORef' (declEnv h) $ Map.insert k (domList, cod, DN.Fixed)
+
+insDeclEnvVariadic :: Handle -> DN.DeclarationName -> [BLT.BaseLowType] -> FCT.ForeignCodType BLT.BaseLowType -> IO ()
+insDeclEnvVariadic h k domList cod = do
+  modifyIORef' (declEnv h) $ Map.insert k (domList, cod, DN.Variadic)
 
 member :: Handle -> DN.DeclarationName -> IO Bool
 member h k = do

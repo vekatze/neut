@@ -393,10 +393,11 @@ naiveReplace sub t =
 getForeignSubst :: Handle -> Target -> M.Module -> App [(T.Text, T.Text)]
 getForeignSubst h t m = do
   clang <- liftIO Platform.getClang
+  let targetTriple = Platform.getClangTargetTriple (Global.platformHandle (globalHandle h))
   foreignDir <- Path.getForeignDir (Global.pathHandle (globalHandle h)) t m
   return
     [ ("{{module-root}}", shellQuote $ T.pack $ toFilePath $ M.getModuleRootDir m),
-      ("{{clang}}", shellQuote $ T.pack clang),
+      ("{{clang}}", T.unwords $ map (shellQuote . T.pack) [clang, "-target", targetTriple]),
       ("{{foreign}}", shellQuote $ T.pack $ toFilePath foreignDir)
     ]
 

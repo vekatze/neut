@@ -22,11 +22,13 @@ import Data.Text.Encoding qualified as TE
 import Gensym.CreateHandle qualified as Gensym
 import Gensym.Handle qualified as GensymHandle
 import Kernel.Common.Allocator (Allocator, AllocatorKind (..), allocatorFamily, allocatorForeignList, allocatorSpec)
+import Kernel.Common.Arch qualified as Arch
 import Kernel.Common.Const
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.Env qualified as Env
 import Kernel.Common.Handle.Global.ModulePath qualified as ModulePath
 import Kernel.Common.Handle.Global.Platform qualified as Platform
+import Kernel.Common.Platform qualified as P
 import Kernel.Common.Target (Target)
 import Kernel.Common.Trace qualified as Trace
 import Kernel.Emit.Builder
@@ -37,6 +39,7 @@ import Language.Common.BaseLowType qualified as BLT
 import Language.Common.CreateSymbol qualified as Gensym
 import Language.Common.DataSize qualified as DS
 import Language.Common.DefiniteDescription qualified as DD
+import Language.Common.ExternalName qualified as EN
 import Language.Common.Foreign qualified as F
 import Language.Common.ForeignCodType qualified as FCT
 import Language.Common.Ident.Reify
@@ -69,14 +72,16 @@ emit h lowCode = do
     LC.LowCodeMain mainDef lowCodeInfo -> do
       main <- emitMain h mainDef
       let moduleHeader = emitModuleHeader h
-      let argDef = emitArgDef
+      let argDef = emitArgDef (getDataSize h)
       (header, body) <- emitLowCodeInfo h lowCodeInfo
-      return $ buildByteString $ moduleHeader ++ header ++ argDef ++ main ++ body
+      let attributeGroups = emitAttributeGroups (getArch h)
+      return $ buildByteString $ moduleHeader ++ header ++ argDef ++ main ++ body ++ attributeGroups
     LC.LowCodeNormal lowCodeInfo -> do
       let moduleHeader = emitModuleHeader h
       let argDecl = emitArgDecl
       (header, body) <- emitLowCodeInfo h lowCodeInfo
-      return $ buildByteString $ moduleHeader ++ header ++ argDecl ++ body
+      let attributeGroups = emitAttributeGroups (getArch h)
+      return $ buildByteString $ moduleHeader ++ header ++ argDecl ++ body ++ attributeGroups
 
 emitModuleHeader :: Handle -> [Builder]
 emitModuleHeader h = do
@@ -99,24 +104,24 @@ emitArgDecl = do
   let argv = emitGlobalExt unsafeArgvName LT.Pointer
   [argc, argv]
 
-emitArgDef :: [Builder]
-emitArgDef = do
-  let argc = emitGlobal unsafeArgcName LT.Pointer LC.Null
-  let argv = emitGlobal unsafeArgvName LT.Pointer LC.Null
+emitArgDef :: DS.DataSize -> [Builder]
+emitArgDef baseSize = do
+  let argc = emitGlobal baseSize unsafeArgcName LT.Pointer LC.Null
+  let argv = emitGlobal baseSize unsafeArgvName LT.Pointer LC.Null
   [argc, argv]
 
 buildByteString :: [Builder] -> L.ByteString
 buildByteString =
   L.toLazyByteString . unlinesL
 
-emitGlobal :: T.Text -> LT.LowType -> LC.Value -> Builder
-emitGlobal name lt v =
+emitGlobal :: DS.DataSize -> T.Text -> LT.LowType -> LC.Value -> Builder
+emitGlobal baseSize name lt v =
   "@"
     <> TE.encodeUtf8Builder name
     <> " = global "
     <> emitLowType lt
     <> " "
-    <> emitValue v
+    <> emitValue baseSize v
 
 emitGlobalExt :: T.Text -> LT.LowType -> Builder
 emitGlobalExt name lt =
@@ -205,16 +210,32 @@ emitDefinitions h (name, LC.DefContent {codType = codType, args = args, body = b
   let sub = IntMap.fromList $ zipWith (\from to -> (toInt from, LC.VarLocal to)) args args'
   let reduceHandle = Reduce.new definitionGensymHandle
   body' <- Reduce.reduce reduceHandle sub body
-  let args'' = showInternalFuncArgs $ map (emitValue . LC.VarLocal) args'
+  let args'' = showInternalFuncArgs $ map (emitValue (getDataSize h) . LC.VarLocal) args'
   emitDefinition h definitionGensymHandle True (Just name) codType (DD.toBuilder name) args'' body'
 
 emitMain :: Handle -> LC.DefContent -> IO [Builder]
 emitMain h (LC.DefContent {codType = codType, args = args, body = body}) = do
-  let args' = showFuncArgs $ map (emitValue . LC.VarLocal) args
-  emitDefinition h (gensymHandle h) False Nothing codType "main" args' body
+  let args' = showFuncArgs $ map (emitValue (getDataSize h) . LC.VarLocal) args
+  emitDefinition h (gensymHandle h) False Nothing codType (mainSymbol (getArch h)) args' body
 
-declToBuilder :: Handle -> (DN.DeclarationName, ([BLT.BaseLowType], FCT.ForeignCodType BLT.BaseLowType)) -> Builder
-declToBuilder h (name, (dom, cod)) = do
+mainSymbol :: Arch.Arch -> Builder
+mainSymbol arch =
+  case arch of
+    Arch.Wasm32 ->
+      "__main_argc_argv"
+    _ ->
+      "main"
+
+getArch :: Handle -> Arch.Arch
+getArch h =
+  P.arch $ Platform.getPlatform $ Global.platformHandle $ globalHandle h
+
+getDataSize :: Handle -> DS.DataSize
+getDataSize h =
+  Platform.getDataSize $ Global.platformHandle $ globalHandle h
+
+declToBuilder :: Handle -> (DN.DeclarationName, ([BLT.BaseLowType], FCT.ForeignCodType BLT.BaseLowType, DN.Variadicity)) -> Builder
+declToBuilder h (name, (dom, cod, variadicity)) = do
   let codType = FCT.fromForeignCodType cod
   let isInternal =
         case name of
@@ -230,22 +251,40 @@ declToBuilder h (name, (dom, cod)) = do
         returnType
           <> " @"
           <> DN.toBuilder name
-          <> emitDeclarationArgs isInternal maybeKind dom
+          <> emitDeclarationArgs isInternal maybeKind variadicity dom
   attachAttributes "declare" $
     callConvAttributes
       ++ returnAttributes
       ++ [signature]
       ++ maybe [] (allocatorFunctionAttributes (allocator h)) maybeKind
+      ++ wasmImportAttributes (getArch h) name
 
-emitDeclarationArgs :: Bool -> Maybe AllocatorKind -> [BLT.BaseLowType] -> Builder
-emitDeclarationArgs isInternal maybeKind dom = do
+wasmImportAttributes :: Arch.Arch -> DN.DeclarationName -> [Builder]
+wasmImportAttributes arch name =
+  case (arch, name) of
+    (Arch.Wasm32, DN.Ext (EN.ExternalName extName))
+      | not ("llvm." `T.isPrefixOf` extName) -> do
+          let name' = TE.encodeUtf8Builder extName
+          ["\"wasm-import-module\"=\"env\" \"wasm-import-name\"=\"" <> name' <> "\""]
+    _ ->
+      []
+
+emitDeclarationArgs :: Bool -> Maybe AllocatorKind -> DN.Variadicity -> [BLT.BaseLowType] -> Builder
+emitDeclarationArgs isInternal maybeKind variadicity dom = do
   let renderArg index t = do
         let attributes =
               if isInternal
                 then internalArgAttributes t
                 else maybe [] (`allocatorArgAttributes` index) maybeKind
         attachAttributes (emitLowType t) attributes
-  "(" <> unwordsC (zipWith renderArg [0 ..] (map LT.fromBaseLowType dom)) <> ")"
+  let renderedArgs = zipWith renderArg [0 ..] (map LT.fromBaseLowType dom)
+  let renderedArgs' =
+        case variadicity of
+          DN.Variadic ->
+            renderedArgs ++ ["..."]
+          DN.Fixed ->
+            renderedArgs
+  "(" <> unwordsC renderedArgs' <> ")"
 
 allocatorKindOf ::
   Handle ->
@@ -301,7 +340,7 @@ allocatorFunctionAttributes allocator kind = do
 
 emitDefinition :: Handle -> GensymHandle.Handle -> Bool -> Maybe DD.DefiniteDescription -> LT.LowType -> Builder -> Builder -> LC.Comp -> IO [Builder]
 emitDefinition h gensymHandle isInternal maybeName retType name args asm = do
-  let header = sig isInternal retType name args <> " {"
+  let header = sig isInternal retType name args (archFunctionAttributes (getArch h)) <> " {"
   emitLowCompHandle <- EmitLowComp.new gensymHandle (globalHandle h) (emitLowType retType) (allocatorSpec $ allocator h)
   content <- EmitLowComp.emitLowComp emitLowCompHandle asm
   let footer = "}"
@@ -316,8 +355,36 @@ emitDefinition h gensymHandle isInternal maybeName retType name args asm = do
       return ()
   return definition
 
-sig :: Bool -> LT.LowType -> Builder -> Builder -> Builder
-sig isInternal retType name args = do
+sig :: Bool -> LT.LowType -> Builder -> Builder -> [Builder] -> Builder
+sig isInternal retType name args functionAttributes = do
   let callConvAttributes = if isInternal then ["fastcc"] else []
   let returnType = if isInternal then emitInternalReturnType retType else emitLowType retType
-  attachAttributes "define" $ callConvAttributes ++ [returnType <> " @" <> name <> args]
+  attachAttributes "define" $ callConvAttributes ++ [returnType <> " @" <> name <> args] ++ functionAttributes
+
+archAttributeGroupName :: Builder
+archAttributeGroupName =
+  "#0"
+
+archAttributeList :: Arch.Arch -> [Builder]
+archAttributeList arch =
+  case arch of
+    Arch.Wasm32 ->
+      ["\"target-features\"=\"+tail-call\""]
+    _ ->
+      []
+
+archFunctionAttributes :: Arch.Arch -> [Builder]
+archFunctionAttributes arch =
+  case archAttributeList arch of
+    [] ->
+      []
+    _ ->
+      [archAttributeGroupName]
+
+emitAttributeGroups :: Arch.Arch -> [Builder]
+emitAttributeGroups arch =
+  case archAttributeList arch of
+    [] ->
+      []
+    attributeList ->
+      ["attributes " <> archAttributeGroupName <> " = { " <> unwordsC attributeList <> " }"]

@@ -12,6 +12,7 @@ module Kernel.Emit.LowValue
   )
 where
 
+import Data.Bits
 import Data.ByteString.Builder
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
@@ -19,6 +20,7 @@ import Data.Word
 import GHC.Float
 import Kernel.Emit.Builder
 import Kernel.Emit.LowType (emitLowType)
+import Language.Common.DataSize qualified as DS
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.ExternalName qualified as EN
 import Language.Common.Ident
@@ -28,8 +30,8 @@ import Language.LowComp.LowComp qualified as LC
 import Numeric (showHex)
 import Numeric.Half
 
-emitValue :: LC.Value -> Builder
-emitValue lowValue =
+emitValue :: DS.DataSize -> LC.Value -> Builder
+emitValue baseSize lowValue =
   case lowValue of
     LC.VarLocal x ->
       "%" <> emitIdentAsVar x
@@ -46,7 +48,10 @@ emitValue lowValue =
     LC.Address a ->
       if a == 0
         then "null"
-        else "inttoptr (i64 " <> integerDec a <> " to ptr)"
+        else do
+          let bits = DS.reify baseSize
+          let wordType = "i" <> intDec bits
+          "inttoptr (" <> wordType <> " " <> integerDec (a .&. (bit bits - 1)) <> " to ptr)"
     LC.Null ->
       "null"
 
@@ -125,23 +130,23 @@ emitIdentAsLabelVar :: Ident -> Builder
 emitIdentAsLabelVar x =
   "%" <> emitIdentAsLabel x
 
-showArgs :: [(LT.LowType, LC.Value)] -> Builder
-showArgs tds =
-  showLocals $ map showArg tds
+showArgs :: DS.DataSize -> [(LT.LowType, LC.Value)] -> Builder
+showArgs baseSize tds =
+  showLocals $ map (showArg baseSize) tds
 
-showInternalArgs :: [(LT.LowType, LC.Value)] -> Builder
-showInternalArgs tds =
-  showLocals $ map showInternalArg tds
+showInternalArgs :: DS.DataSize -> [(LT.LowType, LC.Value)] -> Builder
+showInternalArgs baseSize tds =
+  showLocals $ map (showInternalArg baseSize) tds
 
-showArg :: (LT.LowType, LC.Value) -> Builder
-showArg (t, d) =
-  emitLowType t <> " " <> emitValue d
+showArg :: DS.DataSize -> (LT.LowType, LC.Value) -> Builder
+showArg baseSize (t, d) =
+  emitLowType t <> " " <> emitValue baseSize d
 
-showInternalArg :: (LT.LowType, LC.Value) -> Builder
-showInternalArg (t, d) =
+showInternalArg :: DS.DataSize -> (LT.LowType, LC.Value) -> Builder
+showInternalArg baseSize (t, d) =
   attachAttributes (emitLowType t) (internalArgAttributes t)
     <> " "
-    <> emitValue d
+    <> emitValue baseSize d
 
 showLocals :: [Builder] -> Builder
 showLocals ds =

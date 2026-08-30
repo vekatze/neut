@@ -1,5 +1,6 @@
 module Language.LowComp.DeclarationName
   ( DeclarationName (..),
+    Variadicity (..),
     DeclEnv,
     reify,
     toBuilder,
@@ -24,7 +25,12 @@ data DeclarationName
 
 instance Hashable DeclarationName
 
-type DeclEnv = Map.HashMap DeclarationName ([BaseLowType], F.ForeignCodType BaseLowType)
+data Variadicity
+  = Fixed
+  | Variadic
+  deriving (Eq, Ord, Show, Generic)
+
+type DeclEnv = Map.HashMap DeclarationName ([BaseLowType], F.ForeignCodType BaseLowType, Variadicity)
 
 toBuilder :: DeclarationName -> Builder
 toBuilder dn =

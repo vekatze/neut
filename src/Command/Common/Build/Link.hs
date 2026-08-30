@@ -6,6 +6,7 @@ module Command.Common.Build.Link
 where
 
 import App.App (App)
+import App.Run (raiseError')
 import Console.Handle qualified as Console
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.ByteString qualified as B
@@ -79,7 +80,8 @@ link' h target sourceList = do
   linkResponseFilePath <- Path.getLinkResponseFilePath (pathHandle h) target
   writeLinkResponseFile linkResponseFilePath objects
   liftIO $ Logger.report (loggerHandle h) $ "Created a response file at: " <> T.pack (toFilePath linkResponseFilePath)
-  let linkOptions = clangLinkOpt targetTriple linkResponseFilePath outputPath (ltoOption ++ userLinkOptions)
+  let os = P.os (Platform.getPlatform (platformHandle h))
+  let linkOptions = clangLinkOpt targetTriple os linkResponseFilePath outputPath (ltoOption ++ userLinkOptions)
   let numOfObjects = length objects
   let workingTitle = getWorkingTitle numOfObjects
   let completedTitle = getCompletedTitle numOfObjects
@@ -180,6 +182,8 @@ getAllocatorLibraryIfNecessary :: Handle -> MainTarget -> App (Maybe (Path Abs F
 getAllocatorLibraryIfNecessary h target = do
   allocator <- Env.getAllocatorByTarget (envHandle h) (Main target)
   case allocator of
+    Mimalloc | P.os (Platform.getPlatform (platformHandle h)) == OS.Wasi ->
+      raiseError' "The mimalloc allocator is not supported on wasm32 targets; use `allocator \"system\"`"
     Mimalloc -> do
       let baseModule = extractModule $ Env.getMainModule (envHandle h)
       allocatorDir <- Path.getAllocatorDir (pathHandle h) (Main target) baseModule
@@ -212,16 +216,23 @@ escapeResponseFileChar c =
     _ ->
       T.singleton c
 
-clangLinkOpt :: String -> Path Abs File -> Path Abs File -> [String] -> [String]
-clangLinkOpt targetTriple linkResponseFilePath outputPath additionalOptions = do
+clangLinkOpt :: String -> OS.OS -> Path Abs File -> Path Abs File -> [String] -> [String]
+clangLinkOpt targetTriple os linkResponseFilePath outputPath additionalOptions = do
+  let threadOption =
+        case os of
+          OS.Wasi ->
+            []
+          _ ->
+            ["-pthread"]
   [ "-target",
     targetTriple,
     "-O2",
-    "-flto=thin",
-    "-pthread",
-    "-o",
-    toFilePath outputPath
+    "-flto=thin"
     ]
+    ++ threadOption
+    ++ [ "-o",
+         toFilePath outputPath
+       ]
     ++ ["@" ++ toFilePath linkResponseFilePath]
     ++ additionalOptions
     ++ ["-lm"]
