@@ -1,13 +1,14 @@
 {
+  universal false,
   target {
-    args {
-      main "args.nt",
+    capability {
+      main "capability.nt",
       build-option [
         "-fsanitize=address",
       ],
     },
-    args-wasm {
-      main "args.nt",
+    capability-wasm {
+      main "capability.nt",
       platform "wasm32",
       execute ["wasmtime", "{{executable}}"],
     },

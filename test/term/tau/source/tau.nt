@@ -1,6 +1,6 @@
 import {
   core::null {null},
-  core::sync.thread {thread},
+  core::rc {rc},
 }
 
 define test-syntax() -> type {
@@ -49,9 +49,9 @@ define noema-is-type(a: type) -> type {
   pack-type {&a}
 }
 
-define thread-is-type(a: type) -> type {
+define rc-is-type(a: type) -> type {
   unpack-type a = a;
-  pack-type {thread(a)}
+  pack-type {rc(a)}
 }
 
 define resource-is-type() -> type {
@@ -68,7 +68,7 @@ define test-semantics() -> type {
   let _ = pi-is-type();
   let _ = data-is-type();
   let _ = noema-is-type(pack-type {type});
-  let _ = thread-is-type(pack-type {type});
+  let _ = rc-is-type(pack-type {type});
   let _ = resource-is-type();
   pack-type {type}
 }

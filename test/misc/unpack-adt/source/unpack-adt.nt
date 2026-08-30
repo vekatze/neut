@@ -1,5 +1,5 @@
 import {
-  core::c-size {C-Size},
+  core::c-size {to-c-size},
   core::int.io {print-int-line},
   core::memory {malloc},
   core::memory.unsafe {free, load-int, store-int},
@@ -26,7 +26,7 @@ resource pair-res {
   (v: pointer, dest: pointer) => {
     let p =
       if is-null-pointer(dest) {
-        malloc(C-Size(mul-int(2, size)))
+        malloc(to-c-size(mul-int(2, size)))
       } else {
         dest
       };
@@ -133,7 +133,7 @@ define sum-copy(e: entity) -> int {
 }
 
 define make-pair-res(x: int, y: int) -> pair-res {
-  let p = malloc(C-Size(mul-int(2, size)));
+  let p = malloc(to-c-size(mul-int(2, size)));
   store-int(x, p);
   store-int(y, shift(p, size));
   magic cast(pointer, pair-res, p)

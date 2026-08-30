@@ -1,5 +1,6 @@
 [![Tests on Linux](https://github.com/vekatze/neut/actions/workflows/linux.yaml/badge.svg)](https://github.com/vekatze/neut/actions/workflows/linux.yaml)
 [![Tests on macOS](https://github.com/vekatze/neut/actions/workflows/macos.yaml/badge.svg)](https://github.com/vekatze/neut/actions/workflows/macos.yaml)
+[![Tests on WebAssembly](https://github.com/vekatze/neut/actions/workflows/wasm.yaml/badge.svg)](https://github.com/vekatze/neut/actions/workflows/wasm.yaml)
 
 # Neut
 

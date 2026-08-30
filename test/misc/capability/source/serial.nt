@@ -1,0 +1,7 @@
+define sum-to(n: int) -> int {
+  if eq-int(n, 0) {
+    0
+  } else {
+    add-int(n, sum-to(sub-int(n, 1)))
+  }
+}

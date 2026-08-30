@@ -1,5 +1,5 @@
 import {
-  core::sync.thread {thread},
+  core::rc {rc},
   this::pi-keyword,
   this::pi-term,
 }
@@ -19,8 +19,8 @@ define test-syntax() -> unit {
   let _ = pack-type {(a: type, list(type)) -> a};
   let _ = pack-type {(a: type, a) -> &list(type)};
   let _ = pack-type {(a: type, &list(type)) -> a};
-  let _ = pack-type {(a: type, a) -> thread(list(type))};
-  let _ = pack-type {(a: type, thread(list(type))) -> a};
+  let _ = pack-type {(a: type, a) -> rc(list(type))};
+  let _ = pack-type {(a: type, rc(list(type))) -> a};
   let _ = pack-type {(a: type, a) -> type};
   let _ = pack-type {(a: type, (a) -> a) -> type};
   let _ = pack-type {(a: type, ((a) -> a) -> a) -> type};
@@ -33,8 +33,8 @@ define test-syntax() -> unit {
   let _ = pack-type {(type) -> {(list(type)) -> type}};
   let _ = pack-type {(type) -> {(type) -> &list(type)}};
   let _ = pack-type {(type) -> {(&list(type)) -> type}};
-  let _ = pack-type {(type) -> {(type) -> thread(list(type))}};
-  let _ = pack-type {(type) -> {(thread(list(type))) -> type}};
+  let _ = pack-type {(type) -> {(type) -> rc(list(type))}};
+  let _ = pack-type {(type) -> {(rc(list(type))) -> type}};
   let _ = pack-type {(type) -> {({(type) -> type}) -> type}};
   let _ = pack-type {(type) -> {(type) -> {(type) -> type}}};
   let _ = pack-type {(type) -> {({(type) -> type}) -> {(type) -> type}}};
