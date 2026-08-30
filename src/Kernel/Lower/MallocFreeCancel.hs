@@ -57,7 +57,7 @@ analyze lowComp =
       analyze cont
     LC.Switch _ _ defaultBranch ces phiTargets cont ->
       let branches = defaultBranch : map snd ces
-       in analyzeSwitchJoin branches phiTargets cont <> mconcat (map analyze (cont : branches))
+       in analyzeSwitchJoin branches (map fst phiTargets) cont <> mconcat (map analyze (cont : branches))
     LC.TailCall {} ->
       mempty
     LC.Unreachable ->
@@ -100,8 +100,9 @@ collectFreeIDs aliases lowComp =
 getAliasSource :: LC.Op -> Maybe Ident
 getAliasSource op =
   case op of
-    LC.Bitcast (LC.VarLocal y) LT.Pointer LT.Pointer ->
-      Just y
+    LC.Bitcast (LC.VarLocal y) from to
+      | from == to ->
+          Just y
     LC.PointerToInt (LC.VarLocal y) _ ->
       Just y
     LC.IntToPointer (LC.VarLocal y) _ ->
@@ -158,7 +159,7 @@ collectBranchResultOrigin env lowComp =
             foldl'
               (\acc (phiTarget, resultOrigin) -> Map.insert phiTarget resultOrigin acc)
               env
-              (zip phiTargets resultOrigins)
+              (zip (map fst phiTargets) resultOrigins)
       collectBranchResultOrigin env' cont
     LC.TailCall {} ->
       Nothing

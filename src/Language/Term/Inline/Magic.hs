@@ -43,7 +43,7 @@ import Language.Common.Ident.Reify qualified as Ident
 import Language.Common.IsConstLike (IsConstLike)
 import Language.Common.Literal qualified as L
 import Language.Common.ModuleID qualified as MID
-import Language.Common.PrimNumSize (dataSizeToIntSize)
+import Language.Common.SlotSize
 import Language.Common.PrimType qualified as PT
 import Language.Common.Rune qualified as Rune
 import Language.Common.SourceLocator qualified as SL
@@ -63,9 +63,9 @@ evaluateInspectType :: Handle -> Hint -> MID.ModuleID -> TM.Type -> App TM.Term
 evaluateInspectType h m moduleID typeExpr = do
   case typeExpr of
     _ :< TM.Tau ->
-      returnTypeValueIntValue h m moduleID TypeValue.Type
+      returnTypeValueIntValue m moduleID TypeValue.Type
     _ :< TM.Pi {} ->
-      returnTypeValueIntValue h m moduleID TypeValue.Function
+      returnTypeValueIntValue m moduleID TypeValue.Function
     _ :< TM.Data _ dataName dataArgs -> do
       DI.DataInfo {DI.dataArgs = dataArgBinders, DI.consInfoList = consInfoListRaw} <- lookupDataInfo h m dataName
       consInfoList <- specializeConsInfoList h m dataName dataArgBinders dataArgs consInfoListRaw
@@ -75,7 +75,7 @@ evaluateInspectType h m moduleID typeExpr = do
             then do
               case dataArgs of
                 [dataArg] ->
-                  returnTypeValueIntValue h m moduleID $ TypeValue.Vector dataArg
+                  returnTypeValueIntValue m moduleID $ TypeValue.Vector dataArg
                 _ -> do
                   let len = length dataArgs
                   reportMacroError h m $
@@ -85,52 +85,52 @@ evaluateInspectType h m moduleID typeExpr = do
                 then do
                   case dataArgs of
                     [dataArg] ->
-                      returnTypeValueIntValue h m moduleID $ TypeValue.Array dataArg
+                      returnTypeValueIntValue m moduleID $ TypeValue.Array dataArg
                     _ -> do
                       let len = length dataArgs
                       reportMacroError h m $
                         "inspect-type: `array` expects 1 argument, but got " <> T.pack (show len) <> " arguments."
-                else returnTypeValueIntValue h m moduleID $ TypeValue.Wrapper arg
+                else returnTypeValueIntValue m moduleID $ TypeValue.Wrapper arg
         _ -> do
           let consInfoList' = map consToTypeValue consInfoList
           let isEnum = all (\consInfo -> DI.isConstLike consInfo && null (DI.consArgs consInfo)) consInfoList
           if isEnum && not (null consInfoList)
             then do
               let enumConsNames = map (DD.localLocator . DI.consName) consInfoList
-              returnTypeValueIntValue h m moduleID $ TypeValue.Enum enumConsNames
+              returnTypeValueIntValue m moduleID $ TypeValue.Enum enumConsNames
             else do
               let dataNameText = DD.localLocator dataName
-              returnTypeValueIntValue h m moduleID $ TypeValue.Algebraic dataNameText dataArgs consInfoList'
+              returnTypeValueIntValue m moduleID $ TypeValue.Algebraic dataNameText dataArgs consInfoList'
     _ :< TM.BoxNoema t ->
-      returnTypeValueIntValue h m moduleID $ TypeValue.Noema t
+      returnTypeValueIntValue m moduleID $ TypeValue.Noema t
     _ :< TM.Embed _ ->
-      returnTypeValueIntValue h m moduleID TypeValue.Opaque
+      returnTypeValueIntValue m moduleID TypeValue.Opaque
     _ :< TM.Box t ->
-      returnTypeValueIntValue h m moduleID $ TypeValue.BoxT t
+      returnTypeValueIntValue m moduleID $ TypeValue.BoxT t
     _ :< TM.Code _ ->
-      returnTypeValueIntValue h m moduleID TypeValue.Opaque
+      returnTypeValueIntValue m moduleID TypeValue.Opaque
     _ :< TM.PrimType (PT.Int size) ->
-      returnTypeValueIntValue h m moduleID (TypeValue.fromIntSize size)
+      returnTypeValueIntValue m moduleID (TypeValue.fromIntSize size)
     _ :< TM.PrimType (PT.Float size) ->
-      returnTypeValueIntValue h m moduleID (TypeValue.fromFloatSize size)
+      returnTypeValueIntValue m moduleID (TypeValue.fromFloatSize size)
     _ :< TM.PrimType PT.Text ->
-      returnTypeValueIntValue h m moduleID TypeValue.Opaque
+      returnTypeValueIntValue m moduleID TypeValue.Opaque
     _ :< TM.PrimType PT.Blob ->
-      returnTypeValueIntValue h m moduleID TypeValue.Opaque
+      returnTypeValueIntValue m moduleID TypeValue.Opaque
     _ :< TM.PrimType PT.Pointer ->
-      returnTypeValueIntValue h m moduleID TypeValue.Pointer
+      returnTypeValueIntValue m moduleID TypeValue.Pointer
     _ :< TM.PrimType PT.Rune ->
-      returnTypeValueIntValue h m moduleID TypeValue.Rune
+      returnTypeValueIntValue m moduleID TypeValue.Rune
     _ :< TM.Resource name _ -> do
       let binarySGL = SGL.new moduleID SL.binaryLocator
       let binaryDD = DD.newByGlobalLocator binarySGL BN.binary
       if name == binaryDD
-        then returnTypeValueIntValue h m moduleID TypeValue.Binary
-        else returnTypeValueIntValue h m moduleID TypeValue.Opaque
+        then returnTypeValueIntValue m moduleID TypeValue.Binary
+        else returnTypeValueIntValue m moduleID TypeValue.Opaque
     _ :< TM.TVarGlobal _ _ -> do
-      returnTypeValueIntValue h m moduleID TypeValue.Opaque
+      returnTypeValueIntValue m moduleID TypeValue.Opaque
     _ :< TM.TyApp (_ :< TM.TVarGlobal _ _) _ -> do
-      returnTypeValueIntValue h m moduleID TypeValue.Opaque
+      returnTypeValueIntValue m moduleID TypeValue.Opaque
     _ -> do
       reportMacroError h m $
         "inspect-type: unable to determine type value for this type expression. Got: "
@@ -195,8 +195,8 @@ makeAttrDI typeValueSGL typeTag = do
   let discriminant = D.MakeDiscriminant $ TypeTag.typeTagToInteger typeTag
   return $ AttrDI.Attr {dataName, discriminant, isConstLike = isConstTypeTag typeTag}
 
-returnTypeValueIntValue :: Handle -> Hint -> MID.ModuleID -> TypeValue.TypeValue -> App TM.Term
-returnTypeValueIntValue h m moduleID typeValue = do
+returnTypeValueIntValue :: Hint -> MID.ModuleID -> TypeValue.TypeValue -> App TM.Term
+returnTypeValueIntValue m moduleID typeValue = do
   let typeValueSGL = SGL.new moduleID SL.typeValueLocator
   attr <- makeAttrDI typeValueSGL $ TypeValue.toTypeTag typeValue
   let tag = TypeValue.toTypeTag typeValue
@@ -206,7 +206,7 @@ returnTypeValueIntValue h m moduleID typeValue = do
       let listSgl = makeListSGL moduleID
       let dataNameTerm = m :< TM.Prim (PV.Text dataName)
       dataArgsTerm <- constructListTerm m listSgl dataArgs
-      consInfoTerm <- constructConstructorInfoListTerm h m moduleID consInfoList
+      consInfoTerm <- constructConstructorInfoListTerm m moduleID consInfoList
       return $ m :< TM.DataIntro attr consName [] [dataNameTerm, dataArgsTerm, consInfoTerm]
     TypeValue.Enum consNames -> do
       let listSgl = makeListSGL moduleID
@@ -299,24 +299,22 @@ constructBoolTerm hint moduleID value = do
   hint :< TM.DataIntro attr consName [] []
 
 constructConstructorInfoListTerm ::
-  Handle ->
   Hint ->
   MID.ModuleID ->
   [TypeValue.Constructor] ->
   App TM.Term
-constructConstructorInfoListTerm h hint moduleID consInfoList = do
+constructConstructorInfoListTerm hint moduleID consInfoList = do
   let listSgl = makeListSGL moduleID
   let constructorType = makeConstructorTypeExpr hint moduleID
-  consInfoTerms <- mapM (constructConstructorTerm h hint moduleID) consInfoList
+  consInfoTerms <- mapM (constructConstructorTerm hint moduleID) consInfoList
   constructListTermFromTerms hint listSgl constructorType consInfoTerms
 
 constructConstructorTerm ::
-  Handle ->
   Hint ->
   MID.ModuleID ->
   TypeValue.Constructor ->
   App TM.Term
-constructConstructorTerm h m moduleID (consName, isConstLike, params) = do
+constructConstructorTerm m moduleID (consName, isConstLike, params) = do
   let constructorSgl = makeConstructorSGL moduleID
   let listSgl = makeListSGL moduleID
   let constructorTypeDD = DD.newByGlobalLocator constructorSgl BN.constructorType
@@ -324,7 +322,7 @@ constructConstructorTerm h m moduleID (consName, isConstLike, params) = do
   let fieldType = makeFieldTypeExpr m moduleID
   let attr = AttrDI.Attr {dataName = constructorTypeDD, discriminant = D.zero, isConstLike = False}
   let consNameText = m :< TM.Prim (PV.Text consName)
-  fieldTerms <- mapM (constructFieldTerm h m moduleID) params
+  let fieldTerms = map (constructFieldTerm m moduleID) params
   paramListTerm <- constructListTermFromTerms m listSgl fieldType fieldTerms
   let boolTerm = constructBoolTerm m moduleID isConstLike
   return $ m :< TM.DataIntro attr consDD [] [consNameText, boolTerm, paramListTerm]
@@ -365,37 +363,36 @@ specializeConsInfo h sub consInfo = do
   consArgs' <- mapM specializeConsArg (DI.consArgs consInfo)
   return $ consInfo {DI.consArgs = consArgs'}
 
-constructFieldTerm :: Handle -> Hint -> MID.ModuleID -> TypeValue.Field -> App TM.Term
-constructFieldTerm h m moduleID (paramName, paramType, layout) = do
+constructFieldTerm :: Hint -> MID.ModuleID -> TypeValue.Field -> TM.Term
+constructFieldTerm m moduleID (paramName, paramType, layout) = do
   let constructorSgl = makeConstructorSGL moduleID
   let fieldTypeDD = DD.newByGlobalLocator constructorSgl BN.fieldType
   let fieldDD = DD.newByGlobalLocator constructorSgl BN.field
   let nameTerm = m :< TM.Prim (PV.Text paramName)
   let typeTerm = m :< TM.TauIntro paramType
   let attr = AttrDI.Attr {dataName = fieldTypeDD, discriminant = D.zero, isConstLike = False}
-  layoutTerm <- constructFieldLayoutTerm h m moduleID layout
-  return $ m :< TM.DataIntro attr fieldDD [] [nameTerm, typeTerm, layoutTerm]
+  let layoutTerm = constructFieldLayoutTerm m moduleID layout
+  m :< TM.DataIntro attr fieldDD [] [nameTerm, typeTerm, layoutTerm]
 
-constructFieldLayoutTerm :: Handle -> Hint -> MID.ModuleID -> DI.FieldLayout -> App TM.Term
-constructFieldLayoutTerm h m moduleID layout = do
+constructFieldLayoutTerm :: Hint -> MID.ModuleID -> DI.FieldLayout -> TM.Term
+constructFieldLayoutTerm m moduleID layout = do
   let constructorSgl = makeConstructorSGL moduleID
   let fieldLayoutTypeDD = DD.newByGlobalLocator constructorSgl BN.fieldLayout
   case layout of
     DI.LayoutDirect -> do
       let directDD = DD.newByGlobalLocator constructorSgl BN.direct
       let attr = AttrDI.Attr {dataName = fieldLayoutTypeDD, discriminant = D.zero, isConstLike = True}
-      return $ m :< TM.DataIntro attr directDD [] []
+      m :< TM.DataIntro attr directDD [] []
     DI.LayoutFlattened slotCount -> do
       let mixedDD = DD.newByGlobalLocator constructorSgl BN.mixed
       let attr = AttrDI.Attr {dataName = fieldLayoutTypeDD, discriminant = D.increment D.zero, isConstLike = False}
-      let slotCountTerm = constructIntTerm h m slotCount
-      return $ m :< TM.DataIntro attr mixedDD [] [slotCountTerm]
+      let slotCountTerm = constructIntTerm m slotCount
+      m :< TM.DataIntro attr mixedDD [] [slotCountTerm]
 
-constructIntTerm :: Handle -> Hint -> Int -> TM.Term
-constructIntTerm h m value = do
-  let intSize = dataSizeToIntSize (baseSize h)
-  let intType = m :< TM.PrimType (PT.Int intSize)
-  m :< TM.Prim (PV.Int intType intSize (toInteger value))
+constructIntTerm :: Hint -> Int -> TM.Term
+constructIntTerm m value = do
+  let intType = m :< TM.PrimType (PT.Int slotIntSize)
+  m :< TM.Prim (PV.Int intType slotIntSize (toInteger value))
 
 evaluateShowType :: Hint -> TM.Type -> App TM.Term
 evaluateShowType m typeExpr = do
@@ -458,7 +455,7 @@ evaluateMakeSwitch h m moduleID key fallback clausesTerm = do
           return $ selectSwitchClause keyValue fallback clauses
         Nothing -> do
           cursor <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "switch-key"
-          let intType = m :< TM.PrimType (PT.Int (dataSizeToIntSize (baseSize h)))
+          let intType = m :< TM.PrimType (PT.Int slotIntSize)
           let fallbackTree = makeSwitchLeaf m fallback
           let caseList = map (makeSwitchClause m) clauses
           let tree = DT.Switch (cursor, intType) (fallbackTree, caseList)
@@ -559,13 +556,13 @@ evaluateGetOriginLine :: Handle -> Hint -> App TM.Term
 evaluateGetOriginLine h m = do
   origin <- getOriginHint h m "get-origin-line"
   let (line, _) = metaLocation origin
-  returnOriginInt h m line
+  return $ constructIntTerm m line
 
 evaluateGetOriginColumn :: Handle -> Hint -> App TM.Term
 evaluateGetOriginColumn h m = do
   origin <- getOriginHint h m "get-origin-column"
   let (_, column) = metaLocation origin
-  returnOriginInt h m column
+  return $ constructIntTerm m column
 
 getOriginHint :: Handle -> Hint -> T.Text -> App Hint
 getOriginHint h m magicName = do
@@ -577,12 +574,6 @@ getOriginHint h m magicName = do
       return origin
     [] ->
       return m
-
-returnOriginInt :: Handle -> Hint -> Int -> App TM.Term
-returnOriginInt h m value = do
-  let intSize = dataSizeToIntSize (baseSize h)
-  let intType = m :< TM.PrimType (PT.Int intSize)
-  return $ m :< TM.Prim (PV.Int intType intSize (toInteger value))
 
 reportMacroError :: Handle -> Hint -> T.Text -> App a
 reportMacroError =

@@ -44,8 +44,8 @@ reduce' h sub lowComp = do
       let (cs, es) = unzip ces
       es' <- mapM (reduce' h sub) es
       defaultBranch' <- reduce' h sub defaultBranch
-      phiList' <- mapM (Gensym.newIdentFromIdent (gensymHandle h)) phiList
-      let newSub = IntMap.fromList $ zipWith (\x y -> (Ident.toInt x, LC.VarLocal y)) phiList phiList'
+      phiList' <- mapM (\(x, phiType) -> (,phiType) <$> Gensym.newIdentFromIdent (gensymHandle h) x) phiList
+      let newSub = IntMap.fromList $ zipWith (\(x, _) (y, _) -> (Ident.toInt x, LC.VarLocal y)) phiList phiList'
       let sub' = IntMap.union newSub sub
       cont' <- reduce' h sub' cont
       return $ LC.Switch d' t defaultBranch' (zip cs es') phiList' cont'

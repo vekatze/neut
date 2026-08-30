@@ -71,7 +71,7 @@ import Language.Common.Magic qualified as M
 import Language.Common.ModuleAlias (coreModuleAlias)
 import Language.Common.Noema qualified as N
 import Language.Common.PiKind qualified as PK
-import Language.Common.PrimNumSize (IntSize (IntSize64))
+import Language.Common.SlotSize
 import Language.Common.PrimType qualified as PT
 import Language.Common.RuleKind (RuleKind (FoldLeft, FoldRight))
 import Language.Common.StmtKind qualified as SK
@@ -858,7 +858,8 @@ discern h term =
     _ :< RT.Brace _ (e, _) ->
       discern h e
     m :< RT.Int i -> do
-      let intType = m :< WT.PrimType (PT.Int IntSize64)
+      let baseSize = Platform.getDataSize (H.platformHandle h)
+      let intType = m :< WT.PrimType (PT.Int slotIntSize)
       return $ m :< WT.Prim (WPV.Int intType i)
 
 discernExposeItem :: H.Handle -> RawExposeItem -> App (Hint, DD.DefiniteDescription, EN.ExternalName)

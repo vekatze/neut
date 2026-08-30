@@ -95,7 +95,7 @@ weaken term =
       let e' = weaken e
       m :< WT.PiIntro attr' impArgs' expArgs' defaultArgs' e'
     m :< TM.PiElim _ b e impArgs expArgs defaultArgs -> do
-      let spec = CCS.Inferred $ CC.mapTypes weakenType b
+      let spec = CCS.Resolved $ CC.mapTypes weakenType b
       let e' = weaken e
       let impArgs' = ImpArgs.FullySpecified $ map weakenType impArgs
       let expArgs' = map weaken expArgs

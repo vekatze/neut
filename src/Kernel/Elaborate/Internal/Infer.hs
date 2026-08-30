@@ -21,7 +21,6 @@ import Data.Text qualified as T
 import Gensym.Gensym qualified as Gensym
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.ModulePath qualified as ModulePath
-import Kernel.Common.Handle.Global.Platform qualified as Platform
 import Kernel.Common.Handle.Global.Type qualified as Type
 import Kernel.Elaborate.Internal.Handle.Constraint qualified as Constraint
 import Kernel.Elaborate.Internal.Handle.Elaborate
@@ -127,7 +126,7 @@ inferStmt h stmt =
       (discarder', discarderType) <- infer h discarder
       (copier', copierType) <- infer h copier
       (resourceSize', resourceSizeType) <- infer h resourceSize
-      intType <- getIntType (platformHandle h) m
+      let intType = WT.intType m
       unitType' <- inferType h unitType
       let piType = m :< WT.Pi (PK.Normal True) [] [] [] (m :< WT.Tau)
       liftIO $ Constraint.insert (constraintHandle h) intType resourceSizeType
@@ -249,11 +248,6 @@ inferStmtKindType h stmtKind =
         return (savedHint, consInfo {DI.consArgs = consArgs'})
       return $ SK.Data dataName dataArgs' consInfoList' isNominal
 
-getIntType :: Platform.Handle -> Hint -> App WT.WeakType
-getIntType h m = do
-  let baseSize = Platform.getDataSize h
-  return $ WT.intTypeBySize m baseSize
-
 makeWeakCoreType :: Hint -> MID.ModuleID -> SL.SourceLocator -> BN.BaseName -> AN.ArgNum -> [WT.WeakType] -> WT.WeakType
 makeWeakCoreType m moduleID sourceLocator baseName argNum args = do
   let sgl = SGL.new moduleID sourceLocator
@@ -290,7 +284,7 @@ constrainResourceHandlers h m unitType discarderType copierType = do
   shouldRelease <- liftIO $ Gensym.newIdentForHole (gensymHandle h)
   valueForCopy <- liftIO $ Gensym.newIdentForHole (gensymHandle h)
   dest <- liftIO $ Gensym.newIdentForHole (gensymHandle h)
-  intType <- getIntType (platformHandle h) m
+  let intType = WT.intType m
   let pointerType = m :< WT.PrimType PT.Pointer
   let discardParams =
         [ (m, VK.normal, valueForDiscard, pointerType),
@@ -499,7 +493,7 @@ infer h term =
               return (m :< WT.Magic (M.WeakMagic $ M.LowMagic $ LM.Load t' pointer'), t')
             LM.Alloca lt size -> do
               (size', sizeType) <- infer h size
-              intType <- getIntType (platformHandle h) m
+              let intType = WT.intType m
               lt' <- inferType h lt
               liftIO $ Constraint.insert (constraintHandle h) intType sizeType
               return (m :< WT.Magic (M.WeakMagic $ M.LowMagic $ LM.Alloca lt' size'), m :< WT.PrimType PT.Pointer)
@@ -530,7 +524,7 @@ infer h term =
               (arg1', t1) <- infer h arg1
               (arg2', _) <- infer h arg2
               (arg3', _) <- infer h arg3
-              intType <- getIntType (platformHandle h) m
+              let intType = WT.intType m
               liftIO $ Constraint.insert (constraintHandle h) intType t1
               resultType <- liftIO $ newTypeHole h m (varEnv h)
               return (m :< WT.Magic (M.WeakMagic $ M.LowMagic $ LM.CallType func' arg1' arg2' arg3'), resultType)
@@ -597,7 +591,7 @@ infer h term =
           let eitherType = m :< WT.TyApp eitherTypeVar [unitTypeVar, pairType]
           return (m :< WT.Magic (M.WeakMagic $ M.TextUncons moduleID text'), eitherType)
         M.MakeSwitch moduleID key fallback clauses -> do
-          intType <- getIntType (platformHandle h) m
+          let intType = WT.intType m
           (key', keyType) <- infer h key
           (fallback', fallbackType) <- infer h fallback
           (clauses', clausesType) <- infer h clauses
@@ -617,10 +611,10 @@ infer h term =
         M.GetOriginFileName -> do
           return (m :< WT.Magic (M.WeakMagic M.GetOriginFileName), m :< WT.PrimType PT.Text)
         M.GetOriginLine -> do
-          intType <- getIntType (platformHandle h) m
+          let intType = WT.intType m
           return (m :< WT.Magic (M.WeakMagic M.GetOriginLine), intType)
         M.GetOriginColumn -> do
-          intType <- getIntType (platformHandle h) m
+          let intType = WT.intType m
           return (m :< WT.Magic (M.WeakMagic M.GetOriginColumn), intType)
     m :< WT.Annotation logLevel annot e -> do
       (e', t) <- infer h e
@@ -849,13 +843,9 @@ inferPiElim h m (e, t) impArgs defaultArgsSpec expArgs sourceArgs isDestCall = d
       when (hasSourceSlot || or sourceArgs) $
         forM_ (zip3 expParams sourceArgs expArgs) $ \(param, isSourceArg, (argTerm, _)) ->
           ensureSourceMarkAgreement param isSourceArg argTerm
-      argumentConventions <-
-        if hasSourceSlot
-          then do
-            (expParams', _) <- substTypeBinder h subType expParams
-            return $ map sourceArgumentConvention expParams'
-          else
-            return []
+      argumentConventions <- do
+        (params', _) <- substTypeBinder h subType (expParams ++ defaultParams)
+        return $ map sourceArgumentConvention params'
       let expArgs' = map fst expArgs
       _ :< cod' <- inferArgsTerms h subType m expArgs expParams cod
       defaultArgsOverrides <- resolveDefaultOverrides e defaultParams defaultArgsSpec
@@ -869,7 +859,7 @@ inferPiElim h m (e, t) impArgs defaultArgsSpec expArgs sourceArgs isDestCall = d
             return ()
       let defaultArgsAligned = DefaultArgs.Aligned (map (fmap fst) defaultArgsOverrides)
       let conv = CC.withArguments argumentConventions $ mkKind (m :< cod')
-      return (m :< WT.PiElim (CCS.Inferred conv) e (ImpArgs.FullySpecified impArgs') expArgs' defaultArgsAligned, m :< cod')
+      return (m :< WT.PiElim (CCS.Resolved conv) e (ImpArgs.FullySpecified impArgs') expArgs' defaultArgsAligned, m :< cod')
 
 sourceArgumentConvention :: BinderF WT.WeakType -> CC.Argument WT.WeakType
 sourceArgumentConvention (_, k, _, slotType) =

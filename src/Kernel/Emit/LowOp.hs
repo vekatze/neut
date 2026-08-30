@@ -13,9 +13,9 @@ import Kernel.Emit.LowType
 import Kernel.Emit.LowValue
 import Kernel.Emit.PrimType
 import Language.Common.DataSize (DataSize)
-import Language.Common.DataSize qualified as DS
 import Language.Common.LowType qualified as LT
 import Language.Common.PrimNumSize
+import Language.Common.SlotSize
 import Language.Common.PrimOp
 import Language.Common.PrimType qualified as PT
 import Language.LowComp.LowComp qualified as LC
@@ -30,7 +30,7 @@ data Handle = Handle
 new :: DataSize -> AllocatorSpec -> Handle
 new baseSize allocatorSpec = do
   let intType = LT.PrimNum $ PT.Int $ dataSizeToIntSize baseSize
-  let stackSlotAlignment = DS.reifyBytes baseSize
+  let stackSlotAlignment = slotByteSize
   Handle {..}
 
 emitLowOp :: Handle -> LC.Op -> Builder

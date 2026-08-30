@@ -151,7 +151,6 @@ inlineEnv h = do
   dmap <- Definition.get' (defHandle h)
   typeDefMap <- TypeDef.get' (typeDefHandle h)
   tropeMap <- Trope.get (tropeHandle h)
-  let baseSize = Platform.getDataSize (platformHandle h)
   let mainModule = Env.getMainModule (envHandle h)
   return $
     InlineEnv.Env
@@ -161,7 +160,6 @@ inlineEnv h = do
         InlineEnv.tropeMap = tropeMap,
         InlineEnv.tagHandle = tagHandle h,
         InlineEnv.dataHandle = dataHandle h,
-        InlineEnv.baseSize = baseSize,
         InlineEnv.inlineLimit = inlineLimit h,
         InlineEnv.specializationTable = specializationTable h,
         InlineEnv.pendingSpecializationDefs = pendingSpecializationDefs h,

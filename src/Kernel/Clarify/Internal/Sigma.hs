@@ -3,7 +3,6 @@ module Kernel.Clarify.Internal.Sigma
     DataConstructorInfo (..),
     FieldLayout (..),
     FieldSlots,
-    fieldSlotCount,
     fieldSlotVars,
     new,
     makeImmediateS4,
@@ -38,6 +37,7 @@ import Language.Common.ForeignCodType qualified as FCT
 import Language.Common.Ident
 import Language.Common.LowMagic qualified as LM
 import Language.Common.Opacity qualified as O
+import Language.Common.SlotSize
 import Language.Comp.Comp qualified as C
 import Language.Comp.CreateVar qualified as Gensym
 import Language.Comp.EnumCase qualified as EC
@@ -93,7 +93,7 @@ makeImmediateS4 h = do
   let discard = C.UpIntro C.null
   let copy = C.UpIntro argVar
   Utility.makeSwitcherStmt (utilityHandle h) O.Clear DD.imm $
-    ResourceSpec {switch, arg, extra, discard, copy, size = Utility.returnIntComp (utilityHandle h) (-1), defaultValues = []}
+    ResourceSpec {switch, arg, extra, discard, copy, size = Utility.returnIntComp (-1), defaultValues = []}
 
 makeClosureS4 :: Handle -> IO C.CompStmt
 makeClosureS4 h = do
@@ -127,7 +127,7 @@ makeSigmaResourceSpec h xts = do
   extra@(_, extraVar) <- Gensym.createVar (gensymHandle h) "extra"
   discard <- sigmaT h xts argVar extraVar
   copy <- sigma4 h xts argVar extraVar
-  let size = Utility.returnByteSizeComp (utilityHandle h) (toInteger $ length xts)
+  let size = Utility.returnByteSizeComp (toInteger $ length xts)
   return $ ResourceSpec {switch, arg, extra, discard, copy, size, defaultValues = []}
 
 -- sigmaT [(x1, t1), ..., (xn, tn)] arg shouldRelease   ~>
@@ -148,7 +148,7 @@ sigmaT h xts argVar shouldRelease = do
   unitList <- forM xts $ \(x, t) -> do
     Utility.toAffineApp (utilityHandle h) (C.VarLocal x) t
   holeList <- mapM (const $ Gensym.newIdentFromText (gensymHandle h) "arg") xts
-  cont <- freeOuterStorageIfRequested h shouldRelease argVar (length xts) (C.UpIntro C.null)
+  let cont = freeOuterStorageIfRequested shouldRelease argVar (length xts) (C.UpIntro C.null)
   body' <- Linearize.linearize (linearizeHandle h) xts $ Utility.bindLet (zip holeList unitList) cont
   return $ C.sigmaElim False (map fst xts) argVar body'
 
@@ -168,13 +168,13 @@ sigma4 h xts argVar dest = do
     body' <- Linearize.linearize (linearizeHandle h) xts $ Utility.bindLet (zip holes copyEntries) $ C.UpIntro C.null
     return $ C.sigmaElim False (map fst xts) argVar body'
 
-freeOuterStorageIfRequested :: Handle -> C.Value -> C.Value -> Int -> C.Comp -> IO C.Comp
-freeOuterStorageIfRequested h shouldRelease value slotCount cont = do
+freeOuterStorageIfRequested :: C.Value -> C.Value -> Int -> C.Comp -> C.Comp
+freeOuterStorageIfRequested shouldRelease value slotCount cont =
   if slotCount == 0
-    then return cont
+    then cont
     else do
-      let byteSize = fromInteger $ Utility.wordCountToByteSize (utilityHandle h) (toInteger slotCount)
-      return $ C.EnumElim [] shouldRelease (C.Free value (Just byteSize) cont) [(EC.Int 0, cont)]
+      let byteSize = fromInteger $ slotCountToByteSize (toInteger slotCount)
+      C.EnumElim [] shouldRelease (C.Free value (Just byteSize) cont) [(EC.Int 0, cont)]
 
 selectCopyDestination :: Handle -> Int -> C.Value -> IO C.Comp
 selectCopyDestination h slotCount dest = do
@@ -182,7 +182,7 @@ selectCopyDestination h slotCount dest = do
     then return $ C.UpIntro C.null
     else do
       (sizeName, sizeVar) <- Gensym.createVar (gensymHandle h) "size"
-      let size = Utility.returnByteSizeComp (utilityHandle h) (toInteger slotCount)
+      let size = Utility.returnByteSizeComp (toInteger slotCount)
       let alloc = C.UpElim True sizeName size $ C.Primitive $ C.Alloc sizeVar
       return $ C.EnumElim [] dest (C.UpIntro dest) [(EC.Int 0, alloc)]
 
@@ -204,7 +204,7 @@ copyDirectValueIntoSlot h dest totalSlots cursor x t = do
   storeName <- Gensym.newIdentFromText (gensymHandle h) "_"
   copy <- Utility.toRelevantApp (utilityHandle h) (C.VarLocal x) t
   let destSlot = C.Primitive $ C.ShiftPointer dest (toInteger totalSlots) (toInteger cursor)
-  let store = C.Primitive $ C.Magic $ LM.Store BLT.Pointer C.null (C.VarLocal copiedName) (C.VarLocal destSlotName)
+  let store = C.Primitive $ C.Magic $ LM.Store BLT.slot C.null (C.VarLocal copiedName) (C.VarLocal destSlotName)
   return $
     C.UpElim True destSlotName destSlot $
       C.UpElim True copiedName copy $
@@ -254,7 +254,7 @@ returnSigmaDataS4 h dataName opacity totalSlotCount dataInfo = do
   copy <- sigmaData4 h dataInfo argVar extraVar
   let dataName' = DD.getFormDD dataName
   Utility.registerSwitcher (utilityHandle h) opacity dataName' $ do
-    let size = Utility.returnByteSizeComp (utilityHandle h) (toInteger totalSlotCount)
+    let size = Utility.returnByteSizeComp (toInteger totalSlotCount)
     ResourceSpec {switch, arg, extra, discard, copy, size, defaultValues = []}
   return $ C.UpIntro $ globalPointer dataName' AN.argNumS4
 
@@ -271,7 +271,7 @@ returnSigmaEnumS4 h dataName opacity = do
   let copy = C.UpIntro argVar
   let dataName' = DD.getFormDD dataName
   Utility.registerSwitcher (utilityHandle h) opacity dataName' $
-    ResourceSpec {switch, arg, extra, discard, copy, size = Utility.returnIntComp (utilityHandle h) (-1), defaultValues = []}
+    ResourceSpec {switch, arg, extra, discard, copy, size = Utility.returnIntComp (-1), defaultValues = []}
   return $ C.UpIntro $ globalPointer dataName' AN.argNumS4
 
 sigmaData ::
@@ -294,7 +294,7 @@ sigmaData h resourceHandler dataInfo arg = do
       enumElim <- Utility.getEnumElim (utilityHandle h) [localName] discVar (last binderList') (zip discList' (init binderList'))
       return $
         C.UpElim False localName (C.UpIntro arg) $
-          C.UpElim True disc (C.Primitive (C.Magic (LM.Load BLT.Pointer (C.VarLocal localName)))) enumElim
+          C.UpElim True disc (C.Primitive (C.Magic (LM.Load BLT.slot (C.VarLocal localName)))) enumElim
 
 sigmaDataT :: Handle -> [DataConstructorInfo] -> C.Value -> C.Value -> IO C.Comp
 sigmaDataT h dataInfo arg shouldRelease = do
@@ -334,10 +334,10 @@ sigmaBinderT h info shouldRelease v = do
         Utility.toDropInPlaceAppWith (utilityHandle h) True (C.VarLocal x) (fieldType field)
   let as = readApps ++ fieldApps
   holes <- mapM (const $ Gensym.newIdentFromText (gensymHandle h) "arg") as
-  cont <- freeOuterStorageIfRequested h shouldRelease v (totalSlotCount info) (C.UpIntro C.null)
+  let cont = freeOuterStorageIfRequested shouldRelease v (totalSlotCount info) (C.UpIntro C.null)
   let bodyBase = Utility.bindLet (zip holes as) cont
   let fieldStart = length headerEntries + length dataArgEntries
-  let bodyWithFields = bindFieldsInPlace v (totalSlotCount info) fieldStart (map (fmap fieldShape) fields) bodyBase
+  bodyWithFields <- bindFieldsInPlace h v (totalSlotCount info) fieldStart (map (fmap fieldShape) fields) bodyBase
   body' <- Linearize.linearize (linearizeHandle h) readEntries bodyWithFields
   return $ C.SigmaElim False 0 (totalSlotCount info) (map fst readEntries) v body'
 
@@ -360,7 +360,7 @@ sigmaBinder4 h info dest v = do
   fieldCopies <- copyFieldsInto h dest (totalSlotCount info) (n + length dataArgEntries) fields
   holes <- mapM (const $ Gensym.newIdentFromText (gensymHandle h) "_") (readCopies ++ fieldCopies)
   let bodyBase = Utility.bindLet (zip holes (readCopies ++ fieldCopies)) $ C.UpIntro C.null
-  let bodyWithFields = bindFieldsInPlace v (totalSlotCount info) (n + length dataArgEntries) (map (fmap fieldShape) fields) bodyBase
+  bodyWithFields <- bindFieldsInPlace h v (totalSlotCount info) (n + length dataArgEntries) (map (fmap fieldShape) fields) bodyBase
   body' <- Linearize.linearize (linearizeHandle h) readEntries bodyWithFields
   return $ C.SigmaElim False 0 (totalSlotCount info) (map fst headerEntries ++ map fst (dataArgs info)) v body'
 
@@ -407,44 +407,45 @@ makeFieldSlotVars gensymHandle fields =
       rest' <- makeFieldSlotVars gensymHandle rest
       return $ entry : rest'
 
-bindFieldValues :: [FieldSlots] -> C.Comp -> C.Comp
-bindFieldValues fieldSlots body =
+bindFieldValues :: Handle -> [FieldSlots] -> C.Comp -> IO C.Comp
+bindFieldValues h fieldSlots body =
   case fieldSlots of
     [] ->
-      body
+      return body
     entry : rest -> do
+      body' <- bindFieldValues h rest body
       case entry of
         DirectSlot x slot ->
-          C.UpElim True x (C.UpIntro (C.VarLocal slot)) (bindFieldValues rest body)
+          return $ C.UpElim True x (C.UpIntro (C.VarLocal slot)) body'
         FlattenedSlots x slots ->
-          C.UpElim False x (C.UpIntro (C.SigmaIntro (length slots) (map C.VarLocal slots))) (bindFieldValues rest body)
+          return $ C.UpElim False x (C.UpIntro (C.SigmaIntro (length slots) (map C.VarLocal slots))) body'
 
-bindFieldsInPlace :: C.Value -> Int -> Int -> [(Ident, DI.FieldLayout)] -> C.Comp -> C.Comp
-bindFieldsInPlace v totalSlots fieldStart fields body =
+bindFieldsInPlace :: Handle -> C.Value -> Int -> Int -> [(Ident, DI.FieldLayout)] -> C.Comp -> IO C.Comp
+bindFieldsInPlace h v totalSlots fieldStart fields body =
   case fields of
     [] ->
-      body
+      return body
     (x, field) : rest -> do
-      let rest' = bindFieldsInPlace v totalSlots (fieldStart + DI.fieldLayoutSlotCount field) rest body
+      rest' <- bindFieldsInPlace h v totalSlots (fieldStart + DI.fieldLayoutSlotCount field) rest body
       case field of
         DI.LayoutDirect ->
-          C.SigmaElim False fieldStart totalSlots [x] v rest'
+          return $ C.SigmaElim False fieldStart totalSlots [x] v rest'
         DI.LayoutFlattened _ ->
-          C.UpElim True x (C.Primitive (C.ShiftPointer v (toInteger totalSlots) (toInteger fieldStart))) rest'
+          return $ C.UpElim True x (C.Primitive (C.ShiftPointer v (toInteger totalSlots) (toInteger fieldStart))) rest'
 
-flattenFields :: Gensym.Handle -> [(DI.FieldLayout, C.Value)] -> ([C.Value] -> C.Comp) -> IO C.Comp
-flattenFields gensymHandle fields cont =
+flattenFields :: Handle -> [(DI.FieldLayout, C.Value)] -> ([C.Value] -> C.Comp) -> IO C.Comp
+flattenFields h fields cont =
   case fields of
     [] ->
       return $ cont []
     (field, value) : rest -> do
       case field of
         DI.LayoutDirect ->
-          flattenFields gensymHandle rest $ \restSlots -> cont (value : restSlots)
+          flattenFields h rest $ \restSlots -> cont (value : restSlots)
         DI.LayoutFlattened slotCount -> do
-          slotNames <- mapM (const $ Gensym.newIdentFromText gensymHandle "field") [1 .. slotCount]
+          slotNames <- mapM (const $ Gensym.newIdentFromText (gensymHandle h) "field") [1 .. slotCount]
           let slotValues = map C.VarLocal slotNames
-          body <- flattenFields gensymHandle rest $ \restSlots -> cont (slotValues ++ restSlots)
+          body <- flattenFields h rest $ \restSlots -> cont (slotValues ++ restSlots)
           return $ C.SigmaElim True 0 slotCount slotNames value body
 
 discriminantToEnumCase :: D.Discriminant -> EC.EnumCase

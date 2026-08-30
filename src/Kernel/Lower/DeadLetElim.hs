@@ -33,7 +33,7 @@ rewriteComp demand lowComp =
       (liveSet, LC.Cont op cont')
     LC.Switch value lowType defaultBranch branchList phiTargets cont -> do
       let (liveCont, cont') = rewriteComp demand cont
-      let liveMask = map (\phiTarget -> IntSet.member (toInt phiTarget) liveCont) phiTargets
+      let liveMask = map (\(phiTarget, _) -> IntSet.member (toInt phiTarget) liveCont) phiTargets
       let phiTargets' = filterByMask liveMask phiTargets
       let branchDemand = DemandPhi liveMask
       let (liveDefault, defaultBranch') = rewriteComp branchDemand defaultBranch
@@ -41,7 +41,7 @@ rewriteComp demand lowComp =
       let rewrittenBranchList = map (rewriteComp branchDemand) caseBranches
       let liveCaseList = map fst rewrittenBranchList
       let caseBranches' = map snd rewrittenBranchList
-      let liveBeforeSwitch = deleteMany liveCont phiTargets
+      let liveBeforeSwitch = deleteMany liveCont (map fst phiTargets)
       let liveSet =
             IntSet.unions $
               usedValueSet value : liveBeforeSwitch : liveDefault : liveCaseList

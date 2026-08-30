@@ -1,9 +1,9 @@
-module Language.Common.LowType (LowType (..), textType, textTypeInner) where
+module Language.Common.LowType (LowType (..), slotLowType, textType, textTypeInner) where
 
 import Data.Binary
 import GHC.Generics qualified as G
-import Language.Common.DataSize (DataSize)
 import Language.Common.PrimNumSize
+import Language.Common.SlotSize
 import Language.Common.PrimType qualified as PT
 
 data LowType
@@ -21,11 +21,15 @@ instance Show LowType where
 
 instance Binary LowType
 
-textType :: DataSize -> LowType
-textType baseSize =
+slotLowType :: LowType
+slotLowType =
+  PrimNum slotPrimType
+
+textType :: LowType
+textType =
   Struct
-    [ PrimNum $ PT.Int $ dataSizeToIntSize baseSize,
-      PrimNum $ PT.Int $ dataSizeToIntSize baseSize,
+    [ slotLowType,
+      slotLowType,
       Pointer
     ]
 

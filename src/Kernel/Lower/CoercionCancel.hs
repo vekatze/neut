@@ -1,14 +1,23 @@
 module Kernel.Lower.CoercionCancel (coercionCancel) where
 
+import Data.Bits (shiftL, (.&.))
 import Data.IntMap.Strict qualified as IntMap
 import Data.List (unsnoc)
+import Language.Common.DataSize qualified as DS
 import Language.Common.Ident
 import Language.Common.Ident.Reify
 import Language.Common.LowType qualified as LT
+import Language.Common.PrimNumSize.ToInt (intSizeToInt)
+import Language.Common.PrimOp
+import Language.Common.PrimOp.ConvOp qualified as ConvOp
+import Language.Common.PrimType qualified as PT
+import Language.Common.SlotSize
 import Language.LowComp.LowComp qualified as LC
 
-type Env =
-  IntMap.IntMap CoercionHistory
+data Env = Env
+  { pointerFillsSlot :: Bool,
+    historyMap :: IntMap.IntMap CoercionHistory
+  }
 
 data CoercionHistory = CoercionHistory
   { historyBaseValue :: LC.Value,
@@ -24,10 +33,15 @@ data CoercionStep
   = StepBitcast LT.LowType LT.LowType
   | StepIntToPointer LT.LowType
   | StepPointerToInt LT.LowType
+  | StepIntConv ConvOp.ConvOp PT.PrimType PT.PrimType
 
-coercionCancel :: LC.Comp -> LC.Comp
-coercionCancel =
-  rewriteComp IntMap.empty
+coercionCancel :: DS.DataSize -> LC.Comp -> LC.Comp
+coercionCancel baseSize =
+  rewriteComp
+    Env
+      { pointerFillsSlot = DS.reify baseSize == slotBitSize,
+        historyMap = IntMap.empty
+      }
 
 rewriteComp :: Env -> LC.Comp -> LC.Comp
 rewriteComp env lowComp =
@@ -97,9 +111,9 @@ rewriteValue :: Env -> LC.Value -> LC.Value
 rewriteValue env value =
   case value of
     LC.VarLocal x ->
-      case IntMap.lookup (toInt x) env of
+      case IntMap.lookup (toInt x) (historyMap env) of
         Just history ->
-          historyRepresentative $ normalizeHistory history
+          historyRepresentative $ normalizeHistory (pointerFillsSlot env) history
         Nothing ->
           LC.VarLocal x
     _ ->
@@ -125,6 +139,10 @@ insertCoercionStep env x op = do
     LC.PointerToInt value lowType -> do
       let base = getHistory env value
       insertHistory env x $ appendCoercionStep base (HistoryStep (StepPointerToInt lowType) (LC.VarLocal x))
+    LC.PrimOp (PrimConvOp convOp domType codType) [value]
+      | convOp `elem` [ConvOp.Zext, ConvOp.Trunc] -> do
+          let base = getHistory env value
+          insertHistory env x $ appendCoercionStep base (HistoryStep (StepIntConv convOp domType codType) (LC.VarLocal x))
     _ ->
       env
 
@@ -132,39 +150,44 @@ appendCoercionStep :: CoercionHistory -> HistoryStep -> CoercionHistory
 appendCoercionStep base step = do
   base {historySteps = historySteps base ++ [step]}
 
-normalizeHistory :: CoercionHistory -> CoercionHistory
-normalizeHistory CoercionHistory {historyBaseValue, historySteps} = do
-  let normalizedSteps = normalizeCoercionSteps historySteps
+normalizeHistory :: Bool -> CoercionHistory -> CoercionHistory
+normalizeHistory pointerFits CoercionHistory {historyBaseValue, historySteps} = do
+  let normalizedSteps = normalizeCoercionSteps pointerFits historySteps
   case normalizedSteps of
     HistoryStep {stepOp = StepBitcast from to} : rest
       | from == to ->
-          normalizeHistory $ CoercionHistory historyBaseValue rest
+          normalizeHistory pointerFits $ CoercionHistory historyBaseValue rest
     HistoryStep {stepOp = StepIntToPointer _} : rest
-      | LC.Int i <- historyBaseValue ->
-          normalizeHistory $ CoercionHistory (LC.Address i) rest
+      | pointerFits,
+        LC.Int i <- historyBaseValue ->
+          normalizeHistory pointerFits $ CoercionHistory (LC.Address i) rest
     HistoryStep {stepOp = StepPointerToInt _} : rest
       | LC.Address a <- historyBaseValue ->
-          normalizeHistory $ CoercionHistory (LC.Int a) rest
+          normalizeHistory pointerFits $ CoercionHistory (LC.Int a) rest
+    HistoryStep {stepOp = StepIntConv _ (PT.Int domSize) (PT.Int codSize)} : rest
+      | LC.Int i <- historyBaseValue -> do
+          let width = min (intSizeToInt domSize) (intSizeToInt codSize)
+          normalizeHistory pointerFits $ CoercionHistory (LC.Int (i .&. ((1 `shiftL` width) - 1))) rest
     _ ->
       CoercionHistory historyBaseValue normalizedSteps
 
-normalizeCoercionSteps :: [HistoryStep] -> [HistoryStep]
-normalizeCoercionSteps steps =
+normalizeCoercionSteps :: Bool -> [HistoryStep] -> [HistoryStep]
+normalizeCoercionSteps pointerFits steps =
   case steps of
     [] ->
       []
     s : rest ->
       case normalizeStep s of
         Nothing ->
-          normalizeCoercionSteps rest
+          normalizeCoercionSteps pointerFits rest
         Just step ->
-          case normalizeCoercionSteps rest of
+          case normalizeCoercionSteps pointerFits rest of
             [] ->
               [step]
             next : rest' ->
-              case mergeCoercionSteps (stepOp step) (stepOp next) of
+              case mergeCoercionSteps pointerFits (stepOp step) (stepOp next) of
                 MergeTo merged ->
-                  normalizeCoercionSteps (HistoryStep merged (stepValue next) : rest')
+                  normalizeCoercionSteps pointerFits (HistoryStep merged (stepValue next) : rest')
                 CancelPair ->
                   rest'
                 NoMerge ->
@@ -184,30 +207,33 @@ data StepMerge
   | CancelPair
   | NoMerge
 
-mergeCoercionSteps :: CoercionStep -> CoercionStep -> StepMerge
-mergeCoercionSteps prev next =
+mergeCoercionSteps :: Bool -> CoercionStep -> CoercionStep -> StepMerge
+mergeCoercionSteps pointerFits prev next =
   case (prev, next) of
     (StepBitcast from mid1, StepBitcast mid2 to)
       | mid1 == mid2 ->
           MergeTo $ StepBitcast from to
     (StepIntToPointer lowType1, StepPointerToInt lowType2)
-      | lowType1 == lowType2 ->
+      | pointerFits, lowType1 == lowType2 ->
           CancelPair
     (StepPointerToInt lowType1, StepIntToPointer lowType2)
       | lowType1 == lowType2 ->
+          CancelPair
+    (StepIntConv ConvOp.Zext from mid1, StepIntConv ConvOp.Trunc mid2 to)
+      | mid1 == mid2, from == to ->
           CancelPair
     _ ->
       NoMerge
 
 insertHistory :: Env -> Ident -> CoercionHistory -> Env
 insertHistory env x history =
-  IntMap.insert (toInt x) history env
+  env {historyMap = IntMap.insert (toInt x) history (historyMap env)}
 
 getHistory :: Env -> LC.Value -> CoercionHistory
 getHistory env value =
   case value of
     LC.VarLocal x ->
-      case IntMap.lookup (toInt x) env of
+      case IntMap.lookup (toInt x) (historyMap env) of
         Just history ->
           history
         Nothing ->

@@ -15,7 +15,7 @@ renderDef (name, LC.DefContent {codType = codType, args = args, body = body}) =
   "define "
     <> DD.localLocator name
     <> "("
-    <> T.intercalate ", " (map toText' args)
+    <> T.intercalate ", " (map (toText' . fst) args)
     <> ") -> "
     <> renderLowType codType
     <> " {\n"

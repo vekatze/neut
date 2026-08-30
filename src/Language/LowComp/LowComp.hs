@@ -74,7 +74,7 @@ data Comp
   -- `CompCont` is `CompLet` that discards the result of Op. This `CompCont` is required separately
   -- since LLVM doesn't allow us to write something like `%foo = store i32 3, i32* %ptr`.
   | Cont Op Comp
-  | Switch Value LowType Comp [(Integer, Comp)] [Ident] Comp
+  | Switch Value LowType Comp [(Integer, Comp)] [(Ident, LowType)] Comp
   | TailCall MustTail LowType Value [(LowType, Value)]
   | Unreachable -- for empty case analysis
   | Phi [Value]
@@ -129,7 +129,7 @@ type Def =
 
 data DefContent = DefContent
   { codType :: LowType,
-    args :: [Ident],
+    args :: [(Ident, LowType)],
     body :: Comp
   }
 
@@ -137,7 +137,7 @@ type LowCodeInfo =
   (DN.DeclEnv, [Def], [StaticTextInfo], [StaticDataInfo], [ExportInfo])
 
 type ExportInfo =
-  (EN.ExternalName, DD.DefiniteDescription, Int)
+  (EN.ExternalName, DD.DefiniteDescription, [LowType], LowType)
 
 internalTrailingArgCount :: Int
 internalTrailingArgCount =
@@ -150,7 +150,7 @@ data LowCode
 type StaticTextInfo = (T.Text, (Builder, Int))
 
 data StaticData
-  = StaticInt LowType Integer
+  = StaticInt IntSize Integer
   | StaticFloat FloatSize Double
   | StaticSymbol T.Text
   | StaticGlobal DD.DefiniteDescription

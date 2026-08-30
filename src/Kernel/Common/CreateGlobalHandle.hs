@@ -100,10 +100,10 @@ newOrError cfg moduleFilePathOrNone targetNameOrNone = do
         Left err ->
           return $ Left (loggerHandle, err)
         Right selector ->
-          Right <$> newHandle cfg consoleHandle loggerHandle envHandle selector
+          Right <$> newHandle consoleHandle loggerHandle envHandle selector
 
-newHandle :: Remark.Config -> Console.Handle -> Logger.Handle -> Env.Handle -> P.PlatformSelector -> IO Handle
-newHandle _ consoleHandle loggerHandle envHandle selector = do
+newHandle :: Console.Handle -> Logger.Handle -> Env.Handle -> P.PlatformSelector -> IO Handle
+newHandle consoleHandle loggerHandle envHandle selector = do
   let mainModule = Env.getMainModule envHandle
   platformHandle <- Platform.new loggerHandle selector
   Logger.setModuleDir loggerHandle mainModule

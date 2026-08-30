@@ -45,8 +45,9 @@ import Language.Common.ForeignCodType qualified as FCT
 import Language.Common.Ident.Reify
 import Language.Common.LowType qualified as LT
 import Language.Common.LowType.FromBaseLowType qualified as LT
-import Language.Common.PrimNumSize (floatSizeToIntSize)
+import Language.Common.PrimNumSize.ToInt (floatSizeToInt, intSizeToInt)
 import Language.Common.PrimType qualified as PT
+import Language.Common.SlotSize
 import Language.LowComp.DeclarationName qualified as DN
 import Language.LowComp.LowComp qualified as LC
 import Language.LowComp.Reduce qualified as Reduce
@@ -92,20 +93,20 @@ emitModuleHeader h = do
 emitLowCodeInfo :: Handle -> LC.LowCodeInfo -> IO ([Builder], [Builder])
 emitLowCodeInfo h (declEnv, defList, staticTextList, staticDataList, exportList) = do
   let declStrList = emitDeclarations h declEnv
-  let baseSize = Platform.getDataSize (Global.platformHandle (globalHandle h))
-  let staticTextList' = concatMap (emitStaticText baseSize) staticTextList
-  let staticDataList' = map emitStaticData staticDataList
+  let staticTextList' = concatMap emitStaticText staticTextList
+  let staticDataList' = map (emitStaticData (getDataSize h)) staticDataList
   defStrList <- concat <$> mapM (emitDefinitions h) defList
   let exportStrList = concatMap (emitExport h) exportList ++ emitExportRoots exportList
   return (declStrList <> staticTextList' <> staticDataList', defStrList <> exportStrList)
 
 emitExport :: Handle -> LC.ExportInfo -> [Builder]
-emitExport h (EN.ExternalName extName, dd, arity) = do
+emitExport h (EN.ExternalName extName, dd, domList, cod) = do
   let name' = TE.encodeUtf8Builder extName
-  let argList = map (\i -> "%a" <> intDec i) [0 .. arity - 1]
-  let params = unwordsC (map ("ptr " <>) argList)
-  let trailingArgs = replicate LC.internalTrailingArgCount "ptr null"
-  let callArgs = unwordsC (map ("ptr noundef " <>) argList ++ trailingArgs)
+  let argList = map (\i -> "%a" <> intDec i) [0 .. length domList - 1]
+  let params = unwordsC (zipWith (\t arg -> emitLowType t <> " " <> arg) domList argList)
+  let trailingArgs = replicate LC.internalTrailingArgCount (emitLowType LT.slotLowType <> " 0")
+  let callArgs = unwordsC (zipWith (\t arg -> attachAttributes (emitLowType t) (internalArgAttributes t) <> " " <> arg) domList argList ++ trailingArgs)
+  let cod' = emitLowType cod
   let exportAttributes =
         case getArch h of
           Arch.Wasm32 ->
@@ -113,9 +114,9 @@ emitExport h (EN.ExternalName extName, dd, arity) = do
           _ ->
             []
   let attrs = mconcat $ map (" " <>) $ exportAttributes ++ archFunctionAttributes (getArch h)
-  [ "define ptr @\"" <> name' <> "\"(" <> params <> ")" <> attrs <> " {",
-    "  %ret = tail call fastcc ptr @" <> DD.toBuilder dd <> "(" <> callArgs <> ")",
-    "  ret ptr %ret",
+  [ "define " <> cod' <> " @\"" <> name' <> "\"(" <> params <> ")" <> attrs <> " {",
+    "  %ret = tail call fastcc " <> cod' <> " @" <> DD.toBuilder dd <> "(" <> callArgs <> ")",
+    "  ret " <> cod' <> " %ret",
     "}"
     ]
 
@@ -125,19 +126,23 @@ emitExportRoots exportList =
     [] ->
       []
     _ -> do
-      let names = map (\(EN.ExternalName extName, _, _) -> "ptr @\"" <> TE.encodeUtf8Builder extName <> "\"") exportList
+      let names = map (\(EN.ExternalName extName, _, _, _) -> "ptr @\"" <> TE.encodeUtf8Builder extName <> "\"") exportList
       let arrayType = "[" <> intDec (length exportList) <> " x ptr]"
       ["@llvm.used = appending global " <> arrayType <> " [" <> unwordsC names <> "], section \"llvm.metadata\""]
 
+argcGlobalType :: LT.LowType
+argcGlobalType =
+  LT.slotLowType
+
 emitArgDecl :: [Builder]
 emitArgDecl = do
-  let argc = emitGlobalExt unsafeArgcName LT.Pointer
+  let argc = emitGlobalExt unsafeArgcName argcGlobalType
   let argv = emitGlobalExt unsafeArgvName LT.Pointer
   [argc, argv]
 
 emitArgDef :: DS.DataSize -> [Builder]
 emitArgDef baseSize = do
-  let argc = emitGlobal baseSize unsafeArgcName LT.Pointer LC.Null
+  let argc = emitGlobal baseSize unsafeArgcName argcGlobalType (LC.Int 0)
   let argv = emitGlobal baseSize unsafeArgvName LT.Pointer LC.Null
   [argc, argv]
 
@@ -163,47 +168,61 @@ emitGlobalExt name lt =
 
 type StaticTextInfo = (T.Text, (Builder, Int))
 
-emitStaticData :: LC.StaticDataInfo -> Builder
-emitStaticData (name, slots) = do
-  let arrayType = "[" <> intDec (length slots) <> " x ptr]"
+emitStaticData :: DS.DataSize -> LC.StaticDataInfo -> Builder
+emitStaticData baseSize (name, slots) = do
+  let fields = concatMap (emitStaticSlot baseSize) slots
   "@"
     <> TE.encodeUtf8Builder ("\"" <> name <> "\"")
-    <> " = private unnamed_addr constant "
-    <> arrayType
-    <> " ["
-    <> unwordsC (map emitStaticSlot slots)
-    <> "]"
+    <> " = private unnamed_addr constant <{"
+    <> unwordsC (map fst fields)
+    <> "}> <{"
+    <> unwordsC (map snd fields)
+    <> "}>, align "
+    <> intDec slotByteSize
 
-emitStaticSlot :: LC.StaticData -> Builder
-emitStaticSlot slot =
-  "ptr "
-    <> case slot of
-      LC.StaticNull ->
-        "null"
-      LC.StaticSymbol name ->
-        "@" <> TE.encodeUtf8Builder ("\"" <> name <> "\"")
-      LC.StaticGlobal dd ->
-        "@" <> DD.toBuilder dd
-      LC.StaticInt intType value ->
-        "inttoptr (" <> emitLowType intType <> " " <> integerDec value <> " to ptr)"
-      LC.StaticFloat size value -> do
-        let intType = emitLowType (LT.PrimNum (PT.Int (floatSizeToIntSize size)))
-        let floatType = emitLowType (LT.PrimNum (PT.Float size))
-        "inttoptr ("
-          <> intType
-          <> " bitcast ("
-          <> floatType
-          <> " "
-          <> emitFloat size value
-          <> " to "
-          <> intType
-          <> ") to ptr)"
+slotTypeBuilder :: Builder
+slotTypeBuilder =
+  emitLowType LT.slotLowType
 
-emitStaticText :: DS.DataSize -> StaticTextInfo -> [Builder]
-emitStaticText baseSize (from, (text, len)) = do
+emitStaticSlot :: DS.DataSize -> LC.StaticData -> [(Builder, Builder)]
+emitStaticSlot baseSize slot =
+  case slot of
+    LC.StaticNull ->
+      [asSlot "0"]
+    LC.StaticSymbol name ->
+      emitAddressSlot baseSize $ "@" <> TE.encodeUtf8Builder ("\"" <> name <> "\"")
+    LC.StaticGlobal dd ->
+      emitAddressSlot baseSize $ "@" <> DD.toBuilder dd
+    LC.StaticInt size value ->
+      [asSlot $ integerDec $ widenToSlot (intSizeToInt size) value]
+    LC.StaticFloat size value ->
+      [asSlot $ integerDec $ widenToSlot (floatSizeToInt size) (floatToBits size value)]
+
+asSlot :: Builder -> (Builder, Builder)
+asSlot value =
+  (slotTypeBuilder, slotTypeBuilder <> " " <> value)
+
+emitAddressSlot :: DS.DataSize -> Builder -> [(Builder, Builder)]
+emitAddressSlot baseSize address = do
+  let paddingBitSize = slotBitSize - DS.reify baseSize
+  let pointerField = ("ptr", "ptr " <> address)
+  if paddingBitSize == 0
+    then [pointerField]
+    else do
+      let paddingType = "i" <> intDec paddingBitSize
+      [pointerField, (paddingType, paddingType <> " 0")]
+
+widenToSlot :: Int -> Integer -> Integer
+widenToSlot bitSize value =
+  if bitSize == slotBitSize
+    then value
+    else value `mod` (2 ^ bitSize)
+
+emitStaticText :: StaticTextInfo -> [Builder]
+emitStaticText (from, (text, len)) = do
   let headerName = TE.encodeUtf8Builder ("\"" <> from <> "\"")
   let payloadName = TE.encodeUtf8Builder ("\"" <> from <> ".payload\"")
-  let wordType = "i" <> intDec (DS.reify baseSize)
+  let wordType = emitLowType (LT.PrimNum (PT.Int slotIntSize))
   let payloadType = emitLowType (LT.textTypeInner len)
   let payload =
         "@"
@@ -217,7 +236,7 @@ emitStaticText baseSize (from, (text, len)) = do
         "@"
           <> headerName
           <> " = private unnamed_addr constant "
-          <> emitLowType (LT.textType baseSize)
+          <> emitLowType LT.textType
           <> " {"
           <> wordType
           <> " 0, "
@@ -237,16 +256,17 @@ emitDeclarations h declEnv = do
 emitDefinitions :: Handle -> LC.Def -> IO [Builder]
 emitDefinitions h (name, LC.DefContent {codType = codType, args = args, body = body}) = do
   definitionGensymHandle <- Gensym.createHandle
-  args' <- mapM (Gensym.newIdentFromIdent definitionGensymHandle) args
-  let sub = IntMap.fromList $ zipWith (\from to -> (toInt from, LC.VarLocal to)) args args'
+  args' <- mapM (Gensym.newIdentFromIdent definitionGensymHandle . fst) args
+  let sub = IntMap.fromList $ zipWith (\from to -> (toInt from, LC.VarLocal to)) (map fst args) args'
   let reduceHandle = Reduce.new definitionGensymHandle
   body' <- Reduce.reduce reduceHandle sub body
-  let args'' = showInternalFuncArgs $ map (emitValue (getDataSize h) . LC.VarLocal) args'
+  let args'' = showInternalArgs (getDataSize h) $ zipWith (\(_, t) x -> (t, LC.VarLocal x)) args args'
   emitDefinition h definitionGensymHandle True (Just name) codType (DD.toBuilder name) args'' body'
 
 emitMain :: Handle -> LC.DefContent -> IO [Builder]
 emitMain h (LC.DefContent {codType = codType, args = args, body = body}) = do
-  let args' = showFuncArgs $ map (emitValue (getDataSize h) . LC.VarLocal) args
+  let renderArg (x, t) = emitLowType t <> " " <> emitValue (getDataSize h) (LC.VarLocal x)
+  let args' = "(" <> unwordsC (map renderArg args) <> ")"
   emitDefinition h (gensymHandle h) False Nothing codType (mainSymbol (getArch h)) args' body
 
 mainSymbol :: Arch.Arch -> Builder
@@ -371,7 +391,8 @@ allocatorFunctionAttributes allocator kind = do
 
 emitDefinition :: Handle -> GensymHandle.Handle -> Bool -> Maybe DD.DefiniteDescription -> LT.LowType -> Builder -> Builder -> LC.Comp -> IO [Builder]
 emitDefinition h gensymHandle isInternal maybeName retType name args asm = do
-  let header = sig isInternal retType name args (archFunctionAttributes (getArch h)) <> " {"
+  let attributes = archFunctionAttributes (getArch h) ++ tailCallAttributes maybeName asm
+  let header = sig isInternal retType name args attributes <> " {"
   emitLowCompHandle <- EmitLowComp.new gensymHandle (globalHandle h) (emitLowType retType) (allocatorSpec $ allocator h)
   content <- EmitLowComp.emitLowComp emitLowCompHandle asm
   let footer = "}"
@@ -391,6 +412,52 @@ sig isInternal retType name args functionAttributes = do
   let callConvAttributes = if isInternal then ["fastcc"] else []
   let returnType = if isInternal then emitInternalReturnType retType else emitLowType retType
   attachAttributes "define" $ callConvAttributes ++ [returnType <> " @" <> name <> args] ++ functionAttributes
+
+tailCallAttributes :: Maybe DD.DefiniteDescription -> LC.Comp -> [Builder]
+tailCallAttributes maybeName body =
+  case maybeName of
+    Just self
+      | hasMustTailCall body,
+        hasNonTailSelfCall self body ->
+          ["\"disable-tail-calls\"=\"true\""]
+    _ ->
+      []
+
+hasMustTailCall :: LC.Comp -> Bool
+hasMustTailCall =
+  anyComp $ \comp ->
+    case comp of
+      LC.TailCall mustTail _ _ _ ->
+        mustTail
+      _ ->
+        False
+
+hasNonTailSelfCall :: DD.DefiniteDescription -> LC.Comp -> Bool
+hasNonTailSelfCall self =
+  anyComp $ \comp ->
+    case comp of
+      LC.Let _ (LC.Call _ _ (LC.VarGlobal callee) _) _ ->
+        callee == self
+      LC.Cont (LC.Call _ _ (LC.VarGlobal callee) _) _ ->
+        callee == self
+      _ ->
+        False
+
+anyComp :: (LC.Comp -> Bool) -> LC.Comp -> Bool
+anyComp p comp =
+  p comp || any (anyComp p) (subComps comp)
+
+subComps :: LC.Comp -> [LC.Comp]
+subComps comp =
+  case comp of
+    LC.Let _ _ cont ->
+      [cont]
+    LC.Cont _ cont ->
+      [cont]
+    LC.Switch _ _ defaultBranch branchList _ cont ->
+      defaultBranch : map snd branchList ++ [cont]
+    _ ->
+      []
 
 archAttributeGroupName :: Builder
 archAttributeGroupName =

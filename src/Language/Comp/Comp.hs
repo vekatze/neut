@@ -10,7 +10,6 @@ module Language.Comp.Comp
     DefMap,
     toDefMap,
     Label,
-    fromDefTuple,
     fromCompStmt,
     getCompStmtName,
     intValue0,
@@ -320,10 +319,6 @@ getCompStmtName stmt =
       Nothing
     Expose {} ->
       Nothing
-
-fromDefTuple :: (DD.DefiniteDescription, (Opacity, [Ident], Comp)) -> CompStmt
-fromDefTuple (dd, (opacity, args, body)) =
-  Def dd opacity args body
 
 type DefMap =
   Map.HashMap DD.DefiniteDescription (Opacity, [Ident], Comp)

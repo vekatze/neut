@@ -22,7 +22,7 @@ import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.IntMap qualified as IntMap
 import Data.IntSet qualified as IntSet
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, isJust)
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Gensym.Trick qualified as Gensym
@@ -95,6 +95,7 @@ import Language.Common.ModuleID qualified as MID
 import Language.Common.PiKind qualified as PK
 import Language.Common.PrimNumSize
 import Language.Common.PrimType qualified as PT
+import Language.Common.SlotSize
 import Language.Common.SourceLocator qualified as SL
 import Language.Common.StmtKind qualified as SK
 import Language.Common.StrictGlobalLocator qualified as SGL
@@ -442,14 +443,16 @@ logPosition (SavedHint m) =
   (metaFileName m, metaLocation m)
 
 checkTypeObligation :: Handle -> TypeObligation -> App [L.Log]
-checkTypeObligation h (TypeObligation attr site m t) = do
-  t' <- elaborateType h t >>= inlineType h m
-  result <- checkTypeAttr h attr m t'
-  case result of
-    Right () ->
-      return []
-    Left message ->
-      return [L.newLog m LL.Error $ obligationErrorMessage attr site message]
+checkTypeObligation h obligation =
+  case obligation of
+    TypeObligation attr site m t -> do
+      t' <- elaborateType h t >>= inlineType h m
+      result <- checkTypeAttr h attr m t'
+      case result of
+        Right () ->
+          return []
+        Left message ->
+          return [L.newLog m LL.Error $ obligationErrorMessage attr site message]
 
 checkTypeAttr :: Handle -> VK.TypeAttr -> Hint -> TM.Type -> App (Either T.Text ())
 checkTypeAttr h attr m t =
@@ -695,7 +698,7 @@ elaborateStmtKindType h stmtKind =
       return $ SK.Data dataName dataArgs'' consInfoList' isNominal
 
 resolveFieldLayout :: Handle -> DI.FieldHint -> BinderF TM.Type -> App DI.FieldLayout
-resolveFieldLayout h hint (_, _, _, t) =
+resolveFieldLayout h hint (mBinder, _, _, t) =
   case hint of
     DI.FieldAuto ->
       return DI.LayoutDirect
@@ -778,8 +781,7 @@ cannotMixRecursiveMessage h dataName =
 
 resourceByteSizeToSlotCount :: Handle -> Int -> Either T.Text SlotCount
 resourceByteSizeToSlotCount h byteSize = do
-  let wordSize = DS.reifyBytes (Platform.getDataSize (platformHandle h))
-  let slotCount = (byteSize + wordSize - 1) `div` wordSize
+  let slotCount = (byteSize + slotByteSize - 1) `div` slotByteSize
   Right $ StaticSlots slotCount
 
 specializeUnaryDataType :: Handle -> Hint -> DD.DefiniteDescription -> [TM.Type] -> App TM.Type
@@ -862,8 +864,8 @@ elaborate' h term = do
       return $ m :< TM.PiIntro kind' impArgs' expArgs' defaultArgs' e'
     m :< WT.PiElim spec e impArgs expArgs defaultArgs -> do
       conv <- case spec of
-        CCS.Inferred conv ->
-          CC.traverseTypes (elaborateType h) conv
+        CCS.Resolved resolvedConv ->
+          CC.traverseTypes (elaborateType h) resolvedConv
         CCS.AsMarked {} ->
           raiseCritical m "Scene.Elaborate.elaborate': found an unresolved calling convention"
       e' <- elaborate' h e
