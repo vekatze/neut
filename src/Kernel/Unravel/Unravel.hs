@@ -44,7 +44,6 @@ import Kernel.Common.Source qualified as Source
 import Kernel.Common.Source.ShiftToLatest qualified as STL
 import Kernel.Common.SourceDependencyMap (SourceDependencyMap)
 import Kernel.Common.Handle.Global.Platform qualified as Platform
-import Kernel.Common.Platform qualified as P
 import Kernel.Common.Target
 import Kernel.Parse.Internal.Import qualified as Import
 import Kernel.Parse.Internal.Program (parseHeader)
@@ -545,14 +544,13 @@ interpretRequireItem (RawRequireItem m name) = do
       raiseError m $ "No such capability exists: `" <> name <> "`"
 
 targetEnvironment :: Handle -> S.Set Capability.Capability
-targetEnvironment h = do
-  let platform = Platform.getPlatform (Global.platformHandle (globalHandle h))
-  Capability.providedBy (P.os platform)
+targetEnvironment h =
+  Capability.providedBy $ Platform.getSelector $ Global.platformHandle $ globalHandle h
 
 demandList :: Handle -> Target -> Module -> [(Demand, S.Set Capability.Capability)]
 demandList h t baseModule =
   if moduleUniversal baseModule
-    then map ((,) ByUniversality) Capability.everySubset
+    then map ((,) ByUniversality) Capability.everyProvidedSet
     else case t of
       Main _ ->
         [(ByPlatform, targetEnvironment h)]
@@ -624,7 +622,7 @@ renderUnavailable :: Demand -> Platform.Handle -> Capability.Capability -> T.Tex
 renderUnavailable demand platformHandle capability =
   case demand of
     ByPlatform ->
-      "`" <> Capability.reify capability <> "` is not available on " <> P.reify (Platform.getPlatform platformHandle)
+      "`" <> Capability.reify capability <> "` is not available on " <> Platform.getPlatformText platformHandle
     ByUniversality ->
       "A universal module cannot require `" <> Capability.reify capability <> "`"
 

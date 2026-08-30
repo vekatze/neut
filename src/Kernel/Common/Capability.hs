@@ -2,18 +2,19 @@ module Kernel.Common.Capability
   ( Capability (..),
     reify,
     reflect,
-    everySubset,
+    everyProvidedSet,
     providedBy,
   )
 where
 
 import Data.Set qualified as S
 import Data.Text qualified as T
-import Kernel.Common.OS qualified as OS
+import Kernel.Common.Platform qualified as P
 
 data Capability
   = Thread
   | Subprocess
+  | JavaScript
   deriving (Eq, Ord, Show, Enum, Bounded)
 
 reify :: Capability -> T.Text
@@ -23,6 +24,8 @@ reify capability =
       "thread"
     Subprocess ->
       "subprocess"
+    JavaScript ->
+      "javascript"
 
 reflect :: T.Text -> Maybe Capability
 reflect text =
@@ -31,28 +34,21 @@ reflect text =
       Just Thread
     "subprocess" ->
       Just Subprocess
+    "javascript" ->
+      Just JavaScript
     _ ->
       Nothing
 
-everySubset :: [S.Set Capability]
-everySubset =
-  map S.fromList $ subsequenceList [minBound .. maxBound]
-
-subsequenceList :: [a] -> [[a]]
-subsequenceList xs =
-  case xs of
-    [] ->
-      [[]]
-    y : rest -> do
-      let rest' = subsequenceList rest
-      rest' ++ map (y :) rest'
-
-providedBy :: OS.OS -> S.Set Capability
-providedBy os =
-  case os of
-    OS.Linux ->
+providedBy :: P.PlatformSelector -> S.Set Capability
+providedBy selector =
+  case selector of
+    P.SelectHost ->
       S.fromList [Thread, Subprocess]
-    OS.Darwin ->
-      S.fromList [Thread, Subprocess]
-    OS.Wasi ->
+    P.SelectWasm32 ->
       S.empty
+    P.SelectWeb ->
+      S.fromList [JavaScript]
+
+everyProvidedSet :: [S.Set Capability]
+everyProvidedSet =
+  map providedBy [minBound .. maxBound]

@@ -21,7 +21,8 @@ data Platform = Platform
 data PlatformSelector
   = SelectHost
   | SelectWasm32
-  deriving (Show, Eq, Generic)
+  | SelectWeb
+  deriving (Show, Eq, Enum, Bounded, Generic)
 
 instance Hashable PlatformSelector
 
@@ -36,6 +37,8 @@ reifySelector selector =
       "host"
     SelectWasm32 ->
       "wasm32"
+    SelectWeb ->
+      "web"
 
 reflectSelector :: T.Text -> Maybe PlatformSelector
 reflectSelector text =
@@ -44,5 +47,7 @@ reflectSelector text =
       Just SelectHost
     "wasm32" ->
       Just SelectWasm32
+    "web" ->
+      Just SelectWeb
     _ ->
       Nothing

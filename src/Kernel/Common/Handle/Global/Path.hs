@@ -105,6 +105,7 @@ getBuildSignature h t = do
       return sig
     Nothing -> do
       let clangDigest = Platform.getClangDigest (_platformHandle h)
+      let platformText = Platform.getPlatformText (_platformHandle h)
       let MainModule m = _mainModule h
       allocator <- getAllocator t m
       clangOption <- getClangOption t m
@@ -112,7 +113,8 @@ getBuildSignature h t = do
       let ens =
             E.dictFromList
               _m
-              [ ("clang-digest", _m :< E.String clangDigest),
+              [ ("platform", _m :< E.String platformText),
+                ("clang-digest", _m :< E.String clangDigest),
                 ("allocator", _m :< E.String (showAllocator allocator)),
                 ("compile-option", _m :< E.String (T.unwords $ CL.compileOption clangOption)),
                 ("link-option", _m :< E.String (T.unwords $ CL.linkOption clangOption)),

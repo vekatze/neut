@@ -281,6 +281,10 @@ getArch :: Handle -> Arch.Arch
 getArch h =
   P.arch $ Platform.getPlatform $ Global.platformHandle $ globalHandle h
 
+getSelector :: Handle -> P.PlatformSelector
+getSelector h =
+  Platform.getSelector $ Global.platformHandle $ globalHandle h
+
 getDataSize :: Handle -> DS.DataSize
 getDataSize h =
   Platform.getDataSize $ Global.platformHandle $ globalHandle h
@@ -308,12 +312,12 @@ declToBuilder h (name, (dom, cod, variadicity)) = do
       ++ returnAttributes
       ++ [signature]
       ++ maybe [] (allocatorFunctionAttributes (allocator h)) maybeKind
-      ++ wasmImportAttributes (getArch h) name
+      ++ wasmImportAttributes (getSelector h) name
 
-wasmImportAttributes :: Arch.Arch -> DN.DeclarationName -> [Builder]
-wasmImportAttributes arch name =
-  case (arch, name) of
-    (Arch.Wasm32, DN.Ext (EN.ExternalName extName))
+wasmImportAttributes :: P.PlatformSelector -> DN.DeclarationName -> [Builder]
+wasmImportAttributes selector name =
+  case (selector, name) of
+    (P.SelectWeb, DN.Ext (EN.ExternalName extName))
       | not ("llvm." `T.isPrefixOf` extName) -> do
           let name' = TE.encodeUtf8Builder extName
           ["\"wasm-import-module\"=\"env\" \"wasm-import-name\"=\"" <> name' <> "\""]

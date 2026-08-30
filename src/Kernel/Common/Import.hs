@@ -33,7 +33,7 @@ newtype Liveness
 
 everywhere :: Liveness
 everywhere =
-  Liveness $ S.fromList Capability.everySubset
+  Liveness $ S.fromList Capability.everyProvidedSet
 
 isUnconditional :: Liveness -> Bool
 isUnconditional =
