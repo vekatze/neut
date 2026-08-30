@@ -98,7 +98,7 @@ constructErrorMessageEq h found expected = do
       let grouped = Map.fromListWith S.union [(DD.localLocator dd, S.singleton dd) | dd <- allDDs]
       let needVerbose = S.fromList [dd | (_, dds) <- Map.toList grouped, S.size dds > 1, dd <- S.toList dds]
       let pathMap = modulePathMap h
-      let showDD dd = if S.member dd needVerbose then ModulePath.renderDD pathMap dd else DD.localLocator dd
+      let showDD dd = if S.member dd needVerbose then ModulePath.renderCanonicalDD pathMap dd else DD.localLocator dd
       "Expected:\n  "
         <> toTextTypeWith showDD expected
         <> "\nFound:\n  "
