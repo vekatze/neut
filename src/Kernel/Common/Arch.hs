@@ -14,6 +14,7 @@ import Language.Common.DataSize qualified as DS
 data Arch
   = Amd64
   | Arm64
+  | Wasm32
   deriving (Eq, Ord, G.Generic)
 
 instance Binary Arch
@@ -25,6 +26,8 @@ reify arch =
       "amd64"
     Arm64 ->
       "arm64"
+    Wasm32 ->
+      "wasm32"
 
 dataSizeOf :: Arch -> DS.DataSize
 dataSizeOf arch =
@@ -33,3 +36,5 @@ dataSizeOf arch =
       DS.DataSize64
     Arm64 ->
       DS.DataSize64
+    Wasm32 ->
+      DS.DataSize32

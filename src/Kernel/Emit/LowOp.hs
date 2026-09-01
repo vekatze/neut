@@ -13,15 +13,16 @@ import Kernel.Emit.LowType
 import Kernel.Emit.LowValue
 import Kernel.Emit.PrimType
 import Language.Common.DataSize (DataSize)
-import Language.Common.DataSize qualified as DS
 import Language.Common.LowType qualified as LT
 import Language.Common.PrimNumSize
+import Language.Common.SlotSize
 import Language.Common.PrimOp
 import Language.Common.PrimType qualified as PT
 import Language.LowComp.LowComp qualified as LC
 
 data Handle = Handle
-  { intType :: LT.LowType,
+  { baseSize :: DataSize,
+    intType :: LT.LowType,
     stackSlotAlignment :: Int,
     allocatorSpec :: AllocatorSpec
   }
@@ -29,53 +30,54 @@ data Handle = Handle
 new :: DataSize -> AllocatorSpec -> Handle
 new baseSize allocatorSpec = do
   let intType = LT.PrimNum $ PT.Int $ dataSizeToIntSize baseSize
-  let stackSlotAlignment = DS.reifyBytes baseSize
+  let stackSlotAlignment = slotByteSize
   Handle {..}
 
 emitLowOp :: Handle -> LC.Op -> Builder
-emitLowOp ax lowOp =
+emitLowOp ax lowOp = do
+  let emitValue' = emitValue (baseSize ax)
   case lowOp of
     LC.Call isPure codType d ds -> do
-      let renderedArgs = showInternalArgs ds
+      let renderedArgs = showInternalArgs (baseSize ax) ds
       let attributes = if isPure then ["nounwind willreturn memory(read)"] else []
-      unwordsL $ ["call fastcc", emitInternalReturnType codType, emitValue d <> renderedArgs] <> attributes
+      unwordsL $ ["call fastcc", emitInternalReturnType codType, emitValue' d <> renderedArgs] <> attributes
     LC.MagicCall funcType d ds ->
-      unwordsL ["call", emitLowType funcType, emitValue d <> showArgs ds]
+      unwordsL ["call", emitLowType funcType, emitValue' d <> showArgs (baseSize ax) ds]
     LC.GetElementPtr (basePtr, n) is ->
       unwordsL
         [ "getelementptr",
           emitLowType n <> ",",
           emitLowType LT.Pointer,
-          emitValue basePtr <> ",",
-          showIndex is
+          emitValue' basePtr <> ",",
+          showIndex (baseSize ax) is
         ]
     LC.Bitcast d fromType toType ->
-      emitConvOp "bitcast" d fromType toType
+      emitConvOp (baseSize ax) "bitcast" d fromType toType
     LC.IntToPointer d fromType ->
-      emitConvOp "inttoptr" d fromType LT.Pointer
+      emitConvOp (baseSize ax) "inttoptr" d fromType LT.Pointer
     LC.PointerToInt d toType ->
-      emitConvOp "ptrtoint" d LT.Pointer toType
+      emitConvOp (baseSize ax) "ptrtoint" d LT.Pointer toType
     LC.Load d lowType ->
       unwordsL
         [ "load",
           emitLowType lowType <> ",",
           emitLowType LT.Pointer,
-          emitValue d
+          emitValue' d
         ]
     LC.Store t d1 d2 ->
       unwordsL
         [ "store",
           emitLowType t,
-          emitValue d1 <> ",",
+          emitValue' d1 <> ",",
           emitLowType LT.Pointer,
-          emitValue d2
+          emitValue' d2
         ]
     LC.StackAlloc stackAllocInfo -> do
       unwordsL
         [ "alloca",
           emitLowType (LC.stackElemType stackAllocInfo) <> ",",
           emitLowType (LC.stackIndexType stackAllocInfo),
-          emitStackSize (LC.stackSize stackAllocInfo)
+          emitStackSize (baseSize ax) (LC.stackSize stackAllocInfo)
             <> ", align "
             <> intDec (stackSlotAlignment ax)
         ]
@@ -92,11 +94,11 @@ emitLowOp ax lowOp =
             <> "("
             <> emitLowType (intType ax)
             <> " "
-            <> emitValue num
+            <> emitValue' num
             <> ", "
             <> emitLowType (intType ax)
             <> " "
-            <> emitValue size
+            <> emitValue' size
             <> ")"
         ]
     LC.Alloc size _ -> do
@@ -108,7 +110,7 @@ emitLowOp ax lowOp =
             <> "("
             <> emitLowType (intType ax)
             <> " "
-            <> emitAllocSize size
+            <> emitAllocSize (baseSize ax) size
             <> ")"
         ]
     LC.Realloc ptr size -> do
@@ -118,11 +120,11 @@ emitLowOp ax lowOp =
           "@"
             <> TE.encodeUtf8Builder (reallocName $ allocatorSpec ax)
             <> "(ptr "
-            <> emitValue ptr
+            <> emitValue' ptr
             <> ", "
             <> emitLowType (intType ax)
             <> " "
-            <> emitValue size
+            <> emitValue' size
             <> ")"
         ]
     LC.Free d _ _ -> do
@@ -132,7 +134,7 @@ emitLowOp ax lowOp =
           "@"
             <> TE.encodeUtf8Builder (freeName $ allocatorSpec ax)
             <> "(ptr "
-            <> emitValue d
+            <> emitValue' d
             <> ")"
         ]
     LC.PrimOp op args -> do
@@ -141,58 +143,58 @@ emitLowOp ax lowOp =
           let name' = TE.encodeUtf8Builder (T.pack $ show name)
           case args of
             [arg] ->
-              emitUnaryOp dom name' arg
+              emitUnaryOp (baseSize ax) dom name' arg
             _ ->
               error "Kernel.Emit.LowOp.emitLowOp.PrimUnaryOp"
         PrimBinaryOp name dom _ -> do
           let name' = TE.encodeUtf8Builder (T.pack $ show name)
           case args of
             [arg1, arg2] ->
-              emitBinaryOp dom name' arg1 arg2
+              emitBinaryOp (baseSize ax) dom name' arg1 arg2
             _ ->
               error "Kernel.Emit.LowOp.emitLowOp.PrimBinaryOp"
         PrimCmpOp name dom _ -> do
           let name' = TE.encodeUtf8Builder (T.pack $ show name)
           case args of
             [arg1, arg2] ->
-              emitBinaryOp dom name' arg1 arg2
+              emitBinaryOp (baseSize ax) dom name' arg1 arg2
             _ ->
               error "Kernel.Emit.LowOp.emitLowOp.PrimCmpOp"
         PrimConvOp name dom cod -> do
           let name' = TE.encodeUtf8Builder (T.pack $ show name)
           case args of
             [arg] ->
-              emitConvOp name' arg (LT.PrimNum dom) (LT.PrimNum cod)
+              emitConvOp (baseSize ax) name' arg (LT.PrimNum dom) (LT.PrimNum cod)
             _ ->
               error "Kernel.Emit.LowOp.emitLowOp.PrimConvOp"
 
-emitStackSize :: Either Integer LC.Value -> Builder
-emitStackSize stackSize =
+emitStackSize :: DataSize -> Either Integer LC.Value -> Builder
+emitStackSize baseSize stackSize =
   case stackSize of
     Left knownSize ->
       integerDec knownSize
     Right runtimeSize ->
-      emitValue runtimeSize
+      emitValue baseSize runtimeSize
 
-emitAllocSize :: Either Integer LC.Value -> Builder
-emitAllocSize allocSize =
+emitAllocSize :: DataSize -> Either Integer LC.Value -> Builder
+emitAllocSize baseSize allocSize =
   case allocSize of
     Left knownSize ->
       integerDec knownSize
     Right runtimeSize ->
-      emitValue runtimeSize
+      emitValue baseSize runtimeSize
 
-emitUnaryOp :: PT.PrimType -> Builder -> LC.Value -> Builder
-emitUnaryOp t inst d =
-  unwordsL [inst, emitPrimType t, emitValue d]
+emitUnaryOp :: DataSize -> PT.PrimType -> Builder -> LC.Value -> Builder
+emitUnaryOp baseSize t inst d =
+  unwordsL [inst, emitPrimType t, emitValue baseSize d]
 
-emitBinaryOp :: PT.PrimType -> Builder -> LC.Value -> LC.Value -> Builder
-emitBinaryOp t inst d1 d2 =
-  unwordsL [inst, emitPrimType t, emitValue d1 <> ",", emitValue d2]
+emitBinaryOp :: DataSize -> PT.PrimType -> Builder -> LC.Value -> LC.Value -> Builder
+emitBinaryOp baseSize t inst d1 d2 =
+  unwordsL [inst, emitPrimType t, emitValue baseSize d1 <> ",", emitValue baseSize d2]
 
-emitConvOp :: Builder -> LC.Value -> LT.LowType -> LT.LowType -> Builder
-emitConvOp cast d dom cod =
-  unwordsL [cast, emitLowType dom, emitValue d, "to", emitLowType cod]
+emitConvOp :: DataSize -> Builder -> LC.Value -> LT.LowType -> LT.LowType -> Builder
+emitConvOp baseSize cast d dom cod =
+  unwordsL [cast, emitLowType dom, emitValue baseSize d, "to", emitLowType cod]
 
 {-# INLINE unwordsL #-}
 unwordsL :: [Builder] -> Builder
@@ -205,12 +207,12 @@ unwordsL strList =
     b : bs ->
       b <> " " <> unwordsL bs
 
-showIndex :: [(LC.Value, LT.LowType)] -> Builder
-showIndex idxList =
+showIndex :: DataSize -> [(LC.Value, LT.LowType)] -> Builder
+showIndex baseSize idxList =
   case idxList of
     [] ->
       ""
     [(d, t)] ->
-      emitLowType t <> " " <> emitValue d
+      emitLowType t <> " " <> emitValue baseSize d
     ((d, t) : dts) ->
-      showIndex [(d, t)] <> ", " <> showIndex dts
+      showIndex baseSize [(d, t)] <> ", " <> showIndex baseSize dts

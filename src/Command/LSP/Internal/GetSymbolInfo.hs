@@ -29,7 +29,7 @@ getSymbolInfo ::
   p ->
   App T.Text
 getSymbolInfo params = do
-  h <- liftIO $ Global.new lspConfig Nothing
+  h <- liftIO $ Global.new lspConfig Nothing Nothing
   let getSourceHandle = GetSource.new h
   source <- GetSource.getSource getSourceHandle params
   invalidate (Global.pathHandle h) Peripheral source

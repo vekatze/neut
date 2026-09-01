@@ -12,8 +12,8 @@ module Language.Common.CallConv
     mapTypes,
     traverseTypes,
     isNormal,
-    isDestPassing,
     isNoetic,
+    isDestPassing,
     destinationType,
   )
 where
@@ -129,15 +129,15 @@ isNoetic (CallConv evaluation _ _) =
 isDestPassing :: CallConv t -> Bool
 isDestPassing (CallConv _ result _) =
   case result of
-    Return ->
-      False
     Destination _ ->
       True
+    Return ->
+      False
 
 destinationType :: CallConv t -> Maybe t
 destinationType (CallConv _ result _) =
   case result of
-    Return ->
-      Nothing
     Destination t ->
       Just t
+    Return ->
+      Nothing

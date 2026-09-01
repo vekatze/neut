@@ -17,6 +17,7 @@ import Data.Maybe
 import GHC.Generics hiding (C)
 import Language.Common.Binder
 import Language.Common.DefiniteDescription qualified as DD
+import Language.Common.ExternalName qualified as EN
 import Language.Common.Discriminant qualified as D
 import Language.Common.Foreign qualified as F
 import Language.Common.IsConstLike
@@ -75,6 +76,7 @@ data StmtF t a
   | StmtTrope SavedHint DD.DefiniteDescription [DefineMetaF t a]
   | StmtVariadic RuleKind SavedHint DD.DefiniteDescription
   | StmtForeign [F.Foreign]
+  | StmtExpose [(SavedHint, DD.DefiniteDescription, EN.ExternalName)]
   | StmtNamespace SavedHint DD.DefiniteDescription
   deriving (Generic)
 
@@ -102,6 +104,8 @@ getStmtName' stmt =
     StmtVariadic _ (SavedHint m) name ->
       return (m, name)
     StmtForeign _ ->
+      Nothing
+    StmtExpose _ ->
       Nothing
     StmtNamespace (SavedHint m) name ->
       return (m, name)

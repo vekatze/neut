@@ -1,12 +1,23 @@
 import {
+  core::c-int {C-Int, c-int, from-c-int},
   core::int.io {print-int-line},
 }
 
 foreign {
-  add_const(int) -> int,
+  add_const(c-int) -> c-int,
+  call_double(int) -> int,
+}
+
+define double(x: int) -> int {
+  mul-int(x, 2)
+}
+
+expose {
+  double as neut_test_double,
 }
 
 define main() -> unit {
   let x: int = 10;
-  print-int-line(magic external add_const(x));
+  print-int-line(from-c-int(magic external add_const(C-Int(trunc-int-int32(x)))));
+  print-int-line(magic external call_double(21));
 }

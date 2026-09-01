@@ -34,6 +34,6 @@ lint h = do
   liftIO $ DiagnosticStore.clear (diagnosticStore (lspState h))
   remarksOrNone <- run (lspState h) (globalHandle h) $ do
     Fetch.fetch fetchHandle (Env.getMainModule envHandle)
-    Check.check checkHandle
+    Check.check checkHandle Nothing
   liftIO $ DocumentStateStore.refreshDocumentStates (globalHandle h) (documentStateStore (lspState h))
   forM_ remarksOrNone (report (lspState h))

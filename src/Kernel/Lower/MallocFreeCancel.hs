@@ -8,7 +8,8 @@ import Data.Map.Strict qualified as Map
 import Data.Set qualified as S
 import Language.Common.Ident
 import Language.Common.LowType qualified as LT
-import Language.Common.PrimNumSize (IntSize (IntSize64, IntSize8))
+import Language.Common.DataSize qualified as DS
+import Language.Common.PrimNumSize (IntSize (IntSize8), dataSizeToIntSize)
 import Language.Common.PrimType qualified as PT
 import Language.LowComp.LowComp qualified as LC
 
@@ -31,9 +32,9 @@ instance Semigroup Axis where
 instance Monoid Axis where
   mempty = emptyAxis
 
-mallocFreeCancel :: LC.Comp -> LC.Comp
-mallocFreeCancel lowComp =
-  cancelMallocFree (analyze lowComp) lowComp
+mallocFreeCancel :: DS.DataSize -> LC.Comp -> LC.Comp
+mallocFreeCancel baseSize lowComp =
+  cancelMallocFree baseSize (analyze lowComp) lowComp
 
 analyze :: LC.Comp -> Axis
 analyze lowComp =
@@ -56,7 +57,7 @@ analyze lowComp =
       analyze cont
     LC.Switch _ _ defaultBranch ces phiTargets cont ->
       let branches = defaultBranch : map snd ces
-       in analyzeSwitchJoin branches phiTargets cont <> mconcat (map analyze (cont : branches))
+       in analyzeSwitchJoin branches (map fst phiTargets) cont <> mconcat (map analyze (cont : branches))
     LC.TailCall {} ->
       mempty
     LC.Unreachable ->
@@ -99,8 +100,9 @@ collectFreeIDs aliases lowComp =
 getAliasSource :: LC.Op -> Maybe Ident
 getAliasSource op =
   case op of
-    LC.Bitcast (LC.VarLocal y) LT.Pointer LT.Pointer ->
-      Just y
+    LC.Bitcast (LC.VarLocal y) from to
+      | from == to ->
+          Just y
     LC.PointerToInt (LC.VarLocal y) _ ->
       Just y
     LC.IntToPointer (LC.VarLocal y) _ ->
@@ -157,7 +159,7 @@ collectBranchResultOrigin env lowComp =
             foldl'
               (\acc (phiTarget, resultOrigin) -> Map.insert phiTarget resultOrigin acc)
               env
-              (zip phiTargets resultOrigins)
+              (zip (map fst phiTargets) resultOrigins)
       collectBranchResultOrigin env' cont
     LC.TailCall {} ->
       Nothing
@@ -215,13 +217,13 @@ newFreeCanceller :: IntSet.IntSet -> IntSet.IntSet -> IntMap.IntMap IntSet.IntSe
 newFreeCanceller allocIDs freeIDs =
   IntMap.fromList $ map (,allocIDs) (IntSet.toList freeIDs)
 
-cancelMallocFree :: Axis -> LC.Comp -> LC.Comp
-cancelMallocFree axis lowComp =
+cancelMallocFree :: DS.DataSize -> Axis -> LC.Comp -> LC.Comp
+cancelMallocFree baseSize axis lowComp =
   case lowComp of
     LC.Return {} ->
       lowComp
     LC.Let x op cont -> do
-      let cont' = cancelMallocFree axis cont
+      let cont' = cancelMallocFree baseSize axis cont
       case op of
         LC.Alloc size allocID
           | IntSet.member allocID (allocCanceller axis) -> do
@@ -229,7 +231,7 @@ cancelMallocFree axis lowComp =
                     LC.StackAllocInfo
                       { stackSlotID = allocID,
                         stackElemType = LT.PrimNum $ PT.Int IntSize8,
-                        stackIndexType = LT.PrimNum $ PT.Int IntSize64,
+                        stackIndexType = LT.PrimNum $ PT.Int (dataSizeToIntSize baseSize),
                         stackSize = size
                       }
               LC.Let x (LC.StackAlloc stackAllocInfo) $
@@ -237,7 +239,7 @@ cancelMallocFree axis lowComp =
         _ ->
           LC.Let x op cont'
     LC.Cont op cont -> do
-      let cont' = cancelMallocFree axis cont
+      let cont' = cancelMallocFree baseSize axis cont
       case op of
         LC.Free _ _ freeID
           | Just stackSlotIDs <- IntMap.lookup freeID (freeCanceller axis) ->
@@ -245,10 +247,10 @@ cancelMallocFree axis lowComp =
         _ ->
           LC.Cont op cont'
     LC.Switch d t defaultBranch ces phiTargets cont -> do
-      let defaultBranch' = cancelMallocFree axis defaultBranch
+      let defaultBranch' = cancelMallocFree baseSize axis defaultBranch
       let (cs, es) = unzip ces
-      let es' = map (cancelMallocFree axis) es
-      let cont' = cancelMallocFree axis cont
+      let es' = map (cancelMallocFree baseSize axis) es
+      let cont' = cancelMallocFree baseSize axis cont
       LC.Switch d t defaultBranch' (zip cs es') phiTargets cont'
     LC.TailCall {} ->
       lowComp

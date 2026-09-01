@@ -6,12 +6,17 @@
         "-fsanitize=address",
       ],
     },
+    nat-list-wasm {
+      main "nat-list.nt",
+      platform "wasm32",
+      execute ["wasmtime", "{{executable}}"],
+    },
   },
   dependency {
     core {
-      digest "v5ZueFMAkJl9q3gU5dHupMJr5Wb30PHzmcDgL8_padI",
+      digest "RmCY7wlMkLbs2bhVARt1nvc9FF64VHb9voHD9VY0nJw",
       mirror [
-        "https://github.com/vekatze/neut-core/raw/main/archive/0.56.1.tar.zst",
+        "https://github.com/vekatze/neut-core/raw/main/archive/0.57.0.tar.zst",
       ],
       enable-preset true,
     },

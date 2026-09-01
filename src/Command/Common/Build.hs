@@ -25,6 +25,7 @@ import Data.Containers.ListUtils (nubOrdOn)
 import Data.Either (lefts)
 import Data.Foldable
 import Data.Maybe
+import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Text.Encoding (decodeUtf8)
 import Data.Time
@@ -62,6 +63,7 @@ import Language.Common.ModuleID qualified as MID
 import Language.LowComp.LowComp qualified as LC
 import Language.Term.Stmt (getStmtName)
 import Logger.Debug qualified as Logger
+import Logger.Handle qualified as LoggerHandle
 import Logger.Print qualified as Logger
 import Path
 import Path.IO
@@ -110,16 +112,18 @@ buildTarget h (M.MainModule baseModule) target = do
     Logger.report (Global.loggerHandle (globalHandle h)) $
       "Build configuration: target=" <> T.pack (show target') <> ", outputs=" <> T.pack (show $ _outputKindList h) <> ", skip-link=" <> T.pack (show $ _shouldSkipLink h) <> ", execute=" <> T.pack (show $ _shouldExecute h)
   unravelHandle <- liftIO $ Unravel.new (globalHandle h)
-  (artifactTime, dependenceSeq) <- Unravel.unravel unravelHandle baseModule target'
+  Unravel.Result {..} <- Unravel.unravel unravelHandle baseModule target'
+  let dependenceSeq = resultSourceList
+  let liveSeq = filter (flip S.member resultLiveSourceSet . sourceFilePath) dependenceSeq
   sourceDependencyMap <- liftIO $ Unravel.getSourceDependencyMap unravelHandle dependenceSeq
   let traceReport = Console.getTraceConfig $ Global.consoleHandle $ globalHandle h
   traceConfig <- either raiseError' return $ Trace.new (Env.getMainModule $ Global.envHandle $ globalHandle h) traceReport
-  let moduleList = nubOrdOn M.moduleID $ map sourceModule dependenceSeq
+  let moduleList = nubOrdOn M.moduleID $ map sourceModule liveSeq
   didPerformForeignCompilation <- compileForeign h target' moduleList
   let loadHandle = Load.new (globalHandle h)
   contentSeq <- Load.load loadHandle (Trace.isEnabled traceConfig) target' dependenceSeq
   withSystemTempDir "neut-object" $ \stagingDir -> do
-    compile h traceConfig target' (_outputKindList h) sourceDependencyMap contentSeq stagingDir
+    compile h traceConfig target' (_outputKindList h) sourceDependencyMap resultLiveSourceSet contentSeq stagingDir
   liftIO $
     GlobalRemark.get (Global.globalRemarkHandle (globalHandle h))
       >>= Logger.printLogList (Global.loggerHandle (globalHandle h))
@@ -130,7 +134,7 @@ buildTarget h (M.MainModule baseModule) target = do
       return ()
     Main ct -> do
       let linkHandle = Link.new (globalHandle h)
-      Link.link linkHandle ct (_shouldSkipLink h) didPerformForeignCompilation artifactTime (toList dependenceSeq)
+      Link.link linkHandle ct (_shouldSkipLink h) didPerformForeignCompilation resultArtifactTime liveSeq
       execute h (_shouldExecute h) ct (_executeArgs h)
       install h (_installDir h) ct
 
@@ -140,14 +144,15 @@ compile ::
   Target ->
   [OutputKind] ->
   SourceDependencyMap ->
+  S.Set (Path Abs File) ->
   [(Source, Either Cache T.Text)] ->
   Path Abs Dir ->
   App ()
-compile h traceConfig target outputKindList sourceDependencyMap contentSeq stagingDir = do
+compile h traceConfig target outputKindList sourceDependencyMap liveSourceSet contentSeq stagingDir = do
   numCapabilities <- liftIO getNumCapabilities
   generateHandle <- liftIO $ Gen.new (globalHandle h) stagingDir numCapabilities
   let cacheHandle = Cache.new (globalHandle h)
-  bs <- mapM (needsCodeGeneration traceConfig cacheHandle outputKindList . fst) contentSeq
+  bs <- mapM (needsCodeGeneration traceConfig cacheHandle outputKindList liveSourceSet . fst) contentSeq
   forM_ (zip contentSeq bs) $ \((source, _), shouldGenerateCode) -> do
     let sourcePath = T.pack $ toFilePath $ sourceFilePath source
     let message =
@@ -176,7 +181,7 @@ compile h traceConfig target outputKindList sourceDependencyMap contentSeq stagi
     let ensureMainHandle = EnsureMain.new (Global.envHandle (globalHandle h))
     stmtList <- Elaborate.elaborate elaborateHandle target logs cacheOrStmt
     EnsureMain.ensureMain ensureMainHandle target source (map snd $ getStmtName stmtList)
-    b <- needsCodeGeneration traceConfig cacheHandle outputKindList source
+    b <- needsCodeGeneration traceConfig cacheHandle outputKindList liveSourceSet source
     if b
       then do
         fmap Just $ liftIO $ async $ runApp $ do
@@ -206,11 +211,14 @@ compile h traceConfig target outputKindList sourceDependencyMap contentSeq stagi
     then return ()
     else throwError $ E.join allErrors
 
-needsCodeGeneration :: Trace.Config -> Cache.Handle -> [OutputKind] -> Source -> App Bool
-needsCodeGeneration traceConfig cacheHandle outputKindList source = do
-  if Trace.isEnabled traceConfig
-    then return True
-    else Cache.needsCompilation cacheHandle outputKindList source
+needsCodeGeneration :: Trace.Config -> Cache.Handle -> [OutputKind] -> S.Set (Path Abs File) -> Source -> App Bool
+needsCodeGeneration traceConfig cacheHandle outputKindList liveSourceSet source
+  | not $ S.member (sourceFilePath source) liveSourceSet =
+      return False
+  | Trace.isEnabled traceConfig =
+      return True
+  | otherwise =
+      Cache.needsCompilation cacheHandle outputKindList source
 
 registerUnusedTopLevelNameRemarks :: Handle -> App ()
 registerUnusedTopLevelNameRemarks h = do
@@ -301,7 +309,7 @@ compileEntryPoint h target outputKindList = do
           return []
         else do
           liftIO $ Logger.report (Global.loggerHandle (globalHandle h)) $ "Generating entry point: " <> T.pack (show t)
-          clarifyMainHandle <- liftIO $ Clarify.newMain gensymHandle (globalHandle h)
+          clarifyMainHandle <- liftIO $ Clarify.newMain gensymHandle
           (stmtList, defMap) <- liftIO $ Clarify.clarifyEntryPoint clarifyMainHandle
           liftIO $ Logger.report (Global.loggerHandle (globalHandle h)) $ "Lowering entry point: " <> T.pack (show t)
           lowerHandle <- Lower.new gensymHandle (globalHandle h) traceConfig target defMap
@@ -392,13 +400,24 @@ naiveReplace sub t =
 
 getForeignSubst :: Handle -> Target -> M.Module -> App [(T.Text, T.Text)]
 getForeignSubst h t m = do
-  clang <- liftIO Platform.getClang
+  clangCommand <- liftIO $ getForeignClangCommand (Global.loggerHandle (globalHandle h)) (Global.platformHandle (globalHandle h))
   foreignDir <- Path.getForeignDir (Global.pathHandle (globalHandle h)) t m
   return
     [ ("{{module-root}}", shellQuote $ T.pack $ toFilePath $ M.getModuleRootDir m),
-      ("{{clang}}", shellQuote $ T.pack clang),
+      ("{{clang}}", clangCommand),
       ("{{foreign}}", shellQuote $ T.pack $ toFilePath foreignDir)
     ]
+
+getForeignClangCommand :: LoggerHandle.Handle -> Platform.Handle -> IO T.Text
+getForeignClangCommand loggerHandle platformHandle = do
+  let clang = Platform.getClang platformHandle
+  let targetTriple = Platform.getClangTargetTriple platformHandle
+  sysrootOption <- Platform.getSysrootOption loggerHandle platformHandle
+  let toolchainOption = Platform.getToolchainOption platformHandle
+  return $
+    T.unwords $
+      map (shellQuote . T.pack) $
+        [clang, "-target", targetTriple] ++ sysrootOption ++ toolchainOption
 
 shellQuote :: T.Text -> T.Text
 shellQuote text =

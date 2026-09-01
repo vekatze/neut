@@ -23,8 +23,11 @@ module Kernel.Common.Module
     keyForeignOutput,
     keyForeignScript,
     keyInlineLimit,
+    keyUniversal,
     keyLinkOption,
     keyMain,
+    keyExecute,
+    keyPlatform,
     keyMirror,
     keyPreset,
     keySource,
@@ -57,13 +60,14 @@ import Control.Monad.Catch
 import Data.HashMap.Strict qualified as Map
 import Data.List (sort)
 import Data.List.NonEmpty qualified as NE
-import Data.Maybe (catMaybes, fromMaybe, maybeToList)
+import Data.Maybe (catMaybes, fromMaybe, isNothing, maybeToList)
 import Data.Text qualified as T
 import Ens.Ens qualified as E
 import Kernel.Common.Allocator qualified as Allocator
 import Kernel.Common.ClangOption qualified as CL
 import Kernel.Common.Const
 import Kernel.Common.ModuleURL
+import Kernel.Common.Platform qualified as P
 import Kernel.Common.Target qualified as Target
 import Kernel.Common.ZenConfig
 import Language.Common.BaseName qualified as BN
@@ -119,6 +123,7 @@ data Module = Module
     moduleForeign :: Foreign,
     moduleStaticFiles :: Map.HashMap T.Text (Path Rel File),
     moduleInlineLimit :: Maybe Int,
+    moduleUniversal :: Bool,
     modulePresetMap :: PresetMap
   }
   deriving (Show)
@@ -158,6 +163,14 @@ keyMain =
 keyAllocator :: T.Text
 keyAllocator =
   "allocator"
+
+keyPlatform :: T.Text
+keyPlatform =
+  "platform"
+
+keyExecute :: T.Text
+keyExecute =
+  "execute"
 
 keyBuildOption :: T.Text
 keyBuildOption =
@@ -214,6 +227,10 @@ keyForeignOutput =
 keyForeignScript :: T.Text
 keyForeignScript =
   "script"
+
+keyUniversal :: T.Text
+keyUniversal =
+  "universal"
 
 keyInlineLimit :: T.Text
 keyInlineLimit =
@@ -317,13 +334,30 @@ getZenInfo someModule = do
             "mimalloc"
           Allocator.System ->
             "system"
+  let platform' =
+        case platform zenConfig of
+          P.SelectHost ->
+            Nothing
+          selector ->
+            Just (keyPlatform, _m :< E.String (P.reifySelector selector))
+  let executeCommand' =
+        case executeCommand zenConfig of
+          Nothing ->
+            Nothing
+          Just executeCommand ->
+            Just (keyExecute, _m :< E.List (seriesFromList (map (\x -> _m :< E.String x) executeCommand)))
   let zenInfo =
         E.dictFromListVertical
           _m
           $ [(keyAllocator, _m :< E.String allocatorText)]
+            ++ maybeToList platform'
+            ++ maybeToList executeCommand'
             ++ maybeToList compileOption'
             ++ maybeToList linkOption'
-  if clangOption zenConfig == CL.empty && allocator zenConfig == Allocator.defaultAllocator
+  if clangOption zenConfig == CL.empty
+    && allocator zenConfig == Allocator.defaultAllocator
+    && platform zenConfig == P.SelectHost
+    && isNothing (executeCommand zenConfig)
     then Nothing
     else Just (keyZen, zenInfo)
 
@@ -353,11 +387,25 @@ getTargetInfo someModule = do
                   "mimalloc"
                 Allocator.System ->
                   "system"
+        let platform' =
+              case Target.platform summary of
+                P.SelectHost ->
+                  Nothing
+                selector ->
+                  Just (keyPlatform, _m :< E.String (P.reifySelector selector))
+        let executeCommand' =
+              case Target.executeCommand summary of
+                Nothing ->
+                  Nothing
+                Just executeCommand ->
+                  Just (keyExecute, _m :< E.List (seriesFromList (map (\x -> _m :< E.String x) executeCommand)))
         E.dictFromListVertical
           _m
           $ [ (keyMain, _m :< E.String (SL.getRelPathText (Target.entryPoint summary))),
               (keyAllocator, _m :< E.String allocatorText)
             ]
+            ++ maybeToList platform'
+            ++ maybeToList executeCommand'
             ++ maybeToList compileOption'
             ++ maybeToList linkOption'
   (keyTarget, E.dictFromListVertical _m (Map.toList targetDict))

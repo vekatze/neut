@@ -44,5 +44,5 @@ get h cfg = do
   Path.ensureNotInDependencyDir mainModule
   Clean.clean (cleanHandle h)
   Fetch.insertDependency (fetchHandle h) (moduleAliasText cfg) (ModuleURL $ moduleURLText cfg)
-  h' <- liftIO $ Global.new (remarkCfg h) Nothing
-  void $ Check.checkAllOrFail (Check.new h')
+  h' <- liftIO $ Global.new (remarkCfg h) Nothing Nothing
+  void $ Check.checkAllOrFail (Check.new h') Nothing

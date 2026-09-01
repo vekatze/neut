@@ -8,6 +8,7 @@ where
 import App.App (App)
 import Control.Monad
 import Control.Monad.IO.Class
+import Data.HashSet qualified as HS
 import Gensym.Handle qualified as Gensym
 import Kernel.Common.Cache qualified as Cache
 import Kernel.Common.CreateGlobalHandle qualified as Global
@@ -34,6 +35,7 @@ import Kernel.Parse.VarDefKind
 import Language.Common.ExternalName qualified as EN
 import Language.Common.Ident.Reify
 import Language.Common.LocalLocator qualified as LL
+import Language.Common.StrictGlobalLocator qualified as SGL
 import Language.RawTerm.RawStmt
 import Language.WeakTerm.WeakStmt
 import Logger.Hint
@@ -101,7 +103,7 @@ interpret h t source cacheOrContent = do
       return (Right prog', logs)
 
 interpret' :: Handle -> Source.Source -> PostRawProgram -> App ([WeakStmt], [L.Log])
-interpret' h currentSource (PostRawProgram m importList stmtList) = do
+interpret' h currentSource (PostRawProgram m importList _ stmtList) = do
   Import.interpretImport (importHandle h) m currentSource importList >>= activateImport h m currentSource
   stmtList'' <- Discern.discernStmtList (discernHandle h) stmtList
   NameMap.reportMissingDefinitions (Discern.nameMapHandle (discernHandle h))
@@ -114,17 +116,34 @@ interpret' h currentSource (PostRawProgram m importList stmtList) = do
 
 activateImport :: Handle -> Hint -> Source.Source -> [ImportItem] -> App ()
 activateImport h m currentSource sourceInfoList = do
+  liftIO $ Locator.setConditionalSources (locatorHandle h) $ conditionalSourceSet sourceInfoList
   forM_ sourceInfoList $ \importItem -> do
     case importItem of
-      ImportItem source importUseList -> do
+      ImportItem liveness source importUseList -> do
         let path = Source.sourceFilePath source
         namesInSource <- GlobalNameMap.lookup (globalNameMapHandle h) m path
-        liftIO $ NameMap.activateTopLevelNames (nameMapHandle h) namesInSource
-        forM_ importUseList $ \importUse ->
-          Alias.activateImportUse (aliasHandle h) currentSource namesInSource importUse
+        if Import.isLive (importHandle h) liveness
+          then do
+            liftIO $ NameMap.activateTopLevelNames (nameMapHandle h) namesInSource
+            forM_ importUseList $ \importUse ->
+              Alias.activateImportUse (aliasHandle h) currentSource namesInSource importUse
+          else
+            forM_ importUseList $ \importUse ->
+              Alias.ensureImportUseIsAvailable currentSource namesInSource importUse
       StaticFileKey pathList -> do
-        forM_ pathList $ \(key, (mKey, path)) -> do
+        forM_ pathList $ \(key, (mKey, path)) ->
           Locator.activateStaticFile (locatorHandle h) mKey key path
+
+conditionalSourceSet :: [ImportItem] -> HS.HashSet SGL.StrictGlobalLocator
+conditionalSourceSet sourceInfoList = do
+  let locatorsWhere p =
+        HS.fromList
+          [ sgl
+            | ImportItem liveness _ importUseList <- sourceInfoList,
+              p liveness,
+              ImportUse _ sgl _ <- importUseList
+          ]
+  HS.difference (locatorsWhere (not . isUnconditional)) (locatorsWhere isUnconditional)
 
 registerUnusedVariableRemarks :: Handle -> IO [L.Log]
 registerUnusedVariableRemarks h = do

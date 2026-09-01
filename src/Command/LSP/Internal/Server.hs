@@ -80,7 +80,7 @@ prettyMsg l =
 
 withGlobalHandle :: LspState -> Lsp () () -> (Global.Handle -> Lsp () ()) -> Lsp () ()
 withGlobalHandle lspState defaultAction cont = do
-  vOrErr <- liftIO $ Global.newOrError lspConfig Nothing
+  vOrErr <- liftIO $ Global.newOrError lspConfig Nothing Nothing
   case vOrErr of
     Left (_, E.MakeError errors) -> do
       report lspState errors
@@ -264,7 +264,7 @@ handlers lspState = do
             | commandName == CA.refreshCacheCommandName -> do
                 withGlobalHandle lspState (responder $ Right $ InR Null) $ \h -> do
                   let checkHandle = Check.new h
-                  _ <- run lspState h $ Check.checkAll checkHandle
+                  _ <- run lspState h $ Check.checkAll checkHandle Nothing
                   liftIO $ DocumentStateStore.refreshDocumentStates h documentStateStore
                   responder $ Right $ InR Null
           _ ->

@@ -1,17 +1,17 @@
 module Kernel.Emit.LowValue
   ( emitValue,
     emitFloat,
+    floatToBits,
     emitIdentAsVar,
     emitIdentAsLabel,
     emitIdentAsLabelVar,
     showArgs,
     showInternalArgs,
-    showFuncArgs,
-    showInternalFuncArgs,
     internalArgAttributes,
   )
 where
 
+import Data.Bits
 import Data.ByteString.Builder
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
@@ -19,17 +19,21 @@ import Data.Word
 import GHC.Float
 import Kernel.Emit.Builder
 import Kernel.Emit.LowType (emitLowType)
+import Kernel.Emit.PrimType (emitPrimType)
+import Language.Common.DataSize qualified as DS
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.ExternalName qualified as EN
 import Language.Common.Ident
 import Language.Common.LowType qualified as LT
 import Language.Common.PrimNumSize
+import Language.Common.PrimNumSize.ToInt (floatSizeToInt)
+import Language.Common.PrimType qualified as PT
 import Language.LowComp.LowComp qualified as LC
 import Numeric (showHex)
 import Numeric.Half
 
-emitValue :: LC.Value -> Builder
-emitValue lowValue =
+emitValue :: DS.DataSize -> LC.Value -> Builder
+emitValue baseSize lowValue =
   case lowValue of
     LC.VarLocal x ->
       "%" <> emitIdentAsVar x
@@ -46,7 +50,10 @@ emitValue lowValue =
     LC.Address a ->
       if a == 0
         then "null"
-        else "inttoptr (i64 " <> integerDec a <> " to ptr)"
+        else do
+          let bits = DS.reify baseSize
+          let wordType = "i" <> intDec bits
+          "inttoptr (" <> wordType <> " " <> integerDec (a .&. (bit bits - 1)) <> " to ptr)"
     LC.Null ->
       "null"
 
@@ -54,38 +61,65 @@ emitIdentAsVar :: Ident -> Builder
 emitIdentAsVar (I (_, i)) =
   "v" <> intDec i
 
-emitFloat :: FloatSize -> Double -> Builder
-emitFloat size x =
+data FloatLiteral = FloatLiteral
+  { floatLiteralBits :: Integer,
+    floatLiteralDecimal :: Maybe Double
+  }
+
+floatLiteral :: FloatSize -> Double -> FloatLiteral
+floatLiteral size x =
   case size of
     FloatSize16
       | isNaN x ->
-          emitFloatBitcast "i16" 4 (halfPreferredNaNBits x) "half"
+          bitsOnly $ halfPreferredNaNBits x
       | isInfinite x || abs x >= halfOverflowThreshold ->
-          emitFloatBitcast "i16" 4 (halfInfinityBits x) "half"
+          bitsOnly $ halfInfinityBits x
       | otherwise -> do
           let x' = realToFrac x :: Half
           let rounded = realToFrac x' :: Double
           case () of
             _
               | isInfinite rounded ->
-                  emitFloatBitcast "i16" 4 (halfInfinityBits x) "half"
+                  bitsOnly $ halfInfinityBits x
               | rounded == 0 && isNegativeDouble x ->
-                  emitFloatBitcast "i16" 4 (0x8000 :: Word16) "half"
+                  bitsOnly (0x8000 :: Word16)
               | otherwise ->
-                  doubleDec rounded
+                  FloatLiteral {floatLiteralBits = toInteger $ getHalf x', floatLiteralDecimal = Just rounded}
     FloatSize32 -> do
       let x' = realToFrac x :: Float
+      let bits = toInteger $ castFloatToWord32 x'
       if isNaN x' || isInfinite x'
-        then emitFloatBitcast "i32" 8 (castFloatToWord32 x') "float"
-        else doubleDec (realToFrac x')
-    FloatSize64 ->
+        then bitsOnly bits
+        else FloatLiteral {floatLiteralBits = bits, floatLiteralDecimal = Just (realToFrac x')}
+    FloatSize64 -> do
+      let bits = toInteger $ castDoubleToWord64 x
       if isNaN x || isInfinite x
-        then emitFloatBitcast "i64" 16 (castDoubleToWord64 x) "double"
-        else doubleDec x
+        then bitsOnly bits
+        else FloatLiteral {floatLiteralBits = bits, floatLiteralDecimal = Just x}
 
-emitFloatBitcast :: (Integral a) => Builder -> Int -> a -> Builder -> Builder
-emitFloatBitcast intType width bits floatType =
-  "bitcast (" <> intType <> " " <> emitHexWord width bits <> " to " <> floatType <> ")"
+bitsOnly :: (Integral a) => a -> FloatLiteral
+bitsOnly bits =
+  FloatLiteral {floatLiteralBits = toInteger bits, floatLiteralDecimal = Nothing}
+
+floatToBits :: FloatSize -> Double -> Integer
+floatToBits size x =
+  floatLiteralBits $ floatLiteral size x
+
+emitFloat :: FloatSize -> Double -> Builder
+emitFloat size x = do
+  let literal = floatLiteral size x
+  case floatLiteralDecimal literal of
+    Just rounded ->
+      doubleDec rounded
+    Nothing ->
+      emitFloatBitcast size $ floatLiteralBits literal
+
+emitFloatBitcast :: FloatSize -> Integer -> Builder
+emitFloatBitcast size bits = do
+  let width = floatSizeToInt size
+  let intType = "i" <> intDec width
+  let floatType = emitPrimType $ PT.Float size
+  "bitcast (" <> intType <> " " <> emitHexWord (width `div` 4) bits <> " to " <> floatType <> ")"
 
 halfPreferredNaNBits :: Double -> Word16
 halfPreferredNaNBits x =
@@ -125,35 +159,27 @@ emitIdentAsLabelVar :: Ident -> Builder
 emitIdentAsLabelVar x =
   "%" <> emitIdentAsLabel x
 
-showArgs :: [(LT.LowType, LC.Value)] -> Builder
-showArgs tds =
-  showLocals $ map showArg tds
+showArgs :: DS.DataSize -> [(LT.LowType, LC.Value)] -> Builder
+showArgs baseSize tds =
+  showLocals $ map (showArg baseSize) tds
 
-showInternalArgs :: [(LT.LowType, LC.Value)] -> Builder
-showInternalArgs tds =
-  showLocals $ map showInternalArg tds
+showInternalArgs :: DS.DataSize -> [(LT.LowType, LC.Value)] -> Builder
+showInternalArgs baseSize tds =
+  showLocals $ map (showInternalArg baseSize) tds
 
-showArg :: (LT.LowType, LC.Value) -> Builder
-showArg (t, d) =
-  emitLowType t <> " " <> emitValue d
+showArg :: DS.DataSize -> (LT.LowType, LC.Value) -> Builder
+showArg baseSize (t, d) =
+  emitLowType t <> " " <> emitValue baseSize d
 
-showInternalArg :: (LT.LowType, LC.Value) -> Builder
-showInternalArg (t, d) =
+showInternalArg :: DS.DataSize -> (LT.LowType, LC.Value) -> Builder
+showInternalArg baseSize (t, d) =
   attachAttributes (emitLowType t) (internalArgAttributes t)
     <> " "
-    <> emitValue d
+    <> emitValue baseSize d
 
 showLocals :: [Builder] -> Builder
 showLocals ds =
   "(" <> unwordsC ds <> ")"
-
-showFuncArgs :: [Builder] -> Builder
-showFuncArgs ds =
-  "(" <> unwordsC (map ("ptr " <>) ds) <> ")"
-
-showInternalFuncArgs :: [Builder] -> Builder
-showInternalFuncArgs ds =
-  showLocals $ map (\arg -> attachAttributes "ptr" (internalArgAttributes LT.Pointer) <> " " <> arg) ds
 
 internalArgAttributes :: LT.LowType -> [Builder]
 internalArgAttributes argType =

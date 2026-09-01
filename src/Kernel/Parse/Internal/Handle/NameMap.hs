@@ -105,7 +105,6 @@ registerGeist h tag RT.RawGeist {..} = do
 lookup :: Handle -> Hint.Hint -> SGL.StrictGlobalLocator -> [BN.BaseName] -> DD.DefiniteDescription -> App (LookupResult (Hint, GN.GlobalName))
 lookup h m currentLocator bodyContext name = do
   nameMap <- liftIO $ readIORef (nameMapRef h)
-  let dataSize = Platform.getDataSize (platformHandle h)
   case lookupAvailable currentLocator bodyContext name nameMap of
     Found (mFound, _tag, gn) -> do
       liftIO $ Unused.deleteGlobalLocator (unusedHandle h) $ DD.globalLocator name
@@ -115,9 +114,9 @@ lookup h m currentLocator bodyContext name = do
     Hidden ->
       return Hidden
     Missing
-      | Just primType <- PT.fromDefiniteDescription dataSize name ->
+      | Just primType <- PT.fromDefiniteDescription name ->
           return $ Found (m, GN.PrimType primType)
-      | Just primOp <- PrimOp.fromDefiniteDescription dataSize name ->
+      | Just primOp <- PrimOp.fromDefiniteDescription name ->
           return $ Found (m, GN.PrimOp primOp)
       | otherwise -> do
           return Missing
@@ -226,6 +225,8 @@ _getGlobalNames stmt = do
       [(name, (m, Nothing, GN.Trope))]
     PostRawStmtForeign {} ->
       []
+    PostRawStmtExpose {} ->
+      []
     PostRawStmtNamespace m name children ->
       (name, (m, Nothing, GN.Namespace)) : concatMap _getGlobalNames children
 
@@ -307,6 +308,8 @@ _getGlobalNames' stmt = do
     StmtVariadic kind (SavedHint m) name -> do
       [(name, (m, Nothing, GN.Rule kind))]
     StmtForeign {} ->
+      []
+    StmtExpose {} ->
       []
     StmtNamespace (SavedHint m) name ->
       [(name, (m, Nothing, GN.Namespace))]

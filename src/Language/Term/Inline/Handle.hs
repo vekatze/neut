@@ -20,7 +20,6 @@ import Kernel.Common.Module qualified as Module
 import Kernel.Common.Handle.Global.ModulePath qualified as ModulePath
 import Kernel.Elaborate.Internal.Handle.TypeDef qualified as TypeDef
 import Language.Common.Binder
-import Language.Common.DataSize qualified as DS
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.Ident (Ident)
 import Language.Term.Stmt qualified as Stmt
@@ -81,7 +80,6 @@ data Handle = Handle
     traceEnabled :: Bool,
     macroCallStack :: IORef [(DD.DefiniteDescription, DefKind, Hint)],
     gensymHandle :: GensymHandle.Handle,
-    baseSize :: DS.DataSize,
     currentStage :: Int,
     initialStage :: Int,
     insideDefineMeta :: Bool,

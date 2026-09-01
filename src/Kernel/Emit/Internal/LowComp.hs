@@ -22,6 +22,7 @@ import Kernel.Emit.LowOp qualified as EmitOp
 import Kernel.Emit.LowType
 import Kernel.Emit.LowValue
 import Language.Common.CreateSymbol qualified as Gensym
+import Language.Common.DataSize qualified as DS
 import Language.Common.Ident
 import Language.Common.Ident.Reify
 import Language.Common.Ident.Reify qualified as Ident
@@ -34,6 +35,7 @@ type Label =
 data Handle = Handle
   { gensymHandle :: Gensym.Handle,
     emitOpHandle :: EmitOp.Handle,
+    baseSize :: DS.DataSize,
     retType :: Builder,
     currentLabel :: Maybe Label,
     goalLabel :: Maybe Label,
@@ -55,7 +57,7 @@ emitLowComp h lowComp =
     LC.Return d -> do
       case goalLabel h of
         Nothing ->
-          return $ emitOp $ unwordsL ["ret", retType h, emitValue d]
+          return $ emitOp $ unwordsL ["ret", retType h, emitValue (baseSize h) d]
         Just joinLabel ->
           return $ emitOp $ unwordsL ["br", "label", emitIdentAsLabelVar joinLabel]
     LC.Phi _ -> do
@@ -70,11 +72,11 @@ emitLowComp h lowComp =
       let op =
             emitOp $
               unwordsL
-                [ emitValue (LC.VarLocal tmp),
+                [ emitValue (baseSize h) (LC.VarLocal tmp),
                   "=",
                   tailMarker,
                   emitInternalReturnType codType,
-                  emitValue f <> showInternalArgs args
+                  emitValue (baseSize h) f <> showInternalArgs (baseSize h) args
                 ]
       ret <- emitLowComp (h {goalLabel = Nothing}) $ LC.Return (LC.VarLocal tmp)
       return $ op <> ret
@@ -87,7 +89,7 @@ emitLowComp h lowComp =
               unwordsL
                 [ "switch",
                   emitLowType lowType,
-                  emitValue d <> ",",
+                  emitValue (baseSize h) d <> ",",
                   "label",
                   emitIdentAsLabelVar defaultLabel,
                   showBranchList lowType $ zip (map fst branchList) labelList
@@ -114,9 +116,9 @@ emitLowComp h lowComp =
         let (reachableLabels, phiValueLists) = unzip phiBranchList
         let phiValueListList = transpose phiValueLists
         let phiOpList =
-              flip map (zip phiTargets phiValueListList) $ \(phiTarget, values) -> do
-                let phiOp = unwordsL ["phi", emitLowType LT.Pointer, emitPhiList $ zip values reachableLabels]
-                emitOp $ emitValue (LC.VarLocal phiTarget) <> " = " <> phiOp
+              flip map (zip phiTargets phiValueListList) $ \((phiTarget, phiType), values) -> do
+                let phiOp = unwordsL ["phi", emitLowType phiType, emitPhiList (baseSize h) $ zip values reachableLabels]
+                emitOp $ emitValue (baseSize h) (LC.VarLocal phiTarget) <> " = " <> phiOp
         if null phiBranchList && not (null phiTargets)
           then return $ emitLabel (emitIdentAsLabel goalLabel) : emitOp "unreachable"
           else do
@@ -129,7 +131,7 @@ emitLowComp h lowComp =
       a <- emitLowComp h cont
       return $ lowOp <> a
     LC.Let x op cont -> do
-      let lowOp = emitLowOp (emitOpHandle h) (emitValue (LC.VarLocal x) <> " = ") op
+      let lowOp = emitLowOp (emitOpHandle h) (emitValue (baseSize h) (LC.VarLocal x) <> " = ") op
       a <- emitLowComp h cont
       return $ lowOp <> a
     LC.Unreachable -> do
@@ -169,19 +171,19 @@ emitLowOp ax prefix op =
     _ ->
       emitOp $ prefix <> EmitOp.emitLowOp ax op
 
-emitPhiList :: [(LC.Value, Ident)] -> Builder
-emitPhiList valueLabelList =
+emitPhiList :: DS.DataSize -> [(LC.Value, Ident)] -> Builder
+emitPhiList baseSize valueLabelList =
   case valueLabelList of
     [] ->
       ""
     [(value, label)] ->
-      "[" <> emitValue value <> ", " <> emitIdentAsLabelVar label <> "]"
+      showValueLabel baseSize value label
     (value, label) : rest ->
-      showValueLabel value label <> ", " <> emitPhiList rest
+      showValueLabel baseSize value label <> ", " <> emitPhiList baseSize rest
 
-showValueLabel :: LC.Value -> Ident -> Builder
-showValueLabel value label =
-  "[" <> emitValue value <> ", " <> emitIdentAsLabelVar label <> "]"
+showValueLabel :: DS.DataSize -> LC.Value -> Ident -> Builder
+showValueLabel baseSize value label =
+  "[" <> emitValue baseSize value <> ", " <> emitIdentAsLabelVar label <> "]"
 
 emitOp :: Builder -> [Builder]
 emitOp s =

@@ -120,11 +120,11 @@ parseSource h source cacheOrContent = do
       return $ Right $ snd prog
 
 postprocess :: Locator.Handle -> RawProgram -> PostRawProgram
-postprocess h (RawProgram m importList stmtList) = do
+postprocess h (RawProgram m importList requireList stmtList) = do
   let stmtList' = concatMap (postprocess' h [] . fst) stmtList
   let nominalNameList = concatMap collectNominalDecls stmtList'
   let stmtList'' = map (markNominalData nominalNameList) stmtList'
-  PostRawProgram m importList stmtList''
+  PostRawProgram m importList requireList stmtList''
 
 collectNominalDecls :: PostRawStmt -> [DD.DefiniteDescription]
 collectNominalDecls stmt =
@@ -190,6 +190,8 @@ postprocess' h nsPath stmt = do
       [PostRawStmtNominal c m geistList']
     RawStmtForeign m foreignList -> do
       [PostRawStmtForeign m foreignList]
+    RawStmtExpose c exportList -> do
+      [PostRawStmtExpose c (SE.extract exportList)]
     RawStmtNamespace _ m (name, _) _ children _ -> do
       let name' = Locator.attachCurrentLocatorWithin h nsPath name
       let children' = concatMap (postprocess' h (nsPath ++ [name]) . fst) children
@@ -241,7 +243,7 @@ registerTopLevelNames h source cacheOrContent = do
       let nameArrowList = NameMap.getGlobalNames' stmtList
       liftIO $ saveTopLevelNames h source nameArrowList
       forM_ stmtList $ registerKeyArg' h
-    Right (PostRawProgram _ _ stmtList) -> do
+    Right (PostRawProgram _ _ _ stmtList) -> do
       let nameArrowList = NameMap.getGlobalNames stmtList
       liftIO $ saveTopLevelNames h source nameArrowList
       forM_ stmtList $ registerKeyArg h
@@ -293,6 +295,8 @@ registerKeyArg h stmt = do
       return ()
     PostRawStmtForeign {} ->
       return ()
+    PostRawStmtExpose {} ->
+      return ()
     PostRawStmtNamespace _ _ children ->
       forM_ children $ registerKeyArg h
 
@@ -318,6 +322,8 @@ registerKeyArg' h stmt = do
     StmtVariadic {} ->
       return ()
     StmtForeign {} ->
+      return ()
+    StmtExpose {} ->
       return ()
     StmtNamespace {} ->
       return ()

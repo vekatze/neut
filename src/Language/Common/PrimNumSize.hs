@@ -2,7 +2,6 @@ module Language.Common.PrimNumSize
   ( IntSize (..),
     FloatSize (..),
     dataSizeToIntSize,
-    dataSizeToFloatSize,
     intToIntSize,
     intToFloatSize,
     floatSizeToIntSize,
@@ -36,52 +35,42 @@ instance Binary FloatSize
 dataSizeToIntSize :: DS.DataSize -> IntSize
 dataSizeToIntSize dataSize =
   case dataSize of
+    DS.DataSize32 ->
+      IntSize32
     DS.DataSize64 ->
       IntSize64
 
-dataSizeToFloatSize :: DS.DataSize -> FloatSize
-dataSizeToFloatSize dataSize =
-  case dataSize of
-    DS.DataSize64 ->
-      FloatSize64
+intToIntSize :: Int -> Maybe IntSize
+intToIntSize size =
+  case size of
+    1 ->
+      return IntSize1
+    2 ->
+      return IntSize2
+    4 ->
+      return IntSize4
+    8 ->
+      return IntSize8
+    16 ->
+      return IntSize16
+    32 ->
+      return IntSize32
+    64 ->
+      return IntSize64
+    _ ->
+      Nothing
 
-intToIntSize :: DS.DataSize -> Int -> Maybe IntSize
-intToIntSize dataSize size =
-  if size > DS.reify dataSize
-    then Nothing
-    else do
-      case size of
-        1 ->
-          return IntSize1
-        2 ->
-          return IntSize2
-        4 ->
-          return IntSize4
-        8 ->
-          return IntSize8
-        16 ->
-          return IntSize16
-        32 ->
-          return IntSize32
-        64 ->
-          return IntSize64
-        _ ->
-          Nothing
-
-intToFloatSize :: DS.DataSize -> Int -> Maybe FloatSize
-intToFloatSize dataSize size =
-  if size > DS.reify dataSize
-    then Nothing
-    else do
-      case size of
-        16 ->
-          return FloatSize16
-        32 ->
-          return FloatSize32
-        64 ->
-          return FloatSize64
-        _ ->
-          Nothing
+intToFloatSize :: Int -> Maybe FloatSize
+intToFloatSize size =
+  case size of
+    16 ->
+      return FloatSize16
+    32 ->
+      return FloatSize32
+    64 ->
+      return FloatSize64
+    _ ->
+      Nothing
 
 floatSizeToIntSize :: FloatSize -> IntSize
 floatSizeToIntSize floatSize =

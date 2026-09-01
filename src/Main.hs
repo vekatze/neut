@@ -13,6 +13,8 @@ import Command.LSP.LSP qualified as LSP
 import Command.Version.Version qualified as Version
 import Command.Zen.Zen qualified as Zen
 import CommandParser.Command qualified as C
+import CommandParser.Config.Build qualified as BuildConfig
+import CommandParser.Config.Check qualified as CheckConfig
 import CommandParser.Config.Remark qualified as Remark
 import CommandParser.Parse qualified as CommandParser
 import Console.CreateHandle qualified as Console
@@ -42,7 +44,15 @@ main = do
           C.ShowVersion cfg ->
             liftIO $ Version.showVersion cfg
     C.Internal loggerConfig cmd -> do
-      h <- liftIO $ Global.new loggerConfig Nothing
+      let buildTargetName =
+            case cmd of
+              C.Build cfg ->
+                Just $ BuildConfig.targetName cfg
+              C.Check cfg ->
+                CheckConfig.targetName cfg
+              _ ->
+                Nothing
+      h <- liftIO $ Global.new loggerConfig Nothing buildTargetName
       run (Global.loggerHandle h) $ do
         ensureExecutables
         case cmd of

@@ -39,9 +39,9 @@ envVarCoreModuleDigest :: String
 envVarCoreModuleDigest =
   "NEUT_CORE_MODULE_DIGEST"
 
-envVarClang :: String
-envVarClang =
-  "NEUT_CLANG"
+envVarHome :: String
+envVarHome =
+  "NEUT_HOME"
 
 moduleFile :: Path Rel File
 moduleFile =
@@ -150,10 +150,6 @@ coreVector =
 coreDebugPanic :: T.Text
 coreDebugPanic =
   core <> doubleColon <> "debug" <> doubleColon <> "panic"
-
-coreLayerEmbody :: T.Text
-coreLayerEmbody =
-  core <> doubleColon <> "layer" <> doubleColon <> "embody"
 
 coreTypeValueTypeValue :: T.Text
 coreTypeValueTypeValue =

@@ -1,7 +1,6 @@
 module Language.Common.PrimOp.FromText (fromDefiniteDescription) where
 
 import Data.Text qualified as T
-import Language.Common.DataSize qualified as DS
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.PrimNumSize
 import Language.Common.PrimOp
@@ -12,24 +11,24 @@ import Language.Common.PrimOp.UnaryOp
 import Language.Common.PrimType qualified as PT
 import Language.Common.PrimType.FromText qualified as PT
 
-fromDefiniteDescription :: DS.DataSize -> DD.DefiniteDescription -> Maybe PrimOp
-fromDefiniteDescription dataSize dd = do
+fromDefiniteDescription :: DD.DefiniteDescription -> Maybe PrimOp
+fromDefiniteDescription dd = do
   let sgl = DD.globalLocator dd
   let ll = DD.localLocator dd
   if DD.llvmGlobalLocator /= sgl
     then Nothing
-    else fromText dataSize ll
+    else fromText ll
 
-fromText :: DS.DataSize -> T.Text -> Maybe PrimOp
-fromText dataSize name
+fromText :: T.Text -> Maybe PrimOp
+fromText name
   | Just (convOpStr, rest) <- breakOnMaybe "-" name,
     Just (domTypeStr, codTypeStr) <- breakOnMaybe "-" rest,
-    Just domType <- PT.fromText dataSize domTypeStr,
-    Just codType <- PT.fromText dataSize codTypeStr,
+    Just domType <- PT.fromText domTypeStr,
+    Just codType <- PT.fromText codTypeStr,
     Just convOp <- Conv.asConvOp convOpStr domType codType =
       Just $ PrimConvOp convOp domType codType
   | Just (opStr, typeStr) <- breakOnMaybe "-" name,
-    Just primType <- PT.fromText dataSize typeStr = do
+    Just primType <- PT.fromText typeStr = do
       case primType of
         PT.Int {}
           | Just op <- asIntBinaryOp opStr ->

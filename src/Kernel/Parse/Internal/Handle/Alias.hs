@@ -5,6 +5,7 @@ module Kernel.Parse.Internal.Handle.Alias
     getModuleLocation,
     resolveModuleAlias,
     activateImportUse,
+    ensureImportUseIsAvailable,
   )
 where
 
@@ -128,3 +129,9 @@ activateImportUse h source topNameMap importUse =
   case importUse of
     ImportUse shouldUpdateTag strictGlobalLocator entries ->
       Locator.activateImportedEntries (locatorHandle h) source topNameMap shouldUpdateTag strictGlobalLocator entries
+
+ensureImportUseIsAvailable :: Source.Source -> TopNameMap -> ImportUse -> App ()
+ensureImportUseIsAvailable source topNameMap importUse =
+  case importUse of
+    ImportUse _ strictGlobalLocator entries ->
+      Locator.ensureImportedEntriesAreAvailable source topNameMap strictGlobalLocator entries

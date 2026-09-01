@@ -123,30 +123,14 @@ applyIntBinaryOp size op val1 val2 =
       Just $ normalize size (val1 - val2)
     BinOp.Mul ->
       Just $ normalize size (val1 * val2)
-    BinOp.SDiv
-      | val2 /= 0 ->
-          Just $ normalize size (val1 `div` val2)
-      | otherwise ->
-          Nothing
-    BinOp.SRem
-      | val2 /= 0 ->
-          Just $ normalize size (val1 `rem` val2)
-      | otherwise ->
-          Nothing
-    BinOp.UDiv
-      | val2 /= 0 -> do
-          let uval1 = toUnsigned size val1
-          let uval2 = toUnsigned size val2
-          Just $ normalize size (uval1 `div` uval2)
-      | otherwise ->
-          Nothing
-    BinOp.URem
-      | val2 /= 0 -> do
-          let uval1 = toUnsigned size val1
-          let uval2 = toUnsigned size val2
-          Just $ normalize size (uval1 `rem` uval2)
-      | otherwise ->
-          Nothing
+    BinOp.SDiv ->
+      divisionOf (toSigned size) size quot val1 val2
+    BinOp.SRem ->
+      divisionOf (toSigned size) size rem val1 val2
+    BinOp.UDiv ->
+      divisionOf (toUnsigned size) size quot val1 val2
+    BinOp.URem ->
+      divisionOf (toUnsigned size) size rem val1 val2
     BinOp.And ->
       Just $ normalize size (val1 .&. val2)
     BinOp.Or ->
@@ -154,16 +138,39 @@ applyIntBinaryOp size op val1 val2 =
     BinOp.Xor ->
       Just $ normalize size (val1 `xor` val2)
     BinOp.Shl ->
-      Just $ normalize size (val1 `shiftL` fromIntegral val2)
-    BinOp.Lshr -> do
-      let uval = toUnsigned size val1
-      Just $ normalize size (uval `shiftR` fromIntegral val2)
-    BinOp.Ashr -> do
-      let shiftAmount = fromIntegral val2
-      let result = val1 `shiftR` shiftAmount
-      Just $ normalize size result
+      shiftOf id size shiftL val1 val2
+    BinOp.Lshr ->
+      shiftOf (toUnsigned size) size shiftR val1 val2
+    BinOp.Ashr ->
+      shiftOf (toSigned size) size shiftR val1 val2
     _ ->
       Nothing
+
+divisionOf ::
+  (Integer -> Integer) ->
+  PNS.IntSize ->
+  (Integer -> Integer -> Integer) ->
+  Integer ->
+  Integer ->
+  Maybe Integer
+divisionOf interpret size f val1 val2 = do
+  let divisor = interpret val2
+  if divisor == 0
+    then Nothing
+    else Just $ normalize size (f (interpret val1) divisor)
+
+shiftOf ::
+  (Integer -> Integer) ->
+  PNS.IntSize ->
+  (Integer -> Int -> Integer) ->
+  Integer ->
+  Integer ->
+  Maybe Integer
+shiftOf interpret size f val1 val2 = do
+  let amount = toUnsigned size val2
+  if amount >= toInteger (intSizeToInt size)
+    then Nothing
+    else Just $ normalize size (f (interpret val1) (fromInteger amount))
 
 applyFloatBinaryOp :: PNS.FloatSize -> BinOp.BinaryOp -> Double -> Double -> Maybe Double
 applyFloatBinaryOp size op val1 val2 = do

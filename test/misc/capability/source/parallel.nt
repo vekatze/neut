@@ -1,0 +1,18 @@
+import {
+  core::sync.thread {join, spawn},
+}
+
+define _sum-between(from: int, to: int) -> int {
+  if eq-int(from, to) {
+    from
+  } else {
+    add-int(from, _sum-between(add-int(from, 1), to))
+  }
+}
+
+define sum-to(n: int) -> int {
+  let half = div-int(n, 2);
+  let lower = spawn(() => {_sum-between(1, half)});
+  let upper = spawn(() => {_sum-between(add-int(half, 1), n)});
+  add-int(join(lower), join(upper))
+}

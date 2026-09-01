@@ -5,7 +5,7 @@ import App.Error qualified as E
 import App.Run (raiseCritical, raiseError)
 import Control.Comonad.Cofree hiding (section)
 import Control.Monad
-import Control.Monad.Except (MonadError (throwError), liftEither)
+import Control.Monad.Except (MonadError (catchError, throwError), liftEither)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Containers.ListUtils qualified as ListUtils
 import Data.Functor ((<&>))
@@ -56,6 +56,7 @@ import Language.Common.CreateSymbol qualified as Gensym
 import Language.Common.DataInfo qualified as DI
 import Language.Common.DefaultArgs qualified as DefaultArgs
 import Language.Common.DefiniteDescription qualified as DD
+import Language.Common.ExternalName qualified as EN
 import Language.Common.Foreign qualified as F
 import Language.Common.ForeignCodType qualified as FCT
 import Language.Common.Geist qualified as G
@@ -70,7 +71,7 @@ import Language.Common.Magic qualified as M
 import Language.Common.ModuleAlias (coreModuleAlias)
 import Language.Common.Noema qualified as N
 import Language.Common.PiKind qualified as PK
-import Language.Common.PrimNumSize (IntSize (IntSize64))
+import Language.Common.SlotSize
 import Language.Common.PrimType qualified as PT
 import Language.Common.RuleKind (RuleKind (FoldLeft, FoldRight))
 import Language.Common.StmtKind qualified as SK
@@ -206,6 +207,9 @@ discernStmt h stmt = do
       foreignList'' <- mapM (mapM (discernType h)) foreignList'
       foreign' <- liftIO $ interpretForeign h foreignList''
       return [WeakStmtForeign foreign']
+    PostRawStmtExpose _ exportList -> do
+      exportList' <- mapM (discernExposeItem h) exportList
+      return [WeakStmtExpose exportList']
     PostRawStmtNamespace m dd children -> do
       registerNamespaceName h m dd
       let h' = h {H.nsPath = DD.bodySegments dd}
@@ -627,8 +631,32 @@ discern h term =
       return $ m :< WT.TauElim (mx, k, x') e1' e2'
     m :< RT.Embody e -> do
       ensureRuntimeStage m h "meta operation (`*`)"
-      embodyVar <- liftEither $ locatorToVarGlobal m coreLayerEmbody
-      discern h $ m :< RT.piElim embodyVar [e]
+      let m' = blur m
+      let loc = metaLocation m
+      tmpName <- liftIO $ Gensym.newTextFromText (H.gensymHandle h) "tmp-embody"
+      outName <- liftIO $ Gensym.newTextFromText (H.gensymHandle h) "tmp-embody-out"
+      tmpType <- liftIO $ RT.createTypeHole (H.gensymHandle h) m'
+      outType <- liftIO $ RT.createTypeHole (H.gensymHandle h) m'
+      let tmpSeries = SE.fromListWithComment Nothing SE.Comma [([], ((m', VK.normal, tmpName), []))]
+      let boxIntro = m' :< RT.BoxIntro [] [] tmpSeries (m' :< RT.Var (Bare tmpName), [])
+      let outParam = (m', RP.Var VK.normal (Bare outName), [], [], outType)
+      let letboxT =
+            m
+              :< RT.BoxElim
+                VariantT
+                False
+                []
+                outParam
+                []
+                (SE.emptySeries Nothing SE.Comma)
+                []
+                boxIntro
+                []
+                loc
+                []
+                (m' :< RT.Var (Bare outName))
+                loc
+      discern h $ bind loc loc (m', VK.normal, tmpName, [], [], tmpType) e letboxT
     m :< RT.Let letKind _ (mx, pat, c1, c2, t) _ _ e1 _ startLoc _ e2 endLoc -> do
       discernLet h m letKind (mx, pat, c1, c2, t) e1 e2 startLoc endLoc
     m :< RT.LetOn letKind _ pat _ mys _ e1@(m1 :< _) _ startLoc _ e2 endLoc -> do
@@ -726,7 +754,8 @@ discern h term =
           discern h $ asOpaqueValue $ m :< RT.Annotation L.Warning (AN.Type ()) (m :< RT.piElim panic [message'])
     m :< RT.Introspect _ key _ clauseList -> do
       value <- getIntrospectiveValue h m key
-      clause <- lookupIntrospectiveClause m value $ SE.extract clauseList
+      (clause, droppedClauses) <- splitIntrospectiveClauses m value $ SE.extract clauseList
+      mapM_ (markDroppedClause (discern h)) droppedClauses
       discern h clause
     m :< RT.Static _ mKey staticItem -> do
       case staticItem of
@@ -829,8 +858,26 @@ discern h term =
     _ :< RT.Brace _ (e, _) ->
       discern h e
     m :< RT.Int i -> do
-      let intType = m :< WT.PrimType (PT.Int IntSize64)
+      let intType = m :< WT.PrimType (PT.Int slotIntSize)
       return $ m :< WT.Prim (WPV.Int intType i)
+
+discernExposeItem :: H.Handle -> RawExposeItem -> App (Hint, DD.DefiniteDescription, EN.ExternalName)
+discernExposeItem h (RawExposeItem m (name, _) asClause) = do
+  (dd, (_, gn)) <- resolveName h m name
+  case gn of
+    GN.TopLevelFuncTerm {} -> do
+      let currentGlobalLocator = Locator.getCurrentGlobalLocator (H.locatorHandle h)
+      unless (DD.strictGlobalLocator dd == currentGlobalLocator) $
+        raiseError m "The target of this `expose` is not defined in this file"
+      let extName =
+            case asClause of
+              Just (_, (ext, _)) ->
+                ext
+              Nothing ->
+                EN.ExternalName $ DD.localLocator dd
+      return (m, dd, extName)
+    _ ->
+      raiseError m $ "`" <> renderDD (H.modulePathMap h) dd <> "` is not a function"
 
 resolveTropeName :: H.Handle -> (Hint, Name) -> App DD.DefiniteDescription
 resolveTropeName h (m, name) = do
@@ -923,7 +970,8 @@ discernType h ty =
       discernType h t
     m :< RT.TyIntrospect _ key _ clauseList -> do
       value <- getIntrospectiveValue h m key
-      clause <- lookupIntrospectiveClause m value $ SE.extract clauseList
+      (clause, droppedClauses) <- splitIntrospectiveClauses m value $ SE.extract clauseList
+      mapM_ (markDroppedClause (discernType h)) droppedClauses
       discernType h clause
 
 type ShouldInsertTagInfo =
@@ -1130,18 +1178,23 @@ bind' mustIgnoreRelayedVars loc endLoc (m, _, x, c1, c2, t) e cont =
       cont
       endLoc
 
-lookupIntrospectiveClause :: Hint -> T.Text -> [(Maybe T.Text, C, a)] -> App a
-lookupIntrospectiveClause m value clauseList =
+splitIntrospectiveClauses :: Hint -> T.Text -> [(Maybe T.Text, C, a)] -> App (a, [a])
+splitIntrospectiveClauses m value clauseList =
   case clauseList of
     [] ->
       raiseError m $ "This term does not support `" <> value <> "`."
     (Just key, _, clause) : rest
       | key == value ->
-          return clause
-      | otherwise ->
-          lookupIntrospectiveClause m value rest
-    (Nothing, _, clause) : _ ->
-      return clause
+          return (clause, map (\(_, _, dropped) -> dropped) rest)
+      | otherwise -> do
+          (selected, droppedRest) <- splitIntrospectiveClauses m value rest
+          return (selected, clause : droppedRest)
+    (Nothing, _, clause) : rest ->
+      return (clause, map (\(_, _, dropped) -> dropped) rest)
+
+markDroppedClause :: (a -> App b) -> a -> App ()
+markDroppedClause interpret clause =
+  catchError (void $ interpret clause) (const $ return ())
 
 getIntrospectiveValue :: H.Handle -> Hint -> T.Text -> App T.Text
 getIntrospectiveValue h m key = do

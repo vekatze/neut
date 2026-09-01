@@ -26,6 +26,7 @@ jobs:
               - 'test/**'
               - 'build/**'
               - 'stack.yaml*'
+              - '.justfile'
 
   test:
     needs: changes
@@ -43,7 +44,42 @@ jobs:
         run: docker load -i ${NEUT_DOCKER_PATH}
       - if: steps.cache-docker-image.outputs.cache-hit != 'true'
         run: just build-image-amd64-linux
+      - uses: actions/cache/restore@v4
+        id: cache-llvm
+        with:
+          path: cache/llvm/out
+          key: ${{ runner.os }}-${{ runner.arch }}-llvm-${{ hashFiles('build/llvm.just') }}
+      - uses: actions/cache/restore@v4
+        id: cache-fetched
+        with:
+          path: |
+            cache/wasi
+            cache/binaryen
+          key: ${{ runner.os }}-${{ runner.arch }}-fetched-${{ hashFiles('build/wasi.just', 'build/binaryen.just') }}
+      - uses: actions/cache/restore@v4
+        id: cache-mimalloc
+        with:
+          path: cache/mimalloc
+          key: ${{ runner.os }}-${{ runner.arch }}-mimalloc-${{ hashFiles('build/mimalloc.just', 'build/llvm.just', 'build/wasi.just') }}
       - run: just build-compiler-amd64-linux
+      - run: sudo chown -R "$(id -u):$(id -g)" cache
+      - uses: actions/cache/save@v4
+        if: steps.cache-llvm.outputs.cache-hit != 'true'
+        with:
+          path: cache/llvm/out
+          key: ${{ runner.os }}-${{ runner.arch }}-llvm-${{ hashFiles('build/llvm.just') }}
+      - uses: actions/cache/save@v4
+        if: steps.cache-fetched.outputs.cache-hit != 'true'
+        with:
+          path: |
+            cache/wasi
+            cache/binaryen
+          key: ${{ runner.os }}-${{ runner.arch }}-fetched-${{ hashFiles('build/wasi.just', 'build/binaryen.just') }}
+      - uses: actions/cache/save@v4
+        if: steps.cache-mimalloc.outputs.cache-hit != 'true'
+        with:
+          path: cache/mimalloc
+          key: ${{ runner.os }}-${{ runner.arch }}-mimalloc-${{ hashFiles('build/mimalloc.just', 'build/llvm.just', 'build/wasi.just') }}
       - run: just test-amd64-linux
       - if: steps.cache-docker-image.outputs.cache-hit != 'true'
         run: docker save ${NEUT_DOCKER_IMAGE} -o ${NEUT_DOCKER_PATH}

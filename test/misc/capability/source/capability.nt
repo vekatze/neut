@@ -1,0 +1,12 @@
+import {
+  core::int.io {print-int-line},
+  if thread {
+    this::parallel {sum-to},
+  } else {
+    this::serial {sum-to},
+  },
+}
+
+define main() -> unit {
+  print-int-line(sum-to(10));
+}

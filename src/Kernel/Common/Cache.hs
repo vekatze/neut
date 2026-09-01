@@ -127,6 +127,8 @@ compressStmt stmt = do
       return (Stmt.StmtVariadic kind m name, IntSet.empty)
     Stmt.StmtForeign foreignList ->
       return (Stmt.StmtForeign foreignList, IntSet.empty)
+    Stmt.StmtExpose exportList ->
+      return (Stmt.StmtExpose exportList, IntSet.empty)
     Stmt.StmtNamespace m name ->
       return (Stmt.StmtNamespace m name, IntSet.empty)
 
@@ -166,6 +168,8 @@ extendStmt remapping stmt =
       Stmt.StmtVariadic kind m name
     Stmt.StmtForeign foreignList ->
       Stmt.StmtForeign foreignList
+    Stmt.StmtExpose exportList ->
+      Stmt.StmtExpose exportList
     Stmt.StmtNamespace m name ->
       Stmt.StmtNamespace m name
 

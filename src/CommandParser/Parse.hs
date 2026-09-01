@@ -131,12 +131,14 @@ parseVersionOpt = do
 parseCheckOpt :: Parser Command
 parseCheckOpt = do
   shouldCheckAllDependencies <- flag False True (mconcat [long "full", help "Set this to refresh the caches of all the dependencies"])
+  targetName <- optional $ strOption $ mconcat [long "target", metavar "TARGET", help "Check under the platform of this target (default: the platform of zen)"]
   remarkCfg <- remarkConfigOpt
   pure $
     Internal remarkCfg $
       Check $
         Check.Config
-          { Check.shouldCheckAllDependencies = shouldCheckAllDependencies
+          { Check.shouldCheckAllDependencies = shouldCheckAllDependencies,
+            Check.targetName = targetName
           }
 
 parseArchiveOpt :: Parser Command

@@ -14,7 +14,7 @@ import Data.Maybe
 import Data.Text qualified as T
 import Data.Text.Encoding (decodeUtf8Lenient)
 import Data.Text.IO qualified as TIO
-import Kernel.Common.Allocator (Allocator (Mimalloc), mimallocArchive)
+import Kernel.Common.Allocator (Allocator (Mimalloc), allocatorLinkOption, mimallocArchive)
 import Kernel.Common.Artifact qualified as A
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.Env qualified as Env
@@ -68,9 +68,10 @@ link' h target sourceList = do
   let moduleList = nubOrdOn moduleID $ map Source.sourceModule sourceList
   foreignDirList <- mapM (Path.getForeignDir (pathHandle h) (Main target)) moduleList
   foreignObjectList <- concat <$> mapM getForeignDirContent foreignDirList
-  mAllocatorLibrary <- getAllocatorLibraryIfNecessary h target
+  allocator <- Env.getAllocatorByTarget (envHandle h) (Main target)
+  mAllocatorLibrary <- getAllocatorLibraryIfNecessary h target allocator
   let objects = mainObject : objectPathList ++ foreignObjectList ++ maybeToList mAllocatorLibrary
-  clang <- liftIO Platform.getClang
+  let clang = Platform.getClang (platformHandle h)
   let targetTriple = Platform.getClangTargetTriple (platformHandle h)
   let userLinkOptions = getLinkOption target
   let baseModule = extractModule $ Env.getMainModule (envHandle h)
@@ -79,7 +80,11 @@ link' h target sourceList = do
   linkResponseFilePath <- Path.getLinkResponseFilePath (pathHandle h) target
   writeLinkResponseFile linkResponseFilePath objects
   liftIO $ Logger.report (loggerHandle h) $ "Created a response file at: " <> T.pack (toFilePath linkResponseFilePath)
-  let linkOptions = clangLinkOpt targetTriple linkResponseFilePath outputPath (ltoOption ++ userLinkOptions)
+  let platform = Platform.getPlatform (platformHandle h)
+  let allocatorOption = allocatorLinkOption (P.arch platform) allocator
+  sysrootOption <- liftIO $ Platform.getSysrootOption (loggerHandle h) (platformHandle h)
+  let toolchainOption = Platform.getToolchainOption (platformHandle h)
+  let linkOptions = clangLinkOpt targetTriple (P.os platform) linkResponseFilePath outputPath (ltoOption ++ allocatorOption ++ sysrootOption ++ toolchainOption ++ userLinkOptions)
   let numOfObjects = length objects
   let workingTitle = getWorkingTitle numOfObjects
   let completedTitle = getCompletedTitle numOfObjects
@@ -113,6 +118,8 @@ getLtoOption h clang userLinkOptions ltoCacheDir = do
   case P.os (Platform.getPlatform (platformHandle h)) of
     OS.Darwin ->
       return ["-Xlinker", "-cache_path_lto", "-Xlinker", cacheDir]
+    OS.Wasi ->
+      return $ getLtoCacheOption LldFamily cacheDir
     OS.Linux ->
       case findUserSpecifiedLinker userLinkOptions of
         Just linker ->
@@ -174,9 +181,8 @@ getForeignDirContent foreignDir = do
     then snd <$> listDirRecur foreignDir
     else return []
 
-getAllocatorLibraryIfNecessary :: Handle -> MainTarget -> App (Maybe (Path Abs File))
-getAllocatorLibraryIfNecessary h target = do
-  allocator <- Env.getAllocatorByTarget (envHandle h) (Main target)
+getAllocatorLibraryIfNecessary :: Handle -> MainTarget -> Allocator -> App (Maybe (Path Abs File))
+getAllocatorLibraryIfNecessary h target allocator = do
   case allocator of
     Mimalloc -> do
       let baseModule = extractModule $ Env.getMainModule (envHandle h)
@@ -185,7 +191,7 @@ getAllocatorLibraryIfNecessary h target = do
       archiveExists <- doesFileExist archivePath
       if archiveExists
         then return ()
-        else liftIO $ B.writeFile (toFilePath archivePath) mimallocArchive
+        else liftIO $ B.writeFile (toFilePath archivePath) $ mimallocArchive $ P.arch $ Platform.getPlatform (platformHandle h)
       return $ Just archivePath
     _ ->
       return Nothing
@@ -210,16 +216,23 @@ escapeResponseFileChar c =
     _ ->
       T.singleton c
 
-clangLinkOpt :: String -> Path Abs File -> Path Abs File -> [String] -> [String]
-clangLinkOpt targetTriple linkResponseFilePath outputPath additionalOptions = do
+clangLinkOpt :: String -> OS.OS -> Path Abs File -> Path Abs File -> [String] -> [String]
+clangLinkOpt targetTriple os linkResponseFilePath outputPath additionalOptions = do
+  let threadOption =
+        case os of
+          OS.Wasi ->
+            []
+          _ ->
+            ["-pthread"]
   [ "-target",
     targetTriple,
     "-O2",
-    "-flto=thin",
-    "-pthread",
-    "-o",
-    toFilePath outputPath
+    "-flto=thin"
     ]
+    ++ threadOption
+    ++ [ "-o",
+         toFilePath outputPath
+       ]
     ++ ["@" ++ toFilePath linkResponseFilePath]
     ++ additionalOptions
     ++ ["-lm"]

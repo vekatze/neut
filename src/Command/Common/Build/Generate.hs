@@ -148,10 +148,11 @@ flushObjects h = do
 
 compileObjectBatch :: Handle -> [ClangOption] -> [PendingObject] -> App ()
 compileObjectBatch h clangOptions objectList = do
-  clang <- liftIO Platform.getClang
+  let clang = Platform.getClang (platformHandle h)
   let targetTriple = Platform.getClangTargetTriple (platformHandle h)
   let inputPathList = map (toFilePath . stagingLLVMPath) objectList
-  let optionList = clangBaseOpt targetTriple ++ clangOptions ++ inputPathList
+  let toolchainOption = Platform.getToolchainSearchPathOption (platformHandle h)
+  let optionList = clangBaseOpt targetTriple ++ toolchainOption ++ clangOptions ++ inputPathList
   let spec =
         RunProcess.Spec
           { cmdspec = RawCommand clang optionList,

@@ -2,7 +2,6 @@ module Kernel.Clarify.Internal.Utility
   ( Handle,
     ResourceSpec (..),
     new,
-    wordCountToByteSize,
     returnIntComp,
     returnByteSizeComp,
     toAffineApp,
@@ -23,12 +22,11 @@ import Data.IntMap qualified as IntMap
 import Gensym.Handle qualified as Gensym
 import Kernel.Clarify.Internal.Handle.AuxEnv qualified as AuxEnv
 import Language.Common.CreateSymbol qualified as Gensym
-import Language.Common.DataSize qualified as DS
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.Ident
 import Language.Common.Ident.Reify
 import Language.Common.Opacity qualified as O
-import Language.Common.PrimNumSize
+import Language.Common.SlotSize
 import Language.Comp.Comp qualified as C
 import Language.Comp.CreateVar qualified as Gensym
 import Language.Comp.EnumCase
@@ -38,12 +36,11 @@ import Language.Comp.Subst qualified as Subst
 data Handle = Handle
   { gensymHandle :: Gensym.Handle,
     substHandle :: Subst.Handle,
-    auxEnvHandle :: AuxEnv.Handle,
-    baseSize :: DS.DataSize
+    auxEnvHandle :: AuxEnv.Handle
   }
 
-new :: Gensym.Handle -> Subst.Handle -> AuxEnv.Handle -> DS.DataSize -> Handle
-new gensymHandle substHandle auxEnvHandle baseSize = do
+new :: Gensym.Handle -> Subst.Handle -> AuxEnv.Handle -> Handle
+new gensymHandle substHandle auxEnvHandle = do
   Handle {..}
 
 -- toAffineApp h x t ~>
@@ -56,13 +53,13 @@ toAffineApp h v t = do
 toAffineAppWith :: Handle -> C.ForceInline -> C.Value -> C.Comp -> IO C.Comp
 toAffineAppWith h forceInline v t = do
   (expVarName, expVar) <- Gensym.createVar (gensymHandle h) "exp"
-  let switch = C.Int (dataSizeToIntSize (baseSize h)) 0
+  let switch = C.Int slotIntSize 0
   return $ C.UpElim True expVarName t (C.PiElimDownElim forceInline expVar [switch, v, C.intValue1])
 
 toDropInPlaceAppWith :: Handle -> C.ForceInline -> C.Value -> C.Comp -> IO C.Comp
 toDropInPlaceAppWith h forceInline v t = do
   (expVarName, expVar) <- Gensym.createVar (gensymHandle h) "exp"
-  let switch = C.Int (dataSizeToIntSize (baseSize h)) 0
+  let switch = C.Int slotIntSize 0
   return $ C.UpElim True expVarName t (C.PiElimDownElim forceInline expVar [switch, v, C.intValue0])
 
 -- toRelevantApp h x t ~>
@@ -75,7 +72,7 @@ toRelevantApp h v t = do
 toRelevantAppWith :: Handle -> C.ForceInline -> C.Value -> C.Comp -> IO C.Comp
 toRelevantAppWith h forceInline v t = do
   (expVarName, expVar) <- Gensym.createVar (gensymHandle h) "exp"
-  let switch = C.Int (dataSizeToIntSize (baseSize h)) 1
+  let switch = C.Int slotIntSize 1
   return $ C.UpElim True expVarName t (C.PiElimDownElim forceInline expVar [switch, v, C.null])
 
 toCopyIntoApp :: Handle -> C.Value -> C.Value -> C.Comp -> IO C.Comp
@@ -85,7 +82,7 @@ toCopyIntoApp h source dest t = do
 toCopyIntoAppWith :: Handle -> C.ForceInline -> C.Value -> C.Value -> C.Comp -> IO C.Comp
 toCopyIntoAppWith h forceInline source dest t = do
   (expVarName, expVar) <- Gensym.createVar (gensymHandle h) "exp"
-  let switch = C.Int (dataSizeToIntSize (baseSize h)) 1
+  let switch = C.Int slotIntSize 1
   return $ C.UpElim True expVarName t (C.PiElimDownElim forceInline expVar [switch, source, dest])
 
 bindLet :: [(Ident, C.Comp)] -> C.Comp -> C.Comp
@@ -133,17 +130,13 @@ data ResourceSpec = ResourceSpec
     defaultValues :: [C.Value]
   }
 
-returnIntComp :: Handle -> Integer -> C.Comp
-returnIntComp h value =
-  C.UpIntro $ C.Int (dataSizeToIntSize (baseSize h)) value
+returnIntComp :: Integer -> C.Comp
+returnIntComp value =
+  C.UpIntro $ C.Int slotIntSize value
 
-wordCountToByteSize :: Handle -> Integer -> Integer
-wordCountToByteSize h wordCount =
-  wordCount * toInteger (DS.reifyBytes (baseSize h))
-
-returnByteSizeComp :: Handle -> Integer -> C.Comp
-returnByteSizeComp h wordCount =
-  returnIntComp h $ wordCountToByteSize h wordCount
+returnByteSizeComp :: Integer -> C.Comp
+returnByteSizeComp slotCount =
+  returnIntComp $ slotCountToByteSize slotCount
 
 registerSwitcher ::
   Handle ->

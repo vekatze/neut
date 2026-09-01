@@ -4,7 +4,7 @@ module Language.WeakTerm.WeakTerm
     WeakType,
     WeakTypeF (..),
     WeakForeign,
-    intTypeBySize,
+    intType,
     metaOfType,
     fromLetSeq,
     fromBaseLowType,
@@ -21,7 +21,6 @@ import Language.Common.BaseLowType qualified as BLT
 import Language.Common.BasePrimType qualified as BPT
 import Language.Common.Binder
 import Language.Common.CallConvSpec qualified as CCS
-import Language.Common.DataSize (DataSize)
 import Language.Common.DecisionTree qualified as DT
 import Language.Common.DefaultArgs qualified as DefaultArgs
 import Language.Common.DefiniteDescription qualified as DD
@@ -32,8 +31,8 @@ import Language.Common.ImpArgs qualified as ImpArgs
 import Language.Common.Magic (WeakMagic (..))
 import Language.Common.Noema qualified as N
 import Language.Common.PiKind (PiKind)
-import Language.Common.PrimNumSize
 import Language.Common.PrimType qualified as PT
+import Language.Common.SlotSize
 import Language.Common.VarKind qualified as VK
 import Language.WeakTerm.WeakPrimValue qualified as WPV
 import Logger.Hint
@@ -81,9 +80,9 @@ data WeakTermF a
   | Magic (WeakMagic WeakType WeakType a)
   | Annotation LogLevel (AN.Annotation WeakType) a
 
-intTypeBySize :: Hint -> DataSize -> WeakType
-intTypeBySize m size =
-  m :< PrimType (PT.Int $ dataSizeToIntSize size)
+intType :: Hint -> WeakType
+intType m =
+  m :< PrimType (PT.Int slotIntSize)
 
 metaOfType :: WeakType -> Hint
 metaOfType (m :< _) =

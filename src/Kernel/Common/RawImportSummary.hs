@@ -46,6 +46,8 @@ fromRawImportItem rawImportItem = do
       Just RawImportSummaryItem {importLocator = normalizedLocator, importEntries = entries'}
     RawStaticFileKey {} ->
       Nothing
+    RawConditionalImport {} ->
+      Nothing
 
 fromRawImportEntry :: RawImportEntry -> SummaryEntry
 fromRawImportEntry entry =

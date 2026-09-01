@@ -1,25 +1,25 @@
 module Language.Common.PrimType.FromText (fromDefiniteDescription, fromText) where
 
 import Data.Text qualified as T
-import Language.Common.DataSize qualified as DS
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.PrimNumSize
 import Language.Common.PrimType qualified as PT
+import Language.Common.SlotSize
 import Text.Read
 
-fromDefiniteDescription :: DS.DataSize -> DD.DefiniteDescription -> Maybe PT.PrimType
-fromDefiniteDescription dataSize dd = do
+fromDefiniteDescription :: DD.DefiniteDescription -> Maybe PT.PrimType
+fromDefiniteDescription dd = do
   let sgl = DD.globalLocator dd
   let ll = DD.localLocator dd
   if DD.llvmGlobalLocator /= sgl
     then Nothing
-    else fromText dataSize ll
+    else fromText ll
 
-fromText :: DS.DataSize -> T.Text -> Maybe PT.PrimType
-fromText dataSize name
-  | Just intSize <- asLowInt dataSize name =
+fromText :: T.Text -> Maybe PT.PrimType
+fromText name
+  | Just intSize <- asLowInt name =
       Just $ PT.Int intSize
-  | Just floatSize <- asLowFloat dataSize name =
+  | Just floatSize <- asLowFloat name =
       Just $ PT.Float floatSize
   | name == textTypeName =
       Just PT.Text
@@ -30,10 +30,10 @@ fromText dataSize name
   | otherwise =
       Nothing
 
-asLowInt :: DS.DataSize -> T.Text -> Maybe IntSize
-asLowInt dataSize s =
+asLowInt :: T.Text -> Maybe IntSize
+asLowInt s =
   if s == intTypeName
-    then Just $ dataSizeToIntSize dataSize
+    then Just slotIntSize
     else do
       case T.splitAt 3 s of
         ("", "") ->
@@ -41,7 +41,7 @@ asLowInt dataSize s =
         (c, rest)
           | c == intTypeName,
             Just n <- readMaybe $ T.unpack rest,
-            Just size <- intToIntSize dataSize n ->
+            Just size <- intToIntSize n ->
               Just size
           | otherwise ->
               Nothing
@@ -49,10 +49,10 @@ asLowInt dataSize s =
 floatTypeName :: T.Text
 floatTypeName = "float"
 
-asLowFloat :: DS.DataSize -> T.Text -> Maybe FloatSize
-asLowFloat dataSize s =
+asLowFloat :: T.Text -> Maybe FloatSize
+asLowFloat s =
   if s == floatTypeName
-    then Just $ dataSizeToFloatSize dataSize
+    then Just slotFloatSize
     else do
       case T.splitAt 5 s of
         ("", "") ->
@@ -60,7 +60,7 @@ asLowFloat dataSize s =
         (c, rest)
           | c == floatTypeName,
             Just n <- readMaybe $ T.unpack rest,
-            Just size <- intToFloatSize dataSize n ->
+            Just size <- intToFloatSize n ->
               Just size
           | otherwise ->
               Nothing

@@ -90,9 +90,19 @@ If `--emit` does not include `object`, you must also pass `--skip-link`.
 
 `neut check` type-checks all the files in the current module. It also creates cache files for faster compilation.
 
+`neut check` enforces [universal](./modules.md#universal), walking every file in the module.
+
 ### `--full`
 
 If you pass `--full` to `neut check`, the caches of all dependencies are refreshed as well.
+
+### `--target TARGET`
+
+`neut check` doesn't take a target, so it checks under the platform of `zen`. If you pass `--target TARGET`, it checks under the platform of `TARGET` instead.
+
+The platform decides which branch of a [conditional import](./statements.md#import) is taken.
+
+`--target TARGET` also reports a [`require`](./statements.md#require) that the platform of `TARGET` doesn't provide, over the files that `TARGET` reaches, as `neut build TARGET` would.
 
 ## `neut clean`
 

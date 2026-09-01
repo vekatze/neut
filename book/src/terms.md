@@ -140,7 +140,7 @@ define sample() -> unit {
 
 The name of a local variable must satisfy the following conditions:
 
-- It doesn't contain any of ``=() `\"'\n\t:;,<>[]{}/*+|&?!#@~$``
+- It doesn't contain a space, a tab, a newline, or any of ``=()`"'\:;,<>[]{}/*+|&?!#@~$``
 - It doesn't start with `A, B, .., Z` (uppercase letters)
 
 ### Semantics

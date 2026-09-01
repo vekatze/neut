@@ -14,8 +14,11 @@ RUN apt-get update && \
   gnupg \
   just \
   lsb-release \
+  ninja-build \
+  python3 \
   tar \
   wget \
+  xz-utils \
   zstd && \
   curl -sSL https://get.haskellstack.org/ | sh && \
   rm -rf /var/lib/apt/lists/* && \
@@ -42,3 +45,17 @@ RUN apt-get update && \
   pkg-config \
   zsh && \
   rm -rf /var/lib/apt/lists/*
+
+ENV WASMTIME_VERSION=46.0.1
+
+RUN case "$(dpkg --print-architecture)" in \
+      amd64) wasmtime_arch=x86_64 ;; \
+      arm64) wasmtime_arch=aarch64 ;; \
+      *) echo "unsupported architecture: $(dpkg --print-architecture)" >&2; exit 1 ;; \
+    esac && \
+  wasmtime_dir="wasmtime-v${WASMTIME_VERSION}-${wasmtime_arch}-linux" && \
+  curl -sSL -o /tmp/wasmtime.tar.xz \
+  "https://github.com/bytecodealliance/wasmtime/releases/download/v${WASMTIME_VERSION}/${wasmtime_dir}.tar.xz" && \
+  tar -xJf /tmp/wasmtime.tar.xz -C /tmp && \
+  mv "/tmp/${wasmtime_dir}/wasmtime" /usr/local/bin/wasmtime && \
+  rm -rf /tmp/wasmtime.tar.xz "/tmp/${wasmtime_dir}"

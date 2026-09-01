@@ -102,20 +102,20 @@ branchAllocComp branchAlloc =
       lowComp
 
 data LiftResult = LiftResult
-  { liftPhiTargets :: [Ident],
+  { liftPhiTargets :: [(Ident, LT.LowType)],
     liftDefaultBranch :: LC.Comp,
     liftBranches :: [LC.Comp],
     liftCont :: LC.Comp
   }
 
-liftAllocIntoPhi :: MatchMode -> GensymHandle.Handle -> [Ident] -> LC.Comp -> [LC.Comp] -> LC.Comp -> IO LiftResult
+liftAllocIntoPhi :: MatchMode -> GensymHandle.Handle -> [(Ident, LT.LowType)] -> LC.Comp -> [LC.Comp] -> LC.Comp -> IO LiftResult
 liftAllocIntoPhi matchMode gensymHandle phiTargets defaultBranch branches cont =
   case cont of
     LC.Let x allocOp@(LC.Alloc (Left knownSize) _) cont1 -> do
       capturedBranches <- captureAndAppendAcrossBranches matchMode gensymHandle (fromInteger knownSize) (defaultBranch : branches)
       case capturedBranches of
         Just (defaultBranch' : branches') -> do
-          liftAllocIntoPhi matchMode gensymHandle (phiTargets ++ [x]) defaultBranch' branches' cont1
+          liftAllocIntoPhi matchMode gensymHandle (phiTargets ++ [(x, LT.Pointer)]) defaultBranch' branches' cont1
         _ -> do
           result <- liftAllocIntoPhi matchMode gensymHandle phiTargets defaultBranch branches cont1
           pure $ result {liftCont = LC.Let x allocOp (liftCont result)}
@@ -185,7 +185,7 @@ captureFirstFree matchMode gensymHandle size lowComp =
                   phiTarget <- freshLiftedPhiTarget gensymHandle
                   case appendCapturedValues captureList of
                     Just (defaultBranch' : es') -> do
-                      let switch' = LC.Switch d t defaultBranch' (zip cs es') (phiTargets ++ [phiTarget]) cont
+                      let switch' = LC.Switch d t defaultBranch' (zip cs es') (phiTargets ++ [(phiTarget, LT.Pointer)]) cont
                       pure $ Just $ foundCapture switch' (LC.VarLocal phiTarget)
                     _ ->
                       pure Nothing

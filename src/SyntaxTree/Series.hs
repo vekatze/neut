@@ -32,10 +32,10 @@ module SyntaxTree.Series
 where
 
 import Data.Bifunctor
-import Data.List (nubBy, sortBy)
+import Data.List (partition, sortBy)
 import Data.Maybe (mapMaybe)
 import Data.Text qualified as T
-import SyntaxTree.C (C)
+import SyntaxTree.C (C, Comment (..), CommentType (..), toLineComment)
 
 data Separator
   = Comma
@@ -255,13 +255,66 @@ isEmpty series =
 
 sortSeriesBy :: (a -> a -> Ordering) -> Series a -> Series a
 sortSeriesBy cmp series = do
-  let cmp' (_, x) (_, y) = cmp x y
-  series {elems = sortBy cmp' $ elems series}
+  let (openerComment, anchoredList, trailing) = anchorComments (elems series) (trailingComment series)
+  let cmp' (_, x, _) (_, y, _) = cmp x y
+  let (elems', trailing') = unanchorComments openerComment (sortBy cmp' anchoredList) trailing
+  series {elems = elems', trailingComment = trailing'}
 
 nubSeriesBy :: (a -> a -> Bool) -> Series a -> Series a
 nubSeriesBy cmp series = do
-  let cmp' (_, x) (_, y) = cmp x y
-  series {elems = nubBy cmp' $ elems series}
+  let (openerComment, anchoredList, trailing) = anchorComments (elems series) (trailingComment series)
+  let (elems', trailing') = unanchorComments openerComment (nubAnchoredBy cmp anchoredList) trailing
+  series {elems = elems', trailingComment = trailing'}
+
+splitInlineComment :: C -> (C, C)
+splitInlineComment c =
+  case c of
+    comment : rest
+      | commentType comment == InlineComment ->
+          ([comment], rest)
+    _ ->
+      ([], c)
+
+anchorComments :: [(C, a)] -> C -> (C, [(C, a, C)], C)
+anchorComments elemList trailing = do
+  case elemList of
+    [] -> do
+      let (openerComment, trailing') = splitInlineComment trailing
+      (openerComment, [], trailing')
+    (c, x) : rest -> do
+      let (openerComment, leading) = splitInlineComment c
+      let (anchoredList, trailing') = anchorRestComments leading x rest trailing
+      (openerComment, anchoredList, trailing')
+
+anchorRestComments :: C -> a -> [(C, a)] -> C -> ([(C, a, C)], C)
+anchorRestComments leading x elemList trailing = do
+  case elemList of
+    [] -> do
+      let (inlineComment, trailing') = splitInlineComment trailing
+      ([(leading, x, inlineComment)], trailing')
+    (c, y) : rest -> do
+      let (inlineComment, leading') = splitInlineComment c
+      let (anchoredList, trailing') = anchorRestComments leading' y rest trailing
+      ((leading, x, inlineComment) : anchoredList, trailing')
+
+unanchorComments :: C -> [(C, a, C)] -> C -> ([(C, a)], C)
+unanchorComments pendingComment anchoredList trailing =
+  case anchoredList of
+    [] ->
+      ([], pendingComment ++ trailing)
+    (leading, x, inlineComment) : rest -> do
+      let (elemList, trailing') = unanchorComments inlineComment rest trailing
+      ((pendingComment ++ leading, x) : elemList, trailing')
+
+nubAnchoredBy :: (a -> a -> Bool) -> [(C, a, C)] -> [(C, a, C)]
+nubAnchoredBy cmp anchoredList =
+  case anchoredList of
+    [] ->
+      []
+    (leading, x, inlineComment) : rest -> do
+      let (dropped, kept) = partition (\(_, y, _) -> cmp x y) rest
+      let absorbed = map toLineComment $ concatMap (\(l, _, i) -> l ++ i) dropped
+      (leading, x, inlineComment ++ absorbed) : nubAnchoredBy cmp kept
 
 appendLeftBiased :: Series a -> Series a -> Series a
 appendLeftBiased series1 series2 = do

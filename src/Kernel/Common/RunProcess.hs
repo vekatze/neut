@@ -13,6 +13,7 @@ where
 
 import App.App (App)
 import App.Error (newError')
+import Control.Concurrent.Async (wait, withAsync)
 import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.ByteString qualified as B
@@ -143,25 +144,25 @@ sendInput h input = do
       L.hPut h lazyInput
   GHC.hClose h
 
-createError :: Spec -> Int -> GHC.Handle -> IO CommandError
-createError spec failureCode h = do
-  errStr <- B.hGetContents h
-  return $
-    CommandError
-      { spec = spec,
-        exitCode = failureCode,
-        errStr = errStr
-      }
-
 receiveOutput :: Spec -> P.ProcessHandle -> GHC.Handle -> IO a -> IO (Either ErrorText a)
 receiveOutput spec processHandle hErr resultReader = do
-  exitCode <- P.waitForProcess processHandle
-  case exitCode of
-    ExitSuccess -> do
-      Right <$> resultReader
-    ExitFailure failureCode -> do
-      e <- createError spec failureCode hErr
-      return $ Left $ toCompilerError $ CommandExecutionError e
+  withAsync (B.hGetContents hErr) $ \errReader -> do
+    result <- resultReader
+    exitCode <- P.waitForProcess processHandle
+    errStr <- wait errReader
+    case exitCode of
+      ExitSuccess ->
+        return $ Right result
+      ExitFailure failureCode ->
+        return $
+          Left $
+            toCompilerError $
+              CommandExecutionError $
+                CommandError
+                  { spec = spec,
+                    exitCode = failureCode,
+                    errStr = errStr
+                  }
 
 stdinError :: ErrorText
 stdinError =

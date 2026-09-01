@@ -12,13 +12,18 @@ module Language.RawTerm.RawStmt
     RawDefineMeta (..),
     PostRawDefineMeta (..),
     RawImport (..),
+    RawRequire (..),
+    RawRequireItem (..),
     RawImportItem (..),
+    boundNameList,
     RawImportEntry (..),
     RawAsClause (..),
     isImportEmpty,
     mergeImportList,
+    mergeRequireList,
     RawForeignItemF (..),
     RawForeignItem,
+    RawExposeItem (..),
   )
 where
 
@@ -40,7 +45,7 @@ import SyntaxTree.C
 import SyntaxTree.Series qualified as SE
 
 data BaseRawProgram a
-  = RawProgram Hint [(RawImport, C)] [(BaseRawStmt a, C)]
+  = RawProgram Hint [(RawImport, C)] [(RawRequire, C)] [(BaseRawStmt a, C)]
 
 type RawProgram =
   BaseRawProgram BN.BaseName
@@ -110,6 +115,7 @@ data BaseRawStmt name
       Loc
   | RawStmtNominal C Hint (SE.Series (NominalTag, RT.RawGeist name, Loc))
   | RawStmtForeign C (SE.Series RawForeignItem)
+  | RawStmtExpose C (SE.Series RawExposeItem)
   | RawStmtNamespace C Hint (name, C) C [(BaseRawStmt name, C)] Loc
 
 type RawStmt =
@@ -118,8 +124,14 @@ type RawStmt =
 data RawImport
   = RawImport C Hint (SE.Series RawImportItem) Loc
 
+data RawRequire
+  = RawRequire C Hint (SE.Series RawRequireItem) Loc
+
+data RawRequireItem
+  = RawRequireItem Hint T.Text
+
 data PostRawProgram
-  = PostRawProgram Hint [(RawImport, C)] [PostRawStmt]
+  = PostRawProgram Hint [(RawImport, C)] [(RawRequire, C)] [PostRawStmt]
 
 data PostRawStmt
   = PostRawStmtDefineTerm
@@ -150,6 +162,7 @@ data PostRawStmt
       DD.DefiniteDescription
   | PostRawStmtNominal C Hint (SE.Series (NominalTag, RT.RawGeist DD.DefiniteDescription, Loc))
   | PostRawStmtForeign C (SE.Series RawForeignItem)
+  | PostRawStmtExpose C [RawExposeItem]
   | PostRawStmtNamespace Hint DD.DefiniteDescription [PostRawStmt]
 
 data PostRawDefineMeta = PostRawDefineMeta
@@ -166,6 +179,33 @@ data PostRawDefineMeta = PostRawDefineMeta
 data RawImportItem
   = RawImportItem Hint (T.Text, C) (SE.Series RawImportEntry)
   | RawStaticFileKey Hint C (SE.Series (Hint, T.Text))
+  | RawConditionalImport
+      Hint
+      C
+      (Hint, T.Text, C)
+      (SE.Series RawImportItem, C)
+      C
+      (SE.Series RawImportItem)
+
+boundNameList :: RawImportItem -> [T.Text]
+boundNameList item =
+  case item of
+    RawImportItem _ _ entries ->
+      map boundName $ SE.extract entries
+    RawStaticFileKey _ _ keys ->
+      map snd $ SE.extract keys
+    RawConditionalImport _ _ _ (thenSeries, _) _ _ ->
+      concatMap boundNameList $ SE.extract thenSeries
+
+boundName :: RawImportEntry -> T.Text
+boundName entry =
+  case entry of
+    RawImportName _ ll Nothing ->
+      LL.reify ll
+    RawImportName _ _ (Just (RawAsClause _ _ _ alias)) ->
+      BN.reify alias
+    RawImportWildcard _ (RawAsClause _ _ _ alias) ->
+      BN.reify alias
 
 data RawImportEntry
   = RawImportName Hint LL.LocalLocator (Maybe RawAsClause)
@@ -181,6 +221,9 @@ data RawForeignItemF a
 type RawForeignItem =
   RawForeignItemF RT.RawType
 
+data RawExposeItem
+  = RawExposeItem Hint (N.Name, C) (Maybe (C, (EN.ExternalName, C)))
+
 isImportEmpty :: RawImport -> Bool
 isImportEmpty rawImport =
   case rawImport of
@@ -189,6 +232,16 @@ isImportEmpty rawImport =
           True
     _ ->
       False
+
+mergeRequireList :: Hint -> [(RawRequire, C)] -> (RawRequire, C)
+mergeRequireList headHint requireList =
+  case requireList of
+    [] -> do
+      let beginningOfFile = (1, 1)
+      (RawRequire [] headHint (SE.emptySeries (Just SE.Brace) SE.Comma) beginningOfFile, [])
+    (RawRequire c1 m requireItems loc, c) : rest -> do
+      let (RawRequire c1' _ requireItems' _, c') = mergeRequireList headHint rest
+      (RawRequire (c1 ++ c1') m (SE.appendLeftBiased requireItems requireItems') loc, c ++ c')
 
 mergeImportList :: Hint -> [(RawImport, C)] -> (RawImport, C)
 mergeImportList headHint importList =

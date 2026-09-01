@@ -30,11 +30,11 @@ import Kernel.Common.Cache qualified as Cache
 import Kernel.Common.Const (holeLiteral)
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.Data qualified as Data
+import Kernel.Common.Handle.Global.Expose qualified as Expose
 import Kernel.Common.Handle.Global.GlobalRemark qualified as GlobalRemark
 import Kernel.Common.Handle.Global.KeyArg qualified as KeyArg
 import Kernel.Common.Handle.Global.ModulePath qualified as ModulePath
 import Kernel.Common.Handle.Global.OptimizableData qualified as OptimizableData
-import Kernel.Common.Handle.Global.Platform qualified as Platform
 import Kernel.Common.Handle.Global.Resource qualified as Resource
 import Kernel.Common.Handle.Global.Type qualified as Type
 import Kernel.Common.Handle.Local.Tag qualified as Tag
@@ -56,6 +56,7 @@ import Kernel.Elaborate.Internal.Handle.WeakDecl qualified as WeakDecl
 import Kernel.Elaborate.Internal.Handle.WeakDef qualified as WeakDef
 import Kernel.Elaborate.Internal.Handle.WeakType qualified as WeakType
 import Kernel.Elaborate.Internal.Handle.WeakTypeDef qualified as WeakTypeDef
+import Kernel.Parse.Internal.Handle.BranchAgreement qualified as BranchAgreement
 import Kernel.Elaborate.Internal.Infer qualified as Infer
 import Kernel.Elaborate.Internal.TypeUtil (inlineType)
 import Kernel.Elaborate.Internal.TypeUtil qualified as TypeUtil
@@ -75,7 +76,6 @@ import Language.Common.CallConv qualified as CC
 import Language.Common.CallConvSpec qualified as CCS
 import Language.Common.CreateSymbol qualified as Gensym
 import Language.Common.DataInfo qualified as DI
-import Language.Common.DataSize qualified as DS
 import Language.Common.DecisionTree qualified as DT
 import Language.Common.DefaultArgs qualified as DefaultArgs
 import Language.Common.DefiniteDescription qualified as DD
@@ -94,6 +94,7 @@ import Language.Common.ModuleID qualified as MID
 import Language.Common.PiKind qualified as PK
 import Language.Common.PrimNumSize
 import Language.Common.PrimType qualified as PT
+import Language.Common.SlotSize
 import Language.Common.SourceLocator qualified as SL
 import Language.Common.StmtKind qualified as SK
 import Language.Common.StrictGlobalLocator qualified as SGL
@@ -151,11 +152,31 @@ saveLocationTree h t = do
 
 analyzeStmtList :: Handle -> [WeakStmt] -> App [WeakStmt]
 analyzeStmtList h stmtList = do
+  requireBranchAgreement h
   forM stmtList $ \stmt -> do
     liftIO $ reportTrace h Report.PreTermPhase "preterm" stmt
     stmt' <- Infer.inferStmt h stmt
     insertWeakStmt h stmt'
     return stmt'
+
+requireBranchAgreement :: Handle -> App ()
+requireBranchAgreement h = do
+  obligationList <- liftIO $ BranchAgreement.get (branchAgreementHandle h)
+  forM_ obligationList $ \obligation -> do
+    thenType <- liftIO $ Type.lookupMaybe' (typeHandle h) $ BranchAgreement.thenName obligation
+    elseType <- liftIO $ Type.lookupMaybe' (typeHandle h) $ BranchAgreement.elseName obligation
+    case (thenType, elseType) of
+      (Just t1, Just t2) ->
+        liftIO $ Constraint.insert (constraintHandle h) t1 t2
+      (Nothing, _) ->
+        raiseTypelessBranch h obligation $ BranchAgreement.thenName obligation
+      (_, Nothing) ->
+        raiseTypelessBranch h obligation $ BranchAgreement.elseName obligation
+
+raiseTypelessBranch :: Handle -> BranchAgreement.Obligation -> DD.DefiniteDescription -> App ()
+raiseTypelessBranch h obligation dd = do
+  raiseError (BranchAgreement.obligationHint obligation) $
+    "A name without a type cannot be supplied by a conditional import: `" <> ModulePath.renderDD (modulePathMap h) dd <> "`"
 
 reportTrace :: Handle -> Report.TracePhase -> T.Text -> WeakStmt -> IO ()
 reportTrace h phase stage stmt = do
@@ -364,6 +385,11 @@ elaborateStmt h stmt = do
         cod' <- mapM (strictify h) cod
         return $ F.Foreign m externalName domList' cod'
       return ([StmtForeign foreignList'], [])
+    WeakStmtExpose exportList -> do
+      let exportList2 = map (\(m, dd, extName) -> (SavedHint m, dd, extName)) exportList
+      let result = StmtExpose exportList2
+      insertStmt h result
+      return ([result], [])
     WeakStmtNamespace m dd -> do
       return ([StmtNamespace (SavedHint m) dd], [])
 
@@ -436,14 +462,16 @@ logPosition (SavedHint m) =
   (metaFileName m, metaLocation m)
 
 checkTypeObligation :: Handle -> TypeObligation -> App [L.Log]
-checkTypeObligation h (TypeObligation attr site m t) = do
-  t' <- elaborateType h t >>= inlineType h m
-  result <- checkTypeAttr h attr m t'
-  case result of
-    Right () ->
-      return []
-    Left message ->
-      return [L.newLog m LL.Error $ obligationErrorMessage attr site message]
+checkTypeObligation h obligation =
+  case obligation of
+    TypeObligation attr site m t -> do
+      t' <- elaborateType h t >>= inlineType h m
+      result <- checkTypeAttr h attr m t'
+      case result of
+        Right () ->
+          return []
+        Left message ->
+          return [L.newLog m LL.Error $ obligationErrorMessage attr site message]
 
 checkTypeAttr :: Handle -> VK.TypeAttr -> Hint -> TM.Type -> App (Either T.Text ())
 checkTypeAttr h attr m t =
@@ -571,6 +599,9 @@ insertStmtWithTraceSites h knownTraceSiteIDs stmt = do
       return ()
     StmtForeign _ -> do
       return ()
+    StmtExpose exportList ->
+      forM_ exportList $ \(SavedHint m, dd, extName) ->
+        Expose.insert (Global.exposeHandle (globalHandle h)) m dd extName
     StmtNamespace {} ->
       return ()
   insertWeakStmt h $ weakenStmt stmt
@@ -596,6 +627,8 @@ insertWeakStmt h stmt = do
     WeakStmtForeign foreignList ->
       forM_ foreignList $ \(F.Foreign _ externalName domList cod) -> do
         liftIO $ WeakDecl.insert (weakDeclHandle h) (DN.Ext externalName) domList cod
+    WeakStmtExpose {} -> do
+      return ()
     WeakStmtNamespace {} -> do
       return ()
 
@@ -726,7 +759,7 @@ resolveMixedOrError h visited m ty =
       resourceSizeOrNone <- liftIO $ Resource.lookup (Global.resourceHandle (globalHandle h)) dataName
       case resourceSizeOrNone of
         Just (Resource.Flattened byteSize) ->
-          return $ resourceByteSizeToSlotCount h byteSize
+          return $ resourceByteSizeToSlotCount byteSize
         Just Resource.Direct ->
           return $ Left $ "the resource `" <> showDD h dataName <> "` has no fixed size and cannot be stored inline"
         Nothing ->
@@ -765,10 +798,9 @@ cannotMixRecursiveMessage :: Handle -> DD.DefiniteDescription -> T.Text
 cannotMixRecursiveMessage h dataName =
   "the recursive type `" <> showDD h dataName <> "` cannot be stored inline"
 
-resourceByteSizeToSlotCount :: Handle -> Int -> Either T.Text SlotCount
-resourceByteSizeToSlotCount h byteSize = do
-  let wordSize = DS.reifyBytes (Platform.getDataSize (platformHandle h))
-  let slotCount = (byteSize + wordSize - 1) `div` wordSize
+resourceByteSizeToSlotCount :: Int -> Either T.Text SlotCount
+resourceByteSizeToSlotCount byteSize = do
+  let slotCount = (byteSize + slotByteSize - 1) `div` slotByteSize
   Right $ StaticSlots slotCount
 
 specializeUnaryDataType :: Handle -> Hint -> DD.DefiniteDescription -> [TM.Type] -> App TM.Type
@@ -851,8 +883,8 @@ elaborate' h term = do
       return $ m :< TM.PiIntro kind' impArgs' expArgs' defaultArgs' e'
     m :< WT.PiElim spec e impArgs expArgs defaultArgs -> do
       conv <- case spec of
-        CCS.Inferred conv ->
-          CC.traverseTypes (elaborateType h) conv
+        CCS.Resolved resolvedConv ->
+          CC.traverseTypes (elaborateType h) resolvedConv
         CCS.AsMarked {} ->
           raiseCritical m "Scene.Elaborate.elaborate': found an unresolved calling convention"
       e' <- elaborate' h e

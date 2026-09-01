@@ -53,7 +53,7 @@ makeArchiveFromTempDir h packageVersion tempRootDir = do
   let mainModule = Env.getMainModule (envHandle h)
   outputPath <- getArchiveFilePath mainModule (PV.reify packageVersion)
   RunProcess.run (runProcessHandle h) "tar" $
-    ["-c", "--zstd", "-f", toFilePath outputPath, "-C", toFilePath tempRootDir] ++ newContents
+    ["-c", "--zstd", "--no-xattrs", "-f", toFilePath outputPath, "-C", toFilePath tempRootDir] ++ newContents
   return outputPath
 
 copyModuleContents :: Path Abs Dir -> Path Abs Dir -> [SomePath Rel] -> App ()

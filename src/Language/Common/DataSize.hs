@@ -6,12 +6,15 @@ module Language.Common.DataSize
 where
 
 data DataSize
-  = DataSize64
+  = DataSize32
+  | DataSize64
   deriving (Eq)
 
 reify :: DataSize -> Int
 reify dataSize =
   case dataSize of
+    DataSize32 ->
+      32
     DataSize64 ->
       64
 

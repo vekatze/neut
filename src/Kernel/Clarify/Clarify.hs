@@ -38,7 +38,6 @@ import Kernel.Common.Handle.Global.Data qualified as Data
 import Kernel.Common.Handle.Global.ImportedTypeDefCache qualified as ImportedTypeDefCache
 import Kernel.Common.Handle.Global.ModulePath qualified as ModulePath
 import Kernel.Common.Handle.Global.OptimizableData qualified as OptimizableData
-import Kernel.Common.Handle.Global.Platform qualified as Platform
 import Kernel.Common.Handle.Global.Resource qualified as Resource
 import Kernel.Common.Handle.Global.Type qualified as Type
 import Kernel.Common.OptimizableData qualified as OD
@@ -53,7 +52,6 @@ import Language.Common.Binder
 import Language.Common.CallConv qualified as CC
 import Language.Common.CreateSymbol qualified as Gensym
 import Language.Common.DataInfo qualified as DI
-import Language.Common.DataSize qualified as DS
 import Language.Common.DecisionTree qualified as DT
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.Discriminant qualified as D
@@ -67,7 +65,7 @@ import Language.Common.Magic qualified as M
 import Language.Common.Noema qualified as N
 import Language.Common.Opacity (isOpaque)
 import Language.Common.Opacity qualified as O
-import Language.Common.PrimNumSize (dataSizeToIntSize)
+import Language.Common.SlotSize
 import Language.Common.PrimNumSize qualified as PNS
 import Language.Common.PrimOp
 import Language.Common.PrimType qualified as PT
@@ -104,7 +102,6 @@ data Handle = Handle
     resourceHandle :: Resource.Handle,
     reduceHandle :: Reduce.Handle,
     substHandle :: Subst.Handle,
-    baseSize :: DS.DataSize,
     typeHandle :: Type.Handle,
     typeDefHandle :: TypeDef.Handle,
     importedTypeDefCacheHandle :: ImportedTypeDefCache.Handle,
@@ -133,12 +130,11 @@ setCurrentFunction currentFunction context =
 new :: Gensym.Handle -> Global.Handle -> Trace.Config -> IO Handle
 new gensymHandle (Global.Handle {..}) traceConfig = do
   modulePathMap <- ModulePath.get modulePathHandle
-  let baseSize = Platform.getDataSize platformHandle
   auxEnvHandle <- AuxEnv.new
   let substHandle = Subst.new gensymHandle
   let compSubstHandle = CompSubst.new gensymHandle
   let reduceHandle = Reduce.new compSubstHandle gensymHandle mempty
-  let utilityHandle = Utility.new gensymHandle compSubstHandle auxEnvHandle baseSize
+  let utilityHandle = Utility.new gensymHandle compSubstHandle auxEnvHandle
   let linearizeHandle = Linearize.new gensymHandle utilityHandle
   let sigmaHandle = Sigma.new gensymHandle linearizeHandle utilityHandle
   closureNameSupplyRef <- newIORef Map.empty
@@ -148,9 +144,8 @@ newReduceOnlyHandle :: Handle -> IO Handle
 newReduceOnlyHandle h = do
   auxEnvHandle' <- AuxEnv.new
   let gensymHandle' = gensymHandle h
-  let baseSize' = baseSize h
   let compSubstHandle = CompSubst.new gensymHandle'
-  let utilityHandle' = Utility.new gensymHandle' compSubstHandle auxEnvHandle' baseSize'
+  let utilityHandle' = Utility.new gensymHandle' compSubstHandle auxEnvHandle'
   let linearizeHandle' = Linearize.new gensymHandle' utilityHandle'
   let sigmaHandle' = Sigma.new gensymHandle' linearizeHandle' utilityHandle'
   let reduceHandle' = Reduce.new compSubstHandle gensymHandle' mempty
@@ -167,7 +162,6 @@ newReduceOnlyHandle h = do
         resourceHandle = resourceHandle h,
         reduceHandle = reduceHandle',
         substHandle = substHandle h,
-        baseSize = baseSize',
         typeHandle = typeHandle h,
         typeDefHandle = typeDefHandle h,
         importedTypeDefCacheHandle = importedTypeDefCacheHandle h,
@@ -201,12 +195,16 @@ clarify h stmtList = do
         return $ C.Def x opacity args e'
       C.Foreign {} ->
         return stmt
+      C.Expose {} ->
+        return stmt
   auxEnv' <- forM auxEnv $ \stmt -> do
     case stmt of
       C.Def x opacity args e -> do
         e' <- liftIO $ Reduce.reduce auxReduceHandle e
         return $ C.Def x opacity args e'
       C.Foreign {} ->
+        return stmt
+      C.Expose {} ->
         return stmt
   liftIO $ mapM_ (reportTrace h Report.CompPhase "comp") (stmtList'' ++ auxEnv')
   return (stmtList'', auxEnv', defMap)
@@ -228,6 +226,8 @@ renderCompStmt stmt = do
       renderCompDefinition (if isOpaque opacity then "define" else "inline") name args body
     C.Foreign {} ->
       "foreign declaration"
+    C.Expose {} ->
+      "export declaration"
 
 renderCompDefinition :: T.Text -> DD.DefiniteDescription -> [Ident] -> C.Comp -> T.Text
 renderCompDefinition keyword name args body =
@@ -305,10 +305,41 @@ clarifyImportedTypeDef :: Handle -> DD.DefiniteDescription -> TypeDef.TypeDefInf
 clarifyImportedTypeDef h name typeDefInfo = do
   dataInfoOrNone <- liftIO $ Data.lookup (dataHandle h) name
   case dataInfoOrNone of
-    Just dataInfo ->
+    Just dataInfo0 -> do
+      dataInfo <- liftIO $ refreshDataInfo h dataInfo0
       clarifyDataTypeDef h name (DI.dataArgs dataInfo) (DI.consInfoList dataInfo)
-    Nothing ->
-      clarifyAliasTypeDef h name typeDefInfo
+    Nothing -> do
+      typeDefInfo' <- liftIO $ refreshTypeDefInfo h typeDefInfo
+      clarifyAliasTypeDef h name typeDefInfo'
+
+refreshBinderList :: Handle -> Subst.Subst -> [BinderF TM.Type] -> IO ([BinderF TM.Type], Subst.Subst)
+refreshBinderList h sub xts =
+  case xts of
+    [] ->
+      return ([], sub)
+    (m, k, x, t) : rest -> do
+      t' <- Subst.substType (substHandle h) sub t
+      x' <- Gensym.newIdentFromIdent (gensymHandle h) x
+      let sub' = IntMap.insert (Ident.toInt x) (Subst.Var x') sub
+      (rest', sub'') <- refreshBinderList h sub' rest
+      return ((m, k, x', t') : rest', sub'')
+
+refreshTypeDefInfo :: Handle -> TypeDef.TypeDefInfo -> IO TypeDef.TypeDefInfo
+refreshTypeDefInfo h typeDefInfo = do
+  (binders', sub) <- refreshBinderList h IntMap.empty (TypeDef.typeDefBinders typeDefInfo)
+  body' <- Subst.substType (substHandle h) sub (TypeDef.typeDefBody typeDefInfo)
+  return typeDefInfo {TypeDef.typeDefBinders = binders', TypeDef.typeDefBody = body'}
+
+refreshDataInfo :: Handle -> DI.DataInfo (BinderF TM.Type) -> IO (DI.DataInfo (BinderF TM.Type))
+refreshDataInfo h dataInfo = do
+  (dataArgs', sub) <- refreshBinderList h IntMap.empty (DI.dataArgs dataInfo)
+  consInfoList' <- mapM (refreshConsInfo h sub) (DI.consInfoList dataInfo)
+  return dataInfo {DI.dataArgs = dataArgs', DI.consInfoList = consInfoList'}
+
+refreshConsInfo :: Handle -> Subst.Subst -> DI.ConsInfo (BinderF TM.Type) -> IO (DI.ConsInfo (BinderF TM.Type))
+refreshConsInfo h sub consInfo = do
+  (consArgs', _) <- refreshBinderList h sub (DI.consArgs consInfo)
+  return consInfo {DI.consArgs = consArgs'}
 
 clarifyAliasTypeDef :: Handle -> DD.DefiniteDescription -> TypeDef.TypeDefInfo -> App C.CompStmt
 clarifyAliasTypeDef h name typeDefInfo = do
@@ -328,12 +359,11 @@ data MainHandle = MainHandle
     mainGensymHandle :: Gensym.Handle
   }
 
-newMain :: Gensym.Handle -> Global.Handle -> IO MainHandle
-newMain gensymHandle Global.Handle {..} = do
+newMain :: Gensym.Handle -> IO MainHandle
+newMain gensymHandle = do
   mainAuxEnvHandle <- AuxEnv.new
-  let baseSize = Platform.getDataSize platformHandle
   let compSubstHandle = CompSubst.new gensymHandle
-  let utilityHandle = Utility.new gensymHandle compSubstHandle mainAuxEnvHandle baseSize
+  let utilityHandle = Utility.new gensymHandle compSubstHandle mainAuxEnvHandle
   let linearizeHandle = Linearize.new gensymHandle utilityHandle
   let mainSigmaHandle = Sigma.new gensymHandle linearizeHandle utilityHandle
   let mainGensymHandle = gensymHandle
@@ -351,6 +381,8 @@ clarifyEntryPoint h = do
         e' <- Reduce.reduce reduceHandle e
         return $ C.Def x opacity args e'
       C.Foreign {} ->
+        return stmt
+      C.Expose {} ->
         return stmt
   return (stmtList, defMap)
 
@@ -407,7 +439,7 @@ clarifyStmt h stmt =
       switch <- liftIO $ Gensym.createVar (gensymHandle h) "switch"
       arg@(argVarName, _) <- liftIO $ Gensym.createVar (gensymHandle h) "arg"
       extra@(extraVarName, _) <- liftIO $ Gensym.createVar (gensymHandle h) "extra"
-      size <- clarifyResourceSize h resourceSize
+      size <- clarifyResourceSize resourceSize
       discard <- clarifyTerm h context (m :< TM.PiElim noTrace CC.normal discarder [] [m :< TM.Var argVarName, m :< TM.Var extraVarName] [])
       copy <- clarifyTerm h context (m :< TM.PiElim noTrace CC.normal copier [] [m :< TM.Var argVarName, m :< TM.Var extraVarName] [])
       let resourceSpec = Utility.ResourceSpec {switch, arg, extra, discard, copy, size, defaultValues = []}
@@ -419,6 +451,8 @@ clarifyStmt h stmt =
       return $ C.Foreign [] -- nop
     StmtForeign foreignList ->
       return $ C.Foreign foreignList
+    StmtExpose exportList ->
+      return $ C.Expose $ map (\(SavedHint m, dd, extName) -> (m, dd, extName)) exportList
     StmtNamespace {} -> do
       return $ C.Foreign [] -- nop
 
@@ -486,7 +520,7 @@ makeSwitchArg h = do
 getSizeComp :: Handle -> C.Comp -> IO C.Comp
 getSizeComp h codType = do
   (typeName, typeVar) <- Gensym.createVar (gensymHandle h) "type"
-  return $ C.UpElim True typeName codType (C.PiElimDownElim True typeVar [intTerm h (2 :: Int), C.null, C.null])
+  return $ C.UpElim True typeName codType (C.PiElimDownElim True typeVar [intTerm (2 :: Int), C.null, C.null])
 
 toDestPassing :: Handle -> C.Comp -> C.Comp -> IO (Maybe Ident, C.Comp)
 toDestPassing h codType e = do
@@ -537,7 +571,7 @@ registerDefaultEnvType h name defaultValues = do
       extra <- Gensym.createVar (gensymHandle h) "extra"
       let discard = C.UpIntro C.null
       let copy = C.UpIntro argVar
-      let resourceSpec = Utility.ResourceSpec {switch, arg, extra, discard, copy, size = Utility.returnIntComp (utilityHandle h) (-1), defaultValues}
+      let resourceSpec = Utility.ResourceSpec {switch, arg, extra, discard, copy, size = Utility.returnIntComp (-1), defaultValues}
       Utility.registerSwitcher (utilityHandle h) O.Clear envTypeName resourceSpec
 
 registerDefaultFunctions ::
@@ -643,7 +677,8 @@ clarifyTerm h context term =
     _ :< TM.PiElim _ conv e impArgs expArgs defaultArgs -> do
       conv' <- CC.traverseTypes (clarifyType h context) conv
       impArgs' <- mapM (clarifyTypePlus h context) impArgs
-      let argumentConventions = CC.argumentsFor (length expArgs) conv'
+      let allConventions = CC.argumentsFor (length expArgs + length defaultArgs) conv'
+      let (expConventions, defaultConventions) = splitAt (length expArgs) allConventions
       expArgs' <- mapM (clarifyPlus h context) expArgs
       defaultArgs' <- mapM (traverse (clarifyPlus h context)) defaultArgs
       let allArgs = impArgs' ++ expArgs' ++ catMaybes defaultArgs'
@@ -652,12 +687,12 @@ clarifyTerm h context term =
           return $ callPrimOp op allArgs
         _ -> do
           e' <- clarifyTerm h context e
-          liftIO $ callClosure h conv' e' impArgs' (zip argumentConventions expArgs') defaultArgs'
+          liftIO $ callClosure h conv' e' impArgs' (zip expConventions expArgs') (zip defaultConventions defaultArgs')
     m :< TM.DataIntro (AttrDI.Attr {..}) consName dataArgs consArgs -> do
       od <- liftIO $ OptimizableData.lookup (optDataHandle h) consName
       case od of
         Just OD.Enum ->
-          return $ C.UpIntro $ C.Int (dataSizeToIntSize (baseSize h)) (D.reify discriminant)
+          return $ C.UpIntro $ C.Int slotIntSize (D.reify discriminant)
         Just OD.Unary
           | [e] <- consArgs ->
               clarifyTerm h context e
@@ -669,14 +704,14 @@ clarifyTerm h context term =
           dataInfo <- lookupDataEntry h m dataName
           let totalSlotCount = DI.dataTotalSlotCount (DI.dataArgs dataInfo) (DI.consInfoList dataInfo)
           consInfo <- getConsInfoByDiscriminant h m discriminant (DI.consInfoList dataInfo)
-          fieldStorageList <- fieldStoragesOfConsInfo h context consInfo
+          let fieldStorageList = DI.consArgLayouts consInfo
           when (length fieldStorageList /= length xs2) $
             raiseCritical m "Found a constructor layout arity mismatch"
           let header =
                 if DI.headerSlotCount (DI.consInfoList dataInfo) == 0
                   then []
-                  else [C.Int (dataSizeToIntSize (baseSize h)) (D.reify discriminant)]
-          packedBody <- liftIO $ Sigma.flattenFields (gensymHandle h) (zip fieldStorageList xs2) $ \payloadSlots ->
+                  else [C.Int slotIntSize (D.reify discriminant)]
+          packedBody <- liftIO $ Sigma.flattenFields (sigmaHandle h) (zip fieldStorageList xs2) $ \payloadSlots ->
             C.UpIntro $
               C.SigmaIntro totalSlotCount $
                 header ++ xs1 ++ payloadSlots
@@ -831,11 +866,7 @@ fieldStoragesOfConsInfo ::
 fieldStoragesOfConsInfo h context consInfo = do
   forM (zip (DI.consArgLayouts consInfo) (DI.consArgs consInfo)) $ \(layout, (_, _, _, t)) -> do
     fieldType <- clarifyType h context t
-    case layout of
-      DI.LayoutDirect ->
-        return $ Sigma.Direct fieldType
-      DI.LayoutFlattened slotCount ->
-        return $ Sigma.Flattened fieldType slotCount
+    return $ Sigma.FieldLayout {Sigma.fieldType = fieldType, Sigma.fieldShape = layout}
 
 clarifyStaticValue :: Handle -> Context -> TM.Term -> App C.Value
 clarifyStaticValue h context term =
@@ -844,7 +875,7 @@ clarifyStaticValue h context term =
       od <- liftIO $ OptimizableData.lookup (optDataHandle h) consName
       case od of
         Just OD.Enum ->
-          return $ C.Int (dataSizeToIntSize (baseSize h)) (D.reify discriminant)
+          return $ C.Int slotIntSize (D.reify discriminant)
         Just OD.Unary
           | [e] <- consArgs ->
               clarifyStaticValue h context e
@@ -856,14 +887,14 @@ clarifyStaticValue h context term =
           dataInfo <- lookupDataEntry h m dataName
           let totalSlotCount = DI.dataTotalSlotCount (DI.dataArgs dataInfo) (DI.consInfoList dataInfo)
           consInfo <- getConsInfoByDiscriminant h m discriminant (DI.consInfoList dataInfo)
-          fieldStorageList <- fieldStoragesOfConsInfo h context consInfo
+          let fieldStorageList = DI.consArgLayouts consInfo
           when (length fieldStorageList /= length consArgSlots) $
             raiseCritical m "Found a constructor layout arity mismatch"
           payloadSlots <- concat <$> mapM (uncurry $ flattenStaticField m) (zip fieldStorageList consArgSlots)
           let header =
                 if DI.headerSlotCount (DI.consInfoList dataInfo) == 0
                   then []
-                  else [C.Int (dataSizeToIntSize (baseSize h)) (D.reify discriminant)]
+                  else [C.Int slotIntSize (D.reify discriminant)]
           label <- liftIO $ newStaticDataLabel h
           return $ C.StaticSigmaIntro label totalSlotCount $ header ++ dataArgSlots ++ payloadSlots
     m :< TM.PiIntro {} ->
@@ -934,12 +965,12 @@ staticSlotOf m v =
     _ ->
       raiseNonStaticValue m
 
-flattenStaticField :: Hint -> Sigma.FieldLayout -> C.Value -> App [C.Value]
+flattenStaticField :: Hint -> DI.FieldLayout -> C.Value -> App [C.Value]
 flattenStaticField m field value =
   case field of
-    Sigma.Direct _ ->
+    DI.LayoutDirect ->
       return [value]
-    Sigma.Flattened _ slotCount ->
+    DI.LayoutFlattened slotCount ->
       case value of
         C.StaticSigmaIntro _ slotCount' slots
           | slotCount == slotCount' ->
@@ -1035,10 +1066,6 @@ getDataSlotCountFromType h t =
     m :< _ ->
       raiseCritical m "Clarify.getDataSlotCountFromType"
 
-dataSlotCountToByteSize :: Handle -> Int -> Int
-dataSlotCountToByteSize h slotCount =
-  slotCount * DS.reifyBytes (baseSize h)
-
 clarifyDataClause ::
   Handle ->
   Context ->
@@ -1105,7 +1132,7 @@ clarifyDecisionTree h context isNoetic dataArgsMap tree =
               (disc, discVar) <- liftIO $ Gensym.createVar (gensymHandle h) "disc"
               enumElim <- liftIO $ Utility.getEnumElim (utilityHandle h) idents discVar fallbackClause'' (zip enumCaseList clauseList'')
               return
-                ( C.UpElim True disc (C.Primitive (C.Magic (LM.Load BLT.Pointer (C.VarLocal cursor)))) enumElim,
+                ( C.UpElim True disc (C.Primitive (C.Magic (LM.Load BLT.slot (C.VarLocal cursor)))) enumElim,
                   newChain
                 )
 
@@ -1234,7 +1261,7 @@ clarifyCase h context isNoetic dataArgsMap cursor cursorType decisionCase = do
     DT.ConsCase (DT.ConsCaseRecord {..}) -> do
       let (_, dataTypes) = unzip dataArgs
       dataArgVars <- liftIO $ mapM (const $ Gensym.newIdentFromText (gensymHandle h) "dataArg") dataTypes
-      cursorSize <- dataSlotCountToByteSize h <$> getDataSlotCountFromType h cursorType
+      cursorSize <- fromInteger . slotCountToByteSize . toInteger <$> getDataSlotCountFromType h cursorType
       let dataArgsMap' = IntMap.insert (Ident.toInt cursor) (zip dataArgVars dataTypes, cursorSize) dataArgsMap
       let consArgs' = map (\(m, k, x, _) -> (m, k, x, m :< TM.Tau)) consArgs
       let prefixChain = TM.chainOfCaseWithoutCont (typeEnv context) decisionCase
@@ -1261,10 +1288,9 @@ clarifyCase h context isNoetic dataArgsMap cursor cursorType decisionCase = do
           layoutConsInfo <- getConsInfoByDiscriminant h mCons disc (DI.consInfoList dataInfo)
           when (length (DI.consArgs layoutConsInfo) /= length consArgs) $
             raiseCritical mCons "Found a constructor layout arity mismatch"
-          let fieldLayoutContext = extendContext (DI.dataArgs dataInfo) context
-          fieldStorageList <- fieldStoragesOfConsInfo h fieldLayoutContext layoutConsInfo
+          let fieldStorageList = DI.consArgLayouts layoutConsInfo
           let consArgIdents = map (\(_, _, x, _) -> x) consArgs
-          let totalSlots = cursorSize `div` DS.reifyBytes (baseSize h)
+          let totalSlots = cursorSize `div` slotByteSize
           headerVars <-
             if DI.headerSlotCount (DI.consInfoList dataInfo) == 0
               then return []
@@ -1274,7 +1300,7 @@ clarifyCase h context isNoetic dataArgsMap cursor cursorType decisionCase = do
           if isNoetic
             then do
               let firstFieldStart = length headerVars + length dataArgVars
-              let bodyInPlace = Sigma.bindFieldsInPlace (C.VarLocal cursor) totalSlots firstFieldStart (zip consArgIdents fieldStorageList) body'
+              bodyInPlace <- liftIO $ Sigma.bindFieldsInPlace (sigmaHandle h) (C.VarLocal cursor) totalSlots firstFieldStart (zip consArgIdents fieldStorageList) body'
               return
                 ( EC.Int (D.reify disc),
                   C.SigmaElim False 0 totalSlots (headerVars ++ dataArgVars) (C.VarLocal cursor) bodyInPlace,
@@ -1283,7 +1309,7 @@ clarifyCase h context isNoetic dataArgsMap cursor cursorType decisionCase = do
             else do
               fieldSlotList <- liftIO $ Sigma.makeFieldSlotVars (gensymHandle h) (zip consArgIdents fieldStorageList)
               let fieldSlotVars = concatMap Sigma.fieldSlotVars fieldSlotList
-              let bodyWithFields = Sigma.bindFieldValues fieldSlotList body'
+              bodyWithFields <- liftIO $ Sigma.bindFieldValues (sigmaHandle h) fieldSlotList body'
               return
                 ( EC.Int (D.reify disc),
                   C.SigmaElim False 0 totalSlots (headerVars ++ dataArgVars ++ fieldSlotVars) (C.VarLocal cursor) bodyWithFields,
@@ -1405,7 +1431,8 @@ clarifyLambda h context attrL@(AttrL.Attr {lamKind}) fvs impArgs expArgs default
       let appArgs = fvs ++ mxts
       let appArgs' = map (\(mx, _, x, _) -> mx :< TM.Var x) appArgs
       let argumentConventions = map argumentConventionOfBinder appArgs
-      let conv = CC.withArguments argumentConventions $ if isDestPassing then CC.destination codType else CC.normal
+      let baseConv = if isDestPassing then CC.destination codType else CC.normal
+      let conv = CC.withArguments argumentConventions baseConv
       let argNum = AN.fromInt $ length appArgs'
       let attr = AttrVG.Attr {argNum, isConstLike = False, isDestPassing}
       lamAttr <- do
@@ -1447,7 +1474,7 @@ clarifyLambda h context attrL@(AttrL.Attr {lamKind}) fvs impArgs expArgs default
       returnClosure h context closureID mName O.Clear isDestPassing codType fvs mxts slots defaultValues e'
 
 argumentConventionOfBinder :: BinderF TM.Type -> CC.Argument TM.Type
-argumentConventionOfBinder (_, k, _, t) = do
+argumentConventionOfBinder (_, k, _, t) =
   if VK.isSource k
     then CC.Source t
     else CC.Plain
@@ -1458,13 +1485,13 @@ clarifyPlus h context e = do
   (varName, var) <- liftIO $ Gensym.createVar (gensymHandle h) "var"
   return (varName, e', var)
 
-clarifyResourceSize :: Handle -> TM.Term -> App C.Comp
-clarifyResourceSize h resourceSize@(m :< _) = do
+clarifyResourceSize :: TM.Term -> App C.Comp
+clarifyResourceSize resourceSize@(m :< _) = do
   case Resource.layoutOf resourceSize of
     Just Resource.Direct ->
-      return $ Utility.returnIntComp (utilityHandle h) (-1)
+      return $ Utility.returnIntComp (-1)
     Just (Resource.Flattened byteSize) ->
-      return $ Utility.returnIntComp (utilityHandle h) (toInteger byteSize)
+      return $ Utility.returnIntComp (toInteger byteSize)
     Nothing ->
       raiseCritical m "clarifyResourceSize: the resource size was not reduced to an integer"
 
@@ -1520,14 +1547,16 @@ returnClosure h context lamID mName opacity isDestPassing codType fvs xts slots 
   xts'' <- dropFst <$> clarifyBinder h context xts
   let name = DD.getLambdaDD (currentFunction context) mName lamID
   fvEnvSigma <- liftIO $ Sigma.closureEnvS4 (sigmaHandle h) name fvs'' defaultValues
-  let fvEnv = C.sigmaIntro (map (\(x, _) -> C.VarLocal x) fvs'')
+  let fvEnv = C.sigmaIntro (map (C.VarLocal . fst) fvs'')
   let argNum = AN.fromInt $ length xts'' + if isDestPassing then 3 else 2
   isAlreadyRegistered <- liftIO $ AuxEnv.checkIfAlreadyRegistered (auxEnvHandle h) name
   unless isAlreadyRegistered $ do
     let codTypeContext = setCurrentFunction name $ extendContext (fvs ++ xts) context
     codType' <- clarifyType h codTypeContext codType
     liftIO $ registerClosure h name opacity isDestPassing codType' slots xts'' fvs'' e
-  return $ C.UpIntro $ C.sigmaIntro [fvEnvSigma, fvEnv, C.VarGlobal name argNum (FCT.Cod BLT.Pointer)]
+  return $
+    C.UpIntro $
+      C.sigmaIntro [fvEnvSigma, fvEnv, C.VarGlobal name argNum (FCT.Cod BLT.Pointer)]
 
 registerClosure ::
   Handle ->
@@ -1543,20 +1572,21 @@ registerClosure ::
 registerClosure h name opacity isDestPassing codType slots xts fvs e = do
   (envVarName, envVar) <- Gensym.createVar (gensymHandle h) "env"
   (switchVarName, switchVar) <- Gensym.createVar (gensymHandle h) "switch"
-  (slotNameList, slotVarList) <- mapAndUnzipM (const $ Gensym.createVar (gensymHandle h) "slot") fvs
+  let envEntries = fvs
+  (slotNameList, slotVarList) <- mapAndUnzipM (const $ Gensym.createVar (gensymHandle h) "slot") envEntries
   hole <- Gensym.newIdentFromText (gensymHandle h) "_"
   (destParam, e') <-
     if isDestPassing
       then toDestPassing h codType e
       else return (Nothing, e)
-  normalPrefix <- lambdaPrefixNormal h fvs slotVarList envVar
-  noeticPrefix <- lambdaPrefixNoetic h fvs slotVarList envVar
+  normalPrefix <- lambdaPrefixNormal h envEntries slotVarList envVar
+  noeticPrefix <- lambdaPrefixNoetic h envEntries slotVarList envVar
   let allocList =
-        map (\slotName -> (slotName, C.Primitive (C.Magic (LM.Alloca BLT.Pointer (intTerm h (1 :: Int)))))) slotNameList
+        map (\slotName -> (slotName, C.Primitive (C.Magic (LM.Alloca BLT.slot (intTerm (1 :: Int)))))) slotNameList
   enumElim <-
     Utility.getEnumElim (utilityHandle h) (envVarName : slotNameList) switchVar normalPrefix [(EC.Int 1, noeticPrefix)]
   let loadList =
-        zipWith (\(x, _) slotVar -> (x, C.Primitive (C.Magic (LM.Load BLT.Pointer slotVar)))) fvs slotVarList
+        zipWith (\(x, _) slotVar -> (x, C.Primitive (C.Magic (LM.Load BLT.slot slotVar)))) envEntries slotVarList
   let unpackEnv = Utility.bindLet (allocList ++ [(hole, enumElim)] ++ loadList)
   stmt <- defineWithSourceEntries h name opacity destParam slots xts (fvs ++ xts) [envVarName, switchVarName] unpackEnv e'
   AuxEnv.insert (auxEnvHandle h) name stmt
@@ -1567,15 +1597,16 @@ callClosure ::
   C.Comp ->
   [(Ident, C.Comp, C.Value)] ->
   [(CC.Argument C.Comp, (Ident, C.Comp, C.Value))] ->
-  [Maybe (Ident, C.Comp, C.Value)] ->
+  [(CC.Argument C.Comp, Maybe (Ident, C.Comp, C.Value))] ->
   IO C.Comp
-callClosure h kind e impArgs expArgsWithPassings defaultArgs = do
+callClosure h kind e impArgs expArgsWithPassings defaultArgsWithPassings = do
   let flag = if CC.isNoetic kind then C.intValue1 else C.intValue0
   let (passings, expArgs) = unzip expArgsWithPassings
   let (impNames, impComps, impVals) = unzip3 impArgs
   let (expNames, expComps, expVals) = unzip3 expArgs
   ((closureVarName, closureVar), envTypeVarName, (envVarName, envVar), (lamVarName, lamVar)) <- newClosureNames h
-  defaultTriples <- resolveDefaultTriples h envTypeVarName envVar (impVals ++ expVals) defaultArgs
+  defaultTriples <-
+    resolveDefaultTriples h envTypeVarName envVar (impVals ++ expVals) defaultArgsWithPassings
   let (defNames, defComps, defVals) = unzip3 defaultTriples
   (slotVals, slotBindings) <- mapAndUnzipM (passSlotArg h) (zip passings expVals)
   let args = impVals ++ slotVals ++ defVals ++ [envVar, flag]
@@ -1613,7 +1644,7 @@ resolveDefaultTriple h envTypeVarName envVar prefixVals (i, mOverride) =
       return triple
     Nothing -> do
       (labelName, labelVar) <- Gensym.createVar (gensymHandle h) "label"
-      let labelComp = C.PiElimDownElim False (C.VarLocal envTypeVarName) [intTerm h (i + 3), C.null, C.null]
+      let labelComp = C.PiElimDownElim False (C.VarLocal envTypeVarName) [intTerm (i + 3), C.null, C.null]
       defaultComp <-
         Utility.bindLet [(labelName, labelComp)]
           <$> callDefaultLabel h envTypeVarName envVar prefixVals labelVar
@@ -1625,10 +1656,10 @@ resolveDefaultTriples ::
   Ident ->
   C.Value ->
   [C.Value] ->
-  [Maybe (Ident, C.Comp, C.Value)] ->
+  [(CC.Argument C.Comp, Maybe (Ident, C.Comp, C.Value))] ->
   IO [(Ident, C.Comp, C.Value)]
-resolveDefaultTriples h envTypeVarName envVar fixedVals =
-  resolveDefaultTriples' h envTypeVarName envVar fixedVals [] 0
+resolveDefaultTriples h envTypeVarName envVar fixedVals defaultArgs =
+  resolveDefaultTriples' h envTypeVarName envVar fixedVals [] 0 defaultArgs
 
 resolveDefaultTriples' ::
   Handle ->
@@ -1637,15 +1668,17 @@ resolveDefaultTriples' ::
   [C.Value] ->
   [C.Value] ->
   Int ->
-  [Maybe (Ident, C.Comp, C.Value)] ->
+  [(CC.Argument C.Comp, Maybe (Ident, C.Comp, C.Value))] ->
   IO [(Ident, C.Comp, C.Value)]
 resolveDefaultTriples' h envTypeVarName envVar fixedVals prevDefaultVals index defaultArgs =
   case defaultArgs of
     [] ->
       return []
-    mOverride : rest -> do
-      triple@(_, _, value) <- resolveDefaultTriple h envTypeVarName envVar (fixedVals ++ prevDefaultVals) (index, mOverride)
-      restTriples <- resolveDefaultTriples' h envTypeVarName envVar fixedVals (prevDefaultVals ++ [value]) (index + 1) rest
+    (_, mOverride) : rest -> do
+      triple@(_, _, value) <-
+        resolveDefaultTriple h envTypeVarName envVar (fixedVals ++ prevDefaultVals) (index, mOverride)
+      restTriples <-
+        resolveDefaultTriples' h envTypeVarName envVar fixedVals (prevDefaultVals ++ [value]) (index + 1) rest
       return (triple : restTriples)
 
 buildCall ::
@@ -1662,13 +1695,9 @@ buildCall h kind lamVar args =
     Nothing ->
       return $ C.PiElimDownElim False lamVar args
 
-intTerm :: (Integral a) => Handle -> a -> C.Value
-intTerm h i =
-  C.Int (intSizeFrom h) (toInteger i)
-
-intSizeFrom :: Handle -> PNS.IntSize
-intSizeFrom h =
-  dataSizeToIntSize (baseSize h)
+intTerm :: (Integral a) => a -> C.Value
+intTerm i =
+  C.Int slotIntSize (toInteger i)
 
 callDefaultLabel ::
   Handle ->
@@ -1679,7 +1708,7 @@ callDefaultLabel ::
   IO C.Comp
 callDefaultLabel h envTypeVarName envVar prefixVals labelVar = do
   (envCopyName, envCopyVar) <- Gensym.createVar (gensymHandle h) "env"
-  let envCopyComp = C.PiElimDownElim False (C.VarLocal envTypeVarName) [intTerm h (1 :: Int), envVar, C.null]
+  let envCopyComp = C.PiElimDownElim False (C.VarLocal envTypeVarName) [intTerm (1 :: Int), envVar, C.null]
   return $
     Utility.bindLet [(envCopyName, envCopyComp)] $
       C.PiElimDownElim False labelVar (prefixVals ++ [envCopyVar, C.intValue0])
@@ -1736,7 +1765,7 @@ storeValuesInSlots h valueList slotVarList = do
   let storeBinderList =
         zip ignoredVarList $
           zipWith
-            (\value slotVar -> C.Primitive (C.Magic (LM.Store BLT.Pointer C.null value slotVar)))
+            (\value slotVar -> C.Primitive (C.Magic (LM.Store BLT.slot C.null value slotVar)))
             valueList
             slotVarList
   return $ Utility.bindLet storeBinderList (C.UpIntro C.null)

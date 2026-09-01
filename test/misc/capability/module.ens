@@ -1,0 +1,25 @@
+{
+  universal false,
+  target {
+    capability {
+      main "capability.nt",
+      build-option [
+        "-fsanitize=address",
+      ],
+    },
+    capability-wasm {
+      main "capability.nt",
+      platform "wasm32",
+      execute ["wasmtime", "{{executable}}"],
+    },
+  },
+  dependency {
+    core {
+      digest "RmCY7wlMkLbs2bhVARt1nvc9FF64VHb9voHD9VY0nJw",
+      mirror [
+        "https://github.com/vekatze/neut-core/raw/main/archive/0.57.0.tar.zst",
+      ],
+      enable-preset true,
+    },
+  },
+}
