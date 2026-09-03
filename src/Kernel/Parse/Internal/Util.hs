@@ -64,7 +64,7 @@ numericClassToText numericClass =
 
 parseNumericLiteral :: T.Text -> NumericParseResult
 parseNumericLiteral text
-  | Just value <- readSpecialFloatingMaybe normalizedText =
+  | Just value <- readSpecialFloatingMaybe text =
       ParsedNumericLiteral $ FloatingLiteral value
   | isHexadecimalFloatCandidate unsignedText =
       parseFloatingLiteral HexadecimalFloat (readFloatingMaybe hexadecimalSystem 'p' 2) normalizedText

@@ -315,7 +315,16 @@ define test-ieee754-floats() -> unit {
   test-float16-ops()
 }
 
+define i_nf() -> int {
+  100
+}
+
+define underscore-literals() -> int {
+  add-int(_1, add-int(1_, add-int(_0x10, add-int(-_1, i_nf()))))
+}
+
 define main() -> unit {
   test-ieee754-floats();
   print-int-line(from-c-int(foo()));
+  print-int-line(underscore-literals());
 }

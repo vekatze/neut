@@ -22,6 +22,8 @@ readUnicodeScalarValueMaybe :: T.Text -> Either T.Text Char
 readUnicodeScalarValueMaybe t =
   case readHex (T.unpack t) of
     [(value, _)]
+      | 0xD800 <= value && value <= 0xDFFF ->
+          Left $ "The value `" <> t <> "` is a surrogate code point"
       | 0 <= value && value <= 0x10FFFF ->
           return $ chr value
       | otherwise ->

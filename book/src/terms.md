@@ -370,7 +370,7 @@ define foo() -> unit {
 
 ### Syntax
 
-Underscores in integer literals are ignored.
+An `_` may stand anywhere in an integer literal and is ignored.
 
 After removing all `_` characters, an integer literal must have one of the following forms:
 
@@ -381,7 +381,7 @@ After removing all `_` characters, an integer literal must have one of the follo
 -?0x[0-9A-F]+
 ```
 
-So, for example, `3`, `-16`, `1_000_000`, `0b1010_1010`, `0o755`, and `0xDEAD_BEEF` are valid integer literals.
+So, for example, `3`, `-16`, `1_000_000`, `_1`, `0b1010_1010`, `0o755`, and `0xDEAD_BEEF` are valid integer literals.
 
 ### Semantics
 
@@ -440,7 +440,7 @@ define foo() -> unit {
 
 ### Syntax
 
-Underscores in float literals are ignored.
+An `_` may stand anywhere in a float literal and is ignored.
 
 After removing all `_` characters, a decimal floating-point literal must match one of the following:
 
@@ -604,7 +604,7 @@ Below is a list of all escape sequences available in Neut string literals:
 | `\x{n}`         | byte with hexadecimal value n  |
 | `\u{n}`         | U+n                            |
 
-The `n` in `\x{n}` and `\u{n}` must be an uppercase hexadecimal number. For `\x{n}`, the value must be in the byte range `0` to `FF`.
+The `n` in `\x{n}` and `\u{n}` must be an uppercase hexadecimal number. For `\x{n}`, the value must be in the byte range `0` to `FF`. For `\u{n}`, the value must be a Unicode scalar value: at most `10FFFF` and not a surrogate code point in the range `D800` to `DFFF`.
 
 ### Semantics
 
