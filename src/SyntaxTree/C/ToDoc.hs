@@ -22,9 +22,13 @@ decode commentList =
       case commentType headComment of
         LineComment -> do
           D.intercalate D.line $ map decode' (headComment : rest)
-        InlineComment -> do
-          let rest' = D.intercalate D.line $ map decode' rest
-          D.join [decode' headComment, rest']
+        InlineComment ->
+          case rest of
+            [] ->
+              decode' headComment
+            _ -> do
+              let rest' = D.intercalate D.line $ map decode' rest
+              D.join [decode' headComment, D.line, rest']
 
 decode' :: Comment -> D.Doc
 decode' com = do

@@ -377,10 +377,14 @@ define keyword-term-in-condition(b: bool, x: int) -> int {
   let n =
     if magic cast(bool, bool, b) {
       1
-    } else-if match x {
-      | 0 => True
-      | _ => False
-    } {
+    } else-if
+      match x {
+      | 0 =>
+        True
+      | _ =>
+        False
+      }
+    {
       2
     } else {
       3
