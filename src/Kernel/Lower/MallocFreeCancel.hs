@@ -5,8 +5,8 @@ import Data.IntMap.Strict qualified as IntMap
 import Data.IntSet qualified as IntSet
 import Data.List (foldl', transpose)
 import Data.Map.Strict qualified as Map
-import Data.Set qualified as S
 import Language.Common.Ident
+import Language.Common.Ident.Reify
 import Language.Common.LowType qualified as LT
 import Language.Common.DataSize qualified as DS
 import Language.Common.PrimNumSize (IntSize (IntSize8), dataSizeToIntSize)
@@ -33,69 +33,116 @@ instance Monoid Axis where
   mempty = emptyAxis
 
 mallocFreeCancel :: DS.DataSize -> LC.Comp -> LC.Comp
-mallocFreeCancel baseSize lowComp =
-  cancelMallocFree baseSize (analyze lowComp) lowComp
+mallocFreeCancel baseSize lowComp = do
+  let roots = collectRoots IntMap.empty lowComp
+  cancelMallocFree baseSize (fst (analyze roots lowComp)) lowComp
 
-analyze :: LC.Comp -> Axis
-analyze lowComp =
+type RootMap =
+  IntMap.IntMap Int
+
+rootOf :: RootMap -> Ident -> Int
+rootOf roots x =
+  IntMap.findWithDefault (toInt x) (toInt x) roots
+
+collectRoots :: RootMap -> LC.Comp -> RootMap
+collectRoots roots lowComp =
   case lowComp of
     LC.Return {} ->
-      mempty
-    LC.Let x op cont -> do
-      let axis = analyze cont
-      case op of
-        LC.Alloc _ allocID ->
-          case collectFreeIDs (S.singleton x) cont of
-            Just freeIDs ->
-              let allocIDs = IntSet.singleton allocID
-               in axis <> Axis {allocCanceller = allocIDs, freeCanceller = newFreeCanceller allocIDs freeIDs}
-            Nothing ->
-              axis
-        _ ->
-          axis
-    LC.Cont _ cont ->
-      analyze cont
-    LC.Switch _ _ defaultBranch ces phiTargets cont ->
-      let branches = defaultBranch : map snd ces
-       in analyzeSwitchJoin branches (map fst phiTargets) cont <> mconcat (map analyze (cont : branches))
-    LC.TailCall {} ->
-      mempty
-    LC.Unreachable ->
-      mempty
-    LC.Phi {} ->
-      mempty
-
-collectFreeIDs :: S.Set Ident -> LC.Comp -> Maybe IntSet.IntSet
-collectFreeIDs aliases lowComp =
-  case lowComp of
-    LC.Return {} ->
-      Nothing
+      roots
     LC.Let x op cont ->
       case getAliasSource op of
-        Just y
-          | S.member y aliases ->
-              collectFreeIDs (S.insert x aliases) cont
-        _ ->
-          collectFreeIDs aliases cont
-    LC.Cont op cont ->
-      case op of
-        LC.Free (LC.VarLocal ptr) _ freeID
-          | S.member ptr aliases ->
-              Just $ IntSet.singleton freeID
-        _ ->
-          collectFreeIDs aliases cont
-    LC.Switch _ _ defaultBranch ces _ cont ->
-      case collectFreeIDs aliases cont of
-        Just freeIDs ->
-          Just freeIDs
+        Just y ->
+          collectRoots (IntMap.insert (toInt x) (rootOf roots y) roots) cont
         Nothing ->
-          IntSet.unions <$> traverse (collectFreeIDs aliases) (defaultBranch : map snd ces)
+          collectRoots roots cont
+    LC.Cont _ cont ->
+      collectRoots roots cont
+    LC.Switch _ _ defaultBranch ces _ cont ->
+      collectRoots (foldl' collectRoots roots (defaultBranch : map snd ces)) cont
     LC.TailCall {} ->
-      Nothing
+      roots
     LC.Unreachable ->
-      Just IntSet.empty
+      roots
     LC.Phi {} ->
-      Nothing
+      roots
+
+data FreeState = FreeState
+  { freeDefault :: Maybe IntSet.IntSet,
+    freeByRoot :: IntMap.IntMap IntSet.IntSet
+  }
+
+escapingState :: FreeState
+escapingState =
+  FreeState {freeDefault = Nothing, freeByRoot = IntMap.empty}
+
+deadState :: FreeState
+deadState =
+  FreeState {freeDefault = Just IntSet.empty, freeByRoot = IntMap.empty}
+
+lookupFree :: FreeState -> Int -> Maybe IntSet.IntSet
+lookupFree state root =
+  case IntMap.lookup root (freeByRoot state) of
+    Just freeIDs ->
+      Just freeIDs
+    Nothing ->
+      freeDefault state
+
+analyze :: RootMap -> LC.Comp -> (Axis, FreeState)
+analyze roots lowComp =
+  case lowComp of
+    LC.Return {} ->
+      (mempty, escapingState)
+    LC.Let x op cont -> do
+      let (axis, state) = analyze roots cont
+      case op of
+        LC.Alloc _ allocID ->
+          case lookupFree state (rootOf roots x) of
+            Just freeIDs ->
+              let allocIDs = IntSet.singleton allocID
+               in (axis <> Axis {allocCanceller = allocIDs, freeCanceller = newFreeCanceller allocIDs freeIDs}, state)
+            Nothing ->
+              (axis, state)
+        _ ->
+          (axis, state)
+    LC.Cont op cont -> do
+      let (axis, state) = analyze roots cont
+      case op of
+        LC.Free (LC.VarLocal ptr) _ freeID ->
+          (axis, state {freeByRoot = IntMap.insert (rootOf roots ptr) (IntSet.singleton freeID) (freeByRoot state)})
+        _ ->
+          (axis, state)
+    LC.Switch _ _ defaultBranch ces phiTargets cont -> do
+      let (contAxis, contState) = analyze roots cont
+      let (branchAxes, branchStates) = unzip $ map (analyze roots) (defaultBranch : map snd ces)
+      let joinAxis = analyzeSwitchJoin (defaultBranch : map snd ces) (map fst phiTargets) contState
+      (joinAxis <> mconcat (contAxis : branchAxes), joinStates contState branchStates)
+    LC.TailCall {} ->
+      (mempty, escapingState)
+    LC.Unreachable ->
+      (mempty, deadState)
+    LC.Phi {} ->
+      (mempty, escapingState)
+
+joinStates :: FreeState -> [FreeState] -> FreeState
+joinStates contState branchStates =
+  case freeDefault contState of
+    Just _ ->
+      contState
+    Nothing -> do
+      let mergedDefault = mergeOrigins (map freeDefault branchStates)
+      let branchKeys = IntSet.unions (map (IntMap.keysSet . freeByRoot) branchStates)
+      let addBranchKey acc root =
+            if IntMap.member root (freeByRoot contState)
+              then acc
+              else case mergeOrigins (map (`lookupFree` root) branchStates) of
+                Just freeIDs ->
+                  IntMap.insert root freeIDs acc
+                Nothing ->
+                  acc
+      FreeState
+        { freeDefault = mergedDefault,
+          freeByRoot = IntSet.foldl' addBranchKey (freeByRoot contState) branchKeys
+        }
 
 getAliasSource :: LC.Op -> Maybe Ident
 getAliasSource op =
@@ -110,10 +157,10 @@ getAliasSource op =
     _ ->
       Nothing
 
-analyzeSwitchJoin :: [LC.Comp] -> [Ident] -> LC.Comp -> Axis
-analyzeSwitchJoin branches phiTargets cont =
+analyzeSwitchJoin :: [LC.Comp] -> [Ident] -> FreeState -> Axis
+analyzeSwitchJoin branches phiTargets contState =
   mconcat $ flip map (zip [0 ..] phiTargets) $ \(index, phiTarget) ->
-    case collectFreeIDs (S.singleton phiTarget) cont of
+    case lookupFree contState (toInt phiTarget) of
       Just freeIDs ->
         case traverse (collectBranchResultAllocIDs index) branches of
           Just allocIDList ->
