@@ -373,6 +373,46 @@ define test-resource() -> unit {
   relevant-either()
 }
 
+define keyword-term-in-condition(b: bool, x: int) -> int {
+  let n =
+    if magic cast(bool, bool, b) {
+      1
+    } else-if match x {
+      | 0 => True
+      | _ => False
+    } {
+      2
+    } else {
+      3
+    };
+  when unquote {quote {b}} {
+    Unit
+  };
+  let m =
+    match magic cast(int, int, x) {
+    | 0 =>
+      10
+    | _ =>
+      20
+    };
+  let k on x = {
+    case magic cast(&int, &int, x) {
+    | 0 =>
+      100
+    | _ =>
+      200
+    }
+  };
+  let _ = x;
+  add-int(n, add-int(m, k))
+}
+
+define test-keyword-term-in-condition() -> unit {
+  assert("if magic", eq-int(keyword-term-in-condition(True, 0), 111));
+  assert("else-if match", eq-int(keyword-term-in-condition(False, 0), 112));
+  assert("else", eq-int(keyword-term-in-condition(False, 5), 223));
+}
+
 define test-match() -> unit {
   let !t1: term(&string) = Var("text");
   let !t2: term(&string) = Abs("foo", Var("foo"));
@@ -401,6 +441,7 @@ define test-match() -> unit {
   let _ on n = literal-match-N(n);
   let _ = literal-match-in-cons(xs);
   let _ on !xs = literal-match-in-cons-N(xs);
+  test-keyword-term-in-condition();
   let _ = with-bind-through-if(True);
   with-bind-through-when(True);
   let _ = with-bind-through-match(xs);

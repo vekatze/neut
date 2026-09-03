@@ -96,7 +96,7 @@ rawExpr h = do
             "pin" ->
               rawTermPin h m c
             _ -> do
-              e1 <- rawTerm' h m headSymbol c
+              e1 <- rawTerm' Full h m headSymbol c
               choice
                 [ do
                     c1 <- delimiter ";"
@@ -117,13 +117,13 @@ rawTerm :: Handle -> Parser (RT.RawTerm, C)
 rawTerm h = do
   m <- getCurrentHint
   (headSymbol, c) <- symbol'
-  rawTerm' h m headSymbol c
+  rawTerm' Full h m headSymbol c
 
 rawTermPartial :: Handle -> Parser (RT.RawTerm, C)
 rawTermPartial h = do
   m <- getCurrentHint
   (headSymbol, c) <- symbol'
-  rawTermBase Partial h m headSymbol c
+  rawTerm' Partial h m headSymbol c
 
 rawType :: Handle -> Parser (RT.RawType, C)
 rawType h = do
@@ -163,8 +163,8 @@ rawType' h m headSymbol c =
           name <- interpretNameText m nameText
           rawTypeTyAppCont h (m :< RT.TyVar name, c')
 
-rawTerm' :: Handle -> Hint -> T.Text -> C -> Parser (RT.RawTerm, C)
-rawTerm' h m headSymbol c = do
+rawTerm' :: TermMode -> Handle -> Hint -> T.Text -> C -> Parser (RT.RawTerm, C)
+rawTerm' mode h m headSymbol c = do
   case headSymbol of
     "define" -> do
       rawTermDefine h LDK.Define m c
@@ -209,7 +209,7 @@ rawTerm' h m headSymbol c = do
     "admit" -> do
       rawTermAdmit m c
     _ -> do
-      rawTermBase Full h m headSymbol c
+      rawTermBase mode h m headSymbol c
 
 rawTermInvoke :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermInvoke h m c1 = do
