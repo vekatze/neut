@@ -12,12 +12,13 @@ import App.Run (forP, raiseError')
 import Command.Common.SaveModule qualified as SaveModule
 import Control.Comonad.Cofree
 import Control.Monad
-import Control.Monad.Except (liftEither)
+import Control.Monad.Except (MonadError (catchError, throwError), liftEither)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.ByteString qualified as B
 import Data.Containers.ListUtils (nubOrdOn)
 import Data.HashMap.Strict qualified as Map
 import Data.Maybe
+import Data.Set qualified as S
 import Data.Text qualified as T
 import Ens.Ens qualified as E
 import Ens.Ens qualified as SE
@@ -83,6 +84,8 @@ insertDependency h aliasName url = do
   aliasName' <- liftEither (BN.reflect' aliasName)
   when (isCapitalized aliasName') $ do
     raiseError' $ "Module aliases must not be capitalized, but found: " <> BN.reify aliasName'
+  when (S.member aliasName' BN.reservedAlias) $ do
+    raiseError' $ "The reserved name `" <> BN.reify aliasName' <> "` cannot be used as an alias of a module"
   let alias = ModuleAlias aliasName'
   withSystemTempFile "fetch" $ \tempFilePath tempFileHandle -> do
     download h tempFilePath alias [url]
@@ -221,6 +224,9 @@ extractToDependencyDir h archivePath _ digest = do
   moduleDirPath <- Module.getModuleDirByID mainModule Nothing (MID.Library digest)
   ensureDir moduleDirPath
   RunProcess.run (runProcessHandle h) "tar" ["xf", toFilePath archivePath, "-C", toFilePath moduleDirPath]
+    `catchError` \err -> do
+      removeDirRecur moduleDirPath
+      throwError err
 
 addDependencyToModuleFile :: Handle -> ModuleAlias -> M.Dependency -> App ()
 addDependencyToModuleFile h alias dep = do
