@@ -91,6 +91,7 @@ import Language.Common.ForeignCodType qualified as FCT
 import Language.Common.Geist qualified as G
 import Language.Common.HoleID qualified as HID
 import Language.Common.Ident
+import Language.Common.Literal qualified as LI
 import Language.Common.Ident.Reify qualified as Ident
 import Language.Common.ImpArgs qualified as ImpArgs
 import Language.Common.IsConstLike (IsConstLike)
@@ -1402,14 +1403,14 @@ elaborateDecisionTree h ctx mOrig m tree =
           when (DT.isUnreachable fallbackClause) $ do
             raiseLiteralNonExhaustivePatternMatching m
           fallbackClause' <- elaborateDecisionTree h ctx mOrig m fallbackClause
-          clauseList' <- mapM (elaborateClause h mOrig cursor ctx) clauseList
+          clauseList' <- mapM (elaborateClause h mOrig cursor cursorType' ctx) clauseList
           return $ DT.Switch (cursor, cursorType') (fallbackClause', clauseList')
         ConsSwitch consList -> do
           let activeConsList = DT.getConstructors clauseList
           let diff = S.difference (S.fromList consList) (S.fromList activeConsList)
           if S.size diff == 0
             then do
-              clauseList' <- mapM (elaborateClause h mOrig cursor ctx) clauseList
+              clauseList' <- mapM (elaborateClause h mOrig cursor cursorType' ctx) clauseList
               return $ DT.Switch (cursor, cursorType') (DT.Unreachable, clauseList')
             else do
               case fallbackClause of
@@ -1427,15 +1428,16 @@ elaborateDecisionTree h ctx mOrig m tree =
                     "This pattern matching does not cover the following:\n" <> uncoveredPatterns'
                 _ -> do
                   fallbackClause' <- elaborateDecisionTree h ctx mOrig m fallbackClause
-                  clauseList' <- mapM (elaborateClause h mOrig cursor ctx) clauseList
+                  clauseList' <- mapM (elaborateClause h mOrig cursor cursorType' ctx) clauseList
                   return $ DT.Switch (cursor, cursorType') (fallbackClause', clauseList')
 
-elaborateClause :: Handle -> Hint -> Ident -> ClauseContext -> DT.Case WT.WeakType WT.WeakTerm -> App (DT.Case TM.Type TM.Term)
-elaborateClause h mOrig cursor ctx decisionCase = do
+elaborateClause :: Handle -> Hint -> Ident -> TM.Type -> ClauseContext -> DT.Case WT.WeakType WT.WeakTerm -> App (DT.Case TM.Type TM.Term)
+elaborateClause h mOrig cursor cursorType ctx decisionCase = do
   case decisionCase of
-    DT.LiteralCase mPat i cont -> do
+    DT.LiteralCase mPat literal cont -> do
+      literal' <- normalizeLiteralPattern h mPat cursorType literal
       cont' <- elaborateDecisionTree h ctx mOrig mPat cont
-      return $ DT.LiteralCase mPat i cont'
+      return $ DT.LiteralCase mPat literal' cont'
     DT.ConsCase record@DT.ConsCaseRecord {..} -> do
       let (dataTerms, dataTypes) = unzip dataArgs
       dataTerms' <- mapM (elaborateType h) dataTerms
@@ -1457,6 +1459,19 @@ raiseNonStrictType m t = do
   raiseError m $
     "Expected:\n  an integer, a float, or a pointer\nFound:\n  "
       <> toTextType t
+
+normalizeLiteralPattern :: Handle -> Hint -> TM.Type -> LI.Literal -> App LI.Literal
+normalizeLiteralPattern h m cursorType literal =
+  case literal of
+    LI.Rune _ ->
+      return literal
+    LI.Int i -> do
+      cursorType' <- inlineType h m cursorType
+      case cursorType' of
+        _ :< TM.PrimType (PT.Int size) ->
+          return $ LI.Int $ Wrap.unsignedOf size i
+        _ ->
+          return literal
 
 raiseNonDecimalType :: Hint -> Integer -> WT.WeakType -> App a
 raiseNonDecimalType m x t = do
@@ -1564,7 +1579,7 @@ fillHole h m holeID es = do
   holeSubst <- liftIO $ Hole.getTypeSubst (holeHandle h)
   case THS.lookup holeID holeSubst of
     Nothing ->
-      raiseError m $ "Could not instantiate the hole here: " <> T.pack (show holeID)
+      raiseError m "Could not infer the type here"
     Just (xs, e)
       | length xs == length es -> do
           e' <- chaseHole h m e

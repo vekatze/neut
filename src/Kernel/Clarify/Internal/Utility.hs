@@ -18,6 +18,7 @@ module Kernel.Clarify.Internal.Utility
   )
 where
 
+import Data.Containers.ListUtils (nubOrdOn)
 import Data.IntMap qualified as IntMap
 import Gensym.Handle qualified as Gensym
 import Kernel.Clarify.Internal.Handle.AuxEnv qualified as AuxEnv
@@ -150,7 +151,7 @@ registerSwitcher h opacity name resourceSpec = do
 
 getEnumElim :: Handle -> [Ident] -> C.Value -> C.Comp -> [(EnumCase, C.Comp)] -> IO C.Comp
 getEnumElim h idents d defaultBranch branchList = do
-  case prune defaultBranch branchList of
+  case prune defaultBranch (nubOrdOn fst branchList) of
     Nothing ->
       return C.Unreachable
     Just (defaultBranch', branchList') -> do
