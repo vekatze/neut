@@ -582,7 +582,7 @@ During compilation, the compiler performs possibly recursive computation when:
 - type-checking, and
 - expanding the definitions of inline functions.
 
-The `inline-limit` specifies a limit here. If the limit is exceeded, the compiler reports an error like the following:
+The `inline-limit` specifies a limit here. For type-checking, it bounds the number of steps taken while reducing a type. For inlining, it bounds the number of expansions performed within one definition, where an expansion is the application of an inline function, a meta function, or a type alias, or the reduction of a `match` or an `unquote` at compile time. If the limit is exceeded, the compiler reports an error like the following:
 
 ```text
 /path/to/file.nt:123:45

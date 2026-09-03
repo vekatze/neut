@@ -41,6 +41,7 @@ define main() -> unit {
   print-int-line(cm-outer);
   print-int-line(cm-param<int>);
   emit-keyword-args::{key3 := 33, key2 := 32, key1 := 31};
+  print-int-line(this::other::big-list-length());
 }
 
 define zen() -> unit {
