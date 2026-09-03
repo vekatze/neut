@@ -455,7 +455,7 @@ define-meta make-pair<a, b>(x: 'a, y: 'b) -> 'pair(a, b) {
 
 `define-meta` starts at stage 1. When evaluating a call to `define-meta`, the compiler first specializes the definition to its type arguments and memoizes the result. This memoization is performed on a per-file basis. This allows `define-meta` to generate recursive code.
 
-As with ordinary functions, `define-meta` can also have default arguments by placing `[]` between the ordinary parameter list and the arrow.
+Unlike `define`, `define-meta` can't have default arguments, since a call is memoized by its type arguments alone. Wrap it in an `inline-meta` when a default is needed.
 
 Every explicit parameter of `define-meta` must have a type of the form `'a`:
 
@@ -1171,22 +1171,11 @@ foreign {
 }
 ```
 
-Here, the definition of `c-int` is as follows:
+Here, `c-int` is defined in the core library as follows:
 
 ```neut
-constant _c-int: type {
-  introspect target-arch {
-  | amd64 =>
-    int32
-  | arm64 =>
-    int32
-  | wasm32 =>
-    int32
-  }
-}
-
 data c-int {
-| C-Int(_c-int)
+| C-Int(int32)
 }
 ```
 

@@ -90,7 +90,7 @@ inferStmt h stmt =
       case stmtKind of
         SK.Macro -> do
           unless (null defaultArgs') $ do
-            raiseError m "`define-meta` cannot have default arguments; use an `inline-meta` wrapper instead"
+            raiseError m "`define-meta` cannot have default arguments"
           forM_ (expArgs' ++ map fst defaultArgs') $ \(mx, _, _, t) ->
             checkIsCodeType h''' mx t
           checkIsCodeType h''' m codType'
