@@ -11,7 +11,9 @@ import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.IO.Class
 import Data.Bitraversable (bimapM)
+import Control.Exception (evaluate)
 import Data.HashMap.Strict qualified as Map
+import Data.HashSet qualified as HashSet
 import Data.IORef
 import Data.IntMap qualified as IntMap
 import Data.IntSet qualified as IntSet
@@ -54,6 +56,7 @@ import Language.Term.Trace qualified as TermTrace
 import Language.Term.TraceID
 import Language.Term.TraceSites qualified as TraceSites
 import Logger.Hint
+import System.Mem.StableName (makeStableName)
 
 new :: Env.Env -> Hint -> Bool -> IO Handle
 new env location traceEnabled = do
@@ -67,7 +70,36 @@ new env location traceEnabled = do
   let insideDefineMeta = False
   let localMetaMemo = []
   let activeDefineMetaList = []
+  normalFormsRef <- liftIO $ newIORef HashSet.empty
   return $ Handle {..}
+
+normalKeyOf :: Handle -> TM.Term -> IO NormalKey
+normalKeyOf h term = do
+  term' <- evaluate term
+  normalTerm <- makeStableName term'
+  normalMemo <- makeStableName (localMetaMemo h)
+  normalTropes <- makeStableName (activeDefineMetaList h)
+  return $
+    NormalKey
+      { normalTerm = normalTerm,
+        normalStage = currentStage h,
+        normalInitialStage = initialStage h,
+        normalMemo = normalMemo,
+        normalTropes = normalTropes
+      }
+
+isNormalForm :: Handle -> TM.Term -> IO Bool
+isNormalForm h term = do
+  key <- normalKeyOf h term
+  normalForms <- readIORef (normalFormsRef h)
+  return $ HashSet.member key normalForms
+
+markNormalForm :: Handle -> TM.Term -> IO TM.Term
+markNormalForm h term = do
+  key <- normalKeyOf h term
+  modifyIORef' (normalFormsRef h) $ HashSet.insert key
+  return term
+
 
 inline :: Handle -> TM.Term -> App TM.Term
 inline h e = do
@@ -100,6 +132,13 @@ detectPossibleInfiniteLoop h = do
 inline' :: Handle -> TM.Term -> App TM.Term
 inline' h rawTerm = do
   detectPossibleInfiniteLoop h
+  isNormal <- liftIO $ isNormalForm h rawTerm
+  if isNormal
+    then return rawTerm
+    else inlineFresh h rawTerm >>= liftIO . markNormalForm h
+
+inlineFresh :: Handle -> TM.Term -> App TM.Term
+inlineFresh h rawTerm = do
   case rawTerm of
     _ :< TM.Var {} ->
       return rawTerm
