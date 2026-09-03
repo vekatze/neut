@@ -27,6 +27,7 @@ module Kernel.Parse.Internal.RawTerm
     parseDefaultParams,
     keyword,
     baseName,
+    ensureArgumentLinearity,
   )
 where
 
