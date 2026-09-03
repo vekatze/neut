@@ -352,7 +352,7 @@ infer h term =
           return (term', m :< WT.Pi piKind impArgs' expArgs' defaultBinders t')
     m :< WT.PiElim spec e impArgs expArgs defaultArgs -> do
       etl <- infer h e
-      impArgs' <- ImpArgs.traverseImpArgs (inferType h) impArgs
+      impArgs' <- ImpArgs.traverseImpArgs (fmap fst . inferTypeWithKind h) impArgs
       defaultArgs' <- DefaultArgs.traverseDefaultArgs (infer h) defaultArgs
       expArgs' <- mapM (infer h) expArgs
       let (isDestCall, sourceArgs) = CCS.marks (length expArgs) spec
