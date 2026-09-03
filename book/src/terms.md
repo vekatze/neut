@@ -1383,6 +1383,18 @@ constant some-config: config {
 }
 ```
 
+A key can also name a default argument. In that case, the corresponding default is overridden:
+
+```neut
+define bump(x: int)[step: int := 1] -> int {
+  add-int(x, step)
+}
+
+define use-bump() -> int {
+  bump{x := 10, step := 5} // == bump(10)[step := 5]
+}
+```
+
 If the argument is a variable that has the same name as the parameter, you can use a shorthand notation:
 
 ```neut
