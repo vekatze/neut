@@ -170,14 +170,14 @@ If the content of a variable `x` is an immediate value, `x` is compiled into the
 
 ```neut
 import {
-  core::bool {and},
+  core::bool {not},
   some-module.public-dep::item,
 }
 
 define sample() -> unit {
   // using top-level variables
-  let _ = and; // using an imported top-level name
-  let _ = core::bool::and; // using the fully qualified name `core::bool::and`
+  let _ = not; // using an imported top-level name
+  let _ = core::bool::not; // using the fully qualified name `core::bool::not`
   let _ = some-module.public-dep::item::f; // using a public module path
   Unit
 }
@@ -1785,7 +1785,7 @@ Operationally, `^a` has the same runtime representation as `a`.
 
 `^` is the T-necessity operator in that we can construct terms of the following types:
 
-- `((a) -> b, ^a) -> ^b` (Axiom K)
+- `(^{(a) -> b}, ^a) -> ^b` (Axiom K)
 - `(^a) -> a` (Axiom T)
 
 Note that `^(a) -> b` and `(^a) -> b` are different types.
@@ -3188,10 +3188,10 @@ introspect key {
 
 You can use the following configuration `key`s and configuration `value`s:
 
-| Configuration Key      | Configuration Value |
-| ---------------------- | ------------------- |
-| `target-arch`          | `amd64` or `arm64`  |
-| `target-os`            | `linux` or `darwin` |
+| Configuration Key      | Configuration Value            |
+| ---------------------- | ------------------------------ |
+| `target-arch`          | `amd64`, `arm64`, or `wasm32`  |
+| `target-os`            | `linux`, `darwin`, or `wasi`   |
 
 You can also use `default` as a configuration value to represent a fallback case.
 

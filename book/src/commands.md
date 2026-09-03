@@ -308,7 +308,7 @@ The default value of `--mode` is `check`.
 
 ### `--stdin FILEPATH`
 
-`--stdin FILEPATH` reads the content to format from stdin instead of `FILEPATH` itself, and prints the formatted result to stdout. `FILEPATH` is still used to decide the file type (`.nt` or `.ens`).
+`--stdin FILEPATH` reads the content to format from stdin instead of `FILEPATH` itself. `FILEPATH` still decides the file type (`.nt` or `.ens`) and is the path that `check` reports; `write` prints the result to stdout instead of updating it.
 
 ### `--minimize-imports`
 

@@ -1058,9 +1058,18 @@ push-back(push-back(push-back(make(3), a), b), c)
 ```neut
 nominal {
   define is-odd(x: int) -> bool,
+  inline twice(x: int) -> int,
+  constant answer: int,
+  define-meta emit(x: 'int) -> 'int,
+  constant-meta limit: 'int,
+  alias number,
+  alias-opaque handle(a),
   data stream(a: type),
+  resource buffer,
 }
 ```
+
+An entry is written like the header of the corresponding statement, without its body. A `data` entry declares only the type; its constructors become available at the real definition.
 
 Nominal definitions can be used to achieve mutual recursion:
 
@@ -1098,6 +1107,7 @@ The following kinds of top-level items can be declared in `nominal`:
 - `constant`
 - `define-meta`
 - `inline-meta`
+- `constant-meta`
 - `alias`
 - `alias-opaque`
 - `data`
