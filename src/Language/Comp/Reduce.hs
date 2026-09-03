@@ -13,6 +13,7 @@ import Language.Common.Ident
 import Language.Common.Ident.Reify qualified as Ident
 import Language.Common.LowMagic qualified as LM
 import Language.Common.Opacity qualified as O
+import Language.Common.CellLayout qualified as CL
 import Language.Comp.Comp qualified as C
 import Language.Comp.EnumCase qualified as EC
 import Language.Comp.Subst qualified as Subst
@@ -54,9 +55,9 @@ reduce h term = do
               return $ C.PiElimDownElim forceInline v' ds'
         _ ->
           return $ C.PiElimDownElim forceInline v' ds'
-    C.SigmaElim shouldDeallocate offset size xs v e -> do
+    C.SigmaElim shouldDeallocate slotIndex layout xs v e -> do
       let v' = Subst.substValue (subst h) v
-      reduceSigmaElim h shouldDeallocate offset size xs v' e
+      reduceSigmaElim h shouldDeallocate slotIndex layout xs v' e
     C.UpIntro d -> do
       return $ C.UpIntro $ Subst.substValue (subst h) d
     C.UpElim isReducible x e1 e2 -> do
@@ -108,21 +109,23 @@ reduce h term = do
     C.Unreachable -> do
       return C.Unreachable
 
-reduceSigmaElim :: Handle -> Bool -> Int -> Int -> [Ident] -> C.Value -> C.Comp -> IO C.Comp
-reduceSigmaElim h shouldDeallocate offset size xs v e = do
+reduceSigmaElim :: Handle -> Bool -> Int -> CL.CellLayout -> [Ident] -> C.Value -> C.Comp -> IO C.Comp
+reduceSigmaElim h shouldDeallocate slotIndex layout xs v e = do
   case v of
-    C.SigmaIntro _ ds
-      | length ds >= offset + length xs -> do
-          let ds' = take (length xs) $ drop offset ds
+    C.SigmaIntro introLayout ds
+      | introLayout == layout,
+        length ds >= slotIndex + length xs -> do
+          let ds' = take (length xs) $ drop slotIndex ds
           let h' = unionSubst h (IntMap.fromList (zip (map Ident.toInt xs) ds'))
           reduce h' e
     _ -> do
       let h' = deleteSubstList h xs
       e' <- reduce h' e
       case e' of
-        C.UpIntro (C.SigmaIntro _ ds)
-          | offset == 0,
-            length xs == size,
+        C.UpIntro (C.SigmaIntro introLayout ds)
+          | introLayout == layout,
+            slotIndex == 0,
+            length xs == length (CL.cellSlots layout),
             Just ys <- mapM extractIdent ds,
             xs == ys ->
               return $ C.UpIntro v
@@ -133,7 +136,7 @@ reduceSigmaElim h shouldDeallocate offset size xs v e = do
             [] ->
               return e'
             _ ->
-              return $ C.SigmaElim shouldDeallocate offset size xs v e'
+              return $ C.SigmaElim shouldDeallocate slotIndex layout xs v e'
 
 reduceOutputProvide :: Handle -> C.Value -> C.Comp -> C.Comp -> IO C.Comp
 reduceOutputProvide h dest sizeComp result = do
@@ -142,8 +145,8 @@ reduceOutputProvide h dest sizeComp result = do
       reduce h $ C.PiElimDownElim False f (dest : args)
     C.UpElim flag x e1 e2 ->
       reduce h $ C.UpElim flag x e1 (C.OutputProvide dest sizeComp e2)
-    C.SigmaElim shouldDeallocate offset size ys v e ->
-      reduce h $ C.SigmaElim shouldDeallocate offset size ys v (C.OutputProvide dest sizeComp e)
+    C.SigmaElim shouldDeallocate slotIndex layout ys v e ->
+      reduce h $ C.SigmaElim shouldDeallocate slotIndex layout ys v (C.OutputProvide dest sizeComp e)
     C.Free x size e ->
       reduce h $ C.Free x size (C.OutputProvide dest sizeComp e)
     C.EnumElim fvInfo disc defaultBranch caseList -> do
@@ -171,9 +174,9 @@ reduceUpElim h isReducible x e1 e2 = do
     C.UpElim isReducible' y ey1 ey2 -> do
       e2' <- reduce h e2
       reduceUpElim h isReducible' y ey1 $ C.UpElim isReducible x ey2 e2'
-    C.SigmaElim shouldDeallocate offset size ys vy ey -> do
+    C.SigmaElim shouldDeallocate slotIndex layout ys vy ey -> do
       e2' <- reduce h e2
-      reduceSigmaElim h shouldDeallocate offset size ys vy $ C.UpElim isReducible x ey e2'
+      reduceSigmaElim h shouldDeallocate slotIndex layout ys vy $ C.UpElim isReducible x ey e2'
     C.Unreachable ->
       return C.Unreachable
     _ -> do
@@ -214,7 +217,7 @@ valueToEnumInt value = do
   case value of
     C.Int _ l ->
       Just l
-    C.SigmaIntro 0 [] ->
+    C.SigmaIntro _ [] ->
       Just 0
     _ ->
       Nothing

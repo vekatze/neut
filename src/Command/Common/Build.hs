@@ -309,7 +309,7 @@ compileEntryPoint h target outputKindList = do
           return []
         else do
           liftIO $ Logger.report (Global.loggerHandle (globalHandle h)) $ "Generating entry point: " <> T.pack (show t)
-          clarifyMainHandle <- liftIO $ Clarify.newMain gensymHandle
+          clarifyMainHandle <- liftIO $ Clarify.newMain gensymHandle (Platform.getDataSize (Global.platformHandle (globalHandle h)))
           (stmtList, defMap) <- liftIO $ Clarify.clarifyEntryPoint clarifyMainHandle
           liftIO $ Logger.report (Global.loggerHandle (globalHandle h)) $ "Lowering entry point: " <> T.pack (show t)
           lowerHandle <- Lower.new gensymHandle (globalHandle h) traceConfig target defMap

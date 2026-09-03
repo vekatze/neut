@@ -58,6 +58,7 @@ import Language.Term.Inline.Handle qualified as InlineHandle
 import Language.Term.Stmt qualified as Stmt
 import Language.Term.Term qualified as TM
 import Language.WeakTerm.Reduce qualified as Reduce
+import Language.Term.Subst qualified as TmSubst
 import Language.WeakTerm.Subst qualified as Subst
 import Language.WeakTerm.WeakTerm qualified as WT
 import Logger.Hint (Hint)
@@ -73,6 +74,7 @@ data Handle = Handle
     constraintHandle :: Constraint.Handle,
     holeHandle :: Hole.Handle,
     substHandle :: Subst.Handle,
+    termSubstHandle :: TmSubst.Handle,
     typeHandle :: Type.Handle,
     weakDeclHandle :: WeakDecl.Handle,
     branchAgreementHandle :: BranchAgreement.Handle,
@@ -118,6 +120,7 @@ new gensymHandle globalHandle@(Global.Handle {..}) traceConfig (Local.Handle {..
   modulePathMap <- ModulePath.get modulePathHandle
   localLogsHandle <- LocalLogs.new
   let substHandle = Subst.new gensymHandle
+  let termSubstHandle = TmSubst.new gensymHandle
   let inlineLimit = fromMaybe defaultInlineLimit $ moduleInlineLimit (sourceModule currentSource)
   constraintHandle <- Constraint.new
   holeHandle <- Hole.new

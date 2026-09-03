@@ -15,7 +15,7 @@ emitLowType lowType =
     LT.PrimNum primType ->
       emitPrimType primType
     LT.Struct ts ->
-      "{" <> unwordsC (map emitLowType ts) <> "}"
+      "<{" <> unwordsC (map emitLowType ts) <> "}>"
     LT.Function ts t ->
       emitLowType t <> " (" <> unwordsC (map emitLowType ts) <> ")"
     LT.Array i t -> do

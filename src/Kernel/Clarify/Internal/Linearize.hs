@@ -172,14 +172,14 @@ distinguishCompAcc h activeSet term !occMap =
       (occMap1, d') <- distinguishValueAcc h activeSet d occMap
       (occMap2, ds') <- distinguishValuesAcc h activeSet ds occMap1
       return (occMap2, C.PiElimDownElim forceInline d' ds')
-    C.SigmaElim shouldDeallocate slotIndex size xs d e -> do
+    C.SigmaElim shouldDeallocate slotIndex layout xs d e -> do
       (occMap1, d') <- distinguishValueAcc h activeSet d occMap
       let activeSet' = removeBoundIdents activeSet xs
       if IntSet.null activeSet'
-        then return (occMap1, C.SigmaElim shouldDeallocate slotIndex size xs d' e)
+        then return (occMap1, C.SigmaElim shouldDeallocate slotIndex layout xs d' e)
         else do
           (occMap2, e') <- distinguishCompAcc h activeSet' e occMap1
-          return (occMap2, C.SigmaElim shouldDeallocate slotIndex size xs d' e')
+          return (occMap2, C.SigmaElim shouldDeallocate slotIndex layout xs d' e')
     C.UpIntro d -> do
       (occMap', d') <- distinguishValueAcc h activeSet d occMap
       return (occMap', C.UpIntro d')

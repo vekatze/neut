@@ -135,8 +135,8 @@ returnIntComp value =
   C.UpIntro $ C.Int slotIntSize value
 
 returnByteSizeComp :: Integer -> C.Comp
-returnByteSizeComp slotCount =
-  returnIntComp $ slotCountToByteSize slotCount
+returnByteSizeComp byteSize =
+  returnIntComp byteSize
 
 registerSwitcher ::
   Handle ->
