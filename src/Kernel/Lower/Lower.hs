@@ -665,29 +665,20 @@ allocateCell h resultVar byteSize cont =
 
 createCell :: Handle -> Ident -> CL.CellLayout -> [C.Value] -> LC.Comp -> App LC.Comp
 createCell h resultVar layout ds cont = do
+  let slots = CL.cellSlots layout
+  let widths = map (widthLowType . snd) slots
+  (elemVars, elemValues) <- mapAndUnzipM (const $ liftIO $ newValueLocal h "base") ds
   (xs, vs) <- mapAndUnzipM (const $ liftIO $ newValueLocal h "item") ds
   (cellVar, cellValue) <- liftIO $ newValueLocal h "cell"
-  let slots = CL.cellSlots layout
-  allocateCell h cellVar (CL.cellByteSize layout)
+  lowerAndCastValues h (zip elemVars (zip ds widths))
+    =<< allocateCell h cellVar (CL.cellByteSize layout)
     =<< return . fieldPointers (zip xs (map fst slots)) cellValue
-    =<< storeElements h cellValue (zip vs (zip ds (map (widthLowType . snd) slots)))
+    =<< return . storeElements (zip3 widths elemValues vs)
     =<< uncast h resultVar cellValue LT.Pointer cont
 
-storeElements ::
-  Handle ->
-  LC.Value -> -- base pointer
-  [(LC.Value, (C.Value, LT.LowType))] ->
-  LC.Comp ->
-  App LC.Comp
-storeElements h basePointer values cont =
-  case values of
-    [] ->
-      return cont
-    (elemPtr, (value, valueType)) : ids -> do
-      (castVar, castValue) <- liftIO $ newValueLocal h "base"
-      lowerValueLetCast h castVar value valueType
-        =<< return . store valueType castValue elemPtr
-        =<< storeElements h basePointer ids cont
+storeElements :: [(LT.LowType, LC.Value, LC.Value)] -> LC.Comp -> LC.Comp
+storeElements values cont =
+  foldr (\(valueType, value, elemPtr) -> store valueType value elemPtr) cont values
 
 store :: LT.LowType -> LC.Value -> LC.Value -> LC.Comp -> LC.Comp
 store lowType value pointer =
