@@ -71,7 +71,36 @@ new env location traceEnabled = do
   let localMetaMemo = []
   let activeDefineMetaList = []
   normalFormsRef <- liftIO $ newIORef HashSet.empty
+  valueFormsRef <- liftIO $ newIORef HashSet.empty
   return $ Handle {..}
+
+isValueTerm :: Handle -> TM.Term -> IO Bool
+isValueTerm h term = do
+  term' <- evaluate term
+  name <- makeStableName term'
+  valueForms <- readIORef (valueFormsRef h)
+  if HashSet.member name valueForms
+    then return True
+    else do
+      isValue <- case term' of
+        _ :< TM.DataIntro _ _ _ consArgs ->
+          allM (isValueTerm h) consArgs
+        _ :< TM.BoxIntroLift _ e ->
+          isValueTerm h e
+        _ ->
+          return $ TM.isValue term'
+      when isValue $
+        modifyIORef' (valueFormsRef h) $ HashSet.insert name
+      return isValue
+
+allM :: (Monad m) => (a -> m Bool) -> [a] -> m Bool
+allM p xs =
+  case xs of
+    [] ->
+      return True
+    x : rest -> do
+      b <- p x
+      if b then allM p rest else return False
 
 normalKeyOf :: Handle -> TM.Term -> IO NormalKey
 normalKeyOf h term = do
@@ -197,7 +226,8 @@ inlineFresh h rawTerm = do
                 let subSelf = selfSubstForLamKind lamKind e'
                 let expIds = map (\(_, _, x, _) -> x) expParams
                 let subTerm = IntMap.fromList $ zip (map Ident.toInt expIds) (map Subst.Term expArgsAll)
-                if all TM.isValue expArgsAll
+                areValues <- liftIO $ allM (isValueTerm h) expArgsAll
+                if areValues
                   then do
                     let sub = IntMap.unions [subSelf, subType, subTerm]
                     body' <- liftIO $ Subst.subst (substHandle h) sub body
@@ -221,7 +251,8 @@ inlineFresh h rawTerm = do
                     specializeMacro h m mUse specializedCallTraceID dd defKind subType impArgs' expParams defBody codType expArgsAll
                   _ -> do
                     let tracer = if isMacroDef defKind then withMacroHint h dd defKind m else id
-                    if all TM.isValue expArgsAll
+                    areValues <- liftIO $ allM (isValueTerm h) expArgsAll
+                    if areValues
                       then do
                         remapTrace <- prepareDefinitionTraceRemapping h dd defKind traceSiteIDs m callTraceID
                         let expIds = map (\(_, _, x, _) -> x) expParams
@@ -337,7 +368,8 @@ inlineFresh h rawTerm = do
           registerResidual h $ m :< TM.TauElim traceID (mx, k, x) e1' e2'
     m :< TM.Let mxt@(_, _, x, _) e1 e2 -> do
       e1' <- inline' h e1
-      if TM.isValue e1'
+      isValue <- liftIO $ isValueTerm h e1'
+      if isValue
         then do
           let sub = IntMap.singleton (Ident.toInt x) (Subst.Term e1')
           liftIO (Subst.subst (substHandle h) sub e2) >>= expand h

@@ -108,6 +108,7 @@ data Handle = Handle
     localMetaMemo :: [(DD.DefiniteDescription, [TM.Type], Ident)],
     activeDefineMetaList :: [Stmt.DefineMeta],
     normalFormsRef :: IORef (HashSet.HashSet NormalKey),
+    valueFormsRef :: IORef (HashSet.HashSet (StableName TM.Term)),
     mainModule :: Module.MainModule,
     modulePathMap :: ModulePath.ModulePathMap,
     traceHandle :: Trace.Handle
