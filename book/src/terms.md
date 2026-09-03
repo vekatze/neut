@@ -3335,7 +3335,7 @@ admit
 Evaluating `admit` exits the program and displays a message like the following:
 
 ```text
-admit: /path/to/file.nt:1:2
+Admitted: /path/to/file.nt:1:2
 ```
 
 When `admit` exits a program, the exit code is 1.
