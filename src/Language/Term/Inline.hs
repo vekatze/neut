@@ -77,8 +77,8 @@ normalKeyOf :: Handle -> TM.Term -> IO NormalKey
 normalKeyOf h term = do
   term' <- evaluate term
   normalTerm <- makeStableName term'
-  normalMemo <- makeStableName (localMetaMemo h)
-  normalTropes <- makeStableName (activeDefineMetaList h)
+  normalMemo <- evaluate (localMetaMemo h) >>= makeStableName
+  normalTropes <- evaluate (activeDefineMetaList h) >>= makeStableName
   return $
     NormalKey
       { normalTerm = normalTerm,
