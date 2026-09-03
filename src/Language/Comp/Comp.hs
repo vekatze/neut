@@ -115,11 +115,11 @@ renderCompBuilder level comp =
         <> btext "("
         <> bintercalate (map bshow vs)
         <> btext ")"
-    SigmaElim shouldDeallocate offset size xs v cont ->
+    SigmaElim shouldDeallocate slotIndex size xs v cont ->
       indent level
         <> btext (if shouldDeallocate then "let" else "let-noetic")
         <> btext "<"
-        <> bshow offset
+        <> bshow slotIndex
         <> btext ", "
         <> bshow size
         <> btext "> ("
@@ -284,7 +284,7 @@ continuationLevel level =
 
 data Primitive
   = PrimOp PrimOp [Value]
-  | ShiftPointer Value Integer Integer -- (ptr, num-of-elems, index)
+  | ShiftPointer Value Integer -- (ptr, byte offset)
   | Calloc Value Value -- num, size-in-bytes
   | Alloc Value -- number of bytes to allocate
   | Realloc Value Value -- ptr, size-in-bytes

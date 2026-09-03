@@ -197,13 +197,13 @@ copyWithDestination h slotCount dest fill = do
       C.UpElim True ignoredName fillTarget $
         C.UpIntro (C.VarLocal targetName)
 
-copyDirectValueIntoSlot :: Handle -> C.Value -> Int -> Int -> Ident -> C.Comp -> IO C.Comp
-copyDirectValueIntoSlot h dest totalSlots cursor x t = do
+copyDirectValueIntoSlot :: Handle -> C.Value -> Int -> Ident -> C.Comp -> IO C.Comp
+copyDirectValueIntoSlot h dest cursor x t = do
   destSlotName <- Gensym.newIdentFromText (gensymHandle h) "dest-slot"
   copiedName <- Gensym.newIdentFromText (gensymHandle h) "copied"
   storeName <- Gensym.newIdentFromText (gensymHandle h) "_"
   copy <- Utility.toRelevantApp (utilityHandle h) (C.VarLocal x) t
-  let destSlot = C.Primitive $ C.ShiftPointer dest (toInteger totalSlots) (toInteger cursor)
+  let destSlot = C.Primitive $ C.ShiftPointer dest (toInteger (cursor * slotByteSize))
   let store = C.Primitive $ C.Magic $ LM.Store BLT.slot C.null (C.VarLocal copiedName) (C.VarLocal destSlotName)
   return $
     C.UpElim True destSlotName destSlot $
@@ -217,7 +217,7 @@ copyDirectEntriesInto h dest totalSlots cursor entries = do
     [] ->
       return []
     (x, t) : rest -> do
-      copy <- copyDirectValueIntoSlot h dest totalSlots cursor x t
+      copy <- copyDirectValueIntoSlot h dest cursor x t
       rest' <- copyDirectEntriesInto h dest totalSlots (cursor + 1) rest
       return $ copy : rest'
 
@@ -381,10 +381,10 @@ copyFieldsInto h dest totalSlots cursor fields = do
       copy <-
         case fieldShape field of
           DI.LayoutDirect -> do
-            copyDirectValueIntoSlot h dest totalSlots cursor x (fieldType field)
+            copyDirectValueIntoSlot h dest cursor x (fieldType field)
           DI.LayoutFlattened _ -> do
             destSlotName <- Gensym.newIdentFromText (gensymHandle h) "dest-slot"
-            let destSlot = C.Primitive $ C.ShiftPointer dest (toInteger totalSlots) (toInteger cursor)
+            let destSlot = C.Primitive $ C.ShiftPointer dest (toInteger (cursor * slotByteSize))
             placedCopy <- Utility.toCopyIntoApp (utilityHandle h) (C.VarLocal x) (C.VarLocal destSlotName) (fieldType field)
             return $ C.UpElim True destSlotName destSlot placedCopy
       rest' <- copyFieldsInto h dest totalSlots (cursor + fieldSlotCount field) rest
@@ -431,7 +431,7 @@ bindFieldsInPlace h v totalSlots fieldStart fields body =
         DI.LayoutDirect ->
           return $ C.SigmaElim False fieldStart totalSlots [x] v rest'
         DI.LayoutFlattened _ ->
-          return $ C.UpElim True x (C.Primitive (C.ShiftPointer v (toInteger totalSlots) (toInteger fieldStart))) rest'
+          return $ C.UpElim True x (C.Primitive (C.ShiftPointer v (toInteger (fieldStart * slotByteSize)))) rest'
 
 flattenFields :: Handle -> [(DI.FieldLayout, C.Value)] -> ([C.Value] -> C.Comp) -> IO C.Comp
 flattenFields h fields cont =

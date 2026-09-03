@@ -412,15 +412,15 @@ lowerCompPrimitive h codeOp k =
   case codeOp of
     C.PrimOp op vs ->
       lowerCompPrimOp h op vs k
-    C.ShiftPointer v size index -> do
+    C.ShiftPointer v offset -> do
       (resultVar, resultValue) <- liftIO $ newValueLocal h "result"
       (shiftedVar, shiftedValue) <- liftIO $ newValueLocal h "shifted"
-      (ptrVar, ptr) <- liftIO $ newValueLocal h "func"
-      let aggType = AggTypeArray (fromInteger size) LT.slotLowType
-      let indexList' = [(LC.Int 0, LT.PrimNum $ PT.Int IntSize32), (LC.Int index, LT.PrimNum $ PT.Int IntSize32)]
+      (ptrVar, ptr) <- liftIO $ newValueLocal h "pointer"
+      let byteType = LT.PrimNum $ PT.Int IntSize8
+      let indexList' = [(LC.Int offset, LT.PrimNum $ PT.Int IntSize32)]
       rest <- sendResult k LT.slotLowType resultValue
       lowerValueLetCast h ptrVar v LT.Pointer
-        =<< return . LC.Let shiftedVar (LC.GetElementPtr (ptr, toLowType aggType) indexList')
+        =<< return . LC.Let shiftedVar (LC.GetElementPtr (ptr, byteType) indexList')
         =<< uncast h resultVar shiftedValue LT.Pointer rest
     C.Calloc num size -> do
       (resultVar, resultValue) <- liftIO $ newValueLocal h "result"
