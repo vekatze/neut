@@ -29,6 +29,9 @@ import Gensym.Trick qualified as Gensym
 import Kernel.Common.Cache qualified as Cache
 import Kernel.Common.Const (holeLiteral)
 import Kernel.Common.CreateGlobalHandle qualified as Global
+import Language.Common.ExternalName qualified as EN
+import Kernel.Common.Platform qualified as P
+import Kernel.Common.Arch qualified as Arch
 import Kernel.Common.Handle.Global.Data qualified as Data
 import Kernel.Common.Handle.Global.Expose qualified as Expose
 import Kernel.Common.Handle.Global.GlobalRemark qualified as GlobalRemark
@@ -604,8 +607,12 @@ insertStmtWithTraceSites h knownTraceSiteIDs stmt = do
       return ()
     StmtForeign _ -> do
       return ()
-    StmtExpose exportList ->
-      forM_ exportList $ \(SavedHint m, dd, extName) ->
+    StmtExpose exportList -> do
+      let entrySymbol = Arch.entrySymbol $ P.arch $ Platform.getPlatform $ Global.platformHandle (globalHandle h)
+      ensureExposedNameLinearity S.empty exportList
+      forM_ exportList $ \(SavedHint m, dd, extName) -> do
+        when (EN.reify extName == entrySymbol) $
+          raiseError m $ "`" <> EN.reify extName <> "` is the entry point of the target and cannot be exposed"
         Expose.insert (Global.exposeHandle (globalHandle h)) m dd extName
     StmtNamespace {} ->
       return ()
@@ -1574,6 +1581,17 @@ chaseHole h m t =
       fillHole h m holeID es
     _ ->
       return t
+
+ensureExposedNameLinearity :: S.Set EN.ExternalName -> [(SavedHint, DD.DefiniteDescription, EN.ExternalName)] -> App ()
+ensureExposedNameLinearity found exportList =
+  case exportList of
+    [] ->
+      return ()
+    (SavedHint m, _, extName) : rest
+      | S.member extName found ->
+          raiseError m $ "`" <> EN.reify extName <> "` is already exposed"
+      | otherwise ->
+          ensureExposedNameLinearity (S.insert extName found) rest
 
 stmtKindToDefKind :: SK.StmtKindTerm a -> [(binder, b)] -> Maybe InlineHandle.DefKind
 stmtKindToDefKind stmtKind defaultArgs =

@@ -2,6 +2,7 @@ module Kernel.Common.Arch
   ( Arch (..),
     reify,
     dataSizeOf,
+    entrySymbol,
   )
 where
 
@@ -38,3 +39,11 @@ dataSizeOf arch =
       DS.DataSize64
     Wasm32 ->
       DS.DataSize32
+
+entrySymbol :: Arch -> T.Text
+entrySymbol arch =
+  case arch of
+    Wasm32 ->
+      "__main_argc_argv"
+    _ ->
+      "main"

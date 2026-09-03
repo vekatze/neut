@@ -300,11 +300,7 @@ emitMain h (LC.DefContent {codType = codType, args = args, body = body}) = do
 
 mainSymbol :: Arch.Arch -> Builder
 mainSymbol arch =
-  case arch of
-    Arch.Wasm32 ->
-      "__main_argc_argv"
-    _ ->
-      "main"
+  L.byteString $ TE.encodeUtf8 $ Arch.entrySymbol arch
 
 getArch :: Handle -> Arch.Arch
 getArch h =

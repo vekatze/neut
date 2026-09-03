@@ -1202,13 +1202,13 @@ foreign {
 }
 ```
 
-Then, specify the types of variadic arguments when using `magic external`:
+Then, specify the types of variadic arguments when using `magic external`. Each variadic argument is written as its lowtype followed by the term:
 
 ```neut
 define print-raw(fmt: pointer, len: int, val: pointer) -> c-int {
-  magic external printf(fmt)(len: int, val: pointer)
-  //                                 ^^^^^^^^^^^^^^^^^^^^^^
-  //                                 passing variadic arguments with types
+  magic external printf(fmt)(int len, pointer val)
+  //                        ^^^^^^^^^^^^^^^^^^^^^^
+  //                        passing variadic arguments with types
 }
 ```
 
@@ -1234,7 +1234,7 @@ int64_t my_app_add_const(int64_t x);
 int64_t y = my_app_add_const(7); // 107
 ```
 
-Each entry names a function defined in the same file, optionally followed by `as` and its external name. Without `as`, the name of the function is used. No two functions can be exposed under the same external name.
+Each entry names a function defined in the same file, optionally followed by `as` and its external name. Without `as`, the name of the function is used. No two entries can expose the same external name, and the entry point of the target (`main`, or `__main_argc_argv` on wasm32) can't be exposed.
 
 The compiler emits a wrapper with the C calling convention for each entry. On native targets, the external name becomes a public symbol. On wasm targets, it also becomes a wasm export.
 
