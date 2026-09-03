@@ -2854,7 +2854,9 @@ magic opaque-value { e }
 
 magic external func-name(e1, ..., en)
 
-magic external func-name(e1, ..., en)(vararg-1: lowtype-1, ..., vararg-n: lowtype-n)
+magic external func-name(e1, ..., en)(lowtype-1 vararg-1, ..., lowtype-n vararg-n)
+
+magic global(symbol-name, lowtype)
 
 magic call-type(some-type, switch, arg, extra)
 
@@ -2946,7 +2948,11 @@ These forms can only be used at stage 1 or above. The compiler reports an error 
 
 `magic external func(e1, ..., en)` can be used to call foreign functions (or FFI). See [foreign in Statements](./statements.md#foreign) for more information.
 
-`magic external func(e1, ..., en)(e{n+1}: lowtype1, ..., e{n+m}: lowtypem)` can also be used to call variadic foreign functions like `printf` in C.
+`magic external func(e1, ..., en)(lowtype1 e{n+1}, ..., lowtypem e{n+m})` can also be used to call variadic foreign functions like `printf` in C.
+
+### Semantics (global)
+
+`magic global("name", lowtype)` refers to the global variable `name` defined in a linked object. A `foreign` declares the functions of such an object, and this form reaches its variables. The result is the address of the variable, read as a value of `lowtype`, so `lowtype` is normally `pointer`.
 
 ### Semantics (call-type)
 
@@ -3083,7 +3089,13 @@ Since clauses are represented as an ordinary `list`, variables used in multiple 
 (t is a lowtype or void)
 (func is a foreign function)
 ---------------------------------------------------------------------------------
-Γ ⊢ magic external func(e1, ..., en)(e{n+1}: t{n+1}, ..., e{n+m}: t{n+m}): t
+Γ ⊢ magic external func(e1, ..., en)(t{n+1} e{n+1}, ..., t{n+m} e{n+m}): t
+
+
+(t is a lowtype)
+(name is a global variable in a linked object)
+------------------------------------------------------
+Γ ⊢ magic global("name", t): t
 
 
 Γ ⊢ t: type
@@ -3201,18 +3213,14 @@ First, `introspect key {v1 => e1 | ... | vn => en}` looks up the configuration v
 
 The configuration value `default` is equal to any configuration value.
 
+Only the selected clause is elaborated. The names in the other clauses are still resolved, so that an import they use doesn't count as unused, but those clauses are not type-checked.
+
 ### Type
 
 ```neut
 (key is a configuration key)
-
-(v1 is a configuration value)
-Γ ⊢ e1: a
-
-...
-
-(vn is a configuration value)
-Γ ⊢ en: a
+(vk is the configuration value selected by key)
+Γ ⊢ ek: a
 ------------------------------------------
 Γ ⊢ introspect key {
     | v1 => e1
