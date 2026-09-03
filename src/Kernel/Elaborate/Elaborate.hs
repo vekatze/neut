@@ -1534,10 +1534,20 @@ fillHole h m holeID es = do
       raiseError m $ "Could not instantiate the hole here: " <> T.pack (show holeID)
     Just (xs, e)
       | length xs == length es -> do
+          e' <- chaseHole h m e
+          liftIO $ Hole.insertTypeSubst (holeHandle h) holeID xs e'
           let s = IntMap.fromList $ zip (map Ident.toInt xs) (map Type es)
-          liftIO $ Subst.substType (substHandle h) s e
+          liftIO $ Subst.substType (substHandle h) s e'
       | otherwise ->
           raiseError m "Arity mismatch"
+
+chaseHole :: Handle -> Hint -> WT.WeakType -> App WT.WeakType
+chaseHole h m t =
+  case t of
+    _ :< WT.TypeHole holeID es ->
+      fillHole h m holeID es
+    _ ->
+      return t
 
 stmtKindToDefKind :: SK.StmtKindTerm a -> [(binder, b)] -> Maybe InlineHandle.DefKind
 stmtKindToDefKind stmtKind defaultArgs =
