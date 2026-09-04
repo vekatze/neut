@@ -17,4 +17,4 @@ getExistingVersions (MainModule targetModule) = do
     else do
       (_, archiveFiles) <- listDir archiveDir
       basenameList <- mapM getBaseName archiveFiles
-      return $ List.sort $ mapMaybe PV.reflect basenameList
+      return $ List.sortBy PV.compareVersion $ mapMaybe PV.reflect basenameList

@@ -5,6 +5,7 @@ module Command.Archive.PackageVersion.PackageVersion
     isValidNewVersion,
     getAntecedents,
     getNewestVersion,
+    compareVersion,
     increment,
     initialVersion,
   )
@@ -39,9 +40,16 @@ reflect releaseName = do
     else Nothing
 
 reify :: PackageVersion -> T.Text
-reify (alphaPrefix, (majorVersion, minorVersionList)) = do
-  let versionSeq = map (const 0) [1 .. alphaPrefix] ++ [majorVersion] ++ minorVersionList
-  T.pack $ List.intercalate (T.unpack verSep) $ map show versionSeq
+reify version = do
+  T.pack $ List.intercalate (T.unpack verSep) $ map show $ toComponentList version
+
+toComponentList :: PackageVersion -> [Int]
+toComponentList (alphaPrefix, (majorVersion, minorVersionList)) =
+  replicate alphaPrefix 0 ++ (majorVersion : minorVersionList)
+
+compareVersion :: PackageVersion -> PackageVersion -> Ordering
+compareVersion v1 v2 =
+  compare (toComponentList v1) (toComponentList v2)
 
 isValidNewVersion :: PackageVersion -> [PackageVersion] -> Bool
 isValidNewVersion (alphaPrefix, (majorVersion1, minorVersionList1)) vs = do
@@ -64,7 +72,15 @@ getAntecedents (alphaPrefix, (majorVersion1, minorVersionList1)) vs = do
 
 getNewestVersion :: [PackageVersion] -> PackageVersion -> PackageVersion
 getNewestVersion candidates fallback =
-  List.foldl' max fallback candidates
+  List.foldl' newer fallback candidates
+
+newer :: PackageVersion -> PackageVersion -> PackageVersion
+newer v1 v2 =
+  case compareVersion v1 v2 of
+    LT ->
+      v2
+    _ ->
+      v1
 
 increment :: PackageVersion -> PackageVersion
 increment version = do
