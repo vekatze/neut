@@ -477,11 +477,11 @@ define-meta bad<a>(x: int) -> 'int {
 
 ```neut
 trope terse {
-  define-meta print<bool>(x: '&bool) -> 'unit {
+  define-meta describe<bool>(x: 'bool) -> 'unit {
     quote {print("<bool>")}
   }
 
-  define-meta print<int>(x: '&int) -> 'unit {
+  define-meta describe<int>(x: 'int) -> 'unit {
     quote {print("<int>")}
   }
 }

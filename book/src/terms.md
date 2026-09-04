@@ -2410,30 +2410,29 @@ You can use `invoke` to enable tropes while evaluating a term.
 ### Example
 
 ```neut
-define-meta print<a>(x: '&a) -> 'unit {
-  ..
+define-meta describe<a>(x: 'a) -> 'unit {
+  quote {print-line("<value>")}
 }
 
 trope terse {
-  define-meta print<bool>(x: '&bool) -> 'unit {
+  define-meta describe<bool>(x: 'bool) -> 'unit {
     quote {
-      let b = unquote {x};
-      if b {
-        quote {print-line("T")}
+      if unquote {x} {
+        print-line("T")
       } else {
-        quote {print-line("F")}
+        print-line("F")
       }
     }
   }
 }
 
 define use-trope() -> unit {
-  print::(True); // -> "True"
+  describe::(True); // -> "<value>"
   let _ = {
     invoke terse;
-    print::(True) // -> "T"
+    describe::(True) // -> "T"
   };
-  print::(True) // -> "True"
+  describe::(True) // -> "<value>"
 }
 ```
 
