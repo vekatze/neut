@@ -2566,7 +2566,7 @@ data joker-x {
 
 // the type `joker-y` is dubious since it contains a functional type
 data joker-y {
-| Joker-Y(int -> bool)
+| Joker-Y((int) -> bool)
 }
 
 // the type `joker-z` is dubious since it contains a dubious ADT type
