@@ -30,7 +30,8 @@ import Kernel.Parse.Internal.Discern.Handle qualified as H
 import Kernel.Parse.Internal.Handle.Alias qualified as Alias
 import Kernel.Parse.Internal.Handle.NameMap qualified as NameMap
 import Kernel.Parse.Internal.Handle.Unused qualified as Unused
-import Kernel.Parse.NominalEnv (NominalEnv)
+import Data.HashMap.Strict qualified as Map
+import Kernel.Parse.NominalEnv (NameEnv)
 import Language.Common.ArgNum qualified as AN
 import Language.Common.CallSite (IsSourceArg)
 import Language.Common.Attr.VarGlobal qualified as AttrVG
@@ -69,11 +70,11 @@ resolveTypeName :: H.Handle -> Hint -> Name -> App (DD.DefiniteDescription, (Hin
 resolveTypeName h =
   resolveNameIn (H.typeNameEnv h) h
 
-resolveNameIn :: NominalEnv -> H.Handle -> Hint -> Name -> App (DD.DefiniteDescription, (Hint, GN.GlobalName))
+resolveNameIn :: NameEnv -> H.Handle -> Hint -> Name -> App (DD.DefiniteDescription, (Hint, GN.GlobalName))
 resolveNameIn localEnv h m name = do
   case name of
     Dotted headText _
-      | Just _ <- lookup headText localEnv ->
+      | Just _ <- Map.lookup headText localEnv ->
           raiseError m $ "`" <> headText <> "` is not a namespace"
     _ -> do
       resolveNameWithoutLocals h m name

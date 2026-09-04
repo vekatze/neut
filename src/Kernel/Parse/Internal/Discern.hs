@@ -325,8 +325,8 @@ discernStmtKindTerm h stmtKind m =
     SK.DataIntro dataName dataArgs expConsArgs discriminant -> do
       (dataArgs', h') <- discernTypeBinder' h dataArgs
       (expConsArgs', h'') <- discernBinder' h' expConsArgs
-      forM_ (H.nameEnv h'') $ \(_, (_, newVar, _, _)) -> do
-        liftIO $ Unused.deleteVariable (H.unusedHandle h'') newVar
+      forM_ expConsArgs' $ \(_, _, x, _) -> do
+        liftIO $ Unused.deleteVariable (H.unusedHandle h'') x
       forM_ dataArgs' $ \(_, _, x, _) -> do
         liftIO $ Unused.deleteVariable (H.unusedHandle h'') x
       return $ SK.DataIntro dataName dataArgs' expConsArgs' discriminant
@@ -341,11 +341,13 @@ discernStmtKindType h stmtKind =
     SK.Data dataName dataArgs consInfoList isNominal -> do
       (dataArgs', h') <- discernTypeBinder' h dataArgs
       let discernConsInfo (savedHint, consInfo) = do
-            (consArgs', h'') <- discernBinder' h' (DI.consArgs consInfo)
-            return ((savedHint, consInfo {DI.consArgs = consArgs'}), h'')
-      (consInfoList', hList) <- mapAndUnzipM discernConsInfo consInfoList
-      forM_ (concatMap H.nameEnv hList) $ \(_, (_, newVar, _, _)) -> do
-        liftIO $ Unused.deleteVariable (H.unusedHandle h') newVar
+            (consArgs', _) <- discernBinder' h' (DI.consArgs consInfo)
+            return (savedHint, consInfo {DI.consArgs = consArgs'})
+      consInfoList' <- mapM discernConsInfo consInfoList
+      forM_ (concatMap (DI.consArgs . snd) consInfoList') $ \(_, _, x, _) -> do
+        liftIO $ Unused.deleteVariable (H.unusedHandle h') x
+      forM_ dataArgs' $ \(_, _, x, _) -> do
+        liftIO $ Unused.deleteVariable (H.unusedHandle h') x
       return $ SK.Data dataName dataArgs' consInfoList' isNominal
 
 getUnitType :: H.Handle -> Hint -> App WT.WeakType
@@ -391,7 +393,7 @@ isLocalVar :: H.Handle -> Name -> Bool
 isLocalVar h name =
   case name of
     Bare s ->
-      isJust $ lookup s (H.nameEnv h)
+      isJust $ Map.lookup s (H.nameEnv h)
     _ ->
       False
 
@@ -411,7 +413,7 @@ discern h term =
             InvalidNumericLiteral numericClass ->
               raiseInvalidNumericLiteral m numericClass s
             NotNumeric ->
-              case lookup s (H.nameEnv h) of
+              case Map.lookup s (H.nameEnv h) of
                 Just (mDef, name', layer, stage) ->
                   case (layer == H.currentLayer h, stage == H.currentStage h) of
                     (True, True) -> do
@@ -906,7 +908,7 @@ discernType h ty =
     m :< RT.TyVar name -> do
       case name of
         Bare s
-          | Just (mDef, name', _, _) <- lookup s (H.typeNameEnv h) -> do
+          | Just (mDef, name', _, _) <- Map.lookup s (H.typeNameEnv h) -> do
               liftIO $ Unused.deleteVariable (H.unusedHandle h) name'
               liftIO $ Tag.insertLocalVar (H.tagHandle h) m name' mDef
               return $ m :< WT.TVar name'
@@ -1446,7 +1448,7 @@ constructEitherBinder h m mx m1 pat tmpVar cont = do
 
 discernIdent :: Hint -> H.Handle -> RawIdent -> App (Hint, (Hint, Ident))
 discernIdent mUse h x =
-  case lookup x (H.nameEnv h) of
+  case Map.lookup x (H.nameEnv h) of
     Nothing ->
       raiseError mUse $ "Undefined variable: " <> x
     Just (mDef, x', _, stage) -> do
@@ -1546,7 +1548,7 @@ discernTypeBinderWithDefaultArgs h binder endLoc =
       return ([], h)
     ((mx, k, x, _, _, t), defaultValue) : xts -> do
       t' <- discernType h t
-      defaultValue' <- discern h {H.nameEnv = []} defaultValue
+      defaultValue' <- discern h {H.nameEnv = emptyNameEnv} defaultValue
       x' <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) x
       h' <- extendTypeVar h mx x'
       (xts', h'') <- discernTypeBinderWithDefaultArgs h' xts endLoc
@@ -1781,7 +1783,7 @@ locatorToTypeVar m text = do
 
 getLayer :: Hint -> H.Handle -> Ident -> App Layer
 getLayer m h x =
-  case lookup (Ident.toText x) (H.nameEnv h) of
+  case Map.lookup (Ident.toText x) (H.nameEnv h) of
     Nothing ->
       raiseCritical m $ "Scene.Parse.Discern.getLayer: Undefined variable: " <> Ident.toText x
     Just (_, _, l, _) -> do

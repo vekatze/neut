@@ -8,6 +8,7 @@ module Kernel.Parse.Internal.Discern.Handle
   )
 where
 
+import Data.HashMap.Strict qualified as Map
 import Gensym.Handle qualified as Gensym
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.CreateLocalHandle qualified as Local
@@ -51,8 +52,8 @@ data Handle = Handle
     platformHandle :: Platform.Handle,
     currentModule :: Module.Module,
     nsPath :: [BN.BaseName],
-    nameEnv :: NominalEnv,
-    typeNameEnv :: NominalEnv,
+    nameEnv :: NameEnv,
+    typeNameEnv :: NameEnv,
     currentLayer :: Layer,
     currentStage :: Stage
   }
@@ -67,8 +68,8 @@ new ::
   Handle
 new gensymHandle (Global.Handle {..}) (Local.Handle {..}) nameMapHandle modulePathMap currentModule = do
   let nsPath = []
-  let nameEnv = empty
-  let typeNameEnv = empty
+  let nameEnv = emptyNameEnv
+  let typeNameEnv = emptyNameEnv
   let currentLayer = 0
   let currentStage = 0
   Handle {..}
@@ -76,7 +77,7 @@ new gensymHandle (Global.Handle {..}) (Local.Handle {..}) nameMapHandle modulePa
 extend :: Handle -> Hint -> Ident -> Layer -> Stage -> VarDefKind -> IO Handle
 extend h m newVar l s k = do
   Unused.insertVariable (unusedHandle h) m newVar k
-  return $ h {nameEnv = (Ident.toText newVar, (m, newVar, l, s)) : nameEnv h}
+  return $ h {nameEnv = Map.insert (Ident.toText newVar) (m, newVar, l, s) (nameEnv h)}
 
 extend' :: Handle -> Hint -> Ident -> VarDefKind -> IO Handle
 extend' h m newVar k = do
@@ -85,11 +86,11 @@ extend' h m newVar k = do
 extendType' :: Handle -> Hint -> Ident -> VarDefKind -> IO Handle
 extendType' h m newVar k = do
   Unused.insertVariable (unusedHandle h) m newVar k
-  return $ h {typeNameEnv = (Ident.toText newVar, (m, newVar, currentLayer h, currentStage h)) : typeNameEnv h}
+  return $ h {typeNameEnv = Map.insert (Ident.toText newVar) (m, newVar, currentLayer h, currentStage h) (typeNameEnv h)}
 
 extendWithoutInsert :: Handle -> Hint -> Ident -> Handle
 extendWithoutInsert h m newVar = do
-  h {nameEnv = (Ident.toText newVar, (m, newVar, currentLayer h, currentStage h)) : nameEnv h}
+  h {nameEnv = Map.insert (Ident.toText newVar) (m, newVar, currentLayer h, currentStage h) (nameEnv h)}
 
 extendByNominalEnv :: Handle -> VarDefKind -> NominalEnv -> IO Handle
 extendByNominalEnv h k newNominalEnv = do
