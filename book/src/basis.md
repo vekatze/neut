@@ -115,23 +115,23 @@ Thanks to its static nature, memory allocation in Neut can sometimes be optimize
 
 ```neut
 data int-list {
-| Nil
-| Cons(int, int-list)
+| Int-Nil
+| Int-Cons(int, int-list)
 }
 
 // [1, 5, 9] => [2, 6, 10]
 define increment(xs: int-list) -> int-list {
   match xs {
-  | Nil =>
-    Nil
-  // ↓ the `Cons` clause
-  | Cons(x, rest) =>
-    Cons(add-int(x, 1), increment(rest))
+  | Int-Nil =>
+    Int-Nil
+  // ↓ the `Int-Cons` clause
+  | Int-Cons(x, rest) =>
+    Int-Cons(add-int(x, 1), increment(rest))
   }
 }
 ```
 
-The expected behavior of the `Cons` clause above would be something like the following:
+The expected behavior of the `Int-Cons` clause above would be something like the following:
 
 1. obtain `x` and `rest` from `xs`
 2. `free` the outer tuple of `xs`
@@ -139,7 +139,7 @@ The expected behavior of the `Cons` clause above would be something like the fol
 4. allocate a memory region using `malloc` to hold the result
 5. store the calculated values to the pointer and return it
 
-However, since the size of `Cons(x, rest)` and `Cons(add-int(x, 1), increment(rest))` is known to be the same at compile time, the pair of `free` and `malloc` can be optimized away, as follows:
+However, since the size of `Int-Cons(x, rest)` and `Int-Cons(add-int(x, 1), increment(rest))` is known to be the same at compile time, the pair of `free` and `malloc` can be optimized away, as follows:
 
 1. obtain `x` and `rest` from `xs`
 2. calculate `add-int(x, 1)` and `increment(rest)`
@@ -221,13 +221,13 @@ This optimization works across branches. For example, consider the following:
 // (an `insert` function in bubble sort)
 define insert(v: int, xs: int-list) -> int-list {
   match xs {
-  | Nil =>
+  | Int-Nil =>
     // ...
-  | Cons(y, ys) =>           // (X)
+  | Int-Cons(y, ys) =>               // (X)
     if gt-int(v, y) {
-      Cons(y, insert(v, ys)) // (Y)
+      Int-Cons(y, insert(v, ys))     // (Y)
     } else {
-      Cons(v, Cons(y, ys))   // (Z)
+      Int-Cons(v, Int-Cons(y, ys))   // (Z)
     }
   }
 }
@@ -240,13 +240,13 @@ On the other hand, consider rewriting the code above into something like the fol
 ```neut
 define foo(v: int, xs: int-list) -> int-list {
   match xs {
-  | Nil =>
+  | Int-Nil =>
     // ...
-  | Cons(y, ys) =>         // (X')
+  | Int-Cons(y, ys) =>             // (X')
     if gt-int(v, y) {
-      Nil                  // (Y')
+      Int-Nil                      // (Y')
     } else {
-      Cons(v, Cons(y, ys)) // (Z')
+      Int-Cons(v, Int-Cons(y, ys)) // (Z')
     }
   }
 }
