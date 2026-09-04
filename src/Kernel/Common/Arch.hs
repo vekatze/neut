@@ -15,7 +15,7 @@ data Arch
   = Amd64
   | Arm64
   | Wasm32
-  deriving (Eq, Ord, G.Generic)
+  deriving (Eq, Ord, Enum, Bounded, G.Generic)
 
 instance Binary Arch
 

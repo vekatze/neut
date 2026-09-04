@@ -1074,13 +1074,13 @@ decPiElimKeyItem' (k, c, b, d) = do
           decodeClauseBody c d
         ]
 
-decodeIntrospectClause :: (Maybe T.Text, C, RawTerm) -> (D.Doc, T.Text, D.Doc)
-decodeIntrospectClause (mKey, c, body) = do
+decodeIntrospectClause :: (RT.IntrospectClauseKey, C, RawTerm) -> (D.Doc, T.Text, D.Doc)
+decodeIntrospectClause ((_, mKey), c, body) = do
   let key = D.text $ fromMaybe "default" mKey
   decodeDoubleArrowClause (key, c, body)
 
-decodeTypeIntrospectClause :: (Maybe T.Text, C, RawType) -> (D.Doc, T.Text, D.Doc)
-decodeTypeIntrospectClause (mKey, c, body) = do
+decodeTypeIntrospectClause :: (RT.IntrospectClauseKey, C, RawType) -> (D.Doc, T.Text, D.Doc)
+decodeTypeIntrospectClause ((_, mKey), c, body) = do
   let key = D.text $ fromMaybe "default" mKey
   (PI.arrange [PI.container key], "=>", attachComment c $ typeToDoc body)
 

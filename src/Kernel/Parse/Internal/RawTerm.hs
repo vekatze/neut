@@ -608,14 +608,15 @@ rawTypeIntrospect h m c1 = do
   (clauseList, c) <- seriesBraceList $ rawTypeIntrospectiveClause h
   return (m :< RT.TyIntrospect c1 key c2 clauseList, c)
 
-rawTypeIntrospectiveClause :: Handle -> Parser ((Maybe T.Text, C, RT.RawType), C)
+rawTypeIntrospectiveClause :: Handle -> Parser ((RT.IntrospectClauseKey, C, RT.RawType), C)
 rawTypeIntrospectiveClause h = do
+  mKey <- getCurrentHint
   (s, cKey) <- symbol
   cArrow <- delimiter "=>"
   (body, c) <- rawType h
   if s /= "default"
-    then return ((Just s, cKey ++ cArrow, body), c)
-    else return ((Nothing, cKey ++ cArrow, body), c)
+    then return (((mKey, Just s), cKey ++ cArrow, body), c)
+    else return (((mKey, Nothing), cKey ++ cArrow, body), c)
 
 parseDef :: ArrowMode -> Handle -> Parser (a, C) -> Parser (RT.RawDef a, C)
 parseDef arrowMode h nameParser = do
@@ -1440,14 +1441,15 @@ rawTermIntrospect h m c1 = do
   (clauseList, c) <- seriesBraceList $ rawTermIntrospectiveClause h
   return (m :< RT.Introspect c1 key c2 clauseList, c)
 
-rawTermIntrospectiveClause :: Handle -> Parser ((Maybe T.Text, C, RT.RawTerm), C)
+rawTermIntrospectiveClause :: Handle -> Parser ((RT.IntrospectClauseKey, C, RT.RawTerm), C)
 rawTermIntrospectiveClause h = do
+  mKey <- getCurrentHint
   (s, cKey) <- symbol
   cArrow <- delimiter "=>"
   (body, c) <- rawExpr h
   if s /= "default"
-    then return ((Just s, cKey ++ cArrow, body), c)
-    else return ((Nothing, cKey ++ cArrow, body), c)
+    then return (((mKey, Just s), cKey ++ cArrow, body), c)
+    else return (((mKey, Nothing), cKey ++ cArrow, body), c)
 
 rawTermStatic :: Hint -> C -> Parser (RT.RawTerm, C)
 rawTermStatic m c1 = do

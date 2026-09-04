@@ -12,7 +12,7 @@ import Data.Functor ((<&>))
 import Data.HashMap.Strict qualified as Map
 import Data.List ((\\))
 import Data.List qualified as List
-import Data.Maybe (isJust, mapMaybe)
+import Data.Maybe (fromMaybe, isJust, mapMaybe)
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Vector qualified as V
@@ -753,7 +753,8 @@ discern h term =
           panic <- liftEither $ locatorToVarGlobal m coreDebugPanic
           discern h $ asOpaqueValue $ m :< RT.Annotation L.Warning (AN.Type ()) (m :< RT.piElim panic [message'])
     m :< RT.Introspect _ key _ clauseList -> do
-      value <- getIntrospectiveValue h m key
+      (value, valueSet) <- getIntrospectiveValue h m key
+      ensureIntrospectiveClauseSanity valueSet S.empty $ SE.extract clauseList
       (clause, droppedClauses) <- splitIntrospectiveClauses m value $ SE.extract clauseList
       mapM_ (markDroppedClause (discern h)) droppedClauses
       discern h clause
@@ -971,7 +972,8 @@ discernType h ty =
     _ :< RT.TyBrace _ (t, _) ->
       discernType h t
     m :< RT.TyIntrospect _ key _ clauseList -> do
-      value <- getIntrospectiveValue h m key
+      (value, valueSet) <- getIntrospectiveValue h m key
+      ensureIntrospectiveClauseSanity valueSet S.empty $ SE.extract clauseList
       (clause, droppedClauses) <- splitIntrospectiveClauses m value $ SE.extract clauseList
       mapM_ (markDroppedClause (discernType h)) droppedClauses
       discernType h clause
@@ -1180,34 +1182,47 @@ bind' mustIgnoreRelayedVars loc endLoc (m, _, x, c1, c2, t) e cont =
       cont
       endLoc
 
-splitIntrospectiveClauses :: Hint -> T.Text -> [(Maybe T.Text, C, a)] -> App (a, [a])
+splitIntrospectiveClauses :: Hint -> T.Text -> [(RT.IntrospectClauseKey, C, a)] -> App (a, [a])
 splitIntrospectiveClauses m value clauseList =
   case clauseList of
     [] ->
       raiseError m $ "This term does not support `" <> value <> "`."
-    (Just key, _, clause) : rest
+    ((_, Just key), _, clause) : rest
       | key == value ->
           return (clause, map (\(_, _, dropped) -> dropped) rest)
       | otherwise -> do
           (selected, droppedRest) <- splitIntrospectiveClauses m value rest
           return (selected, clause : droppedRest)
-    (Nothing, _, clause) : rest ->
+    ((_, Nothing), _, clause) : rest ->
       return (clause, map (\(_, _, dropped) -> dropped) rest)
+
+ensureIntrospectiveClauseSanity :: S.Set T.Text -> S.Set T.Text -> [(RT.IntrospectClauseKey, C, a)] -> App ()
+ensureIntrospectiveClauseSanity valueSet foundSet clauseList =
+  case clauseList of
+    [] ->
+      return ()
+    ((mKey, mValue), _, _) : rest -> do
+      let value = fromMaybe "default" mValue
+      when (isJust mValue && not (S.member value valueSet)) $ do
+        raiseError mKey $ "No such introspective value is defined: " <> value
+      when (S.member value foundSet) $ do
+        raiseError mKey $ "Found a duplicate introspective value: " <> value
+      ensureIntrospectiveClauseSanity valueSet (S.insert value foundSet) rest
 
 markDroppedClause :: (a -> App b) -> a -> App ()
 markDroppedClause interpret clause =
   catchError (void $ interpret clause) (const $ return ())
 
-getIntrospectiveValue :: H.Handle -> Hint -> T.Text -> App T.Text
+getIntrospectiveValue :: H.Handle -> Hint -> T.Text -> App (T.Text, S.Set T.Text)
 getIntrospectiveValue h m key = do
   let p = Platform.getPlatform (H.platformHandle h)
   case key of
     "target-arch" ->
-      return $ Arch.reify (Platform.arch p)
+      return (Arch.reify (Platform.arch p), S.fromList $ map Arch.reify [minBound .. maxBound])
     "target-os" ->
-      return $ OS.reify (Platform.os p)
+      return (OS.reify (Platform.os p), S.fromList $ map OS.reify [minBound .. maxBound])
     _ ->
-      raiseError m $ "No such introspective value is defined: " <> key
+      raiseError m $ "No such introspective key is defined: " <> key
 
 foldIf ::
   Hint ->
