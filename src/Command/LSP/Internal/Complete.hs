@@ -668,10 +668,8 @@ extractSymbolAtPosition vfile pos = do
 
 extractIdentifierAt :: T.Text -> Int -> T.Text
 extractIdentifierAt line pos = do
-  let (before, after) = T.splitAt pos line
-  let beforeIdent = T.reverse $ T.takeWhile (not . isBoundaryChar) $ T.reverse before
-  let afterIdent = T.takeWhile (not . isBoundaryChar) after
-  beforeIdent <> afterIdent
+  let (before, _) = T.splitAt pos line
+  T.reverse $ T.takeWhile (not . isBoundaryChar) $ T.reverse before
 
 isBoundaryChar :: Char -> Bool
 isBoundaryChar c =
