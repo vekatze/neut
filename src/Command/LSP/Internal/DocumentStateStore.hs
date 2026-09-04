@@ -21,7 +21,8 @@ import Data.ByteString qualified as B
 import Data.IORef
 import Data.Map.Strict qualified as M
 import Data.Text qualified as T
-import Data.Text.Encoding (decodeUtf8)
+import Data.Text.Encoding (decodeUtf8With)
+import Data.Text.Encoding.Error (lenientDecode)
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.Path qualified as KPath
 import Kernel.Common.Source qualified as Source
@@ -117,7 +118,7 @@ readSavedText uri =
     Just path -> do
       exists <- doesFileExist path
       if exists
-        then Just . decodeUtf8 <$> B.readFile path
+        then Just . decodeUtf8With lenientDecode <$> B.readFile path
         else return Nothing
 
 readBaseTextIfCacheFresh :: Global.Handle -> Uri -> IO (Maybe T.Text)
@@ -150,5 +151,5 @@ readSavedTextIfCacheFresh gh uri =
               cacheMtime <- PathIO.getModificationTime cachePath
               sourceMtime <- PathIO.getModificationTime srcAbs
               if cacheMtime >= sourceMtime
-                then liftIO $ Just . decodeUtf8 <$> B.readFile fp
+                then liftIO $ Just . decodeUtf8With lenientDecode <$> B.readFile fp
                 else return Nothing

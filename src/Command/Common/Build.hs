@@ -27,7 +27,8 @@ import Data.Foldable
 import Data.Maybe
 import Data.Set qualified as S
 import Data.Text qualified as T
-import Data.Text.Encoding (decodeUtf8)
+import Data.Text.Encoding (decodeUtf8With)
+import Data.Text.Encoding.Error (lenientDecode)
 import Data.Time
 import Gensym.CreateHandle qualified as Gensym
 import Gensym.Handle qualified as Gensym
@@ -482,6 +483,6 @@ expandText h t = do
   output <- liftIO $ RunProcess.run01 (runProcessHandle h) spec
   case output of
     Right value ->
-      return $ filter (not . T.null) $ T.lines $ decodeUtf8 value
+      return $ filter (not . T.null) $ T.lines $ decodeUtf8With lenientDecode value
     Left err ->
       throwError $ newError' err

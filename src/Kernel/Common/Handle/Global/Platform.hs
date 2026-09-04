@@ -25,6 +25,7 @@ import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Text qualified as T
 import Data.Text.Encoding
+import Data.Text.Encoding.Error (lenientDecode)
 import Data.Version qualified as V
 import Kernel.Common.Arch qualified as Arch
 import Kernel.Common.Const (envVarHome)
@@ -224,7 +225,7 @@ resolveMacOSSDK loggerHandle = do
     Left _ ->
       return Nothing
     Right value ->
-      case T.lines (decodeUtf8 value) of
+      case T.lines (decodeUtf8With lenientDecode value) of
         [] ->
           return Nothing
         sdk : _ ->
