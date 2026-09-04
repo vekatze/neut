@@ -2373,7 +2373,7 @@ You can use `promote` to create code without changing stages.
 define-meta make-message<a>() -> 'unit {
   let t = magic show-type(a);
   quote {
-    print(unquote {promote {t}});
+    print(from-text(unquote {promote {t}}));
     Unit
   }
 }

@@ -319,7 +319,7 @@ Sometimes you want to embed a compile-time calculation result into code without 
 define-meta make-message<a>() -> 'unit {
   let t = magic show-type(a);
   quote {
-    print(unquote {promote {t}});
+    print(from-text(unquote {promote {t}}));
     Unit
   }
 }
