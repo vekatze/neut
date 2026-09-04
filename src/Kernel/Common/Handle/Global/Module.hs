@@ -33,6 +33,7 @@ import Path
 import Path.Collect (hasExtension)
 import Path.IO
 import System.Environment
+import System.FilePath (dropExtension)
 import System.FilePath (splitDirectories)
 
 newtype Handle = Handle
@@ -111,17 +112,23 @@ ensureFileModuleSanity filePath baseModule = do
           <> T.pack (toFilePath filePath)
           <> "` is not in the source directory of current module"
     Just path -> do
+      let sourceHint = newSourceHint $ getSourceDir baseModule </> path
+      let srcDir = moduleSourceDir baseModule
       let dirList = dropLast $ splitDirectories $ toFilePath path
       forM_ dirList $ \dir -> do
         when ('.' `elem` dir) $ do
-          let sourceHint = newSourceHint $ getSourceDir baseModule </> path
-          let srcDir = moduleSourceDir baseModule
           let errPath = srcDir </> parent path
           raiseError sourceHint $
             "Directory names in "
               <> T.pack (show srcDir)
               <> " must not contain dots, but found: "
               <> T.pack (show errPath)
+      when ('.' `elem` dropExtension (toFilePath (filename path))) $ do
+        raiseError sourceHint $
+          "File names in "
+            <> T.pack (show srcDir)
+            <> " must not contain dots, but found: "
+            <> T.pack (show (srcDir </> path))
 
 getAllSourcePathInModule :: Module -> App [Path Abs File]
 getAllSourcePathInModule baseModule = do

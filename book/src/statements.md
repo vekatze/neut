@@ -64,7 +64,7 @@ name as local-name
 
 Module paths are dot-separated dependency aliases, with `this` as the identity element. For example, `sample.another-module::foo` imports `foo.nt` from a public dependency `another-module` of `sample`.
 
-Source paths are the relative paths from the source directories. For example, if we want to import `(source-dir)/foo/bar.nt`, we'll have to write `foo.bar`.
+Source paths are the relative paths from the source directories. For example, if we want to import `(source-dir)/foo/bar.nt`, we'll have to write `foo.bar`. A dot in a source path therefore always stands for a directory, and neither a directory nor a source file under a source directory may have a dot in its name.
 
 Each entry in `{}` introduces an import alias. An entry `name` introduces the same name as an implicit import alias and makes it usable without qualifiers:
 
