@@ -372,7 +372,7 @@ inlineFresh h rawTerm = do
       if isValue
         then do
           let sub = IntMap.singleton (Ident.toInt x) (Subst.Term e1')
-          liftIO (Subst.subst (substHandle h) sub e2) >>= expand h
+          inlineLetCont h sub e2
         else do
           mxt' <- inlineTypeBinder h mxt
           e2' <- inline' h e2
@@ -462,6 +462,25 @@ inlineFresh h rawTerm = do
           Magic.evaluateGetOriginColumn h m
 
 registerResidual :: Handle -> TM.Term -> App TM.Term
+inlineLetCont :: Handle -> Subst.Subst -> TM.Term -> App TM.Term
+inlineLetCont h sub term =
+  case term of
+    m :< TM.Let (mx, k, x, t) e1 e2 -> do
+      liftIO $ incrementStep h
+      detectPossibleInfiniteLoop h
+      e1' <- liftIO (Subst.subst (substHandle h) sub e1) >>= inline' h
+      isValue <- liftIO $ isValueTerm h e1'
+      if isValue
+        then inlineLetCont h (IntMap.insert (Ident.toInt x) (Subst.Term e1') sub) e2
+        else do
+          t' <- liftIO (Subst.substType (substHandle h) sub t) >>= inlineType' h
+          x' <- liftIO $ Sym.newIdentFromIdent (gensymHandle h) x
+          let sub' = IntMap.insert (Ident.toInt x) (Subst.Var x') sub
+          e2' <- inlineLetCont h sub' e2
+          return $ m :< TM.Let (mx, k, x', t') e1' e2'
+    _ -> do
+      liftIO (Subst.subst (substHandle h) sub term) >>= expand h
+
 expand :: Handle -> TM.Term -> App TM.Term
 expand h term = do
   liftIO $ incrementStep h

@@ -1,12 +1,14 @@
 module Kernel.Common.LocalVarTree
   ( LocalVarTree (..),
+    Entry,
     empty,
-    insert,
+    fromList,
     collect,
   )
 where
 
 import Data.Binary
+import Data.List (sortOn)
 import GHC.Generics (Generic)
 import Language.Common.Ident
 import Logger.Hint
@@ -18,23 +20,37 @@ data LocalVarTree
 
 instance Binary LocalVarTree
 
+type Entry =
+  (Loc, Loc, Ident)
+
 empty :: LocalVarTree
 empty =
   Leaf
 
-insert :: Loc -> Loc -> Ident -> LocalVarTree -> LocalVarTree
-insert startLoc endLoc x tree = do
-  case tree of
-    Leaf ->
-      Node startLoc endLoc x Leaf Leaf
-    Node startLoc' endLoc' x' t1 t2 ->
-      case compare startLoc startLoc' of
-        LT ->
-          Node startLoc' endLoc' x' (insert startLoc endLoc x t1) t2
-        GT ->
-          Node startLoc' endLoc' x' t1 (insert startLoc endLoc x t2)
-        EQ ->
-          Node startLoc endLoc x t1 t2
+fromList :: [Entry] -> LocalVarTree
+fromList entries = do
+  build $ dropShadowed $ sortOn (\(startLoc, _, _) -> startLoc) entries
+
+dropShadowed :: [Entry] -> [Entry]
+dropShadowed entries =
+  case entries of
+    [] ->
+      []
+    [entry] ->
+      [entry]
+    entry@(startLoc, _, _) : rest@((startLoc', _, _) : _)
+      | startLoc == startLoc' ->
+          dropShadowed rest
+      | otherwise ->
+          entry : dropShadowed rest
+
+build :: [Entry] -> LocalVarTree
+build entries =
+  case splitAt (length entries `div` 2) entries of
+    (_, []) ->
+      Leaf
+    (smaller, (startLoc, endLoc, x) : larger) ->
+      Node startLoc endLoc x (build smaller) (build larger)
 
 collect :: Loc -> LocalVarTree -> [Ident]
 collect loc tree = do
