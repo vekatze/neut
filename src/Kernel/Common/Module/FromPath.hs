@@ -159,8 +159,8 @@ interpretClangOption v = do
 interpretStaticFiles :: SE.Series (T.Text, E.Ens) -> App (Map.HashMap T.Text (Path Rel File))
 interpretStaticFiles staticFileDict = do
   kvs <- forM (SE.extract staticFileDict) $ \(staticFileKey, staticFilePathEns) -> do
-    (_, staticFilePathText) <- liftEither $ E.toString staticFilePathEns
-    staticFilePath <- parseRelFile $ T.unpack staticFilePathText
+    (m, staticFilePathText) <- liftEither $ E.toString staticFilePathEns
+    staticFilePath <- interpretRelFile m staticFilePathText
     return (staticFileKey, staticFilePath)
   return $ Map.fromList kvs
 
@@ -179,11 +179,23 @@ interpretSourceLocator ens = do
 interpretRelFilePath :: E.Ens -> App (Path Rel File)
 interpretRelFilePath ens = do
   (m, pathString) <- liftEither $ E.toString ens
-  case parseRelFile $ T.unpack pathString of
+  interpretRelFile m pathString
+
+interpretRelFile :: H.Hint -> T.Text -> App (Path Rel File)
+interpretRelFile m pathText =
+  case parseRelFile $ T.unpack pathText of
     Just relPath ->
       return relPath
     Nothing ->
-      raiseError m $ "Invalid file path: " <> pathString
+      raiseError m $ "Invalid file path: " <> pathText
+
+interpretRelDir :: H.Hint -> T.Text -> App (Path Rel Dir)
+interpretRelDir m pathText =
+  case parseRelDir $ T.unpack pathText of
+    Just relPath ->
+      return relPath
+    Nothing ->
+      raiseError m $ "Invalid directory path: " <> pathText
 
 interpretDependencyDict ::
   (H.Hint, SE.Series (T.Text, E.Ens)) ->
@@ -243,13 +255,13 @@ ensureNoDuplicateAliasTexts m seen aliasList =
 interpretExtraPath :: Path Abs Dir -> E.Ens -> App (SomePath Rel)
 interpretExtraPath moduleRootDir entity = do
   (m, itemPathText) <- liftEither $ E.toString entity
-  if T.last itemPathText == '/'
+  if T.isSuffixOf "/" itemPathText
     then do
-      dirPath <- parseRelDir $ T.unpack itemPathText
+      dirPath <- interpretRelDir m itemPathText
       ensureExistence m moduleRootDir dirPath doesDirExist "directory"
       return $ Left dirPath
     else do
-      filePath <- parseRelFile $ T.unpack itemPathText
+      filePath <- interpretRelFile m itemPathText
       ensureExistence m moduleRootDir filePath doesFileExist "file"
       return $ Right filePath
 
@@ -273,8 +285,8 @@ interpretAntecedent ens = do
 
 interpretDirPath :: E.Ens -> App (Path Rel Dir)
 interpretDirPath ens = do
-  (_, pathText) <- liftEither $ E.toString ens
-  parseRelDir $ T.unpack pathText
+  (m, pathText) <- liftEither $ E.toString ens
+  interpretRelDir m pathText
 
 interpretInlineLimit :: Either Error E.Ens -> Maybe Int
 interpretInlineLimit errOrEns = do
