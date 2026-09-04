@@ -18,18 +18,22 @@ module Kernel.Common.Handle.Global.Path
     getLastModifiedSup,
     getLastModifiedInf,
     unrollPath,
+    ensureNotFile,
   )
 where
 
 import App.App (App)
 import App.Run (raiseError')
 import Control.Comonad.Cofree
+import Control.Monad (unless, when)
 import Control.Monad.IO.Class
 import Data.ByteString.UTF8 qualified as B
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.Text qualified as T
 import Data.Time
+import System.Directory qualified as Dir
+import System.FilePath qualified as FP
 import Ens.Ens qualified as E
 import Ens.ToDoc qualified as E
 import Kernel.Common.Allocator (Allocator, defaultAllocator, showAllocator)
@@ -283,8 +287,18 @@ getOutputPathForEntryPoint h kind mainTarget = do
 getInstallDir :: FilePath -> App (Path Abs Dir)
 getInstallDir filePath = do
   path <- P.resolveDir' filePath
+  ensureNotFile "The install destination" path
   P.ensureDir path
   return path
+
+ensureNotFile :: T.Text -> Path Abs Dir -> App ()
+ensureNotFile description path = do
+  isDir <- P.doesDirExist path
+  unless isDir $ do
+    let pathString = FP.dropTrailingPathSeparator $ P.toFilePath path
+    exists <- liftIO $ Dir.doesPathExist pathString
+    when exists $ do
+      raiseError' $ description <> " is not a directory: " <> T.pack pathString
 
 getLastModifiedSup :: [Path Abs File] -> App (Maybe UTCTime)
 getLastModifiedSup pathList =

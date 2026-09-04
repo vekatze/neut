@@ -19,6 +19,7 @@ import Data.Text qualified as T
 import Kernel.Common.Allocator (defaultAllocator)
 import Kernel.Common.ClangOption qualified as CL
 import Kernel.Common.Const
+import Kernel.Common.Handle.Global.Path qualified as Path
 import Kernel.Common.Handle.Global.Platform qualified as Platform
 import Kernel.Common.Module
 import Kernel.Common.Platform qualified as P
@@ -45,6 +46,7 @@ new saveModuleHandle loggerHandle platformHandle = do
 createNewProject :: Handle -> T.Text -> Module -> App ()
 createNewProject h moduleName newModule = do
   let moduleDir = parent $ moduleLocation newModule
+  Path.ensureNotFile "The module destination" moduleDir
   moduleDirExists <- doesDirExist moduleDir
   if moduleDirExists
     then raiseError' $ "The directory `" <> moduleName <> "` already exists"
