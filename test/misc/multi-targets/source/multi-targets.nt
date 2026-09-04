@@ -22,7 +22,15 @@ define os-tag() -> int {
   }
 }
 
-define widen(x: introspect target-arch { | wasm32 => int32 | default => int64 }) -> int {
+define widen(
+  x:
+  introspect target-arch {
+  | wasm32 =>
+    int32
+  | default =>
+    int64
+  },
+) -> int {
   introspect target-arch {
   | wasm32 =>
     sext-int32-int64(x)
@@ -33,9 +41,17 @@ define widen(x: introspect target-arch { | wasm32 => int32 | default => int64 })
 
 define check-introspect() -> unit {
   let a = arch-tag();
-  assert("arch is known", if le-int(1, a) { le-int(a, 3) } else { False });
+  assert("arch is known", if le-int(1, a) {
+    le-int(a, 3)
+  } else {
+    False
+  });
   let o = os-tag();
-  assert("os is known", if eq-int(o, 10) { True } else { eq-int(o, 20) });
+  assert("os is known", if eq-int(o, 10) {
+    True
+  } else {
+    eq-int(o, 20)
+  });
   assert("introspect in a type", eq-int(widen(7), 7))
 }
 

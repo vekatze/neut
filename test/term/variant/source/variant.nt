@@ -191,7 +191,12 @@ define with-bind-through-case(xs: &list(int)) -> either(unit, int) {
 define with-bind-through-brace(cond: bool) -> either(unit, int) {
   with either-bind {
     {
-      bind x = if cond { Right(10) } else { Left(Unit) };
+      bind x =
+        if cond {
+          Right(10)
+        } else {
+          Left(Unit)
+        };
       {
         bind y = Right(20);
         Right(add-int(x, y))
@@ -204,15 +209,19 @@ define test-with-bind-through-brace() -> unit {
   assert(
     "with-bind through a brace",
     match with-bind-through-brace(True) {
-    | Left(_) => False
-    | Right(v) => eq-int(v, 30)
+    | Left(_) =>
+      False
+    | Right(v) =>
+      eq-int(v, 30)
     },
   );
   assert(
     "with-bind through a brace (short circuit)",
     match with-bind-through-brace(False) {
-    | Left(_) => True
-    | Right(_) => False
+    | Left(_) =>
+      True
+    | Right(_) =>
+      False
     },
   )
 }
