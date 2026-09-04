@@ -879,6 +879,10 @@ discernExposeItem h (RawExposeItem m (name, _) asClause) = do
                 ext
               Nothing ->
                 EN.ExternalName $ DD.localLocator dd
+      mDecl <- liftIO $ PreDecl.lookupMaybe (H.preDeclHandle h) extName
+      when (isJust mDecl) $ do
+        raiseError m $ "`" <> EN.reify extName <> "` is already declared as a foreign function"
+      liftIO $ PreDecl.insertExposed (H.preDeclHandle h) extName m
       return (m, dd, extName)
     _ ->
       raiseError m $ "`" <> renderDD (H.modulePathMap h) dd <> "` is not a function"
@@ -1864,6 +1868,9 @@ ensureNoDuplicateForeignName h foundNameSet itemList =
       mDef <- liftIO $ PreDecl.lookupMaybe (H.preDeclHandle h) name
       when (isJust mDef || S.member name foundNameSet) $ do
         raiseError m $ "`" <> EN.reify name <> "` is already declared"
+      mExposed <- liftIO $ PreDecl.lookupExposed (H.preDeclHandle h) name
+      when (isJust mExposed) $ do
+        raiseError m $ "`" <> EN.reify name <> "` is already exposed"
       ensureNoDuplicateForeignName h (S.insert name foundNameSet) rest
 
 interpretForeign :: H.Handle -> [RawForeignItemF WT.WeakType] -> IO [WT.WeakForeign]
