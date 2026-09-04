@@ -8,11 +8,13 @@ where
 
 import App.App (App)
 import App.Run (raiseError')
+import CodeParser.Parser qualified as CP
 import Command.Common.SaveModule qualified as SaveModule
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.HashMap.Strict qualified as Map
 import Data.Maybe (fromMaybe)
+import Data.Set qualified as S
 import Data.Text qualified as T
 import Kernel.Common.Allocator (defaultAllocator)
 import Kernel.Common.ClangOption qualified as CL
@@ -54,9 +56,19 @@ createNewProject h moduleName newModule = do
 constructDefaultModule :: T.Text -> Maybe T.Text -> App Module
 constructDefaultModule moduleName mTargetName = do
   let targetName = fromMaybe moduleName mTargetName
+  ensureValidTargetName targetName
   currentDir <- getCurrentDir
-  moduleRootDir <- resolveDir currentDir $ T.unpack moduleName
-  mainFile <- parseRelFile $ T.unpack targetName <> sourceFileExtension
+  moduleRelDir <- case parseRelDir (T.unpack moduleName) of
+    Just relDir ->
+      return relDir
+    Nothing ->
+      raiseError' $ "Invalid module name: " <> moduleName
+  let moduleRootDir = currentDir </> moduleRelDir
+  mainFile <- case parseRelFile (T.unpack targetName <> sourceFileExtension) of
+    Just relFile ->
+      return relFile
+    Nothing ->
+      raiseError' $ "Invalid target name: " <> targetName
   sourceLocator <- case SL.fromPath mainFile of
     Just locator ->
       return locator
@@ -91,6 +103,13 @@ constructDefaultModule moduleName mTargetName = do
         moduleUniversal = True,
         modulePresetMap = Map.empty
       }
+
+ensureValidTargetName :: T.Text -> App ()
+ensureValidTargetName targetName = do
+  when (T.null targetName) $ do
+    raiseError' "The target name must not be empty"
+  when (T.any (`S.member` CP.nonSymbolCharSet) targetName) $ do
+    raiseError' $ "Invalid target name: " <> targetName
 
 createModuleFile :: Handle -> Module -> App ()
 createModuleFile h newModule = do
