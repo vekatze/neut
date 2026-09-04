@@ -3,6 +3,7 @@ module Kernel.Parse.Internal.Handle.PreDecl
     new,
     insert,
     lookup,
+    lookupMaybe,
   )
 where
 
@@ -28,6 +29,11 @@ new = do
 insert :: Handle -> EN.ExternalName -> Hint -> IO ()
 insert h k m =
   modifyIORef' (preDeclEnvRef h) $ Map.insert k m
+
+lookupMaybe :: Handle -> EN.ExternalName -> IO (Maybe Hint)
+lookupMaybe h name = do
+  preDeclEnv <- readIORef (preDeclEnvRef h)
+  return $ Map.lookup name preDeclEnv
 
 lookup :: Handle -> Hint -> EN.ExternalName -> App Hint
 lookup h m name = do

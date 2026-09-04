@@ -204,6 +204,7 @@ discernStmt h stmt = do
       return [WeakStmtNominal m geistList']
     PostRawStmtForeign _ foreignList -> do
       let foreignList' = SE.extract foreignList
+      ensureNoDuplicateForeignName h S.empty foreignList'
       foreignList'' <- mapM (mapM (discernType h)) foreignList'
       foreign' <- liftIO $ interpretForeign h foreignList''
       return [WeakStmtForeign foreign']
@@ -1853,6 +1854,17 @@ ensureLocalDefStage m h kind =
 asOpaqueValue :: RT.RawTerm -> RT.RawTerm
 asOpaqueValue e@(m :< _) =
   m :< RT.Magic [] (RT.OpaqueValue [] ([], (e, [])))
+
+ensureNoDuplicateForeignName :: H.Handle -> S.Set EN.ExternalName -> [RawForeignItemF a] -> App ()
+ensureNoDuplicateForeignName h foundNameSet itemList =
+  case itemList of
+    [] ->
+      return ()
+    RawForeignItemF m name _ _ _ _ _ : rest -> do
+      mDef <- liftIO $ PreDecl.lookupMaybe (H.preDeclHandle h) name
+      when (isJust mDef || S.member name foundNameSet) $ do
+        raiseError m $ "`" <> EN.reify name <> "` is already declared"
+      ensureNoDuplicateForeignName h (S.insert name foundNameSet) rest
 
 interpretForeign :: H.Handle -> [RawForeignItemF WT.WeakType] -> IO [WT.WeakForeign]
 interpretForeign h foreignItemList = do
