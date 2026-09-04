@@ -184,6 +184,35 @@ define with-bind-through-case(xs: &list(int)) -> either(unit, int) {
   }
 }
 
+define with-bind-through-brace(cond: bool) -> either(unit, int) {
+  with either-bind {
+    {
+      bind x = if cond { Right(10) } else { Left(Unit) };
+      {
+        bind y = Right(20);
+        Right(add-int(x, y))
+      }
+    }
+  }
+}
+
+define test-with-bind-through-brace() -> unit {
+  assert(
+    "with-bind through a brace",
+    match with-bind-through-brace(True) {
+    | Left(_) => False
+    | Right(v) => eq-int(v, 30)
+    },
+  );
+  assert(
+    "with-bind through a brace (short circuit)",
+    match with-bind-through-brace(False) {
+    | Left(_) => True
+    | Right(_) => False
+    },
+  )
+}
+
 define nested-enum-match(t: term(my-enum)) -> my-enum {
   let val =
     match t {
@@ -450,6 +479,7 @@ define test-match() -> unit {
   with-bind-through-when(True);
   let _ = with-bind-through-match(xs);
   let _ on xs = with-bind-through-case(xs);
+  test-with-bind-through-brace();
   let _ = n;
   let _ = xs;
   let _: list(int) = use-struct(list-monoid());

@@ -853,6 +853,8 @@ discern h term =
         mDataElim :< RT.DataElim c isNoetic es patternRowList -> do
           let patternRowList' = fmap withPatternRowBody patternRowList
           discern h $ mDataElim :< RT.DataElim c isNoetic es patternRowList'
+        _ :< RT.Brace _ (e, _) -> do
+          discern h $ withBody e
         _ ->
           discern h body
     _ :< RT.Brace _ (e, _) ->
