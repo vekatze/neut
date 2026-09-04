@@ -35,7 +35,7 @@ check h cfg = do
     if shouldCheckAllDependencies cfg
       then Check.checkAllOrFail checkHandle mainTarget
       else Check.checkOrFail checkHandle mainTarget
-  liftIO $ Logger.printErrorList (Global.loggerHandle (globalHandle h)) logs
+  liftIO $ Logger.printLogList (Global.loggerHandle (globalHandle h)) logs
 
 getMainTarget :: Handle -> T.Text -> App MainTarget
 getMainTarget h name = do

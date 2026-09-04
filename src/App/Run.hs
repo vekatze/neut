@@ -33,7 +33,7 @@ run loggerHandle c = do
   resultOrErr <- liftIO (runApp c) `catch` (return . Left . asError)
   case resultOrErr of
     Left (E.MakeError err) -> do
-      liftIO $ Logger.printErrorList loggerHandle err
+      liftIO $ Logger.printLogList loggerHandle err
       liftIO $ exitWith (ExitFailure 1)
     Right result ->
       return result
