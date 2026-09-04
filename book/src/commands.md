@@ -296,6 +296,8 @@ Each `INPUT` can be a file or a directory.
 
 By default, `neut format` just checks whether the given files are already formatted. If some files aren't, their paths are printed and the command exits with a nonzero status.
 
+Formatting a source file also removes an item of `import {..}` that an enabled [`preset`](./modules.md#preset) already provides, since the name is available without it. An item that is given an alias with `as` is kept, and an `import {..}` left with no items at all is removed.
+
 ### `--mode MODE`
 
 `--mode` / `-m` controls what `neut format` does with the formatting result. `MODE` must be one of the following:
