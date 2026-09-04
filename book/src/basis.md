@@ -13,21 +13,25 @@
 
 ## On Executing Types
 
-A type in Neut is compiled into a pointer to a binary function like the following (pseudocode):
+A type in Neut is compiled into a pointer to a ternary function like the following (pseudocode):
 
 ```neut
-define discard-or-copy-value(action-selector, value) {
+define discard-or-copy-value(action-selector, value, extra) {
   if eq-int(action-selector, 0) {
-    discard-value(value);
+    // `extra` says whether the outer storage is released as well
+    discard-value(value, extra);
     Unit
-  } else {
-    let new-value = copy-value(value);
+  } else-if eq-int(action-selector, 1) {
+    // `extra` is the destination, or null for an owned copy
+    let new-value = copy-value(value, extra);
     new-value
+  } else {
+    size-of-value() // in bytes, or a negative value when there is no fixed size
   }
 }
 ```
 
-These functions are then used to discard/copy values when necessary.
+These functions are then used to discard/copy values when necessary, and to ask a type for the size of its placed representation.
 
 ### Discarding Values
 
@@ -44,7 +48,7 @@ Note that the variable `xs` isn't used. Because of that, the compiler translates
 ```neut
 define foo(xs: list(int)) -> unit {
   let f = list(int);
-  f(0, xs); // passing `0` to discard `xs`
+  f(0, xs, 1); // passing `0` to discard `xs`
   Unit
 }
 ```
@@ -66,7 +70,7 @@ Note that the variable `xs` is used twice. Because of that, the compiler transla
 ```neut
 define foo(!xs: list(int)) -> unit {
   let f = list(int);
-  let xs-clone = f(1, xs); // passing `1` to copy `xs`
+  let xs-clone = f(1, xs, null); // passing `1` to copy `xs`
   some-func(xs-clone, xs)
 }
 ```
@@ -84,11 +88,13 @@ We don't have to discard immediates like integers or floats because their intern
 More specifically, the type of an immediate is compiled into a pointer to the following function (pseudocode):
 
 ```neut
-inline discard-or-copy-immediate(selector, value) {
+inline discard-or-copy-immediate(selector, value, extra) {
   if eq-int(selector, 0) {
     0     // discard: we have nothing to do on `value`
-  } else {
+  } else-if eq-int(selector, 1) {
     value // copy: we can simply reuse the immediate `value`
+  } else {
+    -1    // an immediate has no placed representation of its own
   }
 }
 ```
