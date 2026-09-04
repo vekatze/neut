@@ -402,7 +402,7 @@ Most `neut` subcommands must be executed inside a module. Otherwise, the command
 
 ```sh
 neut build foo
-#=> Error: Couldn't find a module file (Context: /Users/foo/Desktop)
+#=> Error: Could not find a module file (Context: /Users/foo/Desktop)
 ```
 
 Only the following subcommands can be used outside a module:
@@ -416,6 +416,15 @@ Most subcommands share the following command-line options:
 
 - `--no-color` can be used to turn off ANSI colors
 - `--report MODE` sets report mode (`none`, `plain`, `fancy`, or `trace=ITEMS`)
+
+`--report` decides what a command says about its own progress, which it writes to standard error:
+
+- `none` says nothing
+- `plain` prints one line per phase
+- `fancy` draws a progress bar that redraws in place
+- `trace=ITEMS` prints the selected intermediate representations, as described below
+
+Without `--report`, a command uses `fancy` when both of its streams are an ANSI-capable terminal, and `plain` otherwise. Errors and warnings are printed whatever the mode is.
 
 ### `--report trace=ITEMS`
 
