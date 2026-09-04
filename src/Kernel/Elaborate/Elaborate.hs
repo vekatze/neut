@@ -368,11 +368,12 @@ elaborateStmt h stmt = do
       discarder'' <- inline h m discarder'
       copier'' <- inline h m copier'
       resourceSize'' <- inline h m resourceSize'
+      let mSize :< _ = resourceSize'
       case Resource.layoutOf resourceSize'' of
         Just _ ->
           return ()
         Nothing ->
-          raiseError m "Could not reduce the size of this resource into an integer"
+          raiseError mSize "Could not reduce the size of this resource into an integer"
       unitType'' <- inlineType h m unitType'
       let result = StmtDefineResource (SavedHint m) dd resourceID unitType'' discarder'' copier'' resourceSize''
       insertStmt h result
