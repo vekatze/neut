@@ -1418,6 +1418,7 @@ binderOrType h admission = do
       when (doubleColon `T.isInfixOf` nameText) $ do
         lift $ raiseError m "A parameter name cannot be qualified"
       ensureNotIdentityName m nameText
+      ensureNotNumericName m nameText
       x <-
         if nameText /= "_"
           then return nameText
@@ -1541,6 +1542,7 @@ binderName h = do
   m <- getCurrentHint
   (x, c) <- symbol
   ensureNotIdentityName m x
+  ensureNotNumericName m x
   let k = maybe VK.normal (const VK.exponential) mBang
   let c' = fromMaybe [] mBang ++ c
   if x /= "_"
@@ -1587,12 +1589,18 @@ baseName = do
       lift $ throwError err
     Right name -> do
       ensureNotIdentityName m rawName
+      ensureNotNumericName m rawName
       return (name, c)
 
 ensureNotIdentityName :: Hint -> T.Text -> Parser ()
 ensureNotIdentityName m name = do
   when (name == BN.reify BN.this) $ do
     lift $ raiseError m "`this` is reserved"
+
+ensureNotNumericName :: Hint -> T.Text -> Parser ()
+ensureNotNumericName m name = do
+  when (isNumericLike name) $ do
+    lift $ raiseError m $ "`" <> name <> "` reads as a numeric literal and cannot be used as a name"
 
 keyword :: T.Text -> Parser C
 keyword expected = do

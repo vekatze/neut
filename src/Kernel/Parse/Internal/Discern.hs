@@ -1140,8 +1140,10 @@ modifyLetContinuation ::
   App (VK.VarKind, RawIdent, RT.RawTerm)
 modifyLetContinuation h pat isNoetic cont@(mCont :< _) =
   case pat of
-    (_, RP.Var k (Bare x))
-      | not (isConsName x) ->
+    (m, RP.Var k (Bare x))
+      | not (isConsName x) -> do
+          when (isNumericLike x) $ do
+            raiseError m $ "`" <> x <> "` reads as a numeric literal and cannot be used as a name"
           return (k, x, cont)
     _ -> do
       tmp <- liftIO $ Gensym.newTextForHole (H.gensymHandle h)
@@ -1680,6 +1682,8 @@ discernPattern h layer stage (m, pat) = do
               when (VK.isExp k) $
                 raiseError m "Numeric literal cannot be marked with `!`"
               return ((m, PAT.Literal (LI.Int i)), [])
+            ParsedNumericLiteral (FloatingLiteral _) ->
+              raiseError m $ "A floating-point literal cannot be used as a pattern: `" <> x <> "`"
             InvalidNumericLiteral numericClass ->
               raiseInvalidNumericLiteral m numericClass x
             _
