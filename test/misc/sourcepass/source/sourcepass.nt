@@ -12,7 +12,7 @@ data wide {
 }
 
 data stamped {
-| Stamped(~shape, int)
+| Stamped(+shape, int)
 }
 
 define shape-area(s: &shape) -> int {
@@ -35,7 +35,7 @@ define increment(n: int) -> int {
   add-int(n, 1)
 }
 
-define area(~s: shape) -> int {
+define area(+s: shape) -> int {
   match s {
   | Circle(r) =>
     r
@@ -56,16 +56,16 @@ define use-area-pun(s: shape) -> int {
   area{~s}
 }
 
-define forward(~s: shape) -> int {
+define forward(+s: shape) -> int {
   area(~s)
 }
 
-define peek(~s: shape) -> int {
+define peek(+s: shape) -> int {
   let v on s = shape-area(s);
   add-int(v, area(~s))
 }
 
-define keep(~s: shape) -> shape {
+define keep(+s: shape) -> shape {
   s
 }
 
@@ -73,22 +73,22 @@ define use-keep() -> int {
   area(~keep(~Circle(9)))
 }
 
-define twice(~!s: shape) -> int {
+define twice(+!s: shape) -> int {
   add-int(area(~s), area(~s))
 }
 
-define stamp@(~s: shape, k: int) -> stamped {
+define stamp(+s: shape, k: int) ->> stamped {
   Stamped(~s, k)
 }
 
 define use-stamp() -> int {
-  let Stamped(~s, k) = stamp@(~Rect(2, 5), 7);
+  let Stamped(+s, k) = stamp@(~Rect(2, 5), 7);
   add-int(area(~s), k)
 }
 
 define stamped-sum(x: &stamped) -> int {
   case x {
-  | Stamped(~s, k) =>
+  | Stamped(+s, k) =>
     add-int(shape-area(s), *k)
   }
 }
@@ -98,7 +98,7 @@ define use-stamped-noetic() -> int {
   stamped-sum(x)
 }
 
-define consume<sized a>(~x: a, f: (&a) -> int) -> int {
+define consume<sized a>(+x: a, f: (&a) -> int) -> int {
   pin x = x;
   f(x)
 }
@@ -107,7 +107,7 @@ define use-consume() -> int {
   add-int(consume(~Rect(3, 4), shape-area), consume(~Wide(1, 2, 3, 4), wide-sum))
 }
 
-define relay<sized a>(~x: a, f: (&a) -> int) -> int {
+define relay<sized a>(+x: a, f: (&a) -> int) -> int {
   consume(~x, f)
 }
 
@@ -115,7 +115,7 @@ define use-relay() -> int {
   relay(~Circle(11), shape-area)
 }
 
-define apply-int-fn(~f: (int) -> int, n: int) -> int {
+define apply-int-fn(+f: (int) -> int, n: int) -> int {
   f(n)
 }
 
@@ -123,19 +123,19 @@ define use-apply-int-fn() -> int {
   apply-int-fn(~increment, 41)
 }
 
-define apply-source(g: (~s: shape) -> int) -> int {
+define apply-source(g: (+s: shape) -> int) -> int {
   g(~Rect(3, 3))
 }
 
 define use-lambda-source() -> int {
-  apply-source((~s: shape) => {
+  apply-source((+s: shape) => {
     add-int(area(~s), 1)
   })
 }
 
 define local-source(base: int) -> int {
   let go =
-    define go(~s: shape, n: int) -> int {
+    define go(+s: shape, n: int) -> int {
       match n {
       | 0 =>
         add-int(area(~s), base)
@@ -148,7 +148,7 @@ define local-source(base: int) -> int {
 
 define local-inline-source(k: int) -> int {
   let f =
-    inline f(~s: shape) -> int {
+    inline f(+s: shape) -> int {
       add-int(area(~s), k)
     };
   f(~Rect(2, 6))
@@ -163,11 +163,11 @@ define build-sum(n: int, acc: int) -> int {
   }
 }
 
-define scale-area(~s: shape)[bias: int := 100] -> int {
+define scale-area(+s: shape)[bias: int := 100] -> int {
   add-int(area(~s), bias)
 }
 
-define first-of<sized a>(~x: a, f: (&a) -> int, g: (&a) -> int) -> int {
+define first-of<sized a>(+x: a, f: (&a) -> int, g: (&a) -> int) -> int {
   pin x = x;
   add-int(f(x), g(x))
 }

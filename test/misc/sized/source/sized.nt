@@ -44,24 +44,24 @@ define increment(n: int) -> int {
   add-int(n, 1)
 }
 
-define consume<sized a>(~x: a, f: (&a) -> int) -> int {
+define consume<sized a>(+x: a, f: (&a) -> int) -> int {
   pin x = x;
   f(x)
 }
 
-define produce@<sized a>(make: () -> a) -> a {
+define produce<sized a>(make: () -> a) ->> a {
   make()
 }
 
-define relay-source<sized a>(~x: a, f: (&a) -> int) -> int {
+define relay-source<sized a>(+x: a, f: (&a) -> int) -> int {
   consume(~x, f)
 }
 
-define relay-dest@<sized a>(make: () -> a) -> a {
+define relay-dest<sized a>(make: () -> a) ->> a {
   produce@(make)
 }
 
-define round-trip@<sized a>(~x: a) -> a {
+define round-trip<sized a>(+x: a) ->> a {
   x
 }
 
@@ -114,7 +114,7 @@ define use-unsafe-sized() -> int {
   round-trip-via-type-value(pack-type {shape}, Rect(6, 7))
 }
 
-define sum-both<sized a, sized b>(~x: a, f: (&a) -> int, ~y: b, g: (&b) -> int) -> int {
+define sum-both<sized a, sized b>(+x: a, f: (&a) -> int, +y: b, g: (&b) -> int) -> int {
   pin x = x;
   pin y = y;
   add-int(f(x), g(y))

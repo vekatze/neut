@@ -7,7 +7,7 @@ import {
   core::layer {axiom-T},
 }
 
-define-meta make-boxed-pair<actual a>(x: 'a) -> 'pair(+a, +a) {
+define-meta make-boxed-pair<actual a>(x: 'a) -> 'pair(^a, ^a) {
   quote {
     let !y = unquote {x};
     Pair(lift {y}, lift {y})
@@ -29,12 +29,12 @@ define-meta classify-int<integer a>(x: 'a) -> 'int {
 }
 
 define use-unit-lift() -> unit {
-  let _: pair(+unit, +unit) = make-boxed-pair::(Unit);
+  let _: pair(^unit, ^unit) = make-boxed-pair::(Unit);
   Unit
 }
 
 define use-int-lift() -> unit {
-  let _: pair(+int, +int) = make-boxed-pair::(7);
+  let _: pair(^int, ^int) = make-boxed-pair::(7);
   Unit
 }
 
@@ -48,8 +48,8 @@ data point {
 }
 
 data complex-item {
-| Wide(~point, ~item, ~point, bool, int)
-| Narrow(~item, ~point)
+| Wide(+point, +item, +point, bool, int)
+| Narrow(+item, +point)
 | Empty
 }
 
@@ -66,15 +66,15 @@ define _item-code(x: item) -> int {
   }
 }
 
-define _box-value<actual a>(x: a) -> +a {
+define _box-value<actual a>(x: a) -> ^a {
   lift {x}
 }
 
-define _relay-box-value<actual a>(x: a) -> +a {
+define _relay-box-value<actual a>(x: a) -> ^a {
   _box-value(x)
 }
 
-define _unbox-item(x: +item) -> int {
+define _unbox-item(x: ^item) -> int {
   letbox-T y = x;
   _item-code(y)
 }
@@ -115,7 +115,7 @@ define _point-code(p: point) -> int {
 
 define _complex-code-N(x: &complex-item) -> int {
   case x {
-  | Wide(~p1, ~it, ~p2, b, n) =>
+  | Wide(+p1, +it, +p2, b, n) =>
     add-int(
       add-int(
         add-int(mul-int(_point-code-N(p1), 100000), mul-int(_item-code-N(it), 10)),
@@ -127,7 +127,7 @@ define _complex-code-N(x: &complex-item) -> int {
         sub-int(0, *n)
       },
     )
-  | Narrow(~it, ~p) =>
+  | Narrow(+it, +p) =>
     add-int(mul-int(_item-code-N(it), 10000), _point-code-N(p))
   | Empty =>
     -777
@@ -136,7 +136,7 @@ define _complex-code-N(x: &complex-item) -> int {
 
 define _complex-code(x: complex-item) -> int {
   match x {
-  | Wide(~p1, ~it, ~p2, b, n) =>
+  | Wide(+p1, +it, +p2, b, n) =>
     add-int(
       add-int(
         add-int(mul-int(_point-code(p1), 100000), mul-int(_item-code(it), 10)),
@@ -148,7 +148,7 @@ define _complex-code(x: complex-item) -> int {
         sub-int(0, n)
       },
     )
-  | Narrow(~it, ~p) =>
+  | Narrow(+it, +p) =>
     add-int(mul-int(_item-code(it), 10000), _point-code(p))
   | Empty =>
     -777
@@ -222,7 +222,7 @@ define _clone-complex-at(label: &string, xs: &array(complex-item), index: int) -
     panic(label)
   | Right(elem) =>
     case elem {
-    | Wide(~p1, ~it, ~p2, b, n) =>
+    | Wide(+p1, +it, +p2, b, n) =>
       case p1 {
       | Point(x1, y1) =>
         case p2 {
@@ -235,7 +235,7 @@ define _clone-complex-at(label: &string, xs: &array(complex-item), index: int) -
           }
         }
       }
-    | Narrow(~it, ~p) =>
+    | Narrow(+it, +p) =>
       case p {
       | Point(x, y) =>
         case it {

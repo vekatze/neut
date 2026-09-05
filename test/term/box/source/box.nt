@@ -4,7 +4,7 @@ import {
   core::list {length},
 }
 
-define axiom-K<a, b>(f: +(a) -> b, x: +a) -> +b {
+define axiom-K<a, b>(f: ^(a) -> b, x: ^a) -> ^b {
   box {
     letbox f = f;
     letbox x = x;
@@ -12,7 +12,7 @@ define axiom-K<a, b>(f: +(a) -> b, x: +a) -> +b {
   }
 }
 
-define axiom-T<a>(x: +a) -> a {
+define axiom-T<a>(x: ^a) -> a {
   letbox-T x = x;
   x
 }
