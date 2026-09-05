@@ -142,6 +142,9 @@ The name of a local variable must satisfy the following conditions:
 
 - It doesn't contain a space, a tab, a newline, or any of ``=()`"'\:;,<>[]{}/*+|&?!#^@~$``
 - It doesn't start with `A, B, .., Z` (uppercase letters)
+- It isn't read as a numeric literal, as `12`, `_1`, `0x10` and `inf` are
+
+The same conditions apply to every name that is bound, such as the name of a `define`, of a namespace, of a parameter, or of a field of a `data`.
 
 ### Semantics
 
@@ -1495,6 +1498,8 @@ Here, `?Mi`s are metavariables that must be inferred by the type checker.
 ### Note
 
 As you can see from its semantics, an `exact` is just a shorthand for a "hole-application" that fills in implicit parameters.
+
+If `e` has default arguments, they are not part of the type of `exact e`; each call of the result uses the defaults that `e` declares.
 
 ## ADT Formation
 

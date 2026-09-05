@@ -1244,6 +1244,7 @@ The wrapper takes the parameter list of the compiled function, so `expose` publi
 - a type parameter becomes a leading parameter
 - a default argument becomes an ordinary parameter, with no default
 - a destination-passing function (one written with `->>`) takes its destination first, and returns it
+- a source-passing parameter (one written with `+`) takes the address of the storage it reads the argument from, and the caller releases that storage after the call returns
 
 A destination-passing function, for example:
 
