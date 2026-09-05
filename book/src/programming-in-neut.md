@@ -16,7 +16,7 @@ You can use `let` to define variables:
 
 ```neut
 define hey() -> unit {
-  let x = "hello";
+  let x: text = "hello";
   let y: int = 100;
   let z: float = 3.8;
   print("hey");
@@ -27,7 +27,7 @@ The compiler warns about unused variables (`x`, `y`, and `z` in the example abov
 
 ```neut
 define hey() -> unit {
-  let _ = "hello";
+  let _: text = "hello";
   let _: int = 100;
   let _: float = 3.8;
   print("hey");

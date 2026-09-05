@@ -2800,6 +2800,15 @@ You can use `magic` to perform low-level operations. Using `magic` is unsafe.
 ### Example
 
 ```neut
+import {
+  core::int.io {print-int},
+}
+
+foreign {
+  malloc(int) -> pointer,
+  free(pointer) -> void,
+}
+
 // empty type
 data descriptor {}
 
@@ -2810,7 +2819,7 @@ constant stdin: descriptor {
 
 define malloc-then-free() -> unit {
   // allocates a memory region (stack)
-  let ptr = magic alloca(int64, 2); // allocates (64 / 8) * 2 = 16 bytes
+  let _ = magic alloca(int64, 2); // allocates (64 / 8) * 2 = 16 bytes
 
   // allocates a memory region (heap)
   let size: int = 10;
@@ -2827,15 +2836,16 @@ define malloc-then-free() -> unit {
   // tells the compiler to treat the content of {..} as a value
   let v =
     magic opaque-value {
-      get-some-c-constant-using-FFI()
+      magic external malloc(size)
     };
+  let _ = magic external free(v);
 
   // frees the pointer
-  magic external free(ptr); // ← external
+  let _ = magic external free(ptr); // ← external
 
   // call types as functions
   let t: string = *"hello";
-  magic call-type(string, 0, t, add-int(0, 1)); // ← call-type (discard)
+  magic call-type(pack-type {string}, 0, t, add-int(0, 1)); // ← call-type (discard)
 
   Unit
 }
