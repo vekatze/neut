@@ -54,13 +54,13 @@ import Language.Common.Ident
 import Language.Common.LowMagic qualified as LM
 import Language.Common.LowType qualified as LT
 import Language.Common.LowType.FromBaseLowType qualified as LT
-import Language.Common.LowType.ToByteSize (lowTypeToByteSize)
 import Language.Common.PrimNumSize
 import Language.Common.PrimNumSize.ToInt
 import Language.Common.SlotSize
 import Language.Common.PrimOp
 import Language.Common.PrimOp.ConvOp qualified as ConvOp
 import Language.Common.PrimType qualified as PT
+import Language.Common.CellLayout qualified as CL
 import Language.Comp.Comp qualified as C
 import Language.Comp.CreateVar (createVar)
 import Language.Comp.EnumCase qualified as EC
@@ -82,7 +82,7 @@ data Handle = Handle
     substHandle :: Subst.Handle,
     declEnv :: IORef DN.DeclEnv,
     staticTextList :: IORef [(T.Text, (Builder, Int))],
-    staticDataMap :: IORef (Map.HashMap T.Text [LC.StaticData]),
+    staticDataMap :: IORef (Map.HashMap T.Text [LC.StaticMember]),
     definedNameSet :: IORef (S.Set DD.DefiniteDescription),
     referencedNameSet :: IORef (S.Set DD.DefiniteDescription),
     fileDefArityRef :: IORef (Map.HashMap DD.DefiniteDescription Int),
@@ -295,15 +295,15 @@ lowerComp h term k =
             =<< lowerValues h (zip argVars ds)
             =<< cast h castFuncVar func LT.Pointer
             =<< return (LC.Let resultVar (LC.Call isPure codType castFunc args) rest)
-    C.SigmaElim shouldDeallocate offset slotCount xs v e -> do
+    C.SigmaElim shouldDeallocate slotIndex layout xs v e -> do
       (sigmaVar, sigma) <- liftIO $ newValueLocal h "sigma"
       (elemVars, elems) <- mapAndUnzipM (const $ liftIO $ newValueLocal h "elem") xs
-      let baseType = LT.Array slotCount LT.slotLowType
+      let slots = drop slotIndex $ CL.cellSlots layout
       body <- lowerComp h e k
-      afterRead <- liftIO $ freeIfNecessary h shouldDeallocate sigma slotCount body
+      afterRead <- liftIO $ freeIfNecessary h shouldDeallocate sigma (CL.cellByteSize layout) body
       lowerValueLetCast h sigmaVar v LT.Pointer
-        =<< return . getElemPtrListFrom offset sigma elemVars baseType
-        =<< loadElements h sigma (zip xs (map (,LT.slotLowType) elems))
+        =<< return . fieldPointers (zip elemVars (map fst slots)) sigma
+        =<< loadElements h sigma (zip xs (zip elems (map (widthLowType . snd) slots)))
         =<< return afterRead
     C.UpIntro d -> do
       (resultVar, resultValue) <- liftIO $ newValueLocal h "result"
@@ -412,15 +412,15 @@ lowerCompPrimitive h codeOp k =
   case codeOp of
     C.PrimOp op vs ->
       lowerCompPrimOp h op vs k
-    C.ShiftPointer v size index -> do
+    C.ShiftPointer v offset -> do
       (resultVar, resultValue) <- liftIO $ newValueLocal h "result"
       (shiftedVar, shiftedValue) <- liftIO $ newValueLocal h "shifted"
-      (ptrVar, ptr) <- liftIO $ newValueLocal h "func"
-      let aggType = AggTypeArray (fromInteger size) LT.slotLowType
-      let indexList' = [(LC.Int 0, LT.PrimNum $ PT.Int IntSize32), (LC.Int index, LT.PrimNum $ PT.Int IntSize32)]
+      (ptrVar, ptr) <- liftIO $ newValueLocal h "pointer"
+      let byteType = LT.PrimNum $ PT.Int IntSize8
+      let indexList' = [(LC.Int offset, LT.PrimNum $ PT.Int IntSize32)]
       rest <- sendResult k LT.slotLowType resultValue
       lowerValueLetCast h ptrVar v LT.Pointer
-        =<< return . LC.Let shiftedVar (LC.GetElementPtr (ptr, toLowType aggType) indexList')
+        =<< return . LC.Let shiftedVar (LC.GetElementPtr (ptr, byteType) indexList')
         =<< uncast h resultVar shiftedValue LT.Pointer rest
     C.Calloc num size -> do
       (resultVar, resultValue) <- liftIO $ newValueLocal h "result"
@@ -655,33 +655,22 @@ widenToSlot var v srcPrim bitSize cont =
     then return $ LC.Let var (moveOf LT.slotLowType v) cont
     else return $ LC.Let var (LC.PrimOp (PrimConvOp ConvOp.Zext srcPrim slotPrimType) [v]) cont
 
-allocateBasePointer :: Handle -> Ident -> AggType -> LC.Comp -> App LC.Comp
-allocateBasePointer h resultVar aggType cont = do
-  let lt = toLowType aggType
-  case lt of
-    LT.Array 0 _ ->
-      return $ LC.Let resultVar (LC.nop LC.Null) cont
-    LT.Struct [] ->
-      return $ LC.Let resultVar (LC.nop LC.Null) cont
-    _ -> do
+allocateCell :: Handle -> Ident -> Int -> LC.Comp -> App LC.Comp
+allocateCell h resultVar byteSize cont =
+  if byteSize == 0
+    then return $ LC.Let resultVar (LC.nop LC.Null) cont
+    else do
       allocID <- liftIO $ Gensym.newCount (gensymHandle h)
-      let knownByteCount = aggTypeByteSize h aggType
-      return $ LC.Let resultVar (LC.Alloc (Left knownByteCount) allocID) cont
+      return $ LC.Let resultVar (LC.Alloc (Left (toInteger byteSize)) allocID) cont
 
-createAggData ::
-  Handle ->
-  Ident ->
-  AggType -> -- the type of the base pointer
-  [(C.Value, LT.LowType)] ->
-  LC.Comp ->
-  App LC.Comp
-createAggData h resultVar aggType dts cont = do
-  (xs, vs) <- mapAndUnzipM (const $ liftIO $ newValueLocal h "item") dts
-  let baseType = toLowType aggType
+createCell :: Handle -> Ident -> CL.CellLayout -> [C.Value] -> LC.Comp -> App LC.Comp
+createCell h resultVar layout ds cont = do
+  (xs, vs) <- mapAndUnzipM (const $ liftIO $ newValueLocal h "item") ds
   (cellVar, cellValue) <- liftIO $ newValueLocal h "cell"
-  allocateBasePointer h cellVar aggType
-    =<< return . getElemPtrList cellValue xs baseType
-    =<< storeElements h cellValue (zip vs dts)
+  let slots = CL.cellSlots layout
+  allocateCell h cellVar (CL.cellByteSize layout)
+    =<< return . fieldPointers (zip xs (map fst slots)) cellValue
+    =<< storeElements h cellValue (zip vs (zip ds (map (widthLowType . snd) slots)))
     =<< uncast h resultVar cellValue LT.Pointer cont
 
 storeElements ::
@@ -740,12 +729,11 @@ lowerValue h resultVar v cont =
     C.VarStaticBytes bytes -> do
       name <- liftIO $ registerStaticBytes h bytes
       uncast h resultVar (LC.VarTextName name) LT.Pointer cont
-    C.StaticSigmaIntro name size ds -> do
-      lowerStaticSigma h name size ds
+    C.StaticSigmaIntro name layout ds -> do
+      lowerStaticSigma h name layout ds
       uncast h resultVar (LC.VarTextName name) LT.Pointer cont
-    C.SigmaIntro size ds -> do
-      let arrayType = AggTypeArray size LT.slotLowType
-      createAggData h resultVar arrayType (map (,LT.slotLowType) ds) cont
+    C.SigmaIntro layout ds ->
+      createCell h resultVar layout ds cont
     C.Int size l -> do
       uncast h resultVar (LC.Int l) (LT.PrimNum $ PT.Int size) cont
     C.Float size f -> do
@@ -776,17 +764,13 @@ lowerValueLetCast h resultVar v lowType cont = do
     =<< cast h resultVar tmpValue lowType cont
 
 freeIfNecessary :: Handle -> Bool -> LC.Value -> Int -> LC.Comp -> IO LC.Comp
-freeIfNecessary h shouldDeallocate pointer slotCount cont =
+freeIfNecessary h shouldDeallocate pointer byteCount cont =
   if shouldDeallocate
     then do
       freeID <- Gensym.newCount (gensymHandle h)
-      return $ LC.Cont (LC.Free pointer (Just (slotByteCount slotCount)) freeID) cont
+      return $ LC.Cont (LC.Free pointer (Just byteCount) freeID) cont
     else
       return cont
-
-slotByteCount :: Int -> Int
-slotByteCount slotCount =
-  fromInteger $ slotCountToByteSize $ toInteger slotCount
 
 -- returns Nothing iff the branch list is empty
 newValueLocal :: Handle -> T.Text -> IO (Ident, LC.Value)
@@ -819,9 +803,9 @@ insertStaticText :: Handle -> T.Text -> Builder -> Int -> IO ()
 insertStaticText h name text len =
   modifyIORef' (staticTextList h) $ (:) (name, (text, len))
 
-insertStaticData :: Handle -> T.Text -> [LC.StaticData] -> IO ()
-insertStaticData h name slots =
-  modifyIORef' (staticDataMap h) $ Map.insert name slots
+insertStaticData :: Handle -> T.Text -> [LC.StaticMember] -> IO ()
+insertStaticData h name members =
+  modifyIORef' (staticDataMap h) $ Map.insert name members
 
 hasStaticData :: Handle -> T.Text -> IO Bool
 hasStaticData h name = do
@@ -835,21 +819,40 @@ registerStaticBytes h bytes = do
   insertStaticText h name encodedBytes (BS.length bytes)
   return name
 
-lowerStaticSigma :: Handle -> T.Text -> Int -> [C.Value] -> App ()
-lowerStaticSigma h name size ds = do
+lowerStaticSigma :: Handle -> T.Text -> CL.CellLayout -> [C.Value] -> App ()
+lowerStaticSigma h name layout ds = do
   alreadyEmitted <- liftIO $ hasStaticData h name
   unless alreadyEmitted $ do
     liftIO $ insertStaticData h name []
-    slots <- mapM (lowerStaticSlot h) ds
-    liftIO $ insertStaticData h name $ slots ++ replicate (size - length slots) LC.StaticNull
+    members <- lowerStaticCell h layout ds
+    liftIO $ insertStaticData h name members
 
-lowerStaticSlot :: Handle -> C.Value -> App LC.StaticData
-lowerStaticSlot h v =
+lowerStaticCell :: Handle -> CL.CellLayout -> [C.Value] -> App [LC.StaticMember]
+lowerStaticCell h layout ds = do
+  values <- mapM (lowerStaticValue h) ds
+  return $ fillStaticGaps (baseSize h) 0 (CL.cellByteSize layout) (zip (CL.cellSlots layout) values)
+
+fillStaticGaps :: DS.DataSize -> Int -> Int -> [((Int, CL.FieldWidth), LC.StaticData)] -> [LC.StaticMember]
+fillStaticGaps dataSize cursor byteSize members =
+  case members of
+    [] ->
+      zeroBytes (byteSize - cursor)
+    ((offset, width), value) : rest ->
+      zeroBytes (offset - cursor)
+        ++ LC.StaticValue width value
+        : fillStaticGaps dataSize (offset + CL.fieldWidthByteSize dataSize width) byteSize rest
+
+zeroBytes :: Int -> [LC.StaticMember]
+zeroBytes byteSize =
+  [LC.StaticZeroBytes byteSize | byteSize > 0]
+
+lowerStaticValue :: Handle -> C.Value -> App LC.StaticData
+lowerStaticValue h v =
   case v of
-    C.StaticSigmaIntro name size ds -> do
-      lowerStaticSigma h name size ds
+    C.StaticSigmaIntro name layout ds -> do
+      lowerStaticSigma h name layout ds
       return $ LC.StaticSymbol name
-    C.SigmaIntro 0 [] ->
+    C.SigmaIntro _ [] ->
       return LC.StaticNull
     C.VarStaticBytes bytes -> do
       LC.StaticSymbol <$> liftIO (registerStaticBytes h bytes)
@@ -883,34 +886,25 @@ getElemPtr var value valueType indexList cont = do
   let indexList' = map (\i -> (LC.Int i, LT.PrimNum $ PT.Int IntSize32)) indexList
   LC.Let var (LC.GetElementPtr (value, valueType) indexList') cont
 
-getElemPtrList :: LC.Value -> [Ident] -> LT.LowType -> LC.Comp -> LC.Comp
-getElemPtrList basePointer vars baseType cont = do
-  getElemPtrListFrom 0 basePointer vars baseType cont
+fieldPointers :: [(Ident, Int)] -> LC.Value -> LC.Comp -> LC.Comp
+fieldPointers offsetVars basePointer cont = do
+  let byteType = LT.PrimNum $ PT.Int IntSize8
+  let f (var, offset) = getElemPtr var basePointer byteType [toInteger offset]
+  foldr f cont offsetVars
 
-getElemPtrListFrom :: Int -> LC.Value -> [Ident] -> LT.LowType -> LC.Comp -> LC.Comp
-getElemPtrListFrom offset basePointer vars baseType cont = do
-  let f (var, i) = getElemPtr var basePointer baseType [0, toInteger $ offset + i]
-  foldr f cont (zip vars [0 :: Int ..])
-
-data AggType
-  = AggTypeArray Int LT.LowType
-  | AggTypeStruct [LT.LowType]
-
-toLowType :: AggType -> LT.LowType
-toLowType aggType =
-  case aggType of
-    AggTypeArray i t ->
-      LT.Array i t
-    AggTypeStruct ts ->
-      LT.Struct ts
-
-aggTypeByteSize :: Handle -> AggType -> Integer
-aggTypeByteSize h aggType =
-  lowTypeByteSize h (toLowType aggType)
-
-lowTypeByteSize :: Handle -> LT.LowType -> Integer
-lowTypeByteSize h =
-  lowTypeToByteSize (baseSize h)
+widthLowType :: CL.FieldWidth -> LT.LowType
+widthLowType width =
+  case width of
+    CL.WidthPointer ->
+      LT.Pointer
+    CL.Width8 ->
+      LT.PrimNum $ PT.Int IntSize8
+    CL.Width16 ->
+      LT.PrimNum $ PT.Int IntSize16
+    CL.Width32 ->
+      LT.PrimNum $ PT.Int IntSize32
+    CL.Width64 ->
+      LT.PrimNum $ PT.Int IntSize64
 
 memcpyExternal :: C.Value -> C.Value -> C.Value -> C.Primitive
 memcpyExternal dest src byteCount = do

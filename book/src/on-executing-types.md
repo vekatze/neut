@@ -26,7 +26,7 @@ New(10, 20)
 
 // ↓ (compile)
 
-let ptr = malloc({2-words});
+let ptr = malloc({size-of-item});
 store(ptr[0], 10); // ptr[0] := 10
 store(ptr[1], 20); // ptr[1] := 20
 ptr
@@ -46,7 +46,7 @@ The value `v` can be copied into newly allocated owned storage as follows:
 
 ```neut
 // copy `v`, keeping the original `v` intact
-let ptr = malloc({2-words});
+let ptr = malloc({size-of-item});
 store(ptr[0], v[0]); // ptr[0] := v[0]
 store(ptr[1], v[1]); // ptr[1] := v[1]
 ptr
@@ -67,7 +67,7 @@ define exp-item(selector, v, extra) {
     // copy
     let ptr =
       if extra == null {
-        malloc({2-words})
+        malloc({size-of-item})
       } else {
         extra
       };
@@ -76,7 +76,7 @@ define exp-item(selector, v, extra) {
     ptr
   } else {
     // size
-    {2-words}
+    {size-of-item}
   }
 }
 ```
@@ -201,10 +201,10 @@ data list(a) {
 }
 ```
 
-For `list(a)`, every value occupies 4 words: a discriminant, one word for `a`, and two words for the largest payload (`Cons(a, list(a))`). For example, `Nil` and `Cons(10, xs)` are represented as follows:
+For `list(a)`, every value occupies the same number of bytes: a discriminant, a type descriptor for `a`, and the two fields of the largest payload (`Cons(a, list(a))`). For example, `Nil` and `Cons(10, xs)` are represented as follows:
 
 ```neut
-(0, a, _, _)   // Nil: `0` is the discriminant; the trailing words are unused
+(0, a, _, _)   // Nil: `0` is the discriminant; the trailing bytes are unused
 (1, a, 10, xs) // Cons(10, xs): `1` is the discriminant
 ```
 
@@ -234,7 +234,7 @@ define exp-list(selector, v, extra) {
     let d = get-discriminant(v);
     let ptr =
       if extra == null {
-        malloc({4-words})
+        malloc({size-of-list})
       } else {
         extra
       };
@@ -257,12 +257,12 @@ define exp-list(selector, v, extra) {
       ptr
     }
   } else {
-    {4-words}
+    {size-of-list}
   }
 }
 ```
 
-The point is that the type information in a value is loaded at runtime and used to discard/copy values. The same resource exponential also reports the fixed size used by the type. Even when a constructor carries fewer fields, the resource exponential still works on the fixed-size layout, leaving the unused slots untouched.
+The point is that the type information in a value is loaded at runtime and used to discard/copy values. The same resource exponential also reports the fixed size used by the type. Even when a constructor carries fewer fields, the resource exponential still works on the fixed-size layout, leaving the unused bytes untouched.
 
 ## Advanced: Function Types
 
@@ -310,7 +310,7 @@ In the example above, this condition holds because:
 
 ### Closure Conversion
 
-We'll use this closed chain to compile a lambda. The internal representation of a closure for the lambda will be a 3-word tuple like the following:
+We'll use this closed chain to compile a lambda. The internal representation of a closure for the lambda will be a tuple of three pointers like the following:
 
 ```text
 (ENVIRONMENT-TYPE, (a, x, y), LABEL-TO-FUNCTION-DEFINITION)
@@ -334,7 +334,7 @@ let label    = cls[2]; // get the label to the function
 let env-clone = env-type(1, env, null); // copy the environment using its type
 
 // allocate new memory region for our new closure
-let new-ptr = malloc(mul-int(3, word-size));
+let new-ptr = malloc(mul-int(3, pointer-size));
 
 // store cloned values
 store(new-ptr[0], env-type);  // remember that a type is an immediate
@@ -381,7 +381,7 @@ define base::#::cls(action-selector, cls, extra) {
 
     let new-ptr =
       if extra == null {
-        malloc(mul-int(3, word-size))
+        malloc(mul-int(3, pointer-size))
       } else {
         extra
       };
@@ -392,7 +392,7 @@ define base::#::cls(action-selector, cls, extra) {
 
     new-ptr
   } else {
-    mul-int(3, word-size)
+    mul-int(3, pointer-size)
   }
 }
 ```

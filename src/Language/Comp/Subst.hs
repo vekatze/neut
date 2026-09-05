@@ -63,12 +63,12 @@ substComp h sub term =
       let v' = substValue sub v
       let ds' = map (substValue sub) ds
       return $ C.PiElimDownElim forceInline v' ds'
-    C.SigmaElim shouldDeallocate offset size xs v e -> do
+    C.SigmaElim shouldDeallocate slotIndex layout xs v e -> do
       let v' = substValue sub v
       xs' <- mapM (Gensym.newIdentFromIdent (gensymHandle h)) xs
       let sub' = IntMap.union (IntMap.fromList (zip (map Ident.toInt xs) (map C.VarLocal xs'))) sub
       e' <- substComp h sub' e
-      return $ C.SigmaElim shouldDeallocate offset size xs' v' e'
+      return $ C.SigmaElim shouldDeallocate slotIndex layout xs' v' e'
     C.UpIntro v -> do
       let v' = substValue sub v
       return $ C.UpIntro v'
@@ -138,8 +138,8 @@ substPrimitive sub c =
     C.PrimOp op vs -> do
       let vs' = map (substValue sub) vs
       C.PrimOp op vs'
-    C.ShiftPointer v size index ->
-      C.ShiftPointer (substValue sub v) size index
+    C.ShiftPointer v offset ->
+      C.ShiftPointer (substValue sub v) offset
     C.Calloc num size ->
       C.Calloc (substValue sub num) (substValue sub size)
     C.Alloc size ->

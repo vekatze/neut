@@ -4,7 +4,6 @@ module Language.Common.SlotSize
     slotIntSize,
     slotFloatSize,
     slotPrimType,
-    slotCountToByteSize,
   )
 where
 
@@ -30,7 +29,3 @@ slotFloatSize =
 slotPrimType :: PT.PrimType
 slotPrimType =
   PT.Int slotIntSize
-
-slotCountToByteSize :: Integer -> Integer
-slotCountToByteSize slotCount =
-  slotCount * toInteger slotByteSize

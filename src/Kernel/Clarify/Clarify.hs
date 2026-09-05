@@ -52,6 +52,9 @@ import Language.Common.Binder
 import Language.Common.CallConv qualified as CC
 import Language.Common.CreateSymbol qualified as Gensym
 import Language.Common.DataInfo qualified as DI
+import Kernel.Common.Handle.Global.Platform qualified as Platform
+import Kernel.Common.StorageWidth qualified as StorageWidth
+import Language.Common.DataSize qualified as DS
 import Language.Common.DecisionTree qualified as DT
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.Discriminant qualified as D
@@ -72,6 +75,7 @@ import Language.Common.PrimType qualified as PT
 import Language.Common.Rune qualified as RU
 import Language.Common.StmtKind qualified as SK
 import Language.Common.VarKind qualified as VK
+import Language.Common.CellLayout qualified as CL
 import Language.Comp.Comp qualified as C
 import Language.Comp.CreateVar qualified as Gensym
 import Language.Comp.EnumCase qualified as EC
@@ -105,6 +109,7 @@ data Handle = Handle
     typeHandle :: Type.Handle,
     typeDefHandle :: TypeDef.Handle,
     importedTypeDefCacheHandle :: ImportedTypeDefCache.Handle,
+    dataSize :: DS.DataSize,
     closureNameSupplyRef :: IORef (Map.HashMap DD.DefiniteDescription Int),
     traceConfig :: Trace.Config,
     loggerHandle :: Logger.Handle
@@ -131,12 +136,13 @@ new :: Gensym.Handle -> Global.Handle -> Trace.Config -> IO Handle
 new gensymHandle (Global.Handle {..}) traceConfig = do
   modulePathMap <- ModulePath.get modulePathHandle
   auxEnvHandle <- AuxEnv.new
+  let dataSize = Platform.getDataSize platformHandle
   let substHandle = Subst.new gensymHandle
   let compSubstHandle = CompSubst.new gensymHandle
   let reduceHandle = Reduce.new compSubstHandle gensymHandle mempty
   let utilityHandle = Utility.new gensymHandle compSubstHandle auxEnvHandle
   let linearizeHandle = Linearize.new gensymHandle utilityHandle
-  let sigmaHandle = Sigma.new gensymHandle linearizeHandle utilityHandle
+  let sigmaHandle = Sigma.new gensymHandle linearizeHandle utilityHandle dataSize
   closureNameSupplyRef <- newIORef Map.empty
   return $ Handle {..}
 
@@ -147,7 +153,7 @@ newReduceOnlyHandle h = do
   let compSubstHandle = CompSubst.new gensymHandle'
   let utilityHandle' = Utility.new gensymHandle' compSubstHandle auxEnvHandle'
   let linearizeHandle' = Linearize.new gensymHandle' utilityHandle'
-  let sigmaHandle' = Sigma.new gensymHandle' linearizeHandle' utilityHandle'
+  let sigmaHandle' = Sigma.new gensymHandle' linearizeHandle' utilityHandle' (dataSize h)
   let reduceHandle' = Reduce.new compSubstHandle gensymHandle' mempty
   return $
     Handle
@@ -165,6 +171,7 @@ newReduceOnlyHandle h = do
         typeHandle = typeHandle h,
         typeDefHandle = typeDefHandle h,
         importedTypeDefCacheHandle = importedTypeDefCacheHandle h,
+        dataSize = dataSize h,
         closureNameSupplyRef = closureNameSupplyRef h,
         traceConfig = traceConfig h,
         loggerHandle = loggerHandle h
@@ -359,13 +366,13 @@ data MainHandle = MainHandle
     mainGensymHandle :: Gensym.Handle
   }
 
-newMain :: Gensym.Handle -> IO MainHandle
-newMain gensymHandle = do
+newMain :: Gensym.Handle -> DS.DataSize -> IO MainHandle
+newMain gensymHandle dataSize = do
   mainAuxEnvHandle <- AuxEnv.new
   let compSubstHandle = CompSubst.new gensymHandle
   let utilityHandle = Utility.new gensymHandle compSubstHandle mainAuxEnvHandle
   let linearizeHandle = Linearize.new gensymHandle utilityHandle
-  let mainSigmaHandle = Sigma.new gensymHandle linearizeHandle utilityHandle
+  let mainSigmaHandle = Sigma.new gensymHandle linearizeHandle utilityHandle dataSize
   let mainGensymHandle = gensymHandle
   return $ MainHandle {..}
 
@@ -592,18 +599,20 @@ registerDefaultFunctions h context name fvs impArgs expArgs defaultArgs =
       let fvs' = take (length fvs) fvsAndFixedArgs
       let fixedArgs = drop (length fvs) fvsAndFixedArgs
       let context' = extendContext (fvs ++ impArgs ++ expArgs) context
-      registerDefaultFunctions' h context' name fvs' fixedArgs 0 defaultArgs
+      envLayout <- closureEnvLayout h fvs
+      registerDefaultFunctions' h context' name envLayout fvs' fixedArgs 0 defaultArgs
 
 registerDefaultFunctions' ::
   Handle ->
   Context ->
   DD.DefiniteDescription ->
+  CL.CellLayout ->
   [(Ident, C.Comp)] ->
   [(Ident, C.Comp)] ->
   Int ->
   [(BinderF TM.Type, TM.Term)] ->
   App [C.Value]
-registerDefaultFunctions' h context name fvs args index defaultArgs =
+registerDefaultFunctions' h context name envLayout fvs args index defaultArgs =
   case defaultArgs of
     [] ->
       return []
@@ -614,11 +623,11 @@ registerDefaultFunctions' h context name fvs args index defaultArgs =
       isAlreadyRegistered <- liftIO $ AuxEnv.checkIfAlreadyRegistered (auxEnvHandle h) labelName
       unless isAlreadyRegistered $ do
         body <- clarifyTerm h labelContext value
-        liftIO $ registerClosure h labelName O.Clear False codType' (map (const False) args) args fvs body
+        liftIO $ registerClosure h labelName O.Clear False codType' (map (const False) args) args envLayout fvs body
       let argNum = AN.fromInt (length args + 2)
       let labelValue = C.VarGlobal labelName argNum (FCT.Cod BLT.Pointer)
       let context' = extendContext [binder] context
-      restValues <- registerDefaultFunctions' h context' name fvs (args ++ [(x, codType')]) (index + 1) rest
+      restValues <- registerDefaultFunctions' h context' name envLayout fvs (args ++ [(x, codType')]) (index + 1) rest
       return (labelValue : restValues)
 
 clarifyBinderBody ::
@@ -667,7 +676,8 @@ clarifyTerm h context term =
       let (globalArgNum, globalCodType) = getGlobalRefInfo AttrVG.Attr {..}
       return $
         C.UpIntro $
-          C.sigmaIntro
+          C.SigmaIntro
+            (DI.closureLayout (dataSize h))
             [ envType,
               C.null,
               C.VarGlobal x globalArgNum globalCodType
@@ -702,19 +712,16 @@ clarifyTerm h context term =
           (zs1, es1, xs1) <- unzip3 <$> mapM (clarifyTypePlus h context) dataArgs
           (zs2, es2, xs2) <- unzip3 <$> mapM (clarifyPlus h context) consArgs
           dataInfo <- lookupDataEntry h m dataName
-          let totalSlotCount = DI.dataTotalSlotCount (DI.dataArgs dataInfo) (DI.consInfoList dataInfo)
           consInfo <- getConsInfoByDiscriminant h m discriminant (DI.consInfoList dataInfo)
+          let shape = DI.cellShape (dataSize h) dataInfo
+          let layout = DI.consLayout shape consInfo
           let fieldStorageList = DI.consArgLayouts consInfo
           when (length fieldStorageList /= length xs2) $
             raiseCritical m "Found a constructor layout arity mismatch"
-          let header =
-                if DI.headerSlotCount (DI.consInfoList dataInfo) == 0
-                  then []
-                  else [C.Int slotIntSize (D.reify discriminant)]
-          packedBody <- liftIO $ Sigma.flattenFields (sigmaHandle h) (zip fieldStorageList xs2) $ \payloadSlots ->
-            C.UpIntro $
-              C.SigmaIntro totalSlotCount $
-                header ++ xs1 ++ payloadSlots
+          let headerEntries = discriminantEntries shape discriminant
+          let dataArgEntries = map (DI.dataArgStorage,) xs1
+          let entries = headerEntries ++ dataArgEntries ++ zip fieldStorageList xs2
+          packedBody <- liftIO $ Sigma.introCell (sigmaHandle h) layout entries
           return $
             Utility.bindLet (zip zs1 es1 ++ zip zs2 es2) packedBody
     m :< TM.DataElim _ isNoetic xets tree -> do
@@ -779,7 +786,8 @@ clarifyType h context ty =
       let (globalArgNum, globalCodType) = getGlobalRefInfo AttrVG.Attr {..}
       return $
         C.UpIntro $
-          C.sigmaIntro
+          C.SigmaIntro
+            (DI.closureLayout (dataSize h))
             [ envType,
               C.null,
               C.VarGlobal x globalArgNum globalCodType
@@ -801,7 +809,7 @@ clarifyType h context ty =
         _ -> do
           let argNum = AN.fromInt $ length dataArgs + 2
           envType <- liftIO $ envTypeForGlobal h name
-          let cls = C.UpIntro $ C.sigmaIntro [envType, C.null, C.VarGlobal name argNum (FCT.Cod BLT.Pointer)]
+          let cls = C.UpIntro $ C.SigmaIntro (DI.closureLayout (dataSize h)) [envType, C.null, C.VarGlobal name argNum (FCT.Cod BLT.Pointer)]
           dataArgs' <- mapM (clarifyTypePlus h context) dataArgs
           liftIO $ callClosure h CC.normal cls dataArgs' [] []
     _ :< TM.Box t -> do
@@ -885,18 +893,14 @@ clarifyStaticValue h context term =
           dataArgSlots <- mapM (staticTypeRep h) dataArgs
           consArgSlots <- mapM (clarifyStaticValue h context) consArgs
           dataInfo <- lookupDataEntry h m dataName
-          let totalSlotCount = DI.dataTotalSlotCount (DI.dataArgs dataInfo) (DI.consInfoList dataInfo)
           consInfo <- getConsInfoByDiscriminant h m discriminant (DI.consInfoList dataInfo)
           let fieldStorageList = DI.consArgLayouts consInfo
           when (length fieldStorageList /= length consArgSlots) $
             raiseCritical m "Found a constructor layout arity mismatch"
-          payloadSlots <- concat <$> mapM (uncurry $ flattenStaticField m) (zip fieldStorageList consArgSlots)
-          let header =
-                if DI.headerSlotCount (DI.consInfoList dataInfo) == 0
-                  then []
-                  else [C.Int slotIntSize (D.reify discriminant)]
-          label <- liftIO $ newStaticDataLabel h
-          return $ C.StaticSigmaIntro label totalSlotCount $ header ++ dataArgSlots ++ payloadSlots
+          let shape = DI.cellShape (dataSize h) dataInfo
+          let headerEntries = discriminantEntries shape discriminant
+          let dataArgEntries = map (DI.dataArgStorage,) dataArgSlots
+          staticCell h m (DI.shapeByteSize shape) $ headerEntries ++ dataArgEntries ++ zip fieldStorageList consArgSlots
     m :< TM.PiIntro {} ->
       clarifyStaticClosure h context m term
     m :< TM.VarGlobal {} ->
@@ -940,10 +944,10 @@ clarifyStaticClosure :: Handle -> Context -> Hint -> TM.Term -> App C.Value
 clarifyStaticClosure h context m term = do
   closure <- clarifyTerm h context term
   case closure of
-    C.UpIntro (C.SigmaIntro size slots) -> do
+    C.UpIntro (C.SigmaIntro layout slots) -> do
       slots' <- mapM (staticSlotOf m) slots
       label <- liftIO $ newStaticDataLabel h
-      return $ C.StaticSigmaIntro label size slots'
+      return $ C.StaticSigmaIntro label layout slots'
     _ ->
       raiseNonStaticValue m
 
@@ -960,23 +964,42 @@ staticSlotOf m v =
       return v
     C.Float {} ->
       return v
-    C.SigmaIntro 0 [] ->
+    C.SigmaIntro _ [] ->
       return v
     _ ->
       raiseNonStaticValue m
 
-flattenStaticField :: Hint -> DI.FieldLayout -> C.Value -> App [C.Value]
-flattenStaticField m field value =
-  case field of
-    DI.LayoutDirect ->
-      return [value]
-    DI.LayoutFlattened slotCount ->
+staticCell :: Handle -> Hint -> Int -> [(CL.FieldStorage, C.Value)] -> App C.Value
+staticCell h m byteSize entries = do
+  let offsets = CL.storageOffsets (dataSize h) 0 (map fst entries)
+  (slotsList, valuesList) <- unzip <$> zipWithM (staticEntry m) offsets entries
+  label <- liftIO $ newStaticDataLabel h
+  let layout = CL.CellLayout {CL.cellSlots = concat slotsList, CL.cellByteSize = byteSize}
+  return $ C.StaticSigmaIntro label layout $ concat valuesList
+
+staticEntry :: Hint -> Int -> (CL.FieldStorage, C.Value) -> App ([(Int, CL.FieldWidth)], [C.Value])
+staticEntry m offset (storage, value) =
+  case storage of
+    CL.StoredDirect _ ->
+      return (CL.storageSlots offset storage, [value])
+    CL.StoredFlat chunks ->
       case value of
-        C.StaticSigmaIntro _ slotCount' slots
-          | slotCount == slotCount' ->
-              return $ slots ++ replicate (slotCount - length slots) C.null
+        C.StaticSigmaIntro _ inner innerValues
+          | CL.cellByteSize inner == sum chunks ->
+              return (CL.inlineSlots offset inner, innerValues)
+        C.SigmaIntro _ []
+          | null chunks ->
+              return ([], [])
         _ ->
           raiseCritical m "Found an inlined field of an unexpected static layout"
+
+discriminantEntries :: DI.CellShape -> D.Discriminant -> [(CL.FieldStorage, C.Value)]
+discriminantEntries shape discriminant =
+  case DI.shapeHeader shape of
+    Nothing ->
+      []
+    Just width ->
+      [(CL.StoredDirect width, C.Int slotIntSize (D.reify discriminant))]
 
 staticTypeRep :: Handle -> TM.Type -> App C.Value
 staticTypeRep h ty =
@@ -1046,35 +1069,33 @@ clarifyDataTypeDef h name dataArgs consInfoList = do
         _ ->
           raiseCritical' $ "Found a broken unary data metadata for `" <> DD.reify name <> "`"
     _ -> do
-      let totalSlotCount = DI.dataTotalSlotCount dataArgs consInfoList
-      let headerSize = DI.headerSlotCount consInfoList
-      dataInfo' <- mapM (clarifyDataClause h context headerSize totalSlotCount dataArgs) consInfoList
-      liftIO (Sigma.returnSigmaDataS4 (sigmaHandle h) name O.Opaque totalSlotCount dataInfo')
+      let shape = DI.cellShapeOf (dataSize h) dataArgs consInfoList
+      dataInfo' <- mapM (clarifyDataClause h context shape dataArgs) consInfoList
+      liftIO (Sigma.returnSigmaDataS4 (sigmaHandle h) name O.Opaque shape dataInfo')
         >>= clarifyStmtDefineBody' h name xts
 
-getDataSlotCountFromType :: Handle -> TM.Type -> App Int
-getDataSlotCountFromType h t =
+getDataCellByteSizeFromType :: Handle -> TM.Type -> App Int
+getDataCellByteSizeFromType h t =
   case t of
     m :< TM.Data _ dataName _ -> do
       dataInfo <- lookupDataEntry h m dataName
-      return $ DI.dataTotalSlotCount (DI.dataArgs dataInfo) (DI.consInfoList dataInfo)
+      return $ DI.shapeByteSize $ DI.cellShape (dataSize h) dataInfo
     _ :< TM.TyApp t' _ ->
-      getDataSlotCountFromType h t'
+      getDataCellByteSizeFromType h t'
     m :< TM.TVarGlobal _ dataName -> do
       dataInfo <- lookupDataEntry h m dataName
-      return $ DI.dataTotalSlotCount (DI.dataArgs dataInfo) (DI.consInfoList dataInfo)
+      return $ DI.shapeByteSize $ DI.cellShape (dataSize h) dataInfo
     m :< _ ->
-      raiseCritical m "Clarify.getDataSlotCountFromType"
+      raiseCritical m "Clarify.getDataCellByteSizeFromType"
 
 clarifyDataClause ::
   Handle ->
   Context ->
-  Int ->
-  Int ->
+  DI.CellShape ->
   [BinderF TM.Type] ->
   DI.ConsInfo (BinderF TM.Type) ->
   App Sigma.DataConstructorInfo
-clarifyDataClause h context headerSize totalSlotCount dataArgsVal consInfo = do
+clarifyDataClause h context shape dataArgsVal consInfo = do
   dataArgs' <- dropFst <$> clarifyBinder h context dataArgsVal
   let context' = extendContext dataArgsVal context
   fieldStorages <- fieldStoragesOfConsInfo h context' consInfo
@@ -1084,8 +1105,7 @@ clarifyDataClause h context headerSize totalSlotCount dataArgsVal consInfo = do
       { Sigma.discriminant = DI.discriminant consInfo,
         Sigma.dataArgs = dataArgs',
         Sigma.consArgs = consArgs',
-        Sigma.headerSize = headerSize,
-        Sigma.totalSlotCount = totalSlotCount
+        Sigma.cellLayout = DI.consLayout shape consInfo
       }
 
 clarifyDecisionTree ::
@@ -1126,13 +1146,15 @@ clarifyDecisionTree h context isNoetic dataArgsMap tree =
           return (getFirstClause fallbackClause'' clauseList'', newChain)
         _ -> do
           (_, dataInfo) <- lookupDataEntryFromType h m cursorType
-          if DI.headerSlotCount (DI.consInfoList dataInfo) == 0
-            then return (getFirstClause fallbackClause'' clauseList'', newChain)
-            else do
+          let shape = DI.cellShape (dataSize h) dataInfo
+          case DI.shapeHeader shape of
+            Nothing ->
+              return (getFirstClause fallbackClause'' clauseList'', newChain)
+            Just _ -> do
               (disc, discVar) <- liftIO $ Gensym.createVar (gensymHandle h) "disc"
               enumElim <- liftIO $ Utility.getEnumElim (utilityHandle h) idents discVar fallbackClause'' (zip enumCaseList clauseList'')
               return
-                ( C.UpElim True disc (C.Primitive (C.Magic (LM.Load BLT.slot (C.VarLocal cursor)))) enumElim,
+                ( C.UpElim True disc (C.Primitive (C.Magic (LM.Load (DI.discriminantLoadType shape) (C.VarLocal cursor)))) enumElim,
                   newChain
                 )
 
@@ -1261,7 +1283,7 @@ clarifyCase h context isNoetic dataArgsMap cursor cursorType decisionCase = do
     DT.ConsCase (DT.ConsCaseRecord {..}) -> do
       let (_, dataTypes) = unzip dataArgs
       dataArgVars <- liftIO $ mapM (const $ Gensym.newIdentFromText (gensymHandle h) "dataArg") dataTypes
-      cursorSize <- fromInteger . slotCountToByteSize . toInteger <$> getDataSlotCountFromType h cursorType
+      cursorSize <- getDataCellByteSizeFromType h cursorType
       let dataArgsMap' = IntMap.insert (Ident.toInt cursor) (zip dataArgVars dataTypes, cursorSize) dataArgsMap
       let consArgs' = map (\(m, k, x, _) -> (m, k, x, m :< TM.Tau)) consArgs
       let prefixChain = TM.chainOfCaseWithoutCont (typeEnv context) decisionCase
@@ -1290,29 +1312,32 @@ clarifyCase h context isNoetic dataArgsMap cursor cursorType decisionCase = do
             raiseCritical mCons "Found a constructor layout arity mismatch"
           let fieldStorageList = DI.consArgLayouts layoutConsInfo
           let consArgIdents = map (\(_, _, x, _) -> x) consArgs
-          let totalSlots = cursorSize `div` slotByteSize
+          let shape = DI.cellShape (dataSize h) dataInfo
+          let layout = DI.consLayout shape layoutConsInfo
+          let fieldEntries = zip consArgIdents fieldStorageList
           headerVars <-
-            if DI.headerSlotCount (DI.consInfoList dataInfo) == 0
-              then return []
-              else do
+            case DI.shapeHeader shape of
+              Nothing ->
+                return []
+              Just _ -> do
                 discriminantVar <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "discriminant"
                 return [discriminantVar]
           if isNoetic
             then do
               let firstFieldStart = length headerVars + length dataArgVars
-              bodyInPlace <- liftIO $ Sigma.bindFieldsInPlace (sigmaHandle h) (C.VarLocal cursor) totalSlots firstFieldStart (zip consArgIdents fieldStorageList) body'
+              bindFields <- liftIO $ Sigma.bindFieldsInPlace (sigmaHandle h) (C.VarLocal cursor) layout firstFieldStart fieldEntries body'
               return
                 ( EC.Int (D.reify disc),
-                  C.SigmaElim False 0 totalSlots (headerVars ++ dataArgVars) (C.VarLocal cursor) bodyInPlace,
+                  C.SigmaElim False 0 layout (headerVars ++ dataArgVars) (C.VarLocal cursor) bindFields,
                   chain
                 )
             else do
-              fieldSlotList <- liftIO $ Sigma.makeFieldSlotVars (gensymHandle h) (zip consArgIdents fieldStorageList)
+              fieldSlotList <- liftIO $ Sigma.makeFieldSlotVars (gensymHandle h) fieldEntries
               let fieldSlotVars = concatMap Sigma.fieldSlotVars fieldSlotList
-              bodyWithFields <- liftIO $ Sigma.bindFieldValues (sigmaHandle h) fieldSlotList body'
+              let bodyWithFields = Sigma.bindFieldValues fieldSlotList body'
               return
                 ( EC.Int (D.reify disc),
-                  C.SigmaElim False 0 totalSlots (headerVars ++ dataArgVars ++ fieldSlotVars) (C.VarLocal cursor) bodyWithFields,
+                  C.SigmaElim False 0 layout (headerVars ++ dataArgVars ++ fieldSlotVars) (C.VarLocal cursor) bodyWithFields,
                   chain
                 )
 
@@ -1545,18 +1570,25 @@ returnClosure ::
 returnClosure h context lamID mName opacity isDestPassing codType fvs xts slots defaultValues e = do
   fvs'' <- dropFst <$> clarifyBinder h context fvs
   xts'' <- dropFst <$> clarifyBinder h context xts
+  envLayout <- closureEnvLayout h fvs
   let name = DD.getLambdaDD (currentFunction context) mName lamID
-  fvEnvSigma <- liftIO $ Sigma.closureEnvS4 (sigmaHandle h) name fvs'' defaultValues
-  let fvEnv = C.sigmaIntro (map (C.VarLocal . fst) fvs'')
+  fvEnvSigma <- liftIO $ Sigma.closureEnvS4 (sigmaHandle h) name envLayout fvs'' defaultValues
+  let fvEnv = C.SigmaIntro envLayout (map (C.VarLocal . fst) fvs'')
   let argNum = AN.fromInt $ length xts'' + if isDestPassing then 3 else 2
   isAlreadyRegistered <- liftIO $ AuxEnv.checkIfAlreadyRegistered (auxEnvHandle h) name
   unless isAlreadyRegistered $ do
     let codTypeContext = setCurrentFunction name $ extendContext (fvs ++ xts) context
     codType' <- clarifyType h codTypeContext codType
-    liftIO $ registerClosure h name opacity isDestPassing codType' slots xts'' fvs'' e
+    liftIO $ registerClosure h name opacity isDestPassing codType' slots xts'' envLayout fvs'' e
   return $
     C.UpIntro $
-      C.sigmaIntro [fvEnvSigma, fvEnv, C.VarGlobal name argNum (FCT.Cod BLT.Pointer)]
+      C.SigmaIntro (DI.closureLayout (dataSize h)) [fvEnvSigma, fvEnv, C.VarGlobal name argNum (FCT.Cod BLT.Pointer)]
+
+closureEnvLayout :: Handle -> [BinderF TM.Type] -> App CL.CellLayout
+closureEnvLayout h fvs = do
+  widths <- forM fvs $ \(m, _, _, t) -> do
+    StorageWidth.storageWidthOf (dataHandle h) (optDataHandle h) (substHandle h) m t
+  return $ CL.naturalCell (dataSize h) $ map CL.StoredDirect widths
 
 registerClosure ::
   Handle ->
@@ -1566,10 +1598,11 @@ registerClosure ::
   C.Comp ->
   [Bool] ->
   [(Ident, C.Comp)] ->
+  CL.CellLayout ->
   [(Ident, C.Comp)] ->
   C.Comp ->
   IO ()
-registerClosure h name opacity isDestPassing codType slots xts fvs e = do
+registerClosure h name opacity isDestPassing codType slots xts envLayout fvs e = do
   (envVarName, envVar) <- Gensym.createVar (gensymHandle h) "env"
   (switchVarName, switchVar) <- Gensym.createVar (gensymHandle h) "switch"
   let envEntries = fvs
@@ -1579,8 +1612,8 @@ registerClosure h name opacity isDestPassing codType slots xts fvs e = do
     if isDestPassing
       then toDestPassing h codType e
       else return (Nothing, e)
-  normalPrefix <- lambdaPrefixNormal h envEntries slotVarList envVar
-  noeticPrefix <- lambdaPrefixNoetic h envEntries slotVarList envVar
+  normalPrefix <- lambdaPrefixNormal h envLayout envEntries slotVarList envVar
+  noeticPrefix <- lambdaPrefixNoetic h envLayout envEntries slotVarList envVar
   let allocList =
         map (\slotName -> (slotName, C.Primitive (C.Magic (LM.Alloca BLT.slot (intTerm (1 :: Int)))))) slotNameList
   enumElim <-
@@ -1613,7 +1646,7 @@ callClosure h kind e impArgs expArgsWithPassings defaultArgsWithPassings = do
   callComp <- buildCall h kind lamVar args
   return $
     Utility.bindLet [(closureVarName, e)] $
-      C.sigmaElim (not $ CC.isNoetic kind) [envTypeVarName, envVarName, lamVarName] closureVar $
+      C.SigmaElim (not $ CC.isNoetic kind) 0 (DI.closureLayout (dataSize h)) [envTypeVarName, envVarName, lamVarName] closureVar $
         Utility.bindLet (zip (impNames ++ expNames ++ defNames) (impComps ++ expComps ++ defComps)) $
           foldr ($) callComp slotBindings
 
@@ -1733,27 +1766,29 @@ dropFst xyzs = do
 
 lambdaPrefixNormal ::
   Handle ->
+  CL.CellLayout ->
   [(Ident, C.Comp)] ->
   [C.Value] ->
   C.Value ->
   IO C.Comp
-lambdaPrefixNormal h fvs slotVarList envVar = do
+lambdaPrefixNormal h envLayout fvs slotVarList envVar = do
   body <- storeValuesInSlots h (map (C.VarLocal . fst) fvs) slotVarList
-  return $ C.sigmaElim True (map fst fvs) envVar body
+  return $ C.SigmaElim True 0 envLayout (map fst fvs) envVar body
 
 lambdaPrefixNoetic ::
   Handle ->
+  CL.CellLayout ->
   [(Ident, C.Comp)] ->
   [C.Value] ->
   C.Value ->
   IO C.Comp
-lambdaPrefixNoetic h fvs slotVarList envVar = do
+lambdaPrefixNoetic h envLayout fvs slotVarList envVar = do
   -- as == [APP-1, ..., APP-n]
   as <- forM fvs $ \(x, t) -> Utility.toRelevantApp (utilityHandle h) (C.VarLocal x) t
   (varNameList, varList) <- mapAndUnzipM (const $ Gensym.createVar (gensymHandle h) "pair") fvs
   storeBody <- storeValuesInSlots h varList slotVarList
   body <- Linearize.linearize (linearizeHandle h) fvs $ Utility.bindLet (zip varNameList as) storeBody
-  return $ C.sigmaElim False (map fst fvs) envVar body
+  return $ C.SigmaElim False 0 envLayout (map fst fvs) envVar body
 
 storeValuesInSlots ::
   Handle ->

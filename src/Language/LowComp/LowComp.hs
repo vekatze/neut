@@ -11,6 +11,7 @@ module Language.LowComp.LowComp
     ExportInfo,
     internalTrailingArgCount,
     StaticData (..),
+    StaticMember (..),
     StaticDataInfo,
     Def,
     DefContent (..),
@@ -23,6 +24,7 @@ where
 
 import Data.ByteString.Builder
 import Data.Text qualified as T
+import Language.Common.CellLayout qualified as CL
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.ExternalName qualified as EN
 import Language.Common.Ident
@@ -156,7 +158,11 @@ data StaticData
   | StaticGlobal DD.DefiniteDescription
   | StaticNull
 
-type StaticDataInfo = (T.Text, [StaticData])
+data StaticMember
+  = StaticValue CL.FieldWidth StaticData
+  | StaticZeroBytes Int
+
+type StaticDataInfo = (T.Text, [StaticMember])
 
 nop :: Value -> Op
 nop v =

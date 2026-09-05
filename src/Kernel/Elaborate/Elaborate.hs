@@ -47,6 +47,8 @@ import Kernel.Elaborate.Internal.EnsureAffinity qualified as EnsureAffinity
 import Kernel.Elaborate.Internal.EnsureEmbeddable (ensureEmbeddable)
 import Kernel.Elaborate.Internal.Handle.Constraint qualified as Constraint
 import Kernel.Elaborate.Internal.Handle.Def qualified as Definition
+import Kernel.Common.Handle.Global.Platform qualified as Platform
+import Kernel.Common.StorageWidth qualified as StorageWidth
 import Kernel.Elaborate.Internal.Handle.Elaborate
 import Kernel.Elaborate.Internal.Handle.Hole qualified as Hole
 import Kernel.Elaborate.Internal.Handle.LocalLogs qualified as LocalLogs
@@ -75,7 +77,9 @@ import Language.Common.Binder
 import Language.Common.CallConv qualified as CC
 import Language.Common.CallConvSpec qualified as CCS
 import Language.Common.CreateSymbol qualified as Gensym
+import Language.Common.CellLayout qualified as CL
 import Language.Common.DataInfo qualified as DI
+import Language.Common.DataSize qualified as DS
 import Language.Common.DecisionTree qualified as DT
 import Language.Common.DefaultArgs qualified as DefaultArgs
 import Language.Common.DefiniteDescription qualified as DD
@@ -94,7 +98,6 @@ import Language.Common.ModuleID qualified as MID
 import Language.Common.PiKind qualified as PK
 import Language.Common.PrimNumSize
 import Language.Common.PrimType qualified as PT
-import Language.Common.SlotSize
 import Language.Common.SourceLocator qualified as SL
 import Language.Common.StmtKind qualified as SK
 import Language.Common.StrictGlobalLocator qualified as SGL
@@ -716,26 +719,26 @@ elaborateStmtKindType h stmtKind =
         return (savedHint, consInfo {DI.consArgs = consArgs'', DI.consArgLayouts = layouts})
       return $ SK.Data dataName dataArgs'' consInfoList' isNominal
 
-resolveFieldLayout :: Handle -> DI.FieldHint -> BinderF TM.Type -> App DI.FieldLayout
-resolveFieldLayout h hint (_, _, _, t) =
+resolveFieldLayout :: Handle -> DI.FieldHint -> BinderF TM.Type -> App CL.FieldStorage
+resolveFieldLayout h hint (m, _, _, t) =
   case hint of
     DI.FieldAuto ->
-      return DI.LayoutDirect
+      CL.StoredDirect <$> StorageWidth.storageWidthOf (Global.dataHandle (globalHandle h)) (optDataHandle h) (termSubstHandle h) m t
     DI.FieldMixed mSized -> do
       result <- resolveMixedOrError h S.empty mSized t
       case result of
-        Right (StaticSlots slotCount) ->
-          return $ DI.LayoutFlattened slotCount
-        Right RuntimeSlots ->
+        Right (StaticBytes byteSize chunkLimit) ->
+          return $ CL.StoredFlat $ CL.chunkSizes chunkLimit byteSize
+        Right RuntimeSize ->
           raiseError mSized "a type variable cannot be stored inline in a `data` field"
         Left message ->
           raiseError mSized message
 
-data SlotCount
-  = StaticSlots Int
-  | RuntimeSlots
+data InlineSize
+  = StaticBytes Int Int
+  | RuntimeSize
 
-resolveMixedOrError :: Handle -> S.Set DD.DefiniteDescription -> Hint -> TM.Type -> App (Either T.Text SlotCount)
+resolveMixedOrError :: Handle -> S.Set DD.DefiniteDescription -> Hint -> TM.Type -> App (Either T.Text InlineSize)
 resolveMixedOrError h visited m ty =
   case ty of
     _ :< TM.Data _ dataName dataArgs -> do
@@ -754,24 +757,25 @@ resolveMixedOrError h visited m ty =
             then return $ Left $ cannotMixRecursiveMessage h dataName
             else do
               dataInfo <- TypeUtil.lookupDataInfoFull h m dataName
-              return $ Right $ StaticSlots $ DI.dataTotalSlotCount (DI.dataArgs dataInfo) (DI.consInfoList dataInfo)
+              let shape = DI.cellShape (dataSizeOf h) dataInfo
+              return $ Right $ StaticBytes (DI.shapeByteSize shape) (DI.shapeAlignment shape)
     _ :< TM.Resource dataName _ -> do
       resourceSizeOrNone <- liftIO $ Resource.lookup (Global.resourceHandle (globalHandle h)) dataName
       case resourceSizeOrNone of
         Just (Resource.Flattened byteSize) ->
-          return $ resourceByteSizeToSlotCount byteSize
+          return $ Right $ StaticBytes byteSize CL.maxChunkSize
         Just Resource.Direct ->
           return $ Left $ "the resource `" <> showDD h dataName <> "` has no fixed size and cannot be stored inline"
         Nothing ->
           return $ Left $ "could not find the size of the resource `" <> showDD h dataName <> "`"
     _ :< TM.Pi {} ->
-      return $ Right $ StaticSlots DI.closureSlotCount
+      return $ Right $ StaticBytes (CL.cellByteSize $ DI.closureLayout (dataSizeOf h)) (DI.closureAlignment (dataSizeOf h))
     _ :< TM.Tau ->
       cannotMixFieldType "the type universe"
     _ :< TM.TVar x -> do
       isSized <- hasTypeAttr h VK.Sized x
       if isSized
-        then return $ Right RuntimeSlots
+        then return $ Right RuntimeSize
         else return $ Left $ undeclaredTypeVarMessage VK.Sized x
     _ :< TM.TVarGlobal {} ->
       cannotMixFieldType "a nominal type"
@@ -790,7 +794,7 @@ resolveMixedOrError h visited m ty =
     _ :< TM.Void ->
       cannotMixFieldType "the void type"
 
-cannotMixFieldType :: T.Text -> App (Either T.Text SlotCount)
+cannotMixFieldType :: T.Text -> App (Either T.Text InlineSize)
 cannotMixFieldType typeDesc =
   return $ Left $ typeDesc <> " cannot be stored inline"
 
@@ -798,10 +802,9 @@ cannotMixRecursiveMessage :: Handle -> DD.DefiniteDescription -> T.Text
 cannotMixRecursiveMessage h dataName =
   "the recursive type `" <> showDD h dataName <> "` cannot be stored inline"
 
-resourceByteSizeToSlotCount :: Int -> Either T.Text SlotCount
-resourceByteSizeToSlotCount byteSize = do
-  let slotCount = (byteSize + slotByteSize - 1) `div` slotByteSize
-  Right $ StaticSlots slotCount
+dataSizeOf :: Handle -> DS.DataSize
+dataSizeOf h =
+  Platform.getDataSize $ platformHandle h
 
 specializeUnaryDataType :: Handle -> Hint -> DD.DefiniteDescription -> [TM.Type] -> App TM.Type
 specializeUnaryDataType h m dataName dataArgs = do
@@ -813,7 +816,7 @@ specializeUnaryDataType h m dataName dataArgs = do
   let sub = IntMap.fromList $ zip (map Ident.toInt binderIds) (map TmSubst.Type dataArgs)
   case DI.consInfoList dataInfo of
     [DI.ConsInfo {DI.consArgs = [(_, _, _, t)]}] ->
-      liftIO $ TmSubst.substType (TmSubst.new (gensymHandle h)) sub t
+      liftIO $ TmSubst.substType (termSubstHandle h) sub t
     _ ->
       raiseError m $ "broken unary metadata for `" <> showDD h dataName <> "`"
 

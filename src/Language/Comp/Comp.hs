@@ -15,8 +15,6 @@ module Language.Comp.Comp
     intValue0,
     intValue1,
     mulInt64,
-    sigmaIntro,
-    sigmaElim,
     isUnreachable,
     null,
   )
@@ -32,6 +30,7 @@ import Data.Text.Lazy qualified as TL
 import Data.Text.Lazy.Builder qualified as B
 import Language.Common.ArgNum
 import Language.Common.BaseLowType
+import Language.Common.CellLayout qualified as CL
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.ExternalName qualified as EN
 import Language.Common.Foreign qualified as F
@@ -52,8 +51,8 @@ data Value
   = VarLocal Ident
   | VarGlobal DD.DefiniteDescription ArgNum (FCT.ForeignCodType BaseLowType)
   | VarStaticBytes BS.ByteString
-  | SigmaIntro Int [Value]
-  | StaticSigmaIntro T.Text Int [Value]
+  | SigmaIntro CL.CellLayout [Value]
+  | StaticSigmaIntro T.Text CL.CellLayout [Value]
   | Int IntSize Integer
   | Float FloatSize Double
   deriving (Eq)
@@ -87,7 +86,7 @@ type Label =
 
 data Comp
   = PiElimDownElim ForceInline Value [Value] -- ((force v) v1 ... vn)
-  | SigmaElim ShouldDeallocate Int Int [Ident] Value Comp -- offset, allocation slot count
+  | SigmaElim ShouldDeallocate Int CL.CellLayout [Ident] Value Comp
   | UpIntro Value
   | UpElim IsReducible Ident Comp Comp
   | EnumElim [(Int, Value)] Value Comp [(EnumCase, Comp)]
@@ -115,13 +114,13 @@ renderCompBuilder level comp =
         <> btext "("
         <> bintercalate (map bshow vs)
         <> btext ")"
-    SigmaElim shouldDeallocate offset size xs v cont ->
+    SigmaElim shouldDeallocate slotIndex layout xs v cont ->
       indent level
         <> btext (if shouldDeallocate then "let" else "let-noetic")
         <> btext "<"
-        <> bshow offset
+        <> bshow slotIndex
         <> btext ", "
-        <> bshow size
+        <> bshow layout
         <> btext "> ("
         <> bintercalate (map bshow xs)
         <> btext ") = "
@@ -284,7 +283,7 @@ continuationLevel level =
 
 data Primitive
   = PrimOp PrimOp [Value]
-  | ShiftPointer Value Integer Integer -- (ptr, num-of-elems, index)
+  | ShiftPointer Value Integer -- (ptr, byte offset)
   | Calloc Value Value -- num, size-in-bytes
   | Alloc Value -- number of bytes to allocate
   | Realloc Value Value -- ptr, size-in-bytes
@@ -340,14 +339,6 @@ mulInt64 :: Value -> Value -> Primitive
 mulInt64 x y =
   PrimOp (PrimBinaryOp BOp.Mul (PT.Int IntSize64) (PT.Int IntSize64)) [x, y]
 
-sigmaIntro :: [Value] -> Value
-sigmaIntro vs =
-  SigmaIntro (length vs) vs
-
-sigmaElim :: ShouldDeallocate -> [Ident] -> Value -> Comp -> Comp
-sigmaElim shouldDeallocate xs =
-  SigmaElim shouldDeallocate 0 (length xs) xs
-
 isUnreachable :: Comp -> Bool
 isUnreachable comp =
   case comp of
@@ -374,4 +365,4 @@ isUnreachable comp =
 
 null :: Value
 null =
-  sigmaIntro []
+  SigmaIntro CL.emptyCell []

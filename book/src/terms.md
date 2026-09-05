@@ -196,7 +196,7 @@ Without `::`, the path is resolved through the local name environment. The three
 
 ### Semantics
 
-A top-level variable `f` is compiled into the following 3-word tuple:
+A top-level variable `f` is compiled into the following tuple of three pointers:
 
 ```txt
 (base::#::imm, 0, POINTER_TO_FUNCTION(f))
@@ -245,7 +245,7 @@ define fastcc ptr @"this::sample::increment"(ptr %_1) {
 define fastcc ptr @"this::sample::get-increment"() {
   ; `increment` in `get-increment` is lowered to the following code:
 
-  ; calculate the size of 3-word tuples
+  ; calculate the size of a closure
   %_1 = getelementptr ptr, ptr null, i32 3
   %_2 = ptrtoint ptr %_1 to i64
   ; allocate memory
@@ -262,7 +262,7 @@ define fastcc ptr @"this::sample::get-increment"() {
 }
 ```
 
-Incidentally, these 3-word tuples are optimized away as long as top-level variables (functions) are called directly with arguments.
+Incidentally, these closures are optimized away as long as top-level variables (functions) are called directly with arguments.
 
 ## `let`
 
@@ -1701,9 +1701,9 @@ The internal representation of `n: my-nat` is something like the following:
 
 ```neut
 Zero:
-  (0) // 1-word tuple
+  (0) // just the discriminant
 Succ:
-  (1, pointer-to-m) // 2-word tuple
+  (1, pointer-to-m) // the discriminant and one pointer
 ```
 
 When evaluating `match`, the runtime inspects the first element of the "tuple" `n`.

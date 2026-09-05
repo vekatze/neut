@@ -2,6 +2,7 @@ module Language.Common.LowType (LowType (..), slotLowType, textType, textTypeInn
 
 import Data.Binary
 import GHC.Generics qualified as G
+import Language.Common.DataSize qualified as DS
 import Language.Common.PrimNumSize
 import Language.Common.SlotSize
 import Language.Common.PrimType qualified as PT
@@ -25,11 +26,12 @@ slotLowType :: LowType
 slotLowType =
   PrimNum slotPrimType
 
-textType :: LowType
-textType =
+textType :: DS.DataSize -> LowType
+textType dataSize = do
+  let addressInt = PrimNum $ PT.Int $ dataSizeToIntSize dataSize
   Struct
-    [ slotLowType,
-      slotLowType,
+    [ addressInt,
+      addressInt,
       Pointer
     ]
 

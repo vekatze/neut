@@ -39,6 +39,12 @@ module Language.Common.BaseName
     fieldType,
     direct,
     mixed,
+    storageWidth,
+    width8,
+    width16,
+    width32,
+    width64,
+    widthPointer,
     pair,
     pairType,
     stringType,
@@ -230,6 +236,30 @@ direct =
 mixed :: BaseName
 mixed =
   MakeBaseName "Mixed"
+
+storageWidth :: BaseName
+storageWidth =
+  MakeBaseName "storage-width"
+
+width8 :: BaseName
+width8 =
+  MakeBaseName "Width8"
+
+width16 :: BaseName
+width16 =
+  MakeBaseName "Width16"
+
+width32 :: BaseName
+width32 =
+  MakeBaseName "Width32"
+
+width64 :: BaseName
+width64 =
+  MakeBaseName "Width64"
+
+widthPointer :: BaseName
+widthPointer =
+  MakeBaseName "Width-Pointer"
 
 pair :: BaseName
 pair =

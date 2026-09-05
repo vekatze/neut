@@ -10,7 +10,7 @@ where
 
 import Data.Text qualified as T
 import Kernel.Common.TypeTag qualified as TT
-import Language.Common.DataInfo qualified as DI
+import Language.Common.CellLayout qualified as CL
 import Language.Common.IsConstLike (IsConstLike)
 import Language.Common.PrimNumSize
 import Language.Term.Term qualified as TM
@@ -25,7 +25,7 @@ type DataName =
   T.Text
 
 type Field =
-  (ParamName, TM.Type, DI.FieldLayout)
+  (ParamName, TM.Type, CL.FieldStorage)
 
 type Constructor =
   (ConstructorName, IsConstLike, [Field])

@@ -37,6 +37,8 @@ import Kernel.Emit.LowType
 import Kernel.Emit.LowValue
 import Language.Common.BaseLowType qualified as BLT
 import Language.Common.CreateSymbol qualified as Gensym
+import Language.Common.PrimNumSize (dataSizeToIntSize)
+import Language.Common.CellLayout qualified as CL
 import Language.Common.DataSize qualified as DS
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.ExternalName qualified as EN
@@ -93,7 +95,7 @@ emitModuleHeader h = do
 emitLowCodeInfo :: Handle -> LC.LowCodeInfo -> IO ([Builder], [Builder])
 emitLowCodeInfo h (declEnv, defList, staticTextList, staticDataList, exportList) = do
   let declStrList = emitDeclarations h declEnv
-  let staticTextList' = concatMap emitStaticText staticTextList
+  let staticTextList' = concatMap (emitStaticText (getDataSize h)) staticTextList
   let staticDataList' = map (emitStaticData (getDataSize h)) staticDataList
   defStrList <- concat <$> mapM (emitDefinitions h) defList
   let exportStrList = concatMap (emitExport h) exportList ++ emitExportRoots exportList
@@ -169,8 +171,8 @@ emitGlobalExt name lt =
 type StaticTextInfo = (T.Text, (Builder, Int))
 
 emitStaticData :: DS.DataSize -> LC.StaticDataInfo -> Builder
-emitStaticData baseSize (name, slots) = do
-  let fields = concatMap (emitStaticSlot baseSize) slots
+emitStaticData baseSize (name, members) = do
+  let fields = concatMap (emitStaticMember baseSize) members
   "@"
     <> TE.encodeUtf8Builder ("\"" <> name <> "\"")
     <> " = private unnamed_addr constant <{"
@@ -180,31 +182,46 @@ emitStaticData baseSize (name, slots) = do
     <> "}>, align "
     <> intDec slotByteSize
 
-slotTypeBuilder :: Builder
-slotTypeBuilder =
-  emitLowType LT.slotLowType
+emitStaticMember :: DS.DataSize -> LC.StaticMember -> [(Builder, Builder)]
+emitStaticMember baseSize member =
+  case member of
+    LC.StaticZeroBytes byteSize -> do
+      let typeBuilder = "[" <> intDec byteSize <> " x i8]"
+      [(typeBuilder, typeBuilder <> " zeroinitializer")]
+    LC.StaticValue width value ->
+      emitStaticSlot baseSize width value
 
-emitStaticSlot :: DS.DataSize -> LC.StaticData -> [(Builder, Builder)]
-emitStaticSlot baseSize slot =
+emitStaticSlot :: DS.DataSize -> CL.FieldWidth -> LC.StaticData -> [(Builder, Builder)]
+emitStaticSlot baseSize width slot =
   case slot of
     LC.StaticNull ->
-      [asSlot "0"]
+      case width of
+        CL.WidthPointer ->
+          [("ptr", "ptr null")]
+        _ ->
+          [asWidth baseSize width "0"]
     LC.StaticSymbol name ->
-      emitAddressSlot baseSize $ "@" <> TE.encodeUtf8Builder ("\"" <> name <> "\"")
+      emitAddressSlot baseSize width $ "@" <> TE.encodeUtf8Builder ("\"" <> name <> "\"")
     LC.StaticGlobal dd ->
-      emitAddressSlot baseSize $ "@" <> DD.toBuilder dd
+      emitAddressSlot baseSize width $ "@" <> DD.toBuilder dd
     LC.StaticInt size value ->
-      [asSlot $ integerDec $ widenToSlot (intSizeToInt size) value]
+      [asWidth baseSize width $ integerDec $ maskToWidth (intSizeToInt size) value]
     LC.StaticFloat size value ->
-      [asSlot $ integerDec $ widenToSlot (floatSizeToInt size) (floatToBits size value)]
+      [asWidth baseSize width $ integerDec $ maskToWidth (floatSizeToInt size) (floatToBits size value)]
 
-asSlot :: Builder -> (Builder, Builder)
-asSlot value =
-  (slotTypeBuilder, slotTypeBuilder <> " " <> value)
+asWidth :: DS.DataSize -> CL.FieldWidth -> Builder -> (Builder, Builder)
+asWidth baseSize width value =
+  case width of
+    CL.WidthPointer -> do
+      let addressType = "i" <> intDec (DS.reify baseSize)
+      ("ptr", "ptr inttoptr (" <> addressType <> " " <> value <> " to ptr)")
+    _ -> do
+      let typeBuilder = "i" <> intDec (8 * CL.fieldWidthByteSize baseSize width)
+      (typeBuilder, typeBuilder <> " " <> value)
 
-emitAddressSlot :: DS.DataSize -> Builder -> [(Builder, Builder)]
-emitAddressSlot baseSize address = do
-  let paddingBitSize = slotBitSize - DS.reify baseSize
+emitAddressSlot :: DS.DataSize -> CL.FieldWidth -> Builder -> [(Builder, Builder)]
+emitAddressSlot baseSize width address = do
+  let paddingBitSize = 8 * CL.fieldWidthByteSize baseSize width - DS.reify baseSize
   let pointerField = ("ptr", "ptr " <> address)
   if paddingBitSize == 0
     then [pointerField]
@@ -212,17 +229,17 @@ emitAddressSlot baseSize address = do
       let paddingType = "i" <> intDec paddingBitSize
       [pointerField, (paddingType, paddingType <> " 0")]
 
-widenToSlot :: Int -> Integer -> Integer
-widenToSlot bitSize value =
-  if bitSize == slotBitSize
+maskToWidth :: Int -> Integer -> Integer
+maskToWidth bitSize value =
+  if bitSize >= slotBitSize
     then value
     else value `mod` (2 ^ bitSize)
 
-emitStaticText :: StaticTextInfo -> [Builder]
-emitStaticText (from, (text, len)) = do
+emitStaticText :: DS.DataSize -> StaticTextInfo -> [Builder]
+emitStaticText baseSize (from, (text, len)) = do
   let headerName = TE.encodeUtf8Builder ("\"" <> from <> "\"")
   let payloadName = TE.encodeUtf8Builder ("\"" <> from <> ".payload\"")
-  let wordType = emitLowType (LT.PrimNum (PT.Int slotIntSize))
+  let wordType = emitLowType (LT.PrimNum (PT.Int (dataSizeToIntSize baseSize)))
   let payloadType = emitLowType (LT.textTypeInner len)
   let payload =
         "@"
@@ -236,8 +253,8 @@ emitStaticText (from, (text, len)) = do
         "@"
           <> headerName
           <> " = private unnamed_addr constant "
-          <> emitLowType LT.textType
-          <> " {"
+          <> emitLowType (LT.textType baseSize)
+          <> " <{"
           <> wordType
           <> " 0, "
           <> wordType
@@ -246,7 +263,7 @@ emitStaticText (from, (text, len)) = do
           <> ", ptr "
           <> "@"
           <> payloadName
-          <> "}"
+          <> "}>"
   [payload, header]
 
 emitDeclarations :: Handle -> DN.DeclEnv -> [Builder]

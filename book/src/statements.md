@@ -644,7 +644,26 @@ define use-config(c: config) -> int {
 
 ### Memory Representation
 
-All the constructors of an ADT share the same allocation size: the size of its largest constructor. Each value stores a discriminant that identifies its constructor, followed by the constructor's fields.
+All the constructors of an ADT share the same allocation size: the size of its largest constructor. Each value stores a discriminant that identifies its constructor, then one entry per type argument, then the constructor's fields.
+
+Fields are laid out in the order they are written. Each one takes as many bytes as its type needs:
+
+| field | bytes |
+|---|---|
+| `int8` and narrower | 1 |
+| `int16`, `float16` | 2 |
+| `int32`, `float32`, `rune` | 4 |
+| `int64`, `float64`, `int`, `float` | 8 |
+| anything represented by a pointer | the pointer of the target |
+| a type variable | 8 |
+
+The discriminant is an integer just wide enough to tell the constructors apart:
+
+- 1 byte for up to 256 constructors,
+- 2 bytes for up to 65536 constructors,
+- 4 bytes beyond that.
+
+Every entry starts at the next multiple of its own width, so a value is always read at the alignment its width asks for (i.e. natural alignment). The bytes between entries are padding and hold nothing, and the size of the whole value is rounded up to the width of its widest entry.
 
 For example, consider the following code:
 
@@ -655,25 +674,30 @@ data list(a) {
 }
 ```
 
-For `list(a)`, every value occupies 4 words:
-
-- 1 word for the discriminant,
-- 1 word for `a`,
-- 2 words for the largest constructor payload (`Cons(a, list(a))`).
-
-So the internal representation of `Nil` is:
-
-```neut
-(0, a, _, _)
-```
-
-Here `0` is the discriminant for `Nil`, and the trailing two words are unused and remain uninitialized. Likewise, `Cons(10, xs)` is represented as:
+The internal representation of `Cons(10, xs)` is:
 
 ```neut
 (1, a, 10, xs)
 ```
 
-where `1` is the discriminant for `Cons`. Even when a constructor carries fewer fields, the allocation size is still the one determined by the largest constructor; the unused slots are simply left untouched.
+where `1` is the discriminant for `Cons`, `a` is the type descriptor for the element type, and `10` and `xs` are the fields. On a 64-bit target the value takes 32 bytes:
+
+- 1 byte for the discriminant, then 7 bytes of padding,
+- 8 bytes for `a`,
+- 8 bytes for `10`,
+- 8 bytes for `xs`.
+
+On a 32-bit target `a` and `xs` take four bytes each, so the value takes 20 bytes rounded up to 24. The element takes eight bytes on both, since `Cons` holds a value whose type it does not know.
+
+The representation of `Nil` is:
+
+```neut
+(0, a, _, _)
+```
+
+Even when a constructor carries fewer fields, the allocation size is still the one determined by the largest constructor; the unused bytes are simply left untouched.
+
+A value of a type variable takes eight bytes whatever the target, so writing an explicit width keeps a field at the width its own type asks for.
 
 <div class="info-block">
 
@@ -740,6 +764,8 @@ A constructor is an ordinary function, so a marked field is filled by a marked a
 
 where `ptr2` points to `(3, 4)`.
 
+An inline field starts at the alignment its type asks for and takes as many bytes as a value of that type takes, including the padding at its end.
+
 A pattern carries the mark as well, so the two sides of a constructor read alike:
 
 ```neut
@@ -749,7 +775,7 @@ cont
 // ↓ (compile)
 
 // repack `p` from `e` into a fresh allocation
-let p = malloc({2-words});
+let p = malloc({size-of-point});
 store(p[0], e[0]);  // x1
 store(p[1], e[1]);  // y1
 // q isn't stored inline
@@ -767,10 +793,10 @@ cont
 
 // ↓ (compile)
 
-// (`p` and `q` point directly into `e`'s words; no malloc)
+// (`p` and `q` point directly into `e`'s bytes; no malloc)
 ```
 
-The same mark can also be used with a `resource` type when the resource has a fixed non-negative byte size. The field then uses the minimum number of words that can contain those bytes.
+The same mark can also be used with a `resource` type when the resource has a fixed non-negative byte size. The field then takes exactly those bytes.
 
 The mark is the same one that is used for a source-passing parameter. For the details, please see [function types in Terms](./terms.md#x1-a1--xn-an---b).
 
