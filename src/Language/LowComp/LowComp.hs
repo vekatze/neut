@@ -8,6 +8,7 @@ module Language.LowComp.LowComp
     StackAllocInfo (..),
     LowCode (..),
     LowCodeInfo,
+    GlobalEnv,
     ExportInfo,
     internalTrailingArgCount,
     StaticData (..),
@@ -23,7 +24,9 @@ module Language.LowComp.LowComp
 where
 
 import Data.ByteString.Builder
+import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
+import Language.Common.BaseLowType qualified as BLT
 import Language.Common.CellLayout qualified as CL
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.ExternalName qualified as EN
@@ -136,7 +139,10 @@ data DefContent = DefContent
   }
 
 type LowCodeInfo =
-  (DN.DeclEnv, [Def], [StaticTextInfo], [StaticDataInfo], [ExportInfo])
+  (DN.DeclEnv, GlobalEnv, [Def], [StaticTextInfo], [StaticDataInfo], [ExportInfo])
+
+type GlobalEnv =
+  Map.HashMap EN.ExternalName BLT.BaseLowType
 
 type ExportInfo =
   (EN.ExternalName, DD.DefiniteDescription, [LowType], LowType)

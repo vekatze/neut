@@ -11,10 +11,12 @@ where
 
 import Data.Binary
 import Data.ByteString.Builder
+import Data.Char (isControl, ord)
 import Data.Hashable
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
 import GHC.Generics
+import Numeric (showHex)
 
 newtype ExternalName = ExternalName {reify :: T.Text}
   deriving (Generic, Show, Eq, Ord)
@@ -45,4 +47,26 @@ memcpy =
 
 toBuilder :: ExternalName -> Builder
 toBuilder (ExternalName rawTxt) =
-  TE.encodeUtf8Builder rawTxt
+  TE.encodeUtf8Builder $ "\"" <> T.concatMap escapeChar rawTxt <> "\""
+
+escapeChar :: Char -> T.Text
+escapeChar c
+  | c == '"' || c == '\\' || isControl c =
+      T.pack $ '\\' : pad (map toUpperHex (showHex (ord c) ""))
+  | otherwise =
+      T.singleton c
+
+pad :: String -> String
+pad hex =
+  replicate (2 - length hex) '0' ++ hex
+
+toUpperHex :: Char -> Char
+toUpperHex c =
+  case c of
+    'a' -> 'A'
+    'b' -> 'B'
+    'c' -> 'C'
+    'd' -> 'D'
+    'e' -> 'E'
+    'f' -> 'F'
+    _ -> c

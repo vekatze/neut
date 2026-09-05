@@ -81,6 +81,7 @@ data Handle = Handle
     reduceHandle :: Reduce.Handle,
     substHandle :: Subst.Handle,
     declEnv :: IORef DN.DeclEnv,
+    globalEnv :: IORef LC.GlobalEnv,
     staticTextList :: IORef [(T.Text, (Builder, Int))],
     staticDataMap :: IORef (Map.HashMap T.Text [LC.StaticMember]),
     definedNameSet :: IORef (S.Set DD.DefiniteDescription),
@@ -112,6 +113,7 @@ new gensymHandle (Global.Handle {..}) traceConfig target defMap = do
   let substHandle = Subst.new gensymHandle
   let reduceHandle = Reduce.new substHandle gensymHandle defMap
   declEnv <- liftIO $ newIORef $ makeBaseDeclEnv baseSize (allocatorSpec allocator)
+  globalEnv <- liftIO $ newIORef Map.empty
   staticTextList <- liftIO $ newIORef []
   staticDataMap <- liftIO $ newIORef Map.empty
   definedNameSet <- liftIO $ newIORef S.empty
@@ -148,10 +150,11 @@ lowerEntryPoint h target stmtList = do
 summarize :: Handle -> [LC.Def] -> IO LC.LowCodeInfo
 summarize h stmtList = do
   declEnv <- readIORef $ declEnv h
+  globalEnv <- readIORef $ globalEnv h
   staticTextList <- readIORef $ staticTextList h
   staticDataMap <- readIORef $ staticDataMap h
   exportList <- readIORef $ exportListRef h
-  return (declEnv, stmtList, staticTextList, Map.toList staticDataMap, exportList)
+  return (declEnv, globalEnv, stmtList, staticTextList, Map.toList staticDataMap, exportList)
 
 optimize :: Handle -> LC.Comp -> IO LC.Comp
 optimize h = do
@@ -567,6 +570,7 @@ lowerCompPrimitive h codeOp k =
                 =<< uncast h resultVar tmpValue lowCod rest
         LM.Global name t -> do
           let t' = LT.fromBaseLowType t
+          liftIO $ modifyIORef' (globalEnv h) $ Map.insertWith (\_ old -> old) name t
           (resultVar, resultValue) <- liftIO $ newValueLocal h "result"
           rest <- sendResult k LT.slotLowType resultValue
           uncast h resultVar (LC.VarExternal name) t' rest
