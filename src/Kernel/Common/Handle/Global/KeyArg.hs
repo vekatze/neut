@@ -1,5 +1,6 @@
 module Kernel.Common.Handle.Global.KeyArg
   ( Handle (..),
+    Origin (..),
     ExpKey,
     ImpKey,
     DefaultKey,
@@ -40,8 +41,13 @@ type DefaultKey =
 data Handle = Handle
   { _mainModule :: MainModule,
     _modulePathHandle :: ModulePath.Handle,
-    _keyArgMapRef :: IORef (Map.HashMap DD.DefiniteDescription (IsConstLike, ([ImpKey], [ExpKey], [DefaultKey])))
+    _keyArgMapRef :: IORef (Map.HashMap DD.DefiniteDescription (Origin, IsConstLike, ([ImpKey], [ExpKey], [DefaultKey])))
   }
+
+data Origin
+  = Declared
+  | Defined
+  deriving (Eq)
 
 isHole :: Key -> Bool
 isHole =
@@ -95,14 +101,20 @@ new _mainModule _modulePathHandle = do
   _keyArgMapRef <- newIORef Map.empty
   return $ Handle {..}
 
-insert :: Handle -> Hint -> DD.DefiniteDescription -> IsConstLike -> [ImpKey] -> [ExpKey] -> [DefaultKey] -> App ()
-insert h m funcName isConstLike impKeys expKeys defaultKeys = do
+insert :: Handle -> Hint -> DD.DefiniteDescription -> Origin -> IsConstLike -> [ImpKey] -> [ExpKey] -> [DefaultKey] -> App ()
+insert h m funcName origin isConstLike impKeys expKeys defaultKeys = do
   modulePathMap <- liftIO $ ModulePath.get (_modulePathHandle h)
   kmap <- liftIO $ readIORef (_keyArgMapRef h)
   case Map.lookup funcName kmap of
     Nothing ->
+      liftIO $ atomicModifyIORef' (_keyArgMapRef h) $ \mp -> do
+        (Map.insert funcName (origin, isConstLike, (impKeys, expKeys, defaultKeys)) mp, ())
+    Just (Defined, _, _) ->
       return ()
-    Just (isConstLike', (impKeys', expKeys', defaultKeys'))
+    Just (Declared, _, _)
+      | origin == Declared ->
+          return ()
+    Just (_, isConstLike', (impKeys', expKeys', defaultKeys'))
       | isConstLike,
         not isConstLike' -> do
           let funcName' = renderDD modulePathMap funcName
@@ -148,16 +160,15 @@ insert h m funcName isConstLike impKeys expKeys defaultKeys = do
               <> _showKeys expKeys
               <> "`."
       | otherwise ->
-          return ()
-  liftIO $ atomicModifyIORef' (_keyArgMapRef h) $ \mp -> do
-    (Map.insert funcName (isConstLike, (impKeys, expKeys, defaultKeys)) mp, ())
+          liftIO $ atomicModifyIORef' (_keyArgMapRef h) $ \mp -> do
+            (Map.insert funcName (origin, isConstLike, (impKeys, expKeys, defaultKeys)) mp, ())
 
 lookup :: Handle -> Hint -> DD.DefiniteDescription -> App ([ImpKey], [ExpKey], [DefaultKey])
 lookup h m dataName = do
   modulePathMap <- liftIO $ ModulePath.get (_modulePathHandle h)
   keyArgMap <- liftIO $ readIORef (_keyArgMapRef h)
   case Map.lookup dataName keyArgMap of
-    Just (_, impExpKeys) ->
+    Just (_, _, impExpKeys) ->
       return impExpKeys
     Nothing -> do
       let dataName' = renderDD modulePathMap dataName

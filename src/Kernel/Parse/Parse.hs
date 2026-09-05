@@ -274,7 +274,7 @@ registerKeyArg h stmt = do
       case stmtKind of
         SK.DataIntro _ _ expConsArgs _ -> do
           let expKeys = map (\(_, _, x, _, _, _) -> x) expConsArgs
-          KeyArg.insert (keyArgHandle h) m name isConstLike [] expKeys []
+          KeyArg.insert (keyArgHandle h) m name KeyArg.Defined isConstLike [] expKeys []
         _ -> do
           let impArgs = RT.extractImpArgs $ RT.impArgs geist
           let defaultArgs = map fst $ SE.extract $ fst $ RT.defaultArgs geist
@@ -282,11 +282,18 @@ registerKeyArg h stmt = do
           let impKeys = map (\(_, _, x, _, _, _) -> x) impArgs
           let defaultKeys = map (\(_, _, x, _, _, _) -> x) defaultArgs
           let expKeys = map (\(_, _, x, _, _, _) -> x) expArgs
-          KeyArg.insert (keyArgHandle h) m name isConstLike impKeys expKeys defaultKeys
+          KeyArg.insert (keyArgHandle h) m name KeyArg.Defined isConstLike impKeys expKeys defaultKeys
     PostRawStmtDefineType {} -> do
       return ()
-    PostRawStmtNominal {} -> do
-      return ()
+    PostRawStmtNominal _ _ geistList -> do
+      forM_ (SE.extract geistList) $ \(tag, geist, _) ->
+        when (NT.isTermTag tag) $ do
+          let name = fst $ RT.name geist
+          let isConstLike = RT.isConstLike geist
+          let m = RT.loc geist
+          let impKeys = map (\(_, _, x, _, _, _) -> x) $ RT.extractImpArgs $ RT.impArgs geist
+          let expKeys = map (\(_, _, x, _, _, _) -> x) $ RT.extractArgs $ RT.expArgs geist
+          KeyArg.insert (keyArgHandle h) m name KeyArg.Declared isConstLike impKeys expKeys []
     PostRawStmtDefineResource {} -> do
       return ()
     PostRawStmtTrope {} -> do
@@ -307,12 +314,12 @@ registerKeyArg' h stmt = do
       case stmtKind of
         SK.DataIntro _ _ expConsArgs _ -> do
           let expKeys = map (\(_, _, x, _) -> toText x) expConsArgs
-          KeyArg.insert (keyArgHandle h) m name isConstLike [] expKeys []
+          KeyArg.insert (keyArgHandle h) m name KeyArg.Defined isConstLike [] expKeys []
         _ -> do
           let impKeys = map (\(_, _, x, _) -> toText x) impArgs
           let defaultKeys = map ((\(_, _, x, _) -> toText x) . fst) defaultArgs
           let expKeys = map (\(_, _, x, _) -> toText x) expArgs
-          KeyArg.insert (keyArgHandle h) m name isConstLike impKeys expKeys defaultKeys
+          KeyArg.insert (keyArgHandle h) m name KeyArg.Defined isConstLike impKeys expKeys defaultKeys
     StmtDefineType {} ->
       return ()
     StmtDefineResource {} ->
