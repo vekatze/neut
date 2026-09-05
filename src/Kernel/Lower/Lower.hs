@@ -83,6 +83,7 @@ data Handle = Handle
     declEnv :: IORef DN.DeclEnv,
     globalEnv :: IORef LC.GlobalEnv,
     staticTextList :: IORef [(T.Text, (Builder, Int))],
+    staticTextCount :: IORef Int,
     staticDataMap :: IORef (Map.HashMap T.Text [LC.StaticMember]),
     definedNameSet :: IORef (S.Set DD.DefiniteDescription),
     referencedNameSet :: IORef (S.Set DD.DefiniteDescription),
@@ -115,6 +116,7 @@ new gensymHandle (Global.Handle {..}) traceConfig target defMap = do
   declEnv <- liftIO $ newIORef $ makeBaseDeclEnv baseSize (allocatorSpec allocator)
   globalEnv <- liftIO $ newIORef Map.empty
   staticTextList <- liftIO $ newIORef []
+  staticTextCount <- liftIO $ newIORef 0
   staticDataMap <- liftIO $ newIORef Map.empty
   definedNameSet <- liftIO $ newIORef S.empty
   referencedNameSet <- liftIO $ newIORef S.empty
@@ -808,7 +810,7 @@ hasStaticData h name = do
 
 registerStaticBytes :: Handle -> BS.ByteString -> IO T.Text
 registerStaticBytes h bytes = do
-  i <- Gensym.newCount (gensymHandle h)
+  i <- atomicModifyIORef' (staticTextCount h) $ \count -> (count + 1, count)
   let name = "bytes;" <> T.pack (show i)
   let encodedBytes = foldMap (\w -> "\\" <> word8HexFixed w) (BS.unpack bytes)
   insertStaticText h name encodedBytes (BS.length bytes)
