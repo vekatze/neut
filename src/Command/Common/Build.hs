@@ -49,6 +49,7 @@ import Kernel.Common.RunProcess qualified as RunProcess
 import Kernel.Common.Source
 import Kernel.Common.SourceDependencyMap (SourceDependencyMap)
 import Kernel.Common.Target
+import Kernel.Common.Template qualified as Template
 import Kernel.Common.Trace qualified as Trace
 import Kernel.Common.ZenConfig qualified as Z
 import Kernel.Elaborate.Elaborate qualified as Elaborate
@@ -362,6 +363,7 @@ compileForeign' h t currentTime m = do
           return False
     _ -> do
       let cmdList' = map (naiveReplace sub) cmdList
+      Template.ensureNoUnknownPlaceholder M.keyForeignScript cmdList'
       unless (null cmdList') $ do
         liftIO $
           Logger.report (Global.loggerHandle (globalHandle h)) $
