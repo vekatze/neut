@@ -35,7 +35,7 @@ data tagged {
 }
 
 data inlined {
-| Inlined(~fst: shape, snd: int)
+| Inlined(+fst: shape, snd: int)
 }
 
 data holder {
@@ -47,7 +47,7 @@ data floating {
 }
 
 data boxed-fn {
-| Boxed-Fn(~f: (int) -> int, tag: int)
+| Boxed-Fn(+f: (int) -> int, tag: int)
 }
 
 data runic {
@@ -71,7 +71,7 @@ data heap-holder {
 }
 
 data sized-holder {
-| Sized-Holder(~inner: holder, extra: int)
+| Sized-Holder(+inner: holder, extra: int)
 }
 
 data deep {
@@ -317,7 +317,7 @@ define test-noetic-element() -> unit {
 define test-inlined-field() -> unit {
   let v: $inlined = embed {Inlined(~Rect(3, 4), 7)};
   case view(v) {
-  | Inlined(~fst, snd) =>
+  | Inlined(+fst, snd) =>
     print-int-line(shape-area(fst));
     print-int-line(*snd)
   }
@@ -364,8 +364,8 @@ define test-let-bound() -> unit {
 }
 
 define test-transparent-forms() -> unit {
-  let a: $+list(int) = embed {lift {List::[1, 2]}};
-  letbox-T a2 = magic cast($+list(int), +list(int), a);
+  let a: $^list(int) = embed {lift {List::[1, 2]}};
+  letbox-T a2 = magic cast($^list(int), ^list(int), a);
   print-int-line(sum-list(view(magic cast(list(int), $list(int), a2))));
   let b: $int = embed {unquote {quote {7}}};
   print-int-line(*view(b));
@@ -474,7 +474,7 @@ define test-function-field() -> unit {
       )
     };
   case view(v) {
-  | Boxed-Fn(~f, tag) =>
+  | Boxed-Fn(+f, tag) =>
     print-int-line(f(7));
     print-int-line(*tag)
   }
@@ -538,7 +538,7 @@ define test-match-in-embed() -> unit {
 define test-embedded-in-sized-field() -> unit {
   let v: $sized-holder = embed {Sized-Holder(~Holder(embed {List::[4, 4]}, "ab"), 6)};
   case view(v) {
-  | Sized-Holder(~inner, extra) =>
+  | Sized-Holder(+inner, extra) =>
     case inner {
     | Holder(table, label) =>
       print-int-line(sum-list(view(*table)));

@@ -135,11 +135,11 @@ hljs.registerLanguage("neut", function (hljs) {
       },
       {
         scope: "keyword",
-        begin: "~|@",
+        begin: "~|@|\\+",
       },
       {
         scope: "builtin",
-        begin: "\\*|\\+|\\||->|=>|'|:|!|\\?|,|;|&|\\$|=",
+        begin: "\\*|\\||->>|->|=>>|=>|'|:|!|\\?|,|;|\\^|&|\\$|=",
       },
       hljs.COMMENT("//", "$"),
     ],

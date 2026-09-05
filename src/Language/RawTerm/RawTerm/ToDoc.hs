@@ -561,10 +561,10 @@ typeToDoc ty =
       let cArrow =
             (if hasDefault then [] else c3) ++ c2
       PI.arrange
-        [ PI.container $ D.join [destMarkToDoc (isDestPassingPiKind piKind), decodeImpParams impArgs],
+        [ PI.container $ decodeImpParams impArgs,
           PI.container expParamsWithImp,
           PI.container defaultParamsWithExpComment,
-          PI.delimiter $ attachComment cArrow $ D.text "->",
+          PI.delimiter $ attachComment cArrow $ D.text (codArrow (isDestPassingPiKind piKind)),
           PI.inject $ attachComment c $ typeToDoc cod
         ]
     _ :< Data (AttrD.Attr {isConstLike}) dataName es -> do
@@ -577,7 +577,7 @@ typeToDoc ty =
               PI.inject $ SE.decodeHorizontallyIfPossible $ typeToDoc <$> SE.fromList' es
             ]
     _ :< Box t -> do
-      D.join [D.text "+", typeToDoc t]
+      D.join [D.text "^", typeToDoc t]
     _ :< BoxNoema t ->
       D.join [D.text "&", typeToDoc t]
     _ :< Embed t ->
@@ -622,8 +622,8 @@ decodeLambda c def = do
   let geist = RT.geist def
   attachComment c $
     PI.arrange
-      [ PI.horizontal $ D.join [destMarkToDoc (RT.isDestPassing geist), decGeistSimple (const D.Nil) geist],
-        PI.horizontal $ D.text "=>",
+      [ PI.horizontal $ decGeistSimple (const D.Nil) geist,
+        PI.horizontal $ D.text (lambdaArrow (RT.isDestPassing geist)),
         PI.inject $ decodeBlock (RT.leadingComment def, (toDoc $ RT.body def, RT.trailingComment def))
       ]
 
@@ -791,7 +791,7 @@ prefixUnsafeTypeAttrs k doc = do
 prefixVarKind :: VK.VarKind -> D.Doc -> D.Doc
 prefixVarKind k doc = do
   let named = if VK.isExp k then D.join [D.text "!", doc] else doc
-  let marked = if VK.isSource k then D.join [D.text "~", named] else named
+  let marked = if VK.isSource k then D.join [D.text "+", named] else named
   let attrPrefixes = map (\attr -> D.text (VK.reifyAttr attr <> " ")) (VK.attrList k)
   D.join $ attrPrefixes ++ [marked]
 
@@ -843,9 +843,9 @@ decGeist
     let codDelim =
           if isConstLike
             then PI.horizontal $ attachComment cArrow' $ D.text ":"
-            else PI.delimiterArrow $ attachComment cArrow' $ D.text "->"
+            else PI.delimiterArrow $ attachComment cArrow' $ D.text (codArrow isDestPassing)
     PI.arrange
-      [ PI.inject $ attachComment c0 $ D.join [nameDecoder name, destMarkToDoc isDestPassing],
+      [ PI.inject $ attachComment c0 $ nameDecoder name,
         PI.inject $ decodeImpParams impArgs,
         PI.inject expParamsWithImp,
         PI.inject defaultParamsWithExpComment,
@@ -1012,6 +1012,14 @@ destMarkToDoc :: IsDestCall -> D.Doc
 destMarkToDoc isDestCall =
   if isDestCall then D.text "@" else D.Nil
 
+codArrow :: Bool -> T.Text
+codArrow isDestPassing =
+  if isDestPassing then "->>" else "->"
+
+lambdaArrow :: Bool -> T.Text
+lambdaArrow isDestPassing =
+  if isDestPassing then "=>>" else "=>"
+
 markedArgToDoc :: RT.MarkedArg RT.RawTerm -> D.Doc
 markedArgToDoc (e, isSourceArg) =
   if isSourceArg
@@ -1134,7 +1142,7 @@ decodePatternKeyValue (k, (_, c, (v, isSourceArg))) = do
 
 prefixSourceMark :: IsSourceArg -> D.Doc -> D.Doc
 prefixSourceMark isSourceArg doc =
-  if isSourceArg then D.join [D.text "~", doc] else doc
+  if isSourceArg then D.join [D.text "+", doc] else doc
 
 attachComment :: C -> D.Doc -> D.Doc
 attachComment c doc =

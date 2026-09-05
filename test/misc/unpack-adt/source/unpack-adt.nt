@@ -12,7 +12,7 @@ data point {
 }
 
 data entity {
-| Entity(~point, ~point)
+| Entity(+point, +point)
 }
 
 resource pair-res {
@@ -38,7 +38,7 @@ resource pair-res {
 }
 
 data holder {
-| Holder(~pair-res, int)
+| Holder(+pair-res, int)
 }
 
 nominal {
@@ -54,15 +54,15 @@ data forest {
 
 data tree {
 | TLeaf(int, int)
-| TNode(~forest, int)
+| TNode(+forest, int)
 }
 
 data my-item-a {
-| My-Item-A(~tree, int)
+| My-Item-A(+tree, int)
 }
 
 data my-item-b {
-| My-Item-B(~forest, int)
+| My-Item-B(+forest, int)
 }
 
 data int-list {
@@ -71,7 +71,7 @@ data int-list {
 }
 
 data list-holder {
-| LHolder(~int-list, int)
+| LHolder(+int-list, int)
 }
 
 data shape {
@@ -81,7 +81,7 @@ data shape {
 }
 
 data scene {
-| Scene(~shape, ~shape)
+| Scene(+shape, +shape)
 }
 
 data color {
@@ -99,15 +99,15 @@ data inner {
 }
 
 data middle {
-| Middle(~inner, int)
+| Middle(+inner, int)
 }
 
 data outer {
-| Outer(~middle, ~middle)
+| Outer(+middle, +middle)
 }
 
 data wrap(a) {
-| Wrap(a, ~point)
+| Wrap(a, +point)
 }
 
 define sum-point(p: point) -> int {
@@ -116,17 +116,17 @@ define sum-point(p: point) -> int {
 }
 
 define sum-entity(e: entity) -> int {
-  let Entity(~p, ~q) = e;
+  let Entity(+p, +q) = e;
   add-int(sum-point(p), sum-point(q))
 }
 
 define sum-discard(e: entity) -> int {
-  let Entity(~_, ~q) = e;
+  let Entity(+_, +q) = e;
   sum-point(q)
 }
 
 define sum-copy(e: entity) -> int {
-  let Entity(~_, ~!q) = e;
+  let Entity(+_, +!q) = e;
   let a = sum-point(q);
   let b = sum-point(q);
   add-int(a, b)
@@ -154,7 +154,7 @@ define sum-pair-res-copy(r: pair-res) -> int {
 }
 
 define sum-holder(h: holder) -> int {
-  let Holder(~r, z) = h;
+  let Holder(+r, z) = h;
   add-int(sum-pair-res(r), z)
 }
 
@@ -164,7 +164,7 @@ define sum-holder-copy(h: holder) -> int {
 }
 
 define copy-extracted-res(h: holder) -> int {
-  let Holder(~r, z) = h;
+  let Holder(+r, z) = h;
   add-int(sum-pair-res-copy(r), z)
 }
 
@@ -181,7 +181,7 @@ define sum-tree(t: tree) -> int {
   match t {
   | TLeaf(a, b) =>
     add-int(a, b)
-  | TNode(~f, n) =>
+  | TNode(+f, n) =>
     add-int(sum-forest(f), n)
   }
 }
@@ -197,12 +197,12 @@ define sum-forest-copy(f: forest) -> int {
 }
 
 define sum-my-item-a(x: my-item-a) -> int {
-  let My-Item-A(~t, n) = x;
+  let My-Item-A(+t, n) = x;
   add-int(sum-tree(t), n)
 }
 
 define sum-my-item-b(x: my-item-b) -> int {
-  let My-Item-B(~f, n) = x;
+  let My-Item-B(+f, n) = x;
   add-int(sum-forest(f), n)
 }
 
@@ -210,7 +210,7 @@ define snd-of-tree(t: tree) -> int {
   match t {
   | TLeaf(_, b) =>
     b
-  | TNode(~_, n) =>
+  | TNode(+_, n) =>
     n
   }
 }
@@ -219,7 +219,7 @@ define copy-extracted-forest(t: tree) -> int {
   match t {
   | TLeaf(a, b) =>
     add-int(a, b)
-  | TNode(~f, n) =>
+  | TNode(+f, n) =>
     add-int(sum-forest-copy(f), n)
   }
 }
@@ -228,7 +228,7 @@ define rewrap-forest(t: tree) -> int {
   match t {
   | TLeaf(a, b) =>
     add-int(a, b)
-  | TNode(~f, _) =>
+  | TNode(+f, _) =>
     sum-tree(TNode(~f, 100))
   }
 }
@@ -237,7 +237,7 @@ define cancel-tree(n: int) -> int {
   match TNode(~FNode(TLeaf(n, 20), 1), 2) {
   | TLeaf(_, _) =>
     0
-  | TNode(~f, m) =>
+  | TNode(+f, m) =>
     match f {
     | FLeaf(_, _) =>
       0
@@ -245,7 +245,7 @@ define cancel-tree(n: int) -> int {
       match t2 {
       | TLeaf(a, b) =>
         add-int(add-int(add-int(a, b), k), m)
-      | TNode(~_, _) =>
+      | TNode(+_, _) =>
         0
       }
     }
@@ -267,7 +267,7 @@ define sum-list-copy(xs: int-list) -> int {
 }
 
 define sum-list-holder(h: list-holder) -> int {
-  let LHolder(~xs, n) = h;
+  let LHolder(+xs, n) = h;
   add-int(sum-list(xs), n)
 }
 
@@ -283,7 +283,7 @@ define area(s: shape) -> int {
 }
 
 define area-sum(sc: scene) -> int {
-  let Scene(~a, ~b) = sc;
+  let Scene(+a, +b) = sc;
   add-int(area(a), area(b))
 }
 
@@ -293,12 +293,12 @@ define area-sum-copy(sc: scene) -> int {
 }
 
 define snd-of-scene(sc: scene) -> int {
-  let Scene(~_, ~b) = sc;
+  let Scene(+_, +b) = sc;
   area(b)
 }
 
 define cancel-scene(n: int) -> int {
-  let Scene(~a, ~b) = Scene(~Circle(n), ~Rect(4, 5));
+  let Scene(+a, +b) = Scene(~Circle(n), ~Rect(4, 5));
   let x =
     match a {
     | Circle(r) =>
@@ -337,23 +337,23 @@ define tagged-sum(t: tagged) -> int {
 }
 
 define sum-middle(m: middle) -> int {
-  let Middle(~i, n) = m;
+  let Middle(+i, n) = m;
   let Inner(a, b) = i;
   add-int(add-int(a, b), n)
 }
 
 define sum-outer(o: outer) -> int {
-  let Outer(~m1, ~m2) = o;
+  let Outer(+m1, +m2) = o;
   add-int(sum-middle(m1), sum-middle(m2))
 }
 
 define snd-of-outer(o: outer) -> int {
-  let Outer(~_, ~m2) = o;
+  let Outer(+_, +m2) = o;
   sum-middle(m2)
 }
 
 define cancel-entity(n: int) -> int {
-  let Entity(~p, ~q) = Entity(~Point(n, 2), ~Point(3, 4));
+  let Entity(+p, +q) = Entity(~Point(n, 2), ~Point(3, 4));
   let Point(a, b) = p;
   let Point(c, d) = q;
   add-int(add-int(a, b), add-int(c, d))
@@ -368,7 +368,7 @@ define sum-point-noetic(p: &point) -> int {
 
 define sum-entity-noetic(e: &entity) -> int {
   case e {
-  | Entity(~p, ~q) =>
+  | Entity(+p, +q) =>
     add-int(sum-point-noetic(p), sum-point-noetic(q))
   }
 }
@@ -391,7 +391,7 @@ define sum-tree-noetic(t: &tree) -> int {
   case t {
   | TLeaf(a, b) =>
     add-int(*a, *b)
-  | TNode(~f, n) =>
+  | TNode(+f, n) =>
     add-int(sum-forest-noetic(f), *n)
   }
 }
@@ -402,13 +402,13 @@ define borrow-tree(t: tree) -> int {
 }
 
 define sum-middle-noetic(m: &middle) -> int {
-  tie Middle(~i, n) = m;
+  tie Middle(+i, n) = m;
   tie Inner(a, b) = i;
   add-int(add-int(*a, *b), *n)
 }
 
 define get-middle-noema(o: &outer) -> &middle {
-  tie Outer(~m, ~_) = o;
+  tie Outer(+m, +_) = o;
   m
 }
 
@@ -418,13 +418,13 @@ define borrow-escaped-middle(o: outer) -> int {
 }
 
 define sum-wrap(w: wrap(int)) -> int {
-  let Wrap(x, ~p) = w;
+  let Wrap(x, +p) = w;
   add-int(x, sum-point(p))
 }
 
 define sum-wrap-noetic(w: &wrap(int)) -> int {
   case w {
-  | Wrap(x, ~p) =>
+  | Wrap(x, +p) =>
     add-int(*x, sum-point-noetic(p))
   }
 }
@@ -440,7 +440,7 @@ data my-either(a, b) {
 }
 
 data config {
-| Config(int, ~my-either(int, point))
+| Config(int, +my-either(int, point))
 }
 
 define make-config() -> config {
@@ -448,7 +448,7 @@ define make-config() -> config {
 }
 
 define sum-config(c: config) -> int {
-  let Config(n, ~e) = c;
+  let Config(n, +e) = c;
   match e {
   | My-Left(x) =>
     add-int(n, x)
@@ -459,7 +459,7 @@ define sum-config(c: config) -> int {
 
 define sum-config-noetic(c: &config) -> int {
   case c {
-  | Config(n, ~e) =>
+  | Config(n, +e) =>
     case e {
     | My-Left(x) =>
       add-int(*n, *x)
@@ -480,7 +480,7 @@ define sum-config-copy(c: config) -> int {
 }
 
 data boxed-fn {
-| BoxedFn(int, ~(int) -> int)
+| BoxedFn(int, +(int) -> int)
 }
 
 define make-boxed(base: int) -> boxed-fn {
@@ -490,12 +490,12 @@ define make-boxed(base: int) -> boxed-fn {
 }
 
 define apply-boxed(b: boxed-fn, x: int) -> int {
-  let BoxedFn(n, ~f) = b;
+  let BoxedFn(n, +f) = b;
   add-int(n, f(x))
 }
 
 define discard-boxed-fn(b: boxed-fn) -> int {
-  let BoxedFn(n, ~_) = b;
+  let BoxedFn(n, +_) = b;
   n
 }
 
@@ -506,7 +506,7 @@ define apply-boxed-copy(b: boxed-fn, x: int) -> int {
 
 define apply-boxed-noetic(b: &boxed-fn, x: int) -> int {
   case b {
-  | BoxedFn(n, ~f) =>
+  | BoxedFn(n, +f) =>
     let g = *f;
     add-int(*n, g(x))
   }
@@ -518,7 +518,7 @@ define apply-boxed-borrow(b: boxed-fn, x: int) -> int {
 }
 
 define clone-second-point-noetic(e: &entity) -> int {
-  tie Entity(~_, ~q) = e;
+  tie Entity(+_, +q) = e;
   let q-owned = *q;
   let Point(a, b) = q-owned;
   add-int(a, b)
@@ -533,7 +533,7 @@ define clone-forest-noetic(t: &tree) -> int {
   case t {
   | TLeaf(a, b) =>
     add-int(*a, *b)
-  | TNode(~f, _) =>
+  | TNode(+f, _) =>
     sum-forest(*f)
   }
 }
@@ -544,7 +544,7 @@ define clone-forest(t: tree) -> int {
 }
 
 define clone-res-noetic(h: &holder) -> int {
-  tie Holder(~r, _) = h;
+  tie Holder(+r, _) = h;
   sum-pair-res(*r)
 }
 
@@ -565,7 +565,7 @@ define area-noetic(s: &shape) -> int {
 }
 
 define scene-noetic(sc: &scene) -> int {
-  tie Scene(~a, ~b) = sc;
+  tie Scene(+a, +b) = sc;
   add-int(area-noetic(a), area-noetic(b))
 }
 
@@ -595,8 +595,8 @@ define sum-inner-noetic(i: &inner) -> int {
 }
 
 define get-inner-noema(o: &outer) -> &inner {
-  tie Outer(~m, ~_) = o;
-  tie Middle(~i, _) = m;
+  tie Outer(+m, +_) = o;
+  tie Middle(+i, _) = m;
   i
 }
 
@@ -605,23 +605,23 @@ define borrow-escaped-inner(o: outer) -> int {
   add-int(s, sum-outer(o))
 }
 
-define make-entity-dps@(a: int, b: int) -> entity {
+define make-entity-dps(a: int, b: int) ->> entity {
   Entity(~Point(a, 1), ~Point(b, 2))
 }
 
-define make-tree-dps@(x: int) -> tree {
+define make-tree-dps(x: int) ->> tree {
   TNode(~FNode(TLeaf(x, 20), 1), 2)
 }
 
-define make-holder-dps@(a: int, b: int) -> holder {
+define make-holder-dps(a: int, b: int) ->> holder {
   Holder(~make-pair-res(a, b), 7)
 }
 
-define accumulate-entity@(n: int, acc: entity) -> entity {
+define accumulate-entity(n: int, acc: entity) ->> entity {
   if eq-int(n, 0) {
     acc
   } else {
-    let Entity(~p, ~q) = acc;
+    let Entity(+p, +q) = acc;
     let Point(px, py) = p;
     accumulate-entity@(sub-int(n, 1), Entity(~Point(add-int(px, 1), py), ~q))
   }
@@ -636,7 +636,7 @@ data wrapper(a) {
 }
 
 data boxed-config {
-| BoxedConfig(int, ~wrapper(item))
+| BoxedConfig(int, +wrapper(item))
 }
 
 define item-to-int(it: item) -> int {
@@ -650,13 +650,13 @@ define item-to-int(it: item) -> int {
 }
 
 define sum-boxed-config(c: boxed-config) -> int {
-  let BoxedConfig(n, ~w) = c;
+  let BoxedConfig(n, +w) = c;
   let Wrapper(it) = w;
   add-int(n, item-to-int(it))
 }
 
 define discard-boxed-config(c: boxed-config) -> int {
-  let BoxedConfig(n, ~_) = c;
+  let BoxedConfig(n, +_) = c;
   n
 }
 
@@ -667,7 +667,7 @@ define sum-boxed-config-copy(c: boxed-config) -> int {
 
 define sum-boxed-config-noetic(c: &boxed-config) -> int {
   case c {
-  | BoxedConfig(n, ~w) =>
+  | BoxedConfig(n, +w) =>
     case w {
     | Wrapper(it) =>
       case it {
@@ -688,11 +688,11 @@ define borrow-boxed-config(c: boxed-config) -> int {
 }
 
 data wrapped-shape {
-| WrappedShape(~wrapper(shape), int)
+| WrappedShape(+wrapper(shape), int)
 }
 
 define sum-wrapped-shape(ws: wrapped-shape) -> int {
-  let WrappedShape(~w, n) = ws;
+  let WrappedShape(+w, n) = ws;
   let Wrapper(s) = w;
   add-int(area(s), n)
 }
@@ -704,7 +704,7 @@ define sum-wrapped-shape-copy(ws: wrapped-shape) -> int {
 
 define sum-wrapped-shape-noetic(ws: &wrapped-shape) -> int {
   case ws {
-  | WrappedShape(~w, n) =>
+  | WrappedShape(+w, n) =>
     case w {
     | Wrapper(s) =>
       add-int(area-noetic(s), *n)
@@ -718,7 +718,7 @@ define borrow-wrapped-shape(ws: wrapped-shape) -> int {
 }
 
 data ubox-flat {
-| UFlat(~point, int)
+| UFlat(+point, int)
 }
 
 data ubox-box {

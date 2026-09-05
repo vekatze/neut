@@ -344,7 +344,7 @@ type PiElimArgs =
 
 rawTermMarkedArg :: Handle -> Parser (RT.MarkedArg RT.RawTerm, C)
 rawTermMarkedArg h = do
-  (isSourceArg, cSource) <- sourceMark SourceAdmissible
+  (isSourceArg, cSource) <- sourceArgMark
   (e, c) <- rawTerm h
   return ((e, isSourceArg), cSource ++ c)
 
@@ -372,27 +372,24 @@ rawTypeTyAppCont h (t@(m :< _), c) = do
 rawTypePi :: Handle -> Parser (RT.RawType, C)
 rawTypePi h = do
   m <- getCurrentHint
-  (isDestPassing, cDest) <- parseDestMark
   impArgs <- parseImplicitParams h
   expArgs <- seriesParen $ binderOrType h SourceAdmissible
   defaultArgs <- parseDefaultTypeParams h
-  cArrow <- delimiter "->"
+  (isDestPassing, cArrow) <- parseCodArrow ArrowObject
   let piKind = if isDestPassing then RT.PiDestPass else RT.PiNormal
   (cod, c) <- rawType h
   loc <- getCurrentLoc
-  return (m :< RT.Pi impArgs expArgs defaultArgs piKind (cDest ++ cArrow) cod loc, c)
+  return (m :< RT.Pi impArgs expArgs defaultArgs piKind cArrow cod loc, c)
 
 rawTermLambda :: Handle -> Parser (RT.RawTerm, C)
 rawTermLambda h = do
   m <- getCurrentHint
-  (isDestPassing, cDest) <- parseDestMark
   impArgs <- parseImplicitParams h
   expArgs@(expSeries, _) <- seriesParen $ preBinder h SourceAdmissible
   defaultArgs <- parseDefaultParams h
   lift $ ensureArgumentLinearity S.empty $ map (\(mx, _, x, _, _, _) -> (mx, x)) $ SE.extract expSeries
   cod <- liftIO $ RT.createTypeHole (gensymHandle h) m
-  cArrow' <- delimiter "=>"
-  let cArrow = cDest ++ cArrow'
+  (isDestPassing, cArrow) <- parseLambdaArrow
   (c2, ((e, c3), loc, c)) <- betweenBrace' $ rawExpr h
   let geist =
         RT.RawGeist
@@ -431,7 +428,7 @@ rawTermKeyValuePair h = do
 rawTermMarkedKeyValuePair :: Handle -> Parser ((Hint, Key, C, C, RT.MarkedArg RT.RawTerm), C)
 rawTermMarkedKeyValuePair h = do
   m <- getCurrentHint
-  (isSourceArg, cSource) <- sourceMark SourceAdmissible
+  (isSourceArg, cSource) <- sourceArgMark
   (key, c1) <- symbol
   markedKeyValueCont h m key (cSource ++ c1) isSourceArg
 
@@ -669,9 +666,7 @@ parseNominalGeist arrowMode =
 parseGeistWith :: ArrowMode -> DefaultArgsMode -> Handle -> Parser (a, C) -> Parser (RT.RawGeist a, C)
 parseGeistWith arrowMode mode h nameParser = do
   loc <- getCurrentHint
-  (name', cName) <- nameParser
-  (isDestPassing, cDest) <- parseDefDestMark arrowMode
-  let name = (name', cName ++ cDest)
+  name <- nameParser
   impArgs <- parseImplicitParams h
   let isConstLike = False
   expArgs@(expSeries, _) <- seriesParen $ mandatoryBinder h SourceAdmissible
@@ -679,7 +674,7 @@ parseGeistWith arrowMode mode h nameParser = do
     ParseDefaultArgs -> parseDefaultParams h
     NoDefaultArgs -> return RT.emptyDefaultArgs
   lift $ ensureArgumentLinearity S.empty $ map (\(mx, _, x, _, _, _) -> (mx, x)) $ SE.extract expSeries
-  (c2, (cod, c)) <- parseDefInfoCod h
+  (isDestPassing, c2, (cod, c)) <- parseDefInfoCod arrowMode h
   return (RT.RawGeist {loc, name, isConstLike, isDestPassing, impArgs, defaultArgs, expArgs, cod = (c2, cod)}, c)
 
 parseAliasGeist :: Handle -> Parser (a, C) -> Parser (RT.RawGeist a, C)
@@ -827,24 +822,38 @@ ensureArgumentLinearity foundVarSet vs =
       | otherwise ->
           ensureArgumentLinearity (S.insert name foundVarSet) rest
 
-parseDefInfoCod :: Handle -> Parser (C, (RT.RawType, C))
-parseDefInfoCod h = do
-  c <- delimiter "->"
+parseDefInfoCod :: ArrowMode -> Handle -> Parser (Bool, C, (RT.RawType, C))
+parseDefInfoCod arrowMode h = do
+  (isDestPassing, c) <- parseCodArrow arrowMode
   t <- rawType h
-  return (c, t)
+  return (isDestPassing, c, t)
 
-parseDestMark :: Parser (Bool, C)
-parseDestMark = do
-  mDest <- optional $ delimiter "@"
-  return (isJust mDest, fromMaybe [] mDest)
-
-parseDefDestMark :: ArrowMode -> Parser (Bool, C)
-parseDefDestMark arrowMode =
+parseCodArrow :: ArrowMode -> Parser (Bool, C)
+parseCodArrow arrowMode =
   case arrowMode of
-    ArrowMeta ->
-      return (False, [])
+    ArrowMeta -> do
+      c <- delimiter "->"
+      return (False, c)
     ArrowObject ->
-      parseDestMark
+      choice
+        [ do
+            c <- delimiter "->>"
+            return (True, c),
+          do
+            c <- delimiter "->"
+            return (False, c)
+        ]
+
+parseLambdaArrow :: Parser (Bool, C)
+parseLambdaArrow =
+  choice
+    [ do
+        c <- delimiter "=>>"
+        return (True, c),
+      do
+        c <- delimiter "=>"
+        return (False, c)
+    ]
 
 rawTermDefine :: Handle -> LDK.LocalDefKind -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermDefine h kind m c0 = do
@@ -1129,7 +1138,7 @@ rawTermPattern h = do
 
 rawTermMarkedPattern :: Handle -> Parser ((Hint, RP.MarkedPattern), C)
 rawTermMarkedPattern h = do
-  (isSourceArg, cSource) <- sourceMark SourceAdmissible
+  (isSourceArg, cSource) <- sourceSlotMark SourceAdmissible
   ((m, pat), c) <- rawTermPattern h
   return ((m, (pat, isSourceArg)), cSource ++ c)
 
@@ -1170,7 +1179,7 @@ rawTermPatternConsOrVar h m k headSymbol c1 = do
 rawTermPatternKeyValuePair :: Handle -> Parser ((Key, (Hint, C, RP.MarkedPattern)), C)
 rawTermPatternKeyValuePair h = do
   mFrom <- getCurrentHint
-  (isSourceArg, cSource) <- sourceMark SourceAdmissible
+  (isSourceArg, cSource) <- sourceSlotMark SourceAdmissible
   (from, c1) <- symbol
   choice
     [ do
@@ -1280,7 +1289,7 @@ rawTermCodeElim h m c1 = do
 rawTypeBox :: Handle -> Parser (RT.RawType, C)
 rawTypeBox h = do
   m <- getCurrentHint
-  c1 <- delimiter "+"
+  c1 <- delimiter "^"
   (t, c) <- rawType h
   return (m :< RT.Box t, c1 ++ c)
 
@@ -1359,7 +1368,7 @@ mandatoryBinder h admission = do
 
 slotBinderName :: Handle -> SourceAdmission -> Parser ((Hint, VK.VarKind, T.Text), C)
 slotBinderName h admission = do
-  (isSourceSlot, c1) <- sourceMark admission
+  (isSourceSlot, c1) <- sourceSlotMark admission
   ((m, k, x), c2) <- binderName h
   return ((m, withSourceMark isSourceSlot k, x), c1 ++ c2)
 
@@ -1395,7 +1404,7 @@ preAscription' h ((m, k, x), c) = do
 
 binderOrType :: Handle -> SourceAdmission -> Parser (RawBinder RT.RawType, C)
 binderOrType h admission = do
-  (isSourceSlot, cSource) <- sourceMark admission
+  (isSourceSlot, cSource) <- sourceSlotMark admission
   mBang <- optional $ delimiter "!"
   m <- getCurrentHint
   (headSymbol, cHead) <- symbol'
@@ -1545,17 +1554,22 @@ data SourceAdmission
   = SourceAdmissible
   | SourceInadmissible
 
-sourceMark :: SourceAdmission -> Parser (Bool, C)
-sourceMark admission = do
+sourceSlotMark :: SourceAdmission -> Parser (Bool, C)
+sourceSlotMark admission = do
   m <- getCurrentHint
-  mSource <- optional $ delimiter "~"
+  mSource <- optional $ delimiter "+"
   case (mSource, admission) of
     (Just _, SourceInadmissible) ->
-      lift $ raiseError m "`~` cannot be used in this position"
+      lift $ raiseError m "`+` cannot be used in this position"
     (Just c, SourceAdmissible) ->
       return (True, c)
     (Nothing, _) ->
       return (False, [])
+
+sourceArgMark :: Parser (Bool, C)
+sourceArgMark = do
+  mSource <- optional $ delimiter "~"
+  return (isJust mSource, fromMaybe [] mSource)
 
 withSourceMark :: Bool -> VK.VarKind -> VK.VarKind
 withSourceMark isSourceSlot k =

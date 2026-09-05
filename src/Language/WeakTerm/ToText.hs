@@ -143,7 +143,7 @@ renderIndentedApplication kit function impArgs spec expArgs =
 renderArgs :: Kit -> CCS.CallConvSpec WT.WeakType -> [WT.WeakTerm] -> T.Text
 renderArgs kit spec expArgs = do
   let (isDestCall, sourceArgs) = CCS.marks (length expArgs) spec
-  let destMark = if isDestCall then "!" else ""
+  let destMark = if isDestCall then "@" else ""
   destMark <> inParen (T.intercalate ", " (zipWith (renderArg kit) expArgs sourceArgs))
 
 renderArg :: Kit -> WT.WeakTerm -> IsSourceArg -> T.Text
@@ -176,18 +176,16 @@ renderPiIntroHeader distinct attr impArgs expArgs defaultArgs =
       LDK.keyword kind
         <> " "
         <> showVarWithKind distinct k x
-        <> (if isDestPassing then "@" else "")
         <> showSourceImpArgs distinct impArgs
         <> inParen (showFnDomArgList distinct expArgs)
         <> showDefaultArgs defaultArgs
-        <> " -> "
+        <> (if isDestPassing then " ->> " else " -> ")
         <> toTextType codType
     LK.Normal _ isDestPassing _ ->
-      (if isDestPassing then "@" else "")
-        <> showSourceImpArgs distinct impArgs
+      showSourceImpArgs distinct impArgs
         <> inParen (showFnDomArgList distinct expArgs)
         <> showDefaultArgs defaultArgs
-        <> " =>"
+        <> (if isDestPassing then " =>>" else " =>")
 
 showSourceImpArgs :: Bool -> [BinderF WT.WeakType] -> T.Text
 showSourceImpArgs distinct impArgs =
@@ -363,7 +361,7 @@ toTextType' h ty =
         PK.DestPass isConstLike ->
           if isConstLike
             then showImpArgsForAll' h impArgs defaultArgs <> toTextType' h cod
-            else "@" <> showImpArgs impArgs <> inParen (showDomArgList' h expArgs) <> showDefaultBinders' h defaultArgs <> " -> " <> toTextType' h cod
+            else showImpArgs impArgs <> inParen (showDomArgList' h expArgs) <> showDefaultBinders' h defaultArgs <> " ->> " <> toTextType' h cod
         PK.DataIntro _ -> do
           showImpArgsForAll' h impArgs defaultArgs <> toTextType' h cod
     _ :< WT.Data (AttrD.Attr {..}) name es -> do
@@ -371,7 +369,7 @@ toTextType' h ty =
         then showDD h name
         else showApp (showDD h name) (map (toTextType' h) es)
     _ :< WT.Box t ->
-      "+" <> toTextType' h t
+      "^" <> toTextType' h t
     _ :< WT.BoxNoema t ->
       "&" <> toTextType' h t
     _ :< WT.Embed t ->
@@ -499,7 +497,7 @@ showVarWithKind distinct k x =
 varKindPrefix :: VK.VarKind -> T.Text
 varKindPrefix k =
   T.concat (map (\attr -> VK.reifyAttr attr <> " ") (VK.attrList k))
-    <> (if VK.isSource k then "~" else "")
+    <> (if VK.isSource k then "+" else "")
     <> (if VK.isExp k then "!" else "")
 
 showDomArgList' :: Handle -> [BinderF WT.WeakType] -> T.Text

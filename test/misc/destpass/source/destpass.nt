@@ -3,9 +3,9 @@ import {
   core::int.io {print-int, print-int-line},
 }
 
-define my-loop-func@(x: int) -> either(int, bool) {
+define my-loop-func(x: int) ->> either(int, bool) {
   let inner =
-    define loop@(n: int) -> either(int, bool) {
+    define loop(n: int) ->> either(int, bool) {
       if eq-int(n, 0) {
         Right(True)
       } else {
@@ -32,7 +32,7 @@ define foo-tail-list(xs: list(int), acc: int) -> int {
   }
 }
 
-define foo-tail-either-let@(x: int) -> either(int, bool) {
+define foo-tail-either-let(x: int) ->> either(int, bool) {
   if eq-int(x, 0) {
     Right(True)
   } else {
@@ -41,7 +41,7 @@ define foo-tail-either-let@(x: int) -> either(int, bool) {
   }
 }
 
-define foo-tail-list-print-either@(xs: list(int), acc: int) -> either(int, bool) {
+define foo-tail-list-print-either(xs: list(int), acc: int) ->> either(int, bool) {
   match xs {
   | Nil =>
     Left(acc)
@@ -52,7 +52,7 @@ define foo-tail-list-print-either@(xs: list(int), acc: int) -> either(int, bool)
   }
 }
 
-define foo-tail-pair@(x: int, acc: pair(int, int)) -> pair(int, int) {
+define foo-tail-pair(x: int, acc: pair(int, int)) ->> pair(int, int) {
   let Pair(left, right) = acc;
   if eq-int(x, 0) {
     Pair(left, right)
@@ -61,7 +61,7 @@ define foo-tail-pair@(x: int, acc: pair(int, int)) -> pair(int, int) {
   }
 }
 
-define foo-tail-list-pair-print@(xs: list(int), acc: pair(int, int)) -> pair(int, int) {
+define foo-tail-list-pair-print(xs: list(int), acc: pair(int, int)) ->> pair(int, int) {
   match xs {
   | Nil =>
     acc
@@ -76,7 +76,7 @@ define foo-tail-list-pair-print@(xs: list(int), acc: pair(int, int)) -> pair(int
   }
 }
 
-define foo-tail-list-of-either@(xs: list(either(int, int)), acc: pair(int, int)) -> pair(int, int) {
+define foo-tail-list-of-either(xs: list(either(int, int)), acc: pair(int, int)) ->> pair(int, int) {
   match xs {
   | Nil =>
     acc
@@ -92,9 +92,9 @@ define foo-tail-list-of-either@(xs: list(either(int, int)), acc: pair(int, int))
   }
 }
 
-inline foo-tail-inner-complex@(xs: list(int), seed: int) -> pair(int, int) {
+inline foo-tail-inner-complex(xs: list(int), seed: int) ->> pair(int, int) {
   let inner =
-    define loop@(xs: list(int), acc: pair(int, int)) -> pair(int, int) {
+    define loop(xs: list(int), acc: pair(int, int)) ->> pair(int, int) {
       match xs {
       | Nil =>
         acc
@@ -115,11 +115,11 @@ define immediate-step(x: int) -> int {
   add-int(x, 1)
 }
 
-define pair-step@(x: int) -> pair(int, int) {
+define pair-step(x: int) ->> pair(int, int) {
   Pair(add-int(x, 1), add-int(x, 2))
 }
 
-define either-step@(x: int) -> either(int, bool) {
+define either-step(x: int) ->> either(int, bool) {
   if eq-int(rem-int(x, 2), 0) {
     Left(add-int(x, 100))
   } else {
@@ -127,7 +127,7 @@ define either-step@(x: int) -> either(int, bool) {
   }
 }
 
-define forward-pair-step@(x: int) -> pair(int, int) {
+define forward-pair-step(x: int) ->> pair(int, int) {
   pair-step@(x)
 }
 
@@ -157,7 +157,7 @@ define apply-int-dps(f: (int) -> int, x: int) -> int {
   add-int(f(x), 100)
 }
 
-define apply-either-dps(f: @(int) -> either(int, bool), x: int) -> either(int, bool) {
+define apply-either-dps(f: (int) ->> either(int, bool), x: int) -> either(int, bool) {
   f@(x)
 }
 
@@ -191,7 +191,7 @@ define use-boxed-destcall-via-closure-capture(x: int) -> int {
 define use-local-nontail-dps-captured-pair(n: int) -> pair(int, int) {
   let !seed = Pair(10, 100);
   let inner =
-    define loop@(x: int) -> pair(int, int) {
+    define loop(x: int) ->> pair(int, int) {
       let Pair(seed-left, seed-right) = seed;
       if eq-int(x, 0) {
         Pair(seed-left, seed-right)
@@ -223,9 +223,9 @@ define use-local-nontail-dps-captured-either(n: int) -> int {
   inner(n)
 }
 
-define make-local-pair-dps(!seed: pair(int, int)) -> @(int) -> pair(int, int) {
+define make-local-pair-dps(!seed: pair(int, int)) -> (int) ->> pair(int, int) {
   let inner =
-    define loop@(x: int) -> pair(int, int) {
+    define loop(x: int) ->> pair(int, int) {
       let Pair(a, b) = seed;
       if eq-int(x, 0) {
         Pair(a, b)
@@ -296,11 +296,11 @@ define apply-tagged-dps(x: int) -> int {
   f(x)
 }
 
-define id-dps@<sized a>(x: a) -> a {
+define id-dps<sized a>(x: a) ->> a {
   x
 }
 
-define apply-poly-dps<a, sized b>(f: @(a) -> b, x: a) -> b {
+define apply-poly-dps<a, sized b>(f: (a) ->> b, x: a) -> b {
   f@(x)
 }
 
@@ -320,9 +320,9 @@ define use-poly-id-both() -> int {
   add-int(add-int(i, zero), add-int(left, right))
 }
 
-define make-poly-boxed-id(!seed: pair(int, int)) -> @(pair(int, int)) -> pair(int, int) {
+define make-poly-boxed-id(!seed: pair(int, int)) -> (pair(int, int)) ->> pair(int, int) {
   let inner =
-    define _@(x: pair(int, int)) -> pair(int, int) {
+    define _(x: pair(int, int)) ->> pair(int, int) {
       let Pair(a, b) = seed;
       let Pair(c, d) = x;
       Pair(add-int(a, c), add-int(b, d))
@@ -335,9 +335,9 @@ define use-poly-escaped-boxed-id() -> pair(int, int) {
   f@(Pair(4, 5))
 }
 
-define make-exact-poly-captured-boxed(!tag: either(pair(int, int), pair(int, int))) -> @(pair(int, int)) -> pair(int, int) {
+define make-exact-poly-captured-boxed(!tag: either(pair(int, int), pair(int, int))) -> (pair(int, int)) ->> pair(int, int) {
   let inner =
-    define _@(x: pair(int, int)) -> pair(int, int) {
+    define _(x: pair(int, int)) ->> pair(int, int) {
       let y = apply-poly-dps(exact id-dps, x);
       match tag {
       | Left(seed) =>
@@ -392,7 +392,7 @@ define hard-case(xs: list(int)) -> int {
   inner(xs)
 }
 
-define huge-box@(x: int) -> pair(pair(int, int), pair(int, int)) {
+define huge-box(x: int) ->> pair(pair(int, int), pair(int, int)) {
   Pair(Pair(x, add-int(x, 1)), Pair(add-int(x, 2), add-int(x, 3)))
 }
 
