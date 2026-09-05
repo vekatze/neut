@@ -57,7 +57,7 @@ fromFilePath moduleFilePath = do
   sourceDir <- interpretDirPath sourceDirEns
   foreignDictEns <- liftEither $ E.access' keyForeign (emptyForeign m) ens
   foreignDict <- interpretForeignDict (parent moduleFilePath) foreignDictEns
-  let mInlineLimit = interpretInlineLimit $ E.access keyInlineLimit ens
+  mInlineLimit <- interpretInlineLimit ens
   (_, universal) <- liftEither $ E.access' keyUniversal (E.Bool True) ens >>= E.toBool
   (mPreset, presetEns) <- liftEither $ E.access' keyPreset E.emptyDict ens >>= E.toDictionary
   presetMap <- liftEither $ interpretPresetMap mPreset presetEns
@@ -288,10 +288,16 @@ interpretDirPath ens = do
   (m, pathText) <- liftEither $ E.toString ens
   interpretRelDir m pathText
 
-interpretInlineLimit :: Either Error E.Ens -> Maybe Int
-interpretInlineLimit errOrEns = do
-  ens <- rightToMaybe errOrEns
-  rightToMaybe $ E.toInt ens
+interpretInlineLimit :: E.Ens -> App (Maybe Int)
+interpretInlineLimit ens =
+  if not (E.hasKey keyInlineLimit ens)
+    then return Nothing
+    else do
+      limitEns@(m :< _) <- liftEither $ E.access keyInlineLimit ens
+      limit <- liftEither $ E.toInt limitEns
+      if limit < 0
+        then raiseError m $ "The inline limit must not be negative, but is: " <> T.pack (show limit)
+        else return $ Just limit
 
 ensureExistence ::
   H.Hint ->
@@ -304,14 +310,6 @@ ensureExistence m moduleRootDir path existenceChecker kindText = do
   b <- existenceChecker (moduleRootDir </> path)
   unless b $ do
     raiseError m $ "No such " <> kindText <> " exists: " <> T.pack (toFilePath path)
-
-rightToMaybe :: Either a b -> Maybe b
-rightToMaybe errOrVal =
-  case errOrVal of
-    Left _ ->
-      Nothing
-    Right val ->
-      Just val
 
 emptyForeign :: H.Hint -> E.EnsF E.Ens
 emptyForeign m =
