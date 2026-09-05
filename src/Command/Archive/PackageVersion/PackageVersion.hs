@@ -11,6 +11,7 @@ module Command.Archive.PackageVersion.PackageVersion
   )
 where
 
+import Data.Char (isDigit)
 import Data.List qualified as List
 import Data.Text qualified as T
 import Kernel.Common.Const
@@ -24,26 +25,42 @@ type AlphaPrefix =
   Int
 
 type MajorVersion =
-  Int
+  Integer
 
 type MinorVersion =
-  Int
+  Integer
 
 reflect :: T.Text -> Maybe PackageVersion
 reflect releaseName = do
-  let intTextList = T.splitOn verSep releaseName
-  intList <- mapM (readMaybe . T.unpack) intTextList
-  let (zeroList, versionList) = span (== 0) intList
+  let componentTextList = T.splitOn verSep releaseName
+  componentList <- mapM readComponent componentTextList
+  let (zeroList, versionList) = span (== 0) componentList
   (majorVersion, minorVersionList) <- List.uncons versionList
-  if all (>= 0) $ majorVersion : minorVersionList
-    then return (length zeroList, (majorVersion, minorVersionList))
+  return (length zeroList, (majorVersion, minorVersionList))
+
+readComponent :: T.Text -> Maybe Integer
+readComponent componentText =
+  if isCanonicalDecimal componentText
+    then readMaybe $ T.unpack componentText
     else Nothing
+
+isCanonicalDecimal :: T.Text -> Bool
+isCanonicalDecimal componentText =
+  case T.unpack componentText of
+    [] ->
+      False
+    ['0'] ->
+      True
+    '0' : _ ->
+      False
+    digits ->
+      all isDigit digits
 
 reify :: PackageVersion -> T.Text
 reify version = do
   T.pack $ List.intercalate (T.unpack verSep) $ map show $ toComponentList version
 
-toComponentList :: PackageVersion -> [Int]
+toComponentList :: PackageVersion -> [Integer]
 toComponentList (alphaPrefix, (majorVersion, minorVersionList)) =
   replicate alphaPrefix 0 ++ (majorVersion : minorVersionList)
 
