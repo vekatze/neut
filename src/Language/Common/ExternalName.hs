@@ -47,7 +47,35 @@ memcpy =
 
 toBuilder :: ExternalName -> Builder
 toBuilder (ExternalName rawTxt) =
-  TE.encodeUtf8Builder $ "\"" <> T.concatMap escapeChar rawTxt <> "\""
+  TE.encodeUtf8Builder $
+    if isPlainIdentifier rawTxt
+      then rawTxt
+      else "\"" <> T.concatMap escapeChar rawTxt <> "\""
+
+-- an LLVM identifier that needs no quotation: [-a-zA-Z$._][-a-zA-Z$._0-9]*
+isPlainIdentifier :: T.Text -> Bool
+isPlainIdentifier text =
+  case T.uncons text of
+    Nothing ->
+      False
+    Just (c, rest) ->
+      isIdentifierHead c && T.all isIdentifierTail rest
+
+isIdentifierHead :: Char -> Bool
+isIdentifierHead c =
+  isAsciiLetter c || c `elem` ("-$._" :: String)
+
+isIdentifierTail :: Char -> Bool
+isIdentifierTail c =
+  isIdentifierHead c || isAsciiDigit c
+
+isAsciiLetter :: Char -> Bool
+isAsciiLetter c =
+  ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z')
+
+isAsciiDigit :: Char -> Bool
+isAsciiDigit c =
+  '0' <= c && c <= '9'
 
 escapeChar :: Char -> T.Text
 escapeChar c
