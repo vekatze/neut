@@ -1031,7 +1031,11 @@ resolveType h t = do
   reduceWeakType' h sub t
 
 reduceWeakType' :: Handle -> THS.TypeHoleSubst -> WT.WeakType -> App WT.WeakType
-reduceWeakType' h holeSubst t = do
+reduceWeakType' h holeSubst =
+  reduceWeakTypeWithin h holeSubst (inlineLimit h)
+
+reduceWeakTypeWithin :: Handle -> THS.TypeHoleSubst -> Int -> WT.WeakType -> App WT.WeakType
+reduceWeakTypeWithin h holeSubst budget t = do
   t' <- reduceType h t
   case t' of
     m :< WT.TypeHole holeID args -> do
@@ -1040,27 +1044,34 @@ reduceWeakType' h holeSubst t = do
           return t'
         Just (xs, body)
           | length xs == length args -> do
+              ensureUnfoldingBudget h m budget
               let sub = IntMap.fromList $ zip (map Ident.toInt xs) (map Type args)
               body' <- liftIO $ Subst.substType (substHandle h) sub body
-              reduceWeakType' h holeSubst body'
+              reduceWeakTypeWithin h holeSubst (budget - 1) body'
           | otherwise ->
               raiseError m "Arity mismatch"
-    _ :< WT.TyApp (_ :< WT.TVarGlobal _ name) args -> do
+    m :< WT.TyApp (_ :< WT.TVarGlobal _ name) args -> do
       mDef <- liftIO $ WeakTypeDef.lookup' (weakTypeDefHandle h) name
       case mDef of
         Just def
           | length args == length (WeakTypeDef.typeDefBinders def) -> do
+              ensureUnfoldingBudget h m budget
               let varList = map (\(_, _, x, _) -> Ident.toInt x) (WeakTypeDef.typeDefBinders def)
               let sub = IntMap.fromList $ zip varList (map Type args)
               body' <- liftIO $ Subst.substType (substHandle h) sub (WeakTypeDef.typeDefBody def)
-              reduceWeakType' h holeSubst body'
+              reduceWeakTypeWithin h holeSubst (budget - 1) body'
         _ ->
           return t'
     m :< WT.BoxNoema tInner -> do
-      tInner' <- reduceWeakType' h holeSubst tInner
+      tInner' <- reduceWeakTypeWithin h holeSubst budget tInner
       return $ m :< WT.BoxNoema tInner'
     _ ->
       return t'
+
+ensureUnfoldingBudget :: Handle -> Hint -> Int -> App ()
+ensureUnfoldingBudget h m budget =
+  when (budget <= 0) $
+    raiseError m $ "Exceeded max recursion depth of " <> T.pack (show (inlineLimit h)) <> " while reducing a type"
 
 -- reduceWeakType' :: Handle -> THS.TypeHoleSubst -> WT.WeakType -> App WT.WeakType
 -- reduceWeakType' h sub e = do

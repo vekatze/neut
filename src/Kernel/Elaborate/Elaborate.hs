@@ -1152,12 +1152,15 @@ elaboratePrimValue h m primValue =
     WPV.Rune r ->
       return $ PV.Rune r
 
+type UnwrappedTypes =
+  S.Set DD.DefiniteDescription
+
 strictify :: Handle -> WT.WeakType -> App BLT.BaseLowType
 strictify h t@(mt :< _) =
-  strictify' h mt t
+  strictify' h mt S.empty t
 
-strictify' :: Handle -> Hint -> WT.WeakType -> App BLT.BaseLowType
-strictify' h m t = do
+strictify' :: Handle -> Hint -> UnwrappedTypes -> WT.WeakType -> App BLT.BaseLowType
+strictify' h m unwrapped t = do
   t' <- reduceWeakType h t >>= elaborateType h
   case t' of
     _ :< TM.PrimType (PT.Int size) ->
@@ -1168,45 +1171,56 @@ strictify' h m t = do
       return $ BLT.PrimNum $ BPT.Float $ BPT.Explicit size
     _ :< TM.PrimType PT.Pointer ->
       return BLT.Pointer
-    _ :< TM.Data _ dataName [] -> do
-      consInfoList <- lookupDataInfo h m dataName
-      case consInfoList of
-        [DI.ConsInfo {DI.consArgs = [(_, _, _, arg)]}] ->
-          strictify' h m (weakenType arg)
-        _ ->
-          raiseNonStrictType m (weakenType t')
+    _ :< TM.Data _ dataName []
+      | S.notMember dataName unwrapped -> do
+          consInfoList <- lookupDataInfo h m dataName
+          case consInfoList of
+            [DI.ConsInfo {DI.consArgs = [(_, _, _, arg)]}] ->
+              strictify' h m (S.insert dataName unwrapped) (weakenType arg)
+            _ ->
+              raiseNonStrictType m (weakenType t')
     _ :< _ ->
       raiseNonStrictType m (weakenType t')
 
 strictifyDecimalType :: Handle -> Hint -> Integer -> WT.WeakType -> App (IntSize, TM.Type)
-strictifyDecimalType h m x t = do
+strictifyDecimalType h m =
+  strictifyDecimalType' h m S.empty
+
+strictifyDecimalType' :: Handle -> Hint -> UnwrappedTypes -> Integer -> WT.WeakType -> App (IntSize, TM.Type)
+strictifyDecimalType' h m unwrapped x t = do
   t' <- reduceWeakType h t >>= elaborateType h
   case t' of
     _ :< TM.PrimType (PT.Int size) ->
       return (size, t')
-    _ :< TM.Data _ dataName [] -> do
-      consInfoList <- lookupDataInfo h m dataName
-      case consInfoList of
-        [DI.ConsInfo {DI.consArgs = [(_, _, _, arg)]}] ->
-          strictifyDecimalType h m x (weakenType arg)
-        _ ->
-          raiseNonDecimalType m x (weakenType t')
+    _ :< TM.Data _ dataName []
+      | S.notMember dataName unwrapped -> do
+          consInfoList <- lookupDataInfo h m dataName
+          case consInfoList of
+            [DI.ConsInfo {DI.consArgs = [(_, _, _, arg)]}] ->
+              strictifyDecimalType' h m (S.insert dataName unwrapped) x (weakenType arg)
+            _ ->
+              raiseNonDecimalType m x (weakenType t')
     _ :< _ ->
       raiseNonDecimalType m x (weakenType t')
 
 strictifyFloatType :: Handle -> Hint -> Double -> WT.WeakType -> App (FloatSize, TM.Type)
-strictifyFloatType h m x t = do
+strictifyFloatType h m =
+  strictifyFloatType' h m S.empty
+
+strictifyFloatType' :: Handle -> Hint -> UnwrappedTypes -> Double -> WT.WeakType -> App (FloatSize, TM.Type)
+strictifyFloatType' h m unwrapped x t = do
   t' <- reduceWeakType h t >>= elaborateType h
   case t' of
     _ :< TM.PrimType (PT.Float size) ->
       return (size, t')
-    _ :< TM.Data _ dataName [] -> do
-      consInfoList <- lookupDataInfo h m dataName
-      case consInfoList of
-        [DI.ConsInfo {DI.consArgs = [(_, _, _, arg)]}] ->
-          strictifyFloatType h m x (weakenType arg)
-        _ ->
-          raiseNonFloatType m x (weakenType t')
+    _ :< TM.Data _ dataName []
+      | S.notMember dataName unwrapped -> do
+          consInfoList <- lookupDataInfo h m dataName
+          case consInfoList of
+            [DI.ConsInfo {DI.consArgs = [(_, _, _, arg)]}] ->
+              strictifyFloatType' h m (S.insert dataName unwrapped) x (weakenType arg)
+            _ ->
+              raiseNonFloatType m x (weakenType t')
     _ :< _ ->
       raiseNonFloatType m x (weakenType t')
 
@@ -1502,24 +1516,35 @@ isLiteralCase decisionCase =
       False
 
 reduceWeakType :: Handle -> WT.WeakType -> App WT.WeakType
-reduceWeakType h t = do
+reduceWeakType h =
+  reduceWeakTypeWithin h (inlineLimit h)
+
+reduceWeakTypeWithin :: Handle -> Int -> WT.WeakType -> App WT.WeakType
+reduceWeakTypeWithin h budget t = do
   t' <- reduceType h t
   case t' of
     m :< WT.TypeHole holeID args -> do
-      fillHole h m holeID args >>= reduceWeakType h
-    _ :< WT.TyApp (_ :< WT.TVarGlobal _ name) args -> do
+      ensureUnfoldingBudget h m budget
+      fillHole h m holeID args >>= reduceWeakTypeWithin h (budget - 1)
+    m :< WT.TyApp (_ :< WT.TVarGlobal _ name) args -> do
       mDef <- liftIO $ WeakTypeDef.lookup' (weakTypeDefHandle h) name
       case mDef of
         Just def
           | length args == length (WeakTypeDef.typeDefBinders def) -> do
+              ensureUnfoldingBudget h m budget
               let varList = map (\(_, _, x, _) -> Ident.toInt x) (WeakTypeDef.typeDefBinders def)
               let sub = IntMap.fromList $ zip varList (map Type args)
               body' <- liftIO $ Subst.substType (substHandle h) sub (WeakTypeDef.typeDefBody def)
-              reduceWeakType h body'
+              reduceWeakTypeWithin h (budget - 1) body'
         _ ->
           return t'
     _ ->
       return t'
+
+ensureUnfoldingBudget :: Handle -> Hint -> Int -> App ()
+ensureUnfoldingBudget h m budget =
+  when (budget <= 0) $
+    raiseError m $ "Exceeded max recursion depth of " <> T.pack (show (inlineLimit h)) <> " while reducing a type"
 
 fillHole ::
   Handle ->
