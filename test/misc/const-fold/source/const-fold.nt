@@ -1,0 +1,123 @@
+import {
+  core::debug {assert},
+}
+
+define opaque-float(x: float) -> float {
+  magic opaque-value {x}
+}
+
+define opaque-float32(x: float32) -> float32 {
+  magic opaque-value {x}
+}
+
+define opaque-float16(x: float16) -> float16 {
+  magic opaque-value {x}
+}
+
+define opaque-int(x: int) -> int {
+  magic opaque-value {x}
+}
+
+define opaque-int32(x: int32) -> int32 {
+  magic opaque-value {x}
+}
+
+define opaque-int8(x: int8) -> int8 {
+  magic opaque-value {x}
+}
+
+define same-float(label: &string, folded: float, computed: float) -> unit {
+  assert(label, eq-int64(magic cast(float64, int64, folded), magic cast(float64, int64, computed)))
+}
+
+define same-float32(label: &string, folded: float32, computed: float32) -> unit {
+  assert(label, eq-int32(magic cast(float32, int32, folded), magic cast(float32, int32, computed)))
+}
+
+define same-float16(label: &string, folded: float16, computed: float16) -> unit {
+  assert(label, eq-int16(magic cast(float16, int16, folded), magic cast(float16, int16, computed)))
+}
+
+define same-int(label: &string, folded: int, computed: int) -> unit {
+  assert(label, eq-int(folded, computed))
+}
+
+define same-int32(label: &string, folded: int32, computed: int32) -> unit {
+  assert(label, eq-int32(folded, computed))
+}
+
+define same-int8(label: &string, folded: int8, computed: int8) -> unit {
+  assert(label, eq-int8(folded, computed))
+}
+
+define test-float-rem() -> unit {
+  same-float("rem-float-huge", rem-float(1.0e17, 3.0), rem-float(opaque-float(1.0e17), opaque-float(3.0)));
+  same-float("rem-float-huge-neg", rem-float(-1.0e17, 3.0), rem-float(opaque-float(-1.0e17), opaque-float(3.0)));
+  same-float("rem-float-small", rem-float(7.5, 2.0), rem-float(opaque-float(7.5), opaque-float(2.0)));
+  same-float("rem-float-neg-divisor", rem-float(7.5, -2.0), rem-float(opaque-float(7.5), opaque-float(-2.0)));
+  same-float("rem-float-neg-dividend", rem-float(-7.5, 2.0), rem-float(opaque-float(-7.5), opaque-float(2.0)));
+  same-float("rem-float-zero-result", rem-float(-6.0, 3.0), rem-float(opaque-float(-6.0), opaque-float(3.0)));
+  same-float("rem-float-tiny", rem-float(1.0, 1.0e300), rem-float(opaque-float(1.0), opaque-float(1.0e300)));
+  same-float("rem-float-wide", rem-float(1.0e300, 3.0), rem-float(opaque-float(1.0e300), opaque-float(3.0)));
+  same-float("rem-float-exact", rem-float(9007199254740993.0, 2.0), rem-float(opaque-float(9007199254740993.0), opaque-float(2.0)));
+  same-float32("rem-float32", rem-float32(1.0e10, 3.0), rem-float32(opaque-float32(1.0e10), opaque-float32(3.0)));
+  same-float16("rem-float16", rem-float16(1024.0, 3.0), rem-float16(opaque-float16(1024.0), opaque-float16(3.0)));
+}
+
+define test-float-arith() -> unit {
+  same-float("add-float", add-float(0.1, 0.2), add-float(opaque-float(0.1), opaque-float(0.2)));
+  same-float("sub-float", sub-float(0.1, 0.3), sub-float(opaque-float(0.1), opaque-float(0.3)));
+  same-float("mul-float", mul-float(1.0e200, 1.0e200), mul-float(opaque-float(1.0e200), opaque-float(1.0e200)));
+  same-float("div-float", div-float(1.0, 3.0), div-float(opaque-float(1.0), opaque-float(3.0)));
+  same-float("neg-float", neg-float(0.0), neg-float(opaque-float(0.0)));
+  same-float32("add-float32", add-float32(0.1, 0.2), add-float32(opaque-float32(0.1), opaque-float32(0.2)));
+  same-float32("div-float32", div-float32(1.0, 3.0), div-float32(opaque-float32(1.0), opaque-float32(3.0)));
+  same-float16("mul-float16", mul-float16(300.0, 300.0), mul-float16(opaque-float16(300.0), opaque-float16(300.0)));
+}
+
+define test-int-arith() -> unit {
+  same-int("add-int", add-int(9223372036854775807, 1), add-int(opaque-int(9223372036854775807), opaque-int(1)));
+  same-int("sub-int", sub-int(-9223372036854775808, 1), sub-int(opaque-int(-9223372036854775808), opaque-int(1)));
+  same-int("mul-int", mul-int(4294967296, 4294967296), mul-int(opaque-int(4294967296), opaque-int(4294967296)));
+  same-int("div-int", div-int(-7, 2), div-int(opaque-int(-7), opaque-int(2)));
+  same-int("rem-int", rem-int(-7, 2), rem-int(opaque-int(-7), opaque-int(2)));
+  same-int("udiv-int", udiv-int(-7, 2), udiv-int(opaque-int(-7), opaque-int(2)));
+  same-int("urem-int", urem-int(-7, 2), urem-int(opaque-int(-7), opaque-int(2)));
+  same-int("and-int", and-int(-1, 255), and-int(opaque-int(-1), opaque-int(255)));
+  same-int("or-int", or-int(-256, 255), or-int(opaque-int(-256), opaque-int(255)));
+  same-int("xor-int", xor-int(-1, 255), xor-int(opaque-int(-1), opaque-int(255)));
+  same-int("shl-int", shl-int(-1, 63), shl-int(opaque-int(-1), opaque-int(63)));
+  same-int("lshr-int", lshr-int(-1, 1), lshr-int(opaque-int(-1), opaque-int(1)));
+  same-int("ashr-int", ashr-int(-1, 1), ashr-int(opaque-int(-1), opaque-int(1)));
+  same-int32("add-int32", add-int32(2147483647, 1), add-int32(opaque-int32(2147483647), opaque-int32(1)));
+  same-int32("lshr-int32", lshr-int32(-1, 1), lshr-int32(opaque-int32(-1), opaque-int32(1)));
+  same-int8("add-int8", add-int8(127, 1), add-int8(opaque-int8(127), opaque-int8(1)));
+  same-int8("udiv-int8", udiv-int8(-1, 3), udiv-int8(opaque-int8(-1), opaque-int8(3)));
+  same-int8("ashr-int8", ashr-int8(-8, 2), ashr-int8(opaque-int8(-8), opaque-int8(2)));
+}
+
+define same-bool(label: &string, folded: bool, computed: bool) -> unit {
+  match folded, computed {
+  | True, True =>
+    assert(label, True)
+  | False, False =>
+    assert(label, True)
+  | _, _ =>
+    assert(label, False)
+  }
+}
+
+define test-cmp() -> unit {
+  same-bool("lt-int-folded", lt-int(-1, 1), lt-int(opaque-int(-1), opaque-int(1)));
+  same-bool("ult-int-folded", ult-int(-1, 1), ult-int(opaque-int(-1), opaque-int(1)));
+  same-bool("eq-float-nan", eq-float(nan, nan), eq-float(opaque-float(nan), opaque-float(nan)));
+  same-bool("une-float-nan", une-float(nan, nan), une-float(opaque-float(nan), opaque-float(nan)));
+  same-bool("le-float-zero", le-float(-0.0, 0.0), le-float(opaque-float(-0.0), opaque-float(0.0)));
+}
+
+define main() -> unit {
+  test-float-rem();
+  test-float-arith();
+  test-int-arith();
+  test-cmp();
+}

@@ -191,17 +191,19 @@ applyFloatBinaryOp' op val1 val2 =
     BinOp.FDiv ->
       Just (val1 / val2)
     BinOp.FRem
-      | isFiniteDouble val1 && isFiniteDouble val2 && val2 /= 0 -> do
-          let quotientSource = val1 / val2
-          if isFiniteDouble quotientSource
-            then do
-              let quotient = truncate quotientSource :: Integer
-              let remainder = val1 - fromIntegral quotient * val2
-              Just $ restoreNegativeZero val1 remainder
-            else
-              Nothing
+      | isFiniteDouble val1 && isFiniteDouble val2 && val2 /= 0 ->
+          Just $ restoreNegativeZero val1 (fmod val1 val2)
     _ ->
       Nothing
+
+fmod :: Double -> Double -> Double
+fmod val1 val2 = do
+  let (mantissa1, exponent1) = decodeFloat val1
+  let (mantissa2, exponent2) = decodeFloat val2
+  let sharedExponent = min exponent1 exponent2
+  let scaled1 = mantissa1 `shiftL` (exponent1 - sharedExponent)
+  let scaled2 = mantissa2 `shiftL` (exponent2 - sharedExponent)
+  encodeFloat (scaled1 `rem` scaled2) sharedExponent
 
 applyFloatUnaryOp :: PNS.FloatSize -> UnOp.UnaryOp -> Double -> Maybe Double
 applyFloatUnaryOp size op val = do
