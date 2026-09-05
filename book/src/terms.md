@@ -36,7 +36,7 @@
 
 ### Necessity and Noema
 
-- [+a](#a)
+- [^a](#a)
 - [&a](#a-1)
 - [box](#box)
 - [letbox](#letbox)
@@ -140,7 +140,7 @@ define sample() -> unit {
 
 The name of a local variable must satisfy the following conditions:
 
-- It doesn't contain a space, a tab, a newline, or any of ``=()`"'\:;,<>[]{}/*+|&?!#@~$``
+- It doesn't contain a space, a tab, a newline, or any of ``=()`"'\:;,<>[]{}/*+|&?!#^@~$``
 - It doesn't start with `A, B, .., Z` (uppercase letters)
 
 ### Semantics
@@ -653,19 +653,19 @@ When the resolved type is `&string` or `&binary`, the literal is compiled as a s
 (value: int) -> bool
 
 // a destination-passing function that returns `either(int, bool)`
-@(value: int) -> either(int, bool)
+(value: int) ->> either(int, bool)
 
 // a function whose parameter `x` is source-passing
-(~x: item, k: int) -> int
+(+x: item, k: int) -> int
 
 // a function that uses both conventions
-@(~x: item, k: int) -> item
+(+x: item, k: int) ->> item
 
 // this is equivalent to `(_: int) -> bool`:
 (int) -> bool
 
-// `~` precedes the type when the name is elided
-(~item, int) -> int
+// `+` precedes the type when the name is elided
+(+item, int) -> int
 
 // using a type variable
 <a: type>(x: a) -> a
@@ -673,8 +673,8 @@ When the resolved type is `&string` or `&binary`, the literal is compiled as a s
 // this is equivalent to `<a: _>(x: a) -> a`
 <a>(x: a) -> a
 
-// `a` ranges over the types that can be stored inline, so `~x: a` is allowed
-<sized a>(xs: array(a), ~x: a) -> array(a)
+// `a` ranges over the types that can be stored inline, so `+x: a` is allowed
+<sized a>(xs: array(a), +x: a) -> array(a)
 
 // a function with a default argument named `step`
 (value: int)[step: int] -> int
@@ -687,17 +687,17 @@ When the resolved type is `&string` or `&binary`, the literal is compiled as a s
 
 <x1: a1, ..., xn: an>(y1: b1, ..., ym: bm)[z1: c1, ..., zk: ck] -> c
 
-@<x1: a1, ..., xn: an>(y1: b1, ..., ym: bm) -> c
+<x1: a1, ..., xn: an>(y1: b1, ..., ym: bm) ->> c
 
-@<x1: a1, ..., xn: an>(y1: b1, ..., ym: bm)[z1: c1, ..., zk: ck] -> c
+<x1: a1, ..., xn: an>(y1: b1, ..., ym: bm)[z1: c1, ..., zk: ck] ->> c
 ```
 
-An ordinary parameter can carry `~`. It precedes the name, or the type when the name is elided:
+An ordinary parameter can carry `+`. It precedes the name, or the type when the name is elided:
 
 ```neut
-~y: b
++y: b
 
-~b
++b
 ```
 
 An implicit parameter can carry attributes. They precede the name:
@@ -733,11 +733,11 @@ The following abbreviations are available:
 // <a1: _, ..., an: _>(y1: b1, ..., ym: bm) -> c
 ```
 
-The same abbreviations are available when `@` or `~` is used.
+The same abbreviations are available when `->>` or `+` is used.
 
 The bracketed part may be omitted, and `[]` is also accepted. This default-argument part is included in the function type, so both the keys and their order must match during type checking.
 
-`~` can only be used on an ordinary parameter. It is available only at a run-time stage (stage 0 or below).
+`+` can only be used on an ordinary parameter. It is available only at a run-time stage (stage 0 or below).
 
 ### Semantics
 
@@ -751,31 +751,31 @@ A function type is compiled into a pointer to `base::#::cls`. For more, please s
 Γ ⊢ <α1: s1, ..., αn: sn>(x1: t1, ..., xm: tm)[z1: u1, ..., zk: uk] -> v: type
 ```
 
-Omitting the bracketed part means `k = 0`. The same rule applies when `@` or `~` is used.
+Omitting the bracketed part means `k = 0`. The same rule applies when `->>` or `+` is used.
 
 The marks are part of the type, and the following are all distinct:
 
 ```neut
 (x: a) -> b
 
-@(x: a) -> b
+(x: a) ->> b
 
-(~x: a) -> b
+(+x: a) -> b
 ```
 
-The type of a `~` parameter and the result type of a `@` function must be sized: the width of their values' storage must be determined by the type alone. A type variable is sized only when its binder carries `sized`:
+The type of a `+` parameter and the result type of a `->>` function must be sized: the width of their values' storage must be determined by the type alone. A type variable is sized only when its binder carries `sized`:
 
 ```neut
-<a>(~x: a) -> int // rejected: nothing guarantees that `a` is sized
+<a>(+x: a) -> int // rejected: nothing guarantees that `a` is sized
 
-<sized a>(~x: a) -> int // accepted
+<sized a>(+x: a) -> int // accepted
 ```
 
 `actual` and `integer` work in the same way. A type variable can be `lift`ed only when it is declared `actual`, and it can be matched against an integer pattern only when it is declared `integer`. `integer` implies `actual`:
 
 ```neut
 // `lift {x}` is available in the body
-<actual a>(x: a) -> +a
+<actual a>(x: a) -> ^a
 
 // `match x { | 0 => .. }` is available in the body
 <integer a>(x: a) -> int
@@ -801,11 +801,11 @@ define use-function() -> int {
       x
     };
   let step =
-    @(x: int) => {
+    (x: int) =>> {
       Pair(x, add-int(x, 1))
     };
   let sum =
-    (~p: pair(int, int)) => {
+    (+p: pair(int, int)) => {
       let Pair(a, b) = p;
       add-int(a, b)
     };
@@ -827,8 +827,8 @@ define use-function() -> int {
   e
 }
 
-// `@` in front of the parameter list, `~` on a parameter; each can appear independently
-@(~x1: a1, ..., xn: an) => {
+// `=>>` in place of `=>`, `+` on a parameter; each can appear independently
+(+x1: a1, ..., xn: an) =>> {
   e
 }
 
@@ -862,7 +862,7 @@ has type `(x: int)[step: int] -> int`.
 If an anonymous function is defined at layer `n`, then any free variable `x` in the function must satisfy `layer(x) <= n`. For example, the following is not a valid term:
 
 ```neut
-define return-int(x: +int) -> +() -> int {
+define return-int(x: ^int) -> ^() -> int {
   // here is layer 0
   box {
     // here is layer -1
@@ -886,8 +886,8 @@ Anonymous functions are compiled into three-word closures. For more, please see 
 
 A call site carries the same marks as the definition:
 
-- `@` in front of the parameter list means that the caller passes the place the result is written into (destination-passing style).
-- `~` on a parameter means that the caller passes the place that argument is read from (source-passing style).
+- `=>>` in place of `=>` means that the caller passes the place the result is written into (destination-passing style). Such a call carries `@` in front of its argument list.
+- `+` on a parameter means that the caller passes the place that argument is read from (source-passing style). Such an argument carries `~`.
 
 For the evaluation steps, see [`e(e1, ..., en)`](#ee1--en).
 
@@ -900,7 +900,7 @@ For the evaluation steps, see [`e(e1, ..., en)`](#ee1--en).
 
 ```
 
-The marks appear in the resulting function type: `@` on the parameter list prefixes the type with `@`, and `~` on a parameter stays on that parameter.
+The marks appear in the resulting function type: `=>>` makes the arrow of the type `->>`, and `+` on a parameter stays on that parameter.
 
 When default arguments are present, the resulting type additionally contains the bracketed default-argument part, and those binders are also available in the body.
 
@@ -941,8 +941,8 @@ define name<x1: a1, ..., xn: an>(y1: b1, ..., ym: bm)[z1: c1 := e1, ..., zk: ck 
   e
 }
 
-// `@` between the name and the parameter list, `~` on a parameter; each can appear independently
-define name@<x1: a1, ..., xn: an>(~y1: b1, ..., ym: bm) -> c {
+// `->>` in place of `->`, `+` on a parameter; each can appear independently
+define name<x1: a1, ..., xn: an>(+y1: b1, ..., ym: bm) ->> c {
   e
 }
 ```
@@ -1014,7 +1014,7 @@ define use-define() -> int {
 }
 ```
 
-The calling-convention marks behave as they do for [anonymous functions](#x1-a1--xn-an---e-): `@` between the name and the parameter list makes the function use destination-passing style, and `~` on a parameter makes that parameter source-passing. For the evaluation steps, see [`e(e1, ..., en)`](#ee1--en).
+The calling-convention marks behave as they do for [anonymous functions](#x1-a1--xn-an---e-): `->>` in place of `->` makes the function use destination-passing style, and `+` on a parameter makes that parameter source-passing. For the evaluation steps, see [`e(e1, ..., en)`](#ee1--en).
 
 ### Type
 
@@ -1024,7 +1024,7 @@ The calling-convention marks behave as they do for [anonymous functions](#x1-a1-
 Γ ⊢ define f(x1: a1, ..., xn: an) -> t {e}: (x1: a1, ..., xn: an) -> t
 ```
 
-The marks appear in the resulting type: putting `@` in front of the parameter list turns it into `@(x1: a1, ..., xn: an) -> t`, and `~` on a parameter stays on that parameter, as in `(~x1: a1, ..., xn: an) -> t`.
+The marks appear in the resulting type: `->>` turns it into `(x1: a1, ..., xn: an) ->> t`, and `+` on a parameter stays on that parameter, as in `(+x1: a1, ..., xn: an) -> t`.
 
 When default arguments are present, the resulting type additionally contains the bracketed default-argument part.
 
@@ -1061,8 +1061,8 @@ inline name<x1: a1, ..., xn: an>(y1: b1, ..., ym: bm)[z1: c1 := e1, ..., zk: ck 
   e
 }
 
-// `@` between the name and the parameter list, `~` on a parameter; each can appear independently
-inline name@<x1: a1, ..., xn: an>(~y1: b1, ..., ym: bm) -> c {
+// `->>` in place of `->`, `+` on a parameter; each can appear independently
+inline name<x1: a1, ..., xn: an>(+y1: b1, ..., ym: bm) ->> c {
   e
 }
 ```
@@ -1202,7 +1202,7 @@ The same as a term-level `define-meta`, except that the body is expanded at comp
 
 Given a function `e` and arguments `e1, ..., en`, we can write `e(e1, ..., en)` to denote a function application. If `e` has default arguments, the application may be followed by a bracketed list of overrides.
 
-An application also carries the calling convention of `e`. A call to a function whose type has `@` is written `e@(e1, ..., en)`, and an argument for a parameter that has `~` is written `~ei`. Both marks are determined by the type of `e`.
+An application also carries the calling convention of `e`. A call to a function whose type has `->>` is written `e@(e1, ..., en)`, and an argument for a parameter that has `+` is written `~ei`. Both marks are determined by the type of `e`.
 
 ### Example
 
@@ -1217,7 +1217,7 @@ define use-function() -> unit {
   Unit
 }
 
-// `scale` has `@`, and the parameter of `weigh` has `~`
+// `scale` has `->>`, and the parameter of `weigh` has `+`
 define use-marks() -> int {
   weigh(~scale@(Item(5, 3), 2))
 }
@@ -1245,7 +1245,7 @@ If `e` has default arguments, you can override some or all of them by writing
 
 after the ordinary argument list. These overrides are matched by key.
 
-If the type of `e` has `@`, the mark stands between `e` and the argument list, in front of the implicit arguments. It belongs to an argument list, so a curried call marks the list it applies to:
+If the type of `e` has `->>`, `@` stands between `e` and the argument list, in front of the implicit arguments. It belongs to an argument list, so a curried call marks the list it applies to:
 
 ```neut
 e@(e1, ..., en)
@@ -1255,7 +1255,7 @@ e@<t1, ..., tm>(e1, ..., en)
 e(x)@(y)
 ```
 
-If a parameter of `e` has `~`, the corresponding argument carries `~` as well:
+If a parameter of `e` has `+`, the corresponding argument carries `~`:
 
 ```neut
 e(e1, ..., ~ei, ..., en)
@@ -1318,16 +1318,16 @@ The `?Mi`s in the above rule are metavariables that must be inferred by the comp
 
 The same rule also applies when `e` has type:
 
-- `@<α1: a1, .., αn: an>(y1: b1, .., ym: bm) -> c`
+- `<α1: a1, .., αn: an>(y1: b1, .., ym: bm) ->> c`
 - `&<α1: a1, .., αn: an>(y1: b1, .., ym: bm) -> c`
-- `&@<α1: a1, .., αn: an>(y1: b1, .., ym: bm) -> c`
+- `&<α1: a1, .., αn: an>(y1: b1, .., ym: bm) ->> c`
 
 When `e` has a default-argument part such as `[z1: c1, .., zk: ck]`, the application may additionally provide `[zi := di]`, and omitted keys use the defaults declared by the function.
 
 ### Note
 
 - A mark that the type of `e` doesn't ask for is rejected, and a missing mark is rejected as well.
-- The result type of a `@` function and the type of a `~` parameter must be a type that can be stored inline, which is the same condition that a `~` field of a `data` must satisfy. Please see [`data` in Statements](./statements.md#data).
+- The result type of a `->>` function and the type of a `+` parameter must be a type that can be stored inline, which is the same condition that a `+` field of a `data` must satisfy. Please see [`data` in Statements](./statements.md#data).
 - `~` cannot be attached to the pseudo-field `..` of a record update, since it names no parameter.
 
 ## `e{x1 := e1, ..., xn := en}`
@@ -1658,7 +1658,7 @@ match e1, ..., en {
 
 The scrutinees `e1, ..., en` are restricted terms. At the top level of a scrutinee, grouped terms like `{e}` and key-argument applications like `foo{...}` are not accepted. Bind such a term with `let` before matching on it.
 
-A pattern that binds a `~` field of a constructor carries the same `~`, as in `| Entity(~p, q) =>`. The mark belongs to the field, so `case`, `tie` and `let` write it the same way, and a wildcard carries it too, as in `| Entity(~_, q) =>`.
+A pattern that binds a `+` field of a constructor carries the same `+`, as in `| Entity(+p, q) =>`. The mark belongs to the field, so `case`, `tie` and `let` write it the same way, and a wildcard carries it too, as in `| Entity(+_, q) =>`.
 
 An integer pattern requires its scrutinee to have an integer type. A type variable can be matched against an integer pattern only when it is declared `integer`:
 
@@ -1775,14 +1775,14 @@ Exhaustive((my-nat), [Zero, Succ(m)])
     }: int
 ```
 
-## `+a`
+## `^a`
 
-Given a type `a: type`, `+a` is the type of `a` in the "outer" layer.
+Given a type `a: type`, `^a` is the type of `a` in the "outer" layer.
 
 ### Example
 
 ```neut
-define axiom-T<a>(x: +a) -> a {
+define axiom-T<a>(x: ^a) -> a {
   letbox-T result = x;
   result
 }
@@ -1791,29 +1791,29 @@ define axiom-T<a>(x: +a) -> a {
 ### Syntax
 
 ```neut
-+a
+^a
 ```
 
 ### Semantics
 
-Operationally, `+a` has the same runtime representation as `a`.
+Operationally, `^a` has the same runtime representation as `a`.
 
 ### Type
 
 ```neut
 Γ ⊢ t: type
 ----------------
-Γ ⊢ +t: type
+Γ ⊢ ^t: type
 ```
 
 ### Note
 
-`+` is the T-necessity operator in that we can construct terms of the following types:
+`^` is the T-necessity operator in that we can construct terms of the following types:
 
-- `((a) -> b, +a) -> +b` (Axiom K)
-- `(+a) -> a` (Axiom T)
+- `((a) -> b, ^a) -> ^b` (Axiom K)
+- `(^a) -> a` (Axiom T)
 
-Note that `+(a) -> b` and `(+a) -> b` are different types.
+Note that `^(a) -> b` and `(^a) -> b` are different types.
 
 ## `&a`
 
@@ -1860,7 +1860,7 @@ For every type `a`, `&a` is compiled into `base::#::imm`.
 - Values of type `&a` can be created using `on`.
 - Values of type `&a` are expected to be used in combination with `case` or `*e`.
 - Since `&a` is compiled into `base::#::imm`, values of type `&a` aren't discarded or copied even when used non-linearly.
-- See the Note of [box](#box) to see the relation between `&a` and `+a`
+- See the Note of [box](#box) to see the relation between `&a` and `^a`
 
 ## `box`
 
@@ -1869,7 +1869,7 @@ For every type `a`, `&a` is compiled into `base::#::imm`.
 ### Example
 
 ```neut
-define use-noetic<a>(x: &a, y: &a) -> +a {
+define use-noetic<a>(x: &a, y: &a) -> ^a {
   // layer 0
   // - x: &a at layer 0
   // - y: &a at layer 0
@@ -1910,7 +1910,7 @@ e
 ```neut
 Γ, Δ ⊢ⁱ e1: a
 ------------------------- (□-intro)
-Γ, &Δ ⊢ⁱ⁺¹ box Δ {e1}: +a
+Γ, &Δ ⊢ⁱ⁺¹ box Δ {e1}: ^a
 ```
 
 where:
@@ -1933,7 +1933,7 @@ define some-function(x: int) -> int {
 Since `box {e}` lifts the layer of `e`, if we use `box` at layer 0, the layer of `e` will become -1:
 
 ```neut
-define use-box(x: int) -> +int {
+define use-box(x: int) -> ^int {
   // here is layer 0
   box {
     // here is layer -1
@@ -1945,7 +1945,7 @@ define use-box(x: int) -> +int {
 In layer n, we can only use variables at the same layer. Thus, the following is not a valid term:
 
 ```neut
-define use-box-error(x: int) -> +int {
+define use-box-error(x: int) -> ^int {
   // here is layer 0
   box {
     // here is layer -1
@@ -1957,7 +1957,7 @@ define use-box-error(x: int) -> +int {
 We can incorporate variables outside `box` by capturing them:
 
 ```neut
-define use-box-with-noema(x: &int) -> +int {
+define use-box-with-noema(x: &int) -> ^int {
   // here is layer 0
   // x: &int at layer 0
   box x {
@@ -1975,7 +1975,7 @@ You can use `letbox` to "unlift" terms.
 ### Example
 
 ```neut
-define roundtrip<a>(x: +a) -> +a {
+define roundtrip<a>(x: ^a) -> ^a {
   // here is layer 0
   box {
     // here is layer -1
@@ -2021,7 +2021,7 @@ e2
 ### Type
 
 ```neut
-Γ ⊢ⁱ⁺¹ e1: +a
+Γ ⊢ⁱ⁺¹ e1: ^a
 Γ, x: a ⊢ⁱ e2: b
 ------------------------- (□-elim-K)
 Γ ⊢ⁱ letbox x = e1; e2: b
@@ -2034,7 +2034,7 @@ where `x` is a variable at layer `i`.
 Given a term `e1` at layer n + 1, `letbox x = e1; e2` is at layer n:
 
 ```neut
-define roundtrip<a>(x: +a) -> +a {
+define roundtrip<a>(x: ^a) -> ^a {
   box {
     // here is layer -1 (= n)
     letbox tmp =
@@ -2049,9 +2049,9 @@ define roundtrip<a>(x: +a) -> +a {
 In layer n, we can only use variables at the same layer. Thus, the following is not a valid term:
 
 ```neut
-define use-letbox-error(x: +int) -> int {
+define use-letbox-error(x: ^int) -> int {
   // here is layer 0
-  // x: +int (at layer 0)
+  // x: ^int (at layer 0)
   letbox tmp =
     // here is layer 1
     x; // error: use of a variable at layer 0 (≠ 1)
@@ -2062,14 +2062,14 @@ define use-letbox-error(x: +int) -> int {
 
 ## `letbox-T`
 
-You can use `letbox-T` to get values from terms of type `+a` without changing layers.
+You can use `letbox-T` to get values from terms of type `^a` without changing layers.
 
 ### Example
 
 ```neut
-define extract-value-from-meta(x: +int) -> int {
+define extract-value-from-meta(x: ^int) -> int {
   // here is layer 0
-  // x: +int (at layer 0)
+  // x: ^int (at layer 0)
   letbox-T tmp =
     // here is layer 0
     x; // ok
@@ -2109,7 +2109,7 @@ e2
 ### Type
 
 ```neut
-Γ, &Δ ⊢ⁱ e1: +a
+Γ, &Δ ⊢ⁱ e1: ^a
 Γ, Δ, x: a ⊢ⁱ e2: b
 ----------------------------------- (□-elim-T)
 Γ, Δ ⊢ⁱ letbox-T x on Δ = e1; e2: b
@@ -2122,7 +2122,7 @@ where every variable in `&Δ` and `Δ` is at layer `i`.
 `letbox-T` doesn't alter layers:
 
 ```neut
-define extract-value-from-meta(x: +int) -> int {
+define extract-value-from-meta(x: ^int) -> int {
   // here is layer 0
   letbox-T tmp =
     // here is layer 0
@@ -2513,24 +2513,24 @@ define use-braces-with-let() -> int {
 
 ## `lift`
 
-You can use `lift` to wrap the types of "safe" values by `+`.
+You can use `lift` to wrap the types of "safe" values by `^`.
 
 ### Example
 
 ```neut
-define lift-int(x: int) -> +int {
+define lift-int(x: int) -> ^int {
   lift {x}
 }
 
-define lift-bool(x: bool) -> +bool {
+define lift-bool(x: bool) -> ^bool {
   lift {x}
 }
 
-define lift-text(t: text) -> +text {
+define lift-text(t: text) -> ^text {
   lift {t}
 }
 
-define lift-function(f: (int) -> bool) -> +(int) -> bool {
+define lift-function(f: (int) -> bool) -> ^(int) -> bool {
   lift {f} // error; won't typecheck
 }
 ```
@@ -2557,7 +2557,7 @@ e
 Γ ⊢ e: a
 (a is an "actual" type)
 -----------------------
-Γ ⊢ lift {e}: +a
+Γ ⊢ lift {e}: ^a
 ```
 
 Here, an "actual" type is a type that satisfies all the following conditions:
@@ -2595,13 +2595,13 @@ data joker-z {
 (2) `lift` doesn't add extra expressiveness to the type system. For example, `lift` on `bool` can be replaced with `box` as follows:
 
 ```neut
-define lift-bool(b: bool) -> +bool {
+define lift-bool(b: bool) -> ^bool {
   lift {b}
 }
 
 ↓
 
-define lift-bool(b: bool) -> +bool {
+define lift-bool(b: bool) -> ^bool {
   if b {
     box {True}
   } else {
@@ -2613,13 +2613,13 @@ define lift-bool(b: bool) -> +bool {
 `lift` on `either(bool, unit)` can also be replaced with `box` as follows:
 
 ```neut
-define lift-either(x: either(bool, unit)) -> +either(bool, unit) {
+define lift-either(x: either(bool, unit)) -> ^either(bool, unit) {
   lift {x}
 }
 
 ↓
 
-define lift-either(x: either(bool, unit)) -> +either(bool, unit) {
+define lift-either(x: either(bool, unit)) -> ^either(bool, unit) {
   match x {
   | Left(b) =>
     if b {
@@ -2640,11 +2640,11 @@ A useful case is static data: primitive types such as `text` and `blob` are lift
 (3) A type variable is actual only when its binder carries `actual`:
 
 ```neut
-define lift-value<a>(x: a) -> +a {
+define lift-value<a>(x: a) -> ^a {
   lift {x} // error: the type variable `a` is not declared `actual`
 }
 
-define lift-value<actual a>(x: a) -> +a {
+define lift-value<actual a>(x: a) -> ^a {
   lift {x} // accepted
 }
 ```
@@ -3471,7 +3471,7 @@ where the function `embody` is defined in the core library as follows:
 // core::layer
 
 // □A -> A (Axiom T)
-inline axiom-T<a>(x: +a) -> a {
+inline axiom-T<a>(x: ^a) -> a {
   letbox-T x-tmp = x;
   x-tmp
 }

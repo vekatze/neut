@@ -322,7 +322,7 @@ let result = old;
 cont
 ```
 
-These optimizations are applied within each definition. This is why the calling-convention marks `@` and `~` can matter: they move the relevant allocation and deallocation into the same definition.
+These optimizations are applied within each definition. This is why the calling-convention marks can matter: they move the relevant allocation and deallocation into the same definition.
 
 ## Name Resolution
 

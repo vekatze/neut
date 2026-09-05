@@ -251,12 +251,12 @@ define use-foo() -> unit {
 
 In this form, malloc-free canceling does not help much. The memory region created in `foo` escapes from `foo`, so `foo` itself cannot replace that allocation with a stack slot.
 
-To improve this situation, Neut provides destination-passing style. We write such functions by putting `@` in front of the parameter list. A call to such a function carries the same `@`, and the compiled code receives the result destination from the caller.
+To improve this situation, Neut provides destination-passing style. We write such functions with `->>` in place of `->`. A call to such a function carries `@` in front of its argument list, and the compiled code receives the result destination from the caller.
 
 Rewriting `foo` in this style, we get:
 
 ```neut
-define foo@(x: int) -> either(int, bool) {
+define foo(x: int) ->> either(int, bool) {
   if eq-int(x, 0) {
     Left(42)
   } else {
@@ -398,12 +398,12 @@ define use-area() -> int {
 
 Here again, malloc-free canceling does not help. The `malloc` is in `use-area` and the `free` is in `area`, so the pair crosses the function boundary.
 
-To improve this situation, Neut provides source-passing style. We write such a parameter by prefixing it with `~`. The compiled code of such a function receives that argument as a region the callee reads it from, rather than as a value the callee already owns. A call site marks the argument with the same `~`.
+To improve this situation, Neut provides source-passing style. We write such a parameter by prefixing it with `+`. The compiled code of such a function receives that argument as a region the callee reads it from, rather than as a value the callee already owns. A call site marks the argument with `~`.
 
 Rewriting `area` in this style, we get:
 
 ```neut
-define area(~s: shape) -> int {
+define area(+s: shape) -> int {
   match s {
   | Circle(r) =>
     r
@@ -473,14 +473,14 @@ Note that a call that supplies a `~` argument is never a tail call, since the re
 
 ## What Can Travel Through a Mark
 
-A mark moves the content of a cell from one side of a call to the other: `~` moves an argument's content into the callee, and `@` moves a result's content back to the caller. A type whose values have no such content can use neither mark:
+A mark moves the content of a cell from one side of a call to the other: `+` takes an argument's content into the callee, and `->>` hands a result's content back to the caller. A type whose values have no such content can use neither mark:
 
 ```neut
-define want-int(~n: int) -> int { // error: a primitive type cannot be stored inline
+define want-int(+n: int) -> int { // error: a primitive type cannot be stored inline
   n
 }
 
-define produce-int@() -> int { // error: a primitive type cannot be stored inline
+define produce-int() ->> int { // error: a primitive type cannot be stored inline
   42
 }
 ```
@@ -493,23 +493,23 @@ A type qualifies when its values own a cell of a width that the type alone deter
 
 Such a type is called sized. A primitive like `int` is not sized since its values are bare words that own no cell, and a `string` is not sized since the width of its storage varies from value to value.
 
-The type of a `~` parameter and the result type of a `@` function must be sized. The check runs where the mark is declared, so both definitions above are rejected at their marks.
+The type of a `+` parameter and the result type of a `->>` function must be sized. The check runs where the mark is declared, so both definitions above are rejected at their marks.
 
 A type variable satisfies the condition only when it is declared `sized`:
 
 ```neut
-define consume<sized a>(~x: a, f: (a) -> int) -> int {
+define consume<sized a>(+x: a, f: (a) -> int) -> int {
   f(x)
 }
 
-define generate@<sized a>(make: () -> a) -> a {
+define generate<sized a>(make: () -> a) ->> a {
   make()
 }
 ```
 
 Each call that instantiates a `sized` variable is checked against the type it supplies: `consume` and `generate` work at `shape` and are rejected at `int`.
 
-Inside `consume`, `a` is known to own a cell, so `x` can be passed on through another `~`. Without `sized`, the same call is rejected, since nothing guarantees that `a` owns a cell:
+Inside `consume`, `a` is known to own a cell, so `x` can be passed on through another `+` slot. Without `sized`, the same call is rejected, since nothing guarantees that `a` owns a cell:
 
 ```neut
 // error: the type variable `a` is not declared `sized`

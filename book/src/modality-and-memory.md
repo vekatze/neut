@@ -1,6 +1,6 @@
 # Modality and Memory
 
-Here, we'll see how to interact with the box modality `+`, which provides a way to work with layers in Neut. We'll then see that both `on` and `*e` can be understood as syntactic sugar over this modality.
+Here, we'll see how to interact with the box modality `^`, which provides a way to work with layers in Neut. We'll then see that both `on` and `*e` can be understood as syntactic sugar over this modality.
 
 ## Table of Contents
 
@@ -11,9 +11,9 @@ Here, we'll see how to interact with the box modality `+`, which provides a way 
 
 ## Layers and the Box Modality
 
-In Neut, each type `a` has a corresponding type `+a`. This type provides a way to work with _layers_, which are similar to lifetimes in other languages.
+In Neut, each type `a` has a corresponding type `^a`. This type provides a way to work with _layers_, which are similar to lifetimes in other languages.
 
-Below, we'll first introduce the concept of layers, and then see how to use `+a`.
+Below, we'll first introduce the concept of layers, and then see how to use `^a`.
 
 ### Layers and Variables
 
@@ -52,10 +52,10 @@ Only modality-related operations can change layers, as we'll see below.
 
 ### Creating Boxes
 
-To create a term of type `+a`, use `box`:
+To create a term of type `^a`, use `box`:
 
 ```neut
-define use-box(x: &int, y: &bool, z: &string) -> +pair(int, bool) {
+define use-box(x: &int, y: &bool, z: &string) -> ^pair(int, bool) {
   // here is layer 0
   // free variables:
   // - x: &int
@@ -94,7 +94,7 @@ You can omit the sequence `x1, ..., xn` entirely if no variables need to be copi
 
 ### Using Boxes
 
-To use a term of type `+a`, use `letbox`:
+To use a term of type `^a`, use `letbox`:
 
 ```neut
 // `string` is provided by the core library.
@@ -142,7 +142,7 @@ e2
 
 ### Using Boxes Without Changing the Current Layer
 
-Sometimes you want to use a term of type `+a` without shifting your current layer. For this, Neut provides `letbox-T`, which keeps you in the same layer:
+Sometimes you want to use a term of type `^a` without shifting your current layer. For this, Neut provides `letbox-T`, which keeps you in the same layer:
 
 ```neut
 define use-letbox-T(x: int, y: bool) -> int {
@@ -156,10 +156,10 @@ define use-letbox-T(x: int, y: bool) -> int {
 }
 ```
 
-`letbox-T` can, for example, be used to write functions of type `(+a) -> a` as follows:
+`letbox-T` can, for example, be used to write functions of type `(^a) -> a` as follows:
 
 ```neut
-define axiom-T<a>(x: +a) -> a {
+define axiom-T<a>(x: ^a) -> a {
   letbox-T tmp = x;
   tmp
 }
@@ -169,10 +169,10 @@ If you tried to use `letbox` instead, you'd get an error because it would result
 
 ### A Shortcut for Creating Boxes
 
-We can, for example, construct a `+bool` from a `bool` as follows:
+We can, for example, construct a `^bool` from a `bool` as follows:
 
 ```neut
-define box-bool(b: bool) -> +bool {
+define box-bool(b: bool) -> ^bool {
   match b {
   | True  => box {True}
   | False => box {False}
@@ -183,8 +183,8 @@ define box-bool(b: bool) -> +bool {
 To streamline this kind of mechanical step, Neut provides `lift`:
 
 ```neut
-define box-bool(b: bool) -> +bool {
-  lift {b} // `lift` casts `bool` into `+bool`
+define box-bool(b: bool) -> ^bool {
+  lift {b} // `lift` casts `bool` into `^bool`
 }
 ```
 
@@ -197,7 +197,7 @@ Not all types can be cast using `lift`. Specifically, it can't be used on any ty
 
 A type that satisfies this condition is called actual.
 
-If you can get `+t` by lifting `e: t`, you can get the same type using `box` instead. In this sense, `lift` is a shortcut for creating boxes.
+If you can get `^t` by lifting `e: t`, you can get the same type using `box` instead. In this sense, `lift` is a shortcut for creating boxes.
 
 ### Lifting a Type Variable
 
@@ -205,12 +205,12 @@ A type variable is actual only when its binder declares it so:
 
 ```neut
 // error: the type variable `a` is not declared `actual`
-define box-value<a>(x: a) -> +a {
+define box-value<a>(x: a) -> ^a {
   lift {x}
 }
 
 // this is fine
-define box-value<actual a>(x: a) -> +a {
+define box-value<actual a>(x: a) -> ^a {
   lift {x}
 }
 ```
@@ -290,9 +290,9 @@ define main() -> unit {
 
 This example would wrongly allow a function at layer 0 (`★`) to keep a reference to data (`xs`) that, after the outer `letbox` completes, could be deallocated, leading to a use-after-free scenario in the body of the main function. Hence, Neut's layer rules prohibit capturing a higher-layer variable in a lower-layer function.
 
-### A More Concrete Example: `+` and Callbacks
+### A More Concrete Example: `^` and Callbacks
 
-Compared with `&`, it may be a little less obvious when `+` becomes useful. One such case is the following helper, which reads bytes from a file and passes them to a decoding function:
+Compared with `&`, it may be a little less obvious when `^` becomes useful. One such case is the following helper, which reads bytes from a file and passes them to a decoding function:
 
 ```neut
 data error {
@@ -300,16 +300,16 @@ data error {
 }
 
 // `f` only inspects the input, so it takes `&binary`, not `binary`
-define decode-from-file<a>(f: (&binary) -> +either(error, a)) -> either(error, a) {
+define decode-from-file<a>(f: (&binary) -> ^either(error, a)) -> either(error, a) {
   let bytes = read-from-file("path/to/file");
   letbox-T result on bytes = f(bytes);
   result
 }
 ```
 
-Here, `+` lets the function passed to `decode-from-file` compute a result from borrowed input while still making that result available safely on the outer layer.
+Here, `^` lets the function passed to `decode-from-file` compute a result from borrowed input while still making that result available safely on the outer layer.
 
-Without `+`, one might try to write the following:
+Without `^`, one might try to write the following:
 
 ```neut
 define keep-bytes(arg: &binary) -> either(error, &binary) {
@@ -342,13 +342,13 @@ If it did compile, the following would happen inside `main`:
 2. `decode-from-file` returns and frees that local variable
 3. `main` uses the dangling reference, causing a use-after-free
 
-Thus, the version without `+` doesn't work.
+Thus, the version without `^` doesn't work.
 
-The `+` in the result type asserts that the value produced by `f` remains valid on the outer layer. In this way, `+` lets us write a borrowing-based API without forcing the callback result to stay trapped inside the borrowing scope.
+The `^` in the result type asserts that the value produced by `f` remains valid on the outer layer. In this way, `^` lets us write a borrowing-based API without forcing the callback result to stay trapped inside the borrowing scope.
 
-### An Alternative: `actual` Instead of `+`
+### An Alternative: `actual` Instead of `^`
 
-`+` isn't the only way out here. The problem is that `a` might be a noema, so we can also rule that out directly and let the callback return a plain value:
+`^` isn't the only way out here. The problem is that `a` might be a noema, so we can also rule that out directly and let the callback return a plain value:
 
 ```neut
 define decode-from-file<actual a>(f: (&binary) -> either(error, a)) -> either(error, a) {
@@ -363,6 +363,6 @@ This compiles, since `let ... on ...` is desugared using `lift`, and `actual a` 
 The two solutions differ in who carries the obligation, and in how much they allow:
 
 - `actual a` constrains the type argument, so the callback stays an ordinary function. In exchange, `a` can never be a function type, since function types aren't actual either.
-- `+` leaves `a` unconstrained and instead asks the callback to hand back a value that is already valid on the outer layer. The callback boxes the value itself, so `a` can be a function type here.
+- `^` leaves `a` unconstrained and instead asks the callback to hand back a value that is already valid on the outer layer. The callback boxes the value itself, so `a` can be a function type here.
 
-`actual` is the simpler choice when the results are plain data. `+` is the one to reach for when the callback should decide how its result crosses the layer.
+`actual` is the simpler choice when the results are plain data. `^` is the one to reach for when the callback should decide how its result crosses the layer.

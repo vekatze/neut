@@ -317,14 +317,15 @@ define foo() -> int {
 
 You have to use the statement `nominal` explicitly for forward references.
 
-A `define` also records the calling convention of the function. `@` between the name and the parameter list means that the caller provides the place the result is written into (destination-passing style):
+A `define` also records the calling convention of the function. `->>` in place of `->` means that the caller provides the place the result is written into (destination-passing style):
 
 ```neut
-define scale@(it: item, k: int) -> item {
+define scale(it: item, k: int) ->> item {
   body
 }
 
 define use-scale() -> item {
+  // a call to a `->>` function introduces its argument list with `@`
   scale@(Item(42), 10)
 }
 
@@ -344,10 +345,10 @@ define use-scale() -> item {
 
 ```
 
-`~` in front of a parameter means that the caller provides the place that argument is read from (source-passing style):
+`+` in front of a parameter means that the caller provides the place that argument is read from (source-passing style):
 
 ```neut
-define area(~s: shape) -> int {
+define area(+s: shape) -> int {
   match s {
   | Circle(r) =>
     r
@@ -357,6 +358,7 @@ define area(~s: shape) -> int {
 }
 
 define use-area() -> int {
+  // an argument that fills a `+` parameter is written with `~`
   area(~Circle(42))
 }
 
@@ -383,12 +385,14 @@ define use-area() -> int {
 }
 ```
 
-The marks are part of the function type, so `@(a) -> b` and `(a) -> b` are different types, and so are `(~x: a) -> b` and `(x: a) -> b`.
+As the comments above say, a convention is chosen on the definition and echoed at every call: `->>` is answered by `@`, and `+` is answered by `~`. The two sides must agree, so neither mark can be added or left out on its own.
 
-The type of a `~` parameter and the result type of a `@` function must be a type that can be stored inline. A type variable in such a position must be declared `sized`:
+A convention chosen this way is part of the function type, so `(a) ->> b` and `(a) -> b` are different types, and so are `(+x: a) -> b` and `(x: a) -> b`.
+
+The type of a `+` parameter and the result type of a `->>` function must be a type that can be stored inline. A type variable in such a position must be declared `sized`:
 
 ```neut
-define push-back<sized a>(xs: array(a), ~x: a) -> array(a) {
+define push-back<sized a>(xs: array(a), +x: a) -> array(a) {
   // ...
 }
 ```
@@ -752,11 +756,11 @@ You can store the content of `point` inline in `entity` by:
 
 ```neut
 data entity {
-| Entity(~point, point)
+| Entity(+point, point)
 }
 ```
 
-A constructor is an ordinary function, so a marked field is filled by a marked argument. In this case, `Entity(~Point(1, 2), Point(3, 4))` is compiled into a pointer to:
+A constructor is an ordinary function, so a `+` field is filled by a `~` argument. In this case, `Entity(~Point(1, 2), Point(3, 4))` is compiled into a pointer to:
 
 ```
 (1, 2, ptr2)
@@ -766,10 +770,10 @@ where `ptr2` points to `(3, 4)`.
 
 An inline field starts at the alignment its type asks for and takes as many bytes as a value of that type takes, including the padding at its end.
 
-A pattern carries the mark as well, so the two sides of a constructor read alike:
+A pattern carries `+` as well, since it names a field that the `data` stores inline:
 
 ```neut
-let Entity(~p, q) = e;
+let Entity(+p, q) = e;
 cont
 
 // ↓ (compile)
@@ -788,7 +792,7 @@ Taking such a field out with `match` or `let` repacks it into a fresh allocation
 Reading it through a noema with `case` or `tie` does no repacking: `p` and `q` become interior pointers into `e`, with no allocation. The mark is written the same way in both, since it describes the field rather than the way the field is read:
 
 ```neut
-tie Entity(~p, q) = e;
+tie Entity(+p, q) = e;
 cont
 
 // ↓ (compile)
@@ -1240,7 +1244,7 @@ The wrapper takes the parameter list of the compiled function, so `expose` publi
 
 - a type parameter becomes a leading parameter
 - a default argument becomes an ordinary parameter, with no default
-- a destination-passing function (one written with `@`) takes its destination first, and returns it
+- a destination-passing function (one written with `->>`) takes its destination first, and returns it
 
 A destination-passing function, for example:
 
@@ -1249,7 +1253,7 @@ data pair-of-int {
 | Pair-Of-Int(int, int)
 }
 
-define make@(x: int) -> pair-of-int {
+define make(x: int) ->> pair-of-int {
   Pair-Of-Int(x, x)
 }
 
