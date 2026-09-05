@@ -339,7 +339,7 @@ parseDefineMeta h = do
   target <- interpretName mTarget targetText
   targetArgs <- seriesAngle $ rawType h
   expArgs <- seriesParen $ mandatoryBinder h SourceAdmissible
-  (cArrow, cod) <- parseDefInfoCod h
+  (_, cArrow, cod) <- parseDefInfoCod ArrowMeta h
   (c2, ((body, _), loc, c)) <- betweenBrace' $ rawExpr h
   return
     ( RawDefineMeta

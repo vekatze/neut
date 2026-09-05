@@ -1437,7 +1437,7 @@ discernIdent mUse h x =
 ensureSourceSlotStage :: H.Handle -> [RawBinder a] -> App ()
 ensureSourceSlotStage h binders =
   forM_ binders $ \(mx, k, _, _, _, _) ->
-    when (VK.isSource k) $ ensureRuntimeStage mx h "`~`"
+    when (VK.isSource k) $ ensureRuntimeStage mx h "`+`"
 
 discernImpArgs ::
   H.Handle ->
@@ -1730,9 +1730,9 @@ ensurePatternMarkAgreement sourceFlags markedArgs =
   forM_ (zip sourceFlags markedArgs) $ \(isSourceField, (mArg, (_, isSourceArg))) -> do
     case (isSourceField, isSourceArg) of
       (True, False) ->
-        raiseError mArg "This field is stored inline, so this pattern must be marked with `~`"
+        raiseError mArg "This field is stored inline, so this pattern must be marked with `+`"
       (False, True) ->
-        raiseError mArg "This field is not stored inline, so this pattern must not be marked with `~`"
+        raiseError mArg "This field is not stored inline, so this pattern must not be marked with `+`"
       _ ->
         return ()
 

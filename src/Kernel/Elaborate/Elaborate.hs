@@ -203,10 +203,11 @@ toTextDefinition stmtKind name expArgs cod body =
   toTextStmtKind stmtKind
     <> " "
     <> DD.localLocator name
-    <> toTextDestMark stmtKind
     <> "("
     <> T.intercalate ", " (map toTextBinder expArgs)
-    <> ") -> "
+    <> ") "
+    <> toTextCodArrow stmtKind
+    <> " "
     <> Weak.toTextType cod
     <> " {\n"
     <> Weak.toTextIndented (Weak.Kit 1 True) body
@@ -236,11 +237,11 @@ toTextStmtKind stmtKind =
     SK.DataIntro {} ->
       "define"
 
-toTextDestMark :: SK.StmtKindTerm WT.WeakType -> T.Text
-toTextDestMark stmtKind =
+toTextCodArrow :: SK.StmtKindTerm WT.WeakType -> T.Text
+toTextCodArrow stmtKind =
   if SK.isDestPassingStmtKind stmtKind
-    then "@"
-    else ""
+    then "->>"
+    else "->"
 
 toTextBinder :: BinderF WT.WeakType -> T.Text
 toTextBinder (_, _, x, ty) =
