@@ -4,6 +4,7 @@ module Command.Common.Fetch
     fetch,
     insertDependency,
     insertCoreDependency,
+    getCoreLocation,
   )
 where
 
@@ -132,10 +133,14 @@ insertDependency h aliasName url = do
               dependencyPresetEnabled = False
             }
 
-insertCoreDependency :: Handle -> App ()
-insertCoreDependency h = do
+getCoreLocation :: App (ModuleURL, MD.ModuleDigest)
+getCoreLocation = do
   coreModuleURL <- Module.getCoreModuleURL
   digest <- Module.getCoreModuleDigest
+  return (coreModuleURL, digest)
+
+insertCoreDependency :: Handle -> (ModuleURL, MD.ModuleDigest) -> App ()
+insertCoreDependency h (coreModuleURL, digest) = do
   _ <- installModule h coreModuleAlias [coreModuleURL] digest
   addDependencyToModuleFile h coreModuleAlias $
     M.Dependency
