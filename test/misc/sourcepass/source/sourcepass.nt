@@ -1,5 +1,6 @@
 import {
   core::int.io {print-int-line},
+  core::string {from-text},
 }
 
 data shape {
@@ -172,6 +173,40 @@ define first-of<sized a>(+x: a, f: (&a) -> int, g: (&a) -> int) -> int {
   add-int(f(x), g(x))
 }
 
+data label {
+| Named(head: string, rest: string)
+| Anonymous
+}
+
+data boxed-label {
+| Boxed(outer: label, +inner: label)
+}
+
+define label-length(l: label) -> int {
+  match l {
+  | Named(head, rest) =>
+    let m on head = core::string::length(head);
+    let _ = head;
+    let n on rest = core::string::length(rest);
+    let _ = rest;
+    add-int(m, n)
+  | Anonymous =>
+    0
+  }
+}
+
+define boxed-label-length(b: boxed-label) -> int {
+  match b {
+  | Boxed(outer, +inner) =>
+    add-int(label-length(outer), label-length(inner))
+  }
+}
+
+define drop-then-read-boxed-label() -> int {
+  let _ = Boxed(Anonymous, ~Named(*from-text("aaaa"), *from-text("")));
+  boxed-label-length(Boxed(Named(*from-text("a"), *from-text("")), ~Named(*from-text(""), *from-text("bbbb"))))
+}
+
 define main() -> unit {
   print("use-area\n");
   print-int-line(use-area());
@@ -210,5 +245,7 @@ define main() -> unit {
   print("scale-area-override\n");
   print-int-line(scale-area(~Circle(3))[bias := 1]);
   print("first-of\n");
-  print-int-line(first-of(~Rect(2, 7), shape-area, shape-area))
+  print-int-line(first-of(~Rect(2, 7), shape-area, shape-area));
+  print("drop-then-read-boxed-label\n");
+  print-int-line(drop-then-read-boxed-label())
 }
