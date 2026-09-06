@@ -559,7 +559,7 @@ discern h term =
       decisionTree <- compilePatternMatrix h isNoetic (V.fromList os') patternMatrix'
       return $ m :< WT.DataElim isNoetic (zip3 os es'' ts) decisionTree
     m :< RT.BoxIntro _ _ mxs (body, _) -> do
-      ensureRuntimeStage m h "meta operation (`box`)"
+      ensureRuntimeStage m h "`box`"
       xsOuter <- forM (SE.extract mxs) $ \(mx, k, x) -> do
         (mDef, (mUse, x')) <- discernIdent mx h x
         return (mDef, (mUse, k, x'))
@@ -572,15 +572,15 @@ discern h term =
       body' <- discern hInner body
       return $ m :< WT.BoxIntro xets body'
     m :< RT.BoxIntroLift _ _ (body, _) -> do
-      ensureRuntimeStage m h "meta operation (`lift`)"
+      ensureRuntimeStage m h "`lift`"
       body' <- discern h body
       return $ m :< WT.BoxIntroLift Nothing body'
     m :< RT.EmbedIntro _ _ (body, _) -> do
-      ensureRuntimeStage m h "meta operation (`embed`)"
+      ensureRuntimeStage m h "`embed`"
       body' <- discern h body
       return $ m :< WT.EmbedIntro body'
     m :< RT.BoxElim nv mustIgnoreRelayedVars _ (mx, pat, c1, c2, t) _ mys _ e1 _ startLoc _ e2 endLoc -> do
-      ensureRuntimeStage m h "meta operation (`letbox`)"
+      ensureRuntimeStage m h "`letbox`"
       case nv of
         VariantK ->
           unless (SE.isEmpty mys) $ raiseError m "`on` cannot be used with: `letbox`"
@@ -633,7 +633,7 @@ discern h term =
       e2' <- discern h' e2
       return $ m :< WT.TauElim (mx, k, x') e1' e2'
     m :< RT.Embody e -> do
-      ensureRuntimeStage m h "meta operation (`*`)"
+      ensureRuntimeStage m h "`*`"
       let m' = blur m
       let loc = metaLocation m
       tmpName <- liftIO $ Gensym.newTextFromText (H.gensymHandle h) "tmp-embody"
@@ -663,7 +663,7 @@ discern h term =
     m :< RT.Let letKind _ (mx, pat, c1, c2, t) _ _ e1 _ startLoc _ e2 endLoc -> do
       discernLet h m letKind (mx, pat, c1, c2, t) e1 e2 startLoc endLoc
     m :< RT.LetOn letKind _ pat _ mys _ e1@(m1 :< _) _ startLoc _ e2 endLoc -> do
-      ensureRuntimeStage m h "meta operation (`on`)"
+      ensureRuntimeStage m h "`on`"
       case letKind of
         RT.Plain mustIgnoreRelayedVars -> do
           let e1' = m :< RT.BoxIntroLift [] [] (e1, [])
@@ -1014,46 +1014,46 @@ discernMagic h m magic =
       e' <- discern h e
       return $ M.WeakMagic $ M.LowMagic $ LM.Cast from' to' e'
     RT.Store _ (_, (t, _)) (_, (value, _)) (_, (pointer, _)) _ -> do
-      ensureRuntimeStage m h "runtime magic (`store`)"
+      ensureRuntimeStage m h "`magic store`"
       t' <- discernType h t
       unit <- liftEither (locatorToTypeVar m coreUnit) >>= discernType h
       value' <- discern h value
       pointer' <- discern h pointer
       return $ M.WeakMagic $ M.LowMagic $ LM.Store t' unit value' pointer'
     RT.Load _ (_, (t, _)) (_, (pointer, _)) _ -> do
-      ensureRuntimeStage m h "runtime magic (`load`)"
+      ensureRuntimeStage m h "`magic load`"
       t' <- discernType h t
       pointer' <- discern h pointer
       return $ M.WeakMagic $ M.LowMagic $ LM.Load t' pointer'
     RT.Alloca _ (_, (t, _)) (_, (size, _)) _ -> do
-      ensureRuntimeStage m h "runtime magic (`alloca`)"
+      ensureRuntimeStage m h "`magic alloca`"
       t' <- discernType h t
       size' <- discern h size
       return $ M.WeakMagic $ M.LowMagic $ LM.Alloca t' size'
     RT.Calloc _ (_, (num, _)) (_, (size, _)) _ -> do
-      ensureRuntimeStage m h "runtime magic (`calloc`)"
+      ensureRuntimeStage m h "`magic calloc`"
       sizeType <- liftEither (locatorToTypeVar m coreCSize) >>= discernType h
       num' <- discern h num
       size' <- discern h size
       return $ M.WeakMagic $ M.Calloc sizeType num' size'
     RT.Malloc _ (_, (size, _)) _ -> do
-      ensureRuntimeStage m h "runtime magic (`malloc`)"
+      ensureRuntimeStage m h "`magic malloc`"
       sizeType <- liftEither (locatorToTypeVar m coreCSize) >>= discernType h
       size' <- discern h size
       return $ M.WeakMagic $ M.Malloc sizeType size'
     RT.Realloc _ (_, (ptr, _)) (_, (size, _)) _ -> do
-      ensureRuntimeStage m h "runtime magic (`realloc`)"
+      ensureRuntimeStage m h "`magic realloc`"
       sizeType <- liftEither (locatorToTypeVar m coreCSize) >>= discernType h
       ptr' <- discern h ptr
       size' <- discern h size
       return $ M.WeakMagic $ M.Realloc sizeType ptr' size'
     RT.Free _ (_, (ptr, _)) _ -> do
-      ensureRuntimeStage m h "runtime magic (`free`)"
+      ensureRuntimeStage m h "`magic free`"
       unitType <- liftEither (locatorToTypeVar m coreUnit) >>= discernType h
       ptr' <- discern h ptr
       return $ M.WeakMagic $ M.Free unitType ptr'
     RT.External _ mUse funcName _ args varArgsOrNone -> do
-      ensureRuntimeStage m h "runtime magic (`external`)"
+      ensureRuntimeStage m h "`magic external`"
       mDef <- PreDecl.lookup (H.preDeclHandle h) m funcName
       liftIO $ Tag.insertExternalName (H.tagHandle h) mUse funcName mDef
       liftIO $ Unused.deleteForeign (H.unusedHandle h) funcName
@@ -1070,66 +1070,66 @@ discernMagic h m magic =
             return (arg', t')
       return $ M.WeakMagic $ M.LowMagic $ LM.External domList cod funcName args' varArgs'
     RT.Global _ (_, (name, _)) (_, (t, _)) _ -> do
-      ensureRuntimeStage m h "runtime magic (`global`)"
+      ensureRuntimeStage m h "`magic global`"
       t' <- discernType h t
       return $ M.WeakMagic $ M.LowMagic $ LM.Global name t'
     RT.OpaqueValue _ (_, (e, _)) -> do
-      ensureRuntimeStage m h "runtime magic (`opaque-value`)"
+      ensureRuntimeStage m h "`magic opaque-value`"
       e' <- discern h e
       return $ M.WeakMagic $ M.LowMagic $ LM.OpaqueValue e'
     RT.CallType _ (_, (func, _)) (_, (arg1, _)) (_, (arg2, _)) (_, (arg3, _)) -> do
-      ensureRuntimeStage m h "runtime magic (`call-type`)"
+      ensureRuntimeStage m h "`magic call-type`"
       func' <- discern h func
       arg1' <- discern h arg1
       arg2' <- discern h arg2
       arg3' <- discern h arg3
       return $ M.WeakMagic $ M.LowMagic $ LM.CallType func' arg1' arg2' arg3'
     RT.InspectType (_, (typeExpr, _)) -> do
-      ensureCompileStage m h "inline magic (`inspect-type`)"
+      ensureCompileStage m h "`magic inspect-type`"
       coreModuleID <- Alias.resolveModuleAlias (H.aliasHandle h) m coreModuleAlias
       typeValueVar <- liftEither $ locatorToTypeVar m coreTypeValueTypeValue
       typeValueExpr <- discernType h typeValueVar
       typeExpr' <- discernType h typeExpr
       return $ M.WeakMagic $ M.InspectType coreModuleID typeValueExpr typeExpr'
     RT.EqType (_, (typeExpr1, _)) (_, (typeExpr2, _)) -> do
-      ensureCompileStage m h "inline magic (`eq-type`)"
+      ensureCompileStage m h "`magic eq-type`"
       coreModuleID <- Alias.resolveModuleAlias (H.aliasHandle h) m coreModuleAlias
       typeExpr1' <- discernType h typeExpr1
       typeExpr2' <- discernType h typeExpr2
       return $ M.WeakMagic $ M.EqType coreModuleID typeExpr1' typeExpr2'
     RT.ShowType _ (_, (typeExpr, _)) -> do
-      ensureCompileStage m h "inline magic (`show-type`)"
+      ensureCompileStage m h "`magic show-type`"
       typeExpr' <- discernType h typeExpr
       return $ M.WeakMagic $ M.ShowType typeExpr'
     RT.TextCons _ (_, (rune, _)) (_, (text, _)) -> do
-      ensureCompileStage m h "inline magic (`text-cons`)"
+      ensureCompileStage m h "`magic text-cons`"
       rune' <- discern h rune
       text' <- discern h text
       return $ M.WeakMagic $ M.TextCons rune' text'
     RT.TextUncons _ (_, (text, _)) -> do
-      ensureCompileStage m h "inline magic (`text-uncons`)"
+      ensureCompileStage m h "`magic text-uncons`"
       moduleID <- Alias.resolveModuleAlias (H.aliasHandle h) m coreModuleAlias
       text' <- discern h text
       return $ M.WeakMagic $ M.TextUncons moduleID text'
     RT.MakeSwitch _ (_, (key, _)) (_, (fallback, _)) (_, (clauses, _)) -> do
-      ensureCompileStage m h "inline magic (`make-switch`)"
+      ensureCompileStage m h "`magic make-switch`"
       moduleID <- Alias.resolveModuleAlias (H.aliasHandle h) m coreModuleAlias
       key' <- discern h key
       fallback' <- discern h fallback
       clauses' <- discern h clauses
       return $ M.WeakMagic $ M.MakeSwitch moduleID key' fallback' clauses'
     RT.CompileError _ (_, (msg, _)) -> do
-      ensureCompileStage m h "inline magic (`compile-error`)"
+      ensureCompileStage m h "`magic compile-error`"
       msg' <- discern h msg
       return $ M.WeakMagic $ M.CompileError msg'
     RT.GetOriginFileName {} -> do
-      ensureCompileStage m h "inline magic (`get-origin-file-name`)"
+      ensureCompileStage m h "`magic get-origin-file-name`"
       return $ M.WeakMagic M.GetOriginFileName
     RT.GetOriginLine {} -> do
-      ensureCompileStage m h "inline magic (`get-origin-line`)"
+      ensureCompileStage m h "`magic get-origin-line`"
       return $ M.WeakMagic M.GetOriginLine
     RT.GetOriginColumn {} -> do
-      ensureCompileStage m h "inline magic (`get-origin-column`)"
+      ensureCompileStage m h "`magic get-origin-column`"
       return $ M.WeakMagic M.GetOriginColumn
 
 modifyLetContinuation ::
