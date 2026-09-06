@@ -413,6 +413,8 @@ data wrapper {
 
 Then `42: wrapper` holds.
 
+As in LLVM, the value of a literal is its remainder modulo `2^N`, where `intN` is the integer type that is reached. Integer types are signless, so `-1: int8` and `255: int8` are the same value, and `256: int8` is `0`.
+
 ### Note
 
 - The type `int` is also available. For more, see [Primitives](./primitives.md#primitive-types).

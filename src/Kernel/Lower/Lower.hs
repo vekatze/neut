@@ -56,6 +56,7 @@ import Language.Common.LowType qualified as LT
 import Language.Common.LowType.FromBaseLowType qualified as LT
 import Language.Common.PrimNumSize
 import Language.Common.PrimNumSize.ToInt
+import Language.Common.PrimNumSize.Wrap qualified as Wrap
 import Language.Common.SlotSize
 import Language.Common.PrimOp
 import Language.Common.PrimOp.ConvOp qualified as ConvOp
@@ -732,7 +733,7 @@ lowerValue h resultVar v cont =
     C.SigmaIntro layout ds ->
       createCell h resultVar layout ds cont
     C.Int size l -> do
-      uncast h resultVar (LC.Int l) (LT.PrimNum $ PT.Int size) cont
+      uncast h resultVar (LC.Int (Wrap.signedOf size l)) (LT.PrimNum $ PT.Int size) cont
     C.Float size f -> do
       uncast h resultVar (LC.Float size f) (LT.PrimNum $ PT.Float size) cont
 

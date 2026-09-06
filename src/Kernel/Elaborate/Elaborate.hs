@@ -97,6 +97,7 @@ import Language.Common.Magic qualified as M
 import Language.Common.ModuleID qualified as MID
 import Language.Common.PiKind qualified as PK
 import Language.Common.PrimNumSize
+import Language.Common.PrimNumSize.Wrap qualified as Wrap
 import Language.Common.PrimType qualified as PT
 import Language.Common.SourceLocator qualified as SL
 import Language.Common.StmtKind qualified as SK
@@ -1131,7 +1132,7 @@ elaboratePrimValue h m primValue =
   case primValue of
     WPV.Int t x -> do
       (intSize, t') <- strictifyDecimalType h m x t
-      return $ PV.Int t' intSize x
+      return $ PV.Int t' intSize (Wrap.unsignedOf intSize x)
     WPV.Float t x -> do
       (size, t') <- strictifyFloatType h m x t
       return $ PV.Float t' size x

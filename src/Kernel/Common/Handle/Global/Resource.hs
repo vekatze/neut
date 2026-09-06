@@ -12,6 +12,7 @@ import Control.Comonad.Cofree
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Language.Common.DefiniteDescription qualified as DD
+import Language.Common.PrimNumSize.Wrap qualified as Wrap
 import Language.Term.PrimValue qualified as PV
 import Language.Term.Term qualified as TM
 import Prelude hiding (lookup)
@@ -24,10 +25,11 @@ data ResourceLayout
 layoutOf :: TM.Term -> Maybe ResourceLayout
 layoutOf term =
   case term of
-    _ :< TM.Prim (PV.Int _ _ value) ->
-      if value < 0
+    _ :< TM.Prim (PV.Int _ size value) -> do
+      let byteSize = Wrap.signedOf size value
+      if byteSize < 0
         then Just Direct
-        else Just $ Flattened $ fromInteger value
+        else Just $ Flattened $ fromInteger byteSize
     _ ->
       Nothing
 
