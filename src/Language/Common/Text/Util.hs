@@ -18,6 +18,20 @@ isUpperHexDigit :: Char -> Bool
 isUpperHexDigit c =
   isDigit c || (fromIntegral (ord c - ord 'A') :: Word) <= 5
 
+isLowerHexDigit :: Char -> Bool
+isLowerHexDigit c =
+  (fromIntegral (ord c - ord 'a') :: Word) <= 5
+
+readHexDigits :: T.Text -> Either T.Text (T.Text, T.Text)
+readHexDigits t = do
+  let (digits, rest) = T.span isUpperHexDigit t
+  case T.uncons rest of
+    Just (c, _)
+      | isLowerHexDigit c ->
+          Left $ "A hexadecimal digit must be uppercase, but got: `" <> T.singleton c <> "`"
+    _ ->
+      return (digits, rest)
+
 readUnicodeScalarValueMaybe :: T.Text -> Either T.Text Char
 readUnicodeScalarValueMaybe t =
   case readHex (T.unpack t) of
@@ -45,7 +59,7 @@ readChar c t = do
 readByteEscape :: T.Text -> Either T.Text (Integer, T.Text)
 readByteEscape t = do
   rest <- readChar '{' t
-  let (byteText, rest') = T.span isUpperHexDigit rest
+  (byteText, rest') <- readHexDigits rest
   rest'' <- readChar '}' rest'
   case readHex (T.unpack byteText) :: [(Integer, String)] of
     [(value, _)]
@@ -82,7 +96,7 @@ readEscapeBytes t = do
           Right (Builder.word8 $ fromIntegral byte, rest')
         'u' -> do
           rest' <- readChar '{' rest
-          let (scalarValueText, rest'') = T.span isUpperHexDigit rest'
+          (scalarValueText, rest'') <- readHexDigits rest'
           rest''' <- readChar '}' rest''
           ch <- readUnicodeScalarValueMaybe scalarValueText
           Right (Builder.byteString $ TE.encodeUtf8 $ T.singleton ch, rest''')
