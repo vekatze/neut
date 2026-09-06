@@ -115,9 +115,68 @@ define test-cmp() -> unit {
   same-bool("le-float-zero", le-float(-0.0, 0.0), le-float(opaque-float(-0.0), opaque-float(0.0)));
 }
 
+constant folded-sext: int {
+  sext-int8-int(-1)
+}
+
+constant folded-sext32: int32 {
+  sext-int8-int32(-1)
+}
+
+constant folded-zext: int {
+  zext-int8-int(-1)
+}
+
+constant folded-trunc: int8 {
+  trunc-int-int8(511)
+}
+
+constant folded-fpext: float {
+  fpext-float32-float(0.5)
+}
+
+constant folded-fptrunc: float32 {
+  fptrunc-float-float32(0.1)
+}
+
+constant folded-fptrunc16: float16 {
+  fptrunc-float-float16(1.0e300)
+}
+
+constant folded-sitofp: float {
+  sitofp-int-float(-1)
+}
+
+constant folded-uitofp: float {
+  uitofp-int-float(-1)
+}
+
+constant folded-fptosi: int {
+  fptosi-float-int(-3.7)
+}
+
+constant folded-fptoui: int {
+  fptoui-float-int(3.7)
+}
+
+define test-conv() -> unit {
+  same-int("sext", folded-sext, sext-int8-int(opaque-int8(-1)));
+  same-int32("sext32", folded-sext32, sext-int8-int32(opaque-int8(-1)));
+  same-int("zext", folded-zext, zext-int8-int(opaque-int8(-1)));
+  same-int8("trunc", folded-trunc, trunc-int-int8(opaque-int(511)));
+  same-float("fpext", folded-fpext, fpext-float32-float(opaque-float32(0.5)));
+  same-float32("fptrunc", folded-fptrunc, fptrunc-float-float32(opaque-float(0.1)));
+  same-float16("fptrunc16", folded-fptrunc16, fptrunc-float-float16(opaque-float(1.0e300)));
+  same-float("sitofp", folded-sitofp, sitofp-int-float(opaque-int(-1)));
+  same-float("uitofp", folded-uitofp, uitofp-int-float(opaque-int(-1)));
+  same-int("fptosi", folded-fptosi, fptosi-float-int(opaque-float(-3.7)));
+  same-int("fptoui", folded-fptoui, fptoui-float-int(opaque-float(3.7)));
+}
+
 define main() -> unit {
   test-float-rem();
   test-float-arith();
   test-int-arith();
   test-cmp();
+  test-conv();
 }
