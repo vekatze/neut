@@ -25,7 +25,7 @@ import Data.HashSet qualified as HS
 import Data.IORef
 import Data.Text qualified as T
 import Kernel.Common.GlobalName qualified as GN
-import Kernel.Common.Handle.Global.ModulePath (renderDD)
+import Kernel.Common.Handle.Global.ModulePath (renderCanonicalDD)
 import Kernel.Common.Handle.Global.ModulePath qualified as ModulePath
 import Kernel.Common.Handle.Local.Tag qualified as Tag
 import Kernel.Common.Import (MustUpdateTag)
@@ -151,8 +151,8 @@ activateImportedName h currentGlobalLocator topNameMap mustUpdateTag sgl mImport
   case Map.lookup importAlias importEnv of
     Just (ImportedName existingDD _)
       | dd /= existingDD -> do
-          let dd' = renderDD (_modulePathMap h) dd
-          let existingDD' = renderDD (_modulePathMap h) existingDD
+          let dd' = renderCanonicalDD (_modulePathMap h) dd
+          let existingDD' = renderCanonicalDD (_modulePathMap h) existingDD
           raiseError mImportAlias $
             "The import alias `"
               <> BN.reify importAlias
