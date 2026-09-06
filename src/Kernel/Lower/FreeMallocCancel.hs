@@ -167,13 +167,15 @@ process matchMode gensymHandle segment =
   forM_ (IntMap.toAscList (segmentItems segment)) $ \(pos, item) ->
     case item of
       FreeItem ptr size _ droppedRef -> do
-        consumption <- findConsumption matchMode segment (pos + 1) ptr size
-        case consumption of
-          Just commit -> do
-            commit
-            dropFree segment pos size droppedRef
-          Nothing ->
-            return ()
+        dropped <- readIORef droppedRef
+        unless dropped $ do
+          consumption <- findConsumption matchMode segment (pos + 1) ptr size
+          case consumption of
+            Just commit -> do
+              commit
+              dropFree segment pos size droppedRef
+            Nothing ->
+              return ()
       SwitchItem switch -> do
         liftAllocsIntoPhi matchMode gensymHandle segment (pos + 1) switch
         forM_ (branchesOf switch) $ process matchMode gensymHandle

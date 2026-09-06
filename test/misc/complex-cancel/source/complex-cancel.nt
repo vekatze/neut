@@ -1,3 +1,8 @@
+import {
+  core::cell {borrow, cell, make-cell, mutate},
+  core::int.show {show-int},
+}
+
 data joker {
 | L(joker)
 | R(int)
@@ -50,7 +55,127 @@ define test2(x: joker) -> int {
   }
 }
 
+// A free inside a branch must feed at most one allocation. The allocation
+// after the join is lifted into a phi over the frees of the branches, and the
+// allocation inside the branch must then leave that free alone.
+
+data kept-3 {
+| Kept-3(int, int, int)
+}
+
+data kept-4 {
+| Kept-4(int, int, int, int)
+}
+
+define keep-3(c: &cell(list(kept-3)), x: kept-3) -> unit {
+  mutate(c, (xs) => {
+    letbox-T xs = xs;
+    lift {Cons(x, xs)}
+  })
+}
+
+define keep-4(c: &cell(list(kept-4)), x: kept-4) -> unit {
+  mutate(c, (xs) => {
+    letbox-T xs = xs;
+    lift {Cons(x, xs)}
+  })
+}
+
+define find(x: int) -> ?int {
+  Right(x)
+}
+
+// on wasm32, `?int`, `kept-3`, and `pair(int, int)` share one size
+define step-3(c: &cell(list(kept-3)), e: int) -> list(pair(int, int)) {
+  let id =
+    match find(e) {
+    | Right(id) =>
+      keep-3(c, Kept-3(id, 1, 2));
+      id
+    | Left(_) =>
+      0
+    };
+  Cons(Pair(e, id), Nil)
+}
+
+// on 64-bit hosts, `?int`, `kept-4`, and `pair(int, int)` share one size
+define step-4(c: &cell(list(kept-4)), e: int) -> list(pair(int, int)) {
+  let id =
+    match find(e) {
+    | Right(id) =>
+      keep-4(c, Kept-4(id, 1, 2, 3));
+      id
+    | Left(_) =>
+      0
+    };
+  Cons(Pair(e, id), Nil)
+}
+
+define show-ints(xs: list(int)) -> unit {
+  match xs {
+  | Nil =>
+    Unit
+  | Cons(x, rest) =>
+    pin shown = show-int(x);
+    print(shown);
+    match rest {
+    | Nil =>
+      Unit
+    | Cons(y, rest) =>
+      print(", ");
+      show-ints(Cons(y, rest))
+    }
+  }
+}
+
+define show-kept-3(xs: &list(kept-3)) -> unit {
+  case xs {
+  | Nil =>
+    Unit
+  | Cons(Kept-3(a, b, c), rest) =>
+    print("Kept-3(");
+    show-ints(List::[*a, *b, *c]);
+    print(")\n");
+    show-kept-3(rest)
+  }
+}
+
+define show-kept-4(xs: &list(kept-4)) -> unit {
+  case xs {
+  | Nil =>
+    Unit
+  | Cons(Kept-4(a, b, c, d), rest) =>
+    print("Kept-4(");
+    show-ints(List::[*a, *b, *c, *d]);
+    print(")\n");
+    show-kept-4(rest)
+  }
+}
+
+define test-lifted-free() -> unit {
+  let c3: cell(list(kept-3)) = make-cell(lift {Nil});
+  let c4: cell(list(kept-4)) = make-cell(lift {Nil});
+  let _ on c3, c4 = {
+    let _ = step-3(c3, 5);
+    let _ = step-3(c3, 6);
+    let _ = step-4(c4, 7);
+    let _ = step-4(c4, 8);
+    borrow(c3, (xs) => {
+      show-kept-3(xs);
+      box {Unit}
+    });
+    borrow(c4, (xs) => {
+      show-kept-4(xs);
+      box {Unit}
+    })
+  };
+  let _ = c3;
+  let _ = c4;
+  Unit
+}
+
 define main() -> unit {
+  test-lifted-free();
   let _ = test(L(L(L(L(R(10))))));
   let _ = test(L(L(L(R(10)))));
   let _ = test(L(L(R(10))));
