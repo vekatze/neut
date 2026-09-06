@@ -1,6 +1,7 @@
 module SyntaxTree.ParseSeries
   ( series,
     bareSeries,
+    bareSeries1,
     seriesParen,
     seriesParen',
     seriesBrace,
@@ -104,6 +105,10 @@ series' container separator p = do
 bareSeries :: SE.Separator -> Parser (a, C) -> Parser (SE.Series a)
 bareSeries separator p = do
   _series Nothing separator [] p
+
+bareSeries1 :: SE.Separator -> Parser (a, C) -> Parser (SE.Series a)
+bareSeries1 separator p = do
+  _seriesSepTrail1 Nothing separator [] p
 
 getParserPair :: SE.Container -> (Parser C, Parser C)
 getParserPair container =

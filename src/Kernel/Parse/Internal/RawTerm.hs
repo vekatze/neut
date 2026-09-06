@@ -1095,7 +1095,7 @@ rawTermMagicGetOriginColumn _ m c = do
 
 rawTermMatch :: Handle -> Hint -> C -> Bool -> Parser (RT.RawTerm, C)
 rawTermMatch h m c1 isNoetic = do
-  es <- bareSeries SE.Comma $ rawTermPartial h
+  es <- bareSeries1 SE.Comma $ rawTermPartial h
   (patternRowList, c) <- seriesBraceList $ rawTermPatternRow h (length $ SE.extract es)
   return (m :< RT.DataElim c1 isNoetic es patternRowList, c)
 
