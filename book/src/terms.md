@@ -2643,7 +2643,7 @@ A useful case is static data: primitive types such as `text` and `blob` are lift
 
 ```neut
 define lift-value<a>(x: a) -> ^a {
-  lift {x} // error: the type variable `a` is not declared `actual`
+  lift {x} // error
 }
 
 define lift-value<actual a>(x: a) -> ^a {

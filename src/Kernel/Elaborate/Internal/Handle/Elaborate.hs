@@ -111,6 +111,7 @@ data ObligationSite
   | Instantiation
   | LiftTarget
   | LiteralPattern
+  | InlineField
 
 data TypeObligation
   = TypeObligation VK.TypeAttr ObligationSite Hint WT.WeakType

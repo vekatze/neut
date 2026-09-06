@@ -497,15 +497,17 @@ obligationErrorMessage :: VK.TypeAttr -> ObligationSite -> T.Text -> T.Text
 obligationErrorMessage attr site message =
   case site of
     SourceSlot ->
-      "A source-passing slot cannot have this type: " <> message <> "."
+      "A source-passing slot cannot have " <> message <> "."
     Destination ->
-      "A destination cannot have this type: " <> message <> "."
+      "A destination cannot have " <> message <> "."
     Instantiation ->
-      "A parameter declared `" <> VK.reifyAttr attr <> "` cannot be instantiated with this type: " <> message <> "."
+      "A parameter declared `" <> VK.reifyAttr attr <> "` cannot be instantiated with " <> message <> "."
     LiftTarget ->
-      "`lift` cannot be used on this type: " <> message <> "."
+      "`lift` cannot be used on " <> message <> "."
     LiteralPattern ->
-      "An integer pattern cannot be used against this type: " <> message <> "."
+      "An integer pattern cannot be used against " <> message <> "."
+    InlineField ->
+      "An inline field cannot have " <> message <> "."
 
 hasTypeAttr :: Handle -> VK.TypeAttr -> Ident -> App Bool
 hasTypeAttr h attr x = do
@@ -514,7 +516,7 @@ hasTypeAttr h attr x = do
 
 undeclaredTypeVarMessage :: VK.TypeAttr -> Ident -> T.Text
 undeclaredTypeVarMessage attr x =
-  "the type variable `" <> Ident.toText x <> "` is not declared `" <> VK.reifyAttr attr <> "`"
+  "the type variable `" <> Ident.toText x <> "`, which is not declared `" <> VK.reifyAttr attr <> "`"
 
 checkActualityType :: Handle -> S.Set DD.DefiniteDescription -> Hint -> TM.Type -> App (Either T.Text ())
 checkActualityType h dataNameSet m t = do
@@ -551,7 +553,7 @@ checkActualityType h dataNameSet m t = do
         then return $ Right ()
         else return $ Left $ undeclaredTypeVarMessage VK.Actual x
     _ ->
-      return $ Left $ "a term of the type `" <> toTextType (weakenType t') <> "` might be noetic"
+      return $ Left $ "the type `" <> toTextType (weakenType t') <> "`, whose values might be noetic"
 
 checkActualityTypeList :: Handle -> S.Set DD.DefiniteDescription -> Hint -> [TM.Type] -> App (Either T.Text ())
 checkActualityTypeList h dataNameSet m ts =
@@ -741,9 +743,13 @@ resolveFieldLayout h hint (m, _, _, t) =
         Right (StaticBytes byteSize chunkLimit) ->
           return $ CL.StoredFlat $ CL.chunkSizes chunkLimit byteSize
         Right RuntimeSize ->
-          raiseError mSized "a type variable cannot be stored inline in a `data` field"
+          raiseError mSized $ inlineFieldError "a type variable whose size is not known until run time"
         Left message ->
-          raiseError mSized message
+          raiseError mSized $ inlineFieldError message
+
+inlineFieldError :: T.Text -> T.Text
+inlineFieldError =
+  obligationErrorMessage VK.Sized InlineField
 
 data InlineSize
   = StaticBytes Int Int
@@ -756,7 +762,7 @@ resolveMixedOrError h visited m ty =
       optDataOrNone <- liftIO $ OptimizableData.lookup (optDataHandle h) dataName
       case optDataOrNone of
         Just OD.Enum ->
-          return $ Left $ "the type `" <> showDD h dataName <> "` is an enum and cannot be stored inline"
+          return $ Left $ "the enum `" <> showDD h dataName <> "`"
         Just OD.Unary ->
           if S.member dataName visited
             then return $ Left $ cannotMixRecursiveMessage h dataName
@@ -776,9 +782,9 @@ resolveMixedOrError h visited m ty =
         Just (Resource.Flattened byteSize) ->
           return $ Right $ StaticBytes byteSize CL.maxChunkSize
         Just Resource.Direct ->
-          return $ Left $ "the resource `" <> showDD h dataName <> "` has no fixed size and cannot be stored inline"
+          return $ Left $ "the resource `" <> showDD h dataName <> "`, whose size is not fixed"
         Nothing ->
-          return $ Left $ "could not find the size of the resource `" <> showDD h dataName <> "`"
+          return $ Left $ "the resource `" <> showDD h dataName <> "`, whose size is not known"
     _ :< TM.Pi {} ->
       return $ Right $ StaticBytes (CL.cellByteSize $ DI.closureLayout (dataSizeOf h)) (DI.closureAlignment (dataSizeOf h))
     _ :< TM.Tau ->
@@ -807,11 +813,11 @@ resolveMixedOrError h visited m ty =
 
 cannotMixFieldType :: T.Text -> App (Either T.Text InlineSize)
 cannotMixFieldType typeDesc =
-  return $ Left $ typeDesc <> " cannot be stored inline"
+  return $ Left typeDesc
 
 cannotMixRecursiveMessage :: Handle -> DD.DefiniteDescription -> T.Text
 cannotMixRecursiveMessage h dataName =
-  "the recursive type `" <> showDD h dataName <> "` cannot be stored inline"
+  "the recursive type `" <> showDD h dataName <> "`"
 
 dataSizeOf :: Handle -> DS.DataSize
 dataSizeOf h =
