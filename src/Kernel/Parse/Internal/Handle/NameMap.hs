@@ -143,7 +143,7 @@ ensureDefFreshness h m name mTag isConstLike = do
             return tag
           Nothing ->
             raiseError m $ "`" <> name' <> "` cannot be defined to satisfy a nominal declaration"
-      when (nominalTag /= actualTag) $ do
+      unless (sameNominalKind nominalTag actualTag) $ do
         raiseError m $
           "`"
             <> name'

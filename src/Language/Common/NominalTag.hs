@@ -1,6 +1,7 @@
 module Language.Common.NominalTag
   ( NominalTag (..),
     nominalTagToText,
+    sameNominalKind,
     isTermTag,
     isMacroTag,
     isDestPassingTag,
@@ -55,6 +56,10 @@ nominalTagToText tag =
       "data"
     Resource ->
       "resource"
+
+sameNominalKind :: NominalTag -> NominalTag -> Bool
+sameNominalKind tag1 tag2 =
+  nominalTagToText tag1 == nominalTagToText tag2
 
 isTermTag :: NominalTag -> Bool
 isTermTag tag =
