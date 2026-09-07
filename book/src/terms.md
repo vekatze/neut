@@ -2080,6 +2080,13 @@ letbox-T result on x1, ..., xn = e1;
 e2
 ```
 
+A variable in the list can carry `!`:
+
+```neut
+letbox-T result on !x1, x2 = e1;
+e2
+```
+
 ### Semantics
 
 ```neut
@@ -3421,6 +3428,13 @@ let p on x1, ..., xn = e1;
 e2
 
 let p: t on x1, ..., xn = e1;
+e2
+```
+
+As with [letbox-T](#letbox-t), a variable in the list can carry `!`:
+
+```neut
+let p on !x1, x2 = e1;
 e2
 ```
 
