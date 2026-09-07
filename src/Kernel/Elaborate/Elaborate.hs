@@ -783,8 +783,8 @@ resolveMixedOrError h visited m ty =
       cannotMixFieldType "a nominal type"
     _ :< TM.TyApp {} ->
       cannotMixFieldType "a nominal type"
-    _ :< TM.Box {} ->
-      cannotMixFieldType "a box type"
+    _ :< TM.Box tInner ->
+      resolveMixedOrError h visited m tInner
     _ :< TM.BoxNoema {} ->
       cannotMixFieldType "a noema type"
     _ :< TM.Embed {} ->
