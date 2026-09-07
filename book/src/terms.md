@@ -2683,6 +2683,7 @@ For every type `a`, `$a` is compiled into `base::#::imm`.
 
 - `$t` is an ["actual"](#lift) type for every `t`.
 - A value of type `$a` is immutable and lives for the whole run of the program, so it can be shared across threads without any synchronization.
+- A value of type `$a` is read through `core::static::from-static-value`, which casts it to `&a`.
 
 ## `embed`
 
