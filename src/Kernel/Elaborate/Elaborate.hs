@@ -490,8 +490,6 @@ checkTypeAttr h attr m t =
       fmap (const ()) <$> resolveMixedOrError h S.empty m t
     VK.Actual ->
       checkActualityType h S.empty m t
-    VK.Integer ->
-      checkIntegerType h t
 
 obligationErrorMessage :: VK.TypeAttr -> ObligationSite -> T.Text -> T.Text
 obligationErrorMessage attr site message =
@@ -504,8 +502,6 @@ obligationErrorMessage attr site message =
       "A parameter declared `" <> VK.reifyAttr attr <> "` cannot be instantiated with " <> message <> "."
     LiftTarget ->
       "`lift` cannot be used on " <> message <> "."
-    LiteralPattern ->
-      "An integer pattern cannot be used against " <> message <> "."
     InlineField ->
       "An inline field cannot have " <> message <> "."
 
@@ -567,19 +563,6 @@ checkActualityTypeList h dataNameSet m ts =
           return $ Left message
         Right () ->
           checkActualityTypeList h dataNameSet m rest
-
-checkIntegerType :: Handle -> TM.Type -> App (Either T.Text ())
-checkIntegerType h t =
-  case t of
-    _ :< TM.PrimType (PT.Int _) ->
-      return $ Right ()
-    _ :< TM.TVar x -> do
-      isInteger <- hasTypeAttr h VK.Integer x
-      if isInteger
-        then return $ Right ()
-        else return $ Left $ undeclaredTypeVarMessage VK.Integer x
-    _ ->
-      return $ Left $ "the type `" <> toTextType (weakenType t) <> "` is not an integer type"
 
 insertStmt :: Handle -> Stmt -> App ()
 insertStmt h stmt = do
@@ -1478,7 +1461,10 @@ normalizeLiteralPattern h m cursorType literal =
         _ :< TM.PrimType (PT.Int size) ->
           return $ LI.Int $ Wrap.unsignedOf size i
         _ ->
-          return literal
+          raiseError m $
+            "An integer pattern cannot be used against "
+              <> toTextType (weakenType cursorType')
+              <> "."
 
 raiseNonDecimalType :: Hint -> Integer -> WT.WeakType -> App a
 raiseNonDecimalType m x t = do

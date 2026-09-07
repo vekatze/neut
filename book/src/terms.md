@@ -708,11 +708,9 @@ An implicit parameter can carry attributes. They precede the name:
 sized a: type
 
 actual a
-
-integer a
 ```
 
-The available attributes are `sized`, `actual`, and `integer`. Each of them narrows the types that the parameter can be instantiated with, and in exchange lets the body use the parameter where the corresponding condition is required.
+The available attributes are `sized` and `actual`. Each of them narrows the types that the parameter can be instantiated with, and in exchange lets the body use the parameter where the corresponding condition is required.
 
 The following abbreviations are available:
 
@@ -773,14 +771,11 @@ The type of a `+` parameter and the result type of a `->>` function must be size
 <sized a>(+x: a) -> int // accepted
 ```
 
-`actual` and `integer` work in the same way. A type variable can be `lift`ed only when it is declared `actual`, and it can be matched against an integer pattern only when it is declared `integer`. `integer` implies `actual`:
+`actual` works in the same way. A type variable can be `lift`ed only when it is declared `actual`:
 
 ```neut
 // `lift {x}` is available in the body
 <actual a>(x: a) -> ^a
-
-// `match x { | 0 => .. }` is available in the body
-<integer a>(x: a) -> int
 ```
 
 The attributes are part of the type as well, so `<sized a>(x: a) -> a` and `<a>(x: a) -> a` are different types.
@@ -1662,29 +1657,7 @@ The scrutinees `e1, ..., en` are restricted terms. At the top level of a scrutin
 
 A pattern that binds a `+` field of a constructor carries the same `+`, as in `| Entity(+p, q) =>`. The mark belongs to the field, so `case`, `tie` and `let` write it the same way, and a wildcard carries it too, as in `| Entity(+_, q) =>`.
 
-An integer pattern requires its scrutinee to have an integer type. A type variable can be matched against an integer pattern only when it is declared `integer`:
-
-```neut
-// error: the type variable `a` is not declared `integer`
-define classify<a>(x: a) -> int {
-  match x {
-  | 0 =>
-    11
-  | _ =>
-    22
-  }
-}
-
-// this is fine
-define classify<integer a>(x: a) -> int {
-  match x {
-  | 0 =>
-    11
-  | _ =>
-    22
-  }
-}
-```
+An integer pattern requires its scrutinee to have an integer type.
 
 ### Semantics
 
@@ -2792,7 +2765,7 @@ unpack-type unsafe-sized a = e1;
 e2
 ```
 
-The available attributes are `unsafe-sized`, `unsafe-actual`, and `unsafe-integer`. Each of them corresponds to the same-named attribute without the `unsafe-` prefix in [function types](#x1-a1--xn-an---b), and grants the bound variable exactly what that attribute grants.
+The available attributes are `unsafe-sized` and `unsafe-actual`. Each of them corresponds to the same-named attribute without the `unsafe-` prefix in [function types](#x1-a1--xn-an---b), and grants the bound variable exactly what that attribute grants.
 
 ### Semantics
 

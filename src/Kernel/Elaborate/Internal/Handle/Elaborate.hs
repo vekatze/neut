@@ -110,7 +110,6 @@ data ObligationSite
   | Destination
   | Instantiation
   | LiftTarget
-  | LiteralPattern
   | InlineField
 
 data TypeObligation

@@ -21,7 +21,6 @@ import GHC.Generics (Generic)
 data TypeAttr
   = Sized
   | Actual
-  | Integer
   deriving (Eq, Ord, Show, Enum, Bounded, Generic)
 
 instance Binary TypeAttr
@@ -66,8 +65,6 @@ attrClosure attr =
       S.singleton Sized
     Actual ->
       S.singleton Actual
-    Integer ->
-      S.fromList [Integer, Actual]
 
 reifyAttr :: TypeAttr -> T.Text
 reifyAttr attr =
@@ -76,8 +73,6 @@ reifyAttr attr =
       "sized"
     Actual ->
       "actual"
-    Integer ->
-      "integer"
 
 reifyUnsafeAttr :: TypeAttr -> T.Text
 reifyUnsafeAttr attr =

@@ -985,7 +985,7 @@ inferClause h cursorType decisionCase =
       (cont', tCont) <- inferDecisionTree mPat h cont
       case literal of
         L.Int _ ->
-          require h VK.Integer LiteralPattern mPat cursorType
+          return ()
         L.Rune _ ->
           liftIO $ Constraint.insert (constraintHandle h) cursorType (mPat :< WT.PrimType PT.Rune)
       return (DT.LiteralCase mPat literal cont', tCont)
