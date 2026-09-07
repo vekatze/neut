@@ -535,6 +535,8 @@ checkActualityType h dataNameSet m t = do
               checkActualityTypeList h dataNameSet' m consArgTypes
     _ :< TM.Box tInner ->
       checkActualityType h dataNameSet m tInner
+    _ :< TM.Code tInner ->
+      checkActualityType h dataNameSet m tInner
     _ :< TM.Embed _ ->
       return $ Right ()
     _ :< TM.PrimType {} ->
@@ -787,8 +789,8 @@ resolveMixedOrError h visited m ty =
       cannotMixFieldType "a noema type"
     _ :< TM.Embed {} ->
       cannotMixFieldType "an embedded value type"
-    _ :< TM.Code {} ->
-      cannotMixFieldType "a code type"
+    _ :< TM.Code tInner ->
+      resolveMixedOrError h visited m tInner
     _ :< TM.PrimType {} ->
       cannotMixFieldType "a primitive type"
     _ :< TM.Void ->
