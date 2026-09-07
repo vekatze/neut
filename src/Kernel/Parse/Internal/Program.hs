@@ -442,7 +442,7 @@ parseNominalData h = do
 parseDataArgs :: Handle -> Parser (Maybe (RT.Args RT.RawType))
 parseDataArgs h = do
   choice
-    [ Just <$> try (seriesParen $ preBinder h SourceInadmissible),
+    [ Just <$> seriesParen (preBinder h SourceInadmissible),
       return Nothing
     ]
 
