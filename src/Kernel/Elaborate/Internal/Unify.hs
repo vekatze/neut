@@ -38,7 +38,7 @@ import Language.WeakTerm.FreeVars
 import Language.WeakTerm.Holes
 import Language.WeakTerm.Subst (Subst, SubstEntry (..))
 import Language.WeakTerm.Subst qualified as Subst
-import Language.WeakTerm.ToText (toTextType, toTextTypeWith)
+import Language.WeakTerm.ToText (toTextTypeWith)
 import Language.WeakTerm.WeakTerm qualified as WT
 import Logger.Hint
 import Logger.Log qualified as L
@@ -92,24 +92,31 @@ fillAsMuchAsPossible h sub e = do
 
 constructErrorMessageEq :: Handle -> WT.WeakType -> WT.WeakType -> T.Text
 constructErrorMessageEq h found expected = do
-  let shortExpected = toTextType expected
-  let shortFound = toTextType found
-  if shortExpected == shortFound
-    then do
-      let allDDs = collectGlobalDDs expected ++ collectGlobalDDs found
-      let grouped = Map.fromListWith S.union [(DD.localLocator dd, S.singleton dd) | dd <- allDDs]
-      let needVerbose = S.fromList [dd | (_, dds) <- Map.toList grouped, S.size dds > 1, dd <- S.toList dds]
-      let pathMap = modulePathMap h
-      let showDD dd = if S.member dd needVerbose then ModulePath.renderCanonicalDD pathMap dd else DD.localLocator dd
-      "Expected:\n  "
-        <> toTextTypeWith showDD expected
-        <> "\nFound:\n  "
-        <> toTextTypeWith showDD found
-    else
-      "Expected:\n  "
-        <> shortExpected
-        <> "\nFound:\n  "
-        <> shortFound
+  let showCanonicalDD = ModulePath.renderCanonicalDD (modulePathMap h)
+  let collidingNameSet = collidingNames expected found
+  let showCollidingDD dd = if S.member dd collidingNameSet then showCanonicalDD dd else DD.localLocator dd
+  let renderWith showDD = (toTextTypeWith showDD expected, toTextTypeWith showDD found)
+  let (expected', found') =
+        firstDistinctRendering
+          (renderWith showCanonicalDD)
+          [renderWith DD.localLocator, renderWith showCollidingDD]
+  "Expected:\n  " <> expected' <> "\nFound:\n  " <> found'
+
+firstDistinctRendering :: (T.Text, T.Text) -> [(T.Text, T.Text)] -> (T.Text, T.Text)
+firstDistinctRendering fallback renderingList =
+  case renderingList of
+    [] ->
+      fallback
+    rendering@(expected, found) : rest ->
+      if expected /= found
+        then rendering
+        else firstDistinctRendering fallback rest
+
+collidingNames :: WT.WeakType -> WT.WeakType -> S.Set DD.DefiniteDescription
+collidingNames expected found = do
+  let allDDs = collectGlobalDDs expected ++ collectGlobalDDs found
+  let grouped = Map.fromListWith S.union [(DD.localLocator dd, S.singleton dd) | dd <- allDDs]
+  S.fromList [dd | (_, dds) <- Map.toList grouped, S.size dds > 1, dd <- S.toList dds]
 
 collectGlobalDDs :: WT.WeakType -> [DD.DefiniteDescription]
 collectGlobalDDs ty =
