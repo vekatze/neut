@@ -46,6 +46,8 @@ import Language.Common.DataInfo qualified as DI
 import Language.Common.DecisionTree qualified as DT
 import Language.Common.DefaultArgs qualified as DefaultArgs
 import Language.Common.DefiniteDescription qualified as DD
+import Language.Common.ExternalName qualified as EN
+import Language.Common.Foreign qualified as F
 import Language.Common.ForeignCodType qualified as FCT
 import Language.Common.Geist qualified as G
 import Language.Common.HoleID qualified as HID
@@ -498,7 +500,7 @@ infer h term =
               liftIO $ Constraint.insert (constraintHandle h) intType sizeType
               return (m :< WT.Magic (M.WeakMagic $ M.LowMagic $ LM.Alloca lt' size'), m :< WT.PrimType PT.Pointer)
             LM.External _ _ funcName args varArgs -> do
-              (domList, cod) <- WeakDecl.lookup (weakDeclHandle h) m (DN.Ext funcName)
+              (domList, cod) <- lookupForeignFunction h m funcName
               ensureArityCorrectness h term (length domList) (length args)
               (args', argTypes) <- mapAndUnzipM (infer h) args
               liftIO $ forM_ (zip domList argTypes) $ uncurry $ Constraint.insert (constraintHandle h)
@@ -513,9 +515,9 @@ infer h term =
                 FCT.Void -> do
                   let voidType = m :< WT.Void
                   return (m :< WT.Magic (M.WeakMagic $ M.LowMagic $ LM.External domList FCT.Void funcName args' varArgs'), voidType)
-            LM.Global name t -> do
-              t' <- inferType h t
-              return (m :< WT.Magic (M.WeakMagic $ M.LowMagic $ LM.Global name t'), t')
+            LM.Global name _ -> do
+              t <- lookupForeignVariable h m name
+              return (m :< WT.Magic (M.WeakMagic $ M.LowMagic $ LM.Global name t), t)
             LM.OpaqueValue e -> do
               (e', t) <- infer h e
               return (m :< WT.Magic (M.WeakMagic $ M.LowMagic $ LM.OpaqueValue e'), t)
@@ -1079,6 +1081,24 @@ ensureUnfoldingBudget h m budget =
 --   if THS.fillableType e' sub
 --     then fillType h sub e' >>= reduceWeakType' h sub
 --     else return e'
+
+lookupForeignFunction :: Handle -> Hint -> EN.ExternalName -> App ([WT.WeakType], FCT.ForeignCodType WT.WeakType)
+lookupForeignFunction h m name = do
+  sig <- WeakDecl.lookup (weakDeclHandle h) m (DN.Ext name)
+  case sig of
+    F.Function domList cod ->
+      return (domList, cod)
+    F.Variable _ ->
+      raiseError m $ "`" <> EN.reify name <> "` is declared as a variable"
+
+lookupForeignVariable :: Handle -> Hint -> EN.ExternalName -> App WT.WeakType
+lookupForeignVariable h m name = do
+  sig <- WeakDecl.lookup (weakDeclHandle h) m (DN.Ext name)
+  case sig of
+    F.Variable t ->
+      return t
+    F.Function {} ->
+      raiseError m $ "`" <> EN.reify name <> "` is declared as a function"
 
 ensureArityCorrectness :: Handle -> WT.WeakTerm -> Int -> Int -> App ()
 ensureArityCorrectness h function expected found = do

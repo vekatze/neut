@@ -22,6 +22,7 @@ module Language.RawTerm.RawStmt
     mergeImportList,
     mergeRequireList,
     RawForeignItemF (..),
+    RawForeignSignatureF (..),
     RawForeignItem,
     RawExposeItem (..),
   )
@@ -214,8 +215,13 @@ data RawImportEntry
 data RawAsClause
   = RawAsClause C C Hint BN.BaseName
 
+data RawForeignSignatureF a
+  = RawForeignFunction (SE.Series a) C C (F.ForeignCodType a)
+  | RawForeignVariable C a
+  deriving (Functor, Foldable, Traversable)
+
 data RawForeignItemF a
-  = RawForeignItemF Hint EN.ExternalName C (SE.Series a) C C (F.ForeignCodType a)
+  = RawForeignItemF Hint EN.ExternalName C (RawForeignSignatureF a)
   deriving (Functor, Foldable, Traversable)
 
 type RawForeignItem =

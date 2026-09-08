@@ -339,5 +339,5 @@ weakenStmtKindType stmtKind =
       Data dataName dataArgs' consInfoList' isNominal
 
 weakenForeign :: F.Foreign -> WT.WeakForeign
-weakenForeign foreignItem@(F.Foreign m _ _ _) =
+weakenForeign foreignItem@(F.Foreign m _ _) =
   fmap (WT.fromBaseLowType m) foreignItem

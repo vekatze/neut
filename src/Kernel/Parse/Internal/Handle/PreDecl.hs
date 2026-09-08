@@ -55,4 +55,4 @@ lookup h m name = do
     Just typeInfo ->
       return typeInfo
     Nothing -> do
-      raiseError m $ "Undeclared function: " <> EN.reify name
+      raiseError m $ "Undeclared foreign name: " <> EN.reify name

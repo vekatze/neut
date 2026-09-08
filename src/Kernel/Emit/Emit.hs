@@ -81,10 +81,9 @@ emit h lowCode = do
       return $ buildByteString $ moduleHeader ++ header ++ argDef ++ main ++ body ++ attributeGroups
     LC.LowCodeNormal lowCodeInfo -> do
       let moduleHeader = emitModuleHeader h
-      let argDecl = emitArgDecl
       (header, body) <- emitLowCodeInfo h lowCodeInfo
       let attributeGroups = emitAttributeGroups (getArch h)
-      return $ buildByteString $ moduleHeader ++ header ++ argDecl ++ body ++ attributeGroups
+      return $ buildByteString $ moduleHeader ++ header ++ body ++ attributeGroups
 
 emitModuleHeader :: Handle -> [Builder]
 emitModuleHeader h = do
@@ -135,16 +134,6 @@ emitExportRoots exportList =
 argcGlobalType :: LT.LowType
 argcGlobalType =
   LT.slotLowType
-
-argcGlobalBaseType :: BLT.BaseLowType
-argcGlobalBaseType =
-  BLT.slot
-
-emitArgDecl :: [Builder]
-emitArgDecl = do
-  let argc = emitGlobalExt (EN.ExternalName unsafeArgcName) argcGlobalBaseType
-  let argv = emitGlobalExt (EN.ExternalName unsafeArgvName) BLT.Pointer
-  [argc, argv]
 
 emitArgDef :: DS.DataSize -> [Builder]
 emitArgDef baseSize = do
@@ -276,11 +265,7 @@ emitDeclarations h declEnv = do
 
 emitGlobalDeclarations :: LC.GlobalEnv -> [Builder]
 emitGlobalDeclarations globalEnv =
-  map (uncurry emitGlobalExt) $ List.sort $ HashMap.toList $ foldr HashMap.delete globalEnv compilerGlobalNameList
-
-compilerGlobalNameList :: [EN.ExternalName]
-compilerGlobalNameList =
-  [EN.ExternalName unsafeArgcName, EN.ExternalName unsafeArgvName]
+  map (uncurry emitGlobalExt) $ List.sort $ HashMap.toList globalEnv
 
 emitDefinitions :: Handle -> LC.Def -> IO [Builder]
 emitDefinitions h (name, LC.DefContent {codType = codType, args = args, body = body}) = do
@@ -375,8 +360,8 @@ allocatorKindOf ::
 allocatorKindOf h name dom cod = do
   let dataSize = Platform.getDataSize $ Global.platformHandle $ globalHandle h
   let foreignList = allocatorForeignList dataSize (allocatorSpec $ allocator h)
-  let matches (kind, F.Foreign _ allocatorName expectedDom expectedCod) =
-        if DN.Ext allocatorName == name && dom == expectedDom && cod == expectedCod
+  let matches (kind, F.Foreign _ allocatorName allocatorSig) =
+        if DN.Ext allocatorName == name && allocatorSig == F.Function dom cod
           then Just kind
           else Nothing
   listToMaybe $ mapMaybe matches foreignList
