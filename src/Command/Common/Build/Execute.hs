@@ -17,6 +17,7 @@ import Kernel.Common.Handle.Global.Path qualified as Path
 import Kernel.Common.Module qualified as M
 import Kernel.Common.RunProcess qualified as RunProcess
 import Kernel.Common.Target
+import Kernel.Common.Template qualified as Template
 import Language.Common.ModuleAlias qualified as MA
 import Language.Common.ModuleID qualified as MID
 import Path
@@ -41,7 +42,9 @@ execute h target args = do
       run h (toFilePath outputPath) args
     Just commandTemplate -> do
       subst <- makeSubst h outputPath
-      let command = map (T.unpack . applySubst subst) commandTemplate
+      let filledTemplate = map (applySubst subst) commandTemplate
+      Template.ensureNoUnknownPlaceholder M.keyExecute filledTemplate
+      let command = map T.unpack filledTemplate
       case command of
         [] ->
           raiseError' "The `execute` field must not be empty"

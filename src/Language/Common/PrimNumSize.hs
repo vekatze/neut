@@ -40,7 +40,7 @@ dataSizeToIntSize dataSize =
     DS.DataSize64 ->
       IntSize64
 
-intToIntSize :: Int -> Maybe IntSize
+intToIntSize :: Integer -> Maybe IntSize
 intToIntSize size =
   case size of
     1 ->
@@ -60,7 +60,7 @@ intToIntSize size =
     _ ->
       Nothing
 
-intToFloatSize :: Int -> Maybe FloatSize
+intToFloatSize :: Integer -> Maybe FloatSize
 intToFloatSize size =
   case size of
     16 ->

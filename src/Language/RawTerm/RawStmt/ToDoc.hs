@@ -53,12 +53,16 @@ decRequire (RawRequire c _ requireItemList _) = do
         attachStmtComment c $
           D.join
             [ D.text "require ",
-              SE.decode $ SE.assoc $ decRequireItem <$> sortRequire requireItemList
+              SE.decode $ SE.assoc $ decRequireItem <$> nubRequire (sortRequire requireItemList)
             ]
 
 sortRequire :: SE.Series RawRequireItem -> SE.Series RawRequireItem
 sortRequire =
   SE.sortSeriesBy compareRequire
+
+nubRequire :: SE.Series RawRequireItem -> SE.Series RawRequireItem
+nubRequire =
+  SE.nubSeriesBy $ \(RawRequireItem _ name1) (RawRequireItem _ name2) -> name1 == name2
 
 compareRequire :: RawRequireItem -> RawRequireItem -> Ordering
 compareRequire (RawRequireItem _ name1) (RawRequireItem _ name2) =

@@ -19,7 +19,8 @@ import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.ByteString qualified as B
 import Data.ByteString.Lazy qualified as L
 import Data.Text qualified as T
-import Data.Text.Encoding (decodeUtf8)
+import Data.Text.Encoding (decodeUtf8With)
+import Data.Text.Encoding.Error (lenientDecode)
 import GHC.IO.Handle qualified as GHC
 import Logger.Debug qualified as Logger
 import Logger.Handle qualified as Logger
@@ -71,7 +72,7 @@ toCompilerError err =
         <> "` failed with the following message (exitcode = "
         <> T.pack (show exitCode)
         <> "):\n"
-        <> indent (decodeUtf8 errStr)
+        <> indent (decodeUtf8With lenientDecode errStr)
     SetupError e ->
       e
 

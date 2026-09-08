@@ -204,7 +204,7 @@ If you can get `^t` by lifting `e: t`, you can get the same type using `box` ins
 A type variable is actual only when its binder declares it so:
 
 ```neut
-// error: the type variable `a` is not declared `actual`
+// error
 define box-value<a>(x: a) -> ^a {
   lift {x}
 }

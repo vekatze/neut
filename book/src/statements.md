@@ -64,7 +64,7 @@ name as local-name
 
 Module paths are dot-separated dependency aliases, with `this` as the identity element. For example, `sample.another-module::foo` imports `foo.nt` from a public dependency `another-module` of `sample`.
 
-Source paths are the relative paths from the source directories. For example, if we want to import `(source-dir)/foo/bar.nt`, we'll have to write `foo.bar`.
+Source paths are the relative paths from the source directories. For example, if we want to import `(source-dir)/foo/bar.nt`, we'll have to write `foo.bar`. A dot in a source path therefore always stands for a directory, and neither a directory nor a source file under a source directory may have a dot in its name.
 
 Each entry in `{}` introduces an import alias. An entry `name` introduces the same name as an implicit import alias and makes it usable without qualifiers:
 
@@ -455,7 +455,7 @@ define-meta make-pair<a, b>(x: 'a, y: 'b) -> 'pair(a, b) {
 
 `define-meta` starts at stage 1. When evaluating a call to `define-meta`, the compiler first specializes the definition to its type arguments and memoizes the result. This memoization is performed on a per-file basis. This allows `define-meta` to generate recursive code.
 
-As with ordinary functions, `define-meta` can also have default arguments by placing `[]` between the ordinary parameter list and the arrow.
+Unlike `define`, `define-meta` can't have default arguments, since a call is memoized by its type arguments alone. Wrap it in an `inline-meta` when a default is needed.
 
 Every explicit parameter of `define-meta` must have a type of the form `'a`:
 
@@ -477,11 +477,11 @@ define-meta bad<a>(x: int) -> 'int {
 
 ```neut
 trope terse {
-  define-meta print<bool>(x: '&bool) -> 'unit {
+  define-meta describe<bool>(x: 'bool) -> 'unit {
     quote {print("<bool>")}
   }
 
-  define-meta print<int>(x: '&int) -> 'unit {
+  define-meta describe<int>(x: 'int) -> 'unit {
     quote {print("<int>")}
   }
 }
@@ -1058,9 +1058,18 @@ push-back(push-back(push-back(make(3), a), b), c)
 ```neut
 nominal {
   define is-odd(x: int) -> bool,
+  inline twice(x: int) -> int,
+  constant answer: int,
+  define-meta emit(x: 'int) -> 'int,
+  constant-meta limit: 'int,
+  alias number,
+  alias-opaque handle(a),
   data stream(a: type),
+  resource buffer,
 }
 ```
+
+An entry is written like the header of the corresponding statement, without its body. A `data` entry declares only the type; its constructors become available at the real definition.
 
 Nominal definitions can be used to achieve mutual recursion:
 
@@ -1098,6 +1107,7 @@ The following kinds of top-level items can be declared in `nominal`:
 - `constant`
 - `define-meta`
 - `inline-meta`
+- `constant-meta`
 - `alias`
 - `alias-opaque`
 - `data`
@@ -1171,22 +1181,11 @@ foreign {
 }
 ```
 
-Here, the definition of `c-int` is as follows:
+Here, `c-int` is defined in the core library as follows:
 
 ```neut
-constant _c-int: type {
-  introspect target-arch {
-  | amd64 =>
-    int32
-  | arm64 =>
-    int32
-  | wasm32 =>
-    int32
-  }
-}
-
 data c-int {
-| C-Int(_c-int)
+| C-Int(int32)
 }
 ```
 
@@ -1202,13 +1201,13 @@ foreign {
 }
 ```
 
-Then, specify the types of variadic arguments when using `magic external`:
+Then, specify the types of variadic arguments when using `magic external`. Each variadic argument is written as its lowtype followed by the term:
 
 ```neut
 define print-raw(fmt: pointer, len: int, val: pointer) -> c-int {
-  magic external printf(fmt)(len: int, val: pointer)
-  //                                 ^^^^^^^^^^^^^^^^^^^^^^
-  //                                 passing variadic arguments with types
+  magic external printf(fmt)(int len, pointer val)
+  //                        ^^^^^^^^^^^^^^^^^^^^^^
+  //                        passing variadic arguments with types
 }
 ```
 
@@ -1234,7 +1233,7 @@ int64_t my_app_add_const(int64_t x);
 int64_t y = my_app_add_const(7); // 107
 ```
 
-Each entry names a function defined in the same file, optionally followed by `as` and its external name. Without `as`, the name of the function is used. No two functions can be exposed under the same external name.
+Each entry names a function defined in the same file, optionally followed by `as` and its external name. Without `as`, the name of the function is used. No two entries can expose the same external name, and the entry point of the target (`main`, or `__main_argc_argv` on wasm32) can't be exposed.
 
 The compiler emits a wrapper with the C calling convention for each entry. On native targets, the external name becomes a public symbol. On wasm targets, it also becomes a wasm export.
 
@@ -1245,6 +1244,7 @@ The wrapper takes the parameter list of the compiled function, so `expose` publi
 - a type parameter becomes a leading parameter
 - a default argument becomes an ordinary parameter, with no default
 - a destination-passing function (one written with `->>`) takes its destination first, and returns it
+- a source-passing parameter (one written with `+`) takes the address of the storage it reads the argument from, and the caller releases that storage after the call returns
 
 A destination-passing function, for example:
 

@@ -36,4 +36,5 @@ highlight h params = do
     then return refs
     else do
       let _kind = Just DocumentHighlightKind_Write
-      return $ DocumentHighlight {_range = _targetRange, _kind} : refs
+      let refs' = filter (\ref -> ref ^. J.range /= _targetRange) refs
+      return $ DocumentHighlight {_range = _targetRange, _kind} : refs'

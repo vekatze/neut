@@ -1,6 +1,5 @@
 module Logger.Print
-  ( printErrorList,
-    printNote',
+  ( printNote',
     printLog,
     printLogList,
     printWarning',
@@ -17,17 +16,9 @@ import Logger.Log qualified as L
 import Logger.LogLevel qualified as L
 import System.Console.ANSI
 
-printLog :: Handle -> L.Log -> IO ()
-printLog =
-  printLogIO
-
 printLogList :: Handle -> [L.Log] -> IO ()
 printLogList h logList = do
   foldr ((>>) . printLog h) (return ()) $ L.sortByPosition logList
-
-printErrorList :: Handle -> [L.Log] -> IO ()
-printErrorList h logList = do
-  foldr ((>>) . printErrorIO h) (return ()) $ L.sortByPosition logList
 
 printNote' :: Handle -> T.Text -> IO ()
 printNote' h =
@@ -41,15 +32,8 @@ printLogWithoutFilePos :: Handle -> L.LogLevel -> T.Text -> IO ()
 printLogWithoutFilePos h level txt =
   printLog h $ L.Log Nothing level txt
 
-printLogIO :: Handle -> L.Log -> IO ()
-printLogIO h l = do
-  locText <- getLogLocation h $ L.position l
-  let levelText = getLogLevel (L.logLevel l)
-  let logText = Console.pack' $ getLogText (L.content l) (logLevelToPad (L.logLevel l))
-  Console.printStdOut (_consoleHandle h) $ locText <> levelText <> logText
-
-printErrorIO :: Handle -> L.Log -> IO ()
-printErrorIO h l = do
+printLog :: Handle -> L.Log -> IO ()
+printLog h l = do
   locText <- getLogLocation h $ L.position l
   let levelText = getLogLevel (L.logLevel l)
   let logText = Console.pack' $ getLogText (L.content l) (logLevelToPad (L.logLevel l))

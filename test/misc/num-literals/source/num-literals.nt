@@ -315,7 +315,29 @@ define test-ieee754-floats() -> unit {
   test-float16-ops()
 }
 
+define i_nf() -> int {
+  100
+}
+
+define underscore-literals() -> int {
+  add-int(_1, add-int(1_, add-int(_0x10, add-int(-_1, i_nf()))))
+}
+
+define wrapped-literals() -> int {
+  let over: int8 = 256;
+  let under: int8 = -129;
+  let negative: int8 = -1;
+  let full: int8 = 255;
+  add-int(
+    zext-int8-int(over),
+    add-int(
+      zext-int8-int(under),
+      add-int(zext-int8-int(negative), zext-int8-int(full))))
+}
+
 define main() -> unit {
   test-ieee754-floats();
   print-int-line(from-c-int(foo()));
+  print-int-line(underscore-literals());
+  print-int-line(wrapped-literals());
 }

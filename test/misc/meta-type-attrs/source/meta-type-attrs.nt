@@ -3,7 +3,6 @@ import {
   core::array.unsafe {put-unchecked},
   core::cell {cell, clone, extract, make-cell, mutate},
   core::debug {assert},
-  core::int.io {print-int-line},
   core::layer {axiom-T},
 }
 
@@ -11,20 +10,6 @@ define-meta make-boxed-pair<actual a>(x: 'a) -> 'pair(^a, ^a) {
   quote {
     let !y = unquote {x};
     Pair(lift {y}, lift {y})
-  }
-}
-
-define-meta classify-int<integer a>(x: 'a) -> 'int {
-  quote {
-    let y = unquote {x};
-    match y {
-    | 0 =>
-      11
-    | 1 =>
-      22
-    | _ =>
-      33
-    }
   }
 }
 
@@ -536,8 +521,5 @@ define main() -> unit {
   use-unit-lift();
   use-int-lift();
   use-actual-define();
-  print-int-line(classify-int::<int>(0));
-  print-int-line(classify-int::<int32>(1));
-  print-int-line(classify-int::<int16>(2));
   test-array();
 }

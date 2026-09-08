@@ -13,21 +13,25 @@
 
 ## On Executing Types
 
-A type in Neut is compiled into a pointer to a binary function like the following (pseudocode):
+A type in Neut is compiled into a pointer to a ternary function like the following (pseudocode):
 
 ```neut
-define discard-or-copy-value(action-selector, value) {
+define discard-or-copy-value(action-selector, value, extra) {
   if eq-int(action-selector, 0) {
-    discard-value(value);
+    // `extra` says whether the outer storage is released as well
+    discard-value(value, extra);
     Unit
-  } else {
-    let new-value = copy-value(value);
+  } else-if eq-int(action-selector, 1) {
+    // `extra` is the destination, or null for an owned copy
+    let new-value = copy-value(value, extra);
     new-value
+  } else {
+    size-of-value() // in bytes, or a negative value when there is no fixed size
   }
 }
 ```
 
-These functions are then used to discard/copy values when necessary.
+These functions are then used to discard/copy values when necessary, and to ask a type for the size of its placed representation.
 
 ### Discarding Values
 
@@ -44,7 +48,7 @@ Note that the variable `xs` isn't used. Because of that, the compiler translates
 ```neut
 define foo(xs: list(int)) -> unit {
   let f = list(int);
-  f(0, xs); // passing `0` to discard `xs`
+  f(0, xs, 1); // passing `0` to discard `xs`
   Unit
 }
 ```
@@ -66,7 +70,7 @@ Note that the variable `xs` is used twice. Because of that, the compiler transla
 ```neut
 define foo(!xs: list(int)) -> unit {
   let f = list(int);
-  let xs-clone = f(1, xs); // passing `1` to copy `xs`
+  let xs-clone = f(1, xs, null); // passing `1` to copy `xs`
   some-func(xs-clone, xs)
 }
 ```
@@ -84,11 +88,13 @@ We don't have to discard immediates like integers or floats because their intern
 More specifically, the type of an immediate is compiled into a pointer to the following function (pseudocode):
 
 ```neut
-inline discard-or-copy-immediate(selector, value) {
+inline discard-or-copy-immediate(selector, value, extra) {
   if eq-int(selector, 0) {
     0     // discard: we have nothing to do on `value`
-  } else {
+  } else-if eq-int(selector, 1) {
     value // copy: we can simply reuse the immediate `value`
+  } else {
+    -1    // an immediate has no placed representation of its own
   }
 }
 ```
@@ -115,23 +121,23 @@ Thanks to its static nature, memory allocation in Neut can sometimes be optimize
 
 ```neut
 data int-list {
-| Nil
-| Cons(int, int-list)
+| Int-Nil
+| Int-Cons(int, int-list)
 }
 
 // [1, 5, 9] => [2, 6, 10]
 define increment(xs: int-list) -> int-list {
   match xs {
-  | Nil =>
-    Nil
-  // ↓ the `Cons` clause
-  | Cons(x, rest) =>
-    Cons(add-int(x, 1), increment(rest))
+  | Int-Nil =>
+    Int-Nil
+  // ↓ the `Int-Cons` clause
+  | Int-Cons(x, rest) =>
+    Int-Cons(add-int(x, 1), increment(rest))
   }
 }
 ```
 
-The expected behavior of the `Cons` clause above would be something like the following:
+The expected behavior of the `Int-Cons` clause above would be something like the following:
 
 1. obtain `x` and `rest` from `xs`
 2. `free` the outer tuple of `xs`
@@ -139,7 +145,7 @@ The expected behavior of the `Cons` clause above would be something like the fol
 4. allocate a memory region using `malloc` to hold the result
 5. store the calculated values to the pointer and return it
 
-However, since the size of `Cons(x, rest)` and `Cons(add-int(x, 1), increment(rest))` is known to be the same at compile time, the pair of `free` and `malloc` can be optimized away, as follows:
+However, since the size of `Int-Cons(x, rest)` and `Int-Cons(add-int(x, 1), increment(rest))` is known to be the same at compile time, the pair of `free` and `malloc` can be optimized away, as follows:
 
 1. obtain `x` and `rest` from `xs`
 2. calculate `add-int(x, 1)` and `increment(rest)`
@@ -221,13 +227,13 @@ This optimization works across branches. For example, consider the following:
 // (an `insert` function in bubble sort)
 define insert(v: int, xs: int-list) -> int-list {
   match xs {
-  | Nil =>
+  | Int-Nil =>
     // ...
-  | Cons(y, ys) =>           // (X)
+  | Int-Cons(y, ys) =>               // (X)
     if gt-int(v, y) {
-      Cons(y, insert(v, ys)) // (Y)
+      Int-Cons(y, insert(v, ys))     // (Y)
     } else {
-      Cons(v, Cons(y, ys))   // (Z)
+      Int-Cons(v, Int-Cons(y, ys))   // (Z)
     }
   }
 }
@@ -240,13 +246,13 @@ On the other hand, consider rewriting the code above into something like the fol
 ```neut
 define foo(v: int, xs: int-list) -> int-list {
   match xs {
-  | Nil =>
+  | Int-Nil =>
     // ...
-  | Cons(y, ys) =>         // (X')
+  | Int-Cons(y, ys) =>             // (X')
     if gt-int(v, y) {
-      Nil                  // (Y')
+      Int-Nil                      // (Y')
     } else {
-      Cons(v, Cons(y, ys)) // (Z')
+      Int-Cons(v, Int-Cons(y, ys)) // (Z')
     }
   }
 }
@@ -442,19 +448,21 @@ If a bar-separated sequence has a leading bar, the sequence is formatted vertica
 
 The behavior of the compiler can be adjusted using the following environment variables:
 
-| Environment Variable      | Meaning                                      |
-| ------------------------- | -------------------------------------------- |
-| `NEUT_CORE_MODULE_DIGEST` | the digest of the core module                |
-| `NEUT_CORE_MODULE_URL`    | the URL of the core module                   |
-| `NEUT_HOME`               | the directory the compiler keeps its data in |
+| Environment Variable        | Meaning                                            |
+| --------------------------- | -------------------------------------------------- |
+| `NEUT_CORE_MODULE_DIGEST`   | the digest of the core module                      |
+| `NEUT_CORE_MODULE_URL`      | the URL of the core module                         |
+| `NEUT_HOME`                 | the directory the compiler keeps its data in       |
+| `MACOSX_DEPLOYMENT_TARGET`  | the macOS version a darwin target is built for     |
 
 The default values are as follows:
 
-| Environment Variable      | Default Value                 |
-| ------------------------- | ----------------------------- |
-| `NEUT_CORE_MODULE_DIGEST` | (undefined; you must set one) |
-| `NEUT_CORE_MODULE_URL`    | (undefined; you must set one) |
-| `NEUT_HOME`               | `$XDG_DATA_HOME/neut`         |
+| Environment Variable        | Default Value                 |
+| --------------------------- | ----------------------------- |
+| `NEUT_CORE_MODULE_DIGEST`   | (undefined; you must set one) |
+| `NEUT_CORE_MODULE_URL`      | (undefined; you must set one) |
+| `NEUT_HOME`                 | `$XDG_DATA_HOME/neut`         |
+| `MACOSX_DEPLOYMENT_TARGET`  | `11.0.0`                      |
 
 Every build uses the toolchain installed beside the compiler. It carries `clang`, the linkers, and the wasi sysroot. The compiler looks for it at `$NEUT_HOME/toolchain/(host platform)`.
 

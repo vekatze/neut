@@ -142,6 +142,9 @@ The name of a local variable must satisfy the following conditions:
 
 - It doesn't contain a space, a tab, a newline, or any of ``=()`"'\:;,<>[]{}/*+|&?!#^@~$``
 - It doesn't start with `A, B, .., Z` (uppercase letters)
+- It isn't read as a numeric literal, as `12`, `_1`, `0x10` and `inf` are
+
+The same conditions apply to every name that is bound, such as the name of a `define`, of a namespace, of a parameter, or of a field of a `data`.
 
 ### Semantics
 
@@ -170,14 +173,14 @@ If the content of a variable `x` is an immediate value, `x` is compiled into the
 
 ```neut
 import {
-  core::bool {and},
+  core::bool {not},
   some-module.public-dep::item,
 }
 
 define sample() -> unit {
   // using top-level variables
-  let _ = and; // using an imported top-level name
-  let _ = core::bool::and; // using the fully qualified name `core::bool::and`
+  let _ = not; // using an imported top-level name
+  let _ = core::bool::not; // using the fully qualified name `core::bool::not`
   let _ = some-module.public-dep::item::f; // using a public module path
   Unit
 }
@@ -370,7 +373,7 @@ define foo() -> unit {
 
 ### Syntax
 
-Underscores in integer literals are ignored.
+An `_` may stand anywhere in an integer literal and is ignored.
 
 After removing all `_` characters, an integer literal must have one of the following forms:
 
@@ -381,7 +384,7 @@ After removing all `_` characters, an integer literal must have one of the follo
 -?0x[0-9A-F]+
 ```
 
-So, for example, `3`, `-16`, `1_000_000`, `0b1010_1010`, `0o755`, and `0xDEAD_BEEF` are valid integer literals.
+So, for example, `3`, `-16`, `1_000_000`, `_1`, `0b1010_1010`, `0o755`, and `0xDEAD_BEEF` are valid integer literals.
 
 ### Semantics
 
@@ -413,6 +416,8 @@ data wrapper {
 
 Then `42: wrapper` holds.
 
+As in LLVM, the value of a literal is its remainder modulo `2^N`, where `intN` is the integer type that is reached. Integer types are signless, so `-1: int8` and `255: int8` are the same value, and `256: int8` is `0`.
+
 ### Note
 
 - The type `int` is also available. For more, see [Primitives](./primitives.md#primitive-types).
@@ -440,7 +445,7 @@ define foo() -> unit {
 
 ### Syntax
 
-Underscores in float literals are ignored.
+An `_` may stand anywhere in a float literal and is ignored.
 
 After removing all `_` characters, a decimal floating-point literal must match one of the following:
 
@@ -604,7 +609,7 @@ Below is a list of all escape sequences available in Neut string literals:
 | `\x{n}`         | byte with hexadecimal value n  |
 | `\u{n}`         | U+n                            |
 
-The `n` in `\x{n}` and `\u{n}` must be an uppercase hexadecimal number. For `\x{n}`, the value must be in the byte range `0` to `FF`.
+The `n` in `\x{n}` and `\u{n}` must be an uppercase hexadecimal number. For `\x{n}`, the value must be in the byte range `0` to `FF`. For `\u{n}`, the value must be a Unicode scalar value: at most `10FFFF` and not a surrogate code point in the range `D800` to `DFFF`.
 
 ### Semantics
 
@@ -706,11 +711,9 @@ An implicit parameter can carry attributes. They precede the name:
 sized a: type
 
 actual a
-
-integer a
 ```
 
-The available attributes are `sized`, `actual`, and `integer`. Each of them narrows the types that the parameter can be instantiated with, and in exchange lets the body use the parameter where the corresponding condition is required.
+The available attributes are `sized` and `actual`. Each of them narrows the types that the parameter can be instantiated with, and in exchange lets the body use the parameter where the corresponding condition is required.
 
 The following abbreviations are available:
 
@@ -771,14 +774,11 @@ The type of a `+` parameter and the result type of a `->>` function must be size
 <sized a>(+x: a) -> int // accepted
 ```
 
-`actual` and `integer` work in the same way. A type variable can be `lift`ed only when it is declared `actual`, and it can be matched against an integer pattern only when it is declared `integer`. `integer` implies `actual`:
+`actual` works in the same way. A type variable can be `lift`ed only when it is declared `actual`:
 
 ```neut
 // `lift {x}` is available in the body
 <actual a>(x: a) -> ^a
-
-// `match x { | 0 => .. }` is available in the body
-<integer a>(x: a) -> int
 ```
 
 The attributes are part of the type as well, so `<sized a>(x: a) -> a` and `<a>(x: a) -> a` are different types.
@@ -1386,6 +1386,18 @@ constant some-config: config {
 }
 ```
 
+A key can also name a default argument. In that case, the corresponding default is overridden:
+
+```neut
+define bump(x: int)[step: int := 1] -> int {
+  add-int(x, step)
+}
+
+define use-bump() -> int {
+  bump{x := 10, step := 5} // == bump(10)[step := 5]
+}
+```
+
 If the argument is a variable that has the same name as the parameter, you can use a shorthand notation:
 
 ```neut
@@ -1486,6 +1498,8 @@ Here, `?Mi`s are metavariables that must be inferred by the type checker.
 ### Note
 
 As you can see from its semantics, an `exact` is just a shorthand for a "hole-application" that fills in implicit parameters.
+
+If `e` has default arguments, they are not part of the type of `exact e`; each call of the result uses the defaults that `e` declares.
 
 ## ADT Formation
 
@@ -1660,29 +1674,7 @@ The scrutinees `e1, ..., en` are restricted terms. At the top level of a scrutin
 
 A pattern that binds a `+` field of a constructor carries the same `+`, as in `| Entity(+p, q) =>`. The mark belongs to the field, so `case`, `tie` and `let` write it the same way, and a wildcard carries it too, as in `| Entity(+_, q) =>`.
 
-An integer pattern requires its scrutinee to have an integer type. A type variable can be matched against an integer pattern only when it is declared `integer`:
-
-```neut
-// error: the type variable `a` is not declared `integer`
-define classify<a>(x: a) -> int {
-  match x {
-  | 0 =>
-    11
-  | _ =>
-    22
-  }
-}
-
-// this is fine
-define classify<integer a>(x: a) -> int {
-  match x {
-  | 0 =>
-    11
-  | _ =>
-    22
-  }
-}
-```
+An integer pattern requires its scrutinee to have an integer type.
 
 ### Semantics
 
@@ -1810,7 +1802,7 @@ Operationally, `^a` has the same runtime representation as `a`.
 
 `^` is the T-necessity operator in that we can construct terms of the following types:
 
-- `((a) -> b, ^a) -> ^b` (Axiom K)
+- `(^{(a) -> b}, ^a) -> ^b` (Axiom K)
 - `(^a) -> a` (Axiom T)
 
 Note that `^(a) -> b` and `(^a) -> b` are different types.
@@ -2085,6 +2077,13 @@ letbox-T result = e1;
 e2
 
 letbox-T result on x1, ..., xn = e1;
+e2
+```
+
+A variable in the list can carry `!`:
+
+```neut
+letbox-T result on !x1, x2 = e1;
 e2
 ```
 
@@ -2386,7 +2385,7 @@ You can use `promote` to create code without changing stages.
 define-meta make-message<a>() -> 'unit {
   let t = magic show-type(a);
   quote {
-    print(unquote {promote {t}});
+    print(from-text(unquote {promote {t}}));
     Unit
   }
 }
@@ -2423,30 +2422,29 @@ You can use `invoke` to enable tropes while evaluating a term.
 ### Example
 
 ```neut
-define-meta print<a>(x: '&a) -> 'unit {
-  ..
+define-meta describe<a>(x: 'a) -> 'unit {
+  quote {print-line("<value>")}
 }
 
 trope terse {
-  define-meta print<bool>(x: '&bool) -> 'unit {
+  define-meta describe<bool>(x: 'bool) -> 'unit {
     quote {
-      let b = unquote {x};
-      if b {
-        quote {print-line("T")}
+      if unquote {x} {
+        print-line("T")
       } else {
-        quote {print-line("F")}
+        print-line("F")
       }
     }
   }
 }
 
 define use-trope() -> unit {
-  print::(True); // -> "True"
+  describe::(True); // -> "<value>"
   let _ = {
     invoke terse;
-    print::(True) // -> "T"
+    describe::(True) // -> "T"
   };
-  print::(True) // -> "True"
+  describe::(True) // -> "<value>"
 }
 ```
 
@@ -2579,7 +2577,7 @@ data joker-x {
 
 // the type `joker-y` is dubious since it contains a functional type
 data joker-y {
-| Joker-Y(int -> bool)
+| Joker-Y((int) -> bool)
 }
 
 // the type `joker-z` is dubious since it contains a dubious ADT type
@@ -2641,7 +2639,7 @@ A useful case is static data: primitive types such as `text` and `blob` are lift
 
 ```neut
 define lift-value<a>(x: a) -> ^a {
-  lift {x} // error: the type variable `a` is not declared `actual`
+  lift {x} // error
 }
 
 define lift-value<actual a>(x: a) -> ^a {
@@ -2685,6 +2683,7 @@ For every type `a`, `$a` is compiled into `base::#::imm`.
 
 - `$t` is an ["actual"](#lift) type for every `t`.
 - A value of type `$a` is immutable and lives for the whole run of the program, so it can be shared across threads without any synchronization.
+- A value of type `$a` is read through `core::static::from-static-value`, which casts it to `&a`.
 
 ## `embed`
 
@@ -2790,7 +2789,7 @@ unpack-type unsafe-sized a = e1;
 e2
 ```
 
-The available attributes are `unsafe-sized`, `unsafe-actual`, and `unsafe-integer`. Each of them corresponds to the same-named attribute without the `unsafe-` prefix in [function types](#x1-a1--xn-an---b), and grants the bound variable exactly what that attribute grants.
+The available attributes are `unsafe-sized` and `unsafe-actual`. Each of them corresponds to the same-named attribute without the `unsafe-` prefix in [function types](#x1-a1--xn-an---b), and grants the bound variable exactly what that attribute grants.
 
 ### Semantics
 
@@ -2814,6 +2813,15 @@ You can use `magic` to perform low-level operations. Using `magic` is unsafe.
 ### Example
 
 ```neut
+import {
+  core::int.io {print-int},
+}
+
+foreign {
+  malloc(int) -> pointer,
+  free(pointer) -> void,
+}
+
 // empty type
 data descriptor {}
 
@@ -2824,7 +2832,7 @@ constant stdin: descriptor {
 
 define malloc-then-free() -> unit {
   // allocates a memory region (stack)
-  let ptr = magic alloca(int64, 2); // allocates (64 / 8) * 2 = 16 bytes
+  let _ = magic alloca(int64, 2); // allocates (64 / 8) * 2 = 16 bytes
 
   // allocates a memory region (heap)
   let size: int = 10;
@@ -2841,15 +2849,16 @@ define malloc-then-free() -> unit {
   // tells the compiler to treat the content of {..} as a value
   let v =
     magic opaque-value {
-      get-some-c-constant-using-FFI()
+      magic external malloc(size)
     };
+  let _ = magic external free(v);
 
   // frees the pointer
-  magic external free(ptr); // ← external
+  let _ = magic external free(ptr); // ← external
 
   // call types as functions
   let t: string = *"hello";
-  magic call-type(string, 0, t, add-int(0, 1)); // ← call-type (discard)
+  magic call-type(pack-type {string}, 0, t, add-int(0, 1)); // ← call-type (discard)
 
   Unit
 }
@@ -2879,7 +2888,9 @@ magic opaque-value { e }
 
 magic external func-name(e1, ..., en)
 
-magic external func-name(e1, ..., en)(vararg-1: lowtype-1, ..., vararg-n: lowtype-n)
+magic external func-name(e1, ..., en)(lowtype-1 vararg-1, ..., lowtype-n vararg-n)
+
+magic global(symbol-name, lowtype)
 
 magic call-type(some-type, switch, arg, extra)
 
@@ -2971,7 +2982,11 @@ These forms can only be used at stage 1 or above. The compiler reports an error 
 
 `magic external func(e1, ..., en)` can be used to call foreign functions (or FFI). See [foreign in Statements](./statements.md#foreign) for more information.
 
-`magic external func(e1, ..., en)(e{n+1}: lowtype1, ..., e{n+m}: lowtypem)` can also be used to call variadic foreign functions like `printf` in C.
+`magic external func(e1, ..., en)(lowtype1 e{n+1}, ..., lowtypem e{n+m})` can also be used to call variadic foreign functions like `printf` in C.
+
+### Semantics (global)
+
+`magic global("name", lowtype)` refers to the global variable `name` defined in a linked object. A `foreign` declares the functions of such an object, and this form reaches its variables. The result is the address of the variable, read as a value of `lowtype`, so `lowtype` is normally `pointer`.
 
 ### Semantics (call-type)
 
@@ -3108,7 +3123,13 @@ Since clauses are represented as an ordinary `list`, variables used in multiple 
 (t is a lowtype or void)
 (func is a foreign function)
 ---------------------------------------------------------------------------------
-Γ ⊢ magic external func(e1, ..., en)(e{n+1}: t{n+1}, ..., e{n+m}: t{n+m}): t
+Γ ⊢ magic external func(e1, ..., en)(t{n+1} e{n+1}, ..., t{n+m} e{n+m}): t
+
+
+(t is a lowtype)
+(name is a global variable in a linked object)
+------------------------------------------------------
+Γ ⊢ magic global("name", t): t
 
 
 Γ ⊢ t: type
@@ -3213,10 +3234,10 @@ introspect key {
 
 You can use the following configuration `key`s and configuration `value`s:
 
-| Configuration Key      | Configuration Value |
-| ---------------------- | ------------------- |
-| `target-arch`          | `amd64` or `arm64`  |
-| `target-os`            | `linux` or `darwin` |
+| Configuration Key      | Configuration Value            |
+| ---------------------- | ------------------------------ |
+| `target-arch`          | `amd64`, `arm64`, or `wasm32`  |
+| `target-os`            | `linux`, `darwin`, or `wasi`   |
 
 You can also use `default` as a configuration value to represent a fallback case.
 
@@ -3226,18 +3247,14 @@ First, `introspect key {v1 => e1 | ... | vn => en}` looks up the configuration v
 
 The configuration value `default` is equal to any configuration value.
 
+Only the selected clause is elaborated. The names in the other clauses are still resolved, so that an import they use doesn't count as unused, but those clauses are not type-checked.
+
 ### Type
 
 ```neut
 (key is a configuration key)
-
-(v1 is a configuration value)
-Γ ⊢ e1: a
-
-...
-
-(vn is a configuration value)
-Γ ⊢ en: a
+(vk is the configuration value selected by key)
+Γ ⊢ ek: a
 ------------------------------------------
 Γ ⊢ introspect key {
     | v1 => e1
@@ -3340,7 +3357,7 @@ admit
 Evaluating `admit` exits the program and displays a message like the following:
 
 ```text
-admit: /path/to/file.nt:1:2
+Admitted: /path/to/file.nt:1:2
 ```
 
 When `admit` exits a program, the exit code is 1.
@@ -3412,6 +3429,13 @@ let p on x1, ..., xn = e1;
 e2
 
 let p: t on x1, ..., xn = e1;
+e2
+```
+
+As with [letbox-T](#letbox-t), a variable in the list can carry `!`:
+
+```neut
+let p on !x1, x2 = e1;
 e2
 ```
 

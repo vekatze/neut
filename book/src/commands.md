@@ -296,6 +296,8 @@ Each `INPUT` can be a file or a directory.
 
 By default, `neut format` just checks whether the given files are already formatted. If some files aren't, their paths are printed and the command exits with a nonzero status.
 
+Formatting a source file also removes an item of `import {..}` that an enabled [`preset`](./modules.md#preset) already provides, since the name is available without it. An item that is given an alias with `as` is kept, and an `import {..}` left with no items at all is removed.
+
 ### `--mode MODE`
 
 `--mode` / `-m` controls what `neut format` does with the formatting result. `MODE` must be one of the following:
@@ -308,7 +310,7 @@ The default value of `--mode` is `check`.
 
 ### `--stdin FILEPATH`
 
-`--stdin FILEPATH` reads the content to format from stdin instead of `FILEPATH` itself, and prints the formatted result to stdout. `FILEPATH` is still used to decide the file type (`.nt` or `.ens`).
+`--stdin FILEPATH` reads the content to format from stdin instead of `FILEPATH` itself. `FILEPATH` still decides the file type (`.nt` or `.ens`) and is the path that `check` reports; `write` prints the result to stdout instead of updating it.
 
 ### `--minimize-imports`
 
@@ -400,7 +402,7 @@ Most `neut` subcommands must be executed inside a module. Otherwise, the command
 
 ```sh
 neut build foo
-#=> Error: Couldn't find a module file (Context: /Users/foo/Desktop)
+#=> Error: Could not find a module file (Context: /Users/foo/Desktop)
 ```
 
 Only the following subcommands can be used outside a module:
@@ -414,6 +416,15 @@ Most subcommands share the following command-line options:
 
 - `--no-color` can be used to turn off ANSI colors
 - `--report MODE` sets report mode (`none`, `plain`, `fancy`, or `trace=ITEMS`)
+
+`--report` decides what a command says about its own progress, which it writes to standard error:
+
+- `none` says nothing
+- `plain` prints one line per phase
+- `fancy` draws a progress bar that redraws in place
+- `trace=ITEMS` prints the selected intermediate representations, as described below
+
+Without `--report`, a command uses `fancy` when both of its streams are an ANSI-capable terminal, and `plain` otherwise. Errors and warnings are printed whatever the mode is.
 
 ### `--report trace=ITEMS`
 

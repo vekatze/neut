@@ -29,6 +29,9 @@ import Gensym.Trick qualified as Gensym
 import Kernel.Common.Cache qualified as Cache
 import Kernel.Common.Const (holeLiteral)
 import Kernel.Common.CreateGlobalHandle qualified as Global
+import Language.Common.ExternalName qualified as EN
+import Kernel.Common.Platform qualified as P
+import Kernel.Common.Arch qualified as Arch
 import Kernel.Common.Handle.Global.Data qualified as Data
 import Kernel.Common.Handle.Global.Expose qualified as Expose
 import Kernel.Common.Handle.Global.GlobalRemark qualified as GlobalRemark
@@ -88,6 +91,7 @@ import Language.Common.ForeignCodType qualified as FCT
 import Language.Common.Geist qualified as G
 import Language.Common.HoleID qualified as HID
 import Language.Common.Ident
+import Language.Common.Literal qualified as LI
 import Language.Common.Ident.Reify qualified as Ident
 import Language.Common.ImpArgs qualified as ImpArgs
 import Language.Common.IsConstLike (IsConstLike)
@@ -97,6 +101,7 @@ import Language.Common.Magic qualified as M
 import Language.Common.ModuleID qualified as MID
 import Language.Common.PiKind qualified as PK
 import Language.Common.PrimNumSize
+import Language.Common.PrimNumSize.Wrap qualified as Wrap
 import Language.Common.PrimType qualified as PT
 import Language.Common.SourceLocator qualified as SL
 import Language.Common.StmtKind qualified as SK
@@ -363,11 +368,12 @@ elaborateStmt h stmt = do
       discarder'' <- inline h m discarder'
       copier'' <- inline h m copier'
       resourceSize'' <- inline h m resourceSize'
+      let mSize :< _ = resourceSize'
       case Resource.layoutOf resourceSize'' of
         Just _ ->
           return ()
         Nothing ->
-          raiseError m "Could not reduce the size of this resource into an integer"
+          raiseError mSize "Could not reduce the size of this resource into an integer"
       unitType'' <- inlineType h m unitType'
       let result = StmtDefineResource (SavedHint m) dd resourceID unitType'' discarder'' copier'' resourceSize''
       insertStmt h result
@@ -484,22 +490,20 @@ checkTypeAttr h attr m t =
       fmap (const ()) <$> resolveMixedOrError h S.empty m t
     VK.Actual ->
       checkActualityType h S.empty m t
-    VK.Integer ->
-      checkIntegerType h t
 
 obligationErrorMessage :: VK.TypeAttr -> ObligationSite -> T.Text -> T.Text
 obligationErrorMessage attr site message =
   case site of
     SourceSlot ->
-      "A source-passing slot cannot have this type: " <> message <> "."
+      "A source-passing slot cannot have " <> message <> "."
     Destination ->
-      "A destination cannot have this type: " <> message <> "."
+      "A destination cannot have " <> message <> "."
     Instantiation ->
-      "A parameter declared `" <> VK.reifyAttr attr <> "` cannot be instantiated with this type: " <> message <> "."
+      "A parameter declared `" <> VK.reifyAttr attr <> "` cannot be instantiated with " <> message <> "."
     LiftTarget ->
-      "`lift` cannot be used on this type: " <> message <> "."
-    LiteralPattern ->
-      "An integer pattern cannot be used against this type: " <> message <> "."
+      "`lift` cannot be used on " <> message <> "."
+    InlineField ->
+      "An inline field cannot have " <> message <> "."
 
 hasTypeAttr :: Handle -> VK.TypeAttr -> Ident -> App Bool
 hasTypeAttr h attr x = do
@@ -508,7 +512,7 @@ hasTypeAttr h attr x = do
 
 undeclaredTypeVarMessage :: VK.TypeAttr -> Ident -> T.Text
 undeclaredTypeVarMessage attr x =
-  "the type variable `" <> Ident.toText x <> "` is not declared `" <> VK.reifyAttr attr <> "`"
+  "the type variable `" <> Ident.toText x <> "`, which is not declared `" <> VK.reifyAttr attr <> "`"
 
 checkActualityType :: Handle -> S.Set DD.DefiniteDescription -> Hint -> TM.Type -> App (Either T.Text ())
 checkActualityType h dataNameSet m t = do
@@ -531,6 +535,8 @@ checkActualityType h dataNameSet m t = do
               checkActualityTypeList h dataNameSet' m consArgTypes
     _ :< TM.Box tInner ->
       checkActualityType h dataNameSet m tInner
+    _ :< TM.Code tInner ->
+      checkActualityType h dataNameSet m tInner
     _ :< TM.Embed _ ->
       return $ Right ()
     _ :< TM.PrimType {} ->
@@ -545,7 +551,7 @@ checkActualityType h dataNameSet m t = do
         then return $ Right ()
         else return $ Left $ undeclaredTypeVarMessage VK.Actual x
     _ ->
-      return $ Left $ "a term of the type `" <> toTextType (weakenType t') <> "` might be noetic"
+      return $ Left $ "the type `" <> toTextType (weakenType t') <> "`, whose values might be noetic"
 
 checkActualityTypeList :: Handle -> S.Set DD.DefiniteDescription -> Hint -> [TM.Type] -> App (Either T.Text ())
 checkActualityTypeList h dataNameSet m ts =
@@ -559,19 +565,6 @@ checkActualityTypeList h dataNameSet m ts =
           return $ Left message
         Right () ->
           checkActualityTypeList h dataNameSet m rest
-
-checkIntegerType :: Handle -> TM.Type -> App (Either T.Text ())
-checkIntegerType h t =
-  case t of
-    _ :< TM.PrimType (PT.Int _) ->
-      return $ Right ()
-    _ :< TM.TVar x -> do
-      isInteger <- hasTypeAttr h VK.Integer x
-      if isInteger
-        then return $ Right ()
-        else return $ Left $ undeclaredTypeVarMessage VK.Integer x
-    _ ->
-      return $ Left $ "the type `" <> toTextType (weakenType t) <> "` is not an integer type"
 
 insertStmt :: Handle -> Stmt -> App ()
 insertStmt h stmt = do
@@ -603,8 +596,12 @@ insertStmtWithTraceSites h knownTraceSiteIDs stmt = do
       return ()
     StmtForeign _ -> do
       return ()
-    StmtExpose exportList ->
-      forM_ exportList $ \(SavedHint m, dd, extName) ->
+    StmtExpose exportList -> do
+      let entrySymbol = Arch.entrySymbol $ P.arch $ Platform.getPlatform $ Global.platformHandle (globalHandle h)
+      ensureExposedNameLinearity S.empty exportList
+      forM_ exportList $ \(SavedHint m, dd, extName) -> do
+        when (EN.reify extName == entrySymbol) $
+          raiseError m $ "`" <> EN.reify extName <> "` is the entry point of the target and cannot be exposed"
         Expose.insert (Global.exposeHandle (globalHandle h)) m dd extName
     StmtNamespace {} ->
       return ()
@@ -731,9 +728,13 @@ resolveFieldLayout h hint (m, _, _, t) =
         Right (StaticBytes byteSize chunkLimit) ->
           return $ CL.StoredFlat $ CL.chunkSizes chunkLimit byteSize
         Right RuntimeSize ->
-          raiseError mSized "a type variable cannot be stored inline in a `data` field"
+          raiseError mSized $ inlineFieldError "a type variable whose size is not known until run time"
         Left message ->
-          raiseError mSized message
+          raiseError mSized $ inlineFieldError message
+
+inlineFieldError :: T.Text -> T.Text
+inlineFieldError =
+  obligationErrorMessage VK.Sized InlineField
 
 data InlineSize
   = StaticBytes Int Int
@@ -746,7 +747,7 @@ resolveMixedOrError h visited m ty =
       optDataOrNone <- liftIO $ OptimizableData.lookup (optDataHandle h) dataName
       case optDataOrNone of
         Just OD.Enum ->
-          return $ Left $ "the type `" <> showDD h dataName <> "` is an enum and cannot be stored inline"
+          return $ Left $ "the enum `" <> showDD h dataName <> "`"
         Just OD.Unary ->
           if S.member dataName visited
             then return $ Left $ cannotMixRecursiveMessage h dataName
@@ -766,9 +767,9 @@ resolveMixedOrError h visited m ty =
         Just (Resource.Flattened byteSize) ->
           return $ Right $ StaticBytes byteSize CL.maxChunkSize
         Just Resource.Direct ->
-          return $ Left $ "the resource `" <> showDD h dataName <> "` has no fixed size and cannot be stored inline"
+          return $ Left $ "the resource `" <> showDD h dataName <> "`, whose size is not fixed"
         Nothing ->
-          return $ Left $ "could not find the size of the resource `" <> showDD h dataName <> "`"
+          return $ Left $ "the resource `" <> showDD h dataName <> "`, whose size is not known"
     _ :< TM.Pi {} ->
       return $ Right $ StaticBytes (CL.cellByteSize $ DI.closureLayout (dataSizeOf h)) (DI.closureAlignment (dataSizeOf h))
     _ :< TM.Tau ->
@@ -782,14 +783,14 @@ resolveMixedOrError h visited m ty =
       cannotMixFieldType "a nominal type"
     _ :< TM.TyApp {} ->
       cannotMixFieldType "a nominal type"
-    _ :< TM.Box {} ->
-      cannotMixFieldType "a box type"
+    _ :< TM.Box tInner ->
+      resolveMixedOrError h visited m tInner
     _ :< TM.BoxNoema {} ->
       cannotMixFieldType "a noema type"
     _ :< TM.Embed {} ->
       cannotMixFieldType "an embedded value type"
-    _ :< TM.Code {} ->
-      cannotMixFieldType "a code type"
+    _ :< TM.Code tInner ->
+      resolveMixedOrError h visited m tInner
     _ :< TM.PrimType {} ->
       cannotMixFieldType "a primitive type"
     _ :< TM.Void ->
@@ -797,11 +798,11 @@ resolveMixedOrError h visited m ty =
 
 cannotMixFieldType :: T.Text -> App (Either T.Text InlineSize)
 cannotMixFieldType typeDesc =
-  return $ Left $ typeDesc <> " cannot be stored inline"
+  return $ Left typeDesc
 
 cannotMixRecursiveMessage :: Handle -> DD.DefiniteDescription -> T.Text
 cannotMixRecursiveMessage h dataName =
-  "the recursive type `" <> showDD h dataName <> "` cannot be stored inline"
+  "the recursive type `" <> showDD h dataName <> "`"
 
 dataSizeOf :: Handle -> DS.DataSize
 dataSizeOf h =
@@ -1131,7 +1132,7 @@ elaboratePrimValue h m primValue =
   case primValue of
     WPV.Int t x -> do
       (intSize, t') <- strictifyDecimalType h m x t
-      return $ PV.Int t' intSize x
+      return $ PV.Int t' intSize (Wrap.unsignedOf intSize x)
     WPV.Float t x -> do
       (size, t') <- strictifyFloatType h m x t
       return $ PV.Float t' size x
@@ -1152,12 +1153,15 @@ elaboratePrimValue h m primValue =
     WPV.Rune r ->
       return $ PV.Rune r
 
+type UnwrappedTypes =
+  S.Set DD.DefiniteDescription
+
 strictify :: Handle -> WT.WeakType -> App BLT.BaseLowType
 strictify h t@(mt :< _) =
-  strictify' h mt t
+  strictify' h mt S.empty t
 
-strictify' :: Handle -> Hint -> WT.WeakType -> App BLT.BaseLowType
-strictify' h m t = do
+strictify' :: Handle -> Hint -> UnwrappedTypes -> WT.WeakType -> App BLT.BaseLowType
+strictify' h m unwrapped t = do
   t' <- reduceWeakType h t >>= elaborateType h
   case t' of
     _ :< TM.PrimType (PT.Int size) ->
@@ -1168,45 +1172,56 @@ strictify' h m t = do
       return $ BLT.PrimNum $ BPT.Float $ BPT.Explicit size
     _ :< TM.PrimType PT.Pointer ->
       return BLT.Pointer
-    _ :< TM.Data _ dataName [] -> do
-      consInfoList <- lookupDataInfo h m dataName
-      case consInfoList of
-        [DI.ConsInfo {DI.consArgs = [(_, _, _, arg)]}] ->
-          strictify' h m (weakenType arg)
-        _ ->
-          raiseNonStrictType m (weakenType t')
+    _ :< TM.Data _ dataName []
+      | S.notMember dataName unwrapped -> do
+          consInfoList <- lookupDataInfo h m dataName
+          case consInfoList of
+            [DI.ConsInfo {DI.consArgs = [(_, _, _, arg)]}] ->
+              strictify' h m (S.insert dataName unwrapped) (weakenType arg)
+            _ ->
+              raiseNonStrictType m (weakenType t')
     _ :< _ ->
       raiseNonStrictType m (weakenType t')
 
 strictifyDecimalType :: Handle -> Hint -> Integer -> WT.WeakType -> App (IntSize, TM.Type)
-strictifyDecimalType h m x t = do
+strictifyDecimalType h m =
+  strictifyDecimalType' h m S.empty
+
+strictifyDecimalType' :: Handle -> Hint -> UnwrappedTypes -> Integer -> WT.WeakType -> App (IntSize, TM.Type)
+strictifyDecimalType' h m unwrapped x t = do
   t' <- reduceWeakType h t >>= elaborateType h
   case t' of
     _ :< TM.PrimType (PT.Int size) ->
       return (size, t')
-    _ :< TM.Data _ dataName [] -> do
-      consInfoList <- lookupDataInfo h m dataName
-      case consInfoList of
-        [DI.ConsInfo {DI.consArgs = [(_, _, _, arg)]}] ->
-          strictifyDecimalType h m x (weakenType arg)
-        _ ->
-          raiseNonDecimalType m x (weakenType t')
+    _ :< TM.Data _ dataName []
+      | S.notMember dataName unwrapped -> do
+          consInfoList <- lookupDataInfo h m dataName
+          case consInfoList of
+            [DI.ConsInfo {DI.consArgs = [(_, _, _, arg)]}] ->
+              strictifyDecimalType' h m (S.insert dataName unwrapped) x (weakenType arg)
+            _ ->
+              raiseNonDecimalType m x (weakenType t')
     _ :< _ ->
       raiseNonDecimalType m x (weakenType t')
 
 strictifyFloatType :: Handle -> Hint -> Double -> WT.WeakType -> App (FloatSize, TM.Type)
-strictifyFloatType h m x t = do
+strictifyFloatType h m =
+  strictifyFloatType' h m S.empty
+
+strictifyFloatType' :: Handle -> Hint -> UnwrappedTypes -> Double -> WT.WeakType -> App (FloatSize, TM.Type)
+strictifyFloatType' h m unwrapped x t = do
   t' <- reduceWeakType h t >>= elaborateType h
   case t' of
     _ :< TM.PrimType (PT.Float size) ->
       return (size, t')
-    _ :< TM.Data _ dataName [] -> do
-      consInfoList <- lookupDataInfo h m dataName
-      case consInfoList of
-        [DI.ConsInfo {DI.consArgs = [(_, _, _, arg)]}] ->
-          strictifyFloatType h m x (weakenType arg)
-        _ ->
-          raiseNonFloatType m x (weakenType t')
+    _ :< TM.Data _ dataName []
+      | S.notMember dataName unwrapped -> do
+          consInfoList <- lookupDataInfo h m dataName
+          case consInfoList of
+            [DI.ConsInfo {DI.consArgs = [(_, _, _, arg)]}] ->
+              strictifyFloatType' h m (S.insert dataName unwrapped) x (weakenType arg)
+            _ ->
+              raiseNonFloatType m x (weakenType t')
     _ :< _ ->
       raiseNonFloatType m x (weakenType t')
 
@@ -1380,14 +1395,14 @@ elaborateDecisionTree h ctx mOrig m tree =
           when (DT.isUnreachable fallbackClause) $ do
             raiseLiteralNonExhaustivePatternMatching m
           fallbackClause' <- elaborateDecisionTree h ctx mOrig m fallbackClause
-          clauseList' <- mapM (elaborateClause h mOrig cursor ctx) clauseList
+          clauseList' <- mapM (elaborateClause h mOrig cursor cursorType' ctx) clauseList
           return $ DT.Switch (cursor, cursorType') (fallbackClause', clauseList')
         ConsSwitch consList -> do
           let activeConsList = DT.getConstructors clauseList
           let diff = S.difference (S.fromList consList) (S.fromList activeConsList)
           if S.size diff == 0
             then do
-              clauseList' <- mapM (elaborateClause h mOrig cursor ctx) clauseList
+              clauseList' <- mapM (elaborateClause h mOrig cursor cursorType' ctx) clauseList
               return $ DT.Switch (cursor, cursorType') (DT.Unreachable, clauseList')
             else do
               case fallbackClause of
@@ -1405,15 +1420,16 @@ elaborateDecisionTree h ctx mOrig m tree =
                     "This pattern matching does not cover the following:\n" <> uncoveredPatterns'
                 _ -> do
                   fallbackClause' <- elaborateDecisionTree h ctx mOrig m fallbackClause
-                  clauseList' <- mapM (elaborateClause h mOrig cursor ctx) clauseList
+                  clauseList' <- mapM (elaborateClause h mOrig cursor cursorType' ctx) clauseList
                   return $ DT.Switch (cursor, cursorType') (fallbackClause', clauseList')
 
-elaborateClause :: Handle -> Hint -> Ident -> ClauseContext -> DT.Case WT.WeakType WT.WeakTerm -> App (DT.Case TM.Type TM.Term)
-elaborateClause h mOrig cursor ctx decisionCase = do
+elaborateClause :: Handle -> Hint -> Ident -> TM.Type -> ClauseContext -> DT.Case WT.WeakType WT.WeakTerm -> App (DT.Case TM.Type TM.Term)
+elaborateClause h mOrig cursor cursorType ctx decisionCase = do
   case decisionCase of
-    DT.LiteralCase mPat i cont -> do
+    DT.LiteralCase mPat literal cont -> do
+      literal' <- normalizeLiteralPattern h mPat cursorType literal
       cont' <- elaborateDecisionTree h ctx mOrig mPat cont
-      return $ DT.LiteralCase mPat i cont'
+      return $ DT.LiteralCase mPat literal' cont'
     DT.ConsCase record@DT.ConsCaseRecord {..} -> do
       let (dataTerms, dataTypes) = unzip dataArgs
       dataTerms' <- mapM (elaborateType h) dataTerms
@@ -1435,6 +1451,22 @@ raiseNonStrictType m t = do
   raiseError m $
     "Expected:\n  an integer, a float, or a pointer\nFound:\n  "
       <> toTextType t
+
+normalizeLiteralPattern :: Handle -> Hint -> TM.Type -> LI.Literal -> App LI.Literal
+normalizeLiteralPattern h m cursorType literal =
+  case literal of
+    LI.Rune _ ->
+      return literal
+    LI.Int i -> do
+      cursorType' <- inlineType h m cursorType
+      case cursorType' of
+        _ :< TM.PrimType (PT.Int size) ->
+          return $ LI.Int $ Wrap.unsignedOf size i
+        _ ->
+          raiseError m $
+            "An integer pattern cannot be used against "
+              <> toTextType (weakenType cursorType')
+              <> "."
 
 raiseNonDecimalType :: Hint -> Integer -> WT.WeakType -> App a
 raiseNonDecimalType m x t = do
@@ -1502,24 +1534,35 @@ isLiteralCase decisionCase =
       False
 
 reduceWeakType :: Handle -> WT.WeakType -> App WT.WeakType
-reduceWeakType h t = do
+reduceWeakType h =
+  reduceWeakTypeWithin h (inlineLimit h)
+
+reduceWeakTypeWithin :: Handle -> Int -> WT.WeakType -> App WT.WeakType
+reduceWeakTypeWithin h budget t = do
   t' <- reduceType h t
   case t' of
     m :< WT.TypeHole holeID args -> do
-      fillHole h m holeID args >>= reduceWeakType h
-    _ :< WT.TyApp (_ :< WT.TVarGlobal _ name) args -> do
+      ensureUnfoldingBudget h m budget
+      fillHole h m holeID args >>= reduceWeakTypeWithin h (budget - 1)
+    m :< WT.TyApp (_ :< WT.TVarGlobal _ name) args -> do
       mDef <- liftIO $ WeakTypeDef.lookup' (weakTypeDefHandle h) name
       case mDef of
         Just def
           | length args == length (WeakTypeDef.typeDefBinders def) -> do
+              ensureUnfoldingBudget h m budget
               let varList = map (\(_, _, x, _) -> Ident.toInt x) (WeakTypeDef.typeDefBinders def)
               let sub = IntMap.fromList $ zip varList (map Type args)
               body' <- liftIO $ Subst.substType (substHandle h) sub (WeakTypeDef.typeDefBody def)
-              reduceWeakType h body'
+              reduceWeakTypeWithin h (budget - 1) body'
         _ ->
           return t'
     _ ->
       return t'
+
+ensureUnfoldingBudget :: Handle -> Hint -> Int -> App ()
+ensureUnfoldingBudget h m budget =
+  when (budget <= 0) $
+    raiseError m $ "Exceeded max recursion depth of " <> T.pack (show (inlineLimit h)) <> " while reducing a type"
 
 fillHole ::
   Handle ->
@@ -1531,13 +1574,34 @@ fillHole h m holeID es = do
   holeSubst <- liftIO $ Hole.getTypeSubst (holeHandle h)
   case THS.lookup holeID holeSubst of
     Nothing ->
-      raiseError m $ "Could not instantiate the hole here: " <> T.pack (show holeID)
+      raiseError m "Could not infer the type here"
     Just (xs, e)
       | length xs == length es -> do
+          e' <- chaseHole h m e
+          liftIO $ Hole.insertTypeSubst (holeHandle h) holeID xs e'
           let s = IntMap.fromList $ zip (map Ident.toInt xs) (map Type es)
-          liftIO $ Subst.substType (substHandle h) s e
+          liftIO $ Subst.substType (substHandle h) s e'
       | otherwise ->
           raiseError m "Arity mismatch"
+
+chaseHole :: Handle -> Hint -> WT.WeakType -> App WT.WeakType
+chaseHole h m t =
+  case t of
+    _ :< WT.TypeHole holeID es ->
+      fillHole h m holeID es
+    _ ->
+      return t
+
+ensureExposedNameLinearity :: S.Set EN.ExternalName -> [(SavedHint, DD.DefiniteDescription, EN.ExternalName)] -> App ()
+ensureExposedNameLinearity found exportList =
+  case exportList of
+    [] ->
+      return ()
+    (SavedHint m, _, extName) : rest
+      | S.member extName found ->
+          raiseError m $ "`" <> EN.reify extName <> "` is already exposed"
+      | otherwise ->
+          ensureExposedNameLinearity (S.insert extName found) rest
 
 stmtKindToDefKind :: SK.StmtKindTerm a -> [(binder, b)] -> Maybe InlineHandle.DefKind
 stmtKindToDefKind stmtKind defaultArgs =

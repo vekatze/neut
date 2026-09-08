@@ -4,6 +4,7 @@ module Command.Common.Fetch
     fetch,
     insertDependency,
     insertCoreDependency,
+    getCoreLocation,
   )
 where
 
@@ -12,21 +13,24 @@ import App.Run (forP, raiseError')
 import Command.Common.SaveModule qualified as SaveModule
 import Control.Comonad.Cofree
 import Control.Monad
-import Control.Monad.Except (liftEither)
+import Control.Monad.Except (MonadError (catchError, throwError), liftEither)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.ByteString qualified as B
 import Data.Containers.ListUtils (nubOrdOn)
 import Data.HashMap.Strict qualified as Map
 import Data.Maybe
+import Data.Set qualified as S
 import Data.Text qualified as T
 import Ens.Ens qualified as E
 import Ens.Ens qualified as SE
+import CodeParser.Parser qualified as CP
 import Ens.Parse qualified as EnsParse
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.Env qualified as Env
 import Kernel.Common.Handle.Global.Module qualified as Module
 import Kernel.Common.Module (keyDependency, keyDigest, keyEnablePreset, keyMirror, moduleLocation)
 import Kernel.Common.Module qualified as M
+import Kernel.Parse.Internal.Util (isNumericLike)
 import Kernel.Common.Module.FromPath qualified as ModuleReflect
 import Kernel.Common.ModuleURL
 import Kernel.Common.RunProcess qualified as RunProcess
@@ -81,8 +85,16 @@ tidy h deps = do
 insertDependency :: Handle -> T.Text -> ModuleURL -> App ()
 insertDependency h aliasName url = do
   aliasName' <- liftEither (BN.reflect' aliasName)
+  when (T.null (BN.reify aliasName')) $ do
+    raiseError' "The alias of a module must not be empty"
+  when (T.any (`S.member` CP.nonSymbolCharSet) (BN.reify aliasName')) $ do
+    raiseError' $ "Invalid alias of a module: " <> BN.reify aliasName'
+  when (isNumericLike (BN.reify aliasName')) $ do
+    raiseError' $ "`" <> BN.reify aliasName' <> "` reads as a numeric literal and cannot be used as an alias of a module"
   when (isCapitalized aliasName') $ do
     raiseError' $ "Module aliases must not be capitalized, but found: " <> BN.reify aliasName'
+  when (S.member aliasName' BN.reservedAlias) $ do
+    raiseError' $ "The reserved name `" <> BN.reify aliasName' <> "` cannot be used as an alias of a module"
   let alias = ModuleAlias aliasName'
   withSystemTempFile "fetch" $ \tempFilePath tempFileHandle -> do
     download h tempFilePath alias [url]
@@ -129,10 +141,14 @@ insertDependency h aliasName url = do
               dependencyPresetEnabled = False
             }
 
-insertCoreDependency :: Handle -> App ()
-insertCoreDependency h = do
+getCoreLocation :: App (ModuleURL, MD.ModuleDigest)
+getCoreLocation = do
   coreModuleURL <- Module.getCoreModuleURL
   digest <- Module.getCoreModuleDigest
+  return (coreModuleURL, digest)
+
+insertCoreDependency :: Handle -> (ModuleURL, MD.ModuleDigest) -> App ()
+insertCoreDependency h (coreModuleURL, digest) = do
   _ <- installModule h coreModuleAlias [coreModuleURL] digest
   addDependencyToModuleFile h coreModuleAlias $
     M.Dependency
@@ -221,6 +237,9 @@ extractToDependencyDir h archivePath _ digest = do
   moduleDirPath <- Module.getModuleDirByID mainModule Nothing (MID.Library digest)
   ensureDir moduleDirPath
   RunProcess.run (runProcessHandle h) "tar" ["xf", toFilePath archivePath, "-C", toFilePath moduleDirPath]
+    `catchError` \err -> do
+      removeDirRecur moduleDirPath
+      throwError err
 
 addDependencyToModuleFile :: Handle -> ModuleAlias -> M.Dependency -> App ()
 addDependencyToModuleFile h alias dep = do

@@ -1,11 +1,11 @@
 module Language.Common.PrimType.FromText (fromDefiniteDescription, fromText) where
 
 import Data.Text qualified as T
+import Language.Common.Decimal (readDecimal)
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.PrimNumSize
 import Language.Common.PrimType qualified as PT
 import Language.Common.SlotSize
-import Text.Read
 
 fromDefiniteDescription :: DD.DefiniteDescription -> Maybe PT.PrimType
 fromDefiniteDescription dd = do
@@ -40,7 +40,7 @@ asLowInt s =
           Nothing
         (c, rest)
           | c == intTypeName,
-            Just n <- readMaybe $ T.unpack rest,
+            Just n <- readDecimal rest,
             Just size <- intToIntSize n ->
               Just size
           | otherwise ->
@@ -59,7 +59,7 @@ asLowFloat s =
           Nothing
         (c, rest)
           | c == floatTypeName,
-            Just n <- readMaybe $ T.unpack rest,
+            Just n <- readDecimal rest,
             Just size <- intToFloatSize n ->
               Just size
           | otherwise ->

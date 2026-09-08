@@ -5,6 +5,7 @@ module Command.Archive.PackageVersion.PackageVersion
     isValidNewVersion,
     getAntecedents,
     getNewestVersion,
+    compareVersion,
     increment,
     initialVersion,
   )
@@ -13,8 +14,8 @@ where
 import Data.List qualified as List
 import Data.Text qualified as T
 import Kernel.Common.Const
+import Language.Common.Decimal (readDecimal)
 import Language.Common.List (initLast)
-import Text.Read
 
 type PackageVersion =
   (AlphaPrefix, (MajorVersion, [MinorVersion]))
@@ -23,25 +24,30 @@ type AlphaPrefix =
   Int
 
 type MajorVersion =
-  Int
+  Integer
 
 type MinorVersion =
-  Int
+  Integer
 
 reflect :: T.Text -> Maybe PackageVersion
 reflect releaseName = do
-  let intTextList = T.splitOn verSep releaseName
-  intList <- mapM (readMaybe . T.unpack) intTextList
-  let (zeroList, versionList) = span (== 0) intList
+  let componentTextList = T.splitOn verSep releaseName
+  componentList <- mapM readDecimal componentTextList
+  let (zeroList, versionList) = span (== 0) componentList
   (majorVersion, minorVersionList) <- List.uncons versionList
-  if all (>= 0) $ majorVersion : minorVersionList
-    then return (length zeroList, (majorVersion, minorVersionList))
-    else Nothing
+  return (length zeroList, (majorVersion, minorVersionList))
 
 reify :: PackageVersion -> T.Text
-reify (alphaPrefix, (majorVersion, minorVersionList)) = do
-  let versionSeq = map (const 0) [1 .. alphaPrefix] ++ [majorVersion] ++ minorVersionList
-  T.pack $ List.intercalate (T.unpack verSep) $ map show versionSeq
+reify version = do
+  T.pack $ List.intercalate (T.unpack verSep) $ map show $ toComponentList version
+
+toComponentList :: PackageVersion -> [Integer]
+toComponentList (alphaPrefix, (majorVersion, minorVersionList)) =
+  replicate alphaPrefix 0 ++ (majorVersion : minorVersionList)
+
+compareVersion :: PackageVersion -> PackageVersion -> Ordering
+compareVersion v1 v2 =
+  compare (toComponentList v1) (toComponentList v2)
 
 isValidNewVersion :: PackageVersion -> [PackageVersion] -> Bool
 isValidNewVersion (alphaPrefix, (majorVersion1, minorVersionList1)) vs = do
@@ -64,7 +70,15 @@ getAntecedents (alphaPrefix, (majorVersion1, minorVersionList1)) vs = do
 
 getNewestVersion :: [PackageVersion] -> PackageVersion -> PackageVersion
 getNewestVersion candidates fallback =
-  List.foldl' max fallback candidates
+  List.foldl' newer fallback candidates
+
+newer :: PackageVersion -> PackageVersion -> PackageVersion
+newer v1 v2 =
+  case compareVersion v1 v2 of
+    LT ->
+      v2
+    _ ->
+      v1
 
 increment :: PackageVersion -> PackageVersion
 increment version = do

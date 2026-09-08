@@ -13,6 +13,7 @@ where
 
 import App.App
 import App.Error qualified as E
+import Control.Exception (IOException, catch)
 import Control.Monad.Except (MonadError (throwError), runExceptT)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Either (lefts, partitionEithers)
@@ -29,13 +30,17 @@ runApp =
 
 run :: Logger.Handle -> App a -> IO a
 run loggerHandle c = do
-  resultOrErr <- liftIO $ runApp c
+  resultOrErr <- liftIO (runApp c) `catch` (return . Left . asError)
   case resultOrErr of
     Left (E.MakeError err) -> do
-      liftIO $ Logger.printErrorList loggerHandle err
+      liftIO $ Logger.printLogList loggerHandle err
       liftIO $ exitWith (ExitFailure 1)
     Right result ->
       return result
+
+asError :: IOException -> E.Error
+asError e =
+  E.newError' $ T.pack $ show e
 
 forP :: [a] -> (a -> App b) -> App [b]
 forP xs f = do

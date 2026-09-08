@@ -12,7 +12,7 @@ import Data.Functor ((<&>))
 import Data.HashMap.Strict qualified as Map
 import Data.List ((\\))
 import Data.List qualified as List
-import Data.Maybe (isJust, mapMaybe)
+import Data.Maybe (fromMaybe, isJust, mapMaybe)
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Vector qualified as V
@@ -204,6 +204,7 @@ discernStmt h stmt = do
       return [WeakStmtNominal m geistList']
     PostRawStmtForeign _ foreignList -> do
       let foreignList' = SE.extract foreignList
+      ensureNoDuplicateForeignName h S.empty foreignList'
       foreignList'' <- mapM (mapM (discernType h)) foreignList'
       foreign' <- liftIO $ interpretForeign h foreignList''
       return [WeakStmtForeign foreign']
@@ -324,8 +325,8 @@ discernStmtKindTerm h stmtKind m =
     SK.DataIntro dataName dataArgs expConsArgs discriminant -> do
       (dataArgs', h') <- discernTypeBinder' h dataArgs
       (expConsArgs', h'') <- discernBinder' h' expConsArgs
-      forM_ (H.nameEnv h'') $ \(_, (_, newVar, _, _)) -> do
-        liftIO $ Unused.deleteVariable (H.unusedHandle h'') newVar
+      forM_ expConsArgs' $ \(_, _, x, _) -> do
+        liftIO $ Unused.deleteVariable (H.unusedHandle h'') x
       forM_ dataArgs' $ \(_, _, x, _) -> do
         liftIO $ Unused.deleteVariable (H.unusedHandle h'') x
       return $ SK.DataIntro dataName dataArgs' expConsArgs' discriminant
@@ -340,11 +341,13 @@ discernStmtKindType h stmtKind =
     SK.Data dataName dataArgs consInfoList isNominal -> do
       (dataArgs', h') <- discernTypeBinder' h dataArgs
       let discernConsInfo (savedHint, consInfo) = do
-            (consArgs', h'') <- discernBinder' h' (DI.consArgs consInfo)
-            return ((savedHint, consInfo {DI.consArgs = consArgs'}), h'')
-      (consInfoList', hList) <- mapAndUnzipM discernConsInfo consInfoList
-      forM_ (concatMap H.nameEnv hList) $ \(_, (_, newVar, _, _)) -> do
-        liftIO $ Unused.deleteVariable (H.unusedHandle h') newVar
+            (consArgs', _) <- discernBinder' h' (DI.consArgs consInfo)
+            return (savedHint, consInfo {DI.consArgs = consArgs'})
+      consInfoList' <- mapM discernConsInfo consInfoList
+      forM_ (concatMap (DI.consArgs . snd) consInfoList') $ \(_, _, x, _) -> do
+        liftIO $ Unused.deleteVariable (H.unusedHandle h') x
+      forM_ dataArgs' $ \(_, _, x, _) -> do
+        liftIO $ Unused.deleteVariable (H.unusedHandle h') x
       return $ SK.Data dataName dataArgs' consInfoList' isNominal
 
 getUnitType :: H.Handle -> Hint -> App WT.WeakType
@@ -390,7 +393,7 @@ isLocalVar :: H.Handle -> Name -> Bool
 isLocalVar h name =
   case name of
     Bare s ->
-      isJust $ lookup s (H.nameEnv h)
+      isJust $ Map.lookup s (H.nameEnv h)
     _ ->
       False
 
@@ -410,7 +413,7 @@ discern h term =
             InvalidNumericLiteral numericClass ->
               raiseInvalidNumericLiteral m numericClass s
             NotNumeric ->
-              case lookup s (H.nameEnv h) of
+              case Map.lookup s (H.nameEnv h) of
                 Just (mDef, name', layer, stage) ->
                   case (layer == H.currentLayer h, stage == H.currentStage h) of
                     (True, True) -> do
@@ -556,7 +559,7 @@ discern h term =
       decisionTree <- compilePatternMatrix h isNoetic (V.fromList os') patternMatrix'
       return $ m :< WT.DataElim isNoetic (zip3 os es'' ts) decisionTree
     m :< RT.BoxIntro _ _ mxs (body, _) -> do
-      ensureRuntimeStage m h "meta operation (`box`)"
+      ensureRuntimeStage m h "`box`"
       xsOuter <- forM (SE.extract mxs) $ \(mx, k, x) -> do
         (mDef, (mUse, x')) <- discernIdent mx h x
         return (mDef, (mUse, k, x'))
@@ -569,15 +572,15 @@ discern h term =
       body' <- discern hInner body
       return $ m :< WT.BoxIntro xets body'
     m :< RT.BoxIntroLift _ _ (body, _) -> do
-      ensureRuntimeStage m h "meta operation (`lift`)"
+      ensureRuntimeStage m h "`lift`"
       body' <- discern h body
       return $ m :< WT.BoxIntroLift Nothing body'
     m :< RT.EmbedIntro _ _ (body, _) -> do
-      ensureRuntimeStage m h "meta operation (`embed`)"
+      ensureRuntimeStage m h "`embed`"
       body' <- discern h body
       return $ m :< WT.EmbedIntro body'
     m :< RT.BoxElim nv mustIgnoreRelayedVars _ (mx, pat, c1, c2, t) _ mys _ e1 _ startLoc _ e2 endLoc -> do
-      ensureRuntimeStage m h "meta operation (`letbox`)"
+      ensureRuntimeStage m h "`letbox`"
       case nv of
         VariantK ->
           unless (SE.isEmpty mys) $ raiseError m "`on` cannot be used with: `letbox`"
@@ -630,7 +633,7 @@ discern h term =
       e2' <- discern h' e2
       return $ m :< WT.TauElim (mx, k, x') e1' e2'
     m :< RT.Embody e -> do
-      ensureRuntimeStage m h "meta operation (`*`)"
+      ensureRuntimeStage m h "`*`"
       let m' = blur m
       let loc = metaLocation m
       tmpName <- liftIO $ Gensym.newTextFromText (H.gensymHandle h) "tmp-embody"
@@ -660,7 +663,7 @@ discern h term =
     m :< RT.Let letKind _ (mx, pat, c1, c2, t) _ _ e1 _ startLoc _ e2 endLoc -> do
       discernLet h m letKind (mx, pat, c1, c2, t) e1 e2 startLoc endLoc
     m :< RT.LetOn letKind _ pat _ mys _ e1@(m1 :< _) _ startLoc _ e2 endLoc -> do
-      ensureRuntimeStage m h "meta operation (`on`)"
+      ensureRuntimeStage m h "`on`"
       case letKind of
         RT.Plain mustIgnoreRelayedVars -> do
           let e1' = m :< RT.BoxIntroLift [] [] (e1, [])
@@ -753,7 +756,8 @@ discern h term =
           panic <- liftEither $ locatorToVarGlobal m coreDebugPanic
           discern h $ asOpaqueValue $ m :< RT.Annotation L.Warning (AN.Type ()) (m :< RT.piElim panic [message'])
     m :< RT.Introspect _ key _ clauseList -> do
-      value <- getIntrospectiveValue h m key
+      (value, valueSet) <- getIntrospectiveValue h m key
+      ensureIntrospectiveClauseSanity valueSet S.empty $ SE.extract clauseList
       (clause, droppedClauses) <- splitIntrospectiveClauses m value $ SE.extract clauseList
       mapM_ (markDroppedClause (discern h)) droppedClauses
       discern h clause
@@ -853,6 +857,8 @@ discern h term =
         mDataElim :< RT.DataElim c isNoetic es patternRowList -> do
           let patternRowList' = fmap withPatternRowBody patternRowList
           discern h $ mDataElim :< RT.DataElim c isNoetic es patternRowList'
+        _ :< RT.Brace _ (e, _) -> do
+          discern h $ withBody e
         _ ->
           discern h body
     _ :< RT.Brace _ (e, _) ->
@@ -875,6 +881,10 @@ discernExposeItem h (RawExposeItem m (name, _) asClause) = do
                 ext
               Nothing ->
                 EN.ExternalName $ DD.localLocator dd
+      mDecl <- liftIO $ PreDecl.lookupMaybe (H.preDeclHandle h) extName
+      when (isJust mDecl) $ do
+        raiseError m $ "`" <> EN.reify extName <> "` is already declared as a foreign function"
+      liftIO $ PreDecl.insertExposed (H.preDeclHandle h) extName m
       return (m, dd, extName)
     _ ->
       raiseError m $ "`" <> renderDD (H.modulePathMap h) dd <> "` is not a function"
@@ -898,7 +908,7 @@ discernType h ty =
     m :< RT.TyVar name -> do
       case name of
         Bare s
-          | Just (mDef, name', _, _) <- lookup s (H.typeNameEnv h) -> do
+          | Just (mDef, name', _, _) <- Map.lookup s (H.typeNameEnv h) -> do
               liftIO $ Unused.deleteVariable (H.unusedHandle h) name'
               liftIO $ Tag.insertLocalVar (H.tagHandle h) m name' mDef
               return $ m :< WT.TVar name'
@@ -969,7 +979,8 @@ discernType h ty =
     _ :< RT.TyBrace _ (t, _) ->
       discernType h t
     m :< RT.TyIntrospect _ key _ clauseList -> do
-      value <- getIntrospectiveValue h m key
+      (value, valueSet) <- getIntrospectiveValue h m key
+      ensureIntrospectiveClauseSanity valueSet S.empty $ SE.extract clauseList
       (clause, droppedClauses) <- splitIntrospectiveClauses m value $ SE.extract clauseList
       mapM_ (markDroppedClause (discernType h)) droppedClauses
       discernType h clause
@@ -1003,46 +1014,46 @@ discernMagic h m magic =
       e' <- discern h e
       return $ M.WeakMagic $ M.LowMagic $ LM.Cast from' to' e'
     RT.Store _ (_, (t, _)) (_, (value, _)) (_, (pointer, _)) _ -> do
-      ensureRuntimeStage m h "runtime magic (`store`)"
+      ensureRuntimeStage m h "`magic store`"
       t' <- discernType h t
       unit <- liftEither (locatorToTypeVar m coreUnit) >>= discernType h
       value' <- discern h value
       pointer' <- discern h pointer
       return $ M.WeakMagic $ M.LowMagic $ LM.Store t' unit value' pointer'
     RT.Load _ (_, (t, _)) (_, (pointer, _)) _ -> do
-      ensureRuntimeStage m h "runtime magic (`load`)"
+      ensureRuntimeStage m h "`magic load`"
       t' <- discernType h t
       pointer' <- discern h pointer
       return $ M.WeakMagic $ M.LowMagic $ LM.Load t' pointer'
     RT.Alloca _ (_, (t, _)) (_, (size, _)) _ -> do
-      ensureRuntimeStage m h "runtime magic (`alloca`)"
+      ensureRuntimeStage m h "`magic alloca`"
       t' <- discernType h t
       size' <- discern h size
       return $ M.WeakMagic $ M.LowMagic $ LM.Alloca t' size'
     RT.Calloc _ (_, (num, _)) (_, (size, _)) _ -> do
-      ensureRuntimeStage m h "runtime magic (`calloc`)"
+      ensureRuntimeStage m h "`magic calloc`"
       sizeType <- liftEither (locatorToTypeVar m coreCSize) >>= discernType h
       num' <- discern h num
       size' <- discern h size
       return $ M.WeakMagic $ M.Calloc sizeType num' size'
     RT.Malloc _ (_, (size, _)) _ -> do
-      ensureRuntimeStage m h "runtime magic (`malloc`)"
+      ensureRuntimeStage m h "`magic malloc`"
       sizeType <- liftEither (locatorToTypeVar m coreCSize) >>= discernType h
       size' <- discern h size
       return $ M.WeakMagic $ M.Malloc sizeType size'
     RT.Realloc _ (_, (ptr, _)) (_, (size, _)) _ -> do
-      ensureRuntimeStage m h "runtime magic (`realloc`)"
+      ensureRuntimeStage m h "`magic realloc`"
       sizeType <- liftEither (locatorToTypeVar m coreCSize) >>= discernType h
       ptr' <- discern h ptr
       size' <- discern h size
       return $ M.WeakMagic $ M.Realloc sizeType ptr' size'
     RT.Free _ (_, (ptr, _)) _ -> do
-      ensureRuntimeStage m h "runtime magic (`free`)"
+      ensureRuntimeStage m h "`magic free`"
       unitType <- liftEither (locatorToTypeVar m coreUnit) >>= discernType h
       ptr' <- discern h ptr
       return $ M.WeakMagic $ M.Free unitType ptr'
     RT.External _ mUse funcName _ args varArgsOrNone -> do
-      ensureRuntimeStage m h "runtime magic (`external`)"
+      ensureRuntimeStage m h "`magic external`"
       mDef <- PreDecl.lookup (H.preDeclHandle h) m funcName
       liftIO $ Tag.insertExternalName (H.tagHandle h) mUse funcName mDef
       liftIO $ Unused.deleteForeign (H.unusedHandle h) funcName
@@ -1059,66 +1070,66 @@ discernMagic h m magic =
             return (arg', t')
       return $ M.WeakMagic $ M.LowMagic $ LM.External domList cod funcName args' varArgs'
     RT.Global _ (_, (name, _)) (_, (t, _)) _ -> do
-      ensureRuntimeStage m h "runtime magic (`global`)"
+      ensureRuntimeStage m h "`magic global`"
       t' <- discernType h t
       return $ M.WeakMagic $ M.LowMagic $ LM.Global name t'
     RT.OpaqueValue _ (_, (e, _)) -> do
-      ensureRuntimeStage m h "runtime magic (`opaque-value`)"
+      ensureRuntimeStage m h "`magic opaque-value`"
       e' <- discern h e
       return $ M.WeakMagic $ M.LowMagic $ LM.OpaqueValue e'
     RT.CallType _ (_, (func, _)) (_, (arg1, _)) (_, (arg2, _)) (_, (arg3, _)) -> do
-      ensureRuntimeStage m h "runtime magic (`call-type`)"
+      ensureRuntimeStage m h "`magic call-type`"
       func' <- discern h func
       arg1' <- discern h arg1
       arg2' <- discern h arg2
       arg3' <- discern h arg3
       return $ M.WeakMagic $ M.LowMagic $ LM.CallType func' arg1' arg2' arg3'
     RT.InspectType (_, (typeExpr, _)) -> do
-      ensureCompileStage m h "inline magic (`inspect-type`)"
+      ensureCompileStage m h "`magic inspect-type`"
       coreModuleID <- Alias.resolveModuleAlias (H.aliasHandle h) m coreModuleAlias
       typeValueVar <- liftEither $ locatorToTypeVar m coreTypeValueTypeValue
       typeValueExpr <- discernType h typeValueVar
       typeExpr' <- discernType h typeExpr
       return $ M.WeakMagic $ M.InspectType coreModuleID typeValueExpr typeExpr'
     RT.EqType (_, (typeExpr1, _)) (_, (typeExpr2, _)) -> do
-      ensureCompileStage m h "inline magic (`eq-type`)"
+      ensureCompileStage m h "`magic eq-type`"
       coreModuleID <- Alias.resolveModuleAlias (H.aliasHandle h) m coreModuleAlias
       typeExpr1' <- discernType h typeExpr1
       typeExpr2' <- discernType h typeExpr2
       return $ M.WeakMagic $ M.EqType coreModuleID typeExpr1' typeExpr2'
     RT.ShowType _ (_, (typeExpr, _)) -> do
-      ensureCompileStage m h "inline magic (`show-type`)"
+      ensureCompileStage m h "`magic show-type`"
       typeExpr' <- discernType h typeExpr
       return $ M.WeakMagic $ M.ShowType typeExpr'
     RT.TextCons _ (_, (rune, _)) (_, (text, _)) -> do
-      ensureCompileStage m h "inline magic (`text-cons`)"
+      ensureCompileStage m h "`magic text-cons`"
       rune' <- discern h rune
       text' <- discern h text
       return $ M.WeakMagic $ M.TextCons rune' text'
     RT.TextUncons _ (_, (text, _)) -> do
-      ensureCompileStage m h "inline magic (`text-uncons`)"
+      ensureCompileStage m h "`magic text-uncons`"
       moduleID <- Alias.resolveModuleAlias (H.aliasHandle h) m coreModuleAlias
       text' <- discern h text
       return $ M.WeakMagic $ M.TextUncons moduleID text'
     RT.MakeSwitch _ (_, (key, _)) (_, (fallback, _)) (_, (clauses, _)) -> do
-      ensureCompileStage m h "inline magic (`make-switch`)"
+      ensureCompileStage m h "`magic make-switch`"
       moduleID <- Alias.resolveModuleAlias (H.aliasHandle h) m coreModuleAlias
       key' <- discern h key
       fallback' <- discern h fallback
       clauses' <- discern h clauses
       return $ M.WeakMagic $ M.MakeSwitch moduleID key' fallback' clauses'
     RT.CompileError _ (_, (msg, _)) -> do
-      ensureCompileStage m h "inline magic (`compile-error`)"
+      ensureCompileStage m h "`magic compile-error`"
       msg' <- discern h msg
       return $ M.WeakMagic $ M.CompileError msg'
     RT.GetOriginFileName {} -> do
-      ensureCompileStage m h "inline magic (`get-origin-file-name`)"
+      ensureCompileStage m h "`magic get-origin-file-name`"
       return $ M.WeakMagic M.GetOriginFileName
     RT.GetOriginLine {} -> do
-      ensureCompileStage m h "inline magic (`get-origin-line`)"
+      ensureCompileStage m h "`magic get-origin-line`"
       return $ M.WeakMagic M.GetOriginLine
     RT.GetOriginColumn {} -> do
-      ensureCompileStage m h "inline magic (`get-origin-column`)"
+      ensureCompileStage m h "`magic get-origin-column`"
       return $ M.WeakMagic M.GetOriginColumn
 
 modifyLetContinuation ::
@@ -1129,8 +1140,10 @@ modifyLetContinuation ::
   App (VK.VarKind, RawIdent, RT.RawTerm)
 modifyLetContinuation h pat isNoetic cont@(mCont :< _) =
   case pat of
-    (_, RP.Var k (Bare x))
-      | not (isConsName x) ->
+    (m, RP.Var k (Bare x))
+      | not (isConsName x) -> do
+          when (isNumericLike x) $ do
+            raiseError m $ "`" <> x <> "` reads as a numeric literal and cannot be used as a name"
           return (k, x, cont)
     _ -> do
       tmp <- liftIO $ Gensym.newTextForHole (H.gensymHandle h)
@@ -1178,34 +1191,47 @@ bind' mustIgnoreRelayedVars loc endLoc (m, _, x, c1, c2, t) e cont =
       cont
       endLoc
 
-splitIntrospectiveClauses :: Hint -> T.Text -> [(Maybe T.Text, C, a)] -> App (a, [a])
+splitIntrospectiveClauses :: Hint -> T.Text -> [(RT.IntrospectClauseKey, C, a)] -> App (a, [a])
 splitIntrospectiveClauses m value clauseList =
   case clauseList of
     [] ->
       raiseError m $ "This term does not support `" <> value <> "`."
-    (Just key, _, clause) : rest
+    ((_, Just key), _, clause) : rest
       | key == value ->
           return (clause, map (\(_, _, dropped) -> dropped) rest)
       | otherwise -> do
           (selected, droppedRest) <- splitIntrospectiveClauses m value rest
           return (selected, clause : droppedRest)
-    (Nothing, _, clause) : rest ->
+    ((_, Nothing), _, clause) : rest ->
       return (clause, map (\(_, _, dropped) -> dropped) rest)
+
+ensureIntrospectiveClauseSanity :: S.Set T.Text -> S.Set T.Text -> [(RT.IntrospectClauseKey, C, a)] -> App ()
+ensureIntrospectiveClauseSanity valueSet foundSet clauseList =
+  case clauseList of
+    [] ->
+      return ()
+    ((mKey, mValue), _, _) : rest -> do
+      let value = fromMaybe "default" mValue
+      when (isJust mValue && not (S.member value valueSet)) $ do
+        raiseError mKey $ "No such introspective value is defined: " <> value
+      when (S.member value foundSet) $ do
+        raiseError mKey $ "Found a duplicate introspective value: " <> value
+      ensureIntrospectiveClauseSanity valueSet (S.insert value foundSet) rest
 
 markDroppedClause :: (a -> App b) -> a -> App ()
 markDroppedClause interpret clause =
   catchError (void $ interpret clause) (const $ return ())
 
-getIntrospectiveValue :: H.Handle -> Hint -> T.Text -> App T.Text
+getIntrospectiveValue :: H.Handle -> Hint -> T.Text -> App (T.Text, S.Set T.Text)
 getIntrospectiveValue h m key = do
   let p = Platform.getPlatform (H.platformHandle h)
   case key of
     "target-arch" ->
-      return $ Arch.reify (Platform.arch p)
+      return (Arch.reify (Platform.arch p), S.fromList $ map Arch.reify [minBound .. maxBound])
     "target-os" ->
-      return $ OS.reify (Platform.os p)
+      return (OS.reify (Platform.os p), S.fromList $ map OS.reify [minBound .. maxBound])
     _ ->
-      raiseError m $ "No such introspective value is defined: " <> key
+      raiseError m $ "No such introspective key is defined: " <> key
 
 foldIf ::
   Hint ->
@@ -1424,7 +1450,7 @@ constructEitherBinder h m mx m1 pat tmpVar cont = do
 
 discernIdent :: Hint -> H.Handle -> RawIdent -> App (Hint, (Hint, Ident))
 discernIdent mUse h x =
-  case lookup x (H.nameEnv h) of
+  case Map.lookup x (H.nameEnv h) of
     Nothing ->
       raiseError mUse $ "Undefined variable: " <> x
     Just (mDef, x', _, stage) -> do
@@ -1524,7 +1550,7 @@ discernTypeBinderWithDefaultArgs h binder endLoc =
       return ([], h)
     ((mx, k, x, _, _, t), defaultValue) : xts -> do
       t' <- discernType h t
-      defaultValue' <- discern h {H.nameEnv = []} defaultValue
+      defaultValue' <- discern h {H.nameEnv = emptyNameEnv} defaultValue
       x' <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) x
       h' <- extendTypeVar h mx x'
       (xts', h'') <- discernTypeBinderWithDefaultArgs h' xts endLoc
@@ -1656,6 +1682,8 @@ discernPattern h layer stage (m, pat) = do
               when (VK.isExp k) $
                 raiseError m "Numeric literal cannot be marked with `!`"
               return ((m, PAT.Literal (LI.Int i)), [])
+            ParsedNumericLiteral (FloatingLiteral _) ->
+              raiseError m $ "A floating-point literal cannot be used as a pattern: `" <> x <> "`"
             InvalidNumericLiteral numericClass ->
               raiseInvalidNumericLiteral m numericClass x
             _
@@ -1759,7 +1787,7 @@ locatorToTypeVar m text = do
 
 getLayer :: Hint -> H.Handle -> Ident -> App Layer
 getLayer m h x =
-  case lookup (Ident.toText x) (H.nameEnv h) of
+  case Map.lookup (Ident.toText x) (H.nameEnv h) of
     Nothing ->
       raiseCritical m $ "Scene.Parse.Discern.getLayer: Undefined variable: " <> Ident.toText x
     Just (_, _, l, _) -> do
@@ -1836,6 +1864,20 @@ ensureLocalDefStage m h kind =
 asOpaqueValue :: RT.RawTerm -> RT.RawTerm
 asOpaqueValue e@(m :< _) =
   m :< RT.Magic [] (RT.OpaqueValue [] ([], (e, [])))
+
+ensureNoDuplicateForeignName :: H.Handle -> S.Set EN.ExternalName -> [RawForeignItemF a] -> App ()
+ensureNoDuplicateForeignName h foundNameSet itemList =
+  case itemList of
+    [] ->
+      return ()
+    RawForeignItemF m name _ _ _ _ _ : rest -> do
+      mDef <- liftIO $ PreDecl.lookupMaybe (H.preDeclHandle h) name
+      when (isJust mDef || S.member name foundNameSet) $ do
+        raiseError m $ "`" <> EN.reify name <> "` is already declared"
+      mExposed <- liftIO $ PreDecl.lookupExposed (H.preDeclHandle h) name
+      when (isJust mExposed) $ do
+        raiseError m $ "`" <> EN.reify name <> "` is already exposed"
+      ensureNoDuplicateForeignName h (S.insert name foundNameSet) rest
 
 interpretForeign :: H.Handle -> [RawForeignItemF WT.WeakType] -> IO [WT.WeakForeign]
 interpretForeign h foreignItemList = do

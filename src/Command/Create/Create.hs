@@ -34,8 +34,9 @@ new remarkCfg loggerHandle saveModuleHandle = do
 create :: Handle -> Config -> App ()
 create h cfg = do
   newModule <- Create.constructDefaultModule (moduleName cfg) (targetName cfg)
+  coreLocation <- Fetch.getCoreLocation
   Create.createNewProject (createHandle h) (moduleName cfg) newModule
   h' <- liftIO $ Global.new (remarkCfg h) (Just $ moduleLocation newModule) Nothing
-  Fetch.insertCoreDependency (Fetch.new h')
+  Fetch.insertCoreDependency (Fetch.new h') coreLocation
   h'' <- liftIO $ Global.new (remarkCfg h) (Just $ moduleLocation newModule) Nothing
   void $ Check.checkAllOrFail (Check.new h'') Nothing

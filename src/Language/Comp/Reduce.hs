@@ -143,22 +143,19 @@ reduceOutputProvide h dest sizeComp result = do
   case result of
     C.OutputRequest _ f args ->
       reduce h $ C.PiElimDownElim False f (dest : args)
-    C.UpElim flag x e1 e2 ->
-      reduce h $ C.UpElim flag x e1 (C.OutputProvide dest sizeComp e2)
-    C.SigmaElim shouldDeallocate slotIndex layout ys v e ->
-      reduce h $ C.SigmaElim shouldDeallocate slotIndex layout ys v (C.OutputProvide dest sizeComp e)
-    C.Free x size e ->
-      reduce h $ C.Free x size (C.OutputProvide dest sizeComp e)
+    C.UpElim flag x e1 e2 -> do
+      e2' <- reduceOutputProvide h dest sizeComp e2
+      return $ C.UpElim flag x e1 e2'
+    C.SigmaElim shouldDeallocate slotIndex layout ys v e -> do
+      e' <- reduceOutputProvide h dest sizeComp e
+      return $ C.SigmaElim shouldDeallocate slotIndex layout ys v e'
+    C.Free x size e -> do
+      e' <- reduceOutputProvide h dest sizeComp e
+      return $ C.Free x size e'
     C.EnumElim fvInfo disc defaultBranch caseList -> do
-      let wrap branch = C.OutputProvide dest sizeComp branch
-      let rewritten =
-            C.EnumElim
-              fvInfo
-              disc
-              (wrap defaultBranch)
-              (map (fmap wrap) caseList)
-      refreshed <- Subst.refresh (substHandle h) rewritten
-      reduce h refreshed
+      defaultBranch' <- reduceOutputProvide h dest sizeComp defaultBranch
+      caseList' <- mapM (traverse (reduceOutputProvide h dest sizeComp)) caseList
+      Subst.refresh (substHandle h) $ C.EnumElim fvInfo disc defaultBranch' caseList'
     C.Unreachable ->
       return C.Unreachable
     _ ->
@@ -172,11 +169,11 @@ reduceUpElim h isReducible x e1 e2 = do
           let h' = unionSubst h $ IntMap.singleton (Ident.toInt x) v
           reduce h' e2
     C.UpElim isReducible' y ey1 ey2 -> do
-      e2' <- reduce h e2
-      reduceUpElim h isReducible' y ey1 $ C.UpElim isReducible x ey2 e2'
+      e' <- reduceUpElim h isReducible x ey2 e2
+      return $ C.UpElim isReducible' y ey1 e'
     C.SigmaElim shouldDeallocate slotIndex layout ys vy ey -> do
-      e2' <- reduce h e2
-      reduceSigmaElim h shouldDeallocate slotIndex layout ys vy $ C.UpElim isReducible x ey e2'
+      e' <- reduceUpElim h isReducible x ey e2
+      return $ C.SigmaElim shouldDeallocate slotIndex layout ys vy e'
     C.Unreachable ->
       return C.Unreachable
     _ -> do

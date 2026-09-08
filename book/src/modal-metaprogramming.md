@@ -230,16 +230,16 @@ unquote {foo(quote {bar}, quote {baz})[width := quote {80}]}
 A `trope` groups custom specializations of top-level `define-meta` functions:
 
 ```neut
-define-meta print<a>(x: '&a) -> 'unit {
+define-meta describe<a>(x: 'a) -> 'unit {
   quote {print("<value>")}
 }
 
 trope terse {
-  define-meta print<bool>(x: '&bool) -> 'unit { // a := bool
+  define-meta describe<bool>(x: 'bool) -> 'unit { // a := bool
     quote {print("<bool>")}
   }
 
-  define-meta print<int>(x: '&int) -> 'unit { // a := int
+  define-meta describe<int>(x: 'int) -> 'unit { // a := int
     quote {print("<int>")}
   }
 
@@ -251,12 +251,12 @@ The `define-meta` entries in a `trope` are used only where the `trope` is enable
 
 ```neut
 define example() -> unit {
-  print::(True); // -> "<value>"
+  describe::(True); // -> "<value>"
   let _ = {
     invoke terse;
-    print::(True) // -> "<bool>"
+    describe::(True) // -> "<bool>"
   };
-  print::(True) // -> "<value>"
+  describe::(True) // -> "<value>"
 }
 ```
 
@@ -319,7 +319,7 @@ Sometimes you want to embed a compile-time calculation result into code without 
 define-meta make-message<a>() -> 'unit {
   let t = magic show-type(a);
   quote {
-    print(unquote {promote {t}});
+    print(from-text(unquote {promote {t}}));
     Unit
   }
 }

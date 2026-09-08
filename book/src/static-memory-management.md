@@ -476,11 +476,13 @@ Note that a call that supplies a `~` argument is never a tail call, since the re
 A mark moves the content of a cell from one side of a call to the other: `+` takes an argument's content into the callee, and `->>` hands a result's content back to the caller. A type whose values have no such content can use neither mark:
 
 ```neut
-define want-int(+n: int) -> int { // error: a primitive type cannot be stored inline
+// error
+define want-int(+n: int) -> int {
   n
 }
 
-define produce-int() ->> int { // error: a primitive type cannot be stored inline
+// error
+define produce-int() ->> int {
   42
 }
 ```
@@ -512,7 +514,7 @@ Each call that instantiates a `sized` variable is checked against the type it su
 Inside `consume`, `a` is known to own a cell, so `x` can be passed on through another `+` slot. Without `sized`, the same call is rejected, since nothing guarantees that `a` owns a cell:
 
 ```neut
-// error: the type variable `a` is not declared `sized`
+// error
 define forward<a>(x: a, f: (a) -> int) -> int {
   consume(~x, f)
 }

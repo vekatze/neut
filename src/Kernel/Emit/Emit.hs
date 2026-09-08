@@ -93,8 +93,8 @@ emitModuleHeader h = do
   ["target triple = \"" <> TE.encodeUtf8Builder (T.pack targetTriple) <> "\""]
 
 emitLowCodeInfo :: Handle -> LC.LowCodeInfo -> IO ([Builder], [Builder])
-emitLowCodeInfo h (declEnv, defList, staticTextList, staticDataList, exportList) = do
-  let declStrList = emitDeclarations h declEnv
+emitLowCodeInfo h (declEnv, globalEnv, defList, staticTextList, staticDataList, exportList) = do
+  let declStrList = emitDeclarations h declEnv ++ emitGlobalDeclarations globalEnv
   let staticTextList' = concatMap (emitStaticText (getDataSize h)) staticTextList
   let staticDataList' = map (emitStaticData (getDataSize h)) staticDataList
   defStrList <- concat <$> mapM (emitDefinitions h) defList
@@ -102,8 +102,8 @@ emitLowCodeInfo h (declEnv, defList, staticTextList, staticDataList, exportList)
   return (declStrList <> staticTextList' <> staticDataList', defStrList <> exportStrList)
 
 emitExport :: Handle -> LC.ExportInfo -> [Builder]
-emitExport h (EN.ExternalName extName, dd, domList, cod) = do
-  let name' = TE.encodeUtf8Builder extName
+emitExport h (extName, dd, domList, cod) = do
+  let name' = EN.toBuilder extName
   let argList = map (\i -> "%a" <> intDec i) [0 .. length domList - 1]
   let params = unwordsC (zipWith (\t arg -> emitLowType t <> " " <> arg) domList argList)
   let trailingArgs = replicate LC.internalTrailingArgCount (emitLowType LT.slotLowType <> " 0")
@@ -112,11 +112,11 @@ emitExport h (EN.ExternalName extName, dd, domList, cod) = do
   let exportAttributes =
         case getArch h of
           Arch.Wasm32 ->
-            ["\"wasm-export-name\"=\"" <> name' <> "\""]
+            ["\"wasm-export-name\"=\"" <> TE.encodeUtf8Builder (EN.reify extName) <> "\""]
           _ ->
             []
   let attrs = mconcat $ map (" " <>) $ exportAttributes ++ archFunctionAttributes (getArch h)
-  [ "define " <> cod' <> " @\"" <> name' <> "\"(" <> params <> ")" <> attrs <> " {",
+  [ "define " <> cod' <> " @" <> name' <> "(" <> params <> ")" <> attrs <> " {",
     "  %ret = tail call fastcc " <> cod' <> " @" <> DD.toBuilder dd <> "(" <> callArgs <> ")",
     "  ret " <> cod' <> " %ret",
     "}"
@@ -128,7 +128,7 @@ emitExportRoots exportList =
     [] ->
       []
     _ -> do
-      let names = map (\(EN.ExternalName extName, _, _, _) -> "ptr @\"" <> TE.encodeUtf8Builder extName <> "\"") exportList
+      let names = map (\(extName, _, _, _) -> "ptr @" <> EN.toBuilder extName) exportList
       let arrayType = "[" <> intDec (length exportList) <> " x ptr]"
       ["@llvm.used = appending global " <> arrayType <> " [" <> unwordsC names <> "], section \"llvm.metadata\""]
 
@@ -136,10 +136,14 @@ argcGlobalType :: LT.LowType
 argcGlobalType =
   LT.slotLowType
 
+argcGlobalBaseType :: BLT.BaseLowType
+argcGlobalBaseType =
+  BLT.slot
+
 emitArgDecl :: [Builder]
 emitArgDecl = do
-  let argc = emitGlobalExt unsafeArgcName argcGlobalType
-  let argv = emitGlobalExt unsafeArgvName LT.Pointer
+  let argc = emitGlobalExt (EN.ExternalName unsafeArgcName) argcGlobalBaseType
+  let argv = emitGlobalExt (EN.ExternalName unsafeArgvName) BLT.Pointer
   [argc, argv]
 
 emitArgDef :: DS.DataSize -> [Builder]
@@ -155,18 +159,18 @@ buildByteString =
 emitGlobal :: DS.DataSize -> T.Text -> LT.LowType -> LC.Value -> Builder
 emitGlobal baseSize name lt v =
   "@"
-    <> TE.encodeUtf8Builder name
+    <> EN.toBuilder (EN.ExternalName name)
     <> " = global "
     <> emitLowType lt
     <> " "
     <> emitValue baseSize v
 
-emitGlobalExt :: T.Text -> LT.LowType -> Builder
+emitGlobalExt :: EN.ExternalName -> BLT.BaseLowType -> Builder
 emitGlobalExt name lt =
   "@"
-    <> TE.encodeUtf8Builder name
+    <> EN.toBuilder name
     <> " = external global "
-    <> emitLowType lt
+    <> emitLowType (LT.fromBaseLowType lt)
 
 type StaticTextInfo = (T.Text, (Builder, Int))
 
@@ -270,6 +274,14 @@ emitDeclarations :: Handle -> DN.DeclEnv -> [Builder]
 emitDeclarations h declEnv = do
   map (declToBuilder h) $ List.sort $ HashMap.toList declEnv
 
+emitGlobalDeclarations :: LC.GlobalEnv -> [Builder]
+emitGlobalDeclarations globalEnv =
+  map (uncurry emitGlobalExt) $ List.sort $ HashMap.toList $ foldr HashMap.delete globalEnv compilerGlobalNameList
+
+compilerGlobalNameList :: [EN.ExternalName]
+compilerGlobalNameList =
+  [EN.ExternalName unsafeArgcName, EN.ExternalName unsafeArgvName]
+
 emitDefinitions :: Handle -> LC.Def -> IO [Builder]
 emitDefinitions h (name, LC.DefContent {codType = codType, args = args, body = body}) = do
   definitionGensymHandle <- Gensym.createHandle
@@ -288,11 +300,7 @@ emitMain h (LC.DefContent {codType = codType, args = args, body = body}) = do
 
 mainSymbol :: Arch.Arch -> Builder
 mainSymbol arch =
-  case arch of
-    Arch.Wasm32 ->
-      "__main_argc_argv"
-    _ ->
-      "main"
+  L.byteString $ TE.encodeUtf8 $ Arch.entrySymbol arch
 
 getArch :: Handle -> Arch.Arch
 getArch h =

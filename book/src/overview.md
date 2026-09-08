@@ -20,16 +20,16 @@ define hello() -> unit {
 
 // an algebraic data type
 data my-list(a) {
-| Nil
-| Cons(a, my-list(a))
+| My-Nil
+| My-Cons(a, my-list(a))
 }
 
 // a recursive function with pattern matching
 define foo<a>(xs: my-list(a)) -> int {
   match xs {
-  | Nil =>
+  | My-Nil =>
     0
-  | Cons(_, ys) =>
+  | My-Cons(_, ys) =>
     let my-message = "hey\n";
     print(my-message);
     add-int(1, foo(ys))

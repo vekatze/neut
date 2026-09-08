@@ -12,6 +12,7 @@ import CodeParser.Parser
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.Trans
+import Data.Set qualified as S
 import Data.Text qualified as T
 import Kernel.Parse.Internal.RawTerm
 import Language.Common.BaseName qualified as BN
@@ -441,7 +442,7 @@ parseNominalData h = do
 parseDataArgs :: Handle -> Parser (Maybe (RT.Args RT.RawType))
 parseDataArgs h = do
   choice
-    [ Just <$> try (seriesParen $ preBinder h SourceInadmissible),
+    [ Just <$> seriesParen (preBinder h SourceInadmissible),
       return Nothing
     ]
 
@@ -452,6 +453,8 @@ parseDefineDataClause h = do
   unless (isConsName (BN.reify name)) $ do
     lift $ raiseError loc "The name of a constructor must be capitalized"
   (expArgs, endLoc, c2) <- parseConsArgs h
+  forM_ expArgs $ \fields ->
+    lift $ ensureArgumentLinearity S.empty $ map (\(_, (mx, _, x, _, _, _)) -> (mx, x)) $ SE.extract fields
   return (RawConsInfo {loc, name, expArgs, endLoc}, c1 ++ c2)
 
 parseConsArgs :: Handle -> Parser (Maybe (SE.Series (FieldHint, RawBinder RT.RawType)), Loc, C)

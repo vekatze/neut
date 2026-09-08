@@ -1,5 +1,6 @@
 module Language.RawTerm.RawTerm
   ( RawTerm,
+    IntrospectClauseKey,
     RawTermF (..),
     RawType,
     RawTypeF (..),
@@ -74,6 +75,9 @@ import SyntaxTree.Series qualified as SE
 type RawImpVar =
   (Hint, RawIdent, C)
 
+type IntrospectClauseKey =
+  (Hint, Maybe T.Text)
+
 data RawPiKind
   = PiNormal
   | PiDestPass
@@ -95,7 +99,7 @@ data RawTypeF a
   | Void
   | Option a
   | TyBrace C (a, C)
-  | TyIntrospect C T.Text C (SE.Series (Maybe T.Text, C, a))
+  | TyIntrospect C T.Text C (SE.Series (IntrospectClauseKey, C, a))
 
 type RawType = Cofree RawTypeF Hint
 
@@ -150,7 +154,7 @@ data RawTermF a
   | Seq (a, C) C a
   | SeqEnd a
   | Admit
-  | Introspect C T.Text C (SE.Series (Maybe T.Text, C, a))
+  | Introspect C T.Text C (SE.Series (IntrospectClauseKey, C, a))
   | Static C Hint StaticItem
   | String T.Text
   | With (KeywordClause a)

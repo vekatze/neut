@@ -27,6 +27,7 @@ module Kernel.Parse.Internal.RawTerm
     parseDefaultParams,
     keyword,
     baseName,
+    ensureArgumentLinearity,
   )
 where
 
@@ -96,7 +97,7 @@ rawExpr h = do
             "pin" ->
               rawTermPin h m c
             _ -> do
-              e1 <- rawTerm' h m headSymbol c
+              e1 <- rawTerm' Full h m headSymbol c
               choice
                 [ do
                     c1 <- delimiter ";"
@@ -117,13 +118,13 @@ rawTerm :: Handle -> Parser (RT.RawTerm, C)
 rawTerm h = do
   m <- getCurrentHint
   (headSymbol, c) <- symbol'
-  rawTerm' h m headSymbol c
+  rawTerm' Full h m headSymbol c
 
 rawTermPartial :: Handle -> Parser (RT.RawTerm, C)
 rawTermPartial h = do
   m <- getCurrentHint
   (headSymbol, c) <- symbol'
-  rawTermBase Partial h m headSymbol c
+  rawTerm' Partial h m headSymbol c
 
 rawType :: Handle -> Parser (RT.RawType, C)
 rawType h = do
@@ -163,8 +164,8 @@ rawType' h m headSymbol c =
           name <- interpretNameText m nameText
           rawTypeTyAppCont h (m :< RT.TyVar name, c')
 
-rawTerm' :: Handle -> Hint -> T.Text -> C -> Parser (RT.RawTerm, C)
-rawTerm' h m headSymbol c = do
+rawTerm' :: TermMode -> Handle -> Hint -> T.Text -> C -> Parser (RT.RawTerm, C)
+rawTerm' mode h m headSymbol c = do
   case headSymbol of
     "define" -> do
       rawTermDefine h LDK.Define m c
@@ -209,7 +210,7 @@ rawTerm' h m headSymbol c = do
     "admit" -> do
       rawTermAdmit m c
     _ -> do
-      rawTermBase Full h m headSymbol c
+      rawTermBase mode h m headSymbol c
 
 rawTermInvoke :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermInvoke h m c1 = do
@@ -608,14 +609,15 @@ rawTypeIntrospect h m c1 = do
   (clauseList, c) <- seriesBraceList $ rawTypeIntrospectiveClause h
   return (m :< RT.TyIntrospect c1 key c2 clauseList, c)
 
-rawTypeIntrospectiveClause :: Handle -> Parser ((Maybe T.Text, C, RT.RawType), C)
+rawTypeIntrospectiveClause :: Handle -> Parser ((RT.IntrospectClauseKey, C, RT.RawType), C)
 rawTypeIntrospectiveClause h = do
+  mKey <- getCurrentHint
   (s, cKey) <- symbol
   cArrow <- delimiter "=>"
   (body, c) <- rawType h
   if s /= "default"
-    then return ((Just s, cKey ++ cArrow, body), c)
-    else return ((Nothing, cKey ++ cArrow, body), c)
+    then return (((mKey, Just s), cKey ++ cArrow, body), c)
+    else return (((mKey, Nothing), cKey ++ cArrow, body), c)
 
 parseDef :: ArrowMode -> Handle -> Parser (a, C) -> Parser (RT.RawDef a, C)
 parseDef arrowMode h nameParser = do
@@ -1094,7 +1096,7 @@ rawTermMagicGetOriginColumn _ m c = do
 
 rawTermMatch :: Handle -> Hint -> C -> Bool -> Parser (RT.RawTerm, C)
 rawTermMatch h m c1 isNoetic = do
-  es <- bareSeries SE.Comma $ rawTermPartial h
+  es <- bareSeries1 SE.Comma $ rawTermPartial h
   (patternRowList, c) <- seriesBraceList $ rawTermPatternRow h (length $ SE.extract es)
   return (m :< RT.DataElim c1 isNoetic es patternRowList, c)
 
@@ -1416,6 +1418,7 @@ binderOrType h admission = do
       when (doubleColon `T.isInfixOf` nameText) $ do
         lift $ raiseError m "A parameter name cannot be qualified"
       ensureNotIdentityName m nameText
+      ensureNotNumericName m nameText
       x <-
         if nameText /= "_"
           then return nameText
@@ -1440,14 +1443,15 @@ rawTermIntrospect h m c1 = do
   (clauseList, c) <- seriesBraceList $ rawTermIntrospectiveClause h
   return (m :< RT.Introspect c1 key c2 clauseList, c)
 
-rawTermIntrospectiveClause :: Handle -> Parser ((Maybe T.Text, C, RT.RawTerm), C)
+rawTermIntrospectiveClause :: Handle -> Parser ((RT.IntrospectClauseKey, C, RT.RawTerm), C)
 rawTermIntrospectiveClause h = do
+  mKey <- getCurrentHint
   (s, cKey) <- symbol
   cArrow <- delimiter "=>"
   (body, c) <- rawExpr h
   if s /= "default"
-    then return ((Just s, cKey ++ cArrow, body), c)
-    else return ((Nothing, cKey ++ cArrow, body), c)
+    then return (((mKey, Just s), cKey ++ cArrow, body), c)
+    else return (((mKey, Nothing), cKey ++ cArrow, body), c)
 
 rawTermStatic :: Hint -> C -> Parser (RT.RawTerm, C)
 rawTermStatic m c1 = do
@@ -1538,6 +1542,7 @@ binderName h = do
   m <- getCurrentHint
   (x, c) <- symbol
   ensureNotIdentityName m x
+  ensureNotNumericName m x
   let k = maybe VK.normal (const VK.exponential) mBang
   let c' = fromMaybe [] mBang ++ c
   if x /= "_"
@@ -1584,12 +1589,18 @@ baseName = do
       lift $ throwError err
     Right name -> do
       ensureNotIdentityName m rawName
+      ensureNotNumericName m rawName
       return (name, c)
 
 ensureNotIdentityName :: Hint -> T.Text -> Parser ()
 ensureNotIdentityName m name = do
   when (name == BN.reify BN.this) $ do
     lift $ raiseError m "`this` is reserved"
+
+ensureNotNumericName :: Hint -> T.Text -> Parser ()
+ensureNotNumericName m name = do
+  when (isNumericLike name) $ do
+    lift $ raiseError m $ "`" <> name <> "` reads as a numeric literal and cannot be used as a name"
 
 keyword :: T.Text -> Parser C
 keyword expected = do

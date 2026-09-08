@@ -6,6 +6,7 @@ module Command.Format.Format
 where
 
 import App.App (App)
+import Command.Common.Fetch qualified as Fetch
 import Command.Common.Format qualified as Format
 import CommandParser.Config.Format
 import Console.FormatMode (FormatMode (..))
@@ -35,6 +36,7 @@ new globalHandle = do
 
 format :: Handle -> Config -> App ()
 format h cfg = do
+  setup h
   pathList <- getTargetPathList cfg
   stdinPath <- mapM resolvePath (stdinFilePath cfg)
   let formatHandle = Format.new (globalHandle h)
@@ -55,6 +57,11 @@ format h cfg = do
       liftIO $ do
         mapM_ (TIO.putStrLn . getRelativePathFromModuleRoot mainModule . inject) changedPathList
         exitWith (ExitFailure 1)
+
+setup :: Handle -> App ()
+setup h = do
+  let fetchHandle = Fetch.new (globalHandle h)
+  Fetch.fetch fetchHandle $ Env.getMainModule (Global.envHandle (globalHandle h))
 
 data ItemPath
   = NeutPath (Path Abs File)

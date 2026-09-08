@@ -10,7 +10,7 @@ data OS
   = Linux
   | Darwin
   | Wasi
-  deriving (Eq)
+  deriving (Eq, Enum, Bounded)
 
 reify :: OS -> T.Text
 reify os =

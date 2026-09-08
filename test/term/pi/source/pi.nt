@@ -1,4 +1,5 @@
 import {
+  core::debug {assert},
   core::rc {rc},
   this::pi-keyword,
   this::pi-term,
@@ -68,7 +69,39 @@ define test-resource() -> unit {
   Unit
 }
 
+data functor(f: (type) -> type) {
+| Functor(map: <a, b>((a) -> b, f(a)) -> f(b))
+}
+
+define list-map<a, b>(!f: (a) -> b, xs: list(a)) -> list(b) {
+  match xs {
+  | Nil =>
+    Nil
+  | Cons(y, ys) =>
+    Cons(f(y), list-map(f, ys))
+  }
+}
+
+define increment-all<f: (type) -> type>(fu: functor(f), xs: f(int)) -> f(int) {
+  let Functor(map) = fu;
+  map((x) => {add-int(x, 1)}, xs)
+}
+
+define select<f: (type) -> type>(xs: f(int)) -> f(int) {
+  xs
+}
+
+define test-higher-kinded() -> unit {
+  pin ys = increment-all(Functor(list-map), List::[1, 2, 3]);
+  assert("a functor over list", eq-int(core::list::length(ys), 3));
+  pin zs = increment-all<list>(Functor(list-map), List::[1]);
+  assert("a functor over list, explicitly", eq-int(core::list::length(zs), 1));
+  pin ws = select<list>(List::[1, 2]);
+  assert("an explicit type constructor", eq-int(core::list::length(ws), 2));
+}
+
 define main() -> unit {
+  test-higher-kinded();
   test-syntax();
   test-resource();
   this::pi-term::test-syntax();

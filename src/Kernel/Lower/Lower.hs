@@ -56,6 +56,7 @@ import Language.Common.LowType qualified as LT
 import Language.Common.LowType.FromBaseLowType qualified as LT
 import Language.Common.PrimNumSize
 import Language.Common.PrimNumSize.ToInt
+import Language.Common.PrimNumSize.Wrap qualified as Wrap
 import Language.Common.SlotSize
 import Language.Common.PrimOp
 import Language.Common.PrimOp.ConvOp qualified as ConvOp
@@ -81,7 +82,9 @@ data Handle = Handle
     reduceHandle :: Reduce.Handle,
     substHandle :: Subst.Handle,
     declEnv :: IORef DN.DeclEnv,
+    globalEnv :: IORef LC.GlobalEnv,
     staticTextList :: IORef [(T.Text, (Builder, Int))],
+    staticTextCount :: IORef Int,
     staticDataMap :: IORef (Map.HashMap T.Text [LC.StaticMember]),
     definedNameSet :: IORef (S.Set DD.DefiniteDescription),
     referencedNameSet :: IORef (S.Set DD.DefiniteDescription),
@@ -112,7 +115,9 @@ new gensymHandle (Global.Handle {..}) traceConfig target defMap = do
   let substHandle = Subst.new gensymHandle
   let reduceHandle = Reduce.new substHandle gensymHandle defMap
   declEnv <- liftIO $ newIORef $ makeBaseDeclEnv baseSize (allocatorSpec allocator)
+  globalEnv <- liftIO $ newIORef Map.empty
   staticTextList <- liftIO $ newIORef []
+  staticTextCount <- liftIO $ newIORef 0
   staticDataMap <- liftIO $ newIORef Map.empty
   definedNameSet <- liftIO $ newIORef S.empty
   referencedNameSet <- liftIO $ newIORef S.empty
@@ -148,10 +153,11 @@ lowerEntryPoint h target stmtList = do
 summarize :: Handle -> [LC.Def] -> IO LC.LowCodeInfo
 summarize h stmtList = do
   declEnv <- readIORef $ declEnv h
+  globalEnv <- readIORef $ globalEnv h
   staticTextList <- readIORef $ staticTextList h
   staticDataMap <- readIORef $ staticDataMap h
   exportList <- readIORef $ exportListRef h
-  return (declEnv, stmtList, staticTextList, Map.toList staticDataMap, exportList)
+  return (declEnv, globalEnv, stmtList, staticTextList, Map.toList staticDataMap, exportList)
 
 optimize :: Handle -> LC.Comp -> IO LC.Comp
 optimize h = do
@@ -567,6 +573,7 @@ lowerCompPrimitive h codeOp k =
                 =<< uncast h resultVar tmpValue lowCod rest
         LM.Global name t -> do
           let t' = LT.fromBaseLowType t
+          liftIO $ modifyIORef' (globalEnv h) $ Map.insertWith (\_ old -> old) name t
           (resultVar, resultValue) <- liftIO $ newValueLocal h "result"
           rest <- sendResult k LT.slotLowType resultValue
           uncast h resultVar (LC.VarExternal name) t' rest
@@ -665,29 +672,20 @@ allocateCell h resultVar byteSize cont =
 
 createCell :: Handle -> Ident -> CL.CellLayout -> [C.Value] -> LC.Comp -> App LC.Comp
 createCell h resultVar layout ds cont = do
+  let slots = CL.cellSlots layout
+  let widths = map (widthLowType . snd) slots
+  (elemVars, elemValues) <- mapAndUnzipM (const $ liftIO $ newValueLocal h "base") ds
   (xs, vs) <- mapAndUnzipM (const $ liftIO $ newValueLocal h "item") ds
   (cellVar, cellValue) <- liftIO $ newValueLocal h "cell"
-  let slots = CL.cellSlots layout
-  allocateCell h cellVar (CL.cellByteSize layout)
+  lowerAndCastValues h (zip elemVars (zip ds widths))
+    =<< allocateCell h cellVar (CL.cellByteSize layout)
     =<< return . fieldPointers (zip xs (map fst slots)) cellValue
-    =<< storeElements h cellValue (zip vs (zip ds (map (widthLowType . snd) slots)))
+    =<< return . storeElements (zip3 widths elemValues vs)
     =<< uncast h resultVar cellValue LT.Pointer cont
 
-storeElements ::
-  Handle ->
-  LC.Value -> -- base pointer
-  [(LC.Value, (C.Value, LT.LowType))] ->
-  LC.Comp ->
-  App LC.Comp
-storeElements h basePointer values cont =
-  case values of
-    [] ->
-      return cont
-    (elemPtr, (value, valueType)) : ids -> do
-      (castVar, castValue) <- liftIO $ newValueLocal h "base"
-      lowerValueLetCast h castVar value valueType
-        =<< return . store valueType castValue elemPtr
-        =<< storeElements h basePointer ids cont
+storeElements :: [(LT.LowType, LC.Value, LC.Value)] -> LC.Comp -> LC.Comp
+storeElements values cont =
+  foldr (\(valueType, value, elemPtr) -> store valueType value elemPtr) cont values
 
 store :: LT.LowType -> LC.Value -> LC.Value -> LC.Comp -> LC.Comp
 store lowType value pointer =
@@ -735,7 +733,7 @@ lowerValue h resultVar v cont =
     C.SigmaIntro layout ds ->
       createCell h resultVar layout ds cont
     C.Int size l -> do
-      uncast h resultVar (LC.Int l) (LT.PrimNum $ PT.Int size) cont
+      uncast h resultVar (LC.Int (Wrap.signedOf size l)) (LT.PrimNum $ PT.Int size) cont
     C.Float size f -> do
       uncast h resultVar (LC.Float size f) (LT.PrimNum $ PT.Float size) cont
 
@@ -813,7 +811,7 @@ hasStaticData h name = do
 
 registerStaticBytes :: Handle -> BS.ByteString -> IO T.Text
 registerStaticBytes h bytes = do
-  i <- Gensym.newCount (gensymHandle h)
+  i <- atomicModifyIORef' (staticTextCount h) $ \count -> (count + 1, count)
   let name = "bytes;" <> T.pack (show i)
   let encodedBytes = foldMap (\w -> "\\" <> word8HexFixed w) (BS.unpack bytes)
   insertStaticText h name encodedBytes (BS.length bytes)

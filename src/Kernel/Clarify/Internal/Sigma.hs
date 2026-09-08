@@ -273,8 +273,10 @@ sigmaData h shape resourceHandler dataInfo arg = do
   case dataInfo of
     [] ->
       return $ C.UpIntro arg
-    [info] ->
-      resourceHandler info arg
+    [info] -> do
+      localName <- Gensym.newIdentFromText (gensymHandle h) "local"
+      body <- resourceHandler info (C.VarLocal localName)
+      return $ C.UpElim False localName (C.UpIntro arg) body
     _ -> do
       let discList' = map (discriminantToEnumCase . discriminant) dataInfo
       localName <- Gensym.newIdentFromText (gensymHandle h) "local"

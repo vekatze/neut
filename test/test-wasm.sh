@@ -81,12 +81,15 @@ for target_dir in "$@"; do
         fi
         exit 0
       fi
-      $NEUT build "$name-wasm" --report none --execute > /dev/null
+      $NEUT build "$name-wasm" --report none --execute > /dev/null 2>&1
       output=$($NEUT build "$name-wasm" --report none --execute 2>&1 1> actual-wasm)
       last_exit_code=$?
       if [ $last_exit_code -ne 0 ]; then
         printf "\033[1;31merror:\033[0m a test failed: $name\n$output\n"
         exit_code=$last_exit_code
+      elif [ -n "$output" ]; then
+        printf "\033[1;31merror:\033[0m found unexpected output on standard error in: $name\n$output\n"
+        exit_code=1
       fi
       mismatch=$(diff expected actual-wasm 2>&1)
       last_exit_code=$?

@@ -45,12 +45,15 @@ for target_dir in "$@"; do
       exit_code=0
       rm -rf ./cache
       $NEUT clean
-      ASAN_OPTIONS=detect_leaks=1 $NEUT build $(basename $i) --report none --execute > /dev/null
+      ASAN_OPTIONS=detect_leaks=1 $NEUT build $(basename $i) --report none --execute > /dev/null 2>&1
       output=$(ASAN_OPTIONS=detect_leaks=1 $NEUT build $(basename $i) --report none --execute 2>&1 1> actual)
       last_exit_code=$?
       if [ $last_exit_code -ne 0 ]; then
         printf "\033[1;31merror:\033[0m a test failed: $(basename $i)\n$output\n"
         exit_code=$last_exit_code
+      elif [ -n "$output" ]; then
+        printf "\033[1;31merror:\033[0m found unexpected output on standard error in: $(basename $i)\n$output\n"
+        exit_code=1
       fi
       mismatch=$(diff expected actual 2>&1)
       last_exit_code=$?
