@@ -1117,15 +1117,16 @@ Default arguments can't be used in `nominal`.
 
 ## `foreign`
 
-`foreign` declares functions that are defined in linked objects. It should look like the following:
+`foreign` declares functions and variables that are defined in linked objects. It should look like the following:
 
 ```neut
 foreign {
   neut_myapp_v1_add_const(int) -> int,
+  neut_myapp_v1_counter: int,
 }
 ```
 
-Foreign functions declared here can be called by using `magic external(..)`.
+An entry of the form `name(t1, ..., tn) -> t` declares a function, and an entry of the form `name: t` declares a variable. Both are used by `magic external`.
 
 Suppose that you have a C source file with the following definition:
 
@@ -1210,6 +1211,28 @@ define print-raw(fmt: pointer, len: int, val: pointer) -> c-int {
   //                        passing variadic arguments with types
 }
 ```
+
+A foreign variable is declared by writing its type after the name:
+
+```c
+// counter.c
+
+int64_t neut_myapp_v1_counter = 0;
+```
+
+```neut
+foreign {
+  neut_myapp_v1_counter: int,
+}
+
+define get-counter() -> int {
+  magic external neut_myapp_v1_counter
+}
+```
+
+`magic external name` on a variable reads that variable, just as `magic external func(..)` calls a function. The result has the declared type. A foreign variable can only be read; to write one, declare a function that does so.
+
+The type of a foreign variable must be a term that compiles to one of `int{N}`, `float{N}`, or `pointer` during compilation.
 
 ## `expose`
 

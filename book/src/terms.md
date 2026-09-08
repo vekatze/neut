@@ -2890,7 +2890,7 @@ magic external func-name(e1, ..., en)
 
 magic external func-name(e1, ..., en)(lowtype-1 vararg-1, ..., lowtype-n vararg-n)
 
-magic global(symbol-name, lowtype)
+magic external var-name
 
 magic call-type(some-type, switch, arg, extra)
 
@@ -2984,9 +2984,7 @@ These forms can only be used at stage 1 or above. The compiler reports an error 
 
 `magic external func(e1, ..., en)(lowtype1 e{n+1}, ..., lowtypem e{n+m})` can also be used to call variadic foreign functions like `printf` in C.
 
-### Semantics (global)
-
-`magic global("name", lowtype)` refers to the global variable `name` defined in a linked object. A `foreign` declares the functions of such an object, and this form reaches its variables. The result is the address of the variable, read as a value of `lowtype`, so `lowtype` is normally `pointer`.
+`magic external var` reads the foreign variable `var`. Its type is the type given to `var` in `foreign`.
 
 ### Semantics (call-type)
 
@@ -3126,10 +3124,9 @@ Since clauses are represented as an ordinary `list`, variables used in multiple 
 Γ ⊢ magic external func(e1, ..., en)(t{n+1} e{n+1}, ..., t{n+m} e{n+m}): t
 
 
-(t is a lowtype)
-(name is a global variable in a linked object)
+(var is a foreign variable of type t)
 ------------------------------------------------------
-Γ ⊢ magic global("name", t): t
+Γ ⊢ magic external var: t
 
 
 Γ ⊢ t: type
