@@ -17,6 +17,39 @@ define loop(!f: (int) -> ?int) -> unit {
   k(5)
 }
 
+data chain(a) {
+| Stop
+| Link(a, chain(a))
+}
+
+define build(n: int) -> chain(int) {
+  if le-int(n, 0) {
+    Stop
+  } else {
+    Link(n, build(sub-int(n, 1)))
+  }
+}
+
+define unwrap-fresh(i: int) -> int {
+  let junk = build(1);
+  let _ = junk;
+  match Link(add-int(i, 1), Stop) {
+  | Link(v, rest) =>
+    let _ = rest;
+    v
+  | Stop =>
+    0
+  }
+}
+
+define sum-fresh(i: int, acc: int) -> int {
+  if ge-int(i, 1000) {
+    acc
+  } else {
+    sum-fresh(add-int(i, 1), add-int(acc, unwrap-fresh(i)))
+  }
+}
+
 define main() -> unit {
   loop((x) => {
     if eq-int(x, 0) {
@@ -24,5 +57,6 @@ define main() -> unit {
     } else {
       Right(sub-int(x, 1))
     }
-  })
+  });
+  print-int-line(sum-fresh(0, 0));
 }

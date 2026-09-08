@@ -729,7 +729,7 @@ clarifyTerm h context term =
       let mxts = map (\x -> (m, VK.normal, x, m :< TM.Tau)) xs
       es' <- mapM (clarifyTerm h context) es
       (tree', _) <- clarifyDecisionTree h (extendContext mxts context) isNoetic IntMap.empty tree
-      return $ Utility.bindLet (zip xs es') tree'
+      return $ Utility.bindLetWithReducibility False (zip xs es') tree'
     _ :< TM.BoxIntro _ letSeq e -> do
       embody h context letSeq e
     _ :< TM.BoxIntroLift _ e -> do
