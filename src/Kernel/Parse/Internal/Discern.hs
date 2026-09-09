@@ -536,7 +536,15 @@ discern h term =
       let defaultArgs = mDefaultArgs <&> fmap (\(mx, k, c1, c2, e) -> (mx, k, c1, c2, quote e))
       discern h $ m :< RT.CodeElim [] [] (m :< RT.PiElim headTerm [] mImpArgs False [] args [] defaultArgs, [])
     m :< RT.PiElimMetaByKey name _ mImpArgs _ kvs -> do
-      let quote (mx, k, c1, c2, e@(me :< _)) = (mx, k, c1, c2, (me :< RT.CodeIntro RT.CodeVariantK [] [] (e, []), False))
+      let quote (mx, k, c1, c2, e@(me :< _)) =
+            RT.KeyValueArg
+              { RT.kvLoc = mx,
+                RT.kvKey = k,
+                RT.kvKeyComment = c1,
+                RT.kvValueComment = c2,
+                RT.kvPrevValue = Nothing,
+                RT.kvValue = (me :< RT.CodeIntro RT.CodeVariantK [] [] (e, []), False)
+              }
       let args = fmap quote kvs
       let call = m :< RT.PiElimByKey name [] mImpArgs False [] args Nothing
       discern h $ m :< RT.CodeElim [] [] (call, [])
@@ -1322,12 +1330,12 @@ discernPiElimByKeyPlain ::
   IsDestCall ->
   Name ->
   Maybe (SE.Series RT.RawType) ->
-  SE.Series (Hint, Key, C, C, RT.MarkedArg RT.RawTerm) ->
+  SE.Series (RT.KeyValueArg RT.RawTerm) ->
   App WT.WeakTerm
 discernPiElimByKeyPlain h m isDestCall name mImpArgs kvs = do
   (dd, (_, gn)) <- resolveName h m name
   _ :< func <- interpretGlobalName h m dd (GN.disableConstLikeFlag gn)
-  let (ks, vs) = unzip $ map (\(_, k, _, _, v) -> (k, v)) $ SE.extract kvs
+  let (ks, vs) = unzip $ map (\kv -> (RT.kvKey kv, RT.kvValue kv)) $ SE.extract kvs
   ensureFieldLinearity m ks S.empty S.empty
   (impKeys, expKeys, defaultKeys) <- KeyArg.lookup (H.keyArgHandle h) m dd
   when (any (`elem` impKeys) ks) $ do
@@ -1340,9 +1348,10 @@ discernPiElimByKeyPlain h m isDestCall name mImpArgs kvs = do
       return $ ImpArgs.FullySpecified impArgs'
   let keyMap = Map.fromList $ zip ks (repeat ())
   checkRedundancy m (expKeys ++ defaultKeys) keyMap
-  forM_ (SE.extract kvs) $ \(mKv, k, _, _, (_, isSourceArg)) ->
-    when (k `elem` defaultKeys && isSourceArg) $ do
-      raiseError mKv $ "The field `" <> k <> "` is a parameter with a default value, so it cannot be marked with `~`"
+  forM_ (SE.extract kvs) $ \kv -> do
+    let k = RT.kvKey kv
+    when (k `elem` defaultKeys && snd (RT.kvValue kv)) $ do
+      raiseError (RT.kvLoc kv) $ "The field `" <> k <> "` is a parameter with a default value, so it cannot be marked with `~`"
   vs' <- forM vs $ \(v, isSourceArg) -> do
     v' <- discern h v
     return (v', isSourceArg)
@@ -1357,13 +1366,13 @@ discernRecordUpdate ::
   Hint ->
   Name ->
   Maybe (SE.Series RT.RawType) ->
-  SE.Series (Hint, Key, C, C, RT.MarkedArg RT.RawTerm) ->
+  SE.Series (RT.KeyValueArg RT.RawTerm) ->
   (Hint, C, C, RT.RawTerm) ->
   App WT.WeakTerm
 discernRecordUpdate h m name mImpArgs kvs (mRest, _, _, restValue) = do
   let m' = blur m
   ResolvedCons {consDD, consSourceFlags} <- resolveConstructor h m' name
-  let specifiedKeys = map (\(_, k, _, _, _) -> k) $ SE.extract kvs
+  let specifiedKeys = map RT.kvKey $ SE.extract kvs
   (_, expKeys, _) <- KeyArg.lookup (H.keyArgHandle h) m' consDD
   let sourceFlagMap = Map.fromList $ zip expKeys consSourceFlags
   let sourceFlagOf key = Map.lookupDefault False key sourceFlagMap
@@ -1372,13 +1381,37 @@ discernRecordUpdate h m name mImpArgs kvs (mRest, _, _, restValue) = do
     return (key, value)
   let mRest' = blur mRest
   restType <- liftIO $ RT.createTypeHole (H.gensymHandle h) mRest'
-  let restPatternItems = map (\(key, value) -> (key, (mRest', [], (RP.Var VK.normal (Bare value), sourceFlagOf key)))) missingPairs
-  let restPattern = RP.Cons name [] (RP.Of $ SE.fromList SE.Brace SE.Comma restPatternItems)
+  let missingPatternItems =
+        map (\(key, value) -> (key, (mRest', [], (RP.Var VK.normal (Bare value), sourceFlagOf key)))) missingPairs
+  let prevValuePatternItems = mapMaybe (prevValuePatternItem sourceFlagOf) $ SE.extract kvs
+  let restPattern = RP.Cons name [] (RP.Of $ SE.fromList SE.Brace SE.Comma $ missingPatternItems ++ prevValuePatternItems)
   let patParam = (mRest', restPattern, [], [], restType)
-  let missingFields = map (\(key, value) -> (m', key, [], [], (m' :< RT.Var (Bare value), sourceFlagOf key))) missingPairs
-  let bodyFields = SE.fromList SE.Brace SE.Comma $ SE.extract kvs ++ missingFields
+  let missingFields = map (\(key, value) -> plainKeyValueArg m' key (m' :< RT.Var (Bare value)) (sourceFlagOf key)) missingPairs
+  let specifiedFields = map (\kv -> kv {RT.kvPrevValue = Nothing}) $ SE.extract kvs
+  let bodyFields = SE.fromList SE.Brace SE.Comma $ specifiedFields ++ missingFields
   let body = m :< RT.PiElimByKey name [] mImpArgs False [] bodyFields Nothing
   discern h $ m' :< RT.Let (RT.Plain False) [] patParam [] [] restValue [] fakeLoc [] body fakeLoc
+
+prevValuePatternItem ::
+  (Key -> IsSourceArg) ->
+  RT.KeyValueArg RT.RawTerm ->
+  Maybe (Key, (Hint, C, RP.MarkedPattern))
+prevValuePatternItem sourceFlagOf kv = do
+  prevValue <- RT.kvPrevValue kv
+  let key = RT.kvKey kv
+  let pat = RP.Var (RT.prevValueKind prevValue) (Bare (RT.prevValueName prevValue))
+  return (key, (RT.prevValueLoc prevValue, [], (pat, sourceFlagOf key)))
+
+plainKeyValueArg :: Hint -> Key -> RT.RawTerm -> IsSourceArg -> RT.KeyValueArg RT.RawTerm
+plainKeyValueArg m key value isSourceArg =
+  RT.KeyValueArg
+    { RT.kvLoc = m,
+      RT.kvKey = key,
+      RT.kvKeyComment = [],
+      RT.kvValueComment = [],
+      RT.kvPrevValue = Nothing,
+      RT.kvValue = (value, isSourceArg)
+    }
 
 discernLet ::
   H.Handle ->

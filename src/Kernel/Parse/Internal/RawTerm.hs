@@ -39,7 +39,7 @@ import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.Error.Class (throwError)
 import Control.Monad.Trans
-import Data.Maybe (fromMaybe, isJust)
+import Data.Maybe (fromMaybe, isJust, isNothing)
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Gensym.Handle qualified as Gensym
@@ -426,48 +426,81 @@ rawTermKeyValuePair h = do
         return ((m, key, c1, [], m :< RT.Var (Bare key)), [])
     ]
 
-rawTermMarkedKeyValuePair :: Handle -> Parser ((Hint, Key, C, C, RT.MarkedArg RT.RawTerm), C)
+rawTermMarkedKeyValuePair :: Handle -> Parser (RT.KeyValueArg RT.RawTerm, C)
 rawTermMarkedKeyValuePair h = do
   m <- getCurrentHint
   (isSourceArg, cSource) <- sourceArgMark
   (key, c1) <- symbol
   markedKeyValueCont h m key (cSource ++ c1) isSourceArg
 
-markedKeyValueCont :: Handle -> Hint -> Key -> C -> IsSourceArg -> Parser ((Hint, Key, C, C, RT.MarkedArg RT.RawTerm), C)
+markedKeyValueCont :: Handle -> Hint -> Key -> C -> IsSourceArg -> Parser (RT.KeyValueArg RT.RawTerm, C)
 markedKeyValueCont h m key c1 isSourceArg = do
-  choice
-    [ do
+  mPrevValue <- optional $ prevValueBinder h
+  let base =
+        RT.KeyValueArg
+          { RT.kvLoc = m,
+            RT.kvKey = key,
+            RT.kvKeyComment = c1,
+            RT.kvValueComment = [],
+            RT.kvPrevValue = mPrevValue,
+            RT.kvValue = (m :< RT.Var (Bare key), isSourceArg)
+          }
+  let parseValue = do
         c2 <- delimiter ":="
         (value, c) <- rawTerm h
-        return ((m, key, c1, c2, (value, isSourceArg)), c),
-      do
-        return ((m, key, c1, [], (m :< RT.Var (Bare key), isSourceArg)), [])
-    ]
+        return (base {RT.kvValueComment = c2, RT.kvValue = (value, isSourceArg)}, c)
+  case mPrevValue of
+    Just _ ->
+      parseValue
+    Nothing ->
+      choice [parseValue, return (base, [])]
+
+prevValueBinder :: Handle -> Parser RT.PrevValue
+prevValueBinder h = do
+  cAs <- keyword "as"
+  ((mx, k, x), cx) <- binderName h
+  return $
+    RT.PrevValue
+      { RT.prevValueLoc = mx,
+        RT.prevValueKind = k,
+        RT.prevValueName = x,
+        RT.prevValueKeywordComment = cAs,
+        RT.prevValueComment = cx
+      }
 
 extractRestArg ::
-  SE.Series (Hint, Key, C, C, RT.MarkedArg RT.RawTerm) ->
-  App (SE.Series (Hint, Key, C, C, RT.MarkedArg RT.RawTerm), Maybe (Hint, C, C, RT.RawTerm))
-extractRestArg fieldSeries =
-  extractRestArg' fieldSeries (SE.elems fieldSeries) [] Nothing
+  SE.Series (RT.KeyValueArg RT.RawTerm) ->
+  App (SE.Series (RT.KeyValueArg RT.RawTerm), Maybe (Hint, C, C, RT.RawTerm))
+extractRestArg fieldSeries = do
+  result@(fields, restArg) <- extractRestArg' fieldSeries (SE.elems fieldSeries) [] Nothing
+  when (isNothing restArg) $
+    forM_ (SE.extract fields) $ \field ->
+      forM_ (RT.kvPrevValue field) $ \prevValue ->
+        raiseError (RT.prevValueLoc prevValue) "`as` names the previous value of a field, so it can only be used in a record update"
+  return result
 
 extractRestArg' ::
-  SE.Series (Hint, Key, C, C, RT.MarkedArg RT.RawTerm) ->
-  [(C, (Hint, Key, C, C, RT.MarkedArg RT.RawTerm))] ->
-  [(C, (Hint, Key, C, C, RT.MarkedArg RT.RawTerm))] ->
+  SE.Series (RT.KeyValueArg RT.RawTerm) ->
+  [(C, RT.KeyValueArg RT.RawTerm)] ->
+  [(C, RT.KeyValueArg RT.RawTerm)] ->
   Maybe (Hint, C, C, RT.RawTerm) ->
-  App (SE.Series (Hint, Key, C, C, RT.MarkedArg RT.RawTerm), Maybe (Hint, C, C, RT.RawTerm))
+  App (SE.Series (RT.KeyValueArg RT.RawTerm), Maybe (Hint, C, C, RT.RawTerm))
 extractRestArg' fieldSeries elems acc restArg = do
   case elems of
     [] ->
       return (fieldSeries {SE.elems = reverse acc}, restArg)
-    (c, (m, "..", c1, c2, (value, isSourceArg))) : rest -> do
-      when isSourceArg $
-        raiseError m "The pseudo-field `..` names no parameter, so it cannot be marked with `~`"
-      case restArg of
-        Just (_, _, _, _) ->
-          raiseError m "The pseudo-field `..` can be specified at most once"
-        Nothing ->
-          extractRestArg' fieldSeries rest acc $ Just (m, c, c1 ++ c2, value)
+    (c, field) : rest
+      | RT.kvKey field == ".." -> do
+          let m = RT.kvLoc field
+          when (snd (RT.kvValue field)) $
+            raiseError m "The pseudo-field `..` names no parameter, so it cannot be marked with `~`"
+          forM_ (RT.kvPrevValue field) $ \prevValue ->
+            raiseError (RT.prevValueLoc prevValue) "The pseudo-field `..` names no field, so it cannot be given a previous value"
+          case restArg of
+            Just (_, _, _, _) ->
+              raiseError m "The pseudo-field `..` can be specified at most once"
+            Nothing ->
+              extractRestArg' fieldSeries rest acc $ Just (m, c, RT.kvKeyComment field ++ RT.kvValueComment field, fst (RT.kvValue field))
     entry : rest ->
       extractRestArg' fieldSeries rest (entry : acc) restArg
 
