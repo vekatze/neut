@@ -114,8 +114,8 @@ allocatorForeignList :: DS.DataSize -> AllocatorSpec -> [(AllocatorKind, F.Forei
 allocatorForeignList dataSize spec = do
   let word = BLT.PrimNum $ BPT.Int $ BPT.Explicit $ dataSizeToIntSize dataSize
   let ptr = BLT.Pointer
-  [ (Malloc, F.Foreign internalHint (EN.ExternalName $ mallocName spec) [word] (FCT.Cod ptr)),
-    (Calloc, F.Foreign internalHint (EN.ExternalName $ callocName spec) [word, word] (FCT.Cod ptr)),
-    (Realloc, F.Foreign internalHint (EN.ExternalName $ reallocName spec) [ptr, word] (FCT.Cod ptr)),
-    (Free, F.Foreign internalHint (EN.ExternalName $ freeName spec) [ptr] FCT.Void)
+  [ (Malloc, F.Foreign internalHint (EN.ExternalName $ mallocName spec) (F.Function [word] (FCT.Cod ptr))),
+    (Calloc, F.Foreign internalHint (EN.ExternalName $ callocName spec) (F.Function [word, word] (FCT.Cod ptr))),
+    (Realloc, F.Foreign internalHint (EN.ExternalName $ reallocName spec) (F.Function [ptr, word] (FCT.Cod ptr))),
+    (Free, F.Foreign internalHint (EN.ExternalName $ freeName spec) (F.Function [ptr] FCT.Void))
     ]

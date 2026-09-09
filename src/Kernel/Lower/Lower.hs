@@ -128,8 +128,12 @@ new gensymHandle (Global.Handle {..}) traceConfig target defMap = do
 
 makeBaseDeclEnv :: DS.DataSize -> AllocatorSpec -> DN.DeclEnv
 makeBaseDeclEnv dataSize spec = do
-  Map.fromList $ flip map (allocatorForeignList dataSize spec) $ \(_, F.Foreign _ name domList cod) -> do
-    (DN.Ext name, (domList, cod, DN.Fixed))
+  Map.fromList $ flip mapMaybe (allocatorForeignList dataSize spec) $ \(_, F.Foreign _ name sig) -> do
+    case sig of
+      F.Function domList cod ->
+        Just (DN.Ext name, (domList, cod, DN.Fixed))
+      F.Variable _ ->
+        Nothing
 
 lower :: Handle -> [C.CompStmt] -> [C.CompStmt] -> App LC.LowCode
 lower h stmtList auxStmtList = do
@@ -206,8 +210,12 @@ registerInternalNames h stmtList =
         modifyIORef' (definedNameSet h) $ S.insert name
         modifyIORef' (fileDefArityRef h) $ Map.insert name (length defArgs)
       C.Foreign foreignList ->
-        forM_ foreignList $ \(F.Foreign _ name domList cod) -> do
-          insDeclEnv' h (DN.Ext name) domList cod
+        forM_ foreignList $ \(F.Foreign _ name sig) -> do
+          case sig of
+            F.Function domList cod ->
+              insDeclEnv' h (DN.Ext name) domList cod
+            F.Variable t ->
+              modifyIORef' (globalEnv h) $ Map.insert name t
       C.Expose {} ->
         return ()
 
@@ -573,10 +581,12 @@ lowerCompPrimitive h codeOp k =
                 =<< uncast h resultVar tmpValue lowCod rest
         LM.Global name t -> do
           let t' = LT.fromBaseLowType t
-          liftIO $ modifyIORef' (globalEnv h) $ Map.insertWith (\_ old -> old) name t
+          liftIO $ modifyIORef' (globalEnv h) $ Map.insert name t
           (resultVar, resultValue) <- liftIO $ newValueLocal h "result"
+          (tmpVar, tmp) <- liftIO $ newValueLocal h "tmp"
           rest <- sendResult k LT.slotLowType resultValue
-          uncast h resultVar (LC.VarExternal name) t' rest
+          return . LC.Let tmpVar (LC.Load (LC.VarExternal name) t')
+            =<< uncast h resultVar tmp t' rest
         LM.OpaqueValue e -> do
           (resultVar, resultValue) <- liftIO $ newValueLocal h "result"
           rest <- sendResult k LT.slotLowType resultValue

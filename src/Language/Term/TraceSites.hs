@@ -277,7 +277,7 @@ describeMagic magic = do
         LM.External _ _ name _ _ ->
           "magic external " <> T.unpack (EN.reify name)
         LM.Global name _ ->
-          "magic global " <> T.unpack (EN.reify name)
+          "magic external " <> T.unpack (EN.reify name)
         LM.OpaqueValue {} ->
           "magic opaque-value"
         LM.CallType {} ->

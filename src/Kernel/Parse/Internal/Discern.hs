@@ -1069,10 +1069,12 @@ discernMagic h m magic =
             t' <- discernType h t
             return (arg', t')
       return $ M.WeakMagic $ M.LowMagic $ LM.External domList cod funcName args' varArgs'
-    RT.Global _ (_, (name, _)) (_, (t, _)) _ -> do
-      ensureRuntimeStage m h "`magic global`"
-      t' <- discernType h t
-      return $ M.WeakMagic $ M.LowMagic $ LM.Global name t'
+    RT.Global _ mUse name -> do
+      ensureRuntimeStage m h "`magic external`"
+      mDef <- PreDecl.lookup (H.preDeclHandle h) m name
+      liftIO $ Tag.insertExternalName (H.tagHandle h) mUse name mDef
+      liftIO $ Unused.deleteForeign (H.unusedHandle h) name
+      return $ M.WeakMagic $ M.LowMagic $ LM.Global name (m :< WT.Tau)
     RT.OpaqueValue _ (_, (e, _)) -> do
       ensureRuntimeStage m h "`magic opaque-value`"
       e' <- discern h e
@@ -1870,7 +1872,7 @@ ensureNoDuplicateForeignName h foundNameSet itemList =
   case itemList of
     [] ->
       return ()
-    RawForeignItemF m name _ _ _ _ _ : rest -> do
+    RawForeignItemF m name _ _ : rest -> do
       mDef <- liftIO $ PreDecl.lookupMaybe (H.preDeclHandle h) name
       when (isJust mDef || S.member name foundNameSet) $ do
         raiseError m $ "`" <> EN.reify name <> "` is already declared"
@@ -1884,12 +1886,19 @@ interpretForeign h foreignItemList = do
   mapM (interpretForeignItem h) foreignItemList
 
 interpretForeignItem :: H.Handle -> RawForeignItemF WT.WeakType -> IO WT.WeakForeign
-interpretForeignItem h (RawForeignItemF m name _ lts _ _ cod) = do
-  let lts' = SE.extract lts
+interpretForeignItem h (RawForeignItemF m name _ sig) = do
   Tag.insertExternalName (H.tagHandle h) m name m
   PreDecl.insert (H.preDeclHandle h) name m
   Unused.insertForeign (H.unusedHandle h) name m
-  return $ F.Foreign m name lts' cod
+  return $ F.Foreign m name (interpretForeignSignature sig)
+
+interpretForeignSignature :: RawForeignSignatureF WT.WeakType -> F.ForeignSignature WT.WeakType
+interpretForeignSignature sig =
+  case sig of
+    RawForeignFunction domList _ _ cod ->
+      F.Function (SE.extract domList) cod
+    RawForeignVariable _ t ->
+      F.Variable t
 
 selectDefaultKeyArgs :: [DefaultKey] -> Map.HashMap Key a -> DefaultArgs.DefaultArgs a
 selectDefaultKeyArgs defaultKeys kvs = do

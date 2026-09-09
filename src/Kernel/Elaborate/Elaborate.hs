@@ -390,10 +390,9 @@ elaborateStmt h stmt = do
       mapM_ (PublicSignature.checkGeist (globalHandle h) (Source.sourceModule $ currentSource h)) geistList'
       return ([], [])
     WeakStmtForeign foreignList -> do
-      foreignList' <- forM foreignList $ \(F.Foreign m externalName domList cod) -> do
-        domList' <- mapM (strictify h) domList
-        cod' <- mapM (strictify h) cod
-        return $ F.Foreign m externalName domList' cod'
+      foreignList' <- forM foreignList $ \(F.Foreign m externalName sig) -> do
+        sig' <- mapM (strictify h) sig
+        return $ F.Foreign m externalName sig'
       return ([StmtForeign foreignList'], [])
     WeakStmtExpose exportList -> do
       let exportList2 = map (\(m, dd, extName) -> (SavedHint m, dd, extName)) exportList
@@ -626,8 +625,8 @@ insertWeakStmt h stmt = do
     WeakStmtVariadic {} -> do
       return ()
     WeakStmtForeign foreignList ->
-      forM_ foreignList $ \(F.Foreign _ externalName domList cod) -> do
-        liftIO $ WeakDecl.insert (weakDeclHandle h) (DN.Ext externalName) domList cod
+      forM_ foreignList $ \(F.Foreign _ externalName sig) -> do
+        liftIO $ WeakDecl.insert (weakDeclHandle h) (DN.Ext externalName) sig
     WeakStmtExpose {} -> do
       return ()
     WeakStmtNamespace {} -> do

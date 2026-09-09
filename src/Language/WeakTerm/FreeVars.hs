@@ -155,8 +155,8 @@ freeVarsLowMagicTerm lowMagic =
       let argsVars = S.unions $ map freeVars args
       let varArgsVars = S.unions $ map (\(a, _) -> freeVars a) varArgs
       S.union argsVars varArgsVars
-    LM.Global {} ->
-      S.empty
+    LM.Global _ t ->
+      freeVarsType t
     LM.OpaqueValue e ->
       freeVars e
     LM.CallType _ arg1 arg2 arg3 ->

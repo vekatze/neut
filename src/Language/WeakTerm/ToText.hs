@@ -20,6 +20,7 @@ import Language.Common.CallConvSpec qualified as CCS
 import Language.Common.CallSite (IsSourceArg)
 import Language.Common.DecisionTree qualified as DT
 import Language.Common.DefiniteDescription qualified as DD
+import Language.Common.ExternalName qualified as EN
 import Language.Common.ForeignCodType qualified as FCT
 import Language.Common.HoleID qualified as HID
 import Language.Common.Ident
@@ -618,8 +619,8 @@ showLowMagic' h lowMagic =
         <> ": "
         <> codStr
         <> inParen allArgs
-    LM.Global name t ->
-      "magic global " <> T.pack (show name) <> ": " <> toTextType' h t
+    LM.Global name _ ->
+      "magic external " <> EN.reify name
     LM.OpaqueValue e ->
       "magic opaque" <> inParen (toTextIndented (Kit 0 False) e)
     LM.CallType func arg1 arg2 arg3 ->

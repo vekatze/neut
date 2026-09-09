@@ -889,7 +889,6 @@ rawTermMagic h m c = do
       rawTermMagicFree h m c,
       rawTermMagicExternal h m c,
       rawTermMagicOpaqueValue h m c,
-      rawTermMagicGlobal h m c,
       rawTermMagicCallType h m c,
       rawTermMagicInspectType h m c,
       rawTermMagicEqType h m c,
@@ -985,14 +984,18 @@ rawTermMagicExternal :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermMagicExternal h m c0 = do
   c1 <- keyword "external"
   mUse <- getCurrentHint
-  (extFunName, cExt) <- symbol
-  let extFunName' = EN.ExternalName extFunName
-  (es, c2) <- seriesParen (rawTerm h)
+  (extName, cExt) <- symbol
+  let extName' = EN.ExternalName extName
   choice
     [ do
-        (s, c) <- seriesParen (rawTermAndLowType h)
-        return (m :< RT.Magic c0 (RT.External c1 mUse extFunName' cExt es (Just (c2, s))), c),
-      return (m :< RT.Magic c0 (RT.External c1 mUse extFunName' cExt es Nothing), c2)
+        (es, c2) <- seriesParen (rawTerm h)
+        choice
+          [ do
+              (s, c) <- seriesParen (rawTermAndLowType h)
+              return (m :< RT.Magic c0 (RT.External c1 mUse extName' cExt es (Just (c2, s))), c),
+            return (m :< RT.Magic c0 (RT.External c1 mUse extName' cExt es Nothing), c2)
+          ],
+      return (m :< RT.Magic c0 (RT.Global c1 mUse extName'), cExt)
     ]
 
 rawTermAndLowType :: Handle -> Parser (RT.VarArg, C)
@@ -1001,15 +1004,6 @@ rawTermAndLowType h = do
   (t, c1) <- rawType h
   (e, c) <- rawTerm h
   return ((m, t, c1, e), c)
-
-rawTermMagicGlobal :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
-rawTermMagicGlobal h m c = do
-  rawTermMagicBase "global" $ do
-    (globalVarName, c3) <- string
-    c4 <- delimiter ","
-    lt <- rawType h
-    c5 <- optional $ delimiter ","
-    return $ \c1 c2 -> m :< RT.Magic c (RT.Global c1 (c2, (EN.ExternalName globalVarName, c3)) (c4, lt) c5)
 
 rawTermMagicOpaqueValue :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermMagicOpaqueValue h m c0 = do

@@ -181,9 +181,20 @@ parseForeign h = do
 parseForeignItem :: Handle -> Parser (RawForeignItem, C)
 parseForeignItem h = do
   m <- getCurrentHint
-  (funcName, c1) <- symbol
-  (domList, c2) <- seriesParen $ rawType h
-  c3 <- delimiter "->"
+  (name, c1) <- symbol
+  (sig, c) <- choice [parseForeignVariable h, parseForeignFunction h]
+  return (RawForeignItemF m (EN.ExternalName name) c1 sig, c)
+
+parseForeignVariable :: Handle -> Parser (RawForeignSignatureF RT.RawType, C)
+parseForeignVariable h = do
+  c1 <- delimiter ":"
+  (lt, c) <- rawType h
+  return (RawForeignVariable c1 lt, c)
+
+parseForeignFunction :: Handle -> Parser (RawForeignSignatureF RT.RawType, C)
+parseForeignFunction h = do
+  (domList, c1) <- seriesParen $ rawType h
+  c2 <- delimiter "->"
   (cod, c) <-
     choice
       [ do
@@ -193,7 +204,7 @@ parseForeignItem h = do
           (lt, c) <- rawType h
           return (F.Cod lt, c)
       ]
-  return (RawForeignItemF m (EN.ExternalName funcName) c1 domList c2 c3 cod, c)
+  return (RawForeignFunction domList c1 c2 cod, c)
 
 parseExpose :: Parser (RawStmt, C)
 parseExpose = do

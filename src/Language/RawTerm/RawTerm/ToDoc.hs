@@ -391,18 +391,8 @@ toDoc term =
                   PI.inject $ attachComment c2 args',
                   PI.inject $ attachComment c3 $ SE.decode $ fmap varArgToDoc varArgs
                 ]
-        Global c1 name t mc -> do
-          D.join
-            [ attachComment (c ++ c1) $ D.text "magic global",
-              SE.decode $
-                attachOptionalComment mc $
-                  SE.fromListWithComment
-                    (Just SE.Paren)
-                    SE.Comma
-                    [ RT.mapEL (D.text . T.pack . show . EN.reify) name,
-                      RT.mapEL typeToDoc t
-                    ]
-            ]
+        Global c1 _ name -> do
+          attachComment (c ++ c1) $ D.text $ "magic external " <> EN.reify name
         OpaqueValue c1 (c2, (e, c3)) -> do
           D.join
             [ attachComment (c ++ c1) $ D.text "magic opaque-value ",

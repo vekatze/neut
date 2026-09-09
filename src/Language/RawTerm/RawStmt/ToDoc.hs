@@ -444,15 +444,23 @@ decExposeItem (RawExposeItem _ (name, _) asClause) = do
       D.join [D.text (N.showName name), D.text " as ", D.text extName]
 
 decForeignItem :: RawForeignItem -> D.Doc
-decForeignItem (RawForeignItemF _ funcName _ args _ _ cod) = do
-  let args' = SE.decode $ fmap RT.typeToDoc args
-  let cod' =
-        case cod of
-          FCT.Cod c ->
-            RT.typeToDoc c
-          FCT.Void ->
-            D.text "void"
-  D.join [D.text (EN.reify funcName), args', D.text " -> ", cod']
+decForeignItem (RawForeignItemF _ name _ sig) = do
+  D.join [D.text (EN.reify name), decForeignSignature sig]
+
+decForeignSignature :: RawForeignSignatureF RT.RawType -> D.Doc
+decForeignSignature sig =
+  case sig of
+    RawForeignFunction args _ _ cod -> do
+      let args' = SE.decode $ fmap RT.typeToDoc args
+      let cod' =
+            case cod of
+              FCT.Cod c ->
+                RT.typeToDoc c
+              FCT.Void ->
+                D.text "void"
+      D.join [args', D.text " -> ", cod']
+    RawForeignVariable _ t ->
+      D.join [D.text ": ", RT.typeToDoc t]
 
 decDefineMeta :: C -> RawDefineMeta N.Name -> D.Doc
 decDefineMeta c defineMeta =
