@@ -12,6 +12,8 @@ module Language.RawTerm.RawTerm
     LetKind (..),
     RawMagic (..),
     MarkedArg,
+    KeyValueArg (..),
+    PrevValue (..),
     StaticItem (..),
     KeywordClause,
     EL,
@@ -119,6 +121,23 @@ codeVariantToKeyword v =
 
 type MarkedArg a = (a, IsSourceArg)
 
+data PrevValue = PrevValue
+  { prevValueLoc :: Hint,
+    prevValueKind :: VarKind,
+    prevValueName :: RawIdent,
+    prevValueKeywordComment :: C,
+    prevValueComment :: C
+  }
+
+data KeyValueArg a = KeyValueArg
+  { kvLoc :: Hint,
+    kvKey :: Key,
+    kvKeyComment :: C,
+    kvValueComment :: C,
+    kvPrevValue :: Maybe PrevValue,
+    kvValue :: MarkedArg a
+  }
+
 data RawTermF a
   = Var Name
   | VarGlobal DD.DefiniteDescription GN.GlobalName
@@ -126,7 +145,7 @@ data RawTermF a
   | PiIntroFix LDK.LocalDefKind C DefInfo
   | PiElim a C (Maybe (SE.Series RawType)) IsDestCall C (SE.Series (MarkedArg a)) C (Maybe (SE.Series (Hint, Key, C, C, a)))
   | PiElimImplicit Name C (SE.Series RawType)
-  | PiElimByKey Name C (Maybe (SE.Series RawType)) IsDestCall C (SE.Series (Hint, Key, C, C, MarkedArg a)) (Maybe (Hint, C, C, a)) -- auxiliary syntax for key-call
+  | PiElimByKey Name C (Maybe (SE.Series RawType)) IsDestCall C (SE.Series (KeyValueArg a)) (Maybe (Hint, C, C, a)) -- auxiliary syntax for key-call
   | PiElimRule Name C (SE.Series a)
   | PiElimMeta Name C (Maybe (SE.Series RawType)) C (SE.Series a) C (Maybe (SE.Series (Hint, Key, C, C, a)))
   | PiElimMetaByKey Name C (Maybe (SE.Series RawType)) C (SE.Series (Hint, Key, C, C, a))

@@ -1021,24 +1021,45 @@ decPiElimKey kvs = do
   let kvs' = fmap decPiElimKeyItem kvs
   SE.decode $ fmap decPiElimKeyItem' kvs'
 
-decPiElimMarkedKey :: SE.Series (Hint, Key, C, C, RT.MarkedArg RawTerm) -> D.Doc
+decPiElimMarkedKey :: SE.Series (RT.KeyValueArg RawTerm) -> D.Doc
 decPiElimMarkedKey kvs =
   SE.decode $ fmap (decPiElimKeyItem' . decPiElimMarkedKeyItem) kvs
 
-decPiElimMarkedKeyItem :: (Hint, Key, C, C, RT.MarkedArg RawTerm) -> (Key, C, Rhymed, RawTerm)
-decPiElimMarkedKeyItem (m, k, c1, c2, (e, isSourceArg)) = do
-  let (kText, c, rhymed, e') = decPiElimKeyItem (m, k, c1, c2, e)
-  if isSourceArg
-    then ("~" <> kText, c, rhymed, e')
-    else (kText, c, rhymed, e')
+decPiElimMarkedKeyItem :: RT.KeyValueArg RawTerm -> (Key, C, Rhymed, RawTerm)
+decPiElimMarkedKeyItem kv = do
+  let (e, isSourceArg) = RT.kvValue kv
+  let (kText, c, rhymed, e') = decPiElimKeyItem (RT.kvLoc kv, RT.kvKey kv, RT.kvKeyComment kv, RT.kvValueComment kv, e)
+  let kText' = if isSourceArg then "~" <> kText else kText
+  case RT.kvPrevValue kv of
+    Nothing ->
+      (kText', c, rhymed, e')
+    Just prevValue -> do
+      let nameText = if isHole (RT.prevValueName prevValue) then "_" else RT.prevValueName prevValue
+      let prevText = varKindPrefix (RT.prevValueKind prevValue) <> nameText
+      let c' = RT.prevValueKeywordComment prevValue ++ RT.prevValueComment prevValue ++ c
+      (kText' <> " as " <> prevText, c', False, e')
 
-decPiElimKeyWithRest :: SE.Series (Hint, Key, C, C, RT.MarkedArg RawTerm) -> Maybe (Hint, C, C, RawTerm) -> D.Doc
+varKindPrefix :: VK.VarKind -> T.Text
+varKindPrefix k =
+  if VK.isExp k then "!" else ""
+
+decPiElimKeyWithRest :: SE.Series (RT.KeyValueArg RawTerm) -> Maybe (Hint, C, C, RawTerm) -> D.Doc
 decPiElimKeyWithRest kvs restArg = do
   let restElem = case restArg of
         Nothing ->
           []
         Just (m, c1, c2, e) ->
-          [(c1, (m, "..", [], c2, (e, False)))]
+          [ ( c1,
+              RT.KeyValueArg
+                { RT.kvLoc = m,
+                  RT.kvKey = "..",
+                  RT.kvKeyComment = [],
+                  RT.kvValueComment = c2,
+                  RT.kvPrevValue = Nothing,
+                  RT.kvValue = (e, False)
+                }
+            )
+          ]
   decPiElimMarkedKey $ kvs {SE.elems = SE.elems kvs ++ restElem}
 
 type Rhymed =
