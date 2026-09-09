@@ -592,8 +592,88 @@ define test-syntax() -> unit {
   Unit
 }
 
+data chain {
+| Link(int, chain)
+| End
+}
+
+define chain-sum(c: chain) -> int {
+  match c {
+  | End =>
+    0
+  | Link(v, rest) =>
+    add-int(v, chain-sum(rest))
+  }
+}
+
+define chain-append(c1: chain, c2: chain) -> chain {
+  match c1 {
+  | End =>
+    c2
+  | Link(v, rest) =>
+    Link(v, chain-append(rest, c2))
+  }
+}
+
+data sample {
+| Sample(count: int, tag: int, items: chain)
+}
+
+define test-record-update() -> unit {
+  let s1 = Sample{count := 1, tag := 2, items := Link(3, Link(4, End))};
+  let s2 = Sample{count as c := add-int(c, 10), .. := s1};
+  let s3 = Sample{count as c := add-int(c, t), tag as t := mul-int(t, 5), .. := s2};
+  let s4 = Sample{items as xs := Link(1, xs), .. := s3};
+  let s5 = Sample{count as c := c, tag := 7, items as xs := xs, .. := s4};
+  let Sample{count, tag, items} = s5;
+  assert("count", eq-int(count, 13));
+  assert("tag", eq-int(tag, 7));
+  assert("items", eq-int(chain-sum(items), 8));
+  Unit
+}
+
+define test-record-update-copied() -> unit {
+  let s1 = Sample{count := 1, tag := 2, items := Link(3, End)};
+  let s2 = Sample{items as !xs := chain-append(xs, xs), .. := s1};
+  let Sample{count, tag, items} = s2;
+  assert("relevant count", eq-int(count, 1));
+  assert("relevant tag", eq-int(tag, 2));
+  assert("relevant items", eq-int(chain-sum(items), 6));
+  Unit
+}
+
+define test-record-update-discarded() -> unit {
+  let s1 = Sample{count := 1, tag := 2, items := Link(3, End)};
+  let s2 = Sample{items as _ := End, .. := s1};
+  let Sample{count, tag, items} = s2;
+  assert("discarded count", eq-int(count, 1));
+  assert("discarded tag", eq-int(tag, 2));
+  assert("discarded items", eq-int(chain-sum(items), 0));
+  Unit
+}
+
+data tagged {
+| Tagged(+spot: point, level: int)
+}
+
+define test-record-update-source() -> unit {
+  let t1 = Tagged{~spot := Point{x := 1, y := 2}, level := 5};
+  let t2 = Tagged{~spot as p := Point{x as v := add-int(v, 9), .. := p}, .. := t1};
+  let t3 = Tagged{level as lv := mul-int(lv, 3), .. := t2};
+  let Tagged{+spot, level} = t3;
+  let Point{x, y} = spot;
+  assert("source x", eq-int(x, 10));
+  assert("source y", eq-int(y, 2));
+  assert("source level", eq-int(level, 15));
+  Unit
+}
+
 define main() -> unit {
   test-syntax();
+  test-record-update();
+  test-record-update-copied();
+  test-record-update-discarded();
+  test-record-update-source();
   test-resource();
   test-match()
 }
