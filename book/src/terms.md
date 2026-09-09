@@ -1431,6 +1431,32 @@ define update-point(p: point) -> point {
 
 The pseudo-field `..` is not an actual field of the constructor, and it can be specified at most once.
 
+In a record update, a field can name the value it had in the original value by writing `as` after its key:
+
+```neut
+define bump-point(p: point) -> point {
+  Point{x as prev-x := add-int(prev-x, 1), .. := p}
+}
+
+// ↓ desugar
+//
+// define bump-point(p: point) -> point {
+//   let Point{x := prev-x, y := orig-y} = p;
+//   Point{x := add-int(prev-x, 1), y := orig-y}
+// }
+
+```
+
+Every such name is in scope in all the field expressions of the update, whatever the order of the fields:
+
+```neut
+define swap-point(p: point) -> point {
+  Point{x as a := b, y as b := a, .. := p}
+}
+```
+
+The name is an ordinary binder: it can be `_`, it can be marked with `!`, etc.
+
 ## `exact e`
 
 Given a function `e`, `exact e` supplies all the implicit parameters of `e` by inserting holes.
