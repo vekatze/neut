@@ -2,6 +2,7 @@ module Language.Common.Text.Util
   ( decodeUtf8Bytes,
     parseBytes,
     parseText,
+    printText,
   )
 where
 
@@ -228,3 +229,28 @@ parseText :: T.Text -> Either T.Text T.Text
 parseText t = do
   bytes <- parseBytes t
   decodeUtf8Bytes bytes
+
+printText :: T.Text -> T.Text
+printText =
+  T.concatMap printChar
+
+printChar :: Char -> T.Text
+printChar c =
+  case c of
+    '\0' ->
+      "\\0"
+    '\t' ->
+      "\\t"
+    '\n' ->
+      "\\n"
+    '\r' ->
+      "\\r"
+    '"' ->
+      "\\\""
+    '\\' ->
+      "\\\\"
+    _
+      | isControl c ->
+          "\\u{" <> T.pack (map toUpper $ showHex (ord c) "") <> "}"
+      | otherwise ->
+          T.singleton c

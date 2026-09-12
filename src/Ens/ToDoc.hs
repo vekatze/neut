@@ -4,6 +4,7 @@ import Control.Comonad.Cofree
 import Data.Char (isSpace)
 import Data.Text qualified as T
 import Ens.Ens
+import Language.Common.Text.Util (printText)
 import PrettyPrinter.Doc qualified as D
 import SyntaxTree.C
 import SyntaxTree.Series.ToDoc qualified as SE
@@ -27,7 +28,7 @@ toDoc ens =
         then D.text "true"
         else D.text "false"
     _ :< String x ->
-      D.text $ T.pack (show x)
+      D.text $ "\"" <> printText x <> "\""
     _ :< List xs -> do
       let xs' = fmap toDoc xs
       SE.decode xs'

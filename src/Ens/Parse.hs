@@ -13,6 +13,7 @@ import Control.Monad.Trans
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Ens.Ens qualified as E
+import Language.Common.Text.Util (parseText)
 import Logger.Hint
 import Path
 import Path.Read (readTextFromPath)
@@ -61,7 +62,11 @@ parseBool m = do
 parseString :: Hint -> P.Parser (E.Ens, C)
 parseString m = do
   (x, c) <- P.string
-  return (m :< E.String x, c)
+  case parseText x of
+    Left reason ->
+      lift $ raiseError m $ "Could not interpret the following as a string: " <> x <> "\nReason: " <> reason
+    Right x' ->
+      return (m :< E.String x', c)
 
 parseList :: Hint -> P.Parser (E.Ens, C)
 parseList m = do
