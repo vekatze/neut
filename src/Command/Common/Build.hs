@@ -9,7 +9,7 @@ where
 import App.App (App)
 import App.Error (newError')
 import App.Error qualified as E
-import App.Run (forP, raiseError', runApp)
+import App.Run (forP, onFailure, raiseError', runApp)
 import Command.Common.Build.EnsureMain qualified as EnsureMain
 import Command.Common.Build.Execute qualified as Execute
 import Command.Common.Build.Generate qualified as Gen
@@ -18,13 +18,14 @@ import Command.Common.Build.Link qualified as Link
 import Command.Common.Dependency qualified as Dependency
 import Console.Handle qualified as Console
 import Control.Concurrent (getNumCapabilities)
+import Control.Exception (mask_)
 import Control.Monad
 import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.IO.Class
 import Data.Containers.ListUtils (nubOrdOn)
 import Data.Either (lefts)
 import Data.Foldable
-import Data.Maybe
+import Data.IORef (IORef, atomicModifyIORef', newIORef, readIORef)
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Text.Encoding (decodeUtf8With)
@@ -43,6 +44,7 @@ import Kernel.Common.Handle.Global.Path qualified as Path
 import Kernel.Common.Handle.Global.Platform qualified as Platform
 import Kernel.Common.ManageCache qualified as Cache
 import Kernel.Common.Module qualified as M
+import Kernel.Common.Module.EnsureDeclaredPathExistence (ensureDeclaredPathExistence)
 import Kernel.Common.OutputKind
 import Kernel.Common.OutputKind qualified as OK
 import Kernel.Common.RunProcess qualified as RunProcess
@@ -113,6 +115,7 @@ buildTarget h (M.MainModule baseModule) target = do
   liftIO $
     Logger.report (Global.loggerHandle (globalHandle h)) $
       "Build configuration: target=" <> T.pack (show target') <> ", outputs=" <> T.pack (show $ _outputKindList h) <> ", skip-link=" <> T.pack (show $ _shouldSkipLink h) <> ", execute=" <> T.pack (show $ _shouldExecute h)
+  startTime <- liftIO getCurrentTime
   unravelHandle <- liftIO $ Unravel.new (globalHandle h)
   Unravel.Result {..} <- Unravel.unravel unravelHandle baseModule target'
   let dependenceSeq = resultSourceList
@@ -121,11 +124,11 @@ buildTarget h (M.MainModule baseModule) target = do
   let traceReport = Console.getTraceConfig $ Global.consoleHandle $ globalHandle h
   traceConfig <- either raiseError' return $ Trace.new (Env.getMainModule $ Global.envHandle $ globalHandle h) traceReport
   let moduleList = nubOrdOn M.moduleID $ map sourceModule liveSeq
-  didPerformForeignCompilation <- compileForeign h target' moduleList
+  didPerformForeignCompilation <- compileForeign h target' startTime moduleList
   let loadHandle = Load.new (globalHandle h)
   contentSeq <- Load.load loadHandle (Trace.isEnabled traceConfig) target' dependenceSeq
   withSystemTempDir "neut-object" $ \stagingDir -> do
-    compile h traceConfig target' (_outputKindList h) sourceDependencyMap resultLiveSourceSet contentSeq stagingDir
+    compile h traceConfig target' (_outputKindList h) sourceDependencyMap resultLiveSourceSet contentSeq stagingDir startTime
   liftIO $
     GlobalRemark.get (Global.globalRemarkHandle (globalHandle h))
       >>= Logger.printLogList (Global.loggerHandle (globalHandle h))
@@ -149,8 +152,9 @@ compile ::
   S.Set (Path Abs File) ->
   [(Source, Either Cache T.Text)] ->
   Path Abs Dir ->
+  UTCTime ->
   App ()
-compile h traceConfig target outputKindList sourceDependencyMap liveSourceSet contentSeq stagingDir = do
+compile h traceConfig target outputKindList sourceDependencyMap liveSourceSet contentSeq stagingDir startTime = do
   numCapabilities <- liftIO getNumCapabilities
   generateHandle <- liftIO $ Gen.new (globalHandle h) stagingDir numCapabilities
   let cacheHandle = Cache.new (globalHandle h)
@@ -166,52 +170,59 @@ compile h traceConfig target outputKindList sourceDependencyMap liveSourceSet co
   let numOfItems = length (filter id bs) + c
   let consoleHandle = Global.consoleHandle (globalHandle h)
   let loggerHandle = Global.loggerHandle (globalHandle h)
-  currentTime <- liftIO getCurrentTime
   let color = [SetColor Foreground Vivid Green]
   let workingTitle = getWorkingTitle numOfItems
   let completedTitle = getCompletedTitle numOfItems
-  hp <- liftIO $ Indicator.new consoleHandle loggerHandle (Just numOfItems) workingTitle completedTitle color
-  cacheOrProgList <- Parse.parse (globalHandle h) contentSeq
-  cacheOrStmtList <- forP cacheOrProgList $ \(gensymHandle, localHandle, (source, cacheOrProg)) -> do
-    liftIO $ Logger.report (Global.loggerHandle (globalHandle h)) $ "Interpreting: " <> T.pack (toFilePath $ sourceFilePath source)
-    interpretHandle <- liftIO $ Interpret.new gensymHandle (globalHandle h) localHandle (sourceModule source)
-    item <- Interpret.interpret interpretHandle target source cacheOrProg
-    return (gensymHandle, localHandle, (source, item))
-  contentAsync <- fmap catMaybes $ Dependency.run numCapabilities sourceDependencyMap Parse.getSourcePath cacheOrStmtList $ \(gensymHandle, localHandle, (source, (cacheOrStmt, logs))) -> do
-    liftIO $ Logger.report (Global.loggerHandle (globalHandle h)) $ "Elaborating: " <> T.pack (toFilePath $ sourceFilePath source)
-    elaborateHandle <- liftIO $ Elaborate.new gensymHandle (globalHandle h) traceConfig localHandle source
-    let ensureMainHandle = EnsureMain.new (Global.envHandle (globalHandle h))
-    stmtList <- Elaborate.elaborate elaborateHandle target logs cacheOrStmt
-    EnsureMain.ensureMain ensureMainHandle target source (map snd $ getStmtName stmtList)
-    b <- needsCodeGeneration traceConfig cacheHandle outputKindList liveSourceSet source
-    if b
-      then do
-        fmap Just $ liftIO $ async $ runApp $ do
+  Indicator.with consoleHandle loggerHandle (Just numOfItems) workingTitle completedTitle color $ \hp -> do
+    cacheOrProgList <- Parse.parse (globalHandle h) contentSeq
+    cacheOrStmtList <- forP cacheOrProgList $ \(gensymHandle, localHandle, (source, cacheOrProg)) -> do
+      liftIO $ Logger.report (Global.loggerHandle (globalHandle h)) $ "Interpreting: " <> T.pack (toFilePath $ sourceFilePath source)
+      interpretHandle <- liftIO $ Interpret.new gensymHandle (globalHandle h) localHandle (sourceModule source)
+      item <- Interpret.interpret interpretHandle target source cacheOrProg
+      return (gensymHandle, localHandle, (source, item))
+    codeGenerationListRef <- liftIO $ newIORef []
+    errors <- (`onFailure` cancelCodeGenerations codeGenerationListRef) $ do
+      Dependency.run numCapabilities sourceDependencyMap Parse.getSourcePath cacheOrStmtList $ \(gensymHandle, localHandle, (source, (cacheOrStmt, logs))) -> do
+        liftIO $ Logger.report (Global.loggerHandle (globalHandle h)) $ "Elaborating: " <> T.pack (toFilePath $ sourceFilePath source)
+        elaborateHandle <- liftIO $ Elaborate.new gensymHandle (globalHandle h) traceConfig localHandle source startTime
+        let ensureMainHandle = EnsureMain.new (Global.envHandle (globalHandle h))
+        stmtList <- Elaborate.elaborate elaborateHandle target logs cacheOrStmt
+        EnsureMain.ensureMain ensureMainHandle target source (map snd $ getStmtName stmtList)
+        b <- needsCodeGeneration traceConfig cacheHandle outputKindList liveSourceSet source
+        when b $ liftIO $ spawnCodeGeneration codeGenerationListRef $ do
           liftIO $ Logger.report (Global.loggerHandle (globalHandle h)) $ "Clarifying: " <> T.pack (toFilePath $ sourceFilePath source)
           clarifyHandle <- liftIO $ Clarify.new gensymHandle (globalHandle h) traceConfig
           (stmtList', auxStmtList, defMap) <- Clarify.clarify clarifyHandle stmtList
           liftIO $ Logger.report (Global.loggerHandle (globalHandle h)) $ "Lowering: " <> T.pack (toFilePath $ sourceFilePath source)
           lowerHandle <- Lower.new gensymHandle (globalHandle h) traceConfig target defMap
           virtualCode <- Lower.lower lowerHandle stmtList' auxStmtList
-          emit h generateHandle gensymHandle hp currentTime target outputKindList (Right source) virtualCode
-      else return Nothing
-  when (shouldRegisterUnusedTopLevelNameRemarks target) $
-    registerUnusedTopLevelNameRemarks h
-  entryPointVirtualCode <- compileEntryPoint h target outputKindList
-  entryPointAsync <- forM entryPointVirtualCode $ \(gensymHandle, src, code) -> liftIO $ do
-    async $ runApp $ emit h generateHandle gensymHandle hp currentTime target outputKindList src code
-  errors <- fmap lefts $ mapM wait $ entryPointAsync ++ contentAsync
-  objectErrors <-
-    if null errors
-      then do
-        result <- liftIO $ runApp $ Gen.flushObjects generateHandle
-        return $ lefts [result]
-      else return []
-  liftIO $ Indicator.close hp
-  let allErrors = errors <> objectErrors
-  if null allErrors
-    then return ()
-    else throwError $ E.join allErrors
+          emit h generateHandle gensymHandle hp startTime target outputKindList (Right source) virtualCode
+      when (shouldRegisterUnusedTopLevelNameRemarks target) $
+        registerUnusedTopLevelNameRemarks h
+      entryPointVirtualCode <- compileEntryPoint h target outputKindList
+      forM_ entryPointVirtualCode $ \(gensymHandle, src, code) ->
+        liftIO $ spawnCodeGeneration codeGenerationListRef $ emit h generateHandle gensymHandle hp startTime target outputKindList src code
+      codeGenerationList <- liftIO $ readIORef codeGenerationListRef
+      fmap lefts $ mapM wait codeGenerationList
+    objectErrors <-
+      if null errors
+        then do
+          result <- liftIO $ runApp $ Gen.flushObjects generateHandle
+          return $ lefts [result]
+        else return []
+    let allErrors = errors <> objectErrors
+    if null allErrors
+      then return ()
+      else throwError $ E.join allErrors
+
+spawnCodeGeneration :: IORef [Async (Either E.Error ())] -> App () -> IO ()
+spawnCodeGeneration codeGenerationListRef generation = mask_ $ do
+  codeGeneration <- asyncWithUnmask $ \unmask -> unmask $ runApp generation
+  atomicModifyIORef' codeGenerationListRef $ \codeGenerationList -> (codeGeneration : codeGenerationList, ())
+
+cancelCodeGenerations :: IORef [Async (Either E.Error ())] -> IO ()
+cancelCodeGenerations codeGenerationListRef =
+  readIORef codeGenerationListRef >>= mapM_ cancel
 
 needsCodeGeneration :: Trace.Config -> Cache.Handle -> [OutputKind] -> S.Set (Path Abs File) -> Source -> App Bool
 needsCodeGeneration traceConfig cacheHandle outputKindList liveSourceSet source
@@ -259,7 +270,7 @@ emit ::
   Either MainTarget Source ->
   LC.LowCode ->
   App ()
-emit h generateHandle gensymHandle progressBar currentTime target outputKindList src code = do
+emit h generateHandle gensymHandle progressBar timeStamp target outputKindList src code = do
   emitHandle <- Emit.new gensymHandle (globalHandle h) target
   let clangOptions = getCompileOption target
   llvmIR' <- liftIO $ Emit.emit emitHandle code
@@ -267,9 +278,9 @@ emit h generateHandle gensymHandle progressBar currentTime target outputKindList
   forM_ outputKindList $ \outputKind -> do
     case outputKind of
       OK.Object -> do
-        Gen.generateObject generateHandle target clangOptions currentTime progressLabel src llvmIR'
+        Gen.generateObject generateHandle target clangOptions timeStamp progressLabel src llvmIR'
       OK.LLVM -> do
-        Gen.generateAsm generateHandle target currentTime src llvmIR'
+        Gen.generateAsm generateHandle target timeStamp src llvmIR'
   liftIO $ Indicator.increment progressBar progressLabel
 
 getProgressLabel :: Handle -> Either MainTarget Source -> IO T.Text
@@ -336,19 +347,19 @@ install h filePathOrNone target = do
   let installHandle = Install.new (globalHandle h)
   mapM_ (Install.install installHandle target) mDir
 
-compileForeign :: Handle -> Target -> [M.Module] -> App Bool
-compileForeign h t moduleList = do
-  currentTime <- liftIO getCurrentTime
-  bs <- forP moduleList (compileForeign' h t currentTime)
+compileForeign :: Handle -> Target -> UTCTime -> [M.Module] -> App Bool
+compileForeign h t startTime moduleList = do
+  bs <- forP moduleList (compileForeign' h t startTime)
   return $ or bs
 
 compileForeign' :: Handle -> Target -> UTCTime -> M.Module -> App Bool
-compileForeign' h t currentTime m = do
+compileForeign' h t startTime m = do
   sub <- getForeignSubst h t m
   let cmdList = M.script $ M.moduleForeign m
   let moduleRootDir = M.getModuleRootDir m
   foreignDir <- Path.getForeignDir (Global.pathHandle (globalHandle h)) t m
-  inputPathList <- fmap concat $ mapM (getInputPathList moduleRootDir) $ M.input $ M.moduleForeign m
+  forM_ (M.input $ M.moduleForeign m) $ ensureDeclaredPathExistence moduleRootDir
+  inputPathList <- fmap concat $ mapM (liftIO . Path.unrollPath . M.attachPrefixPath moduleRootDir . snd) $ M.input $ M.moduleForeign m
   let outputPathList = map (foreignDir </>) $ M.output $ M.moduleForeign m
   for_ outputPathList $ \outputPath -> do
     ensureDir $ parent outputPath
@@ -389,7 +400,7 @@ compileForeign' h t currentTime m = do
       forM_ outputPathList $ \outputPath -> do
         b <- doesFileExist outputPath
         if b
-          then setModificationTime outputPath currentTime
+          then setModificationTime outputPath startTime
           else raiseError' $ "Missing foreign output: " <> T.pack (toFilePath outputPath)
       return $ not $ null cmdList
 
@@ -425,18 +436,6 @@ getForeignClangCommand loggerHandle platformHandle = do
 shellQuote :: T.Text -> T.Text
 shellQuote text =
   "'" <> T.replace "'" "'\\''" text <> "'"
-
-getInputPathList :: Path Abs Dir -> M.SomePath Rel -> App [Path Abs File]
-getInputPathList moduleRootDir =
-  Path.unrollPath . attachPrefixPath moduleRootDir
-
-attachPrefixPath :: Path Abs Dir -> M.SomePath Rel -> M.SomePath Abs
-attachPrefixPath baseDirPath path =
-  case path of
-    Left dirPath ->
-      Left $ baseDirPath </> dirPath
-    Right filePath ->
-      Right $ baseDirPath </> filePath
 
 expandClangOptions :: Handle -> Target -> App Target
 expandClangOptions h target =

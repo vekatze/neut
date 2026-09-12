@@ -13,7 +13,6 @@ import Data.Containers.ListUtils (nubOrdOn)
 import Data.Maybe
 import Data.Text qualified as T
 import Data.Text.Encoding (decodeUtf8Lenient)
-import Data.Text.IO qualified as TIO
 import Kernel.Common.Allocator (Allocator (Mimalloc), allocatorLinkOption, mimallocArchive)
 import Kernel.Common.Artifact qualified as A
 import Kernel.Common.CreateGlobalHandle qualified as Global
@@ -31,6 +30,7 @@ import Logger.Debug qualified as Logger
 import Logger.Handle qualified as Logger
 import Path
 import Path.IO
+import Path.Write (writeText)
 import ProgressIndicator.ShowProgress qualified as Indicator
 import System.Console.ANSI
 import System.Process (CmdSpec (RawCommand))
@@ -88,10 +88,9 @@ link' h target sourceList = do
   let numOfObjects = length objects
   let workingTitle = getWorkingTitle numOfObjects
   let completedTitle = getCompletedTitle numOfObjects
-  progressBarHandle <- liftIO $ Indicator.new (consoleHandle h) (loggerHandle h) Nothing workingTitle completedTitle barColor
   let runProcessHandle = RunProcess.new (loggerHandle h)
-  RunProcess.run runProcessHandle clang linkOptions
-  liftIO $ Indicator.close progressBarHandle
+  Indicator.with (consoleHandle h) (loggerHandle h) Nothing workingTitle completedTitle barColor $ \_ ->
+    RunProcess.run runProcessHandle clang linkOptions
 
 getWorkingTitle :: Int -> T.Text
 getWorkingTitle numOfObjects = do
@@ -199,7 +198,7 @@ getAllocatorLibraryIfNecessary h target allocator = do
 writeLinkResponseFile :: Path Abs File -> [Path Abs File] -> App ()
 writeLinkResponseFile responseFilePath objectPathList = do
   let responseFileContent = T.unlines $ map (quoteResponseFileArgument . toFilePath) objectPathList
-  liftIO $ TIO.writeFile (toFilePath responseFilePath) responseFileContent
+  liftIO $ writeText responseFilePath responseFileContent
 
 quoteResponseFileArgument :: FilePath -> T.Text
 quoteResponseFileArgument path = do

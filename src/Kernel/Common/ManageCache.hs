@@ -18,6 +18,7 @@ import Control.Monad.IO.Class
 import Data.Binary
 import Data.Maybe
 import Data.Text qualified as T
+import Data.Time (UTCTime)
 import Kernel.Common.Artifact qualified as A
 import Kernel.Common.Cache qualified as Cache
 import Kernel.Common.CreateGlobalHandle qualified as Global
@@ -31,6 +32,7 @@ import Logger.Debug qualified as Logger
 import Logger.Handle qualified as Logger
 import Path
 import Path.IO
+import Path.Write (placeAtomically)
 
 data Handle = Handle
   { pathHandle :: Path.Handle,
@@ -43,12 +45,13 @@ new :: Global.Handle -> Handle
 new (Global.Handle {..}) =
   Handle {..}
 
-saveCache :: Global.Handle -> Path.Handle -> Target -> Source.Source -> Cache.Cache -> App ()
-saveCache globalHandle h t source cache = do
+saveCache :: Global.Handle -> Path.Handle -> Target -> Source.Source -> UTCTime -> Cache.Cache -> App ()
+saveCache globalHandle h t source timeStamp cache = do
   cachePath <- Path.getSourceCachePath h t source
   ensureDir $ parent cachePath
   lowCache <- liftIO $ Cache.compress (Global.termTraceHandle globalHandle) cache
-  liftIO $ encodeFile (toFilePath cachePath) lowCache
+  liftIO $ placeAtomically cachePath timeStamp $ \stagingPath -> do
+    encodeFile (toFilePath stagingPath) lowCache
 
 saveCompletionCache :: Path.Handle -> Target -> Source.Source -> Cache.CompletionCache -> App ()
 saveCompletionCache h t source cache = do

@@ -12,11 +12,12 @@ import Control.Monad
 import Control.Monad.Except (liftEither)
 import Control.Monad.IO.Class
 import Data.HashMap.Strict qualified as Map
-import Data.Set qualified as S
 import Data.IORef (IORef, modifyIORef', readIORef)
 import Data.Maybe (mapMaybe)
+import Data.Set qualified as S
 import Data.Text qualified as T
 import Gensym.Handle qualified as Gensym
+import Kernel.Common.Capability qualified as Capability
 import Kernel.Common.Const
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.CreateLocalHandle qualified as Local
@@ -27,7 +28,6 @@ import Kernel.Common.Handle.Local.Locator qualified as Locator
 import Kernel.Common.Handle.Local.RawImportSummary qualified as RawImportSummary
 import Kernel.Common.Handle.Local.Tag qualified as Tag
 import Kernel.Common.Import (ImportItem (..), Liveness)
-import Kernel.Common.Capability qualified as Capability
 import Kernel.Common.Import qualified as I
 import Kernel.Common.Module
 import Kernel.Common.Module.GetEnabledPreset qualified as GetEnabledPreset
@@ -220,7 +220,7 @@ interpretImportItemStaticFile h currentModule keyList = do
   let moduleRootDir = getModuleRootDir currentModule'
   pathList <- forM keyList $ \(mKey, key) -> do
     case Map.lookup key (moduleStaticFiles currentModule') of
-      Just path -> do
+      Just (_, path) -> do
         let fullPath = moduleRootDir </> path
         liftIO $ Tag.insertStaticFile (tagHandle h) mKey key (newSourceHint fullPath)
         liftIO $ Unused.insertStaticFile (unusedHandle h) key mKey

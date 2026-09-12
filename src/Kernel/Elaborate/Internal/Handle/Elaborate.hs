@@ -18,6 +18,7 @@ import Data.IORef
 import Data.IntMap qualified as IntMap
 import Data.Maybe (fromMaybe)
 import Data.Set qualified as S
+import Data.Time (UTCTime)
 import Gensym.Handle qualified as Gensym
 import Kernel.Common.Const (defaultInlineLimit)
 import Kernel.Common.CreateGlobalHandle qualified as Global
@@ -91,6 +92,7 @@ data Handle = Handle
     weakTypeHandle :: WeakType.Handle,
     optDataHandle :: OptimizableData.Handle,
     currentSource :: Source,
+    cacheTimeStamp :: UTCTime,
     inlineLimit :: Int,
     currentStep :: Int,
     varEnv :: BoundVarEnv,
@@ -115,8 +117,8 @@ data ObligationSite
 data TypeObligation
   = TypeObligation VK.TypeAttr ObligationSite Hint WT.WeakType
 
-new :: Gensym.Handle -> Global.Handle -> Trace.Config -> Local.Handle -> Source -> IO Handle
-new gensymHandle globalHandle@(Global.Handle {..}) traceConfig (Local.Handle {..}) currentSource = do
+new :: Gensym.Handle -> Global.Handle -> Trace.Config -> Local.Handle -> Source -> UTCTime -> IO Handle
+new gensymHandle globalHandle@(Global.Handle {..}) traceConfig (Local.Handle {..}) currentSource cacheTimeStamp = do
   modulePathMap <- ModulePath.get modulePathHandle
   localLogsHandle <- LocalLogs.new
   let substHandle = Subst.new gensymHandle

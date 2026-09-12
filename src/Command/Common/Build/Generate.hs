@@ -30,7 +30,7 @@ import Logger.Debug qualified as Logger
 import Logger.Handle qualified as Logger
 import Path
 import Path.IO
-import Path.Write (writeLazyByteString)
+import Path.Write (placeAtomically, writeLazyByteString)
 import System.Process (CmdSpec (RawCommand))
 
 data Handle = Handle
@@ -95,18 +95,17 @@ generateAsm h target timeStamp sourceOrNone llvmCode = do
     Right source -> do
       (_, outputPath) <- Path.attachOutputPath (pathHandle h) target OK.LLVM source
       ensureDir $ parent outputPath
-      generateAsm' h llvmCode outputPath
-      setModificationTime outputPath timeStamp
+      generateAsm' h llvmCode outputPath timeStamp
     Left mainTarget -> do
       (_, outputPath) <- Path.getOutputPathForEntryPoint (pathHandle h) OK.LLVM mainTarget
       ensureDir $ parent outputPath
-      generateAsm' h llvmCode outputPath
-      setModificationTime outputPath timeStamp
+      generateAsm' h llvmCode outputPath timeStamp
 
-generateAsm' :: Handle -> LLVMCode -> Path Abs File -> App ()
-generateAsm' h llvmCode path = do
+generateAsm' :: Handle -> LLVMCode -> Path Abs File -> UTCTime -> App ()
+generateAsm' h llvmCode path timeStamp = do
   liftIO $ Logger.report (loggerHandle h) $ "Saving: " <> T.pack (toFilePath path)
-  liftIO $ writeLazyByteString path llvmCode
+  liftIO $ placeAtomically path timeStamp $ \stagingPath -> do
+    writeLazyByteString stagingPath llvmCode
 
 stageObject :: Handle -> T.Text -> [ClangOption] -> L.ByteString -> Path Abs File -> UTCTime -> App ()
 stageObject h sourceLabel additionalClangOptions llvm outputPath timeStamp = do
@@ -162,8 +161,8 @@ compileObjectBatch h clangOptions objectList = do
   case value of
     Right _ -> do
       forM_ objectList $ \object -> do
-        copyFile (stagingDir h </> stagingObjectPath object) (finalObjectPath object)
-        setModificationTime (finalObjectPath object) (objectTimeStamp object)
+        liftIO $ placeAtomically (finalObjectPath object) (objectTimeStamp object) $ \stagingPath -> do
+          copyFile (stagingDir h </> stagingObjectPath object) stagingPath
     Left err ->
       throwError $ newError' err
 

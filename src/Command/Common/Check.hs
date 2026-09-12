@@ -19,6 +19,7 @@ import Control.Monad
 import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.IO.Class
 import Data.Text qualified as T
+import Data.Time (UTCTime, getCurrentTime)
 import Gensym.Handle qualified as Gensym
 import Kernel.Common.Cache
 import Kernel.Common.CreateGlobalHandle qualified as Global
@@ -99,6 +100,7 @@ checkSingle h baseModule path = do
 _check :: Handle -> Target -> Maybe MainTarget -> M.Module -> IO [Log]
 _check h target mainTarget baseModule = do
   collectLogs (Global.globalRemarkHandle (globalHandle h)) $ do
+    startTime <- liftIO getCurrentTime
     let loadHandle = Load.new (globalHandle h)
     unravelHandle <- liftIO $ Unravel.new (globalHandle h)
     dependenceSeq <- Unravel.resultSourceList <$> Unravel.unravel unravelHandle baseModule target
@@ -115,12 +117,13 @@ _check h target mainTarget baseModule = do
       item <- Interpret.interpret interpretHandle target source cacheOrProg
       return (gensymHandle, localHandle, (source, item))
     numCapabilities <- liftIO getNumCapabilities
-    void $ Dependency.run numCapabilities sourceDependencyMap Parse.getSourcePath cacheOrStmtList $ \(gensymHandle, localHandle, (source, cacheOrContent)) -> do
-      checkSource h gensymHandle traceConfig localHandle target source cacheOrContent
+    Dependency.run numCapabilities sourceDependencyMap Parse.getSourcePath cacheOrStmtList $ \(gensymHandle, localHandle, (source, cacheOrContent)) -> do
+      void $ checkSource h startTime gensymHandle traceConfig localHandle target source cacheOrContent
     registerUnusedTopLevelNameRemarks h
 
 _check' :: Handle -> Target -> M.Module -> App (Maybe Elaborate.Handle)
 _check' h target baseModule = do
+  startTime <- liftIO getCurrentTime
   unravelHandle <- liftIO $ Unravel.new (globalHandle h)
   let loadHandle = Load.new (globalHandle h)
   dependenceSeq <- Unravel.resultSourceList <$> Unravel.unravel unravelHandle baseModule target
@@ -141,15 +144,15 @@ _check' h target baseModule = do
       return Nothing
     Just (deps, (rootGensymHandle, rootLocalHandle, (rootSource, rootCacheOrContent))) -> do
       numCapabilities <- liftIO getNumCapabilities
-      void $ Dependency.run numCapabilities sourceDependencyMap Parse.getSourcePath deps $ \(gensymHandle, localHandle, (source, cacheOrContent)) -> do
-        checkSource h gensymHandle traceConfig localHandle target source cacheOrContent
-      result <- Just <$> checkSource h rootGensymHandle traceConfig rootLocalHandle target rootSource rootCacheOrContent
+      Dependency.run numCapabilities sourceDependencyMap Parse.getSourcePath deps $ \(gensymHandle, localHandle, (source, cacheOrContent)) -> do
+        void $ checkSource h startTime gensymHandle traceConfig localHandle target source cacheOrContent
+      result <- Just <$> checkSource h startTime rootGensymHandle traceConfig rootLocalHandle target rootSource rootCacheOrContent
       registerUnusedTopLevelNameRemarks h
       return result
 
-checkSource :: Handle -> Gensym.Handle -> Trace.Config -> Local.Handle -> Target -> Source -> (Either Cache [WeakStmt], [Log]) -> App Elaborate.Handle
-checkSource h gensymHandle traceConfig localHandle target source (cacheOrStmtList, logs) = do
-  elaborateHandle <- liftIO $ Elaborate.new gensymHandle (globalHandle h) traceConfig localHandle source
+checkSource :: Handle -> UTCTime -> Gensym.Handle -> Trace.Config -> Local.Handle -> Target -> Source -> (Either Cache [WeakStmt], [Log]) -> App Elaborate.Handle
+checkSource h startTime gensymHandle traceConfig localHandle target source (cacheOrStmtList, logs) = do
+  elaborateHandle <- liftIO $ Elaborate.new gensymHandle (globalHandle h) traceConfig localHandle source startTime
   liftIO $
     Logger.report (Global.loggerHandle (globalHandle h)) $
       "Checking: " <> T.pack (toFilePath $ sourceFilePath source)

@@ -1,5 +1,6 @@
 module App.Run
   ( runApp,
+    tryApp,
     run,
     forP,
     forP_,
@@ -8,12 +9,13 @@ module App.Run
     raiseError',
     raiseCritical,
     raiseCritical',
+    onFailure,
   )
 where
 
 import App.App
 import App.Error qualified as E
-import Control.Exception (IOException, catch)
+import Control.Exception (IOException, catch, onException)
 import Control.Monad.Except (MonadError (throwError), runExceptT)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Either (lefts, partitionEithers)
@@ -28,9 +30,13 @@ runApp :: App a -> IO (Either E.Error a)
 runApp =
   runExceptT
 
+tryApp :: App a -> IO (Either E.Error a)
+tryApp act =
+  runApp act `catch` (return . Left . asError)
+
 run :: Logger.Handle -> App a -> IO a
 run loggerHandle c = do
-  resultOrErr <- liftIO (runApp c) `catch` (return . Left . asError)
+  resultOrErr <- tryApp c
   case resultOrErr of
     Left (E.MakeError err) -> do
       liftIO $ Logger.printLogList loggerHandle err
@@ -81,3 +87,13 @@ raiseCritical m t =
 raiseCritical' :: T.Text -> App a
 raiseCritical' t =
   throwError $ E.newCritical' t
+
+onFailure :: App a -> IO () -> App a
+onFailure act cleanup = do
+  resultOrError <- liftIO $ runApp act `onException` cleanup
+  case resultOrError of
+    Left err -> do
+      liftIO cleanup
+      throwError err
+    Right result ->
+      return result
