@@ -103,7 +103,7 @@ data Dependency = Dependency
 data Foreign = Foreign
   { input :: [(Hint, SomePath Rel)],
     output :: [Path Rel File],
-    script :: [T.Text]
+    script :: [(Hint, T.Text)]
   }
   deriving (Show)
 
@@ -341,7 +341,7 @@ getZenInfo someModule = do
             Nothing
           selector ->
             Just (keyPlatform, _m :< E.String (P.reifySelector selector))
-  let executeCommand' = getCommandInfo keyExecute (executeCommand zenConfig)
+  let executeCommand' = getExecuteCommandInfo (executeCommand zenConfig)
   let zenInfo =
         E.dictFromListVertical
           _m
@@ -357,10 +357,10 @@ getZenInfo someModule = do
     then Nothing
     else Just (keyZen, zenInfo)
 
-getCommandInfo :: T.Text -> Maybe [T.Text] -> Maybe (T.Text, E.Ens)
-getCommandInfo key commandOrNone = do
-  command <- commandOrNone
-  return (key, _m :< E.List (seriesFromList (map (\x -> _m :< E.String x) command)))
+getExecuteCommandInfo :: Maybe (Hint, T.Text) -> Maybe (T.Text, E.Ens)
+getExecuteCommandInfo commandOrNone = do
+  (_, command) <- commandOrNone
+  return (keyExecute, _m :< E.String command)
 
 getCacheDirInfo :: Module -> Maybe (T.Text, E.Ens)
 getCacheDirInfo someModule = do
@@ -394,7 +394,7 @@ getTargetInfo someModule = do
                   Nothing
                 selector ->
                   Just (keyPlatform, _m :< E.String (P.reifySelector selector))
-        let executeCommand' = getCommandInfo keyExecute (Target.executeCommand summary)
+        let executeCommand' = getExecuteCommandInfo (Target.executeCommand summary)
         E.dictFromListVertical
           _m
           $ [ (keyMain, _m :< E.String (SL.getRelPathText (Target.entryPoint summary))),
@@ -445,7 +445,7 @@ getForeignInfo someModule = do
   let foreignInfo = moduleForeign someModule
   let assetList = map (\(_, x) -> _m :< E.String (ppExtraContent x)) $ input foreignInfo
   let outputList = map (\x -> _m :< E.String (T.pack $ toFilePath x)) $ output foreignInfo
-  let cmdList = map (\x -> _m :< E.String x) $ script foreignInfo
+  let cmdList = map (\(_, x) -> _m :< E.String x) $ script foreignInfo
   if null (input foreignInfo) && null (script foreignInfo)
     then Nothing
     else

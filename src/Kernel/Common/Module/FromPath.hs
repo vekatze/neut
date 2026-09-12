@@ -102,14 +102,14 @@ interpretTarget (_, targetDict) = do
     clangOption <- interpretClangOption v
     allocator <- interpretAllocator v
     platform <- interpretPlatform v
-    executeCommand <- interpretCommand keyExecute v
+    executeCommand <- interpretExecuteCommand v
     return (k, TargetSummary {entryPoint, clangOption, allocator, platform, executeCommand})
   return $ Map.fromList kvs
 
-interpretCommand :: T.Text -> E.Ens -> App (Maybe [T.Text])
-interpretCommand key ens = do
-  if E.hasKey key ens
-    then Just <$> interpretTextList key ens
+interpretExecuteCommand :: E.Ens -> App (Maybe (H.Hint, T.Text))
+interpretExecuteCommand ens = do
+  if E.hasKey keyExecute ens
+    then Just <$> liftEither (E.access keyExecute ens >>= E.toString)
     else return Nothing
 
 interpretTextList :: T.Text -> E.Ens -> App [T.Text]
@@ -144,7 +144,7 @@ interpretZenConfig zenDict = do
   clangOption <- interpretClangOption zenDict
   allocator <- interpretAllocator zenDict
   platform <- interpretPlatform zenDict
-  executeCommand <- interpretCommand keyExecute zenDict
+  executeCommand <- interpretExecuteCommand zenDict
   return $ ZenConfig {clangOption, allocator, platform, executeCommand}
 
 interpretClangOption :: E.Ens -> App CL.ClangOption
@@ -267,7 +267,7 @@ interpretForeignDict ens = do
   (_, script) <- liftEither $ E.access keyForeignScript ens >>= E.toList
   input' <- mapM interpretSomePath $ SE.extract input
   output' <- mapM interpretRelFilePath $ SE.extract output
-  script' <- fmap (map snd . SE.extract) $ liftEither $ mapM E.toString script
+  script' <- fmap SE.extract $ liftEither $ mapM E.toString script
   return $ Foreign {input = input', script = script', output = output'}
 
 interpretAntecedent :: E.Ens -> App ModuleDigest

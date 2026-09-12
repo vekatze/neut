@@ -47,11 +47,11 @@ import Kernel.Common.Module qualified as M
 import Kernel.Common.Module.EnsureDeclaredPathExistence (ensureDeclaredPathExistence)
 import Kernel.Common.OutputKind
 import Kernel.Common.OutputKind qualified as OK
+import Kernel.Common.Placeholder qualified as Placeholder
 import Kernel.Common.RunProcess qualified as RunProcess
 import Kernel.Common.Source
 import Kernel.Common.SourceDependencyMap (SourceDependencyMap)
 import Kernel.Common.Target
-import Kernel.Common.Template qualified as Template
 import Kernel.Common.Trace qualified as Trace
 import Kernel.Common.ZenConfig qualified as Z
 import Kernel.Elaborate.Elaborate qualified as Elaborate
@@ -354,10 +354,10 @@ compileForeign h t startTime moduleList = do
 
 compileForeign' :: Handle -> Target -> UTCTime -> M.Module -> App Bool
 compileForeign' h t startTime m = do
-  sub <- getForeignSubst h t m
   let cmdList = M.script $ M.moduleForeign m
   let moduleRootDir = M.getModuleRootDir m
   foreignDir <- Path.getForeignDir (Global.pathHandle (globalHandle h)) t m
+  let resolver = getForeignResolver h foreignDir m
   forM_ (M.input $ M.moduleForeign m) $ ensureDeclaredPathExistence moduleRootDir
   inputPathList <- fmap concat $ mapM (liftIO . Path.unrollPath . M.attachPrefixPath moduleRootDir . snd) $ M.input $ M.moduleForeign m
   let outputPathList = map (foreignDir </>) $ M.output $ M.moduleForeign m
@@ -373,12 +373,11 @@ compileForeign' h t startTime m = do
               "Cache found; skipping foreign compilation of `" <> MID.reify (M.moduleID m) <> "`"
           return False
     _ -> do
-      let cmdList' = map (naiveReplace sub) cmdList
-      Template.ensureNoUnknownPlaceholder M.keyForeignScript cmdList'
+      cmdList' <- mapM (Placeholder.expand M.keyForeignScript resolver) cmdList
       unless (null cmdList') $ do
         liftIO $
           Logger.report (Global.loggerHandle (globalHandle h)) $
-            "Performing foreign compilation of `" <> MID.reify (M.moduleID m) <> "` with " <> T.pack (show sub)
+            "Performing foreign compilation of `" <> MID.reify (M.moduleID m) <> "`"
       forM_ cmdList' $ \cmd -> do
         let spec =
               RunProcess.Spec
@@ -404,23 +403,17 @@ compileForeign' h t startTime m = do
           else raiseError' $ "Missing foreign output: " <> T.pack (toFilePath outputPath)
       return $ not $ null cmdList
 
-naiveReplace :: [(T.Text, T.Text)] -> T.Text -> T.Text
-naiveReplace sub t =
-  case sub of
-    [] ->
-      t
-    (from, to) : rest -> do
-      T.replace from to (naiveReplace rest t)
-
-getForeignSubst :: Handle -> Target -> M.Module -> App [(T.Text, T.Text)]
-getForeignSubst h t m = do
-  clangCommand <- liftIO $ getForeignClangCommand (Global.loggerHandle (globalHandle h)) (Global.platformHandle (globalHandle h))
-  foreignDir <- Path.getForeignDir (Global.pathHandle (globalHandle h)) t m
-  return
-    [ ("{{module-root}}", shellQuote $ T.pack $ toFilePath $ M.getModuleRootDir m),
-      ("{{clang}}", clangCommand),
-      ("{{foreign}}", shellQuote $ T.pack $ toFilePath foreignDir)
-    ]
+getForeignResolver :: Handle -> Path Abs Dir -> M.Module -> Placeholder.Resolver
+getForeignResolver h foreignDir hostModule hint name = do
+  case name of
+    "clang" -> do
+      clangCommand <- liftIO $ getForeignClangCommand (Global.loggerHandle (globalHandle h)) (Global.platformHandle (globalHandle h))
+      return $ Just clangCommand
+    "foreign" ->
+      return $ Just $ Placeholder.quote $ T.pack $ toFilePath foreignDir
+    _ -> do
+      let mainModule = Env.getMainModule (Global.envHandle (globalHandle h))
+      Placeholder.moduleResolver (Global.moduleHandle (globalHandle h)) mainModule hostModule hint name
 
 getForeignClangCommand :: LoggerHandle.Handle -> Platform.Handle -> IO T.Text
 getForeignClangCommand loggerHandle platformHandle = do
@@ -429,13 +422,9 @@ getForeignClangCommand loggerHandle platformHandle = do
   sysrootOption <- Platform.getSysrootOption loggerHandle platformHandle
   let toolchainOption = Platform.getToolchainOption platformHandle
   return $
-    T.unwords $
-      map (shellQuote . T.pack) $
+    Placeholder.quoteWords $
+      map T.pack $
         [clang, "-target", targetTriple] ++ sysrootOption ++ toolchainOption
-
-shellQuote :: T.Text -> T.Text
-shellQuote text =
-  "'" <> T.replace "'" "'\\''" text <> "'"
 
 expandClangOptions :: Handle -> Target -> App Target
 expandClangOptions h target =

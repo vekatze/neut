@@ -18,6 +18,7 @@ import Kernel.Common.ZenConfig (ZenConfig)
 import Kernel.Common.ZenConfig qualified as Z
 import Language.Common.BaseName qualified as BN
 import Language.Common.SourceLocator qualified as SL
+import Logger.Hint (Hint)
 import Path
 
 data Target
@@ -31,7 +32,7 @@ data TargetSummary = TargetSummary
     clangOption :: CL.ClangOption,
     allocator :: Allocator,
     platform :: P.PlatformSelector,
-    executeCommand :: Maybe [T.Text]
+    executeCommand :: Maybe (Hint, T.Text)
   }
   deriving (Show, Eq)
 
@@ -74,7 +75,7 @@ getLinkOption target =
     Zen _ zenConfig ->
       map T.unpack $ CL.linkOption (Z.clangOption zenConfig)
 
-getExecuteCommand :: MainTarget -> Maybe [T.Text]
+getExecuteCommand :: MainTarget -> Maybe (Hint, T.Text)
 getExecuteCommand target =
   case target of
     Named _ targetSummary ->
