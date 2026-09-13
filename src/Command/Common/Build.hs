@@ -2,7 +2,9 @@ module Command.Common.Build
   ( Config (..),
     Handle,
     new,
-    buildTarget,
+    getMainTarget,
+    prepareMainModule,
+    buildMainTarget,
   )
 where
 
@@ -16,6 +18,7 @@ import Command.Common.Build.Generate qualified as Gen
 import Command.Common.Build.Install qualified as Install
 import Command.Common.Build.Link qualified as Link
 import Command.Common.Dependency qualified as Dependency
+import Command.Common.Fetch qualified as Fetch
 import Console.Handle qualified as Console
 import Control.Comonad.Cofree
 import Control.Concurrent (getNumCapabilities)
@@ -114,6 +117,27 @@ new cfg globalHandle = do
   let _installDir = installDir cfg
   let _executeArgs = executeArgs cfg
   Handle {..}
+
+getMainTarget :: M.TargetName -> Global.Handle -> App MainTarget
+getMainTarget targetName globalHandle = do
+  let mainModule = Env.getMainModule (Global.envHandle globalHandle)
+  case M.getTarget (M.extractModule mainModule) targetName of
+    Just target ->
+      return target
+    Nothing ->
+      raiseError' $ "No such target exists: " <> targetName
+
+prepareMainModule :: Global.Handle -> App M.MainModule
+prepareMainModule h = do
+  let mainModule = Env.getMainModule (Global.envHandle h)
+  Path.ensureNotInDependencyDir mainModule
+  Fetch.fetch (Fetch.new h) mainModule
+  return mainModule
+
+buildMainTarget :: Handle -> MainTarget -> App ()
+buildMainTarget h target = do
+  mainModule <- prepareMainModule (globalHandle h)
+  buildTarget h mainModule (Main target)
 
 buildTarget :: Handle -> M.MainModule -> Target -> App ()
 buildTarget h (M.MainModule baseModule) target = do
@@ -466,47 +490,40 @@ expandClangOptions :: Handle -> Target -> App Target
 expandClangOptions h target =
   case target of
     Main concreteTarget ->
-      case concreteTarget of
-        Named targetName summary -> do
-          let cl = clangOption summary
-          compileOption' <- expandOptions h (CL.compileOption cl)
-          linkOption' <- expandOptions h (CL.linkOption cl)
-          return $
-            Main $
-              Named
-                targetName
-                ( summary
-                    { clangOption =
-                        CL.ClangOption
-                          { compileOption = compileOption',
-                            linkOption = linkOption'
-                          }
-                    }
-                )
-        Zen path zenConfig -> do
-          let cl = Z.clangOption zenConfig
-          compileOption' <- expandOptions h (CL.compileOption cl)
-          linkOption' <- expandOptions h (CL.linkOption cl)
-          let cl' = CL.ClangOption {compileOption = compileOption', linkOption = linkOption'}
-          let zenConfig' = zenConfig {Z.clangOption = cl'}
-          return $ Main $ Zen path zenConfig'
+      Main <$> expandMainTarget (runProcessHandle h) concreteTarget
     Peripheral {} ->
       return target
     PeripheralSingle {} ->
       return target
 
-expandOptions :: Handle -> [T.Text] -> App [T.Text]
+expandMainTarget :: RunProcess.Handle -> MainTarget -> App MainTarget
+expandMainTarget h target =
+  case target of
+    Named targetName summary -> do
+      clangOption' <- expandClangOption h (clangOption summary)
+      return $ Named targetName (summary {clangOption = clangOption'})
+    Zen path zenConfig -> do
+      clangOption' <- expandClangOption h (Z.clangOption zenConfig)
+      return $ Zen path (zenConfig {Z.clangOption = clangOption'})
+
+expandClangOption :: RunProcess.Handle -> CL.ClangOption -> App CL.ClangOption
+expandClangOption h cl = do
+  compileOption' <- expandOptions h (CL.compileOption cl)
+  linkOption' <- expandOptions h (CL.linkOption cl)
+  return $ CL.ClangOption {compileOption = compileOption', linkOption = linkOption'}
+
+expandOptions :: RunProcess.Handle -> [T.Text] -> App [T.Text]
 expandOptions h textList =
   concat <$> mapM (expandText h) textList
 
-expandText :: Handle -> T.Text -> App [T.Text]
+expandText :: RunProcess.Handle -> T.Text -> App [T.Text]
 expandText h t = do
   let spec =
         RunProcess.Spec
           { cmdspec = RawCommand "sh" ["-c", "printf '%s\\n' " ++ T.unpack t],
             cwd = Nothing
           }
-  output <- liftIO $ RunProcess.run01 (runProcessHandle h) spec
+  output <- liftIO $ RunProcess.run01 h spec
   case output of
     Right value ->
       return $ filter (not . T.null) $ T.lines $ decodeUtf8With lenientDecode value

@@ -2,57 +2,37 @@ module Command.Build.Build
   ( Handle,
     new,
     build,
-    toBuildConfig,
   )
 where
 
 import App.App (App)
-import App.Error (Error)
 import App.Run (raiseError')
 import Command.Common.Build qualified as Build
-import Command.Common.Fetch qualified as Fetch
 import CommandParser.Config.Build
 import Control.Monad
 import Control.Monad.Except (liftEither)
-import Data.Text qualified as T
 import Kernel.Common.CreateGlobalHandle qualified as Global
-import Kernel.Common.Handle.Global.Env qualified as Env
-import Kernel.Common.Handle.Global.Path qualified as Path
-import Kernel.Common.Module
 import Kernel.Common.OutputKind qualified as OK
-import Kernel.Common.Target
 import Prelude hiding (log)
 
 newtype Handle = Handle
   { globalHandle :: Global.Handle
   }
 
-new ::
-  Global.Handle ->
-  Handle
+new :: Global.Handle -> Handle
 new globalHandle = do
   Handle {..}
 
 build :: Handle -> Config -> App ()
 build h cfg = do
-  setup h cfg
-  buildConfig <- liftEither $ toBuildConfig cfg
-  let buildHandle = Build.new buildConfig (globalHandle h)
-  target <- getMainTarget h $ targetName cfg
-  let mainModule = Env.getMainModule (Global.envHandle (globalHandle h))
-  Build.buildTarget buildHandle mainModule (Main target)
+  buildConfig <- toBuildConfig cfg
+  target <- Build.getMainTarget (targetName cfg) (globalHandle h)
+  Build.buildMainTarget (Build.new buildConfig (globalHandle h)) target
 
-setup :: Handle -> Config -> App ()
-setup h cfg = do
-  ensureSetupSanity cfg
-  let mainModule = Env.getMainModule (Global.envHandle (globalHandle h))
-  Path.ensureNotInDependencyDir mainModule
-  let fetchHandle = Fetch.new (globalHandle h)
-  Fetch.fetch fetchHandle mainModule
-
-toBuildConfig :: Config -> Either Error Build.Config
+toBuildConfig :: Config -> App Build.Config
 toBuildConfig cfg = do
-  outputKindList <- mapM OK.fromText $ outputKindTextList cfg
+  outputKindList <- liftEither $ mapM OK.fromText $ outputKindTextList cfg
+  ensureSetupSanity outputKindList (shouldSkipLink cfg)
   return $
     Build.Config
       { outputKindList = outputKindList,
@@ -62,19 +42,9 @@ toBuildConfig cfg = do
         executeArgs = args cfg
       }
 
-getMainTarget :: Handle -> T.Text -> App MainTarget
-getMainTarget h targetName = do
-  let mainModule = Env.getMainModule (Global.envHandle (globalHandle h))
-  case getTarget (extractModule mainModule) targetName of
-    Just target ->
-      return target
-    Nothing ->
-      raiseError' $ "No such target exists: " <> targetName
-
-ensureSetupSanity :: Config -> App ()
-ensureSetupSanity cfg = do
-  outputKindList <- liftEither $ mapM OK.fromText $ outputKindTextList cfg
+ensureSetupSanity :: [OK.OutputKind] -> Bool -> App ()
+ensureSetupSanity outputKindList shouldSkipLink' = do
   let willBuildObjects = OK.Object `elem` outputKindList
-  let willLink = not $ shouldSkipLink cfg
+  let willLink = not shouldSkipLink'
   when (not willBuildObjects && willLink) $
     raiseError' "`--skip-link` must be set explicitly when `--emit` does not contain `object`"

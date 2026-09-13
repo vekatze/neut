@@ -27,6 +27,7 @@ where
 import App.App (App)
 import App.Run (raiseError')
 import Control.Comonad.Cofree
+import Control.Exception (IOException, try)
 import Control.Monad (unless, when)
 import Control.Monad.IO.Class
 import Data.ByteString.UTF8 qualified as B
@@ -332,8 +333,12 @@ unrollPath :: M.SomePath Abs -> IO [M.SomePath Abs]
 unrollPath path = do
   case path of
     Left dirPath -> do
-      (dirList, fileList) <- P.listDirRecur dirPath
-      return $ path : map Left dirList ++ map Right fileList
+      contentOrError <- try $ P.listDirRecur dirPath
+      case contentOrError of
+        Left (_ :: IOException) ->
+          return [path]
+        Right (dirList, fileList) ->
+          return $ path : map Left dirList ++ map Right fileList
     Right _ ->
       return [path]
 

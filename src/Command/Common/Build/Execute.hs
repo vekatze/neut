@@ -44,13 +44,15 @@ resolveCommand h target outputPath = do
     Nothing ->
       return $ Placeholder.quote $ T.pack (toFilePath outputPath)
     Just commandTemplate ->
-      Placeholder.expand M.keyExecute (resolver h mainModule outputPath) commandTemplate
+      Placeholder.expand M.keyExecute (resolver h mainModule target outputPath) commandTemplate
 
-resolver :: Handle -> M.MainModule -> Path Abs File -> Placeholder.Resolver
-resolver h mainModule outputPath hint name = do
+resolver :: Handle -> M.MainModule -> MainTarget -> Path Abs File -> Placeholder.Resolver
+resolver h mainModule target outputPath hint name = do
   case name of
     "executable" ->
       return $ Just $ Placeholder.quote $ T.pack (toFilePath outputPath)
+    "target" ->
+      return $ fmap Placeholder.quote $ getTargetName target
     _ ->
       Placeholder.mainModuleResolver (moduleHandle h) mainModule hint name
 

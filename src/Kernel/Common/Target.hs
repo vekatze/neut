@@ -7,6 +7,7 @@ module Kernel.Common.Target
     getCompileOption,
     getLinkOption,
     getExecuteCommand,
+    getTargetName,
   )
 where
 
@@ -74,6 +75,14 @@ getLinkOption target =
       map T.unpack $ CL.linkOption (clangOption targetSummary)
     Zen _ zenConfig ->
       map T.unpack $ CL.linkOption (Z.clangOption zenConfig)
+
+getTargetName :: MainTarget -> Maybe T.Text
+getTargetName target =
+  case target of
+    Named name _ ->
+      Just name
+    Zen {} ->
+      Nothing
 
 getExecuteCommand :: MainTarget -> Maybe (Hint, T.Text)
 getExecuteCommand target =

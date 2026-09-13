@@ -10,6 +10,7 @@ import CommandParser.Config.Build qualified as Build
 import CommandParser.Config.Check qualified as Check
 import CommandParser.Config.Clean qualified as Clean
 import CommandParser.Config.Create qualified as Create
+import CommandParser.Config.Describe qualified as Describe
 import CommandParser.Config.Format qualified as Format
 import CommandParser.Config.Get qualified as Get
 import CommandParser.Config.Remark qualified as Remark
@@ -21,6 +22,7 @@ data InternalCommand
   | Build Build.Config
   | Check Check.Config
   | Clean Clean.Config
+  | Describe Describe.Config
   | Format Format.Config
   | Get Get.Config
   | Zen Zen.Config

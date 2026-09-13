@@ -19,7 +19,7 @@ where
 
 import App.App (App)
 import App.Error (newError')
-import App.Run (raiseError, raiseError', run)
+import App.Run (raiseError, raiseError')
 import Control.Monad (unless)
 import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.IO.Class (MonadIO (liftIO))
@@ -41,8 +41,8 @@ import Logger.Hint
 import Path
 import Paths_neut
 import System.Directory
-import System.FilePath qualified as FP
 import System.Environment (lookupEnv)
+import System.FilePath qualified as FP
 import System.Info qualified as SI
 import System.Process (CmdSpec (RawCommand))
 import Text.ParserCombinators.ReadP (readP_to_S)
@@ -96,29 +96,28 @@ getClangTargetTriple :: Handle -> String
 getClangTargetTriple =
   _clangTargetTriple
 
-new :: Logger.Handle -> P.PlatformSelector -> IO Handle
+new :: Logger.Handle -> P.PlatformSelector -> App Handle
 new loggerHandle selector = do
-  run loggerHandle $ do
-    let _selector = selector
-    (_arch, _os) <-
-      case selector of
-        P.SelectHost -> do
-          hostArch <- getArch' Nothing
-          hostOS <- getOS' Nothing
-          return (hostArch, hostOS)
-        P.SelectWasm32 ->
-          return (Arch.Wasm32, O.Wasi)
-        P.SelectWeb ->
-          return (Arch.Wasm32, O.Wasi)
-    _clangTargetTriple <- resolveClangTargetTriple _arch _os
-    let _baseSize = Arch.dataSizeOf _arch
-    hostArch <- getArch' Nothing
-    hostOS <- getOS' Nothing
-    _toolchainRoot <- resolveToolchainRoot hostArch hostOS
-    let _clang = resolveClang _toolchainRoot
-    ensureClang _clang
-    _clangDigest <- calculateClangDigest loggerHandle _clang _clangTargetTriple
-    return $ Handle {..}
+  let _selector = selector
+  (_arch, _os) <-
+    case selector of
+      P.SelectHost -> do
+        hostArch <- getArch' Nothing
+        hostOS <- getOS' Nothing
+        return (hostArch, hostOS)
+      P.SelectWasm32 ->
+        return (Arch.Wasm32, O.Wasi)
+      P.SelectWeb ->
+        return (Arch.Wasm32, O.Wasi)
+  _clangTargetTriple <- resolveClangTargetTriple _arch _os
+  let _baseSize = Arch.dataSizeOf _arch
+  hostArch <- getArch' Nothing
+  hostOS <- getOS' Nothing
+  _toolchainRoot <- resolveToolchainRoot hostArch hostOS
+  let _clang = resolveClang _toolchainRoot
+  ensureClang _clang
+  _clangDigest <- calculateClangDigest loggerHandle _clang _clangTargetTriple
+  return $ Handle {..}
 
 getArch' :: Maybe Hint -> App Arch.Arch
 getArch' mm = do
@@ -330,8 +329,7 @@ ensureClang clang = do
       unless b $
         raiseError' $
           "Command not found: " <> T.pack clang
-    else
-      ensureExecutable clang
+    else ensureExecutable clang
 
 ensureExecutable :: String -> App ()
 ensureExecutable name = do

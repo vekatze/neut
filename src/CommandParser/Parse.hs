@@ -4,6 +4,7 @@ import CommandParser.Command
 import CommandParser.Config.Archive qualified as Archive
 import CommandParser.Config.Build qualified as Build
 import CommandParser.Config.Check qualified as Check
+import CommandParser.Config.Describe qualified as Describe
 import CommandParser.Config.Clean qualified as Clean
 import CommandParser.Config.Create qualified as Create
 import CommandParser.Config.Format qualified as Format
@@ -25,6 +26,7 @@ parseOpt = do
   subparser $
     mconcat
       [ cmd "build" parseBuildOpt "build given target",
+        cmd "describe" parseDescribeOpt "describe the inputs and the executable of given target",
         cmd "clean" parseCleanOpt "remove the resulting files",
         cmd "check" parseCheckOpt "type-check all the files in the current module",
         cmd "archive" parseArchiveOpt "package a tarball",
@@ -59,6 +61,17 @@ parseBuildOpt = do
             Build.shouldExecute = shouldExecute,
             Build.installDir = installDir,
             Build.args = rest
+          }
+
+parseDescribeOpt :: Parser Command
+parseDescribeOpt = do
+  targetName <- argument str $ mconcat [metavar "TARGET", help "The target to describe"]
+  remarkCfg <- remarkConfigOpt
+  pure $
+    Internal remarkCfg $
+      Describe $
+        Describe.Config
+          { Describe.targetName = targetName
           }
 
 parseCleanOpt :: Parser Command
