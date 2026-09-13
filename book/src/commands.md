@@ -5,6 +5,7 @@ The `neut` command has subcommands like `neut build`, `neut get`, etc. This sect
 ## Table of Contents
 
 - [neut build](#neut-build)
+- [neut describe](#neut-describe)
 - [neut check](#neut-check)
 - [neut clean](#neut-clean)
 - [neut archive](#neut-archive)
@@ -85,6 +86,44 @@ You can control the emitted artifacts by passing a comma-separated list to `--em
 - `--emit object,llvm` emits both
 
 If `--emit` does not include `object`, you must also pass `--skip-link`.
+
+## `neut describe`
+
+`neut describe TARGET` writes a description of `TARGET` to stdout, without building it:
+
+```sh
+neut describe hello
+#=> {
+#     module-root "/path/to/app/",
+#     executable "/path/to/app/cache/build/(..)/executable/hello",
+#     input [
+#       "/path/to/app/module.ens",
+#       "/path/to/app/source/hello.nt",
+#       "/path/to/app/source/lib.nt",
+#     ],
+#   }
+```
+
+The description has the following keys:
+
+| Key           | Value                                                               |
+| ------------- | ------------------------------------------------------------------- |
+| `module-root` | the root directory of the current module                            |
+| `executable`  | the path at which `neut build TARGET` places the executable         |
+| `input`       | the files in the current module that `neut build TARGET` depends on |
+
+The `input` holds the following files:
+
+- sources reached from the entry point of `TARGET`, including missing sources and sources with parse errors
+- [static files](./modules.md#static-file)
+- the `input` of [`foreign`](./modules.md#foreign); a directory is listed along with everything under it
+- `module.ens`
+
+The description follows the files as they are when `neut describe` runs. The executable might not exist yet, and its path changes when `module.ens` changes.
+
+Each path is absolute, and the path of a directory ends with `/`. Nothing else is written to stdout. If a path is not valid UTF-8, an error is reported instead.
+
+If the sources cannot be followed, for example because an import is malformed, the description still holds the input reached so far. The error goes to stderr, and the command exits with a nonzero status.
 
 ## `neut check`
 

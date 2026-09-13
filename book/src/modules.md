@@ -4,6 +4,8 @@ A directory (including all its children) is a _module_ if it contains a file nam
 
 Below is a list of the configurations in `module.ens`.
 
+The string literals in `module.ens` use the same escape sequences as [the string literals of Neut](./terms.md#strings).
+
 ## Table of Contents
 
 - [target](#target)
@@ -143,6 +145,8 @@ Adding an element to `build-option` is the same as adding the element to both `c
 
 In `build-option`, you can use environment variables and shell interpolations.
 
+The options are expanded every time the target is built. If the expansion differs from the one of the previous build, the artifacts of the target are discarded and built again.
+
 The field `build-option` is optional. The default value of `build-option` is `[]`.
 
 ### `allocator`
@@ -208,22 +212,30 @@ The field `execute` specifies how `neut build TARGET --execute` runs the build a
     foo {
       main "foo.nt",
       platform "wasm32",
-      execute [
-        "wasmtime",
-        "{{executable}}",
-      ],
+      execute "wasmtime {{executable}}",
     },
   },
 }
 ```
 
-The value is an argument list. It is executed directly, without a shell. Arguments passed after `--execute` are appended to it.
+The value is a command, run by a shell. Arguments passed after `--execute` are appended to it, each quoted.
 
 In the field `execute`, you can use the following placeholders:
 
 - `{{executable}}`: the path of the build artifact
-- `{{module-root}}`: the root directory of the current module
-- `{{module:ALIAS}}`: the root directory of the dependency whose alias is `ALIAS`
+- `{{module:MODULE-PATH}}`: the root directory of the module named by `MODULE-PATH`
+- `{{neut}}`: the path of the running compiler
+- `{{target}}`: the name of the target
+
+A placeholder expands to one or more arguments, each quoted on its own.
+
+`{{module:MODULE-PATH}}` takes a [module path](./basis.md#resolving-names), relative to the module in which the command is written:
+
+- `{{module:this}}`: the module itself
+- `{{module:core}}`: its dependency `core`
+- `{{module:noa.core}}`: the `core` of its dependency `noa`
+
+The build artifact is placed in a directory named after the module configuration and the options of the target. The path of `{{executable}}` therefore changes when `module.ens` changes.
 
 The field `execute` is optional. Without it, `--execute` runs the build artifact directly.
 
@@ -382,10 +394,11 @@ The field `script` specifies how to compile external source files. When running 
 In the field `script`, you can use the following placeholders:
 
 - `{{clang}}`: The `clang` used by the compiler, aimed at the platform of the target
-- `{{module-root}}`: The root directory of the module
+- `{{module:MODULE-PATH}}`: The root directory of the module named by `MODULE-PATH`
 - `{{foreign}}`: The foreign directory
+- `{{neut}}`: The path of the running compiler
 
-`{{clang}}` expands to a command, not a path. It carries the options that select the platform, such as `-target` and the sysroot.
+These expand as in `execute`: one or more arguments, each quoted. `{{clang}}` expands to several since it carries the options that select the platform, such as `-target` and the sysroot.
 
 The compiler skips running the `script` if all the files in `output` are newer than `input`.
 
