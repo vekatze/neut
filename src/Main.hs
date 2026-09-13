@@ -18,15 +18,20 @@ import CommandParser.Config.Check qualified as CheckConfig
 import CommandParser.Config.Remark qualified as Remark
 import CommandParser.Parse qualified as CommandParser
 import Console.CreateHandle qualified as Console
+import Control.Concurrent (myThreadId, throwTo)
+import Control.Monad (forM_)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.Platform (ensureExecutables)
 import Logger.CreateHandle qualified as Logger
+import System.Exit (ExitCode (ExitFailure))
 import System.IO
+import System.Posix.Signals (Handler (Catch), Signal, installHandler, sigHUP, sigTERM)
 
 main :: IO ()
 main = do
   mapM_ (`hSetEncoding` utf8) [stdin, stdout, stderr]
+  endOnTerminationSignals
   userCommand <- liftIO CommandParser.run
   case userCommand of
     C.External loggerConfig cmd -> do
@@ -72,3 +77,13 @@ main = do
             Format.format (Format.new h) cfg
           C.Zen cfg -> do
             Zen.zen (Zen.new h cfg) cfg
+
+endOnTerminationSignals :: IO ()
+endOnTerminationSignals = do
+  mainThreadId <- myThreadId
+  forM_ [sigTERM, sigHUP] $ \signal ->
+    installHandler signal (Catch $ throwTo mainThreadId $ ExitFailure $ exitCodeOnSignal signal) Nothing
+
+exitCodeOnSignal :: Signal -> Int
+exitCodeOnSignal signal =
+  128 + fromIntegral signal

@@ -72,6 +72,7 @@ dependencies:
 - time
 - transformers
 - unboxed-ref
+- unix
 - unliftio
 - unliftio-core
 - unordered-containers
