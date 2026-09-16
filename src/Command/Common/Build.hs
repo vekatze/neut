@@ -17,6 +17,7 @@ import Command.Common.Build.Install qualified as Install
 import Command.Common.Build.Link qualified as Link
 import Command.Common.Dependency qualified as Dependency
 import Console.Handle qualified as Console
+import Control.Comonad.Cofree
 import Control.Concurrent (getNumCapabilities)
 import Control.Exception (mask_)
 import Control.Monad
@@ -31,6 +32,8 @@ import Data.Text qualified as T
 import Data.Text.Encoding (decodeUtf8With)
 import Data.Text.Encoding.Error (lenientDecode)
 import Data.Time
+import Ens.Ens qualified as E
+import Ens.ToDoc qualified as E
 import Gensym.CreateHandle qualified as Gensym
 import Gensym.Handle qualified as Gensym
 import Kernel.Clarify.Clarify qualified as Clarify
@@ -68,10 +71,14 @@ import Language.LowComp.LowComp qualified as LC
 import Language.Term.Stmt (getStmtName)
 import Logger.Debug qualified as Logger
 import Logger.Handle qualified as LoggerHandle
+import Logger.Hint (internalHint)
 import Logger.Print qualified as Logger
 import Path
 import Path.IO
+import Path.Read (readTextFromPath)
+import Path.Write (writeText)
 import ProgressIndicator.ShowProgress qualified as Indicator
+import SyntaxTree.Series qualified as SE
 import System.Console.ANSI
 import System.Process (CmdSpec (RawCommand, ShellCommand))
 import UnliftIO.Async
@@ -112,6 +119,7 @@ buildTarget :: Handle -> M.MainModule -> Target -> App ()
 buildTarget h (M.MainModule baseModule) target = do
   liftIO $ Logger.report (Global.loggerHandle (globalHandle h)) $ "Building: " <> T.pack (show target)
   target' <- expandClangOptions h target
+  discardStaleBuildDir h target' baseModule
   liftIO $
     Logger.report (Global.loggerHandle (globalHandle h)) $
       "Build configuration: target=" <> T.pack (show target') <> ", outputs=" <> T.pack (show $ _outputKindList h) <> ", skip-link=" <> T.pack (show $ _shouldSkipLink h) <> ", execute=" <> T.pack (show $ _shouldExecute h)
@@ -425,6 +433,34 @@ getForeignClangCommand loggerHandle platformHandle = do
     Placeholder.quoteWords $
       map T.pack $
         [clang, "-target", targetTriple] ++ sysrootOption ++ toolchainOption
+
+discardStaleBuildDir :: Handle -> Target -> M.Module -> App ()
+discardStaleBuildDir h target baseModule = do
+  recordPath <- Path.getExpandedClangOptionPath (Global.pathHandle (globalHandle h)) target baseModule
+  let expandedClangOption = showExpandedClangOption target
+  recordExists <- doesFileExist recordPath
+  recordedClangOption <- if recordExists then Just <$> readTextFromPath recordPath else return Nothing
+  when (recordedClangOption /= Just expandedClangOption) $ do
+    buildDir <- Path.getBuildDir (Global.pathHandle (globalHandle h)) target baseModule
+    liftIO $ Logger.report (Global.loggerHandle (globalHandle h)) "The expansion of the clang options changed; discarding the build directory"
+    ignoringAbsence $ removeDirRecur buildDir
+    ensureDir buildDir
+    liftIO $ writeText recordPath expandedClangOption
+
+showExpandedClangOption :: Target -> T.Text
+showExpandedClangOption target = do
+  let compileOption' = map T.pack $ getCompileOption target
+  let linkOption' = case target of
+        Main mainTarget ->
+          map T.pack $ getLinkOption mainTarget
+        _ ->
+          []
+  E.pp $
+    E.inject $
+      E.dictFromListVertical internalHint $
+        [ (M.keyCompileOption, internalHint :< E.List (SE.fromList SE.Bracket SE.Comma (map (\option -> internalHint :< E.String option) compileOption'))),
+          (M.keyLinkOption, internalHint :< E.List (SE.fromList SE.Bracket SE.Comma (map (\option -> internalHint :< E.String option) linkOption')))
+        ]
 
 expandClangOptions :: Handle -> Target -> App Target
 expandClangOptions h target =

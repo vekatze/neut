@@ -7,6 +7,8 @@ module Kernel.Common.Handle.Global.Path
     getForeignDir,
     getAllocatorDir,
     getLtoCacheDir,
+    getBuildDir,
+    getExpandedClangOptionPath,
     getLinkResponseFilePath,
     getInstallDir,
     sourceToOutputPath,
@@ -183,6 +185,11 @@ getAllocatorDir h t baseModule = do
   let allocatorDir = buildDir </> allocatorRelDir
   P.ensureDir allocatorDir
   return allocatorDir
+
+getExpandedClangOptionPath :: Handle -> Target.Target -> Module -> App (Path Abs File)
+getExpandedClangOptionPath h t baseModule = do
+  buildDir <- getBuildDir h t baseModule
+  P.resolveFile buildDir "clang-option.ens"
 
 getLtoCacheDir :: Handle -> Target.Target -> Module -> App (Path Abs Dir)
 getLtoCacheDir h t baseModule = do
