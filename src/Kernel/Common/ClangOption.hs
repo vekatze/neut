@@ -5,17 +5,14 @@ module Kernel.Common.ClangOption
   )
 where
 
-import Data.Hashable
 import Data.Text qualified as T
-import GHC.Generics (Generic)
 
 data ClangOption = ClangOption
   { compileOption :: [T.Text],
     linkOption :: [T.Text]
   }
-  deriving (Show, Eq, Generic)
+  deriving (Show, Eq)
 
-instance Hashable ClangOption
 
 new :: [T.Text] -> [T.Text] -> [T.Text] -> ClangOption
 new buildOption compileOption linkOption =

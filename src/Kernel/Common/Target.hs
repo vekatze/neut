@@ -10,9 +10,7 @@ module Kernel.Common.Target
   )
 where
 
-import Data.Hashable
 import Data.Text qualified as T
-import GHC.Generics (Generic)
 import Kernel.Common.Allocator (Allocator, defaultAllocator)
 import Kernel.Common.ClangOption qualified as CL
 import Kernel.Common.Platform qualified as P
@@ -26,7 +24,7 @@ data Target
   = Main MainTarget
   | Peripheral
   | PeripheralSingle (Path Abs File)
-  deriving (Show, Eq, Generic)
+  deriving (Show, Eq)
 
 data TargetSummary = TargetSummary
   { entryPoint :: SL.SourceLocator,
@@ -35,18 +33,12 @@ data TargetSummary = TargetSummary
     platform :: P.PlatformSelector,
     executeCommand :: Maybe [T.Text]
   }
-  deriving (Show, Eq, Generic)
+  deriving (Show, Eq)
 
 data MainTarget
   = Named T.Text TargetSummary
   | Zen (Path Abs File) ZenConfig
-  deriving (Show, Eq, Generic)
-
-instance Hashable Target
-
-instance Hashable TargetSummary
-
-instance Hashable MainTarget
+  deriving (Show, Eq)
 
 emptyZen :: Path Abs File -> MainTarget
 emptyZen path =
