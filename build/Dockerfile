@@ -15,6 +15,7 @@ RUN apt-get update && \
   just \
   lsb-release \
   ninja-build \
+  patch \
   python3 \
   tar \
   wget \
