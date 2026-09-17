@@ -6,17 +6,17 @@ import App.Run (runApp)
 import Control.Concurrent.MVar
 import Control.Concurrent.QSem
 import Control.Exception (bracket_)
-import Control.Monad (forM)
+import Control.Monad (forM, unless)
 import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.IO.Class (MonadIO (liftIO))
-import Data.Either (isRight, partitionEithers)
+import Data.Either (isRight, lefts)
 import Data.HashMap.Strict qualified as Map
-import Data.Maybe (catMaybes, mapMaybe)
+import Data.Maybe (mapMaybe)
 import Kernel.Common.SourceDependencyMap (SourceDependencyMap)
 import Path
 import UnliftIO.Async (forConcurrently)
 
-run :: Int -> SourceDependencyMap -> (a -> Path Abs File) -> [a] -> (a -> App b) -> App [b]
+run :: Int -> SourceDependencyMap -> (a -> Path Abs File) -> [a] -> (a -> App ()) -> App ()
 run concurrency dependencyMap getKey itemList f = do
   semaphore <- liftIO $ newQSem concurrency
   completionList <- liftIO $ forM itemList $ \item -> do
@@ -32,11 +32,9 @@ run concurrency dependencyMap getKey itemList f = do
       then do
         result <- bracket_ (waitQSem semaphore) (signalQSem semaphore) $ runApp $ f item
         putMVar (completionMap Map.! key) (isRight result)
-        return $ fmap Just result
+        return result
       else do
         putMVar (completionMap Map.! key) False
-        return $ Right Nothing
-  let (errorList, valueList) = partitionEithers resultList
-  if null errorList
-    then return $ catMaybes valueList
-    else throwError $ E.join errorList
+        return $ Right ()
+  let errorList = lefts resultList
+  unless (null errorList) $ throwError $ E.join errorList

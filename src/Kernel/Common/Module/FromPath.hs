@@ -32,7 +32,6 @@ import Language.Common.ModuleID qualified as MID
 import Language.Common.SourceLocator qualified as SL
 import Logger.Hint qualified as H
 import Path
-import Path.IO
 import SyntaxTree.Series qualified as SE
 
 fromFilePath :: Path Abs File -> App Module
@@ -44,7 +43,7 @@ fromFilePath moduleFilePath = do
   dependencyEns <- liftEither $ E.access' keyDependency E.emptyDict ens >>= E.toDictionary
   dependency <- interpretDependencyDict dependencyEns
   (_, extraContentsEns) <- liftEither $ E.access' keyExtraContent E.emptyList ens >>= E.toList
-  extraContents <- mapM (interpretExtraPath $ parent moduleFilePath) $ SE.extract extraContentsEns
+  extraContents <- mapM interpretSomePath $ SE.extract extraContentsEns
   (_, antecedentsEns) <- liftEither $ E.access' keyAntecedent E.emptyList ens >>= E.toList
   antecedents <- mapM interpretAntecedent $ SE.extract antecedentsEns
   (_, staticFileEns) <- liftEither $ E.access' keyStaticFile E.emptyDict ens >>= E.toDictionary
@@ -56,7 +55,7 @@ fromFilePath moduleFilePath = do
   sourceDirEns <- liftEither $ E.access' keySource (E.ensPath sourceRelDir) ens
   sourceDir <- interpretDirPath sourceDirEns
   foreignDictEns <- liftEither $ E.access' keyForeign (emptyForeign m) ens
-  foreignDict <- interpretForeignDict (parent moduleFilePath) foreignDictEns
+  foreignDict <- interpretForeignDict foreignDictEns
   mInlineLimit <- interpretInlineLimit ens
   (_, universal) <- liftEither $ E.access' keyUniversal (E.Bool True) ens >>= E.toBool
   (mPreset, presetEns) <- liftEither $ E.access' keyPreset E.emptyDict ens >>= E.toDictionary
@@ -107,14 +106,16 @@ interpretTarget (_, targetDict) = do
     return (k, TargetSummary {entryPoint, clangOption, allocator, platform, executeCommand})
   return $ Map.fromList kvs
 
-interpretExecuteCommand :: E.Ens -> App (Maybe [T.Text])
+interpretExecuteCommand :: E.Ens -> App (Maybe (H.Hint, T.Text))
 interpretExecuteCommand ens = do
   if E.hasKey keyExecute ens
-    then do
-      (_, executeEnsSeries) <- liftEither $ E.access keyExecute ens >>= E.toList
-      executeCommand <- liftEither $ mapM (E.toString >=> return . snd) $ SE.extract executeEnsSeries
-      return $ Just executeCommand
+    then Just <$> liftEither (E.access keyExecute ens >>= E.toString)
     else return Nothing
+
+interpretTextList :: T.Text -> E.Ens -> App [T.Text]
+interpretTextList key ens = do
+  (_, textEnsSeries) <- liftEither $ E.access' key E.emptyList ens >>= E.toList
+  liftEither $ mapM (E.toString >=> return . snd) $ SE.extract textEnsSeries
 
 interpretPlatform :: E.Ens -> App P.PlatformSelector
 interpretPlatform ens = do
@@ -148,20 +149,17 @@ interpretZenConfig zenDict = do
 
 interpretClangOption :: E.Ens -> App CL.ClangOption
 interpretClangOption v = do
-  (_, buildOptEnsSeries) <- liftEither $ E.access' keyBuildOption E.emptyList v >>= E.toList
-  buildOption <- liftEither $ mapM (E.toString >=> return . snd) $ SE.extract buildOptEnsSeries
-  (_, compileOptEnsSeries) <- liftEither $ E.access' keyCompileOption E.emptyList v >>= E.toList
-  compileOption <- liftEither $ mapM (E.toString >=> return . snd) $ SE.extract compileOptEnsSeries
-  (_, linkOptEnsSeries) <- liftEither $ E.access' keyLinkOption E.emptyList v >>= E.toList
-  linkOption <- liftEither $ mapM (E.toString >=> return . snd) $ SE.extract linkOptEnsSeries
+  buildOption <- interpretTextList keyBuildOption v
+  compileOption <- interpretTextList keyCompileOption v
+  linkOption <- interpretTextList keyLinkOption v
   return $ CL.new buildOption compileOption linkOption
 
-interpretStaticFiles :: SE.Series (T.Text, E.Ens) -> App (Map.HashMap T.Text (Path Rel File))
+interpretStaticFiles :: SE.Series (T.Text, E.Ens) -> App (Map.HashMap T.Text (H.Hint, Path Rel File))
 interpretStaticFiles staticFileDict = do
   kvs <- forM (SE.extract staticFileDict) $ \(staticFileKey, staticFilePathEns) -> do
     (m, staticFilePathText) <- liftEither $ E.toString staticFilePathEns
     staticFilePath <- interpretRelFile m staticFilePathText
-    return (staticFileKey, staticFilePath)
+    return (staticFileKey, (m, staticFilePath))
   return $ Map.fromList kvs
 
 interpretSourceLocator :: E.Ens -> App SL.SourceLocator
@@ -249,33 +247,27 @@ ensureNoDuplicateAliasTexts m seen aliasList =
       return ()
     alias : rest -> do
       when (S.member alias seen) $
-        raiseError m $ "Duplicate module alias: " <> alias
+        raiseError m $
+          "Duplicate module alias: " <> alias
       ensureNoDuplicateAliasTexts m (S.insert alias seen) rest
 
-interpretExtraPath :: Path Abs Dir -> E.Ens -> App (SomePath Rel)
-interpretExtraPath moduleRootDir entity = do
+interpretSomePath :: E.Ens -> App (H.Hint, SomePath Rel)
+interpretSomePath entity = do
   (m, itemPathText) <- liftEither $ E.toString entity
-  if T.isSuffixOf "/" itemPathText
-    then do
-      dirPath <- interpretRelDir m itemPathText
-      ensureExistence m moduleRootDir dirPath doesDirExist "directory"
-      return $ Left dirPath
-    else do
-      filePath <- interpretRelFile m itemPathText
-      ensureExistence m moduleRootDir filePath doesFileExist "file"
-      return $ Right filePath
+  path <-
+    if T.isSuffixOf "/" itemPathText
+      then Left <$> interpretRelDir m itemPathText
+      else Right <$> interpretRelFile m itemPathText
+  return (m, path)
 
-interpretForeignDict ::
-  Path Abs Dir ->
-  E.Ens ->
-  App Foreign
-interpretForeignDict moduleRootDir ens = do
+interpretForeignDict :: E.Ens -> App Foreign
+interpretForeignDict ens = do
   (_, input) <- liftEither $ E.access keyForeignInput ens >>= E.toList
   (_, output) <- liftEither $ E.access keyForeignOutput ens >>= E.toList
   (_, script) <- liftEither $ E.access keyForeignScript ens >>= E.toList
-  input' <- mapM (interpretExtraPath moduleRootDir) $ SE.extract input
+  input' <- mapM interpretSomePath $ SE.extract input
   output' <- mapM interpretRelFilePath $ SE.extract output
-  script' <- fmap (map snd . SE.extract) $ liftEither $ mapM E.toString script
+  script' <- fmap SE.extract $ liftEither $ mapM E.toString script
   return $ Foreign {input = input', script = script', output = output'}
 
 interpretAntecedent :: E.Ens -> App ModuleDigest
@@ -298,18 +290,6 @@ interpretInlineLimit ens =
       if limit < 0
         then raiseError m $ "The inline limit must not be negative, but is: " <> T.pack (show limit)
         else return $ Just limit
-
-ensureExistence ::
-  H.Hint ->
-  Path Abs Dir ->
-  Path Rel t ->
-  (Path Abs t -> App Bool) ->
-  T.Text ->
-  App ()
-ensureExistence m moduleRootDir path existenceChecker kindText = do
-  b <- existenceChecker (moduleRootDir </> path)
-  unless b $ do
-    raiseError m $ "No such " <> kindText <> " exists: " <> T.pack (toFilePath path)
 
 emptyForeign :: H.Hint -> E.EnsF E.Ens
 emptyForeign m =

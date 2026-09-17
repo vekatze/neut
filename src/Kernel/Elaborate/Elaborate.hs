@@ -271,7 +271,7 @@ synthesizeStmtList h t logs globalReferenceList stmtList = do
   countSnapshot <- liftIO $ Gensym.getCount (gensymHandle h)
   localLogs <- liftIO $ LocalLogs.get (localLogsHandle h)
   let logs' = logs ++ localLogs
-  Cache.saveCache (globalHandle h) (pathHandle h) t (currentSource h) $
+  Cache.saveCache (globalHandle h) (pathHandle h) t (currentSource h) (cacheTimeStamp h) $
     Cache.Cache
       { Cache.stmtList = stmtList'',
         Cache.knownTraceSiteIDs = Nothing,

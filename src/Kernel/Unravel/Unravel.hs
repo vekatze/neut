@@ -7,6 +7,7 @@ module Kernel.Unravel.Unravel
     checkTargetCapabilities,
     registerShiftMap,
     getSourceDependencyMap,
+    getVisitedMainSourceList,
     unravel',
     unravelModule,
   )
@@ -36,14 +37,15 @@ import Kernel.Common.Handle.Global.Env (getMainModule)
 import Kernel.Common.Handle.Global.Module qualified as Module
 import Kernel.Common.Handle.Global.ModulePath qualified as ModulePath
 import Kernel.Common.Handle.Global.Path qualified as Path
+import Kernel.Common.Handle.Global.Platform qualified as Platform
 import Kernel.Common.Import
 import Kernel.Common.Module
+import Kernel.Common.Module qualified as M
 import Kernel.Common.Module.FromPath qualified as ModuleReflect
 import Kernel.Common.OutputKind qualified as OK
 import Kernel.Common.Source qualified as Source
 import Kernel.Common.Source.ShiftToLatest qualified as STL
 import Kernel.Common.SourceDependencyMap (SourceDependencyMap)
-import Kernel.Common.Handle.Global.Platform qualified as Platform
 import Kernel.Common.Target
 import Kernel.Parse.Internal.Import qualified as Import
 import Kernel.Parse.Internal.Program (parseHeader)
@@ -51,13 +53,13 @@ import Kernel.Unravel.VisitInfo qualified as VI
 import Language.Common.ModuleAlias qualified as MA
 import Language.Common.ModuleID qualified as MID
 import Language.RawTerm.RawStmt (RawRequire (..), RawRequireItem (..))
-import SyntaxTree.Series qualified as SE
 import Logger.Debug qualified as Logger
 import Logger.Hint
 import Path
 import Path.EnsureFileExistence (ensureFileExistence)
 import Path.IO
 import Path.Read (readTextFromPath)
+import SyntaxTree.Series qualified as SE
 
 type CacheTime =
   Maybe UTCTime
@@ -79,7 +81,8 @@ data Handle = Handle
     visitEnvRef :: IORef (Map.HashMap (Path Abs File) VI.VisitInfo),
     traceSourceListRef :: IORef [Source.Source],
     sourceChildrenMapRef :: IORef (Map.HashMap (Path Abs File) [ImportItem]),
-    sourceRequireMapRef :: IORef (Map.HashMap (Path Abs File) [(Hint, Capability.Capability)])
+    sourceRequireMapRef :: IORef (Map.HashMap (Path Abs File) [(Hint, Capability.Capability)]),
+    visitedMainSourceSetRef :: IORef (S.Set (Path Abs File))
   }
 
 data Result = Result
@@ -98,7 +101,12 @@ new globalHandle = do
   traceSourceListRef <- newIORef []
   sourceChildrenMapRef <- newIORef Map.empty
   sourceRequireMapRef <- newIORef Map.empty
+  visitedMainSourceSetRef <- newIORef S.empty
   return $ Handle {..}
+
+getVisitedMainSourceList :: Handle -> IO [Path Abs File]
+getVisitedMainSourceList h =
+  S.toList <$> readIORef (visitedMainSourceSetRef h)
 
 unravel :: Handle -> Module -> Target -> App Result
 unravel h baseModule t = do
@@ -359,6 +367,8 @@ unravel'' h t source = do
       artifactTime <- Artifact.lookup (Global.artifactHandle (globalHandle h)) path
       return (artifactTime, Seq.empty)
     Nothing -> do
+      when (M.moduleID (Source.sourceModule source) == MID.Main) $ do
+        liftIO $ modifyIORef' (visitedMainSourceSetRef h) $ S.insert path
       liftIO $ insertToVisitEnv h path VI.Active
       liftIO $ pushToTraceSourceList h source
       children <- getChildren h source

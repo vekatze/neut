@@ -7,6 +7,8 @@ module Kernel.Common.Handle.Global.Path
     getForeignDir,
     getAllocatorDir,
     getLtoCacheDir,
+    getBuildDir,
+    getExpandedClangOptionPath,
     getLinkResponseFilePath,
     getInstallDir,
     sourceToOutputPath,
@@ -25,15 +27,15 @@ where
 import App.App (App)
 import App.Run (raiseError')
 import Control.Comonad.Cofree
+import Control.Exception (IOException, try)
 import Control.Monad (unless, when)
 import Control.Monad.IO.Class
 import Data.ByteString.UTF8 qualified as B
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
+import Data.List.NonEmpty qualified as NE
 import Data.Text qualified as T
 import Data.Time
-import System.Directory qualified as Dir
-import System.FilePath qualified as FP
 import Ens.Ens qualified as E
 import Ens.ToDoc qualified as E
 import Kernel.Common.Allocator (Allocator, defaultAllocator, showAllocator)
@@ -53,6 +55,8 @@ import Path (Abs, Dir, File, Path, (</>))
 import Path qualified as P
 import Path.IO qualified as P
 import Path.Read (readTextFromPath)
+import System.Directory qualified as Dir
+import System.FilePath qualified as FP
 
 data Handle = Handle
   { _mainModule :: MainModule,
@@ -183,6 +187,11 @@ getAllocatorDir h t baseModule = do
   P.ensureDir allocatorDir
   return allocatorDir
 
+getExpandedClangOptionPath :: Handle -> Target.Target -> Module -> App (Path Abs File)
+getExpandedClangOptionPath h t baseModule = do
+  buildDir <- getBuildDir h t baseModule
+  P.resolveFile buildDir "clang-option.ens"
+
 getLtoCacheDir :: Handle -> Target.Target -> Module -> App (Path Abs Dir)
 getLtoCacheDir h t baseModule = do
   buildDir <- getBuildDir h t baseModule
@@ -300,58 +309,38 @@ ensureNotFile description path = do
     when exists $ do
       raiseError' $ description <> " is not a directory: " <> T.pack pathString
 
-getLastModifiedSup :: [Path Abs File] -> App (Maybe UTCTime)
-getLastModifiedSup pathList =
-  case pathList of
-    [] ->
-      return Nothing
-    [path] -> do
-      b <- P.doesFileExist path
-      if b
-        then Just <$> P.getModificationTime path
-        else return Nothing
-    path : pathList' -> do
-      b <- P.doesFileExist path
-      if b
-        then do
-          t1 <- P.getModificationTime path
-          t2 <- getLastModifiedSup pathList'
-          if Just t1 > t2
-            then return $ Just t1
-            else return t2
-        else do
-          return Nothing
+getLastModifiedSup :: [M.SomePath Abs] -> App (Maybe UTCTime)
+getLastModifiedSup =
+  aggregateModificationTime maximum
 
 getLastModifiedInf :: [Path Abs File] -> App (Maybe UTCTime)
-getLastModifiedInf pathList =
-  case pathList of
-    [] ->
-      return Nothing
-    [path] -> do
-      b <- P.doesFileExist path
-      if b
-        then Just <$> P.getModificationTime path
-        else return Nothing
-    path : pathList' -> do
-      b <- P.doesFileExist path
-      if b
-        then do
-          t1 <- P.getModificationTime path
-          t2 <- getLastModifiedInf pathList'
-          if Just t1 < t2
-            then return $ Just t1
-            else return t2
-        else do
-          return Nothing
+getLastModifiedInf =
+  aggregateModificationTime minimum . map Right
 
-unrollPath :: M.SomePath Abs -> App [Path Abs File]
+aggregateModificationTime :: (NE.NonEmpty UTCTime -> UTCTime) -> [M.SomePath Abs] -> App (Maybe UTCTime)
+aggregateModificationTime aggregate pathList = do
+  timeListOrNone <- fmap sequence $ mapM getModificationTimeOrNone pathList
+  return $ aggregate <$> (timeListOrNone >>= NE.nonEmpty)
+
+getModificationTimeOrNone :: M.SomePath Abs -> App (Maybe UTCTime)
+getModificationTimeOrNone path = do
+  exists <- either P.doesDirExist P.doesFileExist path
+  if exists
+    then Just <$> either P.getModificationTime P.getModificationTime path
+    else return Nothing
+
+unrollPath :: M.SomePath Abs -> IO [M.SomePath Abs]
 unrollPath path = do
   case path of
     Left dirPath -> do
-      (_, filePathList) <- P.listDirRecur dirPath
-      return filePathList
-    Right filePath ->
-      return [filePath]
+      contentOrError <- try $ P.listDirRecur dirPath
+      case contentOrError of
+        Left (_ :: IOException) ->
+          return [path]
+        Right (dirList, fileList) ->
+          return $ path : map Left dirList ++ map Right fileList
+    Right _ ->
+      return [path]
 
 attachExtension :: Path Abs File -> OK.OutputKind -> App (Path Abs File)
 attachExtension file kind =

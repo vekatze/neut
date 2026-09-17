@@ -4,7 +4,7 @@ module Kernel.Common.RunProcess
     Handle,
     new,
     run,
-    runProcess,
+    runShellCommand,
     run00,
     run01,
     run10,
@@ -90,9 +90,12 @@ run h procName optionList = do
     Left err ->
       throwError $ newError' err
 
-runProcess :: Handle -> String -> [String] -> IO ExitCode
-runProcess h procName optionList = do
-  let spec = Spec {cmdspec = P.RawCommand procName optionList, cwd = Nothing}
+runShellCommand :: Handle -> String -> IO ExitCode
+runShellCommand h command = do
+  runSpec h $ Spec {cmdspec = P.ShellCommand command, cwd = Nothing}
+
+runSpec :: Handle -> Spec -> IO ExitCode
+runSpec h spec = do
   reportCommand h spec
   P.withCreateProcess (fromSpec spec) $
     \_ _ _ processHandle -> do

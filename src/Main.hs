@@ -7,6 +7,7 @@ import Command.Check.Check qualified as Check
 import Command.Clean.Clean qualified as Clean
 import Command.Common.SaveModule qualified as SaveModule
 import Command.Create.Create qualified as Create
+import Command.Describe.Describe qualified as Describe
 import Command.Format.Format qualified as Format
 import Command.Get.Get qualified as Get
 import Command.LSP.LSP qualified as LSP
@@ -15,18 +16,24 @@ import Command.Zen.Zen qualified as Zen
 import CommandParser.Command qualified as C
 import CommandParser.Config.Build qualified as BuildConfig
 import CommandParser.Config.Check qualified as CheckConfig
+import CommandParser.Config.Describe qualified as DescribeConfig
 import CommandParser.Config.Remark qualified as Remark
 import CommandParser.Parse qualified as CommandParser
 import Console.CreateHandle qualified as Console
+import Control.Concurrent (myThreadId, throwTo)
+import Control.Monad (forM_)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.Platform (ensureExecutables)
 import Logger.CreateHandle qualified as Logger
+import System.Exit (ExitCode (ExitFailure))
 import System.IO
+import System.Posix.Signals (Handler (Catch), Signal, installHandler, sigHUP, sigTERM)
 
 main :: IO ()
 main = do
   mapM_ (`hSetEncoding` utf8) [stdin, stdout, stderr]
+  endOnTerminationSignals
   userCommand <- liftIO CommandParser.run
   case userCommand of
     C.External loggerConfig cmd -> do
@@ -37,7 +44,7 @@ main = do
         case cmd of
           C.Create cfg -> do
             let saveModuleHandle = SaveModule.new loggerHandle
-            createHandle <- liftIO $ Create.new loggerConfig loggerHandle saveModuleHandle
+            createHandle <- Create.new loggerConfig loggerHandle saveModuleHandle
             Create.create createHandle cfg
           C.LSP -> do
             LSP.lsp
@@ -50,6 +57,8 @@ main = do
                 Just $ BuildConfig.targetName cfg
               C.Check cfg ->
                 CheckConfig.targetName cfg
+              C.Describe cfg ->
+                Just $ DescribeConfig.targetName cfg
               _ ->
                 Nothing
       h <- liftIO $ Global.new loggerConfig Nothing buildTargetName
@@ -60,6 +69,8 @@ main = do
             Build.build (Build.new h) cfg
           C.Check cfg -> do
             Check.check (Check.new h) cfg
+          C.Describe cfg -> do
+            Describe.describe (Describe.new h) cfg
           C.Clean _ -> do
             cleanHandle <- liftIO $ Clean.new h
             Clean.clean cleanHandle
@@ -71,4 +82,14 @@ main = do
           C.Format cfg -> do
             Format.format (Format.new h) cfg
           C.Zen cfg -> do
-            Zen.zen (Zen.new h cfg) cfg
+            Zen.zen (Zen.new h) cfg
+
+endOnTerminationSignals :: IO ()
+endOnTerminationSignals = do
+  mainThreadId <- myThreadId
+  forM_ [sigTERM, sigHUP] $ \signal ->
+    installHandler signal (Catch $ throwTo mainThreadId $ ExitFailure $ exitCodeOnSignal signal) Nothing
+
+exitCodeOnSignal :: Signal -> Int
+exitCodeOnSignal signal =
+  128 + fromIntegral signal

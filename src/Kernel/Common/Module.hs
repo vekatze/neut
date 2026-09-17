@@ -2,6 +2,7 @@ module Kernel.Common.Module
   ( Module (..),
     MainModule (..),
     SomePath,
+    attachPrefixPath,
     LocatorName,
     AliasPresetMap,
     Foreign (..),
@@ -100,9 +101,9 @@ data Dependency = Dependency
   deriving (Show)
 
 data Foreign = Foreign
-  { input :: [SomePath Rel],
+  { input :: [(Hint, SomePath Rel)],
     output :: [Path Rel File],
-    script :: [T.Text]
+    script :: [(Hint, T.Text)]
   }
   deriving (Show)
 
@@ -117,11 +118,11 @@ data Module = Module
     moduleArchiveDir :: Path Rel Dir,
     moduleCacheDir :: Path Rel Dir,
     moduleDependency :: Map.HashMap MA.ModuleAlias Dependency,
-    moduleExtraContents :: [SomePath Rel],
+    moduleExtraContents :: [(Hint, SomePath Rel)],
     moduleAntecedents :: [ModuleDigest],
     moduleLocation :: Path Abs File,
     moduleForeign :: Foreign,
-    moduleStaticFiles :: Map.HashMap T.Text (Path Rel File),
+    moduleStaticFiles :: Map.HashMap T.Text (Hint, Path Rel File),
     moduleInlineLimit :: Maybe Int,
     moduleUniversal :: Bool,
     modulePresetMap :: PresetMap
@@ -340,12 +341,7 @@ getZenInfo someModule = do
             Nothing
           selector ->
             Just (keyPlatform, _m :< E.String (P.reifySelector selector))
-  let executeCommand' =
-        case executeCommand zenConfig of
-          Nothing ->
-            Nothing
-          Just executeCommand ->
-            Just (keyExecute, _m :< E.List (seriesFromList (map (\x -> _m :< E.String x) executeCommand)))
+  let executeCommand' = getExecuteCommandInfo (executeCommand zenConfig)
   let zenInfo =
         E.dictFromListVertical
           _m
@@ -360,6 +356,11 @@ getZenInfo someModule = do
     && isNothing (executeCommand zenConfig)
     then Nothing
     else Just (keyZen, zenInfo)
+
+getExecuteCommandInfo :: Maybe (Hint, T.Text) -> Maybe (T.Text, E.Ens)
+getExecuteCommandInfo commandOrNone = do
+  (_, command) <- commandOrNone
+  return (keyExecute, _m :< E.String command)
 
 getCacheDirInfo :: Module -> Maybe (T.Text, E.Ens)
 getCacheDirInfo someModule = do
@@ -393,12 +394,7 @@ getTargetInfo someModule = do
                   Nothing
                 selector ->
                   Just (keyPlatform, _m :< E.String (P.reifySelector selector))
-        let executeCommand' =
-              case Target.executeCommand summary of
-                Nothing ->
-                  Nothing
-                Just executeCommand ->
-                  Just (keyExecute, _m :< E.List (seriesFromList (map (\x -> _m :< E.String x) executeCommand)))
+        let executeCommand' = getExecuteCommandInfo (Target.executeCommand summary)
         E.dictFromListVertical
           _m
           $ [ (keyMain, _m :< E.String (SL.getRelPathText (Target.entryPoint summary))),
@@ -432,7 +428,7 @@ getDependencyInfo someModule = do
 
 getExtraContentInfo :: Module -> Maybe (T.Text, E.Ens)
 getExtraContentInfo someModule = do
-  let extraContentList = map (\x -> _m :< E.String (ppExtraContent x)) $ moduleExtraContents someModule
+  let extraContentList = map (\(_, x) -> _m :< E.String (ppExtraContent x)) $ moduleExtraContents someModule
   if null extraContentList
     then Nothing
     else return (keyExtraContent, _m :< E.List (seriesFromList extraContentList))
@@ -447,9 +443,9 @@ getAntecedentInfo someModule = do
 getForeignInfo :: Module -> Maybe (T.Text, E.Ens)
 getForeignInfo someModule = do
   let foreignInfo = moduleForeign someModule
-  let assetList = map (\x -> _m :< E.String (ppExtraContent x)) $ input foreignInfo
+  let assetList = map (\(_, x) -> _m :< E.String (ppExtraContent x)) $ input foreignInfo
   let outputList = map (\x -> _m :< E.String (T.pack $ toFilePath x)) $ output foreignInfo
-  let cmdList = map (\x -> _m :< E.String x) $ script foreignInfo
+  let cmdList = map (\(_, x) -> _m :< E.String x) $ script foreignInfo
   if null (input foreignInfo) && null (script foreignInfo)
     then Nothing
     else
@@ -487,6 +483,14 @@ ppExtraContent somePath =
       T.pack $ toFilePath dirPath
     Right filePath ->
       T.pack $ toFilePath filePath
+
+attachPrefixPath :: Path Abs Dir -> SomePath Rel -> SomePath Abs
+attachPrefixPath baseDirPath path =
+  case path of
+    Left dirPath ->
+      Left $ baseDirPath </> dirPath
+    Right filePath ->
+      Right $ baseDirPath </> filePath
 
 getDigestFromModulePath :: Path Abs File -> MID.ModuleID
 getDigestFromModulePath moduleFilePath =

@@ -7,12 +7,11 @@ module Kernel.Common.Target
     getCompileOption,
     getLinkOption,
     getExecuteCommand,
+    getTargetName,
   )
 where
 
-import Data.Hashable
 import Data.Text qualified as T
-import GHC.Generics (Generic)
 import Kernel.Common.Allocator (Allocator, defaultAllocator)
 import Kernel.Common.ClangOption qualified as CL
 import Kernel.Common.Platform qualified as P
@@ -20,33 +19,28 @@ import Kernel.Common.ZenConfig (ZenConfig)
 import Kernel.Common.ZenConfig qualified as Z
 import Language.Common.BaseName qualified as BN
 import Language.Common.SourceLocator qualified as SL
+import Logger.Hint (Hint)
 import Path
 
 data Target
   = Main MainTarget
   | Peripheral
   | PeripheralSingle (Path Abs File)
-  deriving (Show, Eq, Generic)
+  deriving (Show, Eq)
 
 data TargetSummary = TargetSummary
   { entryPoint :: SL.SourceLocator,
     clangOption :: CL.ClangOption,
     allocator :: Allocator,
     platform :: P.PlatformSelector,
-    executeCommand :: Maybe [T.Text]
+    executeCommand :: Maybe (Hint, T.Text)
   }
-  deriving (Show, Eq, Generic)
+  deriving (Show, Eq)
 
 data MainTarget
   = Named T.Text TargetSummary
   | Zen (Path Abs File) ZenConfig
-  deriving (Show, Eq, Generic)
-
-instance Hashable Target
-
-instance Hashable TargetSummary
-
-instance Hashable MainTarget
+  deriving (Show, Eq)
 
 emptyZen :: Path Abs File -> MainTarget
 emptyZen path =
@@ -82,7 +76,15 @@ getLinkOption target =
     Zen _ zenConfig ->
       map T.unpack $ CL.linkOption (Z.clangOption zenConfig)
 
-getExecuteCommand :: MainTarget -> Maybe [T.Text]
+getTargetName :: MainTarget -> Maybe T.Text
+getTargetName target =
+  case target of
+    Named name _ ->
+      Just name
+    Zen {} ->
+      Nothing
+
+getExecuteCommand :: MainTarget -> Maybe (Hint, T.Text)
 getExecuteCommand target =
   case target of
     Named _ targetSummary ->

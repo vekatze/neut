@@ -16,8 +16,8 @@ import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.Platform qualified as Platform
-import Kernel.Common.Platform qualified as P
 import Kernel.Common.Module (moduleLocation)
+import Kernel.Common.Platform qualified as P
 import Logger.Handle qualified as Logger
 
 data Handle = Handle
@@ -25,10 +25,10 @@ data Handle = Handle
     remarkCfg :: Remark.Config
   }
 
-new :: Remark.Config -> Logger.Handle -> SaveModule.Handle -> IO Handle
+new :: Remark.Config -> Logger.Handle -> SaveModule.Handle -> App Handle
 new remarkCfg loggerHandle saveModuleHandle = do
   platformHandle <- Platform.new loggerHandle P.SelectHost
-  createHandle <- Create.new saveModuleHandle loggerHandle platformHandle
+  createHandle <- liftIO $ Create.new saveModuleHandle loggerHandle platformHandle
   return $ Handle {..}
 
 create :: Handle -> Config -> App ()

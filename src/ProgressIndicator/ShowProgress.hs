@@ -1,16 +1,18 @@
 module ProgressIndicator.ShowProgress
   ( Handle,
-    new,
     increment,
-    close,
+    with,
   )
 where
 
+import App.App (App)
+import App.Run (onFailure)
 import Console.Handle qualified as Console
 import Console.Print qualified as Console
 import Console.Text qualified as Console
 import Control.Concurrent.MVar
 import Control.Monad (when)
+import Control.Monad.IO.Class (liftIO)
 import Data.IORef (IORef, atomicModifyIORef', newIORef, readIORef)
 import Data.Text qualified as T
 import Logger.Debug qualified as Logger
@@ -67,7 +69,8 @@ increment mh label = do
             printPlainProgress h label progressBar
           _ ->
             when (Console.isActivityMode $ consoleHandle h) $
-              Logger.report (loggerHandle h) $ "Compiled: " <> label
+              Logger.report (loggerHandle h) $
+                "Compiled: " <> label
 
 printPlainProgress :: InnerHandle -> T.Text -> ProgressBar -> IO ()
 printPlainProgress h label progressBar = do
@@ -113,18 +116,28 @@ clear ref = do
       hCursorUpLine stderr 1
       hClearFromCursorToLineEnd stderr
 
+with :: Console.Handle -> Logger.Handle -> Maybe Int -> T.Text -> T.Text -> [SGR] -> (Handle -> App a) -> App a
+with consoleHandle loggerHandle numOfItemsOrNone workingTitle completedTitle color act = do
+  h <- liftIO $ new consoleHandle loggerHandle numOfItemsOrNone workingTitle completedTitle color
+  result <- act h `onFailure` abort h
+  liftIO $ close h
+  return result
+
+abort :: Handle -> IO ()
+abort mh = do
+  case mh of
+    Nothing ->
+      return ()
+    Just h ->
+      stopRendering h
+
 close :: Handle -> IO ()
 close mh = do
   case mh of
     Nothing ->
       return ()
     Just h -> do
-      case renderThread h of
-        Nothing ->
-          return ()
-        Just thread -> do
-          cancel thread
-          clear (progressBarRef h)
+      stopRendering h
       progressBar <- readIORef (progressBarRef h)
       case reportMode h of
         Console.PlainReport ->
@@ -133,3 +146,12 @@ close mh = do
           Console.printStdErr (consoleHandle h) $ renderFinished progressBar
         _ ->
           return ()
+
+stopRendering :: InnerHandle -> IO ()
+stopRendering h = do
+  case renderThread h of
+    Nothing ->
+      return ()
+    Just thread -> do
+      cancel thread
+      clear (progressBarRef h)

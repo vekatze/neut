@@ -9,14 +9,14 @@
     fold-tails-wasm {
       main "fold-tails.nt",
       platform "wasm32",
-      execute ["wasmtime", "{{executable}}"],
+      execute "wasmtime {{executable}}",
     },
   },
   dependency {
     core {
-      digest "hkhl9Bpp4lGL1MSTnhFmCGYbL9gG5Gg41VZ5LSNcd_o",
+      digest "XfFV2TbkGgQbBv9N7WgZbP4J9QIE8NO9e2o9YhtmyVA",
       mirror [
-        "https://github.com/vekatze/neut-core/raw/main/archive/0.57.6.tar.zst",
+        "https://github.com/vekatze/neut-core/raw/main/archive/0.57.8.tar.zst",
       ],
       enable-preset true,
     },

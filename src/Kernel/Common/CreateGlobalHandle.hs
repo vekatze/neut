@@ -6,11 +6,12 @@ module Kernel.Common.CreateGlobalHandle
 where
 
 import App.Error qualified as E
-import App.Run (run)
+import App.Run (run, runApp)
 import CommandParser.Config.Remark qualified as Remark
 import Console.CreateHandle qualified as Console
 import Console.Handle qualified as Console
-import Control.Monad.Except (MonadError (throwError))
+import Control.Monad.Except (MonadError (throwError), liftEither)
+import Control.Monad.IO.Class (liftIO)
 import Data.HashMap.Strict qualified as Map
 import Data.IORef (IORef, newIORef)
 import Data.Set qualified as S
@@ -91,21 +92,21 @@ newOrError cfg moduleFilePathOrNone targetNameOrNone = do
   consoleHandle <- Console.createHandle (Remark.shouldColorize cfg) (Remark.shouldColorize cfg) (Remark.reportMode cfg)
   loggerHandle <- Logger.createHandle consoleHandle
   envHandleOrError <- Env.new moduleFilePathOrNone
-  case envHandleOrError of
-    Left errors ->
-      return $ Left (loggerHandle, errors)
-    Right envHandle -> do
-      let mainModule = Env.getMainModule envHandle
-      case resolvePlatformSelector mainModule targetNameOrNone of
-        Left err ->
-          return $ Left (loggerHandle, err)
-        Right selector ->
-          Right <$> newHandle consoleHandle loggerHandle envHandle selector
+  handleOrError <- runApp $ do
+    envHandle <- liftEither envHandleOrError
+    let mainModule = Env.getMainModule envHandle
+    selector <- liftEither $ resolvePlatformSelector mainModule targetNameOrNone
+    platformHandle <- Platform.new loggerHandle selector
+    liftIO $ newHandle consoleHandle loggerHandle envHandle platformHandle
+  case handleOrError of
+    Left err ->
+      return $ Left (loggerHandle, err)
+    Right h ->
+      return $ Right h
 
-newHandle :: Console.Handle -> Logger.Handle -> Env.Handle -> P.PlatformSelector -> IO Handle
-newHandle consoleHandle loggerHandle envHandle selector = do
+newHandle :: Console.Handle -> Logger.Handle -> Env.Handle -> Platform.Handle -> IO Handle
+newHandle consoleHandle loggerHandle envHandle platformHandle = do
   let mainModule = Env.getMainModule envHandle
-  platformHandle <- Platform.new loggerHandle selector
   Logger.setModuleDir loggerHandle mainModule
   optDataHandle <- OptimizableData.new
   resourceHandle <- Resource.new

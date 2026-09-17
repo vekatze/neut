@@ -12,11 +12,13 @@ import Command.Archive.PackageVersion.ChooseNewVersion qualified as PV
 import Command.Archive.PackageVersion.Reflect qualified as PV
 import Command.Common.SaveModule qualified as SaveModule
 import CommandParser.Config.Archive
+import Control.Monad (forM_)
 import Data.HashMap.Strict qualified as Map
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.Env qualified as Env
 import Kernel.Common.Handle.Global.Path qualified as Path
 import Kernel.Common.Module
+import Kernel.Common.Module.EnsureDeclaredPathExistence (ensureDeclaredPathExistence)
 import Kernel.Common.RunProcess qualified as RunProcess
 import Path
 
@@ -40,14 +42,16 @@ archive h cfg = do
   packageVersion <-
     maybe (PV.chooseNewVersion mainModule) (PV.reflect mainModule) (getArchiveName cfg)
   archiveEns <- makeArchiveEns packageVersion mainModule
-  let (moduleRootDir, contents) = collectModuleFiles mainModule
+  (moduleRootDir, contents) <- collectModuleFiles mainModule
   Archive.archive (archiveHandle h) packageVersion archiveEns moduleRootDir contents
 
-collectModuleFiles :: MainModule -> (Path Abs Dir, [SomePath Rel])
+collectModuleFiles :: MainModule -> App (Path Abs Dir, [SomePath Rel])
 collectModuleFiles (MainModule baseModule) = do
   let moduleRootDir = parent $ moduleLocation baseModule
   let relModuleSourceDir = Left $ moduleSourceDir baseModule
   let foreignContents = input $ moduleForeign baseModule
   let extraContents = moduleExtraContents baseModule
-  let staticContents = map (\(_, path) -> Right path) $ Map.toList $ moduleStaticFiles baseModule
-  (moduleRootDir, relModuleSourceDir : foreignContents ++ staticContents ++ extraContents)
+  let staticContents = map (\(m, path) -> (m, Right path)) $ Map.elems $ moduleStaticFiles baseModule
+  let declaredContents = foreignContents ++ staticContents ++ extraContents
+  forM_ declaredContents $ ensureDeclaredPathExistence moduleRootDir
+  return (moduleRootDir, relModuleSourceDir : map snd declaredContents)
