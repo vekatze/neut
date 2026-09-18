@@ -30,6 +30,7 @@ import Data.Set qualified as S
 import Data.Text qualified as T
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.GlobalRemark qualified as GlobalRemark
+import Kernel.Common.LocalArchive qualified as LocalArchive
 import Language.LSP.Diagnostics (partitionBySource)
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types
@@ -44,7 +45,8 @@ type Lsp config =
 
 data LspState = LspState
   { documentStateStore :: DocumentStateStore,
-    diagnosticStore :: DiagnosticStore
+    diagnosticStore :: DiagnosticStore,
+    localArchiveMap :: LocalArchive.LocalArchiveMap
   }
 
 run :: LspState -> Global.Handle -> App a -> Lsp b (Maybe a)

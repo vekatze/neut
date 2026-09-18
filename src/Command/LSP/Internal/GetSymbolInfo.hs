@@ -14,6 +14,7 @@ import Data.IntMap qualified as IntMap
 import Data.Text qualified as T
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.Type qualified as Type
+import Kernel.Common.LocalArchive qualified as LocalArchive
 import Kernel.Common.LocationTree qualified as LT
 import Kernel.Common.ManageCache (invalidate)
 import Kernel.Common.Source (Source (sourceFilePath, sourceModule))
@@ -26,10 +27,11 @@ import Language.WeakTerm.ToText (toTextType)
 
 getSymbolInfo ::
   (J.HasTextDocument p a1, J.HasUri a1 Uri, J.HasPosition p Position) =>
+  LocalArchive.LocalArchiveMap ->
   p ->
   App T.Text
-getSymbolInfo params = do
-  h <- liftIO $ Global.new lspConfig Nothing Nothing
+getSymbolInfo localArchiveMap params = do
+  h <- liftIO $ Global.new lspConfig localArchiveMap Nothing Nothing
   let getSourceHandle = GetSource.new h
   source <- GetSource.getSource getSourceHandle params
   invalidate (Global.pathHandle h) Peripheral source

@@ -16,6 +16,7 @@ import Control.Monad.IO.Class (MonadIO (liftIO))
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.Env qualified as Env
 import Kernel.Common.Handle.Global.Path qualified as Path
+import Kernel.Common.LocalArchive qualified as LocalArchive
 import Kernel.Common.ModuleURL (ModuleURL (ModuleURL))
 import Prelude hiding (log)
 
@@ -24,7 +25,8 @@ data Handle = Handle
     envHandle :: Env.Handle,
     cleanHandle :: Clean.Handle,
     checkHandle :: Check.Handle,
-    remarkCfg :: Remark.Config
+    remarkCfg :: Remark.Config,
+    localArchiveMap :: LocalArchive.LocalArchiveMap
   }
 
 new ::
@@ -36,6 +38,7 @@ new globalHandle remarkCfg = do
   let fetchHandle = Fetch.new globalHandle
   let checkHandle = Check.new globalHandle
   cleanHandle <- Clean.new globalHandle
+  let localArchiveMap = Global.localArchiveMap globalHandle
   return $ Handle {..}
 
 get :: Handle -> Config -> App ()
@@ -44,5 +47,5 @@ get h cfg = do
   Path.ensureNotInDependencyDir mainModule
   Clean.clean (cleanHandle h)
   Fetch.insertDependency (fetchHandle h) (moduleAliasText cfg) (ModuleURL $ moduleURLText cfg)
-  h' <- liftIO $ Global.new (remarkCfg h) Nothing Nothing
+  h' <- liftIO $ Global.new (remarkCfg h) (localArchiveMap h) Nothing Nothing
   void $ Check.checkAllOrFail (Check.new h') Nothing

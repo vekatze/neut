@@ -30,6 +30,7 @@ import Data.Maybe
 import Data.Text qualified as T
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.Env qualified as Env
+import Kernel.Common.LocalArchive qualified as LocalArchive
 import Language.LSP.Logging
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Message
@@ -39,11 +40,16 @@ import Language.LSP.VFS (virtualFileText)
 import Prettyprinter
 import System.IO (stdin, stdout)
 
-lsp :: IO Int
-lsp = do
+lsp :: LocalArchive.LocalArchiveMap -> IO Int
+lsp localArchiveMap = do
   documentStateStore <- DocumentStateStore.new
   diagnosticStore <- DiagnosticStore.new
-  let lspState = Util.LspState {Util.documentStateStore = documentStateStore, Util.diagnosticStore = diagnosticStore}
+  let lspState =
+        Util.LspState
+          { Util.documentStateStore = documentStateStore,
+            Util.diagnosticStore = diagnosticStore,
+            Util.localArchiveMap = localArchiveMap
+          }
   runQuietServer $
     ServerDefinition
       { defaultConfig = (),
@@ -80,7 +86,7 @@ prettyMsg l =
 
 withGlobalHandle :: LspState -> Lsp () () -> (Global.Handle -> Lsp () ()) -> Lsp () ()
 withGlobalHandle lspState defaultAction cont = do
-  vOrErr <- liftIO $ Global.newOrError lspConfig Nothing Nothing
+  vOrErr <- liftIO $ Global.newOrError lspConfig (Util.localArchiveMap lspState) Nothing Nothing
   case vOrErr of
     Left (_, E.MakeError errors) -> do
       report lspState errors
@@ -221,7 +227,7 @@ handlers lspState = do
             responder $ Right $ InR Null
           Just baseReqParams ->
             withGlobalHandle lspState (responder $ Right $ InR Null) $ \h -> do
-              textOrNone <- run lspState h $ GetSymbolInfo.getSymbolInfo baseReqParams
+              textOrNone <- run lspState h $ GetSymbolInfo.getSymbolInfo (Global.localArchiveMap h) baseReqParams
               liftIO $ DocumentStateStore.refreshDocumentStates h documentStateStore
               case textOrNone of
                 Nothing ->

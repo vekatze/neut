@@ -10,6 +10,7 @@ import CommandParser.Config.Create qualified as Create
 import CommandParser.Config.Format qualified as Format
 import CommandParser.Config.Get qualified as Get
 import CommandParser.Config.Remark qualified as Remark
+import CommandParser.Config.Shared qualified as Shared
 import CommandParser.Config.Version qualified as Version
 import CommandParser.Config.Zen qualified as Zen
 import Console.FormatMode qualified as FormatMode
@@ -46,13 +47,13 @@ parseBuildOpt :: Parser Command
 parseBuildOpt = do
   targetName <- argument str $ mconcat [metavar "TARGET", help "The build target"]
   installDir <- optional $ strOption $ mconcat [long "install", metavar "DIRECTORY", help "Install the resulting binary to this directory"]
-  remarkCfg <- remarkConfigOpt
+  sharedCfg <- sharedOpt
   outputKindTextList <- outputKindTextListOpt
   shouldSkipLink <- shouldSkipLinkOpt
   shouldExecute <- shouldExecuteOpt
   rest <- (many . strArgument) (metavar "args")
   pure $
-    Internal remarkCfg $
+    Internal sharedCfg $
       Build $
         Build.Config
           { Build.targetName = targetName,
@@ -66,9 +67,9 @@ parseBuildOpt = do
 parseDescribeOpt :: Parser Command
 parseDescribeOpt = do
   targetName <- argument str $ mconcat [metavar "TARGET", help "The target to describe"]
-  remarkCfg <- remarkConfigOpt
+  sharedCfg <- sharedOpt
   pure $
-    Internal remarkCfg $
+    Internal sharedCfg $
       Describe $
         Describe.Config
           { Describe.targetName = targetName
@@ -76,9 +77,9 @@ parseDescribeOpt = do
 
 parseCleanOpt :: Parser Command
 parseCleanOpt = do
-  remarkCfg <- remarkConfigOpt
+  sharedCfg <- sharedOpt
   pure $
-    Internal remarkCfg $
+    Internal sharedCfg $
       Clean $
         Clean.Config {}
 
@@ -86,9 +87,9 @@ parseGetOpt :: Parser Command
 parseGetOpt = do
   moduleAlias <- argument str (mconcat [metavar "ALIAS", help "The alias of the module"])
   moduleURLText <- argument str (mconcat [metavar "URL", help "The URL of the archive"])
-  remarkCfg <- remarkConfigOpt
+  sharedCfg <- sharedOpt
   pure $
-    Internal remarkCfg $
+    Internal sharedCfg $
       Get $
         Get.Config
           { Get.moduleAliasText = T.pack moduleAlias,
@@ -98,10 +99,10 @@ parseGetOpt = do
 parseZenOpt :: Parser Command
 parseZenOpt = do
   inputFilePath <- argument str (mconcat [metavar "INPUT", help "The path of input file"])
-  remarkCfg <- remarkConfigOpt
+  sharedCfg <- sharedOpt
   rest <- (many . strArgument) (metavar "args")
   pure $
-    Internal remarkCfg $
+    Internal sharedCfg $
       CommandParser.Command.Zen $
         Zen.Config
           { Zen.filePathString = inputFilePath,
@@ -110,8 +111,8 @@ parseZenOpt = do
 
 parseLSPOpt :: Parser Command
 parseLSPOpt = do
-  remarkCfg <- remarkConfigOpt
-  pure $ External remarkCfg LSP
+  sharedCfg <- sharedOpt
+  pure $ External sharedCfg LSP
 
 parseCreateOpt :: Parser Command
 parseCreateOpt = do
@@ -124,9 +125,9 @@ parseCreateOpt = do
             metavar "TARGET_NAME",
             help "The name of the target"
           ]
-  remarkCfg <- remarkConfigOpt
+  sharedCfg <- sharedOpt
   pure $
-    External remarkCfg $
+    External sharedCfg $
       Create $
         Create.Config
           { Create.moduleName = T.pack moduleName,
@@ -135,9 +136,9 @@ parseCreateOpt = do
 
 parseVersionOpt :: Parser Command
 parseVersionOpt = do
-  remarkCfg <- remarkConfigOpt
+  sharedCfg <- sharedOpt
   pure $
-    External remarkCfg $
+    External sharedCfg $
       ShowVersion $
         Version.Config {}
 
@@ -145,9 +146,9 @@ parseCheckOpt :: Parser Command
 parseCheckOpt = do
   shouldCheckAllDependencies <- flag False True (mconcat [long "full", help "Set this to refresh the caches of all the dependencies"])
   targetName <- optional $ strOption $ mconcat [long "target", metavar "TARGET", help "Check under the platform of this target (default: the platform of zen)"]
-  remarkCfg <- remarkConfigOpt
+  sharedCfg <- sharedOpt
   pure $
-    Internal remarkCfg $
+    Internal sharedCfg $
       Check $
         Check.Config
           { Check.shouldCheckAllDependencies = shouldCheckAllDependencies,
@@ -157,9 +158,9 @@ parseCheckOpt = do
 parseArchiveOpt :: Parser Command
 parseArchiveOpt = do
   archiveName <- optional $ argument str (mconcat [metavar "NAME", help "The name of the archive"])
-  remarkCfg <- remarkConfigOpt
+  sharedCfg <- sharedOpt
   pure $
-    Internal remarkCfg $
+    Internal sharedCfg $
       Archive $
         Archive.Config
           { Archive.getArchiveName = archiveName
@@ -171,9 +172,9 @@ parseFormatOpt = do
   formatModeValue <- formatModeOpt
   stdinFilePathValue <- stdinFilePathOpt
   shouldMinimizeImports <- flag False True (mconcat [long "minimize-imports", help "Set this to remove unused items in `import {..}`"])
-  remarkCfg <- remarkConfigOpt
+  sharedCfg <- sharedOpt
   pure $
-    Internal remarkCfg $
+    Internal sharedCfg $
       Format $
         Format.Config
           { Format.filePathStringList = inputFilePathList,
@@ -214,6 +215,26 @@ stdinFilePathOpt =
         [ long "stdin",
           metavar "FILEPATH",
           help "Set this to read the content of FILEPATH from stdin instead of the actual file, and print the formatted result to stdout"
+        ]
+
+sharedOpt :: Parser Shared.Config
+sharedOpt = do
+  remarkConfig <- remarkConfigOpt
+  localArchivesPath <- localArchivesOpt
+  pure
+    Shared.Config
+      { Shared.remarkConfig = remarkConfig,
+        Shared.localArchivesPath = localArchivesPath
+      }
+
+localArchivesOpt :: Parser (Maybe FilePath)
+localArchivesOpt =
+  optional $
+    strOption $
+      mconcat
+        [ long "local-archives",
+          metavar "FILE",
+          help "Look for the archives of dependencies in the directories listed in FILE before downloading them"
         ]
 
 remarkConfigOpt :: Parser Remark.Config

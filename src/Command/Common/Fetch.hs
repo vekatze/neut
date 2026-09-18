@@ -28,6 +28,7 @@ import Ens.Parse qualified as EnsParse
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.Env qualified as Env
 import Kernel.Common.Handle.Global.Module qualified as Module
+import Kernel.Common.LocalArchive qualified as LocalArchive
 import Kernel.Common.Module (keyDependency, keyDigest, keyEnablePreset, keyMirror, moduleLocation)
 import Kernel.Common.Module qualified as M
 import Kernel.Parse.Internal.Util (isNumericLike)
@@ -52,7 +53,8 @@ data Handle = Handle
   { saveModuleHandle :: SaveModule.Handle,
     runProcessHandle :: RunProcess.Handle,
     loggerHandle :: Logger.Handle,
-    envHandle :: Env.Handle
+    envHandle :: Env.Handle,
+    localArchiveMap :: LocalArchive.LocalArchiveMap
   }
 
 new ::
@@ -160,22 +162,27 @@ insertCoreDependency h (coreModuleURL, digest) = do
 installModule :: Handle -> ModuleAlias -> [ModuleURL] -> MD.ModuleDigest -> App [(ModuleAlias, M.Dependency)]
 installModule h alias mirrorList digest = do
   liftIO $ printInstallationRemark h alias digest
-  withSystemTempFile "fetch" $ \tempFilePath tempFileHandle -> do
-    download h tempFilePath alias mirrorList
-    archive <- liftIO $ B.hGetContents tempFileHandle
-    let archiveModuleDigest = MD.fromByteString archive
-    when (digest /= archiveModuleDigest) $
-      raiseError' $
-        "The digest of the module `"
-          <> BN.reify (extract alias)
-          <> "` is different from the expected one:"
-          <> "\n- "
-          <> MD.reify digest
-          <> " (expected)"
-          <> "\n- "
-          <> MD.reify archiveModuleDigest
-          <> " (actual)"
-    installModule' h tempFilePath alias digest
+  case Map.lookup digest (localArchiveMap h) of
+    Just archivePath -> do
+      liftIO $ Logger.printNote' (loggerHandle h) $ "Using a local archive: " <> T.pack (toFilePath archivePath)
+      installModule' h archivePath alias digest
+    Nothing ->
+      withSystemTempFile "fetch" $ \tempFilePath tempFileHandle -> do
+        download h tempFilePath alias mirrorList
+        archive <- liftIO $ B.hGetContents tempFileHandle
+        let archiveModuleDigest = MD.fromByteString archive
+        when (digest /= archiveModuleDigest) $
+          raiseError' $
+            "The digest of the module `"
+              <> BN.reify (extract alias)
+              <> "` is different from the expected one:"
+              <> "\n- "
+              <> MD.reify digest
+              <> " (expected)"
+              <> "\n- "
+              <> MD.reify archiveModuleDigest
+              <> " (actual)"
+        installModule' h tempFilePath alias digest
 
 installModule' :: Handle -> Path Abs File -> ModuleAlias -> MD.ModuleDigest -> App [(ModuleAlias, M.Dependency)]
 installModule' h archivePath alias digest = do
@@ -219,7 +226,7 @@ download h tempFilePath ma@(ModuleAlias alias) mirrorList = do
     ModuleURL mirror : rest -> do
       let spec =
             RunProcess.Spec
-              { cmdspec = RawCommand "curl" ["-s", "-S", "-L", "-o", toFilePath tempFilePath, T.unpack mirror],
+              { cmdspec = RawCommand "curl" ["-f", "-s", "-S", "-L", "-o", toFilePath tempFilePath, T.unpack mirror],
                 cwd = Nothing
               }
       errOrUnit <- liftIO $ RunProcess.run00 (runProcessHandle h) spec

@@ -13,7 +13,7 @@ import CommandParser.Config.Create qualified as Create
 import CommandParser.Config.Describe qualified as Describe
 import CommandParser.Config.Format qualified as Format
 import CommandParser.Config.Get qualified as Get
-import CommandParser.Config.Remark qualified as Remark
+import CommandParser.Config.Shared qualified as Shared
 import CommandParser.Config.Version qualified as Version
 import CommandParser.Config.Zen qualified as Zen
 
@@ -33,5 +33,5 @@ data ExternalCommand
   | ShowVersion Version.Config
 
 data Command
-  = Internal Remark.Config InternalCommand
-  | External Remark.Config ExternalCommand
+  = Internal Shared.Config InternalCommand
+  | External Shared.Config ExternalCommand
