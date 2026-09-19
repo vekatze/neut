@@ -75,6 +75,7 @@ data Handle = Handle
     termTraceHandle :: TermTrace.Handle,
     publicModuleReachabilityRef :: IORef (Map.HashMap MID.ModuleID (S.Set MID.ModuleID)),
     presetCacheRef :: IORef (Map.HashMap MID.ModuleID [ImportItem]),
+    isShiftMapRegisteredRef :: IORef Bool,
     localArchiveMap :: LocalArchive.LocalArchiveMap
   }
 
@@ -120,6 +121,7 @@ newHandle consoleHandle loggerHandle envHandle platformHandle localArchiveMap = 
   termTraceHandle <- TermTrace.new
   publicModuleReachabilityRef <- newIORef Map.empty
   presetCacheRef <- newIORef Map.empty
+  isShiftMapRegisteredRef <- newIORef False
   return $ Handle {..}
 
 resolvePlatformSelector :: M.MainModule -> Maybe M.TargetName -> Either E.Error P.PlatformSelector
