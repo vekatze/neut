@@ -18,6 +18,7 @@ import CommandParser.Config.Build qualified as BuildConfig
 import CommandParser.Config.Check qualified as CheckConfig
 import CommandParser.Config.Describe qualified as DescribeConfig
 import CommandParser.Config.Remark qualified as Remark
+import CommandParser.Config.Shared qualified as Shared
 import CommandParser.Parse qualified as CommandParser
 import Console.CreateHandle qualified as Console
 import Control.Concurrent (myThreadId, throwTo)
@@ -25,6 +26,7 @@ import Control.Monad (forM_)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.Platform (ensureExecutables)
+import Kernel.Common.LocalArchive qualified as LocalArchive
 import Logger.CreateHandle qualified as Logger
 import System.Exit (ExitCode (ExitFailure))
 import System.IO
@@ -34,35 +36,36 @@ main :: IO ()
 main = do
   mapM_ (`hSetEncoding` utf8) [stdin, stdout, stderr]
   endOnTerminationSignals
-  userCommand <- liftIO CommandParser.run
-  case userCommand of
-    C.External loggerConfig cmd -> do
-      let shouldColorize = Remark.shouldColorize loggerConfig
-      consoleHandle <- Console.createHandle shouldColorize shouldColorize (Remark.reportMode loggerConfig)
-      loggerHandle <- Logger.createHandle consoleHandle
-      run loggerHandle $ do
+  C.Command sharedConfig subcommand <- liftIO CommandParser.run
+  let remarkConfig = Shared.remarkConfig sharedConfig
+  let shouldColorize = Remark.shouldColorize remarkConfig
+  consoleHandle <- Console.createHandle shouldColorize shouldColorize (Remark.reportMode remarkConfig)
+  loggerHandle <- Logger.createHandle consoleHandle
+  run loggerHandle $ do
+    localArchiveMap <- maybe (return LocalArchive.empty) LocalArchive.load (Shared.localArchivesPath sharedConfig)
+    case subcommand of
+      C.External cmd -> do
         case cmd of
           C.Create cfg -> do
             let saveModuleHandle = SaveModule.new loggerHandle
-            createHandle <- Create.new loggerConfig loggerHandle saveModuleHandle
+            createHandle <- Create.new consoleHandle loggerHandle saveModuleHandle localArchiveMap
             Create.create createHandle cfg
           C.LSP -> do
-            LSP.lsp
+            LSP.lsp consoleHandle loggerHandle localArchiveMap
           C.ShowVersion cfg ->
             liftIO $ Version.showVersion cfg
-    C.Internal loggerConfig cmd -> do
-      let buildTargetName =
-            case cmd of
-              C.Build cfg ->
-                Just $ BuildConfig.targetName cfg
-              C.Check cfg ->
-                CheckConfig.targetName cfg
-              C.Describe cfg ->
-                Just $ DescribeConfig.targetName cfg
-              _ ->
-                Nothing
-      h <- liftIO $ Global.new loggerConfig Nothing buildTargetName
-      run (Global.loggerHandle h) $ do
+      C.Internal cmd -> do
+        let buildTargetName =
+              case cmd of
+                C.Build cfg ->
+                  Just $ BuildConfig.targetName cfg
+                C.Check cfg ->
+                  CheckConfig.targetName cfg
+                C.Describe cfg ->
+                  Just $ DescribeConfig.targetName cfg
+                _ ->
+                  Nothing
+        h <- Global.new consoleHandle loggerHandle localArchiveMap Nothing buildTargetName
         ensureExecutables
         case cmd of
           C.Build cfg -> do
@@ -77,7 +80,7 @@ main = do
           C.Archive cfg -> do
             Archive.archive (Archive.new h) cfg
           C.Get cfg -> do
-            getHandle <- liftIO $ Get.new h loggerConfig
+            getHandle <- liftIO $ Get.new h
             Get.get getHandle cfg
           C.Format cfg -> do
             Format.format (Format.new h) cfg

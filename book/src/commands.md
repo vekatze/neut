@@ -455,6 +455,7 @@ Most subcommands share the following command-line options:
 
 - `--no-color` can be used to turn off ANSI colors
 - `--report MODE` sets report mode (`none`, `plain`, `fancy`, or `trace=ITEMS`)
+- `--local-archives FILE` sets where to look for the tarballs of dependencies before downloading them
 
 `--report` decides what a command says about its own progress, which it writes to standard error:
 
@@ -464,6 +465,23 @@ Most subcommands share the following command-line options:
 - `trace=ITEMS` prints the selected intermediate representations, as described below
 
 Without `--report`, a command uses `fancy` when both of its streams are an ANSI-capable terminal, and `plain` otherwise. Errors and warnings are printed whatever the mode is.
+
+### `--local-archives FILE`
+
+`FILE` is an ens file that lists directories and tarballs:
+
+```ens
+[
+  "../some-module/archive/",
+  "../downloads/0.3.1.tar.zst",
+]
+```
+
+When a dependency must be installed, the compiler first looks for a tarball with the same digest among them. If one is found, the compiler uses it instead of downloading the tarball from the mirrors.
+
+Relative paths are resolved from the directory of `FILE`. An entry that ends with `/` is a directory, and contributes the files ending with `.tar.zst` directly under it.
+
+Since tarballs are found by their digests, this option doesn't change the result of a command.
 
 ### `--report trace=ITEMS`
 

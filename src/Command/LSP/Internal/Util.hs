@@ -18,6 +18,7 @@ import Command.LSP.Internal.DiagnosticStore qualified as DiagnosticStore
 import Command.LSP.Internal.DocumentState qualified as DocumentState
 import Command.LSP.Internal.DocumentStateStore (DocumentStateStore)
 import Command.LSP.Internal.DocumentStateStore qualified as DocumentStateStore
+import Console.Handle qualified as Console
 import Control.Lens hiding (Iso, List)
 import Control.Monad
 import Control.Monad.IO.Class
@@ -30,10 +31,12 @@ import Data.Set qualified as S
 import Data.Text qualified as T
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.GlobalRemark qualified as GlobalRemark
+import Kernel.Common.LocalArchive qualified as LocalArchive
 import Language.LSP.Diagnostics (partitionBySource)
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types
 import Language.LSP.Server
+import Logger.Handle qualified as Logger
 import Logger.Hint
 import Logger.Log
 import Logger.Log qualified as L
@@ -44,7 +47,10 @@ type Lsp config =
 
 data LspState = LspState
   { documentStateStore :: DocumentStateStore,
-    diagnosticStore :: DiagnosticStore
+    diagnosticStore :: DiagnosticStore,
+    consoleHandle :: Console.Handle,
+    loggerHandle :: Logger.Handle,
+    localArchiveMap :: LocalArchive.LocalArchiveMap
   }
 
 run :: LspState -> Global.Handle -> App a -> Lsp b (Maybe a)

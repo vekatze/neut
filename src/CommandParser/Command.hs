@@ -1,5 +1,6 @@
 module CommandParser.Command
   ( Command (..),
+    Subcommand (..),
     InternalCommand (..),
     ExternalCommand (..),
   )
@@ -13,7 +14,7 @@ import CommandParser.Config.Create qualified as Create
 import CommandParser.Config.Describe qualified as Describe
 import CommandParser.Config.Format qualified as Format
 import CommandParser.Config.Get qualified as Get
-import CommandParser.Config.Remark qualified as Remark
+import CommandParser.Config.Shared qualified as Shared
 import CommandParser.Config.Version qualified as Version
 import CommandParser.Config.Zen qualified as Zen
 
@@ -32,6 +33,9 @@ data ExternalCommand
   | LSP
   | ShowVersion Version.Config
 
+data Subcommand
+  = Internal InternalCommand
+  | External ExternalCommand
+
 data Command
-  = Internal Remark.Config InternalCommand
-  | External Remark.Config ExternalCommand
+  = Command Shared.Config Subcommand

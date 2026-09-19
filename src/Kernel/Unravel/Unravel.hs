@@ -188,19 +188,22 @@ getSourceDependency importItem = do
 
 registerShiftMap :: Handle -> App ()
 registerShiftMap h = do
-  axis <- liftIO newAxis
-  let mainModule = getMainModule (Global.envHandle (globalHandle h))
-  let m = extractModule mainModule
-  arrowList <- unravelAntecedentArrow h axis m
-  moduleList <- liftIO $ readIORef $ moduleListRef axis
-  cAxis <- liftIO newCAxis
-  compressedMap <- compressMap cAxis (Map.fromList arrowList) arrowList
-  ensureNoCompatibleDependencyAliasCollision compressedMap moduleList
-  let publicReachabilityMap = buildPublicReachabilityMap compressedMap moduleList
-  liftIO $ writeIORef (Global.publicModuleReachabilityRef (globalHandle h)) publicReachabilityMap
-  liftIO $ Antecedent.set (Global.antecedentHandle (globalHandle h)) compressedMap
-  modulePathMap <- ModulePath.build (Global.modulePathHandle (globalHandle h))
-  liftIO $ ModulePath.set (Global.modulePathHandle (globalHandle h)) modulePathMap
+  isRegistered <- liftIO $ readIORef (Global.isShiftMapRegisteredRef (globalHandle h))
+  unless isRegistered $ do
+    axis <- liftIO newAxis
+    let mainModule = getMainModule (Global.envHandle (globalHandle h))
+    let m = extractModule mainModule
+    arrowList <- unravelAntecedentArrow h axis m
+    moduleList <- liftIO $ readIORef $ moduleListRef axis
+    cAxis <- liftIO newCAxis
+    compressedMap <- compressMap cAxis (Map.fromList arrowList) arrowList
+    ensureNoCompatibleDependencyAliasCollision compressedMap moduleList
+    let publicReachabilityMap = buildPublicReachabilityMap compressedMap moduleList
+    liftIO $ writeIORef (Global.publicModuleReachabilityRef (globalHandle h)) publicReachabilityMap
+    liftIO $ Antecedent.set (Global.antecedentHandle (globalHandle h)) compressedMap
+    modulePathMap <- ModulePath.build (Global.modulePathHandle (globalHandle h))
+    liftIO $ ModulePath.set (Global.modulePathHandle (globalHandle h)) modulePathMap
+    liftIO $ writeIORef (Global.isShiftMapRegisteredRef (globalHandle h)) True
 
 buildPublicReachabilityMap :: Map.HashMap MID.ModuleID Module -> [Module] -> PublicReachabilityMap
 buildPublicReachabilityMap compressedMap moduleList = do

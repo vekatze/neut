@@ -5,12 +5,11 @@ module Kernel.Common.CreateGlobalHandle
   )
 where
 
+import App.App (App)
 import App.Error qualified as E
-import App.Run (run, runApp)
-import CommandParser.Config.Remark qualified as Remark
-import Console.CreateHandle qualified as Console
+import App.Run (runApp)
 import Console.Handle qualified as Console
-import Control.Monad.Except (MonadError (throwError), liftEither)
+import Control.Monad.Except (liftEither)
 import Control.Monad.IO.Class (liftIO)
 import Data.HashMap.Strict qualified as Map
 import Data.IORef (IORef, newIORef)
@@ -31,6 +30,7 @@ import Kernel.Common.Handle.Global.Platform qualified as Platform
 import Kernel.Common.Handle.Global.Resource qualified as Resource
 import Kernel.Common.Handle.Global.Type qualified as Type
 import Kernel.Common.Import
+import Kernel.Common.LocalArchive qualified as LocalArchive
 import Kernel.Common.Module qualified as M
 import Kernel.Common.Platform qualified as P
 import Kernel.Common.Target qualified as Target
@@ -44,7 +44,6 @@ import Kernel.Parse.Internal.Handle.GlobalNameMap qualified as GlobalNameMap
 import Kernel.Parse.Internal.Handle.UnusedTopLevelName qualified as UnusedTopLevelName
 import Language.Common.ModuleID qualified as MID
 import Language.Term.Trace qualified as TermTrace
-import Logger.CreateHandle qualified as Logger
 import Logger.Handle qualified as Logger
 import Path
 
@@ -75,37 +74,28 @@ data Handle = Handle
     unusedTopLevelNameHandle :: UnusedTopLevelName.Handle,
     termTraceHandle :: TermTrace.Handle,
     publicModuleReachabilityRef :: IORef (Map.HashMap MID.ModuleID (S.Set MID.ModuleID)),
-    presetCacheRef :: IORef (Map.HashMap MID.ModuleID [ImportItem])
+    presetCacheRef :: IORef (Map.HashMap MID.ModuleID [ImportItem]),
+    isShiftMapRegisteredRef :: IORef Bool,
+    localArchiveMap :: LocalArchive.LocalArchiveMap
   }
 
-new :: Remark.Config -> Maybe (Path Abs File) -> Maybe M.TargetName -> IO Handle
-new cfg moduleFilePathOrNone targetNameOrNone = do
-  handleOrError <- newOrError cfg moduleFilePathOrNone targetNameOrNone
-  case handleOrError of
-    Left (loggerHandle, err) -> do
-      run loggerHandle $ throwError err
-    Right v ->
-      return v
+new :: Console.Handle -> Logger.Handle -> LocalArchive.LocalArchiveMap -> Maybe (Path Abs File) -> Maybe M.TargetName -> App Handle
+new consoleHandle loggerHandle localArchiveMap moduleFilePathOrNone targetNameOrNone = do
+  handleOrError <- liftIO $ newOrError consoleHandle loggerHandle localArchiveMap moduleFilePathOrNone targetNameOrNone
+  liftEither handleOrError
 
-newOrError :: Remark.Config -> Maybe (Path Abs File) -> Maybe M.TargetName -> IO (Either (Logger.Handle, E.Error) Handle)
-newOrError cfg moduleFilePathOrNone targetNameOrNone = do
-  consoleHandle <- Console.createHandle (Remark.shouldColorize cfg) (Remark.shouldColorize cfg) (Remark.reportMode cfg)
-  loggerHandle <- Logger.createHandle consoleHandle
+newOrError :: Console.Handle -> Logger.Handle -> LocalArchive.LocalArchiveMap -> Maybe (Path Abs File) -> Maybe M.TargetName -> IO (Either E.Error Handle)
+newOrError consoleHandle loggerHandle localArchiveMap moduleFilePathOrNone targetNameOrNone = do
   envHandleOrError <- Env.new moduleFilePathOrNone
-  handleOrError <- runApp $ do
+  runApp $ do
     envHandle <- liftEither envHandleOrError
     let mainModule = Env.getMainModule envHandle
     selector <- liftEither $ resolvePlatformSelector mainModule targetNameOrNone
     platformHandle <- Platform.new loggerHandle selector
-    liftIO $ newHandle consoleHandle loggerHandle envHandle platformHandle
-  case handleOrError of
-    Left err ->
-      return $ Left (loggerHandle, err)
-    Right h ->
-      return $ Right h
+    liftIO $ newHandle consoleHandle loggerHandle envHandle platformHandle localArchiveMap
 
-newHandle :: Console.Handle -> Logger.Handle -> Env.Handle -> Platform.Handle -> IO Handle
-newHandle consoleHandle loggerHandle envHandle platformHandle = do
+newHandle :: Console.Handle -> Logger.Handle -> Env.Handle -> Platform.Handle -> LocalArchive.LocalArchiveMap -> IO Handle
+newHandle consoleHandle loggerHandle envHandle platformHandle localArchiveMap = do
   let mainModule = Env.getMainModule envHandle
   Logger.setModuleDir loggerHandle mainModule
   optDataHandle <- OptimizableData.new
@@ -131,6 +121,7 @@ newHandle consoleHandle loggerHandle envHandle platformHandle = do
   termTraceHandle <- TermTrace.new
   publicModuleReachabilityRef <- newIORef Map.empty
   presetCacheRef <- newIORef Map.empty
+  isShiftMapRegisteredRef <- newIORef False
   return $ Handle {..}
 
 resolvePlatformSelector :: M.MainModule -> Maybe M.TargetName -> Either E.Error P.PlatformSelector
