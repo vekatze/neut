@@ -53,7 +53,7 @@ parseBuildOpt = do
   shouldExecute <- shouldExecuteOpt
   rest <- (many . strArgument) (metavar "args")
   pure $
-    Internal sharedCfg $
+    Command sharedCfg $ Internal $
       Build $
         Build.Config
           { Build.targetName = targetName,
@@ -69,7 +69,7 @@ parseDescribeOpt = do
   targetName <- argument str $ mconcat [metavar "TARGET", help "The target to describe"]
   sharedCfg <- sharedOpt
   pure $
-    Internal sharedCfg $
+    Command sharedCfg $ Internal $
       Describe $
         Describe.Config
           { Describe.targetName = targetName
@@ -79,7 +79,7 @@ parseCleanOpt :: Parser Command
 parseCleanOpt = do
   sharedCfg <- sharedOpt
   pure $
-    Internal sharedCfg $
+    Command sharedCfg $ Internal $
       Clean $
         Clean.Config {}
 
@@ -89,7 +89,7 @@ parseGetOpt = do
   moduleURLText <- argument str (mconcat [metavar "URL", help "The URL of the archive"])
   sharedCfg <- sharedOpt
   pure $
-    Internal sharedCfg $
+    Command sharedCfg $ Internal $
       Get $
         Get.Config
           { Get.moduleAliasText = T.pack moduleAlias,
@@ -102,7 +102,7 @@ parseZenOpt = do
   sharedCfg <- sharedOpt
   rest <- (many . strArgument) (metavar "args")
   pure $
-    Internal sharedCfg $
+    Command sharedCfg $ Internal $
       CommandParser.Command.Zen $
         Zen.Config
           { Zen.filePathString = inputFilePath,
@@ -112,7 +112,7 @@ parseZenOpt = do
 parseLSPOpt :: Parser Command
 parseLSPOpt = do
   sharedCfg <- sharedOpt
-  pure $ External sharedCfg LSP
+  pure $ Command sharedCfg $ External LSP
 
 parseCreateOpt :: Parser Command
 parseCreateOpt = do
@@ -127,7 +127,7 @@ parseCreateOpt = do
           ]
   sharedCfg <- sharedOpt
   pure $
-    External sharedCfg $
+    Command sharedCfg $ External $
       Create $
         Create.Config
           { Create.moduleName = T.pack moduleName,
@@ -138,7 +138,7 @@ parseVersionOpt :: Parser Command
 parseVersionOpt = do
   sharedCfg <- sharedOpt
   pure $
-    External sharedCfg $
+    Command sharedCfg $ External $
       ShowVersion $
         Version.Config {}
 
@@ -148,7 +148,7 @@ parseCheckOpt = do
   targetName <- optional $ strOption $ mconcat [long "target", metavar "TARGET", help "Check under the platform of this target (default: the platform of zen)"]
   sharedCfg <- sharedOpt
   pure $
-    Internal sharedCfg $
+    Command sharedCfg $ Internal $
       Check $
         Check.Config
           { Check.shouldCheckAllDependencies = shouldCheckAllDependencies,
@@ -160,7 +160,7 @@ parseArchiveOpt = do
   archiveName <- optional $ argument str (mconcat [metavar "NAME", help "The name of the archive"])
   sharedCfg <- sharedOpt
   pure $
-    Internal sharedCfg $
+    Command sharedCfg $ Internal $
       Archive $
         Archive.Config
           { Archive.getArchiveName = archiveName
@@ -174,7 +174,7 @@ parseFormatOpt = do
   shouldMinimizeImports <- flag False True (mconcat [long "minimize-imports", help "Set this to remove unused items in `import {..}`"])
   sharedCfg <- sharedOpt
   pure $
-    Internal sharedCfg $
+    Command sharedCfg $ Internal $
       Format $
         Format.Config
           { Format.filePathStringList = inputFilePathList,

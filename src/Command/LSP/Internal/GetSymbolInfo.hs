@@ -8,13 +8,11 @@ import App.Run (liftMaybe)
 import Command.Common.Check qualified as Check
 import Command.LSP.Internal.FindDefinition qualified as FindDefinition
 import Command.LSP.Internal.GetSource qualified as GetSource
-import CommandParser.Config.Remark (lspConfig)
 import Control.Monad.Trans
 import Data.IntMap qualified as IntMap
 import Data.Text qualified as T
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.Type qualified as Type
-import Kernel.Common.LocalArchive qualified as LocalArchive
 import Kernel.Common.LocationTree qualified as LT
 import Kernel.Common.ManageCache (invalidate)
 import Kernel.Common.Source (Source (sourceFilePath, sourceModule))
@@ -27,11 +25,11 @@ import Language.WeakTerm.ToText (toTextType)
 
 getSymbolInfo ::
   (J.HasTextDocument p a1, J.HasUri a1 Uri, J.HasPosition p Position) =>
-  LocalArchive.LocalArchiveMap ->
+  Global.Handle ->
   p ->
   App T.Text
-getSymbolInfo localArchiveMap params = do
-  h <- liftIO $ Global.new lspConfig localArchiveMap Nothing Nothing
+getSymbolInfo globalHandle params = do
+  h <- Global.new (Global.consoleHandle globalHandle) (Global.loggerHandle globalHandle) (Global.localArchiveMap globalHandle) Nothing Nothing
   let getSourceHandle = GetSource.new h
   source <- GetSource.getSource getSourceHandle params
   invalidate (Global.pathHandle h) Peripheral source

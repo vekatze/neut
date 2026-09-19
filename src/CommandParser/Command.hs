@@ -1,5 +1,6 @@
 module CommandParser.Command
   ( Command (..),
+    Subcommand (..),
     InternalCommand (..),
     ExternalCommand (..),
   )
@@ -32,6 +33,9 @@ data ExternalCommand
   | LSP
   | ShowVersion Version.Config
 
+data Subcommand
+  = Internal InternalCommand
+  | External ExternalCommand
+
 data Command
-  = Internal Shared.Config InternalCommand
-  | External Shared.Config ExternalCommand
+  = Command Shared.Config Subcommand

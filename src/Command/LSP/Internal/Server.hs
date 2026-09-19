@@ -21,7 +21,7 @@ import Command.LSP.Internal.Lint qualified as Lint
 import Command.LSP.Internal.References qualified as References
 import Command.LSP.Internal.Util (Lsp, LspState, getUriParam, report, republishDiagnostics, run)
 import Command.LSP.Internal.Util qualified as Util
-import CommandParser.Config.Remark (lspConfig)
+import Console.Handle qualified as Console
 import Control.Lens hiding (Iso)
 import Control.Monad (forM)
 import Control.Monad.IO.Class
@@ -37,17 +37,20 @@ import Language.LSP.Protocol.Message
 import Language.LSP.Protocol.Types
 import Language.LSP.Server
 import Language.LSP.VFS (virtualFileText)
+import Logger.Handle qualified as Logger
 import Prettyprinter
 import System.IO (stdin, stdout)
 
-lsp :: LocalArchive.LocalArchiveMap -> IO Int
-lsp localArchiveMap = do
+lsp :: Console.Handle -> Logger.Handle -> LocalArchive.LocalArchiveMap -> IO Int
+lsp consoleHandle loggerHandle localArchiveMap = do
   documentStateStore <- DocumentStateStore.new
   diagnosticStore <- DiagnosticStore.new
   let lspState =
         Util.LspState
           { Util.documentStateStore = documentStateStore,
             Util.diagnosticStore = diagnosticStore,
+            Util.consoleHandle = consoleHandle,
+            Util.loggerHandle = loggerHandle,
             Util.localArchiveMap = localArchiveMap
           }
   runQuietServer $
@@ -86,9 +89,9 @@ prettyMsg l =
 
 withGlobalHandle :: LspState -> Lsp () () -> (Global.Handle -> Lsp () ()) -> Lsp () ()
 withGlobalHandle lspState defaultAction cont = do
-  vOrErr <- liftIO $ Global.newOrError lspConfig (Util.localArchiveMap lspState) Nothing Nothing
+  vOrErr <- liftIO $ Global.newOrError (Util.consoleHandle lspState) (Util.loggerHandle lspState) (Util.localArchiveMap lspState) Nothing Nothing
   case vOrErr of
-    Left (_, E.MakeError errors) -> do
+    Left (E.MakeError errors) -> do
       report lspState errors
       defaultAction
     Right v ->
@@ -227,7 +230,7 @@ handlers lspState = do
             responder $ Right $ InR Null
           Just baseReqParams ->
             withGlobalHandle lspState (responder $ Right $ InR Null) $ \h -> do
-              textOrNone <- run lspState h $ GetSymbolInfo.getSymbolInfo (Global.localArchiveMap h) baseReqParams
+              textOrNone <- run lspState h $ GetSymbolInfo.getSymbolInfo h baseReqParams
               liftIO $ DocumentStateStore.refreshDocumentStates h documentStateStore
               case textOrNone of
                 Nothing ->

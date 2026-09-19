@@ -36,39 +36,36 @@ main :: IO ()
 main = do
   mapM_ (`hSetEncoding` utf8) [stdin, stdout, stderr]
   endOnTerminationSignals
-  userCommand <- liftIO CommandParser.run
-  case userCommand of
-    C.External sharedConfig cmd -> do
-      let loggerConfig = Shared.remarkConfig sharedConfig
-      let shouldColorize = Remark.shouldColorize loggerConfig
-      consoleHandle <- Console.createHandle shouldColorize shouldColorize (Remark.reportMode loggerConfig)
-      loggerHandle <- Logger.createHandle consoleHandle
-      run loggerHandle $ do
-        localArchiveMap <- maybe (return LocalArchive.empty) LocalArchive.load (Shared.localArchivesPath sharedConfig)
+  C.Command sharedConfig subcommand <- liftIO CommandParser.run
+  let remarkConfig = Shared.remarkConfig sharedConfig
+  let shouldColorize = Remark.shouldColorize remarkConfig
+  consoleHandle <- Console.createHandle shouldColorize shouldColorize (Remark.reportMode remarkConfig)
+  loggerHandle <- Logger.createHandle consoleHandle
+  run loggerHandle $ do
+    localArchiveMap <- maybe (return LocalArchive.empty) LocalArchive.load (Shared.localArchivesPath sharedConfig)
+    case subcommand of
+      C.External cmd -> do
         case cmd of
           C.Create cfg -> do
             let saveModuleHandle = SaveModule.new loggerHandle
-            createHandle <- Create.new loggerConfig loggerHandle saveModuleHandle localArchiveMap
+            createHandle <- Create.new consoleHandle loggerHandle saveModuleHandle localArchiveMap
             Create.create createHandle cfg
           C.LSP -> do
-            LSP.lsp localArchiveMap
+            LSP.lsp consoleHandle loggerHandle localArchiveMap
           C.ShowVersion cfg ->
             liftIO $ Version.showVersion cfg
-    C.Internal sharedConfig cmd -> do
-      let loggerConfig = Shared.remarkConfig sharedConfig
-      let buildTargetName =
-            case cmd of
-              C.Build cfg ->
-                Just $ BuildConfig.targetName cfg
-              C.Check cfg ->
-                CheckConfig.targetName cfg
-              C.Describe cfg ->
-                Just $ DescribeConfig.targetName cfg
-              _ ->
-                Nothing
-      localArchiveMap <- loadLocalArchiveMap loggerConfig (Shared.localArchivesPath sharedConfig)
-      h <- liftIO $ Global.new loggerConfig localArchiveMap Nothing buildTargetName
-      run (Global.loggerHandle h) $ do
+      C.Internal cmd -> do
+        let buildTargetName =
+              case cmd of
+                C.Build cfg ->
+                  Just $ BuildConfig.targetName cfg
+                C.Check cfg ->
+                  CheckConfig.targetName cfg
+                C.Describe cfg ->
+                  Just $ DescribeConfig.targetName cfg
+                _ ->
+                  Nothing
+        h <- Global.new consoleHandle loggerHandle localArchiveMap Nothing buildTargetName
         ensureExecutables
         case cmd of
           C.Build cfg -> do
@@ -83,19 +80,12 @@ main = do
           C.Archive cfg -> do
             Archive.archive (Archive.new h) cfg
           C.Get cfg -> do
-            getHandle <- liftIO $ Get.new h loggerConfig
+            getHandle <- liftIO $ Get.new h
             Get.get getHandle cfg
           C.Format cfg -> do
             Format.format (Format.new h) cfg
           C.Zen cfg -> do
             Zen.zen (Zen.new h) cfg
-
-loadLocalArchiveMap :: Remark.Config -> Maybe FilePath -> IO LocalArchive.LocalArchiveMap
-loadLocalArchiveMap loggerConfig localArchivesPath = do
-  let shouldColorize = Remark.shouldColorize loggerConfig
-  consoleHandle <- Console.createHandle shouldColorize shouldColorize (Remark.reportMode loggerConfig)
-  loggerHandle <- Logger.createHandle consoleHandle
-  run loggerHandle $ maybe (return LocalArchive.empty) LocalArchive.load localArchivesPath
 
 endOnTerminationSignals :: IO ()
 endOnTerminationSignals = do
