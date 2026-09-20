@@ -66,8 +66,7 @@ link' h target sourceList = do
   ensureDir $ parent outputPath
   objectPathList <- mapM (Path.sourceToOutputPath (pathHandle h) (Main target) OK.Object) sourceList
   let moduleList = nubOrdOn moduleID $ map Source.sourceModule sourceList
-  foreignDirList <- mapM (Path.getForeignDir (pathHandle h) (Main target)) moduleList
-  foreignObjectList <- concat <$> mapM getForeignDirContent foreignDirList
+  foreignObjectList <- concat <$> mapM (getForeignOutputList h target) moduleList
   allocator <- Env.getAllocatorByTarget (envHandle h) (Main target)
   mAllocatorLibrary <- getAllocatorLibraryIfNecessary h target allocator
   let objects = mainObject : objectPathList ++ foreignObjectList ++ maybeToList mAllocatorLibrary
@@ -173,12 +172,10 @@ checkIfLldIsAvailable h clang = do
     Left _ ->
       return False
 
-getForeignDirContent :: Path Abs Dir -> App [Path Abs File]
-getForeignDirContent foreignDir = do
-  b <- doesDirExist foreignDir
-  if b
-    then snd <$> listDirRecur foreignDir
-    else return []
+getForeignOutputList :: Handle -> MainTarget -> Module -> App [Path Abs File]
+getForeignOutputList h target baseModule = do
+  foreignDir <- Path.getForeignDir (pathHandle h) (Main target) baseModule
+  return $ map (foreignDir </>) $ output $ moduleForeign baseModule
 
 getAllocatorLibraryIfNecessary :: Handle -> MainTarget -> Allocator -> App (Maybe (Path Abs File))
 getAllocatorLibraryIfNecessary h target allocator = do
