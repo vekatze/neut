@@ -305,18 +305,19 @@ inlineFresh h rawTerm = do
                 Just (e@(_ :< TM.DataIntro (AttrDI.Attr {..}) _ _ consArgs), oets'') -> do
                   let (newBaseCursorList, cont) = findClause discriminant fallbackTree caseList
                   let newCursorList = zipWith (\(o, t) arg -> (o, arg, t)) newBaseCursorList consArgs
-                  let subst = Subst.subst (substHandle h) (IntMap.singleton (Ident.toInt cursor) (Subst.Term e))
-                  liftIO (subst $ m :< TM.DataElim traceID isNoetic (oets'' ++ newCursorList) cont) >>= expand h
+                  cont' <- liftIO $ substCursor h cursor e cont
+                  expand h $ m :< TM.DataElim traceID isNoetic (oets'' ++ newCursorList) cont'
                 Just (e, oets'')
                   | Just literal <- asLiteralTerm e -> do
-                      let subst = Subst.subst (substHandle h) (IntMap.singleton (Ident.toInt cursor) (Subst.Term e))
                       case findLiteralClause literal caseList of
                         Just cont -> do
-                          liftIO (subst $ m :< TM.DataElim traceID isNoetic oets'' cont) >>= expand h
+                          cont' <- liftIO $ substCursor h cursor e cont
+                          expand h $ m :< TM.DataElim traceID isNoetic oets'' cont'
                         Nothing
                           | L.Int value <- literal,
                             Just ([], cont) <- findConsCaseByDisc (D.MakeDiscriminant value) caseList -> do
-                              liftIO (subst $ m :< TM.DataElim traceID isNoetic oets'' cont) >>= expand h
+                              cont' <- liftIO $ substCursor h cursor e cont
+                              expand h $ m :< TM.DataElim traceID isNoetic oets'' cont'
                           | otherwise -> do
                               decisionTree' <- inlineDecisionTree h decisionTree
                               registerResidual h $ m :< TM.DataElim traceID isNoetic oets' decisionTree'
@@ -584,6 +585,10 @@ inlineTypeBinder :: Handle -> BinderF TM.Type -> App (BinderF TM.Type)
 inlineTypeBinder h (m, k, x, t) = do
   t' <- inlineType' h t
   return (m, k, x, t')
+
+substCursor :: Handle -> Ident -> TM.Term -> DT.DecisionTree TM.Type TM.Term -> IO (DT.DecisionTree TM.Type TM.Term)
+substCursor h cursor e =
+  Subst.substDecisionTree (substHandle h) (IntMap.singleton (Ident.toInt cursor) (Subst.Term e))
 
 inlineDecisionTree ::
   Handle ->
