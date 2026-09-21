@@ -19,8 +19,6 @@ where
 
 import Control.Comonad.Cofree
 import Data.IntMap qualified as IntMap
-import Data.Maybe (isNothing)
-import Data.Set qualified as S
 import Gensym.Gensym qualified as Gensym
 import Gensym.Handle qualified as Gensym
 import Language.Common.Attr.Lam qualified as AttrL
@@ -35,7 +33,6 @@ import Language.Common.LamKind qualified as LK
 import Language.Common.LowMagic qualified as LM
 import Language.Common.Magic qualified as M
 import Language.Common.VarKind qualified as VK
-import Language.Term.FreeVars qualified as TM
 import Language.Term.Term qualified as TM
 import Language.Term.Trace qualified as Trace
 import Language.Term.TraceSites qualified as TraceSites
@@ -146,8 +143,13 @@ release env change =
 
 {-# INLINE build #-}
 build :: Change -> a -> Outcome a
-build _ x =
-  Made x True noRenamedLevel
+build change x =
+  case change of
+    Changed isAltered renamedLevel
+      | isAltered || renamedLevel /= noRenamedLevel ->
+          Made x isAltered renamedLevel
+    _ ->
+      Kept
 
 {-# INLINE buildTraced #-}
 buildTraced :: Handle -> Hint -> Change -> TM.TermF TM.Term -> Outcome TM.Term
@@ -296,9 +298,6 @@ substTerm h env term =
               return Kept
     _ :< TM.VarGlobal {} ->
       return Kept
-    _ :< TM.PiIntro {}
-      | isOutsideSubst h env term ->
-          return Kept
     m :< TM.PiIntro (AttrL.Attr {lamKind}) impArgs expArgs defaultArgs e -> do
       newLamID <- Gensym.newCount (gensymHandle h)
       (impArgs', env1) <- substBinders h env impArgs
@@ -393,12 +392,6 @@ substTerm h env term =
     m :< TM.Magic traceID der -> do
       der' <- substMagic h env der
       return $ buildTraced h m (changeOf der') $ TM.Magic traceID (valueOr der der')
-
-isOutsideSubst :: Handle -> Env -> TM.Term -> Bool
-isOutsideSubst h env term = do
-  let fvs = S.map Ident.toInt $ TM.freeVars term
-  let domain = S.fromList $ IntMap.keys (entries env) ++ IntMap.keys (renaming env)
-  not (shouldRefreshBinders h) && isNothing (traceMapper h) && S.disjoint fvs domain
 
 substTy :: Handle -> Env -> TM.Type -> IO (Outcome TM.Type)
 substTy h env ty =
