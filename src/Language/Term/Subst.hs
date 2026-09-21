@@ -18,9 +18,8 @@ module Language.Term.Subst
 where
 
 import Control.Comonad.Cofree
-import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.IntMap qualified as IntMap
-import Data.Maybe (isNothing, mapMaybe)
+import Data.Maybe (isNothing)
 import Data.Set qualified as S
 import Gensym.Gensym qualified as Gensym
 import Gensym.Handle qualified as Gensym
@@ -62,123 +61,123 @@ new gensymHandle = do
   let traceMapper = Nothing
   Handle {..}
 
-subst :: Handle -> Subst -> TM.Term -> IO TM.Term
-subst h sub term =
-  case term of
-    m :< TM.Var x
-      | Just entry <- IntMap.lookup (Ident.toInt x) sub ->
-          case entry of
-            Var x' ->
-              return $ m :< TM.Var x'
-            Term e ->
-              return e
-            Type (_ :< TM.TVar x') ->
-              return $ m :< TM.Var x'
-            Type _ ->
-              return $ m :< TM.Var x
-      | otherwise ->
-          return term
-    _ :< TM.VarGlobal {} ->
-      return term
-    m :< TM.PiIntro (AttrL.Attr {lamKind}) impArgs expArgs defaultArgs e -> do
-      let fvs = S.map Ident.toInt $ TM.freeVars term
-      let subDomSet = S.fromList $ IntMap.keys sub
-      if not (shouldRefreshBinders h) && isNothing (traceMapper h) && S.intersection fvs subDomSet == S.empty
-        then return term
-        else do
-          newLamID <- liftIO $ Gensym.newCount (gensymHandle h)
-          case lamKind of
-            LK.Fix kind isDestPassing xt -> do
-              (impArgs', sub') <- substBinder h sub impArgs
-              (expArgs', sub'') <- substBinder h sub' expArgs
-              (defaultArgs', sub''') <- substDefaultArgs h sub'' defaultArgs
-              ([xt'], sub'''') <- substBinder h sub''' [xt]
-              e' <- subst h sub'''' e
-              let fixAttr = AttrL.Attr {lamKind = LK.Fix kind isDestPassing xt', identity = newLamID}
-              return $ m :< TM.PiIntro fixAttr impArgs' expArgs' defaultArgs' e'
-            LK.Normal name isDestPassing codType -> do
-              (impArgs', sub') <- substBinder h sub impArgs
-              (expArgs', sub'') <- substBinder h sub' expArgs
-              (defaultArgs', sub''') <- substDefaultArgs h sub'' defaultArgs
-              codType' <- substType h sub''' codType
-              e' <- subst h sub''' e
-              let lamAttr = AttrL.Attr {lamKind = LK.Normal name isDestPassing codType', identity = newLamID}
-              return $ m :< TM.PiIntro lamAttr impArgs' expArgs' defaultArgs' e'
-    m :< TM.PiElim traceID b e impArgs expArgs defaultArgs -> do
-      b' <- CC.traverseTypes (substType h sub) b
-      e' <- subst h sub e
-      impArgs' <- mapM (substType h sub) impArgs
-      expArgs' <- mapM (subst h sub) expArgs
-      defaultArgs' <- mapM (traverse (subst h sub)) defaultArgs
-      rebuild h m $ TM.PiElim traceID b' e' impArgs' expArgs' defaultArgs'
-    m :< TM.DataIntro attr consName dataArgs consArgs -> do
-      dataArgs' <- mapM (substType h sub) dataArgs
-      consArgs' <- mapM (subst h sub) consArgs
-      return $ m :< TM.DataIntro attr consName dataArgs' consArgs'
-    m :< TM.DataElim traceID isNoetic oets decisionTree -> do
-      let (os, es, ts) = unzip3 oets
-      es' <- mapM (subst h sub) es
-      let binder = zipWith (\o t -> (m, VK.normal, o, t)) os ts
-      (binder', decisionTree') <- subst'' h sub binder decisionTree
-      let os' = map (\(_, _, o, _) -> o) binder'
-      let ts' = map (\(_, _, _, t) -> t) binder'
-      rebuild h m $ TM.DataElim traceID isNoetic (zip3 os' es' ts') decisionTree'
-    m :< TM.BoxIntro traceID letSeq e -> do
-      (letSeq', sub') <- substLetSeq h sub letSeq
-      e' <- subst h sub' e
-      rebuild h m $ TM.BoxIntro traceID letSeq' e'
-    m :< TM.BoxIntroLift t e -> do
-      t' <- substType h sub t
-      e' <- subst h sub e
-      return $ m :< TM.BoxIntroLift t' e'
-    m :< TM.EmbedIntro e -> do
-      e' <- subst h sub e
-      return $ m :< TM.EmbedIntro e'
-    m :< TM.BoxElim traceID castSeq mxt e1 uncastSeq e2 -> do
-      (castSeq', sub1) <- substLetSeq h sub castSeq
-      ((mxt', e1'), sub2) <- substLet h sub1 (mxt, e1)
-      (uncastSeq', sub3) <- substLetSeq h sub2 uncastSeq
-      e2' <- subst h sub3 e2
-      rebuild h m $ TM.BoxElim traceID castSeq' mxt' e1' uncastSeq' e2'
-    m :< TM.CodeIntro e -> do
-      e' <- subst h sub e
-      return $ m :< TM.CodeIntro e'
-    m :< TM.CodeElim traceID e -> do
-      e' <- subst h sub e
-      rebuild h m $ TM.CodeElim traceID e'
-    m :< TM.TauIntro ty -> do
-      ty' <- substType h sub ty
-      return $ m :< TM.TauIntro ty'
-    m :< TM.TauElim traceID (mx, k, x) e1 e2 -> do
-      e1' <- subst h sub e1
-      x' <- liftIO $ Gensym.newIdentFromIdent (gensymHandle h) x
-      let sub' = IntMap.insert (Ident.toInt x) (Var x') sub
-      e2' <- subst h sub' e2
-      rebuild h m $ TM.TauElim traceID (mx, k, x') e1' e2'
-    m :< TM.Let mxt e1 e2 -> do
-      e1' <- subst h sub e1
-      ([mxt'], e2') <- subst' h sub [mxt] e2
-      return $ m :< TM.Let mxt' e1' e2'
-    m :< TM.Invoke tropeNames body -> do
-      body' <- subst h sub body
-      return $ m :< TM.Invoke tropeNames body'
-    _ :< TM.Prim {} ->
-      return term
-    m :< TM.Magic traceID der -> do
-      der' <- substMagic h sub der
-      rebuild h m $ TM.Magic traceID der'
+newtype Level
+  = Level Int
+  deriving (Eq, Ord)
 
-rebuild :: Handle -> Hint -> TM.TermF TM.Term -> IO TM.Term
-rebuild h m node = do
+rootLevel :: Level
+rootLevel =
+  Level 0
+
+nextLevel :: Level -> Level
+nextLevel (Level level) =
+  Level (level + 1)
+
+noRenamedLevel :: Level
+noRenamedLevel =
+  Level maxBound
+
+data Env = Env
+  { entries :: Subst,
+    renaming :: IntMap.IntMap (Ident, Level),
+    depth :: Level
+  }
+
+initialEnv :: Subst -> Env
+initialEnv sub =
+  Env {entries = sub, renaming = IntMap.empty, depth = rootLevel}
+
+data Change
+  = Unchanged
+  | Changed !Bool !Level
+
+instance Semigroup Change where
+  Unchanged <> change =
+    change
+  change <> Unchanged =
+    change
+  Changed isAltered1 renamedLevel1 <> Changed isAltered2 renamedLevel2 =
+    Changed (isAltered1 || isAltered2) (min renamedLevel1 renamedLevel2)
+
+instance Monoid Change where
+  mempty =
+    Unchanged
+
+data Outcome a
+  = Kept
+  | Made a !Bool !Level
+
+changeOf :: Outcome a -> Change
+changeOf outcome =
+  case outcome of
+    Kept ->
+      Unchanged
+    Made _ isAltered renamedLevel ->
+      Changed isAltered renamedLevel
+
+changes :: [Outcome a] -> Change
+changes =
+  foldMap changeOf
+
+valueOr :: a -> Outcome a -> a
+valueOr original outcome =
+  case outcome of
+    Kept ->
+      original
+    Made x _ _ ->
+      x
+
+values :: [a] -> [Outcome a] -> [a]
+values =
+  zipWith valueOr
+
+altered :: a -> Outcome a
+altered x =
+  Made x True noRenamedLevel
+
+release :: Env -> Change -> Change
+release env change =
+  case change of
+    Changed isAltered renamedLevel
+      | renamedLevel >= depth env ->
+          Changed isAltered noRenamedLevel
+    _ ->
+      change
+
+{-# INLINE build #-}
+build :: Change -> a -> Outcome a
+build _ x =
+  Made x True noRenamedLevel
+
+{-# INLINE buildTraced #-}
+buildTraced :: Handle -> Hint -> Change -> TM.TermF TM.Term -> Outcome TM.Term
+buildTraced h m change node =
   case traceMapper h of
-    Nothing -> return $ m :< node
+    Nothing ->
+      build change (m :< node)
     Just remapping -> do
       let node' = TraceSites.setTraceID (Trace.remapOrKeep remapping $ TraceSites.traceIDOf node) node
-      return $ m :< node'
+      case change of
+        Changed _ renamedLevel ->
+          Made (m :< node') True renamedLevel
+        Unchanged ->
+          Made (m :< node') True noRenamedLevel
+
+subst :: Handle -> Subst -> TM.Term -> IO TM.Term
+subst h sub term =
+  valueOr term <$> substTerm h (initialEnv sub) term
+
+substType :: Handle -> Subst -> TM.Type -> IO TM.Type
+substType h sub ty =
+  valueOr ty <$> substTy h (initialEnv sub) ty
 
 refresh :: Handle -> TM.Term -> IO TM.Term
 refresh h =
   subst (h {shouldRefreshBinders = True}) IntMap.empty
+
+refreshType :: Handle -> TM.Type -> IO TM.Type
+refreshType h =
+  substType (h {shouldRefreshBinders = True}) IntMap.empty
 
 substAndRefresh :: Handle -> Subst -> TM.Term -> IO TM.Term
 substAndRefresh h =
@@ -188,112 +187,16 @@ substAndRefreshWithTrace :: Handle -> Trace.Remapping -> Subst -> TM.Term -> IO 
 substAndRefreshWithTrace h remapping =
   subst (h {shouldRefreshBinders = True, traceMapper = Just remapping})
 
-substType :: Handle -> Subst -> TM.Type -> IO TM.Type
-substType h sub ty =
-  case ty of
-    _ :< TM.Tau ->
-      return ty
-    m :< TM.TVar x
-      | Just entry <- IntMap.lookup (Ident.toInt x) sub ->
-          case entry of
-            Var x' ->
-              return $ m :< TM.TVar x'
-            Term (_ :< TM.Var x') ->
-              return $ m :< TM.TVar x'
-            Term _ ->
-              return ty
-            Type t ->
-              return t
-      | otherwise ->
-          return ty
-    _ :< TM.TVarGlobal {} ->
-      return ty
-    m :< TM.TyApp t args -> do
-      t' <- substType h sub t
-      args' <- mapM (substType h sub) args
-      return $ m :< TM.TyApp t' args'
-    m :< TM.Pi piKind impArgs expArgs defaultArgs t -> do
-      (impArgs', sub') <- substBinder h sub impArgs
-      (expArgs', sub'') <- substBinder h sub' expArgs
-      (defaultArgs', sub''') <- substBinder h sub'' defaultArgs
-      t' <- substType h sub''' t
-      return (m :< TM.Pi piKind impArgs' expArgs' defaultArgs' t')
-    m :< TM.Data attr name es -> do
-      es' <- mapM (substType h sub) es
-      return $ m :< TM.Data attr name es'
-    m :< TM.Box t -> do
-      t' <- substType h sub t
-      return $ m :< TM.Box t'
-    m :< TM.BoxNoema t -> do
-      t' <- substType h sub t
-      return $ m :< TM.BoxNoema t'
-    m :< TM.Embed t -> do
-      t' <- substType h sub t
-      return $ m :< TM.Embed t'
-    m :< TM.Code t -> do
-      t' <- substType h sub t
-      return $ m :< TM.Code t'
-    _ :< TM.PrimType {} ->
-      return ty
-    _ :< TM.Void ->
-      return ty
-    m :< TM.Resource dd resourceID -> do
-      return $ m :< TM.Resource dd resourceID
-
-refreshType :: Handle -> TM.Type -> IO TM.Type
-refreshType h =
-  substType (h {shouldRefreshBinders = True}) IntMap.empty
-
-substBinder ::
-  Handle ->
-  Subst ->
-  [BinderF TM.Type] ->
-  IO ([BinderF TM.Type], Subst)
-substBinder h sub binder =
-  case binder of
-    [] -> do
-      return ([], sub)
-    ((m, k, x, t) : xts) -> do
-      t' <- substType h sub t
-      x' <- liftIO $ Gensym.newIdentFromIdent (gensymHandle h) x
-      let sub' = IntMap.insert (Ident.toInt x) (Var x') sub
-      (xts', sub'') <- substBinder h sub' xts
-      return ((m, k, x', t') : xts', sub'')
-
-substDefaultArgs ::
-  Handle ->
-  Subst ->
-  [(BinderF TM.Type, TM.Term)] ->
-  IO ([(BinderF TM.Type, TM.Term)], Subst)
-substDefaultArgs h sub binderList =
-  case binderList of
-    [] -> do
-      return ([], sub)
-    ((m, k, x, t), defaultValue) : xts -> do
-      t' <- substType h sub t
-      defaultValue' <- subst h sub defaultValue
-      x' <- liftIO $ Gensym.newIdentFromIdent (gensymHandle h) x
-      let sub' = IntMap.insert (Ident.toInt x) (Var x') sub
-      (xts', sub'') <- substDefaultArgs h sub' xts
-      return (((m, k, x', t'), defaultValue') : xts', sub'')
-
 subst' ::
   Handle ->
   Subst ->
   [BinderF TM.Type] ->
   TM.Term ->
   IO ([BinderF TM.Type], TM.Term)
-subst' h sub binder e =
-  case binder of
-    [] -> do
-      e' <- subst h sub e
-      return ([], e')
-    ((m, k, x, t) : xts) -> do
-      t' <- substType h sub t
-      x' <- liftIO $ Gensym.newIdentFromIdent (gensymHandle h) x
-      let sub' = IntMap.insert (Ident.toInt x) (Var x') sub
-      (xts', e') <- subst' h sub' xts e
-      return ((m, k, x', t') : xts', e')
+subst' h sub binders e = do
+  (binders', env) <- substBinders h (initialEnv sub) binders
+  e' <- substTerm h env e
+  return (values binders binders', valueOr e e')
 
 substAndRefresh' :: Handle -> Subst -> [BinderF TM.Type] -> TM.Term -> IO ([BinderF TM.Type], TM.Term)
 substAndRefresh' h =
@@ -309,43 +212,10 @@ subst'' ::
   [BinderF TM.Type] ->
   DT.DecisionTree TM.Type TM.Term ->
   IO ([BinderF TM.Type], DT.DecisionTree TM.Type TM.Term)
-subst'' h sub binder decisionTree =
-  case binder of
-    [] -> do
-      decisionTree' <- substDecisionTree h sub decisionTree
-      return ([], decisionTree')
-    ((m, k, x, t) : xts) -> do
-      t' <- substType h sub t
-      x' <- liftIO $ Gensym.newIdentFromIdent (gensymHandle h) x
-      let sub' = IntMap.insert (Ident.toInt x) (Var x') sub
-      (xts', e') <- subst'' h sub' xts decisionTree
-      return ((m, k, x', t') : xts', e')
-
-substLet ::
-  Handle ->
-  Subst ->
-  (BinderF TM.Type, TM.Term) ->
-  IO ((BinderF TM.Type, TM.Term), Subst)
-substLet h sub ((m, k, x, t), e) = do
-  e' <- subst h sub e
-  t' <- substType h sub t
-  x' <- liftIO $ Gensym.newIdentFromIdent (gensymHandle h) x
-  let sub' = IntMap.insert (Ident.toInt x) (Var x') sub
-  return (((m, k, x', t'), e'), sub')
-
-substLetSeq ::
-  Handle ->
-  Subst ->
-  [(BinderF TM.Type, TM.Term)] ->
-  IO ([(BinderF TM.Type, TM.Term)], Subst)
-substLetSeq h sub letSeq = do
-  case letSeq of
-    [] ->
-      return ([], sub)
-    letPair : rest -> do
-      (letPair', sub') <- substLet h sub letPair
-      (rest', sub'') <- substLetSeq h sub' rest
-      return (letPair' : rest', sub'')
+subst'' h sub binders tree = do
+  (binders', env) <- substBinders h (initialEnv sub) binders
+  tree' <- substTree h env tree
+  return (values binders binders', valueOr tree tree')
 
 substDecisionTree ::
   Handle ->
@@ -353,164 +223,416 @@ substDecisionTree ::
   DT.DecisionTree TM.Type TM.Term ->
   IO (DT.DecisionTree TM.Type TM.Term)
 substDecisionTree h sub tree =
+  valueOr tree <$> substTree h (initialEnv sub) tree
+
+renamedVariable :: Handle -> Env -> Ident -> Maybe (Outcome Ident)
+renamedVariable h env x = do
+  (x', level) <- IntMap.lookup (Ident.toInt x) (renaming env)
+  return $ Made x' (shouldRefreshBinders h) level
+
+bindIdent :: Handle -> Env -> Ident -> IO (Outcome Ident, Env)
+bindIdent h env x = do
+  x' <- Gensym.newIdentFromIdent (gensymHandle h) x
+  let key = Ident.toInt x
+  let level = depth env
+  let env' =
+        env
+          { entries = IntMap.delete key (entries env),
+            renaming = IntMap.insert key (x', level) (renaming env),
+            depth = nextLevel level
+          }
+  return (Made x' (shouldRefreshBinders h) level, env')
+
+substBinder :: Handle -> Env -> BinderF TM.Type -> IO (Outcome (BinderF TM.Type), Env)
+substBinder h env (m, k, x, t) = do
+  t' <- substTy h env t
+  (x', env') <- bindIdent h env x
+  return (build (changeOf x' <> changeOf t') (m, k, valueOr x x', valueOr t t'), env')
+
+substBinders :: Handle -> Env -> [BinderF TM.Type] -> IO ([Outcome (BinderF TM.Type)], Env)
+substBinders h env binders =
+  case binders of
+    [] ->
+      return ([], env)
+    binder : rest -> do
+      (binder', env') <- substBinder h env binder
+      (rest', env'') <- substBinders h env' rest
+      return (binder' : rest', env'')
+
+substLetSeq ::
+  Handle ->
+  Env ->
+  [(BinderF TM.Type, TM.Term)] ->
+  IO (Outcome [(BinderF TM.Type, TM.Term)], Env)
+substLetSeq h env letSeq =
+  case letSeq of
+    [] ->
+      return (Kept, env)
+    (binder, e) : rest -> do
+      e' <- substTerm h env e
+      (binder', env') <- substBinder h env binder
+      (rest', env'') <- substLetSeq h env' rest
+      let change = changeOf binder' <> changeOf e' <> changeOf rest'
+      return (build change ((valueOr binder binder', valueOr e e') : valueOr rest rest'), env'')
+
+substTerm :: Handle -> Env -> TM.Term -> IO (Outcome TM.Term)
+substTerm h env term =
+  case term of
+    m :< TM.Var x ->
+      case IntMap.lookup (Ident.toInt x) (entries env) of
+        Just (Var x') ->
+          return $ altered $ m :< TM.Var x'
+        Just (Term e) ->
+          return $ altered e
+        Just (Type (_ :< TM.TVar x')) ->
+          return $ altered $ m :< TM.Var x'
+        Just (Type _) ->
+          return Kept
+        Nothing ->
+          case renamedVariable h env x of
+            Just x' ->
+              return $ build (changeOf x') $ m :< TM.Var (valueOr x x')
+            Nothing ->
+              return Kept
+    _ :< TM.VarGlobal {} ->
+      return Kept
+    _ :< TM.PiIntro {}
+      | isOutsideSubst h env term ->
+          return Kept
+    m :< TM.PiIntro (AttrL.Attr {lamKind}) impArgs expArgs defaultArgs e -> do
+      newLamID <- Gensym.newCount (gensymHandle h)
+      (impArgs', env1) <- substBinders h env impArgs
+      (expArgs', env2) <- substBinders h env1 expArgs
+      (defaultArgs', env3) <- substLetSeq h env2 defaultArgs
+      let change = changes impArgs' <> changes expArgs' <> changeOf defaultArgs'
+      let lam attr body = m :< TM.PiIntro attr (values impArgs impArgs') (values expArgs expArgs') (valueOr defaultArgs defaultArgs') body
+      case lamKind of
+        LK.Fix kind isDestPassing xt -> do
+          (xt', env4) <- substBinder h env3 xt
+          e' <- substTerm h env4 e
+          let change' = release env $ change <> changeOf xt' <> changeOf e'
+          let attr = AttrL.Attr {lamKind = LK.Fix kind isDestPassing (valueOr xt xt'), identity = newLamID}
+          return $ build change' $ lam attr (valueOr e e')
+        LK.Normal name isDestPassing codType -> do
+          codType' <- substTy h env3 codType
+          e' <- substTerm h env3 e
+          let change' = release env $ change <> changeOf codType' <> changeOf e'
+          let attr = AttrL.Attr {lamKind = LK.Normal name isDestPassing (valueOr codType codType'), identity = newLamID}
+          return $ build change' $ lam attr (valueOr e e')
+    m :< TM.PiElim traceID b e impArgs expArgs defaultArgs -> do
+      b' <- CC.traverseTypes (\t -> (,) t <$> substTy h env t) b
+      e' <- substTerm h env e
+      impArgs' <- mapM (substTy h env) impArgs
+      expArgs' <- mapM (substTerm h env) expArgs
+      defaultArgs' <- mapM (traverse (\d -> (,) d <$> substTerm h env d)) defaultArgs
+      let change = foldMap (changeOf . snd) b' <> changeOf e' <> changes impArgs' <> changes expArgs' <> foldMap (foldMap (changeOf . snd)) defaultArgs'
+      let node = TM.PiElim traceID (fmap (uncurry valueOr) b') (valueOr e e') (values impArgs impArgs') (values expArgs expArgs') (map (fmap (uncurry valueOr)) defaultArgs')
+      return $ buildTraced h m change node
+    m :< TM.DataIntro attr consName dataArgs consArgs -> do
+      dataArgs' <- mapM (substTy h env) dataArgs
+      consArgs' <- mapM (substTerm h env) consArgs
+      let change = changes dataArgs' <> changes consArgs'
+      return $ build change $ m :< TM.DataIntro attr consName (values dataArgs dataArgs') (values consArgs consArgs')
+    m :< TM.DataElim traceID isNoetic oets decisionTree -> do
+      let (os, es, ts) = unzip3 oets
+      es' <- mapM (substTerm h env) es
+      let binders = zipWith (\o t -> (m, VK.normal, o, t)) os ts
+      (binders', env') <- substBinders h env binders
+      decisionTree' <- substTree h env' decisionTree
+      let change = release env $ changes es' <> changes binders' <> changeOf decisionTree'
+      let binders'' = values binders binders'
+      let os' = map (\(_, _, o, _) -> o) binders''
+      let ts' = map (\(_, _, _, t) -> t) binders''
+      return $ buildTraced h m change $ TM.DataElim traceID isNoetic (zip3 os' (values es es') ts') (valueOr decisionTree decisionTree')
+    m :< TM.BoxIntro traceID letSeq e -> do
+      (letSeq', env') <- substLetSeq h env letSeq
+      e' <- substTerm h env' e
+      let change = release env $ changeOf letSeq' <> changeOf e'
+      return $ buildTraced h m change $ TM.BoxIntro traceID (valueOr letSeq letSeq') (valueOr e e')
+    m :< TM.BoxIntroLift t e -> do
+      t' <- substTy h env t
+      e' <- substTerm h env e
+      return $ build (changeOf t' <> changeOf e') $ m :< TM.BoxIntroLift (valueOr t t') (valueOr e e')
+    m :< TM.EmbedIntro e -> do
+      e' <- substTerm h env e
+      return $ build (changeOf e') $ m :< TM.EmbedIntro (valueOr e e')
+    m :< TM.BoxElim traceID castSeq mxt e1 uncastSeq e2 -> do
+      (castSeq', env1) <- substLetSeq h env castSeq
+      e1' <- substTerm h env1 e1
+      (mxt', env2) <- substBinder h env1 mxt
+      (uncastSeq', env3) <- substLetSeq h env2 uncastSeq
+      e2' <- substTerm h env3 e2
+      let change = release env $ changeOf castSeq' <> changeOf e1' <> changeOf mxt' <> changeOf uncastSeq' <> changeOf e2'
+      return $ buildTraced h m change $ TM.BoxElim traceID (valueOr castSeq castSeq') (valueOr mxt mxt') (valueOr e1 e1') (valueOr uncastSeq uncastSeq') (valueOr e2 e2')
+    m :< TM.CodeIntro e -> do
+      e' <- substTerm h env e
+      return $ build (changeOf e') $ m :< TM.CodeIntro (valueOr e e')
+    m :< TM.CodeElim traceID e -> do
+      e' <- substTerm h env e
+      return $ buildTraced h m (changeOf e') $ TM.CodeElim traceID (valueOr e e')
+    m :< TM.TauIntro ty -> do
+      ty' <- substTy h env ty
+      return $ build (changeOf ty') $ m :< TM.TauIntro (valueOr ty ty')
+    m :< TM.TauElim traceID (mx, k, x) e1 e2 -> do
+      e1' <- substTerm h env e1
+      (x', env') <- bindIdent h env x
+      e2' <- substTerm h env' e2
+      let change = release env $ changeOf x' <> changeOf e1' <> changeOf e2'
+      return $ buildTraced h m change $ TM.TauElim traceID (mx, k, valueOr x x') (valueOr e1 e1') (valueOr e2 e2')
+    m :< TM.Let mxt e1 e2 -> do
+      e1' <- substTerm h env e1
+      (mxt', env') <- substBinder h env mxt
+      e2' <- substTerm h env' e2
+      let change = release env $ changeOf mxt' <> changeOf e1' <> changeOf e2'
+      return $ build change $ m :< TM.Let (valueOr mxt mxt') (valueOr e1 e1') (valueOr e2 e2')
+    m :< TM.Invoke tropeNames body -> do
+      body' <- substTerm h env body
+      return $ build (changeOf body') $ m :< TM.Invoke tropeNames (valueOr body body')
+    _ :< TM.Prim {} ->
+      return Kept
+    m :< TM.Magic traceID der -> do
+      der' <- substMagic h env der
+      return $ buildTraced h m (changeOf der') $ TM.Magic traceID (valueOr der der')
+
+isOutsideSubst :: Handle -> Env -> TM.Term -> Bool
+isOutsideSubst h env term = do
+  let fvs = S.map Ident.toInt $ TM.freeVars term
+  let domain = S.fromList $ IntMap.keys (entries env) ++ IntMap.keys (renaming env)
+  not (shouldRefreshBinders h) && isNothing (traceMapper h) && S.disjoint fvs domain
+
+substTy :: Handle -> Env -> TM.Type -> IO (Outcome TM.Type)
+substTy h env ty =
+  case ty of
+    _ :< TM.Tau ->
+      return Kept
+    m :< TM.TVar x ->
+      case IntMap.lookup (Ident.toInt x) (entries env) of
+        Just (Var x') ->
+          return $ altered $ m :< TM.TVar x'
+        Just (Term (_ :< TM.Var x')) ->
+          return $ altered $ m :< TM.TVar x'
+        Just (Term _) ->
+          return Kept
+        Just (Type t) ->
+          return $ altered t
+        Nothing ->
+          case renamedVariable h env x of
+            Just x' ->
+              return $ build (changeOf x') $ m :< TM.TVar (valueOr x x')
+            Nothing ->
+              return Kept
+    _ :< TM.TVarGlobal {} ->
+      return Kept
+    m :< TM.TyApp t args -> do
+      t' <- substTy h env t
+      args' <- mapM (substTy h env) args
+      return $ build (changeOf t' <> changes args') $ m :< TM.TyApp (valueOr t t') (values args args')
+    m :< TM.Pi piKind impArgs expArgs defaultArgs t -> do
+      (impArgs', env1) <- substBinders h env impArgs
+      (expArgs', env2) <- substBinders h env1 expArgs
+      (defaultArgs', env3) <- substBinders h env2 defaultArgs
+      t' <- substTy h env3 t
+      let change = release env $ changes impArgs' <> changes expArgs' <> changes defaultArgs' <> changeOf t'
+      return $ build change $ m :< TM.Pi piKind (values impArgs impArgs') (values expArgs expArgs') (values defaultArgs defaultArgs') (valueOr t t')
+    m :< TM.Data attr name es -> do
+      es' <- mapM (substTy h env) es
+      return $ build (changes es') $ m :< TM.Data attr name (values es es')
+    m :< TM.Box t -> do
+      t' <- substTy h env t
+      return $ build (changeOf t') $ m :< TM.Box (valueOr t t')
+    m :< TM.BoxNoema t -> do
+      t' <- substTy h env t
+      return $ build (changeOf t') $ m :< TM.BoxNoema (valueOr t t')
+    m :< TM.Embed t -> do
+      t' <- substTy h env t
+      return $ build (changeOf t') $ m :< TM.Embed (valueOr t t')
+    m :< TM.Code t -> do
+      t' <- substTy h env t
+      return $ build (changeOf t') $ m :< TM.Code (valueOr t t')
+    _ :< TM.PrimType {} ->
+      return Kept
+    _ :< TM.Void ->
+      return Kept
+    _ :< TM.Resource {} ->
+      return Kept
+
+substTree ::
+  Handle ->
+  Env ->
+  DT.DecisionTree TM.Type TM.Term ->
+  IO (Outcome (DT.DecisionTree TM.Type TM.Term))
+substTree h env tree =
   case tree of
     DT.Leaf xs letSeq e -> do
-      let xs' = mapMaybe (substLeafVar sub) xs
-      (letSeq', sub') <- substLetSeq h sub letSeq
-      e' <- subst h sub' e
-      return $ DT.Leaf xs' letSeq' e'
+      let xs' = map (substLeafVar h env) xs
+      (letSeq', env') <- substLetSeq h env letSeq
+      e' <- substTerm h env' e
+      let change = release env $ changes xs' <> changeOf letSeq' <> changeOf e'
+      let xs'' = concat $ zipWith (\x x' -> valueOr [x] x') xs xs'
+      return $ build change $ DT.Leaf xs'' (valueOr letSeq letSeq') (valueOr e e')
     DT.Unreachable ->
-      return tree
+      return Kept
     DT.Switch (cursorVar, cursor) caseList -> do
-      let cursorVar' = substVar sub cursorVar
-      cursor' <- substType h sub cursor
-      caseList' <- substCaseList h sub caseList
-      return $ DT.Switch (cursorVar', cursor') caseList'
+      let cursorVar' = substVar h env cursorVar
+      cursor' <- substTy h env cursor
+      caseList' <- substCaseList h env caseList
+      let change = changeOf cursorVar' <> changeOf cursor' <> changeOf caseList'
+      return $ build change $ DT.Switch (valueOr cursorVar cursorVar', valueOr cursor cursor') (valueOr caseList caseList')
 
 substCaseList ::
   Handle ->
-  Subst ->
+  Env ->
   DT.CaseList TM.Type TM.Term ->
-  IO (DT.CaseList TM.Type TM.Term)
-substCaseList h sub (fallbackClause, clauseList) = do
-  fallbackClause' <- substDecisionTree h sub fallbackClause
-  clauseList' <- mapM (substCase h sub) clauseList
-  return (fallbackClause', clauseList')
+  IO (Outcome (DT.CaseList TM.Type TM.Term))
+substCaseList h env (fallbackClause, clauseList) = do
+  fallbackClause' <- substTree h env fallbackClause
+  clauseList' <- mapM (substCase h env) clauseList
+  let change = changeOf fallbackClause' <> changes clauseList'
+  return $ build change (valueOr fallbackClause fallbackClause', values clauseList clauseList')
 
 substCase ::
   Handle ->
-  Subst ->
+  Env ->
   DT.Case TM.Type TM.Term ->
-  IO (DT.Case TM.Type TM.Term)
-substCase h sub decisionCase = do
+  IO (Outcome (DT.Case TM.Type TM.Term))
+substCase h env decisionCase = do
   case decisionCase of
     DT.LiteralCase mPat i cont -> do
-      cont' <- substDecisionTree h sub cont
-      return $ DT.LiteralCase mPat i cont'
+      cont' <- substTree h env cont
+      return $ build (changeOf cont') $ DT.LiteralCase mPat i (valueOr cont cont')
     DT.ConsCase record@(DT.ConsCaseRecord {..}) -> do
       let (dataTerms, dataTypes) = unzip dataArgs
-      dataTerms' <- mapM (substType h sub) dataTerms
-      dataTypes' <- mapM (substType h sub) dataTypes
-      (consArgs', cont') <- subst'' h sub consArgs cont
+      dataTerms' <- mapM (substTy h env) dataTerms
+      dataTypes' <- mapM (substTy h env) dataTypes
+      (consArgs', env') <- substBinders h env consArgs
+      cont' <- substTree h env' cont
+      let change = release env $ changes dataTerms' <> changes dataTypes' <> changes consArgs' <> changeOf cont'
       return $
-        DT.ConsCase
-          record
-            { DT.dataArgs = zip dataTerms' dataTypes',
-              DT.consArgs = consArgs',
-              DT.cont = cont'
-            }
+        build change $
+          DT.ConsCase
+            record
+              { DT.dataArgs = zip (values dataTerms dataTerms') (values dataTypes dataTypes'),
+                DT.consArgs = values consArgs consArgs',
+                DT.cont = valueOr cont cont'
+              }
 
-substLeafVar :: Subst -> Ident -> Maybe Ident
-substLeafVar sub leafVar =
-  case IntMap.lookup (Ident.toInt leafVar) sub of
+substLeafVar :: Handle -> Env -> Ident -> Outcome [Ident]
+substLeafVar h env leafVar =
+  case IntMap.lookup (Ident.toInt leafVar) (entries env) of
     Just (Var leafVar') ->
-      return leafVar'
+      altered [leafVar']
     Just (Term _) ->
-      Nothing
+      altered []
     Just (Type _) ->
-      return leafVar
+      Kept
     Nothing ->
-      return leafVar
+      case renamedVariable h env leafVar of
+        Just leafVar' ->
+          build (changeOf leafVar') [valueOr leafVar leafVar']
+        Nothing ->
+          Kept
 
-substVar :: Subst -> Ident -> Ident
-substVar sub x =
-  case IntMap.lookup (Ident.toInt x) sub of
+substVar :: Handle -> Env -> Ident -> Outcome Ident
+substVar h env x =
+  case IntMap.lookup (Ident.toInt x) (entries env) of
     Just (Var x') ->
-      x'
+      altered x'
     _ ->
-      x
+      case renamedVariable h env x of
+        Just x' ->
+          x'
+        Nothing ->
+          Kept
 
-substMagic :: Handle -> Subst -> M.Magic BLT.BaseLowType TM.Type TM.Term -> IO (M.Magic BLT.BaseLowType TM.Type TM.Term)
-substMagic h sub magic =
+substMagic :: Handle -> Env -> M.Magic BLT.BaseLowType TM.Type TM.Term -> IO (Outcome (M.Magic BLT.BaseLowType TM.Type TM.Term))
+substMagic h env magic =
   case magic of
-    M.LowMagic lowMagic ->
-      M.LowMagic <$> substLowMagic h sub lowMagic
+    M.LowMagic lowMagic -> do
+      lowMagic' <- substLowMagic h env lowMagic
+      return $ build (changeOf lowMagic') $ M.LowMagic (valueOr lowMagic lowMagic')
     M.Calloc sizeType num size -> do
-      sizeType' <- substType h sub sizeType
-      num' <- subst h sub num
-      size' <- subst h sub size
-      return $ M.Calloc sizeType' num' size'
+      sizeType' <- substTy h env sizeType
+      num' <- substTerm h env num
+      size' <- substTerm h env size
+      return $ build (changeOf sizeType' <> changeOf num' <> changeOf size') $ M.Calloc (valueOr sizeType sizeType') (valueOr num num') (valueOr size size')
     M.Malloc sizeType size -> do
-      sizeType' <- substType h sub sizeType
-      size' <- subst h sub size
-      return $ M.Malloc sizeType' size'
+      sizeType' <- substTy h env sizeType
+      size' <- substTerm h env size
+      return $ build (changeOf sizeType' <> changeOf size') $ M.Malloc (valueOr sizeType sizeType') (valueOr size size')
     M.Realloc sizeType ptr size -> do
-      sizeType' <- substType h sub sizeType
-      ptr' <- subst h sub ptr
-      size' <- subst h sub size
-      return $ M.Realloc sizeType' ptr' size'
+      sizeType' <- substTy h env sizeType
+      ptr' <- substTerm h env ptr
+      size' <- substTerm h env size
+      return $ build (changeOf sizeType' <> changeOf ptr' <> changeOf size') $ M.Realloc (valueOr sizeType sizeType') (valueOr ptr ptr') (valueOr size size')
     M.Free unitType ptr -> do
-      unitType' <- substType h sub unitType
-      ptr' <- subst h sub ptr
-      return $ M.Free unitType' ptr'
+      unitType' <- substTy h env unitType
+      ptr' <- substTerm h env ptr
+      return $ build (changeOf unitType' <> changeOf ptr') $ M.Free (valueOr unitType unitType') (valueOr ptr ptr')
     M.InspectType mid typeValueExpr e -> do
-      typeValueExpr' <- substType h sub typeValueExpr
-      e' <- substType h sub e
-      return $ M.InspectType mid typeValueExpr' e'
+      typeValueExpr' <- substTy h env typeValueExpr
+      e' <- substTy h env e
+      return $ build (changeOf typeValueExpr' <> changeOf e') $ M.InspectType mid (valueOr typeValueExpr typeValueExpr') (valueOr e e')
     M.EqType moduleID typeExpr1 typeExpr2 -> do
-      typeExpr1' <- substType h sub typeExpr1
-      typeExpr2' <- substType h sub typeExpr2
-      return $ M.EqType moduleID typeExpr1' typeExpr2'
+      typeExpr1' <- substTy h env typeExpr1
+      typeExpr2' <- substTy h env typeExpr2
+      return $ build (changeOf typeExpr1' <> changeOf typeExpr2') $ M.EqType moduleID (valueOr typeExpr1 typeExpr1') (valueOr typeExpr2 typeExpr2')
     M.ShowType typeExpr -> do
-      typeExpr' <- substType h sub typeExpr
-      return $ M.ShowType typeExpr'
+      typeExpr' <- substTy h env typeExpr
+      return $ build (changeOf typeExpr') $ M.ShowType (valueOr typeExpr typeExpr')
     M.TextCons rune text -> do
-      rune' <- subst h sub rune
-      text' <- subst h sub text
-      return $ M.TextCons rune' text'
+      rune' <- substTerm h env rune
+      text' <- substTerm h env text
+      return $ build (changeOf rune' <> changeOf text') $ M.TextCons (valueOr rune rune') (valueOr text text')
     M.TextUncons mid text -> do
-      text' <- subst h sub text
-      return $ M.TextUncons mid text'
+      text' <- substTerm h env text
+      return $ build (changeOf text') $ M.TextUncons mid (valueOr text text')
     M.MakeSwitch mid key fallback clauses -> do
-      key' <- subst h sub key
-      fallback' <- subst h sub fallback
-      clauses' <- subst h sub clauses
-      return $ M.MakeSwitch mid key' fallback' clauses'
+      key' <- substTerm h env key
+      fallback' <- substTerm h env fallback
+      clauses' <- substTerm h env clauses
+      return $ build (changeOf key' <> changeOf fallback' <> changeOf clauses') $ M.MakeSwitch mid (valueOr key key') (valueOr fallback fallback') (valueOr clauses clauses')
     M.CompileError msg -> do
-      msg' <- subst h sub msg
-      return $ M.CompileError msg'
+      msg' <- substTerm h env msg
+      return $ build (changeOf msg') $ M.CompileError (valueOr msg msg')
     M.GetOriginFileName ->
-      return M.GetOriginFileName
+      return Kept
     M.GetOriginLine ->
-      return M.GetOriginLine
+      return Kept
     M.GetOriginColumn ->
-      return M.GetOriginColumn
+      return Kept
 
-substLowMagic :: Handle -> Subst -> LM.LowMagic BLT.BaseLowType TM.Type TM.Term -> IO (LM.LowMagic BLT.BaseLowType TM.Type TM.Term)
-substLowMagic h sub lowMagic =
+substLowMagic :: Handle -> Env -> LM.LowMagic BLT.BaseLowType TM.Type TM.Term -> IO (Outcome (LM.LowMagic BLT.BaseLowType TM.Type TM.Term))
+substLowMagic h env lowMagic =
   case lowMagic of
     LM.Cast from to value -> do
-      from' <- substType h sub from
-      to' <- substType h sub to
-      value' <- subst h sub value
-      return $ LM.Cast from' to' value'
+      from' <- substTy h env from
+      to' <- substTy h env to
+      value' <- substTerm h env value
+      return $ build (changeOf from' <> changeOf to' <> changeOf value') $ LM.Cast (valueOr from from') (valueOr to to') (valueOr value value')
     LM.Store t unit value pointer -> do
-      value' <- subst h sub value
-      pointer' <- subst h sub pointer
-      return $ LM.Store t unit value' pointer'
+      value' <- substTerm h env value
+      pointer' <- substTerm h env pointer
+      return $ build (changeOf value' <> changeOf pointer') $ LM.Store t unit (valueOr value value') (valueOr pointer pointer')
     LM.Load t pointer -> do
-      pointer' <- subst h sub pointer
-      return $ LM.Load t pointer'
+      pointer' <- substTerm h env pointer
+      return $ build (changeOf pointer') $ LM.Load t (valueOr pointer pointer')
     LM.Alloca t size -> do
-      size' <- subst h sub size
-      return $ LM.Alloca t size'
+      size' <- substTerm h env size
+      return $ build (changeOf size') $ LM.Alloca t (valueOr size size')
     LM.External domList cod extFunName args varArgs -> do
-      args' <- mapM (subst h sub) args
-      varArgs' <-
-        mapM
-          ( \(arg, typ) -> do
-              arg' <- subst h sub arg
-              return (arg', typ)
-          )
-          varArgs
-      return $ LM.External domList cod extFunName args' varArgs'
-    LM.Global name t ->
-      return $ LM.Global name t
-    LM.OpaqueValue e ->
-      LM.OpaqueValue <$> subst h sub e
+      args' <- mapM (substTerm h env) args
+      let (varArgTerms, varArgTypes) = unzip varArgs
+      varArgTerms' <- mapM (substTerm h env) varArgTerms
+      let change = changes args' <> changes varArgTerms'
+      return $ build change $ LM.External domList cod extFunName (values args args') (zip (values varArgTerms varArgTerms') varArgTypes)
+    LM.Global {} ->
+      return Kept
+    LM.OpaqueValue e -> do
+      e' <- substTerm h env e
+      return $ build (changeOf e') $ LM.OpaqueValue (valueOr e e')
     LM.CallType func arg1 arg2 arg3 -> do
-      func' <- subst h sub func
-      arg1' <- subst h sub arg1
-      arg2' <- subst h sub arg2
-      arg3' <- subst h sub arg3
-      return $ LM.CallType func' arg1' arg2' arg3'
+      func' <- substTerm h env func
+      arg1' <- substTerm h env arg1
+      arg2' <- substTerm h env arg2
+      arg3' <- substTerm h env arg3
+      return $ build (changeOf func' <> changeOf arg1' <> changeOf arg2' <> changeOf arg3') $ LM.CallType (valueOr func func') (valueOr arg1 arg1') (valueOr arg2 arg2') (valueOr arg3 arg3')
