@@ -113,5 +113,6 @@ data Handle = Handle
     valueFormsRef :: IORef (HashSet.HashSet (StableName TM.Term)),
     mainModule :: Module.MainModule,
     modulePathMap :: ModulePath.ModulePathMap,
-    traceHandle :: Trace.Handle
+    traceHandle :: Trace.Handle,
+    localTypeEnv :: TM.TypeEnv
   }

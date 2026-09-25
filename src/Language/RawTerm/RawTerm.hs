@@ -369,6 +369,7 @@ data RawMagic
   | TextCons C (EL RawTerm) (EL RawTerm)
   | TextUncons C (EL RawTerm)
   | MakeSwitch C (EL RawTerm) (EL RawTerm) (EL RawTerm)
+  | FreeVariables C (EL RawTerm)
   | CompileError C (EL RawTerm)
   | GetOriginFileName C C
   | GetOriginLine C C

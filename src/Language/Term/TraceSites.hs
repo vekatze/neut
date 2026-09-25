@@ -302,6 +302,8 @@ describeMagic magic = do
       "magic text-uncons"
     M.MakeSwitch {} ->
       "magic make-switch"
+    M.FreeVariables {} ->
+      "magic free-variables"
     M.CompileError {} ->
       "magic compile-error"
     M.GetOriginFileName ->

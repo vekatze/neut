@@ -21,6 +21,7 @@ data Magic lt ty a
   | TextCons a a -- rune, text
   | TextUncons MID.ModuleID a -- text
   | MakeSwitch MID.ModuleID a a a -- key, fallback, clauses
+  | FreeVariables MID.ModuleID a -- code
   | CompileError a -- msg
   | GetOriginFileName
   | GetOriginLine
@@ -54,6 +55,8 @@ instance Functor (Magic lt ty) where
         TextUncons mid (f text)
       MakeSwitch mid key fallback clauses ->
         MakeSwitch mid (f key) (f fallback) (f clauses)
+      FreeVariables mid code ->
+        FreeVariables mid (f code)
       CompileError msg ->
         CompileError (f msg)
       GetOriginFileName ->
@@ -88,6 +91,8 @@ instance Foldable (Magic lt ty) where
         f text
       MakeSwitch _ key fallback clauses ->
         f key <> f fallback <> f clauses
+      FreeVariables _ code ->
+        f code
       CompileError msg ->
         f msg
       GetOriginFileName ->
@@ -122,6 +127,8 @@ instance Traversable (Magic lt ty) where
         TextUncons mid <$> f text
       MakeSwitch mid key fallback clauses ->
         MakeSwitch mid <$> f key <*> f fallback <*> f clauses
+      FreeVariables mid code ->
+        FreeVariables mid <$> f code
       CompileError msg ->
         CompileError <$> f msg
       GetOriginFileName ->

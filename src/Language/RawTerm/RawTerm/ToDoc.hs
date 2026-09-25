@@ -461,6 +461,11 @@ toDoc term =
                     RT.mapEL toDoc clauses
                   ]
             ]
+        FreeVariables c1 (c2, (code, c3)) -> do
+          D.join
+            [ attachComment (c ++ c1) $ D.text "magic free-variables",
+              SE.decode $ SE.fromListWithComment (Just SE.Paren) SE.Comma [(c2, (toDoc code, c3))]
+            ]
         CompileError c1 (c2, (msg, c3)) -> do
           D.join
             [ attachComment (c ++ c1) $ D.text "magic compile-error",

@@ -218,6 +218,8 @@ weakenMagic m magic = do
       M.WeakMagic $ M.TextUncons mid (weaken text)
     M.MakeSwitch mid key fallback clauses ->
       M.WeakMagic $ M.MakeSwitch mid (weaken key) (weaken fallback) (weaken clauses)
+    M.FreeVariables mid code ->
+      M.WeakMagic $ M.FreeVariables mid (weaken code)
     M.CompileError msg ->
       M.WeakMagic $ M.CompileError (weaken msg)
     M.GetOriginFileName ->

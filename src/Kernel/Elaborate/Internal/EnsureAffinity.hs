@@ -308,6 +308,8 @@ analyze h term = do
           cs2 <- analyze h fallback
           cs3 <- analyze h clauses
           return $ cs1 ++ cs2 ++ cs3
+        M.FreeVariables _ code -> do
+          analyze h code
         M.CompileError msg -> do
           analyze h msg
         M.GetOriginFileName ->

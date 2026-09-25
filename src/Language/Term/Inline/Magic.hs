@@ -5,6 +5,7 @@ module Language.Term.Inline.Magic
     evaluateTextCons,
     evaluateTextUncons,
     evaluateMakeSwitch,
+    evaluateFreeVariables,
     evaluateCompileError,
     evaluateGetOriginFileName,
     evaluateGetOriginLine,
@@ -16,10 +17,12 @@ where
 import App.App (App)
 import App.Run (raiseError)
 import Control.Comonad.Cofree
-import Control.Monad (when)
+import Control.Monad (forM, when)
 import Control.Monad.IO.Class
+import Data.Containers.ListUtils (nubOrdOn)
 import Data.IORef (readIORef)
 import Data.IntMap qualified as IntMap
+import Data.List (sortOn)
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NE
 import Data.Set qualified as S
@@ -37,23 +40,25 @@ import Language.Common.Attr.VarGlobal qualified as AttrVG
 import Language.Common.BaseName qualified as BN
 import Language.Common.Binder (BinderF)
 import Language.Common.CallConv qualified as CC
-import Language.Common.CreateSymbol qualified as Gensym
 import Language.Common.CellLayout qualified as CL
+import Language.Common.CreateSymbol qualified as Gensym
 import Language.Common.DataInfo qualified as DI
 import Language.Common.DecisionTree qualified as DT
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.Discriminant qualified as D
+import Language.Common.Ident (Ident)
 import Language.Common.Ident.Reify qualified as Ident
 import Language.Common.IsConstLike (IsConstLike)
 import Language.Common.Literal qualified as L
 import Language.Common.ModuleID qualified as MID
-import Language.Common.SlotSize
 import Language.Common.PrimType qualified as PT
 import Language.Common.Rune qualified as Rune
+import Language.Common.SlotSize
 import Language.Common.SourceLocator qualified as SL
 import Language.Common.StrictGlobalLocator qualified as SGL
 import Language.Term.Eq qualified as TermEq
 import Language.Term.FreeVars qualified as TM
+import Language.Term.FreeVarsWithHints (freeTermVarsWithHints)
 import Language.Term.Inline.Handle
 import Language.Term.PrimValue qualified as PV
 import Language.Term.Subst qualified as Subst
@@ -592,6 +597,41 @@ corePairByModule moduleID =
 coreSGL :: MID.ModuleID -> SL.SourceLocator -> SGL.StrictGlobalLocator
 coreSGL moduleID sourceLocator =
   SGL.new moduleID sourceLocator
+
+evaluateFreeVariables :: Handle -> (TM.Type -> App TM.Type) -> Hint -> MID.ModuleID -> TM.Term -> App TM.Term
+evaluateFreeVariables h normalizeType m moduleID code = do
+  case code of
+    _ :< TM.CodeIntro body -> do
+      let occurrences = nubOrdOn snd $ sortOn fst $ S.toList $ freeTermVarsWithHints body
+      variables <- forM occurrences $ \(_, x) -> do
+        t <- lookupVariableType h m x >>= normalizeType
+        return (x, t)
+      let elemType = codeVariableType m moduleID
+      return $ constructListTermFromTerms m (makeListSGL moduleID) elemType $ map (codeVariableTerm m moduleID) variables
+    _ ->
+      reportMacroError h m "free-variables requires its argument to reduce to a code literal"
+
+lookupVariableType :: Handle -> Hint -> Ident -> App TM.Type
+lookupVariableType h m x =
+  case IntMap.lookup (Ident.toInt x) (localTypeEnv h) of
+    Just t ->
+      return t
+    Nothing ->
+      reportMacroError h m $ "free-variables could not determine the type of `" <> Ident.toText x <> "`"
+
+codeVariableTerm :: Hint -> MID.ModuleID -> (Ident, TM.Type) -> TM.Term
+codeVariableTerm m moduleID (x, t) = do
+  let intType = m :< TM.PrimType (PT.Int slotIntSize)
+  let idTerm = m :< TM.Prim (PV.Int intType slotIntSize (toInteger $ Ident.toInt x))
+  let codeSGL = coreSGL moduleID SL.codeLocator
+  let dataName = DD.newByGlobalLocator codeSGL BN.codeVariableType
+  let attr = AttrDI.Attr {dataName, discriminant = D.zero, isConstLike = False}
+  m :< TM.DataIntro attr (DD.newByGlobalLocator codeSGL BN.codeVariable) [] [t] [idTerm, m :< TM.CodeIntro (m :< TM.Var x)]
+
+codeVariableType :: Hint -> MID.ModuleID -> TM.Type
+codeVariableType m moduleID = do
+  let dataName = DD.newByGlobalLocator (coreSGL moduleID SL.codeLocator) BN.codeVariableType
+  m :< TM.TyApp (m :< TM.TVarGlobal (AttrVG.Attr {argNum = AN.zero, isConstLike = True, isDestPassing = False}) dataName) []
 
 evaluateCompileError :: Handle -> Hint -> TM.Term -> App a
 evaluateCompileError h m msg = do

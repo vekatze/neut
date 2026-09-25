@@ -580,6 +580,8 @@ showMagic' h (M.WeakMagic magic) =
       "magic text-uncons" <> inParen (toTextIndented (Kit 0 False) text)
     M.MakeSwitch _ key fallback clauses ->
       "magic make-switch" <> inParen (toTextIndented (Kit 0 False) key <> ", " <> toTextIndented (Kit 0 False) fallback <> ", " <> toTextIndented (Kit 0 False) clauses)
+    M.FreeVariables _ code ->
+      "magic free-variables" <> inParen (toTextIndented (Kit 0 False) code)
     M.CompileError msg ->
       "magic compile-error" <> inParen (toTextIndented (Kit 0 False) msg)
     M.GetOriginFileName ->

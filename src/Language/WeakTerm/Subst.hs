@@ -461,6 +461,9 @@ substMagic h sub (WeakMagic magic) = do
       fallback' <- subst h sub fallback
       clauses' <- subst h sub clauses
       return $ M.MakeSwitch mid key' fallback' clauses'
+    M.FreeVariables mid code -> do
+      code' <- subst h sub code
+      return $ M.FreeVariables mid code'
     M.CompileError msg -> do
       msg' <- subst h sub msg
       return $ M.CompileError msg'

@@ -314,7 +314,7 @@ elaborateStmt h stmt = do
       (impArgs'', defaultArgs'', expArgs'', codType'', e'') <- withFreshSpecializationTable h $ do
         e'' <-
           if not $ SK.isMacroStmtKind stmtKind
-            then inlineDefinition h m (shouldTraceDefinition mDefKind || usesEmbed) e'
+            then inlineDefinition h m (shouldTraceDefinition mDefKind || usesEmbed) (impArgs' ++ expArgs' ++ map fst defaultArgs') e'
             else return e'
         impArgs'' <- mapM (inlineBinder h) impArgs'
         defaultArgs'' <- forM defaultArgs' $ \(binder, value) -> do
@@ -1070,6 +1070,9 @@ elaborate' h term = do
           fallback' <- elaborate' h fallback
           clauses' <- elaborate' h clauses
           return $ m :< TM.Magic noTrace (M.MakeSwitch mid key' fallback' clauses')
+        M.FreeVariables mid code -> do
+          code' <- elaborate' h code
+          return $ m :< TM.Magic noTrace (M.FreeVariables mid code')
         M.CompileError msg -> do
           msg' <- elaborate' h msg
           return $ m :< TM.Magic noTrace (M.CompileError msg')

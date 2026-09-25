@@ -72,6 +72,7 @@ new env location traceEnabled = do
   let activeDefineMetaList = []
   normalFormsRef <- liftIO $ newIORef HashSet.empty
   valueFormsRef <- liftIO $ newIORef HashSet.empty
+  let localTypeEnv = IntMap.empty
   return $ Handle {..}
 
 isValueTerm :: Handle -> TM.Term -> IO Bool
@@ -177,7 +178,8 @@ inlineFresh h rawTerm = do
       impArgs' <- mapM (inlineTypeBinder h) impArgs
       expArgs' <- mapM (inlineTypeBinder h) expArgs
       defaultArgs' <- mapM (bimapM (inlineTypeBinder h) (inline' h)) defaultArgs
-      e' <- if currentStage h >= 1 then return e else inline' h e
+      let hBody = withBinders (impArgs' ++ expArgs' ++ map fst defaultArgs') h
+      e' <- if currentStage h >= 1 then return e else inline' hBody e
       case lamKind of
         LK.Fix kind isDestPassing (mx, k, x, codType) -> do
           codType' <- inlineType' h codType
@@ -290,9 +292,10 @@ inlineFresh h rawTerm = do
       es' <- mapM (inline' h) es
       ts' <- mapM (inlineType' h) ts
       let oets' = zip3 os es' ts'
+      let hTree = withTypedIdents (zip os ts') h
       if isNoetic
         then do
-          decisionTree' <- inlineDecisionTree h decisionTree
+          decisionTree' <- inlineDecisionTree hTree decisionTree
           registerResidual h $ m :< TM.DataElim traceID isNoetic oets' decisionTree'
         else do
           case decisionTree of
@@ -322,16 +325,16 @@ inlineFresh h rawTerm = do
                               cont' <- liftIO $ substCursor h cursor e cont
                               expand h $ m :< TM.DataElim traceID isNoetic oets'' cont'
                           | otherwise -> do
-                              decisionTree' <- inlineDecisionTree h decisionTree
+                              decisionTree' <- inlineDecisionTree hTree decisionTree
                               registerResidual h $ m :< TM.DataElim traceID isNoetic oets' decisionTree'
                 _ -> do
-                  decisionTree' <- inlineDecisionTree h decisionTree
+                  decisionTree' <- inlineDecisionTree hTree decisionTree
                   registerResidual h $ m :< TM.DataElim traceID isNoetic oets' decisionTree'
     m :< TM.BoxIntro traceID letSeq e -> do
       let (xts, es) = unzip letSeq
       xts' <- mapM (inlineTypeBinder h) xts
       es' <- mapM (inline' h) es
-      e' <- inline' h e
+      e' <- inline' (withBinders xts' h) e
       registerResidual h $ m :< TM.BoxIntro traceID (zip xts' es') e'
     m :< TM.BoxIntroLift t e -> do
       t' <- inlineType' h t
@@ -342,9 +345,11 @@ inlineFresh h rawTerm = do
       return $ m :< TM.EmbedIntro e'
     m :< TM.BoxElim traceID castSeq mxt e1 uncastSeq e2 -> do
       castSeq' <- mapM (bimapM (inlineTypeBinder h) (inline' h)) castSeq
-      (mxt', e1') <- bimapM (inlineTypeBinder h) (inline' h) (mxt, e1)
-      uncastSeq' <- mapM (bimapM (inlineTypeBinder h) (inline' h)) uncastSeq
-      e2' <- inline' h e2
+      let hCast = withBinders (map fst castSeq') h
+      (mxt', e1') <- bimapM (inlineTypeBinder h) (inline' hCast) (mxt, e1)
+      let hCont = withBinders (mxt' : map fst castSeq') h
+      uncastSeq' <- mapM (bimapM (inlineTypeBinder h) (inline' hCont)) uncastSeq
+      e2' <- inline' (withBinders (map fst uncastSeq') hCont) e2
       registerResidual h $ m :< TM.BoxElim traceID castSeq' mxt' e1' uncastSeq' e2'
     m :< TM.CodeIntro e -> do
       let hInner = h {currentStage = currentStage h - 1}
@@ -379,7 +384,7 @@ inlineFresh h rawTerm = do
           inlineLetCont h sub e2
         else do
           mxt' <- inlineTypeBinder h mxt
-          e2' <- inline' h e2
+          e2' <- inline' (withBinders [mxt'] h) e2
           return $ m :< TM.Let mxt' e1' e2'
     m :< TM.Invoke tropeNames body -> do
       defineMetaList <- activateTropes h m tropeNames
@@ -455,6 +460,9 @@ inlineFresh h rawTerm = do
           fallback' <- inline' h fallback
           clauses' <- inline' h clauses
           Magic.evaluateMakeSwitch h m mid key' fallback' clauses' >>= expand h
+        M.FreeVariables mid code -> do
+          code' <- inline' h code
+          Magic.evaluateFreeVariables h (inlineType' h) m mid code' >>= expand h
         M.CompileError msg -> do
           msg' <- inline' h msg
           Magic.evaluateCompileError h m msg'
@@ -480,7 +488,7 @@ inlineLetCont h sub term =
           t' <- liftIO (Subst.substType (substHandle h) sub t) >>= inlineType' h
           x' <- liftIO $ Sym.newIdentFromIdent (gensymHandle h) x
           let sub' = IntMap.insert (Ident.toInt x) (Subst.Var x') sub
-          e2' <- inlineLetCont h sub' e2
+          e2' <- inlineLetCont (withTypedIdents [(x', t')] h) sub' e2
           return $ m :< TM.Let (mx, k, x', t') e1' e2'
     _ -> do
       liftIO (Subst.subst (substHandle h) sub term) >>= expand h
@@ -584,6 +592,14 @@ inlineLowMagic h lowMagic =
       arg3' <- inline' h arg3
       return $ LM.CallType func' arg1' arg2' arg3'
 
+withBinders :: [BinderF TM.Type] -> Handle -> Handle
+withBinders xts =
+  withTypedIdents (map (\(_, _, x, t) -> (x, t)) xts)
+
+withTypedIdents :: [(Ident, TM.Type)] -> Handle -> Handle
+withTypedIdents xts h =
+  h {localTypeEnv = foldr (\(x, t) -> IntMap.insert (Ident.toInt x) t) (localTypeEnv h) xts}
+
 inlineTypeBinder :: Handle -> BinderF TM.Type -> App (BinderF TM.Type)
 inlineTypeBinder h (m, k, x, t) = do
   t' <- inlineType' h t
@@ -601,13 +617,13 @@ inlineDecisionTree h tree =
   case tree of
     DT.Leaf xs letSeq e -> do
       letSeq' <- mapM (bimapM (inlineTypeBinder h) (inline' h)) letSeq
-      e' <- inline' h e
+      e' <- inline' (withBinders (map fst letSeq') h) e
       return $ DT.Leaf xs letSeq' e'
     DT.Unreachable ->
       return DT.Unreachable
     DT.Switch (cursorVar, cursor) clauseList -> do
       cursor' <- inlineType' h cursor
-      clauseList' <- inlineCaseList h clauseList
+      clauseList' <- inlineCaseList (withTypedIdents [(cursorVar, cursor')] h) clauseList
       return $ DT.Switch (cursorVar, cursor') clauseList'
 
 inlineCaseList ::
@@ -634,7 +650,7 @@ inlineCase h decisionCase = do
       dataTypes' <- mapM (inlineType' h) dataTypes
       consImpArgs' <- mapM (inlineTypeBinder h) consImpArgs
       consArgs' <- mapM (inlineTypeBinder h) consArgs
-      cont' <- inlineDecisionTree h cont
+      cont' <- inlineDecisionTree (withBinders consArgs' h) cont
       return $
         DT.ConsCase
           record

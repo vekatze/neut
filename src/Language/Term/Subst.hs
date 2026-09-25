@@ -595,6 +595,9 @@ substMagic h env magic =
       fallback' <- substTerm h env fallback
       clauses' <- substTerm h env clauses
       return $ build (changeOf key' <> changeOf fallback' <> changeOf clauses') $ M.MakeSwitch mid (valueOr key key') (valueOr fallback fallback') (valueOr clauses clauses')
+    M.FreeVariables mid code -> do
+      code' <- substTerm h env code
+      return $ build (changeOf code') $ M.FreeVariables mid (valueOr code code')
     M.CompileError msg -> do
       msg' <- substTerm h env msg
       return $ build (changeOf msg') $ M.CompileError (valueOr msg msg')

@@ -268,6 +268,11 @@ makeWeakPairType :: Hint -> MID.ModuleID -> WT.WeakType -> WT.WeakType -> WT.Wea
 makeWeakPairType m moduleID leftType rightType =
   makeWeakCoreType m moduleID SL.pairLocator BN.pairType (AN.fromInt 2) [leftType, rightType]
 
+makeWeakCodeVariableType :: Hint -> MID.ModuleID -> WT.WeakType
+makeWeakCodeVariableType m moduleID = do
+  let codeVariableTypeDD = DD.newByGlobalLocator (SGL.new moduleID SL.codeLocator) BN.codeVariableType
+  m :< WT.TyApp (m :< WT.TVarGlobal (AttrVG.Attr {argNum = AN.zero, isConstLike = True, isDestPassing = False}) codeVariableTypeDD) []
+
 getMainUnitType :: SK.StmtKindTerm WT.WeakType -> Maybe WT.WeakType
 getMainUnitType stmtKind =
   case stmtKind of
@@ -612,6 +617,12 @@ infer h term =
           liftIO $ Constraint.insert (constraintHandle h) expectedClausesType clausesType
           liftIO $ Constraint.insert (constraintHandle h) (m :< WT.Code hole) fallbackType
           return (m :< WT.Magic (M.WeakMagic $ M.MakeSwitch moduleID key' fallback' clauses'), fallbackType)
+        M.FreeVariables moduleID code -> do
+          (code', codeType) <- infer h code
+          hole <- liftIO $ newTypeHole h m (varEnv h)
+          liftIO $ Constraint.insert (constraintHandle h) (m :< WT.Code hole) codeType
+          let variablesType = makeWeakListType m moduleID (makeWeakCodeVariableType m moduleID)
+          return (m :< WT.Magic (M.WeakMagic $ M.FreeVariables moduleID code'), variablesType)
         M.CompileError msg -> do
           (msg', msgType) <- infer h msg
           liftIO $ Constraint.insert (constraintHandle h) (m :< WT.PrimType PT.Text) msgType

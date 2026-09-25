@@ -929,6 +929,7 @@ rawTermMagic h m c = do
       rawTermMagicTextCons h m c,
       rawTermMagicTextUncons h m c,
       rawTermMagicMakeSwitch h m c,
+      rawTermMagicFreeVariables h m c,
       rawTermMagicCompileError h m c,
       rawTermMagicGetOriginFileName h m c,
       rawTermMagicGetOriginLine h m c,
@@ -1099,6 +1100,12 @@ rawTermMagicMakeSwitch h m c = do
     c4 <- delimiter ","
     clausesTerm <- rawTerm h
     return $ \c1 c2 -> m :< RT.Magic c (RT.MakeSwitch c1 (c2, keyTerm) (c3, fallbackTerm) (c4, clausesTerm))
+
+rawTermMagicFreeVariables :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
+rawTermMagicFreeVariables h m c = do
+  rawTermMagicBase "free-variables" $ do
+    codeTerm <- rawTerm h
+    return $ \c1 c2 -> m :< RT.Magic c (RT.FreeVariables c1 (c2, codeTerm))
 
 rawTermMagicCompileError :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermMagicCompileError h m c = do

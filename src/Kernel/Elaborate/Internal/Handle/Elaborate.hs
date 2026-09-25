@@ -153,7 +153,7 @@ fillType h sub t = do
 
 inline :: Handle -> Hint -> TM.Term -> App TM.Term
 inline h m =
-  inlineDefinition h m True
+  inlineDefinition h m True []
 
 inlineEnv :: Handle -> IO InlineEnv.Env
 inlineEnv h = do
@@ -178,11 +178,12 @@ inlineEnv h = do
         InlineEnv.traceHandle = Global.termTraceHandle (globalHandle h)
       }
 
-inlineDefinition :: Handle -> Hint -> Bool -> TM.Term -> App TM.Term
-inlineDefinition h m traceEnabled e = do
+inlineDefinition :: Handle -> Hint -> Bool -> [BinderF TM.Type] -> TM.Term -> App TM.Term
+inlineDefinition h m traceEnabled binders e = do
   env <- liftIO $ inlineEnv h
   inlineHandle <- liftIO $ Inline.new env m traceEnabled
-  Inline.inline inlineHandle e
+  let localTypeEnv = TM.insTypeEnv binders (InlineHandle.localTypeEnv inlineHandle)
+  Inline.inline (inlineHandle {InlineHandle.localTypeEnv}) e
 
 inlineBinder :: Handle -> BinderF TM.Type -> App (BinderF TM.Type)
 inlineBinder h (m, k, x, t) = do

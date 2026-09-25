@@ -1137,6 +1137,12 @@ discernMagic h m magic =
       fallback' <- discern h fallback
       clauses' <- discern h clauses
       return $ M.WeakMagic $ M.MakeSwitch moduleID key' fallback' clauses'
+    RT.FreeVariables _ (_, (code, _)) -> do
+      ensureCompileStage m h "`magic free-variables`"
+      ensureCodeVariableType h m
+      moduleID <- Alias.resolveModuleAlias (H.aliasHandle h) m coreModuleAlias
+      code' <- discern h code
+      return $ M.WeakMagic $ M.FreeVariables moduleID code'
     RT.CompileError _ (_, (msg, _)) -> do
       ensureCompileStage m h "`magic compile-error`"
       msg' <- discern h msg
@@ -1886,6 +1892,11 @@ ensureStringLiteralTypes h m = do
   binaryName <- liftEither $ locatorToName m coreBinary
   void $ resolveName h (blur m) stringName
   void $ resolveName h (blur m) binaryName
+
+ensureCodeVariableType :: H.Handle -> Hint -> App ()
+ensureCodeVariableType h m = do
+  codeVariableName <- liftEither $ locatorToName m coreCodeVariable
+  void $ resolveName h (blur m) codeVariableName
 
 locatorToName :: Hint -> T.Text -> Either E.Error Name
 locatorToName m text = do

@@ -176,6 +176,8 @@ freeVarsMagic magic =
       freeVars text
     M.MakeSwitch _ key fallback clauses ->
       S.unions [freeVars key, freeVars fallback, freeVars clauses]
+    M.FreeVariables _ code ->
+      freeVars code
     M.CompileError msg ->
       freeVars msg
     M.GetOriginFileName ->

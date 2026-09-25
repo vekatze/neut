@@ -9,6 +9,7 @@ module Language.Common.SourceLocator
     llvmLocator,
     internalLocator,
     typeValueLocator,
+    codeLocator,
     binaryLocator,
     vectorLocator,
     arrayLocator,
@@ -86,6 +87,10 @@ internalLocator =
 typeValueLocator :: SourceLocator
 typeValueLocator =
   SourceLocator $(mkRelFile "type-value")
+
+codeLocator :: SourceLocator
+codeLocator =
+  SourceLocator $(mkRelFile "code")
 
 binaryLocator :: SourceLocator
 binaryLocator =

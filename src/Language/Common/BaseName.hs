@@ -38,6 +38,8 @@ module Language.Common.BaseName
     field,
     fieldType,
     fieldTypeType,
+    codeVariable,
+    codeVariableType,
     known,
     unknown,
     direct,
@@ -235,6 +237,14 @@ fieldType =
 fieldTypeType :: BaseName
 fieldTypeType =
   MakeBaseName "field-type"
+
+codeVariable :: BaseName
+codeVariable =
+  MakeBaseName "Code-Variable"
+
+codeVariableType :: BaseName
+codeVariableType =
+  MakeBaseName "code-variable"
 
 known :: BaseName
 known =

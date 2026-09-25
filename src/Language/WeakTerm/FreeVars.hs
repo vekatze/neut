@@ -133,6 +133,8 @@ freeVarsMagicTerm (M.WeakMagic magic) =
       freeVars text
     M.MakeSwitch _ key fallback clauses ->
       S.unions [freeVars key, freeVars fallback, freeVars clauses]
+    M.FreeVariables _ code ->
+      freeVars code
     M.CompileError msg ->
       freeVars msg
     M.GetOriginFileName ->
@@ -323,6 +325,8 @@ freeVarsMagic (M.WeakMagic magic) =
       freeVarsAll text
     M.MakeSwitch _ key fallback clauses ->
       S.unions [freeVarsAll key, freeVarsAll fallback, freeVarsAll clauses]
+    M.FreeVariables _ code ->
+      freeVarsAll code
     M.CompileError msg ->
       freeVarsAll msg
     M.GetOriginFileName ->
