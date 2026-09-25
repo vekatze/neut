@@ -504,6 +504,12 @@ obligationErrorMessage attr site message =
     InlineField ->
       "An inline field cannot have " <> message <> "."
 
+declareTypeAttrs :: Handle -> VK.VarKind -> Ident -> App ()
+declareTypeAttrs h k x = do
+  let attrs = S.unions $ map VK.attrClosure $ VK.attrList k
+  unless (S.null attrs) $
+    liftIO $ modifyIORef' (attributedTypeVars h) $ IntMap.insertWith S.union (Ident.toInt x) attrs
+
 hasTypeAttr :: Handle -> VK.TypeAttr -> Ident -> App Bool
 hasTypeAttr h attr x = do
   attrMap <- liftIO $ readIORef (attributedTypeVars h)
@@ -529,8 +535,10 @@ checkActualityType h dataNameSet m t = do
           | S.member dataName dataNameSet ->
               return $ Right ()
           | otherwise -> do
-              dataConsArgsList <- TypeUtil.getConsArgTypes h m dataName dataArgs
-              let consArgTypes = map (\(_, _, _, consArg) -> consArg) $ concat dataConsArgsList
+              consInfoList <- TypeUtil.getConsArgTypes h m dataName dataArgs
+              forM_ (concatMap DI.consImpArgs consInfoList) $ \(_, k, x, _) ->
+                declareTypeAttrs h k x
+              let consArgTypes = map (\(_, _, _, consArg) -> consArg) $ concatMap DI.consArgs consInfoList
               checkActualityTypeList h dataNameSet' m consArgTypes
     _ :< TM.Box tInner ->
       checkActualityType h dataNameSet m tInner
