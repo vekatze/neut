@@ -319,34 +319,22 @@ clarifyImportedTypeDef h name typeDefInfo = do
       typeDefInfo' <- liftIO $ refreshTypeDefInfo h typeDefInfo
       clarifyAliasTypeDef h name typeDefInfo'
 
-refreshBinderList :: Handle -> Subst.Subst -> [BinderF TM.Type] -> IO ([BinderF TM.Type], Subst.Subst)
-refreshBinderList h sub xts =
-  case xts of
-    [] ->
-      return ([], sub)
-    (m, k, x, t) : rest -> do
-      t' <- Subst.substType (substHandle h) sub t
-      x' <- Gensym.newIdentFromIdent (gensymHandle h) x
-      let sub' = IntMap.insert (Ident.toInt x) (Subst.Var x') sub
-      (rest', sub'') <- refreshBinderList h sub' rest
-      return ((m, k, x', t') : rest', sub'')
-
 refreshTypeDefInfo :: Handle -> TypeDef.TypeDefInfo -> IO TypeDef.TypeDefInfo
 refreshTypeDefInfo h typeDefInfo = do
-  (binders', sub) <- refreshBinderList h IntMap.empty (TypeDef.typeDefBinders typeDefInfo)
+  (binders', sub) <- Subst.refreshBinders (substHandle h) IntMap.empty (TypeDef.typeDefBinders typeDefInfo)
   body' <- Subst.substType (substHandle h) sub (TypeDef.typeDefBody typeDefInfo)
   return typeDefInfo {TypeDef.typeDefBinders = binders', TypeDef.typeDefBody = body'}
 
 refreshDataInfo :: Handle -> DI.DataInfo (BinderF TM.Type) -> IO (DI.DataInfo (BinderF TM.Type))
 refreshDataInfo h dataInfo = do
-  (dataArgs', sub) <- refreshBinderList h IntMap.empty (DI.dataArgs dataInfo)
+  (dataArgs', sub) <- Subst.refreshBinders (substHandle h) IntMap.empty (DI.dataArgs dataInfo)
   consInfoList' <- mapM (refreshConsInfo h sub) (DI.consInfoList dataInfo)
   return dataInfo {DI.dataArgs = dataArgs', DI.consInfoList = consInfoList'}
 
 refreshConsInfo :: Handle -> Subst.Subst -> DI.ConsInfo (BinderF TM.Type) -> IO (DI.ConsInfo (BinderF TM.Type))
 refreshConsInfo h sub consInfo = do
-  (consImpArgs', sub') <- refreshBinderList h sub (DI.consImpArgs consInfo)
-  (consArgs', _) <- refreshBinderList h sub' (DI.consArgs consInfo)
+  (consImpArgs', sub') <- Subst.refreshBinders (substHandle h) sub (DI.consImpArgs consInfo)
+  (consArgs', _) <- Subst.refreshBinders (substHandle h) sub' (DI.consArgs consInfo)
   return consInfo {DI.consImpArgs = consImpArgs', DI.consArgs = consArgs'}
 
 clarifyAliasTypeDef :: Handle -> DD.DefiniteDescription -> TypeDef.TypeDefInfo -> App C.CompStmt

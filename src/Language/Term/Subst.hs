@@ -9,6 +9,7 @@ module Language.Term.Subst
     substType,
     refresh,
     refreshType,
+    refreshBinders,
     subst',
     substAndRefresh',
     substAndRefreshWithTrace',
@@ -226,6 +227,12 @@ substDecisionTree ::
   IO (DT.DecisionTree TM.Type TM.Term)
 substDecisionTree h sub tree =
   valueOr tree <$> substTree h (initialEnv sub) tree
+
+refreshBinders :: Handle -> Subst -> [BinderF TM.Type] -> IO ([BinderF TM.Type], Subst)
+refreshBinders h sub binders = do
+  (binders', env) <- substBinders (h {shouldRefreshBinders = True}) (initialEnv sub) binders
+  let renamings = IntMap.map (\(x', _) -> Var x') (renaming env)
+  return (values binders binders', IntMap.union renamings (entries env))
 
 renamedVariable :: Handle -> Env -> Ident -> Maybe (Outcome Ident)
 renamedVariable h env x = do
