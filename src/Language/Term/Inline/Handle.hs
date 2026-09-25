@@ -18,6 +18,7 @@ import Data.IntSet qualified as IntSet
 import Data.IORef
 import Gensym.Handle qualified as GensymHandle
 import Kernel.Common.Handle.Global.Data qualified as Data
+import Kernel.Common.Handle.Global.OptimizableData qualified as OptimizableData
 import Kernel.Common.Handle.Local.Tag qualified as Tag
 import Kernel.Common.Module qualified as Module
 import Kernel.Common.Handle.Global.ModulePath qualified as ModulePath
@@ -94,6 +95,7 @@ data Handle = Handle
     tropeMap :: TropeMap,
     tagHandle :: Tag.Handle,
     dataHandle :: Data.Handle,
+    optDataHandle :: OptimizableData.Handle,
     inlineLimit :: Int,
     currentStepRef :: IORef Int,
     location :: Hint,

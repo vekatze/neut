@@ -169,6 +169,7 @@ inlineEnv h = do
         InlineEnv.tropeMap = tropeMap,
         InlineEnv.tagHandle = tagHandle h,
         InlineEnv.dataHandle = dataHandle h,
+        InlineEnv.optDataHandle = optDataHandle h,
         InlineEnv.inlineLimit = inlineLimit h,
         InlineEnv.specializationTable = specializationTable h,
         InlineEnv.pendingSpecializationDefs = pendingSpecializationDefs h,

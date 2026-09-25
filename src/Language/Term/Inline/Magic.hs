@@ -25,6 +25,8 @@ import Data.List.NonEmpty qualified as NE
 import Data.Text qualified as T
 import Kernel.Common.Handle.Global.Data qualified as Data
 import Kernel.Common.Handle.Global.ModulePath qualified as ModulePath
+import Kernel.Common.Handle.Global.OptimizableData qualified as OptimizableData
+import Kernel.Common.OptimizableData qualified as OD
 import Kernel.Common.Module qualified as Module
 import Kernel.Common.TypeTag qualified as TypeTag
 import Kernel.Common.TypeValue qualified as TypeValue
@@ -70,8 +72,12 @@ evaluateInspectType h m moduleID typeExpr = do
     _ :< TM.Data _ dataName dataArgs -> do
       DI.DataInfo {DI.dataArgs = dataArgBinders, DI.consInfoList = consInfoListRaw} <- lookupDataInfo h m dataName
       consInfoList <- specializeConsInfoList h m dataName dataArgBinders dataArgs consInfoListRaw
-      case consInfoList of
-        [DI.ConsInfo {DI.consArgs = [(_, _, _, arg)]}] -> do
+      representation <- liftIO $ OptimizableData.lookup (optDataHandle h) dataName
+      case (representation, consInfoList) of
+        (Just OD.Enum, _) -> do
+          let enumConsNames = map (DD.localLocator . DI.consName) consInfoList
+          returnTypeValueIntValue m moduleID $ TypeValue.Enum enumConsNames
+        (Just OD.Unary, [DI.ConsInfo {DI.consArgs = [(_, _, _, arg)]}]) -> do
           if dataName == makeVectorDD moduleID
             then do
               case dataArgs of
@@ -92,16 +98,13 @@ evaluateInspectType h m moduleID typeExpr = do
                       reportMacroError h m $
                         "inspect-type: `array` expects 1 argument, but got " <> T.pack (show len) <> " arguments."
                 else returnTypeValueIntValue m moduleID $ TypeValue.Wrapper arg
-        _ -> do
+        (Just OD.Unary, _) ->
+          reportMacroError h m $
+            "inspect-type: `" <> ModulePath.renderDD (modulePathMap h) dataName <> "` is unary, but its constructor metadata is not."
+        (Nothing, _) -> do
           let consInfoList' = map consToTypeValue consInfoList
-          let isEnum = all (\consInfo -> DI.isConstLike consInfo && null (DI.consArgs consInfo)) consInfoList
-          if isEnum && not (null consInfoList)
-            then do
-              let enumConsNames = map (DD.localLocator . DI.consName) consInfoList
-              returnTypeValueIntValue m moduleID $ TypeValue.Enum enumConsNames
-            else do
-              let dataNameText = DD.localLocator dataName
-              returnTypeValueIntValue m moduleID $ TypeValue.Algebraic dataNameText dataArgs consInfoList'
+          let dataNameText = DD.localLocator dataName
+          returnTypeValueIntValue m moduleID $ TypeValue.Algebraic dataNameText dataArgs consInfoList'
     _ :< TM.BoxNoema t ->
       returnTypeValueIntValue m moduleID $ TypeValue.Noema t
     _ :< TM.Embed _ ->

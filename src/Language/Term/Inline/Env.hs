@@ -7,6 +7,7 @@ import Data.IORef
 import Gensym.Handle qualified as GensymHandle
 import Kernel.Common.Handle.Global.Data qualified as Data
 import Kernel.Common.Handle.Global.ModulePath qualified as ModulePath
+import Kernel.Common.Handle.Global.OptimizableData qualified as OptimizableData
 import Kernel.Common.Handle.Local.Tag qualified as Tag
 import Kernel.Common.Module qualified as Module
 import Language.Term.Inline.Handle
@@ -20,6 +21,7 @@ data Env = Env
     tropeMap :: TropeMap,
     tagHandle :: Tag.Handle,
     dataHandle :: Data.Handle,
+    optDataHandle :: OptimizableData.Handle,
     inlineLimit :: Int,
     specializationTable :: IORef SpecializationTable,
     pendingSpecializationDefs :: IORef [Stmt.Stmt],
