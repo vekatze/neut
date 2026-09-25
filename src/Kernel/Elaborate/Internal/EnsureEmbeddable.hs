@@ -114,6 +114,10 @@ stuckTypeOf h m visited ty0 = do
       return Nothing
     _ :< TM.Resource {} ->
       return Nothing
+    _ :< TM.TVarGlobal {} ->
+      return Nothing
+    _ :< TM.TyApp (_ :< TM.TVarGlobal {}) args ->
+      stuckTypeOfList h m visited args
     _ :< TM.Pi _ impArgs expArgs defaultArgs cod -> do
       let binderTypes = map (\(_, _, _, t) -> t) $ impArgs ++ expArgs ++ defaultArgs
       stuckTypeOfList h m visited $ binderTypes ++ [cod]

@@ -110,7 +110,7 @@ data Handle = Handle
     typeDefHandle :: TypeDef.Handle,
     importedTypeDefCacheHandle :: ImportedTypeDefCache.Handle,
     dataSize :: DS.DataSize,
-    closureNameSupplyRef :: IORef (Map.HashMap DD.DefiniteDescription Int),
+    localNameSupplyRef :: IORef (Map.HashMap DD.DefiniteDescription Int),
     traceConfig :: Trace.Config,
     loggerHandle :: Logger.Handle
   }
@@ -143,7 +143,7 @@ new gensymHandle (Global.Handle {..}) traceConfig = do
   let utilityHandle = Utility.new gensymHandle compSubstHandle auxEnvHandle
   let linearizeHandle = Linearize.new gensymHandle utilityHandle
   let sigmaHandle = Sigma.new gensymHandle linearizeHandle utilityHandle dataSize
-  closureNameSupplyRef <- newIORef Map.empty
+  localNameSupplyRef <- newIORef Map.empty
   return $ Handle {..}
 
 newReduceOnlyHandle :: Handle -> IO Handle
@@ -172,7 +172,7 @@ newReduceOnlyHandle h = do
         typeDefHandle = typeDefHandle h,
         importedTypeDefCacheHandle = importedTypeDefCacheHandle h,
         dataSize = dataSize h,
-        closureNameSupplyRef = closureNameSupplyRef h,
+        localNameSupplyRef = localNameSupplyRef h,
         traceConfig = traceConfig h,
         loggerHandle = loggerHandle h
       }
@@ -879,7 +879,7 @@ clarifyStaticValue h context term =
           | otherwise ->
               raiseCritical m "Found a malformed unary data in Clarify.clarifyStaticValue"
         _ -> do
-          typeArgSlots <- mapM (staticTypeRep h) (dataArgs ++ consImpArgs)
+          typeArgSlots <- mapM (staticTypeRep h context) (dataArgs ++ consImpArgs)
           consArgSlots <- mapM (clarifyStaticValue h context) consArgs
           dataInfo <- lookupDataEntry h m dataName
           consInfo <- getConsInfoByDiscriminant h m discriminant (DI.consInfoList dataInfo)
@@ -907,7 +907,7 @@ clarifyStaticValue h context term =
     _ :< TM.Magic _ (M.LowMagic (LM.OpaqueValue e)) ->
       clarifyStaticValue h context e
     _ :< TM.TauIntro ty ->
-      staticTypeRep h ty
+      staticTypeRep h context ty
     m :< TM.Prim primValue ->
       case primValue of
         PV.Int _ size l ->
@@ -930,8 +930,11 @@ clarifyStaticValue h context term =
       raiseNonStaticValue m
 
 clarifyStaticClosure :: Handle -> Context -> Hint -> TM.Term -> App C.Value
-clarifyStaticClosure h context m term = do
-  closure <- clarifyTerm h context term
+clarifyStaticClosure h context m term =
+  clarifyTerm h context term >>= staticClosureOf h m
+
+staticClosureOf :: Handle -> Hint -> C.Comp -> App C.Value
+staticClosureOf h m closure =
   case closure of
     C.UpIntro (C.SigmaIntro layout slots) -> do
       slots' <- mapM (staticSlotOf m) slots
@@ -990,8 +993,8 @@ discriminantEntries shape discriminant =
     Just width ->
       [(CL.StoredDirect width, C.Int slotIntSize (D.reify discriminant))]
 
-staticTypeRep :: Handle -> TM.Type -> App C.Value
-staticTypeRep h ty =
+staticTypeRep :: Handle -> Context -> TM.Type -> App C.Value
+staticTypeRep h context ty =
   case ty of
     _ :< TM.Tau ->
       return Sigma.immediateS4
@@ -1004,25 +1007,42 @@ staticTypeRep h ty =
           return Sigma.immediateS4
         Just OD.Unary -> do
           specializedArgType <- specializeUnaryDataType h m name dataArgs
-          staticTypeRep h specializedArgType
+          staticTypeRep h context specializedArgType
         _ ->
           return $ C.VarGlobal (DD.getFormDD name) AN.argNumS4 (FCT.Cod BLT.Pointer)
     _ :< TM.Box t ->
-      staticTypeRep h t
+      staticTypeRep h context t
     _ :< TM.BoxNoema {} ->
       return Sigma.immediateS4
     _ :< TM.Embed {} ->
       return Sigma.immediateS4
     _ :< TM.Code t ->
-      staticTypeRep h t
+      staticTypeRep h context t
     _ :< TM.PrimType {} ->
       return Sigma.immediateS4
     _ :< TM.Void ->
       return Sigma.immediateS4
     _ :< TM.Resource dd resourceID ->
       return $ C.VarGlobal (DD.makeResourceName dd resourceID) AN.argNumS4 (FCT.Cod BLT.Pointer)
-    m :< _ ->
-      raiseCritical m "Found an unevaluated type inside an embedded value"
+    m :< TM.TVarGlobal {} ->
+      clarifyType h context ty >>= staticClosureOf h m
+    _ :< TM.TyApp {} ->
+      registerTypeStub h context ty
+    m :< TM.TVar {} ->
+      raiseCritical m "Found a type variable inside an embedded value"
+
+registerTypeStub :: Handle -> Context -> TM.Type -> App C.Value
+registerTypeStub h context ty = do
+  stubID <- liftIO $ freshLocalNameID h (currentFunction context)
+  let name = DD.appendText (currentFunction context) ("#type-stub." <> T.pack (show stubID))
+  typeValue <- clarifyType h context ty
+  (switchName, switchVar) <- liftIO $ Gensym.createVar (gensymHandle h) "switch"
+  (argName, argVar) <- liftIO $ Gensym.createVar (gensymHandle h) "arg"
+  (extraName, extraVar) <- liftIO $ Gensym.createVar (gensymHandle h) "extra"
+  (typeName, typeVar) <- liftIO $ Gensym.createVar (gensymHandle h) "type"
+  let body = C.UpElim True typeName typeValue (C.PiElimDownElim False typeVar [switchVar, argVar, extraVar])
+  liftIO $ AuxEnv.insert (auxEnvHandle h) name (C.Def name O.Opaque [switchName, argName, extraName] body)
+  return $ C.VarGlobal name AN.argNumS4 (FCT.Cod BLT.Pointer)
 
 newStaticDataLabel :: Handle -> IO T.Text
 newStaticDataLabel h = do
@@ -1444,7 +1464,7 @@ clarifyLambda ::
   App C.Comp
 clarifyLambda h context attrL@(AttrL.Attr {lamKind}) fvs impArgs expArgs defaultArgs e@(m :< _) = do
   let mxts = impArgs ++ expArgs ++ map fst defaultArgs
-  closureID <- liftIO $ freshClosureID h (currentFunction context)
+  closureID <- liftIO $ freshLocalNameID h (currentFunction context)
   case lamKind of
     LK.Fix _ isDestPassing (_, _k, recFuncName, codType) -> do
       let liftedName = DD.getMuDD (currentFunction context) recFuncName closureID
@@ -1537,15 +1557,15 @@ clarifyPrimOp h context op m = do
   let argTypeList = map (fromPrimNum m) domList
   (xs, varList) <- liftIO $ mapAndUnzipM (const (Gensym.createVar (gensymHandle h) "prim")) domList
   let mxts = zipWith (\x t -> (m, VK.normal, x, t)) xs argTypeList
-  closureID <- liftIO $ freshClosureID h (currentFunction context)
+  closureID <- liftIO $ freshLocalNameID h (currentFunction context)
   returnClosure h context closureID (Just "primOp") O.Clear False (fromPrimNum m codType) [] mxts (map (const False) mxts) [] $ C.Primitive (C.PrimOp op varList)
 
-freshClosureID :: Handle -> DD.DefiniteDescription -> IO Int
-freshClosureID h owner = do
-  supply <- readIORef (closureNameSupplyRef h)
+freshLocalNameID :: Handle -> DD.DefiniteDescription -> IO Int
+freshLocalNameID h owner = do
+  supply <- readIORef (localNameSupplyRef h)
   let closureID = Map.lookupDefault 0 owner supply
   let supply' = Map.insert owner (closureID + 1) supply
-  writeIORef (closureNameSupplyRef h) supply'
+  writeIORef (localNameSupplyRef h) supply'
   return closureID
 
 returnClosure ::
