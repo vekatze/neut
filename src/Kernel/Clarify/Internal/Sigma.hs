@@ -53,7 +53,7 @@ data Handle = Handle
 
 data DataConstructorInfo = DataConstructorInfo
   { discriminant :: D.Discriminant,
-    dataArgs :: [(Ident, C.Comp)],
+    typeArgs :: [(Ident, C.Comp)],
     consArgs :: [(Ident, FieldLayout)],
     cellLayout :: CL.CellLayout
   }
@@ -312,9 +312,9 @@ sigmaData4 h shape dataInfo arg dest = do
 sigmaBinderT :: Handle -> DI.CellShape -> DataConstructorInfo -> C.Value -> C.Value -> IO C.Comp
 sigmaBinderT h shape info shouldRelease v = do
   headerEntries <- makeHeaderEntries h shape
-  let dataArgEntries = dataArgs info
+  let typeArgEntries = typeArgs info
   let fields = consArgs info
-  let readEntries = headerEntries ++ dataArgEntries
+  let readEntries = headerEntries ++ typeArgEntries
   readApps <- forM readEntries $ \(x, t) -> do
     Utility.toAffineApp (utilityHandle h) (C.VarLocal x) t
   fieldApps <- forM fields $ \(x, field) -> do
@@ -327,7 +327,7 @@ sigmaBinderT h shape info shouldRelease v = do
   holes <- mapM (const $ Gensym.newIdentFromText (gensymHandle h) "arg") as
   let cont = freeOuterStorageIfRequested shouldRelease v (cellLayout info) (C.UpIntro C.null)
   let bodyBase = Utility.bindLet (zip holes as) cont
-  let fieldStart = length headerEntries + length dataArgEntries
+  let fieldStart = length headerEntries + length typeArgEntries
   bodyWithFields <- bindFieldsInPlace h v (cellLayout info) fieldStart (map (fmap fieldShape) fields) bodyBase
   body' <- Linearize.linearize (linearizeHandle h) readEntries bodyWithFields
   return $ C.SigmaElim False 0 (cellLayout info) (map fst readEntries) v body'
@@ -344,16 +344,16 @@ sigmaBinder4 :: Handle -> DI.CellShape -> DataConstructorInfo -> C.Value -> C.Va
 sigmaBinder4 h shape info dest v = do
   headerEntries <- makeHeaderEntries h shape
   let n = length headerEntries
-  let dataArgEntries = dataArgs info
+  let typeArgEntries = typeArgs info
   let fields = consArgs info
-  let readEntries = headerEntries ++ dataArgEntries
+  let readEntries = headerEntries ++ typeArgEntries
   readCopies <- copyFieldsInto h dest (cellLayout info) 0 (directEntries (cellLayout info) readEntries)
-  fieldCopies <- copyFieldsInto h dest (cellLayout info) (n + length dataArgEntries) fields
+  fieldCopies <- copyFieldsInto h dest (cellLayout info) (n + length typeArgEntries) fields
   holes <- mapM (const $ Gensym.newIdentFromText (gensymHandle h) "_") (readCopies ++ fieldCopies)
   let bodyBase = Utility.bindLet (zip holes (readCopies ++ fieldCopies)) $ C.UpIntro C.null
-  bodyWithFields <- bindFieldsInPlace h v (cellLayout info) (n + length dataArgEntries) (map (fmap fieldShape) fields) bodyBase
+  bodyWithFields <- bindFieldsInPlace h v (cellLayout info) (n + length typeArgEntries) (map (fmap fieldShape) fields) bodyBase
   body' <- Linearize.linearize (linearizeHandle h) readEntries bodyWithFields
-  return $ C.SigmaElim False 0 (cellLayout info) (map fst headerEntries ++ map fst (dataArgs info)) v body'
+  return $ C.SigmaElim False 0 (cellLayout info) (map fst headerEntries ++ map fst (typeArgs info)) v body'
 
 makeHeaderEntries :: Handle -> DI.CellShape -> IO [(Ident, C.Comp)]
 makeHeaderEntries h shape =

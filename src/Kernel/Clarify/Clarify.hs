@@ -345,8 +345,9 @@ refreshDataInfo h dataInfo = do
 
 refreshConsInfo :: Handle -> Subst.Subst -> DI.ConsInfo (BinderF TM.Type) -> IO (DI.ConsInfo (BinderF TM.Type))
 refreshConsInfo h sub consInfo = do
-  (consArgs', _) <- refreshBinderList h sub (DI.consArgs consInfo)
-  return consInfo {DI.consArgs = consArgs'}
+  (consImpArgs', sub') <- refreshBinderList h sub (DI.consImpArgs consInfo)
+  (consArgs', _) <- refreshBinderList h sub' (DI.consArgs consInfo)
+  return consInfo {DI.consImpArgs = consImpArgs', DI.consArgs = consArgs'}
 
 clarifyAliasTypeDef :: Handle -> DD.DefiniteDescription -> TypeDef.TypeDefInfo -> App C.CompStmt
 clarifyAliasTypeDef h name typeDefInfo = do
@@ -698,7 +699,7 @@ clarifyTerm h context term =
         _ -> do
           e' <- clarifyTerm h context e
           liftIO $ callClosure h conv' e' impArgs' (zip expConventions expArgs') (zip defaultConventions defaultArgs')
-    m :< TM.DataIntro (AttrDI.Attr {..}) consName dataArgs _ consArgs -> do
+    m :< TM.DataIntro (AttrDI.Attr {..}) consName dataArgs consImpArgs consArgs -> do
       od <- liftIO $ OptimizableData.lookup (optDataHandle h) consName
       case od of
         Just OD.Enum ->
@@ -709,7 +710,7 @@ clarifyTerm h context term =
           | otherwise ->
               raiseCritical m "Found a malformed unary data in Scene.Clarify.clarifyTerm"
         _ -> do
-          (zs1, es1, xs1) <- unzip3 <$> mapM (clarifyTypePlus h context) dataArgs
+          (zs1, es1, xs1) <- unzip3 <$> mapM (clarifyTypePlus h context) (dataArgs ++ consImpArgs)
           (zs2, es2, xs2) <- unzip3 <$> mapM (clarifyPlus h context) consArgs
           dataInfo <- lookupDataEntry h m dataName
           consInfo <- getConsInfoByDiscriminant h m discriminant (DI.consInfoList dataInfo)
@@ -719,8 +720,8 @@ clarifyTerm h context term =
           when (length fieldStorageList /= length xs2) $
             raiseCritical m "Found a constructor layout arity mismatch"
           let headerEntries = discriminantEntries shape discriminant
-          let dataArgEntries = map (DI.dataArgStorage,) xs1
-          let entries = headerEntries ++ dataArgEntries ++ zip fieldStorageList xs2
+          let typeArgEntries = map (DI.dataArgStorage,) xs1
+          let entries = headerEntries ++ typeArgEntries ++ zip fieldStorageList xs2
           packedBody <- liftIO $ Sigma.introCell (sigmaHandle h) layout entries
           return $
             Utility.bindLet (zip zs1 es1 ++ zip zs2 es2) packedBody
@@ -864,7 +865,7 @@ clarifyLetBody h context isReducible mxt@(_, _, x, _) e1 e2 = do
 type Size =
   Int
 
-type DataArgsMap = IntMap.IntMap ([(Ident, TM.Type)], Size)
+type TypeArgsMap = IntMap.IntMap ([(Ident, TM.Type)], Size)
 
 fieldStoragesOfConsInfo ::
   Handle ->
@@ -879,7 +880,7 @@ fieldStoragesOfConsInfo h context consInfo = do
 clarifyStaticValue :: Handle -> Context -> TM.Term -> App C.Value
 clarifyStaticValue h context term =
   case term of
-    m :< TM.DataIntro (AttrDI.Attr {..}) consName dataArgs _ consArgs -> do
+    m :< TM.DataIntro (AttrDI.Attr {..}) consName dataArgs consImpArgs consArgs -> do
       od <- liftIO $ OptimizableData.lookup (optDataHandle h) consName
       case od of
         Just OD.Enum ->
@@ -890,7 +891,7 @@ clarifyStaticValue h context term =
           | otherwise ->
               raiseCritical m "Found a malformed unary data in Clarify.clarifyStaticValue"
         _ -> do
-          dataArgSlots <- mapM (staticTypeRep h) dataArgs
+          typeArgSlots <- mapM (staticTypeRep h) (dataArgs ++ consImpArgs)
           consArgSlots <- mapM (clarifyStaticValue h context) consArgs
           dataInfo <- lookupDataEntry h m dataName
           consInfo <- getConsInfoByDiscriminant h m discriminant (DI.consInfoList dataInfo)
@@ -899,8 +900,8 @@ clarifyStaticValue h context term =
             raiseCritical m "Found a constructor layout arity mismatch"
           let shape = DI.cellShape (dataSize h) dataInfo
           let headerEntries = discriminantEntries shape discriminant
-          let dataArgEntries = map (DI.dataArgStorage,) dataArgSlots
-          staticCell h m (DI.shapeByteSize shape) $ headerEntries ++ dataArgEntries ++ zip fieldStorageList consArgSlots
+          let typeArgEntries = map (DI.dataArgStorage,) typeArgSlots
+          staticCell h m (DI.shapeByteSize shape) $ headerEntries ++ typeArgEntries ++ zip fieldStorageList consArgSlots
     m :< TM.PiIntro {} ->
       clarifyStaticClosure h context m term
     m :< TM.VarGlobal {} ->
@@ -1096,14 +1097,15 @@ clarifyDataClause ::
   DI.ConsInfo (BinderF TM.Type) ->
   App Sigma.DataConstructorInfo
 clarifyDataClause h context shape dataArgsVal consInfo = do
-  dataArgs' <- dropFst <$> clarifyBinder h context dataArgsVal
-  let context' = extendContext dataArgsVal context
+  let typeArgs = dataArgsVal ++ DI.consImpArgs consInfo
+  typeArgs' <- dropFst <$> clarifyBinder h context typeArgs
+  let context' = extendContext typeArgs context
   fieldStorages <- fieldStoragesOfConsInfo h context' consInfo
   let consArgs' = zip (map (\(_, _, x, _) -> x) (DI.consArgs consInfo)) fieldStorages
   return $
     Sigma.DataConstructorInfo
       { Sigma.discriminant = DI.discriminant consInfo,
-        Sigma.dataArgs = dataArgs',
+        Sigma.typeArgs = typeArgs',
         Sigma.consArgs = consArgs',
         Sigma.cellLayout = DI.consLayout shape consInfo
       }
@@ -1112,10 +1114,10 @@ clarifyDecisionTree ::
   Handle ->
   Context ->
   N.IsNoetic ->
-  DataArgsMap ->
+  TypeArgsMap ->
   DT.DecisionTree TM.Type TM.Term ->
   App (C.Comp, [BinderF TM.Type])
-clarifyDecisionTree h context isNoetic dataArgsMap tree =
+clarifyDecisionTree h context isNoetic typeArgsMap tree =
   case tree of
     DT.Leaf consumedCursorList letSeq cont@(m :< _) -> do
       let chain = TM.chainOfDecisionTree (typeEnv context) m tree
@@ -1123,13 +1125,13 @@ clarifyDecisionTree h context isNoetic dataArgsMap tree =
       if isNoetic
         then return (cont', chain)
         else do
-          (cont'', dataChain) <- tidyCursorList h context dataArgsMap consumedCursorList cont'
+          (cont'', dataChain) <- tidyCursorList h context typeArgsMap consumedCursorList cont'
           return (cont'', dataChain ++ chain)
     DT.Unreachable -> do
       return (C.Unreachable, [])
     DT.Switch (cursor, cursorType@(m :< _)) (fallbackClause, clauseList) -> do
-      (fallbackClause', fallbackChain) <- clarifyDecisionTree h context isNoetic dataArgsMap fallbackClause
-      tmp <- mapM (clarifyCase h context isNoetic dataArgsMap cursor cursorType) clauseList
+      (fallbackClause', fallbackChain) <- clarifyDecisionTree h context isNoetic typeArgsMap fallbackClause
+      tmp <- mapM (clarifyCase h context isNoetic typeArgsMap cursor cursorType) clauseList
       let (enumCaseList, clauseList', clauseChainList) = unzip3 tmp
       let chain = filter (\(_, _, x, _) -> x /= cursor) $ nubFreeVariables $ fallbackChain ++ concat clauseChainList
       let aligner = alignFreeVariable h context chain
@@ -1244,37 +1246,37 @@ specializeUnaryDataType h m dataName dataArgs = do
     _ ->
       raiseCritical m $ "Found a broken unary data metadata for `" <> DD.reify dataName <> "`"
 
-tidyCursorList :: Handle -> Context -> DataArgsMap -> [Ident] -> C.Comp -> App (C.Comp, [BinderF TM.Type])
-tidyCursorList h context dataArgsMap consumedCursorList cont =
+tidyCursorList :: Handle -> Context -> TypeArgsMap -> [Ident] -> C.Comp -> App (C.Comp, [BinderF TM.Type])
+tidyCursorList h context typeArgsMap consumedCursorList cont =
   case consumedCursorList of
     [] ->
       return (cont, [])
     cursor : rest -> do
-      case IntMap.lookup (Ident.toInt cursor) dataArgsMap of
+      case IntMap.lookup (Ident.toInt cursor) typeArgsMap of
         Nothing ->
           error "tidyCursor"
-        Just (dataArgs, cursorSize) -> do
-          let (dataArgVars, dataTypes) = unzip dataArgs
-          dataTypes' <- mapM (clarifyType h context) dataTypes
-          (cont', chain) <- tidyCursorList h context dataArgsMap rest cont
-          tmp <- liftIO $ Linearize.linearizeUser (linearizeHandle h) (zip dataArgVars dataTypes') $ do
+        Just (typeArgs, cursorSize) -> do
+          let (typeArgVars, typeArgTypes) = unzip typeArgs
+          typeArgTypes' <- mapM (clarifyType h context) typeArgTypes
+          (cont', chain) <- tidyCursorList h context typeArgsMap rest cont
+          tmp <- liftIO $ Linearize.linearizeUser (linearizeHandle h) (zip typeArgVars typeArgTypes') $ do
             C.Free (C.VarLocal cursor) (Just cursorSize) cont'
-          let newChain = zipWith (\x t@(m :< _) -> (m, VK.normal, x, t)) dataArgVars dataTypes
+          let newChain = zipWith (\x t@(m :< _) -> (m, VK.normal, x, t)) typeArgVars typeArgTypes
           return (tmp, newChain ++ chain)
 
 clarifyCase ::
   Handle ->
   Context ->
   N.IsNoetic ->
-  DataArgsMap ->
+  TypeArgsMap ->
   Ident ->
   TM.Type ->
   DT.Case TM.Type TM.Term ->
   App (EC.EnumCase, C.Comp, [BinderF TM.Type])
-clarifyCase h context isNoetic dataArgsMap cursor cursorType decisionCase = do
+clarifyCase h context isNoetic typeArgsMap cursor cursorType decisionCase = do
   case decisionCase of
     DT.LiteralCase _ l cont -> do
-      (body', contChain) <- clarifyDecisionTree h context isNoetic dataArgsMap cont
+      (body', contChain) <- clarifyDecisionTree h context isNoetic typeArgsMap cont
       case l of
         L.Int i ->
           return (EC.Int i, body', contChain)
@@ -1283,13 +1285,16 @@ clarifyCase h context isNoetic dataArgsMap cursor cursorType decisionCase = do
     DT.ConsCase (DT.ConsCaseRecord {..}) -> do
       let (_, dataTypes) = unzip dataArgs
       dataArgVars <- liftIO $ mapM (const $ Gensym.newIdentFromText (gensymHandle h) "dataArg") dataTypes
+      let consImpVars = map (\(_, _, x, _) -> x) consImpArgs
+      let typeArgEntries = zip dataArgVars dataTypes ++ map (\(_, _, x, t) -> (x, t)) consImpArgs
+      let typeArgVars = dataArgVars ++ consImpVars
       cursorSize <- getDataCellByteSizeFromType h cursorType
-      let dataArgsMap' = IntMap.insert (Ident.toInt cursor) (zip dataArgVars dataTypes, cursorSize) dataArgsMap
+      let typeArgsMap' = IntMap.insert (Ident.toInt cursor) (typeArgEntries, cursorSize) typeArgsMap
       let consArgs' = map (\(m, k, x, _) -> (m, k, x, m :< TM.Tau)) consArgs
       let prefixChain = TM.chainOfCaseWithoutCont (typeEnv context) decisionCase
-      (body', contChain) <- clarifyDecisionTree h (extendContext consArgs' context) isNoetic dataArgsMap' cont
+      (body', contChain) <- clarifyDecisionTree h (extendContext (consImpArgs ++ consArgs') context) isNoetic typeArgsMap' cont
       let consArgVars = map (\(_, _, x, _) -> x) consArgs
-      let argVars = dataArgVars ++ consArgVars
+      let argVars = typeArgVars ++ consArgVars
       let contChain' = filter (\(_, _, x, _) -> x `notElem` argVars) contChain
       let chain = prefixChain ++ contChain'
       od <- liftIO $ OptimizableData.lookup (optDataHandle h) consDD
@@ -1324,11 +1329,11 @@ clarifyCase h context isNoetic dataArgsMap cursor cursorType decisionCase = do
                 return [discriminantVar]
           if isNoetic
             then do
-              let firstFieldStart = length headerVars + length dataArgVars
+              let firstFieldStart = length headerVars + length typeArgVars
               bindFields <- liftIO $ Sigma.bindFieldsInPlace (sigmaHandle h) (C.VarLocal cursor) layout firstFieldStart fieldEntries body'
               return
                 ( EC.Int (D.reify disc),
-                  C.SigmaElim False 0 layout (headerVars ++ dataArgVars) (C.VarLocal cursor) bindFields,
+                  C.SigmaElim False 0 layout (headerVars ++ typeArgVars) (C.VarLocal cursor) bindFields,
                   chain
                 )
             else do
@@ -1337,7 +1342,7 @@ clarifyCase h context isNoetic dataArgsMap cursor cursorType decisionCase = do
               let bodyWithFields = Sigma.bindFieldValues fieldSlotList body'
               return
                 ( EC.Int (D.reify disc),
-                  C.SigmaElim False 0 layout (headerVars ++ dataArgVars ++ fieldSlotVars) (C.VarLocal cursor) bodyWithFields,
+                  C.SigmaElim False 0 layout (headerVars ++ typeArgVars ++ fieldSlotVars) (C.VarLocal cursor) bodyWithFields,
                   chain
                 )
 

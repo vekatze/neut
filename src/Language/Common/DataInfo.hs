@@ -8,6 +8,7 @@ module Language.Common.DataInfo
     cellShape,
     cellShapeOf,
     consLayout,
+    consStorages,
     discriminantLoadType,
     discriminantWidth,
     dataArgStorage,
@@ -105,8 +106,12 @@ cellShapeOf dataSize dataArgs consInfoList = do
 
 consLayout :: CellShape -> ConsInfo binder -> CL.CellLayout
 consLayout shape consInfo = do
-  let storages = prefixStorages (shapeHeader shape) (shapeDataArgCount shape) ++ consArgLayouts consInfo
+  let storages = prefixStorages (shapeHeader shape) (shapeDataArgCount shape) ++ consStorages consInfo
   CL.alignedCell (shapeDataSize shape) storages (shapeByteSize shape)
+
+consStorages :: ConsInfo binder -> [CL.FieldStorage]
+consStorages consInfo =
+  replicate (length (consImpArgs consInfo)) dataArgStorage ++ consArgLayouts consInfo
 
 discriminantLoadType :: CellShape -> BLT.BaseLowType
 discriminantLoadType shape =
@@ -140,4 +145,4 @@ cellStoragesList prefix consInfoList =
     [] ->
       [prefix]
     _ ->
-      map ((prefix ++) . consArgLayouts) consInfoList
+      map ((prefix ++) . consStorages) consInfoList
