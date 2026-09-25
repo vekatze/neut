@@ -385,6 +385,7 @@ resolveDefiniteDescription h m dd = do
 data ResolvedCons = ResolvedCons
   { consDD :: DD.DefiniteDescription,
     dataArgNum :: AN.ArgNum,
+    consImpArgNum :: AN.ArgNum,
     consArgNum :: AN.ArgNum,
     disc :: D.Discriminant,
     isConstLike :: IsConstLike,
@@ -403,7 +404,7 @@ resolveConstructor h m s = do
 resolveConstructorMaybe :: DD.DefiniteDescription -> GN.GlobalName -> Maybe ResolvedCons
 resolveConstructorMaybe dd gn = do
   case gn of
-    GN.DataIntro dataArgNum consArgNum disc isConstLike consSourceFlags ->
+    GN.DataIntro dataArgNum consImpArgNum consArgNum disc isConstLike consSourceFlags ->
       Just $ ResolvedCons {consDD = dd, ..}
     _ ->
       Nothing
@@ -429,8 +430,8 @@ interpretGlobalName h m dd gn = do
       raiseError m $ "`" <> dd' <> "` is a namespace and cannot appear in term position"
     GN.Data {} ->
       raiseError m $ "`" <> dd' <> "` is a type name and cannot appear in term position"
-    GN.DataIntro dataArgNum consArgNum _ isConstLike _ -> do
-      let argNum = AN.add dataArgNum consArgNum
+    GN.DataIntro dataArgNum consImpArgNum consArgNum _ isConstLike _ -> do
+      let argNum = AN.add (AN.add dataArgNum consImpArgNum) consArgNum
       let isDestPassing = False
       let attr = AttrVG.Attr {..}
       return $ m :< WT.PiElim (CCS.AsMarked False []) (m :< WT.VarGlobal attr dd) ImpArgs.Unspecified [] (DefaultArgs.ByKey [])

@@ -192,8 +192,8 @@ analyze h term = do
       css2 <- mapM (analyze h) expArgs
       css3 <- mapM (analyze h) (catMaybes defaultArgs)
       return $ cs ++ concat css1 ++ concat css2 ++ concat css3
-    _ :< TM.DataIntro _ _ dataArgs consArgs -> do
-      css1 <- mapM (analyzeType $ deactivateExpCheck h) dataArgs
+    _ :< TM.DataIntro _ _ dataArgs consImpArgs consArgs -> do
+      css1 <- mapM (analyzeType $ deactivateExpCheck h) (dataArgs ++ consImpArgs)
       css2 <- mapM (analyze $ deactivateExpCheck h) consArgs
       return $ concat css1 ++ concat css2
     m :< TM.DataElim _ _ oets tree -> do

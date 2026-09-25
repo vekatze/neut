@@ -693,10 +693,11 @@ elaborateStmtKindTerm h stmtKind =
     SK.Main t -> do
       t' <- elaborateType h t
       return $ SK.Main t'
-    SK.DataIntro dataName dataArgs expConsArgs discriminant -> do
+    SK.DataIntro dataName dataArgs consImpArgs expConsArgs discriminant -> do
       dataArgs' <- mapM (elaborateWeakBinder h) dataArgs
+      consImpArgs' <- mapM (elaborateWeakBinder h) consImpArgs
       expConsArgs' <- mapM (elaborateWeakBinder h) expConsArgs
-      return $ SK.DataIntro dataName dataArgs' expConsArgs' discriminant
+      return $ SK.DataIntro dataName dataArgs' consImpArgs' expConsArgs' discriminant
 
 elaborateStmtKindType :: Handle -> SK.StmtKindType WT.WeakType -> App (SK.StmtKindType TM.Type)
 elaborateStmtKindType h stmtKind =
@@ -709,11 +710,13 @@ elaborateStmtKindType h stmtKind =
       dataArgs' <- mapM (elaborateWeakBinder h) dataArgs
       dataArgs'' <- mapM (inlineBinder h) dataArgs'
       consInfoList' <- forM consInfoList $ \(savedHint, consInfo) -> do
+        consImpArgs' <- mapM (elaborateWeakBinder h) (DI.consImpArgs consInfo)
+        consImpArgs'' <- mapM (inlineBinder h) consImpArgs'
         consArgs' <- mapM (elaborateWeakBinder h) (DI.consArgs consInfo)
         consArgs'' <- mapM (inlineBinder h) consArgs'
         layouts <- forM (zip (DI.consArgHints consInfo) consArgs'') $ \(hint, binder) -> do
           resolveFieldLayout h hint binder
-        return (savedHint, consInfo {DI.consArgs = consArgs'', DI.consArgLayouts = layouts})
+        return (savedHint, consInfo {DI.consImpArgs = consImpArgs'', DI.consArgs = consArgs'', DI.consArgLayouts = layouts})
       return $ SK.Data dataName dataArgs'' consInfoList' isNominal
 
 resolveFieldLayout :: Handle -> DI.FieldHint -> BinderF TM.Type -> App CL.FieldStorage
@@ -903,10 +906,11 @@ elaborate' h term = do
       return $ m :< TM.PiElim noTrace conv e' impArgs'' expArgs' defaultArgs'
     m :< WT.PiElimExact {} -> do
       raiseCritical m "Scene.Elaborate.elaborate': found a remaining `exact`"
-    m :< WT.DataIntro attr consName dataArgs consArgs -> do
+    m :< WT.DataIntro attr consName dataArgs consImpArgs consArgs -> do
       dataArgs' <- mapM (elaborateType h) dataArgs
+      consImpArgs' <- mapM (elaborateType h) consImpArgs
       consArgs' <- mapM (elaborate' h) consArgs
-      return $ m :< TM.DataIntro attr consName dataArgs' consArgs'
+      return $ m :< TM.DataIntro attr consName dataArgs' consImpArgs' consArgs'
     m :< WT.DataElim isNoetic oets tree -> do
       let (os, es, ts) = unzip3 oets
       es' <- mapM (elaborate' h) es

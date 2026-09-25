@@ -222,14 +222,14 @@ liftStmtKindTerm _h nsPath stmtKind = do
       SK.MacroInline
     SK.Main t ->
       SK.Main t
-    SK.DataIntro name dataArgs expConsArgs discriminant -> do
+    SK.DataIntro name dataArgs consImpArgs expConsArgs discriminant -> do
       let name' = Locator.attachCurrentLocatorWithin _h nsPath name
-      SK.DataIntro name' dataArgs expConsArgs discriminant
+      SK.DataIntro name' dataArgs consImpArgs expConsArgs discriminant
 
 liftRawCons :: Locator.Handle -> [BN.BaseName] -> RawConsInfo BN.BaseName -> RawConsInfo DD.DefiniteDescription
-liftRawCons h nsPath (RawConsInfo {loc, name, expArgs, endLoc}) = do
+liftRawCons h nsPath (RawConsInfo {loc, name, impArgs, expArgs, endLoc}) = do
   let name' = Locator.attachCurrentLocatorWithin h nsPath name
-  RawConsInfo {loc, name = name', expArgs, endLoc}
+  RawConsInfo {loc, name = name', impArgs, expArgs, endLoc}
 
 registerTopLevelNames ::
   Handle ->
@@ -272,7 +272,7 @@ registerKeyArg h stmt = do
       let isConstLike = RT.isConstLike geist
       let m = RT.loc geist
       case stmtKind of
-        SK.DataIntro _ _ expConsArgs _ -> do
+        SK.DataIntro _ _ _ expConsArgs _ -> do
           let expKeys = map (\(_, _, x, _, _, _) -> x) expConsArgs
           KeyArg.insert (keyArgHandle h) m name KeyArg.Defined isConstLike [] expKeys []
         _ -> do
@@ -312,7 +312,7 @@ registerKeyArg' h stmt = do
   case stmt of
     StmtDefine isConstLike stmtKind (SavedHint m) name impArgs expArgs defaultArgs _ _ -> do
       case stmtKind of
-        SK.DataIntro _ _ expConsArgs _ -> do
+        SK.DataIntro _ _ _ expConsArgs _ -> do
           let expKeys = map (\(_, _, x, _) -> toText x) expConsArgs
           KeyArg.insert (keyArgHandle h) m name KeyArg.Defined isConstLike [] expKeys []
         _ -> do
@@ -374,8 +374,8 @@ registerAsEnumIfNecessary h dataName dataArgNum consInfoList =
 isUnary :: [(DD.DefiniteDescription, (Hint, GN.GlobalName))] -> Bool
 isUnary consInfoList =
   case consInfoList of
-    [(_, (_, GN.DataIntro _ consArgNum _ _ _))] ->
-      consArgNum == AN.fromInt 1
+    [(_, (_, GN.DataIntro _ consImpArgNum consArgNum _ _ _))] ->
+      consImpArgNum == AN.fromInt 0 && consArgNum == AN.fromInt 1
     _ ->
       False
 

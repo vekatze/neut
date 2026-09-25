@@ -104,10 +104,11 @@ subst h sub term =
     m :< WT.PiElimExact e -> do
       e' <- subst h sub e
       return $ m :< WT.PiElimExact e'
-    m :< WT.DataIntro attr consName dataArgs consArgs -> do
+    m :< WT.DataIntro attr consName dataArgs consImpArgs consArgs -> do
       dataArgs' <- mapM (substType h sub) dataArgs
+      consImpArgs' <- mapM (substType h sub) consImpArgs
       consArgs' <- mapM (subst h sub) consArgs
-      return $ m :< WT.DataIntro attr consName dataArgs' consArgs'
+      return $ m :< WT.DataIntro attr consName dataArgs' consImpArgs' consArgs'
     m :< WT.DataElim isNoetic oets decisionTree -> do
       let (os, es, ts) = unzip3 oets
       es' <- mapM (subst h sub) es

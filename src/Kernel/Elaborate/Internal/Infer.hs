@@ -231,10 +231,11 @@ inferStmtKindTerm h stmtKind =
     SK.Main t -> do
       t' <- inferType h t
       return $ SK.Main t'
-    SK.DataIntro consName dataArgs expConsArgs discriminant -> do
-      (dataArgs', varEnv) <- inferBinder' h dataArgs
-      (expConsArgs', _) <- inferBinder' varEnv expConsArgs
-      return $ SK.DataIntro consName dataArgs' expConsArgs' discriminant
+    SK.DataIntro consName dataArgs consImpArgs expConsArgs discriminant -> do
+      (dataArgs', h') <- inferBinder' h dataArgs
+      (consImpArgs', h'') <- inferImpBinder h' consImpArgs
+      (expConsArgs', _) <- inferBinder' h'' expConsArgs
+      return $ SK.DataIntro consName dataArgs' consImpArgs' expConsArgs' discriminant
 
 inferStmtKindType :: Handle -> SK.StmtKindType WT.WeakType -> App (SK.StmtKindType WT.WeakType)
 inferStmtKindType h stmtKind =
@@ -244,10 +245,11 @@ inferStmtKindType h stmtKind =
     SK.AliasOpaque ->
       return SK.AliasOpaque
     SK.Data dataName dataArgs consInfoList isNominal -> do
-      (dataArgs', varEnv) <- inferBinder' h dataArgs
+      (dataArgs', h') <- inferBinder' h dataArgs
       consInfoList' <- forM consInfoList $ \(savedHint, consInfo) -> do
-        (consArgs', _) <- inferBinder' varEnv (DI.consArgs consInfo)
-        return (savedHint, consInfo {DI.consArgs = consArgs'})
+        (consImpArgs', h'') <- inferImpBinder h' (DI.consImpArgs consInfo)
+        (consArgs', _) <- inferBinder' h'' (DI.consArgs consInfo)
+        return (savedHint, consInfo {DI.consImpArgs = consImpArgs', DI.consArgs = consArgs'})
       return $ SK.Data dataName dataArgs' consInfoList' isNominal
 
 makeWeakCoreType :: Hint -> MID.ModuleID -> SL.SourceLocator -> BN.BaseName -> AN.ArgNum -> [WT.WeakType] -> WT.WeakType
@@ -383,11 +385,12 @@ infer h term =
           infer h $ m :< WT.PiIntro attr [] expArgs' [] (m :< WT.PiElim spec e' (ImpArgs.FullySpecified impArgs') expArgs'' (DefaultArgs.ByKey []))
         _ ->
           raiseError m $ "Expected a function type, but got: " <> toTextType t'
-    m :< WT.DataIntro attr@(AttrDI.Attr {..}) consName dataArgs consArgs -> do
+    m :< WT.DataIntro attr@(AttrDI.Attr {..}) consName dataArgs consImpArgs consArgs -> do
       (dataArgs', _) <- mapAndUnzipM (inferTypeWithKind h) dataArgs
+      (consImpArgs', _) <- mapAndUnzipM (inferTypeWithKind h) consImpArgs
       (consArgs', _) <- mapAndUnzipM (infer h) consArgs
       let dataType = m :< WT.Data (AttrD.Attr {isConstLike}) dataName dataArgs'
-      return (m :< WT.DataIntro attr consName dataArgs' consArgs', dataType)
+      return (m :< WT.DataIntro attr consName dataArgs' consImpArgs' consArgs', dataType)
     m :< WT.DataElim isNoetic oets tree -> do
       let (os, es, _) = unzip3 oets
       (es', ts') <- mapAndUnzipM (infer h) es

@@ -150,7 +150,7 @@ data RawTermF a
   | PiElimMeta Name C (Maybe (SE.Series RawType)) C (SE.Series a) C (Maybe (SE.Series (Hint, Key, C, C, a)))
   | PiElimMetaByKey Name C (Maybe (SE.Series RawType)) C (SE.Series (Hint, Key, C, C, a))
   | PiElimExact C a
-  | DataIntro AttrDI.Attr DD.DefiniteDescription [RawType] [a] -- (attr, consName, dataArgs, consArgs)
+  | DataIntro AttrDI.Attr DD.DefiniteDescription [RawType] [RawType] [a] -- (attr, consName, dataArgs, consImpArgs, consArgs)
   | DataElim C N.IsNoetic (SE.Series a) (SE.Series (RP.RawPatternRow a))
   | BoxIntro C C (SE.Series (Hint, VarKind, RawIdent)) (a, C)
   | BoxIntroLift C C (a, C)

@@ -698,7 +698,7 @@ clarifyTerm h context term =
         _ -> do
           e' <- clarifyTerm h context e
           liftIO $ callClosure h conv' e' impArgs' (zip expConventions expArgs') (zip defaultConventions defaultArgs')
-    m :< TM.DataIntro (AttrDI.Attr {..}) consName dataArgs consArgs -> do
+    m :< TM.DataIntro (AttrDI.Attr {..}) consName dataArgs _ consArgs -> do
       od <- liftIO $ OptimizableData.lookup (optDataHandle h) consName
       case od of
         Just OD.Enum ->
@@ -879,7 +879,7 @@ fieldStoragesOfConsInfo h context consInfo = do
 clarifyStaticValue :: Handle -> Context -> TM.Term -> App C.Value
 clarifyStaticValue h context term =
   case term of
-    m :< TM.DataIntro (AttrDI.Attr {..}) consName dataArgs consArgs -> do
+    m :< TM.DataIntro (AttrDI.Attr {..}) consName dataArgs _ consArgs -> do
       od <- liftIO $ OptimizableData.lookup (optDataHandle h) consName
       case od of
         Just OD.Enum ->

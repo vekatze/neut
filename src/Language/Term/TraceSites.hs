@@ -137,7 +137,7 @@ findBlocker (_ :< node) =
   case node of
     TM.Let _ rhs body ->
       findBlocker rhs <|> findBlocker body
-    TM.DataIntro _ _ _ args ->
+    TM.DataIntro _ _ _ _ args ->
       firstBlocker args
     TM.BoxIntroLift _ child ->
       findBlocker child
@@ -382,9 +382,9 @@ forNodeM node recur = do
       expArgs' <- forM expArgs recur
       defaultArgs' <- forM defaultArgs (traverse recur)
       return $ TM.PiElim traceID kind callee' impArgs expArgs' defaultArgs'
-    TM.DataIntro attr dd dataArgs consArgs -> do
+    TM.DataIntro attr dd dataArgs consImpArgs consArgs -> do
       consArgs' <- forM consArgs recur
-      return $ TM.DataIntro attr dd dataArgs consArgs'
+      return $ TM.DataIntro attr dd dataArgs consImpArgs consArgs'
     TM.DataElim traceID isNoetic oets tree -> do
       oets' <- forM oets $ \(x, e, t) -> do
         e' <- recur e

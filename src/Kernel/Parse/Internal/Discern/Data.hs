@@ -75,6 +75,7 @@ modifyConsInfo d consInfoList =
         DI.ConsInfo
           { DI.consName = name consInfo,
             DI.isConstLike = isConstLikeConsInfo consInfo,
+            DI.consImpArgs = SE.extract (impArgs consInfo),
             DI.consArgs = map snd expArgsExtracted,
             DI.consArgHints = map fst expArgsExtracted,
             DI.consArgLayouts = [], -- filled by Elaborate
@@ -97,6 +98,8 @@ parseDefineDataConstructor dataType dataName dataArgs consInfoList discriminant 
     consInfo : rest -> do
       let dataArgs' = RT.extractArgs dataArgs
       let dataArgs'' = map identPlusToVar dataArgs'
+      let consImpArgs = SE.extract (impArgs consInfo)
+      let consImpArgs' = map identPlusToVar consImpArgs
       let expConsArgs = map snd $ maybe [] SE.extract (expArgs consInfo)
       let expConsArgs' = map adjustExpConsArg expConsArgs
       let m = loc consInfo
@@ -111,14 +114,14 @@ parseDefineDataConstructor dataType dataName dataArgs consInfoList discriminant 
                 m :< RT.Pi emptyImpArgs expArgsWithEmpty emptyDefArgs RT.PiDataIntro [] dataType (endLoc consInfo)
       let consBody =
             if isConstLikeConsInfo consInfo
-              then m :< RT.DataIntro attr (name consInfo) dataArgs'' (map fst expConsArgs')
+              then m :< RT.DataIntro attr (name consInfo) dataArgs'' consImpArgs' (map fst expConsArgs')
               else
                 RT.lam (endLoc consInfo) m (map (,[]) expConsArgs) dataType $
-                  m :< RT.DataIntro attr (name consInfo) dataArgs'' (map fst expConsArgs')
+                  m :< RT.DataIntro attr (name consInfo) dataArgs'' consImpArgs' (map fst expConsArgs')
       let introRule =
             PostRawStmtDefineTerm
               []
-              (SK.DataIntro (name consInfo) dataArgs' expConsArgs discriminant)
+              (SK.DataIntro (name consInfo) dataArgs' consImpArgs expConsArgs discriminant)
               ( RT.RawDef
                   { geist =
                       RT.RawGeist
@@ -126,7 +129,7 @@ parseDefineDataConstructor dataType dataName dataArgs consInfoList discriminant 
                           name = (name consInfo, []),
                           isConstLike = isConstLikeConsInfo consInfo,
                           isDestPassing = False,
-                          impArgs = dataArgs,
+                          impArgs = (SE.appendLeftBiased (fst dataArgs) (impArgs consInfo), snd dataArgs),
                           defaultArgs = RT.emptyDefaultArgs,
                           expArgs = (SE.emptySeriesPC, []),
                           cod = ([], consType)

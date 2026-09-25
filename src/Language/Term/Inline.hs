@@ -83,7 +83,7 @@ isValueTerm h term = do
     then return True
     else do
       isValue <- case term' of
-        _ :< TM.DataIntro _ _ _ consArgs ->
+        _ :< TM.DataIntro _ _ _ _ consArgs ->
           allM (isValueTerm h) consArgs
         _ :< TM.BoxIntroLift _ e ->
           isValueTerm h e
@@ -280,10 +280,11 @@ inlineFresh h rawTerm = do
                   registerResidual h residual
         _ ->
           registerResidual h residual
-    m :< TM.DataIntro attr consName dataArgs consArgs -> do
+    m :< TM.DataIntro attr consName dataArgs consImpArgs consArgs -> do
       dataArgs' <- mapM (inlineType' h) dataArgs
+      consImpArgs' <- mapM (inlineType' h) consImpArgs
       consArgs' <- mapM (inline' h) consArgs
-      return $ m :< TM.DataIntro attr consName dataArgs' consArgs'
+      return $ m :< TM.DataIntro attr consName dataArgs' consImpArgs' consArgs'
     m :< TM.DataElim traceID isNoetic oets decisionTree -> do
       let (os, es, ts) = unzip3 oets
       es' <- mapM (inline' h) es
@@ -302,7 +303,7 @@ inlineFresh h rawTerm = do
               registerResidual h $ m :< TM.DataElim traceID isNoetic oets' DT.Unreachable
             DT.Switch (cursor, _) (fallbackTree, caseList) -> do
               case lookupSplit cursor oets' of
-                Just (e@(_ :< TM.DataIntro (AttrDI.Attr {..}) _ _ consArgs), oets'') -> do
+                Just (e@(_ :< TM.DataIntro (AttrDI.Attr {..}) _ _ _ consArgs), oets'') -> do
                   let (newBaseCursorList, cont) = findClause discriminant fallbackTree caseList
                   let newCursorList = zipWith (\(o, t) arg -> (o, arg, t)) newBaseCursorList consArgs
                   cont' <- liftIO $ substCursor h cursor e cont

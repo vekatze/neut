@@ -101,10 +101,11 @@ weaken term =
       let expArgs' = map weaken expArgs
       let defaultArgs' = map (fmap weaken) defaultArgs
       m :< WT.PiElim spec e' impArgs' expArgs' (DefaultArgs.Aligned defaultArgs')
-    m :< TM.DataIntro attr consName dataArgs consArgs -> do
+    m :< TM.DataIntro attr consName dataArgs consImpArgs consArgs -> do
       let dataArgs' = map weakenType dataArgs
+      let consImpArgs' = map weakenType consImpArgs
       let consArgs' = map weaken consArgs
-      m :< WT.DataIntro attr consName dataArgs' consArgs'
+      m :< WT.DataIntro attr consName dataArgs' consImpArgs' consArgs'
     m :< TM.DataElim _ isNoetic oets tree -> do
       let (os, es, ts) = unzip3 oets
       let es' = map weaken es
@@ -320,10 +321,11 @@ weakenStmtKindTerm stmtKind =
       MacroInline
     Main t ->
       Main (weakenType t)
-    DataIntro dataName dataArgs expConsArgs discriminant -> do
+    DataIntro dataName dataArgs consImpArgs expConsArgs discriminant -> do
       let dataArgs' = map weakenTypeBinder dataArgs
+      let consImpArgs' = map weakenTypeBinder consImpArgs
       let expConsArgs' = map weakenTypeBinder expConsArgs
-      DataIntro dataName dataArgs' expConsArgs' discriminant
+      DataIntro dataName dataArgs' consImpArgs' expConsArgs' discriminant
 
 weakenStmtKindType :: StmtKindType TM.Type -> StmtKindType WT.WeakType
 weakenStmtKindType stmtKind =
@@ -334,7 +336,11 @@ weakenStmtKindType stmtKind =
       AliasOpaque
     Data dataName dataArgs consInfoList isNominal -> do
       let dataArgs' = map weakenTypeBinder dataArgs
-      let weakenConsInfo consInfo = consInfo {DI.consArgs = map weakenTypeBinder (DI.consArgs consInfo)}
+      let weakenConsInfo consInfo =
+            consInfo
+              { DI.consImpArgs = map weakenTypeBinder (DI.consImpArgs consInfo),
+                DI.consArgs = map weakenTypeBinder (DI.consArgs consInfo)
+              }
       let consInfoList' = map (second weakenConsInfo) consInfoList
       Data dataName dataArgs' consInfoList' isNominal
 

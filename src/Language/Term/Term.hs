@@ -70,7 +70,7 @@ data TermF a
   | VarGlobal AttrVG.Attr DD.DefiniteDescription
   | PiIntro (AttrL.Attr Type) [BinderF Type] [BinderF Type] [(BinderF Type, a)] a
   | PiElim TraceID (CC.CallConv Type) a [Type] [a] [Maybe a]
-  | DataIntro AttrDI.Attr DD.DefiniteDescription [Type] [a]
+  | DataIntro AttrDI.Attr DD.DefiniteDescription [Type] [Type] [a]
   | DataElim TraceID N.IsNoetic [(Ident, a, Type)] (DT.DecisionTree Type a)
   | BoxIntro TraceID [(BinderF Type, a)] a
   | BoxIntroLift Type a
@@ -112,7 +112,7 @@ isValue term =
       True
     _ :< PiIntro {} ->
       True
-    _ :< DataIntro _ _ _ consArgs ->
+    _ :< DataIntro _ _ _ _ consArgs ->
       all isValue consArgs
     _ :< CodeIntro {} ->
       True

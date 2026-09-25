@@ -7,6 +7,7 @@ module Language.RawTerm.RawTerm.ToDoc
     decodeArgs',
     decodeArgsMaybe,
     decodeConsArgsMaybe,
+    decodeImpParams,
     decodeDef,
     decodeTypeDef,
     decGeist,
@@ -156,7 +157,7 @@ toDoc term =
         [ PI.delimiterLeftAligned $ D.text "exact",
           PI.inject $ attachComment c $ toDoc e
         ]
-    _ :< DataIntro _ dataIntroName _ _ ->
+    _ :< DataIntro _ dataIntroName _ _ _ ->
       D.text $ DD.reify dataIntroName
     _ :< DataElim c isNoetic es patternRowList -> do
       D.join

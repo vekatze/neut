@@ -35,6 +35,7 @@ data DataInfo binder = DataInfo
 data ConsInfo binder = ConsInfo
   { consName :: DD.DefiniteDescription,
     isConstLike :: IsConstLike,
+    consImpArgs :: [binder],
     consArgs :: [binder],
     consArgHints :: [FieldHint],
     consArgLayouts :: [CL.FieldStorage],

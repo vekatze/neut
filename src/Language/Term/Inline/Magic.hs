@@ -148,7 +148,7 @@ constructUnitTerm m moduleID = do
   let unitTypeDD = DD.newByGlobalLocator unitSGL BN.unitType
   let unitDD = DD.newByGlobalLocator unitSGL BN.unit
   let attr = AttrDI.Attr {dataName = unitTypeDD, discriminant = D.zero, isConstLike = True}
-  m :< TM.DataIntro attr unitDD [] []
+  m :< TM.DataIntro attr unitDD [] [] []
 
 makeVectorDD :: MID.ModuleID -> DD.DefiniteDescription
 makeVectorDD moduleID = do
@@ -208,25 +208,25 @@ returnTypeValueIntValue m moduleID typeValue = do
       let dataNameTerm = m :< TM.Prim (PV.Text dataName)
       let dataArgsTerm = constructListTerm m listSgl dataArgs
       consInfoTerm <- constructConstructorInfoListTerm m moduleID consInfoList
-      return $ m :< TM.DataIntro attr consName [] [dataNameTerm, dataArgsTerm, consInfoTerm]
+      return $ m :< TM.DataIntro attr consName [] [] [dataNameTerm, dataArgsTerm, consInfoTerm]
     TypeValue.Enum consNames -> do
       let listSgl = makeListSGL moduleID
       let elemType = m :< TM.PrimType PT.Text
       let nameTerms = map (\name -> m :< TM.Prim (PV.Text name)) consNames
       let namesListTerm = constructListTermFromTerms m listSgl elemType nameTerms
-      return $ m :< TM.DataIntro attr consName [] [namesListTerm]
+      return $ m :< TM.DataIntro attr consName [] [] [namesListTerm]
     TypeValue.Vector t -> do
-      return $ m :< TM.DataIntro attr consName [] [m :< TM.TauIntro t]
+      return $ m :< TM.DataIntro attr consName [] [] [m :< TM.TauIntro t]
     TypeValue.Array t -> do
-      return $ m :< TM.DataIntro attr consName [] [m :< TM.TauIntro t]
+      return $ m :< TM.DataIntro attr consName [] [] [m :< TM.TauIntro t]
     TypeValue.Wrapper t -> do
-      return $ m :< TM.DataIntro attr consName [] [m :< TM.TauIntro t]
+      return $ m :< TM.DataIntro attr consName [] [] [m :< TM.TauIntro t]
     TypeValue.Noema t -> do
-      return $ m :< TM.DataIntro attr consName [] [m :< TM.TauIntro t]
+      return $ m :< TM.DataIntro attr consName [] [] [m :< TM.TauIntro t]
     TypeValue.BoxT t -> do
-      return $ m :< TM.DataIntro attr consName [] [m :< TM.TauIntro t]
+      return $ m :< TM.DataIntro attr consName [] [] [m :< TM.TauIntro t]
     _ ->
-      return $ m :< TM.DataIntro attr consName [] []
+      return $ m :< TM.DataIntro attr consName [] [] []
 
 constructListTerm :: Hint -> SGL.StrictGlobalLocator -> [TM.Type] -> TM.Term
 constructListTerm m listSgl types = do
@@ -246,13 +246,13 @@ constructListNilTerm :: Hint -> SGL.StrictGlobalLocator -> TM.Type -> TM.Term
 constructListNilTerm hint listSgl elemType = do
   let dataName = coreListType listSgl
   let attr = AttrDI.Attr {dataName, discriminant = D.zero, isConstLike = True}
-  hint :< TM.DataIntro attr (coreListNil listSgl) [elemType] []
+  hint :< TM.DataIntro attr (coreListNil listSgl) [elemType] [] []
 
 constructListConsTerm :: Hint -> SGL.StrictGlobalLocator -> TM.Type -> TM.Term -> TM.Term -> TM.Term
 constructListConsTerm hint listSgl elemType headTerm tailList = do
   let dataName = coreListType listSgl
   let attr = AttrDI.Attr {dataName, discriminant = D.increment D.zero, isConstLike = False}
-  hint :< TM.DataIntro attr (coreListCons listSgl) [elemType] [headTerm, tailList]
+  hint :< TM.DataIntro attr (coreListCons listSgl) [elemType] [] [headTerm, tailList]
 
 coreListType :: SGL.StrictGlobalLocator -> DD.DefiniteDescription
 coreListType sglList =
@@ -297,7 +297,7 @@ constructBoolTerm hint moduleID value = do
           then (trueDD, D.increment D.zero)
           else (falseDD, D.zero)
   let attr = AttrDI.Attr {dataName = boolTypeDD, discriminant, isConstLike = True}
-  hint :< TM.DataIntro attr consName [] []
+  hint :< TM.DataIntro attr consName [] [] []
 
 constructConstructorInfoListTerm ::
   Hint ->
@@ -326,7 +326,7 @@ constructConstructorTerm m moduleID (consName, isConstLike, params) = do
   let fieldTerms = map (constructFieldTerm m moduleID) params
   let paramListTerm = constructListTermFromTerms m listSgl fieldType fieldTerms
   let boolTerm = constructBoolTerm m moduleID isConstLike
-  return $ m :< TM.DataIntro attr consDD [] [consNameText, boolTerm, paramListTerm]
+  return $ m :< TM.DataIntro attr consDD [] [] [consNameText, boolTerm, paramListTerm]
 
 lookupDataInfo :: Handle -> Hint -> DD.DefiniteDescription -> App (DI.DataInfo (BinderF TM.Type))
 lookupDataInfo h m dataName = do
@@ -373,7 +373,7 @@ constructFieldTerm m moduleID (paramName, paramType, layout) = do
   let typeTerm = m :< TM.TauIntro paramType
   let attr = AttrDI.Attr {dataName = fieldTypeDD, discriminant = D.zero, isConstLike = False}
   let layoutTerm = constructFieldLayoutTerm m moduleID layout
-  m :< TM.DataIntro attr fieldDD [] [nameTerm, typeTerm, layoutTerm]
+  m :< TM.DataIntro attr fieldDD [] [] [nameTerm, typeTerm, layoutTerm]
 
 constructFieldLayoutTerm :: Hint -> MID.ModuleID -> CL.FieldStorage -> TM.Term
 constructFieldLayoutTerm m moduleID layout = do
@@ -384,14 +384,14 @@ constructFieldLayoutTerm m moduleID layout = do
       let directDD = DD.newByGlobalLocator constructorSgl BN.direct
       let attr = AttrDI.Attr {dataName = fieldLayoutTypeDD, discriminant = D.zero, isConstLike = False}
       let widthTerm = constructStorageWidthTerm m moduleID width
-      m :< TM.DataIntro attr directDD [] [widthTerm]
+      m :< TM.DataIntro attr directDD [] [] [widthTerm]
     CL.StoredFlat chunks -> do
       let mixedDD = DD.newByGlobalLocator constructorSgl BN.mixed
       let attr = AttrDI.Attr {dataName = fieldLayoutTypeDD, discriminant = D.increment D.zero, isConstLike = False}
       let listSgl = makeListSGL moduleID
       let intType = m :< TM.PrimType (PT.Int slotIntSize)
       let chunksTerm = constructListTermFromTerms m listSgl intType $ map (constructIntTerm m) chunks
-      m :< TM.DataIntro attr mixedDD [] [chunksTerm]
+      m :< TM.DataIntro attr mixedDD [] [] [chunksTerm]
 
 constructStorageWidthTerm :: Hint -> MID.ModuleID -> CL.FieldWidth -> TM.Term
 constructStorageWidthTerm m moduleID width = do
@@ -400,7 +400,7 @@ constructStorageWidthTerm m moduleID width = do
   let (widthName, discriminant) = storageWidthConsInfo width
   let widthDD = DD.newByGlobalLocator constructorSgl widthName
   let attr = AttrDI.Attr {dataName = storageWidthTypeDD, discriminant = discriminant, isConstLike = True}
-  m :< TM.DataIntro attr widthDD [] []
+  m :< TM.DataIntro attr widthDD [] [] []
 
 storageWidthConsInfo :: CL.FieldWidth -> (BN.BaseName, D.Discriminant)
 storageWidthConsInfo width =
@@ -492,10 +492,10 @@ evaluateMakeSwitch h m moduleID key fallback clausesTerm = do
 collectSwitchClauses :: Handle -> Hint -> MID.ModuleID -> TM.Term -> App [SwitchClause]
 collectSwitchClauses h m moduleID term = do
   case term of
-    _ :< TM.DataIntro _ consName _ []
+    _ :< TM.DataIntro _ consName _ _ []
       | consName == coreListNilByModule moduleID ->
           return []
-    _ :< TM.DataIntro _ consName _ [clauseTerm, rest]
+    _ :< TM.DataIntro _ consName _ _ [clauseTerm, rest]
       | consName == coreListConsByModule moduleID -> do
           clause <- destructSwitchClause h m moduleID clauseTerm
           restClauses <- collectSwitchClauses h m moduleID rest
@@ -506,7 +506,7 @@ collectSwitchClauses h m moduleID term = do
 destructSwitchClause :: Handle -> Hint -> MID.ModuleID -> TM.Term -> App SwitchClause
 destructSwitchClause h m moduleID term = do
   case term of
-    _ :< TM.DataIntro _ consName _ [key, body]
+    _ :< TM.DataIntro _ consName _ _ [key, body]
       | consName == corePairByModule moduleID -> do
           case asIntTerm key of
             Just keyValue ->

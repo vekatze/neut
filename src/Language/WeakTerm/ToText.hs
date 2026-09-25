@@ -65,7 +65,7 @@ toTextIndented kit term =
             (toTextIndented (atLevel kit 0) e <> renderImpArgs impArgs <> renderArgs kit spec expArgs)
     _ :< WT.PiElimExact e ->
       indentText (level kit) ("exact " <> toTextIndented (atLevel kit 0) e)
-    _ :< WT.DataIntro (AttrDI.Attr {..}) consName _ consArgs ->
+    _ :< WT.DataIntro (AttrDI.Attr {..}) consName _ _ consArgs ->
       indentText (level kit) $
         if isConstLike
           then DD.localLocator consName

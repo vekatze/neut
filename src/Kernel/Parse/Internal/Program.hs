@@ -463,10 +463,11 @@ parseDefineDataClause h = do
   (name, c1) <- baseName
   unless (isConsName (BN.reify name)) $ do
     lift $ raiseError loc "The name of a constructor must be capitalized"
+  (impArgs, cImpArgs) <- parseImplicitParams h
   (expArgs, endLoc, c2) <- parseConsArgs h
   forM_ expArgs $ \fields ->
     lift $ ensureArgumentLinearity S.empty $ map (\(_, (mx, _, x, _, _, _)) -> (mx, x)) $ SE.extract fields
-  return (RawConsInfo {loc, name, expArgs, endLoc}, c1 ++ c2)
+  return (RawConsInfo {loc, name, impArgs, expArgs, endLoc}, c1 ++ cImpArgs ++ c2)
 
 parseConsArgs :: Handle -> Parser (Maybe (SE.Series (FieldHint, RawBinder RT.RawType)), Loc, C)
 parseConsArgs h = do

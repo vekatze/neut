@@ -327,11 +327,12 @@ substTerm h env term =
       let change = foldMap (changeOf . snd) b' <> changeOf e' <> changes impArgs' <> changes expArgs' <> foldMap (foldMap (changeOf . snd)) defaultArgs'
       let node = TM.PiElim traceID (fmap (uncurry valueOr) b') (valueOr e e') (values impArgs impArgs') (values expArgs expArgs') (map (fmap (uncurry valueOr)) defaultArgs')
       return $ buildTraced h m change node
-    m :< TM.DataIntro attr consName dataArgs consArgs -> do
+    m :< TM.DataIntro attr consName dataArgs consImpArgs consArgs -> do
       dataArgs' <- mapM (substTy h env) dataArgs
+      consImpArgs' <- mapM (substTy h env) consImpArgs
       consArgs' <- mapM (substTerm h env) consArgs
-      let change = changes dataArgs' <> changes consArgs'
-      return $ build change $ m :< TM.DataIntro attr consName (values dataArgs dataArgs') (values consArgs consArgs')
+      let change = changes dataArgs' <> changes consImpArgs' <> changes consArgs'
+      return $ build change $ m :< TM.DataIntro attr consName (values dataArgs dataArgs') (values consImpArgs consImpArgs') (values consArgs consArgs')
     m :< TM.DataElim traceID isNoetic oets decisionTree -> do
       let (os, es, ts) = unzip3 oets
       es' <- mapM (substTerm h env) es

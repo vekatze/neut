@@ -54,9 +54,9 @@ compressWithTrace traceMode term = do
       expArgs' <- mapM (compressWithTrace traceMode) expArgs
       defaultArgs' <- mapM (traverse $ compressWithTrace traceMode) defaultArgs
       return $ () :< TM.PiElim traceID' b e' impArgs expArgs' defaultArgs'
-    _ :< TM.DataIntro attr consName dataArgs consArgs -> do
+    _ :< TM.DataIntro attr consName dataArgs consImpArgs consArgs -> do
       consArgs' <- mapM (compressWithTrace traceMode) consArgs
-      return $ () :< TM.DataIntro attr consName dataArgs consArgs'
+      return $ () :< TM.DataIntro attr consName dataArgs consImpArgs consArgs'
     _ :< TM.DataElim traceID isNoetic oets tree -> do
       traceID' <- prepareTraceID traceMode traceID
       let (os, es, ts) = unzip3 oets
@@ -214,8 +214,8 @@ compressStmtKindTerm stmtKind =
       MacroInline
     Main t ->
       Main (compressType t)
-    DataIntro name dataArgs consArgs disc ->
-      DataIntro name (map compressBinder dataArgs) (map compressBinder consArgs) disc
+    DataIntro name dataArgs consImpArgs consArgs disc ->
+      DataIntro name (map compressBinder dataArgs) (map compressBinder consImpArgs) (map compressBinder consArgs) disc
 
 compressStmtKindType :: StmtKindType TM.Type -> StmtKindType (Cofree TM.TypeF ())
 compressStmtKindType stmtKind =
@@ -231,4 +231,7 @@ compressConsInfo ::
   DI.ConsInfo (BinderF TM.Type) ->
   DI.ConsInfo (BinderF (Cofree TM.TypeF ()))
 compressConsInfo consInfo =
-  consInfo {DI.consArgs = map compressBinder (DI.consArgs consInfo)}
+  consInfo
+    { DI.consImpArgs = map compressBinder (DI.consImpArgs consInfo),
+      DI.consArgs = map compressBinder (DI.consArgs consInfo)
+    }

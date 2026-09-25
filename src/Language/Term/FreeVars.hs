@@ -33,8 +33,8 @@ freeVars term =
       let ys2 = S.unions $ map freeVars expArgs
       let ys3 = S.unions $ map freeVars (catMaybes defaultArgs)
       S.unions [xs, ys0, ys1, ys2, ys3]
-    _ :< TM.DataIntro _ _ dataArgs consArgs -> do
-      let xs1 = S.unions $ map freeVarsType dataArgs
+    _ :< TM.DataIntro _ _ dataArgs consImpArgs consArgs -> do
+      let xs1 = S.unions $ map freeVarsType (dataArgs ++ consImpArgs)
       let xs2 = S.unions $ map freeVars consArgs
       S.union xs1 xs2
     m :< TM.DataElim _ _ oets decisionTree -> do

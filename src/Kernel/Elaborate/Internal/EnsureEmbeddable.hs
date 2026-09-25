@@ -36,8 +36,8 @@ ensureEmbeddable h headLabel term@(m :< node) =
 ensureStaticTerm :: ElaborateHandle.Handle -> T.Text -> Hint -> TM.Term -> App ()
 ensureStaticTerm h headLabel m term@(_ :< node) =
   case node of
-    TM.DataIntro _ _ dataArgs _ -> do
-      mapM_ (ensureEvaluatedType h m) dataArgs
+    TM.DataIntro _ _ dataArgs consImpArgs _ -> do
+      mapM_ (ensureEvaluatedType h m) (dataArgs ++ consImpArgs)
       mapM_ (ensureStaticTerm h headLabel m) $ termChildren node
     TM.BoxIntroLift _ body ->
       ensureStaticTerm h headLabel m body

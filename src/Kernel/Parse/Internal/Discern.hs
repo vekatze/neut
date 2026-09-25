@@ -322,14 +322,13 @@ discernStmtKindTerm h stmtKind m =
     SK.Main _ -> do
       unitType <- getUnitType h m
       return $ SK.Main unitType
-    SK.DataIntro dataName dataArgs expConsArgs discriminant -> do
+    SK.DataIntro dataName dataArgs consImpArgs expConsArgs discriminant -> do
       (dataArgs', h') <- discernTypeBinder' h dataArgs
-      (expConsArgs', h'') <- discernBinder' h' expConsArgs
-      forM_ expConsArgs' $ \(_, _, x, _) -> do
-        liftIO $ Unused.deleteVariable (H.unusedHandle h'') x
-      forM_ dataArgs' $ \(_, _, x, _) -> do
-        liftIO $ Unused.deleteVariable (H.unusedHandle h'') x
-      return $ SK.DataIntro dataName dataArgs' expConsArgs' discriminant
+      (consImpArgs', h'') <- discernTypeBinder' h' consImpArgs
+      (expConsArgs', h''') <- discernBinder' h'' expConsArgs
+      forM_ (dataArgs' ++ consImpArgs' ++ expConsArgs') $ \(_, _, x, _) -> do
+        liftIO $ Unused.deleteVariable (H.unusedHandle h''') x
+      return $ SK.DataIntro dataName dataArgs' consImpArgs' expConsArgs' discriminant
 
 discernStmtKindType :: H.Handle -> RawStmtKindType -> App (SK.StmtKindType WT.WeakType)
 discernStmtKindType h stmtKind =
@@ -341,10 +340,11 @@ discernStmtKindType h stmtKind =
     SK.Data dataName dataArgs consInfoList isNominal -> do
       (dataArgs', h') <- discernTypeBinder' h dataArgs
       let discernConsInfo (savedHint, consInfo) = do
-            (consArgs', _) <- discernBinder' h' (DI.consArgs consInfo)
-            return (savedHint, consInfo {DI.consArgs = consArgs'})
+            (consImpArgs', h'') <- discernTypeBinder' h' (DI.consImpArgs consInfo)
+            (consArgs', _) <- discernBinder' h'' (DI.consArgs consInfo)
+            return (savedHint, consInfo {DI.consImpArgs = consImpArgs', DI.consArgs = consArgs'})
       consInfoList' <- mapM discernConsInfo consInfoList
-      forM_ (concatMap (DI.consArgs . snd) consInfoList') $ \(_, _, x, _) -> do
+      forM_ (concatMap (\(_, consInfo) -> DI.consImpArgs consInfo ++ DI.consArgs consInfo) consInfoList') $ \(_, _, x, _) -> do
         liftIO $ Unused.deleteVariable (H.unusedHandle h') x
       forM_ dataArgs' $ \(_, _, x, _) -> do
         liftIO $ Unused.deleteVariable (H.unusedHandle h') x
@@ -484,7 +484,12 @@ discern h term =
             else do
               impArgs' <- mapM (discernType h) $ SE.extract impArgs
               func <- interpretGlobalName h m dd $ GN.disableConstLikeFlag gn
-              return $ m :< WT.PiElim (CCS.AsMarked False []) func (ImpArgs.FullySpecified impArgs') [] (DefaultArgs.ByKey [])
+              specifiedCons <- specifyConstructorImpArgs h func impArgs'
+              case specifiedCons of
+                Just cons ->
+                  return cons
+                Nothing ->
+                  return $ m :< WT.PiElim (CCS.AsMarked False []) func (ImpArgs.FullySpecified impArgs') [] (DefaultArgs.ByKey [])
     m :< RT.PiElimByKey name _ mImpArgs isDestCall _ kvs restArg -> do
       case restArg of
         Nothing ->
@@ -551,10 +556,11 @@ discern h term =
     m :< RT.PiElimExact _ e -> do
       e' <- discern h e
       return $ m :< WT.PiElimExact e'
-    m :< RT.DataIntro attr consName dataArgs consArgs -> do
+    m :< RT.DataIntro attr consName dataArgs consImpArgs consArgs -> do
       dataArgs' <- mapM (discernType h) dataArgs
+      consImpArgs' <- mapM (discernType h) consImpArgs
       consArgs' <- mapM (discern h) consArgs
-      return $ m :< WT.DataIntro attr consName dataArgs' consArgs'
+      return $ m :< WT.DataIntro attr consName dataArgs' consImpArgs' consArgs'
     m :< RT.DataElim _ isNoetic es patternMatrix -> do
       let es' = SE.extract es
       let ms = map (\(me :< _) -> me) es'
@@ -1304,12 +1310,12 @@ discernPiElim ::
   App WT.WeakTerm
 discernPiElim h m isDestCall e mImpArgs expArgs mDefaultArgs = do
   e' <- discern h e
-  impArgs' <- case mImpArgs of
+  (e'', impArgs') <- case mImpArgs of
     Nothing ->
-      return ImpArgs.Unspecified
+      return (e', ImpArgs.Unspecified)
     Just impArgs -> do
       impArgs' <- mapM (discernType h) $ SE.extract impArgs
-      return $ ImpArgs.FullySpecified impArgs'
+      passImpArgsToConstructor h e' impArgs'
   markedArgs <- forM (SE.extract expArgs) $ \(arg, isSourceArg) -> do
     arg' <- discern h arg
     return (arg', isSourceArg)
@@ -1322,7 +1328,29 @@ discernPiElim h m isDestCall e mImpArgs expArgs mDefaultArgs = do
       ensureFieldLinearity m ks S.empty S.empty
       vs' <- mapM (discern h) vs
       return $ DefaultArgs.ByKey (zip ks vs')
-  return $ m :< WT.PiElim (CCS.AsMarked isDestCall sourceArgs) e' impArgs' expArgs' defaultArgs'
+  return $ m :< WT.PiElim (CCS.AsMarked isDestCall sourceArgs) e'' impArgs' expArgs' defaultArgs'
+
+passImpArgsToConstructor :: H.Handle -> WT.WeakTerm -> [WT.WeakType] -> App (WT.WeakTerm, ImpArgs.ImpArgs WT.WeakType)
+passImpArgsToConstructor h func impArgs = do
+  specifiedCons <- specifyConstructorImpArgs h func impArgs
+  case specifiedCons of
+    Just cons ->
+      return (cons, ImpArgs.Unspecified)
+    Nothing ->
+      return (func, ImpArgs.FullySpecified impArgs)
+
+specifyConstructorImpArgs :: H.Handle -> WT.WeakTerm -> [WT.WeakType] -> App (Maybe WT.WeakTerm)
+specifyConstructorImpArgs h func impArgs =
+  case func of
+    m :< WT.PiElim spec cons@(mCons :< WT.VarGlobal _ dd) ImpArgs.Unspecified [] defaultArgs -> do
+      gn <- resolveDefiniteDescription h mCons dd
+      case gn of
+        GN.DataIntro {} ->
+          return $ Just $ m :< WT.PiElim spec cons (ImpArgs.FullySpecified impArgs) [] defaultArgs
+        _ ->
+          return Nothing
+    _ ->
+      return Nothing
 
 discernPiElimByKeyPlain ::
   H.Handle ->
@@ -1334,18 +1362,18 @@ discernPiElimByKeyPlain ::
   App WT.WeakTerm
 discernPiElimByKeyPlain h m isDestCall name mImpArgs kvs = do
   (dd, (_, gn)) <- resolveName h m name
-  _ :< func <- interpretGlobalName h m dd (GN.disableConstLikeFlag gn)
+  func <- interpretGlobalName h m dd (GN.disableConstLikeFlag gn)
   let (ks, vs) = unzip $ map (\kv -> (RT.kvKey kv, RT.kvValue kv)) $ SE.extract kvs
   ensureFieldLinearity m ks S.empty S.empty
   (impKeys, expKeys, defaultKeys) <- KeyArg.lookup (H.keyArgHandle h) m dd
   when (any (`elem` impKeys) ks) $ do
     raiseError m "Implicit key arguments must be specified via explicit type arguments"
-  impArgs' <- case mImpArgs of
+  (func', impArgs') <- case mImpArgs of
     Nothing ->
-      return ImpArgs.Unspecified
+      return (func, ImpArgs.Unspecified)
     Just impArgs -> do
       impArgs' <- mapM (discernType h) $ SE.extract impArgs
-      return $ ImpArgs.FullySpecified impArgs'
+      passImpArgsToConstructor h func impArgs'
   let keyMap = Map.fromList $ zip ks (repeat ())
   checkRedundancy m (expKeys ++ defaultKeys) keyMap
   forM_ (SE.extract kvs) $ \kv -> do
@@ -1359,7 +1387,7 @@ discernPiElimByKeyPlain h m isDestCall name mImpArgs kvs = do
   markedExpArgs <- resolveExpKeys h m expKeys expKvs
   let (expArgs, sourceArgs) = unzip markedExpArgs
   let defaultArgs = selectDefaultKeyArgs defaultKeys (Map.map fst expKvs)
-  return $ m :< WT.PiElim (CCS.AsMarked isDestCall sourceArgs) (m :< func) impArgs' expArgs defaultArgs
+  return $ m :< WT.PiElim (CCS.AsMarked isDestCall sourceArgs) func' impArgs' expArgs defaultArgs
 
 discernRecordUpdate ::
   H.Handle ->
@@ -1737,7 +1765,7 @@ discernPattern h layer stage (m, pat) = do
             raiseError m "Locator patterns cannot be marked with `!`"
           (dd, gn) <- resolveName h m name
           case gn of
-            (_, GN.DataIntro dataArgNum consArgNum disc isConstLike _) -> do
+            (_, GN.DataIntro dataArgNum _ consArgNum disc isConstLike _) -> do
               let consInfo =
                     PAT.ConsInfo
                       { consDD = dd,

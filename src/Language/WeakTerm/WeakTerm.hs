@@ -64,7 +64,7 @@ data WeakTermF a
   | PiIntro (AttrL.Attr WeakType) [BinderF WeakType] [BinderF WeakType] [(BinderF WeakType, WeakTerm)] a
   | PiElim (CCS.CallConvSpec WeakType) a (ImpArgs.ImpArgs WeakType) [a] (DefaultArgs.DefaultArgs a)
   | PiElimExact a
-  | DataIntro AttrDI.Attr DD.DefiniteDescription [WeakType] [a]
+  | DataIntro AttrDI.Attr DD.DefiniteDescription [WeakType] [WeakType] [a]
   | DataElim N.IsNoetic [(Ident, a, WeakType)] (DT.DecisionTree WeakType a)
   | BoxIntro [(BinderF WeakType, a)] a
   | BoxIntroLift (Maybe WeakType) a

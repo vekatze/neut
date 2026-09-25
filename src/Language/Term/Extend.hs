@@ -39,9 +39,9 @@ extend remapping term =
       let expArgs' = map (extend remapping) expArgs
       let defaultArgs' = map (fmap (extend remapping)) defaultArgs
       _m :< TM.PiElim traceID' b e' impArgs expArgs' defaultArgs'
-    () :< TM.DataIntro attr consName dataArgs consArgs -> do
+    () :< TM.DataIntro attr consName dataArgs consImpArgs consArgs -> do
       let consArgs' = map (extend remapping) consArgs
-      _m :< TM.DataIntro attr consName dataArgs consArgs'
+      _m :< TM.DataIntro attr consName dataArgs consImpArgs consArgs'
     () :< TM.DataElim traceID isNoetic oets tree -> do
       let traceID' = Trace.remapOrDrop remapping traceID
       let (os, es, ts) = unzip3 oets
@@ -186,8 +186,8 @@ extendStmtKindTerm stmtKind =
       MacroInline
     Main t ->
       Main (extendType t)
-    DataIntro name dataArgs consArgs disc ->
-      DataIntro name (map extendBinder dataArgs) (map extendBinder consArgs) disc
+    DataIntro name dataArgs consImpArgs consArgs disc ->
+      DataIntro name (map extendBinder dataArgs) (map extendBinder consImpArgs) (map extendBinder consArgs) disc
 
 extendStmtKindType :: StmtKindType (Cofree TM.TypeF ()) -> StmtKindType TM.Type
 extendStmtKindType stmtKind =
@@ -203,4 +203,7 @@ extendConsInfo ::
   DI.ConsInfo (BinderF (Cofree TM.TypeF ())) ->
   DI.ConsInfo (BinderF TM.Type)
 extendConsInfo consInfo =
-  consInfo {DI.consArgs = map extendBinder (DI.consArgs consInfo)}
+  consInfo
+    { DI.consImpArgs = map extendBinder (DI.consImpArgs consInfo),
+      DI.consArgs = map extendBinder (DI.consArgs consInfo)
+    }

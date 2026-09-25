@@ -35,7 +35,7 @@ freeVars term =
       S.unions [xs, ys2, ys3]
     _ :< WT.PiElimExact e -> do
       freeVars e
-    _ :< WT.DataIntro _ _ _ consArgs -> do
+    _ :< WT.DataIntro _ _ _ _ consArgs -> do
       S.unions $ map freeVars consArgs
     m :< WT.DataElim _ oets decisionTree -> do
       let (os, es, ts) = unzip3 oets
@@ -182,9 +182,9 @@ freeVarsAll term =
       S.unions [xs, ys0, ys1, ys2, ys3]
     _ :< WT.PiElimExact e -> do
       freeVarsAll e
-    _ :< WT.DataIntro _ _ dataArgs consArgs -> do
+    _ :< WT.DataIntro _ _ dataArgs consImpArgs consArgs -> do
       let xs1 = S.unions $ map freeVarsAll consArgs
-      let xs2 = S.unions $ map freeVarsType dataArgs
+      let xs2 = S.unions $ map freeVarsType (dataArgs ++ consImpArgs)
       S.union xs1 xs2
     m :< WT.DataElim _ oets decisionTree -> do
       let (os, es, ts) = unzip3 oets
