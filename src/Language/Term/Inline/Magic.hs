@@ -22,6 +22,7 @@ import Data.IORef (readIORef)
 import Data.IntMap qualified as IntMap
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NE
+import Data.Set qualified as S
 import Data.Text qualified as T
 import Kernel.Common.Handle.Global.Data qualified as Data
 import Kernel.Common.Handle.Global.ModulePath qualified as ModulePath
@@ -52,6 +53,7 @@ import Language.Common.Rune qualified as Rune
 import Language.Common.SourceLocator qualified as SL
 import Language.Common.StrictGlobalLocator qualified as SGL
 import Language.Term.Eq qualified as TermEq
+import Language.Term.FreeVars qualified as TM
 import Language.Term.Inline.Handle
 import Language.Term.PrimValue qualified as PV
 import Language.Term.Subst qualified as Subst
@@ -102,7 +104,7 @@ evaluateInspectType h m moduleID typeExpr = do
           reportMacroError h m $
             "inspect-type: `" <> ModulePath.renderDD (modulePathMap h) dataName <> "` is unary, but its constructor metadata is not."
         (Nothing, _) -> do
-          let consInfoList' = map consToTypeValue consInfoList
+          let consInfoList' = zipWith consToTypeValue consInfoListRaw consInfoList
           let dataNameText = DD.localLocator dataName
           returnTypeValueIntValue m moduleID $ TypeValue.Algebraic dataNameText dataArgs consInfoList'
     _ :< TM.BoxNoema t ->
@@ -165,10 +167,17 @@ makeArrayDD moduleID = do
 
 consToTypeValue ::
   DI.ConsInfo (BinderF TM.Type) ->
+  DI.ConsInfo (BinderF TM.Type) ->
   TypeValue.Constructor
-consToTypeValue consInfo = do
-  let params = zipWith (\(_, _, x, t) layout -> (Ident.toText x, t, layout)) (DI.consArgs consInfo) (DI.consArgLayouts consInfo)
-  (DD.localLocator (DI.consName consInfo), DI.isConstLike consInfo, params)
+consToTypeValue declaredConsInfo consInfo = do
+  let existentialParams = S.fromList $ map (\(_, _, x, _) -> x) $ DI.consImpArgs declaredConsInfo
+  let fieldTypeOf (_, _, _, declaredType) (_, _, _, t) =
+        if S.disjoint (TM.freeVarsType declaredType) existentialParams
+          then TypeValue.Known t
+          else TypeValue.Unknown
+  let fieldTypes = zipWith fieldTypeOf (DI.consArgs declaredConsInfo) (DI.consArgs consInfo)
+  let params = zipWith3 (\(_, _, x, _) fieldType layout -> (Ident.toText x, fieldType, layout)) (DI.consArgs consInfo) fieldTypes (DI.consArgLayouts consInfo)
+  (DD.localLocator (DI.consName consInfo), DI.isConstLike consInfo, length existentialParams, params)
 
 isConstTypeTag :: TypeTag.TypeTag -> Bool
 isConstTypeTag tt =
@@ -318,7 +327,7 @@ constructConstructorTerm ::
   MID.ModuleID ->
   TypeValue.Constructor ->
   App TM.Term
-constructConstructorTerm m moduleID (consName, isConstLike, params) = do
+constructConstructorTerm m moduleID (consName, isConstLike, existentialParamCount, params) = do
   let constructorSgl = makeConstructorSGL moduleID
   let listSgl = makeListSGL moduleID
   let constructorTypeDD = DD.newByGlobalLocator constructorSgl BN.constructorType
@@ -329,7 +338,8 @@ constructConstructorTerm m moduleID (consName, isConstLike, params) = do
   let fieldTerms = map (constructFieldTerm m moduleID) params
   let paramListTerm = constructListTermFromTerms m listSgl fieldType fieldTerms
   let boolTerm = constructBoolTerm m moduleID isConstLike
-  return $ m :< TM.DataIntro attr consDD [] [] [consNameText, boolTerm, paramListTerm]
+  let existentialParamCountTerm = constructIntTerm m existentialParamCount
+  return $ m :< TM.DataIntro attr consDD [] [] [consNameText, boolTerm, existentialParamCountTerm, paramListTerm]
 
 lookupDataInfo :: Handle -> Hint -> DD.DefiniteDescription -> App (DI.DataInfo (BinderF TM.Type))
 lookupDataInfo h m dataName = do
@@ -373,10 +383,24 @@ constructFieldTerm m moduleID (paramName, paramType, layout) = do
   let fieldTypeDD = DD.newByGlobalLocator constructorSgl BN.fieldType
   let fieldDD = DD.newByGlobalLocator constructorSgl BN.field
   let nameTerm = m :< TM.Prim (PV.Text paramName)
-  let typeTerm = m :< TM.TauIntro paramType
+  let typeTerm = constructFieldTypeTerm m moduleID paramType
   let attr = AttrDI.Attr {dataName = fieldTypeDD, discriminant = D.zero, isConstLike = False}
   let layoutTerm = constructFieldLayoutTerm m moduleID layout
   m :< TM.DataIntro attr fieldDD [] [] [nameTerm, typeTerm, layoutTerm]
+
+constructFieldTypeTerm :: Hint -> MID.ModuleID -> TypeValue.FieldType -> TM.Term
+constructFieldTypeTerm m moduleID fieldType = do
+  let constructorSgl = makeConstructorSGL moduleID
+  let fieldTypeTypeDD = DD.newByGlobalLocator constructorSgl BN.fieldTypeType
+  case fieldType of
+    TypeValue.Known t -> do
+      let knownDD = DD.newByGlobalLocator constructorSgl BN.known
+      let attr = AttrDI.Attr {dataName = fieldTypeTypeDD, discriminant = D.zero, isConstLike = False}
+      m :< TM.DataIntro attr knownDD [] [] [m :< TM.TauIntro t]
+    TypeValue.Unknown -> do
+      let unknownDD = DD.newByGlobalLocator constructorSgl BN.unknown
+      let attr = AttrDI.Attr {dataName = fieldTypeTypeDD, discriminant = D.increment D.zero, isConstLike = True}
+      m :< TM.DataIntro attr unknownDD [] [] []
 
 constructFieldLayoutTerm :: Hint -> MID.ModuleID -> CL.FieldStorage -> TM.Term
 constructFieldLayoutTerm m moduleID layout = do

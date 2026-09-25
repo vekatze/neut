@@ -1,5 +1,6 @@
 module Kernel.Common.TypeValue
   ( TypeValue (..),
+    FieldType (..),
     Field,
     Constructor,
     toTypeTag,
@@ -24,11 +25,18 @@ type ParamName =
 type DataName =
   T.Text
 
+data FieldType
+  = Known TM.Type
+  | Unknown
+
 type Field =
-  (ParamName, TM.Type, CL.FieldStorage)
+  (ParamName, FieldType, CL.FieldStorage)
+
+type ExistentialParamCount =
+  Int
 
 type Constructor =
-  (ConstructorName, IsConstLike, [Field])
+  (ConstructorName, IsConstLike, ExistentialParamCount, [Field])
 
 data TypeValue
   = Opaque

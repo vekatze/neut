@@ -1,4 +1,4 @@
-module Language.Term.FreeVars (freeVars) where
+module Language.Term.FreeVars (freeVars, freeVarsType) where
 
 import Control.Comonad.Cofree
 import Data.Maybe
