@@ -1121,8 +1121,8 @@ decodePattern pat = do
   case pat of
     RP.Var k name ->
       prefixVarKind k $ nameToDoc name
-    RP.Cons name c args -> do
-      let name' = nameToDoc name
+    RP.Cons name c typeParams args -> do
+      let name' = D.join [nameToDoc name, maybe D.Nil decodePatternTypeParams typeParams]
       case args of
         RP.Paren patList -> do
           let patList' = SE.decode $ fmap (decodeMarkedPattern . snd) patList
@@ -1130,8 +1130,17 @@ decodePattern pat = do
         RP.Of kvs -> do
           let kvs' = SE.decode $ fmap decodePatternKeyValue kvs
           D.join [attachComment (map toLineComment c) name', kvs']
+        RP.Omitted ->
+          attachComment c name'
     RP.RuneIntro r ->
       D.text $ "`" <> T.replace "`" "\\`" (RU.asText r) <> "`"
+
+decodePatternTypeParams :: RP.TypeParams -> D.Doc
+decodePatternTypeParams typeParams =
+  SE.decode $ flip fmap typeParams $ \(_, x) ->
+    if isHole x
+      then D.text "_"
+      else D.text x
 
 decodeMarkedPattern :: RP.MarkedPattern -> D.Doc
 decodeMarkedPattern (pat, isSourceArg) =

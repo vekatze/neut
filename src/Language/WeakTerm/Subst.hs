@@ -153,6 +153,12 @@ subst h sub term =
       e1' <- subst h sub e1
       (mxt', _, e2') <- subst'' h sub mxt [] e2
       return $ m :< WT.Let mxt' e1' e2'
+    m :< WT.LetType (mx, x) t e -> do
+      t' <- substType h sub t
+      x' <- liftIO $ Gensym.newIdentFromIdent (gensymHandle h) x
+      let sub' = IntMap.insert (Ident.toInt x) (Var x') sub
+      e' <- subst h sub' e
+      return $ m :< WT.LetType (mx, x') t' e'
     m :< WT.Invoke tropeNames body -> do
       body' <- subst h sub body
       return $ m :< WT.Invoke tropeNames body'
@@ -377,11 +383,13 @@ substCase h sub decisionCase = do
       let (dataTerms, dataTypes) = unzip dataArgs
       dataTerms' <- mapM (substType h sub) dataTerms
       dataTypes' <- mapM (substType h sub) dataTypes
-      (consArgs', cont') <- subst''' h sub consArgs cont
+      (binders', cont') <- subst''' h sub (consImpArgs ++ consArgs) cont
+      let (consImpArgs', consArgs') = splitAt (length consImpArgs) binders'
       return $
         DT.ConsCase
           record
             { DT.dataArgs = zip dataTerms' dataTypes',
+              DT.consImpArgs = consImpArgs',
               DT.consArgs = consArgs',
               DT.cont = cont'
             }

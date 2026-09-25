@@ -5,6 +5,7 @@ module Kernel.Parse.Internal.Discern.Handle
     extendType',
     extendWithoutInsert,
     extendByNominalEnv,
+    extendTypeByNominalEnv,
   )
 where
 
@@ -100,3 +101,12 @@ extendByNominalEnv h k newNominalEnv = do
     (_, (m, x, l, s)) : rest -> do
       h' <- extend h m x l s k
       extendByNominalEnv h' k rest
+
+extendTypeByNominalEnv :: Handle -> VarDefKind -> NominalEnv -> IO Handle
+extendTypeByNominalEnv h k newNominalEnv = do
+  case newNominalEnv of
+    [] ->
+      return h
+    (_, (m, x, _, _)) : rest -> do
+      h' <- extendType' h m x k
+      extendTypeByNominalEnv h' k rest

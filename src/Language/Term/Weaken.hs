@@ -291,11 +291,13 @@ weakenCase decisionCase = do
       DT.LiteralCase mPat i cont'
     DT.ConsCase record@(DT.ConsCaseRecord {..}) -> do
       let dataArgs' = map (bimap weakenType weakenType) dataArgs
+      let consImpArgs' = map weakenTypeBinder consImpArgs
       let consArgs' = map weakenTypeBinder consArgs
       let cont' = weakenDecisionTree cont
       DT.ConsCase $
         record
           { DT.dataArgs = dataArgs',
+            DT.consImpArgs = consImpArgs',
             DT.consArgs = consArgs',
             DT.cont = cont'
           }

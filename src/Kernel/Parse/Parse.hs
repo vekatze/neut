@@ -374,8 +374,8 @@ registerAsEnumIfNecessary h dataName dataArgNum consInfoList =
 isUnary :: [(DD.DefiniteDescription, (Hint, GN.GlobalName))] -> Bool
 isUnary consInfoList =
   case consInfoList of
-    [(_, (_, GN.DataIntro _ consImpArgNum consArgNum _ _ _))] ->
-      consImpArgNum == AN.fromInt 0 && consArgNum == AN.fromInt 1
+    [(_, (_, GN.DataIntro _ consImpArgNames consArgNum _ _ _))] ->
+      null consImpArgNames && consArgNum == AN.fromInt 1
     _ ->
       False
 

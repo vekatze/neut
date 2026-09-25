@@ -3,6 +3,7 @@ module Kernel.Parse.Internal.Discern.Name
     resolveTypeName,
     ResolvedCons (..),
     resolveConstructor,
+    resolveConstructorMaybe,
     resolveLocator,
     interpretGlobalName,
     interpretMetaConstant,
@@ -385,7 +386,7 @@ resolveDefiniteDescription h m dd = do
 data ResolvedCons = ResolvedCons
   { consDD :: DD.DefiniteDescription,
     dataArgNum :: AN.ArgNum,
-    consImpArgNum :: AN.ArgNum,
+    consImpArgNames :: [T.Text],
     consArgNum :: AN.ArgNum,
     disc :: D.Discriminant,
     isConstLike :: IsConstLike,
@@ -404,7 +405,7 @@ resolveConstructor h m s = do
 resolveConstructorMaybe :: DD.DefiniteDescription -> GN.GlobalName -> Maybe ResolvedCons
 resolveConstructorMaybe dd gn = do
   case gn of
-    GN.DataIntro dataArgNum consImpArgNum consArgNum disc isConstLike consSourceFlags ->
+    GN.DataIntro dataArgNum consImpArgNames consArgNum disc isConstLike consSourceFlags ->
       Just $ ResolvedCons {consDD = dd, ..}
     _ ->
       Nothing
@@ -430,8 +431,8 @@ interpretGlobalName h m dd gn = do
       raiseError m $ "`" <> dd' <> "` is a namespace and cannot appear in term position"
     GN.Data {} ->
       raiseError m $ "`" <> dd' <> "` is a type name and cannot appear in term position"
-    GN.DataIntro dataArgNum consImpArgNum consArgNum _ isConstLike _ -> do
-      let argNum = AN.add (AN.add dataArgNum consImpArgNum) consArgNum
+    GN.DataIntro dataArgNum consImpArgNames consArgNum _ isConstLike _ -> do
+      let argNum = AN.add (AN.add dataArgNum (AN.fromInt (length consImpArgNames))) consArgNum
       let isDestPassing = False
       let attr = AttrVG.Attr {..}
       return $ m :< WT.PiElim (CCS.AsMarked False []) (m :< WT.VarGlobal attr dd) ImpArgs.Unspecified [] (DefaultArgs.ByKey [])

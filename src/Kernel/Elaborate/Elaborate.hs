@@ -965,6 +965,8 @@ elaborate' h term = do
       t' <- reduceWeakType h t >>= elaborateType h
       e2' <- elaborate' h e2
       return $ m :< TM.Let (mx, k, x, t') e1' e2'
+    m :< WT.LetType {} ->
+      raiseCritical m "Scene.Elaborate.elaborate': found a type binding that inference should have removed"
     m :< WT.Invoke tropeNames body -> do
       body' <- elaborate' h body
       return $ m :< TM.Invoke tropeNames body'
@@ -1437,6 +1439,7 @@ elaborateClause h mOrig cursor cursorType ctx decisionCase = do
       let (dataTerms, dataTypes) = unzip dataArgs
       dataTerms' <- mapM (elaborateType h) dataTerms
       dataTypes' <- mapM (elaborateType h) dataTypes
+      consImpArgs' <- mapM (elaborateWeakBinder h) consImpArgs
       consArgs' <- mapM (elaborateWeakBinder h) consArgs
       let consArgIdents = map (\(_, _, x, _) -> x) consArgs
       let consContext = (cursor, (Just consDD, isConstLike, consArgIdents))
@@ -1445,6 +1448,7 @@ elaborateClause h mOrig cursor cursorType ctx decisionCase = do
         DT.ConsCase
           record
             { DT.dataArgs = zip dataTerms' dataTypes',
+              DT.consImpArgs = consImpArgs',
               DT.consArgs = consArgs',
               DT.cont = cont'
             }

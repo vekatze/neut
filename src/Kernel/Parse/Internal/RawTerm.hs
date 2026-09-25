@@ -1194,16 +1194,43 @@ rawTermPatternConsOrVar h m k headSymbol c1 = do
       return ((m, RP.Var k (Bare headSymbol)), c1)
     else do
       name <- interpretName m headSymbol
+      (typeParams, cTypeParams) <- rawTermPatternTypeParams h
+      let c1' = c1 ++ cTypeParams
       choice
         [ do
             (patArgs, c) <- seriesParen $ rawTermMarkedPattern h
-            return ((m, RP.Cons name c1 (RP.Paren patArgs)), c),
+            return ((m, RP.Cons name c1' typeParams (RP.Paren patArgs)), c),
           do
             (kvs, c) <- keyValueArgs $ rawTermPatternKeyValuePair h
-            return ((m, RP.Cons name c1 (RP.Of kvs)), c),
+            return ((m, RP.Cons name c1' typeParams (RP.Of kvs)), c),
           do
-            return ((m, RP.Var k name), c1)
+            case typeParams of
+              Just _ ->
+                return ((m, RP.Cons name c1 typeParams RP.Omitted), cTypeParams)
+              Nothing ->
+                return ((m, RP.Var k name), c1)
         ]
+
+rawTermPatternTypeParams :: Handle -> Parser (Maybe RP.TypeParams, C)
+rawTermPatternTypeParams h =
+  choice
+    [ do
+        (typeParams, c) <- seriesAngle $ rawTermPatternTypeParam h
+        return (Just typeParams, c),
+      return (Nothing, [])
+    ]
+
+rawTermPatternTypeParam :: Handle -> Parser ((Hint, RawIdent), C)
+rawTermPatternTypeParam h = do
+  m <- getCurrentHint
+  (x, c) <- symbol
+  ensureNotIdentityName m x
+  ensureNotNumericName m x
+  if x /= "_"
+    then return ((m, x), c)
+    else do
+      unusedVar <- liftIO $ newTextForHole (gensymHandle h)
+      return ((m, unusedVar), c)
 
 rawTermPatternKeyValuePair :: Handle -> Parser ((Key, (Hint, C, RP.MarkedPattern)), C)
 rawTermPatternKeyValuePair h = do

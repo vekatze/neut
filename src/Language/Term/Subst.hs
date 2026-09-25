@@ -498,15 +498,18 @@ substCase h env decisionCase = do
       let (dataTerms, dataTypes) = unzip dataArgs
       dataTerms' <- mapM (substTy h env) dataTerms
       dataTypes' <- mapM (substTy h env) dataTypes
-      (consArgs', env') <- substBinders h env consArgs
+      let binders = consImpArgs ++ consArgs
+      (binders', env') <- substBinders h env binders
       cont' <- substTree h env' cont
-      let change = release env $ changes dataTerms' <> changes dataTypes' <> changes consArgs' <> changeOf cont'
+      let change = release env $ changes dataTerms' <> changes dataTypes' <> changes binders' <> changeOf cont'
+      let (consImpArgs', consArgs') = splitAt (length consImpArgs) (values binders binders')
       return $
         build change $
           DT.ConsCase
             record
               { DT.dataArgs = zip (values dataTerms dataTerms') (values dataTypes dataTypes'),
-                DT.consArgs = values consArgs consArgs',
+                DT.consImpArgs = consImpArgs',
+                DT.consArgs = consArgs',
                 DT.cont = valueOr cont cont'
               }
 

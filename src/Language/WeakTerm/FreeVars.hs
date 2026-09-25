@@ -65,6 +65,8 @@ freeVars term =
       let set1 = freeVars e1
       let set2 = freeVarsBinders [mxt] (freeVars e2)
       S.union set1 set2
+    _ :< WT.LetType _ _ e ->
+      freeVars e
     _ :< WT.Invoke _ body ->
       freeVars body
     _ :< WT.Prim _ ->
@@ -214,6 +216,8 @@ freeVarsAll term =
       S.union set1 set2
     _ :< WT.TauElim (_, _, x) e1 e2 ->
       S.union (freeVarsAll e1) (S.delete x (freeVarsAll e2))
+    _ :< WT.LetType (_, x) t e ->
+      S.union (freeVarsType t) (S.delete x (freeVarsAll e))
     _ :< WT.Invoke _ body ->
       freeVarsAll body
     _ :< WT.Prim prim ->
@@ -292,7 +296,7 @@ freeVarsCase decisionCase = do
       freeVarsDecisionTree cont
     DT.ConsCase (DT.ConsCaseRecord {..}) -> do
       let (dataTypes1, dataTypes2) = unzip dataArgs
-      S.unions $ freeVarsBindersType consArgs (freeVarsDecisionTree cont) : map freeVarsType dataTypes1 ++ map freeVarsType dataTypes2
+      S.unions $ freeVarsBindersType (consImpArgs ++ consArgs) (freeVarsDecisionTree cont) : map freeVarsType dataTypes1 ++ map freeVarsType dataTypes2
 
 freeVarsMagic :: M.WeakMagic WT.WeakType WT.WeakType WT.WeakTerm -> S.Set Ident
 freeVarsMagic (M.WeakMagic magic) =

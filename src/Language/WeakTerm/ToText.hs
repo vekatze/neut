@@ -102,6 +102,8 @@ toTextIndented kit term =
       indentText (level kit) ("unpack-type " <> showVariable (distinctVars kit) x <> " = " <> toTextIndented (atLevel kit 0) e1 <> "; " <> toTextIndented (atLevel kit 0) e2)
     _ :< WT.Let (_, k, x, t) e1 e2 ->
       renderTermLet kit k x t e1 e2
+    _ :< WT.LetType (_, x) t e ->
+      indentText (level kit) ("let-type " <> showVariable (distinctVars kit) x <> " = " <> toTextType t <> "; " <> toTextIndented (atLevel kit 0) e)
     _ :< WT.Invoke tropeNames body ->
       indentText (level kit) ("invoke " <> T.intercalate ", " (map DD.localLocator tropeNames) <> "; " <> toTextIndented (atLevel kit 0) body)
     _ :< WT.Prim primValue ->

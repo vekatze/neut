@@ -9,7 +9,7 @@ module Kernel.Elaborate.Internal.Infer
 where
 
 import App.App (App)
-import App.Run (raiseError)
+import App.Run (raiseCritical, raiseError)
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
@@ -444,6 +444,10 @@ infer h term =
       liftIO $ Constraint.insert (constraintHandle h) t' t1'
       (e2', t2') <- infer h e2
       return (m :< WT.Let (mx, k, x, t') e1' e2', t2')
+    _ :< WT.LetType (_, x) t e -> do
+      (_, kind) <- inferTypeWithKind h t
+      liftIO $ WeakType.insert (weakTypeHandle h) x kind
+      infer (h {typeAliases = IntMap.insert (Ident.toInt x) t (typeAliases h)}) e
     m :< WT.Invoke tropeNames body -> do
       (body', bodyType) <- infer h body
       return (m :< WT.Invoke tropeNames body', bodyType)
@@ -639,9 +643,12 @@ inferTypeWithKind h ty =
   case ty of
     _ :< WT.Tau ->
       return (ty, ty)
-    m :< WT.TVar x -> do
-      _ :< k <- WeakType.lookup (weakTypeHandle h) m x
-      return (ty, m :< k)
+    m :< WT.TVar x
+      | Just t <- IntMap.lookup (Ident.toInt x) (typeAliases h) ->
+          inferTypeWithKind h t
+      | otherwise -> do
+          _ :< k <- WeakType.lookup (weakTypeHandle h) m x
+          return (ty, m :< k)
     m :< WT.TVarGlobal _ name -> do
       _ :< k <- Type.lookup' (typeHandle h) m name
       return (ty, m :< k)
@@ -998,29 +1005,48 @@ inferClause h cursorType decisionCase =
       let m = mCons
       let (dataTermList, _) = unzip dataArgs
       typedDataArgs' <- mapM (inferTypeWithKind h) dataTermList
-      (consArgs', _) <- inferBinder' h consArgs
-      let argNum = AN.fromInt $ length dataArgs + length consArgs
+      consImpArgs' <- declareConsImpArgs h m consDD (map fst typedDataArgs') consImpArgs
+      (consImpArgs'', h') <- inferImpBinder h consImpArgs'
+      (consArgs', _) <- inferBinder' h' consArgs
+      let argNum = AN.fromInt $ length dataArgs + length consImpArgs + length consArgs
       let isDestPassing = False
       let attr = AttrVG.Attr {..}
-      let dataArgs' = ImpArgs.FullySpecified $ map fst typedDataArgs'
-      consTerm@(_, consType) <- infer h $ m :< WT.PiElim (CCS.AsMarked False []) (m :< WT.VarGlobal attr consDD) dataArgs' [] (DefaultArgs.ByKey [])
+      let consImpTypes = map (\(mx, _, x, _) -> mx :< WT.TVar x) consImpArgs''
+      let impArgs = ImpArgs.FullySpecified $ map fst typedDataArgs' ++ consImpTypes
+      consTerm@(_, consType) <- infer h' $ m :< WT.PiElim (CCS.AsMarked False []) (m :< WT.VarGlobal attr consDD) impArgs [] (DefaultArgs.ByKey [])
       if isConstLike
         then liftIO $ Constraint.insert (constraintHandle h) cursorType consType
         else do
           let impConsArgs = ImpArgs.FullySpecified []
           let expConsArgs = map (\(mx, _, x, t) -> (mx :< WT.Var x, t)) consArgs'
-          (_, tPat) <- inferPiElim h m consTerm impConsArgs (DefaultArgs.ByKey []) expConsArgs [] False
+          (_, tPat) <- inferPiElim h' m consTerm impConsArgs (DefaultArgs.ByKey []) expConsArgs [] False
           liftIO $ Constraint.insert (constraintHandle h) cursorType tPat
-      (cont', tCont) <- inferDecisionTree m h cont
+      (cont', tCont) <- inferDecisionTree m h' cont
       return
         ( DT.ConsCase
             record
               { DT.dataArgs = typedDataArgs',
+                DT.consImpArgs = consImpArgs'',
                 DT.consArgs = consArgs',
                 DT.cont = cont'
               },
           tCont
         )
+
+declareConsImpArgs :: Handle -> Hint -> DD.DefiniteDescription -> [WT.WeakType] -> [BinderF WT.WeakType] -> App [BinderF WT.WeakType]
+declareConsImpArgs h m consDD dataTypes consImpArgs = do
+  consType <- Type.lookup' (typeHandle h) m consDD
+  case consType of
+    _ :< WT.Pi _ impArgs _ _ _ -> do
+      let (dataBinders, declaredConsImpArgs) = splitAt (length dataTypes) impArgs
+      let dataSub = zipWith (\(_, _, x, _) t -> (Ident.toInt x, Type t)) dataBinders dataTypes
+      let consImpSub = zipWith (\(_, _, y, _) (mx, _, x, _) -> (Ident.toInt y, Type (mx :< WT.TVar x))) declaredConsImpArgs consImpArgs
+      let sub = IntMap.fromList $ dataSub ++ consImpSub
+      forM (zip consImpArgs declaredConsImpArgs) $ \((mx, _, x, _), (_, k, _, t)) -> do
+        t' <- liftIO $ Subst.substType (substHandle h) sub t
+        return (mx, k, x, t')
+    _ ->
+      raiseCritical m $ "The type of the constructor `" <> DD.reify consDD <> "` is not a function type"
 
 inferLet :: Handle -> (BinderF WT.WeakType, WT.WeakTerm) -> App (BinderF WT.WeakType, WT.WeakTerm)
 inferLet h ((mx, k, x, t), e1) = do

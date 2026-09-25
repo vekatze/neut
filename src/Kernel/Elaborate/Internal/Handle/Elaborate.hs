@@ -96,6 +96,7 @@ data Handle = Handle
     inlineLimit :: Int,
     currentStep :: Int,
     varEnv :: BoundVarEnv,
+    typeAliases :: IntMap.IntMap WT.WeakType,
     specializationTable :: IORef InlineHandle.SpecializationTable,
     pendingSpecializationDefs :: IORef [Stmt.Stmt],
     attributedTypeVars :: IORef (IntMap.IntMap (S.Set VK.TypeAttr)),
@@ -128,6 +129,7 @@ new gensymHandle globalHandle@(Global.Handle {..}) traceConfig (Local.Handle {..
   holeHandle <- Hole.new
   weakTypeHandle <- WeakType.new
   let varEnv = []
+  let typeAliases = IntMap.empty
   let currentStep = 0
   specializationTable <- newIORef mempty
   pendingSpecializationDefs <- newIORef []

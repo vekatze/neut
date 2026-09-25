@@ -162,7 +162,7 @@ chainOfCase tenv m decisionCase = do
       let (dataTerms, dataTypes) = unzip dataArgs
       let xs1 = concatMap (chainOfType tenv) dataTerms
       let xs2 = concatMap (chainOfType tenv) dataTypes
-      let xs3 = chainOfDecisionTree' tenv m consArgs cont
+      let xs3 = chainOfDecisionTree' tenv m (consImpArgs ++ consArgs) cont
       xs1 ++ xs2 ++ xs3
 
 chainOfCaseWithoutCont :: TM.TypeEnv -> DT.Case TM.Type TM.Term -> [BinderF TM.Type]

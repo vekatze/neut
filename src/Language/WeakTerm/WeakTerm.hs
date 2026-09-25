@@ -75,6 +75,7 @@ data WeakTermF a
   | TauIntro WeakType
   | TauElim (Hint, VK.VarKind, Ident) a a
   | Let (BinderF WeakType) a a
+  | LetType (Hint, Ident) WeakType a
   | Invoke [DD.DefiniteDescription] a
   | Prim (WPV.WeakPrimValue WeakType)
   | Magic (WeakMagic WeakType WeakType a)

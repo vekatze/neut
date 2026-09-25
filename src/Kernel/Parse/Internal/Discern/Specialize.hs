@@ -20,26 +20,29 @@ import Language.Common.Ident
 import Language.Common.Noema qualified as N
 import Language.WeakTerm.CreateHole qualified as WT
 import Language.WeakTerm.WeakTerm qualified as WT
+import Logger.Hint
 
 -- `cursor` is the variable `x` in `match x, y, z with (...) end`.
 specialize ::
   H.Handle ->
   N.IsNoetic ->
   Ident ->
+  [WT.WeakType] ->
   Specializer ->
   PatternMatrix ([Ident], [(BinderF WT.WeakType, WT.WeakTerm)], WT.WeakTerm) ->
   App (PatternMatrix ([Ident], [(BinderF WT.WeakType, WT.WeakTerm)], WT.WeakTerm))
-specialize h isNoetic cursor cons mat = do
-  mapMaybeRowM (specializeRow h isNoetic cursor cons) mat
+specialize h isNoetic cursor typeArgs cons mat = do
+  mapMaybeRowM (specializeRow h isNoetic cursor typeArgs cons) mat
 
 specializeRow ::
   H.Handle ->
   N.IsNoetic ->
   Ident ->
+  [WT.WeakType] ->
   Specializer ->
   PatternRow ([Ident], [(BinderF WT.WeakType, WT.WeakTerm)], WT.WeakTerm) ->
   App (Maybe (PatternRow ([Ident], [(BinderF WT.WeakType, WT.WeakTerm)], WT.WeakTerm)))
-specializeRow h isNoetic cursor specializer (patternVector, (freedVars, baseSeq, body@(mBody :< _))) =
+specializeRow h isNoetic cursor typeArgs specializer (patternVector, (freedVars, baseSeq, body@(mBody :< _))) =
   case V.uncons patternVector of
     Nothing ->
       raiseCritical' "Specialization against the empty pattern matrix should not happen"
@@ -68,14 +71,15 @@ specializeRow h isNoetic cursor specializer (patternVector, (freedVars, baseSeq,
         ConsSpecializer (ConsInfo {consDD = dd}) -> do
           if dd == consDD
             then do
+              let body' = bindTypeParams typeParams typeArgs body
               od <- liftIO $ OptimizableData.lookup (H.optDataHandle h) consDD
               case od of
                 Just OD.Enum ->
-                  return $ Just (V.concat [V.fromList args, rest], (freedVars, baseSeq, body))
+                  return $ Just (V.concat [V.fromList args, rest], (freedVars, baseSeq, body'))
                 Just OD.Unary ->
-                  return $ Just (V.concat [V.fromList args, rest], (freedVars, baseSeq, body))
+                  return $ Just (V.concat [V.fromList args, rest], (freedVars, baseSeq, body'))
                 _ ->
-                  return $ Just (V.concat [V.fromList args, rest], (cursor : freedVars, baseSeq, body))
+                  return $ Just (V.concat [V.fromList args, rest], (cursor : freedVars, baseSeq, body'))
             else return Nothing
     Just ((_, Literal l), rest) -> do
       case specializer of
@@ -85,3 +89,8 @@ specializeRow h isNoetic cursor specializer (patternVector, (freedVars, baseSeq,
             else return Nothing
         _ ->
           return Nothing
+
+bindTypeParams :: [Maybe (Hint, Ident)] -> [WT.WeakType] -> WT.WeakTerm -> WT.WeakTerm
+bindTypeParams typeParams typeArgs body@(m :< _) = do
+  let bindings = [(x, t) | (Just x, t) <- zip typeParams typeArgs]
+  foldr (\(x, t) cont -> m :< WT.LetType x t cont) body bindings

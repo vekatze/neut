@@ -303,10 +303,12 @@ inlineFresh h rawTerm = do
               registerResidual h $ m :< TM.DataElim traceID isNoetic oets' DT.Unreachable
             DT.Switch (cursor, _) (fallbackTree, caseList) -> do
               case lookupSplit cursor oets' of
-                Just (e@(_ :< TM.DataIntro (AttrDI.Attr {..}) _ _ _ consArgs), oets'') -> do
-                  let (newBaseCursorList, cont) = findClause discriminant fallbackTree caseList
-                  let newCursorList = zipWith (\(o, t) arg -> (o, arg, t)) newBaseCursorList consArgs
-                  cont' <- liftIO $ substCursor h cursor e cont
+                Just (e@(_ :< TM.DataIntro (AttrDI.Attr {..}) _ _ consImpTypes consArgs), oets'') -> do
+                  let (consImpVars, newBaseCursorList, cont) = findClause discriminant fallbackTree caseList
+                  let typeSub = IntMap.fromList $ zip (map Ident.toInt consImpVars) (map Subst.Type consImpTypes)
+                  newBaseCursorList' <- liftIO $ mapM (traverse (Subst.substType (substHandle h) typeSub)) newBaseCursorList
+                  let newCursorList = zipWith (\(o, t) arg -> (o, arg, t)) newBaseCursorList' consArgs
+                  cont' <- liftIO $ Subst.substDecisionTree (substHandle h) (IntMap.insert (Ident.toInt cursor) (Subst.Term e) typeSub) cont
                   expand h $ m :< TM.DataElim traceID isNoetic (oets'' ++ newCursorList) cont'
                 Just (e, oets'')
                   | Just literal <- asLiteralTerm e -> do
@@ -630,12 +632,14 @@ inlineCase h decisionCase = do
       let (dataTerms, dataTypes) = unzip dataArgs
       dataTerms' <- mapM (inlineType' h) dataTerms
       dataTypes' <- mapM (inlineType' h) dataTypes
+      consImpArgs' <- mapM (inlineTypeBinder h) consImpArgs
       consArgs' <- mapM (inlineTypeBinder h) consArgs
       cont' <- inlineDecisionTree h cont
       return $
         DT.ConsCase
           record
             { DT.dataArgs = zip dataTerms' dataTypes',
+              DT.consImpArgs = consImpArgs',
               DT.consArgs = consArgs',
               DT.cont = cont'
             }
@@ -644,15 +648,15 @@ findClause ::
   D.Discriminant ->
   DT.DecisionTree TM.Type TM.Term ->
   [DT.Case TM.Type TM.Term] ->
-  ([(Ident, TM.Type)], DT.DecisionTree TM.Type TM.Term)
+  ([Ident], [(Ident, TM.Type)], DT.DecisionTree TM.Type TM.Term)
 findClause consDisc fallbackTree clauseList =
   case clauseList of
     [] ->
-      ([], fallbackTree)
+      ([], [], fallbackTree)
     clause : rest ->
       case DT.findCase consDisc clause of
-        Just (consArgs, clauseTree) ->
-          (consArgs, clauseTree)
+        Just (consImpVars, consArgs, clauseTree) ->
+          (consImpVars, consArgs, clauseTree)
         Nothing ->
           findClause consDisc fallbackTree rest
 

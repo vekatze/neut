@@ -47,6 +47,8 @@ import Kernel.Parse.Pattern qualified as PAT
 import Kernel.Parse.Stage
 import Kernel.Parse.VarDefKind qualified as VDK
 import Language.Common.Annotation qualified as AN
+import Language.Common.ArgNum qualified as ArgNum
+import Language.Common.IsConstLike (IsConstLike)
 import Language.Common.Attr.Lam qualified as AttrL
 import Language.Common.BaseName qualified as BN
 import Language.Common.Binder
@@ -84,6 +86,7 @@ import Language.RawTerm.Name
 import Language.RawTerm.NecessityVariant
 import Language.RawTerm.RawBinder
 import Language.RawTerm.RawIdent hiding (isHole)
+import Language.RawTerm.RawIdent qualified as RawIdent
 import Language.RawTerm.RawPattern qualified as RP
 import Language.RawTerm.RawStmt
 import Language.RawTerm.RawTerm (CodeVariant (CodeVariantK))
@@ -1412,7 +1415,7 @@ discernRecordUpdate h m name mImpArgs kvs (mRest, _, _, restValue) = do
   let missingPatternItems =
         map (\(key, value) -> (key, (mRest', [], (RP.Var VK.normal (Bare value), sourceFlagOf key)))) missingPairs
   let prevValuePatternItems = mapMaybe (prevValuePatternItem sourceFlagOf) $ SE.extract kvs
-  let restPattern = RP.Cons name [] (RP.Of $ SE.fromList SE.Brace SE.Comma $ missingPatternItems ++ prevValuePatternItems)
+  let restPattern = RP.Cons name [] Nothing (RP.Of $ SE.fromList SE.Brace SE.Comma $ missingPatternItems ++ prevValuePatternItems)
   let patParam = (mRest', restPattern, [], [], restType)
   let missingFields = map (\(key, value) -> plainKeyValueArg m' key (m' :< RT.Var (Bare value)) (sourceFlagOf key)) missingPairs
   let specifiedFields = map (\kv -> kv {RT.kvPrevValue = Nothing}) $ SE.extract kvs
@@ -1494,12 +1497,12 @@ constructEitherBinder h m mx m1 pat tmpVar cont = do
   eitherR <- liftEither $ locatorToName m1 coreEitherRight
   eitherVarL <- liftEither $ locatorToVarGlobal m1 coreEitherLeft
   let longClause =
-        ( SE.fromList'' [(mx', RP.Cons eitherR [] (RP.Paren (SE.fromList' [(mx, (pat, False))])))],
+        ( SE.fromList'' [(mx', RP.Cons eitherR [] Nothing (RP.Paren (SE.fromList' [(mx, (pat, False))])))],
           [],
           cont
         )
   let shortClause =
-        ( SE.fromList'' [(m', RP.Cons eitherL [] (RP.Paren (SE.fromList' [(m', (RP.Var VK.normal (Bare earlyRetVar), False))])))],
+        ( SE.fromList'' [(m', RP.Cons eitherL [] Nothing (RP.Paren (SE.fromList' [(m', (RP.Var VK.normal (Bare earlyRetVar), False))])))],
           [],
           m' :< RT.piElim eitherVarL [m' :< RT.Var (Bare earlyRetVar)]
         )
@@ -1687,25 +1690,28 @@ discernPatternRow ::
   RP.RawPatternRow RT.RawTerm ->
   App (PAT.PatternRow ([Ident], [(BinderF WT.WeakType, WT.WeakTerm)], WT.WeakTerm))
 discernPatternRow h (patList, _, body) = do
-  (patList', body') <- discernPatternRow' h (SE.extract patList) [] body
+  (patList', body') <- discernPatternRow' h (SE.extract patList) [] [] body
   return (V.fromList patList', body')
 
 discernPatternRow' ::
   H.Handle ->
   [(Hint, RP.RawPattern)] ->
   NominalEnv ->
+  NominalEnv ->
   RT.RawTerm ->
   App ([(Hint, PAT.Pattern)], ([Ident], [(BinderF WT.WeakType, WT.WeakTerm)], WT.WeakTerm))
-discernPatternRow' h patList newVarList body = do
+discernPatternRow' h patList newVarList newTypeVarList body = do
   case patList of
     [] -> do
       ensureVariableLinearity newVarList
+      ensureVariableLinearity newTypeVarList
       h' <- liftIO $ H.extendByNominalEnv h VDK.Normal newVarList
-      body' <- discern h' body
+      h'' <- liftIO $ H.extendTypeByNominalEnv h' VDK.Normal newTypeVarList
+      body' <- discern h'' body
       return ([], ([], [], body'))
     pat : rest -> do
-      (pat', varsInPat) <- discernPattern h (H.currentLayer h) (H.currentStage h) pat
-      (rest', body') <- discernPatternRow' h rest (varsInPat ++ newVarList) body
+      (pat', varsInPat, typeVarsInPat) <- discernPattern h (H.currentLayer h) (H.currentStage h) pat
+      (rest', body') <- discernPatternRow' h rest (varsInPat ++ newVarList) (typeVarsInPat ++ newTypeVarList) body
       return (pat' : rest', body')
 
 ensureVariableLinearity :: NominalEnv -> App ()
@@ -1734,7 +1740,7 @@ discernPattern ::
   Layer ->
   Stage ->
   (Hint, RP.RawPattern) ->
-  App ((Hint, PAT.Pattern), NominalEnv)
+  App ((Hint, PAT.Pattern), NominalEnv, NominalEnv)
 discernPattern h layer stage (m, pat) = do
   case pat of
     RP.Var k name -> do
@@ -1744,54 +1750,44 @@ discernPattern h layer stage (m, pat) = do
             ParsedNumericLiteral (IntegerLiteral i) -> do
               when (VK.isExp k) $
                 raiseError m "Numeric literal cannot be marked with `!`"
-              return ((m, PAT.Literal (LI.Int i)), [])
+              return ((m, PAT.Literal (LI.Int i)), [], [])
             ParsedNumericLiteral (FloatingLiteral _) ->
               raiseError m $ "A floating-point literal cannot be used as a pattern: `" <> x <> "`"
             InvalidNumericLiteral numericClass ->
               raiseInvalidNumericLiteral m numericClass x
             _
               | isConsName x && k == VK.normal -> do
-                  ResolvedCons {..} <- resolveConstructor h m $ Bare x
-                  unless isConstLike $ do
-                    let consDD' = renderDD (H.modulePathMap h) consDD
-                    raiseError m $
-                      "The constructor `" <> consDD' <> "` cannot be used as a constant"
-                  return ((m, PAT.Cons (PAT.ConsInfo {args = [], ..})), [])
+                  resolvedCons <- resolveConstructor h m $ Bare x
+                  discernConstantPattern h layer stage m name resolvedCons Nothing
               | otherwise -> do
                   x' <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) x
-                  return ((m, PAT.Var k x'), [(x, (m, x', layer, stage))])
+                  return ((m, PAT.Var k x'), [(x, (m, x', layer, stage))], [])
         _ -> do
           when (VK.isExp k) $
             raiseError m "Locator patterns cannot be marked with `!`"
-          (dd, gn) <- resolveName h m name
-          case gn of
-            (_, GN.DataIntro dataArgNum _ consArgNum disc isConstLike _) -> do
-              let consInfo =
-                    PAT.ConsInfo
-                      { consDD = dd,
-                        isConstLike = isConstLike,
-                        disc = disc,
-                        dataArgNum = dataArgNum,
-                        consArgNum = consArgNum,
-                        args = []
-                      }
-              return ((m, PAT.Cons consInfo), [])
-            _ -> do
+          (dd, (_, gn)) <- resolveName h m name
+          case resolveConstructorMaybe dd gn of
+            Just resolvedCons ->
+              discernConstantPattern h layer stage m name resolvedCons Nothing
+            Nothing -> do
               let dd' = renderDD (H.modulePathMap h) dd
               raiseError m $
                 "The symbol `" <> dd' <> "` is not defined as a constuctor"
-    RP.Cons cons _ mArgs -> do
-      ResolvedCons {..} <- resolveConstructor h m cons
-      when isConstLike $
-        raiseError m $
-          "The constructor `" <> showName cons <> "` cannot have any arguments"
+    RP.Cons cons _ mTypeParams mArgs -> do
+      resolvedCons@ResolvedCons {..} <- resolveConstructor h m cons
       case mArgs of
+        RP.Omitted ->
+          discernConstantPattern h layer stage m cons resolvedCons mTypeParams
         RP.Paren markedArgs -> do
+          ensureNonConstantConstructor m cons isConstLike
+          (typeParams, typeVars) <- discernPatternTypeParams h layer stage m cons resolvedCons mTypeParams
           let markedArgs' = SE.extract markedArgs
           ensurePatternMarkAgreement consSourceFlags markedArgs'
-          (args, hList) <- mapAndUnzipM (discernPattern h layer stage) $ map stripPatternMark markedArgs'
-          return ((m, PAT.Cons (PAT.ConsInfo {..})), concat hList)
+          (args, varsList, typeVarsList) <- unzip3 <$> mapM (discernPattern h layer stage) (map stripPatternMark markedArgs')
+          return ((m, PAT.Cons (PAT.ConsInfo {..})), concat varsList, typeVars ++ concat typeVarsList)
         RP.Of mkvs -> do
+          ensureNonConstantConstructor m cons isConstLike
+          (typeParams, typeVars) <- discernPatternTypeParams h layer stage m cons resolvedCons mTypeParams
           let (ks, mvcs) = unzip $ SE.extract mkvs
           let mvs = map (\(mv, _, v) -> (mv, v)) mvcs
           ensureFieldLinearity m ks S.empty S.empty
@@ -1802,10 +1798,67 @@ discernPattern h layer stage (m, pat) = do
           markedArgs <- resolveExpKeys h m expKeys kvs'
           checkRedundancy m expKeys kvs'
           ensurePatternMarkAgreement consSourceFlags markedArgs
-          (args, hList) <- mapAndUnzipM (discernPattern h layer stage) $ map stripPatternMark markedArgs
-          return ((m, PAT.Cons (PAT.ConsInfo {..})), concat hList)
+          (args, varsList, typeVarsList) <- unzip3 <$> mapM (discernPattern h layer stage) (map stripPatternMark markedArgs)
+          return ((m, PAT.Cons (PAT.ConsInfo {..})), concat varsList, typeVars ++ concat typeVarsList)
     RP.RuneIntro r -> do
-      return ((m, PAT.Literal (LI.Rune r)), [])
+      return ((m, PAT.Literal (LI.Rune r)), [], [])
+
+discernConstantPattern ::
+  H.Handle ->
+  Layer ->
+  Stage ->
+  Hint ->
+  Name ->
+  ResolvedCons ->
+  Maybe RP.TypeParams ->
+  App ((Hint, PAT.Pattern), NominalEnv, NominalEnv)
+discernConstantPattern h layer stage m cons resolvedCons@ResolvedCons {..} mTypeParams = do
+  unless isConstLike $ do
+    let consDD' = renderDD (H.modulePathMap h) consDD
+    raiseError m $
+      "The constructor `" <> consDD' <> "` cannot be used as a constant"
+  (typeParams, typeVars) <- discernPatternTypeParams h layer stage m cons resolvedCons mTypeParams
+  return ((m, PAT.Cons (PAT.ConsInfo {args = [], ..})), [], typeVars)
+
+ensureNonConstantConstructor :: Hint -> Name -> IsConstLike -> App ()
+ensureNonConstantConstructor m cons isConstLike =
+  when isConstLike $
+    raiseError m $
+      "The constructor `" <> showName cons <> "` cannot have any arguments"
+
+discernPatternTypeParams ::
+  H.Handle ->
+  Layer ->
+  Stage ->
+  Hint ->
+  Name ->
+  ResolvedCons ->
+  Maybe RP.TypeParams ->
+  App ([Maybe (Hint, Ident)], NominalEnv)
+discernPatternTypeParams h layer stage m cons ResolvedCons {dataArgNum, consImpArgNames} mTypeParams = do
+  let typeParamNum = ArgNum.reify dataArgNum + length consImpArgNames
+  case mTypeParams of
+    Nothing ->
+      return (replicate typeParamNum Nothing, [])
+    Just typeParams -> do
+      let typeParams' = SE.extract typeParams
+      when (length typeParams' /= typeParamNum) $ do
+        raiseError m $
+          "The constructor `"
+            <> showName cons
+            <> "` expects "
+            <> T.pack (show typeParamNum)
+            <> " implicit arguments, but found "
+            <> T.pack (show (length typeParams'))
+            <> "."
+      bindings <- forM typeParams' $ \(mx, x) -> do
+        if RawIdent.isHole x
+          then return (Nothing, [])
+          else do
+            x' <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) x
+            return (Just (mx, x'), [(x, (mx, x', layer, stage))])
+      let (typeParams'', typeVarsList) = unzip bindings
+      return (typeParams'', concat typeVarsList)
 
 constructDefaultKeyMap :: H.Handle -> Hint -> [(Key, IsSourceArg)] -> IO (Map.HashMap Key (Hint, RP.MarkedPattern))
 constructDefaultKeyMap h m keyList = do
