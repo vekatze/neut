@@ -220,6 +220,12 @@ clangLinkOpt targetTriple os linkResponseFilePath outputPath additionalOptions =
             []
           _ ->
             ["-pthread"]
+  let stackOption =
+        case os of
+          OS.Wasi ->
+            ["-Wl,-z,stack-size=" ++ show wasiStackSize]
+          _ ->
+            []
   [ "-target",
     targetTriple,
     "-O2",
@@ -230,5 +236,10 @@ clangLinkOpt targetTriple os linkResponseFilePath outputPath additionalOptions =
          toFilePath outputPath
        ]
     ++ ["@" ++ toFilePath linkResponseFilePath]
+    ++ stackOption
     ++ additionalOptions
     ++ ["-lm"]
+
+wasiStackSize :: Int
+wasiStackSize =
+  8 * 1024 * 1024
