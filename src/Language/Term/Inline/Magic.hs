@@ -138,6 +138,8 @@ evaluateInspectType h m moduleID typeExpr = do
       if name == binaryDD
         then returnTypeValueIntValue m moduleID TypeValue.Binary
         else returnTypeValueIntValue m moduleID TypeValue.Opaque
+    _ :< TM.TVar _ -> do
+      returnTypeValueIntValue m moduleID TypeValue.Opaque
     _ :< TM.TVarGlobal _ _ -> do
       returnTypeValueIntValue m moduleID TypeValue.Opaque
     _ :< TM.TyApp (_ :< TM.TVarGlobal _ _) _ -> do
