@@ -30,7 +30,7 @@ insert h expected actual = do
 
 get :: Handle -> IO [C.Constraint]
 get h = do
-  readIORef (constraintEnvRef h)
+  reverse <$> readIORef (constraintEnvRef h)
 
 set :: Handle -> [C.Constraint] -> IO ()
 set h cs = do
