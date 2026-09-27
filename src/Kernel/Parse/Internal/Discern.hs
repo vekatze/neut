@@ -195,6 +195,7 @@ discernStmt h stmt = do
       return [WeakStmtTrope m dd defineMetaList']
     PostRawStmtVariadic kind m dd -> do
       registerTopLevelName h stmt
+      liftIO $ NameMap.recordRuleParts (H.nameMapHandle h) dd
       liftIO $ Tag.insertGlobalVar (H.tagHandle h) m dd True m
       liftIO $ TopCandidate.insert (H.topCandidateHandle h) $ do
         TopCandidate {loc = metaLocation m, dd = dd, kind = Function}

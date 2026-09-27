@@ -6,6 +6,7 @@ module Kernel.Parse.Internal.Handle.NameMap
     reportMissingDefinitions,
     activateTopLevelNames,
     withCurrentTopLevelName,
+    recordRuleParts,
     lookup,
     getGlobalNames,
     getGlobalNames',
@@ -82,6 +83,11 @@ new (Global.Handle {..}) unusedHandle usedTopLevelNameHandle tagHandle = do
 withCurrentTopLevelName :: Maybe DD.DefiniteDescription -> Handle -> Handle
 withCurrentTopLevelName currentTopLevelName h =
   h {currentTopLevelName}
+
+recordRuleParts :: Handle -> DD.DefiniteDescription -> IO ()
+recordRuleParts h name =
+  forM_ [DD.getLeafDD name, DD.getNodeDD name, DD.getRootDD name] $
+    UnusedTopLevelName.recordReference (unusedTopLevelNameHandle h) (Just name)
 
 insert :: Handle -> [NameEntry] -> App ()
 insert h nameArrowList = do
