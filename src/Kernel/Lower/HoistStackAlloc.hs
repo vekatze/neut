@@ -101,7 +101,7 @@ analyzeConflicts slotMap active lowComp =
     LC.Switch _ _ defaultBranch ces _ cont -> do
       let branches = defaultBranch : map snd ces
       let branchResults = map (analyzeConflicts slotMap active) branches
-      let branchGraph = foldMap snd branchResults
+      let branchGraph = foldl' mergeConflictGraph IntMap.empty (map snd branchResults)
       let reachableActives = [activeSet | (Just activeSet, _) <- branchResults]
       case reachableActives of
         [] ->
