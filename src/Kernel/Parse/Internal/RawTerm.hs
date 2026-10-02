@@ -1055,13 +1055,15 @@ rawTermMagicCallType h m c = do
     arg2 <- rawTerm h
     c5 <- delimiter ","
     arg3 <- rawTerm h
-    return $ \c1 c2 -> m :< RT.Magic c (RT.CallType c1 (c2, func) (c3, arg1) (c4, arg2) (c5, arg3))
+    c6 <- optional $ delimiter ","
+    return $ \c1 c2 -> m :< RT.Magic c (RT.CallType c1 (c2, func) (c3, arg1) (c4, arg2) (c5, arg3) c6)
 
 rawTermMagicInspectType :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermMagicInspectType h m c = do
   rawTermMagicBase "inspect-type" $ do
     typeExpr <- rawType h
-    return $ \_ c2 -> m :< RT.Magic c (RT.InspectType (c2, typeExpr))
+    c3 <- optional $ delimiter ","
+    return $ \_ c2 -> m :< RT.Magic c (RT.InspectType (c2, typeExpr) c3)
 
 rawTermMagicEqType :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermMagicEqType h m c = do
@@ -1069,13 +1071,15 @@ rawTermMagicEqType h m c = do
     typeExpr1 <- rawType h
     c3 <- delimiter ","
     typeExpr2 <- rawType h
-    return $ \_ c2 -> m :< RT.Magic c (RT.EqType (c2, typeExpr1) (c3, typeExpr2))
+    c4 <- optional $ delimiter ","
+    return $ \_ c2 -> m :< RT.Magic c (RT.EqType (c2, typeExpr1) (c3, typeExpr2) c4)
 
 rawTermMagicShowType :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermMagicShowType h m c = do
   rawTermMagicBase "show-type" $ do
     typeExpr <- rawType h
-    return $ \c1 c2 -> m :< RT.Magic c (RT.ShowType c1 (c2, typeExpr))
+    c3 <- optional $ delimiter ","
+    return $ \c1 c2 -> m :< RT.Magic c (RT.ShowType c1 (c2, typeExpr) c3)
 
 rawTermMagicTextCons :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermMagicTextCons h m c = do
@@ -1083,13 +1087,15 @@ rawTermMagicTextCons h m c = do
     runeTerm <- rawTerm h
     c3 <- delimiter ","
     textTerm <- rawTerm h
-    return $ \c1 c2 -> m :< RT.Magic c (RT.TextCons c1 (c2, runeTerm) (c3, textTerm))
+    c4 <- optional $ delimiter ","
+    return $ \c1 c2 -> m :< RT.Magic c (RT.TextCons c1 (c2, runeTerm) (c3, textTerm) c4)
 
 rawTermMagicTextUncons :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermMagicTextUncons h m c = do
   rawTermMagicBase "text-uncons" $ do
     textTerm <- rawTerm h
-    return $ \c1 c2 -> m :< RT.Magic c (RT.TextUncons c1 (c2, textTerm))
+    c3 <- optional $ delimiter ","
+    return $ \c1 c2 -> m :< RT.Magic c (RT.TextUncons c1 (c2, textTerm) c3)
 
 rawTermMagicMakeSwitch :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermMagicMakeSwitch h m c = do
@@ -1099,19 +1105,22 @@ rawTermMagicMakeSwitch h m c = do
     fallbackTerm <- rawTerm h
     c4 <- delimiter ","
     clausesTerm <- rawTerm h
-    return $ \c1 c2 -> m :< RT.Magic c (RT.MakeSwitch c1 (c2, keyTerm) (c3, fallbackTerm) (c4, clausesTerm))
+    c5 <- optional $ delimiter ","
+    return $ \c1 c2 -> m :< RT.Magic c (RT.MakeSwitch c1 (c2, keyTerm) (c3, fallbackTerm) (c4, clausesTerm) c5)
 
 rawTermMagicFreeVariables :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermMagicFreeVariables h m c = do
   rawTermMagicBase "free-variables" $ do
     codeTerm <- rawTerm h
-    return $ \c1 c2 -> m :< RT.Magic c (RT.FreeVariables c1 (c2, codeTerm))
+    c3 <- optional $ delimiter ","
+    return $ \c1 c2 -> m :< RT.Magic c (RT.FreeVariables c1 (c2, codeTerm) c3)
 
 rawTermMagicCompileError :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermMagicCompileError h m c = do
   rawTermMagicBase "compile-error" $ do
     msgTerm <- rawTerm h
-    return $ \c1 c2 -> m :< RT.Magic c (RT.CompileError c1 (c2, msgTerm))
+    c3 <- optional $ delimiter ","
+    return $ \c1 c2 -> m :< RT.Magic c (RT.CompileError c1 (c2, msgTerm) c3)
 
 rawTermMagicGetOriginFileName :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermMagicGetOriginFileName _ m c = do

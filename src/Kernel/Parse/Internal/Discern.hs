@@ -48,7 +48,6 @@ import Kernel.Parse.Stage
 import Kernel.Parse.VarDefKind qualified as VDK
 import Language.Common.Annotation qualified as AN
 import Language.Common.ArgNum qualified as ArgNum
-import Language.Common.IsConstLike (IsConstLike)
 import Language.Common.Attr.Lam qualified as AttrL
 import Language.Common.BaseName qualified as BN
 import Language.Common.Binder
@@ -65,6 +64,7 @@ import Language.Common.Geist qualified as G
 import Language.Common.Ident
 import Language.Common.Ident.Reify qualified as Ident
 import Language.Common.ImpArgs qualified as ImpArgs
+import Language.Common.IsConstLike (IsConstLike)
 import Language.Common.LamKind qualified as LK
 import Language.Common.Literal qualified as LI
 import Language.Common.LocalDefKind qualified as LDK
@@ -73,9 +73,9 @@ import Language.Common.Magic qualified as M
 import Language.Common.ModuleAlias (coreModuleAlias)
 import Language.Common.Noema qualified as N
 import Language.Common.PiKind qualified as PK
-import Language.Common.SlotSize
 import Language.Common.PrimType qualified as PT
 import Language.Common.RuleKind (RuleKind (FoldLeft, FoldRight))
+import Language.Common.SlotSize
 import Language.Common.StmtKind qualified as SK
 import Language.Common.Text.Util
 import Language.Common.VarKind qualified as VK
@@ -1097,54 +1097,54 @@ discernMagic h m magic =
       ensureRuntimeStage m h "`magic opaque-value`"
       e' <- discern h e
       return $ M.WeakMagic $ M.LowMagic $ LM.OpaqueValue e'
-    RT.CallType _ (_, (func, _)) (_, (arg1, _)) (_, (arg2, _)) (_, (arg3, _)) -> do
+    RT.CallType _ (_, (func, _)) (_, (arg1, _)) (_, (arg2, _)) (_, (arg3, _)) _ -> do
       ensureRuntimeStage m h "`magic call-type`"
       func' <- discern h func
       arg1' <- discern h arg1
       arg2' <- discern h arg2
       arg3' <- discern h arg3
       return $ M.WeakMagic $ M.LowMagic $ LM.CallType func' arg1' arg2' arg3'
-    RT.InspectType (_, (typeExpr, _)) -> do
+    RT.InspectType (_, (typeExpr, _)) _ -> do
       ensureCompileStage m h "`magic inspect-type`"
       coreModuleID <- Alias.resolveModuleAlias (H.aliasHandle h) m coreModuleAlias
       typeValueVar <- liftEither $ locatorToTypeVar m coreTypeValueTypeValue
       typeValueExpr <- discernType h typeValueVar
       typeExpr' <- discernType h typeExpr
       return $ M.WeakMagic $ M.InspectType coreModuleID typeValueExpr typeExpr'
-    RT.EqType (_, (typeExpr1, _)) (_, (typeExpr2, _)) -> do
+    RT.EqType (_, (typeExpr1, _)) (_, (typeExpr2, _)) _ -> do
       ensureCompileStage m h "`magic eq-type`"
       coreModuleID <- Alias.resolveModuleAlias (H.aliasHandle h) m coreModuleAlias
       typeExpr1' <- discernType h typeExpr1
       typeExpr2' <- discernType h typeExpr2
       return $ M.WeakMagic $ M.EqType coreModuleID typeExpr1' typeExpr2'
-    RT.ShowType _ (_, (typeExpr, _)) -> do
+    RT.ShowType _ (_, (typeExpr, _)) _ -> do
       ensureCompileStage m h "`magic show-type`"
       typeExpr' <- discernType h typeExpr
       return $ M.WeakMagic $ M.ShowType typeExpr'
-    RT.TextCons _ (_, (rune, _)) (_, (text, _)) -> do
+    RT.TextCons _ (_, (rune, _)) (_, (text, _)) _ -> do
       ensureCompileStage m h "`magic text-cons`"
       rune' <- discern h rune
       text' <- discern h text
       return $ M.WeakMagic $ M.TextCons rune' text'
-    RT.TextUncons _ (_, (text, _)) -> do
+    RT.TextUncons _ (_, (text, _)) _ -> do
       ensureCompileStage m h "`magic text-uncons`"
       moduleID <- Alias.resolveModuleAlias (H.aliasHandle h) m coreModuleAlias
       text' <- discern h text
       return $ M.WeakMagic $ M.TextUncons moduleID text'
-    RT.MakeSwitch _ (_, (key, _)) (_, (fallback, _)) (_, (clauses, _)) -> do
+    RT.MakeSwitch _ (_, (key, _)) (_, (fallback, _)) (_, (clauses, _)) _ -> do
       ensureCompileStage m h "`magic make-switch`"
       moduleID <- Alias.resolveModuleAlias (H.aliasHandle h) m coreModuleAlias
       key' <- discern h key
       fallback' <- discern h fallback
       clauses' <- discern h clauses
       return $ M.WeakMagic $ M.MakeSwitch moduleID key' fallback' clauses'
-    RT.FreeVariables _ (_, (code, _)) -> do
+    RT.FreeVariables _ (_, (code, _)) _ -> do
       ensureCompileStage m h "`magic free-variables`"
       ensureCodeVariableType h m
       moduleID <- Alias.resolveModuleAlias (H.aliasHandle h) m coreModuleAlias
       code' <- discern h code
       return $ M.WeakMagic $ M.FreeVariables moduleID code'
-    RT.CompileError _ (_, (msg, _)) -> do
+    RT.CompileError _ (_, (msg, _)) _ -> do
       ensureCompileStage m h "`magic compile-error`"
       msg' <- discern h msg
       return $ M.WeakMagic $ M.CompileError msg'

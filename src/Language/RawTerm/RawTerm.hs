@@ -362,15 +362,15 @@ data RawMagic
   | External C Hint EN.ExternalName C (SE.Series RawTerm) (Maybe (C, SE.Series VarArg))
   | Global C Hint EN.ExternalName
   | OpaqueValue C (EL RawTerm)
-  | CallType C (EL RawTerm) (EL RawTerm) (EL RawTerm) (EL RawTerm)
-  | InspectType (EL RawType)
-  | EqType (EL RawType) (EL RawType)
-  | ShowType C (EL RawType)
-  | TextCons C (EL RawTerm) (EL RawTerm)
-  | TextUncons C (EL RawTerm)
-  | MakeSwitch C (EL RawTerm) (EL RawTerm) (EL RawTerm)
-  | FreeVariables C (EL RawTerm)
-  | CompileError C (EL RawTerm)
+  | CallType C (EL RawTerm) (EL RawTerm) (EL RawTerm) (EL RawTerm) (Maybe C)
+  | InspectType (EL RawType) (Maybe C)
+  | EqType (EL RawType) (EL RawType) (Maybe C)
+  | ShowType C (EL RawType) (Maybe C)
+  | TextCons C (EL RawTerm) (EL RawTerm) (Maybe C)
+  | TextUncons C (EL RawTerm) (Maybe C)
+  | MakeSwitch C (EL RawTerm) (EL RawTerm) (EL RawTerm) (Maybe C)
+  | FreeVariables C (EL RawTerm) (Maybe C)
+  | CompileError C (EL RawTerm) (Maybe C)
   | GetOriginFileName C C
   | GetOriginLine C C
   | GetOriginColumn C C
