@@ -10,6 +10,7 @@ module Kernel.Unravel.Unravel
     getVisitedMainSourceList,
     unravel',
     unravelModule,
+    getModuleList,
   )
 where
 
@@ -21,6 +22,7 @@ import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Foldable
 import Data.HashMap.Strict qualified as Map
 import Data.IORef (IORef, modifyIORef', newIORef, readIORef, writeIORef)
+import Data.List (sortOn)
 import Data.Maybe (mapMaybe)
 import Data.Sequence as Seq (Seq, empty, (><), (|>))
 import Data.Set qualified as S
@@ -357,6 +359,37 @@ unravelModule' h axis currentModule = do
       liftIO $ modifyIORef' (visitMapRef axis) $ Map.insert path VI.Finish
       liftIO $ modifyIORef' (traceListRef axis) (drop 1)
       return $ currentModule : arrows
+
+getModuleList :: Handle -> [Source.Source] -> App [Module]
+getModuleList h sourceList = do
+  let moduleList = map Source.sourceModule sourceList
+  let mainModule = getMainModule (Global.envHandle (globalHandle h))
+  compressedMap <- liftIO $ Antecedent.get (Global.antecedentHandle (globalHandle h))
+  (_, reversedIDList) <- collectDependedFirst mainModule compressedMap (S.empty, []) (extractModule mainModule)
+  let moduleMap = Map.fromList $ map (\m -> (moduleID m, m)) moduleList
+  return $ mapMaybe (`Map.lookup` moduleMap) $ reverse reversedIDList
+
+collectDependedFirst ::
+  MainModule ->
+  Map.HashMap MID.ModuleID Module ->
+  (S.Set MID.ModuleID, [MID.ModuleID]) ->
+  Module ->
+  App (S.Set MID.ModuleID, [MID.ModuleID])
+collectDependedFirst mainModule compressedMap (visited, reversedIDList) currentModule = do
+  let currentID = moduleID currentModule
+  if S.member currentID visited
+    then return (visited, reversedIDList)
+    else do
+      let dependencyList = sortOn (MA.reify . fst) $ Map.toList $ moduleDependency currentModule
+      dependencyModuleList <- forM dependencyList $ \(_, dependency) -> do
+        let dependencyID = MID.Library $ dependencyDigest dependency
+        case Map.lookup dependencyID compressedMap of
+          Just dependencyModule ->
+            return dependencyModule
+          Nothing ->
+            Module.getModuleFilePath mainModule Nothing dependencyID >>= ModuleReflect.fromFilePath
+      (visited', reversedIDList') <- foldM (collectDependedFirst mainModule compressedMap) (S.insert currentID visited, reversedIDList) dependencyModuleList
+      return (visited', currentID : reversedIDList')
 
 unravel'' :: Handle -> Target -> Source.Source -> App (A.ArtifactTime, Seq Source.Source)
 unravel'' h t source = do

@@ -176,9 +176,7 @@ getArtifactDir h t baseModule = do
 getForeignDir :: Handle -> Target.Target -> Module -> App (Path Abs Dir)
 getForeignDir h t baseModule = do
   buildDir <- getBuildDir h t baseModule
-  let foreignDir = buildDir </> foreignRelDir
-  P.ensureDir foreignDir
-  return foreignDir
+  return $ buildDir </> foreignRelDir
 
 getAllocatorDir :: Handle -> Target.Target -> Module -> App (Path Abs Dir)
 getAllocatorDir h t baseModule = do
@@ -313,9 +311,9 @@ getLastModifiedSup :: [M.SomePath Abs] -> App (Maybe UTCTime)
 getLastModifiedSup =
   aggregateModificationTime maximum
 
-getLastModifiedInf :: [Path Abs File] -> App (Maybe UTCTime)
+getLastModifiedInf :: [M.SomePath Abs] -> App (Maybe UTCTime)
 getLastModifiedInf =
-  aggregateModificationTime minimum . map Right
+  aggregateModificationTime minimum
 
 aggregateModificationTime :: (NE.NonEmpty UTCTime -> UTCTime) -> [M.SomePath Abs] -> App (Maybe UTCTime)
 aggregateModificationTime aggregate pathList = do

@@ -26,7 +26,7 @@ import Control.Exception (mask_)
 import Control.Monad
 import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.IO.Class
-import Data.Containers.ListUtils (nubOrdOn)
+import Data.Containers.ListUtils (nubOrd)
 import Data.Either (lefts)
 import Data.Foldable
 import Data.IORef (IORef, atomicModifyIORef', newIORef, readIORef)
@@ -155,7 +155,7 @@ buildTarget h (M.MainModule baseModule) target = do
   sourceDependencyMap <- liftIO $ Unravel.getSourceDependencyMap unravelHandle dependenceSeq
   let traceReport = Console.getTraceConfig $ Global.consoleHandle $ globalHandle h
   traceConfig <- either raiseError' return $ Trace.new (Env.getMainModule $ Global.envHandle $ globalHandle h) traceReport
-  let moduleList = nubOrdOn M.moduleID $ map sourceModule liveSeq
+  moduleList <- Unravel.getModuleList unravelHandle liveSeq
   didPerformForeignCompilation <- compileForeign h target' startTime moduleList
   let loadHandle = Load.new (globalHandle h)
   contentSeq <- Load.load loadHandle (Trace.isEnabled traceConfig) target' dependenceSeq
@@ -171,7 +171,8 @@ buildTarget h (M.MainModule baseModule) target = do
       return ()
     Main ct -> do
       let linkHandle = Link.new (globalHandle h)
-      Link.link linkHandle ct (_shouldSkipLink h) didPerformForeignCompilation resultArtifactTime liveSeq
+      transitiveLinkOption <- expandOptions (runProcessHandle h) $ nubOrd $ concatMap (M.transitiveLinkOption . M.moduleForeign) moduleList
+      Link.link linkHandle ct (_shouldSkipLink h) didPerformForeignCompilation resultArtifactTime moduleList transitiveLinkOption liveSeq
       execute h (_shouldExecute h) ct (_executeArgs h)
       install h (_installDir h) ct
 
@@ -386,17 +387,20 @@ compileForeign h t startTime moduleList = do
 
 compileForeign' :: Handle -> Target -> UTCTime -> M.Module -> App Bool
 compileForeign' h t startTime m = do
-  let cmdList = M.script $ M.moduleForeign m
+  let foreignInfo = M.moduleForeign m
+  let cmdList = M.script foreignInfo
   let moduleRootDir = M.getModuleRootDir m
   foreignDir <- Path.getForeignDir (Global.pathHandle (globalHandle h)) t m
+  ensureDir foreignDir
   let resolver = getForeignResolver h foreignDir m
-  forM_ (M.input $ M.moduleForeign m) $ ensureDeclaredPathExistence moduleRootDir
-  inputPathList <- fmap concat $ mapM (liftIO . Path.unrollPath . M.attachPrefixPath moduleRootDir . snd) $ M.input $ M.moduleForeign m
-  let outputPathList = map (foreignDir </>) $ M.output $ M.moduleForeign m
+  forM_ (M.input foreignInfo) $ ensureDeclaredPathExistence moduleRootDir
+  inputPathList <- fmap concat $ mapM (liftIO . Path.unrollPath . M.attachPrefixPath moduleRootDir . snd) $ M.input foreignInfo
+  let outputPathList = map (M.attachPrefixPath foreignDir) $ M.output foreignInfo
+  let linkedOutputPathList = map (foreignDir </>) $ M.linkedOutput foreignInfo
   for_ outputPathList $ \outputPath -> do
-    ensureDir $ parent outputPath
+    ensureDir $ either parent parent outputPath
   inputTime <- Path.getLastModifiedSup inputPathList
-  outputTime <- Path.getLastModifiedInf outputPathList
+  outputTime <- fmap concat (mapM (liftIO . Path.unrollPath) outputPathList) >>= Path.getLastModifiedInf
   case (inputTime, outputTime) of
     (Just t1, Just t2)
       | t1 <= t2 -> do
@@ -428,11 +432,14 @@ compileForeign' h t startTime m = do
                 <> cmd
                 <> "` with the following error:\n"
                 <> err
-      forM_ outputPathList $ \outputPath -> do
-        b <- doesFileExist outputPath
-        if b
-          then setModificationTime outputPath startTime
-          else raiseError' $ "Missing foreign output: " <> T.pack (toFilePath outputPath)
+      forM_ (outputPathList ++ map Right linkedOutputPathList) $ \outputPath -> do
+        b <- either doesDirExist doesFileExist outputPath
+        unless b $
+          raiseError' $
+            "Missing foreign output: " <> T.pack (either toFilePath toFilePath outputPath)
+      producedPathList <- fmap concat $ mapM (liftIO . Path.unrollPath) outputPathList
+      forM_ producedPathList $ \producedPath -> do
+        either (`setModificationTime` startTime) (`setModificationTime` startTime) producedPath
       return $ not $ null cmdList
 
 getForeignResolver :: Handle -> Path Abs Dir -> M.Module -> Placeholder.Resolver
