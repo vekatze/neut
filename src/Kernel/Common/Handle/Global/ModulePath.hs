@@ -61,40 +61,38 @@ build :: Handle -> App ModulePathMap
 build h = do
   let initialMap = Map.fromList [(MID.Main, []), (MID.Base, ["base"])]
   let shiftToLatestHandle = STL.new (_antecedentHandle h)
-  build' (_moduleHandle h) shiftToLatestHandle (_mainModule h) initialMap [(M.extractModule (_mainModule h), [])]
+  build' (_moduleHandle h) shiftToLatestHandle initialMap [(M.extractModule (_mainModule h), [])]
 
 build' ::
   ModuleHandle.Handle ->
   STL.Handle ->
-  M.MainModule ->
   ModulePathMap ->
   [(M.Module, ModulePath)] ->
   App ModulePathMap
-build' moduleHandle shiftToLatestHandle mainModule modulePathMap queue = do
+build' moduleHandle shiftToLatestHandle modulePathMap queue = do
   case queue of
     [] ->
       return modulePathMap
     (currentModule, currentPath) : rest -> do
       (modulePathMap', newQueueItems) <-
         foldM
-          (registerDependency moduleHandle shiftToLatestHandle mainModule currentModule currentPath)
+          (registerDependency moduleHandle shiftToLatestHandle currentModule currentPath)
           (modulePathMap, [])
           (getSortedDependencyList currentModule)
-      build' moduleHandle shiftToLatestHandle mainModule modulePathMap' (rest <> reverse newQueueItems)
+      build' moduleHandle shiftToLatestHandle modulePathMap' (rest <> reverse newQueueItems)
 
 registerDependency ::
   ModuleHandle.Handle ->
   STL.Handle ->
-  M.MainModule ->
   M.Module ->
   ModulePath ->
   (ModulePathMap, [(M.Module, ModulePath)]) ->
   (MA.ModuleAlias, M.Dependency) ->
   App (ModulePathMap, [(M.Module, ModulePath)])
-registerDependency moduleHandle shiftToLatestHandle mainModule currentModule path (modulePathMap, queue) (alias, dependency) = do
+registerDependency moduleHandle shiftToLatestHandle currentModule path (modulePathMap, queue) (alias, dependency) = do
   let moduleID = MID.Library $ M.dependencyDigest dependency
   let m = H.newSourceHint $ M.moduleLocation currentModule
-  dependencyModule <- GetModule.getModule (GetModule.Handle {moduleHandle}) mainModule m moduleID (MA.reify alias)
+  dependencyModule <- GetModule.getModule (GetModule.Handle {moduleHandle}) m moduleID (MA.reify alias)
   childModule <- STL.shiftToLatestModule shiftToLatestHandle dependencyModule
   let childModuleID = M.moduleID childModule
   case Map.lookup childModuleID modulePathMap of

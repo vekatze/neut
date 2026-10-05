@@ -54,6 +54,7 @@ data Handle = Handle
     runProcessHandle :: RunProcess.Handle,
     loggerHandle :: Logger.Handle,
     envHandle :: Env.Handle,
+    moduleHandle :: Module.Handle,
     localArchiveMap :: LocalArchive.LocalArchiveMap
   }
 
@@ -109,7 +110,7 @@ insertDependency h aliasName url = do
           then do
             if url `elem` M.dependencyMirrorList dep
               then do
-                moduleDirPath <- Module.getModuleDirByID mainModule Nothing (MID.Library digest)
+                moduleDirPath <- Module.getModuleDirByID (moduleHandle h) Nothing (MID.Library digest)
                 dependencyDirExists <- doesDirExist moduleDirPath
                 if dependencyDirExists
                   then do
@@ -200,13 +201,11 @@ collectDependency baseModule = do
 
 checkIfInstalled :: Handle -> MD.ModuleDigest -> App Bool
 checkIfInstalled h digest = do
-  let mainModule = Env.getMainModule (envHandle h)
-  Module.getModuleFilePath mainModule Nothing (MID.Library digest) >>= doesFileExist
+  Module.getModuleFilePath (moduleHandle h) Nothing (MID.Library digest) >>= doesFileExist
 
 getLibraryModule :: Handle -> ModuleAlias -> MD.ModuleDigest -> App M.Module
 getLibraryModule h alias digest = do
-  let mainModule = Env.getMainModule (envHandle h)
-  moduleFilePath <- Module.getModuleFilePath mainModule Nothing (MID.Library digest)
+  moduleFilePath <- Module.getModuleFilePath (moduleHandle h) Nothing (MID.Library digest)
   moduleFileExists <- doesFileExist moduleFilePath
   if moduleFileExists
     then ModuleReflect.fromFilePath moduleFilePath
@@ -240,8 +239,7 @@ download h tempFilePath ma@(ModuleAlias alias) mirrorList = do
 
 extractToDependencyDir :: Handle -> Path Abs File -> ModuleAlias -> MD.ModuleDigest -> App ()
 extractToDependencyDir h archivePath _ digest = do
-  let mainModule = Env.getMainModule (envHandle h)
-  moduleDirPath <- Module.getModuleDirByID mainModule Nothing (MID.Library digest)
+  moduleDirPath <- Module.getModuleDirByID (moduleHandle h) Nothing (MID.Library digest)
   ensureDir moduleDirPath
   RunProcess.run (runProcessHandle h) "tar" ["xf", toFilePath archivePath, "-C", toFilePath moduleDirPath]
     `catchError` \err -> do

@@ -106,7 +106,7 @@ newHandle consoleHandle loggerHandle envHandle platformHandle localArchiveMap = 
   pathHandle <- Path.new mainModule platformHandle loggerHandle
   globalRemarkHandle <- GlobalRemark.new
   artifactHandle <- Artifact.new
-  moduleHandle <- Module.new
+  moduleHandle <- Module.new mainModule
   antecedentHandle <- Antecedent.new
   modulePathHandle <- ModulePath.new moduleHandle antecedentHandle mainModule
   keyArgHandle <- KeyArg.new mainModule modulePathHandle

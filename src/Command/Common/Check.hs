@@ -76,7 +76,7 @@ checkAll :: Handle -> Maybe MainTarget -> App [Log]
 checkAll h mainTarget = do
   let mainModule = Env.getMainModule (Global.envHandle (globalHandle h))
   let getModuleHandle = GetModule.new $ Global.moduleHandle $ globalHandle h
-  deps <- GetModule.getAllDependencies getModuleHandle mainModule (extractModule mainModule)
+  deps <- GetModule.getAllDependencies getModuleHandle (extractModule mainModule)
   unravelHandle <- liftIO $ Unravel.new (globalHandle h)
   Unravel.registerShiftMap unravelHandle
   depLogs <- fmap concat $ forM deps $ \(_, m) -> liftIO $ checkModule h Nothing m

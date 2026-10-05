@@ -30,13 +30,12 @@ new moduleHandle = do
 
 getModule ::
   Handle ->
-  MainModule ->
   H.Hint ->
   MID.ModuleID ->
   T.Text ->
   App Module
-getModule h mainModule m moduleID locatorText = do
-  nextModuleFilePath <- Module.getModuleFilePath mainModule (Just m) moduleID
+getModule h m moduleID locatorText = do
+  nextModuleFilePath <- Module.getModuleFilePath (moduleHandle h) (Just m) moduleID
   cacheMap <- liftIO $ Module.getModuleCacheMap (moduleHandle h)
   case Map.lookup nextModuleFilePath cacheMap of
     Just nextModule ->
@@ -52,11 +51,11 @@ getModule h mainModule m moduleID locatorText = do
       liftIO $ Module.insertToModuleCacheMap (moduleHandle h) nextModuleFilePath nextModule
       return nextModule
 
-getAllDependencies :: Handle -> MainModule -> Module -> App [(ModuleAlias, Module)]
-getAllDependencies h mainModule baseModule = do
+getAllDependencies :: Handle -> Module -> App [(ModuleAlias, Module)]
+getAllDependencies h baseModule = do
   forM (Map.toList $ moduleDependency baseModule) $ \(alias, dependency) -> do
     let moduleID = MID.Library $ dependencyDigest dependency
-    moduleFilePath <- Module.getModuleFilePath mainModule Nothing moduleID
+    moduleFilePath <- Module.getModuleFilePath (moduleHandle h) Nothing moduleID
     let m = H.newSourceHint moduleFilePath
-    dep <- getModule h mainModule m moduleID (MID.reify moduleID)
+    dep <- getModule h m moduleID (MID.reify moduleID)
     return (alias, dep)

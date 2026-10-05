@@ -450,9 +450,8 @@ getForeignResolver h foreignDir hostModule hint name = do
       return $ Just clangCommand
     "foreign" ->
       return $ Just $ Placeholder.quote $ T.pack $ toFilePath foreignDir
-    _ -> do
-      let mainModule = Env.getMainModule (Global.envHandle (globalHandle h))
-      Placeholder.moduleResolver (Global.moduleHandle (globalHandle h)) mainModule hostModule hint name
+    _ ->
+      Placeholder.moduleResolver (Global.moduleHandle (globalHandle h)) hostModule hint name
 
 getForeignClangCommand :: LoggerHandle.Handle -> Platform.Handle -> IO T.Text
 getForeignClangCommand loggerHandle platformHandle = do

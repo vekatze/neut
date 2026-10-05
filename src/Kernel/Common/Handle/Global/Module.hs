@@ -36,18 +36,21 @@ import System.Environment
 import System.FilePath (dropExtension)
 import System.FilePath (splitDirectories)
 
-newtype Handle = Handle
-  { _moduleCacheMapRef :: IORef (Map.HashMap (Path Abs File) Module)
+data Handle = Handle
+  { _mainModule :: MainModule,
+    _moduleCacheMapRef :: IORef (Map.HashMap (Path Abs File) Module),
+    _moduleDirMapRef :: IORef (Map.HashMap MID.ModuleID (Path Abs Dir))
   }
 
-new :: IO Handle
-new = do
+new :: MainModule -> IO Handle
+new _mainModule = do
   _moduleCacheMapRef <- newIORef Map.empty
+  _moduleDirMapRef <- newIORef Map.empty
   return $ Handle {..}
 
-getModuleFilePath :: MainModule -> Maybe H.Hint -> MID.ModuleID -> App (Path Abs File)
-getModuleFilePath mainModule mHint moduleID = do
-  moduleDir <- getModuleDirByID mainModule mHint moduleID
+getModuleFilePath :: Handle -> Maybe H.Hint -> MID.ModuleID -> App (Path Abs File)
+getModuleFilePath h mHint moduleID = do
+  moduleDir <- getModuleDirByID h mHint moduleID
   return $ moduleDir </> moduleFile
 
 getModuleCacheMap :: Handle -> IO (Map.HashMap (Path Abs File) Module)
@@ -58,8 +61,9 @@ insertToModuleCacheMap :: Handle -> Path Abs File -> Module -> IO ()
 insertToModuleCacheMap h k v =
   atomicModifyIORef' (_moduleCacheMapRef h) (\mp -> (Map.insert k v mp, ()))
 
-getModuleDirByID :: MainModule -> Maybe H.Hint -> MID.ModuleID -> App (Path Abs Dir)
-getModuleDirByID (MainModule pivotModule) mHint moduleID = do
+getModuleDirByID :: Handle -> Maybe H.Hint -> MID.ModuleID -> App (Path Abs Dir)
+getModuleDirByID h mHint moduleID = do
+  let MainModule pivotModule = _mainModule h
   case moduleID of
     MID.Base -> do
       let message = "The base module cannot be used here"
@@ -71,8 +75,15 @@ getModuleDirByID (MainModule pivotModule) mHint moduleID = do
     MID.Main ->
       return $ getModuleRootDir pivotModule
     MID.Library (MD.ModuleDigest digest) -> do
-      dependencyDir <- getDependencyDirPath pivotModule
-      resolveDir dependencyDir $ T.unpack digest
+      moduleDirMap <- liftIO $ readIORef (_moduleDirMapRef h)
+      case Map.lookup moduleID moduleDirMap of
+        Just moduleDir ->
+          return moduleDir
+        Nothing -> do
+          dependencyDir <- getDependencyDirPath pivotModule
+          moduleDir <- resolveDir dependencyDir $ T.unpack digest
+          liftIO $ atomicModifyIORef' (_moduleDirMapRef h) (\mp -> (Map.insert moduleID moduleDir mp, ()))
+          return moduleDir
 
 getCoreModuleURL :: App ModuleURL
 getCoreModuleURL = do

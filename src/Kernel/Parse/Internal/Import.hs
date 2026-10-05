@@ -21,7 +21,6 @@ import Kernel.Common.Capability qualified as Capability
 import Kernel.Common.Const
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.CreateLocalHandle qualified as Local
-import Kernel.Common.Handle.Global.Env qualified as Env
 import Kernel.Common.Handle.Global.Module qualified as Module
 import Kernel.Common.Handle.Global.Platform qualified as Platform
 import Kernel.Common.Handle.Local.Locator qualified as Locator
@@ -58,8 +57,7 @@ type LocatorText =
   T.Text
 
 data Handle = Handle
-  { envHandle :: Env.Handle,
-    unusedHandle :: Unused.Handle,
+  { unusedHandle :: Unused.Handle,
     getEnabledPresetHandle :: GetEnabledPreset.Handle,
     shiftToLatestHandle :: STL.Handle,
     locatorHandle :: Locator.Handle,
@@ -287,8 +285,7 @@ ensureImportAliasConsistency entry =
 getSource :: Handle -> I.MustUpdateTag -> Hint -> SGL.StrictGlobalLocator -> LocatorText -> App Source.Source
 getSource h mustUpdateTag m sgl locatorText = do
   let h' = GetModule.Handle {moduleHandle = moduleHandle h}
-  let mainModule = Env.getMainModule (envHandle h)
-  nextModule <- GetModule.getModule h' mainModule m (SGL.moduleID sgl) locatorText
+  nextModule <- GetModule.getModule h' m (SGL.moduleID sgl) locatorText
   ensureSourceImportability h m sgl locatorText
   relPath <- addExtension sourceFileExtension $ SL.reify $ SGL.sourceLocator sgl
   let nextPath = getSourceDir nextModule </> relPath
