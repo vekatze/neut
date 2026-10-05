@@ -23,9 +23,8 @@ freeVars term =
     _ :< TM.VarGlobal {} ->
       S.empty
     _ :< TM.PiIntro k impArgs expArgs defaultArgs e -> do
-      let impBinders = impArgs ++ expArgs
-      let defaultVars = S.unions $ map freeVars $ map snd defaultArgs
-      S.union defaultVars (freeVarsBinderType (impBinders ++ map fst defaultArgs ++ catMaybes [AttrL.fromAttr k]) (freeVars e))
+      let body = freeVarsBinderType (catMaybes [AttrL.fromAttr k]) (freeVars e)
+      freeVarsBinderType (impArgs ++ expArgs) (freeVarsDefaultArgs defaultArgs body)
     _ :< TM.PiElim _ conv e impArgs expArgs defaultArgs -> do
       let xs = freeVars e
       let ys0 = S.unions $ map freeVarsType (CC.types conv)
@@ -115,6 +114,14 @@ freeVarsType ty =
       S.empty
     _ :< TM.Resource _ _ -> do
       S.empty
+
+freeVarsDefaultArgs :: [(BinderF TM.Type, TM.Term)] -> S.Set Ident -> S.Set Ident
+freeVarsDefaultArgs defaultArgs zs =
+  case defaultArgs of
+    [] ->
+      zs
+    (binder, value) : rest ->
+      S.union (freeVars value) (freeVarsBinderType [binder] (freeVarsDefaultArgs rest zs))
 
 freeVarsBinderType :: [BinderF TM.Type] -> S.Set Ident -> S.Set Ident
 freeVarsBinderType binder zs =

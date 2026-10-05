@@ -36,9 +36,8 @@ collect visitType term =
     _ :< TM.VarGlobal {} ->
       S.empty
     _ :< TM.PiIntro k impArgs expArgs defaultArgs e -> do
-      let impBinders = impArgs ++ expArgs
-      let defaultVars = S.unions $ map (collect visitType) $ map snd defaultArgs
-      S.union defaultVars (collectBinder visitType (impBinders ++ map fst defaultArgs ++ catMaybes [AttrL.fromAttr k]) (collect visitType e))
+      let body = collectBinder visitType (catMaybes [AttrL.fromAttr k]) (collect visitType e)
+      collectBinder visitType (impArgs ++ expArgs) (collectDefaultArgs visitType defaultArgs body)
     _ :< TM.PiElim _ conv e impArgs expArgs defaultArgs -> do
       let xs = collect visitType e
       let ys0 = S.unions $ map visitType (CC.types conv)
@@ -128,6 +127,14 @@ freeVarsWithHintsType ty =
       S.empty
     _ :< TM.Resource _ _ -> do
       S.empty
+
+collectDefaultArgs :: (TM.Type -> S.Set (Hint, Ident)) -> [(BinderF TM.Type, TM.Term)] -> S.Set (Hint, Ident) -> S.Set (Hint, Ident)
+collectDefaultArgs visitType defaultArgs zs =
+  case defaultArgs of
+    [] ->
+      zs
+    (binder, value) : rest ->
+      S.union (collect visitType value) (collectBinder visitType [binder] (collectDefaultArgs visitType rest zs))
 
 collectBinder :: (TM.Type -> S.Set (Hint, Ident)) -> [BinderF TM.Type] -> S.Set (Hint, Ident) -> S.Set (Hint, Ident)
 collectBinder visitType binder zs =

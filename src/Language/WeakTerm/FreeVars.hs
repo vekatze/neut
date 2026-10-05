@@ -25,9 +25,8 @@ freeVars term =
     _ :< WT.VarGlobal {} ->
       S.empty
     _ :< WT.PiIntro k impArgs expArgs defaultArgs e -> do
-      let impBinders = impArgs ++ expArgs
-      let defaultVars = S.unions $ map freeVars $ map snd defaultArgs
-      S.union defaultVars (freeVarsBinders (impBinders ++ map fst defaultArgs ++ catMaybes [AttrL.fromAttr k]) (freeVars e))
+      let body = freeVarsBinders (catMaybes [AttrL.fromAttr k]) (freeVars e)
+      freeVarsBinders (impArgs ++ expArgs) (freeVarsDefaultArgs defaultArgs body)
     _ :< WT.PiElim _ e _ expArgs defaultArgs -> do
       let xs = freeVars e
       let ys2 = S.unions $ map freeVars (DefaultArgs.extract defaultArgs)
@@ -75,6 +74,14 @@ freeVars term =
       freeVarsMagicTerm der
     _ :< WT.Annotation _ _ e -> do
       freeVars e
+
+freeVarsDefaultArgs :: [(BinderF WT.WeakType, WT.WeakTerm)] -> S.Set Ident -> S.Set Ident
+freeVarsDefaultArgs defaultArgs zs =
+  case defaultArgs of
+    [] ->
+      zs
+    (binder, value) : rest ->
+      S.union (freeVars value) (freeVarsBinders [binder] (freeVarsDefaultArgs rest zs))
 
 freeVarsBinders :: [BinderF WT.WeakType] -> S.Set Ident -> S.Set Ident
 freeVarsBinders binder zs =
@@ -174,9 +181,8 @@ freeVarsAll term =
     _ :< WT.VarGlobal {} ->
       S.empty
     _ :< WT.PiIntro k impArgs expArgs defaultArgs e -> do
-      let impBinders = impArgs ++ expArgs
-      let defaultVars = S.unions $ map freeVarsAll $ map snd defaultArgs
-      S.union defaultVars (freeVarsBindersType (impBinders ++ map fst defaultArgs ++ catMaybes [AttrL.fromAttr k]) (freeVarsAll e))
+      let body = freeVarsBindersType (catMaybes [AttrL.fromAttr k]) (freeVarsAll e)
+      freeVarsBindersType (impArgs ++ expArgs) (freeVarsAllDefaultArgs defaultArgs body)
     _ :< WT.PiElim spec e impArgs expArgs defaultArgs -> do
       let xs = freeVarsAll e
       let ys0 = S.unions $ map freeVarsType (CCS.types spec)
@@ -264,6 +270,14 @@ freeVarsType ty =
       S.empty
     _ :< WT.TypeHole _ es ->
       S.unions $ map freeVarsType es
+
+freeVarsAllDefaultArgs :: [(BinderF WT.WeakType, WT.WeakTerm)] -> S.Set Ident -> S.Set Ident
+freeVarsAllDefaultArgs defaultArgs zs =
+  case defaultArgs of
+    [] ->
+      zs
+    (binder, value) : rest ->
+      S.union (freeVarsAll value) (freeVarsBindersType [binder] (freeVarsAllDefaultArgs rest zs))
 
 freeVarsBindersType :: [BinderF WT.WeakType] -> S.Set Ident -> S.Set Ident
 freeVarsBindersType binder zs =
