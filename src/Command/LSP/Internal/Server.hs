@@ -31,6 +31,7 @@ import Data.Maybe
 import Data.Text qualified as T
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.Env qualified as Env
+import Kernel.Common.Handle.Global.Reuse qualified as Reuse
 import Kernel.Common.LocalArchive qualified as LocalArchive
 import Language.LSP.Logging
 import Language.LSP.Protocol.Lens qualified as J
@@ -48,6 +49,7 @@ lsp consoleHandle loggerHandle localArchiveMap = do
   documentStateStore <- DocumentStateStore.new
   diagnosticStore <- DiagnosticStore.new
   lintWorker <- LintWorker.new
+  reuseHandle <- Reuse.new
   let lspState =
         Util.LspState
           { Util.documentStateStore = documentStateStore,
@@ -55,7 +57,8 @@ lsp consoleHandle loggerHandle localArchiveMap = do
             Util.consoleHandle = consoleHandle,
             Util.loggerHandle = loggerHandle,
             Util.localArchiveMap = localArchiveMap,
-            Util.lintWorker = lintWorker
+            Util.lintWorker = lintWorker,
+            Util.reuseHandle = reuseHandle
           }
   runQuietServer $
     ServerDefinition
@@ -93,7 +96,7 @@ prettyMsg l =
 
 withGlobalHandle :: LspState -> Lsp () () -> (Global.Handle -> Lsp () ()) -> Lsp () ()
 withGlobalHandle lspState defaultAction cont = do
-  vOrErr <- liftIO $ Global.newOrError (Util.consoleHandle lspState) (Util.loggerHandle lspState) (Util.localArchiveMap lspState) Nothing Nothing
+  vOrErr <- liftIO $ Global.newOrError (Util.consoleHandle lspState) (Util.loggerHandle lspState) (Util.localArchiveMap lspState) (Util.reuseHandle lspState) Nothing Nothing
   case vOrErr of
     Left (E.MakeError errors) -> do
       report lspState errors

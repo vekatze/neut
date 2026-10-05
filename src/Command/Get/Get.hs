@@ -15,6 +15,7 @@ import Control.Monad
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.Env qualified as Env
 import Kernel.Common.Handle.Global.Path qualified as Path
+import Kernel.Common.Handle.Global.Reuse qualified as Reuse
 import Kernel.Common.LocalArchive qualified as LocalArchive
 import Kernel.Common.ModuleURL (ModuleURL (ModuleURL))
 import Logger.Handle qualified as Logger
@@ -27,7 +28,8 @@ data Handle = Handle
     checkHandle :: Check.Handle,
     consoleHandle :: Console.Handle,
     loggerHandle :: Logger.Handle,
-    localArchiveMap :: LocalArchive.LocalArchiveMap
+    localArchiveMap :: LocalArchive.LocalArchiveMap,
+    reuseHandle :: Reuse.Handle
   }
 
 new ::
@@ -41,6 +43,7 @@ new globalHandle = do
   let consoleHandle = Global.consoleHandle globalHandle
   let loggerHandle = Global.loggerHandle globalHandle
   let localArchiveMap = Global.localArchiveMap globalHandle
+  let reuseHandle = Global.reuseHandle globalHandle
   return $ Handle {..}
 
 get :: Handle -> Config -> App ()
@@ -49,5 +52,5 @@ get h cfg = do
   Path.ensureNotInDependencyDir mainModule
   Clean.clean (cleanHandle h)
   Fetch.insertDependency (fetchHandle h) (moduleAliasText cfg) (ModuleURL $ moduleURLText cfg)
-  h' <- Global.new (consoleHandle h) (loggerHandle h) (localArchiveMap h) Nothing Nothing
+  h' <- Global.new (consoleHandle h) (loggerHandle h) (localArchiveMap h) (reuseHandle h) Nothing Nothing
   void $ Check.checkAllOrFail (Check.new h') Nothing

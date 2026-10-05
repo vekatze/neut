@@ -28,6 +28,7 @@ import Kernel.Common.Handle.Global.OptimizableData qualified as OptimizableData
 import Kernel.Common.Handle.Global.Path qualified as Path
 import Kernel.Common.Handle.Global.Platform qualified as Platform
 import Kernel.Common.Handle.Global.Resource qualified as Resource
+import Kernel.Common.Handle.Global.Reuse qualified as Reuse
 import Kernel.Common.Handle.Global.Type qualified as Type
 import Kernel.Common.Import
 import Kernel.Common.LocalArchive qualified as LocalArchive
@@ -76,26 +77,27 @@ data Handle = Handle
     publicModuleReachabilityRef :: IORef (Map.HashMap MID.ModuleID (S.Set MID.ModuleID)),
     presetCacheRef :: IORef (Map.HashMap MID.ModuleID [ImportItem]),
     isShiftMapRegisteredRef :: IORef Bool,
+    reuseHandle :: Reuse.Handle,
     localArchiveMap :: LocalArchive.LocalArchiveMap
   }
 
-new :: Console.Handle -> Logger.Handle -> LocalArchive.LocalArchiveMap -> Maybe (Path Abs File) -> Maybe M.TargetName -> App Handle
-new consoleHandle loggerHandle localArchiveMap moduleFilePathOrNone targetNameOrNone = do
-  handleOrError <- liftIO $ newOrError consoleHandle loggerHandle localArchiveMap moduleFilePathOrNone targetNameOrNone
+new :: Console.Handle -> Logger.Handle -> LocalArchive.LocalArchiveMap -> Reuse.Handle -> Maybe (Path Abs File) -> Maybe M.TargetName -> App Handle
+new consoleHandle loggerHandle localArchiveMap reuseHandle moduleFilePathOrNone targetNameOrNone = do
+  handleOrError <- liftIO $ newOrError consoleHandle loggerHandle localArchiveMap reuseHandle moduleFilePathOrNone targetNameOrNone
   liftEither handleOrError
 
-newOrError :: Console.Handle -> Logger.Handle -> LocalArchive.LocalArchiveMap -> Maybe (Path Abs File) -> Maybe M.TargetName -> IO (Either E.Error Handle)
-newOrError consoleHandle loggerHandle localArchiveMap moduleFilePathOrNone targetNameOrNone = do
-  envHandleOrError <- Env.new moduleFilePathOrNone
+newOrError :: Console.Handle -> Logger.Handle -> LocalArchive.LocalArchiveMap -> Reuse.Handle -> Maybe (Path Abs File) -> Maybe M.TargetName -> IO (Either E.Error Handle)
+newOrError consoleHandle loggerHandle localArchiveMap reuseHandle moduleFilePathOrNone targetNameOrNone = do
+  envHandleOrError <- Env.new reuseHandle moduleFilePathOrNone
   runApp $ do
     envHandle <- liftEither envHandleOrError
     let mainModule = Env.getMainModule envHandle
     selector <- liftEither $ resolvePlatformSelector mainModule targetNameOrNone
-    platformHandle <- Platform.new loggerHandle selector
-    liftIO $ newHandle consoleHandle loggerHandle envHandle platformHandle localArchiveMap
+    platformHandle <- Platform.new loggerHandle reuseHandle selector
+    liftIO $ newHandle consoleHandle loggerHandle envHandle platformHandle localArchiveMap reuseHandle
 
-newHandle :: Console.Handle -> Logger.Handle -> Env.Handle -> Platform.Handle -> LocalArchive.LocalArchiveMap -> IO Handle
-newHandle consoleHandle loggerHandle envHandle platformHandle localArchiveMap = do
+newHandle :: Console.Handle -> Logger.Handle -> Env.Handle -> Platform.Handle -> LocalArchive.LocalArchiveMap -> Reuse.Handle -> IO Handle
+newHandle consoleHandle loggerHandle envHandle platformHandle localArchiveMap reuseHandle = do
   let mainModule = Env.getMainModule envHandle
   Logger.setModuleDir loggerHandle mainModule
   optDataHandle <- OptimizableData.new
@@ -106,7 +108,7 @@ newHandle consoleHandle loggerHandle envHandle platformHandle localArchiveMap = 
   pathHandle <- Path.new mainModule platformHandle loggerHandle
   globalRemarkHandle <- GlobalRemark.new
   artifactHandle <- Artifact.new
-  moduleHandle <- Module.new mainModule
+  moduleHandle <- Module.new mainModule reuseHandle
   antecedentHandle <- Antecedent.new
   modulePathHandle <- ModulePath.new moduleHandle antecedentHandle mainModule
   keyArgHandle <- KeyArg.new mainModule modulePathHandle

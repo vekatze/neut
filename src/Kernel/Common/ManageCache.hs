@@ -24,6 +24,7 @@ import Kernel.Common.Cache qualified as Cache
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.Artifact qualified as Artifact
 import Kernel.Common.Handle.Global.Path qualified as Path
+import Kernel.Common.Handle.Global.Reuse qualified as Reuse
 import Kernel.Common.OutputKind qualified as OK
 import Kernel.Common.Source qualified as Source
 import Kernel.Common.Target
@@ -38,7 +39,8 @@ data Handle = Handle
   { pathHandle :: Path.Handle,
     artifactHandle :: Artifact.Handle,
     loggerHandle :: Logger.Handle,
-    termTraceHandle :: TermTrace.Handle
+    termTraceHandle :: TermTrace.Handle,
+    reuseHandle :: Reuse.Handle
   }
 
 new :: Global.Handle -> Handle
@@ -83,7 +85,7 @@ loadCache h t source = do
           liftIO $ Logger.report (loggerHandle h) $ "Cache miss: " <> renderSource source <> " (cache is stale)"
           return Nothing
         _ -> do
-          dataOrErr <- liftIO $ decodeFileOrFail (toFilePath cachePath)
+          dataOrErr <- liftIO $ Reuse.rememberCache (reuseHandle h) cachePath $ decodeFileOrFail (toFilePath cachePath)
           case dataOrErr of
             Left _ -> do
               liftIO $ Logger.report (loggerHandle h) $ "Cache miss: " <> renderSource source <> " (cache file is invalid and will be removed)"

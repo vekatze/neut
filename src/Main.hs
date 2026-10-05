@@ -26,6 +26,7 @@ import Control.Monad (forM_)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.Platform (ensureExecutables)
+import Kernel.Common.Handle.Global.Reuse qualified as Reuse
 import Kernel.Common.LocalArchive qualified as LocalArchive
 import Logger.CreateHandle qualified as Logger
 import System.Exit (ExitCode (ExitFailure))
@@ -65,7 +66,7 @@ main = do
                   Just $ DescribeConfig.targetName cfg
                 _ ->
                   Nothing
-        h <- Global.new consoleHandle loggerHandle localArchiveMap Nothing buildTargetName
+        h <- Global.new consoleHandle loggerHandle localArchiveMap Reuse.disabled Nothing buildTargetName
         ensureExecutables
         case cmd of
           C.Build cfg -> do

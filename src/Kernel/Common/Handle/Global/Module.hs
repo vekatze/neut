@@ -1,6 +1,7 @@
 module Kernel.Common.Handle.Global.Module
   ( Handle (..),
     new,
+    readModule,
     getModuleFilePath,
     getModuleDirByID,
     getModuleCacheMap,
@@ -21,7 +22,9 @@ import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.Text qualified as T
 import Kernel.Common.Const
+import Kernel.Common.Handle.Global.Reuse qualified as Reuse
 import Kernel.Common.Module
+import Kernel.Common.Module.FromPath qualified as ModuleReflect
 import Kernel.Common.ModuleURL
 import Kernel.Common.Source qualified as Source
 import Language.Common.ModuleDigest
@@ -38,15 +41,20 @@ import System.FilePath (splitDirectories)
 
 data Handle = Handle
   { _mainModule :: MainModule,
+    _reuseHandle :: Reuse.Handle,
     _moduleCacheMapRef :: IORef (Map.HashMap (Path Abs File) Module),
     _moduleDirMapRef :: IORef (Map.HashMap MID.ModuleID (Path Abs Dir))
   }
 
-new :: MainModule -> IO Handle
-new _mainModule = do
+new :: MainModule -> Reuse.Handle -> IO Handle
+new _mainModule _reuseHandle = do
   _moduleCacheMapRef <- newIORef Map.empty
   _moduleDirMapRef <- newIORef Map.empty
   return $ Handle {..}
+
+readModule :: Handle -> Path Abs File -> App Module
+readModule h moduleFilePath =
+  Reuse.rememberModule (_reuseHandle h) moduleFilePath $ ModuleReflect.fromFilePath moduleFilePath
 
 getModuleFilePath :: Handle -> Maybe H.Hint -> MID.ModuleID -> App (Path Abs File)
 getModuleFilePath h mHint moduleID = do

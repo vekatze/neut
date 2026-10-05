@@ -40,10 +40,10 @@ import Kernel.Common.Handle.Global.Module qualified as Module
 import Kernel.Common.Handle.Global.ModulePath qualified as ModulePath
 import Kernel.Common.Handle.Global.Path qualified as Path
 import Kernel.Common.Handle.Global.Platform qualified as Platform
+import Kernel.Common.Handle.Global.Reuse qualified as Reuse
 import Kernel.Common.Import
 import Kernel.Common.Module
 import Kernel.Common.Module qualified as M
-import Kernel.Common.Module.FromPath qualified as ModuleReflect
 import Kernel.Common.OutputKind qualified as OK
 import Kernel.Common.Source qualified as Source
 import Kernel.Common.Source.ShiftToLatest qualified as STL
@@ -325,7 +325,7 @@ unravelAntecedentArrow h axis currentModule = do
       let children = map (MID.Library . dependencyDigest . snd) $ Map.toList $ moduleDependency currentModule
       arrows <- fmap concat $ forM children $ \moduleID -> do
         path' <- Module.getModuleFilePath moduleHandle Nothing moduleID
-        ModuleReflect.fromFilePath path' >>= unravelAntecedentArrow h axis
+        Module.readModule moduleHandle path' >>= unravelAntecedentArrow h axis
       liftIO $ modifyIORef' (visitMapRef axis) $ Map.insert path VI.Finish
       liftIO $ modifyIORef' (traceListRef axis) (drop 1)
       return $ getAntecedentArrow currentModule ++ arrows
@@ -354,7 +354,7 @@ unravelModule' h axis currentModule = do
         path' <- Module.getModuleFilePath moduleHandle Nothing moduleID
         b <- doesFileExist path'
         if b
-          then ModuleReflect.fromFilePath path' >>= unravelModule' h axis
+          then Module.readModule moduleHandle path' >>= unravelModule' h axis
           else return []
       liftIO $ modifyIORef' (visitMapRef axis) $ Map.insert path VI.Finish
       liftIO $ modifyIORef' (traceListRef axis) (drop 1)
@@ -387,7 +387,7 @@ collectDependedFirst moduleHandle compressedMap (visited, reversedIDList) curren
           Just dependencyModule ->
             return dependencyModule
           Nothing ->
-            Module.getModuleFilePath moduleHandle Nothing dependencyID >>= ModuleReflect.fromFilePath
+            Module.getModuleFilePath moduleHandle Nothing dependencyID >>= Module.readModule moduleHandle
       (visited', reversedIDList') <- foldM (collectDependedFirst moduleHandle compressedMap) (S.insert currentID visited, reversedIDList) dependencyModuleList
       return (visited', currentID : reversedIDList')
 
@@ -568,8 +568,9 @@ parseSourceHeader :: Handle -> Local.Handle -> Source.Source -> App [ImportItem]
 parseSourceHeader h localHandle currentSource = do
   Source.ensureSourceExistence currentSource
   let filePath = Source.sourceFilePath currentSource
-  fileContent <- readTextFromPath filePath
-  (_, (importList, requireList)) <- runParser filePath fileContent False parseHeader
+  (importList, requireList) <- Reuse.rememberHeader (Global.reuseHandle (globalHandle h)) filePath $ do
+    fileContent <- readTextFromPath filePath
+    snd <$> runParser filePath fileContent False parseHeader
   requiredList <- mapM interpretRequireItem $ concatMap (SE.extract . requireItemsOf . fst) requireList
   liftIO $ modifyIORef' (sourceRequireMapRef h) $ Map.insert filePath requiredList
   let m = newSourceHint filePath

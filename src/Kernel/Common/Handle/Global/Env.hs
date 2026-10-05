@@ -14,8 +14,10 @@ import App.Run (raiseCritical', raiseError', runApp)
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
 import Kernel.Common.Allocator (Allocator)
+import Kernel.Common.Handle.Global.Reuse qualified as Reuse
 import Kernel.Common.Module
 import Kernel.Common.Module qualified as Module
+import Kernel.Common.Module.FindModuleFile (getCurrentModuleFilePath)
 import Kernel.Common.Module.FromPath qualified as ModuleReflect
 import Kernel.Common.Target qualified as Target
 import Kernel.Common.ZenConfig qualified as Z
@@ -39,16 +41,11 @@ getMainModuleDir :: Handle -> FilePath
 getMainModuleDir h =
   toFilePath $ getModuleRootDir $ extractModule $ getMainModule h
 
-new :: Maybe (Path Abs File) -> IO (Either E.Error Handle)
-new moduleFilePathOrNone = do
+new :: Reuse.Handle -> Maybe (Path Abs File) -> IO (Either E.Error Handle)
+new reuseHandle moduleFilePathOrNone = do
   runApp $ do
-    _mainModule <-
-      MainModule
-        <$> case moduleFilePathOrNone of
-          Just moduleFilePath ->
-            ModuleReflect.fromFilePath moduleFilePath
-          Nothing -> do
-            ModuleReflect.fromCurrentPath
+    moduleFilePath <- maybe getCurrentModuleFilePath return moduleFilePathOrNone
+    _mainModule <- MainModule <$> Reuse.rememberModule reuseHandle moduleFilePath (ModuleReflect.fromFilePath moduleFilePath)
     return $ Handle {..}
 
 getMainDefiniteDescriptionByTarget :: Handle -> Target.MainTarget -> App DD.DefiniteDescription

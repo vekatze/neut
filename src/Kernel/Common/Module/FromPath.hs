@@ -1,6 +1,5 @@
 module Kernel.Common.Module.FromPath
   ( fromFilePath,
-    fromCurrentPath,
   )
 where
 
@@ -19,7 +18,6 @@ import Kernel.Common.Allocator (Allocator (..), defaultAllocator, showAllocator)
 import Kernel.Common.ClangOption qualified as CL
 import Kernel.Common.Const (archiveRelDir, cacheRelDir, sourceRelDir)
 import Kernel.Common.Module
-import Kernel.Common.Module.FindModuleFile
 import Kernel.Common.ModuleURL
 import Kernel.Common.Platform qualified as P
 import Kernel.Common.Target
@@ -78,10 +76,6 @@ fromFilePath moduleFilePath = do
         moduleUniversal = universal,
         modulePresetMap = presetMap
       }
-
-fromCurrentPath :: App Module
-fromCurrentPath = do
-  getCurrentModuleFilePath >>= fromFilePath
 
 interpretPresetMap ::
   H.Hint ->

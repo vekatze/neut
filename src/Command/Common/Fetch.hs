@@ -32,7 +32,6 @@ import Kernel.Common.LocalArchive qualified as LocalArchive
 import Kernel.Common.Module (keyDependency, keyDigest, keyEnablePreset, keyMirror, moduleLocation)
 import Kernel.Common.Module qualified as M
 import Kernel.Parse.Internal.Util (isNumericLike)
-import Kernel.Common.Module.FromPath qualified as ModuleReflect
 import Kernel.Common.ModuleURL
 import Kernel.Common.RunProcess qualified as RunProcess
 import Language.Common.BaseName (isCapitalized)
@@ -208,7 +207,7 @@ getLibraryModule h alias digest = do
   moduleFilePath <- Module.getModuleFilePath (moduleHandle h) Nothing (MID.Library digest)
   moduleFileExists <- doesFileExist moduleFilePath
   if moduleFileExists
-    then ModuleReflect.fromFilePath moduleFilePath
+    then Module.readModule (moduleHandle h) moduleFilePath
     else
       raiseError' $
         "Could not find the module file for `"

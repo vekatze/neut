@@ -14,7 +14,6 @@ import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
 import Kernel.Common.Handle.Global.Module qualified as Module
 import Kernel.Common.Module
-import Kernel.Common.Module.FromPath qualified as ModuleReflect
 import Language.Common.ModuleAlias (ModuleAlias)
 import Language.Common.ModuleID qualified as MID
 import Logger.Hint qualified as H
@@ -47,7 +46,7 @@ getModule h m moduleID locatorText = do
           T.pack "Could not find the module file for `"
             <> locatorText
             <> "`"
-      nextModule <- ModuleReflect.fromFilePath nextModuleFilePath
+      nextModule <- Module.readModule (moduleHandle h) nextModuleFilePath
       liftIO $ Module.insertToModuleCacheMap (moduleHandle h) nextModuleFilePath nextModule
       return nextModule
 

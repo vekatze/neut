@@ -34,6 +34,7 @@ import Data.Set qualified as S
 import Data.Text qualified as T
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.GlobalRemark qualified as GlobalRemark
+import Kernel.Common.Handle.Global.Reuse qualified as Reuse
 import Kernel.Common.LocalArchive qualified as LocalArchive
 import Language.LSP.Diagnostics (partitionBySource)
 import Language.LSP.Protocol.Lens qualified as J
@@ -54,7 +55,8 @@ data LspState = LspState
     consoleHandle :: Console.Handle,
     loggerHandle :: Logger.Handle,
     localArchiveMap :: LocalArchive.LocalArchiveMap,
-    lintWorker :: LintWorker.Handle
+    lintWorker :: LintWorker.Handle,
+    reuseHandle :: Reuse.Handle
   }
 
 run :: LspState -> Global.Handle -> App a -> Lsp b (Maybe a)
