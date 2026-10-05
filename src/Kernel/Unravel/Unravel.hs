@@ -469,9 +469,15 @@ getArtifactTime artifactTimeList liveArtifactTimeList artifactTime = do
 getBaseArtifactTime :: Path.Handle -> Target -> Source.Source -> App A.ArtifactTime
 getBaseArtifactTime h t source = do
   cacheTime <- getFreshCacheTime h t source
-  llvmTime <- getFreshLLVMTime h t source
-  objectTime <- getFreshObjectTime h t source
-  return A.ArtifactTime {cacheTime, llvmTime, objectTime}
+  case t of
+    Main {} -> do
+      llvmTime <- getFreshLLVMTime h t source
+      objectTime <- getFreshObjectTime h t source
+      return A.ArtifactTime {cacheTime, llvmTime, objectTime}
+    Peripheral ->
+      return A.ArtifactTime {cacheTime, llvmTime = Nothing, objectTime = Nothing}
+    PeripheralSingle {} ->
+      return A.ArtifactTime {cacheTime, llvmTime = Nothing, objectTime = Nothing}
 
 getItemTime' ::
   [Maybe UTCTime] ->
