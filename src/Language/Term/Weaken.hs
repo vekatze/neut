@@ -124,8 +124,8 @@ weaken term =
       let uncastSeq' = map weakenLet uncastSeq
       let e2' = weaken e2
       m :< WT.BoxElim castSeq' mxt' e1' uncastSeq' e2'
-    m :< TM.CodeIntro e ->
-      m :< WT.CodeIntro (weaken e)
+    m :< TM.CodeIntro codeVariant e ->
+      m :< WT.CodeIntro codeVariant (weaken e)
     m :< TM.CodeElim _ e ->
       m :< WT.CodeElim (weaken e)
     m :< TM.TauIntro ty ->

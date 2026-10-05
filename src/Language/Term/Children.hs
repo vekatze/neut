@@ -31,7 +31,7 @@ termChildren node = do
       [child]
     TM.BoxElim _ castSeq _ value uncastSeq body ->
       map snd castSeq ++ [value] ++ map snd uncastSeq ++ [body]
-    TM.CodeIntro body ->
+    TM.CodeIntro _ body ->
       [body]
     TM.CodeElim _ body ->
       [body]

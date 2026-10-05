@@ -217,7 +217,7 @@ analyze h term = do
       (cs, h') <- analyzeLet h $ castSeq ++ [(mxt, e1)] ++ uncastSeq
       cs' <- analyze h' e2
       return $ cs ++ cs'
-    _ :< TM.CodeIntro e -> do
+    _ :< TM.CodeIntro _ e -> do
       analyze h e
     _ :< TM.CodeElim _ e -> do
       analyze h e

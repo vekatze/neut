@@ -416,9 +416,9 @@ infer h term =
       uncastSeq' <- inferQuoteSeq h uncastSeq FromNoema
       (e2', t2) <- infer h e2
       return (m :< WT.BoxElim castSeq' mxt' e1' uncastSeq' e2', t2)
-    m :< WT.CodeIntro e -> do
+    m :< WT.CodeIntro codeVariant e -> do
       (e', t) <- infer h e
-      return (m :< WT.CodeIntro e', m :< WT.Code t)
+      return (m :< WT.CodeIntro codeVariant e', m :< WT.Code t)
     m :< WT.CodeElim e -> do
       (e', t1) <- infer h e
       tInner <- liftIO $ newTypeHole h m (varEnv h)
@@ -641,10 +641,10 @@ check h term expected =
     m :< WT.CodeElim e -> do
       e' <- check h e (m :< WT.Code expected)
       return $ m :< WT.CodeElim e'
-    m :< WT.CodeIntro e
+    m :< WT.CodeIntro codeVariant e
       | _ :< WT.Code t <- expected -> do
           e' <- check h e t
-          return $ m :< WT.CodeIntro e'
+          return $ m :< WT.CodeIntro codeVariant e'
     m :< WT.Let mxt e1 e2 -> do
       (mxt', e1') <- elaborateLetBinding h mxt e1
       e2' <- check h e2 expected

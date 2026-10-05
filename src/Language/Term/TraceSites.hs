@@ -409,8 +409,8 @@ forNodeM node recur = do
       uncastSeq' <- forM uncastSeq (bimapM return recur)
       body' <- recur body
       return $ TM.BoxElim traceID castSeq' binder value' uncastSeq' body'
-    TM.CodeIntro body ->
-      TM.CodeIntro <$> recur body
+    TM.CodeIntro codeVariant body ->
+      TM.CodeIntro codeVariant <$> recur body
     TM.CodeElim traceID body ->
       TM.CodeElim traceID <$> recur body
     TM.TauIntro ty ->

@@ -41,6 +41,7 @@ import Language.Common.BaseName qualified as BN
 import Language.Common.Binder (BinderF)
 import Language.Common.CallConv qualified as CC
 import Language.Common.CellLayout qualified as CL
+import Language.Common.CodeVariant qualified as CV
 import Language.Common.CreateSymbol qualified as Gensym
 import Language.Common.DataInfo qualified as DI
 import Language.Common.DecisionTree qualified as DT
@@ -521,7 +522,7 @@ evaluateMakeSwitch h m moduleID key fallback clausesTerm = do
           let caseList = map (makeSwitchClause m) clauses
           let tree = DT.Switch (cursor, intType) (fallbackTree, caseList)
           let keyElim = m :< TM.CodeElim noTrace key
-          return $ m :< TM.CodeIntro (m :< TM.DataElim noTrace False [(cursor, keyElim, intType)] tree)
+          return $ m :< TM.CodeIntro CV.CodeVariantK (m :< TM.DataElim noTrace False [(cursor, keyElim, intType)] tree)
 
 collectSwitchClauses :: Handle -> Hint -> MID.ModuleID -> TM.Term -> App [SwitchClause]
 collectSwitchClauses h m moduleID term = do
@@ -571,7 +572,7 @@ makeSwitchClause m (SwitchClause key body) =
 asCodeIntTerm :: TM.Term -> Maybe Integer
 asCodeIntTerm term =
   case term of
-    _ :< TM.CodeIntro body ->
+    _ :< TM.CodeIntro _ body ->
       asIntTerm body
     _ ->
       Nothing
@@ -603,13 +604,13 @@ coreSGL moduleID sourceLocator =
 evaluateFreeVariables :: Handle -> (TM.Type -> App TM.Type) -> Hint -> MID.ModuleID -> TM.Term -> App TM.Term
 evaluateFreeVariables h normalizeType m moduleID code = do
   case code of
-    _ :< TM.CodeIntro body -> do
+    _ :< TM.CodeIntro codeVariant body -> do
       let occurrences = nubOrdOn snd $ sortOn fst $ S.toList $ freeTermVarsWithHints body
       variables <- forM occurrences $ \(_, x) -> do
         t <- lookupVariableType h m x >>= normalizeType
         return (x, t)
       let elemType = codeVariableType m moduleID
-      return $ constructListTermFromTerms m (makeListSGL moduleID) elemType $ map (codeVariableTerm m moduleID) variables
+      return $ constructListTermFromTerms m (makeListSGL moduleID) elemType $ map (codeVariableTerm m moduleID codeVariant) variables
     _ ->
       reportMacroError h m "free-variables requires its argument to reduce to a code literal"
 
@@ -621,14 +622,14 @@ lookupVariableType h m x =
     Nothing ->
       reportMacroError h m $ "free-variables could not determine the type of `" <> Ident.toText x <> "`"
 
-codeVariableTerm :: Hint -> MID.ModuleID -> (Ident, TM.Type) -> TM.Term
-codeVariableTerm m moduleID (x, t) = do
+codeVariableTerm :: Hint -> MID.ModuleID -> CV.CodeVariant -> (Ident, TM.Type) -> TM.Term
+codeVariableTerm m moduleID codeVariant (x, t) = do
   let intType = m :< TM.PrimType (PT.Int slotIntSize)
   let idTerm = m :< TM.Prim (PV.Int intType slotIntSize (toInteger $ Ident.toInt x))
   let codeSGL = coreSGL moduleID SL.codeLocator
   let dataName = DD.newByGlobalLocator codeSGL BN.codeVariableType
   let attr = AttrDI.Attr {dataName, discriminant = D.zero, isConstLike = False}
-  m :< TM.DataIntro attr (DD.newByGlobalLocator codeSGL BN.codeVariable) [] [t] [idTerm, m :< TM.CodeIntro (m :< TM.Var x)]
+  m :< TM.DataIntro attr (DD.newByGlobalLocator codeSGL BN.codeVariable) [] [t] [idTerm, m :< TM.CodeIntro codeVariant (m :< TM.Var x)]
 
 codeVariableType :: Hint -> MID.ModuleID -> TM.Type
 codeVariableType m moduleID = do

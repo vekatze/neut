@@ -955,9 +955,9 @@ elaborate' h term = do
       uncastSeq' <- mapM (elaborateLet h) uncastSeq
       e2' <- elaborate' h e2
       return $ m :< TM.BoxElim noTrace castSeq' mxt' e1' uncastSeq' e2'
-    m :< WT.CodeIntro e -> do
+    m :< WT.CodeIntro codeVariant e -> do
       e' <- elaborate' h e
-      return $ m :< TM.CodeIntro e'
+      return $ m :< TM.CodeIntro codeVariant e'
     m :< WT.CodeElim e -> do
       e' <- elaborate' h e
       return $ m :< TM.CodeElim noTrace e'

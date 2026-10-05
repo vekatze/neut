@@ -21,6 +21,7 @@ import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
 import Language.Common.Attr.Data qualified as AttrD
 import Language.Common.CallSite (IsDestCall, IsSourceArg)
+import Language.Common.CodeVariant qualified as CV
 import Language.Common.DataInfo (FieldHint (..))
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.ExternalName qualified as EN
@@ -199,7 +200,7 @@ toDoc term =
         ]
     m :< CodeIntro codeVariant c1 c2 (e, c3) -> do
       PI.arrange
-        [ PI.horizontal $ attachComment c1 $ D.text (codeVariantToKeyword codeVariant),
+        [ PI.horizontal $ attachComment c1 $ D.text (CV.toKeyword codeVariant),
           PI.inject $ toDoc $ m :< Brace c2 (e, c3)
         ]
     m :< CodeElim c1 c2 (e, c3) -> do

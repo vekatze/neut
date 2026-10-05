@@ -21,6 +21,7 @@ import Language.Common.Attr.VarGlobal qualified as AttrVG
 import Language.Common.BaseLowType qualified as BLT
 import Language.Common.Binder
 import Language.Common.CallConv qualified as CC
+import Language.Common.CodeVariant qualified as CV
 import Language.Common.DecisionTree qualified as DT
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.Ident
@@ -76,7 +77,7 @@ data TermF a
   | BoxIntroLift Type a
   | EmbedIntro a
   | BoxElim TraceID [(BinderF Type, a)] (BinderF Type) a [(BinderF Type, a)] a
-  | CodeIntro a
+  | CodeIntro CV.CodeVariant a
   | CodeElim TraceID a
   | TauIntro Type
   | TauElim TraceID (Hint, VK.VarKind, Ident) a a

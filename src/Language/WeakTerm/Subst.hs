@@ -134,9 +134,9 @@ subst h sub term =
       (uncastSeq', sub3) <- substLetSeq h sub2 uncastSeq
       e2' <- subst h sub3 e2
       return $ m :< WT.BoxElim castSeq' mxt' e1' uncastSeq' e2'
-    m :< WT.CodeIntro e -> do
+    m :< WT.CodeIntro codeVariant e -> do
       e' <- subst h sub e
-      return $ m :< WT.CodeIntro e'
+      return $ m :< WT.CodeIntro codeVariant e'
     m :< WT.CodeElim e -> do
       e' <- subst h sub e
       return $ m :< WT.CodeElim e'

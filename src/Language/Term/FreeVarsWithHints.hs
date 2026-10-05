@@ -66,7 +66,7 @@ collect visitType term =
     _ :< TM.BoxElim _ castSeq mxt e1 uncastSeq e2 -> do
       let (xts, es) = unzip $ castSeq ++ [(mxt, e1)] ++ uncastSeq
       collectBinder visitType xts (S.unions $ map (collect visitType) $ es ++ [e2])
-    _ :< TM.CodeIntro e ->
+    _ :< TM.CodeIntro _ e ->
       collect visitType e
     _ :< TM.CodeElim _ e ->
       collect visitType e

@@ -371,9 +371,9 @@ substTerm h env term =
       e2' <- substTerm h env3 e2
       let change = release env $ changeOf castSeq' <> changeOf e1' <> changeOf mxt' <> changeOf uncastSeq' <> changeOf e2'
       return $ buildTraced h m change $ TM.BoxElim traceID (valueOr castSeq castSeq') (valueOr mxt mxt') (valueOr e1 e1') (valueOr uncastSeq uncastSeq') (valueOr e2 e2')
-    m :< TM.CodeIntro e -> do
+    m :< TM.CodeIntro codeVariant e -> do
       e' <- substTerm h env e
-      return $ build (changeOf e') $ m :< TM.CodeIntro (valueOr e e')
+      return $ build (changeOf e') $ m :< TM.CodeIntro codeVariant (valueOr e e')
     m :< TM.CodeElim traceID e -> do
       e' <- substTerm h env e
       return $ buildTraced h m (changeOf e') $ TM.CodeElim traceID (valueOr e e')

@@ -29,6 +29,7 @@ import Language.Common.Attr.VarGlobal qualified as AttrVG
 import Language.Common.BaseLowType qualified as BLT
 import Language.Common.Binder
 import Language.Common.CallConv qualified as CC
+import Language.Common.CodeVariant qualified as CV
 import Language.Common.CreateSymbol qualified as Sym
 import Language.Common.DecisionTree qualified as DT
 import Language.Common.DefiniteDescription qualified as DD
@@ -351,15 +352,15 @@ inlineFresh h rawTerm = do
       uncastSeq' <- mapM (bimapM (inlineTypeBinder h) (inline' hCont)) uncastSeq
       e2' <- inline' (withBinders (map fst uncastSeq') hCont) e2
       registerResidual h $ m :< TM.BoxElim traceID castSeq' mxt' e1' uncastSeq' e2'
-    m :< TM.CodeIntro e -> do
-      let hInner = h {currentStage = currentStage h - 1}
+    m :< TM.CodeIntro codeVariant e -> do
+      let hInner = h {currentStage = currentStage h - CV.getStageOffset codeVariant}
       e' <- inline' hInner e
-      return $ m :< TM.CodeIntro e'
+      return $ m :< TM.CodeIntro codeVariant e'
     m :< TM.CodeElim traceID e -> do
       let hInner = h {currentStage = currentStage h + 1}
       e' <- inline' hInner e
       case e' of
-        _ :< TM.CodeIntro e'' ->
+        _ :< TM.CodeIntro _ e'' ->
           expand h e''
         _ ->
           registerResidual h $ m :< TM.CodeElim traceID e'

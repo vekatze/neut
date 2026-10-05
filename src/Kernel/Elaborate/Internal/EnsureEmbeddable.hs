@@ -59,7 +59,7 @@ ensureStaticTerm h headLabel m term@(_ :< node) =
       return ()
     TM.TauIntro ty ->
       ensureEvaluatedType h m ty
-    TM.CodeIntro body ->
+    TM.CodeIntro _ body ->
       ensureStaticTerm h headLabel m body
     TM.CodeElim _ body ->
       ensureStaticTerm h headLabel m body

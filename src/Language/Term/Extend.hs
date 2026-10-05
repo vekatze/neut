@@ -66,9 +66,9 @@ extend remapping term =
       let uncastSeq' = map (extendLet remapping) uncastSeq
       let e2' = extend remapping e2
       _m :< TM.BoxElim traceID' castSeq' mxt e1' uncastSeq' e2'
-    () :< TM.CodeIntro e -> do
+    () :< TM.CodeIntro codeVariant e -> do
       let e' = extend remapping e
-      _m :< TM.CodeIntro e'
+      _m :< TM.CodeIntro codeVariant e'
     () :< TM.CodeElim traceID e -> do
       let traceID' = Trace.remapOrDrop remapping traceID
       let e' = extend remapping e

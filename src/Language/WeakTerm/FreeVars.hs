@@ -53,7 +53,7 @@ freeVars term =
     _ :< WT.BoxElim castSeq mxt e1 uncastSeq e2 -> do
       let (xts, es) = unzip $ castSeq ++ [(mxt, e1)] ++ uncastSeq
       freeVarsBinders xts (S.unions $ map freeVars $ es ++ [e2])
-    _ :< WT.CodeIntro e ->
+    _ :< WT.CodeIntro _ e ->
       freeVars e
     _ :< WT.CodeElim e ->
       freeVars e
@@ -206,7 +206,7 @@ freeVarsAll term =
     _ :< WT.BoxElim castSeq mxt e1 uncastSeq e2 -> do
       let (xts, es) = unzip $ castSeq ++ [(mxt, e1)] ++ uncastSeq
       freeVarsBindersType xts (S.unions $ map freeVarsAll $ es ++ [e2])
-    _ :< WT.CodeIntro e ->
+    _ :< WT.CodeIntro _ e ->
       freeVarsAll e
     _ :< WT.CodeElim e ->
       freeVarsAll e

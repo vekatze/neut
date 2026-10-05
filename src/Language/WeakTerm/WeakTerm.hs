@@ -21,6 +21,7 @@ import Language.Common.BaseLowType qualified as BLT
 import Language.Common.BasePrimType qualified as BPT
 import Language.Common.Binder
 import Language.Common.CallConvSpec qualified as CCS
+import Language.Common.CodeVariant qualified as CV
 import Language.Common.DecisionTree qualified as DT
 import Language.Common.DefaultArgs qualified as DefaultArgs
 import Language.Common.DefiniteDescription qualified as DD
@@ -70,7 +71,7 @@ data WeakTermF a
   | BoxIntroLift (Maybe WeakType) a
   | EmbedIntro a
   | BoxElim [(BinderF WeakType, a)] (BinderF WeakType) a [(BinderF WeakType, a)] a
-  | CodeIntro a
+  | CodeIntro CV.CodeVariant a
   | CodeElim a
   | TauIntro WeakType
   | TauElim (Hint, VK.VarKind, Ident) a a

@@ -18,6 +18,7 @@ import Language.Common.Attr.VarGlobal qualified as AttrVG
 import Language.Common.Binder
 import Language.Common.CallConvSpec qualified as CCS
 import Language.Common.CallSite (IsSourceArg)
+import Language.Common.CodeVariant qualified as CV
 import Language.Common.DecisionTree qualified as DT
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.ExternalName qualified as EN
@@ -92,8 +93,8 @@ toTextIndented kit term =
           <> toTextIndented (atLevel kit 0) e1
           <> "; "
           <> toTextIndented (atLevel kit 0) e2
-    _ :< WT.CodeIntro e ->
-      indentText (level kit) ("quote " <> inBrace (toTextIndented (atLevel kit 0) e))
+    _ :< WT.CodeIntro codeVariant e ->
+      indentText (level kit) (CV.toKeyword codeVariant <> " " <> inBrace (toTextIndented (atLevel kit 0) e))
     _ :< WT.CodeElim e ->
       indentText (level kit) ("unquote " <> inBrace (toTextIndented (atLevel kit 0) e))
     _ :< WT.TauIntro ty ->

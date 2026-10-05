@@ -22,7 +22,6 @@ module Language.RawTerm.RawTerm
     RawGeist (..),
     RawDef (..),
     RawTypeDef (..),
-    CodeVariant (..),
     RawImpVar,
     VarArg,
     getDefName,
@@ -41,7 +40,6 @@ module Language.RawTerm.RawTerm
     mapKeywordClause,
     letKindFromText,
     force,
-    codeVariantToKeyword,
   )
 where
 
@@ -54,6 +52,7 @@ import Language.Common.Attr.Data qualified as AttrD
 import Language.Common.Attr.DataIntro qualified as AttrDI
 import Language.Common.BaseName qualified as BN
 import Language.Common.CallSite
+import Language.Common.CodeVariant (CodeVariant)
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.ExternalName qualified as EN
 import Language.Common.HoleID
@@ -106,18 +105,6 @@ data RawTypeF a
 type RawType = Cofree RawTypeF Hint
 
 type RawTerm = Cofree RawTermF Hint
-
-data CodeVariant
-  = CodeVariantK
-  | CodeVariantC -- C: A -> □A (completeness principle)
-
-codeVariantToKeyword :: CodeVariant -> T.Text
-codeVariantToKeyword v =
-  case v of
-    CodeVariantK ->
-      "quote"
-    CodeVariantC ->
-      "promote"
 
 type MarkedArg a = (a, IsSourceArg)
 

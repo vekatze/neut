@@ -729,7 +729,7 @@ clarifyTerm h context term =
       let opaqueLetSeq = map (\(mxt', e) -> (False, mxt', e)) castSeq
       let clearLetSeq = (True, mxt, e1) : map (\(mxt', e) -> (True, mxt', e)) uncastSeq
       clarifyLetSeq h context (opaqueLetSeq ++ clearLetSeq) e2
-    _ :< TM.CodeIntro e -> do
+    _ :< TM.CodeIntro _ e -> do
       clarifyTerm h context e
     _ :< TM.CodeElim _ e -> do
       clarifyTerm h context e
@@ -898,7 +898,7 @@ clarifyStaticValue h context term =
       clarifyStaticValue h context e
     _ :< TM.EmbedIntro e ->
       clarifyStaticValue h context e
-    _ :< TM.CodeIntro e ->
+    _ :< TM.CodeIntro _ e ->
       clarifyStaticValue h context e
     _ :< TM.CodeElim _ e ->
       clarifyStaticValue h context e

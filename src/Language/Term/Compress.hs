@@ -81,9 +81,9 @@ compressWithTrace traceMode term = do
       uncastSeq' <- mapM (compressLet traceMode) uncastSeq
       e2' <- compressWithTrace traceMode e2
       return $ () :< TM.BoxElim traceID' castSeq' mxt e1' uncastSeq' e2'
-    _ :< TM.CodeIntro e -> do
+    _ :< TM.CodeIntro codeVariant e -> do
       e' <- compressWithTrace traceMode e
-      return $ () :< TM.CodeIntro e'
+      return $ () :< TM.CodeIntro codeVariant e'
     _ :< TM.CodeElim traceID e -> do
       traceID' <- prepareTraceID traceMode traceID
       e' <- compressWithTrace traceMode e

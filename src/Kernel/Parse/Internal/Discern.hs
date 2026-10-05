@@ -53,6 +53,7 @@ import Language.Common.BaseName qualified as BN
 import Language.Common.Binder
 import Language.Common.CallConvSpec qualified as CCS
 import Language.Common.CallSite (IsDestCall, IsSourceArg)
+import Language.Common.CodeVariant qualified as CV
 import Language.Common.CreateSymbol qualified as Gensym
 import Language.Common.DataInfo qualified as DI
 import Language.Common.DefaultArgs qualified as DefaultArgs
@@ -89,7 +90,6 @@ import Language.RawTerm.RawIdent hiding (isHole)
 import Language.RawTerm.RawIdent qualified as RawIdent
 import Language.RawTerm.RawPattern qualified as RP
 import Language.RawTerm.RawStmt
-import Language.RawTerm.RawTerm (CodeVariant (CodeVariantK))
 import Language.RawTerm.RawTerm qualified as RT
 import Language.WeakTerm.CreateHole qualified as WT
 import Language.WeakTerm.FreeVars (freeVars)
@@ -519,7 +519,7 @@ discern h term =
       let leafTM = m :< RT.piElim (RT.force (m :< RT.VarGlobal leafDD leafGN)) [size]
       let nodeTM = RT.force (m :< RT.VarGlobal nodeDD nodeGN)
       let rootTM = RT.force (m :< RT.VarGlobal rootDD rootGN)
-      let quoteArg e@(me :< _) = me :< RT.CodeIntro CodeVariantK [] [] (e, [])
+      let quoteArg e@(me :< _) = me :< RT.CodeIntro CV.CodeVariantK [] [] (e, [])
       let args = map quoteArg $ SE.extract es
       let unquote e = m :< RT.CodeElim [] [] (e, [])
       case kind of
@@ -540,7 +540,7 @@ discern h term =
                 raiseError m $ "`" <> renderDD (H.modulePathMap h) dd <> "` is a rule and must be used with `::[...]`"
               _ ->
                 return $ m :< RT.VarGlobal dd gn
-      let quote e@(me :< _) = me :< RT.CodeIntro CodeVariantK [] [] (e, [])
+      let quote e@(me :< _) = me :< RT.CodeIntro CV.CodeVariantK [] [] (e, [])
       let args = fmap (\e -> (quote e, False)) es
       let defaultArgs = mDefaultArgs <&> fmap (\(mx, k, c1, c2, e) -> (mx, k, c1, c2, quote e))
       discern h $ m :< RT.CodeElim [] [] (m :< RT.PiElim headTerm [] mImpArgs False [] args [] defaultArgs, [])
@@ -552,7 +552,7 @@ discern h term =
                 RT.kvKeyComment = c1,
                 RT.kvValueComment = c2,
                 RT.kvPrevValue = Nothing,
-                RT.kvValue = (me :< RT.CodeIntro RT.CodeVariantK [] [] (e, []), False)
+                RT.kvValue = (me :< RT.CodeIntro CV.CodeVariantK [] [] (e, []), False)
               }
       let args = fmap quote kvs
       let call = m :< RT.PiElimByKey name [] mImpArgs False [] args Nothing
@@ -631,11 +631,10 @@ discern h term =
         forM_ ysCont $ \(_, y) -> liftIO (Unused.deleteVariable (H.unusedHandle h) y)
       return $ m :< WT.BoxElim yetsInner mxt' e1' yetsCont e2''
     m :< RT.CodeIntro codeVariant _ _ (body, _) -> do
-      let offset = case codeVariant of RT.CodeVariantK -> 1; RT.CodeVariantC -> 0
-      let innerStage = H.currentStage h - offset
+      let innerStage = H.currentStage h - CV.getStageOffset codeVariant
       let hInner = h {H.currentStage = innerStage}
       body' <- discern hInner body
-      return $ m :< WT.CodeIntro body'
+      return $ m :< WT.CodeIntro codeVariant body'
     m :< RT.CodeElim _ _ (body, _) -> do
       let innerStage = H.currentStage h + 1
       let hInner = h {H.currentStage = innerStage}

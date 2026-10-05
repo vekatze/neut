@@ -47,6 +47,7 @@ import Kernel.Common.Const
 import Kernel.Parse.Internal.Util (isNumericLike)
 import Language.Common.BaseName qualified as BN
 import Language.Common.CallSite (IsDestCall, IsSourceArg)
+import Language.Common.CodeVariant qualified as CV
 import Language.Common.CreateSymbol (newTextForHole)
 import Language.Common.ExternalName qualified as EN
 import Language.Common.LocalDefKind qualified as LDK
@@ -192,9 +193,9 @@ rawTerm' mode h m headSymbol c = do
     "embed" -> do
       rawTermEmbedIntro h m c
     "quote" -> do
-      rawTermCodeIntro h RT.CodeVariantK m c
+      rawTermCodeIntro h CV.CodeVariantK m c
     "promote" ->
-      rawTermCodeIntro h RT.CodeVariantC m c
+      rawTermCodeIntro h CV.CodeVariantC m c
     "unquote" -> do
       rawTermCodeElim h m c
     "pack-type" -> do
@@ -1343,7 +1344,7 @@ rawTermEmbedIntro h m c1 = do
   (c2, (e, c)) <- betweenBrace $ rawExpr h
   return (m :< RT.EmbedIntro c1 c2 e, c)
 
-rawTermCodeIntro :: Handle -> RT.CodeVariant -> Hint -> C -> Parser (RT.RawTerm, C)
+rawTermCodeIntro :: Handle -> CV.CodeVariant -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermCodeIntro h codeVariant m c1 = do
   (c2, (e, c)) <- betweenBrace $ rawExpr h
   return (m :< RT.CodeIntro codeVariant c1 c2 e, c)
