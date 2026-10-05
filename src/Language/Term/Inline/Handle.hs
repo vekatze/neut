@@ -8,11 +8,11 @@ module Language.Term.Inline.Handle
     SpecializationEntry (..),
     TropeMap,
     NormalKey (..),
+    Normal (..),
   )
 where
 
 import Data.HashMap.Strict qualified as Map
-import Data.HashSet qualified as HashSet
 import Data.Hashable (Hashable (..))
 import Data.IntSet qualified as IntSet
 import Data.IORef
@@ -34,13 +34,18 @@ import Logger.Hint
 import System.Mem.StableName (StableName, hashStableName)
 
 data NormalKey = NormalKey
-  { normalTerm :: StableName TM.Term,
+  { normalTermName :: StableName TM.Term,
     normalStage :: Int,
     normalInitialStage :: Int,
     normalMemo :: StableName [(DD.DefiniteDescription, [TM.Type], Ident)],
     normalTropes :: StableName [Stmt.DefineMeta]
   }
   deriving (Eq)
+
+data Normal = Normal
+  { normalTerm :: TM.Term,
+    isNormalValue :: Bool
+  }
 
 instance Hashable NormalKey where
   hashWithSalt salt (NormalKey term stage initialStage memo tropes) =
@@ -109,8 +114,7 @@ data Handle = Handle
     insideDefineMeta :: Bool,
     localMetaMemo :: [(DD.DefiniteDescription, [TM.Type], Ident)],
     activeDefineMetaList :: [Stmt.DefineMeta],
-    normalFormsRef :: IORef (HashSet.HashSet NormalKey),
-    valueFormsRef :: IORef (HashSet.HashSet (StableName TM.Term)),
+    normalFormsRef :: IORef (Map.HashMap NormalKey Bool),
     mainModule :: Module.MainModule,
     modulePathMap :: ModulePath.ModulePathMap,
     traceHandle :: Trace.Handle,
