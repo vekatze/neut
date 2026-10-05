@@ -370,7 +370,9 @@ inlineNormal h rawTerm = do
                   then registerResidual h residual
                   else
                     if CC.isNoetic conv' || not canReduce
-                      then registerResidual h (rebuildWithDefaults defaultArgsFilled)
+                      then do
+                        defaultArgsNormal <- mapM (inline' (withoutPending h)) defaultArgsFilled
+                        registerResidual h (rebuildWithDefaults defaultArgsNormal)
                       else reduce subType expParams expArgsAll
       case e' of
         (_ :< TM.PiIntro attr@(AttrL.Attr {lamKind, identity}) impBinders expBinders defBinders body) -> do
