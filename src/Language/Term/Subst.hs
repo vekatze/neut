@@ -4,7 +4,7 @@ module Language.Term.Subst
     SubstEntry (..),
     Subst,
     subst,
-    substAndRefresh,
+    substIfChanged,
     substAndRefreshWithTrace,
     substType,
     refresh,
@@ -170,6 +170,15 @@ subst :: Handle -> Subst -> TM.Term -> IO TM.Term
 subst h sub term =
   valueOr term <$> substTerm h (initialEnv sub) term
 
+substIfChanged :: Handle -> Subst -> TM.Term -> IO (Maybe TM.Term)
+substIfChanged h sub term = do
+  outcome <- substTerm h (initialEnv sub) term
+  case outcome of
+    Kept ->
+      return Nothing
+    Made e _ _ ->
+      return $ Just e
+
 substType :: Handle -> Subst -> TM.Type -> IO TM.Type
 substType h sub ty =
   valueOr ty <$> substTy h (initialEnv sub) ty
@@ -181,10 +190,6 @@ refresh h =
 refreshType :: Handle -> TM.Type -> IO TM.Type
 refreshType h =
   substType (h {shouldRefreshBinders = True}) IntMap.empty
-
-substAndRefresh :: Handle -> Subst -> TM.Term -> IO TM.Term
-substAndRefresh h =
-  subst (h {shouldRefreshBinders = True})
 
 substAndRefreshWithTrace :: Handle -> Trace.Remapping -> Subst -> TM.Term -> IO TM.Term
 substAndRefreshWithTrace h remapping =

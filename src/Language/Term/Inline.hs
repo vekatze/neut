@@ -11,12 +11,12 @@ import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.IO.Class
 import Data.Bitraversable (bimapM)
-import Control.Exception (evaluate)
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.IntMap qualified as IntMap
 import Data.IntSet qualified as IntSet
 import Data.Maybe (fromMaybe)
+import Data.Set qualified as S
 import Data.Text qualified as T
 import Gensym.Gensym qualified as Gensym
 import Kernel.Common.Handle.Local.Tag qualified as Tag
@@ -44,6 +44,7 @@ import Language.Common.Opacity qualified as O
 import Language.Common.StmtKind qualified as SK
 import Language.Common.VarKind qualified as VK
 import Language.Term.Eq qualified as TermEq
+import Language.Term.FreeVars qualified as TM
 import Language.Term.Inline.ConstantFold qualified as ConstantFold
 import Language.Term.Inline.Env qualified as Env
 import Language.Term.Inline.Handle
@@ -56,7 +57,6 @@ import Language.Term.Trace qualified as TermTrace
 import Language.Term.TraceID
 import Language.Term.TraceSites qualified as TraceSites
 import Logger.Hint
-import System.Mem.StableName (makeStableName)
 
 new :: Env.Env -> Hint -> Bool -> IO Handle
 new env location traceEnabled = do
@@ -70,45 +70,213 @@ new env location traceEnabled = do
   let insideDefineMeta = False
   let localMetaMemo = []
   let activeDefineMetaList = []
-  normalFormsRef <- liftIO $ newIORef Map.empty
+  let pendingValues = IntMap.empty
+  let nextPendingSerial = 0
+  usedPendingSerialRef <- liftIO $ newIORef maxBound
+  emittedBinders <- liftIO $ newIORef IntSet.empty
   let localTypeEnv = IntMap.empty
   return $ Handle {..}
 
-normalKeyOf :: Handle -> TM.Term -> IO NormalKey
-normalKeyOf h term = do
-  term' <- evaluate term
-  normalTermName <- makeStableName term'
-  normalMemo <- evaluate (localMetaMemo h) >>= makeStableName
-  normalTropes <- evaluate (activeDefineMetaList h) >>= makeStableName
-  return $
-    NormalKey
-      { normalTermName = normalTermName,
-        normalStage = currentStage h,
-        normalInitialStage = initialStage h,
-        normalMemo = normalMemo,
-        normalTropes = normalTropes
-      }
+getTropeDepth :: Handle -> TropeDepth
+getTropeDepth h =
+  length $ activeDefineMetaList h
 
-lookupNormalForm :: Handle -> TM.Term -> IO (Maybe Normal)
-lookupNormalForm h term = do
-  key <- normalKeyOf h term
-  normalForms <- readIORef (normalFormsRef h)
-  return $ Normal term <$> Map.lookup key normalForms
+withoutPending :: Handle -> Handle
+withoutPending h =
+  h {pendingValues = IntMap.empty}
 
-markNormalForm :: Handle -> Normal -> IO Normal
-markNormalForm h e = do
-  key <- normalKeyOf h (normalTerm e)
-  modifyIORef' (normalFormsRef h) $ Map.insert key (isNormalValue e)
-  return e
+withoutPendingFor :: [Ident] -> Handle -> Handle
+withoutPendingFor xs h =
+  h {pendingValues = foldr (IntMap.delete . Ident.toInt) (pendingValues h) xs}
+
+withNormalized :: [(Ident, Normal)] -> Handle -> Handle
+withNormalized xes h = do
+  let tropeDepth = getTropeDepth h
+  withPending [(Ident.toInt x, Normalized tropeDepth e) | (x, e) <- xes] h
+
+withSelfValue :: LK.LamKindF a -> TM.Term -> Handle -> Handle
+withSelfValue lamKind self h =
+  case getSelfIdent lamKind of
+    Just selfIdent ->
+      withNormalized [(selfIdent, asValue self)] h
+    Nothing ->
+      h
+
+withArguments :: [Ident] -> [Normal] -> [TM.Term] -> Handle -> Handle
+withArguments params givenArgs args h = do
+  let givenCount = length givenArgs
+  let (givenParams, defaultParams) = splitAt givenCount params
+  withUnnormalized (zip defaultParams (drop givenCount args)) $ withNormalized (zip givenParams givenArgs) h
 
 areArgumentValues :: [Normal] -> [TM.Term] -> Bool
 areArgumentValues givenArgs args =
   all isNormalValue givenArgs && all TM.isValue (drop (length givenArgs) args)
 
+normalizeDefaults :: Handle -> [Normal] -> [TM.Term] -> App [Normal]
+normalizeDefaults h givenArgs args = do
+  defaults <- mapM (inlineNormal (withoutPending h)) (drop (length givenArgs) args)
+  return $ givenArgs ++ defaults
+
+withRenamed :: [(Ident, Ident)] -> Handle -> Handle
+withRenamed xys =
+  withPending [(Ident.toInt x, Renamed y) | (x, y) <- xys]
+
+withTypeSubst :: Subst.Subst -> Handle -> Handle
+withTypeSubst sub =
+  withPending [(x, TypeValue t) | (x, Subst.Type t) <- IntMap.toList sub]
+
+enterBinder :: Handle -> Ident -> App (Ident, Handle)
+enterBinder h x = do
+  emitted <- liftIO $ readIORef (emittedBinders h)
+  if IntSet.member (Ident.toInt x) emitted
+    then do
+      x' <- liftIO $ Sym.newIdentFromIdent (gensymHandle h) x
+      liftIO $ modifyIORef' (emittedBinders h) (IntSet.insert (Ident.toInt x'))
+      return (x', withRenamed [(x, x')] h)
+    else do
+      liftIO $ modifyIORef' (emittedBinders h) (IntSet.insert (Ident.toInt x))
+      return (x, withoutPendingFor [x] h)
+
+enterBinders :: Handle -> [Ident] -> App ([Ident], Handle)
+enterBinders h xs =
+  case xs of
+    [] ->
+      return ([], h)
+    x : rest -> do
+      (x', h') <- enterBinder h x
+      (rest', h'') <- enterBinders h' rest
+      return (x' : rest', h'')
+
+withUnnormalized :: [(Ident, TM.Term)] -> Handle -> Handle
+withUnnormalized xes =
+  withPending [(Ident.toInt x, Unnormalized e) | (x, e) <- xes]
+
+withPending :: [(Int, PendingTerm)] -> Handle -> Handle
+withPending entries h = do
+  let start = nextPendingSerial h
+  let insertPending (serial, (x, e)) = IntMap.insert x (Pending serial e)
+  h
+    { pendingValues = foldr insertPending (pendingValues h) (zip [start ..] entries),
+      nextPendingSerial = start + length entries
+    }
+
+lookupPending :: Handle -> Hint -> Ident -> App (Maybe Normal)
+lookupPending h m x =
+  case IntMap.lookup (Ident.toInt x) (pendingValues h) of
+    Nothing ->
+      return Nothing
+    Just (Pending {pendingSerial, pendingTerm}) -> do
+      case pendingTerm of
+        TypeValue (_ :< TM.TVar _) ->
+          liftIO $ recordPendingUse h pendingSerial
+        TypeValue _ ->
+          return ()
+        _ ->
+          liftIO $ recordPendingUse h pendingSerial
+      case pendingTerm of
+        Normalized tropeDepth e
+          | tropeDepth == getTropeDepth h ->
+              return $ Just e
+          | otherwise ->
+              Just <$> inlineNormal (withoutPending h) (normalTerm e)
+        Unnormalized e ->
+          Just <$> inlineNormal (withoutPending h) e
+        Renamed x' ->
+          return $ Just $ asValue $ m :< TM.Var x'
+        TypeValue (_ :< TM.TVar x') ->
+          return $ Just $ asValue $ m :< TM.Var x'
+        TypeValue _ ->
+          return Nothing
+
+toSubstEntry :: PendingTerm -> Subst.SubstEntry
+toSubstEntry pendingTerm =
+  case pendingTerm of
+    Normalized _ e ->
+      Subst.Term (normalTerm e)
+    Unnormalized e ->
+      Subst.Term e
+    Renamed x' ->
+      Subst.Var x'
+    TypeValue t ->
+      Subst.Type t
+
+getPendingType :: Hint -> PendingTerm -> Maybe TM.Type
+getPendingType m pendingTerm =
+  case pendingTerm of
+    TypeValue t ->
+      Just t
+    Renamed x' ->
+      Just $ m :< TM.TVar x'
+    Normalized _ (Normal {normalTerm = _ :< TM.Var x'}) ->
+      Just $ m :< TM.TVar x'
+    Unnormalized (_ :< TM.Var x') ->
+      Just $ m :< TM.TVar x'
+    _ ->
+      Nothing
+
+resolveLeafVar :: Handle -> Ident -> IO [Ident]
+resolveLeafVar h x =
+  case IntMap.lookup (Ident.toInt x) (pendingValues h) of
+    Nothing ->
+      return [x]
+    Just (Pending {pendingSerial, pendingTerm}) -> do
+      case pendingTerm of
+        Renamed x' -> do
+          recordPendingUse h pendingSerial
+          return [x']
+        TypeValue _ ->
+          return [x]
+        _ -> do
+          recordPendingUse h pendingSerial
+          return []
+
+resolveCursorVar :: Handle -> Ident -> IO Ident
+resolveCursorVar h x =
+  case IntMap.lookup (Ident.toInt x) (pendingValues h) of
+    Just (Pending {pendingSerial, pendingTerm = Renamed x'}) -> do
+      recordPendingUse h pendingSerial
+      return x'
+    _ ->
+      return x
+
+recordPendingUse :: Handle -> Int -> IO ()
+recordPendingUse h serial =
+  modifyIORef' (usedPendingSerialRef h) (min serial)
+
+trackPendingUse :: Handle -> App a -> App (a, Bool)
+trackPendingUse h action = do
+  let ref = usedPendingSerialRef h
+  outer <- liftIO $ readIORef ref
+  liftIO $ writeIORef ref maxBound
+  result <- action
+  inner <- liftIO $ readIORef ref
+  liftIO $ writeIORef ref (min outer inner)
+  return (result, inner < nextPendingSerial h)
+
+applyPending :: Handle -> TM.Term -> IO TM.Term
+applyPending h e = do
+  if IntMap.null (pendingValues h)
+    then return e
+    else do
+      result <- Subst.substIfChanged (substHandle h) (IntMap.map (toSubstEntry . pendingTerm) (pendingValues h)) e
+      case result of
+        Nothing ->
+          return e
+        Just e' -> do
+          let free = IntMap.fromSet (const ()) $ IntSet.fromList $ map Ident.toInt $ S.toList $ TM.freeVars e
+          let used = IntMap.intersection (pendingValues h) free
+          let candidates = if IntMap.null used then pendingValues h else used
+          recordPendingUse h $ minimum $ map pendingSerial $ IntMap.elems candidates
+          return e'
 
 inline :: Handle -> TM.Term -> App TM.Term
 inline h e = do
+  liftIO $ recordLocalBinders h
   inline' h e
+
+recordLocalBinders :: Handle -> IO ()
+recordLocalBinders h =
+  modifyIORef' (emittedBinders h) (IntSet.union (IntMap.keysSet (localTypeEnv h)))
 
 asNormal :: TM.Term -> Normal
 asNormal e =
@@ -120,6 +288,7 @@ asValue e =
 
 inlineType :: Handle -> TM.Type -> App TM.Type
 inlineType h t = do
+  liftIO $ recordLocalBinders h
   inlineType' h t
 
 incrementStep :: Handle -> IO ()
@@ -133,7 +302,7 @@ isActive h =
 
 enterOpaqueDefineMetaBody :: Handle -> Handle
 enterOpaqueDefineMetaBody h =
-  h {currentStage = 1, initialStage = 1, insideDefineMeta = True, traceEnabled = False}
+  withoutPending $ h {currentStage = 1, initialStage = 1, insideDefineMeta = True, traceEnabled = False}
 
 detectPossibleInfiniteLoop :: Handle -> App ()
 detectPossibleInfiniteLoop h = do
@@ -149,35 +318,32 @@ inline' h e =
 inlineNormal :: Handle -> TM.Term -> App Normal
 inlineNormal h rawTerm = do
   detectPossibleInfiniteLoop h
-  cached <- liftIO $ lookupNormalForm h rawTerm
-  case cached of
-    Just e ->
-      return e
-    Nothing ->
-      inlineFresh h rawTerm >>= liftIO . markNormalForm h
-
-inlineFresh :: Handle -> TM.Term -> App Normal
-inlineFresh h rawTerm = do
   case rawTerm of
-    _ :< TM.Var {} ->
-      return $ asValue rawTerm
+    m :< TM.Var x ->
+      fromMaybe (asValue rawTerm) <$> lookupPending h m x
     _ :< TM.VarGlobal {} ->
       return $ asValue rawTerm
     m :< TM.PiIntro attr@(AttrL.Attr {lamKind}) impArgs expArgs defaultArgs e -> do
-      impArgs' <- mapM (inlineTypeBinder h) impArgs
-      expArgs' <- mapM (inlineTypeBinder h) expArgs
-      defaultArgs' <- mapM (bimapM (inlineTypeBinder h) (inline' h)) defaultArgs
-      let hBody = withBinders (impArgs' ++ expArgs' ++ map fst defaultArgs') h
-      e' <- if currentStage h >= 1 then return e else inline' hBody e
-      case lamKind of
-        LK.Fix kind isDestPassing (mx, k, x, codType) -> do
-          codType' <- inlineType' h codType
-          let attr' = attr {AttrL.lamKind = LK.Fix kind isDestPassing (mx, k, x, codType')}
-          return $ asValue $ m :< TM.PiIntro attr' impArgs' expArgs' defaultArgs' e'
-        LK.Normal mName isDestPassing codType -> do
-          codType' <- inlineType' h codType
-          let attr' = attr {AttrL.lamKind = LK.Normal mName isDestPassing codType'}
-          return $ asValue $ m :< TM.PiIntro attr' impArgs' expArgs' defaultArgs' e'
+      ((lamKind', impArgs', expArgs', defaultArgs', e'), isAltered) <- trackPendingUse h $ do
+        (impArgs', hImp) <- inlineTypeBinders h impArgs
+        (expArgs', hExp) <- inlineTypeBinders hImp expArgs
+        (defaultArgs', hDefault) <- inlineLetSeq hExp defaultArgs
+        (lamKindSelf, hSelf) <- enterSelf hDefault lamKind
+        let hBody = withBinders (impArgs' ++ expArgs' ++ map fst defaultArgs') hSelf
+        e' <- if currentStage h >= 1 then liftIO (applyPending hBody e) else inline' hBody e
+        lamKind' <- case lamKindSelf of
+          LK.Fix kind isDestPassing (mx, k, x, codType) -> do
+            codType' <- inlineType' hDefault codType
+            return $ LK.Fix kind isDestPassing (mx, k, x, codType')
+          LK.Normal mName isDestPassing codType -> do
+            codType' <- inlineType' hDefault codType
+            return $ LK.Normal mName isDestPassing codType'
+        return (lamKind', impArgs', expArgs', defaultArgs', e')
+      identity <-
+        if isAltered
+          then liftIO $ Gensym.newCount (gensymHandle h)
+          else return $ AttrL.identity attr
+      return $ asValue $ m :< TM.PiIntro (AttrL.Attr {lamKind = lamKind', identity}) impArgs' expArgs' defaultArgs' e'
     m :< TM.PiElim callTraceID conv e impArgs expArgs defaultArgs -> do
       conv' <- CC.traverseTypes (inlineType' h) conv
       e' <- inline' h e
@@ -215,21 +381,18 @@ inlineFresh h rawTerm = do
                 (g, defInfo) <- registerLocalMeta h m identity attr impBinders expBinders defBinders body
                 asNormal <$> specializeLocalMeta h m g subType impArgs' expParams (defBody defInfo) (codType defInfo) expArgsAll
               else do
-                let subSelf = selfSubstForLamKind lamKind e'
                 let expIds = map (\(_, _, x, _) -> x) expParams
-                let subTerm = IntMap.fromList $ zip (map Ident.toInt expIds) (map Subst.Term expArgsAll)
                 if areArgumentValues expArgsNormal expArgsAll
                   then do
-                    let sub = IntMap.unions [subSelf, subType, subTerm]
-                    body' <- liftIO $ Subst.subst (substHandle h) sub body
-                    expand h body'
+                    expand (withArguments expIds expArgsNormal expArgsAll $ withSelfValue lamKind e' $ withTypeSubst subType $ withoutPending h) body
                   else do
                     if not (isActive h)
                       then registerResidual h residual
                       else do
-                        let sub = IntMap.unions [subSelf, subType]
+                        let sub = IntMap.unions [selfSubstForLamKind lamKind e', subType]
                         (expParams', body') <- liftIO $ Subst.substAndRefresh' (substHandle h) sub expParams body
-                        expand h $ bind (zip expParams' expArgsAll) body'
+                        expArgsAllNormal <- normalizeDefaults h expArgsNormal expArgsAll
+                        bindNormal (withoutPending h) (zip expParams' expArgsAllNormal) body'
         (mUse :< TM.VarGlobal _ dd)
           | Just defInfo <- Map.lookup dd dmap -> do
               let DefInfo {defImpBinders, defExpBinders, defDefaultArgs, defBody, codType, defKind, traceSiteIDs} = defInfo
@@ -245,18 +408,18 @@ inlineFresh h rawTerm = do
                     if areArgumentValues expArgsNormal expArgsAll
                       then do
                         remapTrace <- prepareDefinitionTraceRemapping h dd defKind traceSiteIDs m callTraceID
-                        let expIds = map (\(_, _, x, _) -> x) expParams
-                        let subTerm = IntMap.fromList $ zip (map Ident.toInt expIds) (map Subst.Term expArgsAll)
-                        let sub = IntMap.union subTerm subType
-                        body' <- instantiateDefinition h remapTrace sub defBody
-                        tracer $ expand h body'
+                        (expParams', body') <- instantiateDefinition h remapTrace subType expParams defBody
+                        let expIds = map (\(_, _, x, _) -> x) expParams'
+                        tracer $ expand (withArguments expIds expArgsNormal expArgsAll $ withoutPending h) body'
                       else do
                         if not (isActive h)
                           then registerResidual h residual
                           else do
                             remapTrace <- prepareDefinitionTraceRemapping h dd defKind traceSiteIDs m callTraceID
-                            (expParams', body') <- instantiateDefinition' h remapTrace subType expParams defBody
-                            tracer $ expand h $ bind (zip expParams' expArgsAll) body'
+                            (expParams', body') <- instantiateDefinition h remapTrace subType expParams defBody
+                            tracer $ do
+                              expArgsAllNormal <- normalizeDefaults h expArgsNormal expArgsAll
+                              bindNormal (withoutPending h) (zip expParams' expArgsAllNormal) body'
           | Just defInfo <- Map.lookup dd localDefMap -> do
               let DefInfo {defImpBinders, defExpBinders, defDefaultArgs, defBody, codType} = defInfo
               reduceApplication Nothing defImpBinders defExpBinders defDefaultArgs True $ \subType expParams expArgsAll ->
@@ -278,53 +441,13 @@ inlineFresh h rawTerm = do
       return $ Normal e' (all isNormalValue consArgs')
     m :< TM.DataElim traceID isNoetic oets decisionTree -> do
       let (os, es, ts) = unzip3 oets
-      es' <- mapM (inline' h) es
+      es' <- mapM (inlineNormal h) es
       ts' <- mapM (inlineType' h) ts
-      let oets' = zip3 os es' ts'
-      let hTree = withTypedIdents (zip os ts') h
-      if isNoetic
-        then do
-          decisionTree' <- inlineDecisionTree hTree decisionTree
-          registerResidual h $ m :< TM.DataElim traceID isNoetic oets' decisionTree'
-        else do
-          case decisionTree of
-            DT.Leaf _ letSeq e -> do
-              let sub = IntMap.fromList $ zip (map Ident.toInt os) (map Subst.Term es')
-              liftIO (Subst.subst (substHandle h) sub (TM.fromLetSeq letSeq e)) >>= expand h
-            DT.Unreachable ->
-              registerResidual h $ m :< TM.DataElim traceID isNoetic oets' DT.Unreachable
-            DT.Switch (cursor, _) (fallbackTree, caseList) -> do
-              case lookupSplit cursor oets' of
-                Just (e@(_ :< TM.DataIntro (AttrDI.Attr {..}) _ _ consImpTypes consArgs), oets'') -> do
-                  let (consImpVars, newBaseCursorList, cont) = findClause discriminant fallbackTree caseList
-                  let typeSub = IntMap.fromList $ zip (map Ident.toInt consImpVars) (map Subst.Type consImpTypes)
-                  newBaseCursorList' <- liftIO $ mapM (traverse (Subst.substType (substHandle h) typeSub)) newBaseCursorList
-                  let newCursorList = zipWith (\(o, t) arg -> (o, arg, t)) newBaseCursorList' consArgs
-                  cont' <- liftIO $ Subst.substDecisionTree (substHandle h) (IntMap.insert (Ident.toInt cursor) (Subst.Term e) typeSub) cont
-                  expand h $ m :< TM.DataElim traceID isNoetic (oets'' ++ newCursorList) cont'
-                Just (e, oets'')
-                  | Just literal <- asLiteralTerm e -> do
-                      case findLiteralClause literal caseList of
-                        Just cont -> do
-                          cont' <- liftIO $ substCursor h cursor e cont
-                          expand h $ m :< TM.DataElim traceID isNoetic oets'' cont'
-                        Nothing
-                          | L.Int value <- literal,
-                            Just ([], cont) <- findConsCaseByDisc (D.MakeDiscriminant value) caseList -> do
-                              cont' <- liftIO $ substCursor h cursor e cont
-                              expand h $ m :< TM.DataElim traceID isNoetic oets'' cont'
-                          | otherwise -> do
-                              decisionTree' <- inlineDecisionTree hTree decisionTree
-                              registerResidual h $ m :< TM.DataElim traceID isNoetic oets' decisionTree'
-                _ -> do
-                  decisionTree' <- inlineDecisionTree hTree decisionTree
-                  registerResidual h $ m :< TM.DataElim traceID isNoetic oets' decisionTree'
+      reduceDataElim h m traceID isNoetic (zip3 os es' ts') decisionTree
     m :< TM.BoxIntro traceID letSeq e -> do
-      let (xts, es) = unzip letSeq
-      xts' <- mapM (inlineTypeBinder h) xts
-      es' <- mapM (inline' h) es
-      e' <- inline' (withBinders xts' h) e
-      registerResidual h $ m :< TM.BoxIntro traceID (zip xts' es') e'
+      (letSeq', hLet) <- inlineLetSeq h letSeq
+      e' <- inline' (withBinders (map fst letSeq') hLet) e
+      registerResidual h $ m :< TM.BoxIntro traceID letSeq' e'
     m :< TM.BoxIntroLift t e -> do
       t' <- inlineType' h t
       e' <- inlineNormal h e
@@ -333,12 +456,14 @@ inlineFresh h rawTerm = do
       e' <- inline' h e
       return $ asValue $ m :< TM.EmbedIntro e'
     m :< TM.BoxElim traceID castSeq mxt e1 uncastSeq e2 -> do
-      castSeq' <- mapM (bimapM (inlineTypeBinder h) (inline' h)) castSeq
-      let hCast = withBinders (map fst castSeq') h
-      (mxt', e1') <- bimapM (inlineTypeBinder h) (inline' hCast) (mxt, e1)
-      let hCont = withBinders (mxt' : map fst castSeq') h
-      uncastSeq' <- mapM (bimapM (inlineTypeBinder h) (inline' hCont)) uncastSeq
-      e2' <- inline' (withBinders (map fst uncastSeq') hCont) e2
+      (castSeq', hCastSeq) <- inlineLetSeq h castSeq
+      let hCast = withBinders (map fst castSeq') hCastSeq
+      ((mx, k, x, t), e1') <- bimapM (inlineTypeBinder hCast) (inline' hCast) (mxt, e1)
+      (x', hMxt) <- enterBinder hCast x
+      let mxt' = (mx, k, x', t)
+      let hCont = withBinders [mxt'] hMxt
+      (uncastSeq', hUncast) <- inlineLetSeq hCont uncastSeq
+      e2' <- inline' (withBinders (map fst uncastSeq') hUncast) e2
       registerResidual h $ m :< TM.BoxElim traceID castSeq' mxt' e1' uncastSeq' e2'
     m :< TM.CodeIntro codeVariant e -> do
       let hInner = h {currentStage = currentStage h - CV.getStageOffset codeVariant}
@@ -348,8 +473,9 @@ inlineFresh h rawTerm = do
       let hInner = h {currentStage = currentStage h + 1}
       e' <- inline' hInner e
       case e' of
-        _ :< TM.CodeIntro _ e'' ->
-          expand h e''
+        _ :< TM.CodeIntro _ e'' -> do
+          liftIO $ incrementStep h
+          return $ asNormal e''
         _ ->
           registerResidual h $ m :< TM.CodeElim traceID e'
     m :< TM.TauIntro ty -> do
@@ -359,20 +485,20 @@ inlineFresh h rawTerm = do
       e1' <- inline' h e1
       case e1' of
         _ :< TM.TauIntro ty -> do
-          let sub = IntMap.singleton (Ident.toInt x) (Subst.Type ty)
-          liftIO (Subst.subst (substHandle h) sub e2) >>= expand h
+          expand (withPending [(Ident.toInt x, TypeValue ty)] h) e2
         _ -> do
-          e2' <- inline' h e2
-          registerResidual h $ m :< TM.TauElim traceID (mx, k, x) e1' e2'
+          (x', h') <- enterBinder h x
+          e2' <- inline' h' e2
+          registerResidual h $ m :< TM.TauElim traceID (mx, k, x') e1' e2'
     m :< TM.Let mxt@(_, _, x, _) e1 e2 -> do
       e1' <- inlineNormal h e1
       if isNormalValue e1'
-        then do
-          let sub = IntMap.singleton (Ident.toInt x) (Subst.Term (normalTerm e1'))
-          inlineLetCont h sub e2
+        then expand (withNormalized [(x, e1')] h) e2
         else do
-          mxt' <- inlineTypeBinder h mxt
-          e2' <- inline' (withBinders [mxt'] h) e2
+          (mx, k, _, t) <- inlineTypeBinder h mxt
+          (x', hBody) <- enterBinder h x
+          let mxt' = (mx, k, x', t)
+          e2' <- inline' (withBinders [mxt'] hBody) e2
           return $ asNormal $ m :< TM.Let mxt' (normalTerm e1') e2'
     m :< TM.Invoke tropeNames body -> do
       defineMetaList <- activateTropes h m tropeNames
@@ -380,18 +506,18 @@ inlineFresh h rawTerm = do
     m :< TM.Prim prim -> do
       case prim of
         PV.Int intType size value -> do
-          intType' <- inlineType' h intType
+          intType' <- inlineType' (withoutPending h) intType
           return $ asValue $ m :< TM.Prim (PV.Int intType' size value)
         PV.Float floatType size value -> do
-          floatType' <- inlineType' h floatType
+          floatType' <- inlineType' (withoutPending h) floatType
           return $ asValue $ m :< TM.Prim (PV.Float floatType' size value)
         PV.Op {} ->
           return $ asValue rawTerm
         PV.NoeticString stringType text -> do
-          stringType' <- inlineType' h stringType
+          stringType' <- inlineType' (withoutPending h) stringType
           return $ asValue $ m :< TM.Prim (PV.NoeticString stringType' text)
         PV.NoeticBinary binaryType bytes -> do
-          binaryType' <- inlineType' h binaryType
+          binaryType' <- inlineType' (withoutPending h) binaryType
           return $ asValue $ m :< TM.Prim (PV.NoeticBinary binaryType' bytes)
         PV.Text text ->
           return $ asValue $ m :< TM.Prim (PV.Text text)
@@ -428,7 +554,7 @@ inlineFresh h rawTerm = do
           registerResidual h (m :< TM.Magic traceID (M.Free unitType' ptr'))
         M.InspectType mid _ typeExpr -> do
           typeExpr' <- inlineType' h typeExpr
-          Magic.evaluateInspectType h m mid typeExpr' >>= expand h
+          Magic.evaluateInspectType h m mid typeExpr' >>= expand (withoutPending h)
         M.EqType moduleID typeExpr1 typeExpr2 -> do
           typeExpr1' <- inlineType' h typeExpr1
           typeExpr2' <- inlineType' h typeExpr2
@@ -442,15 +568,15 @@ inlineFresh h rawTerm = do
           asNormal <$> Magic.evaluateTextCons h m rune' text'
         M.TextUncons mid text -> do
           text' <- inline' h text
-          Magic.evaluateTextUncons h m mid text' >>= expand h
+          Magic.evaluateTextUncons h m mid text' >>= expand (withoutPending h)
         M.MakeSwitch mid key fallback clauses -> do
           key' <- inline' h key
           fallback' <- inline' h fallback
           clauses' <- inline' h clauses
-          Magic.evaluateMakeSwitch h m mid key' fallback' clauses' >>= expand h
+          Magic.evaluateMakeSwitch h m mid key' fallback' clauses' >>= expand (withoutPending h)
         M.FreeVariables mid code -> do
           code' <- inline' h code
-          Magic.evaluateFreeVariables h (inlineType' h) m mid code' >>= expand h
+          Magic.evaluateFreeVariables h (inlineType' (withoutPending h)) m mid code' >>= expand (withoutPending h)
         M.CompileError msg -> do
           msg' <- inline' h msg
           asNormal <$> Magic.evaluateCompileError h m msg'
@@ -461,23 +587,68 @@ inlineFresh h rawTerm = do
         M.GetOriginColumn -> do
           asNormal <$> Magic.evaluateGetOriginColumn h m
 
-inlineLetCont :: Handle -> Subst.Subst -> TM.Term -> App Normal
-inlineLetCont h sub term =
-  case term of
-    m :< TM.Let (mx, k, x, t) e1 e2 -> do
-      liftIO $ incrementStep h
-      detectPossibleInfiniteLoop h
-      e1' <- liftIO (Subst.subst (substHandle h) sub e1) >>= inlineNormal h
-      if isNormalValue e1'
-        then inlineLetCont h (IntMap.insert (Ident.toInt x) (Subst.Term (normalTerm e1')) sub) e2
-        else do
-          t' <- liftIO (Subst.substType (substHandle h) sub t) >>= inlineType' h
-          x' <- liftIO $ Sym.newIdentFromIdent (gensymHandle h) x
-          let sub' = IntMap.insert (Ident.toInt x) (Subst.Var x') sub
-          e2' <- inlineLetCont (withTypedIdents [(x', t')] h) sub' e2
-          return $ asNormal $ m :< TM.Let (mx, k, x', t') (normalTerm e1') (normalTerm e2')
-    _ -> do
-      liftIO (Subst.subst (substHandle h) sub term) >>= expand h
+reduceDataElim ::
+  Handle ->
+  Hint ->
+  TraceID ->
+  Bool ->
+  [(Ident, Normal, TM.Type)] ->
+  DT.DecisionTree TM.Type TM.Term ->
+  App Normal
+reduceDataElim h m traceID isNoetic oets' decisionTree = do
+  let (os, es', ts') = unzip3 oets'
+  let residualOets = zip3 os (map normalTerm es') ts'
+  let residualTree = do
+        (os', hOs) <- enterBinders h os
+        decisionTree' <- inlineDecisionTree (withTypedIdents (zip os' ts') hOs) decisionTree
+        registerResidual h $ m :< TM.DataElim traceID isNoetic (zip3 os' (map normalTerm es') ts') decisionTree'
+  if isNoetic
+    then residualTree
+    else do
+      case decisionTree of
+        DT.Leaf _ letSeq e -> do
+          expand (withNormalized (zip os es') h) (TM.fromLetSeq letSeq e)
+        DT.Unreachable ->
+          registerResidual h $ m :< TM.DataElim traceID isNoetic residualOets DT.Unreachable
+        DT.Switch (cursor, _) (fallbackTree, caseList) -> do
+          case lookupSplit cursor oets' of
+            Just (e, oets'')
+              | _ :< TM.DataIntro (AttrDI.Attr {..}) _ _ consImpTypes consArgs <- normalTerm e -> do
+              let (consImpVars, newBaseCursorList, cont) = findClause discriminant fallbackTree caseList
+              let hTyped = withPending [(Ident.toInt x, TypeValue t) | (x, t) <- zip consImpVars consImpTypes] h
+              newCursorTypes <- mapM (inlineType' hTyped . snd) newBaseCursorList
+              let newCursorList = zip3 (map fst newBaseCursorList) (map (asComponent e) consArgs) newCursorTypes
+              continueDataElim (withNormalized [(cursor, e)] hTyped) m traceID isNoetic (oets'' ++ newCursorList) cont
+            Just (e, oets'')
+              | Just literal <- asLiteralTerm (normalTerm e) -> do
+                  case findLiteralClause literal caseList of
+                    Just cont -> do
+                      continueDataElim (withNormalized [(cursor, e)] h) m traceID isNoetic oets'' cont
+                    Nothing
+                      | L.Int value <- literal,
+                        Just ([], cont) <- findConsCaseByDisc (D.MakeDiscriminant value) caseList -> do
+                          continueDataElim (withNormalized [(cursor, e)] h) m traceID isNoetic oets'' cont
+                      | otherwise ->
+                          residualTree
+            _ ->
+              residualTree
+
+continueDataElim ::
+  Handle ->
+  Hint ->
+  TraceID ->
+  Bool ->
+  [(Ident, Normal, TM.Type)] ->
+  DT.DecisionTree TM.Type TM.Term ->
+  App Normal
+continueDataElim h m traceID isNoetic oets' decisionTree = do
+  liftIO $ incrementStep h
+  detectPossibleInfiniteLoop h
+  reduceDataElim h m traceID isNoetic oets' decisionTree
+
+asComponent :: Normal -> TM.Term -> Normal
+asComponent parent e =
+  Normal e (isNormalValue parent || TM.isValue e)
 
 expand :: Handle -> TM.Term -> App Normal
 expand h term = do
@@ -496,13 +667,19 @@ inlineType' h ty = do
   case ty of
     _ :< TM.Tau ->
       return ty
-    _ :< TM.TVar {} ->
-      return ty
+    m :< TM.TVar x ->
+      case IntMap.lookup (Ident.toInt x) (pendingValues h) of
+        Just (Pending {pendingSerial, pendingTerm})
+          | Just ty' <- getPendingType m pendingTerm -> do
+              liftIO $ recordPendingUse h pendingSerial
+              return ty'
+        _ ->
+          return ty
     _ :< TM.TVarGlobal {} ->
       return ty
     m :< TM.TyApp t args -> do
       t' <- inlineType' h t
-      case t of
+      case t' of
         _ :< TM.TVarGlobal _ dd
           | Just typeDefInfo <- Map.lookup dd (typeDefMap h),
             TypeDef.TypeDefInfo {TypeDef.typeDefBinders = binders, TypeDef.typeDefBody = body} <- typeDefInfo,
@@ -512,15 +689,15 @@ inlineType' h ty = do
               let subType = IntMap.fromList $ zip (map Ident.toInt binderIds) (map Subst.Type args')
               body' <- liftIO $ Subst.substType (substHandle h) subType body
               liftIO $ incrementStep h
-              inlineType' h body'
+              inlineType' (withoutPending h) body'
         _ -> do
           args' <- mapM (inlineType' h) args
           return $ m :< TM.TyApp t' args'
     m :< TM.Pi piKind impArgs expArgs defaultArgs cod -> do
-      impArgs' <- mapM (inlineTypeBinder h) impArgs
-      expArgs' <- mapM (inlineTypeBinder h) expArgs
-      defaultArgs' <- mapM (inlineTypeBinder h) defaultArgs
-      cod' <- inlineType' h cod
+      (impArgs', h1) <- inlineTypeBinders h impArgs
+      (expArgs', h2) <- inlineTypeBinders h1 expArgs
+      (defaultArgs', h3) <- inlineTypeBinders h2 defaultArgs
+      cod' <- inlineType' h3 cod
       return $ m :< TM.Pi piKind impArgs' expArgs' defaultArgs' cod'
     m :< TM.Data attr name es -> do
       es' <- mapM (inlineType' h) es
@@ -553,7 +730,7 @@ inlineLowMagic h lowMagic =
       value' <- inline' h value
       return $ LM.Cast from' to' value'
     LM.Store t unit value pointer -> do
-      unit' <- inlineType' h unit
+      unit' <- inlineType' (withoutPending h) unit
       value' <- inline' h value
       pointer' <- inline' h pointer
       return $ LM.Store t unit' value' pointer'
@@ -585,16 +762,51 @@ withBinders xts =
 
 withTypedIdents :: [(Ident, TM.Type)] -> Handle -> Handle
 withTypedIdents xts h =
-  h {localTypeEnv = foldr (\(x, t) -> IntMap.insert (Ident.toInt x) t) (localTypeEnv h) xts}
+  h
+    { localTypeEnv = foldr (\(x, t) -> IntMap.insert (Ident.toInt x) t) (localTypeEnv h) xts,
+      pendingValues = pendingValues (withoutPendingFor (map fst xts) h)
+    }
+
+withCursorType :: Ident -> TM.Type -> Handle -> Handle
+withCursorType x t h =
+  h {localTypeEnv = IntMap.insert (Ident.toInt x) t (localTypeEnv h)}
+
+enterSelf :: Handle -> LK.LamKindF a -> App (LK.LamKindF a, Handle)
+enterSelf h lamKind =
+  case lamKind of
+    LK.Fix kind isDestPassing (mx, k, x, codType) -> do
+      (x', h') <- enterBinder h x
+      return (LK.Fix kind isDestPassing (mx, k, x', codType), h')
+    LK.Normal {} ->
+      return (lamKind, h)
+
+inlineLetSeq :: Handle -> [(BinderF TM.Type, TM.Term)] -> App ([(BinderF TM.Type, TM.Term)], Handle)
+inlineLetSeq h letSeq =
+  case letSeq of
+    [] ->
+      return ([], h)
+    (binder, e) : rest -> do
+      (mx, k, x, t) <- inlineTypeBinder h binder
+      e' <- inline' h e
+      (x', h') <- enterBinder h x
+      (rest', h'') <- inlineLetSeq h' rest
+      return (((mx, k, x', t), e') : rest', h'')
+
+inlineTypeBinders :: Handle -> [BinderF TM.Type] -> App ([BinderF TM.Type], Handle)
+inlineTypeBinders h binders =
+  case binders of
+    [] ->
+      return ([], h)
+    binder : rest -> do
+      (mx, k, x, t) <- inlineTypeBinder h binder
+      (x', h') <- enterBinder h x
+      (rest', h'') <- inlineTypeBinders h' rest
+      return ((mx, k, x', t) : rest', h'')
 
 inlineTypeBinder :: Handle -> BinderF TM.Type -> App (BinderF TM.Type)
 inlineTypeBinder h (m, k, x, t) = do
   t' <- inlineType' h t
   return (m, k, x, t')
-
-substCursor :: Handle -> Ident -> TM.Term -> DT.DecisionTree TM.Type TM.Term -> IO (DT.DecisionTree TM.Type TM.Term)
-substCursor h cursor e =
-  Subst.substDecisionTree (substHandle h) (IntMap.singleton (Ident.toInt cursor) (Subst.Term e))
 
 inlineDecisionTree ::
   Handle ->
@@ -603,15 +815,17 @@ inlineDecisionTree ::
 inlineDecisionTree h tree =
   case tree of
     DT.Leaf xs letSeq e -> do
-      letSeq' <- mapM (bimapM (inlineTypeBinder h) (inline' h)) letSeq
-      e' <- inline' (withBinders (map fst letSeq') h) e
-      return $ DT.Leaf xs letSeq' e'
+      xs' <- liftIO $ concat <$> mapM (resolveLeafVar h) xs
+      (letSeq', hLet) <- inlineLetSeq h letSeq
+      e' <- inline' (withBinders (map fst letSeq') hLet) e
+      return $ DT.Leaf xs' letSeq' e'
     DT.Unreachable ->
       return DT.Unreachable
     DT.Switch (cursorVar, cursor) clauseList -> do
+      cursorVar' <- liftIO $ resolveCursorVar h cursorVar
       cursor' <- inlineType' h cursor
-      clauseList' <- inlineCaseList (withTypedIdents [(cursorVar, cursor')] h) clauseList
-      return $ DT.Switch (cursorVar, cursor') clauseList'
+      clauseList' <- inlineCaseList (withCursorType cursorVar' cursor' h) clauseList
+      return $ DT.Switch (cursorVar', cursor') clauseList'
 
 inlineCaseList ::
   Handle ->
@@ -635,9 +849,9 @@ inlineCase h decisionCase = do
       let (dataTerms, dataTypes) = unzip dataArgs
       dataTerms' <- mapM (inlineType' h) dataTerms
       dataTypes' <- mapM (inlineType' h) dataTypes
-      consImpArgs' <- mapM (inlineTypeBinder h) consImpArgs
-      consArgs' <- mapM (inlineTypeBinder h) consArgs
-      cont' <- inlineDecisionTree (withBinders consArgs' h) cont
+      (consImpArgs', hImp) <- inlineTypeBinders h consImpArgs
+      (consArgs', hArgs) <- inlineTypeBinders hImp consArgs
+      cont' <- inlineDecisionTree (withBinders consArgs' hArgs) cont
       return $
         DT.ConsCase
           record
@@ -772,13 +986,20 @@ fillDefaultValue h defaultFrameCtx sub defaultValue =
     _ ->
       Subst.subst (substHandle h) sub defaultValue
 
-bind :: [(BinderF TM.Type, TM.Term)] -> TM.Term -> TM.Term
-bind binder cont =
+bindNormal :: Handle -> [(BinderF TM.Type, Normal)] -> TM.Term -> App Normal
+bindNormal h binder cont =
   case binder of
     [] ->
-      cont
-    ((m, k, x, t), e1) : rest -> do
-      m :< TM.Let (m, k, x, t) e1 (bind rest cont)
+      expand h cont
+    (mxt@(m, _, x, _), e1) : rest -> do
+      if isNormalValue e1
+        then bindNormal (withNormalized [(x, e1)] h) rest cont
+        else do
+          (mx, k, _, t) <- inlineTypeBinder h mxt
+          (x', hRest) <- enterBinder h x
+          let mxt' = (mx, k, x', t)
+          cont' <- bindNormal (withBinders [mxt'] hRest) rest cont
+          return $ asNormal $ m :< TM.Let mxt' (normalTerm e1) (normalTerm cont')
 
 prepareDefinitionTraceRemapping ::
   Handle ->
@@ -795,22 +1016,14 @@ prepareDefinitionTraceRemapping h dd defKind traceSiteIDs callHint callTraceID =
       remapping <- liftIO $ TermTrace.registerExpansion (traceHandle h) dd callHint callTraceID (toFrameKind defKind) traceSiteIDs
       return $ Just remapping
 
-instantiateDefinition :: Handle -> Maybe TermTrace.Remapping -> Subst.Subst -> TM.Term -> App TM.Term
-instantiateDefinition h remapTrace sub body = do
-  case remapTrace of
-    Nothing ->
-      liftIO $ Subst.substAndRefresh (substHandle h) sub body
-    Just remapping -> do
-      liftIO $ Subst.substAndRefreshWithTrace (substHandle h) remapping sub body
-
-instantiateDefinition' ::
+instantiateDefinition ::
   Handle ->
   Maybe TermTrace.Remapping ->
   Subst.Subst ->
   [BinderF TM.Type] ->
   TM.Term ->
   App ([BinderF TM.Type], TM.Term)
-instantiateDefinition' h remapTrace sub binders body = do
+instantiateDefinition h remapTrace sub binders body = do
   case remapTrace of
     Nothing ->
       liftIO $ Subst.substAndRefresh' (substHandle h) sub binders body
@@ -1075,12 +1288,20 @@ canReduceByLamKind lamKind =
 
 selfSubstForLamKind :: LK.LamKindF a -> TM.Term -> Subst.Subst
 selfSubstForLamKind lamKind selfTerm =
+  case getSelfIdent lamKind of
+    Just selfIdent ->
+      IntMap.singleton (Ident.toInt selfIdent) (Subst.Term selfTerm)
+    Nothing ->
+      IntMap.empty
+
+getSelfIdent :: LK.LamKindF a -> Maybe Ident
+getSelfIdent lamKind =
   case lamKind of
     LK.Fix kind False (_, _, selfIdent, _)
       | not $ O.isOpaque $ LDK.toOpacity kind ->
-          IntMap.singleton (Ident.toInt selfIdent) (Subst.Term selfTerm)
+          Just selfIdent
     _ ->
-      IntMap.empty
+      Nothing
 
 isMacroDef :: DefKind -> Bool
 isMacroDef dk =
