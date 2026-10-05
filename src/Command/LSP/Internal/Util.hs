@@ -1,6 +1,7 @@
 module Command.LSP.Internal.Util
   ( run,
     report,
+    reportForFile,
     republishDiagnostics,
     maxDiagNum,
     getUriParam,
@@ -18,6 +19,7 @@ import Command.LSP.Internal.DiagnosticStore qualified as DiagnosticStore
 import Command.LSP.Internal.DocumentState qualified as DocumentState
 import Command.LSP.Internal.DocumentStateStore (DocumentStateStore)
 import Command.LSP.Internal.DocumentStateStore qualified as DocumentStateStore
+import Command.LSP.Internal.LintWorker qualified as LintWorker
 import Console.Handle qualified as Console
 import Control.Lens hiding (Iso, List)
 import Control.Monad
@@ -26,6 +28,7 @@ import Data.Aeson.Types qualified as A
 import Data.Function (on)
 import Data.List (sortBy, sortOn)
 import Data.List.NonEmpty qualified as NE
+import Data.Map.Strict qualified as M
 import Data.Maybe (mapMaybe)
 import Data.Set qualified as S
 import Data.Text qualified as T
@@ -50,7 +53,8 @@ data LspState = LspState
     diagnosticStore :: DiagnosticStore,
     consoleHandle :: Console.Handle,
     loggerHandle :: Logger.Handle,
-    localArchiveMap :: LocalArchive.LocalArchiveMap
+    localArchiveMap :: LocalArchive.LocalArchiveMap,
+    lintWorker :: LintWorker.Handle
   }
 
 run :: LspState -> Global.Handle -> App a -> Lsp b (Maybe a)
@@ -70,15 +74,24 @@ report lspState logList = do
   let diagGroupList' = NE.groupBy ((==) `on` fst) $ sortBy (compare `on` fst) uriDiagList
   let diagGroups = map (\g -> (fst $ NE.head g, NE.map snd g)) diagGroupList'
   forM_ diagGroups $ \(uri, diags) -> do
-    baseTextOrNone <- liftIO $ DocumentStateStore.readSavedText (fromNormalizedUri uri)
-    diags' <- case baseTextOrNone of
-      Nothing ->
-        return $ NE.toList diags
-      Just baseText -> do
-        let extended = updateCol baseText $ NE.toList diags
-        liftIO $ DiagnosticStore.save (diagnosticStore lspState) uri baseText extended
-        return extended
-    publishDiagnostics maxDiagNum uri Nothing (partitionBySource diags')
+    publishForFile lspState uri (NE.toList diags)
+
+reportForFile :: LspState -> NormalizedUri -> [L.Log] -> Lsp b ()
+reportForFile lspState uri logList = do
+  let diags = [diag | (uri', diag) <- mapMaybe remarkToDignostic logList, uri' == uri]
+  publishForFile lspState uri diags
+
+publishForFile :: LspState -> NormalizedUri -> [Diagnostic] -> Lsp b ()
+publishForFile lspState uri diags = do
+  baseTextOrNone <- liftIO $ DocumentStateStore.readSavedText (fromNormalizedUri uri)
+  diags' <- case baseTextOrNone of
+    Nothing ->
+      return diags
+    Just baseText -> do
+      let extended = updateCol baseText diags
+      liftIO $ DiagnosticStore.save (diagnosticStore lspState) uri baseText extended
+      return extended
+  publishDiagnostics maxDiagNum uri Nothing (M.union (partitionBySource diags') (M.singleton (Just "neut") mempty))
 
 republishDiagnostics :: LspState -> Uri -> Lsp b ()
 republishDiagnostics lspState uri = do
