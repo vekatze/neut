@@ -18,7 +18,7 @@ import Control.Monad.IO.Class
 import Data.Binary
 import Data.Maybe
 import Data.Text qualified as T
-import Data.Time (UTCTime)
+import Data.Time (UTCTime, getCurrentTime)
 import Kernel.Common.Artifact qualified as A
 import Kernel.Common.Cache qualified as Cache
 import Kernel.Common.CreateGlobalHandle qualified as Global
@@ -57,13 +57,16 @@ saveCompletionCache :: Path.Handle -> Target -> Source.Source -> Cache.Completio
 saveCompletionCache h t source cache = do
   cachePath <- Path.getSourceCompletionCachePath h t source
   ensureDir $ parent cachePath
-  liftIO $ encodeFile (toFilePath cachePath) cache
+  timeStamp <- liftIO getCurrentTime
+  liftIO $ placeAtomically cachePath timeStamp $ \stagingPath -> do
+    encodeFile (toFilePath stagingPath) cache
 
-saveLocationCache :: Path.Handle -> Target -> Source.Source -> Cache.LocationCache -> App ()
-saveLocationCache h t source cache = do
+saveLocationCache :: Path.Handle -> Target -> Source.Source -> UTCTime -> Cache.LocationCache -> App ()
+saveLocationCache h t source timeStamp cache = do
   cachePath <- Path.getSourceLocationCachePath h t source
   ensureDir $ parent cachePath
-  liftIO $ encodeFile (toFilePath cachePath) cache
+  liftIO $ placeAtomically cachePath timeStamp $ \stagingPath -> do
+    encodeFile (toFilePath stagingPath) cache
 
 loadCache :: Handle -> Target -> Source.Source -> App (Maybe Cache.Cache)
 loadCache h t source = do

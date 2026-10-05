@@ -156,7 +156,7 @@ elaborate h t logs cacheOrStmt = do
 saveLocationTree :: Handle -> Target -> App ()
 saveLocationTree h t = do
   tmap <- liftIO $ Tag.get (tagHandle h)
-  Cache.saveLocationCache (pathHandle h) t (currentSource h) $ Cache.LocationCache tmap
+  Cache.saveLocationCache (pathHandle h) t (currentSource h) (cacheTimeStamp h) $ Cache.LocationCache tmap
 
 analyzeStmtList :: Handle -> [WeakStmt] -> App [WeakStmt]
 analyzeStmtList h stmtList = do
