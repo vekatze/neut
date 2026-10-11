@@ -51,6 +51,7 @@ import Kernel.Common.Handle.Global.Platform qualified as Platform
 import Kernel.Common.ManageCache qualified as Cache
 import Kernel.Common.Module qualified as M
 import Kernel.Common.Module.EnsureDeclaredPathExistence (ensureDeclaredPathExistence)
+import Kernel.Common.Module.GetDependency qualified as GetDependency
 import Kernel.Common.OutputKind
 import Kernel.Common.OutputKind qualified as OK
 import Kernel.Common.Placeholder qualified as Placeholder
@@ -451,7 +452,11 @@ getForeignResolver h foreignDir hostModule hint name = do
     "foreign" ->
       return $ Just $ Placeholder.quote $ T.pack $ toFilePath foreignDir
     _ ->
-      Placeholder.moduleResolver (Global.moduleHandle (globalHandle h)) hostModule hint name
+      Placeholder.moduleResolver (getDependencyHandle h) hostModule hint name
+
+getDependencyHandle :: Handle -> GetDependency.Handle
+getDependencyHandle h =
+  GetDependency.new (Global.moduleHandle (globalHandle h)) (Global.antecedentHandle (globalHandle h))
 
 getForeignClangCommand :: LoggerHandle.Handle -> Platform.Handle -> IO T.Text
 getForeignClangCommand loggerHandle platformHandle = do

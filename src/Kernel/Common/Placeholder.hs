@@ -15,9 +15,8 @@ import Control.Monad.IO.Class (liftIO)
 import Data.Char (isAlphaNum)
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
-import Kernel.Common.Handle.Global.Module qualified as GlobalModule
 import Kernel.Common.Module qualified as M
-import Kernel.Common.Module.GetModule qualified as GetModule
+import Kernel.Common.Module.GetDependency qualified as GetDependency
 import Language.Common.BaseName qualified as BN
 import Language.Common.ModuleAlias qualified as MA
 import Language.Common.ModuleID qualified as MID
@@ -74,11 +73,11 @@ quoteWords :: [T.Text] -> T.Text
 quoteWords =
   T.unwords . map quote
 
-mainModuleResolver :: GlobalModule.Handle -> M.MainModule -> Resolver
+mainModuleResolver :: GetDependency.Handle -> M.MainModule -> Resolver
 mainModuleResolver h mainModule =
   moduleResolver h (M.extractModule mainModule)
 
-moduleResolver :: GlobalModule.Handle -> M.Module -> Resolver
+moduleResolver :: GetDependency.Handle -> M.Module -> Resolver
 moduleResolver h contextModule m name = do
   case name of
     "neut" -> do
@@ -92,10 +91,10 @@ moduleResolver h contextModule m name = do
           moduleRootDir <- resolveModulePath h contextModule m pathText
           return $ Just $ quote $ T.pack $ toFilePath moduleRootDir
 
-resolveModulePath :: GlobalModule.Handle -> M.Module -> Hint -> T.Text -> App (Path Abs Dir)
+resolveModulePath :: GetDependency.Handle -> M.Module -> Hint -> T.Text -> App (Path Abs Dir)
 resolveModulePath h contextModule m pathText = do
   aliasTextList <- interpretModulePath m pathText
-  targetModule <- foldM (stepIntoDependency (GetModule.new h) m pathText) contextModule aliasTextList
+  targetModule <- foldM (stepIntoDependency h m pathText) contextModule aliasTextList
   return $ M.getModuleRootDir targetModule
 
 interpretModulePath :: Hint -> T.Text -> App [T.Text]
@@ -110,7 +109,7 @@ interpretModulePath m pathText = do
     _ ->
       return segmentList
 
-stepIntoDependency :: GetModule.Handle -> Hint -> T.Text -> M.Module -> T.Text -> App M.Module
+stepIntoDependency :: GetDependency.Handle -> Hint -> T.Text -> M.Module -> T.Text -> App M.Module
 stepIntoDependency h m pathText currentModule aliasText = do
   aliasName <- either (const $ raiseError m $ "Invalid module alias: " <> aliasText) return $ BN.reflect' aliasText
   let alias = MA.ModuleAlias aliasName
@@ -124,6 +123,5 @@ stepIntoDependency h m pathText currentModule aliasText = do
           <> "`, which is not a dependency of `"
           <> MID.reify (M.moduleID currentModule)
           <> "`"
-    Just dependency -> do
-      let moduleID = MID.Library $ M.dependencyDigest dependency
-      GetModule.getModule h m moduleID aliasText
+    Just dependency ->
+      GetDependency.getDependency h m alias dependency
