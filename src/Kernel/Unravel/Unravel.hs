@@ -44,6 +44,8 @@ import Kernel.Common.Handle.Global.Reuse qualified as Reuse
 import Kernel.Common.Import
 import Kernel.Common.Module
 import Kernel.Common.Module qualified as M
+import Kernel.Common.Module.AliasLink qualified as AliasLink
+import Kernel.Common.Module.GetDependency qualified as GetDependency
 import Kernel.Common.OutputKind qualified as OK
 import Kernel.Common.Source qualified as Source
 import Kernel.Common.Source.ShiftToLatest qualified as STL
@@ -205,6 +207,8 @@ registerShiftMap h = do
     liftIO $ Antecedent.set (Global.antecedentHandle (globalHandle h)) compressedMap
     modulePathMap <- ModulePath.build (Global.modulePathHandle (globalHandle h))
     liftIO $ ModulePath.set (Global.modulePathHandle (globalHandle h)) modulePathMap
+    let getDependencyHandle = GetDependency.new (Global.moduleHandle (globalHandle h)) (Global.antecedentHandle (globalHandle h))
+    AliasLink.placeAliasLinks getDependencyHandle mainModule
     liftIO $ writeIORef (Global.isShiftMapRegisteredRef (globalHandle h)) True
 
 buildPublicReachabilityMap :: Map.HashMap MID.ModuleID Module -> [Module] -> PublicReachabilityMap
