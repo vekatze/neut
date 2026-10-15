@@ -1042,6 +1042,10 @@ elaborate' h term = do
           sizeType' <- elaborateType h sizeType
           size' <- elaborate' h size
           return $ m :< TM.Magic noTrace (M.Malloc sizeType' size')
+        M.MallocOpaque sizeType size -> do
+          sizeType' <- elaborateType h sizeType
+          size' <- elaborate' h size
+          return $ m :< TM.Magic noTrace (M.MallocOpaque sizeType' size')
         M.Realloc sizeType ptr size -> do
           sizeType' <- elaborateType h sizeType
           ptr' <- elaborate' h ptr

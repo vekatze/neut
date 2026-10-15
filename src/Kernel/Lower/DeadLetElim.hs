@@ -77,6 +77,8 @@ isDiscardable op =
       True
     LC.Alloc {} ->
       True
+    LC.AllocOpaque {} ->
+      True
     LC.PrimOp {} ->
       True
     LC.Call isPure _ _ _ ->
@@ -121,6 +123,8 @@ usedOpSet op =
           IntSet.empty
         Right runtimeSize ->
           usedValueSet runtimeSize
+    LC.AllocOpaque size ->
+      usedValueSet size
     LC.Realloc value1 value2 ->
       IntSet.union (usedValueSet value1) (usedValueSet value2)
     LC.Free value _ _ ->

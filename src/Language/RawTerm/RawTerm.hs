@@ -345,6 +345,7 @@ data RawMagic
   | Alloca C (EL RawType) (EL RawTerm) (Maybe C)
   | Calloc C (EL RawTerm) (EL RawTerm) (Maybe C)
   | Malloc C (EL RawTerm) (Maybe C)
+  | MallocOpaque C (EL RawTerm) (Maybe C)
   | Realloc C (EL RawTerm) (EL RawTerm) (Maybe C)
   | Free C (EL RawTerm) (Maybe C)
   | External C Hint EN.ExternalName C (SE.Series RawTerm) (Maybe (C, SE.Series VarArg))

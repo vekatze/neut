@@ -545,6 +545,10 @@ inlineNormal h rawTerm = do
           sizeType' <- inlineType' h sizeType
           size' <- inline' h size
           registerResidual h (m :< TM.Magic traceID (M.Malloc sizeType' size'))
+        M.MallocOpaque sizeType size -> do
+          sizeType' <- inlineType' h sizeType
+          size' <- inline' h size
+          registerResidual h (m :< TM.Magic traceID (M.MallocOpaque sizeType' size'))
         M.Realloc sizeType ptr size -> do
           sizeType' <- inlineType' h sizeType
           ptr' <- inline' h ptr

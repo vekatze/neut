@@ -79,6 +79,8 @@ renderOp op =
       "calloc " <> renderValue count <> " " <> renderValue size
     LC.Alloc size ident ->
       "alloc " <> either tshow renderValue size <> " (#" <> tshow ident <> ")"
+    LC.AllocOpaque size ->
+      "alloc-opaque " <> renderValue size
     LC.Realloc pointer size ->
       "realloc " <> renderValue pointer <> " " <> renderValue size
     LC.Free value _ ident ->

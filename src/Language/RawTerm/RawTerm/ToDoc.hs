@@ -369,6 +369,16 @@ toDoc term =
                     SE.Comma
                     [RT.mapEL toDoc size]
             ]
+        MallocOpaque c1 size mc -> do
+          D.join
+            [ attachComment (c ++ c1) $ D.text "magic malloc-opaque",
+              SE.decode $
+                attachOptionalComment mc $
+                  SE.fromListWithComment
+                    (Just SE.Paren)
+                    SE.Comma
+                    [RT.mapEL toDoc size]
+            ]
         Realloc c1 ptr size mc -> do
           D.join
             [ attachComment (c ++ c1) $ D.text "magic realloc",

@@ -1424,6 +1424,11 @@ clarifyMagic h context der = do
       return $
         Utility.bindLet [(sizeVarName, size')] $
           C.Primitive (C.Alloc sizeVar)
+    M.MallocOpaque _ size -> do
+      (sizeVarName, size', sizeVar) <- clarifyPlus h context size
+      return $
+        Utility.bindLet [(sizeVarName, size')] $
+          C.Primitive (C.AllocOpaque sizeVar)
     M.Realloc _ ptr size -> do
       (ptrVarName, ptr', ptrVar) <- clarifyPlus h context ptr
       (sizeVarName, size', sizeVar) <- clarifyPlus h context size

@@ -257,6 +257,9 @@ distinguishPrimitiveAcc h activeSet term !occMap =
     C.Alloc size -> do
       (occMap', size') <- distinguishValueAcc h activeSet size occMap
       return (occMap', C.Alloc size')
+    C.AllocOpaque size -> do
+      (occMap', size') <- distinguishValueAcc h activeSet size occMap
+      return (occMap', C.AllocOpaque size')
     C.Realloc ptr size -> do
       (occMap1, ptr') <- distinguishValueAcc h activeSet ptr occMap
       (occMap2, size') <- distinguishValueAcc h activeSet size occMap1

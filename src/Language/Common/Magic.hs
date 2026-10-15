@@ -13,6 +13,7 @@ data Magic lt ty a
   = LowMagic (LM.LowMagic lt ty a)
   | Calloc ty a a -- Calloc sizeType num size
   | Malloc ty a -- Malloc sizeType size
+  | MallocOpaque ty a -- MallocOpaque sizeType size
   | Realloc ty a a -- Realloc sizeType ptr size
   | Free ty a -- Free unitType ptr
   | InspectType MID.ModuleID ty ty -- typeValueExpr, e (both types)
@@ -39,6 +40,8 @@ instance Functor (Magic lt ty) where
         Calloc sizeType (f num) (f size)
       Malloc sizeType size ->
         Malloc sizeType (f size)
+      MallocOpaque sizeType size ->
+        MallocOpaque sizeType (f size)
       Realloc sizeType ptr size ->
         Realloc sizeType (f ptr) (f size)
       Free unitType ptr ->
@@ -74,6 +77,8 @@ instance Foldable (Magic lt ty) where
       Calloc _ num size ->
         f num <> f size
       Malloc _ size ->
+        f size
+      MallocOpaque _ size ->
         f size
       Realloc _ ptr size ->
         f ptr <> f size
@@ -111,6 +116,8 @@ instance Traversable (Magic lt ty) where
         Calloc sizeType <$> f num <*> f size
       Malloc sizeType size ->
         Malloc sizeType <$> f size
+      MallocOpaque sizeType size ->
+        MallocOpaque sizeType <$> f size
       Realloc sizeType ptr size ->
         Realloc sizeType <$> f ptr <*> f size
       Free unitType ptr ->

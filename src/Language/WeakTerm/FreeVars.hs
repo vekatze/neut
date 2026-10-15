@@ -124,6 +124,8 @@ freeVarsMagicTerm (M.WeakMagic magic) =
       S.union (freeVars num) (freeVars size)
     M.Malloc _ size ->
       freeVars size
+    M.MallocOpaque _ size ->
+      freeVars size
     M.Realloc _ ptr size ->
       S.union (freeVars ptr) (freeVars size)
     M.Free _ ptr ->
@@ -324,6 +326,8 @@ freeVarsMagic (M.WeakMagic magic) =
     M.Calloc sizeType num size ->
       S.unions [freeVarsType sizeType, freeVarsAll num, freeVarsAll size]
     M.Malloc sizeType size ->
+      S.union (freeVarsType sizeType) (freeVarsAll size)
+    M.MallocOpaque sizeType size ->
       S.union (freeVarsType sizeType) (freeVarsAll size)
     M.Realloc sizeType ptr size ->
       S.unions [freeVarsType sizeType, freeVarsAll ptr, freeVarsAll size]

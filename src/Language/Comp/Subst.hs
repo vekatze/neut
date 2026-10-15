@@ -144,6 +144,8 @@ substPrimitive sub c =
       C.Calloc (substValue sub num) (substValue sub size)
     C.Alloc size ->
       C.Alloc (substValue sub size)
+    C.AllocOpaque size ->
+      C.AllocOpaque (substValue sub size)
     C.Realloc ptr size ->
       C.Realloc (substValue sub ptr) (substValue sub size)
     C.Memcpy dest src size ->

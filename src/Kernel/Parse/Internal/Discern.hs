@@ -1063,6 +1063,11 @@ discernMagic h m magic =
       sizeType <- liftEither (locatorToTypeVar m coreCSize) >>= discernType h
       size' <- discern h size
       return $ M.WeakMagic $ M.Malloc sizeType size'
+    RT.MallocOpaque _ (_, (size, _)) _ -> do
+      ensureRuntimeStage m h "`magic malloc-opaque`"
+      sizeType <- liftEither (locatorToTypeVar m coreCSize) >>= discernType h
+      size' <- discern h size
+      return $ M.WeakMagic $ M.MallocOpaque sizeType size'
     RT.Realloc _ (_, (ptr, _)) (_, (size, _)) _ -> do
       ensureRuntimeStage m h "`magic realloc`"
       sizeType <- liftEither (locatorToTypeVar m coreCSize) >>= discernType h

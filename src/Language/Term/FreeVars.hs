@@ -167,6 +167,8 @@ freeVarsMagic magic =
       S.unions [freeVarsType sizeType, freeVars num, freeVars size]
     M.Malloc sizeType size ->
       S.union (freeVarsType sizeType) (freeVars size)
+    M.MallocOpaque sizeType size ->
+      S.union (freeVarsType sizeType) (freeVars size)
     M.Realloc sizeType ptr size ->
       S.unions [freeVarsType sizeType, freeVars ptr, freeVars size]
     M.Free unitType ptr ->

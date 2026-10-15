@@ -565,6 +565,8 @@ showMagic' h (M.WeakMagic magic) =
       "magic calloc" <> inParen (toTextType' h sizeType <> ", " <> toTextIndented (Kit 0 False) num <> ", " <> toTextIndented (Kit 0 False) size)
     M.Malloc sizeType size ->
       "magic malloc" <> inParen (toTextType' h sizeType <> ", " <> toTextIndented (Kit 0 False) size)
+    M.MallocOpaque sizeType size ->
+      "magic malloc-opaque" <> inParen (toTextType' h sizeType <> ", " <> toTextIndented (Kit 0 False) size)
     M.Realloc sizeType ptr size ->
       "magic realloc" <> inParen (toTextType' h sizeType <> ", " <> toTextIndented (Kit 0 False) ptr <> ", " <> toTextIndented (Kit 0 False) size)
     M.Free _ ptr ->

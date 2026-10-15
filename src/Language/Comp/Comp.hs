@@ -286,6 +286,7 @@ data Primitive
   | ShiftPointer Value Integer -- (ptr, byte offset)
   | Calloc Value Value -- num, size-in-bytes
   | Alloc Value -- number of bytes to allocate
+  | AllocOpaque Value -- number of bytes to allocate; never canceled
   | Realloc Value Value -- ptr, size-in-bytes
   | Memcpy Value Value Value -- (dest, src, size-in-bytes)
   | Magic (LowMagic BaseLowType Value Value)

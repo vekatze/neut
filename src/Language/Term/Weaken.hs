@@ -204,6 +204,8 @@ weakenMagic m magic = do
       M.WeakMagic $ M.Calloc (weakenType sizeType) (weaken num) (weaken size)
     M.Malloc sizeType size ->
       M.WeakMagic $ M.Malloc (weakenType sizeType) (weaken size)
+    M.MallocOpaque sizeType size ->
+      M.WeakMagic $ M.MallocOpaque (weakenType sizeType) (weaken size)
     M.Realloc sizeType ptr size ->
       M.WeakMagic $ M.Realloc (weakenType sizeType) (weaken ptr) (weaken size)
     M.Free unitType ptr ->

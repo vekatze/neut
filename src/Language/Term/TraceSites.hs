@@ -288,6 +288,8 @@ describeMagic magic = do
       "magic calloc"
     M.Malloc {} ->
       "magic malloc"
+    M.MallocOpaque {} ->
+      "magic malloc-opaque"
     M.Realloc {} ->
       "magic realloc"
     M.Free {} ->

@@ -568,6 +568,10 @@ substMagic h env magic =
       sizeType' <- substTy h env sizeType
       size' <- substTerm h env size
       return $ build (changeOf sizeType' <> changeOf size') $ M.Malloc (valueOr sizeType sizeType') (valueOr size size')
+    M.MallocOpaque sizeType size -> do
+      sizeType' <- substTy h env sizeType
+      size' <- substTerm h env size
+      return $ build (changeOf sizeType' <> changeOf size') $ M.MallocOpaque (valueOr sizeType sizeType') (valueOr size size')
     M.Realloc sizeType ptr size -> do
       sizeType' <- substTy h env sizeType
       ptr' <- substTerm h env ptr

@@ -471,6 +471,18 @@ lowerCompPrimitive h codeOp k =
             =<< lowerValueLetCast h castVar byteCountValue lowInt
             =<< return . LC.Let cellVar (LC.Alloc (Right castValue) allocID)
             =<< uncast h resultVar cellValue LT.Pointer rest
+    C.AllocOpaque size -> do
+      (resultVar, resultValue) <- liftIO $ newValueLocal h "result"
+      (cellVar, cellValue) <- liftIO $ newValueLocal h "cell"
+      byteCountVarName <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "size"
+      let byteCountValue = C.VarLocal byteCountVarName
+      (castVar, castValue) <- liftIO $ newValueLocal h "size"
+      let lowInt = LT.PrimNum $ PT.Int $ dataSizeToIntSize (baseSize h)
+      rest <- sendResult k LT.slotLowType resultValue
+      lowerValue h byteCountVarName size
+        =<< lowerValueLetCast h castVar byteCountValue lowInt
+        =<< return . LC.Let cellVar (LC.AllocOpaque castValue)
+        =<< uncast h resultVar cellValue LT.Pointer rest
     C.Realloc ptr size -> do
       (resultVar, resultValue) <- liftIO $ newValueLocal h "result"
       byteCountVarName <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "size"

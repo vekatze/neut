@@ -180,6 +180,8 @@ collectMagic visitType magic =
       S.unions [visitType sizeType, collect visitType num, collect visitType size]
     M.Malloc sizeType size ->
       S.union (visitType sizeType) (collect visitType size)
+    M.MallocOpaque sizeType size ->
+      S.union (visitType sizeType) (collect visitType size)
     M.Realloc sizeType ptr size ->
       S.unions [visitType sizeType, collect visitType ptr, collect visitType size]
     M.Free unitType ptr ->

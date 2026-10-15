@@ -124,6 +124,7 @@ data Op
   | StackLifetimeEnd StackSlotID
   | Calloc Value Value
   | Alloc (Either Integer Value) AllocID
+  | AllocOpaque Value
   | Realloc Value Value
   | Free Value (Maybe Int) FreeID
   | PrimOp PrimOp [Value]

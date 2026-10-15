@@ -282,6 +282,10 @@ analyze h term = do
           cs1 <- analyzeType h sizeType
           cs2 <- analyze h size
           return $ cs1 ++ cs2
+        M.MallocOpaque sizeType size -> do
+          cs1 <- analyzeType h sizeType
+          cs2 <- analyze h size
+          return $ cs1 ++ cs2
         M.Realloc sizeType ptr size -> do
           cs1 <- analyzeType h sizeType
           cs2 <- analyze h ptr

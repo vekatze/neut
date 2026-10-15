@@ -552,6 +552,11 @@ infer h term =
           (size', actualSizeType) <- infer h size
           liftIO $ Constraint.insert (constraintHandle h) sizeType' actualSizeType
           return (m :< WT.Magic (M.WeakMagic $ M.Malloc sizeType' size'), m :< WT.PrimType PT.Pointer)
+        M.MallocOpaque sizeType size -> do
+          sizeType' <- inferType h sizeType
+          (size', actualSizeType) <- infer h size
+          liftIO $ Constraint.insert (constraintHandle h) sizeType' actualSizeType
+          return (m :< WT.Magic (M.WeakMagic $ M.MallocOpaque sizeType' size'), m :< WT.PrimType PT.Pointer)
         M.Realloc sizeType ptr size -> do
           sizeType' <- inferType h sizeType
           (ptr', ptrType) <- infer h ptr
