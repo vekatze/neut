@@ -1013,6 +1013,10 @@ elaborate' h term = do
               t' <- strictify h t
               pointer' <- elaborate' h pointer
               return $ m :< TM.Magic noTrace (M.LowMagic $ LM.Load t' pointer')
+            LM.Shift pointer offset -> do
+              pointer' <- elaborate' h pointer
+              offset' <- elaborate' h offset
+              return $ m :< TM.Magic noTrace (M.LowMagic $ LM.Shift pointer' offset')
             LM.Alloca t size -> do
               t' <- strictify h t
               size' <- elaborate' h size

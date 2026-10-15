@@ -628,6 +628,10 @@ substLowMagic h env lowMagic =
     LM.Load t pointer -> do
       pointer' <- substTerm h env pointer
       return $ build (changeOf pointer') $ LM.Load t (valueOr pointer pointer')
+    LM.Shift pointer offset -> do
+      pointer' <- substTerm h env pointer
+      offset' <- substTerm h env offset
+      return $ build (changeOf pointer' <> changeOf offset') $ LM.Shift (valueOr pointer pointer') (valueOr offset offset')
     LM.Alloca t size -> do
       size' <- substTerm h env size
       return $ build (changeOf size') $ LM.Alloca t (valueOr size size')

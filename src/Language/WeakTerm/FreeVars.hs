@@ -160,6 +160,8 @@ freeVarsLowMagicTerm lowMagic =
       S.union (freeVars value) (freeVars pointer)
     LM.Load _ pointer ->
       freeVars pointer
+    LM.Shift pointer offset ->
+      S.union (freeVars pointer) (freeVars offset)
     LM.Alloca _ size ->
       freeVars size
     LM.External _ _ _ args varArgs -> do
@@ -359,6 +361,8 @@ freeVarsLowMagic lowMagic =
       S.unions [freeVarsType t, freeVarsType unit, freeVarsAll value, freeVarsAll pointer]
     LM.Load t pointer ->
       S.union (freeVarsType t) (freeVarsAll pointer)
+    LM.Shift pointer offset ->
+      S.union (freeVarsAll pointer) (freeVarsAll offset)
     LM.Alloca t size ->
       S.union (freeVarsType t) (freeVarsAll size)
     LM.External domList cod _ args varArgs -> do

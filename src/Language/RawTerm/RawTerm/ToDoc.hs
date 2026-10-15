@@ -327,6 +327,16 @@ toDoc term =
                       RT.mapEL toDoc pointer
                     ]
             ]
+        Shift c1 pointer offset mc -> do
+          D.join
+            [ attachComment (c ++ c1) $ D.text "magic shift",
+              SE.decode $
+                attachOptionalComment mc $
+                  SE.fromListWithComment
+                    (Just SE.Paren)
+                    SE.Comma
+                    [RT.mapEL toDoc pointer, RT.mapEL toDoc offset]
+            ]
         Alloca c1 t size mc -> do
           D.join
             [ attachComment (c ++ c1) $ D.text "magic alloca",

@@ -496,6 +496,13 @@ infer h term =
               (pointer', tPointer) <- infer h pointer
               liftIO $ Constraint.insert (constraintHandle h) (m :< WT.PrimType PT.Pointer) tPointer
               return (m :< WT.Magic (M.WeakMagic $ M.LowMagic $ LM.Load t' pointer'), t')
+            LM.Shift pointer offset -> do
+              (pointer', tPointer) <- infer h pointer
+              (offset', tOffset) <- infer h offset
+              let pointerType = m :< WT.PrimType PT.Pointer
+              liftIO $ Constraint.insert (constraintHandle h) pointerType tPointer
+              liftIO $ Constraint.insert (constraintHandle h) (WT.intType m) tOffset
+              return (m :< WT.Magic (M.WeakMagic $ M.LowMagic $ LM.Shift pointer' offset'), pointerType)
             LM.Alloca lt size -> do
               (size', sizeType) <- infer h size
               let intType = WT.intType m

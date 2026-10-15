@@ -515,6 +515,18 @@ lowerCompPrimitive h codeOp k =
           lowerValueLetCast h ptrVar pointer LT.Pointer
             =<< return . LC.Let tmpVar (LC.Load ptrValue valueLowType')
             =<< uncast h resultVar tmp valueLowType' rest
+        LM.Shift pointer offset -> do
+          let byteType = LT.PrimNum $ PT.Int IntSize8
+          let indexType = LT.PrimNum $ PT.Int $ dataSizeToIntSize (baseSize h)
+          (resultVar, resultValue) <- liftIO $ newValueLocal h "result"
+          (shiftedVar, shiftedValue) <- liftIO $ newValueLocal h "shifted"
+          (ptrVar, ptrValue) <- liftIO $ newValueLocal h "ptr"
+          (offsetVar, offsetValue) <- liftIO $ newValueLocal h "offset"
+          rest <- sendResult k LT.slotLowType resultValue
+          lowerValueLetCast h ptrVar pointer LT.Pointer
+            =<< lowerValueLetCast h offsetVar offset indexType
+            =<< return . LC.Let shiftedVar (LC.GetElementPtr (ptrValue, byteType) [(offsetValue, indexType)])
+            =<< uncast h resultVar shiftedValue LT.Pointer rest
         LM.Alloca t size -> do
           let t' = LT.fromBaseLowType t
           let indexType = LT.PrimNum $ PT.Int $ dataSizeToIntSize (baseSize h)

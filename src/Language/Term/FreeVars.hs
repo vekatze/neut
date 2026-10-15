@@ -203,6 +203,8 @@ freeVarsLowMagic lowMagic =
       S.unions [freeVars value, freeVars pointer]
     LM.Load _ pointer ->
       freeVars pointer
+    LM.Shift pointer offset ->
+      S.union (freeVars pointer) (freeVars offset)
     LM.Alloca _ size ->
       freeVars size
     LM.External _ _ _ args varArgs -> do

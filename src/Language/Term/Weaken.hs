@@ -185,6 +185,8 @@ weakenMagic m magic = do
               LM.Store (WT.fromBaseLowType m t) (weakenType unit) (weaken value) (weaken pointer)
             LM.Load t pointer ->
               LM.Load (WT.fromBaseLowType m t) (weaken pointer)
+            LM.Shift pointer offset ->
+              LM.Shift (weaken pointer) (weaken offset)
             LM.Alloca t size ->
               LM.Alloca (WT.fromBaseLowType m t) (weaken size)
             LM.External domList cod extFunName args varArgs -> do

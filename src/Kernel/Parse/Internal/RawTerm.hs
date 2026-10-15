@@ -916,6 +916,7 @@ rawTermMagic h m c = do
     [ rawTermMagicCast h m c,
       rawTermMagicStore h m c,
       rawTermMagicLoad h m c,
+      rawTermMagicShift h m c,
       rawTermMagicAlloca h m c,
       rawTermMagicCalloc h m c,
       rawTermMagicMalloc h m c,
@@ -973,6 +974,15 @@ rawTermMagicLoad h m c = do
     pointer <- rawTerm h
     c4 <- optional $ delimiter ","
     return $ \c1 c2 -> m :< RT.Magic c (RT.Load c1 (c2, t) (c3, pointer) c4)
+
+rawTermMagicShift :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
+rawTermMagicShift h m c = do
+  rawTermMagicBase "shift" $ do
+    pointer <- rawTerm h
+    c3 <- delimiter ","
+    offset <- rawTerm h
+    c4 <- optional $ delimiter ","
+    return $ \c1 c2 -> m :< RT.Magic c (RT.Shift c1 (c2, pointer) (c3, offset) c4)
 
 rawTermMagicAlloca :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermMagicAlloca h m c = do

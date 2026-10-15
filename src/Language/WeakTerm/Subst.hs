@@ -493,6 +493,10 @@ substLowMagic h sub lowMagic =
       t' <- substType h sub t
       pointer' <- subst h sub pointer
       return $ LM.Load t' pointer'
+    LM.Shift pointer offset -> do
+      pointer' <- subst h sub pointer
+      offset' <- subst h sub offset
+      return $ LM.Shift pointer' offset'
     LM.Alloca t size -> do
       t' <- substType h sub t
       size' <- subst h sub size

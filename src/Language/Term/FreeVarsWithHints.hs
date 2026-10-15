@@ -216,6 +216,8 @@ collectLowMagic visitType lowMagic =
       S.unions [collect visitType value, collect visitType pointer]
     LM.Load _ pointer ->
       collect visitType pointer
+    LM.Shift pointer offset ->
+      S.union (collect visitType pointer) (collect visitType offset)
     LM.Alloca _ size ->
       collect visitType size
     LM.External _ _ _ args varArgs -> do

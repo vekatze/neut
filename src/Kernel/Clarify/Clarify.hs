@@ -1383,6 +1383,12 @@ clarifyMagic h context der = do
           return $
             Utility.bindLet [(pointerVarName, pointer')] $
               C.Primitive (C.Magic (LM.Load lt pointerVar))
+        LM.Shift pointer offset -> do
+          (pointerVarName, pointer', pointerVar) <- clarifyPlus h context pointer
+          (offsetVarName, offset', offsetVar) <- clarifyPlus h context offset
+          return $
+            Utility.bindLet [(pointerVarName, pointer'), (offsetVarName, offset')] $
+              C.Primitive (C.Magic (LM.Shift pointerVar offsetVar))
         LM.Alloca lt size -> do
           (sizeVarName, size', sizeVar) <- clarifyPlus h context size
           return $

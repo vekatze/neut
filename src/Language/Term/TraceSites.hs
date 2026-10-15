@@ -272,6 +272,8 @@ describeMagic magic = do
           "magic store"
         LM.Load {} ->
           "magic load"
+        LM.Shift {} ->
+          "magic shift"
         LM.Alloca {} ->
           "magic alloca"
         LM.External _ _ name _ _ ->

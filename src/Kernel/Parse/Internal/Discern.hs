@@ -1042,6 +1042,11 @@ discernMagic h m magic =
       t' <- discernType h t
       pointer' <- discern h pointer
       return $ M.WeakMagic $ M.LowMagic $ LM.Load t' pointer'
+    RT.Shift _ (_, (pointer, _)) (_, (offset, _)) _ -> do
+      ensureRuntimeStage m h "`magic shift`"
+      pointer' <- discern h pointer
+      offset' <- discern h offset
+      return $ M.WeakMagic $ M.LowMagic $ LM.Shift pointer' offset'
     RT.Alloca _ (_, (t, _)) (_, (size, _)) _ -> do
       ensureRuntimeStage m h "`magic alloca`"
       t' <- discernType h t

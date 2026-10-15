@@ -739,6 +739,10 @@ inlineLowMagic h lowMagic =
     LM.Load t pointer -> do
       pointer' <- inline' h pointer
       return $ LM.Load t pointer'
+    LM.Shift pointer offset -> do
+      pointer' <- inline' h pointer
+      offset' <- inline' h offset
+      return $ LM.Shift pointer' offset'
     LM.Alloca t size -> do
       size' <- inline' h size
       return $ LM.Alloca t size'

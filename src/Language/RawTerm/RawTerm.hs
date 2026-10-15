@@ -341,6 +341,7 @@ data RawMagic
   = Cast C (EL RawType) (EL RawType) (EL RawTerm) (Maybe C)
   | Store C (EL RawType) (EL RawTerm) (EL RawTerm) (Maybe C)
   | Load C (EL RawType) (EL RawTerm) (Maybe C)
+  | Shift C (EL RawTerm) (EL RawTerm) (Maybe C)
   | Alloca C (EL RawType) (EL RawTerm) (Maybe C)
   | Calloc C (EL RawTerm) (EL RawTerm) (Maybe C)
   | Malloc C (EL RawTerm) (Maybe C)

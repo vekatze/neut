@@ -610,6 +610,8 @@ showLowMagic' h lowMagic =
           )
     LM.Load t pointer ->
       "magic load" <> inParen (toTextType' h t <> ", " <> toTextIndented (Kit 0 False) pointer)
+    LM.Shift pointer offset ->
+      "magic shift" <> inParen (toTextIndented (Kit 0 False) pointer <> ", " <> toTextIndented (Kit 0 False) offset)
     LM.Alloca t size ->
       "magic alloca" <> inParen (toTextType' h t <> ", " <> toTextIndented (Kit 0 False) size)
     LM.External domList cod extFunName args varArgs -> do

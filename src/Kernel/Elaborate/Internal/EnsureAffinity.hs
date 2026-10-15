@@ -252,6 +252,10 @@ analyze h term = do
             LM.Load _ e -> do
               cs1 <- analyze h e
               return cs1
+            LM.Shift pointer offset -> do
+              cs1 <- analyze h pointer
+              cs2 <- analyze h offset
+              return $ cs1 ++ cs2
             LM.Alloca _ size -> do
               cs1 <- analyze h size
               return cs1
