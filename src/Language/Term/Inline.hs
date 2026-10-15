@@ -973,7 +973,7 @@ fillDefaultArgs' h defaultFrameCtx sub defBinders overrides =
     (((_, _, x, _), defaultValue) : rest, override : overrideRest) -> do
       value <- case override of
         Just overrideValue ->
-          Subst.subst (substHandle h) sub overrideValue
+          return overrideValue
         Nothing ->
           fillDefaultValue h defaultFrameCtx sub defaultValue
       let sub' = IntMap.insert (Ident.toInt x) (Subst.Term value) sub
