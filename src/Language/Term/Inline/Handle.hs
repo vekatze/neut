@@ -11,6 +11,7 @@ module Language.Term.Inline.Handle
     TropeDepth,
     Pending (..),
     PendingTerm (..),
+    PendingType (..),
   )
 where
 
@@ -42,15 +43,18 @@ data Normal = Normal
 type TropeDepth =
   Int
 
-data Pending = Pending
+data Pending a = Pending
   { pendingSerial :: Int,
-    pendingTerm :: PendingTerm
+    pendingEntry :: a
   }
 
 data PendingTerm
   = Normalized TropeDepth Normal
-  | Renamed Ident
-  | TypeValue TM.Type
+  | RenamedTerm Ident
+
+data PendingType
+  = TypeValue TM.Type
+  | RenamedType Ident
 
 data DefKind
   = NoInline
@@ -110,7 +114,8 @@ data Handle = Handle
     insideDefineMeta :: Bool,
     localMetaMemo :: [(DD.DefiniteDescription, [TM.Type], Ident)],
     activeDefineMetaList :: [Stmt.DefineMeta],
-    pendingValues :: IntMap.IntMap Pending,
+    pendingTerms :: IntMap.IntMap (Pending PendingTerm),
+    pendingTypes :: IntMap.IntMap (Pending PendingType),
     nextPendingSerial :: Int,
     usedPendingSerialRef :: IORef Int,
     emittedBinders :: IORef IntSet.IntSet,

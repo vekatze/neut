@@ -70,7 +70,8 @@ new env location traceEnabled = do
   let insideDefineMeta = False
   let localMetaMemo = []
   let activeDefineMetaList = []
-  let pendingValues = IntMap.empty
+  let pendingTerms = IntMap.empty
+  let pendingTypes = IntMap.empty
   let nextPendingSerial = 0
   usedPendingSerialRef <- liftIO $ newIORef maxBound
   emittedBinders <- liftIO $ newIORef IntSet.empty
@@ -83,16 +84,20 @@ getTropeDepth h =
 
 withoutPending :: Handle -> Handle
 withoutPending h =
-  h {pendingValues = IntMap.empty}
+  h {pendingTerms = IntMap.empty, pendingTypes = IntMap.empty}
 
-withoutPendingFor :: [Ident] -> Handle -> Handle
-withoutPendingFor xs h =
-  h {pendingValues = foldr (IntMap.delete . Ident.toInt) (pendingValues h) xs}
+withoutPendingTerms :: [Ident] -> Handle -> Handle
+withoutPendingTerms xs h =
+  h {pendingTerms = foldr (IntMap.delete . Ident.toInt) (pendingTerms h) xs}
+
+withoutPendingTypes :: [Ident] -> Handle -> Handle
+withoutPendingTypes xs h =
+  h {pendingTypes = foldr (IntMap.delete . Ident.toInt) (pendingTypes h) xs}
 
 withNormalized :: [(Ident, Normal)] -> Handle -> Handle
 withNormalized xes h = do
   let tropeDepth = getTropeDepth h
-  withPending [(Ident.toInt x, Normalized tropeDepth e) | (x, e) <- xes] h
+  withPendingTerms [(Ident.toInt x, Normalized tropeDepth e) | (x, e) <- xes] h
 
 withSelfValue :: LK.LamKindF a -> TM.Term -> Handle -> Handle
 withSelfValue lamKind self h =
@@ -142,25 +147,43 @@ getGivenTerm (_, source) =
     DefaultValue _ ->
       Nothing
 
-withRenamed :: [(Ident, Ident)] -> Handle -> Handle
-withRenamed xys =
-  withPending [(Ident.toInt x, Renamed y) | (x, y) <- xys]
+withTypeValues :: [(Ident, TM.Type)] -> Handle -> Handle
+withTypeValues xts =
+  withPendingTypes [(Ident.toInt x, TypeValue t) | (x, t) <- xts]
 
 withTypeSubst :: Subst.Subst -> Handle -> Handle
 withTypeSubst sub =
-  withPending [(x, TypeValue t) | (x, Subst.Type t) <- IntMap.toList sub]
+  withPendingTypes [(x, TypeValue t) | (x, Subst.Type t) <- IntMap.toList sub]
 
 enterBinder :: Handle -> Ident -> App (Ident, Handle)
 enterBinder h x = do
-  emitted <- liftIO $ readIORef (emittedBinders h)
+  renaming <- liftIO $ getBinderRenaming h x
+  case renaming of
+    Just x' ->
+      return (x', withPendingTerms [(Ident.toInt x, RenamedTerm x')] h)
+    Nothing ->
+      return (x, withoutPendingTerms [x] h)
+
+enterTypeBinder :: Handle -> Ident -> App (Ident, Handle)
+enterTypeBinder h x = do
+  renaming <- liftIO $ getBinderRenaming h x
+  case renaming of
+    Just x' ->
+      return (x', withPendingTypes [(Ident.toInt x, RenamedType x')] h)
+    Nothing ->
+      return (x, withoutPendingTypes [x] h)
+
+getBinderRenaming :: Handle -> Ident -> IO (Maybe Ident)
+getBinderRenaming h x = do
+  emitted <- readIORef (emittedBinders h)
   if IntSet.member (Ident.toInt x) emitted
     then do
-      x' <- liftIO $ Sym.newIdentFromIdent (gensymHandle h) x
-      liftIO $ modifyIORef' (emittedBinders h) (IntSet.insert (Ident.toInt x'))
-      return (x', withRenamed [(x, x')] h)
+      x' <- Sym.newIdentFromIdent (gensymHandle h) x
+      modifyIORef' (emittedBinders h) (IntSet.insert (Ident.toInt x'))
+      return $ Just x'
     else do
-      liftIO $ modifyIORef' (emittedBinders h) (IntSet.insert (Ident.toInt x))
-      return (x, withoutPendingFor [x] h)
+      modifyIORef' (emittedBinders h) (IntSet.insert (Ident.toInt x))
+      return Nothing
 
 enterBinders :: Handle -> [Ident] -> App ([Ident], Handle)
 enterBinders h xs =
@@ -172,77 +195,88 @@ enterBinders h xs =
       (rest', h'') <- enterBinders h' rest
       return (x' : rest', h'')
 
-withPending :: [(Int, PendingTerm)] -> Handle -> Handle
-withPending entries h = do
+withPendingTerms :: [(Int, PendingTerm)] -> Handle -> Handle
+withPendingTerms entries h = do
   let start = nextPendingSerial h
-  let insertPending (serial, (x, e)) = IntMap.insert x (Pending serial e)
   h
-    { pendingValues = foldr insertPending (pendingValues h) (zip [start ..] entries),
+    { pendingTerms = insertPendingEntries start entries (pendingTerms h),
       nextPendingSerial = start + length entries
     }
 
-lookupPending :: Handle -> Hint -> Ident -> App (Maybe Normal)
-lookupPending h m x =
-  case IntMap.lookup (Ident.toInt x) (pendingValues h) of
+withPendingTypes :: [(Int, PendingType)] -> Handle -> Handle
+withPendingTypes entries h = do
+  let start = nextPendingSerial h
+  h
+    { pendingTypes = insertPendingEntries start entries (pendingTypes h),
+      nextPendingSerial = start + length entries
+    }
+
+insertPendingEntries :: Int -> [(Int, a)] -> IntMap.IntMap (Pending a) -> IntMap.IntMap (Pending a)
+insertPendingEntries start entries table =
+  foldr (\(serial, (x, e)) -> IntMap.insert x (Pending serial e)) table (zip [start ..] entries)
+
+lookupPendingTerm :: Handle -> Hint -> Ident -> App (Maybe Normal)
+lookupPendingTerm h m x =
+  case IntMap.lookup (Ident.toInt x) (pendingTerms h) of
     Nothing ->
       return Nothing
-    Just (Pending {pendingSerial, pendingTerm}) -> do
-      case pendingTerm of
-        TypeValue _ ->
-          return ()
-        _ ->
-          liftIO $ recordPendingUse h pendingSerial
-      case pendingTerm of
+    Just (Pending {pendingSerial, pendingEntry}) -> do
+      liftIO $ recordPendingUse h pendingSerial
+      case pendingEntry of
         Normalized tropeDepth e
           | tropeDepth == getTropeDepth h ->
               return $ Just e
           | otherwise ->
               Just <$> inlineNormal (withoutPending h) (normalTerm e)
-        Renamed x' ->
+        RenamedTerm x' ->
           return $ Just $ asValue $ m :< TM.Var x'
-        TypeValue _ ->
-          return Nothing
 
-toSubstEntry :: PendingTerm -> Subst.SubstEntry
-toSubstEntry pendingTerm =
-  case pendingTerm of
+lookupPendingType :: Handle -> Hint -> Ident -> IO (Maybe TM.Type)
+lookupPendingType h m x =
+  case IntMap.lookup (Ident.toInt x) (pendingTypes h) of
+    Nothing ->
+      return Nothing
+    Just (Pending {pendingSerial, pendingEntry}) -> do
+      recordPendingUse h pendingSerial
+      case pendingEntry of
+        TypeValue t ->
+          return $ Just t
+        RenamedType x' ->
+          return $ Just $ m :< TM.TVar x'
+
+toTermSubstEntry :: PendingTerm -> Subst.SubstEntry
+toTermSubstEntry entry =
+  case entry of
     Normalized _ e ->
       Subst.Term (normalTerm e)
-    Renamed x' ->
+    RenamedTerm x' ->
       Subst.Var x'
+
+toTypeSubstEntry :: PendingType -> Subst.SubstEntry
+toTypeSubstEntry entry =
+  case entry of
     TypeValue t ->
       Subst.Type t
-
-getPendingType :: Hint -> PendingTerm -> Maybe TM.Type
-getPendingType m pendingTerm =
-  case pendingTerm of
-    TypeValue t ->
-      Just t
-    Renamed x' ->
-      Just $ m :< TM.TVar x'
-    _ ->
-      Nothing
+    RenamedType x' ->
+      Subst.Var x'
 
 resolveLeafVar :: Handle -> Ident -> IO [Ident]
 resolveLeafVar h x =
-  case IntMap.lookup (Ident.toInt x) (pendingValues h) of
+  case IntMap.lookup (Ident.toInt x) (pendingTerms h) of
     Nothing ->
       return [x]
-    Just (Pending {pendingSerial, pendingTerm}) -> do
-      case pendingTerm of
-        Renamed x' -> do
-          recordPendingUse h pendingSerial
+    Just (Pending {pendingSerial, pendingEntry}) -> do
+      recordPendingUse h pendingSerial
+      case pendingEntry of
+        RenamedTerm x' ->
           return [x']
-        TypeValue _ ->
-          return [x]
-        _ -> do
-          recordPendingUse h pendingSerial
+        Normalized {} ->
           return []
 
 resolveCursorVar :: Handle -> Ident -> IO Ident
 resolveCursorVar h x =
-  case IntMap.lookup (Ident.toInt x) (pendingValues h) of
-    Just (Pending {pendingSerial, pendingTerm = Renamed x'}) -> do
+  case IntMap.lookup (Ident.toInt x) (pendingTerms h) of
+    Just (Pending {pendingSerial, pendingEntry = RenamedTerm x'}) -> do
       recordPendingUse h pendingSerial
       return x'
     _ ->
@@ -264,18 +298,23 @@ trackPendingUse h action = do
 
 applyPending :: Handle -> TM.Term -> IO TM.Term
 applyPending h e = do
-  if IntMap.null (pendingValues h)
+  if IntMap.null (pendingTerms h) && IntMap.null (pendingTypes h)
     then return e
     else do
-      result <- Subst.substIfChanged (substHandle h) (IntMap.map (toSubstEntry . pendingTerm) (pendingValues h)) e
+      let termEntries = IntMap.map (toTermSubstEntry . pendingEntry) (pendingTerms h)
+      let typeEntries = IntMap.map (toTypeSubstEntry . pendingEntry) (pendingTypes h)
+      result <- Subst.substIfChanged (substHandle h) (IntMap.union termEntries typeEntries) e
       case result of
         Nothing ->
           return e
         Just e' -> do
-          let free = IntMap.fromSet (const ()) $ IntSet.fromList $ map Ident.toInt $ S.toList $ TM.freeVars e
-          let used = IntMap.intersection (pendingValues h) free
-          let candidates = if IntMap.null used then pendingValues h else used
-          recordPendingUse h $ minimum $ map pendingSerial $ IntMap.elems candidates
+          let free = IntSet.fromList $ map Ident.toInt $ S.toList $ TM.freeVars e
+          let usedTerms = IntMap.elems $ IntMap.restrictKeys (pendingTerms h) free
+          let usedTypes = IntMap.elems $ IntMap.restrictKeys (pendingTypes h) free
+          let used = map pendingSerial usedTerms ++ map pendingSerial usedTypes
+          let allSerials = map pendingSerial (IntMap.elems (pendingTerms h)) ++ map pendingSerial (IntMap.elems (pendingTypes h))
+          let candidates = if null used then allSerials else used
+          recordPendingUse h $ minimum candidates
           return e'
 
 inline :: Handle -> TM.Term -> App TM.Term
@@ -329,13 +368,13 @@ inlineNormal h rawTerm = do
   detectPossibleInfiniteLoop h
   case rawTerm of
     m :< TM.Var x ->
-      fromMaybe (asValue rawTerm) <$> lookupPending h m x
+      fromMaybe (asValue rawTerm) <$> lookupPendingTerm h m x
     _ :< TM.VarGlobal {} ->
       return $ asValue rawTerm
     m :< TM.PiIntro attr@(AttrL.Attr {lamKind}) impArgs expArgs defaultArgs e -> do
       ((lamKind', impArgs', expArgs', defaultArgs', e'), isAltered) <- trackPendingUse h $ do
-        (impArgs', hImp) <- inlineTypeBinders h impArgs
-        (expArgs', hExp) <- inlineTypeBinders hImp expArgs
+        (impArgs', hImp) <- inlineTypeParams h impArgs
+        (expArgs', hExp) <- inlineTermBinders hImp expArgs
         (defaultArgs', hDefault) <- inlineLetSeq hExp defaultArgs
         (lamKindSelf, hSelf) <- enterSelf hDefault lamKind
         let hBody = withBinders (impArgs' ++ expArgs' ++ map fst defaultArgs') hSelf
@@ -494,9 +533,9 @@ inlineNormal h rawTerm = do
       e1' <- inline' h e1
       case e1' of
         _ :< TM.TauIntro ty -> do
-          expand (withPending [(Ident.toInt x, TypeValue ty)] h) e2
+          expand (withTypeValues [(x, ty)] h) e2
         _ -> do
-          (x', h') <- enterBinder h x
+          (x', h') <- enterTypeBinder h x
           e2' <- inline' h' e2
           registerResidual h $ m :< TM.TauElim traceID (mx, k, x') e1' e2'
     m :< TM.Let mxt@(_, _, x, _) e1 e2 -> do
@@ -628,7 +667,7 @@ reduceDataElim h m traceID isNoetic oets' decisionTree = do
             Just (e, oets'')
               | _ :< TM.DataIntro (AttrDI.Attr {..}) _ _ consImpTypes consArgs <- normalTerm e -> do
               let (consImpVars, newBaseCursorList, cont) = findClause discriminant fallbackTree caseList
-              let hTyped = withPending [(Ident.toInt x, TypeValue t) | (x, t) <- zip consImpVars consImpTypes] h
+              let hTyped = withTypeValues (zip consImpVars consImpTypes) h
               newCursorTypes <- mapM (inlineType' hTyped . snd) newBaseCursorList
               let newCursorList = zip3 (map fst newBaseCursorList) (map (asComponent e) consArgs) newCursorTypes
               continueDataElim (withNormalized [(cursor, e)] hTyped) m traceID isNoetic (oets'' ++ newCursorList) cont
@@ -681,13 +720,7 @@ inlineType' h ty = do
     _ :< TM.Tau ->
       return ty
     m :< TM.TVar x ->
-      case IntMap.lookup (Ident.toInt x) (pendingValues h) of
-        Just (Pending {pendingSerial, pendingTerm})
-          | Just ty' <- getPendingType m pendingTerm -> do
-              liftIO $ recordPendingUse h pendingSerial
-              return ty'
-        _ ->
-          return ty
+      fromMaybe ty <$> liftIO (lookupPendingType h m x)
     _ :< TM.TVarGlobal {} ->
       return ty
     m :< TM.TyApp t args -> do
@@ -707,9 +740,9 @@ inlineType' h ty = do
           args' <- mapM (inlineType' h) args
           return $ m :< TM.TyApp t' args'
     m :< TM.Pi piKind impArgs expArgs defaultArgs cod -> do
-      (impArgs', h1) <- inlineTypeBinders h impArgs
-      (expArgs', h2) <- inlineTypeBinders h1 expArgs
-      (defaultArgs', h3) <- inlineTypeBinders h2 defaultArgs
+      (impArgs', h1) <- inlineTypeParams h impArgs
+      (expArgs', h2) <- inlineTermBinders h1 expArgs
+      (defaultArgs', h3) <- inlineTermBinders h2 defaultArgs
       cod' <- inlineType' h3 cod
       return $ m :< TM.Pi piKind impArgs' expArgs' defaultArgs' cod'
     m :< TM.Data attr name es -> do
@@ -781,7 +814,7 @@ withTypedIdents :: [(Ident, TM.Type)] -> Handle -> Handle
 withTypedIdents xts h =
   h
     { localTypeEnv = foldr (\(x, t) -> IntMap.insert (Ident.toInt x) t) (localTypeEnv h) xts,
-      pendingValues = pendingValues (withoutPendingFor (map fst xts) h)
+      pendingTerms = pendingTerms (withoutPendingTerms (map fst xts) h)
     }
 
 withCursorType :: Ident -> TM.Type -> Handle -> Handle
@@ -809,15 +842,23 @@ inlineLetSeq h letSeq =
       (rest', h'') <- inlineLetSeq h' rest
       return (((mx, k, x', t), e') : rest', h'')
 
-inlineTypeBinders :: Handle -> [BinderF TM.Type] -> App ([BinderF TM.Type], Handle)
-inlineTypeBinders h binders =
+inlineTermBinders :: Handle -> [BinderF TM.Type] -> App ([BinderF TM.Type], Handle)
+inlineTermBinders =
+  inlineBinders enterBinder
+
+inlineTypeParams :: Handle -> [BinderF TM.Type] -> App ([BinderF TM.Type], Handle)
+inlineTypeParams =
+  inlineBinders enterTypeBinder
+
+inlineBinders :: (Handle -> Ident -> App (Ident, Handle)) -> Handle -> [BinderF TM.Type] -> App ([BinderF TM.Type], Handle)
+inlineBinders enter h binders =
   case binders of
     [] ->
       return ([], h)
     binder : rest -> do
       (mx, k, x, t) <- inlineTypeBinder h binder
-      (x', h') <- enterBinder h x
-      (rest', h'') <- inlineTypeBinders h' rest
+      (x', h') <- enter h x
+      (rest', h'') <- inlineBinders enter h' rest
       return ((mx, k, x', t) : rest', h'')
 
 inlineTypeBinder :: Handle -> BinderF TM.Type -> App (BinderF TM.Type)
@@ -866,8 +907,8 @@ inlineCase h decisionCase = do
       let (dataTerms, dataTypes) = unzip dataArgs
       dataTerms' <- mapM (inlineType' h) dataTerms
       dataTypes' <- mapM (inlineType' h) dataTypes
-      (consImpArgs', hImp) <- inlineTypeBinders h consImpArgs
-      (consArgs', hArgs) <- inlineTypeBinders hImp consArgs
+      (consImpArgs', hImp) <- inlineTypeParams h consImpArgs
+      (consArgs', hArgs) <- inlineTermBinders hImp consArgs
       cont' <- inlineDecisionTree (withBinders consArgs' hArgs) cont
       return $
         DT.ConsCase
