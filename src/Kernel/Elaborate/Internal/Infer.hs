@@ -329,7 +329,9 @@ infer h term =
           let defaultBinders = map fst defaultArgs'
           codType' <- inferType h''' codType
           when (kind == LDK.DefineMeta) $ do
-            forM_ (expArgs' ++ defaultBinders) $ \(mp, _, _, t) ->
+            unless (null defaultArgs') $ do
+              raiseError m "`define-meta` cannot have default arguments"
+            forM_ expArgs' $ \(mp, _, _, t) ->
               checkIsCodeType h''' mp t
             checkIsCodeType h''' mx codType'
           let piKind =
