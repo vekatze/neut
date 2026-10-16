@@ -298,8 +298,6 @@ substTerm h env term =
           return $ altered $ m :< TM.Var x'
         Just (Term e) ->
           return $ altered e
-        Just (Type (_ :< TM.TVar x')) ->
-          return $ altered $ m :< TM.Var x'
         Just (Type _) ->
           return Kept
         Nothing ->
@@ -414,8 +412,6 @@ substTy h env ty =
     m :< TM.TVar x ->
       case IntMap.lookup (Ident.toInt x) (entries env) of
         Just (Var x') ->
-          return $ altered $ m :< TM.TVar x'
-        Just (Term (_ :< TM.Var x')) ->
           return $ altered $ m :< TM.TVar x'
         Just (Term _) ->
           return Kept

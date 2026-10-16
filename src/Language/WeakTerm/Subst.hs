@@ -62,8 +62,6 @@ subst h sub term =
               return $ m :< WT.Var x'
             Term e ->
               return e
-            Type (_ :< WT.TVar x') ->
-              return $ m :< WT.Var x'
             Type _ ->
               return term
       | otherwise ->
@@ -184,8 +182,6 @@ substType h sub ty =
       | Just entry <- IntMap.lookup (Ident.toInt x) sub ->
           case entry of
             Var x' ->
-              return $ m :< WT.TVar x'
-            Term (_ :< WT.Var x') ->
               return $ m :< WT.TVar x'
             Term _ ->
               return ty

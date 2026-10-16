@@ -188,8 +188,6 @@ lookupPending h m x =
       return Nothing
     Just (Pending {pendingSerial, pendingTerm}) -> do
       case pendingTerm of
-        TypeValue (_ :< TM.TVar _) ->
-          liftIO $ recordPendingUse h pendingSerial
         TypeValue _ ->
           return ()
         _ ->
@@ -201,8 +199,6 @@ lookupPending h m x =
           | otherwise ->
               Just <$> inlineNormal (withoutPending h) (normalTerm e)
         Renamed x' ->
-          return $ Just $ asValue $ m :< TM.Var x'
-        TypeValue (_ :< TM.TVar x') ->
           return $ Just $ asValue $ m :< TM.Var x'
         TypeValue _ ->
           return Nothing
@@ -223,8 +219,6 @@ getPendingType m pendingTerm =
     TypeValue t ->
       Just t
     Renamed x' ->
-      Just $ m :< TM.TVar x'
-    Normalized _ (Normal {normalTerm = _ :< TM.Var x'}) ->
       Just $ m :< TM.TVar x'
     _ ->
       Nothing
