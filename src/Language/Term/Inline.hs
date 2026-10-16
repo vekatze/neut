@@ -102,20 +102,45 @@ withSelfValue lamKind self h =
     Nothing ->
       h
 
-withArguments :: [Ident] -> [Normal] -> [TM.Term] -> Handle -> Handle
-withArguments params givenArgs args h = do
-  let givenCount = length givenArgs
-  let (givenParams, defaultParams) = splitAt givenCount params
-  withUnnormalized (zip defaultParams (drop givenCount args)) $ withNormalized (zip givenParams givenArgs) h
+data ParameterSource
+  = GivenArgument Normal
+  | DefaultValue TM.Term
 
-areArgumentValues :: [Normal] -> [TM.Term] -> Bool
-areArgumentValues givenArgs args =
-  all isNormalValue givenArgs && all TM.isValue (drop (length givenArgs) args)
+toDefaultParameter :: (BinderF TM.Type, TM.Term) -> Maybe TM.Term -> (BinderF TM.Type, ParameterSource)
+toDefaultParameter (binder, defaultValue) override =
+  case override of
+    Just e ->
+      (binder, GivenArgument (asNormal e))
+    Nothing ->
+      (binder, DefaultValue defaultValue)
 
-normalizeDefaults :: Handle -> [Normal] -> [TM.Term] -> App [Normal]
-normalizeDefaults h givenArgs args = do
-  defaults <- mapM (inlineNormal (withoutPending h)) (drop (length givenArgs) args)
-  return $ givenArgs ++ defaults
+isTakenFromDefinition :: (a, ParameterSource) -> Bool
+isTakenFromDefinition (_, source) =
+  case source of
+    GivenArgument _ ->
+      False
+    DefaultValue _ ->
+      True
+
+hasNonValueSource :: [(a, ParameterSource)] -> Bool
+hasNonValueSource params =
+  not $ all (\(_, source) -> isValueSource source) params
+
+isValueSource :: ParameterSource -> Bool
+isValueSource source =
+  case source of
+    GivenArgument e ->
+      isNormalValue e
+    DefaultValue e ->
+      TM.isValue e
+
+getGivenTerm :: (a, ParameterSource) -> Maybe TM.Term
+getGivenTerm (_, source) =
+  case source of
+    GivenArgument e ->
+      Just $ normalTerm e
+    DefaultValue _ ->
+      Nothing
 
 withRenamed :: [(Ident, Ident)] -> Handle -> Handle
 withRenamed xys =
@@ -147,10 +172,6 @@ enterBinders h xs =
       (rest', h'') <- enterBinders h' rest
       return (x' : rest', h'')
 
-withUnnormalized :: [(Ident, TM.Term)] -> Handle -> Handle
-withUnnormalized xes =
-  withPending [(Ident.toInt x, Unnormalized e) | (x, e) <- xes]
-
 withPending :: [(Int, PendingTerm)] -> Handle -> Handle
 withPending entries h = do
   let start = nextPendingSerial h
@@ -179,8 +200,6 @@ lookupPending h m x =
               return $ Just e
           | otherwise ->
               Just <$> inlineNormal (withoutPending h) (normalTerm e)
-        Unnormalized e ->
-          Just <$> inlineNormal (withoutPending h) e
         Renamed x' ->
           return $ Just $ asValue $ m :< TM.Var x'
         TypeValue (_ :< TM.TVar x') ->
@@ -193,8 +212,6 @@ toSubstEntry pendingTerm =
   case pendingTerm of
     Normalized _ e ->
       Subst.Term (normalTerm e)
-    Unnormalized e ->
-      Subst.Term e
     Renamed x' ->
       Subst.Var x'
     TypeValue t ->
@@ -208,8 +225,6 @@ getPendingType m pendingTerm =
     Renamed x' ->
       Just $ m :< TM.TVar x'
     Normalized _ (Normal {normalTerm = _ :< TM.Var x'}) ->
-      Just $ m :< TM.TVar x'
-    Unnormalized (_ :< TM.Var x') ->
       Just $ m :< TM.TVar x'
     _ ->
       Nothing
@@ -354,78 +369,76 @@ inlineNormal h rawTerm = do
       let Handle {dmap} = h
       localDefMap <- liftIO $ readIORef (localMetaDefMap h)
       let residual = m :< TM.PiElim callTraceID conv' e' impArgs' expArgs' defaultArgs'
-      let rebuildWithDefaults defaultArgsFilled =
-            m :< TM.PiElim callTraceID conv' e' impArgs' expArgs' (map Just defaultArgsFilled)
       let reduceApplication mDefaultCallee impParams expBinders defDefaults canReduce reduce =
-            if length impParams /= length impArgs'
+            if length impParams /= length impArgs' || length expBinders /= length expArgs' || length defDefaults /= length defaultArgs'
               then registerResidual h residual
               else do
                 let impIds = map (\(_, _, x, _) -> x) impParams
                 let subType = IntMap.fromList $ zip (map Ident.toInt impIds) (map Subst.Type impArgs')
-                let expParams = expBinders ++ map fst defDefaults
                 let defaultFrameCtx = (\dd -> (dd, m, callTraceID)) <$> mDefaultCallee
-                defaultArgsFilled <- liftIO $ fillDefaultArgs h defaultFrameCtx subType expBinders expArgs' defDefaults defaultArgs'
-                let expArgsAll = expArgs' ++ defaultArgsFilled
-                if length expParams /= length expArgsAll
-                  then registerResidual h residual
-                  else
-                    if CC.isNoetic conv' || not canReduce
-                      then do
-                        defaultArgsNormal <- mapM (inline' (withoutPending h)) defaultArgsFilled
-                        registerResidual h (rebuildWithDefaults defaultArgsNormal)
-                      else reduce subType expParams expArgsAll
+                let givenParams = zip expBinders (map GivenArgument expArgsNormal)
+                let defaultParams = zipWith toDefaultParameter defDefaults defaultArgs'
+                let params = givenParams ++ defaultParams
+                if CC.isNoetic conv' || not canReduce
+                  then
+                    if not (any isTakenFromDefinition defaultParams) || (hasNonValueSource params && not (isActive h))
+                      then registerResidual h residual
+                      else do
+                        bindParameters h subType defaultFrameCtx params $ \values _ -> do
+                          let (expValues, defaultValues) = splitAt (length expArgs') (map normalTerm values)
+                          registerResidual h $ m :< TM.PiElim callTraceID conv' e' impArgs' expValues (map Just defaultValues)
+                  else reduce subType defaultFrameCtx params
       case e' of
         (_ :< TM.PiIntro attr@(AttrL.Attr {lamKind, identity}) impBinders expBinders defBinders body) -> do
           let canReduce = isLocalDefineMeta lamKind || canReduceByLamKind lamKind
-          reduceApplication Nothing impBinders expBinders defBinders canReduce $ \subType expParams expArgsAll ->
+          reduceApplication Nothing impBinders expBinders defBinders canReduce $ \subType _ params ->
             if isLocalDefineMeta lamKind
               then do
-                (g, defInfo) <- registerLocalMeta h m identity attr impBinders expBinders defBinders body
-                asNormal <$> specializeLocalMeta h m g subType impArgs' expParams (defBody defInfo) (codType defInfo) expArgsAll
+                case mapM getGivenTerm params of
+                  Just args -> do
+                    (g, defInfo) <- registerLocalMeta h m identity attr impBinders expBinders defBinders body
+                    asNormal <$> specializeLocalMeta h m g subType impArgs' (map fst params) (defBody defInfo) (codType defInfo) args
+                  Nothing ->
+                    registerResidual h residual
               else do
-                let expIds = map (\(_, _, x, _) -> x) expParams
-                if areArgumentValues expArgsNormal expArgsAll
-                  then do
-                    expand (withArguments expIds expArgsNormal expArgsAll $ withSelfValue lamKind e' $ withTypeSubst subType $ withoutPending h) body
+                if hasNonValueSource params && not (isActive h)
+                  then registerResidual h residual
                   else do
-                    if not (isActive h)
-                      then registerResidual h residual
-                      else do
-                        let sub = IntMap.unions [selfSubstForLamKind lamKind e', subType]
-                        (expParams', body') <- liftIO $ Subst.substAndRefresh' (substHandle h) sub expParams body
-                        expArgsAllNormal <- normalizeDefaults h expArgsNormal expArgsAll
-                        bindNormal (withoutPending h) (zip expParams' expArgsAllNormal) body'
+                    let paramIds = map (\((_, _, x, _), _) -> x) params
+                    bindParameters h subType Nothing params $ \values letBinders ->
+                      expand (withBinders letBinders $ withNormalized (zip paramIds values) $ withSelfValue lamKind e' $ withTypeSubst subType $ withoutPending h) body
         (mUse :< TM.VarGlobal _ dd)
           | Just defInfo <- Map.lookup dd dmap -> do
               let DefInfo {defImpBinders, defExpBinders, defDefaultArgs, defBody, codType, defKind, traceSiteIDs} = defInfo
               let canReduce = canInlineDefKind defKind
-              reduceApplication (Just dd) defImpBinders defExpBinders defDefaultArgs canReduce $ \subType expParams expArgsAll ->
+              reduceApplication (Just dd) defImpBinders defExpBinders defDefaultArgs canReduce $ \subType defaultFrameCtx params ->
                 case defKind of
                   Macro -> do
-                    Normal {normalTerm = _ :< tracedCall} <- registerResidual h residual
-                    let specializedCallTraceID = TraceSites.traceIDOf tracedCall
-                    asNormal <$> specializeMacro h m mUse specializedCallTraceID dd defKind subType impArgs' expParams defBody codType expArgsAll
+                    case mapM getGivenTerm params of
+                      Just args -> do
+                        Normal {normalTerm = _ :< tracedCall} <- registerResidual h residual
+                        let specializedCallTraceID = TraceSites.traceIDOf tracedCall
+                        asNormal <$> specializeMacro h m mUse specializedCallTraceID dd defKind subType impArgs' (map fst params) defBody codType args
+                      Nothing ->
+                        registerResidual h residual
                   _ -> do
                     let tracer = if isMacroDef defKind then withMacroHint h dd defKind m else id
-                    if areArgumentValues expArgsNormal expArgsAll
-                      then do
-                        remapTrace <- prepareDefinitionTraceRemapping h dd defKind traceSiteIDs m callTraceID
-                        (expParams', body') <- instantiateDefinition h remapTrace subType expParams defBody
-                        let expIds = map (\(_, _, x, _) -> x) expParams'
-                        tracer $ expand (withArguments expIds expArgsNormal expArgsAll $ withoutPending h) body'
+                    if hasNonValueSource params && not (isActive h)
+                      then registerResidual h residual
                       else do
-                        if not (isActive h)
-                          then registerResidual h residual
-                          else do
-                            remapTrace <- prepareDefinitionTraceRemapping h dd defKind traceSiteIDs m callTraceID
-                            (expParams', body') <- instantiateDefinition h remapTrace subType expParams defBody
-                            tracer $ do
-                              expArgsAllNormal <- normalizeDefaults h expArgsNormal expArgsAll
-                              bindNormal (withoutPending h) (zip expParams' expArgsAllNormal) body'
+                        remapTrace <- prepareDefinitionTraceRemapping h dd defKind traceSiteIDs m callTraceID
+                        (expParams', body') <- instantiateDefinition h remapTrace subType (map fst params) defBody
+                        let paramIds = map (\(_, _, x, _) -> x) expParams'
+                        tracer $ bindParameters h subType defaultFrameCtx params $ \values letBinders ->
+                          expand (withBinders letBinders $ withNormalized (zip paramIds values) $ withoutPending h) body'
           | Just defInfo <- Map.lookup dd localDefMap -> do
               let DefInfo {defImpBinders, defExpBinders, defDefaultArgs, defBody, codType} = defInfo
-              reduceApplication Nothing defImpBinders defExpBinders defDefaultArgs True $ \subType expParams expArgsAll ->
-                asNormal <$> specializeLocalMeta h m dd subType impArgs' expParams defBody codType expArgsAll
+              reduceApplication Nothing defImpBinders defExpBinders defDefaultArgs True $ \subType _ params ->
+                case mapM getGivenTerm params of
+                  Just args ->
+                    asNormal <$> specializeLocalMeta h m dd subType impArgs' (map fst params) defBody codType args
+                  Nothing ->
+                    registerResidual h residual
         (_ :< TM.Prim (PV.Op op))
           | CC.isNormal conv' -> do
               case ConstantFold.evaluatePrimOp m op expArgs' of
@@ -945,71 +958,62 @@ lookupSplit' cursor acc oets =
 
 type DefaultFrameContext = (DD.DefiniteDescription, Hint, TraceID)
 
-fillDefaultArgs ::
+bindParameters ::
   Handle ->
-  Maybe DefaultFrameContext ->
   Subst.Subst ->
+  Maybe DefaultFrameContext ->
+  [(BinderF TM.Type, ParameterSource)] ->
+  ([Normal] -> [BinderF TM.Type] -> App Normal) ->
+  App Normal
+bindParameters h subType defaultFrameCtx params cont =
+  bindParameters' h (withoutPending h) subType defaultFrameCtx params [] [] cont
+
+bindParameters' ::
+  Handle ->
+  Handle ->
+  Subst.Subst ->
+  Maybe DefaultFrameContext ->
+  [(BinderF TM.Type, ParameterSource)] ->
+  [Normal] ->
   [BinderF TM.Type] ->
-  [TM.Term] ->
-  [(BinderF TM.Type, TM.Term)] ->
-  [Maybe TM.Term] ->
-  IO [TM.Term]
-fillDefaultArgs h defaultFrameCtx sub expBinders expArgs defBinders overrides = do
-  let expIds = map (\(_, _, x, _) -> x) expBinders
-  let expSub = IntMap.fromList $ zip (map Ident.toInt expIds) (map Subst.Term expArgs)
-  fillDefaultArgs' h defaultFrameCtx (IntMap.union expSub sub) defBinders overrides
+  ([Normal] -> [BinderF TM.Type] -> App Normal) ->
+  App Normal
+bindParameters' h hDefault subType defaultFrameCtx params values letBinders cont =
+  case params of
+    [] ->
+      cont (reverse values) (reverse letBinders)
+    ((mx, k, x, t), source) : rest -> do
+      e <- case source of
+        GivenArgument e ->
+          return e
+        DefaultValue defaultValue -> do
+          defaultValue' <- liftIO $ refreshDefaultValue h defaultFrameCtx subType defaultValue
+          inlineNormal hDefault defaultValue'
+      if isNormalValue e
+        then bindParameters' h (withNormalized [(x, e)] hDefault) subType defaultFrameCtx rest (e : values) letBinders cont
+        else do
+          t' <- liftIO (Subst.substType (substHandle h) subType t) >>= inlineType' (withoutPending h)
+          v <- liftIO $ Sym.newIdentFromIdent (gensymHandle h) x
+          liftIO $ modifyIORef' (emittedBinders h) (IntSet.insert (Ident.toInt v))
+          let binder = (mx, k, v, t')
+          let value = asValue $ mx :< TM.Var v
+          let hDefault' = withBinders [binder] $ withNormalized [(x, value)] hDefault
+          cont' <- bindParameters' h hDefault' subType defaultFrameCtx rest (value : values) (binder : letBinders) cont
+          return $ asNormal $ mx :< TM.Let binder (normalTerm e) (normalTerm cont')
 
-fillDefaultArgs' ::
-  Handle ->
-  Maybe DefaultFrameContext ->
-  Subst.Subst ->
-  [(BinderF TM.Type, TM.Term)] ->
-  [Maybe TM.Term] ->
-  IO [TM.Term]
-fillDefaultArgs' h defaultFrameCtx sub defBinders overrides =
-  case (defBinders, overrides) of
-    ([], []) ->
-      return []
-    (((_, _, x, _), defaultValue) : rest, override : overrideRest) -> do
-      value <- case override of
-        Just overrideValue ->
-          return overrideValue
-        Nothing ->
-          fillDefaultValue h defaultFrameCtx sub defaultValue
-      let sub' = IntMap.insert (Ident.toInt x) (Subst.Term value) sub
-      rest' <- fillDefaultArgs' h defaultFrameCtx sub' rest overrideRest
-      return (value : rest')
-    _ ->
-      return []
-
-fillDefaultValue :: Handle -> Maybe DefaultFrameContext -> Subst.Subst -> TM.Term -> IO TM.Term
-fillDefaultValue h defaultFrameCtx sub defaultValue =
+refreshDefaultValue :: Handle -> Maybe DefaultFrameContext -> Subst.Subst -> TM.Term -> IO TM.Term
+refreshDefaultValue h defaultFrameCtx subType defaultValue =
   case defaultFrameCtx of
     Just (dd, callHint, callTraceID)
       | traceEnabled h -> do
           (annotated, siteIDs) <- TraceSites.annotate (traceHandle h) defaultValue
           if IntSet.null siteIDs
-            then Subst.subst (substHandle h) sub annotated
+            then snd <$> Subst.substAndRefresh' (substHandle h) subType [] annotated
             else do
               remapping <- TermTrace.registerExpansion (traceHandle h) dd callHint callTraceID TermTrace.DefaultArgFrame siteIDs
-              Subst.substAndRefreshWithTrace (substHandle h) remapping sub annotated
+              Subst.substAndRefreshWithTrace (substHandle h) remapping subType annotated
     _ ->
-      Subst.subst (substHandle h) sub defaultValue
-
-bindNormal :: Handle -> [(BinderF TM.Type, Normal)] -> TM.Term -> App Normal
-bindNormal h binder cont =
-  case binder of
-    [] ->
-      expand h cont
-    (mxt@(m, _, x, _), e1) : rest -> do
-      if isNormalValue e1
-        then bindNormal (withNormalized [(x, e1)] h) rest cont
-        else do
-          (mx, k, _, t) <- inlineTypeBinder h mxt
-          (x', hRest) <- enterBinder h x
-          let mxt' = (mx, k, x', t)
-          cont' <- bindNormal (withBinders [mxt'] hRest) rest cont
-          return $ asNormal $ m :< TM.Let mxt' (normalTerm e1) (normalTerm cont')
+      snd <$> Subst.substAndRefresh' (substHandle h) subType [] defaultValue
 
 prepareDefinitionTraceRemapping ::
   Handle ->
@@ -1295,14 +1299,6 @@ canReduceByLamKind lamKind =
       not $ O.isOpaque $ LDK.toOpacity kind
     _ ->
       False
-
-selfSubstForLamKind :: LK.LamKindF a -> TM.Term -> Subst.Subst
-selfSubstForLamKind lamKind selfTerm =
-  case getSelfIdent lamKind of
-    Just selfIdent ->
-      IntMap.singleton (Ident.toInt selfIdent) (Subst.Term selfTerm)
-    Nothing ->
-      IntMap.empty
 
 getSelfIdent :: LK.LamKindF a -> Maybe Ident
 getSelfIdent lamKind =

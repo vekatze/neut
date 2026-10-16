@@ -49,7 +49,6 @@ data Pending = Pending
 
 data PendingTerm
   = Normalized TropeDepth Normal
-  | Unnormalized TM.Term
   | Renamed Ident
   | TypeValue TM.Type
 
