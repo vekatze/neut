@@ -8,7 +8,9 @@ where
 import Data.HashMap.Strict qualified as Map
 import Data.IntMap qualified as IntMap
 import Data.List (foldl')
+import Data.Set qualified as S
 import Gensym.Handle qualified as Gensym
+import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.Ident
 import Language.Common.Ident.Reify qualified as Ident
 import Language.Common.LowMagic qualified as LM
@@ -22,12 +24,14 @@ data Handle = Handle
   { substHandle :: Subst.Handle,
     gensymHandle :: Gensym.Handle,
     defMap :: C.DefMap,
-    subst :: C.SubstValue
+    subst :: C.SubstValue,
+    unfolding :: S.Set DD.DefiniteDescription
   }
 
 new :: Subst.Handle -> Gensym.Handle -> C.DefMap -> Handle
 new substHandle gensymHandle defMap = do
   let subst = IntMap.empty
+  let unfolding = S.empty
   Handle {..}
 
 unionSubst :: Handle -> C.SubstValue -> Handle
@@ -49,8 +53,8 @@ reduce h term = do
         C.VarGlobal x _ _ -> do
           case Map.lookup x (defMap h) of
             Just (opacity, xs, body)
-              | forceInline || opacity == O.Clear -> do
-                  instantiate h xs ds' body
+              | (forceInline || opacity == O.Clear) && S.notMember x (unfolding h) -> do
+                  instantiate (h {unfolding = S.insert x (unfolding h)}) xs ds' body
             _ ->
               return $ C.PiElimDownElim forceInline v' ds'
         _ ->
