@@ -101,7 +101,7 @@ hljs.registerLanguage("neut", function (hljs) {
         begin: [
           /(?<![\w-])/,
           /[A-Z][a-z0-9A-Z-]*/,
-          /(?=[^\w-=<>])/
+          /(?=[^\w-=>])/
         ],
         beginScope: {
           2: "constructor"
@@ -109,7 +109,7 @@ hljs.registerLanguage("neut", function (hljs) {
       },
       {
         begin: [
-          /(define|inline|define-meta|inline-meta|alias|alias-opaque|constant-meta|constant|data|resource|trope|namespace)/,
+          /(define|inline|define-meta|inline-meta|function|alias|alias-opaque|constant-meta|constant|data|resource|trope|namespace)/,
           /\s+/,
           /[\w-]+/,
         ],

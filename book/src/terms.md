@@ -20,10 +20,11 @@
 
 - [(x1: a1, ..., xn: an) -> b](#x1-a1--xn-an---b)
 - [(x1: a1, ..., xn: an) => { e }](#x1-a1--xn-an---e-)
-- [define f(x1: a1, ..., xn: an) -> c { e }](#define-fx1-a1--xn-an---c--e-)
-- [inline f(x1: a1, ..., xn: an) -> c { e }](#inline-fx1-a1--xn-an---c--e-)
-- [define-meta f(x1: a1, ..., xn: an) -> c { e }](#define-meta-fx1-a1--xn-an---c--e-)
-- [inline-meta f(x1: a1, ..., xn: an) -> c { e }](#inline-meta-fx1-a1--xn-an---c--e-)
+- [function (x1: a1, ..., xn: an) -> c { e }](#function-x1-a1--xn-an---c--e-)
+- [define f(x1: a1, ..., xn: an) -> c { e }; cont](#define-fx1-a1--xn-an---c--e--cont)
+- [inline f(x1: a1, ..., xn: an) -> c { e }; cont](#inline-fx1-a1--xn-an---c--e--cont)
+- [define-meta f(x1: a1, ..., xn: an) -> c { e }; cont](#define-meta-fx1-a1--xn-an---c--e--cont)
+- [inline-meta f(x1: a1, ..., xn: an) -> c { e }; cont](#inline-meta-fx1-a1--xn-an---c--e--cont)
 - [e(e1, ..., en)](#ee1--en)
 - [e{x1 := e1, ..., xn := en}](#ex1--e1--xn--en)
 - [exact e](#exact-e)
@@ -908,7 +909,72 @@ When default arguments are present, the resulting type additionally contains the
 
 - Anonymous functions are reduced at compile time when possible. If you would like to avoid this behavior, consider using `define`.
 
-## `define f(x1: a1, ..., xn: an) -> c { e }`
+## `function (x1: a1, ..., xn: an) -> c { e }`
+
+`function` is the long form of an [anonymous function](#x1-a1--xn-an---e-).
+
+### Example
+
+```neut
+define use-function() -> int {
+  let f =
+    function (x: int, y: int) -> int {
+      add-int(x, y)
+    };
+  let g =
+    function myfunc(x: int, y: int) -> int {
+      sub-int(x, y)
+    };
+  let id =
+    function <a>(x: a) -> a {
+      x
+    };
+  f(1, g(id(2), 3))
+}
+```
+
+### Syntax
+
+```neut
+function <x1: a1, ..., xn: an>(y1: b1, ..., ym: bm) -> c {
+  e
+}
+
+function <x1: a1, ..., xn: an>(y1: b1, ..., ym: bm)[z1: c1 := e1, ..., zk: ck := ek] -> c {
+  e
+}
+
+// `->>` in place of `->`, `+` on a parameter; each can appear independently
+function <x1: a1, ..., xn: an>(+y1: b1, ..., ym: bm) ->> c {
+  e
+}
+
+// with a name
+function name<x1: a1, ..., xn: an>(y1: b1, ..., ym: bm) -> c {
+  e
+}
+```
+
+### Semantics
+
+`function` is operationally the same as an anonymous function.
+
+The optional name of a `function` is included in the symbol for the generated closure function. The name is not bound in the body. Use [`define`](#define-fx1-a1--xn-an---c--e--cont) for recursion.
+
+### Type
+
+```neut
+Γ, x1: a1, ..., xn: an ⊢ e: t
+-----------------------------------------------------------------------
+Γ ⊢ function (x1: a1, ..., xn: an) -> t {e}: (x1: a1, ..., xn: an) -> t
+```
+
+### Note
+
+- A `function` is reduced at compile time when possible, even when it has a name.
+- The name of a `function` is used by, for example, profilers.
+
+## `define f(x1: a1, ..., xn: an) -> c { e }; cont`
 
 `define` (at the term-level) can be used to create a function with possible recursion.
 
@@ -917,16 +983,15 @@ When default arguments are present, the resulting type additionally contains the
 ```neut
 define use-define() -> int {
   let c = 10;
-  let f =
-    // term-level `define` with a free variable `c`
-    define some-recursive-func(x: int) -> int {
-      if eq-int(x, 0) {
-        0
-      } else {
-        add-int(c, some-recursive-func(sub-int(x, 1)))
-      }
-    };
-  f(100)
+  // term-level `define` with a free variable `c`
+  define some-recursive-func(x: int) -> int {
+    if eq-int(x, 0) {
+      0
+    } else {
+      add-int(c, some-recursive-func(sub-int(x, 1)))
+    }
+  };
+  some-recursive-func(100)
 }
 ```
 
@@ -935,198 +1000,139 @@ define use-define() -> int {
 ```neut
 define name<x1: a1, ..., xn: an>(y1: b1, ..., ym: bm) -> c {
   e
-}
+};
+cont
 
 define name<x1: a1, ..., xn: an>(y1: b1, ..., ym: bm)[z1: c1 := e1, ..., zk: ck := ek] -> c {
   e
-}
+};
+cont
 
 // `->>` in place of `->`, `+` on a parameter; each can appear independently
 define name<x1: a1, ..., xn: an>(+y1: b1, ..., ym: bm) ->> c {
   e
-}
+};
+cont
 ```
 
 The following abbreviations are available:
 
 ```neut
-define name(y1: b1, ..., ym: bm) -> c {e}
+define name(y1: b1, ..., ym: bm) -> c {e};
+cont
 
 // ↓
-// define name<>(y1: b1, ..., ym: bm) -> c {e}
+// define name<>(y1: b1, ..., ym: bm) -> c {e};
+// cont
 
 
-define name<a1, ..., an>(y1: b1, ..., ym: bm) -> c {e}
+define name<a1, ..., an>(y1: b1, ..., ym: bm) -> c {e};
+cont
 
 // ↓
-// define name<a1: _, ..., an: _>(y1: b1, ..., ym: bm) -> c {e}
+// define name<a1: _, ..., an: _>(y1: b1, ..., ym: bm) -> c {e};
+// cont
 ```
 
 The same abbreviations are available when the marks are used.
 
-Type annotations inside the default-argument list can be omitted when they can be inferred, as in `define add(x: int)[step := 1] -> int { add-int(x, step) }`.
-
 If a term-level `define` is at layer `n`, then any free variable `x` in it must satisfy `layer(x) <= n`.
+
+`name` can be used repeatedly without `!` and accepts [key arguments](#ex1--e1--xn--en).
 
 ### Semantics
 
-A term-level `define` is lifted to a top-level definition using lambda lifting. For example, consider the following example:
+A term-level `define` is lifted to a top-level definition, with its free variables passed as extra arguments (lambda lifting):
 
 ```neut
 define use-define() -> int {
   let c = 10;
-  let f =
-    // term-level `define` with a free variable `c`
-    define some-recursive-func(x: int) -> int {
-      if eq-int(x, 0) {
-        0
-      } else {
-        add-int(c, some-recursive-func(sub-int(x, 1)))
-      }
-    };
-  f(100)
+  define some-recursive-func(x: int) -> int {
+    if eq-int(x, 0) {
+      0
+    } else {
+      add-int(c, some-recursive-func(sub-int(x, 1)))
+    }
+  };
+  some-recursive-func(100)
 }
-```
 
-The code above is compiled into something like the following:
+// ↓ compile
 
-```neut
-// the free variable `c` is now a parameter
 define some-recursive-func(c: int, x: int) -> int {
   if eq-int(x, 0) {
     0
   } else {
-    let f =
-      (x: int) => {
-        some-recursive-func(c, x)
-      };
-    add-int(c, f(sub-int(x, 1)))
+    add-int(c, some-recursive-func(c, sub-int(x, 1)))
   }
 }
 
 define use-define() -> int {
   let c = 10;
-  let f =
-    (x: int) => {
-      some-recursive-func(c, x)
-    };
-  f(100)
+  some-recursive-func(c, 100)
 }
 ```
 
-The calling-convention marks behave as they do for [anonymous functions](#x1-a1--xn-an---e-): `->>` in place of `->` makes the function use destination-passing style, and `+` on a parameter makes that parameter source-passing. For the evaluation steps, see [`e(e1, ..., en)`](#ee1--en).
+The calling-convention marks behave as they do for [anonymous functions](#x1-a1--xn-an---e-): `->>` in place of `->` makes the function use destination-passing style, and `+` on a parameter makes that parameter source-passing.
 
 ### Type
 
 ```neut
 Γ, x1: a1, ..., xn: an, f: (x1: a1, ..., xn: an) -> t ⊢ e: t
-----------------------------------------------------------------------
-Γ ⊢ define f(x1: a1, ..., xn: an) -> t {e}: (x1: a1, ..., xn: an) -> t
+Γ, f: (x1: a1, ..., xn: an) -> t ⊢ cont: b
+------------------------------------------------------------
+Γ ⊢ define f(x1: a1, ..., xn: an) -> t {e}; cont: b
 ```
 
-The marks appear in the resulting type: `->>` turns it into `(x1: a1, ..., xn: an) ->> t`, and `+` on a parameter stays on that parameter, as in `(+x1: a1, ..., xn: an) -> t`.
+The marks appear in the type of `f`: `->>` turns it into `(x1: a1, ..., xn: an) ->> t`, and `+` on a parameter stays on that parameter, as in `(+x1: a1, ..., xn: an) -> t`.
 
-When default arguments are present, the resulting type additionally contains the bracketed default-argument part.
+When default arguments are present, the type of `f` additionally contains the bracketed default-argument part.
 
 ### Note
 
 - Functions defined by term-level `define` aren't inlined at compile time, even if they contain no recursion.
 
-## `inline f(x1: a1, ..., xn: an) -> c { e }`
+## `inline f(x1: a1, ..., xn: an) -> c { e }; cont`
 
-`inline` (at the term-level) can be used to create an inline function. It takes the same calling-convention marks as a term-level `define`. The same default-argument syntax as `define` is available here as well.
+`inline` (at the term-level) can be used to create a function with possible recursion.
 
 ### Example
 
 ```neut
 define use-inline() -> int {
-  let f =
-    inline add-and-double(x: int, y: int) -> int {
-      let z = add-int(x, y);
-      mul-int(z, z)
-    };
-  let result = f(10, 20);
+  inline add-and-double(x: int, y: int) -> int {
+    let z = add-int(x, y);
+    mul-int(z, z)
+  };
+  let result = add-and-double(10, 20);
   result
 }
 ```
 
 ### Syntax
 
-```neut
-inline name<x1: a1, ..., xn: an>(y1: b1, ..., ym: bm) -> c {
-  e
-}
-
-inline name<x1: a1, ..., xn: an>(y1: b1, ..., ym: bm)[z1: c1 := e1, ..., zk: ck := ek] -> c {
-  e
-}
-
-// `->>` in place of `->`, `+` on a parameter; each can appear independently
-inline name<x1: a1, ..., xn: an>(+y1: b1, ..., ym: bm) ->> c {
-  e
-}
-```
-
-The following abbreviations are available:
-
-```neut
-inline name(y1: b1, ..., ym: bm) -> c {e}
-
-// ↓
-// inline name<>(y1: b1, ..., ym: bm) -> c {e}
-
-
-inline name<a1, ..., an>(y1: b1, ..., ym: bm) -> c {e}
-
-// ↓
-// inline name<a1: _, ..., an: _>(y1: b1, ..., ym: bm) -> c {e}
-```
-
-The same abbreviations are available when the marks are used.
-
-You can also insert a default-argument list between the ordinary parameter list and the arrow, as in:
-
-```neut
-inline add(x: int)[step: int := 1] -> int {
-  add-int(x, step)
-}
-```
-
-If a term-level `inline` is at layer `n`, then any free variable `x` in it must satisfy `layer(x) <= n`.
+The same as a term-level `define` except that the keyword `define` is replaced with `inline`.
 
 ### Semantics
 
-A term-level `inline` is the same as a term-level `define`, except that the resulting function is always expanded at compile time. The calling-convention marks behave as they do for [anonymous functions](#x1-a1--xn-an---e-).
+The same as a term-level `define` except that the resulting function is always expanded at compile time.
 
 ### Type
 
-```neut
-Γ, x1: a1, ..., xn: an, f: (x1: a1, ..., xn: an) -> t ⊢ e: t
-----------------------------------------------------------------------
-Γ ⊢ inline f(x1: a1, ..., xn: an) -> t {e}: (x1: a1, ..., xn: an) -> t
-```
+The same as a term-level `define` except that the keyword `define` is replaced with `inline`.
 
-The marks appear in the resulting type, exactly as with a term-level `define`.
+## `define-meta f(x1: a1, ..., xn: an) -> c { e }; cont`
 
-When default arguments are present, the resulting type additionally contains the bracketed default-argument part.
-
-### Note
-
-- Functions defined by term-level `inline` are always inlined at compile time. If you would like to avoid this behavior, consider using `define`.
-
-## `define-meta f(x1: a1, ..., xn: an) -> c { e }`
-
-`define-meta` (at the term-level) is the meta counterpart of the term-level `define`. Unlike the [top-level `define-meta`](statements.md#define-meta), it can capture free variables.
+`define-meta` (at the term-level) is the meta counterpart of the term-level `define`.
 
 ### Example
 
 ```neut
 inline-meta with-base(c: 'int) -> 'int {
-  let f =
-    define-meta go(x: 'int) -> 'int {
-      quote {add-int(unquote {c}, unquote {x})}
-    };
-  f(quote {1})
+  define-meta go(x: 'int) -> 'int {
+    quote {add-int(unquote {c}, unquote {x})}
+  };
+  go(quote {1})
 }
 ```
 
@@ -1135,38 +1141,39 @@ inline-meta with-base(c: 'int) -> 'int {
 ```neut
 define-meta name<x1: a1, ..., xn: an>(y1: b1, ..., ym: bm) -> c {
   e
-}
+};
+cont
 ```
 
 ### Semantics
 
-The same as the [top-level `define-meta`](statements.md#define-meta), except that `e` may capture free variables.
+The same as the [top-level `define-meta`](statements.md#define-meta) except that `e` may capture free variables.
 
 ### Type
 
 ```neut
-Γ, x1: 'a1, ..., xn: 'an, f: (x1: 'a1, ..., xn: 'an) -> t ⊢ e: 't
----------------------------------------------------------------------------------
-Γ ⊢ define-meta f(x1: 'a1, ..., xn: 'an) -> 't {e}: (x1: 'a1, ..., xn: 'an) -> 't
+Γ, x1: 'a1, ..., xn: 'an, f: (x1: 'a1, ..., xn: 'an) -> 't ⊢ e: 't
+Γ, f: (x1: 'a1, ..., xn: 'an) -> 't ⊢ cont: b
+--------------------------------------------------------------------
+Γ ⊢ define-meta f(x1: 'a1, ..., xn: 'an) -> 't {e}; cont: b
 ```
 
 ### Note
 
 - A term-level `define-meta` is usable only at stage `n >= 1`. For stage `n <= 0`, use `define`.
 
-## `inline-meta f(x1: a1, ..., xn: an) -> c { e }`
+## `inline-meta f(x1: a1, ..., xn: an) -> c { e }; cont`
 
-`inline-meta` (at the term-level) is the meta counterpart of the term-level `inline`. Unlike the [top-level `inline-meta`](statements.md#inline-meta), it can capture free variables.
+`inline-meta` (at the term-level) is the meta counterpart of the term-level `inline`.
 
 ### Example
 
 ```neut
 inline-meta double(x: 'int) -> 'int {
-  let f =
-    inline-meta twice(y: 'int) -> 'int {
-      quote {mul-int(2, unquote {y})}
-    };
-  f(x)
+  inline-meta twice(y: 'int) -> 'int {
+    quote {mul-int(2, unquote {y})}
+  };
+  twice(x)
 }
 ```
 
@@ -1175,11 +1182,13 @@ inline-meta double(x: 'int) -> 'int {
 ```neut
 inline-meta name<x1: a1, ..., xn: an>(y1: b1, ..., ym: bm) -> c {
   e
-}
+};
+cont
 
 inline-meta name<x1: a1, ..., xn: an>(y1: b1, ..., ym: bm)[z1: c1 := e1, ..., zk: ck := ek] -> c {
   e
-}
+};
+cont
 ```
 
 ### Semantics
@@ -1190,8 +1199,9 @@ The same as a term-level `define-meta`, except that the body is expanded at comp
 
 ```neut
 Γ, x1: a1, ..., xn: an, f: (x1: a1, ..., xn: an) -> t ⊢ e: t
----------------------------------------------------------------------------
-Γ ⊢ inline-meta f(x1: a1, ..., xn: an) -> t {e}: (x1: a1, ..., xn: an) -> t
+Γ, f: (x1: a1, ..., xn: an) -> t ⊢ cont: b
+------------------------------------------------------------
+Γ ⊢ inline-meta f(x1: a1, ..., xn: an) -> t {e}; cont: b
 ```
 
 ### Note
@@ -1343,6 +1353,17 @@ define foo(x: int, y: bool, some-path: &string) -> unit {
 
 define use-foo() -> unit {
   foo{
+    x := 10,
+    y := True,
+    some-path := "/path/to/file",
+  }
+}
+
+define use-bar() -> unit {
+  define bar(x: int, y: bool, some-path: &string) -> unit {
+    // ...
+  };
+  bar{
     x := 10,
     y := True,
     some-path := "/path/to/file",
@@ -1618,13 +1639,20 @@ data some-adt {
 
 data other-adt(a: type) {
 | C2(bar: bool, baz: other-adt(a))
+| C3<b>(value: b)
 }
 ```
 
 In this case,
 
-- the type of `C1` is `(foo: int) -> some-adt`, and
-- the type of `C2` is `(bar: bool, baz: other-adt(?M)) -> other-adt(?M)`.
+- the type of `C1` is `(foo: int) -> some-adt`,
+- the type of `C2` is `(bar: bool, baz: other-adt(?M)) -> other-adt(?M)`, and
+- the type of `C3` is `(value: ?N) -> other-adt(?M)`.
+
+Type arguments can be written explicitly, with the ADT's arguments before the constructor's. For example,
+
+- `C2<int>(True, x)` has type `other-adt(int)`, and
+- `C3<bool, int>(3)` has type `other-adt(bool)`.
 
 ## `match`
 
@@ -2589,6 +2617,7 @@ Here, an "actual" type is a type that satisfies all the following conditions:
 - Every type variable in it is declared `actual`
 - It doesn't contain any noetic types
 - It doesn't contain any function types
+- It doesn't contain any type defined by `alias-opaque`
 - It doesn't contain any "dubious" ADTs
 
 The conditions above don't look inside `$`. That is, `$t` is an actual type for every `t`, even when `t` is noetic or functional.
@@ -2606,9 +2635,14 @@ data joker-y {
 | Joker-Y((int) -> bool)
 }
 
-// the type `joker-z` is dubious since it contains a dubious ADT type
+// the type `joker-z` is dubious since it contains an opaque type
 data joker-z {
-| Joker-Z(joker-y)
+| Joker-Z(my-opaque-type)
+}
+
+// the type `joker-w` is dubious since it contains a dubious ADT type
+data joker-w {
+| Joker-W(joker-y)
 }
 ```
 
@@ -2733,6 +2767,8 @@ embed {e}
 
 The compiler reduces the body of `embed` at compile time and compiles the result into a value that has the same runtime representation as `e`, except that whatever would be allocated on the heap is laid out as a constant in the resulting binary instead.
 
+Each `embed` occurrence that needs heap storage has its own constant address. Calls that execute the same occurrence share that constant. Expanding an `inline` or `constant` creates a new occurrence.
+
 ### Type
 
 ```neut
@@ -2746,6 +2782,8 @@ Here, a "compile-time value" is a term whose reduced form satisfies all the foll
 
 - It is evaluated to the end, including the types in it
 - It has no free variables, including free type variables
+
+A type defined by `alias-opaque` counts as evaluated since it doesn't reduce any further.
 
 ## `pack-type`
 
@@ -2900,11 +2938,15 @@ magic store(lowtype, stored-value, address)
 
 magic load(lowtype, address)
 
+magic shift(address, offset)
+
 magic alloca(lowtype, num-of-elems)
 
 magic calloc(num-of-elems, size)
 
 magic malloc(size)
+
+magic malloc-opaque(size)
 
 magic realloc(pointer, size)
 
@@ -2931,6 +2973,8 @@ magic text-cons(rune, text)
 magic text-uncons(text)
 
 magic make-switch(key, fallback, clauses)
+
+magic free-variables(code)
 
 magic compile-error(message)
 
@@ -2959,6 +3003,7 @@ The forms
 - `magic text-cons(rune, text)`
 - `magic text-uncons(text)`
 - `magic make-switch(key, fallback, clauses)`
+- `magic free-variables(code)`
 - `magic compile-error(message)`
 - `magic get-origin-file-name()`
 - `magic get-origin-line()`
@@ -2980,6 +3025,10 @@ These forms can only be used at stage 1 or above. The compiler reports an error 
 
 `magic load(lowtype, address)` loads a value from `address`. This is the same as `load` [in LLVM](https://llvm.org/docs/LangRef.html#load-instruction).
 
+### Semantics (shift)
+
+`magic shift(address, offset)` returns the address `offset` bytes after `address`. `offset` can be negative. This is the same as `getelementptr i8` [in LLVM](https://llvm.org/docs/LangRef.html#getelementptr-instruction), without `inbounds`.
+
 ### Semantics (alloca)
 
 `magic alloca(lowtype, num-of-elems)` allocates a memory region on the stack frame. This is the same as `alloca` [in LLVM](https://llvm.org/docs/LangRef.html#alloca-instruction).
@@ -2992,13 +3041,17 @@ These forms can only be used at stage 1 or above. The compiler reports an error 
 
 `magic malloc(size)` allocates a memory region on the heap.
 
+### Semantics (malloc-opaque)
+
+`magic malloc-opaque(size)` allocates heap storage, excluding the allocation from [malloc-free canceling](./basis.md#malloc-free-canceling) and [free-malloc canceling](./basis.md#free-malloc-canceling).
+
 ### Semantics (realloc)
 
 `magic realloc(pointer, size)` resizes a memory region on the heap.
 
 ### Semantics (free)
 
-`magic free(pointer)` deallocates a memory region on the heap.
+`magic free(pointer)` deallocates a heap region. It is excluded from [free-malloc canceling](./basis.md#free-malloc-canceling) since it carries no size information.
 
 ### Semantics (opaque-value)
 
@@ -3054,6 +3107,53 @@ When multiple clauses have the same label, the first matching clause is selected
 
 Since clauses are represented as an ordinary `list`, variables used in multiple clauses may need to be marked with `!` even when the generated runtime code does not copy them.
 
+### Semantics (free-variables)
+
+`magic free-variables(code)` lists free variables in `code`. For example:
+
+```neut
+magic free-variables(quote {Pair(unquote {my-bool-var}, unquote {my-int-var})})
+
+// ↓ reduce
+
+List[
+  Code-Variable<bool>(11, quote {my-bool-var}), // 11 == internal-id(my-bool-var)
+  Code-Variable<int>(22, quote {my-int-var}),   // 22 == internal-id(my-int-var)
+]
+```
+
+Here, `Code-Variable` is a constructor defined as follows:
+
+```neut
+data code-variable {
+| Code-Variable<a>(id: int, code: 'a)
+}
+```
+
+Since `magic free-variable` evaluates its argument before collecting free variables, variables substituted away during reduction are not listed. For example, consider the following:
+
+```neut
+inline myfunc(x: bool, _: int) -> bool {
+  x
+}
+```
+
+Then:
+
+```neut
+magic free-variables(quote {myfunc(unquote {my-bool-var}, unquote {my-int-var})})
+
+// ↓ reduce
+
+magic free-variables(quote {unquote {my-bool-var}})
+
+// ↓ reduce
+
+List[
+  Code-Variable<bool>(11, quote {my-bool-var}), // 11 == internal-id(my-bool-var)
+]
+```
+
 ### Semantics (compile-error)
 
 `magic compile-error(message)` reports a compile-time error with the given message when evaluated.
@@ -3094,6 +3194,12 @@ Since clauses are represented as an ordinary `list`, variables used in multiple 
 Γ ⊢ magic load(t, e): t
 
 
+Γ ⊢ address: pointer
+Γ ⊢ offset: int
+------------------------------------------------------
+Γ ⊢ magic shift(address, offset): pointer
+
+
 Γ ⊢ num-of-elems: c-size
 Γ ⊢ size: c-size
 ------------------------------------------------------
@@ -3103,6 +3209,11 @@ Since clauses are represented as an ordinary `list`, variables used in multiple 
 Γ ⊢ size: c-size
 ------------------------------------------------------
 Γ ⊢ magic malloc(size): pointer
+
+
+Γ ⊢ size: c-size
+------------------------------------------------------
+Γ ⊢ magic malloc-opaque(size): pointer
 
 
 Γ ⊢ pointer: pointer
@@ -3195,6 +3306,11 @@ Since clauses are represented as an ordinary `list`, variables used in multiple 
 Γ ⊢ clauses: list(pair(int, 'a))
 ------------------------------------------------------
 Γ ⊢ magic make-switch(key, fallback, clauses): 'a
+
+
+Γ ⊢ code: 'a
+------------------------------------------------------
+Γ ⊢ magic free-variables(code): list(code-variable)
 
 
 Γ ⊢ a: type

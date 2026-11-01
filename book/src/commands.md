@@ -101,6 +101,23 @@ neut describe hello
 #       "/path/to/app/source/hello.nt",
 #       "/path/to/app/source/lib.nt",
 #     ],
+#     foreign [
+#       {
+#         digest "(..)",
+#         directory "/path/to/app/cache/dependency/(..)/cache/build/(..)/foreign/",
+#         output [
+#           "foreign.o",
+#         ],
+#         link [
+#           "foreign.o",
+#         ],
+#       },
+#       {
+#         directory "/path/to/app/cache/build/(..)/foreign/",
+#         output [],
+#         link [],
+#       },
+#     ],
 #   }
 ```
 
@@ -111,19 +128,29 @@ The description has the following keys:
 | `module-root` | the root directory of the current module                            |
 | `executable`  | the path at which `neut build TARGET` places the executable         |
 | `input`       | the files in the current module that `neut build TARGET` depends on |
+| `foreign`     | foreign build information for each module used by `TARGET`          |
 
 The `input` holds the following files:
 
+- `module.ens`
 - sources reached from the entry point of `TARGET`, including missing sources and sources with parse errors
 - [static files](./modules.md#static-file)
 - the `input` of [`foreign`](./modules.md#foreign); a directory is listed along with everything under it
-- `module.ens`
 
-The description follows the files as they are when `neut describe` runs. The executable might not exist yet, and its path changes when `module.ens` changes.
+Each entry in `foreign` describes a module, with dependencies listed first:
 
-Each path is absolute, and the path of a directory ends with `/`. Nothing else is written to stdout. If a path is not valid UTF-8, an error is reported instead.
+| Field       | Value                                                |
+| ----------- | ---------------------------------------------------- |
+| `digest`    | the module's digest; omitted for the current module  |
+| `directory` | the module's foreign directory                       |
+| `output`    | the module's [`foreign.output`](./modules.md#output) |
+| `link`      | the module's [`foreign.link`](./modules.md#link)     |
 
-If the sources cannot be followed, for example because an import is malformed, the description still holds the input reached so far. The error goes to stderr, and the command exits with a nonzero status.
+Paths in `output` and `link` are relative to `directory`. All other paths are absolute. Directory paths end with `/`.
+
+Output paths depend on `module.ens`. The files need not exist.
+
+If source traversal fails (e.g. an `import` is malformed), `input` contains the files reached so far and `foreign` is empty. The command reports the error to stderr and exits with a nonzero status.
 
 ## `neut check`
 

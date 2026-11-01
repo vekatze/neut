@@ -149,24 +149,17 @@ You can also use `define` in the body of a function to define a recursive functi
 
 ```neut
 define foo() -> unit {
-  let f =
-    define print-multiple-hellos(counter: int) -> unit {
-      if eq-int(counter, 0) {
-        Unit
-      } else {
-        print("hello\n");
-        print-multiple-hellos(sub-int(counter, 1))
-      }
-    };
-  f(10) // prints "hello" 10 times
+  define print-multiple-hellos(counter: int) -> unit {
+    if eq-int(counter, 0) {
+      Unit
+    } else {
+      print("hello\n");
+      print-multiple-hellos(sub-int(counter, 1))
+    }
+  };
+  print-multiple-hellos(10) // prints "hello" 10 times
 }
 ```
-
-<div class="info-block">
-
-The compiler reports an error if you rewrite the example so that the variable `f` is used more than once. This behavior prevents unexpected copying of values. You can satisfy the compiler by defining the variable as `!f`. We'll cover this topic in more detail on the next page.
-
-</div>
 
 ### Calling Functions
 

@@ -200,6 +200,10 @@ Every platform provides a fixed set of [capabilities](./statements.md#require):
 | `"wasm32"` | (none)                 |
 | `"web"`    | `javascript`           |
 
+On `"wasm32"` and `"web"`, the stack in WebAssembly linear memory defaults to 8 MiB. This is the same size as the main thread's stack on the other platforms.
+
+To change the linear-memory stack to 16 MiB, add `"-Wl,-z,stack-size=16777216"` to the target's `link-option`. The runtime may impose a separate limit on call depth.
+
 The field `platform` is optional. The default value of `platform` is `"host"`.
 
 ### `execute`
@@ -234,6 +238,8 @@ A placeholder expands to one or more arguments, each quoted on its own.
 - `{{module:this}}`: the module itself
 - `{{module:core}}`: its dependency `core`
 - `{{module:noa.core}}`: the `core` of its dependency `noa`
+
+As with `import`, each step resolves to the [newest compatible version](./commands.md#using-the-newest-compatible-version) of the dependency.
 
 The build artifact is placed in a directory named after the module configuration and the options of the target. The path of `{{executable}}` therefore changes when `module.ens` changes.
 
@@ -337,6 +343,20 @@ The field `cache` defines the path of the directory in which to store object fil
 
 The field `cache` is optional. The default value of `cache` is `./cache/`.
 
+### Links to Dependencies
+
+Each dependency alias has a symbolic link under the module's cache directory, pointing to the dependency's root. With the default cache path:
+
+```text
+cache/alias/
+├── core -> ../dependency/(digest of core)
+└── util -> ../dependency/(digest of util)
+```
+
+Tools can use stable paths such as `cache/alias/core/source/list.nt`. Links select the newest compatible version, as [`{{module:MODULE-PATH}}`](#execute) does.
+
+Commands that resolve dependencies, including `neut build` and `neut check`, refresh these links and remove obsolete aliases. Dependency modules maintain their own `alias/` directories in their caches.
+
 ## `source`
 
 The field `source` defines the path to the directory where source files are stored. It should look like the following:
@@ -361,15 +381,18 @@ The field `foreign` defines a way to compile external source files. It should lo
   foreign {
     input [
       "source/foo.c",
-      "source/bar.c",
+      "source/foo.h",
     ],
     output [
-      "foo.o",
-      "bar.o",
+      "generated/",
+    ],
+    link [
+      "generated/foo.o",
     ],
     script [
-      "{{clang}} -c -flto=thin -O2 source/foo.c -o {{foreign}}/foo.o",
-      "{{clang}} -c -flto=thin -O2 source/bar.c -o {{foreign}}/bar.o",
+      "mkdir -p {{foreign}}/generated",
+      "{{clang}} -c -flto=thin -O2 source/foo.c -o {{foreign}}/generated/foo.o",
+      "cp source/foo.h {{foreign}}/generated/foo.h",
     ],
   },
 }
@@ -383,9 +406,31 @@ When running `neut archive`, the compiler adds all the `input` files to the resu
 
 ### `output`
 
-The field `output` specifies the output files produced from foreign source files. The paths are relative to a directory named the _foreign directory_. You can find the foreign directory in the build directory.
+The field `output` lists the files and directories produced by `script`, relative to the module's _foreign directory_.
 
-When running `neut build`, the compiler links all the `output` files in the foreign directory (in addition to Neut's "domestic" object files).
+If an entry ends with `/`, it is treated as a directory. Otherwise, it is treated as a file.
+
+### `link`
+
+The field `link` lists files to link alongside Neut's object files, relative to the foreign directory. Each file must be listed in `output` or lie inside a directory listed there.
+
+### `transitive-link-option`
+
+The field `transitive-link-option` supplies `clang` linker options for this module and its direct or indirect dependents:
+
+```ens
+{
+  // ..
+  foreign {
+    // ..
+    transitive-link-option [
+      "$(pkg-config libpq --libs)",
+    ],
+  },
+}
+```
+
+The options are passed after the object files, with dependencies' options before the module's own options.
 
 ### `script`
 
@@ -400,18 +445,20 @@ In the field `script`, you can use the following placeholders:
 
 These expand as in `execute`: one or more arguments, each quoted. `{{clang}}` expands to several since it carries the options that select the platform, such as `-target` and the sysroot.
 
-The compiler skips running the `script` if all the files in `output` are newer than `input`.
+The compiler skips running `script` when all outputs are newer than all inputs. For a directory in `output`, this check includes the files inside it.
 
 When running the `script`, the compiler sets the current working directory to the module's root directory.
 
 ### Notes
 
-The field `foreign` is optional. The default value of `foreign` is:
+The field `foreign` and each of its fields are optional. The default value of `foreign` is:
 
 ```ens
 {
   input [],
   output [],
+  link [],
+  transitive-link-option [],
   script [],
 }
 ```
