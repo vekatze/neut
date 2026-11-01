@@ -130,7 +130,6 @@ data RawTermF a
   | VarGlobal DD.DefiniteDescription GN.GlobalName
   | PiIntro C FuncInfo
   | PiIntroFunction C FuncInfo
-  | PiIntroFix LDK.LocalDefKind C DefInfo
   | PiElim a C (Maybe (SE.Series RawType)) IsDestCall C (SE.Series (MarkedArg a)) C (Maybe (SE.Series (Hint, Key, C, C, a)))
   | PiElimImplicit Name C (SE.Series RawType)
   | PiElimByKey Name C (Maybe (SE.Series RawType)) IsDestCall C (SE.Series (KeyValueArg a)) (Maybe (Hint, C, C, a)) -- auxiliary syntax for key-call
@@ -151,6 +150,7 @@ data RawTermF a
   | Embody a
   | Let LetKind C (PatParam RawType) C C a C Loc C a Loc
   | LetOn LetKind C (PatParam RawType) C (SE.Series (Hint, VarKind, RawIdent)) C a C Loc C a Loc
+  | LetRec LDK.LocalDefKind C DefInfo C Loc C a Loc
   | Pin C (RawBinder RawType) C (SE.Series (Hint, VarKind, RawIdent)) C a C Loc C a Loc
   | Invoke C (SE.Series (Hint, Name)) C a
   | RuneIntro R.Rune

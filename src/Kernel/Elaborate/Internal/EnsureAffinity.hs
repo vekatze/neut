@@ -152,7 +152,7 @@ analyzeVar h m x = do
             then return []
             else do
               liftIO $ insertRelevantVar x h
-              if VK.isExp varKind
+              if VK.canCopy varKind
                 then return []
                 else do
                   _ :< t <- lookupTypeEnv (varEnv h) m x

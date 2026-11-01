@@ -422,7 +422,7 @@ discern h term =
                   case (layer == H.currentLayer h, stage == H.currentStage h) of
                     (True, True) -> do
                       liftIO $ Unused.deleteVariable (H.unusedHandle h) name'
-                      liftIO $ Tag.insertLocalVar (H.tagHandle h) m name' mDef
+                      liftIO $ Tag.insertLocalVar (H.tagHandle h) m (H.getSymbolOwner h name') mDef
                       return $ m :< WT.Var name'
                     (False, _) ->
                       raiseLayerError m (H.currentLayer h) layer
@@ -440,27 +440,6 @@ discern h term =
       discernLambda h m def
     m :< RT.PiIntroFunction _ def -> do
       discernLambda h m def
-    m :< RT.PiIntroFix kind _ (RT.RawDef {geist, body, endLoc}) -> do
-      ensureLocalDefStage m h kind
-      let isDestPassing = RT.isDestPassing geist
-      let impArgs = RT.extractImpArgs $ RT.impArgs geist
-      let defaultArgs = SE.extract $ fst $ RT.defaultArgs geist
-      let expArgs = RT.extractArgs $ RT.expArgs geist
-      let mx = RT.loc geist
-      let (x, _) = RT.name geist
-      (impArgs', h') <- discernImpArgs h impArgs endLoc
-      (expArgs', h'') <- discernBinder h' expArgs endLoc
-      (defaultArgs', h''') <- discernBinderWithDefaultArgs h'' defaultArgs endLoc
-      codType' <- discernType h''' $ snd $ RT.cod geist
-      x' <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) x
-      h'''' <- extendVar h''' mx x'
-      liftIO $ Unused.deleteVariable (H.unusedHandle h) x'
-      body' <- discern h'''' body
-      let mxt' = (mx, VK.normal, x', codType')
-      liftIO $ Tag.insertBinder (H.tagHandle h) mxt'
-      lamID <- liftIO $ Gensym.newCount (H.gensymHandle h)
-      ensureLayerClosedness m h'''' body'
-      return $ m :< WT.PiIntro (AttrL.Attr {lamKind = LK.Fix kind isDestPassing mxt', identity = lamID}) impArgs' expArgs' defaultArgs' body'
     m :< RT.PiElim e _ mImpArgs isDestCall _ expArgs _ mDefaultArgs -> do
       discernPiElim h m isDestCall e mImpArgs expArgs mDefaultArgs
     m :< RT.PiElimImplicit name _ impArgs -> do
@@ -699,6 +678,8 @@ discern h term =
                 []
                 (m' :< RT.Let RT.Try [] pat [] [] (m' :< RT.Var tmpVar) [] startLoc [] e2 endLoc)
                 endLoc
+    m :< RT.LetRec kind _ def _ startLoc _ cont endLoc -> do
+      discernLetRec h m kind def startLoc cont endLoc
     m :< RT.Pin _ mxt@(mx, _k, x, _, _, t) _ mys _ e1 _ startLoc _ e2@(m2 :< _) endLoc -> do
       let m2' = blur m2
       let x' = SE.fromListWithComment Nothing SE.Comma [([], ((mx, VK.normal, x), []))]
@@ -836,6 +817,8 @@ discern h term =
           let e1' = withBody e1
           let e2' = withBody e2
           discern h $ mLet :< RT.LetOn letKind c1 mxt c2 mys c3 e1' c4 startLoc c5 e2' endLoc
+        mLetRec :< RT.LetRec kind c1 def c2 startLoc c3 cont endLoc -> do
+          discern h $ mLetRec :< RT.LetRec kind c1 def c2 startLoc c3 (withBody cont) endLoc
         mTau :< RT.TauElim c1 mxt c2 e1 c3 startLoc c4 e2 endLoc -> do
           let e1' = withBody e1
           let e2' = withBody e2
@@ -1005,7 +988,7 @@ discernNoeticVarList h mustInsertTagInfo xsOuter = do
     xInner <- Gensym.newIdentFromIdent (H.gensymHandle h) outerVar
     t <- WT.createTypeHole (H.gensymHandle h) mUse []
     when mustInsertTagInfo $ do
-      Tag.insertLocalVar (H.tagHandle h) mUse outerVar mDef
+      Tag.insertLocalVar (H.tagHandle h) mUse (H.getSymbolOwner h outerVar) mDef
     return ((mUse, k, xInner, t), mDef :< WT.Var outerVar)
 
 withoutCopyMark :: (Hint, (Hint, VK.VarKind, Ident)) -> (Hint, (Hint, VK.VarKind, Ident))
@@ -1535,6 +1518,46 @@ constructEitherBinder h m mx m1 pat tmpVar cont = do
         False
         (SE.fromList'' [m1' :< RT.Var (Bare tmpVar)])
         (SE.fromList SE.Brace SE.Bar [longClause, shortClause])
+
+discernLetRec ::
+  H.Handle ->
+  Hint ->
+  LDK.LocalDefKind ->
+  RT.DefInfo ->
+  Loc ->
+  RT.RawTerm ->
+  Loc ->
+  App WT.WeakTerm
+discernLetRec h m kind (RT.RawDef {geist, body, endLoc = bodyEndLoc}) startLoc cont endLoc = do
+  ensureLocalDefStage m h kind
+  let isDestPassing = RT.isDestPassing geist
+  let impArgs = RT.extractImpArgs $ RT.impArgs geist
+  let defaultArgs = SE.extract $ fst $ RT.defaultArgs geist
+  let expArgs = RT.extractArgs $ RT.expArgs geist
+  let mx = RT.loc geist
+  let (x, _) = RT.name geist
+  (impArgs', h') <- discernImpArgs h impArgs bodyEndLoc
+  (expArgs', h'') <- discernBinder h' expArgs bodyEndLoc
+  (defaultArgs', h''') <- discernBinderWithDefaultArgs h'' defaultArgs bodyEndLoc
+  codType' <- discernType h''' $ snd $ RT.cod geist
+  self <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) x
+  name <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) x
+  hSelf <- extendVar h''' mx self
+  liftIO $ Unused.deleteVariable (H.unusedHandle h) self
+  liftIO $ SymLoc.insert (H.symLocHandle h) self (metaLocation mx) bodyEndLoc
+  let hBody = H.withSymbolOwner hSelf self name
+  body' <- discern hBody body
+  lamID <- liftIO $ Gensym.newCount (H.gensymHandle h)
+  ensureLayerClosedness m hBody body'
+  let attr = AttrL.Attr {lamKind = LK.Fix kind isDestPassing (mx, VK.normal, self, codType'), identity = lamID}
+  let fix = m :< WT.PiIntro attr impArgs' expArgs' defaultArgs' body'
+  nameType <- liftIO (RT.createTypeHole (H.gensymHandle h) mx) >>= discernType h
+  hCont <- extendVar h mx name
+  cont' <- discern hCont cont
+  liftIO $ SymLoc.insert (H.symLocHandle h) name startLoc endLoc
+  let binder = (mx, VK.defined, name, nameType)
+  liftIO $ Tag.insertBinder (H.tagHandle h) binder
+  return $ m :< WT.Let binder fix cont'
 
 discernIdent :: Hint -> H.Handle -> RawIdent -> App (Hint, (Hint, Ident))
 discernIdent mUse h x =

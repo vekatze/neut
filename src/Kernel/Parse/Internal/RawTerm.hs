@@ -86,30 +86,34 @@ rawExpr h = do
     Just kind ->
       rawTermLet h m kind c
     Nothing -> do
-      case NV.fromText headSymbol of
-        Just variant ->
-          rawTermBoxElim h m variant c
+      case LDK.fromText headSymbol of
+        Just kind ->
+          rawTermLetRec h kind m c
         Nothing ->
-          case headSymbol of
-            "invoke" ->
-              rawTermInvoke h m c
-            "unpack-type" ->
-              rawTermTauElim h m c
-            "pin" ->
-              rawTermPin h m c
-            _ -> do
-              e1 <- rawTerm' Full h m headSymbol c
-              choice
-                [ do
-                    c1 <- delimiter ";"
-                    mExpr <- optional $ rawExpr h
-                    case mExpr of
-                      Just (e2, c2) ->
-                        return (m :< RT.Seq e1 c1 e2, c2)
-                      Nothing ->
-                        return (m :< RT.SeqEnd (fst e1), snd e1 ++ c1),
-                  return e1
-                ]
+          case NV.fromText headSymbol of
+            Just variant ->
+              rawTermBoxElim h m variant c
+            Nothing ->
+              case headSymbol of
+                "invoke" ->
+                  rawTermInvoke h m c
+                "unpack-type" ->
+                  rawTermTauElim h m c
+                "pin" ->
+                  rawTermPin h m c
+                _ -> do
+                  e1 <- rawTerm' Full h m headSymbol c
+                  choice
+                    [ do
+                        c1 <- delimiter ";"
+                        mExpr <- optional $ rawExpr h
+                        case mExpr of
+                          Just (e2, c2) ->
+                            return (m :< RT.Seq e1 c1 e2, c2)
+                          Nothing ->
+                            return (m :< RT.SeqEnd (fst e1), snd e1 ++ c1),
+                      return e1
+                    ]
 
 data TermMode
   = Full
@@ -168,14 +172,6 @@ rawType' h m headSymbol c =
 rawTerm' :: TermMode -> Handle -> Hint -> T.Text -> C -> Parser (RT.RawTerm, C)
 rawTerm' mode h m headSymbol c = do
   case headSymbol of
-    "define" -> do
-      rawTermDefine h LDK.Define m c
-    "inline" -> do
-      rawTermDefine h LDK.Inline m c
-    "define-meta" -> do
-      rawTermDefine h LDK.DefineMeta m c
-    "inline-meta" -> do
-      rawTermDefine h LDK.InlineMeta m c
     "function" -> do
       rawTermFunction h m c
     "introspect" -> do
@@ -544,6 +540,22 @@ rawTermLet h mLet letKind c1 = do
     then return (mLet :< RT.Let letKind c1 (mx, patInner, c2, c3, t) c4 c5 e1 c6 loc c7 e2 endLoc, c)
     else return (mLet :< RT.LetOn letKind c1 (mx, patInner, c2, c3, t) c4 noeticVarList c5 e1 c6 loc c7 e2 endLoc, c)
 
+rawTermLetRec :: Handle -> LDK.LocalDefKind -> Hint -> C -> Parser (RT.RawTerm, C)
+rawTermLetRec h kind m c0 = do
+  let arrowMode = case kind of
+        LDK.DefineMeta -> ArrowMeta
+        LDK.InlineMeta -> ArrowMeta
+        _ -> ArrowObject
+  (defInfo, c1) <- parseDef arrowMode h $ do
+    (name, c) <- baseName
+    name' <- liftIO $ adjustHoleVar h name
+    return (name', c)
+  loc <- getCurrentLoc
+  c2 <- delimiter ";"
+  (cont, c) <- rawExpr h
+  endLoc <- getCurrentLoc
+  return (m :< RT.LetRec kind c0 defInfo c1 loc c2 cont endLoc, c)
+
 rawTermBoxElim :: Handle -> Hint -> NV.NecessityVariant -> C -> Parser (RT.RawTerm, C)
 rawTermBoxElim h mLet nv c1 = do
   ((mx, patInner), c2) <- rawTermPattern h
@@ -906,18 +918,6 @@ parseLambdaArrow =
         c <- delimiter "=>"
         return (False, c)
     ]
-
-rawTermDefine :: Handle -> LDK.LocalDefKind -> Hint -> C -> Parser (RT.RawTerm, C)
-rawTermDefine h kind m c0 = do
-  let arrowMode = case kind of
-        LDK.DefineMeta -> ArrowMeta
-        LDK.InlineMeta -> ArrowMeta
-        _ -> ArrowObject
-  (defInfo, c) <- parseDef arrowMode h $ do
-    (name, c1) <- baseName
-    name' <- liftIO $ adjustHoleVar h name
-    return (name', c1)
-  return (m :< RT.PiIntroFix kind c0 defInfo, c)
 
 adjustHoleVar :: Handle -> BN.BaseName -> IO T.Text
 adjustHoleVar h bn = do

@@ -56,8 +56,6 @@ toDoc term =
       decodeLambda c def
     _ :< PiIntroFunction c def -> do
       decodeDef (maybe D.Nil D.text) "function" c def
-    _ :< PiIntroFix kind c def -> do
-      decodeDef (nameToDoc . N.Bare) (LDK.keyword kind) c def
     _ :< PiElim e c1 mImpArgs isDestCall c2 expArgs c3 mDefaultArgs -> do
       let calleeDoc = D.join [toDoc e, destMarkToDoc isDestCall]
       let expArgsDoc c =
@@ -252,6 +250,14 @@ toDoc term =
             ],
           D.line,
           attachComment c5 $ toDoc cont
+        ]
+    _ :< LetRec kind c1 def c2 _ c3 cont _ -> do
+      D.join
+        [ decodeDef (nameToDoc . N.Bare) (LDK.keyword kind) c1 def,
+          D.text ";",
+          C.asSuffix c2,
+          D.line,
+          attachComment c3 $ toDoc cont
         ]
     _ :< Pin c1 mxt c2 noeticVarList c3 e1 c4 _ c5 e2 _ -> do
       D.join
