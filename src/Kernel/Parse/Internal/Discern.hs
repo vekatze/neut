@@ -1353,19 +1353,11 @@ discernPiElimByKeyPlain ::
   SE.Series (RT.KeyValueArg RT.RawTerm) ->
   App WT.WeakTerm
 discernPiElimByKeyPlain h m isDestCall name mImpArgs kvs = do
-  (dd, (_, gn)) <- resolveName h m name
-  func <- interpretGlobalName h m dd (GN.disableConstLikeFlag gn)
   let (ks, vs) = unzip $ map (\kv -> (RT.kvKey kv, RT.kvValue kv)) $ SE.extract kvs
   ensureFieldLinearity m ks S.empty S.empty
-  (impKeys, expKeys, defaultKeys) <- KeyArg.lookup (H.keyArgHandle h) m dd
+  (func', impArgs', (impKeys, expKeys, defaultKeys)) <- discernKeyCallee h m name mImpArgs
   when (any (`elem` impKeys) ks) $ do
     raiseError m "Implicit key arguments must be specified via explicit type arguments"
-  (func', impArgs') <- case mImpArgs of
-    Nothing ->
-      return (func, ImpArgs.Unspecified)
-    Just impArgs -> do
-      impArgs' <- mapM (discernType h) $ SE.extract impArgs
-      passImpArgsToConstructor h func impArgs'
   let keyMap = Map.fromList $ zip ks (repeat ())
   checkRedundancy m (expKeys ++ defaultKeys) keyMap
   forM_ (SE.extract kvs) $ \kv -> do
@@ -1380,6 +1372,41 @@ discernPiElimByKeyPlain h m isDestCall name mImpArgs kvs = do
   let (expArgs, sourceArgs) = unzip markedExpArgs
   let defaultArgs = selectDefaultKeyArgs defaultKeys (Map.map fst expKvs)
   return $ m :< WT.PiElim (CCS.AsMarked isDestCall sourceArgs) func' impArgs' expArgs defaultArgs
+
+discernKeyCallee ::
+  H.Handle ->
+  Hint ->
+  Name ->
+  Maybe (SE.Series RT.RawType) ->
+  App (WT.WeakTerm, ImpArgs.ImpArgs WT.WeakType, ([KeyArg.ImpKey], [ExpKey], [DefaultKey]))
+discernKeyCallee h m name mImpArgs =
+  case name of
+    Bare s
+      | Just (_, x, _, _) <- Map.lookup s (H.nameEnv h) -> do
+          RT.GeistKeys {geistImpKeys, geistExpKeys, geistDefaultKeys} <-
+            case H.lookupLocalKeys h x of
+              Just keys ->
+                return keys
+              Nothing ->
+                raiseError m $ "The local variable `" <> s <> "` has no parameter names"
+          func <- discern h $ m :< RT.Var name
+          impArgs' <- case mImpArgs of
+            Nothing ->
+              return ImpArgs.Unspecified
+            Just impArgs ->
+              ImpArgs.FullySpecified <$> mapM (discernType h) (SE.extract impArgs)
+          return (func, impArgs', (geistImpKeys, geistExpKeys, geistDefaultKeys))
+    _ -> do
+      (dd, (_, gn)) <- resolveName h m name
+      func <- interpretGlobalName h m dd (GN.disableConstLikeFlag gn)
+      keys <- KeyArg.lookup (H.keyArgHandle h) m dd
+      case mImpArgs of
+        Nothing ->
+          return (func, ImpArgs.Unspecified, keys)
+        Just impArgs -> do
+          impArgs' <- mapM (discernType h) $ SE.extract impArgs
+          (func', impArgs'') <- passImpArgsToConstructor h func impArgs'
+          return (func', impArgs'', keys)
 
 discernRecordUpdate ::
   H.Handle ->
@@ -1542,7 +1569,8 @@ discernLetRec h m kind (RT.RawDef {geist, body, endLoc = bodyEndLoc}) startLoc c
   codType' <- discernType h''' $ snd $ RT.cod geist
   self <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) x
   name <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) x
-  hSelf <- extendVar h''' mx self
+  let keys = RT.getGeistKeys geist
+  hSelf <- extendVarWithKeys h''' mx self keys
   liftIO $ Unused.deleteVariable (H.unusedHandle h) self
   liftIO $ SymLoc.insert (H.symLocHandle h) self (metaLocation mx) bodyEndLoc
   let hBody = H.withSymbolOwner hSelf self name
@@ -1552,7 +1580,7 @@ discernLetRec h m kind (RT.RawDef {geist, body, endLoc = bodyEndLoc}) startLoc c
   let attr = AttrL.Attr {lamKind = LK.Fix kind isDestPassing (mx, VK.normal, self, codType'), identity = lamID}
   let fix = m :< WT.PiIntro attr impArgs' expArgs' defaultArgs' body'
   nameType <- liftIO (RT.createTypeHole (H.gensymHandle h) mx) >>= discernType h
-  hCont <- extendVar h mx name
+  hCont <- extendVarWithKeys h mx name keys
   cont' <- discern hCont cont
   liftIO $ SymLoc.insert (H.symLocHandle h) name startLoc endLoc
   let binder = (mx, VK.defined, name, nameType)
@@ -2121,6 +2149,11 @@ extendVar :: H.Handle -> Hint -> Ident -> App H.Handle
 extendVar h m newVar = do
   ensureLocalVar m (Ident.toText newVar)
   liftIO $ H.extend' h m newVar VDK.Normal
+
+extendVarWithKeys :: H.Handle -> Hint -> Ident -> RT.GeistKeys -> App H.Handle
+extendVarWithKeys h m newVar keys = do
+  h' <- extendVar h m newVar
+  return $ H.insertLocalKeys h' newVar keys
 
 extendTypeVar :: H.Handle -> Hint -> Ident -> App H.Handle
 extendTypeVar h m newVar = do

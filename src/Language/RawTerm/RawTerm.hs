@@ -20,6 +20,8 @@ module Language.RawTerm.RawTerm
     MustIgnoreRelayedVars,
     Args,
     RawGeist (..),
+    GeistKeys (..),
+    getGeistKeys,
     RawDef (..),
     RawTypeDef (..),
     RawImpVar,
@@ -266,6 +268,21 @@ type TopGeist =
 
 type TopDef =
   RawDef BN.BaseName
+
+data GeistKeys = GeistKeys
+  { geistImpKeys :: [Key],
+    geistExpKeys :: [Key],
+    geistDefaultKeys :: [Key]
+  }
+
+getGeistKeys :: RawGeist a -> GeistKeys
+getGeistKeys geist = do
+  let binderKey (_, _, x, _, _, _) = x
+  GeistKeys
+    { geistImpKeys = map binderKey $ extractImpArgs $ impArgs geist,
+      geistExpKeys = map binderKey $ extractArgs $ expArgs geist,
+      geistDefaultKeys = map (binderKey . fst) $ SE.extract $ fst $ defaultArgs geist
+    }
 
 getDefName :: RawDef a -> a
 getDefName def =

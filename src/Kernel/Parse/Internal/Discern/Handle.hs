@@ -8,6 +8,8 @@ module Kernel.Parse.Internal.Discern.Handle
     extendTypeByNominalEnv,
     withSymbolOwner,
     getSymbolOwner,
+    insertLocalKeys,
+    lookupLocalKeys,
   )
 where
 
@@ -37,6 +39,7 @@ import Kernel.Parse.VarDefKind
 import Language.Common.BaseName qualified as BN
 import Language.Common.Ident
 import Language.Common.Ident.Reify qualified as Ident
+import Language.RawTerm.RawTerm qualified as RT
 import Logger.Hint
 
 data Handle = Handle
@@ -59,6 +62,7 @@ data Handle = Handle
     nameEnv :: NameEnv,
     typeNameEnv :: NameEnv,
     symbolOwners :: IntMap.IntMap Ident,
+    localKeys :: IntMap.IntMap RT.GeistKeys,
     currentLayer :: Layer,
     currentStage :: Stage
   }
@@ -76,6 +80,7 @@ new gensymHandle (Global.Handle {..}) (Local.Handle {..}) nameMapHandle modulePa
   let nameEnv = emptyNameEnv
   let typeNameEnv = emptyNameEnv
   let symbolOwners = IntMap.empty
+  let localKeys = IntMap.empty
   let currentLayer = 0
   let currentStage = 0
   Handle {..}
@@ -123,3 +128,11 @@ withSymbolOwner h x owner =
 getSymbolOwner :: Handle -> Ident -> Ident
 getSymbolOwner h x =
   IntMap.findWithDefault x (Ident.toInt x) (symbolOwners h)
+
+insertLocalKeys :: Handle -> Ident -> RT.GeistKeys -> Handle
+insertLocalKeys h x keys =
+  h {localKeys = IntMap.insert (Ident.toInt x) keys (localKeys h)}
+
+lookupLocalKeys :: Handle -> Ident -> Maybe RT.GeistKeys
+lookupLocalKeys h x =
+  IntMap.lookup (Ident.toInt x) (localKeys h)

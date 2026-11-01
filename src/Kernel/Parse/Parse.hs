@@ -276,12 +276,7 @@ registerKeyArg h stmt = do
           let expKeys = map (\(_, _, x, _, _, _) -> x) expConsArgs
           KeyArg.insert (keyArgHandle h) m name KeyArg.Defined isConstLike [] expKeys []
         _ -> do
-          let impArgs = RT.extractImpArgs $ RT.impArgs geist
-          let defaultArgs = map fst $ SE.extract $ fst $ RT.defaultArgs geist
-          let expArgs = RT.extractArgs $ RT.expArgs geist
-          let impKeys = map (\(_, _, x, _, _, _) -> x) impArgs
-          let defaultKeys = map (\(_, _, x, _, _, _) -> x) defaultArgs
-          let expKeys = map (\(_, _, x, _, _, _) -> x) expArgs
+          let RT.GeistKeys {geistImpKeys = impKeys, geistExpKeys = expKeys, geistDefaultKeys = defaultKeys} = RT.getGeistKeys geist
           KeyArg.insert (keyArgHandle h) m name KeyArg.Defined isConstLike impKeys expKeys defaultKeys
     PostRawStmtDefineType {} -> do
       return ()
@@ -291,8 +286,7 @@ registerKeyArg h stmt = do
           let name = fst $ RT.name geist
           let isConstLike = RT.isConstLike geist
           let m = RT.loc geist
-          let impKeys = map (\(_, _, x, _, _, _) -> x) $ RT.extractImpArgs $ RT.impArgs geist
-          let expKeys = map (\(_, _, x, _, _, _) -> x) $ RT.extractArgs $ RT.expArgs geist
+          let RT.GeistKeys {geistImpKeys = impKeys, geistExpKeys = expKeys} = RT.getGeistKeys geist
           KeyArg.insert (keyArgHandle h) m name KeyArg.Declared isConstLike impKeys expKeys []
     PostRawStmtDefineResource {} -> do
       return ()
