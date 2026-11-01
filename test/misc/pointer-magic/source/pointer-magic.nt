@@ -1,0 +1,53 @@
+import {
+  core::c-size {to-c-size},
+  core::int.io {print-int-line},
+  core::memory.unsafe {free, load-int, load-int8, store-int, store-int8},
+}
+
+define test-shift() -> unit {
+  let p = magic malloc-opaque(32);
+  store-int(10, magic shift(p, 0));
+  store-int(20, magic shift(p, 8));
+  let q = magic shift(p, 16);
+  store-int(30, q);
+  store-int(40, magic shift(q, 8));
+  print-int-line(load-int(magic shift(q, -8)));
+  print-int-line(load-int(magic shift(magic shift(p, 24), -24)));
+  print-int-line(load-int(magic shift(q, 8)));
+  store-int8(7, magic shift(p, 3));
+  print-int-line(sext-int8-int(load-int8(magic shift(p, 3))));
+  free(p);
+}
+
+define fill-and-sum(p: pointer, n: int) -> int {
+  define fill(i: int) -> unit {
+    if lt-int(i, n) {
+      store-int(i, magic shift(p, mul-int(i, 8)));
+      fill(add-int(i, 1))
+    } else {
+      Unit
+    }
+  };
+  fill(0);
+  define sum(i: int, acc: int) -> int {
+    if lt-int(i, n) {
+      sum(add-int(i, 1), add-int(acc, load-int(magic shift(p, mul-int(i, 8)))))
+    } else {
+      acc
+    }
+  };
+  sum(0, 0)
+}
+
+define test-malloc-opaque(n: int) -> unit {
+  let p = magic malloc-opaque(to-c-size(mul-int(n, 8)));
+  let result = fill-and-sum(p, n);
+  free(p);
+  print-int-line(result);
+}
+
+define main() -> unit {
+  test-shift();
+  test-malloc-opaque(16);
+  test-malloc-opaque(4194304);
+}

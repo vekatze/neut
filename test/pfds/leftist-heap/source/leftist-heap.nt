@@ -21,39 +21,37 @@ data heap-signature(a) {
 }
 
 define make-heap-signature<a>(!compare: (a, a) -> ordering) -> heap-signature(a) {
-  let !merge = {
-    let !rank =
-      (h: &heap(a)) => {
-        case h {
-        | Leaf =>
-          0
-        | Node(r, _, _, _) =>
-          *r
-        }
-      };
-    let !make-Node =
-      (x: a, l: heap(a), r: heap(a)) => {
-        let rank1 on l = rank(l);
-        let rank2 on r = rank(r);
-        if ge-int(rank1, rank2) {
-          Node(add-int(rank2, 1), x, l, r)
-        } else {
-          Node(add-int(rank1, 1), x, r, l)
-        }
-      };
-    define merge(h1: heap(a), h2: heap(a)) -> heap(a) {
-      match h1, h2 {
-      | h1, Leaf =>
-        h1
-      | Leaf, h2 =>
-        h2
-      | Node(rank1, !value1, left1, right1), Node(rank2, !value2, left2, right2) =>
-        match compare(value1, value2) {
-        | LT =>
-          make-Node(value1, left1, merge(right1, Node(rank2, value2, left2, right2)))
-        | _ =>
-          make-Node(value2, left2, merge(Node(rank1, value1, left1, right1), right2))
-        }
+  let !rank =
+    (h: &heap(a)) => {
+      case h {
+      | Leaf =>
+        0
+      | Node(r, _, _, _) =>
+        *r
+      }
+    };
+  let !make-Node =
+    (x: a, l: heap(a), r: heap(a)) => {
+      let rank1 on l = rank(l);
+      let rank2 on r = rank(r);
+      if ge-int(rank1, rank2) {
+        Node(add-int(rank2, 1), x, l, r)
+      } else {
+        Node(add-int(rank1, 1), x, r, l)
+      }
+    };
+  define merge(h1: heap(a), h2: heap(a)) -> heap(a) {
+    match h1, h2 {
+    | h1, Leaf =>
+      h1
+    | Leaf, h2 =>
+      h2
+    | Node(rank1, !value1, left1, right1), Node(rank2, !value2, left2, right2) =>
+      match compare(value1, value2) {
+      | LT =>
+        make-Node(value1, left1, merge(right1, Node(rank2, value2, left2, right2)))
+      | _ =>
+        make-Node(value2, left2, merge(Node(rank1, value1, left1, right1), right2))
       }
     }
   };

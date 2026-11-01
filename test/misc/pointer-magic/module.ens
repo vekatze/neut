@@ -1,0 +1,24 @@
+{
+  target {
+    pointer-magic {
+      main "pointer-magic.nt",
+      build-option [
+        "-fsanitize=address",
+      ],
+    },
+    pointer-magic-wasm {
+      main "pointer-magic.nt",
+      platform "wasm32",
+      execute "wasmtime {{executable}}",
+    },
+  },
+  dependency {
+    core {
+      digest "y_tXrgTua-N3029uEirZRTdGbOVWnwcO8IjX7QqiW1U",
+      mirror [
+        "https://github.com/vekatze/neut-core/raw/main/archive/0.57.9.tar.zst",
+      ],
+      enable-preset true,
+    },
+  },
+}

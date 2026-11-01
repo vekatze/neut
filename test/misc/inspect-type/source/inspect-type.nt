@@ -1,0 +1,54 @@
+import {
+  core::eq.generic {eq-data},
+  core::int.io {print-int-line},
+}
+
+data phantom(a) {
+| Left-P
+| Right-P
+}
+
+data paren-enum {
+| A()
+| B()
+}
+
+define eq-phantom(x: &phantom(int), y: &phantom(int)) -> bool {
+  eq-data::(x, y)
+}
+
+define eq-paren(x: &paren-enum, y: &paren-enum) -> bool {
+  eq-data::(x, y)
+}
+
+define to-int(b: bool) -> int {
+  if b {
+    1
+  } else {
+    0
+  }
+}
+
+define main() -> unit {
+  let a: phantom(int) = Left-P;
+  let b: phantom(int) = Right-P;
+  let c: phantom(int) = Right-P;
+  let r1 on a, b = eq-phantom(a, b);
+  let r2 on b, c = eq-phantom(b, c);
+  print-int-line(to-int(r1));
+  print-int-line(to-int(r2));
+  let x = A();
+  let y = B();
+  let z = B();
+  let r3 on x, y = eq-paren(x, y);
+  let r4 on y, z = eq-paren(y, z);
+  print-int-line(to-int(r3));
+  print-int-line(to-int(r4));
+  let _ = a;
+  let _ = b;
+  let _ = c;
+  let _ = x;
+  let _ = y;
+  let _ = z;
+  Unit
+}

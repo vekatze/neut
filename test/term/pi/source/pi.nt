@@ -1,6 +1,7 @@
 import {
   core::debug {assert},
   core::rc {rc},
+  this::capture,
   this::pi-keyword,
   this::pi-term,
 }
@@ -14,17 +15,17 @@ define test-syntax() -> unit {
   let _ = pack-type {(() -> (type) -> type) -> type};
   let _ = pack-type {(((type) -> type) -> type) -> type};
   // general, dependent
-  let _ = pack-type {(a: type, a) -> a};
-  let _ = pack-type {(a: type, a) -> a};
-  let _ = pack-type {(a: type, a) -> list(type)};
-  let _ = pack-type {(a: type, list(type)) -> a};
-  let _ = pack-type {(a: type, a) -> &list(type)};
-  let _ = pack-type {(a: type, &list(type)) -> a};
-  let _ = pack-type {(a: type, a) -> rc(list(type))};
-  let _ = pack-type {(a: type, rc(list(type))) -> a};
-  let _ = pack-type {(a: type, a) -> type};
-  let _ = pack-type {(a: type, (a) -> a) -> type};
-  let _ = pack-type {(a: type, ((a) -> a) -> a) -> type};
+  let _ = pack-type {(a: type, _: a) -> a};
+  let _ = pack-type {(a: type, _: a) -> a};
+  let _ = pack-type {(a: type, _: a) -> list(type)};
+  let _ = pack-type {(a: type, _: list(type)) -> a};
+  let _ = pack-type {(a: type, _: a) -> &list(type)};
+  let _ = pack-type {(a: type, _: &list(type)) -> a};
+  let _ = pack-type {(a: type, _: a) -> rc(list(type))};
+  let _ = pack-type {(a: type, _: rc(list(type))) -> a};
+  let _ = pack-type {(a: type, _: a) -> type};
+  let _ = pack-type {(a: type, _: (a) -> a) -> type};
+  let _ = pack-type {(a: type, _: ((a) -> a) -> a) -> type};
   // simplified
   let _ = pack-type {(type) -> type};
   let _ = pack-type {({(type) -> type}) -> type};
@@ -84,7 +85,12 @@ define list-map<a, b>(!f: (a) -> b, xs: list(a)) -> list(b) {
 
 define increment-all<f: (type) -> type>(fu: functor(f), xs: f(int)) -> f(int) {
   let Functor(map) = fu;
-  map((x) => {add-int(x, 1)}, xs)
+  map(
+    (x) => {
+      add-int(x, 1)
+    },
+    xs,
+  )
 }
 
 define select<f: (type) -> type>(xs: f(int)) -> f(int) {
@@ -100,11 +106,32 @@ define test-higher-kinded() -> unit {
   assert("an explicit type constructor", eq-int(core::list::length(ws), 2));
 }
 
+define _lengths(x: &string, y: &string) -> pair(int, int) {
+  let !f =
+    (v: &string) => {
+      let s = *v;
+      let n on s = core::string::byte-length(s);
+      let _ = s;
+      n
+    };
+  Pair(f(x), f(y))
+}
+
+define test-local-function-applied-twice() -> unit {
+  let Pair(a, b) = _lengths("a", "bbbb");
+  assert("the first application of a local function", eq-int(a, 1));
+  assert("the second application of a local function", eq-int(b, 4));
+}
+
 define main() -> unit {
   test-higher-kinded();
+  test-local-function-applied-twice();
   test-syntax();
   test-resource();
   this::pi-term::test-syntax();
   this::pi-term::test-resource();
-  this::pi-keyword::test-syntax()
+  this::pi-keyword::test-syntax();
+  this::pi-keyword::test-local-keywords();
+  this::pi-keyword::test-function();
+  this::capture::test-capture()
 }

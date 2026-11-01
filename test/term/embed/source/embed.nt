@@ -50,6 +50,14 @@ data boxed-fn {
 | Boxed-Fn(+f: (int) -> int, tag: int)
 }
 
+alias-opaque token {
+  int
+}
+
+data token-maker {
+| Token-Maker(+make: (int) -> token, seed: int)
+}
+
 data runic {
 | Runic(c: rune, n: int)
 }
@@ -434,7 +442,8 @@ define test-recursive-function() -> unit {
         } else {
           add-int(n, go(sub-int(n, 1)))
         }
-      }
+      };
+      go
     };
   print-int-line(view(f)(10));
   Unit
@@ -445,7 +454,8 @@ define test-default-args() -> unit {
     embed {
       define go(n: int)[bump: int := 7] -> int {
         add-int(n, bump)
-      }
+      };
+      go
     };
   print-int-line(view(f)(1));
   print-int-line(view(f)(1)[bump := 100]);
@@ -477,6 +487,22 @@ define test-function-field() -> unit {
   | Boxed-Fn(+f, tag) =>
     print-int-line(f(7));
     print-int-line(*tag)
+  }
+}
+
+define test-opaque-type() -> unit {
+  let v: $token-maker =
+    embed {
+      Token-Maker(
+        ~(x) => {
+          magic cast(int, token, add-int(x, 1))
+        },
+        41,
+      )
+    };
+  case view(v) {
+  | Token-Maker(+make, seed) =>
+    print-int-line(magic cast(token, int, make(*seed)))
   }
 }
 
@@ -664,6 +690,118 @@ define test-statements() -> unit {
   Unit
 }
 
+alias-opaque wrapped-list(a: type) {
+  list(a)
+}
+
+data hidden {
+| Hidden<a>(value: a, measure: (&a) -> int)
+}
+
+data over(f: (type) -> type) {
+| Over
+| Over-Value(value: int)
+}
+
+alias-opaque same-type(a: type) {
+  a
+}
+
+alias-opaque applied-twice(f: (type) -> type, a: type) {
+  f(f(a))
+}
+
+alias-opaque looping {
+  looping
+}
+
+data through-opaque {
+| Through-Opaque(wrapped-list(through-opaque))
+}
+
+data fix(f: (type) -> type) {
+| Fix(f(fix(f)))
+}
+
+define measure-token(x: &token) -> int {
+  magic cast(&token, int, x)
+}
+
+define measure-wrapped(x: &wrapped-list(int)) -> int {
+  core::list::length(magic cast(&wrapped-list(int), &list(int), x))
+}
+
+define measure-applied(x: &applied-twice(same-type, token)) -> int {
+  magic cast(&applied-twice(same-type, token), int, x)
+}
+
+define hidden-token() -> $hidden {
+  embed {Hidden<token>(magic cast(int, token, 7), measure-token)}
+}
+
+define hidden-wrapped() -> $hidden {
+  embed {Hidden<wrapped-list(int)>(magic cast(list(int), wrapped-list(int), List::[1, 2]), measure-wrapped)}
+}
+
+define hidden-applied() -> $hidden {
+  embed {Hidden<applied-twice(same-type, token)>(magic cast(int, applied-twice(same-type, token), 8), measure-applied)}
+}
+
+define empty-looping() -> $list(looping) {
+  embed {Nil}
+}
+
+define over-list() -> $over(list) {
+  embed {Over}
+}
+
+define consume-hidden(x: hidden) -> int {
+  match x {
+  | Hidden(v, measure) =>
+    let n on v = measure(v);
+    let _ = v;
+    n
+  }
+}
+
+define is-empty-looping(xs: &list(looping)) -> int {
+  case xs {
+  | Nil =>
+    1
+  | Cons(_, _) =>
+    0
+  }
+}
+
+define ignore-through-opaque(x: through-opaque) -> int {
+  let _ = x;
+  0
+}
+
+define ignore-fix(x: fix(list)) -> int {
+  let _ = x;
+  0
+}
+
+define is-over<f: (type) -> type>(x: &over(f)) -> int {
+  case x {
+  | Over =>
+    1
+  | Over-Value(v) =>
+    *v
+  }
+}
+
+define test-opaque-type-arguments() -> unit {
+  let _ = ignore-through-opaque;
+  let _ = ignore-fix;
+  print-int-line(consume-hidden(*view(hidden-token())));
+  print-int-line(consume-hidden(*view(hidden-wrapped())));
+  print-int-line(is-over(view(over-list())));
+  print-int-line(consume-hidden(*view(hidden-applied())));
+  print-int-line(is-empty-looping(view(empty-looping())));
+}
+
 define main() -> unit {
   test-primitives();
   test-affinity();
@@ -695,6 +833,8 @@ define main() -> unit {
   test-default-args();
   test-function-list();
   test-function-field();
+  test-opaque-type();
+  test-opaque-type-arguments();
   test-function-returning-function();
   test-embed-in-lambda();
   test-packed-type();

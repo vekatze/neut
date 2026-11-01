@@ -78,27 +78,25 @@ define receive-one-by-one(xs: list(thread(unit)), ch: &channel(int)) -> unit {
 }
 
 define receive-all-at-once(xs: list(thread(unit)), ch: &channel(int)) -> unit {
-  let wait-all =
-    define wait-all(ys: list(thread(unit))) -> unit {
-      match ys {
-      | Nil =>
-        Unit
-      | Cons(z, zs) =>
-        let _ = join(z);
-        wait-all(zs)
-      }
-    };
+  define wait-all(ys: list(thread(unit))) -> unit {
+    match ys {
+    | Nil =>
+      Unit
+    | Cons(z, zs) =>
+      let _ = join(z);
+      wait-all(zs)
+    }
+  };
   let size on xs = length(xs);
   wait-all(xs);
-  let receive-all =
-    define receive-all(count: int) -> unit {
-      if eq-int(count, 0) {
-        Unit
-      } else {
-        let _ = receive(ch);
-        receive-all(sub-int(count, 1))
-      }
-    };
+  define receive-all(count: int) -> unit {
+    if eq-int(count, 0) {
+      Unit
+    } else {
+      let _ = receive(ch);
+      receive-all(sub-int(count, 1))
+    }
+  };
   receive-all(size)
 }
 
