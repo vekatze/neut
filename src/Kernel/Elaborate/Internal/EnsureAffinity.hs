@@ -177,7 +177,7 @@ analyze h term = do
           let piType = m :< TM.Pi piKind impArgs expArgs (map fst defaultArgs) codType
           liftIO $ insertRelevantVar x h''
           cs5 <- analyze (extendHandle (mx, VK.normal, x, piType) h'') e
-          css <- forM (S.toList $ freeTermVarsWithHints term) $ uncurry (analyzeVar h)
+          css <- forM (freeTermVarsWithHints term) $ uncurry (analyzeVar h)
           return $ cs1 ++ cs2 ++ cs3 ++ cs4 ++ cs5 ++ concat css
         LK.Normal _ _ codType -> do
           (cs1, h') <- analyzeBinder h (impArgs ++ expArgs)

@@ -19,10 +19,8 @@ import App.Run (raiseError)
 import Control.Comonad.Cofree
 import Control.Monad (forM, when)
 import Control.Monad.IO.Class
-import Data.Containers.ListUtils (nubOrdOn)
 import Data.IORef (readIORef)
 import Data.IntMap qualified as IntMap
-import Data.List (sortOn)
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NE
 import Data.Set qualified as S
@@ -605,8 +603,7 @@ evaluateFreeVariables :: Handle -> (TM.Type -> App TM.Type) -> Hint -> MID.Modul
 evaluateFreeVariables h normalizeType m moduleID code = do
   case code of
     _ :< TM.CodeIntro codeVariant body -> do
-      let occurrences = nubOrdOn snd $ sortOn fst $ S.toList $ freeTermVarsWithHints body
-      variables <- forM occurrences $ \(_, x) -> do
+      variables <- forM (freeTermVarsWithHints body) $ \(_, x) -> do
         t <- lookupVariableType h m x >>= normalizeType
         return (x, t)
       let elemType = codeVariableType m moduleID

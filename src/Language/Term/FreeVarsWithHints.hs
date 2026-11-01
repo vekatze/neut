@@ -1,8 +1,8 @@
 module Language.Term.FreeVarsWithHints (freeTermVarsWithHints) where
 
 import Control.Comonad.Cofree
+import Data.Containers.ListUtils (nubOrdOn)
 import Data.Maybe
-import Data.Set qualified as S
 import Language.Common.Attr.Lam qualified as AttrL
 import Language.Common.BaseLowType qualified as BLT
 import Language.Common.Binder
@@ -14,91 +14,95 @@ import Language.Common.VarKind qualified as VK
 import Language.Term.Term qualified as TM
 import Logger.Hint
 
-freeTermVarsWithHints :: TM.Term -> S.Set (Hint, Ident)
-freeTermVarsWithHints term =
+freeTermVarsWithHints :: TM.Term -> [(Hint, Ident)]
+freeTermVarsWithHints =
+  nubOrdOn snd . collect
+
+collect :: TM.Term -> [(Hint, Ident)]
+collect term =
   case term of
     m :< TM.Var x ->
-      S.singleton (m, x)
+      [(m, x)]
     _ :< TM.VarGlobal {} ->
-      S.empty
+      []
     _ :< TM.PiIntro k impArgs expArgs defaultArgs e -> do
-      let body = removeBinders (catMaybes [AttrL.fromAttr k]) (freeTermVarsWithHints e)
+      let body = removeBinders (catMaybes [AttrL.fromAttr k]) (collect e)
       removeBinders (impArgs ++ expArgs) (collectDefaultArgs defaultArgs body)
     _ :< TM.PiElim _ _ e _ expArgs defaultArgs -> do
-      let xs = freeTermVarsWithHints e
-      let ys1 = S.unions $ map freeTermVarsWithHints expArgs
-      let ys2 = S.unions $ map freeTermVarsWithHints (catMaybes defaultArgs)
-      S.unions [xs, ys1, ys2]
+      let xs = collect e
+      let ys1 = concatMap collect expArgs
+      let ys2 = concatMap collect (catMaybes defaultArgs)
+      xs ++ ys1 ++ ys2
     _ :< TM.DataIntro _ _ _ _ consArgs ->
-      S.unions $ map freeTermVarsWithHints consArgs
+      concatMap collect consArgs
     m :< TM.DataElim _ _ oets decisionTree -> do
       let (os, es, ts) = unzip3 oets
-      let xs1 = S.unions $ map freeTermVarsWithHints es
+      let xs1 = concatMap collect es
       let binder = zipWith (\o t -> (m, VK.normal, o, t)) os ts
       let xs2 = removeBinders binder (collectDecisionTree decisionTree)
-      S.union xs1 xs2
+      xs1 ++ xs2
     _ :< TM.BoxIntro _ letSeq e -> do
       let (xts, es) = unzip letSeq
-      removeBinders xts (S.unions $ map freeTermVarsWithHints (e : es))
+      removeBinders xts (concatMap collect (e : es))
     _ :< TM.BoxIntroLift _ e ->
-      freeTermVarsWithHints e
+      collect e
     _ :< TM.EmbedIntro e ->
-      freeTermVarsWithHints e
+      collect e
     _ :< TM.BoxElim _ castSeq mxt e1 uncastSeq e2 -> do
       let (xts, es) = unzip $ castSeq ++ [(mxt, e1)] ++ uncastSeq
-      removeBinders xts (S.unions $ map freeTermVarsWithHints $ es ++ [e2])
+      removeBinders xts (concatMap collect $ es ++ [e2])
     _ :< TM.CodeIntro _ e ->
-      freeTermVarsWithHints e
+      collect e
     _ :< TM.CodeElim _ e ->
-      freeTermVarsWithHints e
+      collect e
     _ :< TM.TauIntro _ ->
-      S.empty
+      []
     _ :< TM.TauElim _ _ e1 e2 ->
-      S.union (freeTermVarsWithHints e1) (freeTermVarsWithHints e2)
+      collect e1 ++ collect e2
     _ :< TM.Let mxt e1 e2 -> do
-      let set1 = freeTermVarsWithHints e1
-      let set2 = removeBinders [mxt] (freeTermVarsWithHints e2)
-      S.union set1 set2
+      let set1 = collect e1
+      let set2 = removeBinders [mxt] (collect e2)
+      set1 ++ set2
     _ :< TM.Invoke _ body ->
-      freeTermVarsWithHints body
+      collect body
     _ :< TM.Prim _ ->
-      S.empty
+      []
     _ :< TM.Magic _ der ->
       collectMagic der
 
-collectDefaultArgs :: [(BinderF TM.Type, TM.Term)] -> S.Set (Hint, Ident) -> S.Set (Hint, Ident)
+collectDefaultArgs :: [(BinderF TM.Type, TM.Term)] -> [(Hint, Ident)] -> [(Hint, Ident)]
 collectDefaultArgs defaultArgs zs =
   case defaultArgs of
     [] ->
       zs
     (binder, value) : rest ->
-      S.union (freeTermVarsWithHints value) (removeBinders [binder] (collectDefaultArgs rest zs))
+      collect value ++ removeBinders [binder] (collectDefaultArgs rest zs)
 
-removeBinders :: [BinderF TM.Type] -> S.Set (Hint, Ident) -> S.Set (Hint, Ident)
+removeBinders :: [BinderF TM.Type] -> [(Hint, Ident)] -> [(Hint, Ident)]
 removeBinders binder zs =
   case binder of
     [] ->
       zs
     ((_, _, x, _) : xts) ->
-      S.filter (\(_, y) -> y /= x) $ removeBinders xts zs
+      filter (\(_, y) -> y /= x) $ removeBinders xts zs
 
-collectDecisionTree :: DT.DecisionTree TM.Type TM.Term -> S.Set (Hint, Ident)
+collectDecisionTree :: DT.DecisionTree TM.Type TM.Term -> [(Hint, Ident)]
 collectDecisionTree tree =
   case tree of
     DT.Leaf _ letSeq e ->
-      freeTermVarsWithHints (TM.fromLetSeq letSeq e)
+      collect (TM.fromLetSeq letSeq e)
     DT.Unreachable ->
-      S.empty
+      []
     DT.Switch _ caseList ->
       collectCaseList caseList
 
-collectCaseList :: DT.CaseList TM.Type TM.Term -> S.Set (Hint, Ident)
+collectCaseList :: DT.CaseList TM.Type TM.Term -> [(Hint, Ident)]
 collectCaseList (fallbackClause, clauseList) = do
-  let xs1 = collectDecisionTree fallbackClause
-  let xs2 = S.unions $ map collectCase clauseList
-  S.union xs1 xs2
+  let xs1 = concatMap collectCase clauseList
+  let xs2 = collectDecisionTree fallbackClause
+  xs1 ++ xs2
 
-collectCase :: DT.Case TM.Type TM.Term -> S.Set (Hint, Ident)
+collectCase :: DT.Case TM.Type TM.Term -> [(Hint, Ident)]
 collectCase decisionCase = do
   case decisionCase of
     DT.LiteralCase _ _ cont -> do
@@ -106,64 +110,64 @@ collectCase decisionCase = do
     DT.ConsCase (DT.ConsCaseRecord {consImpArgs, consArgs, cont}) -> do
       removeBinders (consImpArgs ++ consArgs) (collectDecisionTree cont)
 
-collectMagic :: M.Magic BLT.BaseLowType TM.Type TM.Term -> S.Set (Hint, Ident)
+collectMagic :: M.Magic BLT.BaseLowType TM.Type TM.Term -> [(Hint, Ident)]
 collectMagic magic =
   case magic of
     M.LowMagic lowMagic ->
       collectLowMagic lowMagic
     M.Calloc _ num size ->
-      S.union (freeTermVarsWithHints num) (freeTermVarsWithHints size)
+      collect num ++ collect size
     M.Malloc _ size ->
-      freeTermVarsWithHints size
+      collect size
     M.MallocOpaque _ size ->
-      freeTermVarsWithHints size
+      collect size
     M.Realloc _ ptr size ->
-      S.union (freeTermVarsWithHints ptr) (freeTermVarsWithHints size)
+      collect ptr ++ collect size
     M.Free _ ptr ->
-      freeTermVarsWithHints ptr
+      collect ptr
     M.InspectType {} ->
-      S.empty
+      []
     M.EqType {} ->
-      S.empty
+      []
     M.ShowType _ ->
-      S.empty
+      []
     M.TextCons rune text ->
-      S.union (freeTermVarsWithHints rune) (freeTermVarsWithHints text)
+      collect rune ++ collect text
     M.TextUncons _ text ->
-      freeTermVarsWithHints text
+      collect text
     M.MakeSwitch _ key fallback clauses ->
-      S.unions $ map freeTermVarsWithHints [key, fallback, clauses]
+      concatMap collect [key, fallback, clauses]
     M.FreeVariables _ code ->
-      freeTermVarsWithHints code
+      collect code
     M.CompileError msg ->
-      freeTermVarsWithHints msg
+      collect msg
     M.GetOriginFileName ->
-      S.empty
+      []
     M.GetOriginLine ->
-      S.empty
+      []
     M.GetOriginColumn ->
-      S.empty
+      []
 
-collectLowMagic :: LM.LowMagic BLT.BaseLowType TM.Type TM.Term -> S.Set (Hint, Ident)
+collectLowMagic :: LM.LowMagic BLT.BaseLowType TM.Type TM.Term -> [(Hint, Ident)]
 collectLowMagic lowMagic =
   case lowMagic of
     LM.Cast _ _ value ->
-      freeTermVarsWithHints value
+      collect value
     LM.Store _ _ value pointer ->
-      S.union (freeTermVarsWithHints value) (freeTermVarsWithHints pointer)
+      collect value ++ collect pointer
     LM.Load _ pointer ->
-      freeTermVarsWithHints pointer
+      collect pointer
     LM.Shift pointer offset ->
-      S.union (freeTermVarsWithHints pointer) (freeTermVarsWithHints offset)
+      collect pointer ++ collect offset
     LM.Alloca _ size ->
-      freeTermVarsWithHints size
+      collect size
     LM.External _ _ _ args varArgs -> do
-      let argVars = S.unions $ map freeTermVarsWithHints args
-      let varArgVars = S.unions $ map (freeTermVarsWithHints . fst) varArgs
-      S.union argVars varArgVars
+      let argVars = concatMap collect args
+      let varArgVars = concatMap (collect . fst) varArgs
+      argVars ++ varArgVars
     LM.Global {} ->
-      S.empty
+      []
     LM.OpaqueValue e ->
-      freeTermVarsWithHints e
+      collect e
     LM.CallType func arg1 arg2 arg3 ->
-      S.unions $ map freeTermVarsWithHints [func, arg1, arg2, arg3]
+      concatMap collect [func, arg1, arg2, arg3]
