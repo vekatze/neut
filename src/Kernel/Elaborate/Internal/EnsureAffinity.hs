@@ -35,7 +35,7 @@ import Language.Common.LowMagic qualified as LM
 import Language.Common.Magic qualified as M
 import Language.Common.PiKind qualified as PK
 import Language.Common.VarKind qualified as VK
-import Language.Term.FreeVarsWithHints (freeVarsWithHints)
+import Language.Term.FreeVarsWithHints (freeTermVarsWithHints)
 import Language.Term.Term qualified as TM
 import Language.Term.Weaken (weakenType)
 import Language.WeakTerm.Subst (SubstEntry (..))
@@ -177,7 +177,7 @@ analyze h term = do
           let piType = m :< TM.Pi piKind impArgs expArgs (map fst defaultArgs) codType
           liftIO $ insertRelevantVar x h''
           cs5 <- analyze (extendHandle (mx, VK.normal, x, piType) h'') e
-          css <- forM (S.toList $ freeVarsWithHints term) $ uncurry (analyzeVar h)
+          css <- forM (S.toList $ freeTermVarsWithHints term) $ uncurry (analyzeVar h)
           return $ cs1 ++ cs2 ++ cs3 ++ cs4 ++ cs5 ++ concat css
         LK.Normal _ _ codType -> do
           (cs1, h') <- analyzeBinder h (impArgs ++ expArgs)
