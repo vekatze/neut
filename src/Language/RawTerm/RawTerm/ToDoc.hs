@@ -53,11 +53,9 @@ toDoc term =
     _ :< VarGlobal dd _ ->
       D.text $ DD.reify dd -- unreachable
     _ :< PiIntro c def -> do
-      case getName def of
-        Just name ->
-          decodeDef (const $ D.text name) "inline" c def
-        Nothing ->
-          decodeLambda c def
+      decodeLambda c def
+    _ :< PiIntroFunction c def -> do
+      decodeDef (maybe D.Nil D.text) "function" c def
     _ :< PiIntroFix kind c def -> do
       decodeDef (nameToDoc . N.Bare) (LDK.keyword kind) c def
     _ :< PiElim e c1 mImpArgs isDestCall c2 expArgs c3 mDefaultArgs -> do
@@ -632,11 +630,6 @@ decodeDef nameDecoder keyword c def = do
         D.text " ",
         decodeBlock (RT.leadingComment def, (toDoc $ RT.body def, RT.trailingComment def))
       ]
-
-getName :: RT.FuncInfo -> Maybe T.Text
-getName def = do
-  let geist = RT.geist def
-  fst $ RT.name geist
 
 decodeLambda :: C -> RT.FuncInfo -> D.Doc
 decodeLambda c def = do

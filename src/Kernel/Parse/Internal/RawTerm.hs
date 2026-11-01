@@ -176,6 +176,8 @@ rawTerm' mode h m headSymbol c = do
       rawTermDefine h LDK.DefineMeta m c
     "inline-meta" -> do
       rawTermDefine h LDK.InlineMeta m c
+    "function" -> do
+      rawTermFunction h m c
     "introspect" -> do
       rawTermIntrospect h m c
     "static" -> do
@@ -413,6 +415,20 @@ rawTermLambda h = do
             endLoc = loc
           }
   return (m :< RT.PiIntro [] defInfo, c)
+
+rawTermFunction :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
+rawTermFunction h m c0 = do
+  (defInfo, c) <- parseDef ArrowObject h functionName
+  return (m :< RT.PiIntroFunction c0 defInfo, c)
+
+functionName :: Parser (Maybe T.Text, C)
+functionName =
+  choice
+    [ do
+        (name, c) <- baseName
+        return (Just $ BN.reify name, c),
+      return (Nothing, [])
+    ]
 
 rawTermKeyValuePair :: Handle -> Parser ((Hint, Key, C, C, RT.RawTerm), C)
 rawTermKeyValuePair h = do

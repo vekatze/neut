@@ -129,6 +129,7 @@ data RawTermF a
   = Var Name
   | VarGlobal DD.DefiniteDescription GN.GlobalName
   | PiIntro C FuncInfo
+  | PiIntroFunction C FuncInfo
   | PiIntroFix LDK.LocalDefKind C DefInfo
   | PiElim a C (Maybe (SE.Series RawType)) IsDestCall C (SE.Series (MarkedArg a)) C (Maybe (SE.Series (Hint, Key, C, C, a)))
   | PiElimImplicit Name C (SE.Series RawType)

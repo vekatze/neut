@@ -436,20 +436,10 @@ discern h term =
           interpretGlobalName h m dd gn
     m :< RT.VarGlobal dd gn -> do
       interpretGlobalName h m dd gn
-    m :< RT.PiIntro _ (RT.RawDef {geist, body, endLoc}) -> do
-      lamID <- liftIO $ Gensym.newCount (H.gensymHandle h)
-      let (name, _) = RT.name geist
-      let impArgs = RT.extractImpArgs $ RT.impArgs geist
-      let defaultArgs = SE.extract $ fst $ RT.defaultArgs geist
-      let expArgs = RT.extractArgs $ RT.expArgs geist
-      (impArgs', h') <- discernImpArgs h impArgs endLoc
-      (expArgs', h'') <- discernBinder h' expArgs endLoc
-      (defaultArgs', h''') <- discernBinderWithDefaultArgs h'' defaultArgs endLoc
-      codType' <- discernType h''' $ snd $ RT.cod geist
-      body' <- discern h''' body
-      ensureLayerClosedness m h''' body'
-      let isDestPassing = RT.isDestPassing geist
-      return $ m :< WT.PiIntro (AttrL.normal' name isDestPassing lamID codType') impArgs' expArgs' defaultArgs' body'
+    m :< RT.PiIntro _ def -> do
+      discernLambda h m def
+    m :< RT.PiIntroFunction _ def -> do
+      discernLambda h m def
     m :< RT.PiIntroFix kind _ (RT.RawDef {geist, body, endLoc}) -> do
       ensureLocalDefStage m h kind
       let isDestPassing = RT.isDestPassing geist
@@ -1459,6 +1449,22 @@ plainKeyValueArg m key value isSourceArg =
       RT.kvPrevValue = Nothing,
       RT.kvValue = (value, isSourceArg)
     }
+
+discernLambda :: H.Handle -> Hint -> RT.FuncInfo -> App WT.WeakTerm
+discernLambda h m (RT.RawDef {geist, body, endLoc}) = do
+  lamID <- liftIO $ Gensym.newCount (H.gensymHandle h)
+  let (name, _) = RT.name geist
+  let impArgs = RT.extractImpArgs $ RT.impArgs geist
+  let defaultArgs = SE.extract $ fst $ RT.defaultArgs geist
+  let expArgs = RT.extractArgs $ RT.expArgs geist
+  (impArgs', h') <- discernImpArgs h impArgs endLoc
+  (expArgs', h'') <- discernBinder h' expArgs endLoc
+  (defaultArgs', h''') <- discernBinderWithDefaultArgs h'' defaultArgs endLoc
+  codType' <- discernType h''' $ snd $ RT.cod geist
+  body' <- discern h''' body
+  ensureLayerClosedness m h''' body'
+  let isDestPassing = RT.isDestPassing geist
+  return $ m :< WT.PiIntro (AttrL.normal' name isDestPassing lamID codType') impArgs' expArgs' defaultArgs' body'
 
 discernLet ::
   H.Handle ->
