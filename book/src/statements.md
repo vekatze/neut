@@ -1236,9 +1236,11 @@ data c-int {
 }
 ```
 
-The type of each parameter in every foreign entry must be a term that compiles to one of `int{N}`, `float{N}`, or `pointer` during compilation. For example, the `c-int` in `exit(c-int) -> void` is valid because it compiles to `int32` (thanks to an optimization like Haskell's `newtype`).
+The type of each parameter in every foreign entry must compile to one of `int32`, `int64`, `float{N}`, or `pointer`. For example, the `c-int` in `exit(c-int) -> void` is valid because it compiles to `int32` (thanks to an optimization like Haskell's `newtype`).
 
-The resulting type of every foreign entry must be `void` or a term that compiles to one of `int{N}`, `float{N}`, or `pointer` during compilation.
+The resulting type of every foreign entry must compile to one of `int32`, `int64`, `float{N}`, `pointer`, or `void`.
+
+For an LLVM intrinsic, these types can also compile to `int{N}` (`N < 32`).
 
 When declaring a variadic function, declare only the non-variadic part:
 
@@ -1302,12 +1304,18 @@ int64_t my_app_add_const(int64_t x);
 int64_t y = my_app_add_const(7); // 107
 ```
 
-Each entry names a function defined in the same file, optionally followed by `as` and its external name. Without `as`, the name of the function is used. No two entries can expose the same external name, and the entry point of the target (`main`, or `__main_argc_argv` on wasm32) can't be exposed.
+Each entry names a function defined in the same file, optionally followed by `as` and its external name. Without `as`, the name of the function is used.
+
+Every external name in `expose` must satisfy the following:
+
+- The name is unique within the target, including its dependencies
+- The name isn't the entry point of the target (`main`, or `__main_argc_argv` on wasm32)
+- The name doesn't start with `llvm.`
 
 The compiler emits a wrapper with the C calling convention for each entry. On native targets, the external name becomes a public symbol. On wasm targets, it also becomes a wasm export.
 
 An exposed function must have a signature that a [foreign](#foreign) entry can declare:
 
 - the type is of the form `(x1: a1, ..., xn: an) -> b`
-- every input type compiles to one of `int{N}`, `float{N}`, or `pointer`
-- the output type compiles to one of `int{N}`, `float{N}`, `pointer`, or `void`
+- every input type compiles to one of `int32`, `int64`, `float16`, `float32`, `float64`, or `pointer`
+- the output type compiles to one of `int32`, `int64`, `float16`, `float32`, `float64`, `pointer`, or `void`
