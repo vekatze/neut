@@ -298,7 +298,7 @@ type SubstValue =
 data CompStmt
   = Def DD.DefiniteDescription Opacity [Ident] Comp
   | Foreign [F.Foreign]
-  | Expose [(Hint, DD.DefiniteDescription, EN.ExternalName)]
+  | Expose [(Hint, DD.DefiniteDescription, EN.ExternalName, F.FunctionSignature)]
 
 fromCompStmt :: CompStmt -> Maybe (Opacity, [Ident], Comp)
 fromCompStmt cs =

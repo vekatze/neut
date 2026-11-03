@@ -76,7 +76,7 @@ data StmtF t a
   | StmtTrope SavedHint DD.DefiniteDescription [DefineMetaF t a]
   | StmtVariadic RuleKind SavedHint DD.DefiniteDescription
   | StmtForeign [F.Foreign]
-  | StmtExpose [(SavedHint, DD.DefiniteDescription, EN.ExternalName)]
+  | StmtExpose [(SavedHint, DD.DefiniteDescription, EN.ExternalName, F.FunctionSignature)]
   | StmtNamespace SavedHint DD.DefiniteDescription
   deriving (Generic)
 

@@ -2,6 +2,7 @@ module Language.Common.Foreign
   ( BaseForeign (..),
     ForeignSignature (..),
     Foreign,
+    FunctionSignature,
   )
 where
 
@@ -27,3 +28,6 @@ instance (Binary a) => Binary (BaseForeign a)
 
 type Foreign =
   BaseForeign BLT.BaseLowType
+
+type FunctionSignature =
+  ([BLT.BaseLowType], ForeignCodType BLT.BaseLowType)

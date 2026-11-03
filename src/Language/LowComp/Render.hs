@@ -27,6 +27,8 @@ renderComp level comp =
   case comp of
     LC.Return value ->
       line level ("return " <> renderValue value)
+    LC.ReturnVoid ->
+      line level "return"
     LC.Let x op cont ->
       line level ("let " <> toText' x <> " = " <> renderOp op) <> renderComp level cont
     LC.Cont op cont ->

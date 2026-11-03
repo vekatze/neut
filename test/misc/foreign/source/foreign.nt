@@ -1,23 +1,59 @@
 import {
-  core::c-int {C-Int, c-int, from-c-int},
+  core::c-int {C-Int, add-c-int, c-int, from-c-int},
   core::int.io {print-int-line},
 }
 
 foreign {
   add_const(c-int) -> c-int,
   call_double(int) -> int,
+  call_half() -> int,
+  call_decrement(int32) -> int32,
+  call_increment() -> int,
+  call_peek() -> int,
+  call_record(int) -> int,
+  note(int) -> void,
 }
 
 define double(x: int) -> int {
   mul-int(x, 2)
 }
 
+define half(x: float) -> float {
+  div-float(x, 2.0)
+}
+
+define decrement(x: int32) -> int32 {
+  sub-int32(x, 1)
+}
+
+define increment(x: c-int) -> c-int {
+  add-c-int(x, C-Int(1))
+}
+
+define peek(p: pointer) -> int32 {
+  magic load(int32, p)
+}
+
+define record(x: int) -> void {
+  magic external note(x)
+}
+
 expose {
   double as neut_test_double,
+  half as neut_test_half,
+  decrement as neut_test_decrement,
+  increment as neut_test_increment,
+  peek as neut_test_peek,
+  record as neut_test_record,
 }
 
 define main() -> unit {
   let x: int = 10;
   print-int-line(from-c-int(magic external add_const(C-Int(trunc-int-int32(x)))));
   print-int-line(magic external call_double(21));
+  print-int-line(magic external call_half());
+  print-int-line(sext-int32-int(magic external call_decrement(trunc-int-int32(-5))));
+  print-int-line(magic external call_increment());
+  print-int-line(magic external call_peek());
+  print-int-line(magic external call_record(8))
 }

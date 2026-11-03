@@ -448,7 +448,7 @@ clarifyStmt h stmt =
     StmtForeign foreignList ->
       return $ C.Foreign foreignList
     StmtExpose exportList ->
-      return $ C.Expose $ map (\(SavedHint m, dd, extName) -> (m, dd, extName)) exportList
+      return $ C.Expose $ map (\(SavedHint m, dd, extName, signature) -> (m, dd, extName, signature)) exportList
     StmtNamespace {} -> do
       return $ C.Foreign [] -- nop
 

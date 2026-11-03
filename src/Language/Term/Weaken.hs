@@ -63,7 +63,7 @@ weakenStmt stmt = do
     StmtForeign foreignList ->
       WeakStmtForeign $ map weakenForeign foreignList
     StmtExpose exportList ->
-      WeakStmtExpose $ map (\(SavedHint m, dd, extName) -> (m, dd, extName)) exportList
+      WeakStmtExpose $ map (\(SavedHint m, dd, extName, _) -> (m, dd, extName)) exportList
     StmtNamespace (SavedHint m) dd ->
       WeakStmtNamespace m dd
 
