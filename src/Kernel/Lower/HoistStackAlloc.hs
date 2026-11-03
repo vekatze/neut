@@ -2,7 +2,7 @@ module Kernel.Lower.HoistStackAlloc (hoistStackAlloc) where
 
 import Data.IntMap.Strict qualified as IntMap
 import Data.IntSet qualified as IntSet
-import Data.List (foldl', minimumBy, sortOn)
+import Data.List (minimumBy, sortOn)
 import Data.Ord (Down (..), comparing)
 import Gensym.Handle qualified as GensymHandle
 import Language.Common.CreateSymbol qualified as CreateSymbol

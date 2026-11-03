@@ -7,7 +7,6 @@ where
 
 import Data.HashMap.Strict qualified as Map
 import Data.IntMap qualified as IntMap
-import Data.List (foldl')
 import Data.Set qualified as S
 import Gensym.Handle qualified as Gensym
 import Language.Common.DefiniteDescription qualified as DD

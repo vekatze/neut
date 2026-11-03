@@ -16,7 +16,7 @@ import Control.Applicative ((<|>))
 import Control.Comonad.Cofree
 import Control.Monad (forM)
 import Data.Bitraversable (bimapM)
-import Data.Foldable (asum, foldl', toList)
+import Data.Foldable (asum, toList)
 import Data.IORef
 import Data.IntSet qualified as IntSet
 import Data.Text qualified as T
