@@ -1,0 +1,330 @@
+import {
+  core::int.io {print-int-line},
+  core::string {append, length},
+}
+
+data shown {
+| Shown<a>(value: a, measure: (&a) -> int)
+}
+
+data tagged(t) {
+| Untagged<a>(value: a, measure: (a) -> int)
+| Tagged<a>(tag: t, value: a, measure: (a) -> int)
+| Plain(tag: t)
+}
+
+data layered {
+| Layered<a, b>(outer: a, inner: b, combine: (a, b) -> int)
+}
+
+data held {
+| Held<actual a>(value: a)
+}
+
+data nested {
+| Nested<a>(inner: shown, tag: a)
+}
+
+data picked {
+| Picked-Shown(inner: shown)
+| Picked-Plain(n: int)
+}
+
+data boxed(a) {
+| Boxed(value: a)
+}
+
+data wrapped {
+| Wrapped<f: (type) -> type>(value: f(int), get: (f(int)) -> int)
+}
+
+define need-actual<actual a>(x: a) -> int {
+  let _ = x;
+  1
+}
+
+define measure-int(x: &int) -> int {
+  *x
+}
+
+define static-shown() -> $shown {
+  embed {Shown(3, measure-int)}
+}
+
+define static-nested() -> $nested {
+  embed {Nested(Shown(4, measure-int), True)}
+}
+
+define own(t: &string) -> string {
+  append(t, "")
+}
+
+define measure-string(x: &string) -> int {
+  length(x)
+}
+
+define shown-string(t: string) -> shown {
+  Shown(t, measure-string)
+}
+
+define consume(s: shown) -> int {
+  match s {
+  | Shown<a>(v, f) =>
+    let n on v = f(v);
+    let _: a = v;
+    n
+  }
+}
+
+define peek(s: &shown) -> int {
+  case s {
+  | Shown(v, f) =>
+    f(v)
+  }
+}
+
+define peek-by-tie(s: &shown) -> int {
+  tie Shown(v, f) = s;
+  f(v)
+}
+
+define measure-tagged(x: tagged(string)) -> int {
+  match x {
+  | Untagged(v, m) =>
+    m(v)
+  | Tagged<_, a>(tag, v, m) =>
+    let l on tag = length(tag);
+    let _ = tag;
+    let w: a = v;
+    add-int(l, m(w))
+  | Plain(tag) =>
+    let l on tag = length(tag);
+    let _ = tag;
+    l
+  }
+}
+
+define unbox-int(x: boxed(int)) -> int {
+  match x {
+  | Boxed(v) =>
+    v
+  }
+}
+
+define open-wrapped(x: wrapped) -> int {
+  match x {
+  | Wrapped<g>(v, get) =>
+    let w: g(int) = v;
+    get(w)
+  }
+}
+
+define combine-layered(x: layered) -> int {
+  match x {
+  | Layered(u, v, f) =>
+    f(u, v)
+  }
+}
+
+define identity<t>(x: t) -> t {
+  x
+}
+
+define named-in-every-position(s: shown) -> int {
+  match s {
+  | Shown<a>(v, f) =>
+    let relay =
+      function (x: a) -> a {
+        x
+      };
+    define keep(x: a) -> a {
+      x
+    };
+    let w: a = keep(relay(v));
+    let u = identity<a>(w);
+    let c = magic cast(a, a, u);
+    let t = pack-type {a};
+    let _ = t;
+    let n on c = f(c);
+    let _ = c;
+    n
+  }
+}
+
+define named-data-argument(x: tagged(string)) -> int {
+  match x {
+  | Tagged<t, a>(tag, v, m) =>
+    let copied: t = tag;
+    let l on copied = length(copied);
+    let _ = copied;
+    let w: a = v;
+    add-int(l, m(w))
+  | Untagged<_, b>(v, m) =>
+    let w: b = v;
+    m(w)
+  | Plain<t>(tag) =>
+    let copied: t = tag;
+    let l on copied = length(copied);
+    let _ = copied;
+    l
+  }
+}
+
+define named-differently(b: bool, s: shown) -> int {
+  match b, s {
+  | True, Shown<a>(v, f) =>
+    let w: a = v;
+    let n on w = f(w);
+    let _ = w;
+    n
+  | False, Shown<c>(v, f) =>
+    let w: c = v;
+    let n on w = f(w);
+    let _ = w;
+    add-int(n, 1)
+  }
+}
+
+define named-nested(x: nested) -> int {
+  match x {
+  | Nested<a>(Shown<b>(v, f), tag) =>
+    let _: a = tag;
+    let w: b = v;
+    let n on w = f(w);
+    let _ = w;
+    n
+  }
+}
+
+define shared-by-two-paths(b: bool, x: tagged(string)) -> int {
+  match b, x {
+  | True, Plain(tag) =>
+    let l on tag = length(tag);
+    let _ = tag;
+    l
+  | _, Untagged(v, m) =>
+    let w = v;
+    m(w)
+  | False, Plain(tag) =>
+    let _ = tag;
+    0
+  | _, Tagged<_, a>(tag, v, m) =>
+    let w: a = v;
+    let u = w;
+    let _ = tag;
+    m(u)
+  }
+}
+
+define shared-nested(b: bool, x: picked) -> int {
+  match b, x {
+  | True, Picked-Plain(n) =>
+    n
+  | _, Picked-Shown(Shown(v, f)) =>
+    let w = v;
+    let n on w = f(w);
+    let _ = w;
+    n
+  | False, Picked-Plain(_) =>
+    0
+  }
+}
+
+define repeat-wrapped(x: wrapped) -> int {
+  match x {
+  | Wrapped<g>(v, get) =>
+    define first(y: g(int)) -> g(int) {
+      y
+    };
+    define second(y: g(int), n: int) -> g(int) {
+      if eq-int(n, 0) {
+        y
+      } else {
+        second(first(y), sub-int(n, 1))
+      }
+    };
+    get(second(first(v), 3))
+  }
+}
+
+define main() -> unit {
+  let s = shown-string(own("hello"));
+  let a on s = peek(s);
+  print-int-line(a);
+  let b on s = peek-by-tie(s);
+  print-int-line(b);
+  let !t = s;
+  print-int-line(add-int(consume(t), consume(t)));
+  let _ = shown-string(own("dropped"));
+  print-int-line(measure-tagged(Untagged(own("abc"), (x: string) => {
+    let l on x = length(x);
+    let _ = x;
+    l
+  })));
+  print-int-line(measure-tagged(Tagged(own("ab"), own("wxyz"), (x: string) => {
+    let l on x = length(x);
+    let _ = x;
+    l
+  })));
+  print-int-line(measure-tagged(Tagged<string, int>(own("a"), 10, (x) => {
+    x
+  })));
+  print-int-line(measure-tagged(Plain(own("abcdef"))));
+  let !u =
+    Tagged<string, string>(own("xy"), own("z"), (x) => {
+      let l on x = length(x);
+      let _ = x;
+      l
+    });
+  print-int-line(add-int(measure-tagged(u), measure-tagged(u)));
+  print-int-line(combine-layered(Layered(own("ab"), 7, (x: string, n: int) => {
+    let l on x = length(x);
+    let _ = x;
+    add-int(l, n)
+  })));
+  print-int-line(
+    match Shown(own("known"), measure-string) {
+    | Shown(v, f) =>
+      let n on v = f(v);
+      let _ = v;
+      n
+    },
+  );
+  print-int-line(need-actual(Held<int>(3)));
+  print-int-line(open-wrapped(Wrapped(Boxed(8), unbox-int)));
+  let r1 =
+    case from-static-value(static-shown()) {
+    | Shown(v, f) =>
+      f(v)
+    };
+  print-int-line(r1);
+  let r2 =
+    case from-static-value(static-nested()) {
+    | Nested(inner, _) =>
+      case inner {
+      | Shown(v, f) =>
+        f(v)
+      }
+    };
+  print-int-line(r2);
+  print-int-line(named-in-every-position(shown-string(own("hello"))));
+  let !measure =
+    (x: string) => {
+      let l on x = length(x);
+      let _ = x;
+      l
+    };
+  print-int-line(named-data-argument(Tagged(own("abcd"), own("xyz"), measure)));
+  print-int-line(named-differently(True, shown-string(own("ab"))));
+  print-int-line(named-differently(False, shown-string(own("abc"))));
+  print-int-line(named-nested(Nested(shown-string(own("abcde")), True)));
+  print-int-line(shared-by-two-paths(True, Untagged(own("abc"), measure)));
+  print-int-line(shared-by-two-paths(False, Untagged(own("ab"), measure)));
+  print-int-line(shared-by-two-paths(False, Tagged(own("x"), own("abcd"), measure)));
+  print-int-line(shared-by-two-paths(True, Plain(own("abcde"))));
+  print-int-line(shared-nested(True, Picked-Shown(shown-string(own("abc")))));
+  print-int-line(shared-nested(False, Picked-Shown(shown-string(own("ab")))));
+  print-int-line(shared-nested(True, Picked-Plain(7)));
+  print-int-line(shared-nested(False, Picked-Plain(7)));
+  print-int-line(repeat-wrapped(Wrapped(Boxed(21), unbox-int)));
+}

@@ -29,6 +29,7 @@ import Data.Text.Encoding.Error (lenientDecode)
 import Data.Version qualified as V
 import Kernel.Common.Arch qualified as Arch
 import Kernel.Common.Const (envVarHome)
+import Kernel.Common.Handle.Global.Reuse qualified as Reuse
 import Kernel.Common.Module
 import Kernel.Common.OS qualified as O
 import Kernel.Common.Platform qualified as P
@@ -96,8 +97,8 @@ getClangTargetTriple :: Handle -> String
 getClangTargetTriple =
   _clangTargetTriple
 
-new :: Logger.Handle -> P.PlatformSelector -> App Handle
-new loggerHandle selector = do
+new :: Logger.Handle -> Reuse.Handle -> P.PlatformSelector -> App Handle
+new loggerHandle reuseHandle selector = do
   let _selector = selector
   (_arch, _os) <-
     case selector of
@@ -116,7 +117,7 @@ new loggerHandle selector = do
   _toolchainRoot <- resolveToolchainRoot hostArch hostOS
   let _clang = resolveClang _toolchainRoot
   ensureClang _clang
-  _clangDigest <- calculateClangDigest loggerHandle _clang _clangTargetTriple
+  _clangDigest <- calculateClangDigest loggerHandle reuseHandle _clang _clangTargetTriple
   return $ Handle {..}
 
 getArch' :: Maybe Hint -> App Arch.Arch
@@ -287,11 +288,11 @@ invalidMacOSDeploymentTarget :: String -> App a
 invalidMacOSDeploymentTarget deploymentTarget =
   raiseError' $ "Invalid MACOSX_DEPLOYMENT_TARGET: " <> T.pack deploymentTarget
 
-calculateClangDigest :: Logger.Handle -> String -> String -> App T.Text
-calculateClangDigest h clang targetTriple = do
+calculateClangDigest :: Logger.Handle -> Reuse.Handle -> String -> String -> App T.Text
+calculateClangDigest h reuseHandle clang targetTriple = do
   let spec = RunProcess.Spec {cmdspec = RawCommand clang ["--version"], cwd = Nothing}
   let h' = RunProcess.new h
-  output <- liftIO $ RunProcess.run01 h' spec
+  output <- liftIO $ Reuse.rememberClangVersion reuseHandle clang $ RunProcess.run01 h' spec
   case output of
     Right value -> do
       liftIO $ Logger.report h $ "Clang info:\n" <> decodeUtf8 value

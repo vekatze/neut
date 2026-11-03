@@ -1,18 +1,18 @@
 import {
   core::bool.io {print-bool-line},
   core::int.io {print-int, print-int-line},
+  core::memory.unsafe {load-int, store-int},
 }
 
 define my-loop-func(x: int) ->> either(int, bool) {
-  let inner =
-    define loop(n: int) ->> either(int, bool) {
-      if eq-int(n, 0) {
-        Right(True)
-      } else {
-        loop@(sub-int(n, 1))
-      }
-    };
-  inner@(x)
+  define loop(n: int) ->> either(int, bool) {
+    if eq-int(n, 0) {
+      Right(True)
+    } else {
+      loop@(sub-int(n, 1))
+    }
+  };
+  loop@(x)
 }
 
 define foo-tail(x: int, acc: int) -> int {
@@ -93,22 +93,21 @@ define foo-tail-list-of-either(xs: list(either(int, int)), acc: pair(int, int)) 
 }
 
 inline foo-tail-inner-complex(xs: list(int), seed: int) ->> pair(int, int) {
-  let inner =
-    define loop(xs: list(int), acc: pair(int, int)) ->> pair(int, int) {
-      match xs {
-      | Nil =>
-        acc
-      | Cons(y, ys) =>
-        let Pair(left, right) = acc;
-        let _ = print("tick\n");
-        if eq-int(rem-int(y, 2), 0) {
-          loop@(ys, Pair(add-int(left, y), right))
-        } else {
-          loop@(ys, Pair(left, add-int(right, y)))
-        }
+  define loop(xs: list(int), acc: pair(int, int)) ->> pair(int, int) {
+    match xs {
+    | Nil =>
+      acc
+    | Cons(y, ys) =>
+      let Pair(left, right) = acc;
+      let _ = print("tick\n");
+      if eq-int(rem-int(y, 2), 0) {
+        loop@(ys, Pair(add-int(left, y), right))
+      } else {
+        loop@(ys, Pair(left, add-int(right, y)))
       }
-    };
-  inner@(xs, Pair(seed, 0))
+    }
+  };
+  loop@(xs, Pair(seed, 0))
 }
 
 define immediate-step(x: int) -> int {
@@ -190,51 +189,48 @@ define use-boxed-destcall-via-closure-capture(x: int) -> int {
 
 define use-local-nontail-dps-captured-pair(n: int) -> pair(int, int) {
   let !seed = Pair(10, 100);
-  let inner =
-    define loop(x: int) ->> pair(int, int) {
-      let Pair(seed-left, seed-right) = seed;
-      if eq-int(x, 0) {
-        Pair(seed-left, seed-right)
-      } else {
-        let Pair(left, right) = loop@(sub-int(x, 1));
-        Pair(add-int(left, x), add-int(right, seed-right))
-      }
-    };
-  inner@(n)
+  define loop(x: int) ->> pair(int, int) {
+    let Pair(seed-left, seed-right) = seed;
+    if eq-int(x, 0) {
+      Pair(seed-left, seed-right)
+    } else {
+      let Pair(left, right) = loop@(sub-int(x, 1));
+      Pair(add-int(left, x), add-int(right, seed-right))
+    }
+  };
+  loop@(n)
 }
 
 define use-local-nontail-dps-captured-either(n: int) -> int {
   let !tag: either(pair(int, int), pair(int, int)) = Left(Pair(7, 11));
-  let inner =
-    define loop(x: int) -> int {
-      match tag {
-      | Left(seed) =>
-        let Pair(a, b) = seed;
-        if eq-int(x, 0) {
-          add-int(a, b)
-        } else {
-          add-int(a, loop(sub-int(x, 1)))
-        }
-      | Right(seed) =>
-        let Pair(a, b) = seed;
+  define loop(x: int) -> int {
+    match tag {
+    | Left(seed) =>
+      let Pair(a, b) = seed;
+      if eq-int(x, 0) {
         add-int(a, b)
+      } else {
+        add-int(a, loop(sub-int(x, 1)))
       }
-    };
-  inner(n)
+    | Right(seed) =>
+      let Pair(a, b) = seed;
+      add-int(a, b)
+    }
+  };
+  loop(n)
 }
 
 define make-local-pair-dps(!seed: pair(int, int)) -> (int) ->> pair(int, int) {
-  let inner =
-    define loop(x: int) ->> pair(int, int) {
-      let Pair(a, b) = seed;
-      if eq-int(x, 0) {
-        Pair(a, b)
-      } else {
-        let Pair(left, right) = loop@(sub-int(x, 1));
-        Pair(add-int(left, 1), right)
-      }
-    };
-  inner
+  define loop(x: int) ->> pair(int, int) {
+    let Pair(a, b) = seed;
+    if eq-int(x, 0) {
+      Pair(a, b)
+    } else {
+      let Pair(left, right) = loop@(sub-int(x, 1));
+      Pair(add-int(left, 1), right)
+    }
+  };
+  loop
 }
 
 define apply-local-pair-dps(x: int) -> pair(int, int) {
@@ -243,52 +239,49 @@ define apply-local-pair-dps(x: int) -> pair(int, int) {
 }
 
 define local-nontail-with-free(xs: list(int)) -> int {
-  let inner =
-    define loop(xs: list(int)) -> int {
-      match xs {
-      | Nil =>
-        0
-      | Cons(y, ys) =>
-        add-int(y, loop(ys))
-      }
-    };
-  inner(xs)
+  define loop(xs: list(int)) -> int {
+    match xs {
+    | Nil =>
+      0
+    | Cons(y, ys) =>
+      add-int(y, loop(ys))
+    }
+  };
+  loop(xs)
 }
 
 define local-mixed-tailness(xs: list(int)) -> int {
-  let inner =
-    define loop(xs: list(int)) -> int {
-      match xs {
-      | Nil =>
-        0
-      | Cons(y, ys) =>
-        if eq-int(rem-int(y, 2), 0) {
-          loop(ys)
-        } else {
-          add-int(y, loop(ys))
-        }
+  define loop(xs: list(int)) -> int {
+    match xs {
+    | Nil =>
+      0
+    | Cons(y, ys) =>
+      if eq-int(rem-int(y, 2), 0) {
+        loop(ys)
+      } else {
+        add-int(y, loop(ys))
       }
-    };
-  inner(xs)
+    }
+  };
+  loop(xs)
 }
 
 define make-tagged-dps(!tag: either(pair(int, int), pair(int, int))) -> (int) -> int {
-  let inner =
-    define loop(x: int) -> int {
-      if eq-int(x, 0) {
-        match tag {
-        | Left(seed) =>
-          let Pair(a, b) = seed;
-          add-int(a, b)
-        | Right(seed) =>
-          let Pair(a, b) = seed;
-          add-int(a, b)
-        }
-      } else {
-        add-int(1, loop(sub-int(x, 1)))
+  define loop(x: int) -> int {
+    if eq-int(x, 0) {
+      match tag {
+      | Left(seed) =>
+        let Pair(a, b) = seed;
+        add-int(a, b)
+      | Right(seed) =>
+        let Pair(a, b) = seed;
+        add-int(a, b)
       }
-    };
-  inner
+    } else {
+      add-int(1, loop(sub-int(x, 1)))
+    }
+  };
+  loop
 }
 
 define apply-tagged-dps(x: int) -> int {
@@ -321,12 +314,11 @@ define use-poly-id-both() -> int {
 }
 
 define make-poly-boxed-id(!seed: pair(int, int)) -> (pair(int, int)) ->> pair(int, int) {
-  let inner =
-    define _(x: pair(int, int)) ->> pair(int, int) {
-      let Pair(a, b) = seed;
-      let Pair(c, d) = x;
-      Pair(add-int(a, c), add-int(b, d))
-    };
+  define inner(x: pair(int, int)) ->> pair(int, int) {
+    let Pair(a, b) = seed;
+    let Pair(c, d) = x;
+    Pair(add-int(a, c), add-int(b, d))
+  };
   inner
 }
 
@@ -336,20 +328,19 @@ define use-poly-escaped-boxed-id() -> pair(int, int) {
 }
 
 define make-exact-poly-captured-boxed(!tag: either(pair(int, int), pair(int, int))) -> (pair(int, int)) ->> pair(int, int) {
-  let inner =
-    define _(x: pair(int, int)) ->> pair(int, int) {
-      let y = apply-poly-dps(exact id-dps, x);
-      match tag {
-      | Left(seed) =>
-        let Pair(a, b) = seed;
-        let Pair(c, d) = y;
-        Pair(add-int(a, c), add-int(b, d))
-      | Right(seed) =>
-        let Pair(a, b) = seed;
-        let Pair(c, d) = y;
-        Pair(add-int(a, c), add-int(b, d))
-      }
-    };
+  define inner(x: pair(int, int)) ->> pair(int, int) {
+    let y = apply-poly-dps(exact id-dps, x);
+    match tag {
+    | Left(seed) =>
+      let Pair(a, b) = seed;
+      let Pair(c, d) = y;
+      Pair(add-int(a, c), add-int(b, d))
+    | Right(seed) =>
+      let Pair(a, b) = seed;
+      let Pair(c, d) = y;
+      Pair(add-int(a, c), add-int(b, d))
+    }
+  };
   inner
 }
 
@@ -373,23 +364,22 @@ define two-dps(x: int) -> int {
 
 define hard-case(xs: list(int)) -> int {
   let !tag: either(pair(int, int), pair(int, int)) = Left(Pair(2, 3));
-  let inner =
-    define loop(xs: list(int)) -> int {
-      match xs {
-      | Nil =>
-        match tag {
-        | Left(p) =>
-          let Pair(a, b) = p;
-          add-int(a, b)
-        | Right(p) =>
-          let Pair(a, b) = p;
-          add-int(a, b)
-        }
-      | Cons(y, ys) =>
-        add-int(y, loop(ys))
+  define loop(xs: list(int)) -> int {
+    match xs {
+    | Nil =>
+      match tag {
+      | Left(p) =>
+        let Pair(a, b) = p;
+        add-int(a, b)
+      | Right(p) =>
+        let Pair(a, b) = p;
+        add-int(a, b)
       }
-    };
-  inner(xs)
+    | Cons(y, ys) =>
+      add-int(y, loop(ys))
+    }
+  };
+  loop(xs)
 }
 
 define huge-box(x: int) ->> pair(pair(int, int), pair(int, int)) {
@@ -401,6 +391,49 @@ define use-huge-box(x: int) -> int {
   let Pair(a, b) = p1;
   let Pair(c, d) = p2;
   add-int(add-int(a, b), add-int(c, d))
+}
+
+data filled {
+| Nothing-Filled
+| Filled(int, int, int)
+}
+
+define fill(id: int, words: pointer) ->> filled {
+  if eq-int(id, 0) {
+    Nothing-Filled
+  } else {
+    store-int(222, words);
+    Filled(1, 2, 3)
+  }
+}
+
+data words-read {
+| Nothing-Read
+| Words-Read(int)
+}
+
+define read-words-after-dps-in-branch(id: int) ->> words-read {
+  let words = magic alloca(int64, 3);
+  store-int(id, words);
+  if eq-int(id, 1000) {
+    Nothing-Read
+  } else {
+    match fill@(load-int(words), words) {
+    | Filled(_, _, _) =>
+      Words-Read(load-int(words))
+    | Nothing-Filled =>
+      Nothing-Read
+    }
+  }
+}
+
+define use-read-words-after-dps-in-branch(id: int) -> int {
+  match read-words-after-dps-in-branch@(id) {
+  | Words-Read(n) =>
+    n
+  | Nothing-Read =>
+    -1
+  }
 }
 
 define print-either-int-bool(x: either(int, bool)) -> unit {
@@ -497,5 +530,9 @@ define main() -> unit {
   print("hard-case\n");
   print-int-line(hard-case(xs1234));
   print("use-huge-box\n");
-  print-int-line(use-huge-box(5))
+  print-int-line(use-huge-box(5));
+  print("read-words-after-dps-in-branch\n");
+  print-int-line(use-read-words-after-dps-in-branch(2));
+  print-int-line(use-read-words-after-dps-in-branch(0));
+  print-int-line(use-read-words-after-dps-in-branch(1000))
 }

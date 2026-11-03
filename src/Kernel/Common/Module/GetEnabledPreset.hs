@@ -10,16 +10,14 @@ import Data.Bifunctor (second)
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
 import Kernel.Common.CreateGlobalHandle qualified as Global
-import Kernel.Common.Handle.Global.Env qualified as Env
 import Kernel.Common.Handle.Global.Module qualified as Module
 import Kernel.Common.Module
 import Kernel.Common.Module.GetModule qualified as GetModule
 import Language.Common.BaseName qualified as BN
 import Language.Common.ModuleAlias qualified as MA
 
-data Handle = Handle
-  { moduleHandle :: Module.Handle,
-    envHandle :: Env.Handle
+newtype Handle = Handle
+  { moduleHandle :: Module.Handle
   }
 
 new :: Global.Handle -> Handle
@@ -29,8 +27,7 @@ new (Global.Handle {..}) = do
 getEnabledPreset :: Handle -> Module -> App [(T.Text, [BN.BaseName])]
 getEnabledPreset h baseModule = do
   let h' = GetModule.Handle {moduleHandle = moduleHandle h}
-  let mainModule = Env.getMainModule (envHandle h)
-  dependencies <- GetModule.getAllDependencies h' mainModule baseModule
+  dependencies <- GetModule.getAllDependencies h' baseModule
   let aliasPresetInfo = map getAllTopCandidate' dependencies
   let aliasList = getAliasListWithEnabledPresets baseModule
   let aliasPresetMap = constructAliasPresetMap aliasPresetInfo

@@ -96,6 +96,7 @@ data Handle = Handle
     inlineLimit :: Int,
     currentStep :: Int,
     varEnv :: BoundVarEnv,
+    typeAliases :: IntMap.IntMap WT.WeakType,
     specializationTable :: IORef InlineHandle.SpecializationTable,
     pendingSpecializationDefs :: IORef [Stmt.Stmt],
     attributedTypeVars :: IORef (IntMap.IntMap (S.Set VK.TypeAttr)),
@@ -128,6 +129,7 @@ new gensymHandle globalHandle@(Global.Handle {..}) traceConfig (Local.Handle {..
   holeHandle <- Hole.new
   weakTypeHandle <- WeakType.new
   let varEnv = []
+  let typeAliases = IntMap.empty
   let currentStep = 0
   specializationTable <- newIORef mempty
   pendingSpecializationDefs <- newIORef []
@@ -151,7 +153,7 @@ fillType h sub t = do
 
 inline :: Handle -> Hint -> TM.Term -> App TM.Term
 inline h m =
-  inlineDefinition h m True
+  inlineDefinition h m True []
 
 inlineEnv :: Handle -> IO InlineEnv.Env
 inlineEnv h = do
@@ -167,6 +169,7 @@ inlineEnv h = do
         InlineEnv.tropeMap = tropeMap,
         InlineEnv.tagHandle = tagHandle h,
         InlineEnv.dataHandle = dataHandle h,
+        InlineEnv.optDataHandle = optDataHandle h,
         InlineEnv.inlineLimit = inlineLimit h,
         InlineEnv.specializationTable = specializationTable h,
         InlineEnv.pendingSpecializationDefs = pendingSpecializationDefs h,
@@ -175,11 +178,12 @@ inlineEnv h = do
         InlineEnv.traceHandle = Global.termTraceHandle (globalHandle h)
       }
 
-inlineDefinition :: Handle -> Hint -> Bool -> TM.Term -> App TM.Term
-inlineDefinition h m traceEnabled e = do
+inlineDefinition :: Handle -> Hint -> Bool -> [BinderF TM.Type] -> TM.Term -> App TM.Term
+inlineDefinition h m traceEnabled binders e = do
   env <- liftIO $ inlineEnv h
   inlineHandle <- liftIO $ Inline.new env m traceEnabled
-  Inline.inline inlineHandle e
+  let localTypeEnv = TM.insTypeEnv binders (InlineHandle.localTypeEnv inlineHandle)
+  Inline.inline (inlineHandle {InlineHandle.localTypeEnv}) e
 
 inlineBinder :: Handle -> BinderF TM.Type -> App (BinderF TM.Type)
 inlineBinder h (m, k, x, t) = do

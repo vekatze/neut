@@ -92,7 +92,7 @@ getModuleLocation h m moduleID = do
     MID.Base ->
       return $ moduleLocation $ extractModule $ Env.getMainModule $ envHandle h
     _ ->
-      ModuleHandle.getModuleFilePath (Env.getMainModule $ envHandle h) (Just m) moduleID
+      ModuleHandle.getModuleFilePath (moduleHandle h) (Just m) moduleID
 
 resolveModuleAliasIn :: Handle -> Hint -> Module -> ModuleAlias -> App MID.ModuleID
 resolveModuleAliasIn h m baseModule moduleAlias = do
@@ -116,9 +116,8 @@ getModuleByID h m moduleID = do
     MID.Base ->
       raiseError m "The base module cannot be used here"
     _ -> do
-      let mainModule = Env.getMainModule (envHandle h)
       let getModuleHandle = GetModule.Handle {GetModule.moduleHandle = moduleHandle h}
-      GetModule.getModule getModuleHandle mainModule m moduleID (MID.reify moduleID)
+      GetModule.getModule getModuleHandle m moduleID (MID.reify moduleID)
 
 resolveModuleAlias :: Handle -> Hint -> ModuleAlias -> App MID.ModuleID
 resolveModuleAlias h m moduleAlias =

@@ -166,8 +166,8 @@ summarize h stmtList = do
 optimize :: Handle -> LC.Comp -> IO LC.Comp
 optimize h = do
   return . MallocFreeCancel.mallocFreeCancel (baseSize h)
-    >=> FreeMallocCancel.freeMallocCancel FreeMallocCancel.Exact (gensymHandle h)
-    >=> FreeMallocCancel.freeMallocCancel FreeMallocCancel.Compatible (gensymHandle h)
+    >=> FreeMallocCancel.freeMallocCancel FreeMallocCancel.Exact FreeMallocCancel.KeepInPlace (gensymHandle h)
+    >=> FreeMallocCancel.freeMallocCancel FreeMallocCancel.Compatible FreeMallocCancel.SinkIntoBranches (gensymHandle h)
     >=> HoistStackAlloc.hoistStackAlloc (gensymHandle h) (baseSize h)
     >=> return . CoercionCancel.coercionCancel (baseSize h)
     >=> return . DeadLetElim.deadLetElim
@@ -471,6 +471,18 @@ lowerCompPrimitive h codeOp k =
             =<< lowerValueLetCast h castVar byteCountValue lowInt
             =<< return . LC.Let cellVar (LC.Alloc (Right castValue) allocID)
             =<< uncast h resultVar cellValue LT.Pointer rest
+    C.AllocOpaque size -> do
+      (resultVar, resultValue) <- liftIO $ newValueLocal h "result"
+      (cellVar, cellValue) <- liftIO $ newValueLocal h "cell"
+      byteCountVarName <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "size"
+      let byteCountValue = C.VarLocal byteCountVarName
+      (castVar, castValue) <- liftIO $ newValueLocal h "size"
+      let lowInt = LT.PrimNum $ PT.Int $ dataSizeToIntSize (baseSize h)
+      rest <- sendResult k LT.slotLowType resultValue
+      lowerValue h byteCountVarName size
+        =<< lowerValueLetCast h castVar byteCountValue lowInt
+        =<< return . LC.Let cellVar (LC.AllocOpaque castValue)
+        =<< uncast h resultVar cellValue LT.Pointer rest
     C.Realloc ptr size -> do
       (resultVar, resultValue) <- liftIO $ newValueLocal h "result"
       byteCountVarName <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "size"
@@ -515,6 +527,18 @@ lowerCompPrimitive h codeOp k =
           lowerValueLetCast h ptrVar pointer LT.Pointer
             =<< return . LC.Let tmpVar (LC.Load ptrValue valueLowType')
             =<< uncast h resultVar tmp valueLowType' rest
+        LM.Shift pointer offset -> do
+          let byteType = LT.PrimNum $ PT.Int IntSize8
+          let indexType = LT.PrimNum $ PT.Int $ dataSizeToIntSize (baseSize h)
+          (resultVar, resultValue) <- liftIO $ newValueLocal h "result"
+          (shiftedVar, shiftedValue) <- liftIO $ newValueLocal h "shifted"
+          (ptrVar, ptrValue) <- liftIO $ newValueLocal h "ptr"
+          (offsetVar, offsetValue) <- liftIO $ newValueLocal h "offset"
+          rest <- sendResult k LT.slotLowType resultValue
+          lowerValueLetCast h ptrVar pointer LT.Pointer
+            =<< lowerValueLetCast h offsetVar offset indexType
+            =<< return . LC.Let shiftedVar (LC.GetElementPtr (ptrValue, byteType) [(offsetValue, indexType)])
+            =<< uncast h resultVar shiftedValue LT.Pointer rest
         LM.Alloca t size -> do
           let t' = LT.fromBaseLowType t
           let indexType = LT.PrimNum $ PT.Int $ dataSizeToIntSize (baseSize h)

@@ -168,7 +168,7 @@ emitStaticData baseSize (name, members) = do
   let fields = concatMap (emitStaticMember baseSize) members
   "@"
     <> TE.encodeUtf8Builder ("\"" <> name <> "\"")
-    <> " = private unnamed_addr constant <{"
+    <> " = private constant <{"
     <> unwordsC (map fst fields)
     <> "}> <{"
     <> unwordsC (map snd fields)

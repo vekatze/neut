@@ -22,9 +22,8 @@ import Data.Text qualified as T
 import Kernel.Common.Handle.Global.Antecedent qualified as Antecedent
 import Kernel.Common.Handle.Global.Module qualified as ModuleHandle
 import Kernel.Common.Module qualified as M
-import Kernel.Common.Module.GetModule qualified as GetModule
+import Kernel.Common.Module.GetDependency qualified as GetDependency
 import Kernel.Common.Source qualified as Source
-import Kernel.Common.Source.ShiftToLatest qualified as STL
 import Language.Common.Const
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.ModuleAlias qualified as MA
@@ -60,42 +59,36 @@ set h =
 build :: Handle -> App ModulePathMap
 build h = do
   let initialMap = Map.fromList [(MID.Main, []), (MID.Base, ["base"])]
-  let shiftToLatestHandle = STL.new (_antecedentHandle h)
-  build' (_moduleHandle h) shiftToLatestHandle (_mainModule h) initialMap [(M.extractModule (_mainModule h), [])]
+  let getDependencyHandle = GetDependency.new (_moduleHandle h) (_antecedentHandle h)
+  build' getDependencyHandle initialMap [(M.extractModule (_mainModule h), [])]
 
 build' ::
-  ModuleHandle.Handle ->
-  STL.Handle ->
-  M.MainModule ->
+  GetDependency.Handle ->
   ModulePathMap ->
   [(M.Module, ModulePath)] ->
   App ModulePathMap
-build' moduleHandle shiftToLatestHandle mainModule modulePathMap queue = do
+build' getDependencyHandle modulePathMap queue = do
   case queue of
     [] ->
       return modulePathMap
     (currentModule, currentPath) : rest -> do
       (modulePathMap', newQueueItems) <-
         foldM
-          (registerDependency moduleHandle shiftToLatestHandle mainModule currentModule currentPath)
+          (registerDependency getDependencyHandle currentModule currentPath)
           (modulePathMap, [])
           (getSortedDependencyList currentModule)
-      build' moduleHandle shiftToLatestHandle mainModule modulePathMap' (rest <> reverse newQueueItems)
+      build' getDependencyHandle modulePathMap' (rest <> reverse newQueueItems)
 
 registerDependency ::
-  ModuleHandle.Handle ->
-  STL.Handle ->
-  M.MainModule ->
+  GetDependency.Handle ->
   M.Module ->
   ModulePath ->
   (ModulePathMap, [(M.Module, ModulePath)]) ->
   (MA.ModuleAlias, M.Dependency) ->
   App (ModulePathMap, [(M.Module, ModulePath)])
-registerDependency moduleHandle shiftToLatestHandle mainModule currentModule path (modulePathMap, queue) (alias, dependency) = do
-  let moduleID = MID.Library $ M.dependencyDigest dependency
+registerDependency getDependencyHandle currentModule path (modulePathMap, queue) (alias, dependency) = do
   let m = H.newSourceHint $ M.moduleLocation currentModule
-  dependencyModule <- GetModule.getModule (GetModule.Handle {moduleHandle}) mainModule m moduleID (MA.reify alias)
-  childModule <- STL.shiftToLatestModule shiftToLatestHandle dependencyModule
+  childModule <- GetDependency.getDependency getDependencyHandle m alias dependency
   let childModuleID = M.moduleID childModule
   case Map.lookup childModuleID modulePathMap of
     Just _ ->

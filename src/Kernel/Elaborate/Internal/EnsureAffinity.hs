@@ -35,7 +35,7 @@ import Language.Common.LowMagic qualified as LM
 import Language.Common.Magic qualified as M
 import Language.Common.PiKind qualified as PK
 import Language.Common.VarKind qualified as VK
-import Language.Term.FreeVarsWithHints (freeVarsWithHints)
+import Language.Term.FreeVarsWithHints (freeTermVarsWithHints)
 import Language.Term.Term qualified as TM
 import Language.Term.Weaken (weakenType)
 import Language.WeakTerm.Subst (SubstEntry (..))
@@ -152,7 +152,7 @@ analyzeVar h m x = do
             then return []
             else do
               liftIO $ insertRelevantVar x h
-              if VK.isExp varKind
+              if VK.canCopy varKind
                 then return []
                 else do
                   _ :< t <- lookupTypeEnv (varEnv h) m x
@@ -177,7 +177,7 @@ analyze h term = do
           let piType = m :< TM.Pi piKind impArgs expArgs (map fst defaultArgs) codType
           liftIO $ insertRelevantVar x h''
           cs5 <- analyze (extendHandle (mx, VK.normal, x, piType) h'') e
-          css <- forM (S.toList $ freeVarsWithHints term) $ uncurry (analyzeVar h)
+          css <- forM (freeTermVarsWithHints term) $ uncurry (analyzeVar h)
           return $ cs1 ++ cs2 ++ cs3 ++ cs4 ++ cs5 ++ concat css
         LK.Normal _ _ codType -> do
           (cs1, h') <- analyzeBinder h (impArgs ++ expArgs)
@@ -192,8 +192,8 @@ analyze h term = do
       css2 <- mapM (analyze h) expArgs
       css3 <- mapM (analyze h) (catMaybes defaultArgs)
       return $ cs ++ concat css1 ++ concat css2 ++ concat css3
-    _ :< TM.DataIntro _ _ dataArgs consArgs -> do
-      css1 <- mapM (analyzeType $ deactivateExpCheck h) dataArgs
+    _ :< TM.DataIntro _ _ dataArgs consImpArgs consArgs -> do
+      css1 <- mapM (analyzeType $ deactivateExpCheck h) (dataArgs ++ consImpArgs)
       css2 <- mapM (analyze $ deactivateExpCheck h) consArgs
       return $ concat css1 ++ concat css2
     m :< TM.DataElim _ _ oets tree -> do
@@ -217,7 +217,7 @@ analyze h term = do
       (cs, h') <- analyzeLet h $ castSeq ++ [(mxt, e1)] ++ uncastSeq
       cs' <- analyze h' e2
       return $ cs ++ cs'
-    _ :< TM.CodeIntro e -> do
+    _ :< TM.CodeIntro _ e -> do
       analyze h e
     _ :< TM.CodeElim _ e -> do
       analyze h e
@@ -252,6 +252,10 @@ analyze h term = do
             LM.Load _ e -> do
               cs1 <- analyze h e
               return cs1
+            LM.Shift pointer offset -> do
+              cs1 <- analyze h pointer
+              cs2 <- analyze h offset
+              return $ cs1 ++ cs2
             LM.Alloca _ size -> do
               cs1 <- analyze h size
               return cs1
@@ -275,6 +279,10 @@ analyze h term = do
           cs3 <- analyze h size
           return $ cs1 ++ cs2 ++ cs3
         M.Malloc sizeType size -> do
+          cs1 <- analyzeType h sizeType
+          cs2 <- analyze h size
+          return $ cs1 ++ cs2
+        M.MallocOpaque sizeType size -> do
           cs1 <- analyzeType h sizeType
           cs2 <- analyze h size
           return $ cs1 ++ cs2
@@ -308,6 +316,8 @@ analyze h term = do
           cs2 <- analyze h fallback
           cs3 <- analyze h clauses
           return $ cs1 ++ cs2 ++ cs3
+        M.FreeVariables _ code -> do
+          analyze h code
         M.CompileError msg -> do
           analyze h msg
         M.GetOriginFileName ->

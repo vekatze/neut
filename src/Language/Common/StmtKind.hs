@@ -34,7 +34,7 @@ data BaseStmtKindTerm name binder t
   | Macro
   | MacroInline
   | Main t
-  | DataIntro name [binder] [binder] D.Discriminant
+  | DataIntro name [binder] [binder] [binder] D.Discriminant
   deriving (Generic)
 
 data BaseStmtKindType binder

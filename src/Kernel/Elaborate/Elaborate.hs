@@ -156,7 +156,7 @@ elaborate h t logs cacheOrStmt = do
 saveLocationTree :: Handle -> Target -> App ()
 saveLocationTree h t = do
   tmap <- liftIO $ Tag.get (tagHandle h)
-  Cache.saveLocationCache (pathHandle h) t (currentSource h) $ Cache.LocationCache tmap
+  Cache.saveLocationCache (pathHandle h) t (currentSource h) (cacheTimeStamp h) $ Cache.LocationCache tmap
 
 analyzeStmtList :: Handle -> [WeakStmt] -> App [WeakStmt]
 analyzeStmtList h stmtList = do
@@ -314,7 +314,7 @@ elaborateStmt h stmt = do
       (impArgs'', defaultArgs'', expArgs'', codType'', e'') <- withFreshSpecializationTable h $ do
         e'' <-
           if not $ SK.isMacroStmtKind stmtKind
-            then inlineDefinition h m (shouldTraceDefinition mDefKind || usesEmbed) e'
+            then inlineDefinition h m (shouldTraceDefinition mDefKind || usesEmbed) (impArgs' ++ expArgs' ++ map fst defaultArgs') e'
             else return e'
         impArgs'' <- mapM (inlineBinder h) impArgs'
         defaultArgs'' <- forM defaultArgs' $ \(binder, value) -> do
@@ -504,6 +504,12 @@ obligationErrorMessage attr site message =
     InlineField ->
       "An inline field cannot have " <> message <> "."
 
+declareTypeAttrs :: Handle -> VK.VarKind -> Ident -> App ()
+declareTypeAttrs h k x = do
+  let attrs = S.unions $ map VK.attrClosure $ VK.attrList k
+  unless (S.null attrs) $
+    liftIO $ modifyIORef' (attributedTypeVars h) $ IntMap.insertWith S.union (Ident.toInt x) attrs
+
 hasTypeAttr :: Handle -> VK.TypeAttr -> Ident -> App Bool
 hasTypeAttr h attr x = do
   attrMap <- liftIO $ readIORef (attributedTypeVars h)
@@ -529,8 +535,10 @@ checkActualityType h dataNameSet m t = do
           | S.member dataName dataNameSet ->
               return $ Right ()
           | otherwise -> do
-              dataConsArgsList <- TypeUtil.getConsArgTypes h m dataName dataArgs
-              let consArgTypes = map (\(_, _, _, consArg) -> consArg) $ concat dataConsArgsList
+              consInfoList <- TypeUtil.getConsArgTypes h m dataName dataArgs
+              forM_ (concatMap DI.consImpArgs consInfoList) $ \(_, k, x, _) ->
+                declareTypeAttrs h k x
+              let consArgTypes = map (\(_, _, _, consArg) -> consArg) $ concatMap DI.consArgs consInfoList
               checkActualityTypeList h dataNameSet' m consArgTypes
     _ :< TM.Box tInner ->
       checkActualityType h dataNameSet m tInner
@@ -693,10 +701,11 @@ elaborateStmtKindTerm h stmtKind =
     SK.Main t -> do
       t' <- elaborateType h t
       return $ SK.Main t'
-    SK.DataIntro dataName dataArgs expConsArgs discriminant -> do
+    SK.DataIntro dataName dataArgs consImpArgs expConsArgs discriminant -> do
       dataArgs' <- mapM (elaborateWeakBinder h) dataArgs
+      consImpArgs' <- mapM (elaborateWeakBinder h) consImpArgs
       expConsArgs' <- mapM (elaborateWeakBinder h) expConsArgs
-      return $ SK.DataIntro dataName dataArgs' expConsArgs' discriminant
+      return $ SK.DataIntro dataName dataArgs' consImpArgs' expConsArgs' discriminant
 
 elaborateStmtKindType :: Handle -> SK.StmtKindType WT.WeakType -> App (SK.StmtKindType TM.Type)
 elaborateStmtKindType h stmtKind =
@@ -709,11 +718,13 @@ elaborateStmtKindType h stmtKind =
       dataArgs' <- mapM (elaborateWeakBinder h) dataArgs
       dataArgs'' <- mapM (inlineBinder h) dataArgs'
       consInfoList' <- forM consInfoList $ \(savedHint, consInfo) -> do
+        consImpArgs' <- mapM (elaborateWeakBinder h) (DI.consImpArgs consInfo)
+        consImpArgs'' <- mapM (inlineBinder h) consImpArgs'
         consArgs' <- mapM (elaborateWeakBinder h) (DI.consArgs consInfo)
         consArgs'' <- mapM (inlineBinder h) consArgs'
         layouts <- forM (zip (DI.consArgHints consInfo) consArgs'') $ \(hint, binder) -> do
           resolveFieldLayout h hint binder
-        return (savedHint, consInfo {DI.consArgs = consArgs'', DI.consArgLayouts = layouts})
+        return (savedHint, consInfo {DI.consImpArgs = consImpArgs'', DI.consArgs = consArgs'', DI.consArgLayouts = layouts})
       return $ SK.Data dataName dataArgs'' consInfoList' isNominal
 
 resolveFieldLayout :: Handle -> DI.FieldHint -> BinderF TM.Type -> App CL.FieldStorage
@@ -903,10 +914,11 @@ elaborate' h term = do
       return $ m :< TM.PiElim noTrace conv e' impArgs'' expArgs' defaultArgs'
     m :< WT.PiElimExact {} -> do
       raiseCritical m "Scene.Elaborate.elaborate': found a remaining `exact`"
-    m :< WT.DataIntro attr consName dataArgs consArgs -> do
+    m :< WT.DataIntro attr consName dataArgs consImpArgs consArgs -> do
       dataArgs' <- mapM (elaborateType h) dataArgs
+      consImpArgs' <- mapM (elaborateType h) consImpArgs
       consArgs' <- mapM (elaborate' h) consArgs
-      return $ m :< TM.DataIntro attr consName dataArgs' consArgs'
+      return $ m :< TM.DataIntro attr consName dataArgs' consImpArgs' consArgs'
     m :< WT.DataElim isNoetic oets tree -> do
       let (os, es, ts) = unzip3 oets
       es' <- mapM (elaborate' h) es
@@ -943,9 +955,9 @@ elaborate' h term = do
       uncastSeq' <- mapM (elaborateLet h) uncastSeq
       e2' <- elaborate' h e2
       return $ m :< TM.BoxElim noTrace castSeq' mxt' e1' uncastSeq' e2'
-    m :< WT.CodeIntro e -> do
+    m :< WT.CodeIntro codeVariant e -> do
       e' <- elaborate' h e
-      return $ m :< TM.CodeIntro e'
+      return $ m :< TM.CodeIntro codeVariant e'
     m :< WT.CodeElim e -> do
       e' <- elaborate' h e
       return $ m :< TM.CodeElim noTrace e'
@@ -961,6 +973,8 @@ elaborate' h term = do
       t' <- reduceWeakType h t >>= elaborateType h
       e2' <- elaborate' h e2
       return $ m :< TM.Let (mx, k, x, t') e1' e2'
+    m :< WT.LetType {} ->
+      raiseCritical m "Scene.Elaborate.elaborate': found a type binding that inference should have removed"
     m :< WT.Invoke tropeNames body -> do
       body' <- elaborate' h body
       return $ m :< TM.Invoke tropeNames body'
@@ -999,6 +1013,10 @@ elaborate' h term = do
               t' <- strictify h t
               pointer' <- elaborate' h pointer
               return $ m :< TM.Magic noTrace (M.LowMagic $ LM.Load t' pointer')
+            LM.Shift pointer offset -> do
+              pointer' <- elaborate' h pointer
+              offset' <- elaborate' h offset
+              return $ m :< TM.Magic noTrace (M.LowMagic $ LM.Shift pointer' offset')
             LM.Alloca t size -> do
               t' <- strictify h t
               size' <- elaborate' h size
@@ -1024,6 +1042,10 @@ elaborate' h term = do
           sizeType' <- elaborateType h sizeType
           size' <- elaborate' h size
           return $ m :< TM.Magic noTrace (M.Malloc sizeType' size')
+        M.MallocOpaque sizeType size -> do
+          sizeType' <- elaborateType h sizeType
+          size' <- elaborate' h size
+          return $ m :< TM.Magic noTrace (M.MallocOpaque sizeType' size')
         M.Realloc sizeType ptr size -> do
           sizeType' <- elaborateType h sizeType
           ptr' <- elaborate' h ptr
@@ -1056,6 +1078,9 @@ elaborate' h term = do
           fallback' <- elaborate' h fallback
           clauses' <- elaborate' h clauses
           return $ m :< TM.Magic noTrace (M.MakeSwitch mid key' fallback' clauses')
+        M.FreeVariables mid code -> do
+          code' <- elaborate' h code
+          return $ m :< TM.Magic noTrace (M.FreeVariables mid code')
         M.CompileError msg -> do
           msg' <- elaborate' h msg
           return $ m :< TM.Magic noTrace (M.CompileError msg')
@@ -1433,6 +1458,7 @@ elaborateClause h mOrig cursor cursorType ctx decisionCase = do
       let (dataTerms, dataTypes) = unzip dataArgs
       dataTerms' <- mapM (elaborateType h) dataTerms
       dataTypes' <- mapM (elaborateType h) dataTypes
+      consImpArgs' <- mapM (elaborateWeakBinder h) consImpArgs
       consArgs' <- mapM (elaborateWeakBinder h) consArgs
       let consArgIdents = map (\(_, _, x, _) -> x) consArgs
       let consContext = (cursor, (Just consDD, isConstLike, consArgIdents))
@@ -1441,6 +1467,7 @@ elaborateClause h mOrig cursor cursorType ctx decisionCase = do
         DT.ConsCase
           record
             { DT.dataArgs = zip dataTerms' dataTypes',
+              DT.consImpArgs = consImpArgs',
               DT.consArgs = consArgs',
               DT.cont = cont'
             }

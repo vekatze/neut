@@ -1,0 +1,7 @@
+import {
+  this::key-callee {add-key},
+}
+
+define add-key-to(x: int) -> int {
+  add-key(100)[k := x]
+}

@@ -110,7 +110,7 @@ data Handle = Handle
     typeDefHandle :: TypeDef.Handle,
     importedTypeDefCacheHandle :: ImportedTypeDefCache.Handle,
     dataSize :: DS.DataSize,
-    closureNameSupplyRef :: IORef (Map.HashMap DD.DefiniteDescription Int),
+    localNameSupplyRef :: IORef (Map.HashMap DD.DefiniteDescription Int),
     traceConfig :: Trace.Config,
     loggerHandle :: Logger.Handle
   }
@@ -143,7 +143,7 @@ new gensymHandle (Global.Handle {..}) traceConfig = do
   let utilityHandle = Utility.new gensymHandle compSubstHandle auxEnvHandle
   let linearizeHandle = Linearize.new gensymHandle utilityHandle
   let sigmaHandle = Sigma.new gensymHandle linearizeHandle utilityHandle dataSize
-  closureNameSupplyRef <- newIORef Map.empty
+  localNameSupplyRef <- newIORef Map.empty
   return $ Handle {..}
 
 newReduceOnlyHandle :: Handle -> IO Handle
@@ -172,7 +172,7 @@ newReduceOnlyHandle h = do
         typeDefHandle = typeDefHandle h,
         importedTypeDefCacheHandle = importedTypeDefCacheHandle h,
         dataSize = dataSize h,
-        closureNameSupplyRef = closureNameSupplyRef h,
+        localNameSupplyRef = localNameSupplyRef h,
         traceConfig = traceConfig h,
         loggerHandle = loggerHandle h
       }
@@ -319,34 +319,23 @@ clarifyImportedTypeDef h name typeDefInfo = do
       typeDefInfo' <- liftIO $ refreshTypeDefInfo h typeDefInfo
       clarifyAliasTypeDef h name typeDefInfo'
 
-refreshBinderList :: Handle -> Subst.Subst -> [BinderF TM.Type] -> IO ([BinderF TM.Type], Subst.Subst)
-refreshBinderList h sub xts =
-  case xts of
-    [] ->
-      return ([], sub)
-    (m, k, x, t) : rest -> do
-      t' <- Subst.substType (substHandle h) sub t
-      x' <- Gensym.newIdentFromIdent (gensymHandle h) x
-      let sub' = IntMap.insert (Ident.toInt x) (Subst.Var x') sub
-      (rest', sub'') <- refreshBinderList h sub' rest
-      return ((m, k, x', t') : rest', sub'')
-
 refreshTypeDefInfo :: Handle -> TypeDef.TypeDefInfo -> IO TypeDef.TypeDefInfo
 refreshTypeDefInfo h typeDefInfo = do
-  (binders', sub) <- refreshBinderList h IntMap.empty (TypeDef.typeDefBinders typeDefInfo)
+  (binders', sub) <- Subst.refreshBinders (substHandle h) IntMap.empty (TypeDef.typeDefBinders typeDefInfo)
   body' <- Subst.substType (substHandle h) sub (TypeDef.typeDefBody typeDefInfo)
   return typeDefInfo {TypeDef.typeDefBinders = binders', TypeDef.typeDefBody = body'}
 
 refreshDataInfo :: Handle -> DI.DataInfo (BinderF TM.Type) -> IO (DI.DataInfo (BinderF TM.Type))
 refreshDataInfo h dataInfo = do
-  (dataArgs', sub) <- refreshBinderList h IntMap.empty (DI.dataArgs dataInfo)
+  (dataArgs', sub) <- Subst.refreshBinders (substHandle h) IntMap.empty (DI.dataArgs dataInfo)
   consInfoList' <- mapM (refreshConsInfo h sub) (DI.consInfoList dataInfo)
   return dataInfo {DI.dataArgs = dataArgs', DI.consInfoList = consInfoList'}
 
 refreshConsInfo :: Handle -> Subst.Subst -> DI.ConsInfo (BinderF TM.Type) -> IO (DI.ConsInfo (BinderF TM.Type))
 refreshConsInfo h sub consInfo = do
-  (consArgs', _) <- refreshBinderList h sub (DI.consArgs consInfo)
-  return consInfo {DI.consArgs = consArgs'}
+  (consImpArgs', sub') <- Subst.refreshBinders (substHandle h) sub (DI.consImpArgs consInfo)
+  (consArgs', _) <- Subst.refreshBinders (substHandle h) sub' (DI.consArgs consInfo)
+  return consInfo {DI.consImpArgs = consImpArgs', DI.consArgs = consArgs'}
 
 clarifyAliasTypeDef :: Handle -> DD.DefiniteDescription -> TypeDef.TypeDefInfo -> App C.CompStmt
 clarifyAliasTypeDef h name typeDefInfo = do
@@ -698,7 +687,7 @@ clarifyTerm h context term =
         _ -> do
           e' <- clarifyTerm h context e
           liftIO $ callClosure h conv' e' impArgs' (zip expConventions expArgs') (zip defaultConventions defaultArgs')
-    m :< TM.DataIntro (AttrDI.Attr {..}) consName dataArgs consArgs -> do
+    m :< TM.DataIntro (AttrDI.Attr {..}) consName dataArgs consImpArgs consArgs -> do
       od <- liftIO $ OptimizableData.lookup (optDataHandle h) consName
       case od of
         Just OD.Enum ->
@@ -709,7 +698,7 @@ clarifyTerm h context term =
           | otherwise ->
               raiseCritical m "Found a malformed unary data in Scene.Clarify.clarifyTerm"
         _ -> do
-          (zs1, es1, xs1) <- unzip3 <$> mapM (clarifyTypePlus h context) dataArgs
+          (zs1, es1, xs1) <- unzip3 <$> mapM (clarifyTypePlus h context) (dataArgs ++ consImpArgs)
           (zs2, es2, xs2) <- unzip3 <$> mapM (clarifyPlus h context) consArgs
           dataInfo <- lookupDataEntry h m dataName
           consInfo <- getConsInfoByDiscriminant h m discriminant (DI.consInfoList dataInfo)
@@ -719,8 +708,8 @@ clarifyTerm h context term =
           when (length fieldStorageList /= length xs2) $
             raiseCritical m "Found a constructor layout arity mismatch"
           let headerEntries = discriminantEntries shape discriminant
-          let dataArgEntries = map (DI.dataArgStorage,) xs1
-          let entries = headerEntries ++ dataArgEntries ++ zip fieldStorageList xs2
+          let typeArgEntries = map (DI.dataArgStorage,) xs1
+          let entries = headerEntries ++ typeArgEntries ++ zip fieldStorageList xs2
           packedBody <- liftIO $ Sigma.introCell (sigmaHandle h) layout entries
           return $
             Utility.bindLet (zip zs1 es1 ++ zip zs2 es2) packedBody
@@ -740,7 +729,7 @@ clarifyTerm h context term =
       let opaqueLetSeq = map (\(mxt', e) -> (False, mxt', e)) castSeq
       let clearLetSeq = (True, mxt, e1) : map (\(mxt', e) -> (True, mxt', e)) uncastSeq
       clarifyLetSeq h context (opaqueLetSeq ++ clearLetSeq) e2
-    _ :< TM.CodeIntro e -> do
+    _ :< TM.CodeIntro _ e -> do
       clarifyTerm h context e
     _ :< TM.CodeElim _ e -> do
       clarifyTerm h context e
@@ -864,7 +853,7 @@ clarifyLetBody h context isReducible mxt@(_, _, x, _) e1 e2 = do
 type Size =
   Int
 
-type DataArgsMap = IntMap.IntMap ([(Ident, TM.Type)], Size)
+type TypeArgsMap = IntMap.IntMap ([(Ident, TM.Type)], Size)
 
 fieldStoragesOfConsInfo ::
   Handle ->
@@ -879,7 +868,7 @@ fieldStoragesOfConsInfo h context consInfo = do
 clarifyStaticValue :: Handle -> Context -> TM.Term -> App C.Value
 clarifyStaticValue h context term =
   case term of
-    m :< TM.DataIntro (AttrDI.Attr {..}) consName dataArgs consArgs -> do
+    m :< TM.DataIntro (AttrDI.Attr {..}) consName dataArgs consImpArgs consArgs -> do
       od <- liftIO $ OptimizableData.lookup (optDataHandle h) consName
       case od of
         Just OD.Enum ->
@@ -890,7 +879,7 @@ clarifyStaticValue h context term =
           | otherwise ->
               raiseCritical m "Found a malformed unary data in Clarify.clarifyStaticValue"
         _ -> do
-          dataArgSlots <- mapM (staticTypeRep h) dataArgs
+          typeArgSlots <- mapM (staticTypeRep h context) (dataArgs ++ consImpArgs)
           consArgSlots <- mapM (clarifyStaticValue h context) consArgs
           dataInfo <- lookupDataEntry h m dataName
           consInfo <- getConsInfoByDiscriminant h m discriminant (DI.consInfoList dataInfo)
@@ -899,8 +888,8 @@ clarifyStaticValue h context term =
             raiseCritical m "Found a constructor layout arity mismatch"
           let shape = DI.cellShape (dataSize h) dataInfo
           let headerEntries = discriminantEntries shape discriminant
-          let dataArgEntries = map (DI.dataArgStorage,) dataArgSlots
-          staticCell h m (DI.shapeByteSize shape) $ headerEntries ++ dataArgEntries ++ zip fieldStorageList consArgSlots
+          let typeArgEntries = map (DI.dataArgStorage,) typeArgSlots
+          staticCell h m (DI.shapeByteSize shape) $ headerEntries ++ typeArgEntries ++ zip fieldStorageList consArgSlots
     m :< TM.PiIntro {} ->
       clarifyStaticClosure h context m term
     m :< TM.VarGlobal {} ->
@@ -909,7 +898,7 @@ clarifyStaticValue h context term =
       clarifyStaticValue h context e
     _ :< TM.EmbedIntro e ->
       clarifyStaticValue h context e
-    _ :< TM.CodeIntro e ->
+    _ :< TM.CodeIntro _ e ->
       clarifyStaticValue h context e
     _ :< TM.CodeElim _ e ->
       clarifyStaticValue h context e
@@ -918,7 +907,7 @@ clarifyStaticValue h context term =
     _ :< TM.Magic _ (M.LowMagic (LM.OpaqueValue e)) ->
       clarifyStaticValue h context e
     _ :< TM.TauIntro ty ->
-      staticTypeRep h ty
+      staticTypeRep h context ty
     m :< TM.Prim primValue ->
       case primValue of
         PV.Int _ size l ->
@@ -941,8 +930,11 @@ clarifyStaticValue h context term =
       raiseNonStaticValue m
 
 clarifyStaticClosure :: Handle -> Context -> Hint -> TM.Term -> App C.Value
-clarifyStaticClosure h context m term = do
-  closure <- clarifyTerm h context term
+clarifyStaticClosure h context m term =
+  clarifyTerm h context term >>= staticClosureOf h m
+
+staticClosureOf :: Handle -> Hint -> C.Comp -> App C.Value
+staticClosureOf h m closure =
   case closure of
     C.UpIntro (C.SigmaIntro layout slots) -> do
       slots' <- mapM (staticSlotOf m) slots
@@ -1001,8 +993,8 @@ discriminantEntries shape discriminant =
     Just width ->
       [(CL.StoredDirect width, C.Int slotIntSize (D.reify discriminant))]
 
-staticTypeRep :: Handle -> TM.Type -> App C.Value
-staticTypeRep h ty =
+staticTypeRep :: Handle -> Context -> TM.Type -> App C.Value
+staticTypeRep h context ty =
   case ty of
     _ :< TM.Tau ->
       return Sigma.immediateS4
@@ -1015,25 +1007,42 @@ staticTypeRep h ty =
           return Sigma.immediateS4
         Just OD.Unary -> do
           specializedArgType <- specializeUnaryDataType h m name dataArgs
-          staticTypeRep h specializedArgType
+          staticTypeRep h context specializedArgType
         _ ->
           return $ C.VarGlobal (DD.getFormDD name) AN.argNumS4 (FCT.Cod BLT.Pointer)
     _ :< TM.Box t ->
-      staticTypeRep h t
+      staticTypeRep h context t
     _ :< TM.BoxNoema {} ->
       return Sigma.immediateS4
     _ :< TM.Embed {} ->
       return Sigma.immediateS4
     _ :< TM.Code t ->
-      staticTypeRep h t
+      staticTypeRep h context t
     _ :< TM.PrimType {} ->
       return Sigma.immediateS4
     _ :< TM.Void ->
       return Sigma.immediateS4
     _ :< TM.Resource dd resourceID ->
       return $ C.VarGlobal (DD.makeResourceName dd resourceID) AN.argNumS4 (FCT.Cod BLT.Pointer)
-    m :< _ ->
-      raiseCritical m "Found an unevaluated type inside an embedded value"
+    m :< TM.TVarGlobal {} ->
+      clarifyType h context ty >>= staticClosureOf h m
+    _ :< TM.TyApp {} ->
+      registerTypeStub h context ty
+    m :< TM.TVar {} ->
+      raiseCritical m "Found a type variable inside an embedded value"
+
+registerTypeStub :: Handle -> Context -> TM.Type -> App C.Value
+registerTypeStub h context ty = do
+  stubID <- liftIO $ freshLocalNameID h (currentFunction context)
+  let name = DD.appendText (currentFunction context) ("#type-stub." <> T.pack (show stubID))
+  typeValue <- clarifyType h context ty
+  (switchName, switchVar) <- liftIO $ Gensym.createVar (gensymHandle h) "switch"
+  (argName, argVar) <- liftIO $ Gensym.createVar (gensymHandle h) "arg"
+  (extraName, extraVar) <- liftIO $ Gensym.createVar (gensymHandle h) "extra"
+  (typeName, typeVar) <- liftIO $ Gensym.createVar (gensymHandle h) "type"
+  let body = C.UpElim True typeName typeValue (C.PiElimDownElim False typeVar [switchVar, argVar, extraVar])
+  liftIO $ AuxEnv.insert (auxEnvHandle h) name (C.Def name O.Opaque [switchName, argName, extraName] body)
+  return $ C.VarGlobal name AN.argNumS4 (FCT.Cod BLT.Pointer)
 
 newStaticDataLabel :: Handle -> IO T.Text
 newStaticDataLabel h = do
@@ -1096,14 +1105,15 @@ clarifyDataClause ::
   DI.ConsInfo (BinderF TM.Type) ->
   App Sigma.DataConstructorInfo
 clarifyDataClause h context shape dataArgsVal consInfo = do
-  dataArgs' <- dropFst <$> clarifyBinder h context dataArgsVal
-  let context' = extendContext dataArgsVal context
+  let typeArgs = dataArgsVal ++ DI.consImpArgs consInfo
+  typeArgs' <- dropFst <$> clarifyBinder h context typeArgs
+  let context' = extendContext typeArgs context
   fieldStorages <- fieldStoragesOfConsInfo h context' consInfo
   let consArgs' = zip (map (\(_, _, x, _) -> x) (DI.consArgs consInfo)) fieldStorages
   return $
     Sigma.DataConstructorInfo
       { Sigma.discriminant = DI.discriminant consInfo,
-        Sigma.dataArgs = dataArgs',
+        Sigma.typeArgs = typeArgs',
         Sigma.consArgs = consArgs',
         Sigma.cellLayout = DI.consLayout shape consInfo
       }
@@ -1112,10 +1122,10 @@ clarifyDecisionTree ::
   Handle ->
   Context ->
   N.IsNoetic ->
-  DataArgsMap ->
+  TypeArgsMap ->
   DT.DecisionTree TM.Type TM.Term ->
   App (C.Comp, [BinderF TM.Type])
-clarifyDecisionTree h context isNoetic dataArgsMap tree =
+clarifyDecisionTree h context isNoetic typeArgsMap tree =
   case tree of
     DT.Leaf consumedCursorList letSeq cont@(m :< _) -> do
       let chain = TM.chainOfDecisionTree (typeEnv context) m tree
@@ -1123,13 +1133,13 @@ clarifyDecisionTree h context isNoetic dataArgsMap tree =
       if isNoetic
         then return (cont', chain)
         else do
-          (cont'', dataChain) <- tidyCursorList h context dataArgsMap consumedCursorList cont'
+          (cont'', dataChain) <- tidyCursorList h context typeArgsMap consumedCursorList cont'
           return (cont'', dataChain ++ chain)
     DT.Unreachable -> do
       return (C.Unreachable, [])
     DT.Switch (cursor, cursorType@(m :< _)) (fallbackClause, clauseList) -> do
-      (fallbackClause', fallbackChain) <- clarifyDecisionTree h context isNoetic dataArgsMap fallbackClause
-      tmp <- mapM (clarifyCase h context isNoetic dataArgsMap cursor cursorType) clauseList
+      (fallbackClause', fallbackChain) <- clarifyDecisionTree h context isNoetic typeArgsMap fallbackClause
+      tmp <- mapM (clarifyCase h context isNoetic typeArgsMap cursor cursorType) clauseList
       let (enumCaseList, clauseList', clauseChainList) = unzip3 tmp
       let chain = filter (\(_, _, x, _) -> x /= cursor) $ nubFreeVariables $ fallbackChain ++ concat clauseChainList
       let aligner = alignFreeVariable h context chain
@@ -1244,37 +1254,37 @@ specializeUnaryDataType h m dataName dataArgs = do
     _ ->
       raiseCritical m $ "Found a broken unary data metadata for `" <> DD.reify dataName <> "`"
 
-tidyCursorList :: Handle -> Context -> DataArgsMap -> [Ident] -> C.Comp -> App (C.Comp, [BinderF TM.Type])
-tidyCursorList h context dataArgsMap consumedCursorList cont =
+tidyCursorList :: Handle -> Context -> TypeArgsMap -> [Ident] -> C.Comp -> App (C.Comp, [BinderF TM.Type])
+tidyCursorList h context typeArgsMap consumedCursorList cont =
   case consumedCursorList of
     [] ->
       return (cont, [])
     cursor : rest -> do
-      case IntMap.lookup (Ident.toInt cursor) dataArgsMap of
+      case IntMap.lookup (Ident.toInt cursor) typeArgsMap of
         Nothing ->
           error "tidyCursor"
-        Just (dataArgs, cursorSize) -> do
-          let (dataArgVars, dataTypes) = unzip dataArgs
-          dataTypes' <- mapM (clarifyType h context) dataTypes
-          (cont', chain) <- tidyCursorList h context dataArgsMap rest cont
-          tmp <- liftIO $ Linearize.linearizeUser (linearizeHandle h) (zip dataArgVars dataTypes') $ do
+        Just (typeArgs, cursorSize) -> do
+          let (typeArgVars, typeArgTypes) = unzip typeArgs
+          typeArgTypes' <- mapM (clarifyType h context) typeArgTypes
+          (cont', chain) <- tidyCursorList h context typeArgsMap rest cont
+          tmp <- liftIO $ Linearize.linearizeUser (linearizeHandle h) (zip typeArgVars typeArgTypes') $ do
             C.Free (C.VarLocal cursor) (Just cursorSize) cont'
-          let newChain = zipWith (\x t@(m :< _) -> (m, VK.normal, x, t)) dataArgVars dataTypes
+          let newChain = zipWith (\x t@(m :< _) -> (m, VK.normal, x, t)) typeArgVars typeArgTypes
           return (tmp, newChain ++ chain)
 
 clarifyCase ::
   Handle ->
   Context ->
   N.IsNoetic ->
-  DataArgsMap ->
+  TypeArgsMap ->
   Ident ->
   TM.Type ->
   DT.Case TM.Type TM.Term ->
   App (EC.EnumCase, C.Comp, [BinderF TM.Type])
-clarifyCase h context isNoetic dataArgsMap cursor cursorType decisionCase = do
+clarifyCase h context isNoetic typeArgsMap cursor cursorType decisionCase = do
   case decisionCase of
     DT.LiteralCase _ l cont -> do
-      (body', contChain) <- clarifyDecisionTree h context isNoetic dataArgsMap cont
+      (body', contChain) <- clarifyDecisionTree h context isNoetic typeArgsMap cont
       case l of
         L.Int i ->
           return (EC.Int i, body', contChain)
@@ -1283,13 +1293,16 @@ clarifyCase h context isNoetic dataArgsMap cursor cursorType decisionCase = do
     DT.ConsCase (DT.ConsCaseRecord {..}) -> do
       let (_, dataTypes) = unzip dataArgs
       dataArgVars <- liftIO $ mapM (const $ Gensym.newIdentFromText (gensymHandle h) "dataArg") dataTypes
+      let consImpVars = map (\(_, _, x, _) -> x) consImpArgs
+      let typeArgEntries = zip dataArgVars dataTypes ++ map (\(_, _, x, t) -> (x, t)) consImpArgs
+      let typeArgVars = dataArgVars ++ consImpVars
       cursorSize <- getDataCellByteSizeFromType h cursorType
-      let dataArgsMap' = IntMap.insert (Ident.toInt cursor) (zip dataArgVars dataTypes, cursorSize) dataArgsMap
+      let typeArgsMap' = IntMap.insert (Ident.toInt cursor) (typeArgEntries, cursorSize) typeArgsMap
       let consArgs' = map (\(m, k, x, _) -> (m, k, x, m :< TM.Tau)) consArgs
       let prefixChain = TM.chainOfCaseWithoutCont (typeEnv context) decisionCase
-      (body', contChain) <- clarifyDecisionTree h (extendContext consArgs' context) isNoetic dataArgsMap' cont
+      (body', contChain) <- clarifyDecisionTree h (extendContext (consImpArgs ++ consArgs') context) isNoetic typeArgsMap' cont
       let consArgVars = map (\(_, _, x, _) -> x) consArgs
-      let argVars = dataArgVars ++ consArgVars
+      let argVars = typeArgVars ++ consArgVars
       let contChain' = filter (\(_, _, x, _) -> x `notElem` argVars) contChain
       let chain = prefixChain ++ contChain'
       od <- liftIO $ OptimizableData.lookup (optDataHandle h) consDD
@@ -1324,11 +1337,11 @@ clarifyCase h context isNoetic dataArgsMap cursor cursorType decisionCase = do
                 return [discriminantVar]
           if isNoetic
             then do
-              let firstFieldStart = length headerVars + length dataArgVars
+              let firstFieldStart = length headerVars + length typeArgVars
               bindFields <- liftIO $ Sigma.bindFieldsInPlace (sigmaHandle h) (C.VarLocal cursor) layout firstFieldStart fieldEntries body'
               return
                 ( EC.Int (D.reify disc),
-                  C.SigmaElim False 0 layout (headerVars ++ dataArgVars) (C.VarLocal cursor) bindFields,
+                  C.SigmaElim False 0 layout (headerVars ++ typeArgVars) (C.VarLocal cursor) bindFields,
                   chain
                 )
             else do
@@ -1337,7 +1350,7 @@ clarifyCase h context isNoetic dataArgsMap cursor cursorType decisionCase = do
               let bodyWithFields = Sigma.bindFieldValues fieldSlotList body'
               return
                 ( EC.Int (D.reify disc),
-                  C.SigmaElim False 0 layout (headerVars ++ dataArgVars ++ fieldSlotVars) (C.VarLocal cursor) bodyWithFields,
+                  C.SigmaElim False 0 layout (headerVars ++ typeArgVars ++ fieldSlotVars) (C.VarLocal cursor) bodyWithFields,
                   chain
                 )
 
@@ -1370,6 +1383,12 @@ clarifyMagic h context der = do
           return $
             Utility.bindLet [(pointerVarName, pointer')] $
               C.Primitive (C.Magic (LM.Load lt pointerVar))
+        LM.Shift pointer offset -> do
+          (pointerVarName, pointer', pointerVar) <- clarifyPlus h context pointer
+          (offsetVarName, offset', offsetVar) <- clarifyPlus h context offset
+          return $
+            Utility.bindLet [(pointerVarName, pointer'), (offsetVarName, offset')] $
+              C.Primitive (C.Magic (LM.Shift pointerVar offsetVar))
         LM.Alloca lt size -> do
           (sizeVarName, size', sizeVar) <- clarifyPlus h context size
           return $
@@ -1405,6 +1424,11 @@ clarifyMagic h context der = do
       return $
         Utility.bindLet [(sizeVarName, size')] $
           C.Primitive (C.Alloc sizeVar)
+    M.MallocOpaque _ size -> do
+      (sizeVarName, size', sizeVar) <- clarifyPlus h context size
+      return $
+        Utility.bindLet [(sizeVarName, size')] $
+          C.Primitive (C.AllocOpaque sizeVar)
     M.Realloc _ ptr size -> do
       (ptrVarName, ptr', ptrVar) <- clarifyPlus h context ptr
       (sizeVarName, size', sizeVar) <- clarifyPlus h context size
@@ -1428,6 +1452,8 @@ clarifyMagic h context der = do
       error "TextUncons should be evaluated during inline expansion"
     M.MakeSwitch {} ->
       error "MakeSwitch should be evaluated during inline expansion"
+    M.FreeVariables {} ->
+      error "FreeVariables should be evaluated during inline expansion"
     M.CompileError {} ->
       error "CompileError should be evaluated during inline expansion"
     M.GetOriginFileName ->
@@ -1449,7 +1475,7 @@ clarifyLambda ::
   App C.Comp
 clarifyLambda h context attrL@(AttrL.Attr {lamKind}) fvs impArgs expArgs defaultArgs e@(m :< _) = do
   let mxts = impArgs ++ expArgs ++ map fst defaultArgs
-  closureID <- liftIO $ freshClosureID h (currentFunction context)
+  closureID <- liftIO $ freshLocalNameID h (currentFunction context)
   case lamKind of
     LK.Fix _ isDestPassing (_, _k, recFuncName, codType) -> do
       let liftedName = DD.getMuDD (currentFunction context) recFuncName closureID
@@ -1542,15 +1568,15 @@ clarifyPrimOp h context op m = do
   let argTypeList = map (fromPrimNum m) domList
   (xs, varList) <- liftIO $ mapAndUnzipM (const (Gensym.createVar (gensymHandle h) "prim")) domList
   let mxts = zipWith (\x t -> (m, VK.normal, x, t)) xs argTypeList
-  closureID <- liftIO $ freshClosureID h (currentFunction context)
+  closureID <- liftIO $ freshLocalNameID h (currentFunction context)
   returnClosure h context closureID (Just "primOp") O.Clear False (fromPrimNum m codType) [] mxts (map (const False) mxts) [] $ C.Primitive (C.PrimOp op varList)
 
-freshClosureID :: Handle -> DD.DefiniteDescription -> IO Int
-freshClosureID h owner = do
-  supply <- readIORef (closureNameSupplyRef h)
+freshLocalNameID :: Handle -> DD.DefiniteDescription -> IO Int
+freshLocalNameID h owner = do
+  supply <- readIORef (localNameSupplyRef h)
   let closureID = Map.lookupDefault 0 owner supply
   let supply' = Map.insert owner (closureID + 1) supply
-  writeIORef (closureNameSupplyRef h) supply'
+  writeIORef (localNameSupplyRef h) supply'
   return closureID
 
 returnClosure ::

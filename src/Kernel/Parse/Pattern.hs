@@ -40,7 +40,9 @@ data ConsInfo = ConsInfo
     isConstLike :: IsConstLike,
     disc :: D.Discriminant,
     dataArgNum :: AN.ArgNum,
+    consImpArgNames :: [T.Text],
     consArgNum :: AN.ArgNum,
+    typeParams :: [Maybe (Hint, Ident)],
     args :: [(Hint, Pattern)]
   }
   deriving (Show)

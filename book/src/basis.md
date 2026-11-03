@@ -221,46 +221,72 @@ cont
 
 ### Free-Malloc Canceling and Branching
 
-This optimization works across branches. For example, consider the following:
+If every branch contains a suitable allocation, each branch can reuse the region freed before the branch:
 
 ```neut
-// (an `insert` function in bubble sort)
-define insert(v: int, xs: int-list) -> int-list {
-  match xs {
-  | Int-Nil =>
-    // ...
-  | Int-Cons(y, ys) =>               // (X)
-    if gt-int(v, y) {
-      Int-Cons(y, insert(v, ys))     // (Y)
-    } else {
-      Int-Cons(v, Int-Cons(y, ys))   // (Z)
-    }
-  }
+free(p, 16);
+if condition {
+  let q = malloc(16);
+  use(q)
+} else {
+  let r = malloc(16);
+  use(r)
+}
+
+// ↓
+
+if condition {
+  let q = p;
+  use(q)
+} else {
+  let r = p;
+  use(r)
 }
 ```
 
-At point `(X)`, `free` against `xs` is required. However, this `free` can be canceled since suitable `malloc`s can be found in all the reachable branches (here, `(Y)` and `(Z)`). Thus, in the code above, the deallocation of `xs` at `(X)` is removed, and the memory region of `xs` is reused at `(Y)` and `(Z)`, resulting in an in-place update of `xs`.
-
-On the other hand, consider rewriting the code above into something like the following:
+When only some paths can reuse the region, Neut moves the `free` into the branches:
 
 ```neut
-define foo(v: int, xs: int-list) -> int-list {
-  match xs {
-  | Int-Nil =>
-    // ...
-  | Int-Cons(y, ys) =>             // (X')
-    if gt-int(v, y) {
-      Int-Nil                      // (Y')
-    } else {
-      Int-Cons(v, Int-Cons(y, ys)) // (Z')
-    }
-  }
+free(p, 16);
+if condition {
+  let q = malloc(16);
+  use(q)
+} else {
+  fallback()
+}
+
+// ↓
+
+if condition {
+  let q = p;
+  use(q)
+} else {
+  free(p, 16);
+  fallback()
 }
 ```
 
-At this point, the `free` against `xs` at `(X')` can't be optimized away since there is a branch (namely, `(Y')`) that doesn't perform a suitable `malloc`.
+If each branch frees a suitable region, an allocation after the join can reuse it:
 
-The same rule is also applied at branch joins. If a later `malloc` appears after a branch, and each reachable branch frees a suitable region before reaching the join, Neut can pass those freed regions through the join and reuse them for that later `malloc`. Unreachable branches do not prevent this optimization.
+```neut
+if condition {
+  free(p, 16);
+} else {
+  free(r, 16);
+};
+let q = malloc(16);
+cont
+
+// ↓
+
+let q =
+  if condition {
+    p
+  } else {
+    r
+  };
+cont
+```
 
 ## Malloc-Free Canceling
 

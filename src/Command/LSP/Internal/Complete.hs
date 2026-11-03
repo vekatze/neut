@@ -27,7 +27,6 @@ import Kernel.Common.Const (sourceFileExtension)
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.CreateLocalHandle qualified as Local
 import Kernel.Common.Handle.Global.Antecedent qualified as Antecedent
-import Kernel.Common.Handle.Global.Env qualified as Env
 import Kernel.Common.Handle.Global.Path qualified as Path
 import Kernel.Common.Handle.Local.Locator qualified as Locator
 import Kernel.Common.LocalVarTree qualified as LVT
@@ -64,7 +63,6 @@ data Handle = Handle
     antecedentHandle :: Antecedent.Handle,
     getModuleHandle :: GetModule.Handle,
     sourceReflectHandle :: SourceReflect.Handle,
-    envHandle :: Env.Handle,
     gacHandle :: GAC.Handle
   }
 
@@ -204,8 +202,7 @@ resolveImportedSource h aliasHandle currentSource locatorText = do
   outcome <- liftIO $ runApp $ do
     gl <- liftEither $ GL.reflect m locatorText
     sgl <- Alias.resolveAlias aliasHandle m gl
-    let mainModule = Env.getMainModule (envHandle h)
-    candModule <- GetModule.getModule (getModuleHandle h) mainModule m (SGL.moduleID sgl) locatorText
+    candModule <- GetModule.getModule (getModuleHandle h) m (SGL.moduleID sgl) locatorText
     relPath <- addExtension sourceFileExtension $ SL.reify $ SGL.sourceLocator sgl
     return
       Source
@@ -555,8 +552,7 @@ positionToLoc Position {_line, _character} =
 
 getAllTopCandidate :: Handle -> Module -> App ([(Source, [TopCandidate])], FastPresetSummary)
 getAllTopCandidate h baseModule = do
-  let mainModule = Env.getMainModule (envHandle h)
-  dependencies <- GetModule.getAllDependencies (getModuleHandle h) mainModule baseModule
+  dependencies <- GetModule.getAllDependencies (getModuleHandle h) baseModule
   baseCandList <- getModuleTopCandidates h baseModule
   (candListList, aliasPresetInfo) <- unzip <$> forP dependencies (getAllTopCandidate' h)
   let aliasList = getAliasListWithEnabledPresets baseModule

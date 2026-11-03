@@ -100,6 +100,8 @@ rewriteOp env op =
       LC.Calloc (rewriteValue env value1) (rewriteValue env value2)
     LC.Alloc size allocID ->
       LC.Alloc (fmap (rewriteValue env) size) allocID
+    LC.AllocOpaque size ->
+      LC.AllocOpaque (rewriteValue env size)
     LC.Realloc value1 value2 ->
       LC.Realloc (rewriteValue env value1) (rewriteValue env value2)
     LC.Free value size freeID ->

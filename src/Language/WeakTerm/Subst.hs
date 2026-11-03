@@ -62,8 +62,6 @@ subst h sub term =
               return $ m :< WT.Var x'
             Term e ->
               return e
-            Type (_ :< WT.TVar x') ->
-              return $ m :< WT.Var x'
             Type _ ->
               return term
       | otherwise ->
@@ -104,10 +102,11 @@ subst h sub term =
     m :< WT.PiElimExact e -> do
       e' <- subst h sub e
       return $ m :< WT.PiElimExact e'
-    m :< WT.DataIntro attr consName dataArgs consArgs -> do
+    m :< WT.DataIntro attr consName dataArgs consImpArgs consArgs -> do
       dataArgs' <- mapM (substType h sub) dataArgs
+      consImpArgs' <- mapM (substType h sub) consImpArgs
       consArgs' <- mapM (subst h sub) consArgs
-      return $ m :< WT.DataIntro attr consName dataArgs' consArgs'
+      return $ m :< WT.DataIntro attr consName dataArgs' consImpArgs' consArgs'
     m :< WT.DataElim isNoetic oets decisionTree -> do
       let (os, es, ts) = unzip3 oets
       es' <- mapM (subst h sub) es
@@ -133,9 +132,9 @@ subst h sub term =
       (uncastSeq', sub3) <- substLetSeq h sub2 uncastSeq
       e2' <- subst h sub3 e2
       return $ m :< WT.BoxElim castSeq' mxt' e1' uncastSeq' e2'
-    m :< WT.CodeIntro e -> do
+    m :< WT.CodeIntro codeVariant e -> do
       e' <- subst h sub e
-      return $ m :< WT.CodeIntro e'
+      return $ m :< WT.CodeIntro codeVariant e'
     m :< WT.CodeElim e -> do
       e' <- subst h sub e
       return $ m :< WT.CodeElim e'
@@ -152,6 +151,12 @@ subst h sub term =
       e1' <- subst h sub e1
       (mxt', _, e2') <- subst'' h sub mxt [] e2
       return $ m :< WT.Let mxt' e1' e2'
+    m :< WT.LetType (mx, x) t e -> do
+      t' <- substType h sub t
+      x' <- liftIO $ Gensym.newIdentFromIdent (gensymHandle h) x
+      let sub' = IntMap.insert (Ident.toInt x) (Var x') sub
+      e' <- subst h sub' e
+      return $ m :< WT.LetType (mx, x') t' e'
     m :< WT.Invoke tropeNames body -> do
       body' <- subst h sub body
       return $ m :< WT.Invoke tropeNames body'
@@ -177,8 +182,6 @@ substType h sub ty =
       | Just entry <- IntMap.lookup (Ident.toInt x) sub ->
           case entry of
             Var x' ->
-              return $ m :< WT.TVar x'
-            Term (_ :< WT.Var x') ->
               return $ m :< WT.TVar x'
             Term _ ->
               return ty
@@ -376,11 +379,13 @@ substCase h sub decisionCase = do
       let (dataTerms, dataTypes) = unzip dataArgs
       dataTerms' <- mapM (substType h sub) dataTerms
       dataTypes' <- mapM (substType h sub) dataTypes
-      (consArgs', cont') <- subst''' h sub consArgs cont
+      (binders', cont') <- subst''' h sub (consImpArgs ++ consArgs) cont
+      let (consImpArgs', consArgs') = splitAt (length consImpArgs) binders'
       return $
         DT.ConsCase
           record
             { DT.dataArgs = zip dataTerms' dataTypes',
+              DT.consImpArgs = consImpArgs',
               DT.consArgs = consArgs',
               DT.cont = cont'
             }
@@ -420,6 +425,10 @@ substMagic h sub (WeakMagic magic) = do
       sizeType' <- substType h sub sizeType
       size' <- subst h sub size
       return $ M.Malloc sizeType' size'
+    M.MallocOpaque sizeType size -> do
+      sizeType' <- substType h sub sizeType
+      size' <- subst h sub size
+      return $ M.MallocOpaque sizeType' size'
     M.Realloc sizeType ptr size -> do
       sizeType' <- substType h sub sizeType
       ptr' <- subst h sub ptr
@@ -452,6 +461,9 @@ substMagic h sub (WeakMagic magic) = do
       fallback' <- subst h sub fallback
       clauses' <- subst h sub clauses
       return $ M.MakeSwitch mid key' fallback' clauses'
+    M.FreeVariables mid code -> do
+      code' <- subst h sub code
+      return $ M.FreeVariables mid code'
     M.CompileError msg -> do
       msg' <- subst h sub msg
       return $ M.CompileError msg'
@@ -481,6 +493,10 @@ substLowMagic h sub lowMagic =
       t' <- substType h sub t
       pointer' <- subst h sub pointer
       return $ LM.Load t' pointer'
+    LM.Shift pointer offset -> do
+      pointer' <- subst h sub pointer
+      offset' <- subst h sub offset
+      return $ LM.Shift pointer' offset'
     LM.Alloca t size -> do
       t' <- substType h sub t
       size' <- subst h sub size

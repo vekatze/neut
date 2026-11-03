@@ -37,6 +37,11 @@ module Language.Common.BaseName
     constructorType,
     field,
     fieldType,
+    fieldTypeType,
+    codeVariable,
+    codeVariableType,
+    known,
+    unknown,
     direct,
     mixed,
     storageWidth,
@@ -228,6 +233,26 @@ field =
 fieldType :: BaseName
 fieldType =
   MakeBaseName "field"
+
+fieldTypeType :: BaseName
+fieldTypeType =
+  MakeBaseName "field-type"
+
+codeVariable :: BaseName
+codeVariable =
+  MakeBaseName "Code-Variable"
+
+codeVariableType :: BaseName
+codeVariableType =
+  MakeBaseName "code-variable"
+
+known :: BaseName
+known =
+  MakeBaseName "Known"
+
+unknown :: BaseName
+unknown =
+  MakeBaseName "Unknown"
 
 direct :: BaseName
 direct =

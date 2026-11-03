@@ -2,7 +2,7 @@ module Kernel.Lower.HoistStackAlloc (hoistStackAlloc) where
 
 import Data.IntMap.Strict qualified as IntMap
 import Data.IntSet qualified as IntSet
-import Data.List (foldl', minimumBy, sortOn)
+import Data.List (minimumBy, sortOn)
 import Data.Ord (Down (..), comparing)
 import Gensym.Handle qualified as GensymHandle
 import Language.Common.CreateSymbol qualified as CreateSymbol
@@ -101,7 +101,7 @@ analyzeConflicts slotMap active lowComp =
     LC.Switch _ _ defaultBranch ces _ cont -> do
       let branches = defaultBranch : map snd ces
       let branchResults = map (analyzeConflicts slotMap active) branches
-      let branchGraph = foldMap snd branchResults
+      let branchGraph = foldl' mergeConflictGraph IntMap.empty (map snd branchResults)
       let reachableActives = [activeSet | (Just activeSet, _) <- branchResults]
       case reachableActives of
         [] ->

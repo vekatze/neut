@@ -5,11 +5,14 @@ import App.Run (raiseError)
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.IO.Class (liftIO)
+import Data.IntMap qualified as IntMap
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Kernel.Elaborate.Internal.Handle.Elaborate qualified as ElaborateHandle
 import Kernel.Elaborate.Internal.TypeUtil qualified as TypeUtil
 import Kernel.Elaborate.Trace qualified as ElaborateTrace
+import Language.Common.Binder
+import Language.Common.DataInfo qualified as DI
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.Ident.Reify qualified as Ident
 import Language.Common.LowMagic qualified as LM
@@ -17,6 +20,7 @@ import Language.Common.Magic qualified as M
 import Language.Term.Children (termChildren)
 import Language.Term.FreeVars qualified as TM
 import Language.Term.PrimValue qualified as PV
+import Language.Term.Subst qualified as Subst
 import Language.Term.Term qualified as TM
 import Language.Term.TraceSites qualified as TraceSites
 import Language.Term.Weaken (weakenType)
@@ -36,8 +40,8 @@ ensureEmbeddable h headLabel term@(m :< node) =
 ensureStaticTerm :: ElaborateHandle.Handle -> T.Text -> Hint -> TM.Term -> App ()
 ensureStaticTerm h headLabel m term@(_ :< node) =
   case node of
-    TM.DataIntro _ _ dataArgs _ -> do
-      mapM_ (ensureEvaluatedType h m) dataArgs
+    TM.DataIntro _ _ dataArgs consImpArgs _ -> do
+      mapM_ (ensureEvaluatedType h m) (dataArgs ++ consImpArgs)
       mapM_ (ensureStaticTerm h headLabel m) $ termChildren node
     TM.BoxIntroLift _ body ->
       ensureStaticTerm h headLabel m body
@@ -55,7 +59,7 @@ ensureStaticTerm h headLabel m term@(_ :< node) =
       return ()
     TM.TauIntro ty ->
       ensureEvaluatedType h m ty
-    TM.CodeIntro body ->
+    TM.CodeIntro _ body ->
       ensureStaticTerm h headLabel m body
     TM.CodeElim _ body ->
       ensureStaticTerm h headLabel m body
@@ -110,6 +114,10 @@ stuckTypeOf h m visited ty0 = do
       return Nothing
     _ :< TM.Resource {} ->
       return Nothing
+    _ :< TM.TVarGlobal {} ->
+      return Nothing
+    _ :< TM.TyApp (_ :< TM.TVarGlobal {}) args ->
+      stuckTypeOfList h m visited args
     _ :< TM.Pi _ impArgs expArgs defaultArgs cod -> do
       let binderTypes = map (\(_, _, _, t) -> t) $ impArgs ++ expArgs ++ defaultArgs
       stuckTypeOfList h m visited $ binderTypes ++ [cod]
@@ -130,11 +138,17 @@ stuckTypeOf h m visited ty0 = do
           | S.member dataName visited ->
               return Nothing
           | otherwise -> do
-              consArgsList <- TypeUtil.getConsArgTypes h m dataName dataArgs
-              let consArgTypes = map (\(_, _, _, t) -> t) $ concat consArgsList
+              consInfoList <- TypeUtil.getConsArgTypes h m dataName dataArgs
+              consArgTypes <- liftIO $ concat <$> mapM (fieldTypesOfValue h) consInfoList
               stuckTypeOfList h m (S.insert dataName visited) consArgTypes
     _ ->
       return $ Just ty
+
+fieldTypesOfValue :: ElaborateHandle.Handle -> DI.ConsInfo (BinderF TM.Type) -> IO [TM.Type]
+fieldTypesOfValue h consInfo = do
+  let evaluated = map (\(mx, _, x, _) -> (Ident.toInt x, Subst.Type (mx :< TM.Tau))) $ DI.consImpArgs consInfo
+  let sub = IntMap.fromList evaluated
+  mapM (\(_, _, _, t) -> Subst.substType (Subst.new (ElaborateHandle.gensymHandle h)) sub t) $ DI.consArgs consInfo
 
 stuckTypeOfList ::
   ElaborateHandle.Handle ->

@@ -9,7 +9,6 @@ import App.App (App)
 import Console.Handle qualified as Console
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.ByteString qualified as B
-import Data.Containers.ListUtils (nubOrdOn)
 import Data.Maybe
 import Data.Text qualified as T
 import Data.Text.Encoding (decodeUtf8Lenient)
@@ -30,6 +29,7 @@ import Logger.Debug qualified as Logger
 import Logger.Handle qualified as Logger
 import Path
 import Path.IO
+import Path.Read (readTextFromPath)
 import Path.Write (writeText)
 import ProgressIndicator.ShowProgress qualified as Indicator
 import System.Console.ANSI
@@ -47,44 +47,60 @@ new :: Global.Handle -> Handle
 new (Global.Handle {..}) = do
   Handle {..}
 
-link :: Handle -> MainTarget -> Bool -> Bool -> A.ArtifactTime -> [Source.Source] -> App ()
-link h target shouldSkipLink didPerformForeignCompilation artifactTime sourceList = do
-  executablePath <- Path.getExecutableOutputPath (pathHandle h) target
-  isExecutableAvailable <- doesFileExist executablePath
-  let freshExecutableAvailable = isJust (A.objectTime artifactTime) && isExecutableAvailable
+link :: Handle -> MainTarget -> Bool -> Bool -> A.ArtifactTime -> [Module] -> [T.Text] -> [Source.Source] -> App ()
+link h target shouldSkipLink didPerformForeignCompilation artifactTime moduleList transitiveLinkOption sourceList = do
   if shouldSkipLink
     then liftIO $ Logger.report (loggerHandle h) "Skipped linking object files (--skip-link was specified)"
-    else
-      if not didPerformForeignCompilation && freshExecutableAvailable
+    else do
+      objects <- getObjectList h target moduleList sourceList
+      let linkResponse = getLinkResponse objects transitiveLinkOption
+      linkResponseFilePath <- Path.getLinkResponseFilePath (pathHandle h) target
+      previousLinkResponse <- readLinkResponse linkResponseFilePath
+      executablePath <- Path.getExecutableOutputPath (pathHandle h) target
+      isExecutableAvailable <- doesFileExist executablePath
+      let freshExecutableAvailable = isJust (A.objectTime artifactTime) && isExecutableAvailable
+      if not didPerformForeignCompilation && freshExecutableAvailable && previousLinkResponse == Just linkResponse
         then liftIO $ Logger.report (loggerHandle h) "Skipped linking object files (the executable is fresh)"
-        else link' h target sourceList
+        else link' h target linkResponseFilePath linkResponse (length objects)
 
-link' :: Handle -> MainTarget -> [Source.Source] -> App ()
-link' h target sourceList = do
+getObjectList :: Handle -> MainTarget -> [Module] -> [Source.Source] -> App [Path Abs File]
+getObjectList h target moduleList sourceList = do
   mainObject <- snd <$> Path.getOutputPathForEntryPoint (pathHandle h) OK.Object target
-  outputPath <- Path.getExecutableOutputPath (pathHandle h) target
-  ensureDir $ parent outputPath
   objectPathList <- mapM (Path.sourceToOutputPath (pathHandle h) (Main target) OK.Object) sourceList
-  let moduleList = nubOrdOn moduleID $ map Source.sourceModule sourceList
-  foreignObjectList <- concat <$> mapM (getForeignOutputList h target) moduleList
+  foreignObjectList <- concat <$> mapM (getLinkedOutputList h target) moduleList
   allocator <- Env.getAllocatorByTarget (envHandle h) (Main target)
   mAllocatorLibrary <- getAllocatorLibraryIfNecessary h target allocator
-  let objects = mainObject : objectPathList ++ foreignObjectList ++ maybeToList mAllocatorLibrary
+  return $ mainObject : objectPathList ++ foreignObjectList ++ maybeToList mAllocatorLibrary
+
+getLinkResponse :: [Path Abs File] -> [T.Text] -> T.Text
+getLinkResponse objects transitiveLinkOption =
+  T.unlines $ map quoteResponseFileArgument $ map (T.pack . toFilePath) objects ++ transitiveLinkOption
+
+readLinkResponse :: Path Abs File -> App (Maybe T.Text)
+readLinkResponse linkResponseFilePath = do
+  responseExists <- doesFileExist linkResponseFilePath
+  if responseExists
+    then Just <$> readTextFromPath linkResponseFilePath
+    else return Nothing
+
+link' :: Handle -> MainTarget -> Path Abs File -> T.Text -> Int -> App ()
+link' h target linkResponseFilePath linkResponse numOfObjects = do
+  outputPath <- Path.getExecutableOutputPath (pathHandle h) target
+  ensureDir $ parent outputPath
+  allocator <- Env.getAllocatorByTarget (envHandle h) (Main target)
   let clang = Platform.getClang (platformHandle h)
   let targetTriple = Platform.getClangTargetTriple (platformHandle h)
   let userLinkOptions = getLinkOption target
   let baseModule = extractModule $ Env.getMainModule (envHandle h)
   ltoCacheDir <- Path.getLtoCacheDir (pathHandle h) (Main target) baseModule
   ltoOption <- liftIO $ getLtoOption h clang userLinkOptions ltoCacheDir
-  linkResponseFilePath <- Path.getLinkResponseFilePath (pathHandle h) target
-  writeLinkResponseFile linkResponseFilePath objects
+  liftIO $ writeText linkResponseFilePath linkResponse
   liftIO $ Logger.report (loggerHandle h) $ "Created a response file at: " <> T.pack (toFilePath linkResponseFilePath)
   let platform = Platform.getPlatform (platformHandle h)
   let allocatorOption = allocatorLinkOption (P.arch platform) allocator
   sysrootOption <- liftIO $ Platform.getSysrootOption (loggerHandle h) (platformHandle h)
   let toolchainOption = Platform.getToolchainOption (platformHandle h)
   let linkOptions = clangLinkOpt targetTriple (P.os platform) linkResponseFilePath outputPath (ltoOption ++ allocatorOption ++ sysrootOption ++ toolchainOption ++ userLinkOptions)
-  let numOfObjects = length objects
   let workingTitle = getWorkingTitle numOfObjects
   let completedTitle = getCompletedTitle numOfObjects
   let runProcessHandle = RunProcess.new (loggerHandle h)
@@ -172,10 +188,10 @@ checkIfLldIsAvailable h clang = do
     Left _ ->
       return False
 
-getForeignOutputList :: Handle -> MainTarget -> Module -> App [Path Abs File]
-getForeignOutputList h target baseModule = do
+getLinkedOutputList :: Handle -> MainTarget -> Module -> App [Path Abs File]
+getLinkedOutputList h target baseModule = do
   foreignDir <- Path.getForeignDir (pathHandle h) (Main target) baseModule
-  return $ map (foreignDir </>) $ output $ moduleForeign baseModule
+  return $ map (foreignDir </>) $ linkedOutput $ moduleForeign baseModule
 
 getAllocatorLibraryIfNecessary :: Handle -> MainTarget -> Allocator -> App (Maybe (Path Abs File))
 getAllocatorLibraryIfNecessary h target allocator = do
@@ -192,15 +208,9 @@ getAllocatorLibraryIfNecessary h target allocator = do
     _ ->
       return Nothing
 
-writeLinkResponseFile :: Path Abs File -> [Path Abs File] -> App ()
-writeLinkResponseFile responseFilePath objectPathList = do
-  let responseFileContent = T.unlines $ map (quoteResponseFileArgument . toFilePath) objectPathList
-  liftIO $ writeText responseFilePath responseFileContent
-
-quoteResponseFileArgument :: FilePath -> T.Text
-quoteResponseFileArgument path = do
-  let pathText = T.pack path
-  "\"" <> T.concatMap escapeResponseFileChar pathText <> "\""
+quoteResponseFileArgument :: T.Text -> T.Text
+quoteResponseFileArgument argument =
+  "\"" <> T.concatMap escapeResponseFileChar argument <> "\""
 
 escapeResponseFileChar :: Char -> T.Text
 escapeResponseFileChar c =
@@ -220,6 +230,12 @@ clangLinkOpt targetTriple os linkResponseFilePath outputPath additionalOptions =
             []
           _ ->
             ["-pthread"]
+  let stackOption =
+        case os of
+          OS.Wasi ->
+            ["-Wl,-z,stack-size=" ++ show wasiStackSize]
+          _ ->
+            []
   [ "-target",
     targetTriple,
     "-O2",
@@ -230,5 +246,10 @@ clangLinkOpt targetTriple os linkResponseFilePath outputPath additionalOptions =
          toFilePath outputPath
        ]
     ++ ["@" ++ toFilePath linkResponseFilePath]
+    ++ stackOption
     ++ additionalOptions
     ++ ["-lm"]
+
+wasiStackSize :: Int
+wasiStackSize =
+  8 * 1024 * 1024

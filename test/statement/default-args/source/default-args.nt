@@ -18,6 +18,7 @@ import {
   core::int.io {print-int-line},
   core::show.generic {to-doc},
   core::vector {access, from-list, length},
+  this::key-caller {add-key-to},
 }
 
 define _simplify-chunk(x: chunk) -> chunk {
@@ -121,28 +122,26 @@ define call-local-lambda-default() -> unit {
 }
 
 define local-lambda-override(!u: string) -> unit {
-  let !f =
-    define tmp()[r := Right(u)] -> unit {
-      match r {
-      | Left(_) =>
-        print-line("left");
-      | Right(_) =>
-        print-line("right");
-      };
-      Unit
+  define tmp()[r := Right(u)] -> unit {
+    match r {
+    | Left(_) =>
+      print-line("left");
+    | Right(_) =>
+      print-line("right");
     };
-  pin v1 = f();
+    Unit
+  };
+  pin v1 = tmp();
   vet-simple::(v1);
-  pin v2 = f()[r := Left(Unit)];
+  pin v2 = tmp()[r := Left(Unit)];
   vet-simple::(v2);
 }
 
 inline local-define-default<a>(x: a) -> a {
-  let g =
-    define _(v: a)[r: either(a, unit) := Right(Unit)] -> a {
-      let _ = r;
-      v
-    };
+  define g(v: a)[r: either(a, unit) := Right(Unit)] -> a {
+    let _ = r;
+    v
+  };
   g(x)
 }
 
@@ -239,6 +238,25 @@ define call-local-dependent-defaults(anchor: int) -> unit {
   expect-int("local dependent defaults: last override\n", f(2)[total := 50], 50)
 }
 
+define call-dependent-defaults-in-local-functions(n: int) -> unit {
+  define g(m: int) -> int {
+    let !f =
+      (p: int)[d: int := p, e: int := add-int(d, p)] => {
+        add-int(add-int(p, d), e)
+      };
+    add-int(f(m), f(m)[d := 10])
+  };
+  inline go(m: int) -> int {
+    let !f =
+      (p: int)[d: int := p, e: int := add-int(d, p)] => {
+        add-int(add-int(p, d), e)
+      };
+    add-int(f(m), f(m)[d := 10])
+  };
+  expect-int("dependent defaults in a local define\n", g(n), 38);
+  expect-int("dependent defaults in a local inline\n", go(n), 38)
+}
+
 inline inline-dependent-default(x: int)[
   y: int := add-int(x, 1),
   z: int := mul-int(y, 2),
@@ -319,6 +337,49 @@ define use-dependent-default-meta() -> unit {
   dependent-default-vector::(10)[expected-lo := 1, expected-hi := 2, xs := from-list(Cons(1, Cons(2, Nil)))]
 }
 
+define noisy-int(n: int) -> int {
+  print-int-line(n);
+  n
+}
+
+inline once-default(x: int)[y: int := x] -> int {
+  add-int(x, y)
+}
+
+inline once-chain(x: int)[y: int := noisy-int(x), z: int := y] -> int {
+  add-int(y, z)
+}
+
+inline once-override(x: int)[y: int := add-int(x, 10), z: int := y] -> int {
+  add-int(add-int(x, y), z)
+}
+
+define once-runtime(x: int)[y: int := x, z: int := add-int(y, 1)] -> int {
+  add-int(add-int(x, y), z)
+}
+
+inline-meta twice-code(c: 'int)[
+  d: 'int := quote {
+    let t = unquote {c};
+    add-int(t, 1)
+  },
+] -> 'int {
+  quote {add-int(unquote {d}, unquote {d})}
+}
+
+define call-defaults-evaluated-once() -> unit {
+  print-int-line(once-default(noisy-int(2)));
+  print-int-line(once-chain(3));
+  print-int-line(once-override(4)[y := noisy-int(7)]);
+  print-int-line(once-runtime(noisy-int(8)));
+  let f =
+    (x: int)[y: int := x] => {
+      add-int(x, y)
+    };
+  print-int-line(f(noisy-int(5)));
+  print-int-line(unquote {twice-code(quote {noisy-int(9)})});
+}
+
 define main() -> unit {
   call-default-top();
   call-default-list();
@@ -331,8 +392,11 @@ define main() -> unit {
   call-dependent-default-top();
   call-higher-order-default();
   call-local-dependent-defaults(7);
+  call-dependent-defaults-in-local-functions(3);
   call-inline-dependent-default();
   use-dependent-default-meta();
+  expect-int("key argument names a variable of the caller\n", add-key-to(7), 107);
+  call-defaults-evaluated-once();
 }
 
 define zen() -> unit {

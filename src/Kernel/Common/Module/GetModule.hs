@@ -14,7 +14,6 @@ import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
 import Kernel.Common.Handle.Global.Module qualified as Module
 import Kernel.Common.Module
-import Kernel.Common.Module.FromPath qualified as ModuleReflect
 import Language.Common.ModuleAlias (ModuleAlias)
 import Language.Common.ModuleID qualified as MID
 import Logger.Hint qualified as H
@@ -30,13 +29,12 @@ new moduleHandle = do
 
 getModule ::
   Handle ->
-  MainModule ->
   H.Hint ->
   MID.ModuleID ->
   T.Text ->
   App Module
-getModule h mainModule m moduleID locatorText = do
-  nextModuleFilePath <- Module.getModuleFilePath mainModule (Just m) moduleID
+getModule h m moduleID locatorText = do
+  nextModuleFilePath <- Module.getModuleFilePath (moduleHandle h) (Just m) moduleID
   cacheMap <- liftIO $ Module.getModuleCacheMap (moduleHandle h)
   case Map.lookup nextModuleFilePath cacheMap of
     Just nextModule ->
@@ -48,15 +46,15 @@ getModule h mainModule m moduleID locatorText = do
           T.pack "Could not find the module file for `"
             <> locatorText
             <> "`"
-      nextModule <- ModuleReflect.fromFilePath nextModuleFilePath
+      nextModule <- Module.readModule (moduleHandle h) nextModuleFilePath
       liftIO $ Module.insertToModuleCacheMap (moduleHandle h) nextModuleFilePath nextModule
       return nextModule
 
-getAllDependencies :: Handle -> MainModule -> Module -> App [(ModuleAlias, Module)]
-getAllDependencies h mainModule baseModule = do
+getAllDependencies :: Handle -> Module -> App [(ModuleAlias, Module)]
+getAllDependencies h baseModule = do
   forM (Map.toList $ moduleDependency baseModule) $ \(alias, dependency) -> do
     let moduleID = MID.Library $ dependencyDigest dependency
-    moduleFilePath <- Module.getModuleFilePath mainModule Nothing moduleID
+    moduleFilePath <- Module.getModuleFilePath (moduleHandle h) Nothing moduleID
     let m = H.newSourceHint moduleFilePath
-    dep <- getModule h mainModule m moduleID (MID.reify moduleID)
+    dep <- getModule h m moduleID (MID.reify moduleID)
     return (alias, dep)

@@ -100,7 +100,7 @@ constructDefaultModule moduleName mTargetName = do
         moduleAntecedents = [],
         moduleLocation = moduleRootDir </> moduleFile,
         moduleStaticFiles = Map.empty,
-        moduleForeign = Foreign {input = [], output = [], script = []},
+        moduleForeign = emptyForeign,
         moduleInlineLimit = Nothing,
         moduleUniversal = True,
         modulePresetMap = Map.empty

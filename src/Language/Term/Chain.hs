@@ -44,8 +44,8 @@ chainOf' tenv term =
       let xs3 = concatMap (chainOf' tenv) expArgs
       let xs4 = concatMap (chainOf' tenv) (catMaybes defaultArgs)
       xs0 ++ xs1 ++ xs2 ++ xs3 ++ xs4
-    _ :< TM.DataIntro _ _ dataArgs consArgs -> do
-      concatMap (chainOfType tenv) dataArgs ++ concatMap (chainOf' tenv) consArgs
+    _ :< TM.DataIntro _ _ dataArgs consImpArgs consArgs -> do
+      concatMap (chainOfType tenv) (dataArgs ++ consImpArgs) ++ concatMap (chainOf' tenv) consArgs
     m :< TM.DataElim _ _ xets tree -> do
       let (xs, es, ts) = unzip3 xets
       let xs1 = concatMap (chainOf' tenv) es
@@ -62,7 +62,7 @@ chainOf' tenv term =
     _ :< TM.BoxElim _ castSeq mxt e1 uncastSeq e2 -> do
       let (xts, es) = unzip $ castSeq ++ [(mxt, e1)] ++ uncastSeq
       chainOfBinder tenv xts (es ++ [e2])
-    _ :< TM.CodeIntro e ->
+    _ :< TM.CodeIntro _ e ->
       chainOf' tenv e
     _ :< TM.CodeElim _ e ->
       chainOf' tenv e
@@ -162,7 +162,7 @@ chainOfCase tenv m decisionCase = do
       let (dataTerms, dataTypes) = unzip dataArgs
       let xs1 = concatMap (chainOfType tenv) dataTerms
       let xs2 = concatMap (chainOfType tenv) dataTypes
-      let xs3 = chainOfDecisionTree' tenv m consArgs cont
+      let xs3 = chainOfDecisionTree' tenv m (consImpArgs ++ consArgs) cont
       xs1 ++ xs2 ++ xs3
 
 chainOfCaseWithoutCont :: TM.TypeEnv -> DT.Case TM.Type TM.Term -> [BinderF TM.Type]

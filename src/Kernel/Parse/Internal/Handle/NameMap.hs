@@ -6,6 +6,7 @@ module Kernel.Parse.Internal.Handle.NameMap
     reportMissingDefinitions,
     activateTopLevelNames,
     withCurrentTopLevelName,
+    recordRuleParts,
     lookup,
     getGlobalNames,
     getGlobalNames',
@@ -20,6 +21,7 @@ import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
+import Data.Text qualified as T
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.GlobalName (getIsConstLike)
 import Kernel.Common.GlobalName qualified as GN
@@ -36,6 +38,7 @@ import Language.Common.ArgNum qualified as AN
 import Language.Common.BaseName qualified as BN
 import Language.Common.DataInfo qualified as DI
 import Language.Common.DefiniteDescription qualified as DD
+import Language.Common.Ident.Reify qualified as Ident
 import Language.Common.IsConstLike
 import Language.Common.IsDestPassing
 import Language.Common.NominalTag
@@ -80,6 +83,11 @@ new (Global.Handle {..}) unusedHandle usedTopLevelNameHandle tagHandle = do
 withCurrentTopLevelName :: Maybe DD.DefiniteDescription -> Handle -> Handle
 withCurrentTopLevelName currentTopLevelName h =
   h {currentTopLevelName}
+
+recordRuleParts :: Handle -> DD.DefiniteDescription -> IO ()
+recordRuleParts h name =
+  forM_ [DD.getLeafDD name, DD.getNodeDD name, DD.getRootDD name] $
+    UnusedTopLevelName.recordReference (unusedTopLevelNameHandle h) (Just name)
 
 insert :: Handle -> [NameEntry] -> App ()
 insert h nameArrowList = do
@@ -269,7 +277,7 @@ getGlobalNamesFromDefType stmtKind geist = do
       [(name, (m, mTag, GN.TopLevelFuncType allArgNum isConstLike False))]
     SK.Data dataName dataArgs consInfoList _ -> do
       let dataArgNum = AN.fromInt $ length dataArgs
-      let consNameArrowList = map (toConsNameArrow dataArgNum) consInfoList
+      let consNameArrowList = map (toConsNameArrow (\(_, _, x, _, _, _) -> x) dataArgNum) consInfoList
       (dataName, (m, mTag, GN.Data dataArgNum (map stripTag consNameArrowList) isConstLike)) : consNameArrowList
 
 getGlobalNames' :: [Stmt] -> [NameEntry]
@@ -299,7 +307,7 @@ _getGlobalNames' stmt = do
           [(name, (m, mTag, GN.TopLevelFuncType allArgNum isConstLike False))]
         SK.Data dataName dataArgs consInfoList _ -> do
           let dataArgNum = AN.fromInt $ length dataArgs
-          let consNameArrowList = map (toConsNameArrow dataArgNum) consInfoList
+          let consNameArrowList = map (toConsNameArrow (\(_, _, x, _) -> Ident.toText x) dataArgNum) consInfoList
           (dataName, (m, mTag, GN.Data dataArgNum (map stripTag consNameArrowList) isConstLike)) : consNameArrowList
     StmtDefineResource (SavedHint m) name _ _ _ _ _ -> do
       [(name, (m, Nothing, GN.TopLevelFuncType AN.argNumS4 True False))]
@@ -315,16 +323,18 @@ _getGlobalNames' stmt = do
       [(name, (m, Nothing, GN.Namespace))]
 
 toConsNameArrow ::
+  (a -> T.Text) ->
   AN.ArgNum ->
   DI.StmtConsInfo a ->
   NameEntry
-toConsNameArrow dataArgNum (SavedHint m, consInfo) = do
+toConsNameArrow nameOf dataArgNum (SavedHint m, consInfo) = do
+  let consImpArgNames = map nameOf $ DI.consImpArgs consInfo
   let consArgNum = AN.fromInt $ length $ DI.consArgs consInfo
   let consDD = DI.consName consInfo
   let discriminant = DI.discriminant consInfo
   let isConstLikeCons = DI.isConstLike consInfo
   let sourceFlags = map DI.isFieldMixed $ DI.consArgHints consInfo
-  (consDD, (m, Nothing, GN.DataIntro dataArgNum consArgNum discriminant isConstLikeCons sourceFlags))
+  (consDD, (m, Nothing, GN.DataIntro dataArgNum consImpArgNames consArgNum discriminant isConstLikeCons sourceFlags))
 
 geistToRemark :: DD.DefiniteDescription -> (Hint, a) -> Log
 geistToRemark dd (m, _) =

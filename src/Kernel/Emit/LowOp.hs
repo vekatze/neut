@@ -113,6 +113,18 @@ emitLowOp ax lowOp = do
             <> emitAllocSize (baseSize ax) size
             <> ")"
         ]
+    LC.AllocOpaque size -> do
+      unwordsL
+        [ "call",
+          "ptr",
+          "@"
+            <> TE.encodeUtf8Builder (mallocName $ allocatorSpec ax)
+            <> "("
+            <> emitLowType (intType ax)
+            <> " "
+            <> emitValue' size
+            <> ")"
+        ]
     LC.Realloc ptr size -> do
       unwordsL
         [ "call",

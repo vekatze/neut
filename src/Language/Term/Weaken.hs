@@ -101,10 +101,11 @@ weaken term =
       let expArgs' = map weaken expArgs
       let defaultArgs' = map (fmap weaken) defaultArgs
       m :< WT.PiElim spec e' impArgs' expArgs' (DefaultArgs.Aligned defaultArgs')
-    m :< TM.DataIntro attr consName dataArgs consArgs -> do
+    m :< TM.DataIntro attr consName dataArgs consImpArgs consArgs -> do
       let dataArgs' = map weakenType dataArgs
+      let consImpArgs' = map weakenType consImpArgs
       let consArgs' = map weaken consArgs
-      m :< WT.DataIntro attr consName dataArgs' consArgs'
+      m :< WT.DataIntro attr consName dataArgs' consImpArgs' consArgs'
     m :< TM.DataElim _ isNoetic oets tree -> do
       let (os, es, ts) = unzip3 oets
       let es' = map weaken es
@@ -123,8 +124,8 @@ weaken term =
       let uncastSeq' = map weakenLet uncastSeq
       let e2' = weaken e2
       m :< WT.BoxElim castSeq' mxt' e1' uncastSeq' e2'
-    m :< TM.CodeIntro e ->
-      m :< WT.CodeIntro (weaken e)
+    m :< TM.CodeIntro codeVariant e ->
+      m :< WT.CodeIntro codeVariant (weaken e)
     m :< TM.CodeElim _ e ->
       m :< WT.CodeElim (weaken e)
     m :< TM.TauIntro ty ->
@@ -184,6 +185,8 @@ weakenMagic m magic = do
               LM.Store (WT.fromBaseLowType m t) (weakenType unit) (weaken value) (weaken pointer)
             LM.Load t pointer ->
               LM.Load (WT.fromBaseLowType m t) (weaken pointer)
+            LM.Shift pointer offset ->
+              LM.Shift (weaken pointer) (weaken offset)
             LM.Alloca t size ->
               LM.Alloca (WT.fromBaseLowType m t) (weaken size)
             LM.External domList cod extFunName args varArgs -> do
@@ -201,6 +204,8 @@ weakenMagic m magic = do
       M.WeakMagic $ M.Calloc (weakenType sizeType) (weaken num) (weaken size)
     M.Malloc sizeType size ->
       M.WeakMagic $ M.Malloc (weakenType sizeType) (weaken size)
+    M.MallocOpaque sizeType size ->
+      M.WeakMagic $ M.MallocOpaque (weakenType sizeType) (weaken size)
     M.Realloc sizeType ptr size ->
       M.WeakMagic $ M.Realloc (weakenType sizeType) (weaken ptr) (weaken size)
     M.Free unitType ptr ->
@@ -217,6 +222,8 @@ weakenMagic m magic = do
       M.WeakMagic $ M.TextUncons mid (weaken text)
     M.MakeSwitch mid key fallback clauses ->
       M.WeakMagic $ M.MakeSwitch mid (weaken key) (weaken fallback) (weaken clauses)
+    M.FreeVariables mid code ->
+      M.WeakMagic $ M.FreeVariables mid (weaken code)
     M.CompileError msg ->
       M.WeakMagic $ M.CompileError (weaken msg)
     M.GetOriginFileName ->
@@ -290,11 +297,13 @@ weakenCase decisionCase = do
       DT.LiteralCase mPat i cont'
     DT.ConsCase record@(DT.ConsCaseRecord {..}) -> do
       let dataArgs' = map (bimap weakenType weakenType) dataArgs
+      let consImpArgs' = map weakenTypeBinder consImpArgs
       let consArgs' = map weakenTypeBinder consArgs
       let cont' = weakenDecisionTree cont
       DT.ConsCase $
         record
           { DT.dataArgs = dataArgs',
+            DT.consImpArgs = consImpArgs',
             DT.consArgs = consArgs',
             DT.cont = cont'
           }
@@ -320,10 +329,11 @@ weakenStmtKindTerm stmtKind =
       MacroInline
     Main t ->
       Main (weakenType t)
-    DataIntro dataName dataArgs expConsArgs discriminant -> do
+    DataIntro dataName dataArgs consImpArgs expConsArgs discriminant -> do
       let dataArgs' = map weakenTypeBinder dataArgs
+      let consImpArgs' = map weakenTypeBinder consImpArgs
       let expConsArgs' = map weakenTypeBinder expConsArgs
-      DataIntro dataName dataArgs' expConsArgs' discriminant
+      DataIntro dataName dataArgs' consImpArgs' expConsArgs' discriminant
 
 weakenStmtKindType :: StmtKindType TM.Type -> StmtKindType WT.WeakType
 weakenStmtKindType stmtKind =
@@ -334,7 +344,11 @@ weakenStmtKindType stmtKind =
       AliasOpaque
     Data dataName dataArgs consInfoList isNominal -> do
       let dataArgs' = map weakenTypeBinder dataArgs
-      let weakenConsInfo consInfo = consInfo {DI.consArgs = map weakenTypeBinder (DI.consArgs consInfo)}
+      let weakenConsInfo consInfo =
+            consInfo
+              { DI.consImpArgs = map weakenTypeBinder (DI.consImpArgs consInfo),
+                DI.consArgs = map weakenTypeBinder (DI.consArgs consInfo)
+              }
       let consInfoList' = map (second weakenConsInfo) consInfoList
       Data dataName dataArgs' consInfoList' isNominal
 

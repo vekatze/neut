@@ -135,23 +135,21 @@ define use-lambda-source() -> int {
 }
 
 define local-source(base: int) -> int {
-  let go =
-    define go(+s: shape, n: int) -> int {
-      match n {
-      | 0 =>
-        add-int(area(~s), base)
-      | _ =>
-        go(~Rect(2, n), sub-int(n, 1))
-      }
-    };
+  define go(+s: shape, n: int) -> int {
+    match n {
+    | 0 =>
+      add-int(area(~s), base)
+    | _ =>
+      go(~Rect(2, n), sub-int(n, 1))
+    }
+  };
   go(~Circle(5), 3)
 }
 
 define local-inline-source(k: int) -> int {
-  let f =
-    inline f(+s: shape) -> int {
-      add-int(area(~s), k)
-    };
+  inline f(+s: shape) -> int {
+    add-int(area(~s), k)
+  };
   f(~Rect(2, 6))
 }
 

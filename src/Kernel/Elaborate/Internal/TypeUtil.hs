@@ -46,7 +46,7 @@ getConsArgTypes ::
   Hint ->
   DD.DefiniteDescription ->
   [TM.Type] ->
-  App [[BinderF TM.Type]]
+  App [DI.ConsInfo (BinderF TM.Type)]
 getConsArgTypes h m dataName dataArgs = do
   dataInfo <- lookupDataInfoFull h m dataName
   let dataBinders = DI.dataArgs dataInfo
@@ -55,7 +55,9 @@ getConsArgTypes h m dataName dataArgs = do
       let binderIds = map (\(_, _, x, _) -> x) dataBinders
       let sub = IntMap.fromList $ zip (map Ident.toInt binderIds) (map TmSubst.Type dataArgs)
       forM (DI.consInfoList dataInfo) $ \consInfo -> do
-        liftIO $ substConsArgs h sub (DI.consArgs consInfo)
+        (consImpArgs', sub') <- liftIO $ TmSubst.refreshBinders (termSubstHandle h) sub (DI.consImpArgs consInfo)
+        consArgs' <- liftIO $ substConsArgs h sub' (DI.consArgs consInfo)
+        return consInfo {DI.consImpArgs = consImpArgs', DI.consArgs = consArgs'}
     else
       raiseCritical m $
         "Could not specialize constructor metadata for `" <> DD.reify dataName <> "` due to arity mismatch"

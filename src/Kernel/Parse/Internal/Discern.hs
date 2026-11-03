@@ -47,11 +47,13 @@ import Kernel.Parse.Pattern qualified as PAT
 import Kernel.Parse.Stage
 import Kernel.Parse.VarDefKind qualified as VDK
 import Language.Common.Annotation qualified as AN
+import Language.Common.ArgNum qualified as ArgNum
 import Language.Common.Attr.Lam qualified as AttrL
 import Language.Common.BaseName qualified as BN
 import Language.Common.Binder
 import Language.Common.CallConvSpec qualified as CCS
 import Language.Common.CallSite (IsDestCall, IsSourceArg)
+import Language.Common.CodeVariant qualified as CV
 import Language.Common.CreateSymbol qualified as Gensym
 import Language.Common.DataInfo qualified as DI
 import Language.Common.DefaultArgs qualified as DefaultArgs
@@ -63,6 +65,7 @@ import Language.Common.Geist qualified as G
 import Language.Common.Ident
 import Language.Common.Ident.Reify qualified as Ident
 import Language.Common.ImpArgs qualified as ImpArgs
+import Language.Common.IsConstLike (IsConstLike)
 import Language.Common.LamKind qualified as LK
 import Language.Common.Literal qualified as LI
 import Language.Common.LocalDefKind qualified as LDK
@@ -71,9 +74,9 @@ import Language.Common.Magic qualified as M
 import Language.Common.ModuleAlias (coreModuleAlias)
 import Language.Common.Noema qualified as N
 import Language.Common.PiKind qualified as PK
-import Language.Common.SlotSize
 import Language.Common.PrimType qualified as PT
 import Language.Common.RuleKind (RuleKind (FoldLeft, FoldRight))
+import Language.Common.SlotSize
 import Language.Common.StmtKind qualified as SK
 import Language.Common.Text.Util
 import Language.Common.VarKind qualified as VK
@@ -84,9 +87,9 @@ import Language.RawTerm.Name
 import Language.RawTerm.NecessityVariant
 import Language.RawTerm.RawBinder
 import Language.RawTerm.RawIdent hiding (isHole)
+import Language.RawTerm.RawIdent qualified as RawIdent
 import Language.RawTerm.RawPattern qualified as RP
 import Language.RawTerm.RawStmt
-import Language.RawTerm.RawTerm (CodeVariant (CodeVariantK))
 import Language.RawTerm.RawTerm qualified as RT
 import Language.WeakTerm.CreateHole qualified as WT
 import Language.WeakTerm.FreeVars (freeVars)
@@ -192,6 +195,7 @@ discernStmt h stmt = do
       return [WeakStmtTrope m dd defineMetaList']
     PostRawStmtVariadic kind m dd -> do
       registerTopLevelName h stmt
+      liftIO $ NameMap.recordRuleParts (H.nameMapHandle h) dd
       liftIO $ Tag.insertGlobalVar (H.tagHandle h) m dd True m
       liftIO $ TopCandidate.insert (H.topCandidateHandle h) $ do
         TopCandidate {loc = metaLocation m, dd = dd, kind = Function}
@@ -322,14 +326,13 @@ discernStmtKindTerm h stmtKind m =
     SK.Main _ -> do
       unitType <- getUnitType h m
       return $ SK.Main unitType
-    SK.DataIntro dataName dataArgs expConsArgs discriminant -> do
+    SK.DataIntro dataName dataArgs consImpArgs expConsArgs discriminant -> do
       (dataArgs', h') <- discernTypeBinder' h dataArgs
-      (expConsArgs', h'') <- discernBinder' h' expConsArgs
-      forM_ expConsArgs' $ \(_, _, x, _) -> do
-        liftIO $ Unused.deleteVariable (H.unusedHandle h'') x
-      forM_ dataArgs' $ \(_, _, x, _) -> do
-        liftIO $ Unused.deleteVariable (H.unusedHandle h'') x
-      return $ SK.DataIntro dataName dataArgs' expConsArgs' discriminant
+      (consImpArgs', h'') <- discernTypeBinder' h' consImpArgs
+      (expConsArgs', h''') <- discernBinder' h'' expConsArgs
+      forM_ (dataArgs' ++ consImpArgs' ++ expConsArgs') $ \(_, _, x, _) -> do
+        liftIO $ Unused.deleteVariable (H.unusedHandle h''') x
+      return $ SK.DataIntro dataName dataArgs' consImpArgs' expConsArgs' discriminant
 
 discernStmtKindType :: H.Handle -> RawStmtKindType -> App (SK.StmtKindType WT.WeakType)
 discernStmtKindType h stmtKind =
@@ -341,10 +344,11 @@ discernStmtKindType h stmtKind =
     SK.Data dataName dataArgs consInfoList isNominal -> do
       (dataArgs', h') <- discernTypeBinder' h dataArgs
       let discernConsInfo (savedHint, consInfo) = do
-            (consArgs', _) <- discernBinder' h' (DI.consArgs consInfo)
-            return (savedHint, consInfo {DI.consArgs = consArgs'})
+            (consImpArgs', h'') <- discernTypeBinder' h' (DI.consImpArgs consInfo)
+            (consArgs', _) <- discernBinder' h'' (DI.consArgs consInfo)
+            return (savedHint, consInfo {DI.consImpArgs = consImpArgs', DI.consArgs = consArgs'})
       consInfoList' <- mapM discernConsInfo consInfoList
-      forM_ (concatMap (DI.consArgs . snd) consInfoList') $ \(_, _, x, _) -> do
+      forM_ (concatMap (\(_, consInfo) -> DI.consImpArgs consInfo ++ DI.consArgs consInfo) consInfoList') $ \(_, _, x, _) -> do
         liftIO $ Unused.deleteVariable (H.unusedHandle h') x
       forM_ dataArgs' $ \(_, _, x, _) -> do
         liftIO $ Unused.deleteVariable (H.unusedHandle h') x
@@ -418,7 +422,7 @@ discern h term =
                   case (layer == H.currentLayer h, stage == H.currentStage h) of
                     (True, True) -> do
                       liftIO $ Unused.deleteVariable (H.unusedHandle h) name'
-                      liftIO $ Tag.insertLocalVar (H.tagHandle h) m name' mDef
+                      liftIO $ Tag.insertLocalVar (H.tagHandle h) m (H.getSymbolOwner h name') mDef
                       return $ m :< WT.Var name'
                     (False, _) ->
                       raiseLayerError m (H.currentLayer h) layer
@@ -432,41 +436,10 @@ discern h term =
           interpretGlobalName h m dd gn
     m :< RT.VarGlobal dd gn -> do
       interpretGlobalName h m dd gn
-    m :< RT.PiIntro _ (RT.RawDef {geist, body, endLoc}) -> do
-      lamID <- liftIO $ Gensym.newCount (H.gensymHandle h)
-      let (name, _) = RT.name geist
-      let impArgs = RT.extractImpArgs $ RT.impArgs geist
-      let defaultArgs = SE.extract $ fst $ RT.defaultArgs geist
-      let expArgs = RT.extractArgs $ RT.expArgs geist
-      (impArgs', h') <- discernImpArgs h impArgs endLoc
-      (expArgs', h'') <- discernBinder h' expArgs endLoc
-      (defaultArgs', h''') <- discernBinderWithDefaultArgs h'' defaultArgs endLoc
-      codType' <- discernType h''' $ snd $ RT.cod geist
-      body' <- discern h''' body
-      ensureLayerClosedness m h''' body'
-      let isDestPassing = RT.isDestPassing geist
-      return $ m :< WT.PiIntro (AttrL.normal' name isDestPassing lamID codType') impArgs' expArgs' defaultArgs' body'
-    m :< RT.PiIntroFix kind _ (RT.RawDef {geist, body, endLoc}) -> do
-      ensureLocalDefStage m h kind
-      let isDestPassing = RT.isDestPassing geist
-      let impArgs = RT.extractImpArgs $ RT.impArgs geist
-      let defaultArgs = SE.extract $ fst $ RT.defaultArgs geist
-      let expArgs = RT.extractArgs $ RT.expArgs geist
-      let mx = RT.loc geist
-      let (x, _) = RT.name geist
-      (impArgs', h') <- discernImpArgs h impArgs endLoc
-      (expArgs', h'') <- discernBinder h' expArgs endLoc
-      (defaultArgs', h''') <- discernBinderWithDefaultArgs h'' defaultArgs endLoc
-      codType' <- discernType h''' $ snd $ RT.cod geist
-      x' <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) x
-      h'''' <- extendVar h''' mx x'
-      liftIO $ Unused.deleteVariable (H.unusedHandle h) x'
-      body' <- discern h'''' body
-      let mxt' = (mx, VK.normal, x', codType')
-      liftIO $ Tag.insertBinder (H.tagHandle h) mxt'
-      lamID <- liftIO $ Gensym.newCount (H.gensymHandle h)
-      ensureLayerClosedness m h'''' body'
-      return $ m :< WT.PiIntro (AttrL.Attr {lamKind = LK.Fix kind isDestPassing mxt', identity = lamID}) impArgs' expArgs' defaultArgs' body'
+    m :< RT.PiIntro _ def -> do
+      discernLambda h m def
+    m :< RT.PiIntroFunction _ def -> do
+      discernLambda h m def
     m :< RT.PiElim e _ mImpArgs isDestCall _ expArgs _ mDefaultArgs -> do
       discernPiElim h m isDestCall e mImpArgs expArgs mDefaultArgs
     m :< RT.PiElimImplicit name _ impArgs -> do
@@ -484,7 +457,12 @@ discern h term =
             else do
               impArgs' <- mapM (discernType h) $ SE.extract impArgs
               func <- interpretGlobalName h m dd $ GN.disableConstLikeFlag gn
-              return $ m :< WT.PiElim (CCS.AsMarked False []) func (ImpArgs.FullySpecified impArgs') [] (DefaultArgs.ByKey [])
+              specifiedCons <- specifyConstructorImpArgs h func impArgs'
+              case specifiedCons of
+                Just cons ->
+                  return cons
+                Nothing ->
+                  return $ m :< WT.PiElim (CCS.AsMarked False []) func (ImpArgs.FullySpecified impArgs') [] (DefaultArgs.ByKey [])
     m :< RT.PiElimByKey name _ mImpArgs isDestCall _ kvs restArg -> do
       case restArg of
         Nothing ->
@@ -510,7 +488,7 @@ discern h term =
       let leafTM = m :< RT.piElim (RT.force (m :< RT.VarGlobal leafDD leafGN)) [size]
       let nodeTM = RT.force (m :< RT.VarGlobal nodeDD nodeGN)
       let rootTM = RT.force (m :< RT.VarGlobal rootDD rootGN)
-      let quoteArg e@(me :< _) = me :< RT.CodeIntro CodeVariantK [] [] (e, [])
+      let quoteArg e@(me :< _) = me :< RT.CodeIntro CV.CodeVariantK [] [] (e, [])
       let args = map quoteArg $ SE.extract es
       let unquote e = m :< RT.CodeElim [] [] (e, [])
       case kind of
@@ -531,7 +509,7 @@ discern h term =
                 raiseError m $ "`" <> renderDD (H.modulePathMap h) dd <> "` is a rule and must be used with `::[...]`"
               _ ->
                 return $ m :< RT.VarGlobal dd gn
-      let quote e@(me :< _) = me :< RT.CodeIntro CodeVariantK [] [] (e, [])
+      let quote e@(me :< _) = me :< RT.CodeIntro CV.CodeVariantK [] [] (e, [])
       let args = fmap (\e -> (quote e, False)) es
       let defaultArgs = mDefaultArgs <&> fmap (\(mx, k, c1, c2, e) -> (mx, k, c1, c2, quote e))
       discern h $ m :< RT.CodeElim [] [] (m :< RT.PiElim headTerm [] mImpArgs False [] args [] defaultArgs, [])
@@ -543,7 +521,7 @@ discern h term =
                 RT.kvKeyComment = c1,
                 RT.kvValueComment = c2,
                 RT.kvPrevValue = Nothing,
-                RT.kvValue = (me :< RT.CodeIntro RT.CodeVariantK [] [] (e, []), False)
+                RT.kvValue = (me :< RT.CodeIntro CV.CodeVariantK [] [] (e, []), False)
               }
       let args = fmap quote kvs
       let call = m :< RT.PiElimByKey name [] mImpArgs False [] args Nothing
@@ -551,10 +529,11 @@ discern h term =
     m :< RT.PiElimExact _ e -> do
       e' <- discern h e
       return $ m :< WT.PiElimExact e'
-    m :< RT.DataIntro attr consName dataArgs consArgs -> do
+    m :< RT.DataIntro attr consName dataArgs consImpArgs consArgs -> do
       dataArgs' <- mapM (discernType h) dataArgs
+      consImpArgs' <- mapM (discernType h) consImpArgs
       consArgs' <- mapM (discern h) consArgs
-      return $ m :< WT.DataIntro attr consName dataArgs' consArgs'
+      return $ m :< WT.DataIntro attr consName dataArgs' consImpArgs' consArgs'
     m :< RT.DataElim _ isNoetic es patternMatrix -> do
       let es' = SE.extract es
       let ms = map (\(me :< _) -> me) es'
@@ -621,11 +600,10 @@ discern h term =
         forM_ ysCont $ \(_, y) -> liftIO (Unused.deleteVariable (H.unusedHandle h) y)
       return $ m :< WT.BoxElim yetsInner mxt' e1' yetsCont e2''
     m :< RT.CodeIntro codeVariant _ _ (body, _) -> do
-      let offset = case codeVariant of RT.CodeVariantK -> 1; RT.CodeVariantC -> 0
-      let innerStage = H.currentStage h - offset
+      let innerStage = H.currentStage h - CV.getStageOffset codeVariant
       let hInner = h {H.currentStage = innerStage}
       body' <- discern hInner body
-      return $ m :< WT.CodeIntro body'
+      return $ m :< WT.CodeIntro codeVariant body'
     m :< RT.CodeElim _ _ (body, _) -> do
       let innerStage = H.currentStage h + 1
       let hInner = h {H.currentStage = innerStage}
@@ -700,6 +678,8 @@ discern h term =
                 []
                 (m' :< RT.Let RT.Try [] pat [] [] (m' :< RT.Var tmpVar) [] startLoc [] e2 endLoc)
                 endLoc
+    m :< RT.LetRec kind _ def _ startLoc _ cont endLoc -> do
+      discernLetRec h m kind def startLoc cont endLoc
     m :< RT.Pin _ mxt@(mx, _k, x, _, _, t) _ mys _ e1 _ startLoc _ e2@(m2 :< _) endLoc -> do
       let m2' = blur m2
       let x' = SE.fromListWithComment Nothing SE.Comma [([], ((mx, VK.normal, x), []))]
@@ -837,6 +817,8 @@ discern h term =
           let e1' = withBody e1
           let e2' = withBody e2
           discern h $ mLet :< RT.LetOn letKind c1 mxt c2 mys c3 e1' c4 startLoc c5 e2' endLoc
+        mLetRec :< RT.LetRec kind c1 def c2 startLoc c3 cont endLoc -> do
+          discern h $ mLetRec :< RT.LetRec kind c1 def c2 startLoc c3 (withBody cont) endLoc
         mTau :< RT.TauElim c1 mxt c2 e1 c3 startLoc c4 e2 endLoc -> do
           let e1' = withBody e1
           let e2' = withBody e2
@@ -1006,7 +988,7 @@ discernNoeticVarList h mustInsertTagInfo xsOuter = do
     xInner <- Gensym.newIdentFromIdent (H.gensymHandle h) outerVar
     t <- WT.createTypeHole (H.gensymHandle h) mUse []
     when mustInsertTagInfo $ do
-      Tag.insertLocalVar (H.tagHandle h) mUse outerVar mDef
+      Tag.insertLocalVar (H.tagHandle h) mUse (H.getSymbolOwner h outerVar) mDef
     return ((mUse, k, xInner, t), mDef :< WT.Var outerVar)
 
 withoutCopyMark :: (Hint, (Hint, VK.VarKind, Ident)) -> (Hint, (Hint, VK.VarKind, Ident))
@@ -1033,6 +1015,11 @@ discernMagic h m magic =
       t' <- discernType h t
       pointer' <- discern h pointer
       return $ M.WeakMagic $ M.LowMagic $ LM.Load t' pointer'
+    RT.Shift _ (_, (pointer, _)) (_, (offset, _)) _ -> do
+      ensureRuntimeStage m h "`magic shift`"
+      pointer' <- discern h pointer
+      offset' <- discern h offset
+      return $ M.WeakMagic $ M.LowMagic $ LM.Shift pointer' offset'
     RT.Alloca _ (_, (t, _)) (_, (size, _)) _ -> do
       ensureRuntimeStage m h "`magic alloca`"
       t' <- discernType h t
@@ -1049,6 +1036,11 @@ discernMagic h m magic =
       sizeType <- liftEither (locatorToTypeVar m coreCSize) >>= discernType h
       size' <- discern h size
       return $ M.WeakMagic $ M.Malloc sizeType size'
+    RT.MallocOpaque _ (_, (size, _)) _ -> do
+      ensureRuntimeStage m h "`magic malloc-opaque`"
+      sizeType <- liftEither (locatorToTypeVar m coreCSize) >>= discernType h
+      size' <- discern h size
+      return $ M.WeakMagic $ M.MallocOpaque sizeType size'
     RT.Realloc _ (_, (ptr, _)) (_, (size, _)) _ -> do
       ensureRuntimeStage m h "`magic realloc`"
       sizeType <- liftEither (locatorToTypeVar m coreCSize) >>= discernType h
@@ -1087,48 +1079,54 @@ discernMagic h m magic =
       ensureRuntimeStage m h "`magic opaque-value`"
       e' <- discern h e
       return $ M.WeakMagic $ M.LowMagic $ LM.OpaqueValue e'
-    RT.CallType _ (_, (func, _)) (_, (arg1, _)) (_, (arg2, _)) (_, (arg3, _)) -> do
+    RT.CallType _ (_, (func, _)) (_, (arg1, _)) (_, (arg2, _)) (_, (arg3, _)) _ -> do
       ensureRuntimeStage m h "`magic call-type`"
       func' <- discern h func
       arg1' <- discern h arg1
       arg2' <- discern h arg2
       arg3' <- discern h arg3
       return $ M.WeakMagic $ M.LowMagic $ LM.CallType func' arg1' arg2' arg3'
-    RT.InspectType (_, (typeExpr, _)) -> do
+    RT.InspectType (_, (typeExpr, _)) _ -> do
       ensureCompileStage m h "`magic inspect-type`"
       coreModuleID <- Alias.resolveModuleAlias (H.aliasHandle h) m coreModuleAlias
       typeValueVar <- liftEither $ locatorToTypeVar m coreTypeValueTypeValue
       typeValueExpr <- discernType h typeValueVar
       typeExpr' <- discernType h typeExpr
       return $ M.WeakMagic $ M.InspectType coreModuleID typeValueExpr typeExpr'
-    RT.EqType (_, (typeExpr1, _)) (_, (typeExpr2, _)) -> do
+    RT.EqType (_, (typeExpr1, _)) (_, (typeExpr2, _)) _ -> do
       ensureCompileStage m h "`magic eq-type`"
       coreModuleID <- Alias.resolveModuleAlias (H.aliasHandle h) m coreModuleAlias
       typeExpr1' <- discernType h typeExpr1
       typeExpr2' <- discernType h typeExpr2
       return $ M.WeakMagic $ M.EqType coreModuleID typeExpr1' typeExpr2'
-    RT.ShowType _ (_, (typeExpr, _)) -> do
+    RT.ShowType _ (_, (typeExpr, _)) _ -> do
       ensureCompileStage m h "`magic show-type`"
       typeExpr' <- discernType h typeExpr
       return $ M.WeakMagic $ M.ShowType typeExpr'
-    RT.TextCons _ (_, (rune, _)) (_, (text, _)) -> do
+    RT.TextCons _ (_, (rune, _)) (_, (text, _)) _ -> do
       ensureCompileStage m h "`magic text-cons`"
       rune' <- discern h rune
       text' <- discern h text
       return $ M.WeakMagic $ M.TextCons rune' text'
-    RT.TextUncons _ (_, (text, _)) -> do
+    RT.TextUncons _ (_, (text, _)) _ -> do
       ensureCompileStage m h "`magic text-uncons`"
       moduleID <- Alias.resolveModuleAlias (H.aliasHandle h) m coreModuleAlias
       text' <- discern h text
       return $ M.WeakMagic $ M.TextUncons moduleID text'
-    RT.MakeSwitch _ (_, (key, _)) (_, (fallback, _)) (_, (clauses, _)) -> do
+    RT.MakeSwitch _ (_, (key, _)) (_, (fallback, _)) (_, (clauses, _)) _ -> do
       ensureCompileStage m h "`magic make-switch`"
       moduleID <- Alias.resolveModuleAlias (H.aliasHandle h) m coreModuleAlias
       key' <- discern h key
       fallback' <- discern h fallback
       clauses' <- discern h clauses
       return $ M.WeakMagic $ M.MakeSwitch moduleID key' fallback' clauses'
-    RT.CompileError _ (_, (msg, _)) -> do
+    RT.FreeVariables _ (_, (code, _)) _ -> do
+      ensureCompileStage m h "`magic free-variables`"
+      ensureCodeVariableType h m
+      moduleID <- Alias.resolveModuleAlias (H.aliasHandle h) m coreModuleAlias
+      code' <- discern h code
+      return $ M.WeakMagic $ M.FreeVariables moduleID code'
+    RT.CompileError _ (_, (msg, _)) _ -> do
       ensureCompileStage m h "`magic compile-error`"
       msg' <- discern h msg
       return $ M.WeakMagic $ M.CompileError msg'
@@ -1304,12 +1302,12 @@ discernPiElim ::
   App WT.WeakTerm
 discernPiElim h m isDestCall e mImpArgs expArgs mDefaultArgs = do
   e' <- discern h e
-  impArgs' <- case mImpArgs of
+  (e'', impArgs') <- case mImpArgs of
     Nothing ->
-      return ImpArgs.Unspecified
+      return (e', ImpArgs.Unspecified)
     Just impArgs -> do
       impArgs' <- mapM (discernType h) $ SE.extract impArgs
-      return $ ImpArgs.FullySpecified impArgs'
+      passImpArgsToConstructor h e' impArgs'
   markedArgs <- forM (SE.extract expArgs) $ \(arg, isSourceArg) -> do
     arg' <- discern h arg
     return (arg', isSourceArg)
@@ -1322,7 +1320,29 @@ discernPiElim h m isDestCall e mImpArgs expArgs mDefaultArgs = do
       ensureFieldLinearity m ks S.empty S.empty
       vs' <- mapM (discern h) vs
       return $ DefaultArgs.ByKey (zip ks vs')
-  return $ m :< WT.PiElim (CCS.AsMarked isDestCall sourceArgs) e' impArgs' expArgs' defaultArgs'
+  return $ m :< WT.PiElim (CCS.AsMarked isDestCall sourceArgs) e'' impArgs' expArgs' defaultArgs'
+
+passImpArgsToConstructor :: H.Handle -> WT.WeakTerm -> [WT.WeakType] -> App (WT.WeakTerm, ImpArgs.ImpArgs WT.WeakType)
+passImpArgsToConstructor h func impArgs = do
+  specifiedCons <- specifyConstructorImpArgs h func impArgs
+  case specifiedCons of
+    Just cons ->
+      return (cons, ImpArgs.Unspecified)
+    Nothing ->
+      return (func, ImpArgs.FullySpecified impArgs)
+
+specifyConstructorImpArgs :: H.Handle -> WT.WeakTerm -> [WT.WeakType] -> App (Maybe WT.WeakTerm)
+specifyConstructorImpArgs h func impArgs =
+  case func of
+    m :< WT.PiElim spec cons@(mCons :< WT.VarGlobal _ dd) ImpArgs.Unspecified [] defaultArgs -> do
+      gn <- resolveDefiniteDescription h mCons dd
+      case gn of
+        GN.DataIntro {} ->
+          return $ Just $ m :< WT.PiElim spec cons (ImpArgs.FullySpecified impArgs) [] defaultArgs
+        _ ->
+          return Nothing
+    _ ->
+      return Nothing
 
 discernPiElimByKeyPlain ::
   H.Handle ->
@@ -1333,19 +1353,11 @@ discernPiElimByKeyPlain ::
   SE.Series (RT.KeyValueArg RT.RawTerm) ->
   App WT.WeakTerm
 discernPiElimByKeyPlain h m isDestCall name mImpArgs kvs = do
-  (dd, (_, gn)) <- resolveName h m name
-  _ :< func <- interpretGlobalName h m dd (GN.disableConstLikeFlag gn)
   let (ks, vs) = unzip $ map (\kv -> (RT.kvKey kv, RT.kvValue kv)) $ SE.extract kvs
   ensureFieldLinearity m ks S.empty S.empty
-  (impKeys, expKeys, defaultKeys) <- KeyArg.lookup (H.keyArgHandle h) m dd
+  (func', impArgs', (impKeys, expKeys, defaultKeys)) <- discernKeyCallee h m name mImpArgs
   when (any (`elem` impKeys) ks) $ do
     raiseError m "Implicit key arguments must be specified via explicit type arguments"
-  impArgs' <- case mImpArgs of
-    Nothing ->
-      return ImpArgs.Unspecified
-    Just impArgs -> do
-      impArgs' <- mapM (discernType h) $ SE.extract impArgs
-      return $ ImpArgs.FullySpecified impArgs'
   let keyMap = Map.fromList $ zip ks (repeat ())
   checkRedundancy m (expKeys ++ defaultKeys) keyMap
   forM_ (SE.extract kvs) $ \kv -> do
@@ -1359,7 +1371,42 @@ discernPiElimByKeyPlain h m isDestCall name mImpArgs kvs = do
   markedExpArgs <- resolveExpKeys h m expKeys expKvs
   let (expArgs, sourceArgs) = unzip markedExpArgs
   let defaultArgs = selectDefaultKeyArgs defaultKeys (Map.map fst expKvs)
-  return $ m :< WT.PiElim (CCS.AsMarked isDestCall sourceArgs) (m :< func) impArgs' expArgs defaultArgs
+  return $ m :< WT.PiElim (CCS.AsMarked isDestCall sourceArgs) func' impArgs' expArgs defaultArgs
+
+discernKeyCallee ::
+  H.Handle ->
+  Hint ->
+  Name ->
+  Maybe (SE.Series RT.RawType) ->
+  App (WT.WeakTerm, ImpArgs.ImpArgs WT.WeakType, ([KeyArg.ImpKey], [ExpKey], [DefaultKey]))
+discernKeyCallee h m name mImpArgs =
+  case name of
+    Bare s
+      | Just (_, x, _, _) <- Map.lookup s (H.nameEnv h) -> do
+          RT.GeistKeys {geistImpKeys, geistExpKeys, geistDefaultKeys} <-
+            case H.lookupLocalKeys h x of
+              Just keys ->
+                return keys
+              Nothing ->
+                raiseError m $ "The local variable `" <> s <> "` has no parameter names"
+          func <- discern h $ m :< RT.Var name
+          impArgs' <- case mImpArgs of
+            Nothing ->
+              return ImpArgs.Unspecified
+            Just impArgs ->
+              ImpArgs.FullySpecified <$> mapM (discernType h) (SE.extract impArgs)
+          return (func, impArgs', (geistImpKeys, geistExpKeys, geistDefaultKeys))
+    _ -> do
+      (dd, (_, gn)) <- resolveName h m name
+      func <- interpretGlobalName h m dd (GN.disableConstLikeFlag gn)
+      keys <- KeyArg.lookup (H.keyArgHandle h) m dd
+      case mImpArgs of
+        Nothing ->
+          return (func, ImpArgs.Unspecified, keys)
+        Just impArgs -> do
+          impArgs' <- mapM (discernType h) $ SE.extract impArgs
+          (func', impArgs'') <- passImpArgsToConstructor h func impArgs'
+          return (func', impArgs'', keys)
 
 discernRecordUpdate ::
   H.Handle ->
@@ -1384,7 +1431,7 @@ discernRecordUpdate h m name mImpArgs kvs (mRest, _, _, restValue) = do
   let missingPatternItems =
         map (\(key, value) -> (key, (mRest', [], (RP.Var VK.normal (Bare value), sourceFlagOf key)))) missingPairs
   let prevValuePatternItems = mapMaybe (prevValuePatternItem sourceFlagOf) $ SE.extract kvs
-  let restPattern = RP.Cons name [] (RP.Of $ SE.fromList SE.Brace SE.Comma $ missingPatternItems ++ prevValuePatternItems)
+  let restPattern = RP.Cons name [] Nothing (RP.Of $ SE.fromList SE.Brace SE.Comma $ missingPatternItems ++ prevValuePatternItems)
   let patParam = (mRest', restPattern, [], [], restType)
   let missingFields = map (\(key, value) -> plainKeyValueArg m' key (m' :< RT.Var (Bare value)) (sourceFlagOf key)) missingPairs
   let specifiedFields = map (\kv -> kv {RT.kvPrevValue = Nothing}) $ SE.extract kvs
@@ -1412,6 +1459,22 @@ plainKeyValueArg m key value isSourceArg =
       RT.kvPrevValue = Nothing,
       RT.kvValue = (value, isSourceArg)
     }
+
+discernLambda :: H.Handle -> Hint -> RT.FuncInfo -> App WT.WeakTerm
+discernLambda h m (RT.RawDef {geist, body, endLoc}) = do
+  lamID <- liftIO $ Gensym.newCount (H.gensymHandle h)
+  let (name, _) = RT.name geist
+  let impArgs = RT.extractImpArgs $ RT.impArgs geist
+  let defaultArgs = SE.extract $ fst $ RT.defaultArgs geist
+  let expArgs = RT.extractArgs $ RT.expArgs geist
+  (impArgs', h') <- discernImpArgs h impArgs endLoc
+  (expArgs', h'') <- discernBinder h' expArgs endLoc
+  (defaultArgs', h''') <- discernBinderWithDefaultArgs h'' defaultArgs endLoc
+  codType' <- discernType h''' $ snd $ RT.cod geist
+  body' <- discern h''' body
+  ensureLayerClosedness m h''' body'
+  let isDestPassing = RT.isDestPassing geist
+  return $ m :< WT.PiIntro (AttrL.normal' name isDestPassing lamID codType') impArgs' expArgs' defaultArgs' body'
 
 discernLet ::
   H.Handle ->
@@ -1466,12 +1529,12 @@ constructEitherBinder h m mx m1 pat tmpVar cont = do
   eitherR <- liftEither $ locatorToName m1 coreEitherRight
   eitherVarL <- liftEither $ locatorToVarGlobal m1 coreEitherLeft
   let longClause =
-        ( SE.fromList'' [(mx', RP.Cons eitherR [] (RP.Paren (SE.fromList' [(mx, (pat, False))])))],
+        ( SE.fromList'' [(mx', RP.Cons eitherR [] Nothing (RP.Paren (SE.fromList' [(mx, (pat, False))])))],
           [],
           cont
         )
   let shortClause =
-        ( SE.fromList'' [(m', RP.Cons eitherL [] (RP.Paren (SE.fromList' [(m', (RP.Var VK.normal (Bare earlyRetVar), False))])))],
+        ( SE.fromList'' [(m', RP.Cons eitherL [] Nothing (RP.Paren (SE.fromList' [(m', (RP.Var VK.normal (Bare earlyRetVar), False))])))],
           [],
           m' :< RT.piElim eitherVarL [m' :< RT.Var (Bare earlyRetVar)]
         )
@@ -1482,6 +1545,47 @@ constructEitherBinder h m mx m1 pat tmpVar cont = do
         False
         (SE.fromList'' [m1' :< RT.Var (Bare tmpVar)])
         (SE.fromList SE.Brace SE.Bar [longClause, shortClause])
+
+discernLetRec ::
+  H.Handle ->
+  Hint ->
+  LDK.LocalDefKind ->
+  RT.DefInfo ->
+  Loc ->
+  RT.RawTerm ->
+  Loc ->
+  App WT.WeakTerm
+discernLetRec h m kind (RT.RawDef {geist, body, endLoc = bodyEndLoc}) startLoc cont endLoc = do
+  ensureLocalDefStage m h kind
+  let isDestPassing = RT.isDestPassing geist
+  let impArgs = RT.extractImpArgs $ RT.impArgs geist
+  let defaultArgs = SE.extract $ fst $ RT.defaultArgs geist
+  let expArgs = RT.extractArgs $ RT.expArgs geist
+  let mx = RT.loc geist
+  let (x, _) = RT.name geist
+  (impArgs', h') <- discernImpArgs h impArgs bodyEndLoc
+  (expArgs', h'') <- discernBinder h' expArgs bodyEndLoc
+  (defaultArgs', h''') <- discernBinderWithDefaultArgs h'' defaultArgs bodyEndLoc
+  codType' <- discernType h''' $ snd $ RT.cod geist
+  self <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) x
+  name <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) x
+  let keys = RT.getGeistKeys geist
+  hSelf <- extendVarWithKeys h''' mx self keys
+  liftIO $ Unused.deleteVariable (H.unusedHandle h) self
+  liftIO $ SymLoc.insert (H.symLocHandle h) self (metaLocation mx) bodyEndLoc
+  let hBody = H.withSymbolOwner hSelf self name
+  body' <- discern hBody body
+  lamID <- liftIO $ Gensym.newCount (H.gensymHandle h)
+  ensureLayerClosedness m hBody body'
+  let attr = AttrL.Attr {lamKind = LK.Fix kind isDestPassing (mx, VK.normal, self, codType'), identity = lamID}
+  let fix = m :< WT.PiIntro attr impArgs' expArgs' defaultArgs' body'
+  nameType <- liftIO (RT.createTypeHole (H.gensymHandle h) mx) >>= discernType h
+  hCont <- extendVarWithKeys h mx name keys
+  cont' <- discern hCont cont
+  liftIO $ SymLoc.insert (H.symLocHandle h) name startLoc endLoc
+  let binder = (mx, VK.defined, name, nameType)
+  liftIO $ Tag.insertBinder (H.tagHandle h) binder
+  return $ m :< WT.Let binder fix cont'
 
 discernIdent :: Hint -> H.Handle -> RawIdent -> App (Hint, (Hint, Ident))
 discernIdent mUse h x =
@@ -1659,25 +1763,28 @@ discernPatternRow ::
   RP.RawPatternRow RT.RawTerm ->
   App (PAT.PatternRow ([Ident], [(BinderF WT.WeakType, WT.WeakTerm)], WT.WeakTerm))
 discernPatternRow h (patList, _, body) = do
-  (patList', body') <- discernPatternRow' h (SE.extract patList) [] body
+  (patList', body') <- discernPatternRow' h (SE.extract patList) [] [] body
   return (V.fromList patList', body')
 
 discernPatternRow' ::
   H.Handle ->
   [(Hint, RP.RawPattern)] ->
   NominalEnv ->
+  NominalEnv ->
   RT.RawTerm ->
   App ([(Hint, PAT.Pattern)], ([Ident], [(BinderF WT.WeakType, WT.WeakTerm)], WT.WeakTerm))
-discernPatternRow' h patList newVarList body = do
+discernPatternRow' h patList newVarList newTypeVarList body = do
   case patList of
     [] -> do
       ensureVariableLinearity newVarList
+      ensureVariableLinearity newTypeVarList
       h' <- liftIO $ H.extendByNominalEnv h VDK.Normal newVarList
-      body' <- discern h' body
+      h'' <- liftIO $ H.extendTypeByNominalEnv h' VDK.Normal newTypeVarList
+      body' <- discern h'' body
       return ([], ([], [], body'))
     pat : rest -> do
-      (pat', varsInPat) <- discernPattern h (H.currentLayer h) (H.currentStage h) pat
-      (rest', body') <- discernPatternRow' h rest (varsInPat ++ newVarList) body
+      (pat', varsInPat, typeVarsInPat) <- discernPattern h (H.currentLayer h) (H.currentStage h) pat
+      (rest', body') <- discernPatternRow' h rest (varsInPat ++ newVarList) (typeVarsInPat ++ newTypeVarList) body
       return (pat' : rest', body')
 
 ensureVariableLinearity :: NominalEnv -> App ()
@@ -1706,7 +1813,7 @@ discernPattern ::
   Layer ->
   Stage ->
   (Hint, RP.RawPattern) ->
-  App ((Hint, PAT.Pattern), NominalEnv)
+  App ((Hint, PAT.Pattern), NominalEnv, NominalEnv)
 discernPattern h layer stage (m, pat) = do
   case pat of
     RP.Var k name -> do
@@ -1716,54 +1823,44 @@ discernPattern h layer stage (m, pat) = do
             ParsedNumericLiteral (IntegerLiteral i) -> do
               when (VK.isExp k) $
                 raiseError m "Numeric literal cannot be marked with `!`"
-              return ((m, PAT.Literal (LI.Int i)), [])
+              return ((m, PAT.Literal (LI.Int i)), [], [])
             ParsedNumericLiteral (FloatingLiteral _) ->
               raiseError m $ "A floating-point literal cannot be used as a pattern: `" <> x <> "`"
             InvalidNumericLiteral numericClass ->
               raiseInvalidNumericLiteral m numericClass x
             _
               | isConsName x && k == VK.normal -> do
-                  ResolvedCons {..} <- resolveConstructor h m $ Bare x
-                  unless isConstLike $ do
-                    let consDD' = renderDD (H.modulePathMap h) consDD
-                    raiseError m $
-                      "The constructor `" <> consDD' <> "` cannot be used as a constant"
-                  return ((m, PAT.Cons (PAT.ConsInfo {args = [], ..})), [])
+                  resolvedCons <- resolveConstructor h m $ Bare x
+                  discernConstantPattern h layer stage m name resolvedCons Nothing
               | otherwise -> do
                   x' <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) x
-                  return ((m, PAT.Var k x'), [(x, (m, x', layer, stage))])
+                  return ((m, PAT.Var k x'), [(x, (m, x', layer, stage))], [])
         _ -> do
           when (VK.isExp k) $
             raiseError m "Locator patterns cannot be marked with `!`"
-          (dd, gn) <- resolveName h m name
-          case gn of
-            (_, GN.DataIntro dataArgNum consArgNum disc isConstLike _) -> do
-              let consInfo =
-                    PAT.ConsInfo
-                      { consDD = dd,
-                        isConstLike = isConstLike,
-                        disc = disc,
-                        dataArgNum = dataArgNum,
-                        consArgNum = consArgNum,
-                        args = []
-                      }
-              return ((m, PAT.Cons consInfo), [])
-            _ -> do
+          (dd, (_, gn)) <- resolveName h m name
+          case resolveConstructorMaybe dd gn of
+            Just resolvedCons ->
+              discernConstantPattern h layer stage m name resolvedCons Nothing
+            Nothing -> do
               let dd' = renderDD (H.modulePathMap h) dd
               raiseError m $
                 "The symbol `" <> dd' <> "` is not defined as a constuctor"
-    RP.Cons cons _ mArgs -> do
-      ResolvedCons {..} <- resolveConstructor h m cons
-      when isConstLike $
-        raiseError m $
-          "The constructor `" <> showName cons <> "` cannot have any arguments"
+    RP.Cons cons _ mTypeParams mArgs -> do
+      resolvedCons@ResolvedCons {..} <- resolveConstructor h m cons
       case mArgs of
+        RP.Omitted ->
+          discernConstantPattern h layer stage m cons resolvedCons mTypeParams
         RP.Paren markedArgs -> do
+          ensureNonConstantConstructor m cons isConstLike
+          (typeParams, typeVars) <- discernPatternTypeParams h layer stage m cons resolvedCons mTypeParams
           let markedArgs' = SE.extract markedArgs
           ensurePatternMarkAgreement consSourceFlags markedArgs'
-          (args, hList) <- mapAndUnzipM (discernPattern h layer stage) $ map stripPatternMark markedArgs'
-          return ((m, PAT.Cons (PAT.ConsInfo {..})), concat hList)
+          (args, varsList, typeVarsList) <- unzip3 <$> mapM (discernPattern h layer stage) (map stripPatternMark markedArgs')
+          return ((m, PAT.Cons (PAT.ConsInfo {..})), concat varsList, typeVars ++ concat typeVarsList)
         RP.Of mkvs -> do
+          ensureNonConstantConstructor m cons isConstLike
+          (typeParams, typeVars) <- discernPatternTypeParams h layer stage m cons resolvedCons mTypeParams
           let (ks, mvcs) = unzip $ SE.extract mkvs
           let mvs = map (\(mv, _, v) -> (mv, v)) mvcs
           ensureFieldLinearity m ks S.empty S.empty
@@ -1774,10 +1871,67 @@ discernPattern h layer stage (m, pat) = do
           markedArgs <- resolveExpKeys h m expKeys kvs'
           checkRedundancy m expKeys kvs'
           ensurePatternMarkAgreement consSourceFlags markedArgs
-          (args, hList) <- mapAndUnzipM (discernPattern h layer stage) $ map stripPatternMark markedArgs
-          return ((m, PAT.Cons (PAT.ConsInfo {..})), concat hList)
+          (args, varsList, typeVarsList) <- unzip3 <$> mapM (discernPattern h layer stage) (map stripPatternMark markedArgs)
+          return ((m, PAT.Cons (PAT.ConsInfo {..})), concat varsList, typeVars ++ concat typeVarsList)
     RP.RuneIntro r -> do
-      return ((m, PAT.Literal (LI.Rune r)), [])
+      return ((m, PAT.Literal (LI.Rune r)), [], [])
+
+discernConstantPattern ::
+  H.Handle ->
+  Layer ->
+  Stage ->
+  Hint ->
+  Name ->
+  ResolvedCons ->
+  Maybe RP.TypeParams ->
+  App ((Hint, PAT.Pattern), NominalEnv, NominalEnv)
+discernConstantPattern h layer stage m cons resolvedCons@ResolvedCons {..} mTypeParams = do
+  unless isConstLike $ do
+    let consDD' = renderDD (H.modulePathMap h) consDD
+    raiseError m $
+      "The constructor `" <> consDD' <> "` cannot be used as a constant"
+  (typeParams, typeVars) <- discernPatternTypeParams h layer stage m cons resolvedCons mTypeParams
+  return ((m, PAT.Cons (PAT.ConsInfo {args = [], ..})), [], typeVars)
+
+ensureNonConstantConstructor :: Hint -> Name -> IsConstLike -> App ()
+ensureNonConstantConstructor m cons isConstLike =
+  when isConstLike $
+    raiseError m $
+      "The constructor `" <> showName cons <> "` cannot have any arguments"
+
+discernPatternTypeParams ::
+  H.Handle ->
+  Layer ->
+  Stage ->
+  Hint ->
+  Name ->
+  ResolvedCons ->
+  Maybe RP.TypeParams ->
+  App ([Maybe (Hint, Ident)], NominalEnv)
+discernPatternTypeParams h layer stage m cons ResolvedCons {dataArgNum, consImpArgNames} mTypeParams = do
+  let typeParamNum = ArgNum.reify dataArgNum + length consImpArgNames
+  case mTypeParams of
+    Nothing ->
+      return (replicate typeParamNum Nothing, [])
+    Just typeParams -> do
+      let typeParams' = SE.extract typeParams
+      when (length typeParams' /= typeParamNum) $ do
+        raiseError m $
+          "The constructor `"
+            <> showName cons
+            <> "` expects "
+            <> T.pack (show typeParamNum)
+            <> " implicit arguments, but found "
+            <> T.pack (show (length typeParams'))
+            <> "."
+      bindings <- forM typeParams' $ \(mx, x) -> do
+        if RawIdent.isHole x
+          then return (Nothing, [])
+          else do
+            x' <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) x
+            return (Just (mx, x'), [(x, (mx, x', layer, stage))])
+      let (typeParams'', typeVarsList) = unzip bindings
+      return (typeParams'', concat typeVarsList)
 
 constructDefaultKeyMap :: H.Handle -> Hint -> [(Key, IsSourceArg)] -> IO (Map.HashMap Key (Hint, RP.MarkedPattern))
 constructDefaultKeyMap h m keyList = do
@@ -1805,6 +1959,11 @@ ensureStringLiteralTypes h m = do
   binaryName <- liftEither $ locatorToName m coreBinary
   void $ resolveName h (blur m) stringName
   void $ resolveName h (blur m) binaryName
+
+ensureCodeVariableType :: H.Handle -> Hint -> App ()
+ensureCodeVariableType h m = do
+  codeVariableName <- liftEither $ locatorToName m coreCodeVariable
+  void $ resolveName h (blur m) codeVariableName
 
 locatorToName :: Hint -> T.Text -> Either E.Error Name
 locatorToName m text = do
@@ -1990,6 +2149,11 @@ extendVar :: H.Handle -> Hint -> Ident -> App H.Handle
 extendVar h m newVar = do
   ensureLocalVar m (Ident.toText newVar)
   liftIO $ H.extend' h m newVar VDK.Normal
+
+extendVarWithKeys :: H.Handle -> Hint -> Ident -> RT.GeistKeys -> App H.Handle
+extendVarWithKeys h m newVar keys = do
+  h' <- extendVar h m newVar
+  return $ H.insertLocalKeys h' newVar keys
 
 extendTypeVar :: H.Handle -> Hint -> Ident -> App H.Handle
 extendTypeVar h m newVar = do

@@ -10,6 +10,7 @@ module Kernel.Unravel.Unravel
     getVisitedMainSourceList,
     unravel',
     unravelModule,
+    getModuleList,
   )
 where
 
@@ -21,6 +22,7 @@ import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Foldable
 import Data.HashMap.Strict qualified as Map
 import Data.IORef (IORef, modifyIORef', newIORef, readIORef, writeIORef)
+import Data.List (sortOn)
 import Data.Maybe (mapMaybe)
 import Data.Sequence as Seq (Seq, empty, (><), (|>))
 import Data.Set qualified as S
@@ -38,10 +40,12 @@ import Kernel.Common.Handle.Global.Module qualified as Module
 import Kernel.Common.Handle.Global.ModulePath qualified as ModulePath
 import Kernel.Common.Handle.Global.Path qualified as Path
 import Kernel.Common.Handle.Global.Platform qualified as Platform
+import Kernel.Common.Handle.Global.Reuse qualified as Reuse
 import Kernel.Common.Import
 import Kernel.Common.Module
 import Kernel.Common.Module qualified as M
-import Kernel.Common.Module.FromPath qualified as ModuleReflect
+import Kernel.Common.Module.AliasLink qualified as AliasLink
+import Kernel.Common.Module.GetDependency qualified as GetDependency
 import Kernel.Common.OutputKind qualified as OK
 import Kernel.Common.Source qualified as Source
 import Kernel.Common.Source.ShiftToLatest qualified as STL
@@ -203,6 +207,8 @@ registerShiftMap h = do
     liftIO $ Antecedent.set (Global.antecedentHandle (globalHandle h)) compressedMap
     modulePathMap <- ModulePath.build (Global.modulePathHandle (globalHandle h))
     liftIO $ ModulePath.set (Global.modulePathHandle (globalHandle h)) modulePathMap
+    let getDependencyHandle = GetDependency.new (Global.moduleHandle (globalHandle h)) (Global.antecedentHandle (globalHandle h))
+    AliasLink.placeAliasLinks getDependencyHandle mainModule
     liftIO $ writeIORef (Global.isShiftMapRegisteredRef (globalHandle h)) True
 
 buildPublicReachabilityMap :: Map.HashMap MID.ModuleID Module -> [Module] -> PublicReachabilityMap
@@ -308,8 +314,8 @@ data Axis = Axis
 unravelAntecedentArrow :: Handle -> Axis -> Module -> App [(MID.ModuleID, Module)]
 unravelAntecedentArrow h axis currentModule = do
   visitMap <- liftIO $ readIORef $ visitMapRef axis
-  let mainModule = getMainModule (Global.envHandle (globalHandle h))
-  path <- Module.getModuleFilePath mainModule Nothing (moduleID currentModule)
+  let moduleHandle = Global.moduleHandle (globalHandle h)
+  path <- Module.getModuleFilePath moduleHandle Nothing (moduleID currentModule)
   case Map.lookup path visitMap of
     Just VI.Active -> do
       pathList <- liftIO $ readIORef $ traceListRef axis
@@ -322,8 +328,8 @@ unravelAntecedentArrow h axis currentModule = do
       liftIO $ modifyIORef' (moduleListRef axis) $ (:) currentModule
       let children = map (MID.Library . dependencyDigest . snd) $ Map.toList $ moduleDependency currentModule
       arrows <- fmap concat $ forM children $ \moduleID -> do
-        path' <- Module.getModuleFilePath mainModule Nothing moduleID
-        ModuleReflect.fromFilePath path' >>= unravelAntecedentArrow h axis
+        path' <- Module.getModuleFilePath moduleHandle Nothing moduleID
+        Module.readModule moduleHandle path' >>= unravelAntecedentArrow h axis
       liftIO $ modifyIORef' (visitMapRef axis) $ Map.insert path VI.Finish
       liftIO $ modifyIORef' (traceListRef axis) (drop 1)
       return $ getAntecedentArrow currentModule ++ arrows
@@ -336,8 +342,8 @@ unravelModule h currentModule = do
 unravelModule' :: Handle -> Axis -> Module -> App [Module]
 unravelModule' h axis currentModule = do
   visitMap <- liftIO $ readIORef $ visitMapRef axis
-  let mainModule = getMainModule (Global.envHandle (globalHandle h))
-  path <- Module.getModuleFilePath mainModule Nothing (moduleID currentModule)
+  let moduleHandle = Global.moduleHandle (globalHandle h)
+  path <- Module.getModuleFilePath moduleHandle Nothing (moduleID currentModule)
   case Map.lookup path visitMap of
     Just VI.Active -> do
       pathList <- liftIO $ readIORef $ traceListRef axis
@@ -349,14 +355,45 @@ unravelModule' h axis currentModule = do
       liftIO $ modifyIORef' (traceListRef axis) $ (:) path
       let children = map (MID.Library . dependencyDigest . snd) $ Map.toList $ moduleDependency currentModule
       arrows <- fmap concat $ forM children $ \moduleID -> do
-        path' <- Module.getModuleFilePath mainModule Nothing moduleID
+        path' <- Module.getModuleFilePath moduleHandle Nothing moduleID
         b <- doesFileExist path'
         if b
-          then ModuleReflect.fromFilePath path' >>= unravelModule' h axis
+          then Module.readModule moduleHandle path' >>= unravelModule' h axis
           else return []
       liftIO $ modifyIORef' (visitMapRef axis) $ Map.insert path VI.Finish
       liftIO $ modifyIORef' (traceListRef axis) (drop 1)
       return $ currentModule : arrows
+
+getModuleList :: Handle -> [Source.Source] -> App [Module]
+getModuleList h sourceList = do
+  let moduleList = map Source.sourceModule sourceList
+  let mainModule = getMainModule (Global.envHandle (globalHandle h))
+  compressedMap <- liftIO $ Antecedent.get (Global.antecedentHandle (globalHandle h))
+  (_, reversedIDList) <- collectDependedFirst (Global.moduleHandle (globalHandle h)) compressedMap (S.empty, []) (extractModule mainModule)
+  let moduleMap = Map.fromList $ map (\m -> (moduleID m, m)) moduleList
+  return $ mapMaybe (`Map.lookup` moduleMap) $ reverse reversedIDList
+
+collectDependedFirst ::
+  Module.Handle ->
+  Map.HashMap MID.ModuleID Module ->
+  (S.Set MID.ModuleID, [MID.ModuleID]) ->
+  Module ->
+  App (S.Set MID.ModuleID, [MID.ModuleID])
+collectDependedFirst moduleHandle compressedMap (visited, reversedIDList) currentModule = do
+  let currentID = moduleID currentModule
+  if S.member currentID visited
+    then return (visited, reversedIDList)
+    else do
+      let dependencyList = sortOn (MA.reify . fst) $ Map.toList $ moduleDependency currentModule
+      dependencyModuleList <- forM dependencyList $ \(_, dependency) -> do
+        let dependencyID = MID.Library $ dependencyDigest dependency
+        case Map.lookup dependencyID compressedMap of
+          Just dependencyModule ->
+            return dependencyModule
+          Nothing ->
+            Module.getModuleFilePath moduleHandle Nothing dependencyID >>= Module.readModule moduleHandle
+      (visited', reversedIDList') <- foldM (collectDependedFirst moduleHandle compressedMap) (S.insert currentID visited, reversedIDList) dependencyModuleList
+      return (visited', currentID : reversedIDList')
 
 unravel'' :: Handle -> Target -> Source.Source -> App (A.ArtifactTime, Seq Source.Source)
 unravel'' h t source = do
@@ -436,9 +473,15 @@ getArtifactTime artifactTimeList liveArtifactTimeList artifactTime = do
 getBaseArtifactTime :: Path.Handle -> Target -> Source.Source -> App A.ArtifactTime
 getBaseArtifactTime h t source = do
   cacheTime <- getFreshCacheTime h t source
-  llvmTime <- getFreshLLVMTime h t source
-  objectTime <- getFreshObjectTime h t source
-  return A.ArtifactTime {cacheTime, llvmTime, objectTime}
+  case t of
+    Main {} -> do
+      llvmTime <- getFreshLLVMTime h t source
+      objectTime <- getFreshObjectTime h t source
+      return A.ArtifactTime {cacheTime, llvmTime, objectTime}
+    Peripheral ->
+      return A.ArtifactTime {cacheTime, llvmTime = Nothing, objectTime = Nothing}
+    PeripheralSingle {} ->
+      return A.ArtifactTime {cacheTime, llvmTime = Nothing, objectTime = Nothing}
 
 getItemTime' ::
   [Maybe UTCTime] ->
@@ -535,8 +578,9 @@ parseSourceHeader :: Handle -> Local.Handle -> Source.Source -> App [ImportItem]
 parseSourceHeader h localHandle currentSource = do
   Source.ensureSourceExistence currentSource
   let filePath = Source.sourceFilePath currentSource
-  fileContent <- readTextFromPath filePath
-  (_, (importList, requireList)) <- runParser filePath fileContent False parseHeader
+  (importList, requireList) <- Reuse.rememberHeader (Global.reuseHandle (globalHandle h)) filePath $ do
+    fileContent <- readTextFromPath filePath
+    snd <$> runParser filePath fileContent False parseHeader
   requiredList <- mapM interpretRequireItem $ concatMap (SE.extract . requireItemsOf . fst) requireList
   liftIO $ modifyIORef' (sourceRequireMapRef h) $ Map.insert filePath requiredList
   let m = newSourceHint filePath

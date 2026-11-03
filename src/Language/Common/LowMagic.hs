@@ -11,6 +11,7 @@ data LowMagic lt ty a
   = Cast ty ty a -- Cast fromType toType value
   | Store lt ty a a -- Store valueType unitType value pointer
   | Load lt a -- Load valueType pointer
+  | Shift a a -- Shift pointer offset
   | Alloca lt a -- Alloca elemType size
   | External [lt] (FCT.ForeignCodType lt) EN.ExternalName [a] [(a, lt)]
   | Global EN.ExternalName lt
@@ -29,6 +30,8 @@ instance Functor (LowMagic lt ty) where
         Store lt unit (f value) (f pointer)
       Load lt pointer ->
         Load lt (f pointer)
+      Shift pointer offset ->
+        Shift (f pointer) (f offset)
       Alloca lt size ->
         Alloca lt (f size)
       External domList cod extFunName args varArgs -> do
@@ -50,6 +53,8 @@ instance Foldable (LowMagic lt ty) where
         f value <> f pointer
       Load _ pointer ->
         f pointer
+      Shift pointer offset ->
+        f pointer <> f offset
       Alloca _ size ->
         f size
       External _ _ _ args varArgs ->
@@ -70,6 +75,8 @@ instance Traversable (LowMagic lt ty) where
         Store lt unit <$> f value <*> f pointer
       Load lt pointer ->
         Load lt <$> f pointer
+      Shift pointer offset ->
+        Shift <$> f pointer <*> f offset
       Alloca lt size ->
         Alloca lt <$> f size
       External domList cod extFunName args varArgs -> do

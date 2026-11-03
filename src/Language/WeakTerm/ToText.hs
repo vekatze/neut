@@ -18,6 +18,7 @@ import Language.Common.Attr.VarGlobal qualified as AttrVG
 import Language.Common.Binder
 import Language.Common.CallConvSpec qualified as CCS
 import Language.Common.CallSite (IsSourceArg)
+import Language.Common.CodeVariant qualified as CV
 import Language.Common.DecisionTree qualified as DT
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.ExternalName qualified as EN
@@ -65,7 +66,7 @@ toTextIndented kit term =
             (toTextIndented (atLevel kit 0) e <> renderImpArgs impArgs <> renderArgs kit spec expArgs)
     _ :< WT.PiElimExact e ->
       indentText (level kit) ("exact " <> toTextIndented (atLevel kit 0) e)
-    _ :< WT.DataIntro (AttrDI.Attr {..}) consName _ consArgs ->
+    _ :< WT.DataIntro (AttrDI.Attr {..}) consName _ _ consArgs ->
       indentText (level kit) $
         if isConstLike
           then DD.localLocator consName
@@ -92,8 +93,8 @@ toTextIndented kit term =
           <> toTextIndented (atLevel kit 0) e1
           <> "; "
           <> toTextIndented (atLevel kit 0) e2
-    _ :< WT.CodeIntro e ->
-      indentText (level kit) ("quote " <> inBrace (toTextIndented (atLevel kit 0) e))
+    _ :< WT.CodeIntro codeVariant e ->
+      indentText (level kit) (CV.toKeyword codeVariant <> " " <> inBrace (toTextIndented (atLevel kit 0) e))
     _ :< WT.CodeElim e ->
       indentText (level kit) ("unquote " <> inBrace (toTextIndented (atLevel kit 0) e))
     _ :< WT.TauIntro ty ->
@@ -102,6 +103,8 @@ toTextIndented kit term =
       indentText (level kit) ("unpack-type " <> showVariable (distinctVars kit) x <> " = " <> toTextIndented (atLevel kit 0) e1 <> "; " <> toTextIndented (atLevel kit 0) e2)
     _ :< WT.Let (_, k, x, t) e1 e2 ->
       renderTermLet kit k x t e1 e2
+    _ :< WT.LetType (_, x) t e ->
+      indentText (level kit) ("let-type " <> showVariable (distinctVars kit) x <> " = " <> toTextType t <> "; " <> toTextIndented (atLevel kit 0) e)
     _ :< WT.Invoke tropeNames body ->
       indentText (level kit) ("invoke " <> T.intercalate ", " (map DD.localLocator tropeNames) <> "; " <> toTextIndented (atLevel kit 0) body)
     _ :< WT.Prim primValue ->
@@ -562,6 +565,8 @@ showMagic' h (M.WeakMagic magic) =
       "magic calloc" <> inParen (toTextType' h sizeType <> ", " <> toTextIndented (Kit 0 False) num <> ", " <> toTextIndented (Kit 0 False) size)
     M.Malloc sizeType size ->
       "magic malloc" <> inParen (toTextType' h sizeType <> ", " <> toTextIndented (Kit 0 False) size)
+    M.MallocOpaque sizeType size ->
+      "magic malloc-opaque" <> inParen (toTextType' h sizeType <> ", " <> toTextIndented (Kit 0 False) size)
     M.Realloc sizeType ptr size ->
       "magic realloc" <> inParen (toTextType' h sizeType <> ", " <> toTextIndented (Kit 0 False) ptr <> ", " <> toTextIndented (Kit 0 False) size)
     M.Free _ ptr ->
@@ -578,6 +583,8 @@ showMagic' h (M.WeakMagic magic) =
       "magic text-uncons" <> inParen (toTextIndented (Kit 0 False) text)
     M.MakeSwitch _ key fallback clauses ->
       "magic make-switch" <> inParen (toTextIndented (Kit 0 False) key <> ", " <> toTextIndented (Kit 0 False) fallback <> ", " <> toTextIndented (Kit 0 False) clauses)
+    M.FreeVariables _ code ->
+      "magic free-variables" <> inParen (toTextIndented (Kit 0 False) code)
     M.CompileError msg ->
       "magic compile-error" <> inParen (toTextIndented (Kit 0 False) msg)
     M.GetOriginFileName ->
@@ -605,6 +612,8 @@ showLowMagic' h lowMagic =
           )
     LM.Load t pointer ->
       "magic load" <> inParen (toTextType' h t <> ", " <> toTextIndented (Kit 0 False) pointer)
+    LM.Shift pointer offset ->
+      "magic shift" <> inParen (toTextIndented (Kit 0 False) pointer <> ", " <> toTextIndented (Kit 0 False) offset)
     LM.Alloca t size ->
       "magic alloca" <> inParen (toTextType' h t <> ", " <> toTextIndented (Kit 0 False) size)
     LM.External domList cod extFunName args varArgs -> do

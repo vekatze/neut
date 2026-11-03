@@ -1,8 +1,12 @@
 module Language.Common.VarKind
   ( VarKind (..),
+    CopyKind (..),
     TypeAttr (..),
     normal,
     exponential,
+    defined,
+    isExp,
+    canCopy,
     withSource,
     withAttr,
     hasAttr,
@@ -25,8 +29,16 @@ data TypeAttr
 
 instance Binary TypeAttr
 
+data CopyKind
+  = NoCopy
+  | DeclaredCopy
+  | DefinedCopy
+  deriving (Eq, Ord, Show, Generic)
+
+instance Binary CopyKind
+
 data VarKind = VarKind
-  { isExp :: Bool,
+  { copyKind :: CopyKind,
     isSource :: Bool,
     typeAttrs :: S.Set TypeAttr
   }
@@ -36,11 +48,23 @@ instance Binary VarKind
 
 normal :: VarKind
 normal =
-  VarKind {isExp = False, isSource = False, typeAttrs = S.empty}
+  VarKind {copyKind = NoCopy, isSource = False, typeAttrs = S.empty}
 
 exponential :: VarKind
 exponential =
-  VarKind {isExp = True, isSource = False, typeAttrs = S.empty}
+  VarKind {copyKind = DeclaredCopy, isSource = False, typeAttrs = S.empty}
+
+defined :: VarKind
+defined =
+  VarKind {copyKind = DefinedCopy, isSource = False, typeAttrs = S.empty}
+
+isExp :: VarKind -> Bool
+isExp k =
+  copyKind k == DeclaredCopy
+
+canCopy :: VarKind -> Bool
+canCopy k =
+  copyKind k /= NoCopy
 
 withSource :: VarKind -> VarKind
 withSource k =

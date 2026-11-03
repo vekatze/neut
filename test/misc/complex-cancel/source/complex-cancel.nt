@@ -58,7 +58,6 @@ define test2(x: joker) -> int {
 // A free inside a branch must feed at most one allocation. The allocation
 // after the join is lifted into a phi over the frees of the branches, and the
 // allocation inside the branch must then leave that free alone.
-
 data kept-3 {
 | Kept-3(int, int, int)
 }
@@ -174,8 +173,71 @@ define test-lifted-free() -> unit {
   Unit
 }
 
+// A free that some branches can reuse and others cannot moves into the
+// branches: `(Z)` reuses the cell of `xs`, and `(Y)` frees it on entry.
+data int-list {
+| Int-Nil
+| Int-Cons(int, int-list)
+}
+
+define insert-or-skip(v: int, xs: int-list) -> int-list {
+  match xs {
+  | Int-Nil =>
+    Int-Cons(v, Int-Nil)
+  | Int-Cons(y, ys) =>
+    if gt-int(v, y) {
+      // (Y)
+      ys
+    } else {
+      // (Z)
+      Int-Cons(v, Int-Cons(y, ys))
+    }
+  }
+}
+
+// The branch that reuses the cell is one `match` further in.
+define insert-or-skip-nested(v: int, xs: int-list) -> int-list {
+  match xs {
+  | Int-Nil =>
+    Int-Nil
+  | Int-Cons(y, ys) =>
+    if gt-int(v, y) {
+      ys
+    } else {
+      if eq-int(v, y) {
+        ys
+      } else {
+        Int-Cons(v, ys)
+      }
+    }
+  }
+}
+
+define show-int-list(xs: int-list) -> unit {
+  match xs {
+  | Int-Nil =>
+    print("\n")
+  | Int-Cons(x, rest) =>
+    pin shown = show-int(x);
+    print(shown);
+    print(" ");
+    show-int-list(rest)
+  }
+}
+
+define test-sunk-free() -> unit {
+  show-int-list(insert-or-skip(5, Int-Cons(3, Int-Cons(9, Int-Nil))));
+  show-int-list(insert-or-skip(1, Int-Cons(3, Int-Cons(9, Int-Nil))));
+  show-int-list(insert-or-skip(1, Int-Nil));
+  show-int-list(insert-or-skip-nested(5, Int-Cons(3, Int-Cons(9, Int-Nil))));
+  show-int-list(insert-or-skip-nested(3, Int-Cons(3, Int-Cons(9, Int-Nil))));
+  show-int-list(insert-or-skip-nested(1, Int-Cons(3, Int-Cons(9, Int-Nil))));
+  show-int-list(insert-or-skip-nested(1, Int-Nil))
+}
+
 define main() -> unit {
   test-lifted-free();
+  test-sunk-free();
   let _ = test(L(L(L(L(R(10))))));
   let _ = test(L(L(L(R(10)))));
   let _ = test(L(L(R(10))));

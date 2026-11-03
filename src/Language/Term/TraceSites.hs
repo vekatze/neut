@@ -16,7 +16,7 @@ import Control.Applicative ((<|>))
 import Control.Comonad.Cofree
 import Control.Monad (forM)
 import Data.Bitraversable (bimapM)
-import Data.Foldable (asum, foldl', toList)
+import Data.Foldable (asum, toList)
 import Data.IORef
 import Data.IntSet qualified as IntSet
 import Data.Text qualified as T
@@ -137,7 +137,7 @@ findBlocker (_ :< node) =
   case node of
     TM.Let _ rhs body ->
       findBlocker rhs <|> findBlocker body
-    TM.DataIntro _ _ _ args ->
+    TM.DataIntro _ _ _ _ args ->
       firstBlocker args
     TM.BoxIntroLift _ child ->
       findBlocker child
@@ -272,6 +272,8 @@ describeMagic magic = do
           "magic store"
         LM.Load {} ->
           "magic load"
+        LM.Shift {} ->
+          "magic shift"
         LM.Alloca {} ->
           "magic alloca"
         LM.External _ _ name _ _ ->
@@ -286,6 +288,8 @@ describeMagic magic = do
       "magic calloc"
     M.Malloc {} ->
       "magic malloc"
+    M.MallocOpaque {} ->
+      "magic malloc-opaque"
     M.Realloc {} ->
       "magic realloc"
     M.Free {} ->
@@ -302,6 +306,8 @@ describeMagic magic = do
       "magic text-uncons"
     M.MakeSwitch {} ->
       "magic make-switch"
+    M.FreeVariables {} ->
+      "magic free-variables"
     M.CompileError {} ->
       "magic compile-error"
     M.GetOriginFileName ->
@@ -382,9 +388,9 @@ forNodeM node recur = do
       expArgs' <- forM expArgs recur
       defaultArgs' <- forM defaultArgs (traverse recur)
       return $ TM.PiElim traceID kind callee' impArgs expArgs' defaultArgs'
-    TM.DataIntro attr dd dataArgs consArgs -> do
+    TM.DataIntro attr dd dataArgs consImpArgs consArgs -> do
       consArgs' <- forM consArgs recur
-      return $ TM.DataIntro attr dd dataArgs consArgs'
+      return $ TM.DataIntro attr dd dataArgs consImpArgs consArgs'
     TM.DataElim traceID isNoetic oets tree -> do
       oets' <- forM oets $ \(x, e, t) -> do
         e' <- recur e
@@ -407,8 +413,8 @@ forNodeM node recur = do
       uncastSeq' <- forM uncastSeq (bimapM return recur)
       body' <- recur body
       return $ TM.BoxElim traceID castSeq' binder value' uncastSeq' body'
-    TM.CodeIntro body ->
-      TM.CodeIntro <$> recur body
+    TM.CodeIntro codeVariant body ->
+      TM.CodeIntro codeVariant <$> recur body
     TM.CodeElim traceID body ->
       TM.CodeElim traceID <$> recur body
     TM.TauIntro ty ->

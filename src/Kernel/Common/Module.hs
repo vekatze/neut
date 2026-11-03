@@ -3,6 +3,7 @@ module Kernel.Common.Module
     MainModule (..),
     SomePath,
     attachPrefixPath,
+    emptyForeign,
     LocatorName,
     AliasPresetMap,
     Foreign (..),
@@ -22,6 +23,8 @@ module Kernel.Common.Module
     keyForeign,
     keyForeignInput,
     keyForeignOutput,
+    keyForeignLink,
+    keyForeignTransitiveLinkOption,
     keyForeignScript,
     keyInlineLimit,
     keyUniversal,
@@ -102,10 +105,22 @@ data Dependency = Dependency
 
 data Foreign = Foreign
   { input :: [(Hint, SomePath Rel)],
-    output :: [Path Rel File],
+    output :: [SomePath Rel],
+    linkedOutput :: [Path Rel File],
+    transitiveLinkOption :: [T.Text],
     script :: [(Hint, T.Text)]
   }
   deriving (Show)
+
+emptyForeign :: Foreign
+emptyForeign =
+  Foreign
+    { input = [],
+      output = [],
+      linkedOutput = [],
+      transitiveLinkOption = [],
+      script = []
+    }
 
 type TargetName =
   T.Text
@@ -224,6 +239,14 @@ keyForeignInput =
 keyForeignOutput :: T.Text
 keyForeignOutput =
   "output"
+
+keyForeignLink :: T.Text
+keyForeignLink =
+  "link"
+
+keyForeignTransitiveLinkOption :: T.Text
+keyForeignTransitiveLinkOption =
+  "transitive-link-option"
 
 keyForeignScript :: T.Text
 keyForeignScript =
@@ -443,21 +466,18 @@ getAntecedentInfo someModule = do
 getForeignInfo :: Module -> Maybe (T.Text, E.Ens)
 getForeignInfo someModule = do
   let foreignInfo = moduleForeign someModule
-  let assetList = map (\(_, x) -> _m :< E.String (ppExtraContent x)) $ input foreignInfo
-  let outputList = map (\x -> _m :< E.String (T.pack $ toFilePath x)) $ output foreignInfo
-  let cmdList = map (\(_, x) -> _m :< E.String x) $ script foreignInfo
-  if null (input foreignInfo) && null (script foreignInfo)
+  let textList xs = _m :< E.List (seriesFromList $ map (\x -> _m :< E.String x) xs)
+  let fieldList =
+        [ (keyForeignInput, map (ppExtraContent . snd) $ input foreignInfo),
+          (keyForeignOutput, map ppExtraContent $ output foreignInfo),
+          (keyForeignLink, map (T.pack . toFilePath) $ linkedOutput foreignInfo),
+          (keyForeignTransitiveLinkOption, transitiveLinkOption foreignInfo),
+          (keyForeignScript, map snd $ script foreignInfo)
+        ]
+  let fieldList' = filter (not . null . snd) fieldList
+  if null fieldList'
     then Nothing
-    else
-      return
-        ( keyForeign,
-          _m
-            :< E.dictFromListVertical'
-              [ (keyForeignInput, _m :< E.List (seriesFromList assetList)),
-                (keyForeignOutput, _m :< E.List (seriesFromList outputList)),
-                (keyForeignScript, _m :< E.List (seriesFromList cmdList))
-              ]
-        )
+    else return (keyForeign, _m :< E.dictFromListVertical' (map (fmap textList) fieldList'))
 
 getPresetMapInfo :: Module -> Maybe (T.Text, E.Ens)
 getPresetMapInfo someModule = do

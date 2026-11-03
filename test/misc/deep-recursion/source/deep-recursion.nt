@@ -1,0 +1,28 @@
+import {
+  core::int.io {print-int-line},
+}
+
+// Each level receives the result of the next one in a destination of its own
+// frame, and looks at it after the call returns. On wasm32 those destinations
+// live on the stack in linear memory, which is as deep as on other platforms.
+define depth(n: int) ->> ?int {
+  if eq-int(n, 0) {
+    Right(0)
+  } else {
+    match depth@(sub-int(n, 1)) {
+    | Right(k) =>
+      Right(add-int(k, 1))
+    | Left(_) =>
+      none
+    }
+  }
+}
+
+define main() -> unit {
+  match depth@(6000) {
+  | Right(k) =>
+    print-int-line(k)
+  | Left(_) =>
+    print-int-line(-1)
+  }
+}

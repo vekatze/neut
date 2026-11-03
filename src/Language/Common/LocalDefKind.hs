@@ -3,6 +3,7 @@ module Language.Common.LocalDefKind
     toOpacity,
     isMeta,
     keyword,
+    fromText,
   )
 where
 
@@ -43,6 +44,20 @@ isMeta k =
       True
     InlineMeta ->
       True
+
+fromText :: T.Text -> Maybe LocalDefKind
+fromText text =
+  case text of
+    "define" ->
+      Just Define
+    "inline" ->
+      Just Inline
+    "define-meta" ->
+      Just DefineMeta
+    "inline-meta" ->
+      Just InlineMeta
+    _ ->
+      Nothing
 
 keyword :: LocalDefKind -> T.Text
 keyword k =

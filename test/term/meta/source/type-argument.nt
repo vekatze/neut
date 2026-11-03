@@ -1,0 +1,33 @@
+import {
+  core::int.io {print-int-line},
+}
+
+alias _wrapped(a) {
+  list(a)
+}
+
+inline-meta _is-list-of-int() -> 'int {
+  inline-meta probe<f: (type) -> type>() -> 'int {
+    if magic eq-type(f(int), list(int)) {
+      quote {1}
+    } else {
+      quote {0}
+    }
+  };
+  probe<_wrapped>()
+}
+
+inline-meta _local-meta-keys() -> 'int {
+  inline-meta sum(a: 'int, b: 'int) -> 'int {
+    quote {add-int(unquote {a}, unquote {b})}
+  };
+  define-meta one() -> 'int {
+    quote {1}
+  };
+  sum{b := one(), a := sum{a := one(), b := one()}}
+}
+
+define report() -> unit {
+  print-int-line(_is-list-of-int::());
+  print-int-line(_local-meta-keys::());
+}

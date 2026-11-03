@@ -7,17 +7,21 @@ module Language.Term.Inline.Handle
     DefKind (..),
     SpecializationEntry (..),
     TropeMap,
-    NormalKey (..),
+    Normal (..),
+    TropeDepth,
+    Pending (..),
+    PendingTerm (..),
+    PendingType (..),
   )
 where
 
 import Data.HashMap.Strict qualified as Map
-import Data.HashSet qualified as HashSet
-import Data.Hashable (Hashable (..))
+import Data.IntMap qualified as IntMap
 import Data.IntSet qualified as IntSet
 import Data.IORef
 import Gensym.Handle qualified as GensymHandle
 import Kernel.Common.Handle.Global.Data qualified as Data
+import Kernel.Common.Handle.Global.OptimizableData qualified as OptimizableData
 import Kernel.Common.Handle.Local.Tag qualified as Tag
 import Kernel.Common.Module qualified as Module
 import Kernel.Common.Handle.Global.ModulePath qualified as ModulePath
@@ -30,25 +34,27 @@ import Language.Term.Subst qualified as Subst
 import Language.Term.Term qualified as TM
 import Language.Term.Trace qualified as Trace
 import Logger.Hint
-import System.Mem.StableName (StableName, hashStableName)
 
-data NormalKey = NormalKey
-  { normalTerm :: StableName TM.Term,
-    normalStage :: Int,
-    normalInitialStage :: Int,
-    normalMemo :: StableName [(DD.DefiniteDescription, [TM.Type], Ident)],
-    normalTropes :: StableName [Stmt.DefineMeta]
+data Normal = Normal
+  { normalTerm :: TM.Term,
+    isNormalValue :: Bool
   }
-  deriving (Eq)
 
-instance Hashable NormalKey where
-  hashWithSalt salt (NormalKey term stage initialStage memo tropes) =
-    salt
-      `hashWithSalt` hashStableName term
-      `hashWithSalt` stage
-      `hashWithSalt` initialStage
-      `hashWithSalt` hashStableName memo
-      `hashWithSalt` hashStableName tropes
+type TropeDepth =
+  Int
+
+data Pending a = Pending
+  { pendingSerial :: Int,
+    pendingEntry :: a
+  }
+
+data PendingTerm
+  = Normalized TropeDepth Normal
+  | RenamedTerm Ident
+
+data PendingType
+  = TypeValue TM.Type
+  | RenamedType Ident
 
 data DefKind
   = NoInline
@@ -94,6 +100,7 @@ data Handle = Handle
     tropeMap :: TropeMap,
     tagHandle :: Tag.Handle,
     dataHandle :: Data.Handle,
+    optDataHandle :: OptimizableData.Handle,
     inlineLimit :: Int,
     currentStepRef :: IORef Int,
     location :: Hint,
@@ -107,9 +114,13 @@ data Handle = Handle
     insideDefineMeta :: Bool,
     localMetaMemo :: [(DD.DefiniteDescription, [TM.Type], Ident)],
     activeDefineMetaList :: [Stmt.DefineMeta],
-    normalFormsRef :: IORef (HashSet.HashSet NormalKey),
-    valueFormsRef :: IORef (HashSet.HashSet (StableName TM.Term)),
+    pendingTerms :: IntMap.IntMap (Pending PendingTerm),
+    pendingTypes :: IntMap.IntMap (Pending PendingType),
+    nextPendingSerial :: Int,
+    usedPendingSerialRef :: IORef Int,
+    emittedBinders :: IORef IntSet.IntSet,
     mainModule :: Module.MainModule,
     modulePathMap :: ModulePath.ModulePathMap,
-    traceHandle :: Trace.Handle
+    traceHandle :: Trace.Handle,
+    localTypeEnv :: TM.TypeEnv
   }

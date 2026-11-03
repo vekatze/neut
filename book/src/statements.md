@@ -508,7 +508,7 @@ inline-meta duplicate(x: 'int) -> 'pair(int, int) {
 
 `inline-meta` is the same as `inline` except that the body starts at stage 1, not 0.
 
-It also supports the same default-argument syntax as `define-meta`.
+It also supports the same default-argument syntax as `define` and `inline`.
 
 ## `constant`
 
@@ -646,9 +646,55 @@ define use-config(c: config) -> int {
 }
 ```
 
+### Type Variables of a Constructor
+
+A constructor can bind type variables of its own, as in `define`:
+
+```neut
+data tagged(t) {
+| Tagged<a>(tag: t, value: a, measure: (a) -> int)
+}
+
+define make-tagged() -> tagged(bool) {
+  Tagged(True, 3, (n: int) => {n})
+}
+
+define make-tagged-explicitly() -> tagged(bool) {
+  Tagged<bool, int>(True, 3, (n) => {n})
+}
+```
+
+A constructor pattern can name these types with a `<...>` list in the same order:
+
+```neut
+define use-tagged(x: tagged(bool)) -> int {
+  match x {
+  | Tagged<t, a>(tag, value, measure) =>
+    let flag: t = tag;
+    let v: a = value;
+    if flag {
+      measure(v)
+    } else {
+      0
+    }
+  }
+}
+```
+
+In this pattern, `t` names `bool` and `a` names the hidden type of `value`. The name `a` is in scope only within the clause.
+
+Constructor type variables can carry attributes, as in `| Held<actual a>(value: a)`.
+
+For an ADT to be [actual](./terms.md#lift), every constructor type variable must be declared `actual`.
+
 ### Memory Representation
 
-All the constructors of an ADT share the same allocation size: the size of its largest constructor. Each value stores a discriminant that identifies its constructor, then one entry per type argument, then the constructor's fields.
+All the constructors of an ADT share the same allocation size: the size of its largest constructor. Each value stores the following, in order:
+
+1. a discriminant that identifies its constructor
+2. one entry per type argument of the ADT
+3. one entry per type variable of the constructor
+4. the constructor's fields
 
 Fields are laid out in the order they are written. Each one takes as many bytes as its type needs:
 
@@ -839,6 +885,8 @@ alias-opaque my-type {
 
 `alias-opaque` can be used when you want to expose a type constructor while hiding its actual body.
 
+The compiler doesn't unfold the body, even in the file that defines it. A type defined by `alias-opaque` therefore isn't [actual](./terms.md#lift), even when its body is.
+
 ## `resource`
 
 `resource` defines a new type by specifying how to discard/copy the values of the type. It should look like the following:
@@ -949,15 +997,13 @@ The `List` construct available in the core library is defined using `rule-right`
 
 ```neut
 rule-right List {
-  inline-meta leaf<a>(_: int) -> 'list(a) {
+  function leaf<a>(_: int) -> 'list(a) {
     quote {Nil}
   },
-  inline-meta node<a>(x: 'a, acc: 'list(a)) -> 'list(a) {
-    quote {
-      Cons(unquote {x}, unquote {acc})
-    }
+  function node-right<a>(x: 'a, acc: 'list(a)) -> 'list(a) {
+    quote {Cons(unquote {x}, unquote {acc})}
   },
-  inline-meta root<a>(x: 'list(a)) -> 'list(a) {
+  function root<a>(x: 'list(a)) -> 'list(a) {
     x
   },
 }
@@ -970,7 +1016,7 @@ List::[x, y, z]
 
 ↓
 
-unquote {root(node(quote {x}, node(quote {y}, node(quote {z}, leaf(3)))))}
+unquote {root(node-right(quote {x}, node-right(quote {y}, node-right(quote {z}, leaf(3)))))}
 
 ↓
 
@@ -989,7 +1035,7 @@ rule-left name {
 }
 ```
 
-As with `rule-right`, `leaf`, `node`, and `root` must be meta functions that assemble code. Once defined, `name` can be used with `::[...]`:
+Once defined, `name` can be used with `::[...]`:
 
 ```neut
 name::[x, y, z, w]
@@ -1025,13 +1071,13 @@ The `Vector` construct available in the core library is defined using `rule-left
 
 ```neut
 rule-left Vector {
-  inline-meta leaf<a>(size: int) -> 'vector(a) {
+  function leaf<a>(size: int) -> 'vector(a) {
     quote {make(unquote {promote {size}})}
   },
-  inline-meta node<a>(acc: 'vector(a), x: 'a) -> 'vector(a) {
+  function node-left<a>(acc: 'vector(a), x: 'a) -> 'vector(a) {
     quote {push-back(unquote {acc}, unquote {x})}
   },
-  inline-meta root<a>(x: 'vector(a)) -> 'vector(a) {
+  function root<a>(x: 'a) -> 'a {
     x
   },
 }
@@ -1044,7 +1090,7 @@ Vector::[a, b, c]
 
 ↓
 
-unquote {root(node(node(node(leaf(3), quote {a}), quote {b}), quote {c}))}
+unquote {root(node-left(node-left(node-left(leaf(3), quote {a}), quote {b}), quote {c}))}
 
 ↓
 

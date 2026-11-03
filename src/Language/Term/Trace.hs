@@ -22,7 +22,6 @@ import Data.Binary (Binary)
 import Data.IORef
 import Data.IntMap.Strict qualified as IntMap
 import Data.IntSet qualified as IntSet
-import Data.List (foldl')
 import Data.Map.Strict qualified as Map
 import GHC.Generics (Generic)
 import Language.Common.DefiniteDescription qualified as DD

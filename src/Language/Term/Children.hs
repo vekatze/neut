@@ -19,7 +19,7 @@ termChildren node = do
       map snd defaultArgs ++ [body]
     TM.PiElim _ _ callee _ args defaults ->
       callee : args ++ foldMap toList defaults
-    TM.DataIntro _ _ _ args ->
+    TM.DataIntro _ _ _ _ args ->
       args
     TM.DataElim _ _ oets tree ->
       map (\(_, e, _) -> e) oets ++ decisionTreeTerms tree
@@ -31,7 +31,7 @@ termChildren node = do
       [child]
     TM.BoxElim _ castSeq _ value uncastSeq body ->
       map snd castSeq ++ [value] ++ map snd uncastSeq ++ [body]
-    TM.CodeIntro body ->
+    TM.CodeIntro _ body ->
       [body]
     TM.CodeElim _ body ->
       [body]

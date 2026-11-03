@@ -1,6 +1,5 @@
 module Kernel.Common.Module.FromPath
   ( fromFilePath,
-    fromCurrentPath,
   )
 where
 
@@ -13,14 +12,12 @@ import Control.Monad.Except (liftEither)
 import Data.HashMap.Strict qualified as Map
 import Data.Set qualified as S
 import Data.Text qualified as T
-import Ens.Ens (dictFromListVertical')
 import Ens.Ens qualified as E
 import Ens.Parse qualified as Ens
 import Kernel.Common.Allocator (Allocator (..), defaultAllocator, showAllocator)
 import Kernel.Common.ClangOption qualified as CL
 import Kernel.Common.Const (archiveRelDir, cacheRelDir, sourceRelDir)
 import Kernel.Common.Module
-import Kernel.Common.Module.FindModuleFile
 import Kernel.Common.ModuleURL
 import Kernel.Common.Platform qualified as P
 import Kernel.Common.Target
@@ -36,7 +33,7 @@ import SyntaxTree.Series qualified as SE
 
 fromFilePath :: Path Abs File -> App Module
 fromFilePath moduleFilePath = do
-  (_, (ens@(m :< _), _)) <- Ens.fromFilePath moduleFilePath
+  (_, (ens, _)) <- Ens.fromFilePath moduleFilePath
   targetEns <- liftEither $ E.access' keyTarget E.emptyDict ens >>= E.toDictionary
   target <- interpretTarget targetEns
   zenConfigEns <- liftEither (E.access' keyZen E.emptyDict ens) >>= interpretZenConfig
@@ -54,7 +51,7 @@ fromFilePath moduleFilePath = do
   cacheDir <- interpretDirPath cacheDirEns
   sourceDirEns <- liftEither $ E.access' keySource (E.ensPath sourceRelDir) ens
   sourceDir <- interpretDirPath sourceDirEns
-  foreignDictEns <- liftEither $ E.access' keyForeign (emptyForeign m) ens
+  foreignDictEns <- liftEither $ E.access' keyForeign E.emptyDict ens
   foreignDict <- interpretForeignDict foreignDictEns
   mInlineLimit <- interpretInlineLimit ens
   (_, universal) <- liftEither $ E.access' keyUniversal (E.Bool True) ens >>= E.toBool
@@ -79,10 +76,6 @@ fromFilePath moduleFilePath = do
         moduleUniversal = universal,
         modulePresetMap = presetMap
       }
-
-fromCurrentPath :: App Module
-fromCurrentPath = do
-  getCurrentModuleFilePath >>= fromFilePath
 
 interpretPresetMap ::
   H.Hint ->
@@ -174,11 +167,6 @@ interpretSourceLocator ens = do
     _ ->
       raiseError m $ "The source path `" <> pathString <> "` contains the reserved segment `this`"
 
-interpretRelFilePath :: E.Ens -> App (Path Rel File)
-interpretRelFilePath ens = do
-  (m, pathString) <- liftEither $ E.toString ens
-  interpretRelFile m pathString
-
 interpretRelFile :: H.Hint -> T.Text -> App (Path Rel File)
 interpretRelFile m pathText =
   case parseRelFile $ T.unpack pathText of
@@ -262,13 +250,39 @@ interpretSomePath entity = do
 
 interpretForeignDict :: E.Ens -> App Foreign
 interpretForeignDict ens = do
-  (_, input) <- liftEither $ E.access keyForeignInput ens >>= E.toList
-  (_, output) <- liftEither $ E.access keyForeignOutput ens >>= E.toList
-  (_, script) <- liftEither $ E.access keyForeignScript ens >>= E.toList
+  (_, input) <- liftEither $ E.access' keyForeignInput E.emptyList ens >>= E.toList
+  (_, output) <- liftEither $ E.access' keyForeignOutput E.emptyList ens >>= E.toList
+  (_, linkedOutput) <- liftEither $ E.access' keyForeignLink E.emptyList ens >>= E.toList
+  (_, script) <- liftEither $ E.access' keyForeignScript E.emptyList ens >>= E.toList
   input' <- mapM interpretSomePath $ SE.extract input
-  output' <- mapM interpretRelFilePath $ SE.extract output
+  output' <- map snd <$> mapM interpretSomePath (SE.extract output)
+  linkedOutput' <- mapM (interpretLinkedOutput output') $ SE.extract linkedOutput
+  transitiveLinkOption <- interpretTextList keyForeignTransitiveLinkOption ens
   script' <- fmap SE.extract $ liftEither $ mapM E.toString script
-  return $ Foreign {input = input', script = script', output = output'}
+  return $
+    Foreign
+      { input = input',
+        output = output',
+        linkedOutput = linkedOutput',
+        transitiveLinkOption,
+        script = script'
+      }
+
+interpretLinkedOutput :: [SomePath Rel] -> E.Ens -> App (Path Rel File)
+interpretLinkedOutput outputList ens = do
+  (m, pathText) <- liftEither $ E.toString ens
+  path <- interpretRelFile m pathText
+  if any (containsOutput path) outputList
+    then return path
+    else raiseError m $ "Not in the foreign output: " <> pathText
+
+containsOutput :: Path Rel File -> SomePath Rel -> Bool
+containsOutput path output =
+  case output of
+    Left dirPath ->
+      isProperPrefixOf dirPath path
+    Right filePath ->
+      filePath == path
 
 interpretAntecedent :: E.Ens -> App ModuleDigest
 interpretAntecedent ens = do
@@ -290,11 +304,3 @@ interpretInlineLimit ens =
       if limit < 0
         then raiseError m $ "The inline limit must not be negative, but is: " <> T.pack (show limit)
         else return $ Just limit
-
-emptyForeign :: H.Hint -> E.EnsF E.Ens
-emptyForeign m =
-  dictFromListVertical'
-    [ (keyForeignInput, m :< E.List (SE.emptySeries (Just SE.Brace) SE.Comma)),
-      (keyForeignOutput, m :< E.List (SE.emptySeries (Just SE.Brace) SE.Comma)),
-      (keyForeignScript, m :< E.List (SE.emptySeries (Just SE.Brace) SE.Comma))
-    ]

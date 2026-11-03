@@ -1,4 +1,4 @@
-module Kernel.Lower.FreeMallocCancel (MatchMode (..), freeMallocCancel) where
+module Kernel.Lower.FreeMallocCancel (MatchMode (..), Leftover (..), freeMallocCancel) where
 
 import Control.Monad
 import Data.IORef
@@ -15,6 +15,10 @@ import Language.LowComp.LowComp qualified as LC
 data MatchMode
   = Exact
   | Compatible
+
+data Leftover
+  = KeepInPlace
+  | SinkIntoBranches
 
 data AllocState
   = Live
@@ -49,13 +53,14 @@ data Segment = Segment
     liveAllocs :: IORef (Map.Map Int IntSet.IntSet),
     liveFrees :: IORef (Map.Map Int IntSet.IntSet),
     switchPositions :: IntSet.IntSet,
-    failedConsumptions :: IORef (IntMap.IntMap (Set.Set Int))
+    failedConsumptions :: IORef (IntMap.IntMap (Set.Set Int)),
+    sunkFrees :: IORef [LC.Op]
   }
 
-freeMallocCancel :: MatchMode -> GensymHandle.Handle -> LC.Comp -> IO LC.Comp
-freeMallocCancel matchMode gensymHandle lowComp = do
+freeMallocCancel :: MatchMode -> Leftover -> GensymHandle.Handle -> LC.Comp -> IO LC.Comp
+freeMallocCancel matchMode leftover gensymHandle lowComp = do
   segment <- toSegment lowComp
-  process matchMode gensymHandle segment
+  process matchMode leftover gensymHandle segment
   fromSegment segment
 
 toSegment :: LC.Comp -> IO Segment
@@ -67,6 +72,7 @@ toSegment lowComp = do
   liveAllocs <- newIORef allocs
   liveFrees <- newIORef frees
   failedConsumptions <- newIORef IntMap.empty
+  sunkFrees <- newIORef []
   return $
     Segment
       { segmentItems = itemMap,
@@ -75,7 +81,8 @@ toSegment lowComp = do
         liveAllocs = liveAllocs,
         liveFrees = liveFrees,
         switchPositions = IntSet.fromList [pos | (pos, SwitchItem _) <- items],
-        failedConsumptions = failedConsumptions
+        failedConsumptions = failedConsumptions,
+        sunkFrees = sunkFrees
       }
 
 collectItems :: Int -> [(Int, Item)] -> LC.Comp -> IO ([(Int, Item)], Terminal)
@@ -131,7 +138,9 @@ fromSegment segment = do
       return LC.Unreachable
     TerminalPhi valuesRef ->
       LC.Phi <$> readIORef valuesRef
-  foldM prependItem terminal (reverse (IntMap.elems (segmentItems segment)))
+  body <- foldM prependItem terminal (reverse (IntMap.elems (segmentItems segment)))
+  frees <- readIORef (sunkFrees segment)
+  return $ foldr LC.Cont body frees
 
 prependItem :: LC.Comp -> Item -> IO LC.Comp
 prependItem cont item =
@@ -162,15 +171,20 @@ prependItem cont item =
       phiTargets <- readIORef (switchPhiTargets switch)
       return $ LC.Switch (switchValue switch) (switchType switch) defaultBranch ces phiTargets cont
 
-process :: MatchMode -> GensymHandle.Handle -> Segment -> IO ()
-process matchMode gensymHandle segment =
+process :: MatchMode -> Leftover -> GensymHandle.Handle -> Segment -> IO ()
+process matchMode leftover gensymHandle segment =
   forM_ (IntMap.toAscList (segmentItems segment)) $ \(pos, item) ->
     case item of
-      FreeItem ptr size _ droppedRef -> do
+      FreeItem ptr size op droppedRef -> do
         dropped <- readIORef droppedRef
         unless dropped $ do
           consumption <- findConsumption matchMode segment (pos + 1) ptr size
-          case consumption of
+          consumption' <- case (consumption, leftover) of
+            (Nothing, SinkIntoBranches) ->
+              findSink matchMode segment (pos + 1) ptr size op
+            _ ->
+              return consumption
+          case consumption' of
             Just commit -> do
               commit
               dropFree segment pos size droppedRef
@@ -178,7 +192,7 @@ process matchMode gensymHandle segment =
               return ()
       SwitchItem switch -> do
         liftAllocsIntoPhi matchMode gensymHandle segment (pos + 1) switch
-        forM_ (branchesOf switch) $ process matchMode gensymHandle
+        forM_ (branchesOf switch) $ process matchMode leftover gensymHandle
       _ ->
         return ()
 
@@ -277,6 +291,62 @@ findConsumptionInBranches matchMode switch ptr freeSize = do
           return $ Just $ sequence_ [commit | Just commit <- commits]
     _ ->
       return Nothing
+
+data BranchSink
+  = SinkDead
+  | SinkConsumed (IO ())
+  | SinkUnconsumed Segment
+
+findSink :: MatchMode -> Segment -> Int -> Ident -> Int -> LC.Op -> IO (Maybe (IO ()))
+findSink matchMode segment start ptr freeSize op =
+  sinkViaSwitches matchMode segment (switchesBetween segment start (segmentSize segment)) ptr freeSize op
+
+sinkViaSwitches :: MatchMode -> Segment -> [Int] -> Ident -> Int -> LC.Op -> IO (Maybe (IO ()))
+sinkViaSwitches matchMode segment positions ptr freeSize op =
+  case positions of
+    [] ->
+      return Nothing
+    pos : rest -> do
+      sinks <- forM (branchesOf (switchAt segment pos)) $ \branch ->
+        sinkIntoBranch matchMode branch ptr freeSize op
+      if any isConsumedSink sinks
+        then return $ Just $ mapM_ (commitSink op) sinks
+        else sinkViaSwitches matchMode segment rest ptr freeSize op
+
+sinkIntoBranch :: MatchMode -> Segment -> Ident -> Int -> LC.Op -> IO BranchSink
+sinkIntoBranch matchMode branch ptr freeSize op =
+  if isDeadBranch branch
+    then return SinkDead
+    else do
+      consumption <- findConsumption matchMode branch 0 ptr freeSize
+      consumption' <- case consumption of
+        Just _ ->
+          return consumption
+        Nothing ->
+          findSink matchMode branch 0 ptr freeSize op
+      case consumption' of
+        Just commit ->
+          return $ SinkConsumed commit
+        Nothing ->
+          return $ SinkUnconsumed branch
+
+isConsumedSink :: BranchSink -> Bool
+isConsumedSink sink =
+  case sink of
+    SinkConsumed _ ->
+      True
+    _ ->
+      False
+
+commitSink :: LC.Op -> BranchSink -> IO ()
+commitSink op sink =
+  case sink of
+    SinkDead ->
+      return ()
+    SinkConsumed commit ->
+      commit
+    SinkUnconsumed branch ->
+      modifyIORef' (sunkFrees branch) (op :)
 
 isJustCommit :: Maybe a -> Bool
 isJustCommit m =

@@ -1,0 +1,74 @@
+import {
+  core::debug {assert},
+}
+
+define _shift(x: int) -> int {
+  add-int(x, 100)
+}
+
+data _item {
+| _Item(int)
+}
+
+define _shift-item(x: int) -> _item {
+  _Item(add-int(x, 100))
+}
+
+define _unfold-let() -> int {
+  inline go(n: int, y: int) -> int {
+    let z = _shift(y);
+    if eq-int(n, 0) {
+      y
+    } else {
+      go(sub-int(n, 1), z)
+    }
+  };
+  go(1, 10)
+}
+
+define _unfold-lambda() -> int {
+  inline go(n: int, y: int) -> (int) -> int {
+    (z: int) => {
+      if eq-int(n, 0) {
+        y
+      } else {
+        go(sub-int(n, 1), z)(add-int(z, 1000))
+      }
+    }
+  };
+  go(1, 10)(5)
+}
+
+define _unfold-match() -> int {
+  inline go(n: int, y: int) -> int {
+    match _shift-item(y) {
+    | _Item(z) =>
+      if eq-int(n, 0) {
+        y
+      } else {
+        go(sub-int(n, 1), z)
+      }
+    }
+  };
+  go(1, 10)
+}
+
+define _nested-continuation() -> int {
+  let !k =
+    (a: int, g: (int) -> int) => {
+      let z = _shift(a);
+      g(z)
+    };
+  k(1, (w) => {
+    k(w, (v) => {
+      add-int(v, w)
+    })
+  })
+}
+
+define test-capture() -> unit {
+  assert("a let in an unfolded body", eq-int(_unfold-let(), 110));
+  assert("a parameter in an unfolded body", eq-int(_unfold-lambda(), 5));
+  assert("a pattern variable in an unfolded body", eq-int(_unfold-match(), 110));
+  assert("a let in a continuation applied twice", eq-int(_nested-continuation(), 302));
+}

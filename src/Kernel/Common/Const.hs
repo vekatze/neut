@@ -135,6 +135,10 @@ coreString :: T.Text
 coreString =
   core <> doubleColon <> "string" <> doubleColon <> "string"
 
+coreCodeVariable :: T.Text
+coreCodeVariable =
+  core <> doubleColon <> "code" <> doubleColon <> "code-variable"
+
 coreBinary :: T.Text
 coreBinary =
   core <> doubleColon <> "binary" <> doubleColon <> "binary"

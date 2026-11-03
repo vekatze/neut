@@ -3,7 +3,7 @@ module Kernel.Lower.MallocFreeCancel (mallocFreeCancel) where
 import Control.Monad (join)
 import Data.IntMap.Strict qualified as IntMap
 import Data.IntSet qualified as IntSet
-import Data.List (foldl', transpose)
+import Data.List (transpose)
 import Data.Map.Strict qualified as Map
 import Language.Common.Ident
 import Language.Common.Ident.Reify

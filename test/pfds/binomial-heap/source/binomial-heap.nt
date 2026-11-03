@@ -78,21 +78,20 @@ define root<a>(t: &tree(a)) -> a {
 }
 
 define find-min<a>(cmp: &(a, a) -> ordering, h: &heap(a)) -> ?a {
-  let helper =
-    define self(!cand: a, h: &heap(a)) -> a {
-      case h {
-      | Nil =>
-        cand
-      | Cons(t, ts) =>
-        let !root-head = root<a>(t);
-        match cmp(root-head, cand) {
-        | LT =>
-          self(root-head, ts)
-        | _ =>
-          self(cand, ts)
-        }
+  define helper(!cand: a, h: &heap(a)) -> a {
+    case h {
+    | Nil =>
+      cand
+    | Cons(t, ts) =>
+      let !root-head = root<a>(t);
+      match cmp(root-head, cand) {
+      | LT =>
+        helper(root-head, ts)
+      | _ =>
+        helper(cand, ts)
       }
-    };
+    }
+  };
   case h {
   | Nil =>
     none

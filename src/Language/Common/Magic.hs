@@ -13,6 +13,7 @@ data Magic lt ty a
   = LowMagic (LM.LowMagic lt ty a)
   | Calloc ty a a -- Calloc sizeType num size
   | Malloc ty a -- Malloc sizeType size
+  | MallocOpaque ty a -- MallocOpaque sizeType size
   | Realloc ty a a -- Realloc sizeType ptr size
   | Free ty a -- Free unitType ptr
   | InspectType MID.ModuleID ty ty -- typeValueExpr, e (both types)
@@ -21,6 +22,7 @@ data Magic lt ty a
   | TextCons a a -- rune, text
   | TextUncons MID.ModuleID a -- text
   | MakeSwitch MID.ModuleID a a a -- key, fallback, clauses
+  | FreeVariables MID.ModuleID a -- code
   | CompileError a -- msg
   | GetOriginFileName
   | GetOriginLine
@@ -38,6 +40,8 @@ instance Functor (Magic lt ty) where
         Calloc sizeType (f num) (f size)
       Malloc sizeType size ->
         Malloc sizeType (f size)
+      MallocOpaque sizeType size ->
+        MallocOpaque sizeType (f size)
       Realloc sizeType ptr size ->
         Realloc sizeType (f ptr) (f size)
       Free unitType ptr ->
@@ -54,6 +58,8 @@ instance Functor (Magic lt ty) where
         TextUncons mid (f text)
       MakeSwitch mid key fallback clauses ->
         MakeSwitch mid (f key) (f fallback) (f clauses)
+      FreeVariables mid code ->
+        FreeVariables mid (f code)
       CompileError msg ->
         CompileError (f msg)
       GetOriginFileName ->
@@ -72,6 +78,8 @@ instance Foldable (Magic lt ty) where
         f num <> f size
       Malloc _ size ->
         f size
+      MallocOpaque _ size ->
+        f size
       Realloc _ ptr size ->
         f ptr <> f size
       Free _ ptr ->
@@ -88,6 +96,8 @@ instance Foldable (Magic lt ty) where
         f text
       MakeSwitch _ key fallback clauses ->
         f key <> f fallback <> f clauses
+      FreeVariables _ code ->
+        f code
       CompileError msg ->
         f msg
       GetOriginFileName ->
@@ -106,6 +116,8 @@ instance Traversable (Magic lt ty) where
         Calloc sizeType <$> f num <*> f size
       Malloc sizeType size ->
         Malloc sizeType <$> f size
+      MallocOpaque sizeType size ->
+        MallocOpaque sizeType <$> f size
       Realloc sizeType ptr size ->
         Realloc sizeType <$> f ptr <*> f size
       Free unitType ptr ->
@@ -122,6 +134,8 @@ instance Traversable (Magic lt ty) where
         TextUncons mid <$> f text
       MakeSwitch mid key fallback clauses ->
         MakeSwitch mid <$> f key <*> f fallback <*> f clauses
+      FreeVariables mid code ->
+        FreeVariables mid <$> f code
       CompileError msg ->
         CompileError <$> f msg
       GetOriginFileName ->

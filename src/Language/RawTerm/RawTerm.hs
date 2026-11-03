@@ -20,9 +20,10 @@ module Language.RawTerm.RawTerm
     MustIgnoreRelayedVars,
     Args,
     RawGeist (..),
+    GeistKeys (..),
+    getGeistKeys,
     RawDef (..),
     RawTypeDef (..),
-    CodeVariant (..),
     RawImpVar,
     VarArg,
     getDefName,
@@ -41,7 +42,6 @@ module Language.RawTerm.RawTerm
     mapKeywordClause,
     letKindFromText,
     force,
-    codeVariantToKeyword,
   )
 where
 
@@ -54,6 +54,7 @@ import Language.Common.Attr.Data qualified as AttrD
 import Language.Common.Attr.DataIntro qualified as AttrDI
 import Language.Common.BaseName qualified as BN
 import Language.Common.CallSite
+import Language.Common.CodeVariant (CodeVariant)
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.ExternalName qualified as EN
 import Language.Common.HoleID
@@ -107,18 +108,6 @@ type RawType = Cofree RawTypeF Hint
 
 type RawTerm = Cofree RawTermF Hint
 
-data CodeVariant
-  = CodeVariantK
-  | CodeVariantC -- C: A -> □A (completeness principle)
-
-codeVariantToKeyword :: CodeVariant -> T.Text
-codeVariantToKeyword v =
-  case v of
-    CodeVariantK ->
-      "quote"
-    CodeVariantC ->
-      "promote"
-
 type MarkedArg a = (a, IsSourceArg)
 
 data PrevValue = PrevValue
@@ -142,7 +131,7 @@ data RawTermF a
   = Var Name
   | VarGlobal DD.DefiniteDescription GN.GlobalName
   | PiIntro C FuncInfo
-  | PiIntroFix LDK.LocalDefKind C DefInfo
+  | PiIntroFunction C FuncInfo
   | PiElim a C (Maybe (SE.Series RawType)) IsDestCall C (SE.Series (MarkedArg a)) C (Maybe (SE.Series (Hint, Key, C, C, a)))
   | PiElimImplicit Name C (SE.Series RawType)
   | PiElimByKey Name C (Maybe (SE.Series RawType)) IsDestCall C (SE.Series (KeyValueArg a)) (Maybe (Hint, C, C, a)) -- auxiliary syntax for key-call
@@ -150,7 +139,7 @@ data RawTermF a
   | PiElimMeta Name C (Maybe (SE.Series RawType)) C (SE.Series a) C (Maybe (SE.Series (Hint, Key, C, C, a)))
   | PiElimMetaByKey Name C (Maybe (SE.Series RawType)) C (SE.Series (Hint, Key, C, C, a))
   | PiElimExact C a
-  | DataIntro AttrDI.Attr DD.DefiniteDescription [RawType] [a] -- (attr, consName, dataArgs, consArgs)
+  | DataIntro AttrDI.Attr DD.DefiniteDescription [RawType] [RawType] [a] -- (attr, consName, dataArgs, consImpArgs, consArgs)
   | DataElim C N.IsNoetic (SE.Series a) (SE.Series (RP.RawPatternRow a))
   | BoxIntro C C (SE.Series (Hint, VarKind, RawIdent)) (a, C)
   | BoxIntroLift C C (a, C)
@@ -163,6 +152,7 @@ data RawTermF a
   | Embody a
   | Let LetKind C (PatParam RawType) C C a C Loc C a Loc
   | LetOn LetKind C (PatParam RawType) C (SE.Series (Hint, VarKind, RawIdent)) C a C Loc C a Loc
+  | LetRec LDK.LocalDefKind C DefInfo C Loc C a Loc
   | Pin C (RawBinder RawType) C (SE.Series (Hint, VarKind, RawIdent)) C a C Loc C a Loc
   | Invoke C (SE.Series (Hint, Name)) C a
   | RuneIntro R.Rune
@@ -279,6 +269,21 @@ type TopGeist =
 type TopDef =
   RawDef BN.BaseName
 
+data GeistKeys = GeistKeys
+  { geistImpKeys :: [Key],
+    geistExpKeys :: [Key],
+    geistDefaultKeys :: [Key]
+  }
+
+getGeistKeys :: RawGeist a -> GeistKeys
+getGeistKeys geist = do
+  let binderKey (_, _, x, _, _, _) = x
+  GeistKeys
+    { geistImpKeys = map binderKey $ extractImpArgs $ impArgs geist,
+      geistExpKeys = map binderKey $ extractArgs $ expArgs geist,
+      geistDefaultKeys = map (binderKey . fst) $ SE.extract $ fst $ defaultArgs geist
+    }
+
 getDefName :: RawDef a -> a
 getDefName def =
   fst $ name $ geist def
@@ -354,22 +359,25 @@ data RawMagic
   = Cast C (EL RawType) (EL RawType) (EL RawTerm) (Maybe C)
   | Store C (EL RawType) (EL RawTerm) (EL RawTerm) (Maybe C)
   | Load C (EL RawType) (EL RawTerm) (Maybe C)
+  | Shift C (EL RawTerm) (EL RawTerm) (Maybe C)
   | Alloca C (EL RawType) (EL RawTerm) (Maybe C)
   | Calloc C (EL RawTerm) (EL RawTerm) (Maybe C)
   | Malloc C (EL RawTerm) (Maybe C)
+  | MallocOpaque C (EL RawTerm) (Maybe C)
   | Realloc C (EL RawTerm) (EL RawTerm) (Maybe C)
   | Free C (EL RawTerm) (Maybe C)
   | External C Hint EN.ExternalName C (SE.Series RawTerm) (Maybe (C, SE.Series VarArg))
   | Global C Hint EN.ExternalName
   | OpaqueValue C (EL RawTerm)
-  | CallType C (EL RawTerm) (EL RawTerm) (EL RawTerm) (EL RawTerm)
-  | InspectType (EL RawType)
-  | EqType (EL RawType) (EL RawType)
-  | ShowType C (EL RawType)
-  | TextCons C (EL RawTerm) (EL RawTerm)
-  | TextUncons C (EL RawTerm)
-  | MakeSwitch C (EL RawTerm) (EL RawTerm) (EL RawTerm)
-  | CompileError C (EL RawTerm)
+  | CallType C (EL RawTerm) (EL RawTerm) (EL RawTerm) (EL RawTerm) (Maybe C)
+  | InspectType (EL RawType) (Maybe C)
+  | EqType (EL RawType) (EL RawType) (Maybe C)
+  | ShowType C (EL RawType) (Maybe C)
+  | TextCons C (EL RawTerm) (EL RawTerm) (Maybe C)
+  | TextUncons C (EL RawTerm) (Maybe C)
+  | MakeSwitch C (EL RawTerm) (EL RawTerm) (EL RawTerm) (Maybe C)
+  | FreeVariables C (EL RawTerm) (Maybe C)
+  | CompileError C (EL RawTerm) (Maybe C)
   | GetOriginFileName C C
   | GetOriginLine C C
   | GetOriginColumn C C

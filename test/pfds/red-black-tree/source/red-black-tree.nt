@@ -45,22 +45,21 @@ define balance<a>(c: color, t1: tree(a), v: a, t2: tree(a)) -> tree(a) {
 }
 
 define insert<a>(!cmp: (a, a) -> ordering, !x: a, t: tree(a)) -> tree(a) {
-  let helper =
-    define self(t: tree(a)) -> tree(a) {
-      match t {
-      | Leaf =>
-        Node(Red, Leaf, x, Leaf)
-      | Node(c, left, !y, right) =>
-        match cmp(x, y) {
-        | LT =>
-          balance<a>(c, self(left), y, right)
-        | EQ =>
-          Node(c, left, y, right)
-        | GT =>
-          balance<a>(c, left, y, self(right))
-        }
+  define helper(t: tree(a)) -> tree(a) {
+    match t {
+    | Leaf =>
+      Node(Red, Leaf, x, Leaf)
+    | Node(c, left, !y, right) =>
+      match cmp(x, y) {
+      | LT =>
+        balance<a>(c, helper(left), y, right)
+      | EQ =>
+        Node(c, left, y, right)
+      | GT =>
+        balance<a>(c, left, y, helper(right))
       }
-    };
+    }
+  };
   match helper(t) {
   | Leaf =>
     // shouldn't occur

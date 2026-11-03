@@ -257,6 +257,9 @@ distinguishPrimitiveAcc h activeSet term !occMap =
     C.Alloc size -> do
       (occMap', size') <- distinguishValueAcc h activeSet size occMap
       return (occMap', C.Alloc size')
+    C.AllocOpaque size -> do
+      (occMap', size') <- distinguishValueAcc h activeSet size occMap
+      return (occMap', C.AllocOpaque size')
     C.Realloc ptr size -> do
       (occMap1, ptr') <- distinguishValueAcc h activeSet ptr occMap
       (occMap2, size') <- distinguishValueAcc h activeSet size occMap1
@@ -278,6 +281,10 @@ distinguishPrimitiveAcc h activeSet term !occMap =
         LM.Load lt pointer -> do
           (occMap', pointer') <- distinguishValueAcc h activeSet pointer occMap
           return (occMap', C.Magic (LM.Load lt pointer'))
+        LM.Shift pointer offset -> do
+          (occMap1, pointer') <- distinguishValueAcc h activeSet pointer occMap
+          (occMap2, offset') <- distinguishValueAcc h activeSet offset occMap1
+          return (occMap2, C.Magic (LM.Shift pointer' offset'))
         LM.Alloca lt num ->
           return (occMap, C.Magic (LM.Alloca lt num))
         LM.External domList cod extFunName args varArgAndTypeList -> do

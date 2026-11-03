@@ -76,7 +76,7 @@ checkAll :: Handle -> Maybe MainTarget -> App [Log]
 checkAll h mainTarget = do
   let mainModule = Env.getMainModule (Global.envHandle (globalHandle h))
   let getModuleHandle = GetModule.new $ Global.moduleHandle $ globalHandle h
-  deps <- GetModule.getAllDependencies getModuleHandle mainModule (extractModule mainModule)
+  deps <- GetModule.getAllDependencies getModuleHandle (extractModule mainModule)
   unravelHandle <- liftIO $ Unravel.new (globalHandle h)
   Unravel.registerShiftMap unravelHandle
   depLogs <- fmap concat $ forM deps $ \(_, m) -> liftIO $ checkModule h Nothing m
@@ -141,16 +141,13 @@ _check' h target baseModule = do
     item <- Interpret.interpret interpretHandle target source cacheOrProg
     return (gensymHandle, localHandle, (source, item))
   case unsnoc cacheOrStmtList of
-    Nothing -> do
-      registerUnusedTopLevelNameRemarks h
+    Nothing ->
       return Nothing
     Just (deps, (rootGensymHandle, rootLocalHandle, (rootSource, rootCacheOrContent))) -> do
       numCapabilities <- liftIO getNumCapabilities
       Dependency.run numCapabilities sourceDependencyMap Parse.getSourcePath deps $ \(gensymHandle, localHandle, (source, cacheOrContent)) -> do
         void $ checkSource h startTime gensymHandle traceConfig localHandle target source cacheOrContent
-      result <- Just <$> checkSource h startTime rootGensymHandle traceConfig rootLocalHandle target rootSource rootCacheOrContent
-      registerUnusedTopLevelNameRemarks h
-      return result
+      Just <$> checkSource h startTime rootGensymHandle traceConfig rootLocalHandle target rootSource rootCacheOrContent
 
 checkSource :: Handle -> UTCTime -> Gensym.Handle -> Trace.Config -> Local.Handle -> Target -> Source -> (Either Cache [WeakStmt], [Log]) -> App Elaborate.Handle
 checkSource h startTime gensymHandle traceConfig localHandle target source (cacheOrStmtList, logs) = do

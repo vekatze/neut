@@ -153,6 +153,16 @@ define with-bind-through-if(cond: bool) -> either(unit, int) {
   }
 }
 
+define with-bind-through-local-define() -> either(unit, int) {
+  with either-bind {
+    define double(x: int) -> int {
+      mul-int(x, 2)
+    };
+    bind x = Right(double(10));
+    Right(double(x))
+  }
+}
+
 define with-bind-through-when(cond: bool) -> unit {
   with unit-bind {
     when cond {
@@ -565,6 +575,7 @@ define test-match() -> unit {
   test-literal-match-width();
   test-keyword-term-in-condition();
   let _ = with-bind-through-if(True);
+  let _ = with-bind-through-local-define();
   with-bind-through-when(True);
   let _ = with-bind-through-match(xs);
   let _ on xs = with-bind-through-case(xs);
@@ -668,6 +679,38 @@ define test-record-update-source() -> unit {
   Unit
 }
 
+data item {
+| Item(int, bool)
+}
+
+define known-head(b: bool) -> int {
+  let x = Item(1, b);
+  match x {
+  | Item(n, True) =>
+    n
+  | Item(n, False) =>
+    add-int(n, 10)
+  }
+}
+
+define known-literal-head(b: bool) -> int {
+  match Item(2, b) {
+  | Item(1, _) =>
+    1
+  | Item(2, True) =>
+    20
+  | Item(_, _) =>
+    30
+  }
+}
+
+define test-partially-known-match() -> unit {
+  assert("known head, true", eq-int(known-head(True), 1));
+  assert("known head, false", eq-int(known-head(False), 11));
+  assert("known literal head, true", eq-int(known-literal-head(True), 20));
+  assert("known literal head, false", eq-int(known-literal-head(False), 30));
+}
+
 define main() -> unit {
   test-syntax();
   test-record-update();
@@ -675,5 +718,6 @@ define main() -> unit {
   test-record-update-discarded();
   test-record-update-source();
   test-resource();
+  test-partially-known-match();
   test-match()
 }

@@ -21,6 +21,7 @@ import Language.Common.Attr.VarGlobal qualified as AttrVG
 import Language.Common.BaseLowType qualified as BLT
 import Language.Common.Binder
 import Language.Common.CallConv qualified as CC
+import Language.Common.CodeVariant qualified as CV
 import Language.Common.DecisionTree qualified as DT
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.Ident
@@ -70,13 +71,13 @@ data TermF a
   | VarGlobal AttrVG.Attr DD.DefiniteDescription
   | PiIntro (AttrL.Attr Type) [BinderF Type] [BinderF Type] [(BinderF Type, a)] a
   | PiElim TraceID (CC.CallConv Type) a [Type] [a] [Maybe a]
-  | DataIntro AttrDI.Attr DD.DefiniteDescription [Type] [a]
+  | DataIntro AttrDI.Attr DD.DefiniteDescription [Type] [Type] [a]
   | DataElim TraceID N.IsNoetic [(Ident, a, Type)] (DT.DecisionTree Type a)
   | BoxIntro TraceID [(BinderF Type, a)] a
   | BoxIntroLift Type a
   | EmbedIntro a
   | BoxElim TraceID [(BinderF Type, a)] (BinderF Type) a [(BinderF Type, a)] a
-  | CodeIntro a
+  | CodeIntro CV.CodeVariant a
   | CodeElim TraceID a
   | TauIntro Type
   | TauElim TraceID (Hint, VK.VarKind, Ident) a a
@@ -112,7 +113,7 @@ isValue term =
       True
     _ :< PiIntro {} ->
       True
-    _ :< DataIntro _ _ _ consArgs ->
+    _ :< DataIntro _ _ _ _ consArgs ->
       all isValue consArgs
     _ :< CodeIntro {} ->
       True

@@ -21,6 +21,7 @@ import Language.Common.BaseLowType qualified as BLT
 import Language.Common.BasePrimType qualified as BPT
 import Language.Common.Binder
 import Language.Common.CallConvSpec qualified as CCS
+import Language.Common.CodeVariant qualified as CV
 import Language.Common.DecisionTree qualified as DT
 import Language.Common.DefaultArgs qualified as DefaultArgs
 import Language.Common.DefiniteDescription qualified as DD
@@ -64,17 +65,18 @@ data WeakTermF a
   | PiIntro (AttrL.Attr WeakType) [BinderF WeakType] [BinderF WeakType] [(BinderF WeakType, WeakTerm)] a
   | PiElim (CCS.CallConvSpec WeakType) a (ImpArgs.ImpArgs WeakType) [a] (DefaultArgs.DefaultArgs a)
   | PiElimExact a
-  | DataIntro AttrDI.Attr DD.DefiniteDescription [WeakType] [a]
+  | DataIntro AttrDI.Attr DD.DefiniteDescription [WeakType] [WeakType] [a]
   | DataElim N.IsNoetic [(Ident, a, WeakType)] (DT.DecisionTree WeakType a)
   | BoxIntro [(BinderF WeakType, a)] a
   | BoxIntroLift (Maybe WeakType) a
   | EmbedIntro a
   | BoxElim [(BinderF WeakType, a)] (BinderF WeakType) a [(BinderF WeakType, a)] a
-  | CodeIntro a
+  | CodeIntro CV.CodeVariant a
   | CodeElim a
   | TauIntro WeakType
   | TauElim (Hint, VK.VarKind, Ident) a a
   | Let (BinderF WeakType) a a
+  | LetType (Hint, Ident) WeakType a
   | Invoke [DD.DefiniteDescription] a
   | Prim (WPV.WeakPrimValue WeakType)
   | Magic (WeakMagic WeakType WeakType a)

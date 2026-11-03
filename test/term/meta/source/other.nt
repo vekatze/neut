@@ -26,3 +26,19 @@ define big-list-length() -> int {
   let _ = xs;
   n
 }
+
+inline-meta _with-default(f: (bool) -> int, x: 'int)[d: int := f(True)] -> 'int {
+  quote {add-int(unquote {x}, unquote {promote {d}})}
+}
+
+define report-default-origin() -> unit {
+  print-int-line(unquote {
+    _with-default(
+      (b: bool) => {
+        let _ = b;
+        magic get-origin-line()
+      },
+      quote {1000},
+    )
+  });
+}

@@ -1,4 +1,4 @@
-module Language.Term.FreeVars (freeVars) where
+module Language.Term.FreeVars (freeVars, freeVarsType) where
 
 import Control.Comonad.Cofree
 import Data.Maybe
@@ -23,9 +23,8 @@ freeVars term =
     _ :< TM.VarGlobal {} ->
       S.empty
     _ :< TM.PiIntro k impArgs expArgs defaultArgs e -> do
-      let impBinders = impArgs ++ expArgs
-      let defaultVars = S.unions $ map freeVars $ map snd defaultArgs
-      S.union defaultVars (freeVarsBinderType (impBinders ++ map fst defaultArgs ++ catMaybes [AttrL.fromAttr k]) (freeVars e))
+      let body = freeVarsBinderType (catMaybes [AttrL.fromAttr k]) (freeVars e)
+      freeVarsBinderType (impArgs ++ expArgs) (freeVarsDefaultArgs defaultArgs body)
     _ :< TM.PiElim _ conv e impArgs expArgs defaultArgs -> do
       let xs = freeVars e
       let ys0 = S.unions $ map freeVarsType (CC.types conv)
@@ -33,8 +32,8 @@ freeVars term =
       let ys2 = S.unions $ map freeVars expArgs
       let ys3 = S.unions $ map freeVars (catMaybes defaultArgs)
       S.unions [xs, ys0, ys1, ys2, ys3]
-    _ :< TM.DataIntro _ _ dataArgs consArgs -> do
-      let xs1 = S.unions $ map freeVarsType dataArgs
+    _ :< TM.DataIntro _ _ dataArgs consImpArgs consArgs -> do
+      let xs1 = S.unions $ map freeVarsType (dataArgs ++ consImpArgs)
       let xs2 = S.unions $ map freeVars consArgs
       S.union xs1 xs2
     m :< TM.DataElim _ _ oets decisionTree -> do
@@ -53,7 +52,7 @@ freeVars term =
     _ :< TM.BoxElim _ castSeq mxt e1 uncastSeq e2 -> do
       let (xts, es) = unzip $ castSeq ++ [(mxt, e1)] ++ uncastSeq
       freeVarsBinderType xts (S.unions $ map freeVars $ es ++ [e2])
-    _ :< TM.CodeIntro e ->
+    _ :< TM.CodeIntro _ e ->
       freeVars e
     _ :< TM.CodeElim _ e ->
       freeVars e
@@ -116,6 +115,14 @@ freeVarsType ty =
     _ :< TM.Resource _ _ -> do
       S.empty
 
+freeVarsDefaultArgs :: [(BinderF TM.Type, TM.Term)] -> S.Set Ident -> S.Set Ident
+freeVarsDefaultArgs defaultArgs zs =
+  case defaultArgs of
+    [] ->
+      zs
+    (binder, value) : rest ->
+      S.union (freeVars value) (freeVarsBinderType [binder] (freeVarsDefaultArgs rest zs))
+
 freeVarsBinderType :: [BinderF TM.Type] -> S.Set Ident -> S.Set Ident
 freeVarsBinderType binder zs =
   case binder of
@@ -149,7 +156,7 @@ freeVarsCase decisionCase = do
       freeVarsDecisionTree cont
     DT.ConsCase (DT.ConsCaseRecord {..}) -> do
       let (dataTerms, dataTypes) = unzip dataArgs
-      S.unions $ freeVarsBinderType consArgs (freeVarsDecisionTree cont) : map freeVarsType dataTerms ++ map freeVarsType dataTypes
+      S.unions $ freeVarsBinderType (consImpArgs ++ consArgs) (freeVarsDecisionTree cont) : map freeVarsType dataTerms ++ map freeVarsType dataTypes
 
 freeVarsMagic :: M.Magic BLT.BaseLowType TM.Type TM.Term -> S.Set Ident
 freeVarsMagic magic =
@@ -159,6 +166,8 @@ freeVarsMagic magic =
     M.Calloc sizeType num size ->
       S.unions [freeVarsType sizeType, freeVars num, freeVars size]
     M.Malloc sizeType size ->
+      S.union (freeVarsType sizeType) (freeVars size)
+    M.MallocOpaque sizeType size ->
       S.union (freeVarsType sizeType) (freeVars size)
     M.Realloc sizeType ptr size ->
       S.unions [freeVarsType sizeType, freeVars ptr, freeVars size]
@@ -176,6 +185,8 @@ freeVarsMagic magic =
       freeVars text
     M.MakeSwitch _ key fallback clauses ->
       S.unions [freeVars key, freeVars fallback, freeVars clauses]
+    M.FreeVariables _ code ->
+      freeVars code
     M.CompileError msg ->
       freeVars msg
     M.GetOriginFileName ->
@@ -194,6 +205,8 @@ freeVarsLowMagic lowMagic =
       S.unions [freeVars value, freeVars pointer]
     LM.Load _ pointer ->
       freeVars pointer
+    LM.Shift pointer offset ->
+      S.union (freeVars pointer) (freeVars offset)
     LM.Alloca _ size ->
       freeVars size
     LM.External _ _ _ args varArgs -> do

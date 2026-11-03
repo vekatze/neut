@@ -1,6 +1,8 @@
 import {
   core::int.io {print-int-line},
+  this::free-variables,
   this::other,
+  this::type-argument,
 }
 
 inline-meta emit-origin-outer() -> 'unit {
@@ -42,6 +44,9 @@ define main() -> unit {
   print-int-line(cm-param<int>);
   emit-keyword-args::{key3 := 33, key2 := 32, key1 := 31};
   print-int-line(this::other::big-list-length());
+  this::free-variables::report();
+  this::type-argument::report();
+  this::other::report-default-origin();
 }
 
 define zen() -> unit {

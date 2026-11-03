@@ -5,10 +5,16 @@ module Kernel.Parse.Internal.Discern.Handle
     extendType',
     extendWithoutInsert,
     extendByNominalEnv,
+    extendTypeByNominalEnv,
+    withSymbolOwner,
+    getSymbolOwner,
+    insertLocalKeys,
+    lookupLocalKeys,
   )
 where
 
 import Data.HashMap.Strict qualified as Map
+import Data.IntMap.Strict qualified as IntMap
 import Gensym.Handle qualified as Gensym
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.CreateLocalHandle qualified as Local
@@ -33,6 +39,7 @@ import Kernel.Parse.VarDefKind
 import Language.Common.BaseName qualified as BN
 import Language.Common.Ident
 import Language.Common.Ident.Reify qualified as Ident
+import Language.RawTerm.RawTerm qualified as RT
 import Logger.Hint
 
 data Handle = Handle
@@ -54,6 +61,8 @@ data Handle = Handle
     nsPath :: [BN.BaseName],
     nameEnv :: NameEnv,
     typeNameEnv :: NameEnv,
+    symbolOwners :: IntMap.IntMap Ident,
+    localKeys :: IntMap.IntMap RT.GeistKeys,
     currentLayer :: Layer,
     currentStage :: Stage
   }
@@ -70,6 +79,8 @@ new gensymHandle (Global.Handle {..}) (Local.Handle {..}) nameMapHandle modulePa
   let nsPath = []
   let nameEnv = emptyNameEnv
   let typeNameEnv = emptyNameEnv
+  let symbolOwners = IntMap.empty
+  let localKeys = IntMap.empty
   let currentLayer = 0
   let currentStage = 0
   Handle {..}
@@ -100,3 +111,28 @@ extendByNominalEnv h k newNominalEnv = do
     (_, (m, x, l, s)) : rest -> do
       h' <- extend h m x l s k
       extendByNominalEnv h' k rest
+
+extendTypeByNominalEnv :: Handle -> VarDefKind -> NominalEnv -> IO Handle
+extendTypeByNominalEnv h k newNominalEnv = do
+  case newNominalEnv of
+    [] ->
+      return h
+    (_, (m, x, _, _)) : rest -> do
+      h' <- extendType' h m x k
+      extendTypeByNominalEnv h' k rest
+
+withSymbolOwner :: Handle -> Ident -> Ident -> Handle
+withSymbolOwner h x owner =
+  h {symbolOwners = IntMap.insert (Ident.toInt x) owner (symbolOwners h)}
+
+getSymbolOwner :: Handle -> Ident -> Ident
+getSymbolOwner h x =
+  IntMap.findWithDefault x (Ident.toInt x) (symbolOwners h)
+
+insertLocalKeys :: Handle -> Ident -> RT.GeistKeys -> Handle
+insertLocalKeys h x keys =
+  h {localKeys = IntMap.insert (Ident.toInt x) keys (localKeys h)}
+
+lookupLocalKeys :: Handle -> Ident -> Maybe RT.GeistKeys
+lookupLocalKeys h x =
+  IntMap.lookup (Ident.toInt x) (localKeys h)

@@ -18,12 +18,13 @@ import Control.Monad.IO.Class
 import Data.Binary
 import Data.Maybe
 import Data.Text qualified as T
-import Data.Time (UTCTime)
+import Data.Time (UTCTime, getCurrentTime)
 import Kernel.Common.Artifact qualified as A
 import Kernel.Common.Cache qualified as Cache
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.Artifact qualified as Artifact
 import Kernel.Common.Handle.Global.Path qualified as Path
+import Kernel.Common.Handle.Global.Reuse qualified as Reuse
 import Kernel.Common.OutputKind qualified as OK
 import Kernel.Common.Source qualified as Source
 import Kernel.Common.Target
@@ -38,7 +39,8 @@ data Handle = Handle
   { pathHandle :: Path.Handle,
     artifactHandle :: Artifact.Handle,
     loggerHandle :: Logger.Handle,
-    termTraceHandle :: TermTrace.Handle
+    termTraceHandle :: TermTrace.Handle,
+    reuseHandle :: Reuse.Handle
   }
 
 new :: Global.Handle -> Handle
@@ -57,13 +59,16 @@ saveCompletionCache :: Path.Handle -> Target -> Source.Source -> Cache.Completio
 saveCompletionCache h t source cache = do
   cachePath <- Path.getSourceCompletionCachePath h t source
   ensureDir $ parent cachePath
-  liftIO $ encodeFile (toFilePath cachePath) cache
+  timeStamp <- liftIO getCurrentTime
+  liftIO $ placeAtomically cachePath timeStamp $ \stagingPath -> do
+    encodeFile (toFilePath stagingPath) cache
 
-saveLocationCache :: Path.Handle -> Target -> Source.Source -> Cache.LocationCache -> App ()
-saveLocationCache h t source cache = do
+saveLocationCache :: Path.Handle -> Target -> Source.Source -> UTCTime -> Cache.LocationCache -> App ()
+saveLocationCache h t source timeStamp cache = do
   cachePath <- Path.getSourceLocationCachePath h t source
   ensureDir $ parent cachePath
-  liftIO $ encodeFile (toFilePath cachePath) cache
+  liftIO $ placeAtomically cachePath timeStamp $ \stagingPath -> do
+    encodeFile (toFilePath stagingPath) cache
 
 loadCache :: Handle -> Target -> Source.Source -> App (Maybe Cache.Cache)
 loadCache h t source = do
@@ -80,7 +85,7 @@ loadCache h t source = do
           liftIO $ Logger.report (loggerHandle h) $ "Cache miss: " <> renderSource source <> " (cache is stale)"
           return Nothing
         _ -> do
-          dataOrErr <- liftIO $ decodeFileOrFail (toFilePath cachePath)
+          dataOrErr <- liftIO $ Reuse.rememberCache (reuseHandle h) cachePath $ decodeFileOrFail (toFilePath cachePath)
           case dataOrErr of
             Left _ -> do
               liftIO $ Logger.report (loggerHandle h) $ "Cache miss: " <> renderSource source <> " (cache file is invalid and will be removed)"

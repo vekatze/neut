@@ -54,6 +54,7 @@ type RawProgram =
 data RawConsInfo a = RawConsInfo
   { loc :: Hint,
     name :: a,
+    impArgs :: SE.Series (RawBinder RT.RawType),
     expArgs :: Maybe (SE.Series (FieldHint, RawBinder RT.RawType)),
     endLoc :: Loc
   }

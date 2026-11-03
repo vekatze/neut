@@ -10,9 +10,9 @@ import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Text qualified as T
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.Env qualified as Env
-import Kernel.Common.Handle.Global.Module qualified as GlobalModule
 import Kernel.Common.Handle.Global.Path qualified as Path
 import Kernel.Common.Module qualified as M
+import Kernel.Common.Module.GetDependency qualified as GetDependency
 import Kernel.Common.Placeholder qualified as Placeholder
 import Kernel.Common.RunProcess qualified as RunProcess
 import Kernel.Common.Target
@@ -22,12 +22,13 @@ import System.Exit (ExitCode (..), exitWith)
 data Handle = Handle
   { pathHandle :: Path.Handle,
     envHandle :: Env.Handle,
-    moduleHandle :: GlobalModule.Handle,
+    getDependencyHandle :: GetDependency.Handle,
     runProcessHandle :: RunProcess.Handle
   }
 
 new :: Global.Handle -> Handle
 new (Global.Handle {..}) = do
+  let getDependencyHandle = GetDependency.new moduleHandle antecedentHandle
   let runProcessHandle = RunProcess.new loggerHandle
   Handle {..}
 
@@ -54,7 +55,7 @@ resolver h mainModule target outputPath hint name = do
     "target" ->
       return $ fmap Placeholder.quote $ getTargetName target
     _ ->
-      Placeholder.mainModuleResolver (moduleHandle h) mainModule hint name
+      Placeholder.mainModuleResolver (getDependencyHandle h) mainModule hint name
 
 run :: Handle -> T.Text -> App ()
 run h command = do

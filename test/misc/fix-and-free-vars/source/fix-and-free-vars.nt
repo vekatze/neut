@@ -5,47 +5,44 @@ import {
 
 define main() -> unit {
   let !xs: list(int) = List::[];
-  let no-free-var =
-    define foo(c: int) -> int {
-      if eq-int(c, 0) {
-        1
-      } else {
-        foo(sub-int(c, 1))
-      }
-    };
-  let _ = no-free-var(3);
-  let single-free-var =
-    define free-vars-in-recursion(c: int) -> int {
-      if eq-int(c, 0) {
-        let _ = xs;
-        let _ on xs = length(xs);
-        let _ = xs;
-        1
-      } else {
-        free-vars-in-recursion(sub-int(c, 1))
-      }
-    };
+  define foo(c: int) -> int {
+    if eq-int(c, 0) {
+      1
+    } else {
+      foo(sub-int(c, 1))
+    }
+  };
+  let _ = foo(3);
+  define single-free-var(c: int) -> int {
+    if eq-int(c, 0) {
+      let _ = xs;
+      let _ on xs = length(xs);
+      let _ = xs;
+      1
+    } else {
+      single-free-var(sub-int(c, 1))
+    }
+  };
   let _ = single-free-var(3);
   let !ys = xs;
   let !zs = xs;
   let !ws: list(int) = List::[];
-  let multiple-free-var =
-    define free-vars-in-recursion(c: int) -> int {
-      if eq-int(c, 0) {
-        let _ = xs;
-        let _ = xs;
-        let _ = ys;
-        let _ on ys = length(ys);
-        let _ on zs = length(zs);
-        let _ = ys;
-        let _ = zs;
-        1
-      } else {
-        let _ = xs;
-        let _ = ys;
-        let _ = ws;
-        free-vars-in-recursion(sub-int(c, 1))
-      }
-    };
-  print-int-line(multiple-free-var(3))
+  define free-vars-in-recursion(c: int) -> int {
+    if eq-int(c, 0) {
+      let _ = xs;
+      let _ = xs;
+      let _ = ys;
+      let _ on ys = length(ys);
+      let _ on zs = length(zs);
+      let _ = ys;
+      let _ = zs;
+      1
+    } else {
+      let _ = xs;
+      let _ = ys;
+      let _ = ws;
+      free-vars-in-recursion(sub-int(c, 1))
+    }
+  };
+  print-int-line(free-vars-in-recursion(3))
 }

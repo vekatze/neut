@@ -11,22 +11,41 @@ RUN apt-get update && \
   cmake \
   curl \
   g++ \
+  gcc \
+  git \
   gnupg \
   just \
+  libc6-dev \
+  libffi-dev \
+  libgmp-dev \
   lsb-release \
+  make \
+  netbase \
   ninja-build \
   patch \
   python3 \
   tar \
   wget \
   xz-utils \
+  zlib1g-dev \
   zstd && \
-  curl -sSL https://get.haskellstack.org/ | sh && \
   rm -rf /var/lib/apt/lists/* && \
   curl -O https://apt.llvm.org/llvm.sh && \
   chmod +x llvm.sh && \
   ./llvm.sh 21 && \
   ln -s /usr/bin/clang-21 /usr/bin/clang
+
+ENV STACK_VERSION=3.11.1
+
+RUN case "$(dpkg --print-architecture)" in \
+      amd64) stack_arch=x86_64; stack_sha256=67c66e918801c41ae4d286b1c91f9124f691c1c7d56071b53889cf4a5c667550 ;; \
+      arm64) stack_arch=aarch64; stack_sha256=5d6b37c99505e3003fe5462a0578a8f8a7d7154e713aa885e0e155d5d2089f42 ;; \
+      *) echo "unsupported architecture: $(dpkg --print-architecture)" >&2; exit 1 ;; \
+    esac && \
+  curl -sSL -o /usr/local/bin/stack \
+  "https://github.com/commercialhaskell/stack/releases/download/v${STACK_VERSION}/stack-${STACK_VERSION}-linux-${stack_arch}-bin" && \
+  echo "${stack_sha256}  /usr/local/bin/stack" | sha256sum -c - && \
+  chmod +x /usr/local/bin/stack
 
 COPY build/package.template.yaml /app/build/package.template.yaml
 

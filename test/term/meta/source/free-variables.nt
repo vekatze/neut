@@ -1,0 +1,150 @@
+import {
+  core::code {Code-Variable, code-variable},
+  core::int.io {print-int-line},
+}
+
+inline-meta _count<a>(xs: list(a)) -> int {
+  match xs {
+  | Nil =>
+    0
+  | Cons(_, rest) =>
+    add-int(1, _count(rest))
+  }
+}
+
+inline-meta _count-free<a>(c: 'a) -> int {
+  _count(magic free-variables(c))
+}
+
+inline-meta _count-int-variables(xs: list(code-variable)) -> int {
+  match xs {
+  | Nil =>
+    0
+  | Cons(Code-Variable<a>(_, _), rest) =>
+    let here =
+      if magic eq-type(a, int) {
+        1
+      } else {
+        0
+      };
+    add-int(here, _count-int-variables(rest))
+  }
+}
+
+define _use-type(t: type, x: int) -> int {
+  let _ = t;
+  x
+}
+
+define _with-term-variables(x: int, y: int) -> int {
+  unquote {promote {_count-free(quote {add-int(x, y)})}}
+}
+
+define _with-type-value(t: type, x: int) -> int {
+  unquote {promote {_count-free(quote {_use-type(t, x)})}}
+}
+
+define _with-implicit<b>(x: int) -> int {
+  unquote {
+    promote {
+      _count-free(quote {
+        (_: b) => {
+          x
+        }
+      })
+    }
+  }
+}
+
+define _with-unpack(t: type, x: int) -> int {
+  unpack-type a = t;
+  unquote {
+    promote {
+      _count-free(quote {
+        (_: a) => {
+          x
+        }
+      })
+    }
+  }
+}
+
+define _with-int-variables(t: type, x: int, y: int) -> int {
+  unquote {promote {_count-int-variables(magic free-variables(quote {add-int(_use-type(t, x), y)}))}}
+}
+
+inline-meta _is-int-variable(x: code-variable) -> int {
+  match x {
+  | Code-Variable<a>(_, _) =>
+    if magic eq-type(a, int) {
+      1
+    } else {
+      0
+    }
+  }
+}
+
+inline-meta _first-is-int(xs: list(code-variable)) -> int {
+  match xs {
+  | Nil =>
+    0
+  | Cons(x, _) =>
+    _is-int-variable(x)
+  }
+}
+
+inline-meta _second-is-int(xs: list(code-variable)) -> int {
+  match xs {
+  | Cons(_, rest) =>
+    _first-is-int(rest)
+  | Nil =>
+    0
+  }
+}
+
+define _bound-first-occurs-last(x: int, flag: bool) -> int {
+  unquote {
+    promote {
+      _first-is-int(magic free-variables(
+        quote {
+          if flag {
+            x
+          } else {
+            x
+          }
+        },
+      ))
+    }
+  }
+}
+
+define _clause-before-fallback(n: int8, x: int, flag: bool) -> int {
+  unquote {
+    promote {
+      _second-is-int(magic free-variables(
+        quote {
+          match n {
+          | 1 =>
+            if flag {
+              1
+            } else {
+              2
+            }
+          | _ =>
+            x
+          }
+        },
+      ))
+    }
+  }
+}
+
+define report() -> unit {
+  print-int-line(_with-term-variables(1, 2));
+  print-int-line(_with-type-value(pack-type {int}, 1));
+  print-int-line(_with-implicit<int>(1));
+  print-int-line(_with-unpack(pack-type {int}, 1));
+  print-int-line(_with-int-variables(pack-type {int}, 1, 2));
+  print-int-line(_bound-first-occurs-last(1, True));
+  print-int-line(_clause-before-fallback(1, 1, True));
+}
