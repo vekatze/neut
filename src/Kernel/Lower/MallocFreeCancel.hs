@@ -49,6 +49,8 @@ collectRoots roots lowComp =
   case lowComp of
     LC.Return {} ->
       roots
+    LC.ReturnVoid ->
+      roots
     LC.Let x op cont ->
       case getAliasSource op of
         Just y ->
@@ -91,6 +93,8 @@ analyze :: RootMap -> LC.Comp -> (Axis, FreeState)
 analyze roots lowComp =
   case lowComp of
     LC.Return {} ->
+      (mempty, escapingState)
+    LC.ReturnVoid ->
       (mempty, escapingState)
     LC.Let x op cont -> do
       let (axis, state) = analyze roots cont
@@ -195,6 +199,8 @@ collectBranchResultOrigin env lowComp =
   case lowComp of
     LC.Return {} ->
       Nothing
+    LC.ReturnVoid ->
+      Nothing
     LC.Let x op cont -> do
       let env' = Map.insert x (getOrigin env op) env
       collectBranchResultOrigin env' cont
@@ -268,6 +274,8 @@ cancelMallocFree :: DS.DataSize -> Axis -> LC.Comp -> LC.Comp
 cancelMallocFree baseSize axis lowComp =
   case lowComp of
     LC.Return {} ->
+      lowComp
+    LC.ReturnVoid ->
       lowComp
     LC.Let x op cont -> do
       let cont' = cancelMallocFree baseSize axis cont

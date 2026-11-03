@@ -75,6 +75,7 @@ type MustTail =
 
 data Comp
   = Return Value -- UpIntro
+  | ReturnVoid
   | Let Ident Op Comp -- UpElim
   -- `CompCont` is `CompLet` that discards the result of Op. This `CompCont` is required separately
   -- since LLVM doesn't allow us to write something like `%foo = store i32 3, i32* %ptr`.
@@ -146,7 +147,7 @@ type GlobalEnv =
   Map.HashMap EN.ExternalName BLT.BaseLowType
 
 type ExportInfo =
-  (EN.ExternalName, DD.DefiniteDescription, [LowType], LowType)
+  (EN.ExternalName, DefContent)
 
 internalTrailingArgCount :: Int
 internalTrailingArgCount =
@@ -182,6 +183,8 @@ getPhiList comp =
       return vs
     Return {} ->
       Nothing
+    ReturnVoid ->
+      Nothing
     Let _ _ cont ->
       getPhiList cont
     Cont _ cont ->
@@ -209,6 +212,8 @@ getReturnValue comp =
   case comp of
     Return v ->
       return v
+    ReturnVoid ->
+      Nothing
     Let _ _ cont ->
       getReturnValue cont
     Cont _ cont ->

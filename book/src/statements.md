@@ -1306,34 +1306,8 @@ Each entry names a function defined in the same file, optionally followed by `as
 
 The compiler emits a wrapper with the C calling convention for each entry. On native targets, the external name becomes a public symbol. On wasm targets, it also becomes a wasm export.
 
-Every parameter of the wrapper and its result are 64-bit integers. A pointer is zero-extended to that width.
+An exposed function must have a signature that a [foreign](#foreign) entry can declare:
 
-The wrapper takes the parameter list of the compiled function, so `expose` publishes the calling convention as well:
-
-- a type parameter becomes a leading parameter
-- a default argument becomes an ordinary parameter, with no default
-- a destination-passing function (one written with `->>`) takes its destination first, and returns it
-- a source-passing parameter (one written with `+`) takes the address of the storage it reads the argument from, and the caller releases that storage after the call returns
-
-A destination-passing function, for example:
-
-```neut
-data pair-of-int {
-| Pair-Of-Int(int, int)
-}
-
-define make(x: int) ->> pair-of-int {
-  Pair-Of-Int(x, x)
-}
-
-expose {
-  make as my_app_make,
-}
-```
-
-```c
-int64_t my_app_make(int64_t destination, int64_t x);
-
-int64_t storage[2];
-my_app_make((int64_t)storage, 7);
-```
+- the type is of the form `(x1: a1, ..., xn: an) -> b`
+- every input type compiles to one of `int{N}`, `float{N}`, or `pointer`
+- the output type compiles to one of `int{N}`, `float{N}`, `pointer`, or `void`

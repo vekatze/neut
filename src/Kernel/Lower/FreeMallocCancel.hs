@@ -42,6 +42,7 @@ data Switch = Switch
 
 data Terminal
   = TerminalReturn LC.Value
+  | TerminalReturnVoid
   | TerminalTailCall Bool LT.LowType LC.Value [(LT.LowType, LC.Value)]
   | TerminalUnreachable
   | TerminalPhi (IORef [LC.Value])
@@ -90,6 +91,8 @@ collectItems pos acc lowComp =
   case lowComp of
     LC.Return v ->
       return (reverse acc, TerminalReturn v)
+    LC.ReturnVoid ->
+      return (reverse acc, TerminalReturnVoid)
     LC.Let x op cont ->
       case op of
         LC.Alloc (Left knownSize) _ -> do
@@ -132,6 +135,8 @@ fromSegment segment = do
   terminal <- case segmentTerminal segment of
     TerminalReturn v ->
       return $ LC.Return v
+    TerminalReturnVoid ->
+      return LC.ReturnVoid
     TerminalTailCall mustTail t f args ->
       return $ LC.TailCall mustTail t f args
     TerminalUnreachable ->

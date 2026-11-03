@@ -395,8 +395,10 @@ elaborateStmt h stmt = do
         return $ F.Foreign m externalName sig'
       return ([StmtForeign foreignList'], [])
     WeakStmtExpose exportList -> do
-      let exportList2 = map (\(m, dd, extName) -> (SavedHint m, dd, extName)) exportList
-      let result = StmtExpose exportList2
+      exportList' <- forM exportList $ \(m, dd, extName) -> do
+        signature <- getExposedSignature h m dd
+        return (SavedHint m, dd, extName, signature)
+      let result = StmtExpose exportList'
       insertStmt h result
       return ([result], [])
     WeakStmtNamespace m dd -> do
@@ -606,7 +608,7 @@ insertStmtWithTraceSites h knownTraceSiteIDs stmt = do
     StmtExpose exportList -> do
       let entrySymbol = Arch.entrySymbol $ P.arch $ Platform.getPlatform $ Global.platformHandle (globalHandle h)
       ensureExposedNameLinearity S.empty exportList
-      forM_ exportList $ \(SavedHint m, dd, extName) -> do
+      forM_ exportList $ \(SavedHint m, dd, extName, _) -> do
         when (EN.reify extName == entrySymbol) $
           raiseError m $ "`" <> EN.reify extName <> "` is the entry point of the target and cannot be exposed"
         Expose.insert (Global.exposeHandle (globalHandle h)) m dd extName
@@ -1207,6 +1209,37 @@ strictify' h m unwrapped t = do
     _ :< _ ->
       raiseNonStrictType m (weakenType t')
 
+strictifyCod :: Handle -> Hint -> WT.WeakType -> App (FCT.ForeignCodType BLT.BaseLowType)
+strictifyCod h m t = do
+  t' <- reduceWeakType h t
+  case t' of
+    _ :< WT.Void ->
+      return FCT.Void
+    _ ->
+      FCT.Cod <$> strictify' h m S.empty t'
+
+getExposedSignature :: Handle -> Hint -> DD.DefiniteDescription -> App F.FunctionSignature
+getExposedSignature h m dd = do
+  t <- Type.lookup' (typeHandle h) m dd
+  case t of
+    _ :< WT.Pi piKind impArgs expArgs defaultArgs cod -> do
+      unless (null impArgs) $
+        raiseError m "An exposed function cannot have implicit arguments"
+      unless (null defaultArgs) $
+        raiseError m "An exposed function cannot have default arguments"
+      when (any (\(_, k, _, _) -> VK.isSource k) expArgs) $
+        raiseError m "An exposed function cannot have source-passing parameters"
+      case piKind of
+        PK.DestPass _ ->
+          raiseError m "An exposed function cannot be destination-passing"
+        _ ->
+          return ()
+      domList <- mapM (\(_, _, _, domType) -> strictify' h m S.empty domType) expArgs
+      cod' <- strictifyCod h m cod
+      return (domList, cod')
+    _ ->
+      raiseCritical m $ "The type of `" <> DD.reify dd <> "` is not a function type"
+
 strictifyDecimalType :: Handle -> Hint -> Integer -> WT.WeakType -> App (IntSize, TM.Type)
 strictifyDecimalType h m =
   strictifyDecimalType' h m S.empty
@@ -1618,12 +1651,12 @@ chaseHole h m t =
     _ ->
       return t
 
-ensureExposedNameLinearity :: S.Set EN.ExternalName -> [(SavedHint, DD.DefiniteDescription, EN.ExternalName)] -> App ()
+ensureExposedNameLinearity :: S.Set EN.ExternalName -> [(SavedHint, DD.DefiniteDescription, EN.ExternalName, F.FunctionSignature)] -> App ()
 ensureExposedNameLinearity found exportList =
   case exportList of
     [] ->
       return ()
-    (SavedHint m, _, extName) : rest
+    (SavedHint m, _, extName, _) : rest
       | S.member extName found ->
           raiseError m $ "`" <> EN.reify extName <> "` is already exposed"
       | otherwise ->

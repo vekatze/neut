@@ -13,7 +13,7 @@ module Kernel.Lower.Lower
 where
 
 import App.App (App)
-import App.Run (raiseCritical, raiseCritical')
+import App.Run (raiseCritical')
 import Console.ReportMode qualified as Report
 import Control.Monad
 import Control.Monad.Writer.Lazy
@@ -88,7 +88,6 @@ data Handle = Handle
     staticDataMap :: IORef (Map.HashMap T.Text [LC.StaticMember]),
     definedNameSet :: IORef (S.Set DD.DefiniteDescription),
     referencedNameSet :: IORef (S.Set DD.DefiniteDescription),
-    fileDefArityRef :: IORef (Map.HashMap DD.DefiniteDescription Int),
     exportListRef :: IORef [LC.ExportInfo],
     currentArity :: Maybe Int,
     traceConfig :: Trace.Config,
@@ -122,7 +121,6 @@ new gensymHandle (Global.Handle {..}) traceConfig target defMap = do
   definedNameSet <- liftIO $ newIORef S.empty
   referencedNameSet <- liftIO $ newIORef S.empty
   exportListRef <- liftIO $ newIORef []
-  fileDefArityRef <- liftIO $ newIORef Map.empty
   let currentArity = Nothing
   return $ Handle {..}
 
@@ -185,16 +183,41 @@ lowerStmt h stmt = do
     C.Foreign {} -> do
       return Nothing
     C.Expose exposeList -> do
-      arityMap <- liftIO $ readIORef (fileDefArityRef h)
-      forM_ exposeList $ \(m, dd, extName) -> do
-        case Map.lookup dd arityMap of
-          Nothing ->
-            raiseCritical m "The target of this `expose` is not defined in this file"
-          Just arity -> do
-            let visibleArity = arity - LC.internalTrailingArgCount
-            liftIO $ insertReferencedName h dd
-            liftIO $ modifyIORef' (exportListRef h) $ (:) (extName, dd, replicate visibleArity LT.slotLowType, LT.slotLowType)
+      forM_ exposeList $ \(_, dd, extName, signature) -> do
+        liftIO $ insertReferencedName h dd
+        entry <- makeExposedEntry h dd signature
+        liftIO $ modifyIORef' (exportListRef h) $ (:) (extName, entry)
       return Nothing
+
+makeExposedEntry :: Handle -> DD.DefiniteDescription -> F.FunctionSignature -> App LC.DefContent
+makeExposedEntry h dd (domList, cod) = do
+  let domTypes = map LT.fromBaseLowType domList
+  let codType = FCT.fromForeignCodType cod
+  (params, paramValues) <- mapAndUnzipM (const $ liftIO $ newValueLocal h "arg") domList
+  (slots, slotValues) <- mapAndUnzipM (const $ liftIO $ newValueLocal h "slot") domList
+  (resultVar, resultValue) <- liftIO $ newValueLocal h "result"
+  let trailingArgs = replicate LC.internalTrailingArgCount (LT.slotLowType, LC.Int 0)
+  let callArgs = map (\v -> (LT.slotLowType, v)) slotValues ++ trailingArgs
+  returnResult <-
+    case cod of
+      FCT.Void ->
+        return LC.ReturnVoid
+      FCT.Cod _ -> do
+        (castVar, castValue) <- liftIO $ newValueLocal h "cast"
+        cast h castVar resultValue codType (LC.Return castValue)
+  body <-
+    uncastValues h (zip slots (zip paramValues domTypes)) $
+      LC.Let resultVar (LC.Call False LT.slotLowType (LC.VarGlobal dd) callArgs) returnResult
+  return $ LC.DefContent codType (zip params domTypes) body
+
+uncastValues :: Handle -> [(Ident, (LC.Value, LT.LowType))] -> LC.Comp -> App LC.Comp
+uncastValues h xvs cont =
+  case xvs of
+    [] ->
+      return cont
+    (x, (v, t)) : rest -> do
+      uncast h x v t
+        =<< uncastValues h rest cont
 
 reportTrace :: Handle -> DD.DefiniteDescription -> LC.Def -> App ()
 reportTrace h name def = do
@@ -206,9 +229,8 @@ registerInternalNames :: Handle -> [C.CompStmt] -> IO ()
 registerInternalNames h stmtList =
   forM_ stmtList $ \stmt -> do
     case stmt of
-      C.Def name _ defArgs _ -> do
+      C.Def name _ _ _ -> do
         modifyIORef' (definedNameSet h) $ S.insert name
-        modifyIORef' (fileDefArityRef h) $ Map.insert name (length defArgs)
       C.Foreign foreignList ->
         forM_ foreignList $ \(F.Foreign _ name sig) -> do
           case sig of

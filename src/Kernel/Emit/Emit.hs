@@ -44,6 +44,7 @@ import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.ExternalName qualified as EN
 import Language.Common.Foreign qualified as F
 import Language.Common.ForeignCodType qualified as FCT
+import Language.Common.Ident (Ident)
 import Language.Common.Ident.Reify
 import Language.Common.LowType qualified as LT
 import Language.Common.LowType.FromBaseLowType qualified as LT
@@ -97,29 +98,18 @@ emitLowCodeInfo h (declEnv, globalEnv, defList, staticTextList, staticDataList, 
   let staticTextList' = concatMap (emitStaticText (getDataSize h)) staticTextList
   let staticDataList' = map (emitStaticData (getDataSize h)) staticDataList
   defStrList <- concat <$> mapM (emitDefinitions h) defList
-  let exportStrList = concatMap (emitExport h) exportList ++ emitExportRoots exportList
-  return (declStrList <> staticTextList' <> staticDataList', defStrList <> exportStrList)
+  exportStrList <- concat <$> mapM (emitExport h) exportList
+  return (declStrList <> staticTextList' <> staticDataList', defStrList <> exportStrList <> emitExportRoots exportList)
 
-emitExport :: Handle -> LC.ExportInfo -> [Builder]
-emitExport h (extName, dd, domList, cod) = do
-  let name' = EN.toBuilder extName
-  let argList = map (\i -> "%a" <> intDec i) [0 .. length domList - 1]
-  let params = unwordsC (zipWith (\t arg -> emitLowType t <> " " <> arg) domList argList)
-  let trailingArgs = replicate LC.internalTrailingArgCount (emitLowType LT.slotLowType <> " 0")
-  let callArgs = unwordsC (zipWith (\t arg -> attachAttributes (emitLowType t) (internalArgAttributes t) <> " " <> arg) domList argList ++ trailingArgs)
-  let cod' = emitLowType cod
+emitExport :: Handle -> LC.ExportInfo -> IO [Builder]
+emitExport h (extName, LC.DefContent {codType = codType, args = args, body = body}) = do
   let exportAttributes =
         case getArch h of
           Arch.Wasm32 ->
             ["\"wasm-export-name\"=\"" <> TE.encodeUtf8Builder (EN.reify extName) <> "\""]
           _ ->
             []
-  let attrs = mconcat $ map (" " <>) $ exportAttributes ++ archFunctionAttributes (getArch h)
-  [ "define " <> cod' <> " @" <> name' <> "(" <> params <> ")" <> attrs <> " {",
-    "  %ret = tail call fastcc " <> cod' <> " @" <> DD.toBuilder dd <> "(" <> callArgs <> ")",
-    "  ret " <> cod' <> " %ret",
-    "}"
-    ]
+  emitDefinition h (gensymHandle h) False Nothing exportAttributes codType (EN.toBuilder extName) (emitExternalArgs h args) body
 
 emitExportRoots :: [LC.ExportInfo] -> [Builder]
 emitExportRoots exportList =
@@ -127,7 +117,7 @@ emitExportRoots exportList =
     [] ->
       []
     _ -> do
-      let names = map (\(extName, _, _, _) -> "ptr @" <> EN.toBuilder extName) exportList
+      let names = map (\(extName, _) -> "ptr @" <> EN.toBuilder extName) exportList
       let arrayType = "[" <> intDec (length exportList) <> " x ptr]"
       ["@llvm.used = appending global " <> arrayType <> " [" <> unwordsC names <> "], section \"llvm.metadata\""]
 
@@ -275,13 +265,16 @@ emitDefinitions h (name, LC.DefContent {codType = codType, args = args, body = b
   let reduceHandle = Reduce.new definitionGensymHandle
   body' <- Reduce.reduce reduceHandle sub body
   let args'' = showInternalArgs (getDataSize h) $ zipWith (\(_, t) x -> (t, LC.VarLocal x)) args args'
-  emitDefinition h definitionGensymHandle True (Just name) codType (DD.toBuilder name) args'' body'
+  emitDefinition h definitionGensymHandle True (Just name) [] codType (DD.toBuilder name) args'' body'
 
 emitMain :: Handle -> LC.DefContent -> IO [Builder]
 emitMain h (LC.DefContent {codType = codType, args = args, body = body}) = do
+  emitDefinition h (gensymHandle h) False Nothing [] codType (mainSymbol (getArch h)) (emitExternalArgs h args) body
+
+emitExternalArgs :: Handle -> [(Ident, LT.LowType)] -> Builder
+emitExternalArgs h args = do
   let renderArg (x, t) = emitLowType t <> " " <> emitValue (getDataSize h) (LC.VarLocal x)
-  let args' = "(" <> unwordsC (map renderArg args) <> ")"
-  emitDefinition h (gensymHandle h) False Nothing codType (mainSymbol (getArch h)) args' body
+  "(" <> unwordsC (map renderArg args) <> ")"
 
 mainSymbol :: Arch.Arch -> Builder
 mainSymbol arch =
@@ -403,9 +396,9 @@ allocatorFunctionAttributes allocator kind = do
   let family = TE.encodeUtf8Builder $ allocatorFamily allocator
   ["nounwind", "willreturn"] ++ effects ++ ["\"alloc-family\"=\"" <> family <> "\""]
 
-emitDefinition :: Handle -> GensymHandle.Handle -> Bool -> Maybe DD.DefiniteDescription -> LT.LowType -> Builder -> Builder -> LC.Comp -> IO [Builder]
-emitDefinition h gensymHandle isInternal maybeName retType name args asm = do
-  let attributes = archFunctionAttributes (getArch h) ++ tailCallAttributes maybeName asm
+emitDefinition :: Handle -> GensymHandle.Handle -> Bool -> Maybe DD.DefiniteDescription -> [Builder] -> LT.LowType -> Builder -> Builder -> LC.Comp -> IO [Builder]
+emitDefinition h gensymHandle isInternal maybeName extraAttributes retType name args asm = do
+  let attributes = archFunctionAttributes (getArch h) ++ tailCallAttributes maybeName asm ++ extraAttributes
   let header = sig isInternal retType name args attributes <> " {"
   emitLowCompHandle <- EmitLowComp.new gensymHandle (globalHandle h) (emitLowType retType) (allocatorSpec $ allocator h)
   content <- EmitLowComp.emitLowComp emitLowCompHandle asm

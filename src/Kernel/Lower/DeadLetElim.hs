@@ -18,6 +18,8 @@ rewriteComp demand lowComp =
   case lowComp of
     LC.Return value ->
       (usedValueSet value, LC.Return value)
+    LC.ReturnVoid ->
+      (IntSet.empty, LC.ReturnVoid)
     LC.Let x op cont -> do
       let (liveCont, cont') = rewriteComp demand cont
       let liveAfterDef = IntSet.delete (toInt x) liveCont

@@ -60,6 +60,12 @@ emitLowComp h lowComp =
           return $ emitOp $ unwordsL ["ret", retType h, emitValue (baseSize h) d]
         Just joinLabel ->
           return $ emitOp $ unwordsL ["br", "label", emitIdentAsLabelVar joinLabel]
+    LC.ReturnVoid -> do
+      case goalLabel h of
+        Nothing ->
+          return $ emitOp "ret void"
+        Just joinLabel ->
+          return $ emitOp $ unwordsL ["br", "label", emitIdentAsLabelVar joinLabel]
     LC.Phi _ -> do
       case goalLabel h of
         Nothing ->

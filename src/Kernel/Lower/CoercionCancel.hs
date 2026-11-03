@@ -48,6 +48,8 @@ rewriteComp env lowComp =
   case lowComp of
     LC.Return value ->
       LC.Return (rewriteValue env value)
+    LC.ReturnVoid ->
+      LC.ReturnVoid
     LC.Let x op cont -> do
       let op' = rewriteOp env op
       let cont' = rewriteComp (insertCoercionStep env x op') cont
