@@ -1002,7 +1002,7 @@ elaborate' h term = do
               args' <- mapM (elaborate' h) args
               let (vArgs, vTypes) = unzip varArgs
               vArgs' <- mapM (elaborate' h) vArgs
-              vTypes' <- mapM (strictify h) vTypes
+              vTypes' <- mapM (strictifyForeignType h name variadicPrimTypes) vTypes
               return $ m :< TM.Magic noTrace (M.LowMagic $ LM.External domList' cod' name args' (zip vArgs' vTypes'))
             LM.Cast from to value -> do
               from' <- elaborateType h from
@@ -1216,6 +1216,10 @@ strictify' h m unwrapped t = do
 foreignPrimTypes :: [PT.PrimType]
 foreignPrimTypes =
   [PT.Int IntSize32, PT.Int IntSize64, PT.Float FloatSize16, PT.Float FloatSize32, PT.Float FloatSize64, PT.Pointer]
+
+variadicPrimTypes :: [PT.PrimType]
+variadicPrimTypes =
+  [PT.Int IntSize32, PT.Int IntSize64, PT.Float FloatSize64, PT.Pointer]
 
 strictifyForeignType :: Handle -> EN.ExternalName -> [PT.PrimType] -> WT.WeakType -> App BLT.BaseLowType
 strictifyForeignType h externalName allowedTypes t@(m :< _)

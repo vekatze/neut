@@ -1260,6 +1260,10 @@ define print-raw(fmt: pointer, len: int, val: pointer) -> c-int {
 }
 ```
 
+The lowtype of each variadic argument must compile to one of `int32`, `int64`, `float64`, or `pointer`.
+
+For an LLVM intrinsic, these types can also compile to `int{N}` or `float{N}` (`N <= 32`).
+
 A foreign variable is declared by writing its type after the name:
 
 ```c
