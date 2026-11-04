@@ -1215,7 +1215,7 @@ strictify' h m unwrapped t = do
 
 foreignPrimTypes :: [PT.PrimType]
 foreignPrimTypes =
-  [PT.Int IntSize32, PT.Int IntSize64, PT.Float FloatSize16, PT.Float FloatSize32, PT.Float FloatSize64, PT.Pointer]
+  [PT.Int IntSize32, PT.Int IntSize64, PT.Float FloatSize32, PT.Float FloatSize64, PT.Pointer]
 
 variadicPrimTypes :: [PT.PrimType]
 variadicPrimTypes =

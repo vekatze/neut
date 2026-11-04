@@ -1236,11 +1236,11 @@ data c-int {
 }
 ```
 
-The type of each parameter in every foreign entry must compile to one of `int32`, `int64`, `float{N}`, or `pointer`. For example, the `c-int` in `exit(c-int) -> void` is valid because it compiles to `int32` (thanks to an optimization like Haskell's `newtype`).
+The type of each parameter in every foreign entry must compile to one of `int32`, `int64`, `float32`, `float64`, or `pointer`. For example, the `c-int` in `exit(c-int) -> void` is valid because it compiles to `int32` (thanks to an optimization like Haskell's `newtype`).
 
-The resulting type of every foreign entry must compile to one of `int32`, `int64`, `float{N}`, `pointer`, or `void`.
+The resulting type of every foreign entry must compile to one of `int32`, `int64`, `float32`, `float64`, `pointer`, or `void`.
 
-For an LLVM intrinsic, these types can also compile to `int{N}` (`N < 32`).
+For an LLVM intrinsic, these types can also compile to `int{N}` (`N < 32`) or `float16`.
 
 When declaring a variadic function, declare only the non-variadic part:
 
@@ -1321,5 +1321,5 @@ The compiler emits a wrapper with the C calling convention for each entry. On na
 An exposed function must have a signature that a [foreign](#foreign) entry can declare:
 
 - the type is of the form `(x1: a1, ..., xn: an) -> b`
-- every input type compiles to one of `int32`, `int64`, `float16`, `float32`, `float64`, or `pointer`
-- the output type compiles to one of `int32`, `int64`, `float16`, `float32`, `float64`, `pointer`, or `void`
+- every input type compiles to one of `int32`, `int64`, `float32`, `float64`, or `pointer`
+- the output type compiles to one of `int32`, `int64`, `float32`, `float64`, `pointer`, or `void`
