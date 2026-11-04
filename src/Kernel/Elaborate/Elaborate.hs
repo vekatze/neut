@@ -1557,7 +1557,7 @@ raiseNonStrictType :: Hint -> WT.WeakType -> App a
 raiseNonStrictType m t = do
   raiseError m $
     "Expected:\n  an integer, a float, or a pointer\nFound:\n  "
-      <> toTextType t
+      <> toTextTypeInMessage t
 
 normalizeLiteralPattern :: Handle -> Hint -> TM.Type -> LI.Literal -> App LI.Literal
 normalizeLiteralPattern h m cursorType literal =
@@ -1581,7 +1581,7 @@ raiseNonDecimalType m x t = do
     "The term `"
       <> T.pack (show x)
       <> "` is an integer, but its type is: "
-      <> toTextType t
+      <> toTextTypeInMessage t
 
 raiseNonFloatType :: Hint -> Double -> WT.WeakType -> App a
 raiseNonFloatType m x t = do
@@ -1589,7 +1589,7 @@ raiseNonFloatType m x t = do
     "The term `"
       <> T.pack (show x)
       <> "` is a float, but its type is: "
-      <> toTextType t
+      <> toTextTypeInMessage t
 
 raiseNonStringType :: Hint -> BS.ByteString -> WT.WeakType -> App a
 raiseNonStringType m bytes t = do
@@ -1597,7 +1597,7 @@ raiseNonStringType m bytes t = do
     "The term `"
       <> T.pack (show bytes)
       <> "` is a string literal, but its type is neither text, blob, &string, nor &binary: "
-      <> toTextType t
+      <> toTextTypeInMessage t
 
 raiseLiteralNonExhaustivePatternMatching :: Hint -> App a
 raiseLiteralNonExhaustivePatternMatching m =

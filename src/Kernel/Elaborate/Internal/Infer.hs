@@ -72,7 +72,7 @@ import Language.LowComp.DeclarationName qualified as DN
 import Language.WeakTerm.CreateHole qualified as WT
 import Language.WeakTerm.Subst (SubstEntry (..))
 import Language.WeakTerm.Subst qualified as Subst
-import Language.WeakTerm.ToText (toTextType)
+import Language.WeakTerm.ToText (toTextTypeInMessage)
 import Language.WeakTerm.WeakPrimValue qualified as WPV
 import Language.WeakTerm.WeakStmt
 import Language.WeakTerm.WeakTerm qualified as WT
@@ -168,7 +168,7 @@ inferDefineMeta h defineMeta = do
         cod' <- liftIO $ Subst.substType (substHandle h) subType' cod
         return (expParams', cod')
       _ ->
-        raiseError m $ "Expected a `define-meta` target, but got: " <> toTextType targetType'
+        raiseError m $ "Expected a `define-meta` target, but got: " <> toTextTypeInMessage targetType'
   (expArgs', h') <- inferBinder' h $ weakDefineMetaExpArgs defineMeta
   cod' <- inferType h' $ weakDefineMetaCod defineMeta
   let expectedHelperType = m :< WT.Pi PK.normal [] expectedExpArgs [] expectedCod
@@ -632,7 +632,7 @@ expandPiElimExact h m e = do
       let spec = CCS.AsMarked isDestPassing sourceArgs
       return $ m :< WT.PiIntro attr [] expArgs' [] (m :< WT.PiElim spec e' (ImpArgs.FullySpecified impArgs') expArgs'' (DefaultArgs.ByKey []))
     _ ->
-      raiseError m $ "Expected a function type, but got: " <> toTextType t'
+      raiseError m $ "Expected a function type, but got: " <> toTextTypeInMessage t'
 
 inferScrutinees :: Handle -> [(Ident, WT.WeakTerm, WT.WeakType)] -> App [(Ident, WT.WeakTerm, WT.WeakType)]
 inferScrutinees h oets = do
@@ -794,7 +794,7 @@ inferTypeWithKind h ty =
           _ :< cod' <- liftIO $ Subst.substType (substHandle h) subType cod
           return (m :< WT.TyApp t' args', m :< cod')
         _ ->
-          raiseError m $ "Expected a function type, but got: " <> toTextType k'
+          raiseError m $ "Expected a function type, but got: " <> toTextTypeInMessage k'
     m :< WT.Pi piKind impArgs expArgs defaultArgs t -> do
       (impArgs', h') <- inferImpBinder h impArgs
       (expArgs', h'') <- inferBinder' h' expArgs
@@ -943,7 +943,7 @@ inferPiElim h m expected (e, t) impArgs defaultArgsSpec expArgs sourceArgs isDes
       ensureDestMarkAgreement m piKind isDestCall
       inferCore (CC.fromNoeticPiKind piKind) impArgsParam expParams defaultParams cod
     _ ->
-      raiseError m $ "Expected a function type, but got: " <> toTextType t'
+      raiseError m $ "Expected a function type, but got: " <> toTextTypeInMessage t'
   where
     inferCore mkKind impArgsParam expParams defaultParams cod = do
       ensureArityCorrectness h e (length expParams) (length expArgs)
