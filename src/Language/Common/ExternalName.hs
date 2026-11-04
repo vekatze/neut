@@ -5,6 +5,7 @@ module Language.Common.ExternalName
     realloc,
     free,
     memcpy,
+    isLLVMIntrinsic,
     toBuilder,
   )
 where
@@ -44,6 +45,10 @@ free =
 memcpy :: ExternalName
 memcpy =
   ExternalName "llvm.memcpy.p0.p0.i64"
+
+isLLVMIntrinsic :: ExternalName -> Bool
+isLLVMIntrinsic (ExternalName rawTxt) =
+  T.isPrefixOf "llvm." rawTxt
 
 toBuilder :: ExternalName -> Builder
 toBuilder (ExternalName rawTxt) =

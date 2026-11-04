@@ -103,6 +103,8 @@ import Language.Common.PiKind qualified as PK
 import Language.Common.PrimNumSize
 import Language.Common.PrimNumSize.Wrap qualified as Wrap
 import Language.Common.PrimType qualified as PT
+import Language.Common.PrimType.FromBasePrimType (fromBasePrimType)
+import Language.Common.PrimType.ToText qualified as PrimType
 import Language.Common.SourceLocator qualified as SL
 import Language.Common.StmtKind qualified as SK
 import Language.Common.StrictGlobalLocator qualified as SGL
@@ -391,7 +393,7 @@ elaborateStmt h stmt = do
       return ([], [])
     WeakStmtForeign foreignList -> do
       foreignList' <- forM foreignList $ \(F.Foreign m externalName sig) -> do
-        sig' <- mapM (strictify h) sig
+        sig' <- mapM (strictifyForeignType h externalName foreignPrimTypes) sig
         return $ F.Foreign m externalName sig'
       return ([StmtForeign foreignList'], [])
     WeakStmtExpose exportList -> do
@@ -611,6 +613,8 @@ insertStmtWithTraceSites h knownTraceSiteIDs stmt = do
       forM_ exportList $ \(SavedHint m, dd, extName, _) -> do
         when (EN.reify extName == entrySymbol) $
           raiseError m $ "`" <> EN.reify extName <> "` is the entry point of the target and cannot be exposed"
+        when (EN.isLLVMIntrinsic extName) $
+          raiseError m $ "`" <> EN.reify extName <> "` is reserved for LLVM intrinsics and cannot be exposed"
         Expose.insert (Global.exposeHandle (globalHandle h)) m dd extName
     StmtNamespace {} ->
       return ()
@@ -998,7 +1002,7 @@ elaborate' h term = do
               args' <- mapM (elaborate' h) args
               let (vArgs, vTypes) = unzip varArgs
               vArgs' <- mapM (elaborate' h) vArgs
-              vTypes' <- mapM (strictify h) vTypes
+              vTypes' <- mapM (strictifyForeignType h name variadicPrimTypes) vTypes
               return $ m :< TM.Magic noTrace (M.LowMagic $ LM.External domList' cod' name args' (zip vArgs' vTypes'))
             LM.Cast from to value -> do
               from' <- elaborateType h from
@@ -1209,6 +1213,50 @@ strictify' h m unwrapped t = do
     _ :< _ ->
       raiseNonStrictType m (weakenType t')
 
+foreignPrimTypes :: [PT.PrimType]
+foreignPrimTypes =
+  [PT.Int IntSize32, PT.Int IntSize64, PT.Float FloatSize32, PT.Float FloatSize64, PT.Pointer]
+
+variadicPrimTypes :: [PT.PrimType]
+variadicPrimTypes =
+  [PT.Int IntSize32, PT.Int IntSize64, PT.Float FloatSize64, PT.Pointer]
+
+strictifyForeignType :: Handle -> EN.ExternalName -> [PT.PrimType] -> WT.WeakType -> App BLT.BaseLowType
+strictifyForeignType h externalName allowedTypes t@(m :< _)
+  | EN.isLLVMIntrinsic externalName =
+      strictify' h m S.empty t
+  | otherwise =
+      strictifyBoundaryType h m allowedTypes t
+
+strictifyBoundaryType :: Handle -> Hint -> [PT.PrimType] -> WT.WeakType -> App BLT.BaseLowType
+strictifyBoundaryType h m allowedTypes t = do
+  lowType <- strictify' h m S.empty t
+  let primType = toPrimType lowType
+  if primType `elem` allowedTypes
+    then return lowType
+    else
+      raiseError m $
+        "Expected:\n  "
+          <> showAlternatives (map PrimType.toText allowedTypes)
+          <> "\nFound:\n  "
+          <> PrimType.toText primType
+
+toPrimType :: BLT.BaseLowType -> PT.PrimType
+toPrimType lowType =
+  case lowType of
+    BLT.PrimNum primNum ->
+      fromBasePrimType primNum
+    BLT.Pointer ->
+      PT.Pointer
+
+showAlternatives :: [T.Text] -> T.Text
+showAlternatives texts =
+  case reverse texts of
+    lastText : initTexts@(_ : _) ->
+      T.intercalate ", " (reverse initTexts) <> ", or " <> lastText
+    _ ->
+      T.concat texts
+
 strictifyCod :: Handle -> Hint -> WT.WeakType -> App (FCT.ForeignCodType BLT.BaseLowType)
 strictifyCod h m t = do
   t' <- reduceWeakType h t
@@ -1216,7 +1264,7 @@ strictifyCod h m t = do
     _ :< WT.Void ->
       return FCT.Void
     _ ->
-      FCT.Cod <$> strictify' h m S.empty t'
+      FCT.Cod <$> strictifyBoundaryType h m foreignPrimTypes t'
 
 getExposedSignature :: Handle -> Hint -> DD.DefiniteDescription -> App F.FunctionSignature
 getExposedSignature h m dd = do
@@ -1234,7 +1282,7 @@ getExposedSignature h m dd = do
           raiseError m "An exposed function cannot be destination-passing"
         _ ->
           return ()
-      domList <- mapM (\(_, _, _, domType) -> strictify' h m S.empty domType) expArgs
+      domList <- mapM (\(_, _, _, domType) -> strictifyBoundaryType h m foreignPrimTypes domType) expArgs
       cod' <- strictifyCod h m cod
       return (domList, cod')
     _ ->
