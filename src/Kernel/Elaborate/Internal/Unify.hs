@@ -46,7 +46,7 @@ import Logger.LogLevel qualified as L
 
 unify :: Handle -> [C.Constraint] -> App THS.TypeHoleSubst
 unify h constraintList = do
-  susList <- unify' h (reverse constraintList)
+  susList <- unify' h constraintList
   case susList of
     [] ->
       liftIO $ Hole.getTypeSubst (holeHandle h)
