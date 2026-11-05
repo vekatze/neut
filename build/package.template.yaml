@@ -91,4 +91,4 @@ executables:
     ghc-options:
     - -rtsopts
     - -threaded
-    - -with-rtsopts=-N
+    - '"-with-rtsopts=-N -n1m"'
