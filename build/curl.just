@@ -58,10 +58,10 @@ _build-curl platform:
     sdk_stamp=""
     case {{platform}} in
       *-darwin)
-        export MACOSX_DEPLOYMENT_TARGET=12.0
+        openssl_options+=(-mmacosx-version-min={{macos-deployment-target}})
         curl_options+=(--with-apple-sectrust)
-        cflags="-Os"
-        ldflags="-Wl,-dead_strip"
+        cflags="-Os -mmacosx-version-min={{macos-deployment-target}}"
+        ldflags="-Wl,-dead_strip -mmacosx-version-min={{macos-deployment-target}}"
         sdk_stamp="$(xcrun --show-sdk-path) $(xcrun --show-sdk-build-version 2>/dev/null || echo unknown)"
         ;;
       *-linux)

@@ -82,6 +82,7 @@ _build-llvm platform:
     sdk_stamp=""
     case {{platform}} in
       *-darwin)
+        options+=(-DCMAKE_OSX_DEPLOYMENT_TARGET={{macos-deployment-target}})
         sdk_stamp="$(xcrun --show-sdk-path) $(xcrun --show-sdk-build-version 2>/dev/null || echo unknown)"
         ;;
     esac

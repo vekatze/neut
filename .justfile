@@ -6,6 +6,8 @@ import 'build/curl.just'
 
 version := "0.18.1"
 
+macos-deployment-target := "11.0"
+
 image-amd64 := "neut-haskell-amd64"
 
 image-arm64 := "neut-haskell-arm64"
@@ -150,6 +152,9 @@ _build-toolchain platform:
     test -x "$out/bin/wasm-opt"
     test -x "$out/bin/curl"
     test -d "$out/share/wasi-sysroot"
+    case {{platform}} in
+      *-darwin) just _check-macos-deployment-target "$out" ;;
+    esac
 
 _build-images-in-parallel +args:
     @printf "%s\n" {{args}} | xargs -P 0 -I {} just build-image-{}
@@ -162,9 +167,32 @@ _test-in-parallel +args:
 
 _build-compiler-darwin arch-name:
     @just _generate-package-yaml
-    @stack install neut --allow-different-user --local-bin-path ./bin/tmp-{{arch-name}}-darwin
+    @stack install neut --allow-different-user --work-dir .stack-work-macos-{{macos-deployment-target}} --ghc-options -optc-mmacosx-version-min={{macos-deployment-target}} --ghc-options -opta-mmacosx-version-min={{macos-deployment-target}} --ghc-options -optl-mmacosx-version-min={{macos-deployment-target}} --local-bin-path ./bin/tmp-{{arch-name}}-darwin
     @mv ./bin/tmp-{{arch-name}}-darwin/neut ./bin/neut-{{arch-name}}-darwin
     @rm -r ./bin/tmp-{{arch-name}}-darwin
+    @just _check-macos-deployment-target ./bin/neut-{{arch-name}}-darwin ./cache/mimalloc/out/release
+
+_check-macos-deployment-target +paths:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    target={{macos-deployment-target}}
+    status=0
+    while IFS= read -r -d '' file; do
+      kind=$(file -b "$file")
+      case "$kind" in
+        *Mach-O*) ;;
+        *"ar archive"*) lipo -archs "$file" > /dev/null 2>&1 || continue ;;
+        *) continue ;;
+      esac
+      versions=$(otool -l "$file" | awk '/LC_BUILD_VERSION/ {b = 1} b && /minos/ {print $2; b = 0} /LC_VERSION_MIN_MACOSX/ {v = 1} v && / version / {print $2; v = 0}' | sort -u)
+      for version in $versions; do
+        if [ "$(printf '%s\n%s\n' "$version" "$target" | sort -V | tail -1)" != "$target" ]; then
+          echo "$file requires macOS $version" >&2
+          status=1
+        fi
+      done
+    done < <(find {{paths}} -type f -print0)
+    exit $status
 
 _build-native platform:
     @just build-mimalloc {{platform}}
