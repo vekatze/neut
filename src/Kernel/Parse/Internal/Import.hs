@@ -12,7 +12,7 @@ import Control.Monad
 import Control.Monad.Except (liftEither)
 import Control.Monad.IO.Class
 import Data.HashMap.Strict qualified as Map
-import Data.IORef (IORef, modifyIORef', readIORef)
+import Data.IORef (IORef, atomicModifyIORef', readIORef)
 import Data.Maybe (mapMaybe)
 import Data.Set qualified as S
 import Data.Text qualified as T
@@ -319,16 +319,36 @@ ensureSourceImportability h m sgl locatorText = do
     raiseError m $
       "The source `" <> locatorText <> "` is not visible from this source"
 
+attachPresetHint :: Hint -> ImportItem -> ImportItem
+attachPresetHint m item =
+  case item of
+    ImportItem liveness source uses ->
+      ImportItem liveness (source {Source.sourceHint = Just m}) (map (attachPresetUseHint m) uses)
+    StaticFileKey {} ->
+      item
+
+attachPresetUseHint :: Hint -> I.ImportUse -> I.ImportUse
+attachPresetUseHint m (I.ImportUse mustUpdateTag sgl entries) =
+  I.ImportUse mustUpdateTag sgl (map (attachPresetEntryHint m) entries)
+
+attachPresetEntryHint :: Hint -> I.ImportedEntry -> I.ImportedEntry
+attachPresetEntryHint m entry =
+  case entry of
+    I.ImportedName _ ll alias ->
+      I.ImportedName m ll alias
+    I.NamespaceView _ alias ->
+      I.NamespaceView m alias
+
 interpretPreset :: Handle -> Hint -> Module -> App [ImportItem]
 interpretPreset h m currentModule = do
   ref <- liftIO $ readIORef (presetCacheRef h)
   case Map.lookup (moduleID currentModule) ref of
     Just items ->
-      return items
+      return $ map (attachPresetHint m) items
     Nothing -> do
       presetInfo <- GetEnabledPreset.getEnabledPreset (getEnabledPresetHandle h) currentModule
       items <- fmap concat $ forM presetInfo $ \(locatorText, presetNameList) -> do
         let entries = map (\name -> I.ImportedName m (LL.new name) Nothing) presetNameList
         interpretImportItem h I.everywhere False m locatorText entries
-      liftIO $ modifyIORef' (presetCacheRef h) $ Map.insert (moduleID currentModule) items
+      liftIO $ atomicModifyIORef' (presetCacheRef h) $ \m' -> (Map.insert (moduleID currentModule) items m', ())
       return items
