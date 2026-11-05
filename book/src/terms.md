@@ -3839,20 +3839,25 @@ if b1 { e1 } else-if b2 { e2 }  ... else-if b_{n-1} { e_{n-1} } else { en }
 
 ↓
 
-match b1 {
+let c1: bool = b1;
+match c1 {
 | True => e1
 | False =>
-  match b2 {
+  let c2: bool = b2;
+  match c2 {
   | True => e2
   | False =>
     ...
-    match b_{n-1} {
+    let c_{n-1}: bool = b_{n-1};
+    match c_{n-1} {
     | True => e_{n-1}
     | False => en
     }
   }
 }
 ```
+
+Here, `c1, ..., c_{n-1}` are fresh variables.
 
 ### Type
 

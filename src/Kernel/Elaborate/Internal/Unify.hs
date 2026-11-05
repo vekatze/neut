@@ -38,7 +38,7 @@ import Language.WeakTerm.FreeVars
 import Language.WeakTerm.Holes
 import Language.WeakTerm.Subst (Subst, SubstEntry (..))
 import Language.WeakTerm.Subst qualified as Subst
-import Language.WeakTerm.ToText (toTextTypeWith)
+import Language.WeakTerm.ToText (numberHoles, toTextTypeNumbered)
 import Language.WeakTerm.WeakTerm qualified as WT
 import Logger.Hint
 import Logger.Log qualified as L
@@ -46,7 +46,7 @@ import Logger.LogLevel qualified as L
 
 unify :: Handle -> [C.Constraint] -> App THS.TypeHoleSubst
 unify h constraintList = do
-  susList <- unify' h (reverse constraintList)
+  susList <- unify' h constraintList
   case susList of
     [] ->
       liftIO $ Hole.getTypeSubst (holeHandle h)
@@ -95,7 +95,8 @@ constructErrorMessageEq h found expected = do
   let showCanonicalDD = ModulePath.renderCanonicalDD (modulePathMap h)
   let collidingNameSet = collidingNames expected found
   let showCollidingDD dd = if S.member dd collidingNameSet then showCanonicalDD dd else DD.localLocator dd
-  let renderWith showDD = (toTextTypeWith showDD expected, toTextTypeWith showDD found)
+  let numbering = numberHoles [expected, found]
+  let renderWith showDD = (toTextTypeNumbered showDD numbering expected, toTextTypeNumbered showDD numbering found)
   let (expected', found') =
         firstDistinctRendering
           (renderWith showCanonicalDD)

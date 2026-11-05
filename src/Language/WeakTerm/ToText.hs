@@ -1,14 +1,19 @@
 module Language.WeakTerm.ToText
   ( Kit (..),
+    HoleNumbering,
+    numberHoles,
     toTextIndented,
     toTextType,
+    toTextTypeInMessage,
+    toTextTypeNumbered,
     toTextTypeVerbose,
-    toTextTypeWith,
   )
 where
 
 import Control.Comonad.Cofree
 import Data.ByteString qualified as BS
+import Data.Containers.ListUtils (nubOrd)
+import Data.IntMap qualified as IntMap
 import Data.Text qualified as T
 import Kernel.Common.Handle.Global.ModulePath qualified as ModulePath
 import Language.Common.Attr.Data qualified as AttrD
@@ -40,8 +45,17 @@ import Language.Common.VarKind qualified as VK
 import Language.WeakTerm.WeakPrimValue qualified as WPV
 import Language.WeakTerm.WeakTerm qualified as WT
 
-newtype Handle
-  = Handle {showDD :: DD.DefiniteDescription -> T.Text}
+data Handle = Handle
+  { showDD :: DD.DefiniteDescription -> T.Text,
+    holeNumbering :: Maybe HoleNumbering
+  }
+
+newtype HoleNumbering
+  = HoleNumbering (IntMap.IntMap Int)
+
+makeHandle :: (DD.DefiniteDescription -> T.Text) -> Handle
+makeHandle f =
+  Handle {showDD = f, holeNumbering = Nothing}
 
 data Kit = Kit
   { level :: Int,
@@ -330,15 +344,84 @@ indentText level text =
 
 toTextType :: WT.WeakType -> T.Text
 toTextType =
-  toTextType' (Handle DD.localLocator)
+  toTextType' (makeHandle DD.localLocator)
 
 toTextTypeVerbose :: ModulePath.ModulePathMap -> WT.WeakType -> T.Text
 toTextTypeVerbose modulePathMap =
-  toTextType' (Handle (ModulePath.renderDD modulePathMap))
+  toTextType' (makeHandle (ModulePath.renderDD modulePathMap))
 
-toTextTypeWith :: (DD.DefiniteDescription -> T.Text) -> WT.WeakType -> T.Text
-toTextTypeWith f =
-  toTextType' (Handle f)
+toTextTypeInMessage :: WT.WeakType -> T.Text
+toTextTypeInMessage ty =
+  toTextTypeNumbered DD.localLocator (numberHoles [ty]) ty
+
+numberHoles :: [WT.WeakType] -> HoleNumbering
+numberHoles tys = do
+  let holeIDs = nubOrd $ concatMap collectPrintedHoles tys
+  HoleNumbering $ IntMap.fromList $ zip holeIDs [0 ..]
+
+toTextTypeNumbered :: (DD.DefiniteDescription -> T.Text) -> HoleNumbering -> WT.WeakType -> T.Text
+toTextTypeNumbered f numbering =
+  toTextType' (Handle {showDD = f, holeNumbering = Just numbering})
+
+lookupHoleNumber :: Handle -> HID.HoleID -> Maybe Int
+lookupHoleNumber h i = do
+  HoleNumbering numbering <- holeNumbering h
+  IntMap.lookup (HID.reify i) numbering
+
+collectPrintedHoles :: WT.WeakType -> [Int]
+collectPrintedHoles ty =
+  case ty of
+    _ :< WT.Tau ->
+      []
+    _ :< WT.TVar _ ->
+      []
+    _ :< WT.TVarGlobal {} ->
+      []
+    _ :< WT.TyApp t args ->
+      collectPrintedHoles t ++ concatMap collectPrintedHoles args
+    _ :< WT.Pi piKind impArgs expArgs defaultArgs cod -> do
+      let binderHoles = concatMap (\(_, _, _, t) -> collectPrintedHoles t)
+      if isForAllShaped piKind
+        then binderHoles (impArgs ++ defaultArgs) ++ collectPrintedHoles cod
+        else binderHoles (expArgs ++ defaultArgs) ++ collectPrintedHoles cod
+    _ :< WT.Data (AttrD.Attr {..}) _ es ->
+      if isConstLike
+        then []
+        else concatMap collectPrintedHoles es
+    _ :< WT.Box t ->
+      collectPrintedHoles t
+    _ :< WT.BoxNoema t ->
+      collectPrintedHoles t
+    _ :< WT.Embed t ->
+      collectPrintedHoles t
+    _ :< WT.Code t ->
+      collectPrintedHoles t
+    _ :< WT.PrimType _ ->
+      []
+    _ :< WT.Void ->
+      []
+    _ :< WT.Resource {} ->
+      []
+    _ :< WT.TypeHole i _ ->
+      [HID.reify i]
+
+showArrow :: PK.PiKind -> T.Text
+showArrow piKind =
+  case piKind of
+    PK.DestPass _ ->
+      " ->> "
+    _ ->
+      " -> "
+
+isForAllShaped :: PK.PiKind -> Bool
+isForAllShaped piKind =
+  case piKind of
+    PK.Normal isConstLike ->
+      isConstLike
+    PK.DestPass isConstLike ->
+      isConstLike
+    PK.DataIntro _ ->
+      True
 
 toTextType' :: Handle -> WT.WeakType -> T.Text
 toTextType' h ty =
@@ -356,18 +439,10 @@ toTextType' h ty =
               toTextType' h t
         _ ->
           showApp (toTextType' h t) (map (toTextType' h) args)
-    _ :< WT.Pi piKind impArgs expArgs defaultArgs cod -> do
-      case piKind of
-        PK.Normal isConstLike ->
-          if isConstLike
-            then showImpArgsForAll' h impArgs defaultArgs <> toTextType' h cod
-            else showImpArgs impArgs <> inParen (showDomArgList' h expArgs) <> showDefaultBinders' h defaultArgs <> " -> " <> toTextType' h cod
-        PK.DestPass isConstLike ->
-          if isConstLike
-            then showImpArgsForAll' h impArgs defaultArgs <> toTextType' h cod
-            else showImpArgs impArgs <> inParen (showDomArgList' h expArgs) <> showDefaultBinders' h defaultArgs <> " ->> " <> toTextType' h cod
-        PK.DataIntro _ -> do
-          showImpArgsForAll' h impArgs defaultArgs <> toTextType' h cod
+    _ :< WT.Pi piKind impArgs expArgs defaultArgs cod ->
+      if isForAllShaped piKind
+        then showImpArgsForAll' h impArgs defaultArgs <> toTextType' h cod
+        else showImpArgs impArgs <> inParen (showDomArgList' h expArgs) <> showDefaultBinders' h defaultArgs <> showArrow piKind <> toTextType' h cod
     _ :< WT.Data (AttrD.Attr {..}) name es -> do
       if isConstLike
         then showDD h name
@@ -387,7 +462,11 @@ toTextType' h ty =
     _ :< WT.Resource dd _ -> do
       showDD h dd
     _ :< WT.TypeHole i es ->
-      "?" <> T.pack (show (HID.reify i)) <> "(" <> T.intercalate "," (map (toTextType' h) es) <> ")"
+      case lookupHoleNumber h i of
+        Just n ->
+          "#" <> T.pack (show n)
+        Nothing ->
+          "?" <> T.pack (show (HID.reify i)) <> "(" <> T.intercalate "," (map (toTextType' h) es) <> ")"
 
 showImpArgs :: [BinderF WT.WeakType] -> T.Text
 showImpArgs impArgs =
@@ -397,7 +476,7 @@ showImpArgs impArgs =
 
 showDefaultArgs :: [(BinderF WT.WeakType, WT.WeakTerm)] -> T.Text
 showDefaultArgs =
-  showDefaultArgs' (Handle DD.localLocator)
+  showDefaultArgs' (makeHandle DD.localLocator)
 
 showFnDomArgList :: Bool -> [BinderF WT.WeakType] -> T.Text
 showFnDomArgList distinct args =
@@ -409,7 +488,7 @@ showMatchArgs distinct =
 
 showMagic :: M.WeakMagic WT.WeakType WT.WeakType WT.WeakTerm -> T.Text
 showMagic =
-  showMagic' (Handle DD.localLocator)
+  showMagic' (makeHandle DD.localLocator)
 
 showDefaultArgs' :: Handle -> [(BinderF WT.WeakType, WT.WeakTerm)] -> T.Text
 showDefaultArgs' h defaultArgs =

@@ -714,9 +714,7 @@ discern h term =
           return $ m :< WT.Annotation remarkLevel (AN.Type (doNotCare m)) e'
     m :< RT.If ifClause elseIfClauseList (_, (elseBody, _)) -> do
       let (ifCond, ifBody) = RT.extractFromKeywordClause ifClause
-      boolTrue <- liftEither $ locatorToName (blur m) coreBoolTrue
-      boolFalse <- liftEither $ locatorToName (blur m) coreBoolFalse
-      discern h $ foldIf m boolTrue boolFalse ifCond ifBody elseIfClauseList elseBody
+      discern h =<< desugarIf h m ifCond ifBody (getElseBranch m elseIfClauseList elseBody)
     m :< RT.Seq (e1, _) _ e2 -> do
       hole <- liftIO $ Gensym.newTextForHole (H.gensymHandle h)
       unit <- liftEither $ locatorToTypeVar m coreUnit
@@ -728,10 +726,8 @@ discern h term =
       discern h $ bind fakeLoc fakeLoc (m, VK.normal, hole, [], [], unit) e1 unitUnit
     m :< RT.When whenClause -> do
       let (whenCond, whenBody) = RT.extractFromKeywordClause whenClause
-      boolTrue <- liftEither $ locatorToName (blur m) coreBoolTrue
-      boolFalse <- liftEither $ locatorToName (blur m) coreBoolFalse
       unitUnit <- liftEither $ locatorToVarGlobal m coreUnitUnit
-      discern h $ foldIf m boolTrue boolFalse whenCond whenBody [] unitUnit
+      discern h =<< desugarIf h m whenCond whenBody unitUnit
     m :< RT.Admit -> do
       let messageText = "Admitted: " <> T.pack (Hint.toString m)
       if isCompileStage h
@@ -1241,51 +1237,30 @@ getIntrospectiveValue h m key = do
     _ ->
       raiseError m $ "No such introspective key is defined: " <> key
 
-foldIf ::
-  Hint ->
-  Name ->
-  Name ->
-  RT.RawTerm ->
-  RT.RawTerm ->
-  [RT.KeywordClause RT.RawTerm] ->
-  RT.RawTerm ->
-  RT.RawTerm
-foldIf m true false ifCond ifBody elseIfList elseBody =
-  case elseIfList of
-    [] -> do
-      m
-        :< RT.DataElim
-          []
-          False
-          (SE.fromList'' [ifCond])
-          ( SE.fromList
-              SE.Brace
-              SE.Bar
-              [ ( SE.fromList'' [(blur m, RP.Var VK.normal true)],
-                  [],
-                  ifBody
-                ),
-                ( SE.fromList'' [(blur m, RP.Var VK.normal false)],
-                  [],
-                  elseBody
-                )
-              ]
-          )
-    elseIfClause : rest -> do
-      let (elseIfCond, elseIfBody) = RT.extractFromKeywordClause elseIfClause
-      let cont = foldIf m true false elseIfCond elseIfBody rest elseBody
-      m
-        :< RT.DataElim
-          []
-          False
-          (SE.fromList'' [ifCond])
-          ( SE.fromList
-              SE.Brace
-              SE.Bar
-              [ (SE.fromList'' [(blur m, RP.Var VK.normal true)], [], ifBody),
-                (SE.fromList'' [(blur m, RP.Var VK.normal false)], [], cont)
-              ]
-          )
+desugarIf :: H.Handle -> Hint -> RT.RawTerm -> RT.RawTerm -> RT.RawTerm -> App RT.RawTerm
+desugarIf h m cond thenBody elseBody = do
+  let m' = blur m
+  boolType <- liftEither $ locatorToTypeVar m coreBool
+  boolTrue <- liftEither $ locatorToName m' coreBoolTrue
+  boolFalse <- liftEither $ locatorToName m' coreBoolFalse
+  condVar <- liftIO $ Gensym.newTextFromText (H.gensymHandle h) "cond"
+  let branches =
+        SE.fromList
+          SE.Brace
+          SE.Bar
+          [ (SE.fromList'' [(m', RP.Var VK.normal boolTrue)], [], thenBody),
+            (SE.fromList'' [(m', RP.Var VK.normal boolFalse)], [], elseBody)
+          ]
+  let match = m :< RT.DataElim [] False (SE.fromList'' [m' :< RT.Var (Bare condVar)]) branches
+  return $ bind fakeLoc fakeLoc (m', VK.normal, condVar, [], [], boolType) cond match
+
+getElseBranch :: Hint -> [RT.KeywordClause RT.RawTerm] -> RT.RawTerm -> RT.RawTerm
+getElseBranch m elseIfClauseList elseBody =
+  case elseIfClauseList of
+    [] ->
+      elseBody
+    elseIfClause : rest ->
+      m :< RT.If elseIfClause rest ([], (elseBody, []))
 
 doNotCare :: Hint -> WT.WeakType
 doNotCare m =
