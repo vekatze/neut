@@ -490,7 +490,7 @@ The default values are as follows:
 | `NEUT_HOME`                 | `$XDG_DATA_HOME/neut`         |
 | `MACOSX_DEPLOYMENT_TARGET`  | `11.0.0`                      |
 
-Every build uses the toolchain installed beside the compiler. It carries `clang`, the linkers, and the wasi sysroot. The compiler looks for it at `$NEUT_HOME/toolchain/(host platform)`.
+Every build uses the toolchain installed beside the compiler. It carries `clang`, the linkers, `curl`, and the wasi sysroot. The compiler looks for it at `$NEUT_HOME/toolchain/(host platform)`.
 
 ## Other Basic Facts
 

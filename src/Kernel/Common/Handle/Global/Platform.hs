@@ -13,14 +13,15 @@ module Kernel.Common.Handle.Global.Platform
     getClangTargetTriple,
     getClangDigest,
     getBaseBuildDir,
-    ensureExecutables,
+    getCurl,
+    getCurlOptions,
   )
 where
 
 import App.App (App)
 import App.Error (newError')
 import App.Run (raiseError, raiseError')
-import Control.Monad (unless)
+import Control.Monad (filterM, mfilter, unless)
 import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Text qualified as T
@@ -56,7 +57,9 @@ data Handle = Handle
     _baseSize :: DS.DataSize,
     _selector :: P.PlatformSelector,
     _toolchainRoot :: FilePath,
-    _clang :: String
+    _clang :: String,
+    _curl :: FilePath,
+    _curlTrustOption :: [String]
   }
 
 getArch :: Handle -> Arch.Arch
@@ -117,6 +120,8 @@ new loggerHandle reuseHandle selector = do
   _toolchainRoot <- resolveToolchainRoot hostArch hostOS
   let _clang = resolveClang _toolchainRoot
   ensureClang _clang
+  let _curl = resolveCurl _toolchainRoot
+  _curlTrustOption <- liftIO $ resolveCurlTrustOption hostOS
   _clangDigest <- calculateClangDigest loggerHandle reuseHandle _clang _clangTargetTriple
   return $ Handle {..}
 
@@ -198,6 +203,58 @@ platformName arch os =
 resolveClang :: FilePath -> String
 resolveClang root =
   root `FP.combine` "bin" `FP.combine` "clang"
+
+getCurl :: Handle -> FilePath
+getCurl =
+  _curl
+
+getCurlOptions :: Handle -> [String]
+getCurlOptions h =
+  "-q" : _curlTrustOption h
+
+resolveCurl :: FilePath -> FilePath
+resolveCurl root =
+  root `FP.combine` "bin" `FP.combine` "curl"
+
+resolveCurlTrustOption :: O.OS -> IO [String]
+resolveCurlTrustOption hostOS =
+  case hostOS of
+    O.Darwin ->
+      return ["--ca-native", "--proxy-ca-native"]
+    O.Linux -> do
+      caBundle <- lookupNonEmptyEnv "CURL_CA_BUNDLE"
+      certDir <- lookupNonEmptyEnv "SSL_CERT_DIR"
+      certFile <- lookupNonEmptyEnv "SSL_CERT_FILE"
+      case (caBundle, certDir, certFile) of
+        (Just bundle, _, _) ->
+          return $ makeCAFileOption bundle
+        (Nothing, Nothing, Nothing) -> do
+          bundles <- filterM doesFileExist linuxCABundleCandidates
+          return $ concatMap makeCAFileOption $ take 1 bundles
+        (Nothing, _, _) ->
+          return $ concatMap makeCADirOption certDir ++ concatMap makeCAFileOption certFile
+    O.Wasi ->
+      return []
+
+lookupNonEmptyEnv :: String -> IO (Maybe String)
+lookupNonEmptyEnv name = do
+  value <- lookupEnv name
+  return $ mfilter (not . null) value
+
+makeCAFileOption :: FilePath -> [String]
+makeCAFileOption path =
+  ["--cacert", path, "--proxy-cacert", path]
+
+makeCADirOption :: FilePath -> [String]
+makeCADirOption path =
+  ["--capath", path, "--proxy-capath", path]
+
+linuxCABundleCandidates :: [FilePath]
+linuxCABundleCandidates =
+  [ "/etc/ssl/certs/ca-certificates.crt",
+    "/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem",
+    "/etc/ssl/ca-bundle.pem"
+  ]
 
 getToolchainOption :: Handle -> [String]
 getToolchainOption h =
@@ -312,10 +369,6 @@ getBaseBuildDir h baseModule = do
   versionDir <- parseRelDir $ "compiler-" ++ V.showVersion version
   let moduleRootDir = getModuleRootDir baseModule
   return $ moduleRootDir </> moduleCacheDir baseModule </> $(mkRelDir "build") </> platformPrefix </> versionDir
-
-ensureExecutables :: App ()
-ensureExecutables = do
-  ensureExecutable "curl"
 
 ensureClang :: FilePath -> App ()
 ensureClang clang = do

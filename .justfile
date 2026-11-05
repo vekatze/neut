@@ -2,6 +2,7 @@ import 'build/llvm.just'
 import 'build/wasi.just'
 import 'build/binaryen.just'
 import 'build/mimalloc.just'
+import 'build/curl.just'
 
 version := "0.18.1"
 
@@ -129,12 +130,14 @@ _build-toolchain platform:
     just _fetch-wasi
     just _fetch-binaryen {{platform}}
     just _build-llvm {{platform}}
+    just _build-curl {{platform}}
     out={{toolchain-dir}}/{{platform}}
     rm -rf "$out"
     mkdir -p "$out"
     cp -R {{llvm-dir}}/out/{{platform}}/. "$out/"
     cp -R {{binaryen-dir}}/{{platform}}/bin/wasm-opt "$out/bin/"
     cp -R {{binaryen-dir}}/{{platform}}/lib/. "$out/lib/"
+    cp {{curl-dir}}/out/{{platform}}/bin/curl "$out/bin/"
     mkdir -p "$out/share/wasi-sysroot/include" "$out/share/wasi-sysroot/lib"
     cp {{wasi-dir}}/wasi-sysroot/VERSION "$out/share/wasi-sysroot/"
     cp -R {{wasi-dir}}/wasi-sysroot/include/wasm32-wasip1 "$out/share/wasi-sysroot/include/"
@@ -145,6 +148,7 @@ _build-toolchain platform:
     test -x "$out/bin/clang"
     test -x "$out/bin/wasm-ld"
     test -x "$out/bin/wasm-opt"
+    test -x "$out/bin/curl"
     test -d "$out/share/wasi-sysroot"
 
 _build-images-in-parallel +args:

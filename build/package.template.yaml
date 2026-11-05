@@ -4,8 +4,11 @@ license: MIT
 license-file:
 - license.md
 - licenses/binaryen/LICENSE
+- licenses/curl/COPYING
+- licenses/curl/lib/curlx/LICENSE-ISC
 - licenses/llvm/LICENSE.TXT
 - licenses/mimalloc/LICENSE
+- licenses/openssl/LICENSE.txt
 - licenses/wasi-libc/LICENSE
 - licenses/wasi-libc/LICENSE-APACHE
 - licenses/wasi-libc/LICENSE-APACHE-LLVM

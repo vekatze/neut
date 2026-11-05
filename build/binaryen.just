@@ -18,7 +18,7 @@ _fetch-binaryen platform:
     name=binaryen-version_{{binaryen-version}}
     rm -rf "$out"
     mkdir -p "$out"
-    curl -sSL -o "$out/$name.tar.gz" \
+    curl -fsSL -o "$out/$name.tar.gz" \
       "https://github.com/WebAssembly/binaryen/releases/download/version_{{binaryen-version}}/$name-$asset.tar.gz"
     tar -xzf "$out/$name.tar.gz" -C "$out" --strip-components=1 "$name/bin/wasm-opt" "$name/lib"
     rm "$out/$name.tar.gz"
