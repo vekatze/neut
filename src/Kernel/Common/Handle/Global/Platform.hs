@@ -11,7 +11,7 @@ module Kernel.Common.Handle.Global.Platform
     getToolchainSearchPathOption,
     getSysrootOption,
     getClangTargetTriple,
-    getClangDigest,
+    getToolchainDigest,
     getBaseBuildDir,
     getCurl,
     getCurlOptions,
@@ -19,18 +19,16 @@ module Kernel.Common.Handle.Global.Platform
 where
 
 import App.App (App)
-import App.Error (newError')
 import App.Run (raiseError, raiseError')
 import Control.Monad (filterM, mfilter, unless)
-import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.IO.Class (MonadIO (liftIO))
+import Data.ByteString qualified as B
 import Data.Text qualified as T
 import Data.Text.Encoding
 import Data.Text.Encoding.Error (lenientDecode)
 import Data.Version qualified as V
 import Kernel.Common.Arch qualified as Arch
 import Kernel.Common.Const (envVarHome)
-import Kernel.Common.Handle.Global.Reuse qualified as Reuse
 import Kernel.Common.Module
 import Kernel.Common.OS qualified as O
 import Kernel.Common.Platform qualified as P
@@ -53,7 +51,7 @@ data Handle = Handle
   { _arch :: Arch.Arch,
     _os :: O.OS,
     _clangTargetTriple :: String,
-    _clangDigest :: T.Text,
+    _toolchainDigest :: T.Text,
     _baseSize :: DS.DataSize,
     _selector :: P.PlatformSelector,
     _toolchainRoot :: FilePath,
@@ -92,16 +90,16 @@ getDataSize :: Handle -> DS.DataSize
 getDataSize =
   _baseSize
 
-getClangDigest :: Handle -> T.Text
-getClangDigest =
-  _clangDigest
+getToolchainDigest :: Handle -> T.Text
+getToolchainDigest =
+  _toolchainDigest
 
 getClangTargetTriple :: Handle -> String
 getClangTargetTriple =
   _clangTargetTriple
 
-new :: Logger.Handle -> Reuse.Handle -> P.PlatformSelector -> App Handle
-new loggerHandle reuseHandle selector = do
+new :: Logger.Handle -> P.PlatformSelector -> App Handle
+new loggerHandle selector = do
   let _selector = selector
   (_arch, _os) <-
     case selector of
@@ -122,7 +120,7 @@ new loggerHandle reuseHandle selector = do
   ensureClang _clang
   let _curl = resolveCurl _toolchainRoot
   _curlTrustOption <- liftIO $ resolveCurlTrustOption hostOS
-  _clangDigest <- calculateClangDigest loggerHandle reuseHandle _clang _clangTargetTriple
+  _toolchainDigest <- calculateToolchainDigest loggerHandle _toolchainRoot
   return $ Handle {..}
 
 getArch' :: Maybe Hint -> App Arch.Arch
@@ -345,18 +343,15 @@ invalidMacOSDeploymentTarget :: String -> App a
 invalidMacOSDeploymentTarget deploymentTarget =
   raiseError' $ "Invalid MACOSX_DEPLOYMENT_TARGET: " <> T.pack deploymentTarget
 
-calculateClangDigest :: Logger.Handle -> Reuse.Handle -> String -> String -> App T.Text
-calculateClangDigest h reuseHandle clang targetTriple = do
-  let spec = RunProcess.Spec {cmdspec = RawCommand clang ["--version"], cwd = Nothing}
-  let h' = RunProcess.new h
-  output <- liftIO $ Reuse.rememberClangVersion reuseHandle clang $ RunProcess.run01 h' spec
-  case output of
-    Right value -> do
-      liftIO $ Logger.report h $ "Clang info:\n" <> decodeUtf8 value
-      let targetInfo = encodeUtf8 $ "\nTarget triple: " <> T.pack targetTriple
-      return $ decodeUtf8 $ hashAndEncode $ value <> targetInfo
-    Left err ->
-      throwError $ newError' err
+calculateToolchainDigest :: Logger.Handle -> FilePath -> App T.Text
+calculateToolchainDigest h toolchainRoot = do
+  let stampPath = toolchainRoot `FP.combine` ".stamp"
+  stampExists <- liftIO $ doesFileExist stampPath
+  unless stampExists $
+    raiseError' $ "The toolchain has no stamp: " <> T.pack stampPath
+  stamp <- liftIO $ B.readFile stampPath
+  liftIO $ Logger.report h $ "Toolchain stamp:\n" <> decodeUtf8With lenientDecode stamp
+  return $ decodeUtf8 $ hashAndEncode stamp
 
 getPlatformPrefix :: Handle -> App (Path Rel Dir)
 getPlatformPrefix h = do

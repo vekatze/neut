@@ -147,6 +147,12 @@ _build-toolchain platform:
     cp -R {{wasi-dir}}/wasi-sysroot/share "$out/share/wasi-sysroot/share"
     cp -R {{wasi-dir}}/builtins/. "$out/lib/clang/$(ls {{llvm-dir}}/out/{{platform}}/lib/clang | head -1)/lib/"
     cp -R {{justfile_directory()}}/licenses "$out/licenses"
+    {
+      echo "llvm:"; cat {{llvm-dir}}/out/{{platform}}/.stamp; echo
+      echo "binaryen:"; cat {{binaryen-dir}}/{{platform}}/.stamp; echo
+      echo "wasi-sysroot:"; cat {{wasi-dir}}/wasi-sysroot.stamp; echo
+      echo "wasi-builtins:"; cat {{wasi-dir}}/builtins.stamp; echo
+    } > "$out/.stamp"
     test -x "$out/bin/clang"
     test -x "$out/bin/wasm-ld"
     test -x "$out/bin/wasm-opt"

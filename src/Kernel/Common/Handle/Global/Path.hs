@@ -112,7 +112,7 @@ getBuildSignature h t = do
     Just sig -> do
       return sig
     Nothing -> do
-      let clangDigest = Platform.getClangDigest (_platformHandle h)
+      let toolchainDigest = Platform.getToolchainDigest (_platformHandle h)
       let platformText = Platform.getPlatformText (_platformHandle h)
       let MainModule m = _mainModule h
       allocator <- getAllocator t m
@@ -122,7 +122,8 @@ getBuildSignature h t = do
             E.dictFromList
               _m
               [ ("platform", _m :< E.String platformText),
-                ("clang-digest", _m :< E.String clangDigest),
+                ("target-triple", _m :< E.String (T.pack $ Platform.getClangTargetTriple (_platformHandle h))),
+                ("toolchain-digest", _m :< E.String toolchainDigest),
                 ("allocator", _m :< E.String (showAllocator allocator)),
                 ("compile-option", _m :< E.String (T.unwords $ CL.compileOption clangOption)),
                 ("link-option", _m :< E.String (T.unwords $ CL.linkOption clangOption)),

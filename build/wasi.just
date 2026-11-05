@@ -13,9 +13,11 @@ _fetch-wasi-item name asset:
     #!/usr/bin/env bash
     set -euo pipefail
     dest={{wasi-dir}}/{{name}}
-    if [ -d "$dest" ]; then
+    stamp={{wasi-dir}}/{{name}}.stamp
+    if [ -d "$dest" ] && [ "$(cat "$stamp" 2>/dev/null || true)" = "{{asset}}" ]; then
       exit 0
     fi
+    rm -rf "$dest"
     tmp={{wasi-dir}}/.tmp-{{name}}
     rm -rf "$tmp"
     mkdir -p "$tmp/out"
@@ -24,3 +26,4 @@ _fetch-wasi-item name asset:
     tar -xzf "$tmp/{{asset}}" -C "$tmp/out" --strip-components=1
     mv "$tmp/out" "$dest"
     rm -rf "$tmp"
+    printf "%s" "{{asset}}" > "$stamp"
