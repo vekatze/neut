@@ -18,36 +18,27 @@ module Language.Common.CallConv
   )
 where
 
-import Data.Binary (Binary)
+import Binary.Derive (deriveBinary)
 import Data.Foldable (toList)
-import GHC.Generics (Generic)
 import Language.Common.PiKind qualified as PK
 
 data Evaluation
   = Runtime
   | Noetic
-  deriving (Eq, Ord, Show, Generic)
-
-instance Binary Evaluation
+  deriving (Eq, Ord, Show)
 
 data Result t
   = Return
   | Destination t
-  deriving (Eq, Ord, Show, Functor, Foldable, Traversable, Generic)
-
-instance (Binary t) => Binary (Result t)
+  deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
 
 data Argument t
   = Plain
   | Source t
-  deriving (Eq, Ord, Show, Functor, Foldable, Traversable, Generic)
-
-instance (Binary t) => Binary (Argument t)
+  deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
 
 data CallConv t = CallConv Evaluation (Result t) [Argument t]
-  deriving (Eq, Ord, Show, Functor, Foldable, Traversable, Generic)
-
-instance (Binary t) => Binary (CallConv t)
+  deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
 
 normal :: CallConv t
 normal =
@@ -141,3 +132,5 @@ destinationType (CallConv _ result _) =
       Just t
     Return ->
       Nothing
+
+deriveBinary [''Evaluation, ''Result, ''Argument, ''CallConv]

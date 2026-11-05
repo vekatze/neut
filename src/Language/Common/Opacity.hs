@@ -4,15 +4,12 @@ module Language.Common.Opacity
   )
 where
 
-import Data.Binary
-import GHC.Generics
+import Binary.Derive (deriveBinary)
 
 data Opacity
   = Opaque
   | Clear
-  deriving (Show, Eq, Generic)
-
-instance Binary Opacity
+  deriving (Show, Eq)
 
 isOpaque :: Opacity -> Bool
 isOpaque o =
@@ -21,3 +18,5 @@ isOpaque o =
       True
     _ ->
       False
+
+deriveBinary [''Opacity]

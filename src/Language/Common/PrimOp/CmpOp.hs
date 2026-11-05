@@ -6,9 +6,8 @@ module Language.Common.PrimOp.CmpOp
   )
 where
 
-import Data.Binary
+import Binary.Derive (deriveBinary)
 import Data.Text qualified as T
-import GHC.Generics qualified as G
 
 data CmpOp
   = Eq
@@ -37,9 +36,7 @@ data CmpOp
   | FUno
   | FTrue
   | FFalse
-  deriving (Eq, Ord, G.Generic)
-
-instance Binary CmpOp
+  deriving (Eq, Ord)
 
 icmp :: String -> String
 icmp cmp =
@@ -186,3 +183,5 @@ asFloatCmpOp name =
       return FFalse
     _ ->
       Nothing
+
+deriveBinary [''CmpOp]

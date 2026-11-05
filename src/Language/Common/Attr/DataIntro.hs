@@ -1,7 +1,6 @@
 module Language.Common.Attr.DataIntro (Attr (..)) where
 
-import Data.Binary
-import GHC.Generics (Generic)
+import Binary.Derive (deriveBinary)
 import Language.Common.Discriminant qualified as D
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.IsConstLike
@@ -11,6 +10,6 @@ data Attr = Attr
     discriminant :: D.Discriminant,
     isConstLike :: IsConstLike
   }
-  deriving (Show, Eq, Generic)
+  deriving (Show, Eq)
 
-instance Binary Attr
+deriveBinary [''Attr]

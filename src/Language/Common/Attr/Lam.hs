@@ -6,9 +6,8 @@ module Language.Common.Attr.Lam
   )
 where
 
-import Data.Binary
+import Binary.Derive (deriveBinary)
 import Data.Text qualified as T
-import GHC.Generics (Generic)
 import Language.Common.Binder
 import Language.Common.LamKind
 
@@ -18,9 +17,7 @@ data Attr a = Attr
   { lamKind :: LamKindF a,
     identity :: ID
   }
-  deriving (Show, Generic)
-
-instance (Binary a) => Binary (Attr a)
+  deriving (Show)
 
 normal :: ID -> a -> Attr a
 normal i codType =
@@ -33,3 +30,5 @@ normal' name isDestPassing i codType =
 fromAttr :: Attr a -> Maybe (BinderF a)
 fromAttr (Attr {lamKind}) =
   fromLamKind lamKind
+
+deriveBinary [''Attr]

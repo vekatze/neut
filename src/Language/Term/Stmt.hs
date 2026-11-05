@@ -11,10 +11,9 @@ module Language.Term.Stmt
   )
 where
 
+import Binary.Derive (deriveBinary)
 import Control.Comonad.Cofree
-import Data.Binary
 import Data.Maybe
-import GHC.Generics hiding (C)
 import Language.Common.Binder
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.ExternalName qualified as EN
@@ -38,11 +37,8 @@ data DefineMetaF t a = DefineMeta
     defineMetaBody :: a,
     defineMetaHelperName :: DD.DefiniteDescription
   }
-  deriving (Generic)
 
 type DefineMeta = DefineMetaF TM.Type TM.Term
-
-instance (Binary t, Binary a) => Binary (DefineMetaF t a)
 
 data StmtF t a
   = StmtDefine
@@ -78,13 +74,10 @@ data StmtF t a
   | StmtForeign [F.Foreign]
   | StmtExpose [(SavedHint, DD.DefiniteDescription, EN.ExternalName, F.FunctionSignature)]
   | StmtNamespace SavedHint DD.DefiniteDescription
-  deriving (Generic)
 
 type Stmt = StmtF TM.Type TM.Term
 
 type StrippedStmt = StmtF (Cofree TM.TypeF ()) (Cofree TM.TermF ())
-
-instance (Binary t, Binary a) => Binary (StmtF t a)
 
 getStmtName :: [Stmt] -> [(Hint, DD.DefiniteDescription)]
 getStmtName =
@@ -119,3 +112,5 @@ isMacroStmt stmt =
       False
     _ ->
       False
+
+deriveBinary [''DefineMetaF, ''StmtF]

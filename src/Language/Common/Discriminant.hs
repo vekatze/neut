@@ -5,13 +5,10 @@ module Language.Common.Discriminant
   )
 where
 
-import Data.Binary
-import GHC.Generics
+import Binary.Derive (deriveBinary)
 
 newtype Discriminant = MakeDiscriminant {reify :: Integer}
-  deriving (Generic, Ord, Eq, Show)
-
-instance Binary Discriminant
+  deriving (Ord, Eq, Show)
 
 zero :: Discriminant
 zero =
@@ -20,3 +17,5 @@ zero =
 increment :: Discriminant -> Discriminant
 increment d =
   MakeDiscriminant {reify = reify d + 1}
+
+deriveBinary [''Discriminant]

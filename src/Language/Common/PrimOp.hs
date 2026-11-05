@@ -1,7 +1,6 @@
 module Language.Common.PrimOp (PrimOp (..), getTypeInfo) where
 
-import Data.Binary
-import GHC.Generics qualified as G
+import Binary.Derive (deriveBinary)
 import Language.Common.PrimOp.BinaryOp
 import Language.Common.PrimOp.CmpOp
 import Language.Common.PrimOp.ConvOp
@@ -13,9 +12,7 @@ data PrimOp
   | PrimBinaryOp BinaryOp PT.PrimType PT.PrimType
   | PrimCmpOp CmpOp PT.PrimType PT.PrimType
   | PrimConvOp ConvOp PT.PrimType PT.PrimType
-  deriving (Show, Eq, Ord, G.Generic)
-
-instance Binary PrimOp
+  deriving (Show, Eq, Ord)
 
 getTypeInfo :: PrimOp -> ([PT.PrimType], PT.PrimType)
 getTypeInfo op =
@@ -28,3 +25,5 @@ getTypeInfo op =
       ([dom, dom], cod)
     PrimConvOp _ dom cod ->
       ([dom], cod)
+
+deriveBinary [''PrimOp]

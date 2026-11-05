@@ -5,14 +5,12 @@ module Language.Common.Ident
   )
 where
 
-import Data.Binary
+import Binary.Derive (deriveBinary)
 import Data.Text qualified as T
-import GHC.Generics
 import Language.Common.Const
 
 newtype Ident
   = I (T.Text, Int)
-  deriving (Generic)
 
 instance Eq Ident where
   I (_, i1) == I (_, i2) = i1 == i2
@@ -24,8 +22,6 @@ instance Show Ident where
   show (I (s, i)) =
     T.unpack s ++ "_" ++ show i
 
-instance Binary Ident
-
 isHole :: Ident -> Bool
 isHole (I (varName, _)) =
   holeVarPrefix `T.isPrefixOf` varName
@@ -33,3 +29,5 @@ isHole (I (varName, _)) =
 isCartesian :: Ident -> Bool
 isCartesian (I (varName, _)) =
   expVarPrefix `T.isPrefixOf` varName
+
+deriveBinary [''Ident]

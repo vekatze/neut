@@ -1,7 +1,6 @@
 module Language.Common.LowType (LowType (..), slotLowType, textType, textTypeInner) where
 
-import Data.Binary
-import GHC.Generics qualified as G
+import Binary.Derive (deriveBinary)
 import Language.Common.DataSize qualified as DS
 import Language.Common.PrimNumSize
 import Language.Common.SlotSize
@@ -15,12 +14,10 @@ data LowType
   | Function [LowType] LowType
   | Void
   | VarArgs
-  deriving (Eq, Ord, G.Generic)
+  deriving (Eq, Ord)
 
 instance Show LowType where
   show _ = "<LT>"
-
-instance Binary LowType
 
 slotLowType :: LowType
 slotLowType =
@@ -38,3 +35,5 @@ textType dataSize = do
 textTypeInner :: Int -> LowType
 textTypeInner len =
   Array len (PrimNum $ PT.Int IntSize8)
+
+deriveBinary [''LowType]

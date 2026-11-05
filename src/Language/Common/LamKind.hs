@@ -6,9 +6,8 @@ module Language.Common.LamKind
   )
 where
 
-import Data.Binary
+import Binary.Derive (deriveBinary)
 import Data.Text qualified as T
-import GHC.Generics
 import Language.Common.Binder
 import Language.Common.IsDestPassing
 import Language.Common.LocalDefKind (LocalDefKind)
@@ -16,9 +15,7 @@ import Language.Common.LocalDefKind (LocalDefKind)
 data LamKindF a
   = Normal (Maybe T.Text) IsDestPassing a
   | Fix LocalDefKind IsDestPassing (BinderF a)
-  deriving (Show, Generic, Functor, Foldable, Traversable)
-
-instance (Binary a) => Binary (LamKindF a)
+  deriving (Show, Functor, Foldable, Traversable)
 
 fromLamKind :: LamKindF a -> Maybe (BinderF a)
 fromLamKind k =
@@ -43,3 +40,5 @@ getIsDestPassing k =
       isDestPassing
     Fix _ isDestPassing _ ->
       isDestPassing
+
+deriveBinary [''LamKindF]

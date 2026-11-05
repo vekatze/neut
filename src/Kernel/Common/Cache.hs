@@ -8,12 +8,11 @@ module Kernel.Common.Cache
   )
 where
 
+import Binary.Derive (deriveBinary)
 import Control.Comonad.Cofree
 import Control.Monad.State.Strict
 import Data.Bifunctor
-import Data.Binary
 import Data.IntSet qualified as IntSet
-import GHC.Generics
 import Kernel.Common.LocalVarTree qualified as LVT
 import Kernel.Common.LocationTree qualified as LT
 import Kernel.Common.RawImportSummary
@@ -36,7 +35,6 @@ data Cache = Cache
     globalReferenceList :: [DD.DefiniteDescription],
     countSnapshot :: Int
   }
-  deriving (Generic)
 
 data LowCache = LowCache
   { stmtList' :: [Stmt.StrippedStmt],
@@ -45,25 +43,16 @@ data LowCache = LowCache
     countSnapshot' :: Int,
     termTraceSnapshot' :: Trace.Snapshot
   }
-  deriving (Generic)
-
-instance Binary LowCache
 
 data CompletionCache = CompletionCache
   { localVarTree :: LVT.LocalVarTree,
     topCandidate :: [TopCandidate],
     rawImportSummary :: Maybe RawImportSummary
   }
-  deriving (Generic)
-
-instance Binary CompletionCache
 
 newtype LocationCache = LocationCache
   { locationTree :: LT.LocationTree
   }
-  deriving (Generic)
-
-instance Binary LocationCache
 
 compress :: Trace.Handle -> Cache -> IO LowCache
 compress traceHandle cache = do
@@ -192,3 +181,5 @@ extendDefineMeta remapping defineMeta =
       Stmt.defineMetaCodType = TM.extendType $ Stmt.defineMetaCodType defineMeta,
       Stmt.defineMetaBody = TM.extend remapping $ Stmt.defineMetaBody defineMeta
     }
+
+deriveBinary [''LowCache, ''CompletionCache, ''LocationCache]

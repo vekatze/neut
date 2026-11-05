@@ -4,14 +4,13 @@ module Language.Term.TraceID
   )
 where
 
-import Data.Binary (Binary)
-import GHC.Generics (Generic)
+import Binary.Derive (deriveBinary)
 
 newtype TraceID = TraceID Int
-  deriving (Eq, Ord, Show, Generic)
-
-instance Binary TraceID
+  deriving (Eq, Ord, Show)
 
 noTrace :: TraceID
 noTrace =
   TraceID 0
+
+deriveBinary [''TraceID]

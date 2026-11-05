@@ -1,12 +1,11 @@
 module Language.Common.Attr.Data (Attr (..)) where
 
-import Data.Binary
-import GHC.Generics (Generic)
+import Binary.Derive (deriveBinary)
 import Language.Common.IsConstLike
 
 newtype Attr = Attr
   { isConstLike :: IsConstLike
   }
-  deriving (Show, Eq, Generic)
+  deriving (Show, Eq)
 
-instance Binary Attr
+deriveBinary [''Attr]

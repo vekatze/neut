@@ -4,8 +4,7 @@ module Language.Common.Magic
   )
 where
 
-import Data.Binary
-import GHC.Generics qualified as G
+import Binary.Derive (deriveBinary)
 import Language.Common.LowMagic qualified as LM
 import Language.Common.ModuleID qualified as MID
 
@@ -27,9 +26,7 @@ data Magic lt ty a
   | GetOriginFileName
   | GetOriginLine
   | GetOriginColumn
-  deriving (Show, Eq, G.Generic)
-
-instance (Binary lt, Binary ty, Binary a) => Binary (Magic lt ty a)
+  deriving (Show, Eq)
 
 instance Functor (Magic lt ty) where
   fmap f der =
@@ -146,3 +143,5 @@ instance Traversable (Magic lt ty) where
         pure GetOriginColumn
 
 newtype WeakMagic lt ty a = WeakMagic (Magic lt ty a)
+
+deriveBinary [''Magic]

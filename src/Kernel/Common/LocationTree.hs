@@ -11,11 +11,10 @@ module Kernel.Common.LocationTree
   )
 where
 
-import Data.Binary
+import Binary.Derive (deriveBinary)
 import Data.Map.Strict qualified as M
 import Data.Maybe (mapMaybe)
 import Data.Text qualified as T
-import GHC.Generics (Generic)
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.ExternalName qualified as EN
 import Language.Common.IsConstLike
@@ -41,9 +40,7 @@ data SymbolName
   | StaticFile T.Text
   | SourceFile T.Text
   | ModuleFile FilePath
-  deriving (Show, Eq, Generic)
-
-instance Binary SymbolName
+  deriving (Show, Eq)
 
 type LocationTree =
   M.Map (Line, ColFrom) (Line, ColInterval, SymbolName, SavedHint)
@@ -102,3 +99,5 @@ findSymbolRef symbolName t = do
     if symbolName == symbolName'
       then return (metaFileName m, (line, colInterval))
       else Nothing
+
+deriveBinary [''SymbolName]

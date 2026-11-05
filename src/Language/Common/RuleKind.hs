@@ -4,16 +4,13 @@ module Language.Common.RuleKind
   )
 where
 
-import Data.Binary
+import Binary.Derive (deriveBinary)
 import Data.Text qualified as T
-import GHC.Generics
 
 data RuleKind
   = FoldLeft
   | FoldRight
-  deriving (Show, Eq, Generic)
-
-instance Binary RuleKind
+  deriving (Show, Eq)
 
 ruleKindToKeyword :: RuleKind -> T.Text
 ruleKindToKeyword vk =
@@ -22,3 +19,5 @@ ruleKindToKeyword vk =
       "rule-left"
     FoldRight ->
       "rule-right"
+
+deriveBinary [''RuleKind]

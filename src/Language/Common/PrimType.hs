@@ -1,7 +1,6 @@
 module Language.Common.PrimType (PrimType (..)) where
 
-import Data.Binary
-import GHC.Generics qualified as G
+import Binary.Derive (deriveBinary)
 import Language.Common.PrimNumSize
 
 data PrimType
@@ -11,6 +10,6 @@ data PrimType
   | Text
   | Blob
   | Pointer
-  deriving (Show, G.Generic, Eq, Ord)
+  deriving (Show, Eq, Ord)
 
-instance Binary PrimType
+deriveBinary [''PrimType]

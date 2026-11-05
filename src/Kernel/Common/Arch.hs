@@ -6,9 +6,8 @@ module Kernel.Common.Arch
   )
 where
 
-import Data.Binary
+import Binary.Derive (deriveBinary)
 import Data.Text qualified as T
-import GHC.Generics qualified as G
 import Language.Common.DataSize qualified as DS
 
 -- names are chosen as in https://wiki.debian.org/SupportedArchitectures
@@ -16,9 +15,7 @@ data Arch
   = Amd64
   | Arm64
   | Wasm32
-  deriving (Eq, Ord, Enum, Bounded, G.Generic)
-
-instance Binary Arch
+  deriving (Eq, Ord, Enum, Bounded)
 
 reify :: Arch -> T.Text
 reify arch =
@@ -47,3 +44,5 @@ entrySymbol arch =
       "__main_argc_argv"
     _ ->
       "main"
+
+deriveBinary [''Arch]

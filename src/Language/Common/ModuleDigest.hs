@@ -5,7 +5,7 @@ module Language.Common.ModuleDigest
   )
 where
 
-import Data.Binary
+import Binary.Derive (deriveBinary)
 import Data.ByteString qualified as B
 import Data.Hashable
 import Data.Text qualified as T
@@ -17,8 +17,6 @@ newtype ModuleDigest
   = ModuleDigest T.Text
   deriving (Show, Ord, Eq, Generic)
 
-instance Binary ModuleDigest
-
 instance Hashable ModuleDigest
 
 reify :: ModuleDigest -> T.Text
@@ -28,3 +26,5 @@ reify (ModuleDigest digest) =
 fromByteString :: B.ByteString -> ModuleDigest
 fromByteString fileByteString =
   ModuleDigest $ TE.decodeUtf8 $ hashAndEncode fileByteString
+
+deriveBinary [''ModuleDigest]
