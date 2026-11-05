@@ -21,8 +21,10 @@ import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Foldable
 import Data.HashMap.Strict qualified as Map
+import Data.IntMap.Strict qualified as IntMap
+import Data.IntSet qualified as IntSet
 import Data.IORef (IORef, atomicModifyIORef', modifyIORef', newIORef, readIORef, writeIORef)
-import Data.List (sortOn)
+import Data.List (mapAccumL, sortOn)
 import Data.Maybe (mapMaybe)
 import Data.Sequence as Seq (Seq, empty, (><), (|>))
 import Data.Set qualified as S
@@ -645,32 +647,76 @@ demandList h t baseModule =
 
 checkCapabilities :: Handle -> Target -> Module -> [Source.Source] -> App (S.Set (Path Abs File))
 checkCapabilities h t baseModule roots = do
+  sourceChildrenMap <- liftIO $ getSourceChildrenMap h
+  let (graph, rootNodes) = buildSourceGraph sourceChildrenMap roots
   forM_ (demandList h t baseModule) $ \(demand, environment) ->
-    void $ walkReachable h environment (ensureCapabilitiesAreProvided h demand environment) roots
-  walkReachable h (targetEnvironment h) (\_ _ -> return ()) roots
+    void $ walkReachable graph environment (ensureCapabilitiesAreProvided h demand environment) rootNodes
+  reachable <- walkReachable graph (targetEnvironment h) (\_ _ -> return ()) rootNodes
+  return $ S.fromList $ map (graphPaths graph IntMap.!) $ IntSet.toList reachable
+
+data SourceGraph = SourceGraph
+  { graphPaths :: IntMap.IntMap (Path Abs File),
+    graphEdges :: IntMap.IntMap [(Liveness, Source.Source, Int)]
+  }
+
+data GraphBuilder = GraphBuilder
+  { builderPathIndices :: Map.HashMap (Path Abs File) Int,
+    builderPaths :: IntMap.IntMap (Path Abs File),
+    builderEdges :: IntMap.IntMap [(Liveness, Source.Source, Int)],
+    builderSize :: Int
+  }
+
+buildSourceGraph :: Map.HashMap (Path Abs File) [ImportItem] -> [Source.Source] -> (SourceGraph, [(Source.Source, Int)])
+buildSourceGraph sourceChildrenMap roots = do
+  let emptyBuilder = GraphBuilder {builderPathIndices = Map.empty, builderPaths = IntMap.empty, builderEdges = IntMap.empty, builderSize = 0}
+  let (rootBuilder, rootIndices) = mapAccumL getOrAssignIndex emptyBuilder (map Source.sourceFilePath roots)
+  let builder = expandSourceGraph sourceChildrenMap rootBuilder 0
+  let graph = SourceGraph {graphPaths = builderPaths builder, graphEdges = builderEdges builder}
+  (graph, zip roots rootIndices)
+
+expandSourceGraph :: Map.HashMap (Path Abs File) [ImportItem] -> GraphBuilder -> Int -> GraphBuilder
+expandSourceGraph sourceChildrenMap builder i =
+  if i == builderSize builder
+    then builder
+    else do
+      let path = builderPaths builder IntMap.! i
+      let children = [(liveness, childSource) | ImportItem liveness childSource _ <- Map.lookupDefault [] path sourceChildrenMap]
+      let (builder', childIndices) = mapAccumL getOrAssignIndex builder (map (Source.sourceFilePath . snd) children)
+      let edges = zipWith (\(liveness, childSource) j -> (liveness, childSource, j)) children childIndices
+      let builder'' = builder' {builderEdges = IntMap.insert i edges (builderEdges builder')}
+      expandSourceGraph sourceChildrenMap builder'' (i + 1)
+
+getOrAssignIndex :: GraphBuilder -> Path Abs File -> (GraphBuilder, Int)
+getOrAssignIndex builder path =
+  case Map.lookup path (builderPathIndices builder) of
+    Just i ->
+      (builder, i)
+    Nothing -> do
+      let i = builderSize builder
+      let builder' =
+            builder
+              { builderPathIndices = Map.insert path i (builderPathIndices builder),
+                builderPaths = IntMap.insert i path (builderPaths builder),
+                builderSize = i + 1
+              }
+      (builder', i)
 
 walkReachable ::
-  Handle ->
+  SourceGraph ->
   S.Set Capability.Capability ->
   ([Source.Source] -> Source.Source -> App ()) ->
-  [Source.Source] ->
-  App (S.Set (Path Abs File))
-walkReachable h environment visit roots = do
-  sourceChildrenMap <- liftIO $ getSourceChildrenMap h
-  visitedRef <- liftIO $ newIORef S.empty
-  let go trace source = do
-        let path = Source.sourceFilePath source
+  [(Source.Source, Int)] ->
+  App IntSet.IntSet
+walkReachable graph environment visit roots = do
+  visitedRef <- liftIO $ newIORef IntSet.empty
+  let go trace (source, i) = do
         visited <- liftIO $ readIORef visitedRef
-        unless (S.member path visited) $ do
-          liftIO $ modifyIORef' visitedRef $ S.insert path
+        unless (IntSet.member i visited) $ do
+          liftIO $ modifyIORef' visitedRef $ IntSet.insert i
           visit (reverse trace) source
-          forM_ (Map.lookupDefault [] path sourceChildrenMap) $ \child ->
-            case child of
-              ImportItem liveness childSource _
-                | isLiveIn environment liveness ->
-                    go (source : trace) childSource
-              _ ->
-                return ()
+          forM_ (IntMap.findWithDefault [] i (graphEdges graph)) $ \(liveness, childSource, j) ->
+            when (isLiveIn environment liveness) $
+              go (source : trace) (childSource, j)
   mapM_ (go []) roots
   liftIO $ readIORef visitedRef
 
