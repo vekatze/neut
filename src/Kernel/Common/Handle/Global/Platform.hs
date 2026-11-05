@@ -315,12 +315,7 @@ getBaseBuildDir h baseModule = do
 
 ensureExecutables :: App ()
 ensureExecutables = do
-  mapM_
-    ensureExecutable
-    [ "curl",
-      "tar",
-      "zstd"
-    ]
+  ensureExecutable "curl"
 
 ensureClang :: FilePath -> App ()
 ensureClang clang = do

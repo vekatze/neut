@@ -15,6 +15,7 @@ import Data.Time (UTCTime)
 import Data.Text.Encoding
 import Path
 import Path.IO (removeFile, renameFile, setModificationTime)
+import System.IO (hClose, openBinaryTempFileWithDefaultPermissions)
 
 writeText :: Path Abs File -> T.Text -> IO ()
 writeText path content =
@@ -26,12 +27,19 @@ writeLazyByteString path =
 
 placeAtomically :: Path Abs File -> UTCTime -> (Path Abs File -> IO ()) -> IO ()
 placeAtomically finalPath timeStamp write = do
-  stagingPath <- addExtension ".tmp" finalPath
+  stagingPath <- createStagingFile finalPath
   let place = do
         write stagingPath
         setModificationTime stagingPath timeStamp
         renameFile stagingPath finalPath
   place `onException` removeStagingFile stagingPath
+
+createStagingFile :: Path Abs File -> IO (Path Abs File)
+createStagingFile finalPath = do
+  (stagingPath, stagingHandle) <-
+    openBinaryTempFileWithDefaultPermissions (toFilePath $ parent finalPath) (toFilePath (filename finalPath) <> ".tmp")
+  hClose stagingHandle
+  parseAbsFile stagingPath
 
 removeStagingFile :: Path Abs File -> IO ()
 removeStagingFile stagingPath = do

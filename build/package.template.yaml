@@ -67,6 +67,7 @@ dependencies:
 - prettyprinter
 - process
 - safe-exceptions
+- tar
 - template-haskell
 - text
 - time
@@ -78,6 +79,7 @@ dependencies:
 - unordered-containers
 - utf8-string
 - vector
+- zstd
 
 executables:
   neut:

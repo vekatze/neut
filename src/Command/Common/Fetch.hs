@@ -43,6 +43,7 @@ import Logger.Handle qualified as Logger
 import Logger.Hint
 import Logger.Print qualified as Logger
 import Path
+import Path.Archive (extractArchive)
 import Path.IO
 import SyntaxTree.Series (Series (hasOptionalSeparator))
 import SyntaxTree.Series qualified as SE
@@ -109,9 +110,8 @@ insertDependency h aliasName url = do
           then do
             if url `elem` M.dependencyMirrorList dep
               then do
-                moduleDirPath <- Module.getModuleDirByID (moduleHandle h) Nothing (MID.Library digest)
-                dependencyDirExists <- doesDirExist moduleDirPath
-                if dependencyDirExists
+                installed <- checkIfInstalled h digest
+                if installed
                   then do
                     liftIO $ Logger.printNote' (loggerHandle h) $ "Already installed: " <> MD.reify digest
                   else do
@@ -237,13 +237,16 @@ download h tempFilePath ma@(ModuleAlias alias) mirrorList = do
           download h tempFilePath ma rest
 
 extractToDependencyDir :: Handle -> Path Abs File -> ModuleAlias -> MD.ModuleDigest -> App ()
-extractToDependencyDir h archivePath _ digest = do
+extractToDependencyDir h archivePath (ModuleAlias alias) digest = do
   moduleDirPath <- Module.getModuleDirByID (moduleHandle h) Nothing (MID.Library digest)
-  ensureDir moduleDirPath
-  RunProcess.run (runProcessHandle h) "tar" ["xf", toFilePath archivePath, "-C", toFilePath moduleDirPath]
-    `catchError` \err -> do
-      removeDirRecur moduleDirPath
-      throwError err
+  moduleDirExists <- doesDirExist moduleDirPath
+  installed <- checkIfInstalled h digest
+  unless installed $ do
+    when moduleDirExists $ removeDirRecur moduleDirPath
+    extractArchive ("the archive of `" <> BN.reify alias <> "`") archivePath moduleDirPath
+      `catchError` \err -> do
+        installedMeanwhile <- checkIfInstalled h digest
+        unless installedMeanwhile $ throwError err
 
 addDependencyToModuleFile :: Handle -> ModuleAlias -> M.Dependency -> App ()
 addDependencyToModuleFile h alias dep = do
