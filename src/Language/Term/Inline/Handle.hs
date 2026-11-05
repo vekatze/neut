@@ -10,6 +10,7 @@ module Language.Term.Inline.Handle
     Normal (..),
     TropeDepth,
     Pending (..),
+    Instantiation (..),
     PendingTerm (..),
     PendingType (..),
   )
@@ -55,6 +56,10 @@ data PendingTerm
 data PendingType
   = TypeValue TM.Type
   | RenamedType Ident
+
+newtype Instantiation = Instantiation
+  { traceRemapping :: Maybe Trace.Remapping
+  }
 
 data DefKind
   = NoInline
@@ -117,6 +122,7 @@ data Handle = Handle
     pendingTerms :: IntMap.IntMap (Pending PendingTerm),
     pendingTypes :: IntMap.IntMap (Pending PendingType),
     nextPendingSerial :: Int,
+    instantiation :: Maybe Instantiation,
     usedPendingSerialRef :: IORef Int,
     emittedBinders :: IORef IntSet.IntSet,
     mainModule :: Module.MainModule,
