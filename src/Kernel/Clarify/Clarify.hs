@@ -725,20 +725,18 @@ clarifyTerm h context term =
       clarifyTerm h context e
     _ :< TM.EmbedIntro e -> do
       C.UpIntro <$> clarifyStaticValue h context e
-    _ :< TM.BoxElim _ castSeq mxt e1 uncastSeq e2 -> do
-      let opaqueLetSeq = map (\(mxt', e) -> (False, mxt', e)) castSeq
-      let clearLetSeq = (True, mxt, e1) : map (\(mxt', e) -> (True, mxt', e)) uncastSeq
-      clarifyLetSeq h context (opaqueLetSeq ++ clearLetSeq) e2
+    _ :< TM.BoxElim {} ->
+      clarifyLetChainTerm h context term
     _ :< TM.CodeIntro _ e -> do
       clarifyTerm h context e
     _ :< TM.CodeElim _ e -> do
       clarifyTerm h context e
     _ :< TM.TauIntro ty -> do
       clarifyType h context ty
-    _ :< TM.TauElim _ (mx, _, x) e1 e2 -> do
-      clarifyLet h context (mx, VK.normal, x, mx :< TM.Tau) e1 e2
-    _ :< TM.Let mxt e1 e2 ->
-      clarifyLet h context mxt e1 e2
+    _ :< TM.TauElim {} ->
+      clarifyLetChainTerm h context term
+    _ :< TM.Let {} ->
+      clarifyLetChainTerm h context term
     _ :< TM.Invoke _ body -> do
       clarifyTerm h context body
     m :< TM.Prim primValue ->
@@ -829,26 +827,55 @@ embody h context xets cont =
       cont'' <- liftIO $ Linearize.linearizeUser (linearizeHandle h) [(x, t')] cont'
       return $ Utility.bindLet [(valueVarName, value), (x, relApp)] cont''
 
-clarifyLet :: Handle -> Context -> BinderF TM.Type -> TM.Term -> TM.Term -> App C.Comp
-clarifyLet h context mxt e1 e2 = do
-  e2' <- clarifyTerm h (extendContext [mxt] context) e2
-  clarifyLetBody h context True mxt e1 e2'
+data TermBinding = TermBinding
+  { termBindingIsReducible :: C.IsReducible,
+    termBindingBinder :: BinderF TM.Type,
+    termBindingValue :: TM.Term
+  }
 
-clarifyLetSeq :: Handle -> Context -> [(C.IsReducible, BinderF TM.Type, TM.Term)] -> TM.Term -> App C.Comp
-clarifyLetSeq h context letSeq cont =
-  case letSeq of
+clarifyLetChainTerm :: Handle -> Context -> TM.Term -> App C.Comp
+clarifyLetChainTerm h context term = do
+  let (bindings, body) = peelLetChain term
+  chain <- clarifyLetChain h context bindings
+  body' <- clarifyTerm h (extendContext (map termBindingBinder bindings) context) body
+  liftIO $ Linearize.linearizeLetChain (linearizeHandle h) chain body'
+
+peelLetChain :: TM.Term -> ([TermBinding], TM.Term)
+peelLetChain term =
+  case term of
+    _ :< TM.Let mxt e1 e2 ->
+      prependBindings [TermBinding True mxt e1] e2
+    _ :< TM.TauElim _ (mx, _, x) e1 e2 ->
+      prependBindings [TermBinding True (mx, VK.normal, x, mx :< TM.Tau) e1] e2
+    _ :< TM.BoxElim _ castSeq mxt e1 uncastSeq e2 -> do
+      let castBindings = map (uncurry (TermBinding False)) castSeq
+      let uncastBindings = map (uncurry (TermBinding True)) uncastSeq
+      prependBindings (castBindings ++ TermBinding True mxt e1 : uncastBindings) e2
+    _ ->
+      ([], term)
+
+prependBindings :: [TermBinding] -> TM.Term -> ([TermBinding], TM.Term)
+prependBindings bindings cont = do
+  let (innerBindings, body) = peelLetChain cont
+  (bindings ++ innerBindings, body)
+
+clarifyLetChain :: Handle -> Context -> [TermBinding] -> App [Linearize.LetBinding]
+clarifyLetChain h context bindings =
+  case bindings of
     [] ->
-      clarifyTerm h context cont
-    (isReducible, mxt, e1) : rest -> do
-      e2' <- clarifyLetSeq h (extendContext [mxt] context) rest cont
-      clarifyLetBody h context isReducible mxt e1 e2'
-
-clarifyLetBody :: Handle -> Context -> C.IsReducible -> BinderF TM.Type -> TM.Term -> C.Comp -> App C.Comp
-clarifyLetBody h context isReducible mxt@(_, _, x, _) e1 e2 = do
-  mxts' <- dropFst <$> clarifyBinder h context [mxt]
-  e2' <- liftIO $ Linearize.linearizeUser (linearizeHandle h) mxts' e2
-  e1' <- clarifyTerm h context e1
-  return $ Utility.bindLetWithReducibility isReducible [(x, e1')] e2'
+      return []
+    TermBinding {termBindingIsReducible, termBindingBinder = mxt@(_, _, x, t), termBindingValue} : rest -> do
+      e' <- clarifyTerm h context termBindingValue
+      t' <- clarifyType h context t
+      rest' <- clarifyLetChain h (extendContext [mxt] context) rest
+      let binding =
+            Linearize.LetBinding
+              { Linearize.letIsReducible = termBindingIsReducible,
+                Linearize.letBinder = x,
+                Linearize.letBinderType = t',
+                Linearize.letValue = e'
+              }
+      return $ binding : rest'
 
 type Size =
   Int
