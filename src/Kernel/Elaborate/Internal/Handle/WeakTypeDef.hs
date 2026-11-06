@@ -2,15 +2,16 @@ module Kernel.Elaborate.Internal.Handle.WeakTypeDef
   ( Handle,
     TypeDef (..),
     new,
-    insert',
+    insertMany,
+    makeEntry,
     lookup',
     read',
   )
 where
 
-import Control.Monad
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
+import Kernel.Common.HashMapRef (insertEntries)
 import Language.Common.Binder
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.Opacity qualified as O
@@ -31,11 +32,13 @@ new = do
   typeDefMapRef <- newIORef Map.empty
   return $ Handle {..}
 
-insert' :: Handle -> O.Opacity -> DD.DefiniteDescription -> [BinderF WT.WeakType] -> WT.WeakType -> IO ()
-insert' h opacity name binders body =
-  when (opacity == O.Clear) $ do
-    atomicModifyIORef' (typeDefMapRef h) $ \mp ->
-      (Map.insert name (TypeDef {typeDefBinders = binders, typeDefBody = body}) mp, ())
+makeEntry :: O.Opacity -> DD.DefiniteDescription -> [BinderF WT.WeakType] -> WT.WeakType -> [(DD.DefiniteDescription, TypeDef)]
+makeEntry opacity name binders body =
+  [(name, TypeDef {typeDefBinders = binders, typeDefBody = body}) | opacity == O.Clear]
+
+insertMany :: Handle -> [(DD.DefiniteDescription, TypeDef)] -> IO ()
+insertMany h =
+  insertEntries (typeDefMapRef h)
 
 lookup' :: Handle -> DD.DefiniteDescription -> IO (Maybe TypeDef)
 lookup' h name = do

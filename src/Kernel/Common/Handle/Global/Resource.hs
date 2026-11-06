@@ -2,7 +2,7 @@ module Kernel.Common.Handle.Global.Resource
   ( Handle,
     ResourceLayout (..),
     new,
-    insert,
+    insertMany,
     lookup,
     layoutOf,
   )
@@ -11,6 +11,7 @@ where
 import Control.Comonad.Cofree
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
+import Kernel.Common.HashMapRef (insertEntries)
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.PrimNumSize.Wrap qualified as Wrap
 import Language.Term.PrimValue qualified as PV
@@ -42,10 +43,9 @@ new = do
   resourceMapRef <- newIORef Map.empty
   return $ Handle {..}
 
-insert :: Handle -> DD.DefiniteDescription -> ResourceLayout -> IO ()
-insert h dd resourceSize =
-  atomicModifyIORef' (resourceMapRef h) $ \mp ->
-    (Map.insert dd resourceSize mp, ())
+insertMany :: Handle -> [(DD.DefiniteDescription, ResourceLayout)] -> IO ()
+insertMany h =
+  insertEntries (resourceMapRef h)
 
 lookup :: Handle -> DD.DefiniteDescription -> IO (Maybe ResourceLayout)
 lookup h dd = do

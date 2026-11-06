@@ -2,13 +2,14 @@ module Kernel.Elaborate.Internal.Handle.Trope
   ( Handle,
     TropeMap,
     new,
-    insert,
+    insertMany,
     get,
   )
 where
 
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
+import Kernel.Common.HashMapRef (insertEntries)
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Term.Stmt qualified as Stmt
 
@@ -24,10 +25,9 @@ new = do
   tropeMapRef <- newIORef Map.empty
   return $ Handle {..}
 
-insert :: Handle -> DD.DefiniteDescription -> [Stmt.DefineMeta] -> IO ()
-insert h name defineMetaList = do
-  atomicModifyIORef' (tropeMapRef h) $ \mp ->
-    (Map.insert name defineMetaList mp, ())
+insertMany :: Handle -> [(DD.DefiniteDescription, [Stmt.DefineMeta])] -> IO ()
+insertMany h =
+  insertEntries (tropeMapRef h)
 
 get :: Handle -> IO TropeMap
 get h =

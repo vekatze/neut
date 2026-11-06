@@ -1,16 +1,17 @@
 module Kernel.Parse.Internal.Handle.UnusedTopLevelName
   ( Handle,
+    ReferenceLog,
     new,
     clear,
-    insert,
+    insertMany,
+    newReferenceLog,
     recordReference,
-    delete,
+    commitReferences,
     deleteMany,
     flushRemarks,
   )
 where
 
-import Control.Monad
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.List qualified as List
@@ -18,6 +19,7 @@ import Data.Set qualified as S
 import Data.Text qualified as T
 import Kernel.Common.GlobalName qualified as GN
 import Kernel.Common.Handle.Global.ModulePath qualified as ModulePath
+import Kernel.Common.HashMapRef (insertEntries)
 import Kernel.Common.Module qualified as Module
 import Language.Common.Availability qualified as AV
 import Language.Common.DefiniteDescription qualified as DD
@@ -32,6 +34,11 @@ data Handle = Handle
     constructorOwnerMapRef :: IORef (Map.HashMap DD.DefiniteDescription DD.DefiniteDescription),
     referenceMapRef :: IORef (Map.HashMap DD.DefiniteDescription (S.Set DD.DefiniteDescription)),
     externalReferenceSetRef :: IORef (S.Set DD.DefiniteDescription)
+  }
+
+data ReferenceLog = ReferenceLog
+  { loggedReferenceMapRef :: IORef (Map.HashMap DD.DefiniteDescription (S.Set DD.DefiniteDescription)),
+    loggedExternalReferenceSetRef :: IORef (S.Set DD.DefiniteDescription)
   }
 
 new :: Module.MainModule -> IO Handle
@@ -49,29 +56,37 @@ clear h = do
   writeIORef (referenceMapRef h) Map.empty
   writeIORef (externalReferenceSetRef h) S.empty
 
-insert :: Handle -> DD.DefiniteDescription -> Hint -> GN.GlobalName -> IO ()
-insert h dd m gn = do
-  atomicModifyIORef' (unusedTopLevelNameMapRef h) $ \mp ->
-    (Map.insert dd m mp, ())
-  case gn of
-    GN.Data _ consInfoList _ ->
-      forM_ consInfoList $ \(consDD, _) ->
-        atomicModifyIORef' (constructorOwnerMapRef h) $ \mp ->
-          (Map.insert consDD dd mp, ())
-    _ ->
-      return ()
+insertMany :: Handle -> [(DD.DefiniteDescription, Hint, GN.GlobalName)] -> IO ()
+insertMany h entries = do
+  insertEntries (unusedTopLevelNameMapRef h) [(dd, m) | (dd, m, _) <- entries]
+  insertEntries (constructorOwnerMapRef h) [(consDD, dd) | (dd, _, GN.Data _ consInfoList _) <- entries, (consDD, _) <- consInfoList]
 
-recordReference :: Handle -> Maybe DD.DefiniteDescription -> DD.DefiniteDescription -> IO ()
-recordReference h mSource target = do
+newReferenceLog :: IO ReferenceLog
+newReferenceLog = do
+  loggedReferenceMapRef <- newIORef Map.empty
+  loggedExternalReferenceSetRef <- newIORef S.empty
+  return $ ReferenceLog {..}
+
+recordReference :: Handle -> ReferenceLog -> Maybe DD.DefiniteDescription -> DD.DefiniteDescription -> IO ()
+recordReference h referenceLog mSource target = do
   constructorOwnerMap <- readIORef (constructorOwnerMapRef h)
   let targetSet = S.insert target $ maybe S.empty S.singleton $ Map.lookup target constructorOwnerMap
   case mSource of
     Just source ->
-      atomicModifyIORef' (referenceMapRef h) $ \mp ->
-        (Map.insertWith S.union source targetSet mp, ())
+      modifyIORef' (loggedReferenceMapRef referenceLog) $ Map.insertWith S.union source targetSet
     Nothing ->
-      atomicModifyIORef' (externalReferenceSetRef h) $ \s ->
-        (S.union targetSet s, ())
+      modifyIORef' (loggedExternalReferenceSetRef referenceLog) $ S.union targetSet
+
+commitReferences :: Handle -> ReferenceLog -> IO ()
+commitReferences h referenceLog = do
+  loggedReferenceMap <- readIORef (loggedReferenceMapRef referenceLog)
+  loggedExternalReferenceSet <- readIORef (loggedExternalReferenceSetRef referenceLog)
+  writeIORef (loggedReferenceMapRef referenceLog) Map.empty
+  writeIORef (loggedExternalReferenceSetRef referenceLog) S.empty
+  atomicModifyIORef' (referenceMapRef h) $ \mp ->
+    (Map.unionWith S.union loggedReferenceMap mp, ())
+  atomicModifyIORef' (externalReferenceSetRef h) $ \s ->
+    (S.union loggedExternalReferenceSet s, ())
 
 shouldReportUnused :: DD.DefiniteDescription -> Bool
 shouldReportUnused dd = do
@@ -82,16 +97,12 @@ shouldReportUnused dd = do
     && DD.localLocator dd /= "zen"
     && not (isInternalTopLevelName dd)
 
-delete :: Handle -> DD.DefiniteDescription -> IO ()
-delete h dd = do
-  constructorOwnerMap <- readIORef (constructorOwnerMapRef h)
-  atomicModifyIORef' (unusedTopLevelNameMapRef h) $ \mp -> do
-    let mp' = Map.delete dd $ maybe id Map.delete (Map.lookup dd constructorOwnerMap) mp
-    (mp', ())
-
 deleteMany :: Handle -> [DD.DefiniteDescription] -> IO ()
-deleteMany h =
-  mapM_ (delete h)
+deleteMany h dds = do
+  constructorOwnerMap <- readIORef (constructorOwnerMapRef h)
+  let deleteName acc dd = Map.delete dd $ maybe id Map.delete (Map.lookup dd constructorOwnerMap) acc
+  atomicModifyIORef' (unusedTopLevelNameMapRef h) $ \mp ->
+    (foldl' deleteName mp dds, ())
 
 flushRemarks :: ModulePath.ModulePathMap -> Handle -> IO [L.Log]
 flushRemarks modulePathMap h = do

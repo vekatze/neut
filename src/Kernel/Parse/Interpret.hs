@@ -30,6 +30,7 @@ import Kernel.Parse.Internal.Handle.Alias qualified as Alias
 import Kernel.Parse.Internal.Handle.GlobalNameMap qualified as GlobalNameMap
 import Kernel.Parse.Internal.Handle.NameMap qualified as NameMap
 import Kernel.Parse.Internal.Handle.Unused qualified as Unused
+import Kernel.Parse.Internal.Handle.UnusedTopLevelName qualified as UnusedTopLevelName
 import Kernel.Parse.Internal.Import qualified as Import
 import Kernel.Parse.VarDefKind
 import Language.Common.ExternalName qualified as EN
@@ -49,6 +50,8 @@ data Handle = Handle
     pathHandle :: Path.Handle,
     importHandle :: Import.Handle,
     nameMapHandle :: NameMap.Handle,
+    unusedTopLevelNameHandle :: UnusedTopLevelName.Handle,
+    topLevelReferenceLog :: UnusedTopLevelName.ReferenceLog,
     globalNameMapHandle :: GlobalNameMap.Handle,
     unusedHandle :: Unused.Handle,
     symLocHandle :: SymLoc.Handle,
@@ -71,7 +74,9 @@ new gensymHandle globalHandle localHandle currentModule = do
   let aliasHandle = Local.aliasHandle localHandle
   let locatorHandle = Local.locatorHandle localHandle
   let tagHandle = Local.tagHandle localHandle
-  nameMapHandle <- NameMap.new globalHandle unusedHandle usedTopLevelNameHandle tagHandle
+  let unusedTopLevelNameHandle = Global.unusedTopLevelNameHandle globalHandle
+  let topLevelReferenceLog = Local.topLevelReferenceLog localHandle
+  nameMapHandle <- NameMap.new globalHandle unusedHandle usedTopLevelNameHandle topLevelReferenceLog tagHandle
   let symLocHandle = Local.symLocHandle localHandle
   let topCandidateHandle = Local.topCandidateHandle localHandle
   let rawImportSummaryHandle = Local.rawImportSummaryHandle localHandle
@@ -107,6 +112,7 @@ interpret' h currentSource (PostRawProgram m importList _ stmtList) = do
   Import.interpretImport (importHandle h) m currentSource importList >>= activateImport h m currentSource
   stmtList'' <- Discern.discernStmtList (discernHandle h) stmtList
   NameMap.reportMissingDefinitions (Discern.nameMapHandle (discernHandle h))
+  liftIO $ UnusedTopLevelName.commitReferences (unusedTopLevelNameHandle h) (topLevelReferenceLog h)
   logs1 <- liftIO $ registerUnusedVariableRemarks h
   logs2 <- liftIO $ registerUnusedGlobalLocatorRemarks h
   logs3 <- liftIO $ registerUnusedLocalLocatorRemarks h
