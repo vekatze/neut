@@ -24,6 +24,8 @@ if ! [[ $max_jobs =~ ^[1-9][0-9]*$ ]]; then
   exit 1
 fi
 
+export GHCRTS=-N2
+
 wait_one() {
   pid=${pids[0]}
   pids=("${pids[@]:1}")
