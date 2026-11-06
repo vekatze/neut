@@ -311,6 +311,8 @@ neut get some-name https://github.com/USER_NAME/REPO_NAME/raw/main/archive/0.1.t
 
 Here, the `URL` must be the URL of an archive that was created by `neut archive`.
 
+When installing a dependency, Neut sets the modification time of every file and directory in the extracted tree to the Unix epoch.
+
 After executing `neut get`, the new dependency information is saved to `module.ens`:
 
 ```ens
