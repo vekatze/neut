@@ -6,13 +6,11 @@ module Language.Term.Subst
     subst,
     substIfChanged,
     substAndRefresh,
-    substAndRefreshWithTrace,
     substType,
     refresh,
     refreshType,
     refreshBinders,
     subst',
-    substAndRefresh',
     subst'',
     substDecisionTree,
   )
@@ -195,10 +193,6 @@ refreshType :: Handle -> TM.Type -> IO TM.Type
 refreshType h =
   substType (h {shouldRefreshBinders = True}) IntMap.empty
 
-substAndRefreshWithTrace :: Handle -> Trace.Remapping -> Subst -> TM.Term -> IO TM.Term
-substAndRefreshWithTrace h remapping =
-  subst (h {shouldRefreshBinders = True, traceMapper = Just remapping})
-
 subst' ::
   Handle ->
   Subst ->
@@ -209,10 +203,6 @@ subst' h sub binders e = do
   (binders', env) <- substBinders h (initialEnv sub) binders
   e' <- substTerm h env e
   return (values binders binders', valueOr e e')
-
-substAndRefresh' :: Handle -> Subst -> [BinderF TM.Type] -> TM.Term -> IO ([BinderF TM.Type], TM.Term)
-substAndRefresh' h =
-  subst' (h {shouldRefreshBinders = True})
 
 subst'' ::
   Handle ->

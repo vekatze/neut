@@ -190,22 +190,15 @@ enterTypeBinder h x = do
 
 getBinderRenaming :: Handle -> Ident -> IO (Maybe Ident)
 getBinderRenaming h x = do
-  case instantiation h of
-    Just _ ->
-      Just <$> emitFreshBinder h x
-    Nothing -> do
-      emitted <- readIORef (emittedBinders h)
-      if IntSet.member (Ident.toInt x) emitted
-        then Just <$> emitFreshBinder h x
-        else do
-          modifyIORef' (emittedBinders h) (IntSet.insert (Ident.toInt x))
-          return Nothing
-
-emitFreshBinder :: Handle -> Ident -> IO Ident
-emitFreshBinder h x = do
-  x' <- Sym.newIdentFromIdent (gensymHandle h) x
-  modifyIORef' (emittedBinders h) (IntSet.insert (Ident.toInt x'))
-  return x'
+  emitted <- readIORef (emittedBinders h)
+  if isJust (instantiation h) || IntSet.member (Ident.toInt x) emitted
+    then do
+      x' <- Sym.newIdentFromIdent (gensymHandle h) x
+      modifyIORef' (emittedBinders h) (IntSet.insert (Ident.toInt x'))
+      return $ Just x'
+    else do
+      modifyIORef' (emittedBinders h) (IntSet.insert (Ident.toInt x))
+      return Nothing
 
 enterBinders :: Handle -> [Ident] -> App ([Ident], Handle)
 enterBinders h xs =
@@ -494,7 +487,7 @@ inlineNormal h term = do
                     if hasNonValueSource params && not (isActive h)
                       then registerResidual h residual
                       else do
-                        remapTrace <- prepareDefinitionTraceRemapping h dd defKind traceSiteIDs m callTraceID
+                        remapTrace <- prepareTraceRemapping h dd (toFrameKind defKind) traceSiteIDs m callTraceID
                         let hBody = instantiating remapTrace h
                         let paramIds = map (\((_, _, x, _), _) -> x) params
                         tracer $ bindParameters h subType defaultFrameCtx params $ \values letBinders ->
@@ -1054,7 +1047,7 @@ bindParameters' h hDefault subType defaultFrameCtx params values letBinders cont
         GivenArgument e ->
           return e
         DefaultValue defaultValue -> do
-          defaultValue' <- liftIO $ refreshDefaultValue h defaultFrameCtx subType defaultValue
+          defaultValue' <- refreshDefaultValue h defaultFrameCtx subType defaultValue
           inlineNormal hDefault defaultValue'
       if isNormalValue e
         then bindParameters' h (withNormalized [(x, e)] hDefault) subType defaultFrameCtx rest (e : values) letBinders cont
@@ -1068,33 +1061,30 @@ bindParameters' h hDefault subType defaultFrameCtx params values letBinders cont
           cont' <- bindParameters' h hDefault' subType defaultFrameCtx rest (value : values) (binder : letBinders) cont
           return $ asNormal $ mx :< TM.Let binder (normalTerm e) (normalTerm cont')
 
-refreshDefaultValue :: Handle -> Maybe DefaultFrameContext -> Subst.Subst -> TM.Term -> IO TM.Term
+refreshDefaultValue :: Handle -> Maybe DefaultFrameContext -> Subst.Subst -> TM.Term -> App TM.Term
 refreshDefaultValue h defaultFrameCtx subType defaultValue =
   case defaultFrameCtx of
     Just (dd, callHint, callTraceID)
       | traceEnabled h -> do
-          (annotated, siteIDs) <- TraceSites.annotate (traceHandle h) defaultValue
-          if IntSet.null siteIDs
-            then snd <$> Subst.substAndRefresh' (substHandle h) subType [] annotated
-            else do
-              remapping <- TermTrace.registerExpansion (traceHandle h) dd callHint callTraceID TermTrace.DefaultArgFrame siteIDs
-              Subst.substAndRefreshWithTrace (substHandle h) remapping subType annotated
+          (annotated, siteIDs) <- liftIO $ TraceSites.annotate (traceHandle h) defaultValue
+          remapping <- prepareTraceRemapping h dd TermTrace.DefaultArgFrame siteIDs callHint callTraceID
+          liftIO $ Subst.substAndRefresh (substHandle h) remapping subType annotated
     _ ->
-      snd <$> Subst.substAndRefresh' (substHandle h) subType [] defaultValue
+      liftIO $ Subst.substAndRefresh (substHandle h) Nothing subType defaultValue
 
-prepareDefinitionTraceRemapping ::
+prepareTraceRemapping ::
   Handle ->
   DD.DefiniteDescription ->
-  DefKind ->
+  TermTrace.FrameKind ->
   IntSet.IntSet ->
   Hint ->
   TraceID ->
   App (Maybe TermTrace.Remapping)
-prepareDefinitionTraceRemapping h dd defKind traceSiteIDs callHint callTraceID = do
+prepareTraceRemapping h dd frameKind traceSiteIDs callHint callTraceID = do
   if not (traceEnabled h) || IntSet.null traceSiteIDs
     then return Nothing
     else do
-      remapping <- liftIO $ TermTrace.registerExpansion (traceHandle h) dd callHint callTraceID (toFrameKind defKind) traceSiteIDs
+      remapping <- liftIO $ TermTrace.registerExpansion (traceHandle h) dd callHint callTraceID frameKind traceSiteIDs
       return $ Just remapping
 
 toFrameKind :: DefKind -> TermTrace.FrameKind
