@@ -26,6 +26,19 @@ fi
 
 export GHCRTS=-N2
 
+case $(uname -m) in
+  aarch64)
+    platform=arm64-linux
+    ;;
+  x86_64)
+    platform=amd64-linux
+    ;;
+  *)
+    echo "unsupported architecture: $(uname -m)"
+    exit 1
+    ;;
+esac
+
 wait_one() {
   pid=${pids[0]}
   pids=("${pids[@]:1}")
@@ -38,6 +51,10 @@ wait_one() {
 
 work_dir=$(mktemp -d) || exit 1
 trap 'rm -rf "$work_dir"' EXIT
+
+mkdir -p "$work_dir/home/toolchain" || exit 1
+cp -R "${NEUT_HOME:-${XDG_DATA_HOME:-$HOME/.local/share}/neut}/toolchain/$platform" "$work_dir/home/toolchain/" || exit 1
+export NEUT_HOME=$work_dir/home
 
 target_index=0
 
