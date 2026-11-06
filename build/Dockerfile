@@ -27,8 +27,7 @@ RUN apt-get update && \
   tar \
   wget \
   xz-utils \
-  zlib1g-dev \
-  zstd && \
+  zlib1g-dev && \
   rm -rf /var/lib/apt/lists/* && \
   curl -O https://apt.llvm.org/llvm.sh && \
   chmod +x llvm.sh && \

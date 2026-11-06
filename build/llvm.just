@@ -20,7 +20,7 @@ _fetch-llvm:
     mkdir -p "$src"
     if [ ! -f "$archive" ]; then
       rm -f {{llvm-dir}}/llvm-project-*.src.tar.xz
-      curl -sSL -o "$archive.tmp" \
+      curl -fsSL -o "$archive.tmp" \
         "https://github.com/llvm/llvm-project/releases/download/llvmorg-{{llvm-version}}/$prefix.tar.xz"
       mv "$archive.tmp" "$archive"
     fi
@@ -82,6 +82,7 @@ _build-llvm platform:
     sdk_stamp=""
     case {{platform}} in
       *-darwin)
+        options+=(-DCMAKE_OSX_DEPLOYMENT_TARGET={{macos-deployment-target}})
         sdk_stamp="$(xcrun --show-sdk-path) $(xcrun --show-sdk-build-version 2>/dev/null || echo unknown)"
         ;;
     esac

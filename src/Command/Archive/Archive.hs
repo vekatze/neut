@@ -19,7 +19,6 @@ import Kernel.Common.Handle.Global.Env qualified as Env
 import Kernel.Common.Handle.Global.Path qualified as Path
 import Kernel.Common.Module
 import Kernel.Common.Module.EnsureDeclaredPathExistence (ensureDeclaredPathExistence)
-import Kernel.Common.RunProcess qualified as RunProcess
 import Path
 
 data Handle = Handle
@@ -30,9 +29,8 @@ data Handle = Handle
 new :: Global.Handle -> Handle
 new globalHandle = do
   let envHandle = Global.envHandle globalHandle
-  let runProcessHandle = RunProcess.new (Global.loggerHandle globalHandle)
   let saveModuleHandle = SaveModule.new (Global.loggerHandle globalHandle)
-  let archiveHandle = Archive.new runProcessHandle saveModuleHandle envHandle (Global.loggerHandle globalHandle)
+  let archiveHandle = Archive.new saveModuleHandle envHandle (Global.loggerHandle globalHandle)
   Handle {..}
 
 archive :: Handle -> Config -> App ()

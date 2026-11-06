@@ -26,8 +26,6 @@ import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
 import Ens.Ens qualified as E
 import Ens.ToDoc qualified as Ens
-import GHC.Foreign qualified as GF
-import GHC.IO.Encoding (getFileSystemEncoding)
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.Env qualified as Env
 import Kernel.Common.Handle.Global.Path qualified as Path
@@ -39,6 +37,7 @@ import Language.Common.ModuleDigest (ModuleDigest (..))
 import Language.Common.ModuleID qualified as MID
 import Logger.Hint (internalHint)
 import Path
+import Path.FileSystemEncoding (encodeFileSystemPath)
 import SyntaxTree.Series qualified as SE
 import System.IO (hFlush, stdout)
 
@@ -131,8 +130,7 @@ toUtf8Text path = do
 
 decodeUtf8Path :: FilePath -> IO (Maybe T.Text)
 decodeUtf8Path path = do
-  encoding <- getFileSystemEncoding
-  bytesOrError <- try $ GF.withCStringLen encoding path B.packCStringLen
+  bytesOrError <- try $ encodeFileSystemPath path
   case bytesOrError of
     Left (_ :: SomeException) ->
       return Nothing

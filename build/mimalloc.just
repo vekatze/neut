@@ -39,6 +39,9 @@ _build-mimalloc platform kind:
     case {{kind}} in
       host)
         out={{mimalloc-out-dir}}/release
+        case {{platform}} in
+          *-darwin) options+=(-DCMAKE_OSX_DEPLOYMENT_TARGET={{macos-deployment-target}}) ;;
+        esac
         ;;
       wasm32)
         out={{mimalloc-out-dir}}/wasm32

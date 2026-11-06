@@ -25,7 +25,6 @@ import Control.Concurrent (myThreadId, throwTo)
 import Control.Monad (forM_)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Kernel.Common.CreateGlobalHandle qualified as Global
-import Kernel.Common.Handle.Global.Platform (ensureExecutables)
 import Kernel.Common.Handle.Global.Reuse qualified as Reuse
 import Kernel.Common.LocalArchive qualified as LocalArchive
 import Logger.CreateHandle qualified as Logger
@@ -67,7 +66,6 @@ main = do
                 _ ->
                   Nothing
         h <- Global.new consoleHandle loggerHandle localArchiveMap Reuse.disabled Nothing buildTargetName
-        ensureExecutables
         case cmd of
           C.Build cfg -> do
             Build.build (Build.new h) cfg

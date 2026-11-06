@@ -3,9 +3,6 @@
 Make sure the following dependencies are installed on your system:
 
 - `clang (>= 15.0.0)`
-- `curl`
-- `tar`
-- `zstd`
 
 Add the following to your `.bashrc`, `.zshrc`, etc.:
 

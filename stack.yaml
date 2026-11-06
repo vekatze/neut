@@ -1,4 +1,6 @@
 resolver: lts-24.65
 
+apply-ghc-options: everything
+
 packages:
   - .

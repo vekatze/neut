@@ -1,4 +1,5 @@
 .stack-work/
+.stack-work-*/
 .stack-ide/
 *.cabal
 .DS_Store

@@ -28,6 +28,7 @@ import Ens.Parse qualified as EnsParse
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.Env qualified as Env
 import Kernel.Common.Handle.Global.Module qualified as Module
+import Kernel.Common.Handle.Global.Platform qualified as Platform
 import Kernel.Common.LocalArchive qualified as LocalArchive
 import Kernel.Common.Module (keyDependency, keyDigest, keyEnablePreset, keyMirror, moduleLocation)
 import Kernel.Common.Module qualified as M
@@ -43,6 +44,7 @@ import Logger.Handle qualified as Logger
 import Logger.Hint
 import Logger.Print qualified as Logger
 import Path
+import Path.Archive (extractArchive)
 import Path.IO
 import SyntaxTree.Series (Series (hasOptionalSeparator))
 import SyntaxTree.Series qualified as SE
@@ -54,6 +56,7 @@ data Handle = Handle
     loggerHandle :: Logger.Handle,
     envHandle :: Env.Handle,
     moduleHandle :: Module.Handle,
+    platformHandle :: Platform.Handle,
     localArchiveMap :: LocalArchive.LocalArchiveMap
   }
 
@@ -109,9 +112,8 @@ insertDependency h aliasName url = do
           then do
             if url `elem` M.dependencyMirrorList dep
               then do
-                moduleDirPath <- Module.getModuleDirByID (moduleHandle h) Nothing (MID.Library digest)
-                dependencyDirExists <- doesDirExist moduleDirPath
-                if dependencyDirExists
+                installed <- checkIfInstalled h digest
+                if installed
                   then do
                     liftIO $ Logger.printNote' (loggerHandle h) $ "Already installed: " <> MD.reify digest
                   else do
@@ -222,9 +224,12 @@ download h tempFilePath ma@(ModuleAlias alias) mirrorList = do
     [] ->
       raiseError' $ "Could not obtain the module `" <> BN.reify alias <> "`."
     ModuleURL mirror : rest -> do
+      let curlOptions =
+            Platform.getCurlOptions (platformHandle h)
+              ++ ["-f", "-s", "-S", "-L", "-o", toFilePath tempFilePath, T.unpack mirror]
       let spec =
             RunProcess.Spec
-              { cmdspec = RawCommand "curl" ["-f", "-s", "-S", "-L", "-o", toFilePath tempFilePath, T.unpack mirror],
+              { cmdspec = RawCommand (Platform.getCurl (platformHandle h)) curlOptions,
                 cwd = Nothing
               }
       errOrUnit <- liftIO $ RunProcess.run00 (runProcessHandle h) spec
@@ -237,13 +242,16 @@ download h tempFilePath ma@(ModuleAlias alias) mirrorList = do
           download h tempFilePath ma rest
 
 extractToDependencyDir :: Handle -> Path Abs File -> ModuleAlias -> MD.ModuleDigest -> App ()
-extractToDependencyDir h archivePath _ digest = do
+extractToDependencyDir h archivePath (ModuleAlias alias) digest = do
   moduleDirPath <- Module.getModuleDirByID (moduleHandle h) Nothing (MID.Library digest)
-  ensureDir moduleDirPath
-  RunProcess.run (runProcessHandle h) "tar" ["xf", toFilePath archivePath, "-C", toFilePath moduleDirPath]
-    `catchError` \err -> do
-      removeDirRecur moduleDirPath
-      throwError err
+  moduleDirExists <- doesDirExist moduleDirPath
+  installed <- checkIfInstalled h digest
+  unless installed $ do
+    when moduleDirExists $ removeDirRecur moduleDirPath
+    extractArchive ("the archive of `" <> BN.reify alias <> "`") archivePath moduleDirPath
+      `catchError` \err -> do
+        installedMeanwhile <- checkIfInstalled h digest
+        unless installedMeanwhile $ throwError err
 
 addDependencyToModuleFile :: Handle -> ModuleAlias -> M.Dependency -> App ()
 addDependencyToModuleFile h alias dep = do
