@@ -17,8 +17,8 @@ import Kernel.Common.LocalVarTree qualified as LVT
 import Kernel.Common.LocationTree qualified as LT
 import Kernel.Common.RawImportSummary
 import Kernel.Common.TopCandidate (TopCandidate)
+import Kernel.Common.TopLevelReferences (TopLevelReferences)
 import Language.Common.Binder (BinderF)
-import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.Opacity qualified as O
 import Language.Common.StmtKind qualified as SK
 import Language.Term.Compress qualified as TM
@@ -32,14 +32,14 @@ data Cache = Cache
   { stmtList :: [Stmt.Stmt],
     knownTraceSiteIDs :: Maybe [IntSet.IntSet],
     remarkList :: [Log],
-    globalReferenceList :: [DD.DefiniteDescription],
+    topLevelReferences :: TopLevelReferences,
     countSnapshot :: Int
   }
 
 data LowCache = LowCache
   { stmtList' :: [Stmt.StrippedStmt],
     remarkList' :: [Log],
-    globalReferenceList' :: [DD.DefiniteDescription],
+    topLevelReferences' :: TopLevelReferences,
     countSnapshot' :: Int,
     termTraceSnapshot' :: Trace.Snapshot
   }
@@ -62,7 +62,7 @@ compress traceHandle cache = do
   return LowCache
     { stmtList',
       remarkList' = remarkList cache,
-      globalReferenceList' = globalReferenceList cache,
+      topLevelReferences' = topLevelReferences cache,
       countSnapshot' = countSnapshot cache,
       termTraceSnapshot'
     }
@@ -75,7 +75,7 @@ extend traceHandle cache = do
     { stmtList,
       knownTraceSiteIDs = Just siteGroups,
       remarkList = remarkList' cache,
-      globalReferenceList = globalReferenceList' cache,
+      topLevelReferences = topLevelReferences' cache,
       countSnapshot = countSnapshot' cache
     }
 

@@ -24,6 +24,7 @@ import Kernel.Common.ManageCache qualified as Cache
 import Kernel.Common.Module qualified as Module
 import Kernel.Common.Source qualified as Source
 import Kernel.Common.Target
+import Kernel.Common.TopLevelReferences (TopLevelReferences)
 import Kernel.Parse.Internal.Discern qualified as Discern
 import Kernel.Parse.Internal.Discern.Handle qualified as Discern
 import Kernel.Parse.Internal.Handle.Alias qualified as Alias
@@ -67,7 +68,6 @@ new ::
   IO Handle
 new gensymHandle globalHandle localHandle currentModule = do
   let unusedHandle = Local.unusedHandle localHandle
-  let usedTopLevelNameHandle = Local.usedTopLevelNameHandle localHandle
   let pathHandle = Global.pathHandle globalHandle
   let importHandle = Import.new gensymHandle globalHandle localHandle
   let globalNameMapHandle = Global.globalNameMapHandle globalHandle
@@ -76,7 +76,7 @@ new gensymHandle globalHandle localHandle currentModule = do
   let tagHandle = Local.tagHandle localHandle
   let unusedTopLevelNameHandle = Global.unusedTopLevelNameHandle globalHandle
   let topLevelReferenceLog = Local.topLevelReferenceLog localHandle
-  nameMapHandle <- NameMap.new globalHandle unusedHandle usedTopLevelNameHandle topLevelReferenceLog tagHandle
+  nameMapHandle <- NameMap.new globalHandle unusedHandle topLevelReferenceLog tagHandle
   let symLocHandle = Local.symLocHandle localHandle
   let topCandidateHandle = Local.topCandidateHandle localHandle
   let rawImportSummaryHandle = Local.rawImportSummaryHandle localHandle
@@ -89,10 +89,11 @@ interpret ::
   Target ->
   Source.Source ->
   Either Cache.Cache PostRawProgram ->
-  App (Either Cache.Cache [WeakStmt], [L.Log])
+  App (Either Cache.Cache ([WeakStmt], TopLevelReferences), [L.Log])
 interpret h t source cacheOrContent = do
   case cacheOrContent of
     Left cache -> do
+      liftIO $ UnusedTopLevelName.insertReferences (unusedTopLevelNameHandle h) (Cache.topLevelReferences cache)
       return (Left cache, Cache.remarkList cache)
     Right prog -> do
       (prog', logs) <- interpret' h source prog
@@ -107,18 +108,19 @@ interpret h t source cacheOrContent = do
           }
       return (Right prog', logs)
 
-interpret' :: Handle -> Source.Source -> PostRawProgram -> App ([WeakStmt], [L.Log])
+interpret' :: Handle -> Source.Source -> PostRawProgram -> App (([WeakStmt], TopLevelReferences), [L.Log])
 interpret' h currentSource (PostRawProgram m importList _ stmtList) = do
   Import.interpretImport (importHandle h) m currentSource importList >>= activateImport h m currentSource
   stmtList'' <- Discern.discernStmtList (discernHandle h) stmtList
   NameMap.reportMissingDefinitions (Discern.nameMapHandle (discernHandle h))
-  liftIO $ UnusedTopLevelName.commitReferences (unusedTopLevelNameHandle h) (topLevelReferenceLog h)
+  topLevelReferences <- liftIO $ UnusedTopLevelName.getReferences (topLevelReferenceLog h) >>= UnusedTopLevelName.addConstructorOwners (unusedTopLevelNameHandle h)
+  liftIO $ UnusedTopLevelName.insertReferences (unusedTopLevelNameHandle h) topLevelReferences
   logs1 <- liftIO $ registerUnusedVariableRemarks h
   logs2 <- liftIO $ registerUnusedGlobalLocatorRemarks h
   logs3 <- liftIO $ registerUnusedLocalLocatorRemarks h
   logs4 <- liftIO $ registerUnusedStaticFileRemarks h
   logs5 <- liftIO $ registerUnusedForeignRemarks h
-  return (stmtList'', logs1 ++ logs2 ++ logs3 ++ logs4 ++ logs5)
+  return ((stmtList'', topLevelReferences), logs1 ++ logs2 ++ logs3 ++ logs4 ++ logs5)
 
 activateImport :: Handle -> Hint -> Source.Source -> [ImportItem] -> App ()
 activateImport h m currentSource sourceInfoList = do

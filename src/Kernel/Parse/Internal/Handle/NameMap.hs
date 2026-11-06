@@ -33,7 +33,6 @@ import Kernel.Common.Handle.Local.Tag qualified as Tag
 import Kernel.Common.TopNameMap
 import Kernel.Parse.Internal.Handle.Unused qualified as Unused
 import Kernel.Parse.Internal.Handle.UnusedTopLevelName qualified as UnusedTopLevelName
-import Kernel.Parse.Internal.Handle.UsedTopLevelName qualified as UsedTopLevelName
 import Language.Common.ArgNum qualified as AN
 import Language.Common.BaseName qualified as BN
 import Language.Common.DataInfo qualified as DI
@@ -62,8 +61,6 @@ data Handle = Handle
     platformHandle :: Platform.Handle,
     tagHandle :: Tag.Handle,
     unusedHandle :: Unused.Handle,
-    usedTopLevelNameHandle :: UsedTopLevelName.Handle,
-    unusedTopLevelNameHandle :: UnusedTopLevelName.Handle,
     topLevelReferenceLog :: UnusedTopLevelName.ReferenceLog,
     nameMapRef :: IORef TopNameMap,
     geistMapRef :: IORef (Map.HashMap DD.DefiniteDescription (Hint, IsConstLike)),
@@ -73,8 +70,8 @@ data Handle = Handle
 type NameEntry =
   (DD.DefiniteDescription, TopNameInfo)
 
-new :: Global.Handle -> Unused.Handle -> UsedTopLevelName.Handle -> UnusedTopLevelName.ReferenceLog -> Tag.Handle -> IO Handle
-new (Global.Handle {..}) unusedHandle usedTopLevelNameHandle topLevelReferenceLog tagHandle = do
+new :: Global.Handle -> Unused.Handle -> UnusedTopLevelName.ReferenceLog -> Tag.Handle -> IO Handle
+new (Global.Handle {..}) unusedHandle topLevelReferenceLog tagHandle = do
   modulePathMap <- ModulePath.get modulePathHandle
   nameMapRef <- newIORef Map.empty
   geistMapRef <- newIORef Map.empty
@@ -88,7 +85,7 @@ withCurrentTopLevelName currentTopLevelName h =
 recordRuleParts :: Handle -> DD.DefiniteDescription -> IO ()
 recordRuleParts h name =
   forM_ [DD.getLeafDD name, DD.getNodeDD name, DD.getRootDD name] $
-    UnusedTopLevelName.recordReference (unusedTopLevelNameHandle h) (topLevelReferenceLog h) (Just name)
+    UnusedTopLevelName.recordReference (topLevelReferenceLog h) (Just name)
 
 insert :: Handle -> [NameEntry] -> App ()
 insert h nameArrowList = do
@@ -117,8 +114,7 @@ lookup h m currentLocator bodyContext name = do
   case lookupAvailable currentLocator bodyContext name nameMap of
     Found (mFound, _tag, gn) -> do
       liftIO $ Unused.deleteGlobalLocator (unusedHandle h) $ DD.globalLocator name
-      liftIO $ UsedTopLevelName.insert (usedTopLevelNameHandle h) name
-      liftIO $ UnusedTopLevelName.recordReference (unusedTopLevelNameHandle h) (topLevelReferenceLog h) (currentTopLevelName h) name
+      liftIO $ UnusedTopLevelName.recordReference (topLevelReferenceLog h) (currentTopLevelName h) name
       return $ Found (mFound, gn)
     Hidden ->
       return Hidden

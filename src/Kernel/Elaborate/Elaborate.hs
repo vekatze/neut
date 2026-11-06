@@ -43,6 +43,7 @@ import Kernel.Common.ManageCache qualified as Cache
 import Kernel.Common.OptimizableData qualified as OD
 import Kernel.Common.Source qualified as Source
 import Kernel.Common.Target hiding (Main)
+import Kernel.Common.TopLevelReferences (TopLevelReferences)
 import Kernel.Common.Trace qualified as Trace
 import Kernel.Elaborate.Internal.EnsureAffinity qualified as EnsureAffinity
 import Kernel.Elaborate.Internal.EnsureEmbeddable (ensureEmbeddable)
@@ -66,8 +67,6 @@ import Kernel.Elaborate.Internal.Unify qualified as Unify
 import Kernel.Elaborate.PublicSignature qualified as PublicSignature
 import Kernel.Elaborate.Trace qualified as ElaborateTrace
 import Kernel.Elaborate.TypeHoleSubst qualified as THS
-import Kernel.Parse.Internal.Handle.UnusedTopLevelName qualified as UnusedTopLevelName
-import Kernel.Parse.Internal.Handle.UsedTopLevelName qualified as UsedTopLevelName
 import Language.Common.Annotation qualified as AN
 import Language.Common.Attr.Lam qualified as AttrL
 import Language.Common.BaseLowType qualified as BLT
@@ -129,22 +128,18 @@ import Logger.Hint
 import Logger.Log qualified as L
 import Logger.LogLevel qualified as LL
 
-elaborate :: Handle -> Target -> [L.Log] -> Either Cache.Cache [WeakStmt] -> App [Stmt]
+elaborate :: Handle -> Target -> [L.Log] -> Either Cache.Cache ([WeakStmt], TopLevelReferences) -> App [Stmt]
 elaborate h t logs cacheOrStmt = do
   case cacheOrStmt of
     Left cache -> do
       let stmtList = Cache.stmtList cache
-      liftIO $
-        UnusedTopLevelName.deleteMany (Global.unusedTopLevelNameHandle $ globalHandle h) $
-          Cache.globalReferenceList cache
       let traceSiteIDsList = maybe (repeat Nothing) (map Just) $ Cache.knownTraceSiteIDs cache
       register h $ mconcat $ zipWith makeRegistration traceSiteIDsList stmtList
       liftIO $ GlobalRemark.insert (globalRemarkHandle h) logs
       liftIO $ Gensym.setCount (gensymHandle h) $ Cache.countSnapshot cache
       return stmtList
-    Right stmtList -> do
-      globalReferenceList <- liftIO $ UsedTopLevelName.get (usedTopLevelNameHandle h)
-      let action = analyzeStmtList h stmtList >>= synthesizeStmtList h t logs globalReferenceList
+    Right (stmtList, topLevelReferences) -> do
+      let action = analyzeStmtList h stmtList >>= synthesizeStmtList h t logs topLevelReferences
       catchError action $ \e -> do
         saveLocationTree h t
         throwError e
@@ -248,8 +243,8 @@ toTextBinder :: BinderF WT.WeakType -> T.Text
 toTextBinder (_, _, x, ty) =
   Ident.toText' x <> ": " <> Weak.toTextType ty
 
-synthesizeStmtList :: Handle -> Target -> [L.Log] -> [DD.DefiniteDescription] -> [WeakStmt] -> App [Stmt]
-synthesizeStmtList h t logs globalReferenceList stmtList = do
+synthesizeStmtList :: Handle -> Target -> [L.Log] -> TopLevelReferences -> [WeakStmt] -> App [Stmt]
+synthesizeStmtList h t logs topLevelReferences stmtList = do
   liftIO (Constraint.get (constraintHandle h)) >>= Unify.unify h >>= liftIO . Hole.setTypeSubst (holeHandle h)
   (stmtList', affineErrorList) <- bimap concat concat . unzip <$> mapM (elaborateStmt h) stmtList
   let affineErrorList' = nubOrdOn (\lg -> (fmap logPosition (L.position lg), L.content lg)) affineErrorList
@@ -272,7 +267,7 @@ synthesizeStmtList h t logs globalReferenceList stmtList = do
       { Cache.stmtList = stmtList'',
         Cache.knownTraceSiteIDs = Nothing,
         Cache.remarkList = logs',
-        Cache.globalReferenceList = globalReferenceList,
+        Cache.topLevelReferences = topLevelReferences,
         Cache.countSnapshot = countSnapshot
       }
   liftIO $ Tag.flushSuspended (tagHandle h)

@@ -68,7 +68,6 @@ data Handle = Handle
     globalNameMapHandle :: GlobalNameMap.Handle,
     tagHandle :: Tag.Handle,
     platformHandle :: Platform.Handle,
-    unusedTopLevelNameHandle :: UnusedTopLevelName.Handle,
     topLevelReferenceLog :: UnusedTopLevelName.ReferenceLog,
     targetCapabilities :: S.Set Capability.Capability,
     branchAgreementHandle :: BranchAgreement.Handle,
@@ -254,7 +253,7 @@ interpretImportItem h liveness mustUpdateTag m locatorText entries = do
     forM_ entries $ \entry ->
       case entry of
         I.ImportedName _ ll _ ->
-          liftIO $ UnusedTopLevelName.recordReference (unusedTopLevelNameHandle h) (topLevelReferenceLog h) Nothing (DD.new sgl ll)
+          liftIO $ UnusedTopLevelName.recordReference (topLevelReferenceLog h) Nothing (DD.new sgl ll)
         I.NamespaceView {} ->
           return ()
   when mustUpdateTag $ do

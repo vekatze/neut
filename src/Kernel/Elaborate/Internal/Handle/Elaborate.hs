@@ -49,7 +49,6 @@ import Kernel.Elaborate.Internal.Handle.WeakTypeDef qualified as WeakTypeDef
 import Kernel.Parse.Internal.Handle.BranchAgreement qualified as BranchAgreement
 import Kernel.Elaborate.Internal.WeakTerm.Fill qualified as Fill
 import Kernel.Elaborate.TypeHoleSubst qualified as THS
-import Kernel.Parse.Internal.Handle.UsedTopLevelName qualified as UsedTopLevelName
 import Language.Common.Binder
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.VarKind qualified as VK
@@ -85,7 +84,6 @@ data Handle = Handle
     typeDefHandle :: TypeDef.Handle,
     gensymHandle :: Gensym.Handle,
     keyArgHandle :: KeyArg.Handle,
-    usedTopLevelNameHandle :: UsedTopLevelName.Handle,
     localLogsHandle :: LocalLogs.Handle,
     pathHandle :: Path.Handle,
     globalRemarkHandle :: GlobalRemark.Handle,
