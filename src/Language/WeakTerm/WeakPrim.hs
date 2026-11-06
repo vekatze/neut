@@ -1,13 +1,12 @@
 module Language.WeakTerm.WeakPrim (WeakPrim (..)) where
 
-import GHC.Generics qualified as G
 import Language.Common.PrimType qualified as PT
 import Language.WeakTerm.WeakPrimValue qualified as PV
 
 data WeakPrim a
   = Type PT.PrimType
   | Value (PV.WeakPrimValue a)
-  deriving (Show, G.Generic)
+  deriving (Show)
 
 instance Functor WeakPrim where
   fmap f prim =

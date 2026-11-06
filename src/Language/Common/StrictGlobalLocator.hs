@@ -13,7 +13,6 @@ where
 import Data.Binary
 import Data.Hashable
 import Data.Text qualified as T
-import GHC.Generics
 import Language.Common.BaseName qualified as BN
 import Language.Common.Const
 import Language.Common.ModuleDigest qualified as MD
@@ -28,7 +27,7 @@ data StrictGlobalLocator = StrictGlobalLocator
     _reifiedText :: T.Text,
     sourceSegments :: [BN.BaseName]
   }
-  deriving (Generic, Show)
+  deriving (Show)
 
 instance Eq StrictGlobalLocator where
   gl1 == gl2 = reify gl1 == reify gl2

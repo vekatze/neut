@@ -27,7 +27,7 @@ instance Hashable DeclarationName
 data Variadicity
   = Fixed
   | Variadic
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Show)
 
 type DeclEnv = Map.HashMap DeclarationName ([BaseLowType], F.ForeignCodType BaseLowType, Variadicity)
 

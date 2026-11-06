@@ -7,7 +7,6 @@ import Data.Binary
 import Data.ByteString qualified as BS
 import Data.Text qualified as T
 import GHC.Float (castDoubleToWord64, castWord64ToDouble)
-import GHC.Generics (Generic)
 import Language.Common.PrimNumSize
 import Language.Common.PrimOp
 import Language.Common.Rune qualified as RU
@@ -21,7 +20,7 @@ data PrimValue a
   | Text T.Text
   | Blob BS.ByteString
   | Rune RU.Rune
-  deriving (Show, Generic)
+  deriving (Show)
 
 instance (Binary a) => Binary (PrimValue a) where
   put primValue = do

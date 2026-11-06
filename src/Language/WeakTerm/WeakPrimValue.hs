@@ -10,7 +10,6 @@ where
 
 import Data.ByteString qualified as BS
 import Data.Text qualified as T
-import GHC.Generics (Generic)
 import Language.Common.ModuleID qualified as MID
 import Language.Common.PrimOp
 import Language.Common.PrimOp.BinaryOp
@@ -29,7 +28,7 @@ data WeakPrimValue a
   | Text T.Text
   | Blob BS.ByteString
   | Rune RU.Rune
-  deriving (Show, Generic)
+  deriving (Show)
 
 instance Functor WeakPrimValue where
   fmap f primValue =
