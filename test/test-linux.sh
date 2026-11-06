@@ -4,7 +4,7 @@ base_dir=$(pwd)
 
 SCRIPT_DIR=$(cd "$(dirname "$0")"; pwd)
 
-pids=()
+running=0
 exit_code=0
 
 detect_job_count() {
@@ -39,11 +39,10 @@ case $(uname -m) in
     ;;
 esac
 
-wait_one() {
-  pid=${pids[0]}
-  pids=("${pids[@]:1}")
-  wait $pid
+wait_any() {
+  wait -n
   result=$?
+  running=$((running - 1))
   if [ $result -ne 0 ]; then
     exit_code=$result
   fi
@@ -92,15 +91,15 @@ for target_dir in "$@"; do
       fi
       exit $exit_code
     ) &
-    pids+=($!)
-    while [ ${#pids[@]} -ge $max_jobs ]; do
-      wait_one
+    running=$((running + 1))
+    while [ $running -ge $max_jobs ]; do
+      wait_any
     done
   done
 done
 
-while [ ${#pids[@]} -gt 0 ]; do
-  wait_one
+while [ $running -gt 0 ]; do
+  wait_any
 done
 
 exit $exit_code
