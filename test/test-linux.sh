@@ -34,31 +34,41 @@ wait_one() {
   fi
 }
 
+work_dir=$(mktemp -d) || exit 1
+trap 'rm -rf "$work_dir"' EXIT
+
+target_index=0
+
 for target_dir in "$@"; do
   cd $base_dir
   cd $target_dir
+  target_index=$((target_index + 1))
 
   for i in $(find . -maxdepth 1 -mindepth 1 -type d | sort); do
-    cd $i
-    echo $(basename $i)
+    test_name=$(basename $i)
+    source_dir=$(pwd)/$test_name
+    local_dir=$work_dir/$target_index/$test_name
+    echo $test_name
     (
       exit_code=0
-      rm -rf ./cache
-      $NEUT clean
-      ASAN_OPTIONS=detect_leaks=1 $NEUT build $(basename $i) --report none --execute > /dev/null 2>&1
-      output=$(ASAN_OPTIONS=detect_leaks=1 $NEUT build $(basename $i) --report none --execute 2>&1 1> actual)
+      mkdir -p $local_dir
+      find $source_dir -maxdepth 1 -mindepth 1 ! -name cache ! -name actual -exec cp -R {} $local_dir \;
+      cd $local_dir
+      ASAN_OPTIONS=detect_leaks=1 $NEUT build $test_name --report none --execute > /dev/null 2>&1
+      output=$(ASAN_OPTIONS=detect_leaks=1 $NEUT build $test_name --report none --execute 2>&1 1> actual)
       last_exit_code=$?
+      cp -T actual "$source_dir/actual" || exit_code=1
       if [ $last_exit_code -ne 0 ]; then
-        printf "\033[1;31merror:\033[0m a test failed: $(basename $i)\n$output\n"
+        printf "\033[1;31merror:\033[0m a test failed: $test_name\n$output\n"
         exit_code=$last_exit_code
       elif [ -n "$output" ]; then
-        printf "\033[1;31merror:\033[0m found unexpected output on standard error in: $(basename $i)\n$output\n"
+        printf "\033[1;31merror:\033[0m found unexpected output on standard error in: $test_name\n$output\n"
         exit_code=1
       fi
       mismatch=$(diff expected actual 2>&1)
       last_exit_code=$?
       if [ $last_exit_code -ne 0 ]; then
-        printf "\033[1;31merror:\033[0m found an unexpected result in: $(basename $i)\n$mismatch\n"
+        printf "\033[1;31merror:\033[0m found an unexpected result in: $test_name\n$mismatch\n"
         exit_code=$last_exit_code
       fi
       exit $exit_code
@@ -67,7 +77,6 @@ for target_dir in "$@"; do
     while [ ${#pids[@]} -ge $max_jobs ]; do
       wait_one
     done
-    cd ..
   done
 done
 
