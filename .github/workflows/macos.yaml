@@ -23,6 +23,7 @@ jobs:
               - 'build/**'
               - 'stack.yaml*'
               - '.justfile'
+              - '.github/workflows/macos.yaml'
 
   test:
     needs: changes
@@ -49,6 +50,18 @@ jobs:
         with:
           path: cache/llvm/out
           key: ${{ runner.os }}-${{ runner.arch }}-llvm-${{ hashFiles('build/llvm.just') }}
+      - name: Identify the macOS SDK for curl
+        id: curl-sdk
+        run: |
+          sdk_path=$(xcrun --show-sdk-path)
+          sdk_build=$(xcrun --show-sdk-build-version 2>/dev/null || echo unknown)
+          sdk_hash=$(printf '%s\n' "$sdk_path" "$sdk_build" | shasum -a 256 | cut -d ' ' -f 1)
+          echo "hash=$sdk_hash" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache/restore@v4
+        id: cache-curl
+        with:
+          path: cache/curl/out/arm64-darwin
+          key: ${{ runner.os }}-${{ runner.arch }}-curl-${{ hashFiles('build/curl.just', '.justfile') }}-${{ steps.curl-sdk.outputs.hash }}
       - uses: actions/cache/restore@v4
         id: cache-fetched
         with:
@@ -67,6 +80,11 @@ jobs:
         with:
           path: cache/llvm/out
           key: ${{ runner.os }}-${{ runner.arch }}-llvm-${{ hashFiles('build/llvm.just') }}
+      - uses: actions/cache/save@v4
+        if: steps.cache-curl.outputs.cache-hit != 'true'
+        with:
+          path: cache/curl/out/arm64-darwin
+          key: ${{ steps.cache-curl.outputs.cache-primary-key }}
       - uses: actions/cache/save@v4
         if: steps.cache-fetched.outputs.cache-hit != 'true'
         with:
