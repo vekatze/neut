@@ -20,9 +20,10 @@ import Data.ByteString.Lazy qualified as L
 import Data.List (sort)
 import Data.Text qualified as T
 import Data.Time (getCurrentTime)
+import Data.Time.Clock.POSIX (posixSecondsToUTCTime)
 import Path
 import Path.FileSystemEncoding (decodeFileSystemPath, encodeFileSystemPath)
-import Path.IO (ensureDir, renameDir, withTempDir)
+import Path.IO (ensureDir, listDirRecur, renameDir, setModificationTime, withTempDir)
 import Path.Write (placeAtomically)
 import System.Directory qualified as Dir
 import System.FilePath qualified as FP
@@ -123,6 +124,10 @@ unpackArchive archivePath outputDir = do
   let entries = Tar.decodeLongNames $ Tar.read $ ZstdLazy.decompress $ L.fromStrict compressed
   handle (\(_ :: ErrorCall) -> failExtraction "The zstd data is malformed") $
     unpackEntries (toFilePath outputDir) Nothing entries
+  (directories, files) <- listDirRecur outputDir
+  let epoch = posixSecondsToUTCTime 0
+  mapM_ (`setModificationTime` epoch) files
+  mapM_ (`setModificationTime` epoch) (outputDir : directories)
 
 failExtraction :: String -> IO a
 failExtraction message =
