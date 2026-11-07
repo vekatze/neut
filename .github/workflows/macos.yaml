@@ -50,18 +50,19 @@ jobs:
         with:
           path: cache/llvm/out
           key: ${{ runner.os }}-${{ runner.arch }}-llvm-${{ hashFiles('build/llvm.just') }}
-      - name: Identify the macOS SDK for curl
-        id: curl-sdk
+      - name: Identify the macOS build settings for curl
+        id: curl-config
         run: |
           sdk_path=$(xcrun --show-sdk-path)
           sdk_build=$(xcrun --show-sdk-build-version 2>/dev/null || echo unknown)
-          sdk_hash=$(printf '%s\n' "$sdk_path" "$sdk_build" | shasum -a 256 | cut -d ' ' -f 1)
-          echo "hash=$sdk_hash" >> "$GITHUB_OUTPUT"
+          deployment_target=$(just --evaluate macos-deployment-target)
+          config_hash=$(printf '%s\n' "$sdk_path" "$sdk_build" "$deployment_target" | shasum -a 256 | cut -d ' ' -f 1)
+          echo "hash=$config_hash" >> "$GITHUB_OUTPUT"
       - uses: actions/cache/restore@v4
         id: cache-curl
         with:
           path: cache/curl/out/arm64-darwin
-          key: ${{ runner.os }}-${{ runner.arch }}-curl-${{ hashFiles('build/curl.just', '.justfile') }}-${{ steps.curl-sdk.outputs.hash }}
+          key: ${{ runner.os }}-${{ runner.arch }}-curl-${{ hashFiles('build/curl.just') }}-${{ steps.curl-config.outputs.hash }}
       - uses: actions/cache/restore@v4
         id: cache-fetched
         with:
