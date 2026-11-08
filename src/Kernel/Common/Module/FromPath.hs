@@ -150,14 +150,14 @@ interpretRuleList key interpretPattern interpretBody ens = do
 interpretAllocator :: E.Ens -> App Allocator
 interpretAllocator ens = do
   allocatorEns <- liftEither $ E.access' keyAllocator (E.String $ showAllocator defaultAllocator) ens
-  (_, allocatorText) <- liftEither $ E.toString allocatorEns
+  (m, allocatorText) <- liftEither $ E.toString allocatorEns
   case allocatorText of
     "mimalloc" ->
       return Mimalloc
     "system" ->
       return System
     _ ->
-      return defaultAllocator
+      raiseError m $ "Unknown allocator: " <> allocatorText
 
 interpretTargetConfig :: E.Ens -> App TargetConfig
 interpretTargetConfig ens = do
