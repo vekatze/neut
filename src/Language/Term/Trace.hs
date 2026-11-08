@@ -18,12 +18,11 @@ module Language.Term.Trace
   )
 where
 
-import Data.Binary (Binary)
+import Binary.Derive (deriveBinary)
 import Data.IORef
 import Data.IntMap.Strict qualified as IntMap
 import Data.IntSet qualified as IntSet
 import Data.Map.Strict qualified as Map
-import GHC.Generics (Generic)
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Term.TraceID
 import Logger.Hint
@@ -39,9 +38,7 @@ data FrameKind
   | ConstantMetaFrame
   | DataIntroFrame
   | DefaultArgFrame
-  deriving (Eq, Show, Generic)
-
-instance Binary FrameKind
+  deriving (Eq, Show)
 
 data TraceEntry
   = SourceSite SavedHint
@@ -63,15 +60,9 @@ data TracePath = TracePath
 data CompactEntry
   = CompactSource Int Line Column Bool
   | CompactUnder Int Int
-  deriving (Generic)
-
-instance Binary CompactEntry
 
 data CompactFrame
   = CompactFrame Int Int FrameKind
-  deriving (Generic)
-
-instance Binary CompactFrame
 
 data Snapshot = Snapshot
   { snapshotPaths :: [FilePath],
@@ -81,9 +72,6 @@ data Snapshot = Snapshot
     snapshotFrames :: [CompactFrame],
     snapshotSiteGroups :: [[Int]]
   }
-  deriving (Generic)
-
-instance Binary Snapshot
 
 newtype Remapping = Remapping (IntMap.IntMap TraceID)
 
@@ -311,3 +299,5 @@ lookupTrace (TraceID rawID) =
 lookupFrame :: FrameID -> IntMap.IntMap a -> Maybe a
 lookupFrame (FrameID rawID) =
   IntMap.lookup rawID
+
+deriveBinary [''FrameKind, ''CompactEntry, ''CompactFrame, ''Snapshot]

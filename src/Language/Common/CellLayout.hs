@@ -26,9 +26,8 @@ module Language.Common.CellLayout
   )
 where
 
-import Data.Binary
+import Binary.Derive (deriveBinary)
 import Data.List (intercalate)
-import GHC.Generics
 import Language.Common.BaseLowType qualified as BLT
 import Language.Common.BasePrimType qualified as BPT
 import Language.Common.DataSize qualified as DS
@@ -42,9 +41,7 @@ data FieldWidth
   | Width32
   | Width64
   | WidthPointer
-  deriving (Eq, Generic)
-
-instance Binary FieldWidth
+  deriving (Eq)
 
 instance Show FieldWidth where
   show width =
@@ -66,9 +63,7 @@ type Chunks =
 data FieldStorage
   = StoredDirect FieldWidth
   | StoredFlat Chunks
-  deriving (Eq, Generic)
-
-instance Binary FieldStorage
+  deriving (Eq)
 
 instance Show FieldStorage where
   show storage =
@@ -82,9 +77,7 @@ data CellLayout = CellLayout
   { cellSlots :: [(Int, FieldWidth)],
     cellByteSize :: Int
   }
-  deriving (Eq, Generic)
-
-instance Binary CellLayout
+  deriving (Eq)
 
 instance Show CellLayout where
   show layout =
@@ -269,3 +262,5 @@ widthOfPrimType primType =
       WidthPointer
     PT.Pointer ->
       WidthPointer
+
+deriveBinary [''FieldWidth, ''FieldStorage, ''CellLayout]

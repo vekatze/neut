@@ -12,8 +12,8 @@ module Language.Common.LocalLocator
 where
 
 import App.Error
+import Binary.Derive (deriveBinary)
 import Control.Monad
-import Data.Binary
 import Data.Hashable
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
@@ -30,8 +30,6 @@ newtype LocalLocator = MakeLocalLocator
   { bodyPath :: NE.NonEmpty BN.BaseName
   }
   deriving (Generic, Show, Eq, Ord)
-
-instance Binary LocalLocator
 
 instance Hashable LocalLocator
 
@@ -74,3 +72,5 @@ baseName ll =
 baseNameList :: LocalLocator -> [BN.BaseName]
 baseNameList ll =
   NE.toList (bodyPath ll)
+
+deriveBinary [''LocalLocator]

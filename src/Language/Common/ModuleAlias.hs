@@ -8,7 +8,7 @@ module Language.Common.ModuleAlias
   )
 where
 
-import Data.Binary
+import Binary.Derive (deriveBinary)
 import Data.Hashable
 import Data.Text qualified as T
 import GHC.Generics (Generic)
@@ -18,8 +18,6 @@ newtype ModuleAlias = ModuleAlias {extract :: BN.BaseName}
   deriving (Eq, Show, Generic)
 
 instance Hashable ModuleAlias
-
-instance Binary ModuleAlias
 
 coreModuleAlias :: ModuleAlias
 coreModuleAlias =
@@ -40,3 +38,5 @@ reify alias =
 isPrivate :: ModuleAlias -> Bool
 isPrivate alias =
   "_" `T.isPrefixOf` reify alias
+
+deriveBinary [''ModuleAlias]

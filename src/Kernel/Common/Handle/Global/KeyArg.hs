@@ -7,14 +7,17 @@ module Kernel.Common.Handle.Global.KeyArg
     _eqKeys,
     _showKeys,
     _showKeyList,
+    Entry (..),
     new,
-    insert,
+    insertMany,
     lookup,
   )
 where
 
 import App.App (App)
 import App.Run (raiseError)
+import Control.Applicative ((<|>))
+import Control.Monad (foldM)
 import Control.Monad.IO.Class
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
@@ -41,7 +44,7 @@ type DefaultKey =
 data Handle = Handle
   { _mainModule :: MainModule,
     _modulePathHandle :: ModulePath.Handle,
-    _keyArgMapRef :: IORef (Map.HashMap DD.DefiniteDescription (Origin, IsConstLike, ([ImpKey], [ExpKey], [DefaultKey])))
+    _keyArgMapRef :: IORef KeyArgMap
   }
 
 data Origin
@@ -101,36 +104,54 @@ new _mainModule _modulePathHandle = do
   _keyArgMapRef <- newIORef Map.empty
   return $ Handle {..}
 
-insert :: Handle -> Hint -> DD.DefiniteDescription -> Origin -> IsConstLike -> [ImpKey] -> [ExpKey] -> [DefaultKey] -> App ()
-insert h m funcName origin isConstLike impKeys expKeys defaultKeys = do
+data Entry = Entry
+  { entryHint :: Hint,
+    entryName :: DD.DefiniteDescription,
+    entryOrigin :: Origin,
+    entryIsConstLike :: IsConstLike,
+    entryImpKeys :: [ImpKey],
+    entryExpKeys :: [ExpKey],
+    entryDefaultKeys :: [DefaultKey]
+  }
+
+type KeyArgMap =
+  Map.HashMap DD.DefiniteDescription (Origin, IsConstLike, ([ImpKey], [ExpKey], [DefaultKey]))
+
+insertMany :: Handle -> [Entry] -> App ()
+insertMany h entries = do
   modulePathMap <- liftIO $ ModulePath.get (_modulePathHandle h)
   kmap <- liftIO $ readIORef (_keyArgMapRef h)
-  case Map.lookup funcName kmap of
+  accepted <- foldM (acceptEntry modulePathMap kmap) Map.empty entries
+  liftIO $ atomicModifyIORef' (_keyArgMapRef h) $ \mp ->
+    (Map.union accepted mp, ())
+
+acceptEntry :: ModulePath.ModulePathMap -> KeyArgMap -> KeyArgMap -> Entry -> App KeyArgMap
+acceptEntry modulePathMap kmap accepted (Entry m funcName origin isConstLike impKeys expKeys defaultKeys) = do
+  let value = (origin, isConstLike, (impKeys, expKeys, defaultKeys))
+  let funcName' = renderDD modulePathMap funcName
+  let existing = Map.lookup funcName accepted <|> Map.lookup funcName kmap
+  case existing of
     Nothing ->
-      liftIO $ atomicModifyIORef' (_keyArgMapRef h) $ \mp -> do
-        (Map.insert funcName (origin, isConstLike, (impKeys, expKeys, defaultKeys)) mp, ())
+      return $ Map.insert funcName value accepted
     Just (Defined, _, _) ->
-      return ()
+      return accepted
     Just (Declared, _, _)
       | origin == Declared ->
-          return ()
+          return accepted
     Just (_, isConstLike', (impKeys', expKeys', defaultKeys'))
       | isConstLike,
-        not isConstLike' -> do
-          let funcName' = renderDD modulePathMap funcName
+        not isConstLike' ->
           raiseError m $
             "`"
               <> funcName'
               <> "` is declared as a function, but defined as a constant-like term."
       | not isConstLike,
-        isConstLike' -> do
-          let funcName' = renderDD modulePathMap funcName
+        isConstLike' ->
           raiseError m $
             "`"
               <> funcName'
               <> "` is declared as a constant-like term, but defined as a function."
-      | length impKeys /= length impKeys' -> do
-          let funcName' = renderDD modulePathMap funcName
+      | length impKeys /= length impKeys' ->
           raiseError m $
             "The arity of `"
               <> funcName'
@@ -139,8 +160,7 @@ insert h m funcName origin isConstLike impKeys expKeys defaultKeys = do
               <> ", but defined as "
               <> T.pack (show $ length impKeys)
               <> "."
-      | not $ _eqKeys defaultKeys defaultKeys' -> do
-          let funcName' = renderDD modulePathMap funcName
+      | not $ _eqKeys defaultKeys defaultKeys' ->
           raiseError m $
             "The default key sequence of `"
               <> funcName'
@@ -149,8 +169,7 @@ insert h m funcName origin isConstLike impKeys expKeys defaultKeys = do
               <> "`, but defined as `"
               <> _showKeys defaultKeys
               <> "`."
-      | not $ _eqKeys expKeys expKeys' -> do
-          let funcName' = renderDD modulePathMap funcName
+      | not $ _eqKeys expKeys expKeys' ->
           raiseError m $
             "The explicit key sequence of `"
               <> funcName'
@@ -160,8 +179,7 @@ insert h m funcName origin isConstLike impKeys expKeys defaultKeys = do
               <> _showKeys expKeys
               <> "`."
       | otherwise ->
-          liftIO $ atomicModifyIORef' (_keyArgMapRef h) $ \mp -> do
-            (Map.insert funcName (origin, isConstLike, (impKeys, expKeys, defaultKeys)) mp, ())
+          return $ Map.insert funcName value accepted
 
 lookup :: Handle -> Hint -> DD.DefiniteDescription -> App ([ImpKey], [ExpKey], [DefaultKey])
 lookup h m dataName = do

@@ -4,9 +4,8 @@ module Language.Common.PrimOp.ConvOp
   )
 where
 
-import Data.Binary
+import Binary.Derive (deriveBinary)
 import Data.Text qualified as T
-import GHC.Generics qualified as G
 import Language.Common.PrimNumSize.ToInt
 import Language.Common.PrimType qualified as PT
 
@@ -20,9 +19,7 @@ data ConvOp
   | Fptosi
   | Uitofp
   | Sitofp
-  deriving (Eq, Ord, G.Generic)
-
-instance Binary ConvOp
+  deriving (Eq, Ord)
 
 instance Show ConvOp where
   show convOp =
@@ -92,3 +89,5 @@ asConvOp name domType codType =
           return Sitofp
     _ ->
       Nothing
+
+deriveBinary [''ConvOp]

@@ -10,10 +10,10 @@ module Language.Term.Term
   )
 where
 
+import Binary.Derive (deriveBinary)
 import Control.Comonad.Cofree
 import Data.Binary
 import Data.IntMap qualified as IntMap
-import GHC.Generics (Generic)
 import Language.Common.Attr.Data qualified as AttrD
 import Language.Common.Attr.DataIntro qualified as AttrDI
 import Language.Common.Attr.Lam qualified as AttrL
@@ -55,13 +55,6 @@ data TypeF a
   | PrimType PT.PrimType
   | Void
   | Resource DD.DefiniteDescription ID
-  deriving (Generic)
-
-instance (Binary a) => Binary (TypeF a)
-
-instance Binary Type
-
-instance Binary (Cofree TypeF ())
 
 -- Term representation
 type Term = Cofree TermF Hint
@@ -85,13 +78,6 @@ data TermF a
   | Invoke [DD.DefiniteDescription] a
   | Prim (PV.PrimValue Type)
   | Magic TraceID (Magic BLT.BaseLowType Type a)
-  deriving (Generic)
-
-instance (Binary a) => Binary (TermF a)
-
-instance Binary Term
-
-instance Binary (Cofree TermF ())
 
 type TypeEnv =
   IntMap.IntMap Type
@@ -137,3 +123,17 @@ fromLetSeq xts cont =
       cont
     (mxt@(m, _, _, _), e) : rest ->
       m :< Let mxt e (fromLetSeq rest cont)
+
+deriveBinary [''TypeF, ''TermF]
+
+instance Binary Type where
+  put (m :< e) = put m >> put e
+  get = (:<) <$> get <*> get
+
+instance Binary (Cofree TypeF ()) where
+  put (m :< e) = put m >> put e
+  get = (:<) <$> get <*> get
+
+instance Binary (Cofree TermF ()) where
+  put (m :< e) = put m >> put e
+  get = (:<) <$> get <*> get

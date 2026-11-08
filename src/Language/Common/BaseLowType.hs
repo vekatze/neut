@@ -5,8 +5,7 @@ module Language.Common.BaseLowType
   )
 where
 
-import Data.Binary
-import GHC.Generics qualified as G
+import Binary.Derive (deriveBinary)
 import Language.Common.ArgNum qualified as AN
 import Language.Common.BasePrimType qualified as BPT
 import Language.Common.SlotSize
@@ -14,9 +13,7 @@ import Language.Common.SlotSize
 data BaseLowType
   = PrimNum BPT.BasePrimType
   | Pointer
-  deriving (Show, Eq, Ord, G.Generic)
-
-instance Binary BaseLowType
+  deriving (Show, Eq, Ord)
 
 slot :: BaseLowType
 slot =
@@ -25,3 +22,5 @@ slot =
 toSlotSeq :: AN.ArgNum -> [BaseLowType]
 toSlotSeq argNum =
   map (const slot) [1 .. AN.reify argNum]
+
+deriveBinary [''BaseLowType]

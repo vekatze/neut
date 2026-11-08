@@ -17,34 +17,27 @@ module Language.Common.VarKind
   )
 where
 
-import Data.Binary (Binary)
+import Binary.Derive (deriveBinary)
 import Data.Set qualified as S
 import Data.Text qualified as T
-import GHC.Generics (Generic)
 
 data TypeAttr
   = Sized
   | Actual
-  deriving (Eq, Ord, Show, Enum, Bounded, Generic)
-
-instance Binary TypeAttr
+  deriving (Eq, Ord, Show, Enum, Bounded)
 
 data CopyKind
   = NoCopy
   | DeclaredCopy
   | DefinedCopy
-  deriving (Eq, Ord, Show, Generic)
-
-instance Binary CopyKind
+  deriving (Eq, Ord, Show)
 
 data VarKind = VarKind
   { copyKind :: CopyKind,
     isSource :: Bool,
     typeAttrs :: S.Set TypeAttr
   }
-  deriving (Eq, Ord, Show, Generic)
-
-instance Binary VarKind
+  deriving (Eq, Ord, Show)
 
 normal :: VarKind
 normal =
@@ -101,3 +94,5 @@ reifyAttr attr =
 reifyUnsafeAttr :: TypeAttr -> T.Text
 reifyUnsafeAttr attr =
   "unsafe-" <> reifyAttr attr
+
+deriveBinary [''TypeAttr, ''CopyKind, ''VarKind]

@@ -9,9 +9,8 @@ module Language.Common.DecisionTree
   )
 where
 
-import Data.Binary
+import Binary.Derive (deriveBinary)
 import Data.Maybe (catMaybes)
-import GHC.Generics (Generic)
 import Language.Common.Binder
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.Discriminant qualified as D
@@ -25,7 +24,6 @@ data DecisionTree t a
   = Leaf [Ident] [(BinderF t, a)] a
   | Unreachable
   | Switch (Ident, t) (CaseList t a)
-  deriving (Generic)
 
 type CaseList t a = (DecisionTree t a, [Case t a])
 
@@ -39,18 +37,10 @@ data ConsCaseRecord t a = ConsCaseRecord
     consArgs :: [BinderF t],
     cont :: DecisionTree t a
   }
-  deriving (Generic)
 
 data Case t a
   = ConsCase (ConsCaseRecord t a)
   | LiteralCase Hint L.Literal (DecisionTree t a)
-  deriving (Generic)
-
-instance (Binary t, Binary a) => Binary (ConsCaseRecord t a)
-
-instance (Binary t, Binary a) => Binary (DecisionTree t a)
-
-instance (Binary t, Binary a) => Binary (Case t a)
 
 getConstructors :: [Case t a] -> [(DD.DefiniteDescription, IsConstLike)]
 getConstructors clauseList = do
@@ -78,3 +68,5 @@ findCase consDisc decisionCase =
       if consDisc == disc
         then return (map (\(_, _, x, _) -> x) consImpArgs, map (\(_, _, x, t) -> (x, t)) consArgs, cont)
         else Nothing
+
+deriveBinary [''ConsCaseRecord, ''DecisionTree, ''Case]

@@ -4,15 +4,12 @@ module Language.Common.PrimOp.UnaryOp
   )
 where
 
-import Data.Binary
+import Binary.Derive (deriveBinary)
 import Data.Text qualified as T
-import GHC.Generics qualified as G
 
 data UnaryOp
   = FNeg
-  deriving (Eq, Ord, G.Generic)
-
-instance Binary UnaryOp
+  deriving (Eq, Ord)
 
 instance Show UnaryOp where
   show op =
@@ -27,3 +24,5 @@ asFloatUnaryOp name =
       return FNeg
     _ ->
       Nothing
+
+deriveBinary [''UnaryOp]

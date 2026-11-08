@@ -5,23 +5,18 @@ module Language.Common.BasePrimType
   )
 where
 
-import Data.Binary
-import GHC.Generics
+import Binary.Derive (deriveBinary)
 import Language.Common.PrimNumSize
 
 data BasePrimTypeSize a
   = Explicit a
   | Implicit a
-  deriving (Show, Eq, Ord, Generic)
-
-instance (Binary a) => Binary (BasePrimTypeSize a)
+  deriving (Show, Eq, Ord)
 
 data BasePrimType
   = Int (BasePrimTypeSize IntSize)
   | Float (BasePrimTypeSize FloatSize)
-  deriving (Show, Eq, Ord, Generic)
-
-instance Binary BasePrimType
+  deriving (Show, Eq, Ord)
 
 extractSize :: BasePrimTypeSize a -> a
 extractSize size =
@@ -30,3 +25,5 @@ extractSize size =
       s
     Implicit s ->
       s
+
+deriveBinary [''BasePrimTypeSize, ''BasePrimType]

@@ -5,16 +5,13 @@ module Language.Common.CodeVariant
   )
 where
 
-import Data.Binary
+import Binary.Derive (deriveBinary)
 import Data.Text qualified as T
-import GHC.Generics
 
 data CodeVariant
   = CodeVariantK
   | CodeVariantC -- C: A -> □A (completeness principle)
-  deriving (Show, Eq, Generic)
-
-instance Binary CodeVariant
+  deriving (Show, Eq)
 
 toKeyword :: CodeVariant -> T.Text
 toKeyword v =
@@ -31,3 +28,5 @@ getStageOffset v =
       1
     CodeVariantC ->
       0
+
+deriveBinary [''CodeVariant]

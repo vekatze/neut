@@ -1,13 +1,14 @@
 module Kernel.Common.Handle.Global.OptimizableData
   ( Handle (..),
     new,
-    insert,
+    insertMany,
     lookup,
   )
 where
 
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
+import Kernel.Common.HashMapRef (insertEntries)
 import Kernel.Common.OptimizableData
 import Language.Common.DefiniteDescription qualified as DD
 import Prelude hiding (lookup)
@@ -21,9 +22,9 @@ new = do
   _optDataMapRef <- newIORef Map.empty
   return $ Handle {..}
 
-insert :: Handle -> DD.DefiniteDescription -> OptimizableData -> IO ()
-insert h dd grp = do
-  atomicModifyIORef' (_optDataMapRef h) (\mp -> (Map.insert dd grp mp, ()))
+insertMany :: Handle -> [(DD.DefiniteDescription, OptimizableData)] -> IO ()
+insertMany h =
+  insertEntries (_optDataMapRef h)
 
 lookup :: Handle -> DD.DefiniteDescription -> IO (Maybe OptimizableData)
 lookup h dd = do

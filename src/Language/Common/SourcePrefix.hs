@@ -8,7 +8,7 @@ module Language.Common.SourcePrefix
   )
 where
 
-import Data.Binary
+import Binary.Derive (deriveBinary)
 import Data.Hashable
 import Data.List qualified as List
 import Data.Text qualified as T
@@ -19,8 +19,6 @@ import Language.Common.StrictGlobalLocator qualified as SGL
 
 newtype SourcePrefix = SourcePrefix [BN.BaseName]
   deriving (Generic, Show, Eq, Ord)
-
-instance Binary SourcePrefix
 
 instance Hashable SourcePrefix
 
@@ -60,3 +58,5 @@ canImport current target =
 isInternalBaseName :: BN.BaseName -> Bool
 isInternalBaseName baseName =
   "_" `T.isPrefixOf` BN.reify baseName
+
+deriveBinary [''SourcePrefix]

@@ -61,8 +61,8 @@ module Language.Common.BaseName
 where
 
 import App.Error
+import Binary.Derive (deriveBinary)
 import Control.Monad
-import Data.Binary
 import Data.Char (isUpper)
 import Data.Hashable
 import Data.Set qualified as S
@@ -77,8 +77,6 @@ import Prelude hiding (length)
 
 newtype BaseName = MakeBaseName {reify :: T.Text}
   deriving (Generic, Show, Eq, Ord)
-
-instance Binary BaseName
 
 instance Hashable BaseName
 
@@ -384,3 +382,5 @@ reservedAlias =
     [ base,
       this
     ]
+
+deriveBinary [''BaseName]

@@ -17,7 +17,6 @@ where
 import Data.Binary
 import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
-import GHC.Generics
 import Path
 
 type Line =
@@ -34,7 +33,6 @@ data Hint = Hint
     metaLocation :: Loc,
     metaShouldSaveLocation :: Bool
   }
-  deriving (Generic)
 
 instance Binary Hint where
   put _ =
@@ -52,7 +50,7 @@ instance Ord Hint where
 instance Eq Hint where
   _ == _ = True
 
-newtype SavedHint = SavedHint Hint deriving (Generic)
+newtype SavedHint = SavedHint Hint
 
 instance Show SavedHint where
   show (SavedHint m) = show m

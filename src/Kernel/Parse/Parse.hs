@@ -8,7 +8,6 @@ where
 import App.App (App)
 import App.Run (forP, forP_)
 import CodeParser.Parser (runParser)
-import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
@@ -19,6 +18,7 @@ import Kernel.Common.Cache qualified as Cache
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.CreateLocalHandle qualified as Local
 import Kernel.Common.GlobalName qualified as GN
+import Kernel.Common.Handle.Global.KeyArg (Entry (..))
 import Kernel.Common.Handle.Global.KeyArg qualified as KeyArg
 import Kernel.Common.Handle.Global.OptimizableData qualified as OptimizableData
 import Kernel.Common.Handle.Local.Locator qualified as Locator
@@ -242,11 +242,11 @@ registerTopLevelNames h source cacheOrContent = do
       let stmtList = Cache.stmtList cache
       let nameArrowList = NameMap.getGlobalNames' stmtList
       liftIO $ saveTopLevelNames h source nameArrowList
-      forM_ stmtList $ registerKeyArg' h
+      KeyArg.insertMany (keyArgHandle h) $ concatMap cachedKeyArgEntries stmtList
     Right (PostRawProgram _ _ _ stmtList) -> do
       let nameArrowList = NameMap.getGlobalNames stmtList
       liftIO $ saveTopLevelNames h source nameArrowList
-      forM_ stmtList $ registerKeyArg h
+      KeyArg.insertMany (keyArgHandle h) $ concatMap rawKeyArgEntries stmtList
 
 saveTopLevelNames ::
   Handle ->
@@ -256,16 +256,19 @@ saveTopLevelNames ::
 saveTopLevelNames h source nameArrowList = do
   let nameMap = Map.fromList nameArrowList
   GlobalNameMap.insert (globalNameMapHandle h) (Source.sourceFilePath source) nameMap
-  forM_ nameArrowList $ \(dd, (m, _, gn)) ->
-    case gn of
-      GN.Namespace ->
-        return ()
-      _ ->
-        UnusedTopLevelName.insert (unusedTopLevelNameHandle h) dd m gn
-  registerOptDataInfo h nameArrowList
+  UnusedTopLevelName.insertMany (unusedTopLevelNameHandle h) $ concatMap unusedTopLevelNameEntries nameArrowList
+  OptimizableData.insertMany (optDataHandle h) $ concatMap optimizableDataEntries nameArrowList
 
-registerKeyArg :: Handle -> PostRawStmt -> App ()
-registerKeyArg h stmt = do
+unusedTopLevelNameEntries :: (DD.DefiniteDescription, (Hint, Maybe NT.NominalTag, GN.GlobalName)) -> [(DD.DefiniteDescription, Hint, GN.GlobalName)]
+unusedTopLevelNameEntries (dd, (m, _, gn)) =
+  case gn of
+    GN.Namespace ->
+      []
+    _ ->
+      [(dd, m, gn)]
+
+rawKeyArgEntries :: PostRawStmt -> [KeyArg.Entry]
+rawKeyArgEntries stmt = do
   case stmt of
     PostRawStmtDefineTerm _ stmtKind (RT.RawDef {geist}) -> do
       let name = fst $ RT.name geist
@@ -274,96 +277,118 @@ registerKeyArg h stmt = do
       case stmtKind of
         SK.DataIntro _ _ _ expConsArgs _ -> do
           let expKeys = map (\(_, _, x, _, _, _) -> x) expConsArgs
-          KeyArg.insert (keyArgHandle h) m name KeyArg.Defined isConstLike [] expKeys []
+          [ KeyArg.Entry
+              { entryHint = m,
+                entryName = name,
+                entryOrigin = KeyArg.Defined,
+                entryIsConstLike = isConstLike,
+                entryImpKeys = [],
+                entryExpKeys = expKeys,
+                entryDefaultKeys = []
+              }
+            ]
         _ -> do
           let RT.GeistKeys {geistImpKeys = impKeys, geistExpKeys = expKeys, geistDefaultKeys = defaultKeys} = RT.getGeistKeys geist
-          KeyArg.insert (keyArgHandle h) m name KeyArg.Defined isConstLike impKeys expKeys defaultKeys
-    PostRawStmtDefineType {} -> do
-      return ()
-    PostRawStmtNominal _ _ geistList -> do
-      forM_ (SE.extract geistList) $ \(tag, geist, _) ->
-        when (NT.isTermTag tag) $ do
-          let name = fst $ RT.name geist
-          let isConstLike = RT.isConstLike geist
-          let m = RT.loc geist
-          let RT.GeistKeys {geistImpKeys = impKeys, geistExpKeys = expKeys} = RT.getGeistKeys geist
-          KeyArg.insert (keyArgHandle h) m name KeyArg.Declared isConstLike impKeys expKeys []
-    PostRawStmtDefineResource {} -> do
-      return ()
-    PostRawStmtTrope {} -> do
-      return ()
-    PostRawStmtVariadic {} -> do
-      return ()
+          [ KeyArg.Entry
+              { entryHint = m,
+                entryName = name,
+                entryOrigin = KeyArg.Defined,
+                entryIsConstLike = isConstLike,
+                entryImpKeys = impKeys,
+                entryExpKeys = expKeys,
+                entryDefaultKeys = defaultKeys
+              }
+            ]
+    PostRawStmtDefineType {} ->
+      []
+    PostRawStmtNominal _ _ geistList ->
+      flip concatMap (SE.extract geistList) $ \(tag, geist, _) ->
+        if NT.isTermTag tag
+          then do
+            let name = fst $ RT.name geist
+            let isConstLike = RT.isConstLike geist
+            let m = RT.loc geist
+            let RT.GeistKeys {geistImpKeys = impKeys, geistExpKeys = expKeys} = RT.getGeistKeys geist
+            [ KeyArg.Entry
+                { entryHint = m,
+                  entryName = name,
+                  entryOrigin = KeyArg.Declared,
+                  entryIsConstLike = isConstLike,
+                  entryImpKeys = impKeys,
+                  entryExpKeys = expKeys,
+                  entryDefaultKeys = []
+                }
+              ]
+          else []
+    PostRawStmtDefineResource {} ->
+      []
+    PostRawStmtTrope {} ->
+      []
+    PostRawStmtVariadic {} ->
+      []
     PostRawStmtForeign {} ->
-      return ()
+      []
     PostRawStmtExpose {} ->
-      return ()
+      []
     PostRawStmtNamespace _ _ children ->
-      forM_ children $ registerKeyArg h
+      concatMap rawKeyArgEntries children
 
-registerKeyArg' :: Handle -> Stmt -> App ()
-registerKeyArg' h stmt = do
+cachedKeyArgEntries :: Stmt -> [KeyArg.Entry]
+cachedKeyArgEntries stmt = do
   case stmt of
     StmtDefine isConstLike stmtKind (SavedHint m) name impArgs expArgs defaultArgs _ _ -> do
       case stmtKind of
         SK.DataIntro _ _ _ expConsArgs _ -> do
           let expKeys = map (\(_, _, x, _) -> toText x) expConsArgs
-          KeyArg.insert (keyArgHandle h) m name KeyArg.Defined isConstLike [] expKeys []
+          [ KeyArg.Entry
+              { entryHint = m,
+                entryName = name,
+                entryOrigin = KeyArg.Defined,
+                entryIsConstLike = isConstLike,
+                entryImpKeys = [],
+                entryExpKeys = expKeys,
+                entryDefaultKeys = []
+              }
+            ]
         _ -> do
           let impKeys = map (\(_, _, x, _) -> toText x) impArgs
           let defaultKeys = map ((\(_, _, x, _) -> toText x) . fst) defaultArgs
           let expKeys = map (\(_, _, x, _) -> toText x) expArgs
-          KeyArg.insert (keyArgHandle h) m name KeyArg.Defined isConstLike impKeys expKeys defaultKeys
+          [ KeyArg.Entry
+              { entryHint = m,
+                entryName = name,
+                entryOrigin = KeyArg.Defined,
+                entryIsConstLike = isConstLike,
+                entryImpKeys = impKeys,
+                entryExpKeys = expKeys,
+                entryDefaultKeys = defaultKeys
+              }
+            ]
     StmtDefineType {} ->
-      return ()
+      []
     StmtDefineResource {} ->
-      return ()
+      []
     StmtTrope {} ->
-      return ()
+      []
     StmtVariadic {} ->
-      return ()
+      []
     StmtForeign {} ->
-      return ()
+      []
     StmtExpose {} ->
-      return ()
+      []
     StmtNamespace {} ->
-      return ()
+      []
 
-registerOptDataInfo ::
-  Handle ->
-  [(DD.DefiniteDescription, (Hint, Maybe NT.NominalTag, GN.GlobalName))] ->
-  IO ()
-registerOptDataInfo h nameArrowList = do
-  forM_ nameArrowList $ \(dd, (_, _, gn)) -> do
-    case gn of
-      GN.Data dataArgNum consNameArrowList _ -> do
-        registerAsUnaryIfNecessary h dd consNameArrowList
-        registerAsEnumIfNecessary h dd dataArgNum consNameArrowList
-      _ ->
-        return ()
-
-registerAsUnaryIfNecessary ::
-  Handle ->
-  DD.DefiniteDescription ->
-  [(DD.DefiniteDescription, (Hint, GN.GlobalName))] ->
-  IO ()
-registerAsUnaryIfNecessary h dataName consInfoList = do
-  when (isUnary consInfoList) $ do
-    OptimizableData.insert (optDataHandle h) dataName OD.Unary
-    forM_ consInfoList $ \(consName, _) -> do
-      OptimizableData.insert (optDataHandle h) consName OD.Unary
-
-registerAsEnumIfNecessary ::
-  Handle ->
-  DD.DefiniteDescription ->
-  AN.ArgNum ->
-  [(DD.DefiniteDescription, (Hint, GN.GlobalName))] ->
-  IO ()
-registerAsEnumIfNecessary h dataName dataArgNum consInfoList =
-  when (hasNoArgs dataArgNum consInfoList) $ do
-    OptimizableData.insert (optDataHandle h) dataName OD.Enum
-    forM_ consInfoList $ \(consName, _) -> do
-      OptimizableData.insert (optDataHandle h) consName OD.Enum
+optimizableDataEntries :: (DD.DefiniteDescription, (Hint, Maybe NT.NominalTag, GN.GlobalName)) -> [(DD.DefiniteDescription, OD.OptimizableData)]
+optimizableDataEntries (dd, (_, _, gn)) =
+  case gn of
+    GN.Data dataArgNum consNameArrowList _
+      | isUnary consNameArrowList ->
+          (dd, OD.Unary) : map (\(consName, _) -> (consName, OD.Unary)) consNameArrowList
+      | hasNoArgs dataArgNum consNameArrowList ->
+          (dd, OD.Enum) : map (\(consName, _) -> (consName, OD.Enum)) consNameArrowList
+    _ ->
+      []
 
 isUnary :: [(DD.DefiniteDescription, (Hint, GN.GlobalName))] -> Bool
 isUnary consInfoList =

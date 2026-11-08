@@ -15,14 +15,16 @@ module Kernel.Unravel.Unravel
 where
 
 import App.App (App)
-import App.Run (raiseError, raiseError')
+import App.Run (raiseError, raiseError', runApp)
 import CodeParser.Parser (runParser)
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Foldable
 import Data.HashMap.Strict qualified as Map
-import Data.IORef (IORef, modifyIORef', newIORef, readIORef, writeIORef)
-import Data.List (sortOn)
+import Data.IntMap.Strict qualified as IntMap
+import Data.IntSet qualified as IntSet
+import Data.IORef (IORef, atomicModifyIORef', modifyIORef', newIORef, readIORef, writeIORef)
+import Data.List (mapAccumL, sortOn)
 import Data.Maybe (mapMaybe)
 import Data.Sequence as Seq (Seq, empty, (><), (|>))
 import Data.Set qualified as S
@@ -64,6 +66,8 @@ import Path.EnsureFileExistence (ensureFileExistence)
 import Path.IO
 import Path.Read (readTextFromPath)
 import SyntaxTree.Series qualified as SE
+import UnliftIO.Async (pooledForConcurrently)
+import UnliftIO.Exception (tryAny)
 
 type CacheTime =
   Maybe UTCTime
@@ -86,6 +90,7 @@ data Handle = Handle
     traceSourceListRef :: IORef [Source.Source],
     sourceChildrenMapRef :: IORef (Map.HashMap (Path Abs File) [ImportItem]),
     sourceRequireMapRef :: IORef (Map.HashMap (Path Abs File) [(Hint, Capability.Capability)]),
+    baseArtifactTimeMapRef :: IORef (Map.HashMap (Path Abs File) A.ArtifactTime),
     visitedMainSourceSetRef :: IORef (S.Set (Path Abs File))
   }
 
@@ -105,6 +110,7 @@ new globalHandle = do
   traceSourceListRef <- newIORef []
   sourceChildrenMapRef <- newIORef Map.empty
   sourceRequireMapRef <- newIORef Map.empty
+  baseArtifactTimeMapRef <- newIORef Map.empty
   visitedMainSourceSetRef <- newIORef S.empty
   return $ Handle {..}
 
@@ -155,6 +161,7 @@ unravelFromFile h t baseModule path = do
 unravel' :: Handle -> Target -> Module -> Source.Source -> App Result
 unravel' h t baseModule source = do
   registerShiftMap h
+  prefetchSources h t [source]
   (artifactTime, sourceSeq) <- unravel'' h t source
   let sourceList = toList sourceSeq
   forM_ sourceSeq Source.ensureSourceExistence
@@ -417,7 +424,7 @@ unravel'' h t source = do
         return (item, childArtifactTime, childSeq)
       _ <- liftIO $ popFromTraceSourceList h
       liftIO $ insertToVisitEnv h path VI.Finish
-      baseArtifactTime <- getBaseArtifactTime (Global.pathHandle (globalHandle h)) t source
+      baseArtifactTime <- getBaseArtifactTime h t source
       let artifactTimeList = [childTime | (_, childTime, _) <- results]
       let liveArtifactTimeList = [childTime | (item, childTime, _) <- results, isItemLiveIn (targetEnvironment h) item]
       let seqList = [childSeq | (_, _, childSeq) <- results]
@@ -455,6 +462,7 @@ unravelFoundational h t baseModule = do
   let shiftToLatestHandle = STL.new (Global.antecedentHandle (globalHandle h))
   children <- Module.getAllSourceInModule baseModule
   children' <- mapM (STL.shiftToLatest shiftToLatestHandle) children
+  prefetchSources h t children'
   (artifactTimeList, seqList) <- mapAndUnzipM (unravel'' h t) children'
   baseArtifactTime <- liftIO artifactTimeFromCurrentTime
   let artifactTime = getArtifactTime artifactTimeList artifactTimeList baseArtifactTime
@@ -470,8 +478,38 @@ getArtifactTime artifactTimeList liveArtifactTimeList artifactTime = do
   let objectTime = getItemTime' (map A.objectTime liveArtifactTimeList) $ A.objectTime artifactTime
   A.ArtifactTime {cacheTime, llvmTime, objectTime}
 
-getBaseArtifactTime :: Path.Handle -> Target -> Source.Source -> App A.ArtifactTime
-getBaseArtifactTime h t source = do
+prefetchSources :: Handle -> Target -> [Source.Source] -> App ()
+prefetchSources h t roots =
+  prefetchFrontiers h t (S.fromList $ map Source.sourceFilePath roots) roots
+
+prefetchFrontiers :: Handle -> Target -> S.Set (Path Abs File) -> [Source.Source] -> App ()
+prefetchFrontiers h t visited frontier =
+  unless (null frontier) $ do
+    results <- liftIO $ pooledForConcurrently frontier $ tryAny . runApp . prefetchSource h t
+    let candidates = concat [children | Right (Right children) <- results]
+    let (visited', nextFrontier) = foldl' collectUnvisitedSource (visited, []) candidates
+    prefetchFrontiers h t visited' (reverse nextFrontier)
+
+collectUnvisitedSource :: (S.Set (Path Abs File), [Source.Source]) -> Source.Source -> (S.Set (Path Abs File), [Source.Source])
+collectUnvisitedSource (visited, acc) source = do
+  let path = Source.sourceFilePath source
+  if S.member path visited
+    then (visited, acc)
+    else (S.insert path visited, source : acc)
+
+prefetchSource :: Handle -> Target -> Source.Source -> App [Source.Source]
+prefetchSource h t source = do
+  children <- getChildren h source
+  _ <- getBaseArtifactTime h t source
+  return [childSource | ImportItem _ childSource _ <- children]
+
+getBaseArtifactTime :: Handle -> Target -> Source.Source -> App A.ArtifactTime
+getBaseArtifactTime h t source =
+  rememberByPath (baseArtifactTimeMapRef h) (Source.sourceFilePath source) $
+    readBaseArtifactTime (Global.pathHandle (globalHandle h)) t source
+
+readBaseArtifactTime :: Path.Handle -> Target -> Source.Source -> App A.ArtifactTime
+readBaseArtifactTime h t source = do
   cacheTime <- getFreshCacheTime h t source
   case t of
     Main {} -> do
@@ -562,17 +600,10 @@ showCycle' textList =
       "\n  ~> " <> text <> showCycle' ps
 
 getChildren :: Handle -> Source.Source -> App [ImportItem]
-getChildren h currentSource = do
-  localHandle <- Local.new (globalHandle h) currentSource
-  sourceChildrenMap <- liftIO $ getSourceChildrenMap h
-  let currentSourceFilePath = Source.sourceFilePath currentSource
-  case Map.lookup currentSourceFilePath sourceChildrenMap of
-    Just sourceAliasList ->
-      return sourceAliasList
-    Nothing -> do
-      sourceAliasList <- parseSourceHeader h localHandle currentSource
-      liftIO $ insertToSourceChildrenMap h currentSourceFilePath sourceAliasList
-      return sourceAliasList
+getChildren h currentSource =
+  rememberByPath (sourceChildrenMapRef h) (Source.sourceFilePath currentSource) $ do
+    localHandle <- Local.new (globalHandle h) currentSource
+    parseSourceHeader h localHandle currentSource
 
 parseSourceHeader :: Handle -> Local.Handle -> Source.Source -> App [ImportItem]
 parseSourceHeader h localHandle currentSource = do
@@ -582,7 +613,7 @@ parseSourceHeader h localHandle currentSource = do
     fileContent <- readTextFromPath filePath
     snd <$> runParser filePath fileContent False parseHeader
   requiredList <- mapM interpretRequireItem $ concatMap (SE.extract . requireItemsOf . fst) requireList
-  liftIO $ modifyIORef' (sourceRequireMapRef h) $ Map.insert filePath requiredList
+  liftIO $ insertAtomically (sourceRequireMapRef h) filePath requiredList
   let m = newSourceHint filePath
   gensymHandle <- liftIO Gensym.createHandle
   let importHandle = Import.new gensymHandle (globalHandle h) localHandle
@@ -616,32 +647,76 @@ demandList h t baseModule =
 
 checkCapabilities :: Handle -> Target -> Module -> [Source.Source] -> App (S.Set (Path Abs File))
 checkCapabilities h t baseModule roots = do
+  sourceChildrenMap <- liftIO $ getSourceChildrenMap h
+  let (graph, rootNodes) = buildSourceGraph sourceChildrenMap roots
   forM_ (demandList h t baseModule) $ \(demand, environment) ->
-    void $ walkReachable h environment (ensureCapabilitiesAreProvided h demand environment) roots
-  walkReachable h (targetEnvironment h) (\_ _ -> return ()) roots
+    void $ walkReachable graph environment (ensureCapabilitiesAreProvided h demand environment) rootNodes
+  reachable <- walkReachable graph (targetEnvironment h) (\_ _ -> return ()) rootNodes
+  return $ S.fromList $ map (graphPaths graph IntMap.!) $ IntSet.toList reachable
+
+data SourceGraph = SourceGraph
+  { graphPaths :: IntMap.IntMap (Path Abs File),
+    graphEdges :: IntMap.IntMap [(Liveness, Source.Source, Int)]
+  }
+
+data GraphBuilder = GraphBuilder
+  { builderPathIndices :: Map.HashMap (Path Abs File) Int,
+    builderPaths :: IntMap.IntMap (Path Abs File),
+    builderEdges :: IntMap.IntMap [(Liveness, Source.Source, Int)],
+    builderSize :: Int
+  }
+
+buildSourceGraph :: Map.HashMap (Path Abs File) [ImportItem] -> [Source.Source] -> (SourceGraph, [(Source.Source, Int)])
+buildSourceGraph sourceChildrenMap roots = do
+  let emptyBuilder = GraphBuilder {builderPathIndices = Map.empty, builderPaths = IntMap.empty, builderEdges = IntMap.empty, builderSize = 0}
+  let (rootBuilder, rootIndices) = mapAccumL getOrAssignIndex emptyBuilder (map Source.sourceFilePath roots)
+  let builder = expandSourceGraph sourceChildrenMap rootBuilder 0
+  let graph = SourceGraph {graphPaths = builderPaths builder, graphEdges = builderEdges builder}
+  (graph, zip roots rootIndices)
+
+expandSourceGraph :: Map.HashMap (Path Abs File) [ImportItem] -> GraphBuilder -> Int -> GraphBuilder
+expandSourceGraph sourceChildrenMap builder i =
+  if i == builderSize builder
+    then builder
+    else do
+      let path = builderPaths builder IntMap.! i
+      let children = [(liveness, childSource) | ImportItem liveness childSource _ <- Map.lookupDefault [] path sourceChildrenMap]
+      let (builder', childIndices) = mapAccumL getOrAssignIndex builder (map (Source.sourceFilePath . snd) children)
+      let edges = zipWith (\(liveness, childSource) j -> (liveness, childSource, j)) children childIndices
+      let builder'' = builder' {builderEdges = IntMap.insert i edges (builderEdges builder')}
+      expandSourceGraph sourceChildrenMap builder'' (i + 1)
+
+getOrAssignIndex :: GraphBuilder -> Path Abs File -> (GraphBuilder, Int)
+getOrAssignIndex builder path =
+  case Map.lookup path (builderPathIndices builder) of
+    Just i ->
+      (builder, i)
+    Nothing -> do
+      let i = builderSize builder
+      let builder' =
+            builder
+              { builderPathIndices = Map.insert path i (builderPathIndices builder),
+                builderPaths = IntMap.insert i path (builderPaths builder),
+                builderSize = i + 1
+              }
+      (builder', i)
 
 walkReachable ::
-  Handle ->
+  SourceGraph ->
   S.Set Capability.Capability ->
   ([Source.Source] -> Source.Source -> App ()) ->
-  [Source.Source] ->
-  App (S.Set (Path Abs File))
-walkReachable h environment visit roots = do
-  sourceChildrenMap <- liftIO $ getSourceChildrenMap h
-  visitedRef <- liftIO $ newIORef S.empty
-  let go trace source = do
-        let path = Source.sourceFilePath source
+  [(Source.Source, Int)] ->
+  App IntSet.IntSet
+walkReachable graph environment visit roots = do
+  visitedRef <- liftIO $ newIORef IntSet.empty
+  let go trace (source, i) = do
         visited <- liftIO $ readIORef visitedRef
-        unless (S.member path visited) $ do
-          liftIO $ modifyIORef' visitedRef $ S.insert path
+        unless (IntSet.member i visited) $ do
+          liftIO $ modifyIORef' visitedRef $ IntSet.insert i
           visit (reverse trace) source
-          forM_ (Map.lookupDefault [] path sourceChildrenMap) $ \child ->
-            case child of
-              ImportItem liveness childSource _
-                | isLiveIn environment liveness ->
-                    go (source : trace) childSource
-              _ ->
-                return ()
+          forM_ (IntMap.findWithDefault [] i (graphEdges graph)) $ \(liveness, childSource, j) ->
+            when (isLiveIn environment liveness) $
+              go (source : trace) (childSource, j)
   mapM_ (go []) roots
   liftIO $ readIORef visitedRef
 
@@ -687,9 +762,20 @@ getSourceChildrenMap :: Handle -> IO (Map.HashMap (Path Abs File) [ImportItem])
 getSourceChildrenMap h =
   readIORef (sourceChildrenMapRef h)
 
-insertToSourceChildrenMap :: Handle -> Path Abs File -> [ImportItem] -> IO ()
-insertToSourceChildrenMap h k v =
-  modifyIORef' (sourceChildrenMapRef h) $ Map.insert k v
+rememberByPath :: IORef (Map.HashMap (Path Abs File) v) -> Path Abs File -> App v -> App v
+rememberByPath ref path compute = do
+  table <- liftIO $ readIORef ref
+  case Map.lookup path table of
+    Just value ->
+      return value
+    Nothing -> do
+      value <- compute
+      liftIO $ insertAtomically ref path value
+      return value
+
+insertAtomically :: IORef (Map.HashMap (Path Abs File) v) -> Path Abs File -> v -> IO ()
+insertAtomically ref k v =
+  atomicModifyIORef' ref $ \m -> (Map.insert k v m, ())
 
 getAntecedentArrow :: Module -> [(MID.ModuleID, Module)]
 getAntecedentArrow baseModule = do

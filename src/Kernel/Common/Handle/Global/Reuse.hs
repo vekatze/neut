@@ -6,13 +6,11 @@ module Kernel.Common.Handle.Global.Reuse
     rememberCache,
     rememberHeader,
     rememberModule,
-    rememberClangVersion,
   )
 where
 
 import App.App (App)
 import Control.Monad.IO.Class (liftIO)
-import Data.ByteString qualified as B
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.Time (UTCTime)
@@ -35,8 +33,7 @@ type Table a =
 data Tables = Tables
   { caches :: Table Cache.LowCache,
     headers :: Table Header,
-    modules :: Table Module,
-    clangVersions :: Table B.ByteString
+    modules :: Table Module
   }
 
 newtype Handle = Handle (Maybe Tables)
@@ -50,7 +47,6 @@ new = do
   caches <- newIORef Map.empty
   headers <- newIORef Map.empty
   modules <- newIORef Map.empty
-  clangVersions <- newIORef Map.empty
   return $ Handle $ Just $ Tables {..}
 
 rememberCache :: Handle -> Path Abs File -> IO (Either e Cache.LowCache) -> IO (Either e Cache.LowCache)
@@ -60,14 +56,6 @@ rememberCache (Handle tablesOrNone) path decode =
       decode
     Just tables ->
       remember (caches tables) (toFilePath path) decode
-
-rememberClangVersion :: Handle -> FilePath -> IO (Either e B.ByteString) -> IO (Either e B.ByteString)
-rememberClangVersion (Handle tablesOrNone) clang run =
-  case tablesOrNone of
-    Nothing ->
-      run
-    Just tables ->
-      remember (clangVersions tables) clang run
 
 rememberHeader :: Handle -> Path Abs File -> App Header -> App Header
 rememberHeader (Handle tablesOrNone) path parse =

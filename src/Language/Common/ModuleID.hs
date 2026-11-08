@@ -4,7 +4,7 @@ module Language.Common.ModuleID
   )
 where
 
-import Data.Binary
+import Binary.Derive (deriveBinary)
 import Data.Hashable
 import Data.Text qualified as T
 import GHC.Generics
@@ -15,8 +15,6 @@ data ModuleID
   | Library MD.ModuleDigest
   | Base
   deriving (Generic, Eq, Ord, Show)
-
-instance Binary ModuleID
 
 instance Hashable ModuleID
 
@@ -29,3 +27,5 @@ reify moduleID =
       MD.reify digest
     Base ->
       "base"
+
+deriveBinary [''ModuleID]

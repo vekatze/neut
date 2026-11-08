@@ -5,9 +5,8 @@ module Language.Common.PrimOp.BinaryOp
   )
 where
 
-import Data.Binary
+import Binary.Derive (deriveBinary)
 import Data.Text qualified as T
-import GHC.Generics qualified as G
 
 data BinaryOp
   = Add
@@ -28,9 +27,7 @@ data BinaryOp
   | FMul
   | FDiv
   | FRem
-  deriving (Eq, Ord, G.Generic)
-
-instance Binary BinaryOp
+  deriving (Eq, Ord)
 
 instance Show BinaryOp where
   show op =
@@ -119,3 +116,5 @@ asFloatBinaryOp name =
       return FRem
     _ ->
       Nothing
+
+deriveBinary [''BinaryOp]

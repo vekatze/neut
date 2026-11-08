@@ -1,8 +1,7 @@
 module Language.Common.LowMagic (LowMagic (..)) where
 
+import Binary.Derive (deriveBinary)
 import Data.Bifunctor
-import Data.Binary
-import GHC.Generics qualified as G
 import Language.Common.ExternalName qualified as EN
 import Language.Common.ForeignCodType qualified as FCT
 
@@ -17,9 +16,7 @@ data LowMagic lt ty a
   | Global EN.ExternalName lt
   | OpaqueValue a
   | CallType a a a a
-  deriving (Show, Eq, G.Generic)
-
-instance (Binary lt, Binary ty, Binary a) => Binary (LowMagic lt ty a)
+  deriving (Show, Eq)
 
 instance Functor (LowMagic lt ty) where
   fmap f der =
@@ -89,3 +86,5 @@ instance Traversable (LowMagic lt ty) where
         OpaqueValue <$> f e
       CallType func arg1 arg2 arg3 ->
         CallType <$> f func <*> f arg1 <*> f arg2 <*> f arg3
+
+deriveBinary [''LowMagic]

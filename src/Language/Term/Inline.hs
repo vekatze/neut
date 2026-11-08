@@ -15,7 +15,7 @@ import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.IntMap qualified as IntMap
 import Data.IntSet qualified as IntSet
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, isJust)
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Gensym.Gensym qualified as Gensym
@@ -73,6 +73,7 @@ new env location traceEnabled = do
   let pendingTerms = IntMap.empty
   let pendingTypes = IntMap.empty
   let nextPendingSerial = 0
+  let instantiation = Nothing
   usedPendingSerialRef <- liftIO $ newIORef maxBound
   emittedBinders <- liftIO $ newIORef IntSet.empty
   let localTypeEnv = IntMap.empty
@@ -84,7 +85,21 @@ getTropeDepth h =
 
 withoutPending :: Handle -> Handle
 withoutPending h =
-  h {pendingTerms = IntMap.empty, pendingTypes = IntMap.empty}
+  h {pendingTerms = IntMap.empty, pendingTypes = IntMap.empty, instantiation = Nothing}
+
+instantiating :: Maybe TermTrace.Remapping -> Handle -> Handle
+instantiating traceRemapping h =
+  (withoutPending h) {instantiation = Just (Instantiation {traceRemapping})}
+
+remapTraceSite :: Handle -> TM.Term -> TM.Term
+remapTraceSite h term@(m :< node) =
+  case instantiation h of
+    Just (Instantiation {traceRemapping = Just remapping})
+      | traceID <- TraceSites.traceIDOf node,
+        traceID /= noTrace ->
+          m :< TraceSites.setTraceID (TermTrace.remapOrKeep remapping traceID) node
+    _ ->
+      term
 
 withoutPendingTerms :: [Ident] -> Handle -> Handle
 withoutPendingTerms xs h =
@@ -176,7 +191,7 @@ enterTypeBinder h x = do
 getBinderRenaming :: Handle -> Ident -> IO (Maybe Ident)
 getBinderRenaming h x = do
   emitted <- readIORef (emittedBinders h)
-  if IntSet.member (Ident.toInt x) emitted
+  if isJust (instantiation h) || IntSet.member (Ident.toInt x) emitted
     then do
       x' <- Sym.newIdentFromIdent (gensymHandle h) x
       modifyIORef' (emittedBinders h) (IntSet.insert (Ident.toInt x'))
@@ -286,24 +301,36 @@ recordPendingUse :: Handle -> Int -> IO ()
 recordPendingUse h serial =
   modifyIORef' (usedPendingSerialRef h) (min serial)
 
-trackPendingUse :: Handle -> App a -> App (a, Bool)
-trackPendingUse h action = do
+trackAlteration :: Handle -> App a -> App (a, Bool)
+trackAlteration h action = do
   let ref = usedPendingSerialRef h
   outer <- liftIO $ readIORef ref
   liftIO $ writeIORef ref maxBound
   result <- action
   inner <- liftIO $ readIORef ref
   liftIO $ writeIORef ref (min outer inner)
-  return (result, inner < nextPendingSerial h)
+  return (result, inner < nextPendingSerial h || isJust (instantiation h))
+
+toPendingSubst :: Handle -> Subst.Subst
+toPendingSubst h = do
+  let termEntries = IntMap.map (toTermSubstEntry . pendingEntry) (pendingTerms h)
+  let typeEntries = IntMap.map (toTypeSubstEntry . pendingEntry) (pendingTypes h)
+  IntMap.union termEntries typeEntries
 
 applyPending :: Handle -> TM.Term -> IO TM.Term
-applyPending h e = do
+applyPending h e =
+  case instantiation h of
+    Just (Instantiation {traceRemapping}) ->
+      Subst.substAndRefresh (substHandle h) traceRemapping (toPendingSubst h) e
+    Nothing ->
+      substitutePendingValues h e
+
+substitutePendingValues :: Handle -> TM.Term -> IO TM.Term
+substitutePendingValues h e = do
   if IntMap.null (pendingTerms h) && IntMap.null (pendingTypes h)
     then return e
     else do
-      let termEntries = IntMap.map (toTermSubstEntry . pendingEntry) (pendingTerms h)
-      let typeEntries = IntMap.map (toTypeSubstEntry . pendingEntry) (pendingTypes h)
-      result <- Subst.substIfChanged (substHandle h) (IntMap.union termEntries typeEntries) e
+      result <- Subst.substIfChanged (substHandle h) (toPendingSubst h) e
       case result of
         Nothing ->
           return e
@@ -364,15 +391,16 @@ inline' h e =
   normalTerm <$> inlineNormal h e
 
 inlineNormal :: Handle -> TM.Term -> App Normal
-inlineNormal h rawTerm = do
+inlineNormal h term = do
   detectPossibleInfiniteLoop h
+  let rawTerm = remapTraceSite h term
   case rawTerm of
     m :< TM.Var x ->
       fromMaybe (asValue rawTerm) <$> lookupPendingTerm h m x
     _ :< TM.VarGlobal {} ->
       return $ asValue rawTerm
     m :< TM.PiIntro attr@(AttrL.Attr {lamKind}) impArgs expArgs defaultArgs e -> do
-      ((lamKind', impArgs', expArgs', defaultArgs', e'), isAltered) <- trackPendingUse h $ do
+      ((lamKind', impArgs', expArgs', defaultArgs', e'), isAltered) <- trackAlteration h $ do
         (impArgs', hImp) <- inlineTypeParams h impArgs
         (expArgs', hExp) <- inlineTermBinders hImp expArgs
         (defaultArgs', hDefault) <- inlineLetSeq hExp defaultArgs
@@ -459,11 +487,11 @@ inlineNormal h rawTerm = do
                     if hasNonValueSource params && not (isActive h)
                       then registerResidual h residual
                       else do
-                        remapTrace <- prepareDefinitionTraceRemapping h dd defKind traceSiteIDs m callTraceID
-                        (expParams', body') <- instantiateDefinition h remapTrace subType (map fst params) defBody
-                        let paramIds = map (\(_, _, x, _) -> x) expParams'
+                        remapTrace <- prepareTraceRemapping h dd (toFrameKind defKind) traceSiteIDs m callTraceID
+                        let hBody = instantiating remapTrace h
+                        let paramIds = map (\((_, _, x, _), _) -> x) params
                         tracer $ bindParameters h subType defaultFrameCtx params $ \values letBinders ->
-                          expand (withBinders letBinders $ withNormalized (zip paramIds values) $ withoutPending h) body'
+                          expand (withBinders letBinders $ withNormalized (zip paramIds values) $ withTypeSubst subType hBody) defBody
           | Just defInfo <- Map.lookup dd localDefMap -> do
               let DefInfo {defImpBinders, defExpBinders, defDefaultArgs, defBody, codType} = defInfo
               reduceApplication Nothing defImpBinders defExpBinders defDefaultArgs True $ \subType _ params ->
@@ -812,10 +840,7 @@ withBinders xts =
 
 withTypedIdents :: [(Ident, TM.Type)] -> Handle -> Handle
 withTypedIdents xts h =
-  h
-    { localTypeEnv = foldr (\(x, t) -> IntMap.insert (Ident.toInt x) t) (localTypeEnv h) xts,
-      pendingTerms = pendingTerms (withoutPendingTerms (map fst xts) h)
-    }
+  h {localTypeEnv = foldr (\(x, t) -> IntMap.insert (Ident.toInt x) t) (localTypeEnv h) xts}
 
 withCursorType :: Ident -> TM.Type -> Handle -> Handle
 withCursorType x t h =
@@ -1022,7 +1047,7 @@ bindParameters' h hDefault subType defaultFrameCtx params values letBinders cont
         GivenArgument e ->
           return e
         DefaultValue defaultValue -> do
-          defaultValue' <- liftIO $ refreshDefaultValue h defaultFrameCtx subType defaultValue
+          defaultValue' <- refreshDefaultValue h defaultFrameCtx subType defaultValue
           inlineNormal hDefault defaultValue'
       if isNormalValue e
         then bindParameters' h (withNormalized [(x, e)] hDefault) subType defaultFrameCtx rest (e : values) letBinders cont
@@ -1036,48 +1061,31 @@ bindParameters' h hDefault subType defaultFrameCtx params values letBinders cont
           cont' <- bindParameters' h hDefault' subType defaultFrameCtx rest (value : values) (binder : letBinders) cont
           return $ asNormal $ mx :< TM.Let binder (normalTerm e) (normalTerm cont')
 
-refreshDefaultValue :: Handle -> Maybe DefaultFrameContext -> Subst.Subst -> TM.Term -> IO TM.Term
+refreshDefaultValue :: Handle -> Maybe DefaultFrameContext -> Subst.Subst -> TM.Term -> App TM.Term
 refreshDefaultValue h defaultFrameCtx subType defaultValue =
   case defaultFrameCtx of
     Just (dd, callHint, callTraceID)
       | traceEnabled h -> do
-          (annotated, siteIDs) <- TraceSites.annotate (traceHandle h) defaultValue
-          if IntSet.null siteIDs
-            then snd <$> Subst.substAndRefresh' (substHandle h) subType [] annotated
-            else do
-              remapping <- TermTrace.registerExpansion (traceHandle h) dd callHint callTraceID TermTrace.DefaultArgFrame siteIDs
-              Subst.substAndRefreshWithTrace (substHandle h) remapping subType annotated
+          (annotated, siteIDs) <- liftIO $ TraceSites.annotate (traceHandle h) defaultValue
+          remapping <- prepareTraceRemapping h dd TermTrace.DefaultArgFrame siteIDs callHint callTraceID
+          liftIO $ Subst.substAndRefresh (substHandle h) remapping subType annotated
     _ ->
-      snd <$> Subst.substAndRefresh' (substHandle h) subType [] defaultValue
+      liftIO $ Subst.substAndRefresh (substHandle h) Nothing subType defaultValue
 
-prepareDefinitionTraceRemapping ::
+prepareTraceRemapping ::
   Handle ->
   DD.DefiniteDescription ->
-  DefKind ->
+  TermTrace.FrameKind ->
   IntSet.IntSet ->
   Hint ->
   TraceID ->
   App (Maybe TermTrace.Remapping)
-prepareDefinitionTraceRemapping h dd defKind traceSiteIDs callHint callTraceID = do
+prepareTraceRemapping h dd frameKind traceSiteIDs callHint callTraceID = do
   if not (traceEnabled h) || IntSet.null traceSiteIDs
     then return Nothing
     else do
-      remapping <- liftIO $ TermTrace.registerExpansion (traceHandle h) dd callHint callTraceID (toFrameKind defKind) traceSiteIDs
+      remapping <- liftIO $ TermTrace.registerExpansion (traceHandle h) dd callHint callTraceID frameKind traceSiteIDs
       return $ Just remapping
-
-instantiateDefinition ::
-  Handle ->
-  Maybe TermTrace.Remapping ->
-  Subst.Subst ->
-  [BinderF TM.Type] ->
-  TM.Term ->
-  App ([BinderF TM.Type], TM.Term)
-instantiateDefinition h remapTrace sub binders body = do
-  case remapTrace of
-    Nothing ->
-      liftIO $ Subst.substAndRefresh' (substHandle h) sub binders body
-    Just remapping -> do
-      liftIO $ Subst.substAndRefreshWithTrace' (substHandle h) remapping sub binders body
 
 toFrameKind :: DefKind -> TermTrace.FrameKind
 toFrameKind defKind = do

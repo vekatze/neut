@@ -8,8 +8,7 @@ module Language.Common.PrimNumSize
   )
 where
 
-import Data.Binary
-import GHC.Generics qualified as G
+import Binary.Derive (deriveBinary)
 import Language.Common.DataSize qualified as DS
 
 data IntSize
@@ -20,17 +19,13 @@ data IntSize
   | IntSize16
   | IntSize32
   | IntSize64
-  deriving (Eq, Ord, Show, G.Generic)
-
-instance Binary IntSize
+  deriving (Eq, Ord, Show)
 
 data FloatSize
   = FloatSize16
   | FloatSize32
   | FloatSize64
-  deriving (Eq, Ord, Show, G.Generic)
-
-instance Binary FloatSize
+  deriving (Eq, Ord, Show)
 
 dataSizeToIntSize :: DS.DataSize -> IntSize
 dataSizeToIntSize dataSize =
@@ -81,3 +76,5 @@ floatSizeToIntSize floatSize =
       IntSize32
     FloatSize64 ->
       IntSize64
+
+deriveBinary [''IntSize, ''FloatSize]

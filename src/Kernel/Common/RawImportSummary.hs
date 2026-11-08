@@ -6,10 +6,9 @@ module Kernel.Common.RawImportSummary
   )
 where
 
-import Data.Binary
+import Binary.Derive (deriveBinary)
 import Data.Maybe (catMaybes)
 import Data.Text qualified as T
-import GHC.Generics
 import Language.Common.BaseName qualified as BN
 import Language.Common.GlobalLocator qualified as GL
 import Language.Common.LocalLocator qualified as LL
@@ -23,15 +22,9 @@ data RawImportSummaryItem = RawImportSummaryItem
   { importLocator :: T.Text,
     importEntries :: [SummaryEntry]
   }
-  deriving (Generic)
-
-instance Binary RawImportSummaryItem
 
 data SummaryEntry
   = SummaryEntry (Maybe T.Text) T.Text
-  deriving (Generic)
-
-instance Binary SummaryEntry
 
 fromRawImport :: RawImport -> RawImportSummary
 fromRawImport (RawImport _ _ itemSeries loc) =
@@ -57,3 +50,5 @@ fromRawImportEntry entry =
     RawImportName _ ll asClauseOrNone -> do
       let name = LL.reify ll
       SummaryEntry (Just name) $ maybe name (\(RawAsClause _ _ _ importAlias) -> BN.reify importAlias) asClauseOrNone
+
+deriveBinary [''RawImportSummaryItem, ''SummaryEntry]

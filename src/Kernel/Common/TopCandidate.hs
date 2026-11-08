@@ -4,8 +4,7 @@ module Kernel.Common.TopCandidate
   )
 where
 
-import Data.Binary
-import GHC.Generics
+import Binary.Derive (deriveBinary)
 import Language.Common.DefiniteDescription qualified as DD
 import Logger.Hint
 
@@ -14,14 +13,10 @@ data TopCandidate = TopCandidate
     dd :: DD.DefiniteDescription,
     kind :: CandidateKind
   }
-  deriving (Generic)
-
-instance Binary TopCandidate
 
 data CandidateKind
   = Constant
   | Constructor
   | Function
-  deriving (Generic)
 
-instance Binary CandidateKind
+deriveBinary [''TopCandidate, ''CandidateKind]

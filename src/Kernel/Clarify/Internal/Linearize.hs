@@ -5,6 +5,8 @@ module Kernel.Clarify.Internal.Linearize
     new,
     linearize,
     linearizeUser,
+    LetBinding (..),
+    linearizeLetChain,
   )
 where
 
@@ -68,32 +70,55 @@ linearizeWith h resourceOpMode binder e = do
   (occMap, e') <- distinguishComp h activeAll e
   wrapBinders h resourceOpMode activeAll (reverse binder) e' occMap
 
+data LetBinding = LetBinding
+  { letIsReducible :: C.IsReducible,
+    letBinder :: Ident,
+    letBinderType :: C.Comp,
+    letValue :: C.Comp
+  }
+
+linearizeLetChain :: Handle -> [LetBinding] -> C.Comp -> IO C.Comp
+linearizeLetChain h chain body =
+  snd <$> linearizeLetChainWith h IntSet.empty chain body
+
+linearizeLetChainWith :: Handle -> ActiveSet -> [LetBinding] -> C.Comp -> IO (OccMap, C.Comp)
+linearizeLetChainWith h activeSet chain body =
+  case chain of
+    [] ->
+      distinguishComp h activeSet body
+    LetBinding {..} : rest -> do
+      (valueOccMap, value') <- distinguishComp h activeSet letValue
+      (restOccMap, rest') <- linearizeLetChainWith h (IntSet.insert (toInt letBinder) activeSet) rest body
+      (wrappedOccMap, wrapped) <- wrapBinder h ForceResourceOp activeSet (letBinder, letBinderType) rest' restOccMap
+      return (appendOccMaps valueOccMap wrappedOccMap, C.UpElim letIsReducible letBinder value' wrapped)
+
 wrapBinders :: Handle -> ResourceOpMode -> ActiveSet -> [(Ident, C.Comp)] -> C.Comp -> OccMap -> IO C.Comp
 wrapBinders h resourceOpMode activeSet binderEntries body bodyOccMap =
   case binderEntries of
     [] ->
       return body
-    (binderName, binderType) : rest -> do
+    binderEntry@(binderName, _) : rest -> do
       let activeSet' = IntSet.delete (toInt binderName) activeSet
-      case IntMap.findWithDefault [] (toInt binderName) bodyOccMap of
-        [] -> do
-          hole <- Gensym.newIdentFromText (gensymHandle h) "unit"
-          (headerOccMap, t') <- distinguishComp h activeSet' binderType
-          let forceInline = resourceOpModeToForceInline resourceOpMode
-          discardUnusedVar <-
-            Utility.toAffineAppWith (utilityHandle h) forceInline (C.VarLocal binderName) t'
-          let occMap' = appendOccMaps headerOccMap (IntMap.delete (toInt binderName) bodyOccMap)
-          let term' = C.UpElim True hole discardUnusedVar body
-          wrapBinders h resourceOpMode activeSet' rest term' occMap'
-        [z] -> do
-          let term' = C.UpElim True z (C.UpIntro (C.VarLocal binderName)) body
-          wrapBinders h resourceOpMode activeSet' rest term' (IntMap.delete (toInt binderName) bodyOccMap)
-        z : zs -> do
-          localName <- Gensym.newIdentFromText (gensymHandle h) $ toText binderName <> "-local"
-          (headerOccMap, headerTerm) <- insertHeader h resourceOpMode activeSet' localName z zs binderType body
-          let occMap' = appendOccMaps headerOccMap (IntMap.delete (toInt binderName) bodyOccMap)
-          let term' = C.UpElim False localName (C.UpIntro (C.VarLocal binderName)) headerTerm
-          wrapBinders h resourceOpMode activeSet' rest term' occMap'
+      (occMap', term') <- wrapBinder h resourceOpMode activeSet' binderEntry body bodyOccMap
+      wrapBinders h resourceOpMode activeSet' rest term' occMap'
+
+wrapBinder :: Handle -> ResourceOpMode -> ActiveSet -> (Ident, C.Comp) -> C.Comp -> OccMap -> IO (OccMap, C.Comp)
+wrapBinder h resourceOpMode activeSet (binderName, binderType) body bodyOccMap = do
+  let restOccMap = IntMap.delete (toInt binderName) bodyOccMap
+  case IntMap.findWithDefault [] (toInt binderName) bodyOccMap of
+    [] -> do
+      hole <- Gensym.newIdentFromText (gensymHandle h) "unit"
+      (headerOccMap, t') <- distinguishComp h activeSet binderType
+      let forceInline = resourceOpModeToForceInline resourceOpMode
+      discardUnusedVar <-
+        Utility.toAffineAppWith (utilityHandle h) forceInline (C.VarLocal binderName) t'
+      return (appendOccMaps headerOccMap restOccMap, C.UpElim True hole discardUnusedVar body)
+    [z] -> do
+      return (restOccMap, C.UpElim True z (C.UpIntro (C.VarLocal binderName)) body)
+    z : zs -> do
+      localName <- Gensym.newIdentFromText (gensymHandle h) $ toText binderName <> "-local"
+      (headerOccMap, headerTerm) <- insertHeader h resourceOpMode activeSet localName z zs binderType body
+      return (appendOccMaps headerOccMap restOccMap, C.UpElim False localName (C.UpIntro (C.VarLocal binderName)) headerTerm)
 
 resourceOpModeToForceInline :: ResourceOpMode -> C.ForceInline
 resourceOpModeToForceInline resourceOpMode =

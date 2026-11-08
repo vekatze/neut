@@ -5,14 +5,12 @@ module Language.Term.Subst
     Subst,
     subst,
     substIfChanged,
-    substAndRefreshWithTrace,
+    substAndRefresh,
     substType,
     refresh,
     refreshType,
     refreshBinders,
     subst',
-    substAndRefresh',
-    substAndRefreshWithTrace',
     subst'',
     substDecisionTree,
   )
@@ -179,6 +177,10 @@ substIfChanged h sub term = do
     Made e _ _ ->
       return $ Just e
 
+substAndRefresh :: Handle -> Maybe Trace.Remapping -> Subst -> TM.Term -> IO TM.Term
+substAndRefresh h traceMapper =
+  subst (h {shouldRefreshBinders = True, traceMapper})
+
 substType :: Handle -> Subst -> TM.Type -> IO TM.Type
 substType h sub ty =
   valueOr ty <$> substTy h (initialEnv sub) ty
@@ -191,10 +193,6 @@ refreshType :: Handle -> TM.Type -> IO TM.Type
 refreshType h =
   substType (h {shouldRefreshBinders = True}) IntMap.empty
 
-substAndRefreshWithTrace :: Handle -> Trace.Remapping -> Subst -> TM.Term -> IO TM.Term
-substAndRefreshWithTrace h remapping =
-  subst (h {shouldRefreshBinders = True, traceMapper = Just remapping})
-
 subst' ::
   Handle ->
   Subst ->
@@ -205,14 +203,6 @@ subst' h sub binders e = do
   (binders', env) <- substBinders h (initialEnv sub) binders
   e' <- substTerm h env e
   return (values binders binders', valueOr e e')
-
-substAndRefresh' :: Handle -> Subst -> [BinderF TM.Type] -> TM.Term -> IO ([BinderF TM.Type], TM.Term)
-substAndRefresh' h =
-  subst' (h {shouldRefreshBinders = True})
-
-substAndRefreshWithTrace' :: Handle -> Trace.Remapping -> Subst -> [BinderF TM.Type] -> TM.Term -> IO ([BinderF TM.Type], TM.Term)
-substAndRefreshWithTrace' h remapping =
-  subst' (h {shouldRefreshBinders = True, traceMapper = Just remapping})
 
 subst'' ::
   Handle ->

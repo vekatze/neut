@@ -147,6 +147,12 @@ _build-toolchain platform:
     cp -R {{wasi-dir}}/wasi-sysroot/share "$out/share/wasi-sysroot/share"
     cp -R {{wasi-dir}}/builtins/. "$out/lib/clang/$(ls {{llvm-dir}}/out/{{platform}}/lib/clang | head -1)/lib/"
     cp -R {{justfile_directory()}}/licenses "$out/licenses"
+    {
+      echo "llvm:"; cat {{llvm-dir}}/out/{{platform}}/.stamp; echo
+      echo "binaryen:"; cat {{binaryen-dir}}/{{platform}}/.stamp; echo
+      echo "wasi-sysroot:"; cat {{wasi-dir}}/wasi-sysroot.stamp; echo
+      echo "wasi-builtins:"; cat {{wasi-dir}}/builtins.stamp; echo
+    } > "$out/.stamp"
     test -x "$out/bin/clang"
     test -x "$out/bin/wasm-ld"
     test -x "$out/bin/wasm-opt"
@@ -175,24 +181,9 @@ _build-compiler-darwin arch-name:
 _check-macos-deployment-target +paths:
     #!/usr/bin/env bash
     set -euo pipefail
-    target={{macos-deployment-target}}
-    status=0
-    while IFS= read -r -d '' file; do
-      kind=$(file -b "$file")
-      case "$kind" in
-        *Mach-O*) ;;
-        *"ar archive"*) lipo -archs "$file" > /dev/null 2>&1 || continue ;;
-        *) continue ;;
-      esac
-      versions=$(otool -l "$file" | awk '/LC_BUILD_VERSION/ {b = 1} b && /minos/ {print $2; b = 0} /LC_VERSION_MIN_MACOSX/ {v = 1} v && / version / {print $2; v = 0}' | sort -u)
-      for version in $versions; do
-        if [ "$(printf '%s\n%s\n' "$version" "$target" | sort -V | tail -1)" != "$target" ]; then
-          echo "$file requires macOS $version" >&2
-          status=1
-        fi
-      done
-    done < <(find {{paths}} -type f -print0)
-    exit $status
+    command -v otool > /dev/null
+    { find {{paths}} -type f -print0 | xargs -0 otool -l 2> /dev/null || true; } \
+      | LC_ALL=C awk -v target={{macos-deployment-target}} -f {{justfile_directory()}}/build/check-macos-deployment-target.awk
 
 _build-native platform:
     @just build-mimalloc {{platform}}

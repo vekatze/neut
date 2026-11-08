@@ -8,18 +8,17 @@ module Kernel.Common.Cache
   )
 where
 
+import Binary.Derive (deriveBinary)
 import Control.Comonad.Cofree
 import Control.Monad.State.Strict
 import Data.Bifunctor
-import Data.Binary
 import Data.IntSet qualified as IntSet
-import GHC.Generics
 import Kernel.Common.LocalVarTree qualified as LVT
 import Kernel.Common.LocationTree qualified as LT
 import Kernel.Common.RawImportSummary
 import Kernel.Common.TopCandidate (TopCandidate)
+import Kernel.Common.TopLevelReferences (TopLevelReferences)
 import Language.Common.Binder (BinderF)
-import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.Opacity qualified as O
 import Language.Common.StmtKind qualified as SK
 import Language.Term.Compress qualified as TM
@@ -33,37 +32,27 @@ data Cache = Cache
   { stmtList :: [Stmt.Stmt],
     knownTraceSiteIDs :: Maybe [IntSet.IntSet],
     remarkList :: [Log],
-    globalReferenceList :: [DD.DefiniteDescription],
+    topLevelReferences :: TopLevelReferences,
     countSnapshot :: Int
   }
-  deriving (Generic)
 
 data LowCache = LowCache
   { stmtList' :: [Stmt.StrippedStmt],
     remarkList' :: [Log],
-    globalReferenceList' :: [DD.DefiniteDescription],
+    topLevelReferences' :: TopLevelReferences,
     countSnapshot' :: Int,
     termTraceSnapshot' :: Trace.Snapshot
   }
-  deriving (Generic)
-
-instance Binary LowCache
 
 data CompletionCache = CompletionCache
   { localVarTree :: LVT.LocalVarTree,
     topCandidate :: [TopCandidate],
     rawImportSummary :: Maybe RawImportSummary
   }
-  deriving (Generic)
-
-instance Binary CompletionCache
 
 newtype LocationCache = LocationCache
   { locationTree :: LT.LocationTree
   }
-  deriving (Generic)
-
-instance Binary LocationCache
 
 compress :: Trace.Handle -> Cache -> IO LowCache
 compress traceHandle cache = do
@@ -73,7 +62,7 @@ compress traceHandle cache = do
   return LowCache
     { stmtList',
       remarkList' = remarkList cache,
-      globalReferenceList' = globalReferenceList cache,
+      topLevelReferences' = topLevelReferences cache,
       countSnapshot' = countSnapshot cache,
       termTraceSnapshot'
     }
@@ -86,7 +75,7 @@ extend traceHandle cache = do
     { stmtList,
       knownTraceSiteIDs = Just siteGroups,
       remarkList = remarkList' cache,
-      globalReferenceList = globalReferenceList' cache,
+      topLevelReferences = topLevelReferences' cache,
       countSnapshot = countSnapshot' cache
     }
 
@@ -192,3 +181,5 @@ extendDefineMeta remapping defineMeta =
       Stmt.defineMetaCodType = TM.extendType $ Stmt.defineMetaCodType defineMeta,
       Stmt.defineMetaBody = TM.extend remapping $ Stmt.defineMetaBody defineMeta
     }
+
+deriveBinary [''LowCache, ''CompletionCache, ''LocationCache]

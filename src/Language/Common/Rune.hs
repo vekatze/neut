@@ -8,19 +8,16 @@ module Language.Common.Rune
   )
 where
 
+import Binary.Derive (deriveBinary)
 import Codec.Binary.UTF8.String
-import Data.Binary
 import Data.Bits (shiftL, (.|.))
 import Data.List qualified as List
 import Data.Text qualified as T
-import GHC.Generics (Generic)
 import Language.Common.Text.Util (parseText)
 
 data Rune
   = MkRune Char T.Text
-  deriving (Eq, Ord, Show, Generic)
-
-instance Binary Rune
+  deriving (Eq, Ord, Show)
 
 make :: T.Text -> Either T.Text Rune
 make t = do
@@ -50,3 +47,5 @@ fromChar r =
 asText :: Rune -> T.Text
 asText (MkRune _ orig) =
   orig
+
+deriveBinary [''Rune]

@@ -1,24 +1,31 @@
 module Kernel.Parse.Internal.Handle.UnusedTopLevelName
   ( Handle,
+    ReferenceLog,
     new,
     clear,
-    insert,
+    insertMany,
+    newReferenceLog,
     recordReference,
-    delete,
-    deleteMany,
+    getReferences,
+    addConstructorOwners,
+    insertReferences,
     flushRemarks,
   )
 where
 
-import Control.Monad
+import Control.Monad (when)
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.List qualified as List
+import Data.Map.Strict qualified as OrdMap
+import Data.Maybe (mapMaybe)
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Kernel.Common.GlobalName qualified as GN
 import Kernel.Common.Handle.Global.ModulePath qualified as ModulePath
+import Kernel.Common.HashMapRef (insertEntries)
 import Kernel.Common.Module qualified as Module
+import Kernel.Common.TopLevelReferences
 import Language.Common.Availability qualified as AV
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.ModuleID qualified as MID
@@ -30,75 +37,80 @@ data Handle = Handle
   { mainModule :: Module.MainModule,
     unusedTopLevelNameMapRef :: IORef (Map.HashMap DD.DefiniteDescription Hint),
     constructorOwnerMapRef :: IORef (Map.HashMap DD.DefiniteDescription DD.DefiniteDescription),
-    referenceMapRef :: IORef (Map.HashMap DD.DefiniteDescription (S.Set DD.DefiniteDescription)),
-    externalReferenceSetRef :: IORef (S.Set DD.DefiniteDescription)
+    referencesRef :: IORef TopLevelReferences
   }
+
+newtype ReferenceLog = ReferenceLog (IORef TopLevelReferences)
 
 new :: Module.MainModule -> IO Handle
 new mainModule = do
   unusedTopLevelNameMapRef <- newIORef Map.empty
   constructorOwnerMapRef <- newIORef Map.empty
-  referenceMapRef <- newIORef Map.empty
-  externalReferenceSetRef <- newIORef S.empty
+  referencesRef <- newIORef mempty
   return $ Handle {..}
 
 clear :: Handle -> IO ()
 clear h = do
   writeIORef (unusedTopLevelNameMapRef h) Map.empty
   writeIORef (constructorOwnerMapRef h) Map.empty
-  writeIORef (referenceMapRef h) Map.empty
-  writeIORef (externalReferenceSetRef h) S.empty
+  writeIORef (referencesRef h) mempty
 
-insert :: Handle -> DD.DefiniteDescription -> Hint -> GN.GlobalName -> IO ()
-insert h dd m gn = do
-  atomicModifyIORef' (unusedTopLevelNameMapRef h) $ \mp ->
-    (Map.insert dd m mp, ())
-  case gn of
-    GN.Data _ consInfoList _ ->
-      forM_ consInfoList $ \(consDD, _) ->
-        atomicModifyIORef' (constructorOwnerMapRef h) $ \mp ->
-          (Map.insert consDD dd mp, ())
-    _ ->
-      return ()
+insertMany :: Handle -> [(DD.DefiniteDescription, Hint, GN.GlobalName)] -> IO ()
+insertMany h entries = do
+  insertEntries (unusedTopLevelNameMapRef h) [(dd, m) | (dd, m, _) <- entries]
+  insertEntries (constructorOwnerMapRef h) [(consDD, dd) | (dd, _, GN.Data _ consInfoList _) <- entries, (consDD, _) <- consInfoList]
 
-recordReference :: Handle -> Maybe DD.DefiniteDescription -> DD.DefiniteDescription -> IO ()
-recordReference h mSource target = do
+newReferenceLog :: IO ReferenceLog
+newReferenceLog =
+  ReferenceLog <$> newIORef mempty
+
+recordReference :: ReferenceLog -> Maybe DD.DefiniteDescription -> DD.DefiniteDescription -> IO ()
+recordReference (ReferenceLog referencesRef) mSource target =
+  when (isInMainModule target) $
+    modifyIORef' referencesRef $ \references ->
+      case mSource of
+        Just source ->
+          references {referenceMap = OrdMap.insertWith S.union source (S.singleton target) (referenceMap references)}
+        Nothing ->
+          references {externalReferenceSet = S.insert target (externalReferenceSet references)}
+
+getReferences :: ReferenceLog -> IO TopLevelReferences
+getReferences (ReferenceLog referencesRef) =
+  readIORef referencesRef
+
+addConstructorOwners :: Handle -> TopLevelReferences -> IO TopLevelReferences
+addConstructorOwners h references = do
   constructorOwnerMap <- readIORef (constructorOwnerMapRef h)
-  let targetSet = S.insert target $ maybe S.empty S.singleton $ Map.lookup target constructorOwnerMap
-  case mSource of
-    Just source ->
-      atomicModifyIORef' (referenceMapRef h) $ \mp ->
-        (Map.insertWith S.union source targetSet mp, ())
-    Nothing ->
-      atomicModifyIORef' (externalReferenceSetRef h) $ \s ->
-        (S.union targetSet s, ())
+  let withOwners targets = S.union targets $ S.fromList $ mapMaybe (`Map.lookup` constructorOwnerMap) $ S.toList targets
+  return $
+    TopLevelReferences
+      { referenceMap = OrdMap.map withOwners (referenceMap references),
+        externalReferenceSet = withOwners (externalReferenceSet references)
+      }
+
+insertReferences :: Handle -> TopLevelReferences -> IO ()
+insertReferences h references =
+  atomicModifyIORef' (referencesRef h) $ \allReferences ->
+    (references <> allReferences, ())
 
 shouldReportUnused :: DD.DefiniteDescription -> Bool
-shouldReportUnused dd = do
-  let (moduleID, _) = DD.unconsDD dd
-  moduleID == MID.Main
+shouldReportUnused dd =
+  isInMainModule dd
     && AV.isRestricted dd
     && DD.localLocator dd /= "main"
     && DD.localLocator dd /= "zen"
     && not (isInternalTopLevelName dd)
 
-delete :: Handle -> DD.DefiniteDescription -> IO ()
-delete h dd = do
-  constructorOwnerMap <- readIORef (constructorOwnerMapRef h)
-  atomicModifyIORef' (unusedTopLevelNameMapRef h) $ \mp -> do
-    let mp' = Map.delete dd $ maybe id Map.delete (Map.lookup dd constructorOwnerMap) mp
-    (mp', ())
-
-deleteMany :: Handle -> [DD.DefiniteDescription] -> IO ()
-deleteMany h =
-  mapM_ (delete h)
+isInMainModule :: DD.DefiniteDescription -> Bool
+isInMainModule dd = do
+  let (moduleID, _) = DD.unconsDD dd
+  moduleID == MID.Main
 
 flushRemarks :: ModulePath.ModulePathMap -> Handle -> IO [L.Log]
 flushRemarks modulePathMap h = do
   unusedTopLevelNameMap <- readIORef (unusedTopLevelNameMapRef h)
-  referenceMap <- readIORef (referenceMapRef h)
-  recordedExternalReferenceSet <- readIORef (externalReferenceSetRef h)
-  let externalReferenceList = filter (isExternalReference unusedTopLevelNameMap) $ Map.toList referenceMap
+  TopLevelReferences {referenceMap, externalReferenceSet = recordedExternalReferenceSet} <- readIORef (referencesRef h)
+  let externalReferenceList = filter (isExternalReference unusedTopLevelNameMap) $ OrdMap.toList referenceMap
   let derivedExternalReferenceSet = S.unions $ map snd externalReferenceList
   let externalReferenceSet = S.union recordedExternalReferenceSet derivedExternalReferenceSet
   let reachable = reachableNames referenceMap externalReferenceSet
@@ -124,14 +136,14 @@ isInternalTopLevelName dd =
   ";" `T.isInfixOf` DD.reify dd || "#" `T.isInfixOf` DD.reify dd
 
 reachableNames ::
-  Map.HashMap DD.DefiniteDescription (S.Set DD.DefiniteDescription) ->
+  OrdMap.Map DD.DefiniteDescription (S.Set DD.DefiniteDescription) ->
   S.Set DD.DefiniteDescription ->
   S.Set DD.DefiniteDescription
 reachableNames referenceMap =
   reachableNames' referenceMap S.empty . S.toList
 
 reachableNames' ::
-  Map.HashMap DD.DefiniteDescription (S.Set DD.DefiniteDescription) ->
+  OrdMap.Map DD.DefiniteDescription (S.Set DD.DefiniteDescription) ->
   S.Set DD.DefiniteDescription ->
   [DD.DefiniteDescription] ->
   S.Set DD.DefiniteDescription
@@ -143,5 +155,5 @@ reachableNames' referenceMap visited names =
       if S.member name visited
         then reachableNames' referenceMap visited rest
         else do
-          let next = S.toList $ Map.findWithDefault S.empty name referenceMap
+          let next = S.toList $ OrdMap.findWithDefault S.empty name referenceMap
           reachableNames' referenceMap (S.insert name visited) (next ++ rest)

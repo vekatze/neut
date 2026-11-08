@@ -15,8 +15,7 @@ module Language.Common.StmtKind
   )
 where
 
-import Data.Binary
-import GHC.Generics
+import Binary.Derive (deriveBinary)
 import Language.Common.Binder
 import Language.Common.DataInfo qualified as DI
 import Language.Common.DefiniteDescription qualified as DD
@@ -35,17 +34,11 @@ data BaseStmtKindTerm name binder t
   | MacroInline
   | Main t
   | DataIntro name [binder] [binder] [binder] D.Discriminant
-  deriving (Generic)
 
 data BaseStmtKindType binder
   = Alias
   | AliasOpaque
   | Data DD.DefiniteDescription [binder] [DI.StmtConsInfo binder] IsNominal
-  deriving (Generic)
-
-instance (Binary name, Binary x, Binary t) => Binary (BaseStmtKindTerm name x t)
-
-instance (Binary x) => Binary (BaseStmtKindType x)
 
 type StmtKindTerm a =
   BaseStmtKindTerm DD.DefiniteDescription (BinderF a) a
@@ -184,3 +177,5 @@ isOpaqueTypeStmtKind stmtKind =
       True
     _ ->
       False
+
+deriveBinary [''BaseStmtKindTerm, ''BaseStmtKindType]

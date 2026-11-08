@@ -3,14 +3,15 @@ module Kernel.Elaborate.Internal.Handle.TypeDef
     TypeDefInfo (..),
     TypeDefMap,
     new,
-    insert',
+    insertMany,
+    makeEntry,
     get',
   )
 where
 
-import Control.Monad
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
+import Kernel.Common.HashMapRef (insertEntries)
 import Language.Common.Binder
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.Opacity qualified as O
@@ -33,12 +34,13 @@ new = do
   typeDefMapRef <- newIORef Map.empty
   return $ Handle {..}
 
-insert' :: Handle -> O.Opacity -> DD.DefiniteDescription -> [BinderF TM.Type] -> TM.Type -> IO ()
-insert' h opacity name binders body =
-  when (opacity == O.Clear) $ do
-    let typeDefInfo = TypeDefInfo {typeDefBinders = binders, typeDefBody = body}
-    atomicModifyIORef' (typeDefMapRef h) $ \mp ->
-      (Map.insert name typeDefInfo mp, ())
+makeEntry :: O.Opacity -> DD.DefiniteDescription -> [BinderF TM.Type] -> TM.Type -> [(DD.DefiniteDescription, TypeDefInfo)]
+makeEntry opacity name binders body =
+  [(name, TypeDefInfo {typeDefBinders = binders, typeDefBody = body}) | opacity == O.Clear]
+
+insertMany :: Handle -> [(DD.DefiniteDescription, TypeDefInfo)] -> IO ()
+insertMany h =
+  insertEntries (typeDefMapRef h)
 
 get' :: Handle -> IO TypeDefMap
 get' h =

@@ -2,6 +2,7 @@ module Kernel.Common.Handle.Global.Type
   ( Handle (..),
     new,
     insert',
+    insertMany,
     lookup',
     lookupMaybe',
   )
@@ -13,6 +14,7 @@ import Control.Monad.IO.Class
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.Text qualified as T
+import Kernel.Common.HashMapRef (insertEntries)
 import Language.Common.DefiniteDescription qualified as DD
 import Language.WeakTerm.WeakTerm
 import Logger.Hint
@@ -28,9 +30,12 @@ new = do
   return $ Handle {..}
 
 insert' :: Handle -> DD.DefiniteDescription -> WeakType -> IO ()
-insert' h k v = do
-  atomicModifyIORef' (_typeEnvRef h) $ \mp ->
-    (Map.insert k v mp, ())
+insert' h k v =
+  insertMany h [(k, v)]
+
+insertMany :: Handle -> [(DD.DefiniteDescription, WeakType)] -> IO ()
+insertMany h =
+  insertEntries (_typeEnvRef h)
 
 lookup' :: Handle -> Hint -> DD.DefiniteDescription -> App WeakType
 lookup' h m k = do

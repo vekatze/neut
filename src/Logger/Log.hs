@@ -8,10 +8,9 @@ module Logger.Log
   )
 where
 
-import Data.Binary (Binary)
+import Binary.Derive (deriveBinary)
 import Data.List qualified as List
 import Data.Text qualified as T
-import GHC.Generics (Generic)
 import Logger.Hint
 import Logger.LogLevel
 import System.Console.ANSI
@@ -21,9 +20,7 @@ data Log = Log
     logLevel :: LogLevel,
     content :: T.Text
   }
-  deriving (Show, Generic)
-
-instance Binary Log
+  deriving (Show)
 
 isFailure :: Log -> Bool
 isFailure logItem = do
@@ -78,3 +75,5 @@ logPositionKey logItem = do
       (1, metaFileName, line, column)
     Nothing ->
       (0, "", 0, 0)
+
+deriveBinary [''Log]

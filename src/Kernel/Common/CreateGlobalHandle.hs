@@ -93,7 +93,7 @@ newOrError consoleHandle loggerHandle localArchiveMap reuseHandle moduleFilePath
     envHandle <- liftEither envHandleOrError
     let mainModule = Env.getMainModule envHandle
     selector <- liftEither $ resolvePlatformSelector mainModule targetNameOrNone
-    platformHandle <- Platform.new loggerHandle reuseHandle selector
+    platformHandle <- Platform.new loggerHandle selector
     liftIO $ newHandle consoleHandle loggerHandle envHandle platformHandle localArchiveMap reuseHandle
 
 newHandle :: Console.Handle -> Logger.Handle -> Env.Handle -> Platform.Handle -> LocalArchive.LocalArchiveMap -> Reuse.Handle -> IO Handle

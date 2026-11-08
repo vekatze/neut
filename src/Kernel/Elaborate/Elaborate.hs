@@ -18,6 +18,7 @@ import Data.Bifunctor
 import Data.Bitraversable (bimapM)
 import Data.ByteString qualified as BS
 import Data.Containers.ListUtils (nubOrdOn)
+import Data.Foldable (toList)
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.IntMap qualified as IntMap
@@ -30,10 +31,7 @@ import Kernel.Common.Cache qualified as Cache
 import Kernel.Common.Const (holeLiteral)
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Language.Common.ExternalName qualified as EN
-import Kernel.Common.Platform qualified as P
-import Kernel.Common.Arch qualified as Arch
 import Kernel.Common.Handle.Global.Data qualified as Data
-import Kernel.Common.Handle.Global.Expose qualified as Expose
 import Kernel.Common.Handle.Global.GlobalRemark qualified as GlobalRemark
 import Kernel.Common.Handle.Global.KeyArg qualified as KeyArg
 import Kernel.Common.Handle.Global.ModulePath qualified as ModulePath
@@ -45,6 +43,7 @@ import Kernel.Common.ManageCache qualified as Cache
 import Kernel.Common.OptimizableData qualified as OD
 import Kernel.Common.Source qualified as Source
 import Kernel.Common.Target hiding (Main)
+import Kernel.Common.TopLevelReferences (TopLevelReferences)
 import Kernel.Common.Trace qualified as Trace
 import Kernel.Elaborate.Internal.EnsureAffinity qualified as EnsureAffinity
 import Kernel.Elaborate.Internal.EnsureEmbeddable (ensureEmbeddable)
@@ -55,22 +54,19 @@ import Kernel.Common.StorageWidth qualified as StorageWidth
 import Kernel.Elaborate.Internal.Handle.Elaborate
 import Kernel.Elaborate.Internal.Handle.Hole qualified as Hole
 import Kernel.Elaborate.Internal.Handle.LocalLogs qualified as LocalLogs
-import Kernel.Elaborate.Internal.Handle.Trope qualified as Trope
 import Kernel.Elaborate.Internal.Handle.TypeDef qualified as TypeDef
-import Kernel.Elaborate.Internal.Handle.WeakDecl qualified as WeakDecl
 import Kernel.Elaborate.Internal.Handle.WeakDef qualified as WeakDef
 import Kernel.Elaborate.Internal.Handle.WeakType qualified as WeakType
 import Kernel.Elaborate.Internal.Handle.WeakTypeDef qualified as WeakTypeDef
 import Kernel.Parse.Internal.Handle.BranchAgreement qualified as BranchAgreement
 import Kernel.Elaborate.Internal.Infer qualified as Infer
+import Kernel.Elaborate.Internal.Registration
 import Kernel.Elaborate.Internal.TypeUtil (inlineType)
 import Kernel.Elaborate.Internal.TypeUtil qualified as TypeUtil
 import Kernel.Elaborate.Internal.Unify qualified as Unify
 import Kernel.Elaborate.PublicSignature qualified as PublicSignature
 import Kernel.Elaborate.Trace qualified as ElaborateTrace
 import Kernel.Elaborate.TypeHoleSubst qualified as THS
-import Kernel.Parse.Internal.Handle.UnusedTopLevelName qualified as UnusedTopLevelName
-import Kernel.Parse.Internal.Handle.UsedTopLevelName qualified as UsedTopLevelName
 import Language.Common.Annotation qualified as AN
 import Language.Common.Attr.Lam qualified as AttrL
 import Language.Common.BaseLowType qualified as BLT
@@ -132,25 +128,18 @@ import Logger.Hint
 import Logger.Log qualified as L
 import Logger.LogLevel qualified as LL
 
-elaborate :: Handle -> Target -> [L.Log] -> Either Cache.Cache [WeakStmt] -> App [Stmt]
+elaborate :: Handle -> Target -> [L.Log] -> Either Cache.Cache ([WeakStmt], TopLevelReferences) -> App [Stmt]
 elaborate h t logs cacheOrStmt = do
   case cacheOrStmt of
     Left cache -> do
       let stmtList = Cache.stmtList cache
-      liftIO $
-        UnusedTopLevelName.deleteMany (Global.unusedTopLevelNameHandle $ globalHandle h) $
-          Cache.globalReferenceList cache
-      case Cache.knownTraceSiteIDs cache of
-        Just traceSiteIDs ->
-          zipWithM_ (\stmt ids -> insertStmtWithTraceSites h (Just ids) stmt) stmtList traceSiteIDs
-        Nothing ->
-          forM_ stmtList $ insertStmt h
+      let traceSiteIDsList = maybe (repeat Nothing) (map Just) $ Cache.knownTraceSiteIDs cache
+      register h $ mconcat $ zipWith makeRegistration traceSiteIDsList stmtList
       liftIO $ GlobalRemark.insert (globalRemarkHandle h) logs
       liftIO $ Gensym.setCount (gensymHandle h) $ Cache.countSnapshot cache
       return stmtList
-    Right stmtList -> do
-      globalReferenceList <- liftIO $ UsedTopLevelName.get (usedTopLevelNameHandle h)
-      let action = analyzeStmtList h stmtList >>= synthesizeStmtList h t logs globalReferenceList
+    Right (stmtList, topLevelReferences) -> do
+      let action = analyzeStmtList h stmtList >>= synthesizeStmtList h t logs topLevelReferences
       catchError action $ \e -> do
         saveLocationTree h t
         throwError e
@@ -166,7 +155,7 @@ analyzeStmtList h stmtList = do
   forM stmtList $ \stmt -> do
     liftIO $ reportTrace h Report.PreTermPhase "preterm" stmt
     stmt' <- Infer.inferStmt h stmt
-    insertWeakStmt h stmt'
+    register h $ makeWeakRegistration stmt'
     return stmt'
 
 requireBranchAgreement :: Handle -> App ()
@@ -254,8 +243,8 @@ toTextBinder :: BinderF WT.WeakType -> T.Text
 toTextBinder (_, _, x, ty) =
   Ident.toText' x <> ": " <> Weak.toTextType ty
 
-synthesizeStmtList :: Handle -> Target -> [L.Log] -> [DD.DefiniteDescription] -> [WeakStmt] -> App [Stmt]
-synthesizeStmtList h t logs globalReferenceList stmtList = do
+synthesizeStmtList :: Handle -> Target -> [L.Log] -> TopLevelReferences -> [WeakStmt] -> App [Stmt]
+synthesizeStmtList h t logs topLevelReferences stmtList = do
   liftIO (Constraint.get (constraintHandle h)) >>= Unify.unify h >>= liftIO . Hole.setTypeSubst (holeHandle h)
   (stmtList', affineErrorList) <- bimap concat concat . unzip <$> mapM (elaborateStmt h) stmtList
   let affineErrorList' = nubOrdOn (\lg -> (fmap logPosition (L.position lg), L.content lg)) affineErrorList
@@ -278,7 +267,7 @@ synthesizeStmtList h t logs globalReferenceList stmtList = do
       { Cache.stmtList = stmtList'',
         Cache.knownTraceSiteIDs = Nothing,
         Cache.remarkList = logs',
-        Cache.globalReferenceList = globalReferenceList,
+        Cache.topLevelReferences = topLevelReferences,
         Cache.countSnapshot = countSnapshot
       }
   liftIO $ Tag.flushSuspended (tagHandle h)
@@ -337,7 +326,7 @@ elaborateStmt h stmt = do
       PublicSignature.checkStmt (globalHandle h) (Source.sourceModule $ currentSource h) $
         StmtDefine isConstLike stmtKind' (SavedHint m) x impArgs' expArgs' defaultArgs' codType' e'
       let result = StmtDefine isConstLike stmtKind' (SavedHint m) x impArgs'' expArgs'' defaultArgs'' codType'' eFinal
-      insertStmtWithTraceSites h (Just traceSiteIDs) result
+      register h $ makeRegistration (Just traceSiteIDs) result
       return ([result], remarks)
     WeakStmtDefineType isConstLike stmtKind m x impArgs expArgs defaultArgs codType body -> do
       stmtKind' <- elaborateStmtKindType h stmtKind
@@ -360,7 +349,7 @@ elaborateStmt h stmt = do
       PublicSignature.checkStmt (globalHandle h) (Source.sourceModule $ currentSource h) $
         StmtDefineType isConstLike stmtKind' (SavedHint m) x impArgs' expArgs' defaultArgs' codType' body'
       let result = StmtDefineType isConstLike stmtKind' (SavedHint m) x impArgs'' expArgs'' defaultArgs'' codType'' body''
-      insertStmt h result
+      register h $ makeRegistration Nothing result
       return ([result], [])
     WeakStmtDefineResource m dd resourceID unitType discarder copier resourceSize -> do
       discarder' <- elaborate' h discarder
@@ -378,12 +367,12 @@ elaborateStmt h stmt = do
           raiseError mSize "Could not reduce the size of this resource into an integer"
       unitType'' <- inlineType h m unitType'
       let result = StmtDefineResource (SavedHint m) dd resourceID unitType'' discarder'' copier'' resourceSize''
-      insertStmt h result
+      register h $ makeRegistration Nothing result
       return ([result], [])
     WeakStmtTrope m name defineMetaList -> do
       defineMetaList' <- mapM (elaborateDefineMeta h name) defineMetaList
       let tropeStmt = StmtTrope (SavedHint m) name defineMetaList'
-      insertStmt h tropeStmt
+      register h $ makeRegistration Nothing tropeStmt
       return ([tropeStmt], [])
     WeakStmtVariadic kind m dd -> do
       return ([StmtVariadic kind (SavedHint m) dd], [])
@@ -401,7 +390,7 @@ elaborateStmt h stmt = do
         signature <- getExposedSignature h m dd
         return (SavedHint m, dd, extName, signature)
       let result = StmtExpose exportList'
-      insertStmt h result
+      register h $ makeRegistration Nothing result
       return ([result], [])
     WeakStmtNamespace m dd -> do
       return ([StmtNamespace (SavedHint m) dd], [])
@@ -577,104 +566,83 @@ checkActualityTypeList h dataNameSet m ts =
         Right () ->
           checkActualityTypeList h dataNameSet m rest
 
-insertStmt :: Handle -> Stmt -> App ()
-insertStmt h stmt = do
-  insertStmtWithTraceSites h Nothing stmt
+makeRegistration :: Maybe IntSet.IntSet -> Stmt -> Registration
+makeRegistration knownTraceSiteIDs stmt =
+  makeTermRegistration knownTraceSiteIDs stmt <> makeWeakRegistration (weakenStmt stmt)
 
-insertStmtWithTraceSites :: Handle -> Maybe IntSet.IntSet -> Stmt -> App ()
-insertStmtWithTraceSites h knownTraceSiteIDs stmt = do
+makeTermRegistration :: Maybe IntSet.IntSet -> Stmt -> Registration
+makeTermRegistration knownTraceSiteIDs stmt =
   case stmt of
     StmtDefine isConstLike stmtKind (SavedHint m) f impArgs expArgs defaultArgs t e -> do
-      liftIO $ Type.insert' (typeHandle h) f $ weakenType $ m :< TM.Pi (PK.fromStmtKind stmtKind isConstLike) impArgs expArgs (map fst defaultArgs) t
       let traceSiteIDs = fromMaybe (TraceSites.traceIDSet e) knownTraceSiteIDs
-      liftIO $ Definition.insert' (defHandle h) f impArgs expArgs defaultArgs e t (stmtKindToDefKind stmtKind defaultArgs) traceSiteIDs
+      mempty
+        { typeEntries = [(f, weakenType $ m :< TM.Pi (PK.fromStmtKind stmtKind isConstLike) impArgs expArgs (map fst defaultArgs) t)],
+          definitionEntries = Definition.makeEntry f impArgs expArgs defaultArgs e t (stmtKindToDefKind stmtKind defaultArgs) traceSiteIDs
+        }
     StmtDefineType isConstLike stmtKind (SavedHint m) f impArgs expArgs defaultArgs t body -> do
       let allBinders = impArgs ++ expArgs ++ map fst defaultArgs
-      liftIO $ Type.insert' (typeHandle h) f $ weakenType $ m :< TM.Pi (PK.Normal isConstLike) impArgs expArgs (map fst defaultArgs) t
-      registerDataTypeStmt h f stmtKind
-      liftIO $ TypeDef.insert' (typeDefHandle h) (SK.toOpacityType stmtKind) f allBinders body
-    StmtDefineResource (SavedHint m) dd resourceID _ _ _ resourceSize -> do
-      liftIO $ Type.insert' (typeHandle h) dd $ weakenType (m :< TM.Pi (PK.Normal True) [] [] [] (m :< TM.Tau))
-      liftIO $ TypeDef.insert' (typeDefHandle h) (SK.toOpacityType SK.Alias) dd [] (m :< TM.Resource dd resourceID)
-      case Resource.layoutOf resourceSize of
-        Just resourceSize' ->
-          liftIO $ Resource.insert (Global.resourceHandle $ globalHandle h) dd resourceSize'
-        Nothing ->
-          return ()
-    StmtTrope _ name defineMetaList -> do
-      liftIO $ Trope.insert (tropeHandle h) name defineMetaList
+      mempty
+        { typeEntries = [(f, weakenType $ m :< TM.Pi (PK.Normal isConstLike) impArgs expArgs (map fst defaultArgs) t)],
+          dataInfoEntries = makeDataInfoEntries f stmtKind,
+          typeDefEntries = TypeDef.makeEntry (SK.toOpacityType stmtKind) f allBinders body
+        }
+    StmtDefineResource (SavedHint m) dd resourceID _ _ _ resourceSize ->
+      mempty
+        { typeEntries = [(dd, weakenType (m :< TM.Pi (PK.Normal True) [] [] [] (m :< TM.Tau)))],
+          typeDefEntries = TypeDef.makeEntry (SK.toOpacityType SK.Alias) dd [] (m :< TM.Resource dd resourceID),
+          resourceEntries = map (dd,) $ toList $ Resource.layoutOf resourceSize
+        }
+    StmtTrope _ name defineMetaList ->
+      mempty {tropeEntries = [(name, defineMetaList)]}
     StmtVariadic {} ->
-      return ()
-    StmtForeign _ -> do
-      return ()
-    StmtExpose exportList -> do
-      let entrySymbol = Arch.entrySymbol $ P.arch $ Platform.getPlatform $ Global.platformHandle (globalHandle h)
-      ensureExposedNameLinearity S.empty exportList
-      forM_ exportList $ \(SavedHint m, dd, extName, _) -> do
-        when (EN.reify extName == entrySymbol) $
-          raiseError m $ "`" <> EN.reify extName <> "` is the entry point of the target and cannot be exposed"
-        when (EN.isLLVMIntrinsic extName) $
-          raiseError m $ "`" <> EN.reify extName <> "` is reserved for LLVM intrinsics and cannot be exposed"
-        Expose.insert (Global.exposeHandle (globalHandle h)) m dd extName
+      mempty
+    StmtForeign _ ->
+      mempty
+    StmtExpose exportList ->
+      mempty {exposeEntries = [map (\(SavedHint m, dd, extName, _) -> (m, dd, extName)) exportList]}
     StmtNamespace {} ->
-      return ()
-  insertWeakStmt h $ weakenStmt stmt
+      mempty
 
-insertWeakStmt :: Handle -> WeakStmt -> App ()
-insertWeakStmt h stmt = do
+makeWeakRegistration :: WeakStmt -> Registration
+makeWeakRegistration stmt = do
   case stmt of
-    WeakStmtDefineTerm _ stmtKind m f impArgs expArgs defaultArgs codType e -> do
-      liftIO $ WeakDef.insert' (weakDefHandle h) (gensymHandle h) (SK.toOpacityTerm stmtKind) (SK.isDestPassingStmtKind stmtKind) m f impArgs expArgs defaultArgs codType e
+    WeakStmtDefineTerm _ stmtKind m f impArgs expArgs defaultArgs codType e ->
+      mempty {weakDefEntries = WeakDef.makeEntry (SK.toOpacityTerm stmtKind) (SK.isDestPassingStmtKind stmtKind) m f impArgs expArgs defaultArgs codType e}
     WeakStmtDefineType _ stmtKind _ f impArgs expArgs defaultArgs _ body -> do
       let binders = impArgs ++ expArgs ++ map fst defaultArgs
-      liftIO $ WeakTypeDef.insert' (weakTypeDefHandle h) (SK.toOpacityType stmtKind) f binders body
-      registerWeakDataTypeStmt h f stmtKind
+      mempty
+        { weakTypeDefEntries = WeakTypeDef.makeEntry (SK.toOpacityType stmtKind) f binders body,
+          weakDataInfoEntries = makeDataInfoEntries f stmtKind
+        }
     WeakStmtDefineResource m dd resourceID _ _ _ _ -> do
       let resourceType = m :< WT.Resource dd resourceID
-      liftIO $ WeakTypeDef.insert' (weakTypeDefHandle h) (SK.toOpacityType SK.Alias) dd [] resourceType
-    WeakStmtTrope {} -> do
-      return ()
-    WeakStmtNominal {} -> do
-      return ()
-    WeakStmtVariadic {} -> do
-      return ()
+      mempty {weakTypeDefEntries = WeakTypeDef.makeEntry (SK.toOpacityType SK.Alias) dd [] resourceType}
+    WeakStmtTrope {} ->
+      mempty
+    WeakStmtNominal {} ->
+      mempty
+    WeakStmtVariadic {} ->
+      mempty
     WeakStmtForeign foreignList ->
-      forM_ foreignList $ \(F.Foreign _ externalName sig) -> do
-        liftIO $ WeakDecl.insert (weakDeclHandle h) (DN.Ext externalName) sig
-    WeakStmtExpose {} -> do
-      return ()
-    WeakStmtNamespace {} -> do
-      return ()
+      mempty {foreignEntries = map (\(F.Foreign _ externalName sig) -> (DN.Ext externalName, sig)) foreignList}
+    WeakStmtExpose {} ->
+      mempty
+    WeakStmtNamespace {} ->
+      mempty
 
-registerDataTypeStmt :: Handle -> DD.DefiniteDescription -> SK.StmtKindType TM.Type -> App ()
-registerDataTypeStmt h dataName stmtKind =
+makeDataInfoEntries :: DD.DefiniteDescription -> SK.StmtKindType t -> [(DD.DefiniteDescription, DI.DataInfo (BinderF t))]
+makeDataInfoEntries dataName stmtKind =
   case stmtKind of
     SK.Data _ dataArgs consInfoList _ ->
-      liftIO $
-        Data.insert
-          (dataHandle h)
-          dataName
+      [ ( dataName,
           DI.DataInfo
             { DI.dataArgs = dataArgs,
               DI.consInfoList = map snd consInfoList
             }
+        )
+      ]
     _ ->
-      return ()
-
-registerWeakDataTypeStmt :: Handle -> DD.DefiniteDescription -> SK.StmtKindType WT.WeakType -> App ()
-registerWeakDataTypeStmt h dataName stmtKind =
-  case stmtKind of
-    SK.Data _ dataArgs consInfoList _ ->
-      liftIO $
-        Data.insertWeak
-          (dataHandle h)
-          dataName
-          DI.DataInfo
-            { DI.dataArgs = dataArgs,
-              DI.consInfoList = map snd consInfoList
-            }
-    _ ->
-      return ()
+      []
 
 lookupDataInfo :: Handle -> Hint -> DD.DefiniteDescription -> App [DI.ConsInfo (BinderF TM.Type)]
 lookupDataInfo h m dataName = do
@@ -1698,17 +1666,6 @@ chaseHole h m t =
       fillHole h m holeID es
     _ ->
       return t
-
-ensureExposedNameLinearity :: S.Set EN.ExternalName -> [(SavedHint, DD.DefiniteDescription, EN.ExternalName, F.FunctionSignature)] -> App ()
-ensureExposedNameLinearity found exportList =
-  case exportList of
-    [] ->
-      return ()
-    (SavedHint m, _, extName, _) : rest
-      | S.member extName found ->
-          raiseError m $ "`" <> EN.reify extName <> "` is already exposed"
-      | otherwise ->
-          ensureExposedNameLinearity (S.insert extName found) rest
 
 stmtKindToDefKind :: SK.StmtKindTerm a -> [(binder, b)] -> Maybe InlineHandle.DefKind
 stmtKindToDefKind stmtKind defaultArgs =

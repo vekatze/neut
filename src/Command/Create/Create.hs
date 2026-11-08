@@ -31,7 +31,7 @@ data Handle = Handle
 
 new :: Console.Handle -> Logger.Handle -> SaveModule.Handle -> LocalArchive.LocalArchiveMap -> App Handle
 new consoleHandle loggerHandle saveModuleHandle localArchiveMap = do
-  platformHandle <- Platform.new loggerHandle Reuse.disabled P.SelectHost
+  platformHandle <- Platform.new loggerHandle P.SelectHost
   createHandle <- liftIO $ Create.new saveModuleHandle loggerHandle platformHandle
   return $ Handle {..}
 

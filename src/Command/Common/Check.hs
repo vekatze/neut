@@ -33,6 +33,7 @@ import Kernel.Common.Module.GetModule qualified as GetModule
 import Kernel.Common.Source (Source (sourceFilePath))
 import Kernel.Common.Source qualified as Source
 import Kernel.Common.Target
+import Kernel.Common.TopLevelReferences (TopLevelReferences)
 import Kernel.Common.Trace qualified as Trace
 import Kernel.Elaborate.Elaborate qualified as Elaborate
 import Kernel.Elaborate.Internal.Handle.Elaborate qualified as Elaborate
@@ -149,7 +150,7 @@ _check' h target baseModule = do
         void $ checkSource h startTime gensymHandle traceConfig localHandle target source cacheOrContent
       Just <$> checkSource h startTime rootGensymHandle traceConfig rootLocalHandle target rootSource rootCacheOrContent
 
-checkSource :: Handle -> UTCTime -> Gensym.Handle -> Trace.Config -> Local.Handle -> Target -> Source -> (Either Cache [WeakStmt], [Log]) -> App Elaborate.Handle
+checkSource :: Handle -> UTCTime -> Gensym.Handle -> Trace.Config -> Local.Handle -> Target -> Source -> (Either Cache ([WeakStmt], TopLevelReferences), [Log]) -> App Elaborate.Handle
 checkSource h startTime gensymHandle traceConfig localHandle target source (cacheOrStmtList, logs) = do
   elaborateHandle <- liftIO $ Elaborate.new gensymHandle (globalHandle h) traceConfig localHandle source startTime
   liftIO $

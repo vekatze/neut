@@ -8,14 +8,11 @@ module Language.Common.ArgNum
   )
 where
 
-import Data.Binary
-import GHC.Generics
+import Binary.Derive (deriveBinary)
 import Prelude hiding (succ)
 
 newtype ArgNum = MakeArgNum {reify :: Int}
-  deriving (Generic, Eq, Show)
-
-instance Binary ArgNum
+  deriving (Eq, Show)
 
 fromInt :: Int -> ArgNum
 fromInt i =
@@ -33,3 +30,5 @@ argNumS4 =
 add :: ArgNum -> ArgNum -> ArgNum
 add (MakeArgNum i1) (MakeArgNum i2) =
   MakeArgNum (i1 + i2)
+
+deriveBinary [''ArgNum]

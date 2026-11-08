@@ -7,18 +7,14 @@ module Kernel.Common.LocalVarTree
   )
 where
 
-import Data.Binary
+import Binary.Derive (deriveBinary)
 import Data.List (sortOn)
-import GHC.Generics (Generic)
 import Language.Common.Ident
 import Logger.Hint
 
 data LocalVarTree
   = Leaf
   | Node Loc Loc Ident LocalVarTree LocalVarTree
-  deriving (Generic)
-
-instance Binary LocalVarTree
 
 type Entry =
   (Loc, Loc, Ident)
@@ -64,3 +60,5 @@ collect loc tree = do
           if loc < endLoc
             then x : collect loc t1 ++ collect loc t2
             else collect loc t1 ++ collect loc t2
+
+deriveBinary [''LocalVarTree]

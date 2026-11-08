@@ -1,8 +1,8 @@
 module Kernel.Common.Handle.Global.Data
   ( Handle (..),
     new,
-    insert,
-    insertWeak,
+    insertMany,
+    insertWeakMany,
     lookup,
     lookupWeak,
   )
@@ -10,6 +10,7 @@ where
 
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
+import Kernel.Common.HashMapRef (insertEntries)
 import Language.Common.Binder
 import Language.Common.DataInfo (DataInfo)
 import Language.Common.DefiniteDescription qualified as DD
@@ -28,13 +29,13 @@ new = do
   _weakDataMapRef <- newIORef Map.empty
   return $ Handle {..}
 
-insert :: Handle -> DD.DefiniteDescription -> DataInfo (BinderF TM.Type) -> IO ()
-insert h dataName dataInfo =
-  atomicModifyIORef' (_dataMapRef h) (\mp -> (Map.insert dataName dataInfo mp, ()))
+insertMany :: Handle -> [(DD.DefiniteDescription, DataInfo (BinderF TM.Type))] -> IO ()
+insertMany h =
+  insertEntries (_dataMapRef h)
 
-insertWeak :: Handle -> DD.DefiniteDescription -> DataInfo (BinderF WT.WeakType) -> IO ()
-insertWeak h dataName dataInfo =
-  atomicModifyIORef' (_weakDataMapRef h) (\mp -> (Map.insert dataName dataInfo mp, ()))
+insertWeakMany :: Handle -> [(DD.DefiniteDescription, DataInfo (BinderF WT.WeakType))] -> IO ()
+insertWeakMany h =
+  insertEntries (_weakDataMapRef h)
 
 lookup :: Handle -> DD.DefiniteDescription -> IO (Maybe (DataInfo (BinderF TM.Type)))
 lookup h dataName = do

@@ -17,8 +17,7 @@ module Language.Common.DataInfo
   )
 where
 
-import Data.Binary
-import GHC.Generics
+import Binary.Derive (deriveBinary)
 import Language.Common.BaseLowType qualified as BLT
 import Language.Common.CellLayout qualified as CL
 import Language.Common.DataSize qualified as DS
@@ -31,7 +30,6 @@ data DataInfo binder = DataInfo
   { dataArgs :: [binder],
     consInfoList :: [ConsInfo binder]
   }
-  deriving (Generic)
 
 data ConsInfo binder = ConsInfo
   { consName :: DD.DefiniteDescription,
@@ -42,14 +40,11 @@ data ConsInfo binder = ConsInfo
     consArgLayouts :: [CL.FieldStorage],
     discriminant :: D.Discriminant
   }
-  deriving (Generic)
 
 data FieldHint
   = FieldAuto
   | FieldMixed Hint
-  deriving (Show, Eq, Generic)
-
-instance Binary FieldHint
+  deriving (Show, Eq)
 
 isFieldMixed :: FieldHint -> Bool
 isFieldMixed hint =
@@ -61,10 +56,6 @@ isFieldMixed hint =
 
 type StmtConsInfo binder =
   (SavedHint, ConsInfo binder)
-
-instance Binary binder => Binary (DataInfo binder)
-
-instance Binary binder => Binary (ConsInfo binder)
 
 discriminantWidth :: [ConsInfo binder] -> CL.FieldWidth
 discriminantWidth consInfoList =
@@ -146,3 +137,5 @@ cellStoragesList prefix consInfoList =
       [prefix]
     _ ->
       map ((prefix ++) . consStorages) consInfoList
+
+deriveBinary [''FieldHint, ''DataInfo, ''ConsInfo]

@@ -7,9 +7,8 @@ module Language.Common.LocalDefKind
   )
 where
 
-import Data.Binary
+import Binary.Derive (deriveBinary)
 import Data.Text qualified as T
-import GHC.Generics
 import Language.Common.Opacity qualified as O
 
 data LocalDefKind
@@ -17,9 +16,7 @@ data LocalDefKind
   | Inline
   | DefineMeta
   | InlineMeta
-  deriving (Show, Eq, Generic)
-
-instance Binary LocalDefKind
+  deriving (Show, Eq)
 
 toOpacity :: LocalDefKind -> O.Opacity
 toOpacity k =
@@ -70,3 +67,5 @@ keyword k =
       "define-meta"
     InlineMeta ->
       "inline-meta"
+
+deriveBinary [''LocalDefKind]

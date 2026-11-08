@@ -20,11 +20,11 @@ import Kernel.Parse.Internal.Handle.Alias qualified as Alias
 import Kernel.Parse.Internal.Handle.BranchAgreement qualified as BranchAgreement
 import Kernel.Parse.Internal.Handle.PreDecl qualified as PreDecl
 import Kernel.Parse.Internal.Handle.Unused qualified as Unused
-import Kernel.Parse.Internal.Handle.UsedTopLevelName qualified as UsedTopLevelName
+import Kernel.Parse.Internal.Handle.UnusedTopLevelName qualified as UnusedTopLevelName
 
 data Handle = Handle
   { unusedHandle :: Unused.Handle,
-    usedTopLevelNameHandle :: UsedTopLevelName.Handle,
+    topLevelReferenceLog :: UnusedTopLevelName.ReferenceLog,
     aliasHandle :: Alias.Handle,
     locatorHandle :: Locator.Handle,
     tagHandle :: Tag.Handle,
@@ -42,7 +42,7 @@ new h source = do
   let antecedentHandle = Global.antecedentHandle h
   let shiftToLatestHandle = STL.new antecedentHandle
   unusedHandle <- liftIO Unused.new
-  usedTopLevelNameHandle <- liftIO UsedTopLevelName.new
+  topLevelReferenceLog <- liftIO UnusedTopLevelName.newReferenceLog
   tagHandle <- liftIO Tag.new
   modulePathMap <- liftIO $ ModulePath.get $ Global.modulePathHandle h
   locatorHandle <- Locator.new tagHandle modulePathMap source

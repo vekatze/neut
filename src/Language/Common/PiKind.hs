@@ -6,8 +6,7 @@ module Language.Common.PiKind
   )
 where
 
-import Data.Binary
-import GHC.Generics (Generic)
+import Binary.Derive (deriveBinary)
 import Language.Common.IsConstLike (IsConstLike)
 import Language.Common.NominalTag (NominalTag, isDestPassingTag)
 import Language.Common.StmtKind qualified as SK
@@ -16,9 +15,7 @@ data PiKind
   = Normal IsConstLike
   | DestPass IsConstLike
   | DataIntro IsConstLike
-  deriving (Show, Eq, Generic)
-
-instance Binary PiKind
+  deriving (Show, Eq)
 
 normal :: PiKind
 normal =
@@ -40,3 +37,5 @@ fromNominalTag tag isConstLike =
   if isDestPassingTag tag
     then DestPass isConstLike
     else Normal isConstLike
+
+deriveBinary [''PiKind]

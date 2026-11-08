@@ -7,8 +7,8 @@ module Language.Common.GlobalLocator
 where
 
 import App.Error
+import Binary.Derive (deriveBinary)
 import Control.Monad
-import Data.Binary
 import Data.Hashable
 import Data.Text qualified as T
 import GHC.Generics
@@ -24,8 +24,6 @@ data GlobalLocator = GlobalLocator
     sourceLocator :: SL.SourceLocator
   }
   deriving (Generic, Show, Eq)
-
-instance Binary GlobalLocator
 
 instance Hashable GlobalLocator
 
@@ -77,3 +75,5 @@ reflectModulePathComponents m modulePathText modulePathTextList =
         alias <- BN.reflect m aliasText
         return $ ModuleAlias alias
       return $ filter (/= MA.thisModuleAlias) aliases
+
+deriveBinary [''GlobalLocator]

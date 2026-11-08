@@ -3,14 +3,13 @@ module Logger.LogLevel
   )
 where
 
-import Data.Binary
-import GHC.Generics (Generic)
+import Binary.Derive (deriveBinary)
 
 data LogLevel
   = Note
   | Warning
   | Error
   | Critical
-  deriving (Show, Eq, Generic)
+  deriving (Show, Eq)
 
-instance Binary LogLevel
+deriveBinary [''LogLevel]

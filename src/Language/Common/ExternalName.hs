@@ -10,7 +10,7 @@ module Language.Common.ExternalName
   )
 where
 
-import Data.Binary
+import Binary.Derive (deriveBinary)
 import Data.ByteString.Builder
 import Data.Char (isControl, ord)
 import Data.Hashable
@@ -21,8 +21,6 @@ import Numeric (showHex)
 
 newtype ExternalName = ExternalName {reify :: T.Text}
   deriving (Generic, Show, Eq, Ord)
-
-instance Binary ExternalName
 
 instance Hashable ExternalName
 
@@ -103,3 +101,5 @@ toUpperHex c =
     'e' -> 'E'
     'f' -> 'F'
     _ -> c
+
+deriveBinary [''ExternalName]

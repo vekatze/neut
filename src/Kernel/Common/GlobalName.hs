@@ -9,7 +9,6 @@ module Kernel.Common.GlobalName
 where
 
 import Data.Text qualified as T
-import GHC.Generics (Generic)
 import Language.Common.ArgNum
 import Language.Common.CallSite (IsSourceArg)
 import Language.Common.DefiniteDescription qualified as DD
@@ -32,7 +31,6 @@ data GlobalName
   | Rule RuleKind
   | Trope
   | Namespace
-  deriving (Generic)
 
 getIsConstLike :: GlobalName -> IsConstLike
 getIsConstLike gn =

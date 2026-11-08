@@ -8,9 +8,8 @@ module Language.Common.NominalTag
   )
 where
 
-import Data.Binary
+import Binary.Derive (deriveBinary)
 import Data.Text qualified as T
-import GHC.Generics (Generic)
 
 data NominalTag
   = Define
@@ -25,9 +24,7 @@ data NominalTag
   | AliasOpaque
   | Data
   | Resource
-  deriving (Eq, Ord, Show, Generic)
-
-instance Binary NominalTag
+  deriving (Eq, Ord, Show)
 
 nominalTagToText :: NominalTag -> T.Text
 nominalTagToText tag =
@@ -110,3 +107,5 @@ isDestPassingTag tag =
       True
     _ ->
       False
+
+deriveBinary [''NominalTag]
