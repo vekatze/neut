@@ -8,36 +8,142 @@
     },
     foreign-wasm {
       main "foreign.nt",
-      platform "wasm32",
+      platform "*/wasm32-wasip1",
       execute "wasmtime {{executable}}",
     },
   },
-  foreign {
-    input [
-      "foreign/add_const.c",
-      "foreign/add_const_other.c",
-    ],
-    output [
-      "object/",
-      "add_const_other.o",
-    ],
-    link [
-      "object/add_const.o",
-    ],
-    transitive-link-option [
-      "$(printf '%s' -lm)",
-    ],
-    script [
-      "mkdir -p {{foreign}}/object",
-      "{{clang}} -c -flto=thin -O2 foreign/add_const.c -o {{foreign}}/object/add_const.o",
-      "{{clang}} -c -flto=thin -O2 foreign/add_const_other.c -o {{foreign}}/add_const_other.o",
-    ],
-  },
+  foreign [
+    {
+      platform "wasm32-wasip1/*",
+      input [
+        "foreign/add_const.c",
+        "foreign/add_const_other.c",
+        "foreign/platform_tag.c",
+      ],
+      output [
+        "object/",
+        "add_const_other.o",
+      ],
+      link [
+        "object/add_const.o",
+        "object/tag.o",
+      ],
+      transitive-link-option [
+        "$(printf '%s' -lm)",
+      ],
+      script [
+        "mkdir -p {{foreign}}/object",
+        "{{clang}} -c -flto=thin -O2 foreign/add_const.c -o {{foreign}}/object/add_const.o",
+        "{{clang}} -c -flto=thin -O2 foreign/add_const_other.c -o {{foreign}}/add_const_other.o",
+        "{{clang}} -c -flto=thin -O2 -DPLATFORM_TAG=9 foreign/platform_tag.c -o {{foreign}}/object/tag.o",
+      ],
+    },
+    {
+      platform "*/arm64-darwin",
+      input [
+        "foreign/add_const.c",
+        "foreign/add_const_other.c",
+        "foreign/platform_tag.c",
+      ],
+      output [
+        "object/",
+        "add_const_other.o",
+      ],
+      link [
+        "object/add_const.o",
+        "object/tag.o",
+      ],
+      transitive-link-option [
+        "$(printf '%s' -lm)",
+      ],
+      script [
+        "mkdir -p {{foreign}}/object",
+        "{{clang}} -c -flto=thin -O2 foreign/add_const.c -o {{foreign}}/object/add_const.o",
+        "{{clang}} -c -flto=thin -O2 foreign/add_const_other.c -o {{foreign}}/add_const_other.o",
+        "{{clang}} -c -flto=thin -O2 -DPLATFORM_TAG=1 foreign/platform_tag.c -o {{foreign}}/object/tag.o",
+      ],
+    },
+    {
+      platform "*/wasm32-wasip1",
+      input [
+        "foreign/add_const.c",
+        "foreign/add_const_other.c",
+        "foreign/platform_tag.c",
+      ],
+      output [
+        "object/",
+        "add_const_other.o",
+      ],
+      link [
+        "object/add_const.o",
+        "object/tag.o",
+      ],
+      transitive-link-option [
+        "$(printf '%s' -lm)",
+      ],
+      script [
+        "mkdir -p {{foreign}}/object",
+        "{{clang}} -c -flto=thin -O2 foreign/add_const.c -o {{foreign}}/object/add_const.o",
+        "{{clang}} -c -flto=thin -O2 foreign/add_const_other.c -o {{foreign}}/add_const_other.o",
+        "{{clang}} -c -flto=thin -O2 -DPLATFORM_TAG=4 foreign/platform_tag.c -o {{foreign}}/object/tag.o",
+      ],
+    },
+    {
+      platform "*/*",
+      input [
+        "foreign/add_const.c",
+        "foreign/add_const_other.c",
+        "foreign/platform_tag.c",
+      ],
+      output [
+        "object/",
+        "add_const_other.o",
+      ],
+      link [
+        "object/add_const.o",
+        "object/tag.o",
+      ],
+      transitive-link-option [
+        "$(printf '%s' -lm)",
+      ],
+      script [
+        "mkdir -p {{foreign}}/object",
+        "{{clang}} -c -flto=thin -O2 foreign/add_const.c -o {{foreign}}/object/add_const.o",
+        "{{clang}} -c -flto=thin -O2 foreign/add_const_other.c -o {{foreign}}/add_const_other.o",
+        "{{clang}} -c -flto=thin -O2 -DPLATFORM_TAG=0 foreign/platform_tag.c -o {{foreign}}/object/tag.o",
+      ],
+    },
+    {
+      platform "*/amd64-linux",
+      input [
+        "foreign/add_const.c",
+        "foreign/add_const_other.c",
+        "foreign/platform_tag.c",
+      ],
+      output [
+        "object/",
+        "add_const_other.o",
+      ],
+      link [
+        "object/add_const.o",
+        "object/tag.o",
+      ],
+      transitive-link-option [
+        "$(printf '%s' -lm)",
+      ],
+      script [
+        "mkdir -p {{foreign}}/object",
+        "{{clang}} -c -flto=thin -O2 foreign/add_const.c -o {{foreign}}/object/add_const.o",
+        "{{clang}} -c -flto=thin -O2 foreign/add_const_other.c -o {{foreign}}/add_const_other.o",
+        "{{clang}} -c -flto=thin -O2 -DPLATFORM_TAG=7 foreign/platform_tag.c -o {{foreign}}/object/tag.o",
+      ],
+    },
+  ],
   dependency {
     core {
-      digest "-hD_dy56xnr7w2oe-S8ZduK0_ccKID6Y0wuvi_VfqKQ",
+      digest "U0di-DrJSIaBBKq1kVsSzQNp_DedAAcKQQxv_HRP7Rg",
       mirror [
-        "https://github.com/vekatze/neut-core/raw/main/archive/0.57.11.tar.zst",
+        "https://github.com/vekatze/neut-core/raw/main/archive/0.57.12.tar.zst",
       ],
       enable-preset true,
     },

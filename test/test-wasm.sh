@@ -75,7 +75,7 @@ for target_dir in "$@"; do
           printf "\033[1;31merror:\033[0m expected a capability error, but the build succeeded: $name\n"
           exit 1
         fi
-        if ! printf "%s" "$output" | grep -q "is not available on wasm32"; then
+        if ! printf "%s" "$output" | grep -q "is not available on wasm32-wasip1"; then
           printf "\033[1;31merror:\033[0m expected a capability error in: $name\n$output\n"
           exit 1
         fi

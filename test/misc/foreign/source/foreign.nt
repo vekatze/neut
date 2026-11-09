@@ -12,6 +12,7 @@ foreign {
   call_peek() -> int,
   call_record(int) -> int,
   note(int) -> void,
+  platform_tag() -> int,
 }
 
 define double(x: int) -> int {
@@ -47,6 +48,17 @@ expose {
   record as neut_test_record,
 }
 
+define get-expected-platform-tag() -> int {
+  introspect target-platform {
+  | arm64-darwin =>
+    1
+  | wasm32-wasip1 =>
+    4
+  | default =>
+    0
+  }
+}
+
 define main() -> unit {
   let x: int = 10;
   print-int-line(from-c-int(magic external add_const(C-Int(trunc-int-int32(x)))));
@@ -55,5 +67,6 @@ define main() -> unit {
   print-int-line(sext-int32-int(magic external call_decrement(trunc-int-int32(-5))));
   print-int-line(magic external call_increment());
   print-int-line(magic external call_peek());
-  print-int-line(magic external call_record(8))
+  print-int-line(magic external call_record(8));
+  print-int-line(sub-int(magic external platform_tag(), get-expected-platform-tag()))
 }
