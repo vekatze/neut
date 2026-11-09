@@ -4,6 +4,7 @@ module Kernel.Common.Target
     MainTarget (..),
     emptyZen,
     getEntryPointName,
+    getTargetConfig,
     getCompileOption,
     getLinkOption,
     getExecuteCommand,
@@ -12,11 +13,9 @@ module Kernel.Common.Target
 where
 
 import Data.Text qualified as T
-import Kernel.Common.Allocator (Allocator, defaultAllocator)
 import Kernel.Common.ClangOption qualified as CL
-import Kernel.Common.Platform qualified as P
-import Kernel.Common.ZenConfig (ZenConfig)
-import Kernel.Common.ZenConfig qualified as Z
+import Kernel.Common.PlatformPattern (PlatformPattern)
+import Kernel.Common.TargetConfig
 import Language.Common.BaseName qualified as BN
 import Language.Common.SourceLocator qualified as SL
 import Logger.Hint (Hint)
@@ -30,21 +29,19 @@ data Target
 
 data TargetSummary = TargetSummary
   { entryPoint :: SL.SourceLocator,
-    clangOption :: CL.ClangOption,
-    allocator :: Allocator,
-    platform :: P.PlatformSelector,
-    executeCommand :: Maybe (Hint, T.Text)
+    targetPlatform :: (Hint, PlatformPattern),
+    targetConfig :: TargetConfig
   }
   deriving (Show, Eq)
 
 data MainTarget
   = Named T.Text TargetSummary
-  | Zen (Path Abs File) ZenConfig
+  | Zen (Path Abs File) TargetConfig
   deriving (Show, Eq)
 
 emptyZen :: Path Abs File -> MainTarget
 emptyZen path =
-  Zen path $ Z.ZenConfig {clangOption = CL.empty, allocator = defaultAllocator, platform = P.SelectHost, executeCommand = Nothing}
+  Zen path emptyTargetConfig
 
 getEntryPointName :: MainTarget -> BN.BaseName
 getEntryPointName target =
@@ -54,6 +51,14 @@ getEntryPointName target =
     Zen {} ->
       BN.zenName
 
+getTargetConfig :: MainTarget -> TargetConfig
+getTargetConfig target =
+  case target of
+    Named _ targetSummary ->
+      targetConfig targetSummary
+    Zen _ zenConfig ->
+      zenConfig
+
 getCompileOption :: Target -> [String]
 getCompileOption target =
   case target of
@@ -61,20 +66,12 @@ getCompileOption target =
       []
     PeripheralSingle {} ->
       []
-    Main c ->
-      case c of
-        Named _ targetSummary -> do
-          map T.unpack $ CL.compileOption (clangOption targetSummary)
-        Zen _ zenConfig ->
-          map T.unpack $ CL.compileOption (Z.clangOption zenConfig)
+    Main mainTarget ->
+      map T.unpack $ CL.compileOption $ clangOption $ getTargetConfig mainTarget
 
 getLinkOption :: MainTarget -> [String]
-getLinkOption target =
-  case target of
-    Named _ targetSummary ->
-      map T.unpack $ CL.linkOption (clangOption targetSummary)
-    Zen _ zenConfig ->
-      map T.unpack $ CL.linkOption (Z.clangOption zenConfig)
+getLinkOption =
+  map T.unpack . CL.linkOption . clangOption . getTargetConfig
 
 getTargetName :: MainTarget -> Maybe T.Text
 getTargetName target =
@@ -85,9 +82,5 @@ getTargetName target =
       Nothing
 
 getExecuteCommand :: MainTarget -> Maybe (Hint, T.Text)
-getExecuteCommand target =
-  case target of
-    Named _ targetSummary ->
-      executeCommand targetSummary
-    Zen _ zenConfig ->
-      Z.executeCommand zenConfig
+getExecuteCommand =
+  executeCommand . getTargetConfig

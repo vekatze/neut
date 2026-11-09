@@ -21,7 +21,6 @@ import Kernel.Common.Handle.Global.Platform qualified as Platform
 import Kernel.Common.Module
 import Kernel.Common.OS qualified as OS
 import Kernel.Common.OutputKind qualified as OK
-import Kernel.Common.Platform qualified as P
 import Kernel.Common.RunProcess qualified as RunProcess
 import Kernel.Common.Source qualified as Source
 import Kernel.Common.Target
@@ -47,12 +46,12 @@ new :: Global.Handle -> Handle
 new (Global.Handle {..}) = do
   Handle {..}
 
-link :: Handle -> MainTarget -> Bool -> Bool -> A.ArtifactTime -> [Module] -> [T.Text] -> [Source.Source] -> App ()
-link h target shouldSkipLink didPerformForeignCompilation artifactTime moduleList transitiveLinkOption sourceList = do
+link :: Handle -> MainTarget -> Bool -> Bool -> A.ArtifactTime -> [(Module, Foreign)] -> [T.Text] -> [Source.Source] -> App ()
+link h target shouldSkipLink didPerformForeignCompilation artifactTime moduleForeignList transitiveLinkOption sourceList = do
   if shouldSkipLink
     then liftIO $ Logger.report (loggerHandle h) "Skipped linking object files (--skip-link was specified)"
     else do
-      objects <- getObjectList h target moduleList sourceList
+      objects <- getObjectList h target moduleForeignList sourceList
       let linkResponse = getLinkResponse objects transitiveLinkOption
       linkResponseFilePath <- Path.getLinkResponseFilePath (pathHandle h) target
       previousLinkResponse <- readLinkResponse linkResponseFilePath
@@ -63,12 +62,12 @@ link h target shouldSkipLink didPerformForeignCompilation artifactTime moduleLis
         then liftIO $ Logger.report (loggerHandle h) "Skipped linking object files (the executable is fresh)"
         else link' h target linkResponseFilePath linkResponse (length objects)
 
-getObjectList :: Handle -> MainTarget -> [Module] -> [Source.Source] -> App [Path Abs File]
-getObjectList h target moduleList sourceList = do
+getObjectList :: Handle -> MainTarget -> [(Module, Foreign)] -> [Source.Source] -> App [Path Abs File]
+getObjectList h target moduleForeignList sourceList = do
   mainObject <- snd <$> Path.getOutputPathForEntryPoint (pathHandle h) OK.Object target
   objectPathList <- mapM (Path.sourceToOutputPath (pathHandle h) (Main target) OK.Object) sourceList
-  foreignObjectList <- concat <$> mapM (getLinkedOutputList h target) moduleList
-  allocator <- Env.getAllocatorByTarget (envHandle h) (Main target)
+  foreignObjectList <- concat <$> mapM (getLinkedOutputList h target) moduleForeignList
+  allocator <- Env.getAllocatorByTarget (Main target)
   mAllocatorLibrary <- getAllocatorLibraryIfNecessary h target allocator
   return $ mainObject : objectPathList ++ foreignObjectList ++ maybeToList mAllocatorLibrary
 
@@ -87,7 +86,7 @@ link' :: Handle -> MainTarget -> Path Abs File -> T.Text -> Int -> App ()
 link' h target linkResponseFilePath linkResponse numOfObjects = do
   outputPath <- Path.getExecutableOutputPath (pathHandle h) target
   ensureDir $ parent outputPath
-  allocator <- Env.getAllocatorByTarget (envHandle h) (Main target)
+  allocator <- Env.getAllocatorByTarget (Main target)
   let clang = Platform.getClang (platformHandle h)
   let targetTriple = Platform.getClangTargetTriple (platformHandle h)
   let userLinkOptions = getLinkOption target
@@ -96,11 +95,10 @@ link' h target linkResponseFilePath linkResponse numOfObjects = do
   ltoOption <- liftIO $ getLtoOption h clang userLinkOptions ltoCacheDir
   liftIO $ writeText linkResponseFilePath linkResponse
   liftIO $ Logger.report (loggerHandle h) $ "Created a response file at: " <> T.pack (toFilePath linkResponseFilePath)
-  let platform = Platform.getPlatform (platformHandle h)
-  let allocatorOption = allocatorLinkOption (P.arch platform) allocator
+  let allocatorOption = allocatorLinkOption (Platform.getArch (platformHandle h)) allocator
   sysrootOption <- liftIO $ Platform.getSysrootOption (loggerHandle h) (platformHandle h)
   let toolchainOption = Platform.getToolchainOption (platformHandle h)
-  let linkOptions = clangLinkOpt targetTriple (P.os platform) linkResponseFilePath outputPath (ltoOption ++ allocatorOption ++ sysrootOption ++ toolchainOption ++ userLinkOptions)
+  let linkOptions = clangLinkOpt targetTriple (Platform.getOS (platformHandle h)) linkResponseFilePath outputPath (ltoOption ++ allocatorOption ++ sysrootOption ++ toolchainOption ++ userLinkOptions)
   let workingTitle = getWorkingTitle numOfObjects
   let completedTitle = getCompletedTitle numOfObjects
   let runProcessHandle = RunProcess.new (loggerHandle h)
@@ -129,10 +127,10 @@ data LinkerFamily
 getLtoOption :: Handle -> String -> [String] -> Path Abs Dir -> IO [String]
 getLtoOption h clang userLinkOptions ltoCacheDir = do
   let cacheDir = toFilePath ltoCacheDir
-  case P.os (Platform.getPlatform (platformHandle h)) of
+  case Platform.getOS (platformHandle h) of
     OS.Darwin ->
       return ["-Xlinker", "-cache_path_lto", "-Xlinker", cacheDir]
-    OS.Wasi ->
+    OS.Wasip1 ->
       return $ getLtoCacheOption LldFamily cacheDir
     OS.Linux ->
       case findUserSpecifiedLinker userLinkOptions of
@@ -188,10 +186,10 @@ checkIfLldIsAvailable h clang = do
     Left _ ->
       return False
 
-getLinkedOutputList :: Handle -> MainTarget -> Module -> App [Path Abs File]
-getLinkedOutputList h target baseModule = do
+getLinkedOutputList :: Handle -> MainTarget -> (Module, Foreign) -> App [Path Abs File]
+getLinkedOutputList h target (baseModule, foreignInfo) = do
   foreignDir <- Path.getForeignDir (pathHandle h) (Main target) baseModule
-  return $ map (foreignDir </>) $ linkedOutput $ moduleForeign baseModule
+  return $ map (foreignDir </>) $ linkedOutput foreignInfo
 
 getAllocatorLibraryIfNecessary :: Handle -> MainTarget -> Allocator -> App (Maybe (Path Abs File))
 getAllocatorLibraryIfNecessary h target allocator = do
@@ -203,7 +201,7 @@ getAllocatorLibraryIfNecessary h target allocator = do
       archiveExists <- doesFileExist archivePath
       if archiveExists
         then return ()
-        else liftIO $ B.writeFile (toFilePath archivePath) $ mimallocArchive $ P.arch $ Platform.getPlatform (platformHandle h)
+        else liftIO $ B.writeFile (toFilePath archivePath) $ mimallocArchive $ Platform.getArch (platformHandle h)
       return $ Just archivePath
     _ ->
       return Nothing
@@ -226,13 +224,13 @@ clangLinkOpt :: String -> OS.OS -> Path Abs File -> Path Abs File -> [String] ->
 clangLinkOpt targetTriple os linkResponseFilePath outputPath additionalOptions = do
   let threadOption =
         case os of
-          OS.Wasi ->
+          OS.Wasip1 ->
             []
           _ ->
             ["-pthread"]
   let stackOption =
         case os of
-          OS.Wasi ->
+          OS.Wasip1 ->
             ["-Wl,-z,stack-size=" ++ show wasiStackSize]
           _ ->
             []

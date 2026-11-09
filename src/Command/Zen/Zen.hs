@@ -9,8 +9,6 @@ import App.App (App)
 import Command.Common.Build qualified as Build
 import CommandParser.Config.Zen
 import Kernel.Common.CreateGlobalHandle qualified as Global
-import Kernel.Common.Handle.Global.Env qualified as Env
-import Kernel.Common.Module (Module (moduleZenConfig), extractModule)
 import Kernel.Common.OutputKind
 import Kernel.Common.Target
 import Path.IO (resolveFile')
@@ -33,8 +31,7 @@ zen h cfg = do
 getZenTarget :: Config -> Global.Handle -> App MainTarget
 getZenTarget cfg globalHandle = do
   path <- resolveFile' (filePathString cfg)
-  let mainModule = Env.getMainModule (Global.envHandle globalHandle)
-  return $ Zen path $ moduleZenConfig (extractModule mainModule)
+  return $ Zen path $ Global.zenConfig globalHandle
 
 toBuildConfig :: Config -> Build.Config
 toBuildConfig cfg = do

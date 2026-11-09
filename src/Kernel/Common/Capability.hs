@@ -7,6 +7,7 @@ module Kernel.Common.Capability
   )
 where
 
+import Data.Containers.ListUtils (nubOrd)
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Kernel.Common.Platform qualified as P
@@ -39,16 +40,20 @@ reflect text =
     _ ->
       Nothing
 
-providedBy :: P.PlatformSelector -> S.Set Capability
-providedBy selector =
-  case selector of
-    P.SelectHost ->
+providedBy :: P.PlatformName -> S.Set Capability
+providedBy name =
+  case name of
+    P.Arm64Darwin ->
       S.fromList [Thread, Subprocess]
-    P.SelectWasm32 ->
+    P.Amd64Linux ->
+      S.fromList [Thread, Subprocess]
+    P.Arm64Linux ->
+      S.fromList [Thread, Subprocess]
+    P.Wasm32Wasip1 ->
       S.empty
-    P.SelectWeb ->
+    P.Wasm32Wasip1Web ->
       S.fromList [JavaScript]
 
 everyProvidedSet :: [S.Set Capability]
 everyProvidedSet =
-  map providedBy [minBound .. maxBound]
+  nubOrd $ map providedBy [minBound .. maxBound]

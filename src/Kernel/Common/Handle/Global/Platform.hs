@@ -1,11 +1,14 @@
 module Kernel.Common.Handle.Global.Platform
   ( Handle (..),
     new,
+    detectHost,
+    ensureBuildable,
     getArch,
+    getOS,
     getDataSize,
     getPlatform,
-    getSelector,
-    getPlatformText,
+    getTargetPlatform,
+    getForeign,
     getClang,
     getToolchainOption,
     getToolchainSearchPathOption,
@@ -32,28 +35,26 @@ import Kernel.Common.Const (envVarHome)
 import Kernel.Common.Module
 import Kernel.Common.OS qualified as O
 import Kernel.Common.Platform qualified as P
+import Kernel.Common.PlatformPattern qualified as PP
 import Kernel.Common.RunProcess qualified as RunProcess
 import Language.Common.DataSize qualified as DS
 import Language.Common.Digest (hashAndEncode)
 import Logger.Debug qualified as Logger
 import Logger.Handle qualified as Logger
-import Logger.Hint
+import Logger.Hint (Hint)
 import Path
 import Paths_neut
 import System.Directory
 import System.Environment (lookupEnv)
 import System.FilePath qualified as FP
-import System.Info qualified as SI
 import System.Process (CmdSpec (RawCommand))
 import Text.ParserCombinators.ReadP (readP_to_S)
 
 data Handle = Handle
-  { _arch :: Arch.Arch,
-    _os :: O.OS,
-    _clangTargetTriple :: String,
+  { _clangTargetTriple :: String,
     _toolchainDigest :: T.Text,
-    _baseSize :: DS.DataSize,
-    _selector :: P.PlatformSelector,
+    _platform :: P.Platform,
+    _patternHint :: Hint,
     _toolchainRoot :: FilePath,
     _clang :: String,
     _curl :: FilePath,
@@ -61,34 +62,28 @@ data Handle = Handle
   }
 
 getArch :: Handle -> Arch.Arch
-getArch =
-  _arch
+getArch h =
+  P.getArch (getTargetPlatform h)
 
 getOS :: Handle -> O.OS
-getOS =
-  _os
-
-getSelector :: Handle -> P.PlatformSelector
-getSelector =
-  _selector
+getOS h =
+  P.getOS (getTargetPlatform h)
 
 getPlatform :: Handle -> P.Platform
-getPlatform h = do
-  let arch = getArch h
-  let os = getOS h
-  P.Platform {arch, os}
+getPlatform =
+  _platform
 
-getPlatformText :: Handle -> T.Text
-getPlatformText h =
-  case _selector h of
-    P.SelectHost ->
-      P.reify (getPlatform h)
-    selector ->
-      P.reifySelector selector
+getTargetPlatform :: Handle -> P.PlatformName
+getTargetPlatform h =
+  P.target (_platform h)
+
+getForeign :: Handle -> Module -> Foreign
+getForeign h =
+  selectForeign (_platform h)
 
 getDataSize :: Handle -> DS.DataSize
-getDataSize =
-  _baseSize
+getDataSize h =
+  Arch.dataSizeOf (getArch h)
 
 getToolchainDigest :: Handle -> T.Text
 getToolchainDigest =
@@ -98,62 +93,36 @@ getClangTargetTriple :: Handle -> String
 getClangTargetTriple =
   _clangTargetTriple
 
-new :: Logger.Handle -> P.PlatformSelector -> App Handle
-new loggerHandle selector = do
-  let _selector = selector
-  (_arch, _os) <-
-    case selector of
-      P.SelectHost -> do
-        hostArch <- getArch' Nothing
-        hostOS <- getOS' Nothing
-        return (hostArch, hostOS)
-      P.SelectWasm32 ->
-        return (Arch.Wasm32, O.Wasi)
-      P.SelectWeb ->
-        return (Arch.Wasm32, O.Wasi)
-  _clangTargetTriple <- resolveClangTargetTriple _arch _os
-  let _baseSize = Arch.dataSizeOf _arch
-  hostArch <- getArch' Nothing
-  hostOS <- getOS' Nothing
-  _toolchainRoot <- resolveToolchainRoot hostArch hostOS
+detectHost :: App P.PlatformName
+detectHost =
+  either raiseError' return P.detectHost
+
+new :: Logger.Handle -> P.PlatformName -> (Hint, PP.PlatformPattern) -> App Handle
+new loggerHandle host (_patternHint, platformPattern) = do
+  target <- resolveTarget _patternHint platformPattern host
+  let _platform = P.Platform {host, target}
+  _clangTargetTriple <- resolveClangTargetTriple target
+  _toolchainRoot <- resolveToolchainRoot host
   let _clang = resolveClang _toolchainRoot
   ensureClang _clang
   let _curl = resolveCurl _toolchainRoot
-  _curlTrustOption <- liftIO $ resolveCurlTrustOption hostOS
+  _curlTrustOption <- liftIO $ resolveCurlTrustOption (P.getOS host)
   _toolchainDigest <- calculateToolchainDigest loggerHandle _toolchainRoot
   return $ Handle {..}
 
-getArch' :: Maybe Hint -> App Arch.Arch
-getArch' mm = do
-  case SI.arch of
-    "amd64" ->
-      return Arch.Amd64
-    "x86_64" ->
-      return Arch.Amd64
-    "arm64" ->
-      return Arch.Arm64
-    "aarch64" ->
-      return Arch.Arm64
-    arch ->
-      case mm of
-        Just m ->
-          raiseError m $ "Unknown architecture: " <> T.pack arch
-        Nothing ->
-          raiseError' $ "Unknown architecture: " <> T.pack arch
+resolveTarget :: Hint -> PP.PlatformPattern -> P.PlatformName -> App P.PlatformName
+resolveTarget m platformPattern host =
+  case PP.resolveTarget platformPattern host of
+    Just target ->
+      return target
+    Nothing ->
+      raiseError m $ "The platform pattern does not determine a platform on " <> P.reifyName host <> ": " <> PP.reify platformPattern
 
-getOS' :: Maybe Hint -> App O.OS
-getOS' mm = do
-  case SI.os of
-    "linux" ->
-      return O.Linux
-    "darwin" ->
-      return O.Darwin
-    os ->
-      case mm of
-        Just m ->
-          raiseError m $ "Unknown OS: " <> T.pack os
-        Nothing ->
-          raiseError' $ "Unknown OS: " <> T.pack os
+ensureBuildable :: Handle -> App ()
+ensureBuildable h =
+  unless (P.isBuildable (_platform h)) $
+    raiseError (_patternHint h) $
+      "Cannot build on this machine: " <> P.reifyPlatform (_platform h)
 
 getClang :: Handle -> String
 getClang =
@@ -174,10 +143,10 @@ resolveHome = do
     Nothing ->
       liftIO $ getXdgDirectory XdgData "neut"
 
-resolveToolchainRoot :: Arch.Arch -> O.OS -> App FilePath
-resolveToolchainRoot hostArch hostOS = do
+resolveToolchainRoot :: P.PlatformName -> App FilePath
+resolveToolchainRoot host = do
   home <- resolveHome
-  let name = platformName hostArch hostOS
+  let name = T.unpack $ P.reifyName host
   dirOrNone <- liftIO $ existingDir $ home `FP.combine` "toolchain" `FP.combine` name
   case dirOrNone of
     Just root ->
@@ -193,10 +162,6 @@ existingDir :: FilePath -> IO (Maybe FilePath)
 existingDir dir = do
   b <- doesDirectoryExist dir
   return $ if b then Just dir else Nothing
-
-platformName :: Arch.Arch -> O.OS -> FilePath
-platformName arch os =
-  T.unpack (Arch.reify arch) <> "-" <> T.unpack (O.reify os)
 
 resolveClang :: FilePath -> String
 resolveClang root =
@@ -231,7 +196,7 @@ resolveCurlTrustOption hostOS =
           return $ concatMap makeCAFileOption $ take 1 bundles
         (Nothing, _, _) ->
           return $ concatMap makeCADirOption certDir ++ concatMap makeCAFileOption certFile
-    O.Wasi ->
+    O.Wasip1 ->
       return []
 
 lookupNonEmptyEnv :: String -> IO (Maybe String)
@@ -264,8 +229,8 @@ getToolchainSearchPathOption h =
 
 getSysrootOption :: Logger.Handle -> Handle -> IO [String]
 getSysrootOption loggerHandle h =
-  case P.os (getPlatform h) of
-    O.Wasi ->
+  case getOS h of
+    O.Wasip1 ->
       return ["--sysroot=" ++ (_toolchainRoot h `FP.combine` "share" `FP.combine` "wasi-sysroot")]
     O.Darwin ->
       maybe [] (\sdk -> ["--sysroot=" ++ sdk]) <$> resolveMacOSSDK loggerHandle
@@ -286,21 +251,20 @@ resolveMacOSSDK loggerHandle = do
         sdk : _ ->
           return $ Just $ T.unpack $ T.strip sdk
 
-resolveClangTargetTriple :: Arch.Arch -> O.OS -> App String
-resolveClangTargetTriple arch os = do
-  case (arch, os) of
-    (Arch.Amd64, O.Linux) ->
+resolveClangTargetTriple :: P.PlatformName -> App String
+resolveClangTargetTriple name = do
+  case name of
+    P.Amd64Linux ->
       return "x86_64-unknown-linux-gnu"
-    (Arch.Arm64, O.Linux) ->
+    P.Arm64Linux ->
       return "aarch64-unknown-linux-gnu"
-    (Arch.Arm64, O.Darwin) -> do
+    P.Arm64Darwin -> do
       deploymentTarget <- resolveMacOSDeploymentTarget
       return $ "arm64-apple-macosx" <> deploymentTarget
-    (Arch.Wasm32, O.Wasi) ->
+    P.Wasm32Wasip1 ->
       return "wasm32-unknown-wasip1"
-    _ -> do
-      let p = P.Platform {P.arch = arch, P.os = os}
-      raiseError' $ "Unsupported target platform: " <> P.reify p
+    P.Wasm32Wasip1Web ->
+      return "wasm32-unknown-wasip1"
 
 resolveMacOSDeploymentTarget :: App String
 resolveMacOSDeploymentTarget = do
@@ -353,14 +317,9 @@ calculateToolchainDigest h toolchainRoot = do
   liftIO $ Logger.report h $ "Toolchain stamp:\n" <> decodeUtf8With lenientDecode stamp
   return $ decodeUtf8 $ hashAndEncode stamp
 
-getPlatformPrefix :: Handle -> App (Path Rel Dir)
-getPlatformPrefix h = do
-  let p = getPlatform h
-  parseRelDir $ T.unpack $ P.reify p
-
-getBaseBuildDir :: Handle -> Module -> App (Path Abs Dir)
-getBaseBuildDir h baseModule = do
-  platformPrefix <- getPlatformPrefix h
+getBaseBuildDir :: P.PlatformName -> Module -> App (Path Abs Dir)
+getBaseBuildDir name baseModule = do
+  platformPrefix <- parseRelDir $ T.unpack $ P.reifyName name
   versionDir <- parseRelDir $ "compiler-" ++ V.showVersion version
   let moduleRootDir = getModuleRootDir baseModule
   return $ moduleRootDir </> moduleCacheDir baseModule </> $(mkRelDir "build") </> platformPrefix </> versionDir

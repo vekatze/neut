@@ -20,7 +20,7 @@ import Kernel.Common.Module qualified as Module
 import Kernel.Common.Module.FindModuleFile (getCurrentModuleFilePath)
 import Kernel.Common.Module.FromPath qualified as ModuleReflect
 import Kernel.Common.Target qualified as Target
-import Kernel.Common.ZenConfig qualified as Z
+import Kernel.Common.TargetConfig qualified as TC
 import Language.Common.BaseName qualified as BN
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.LocalLocator qualified as LL
@@ -62,24 +62,15 @@ getMainDefiniteDescriptionByTarget h targetOrZen = do
       relPath <- Module.getRelPathFromSourceDir (extractModule mainModule) path
       relPathToDD relPath BN.zenName
 
-getAllocatorByTarget :: Handle -> Target.Target -> App Allocator
-getAllocatorByTarget h target =
+getAllocatorByTarget :: Target.Target -> App Allocator
+getAllocatorByTarget target =
   case target of
     Target.Peripheral {} ->
       raiseCritical' "Kernel.Common.Handle.Global.Env.getAllocatorByTarget: unexpected peripheral target"
     Target.PeripheralSingle {} ->
       raiseCritical' "Kernel.Common.Handle.Global.Env.getAllocatorByTarget: unexpected peripheral-single target"
     Target.Main mainTarget ->
-      case mainTarget of
-        Target.Named targetName _ -> do
-          let targetMap = Module.moduleTarget $ extractModule $ getMainModule h
-          case Map.lookup targetName targetMap of
-            Nothing ->
-              raiseCritical' $ "Kernel.Common.Handle.Global.Env.getAllocatorByTarget: no such target: " <> targetName
-            Just targetSummary ->
-              return $ Target.allocator targetSummary
-        Target.Zen _ zenConfig ->
-          return $ Z.allocator zenConfig
+      return $ TC.allocator $ Target.getTargetConfig mainTarget
 
 relPathToDD :: Path Rel File -> BN.BaseName -> App DD.DefiniteDescription
 relPathToDD relPath baseName = do

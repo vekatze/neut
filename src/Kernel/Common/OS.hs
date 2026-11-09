@@ -9,7 +9,7 @@ import Data.Text qualified as T
 data OS
   = Linux
   | Darwin
-  | Wasi
+  | Wasip1
   deriving (Eq, Enum, Bounded)
 
 reify :: OS -> T.Text
@@ -19,5 +19,5 @@ reify os =
       "linux"
     Darwin ->
       "darwin"
-    Wasi ->
-      "wasi"
+    Wasip1 ->
+      "wasip1"
