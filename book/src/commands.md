@@ -174,16 +174,17 @@ The platform decides which branch of a [conditional import](./statements.md#impo
 
 `neut clean` removes generated build files for the current module and its dependencies.
 
-More specifically, this command removes directories like the following under the build cache:
+For each [target platform](./modules.md#platform), it removes the directory for the current compiler version.
 
 ```text
-(cache-directory)/build/(platform)/(compiler-version)/
+(cache-directory)/build/(target-platform)/compiler-(version)/
 ```
 
-For example:
+With compiler version `0.8.0`, this includes paths like these.
 
 ```text
 cache/build/arm64-darwin/compiler-0.8.0/
+cache/build/wasm32-wasip1/compiler-0.8.0/
 ```
 
 ## `neut archive`

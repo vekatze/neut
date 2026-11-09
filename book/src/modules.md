@@ -173,38 +173,53 @@ The field `allocator` is optional. The default value of `allocator` is `"system"
 
 ### `platform`
 
-The field `platform` specifies the platform for which the target is built:
+The field `platform` specifies which hosts can run the build and which platform to build for.
 
 ```ens
 {
   target {
     foo {
       main "foo.nt",
-      platform "wasm32",
+      platform "*/wasm32-wasip1",
     },
   },
 }
 ```
 
-The following values are available:
+The compiler runs on the host platform and builds the artifact for the target platform. A build pairs these two names as `HOST/TARGET`.
 
-- `"host"`: the platform on which the compiler is running
-- `"wasm32"`: 32-bit WebAssembly for a WASI runtime (wasm32-unknown-wasip1)
-- `"web"`: the same WebAssembly, for a JavaScript host
+| Platform              | Capabilities                            |
+| --------------------- | --------------------------------------- |
+| `"arm64-darwin"`      | `thread`, `subprocess`                  |
+| `"amd64-linux"`       | `thread`, `subprocess`                  |
+| `"arm64-linux"`       | `thread`, `subprocess`                  |
+| `"wasm32-wasip1"`     | none                                    |
+| `"wasm32-wasip1-web"` | `javascript`                            |
 
-Every platform provides a fixed set of [capabilities](./statements.md#require):
+The field takes a [platform pattern](#platform-patterns) described below.
 
-| Platform   | Capabilities           |
-| ---------- | ---------------------- |
-| `"host"`   | `thread`, `subprocess` |
-| `"wasm32"` | (none)                 |
-| `"web"`    | `javascript`           |
+The compiler matches the host name from left to right, trying the longest strings first for each * and each variable’s first occurrence. The first complete match supplies the variable values for the target part, which must expand to a valid platform name.
 
-On `"wasm32"` and `"web"`, the stack in WebAssembly linear memory defaults to 8 MiB. This is the same size as the main thread's stack on the other platforms.
+On `"wasm32-*"`, the stack in WebAssembly linear memory defaults to 8 MiB. This is the same size as the main thread's stack on the other platforms.
 
-To change the linear-memory stack to 16 MiB, add `"-Wl,-z,stack-size=16777216"` to the target's `link-option`. The runtime may impose a separate limit on call depth.
+The field `platform` is optional. The default is `"${0}/${0}"`, which builds for the host.
 
-The field `platform` is optional. The default value of `platform` is `"host"`.
+#### Platform Patterns
+
+In `HOST-PART/TARGET-PART`, the left part matches the host name and the right part matches the target name. Literal text matches itself.
+
+Within each part, `*` and `${NAME}` match any string, including the empty string. All occurrences of the same variable must match the same string, even across the `/`.
+
+| Pattern                         | Matches                                |
+| ------------------------------- | -------------------------------------- |
+| `"*/arm64-darwin"`              | builds for `arm64-darwin`              |
+| `"*/*-linux"`                   | builds for Linux                       |
+| `"*-linux/*"`                   | builds on Linux                        |
+| `"${0}/${0}"`                   | builds for the host platform           |
+| `"${arch}-linux/${arch}-linux"` | builds for the host platform on Linux  |
+| `"*/*"`                         | all builds                             |
+
+The compiler rejects a pattern that matches no pair of platform names.
 
 ### `execute`
 
@@ -215,7 +230,7 @@ The field `execute` specifies how `neut build TARGET --execute` runs the build a
   target {
     foo {
       main "foo.nt",
-      platform "wasm32",
+      platform "*/wasm32-wasip1",
       execute "wasmtime {{executable}}",
     },
   },
@@ -247,35 +262,36 @@ The field `execute` is optional. Without it, `--execute` runs the build artifact
 
 ## `zen`
 
-The field `zen` defines the configuration used by `neut zen`. It should look like the following:
+The field `zen` lists rules for `neut zen`.
 
 ```ens
 {
   // ..
-  zen {
-    build-option [
-      "-fsanitize=address",
-    ],
-    allocator "mimalloc",
-  },
+  zen [
+    {
+      platform "*/wasm32-wasip1-web",
+      execute "{{module:this}}/run.sh {{executable}}",
+    },
+  ],
   // ..
 }
 ```
 
-The fields available inside `zen` are the same as those available inside each entry of `target`:
+Each rule requires a [`platform`](#platform). The compiler uses the first rule with a matching host part. The target part gives the target platform.
 
-- `build-option`
-- `compile-option`
-- `link-option`
-- `allocator`
-- `platform`
-- `execute`
+If no rule matches, the compiler uses the host platform and the default settings.
 
-These fields affect builds performed by `neut zen`, rather than `neut build TARGET`.
+The LSP server also uses the selected platform. So does `neut check` if `--target` isn't specified.
 
-`neut check` and the LSP server also use the `platform` given here.
+The following fields work as they do in `target`.
 
-The field `zen` is optional. By default, it uses empty build options and the system allocator.
+- [`build-option`](#build-option)
+- [`compile-option`](#compile-option)
+- [`link-option`](#link-option)
+- [`allocator`](#allocator)
+- [`execute`](#execute)
+
+The field `zen` is optional. The default is `[]`.
 
 ## `dependency`
 
@@ -373,36 +389,43 @@ The field `source` is optional. The default value of `source` is `./source/`.
 
 ## `foreign`
 
-The field `foreign` defines a way to compile external source files. It should look like the following:
+The field `foreign` lists rules for compiling external source files.
 
 ```ens
 {
   // ..
-  foreign {
-    input [
-      "source/foo.c",
-      "source/foo.h",
-    ],
-    output [
-      "generated/",
-    ],
-    link [
-      "generated/foo.o",
-    ],
-    script [
-      "mkdir -p {{foreign}}/generated",
-      "{{clang}} -c -flto=thin -O2 source/foo.c -o {{foreign}}/generated/foo.o",
-      "cp source/foo.h {{foreign}}/generated/foo.h",
-    ],
-  },
+  foreign [
+    {
+      platform "*/*",
+      input [
+        "source/foo.c",
+        "source/foo.h",
+      ],
+      output [
+        "generated/",
+      ],
+      link [
+        "generated/foo.o",
+      ],
+      script [
+        "mkdir -p {{foreign}}/generated",
+        "{{clang}} -c -flto=thin -O2 source/foo.c -o {{foreign}}/generated/foo.o",
+        "cp source/foo.h {{foreign}}/generated/foo.h",
+      ],
+    },
+  ],
 }
 ```
+
+Each rule requires a [platform pattern](#platform-patterns) in `platform`.
+
+The compiler selects the first matching rule in each module. It uses the same `HOST/TARGET` pair for the current module and its dependencies. If no rule matches, the module adds no foreign build steps or link options.
 
 ### `input`
 
 The field `input` specifies the list of external source files. The paths are relative to the root of the module.
 
-When running `neut archive`, the compiler adds all the `input` files to the resulting tarball.
+`neut archive` includes the `input` files from every rule.
 
 ### `output`
 
@@ -416,17 +439,22 @@ The field `link` lists files to link alongside Neut's object files, relative to 
 
 ### `transitive-link-option`
 
-The field `transitive-link-option` supplies `clang` linker options for this module and its direct or indirect dependents:
+The field `transitive-link-option` supplies `clang` linker options for this module and its direct or indirect dependents.
+
+The following rule uses `pkg-config` to get linker options for the host's `libpq`. The pattern `"${0}/${0}"` limits the rule to builds for the host platform.
 
 ```ens
 {
   // ..
-  foreign {
-    // ..
-    transitive-link-option [
-      "$(pkg-config libpq --libs)",
-    ],
-  },
+  foreign [
+    {
+      platform "${0}/${0}",
+      // ..
+      transitive-link-option [
+        "$(pkg-config libpq --libs)",
+      ],
+    },
+  ],
 }
 ```
 
@@ -451,17 +479,7 @@ When running the `script`, the compiler sets the current working directory to th
 
 ### Notes
 
-The field `foreign` and each of its fields are optional. The default value of `foreign` is:
-
-```ens
-{
-  input [],
-  output [],
-  link [],
-  transitive-link-option [],
-  script [],
-}
-```
+The field `foreign` is optional. The default is `[]`. The `input`, `output`, `link`, `transitive-link-option`, and `script` fields also default to `[]`.
 
 An example of `foreign` can be found in the [core library](https://github.com/vekatze/neut-core/blob/main/module.ens).
 
