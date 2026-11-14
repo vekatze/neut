@@ -71,7 +71,7 @@ data WeakDefineMeta = WeakDefineMeta
   { weakDefineMetaLoc :: Hint,
     weakDefineMetaTarget :: DD.DefiniteDescription,
     weakDefineMetaTargetArgs :: [WT.WeakType],
-    weakDefineMetaExpArgs :: [BinderF WT.WeakType],
+    weakDefineMetaExpParams :: [BinderF WT.WeakType],
     weakDefineMetaCod :: WT.WeakType,
     weakDefineMetaBody :: WT.WeakTerm,
     weakDefineMetaHelperName :: DD.DefiniteDescription

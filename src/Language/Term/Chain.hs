@@ -33,9 +33,9 @@ chainOf' tenv term =
       chainOfVar tenv m x
     _ :< TM.VarGlobal {} ->
       []
-    _ :< TM.PiIntro attr impArgs expArgs defaultArgs e -> do
-      let xs1 = concatMap (chainOf' tenv . snd) defaultArgs
-      let binders = impArgs ++ expArgs ++ map fst defaultArgs ++ catMaybes [AttrL.fromAttr attr]
+    _ :< TM.PiIntro attr impParams expParams defaultParams e -> do
+      let xs1 = concatMap (chainOf' tenv . snd) defaultParams
+      let binders = impParams ++ expParams ++ map fst defaultParams ++ catMaybes [AttrL.fromAttr attr]
       let xs2 = chainOfBinder tenv binders [e]
       xs1 ++ xs2
     _ :< TM.PiElim _ conv e impArgs expArgs defaultArgs -> do
@@ -96,8 +96,8 @@ chainOfType tenv ty =
       []
     _ :< TM.TyApp t args ->
       concatMap (chainOfType tenv) (t : args)
-    _ :< TM.Pi _ impArgs expArgs defaultArgs t -> do
-      chainOfTypeBinder tenv (impArgs ++ expArgs ++ defaultArgs) [t]
+    _ :< TM.Pi _ impParams expParams defaultParams t -> do
+      chainOfTypeBinder tenv (impParams ++ expParams ++ defaultParams) [t]
     _ :< TM.Data _ _ es ->
       concatMap (chainOfType tenv) es
     _ :< TM.Box t ->
@@ -163,7 +163,7 @@ chainOfCase tenv m decisionCase = do
       let (dataTerms, dataTypes) = unzip dataArgs
       let xs1 = concatMap (chainOfType tenv) dataTerms
       let xs2 = concatMap (chainOfType tenv) dataTypes
-      let xs3 = chainOfDecisionTree' tenv m (consImpArgs ++ consArgs) cont
+      let xs3 = chainOfDecisionTree' tenv m (consImpBinders ++ consBinders) cont
       xs1 ++ xs2 ++ xs3
 
 chainOfCaseWithoutCont :: TM.TypeEnv -> DT.Case TM.Type TM.Term -> [BinderF TM.Type]

@@ -19,7 +19,7 @@ import Data.Containers.ListUtils qualified as ListUtils
 import Data.Maybe
 import Data.Text qualified as T
 import Data.Vector qualified as V
-import Language.Common.ArgNum qualified as AN
+import Language.Common.Arity qualified as Arity
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.Discriminant qualified as D
 import Language.Common.Ident
@@ -39,10 +39,10 @@ data ConsInfo = ConsInfo
   { consDD :: DD.DefiniteDescription,
     isConstLike :: IsConstLike,
     disc :: D.Discriminant,
-    dataArgNum :: AN.ArgNum,
-    consImpArgNames :: [T.Text],
-    consArgNum :: AN.ArgNum,
-    typeParams :: [Maybe (Hint, Ident)],
+    dataArity :: Arity.Arity,
+    consImpParamNames :: [T.Text],
+    consArity :: Arity.Arity,
+    impBinders :: [Maybe (Hint, Ident)],
     args :: [(Hint, Pattern)]
   }
   deriving (Show)

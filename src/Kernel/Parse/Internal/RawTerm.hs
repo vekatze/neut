@@ -27,7 +27,7 @@ module Kernel.Parse.Internal.RawTerm
     parseDefaultParams,
     keyword,
     baseName,
-    ensureArgumentLinearity,
+    ensureParamLinearity,
   )
 where
 
@@ -259,7 +259,7 @@ rawTermBase mode h m headSymbol c = do
                   Nothing ->
                     return (m :< RT.PiElimRule name nameC es, cArgs)
                   Just _ ->
-                    lift $ raiseError m "Rule application cannot take implicit type arguments",
+                    lift $ raiseError m "Rule application cannot take implicit arguments",
               do
                 (kvs, cArgs) <- keyValueArgs $ rawTermKeyValuePair h
                 return (m :< RT.PiElimMetaByKey name nameC mImpArgs cImpArgs kvs, cArgs)
@@ -329,7 +329,7 @@ rawTermPiElimArgsCont h m = do
     Nothing -> do
       when (isJust (impArgs prefix)) $
         lift $
-          raiseError m "Implicit type arguments must introduce the argument list of a call"
+          raiseError m "Implicit arguments must introduce the argument list of a call"
       return []
 
 type PiElimDefaultArgs =
@@ -374,22 +374,22 @@ rawTypeTyAppCont h (t@(m :< _), c) = do
 rawTypePi :: Handle -> Parser (RT.RawType, C)
 rawTypePi h = do
   m <- getCurrentHint
-  impArgs <- parseImplicitParams h
-  expArgs <- seriesParen $ binderOrType h SourceAdmissible
-  defaultArgs <- parseDefaultTypeParams h
+  impParams <- parseImplicitParams h
+  expParams <- seriesParen $ binderOrType h SourceAdmissible
+  defaultParams <- parseDefaultTypeParams h
   (isDestPassing, cArrow) <- parseCodArrow ArrowObject
   let piKind = if isDestPassing then RT.PiDestPass else RT.PiNormal
   (cod, c) <- rawType h
   loc <- getCurrentLoc
-  return (m :< RT.Pi impArgs expArgs defaultArgs piKind cArrow cod loc, c)
+  return (m :< RT.Pi impParams expParams defaultParams piKind cArrow cod loc, c)
 
 rawTermLambda :: Handle -> Parser (RT.RawTerm, C)
 rawTermLambda h = do
   m <- getCurrentHint
-  impArgs <- parseImplicitParams h
-  expArgs@(expSeries, _) <- seriesParen $ preBinder h SourceAdmissible
-  defaultArgs <- parseDefaultParams h
-  lift $ ensureArgumentLinearity S.empty $ map (\(mx, _, x, _, _, _) -> (mx, x)) $ SE.extract expSeries
+  impParams <- parseImplicitParams h
+  expParams@(expSeries, _) <- seriesParen $ preBinder h SourceAdmissible
+  defaultParams <- parseDefaultParams h
+  lift $ ensureParamLinearity S.empty $ map (\(mx, _, x, _, _, _) -> (mx, x)) $ SE.extract expSeries
   cod <- liftIO $ RT.createTypeHole (gensymHandle h) m
   (isDestPassing, cArrow) <- parseLambdaArrow
   (c2, ((e, c3), loc, c)) <- betweenBrace' $ rawExpr h
@@ -399,9 +399,9 @@ rawTermLambda h = do
             name = (Nothing, []),
             isConstLike = False,
             isDestPassing,
-            impArgs,
-            defaultArgs,
-            expArgs,
+            impParams,
+            defaultParams,
+            expParams,
             cod = ([], cod)
           }
   let defInfo =
@@ -689,7 +689,7 @@ rawTypeIntrospectiveClause h = do
 
 parseDef :: ArrowMode -> Handle -> Parser (a, C) -> Parser (RT.RawDef a, C)
 parseDef arrowMode h nameParser = do
-  (geist, c1) <- parseGeistWith arrowMode ParseDefaultArgs h nameParser
+  (geist, c1) <- parseGeistWith arrowMode ParseDefaultParams h nameParser
   (c2, ((e, c3), loc, c)) <- betweenBrace' $ rawExpr h
   return
     ( RT.RawDef
@@ -717,9 +717,9 @@ parseAliasDef h nameParser = do
       c
     )
 
-data DefaultArgsMode
-  = ParseDefaultArgs
-  | NoDefaultArgs
+data DefaultParamsMode
+  = ParseDefaultParams
+  | NoDefaultParams
 
 data ArrowMode
   = ArrowMeta
@@ -727,55 +727,76 @@ data ArrowMode
 
 parseGeist :: Handle -> Parser (a, C) -> Parser (RT.RawGeist a, C)
 parseGeist =
-  parseGeistWith ArrowObject ParseDefaultArgs
+  parseGeistWith ArrowObject ParseDefaultParams
 
 parseNominalGeist :: ArrowMode -> Handle -> Parser (a, C) -> Parser (RT.RawGeist a, C)
 parseNominalGeist arrowMode =
-  parseGeistWith arrowMode NoDefaultArgs
+  parseGeistWith arrowMode NoDefaultParams
 
-parseGeistWith :: ArrowMode -> DefaultArgsMode -> Handle -> Parser (a, C) -> Parser (RT.RawGeist a, C)
+parseGeistWith :: ArrowMode -> DefaultParamsMode -> Handle -> Parser (a, C) -> Parser (RT.RawGeist a, C)
 parseGeistWith arrowMode mode h nameParser = do
   loc <- getCurrentHint
   name <- nameParser
-  impArgs <- parseImplicitParams h
+  impParams <- parseImplicitParams h
   let isConstLike = False
-  expArgs@(expSeries, _) <- seriesParen $ mandatoryBinder h SourceAdmissible
-  defaultArgs <- case mode of
-    ParseDefaultArgs -> parseDefaultParams h
-    NoDefaultArgs -> return RT.emptyDefaultArgs
-  lift $ ensureArgumentLinearity S.empty $ map (\(mx, _, x, _, _, _) -> (mx, x)) $ SE.extract expSeries
+  expParams@(expSeries, _) <- seriesParen $ mandatoryBinder h SourceAdmissible
+  defaultParams <- case mode of
+    ParseDefaultParams -> parseDefaultParams h
+    NoDefaultParams -> return RT.emptyDefaultParams
+  lift $ ensureParamLinearity S.empty $ map (\(mx, _, x, _, _, _) -> (mx, x)) $ SE.extract expSeries
   (isDestPassing, c2, (cod, c)) <- parseDefInfoCod arrowMode h
-  return (RT.RawGeist {loc, name, isConstLike, isDestPassing, impArgs, defaultArgs, expArgs, cod = (c2, cod)}, c)
+  return (RT.RawGeist {loc, name, isConstLike, isDestPassing, impParams, defaultParams, expParams, cod = (c2, cod)}, c)
 
 parseAliasGeist :: Handle -> Parser (a, C) -> Parser (RT.RawGeist a, C)
 parseAliasGeist h nameParser = do
   loc <- getCurrentHint
   (name', c1) <- nameParser
-  impArgs <- parseImplicitParams h
-  (isConstLike, expArgs@(expSeries, _)) <- do
+  impParams <- parseImplicitParams h
+  (isConstLike, expParams@(expSeries, _)) <- do
     choice
       [ do
-          expDomArgList <- seriesParen $ preBinder h SourceInadmissible
-          return (False, expDomArgList),
+          expDomParamList <- seriesParen $ preBinder h SourceInadmissible
+          return (False, expDomParamList),
         return (True, (SE.emptySeries (Just SE.Paren) SE.Comma, []))
       ]
-  lift $ ensureArgumentLinearity S.empty $ map (\(mx, _, x, _, _, _) -> (mx, x)) $ SE.extract expSeries
+  lift $ ensureParamLinearity S.empty $ map (\(mx, _, x, _, _, _) -> (mx, x)) $ SE.extract expSeries
   m <- getCurrentHint
   let cod = m :< RT.Tau
   let isDestPassing = False
-  return (RT.RawGeist {loc, name = (name', c1), isConstLike, isDestPassing, impArgs, defaultArgs = RT.emptyDefaultArgs, expArgs, cod = ([], cod)}, [])
+  return
+    ( RT.RawGeist
+        { loc,
+          name = (name', c1),
+          isConstLike,
+          isDestPassing,
+          impParams,
+          defaultParams = RT.emptyDefaultParams,
+          expParams,
+          cod = ([], cod)
+        },
+      []
+    )
 
 parseResourceGeist :: Parser (a, C) -> Parser (RT.RawGeist a, C)
 parseResourceGeist nameParser = do
   loc <- getCurrentHint
   (name', c1) <- nameParser
-  let impArgs = (SE.emptySeriesAC, [])
   let isConstLike = True
   let isDestPassing = False
-  let expArgs = (SE.emptySeries (Just SE.Paren) SE.Comma, [])
-  let defaultArgs = (SE.emptySeries (Just SE.Bracket) SE.Comma, [])
   let cod = loc :< RT.Tau
-  return (RT.RawGeist {loc, name = (name', c1), isConstLike, isDestPassing, impArgs, defaultArgs, expArgs, cod = ([], cod)}, [])
+  return
+    ( RT.RawGeist
+        { loc,
+          name = (name', c1),
+          isConstLike,
+          isDestPassing,
+          impParams = RT.emptyImpParams,
+          defaultParams = RT.emptyDefaultParams,
+          expParams = RT.emptyParams,
+          cod = ([], cod)
+        },
+      []
+    )
 
 parseConstantDef :: Handle -> Parser (a, C) -> Parser (RT.RawDef a, C)
 parseConstantDef h nameParser = do
@@ -796,14 +817,24 @@ parseConstantGeist :: Handle -> Parser (a, C) -> Parser (RT.RawGeist a, C)
 parseConstantGeist h nameParser = do
   loc <- getCurrentHint
   (name', c1) <- nameParser
-  impArgs <- parseImplicitParams h
+  impParams <- parseImplicitParams h
   let isConstLike = True
-  let expArgs = (SE.emptySeries (Just SE.Paren) SE.Comma, [])
-  let defaultArgs = (SE.emptySeries (Just SE.Bracket) SE.Comma, [])
   c2 <- delimiter ":"
   (cod, c) <- rawType h
   let isDestPassing = False
-  return (RT.RawGeist {loc, name = (name', c1), isConstLike, isDestPassing, impArgs, defaultArgs, expArgs, cod = (c2, cod)}, c)
+  return
+    ( RT.RawGeist
+        { loc,
+          name = (name', c1),
+          isConstLike,
+          isDestPassing,
+          impParams,
+          defaultParams = RT.emptyDefaultParams,
+          expParams = RT.emptyParams,
+          cod = (c2, cod)
+        },
+      c
+    )
 
 parseImplicitParams :: Handle -> Parser (SE.Series (RawBinder RT.RawType), C)
 parseImplicitParams h =
@@ -811,7 +842,7 @@ parseImplicitParams h =
     [ do
         (s, c) <- seriesAngle $ parseImplicitParam h
         return (s, c),
-      return (SE.emptySeries (Just SE.Angle) SE.Comma, [])
+      return RT.emptyImpParams
     ]
 
 parseDefaultParams :: Handle -> Parser (SE.Series (RawBinder RT.RawType, RT.RawTerm), C)
@@ -820,7 +851,7 @@ parseDefaultParams h =
     [ do
         (s, c) <- seriesBracket $ preBinderWithDefault h
         return (s, c),
-      return (SE.emptySeries (Just SE.Bracket) SE.Comma, [])
+      return RT.emptyDefaultParams
     ]
 
 parseDefaultTypeParams :: Handle -> Parser (SE.Series (RawBinder RT.RawType), C)
@@ -829,7 +860,7 @@ parseDefaultTypeParams h =
     [ do
         (s, c) <- seriesBracket $ preBinder h SourceInadmissible
         return (s, c),
-      return (SE.emptySeries (Just SE.Bracket) SE.Comma, [])
+      return RT.emptyDefaultParams
     ]
 
 parseImplicitArgsMaybe :: Handle -> Parser (Maybe (SE.Series RT.RawType), C)
@@ -881,8 +912,8 @@ unsafeTypeAttrMark =
     c <- keyword (VK.reifyUnsafeAttr attr)
     return (attr, c)
 
-ensureArgumentLinearity :: S.Set RawIdent -> [(Hint, RawIdent)] -> App ()
-ensureArgumentLinearity foundVarSet vs =
+ensureParamLinearity :: S.Set RawIdent -> [(Hint, RawIdent)] -> App ()
+ensureParamLinearity foundVarSet vs =
   case vs of
     [] ->
       return ()
@@ -890,7 +921,7 @@ ensureArgumentLinearity foundVarSet vs =
       | S.member name foundVarSet ->
           raiseError m $ "Found a non-linear occurrence of `" <> name <> "`."
       | otherwise ->
-          ensureArgumentLinearity (S.insert name foundVarSet) rest
+          ensureParamLinearity (S.insert name foundVarSet) rest
 
 parseDefInfoCod :: ArrowMode -> Handle -> Parser (Bool, C, (RT.RawType, C))
 parseDefInfoCod arrowMode h = do
@@ -1251,34 +1282,34 @@ rawTermPatternConsOrVar h m k headSymbol c1 = do
       return ((m, RP.Var k (Bare headSymbol)), c1)
     else do
       name <- interpretName m headSymbol
-      (typeParams, cTypeParams) <- rawTermPatternTypeParams h
-      let c1' = c1 ++ cTypeParams
+      (impBinders, cImpBinders) <- rawTermPatternImpBinders h
+      let c1' = c1 ++ cImpBinders
       choice
         [ do
             (patArgs, c) <- seriesParen $ rawTermMarkedPattern h
-            return ((m, RP.Cons name c1' typeParams (RP.Paren patArgs)), c),
+            return ((m, RP.Cons name c1' impBinders (RP.Paren patArgs)), c),
           do
             (kvs, c) <- keyValueArgs $ rawTermPatternKeyValuePair h
-            return ((m, RP.Cons name c1' typeParams (RP.Of kvs)), c),
+            return ((m, RP.Cons name c1' impBinders (RP.Of kvs)), c),
           do
-            case typeParams of
+            case impBinders of
               Just _ ->
-                return ((m, RP.Cons name c1 typeParams RP.Omitted), cTypeParams)
+                return ((m, RP.Cons name c1 impBinders RP.Omitted), cImpBinders)
               Nothing ->
                 return ((m, RP.Var k name), c1)
         ]
 
-rawTermPatternTypeParams :: Handle -> Parser (Maybe RP.TypeParams, C)
-rawTermPatternTypeParams h =
+rawTermPatternImpBinders :: Handle -> Parser (Maybe RP.ImpBinders, C)
+rawTermPatternImpBinders h =
   choice
     [ do
-        (typeParams, c) <- seriesAngle $ rawTermPatternTypeParam h
-        return (Just typeParams, c),
+        (impBinders, c) <- seriesAngle $ rawTermPatternImpBinder h
+        return (Just impBinders, c),
       return (Nothing, [])
     ]
 
-rawTermPatternTypeParam :: Handle -> Parser ((Hint, RawIdent), C)
-rawTermPatternTypeParam h = do
+rawTermPatternImpBinder :: Handle -> Parser ((Hint, RawIdent), C)
+rawTermPatternImpBinder h = do
   m <- getCurrentHint
   (x, c) <- symbol
   ensureNotIdentityName m x

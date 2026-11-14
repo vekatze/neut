@@ -101,7 +101,7 @@ define test-function() -> unit {
     function (x: int)[step: int := 2] -> int {
       add-int(x, step)
     };
-  assert("a function with a default argument", eq-int(with-default(1), 3));
+  assert("a function with a default parameter", eq-int(with-default(1), 3));
   define increment(x: int) -> int {
     add-int(x, 100)
   };

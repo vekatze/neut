@@ -43,12 +43,12 @@ fillType h holeSubst ty =
       t' <- fillType h holeSubst t
       args' <- mapM (fillType h holeSubst) args
       return $ m :< WT.TyApp t' args'
-    m :< WT.Pi piKind impArgs expArgs defaultArgs t -> do
-      impArgs' <- fillTypeBinder h holeSubst impArgs
-      expArgs' <- fillTypeBinder h holeSubst expArgs
-      defaultArgs' <- fillTypeBinder h holeSubst defaultArgs
+    m :< WT.Pi piKind impParams expParams defaultParams t -> do
+      impParams' <- fillTypeBinder h holeSubst impParams
+      expParams' <- fillTypeBinder h holeSubst expParams
+      defaultParams' <- fillTypeBinder h holeSubst defaultParams
       t' <- fillType h holeSubst t
-      return $ m :< WT.Pi piKind impArgs' expArgs' defaultArgs' t'
+      return $ m :< WT.Pi piKind impParams' expParams' defaultParams' t'
     m :< WT.Data attr name es -> do
       es' <- mapM (fillType h holeSubst) es
       return $ m :< WT.Data attr name es'

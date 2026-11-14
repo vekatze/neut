@@ -32,7 +32,7 @@ import Kernel.Common.Module qualified as Module
 import Kernel.Common.OptimizableData qualified as OD
 import Kernel.Common.TypeTag qualified as TypeTag
 import Kernel.Common.TypeValue qualified as TypeValue
-import Language.Common.ArgNum qualified as AN
+import Language.Common.Arity qualified as Arity
 import Language.Common.Attr.DataIntro qualified as AttrDI
 import Language.Common.Attr.VarGlobal qualified as AttrVG
 import Language.Common.BaseName qualified as BN
@@ -76,14 +76,14 @@ evaluateInspectType h m moduleID typeExpr = do
     _ :< TM.Pi {} ->
       returnTypeValueIntValue m moduleID TypeValue.Function
     _ :< TM.Data _ dataName dataArgs -> do
-      DI.DataInfo {DI.dataArgs = dataArgBinders, DI.consInfoList = consInfoListRaw} <- lookupDataInfo h m dataName
-      consInfoList <- specializeConsInfoList h m dataName dataArgBinders dataArgs consInfoListRaw
+      DI.DataInfo {DI.dataParams = dataParamBinders, DI.consInfoList = consInfoListRaw} <- lookupDataInfo h m dataName
+      consInfoList <- specializeConsInfoList h m dataName dataParamBinders dataArgs consInfoListRaw
       representation <- liftIO $ OptimizableData.lookup (optDataHandle h) dataName
       case (representation, consInfoList) of
         (Just OD.Enum, _) -> do
           let enumConsNames = map (DD.localLocator . DI.consName) consInfoList
           returnTypeValueIntValue m moduleID $ TypeValue.Enum enumConsNames
-        (Just OD.Unary, [DI.ConsInfo {DI.consArgs = [(_, _, _, arg)]}]) -> do
+        (Just OD.Unary, [DI.ConsInfo {DI.consParams = [(_, _, _, arg)]}]) -> do
           if dataName == makeVectorDD moduleID
             then do
               case dataArgs of
@@ -178,14 +178,14 @@ consToTypeValue ::
   DI.ConsInfo (BinderF TM.Type) ->
   TypeValue.Constructor
 consToTypeValue declaredConsInfo consInfo = do
-  let existentialParams = S.fromList $ map (\(_, _, x, _) -> x) $ DI.consImpArgs declaredConsInfo
+  let existentialParams = S.fromList $ map (\(_, _, x, _) -> x) $ DI.consImpParams declaredConsInfo
   let fieldTypeOf (_, _, _, declaredType) (_, _, _, t) =
         if S.disjoint (TM.freeVarsType declaredType) existentialParams
           then TypeValue.Known t
           else TypeValue.Unknown
-  let fieldTypes = zipWith fieldTypeOf (DI.consArgs declaredConsInfo) (DI.consArgs consInfo)
+  let fieldTypes = zipWith fieldTypeOf (DI.consParams declaredConsInfo) (DI.consParams consInfo)
   let toParam (_, _, x, _) fieldType layout = (Ident.toText x, fieldType, layout)
-  let params = zipWith3 toParam (DI.consArgs consInfo) fieldTypes (DI.consArgLayouts consInfo)
+  let params = zipWith3 toParam (DI.consParams consInfo) fieldTypes (DI.consParamLayouts consInfo)
   (DD.localLocator (DI.consName consInfo), DI.isConstLike consInfo, length existentialParams, params)
 
 isConstTypeTag :: TypeTag.TypeTag -> Bool
@@ -297,7 +297,7 @@ makeConstructorSGL moduleID =
 
 constLikeAttr :: AttrVG.Attr
 constLikeAttr =
-  AttrVG.Attr {argNum = AN.zero, isConstLike = True, isDestPassing = False}
+  AttrVG.Attr {arity = Arity.zero, isConstLike = True, isDestPassing = False}
 
 makeConstructorTypeExpr :: Hint -> MID.ModuleID -> TM.Type
 makeConstructorTypeExpr m moduleID = do
@@ -387,11 +387,11 @@ specializeConsInfoList h m dataName dataBinders dataArgs consInfoList
 
 specializeConsInfo :: Handle -> Subst.Subst -> DI.ConsInfo (BinderF TM.Type) -> App (DI.ConsInfo (BinderF TM.Type))
 specializeConsInfo h sub consInfo = do
-  let specializeConsArg (mx, k, x, t) = do
+  let specializeConsParam (mx, k, x, t) = do
         t' <- liftIO $ Subst.substType (substHandle h) sub t
         return (mx, k, x, t')
-  consArgs' <- mapM specializeConsArg (DI.consArgs consInfo)
-  return $ consInfo {DI.consArgs = consArgs'}
+  consParams' <- mapM specializeConsParam (DI.consParams consInfo)
+  return $ consInfo {DI.consParams = consParams'}
 
 constructFieldTerm :: Hint -> MID.ModuleID -> TypeValue.Field -> TM.Term
 constructFieldTerm m moduleID (paramName, paramType, layout) = do
@@ -488,7 +488,7 @@ evaluateTextUncons h m moduleID text = do
       let unitTypeDD = DD.newByGlobalLocator unitSGL BN.unitType
       let pairTypeDD = DD.newByGlobalLocator pairSGL BN.pairType
       let unitTypeVar = m :< TM.TVarGlobal constLikeAttr unitTypeDD
-      let pairTypeVar = m :< TM.TVarGlobal (AttrVG.new (AN.fromInt 2)) pairTypeDD
+      let pairTypeVar = m :< TM.TVarGlobal (AttrVG.new (Arity.fromInt 2)) pairTypeDD
       let runeType = m :< TM.PrimType PT.Rune
       let textType = m :< TM.PrimType PT.Text
       let pairType = m :< TM.TyApp pairTypeVar [runeType, textType]
@@ -496,14 +496,14 @@ evaluateTextUncons h m moduleID text = do
         Nothing -> do
           let leftDD = DD.newByGlobalLocator eitherSGL BN.left
           let unitDD = DD.newByGlobalLocator unitSGL BN.unit
-          let leftVar = m :< TM.VarGlobal (AttrVG.new (AN.fromInt 3)) leftDD
+          let leftVar = m :< TM.VarGlobal (AttrVG.new (Arity.fromInt 3)) leftDD
           let unitVar = m :< TM.VarGlobal constLikeAttr unitDD
           return $ applyConstructor m leftVar [unitTypeVar, pairType] [unitVar]
         Just (c, rest) -> do
           let rightDD = DD.newByGlobalLocator eitherSGL BN.right
           let pairDD = DD.newByGlobalLocator pairSGL BN.pair
-          let rightVar = m :< TM.VarGlobal (AttrVG.new (AN.fromInt 3)) rightDD
-          let pairVar = m :< TM.VarGlobal (AttrVG.new (AN.fromInt 4)) pairDD
+          let rightVar = m :< TM.VarGlobal (AttrVG.new (Arity.fromInt 3)) rightDD
+          let pairVar = m :< TM.VarGlobal (AttrVG.new (Arity.fromInt 4)) pairDD
           let runeValue = m :< TM.Prim (PV.Rune (Rune.fromChar c))
           let restText = m :< TM.Prim (PV.Text rest)
           let pair = applyConstructor m pairVar [runeType, textType] [runeValue, restText]

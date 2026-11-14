@@ -21,10 +21,10 @@ import Kernel.Common.Handle.Global.Env qualified as Env
 import Kernel.Common.Handle.Global.Expose qualified as Expose
 import Kernel.Common.Handle.Global.GlobalRemark qualified as GlobalRemark
 import Kernel.Common.Handle.Global.ImportedTypeDefCache qualified as ImportedTypeDefCache
-import Kernel.Common.Handle.Global.KeyArg qualified as KeyArg
 import Kernel.Common.Handle.Global.Module qualified as Module
 import Kernel.Common.Handle.Global.ModulePath qualified as ModulePath
 import Kernel.Common.Handle.Global.OptimizableData qualified as OptimizableData
+import Kernel.Common.Handle.Global.ParamKey qualified as ParamKey
 import Kernel.Common.Handle.Global.Path qualified as Path
 import Kernel.Common.Handle.Global.Platform qualified as Platform
 import Kernel.Common.Handle.Global.Resource qualified as Resource
@@ -62,7 +62,7 @@ data Handle = Handle
     envHandle :: Env.Handle,
     globalRemarkHandle :: GlobalRemark.Handle,
     importedTypeDefCacheHandle :: ImportedTypeDefCache.Handle,
-    keyArgHandle :: KeyArg.Handle,
+    paramKeyHandle :: ParamKey.Handle,
     moduleHandle :: Module.Handle,
     modulePathHandle :: ModulePath.Handle,
     optDataHandle :: OptimizableData.Handle,
@@ -141,7 +141,7 @@ newHandle consoleHandle loggerHandle envHandle platformHandle zenConfig localArc
   moduleHandle <- Module.new mainModule reuseHandle
   antecedentHandle <- Antecedent.new
   modulePathHandle <- ModulePath.new moduleHandle antecedentHandle mainModule
-  keyArgHandle <- KeyArg.new mainModule modulePathHandle
+  paramKeyHandle <- ParamKey.new mainModule modulePathHandle
   weakDefHandle <- WeakDef.new
   weakTypeDefHandle <- WeakTypeDef.new
   defHandle <- Definition.new

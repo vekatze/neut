@@ -362,7 +362,7 @@ This compiles, since `let ... on ...` is desugared using `lift`, and `actual a` 
 
 The two solutions differ in who carries the obligation, and in how much they allow:
 
-- `actual a` constrains the type argument, so the callback stays an ordinary function. In exchange, `a` can never be a function type, since function types aren't actual either.
+- `actual a` constrains the implicit argument, so the callback stays an ordinary function. In exchange, `a` can never be a function type, since function types aren't actual either.
 - `^` leaves `a` unconstrained and instead asks the callback to hand back a value that is already valid on the outer layer. The callback boxes the value itself, so `a` can be a function type here.
 
 `actual` is the simpler choice when the results are plain data. `^` is the one to reach for when the callback should decide how its result crosses the layer.

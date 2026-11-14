@@ -1,4 +1,4 @@
-module Kernel.Common.Handle.Global.KeyArg
+module Kernel.Common.Handle.Global.ParamKey
   ( Handle (..),
     Origin (..),
     ExpKey,
@@ -44,7 +44,7 @@ type DefaultKey =
 data Handle = Handle
   { _mainModule :: MainModule,
     _modulePathHandle :: ModulePath.Handle,
-    _keyArgMapRef :: IORef KeyArgMap
+    _paramKeyMapRef :: IORef ParamKeyMap
   }
 
 data Origin
@@ -101,7 +101,7 @@ _showKeyList ks =
 
 new :: MainModule -> ModulePath.Handle -> IO Handle
 new _mainModule _modulePathHandle = do
-  _keyArgMapRef <- newIORef Map.empty
+  _paramKeyMapRef <- newIORef Map.empty
   return $ Handle {..}
 
 data Entry = Entry
@@ -114,18 +114,18 @@ data Entry = Entry
     entryDefaultKeys :: [DefaultKey]
   }
 
-type KeyArgMap =
+type ParamKeyMap =
   Map.HashMap DD.DefiniteDescription (Origin, IsConstLike, ([ImpKey], [ExpKey], [DefaultKey]))
 
 insertMany :: Handle -> [Entry] -> App ()
 insertMany h entries = do
   modulePathMap <- liftIO $ ModulePath.get (_modulePathHandle h)
-  kmap <- liftIO $ readIORef (_keyArgMapRef h)
+  kmap <- liftIO $ readIORef (_paramKeyMapRef h)
   accepted <- foldM (acceptEntry modulePathMap kmap) Map.empty entries
-  liftIO $ atomicModifyIORef' (_keyArgMapRef h) $ \mp ->
+  liftIO $ atomicModifyIORef' (_paramKeyMapRef h) $ \mp ->
     (Map.union accepted mp, ())
 
-acceptEntry :: ModulePath.ModulePathMap -> KeyArgMap -> KeyArgMap -> Entry -> App KeyArgMap
+acceptEntry :: ModulePath.ModulePathMap -> ParamKeyMap -> ParamKeyMap -> Entry -> App ParamKeyMap
 acceptEntry modulePathMap kmap accepted (Entry m funcName origin isConstLike impKeys expKeys defaultKeys) = do
   let value = (origin, isConstLike, (impKeys, expKeys, defaultKeys))
   let funcName' = renderDD modulePathMap funcName
@@ -184,8 +184,8 @@ acceptEntry modulePathMap kmap accepted (Entry m funcName origin isConstLike imp
 lookup :: Handle -> Hint -> DD.DefiniteDescription -> App ([ImpKey], [ExpKey], [DefaultKey])
 lookup h m dataName = do
   modulePathMap <- liftIO $ ModulePath.get (_modulePathHandle h)
-  keyArgMap <- liftIO $ readIORef (_keyArgMapRef h)
-  case Map.lookup dataName keyArgMap of
+  paramKeyMap <- liftIO $ readIORef (_paramKeyMapRef h)
+  case Map.lookup dataName paramKeyMap of
     Just (_, _, impExpKeys) ->
       return impExpKeys
     Nothing -> do

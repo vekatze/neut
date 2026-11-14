@@ -71,9 +71,9 @@ data DefKind
   deriving (Eq, Show)
 
 data DefInfo = DefInfo
-  { defImpBinders :: [BinderF TM.Type],
-    defExpBinders :: [BinderF TM.Type],
-    defDefaultArgs :: [(BinderF TM.Type, TM.Term)],
+  { defImpParams :: [BinderF TM.Type],
+    defExpParams :: [BinderF TM.Type],
+    defDefaultParams :: [(BinderF TM.Type, TM.Term)],
     defBody :: TM.Term,
     codType :: TM.Type,
     defKind :: DefKind,

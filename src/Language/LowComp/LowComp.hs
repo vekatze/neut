@@ -136,7 +136,7 @@ type Def =
 
 data DefContent = DefContent
   { codType :: LowType,
-    args :: [(Ident, LowType)],
+    params :: [(Ident, LowType)],
     body :: Comp
   }
 

@@ -28,7 +28,7 @@ import Data.Maybe (mapMaybe)
 import Data.Text qualified as T
 import Data.Text.Lazy qualified as TL
 import Data.Text.Lazy.Builder qualified as B
-import Language.Common.ArgNum
+import Language.Common.Arity
 import Language.Common.BaseLowType
 import Language.Common.CellLayout qualified as CL
 import Language.Common.DefiniteDescription qualified as DD
@@ -49,7 +49,7 @@ import Prelude hiding (null)
 
 data Value
   = VarLocal Ident
-  | VarGlobal DD.DefiniteDescription ArgNum (FCT.ForeignCodType BaseLowType)
+  | VarGlobal DD.DefiniteDescription Arity (FCT.ForeignCodType BaseLowType)
   | VarStaticBytes BS.ByteString
   | SigmaIntro CL.CellLayout [Value]
   | StaticSigmaIntro T.Text CL.CellLayout [Value]

@@ -30,11 +30,11 @@ import Logger.Hint
 checkStmt :: Global.Handle -> Module.Module -> Stmt.Stmt -> App ()
 checkStmt globalHandle baseModule stmt =
   case stmt of
-    Stmt.StmtDefine _ _ _ name impArgs expArgs defaultArgs codType _ -> do
-      let binderList = impArgs ++ expArgs ++ map fst defaultArgs
+    Stmt.StmtDefine _ _ _ name impParams expParams defaultParams codType _ -> do
+      let binderList = impParams ++ expParams ++ map fst defaultParams
       checkSignatureTypeList globalHandle baseModule name $ collectBinderTypes binderList ++ [codType]
-    Stmt.StmtDefineType _ stmtKind _ name impArgs expArgs defaultArgs codType body -> do
-      let binderList = impArgs ++ expArgs ++ map fst defaultArgs
+    Stmt.StmtDefineType _ stmtKind _ name impParams expParams defaultParams codType body -> do
+      let binderList = impParams ++ expParams ++ map fst defaultParams
       checkSignatureTypeList globalHandle baseModule name $
         collectBinderTypes binderList ++ [codType] ++ collectTypeBody stmtKind body
     Stmt.StmtDefineResource {} ->
@@ -52,16 +52,16 @@ checkStmt globalHandle baseModule stmt =
 
 checkGeist :: Global.Handle -> Module.Module -> G.Geist TM.Type TM.Term -> App ()
 checkGeist globalHandle baseModule geist = do
-  let defaultBinders = map fst $ G.defaultArgs geist
+  let defaultParamBinders = map fst $ G.defaultParams geist
   checkSignatureTypeList globalHandle baseModule (G.name geist) $
-    collectBinderTypes (G.impArgs geist ++ G.expArgs geist ++ defaultBinders)
+    collectBinderTypes (G.impParams geist ++ G.expParams geist ++ defaultParamBinders)
       ++ [G.cod geist]
 
 checkDefineMeta :: Global.Handle -> Module.Module -> DD.DefiniteDescription -> Stmt.DefineMeta -> App ()
 checkDefineMeta globalHandle baseModule name defineMeta =
   checkSignatureTypeList globalHandle baseModule name $
     Stmt.defineMetaTargetArgs defineMeta
-      ++ collectBinderTypes (Stmt.defineMetaExpArgs defineMeta)
+      ++ collectBinderTypes (Stmt.defineMetaExpParams defineMeta)
       ++ [Stmt.defineMetaCodType defineMeta]
 
 collectTypeBody :: SK.StmtKindType TM.Type -> TM.Type -> [TM.Type]
@@ -130,9 +130,9 @@ collectTypeDDs typ =
       [(m, name)]
     _ :< TM.TyApp t args ->
       concatMap collectTypeDDs (t : args)
-    _ :< TM.Pi _ impArgs expArgs defaultArgs codType ->
+    _ :< TM.Pi _ impParams expParams defaultParams codType ->
       concatMap collectTypeDDs $
-        collectBinderTypes (impArgs ++ expArgs ++ defaultArgs) ++ [codType]
+        collectBinderTypes (impParams ++ expParams ++ defaultParams) ++ [codType]
     m :< TM.Data _ name args ->
       (m, name) : concatMap collectTypeDDs args
     _ :< TM.Box t ->

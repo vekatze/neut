@@ -33,7 +33,7 @@ import Kernel.Parse.Internal.Handle.Alias qualified as Alias
 import Kernel.Parse.Internal.Handle.NameMap qualified as NameMap
 import Kernel.Parse.Internal.Handle.Unused qualified as Unused
 import Kernel.Parse.NominalEnv (NameEnv)
-import Language.Common.ArgNum qualified as AN
+import Language.Common.Arity qualified as Arity
 import Language.Common.Attr.VarGlobal qualified as AttrVG
 import Language.Common.BaseName qualified as BN
 import Language.Common.CallConvSpec qualified as CCS
@@ -402,9 +402,9 @@ resolveDefiniteDescription h m dd = do
 
 data ResolvedCons = ResolvedCons
   { consDD :: DD.DefiniteDescription,
-    dataArgNum :: AN.ArgNum,
-    consImpArgNames :: [T.Text],
-    consArgNum :: AN.ArgNum,
+    dataArity :: Arity.Arity,
+    consImpParamNames :: [T.Text],
+    consArity :: Arity.Arity,
     disc :: D.Discriminant,
     isConstLike :: IsConstLike,
     consSourceFlags :: [IsSourceArg]
@@ -422,7 +422,7 @@ resolveConstructor h m s = do
 resolveConstructorMaybe :: DD.DefiniteDescription -> GN.GlobalName -> Maybe ResolvedCons
 resolveConstructorMaybe dd gn = do
   case gn of
-    GN.DataIntro dataArgNum consImpArgNames consArgNum disc isConstLike consSourceFlags ->
+    GN.DataIntro dataArity consImpParamNames consArity disc isConstLike consSourceFlags ->
       Just $ ResolvedCons {consDD = dd, ..}
     _ ->
       Nothing
@@ -431,15 +431,15 @@ interpretGlobalName :: H.Handle -> Hint -> DD.DefiniteDescription -> GN.GlobalNa
 interpretGlobalName h m dd gn = do
   let dd' = renderDD (H.modulePathMap h) dd
   case gn of
-    GN.TopLevelFuncTerm argNum isConstLike isDestPassing -> do
+    GN.TopLevelFuncTerm arity isConstLike isDestPassing -> do
       ensureRuntimeTermStage m h dd
-      return $ interpretTopLevelFuncTerm m dd argNum isConstLike isDestPassing
+      return $ interpretTopLevelFuncTerm m dd arity isConstLike isDestPassing
     GN.TopLevelMetaTerm _ True ->
       interpretMetaConstant h m dd gn ImpArgs.Unspecified
-    GN.TopLevelMetaTerm argNum isConstLike -> do
+    GN.TopLevelMetaTerm arity isConstLike -> do
       ensureMetaTermStage m h dd
       let isDestPassing = False
-      return $ interpretTopLevelFuncTerm m dd argNum isConstLike isDestPassing
+      return $ interpretTopLevelFuncTerm m dd arity isConstLike isDestPassing
     GN.TopLevelFuncType {} -> do
       raiseError m $ "`" <> dd' <> "` is a type name and cannot appear in term position"
     GN.Trope ->
@@ -448,8 +448,8 @@ interpretGlobalName h m dd gn = do
       raiseError m $ "`" <> dd' <> "` is a namespace and cannot appear in term position"
     GN.Data {} ->
       raiseError m $ "`" <> dd' <> "` is a type name and cannot appear in term position"
-    GN.DataIntro dataArgNum consImpArgNames consArgNum _ isConstLike _ -> do
-      let argNum = AN.add (AN.add dataArgNum (AN.fromInt (length consImpArgNames))) consArgNum
+    GN.DataIntro dataArity consImpParamNames consArity _ isConstLike _ -> do
+      let arity = Arity.add (Arity.add dataArity (Arity.fromInt (length consImpParamNames))) consArity
       let isDestPassing = False
       let attr = AttrVG.Attr {..}
       return $ makeNullaryCall m attr dd
@@ -486,10 +486,10 @@ interpretGlobalTypeName h m dd gn = do
       raiseError m $ "`" <> dd' <> "` is a term name and cannot appear in type position"
     GN.TopLevelMetaTerm {} -> do
       raiseError m $ "`" <> dd' <> "` is a term name and cannot appear in type position"
-    GN.TopLevelFuncType argNum isConstLike _ -> do
-      return $ interpretTopLevelFuncType m dd argNum isConstLike
-    GN.Data argNum _ isConstLike ->
-      return $ interpretTopLevelFuncType m dd argNum isConstLike
+    GN.TopLevelFuncType arity isConstLike _ -> do
+      return $ interpretTopLevelFuncType m dd arity isConstLike
+    GN.Data arity _ isConstLike ->
+      return $ interpretTopLevelFuncType m dd arity isConstLike
     GN.DataIntro {} ->
       raiseError m $ "`" <> dd' <> "` is a constructor and cannot appear in type position"
     GN.PrimType primNum ->
@@ -506,11 +506,11 @@ interpretGlobalTypeName h m dd gn = do
 interpretTopLevelFuncTerm ::
   Hint ->
   DD.DefiniteDescription ->
-  AN.ArgNum ->
+  Arity.Arity ->
   IsConstLike ->
   IsDestPassing ->
   WT.WeakTerm
-interpretTopLevelFuncTerm m dd argNum isConstLike isDestPassing = do
+interpretTopLevelFuncTerm m dd arity isConstLike isDestPassing = do
   let attr = AttrVG.Attr {..}
   if isConstLike
     then makeNullaryCall m attr dd
@@ -523,10 +523,10 @@ makeNullaryCall m attr dd =
 interpretTopLevelFuncType ::
   Hint ->
   DD.DefiniteDescription ->
-  AN.ArgNum ->
+  Arity.Arity ->
   IsConstLike ->
   WT.WeakType
-interpretTopLevelFuncType m dd argNum isConstLike = do
+interpretTopLevelFuncType m dd arity isConstLike = do
   let isDestPassing = False
   let attr = AttrVG.Attr {..}
   if isConstLike

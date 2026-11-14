@@ -68,7 +68,7 @@ subst h sub term =
           return term
     _ :< WT.VarGlobal {} ->
       return term
-    m :< WT.PiIntro (AttrL.Attr {lamKind}) impArgs expArgs defaultArgs e -> do
+    m :< WT.PiIntro (AttrL.Attr {lamKind}) impParams expParams defaultParams e -> do
       let fvs = S.map Ident.toInt $ WT.freeVarsAll term
       let subDomSet = S.fromList $ IntMap.keys sub
       if S.intersection fvs subDomSet == S.empty
@@ -77,21 +77,21 @@ subst h sub term =
           newLamID <- liftIO $ Gensym.newCount (gensymHandle h)
           case lamKind of
             LK.Fix kind isDestPassing xt -> do
-              (impArgs', sub') <- subst' h sub impArgs
-              (expArgs', sub'') <- subst' h sub' expArgs
-              (defaultArgs', sub''') <- substDefaultArgs h sub'' defaultArgs
+              (impParams', sub') <- subst' h sub impParams
+              (expParams', sub'') <- subst' h sub' expParams
+              (defaultParams', sub''') <- substDefaultParams h sub'' defaultParams
               ([xt'], sub'''') <- subst' h sub''' [xt]
               e' <- subst h sub'''' e
               let fixAttr = AttrL.Attr {lamKind = LK.Fix kind isDestPassing xt', identity = newLamID}
-              return (m :< WT.PiIntro fixAttr impArgs' expArgs' defaultArgs' e')
+              return (m :< WT.PiIntro fixAttr impParams' expParams' defaultParams' e')
             LK.Normal mName isDestPassing codType -> do
-              (impArgs', sub') <- subst' h sub impArgs
-              (expArgs', sub'') <- subst' h sub' expArgs
-              (defaultArgs', sub''') <- substDefaultArgs h sub'' defaultArgs
+              (impParams', sub') <- subst' h sub impParams
+              (expParams', sub'') <- subst' h sub' expParams
+              (defaultParams', sub''') <- substDefaultParams h sub'' defaultParams
               codType' <- substType h sub''' codType
               e' <- subst h sub''' e
               let lamAttr = AttrL.Attr {lamKind = LK.Normal mName isDestPassing codType', identity = newLamID}
-              return (m :< WT.PiIntro lamAttr impArgs' expArgs' defaultArgs' e')
+              return (m :< WT.PiIntro lamAttr impParams' expParams' defaultParams' e')
     m :< WT.PiElim spec e impArgs expArgs defaultArgs -> do
       spec' <- CCS.traverseTypes (substType h sub) spec
       e' <- subst h sub e
@@ -195,12 +195,12 @@ substType h sub ty =
       t' <- substType h sub t
       args' <- mapM (substType h sub) args
       return $ m :< WT.TyApp t' args'
-    m :< WT.Pi piKind impArgs expArgs defaultArgs t -> do
-      (impArgs', sub') <- subst' h sub impArgs
-      (expArgs', sub'') <- subst' h sub' expArgs
-      (defaultArgs', sub''') <- subst' h sub'' defaultArgs
+    m :< WT.Pi piKind impParams expParams defaultParams t -> do
+      (impParams', sub') <- subst' h sub impParams
+      (expParams', sub'') <- subst' h sub' expParams
+      (defaultParams', sub''') <- subst' h sub'' defaultParams
       t' <- substType h sub''' t
-      return $ m :< WT.Pi piKind impArgs' expArgs' defaultArgs' t'
+      return $ m :< WT.Pi piKind impParams' expParams' defaultParams' t'
     m :< WT.Data attr name es -> do
       es' <- mapM (substType h sub) es
       return $ m :< WT.Data attr name es'
@@ -260,12 +260,12 @@ subst' h sub binder =
       (xts', sub'') <- subst' h sub' xts
       return ((m, k, x', t') : xts', sub'')
 
-substDefaultArgs ::
+substDefaultParams ::
   Handle ->
   Subst ->
   [(BinderF WT.WeakType, WT.WeakTerm)] ->
   IO ([(BinderF WT.WeakType, WT.WeakTerm)], Subst)
-substDefaultArgs h sub binderList =
+substDefaultParams h sub binderList =
   case binderList of
     [] -> do
       return ([], sub)
@@ -274,7 +274,7 @@ substDefaultArgs h sub binderList =
       defaultValue' <- subst h sub defaultValue
       x' <- liftIO $ Gensym.newIdentFromIdent (gensymHandle h) x
       let sub' = IntMap.insert (Ident.toInt x) (Var x') sub
-      (rest', sub'') <- substDefaultArgs h sub' rest
+      (rest', sub'') <- substDefaultParams h sub' rest
       return (((m, k, x', t'), defaultValue') : rest', sub'')
 
 subst'' ::
@@ -379,14 +379,14 @@ substCase h sub decisionCase = do
       let (dataTerms, dataTypes) = unzip dataArgs
       dataTerms' <- mapM (substType h sub) dataTerms
       dataTypes' <- mapM (substType h sub) dataTypes
-      (binders', cont') <- subst''' h sub (consImpArgs ++ consArgs) cont
-      let (consImpArgs', consArgs') = splitAt (length consImpArgs) binders'
+      (binders', cont') <- subst''' h sub (consImpBinders ++ consBinders) cont
+      let (consImpBinders', consBinders') = splitAt (length consImpBinders) binders'
       return $
         DT.ConsCase
           record
             { DT.dataArgs = zip dataTerms' dataTypes',
-              DT.consImpArgs = consImpArgs',
-              DT.consArgs = consArgs',
+              DT.consImpBinders = consImpBinders',
+              DT.consBinders = consBinders',
               DT.cont = cont'
             }
 

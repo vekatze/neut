@@ -3,7 +3,7 @@ module Language.RawTerm.RawPattern
     MarkedPattern,
     RawPatternRow,
     ConsArgs (..),
-    TypeParams,
+    ImpBinders,
   )
 where
 
@@ -19,13 +19,13 @@ import SyntaxTree.Series qualified as SE
 
 data RawPattern
   = Var VarKind Name
-  | Cons Name C (Maybe TypeParams) ConsArgs
+  | Cons Name C (Maybe ImpBinders) ConsArgs
   | RuneIntro RU.Rune
 
 type MarkedPattern =
   (RawPattern, IsSourceArg)
 
-type TypeParams =
+type ImpBinders =
   SE.Series (Hint, RawIdent)
 
 data ConsArgs

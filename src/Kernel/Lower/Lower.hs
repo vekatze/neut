@@ -40,7 +40,7 @@ import Kernel.Lower.DeadLetElim qualified as DeadLetElim
 import Kernel.Lower.FreeMallocCancel qualified as FreeMallocCancel
 import Kernel.Lower.HoistStackAlloc qualified as HoistStackAlloc
 import Kernel.Lower.MallocFreeCancel qualified as MallocFreeCancel
-import Language.Common.ArgNum qualified as AN
+import Language.Common.Arity qualified as Arity
 import Language.Common.BaseLowType qualified as BLT
 import Language.Common.BasePrimType qualified as BPT
 import Language.Common.CellLayout qualified as CL
@@ -138,7 +138,7 @@ lower h stmtList auxStmtList = do
   let auxNameSet = S.fromList $ mapMaybe C.getCompStmtName auxStmtList
   liftIO $ registerInternalNames h (stmtList ++ auxStmtList)
   liftIO $ forM DD.baseTypes $ \dd ->
-    insDeclEnv h (DN.In dd) AN.argNumS4 (FCT.Cod BLT.Pointer)
+    insDeclEnv h (DN.In dd) Arity.arityS4 (FCT.Cod BLT.Pointer)
   stmtDefList <- catMaybes <$> mapM (lowerStmt h) stmtList
   auxDefList <- lowerAuxStmtList h auxNameSet auxStmtList
   LC.LowCodeNormal <$> liftIO (summarize h (stmtDefList ++ auxDefList))
@@ -147,7 +147,7 @@ lowerEntryPoint :: Handle -> MainTarget -> [C.CompStmt] -> App LC.LowCode
 lowerEntryPoint h target stmtList = do
   liftIO $ registerInternalNames h stmtList
   mainDD <- Env.getMainDefiniteDescriptionByTarget (envHandle h) target
-  liftIO $ insDeclEnv h (DN.In mainDD) mainEntryArgNum (FCT.Cod BLT.slot)
+  liftIO $ insDeclEnv h (DN.In mainDD) mainEntryArity (FCT.Cod BLT.slot)
   mainDef <- liftIO $ constructMainTerm h mainDD
   stmtList' <- catMaybes <$> mapM (lowerStmt h) stmtList
   LC.LowCodeMain mainDef <$> liftIO (summarize h stmtList')
@@ -174,11 +174,11 @@ optimize h = do
 lowerStmt :: Handle -> C.CompStmt -> App (Maybe LC.Def)
 lowerStmt h stmt = do
   case stmt of
-    C.Def name _ args e -> do
-      let argTypes = replicate (length args) LT.slotLowType
-      e0 <- lowerComp (h {currentArity = Just (length args)}) e tailCont
+    C.Def name _ params e -> do
+      let paramTypes = replicate (length params) LT.slotLowType
+      e0 <- lowerComp (h {currentArity = Just (length params)}) e tailCont
       e' <- liftIO $ optimize h e0
-      let def = LC.DefContent LT.slotLowType (zip args argTypes) e'
+      let def = LC.DefContent LT.slotLowType (zip params paramTypes) e'
       reportTrace h name (name, def)
       return $ Just (name, def)
     C.Foreign {} -> do
@@ -264,9 +264,9 @@ lowerAuxStmtList h auxNameSet auxStmtList =
                 S.union loweredAuxNameSet (S.fromList $ mapMaybe C.getCompStmtName pendingStmtList)
           go loweredAuxNameSet' (acc ++ pendingDefList)
 
-mainEntryArgNum :: AN.ArgNum
-mainEntryArgNum =
-  AN.fromInt 2
+mainEntryArity :: Arity.Arity
+mainEntryArity =
+  Arity.fromInt 2
 
 mainEntryArgs :: [(LT.LowType, LC.Value)]
 mainEntryArgs =
@@ -299,8 +299,8 @@ cIntLowType =
 hasMatchingSignature :: Handle -> C.Value -> Int -> Bool
 hasMatchingSignature h callee argCount =
   case (currentArity h, callee) of
-    (Just arity, C.VarGlobal _ calleeArgNum _) ->
-      arity == argCount && AN.reify calleeArgNum == argCount
+    (Just arity, C.VarGlobal _ calleeArity _) ->
+      arity == argCount && Arity.reify calleeArity == argCount
     _ ->
       False
 
@@ -773,11 +773,11 @@ loadElements h basePointer values cont =
 lowerValue :: Handle -> Ident -> C.Value -> LC.Comp -> App LC.Comp
 lowerValue h resultVar v cont =
   case v of
-    C.VarGlobal globalName argNum cod -> do
+    C.VarGlobal globalName arity cod -> do
       liftIO $ insertReferencedName h globalName
       lowNameSet <- liftIO $ getDefinedNameSet h
       unless (S.member globalName lowNameSet) $ do
-        liftIO $ insDeclEnvForGlobalFunc h globalName argNum cod
+        liftIO $ insDeclEnvForGlobalFunc h globalName arity cod
       uncast h resultVar (LC.VarGlobal globalName) LT.Pointer cont
     C.VarLocal y ->
       return $ LC.Let resultVar (moveOf (LT.slotLowType) (LC.VarLocal y)) cont
@@ -832,13 +832,13 @@ newValueLocal h name = do
   x <- Gensym.newIdentFromText (gensymHandle h) name
   return (x, LC.VarLocal x)
 
-insDeclEnv :: Handle -> DN.DeclarationName -> AN.ArgNum -> FCT.ForeignCodType BLT.BaseLowType -> IO ()
-insDeclEnv h k argNum cod = do
-  insDeclEnv' h k (BLT.toSlotSeq argNum) cod
+insDeclEnv :: Handle -> DN.DeclarationName -> Arity.Arity -> FCT.ForeignCodType BLT.BaseLowType -> IO ()
+insDeclEnv h k arity cod = do
+  insDeclEnv' h k (BLT.toSlotSeq arity) cod
 
-insDeclEnvForGlobalFunc :: Handle -> DD.DefiniteDescription -> AN.ArgNum -> FCT.ForeignCodType BLT.BaseLowType -> IO ()
-insDeclEnvForGlobalFunc h globalName argNum _ =
-  insDeclEnv' h (DN.In globalName) (BLT.toSlotSeq argNum) (FCT.Cod BLT.slot)
+insDeclEnvForGlobalFunc :: Handle -> DD.DefiniteDescription -> Arity.Arity -> FCT.ForeignCodType BLT.BaseLowType -> IO ()
+insDeclEnvForGlobalFunc h globalName arity _ =
+  insDeclEnv' h (DN.In globalName) (BLT.toSlotSeq arity) (FCT.Cod BLT.slot)
 
 insDeclEnv' :: Handle -> DN.DeclarationName -> [BLT.BaseLowType] -> FCT.ForeignCodType BLT.BaseLowType -> IO ()
 insDeclEnv' h k domList cod = do
@@ -910,11 +910,11 @@ lowerStaticValue h v =
       return LC.StaticNull
     C.VarStaticBytes bytes -> do
       LC.StaticSymbol <$> liftIO (registerStaticBytes h bytes)
-    C.VarGlobal globalName argNum cod -> do
+    C.VarGlobal globalName arity cod -> do
       liftIO $ insertReferencedName h globalName
       lowNameSet <- liftIO $ getDefinedNameSet h
       unless (S.member globalName lowNameSet) $ do
-        liftIO $ insDeclEnvForGlobalFunc h globalName argNum cod
+        liftIO $ insDeclEnvForGlobalFunc h globalName arity cod
       return $ LC.StaticGlobal globalName
     C.Int size l ->
       return $ LC.StaticInt size l

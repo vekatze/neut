@@ -118,8 +118,8 @@ stuckTypeOf h m visited ty0 = do
       return Nothing
     _ :< TM.TyApp (_ :< TM.TVarGlobal {}) args ->
       stuckTypeOfList h m visited args
-    _ :< TM.Pi _ impArgs expArgs defaultArgs cod -> do
-      let binderTypes = map (\(_, _, _, t) -> t) $ impArgs ++ expArgs ++ defaultArgs
+    _ :< TM.Pi _ impParams expParams defaultParams cod -> do
+      let binderTypes = map (\(_, _, _, t) -> t) $ impParams ++ expParams ++ defaultParams
       stuckTypeOfList h m visited $ binderTypes ++ [cod]
     _ :< TM.Box t ->
       stuckTypeOf h m visited t
@@ -138,17 +138,17 @@ stuckTypeOf h m visited ty0 = do
           | S.member dataName visited ->
               return Nothing
           | otherwise -> do
-              consInfoList <- TypeUtil.getConsArgTypes h m dataName dataArgs
-              consArgTypes <- liftIO $ concat <$> mapM (fieldTypesOfValue h) consInfoList
-              stuckTypeOfList h m (S.insert dataName visited) consArgTypes
+              consInfoList <- TypeUtil.getConsParamTypes h m dataName dataArgs
+              consParamTypes <- liftIO $ concat <$> mapM (fieldTypesOfValue h) consInfoList
+              stuckTypeOfList h m (S.insert dataName visited) consParamTypes
     _ ->
       return $ Just ty
 
 fieldTypesOfValue :: ElaborateHandle.Handle -> DI.ConsInfo (BinderF TM.Type) -> IO [TM.Type]
 fieldTypesOfValue h consInfo = do
-  let evaluated = map (\(mx, _, x, _) -> (Ident.toInt x, Subst.Type (mx :< TM.Tau))) $ DI.consImpArgs consInfo
+  let evaluated = map (\(mx, _, x, _) -> (Ident.toInt x, Subst.Type (mx :< TM.Tau))) $ DI.consImpParams consInfo
   let sub = IntMap.fromList evaluated
-  mapM (\(_, _, _, t) -> Subst.substType (Subst.new (ElaborateHandle.gensymHandle h)) sub t) $ DI.consArgs consInfo
+  mapM (\(_, _, _, t) -> Subst.substType (Subst.new (ElaborateHandle.gensymHandle h)) sub t) $ DI.consParams consInfo
 
 stuckTypeOfList ::
   ElaborateHandle.Handle ->

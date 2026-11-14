@@ -84,11 +84,11 @@ extend traceHandle cache = do
 compressStmt :: Stmt.Stmt -> State IntSet.IntSet (Stmt.StrippedStmt, IntSet.IntSet)
 compressStmt stmt = do
   case stmt of
-    Stmt.StmtDefine isConstLike stmtKind m functionName impArgs expArgs defaultArgs codType e -> do
+    Stmt.StmtDefine isConstLike stmtKind m functionName impParams expParams defaultParams codType e -> do
       let stmtKind' = TM.compressStmtKindTerm stmtKind
-      let impArgs' = map TM.compressBinder impArgs
-      defaultArgs' <- mapM compressDefaultArg defaultArgs
-      let expArgs' = map TM.compressBinder expArgs
+      let impParams' = map TM.compressBinder impParams
+      defaultParams' <- mapM compressDefaultParam defaultParams
+      let expParams' = map TM.compressBinder expParams
       let codType' = TM.compressType codType
       let bodyCompression =
             if O.isOpaque $ SK.toOpacityTerm stmtKind
@@ -96,15 +96,15 @@ compressStmt stmt = do
               else TM.compressCollect e
       let (e', bodySiteIDs) = runState bodyCompression IntSet.empty
       modify' $ IntSet.union bodySiteIDs
-      return (Stmt.StmtDefine isConstLike stmtKind' m functionName impArgs' expArgs' defaultArgs' codType' e', bodySiteIDs)
-    Stmt.StmtDefineType isConstLike stmtKind m functionName impArgs expArgs defaultArgs codType body -> do
+      return (Stmt.StmtDefine isConstLike stmtKind' m functionName impParams' expParams' defaultParams' codType' e', bodySiteIDs)
+    Stmt.StmtDefineType isConstLike stmtKind m functionName impParams expParams defaultParams codType body -> do
       let stmtKind' = TM.compressStmtKindType stmtKind
-      let impArgs' = map TM.compressBinder impArgs
-      defaultArgs' <- mapM compressDefaultArg defaultArgs
-      let expArgs' = map TM.compressBinder expArgs
+      let impParams' = map TM.compressBinder impParams
+      defaultParams' <- mapM compressDefaultParam defaultParams
+      let expParams' = map TM.compressBinder expParams
       let codType' = TM.compressType codType
       let body' = TM.compressType body
-      return (Stmt.StmtDefineType isConstLike stmtKind' m functionName impArgs' expArgs' defaultArgs' codType' body', IntSet.empty)
+      return (Stmt.StmtDefineType isConstLike stmtKind' m functionName impParams' expParams' defaultParams' codType' body', IntSet.empty)
     Stmt.StmtDefineResource m name resourceID unitType discarder copier resourceSize -> do
       let unitType' = TM.compressType unitType
       discarder' <- TM.compressCollect discarder
@@ -123,32 +123,32 @@ compressStmt stmt = do
     Stmt.StmtNamespace m name ->
       return (Stmt.StmtNamespace m name, IntSet.empty)
 
-compressDefaultArg ::
+compressDefaultParam ::
   (BinderF Term.Type, Term.Term) ->
   State IntSet.IntSet (BinderF (Cofree Term.TypeF ()), Cofree Term.TermF ())
-compressDefaultArg (binder, value) = do
+compressDefaultParam (binder, value) = do
   value' <- TM.compressCollect value
   return (TM.compressBinder binder, value')
 
 extendStmt :: Trace.Remapping -> Stmt.StrippedStmt -> Stmt.Stmt
 extendStmt remapping stmt =
   case stmt of
-    Stmt.StmtDefine isConstLike stmtKind m functionName impArgs expArgs defaultArgs codType e -> do
+    Stmt.StmtDefine isConstLike stmtKind m functionName impParams expParams defaultParams codType e -> do
       let stmtKind' = TM.extendStmtKindTerm stmtKind
-      let impArgs' = map TM.extendBinder impArgs
-      let defaultArgs' = map (bimap TM.extendBinder (TM.extend remapping)) defaultArgs
-      let expArgs' = map TM.extendBinder expArgs
+      let impParams' = map TM.extendBinder impParams
+      let defaultParams' = map (bimap TM.extendBinder (TM.extend remapping)) defaultParams
+      let expParams' = map TM.extendBinder expParams
       let codType' = TM.extendType codType
       let e' = TM.extend remapping e
-      Stmt.StmtDefine isConstLike stmtKind' m functionName impArgs' expArgs' defaultArgs' codType' e'
-    Stmt.StmtDefineType isConstLike stmtKind m functionName impArgs expArgs defaultArgs codType body -> do
+      Stmt.StmtDefine isConstLike stmtKind' m functionName impParams' expParams' defaultParams' codType' e'
+    Stmt.StmtDefineType isConstLike stmtKind m functionName impParams expParams defaultParams codType body -> do
       let stmtKind' = TM.extendStmtKindType stmtKind
-      let impArgs' = map TM.extendBinder impArgs
-      let defaultArgs' = map (bimap TM.extendBinder (TM.extend remapping)) defaultArgs
-      let expArgs' = map TM.extendBinder expArgs
+      let impParams' = map TM.extendBinder impParams
+      let defaultParams' = map (bimap TM.extendBinder (TM.extend remapping)) defaultParams
+      let expParams' = map TM.extendBinder expParams
       let codType' = TM.extendType codType
       let body' = TM.extendType body
-      Stmt.StmtDefineType isConstLike stmtKind' m functionName impArgs' expArgs' defaultArgs' codType' body'
+      Stmt.StmtDefineType isConstLike stmtKind' m functionName impParams' expParams' defaultParams' codType' body'
     Stmt.StmtDefineResource m name resourceID unitType discarder copier resourceSize -> do
       let unitType' = TM.extendType unitType
       let discarder' = TM.extend remapping discarder
@@ -174,7 +174,7 @@ compressDefineMeta defineMeta = do
   return $
     defineMeta
       { Stmt.defineMetaTargetArgs = map TM.compressType $ Stmt.defineMetaTargetArgs defineMeta,
-        Stmt.defineMetaExpArgs = map TM.compressBinder $ Stmt.defineMetaExpArgs defineMeta,
+        Stmt.defineMetaExpParams = map TM.compressBinder $ Stmt.defineMetaExpParams defineMeta,
         Stmt.defineMetaCodType = TM.compressType $ Stmt.defineMetaCodType defineMeta,
         Stmt.defineMetaBody = body'
       }
@@ -186,7 +186,7 @@ extendDefineMeta ::
 extendDefineMeta remapping defineMeta =
   defineMeta
     { Stmt.defineMetaTargetArgs = map TM.extendType $ Stmt.defineMetaTargetArgs defineMeta,
-      Stmt.defineMetaExpArgs = map TM.extendBinder $ Stmt.defineMetaExpArgs defineMeta,
+      Stmt.defineMetaExpParams = map TM.extendBinder $ Stmt.defineMetaExpParams defineMeta,
       Stmt.defineMetaCodType = TM.extendType $ Stmt.defineMetaCodType defineMeta,
       Stmt.defineMetaBody = TM.extend remapping $ Stmt.defineMetaBody defineMeta
     }

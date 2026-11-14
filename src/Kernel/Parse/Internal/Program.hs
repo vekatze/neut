@@ -315,9 +315,9 @@ parseData h = do
   c1 <- keyword "data"
   m <- getCurrentHint
   (dataName, c2) <- baseName
-  dataArgsOrNone <- parseDataArgs h
+  dataParamsOrNone <- parseDataParams h
   (consSeries, loc, c) <- seriesBraceList' $ parseDefineDataClause h
-  return (RawStmtDefineData c1 m (dataName, c2) dataArgsOrNone consSeries loc, c)
+  return (RawStmtDefineData c1 m (dataName, c2) dataParamsOrNone consSeries loc, c)
 
 parseTrope :: Handle -> Parser (RawStmt, C)
 parseTrope h = do
@@ -351,7 +351,7 @@ parseDefineMeta h = do
   (targetText, cTarget) <- symbol
   target <- interpretName mTarget targetText
   targetArgs <- seriesAngle $ rawType h
-  expArgs <- seriesParen $ mandatoryBinder h SourceAdmissible
+  expParams <- seriesParen $ mandatoryBinder h SourceAdmissible
   (_, cArrow, cod) <- parseDefInfoCod ArrowMeta h
   (c2, ((body, _), loc, c)) <- betweenBrace' $ rawExpr h
   return
@@ -359,7 +359,7 @@ parseDefineMeta h = do
         { defineMetaLoc = m,
           defineMetaTarget = (target, cTarget),
           defineMetaTargetArgs = targetArgs,
-          defineMetaExpArgs = expArgs,
+          defineMetaExpParams = expParams,
           defineMetaCod = (cArrow, fst cod),
           defineMetaBody = body,
           defineMetaEndLoc = loc
@@ -435,24 +435,24 @@ parseNominalData :: Handle -> Parser (RT.RawGeist BN.BaseName, C)
 parseNominalData h = do
   m <- getCurrentHint
   (name, c1) <- baseName
-  argsOrNone <- parseDataArgs h
-  let expArgs = maybe RT.emptyArgs id argsOrNone
-  let isConstLike = maybe True (const False) argsOrNone
+  paramsOrNone <- parseDataParams h
+  let expParams = maybe RT.emptyParams id paramsOrNone
+  let isConstLike = maybe True (const False) paramsOrNone
   let geist =
         RT.RawGeist
           { loc = m,
             name = (name, c1),
             isConstLike = isConstLike,
             isDestPassing = False,
-            impArgs = RT.emptyImpArgs,
-            defaultArgs = RT.emptyDefaultArgs,
-            expArgs = expArgs,
+            impParams = RT.emptyImpParams,
+            defaultParams = RT.emptyDefaultParams,
+            expParams = expParams,
             cod = ([], m :< RT.Tau)
           }
   return (geist, [])
 
-parseDataArgs :: Handle -> Parser (Maybe (RT.Args RT.RawType))
-parseDataArgs h = do
+parseDataParams :: Handle -> Parser (Maybe (RT.Params RT.RawType))
+parseDataParams h = do
   choice
     [ Just <$> seriesParen (preBinder h SourceInadmissible),
       return Nothing
@@ -464,32 +464,32 @@ parseDefineDataClause h = do
   (name, c1) <- baseName
   unless (isConsName (BN.reify name)) $ do
     lift $ raiseError loc "The name of a constructor must be capitalized"
-  (impArgs, cImpArgs) <- parseImplicitParams h
-  (expArgs, endLoc, c2) <- parseConsArgs h
-  forM_ expArgs $ \fields ->
-    lift $ ensureArgumentLinearity S.empty $ map (\(_, (mx, _, x, _, _, _)) -> (mx, x)) $ SE.extract fields
-  return (RawConsInfo {loc, name, impArgs, expArgs, endLoc}, c1 ++ cImpArgs ++ c2)
+  (impParams, cImpArgs) <- parseImplicitParams h
+  (expParams, endLoc, c2) <- parseConsParams h
+  forM_ expParams $ \fields ->
+    lift $ ensureParamLinearity S.empty $ map (\(_, (mx, _, x, _, _, _)) -> (mx, x)) $ SE.extract fields
+  return (RawConsInfo {loc, name, impParams, expParams, endLoc}, c1 ++ cImpArgs ++ c2)
 
-parseConsArgs :: Handle -> Parser (Maybe (SE.Series (FieldHint, RawBinder RT.RawType)), Loc, C)
-parseConsArgs h = do
+parseConsParams :: Handle -> Parser (Maybe (SE.Series (FieldHint, RawBinder RT.RawType)), Loc, C)
+parseConsParams h = do
   choice
     [ do
-        (s, loc, c) <- seriesParen' $ parseDefineDataClauseArg h
+        (s, loc, c) <- seriesParen' $ parseDefineDataClauseParam h
         return (Just s, loc, c),
       do
         loc <- getCurrentLoc
         return (Nothing, loc, [])
     ]
 
-parseDefineDataClauseArg :: Handle -> Parser ((FieldHint, RawBinder RT.RawType), C)
-parseDefineDataClauseArg h = do
-  (binder@(mx, k, _, _, _, _), c) <- parseDataClauseArgBinder h
+parseDefineDataClauseParam :: Handle -> Parser ((FieldHint, RawBinder RT.RawType), C)
+parseDefineDataClauseParam h = do
+  (binder@(mx, k, _, _, _, _), c) <- parseDataClauseParamBinder h
   if VK.isSource k
     then return ((FieldMixed mx, binder), c)
     else return ((FieldAuto, binder), c)
 
-parseDataClauseArgBinder :: Handle -> Parser (RawBinder RT.RawType, C)
-parseDataClauseArgBinder h = do
+parseDataClauseParamBinder :: Handle -> Parser (RawBinder RT.RawType, C)
+parseDataClauseParamBinder h = do
   binderOrType h SourceAdmissible
 
 parseResource :: Handle -> Parser (RawStmt, C)

@@ -18,7 +18,7 @@ module Language.RawTerm.RawTerm
     KeywordClause,
     EL,
     MustIgnoreRelayedVars,
-    Args,
+    Params,
     RawGeist (..),
     GeistKeys (..),
     getGeistKeys,
@@ -27,12 +27,11 @@ module Language.RawTerm.RawTerm
     RawImpVar,
     VarArg,
     getDefName,
-    emptyArgs,
-    emptyImpArgs,
-    emptyDefaultBinders,
-    emptyDefaultArgs,
-    extractArgs,
-    extractImpArgs,
+    emptyParams,
+    emptyImpParams,
+    emptyDefaultParams,
+    extractParams,
+    extractImpParams,
     lam,
     piElim,
     pushCommentToKeywordClause,
@@ -91,7 +90,7 @@ data RawTypeF a
   | TypeHole HoleID
   | TyVar Name
   | TyApp a C (SE.Series a)
-  | Pi (SE.Series (RawBinder a), C) (Args a) (SE.Series (RawBinder a), C) RawPiKind C a Loc
+  | Pi (SE.Series (RawBinder a), C) (Params a) (SE.Series (RawBinder a), C) RawPiKind C a Loc
   | Data AttrD.Attr DD.DefiniteDescription [a]
   | Box a
   | BoxNoema a
@@ -144,14 +143,14 @@ data RawTermF a
   | BoxIntro C C (SE.Series (Hint, VarKind, RawIdent)) (a, C)
   | BoxIntroLift C C (a, C)
   | EmbedIntro C C (a, C)
-  | BoxElim NecessityVariant Bool C (PatParam RawType) C (SE.Series (Hint, VarKind, RawIdent)) C a C Loc C a Loc
+  | BoxElim NecessityVariant Bool C (PatBinder RawType) C (SE.Series (Hint, VarKind, RawIdent)) C a C Loc C a Loc
   | CodeIntro CodeVariant C C (a, C)
   | CodeElim C C (a, C)
   | TauIntro C (EL RawType)
   | TauElim C (Hint, VarKind, RawIdent, C) C a C Loc C a Loc
   | Embody a
-  | Let LetKind C (PatParam RawType) C C a C Loc C a Loc
-  | LetOn LetKind C (PatParam RawType) C (SE.Series (Hint, VarKind, RawIdent)) C a C Loc C a Loc
+  | Let LetKind C (PatBinder RawType) C C a C Loc C a Loc
+  | LetOn LetKind C (PatBinder RawType) C (SE.Series (Hint, VarKind, RawIdent)) C a C Loc C a Loc
   | LetRec LDK.LocalDefKind C DefInfo C Loc C a Loc
   | Pin C (RawBinder RawType) C (SE.Series (Hint, VarKind, RawIdent)) C a C Loc C a Loc
   | Invoke C (SE.Series (Hint, Name)) C a
@@ -173,34 +172,30 @@ data RawTermF a
 data StaticItem
   = StaticFileKey T.Text
 
-type PatParam a =
+type PatBinder a =
   (Hint, RP.RawPattern, C, C, a)
 
-type Args a =
+type Params a =
   (SE.Series (RawBinder a), C)
 
-emptyArgs :: Args a
-emptyArgs =
+emptyParams :: Params a
+emptyParams =
   (SE.emptySeriesPC, [])
 
-emptyImpArgs :: (SE.Series (RawBinder RawType), C)
-emptyImpArgs =
-  (SE.emptySeries (Just SE.Angle) SE.Comma, [])
+emptyImpParams :: (SE.Series a, C)
+emptyImpParams =
+  (SE.emptySeriesAC, [])
 
-emptyDefaultBinders :: (SE.Series (RawBinder RawType), C)
-emptyDefaultBinders =
+emptyDefaultParams :: (SE.Series a, C)
+emptyDefaultParams =
   (SE.emptySeries (Just SE.Bracket) SE.Comma, [])
 
-emptyDefaultArgs :: (SE.Series (RawBinder RawType, RawTerm), C)
-emptyDefaultArgs =
-  (SE.emptySeries (Just SE.Bracket) SE.Comma, [])
-
-extractArgs :: Args a -> [RawBinder a]
-extractArgs (series, _) =
+extractParams :: Params a -> [RawBinder a]
+extractParams (series, _) =
   SE.extract series
 
-extractImpArgs :: (SE.Series (RawBinder RawType), C) -> [RawBinder RawType]
-extractImpArgs (series, _) =
+extractImpParams :: (SE.Series (RawBinder RawType), C) -> [RawBinder RawType]
+extractImpParams (series, _) =
   SE.extract series
 
 type KeywordClause a =
@@ -223,9 +218,9 @@ data RawGeist a = RawGeist
     name :: (a, C),
     isConstLike :: IsConstLike,
     isDestPassing :: IsDestPassing,
-    impArgs :: (SE.Series (RawBinder RawType), C),
-    expArgs :: Args RawType,
-    defaultArgs :: (SE.Series (RawBinder RawType, RawTerm), C),
+    impParams :: (SE.Series (RawBinder RawType), C),
+    expParams :: Params RawType,
+    defaultParams :: (SE.Series (RawBinder RawType, RawTerm), C),
     cod :: (C, RawType)
   }
 
@@ -279,9 +274,9 @@ getGeistKeys :: RawGeist a -> GeistKeys
 getGeistKeys geist = do
   let binderKey (_, _, x, _, _, _) = x
   GeistKeys
-    { geistImpKeys = map binderKey $ extractImpArgs $ impArgs geist,
-      geistExpKeys = map binderKey $ extractArgs $ expArgs geist,
-      geistDefaultKeys = map (binderKey . fst) $ SE.extract $ fst $ defaultArgs geist
+    { geistImpKeys = map binderKey $ extractImpParams $ impParams geist,
+      geistExpKeys = map binderKey $ extractParams $ expParams geist,
+      geistDefaultKeys = map (binderKey . fst) $ SE.extract $ fst $ defaultParams geist
     }
 
 getDefName :: RawDef a -> a
@@ -308,9 +303,9 @@ lam loc m varList codType e =
                   name = (Nothing, []),
                   isConstLike = False,
                   isDestPassing = False,
-                  impArgs = (SE.emptySeries (Just SE.Angle) SE.Comma, []),
-                  defaultArgs = (SE.emptySeries (Just SE.Bracket) SE.Comma, []),
-                  expArgs = (SE.assoc $ SE.fromList SE.Paren SE.Comma varList, []),
+                  impParams = (SE.emptySeries (Just SE.Angle) SE.Comma, []),
+                  defaultParams = (SE.emptySeries (Just SE.Bracket) SE.Comma, []),
+                  expParams = (SE.assoc $ SE.fromList SE.Paren SE.Comma varList, []),
                   cod = ([], codType)
                 },
             leadingComment = [],

@@ -22,9 +22,9 @@ freeVars term =
       S.singleton x
     _ :< TM.VarGlobal {} ->
       S.empty
-    _ :< TM.PiIntro k impArgs expArgs defaultArgs e -> do
+    _ :< TM.PiIntro k impParams expParams defaultParams e -> do
       let body = freeVarsBinderType (catMaybes [AttrL.fromAttr k]) (freeVars e)
-      freeVarsBinderType (impArgs ++ expArgs) (freeVarsDefaultArgs defaultArgs body)
+      freeVarsBinderType (impParams ++ expParams) (freeVarsDefaultParams defaultParams body)
     _ :< TM.PiElim _ conv e impArgs expArgs defaultArgs -> do
       let xs = freeVars e
       let ys0 = S.unions $ map freeVarsType (CC.types conv)
@@ -96,8 +96,8 @@ freeVarsType ty =
       S.empty
     _ :< TM.TyApp t args ->
       S.unions $ freeVarsType t : map freeVarsType args
-    _ :< TM.Pi _ impArgs expArgs defaultArgs t ->
-      freeVarsBinderType (impArgs ++ expArgs ++ defaultArgs) (freeVarsType t)
+    _ :< TM.Pi _ impParams expParams defaultParams t ->
+      freeVarsBinderType (impParams ++ expParams ++ defaultParams) (freeVarsType t)
     _ :< TM.Data _ _ es ->
       S.unions $ map freeVarsType es
     _ :< TM.Box t ->
@@ -115,13 +115,13 @@ freeVarsType ty =
     _ :< TM.Resource _ _ -> do
       S.empty
 
-freeVarsDefaultArgs :: [(BinderF TM.Type, TM.Term)] -> S.Set Ident -> S.Set Ident
-freeVarsDefaultArgs defaultArgs zs =
-  case defaultArgs of
+freeVarsDefaultParams :: [(BinderF TM.Type, TM.Term)] -> S.Set Ident -> S.Set Ident
+freeVarsDefaultParams defaultParams zs =
+  case defaultParams of
     [] ->
       zs
     (binder, value) : rest ->
-      S.union (freeVars value) (freeVarsBinderType [binder] (freeVarsDefaultArgs rest zs))
+      S.union (freeVars value) (freeVarsBinderType [binder] (freeVarsDefaultParams rest zs))
 
 freeVarsBinderType :: [BinderF TM.Type] -> S.Set Ident -> S.Set Ident
 freeVarsBinderType binder zs =
@@ -156,7 +156,7 @@ freeVarsCase decisionCase = do
       freeVarsDecisionTree cont
     DT.ConsCase (DT.ConsCaseRecord {..}) -> do
       let (dataTerms, dataTypes) = unzip dataArgs
-      let binderFreeVars = freeVarsBinderType (consImpArgs ++ consArgs) (freeVarsDecisionTree cont)
+      let binderFreeVars = freeVarsBinderType (consImpBinders ++ consBinders) (freeVarsDecisionTree cont)
       S.unions $ binderFreeVars : map freeVarsType dataTerms ++ map freeVarsType dataTypes
 
 freeVarsMagic :: M.Magic BLT.BaseLowType TM.Type TM.Term -> S.Set Ident

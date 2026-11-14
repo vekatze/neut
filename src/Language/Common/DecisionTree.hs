@@ -33,8 +33,8 @@ data ConsCaseRecord t a = ConsCaseRecord
     isConstLike :: IsConstLike,
     disc :: D.Discriminant,
     dataArgs :: [(t, t)],
-    consImpArgs :: [BinderF t],
-    consArgs :: [BinderF t],
+    consImpBinders :: [BinderF t],
+    consBinders :: [BinderF t],
     cont :: DecisionTree t a
   }
 
@@ -66,7 +66,7 @@ findCase consDisc decisionCase =
       Nothing
     ConsCase (ConsCaseRecord {..}) -> do
       if consDisc == disc
-        then return (map (\(_, _, x, _) -> x) consImpArgs, map (\(_, _, x, t) -> (x, t)) consArgs, cont)
+        then return (map (\(_, _, x, _) -> x) consImpBinders, map (\(_, _, x, t) -> (x, t)) consBinders, cont)
         else Nothing
 
 deriveBinary [''ConsCaseRecord, ''DecisionTree, ''Case]

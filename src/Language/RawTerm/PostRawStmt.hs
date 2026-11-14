@@ -9,7 +9,7 @@ module Language.RawTerm.PostRawStmt () where
 --       C
 --       Hint
 --       (name, C)
---       (Maybe (RT.Args RT.RawTerm))
+--       (Maybe (RT.Params RT.RawTerm))
 --       (SE.Series (RawConsInfo name))
 --       Loc
 --   | RawStmtDefineResource

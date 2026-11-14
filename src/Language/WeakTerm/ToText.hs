@@ -69,8 +69,8 @@ toTextIndented kit term =
       indentText (level kit) (showVariable (distinctVars kit) x)
     _ :< WT.VarGlobal _ x ->
       indentText (level kit) (DD.localLocator x)
-    _ :< WT.PiIntro attr impArgs expArgs defaultArgs e ->
-      renderPiIntro kit attr impArgs expArgs defaultArgs e
+    _ :< WT.PiIntro attr impParams expParams defaultParams e ->
+      renderPiIntro kit attr impParams expParams defaultParams e
     _ :< WT.PiElim spec e impArgs expArgs _ ->
       if isIndentedApplication e
         then renderIndentedApplication kit e impArgs spec expArgs
@@ -213,8 +213,8 @@ renderPiIntro ::
   [(BinderF WT.WeakType, WT.WeakTerm)] ->
   WT.WeakTerm ->
   T.Text
-renderPiIntro kit attr impArgs expArgs defaultArgs e =
-  indentText (level kit) (renderPiIntroHeader (distinctVars kit) attr impArgs expArgs defaultArgs)
+renderPiIntro kit attr impParams expParams defaultParams e =
+  indentText (level kit) (renderPiIntroHeader (distinctVars kit) attr impParams expParams defaultParams)
     <> " {\n"
     <> toTextIndented (atLevel kit (level kit + 1)) e
     <> "\n"
@@ -227,31 +227,31 @@ renderPiIntroHeader ::
   [BinderF WT.WeakType] ->
   [(BinderF WT.WeakType, WT.WeakTerm)] ->
   T.Text
-renderPiIntroHeader distinct attr impArgs expArgs defaultArgs =
+renderPiIntroHeader distinct attr impParams expParams defaultParams =
   case AttrL.lamKind attr of
     LK.Fix kind isDestPassing (_, k, x, codType) ->
       LDK.keyword kind
         <> " "
         <> showVarWithKind distinct k x
-        <> showSourceImpArgs distinct impArgs
-        <> inParen (showFnDomArgList distinct expArgs)
-        <> showDefaultArgs defaultArgs
+        <> showSourceImpParams distinct impParams
+        <> inParen (showFnDomParamList distinct expParams)
+        <> showDefaultParams defaultParams
         <> (if isDestPassing then " ->> " else " -> ")
         <> toTextType codType
     LK.Normal _ isDestPassing _ ->
-      showSourceImpArgs distinct impArgs
-        <> inParen (showFnDomArgList distinct expArgs)
-        <> showDefaultArgs defaultArgs
+      showSourceImpParams distinct impParams
+        <> inParen (showFnDomParamList distinct expParams)
+        <> showDefaultParams defaultParams
         <> (if isDestPassing then " =>>" else " =>")
 
-showSourceImpArgs :: Bool -> [BinderF WT.WeakType] -> T.Text
-showSourceImpArgs distinct impArgs =
-  if null impArgs
+showSourceImpParams :: Bool -> [BinderF WT.WeakType] -> T.Text
+showSourceImpParams distinct impParams =
+  if null impParams
     then ""
-    else inAngleBracket (T.intercalate ", " (map (showSourceImpArg distinct) impArgs))
+    else inAngleBracket (T.intercalate ", " (map (showSourceImpParam distinct) impParams))
 
-showSourceImpArg :: Bool -> BinderF WT.WeakType -> T.Text
-showSourceImpArg distinct (_, k, x, t) =
+showSourceImpParam :: Bool -> BinderF WT.WeakType -> T.Text
+showSourceImpParam distinct (_, k, x, t) =
   showVarWithKind distinct k x <> ": " <> toTextType t
 
 renderDataElim ::
@@ -333,7 +333,7 @@ renderDecisionCaseLabel distinct decisionCase =
       DD.localLocator consDD
         <> if isConstLike
           then ""
-          else "(" <> T.intercalate ", " (map (renderConstructorArg distinct) consArgs) <> ")"
+          else "(" <> T.intercalate ", " (map (renderConstructorBinder distinct) consBinders) <> ")"
 
 renderLiteral :: L.Literal -> T.Text
 renderLiteral literal =
@@ -343,8 +343,8 @@ renderLiteral literal =
     L.Rune rune ->
       T.pack (show rune)
 
-renderConstructorArg :: Bool -> BinderF WT.WeakType -> T.Text
-renderConstructorArg distinct (_, _, x, _) =
+renderConstructorBinder :: Bool -> BinderF WT.WeakType -> T.Text
+renderConstructorBinder distinct (_, _, x, _) =
   showVariable distinct x
 
 renderTermLet :: Kit -> VK.VarKind -> Ident -> WT.WeakType -> WT.WeakTerm -> WT.WeakTerm -> T.Text
@@ -432,11 +432,11 @@ collectPrintedHoles ty =
       []
     _ :< WT.TyApp t args ->
       collectPrintedHoles t ++ concatMap collectPrintedHoles args
-    _ :< WT.Pi piKind impArgs expArgs defaultArgs cod -> do
+    _ :< WT.Pi piKind impParams expParams defaultParams cod -> do
       let binderHoles = concatMap (\(_, _, _, t) -> collectPrintedHoles t)
       if isForAllShaped piKind
-        then binderHoles (impArgs ++ defaultArgs) ++ collectPrintedHoles cod
-        else binderHoles (expArgs ++ defaultArgs) ++ collectPrintedHoles cod
+        then binderHoles (impParams ++ defaultParams) ++ collectPrintedHoles cod
+        else binderHoles (expParams ++ defaultParams) ++ collectPrintedHoles cod
     _ :< WT.Data (AttrD.Attr {..}) _ es ->
       if isConstLike
         then []
@@ -492,10 +492,10 @@ toTextType' h ty =
               toTextType' h t
         _ ->
           showApp (toTextType' h t) (map (toTextType' h) args)
-    _ :< WT.Pi piKind impArgs expArgs defaultArgs cod ->
+    _ :< WT.Pi piKind impParams expParams defaultParams cod ->
       if isForAllShaped piKind
-        then showImpArgsForAll' h impArgs defaultArgs <> toTextType' h cod
-        else showImpArgs impArgs <> inParen (showDomArgList' h expArgs) <> showDefaultBinders' h defaultArgs <> showArrow piKind <> toTextType' h cod
+        then showImpParamsForAll' h impParams defaultParams <> toTextType' h cod
+        else showImpParams impParams <> inParen (showDomParamList' h expParams) <> showDefaultBinders' h defaultParams <> showArrow piKind <> toTextType' h cod
     _ :< WT.Data (AttrD.Attr {..}) name es -> do
       if isConstLike
         then showDD h name
@@ -521,19 +521,19 @@ toTextType' h ty =
         Nothing ->
           "?" <> T.pack (show (HID.reify i)) <> "(" <> T.intercalate "," (map (toTextType' h) es) <> ")"
 
-showImpArgs :: [BinderF WT.WeakType] -> T.Text
-showImpArgs impArgs =
-  if null impArgs
+showImpParams :: [BinderF WT.WeakType] -> T.Text
+showImpParams impParams =
+  if null impParams
     then ""
-    else inAngleBracket $ showImpDomArgList impArgs
+    else inAngleBracket $ showImpDomParamList impParams
 
-showDefaultArgs :: [(BinderF WT.WeakType, WT.WeakTerm)] -> T.Text
-showDefaultArgs =
-  showDefaultArgs' (makeHandle DD.localLocator)
+showDefaultParams :: [(BinderF WT.WeakType, WT.WeakTerm)] -> T.Text
+showDefaultParams =
+  showDefaultParams' (makeHandle DD.localLocator)
 
-showFnDomArgList :: Bool -> [BinderF WT.WeakType] -> T.Text
-showFnDomArgList distinct args =
-  T.intercalate ", " (map (showFnDomArg distinct) args)
+showFnDomParamList :: Bool -> [BinderF WT.WeakType] -> T.Text
+showFnDomParamList distinct params =
+  T.intercalate ", " (map (showFnDomParam distinct) params)
 
 showMatchArgs :: Bool -> [(Ident, WT.WeakTerm, WT.WeakType)] -> T.Text
 showMatchArgs distinct =
@@ -543,51 +543,51 @@ showMagic :: M.WeakMagic WT.WeakType WT.WeakType WT.WeakTerm -> T.Text
 showMagic =
   showMagic' (makeHandle DD.localLocator)
 
-showDefaultArgs' :: Handle -> [(BinderF WT.WeakType, WT.WeakTerm)] -> T.Text
-showDefaultArgs' h defaultArgs =
-  if null defaultArgs
+showDefaultParams' :: Handle -> [(BinderF WT.WeakType, WT.WeakTerm)] -> T.Text
+showDefaultParams' h defaultParams =
+  if null defaultParams
     then ""
-    else inBracket $ showDefaultDomArgList' h defaultArgs
+    else inBracket $ showDefaultDomParamList' h defaultParams
 
-showImpArgsForAll' :: Handle -> [BinderF WT.WeakType] -> [BinderF WT.WeakType] -> T.Text
-showImpArgsForAll' h impArgs defaultArgs = do
-  let impArgsWithDefaults = map (,Nothing) impArgs ++ map (,Nothing) defaultArgs
-  if null impArgsWithDefaults
+showImpParamsForAll' :: Handle -> [BinderF WT.WeakType] -> [BinderF WT.WeakType] -> T.Text
+showImpParamsForAll' h impParams defaultParams = do
+  let impParamsWithDefaults = map (,Nothing) impParams ++ map (,Nothing) defaultParams
+  if null impParamsWithDefaults
     then ""
-    else "∀ " <> T.intercalate " " (map (showDataImpArgWithDefault' h) impArgsWithDefaults) <> ". "
+    else "∀ " <> T.intercalate " " (map (showDataImpParamWithDefault' h) impParamsWithDefaults) <> ". "
 
 showDefaultBinders' :: Handle -> [BinderF WT.WeakType] -> T.Text
-showDefaultBinders' h defaultArgs =
-  if null defaultArgs
+showDefaultBinders' h defaultParams =
+  if null defaultParams
     then ""
-    else inBracket $ showDefaultDomBinderList' h defaultArgs
+    else inBracket $ showDefaultDomBinderList' h defaultParams
 
-showImpDomArgList :: [BinderF WT.WeakType] -> T.Text
-showImpDomArgList mxts =
-  T.intercalate ", " $ map showImpDomArg mxts
+showImpDomParamList :: [BinderF WT.WeakType] -> T.Text
+showImpDomParamList mxts =
+  T.intercalate ", " $ map showImpDomParam mxts
 
-showDefaultDomArgList' :: Handle -> [(BinderF WT.WeakType, WT.WeakTerm)] -> T.Text
-showDefaultDomArgList' h mxts =
-  T.intercalate ", " $ map (showDefaultDomArg' h) mxts
+showDefaultDomParamList' :: Handle -> [(BinderF WT.WeakType, WT.WeakTerm)] -> T.Text
+showDefaultDomParamList' h mxts =
+  T.intercalate ", " $ map (showDefaultDomParam' h) mxts
 
 showDefaultDomBinderList' :: Handle -> [BinderF WT.WeakType] -> T.Text
 showDefaultDomBinderList' h mxts =
   T.intercalate ", " $ map (showDefaultDomBinder' h) mxts
 
-showImpDomArg :: BinderF WT.WeakType -> T.Text
-showImpDomArg (_, k, x, _) =
+showImpDomParam :: BinderF WT.WeakType -> T.Text
+showImpDomParam (_, k, x, _) =
   showVarWithKind False k x
 
-showDefaultDomArg' :: Handle -> (BinderF WT.WeakType, WT.WeakTerm) -> T.Text
-showDefaultDomArg' h ((_, k, x, t), defaultValue) =
+showDefaultDomParam' :: Handle -> (BinderF WT.WeakType, WT.WeakTerm) -> T.Text
+showDefaultDomParam' h ((_, k, x, t), defaultValue) =
   showVarWithKind False k x <> ": " <> toTextType' h t <> " := " <> toTextUnindented defaultValue
 
 showDefaultDomBinder' :: Handle -> BinderF WT.WeakType -> T.Text
 showDefaultDomBinder' h (_, k, x, t) =
   showVarWithKind False k x <> ": " <> toTextType' h t
 
-showDataImpArgWithDefault' :: Handle -> (BinderF WT.WeakType, Maybe WT.WeakTerm) -> T.Text
-showDataImpArgWithDefault' h ((_, k, x, t), maybeDefault) = do
+showDataImpParamWithDefault' :: Handle -> (BinderF WT.WeakType, Maybe WT.WeakTerm) -> T.Text
+showDataImpParamWithDefault' h ((_, k, x, t), maybeDefault) = do
   let baseArg =
         case t of
           _ :< WT.Tau -> showVarWithKind False k x
@@ -612,18 +612,18 @@ inAngleBracket :: T.Text -> T.Text
 inAngleBracket s =
   "<" <> s <> ">"
 
-showDomArg' :: Handle -> Bool -> BinderF WT.WeakType -> T.Text
-showDomArg' h anyNamed (_, k, x, t) =
+showDomParam' :: Handle -> Bool -> BinderF WT.WeakType -> T.Text
+showDomParam' h anyNamed (_, k, x, t) =
   if anyNamed
     then showVarWithKind False k x <> ": " <> toTextType' h t
     else varKindPrefix k <> toTextType' h t
 
-anyNamedDomArg :: [BinderF WT.WeakType] -> Bool
-anyNamedDomArg =
+anyNamedDomParam :: [BinderF WT.WeakType] -> Bool
+anyNamedDomParam =
   any (\(_, _, x, _) -> not (isHole x))
 
-showFnDomArg :: Bool -> BinderF WT.WeakType -> T.Text
-showFnDomArg distinct (_, k, x, t) =
+showFnDomParam :: Bool -> BinderF WT.WeakType -> T.Text
+showFnDomParam distinct (_, k, x, t) =
   showVarWithKind distinct k x <> ": " <> toTextType t
 
 showVarWithKind :: Bool -> VK.VarKind -> Ident -> T.Text
@@ -636,9 +636,9 @@ varKindPrefix k =
     <> (if VK.isSource k then "+" else "")
     <> (if VK.isExp k then "!" else "")
 
-showDomArgList' :: Handle -> [BinderF WT.WeakType] -> T.Text
-showDomArgList' h mxts =
-  T.intercalate ", " $ map (showDomArg' h (anyNamedDomArg mxts)) mxts
+showDomParamList' :: Handle -> [BinderF WT.WeakType] -> T.Text
+showDomParamList' h mxts =
+  T.intercalate ", " $ map (showDomParam' h (anyNamedDomParam mxts)) mxts
 
 showApp :: T.Text -> [T.Text] -> T.Text
 showApp e es =

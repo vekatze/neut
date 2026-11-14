@@ -25,9 +25,9 @@ collect term =
       [(m, x)]
     _ :< TM.VarGlobal {} ->
       []
-    _ :< TM.PiIntro k impArgs expArgs defaultArgs e -> do
+    _ :< TM.PiIntro k impParams expParams defaultParams e -> do
       let body = removeBinders (catMaybes [AttrL.fromAttr k]) (collect e)
-      removeBinders (impArgs ++ expArgs) (collectDefaultArgs defaultArgs body)
+      removeBinders (impParams ++ expParams) (collectDefaultParams defaultParams body)
     _ :< TM.PiElim _ _ e _ expArgs defaultArgs -> do
       let xs = collect e
       let ys1 = concatMap collect expArgs
@@ -70,13 +70,13 @@ collect term =
     _ :< TM.Magic _ der ->
       collectMagic der
 
-collectDefaultArgs :: [(BinderF TM.Type, TM.Term)] -> [(Hint, Ident)] -> [(Hint, Ident)]
-collectDefaultArgs defaultArgs zs =
-  case defaultArgs of
+collectDefaultParams :: [(BinderF TM.Type, TM.Term)] -> [(Hint, Ident)] -> [(Hint, Ident)]
+collectDefaultParams defaultParams zs =
+  case defaultParams of
     [] ->
       zs
     (binder, value) : rest ->
-      collect value ++ removeBinders [binder] (collectDefaultArgs rest zs)
+      collect value ++ removeBinders [binder] (collectDefaultParams rest zs)
 
 removeBinders :: [BinderF TM.Type] -> [(Hint, Ident)] -> [(Hint, Ident)]
 removeBinders binder zs =
@@ -107,8 +107,8 @@ collectCase decisionCase = do
   case decisionCase of
     DT.LiteralCase _ _ cont -> do
       collectDecisionTree cont
-    DT.ConsCase (DT.ConsCaseRecord {consImpArgs, consArgs, cont}) -> do
-      removeBinders (consImpArgs ++ consArgs) (collectDecisionTree cont)
+    DT.ConsCase (DT.ConsCaseRecord {consImpBinders, consBinders, cont}) -> do
+      removeBinders (consImpBinders ++ consBinders) (collectDecisionTree cont)
 
 collectMagic :: M.Magic BLT.BaseLowType TM.Type TM.Term -> [(Hint, Ident)]
 collectMagic magic =

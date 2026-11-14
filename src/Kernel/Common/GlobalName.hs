@@ -1,7 +1,7 @@
 module Kernel.Common.GlobalName
   ( GlobalName (..),
     getIsConstLike,
-    hasNoArgs,
+    isNullary,
     disableConstLikeFlag,
     isMetaConstant,
     toMetaFunction,
@@ -9,7 +9,7 @@ module Kernel.Common.GlobalName
 where
 
 import Data.Text qualified as T
-import Language.Common.ArgNum
+import Language.Common.Arity
 import Language.Common.CallSite (IsSourceArg)
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.Discriminant qualified as D
@@ -21,13 +21,13 @@ import Language.Common.RuleKind (RuleKind)
 import Logger.Hint
 
 data GlobalName
-  = TopLevelFuncTerm ArgNum IsConstLike IsDestPassing
-  | TopLevelMetaTerm ArgNum IsConstLike
-  | TopLevelFuncType ArgNum IsConstLike Bool
+  = TopLevelFuncTerm Arity IsConstLike IsDestPassing
+  | TopLevelMetaTerm Arity IsConstLike
+  | TopLevelFuncType Arity IsConstLike Bool
   | PrimType PT.PrimType
   | PrimOp PrimOp
-  | Data ArgNum [(DD.DefiniteDescription, (Hint, GlobalName))] IsConstLike
-  | DataIntro ArgNum [T.Text] ArgNum D.Discriminant IsConstLike [IsSourceArg]
+  | Data Arity [(DD.DefiniteDescription, (Hint, GlobalName))] IsConstLike
+  | DataIntro Arity [T.Text] Arity D.Discriminant IsConstLike [IsSourceArg]
   | Rule RuleKind
   | Trope
   | Namespace
@@ -50,19 +50,19 @@ getIsConstLike gn =
     _ ->
       False
 
-hasNoArgs :: GlobalName -> Bool
-hasNoArgs gn =
+isNullary :: GlobalName -> Bool
+isNullary gn =
   case gn of
-    TopLevelFuncTerm argNum _ _ ->
-      argNum == fromInt 0
-    TopLevelMetaTerm argNum _ ->
-      argNum == fromInt 0
-    TopLevelFuncType argNum _ _ ->
-      argNum == fromInt 0
-    Data argNum _ _ ->
-      argNum == fromInt 0
-    DataIntro dataArgNum consImpArgNames consArgNum _ _ _ ->
-      dataArgNum == fromInt 0 && null consImpArgNames && consArgNum == fromInt 0
+    TopLevelFuncTerm arity _ _ ->
+      arity == fromInt 0
+    TopLevelMetaTerm arity _ ->
+      arity == fromInt 0
+    TopLevelFuncType arity _ _ ->
+      arity == fromInt 0
+    Data arity _ _ ->
+      arity == fromInt 0
+    DataIntro dataArity consImpParamNames consArity _ _ _ ->
+      dataArity == fromInt 0 && null consImpParamNames && consArity == fromInt 0
     Rule {} ->
       False
     Trope ->
@@ -77,16 +77,16 @@ hasNoArgs gn =
 disableConstLikeFlag :: GlobalName -> GlobalName
 disableConstLikeFlag gn =
   case gn of
-    TopLevelFuncTerm argNum _ isDestPassing ->
-      TopLevelFuncTerm argNum False isDestPassing
-    TopLevelMetaTerm argNum _ ->
-      TopLevelMetaTerm argNum False
-    TopLevelFuncType argNum _ isMacro ->
-      TopLevelFuncType argNum False isMacro
-    Data argNum consInfo _ ->
-      Data argNum consInfo False
-    DataIntro dataArgNum consImpArgNames consArgNum discriminant False sourceFlags ->
-      DataIntro dataArgNum consImpArgNames consArgNum discriminant False sourceFlags
+    TopLevelFuncTerm arity _ isDestPassing ->
+      TopLevelFuncTerm arity False isDestPassing
+    TopLevelMetaTerm arity _ ->
+      TopLevelMetaTerm arity False
+    TopLevelFuncType arity _ isMacro ->
+      TopLevelFuncType arity False isMacro
+    Data arity consInfo _ ->
+      Data arity consInfo False
+    DataIntro dataArity consImpParamNames consArity discriminant False sourceFlags ->
+      DataIntro dataArity consImpParamNames consArity discriminant False sourceFlags
     Trope ->
       Trope
     _ ->
@@ -103,7 +103,7 @@ isMetaConstant gn =
 toMetaFunction :: GlobalName -> GlobalName
 toMetaFunction gn =
   case gn of
-    TopLevelMetaTerm argNum True ->
-      TopLevelMetaTerm argNum False
+    TopLevelMetaTerm arity True ->
+      TopLevelMetaTerm arity False
     _ ->
       gn

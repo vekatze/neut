@@ -32,7 +32,7 @@ data DefineMetaF t a = DefineMeta
   { defineMetaLoc :: SavedHint,
     defineMetaTargetName :: DD.DefiniteDescription,
     defineMetaTargetArgs :: [t],
-    defineMetaExpArgs :: [BinderF t],
+    defineMetaExpParams :: [BinderF t],
     defineMetaCodType :: t,
     defineMetaBody :: a,
     defineMetaHelperName :: DD.DefiniteDescription

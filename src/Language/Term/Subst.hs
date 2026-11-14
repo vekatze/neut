@@ -300,16 +300,16 @@ substTerm h env term =
               return Kept
     _ :< TM.VarGlobal {} ->
       return Kept
-    m :< TM.PiIntro (AttrL.Attr {lamKind}) impArgs expArgs defaultArgs e -> do
+    m :< TM.PiIntro (AttrL.Attr {lamKind}) impParams expParams defaultParams e -> do
       newLamID <- Gensym.newCount (gensymHandle h)
-      (impArgs', env1) <- substBinders h env impArgs
-      (expArgs', env2) <- substBinders h env1 expArgs
-      (defaultArgs', env3) <- substLetSeq h env2 defaultArgs
-      let change = changes impArgs' <> changes expArgs' <> changeOf defaultArgs'
-      let impArgs'' = values impArgs impArgs'
-      let expArgs'' = values expArgs expArgs'
-      let defaultArgs'' = valueOr defaultArgs defaultArgs'
-      let lam attr body = m :< TM.PiIntro attr impArgs'' expArgs'' defaultArgs'' body
+      (impParams', env1) <- substBinders h env impParams
+      (expParams', env2) <- substBinders h env1 expParams
+      (defaultParams', env3) <- substLetSeq h env2 defaultParams
+      let change = changes impParams' <> changes expParams' <> changeOf defaultParams'
+      let impParams'' = values impParams impParams'
+      let expParams'' = values expParams expParams'
+      let defaultParams'' = valueOr defaultParams defaultParams'
+      let lam attr body = m :< TM.PiIntro attr impParams'' expParams'' defaultParams'' body
       case lamKind of
         LK.Fix kind isDestPassing xt -> do
           (xt', env4) <- substBinder h env3 xt
@@ -434,13 +434,13 @@ substTy h env ty =
       args' <- mapM (substTy h env) args
       let change = changeOf t' <> changes args'
       return $ build change $ m :< TM.TyApp (valueOr t t') (values args args')
-    m :< TM.Pi piKind impArgs expArgs defaultArgs t -> do
-      (impArgs', env1) <- substBinders h env impArgs
-      (expArgs', env2) <- substBinders h env1 expArgs
-      (defaultArgs', env3) <- substBinders h env2 defaultArgs
+    m :< TM.Pi piKind impParams expParams defaultParams t -> do
+      (impParams', env1) <- substBinders h env impParams
+      (expParams', env2) <- substBinders h env1 expParams
+      (defaultParams', env3) <- substBinders h env2 defaultParams
       t' <- substTy h env3 t
-      let change = release env $ changes impArgs' <> changes expArgs' <> changes defaultArgs' <> changeOf t'
-      return $ build change $ m :< TM.Pi piKind (values impArgs impArgs') (values expArgs expArgs') (values defaultArgs defaultArgs') (valueOr t t')
+      let change = release env $ changes impParams' <> changes expParams' <> changes defaultParams' <> changeOf t'
+      return $ build change $ m :< TM.Pi piKind (values impParams impParams') (values expParams expParams') (values defaultParams defaultParams') (valueOr t t')
     m :< TM.Data attr name es -> do
       es' <- mapM (substTy h env) es
       let change = changes es'
@@ -517,18 +517,18 @@ substCase h env decisionCase = do
       let (dataTerms, dataTypes) = unzip dataArgs
       dataTerms' <- mapM (substTy h env) dataTerms
       dataTypes' <- mapM (substTy h env) dataTypes
-      let binders = consImpArgs ++ consArgs
+      let binders = consImpBinders ++ consBinders
       (binders', env') <- substBinders h env binders
       cont' <- substTree h env' cont
       let change = release env $ changes dataTerms' <> changes dataTypes' <> changes binders' <> changeOf cont'
-      let (consImpArgs', consArgs') = splitAt (length consImpArgs) (values binders binders')
+      let (consImpBinders', consBinders') = splitAt (length consImpBinders) (values binders binders')
       return $
         build change $
           DT.ConsCase
             record
               { DT.dataArgs = zip (values dataTerms dataTerms') (values dataTypes dataTypes'),
-                DT.consImpArgs = consImpArgs',
-                DT.consArgs = consArgs',
+                DT.consImpBinders = consImpBinders',
+                DT.consBinders = consBinders',
                 DT.cont = valueOr cont cont'
               }
 

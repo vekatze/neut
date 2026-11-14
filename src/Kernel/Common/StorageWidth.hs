@@ -100,14 +100,14 @@ lookupDataInfo h dataName = do
 specializeUnary :: Handle -> DD.DefiniteDescription -> [TM.Type] -> App TM.Type
 specializeUnary h dataName dataArgs = do
   dataInfo <- lookupDataInfo h dataName
-  let dataBinders = DI.dataArgs dataInfo
+  let dataBinders = DI.dataParams dataInfo
   when (length dataBinders /= length dataArgs) $
     raiseCritical (hint h) $
       "Arity mismatch while resolving the width of the unary type `" <> DD.reify dataName <> "`"
   let binderIds = map (\(_, _, x, _) -> x) dataBinders
   let sub = IntMap.fromList $ zip (map Ident.toInt binderIds) (map Subst.Type dataArgs)
   case DI.consInfoList dataInfo of
-    [DI.ConsInfo {DI.consArgs = [(_, _, _, t)]}] ->
+    [DI.ConsInfo {DI.consParams = [(_, _, _, t)]}] ->
       liftIO $ Subst.substType (substHandle h) sub t
     _ ->
       raiseCritical (hint h) $ "Found a broken unary data metadata for `" <> DD.reify dataName <> "`"

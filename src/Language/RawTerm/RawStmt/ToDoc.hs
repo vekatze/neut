@@ -346,12 +346,12 @@ decStmt stmt =
             TransparentAlias -> "alias"
             OpaqueAlias -> "alias-opaque"
       RT.decodeTypeDef (RT.nameToDoc . N.Bare) keyword c (fmap BN.reify def)
-    RawStmtDefineData c1 _ (dataName, c2) argsOrNone consInfo _ -> do
+    RawStmtDefineData c1 _ (dataName, c2) paramsOrNone consInfo _ -> do
       attachStmtComment (c1 ++ c2) $
         D.join
           [ D.text "data ",
             D.text (BN.reify dataName),
-            decDataArgs argsOrNone,
+            decDataParams paramsOrNone,
             D.text " ",
             SE.decode $ fmap decConsInfo consInfo
           ]
@@ -483,9 +483,9 @@ defineMetaToDef defineMeta = do
             RT.name = defineMetaTarget defineMeta,
             RT.isConstLike = False,
             RT.isDestPassing = False,
-            RT.impArgs = (SE.emptySeriesAC, []),
-            RT.expArgs = defineMetaExpArgs defineMeta,
-            RT.defaultArgs = RT.emptyDefaultArgs,
+            RT.impParams = RT.emptyImpParams,
+            RT.expParams = defineMetaExpParams defineMeta,
+            RT.defaultParams = RT.emptyDefaultParams,
             RT.cod = defineMetaCod defineMeta
           }
   RT.RawDef
@@ -515,18 +515,18 @@ decDefineMetaItems entries =
     (c, defineMeta) : rest ->
       D.join [decDefineMeta c defineMeta, D.line, D.line, decDefineMetaItems rest]
 
-decDataArgs :: Maybe (RT.Args RT.RawType) -> D.Doc
-decDataArgs argsOrNone =
-  case argsOrNone of
+decDataParams :: Maybe (RT.Params RT.RawType) -> D.Doc
+decDataParams paramsOrNone =
+  case paramsOrNone of
     Nothing ->
       D.Nil
-    Just args -> do
-      RT.decodeArgs' args
+    Just params -> do
+      RT.decodeParams' params
 
 decConsInfo :: RawConsInfo BN.BaseName -> D.Doc
-decConsInfo (RawConsInfo {name = consName, impArgs, expArgs}) = do
+decConsInfo (RawConsInfo {name = consName, impParams, expParams}) = do
   let consName' = D.text (BN.reify consName)
-  D.join [consName', RT.decodeImpParams impArgs, RT.decodeConsArgsMaybe expArgs]
+  D.join [consName', RT.decodeImpParams impParams, RT.decodeConsParamsMaybe expParams]
 
 decNominalGeist :: (NominalTag, RT.RawGeist BN.BaseName, Loc) -> D.Doc
 decNominalGeist (tag, geist, _) = do

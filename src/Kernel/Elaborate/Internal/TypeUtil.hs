@@ -1,7 +1,7 @@
 module Kernel.Elaborate.Internal.TypeUtil
   ( inlineType,
     lookupDataInfoFull,
-    getConsArgTypes,
+    getConsParamTypes,
   )
 where
 
@@ -41,30 +41,30 @@ lookupDataInfoFull h m dataName = do
           <> ModulePath.renderDD (modulePathMap h) dataName
           <> "`"
 
-getConsArgTypes ::
+getConsParamTypes ::
   Handle ->
   Hint ->
   DD.DefiniteDescription ->
   [TM.Type] ->
   App [DI.ConsInfo (BinderF TM.Type)]
-getConsArgTypes h m dataName dataArgs = do
+getConsParamTypes h m dataName dataArgs = do
   dataInfo <- lookupDataInfoFull h m dataName
-  let dataBinders = DI.dataArgs dataInfo
+  let dataBinders = DI.dataParams dataInfo
   if length dataBinders == length dataArgs
     then do
       let binderIds = map (\(_, _, x, _) -> x) dataBinders
       let sub = IntMap.fromList $ zip (map Ident.toInt binderIds) (map TmSubst.Type dataArgs)
       forM (DI.consInfoList dataInfo) $ \consInfo -> do
-        (consImpArgs', sub') <- liftIO $ TmSubst.refreshBinders (termSubstHandle h) sub (DI.consImpArgs consInfo)
-        consArgs' <- liftIO $ substConsArgs h sub' (DI.consArgs consInfo)
-        return consInfo {DI.consImpArgs = consImpArgs', DI.consArgs = consArgs'}
+        (consImpParams', sub') <- liftIO $ TmSubst.refreshBinders (termSubstHandle h) sub (DI.consImpParams consInfo)
+        consParams' <- liftIO $ substConsParams h sub' (DI.consParams consInfo)
+        return consInfo {DI.consImpParams = consImpParams', DI.consParams = consParams'}
     else
       raiseCritical m $
         "Could not specialize constructor metadata for `" <> DD.reify dataName <> "` due to arity mismatch"
 
-substConsArgs :: Handle -> TmSubst.Subst -> [BinderF TM.Type] -> IO [BinderF TM.Type]
-substConsArgs h sub consArgs =
-  case consArgs of
+substConsParams :: Handle -> TmSubst.Subst -> [BinderF TM.Type] -> IO [BinderF TM.Type]
+substConsParams h sub consParams =
+  case consParams of
     [] ->
       return []
     (m, k, x, t) : rest -> do
@@ -72,5 +72,5 @@ substConsArgs h sub consArgs =
       t' <- TmSubst.substType substHandle' sub t
       let opaque = m :< TM.Tau
       let sub' = IntMap.insert (Ident.toInt x) (TmSubst.Type opaque) sub
-      rest' <- substConsArgs h sub' rest
+      rest' <- substConsParams h sub' rest
       return $ (m, k, x, t') : rest'

@@ -29,10 +29,10 @@ eqTypeWithEnv env (_ :< type1) (_ :< type2) =
       eqTypeWithEnv env t1 t2
         && length args1 == length args2
         && and (zipWith (eqTypeWithEnv env) args1 args2)
-    (TM.Pi pk1 impArgs1 expArgs1 defaultArgs1 cod1, TM.Pi pk2 impArgs2 expArgs2 defaultArgs2 cod2) -> do
-      let (envAfterImp, impArgsEq) = eqAndExtendImpArgs env impArgs1 impArgs2
-      let (envAfterExp, expArgsEq) = eqAndExtendImpArgs envAfterImp expArgs1 expArgs2
-      let (envAfterDefault, defaultArgsEq) = eqAndExtendDefaultArgs envAfterExp defaultArgs1 defaultArgs2
+    (TM.Pi pk1 impParams1 expParams1 defaultParams1 cod1, TM.Pi pk2 impParams2 expParams2 defaultParams2 cod2) -> do
+      let (envAfterImp, impArgsEq) = eqAndExtendImpParams env impParams1 impParams2
+      let (envAfterExp, expArgsEq) = eqAndExtendImpParams envAfterImp expParams1 expParams2
+      let (envAfterDefault, defaultArgsEq) = eqAndExtendDefaultParams envAfterExp defaultParams1 defaultParams2
       pk1 == pk2
         && impArgsEq
         && expArgsEq
@@ -57,21 +57,21 @@ eqTypeWithEnv env (_ :< type1) (_ :< type2) =
     _ ->
       False
 
-eqAndExtendImpArgs :: VarMap -> [BinderF TM.Type] -> [BinderF TM.Type] -> (VarMap, Bool)
-eqAndExtendImpArgs env bs1 bs2 =
+eqAndExtendImpParams :: VarMap -> [BinderF TM.Type] -> [BinderF TM.Type] -> (VarMap, Bool)
+eqAndExtendImpParams env bs1 bs2 =
   case (bs1, bs2) of
     ([], []) ->
       (env, True)
     ((_, k1, x1, t1) : rest1, (_, k2, x2, t2) : rest2) -> do
       let typeEq = eqTypeWithEnv env t1 t2
       let env' = Map.insert x1 x2 env
-      let (envFinal, restEq) = eqAndExtendImpArgs env' rest1 rest2
+      let (envFinal, restEq) = eqAndExtendImpParams env' rest1 rest2
       (envFinal, k1 == k2 && typeEq && restEq)
     _ ->
       (env, False)
 
-eqAndExtendDefaultArgs :: VarMap -> [BinderF TM.Type] -> [BinderF TM.Type] -> (VarMap, Bool)
-eqAndExtendDefaultArgs env bs1 bs2 =
+eqAndExtendDefaultParams :: VarMap -> [BinderF TM.Type] -> [BinderF TM.Type] -> (VarMap, Bool)
+eqAndExtendDefaultParams env bs1 bs2 =
   case (bs1, bs2) of
     ([], []) ->
       (env, True)
@@ -79,7 +79,7 @@ eqAndExtendDefaultArgs env bs1 bs2 =
       let keyEq = Ident.toText x1 == Ident.toText x2
       let typeEq = eqTypeWithEnv env t1 t2
       let env' = Map.insert x1 x2 env
-      let (envFinal, restEq) = eqAndExtendDefaultArgs env' rest1 rest2
+      let (envFinal, restEq) = eqAndExtendDefaultParams env' rest1 rest2
       (envFinal, k1 == k2 && keyEq && typeEq && restEq)
     _ ->
       (env, False)

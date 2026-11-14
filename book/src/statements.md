@@ -281,7 +281,7 @@ define use-foo() -> int {
 }
 ```
 
-`define` can also declare default arguments by inserting `[z1: c1 := d1, ..., zk: ck := dk]` between the ordinary parameter list and `->`:
+`define` can also declare default parameters by inserting `[z1: c1 := d1, ..., zk: ck := dk]` between the ordinary parameter list and `->`:
 
 ```neut
 define bump(x: int)[step: int := 1] -> int {
@@ -291,7 +291,7 @@ define bump(x: int)[step: int := 1] -> int {
 
 Such a function has type `(x: int)[step: int] -> int`, and callers can override the default with `bump(10)[step := 5]`. If the caller omits `step`, its default expression is evaluated at the time of the call. The bracketed part may be omitted, and `[]` is also accepted.
 
-`define` can optionally have implicit type parameters, as in `identity` in the example above. The compiler inserts these type parameters at compile time, so you don't have to write them explicitly:
+`define` can optionally have implicit parameters, as in `identity` in the example above. The compiler infers the corresponding implicit arguments at compile time, so you don't have to write them explicitly:
 
 ```neut
 define use-func-with-implicit-arg() -> int {
@@ -437,7 +437,7 @@ define use-inline-foo() -> int {
 
 `inline` records a calling convention in the same way as `define`. For the details of this behavior, please see the section on [functions in Terms](./terms.md#x1-a1--xn-an---e-).
 
-As with `define`, you can also place a default-argument list in `[]` between the ordinary parameter list and the arrow.
+As with `define`, you can also place a default-parameter list in `[]` between the ordinary parameter list and the arrow.
 
 ## `define-meta`
 
@@ -453,9 +453,9 @@ define-meta make-pair<a, b>(x: 'a, y: 'b) -> 'pair(a, b) {
 }
 ```
 
-`define-meta` starts at stage 1. When evaluating a call to `define-meta`, the compiler first specializes the definition to its type arguments and memoizes the result. This memoization is performed on a per-file basis. This allows `define-meta` to generate recursive code.
+`define-meta` starts at stage 1. When evaluating a call to `define-meta`, the compiler first specializes the definition to its implicit arguments and memoizes the result. This memoization is performed on a per-file basis. This allows `define-meta` to generate recursive code.
 
-Unlike `define`, `define-meta` can't have default arguments, since a call is memoized by its type arguments alone. Wrap it in an `inline-meta` when a default is needed.
+Unlike `define`, `define-meta` can't have default parameters, since a call is memoized by its implicit arguments alone. Wrap it in an `inline-meta` when a default is needed.
 
 Every explicit parameter of `define-meta` must have a type of the form `'a`:
 
@@ -487,11 +487,11 @@ trope terse {
 }
 ```
 
-Each entry must target a top-level `define-meta` function, and its type arguments must be written explicitly. The target function must not have default arguments. The body of each entry starts at stage 1, as with ordinary `define-meta`.
+Each entry must target a top-level `define-meta` function, and its implicit arguments must be written explicitly. The target function must not have default parameters. The body of each entry starts at stage 1, as with ordinary `define-meta`.
 
 When a `trope` is enabled, its entries are available as pre-registered memoized specializations.
 
-Entries in a `trope` are ordered. If multiple entries match the same meta function and type arguments, the later entry is used.
+Entries in a `trope` are ordered. If multiple entries match the same meta function and implicit arguments, the later entry is used.
 
 ## `inline-meta`
 
@@ -508,7 +508,7 @@ inline-meta duplicate(x: 'int) -> 'pair(int, int) {
 
 `inline-meta` is the same as `inline` except that the body starts at stage 1, not 0.
 
-It also supports the same default-argument syntax as `define` and `inline`.
+It also supports the same default-parameter syntax as `define` and `inline`.
 
 ## `constant`
 
@@ -1159,7 +1159,7 @@ The following kinds of top-level items can be declared in `nominal`:
 - `data`
 - `resource`
 
-Default arguments can't be used in `nominal`.
+Default parameters can't be used in `nominal`.
 
 ## `foreign`
 

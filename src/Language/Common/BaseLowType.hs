@@ -6,7 +6,7 @@ module Language.Common.BaseLowType
 where
 
 import Binary.Derive (deriveBinary)
-import Language.Common.ArgNum qualified as AN
+import Language.Common.Arity qualified as Arity
 import Language.Common.BasePrimType qualified as BPT
 import Language.Common.SlotSize
 
@@ -19,8 +19,8 @@ slot :: BaseLowType
 slot =
   PrimNum (BPT.Int (BPT.Explicit slotIntSize))
 
-toSlotSeq :: AN.ArgNum -> [BaseLowType]
-toSlotSeq argNum =
-  map (const slot) [1 .. AN.reify argNum]
+toSlotSeq :: Arity.Arity -> [BaseLowType]
+toSlotSeq arity =
+  map (const slot) [1 .. Arity.reify arity]
 
 deriveBinary [''BaseLowType]

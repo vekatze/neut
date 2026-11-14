@@ -119,8 +119,8 @@ makeSwitcherStmt ::
   ResourceSpec ->
   IO C.CompStmt
 makeSwitcherStmt h opacity name resourceSpec = do
-  (args, e) <- makeSwitcher h resourceSpec
-  return $ C.Def name opacity args e
+  (params, e) <- makeSwitcher h resourceSpec
+  return $ C.Def name opacity params e
 
 data ResourceSpec = ResourceSpec
   { switch :: (Ident, C.Value),
@@ -147,8 +147,8 @@ registerSwitcher ::
   ResourceSpec ->
   IO ()
 registerSwitcher h opacity name resourceSpec = do
-  (args, e) <- makeSwitcher h resourceSpec
-  AuxEnv.insert (auxEnvHandle h) name (C.Def name opacity args e)
+  (params, e) <- makeSwitcher h resourceSpec
+  AuxEnv.insert (auxEnvHandle h) name (C.Def name opacity params e)
 
 getEnumElim :: Handle -> [Ident] -> C.Value -> C.Comp -> [(EnumCase, C.Comp)] -> IO C.Comp
 getEnumElim h idents d defaultBranch branchList = do

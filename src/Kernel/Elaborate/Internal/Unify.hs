@@ -24,7 +24,7 @@ import Kernel.Elaborate.Internal.Handle.Hole qualified as Hole
 import Kernel.Elaborate.Internal.Handle.WeakTypeDef qualified as WeakTypeDef
 import Kernel.Elaborate.Stuck qualified as Stuck
 import Kernel.Elaborate.TypeHoleSubst qualified as THS
-import Language.Common.ArgNum qualified as AN
+import Language.Common.Arity qualified as Arity
 import Language.Common.Attr.VarGlobal qualified as AttrVG
 import Language.Common.Binder
 import Language.Common.CreateSymbol qualified as Gensym
@@ -126,8 +126,8 @@ collectGlobalDDs ty =
       [dd]
     _ :< WT.TyApp t args ->
       collectGlobalDDs t ++ concatMap collectGlobalDDs args
-    _ :< WT.Pi _ impArgs expArgs defaultArgs cod ->
-      concatMap (\(_, _, _, t) -> collectGlobalDDs t) (impArgs ++ expArgs ++ defaultArgs)
+    _ :< WT.Pi _ impParams expParams defaultParams cod ->
+      concatMap (\(_, _, _, t) -> collectGlobalDDs t) (impParams ++ expParams ++ defaultParams)
         ++ collectGlobalDDs cod
     _ :< WT.Data _ dd args ->
       dd : concatMap collectGlobalDDs args
@@ -171,20 +171,18 @@ simplify h susList constraintList =
         then simplify h susList cs
         else do
           case (expected', actual') of
-            (m1 :< WT.Pi piKind1 impArgs1 expArgs1 defaultArgs1 cod1, m2 :< WT.Pi piKind2 impArgs2 expArgs2 defaultArgs2 cod2)
+            (m1 :< WT.Pi piKind1 impParams1 expParams1 defaultParams1 cod1, m2 :< WT.Pi piKind2 impParams2 expParams2 defaultParams2 cod2)
               | piKind1 == piKind2,
                 -- `source` is part of the type, and unification on it is exact.
-                map isSourceBinder expArgs1 == map isSourceBinder expArgs2,
-                map binderTypeAttrs impArgs1 == map binderTypeAttrs impArgs2,
-                Just impBinders <- zipBinders impArgs1 impArgs2,
-                Just defaultBinders <- zipDefaultBinders defaultArgs1 defaultArgs2,
-                length expArgs1 == length expArgs2 -> do
+                map isSourceBinder expParams1 == map isSourceBinder expParams2,
+                map binderTypeAttrs impParams1 == map binderTypeAttrs impParams2,
+                length impParams1 == length impParams2,
+                sameDefaultParams defaultParams1 defaultParams2,
+                length expParams1 == length expParams2 -> do
                   codBinder1 <- liftIO $ asWeakBinder h m1 cod1
                   codBinder2 <- liftIO $ asWeakBinder h m2 cod2
-                  let (impBinders1, impBinders2) = unzip impBinders
-                  let (defaultBinders1, defaultBinders2) = unzip defaultBinders
-                  let binder1 = impBinders1 ++ expArgs1 ++ defaultBinders1 ++ [codBinder1]
-                  let binder2 = impBinders2 ++ expArgs2 ++ defaultBinders2 ++ [codBinder2]
+                  let binder1 = impParams1 ++ expParams1 ++ defaultParams1 ++ [codBinder1]
+                  let binder2 = impParams2 ++ expParams2 ++ defaultParams2 ++ [codBinder2]
                   cs' <- liftIO $ simplifyBinder h orig binder1 binder2
                   simplify h susList $ cs' ++ cs
             (_ :< WT.Data _ name1 es1, _ :< WT.Data _ name2 es2)
@@ -332,8 +330,8 @@ simplifyBinder' ::
   [BinderF WT.WeakType] ->
   [BinderF WT.WeakType] ->
   IO [(C.Constraint, C.Constraint)]
-simplifyBinder' h orig sub args1 args2 =
-  case (args1, args2) of
+simplifyBinder' h orig sub params1 params2 =
+  case (params1, params2) of
     ((m1, _, x1, t1) : xts1, (_, _, x2, t2) : xts2) -> do
       t2' <- Subst.substType (substHandle h) sub t2
       let sub' = IntMap.insert (Ident.toInt x2) (Type (m1 :< WT.TVar x1)) sub
@@ -351,7 +349,7 @@ asAppliedTypeConstructor :: WT.WeakType -> Maybe (WT.WeakType, [WT.WeakType])
 asAppliedTypeConstructor t =
   case t of
     m :< WT.Data _ name args ->
-      Just (m :< WT.TVarGlobal (AttrVG.new (AN.fromInt (length args))) name, args)
+      Just (m :< WT.TVarGlobal (AttrVG.new (Arity.fromInt (length args))) name, args)
     _ ->
       Nothing
 
@@ -399,22 +397,10 @@ binderTypeAttrs :: BinderF WT.WeakType -> [VK.TypeAttr]
 binderTypeAttrs (_, k, _, _) =
   VK.attrList k
 
-zipBinders :: [BinderF WT.WeakType] -> [BinderF WT.WeakType] -> Maybe [(BinderF WT.WeakType, BinderF WT.WeakType)]
-zipBinders args1 args2 =
-  if length args1 == length args2
-    then Just $ zip args1 args2
-    else Nothing
-
-zipDefaultBinders ::
-  [BinderF WT.WeakType] ->
-  [BinderF WT.WeakType] ->
-  Maybe [(BinderF WT.WeakType, BinderF WT.WeakType)]
-zipDefaultBinders defaultArgs1 defaultArgs2 = do
-  defaultBinders <- zipBinders defaultArgs1 defaultArgs2
-  forM defaultBinders $ \(binder1@(_, k1, x1, _), binder2@(_, k2, x2, _)) -> do
-    guard $ k1 == k2
-    guard $ Ident.toText x1 == Ident.toText x2
-    return (binder1, binder2)
+sameDefaultParams :: [BinderF WT.WeakType] -> [BinderF WT.WeakType] -> Bool
+sameDefaultParams defaultParams1 defaultParams2 =
+  length defaultParams1 == length defaultParams2
+    && and (zipWith (\(_, k1, x1, _) (_, k2, x2, _) -> k1 == k2 && Ident.toText x1 == Ident.toText x2) defaultParams1 defaultParams2)
 
 increment :: Handle -> Handle
 increment h = do

@@ -21,7 +21,7 @@ import Data.Text qualified as T
 import Gensym.Gensym qualified as Gensym
 import Kernel.Common.Handle.Local.Tag qualified as Tag
 import Kernel.Elaborate.Internal.Handle.TypeDef qualified as TypeDef
-import Language.Common.ArgNum qualified as AN
+import Language.Common.Arity qualified as Arity
 import Language.Common.Attr.DataIntro qualified as AttrDI
 import Language.Common.Attr.Lam qualified as AttrL
 import Language.Common.Attr.VarGlobal qualified as AttrVG
@@ -401,13 +401,13 @@ inlineNormal h term = do
       fromMaybe (asValue rawTerm) <$> lookupPendingTerm h m x
     _ :< TM.VarGlobal {} ->
       return $ asValue rawTerm
-    m :< TM.PiIntro attr@(AttrL.Attr {lamKind}) impArgs expArgs defaultArgs e -> do
-      ((lamKind', impArgs', expArgs', defaultArgs', e'), isAltered) <- trackAlteration h $ do
-        (impArgs', hImp) <- inlineTypeParams h impArgs
-        (expArgs', hExp) <- inlineTermBinders hImp expArgs
-        (defaultArgs', hDefault) <- inlineLetSeq hExp defaultArgs
+    m :< TM.PiIntro attr@(AttrL.Attr {lamKind}) impParams expParams defaultParams e -> do
+      ((lamKind', impParams', expParams', defaultParams', e'), isAltered) <- trackAlteration h $ do
+        (impParams', hImp) <- inlineTypeParams h impParams
+        (expParams', hExp) <- inlineTermBinders hImp expParams
+        (defaultParams', hDefault) <- inlineLetSeq hExp defaultParams
         (lamKindSelf, hSelf) <- enterSelf hDefault lamKind
-        let hBody = withBinders (impArgs' ++ expArgs' ++ map fst defaultArgs') hSelf
+        let hBody = withBinders (impParams' ++ expParams' ++ map fst defaultParams') hSelf
         e' <- if currentStage h >= 1 then liftIO (applyPending hBody e) else inline' hBody e
         lamKind' <- case lamKindSelf of
           LK.Fix kind isDestPassing (mx, k, x, codType) -> do
@@ -416,13 +416,13 @@ inlineNormal h term = do
           LK.Normal mName isDestPassing codType -> do
             codType' <- inlineType' hDefault codType
             return $ LK.Normal mName isDestPassing codType'
-        return (lamKind', impArgs', expArgs', defaultArgs', e')
+        return (lamKind', impParams', expParams', defaultParams', e')
       identity <-
         if isAltered
           then liftIO $ Gensym.newCount (gensymHandle h)
           else return $ AttrL.identity attr
       let attr' = AttrL.Attr {lamKind = lamKind', identity}
-      return $ asValue $ m :< TM.PiIntro attr' impArgs' expArgs' defaultArgs' e'
+      return $ asValue $ m :< TM.PiIntro attr' impParams' expParams' defaultParams' e'
     m :< TM.PiElim callTraceID conv e impArgs expArgs defaultArgs -> do
       conv' <- CC.traverseTypes (inlineType' h) conv
       e' <- inline' h e
@@ -433,21 +433,21 @@ inlineNormal h term = do
       let Handle {dmap} = h
       localDefMap <- liftIO $ readIORef (localMetaDefMap h)
       let residual = m :< TM.PiElim callTraceID conv' e' impArgs' expArgs' defaultArgs'
-      let reduceApplication mDefaultCallee impParams expBinders defDefaults canReduce reduce =
+      let reduceApplication mDefaultCallee impParams expParams defaultParams canReduce reduce =
             if length impParams /= length impArgs'
-              || length expBinders /= length expArgs'
-              || length defDefaults /= length defaultArgs'
+              || length expParams /= length expArgs'
+              || length defaultParams /= length defaultArgs'
               then registerResidual h residual
               else do
                 let impIds = map (\(_, _, x, _) -> x) impParams
                 let subType = IntMap.fromList $ zip (map Ident.toInt impIds) (map Subst.Type impArgs')
                 let defaultFrameCtx = (\dd -> (dd, m, callTraceID)) <$> mDefaultCallee
-                let givenParams = zip expBinders (map GivenArgument expArgsNormal)
-                let defaultParams = zipWith toDefaultParameter defDefaults defaultArgs'
-                let params = givenParams ++ defaultParams
+                let givenParams = zip expParams (map GivenArgument expArgsNormal)
+                let defaultParams' = zipWith toDefaultParameter defaultParams defaultArgs'
+                let params = givenParams ++ defaultParams'
                 if CC.isNoetic conv' || not canReduce
                   then
-                    if not (any isTakenFromDefinition defaultParams)
+                    if not (any isTakenFromDefinition defaultParams')
                       || (hasNonValueSource params && not (isActive h))
                       then registerResidual h residual
                       else do
@@ -457,14 +457,14 @@ inlineNormal h term = do
                             m :< TM.PiElim callTraceID conv' e' impArgs' expValues (map Just defaultValues)
                   else reduce subType defaultFrameCtx params
       case e' of
-        (_ :< TM.PiIntro attr@(AttrL.Attr {lamKind, identity}) impBinders expBinders defBinders body) -> do
+        (_ :< TM.PiIntro attr@(AttrL.Attr {lamKind, identity}) impParams expParams defaultParams body) -> do
           let canReduce = isLocalDefineMeta lamKind || canReduceByLamKind lamKind
-          reduceApplication Nothing impBinders expBinders defBinders canReduce $ \subType _ params ->
+          reduceApplication Nothing impParams expParams defaultParams canReduce $ \subType _ params ->
             if isLocalDefineMeta lamKind
               then do
                 case mapM getGivenTerm params of
                   Just args -> do
-                    (g, defInfo) <- registerLocalMeta h m identity attr impBinders expBinders defBinders body
+                    (g, defInfo) <- registerLocalMeta h m identity attr impParams expParams defaultParams body
                     let DefInfo {defBody, codType} = defInfo
                     asNormal <$> specializeLocalMeta h m g subType impArgs' (map fst params) defBody codType args
                   Nothing ->
@@ -484,9 +484,9 @@ inlineNormal h term = do
                       expand hExpansion body
         (mUse :< TM.VarGlobal _ dd)
           | Just defInfo <- Map.lookup dd dmap -> do
-              let DefInfo {defImpBinders, defExpBinders, defDefaultArgs, defBody, codType, defKind, traceSiteIDs} = defInfo
+              let DefInfo {defImpParams, defExpParams, defDefaultParams, defBody, codType, defKind, traceSiteIDs} = defInfo
               let canReduce = canInlineDefKind defKind
-              reduceApplication (Just dd) defImpBinders defExpBinders defDefaultArgs canReduce $ \subType defaultFrameCtx params ->
+              reduceApplication (Just dd) defImpParams defExpParams defDefaultParams canReduce $ \subType defaultFrameCtx params ->
                 case defKind of
                   Macro -> do
                     case mapM getGivenTerm params of
@@ -511,8 +511,8 @@ inlineNormal h term = do
                                     withTypeSubst subType hBody
                           expand hExpansion defBody
           | Just defInfo <- Map.lookup dd localDefMap -> do
-              let DefInfo {defImpBinders, defExpBinders, defDefaultArgs, defBody, codType} = defInfo
-              reduceApplication Nothing defImpBinders defExpBinders defDefaultArgs True $ \subType _ params ->
+              let DefInfo {defImpParams, defExpParams, defDefaultParams, defBody, codType} = defInfo
+              reduceApplication Nothing defImpParams defExpParams defDefaultParams True $ \subType _ params ->
                 case mapM getGivenTerm params of
                   Just args ->
                     asNormal <$> specializeLocalMeta h m dd subType impArgs' (map fst params) defBody codType args
@@ -786,12 +786,12 @@ inlineType' h ty = do
         _ -> do
           args' <- mapM (inlineType' h) args
           return $ m :< TM.TyApp t' args'
-    m :< TM.Pi piKind impArgs expArgs defaultArgs cod -> do
-      (impArgs', h1) <- inlineTypeParams h impArgs
-      (expArgs', h2) <- inlineTermBinders h1 expArgs
-      (defaultArgs', h3) <- inlineTermBinders h2 defaultArgs
+    m :< TM.Pi piKind impParams expParams defaultParams cod -> do
+      (impParams', h1) <- inlineTypeParams h impParams
+      (expParams', h2) <- inlineTermBinders h1 expParams
+      (defaultParams', h3) <- inlineTermBinders h2 defaultParams
       cod' <- inlineType' h3 cod
-      return $ m :< TM.Pi piKind impArgs' expArgs' defaultArgs' cod'
+      return $ m :< TM.Pi piKind impParams' expParams' defaultParams' cod'
     m :< TM.Data attr name es -> do
       es' <- mapM (inlineType' h) es
       return $ m :< TM.Data attr name es'
@@ -954,15 +954,15 @@ inlineCase h decisionCase = do
       let (dataTerms, dataTypes) = unzip dataArgs
       dataTerms' <- mapM (inlineType' h) dataTerms
       dataTypes' <- mapM (inlineType' h) dataTypes
-      (consImpArgs', hImp) <- inlineTypeParams h consImpArgs
-      (consArgs', hArgs) <- inlineTermBinders hImp consArgs
-      cont' <- inlineDecisionTree (withBinders consArgs' hArgs) cont
+      (consImpBinders', hImp) <- inlineTypeParams h consImpBinders
+      (consBinders', hArgs) <- inlineTermBinders hImp consBinders
+      cont' <- inlineDecisionTree (withBinders consBinders' hArgs) cont
       return $
         DT.ConsCase
           record
             { DT.dataArgs = zip dataTerms' dataTypes',
-              DT.consImpArgs = consImpArgs',
-              DT.consArgs = consArgs',
+              DT.consImpBinders = consImpBinders',
+              DT.consBinders = consBinders',
               DT.cont = cont'
             }
 
@@ -977,8 +977,8 @@ findClause consDisc fallbackTree clauseList =
       ([], [], fallbackTree)
     clause : rest ->
       case DT.findCase consDisc clause of
-        Just (consImpVars, consArgs, clauseTree) ->
-          (consImpVars, consArgs, clauseTree)
+        Just (consImpVars, consBinders, clauseTree) ->
+          (consImpVars, consBinders, clauseTree)
         Nothing ->
           findClause consDisc fallbackTree rest
 
@@ -1008,9 +1008,9 @@ findConsCaseByDisc disc clauseList =
       Nothing
     clause : rest ->
       case clause of
-        DT.ConsCase (DT.ConsCaseRecord {disc = clauseDisc, consArgs, cont})
+        DT.ConsCase (DT.ConsCaseRecord {disc = clauseDisc, consBinders, cont})
           | disc == clauseDisc ->
-              Just (consArgs, cont)
+              Just (consBinders, cont)
         _ ->
           findConsCaseByDisc disc rest
 
@@ -1091,7 +1091,7 @@ refreshDefaultValue h defaultFrameCtx subType defaultValue =
     Just (dd, callHint, callTraceID)
       | traceEnabled h -> do
           (annotated, siteIDs) <- liftIO $ TraceSites.annotate (traceHandle h) defaultValue
-          remapping <- prepareTraceRemapping h dd TermTrace.DefaultArgFrame siteIDs callHint callTraceID
+          remapping <- prepareTraceRemapping h dd TermTrace.DefaultValueFrame siteIDs callHint callTraceID
           liftIO $ Subst.substAndRefresh (substHandle h) remapping subType annotated
     _ ->
       liftIO $ Subst.substAndRefresh (substHandle h) Nothing subType defaultValue
@@ -1198,7 +1198,7 @@ createSpecializationName h dd = do
 
 applySpecialization :: Hint -> TraceID -> DD.DefiniteDescription -> [TM.Term] -> TM.Term
 applySpecialization m traceID specializedName expArgsAll = do
-  let attr = AttrVG.new (AN.fromInt $ length expArgsAll)
+  let attr = AttrVG.new (Arity.fromInt $ length expArgsAll)
   m :< TM.PiElim traceID CC.normal (m :< TM.VarGlobal attr specializedName) [] expArgsAll []
 
 withMacroHint :: Handle -> DD.DefiniteDescription -> DefKind -> Hint -> App a -> App a
@@ -1234,7 +1234,7 @@ specializeMacro h m mUse callTraceID dd defKind subType impArgs' expParams body 
         Just specializedName ->
           return $ applySpecialization m callTraceID specializedName expArgsAll
         Nothing -> do
-          let expParams' = Stmt.defineMetaExpArgs activeDefineMeta
+          let expParams' = Stmt.defineMetaExpParams activeDefineMeta
           let body' = Stmt.defineMetaBody activeDefineMeta
           let codType' = Stmt.defineMetaCodType activeDefineMeta
           specializeMacroBody h m callTraceID dd defKind helperName impArgs' IntMap.empty expParams' body' codType' expArgsAll
@@ -1262,13 +1262,13 @@ specializeMacroBody ::
   App TM.Term
 specializeMacroBody h m callTraceID dd defKind specializationKey impArgs' subType expParams body codType expArgsAll = do
   let tracer = withMacroHint h dd defKind m
-  (expBinders', body') <- liftIO $ Subst.subst' (substHandle h) subType expParams body
+  (expParams', body') <- liftIO $ Subst.subst' (substHandle h) subType expParams body
   specializedName <- createSpecializationName h specializationKey
   codType' <- liftIO $ Subst.substType (substHandle h) subType codType
   beginSpecialization h specializationKey impArgs' specializedName
   let hDefineMeta = enterOpaqueDefineMetaBody h
   body'' <- tracer $ liftIO (Subst.refresh (substHandle h) body') >>= inline hDefineMeta
-  let stmt = Stmt.StmtDefine False SK.Define (SavedHint m) specializedName [] expBinders' [] codType' body''
+  let stmt = Stmt.StmtDefine False SK.Define (SavedHint m) specializedName [] expParams' [] codType' body''
   completeSpecialization h stmt
   return $ applySpecialization m callTraceID specializedName expArgsAll
 
@@ -1332,7 +1332,7 @@ registerLocalMeta ::
   [(BinderF TM.Type, TM.Term)] ->
   TM.Term ->
   App (DD.DefiniteDescription, DefInfo)
-registerLocalMeta h m identity attr impBinders expBinders defBinders body = do
+registerLocalMeta h m identity attr impParams expParams defaultParams body = do
   let g = DD.getLocalMetaDD identity
   defMap <- liftIO $ readIORef (localMetaDefMap h)
   case Map.lookup g defMap of
@@ -1342,8 +1342,8 @@ registerLocalMeta h m identity attr impBinders expBinders defBinders body = do
       let codType = case AttrL.lamKind attr of
             LK.Fix _ _ (_, _, _, t) -> t
             LK.Normal _ _ t -> t
-      let selfArgNum = AN.fromInt $ length impBinders + length expBinders + length defBinders
-      let gTerm = m :< TM.VarGlobal (AttrVG.new selfArgNum) g
+      let selfArity = Arity.fromInt $ length impParams + length expParams + length defaultParams
+      let gTerm = m :< TM.VarGlobal (AttrVG.new selfArity) g
       body' <- case AttrL.fromAttr attr of
         Just (_, _, selfId, _) -> do
           let sub = IntMap.singleton (Ident.toInt selfId) (Subst.Term gTerm)
@@ -1352,9 +1352,9 @@ registerLocalMeta h m identity attr impBinders expBinders defBinders body = do
           return body
       let defInfo =
             DefInfo
-              { defImpBinders = impBinders,
-                defExpBinders = expBinders,
-                defDefaultArgs = defBinders,
+              { defImpParams = impParams,
+                defExpParams = expParams,
+                defDefaultParams = defaultParams,
                 defBody = body',
                 codType = codType,
                 defKind = Macro,

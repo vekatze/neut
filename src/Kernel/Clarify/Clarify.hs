@@ -45,7 +45,7 @@ import Kernel.Common.OptimizableData qualified as OD
 import Kernel.Common.StorageWidth qualified as StorageWidth
 import Kernel.Common.Trace qualified as Trace
 import Kernel.Elaborate.Internal.Handle.TypeDef qualified as TypeDef
-import Language.Common.ArgNum qualified as AN
+import Language.Common.Arity qualified as Arity
 import Language.Common.Attr.DataIntro qualified as AttrDI
 import Language.Common.Attr.Lam qualified as AttrL
 import Language.Common.Attr.VarGlobal qualified as AttrVG
@@ -197,18 +197,18 @@ clarify h stmtList = do
   auxReduceHandle <- liftIO $ newAuxReduceHandle (gensymHandle h) defMap
   stmtList'' <- forM stmtList' $ \stmt -> do
     case stmt of
-      C.Def x opacity args e -> do
+      C.Def x opacity params e -> do
         e' <- liftIO $ Reduce.reduce auxReduceHandle e
-        return $ C.Def x opacity args e'
+        return $ C.Def x opacity params e'
       C.Foreign {} ->
         return stmt
       C.Expose {} ->
         return stmt
   auxEnv' <- forM auxEnv $ \stmt -> do
     case stmt of
-      C.Def x opacity args e -> do
+      C.Def x opacity params e -> do
         e' <- liftIO $ Reduce.reduce auxReduceHandle e
-        return $ C.Def x opacity args e'
+        return $ C.Def x opacity params e'
       C.Foreign {} ->
         return stmt
       C.Expose {} ->
@@ -229,21 +229,21 @@ reportTrace h phase stage stmt = do
 renderCompStmt :: C.CompStmt -> T.Text
 renderCompStmt stmt = do
   case stmt of
-    C.Def name opacity args body ->
-      renderCompDefinition (if isOpaque opacity then "define" else "inline") name args body
+    C.Def name opacity params body ->
+      renderCompDefinition (if isOpaque opacity then "define" else "inline") name params body
     C.Foreign {} ->
       "foreign declaration"
     C.Expose {} ->
       "export declaration"
 
 renderCompDefinition :: T.Text -> DD.DefiniteDescription -> [Ident] -> C.Comp -> T.Text
-renderCompDefinition keyword name args body =
+renderCompDefinition keyword name params body =
   "\n"
     <> keyword
     <> " "
     <> DD.reify name
     <> "("
-    <> T.intercalate ", " (map Ident.toText' args)
+    <> T.intercalate ", " (map Ident.toText' params)
     <> ") {\n"
     <> C.renderComp 1 body
     <> "\n}"
@@ -314,7 +314,7 @@ clarifyImportedTypeDef h name typeDefInfo = do
   case dataInfoOrNone of
     Just dataInfo0 -> do
       dataInfo <- liftIO $ refreshDataInfo h dataInfo0
-      clarifyDataTypeDef h name (DI.dataArgs dataInfo) (DI.consInfoList dataInfo)
+      clarifyDataTypeDef h name (DI.dataParams dataInfo) (DI.consInfoList dataInfo)
     Nothing -> do
       typeDefInfo' <- liftIO $ refreshTypeDefInfo h typeDefInfo
       clarifyAliasTypeDef h name typeDefInfo'
@@ -327,15 +327,15 @@ refreshTypeDefInfo h typeDefInfo = do
 
 refreshDataInfo :: Handle -> DI.DataInfo (BinderF TM.Type) -> IO (DI.DataInfo (BinderF TM.Type))
 refreshDataInfo h dataInfo = do
-  (dataArgs', sub) <- Subst.refreshBinders (substHandle h) IntMap.empty (DI.dataArgs dataInfo)
+  (dataParams', sub) <- Subst.refreshBinders (substHandle h) IntMap.empty (DI.dataParams dataInfo)
   consInfoList' <- mapM (refreshConsInfo h sub) (DI.consInfoList dataInfo)
-  return dataInfo {DI.dataArgs = dataArgs', DI.consInfoList = consInfoList'}
+  return dataInfo {DI.dataParams = dataParams', DI.consInfoList = consInfoList'}
 
 refreshConsInfo :: Handle -> Subst.Subst -> DI.ConsInfo (BinderF TM.Type) -> IO (DI.ConsInfo (BinderF TM.Type))
 refreshConsInfo h sub consInfo = do
-  (consImpArgs', sub') <- Subst.refreshBinders (substHandle h) sub (DI.consImpArgs consInfo)
-  (consArgs', _) <- Subst.refreshBinders (substHandle h) sub' (DI.consArgs consInfo)
-  return consInfo {DI.consImpArgs = consImpArgs', DI.consArgs = consArgs'}
+  (consImpParams', sub') <- Subst.refreshBinders (substHandle h) sub (DI.consImpParams consInfo)
+  (consParams', _) <- Subst.refreshBinders (substHandle h) sub' (DI.consParams consInfo)
+  return consInfo {DI.consImpParams = consImpParams', DI.consParams = consParams'}
 
 clarifyAliasTypeDef :: Handle -> DD.DefiniteDescription -> TypeDef.TypeDefInfo -> App C.CompStmt
 clarifyAliasTypeDef h name typeDefInfo = do
@@ -343,9 +343,9 @@ clarifyAliasTypeDef h name typeDefInfo = do
   let body = TypeDef.typeDefBody typeDefInfo
   let context = newContext name
   binders' <- dropFst <$> clarifyBinder h context binders
-  envArg <- liftIO $ makeEnvArg h
-  switchArg <- liftIO $ makeSwitchArg h
-  let binders'' = binders' ++ [envArg, switchArg]
+  envParam <- liftIO $ makeEnvParam h
+  switchParam <- liftIO $ makeSwitchParam h
+  let binders'' = binders' ++ [envParam, switchParam]
   body' <- clarifyStmtDefineTypeBody h (extendContext binders context) binders'' body
   return $ C.Def name O.Clear (map fst binders'') body'
 
@@ -373,9 +373,9 @@ clarifyEntryPoint h = do
   let reduceHandle = Reduce.new compSubstHandle (mainGensymHandle h) defMap
   stmtList <- forM baseAuxEnv $ \stmt -> do
     case stmt of
-      C.Def x opacity args e -> do
+      C.Def x opacity params e -> do
         e' <- Reduce.reduce reduceHandle e
-        return $ C.Def x opacity args e'
+        return $ C.Def x opacity params e'
       C.Foreign {} ->
         return stmt
       C.Expose {} ->
@@ -391,16 +391,16 @@ makeBaseAuxEnv sigmaHandle = do
 clarifyStmt :: Handle -> Stmt -> App C.CompStmt
 clarifyStmt h stmt =
   case stmt of
-    StmtDefine _ stmtKind _ f impArgs expArgs defaultArgs codType e -> do
+    StmtDefine _ stmtKind _ f impParams expParams defaultParams codType e -> do
       let context = newContext f
-      defaultValues <- registerDefaultFunctions h context f [] impArgs expArgs defaultArgs
+      defaultValues <- registerDefaultFunctions h context f [] impParams expParams defaultParams
       liftIO $ registerDefaultEnvType h f defaultValues
-      let xts = impArgs ++ expArgs ++ map fst defaultArgs
+      let xts = impParams ++ expParams ++ map fst defaultParams
       xts' <- dropFst <$> clarifyBinder h context xts
       let slots = sourceSlotsOf xts
-      envArg <- liftIO $ makeEnvArg h
-      switchArg <- liftIO $ makeSwitchArg h
-      let xts'' = xts' ++ [envArg, switchArg]
+      envParam <- liftIO $ makeEnvParam h
+      switchParam <- liftIO $ makeSwitchParam h
+      let xts'' = xts' ++ [envParam, switchParam]
       let context' = extendContext xts context
       let opacity = SK.toLowOpacityTerm stmtKind
       e' <- clarifyTerm h context' e
@@ -410,21 +410,21 @@ clarifyStmt h stmt =
             codType' <- clarifyType h context' codType
             liftIO $ toDestPassing h codType' e'
           else return (Nothing, e')
-      liftIO $ defineWithSourceEntries h f opacity destParam slots xts' xts'' [fst envArg, fst switchArg] id e''
-    StmtDefineType _ stmtKind (SavedHint _) f impArgs expArgs defaultArgs _ body -> do
+      liftIO $ defineWithSourceEntries h f opacity destParam slots xts' xts'' [fst envParam, fst switchParam] id e''
+    StmtDefineType _ stmtKind (SavedHint _) f impParams expParams defaultParams _ body -> do
       let context = newContext f
-      defaultValues <- registerDefaultFunctions h context f [] impArgs expArgs defaultArgs
+      defaultValues <- registerDefaultFunctions h context f [] impParams expParams defaultParams
       liftIO $ registerDefaultEnvType h f defaultValues
-      let xts = impArgs ++ expArgs ++ map fst defaultArgs
+      let xts = impParams ++ expParams ++ map fst defaultParams
       case stmtKind of
-        SK.Data name dataArgs consInfoList _ -> do
+        SK.Data name dataParams consInfoList _ -> do
           let consInfoList' = map snd consInfoList
-          clarifyDataTypeDef h name dataArgs consInfoList'
+          clarifyDataTypeDef h name dataParams consInfoList'
         _ -> do
           xts' <- dropFst <$> clarifyBinder h context xts
-          envArg <- liftIO $ makeEnvArg h
-          switchArg <- liftIO $ makeSwitchArg h
-          let xts'' = xts' ++ [envArg, switchArg]
+          envParam <- liftIO $ makeEnvParam h
+          switchParam <- liftIO $ makeSwitchParam h
+          let xts'' = xts' ++ [envParam, switchParam]
           let context' = extendContext xts context
           body' <- clarifyStmtDefineTypeBody h context' xts'' body
           return $ C.Def f (SK.toLowOpacityType stmtKind) (map fst xts'') body'
@@ -440,7 +440,7 @@ clarifyStmt h stmt =
       copy <- clarifyTerm h context (m :< TM.PiElim noTrace CC.normal copier [] resourceArgs [])
       let resourceSpec = Utility.ResourceSpec {switch, arg, extra, discard, copy, size, defaultValues = []}
       liftIO $ Utility.registerSwitcher (utilityHandle h) O.Clear liftedName resourceSpec
-      return $ C.Def dd O.Clear [] (C.UpIntro $ C.VarGlobal liftedName AN.argNumS4 (FCT.Cod BLT.Pointer))
+      return $ C.Def dd O.Clear [] (C.UpIntro $ C.VarGlobal liftedName Arity.arityS4 (FCT.Cod BLT.Pointer))
     StmtTrope {} -> do
       return $ C.Foreign [] -- nop
     StmtVariadic {} -> do
@@ -502,13 +502,13 @@ claimSource h sizeComp sourceName = do
         C.UpElim True ignored (C.Primitive $ C.Memcpy cellVar (C.VarLocal sourceName) sizeVar) $
           C.UpIntro cellVar
 
-makeEnvArg :: Handle -> IO (Ident, C.Comp)
-makeEnvArg h = do
+makeEnvParam :: Handle -> IO (Ident, C.Comp)
+makeEnvParam h = do
   x <- Gensym.newIdentFromText (gensymHandle h) "env"
   return (x, Sigma.returnImmediateS4) -- top-level function's env is always null
 
-makeSwitchArg :: Handle -> IO (Ident, C.Comp)
-makeSwitchArg h = do
+makeSwitchParam :: Handle -> IO (Ident, C.Comp)
+makeSwitchParam h = do
   x <- Gensym.newIdentFromText (gensymHandle h) "sw"
   return (x, Sigma.returnImmediateS4)
 
@@ -527,29 +527,29 @@ defaultEnvTypeName :: DD.DefiniteDescription -> DD.DefiniteDescription
 defaultEnvTypeName dd =
   DD.appendText dd "#default-env"
 
-hasDefaultArgs :: Handle -> DD.DefiniteDescription -> IO Bool
-hasDefaultArgs h name = do
+hasDefaultParams :: Handle -> DD.DefiniteDescription -> IO Bool
+hasDefaultParams h name = do
   mType <- Type.lookupMaybe' (typeHandle h) name
   return $ case mType of
-    Just (_ :< WT.Pi _ _ _ defaultArgs _) ->
-      not (null defaultArgs)
-    Just (_ :< WT.BoxNoema (_ :< WT.Pi _ _ _ defaultArgs _)) ->
-      not (null defaultArgs)
+    Just (_ :< WT.Pi _ _ _ defaultParams _) ->
+      not (null defaultParams)
+    Just (_ :< WT.BoxNoema (_ :< WT.Pi _ _ _ defaultParams _)) ->
+      not (null defaultParams)
     _ ->
       False
 
 envTypeForGlobal :: Handle -> DD.DefiniteDescription -> IO C.Value
 envTypeForGlobal h name = do
-  useImmediate <- not <$> hasDefaultArgs h name
+  useImmediate <- not <$> hasDefaultParams h name
   return $
     if useImmediate
       then Sigma.immediateS4
-      else C.VarGlobal (defaultEnvTypeName name) AN.argNumS4 (FCT.Cod BLT.Pointer)
+      else C.VarGlobal (defaultEnvTypeName name) Arity.arityS4 (FCT.Cod BLT.Pointer)
 
-getGlobalRefInfo :: AttrVG.Attr -> (AN.ArgNum, FCT.ForeignCodType BLT.BaseLowType)
-getGlobalRefInfo AttrVG.Attr {argNum, isDestPassing} = do
-  let extraArgNum = if isDestPassing then 3 else 2
-  (AN.add argNum (AN.fromInt extraArgNum), FCT.Cod BLT.Pointer)
+getGlobalRefInfo :: AttrVG.Attr -> (Arity.Arity, FCT.ForeignCodType BLT.BaseLowType)
+getGlobalRefInfo AttrVG.Attr {arity, isDestPassing} = do
+  let extraArity = if isDestPassing then 3 else 2
+  (Arity.add arity (Arity.fromInt extraArity), FCT.Cod BLT.Pointer)
 
 defaultLabelName :: DD.DefiniteDescription -> Int -> DD.DefiniteDescription
 defaultLabelName dd index =
@@ -579,17 +579,17 @@ registerDefaultFunctions ::
   [BinderF TM.Type] ->
   [(BinderF TM.Type, TM.Term)] ->
   App [C.Value]
-registerDefaultFunctions h context name fvs impArgs expArgs defaultArgs =
-  case defaultArgs of
+registerDefaultFunctions h context name fvs impParams expParams defaultParams =
+  case defaultParams of
     [] ->
       return []
     _ -> do
-      fvsAndFixedArgs <- dropFst <$> clarifyBinder h context (fvs ++ impArgs ++ expArgs)
-      let fvs' = take (length fvs) fvsAndFixedArgs
-      let fixedArgs = drop (length fvs) fvsAndFixedArgs
-      let context' = extendContext (fvs ++ impArgs ++ expArgs) context
+      fvsAndFixedParams <- dropFst <$> clarifyBinder h context (fvs ++ impParams ++ expParams)
+      let fvs' = take (length fvs) fvsAndFixedParams
+      let fixedParams = drop (length fvs) fvsAndFixedParams
+      let context' = extendContext (fvs ++ impParams ++ expParams) context
       envLayout <- closureEnvLayout h fvs
-      registerDefaultFunctions' h context' name envLayout fvs' fixedArgs 0 defaultArgs
+      registerDefaultFunctions' h context' name envLayout fvs' fixedParams 0 defaultParams
 
 registerDefaultFunctions' ::
   Handle ->
@@ -601,8 +601,8 @@ registerDefaultFunctions' ::
   Int ->
   [(BinderF TM.Type, TM.Term)] ->
   App [C.Value]
-registerDefaultFunctions' h context name envLayout fvs args index defaultArgs =
-  case defaultArgs of
+registerDefaultFunctions' h context name envLayout fvs params index defaultParams =
+  case defaultParams of
     [] ->
       return []
     (binder@(_, _, x, codType), value) : rest -> do
@@ -612,13 +612,13 @@ registerDefaultFunctions' h context name envLayout fvs args index defaultArgs =
       isAlreadyRegistered <- liftIO $ AuxEnv.checkIfAlreadyRegistered (auxEnvHandle h) labelName
       unless isAlreadyRegistered $ do
         body <- clarifyTerm h labelContext value
-        let slots = map (const False) args
-        liftIO $ registerClosure h labelName O.Clear False codType' slots args envLayout fvs body
-      let argNum = AN.fromInt (length args + 2)
-      let labelValue = C.VarGlobal labelName argNum (FCT.Cod BLT.Pointer)
+        let slots = map (const False) params
+        liftIO $ registerClosure h labelName O.Clear False codType' slots params envLayout fvs body
+      let arity = Arity.fromInt (length params + 2)
+      let labelValue = C.VarGlobal labelName arity (FCT.Cod BLT.Pointer)
       let context' = extendContext [binder] context
-      let args' = args ++ [(x, codType')]
-      restValues <- registerDefaultFunctions' h context' name envLayout fvs args' (index + 1) rest
+      let params' = params ++ [(x, codType')]
+      restValues <- registerDefaultFunctions' h context' name envLayout fvs params' (index + 1) rest
       return (labelValue : restValues)
 
 clarifyBinderBody ::
@@ -664,17 +664,17 @@ clarifyTerm h context term =
       return $ C.UpIntro $ C.VarLocal x
     _ :< TM.VarGlobal (AttrVG.Attr {..}) x -> do
       envType <- liftIO $ envTypeForGlobal h x
-      let (globalArgNum, globalCodType) = getGlobalRefInfo AttrVG.Attr {..}
+      let (globalArity, globalCodType) = getGlobalRefInfo AttrVG.Attr {..}
       return $
         C.UpIntro $
           C.SigmaIntro
             (DI.closureLayout (dataSize h))
             [ envType,
               C.null,
-              C.VarGlobal x globalArgNum globalCodType
+              C.VarGlobal x globalArity globalCodType
             ]
-    _ :< TM.PiIntro attr impArgs expArgs defaultArgs e -> do
-      clarifyLambda h context attr (TM.chainOf (typeEnv context) [term]) impArgs expArgs defaultArgs e
+    _ :< TM.PiIntro attr impParams expParams defaultParams e -> do
+      clarifyLambda h context attr (TM.chainOf (typeEnv context) [term]) impParams expParams defaultParams e
     _ :< TM.PiElim _ conv e impArgs expArgs defaultArgs -> do
       conv' <- CC.traverseTypes (clarifyType h context) conv
       impArgs' <- mapM (clarifyTypePlus h context) impArgs
@@ -708,7 +708,7 @@ clarifyTerm h context term =
           consInfo <- getConsInfoByDiscriminant h m discriminant (DI.consInfoList dataInfo)
           let shape = DI.cellShape (dataSize h) dataInfo
           let layout = DI.consLayout shape consInfo
-          let fieldStorageList = DI.consArgLayouts consInfo
+          let fieldStorageList = DI.consParamLayouts consInfo
           when (length fieldStorageList /= length xs2) $
             raiseCritical m "Found a constructor layout arity mismatch"
           let headerEntries = discriminantEntries shape discriminant
@@ -774,14 +774,14 @@ clarifyType h context ty =
       return $ C.UpIntro $ C.VarLocal x
     _ :< TM.TVarGlobal (AttrVG.Attr {..}) x -> do
       envType <- liftIO $ envTypeForGlobal h x
-      let (globalArgNum, globalCodType) = getGlobalRefInfo AttrVG.Attr {..}
+      let (globalArity, globalCodType) = getGlobalRefInfo AttrVG.Attr {..}
       return $
         C.UpIntro $
           C.SigmaIntro
             (DI.closureLayout (dataSize h))
             [ envType,
               C.null,
-              C.VarGlobal x globalArgNum globalCodType
+              C.VarGlobal x globalArity globalCodType
             ]
     _ :< TM.TyApp t args -> do
       t' <- clarifyType h context t
@@ -798,7 +798,7 @@ clarifyType h context ty =
           specializedArgType <- specializeUnaryDataType h m name dataArgs
           clarifyType h context specializedArgType
         _ -> do
-          let argNum = AN.fromInt $ length dataArgs + 2
+          let arity = Arity.fromInt $ length dataArgs + 2
           envType <- liftIO $ envTypeForGlobal h name
           let cls =
                 C.UpIntro $
@@ -806,7 +806,7 @@ clarifyType h context ty =
                     (DI.closureLayout (dataSize h))
                     [ envType,
                       C.null,
-                      C.VarGlobal name argNum (FCT.Cod BLT.Pointer)
+                      C.VarGlobal name arity (FCT.Cod BLT.Pointer)
                     ]
           dataArgs' <- mapM (clarifyTypePlus h context) dataArgs
           liftIO $ callClosure h CC.normal cls dataArgs' [] []
@@ -821,7 +821,7 @@ clarifyType h context ty =
     _ :< TM.PrimType {} ->
       return Sigma.returnImmediateS4
     _ :< TM.Resource dd resourceID -> do
-      return $ C.UpIntro $ C.VarGlobal (DD.makeResourceName dd resourceID) AN.argNumS4 (FCT.Cod BLT.Pointer)
+      return $ C.UpIntro $ C.VarGlobal (DD.makeResourceName dd resourceID) Arity.arityS4 (FCT.Cod BLT.Pointer)
     _ :< TM.Void ->
       return Sigma.returnImmediateS4
 
@@ -899,7 +899,7 @@ fieldStoragesOfConsInfo ::
   DI.ConsInfo (BinderF TM.Type) ->
   App [Sigma.FieldLayout]
 fieldStoragesOfConsInfo h context consInfo = do
-  forM (zip (DI.consArgLayouts consInfo) (DI.consArgs consInfo)) $ \(layout, (_, _, _, t)) -> do
+  forM (zip (DI.consParamLayouts consInfo) (DI.consParams consInfo)) $ \(layout, (_, _, _, t)) -> do
     fieldType <- clarifyType h context t
     return $ Sigma.FieldLayout {Sigma.fieldType = fieldType, Sigma.fieldShape = layout}
 
@@ -921,7 +921,7 @@ clarifyStaticValue h context term =
           consArgSlots <- mapM (clarifyStaticValue h context) consArgs
           dataInfo <- lookupDataEntry h m dataName
           consInfo <- getConsInfoByDiscriminant h m discriminant (DI.consInfoList dataInfo)
-          let fieldStorageList = DI.consArgLayouts consInfo
+          let fieldStorageList = DI.consParamLayouts consInfo
           when (length fieldStorageList /= length consArgSlots) $
             raiseCritical m "Found a constructor layout arity mismatch"
           let shape = DI.cellShape (dataSize h) dataInfo
@@ -1048,7 +1048,7 @@ staticTypeRep h context ty =
           specializedArgType <- specializeUnaryDataType h m name dataArgs
           staticTypeRep h context specializedArgType
         _ ->
-          return $ C.VarGlobal (DD.getFormDD name) AN.argNumS4 (FCT.Cod BLT.Pointer)
+          return $ C.VarGlobal (DD.getFormDD name) Arity.arityS4 (FCT.Cod BLT.Pointer)
     _ :< TM.Box t ->
       staticTypeRep h context t
     _ :< TM.BoxNoema {} ->
@@ -1062,7 +1062,7 @@ staticTypeRep h context ty =
     _ :< TM.Void ->
       return Sigma.immediateS4
     _ :< TM.Resource dd resourceID ->
-      return $ C.VarGlobal (DD.makeResourceName dd resourceID) AN.argNumS4 (FCT.Cod BLT.Pointer)
+      return $ C.VarGlobal (DD.makeResourceName dd resourceID) Arity.arityS4 (FCT.Cod BLT.Pointer)
     m :< TM.TVarGlobal {} ->
       clarifyType h context ty >>= staticClosureOf h m
     _ :< TM.TyApp {} ->
@@ -1081,7 +1081,7 @@ registerTypeStub h context ty = do
   (typeName, typeVar) <- liftIO $ Gensym.createVar (gensymHandle h) "type"
   let body = C.UpElim True typeName typeValue (C.PiElimDownElim False typeVar [switchVar, argVar, extraVar])
   liftIO $ AuxEnv.insert (auxEnvHandle h) name (C.Def name O.Opaque [switchName, argName, extraName] body)
-  return $ C.VarGlobal name AN.argNumS4 (FCT.Cod BLT.Pointer)
+  return $ C.VarGlobal name Arity.arityS4 (FCT.Cod BLT.Pointer)
 
 newStaticDataLabel :: Handle -> IO T.Text
 newStaticDataLabel h = do
@@ -1098,12 +1098,12 @@ clarifyDataTypeDef ::
   [BinderF TM.Type] ->
   [DI.ConsInfo (BinderF TM.Type)] ->
   App C.CompStmt
-clarifyDataTypeDef h name dataArgs consInfoList = do
+clarifyDataTypeDef h name dataParams consInfoList = do
   let context = newContext name
-  dataArgs' <- dropFst <$> clarifyBinder h context dataArgs
-  envArg <- liftIO $ makeEnvArg h
-  switchArg <- liftIO $ makeSwitchArg h
-  let xts = dataArgs' ++ [envArg, switchArg]
+  dataParams' <- dropFst <$> clarifyBinder h context dataParams
+  envParam <- liftIO $ makeEnvParam h
+  switchParam <- liftIO $ makeSwitchParam h
+  let xts = dataParams' ++ [envParam, switchParam]
   od <- liftIO $ OptimizableData.lookup (optDataHandle h) name
   case od of
     Just OD.Enum ->
@@ -1111,14 +1111,14 @@ clarifyDataTypeDef h name dataArgs consInfoList = do
         >>= clarifyStmtDefineBody' h name xts
     Just OD.Unary -> do
       case consInfoList of
-        [DI.ConsInfo {DI.consArgs = [(_, _, _, t)]}] -> do
-          t' <- clarifyType h (extendContext dataArgs context) t
+        [DI.ConsInfo {DI.consParams = [(_, _, _, t)]}] -> do
+          t' <- clarifyType h (extendContext dataParams context) t
           return $ C.Def name O.Clear (map fst xts) t'
         _ ->
           raiseCritical' $ "Found a broken unary data metadata for `" <> DD.reify name <> "`"
     _ -> do
-      let shape = DI.cellShapeOf (dataSize h) dataArgs consInfoList
-      dataInfo' <- mapM (clarifyDataClause h context shape dataArgs) consInfoList
+      let shape = DI.cellShapeOf (dataSize h) dataParams consInfoList
+      dataInfo' <- mapM (clarifyDataClause h context shape dataParams) consInfoList
       liftIO (Sigma.returnSigmaDataS4 (sigmaHandle h) name O.Opaque shape dataInfo')
         >>= clarifyStmtDefineBody' h name xts
 
@@ -1143,17 +1143,17 @@ clarifyDataClause ::
   [BinderF TM.Type] ->
   DI.ConsInfo (BinderF TM.Type) ->
   App Sigma.DataConstructorInfo
-clarifyDataClause h context shape dataArgsVal consInfo = do
-  let typeArgs = dataArgsVal ++ DI.consImpArgs consInfo
-  typeArgs' <- dropFst <$> clarifyBinder h context typeArgs
-  let context' = extendContext typeArgs context
+clarifyDataClause h context shape dataParamsVal consInfo = do
+  let typeParams = dataParamsVal ++ DI.consImpParams consInfo
+  typeParams' <- dropFst <$> clarifyBinder h context typeParams
+  let context' = extendContext typeParams context
   fieldStorages <- fieldStoragesOfConsInfo h context' consInfo
-  let consArgs' = zip (map (\(_, _, x, _) -> x) (DI.consArgs consInfo)) fieldStorages
+  let consParams' = zip (map (\(_, _, x, _) -> x) (DI.consParams consInfo)) fieldStorages
   return $
     Sigma.DataConstructorInfo
       { Sigma.discriminant = DI.discriminant consInfo,
-        Sigma.typeArgs = typeArgs',
-        Sigma.consArgs = consArgs',
+        Sigma.typeParams = typeParams',
+        Sigma.consParams = consParams',
         Sigma.cellLayout = DI.consLayout shape consInfo
       }
 
@@ -1284,14 +1284,14 @@ specializeUnaryDataType ::
   App TM.Type
 specializeUnaryDataType h m dataName dataArgs = do
   dataInfo <- lookupDataEntry h m dataName
-  let dataBinders = DI.dataArgs dataInfo
+  let dataBinders = DI.dataParams dataInfo
   when (length dataBinders /= length dataArgs) $
     raiseCritical m $
       "Arity mismatch while specializing unary data metadata for `" <> DD.reify dataName <> "`"
   let binderIds = map (\(_, _, x, _) -> x) dataBinders
   let sub = IntMap.fromList $ zip (map Ident.toInt binderIds) (map Subst.Type dataArgs)
   case DI.consInfoList dataInfo of
-    [DI.ConsInfo {DI.consArgs = [(_, _, _, t)]}] ->
+    [DI.ConsInfo {DI.consParams = [(_, _, _, t)]}] ->
       liftIO $ Subst.substType (substHandle h) sub t
     _ ->
       raiseCritical m $ "Found a broken unary data metadata for `" <> DD.reify dataName <> "`"
@@ -1335,16 +1335,16 @@ clarifyCase h context isNoetic typeArgsMap cursor cursorType decisionCase = do
     DT.ConsCase (DT.ConsCaseRecord {..}) -> do
       let (_, dataTypes) = unzip dataArgs
       dataArgVars <- liftIO $ mapM (const $ Gensym.newIdentFromText (gensymHandle h) "dataArg") dataTypes
-      let consImpVars = map (\(_, _, x, _) -> x) consImpArgs
-      let typeArgEntries = zip dataArgVars dataTypes ++ map (\(_, _, x, t) -> (x, t)) consImpArgs
+      let consImpVars = map (\(_, _, x, _) -> x) consImpBinders
+      let typeArgEntries = zip dataArgVars dataTypes ++ map (\(_, _, x, t) -> (x, t)) consImpBinders
       let typeArgVars = dataArgVars ++ consImpVars
       cursorSize <- getDataCellByteSizeFromType h cursorType
       let typeArgsMap' = IntMap.insert (Ident.toInt cursor) (typeArgEntries, cursorSize) typeArgsMap
-      let consArgs' = map (\(m, k, x, _) -> (m, k, x, m :< TM.Tau)) consArgs
+      let consBinders' = map (\(m, k, x, _) -> (m, k, x, m :< TM.Tau)) consBinders
       let prefixChain = TM.chainOfCaseWithoutCont (typeEnv context) decisionCase
-      let contContext = extendContext (consImpArgs ++ consArgs') context
+      let contContext = extendContext (consImpBinders ++ consBinders') context
       (body', contChain) <- clarifyDecisionTree h contContext isNoetic typeArgsMap' cont
-      let consArgVars = map (\(_, _, x, _) -> x) consArgs
+      let consArgVars = map (\(_, _, x, _) -> x) consBinders
       let argVars = typeArgVars ++ consArgVars
       let contChain' = filter (\(_, _, x, _) -> x `notElem` argVars) contChain
       let chain = prefixChain ++ contChain'
@@ -1353,10 +1353,10 @@ clarifyCase h context isNoetic typeArgsMap cursor cursorType decisionCase = do
         Just OD.Enum -> do
           return (EC.Int (D.reify disc), body', chain)
         Just OD.Unary
-          | [(_, _, consArg, _)] <- consArgs ->
+          | [(_, _, consBinder, _)] <- consBinders ->
               return
                 ( EC.Int 0,
-                  C.UpElim True consArg (C.UpIntro (C.VarLocal cursor)) body',
+                  C.UpElim True consBinder (C.UpIntro (C.VarLocal cursor)) body',
                   chain
                 )
           | otherwise ->
@@ -1364,13 +1364,13 @@ clarifyCase h context isNoetic typeArgsMap cursor cursorType decisionCase = do
         _ -> do
           (_, dataInfo) <- lookupDataEntryFromType h mCons cursorType
           layoutConsInfo <- getConsInfoByDiscriminant h mCons disc (DI.consInfoList dataInfo)
-          when (length (DI.consArgs layoutConsInfo) /= length consArgs) $
+          when (length (DI.consParams layoutConsInfo) /= length consBinders) $
             raiseCritical mCons "Found a constructor layout arity mismatch"
-          let fieldStorageList = DI.consArgLayouts layoutConsInfo
-          let consArgIdents = map (\(_, _, x, _) -> x) consArgs
+          let fieldStorageList = DI.consParamLayouts layoutConsInfo
+          let consBinderIdents = map (\(_, _, x, _) -> x) consBinders
           let shape = DI.cellShape (dataSize h) dataInfo
           let layout = DI.consLayout shape layoutConsInfo
-          let fieldEntries = zip consArgIdents fieldStorageList
+          let fieldEntries = zip consBinderIdents fieldStorageList
           let cursorVar = C.VarLocal cursor
           headerVars <-
             case DI.shapeHeader shape of
@@ -1520,19 +1520,19 @@ clarifyLambda ::
   [(BinderF TM.Type, TM.Term)] ->
   TM.Term ->
   App C.Comp
-clarifyLambda h context attrL@(AttrL.Attr {lamKind}) fvs impArgs expArgs defaultArgs e@(m :< _) = do
-  let mxts = impArgs ++ expArgs ++ map fst defaultArgs
+clarifyLambda h context attrL@(AttrL.Attr {lamKind}) fvs impParams expParams defaultParams e@(m :< _) = do
+  let mxts = impParams ++ expParams ++ map fst defaultParams
   closureID <- liftIO $ freshLocalNameID h (currentFunction context)
   case lamKind of
     LK.Fix _ isDestPassing (_, _k, recFuncName, codType) -> do
       let liftedName = DD.getMuDD (currentFunction context) recFuncName closureID
-      let appArgs = fvs ++ mxts
-      let appArgs' = map (\(mx, _, x, _) -> mx :< TM.Var x) appArgs
-      let argumentConventions = map argumentConventionOfBinder appArgs
+      let appParams = fvs ++ mxts
+      let appArgs = map (\(mx, _, x, _) -> mx :< TM.Var x) appParams
+      let argumentConventions = map argumentConventionOfBinder appParams
       let baseConv = if isDestPassing then CC.destination codType else CC.normal
       let conv = CC.withArguments argumentConventions baseConv
-      let argNum = AN.fromInt $ length appArgs'
-      let attr = AttrVG.Attr {argNum, isConstLike = False, isDestPassing}
+      let arity = Arity.fromInt $ length appArgs
+      let attr = AttrVG.Attr {arity, isConstLike = False, isDestPassing}
       lamAttr <- do
         c <- liftIO $ Gensym.newCount (gensymHandle h)
         return $
@@ -1541,32 +1541,32 @@ clarifyLambda h context attrL@(AttrL.Attr {lamKind}) fvs impArgs expArgs default
             m
               :< TM.PiIntro
                 lamAttr
-                impArgs
-                expArgs
-                defaultArgs
-                (m :< TM.PiElim noTrace conv (m :< TM.VarGlobal attr liftedName) [] appArgs' [])
+                impParams
+                expParams
+                defaultParams
+                (m :< TM.PiElim noTrace conv (m :< TM.VarGlobal attr liftedName) [] appArgs [])
       isAlreadyRegistered <- liftIO $ AuxEnv.checkIfAlreadyRegistered (auxEnvHandle h) liftedName
       unless isAlreadyRegistered $ do
         let recFuncSubst = IntMap.fromList [(Ident.toInt recFuncName, Subst.Term lamApp)]
         liftedBody <- liftIO $ Subst.subst (substHandle h) recFuncSubst e
-        let liftedSlots = sourceSlotsOf appArgs
-        (liftedArgs, liftedBody') <- clarifyBinderBody h (newContext liftedName) appArgs liftedBody
-        envArg <- liftIO $ makeEnvArg h
-        switchArg <- liftIO $ makeSwitchArg h
-        let suffixParams = [fst envArg, fst switchArg]
+        let liftedSlots = sourceSlotsOf appParams
+        (liftedParams, liftedBody') <- clarifyBinderBody h (newContext liftedName) appParams liftedBody
+        envParam <- liftIO $ makeEnvParam h
+        switchParam <- liftIO $ makeSwitchParam h
+        let suffixParams = [fst envParam, fst switchParam]
         (destParam, liftedBody'') <-
           if isDestPassing
             then do
-              codType' <- clarifyType h (extendContext appArgs $ newContext liftedName) codType
+              codType' <- clarifyType h (extendContext appParams $ newContext liftedName) codType
               liftIO $ toDestPassing h codType' liftedBody'
             else return (Nothing, liftedBody')
-        stmt <- liftIO $ defineWithSourceEntries h liftedName O.Opaque destParam liftedSlots liftedArgs liftedArgs suffixParams id liftedBody''
+        stmt <- liftIO $ defineWithSourceEntries h liftedName O.Opaque destParam liftedSlots liftedParams liftedParams suffixParams id liftedBody''
         liftIO $ AuxEnv.insert (auxEnvHandle h) liftedName stmt
       liftIO $ registerDefaultEnvType h liftedName []
       clarifyTerm h context lamApp
     LK.Normal mName isDestPassing codType -> do
       let name = DD.getLambdaDD (currentFunction context) mName closureID
-      defaultValues <- registerDefaultFunctions h context name fvs impArgs expArgs defaultArgs
+      defaultValues <- registerDefaultFunctions h context name fvs impParams expParams defaultParams
       let slots = sourceSlotsOf mxts
       let lambdaContext =
             setCurrentFunction name $ extendContext (catMaybes [AttrL.fromAttr attrL] ++ mxts) context
@@ -1614,9 +1614,9 @@ clarifyBinder h context binder =
 clarifyPrimOp :: Handle -> Context -> PrimOp -> Hint -> App C.Comp
 clarifyPrimOp h context op m = do
   let (domList, codType) = getTypeInfo op
-  let argTypeList = map (fromPrimNum m) domList
+  let paramTypeList = map (fromPrimNum m) domList
   (xs, varList) <- liftIO $ mapAndUnzipM (const (Gensym.createVar (gensymHandle h) "prim")) domList
-  let mxts = zipWith (\x t -> (m, VK.normal, x, t)) xs argTypeList
+  let mxts = zipWith (\x t -> (m, VK.normal, x, t)) xs paramTypeList
   closureID <- liftIO $ freshLocalNameID h (currentFunction context)
   let codType' = fromPrimNum m codType
   let slots = map (const False) mxts
@@ -1652,7 +1652,7 @@ returnClosure h context lamID mName opacity isDestPassing codType fvs xts slots 
   let name = DD.getLambdaDD (currentFunction context) mName lamID
   fvEnvSigma <- liftIO $ Sigma.closureEnvS4 (sigmaHandle h) name envLayout fvs'' defaultValues
   let fvEnv = C.SigmaIntro envLayout (map (C.VarLocal . fst) fvs'')
-  let argNum = AN.fromInt $ length xts'' + if isDestPassing then 3 else 2
+  let arity = Arity.fromInt $ length xts'' + if isDestPassing then 3 else 2
   isAlreadyRegistered <- liftIO $ AuxEnv.checkIfAlreadyRegistered (auxEnvHandle h) name
   unless isAlreadyRegistered $ do
     let codTypeContext = setCurrentFunction name $ extendContext (fvs ++ xts) context
@@ -1664,7 +1664,7 @@ returnClosure h context lamID mName opacity isDestPassing codType fvs xts slots 
         (DI.closureLayout (dataSize h))
         [ fvEnvSigma,
           fvEnv,
-          C.VarGlobal name argNum (FCT.Cod BLT.Pointer)
+          C.VarGlobal name arity (FCT.Cod BLT.Pointer)
         ]
 
 closureEnvLayout :: Handle -> [BinderF TM.Type] -> App CL.CellLayout

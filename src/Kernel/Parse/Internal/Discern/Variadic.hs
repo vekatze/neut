@@ -6,7 +6,6 @@ import Language.Common.StmtKind qualified as SK
 import Language.RawTerm.RawStmt
 import Language.RawTerm.RawTerm qualified as RT
 import Logger.Hint
-import SyntaxTree.Series qualified as SE
 
 defineVariadic ::
   RuleKind ->
@@ -34,9 +33,9 @@ makeDef m name e t loc = do
                   name = (name, []),
                   isConstLike = False,
                   isDestPassing = False,
-                  impArgs = (SE.emptySeriesAC, []),
-                  defaultArgs = RT.emptyDefaultArgs,
-                  expArgs = (SE.emptySeriesPC, []),
+                  impParams = RT.emptyImpParams,
+                  defaultParams = RT.emptyDefaultParams,
+                  expParams = RT.emptyParams,
                   cod = ([], t)
                 },
             leadingComment = [],

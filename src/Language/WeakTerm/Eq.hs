@@ -22,12 +22,12 @@ eqType (_ :< ty1) (_ :< ty2)
       let b2 = length args1 == length args2
       let b3 = all (uncurry eqType) $ zip args1 args2
       b1 && b2 && b3
-  | WT.Pi pk1 impArgs1 expArgs1 defaultArgs1 cod1 <- ty1,
-    WT.Pi pk2 impArgs2 expArgs2 defaultArgs2 cod2 <- ty2 = do
+  | WT.Pi pk1 impParams1 expParams1 defaultParams1 cod1 <- ty1,
+    WT.Pi pk2 impParams2 expParams2 defaultParams2 cod2 <- ty2 = do
       let b1 = pk1 == pk2
-      let b2 = eqImpArgs impArgs1 impArgs2
-      let b3 = eqBinderType expArgs1 expArgs2
-      let b4 = eqDefaultBinderType defaultArgs1 defaultArgs2
+      let b2 = eqImpParams impParams1 impParams2
+      let b3 = eqBinderType expParams1 expParams2
+      let b4 = eqDefaultBinderType defaultParams1 defaultParams2
       let b5 = eqType cod1 cod2
       b1 && b2 && b3 && b4 && b5
   | WT.Data attr1 name1 es1 <- ty1,
@@ -65,8 +65,8 @@ eqType (_ :< ty1) (_ :< ty2)
   | otherwise =
       False
 
-eqImpArgs :: [BinderF WT.WeakType] -> [BinderF WT.WeakType] -> Bool
-eqImpArgs =
+eqImpParams :: [BinderF WT.WeakType] -> [BinderF WT.WeakType] -> Bool
+eqImpParams =
   eqBinderType
 
 eqDefaultBinderType :: [BinderF WT.WeakType] -> [BinderF WT.WeakType] -> Bool

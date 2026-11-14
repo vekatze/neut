@@ -28,7 +28,7 @@ import Gensym.Handle qualified as Gensym
 import Kernel.Clarify.Internal.Linearize qualified as Linearize
 import Kernel.Clarify.Internal.Utility (ResourceSpec (..))
 import Kernel.Clarify.Internal.Utility qualified as Utility
-import Language.Common.ArgNum qualified as AN
+import Language.Common.Arity qualified as Arity
 import Language.Common.BaseLowType qualified as BLT
 import Language.Common.CellLayout qualified as CL
 import Language.Common.CreateSymbol qualified as Gensym
@@ -53,8 +53,8 @@ data Handle = Handle
 
 data DataConstructorInfo = DataConstructorInfo
   { discriminant :: D.Discriminant,
-    typeArgs :: [(Ident, C.Comp)],
-    consArgs :: [(Ident, FieldLayout)],
+    typeParams :: [(Ident, C.Comp)],
+    consParams :: [(Ident, FieldLayout)],
     cellLayout :: CL.CellLayout
   }
 
@@ -67,9 +67,9 @@ new :: Gensym.Handle -> Linearize.Handle -> Utility.Handle -> DS.DataSize -> Han
 new gensymHandle linearizeHandle utilityHandle dataSize = do
   Handle {..}
 
-globalPointer :: DD.DefiniteDescription -> AN.ArgNum -> C.Value
-globalPointer name argNum =
-  C.VarGlobal name argNum (FCT.Cod BLT.Pointer)
+globalPointer :: DD.DefiniteDescription -> Arity.Arity -> C.Value
+globalPointer name arity =
+  C.VarGlobal name arity (FCT.Cod BLT.Pointer)
 
 makeImmediateS4 :: Handle -> IO C.CompStmt
 makeImmediateS4 h = do
@@ -96,15 +96,15 @@ returnImmediateS4 =
 
 returnClosureS4 :: C.Comp
 returnClosureS4 = do
-  C.UpIntro $ globalPointer DD.cls AN.argNumS4
+  C.UpIntro $ globalPointer DD.cls Arity.arityS4
 
 immediateS4 :: C.Value
 immediateS4 =
-  globalPointer DD.imm AN.argNumS4
+  globalPointer DD.imm Arity.arityS4
 
 closureS4 :: C.Value
 closureS4 =
-  globalPointer DD.cls AN.argNumS4
+  globalPointer DD.cls Arity.arityS4
 
 makeResourceSpecWithLayout :: Handle -> CL.CellLayout -> [(Ident, C.Comp)] -> IO ResourceSpec
 makeResourceSpecWithLayout h layout xts = do
@@ -234,7 +234,7 @@ closureEnvS4 h closureName layout mxts defaultValues =
       resourceSpec <- makeResourceSpecWithLayout h layout mxts
       let resourceSpec' = resourceSpec {defaultValues}
       liftIO $ Utility.registerSwitcher (utilityHandle h) O.Clear name resourceSpec'
-      return $ globalPointer name AN.argNumS4
+      return $ globalPointer name Arity.arityS4
 
 returnSigmaDataS4 ::
   Handle ->
@@ -253,7 +253,7 @@ returnSigmaDataS4 h dataName opacity shape dataInfo = do
   Utility.registerSwitcher (utilityHandle h) opacity dataName' $ do
     let size = Utility.returnByteSizeComp (toInteger $ DI.shapeByteSize shape)
     ResourceSpec {switch, arg, extra, discard, copy, size, defaultValues = []}
-  return $ C.UpIntro $ globalPointer dataName' AN.argNumS4
+  return $ C.UpIntro $ globalPointer dataName' Arity.arityS4
 
 returnSigmaEnumS4 ::
   Handle ->
@@ -269,7 +269,7 @@ returnSigmaEnumS4 h dataName opacity = do
   let dataName' = DD.getFormDD dataName
   Utility.registerSwitcher (utilityHandle h) opacity dataName' $
     ResourceSpec {switch, arg, extra, discard, copy, size = Utility.returnIntComp (-1), defaultValues = []}
-  return $ C.UpIntro $ globalPointer dataName' AN.argNumS4
+  return $ C.UpIntro $ globalPointer dataName' Arity.arityS4
 
 sigmaData ::
   Handle ->
@@ -323,8 +323,8 @@ sigmaData4 h shape dataInfo arg dest = do
 sigmaBinderT :: Handle -> DI.CellShape -> DataConstructorInfo -> C.Value -> C.Value -> IO C.Comp
 sigmaBinderT h shape info shouldRelease v = do
   headerEntries <- makeHeaderEntries h shape
-  let typeArgEntries = typeArgs info
-  let fields = consArgs info
+  let typeArgEntries = typeParams info
+  let fields = consParams info
   let readEntries = headerEntries ++ typeArgEntries
   readApps <- forM readEntries $ \(x, t) -> do
     Utility.toAffineApp (utilityHandle h) (C.VarLocal x) t
@@ -355,8 +355,8 @@ sigmaBinder4 :: Handle -> DI.CellShape -> DataConstructorInfo -> C.Value -> C.Va
 sigmaBinder4 h shape info dest v = do
   headerEntries <- makeHeaderEntries h shape
   let n = length headerEntries
-  let typeArgEntries = typeArgs info
-  let fields = consArgs info
+  let typeArgEntries = typeParams info
+  let fields = consParams info
   let readEntries = headerEntries ++ typeArgEntries
   readCopies <- copyFieldsInto h dest (cellLayout info) 0 (directEntries (cellLayout info) readEntries)
   fieldCopies <- copyFieldsInto h dest (cellLayout info) (n + length typeArgEntries) fields
@@ -364,7 +364,7 @@ sigmaBinder4 h shape info dest v = do
   let bodyBase = Utility.bindLet (zip holes (readCopies ++ fieldCopies)) $ C.UpIntro C.null
   bodyWithFields <- bindFieldsInPlace h v (cellLayout info) (n + length typeArgEntries) (map (fmap fieldShape) fields) bodyBase
   body' <- Linearize.linearize (linearizeHandle h) readEntries bodyWithFields
-  return $ C.SigmaElim False 0 (cellLayout info) (map fst headerEntries ++ map fst (typeArgs info)) v body'
+  return $ C.SigmaElim False 0 (cellLayout info) (map fst headerEntries ++ map fst (typeParams info)) v body'
 
 makeHeaderEntries :: Handle -> DI.CellShape -> IO [(Ident, C.Comp)]
 makeHeaderEntries h shape =

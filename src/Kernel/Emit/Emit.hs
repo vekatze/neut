@@ -267,13 +267,13 @@ emitGlobalDeclarations globalEnv =
   map (uncurry emitGlobalExt) $ List.sort $ HashMap.toList globalEnv
 
 emitDefinitions :: Handle -> LC.Def -> IO [Builder]
-emitDefinitions h (name, LC.DefContent {codType = codType, args = args, body = body}) = do
+emitDefinitions h (name, LC.DefContent {codType = codType, params = params, body = body}) = do
   definitionGensymHandle <- Gensym.createHandle
-  args' <- mapM (Gensym.newIdentFromIdent definitionGensymHandle . fst) args
-  let sub = IntMap.fromList $ zipWith (\from to -> (toInt from, LC.VarLocal to)) (map fst args) args'
+  params' <- mapM (Gensym.newIdentFromIdent definitionGensymHandle . fst) params
+  let sub = IntMap.fromList $ zipWith (\from to -> (toInt from, LC.VarLocal to)) (map fst params) params'
   let reduceHandle = Reduce.new definitionGensymHandle
   body' <- Reduce.reduce reduceHandle sub body
-  let args'' = showInternalArgs (getDataSize h) $ zipWith (\(_, t) x -> (t, LC.VarLocal x)) args args'
+  let args'' = showInternalArgs (getDataSize h) $ zipWith (\(_, t) x -> (t, LC.VarLocal x)) params params'
   emitDefinition h definitionGensymHandle True (Just name) [] codType (DD.toBuilder name) args'' body'
 
 emitMain :: Handle -> LC.DefContent -> IO [Builder]
@@ -281,13 +281,13 @@ emitMain h defContent = do
   emitExternalDefinition h [] (mainSymbol (getArch h)) defContent
 
 emitExternalDefinition :: Handle -> [Builder] -> Builder -> LC.DefContent -> IO [Builder]
-emitExternalDefinition h extraAttributes symbol (LC.DefContent {codType = codType, args = args, body = body}) = do
-  emitDefinition h (gensymHandle h) False Nothing extraAttributes codType symbol (emitExternalArgs h args) body
+emitExternalDefinition h extraAttributes symbol (LC.DefContent {codType = codType, params = params, body = body}) = do
+  emitDefinition h (gensymHandle h) False Nothing extraAttributes codType symbol (emitExternalParams h params) body
 
-emitExternalArgs :: Handle -> [(Ident, LT.LowType)] -> Builder
-emitExternalArgs h args = do
-  let renderArg (x, t) = emitLowType t <> " " <> emitValue (getDataSize h) (LC.VarLocal x)
-  "(" <> unwordsC (map renderArg args) <> ")"
+emitExternalParams :: Handle -> [(Ident, LT.LowType)] -> Builder
+emitExternalParams h params = do
+  let renderParam (x, t) = emitLowType t <> " " <> emitValue (getDataSize h) (LC.VarLocal x)
+  "(" <> unwordsC (map renderParam params) <> ")"
 
 mainSymbol :: Arch.Arch -> Builder
 mainSymbol arch =
@@ -325,7 +325,7 @@ declToBuilder h (name, (dom, cod, variadicity)) = do
         returnType
           <> " @"
           <> DN.toBuilder name
-          <> emitDeclarationArgs isInternal maybeKind variadicity dom
+          <> emitDeclarationParams isInternal maybeKind variadicity dom
   attachAttributes "declare" $
     callConvAttributes
       ++ returnAttributes
@@ -343,13 +343,13 @@ wasmImportAttributes platformName name =
     _ ->
       []
 
-emitDeclarationArgs :: Bool -> Maybe AllocatorKind -> DN.Variadicity -> [BLT.BaseLowType] -> Builder
-emitDeclarationArgs isInternal maybeKind variadicity dom = do
+emitDeclarationParams :: Bool -> Maybe AllocatorKind -> DN.Variadicity -> [BLT.BaseLowType] -> Builder
+emitDeclarationParams isInternal maybeKind variadicity dom = do
   let renderArg index t = do
         let attributes =
               if isInternal
                 then internalArgAttributes t
-                else maybe [] (`allocatorArgAttributes` index) maybeKind
+                else maybe [] (`allocatorParamAttributes` index) maybeKind
         attachAttributes (emitLowType t) attributes
   let renderedArgs = zipWith renderArg [0 ..] (map LT.fromBaseLowType dom)
   let renderedArgs' =
@@ -383,8 +383,8 @@ allocatorReturnAttributes kind =
     _ ->
       ["noalias", "noundef"]
 
-allocatorArgAttributes :: AllocatorKind -> Int -> [Builder]
-allocatorArgAttributes kind index = do
+allocatorParamAttributes :: AllocatorKind -> Int -> [Builder]
+allocatorParamAttributes kind index = do
   let isAllocPtr =
         case kind of
           Realloc ->

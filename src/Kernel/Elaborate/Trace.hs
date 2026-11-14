@@ -28,7 +28,7 @@ data FrameInfo = FrameInfo
 data Title
   = HeadTitle T.Text
   | FrameTitle T.Text T.Text
-  | DefaultArgTitle
+  | DefaultValueTitle
 
 data RenderStep = RenderStep
   { renderStepHint :: Hint,
@@ -84,8 +84,8 @@ frameInfo h frame = do
 frameTitleOf :: TermTrace.Frame -> Title
 frameTitleOf frame =
   case TermTrace.frameKind frame of
-    TermTrace.DefaultArgFrame ->
-      DefaultArgTitle
+    TermTrace.DefaultValueFrame ->
+      DefaultValueTitle
     frameKind ->
       FrameTitle (frameKindText frameKind) (TraceSites.sourceLevelName (TermTrace.callee frame))
 
@@ -104,7 +104,7 @@ frameKindText frameKind =
       "constant-meta"
     TermTrace.DataIntroFrame ->
       "data-intro"
-    TermTrace.DefaultArgFrame ->
+    TermTrace.DefaultValueFrame ->
       "default"
 
 savedToHint :: SavedHint -> Hint
@@ -173,8 +173,8 @@ renderTitle title locator =
       "   " <> headLabel <> " -- " <> locator
     FrameTitle kind name ->
       "=> " <> kind <> " " <> name <> " -- " <> locator
-    DefaultArgTitle ->
-      "=> (default argument -- " <> locator <> ")"
+    DefaultValueTitle ->
+      "=> (default value -- " <> locator <> ")"
 
 renderTraceLocation :: T.Text -> ModulePath.ModulePathMap -> [Module.Module] -> Hint -> IO T.Text
 renderTraceLocation moduleDir modulePathMap modules hint = do

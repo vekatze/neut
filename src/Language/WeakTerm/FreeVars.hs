@@ -24,9 +24,9 @@ freeVars term =
       S.singleton x
     _ :< WT.VarGlobal {} ->
       S.empty
-    _ :< WT.PiIntro k impArgs expArgs defaultArgs e -> do
+    _ :< WT.PiIntro k impParams expParams defaultParams e -> do
       let body = freeVarsBinders (catMaybes [AttrL.fromAttr k]) (freeVars e)
-      freeVarsBinders (impArgs ++ expArgs) (freeVarsDefaultArgs defaultArgs body)
+      freeVarsBinders (impParams ++ expParams) (freeVarsDefaultParams defaultParams body)
     _ :< WT.PiElim _ e _ expArgs defaultArgs -> do
       let xs = freeVars e
       let ys2 = S.unions $ map freeVars (DefaultArgs.extract defaultArgs)
@@ -75,13 +75,13 @@ freeVars term =
     _ :< WT.Annotation _ _ e -> do
       freeVars e
 
-freeVarsDefaultArgs :: [(BinderF WT.WeakType, WT.WeakTerm)] -> S.Set Ident -> S.Set Ident
-freeVarsDefaultArgs defaultArgs zs =
-  case defaultArgs of
+freeVarsDefaultParams :: [(BinderF WT.WeakType, WT.WeakTerm)] -> S.Set Ident -> S.Set Ident
+freeVarsDefaultParams defaultParams zs =
+  case defaultParams of
     [] ->
       zs
     (binder, value) : rest ->
-      S.union (freeVars value) (freeVarsBinders [binder] (freeVarsDefaultArgs rest zs))
+      S.union (freeVars value) (freeVarsBinders [binder] (freeVarsDefaultParams rest zs))
 
 freeVarsBinders :: [BinderF WT.WeakType] -> S.Set Ident -> S.Set Ident
 freeVarsBinders binder zs =
@@ -113,7 +113,7 @@ freeVarsCaseTerm decisionCase = do
     DT.LiteralCase _ _ cont -> do
       freeVarsDecisionTreeTerm cont
     DT.ConsCase (DT.ConsCaseRecord {..}) -> do
-      freeVarsBinders consArgs (freeVarsDecisionTreeTerm cont)
+      freeVarsBinders consBinders (freeVarsDecisionTreeTerm cont)
 
 freeVarsMagicTerm :: M.WeakMagic WT.WeakType WT.WeakType WT.WeakTerm -> S.Set Ident
 freeVarsMagicTerm (M.WeakMagic magic) =
@@ -184,9 +184,9 @@ freeVarsAll term =
       S.singleton x
     _ :< WT.VarGlobal {} ->
       S.empty
-    _ :< WT.PiIntro k impArgs expArgs defaultArgs e -> do
+    _ :< WT.PiIntro k impParams expParams defaultParams e -> do
       let body = freeVarsBindersType (catMaybes [AttrL.fromAttr k]) (freeVarsAll e)
-      freeVarsBindersType (impArgs ++ expArgs) (freeVarsAllDefaultArgs defaultArgs body)
+      freeVarsBindersType (impParams ++ expParams) (freeVarsAllDefaultParams defaultParams body)
     _ :< WT.PiElim spec e impArgs expArgs defaultArgs -> do
       let xs = freeVarsAll e
       let ys0 = S.unions $ map freeVarsType (CCS.types spec)
@@ -254,8 +254,8 @@ freeVarsType ty =
       S.empty
     _ :< WT.TyApp t args -> do
       S.unions $ freeVarsType t : map freeVarsType args
-    _ :< WT.Pi _ impArgs expArgs defaultArgs t ->
-      freeVarsBindersType (impArgs ++ expArgs ++ defaultArgs) (freeVarsType t)
+    _ :< WT.Pi _ impParams expParams defaultParams t ->
+      freeVarsBindersType (impParams ++ expParams ++ defaultParams) (freeVarsType t)
     _ :< WT.Data _ _ es ->
       S.unions $ map freeVarsType es
     _ :< WT.Box t ->
@@ -275,13 +275,13 @@ freeVarsType ty =
     _ :< WT.TypeHole _ es ->
       S.unions $ map freeVarsType es
 
-freeVarsAllDefaultArgs :: [(BinderF WT.WeakType, WT.WeakTerm)] -> S.Set Ident -> S.Set Ident
-freeVarsAllDefaultArgs defaultArgs zs =
-  case defaultArgs of
+freeVarsAllDefaultParams :: [(BinderF WT.WeakType, WT.WeakTerm)] -> S.Set Ident -> S.Set Ident
+freeVarsAllDefaultParams defaultParams zs =
+  case defaultParams of
     [] ->
       zs
     (binder, value) : rest ->
-      S.union (freeVarsAll value) (freeVarsBindersType [binder] (freeVarsAllDefaultArgs rest zs))
+      S.union (freeVarsAll value) (freeVarsBindersType [binder] (freeVarsAllDefaultParams rest zs))
 
 freeVarsBindersType :: [BinderF WT.WeakType] -> S.Set Ident -> S.Set Ident
 freeVarsBindersType binder zs =
@@ -316,7 +316,7 @@ freeVarsCase decisionCase = do
       freeVarsDecisionTree cont
     DT.ConsCase (DT.ConsCaseRecord {..}) -> do
       let (dataTypes1, dataTypes2) = unzip dataArgs
-      let binderVars = freeVarsBindersType (consImpArgs ++ consArgs) (freeVarsDecisionTree cont)
+      let binderVars = freeVarsBindersType (consImpBinders ++ consBinders) (freeVarsDecisionTree cont)
       S.unions $ binderVars : map freeVarsType dataTypes1 ++ map freeVarsType dataTypes2
 
 freeVarsMagic :: M.WeakMagic WT.WeakType WT.WeakType WT.WeakTerm -> S.Set Ident

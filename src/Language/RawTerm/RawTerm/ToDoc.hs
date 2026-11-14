@@ -4,9 +4,9 @@ module Language.RawTerm.RawTerm.ToDoc
   ( toDoc,
     typeToDoc,
     nameToDoc,
-    decodeArgs',
-    decodeArgsMaybe,
-    decodeConsArgsMaybe,
+    decodeParams',
+    decodeParamsMaybe,
+    decodeConsParamsMaybe,
     decodeImpParams,
     decodeDef,
     decodeTypeDef,
@@ -186,7 +186,7 @@ toDoc term =
       D.join
         [ PI.arrange $
             [ PI.beforeBareSeries $ D.text keyword,
-              PI.bareSeries $ D.join [attachComment c1 $ letArgToDoc mxt, C.asSuffix c2]
+              PI.bareSeries $ D.join [attachComment c1 $ letBinderToDoc mxt, C.asSuffix c2]
             ]
               ++ decodeNoeticVarList noeticVarList,
           PI.arrange
@@ -230,7 +230,7 @@ toDoc term =
       D.join
         [ PI.arrange
             [ PI.beforeBareSeries $ D.text $ RT.decodeLetKind letKind,
-              PI.bareSeries $ D.join [attachComment c1 $ letArgToDoc mxt, C.asSuffix c2]
+              PI.bareSeries $ D.join [attachComment c1 $ letBinderToDoc mxt, C.asSuffix c2]
             ],
           PI.arrange
             [ PI.beforeBareSeries $ D.text "=",
@@ -243,7 +243,7 @@ toDoc term =
       D.join
         [ PI.arrange $
             [ PI.beforeBareSeries $ D.text $ RT.decodeLetKind letKind,
-              PI.bareSeries $ D.join [attachComment c1 $ letArgToDoc mxt, C.asSuffix c2]
+              PI.bareSeries $ D.join [attachComment c1 $ letBinderToDoc mxt, C.asSuffix c2]
             ]
               ++ decodeNoeticVarList noeticVarList,
           PI.arrange
@@ -265,7 +265,7 @@ toDoc term =
       D.join
         [ PI.arrange $
             [ PI.beforeBareSeries $ D.text "pin",
-              PI.bareSeries $ D.join [attachComment c1 $ piIntroArgToDoc mxt, C.asSuffix c2]
+              PI.bareSeries $ D.join [attachComment c1 $ piIntroParamToDoc mxt, C.asSuffix c2]
             ]
               ++ decodeNoeticVarList noeticVarList,
           PI.arrange
@@ -519,10 +519,10 @@ typeToDoc ty =
         [ PI.inject $ typeToDoc t,
           PI.inject $ attachComment c $ SE.decodeHorizontallyIfPossible $ fmap typeToDoc args
         ]
-    _ :< Pi (impArgs, c1) (expArgs, c3) (defaultArgs, c2) piKind c cod _ -> do
-      let hasDefault = not (SE.isEmpty defaultArgs)
-      let expParamsBase = SE.decode $ fmap (piArgToDoc (anyNamedBinder $ SE.extract expArgs)) expArgs
-      let defaultParamsBase = decodeDefaultBinders defaultArgs
+    _ :< Pi (impParams, c1) (expParams, c3) (defaultParams, c2) piKind c cod _ -> do
+      let hasDefault = not (SE.isEmpty defaultParams)
+      let expParamsBase = SE.decode $ fmap (piParamToDoc (anyNamedBinder $ SE.extract expParams)) expParams
+      let defaultParamsBase = decodeDefaultParamBinders defaultParams
       let expParamsWithImp = attachComment c1 expParamsBase
       let defaultParamsWithExpComment =
             if hasDefault
@@ -531,7 +531,7 @@ typeToDoc ty =
       let cArrow =
             (if hasDefault then [] else c3) ++ c2
       PI.arrange
-        [ PI.container $ decodeImpParams impArgs,
+        [ PI.container $ decodeImpParams impParams,
           PI.container expParamsWithImp,
           PI.container defaultParamsWithExpComment,
           PI.delimiter $ attachComment cArrow $ D.text (codArrow (isDestPassingPiKind piKind)),
@@ -632,8 +632,8 @@ decodeBlock (c1, (body, c2)) = do
       D.text "}"
     ]
 
-decodeArgs :: Args RawType -> D.Doc
-decodeArgs (series, c) = do
+decodeParams :: Params RawType -> D.Doc
+decodeParams (series, c) = do
   if null c
     then decodeBinder series
     else
@@ -643,28 +643,28 @@ decodeArgs (series, c) = do
           D.line
         ]
 
-decodeArgsMaybe :: Maybe (SE.Series (RawBinder RawType)) -> D.Doc
-decodeArgsMaybe mArgs = do
-  case mArgs of
+decodeParamsMaybe :: Maybe (SE.Series (RawBinder RawType)) -> D.Doc
+decodeParamsMaybe mParams = do
+  case mParams of
     Nothing ->
       D.Nil
-    Just args ->
-      decodeArgs (args, [])
+    Just params ->
+      decodeParams (params, [])
 
-decodeConsArgsMaybe :: Maybe (SE.Series (FieldHint, RawBinder RawType)) -> D.Doc
-decodeConsArgsMaybe mArgs =
-  case mArgs of
+decodeConsParamsMaybe :: Maybe (SE.Series (FieldHint, RawBinder RawType)) -> D.Doc
+decodeConsParamsMaybe mParams =
+  case mParams of
     Nothing ->
       D.Nil
-    Just args ->
-      SE.decode $ fmap (consArgToDoc (anyNamedBinder $ map snd $ SE.extract args)) args
+    Just params ->
+      SE.decode $ fmap (consParamToDoc (anyNamedBinder $ map snd $ SE.extract params)) params
 
-consArgToDoc :: Bool -> (FieldHint, RawBinder RawType) -> D.Doc
-consArgToDoc anyNamed (_, binder) =
-  piArgToDoc anyNamed binder
+consParamToDoc :: Bool -> (FieldHint, RawBinder RawType) -> D.Doc
+consParamToDoc anyNamed (_, binder) =
+  piParamToDoc anyNamed binder
 
-decodeArgs' :: Args RawType -> D.Doc
-decodeArgs' (series, c) = do
+decodeParams' :: Params RawType -> D.Doc
+decodeParams' (series, c) = do
   if null c
     then decodeBinder' series
     else
@@ -675,7 +675,7 @@ decodeArgs' (series, c) = do
 
 decodeBinder :: SE.Series (RawBinder RawType) -> D.Doc
 decodeBinder series =
-  SE.decode $ fmap (piArgToDoc (anyNamedBinder $ SE.extract series)) series
+  SE.decode $ fmap (piParamToDoc (anyNamedBinder $ SE.extract series)) series
 
 anyNamedBinder :: [RawBinder RawType] -> Bool
 anyNamedBinder =
@@ -683,7 +683,7 @@ anyNamedBinder =
 
 decodeBinder' :: SE.Series (RawBinder RawType) -> D.Doc
 decodeBinder' series =
-  SE.decode $ fmap piIntroArgToDoc series
+  SE.decode $ fmap piIntroParamToDoc series
 
 decodeNoeticVar :: (Hint, VK.VarKind, RawIdent) -> D.Doc
 decodeNoeticVar (_, k, v) =
@@ -704,8 +704,8 @@ decodeQuoteVarList vs =
     then []
     else [PI.horizontal $ SE.decode $ fmap decodeNoeticVar vs]
 
-piArgToDoc :: Bool -> RawBinder RawType -> D.Doc
-piArgToDoc anyNamed (m, k, x, c1, c2, t) = do
+piParamToDoc :: Bool -> RawBinder RawType -> D.Doc
+piParamToDoc anyNamed (m, k, x, c1, c2, t) = do
   let t' = typeToDoc t
   if isHole x && not anyNamed
     then attachComment (c1 ++ c2) $ prefixVarKind k t'
@@ -713,8 +713,8 @@ piArgToDoc anyNamed (m, k, x, c1, c2, t) = do
       let nameDoc = if isHole x then D.text "_" else D.text x
       paramToDoc' (m, prefixVarKind k nameDoc, c1, c2, t')
 
-piIntroArgToDoc :: RawBinder RawType -> D.Doc
-piIntroArgToDoc (m, k, x, c1, c2, t) = do
+piIntroParamToDoc :: RawBinder RawType -> D.Doc
+piIntroParamToDoc (m, k, x, c1, c2, t) = do
   let x' = prefixVarKind k $ nameToDoc $ N.Bare x
   paramToDoc (m, x', c1, c2, t)
 
@@ -723,8 +723,8 @@ defParamToDoc (m, k, x, c1, c2, t) = do
   let x' = prefixVarKind k $ nameToDoc $ N.Bare x
   paramToDoc' (m, x', c1, c2, typeToDoc t)
 
-piIntroArgWithDefaultToDoc :: (RawBinder RawType, RawTerm) -> D.Doc
-piIntroArgWithDefaultToDoc ((m, k, x, c1, c2, t), defaultValue) = do
+piIntroParamWithDefaultToDoc :: (RawBinder RawType, RawTerm) -> D.Doc
+piIntroParamWithDefaultToDoc ((m, k, x, c1, c2, t), defaultValue) = do
   let x' = prefixVarKind k $ nameToDoc $ N.Bare x
   let baseParam = paramToDoc (m, x', c1, c2, t)
   D.join [baseParam, D.text " := ", toDoc defaultValue]
@@ -775,18 +775,18 @@ decGeist
   nameDecoder
   ( RT.RawGeist
       { name = (name, c0),
-        impArgs = (impArgs, c1),
-        defaultArgs = (defaultArgs, c2),
-        expArgs = (expArgs, c3),
+        impParams = (impParams, c1),
+        defaultParams = (defaultParams, c2),
+        expParams = (expParams, c3),
         cod = (c4, cod),
         isConstLike,
         isDestPassing
       }
     ) = do
-    let hasExp = not isConstLike || not (SE.isEmpty expArgs)
-    let hasDefault = not (SE.isEmpty defaultArgs)
-    let expParamsBase = decodeDefParams isConstLike expArgs
-    let defaultParamsBase = decodeDefaultParams defaultArgs
+    let hasExp = not isConstLike || not (SE.isEmpty expParams)
+    let hasDefault = not (SE.isEmpty defaultParams)
+    let expParamsBase = decodeDefParams isConstLike expParams
+    let defaultParamsBase = decodeDefaultParams defaultParams
     let expParamsWithImp =
           if hasExp
             then attachComment c1 expParamsBase
@@ -811,7 +811,7 @@ decGeist
             else PI.delimiterArrow $ attachComment cArrow' $ D.text (codArrow isDestPassing)
     PI.arrange
       [ PI.inject $ attachComment c0 $ nameDecoder name,
-        PI.inject $ decodeImpParams impArgs,
+        PI.inject $ decodeImpParams impParams,
         PI.inject expParamsWithImp,
         PI.inject defaultParamsWithExpComment,
         codDelim,
@@ -823,16 +823,16 @@ decGeistSimple
   nameDecoder
   ( RT.RawGeist
       { name = (name, c0),
-        impArgs = (impArgs, c1),
-        defaultArgs = (defaultArgs, c2),
-        expArgs = (expArgs, c3),
+        impParams = (impParams, c1),
+        defaultParams = (defaultParams, c2),
+        expParams = (expParams, c3),
         isConstLike
       }
     ) = do
-    let hasExp = not isConstLike || not (SE.isEmpty expArgs)
-    let hasDefault = not (SE.isEmpty defaultArgs)
-    let expParamsBase = decodeExpParams isConstLike expArgs
-    let defaultParamsBase = decodeDefaultParams defaultArgs
+    let hasExp = not isConstLike || not (SE.isEmpty expParams)
+    let hasDefault = not (SE.isEmpty defaultParams)
+    let expParamsBase = decodeExpParams isConstLike expParams
+    let defaultParamsBase = decodeDefaultParams defaultParams
     let expParamsWithImp =
           if hasExp
             then attachComment c1 expParamsBase
@@ -851,7 +851,7 @@ decGeistSimple
             else attachComment (c3 ++ c2) expParamsWithImp
     PI.arrange
       [ PI.inject $ attachComment c0 $ nameDecoder name,
-        PI.inject $ decodeImpParams impArgs,
+        PI.inject $ decodeImpParams impParams,
         PI.inject expParamsWithTrailing,
         PI.inject defaultParamsWithTrailing
       ]
@@ -861,16 +861,16 @@ decTypeGeist
   nameDecoder
   ( RT.RawGeist
       { name = (name, c0),
-        impArgs = (impArgs, c1),
-        defaultArgs = (defaultArgs, c2),
-        expArgs = (expArgs, c3),
+        impParams = (impParams, c1),
+        defaultParams = (defaultParams, c2),
+        expParams = (expParams, c3),
         isConstLike
       }
     ) = do
-    let hasExp = not isConstLike || not (SE.isEmpty expArgs)
-    let hasDefault = not (SE.isEmpty defaultArgs)
-    let expParamsBase = decodeExpParams isConstLike expArgs
-    let defaultParamsBase = decodeDefaultParams defaultArgs
+    let hasExp = not isConstLike || not (SE.isEmpty expParams)
+    let hasDefault = not (SE.isEmpty defaultParams)
+    let expParamsBase = decodeExpParams isConstLike expParams
+    let defaultParamsBase = decodeDefaultParams defaultParams
     let expParamsWithImp =
           if hasExp
             then attachComment c1 expParamsBase
@@ -889,7 +889,7 @@ decTypeGeist
             else attachComment (c3 ++ c2) expParamsWithImp
     PI.arrange
       [ PI.inject $ attachComment c0 $ nameDecoder name,
-        PI.inject $ decodeImpParams impArgs,
+        PI.inject $ decodeImpParams impParams,
         PI.inject expParamsWithTrailing,
         PI.inject defaultParamsWithTrailing
       ]
@@ -906,23 +906,23 @@ decodeImpVar (m, k, x, c1, c2, t) = do
     then attachComment (c1 ++ c2) (typeToDoc t)
     else paramToDoc (m, prefixVarKind k $ D.text x, c1, c2, t)
 
-decodeDefaultBinders :: SE.Series (RawBinder RawType) -> D.Doc
-decodeDefaultBinders defaultBinders =
-  if SE.isEmpty defaultBinders
+decodeDefaultParamBinders :: SE.Series (RawBinder RawType) -> D.Doc
+decodeDefaultParamBinders defaultParamBinders =
+  if SE.isEmpty defaultParamBinders
     then D.Nil
-    else SE.decode $ fmap piIntroArgToDoc defaultBinders
+    else SE.decode $ fmap piIntroParamToDoc defaultParamBinders
 
 decodeDefaultParams :: SE.Series (RawBinder RawType, RawTerm) -> D.Doc
 decodeDefaultParams defaultParams =
   if SE.isEmpty defaultParams
     then D.Nil
-    else SE.decode $ fmap piIntroArgWithDefaultToDoc defaultParams
+    else SE.decode $ fmap piIntroParamWithDefaultToDoc defaultParams
 
 decodeExpParams :: Bool -> SE.Series (RawBinder RawType) -> D.Doc
 decodeExpParams isConstLike expParams =
   if isConstLike && SE.isEmpty expParams
     then D.Nil
-    else SE.decode $ fmap piIntroArgToDoc expParams
+    else SE.decode $ fmap piIntroParamToDoc expParams
 
 decodeDefParams :: Bool -> SE.Series (RawBinder RawType) -> D.Doc
 decodeDefParams isConstLike expParams =
@@ -930,8 +930,8 @@ decodeDefParams isConstLike expParams =
     then D.Nil
     else SE.decode $ fmap defParamToDoc expParams
 
-letArgToDoc :: (a, RP.RawPattern, C, C, RawType) -> D.Doc
-letArgToDoc (m, x, c1, c2, t) = do
+letBinderToDoc :: (a, RP.RawPattern, C, C, RawType) -> D.Doc
+letBinderToDoc (m, x, c1, c2, t) = do
   let x' = decodePattern x
   paramToDoc (m, x', c1, c2, t)
 
@@ -1096,8 +1096,8 @@ decodePattern pat = do
   case pat of
     RP.Var k name ->
       prefixVarKind k $ nameToDoc name
-    RP.Cons name c typeParams args -> do
-      let name' = D.join [nameToDoc name, maybe D.Nil decodePatternTypeParams typeParams]
+    RP.Cons name c impBinders args -> do
+      let name' = D.join [nameToDoc name, maybe D.Nil decodePatternImpBinders impBinders]
       case args of
         RP.Paren patList -> do
           let patList' = SE.decode $ fmap (decodeMarkedPattern . snd) patList
@@ -1110,9 +1110,9 @@ decodePattern pat = do
     RP.RuneIntro r ->
       D.text $ "`" <> T.replace "`" "\\`" (RU.asText r) <> "`"
 
-decodePatternTypeParams :: RP.TypeParams -> D.Doc
-decodePatternTypeParams typeParams =
-  SE.decode $ flip fmap typeParams $ \(_, x) ->
+decodePatternImpBinders :: RP.ImpBinders -> D.Doc
+decodePatternImpBinders impBinders =
+  SE.decode $ flip fmap impBinders $ \(_, x) ->
     if isHole x
       then D.text "_"
       else D.text x

@@ -135,7 +135,7 @@ define-meta print-data<a>(x: 'a) -> 'unit {
 
 Naive compile-time evaluation may diverge in such a situation: while generating code for some type, the meta function may need to generate code for the same type again.
 
-`define-meta` avoids this by first specializing itself to its type arguments and memoizing the result. This memoization is performed on a per-file basis. When the same type arguments appear again, the memoized function is reused.
+`define-meta` avoids this by first specializing itself to its implicit arguments and memoizing the result. This memoization is performed on a per-file basis. When the same implicit arguments appear again, the memoized function is reused.
 
 To make this work, `define-meta` requires every explicit parameter to have a code type:
 
@@ -167,7 +167,7 @@ define use-meta-constant() -> int {
 }
 ```
 
-Explicit type arguments can be written on the meta constant:
+A meta constant can also have implicit parameters:
 
 ```neut
 constant-meta bar<a>: 'int {
@@ -213,7 +213,7 @@ This is the same as:
 unquote {foo{key3 := quote {c}, key2 := quote {b}, key1 := quote {a}}}
 ```
 
-If the meta function has default arguments, you can override them as follows:
+If the meta function has default parameters, you can override their default values as follows:
 
 ```neut
 foo::(bar, baz)[width := 80]
@@ -262,7 +262,7 @@ define example() -> unit {
 
 Inside `invoke`, a matching entry behaves like a pre-registered memoized specialization.
 
-When several entries match the same meta function and type arguments, the later entry takes priority.
+When several entries match the same meta function and implicit arguments, the later entry takes priority.
 
 ## Compile-Time Primitives
 

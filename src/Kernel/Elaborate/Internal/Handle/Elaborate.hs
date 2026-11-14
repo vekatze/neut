@@ -26,9 +26,9 @@ import Kernel.Common.CreateLocalHandle qualified as Local
 import Kernel.Common.Handle.Global.Data qualified as Data
 import Kernel.Common.Handle.Global.Env qualified as Env
 import Kernel.Common.Handle.Global.GlobalRemark qualified as GlobalRemark
-import Kernel.Common.Handle.Global.KeyArg qualified as KeyArg
 import Kernel.Common.Handle.Global.ModulePath qualified as ModulePath
 import Kernel.Common.Handle.Global.OptimizableData qualified as OptimizableData
+import Kernel.Common.Handle.Global.ParamKey qualified as ParamKey
 import Kernel.Common.Handle.Global.Path qualified as Path
 import Kernel.Common.Handle.Global.Platform qualified as Platform
 import Kernel.Common.Handle.Global.Type qualified as Type
@@ -83,7 +83,7 @@ data Handle = Handle
     tagHandle :: Tag.Handle,
     typeDefHandle :: TypeDef.Handle,
     gensymHandle :: Gensym.Handle,
-    keyArgHandle :: KeyArg.Handle,
+    paramKeyHandle :: ParamKey.Handle,
     localLogsHandle :: LocalLogs.Handle,
     pathHandle :: Path.Handle,
     globalRemarkHandle :: GlobalRemark.Handle,

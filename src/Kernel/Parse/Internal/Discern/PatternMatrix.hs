@@ -23,7 +23,7 @@ import Kernel.Parse.Internal.Discern.Noema
 import Kernel.Parse.Internal.Discern.Specialize qualified as PATS
 import Kernel.Parse.Pattern qualified as PAT
 import Kernel.Parse.Vector qualified as V
-import Language.Common.ArgNum qualified as AN
+import Language.Common.Arity qualified as Arity
 import Language.Common.Binder
 import Language.Common.CreateSymbol qualified as Gensym
 import Language.Common.DecisionTree qualified as DT
@@ -57,18 +57,18 @@ type ConsCaseVarsRef =
   IORef (Map.HashMap (Int, DD.DefiniteDescription) ConsCaseVars)
 
 getConsCaseVars :: H.Handle -> ConsCaseVarsRef -> Ident -> PAT.ConsInfo -> IO ConsCaseVars
-getConsCaseVars h consCaseVarsRef cursor (PAT.ConsInfo {consDD, dataArgNum, consArgNum, consImpArgNames, typeParams}) = do
+getConsCaseVars h consCaseVarsRef cursor (PAT.ConsInfo {consDD, dataArity, consArity, consImpParamNames, impBinders}) = do
   let key = (Ident.toInt cursor, consDD)
   known <- readIORef consCaseVarsRef
   case Map.lookup key known of
     Just vars ->
       return vars
     Nothing -> do
-      let consImpParams = drop (AN.reify dataArgNum) typeParams
+      let consImpParams = drop (Arity.reify dataArity) impBinders
       let toConsImpName declared named = maybe declared (Ident.toText . snd) named
-      let consImpNames = zipWith toConsImpName consImpArgNames consImpParams
+      let consImpNames = zipWith toConsImpName consImpParamNames consImpParams
       consImpVars <- mapM (Gensym.newIdentFromText (H.gensymHandle h)) consImpNames
-      consVars <- mapM (const $ Gensym.newIdentFromText (H.gensymHandle h) "cvar") [1 .. AN.reify consArgNum]
+      consVars <- mapM (const $ Gensym.newIdentFromText (H.gensymHandle h) "cvar") [1 .. Arity.reify consArity]
       let vars = ConsCaseVars {consImpVars, consVars}
       modifyIORef' consCaseVarsRef $ Map.insert key vars
       return vars
@@ -109,16 +109,16 @@ compilePatternMatrix' h consCaseVarsRef isNoetic occurrences mat =
                     return $ DT.LiteralCase mPat literal cont
                   PAT.ConsSpecializer consInfo@(PAT.ConsInfo {..}) -> do
                     let hGen = H.gensymHandle h
-                    let createDataHoles = mapM (const $ WT.createTypeHole hGen mPat []) [1 .. AN.reify dataArgNum]
+                    let createDataHoles = mapM (const $ WT.createTypeHole hGen mPat []) [1 .. Arity.reify dataArity]
                     dataHoles <- liftIO createDataHoles
                     dataTypeHoles <- liftIO createDataHoles
                     ConsCaseVars {consImpVars, consVars} <-
                       liftIO $ getConsCaseVars h consCaseVarsRef cursor consInfo
-                    let consImpArgs = map (\x -> (mPat, VK.normal, x, mPat :< WT.Tau)) consImpVars
+                    let consImpBinders = map (\x -> (mPat, VK.normal, x, mPat :< WT.Tau)) consImpVars
                     let typeArgs = dataHoles ++ map (\x -> mPat :< WT.TVar x) consImpVars
                     let ms = map fst args
                     let consVars' = zip ms consVars
-                    (consArgs', h') <- liftIO $ alignConsArgs h consVars'
+                    (consBinders', h') <- liftIO $ alignConsBinders h consVars'
                     let occurrences' = V.fromList consVars' <> V.tail occurrences
                     specialMatrix <- PATS.specialize h isNoetic cursor typeArgs specializer mat
                     specialDecisionTree <-
@@ -132,8 +132,8 @@ compilePatternMatrix' h consCaseVarsRef isNoetic occurrences mat =
                             isConstLike = isConstLike,
                             disc = disc,
                             dataArgs = dataArgs',
-                            consImpArgs = consImpArgs,
-                            consArgs = consArgs',
+                            consImpBinders = consImpBinders,
+                            consBinders = consBinders',
                             cont = specialDecisionTree
                           }
               fallbackMatrix <- PATF.getFallbackMatrix h isNoetic cursor mat
@@ -142,18 +142,18 @@ compilePatternMatrix' h consCaseVarsRef isNoetic occurrences mat =
               t <- liftIO $ WT.createTypeHole (H.gensymHandle h) mCursor []
               return $ DT.Switch (cursor, t) (fallbackClause, clauseList)
 
-alignConsArgs ::
+alignConsBinders ::
   H.Handle ->
   [(Hint, Ident)] ->
   IO ([BinderF WT.WeakType], H.Handle)
-alignConsArgs h binder =
+alignConsBinders h binder =
   case binder of
     [] -> do
       return ([], h)
     (mx, x) : xts -> do
       t <- WT.createTypeHole (H.gensymHandle h) mx []
       let h' = H.extendWithoutInsert h mx x
-      (xts', h'') <- alignConsArgs h' xts
+      (xts', h'') <- alignConsBinders h' xts
       return ((mx, VK.normal, x, t) : xts', h'')
 
 asLetSeq ::
@@ -194,17 +194,17 @@ ensurePatternSanity h (m, pat) =
     PAT.WildcardVar {} ->
       return ()
     PAT.Cons consInfo -> do
-      forM_ (catMaybes (PAT.typeParams consInfo)) $ \(mx, x) ->
+      forM_ (catMaybes (PAT.impBinders consInfo)) $ \(mx, x) ->
         liftIO $ Tag.insertBinder (H.tagHandle h) (mx, VK.normal, x, ())
-      let argNum = length (PAT.args consInfo)
-      when (argNum /= AN.reify (PAT.consArgNum consInfo)) $ do
+      let arity = length (PAT.args consInfo)
+      when (arity /= Arity.reify (PAT.consArity consInfo)) $ do
         let consDD' = renderDD (H.modulePathMap h) $ PAT.consDD consInfo
         raiseError m $
           "The constructor `"
             <> consDD'
             <> "` expects "
-            <> T.pack (show (AN.reify (PAT.consArgNum consInfo)))
+            <> T.pack (show (Arity.reify (PAT.consArity consInfo)))
             <> " arguments, but found "
-            <> T.pack (show argNum)
+            <> T.pack (show arity)
             <> "."
       mapM_ (ensurePatternSanity h) (PAT.args consInfo)

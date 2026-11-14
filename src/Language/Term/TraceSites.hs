@@ -379,10 +379,10 @@ forNodeM node recur = do
       return $ TM.Var x
     TM.VarGlobal attr dd ->
       return $ TM.VarGlobal attr dd
-    TM.PiIntro attr impArgs expArgs defaultArgs body -> do
-      defaultArgs' <- forM defaultArgs (bimapM return recur)
+    TM.PiIntro attr impParams expParams defaultParams body -> do
+      defaultParams' <- forM defaultParams (bimapM return recur)
       body' <- recur body
-      return $ TM.PiIntro attr impArgs expArgs defaultArgs' body'
+      return $ TM.PiIntro attr impParams expParams defaultParams' body'
     TM.PiElim traceID kind callee impArgs expArgs defaultArgs -> do
       callee' <- recur callee
       expArgs' <- forM expArgs recur
