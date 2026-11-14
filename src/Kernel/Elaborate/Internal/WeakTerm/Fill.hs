@@ -9,12 +9,9 @@ import App.App (App)
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.IO.Class
-import Data.IntMap qualified as IntMap
 import Data.Text qualified as T
 import Kernel.Elaborate.TypeHoleSubst qualified as THS
 import Language.Common.Binder
-import Language.Common.Ident.Reify qualified as Ident
-import Language.WeakTerm.Subst (SubstEntry (..))
 import Language.WeakTerm.Subst qualified as Subst
 import Language.WeakTerm.ToText qualified as WT
 import Language.WeakTerm.WeakTerm qualified as WT
@@ -73,8 +70,7 @@ fillType h holeSubst ty =
       case THS.lookup i holeSubst of
         Just (xs, body)
           | length xs == length es' -> do
-              let varList = map Ident.toInt xs
-              let sub = IntMap.fromList $ zip varList (map Type es')
+              let sub = Subst.makeTypeSubst xs es'
               liftIO (Subst.substType (substHandle h) sub body)
           | otherwise -> do
               let tyText = WT.toTextType ty

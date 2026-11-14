@@ -66,7 +66,7 @@ findCase consDisc decisionCase =
       Nothing
     ConsCase (ConsCaseRecord {..}) -> do
       if consDisc == disc
-        then return (map (\(_, _, x, _) -> x) consImpBinders, map (\(_, _, x, t) -> (x, t)) consBinders, cont)
+        then return (map getBinderIdent consImpBinders, map (\(_, _, x, t) -> (x, t)) consBinders, cont)
         else Nothing
 
 deriveBinary [''ConsCaseRecord, ''DecisionTree, ''Case]

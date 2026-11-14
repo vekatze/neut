@@ -114,7 +114,6 @@ import Language.Term.Trace qualified as TermTrace
 import Language.Term.TraceID (noTrace)
 import Language.Term.TraceSites qualified as TraceSites
 import Language.Term.Weaken
-import Language.WeakTerm.Subst (SubstEntry (..))
 import Language.WeakTerm.Subst qualified as Subst
 import Language.WeakTerm.ToText
 import Language.WeakTerm.ToText qualified as Weak
@@ -826,8 +825,7 @@ specializeUnaryDataType h m dataName dataArgs = do
   let dataBinders = DI.dataParams dataInfo
   when (length dataBinders /= length dataArgs) $ do
     raiseError m $ "arity mismatch while resolving the layout of the unary type `" <> showDD h dataName <> "`"
-  let binderIds = map (\(_, _, x, _) -> x) dataBinders
-  let sub = IntMap.fromList $ zip (map Ident.toInt binderIds) (map TmSubst.Type dataArgs)
+  let sub = TmSubst.makeTypeSubst (map getBinderIdent dataBinders) dataArgs
   case DI.consInfoList dataInfo of
     [DI.ConsInfo {DI.consParams = [(_, _, _, t)]}] ->
       liftIO $ TmSubst.substType (termSubstHandle h) sub t
@@ -1545,7 +1543,7 @@ elaborateClause h mOrig cursor cursorType ctx decisionCase = do
       dataTypes' <- mapM (elaborateType h) dataTypes
       consImpBinders' <- mapM (elaborateWeakBinder h) consImpBinders
       consBinders' <- mapM (elaborateWeakBinder h) consBinders
-      let consBinderIdents = map (\(_, _, x, _) -> x) consBinders
+      let consBinderIdents = map getBinderIdent consBinders
       let consContext = (cursor, (Just consDD, isConstLike, consBinderIdents))
       cont' <- elaborateDecisionTree h (consContext : ctx) mOrig mCons cont
       return $
@@ -1660,8 +1658,7 @@ reduceWeakTypeWithin h budget t = do
         Just def
           | length args == length (WeakTypeDef.typeDefBinders def) -> do
               ensureUnfoldingBudget h m budget
-              let varList = map (\(_, _, x, _) -> Ident.toInt x) (WeakTypeDef.typeDefBinders def)
-              let sub = IntMap.fromList $ zip varList (map Type args)
+              let sub = Subst.makeTypeSubst (map getBinderIdent (WeakTypeDef.typeDefBinders def)) args
               body' <- liftIO $ Subst.substType (substHandle h) sub (WeakTypeDef.typeDefBody def)
               reduceWeakTypeWithin h (budget - 1) body'
         _ ->
@@ -1684,7 +1681,7 @@ fillHole h m holeID es = do
       | length xs == length es -> do
           e' <- chaseHole h m e
           liftIO $ Hole.insertTypeSubst (holeHandle h) holeID xs e'
-          let s = IntMap.fromList $ zip (map Ident.toInt xs) (map Type es)
+          let s = Subst.makeTypeSubst xs es
           liftIO $ Subst.substType (substHandle h) s e'
       | otherwise ->
           raiseError m "Arity mismatch"

@@ -632,8 +632,7 @@ expandPiElimExact h m e = do
   case t' of
     _ :< WT.Pi piKind impParams expParams _ codType -> do
       impArgs' <- mapM (const $ liftIO $ newTypeHole h m (varEnv h)) impParams
-      let impIds = map (\(_, _, x, _) -> x) impParams
-      let subType = IntMap.fromList $ zip (map Ident.toInt impIds) (map Type impArgs')
+      let subType = Subst.makeTypeSubst (map getBinderIdent impParams) impArgs'
       (expParams', subType') <- liftIO $ Subst.subst' (substHandle h) subType expParams
       let expArgs'' = map (\(mx, _, x, _) -> mx :< WT.Var x) expParams'
       codType' <- liftIO $ Subst.substType (substHandle h) subType' codType
@@ -807,9 +806,8 @@ inferTypeWithKind h ty =
       k' <- resolveType h k
       case k' of
         _ :< WT.Pi _ impParams expParams _ cod -> do
-          let impParamIds = map (\(_, _, x, _) -> x) impParams
           impParams' <- mapM (const $ liftIO $ newTypeHole h m (varEnv h)) impParams
-          let subType = IntMap.fromList $ zip (map Ident.toInt impParamIds) (map Type impParams')
+          let subType = Subst.makeTypeSubst (map getBinderIdent impParams) impParams'
           (expParams', _) <- substTypeBinder h subType expParams
           ensureTypeArityCorrectness m (length expParams') (length args')
           forM_ (zip expParams' argKinds) $ \((_, _, _, tParam), tArg) ->
@@ -1168,10 +1166,10 @@ declareConsImpParams h m consDD dataTypes consImpParams = do
   case consType of
     _ :< WT.Pi _ impParams _ _ _ -> do
       let (dataBinders, declaredConsImpParams) = splitAt (length dataTypes) impParams
-      let dataSub = zipWith (\(_, _, x, _) t -> (Ident.toInt x, Type t)) dataBinders dataTypes
+      let dataSub = Subst.makeTypeSubst (map getBinderIdent dataBinders) dataTypes
       let consImpTypes = map (\(mx, _, x, _) -> mx :< WT.TVar x) consImpParams
-      let consImpSub = zipWith (\(_, _, y, _) t -> (Ident.toInt y, Type t)) declaredConsImpParams consImpTypes
-      let sub = IntMap.fromList $ dataSub ++ consImpSub
+      let consImpSub = Subst.makeTypeSubst (map getBinderIdent declaredConsImpParams) consImpTypes
+      let sub = IntMap.union dataSub consImpSub
       forM (zip consImpParams declaredConsImpParams) $ \((mx, _, x, _), (_, k, _, t)) -> do
         t' <- liftIO $ Subst.substType (substHandle h) sub t
         return (mx, k, x, t')
@@ -1197,7 +1195,7 @@ reduceWeakTypeWithin h holeSubst budget t = do
         Just (xs, body)
           | length xs == length args -> do
               ensureUnfoldingBudget h m budget
-              let sub = IntMap.fromList $ zip (map Ident.toInt xs) (map Type args)
+              let sub = Subst.makeTypeSubst xs args
               body' <- liftIO $ Subst.substType (substHandle h) sub body
               reduceWeakTypeWithin h holeSubst (budget - 1) body'
           | otherwise ->
@@ -1208,8 +1206,7 @@ reduceWeakTypeWithin h holeSubst budget t = do
         Just def
           | length args == length (WeakTypeDef.typeDefBinders def) -> do
               ensureUnfoldingBudget h m budget
-              let varList = map (\(_, _, x, _) -> Ident.toInt x) (WeakTypeDef.typeDefBinders def)
-              let sub = IntMap.fromList $ zip varList (map Type args)
+              let sub = Subst.makeTypeSubst (map getBinderIdent (WeakTypeDef.typeDefBinders def)) args
               body' <- liftIO $ Subst.substType (substHandle h) sub (WeakTypeDef.typeDefBody def)
               reduceWeakTypeWithin h holeSubst (budget - 1) body'
         _ ->

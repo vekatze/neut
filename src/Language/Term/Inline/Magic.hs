@@ -35,7 +35,7 @@ import Language.Common.Arity qualified as Arity
 import Language.Common.Attr.DataIntro qualified as AttrDI
 import Language.Common.Attr.VarGlobal qualified as AttrVG
 import Language.Common.BaseName qualified as BN
-import Language.Common.Binder (BinderF)
+import Language.Common.Binder (BinderF, getBinderIdent)
 import Language.Common.CallConv qualified as CC
 import Language.Common.CellLayout qualified as CL
 import Language.Common.CodeVariant qualified as CV
@@ -169,7 +169,7 @@ consToTypeValue ::
   DI.ConsInfo (BinderF TM.Type) ->
   TypeValue.Constructor
 consToTypeValue declaredConsInfo consInfo = do
-  let existentialParams = S.fromList $ map (\(_, _, x, _) -> x) $ DI.consImpParams declaredConsInfo
+  let existentialParams = S.fromList $ map getBinderIdent $ DI.consImpParams declaredConsInfo
   let fieldTypeOf (_, _, _, declaredType) (_, _, _, t) =
         if S.disjoint (TM.freeVarsType declaredType) existentialParams
           then TypeValue.Known t
@@ -363,8 +363,7 @@ specializeConsInfoList ::
   App [DI.ConsInfo (BinderF TM.Type)]
 specializeConsInfoList h m dataName dataBinders dataArgs consInfoList
   | length dataBinders == length dataArgs = do
-      let binderIds = map (\(_, _, x, _) -> x) dataBinders
-      let sub = IntMap.fromList $ zip (map Ident.toInt binderIds) (map Subst.Type dataArgs)
+      let sub = Subst.makeTypeSubst (map getBinderIdent dataBinders) dataArgs
       mapM (specializeConsInfo h sub) consInfoList
   | otherwise =
       reportMacroError h m $

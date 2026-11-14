@@ -10,14 +10,12 @@ module Kernel.Elaborate.Stuck
 where
 
 import Control.Comonad.Cofree
-import Data.IntMap qualified as IntMap
 import Kernel.Elaborate.Constraint qualified as C
 import Kernel.Elaborate.Internal.Handle.WeakTypeDef (TypeDef (..))
+import Language.Common.Binder (getBinderIdent)
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.HoleID qualified as HID
 import Language.Common.Ident
-import Language.Common.Ident.Reify qualified as Ident
-import Language.WeakTerm.Subst (SubstEntry (..))
 import Language.WeakTerm.Subst qualified as Subst
 import Language.WeakTerm.WeakTerm qualified as WT
 import Logger.Hint
@@ -61,7 +59,7 @@ resume substHandle typeDef ctx = do
           mInner <- resume substHandle (TypeDef [] typeDefBody) ctx'
           case mInner of
             Just inner -> do
-              let sub = IntMap.fromList $ zipWith (\(_, _, x, _) t -> (Ident.toInt x, Type t)) params args
+              let sub = Subst.makeTypeSubst (map getBinderIdent params) args
               Just <$> Subst.substType substHandle sub inner
             Nothing ->
               return Nothing

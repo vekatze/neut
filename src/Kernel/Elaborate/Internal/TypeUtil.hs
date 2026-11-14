@@ -52,8 +52,7 @@ getConsParamTypes h m dataName dataArgs = do
   let dataBinders = DI.dataParams dataInfo
   if length dataBinders == length dataArgs
     then do
-      let binderIds = map (\(_, _, x, _) -> x) dataBinders
-      let sub = IntMap.fromList $ zip (map Ident.toInt binderIds) (map TmSubst.Type dataArgs)
+      let sub = TmSubst.makeTypeSubst (map getBinderIdent dataBinders) dataArgs
       forM (DI.consInfoList dataInfo) $ \consInfo -> do
         (consImpParams', sub') <- liftIO $ TmSubst.refreshBinders (termSubstHandle h) sub (DI.consImpParams consInfo)
         consParams' <- liftIO $ substConsParams h sub' (DI.consParams consInfo)

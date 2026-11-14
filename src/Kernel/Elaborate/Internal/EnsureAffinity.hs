@@ -564,8 +564,7 @@ getConsParamTypes h m dataName dataArgs = do
   case dataInfoOrNone of
     Just DI.DataInfo {DI.dataParams = dataBinders, DI.consInfoList = consInfoList}
       | length dataBinders == length dataArgs -> do
-          let binderIds = map (\(_, _, x, _) -> x) dataBinders
-          let sub = IntMap.fromList $ zip (map toInt binderIds) (map Type dataArgs)
+          let sub = Subst.makeTypeSubst (map getBinderIdent dataBinders) dataArgs
           mapM (substConsParams h sub . DI.consParams) consInfoList
       | otherwise ->
           raiseCritical m $ "Could not specialize constructor metadata for `" <> DD.reify dataName <> "` due to arity mismatch"

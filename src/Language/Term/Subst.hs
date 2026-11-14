@@ -3,6 +3,7 @@ module Language.Term.Subst
     new,
     SubstEntry (..),
     Subst,
+    makeTypeSubst,
     subst,
     substIfChanged,
     substAndRefresh,
@@ -41,6 +42,10 @@ data SubstEntry
 
 type Subst =
   IntMap.IntMap SubstEntry
+
+makeTypeSubst :: [Ident] -> [TM.Type] -> Subst
+makeTypeSubst xs ts =
+  IntMap.fromList $ zip (map Ident.toInt xs) (map Type ts)
 
 data Handle = Handle
   { gensymHandle :: Gensym.Handle,

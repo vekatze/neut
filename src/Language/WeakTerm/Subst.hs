@@ -3,6 +3,7 @@ module Language.WeakTerm.Subst
     new,
     SubstEntry (..),
     Subst,
+    makeTypeSubst,
     subst,
     subst',
     substType,
@@ -41,6 +42,10 @@ data SubstEntry
 
 type Subst =
   IntMap.IntMap SubstEntry
+
+makeTypeSubst :: [Ident] -> [WT.WeakType] -> Subst
+makeTypeSubst xs ts =
+  IntMap.fromList $ zip (map Ident.toInt xs) (map Type ts)
 
 newtype Handle = Handle
   { gensymHandle :: Gensym.Handle

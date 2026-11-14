@@ -1150,7 +1150,7 @@ clarifyDataClause h context shape dataParamsVal consInfo = do
   typeParams' <- dropFst <$> clarifyBinder h context typeParams
   let context' = extendContext typeParams context
   fieldStorages <- fieldStoragesOfConsInfo h context' consInfo
-  let consParams' = zip (map (\(_, _, x, _) -> x) (DI.consParams consInfo)) fieldStorages
+  let consParams' = zip (map getBinderIdent (DI.consParams consInfo)) fieldStorages
   return $
     Sigma.DataConstructorInfo
       { Sigma.discriminant = DI.discriminant consInfo,
@@ -1188,7 +1188,7 @@ clarifyDecisionTree h context isNoetic typeArgsMap tree =
       fallbackClause'' <- aligner fallbackClause'
       clauseList'' <- mapM aligner clauseList'
       let newChain = (m, VK.normal, cursor, m :< TM.Tau) : chain
-      let idents = nubOrd $ map (\(_, _, x, _) -> x) newChain
+      let idents = nubOrd $ map getBinderIdent newChain
       let enumClauses = zip enumCaseList clauseList''
       ck <- getClauseDataGroup h cursorType
       case ck of
@@ -1290,8 +1290,7 @@ specializeUnaryDataType h m dataName dataArgs = do
   when (length dataBinders /= length dataArgs) $
     raiseCritical m $
       "Arity mismatch while specializing unary data metadata for `" <> DD.reify dataName <> "`"
-  let binderIds = map (\(_, _, x, _) -> x) dataBinders
-  let sub = IntMap.fromList $ zip (map Ident.toInt binderIds) (map Subst.Type dataArgs)
+  let sub = Subst.makeTypeSubst (map getBinderIdent dataBinders) dataArgs
   case DI.consInfoList dataInfo of
     [DI.ConsInfo {DI.consParams = [(_, _, _, t)]}] ->
       liftIO $ Subst.substType (substHandle h) sub t
@@ -1337,7 +1336,7 @@ clarifyCase h context isNoetic typeArgsMap cursor cursorType decisionCase = do
     DT.ConsCase (DT.ConsCaseRecord {..}) -> do
       let (_, dataTypes) = unzip dataArgs
       dataArgVars <- liftIO $ mapM (const $ Gensym.newIdentFromText (gensymHandle h) "dataArg") dataTypes
-      let consImpVars = map (\(_, _, x, _) -> x) consImpBinders
+      let consImpVars = map getBinderIdent consImpBinders
       let typeArgEntries = zip dataArgVars dataTypes ++ map (\(_, _, x, t) -> (x, t)) consImpBinders
       let typeArgVars = dataArgVars ++ consImpVars
       cursorSize <- getDataCellByteSizeFromType h cursorType
@@ -1346,7 +1345,7 @@ clarifyCase h context isNoetic typeArgsMap cursor cursorType decisionCase = do
       let prefixChain = TM.chainOfCaseWithoutCont (typeEnv context) decisionCase
       let contContext = extendContext (consImpBinders ++ consBinders') context
       (body', contChain) <- clarifyDecisionTree h contContext isNoetic typeArgsMap' cont
-      let consArgVars = map (\(_, _, x, _) -> x) consBinders
+      let consArgVars = map getBinderIdent consBinders
       let argVars = typeArgVars ++ consArgVars
       let contChain' = filter (\(_, _, x, _) -> x `notElem` argVars) contChain
       let chain = prefixChain ++ contChain'
@@ -1369,7 +1368,7 @@ clarifyCase h context isNoetic typeArgsMap cursor cursorType decisionCase = do
           when (length (DI.consParams layoutConsInfo) /= length consBinders) $
             raiseCritical mCons "Found a constructor layout arity mismatch"
           let fieldStorageList = DI.consParamLayouts layoutConsInfo
-          let consBinderIdents = map (\(_, _, x, _) -> x) consBinders
+          let consBinderIdents = map getBinderIdent consBinders
           let shape = DI.cellShape (dataSize h) dataInfo
           let layout = DI.consLayout shape layoutConsInfo
           let fieldEntries = zip consBinderIdents fieldStorageList

@@ -433,8 +433,7 @@ inlineNormal h term = do
               || length defaultParams /= length defaultArgs'
               then registerResidual h residual
               else do
-                let impIds = map (\(_, _, x, _) -> x) impParams
-                let subType = IntMap.fromList $ zip (map Ident.toInt impIds) (map Subst.Type impArgs')
+                let subType = Subst.makeTypeSubst (map getBinderIdent impParams) impArgs'
                 let defaultFrameCtx = (\dd -> (dd, m, callTraceID)) <$> mDefaultCallee
                 let givenParams = zip expParams (map GivenArgument expArgsNormal)
                 let defaultParams' = zipWith toDefaultParameter defaultParams defaultArgs'
@@ -753,8 +752,7 @@ inlineType' h ty = do
             TypeDef.TypeDefInfo {TypeDef.typeDefBinders = binders, TypeDef.typeDefBody = body} <- typeDefInfo,
             length binders == length args -> do
               args' <- mapM (inlineType' h) args
-              let binderIds = map (\(_, _, x, _) -> x) binders
-              let subType = IntMap.fromList $ zip (map Ident.toInt binderIds) (map Subst.Type args')
+              let subType = Subst.makeTypeSubst (map getBinderIdent binders) args'
               body' <- liftIO $ Subst.substType (substHandle h) subType body
               liftIO $ incrementStep h
               inlineType' (withoutPending h) body'

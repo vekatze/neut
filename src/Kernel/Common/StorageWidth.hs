@@ -5,7 +5,6 @@ import App.Run (raiseCritical)
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.IO.Class (liftIO)
-import Data.IntMap qualified as IntMap
 import Data.Set qualified as S
 import Kernel.Common.Handle.Global.Data qualified as Data
 import Kernel.Common.Handle.Global.OptimizableData qualified as OptimizableData
@@ -14,7 +13,6 @@ import Language.Common.Binder
 import Language.Common.CellLayout qualified as CL
 import Language.Common.DataInfo qualified as DI
 import Language.Common.DefiniteDescription qualified as DD
-import Language.Common.Ident.Reify qualified as Ident
 import Language.Term.Subst qualified as Subst
 import Language.Term.Term qualified as TM
 import Logger.Hint
@@ -104,8 +102,7 @@ specializeUnary h dataName dataArgs = do
   when (length dataBinders /= length dataArgs) $
     raiseCritical (hint h) $
       "Arity mismatch while resolving the width of the unary type `" <> DD.reify dataName <> "`"
-  let binderIds = map (\(_, _, x, _) -> x) dataBinders
-  let sub = IntMap.fromList $ zip (map Ident.toInt binderIds) (map Subst.Type dataArgs)
+  let sub = Subst.makeTypeSubst (map getBinderIdent dataBinders) dataArgs
   case DI.consInfoList dataInfo of
     [DI.ConsInfo {DI.consParams = [(_, _, _, t)]}] ->
       liftIO $ Subst.substType (substHandle h) sub t
