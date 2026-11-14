@@ -43,7 +43,6 @@ import Data.Maybe (fromMaybe, isJust, isNothing)
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Gensym.Handle qualified as Gensym
-import Kernel.Parse.Internal.Util (isNumericLike)
 import Language.Common.BaseName qualified as BN
 import Language.Common.CallSite (IsDestCall, IsSourceArg)
 import Language.Common.CodeVariant qualified as CV
@@ -51,6 +50,7 @@ import Language.Common.Const (doubleColon, nsSepChar)
 import Language.Common.CreateSymbol (newTextForHole)
 import Language.Common.ExternalName qualified as EN
 import Language.Common.LocalDefKind qualified as LDK
+import Language.Common.NumericLiteral (isNumericLike)
 import Language.Common.Rune qualified as RU
 import Language.Common.VarKind qualified as VK
 import Language.RawTerm.CreateHole qualified as RT

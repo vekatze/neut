@@ -25,11 +25,11 @@ import Kernel.Common.PlatformPattern qualified as PP
 import Kernel.Common.PlatformRule
 import Kernel.Common.Target (TargetSummary (..))
 import Kernel.Common.TargetConfig (TargetConfig (..))
-import Kernel.Parse.Internal.Util (isNumericLike)
 import Language.Common.BaseName qualified as BN
 import Language.Common.ModuleAlias
 import Language.Common.ModuleDigest
 import Language.Common.ModuleID qualified as MID
+import Language.Common.NumericLiteral (isNumericLike)
 import Language.Common.SourceLocator qualified as SL
 import Logger.Hint qualified as H
 import Path

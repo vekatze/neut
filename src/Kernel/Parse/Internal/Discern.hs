@@ -40,7 +40,6 @@ import Kernel.Parse.Internal.Handle.Alias qualified as Alias
 import Kernel.Parse.Internal.Handle.NameMap qualified as NameMap
 import Kernel.Parse.Internal.Handle.PreDecl qualified as PreDecl
 import Kernel.Parse.Internal.Handle.Unused qualified as Unused
-import Kernel.Parse.Internal.Util
 import Kernel.Parse.Layer
 import Kernel.Parse.NominalEnv
 import Kernel.Parse.Pattern qualified as PAT
@@ -74,6 +73,7 @@ import Language.Common.LowMagic qualified as LM
 import Language.Common.Magic qualified as M
 import Language.Common.ModuleAlias (coreModuleAlias)
 import Language.Common.Noema qualified as N
+import Language.Common.NumericLiteral
 import Language.Common.PiKind qualified as PK
 import Language.Common.PrimType qualified as PT
 import Language.Common.RuleKind (RuleKind (FoldLeft, FoldRight))

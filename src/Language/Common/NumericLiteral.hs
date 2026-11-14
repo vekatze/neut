@@ -1,4 +1,4 @@
-module Kernel.Parse.Internal.Util
+module Language.Common.NumericLiteral
   ( NumericClass (..),
     NumericLiteral (..),
     NumericParseResult (..),
@@ -63,7 +63,12 @@ numericClassToText numericClass =
       "hexadecimal floating-point"
 
 parseNumericLiteral :: T.Text -> NumericParseResult
-parseNumericLiteral text
+parseNumericLiteral text = do
+  let normalizedText = dropUnderscores text
+  classifyNumericLiteral text normalizedText (dropOptionalMinus normalizedText)
+
+classifyNumericLiteral :: T.Text -> T.Text -> T.Text -> NumericParseResult
+classifyNumericLiteral text normalizedText unsignedText
   | Just value <- readSpecialFloatingMaybe text =
       ParsedNumericLiteral $ FloatingLiteral value
   | isHexadecimalFloatCandidate unsignedText =
@@ -76,9 +81,6 @@ parseNumericLiteral text
       parseFloatingLiteral DecimalFloat (readFloatingMaybe decimalSystem 'e' 10) normalizedText
   | otherwise =
       NotNumeric
-  where
-    normalizedText = dropUnderscores text
-    unsignedText = dropOptionalMinus normalizedText
 
 readSpecialFloatingMaybe :: T.Text -> Maybe Double
 readSpecialFloatingMaybe text = do
