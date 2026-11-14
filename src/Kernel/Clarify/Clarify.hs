@@ -81,6 +81,7 @@ import Language.Comp.CreateVar qualified as Gensym
 import Language.Comp.EnumCase qualified as EC
 import Language.Comp.Reduce qualified as Reduce
 import Language.Comp.Subst qualified as CompSubst
+import Language.Comp.Switcher qualified as Switcher
 import Language.Term.Chain (nubFreeVariables)
 import Language.Term.Chain qualified as TM
 import Language.Term.FromPrimNum
@@ -515,7 +516,8 @@ makeSwitchParam h = do
 getSizeComp :: Handle -> C.Comp -> IO C.Comp
 getSizeComp h codType = do
   (typeName, typeVar) <- Gensym.createVar (gensymHandle h) "type"
-  return $ C.UpElim True typeName codType (C.PiElimDownElim True typeVar [intTerm (2 :: Int), C.null, C.null])
+  let sizeQuery = C.PiElimDownElim True typeVar [Switcher.switchValue Switcher.sizeSwitch, C.null, C.null]
+  return $ C.UpElim True typeName codType sizeQuery
 
 toDestPassing :: Handle -> C.Comp -> C.Comp -> IO (Maybe Ident, C.Comp)
 toDestPassing h codType e = do
@@ -566,7 +568,7 @@ registerDefaultEnvType h name defaultValues = do
       extra <- Gensym.createVar (gensymHandle h) "extra"
       let discard = C.UpIntro C.null
       let copy = C.UpIntro argVar
-      let size = Utility.returnIntComp (-1)
+      let size = Utility.returnIntComp Switcher.directSize
       let resourceSpec = Utility.ResourceSpec {switch, arg, extra, discard, copy, size, defaultValues}
       Utility.registerSwitcher (utilityHandle h) O.Clear envTypeName resourceSpec
 
@@ -1589,7 +1591,7 @@ clarifyResourceSize :: TM.Term -> App C.Comp
 clarifyResourceSize resourceSize@(m :< _) = do
   case Resource.layoutOf resourceSize of
     Just Resource.Direct ->
-      return $ Utility.returnIntComp (-1)
+      return $ Utility.returnIntComp Switcher.directSize
     Just (Resource.Flattened byteSize) ->
       return $ Utility.returnIntComp (toInteger byteSize)
     Nothing ->
@@ -1762,7 +1764,8 @@ resolveDefaultTriple h envTypeVarName envVar prefixVals (i, mOverride) =
       return triple
     Nothing -> do
       (labelName, labelVar) <- Gensym.createVar (gensymHandle h) "label"
-      let labelComp = C.PiElimDownElim False (C.VarLocal envTypeVarName) [intTerm (i + 3), C.null, C.null]
+      let labelSwitch = Switcher.switchValue (Switcher.defaultLabelSwitch i)
+      let labelComp = C.PiElimDownElim False (C.VarLocal envTypeVarName) [labelSwitch, C.null, C.null]
       defaultComp <-
         Utility.bindLet [(labelName, labelComp)]
           <$> callDefaultLabel h envTypeVarName envVar prefixVals labelVar
@@ -1826,7 +1829,8 @@ callDefaultLabel ::
   IO C.Comp
 callDefaultLabel h envTypeVarName envVar prefixVals labelVar = do
   (envCopyName, envCopyVar) <- Gensym.createVar (gensymHandle h) "env"
-  let envCopyComp = C.PiElimDownElim False (C.VarLocal envTypeVarName) [intTerm (1 :: Int), envVar, C.null]
+  let copySwitch = Switcher.switchValue Switcher.copySwitch
+  let envCopyComp = C.PiElimDownElim False (C.VarLocal envTypeVarName) [copySwitch, envVar, C.null]
   return $
     Utility.bindLet [(envCopyName, envCopyComp)] $
       C.PiElimDownElim False labelVar (prefixVals ++ [envCopyVar, C.intValue0])

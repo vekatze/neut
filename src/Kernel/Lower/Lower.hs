@@ -67,6 +67,7 @@ import Language.Comp.CreateVar (createVar)
 import Language.Comp.EnumCase qualified as EC
 import Language.Comp.Reduce qualified as Reduce
 import Language.Comp.Subst qualified as Subst
+import Language.Comp.Switcher qualified as Switcher
 import Language.LowComp.DeclarationName qualified as DN
 import Language.LowComp.LowComp qualified as LC
 import Language.LowComp.Render qualified as LCR
@@ -397,8 +398,9 @@ lowerComp h term k =
 isSizeQuery :: C.ForceInline -> [C.Value] -> Bool
 isSizeQuery forceInline ds =
   case ds of
-    [C.Int _ 2, _, _] ->
-      forceInline
+    [C.Int _ switch, _, _]
+      | switch == Switcher.sizeSwitch ->
+          forceInline
     _ ->
       False
 

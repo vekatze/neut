@@ -43,6 +43,7 @@ import Language.Common.Opacity qualified as O
 import Language.Comp.Comp qualified as C
 import Language.Comp.CreateVar qualified as Gensym
 import Language.Comp.EnumCase qualified as EC
+import Language.Comp.Switcher qualified as Switcher
 
 data Handle = Handle
   { gensymHandle :: Gensym.Handle,
@@ -79,7 +80,15 @@ makeImmediateS4 h = do
   let discard = C.UpIntro C.null
   let copy = C.UpIntro argVar
   Utility.makeSwitcherStmt (utilityHandle h) O.Clear DD.imm $
-    ResourceSpec {switch, arg, extra, discard, copy, size = Utility.returnIntComp (-1), defaultValues = []}
+    ResourceSpec
+      { switch,
+        arg,
+        extra,
+        discard,
+        copy,
+        size = Utility.returnIntComp Switcher.directSize,
+        defaultValues = []
+      }
 
 makeClosureS4 :: Handle -> IO C.CompStmt
 makeClosureS4 h = do
@@ -268,7 +277,15 @@ returnSigmaEnumS4 h dataName opacity = do
   let copy = C.UpIntro argVar
   let dataName' = DD.getFormDD dataName
   Utility.registerSwitcher (utilityHandle h) opacity dataName' $
-    ResourceSpec {switch, arg, extra, discard, copy, size = Utility.returnIntComp (-1), defaultValues = []}
+    ResourceSpec
+      { switch,
+        arg,
+        extra,
+        discard,
+        copy,
+        size = Utility.returnIntComp Switcher.directSize,
+        defaultValues = []
+      }
   return $ C.UpIntro $ globalPointer dataName' Arity.arityS4
 
 sigmaData ::

@@ -32,6 +32,7 @@ import Language.Comp.CreateVar qualified as Gensym
 import Language.Comp.EnumCase
 import Language.Comp.EnumCase qualified as EC
 import Language.Comp.Subst qualified as Subst
+import Language.Comp.Switcher qualified as Switcher
 
 data Handle = Handle
   { gensymHandle :: Gensym.Handle,
@@ -52,15 +53,11 @@ toAffineApp h v t = do
 
 toAffineAppWith :: Handle -> C.ForceInline -> C.Value -> C.Comp -> IO C.Comp
 toAffineAppWith h forceInline v t = do
-  (expVarName, expVar) <- Gensym.createVar (gensymHandle h) "exp"
-  let switch = C.Int slotIntSize 0
-  return $ C.UpElim True expVarName t (C.PiElimDownElim forceInline expVar [switch, v, C.intValue1])
+  callSwitcher h forceInline Switcher.discardSwitch v C.intValue1 t
 
 toDropInPlaceAppWith :: Handle -> C.ForceInline -> C.Value -> C.Comp -> IO C.Comp
 toDropInPlaceAppWith h forceInline v t = do
-  (expVarName, expVar) <- Gensym.createVar (gensymHandle h) "exp"
-  let switch = C.Int slotIntSize 0
-  return $ C.UpElim True expVarName t (C.PiElimDownElim forceInline expVar [switch, v, C.intValue0])
+  callSwitcher h forceInline Switcher.discardSwitch v C.intValue0 t
 
 -- toRelevantApp h x t ~>
 --   bind exp := t in
@@ -71,9 +68,7 @@ toRelevantApp h v t = do
 
 toRelevantAppWith :: Handle -> C.ForceInline -> C.Value -> C.Comp -> IO C.Comp
 toRelevantAppWith h forceInline v t = do
-  (expVarName, expVar) <- Gensym.createVar (gensymHandle h) "exp"
-  let switch = C.Int slotIntSize 1
-  return $ C.UpElim True expVarName t (C.PiElimDownElim forceInline expVar [switch, v, C.null])
+  callSwitcher h forceInline Switcher.copySwitch v C.null t
 
 toCopyIntoApp :: Handle -> C.Value -> C.Value -> C.Comp -> IO C.Comp
 toCopyIntoApp h source dest t = do
@@ -81,9 +76,13 @@ toCopyIntoApp h source dest t = do
 
 toCopyIntoAppWith :: Handle -> C.ForceInline -> C.Value -> C.Value -> C.Comp -> IO C.Comp
 toCopyIntoAppWith h forceInline source dest t = do
+  callSwitcher h forceInline Switcher.copySwitch source dest t
+
+callSwitcher :: Handle -> C.ForceInline -> Integer -> C.Value -> C.Value -> C.Comp -> IO C.Comp
+callSwitcher h forceInline switch arg extra t = do
   (expVarName, expVar) <- Gensym.createVar (gensymHandle h) "exp"
-  let switch = C.Int slotIntSize 1
-  return $ C.UpElim True expVarName t (C.PiElimDownElim forceInline expVar [switch, source, dest])
+  let args = [Switcher.switchValue switch, arg, extra]
+  return $ C.UpElim True expVarName t (C.PiElimDownElim forceInline expVar args)
 
 bindLet :: [(Ident, C.Comp)] -> C.Comp -> C.Comp
 bindLet =
@@ -106,8 +105,8 @@ makeSwitcher h resourceSpec = do
   let (argVarName, _) = arg resourceSpec
   let (extraVarName, _) = extra resourceSpec
   let (switchVarName, switchVar) = switch resourceSpec
-  let defaultCases = zipWith (\i v -> (EC.Int i, C.UpIntro v)) [3 ..] defaultValues
-  let branchList = (EC.Int 1, copy) : (EC.Int 2, size) : defaultCases
+  let defaultCases = zipWith (\i v -> (EC.Int (Switcher.defaultLabelSwitch i), C.UpIntro v)) [0 ..] defaultValues
+  let branchList = (EC.Int Switcher.copySwitch, copy) : (EC.Int Switcher.sizeSwitch, size) : defaultCases
   enumElim <- getEnumElim h [argVarName, extraVarName] switchVar discard branchList
   return ([switchVarName, argVarName, extraVarName], enumElim)
 
