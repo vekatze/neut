@@ -35,6 +35,7 @@ import Kernel.Common.Module
 import Kernel.Common.Module.GetModule qualified as GetModule
 import Kernel.Common.RawImportSummary
 import Kernel.Common.Source
+import Kernel.Common.Source.ShiftToLatest qualified as STL
 import Kernel.Common.Target
 import Kernel.Common.TopCandidate
 import Kernel.Parse.Internal.Handle.Alias qualified as Alias
@@ -223,7 +224,8 @@ resolveImportedSource h aliasHandle currentSource locatorText = do
     sgl <- Alias.resolveAlias aliasHandle m gl
     candModule <- GetModule.getModule (getModuleHandle h) m (SGL.moduleID sgl) locatorText
     relPath <- addExtension sourceFileExtension $ SL.reify $ SGL.sourceLocator sgl
-    return
+    STL.shiftToLatest
+      (STL.new (antecedentHandle h))
       Source
         { sourceModule = candModule,
           sourceFilePath = getSourceDir candModule </> relPath,
