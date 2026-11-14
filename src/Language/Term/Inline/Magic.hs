@@ -286,21 +286,17 @@ makeConstructorSGL :: MID.ModuleID -> SGL.StrictGlobalLocator
 makeConstructorSGL moduleID =
   SGL.new moduleID SL.typeValueLocator
 
-constLikeAttr :: AttrVG.Attr
-constLikeAttr =
-  AttrVG.Attr {arity = Arity.zero, isConstLike = True, isDestPassing = False}
-
 makeConstructorTypeExpr :: Hint -> MID.ModuleID -> TM.Type
 makeConstructorTypeExpr m moduleID = do
   let constructorSgl = makeConstructorSGL moduleID
   let constructorTypeDD = DD.newByGlobalLocator constructorSgl BN.constructorType
-  m :< TM.TVarGlobal constLikeAttr constructorTypeDD
+  m :< TM.TVarGlobal AttrVG.constLike constructorTypeDD
 
 makeFieldTypeExpr :: Hint -> MID.ModuleID -> TM.Type
 makeFieldTypeExpr m moduleID = do
   let constructorSgl = makeConstructorSGL moduleID
   let fieldTypeDD = DD.newByGlobalLocator constructorSgl BN.fieldType
-  m :< TM.TVarGlobal constLikeAttr fieldTypeDD
+  m :< TM.TVarGlobal AttrVG.constLike fieldTypeDD
 
 constructBoolTerm :: Hint -> MID.ModuleID -> IsConstLike -> TM.Term
 constructBoolTerm hint moduleID value = do
@@ -478,7 +474,7 @@ evaluateTextUncons h m moduleID text = do
       let pairSGL = SGL.new moduleID SL.pairLocator
       let unitTypeDD = DD.newByGlobalLocator unitSGL BN.unitType
       let pairTypeDD = DD.newByGlobalLocator pairSGL BN.pairType
-      let unitTypeVar = m :< TM.TVarGlobal constLikeAttr unitTypeDD
+      let unitTypeVar = m :< TM.TVarGlobal AttrVG.constLike unitTypeDD
       let pairTypeVar = m :< TM.TVarGlobal (AttrVG.new (Arity.fromInt 2)) pairTypeDD
       let runeType = m :< TM.PrimType PT.Rune
       let textType = m :< TM.PrimType PT.Text
@@ -488,7 +484,7 @@ evaluateTextUncons h m moduleID text = do
           let leftDD = DD.newByGlobalLocator eitherSGL BN.left
           let unitDD = DD.newByGlobalLocator unitSGL BN.unit
           let leftVar = m :< TM.VarGlobal (AttrVG.new (Arity.fromInt 3)) leftDD
-          let unitVar = m :< TM.VarGlobal constLikeAttr unitDD
+          let unitVar = m :< TM.VarGlobal AttrVG.constLike unitDD
           return $ applyConstructor m leftVar [unitTypeVar, pairType] [unitVar]
         Just (c, rest) -> do
           let rightDD = DD.newByGlobalLocator eitherSGL BN.right
@@ -640,7 +636,7 @@ codeVariableTerm m moduleID codeVariant (x, t) = do
 codeVariableType :: Hint -> MID.ModuleID -> TM.Type
 codeVariableType m moduleID = do
   let dataName = DD.newByGlobalLocator (coreSGL moduleID SL.codeLocator) BN.codeVariableType
-  m :< TM.TyApp (m :< TM.TVarGlobal constLikeAttr dataName) []
+  m :< TM.TyApp (m :< TM.TVarGlobal AttrVG.constLike dataName) []
 
 evaluateCompileError :: Handle -> Hint -> TM.Term -> App a
 evaluateCompileError h m msg = do

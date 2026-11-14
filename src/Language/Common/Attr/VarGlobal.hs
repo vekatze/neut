@@ -1,4 +1,4 @@
-module Language.Common.Attr.VarGlobal (Attr (..), new) where
+module Language.Common.Attr.VarGlobal (Attr (..), new, constLike) where
 
 import Binary.Derive (deriveBinary)
 import Language.Common.Arity
@@ -15,5 +15,9 @@ data Attr = Attr
 new :: Arity -> Attr
 new arity =
   Attr {arity = arity, isConstLike = False, isDestPassing = False}
+
+constLike :: Attr
+constLike =
+  Attr {arity = zero, isConstLike = True, isDestPassing = False}
 
 deriveBinary [''Attr]

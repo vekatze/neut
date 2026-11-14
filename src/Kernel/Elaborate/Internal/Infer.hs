@@ -21,6 +21,7 @@ import Data.Text qualified as T
 import Gensym.Gensym qualified as Gensym
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.ModulePath qualified as ModulePath
+import Kernel.Common.Handle.Global.ParamKey qualified as ParamKey
 import Kernel.Common.Handle.Global.Type qualified as Type
 import Kernel.Elaborate.Internal.Handle.Constraint qualified as Constraint
 import Kernel.Elaborate.Internal.Handle.Elaborate
@@ -275,11 +276,7 @@ makeWeakPairType m moduleID leftType rightType =
 makeWeakCodeVariableType :: Hint -> MID.ModuleID -> WT.WeakType
 makeWeakCodeVariableType m moduleID = do
   let codeVariableTypeDD = DD.newByGlobalLocator (SGL.new moduleID SL.codeLocator) BN.codeVariableType
-  m :< WT.TyApp (m :< WT.TVarGlobal constLikeTypeAttr codeVariableTypeDD) []
-
-constLikeTypeAttr :: AttrVG.Attr
-constLikeTypeAttr =
-  AttrVG.Attr {arity = Arity.zero, isConstLike = True, isDestPassing = False}
+  m :< WT.TyApp (m :< WT.TVarGlobal AttrVG.constLike codeVariableTypeDD) []
 
 getMainUnitType :: SK.StmtKindTerm WT.WeakType -> Maybe WT.WeakType
 getMainUnitType stmtKind =
@@ -491,7 +488,7 @@ infer h term =
           typeExpr2' <- inferType h typeExpr2
           let boolSGL = SGL.new moduleID SL.boolLocator
           let boolTypeDD = DD.newByGlobalLocator boolSGL BN.boolType
-          let boolTypeVar = m :< WT.TVarGlobal constLikeTypeAttr boolTypeDD
+          let boolTypeVar = m :< WT.TVarGlobal AttrVG.constLike boolTypeDD
           let boolType = m :< WT.TyApp boolTypeVar []
           return (m :< WT.Magic (M.WeakMagic $ M.EqType moduleID typeExpr1' typeExpr2'), boolType)
         M.ShowType typeExpr -> do
@@ -511,7 +508,7 @@ infer h term =
           let pairTypeDD = DD.newByGlobalLocator pairSGL BN.pairType
           let binaryTypeAttr = AttrVG.new (Arity.fromInt 2)
           let eitherTypeVar = m :< WT.TVarGlobal binaryTypeAttr eitherTypeDD
-          let unitTypeVar = m :< WT.TVarGlobal constLikeTypeAttr unitTypeDD
+          let unitTypeVar = m :< WT.TVarGlobal AttrVG.constLike unitTypeDD
           let pairTypeVar = m :< WT.TVarGlobal binaryTypeAttr pairTypeDD
           let runeType = m :< WT.PrimType PT.Rune
           let textType' = m :< WT.PrimType PT.Text
@@ -1223,12 +1220,6 @@ reduceWeakTypeWithin h holeSubst budget t = do
     _ ->
       return t
 
-ensureUnfoldingBudget :: Handle -> Hint -> Int -> App ()
-ensureUnfoldingBudget h m budget =
-  when (budget <= 0) $
-    raiseError m $
-      "Exceeded max recursion depth of " <> T.pack (show (inlineLimit h)) <> " while reducing a type"
-
 lookupForeignFunction :: Handle -> Hint -> EN.ExternalName -> App ([WT.WeakType], FCT.ForeignCodType WT.WeakType)
 lookupForeignFunction h m name = do
   sig <- WeakDecl.lookup (weakDeclHandle h) m (DN.Ext name)
@@ -1303,18 +1294,14 @@ ensureDefaultKeyLinearity m ks = do
   unless (null nonLinear) $ do
     raiseError m $
       "The following fields are defined more than once:\n"
-        <> showKeyList nonLinear
+        <> ParamKey.showKeyList nonLinear
 
 checkDefaultKeyRedundancy :: Hint -> [T.Text] -> [T.Text] -> App ()
 checkDefaultKeyRedundancy m allowedKeys ks = do
   let allowedSet = S.fromList allowedKeys
   let diff = filter (`S.notMember` allowedSet) ks
   unless (null diff) $ do
-    raiseError m $ "The following field(s) are redundant:\n" <> showKeyList diff
-
-showKeyList :: [T.Text] -> T.Text
-showKeyList ks =
-  T.intercalate "\n" $ map ("- " <>) ks
+    raiseError m $ "The following field(s) are redundant:\n" <> ParamKey.showKeyList diff
 
 ensureTypeArityCorrectness :: Hint -> Int -> Int -> App ()
 ensureTypeArityCorrectness m expected found = do

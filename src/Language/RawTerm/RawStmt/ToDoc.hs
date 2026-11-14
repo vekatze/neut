@@ -198,15 +198,11 @@ normalizeImportItem :: RawImportItem -> RawImportItem
 normalizeImportItem item =
   case item of
     RawImportItem m (loc, c) entries ->
-      RawImportItem m (normalizeLocator m loc, c) entries
+      RawImportItem m (GL.normalizeText m loc, c) entries
     RawStaticFileKey {} ->
       item
     RawConditionalImport m cIf capability (thenSeries, cThen) cElse elseSeries ->
       RawConditionalImport m cIf capability (normalizeImportItem <$> thenSeries, cThen) cElse (normalizeImportItem <$> elseSeries)
-
-normalizeLocator :: Hint -> T.Text -> T.Text
-normalizeLocator m loc =
-  either (const loc) GL.reify (GL.reflect m loc)
 
 mergeAdjacentImport :: [(C, RawImportItem)] -> [(C, RawImportItem)]
 mergeAdjacentImport importList = do

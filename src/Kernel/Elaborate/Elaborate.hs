@@ -1670,12 +1670,6 @@ reduceWeakTypeWithin h budget t = do
     _ ->
       return t
 
-ensureUnfoldingBudget :: Handle -> Hint -> Int -> App ()
-ensureUnfoldingBudget h m budget =
-  when (budget <= 0) $
-    raiseError m $
-      "Exceeded max recursion depth of " <> T.pack (show (inlineLimit h)) <> " while reducing a type"
-
 fillHole ::
   Handle ->
   Hint ->

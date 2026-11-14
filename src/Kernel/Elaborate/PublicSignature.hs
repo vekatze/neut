@@ -13,7 +13,6 @@ import Control.Monad.IO.Class
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.Set qualified as S
-import Data.Text qualified as T
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.ModulePath qualified as ModulePath
 import Kernel.Common.Module qualified as Module
@@ -80,7 +79,7 @@ collectBinderTypes binderList =
 
 checkSignatureTypeList :: Global.Handle -> Module.Module -> DD.DefiniteDescription -> [TM.Type] -> App ()
 checkSignatureTypeList globalHandle baseModule ownerName typeList = do
-  when (isSourceLevelName ownerName) $
+  unless (DD.isCompilerGenerated ownerName) $
     forM_ (concatMap collectTypeDDs typeList) $ \(m, depName) -> do
       unless (AV.allowsAsSignatureDependency ownerName depName) $
         raiseSignatureVisibilityError globalHandle m ownerName depName
@@ -166,8 +165,3 @@ raiseSignatureVisibilityError globalHandle m ownerName depName = do
       <> "` is more public than `"
       <> depName'
       <> "`"
-
-isSourceLevelName :: DD.DefiniteDescription -> Bool
-isSourceLevelName name = do
-  let rawName = DD.reify name
-  not (";" `T.isInfixOf` rawName) && not ("#" `T.isInfixOf` rawName)

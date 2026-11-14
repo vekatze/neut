@@ -3,6 +3,7 @@
 module Language.Common.DefiniteDescription
   ( DefiniteDescription,
     reify,
+    isCompilerGenerated,
     new,
     localLocator,
     globalLocator,
@@ -53,6 +54,11 @@ import Language.Common.StrictGlobalLocator qualified as SGL
 -- where `::` separates the three chunks and `.` separates segments in a chunk.
 newtype DefiniteDescription = MakeDefiniteDescription {reify :: T.Text}
   deriving (Show, Eq, Ord, Binary, Hashable)
+
+isCompilerGenerated :: DefiniteDescription -> Bool
+isCompilerGenerated dd = do
+  let rawName = reify dd
+  ";" `T.isInfixOf` rawName || "#" `T.isInfixOf` rawName
 
 make :: SGL.StrictGlobalLocator -> LL.LocalLocator -> T.Text -> DefiniteDescription
 make gl body suffix =

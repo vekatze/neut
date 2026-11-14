@@ -20,7 +20,6 @@ import Data.List qualified as List
 import Data.Map.Strict qualified as OrdMap
 import Data.Maybe (mapMaybe)
 import Data.Set qualified as S
-import Data.Text qualified as T
 import Kernel.Common.GlobalName qualified as GN
 import Kernel.Common.Handle.Global.GlobalRemark qualified as GlobalRemark
 import Kernel.Common.Handle.Global.ModulePath qualified as ModulePath
@@ -101,7 +100,7 @@ shouldReportUnused dd =
     && AV.isRestricted dd
     && DD.localLocator dd /= "main"
     && DD.localLocator dd /= "zen"
-    && not (isInternalTopLevelName dd)
+    && not (DD.isCompilerGenerated dd)
 
 isInMainModule :: DD.DefiniteDescription -> Bool
 isInMainModule dd = do
@@ -136,13 +135,9 @@ isExternalReference ::
 isExternalReference unusedTopLevelNameMap (source, _) =
   case Map.lookup source unusedTopLevelNameMap of
     Nothing ->
-      not $ isInternalTopLevelName source
+      not $ DD.isCompilerGenerated source
     Just _ ->
-      not (shouldReportUnused source) && not (isInternalTopLevelName source)
-
-isInternalTopLevelName :: DD.DefiniteDescription -> Bool
-isInternalTopLevelName dd =
-  ";" `T.isInfixOf` DD.reify dd || "#" `T.isInfixOf` DD.reify dd
+      not (shouldReportUnused source) && not (DD.isCompilerGenerated source)
 
 reachableNames ::
   OrdMap.Map DD.DefiniteDescription (S.Set DD.DefiniteDescription) ->

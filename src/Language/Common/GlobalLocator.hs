@@ -2,6 +2,7 @@ module Language.Common.GlobalLocator
   ( GlobalLocator (..),
     reify,
     reflect,
+    normalizeText,
     reflectModulePath,
   )
 where
@@ -45,6 +46,10 @@ reflect m rawTxt = do
           return GlobalLocator {modulePath, sourceLocator}
     _ ->
       Left $ newError m $ "Invalid global locator: `" <> rawTxt <> "`"
+
+normalizeText :: H.Hint -> T.Text -> T.Text
+normalizeText m text =
+  either (const text) reify (reflect m text)
 
 reflectSourceLocator :: H.Hint -> T.Text -> T.Text -> Either Error SL.SourceLocator
 reflectSourceLocator m rawTxt sourceText =

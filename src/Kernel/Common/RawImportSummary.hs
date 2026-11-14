@@ -34,7 +34,7 @@ fromRawImportItem :: RawImportItem -> Maybe RawImportSummaryItem
 fromRawImportItem rawImportItem = do
   case rawImportItem of
     RawImportItem m (gl, _) entries -> do
-      let normalizedLocator = either (const gl) GL.reify $ GL.reflect m gl
+      let normalizedLocator = GL.normalizeText m gl
       let entries' = map fromRawImportEntry $ SE.extract entries
       Just RawImportSummaryItem {importLocator = normalizedLocator, importEntries = entries'}
     RawStaticFileKey {} ->

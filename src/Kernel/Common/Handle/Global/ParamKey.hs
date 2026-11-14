@@ -6,7 +6,7 @@ module Kernel.Common.Handle.Global.ParamKey
     DefaultKey,
     _eqKeys,
     _showKeys,
-    _showKeyList,
+    showKeyList,
     Entry (..),
     new,
     insertMany,
@@ -91,8 +91,8 @@ showKey k =
     then "_"
     else k
 
-_showKeyList :: [Key] -> T.Text
-_showKeyList ks =
+showKeyList :: [Key] -> T.Text
+showKeyList ks =
   T.intercalate "\n" $ map ("- " <>) ks
 
 new :: MainModule -> ModulePath.Handle -> IO Handle

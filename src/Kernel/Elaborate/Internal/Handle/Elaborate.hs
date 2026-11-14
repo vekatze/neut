@@ -4,6 +4,7 @@ module Kernel.Elaborate.Internal.Handle.Elaborate
     TypeObligation (..),
     new,
     fillType,
+    ensureUnfoldingBudget,
     inline,
     inlineDefinition,
     inlineBinder,
@@ -12,11 +13,14 @@ module Kernel.Elaborate.Internal.Handle.Elaborate
 where
 
 import App.App (App)
+import App.Run (raiseError)
+import Control.Monad (when)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.IORef
 import Data.IntMap qualified as IntMap
 import Data.Maybe (fromMaybe)
 import Data.Set qualified as S
+import Data.Text qualified as T
 import Data.Time (UTCTime)
 import Gensym.Handle qualified as Gensym
 import Kernel.Common.Const (defaultInlineLimit)
@@ -132,6 +136,12 @@ new gensymHandle globalHandle@(Global.Handle {..}) traceConfig (Local.Handle {..
   embeddingDefs <- newIORef S.empty
   let currentDefinition = Nothing
   return $ Handle {..}
+
+ensureUnfoldingBudget :: Handle -> Hint -> Int -> App ()
+ensureUnfoldingBudget h m budget =
+  when (budget <= 0) $
+    raiseError m $
+      "Exceeded max recursion depth of " <> T.pack (show (inlineLimit h)) <> " while reducing a type"
 
 fillType :: Handle -> THS.TypeHoleSubst -> WT.WeakType -> App WT.WeakType
 fillType h sub t = do

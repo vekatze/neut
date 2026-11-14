@@ -21,7 +21,7 @@ import Kernel.Common.Arch qualified as Arch
 import Kernel.Common.Const
 import Kernel.Common.GlobalName qualified as GN
 import Kernel.Common.Handle.Global.ModulePath (renderDD)
-import Kernel.Common.Handle.Global.ParamKey (DefaultKey, ExpKey, _showKeyList)
+import Kernel.Common.Handle.Global.ParamKey (DefaultKey, ExpKey, showKeyList)
 import Kernel.Common.Handle.Global.ParamKey qualified as ParamKey
 import Kernel.Common.Handle.Global.Platform qualified as Platform
 import Kernel.Common.Handle.Local.Locator qualified as Locator
@@ -2108,7 +2108,7 @@ checkRedundancy m allowedKeys kvs = do
   let diff = keys \\ allowedKeys
   if null diff
     then return ()
-    else raiseError m $ "The following field(s) are redundant:\n" <> _showKeyList diff
+    else raiseError m $ "The following field(s) are redundant:\n" <> showKeyList diff
 
 buildFoldRight :: RT.RawTerm -> [RT.RawTerm] -> App RT.RawTerm
 buildFoldRight func@(mFunc :< _) argList =
