@@ -54,6 +54,7 @@ import Language.Common.Binder
 import Language.Common.CallConvSpec qualified as CCS
 import Language.Common.CallSite (IsDestCall, IsSourceArg)
 import Language.Common.CodeVariant qualified as CV
+import Language.Common.Const (isHoleName)
 import Language.Common.CreateSymbol qualified as Gensym
 import Language.Common.DataInfo qualified as DI
 import Language.Common.DefaultArgs qualified as DefaultArgs
@@ -86,8 +87,7 @@ import Language.RawTerm.Locator qualified as L
 import Language.RawTerm.Name
 import Language.RawTerm.NecessityVariant
 import Language.RawTerm.RawBinder
-import Language.RawTerm.RawIdent hiding (isHole)
-import Language.RawTerm.RawIdent qualified as RawIdent
+import Language.RawTerm.RawIdent
 import Language.RawTerm.RawPattern qualified as RP
 import Language.RawTerm.RawStmt
 import Language.RawTerm.RawTerm qualified as RT
@@ -1916,7 +1916,7 @@ discernPatternImpBinders h layer stage m cons ResolvedCons {dataArity, consImpPa
             <> T.pack (show (length typeParams'))
             <> "."
       bindings <- forM typeParams' $ \(mx, x) -> do
-        if RawIdent.isHole x
+        if isHoleName x
           then return (Nothing, [])
           else do
             x' <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) x

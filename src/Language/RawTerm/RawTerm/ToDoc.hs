@@ -22,6 +22,7 @@ import Data.Text qualified as T
 import Language.Common.Attr.Data qualified as AttrD
 import Language.Common.CallSite (IsDestCall, IsSourceArg)
 import Language.Common.CodeVariant qualified as CV
+import Language.Common.Const (isHoleName)
 import Language.Common.DataInfo (FieldHint (..))
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.ExternalName qualified as EN
@@ -679,7 +680,7 @@ decodeBinder series =
 
 anyNamedBinder :: [RawBinder RawType] -> Bool
 anyNamedBinder =
-  any (\(_, _, x, _, _, _) -> not (isHole x))
+  any (\(_, _, x, _, _, _) -> not (isHoleName x))
 
 decodeBinder' :: SE.Series (RawBinder RawType) -> D.Doc
 decodeBinder' series =
@@ -707,10 +708,10 @@ decodeQuoteVarList vs =
 piParamToDoc :: Bool -> RawBinder RawType -> D.Doc
 piParamToDoc anyNamed (m, k, x, c1, c2, t) = do
   let t' = typeToDoc t
-  if isHole x && not anyNamed
+  if isHoleName x && not anyNamed
     then attachComment (c1 ++ c2) $ prefixVarKind k t'
     else do
-      let nameDoc = if isHole x then D.text "_" else D.text x
+      let nameDoc = if isHoleName x then D.text "_" else D.text x
       paramToDoc' (m, prefixVarKind k nameDoc, c1, c2, t')
 
 piIntroParamToDoc :: RawBinder RawType -> D.Doc
@@ -902,7 +903,7 @@ decodeImpParams impParams =
 
 decodeImpVar :: RawBinder RawType -> D.Doc
 decodeImpVar (m, k, x, c1, c2, t) = do
-  if isHole x
+  if isHoleName x
     then attachComment (c1 ++ c2) (typeToDoc t)
     else paramToDoc (m, prefixVarKind k $ D.text x, c1, c2, t)
 
@@ -945,7 +946,7 @@ nameToDoc :: N.Name -> D.Doc
 nameToDoc varOrLocator =
   case varOrLocator of
     N.Bare var ->
-      if isHole var
+      if isHoleName var
         then D.text "_"
         else D.text var
     N.Dotted {} ->
@@ -1010,7 +1011,7 @@ decPiElimMarkedKeyItem kv = do
     Nothing ->
       (kText', c, rhymed, e')
     Just prevValue -> do
-      let nameText = if isHole (RT.prevValueName prevValue) then "_" else RT.prevValueName prevValue
+      let nameText = if isHoleName (RT.prevValueName prevValue) then "_" else RT.prevValueName prevValue
       let prevText = varKindPrefix (RT.prevValueKind prevValue) <> nameText
       let c' = RT.prevValueKeywordComment prevValue ++ RT.prevValueComment prevValue ++ c
       (kText' <> " as " <> prevText, c', False, e')
@@ -1113,7 +1114,7 @@ decodePattern pat = do
 decodePatternImpBinders :: RP.ImpBinders -> D.Doc
 decodePatternImpBinders impBinders =
   SE.decode $ flip fmap impBinders $ \(_, x) ->
-    if isHole x
+    if isHoleName x
       then D.text "_"
       else D.text x
 

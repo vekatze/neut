@@ -25,7 +25,7 @@ import Data.Text qualified as T
 import Kernel.Common.Handle.Global.ModulePath (renderDD)
 import Kernel.Common.Handle.Global.ModulePath qualified as ModulePath
 import Kernel.Common.Module
-import Language.Common.Const (holeVarPrefix)
+import Language.Common.Const (isHoleName)
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.IsConstLike
 import Language.RawTerm.Key
@@ -52,10 +52,6 @@ data Origin
   | Defined
   deriving (Eq)
 
-isHole :: Key -> Bool
-isHole =
-  T.isPrefixOf holeVarPrefix
-
 _eqKeys :: [Key] -> [Key] -> Bool
 _eqKeys ks1 ks2 =
   case (ks1, ks2) of
@@ -66,7 +62,7 @@ _eqKeys ks1 ks2 =
     ([], _ : _) ->
       False
     (k1 : rest1, k2 : rest2) ->
-      case (isHole k1, isHole k2) of
+      case (isHoleName k1, isHoleName k2) of
         (True, True) ->
           _eqKeys rest1 rest2
         (True, False) ->
@@ -91,7 +87,7 @@ _showKeys keys =
 
 showKey :: Key -> T.Text
 showKey k =
-  if isHole k
+  if isHoleName k
     then "_"
     else k
 
