@@ -753,7 +753,7 @@ inferApplication ::
   App (WT.WeakTerm, WT.WeakType)
 inferApplication h m expected spec e impArgs expArgs defaultArgs = do
   etl <- infer h e
-  impArgs' <- ImpArgs.traverseImpArgs (fmap fst . inferTypeWithKind h) impArgs
+  impArgs' <- traverse (fmap fst . inferTypeWithKind h) impArgs
   let (isDestCall, sourceArgs) = CCS.marks (length expArgs) spec
   inferPiElim h m expected etl impArgs' defaultArgs (map Unelaborated expArgs) sourceArgs isDestCall
 

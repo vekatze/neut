@@ -409,13 +409,7 @@ inlineNormal h term = do
         (lamKindSelf, hSelf) <- enterSelf hDefault lamKind
         let hBody = withBinders (impParams' ++ expParams' ++ map fst defaultParams') hSelf
         e' <- if currentStage h >= 1 then liftIO (applyPending hBody e) else inline' hBody e
-        lamKind' <- case lamKindSelf of
-          LK.Fix kind isDestPassing (mx, k, x, codType) -> do
-            codType' <- inlineType' hDefault codType
-            return $ LK.Fix kind isDestPassing (mx, k, x, codType')
-          LK.Normal mName isDestPassing codType -> do
-            codType' <- inlineType' hDefault codType
-            return $ LK.Normal mName isDestPassing codType'
+        lamKind' <- traverse (inlineType' hDefault) lamKindSelf
         return (lamKind', impParams', expParams', defaultParams', e')
       identity <-
         if isAltered
@@ -598,27 +592,8 @@ inlineNormal h term = do
       defineMetaList <- activateTropes h m tropeNames
       inlineNormal (h {activeDefineMetaList = defineMetaList ++ activeDefineMetaList h}) body
     m :< TM.Prim prim -> do
-      case prim of
-        PV.Int intType size value -> do
-          intType' <- inlineType' (withoutPending h) intType
-          return $ asValue $ m :< TM.Prim (PV.Int intType' size value)
-        PV.Float floatType size value -> do
-          floatType' <- inlineType' (withoutPending h) floatType
-          return $ asValue $ m :< TM.Prim (PV.Float floatType' size value)
-        PV.Op {} ->
-          return $ asValue rawTerm
-        PV.NoeticString stringType text -> do
-          stringType' <- inlineType' (withoutPending h) stringType
-          return $ asValue $ m :< TM.Prim (PV.NoeticString stringType' text)
-        PV.NoeticBinary binaryType bytes -> do
-          binaryType' <- inlineType' (withoutPending h) binaryType
-          return $ asValue $ m :< TM.Prim (PV.NoeticBinary binaryType' bytes)
-        PV.Text text ->
-          return $ asValue $ m :< TM.Prim (PV.Text text)
-        PV.Blob bytes ->
-          return $ asValue $ m :< TM.Prim (PV.Blob bytes)
-        PV.Rune {} ->
-          return $ asValue rawTerm
+      prim' <- traverse (inlineType' (withoutPending h)) prim
+      return $ asValue $ m :< TM.Prim prim'
     m :< TM.Magic traceID magic -> do
       case magic of
         M.LowMagic lowMagic -> do
@@ -1339,9 +1314,7 @@ registerLocalMeta h m identity attr impParams expParams defaultParams body = do
     Just defInfo ->
       return (g, defInfo)
     Nothing -> do
-      let codType = case AttrL.lamKind attr of
-            LK.Fix _ _ (_, _, _, t) -> t
-            LK.Normal _ _ t -> t
+      let codType = LK.getCodType $ AttrL.lamKind attr
       let selfArity = Arity.fromInt $ length impParams + length expParams + length defaultParams
       let gTerm = m :< TM.VarGlobal (AttrVG.new selfArity) g
       body' <- case AttrL.fromAttr attr of

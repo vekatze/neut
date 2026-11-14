@@ -311,8 +311,9 @@ distinguishPrimitiveAcc h activeSet term !occMap =
           (occMap1, pointer') <- distinguishValueAcc h activeSet pointer occMap
           (occMap2, offset') <- distinguishValueAcc h activeSet offset occMap1
           return (occMap2, C.Magic (LM.Shift pointer' offset'))
-        LM.Alloca lt num ->
-          return (occMap, C.Magic (LM.Alloca lt num))
+        LM.Alloca lt size -> do
+          (occMap', size') <- distinguishValueAcc h activeSet size occMap
+          return (occMap', C.Magic (LM.Alloca lt size'))
         LM.External domList cod extFunName args varArgAndTypeList -> do
           (occMap1, args') <- distinguishValuesAcc h activeSet args occMap
           (occMap2, varArgAndTypeList') <- distinguishVarArgListAcc h activeSet varArgAndTypeList occMap1
@@ -323,10 +324,11 @@ distinguishPrimitiveAcc h activeSet term !occMap =
           (occMap', e') <- distinguishValueAcc h activeSet e occMap
           return (occMap', C.Magic (LM.OpaqueValue e'))
         LM.CallType func arg1 arg2 arg3 -> do
-          (occMap1, arg1') <- distinguishValueAcc h activeSet arg1 occMap
-          (occMap2, arg2') <- distinguishValueAcc h activeSet arg2 occMap1
-          (occMap3, arg3') <- distinguishValueAcc h activeSet arg3 occMap2
-          return (occMap3, C.Magic (LM.CallType func arg1' arg2' arg3'))
+          (occMap1, func') <- distinguishValueAcc h activeSet func occMap
+          (occMap2, arg1') <- distinguishValueAcc h activeSet arg1 occMap1
+          (occMap3, arg2') <- distinguishValueAcc h activeSet arg2 occMap2
+          (occMap4, arg3') <- distinguishValueAcc h activeSet arg3 occMap3
+          return (occMap4, C.Magic (LM.CallType func' arg1' arg2' arg3'))
 
 distinguishVarArgListAcc :: Handle -> ActiveSet -> [(C.Value, t)] -> OccMap -> IO (OccMap, [(C.Value, t)])
 distinguishVarArgListAcc h activeSet varArgAndTypeList !occMap =

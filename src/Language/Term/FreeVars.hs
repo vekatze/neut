@@ -12,7 +12,6 @@ import Language.Common.Ident
 import Language.Common.LowMagic qualified as LM
 import Language.Common.Magic qualified as M
 import Language.Common.VarKind qualified as VK
-import Language.Term.PrimValue qualified as PV
 import Language.Term.Term qualified as TM
 
 freeVars :: TM.Term -> S.Set Ident
@@ -67,21 +66,7 @@ freeVars term =
     _ :< TM.Invoke _ body ->
       freeVars body
     _ :< TM.Prim prim ->
-      case prim of
-        PV.NoeticString t _ ->
-          freeVarsType t
-        PV.NoeticBinary t _ ->
-          freeVarsType t
-        PV.Text _ ->
-          mempty
-        PV.Blob _ ->
-          mempty
-        PV.Int t _ _ ->
-          freeVarsType t
-        PV.Float t _ _ ->
-          freeVarsType t
-        _ ->
-          S.empty
+      foldMap freeVarsType prim
     _ :< TM.Magic _ der ->
       freeVarsMagic der
 

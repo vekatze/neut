@@ -1,6 +1,7 @@
 module Language.WeakTerm.FreeVars (freeVars, freeVarsAll, freeVarsType) where
 
 import Control.Comonad.Cofree
+import Data.Foldable (toList)
 import Data.Maybe
 import Data.Set qualified as S
 import Language.Common.Annotation qualified as AN
@@ -8,10 +9,8 @@ import Language.Common.Attr.Lam qualified as AttrL
 import Language.Common.Binder
 import Language.Common.CallConvSpec qualified as CCS
 import Language.Common.DecisionTree qualified as DT
-import Language.Common.DefaultArgs qualified as DefaultArgs
 import Language.Common.ForeignCodType qualified as FCT
 import Language.Common.Ident
-import Language.Common.ImpArgs qualified as ImpArgs
 import Language.Common.LowMagic qualified as LM
 import Language.Common.Magic qualified as M
 import Language.Common.VarKind qualified as VK
@@ -41,8 +40,8 @@ freeVarsWith typeVars term =
     _ :< WT.PiElim spec e impArgs expArgs defaultArgs -> do
       let xs = freeVarsWith typeVars e
       let ys0 = S.unions $ map typeVars (CCS.types spec)
-      let ys1 = S.unions $ map typeVars (ImpArgs.extract impArgs)
-      let ys2 = S.unions $ map (freeVarsWith typeVars) (DefaultArgs.extract defaultArgs)
+      let ys1 = S.unions $ map typeVars (toList impArgs)
+      let ys2 = S.unions $ map (freeVarsWith typeVars) (toList defaultArgs)
       let ys3 = S.unions $ map (freeVarsWith typeVars) expArgs
       S.unions [xs, ys0, ys1, ys2, ys3]
     _ :< WT.PiElimExact e -> do

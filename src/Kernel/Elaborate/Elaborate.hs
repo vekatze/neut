@@ -87,7 +87,6 @@ import Language.Common.Geist qualified as G
 import Language.Common.HoleID qualified as HID
 import Language.Common.Ident
 import Language.Common.Ident.Reify qualified as Ident
-import Language.Common.ImpArgs qualified as ImpArgs
 import Language.Common.IsConstLike (IsConstLike)
 import Language.Common.LamKind qualified as LK
 import Language.Common.Literal qualified as LI
@@ -906,7 +905,7 @@ elaborate' h term = do
         CCS.AsMarked {} ->
           raiseCritical m "Scene.Elaborate.elaborate': found an unresolved calling convention"
       e' <- elaborate' h e
-      let impArgs' = ImpArgs.extract impArgs
+      let impArgs' = toList impArgs
       impArgs'' <- mapM (elaborateType h) impArgs'
       expArgs' <- mapM (elaborate' h) expArgs
       defaultArgs' <- case defaultArgs of
