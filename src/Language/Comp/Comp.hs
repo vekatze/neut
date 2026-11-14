@@ -269,13 +269,21 @@ renderValueBuilder value =
     VarStaticBytes bytes ->
       B.fromString $ show $ BS.unpack bytes
     SigmaIntro size vs ->
-      B.fromString "[" <> B.fromString (show size) <> B.fromString "](" <> mconcat (intersperse (B.fromString ", ") (map renderValueBuilder vs)) <> B.fromString ")"
+      renderSigmaIntroBuilder size vs
     StaticSigmaIntro name size vs ->
-      B.fromText name <> B.fromString "[" <> B.fromString (show size) <> B.fromString "](" <> mconcat (intersperse (B.fromString ", ") (map renderValueBuilder vs)) <> B.fromString ")"
+      B.fromText name <> renderSigmaIntroBuilder size vs
     Language.Comp.Comp.Int _ i ->
       B.fromString $ show i
     Language.Comp.Comp.Float _ f ->
       B.fromString $ show f
+
+renderSigmaIntroBuilder :: CL.CellLayout -> [Value] -> B.Builder
+renderSigmaIntroBuilder size vs =
+  B.fromString "["
+    <> B.fromString (show size)
+    <> B.fromString "]("
+    <> mconcat (intersperse (B.fromString ", ") (map renderValueBuilder vs))
+    <> B.fromString ")"
 
 continuationLevel :: Int -> Int
 continuationLevel level =

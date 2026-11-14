@@ -316,7 +316,8 @@ freeVarsCase decisionCase = do
       freeVarsDecisionTree cont
     DT.ConsCase (DT.ConsCaseRecord {..}) -> do
       let (dataTypes1, dataTypes2) = unzip dataArgs
-      S.unions $ freeVarsBindersType (consImpArgs ++ consArgs) (freeVarsDecisionTree cont) : map freeVarsType dataTypes1 ++ map freeVarsType dataTypes2
+      let binderVars = freeVarsBindersType (consImpArgs ++ consArgs) (freeVarsDecisionTree cont)
+      S.unions $ binderVars : map freeVarsType dataTypes1 ++ map freeVarsType dataTypes2
 
 freeVarsMagic :: M.WeakMagic WT.WeakType WT.WeakType WT.WeakTerm -> S.Set Ident
 freeVarsMagic (M.WeakMagic magic) =

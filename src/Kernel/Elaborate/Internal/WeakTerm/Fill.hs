@@ -80,7 +80,15 @@ fillType h holeSubst ty =
               liftIO (Subst.substType (substHandle h) sub body) >>= Reduce.reduceType (reduceHandle h)
           | otherwise -> do
               let tyText = WT.toTextType ty
-              error $ "Rule.WeakTerm.Fill (assertion failure; arity mismatch)\nhole = ?M" ++ show i ++ "(" ++ show xs ++ ")\nhole id = " ++ show i ++ "\ninput: " <> T.unpack tyText
+              error $
+                "Rule.WeakTerm.Fill (assertion failure; arity mismatch)\nhole = ?M"
+                  ++ show i
+                  ++ "("
+                  ++ show xs
+                  ++ ")\nhole id = "
+                  ++ show i
+                  ++ "\ninput: "
+                    <> T.unpack tyText
         Nothing ->
           return $ m :< WT.TypeHole i es'
 

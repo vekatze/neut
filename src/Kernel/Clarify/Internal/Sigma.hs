@@ -152,7 +152,8 @@ sigma4 h layout xts argVar dest = do
   copyWithDestination h layout dest $ \target -> do
     copyEntries <- copyFieldsInto h target layout 0 (directEntries layout xts)
     holes <- mapM (const $ Gensym.newIdentFromText (gensymHandle h) "_") copyEntries
-    body' <- Linearize.linearize (linearizeHandle h) xts $ Utility.bindLet (zip holes copyEntries) $ C.UpIntro C.null
+    let bodyBase = Utility.bindLet (zip holes copyEntries) $ C.UpIntro C.null
+    body' <- Linearize.linearize (linearizeHandle h) xts bodyBase
     return $ C.SigmaElim False 0 layout (map fst xts) argVar body'
 
 freeOuterStorageIfRequested :: C.Value -> C.Value -> CL.CellLayout -> C.Comp -> C.Comp
@@ -193,14 +194,23 @@ directEntries :: CL.CellLayout -> [(Ident, C.Comp)] -> [(Ident, FieldLayout)]
 directEntries layout entries =
   zipWith (\(x, t) (_, width) -> (x, FieldLayout t (CL.StoredDirect width))) entries (CL.cellSlots layout)
 
-copyDirectValueIntoField :: Handle -> C.Value -> CL.CellLayout -> Int -> CL.FieldWidth -> Ident -> C.Comp -> IO C.Comp
+copyDirectValueIntoField ::
+  Handle ->
+  C.Value ->
+  CL.CellLayout ->
+  Int ->
+  CL.FieldWidth ->
+  Ident ->
+  C.Comp ->
+  IO C.Comp
 copyDirectValueIntoField h dest layout slotIndex width x t = do
   destSlotName <- Gensym.newIdentFromText (gensymHandle h) "dest-slot"
   copiedName <- Gensym.newIdentFromText (gensymHandle h) "copied"
   storeName <- Gensym.newIdentFromText (gensymHandle h) "_"
   copy <- Utility.toRelevantApp (utilityHandle h) (C.VarLocal x) t
   let destSlot = fieldAddress dest layout slotIndex
-  let store = C.Primitive $ C.Magic $ LM.Store (CL.widthBaseLowType width) C.null (C.VarLocal copiedName) (C.VarLocal destSlotName)
+  let lowType = CL.widthBaseLowType width
+  let store = C.Primitive $ C.Magic $ LM.Store lowType C.null (C.VarLocal copiedName) (C.VarLocal destSlotName)
   return $
     C.UpElim True destSlotName destSlot $
       C.UpElim True copiedName copy $
@@ -281,10 +291,12 @@ sigmaData h shape resourceHandler dataInfo arg = do
       localName <- Gensym.newIdentFromText (gensymHandle h) "local"
       binderList' <- mapM (\info -> resourceHandler info (C.VarLocal localName)) dataInfo
       (disc, discVar) <- Gensym.createVar (gensymHandle h) "disc"
-      enumElim <- Utility.getEnumElim (utilityHandle h) [localName] discVar (last binderList') (zip discList' (init binderList'))
+      let branchList = zip discList' (init binderList')
+      enumElim <- Utility.getEnumElim (utilityHandle h) [localName] discVar (last binderList') branchList
+      let loadDiscriminant = C.Primitive (C.Magic (LM.Load (DI.discriminantLoadType shape) (C.VarLocal localName)))
       return $
         C.UpElim False localName (C.UpIntro arg) $
-          C.UpElim True disc (C.Primitive (C.Magic (LM.Load (DI.discriminantLoadType shape) (C.VarLocal localName)))) enumElim
+          C.UpElim True disc loadDiscriminant enumElim
 
 sigmaDataT :: Handle -> DI.CellShape -> [DataConstructorInfo] -> C.Value -> C.Value -> IO C.Comp
 sigmaDataT h shape dataInfo arg shouldRelease = do
@@ -381,7 +393,8 @@ copyFieldInto h dest layout slotIndex x field =
     CL.StoredFlat _ -> do
       destSlotName <- Gensym.newIdentFromText (gensymHandle h) "dest-slot"
       let destSlot = fieldAddress dest layout slotIndex
-      placedCopy <- Utility.toCopyIntoApp (utilityHandle h) (C.VarLocal x) (C.VarLocal destSlotName) (fieldType field)
+      placedCopy <-
+        Utility.toCopyIntoApp (utilityHandle h) (C.VarLocal x) (C.VarLocal destSlotName) (fieldType field)
       return $ C.UpElim True destSlotName destSlot placedCopy
 
 data ChunkUnpack = ChunkUnpack CL.Chunks [Ident] C.Value

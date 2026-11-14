@@ -45,7 +45,8 @@ new :: Reuse.Handle -> Maybe (Path Abs File) -> IO (Either E.Error Handle)
 new reuseHandle moduleFilePathOrNone = do
   runApp $ do
     moduleFilePath <- maybe getCurrentModuleFilePath return moduleFilePathOrNone
-    _mainModule <- MainModule <$> Reuse.rememberModule reuseHandle moduleFilePath (ModuleReflect.fromFilePath moduleFilePath)
+    _mainModule <-
+      MainModule <$> Reuse.rememberModule reuseHandle moduleFilePath (ModuleReflect.fromFilePath moduleFilePath)
     return $ Handle {..}
 
 getMainDefiniteDescriptionByTarget :: Handle -> Target.MainTarget -> App DD.DefiniteDescription

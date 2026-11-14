@@ -123,7 +123,8 @@ emitLowComp h lowComp =
         let phiValueListList = transpose phiValueLists
         let phiOpList =
               flip map (zip phiTargets phiValueListList) $ \((phiTarget, phiType), values) -> do
-                let phiOp = unwordsL ["phi", emitLowType phiType, emitPhiList (baseSize h) $ zip values reachableLabels]
+                let phiList = emitPhiList (baseSize h) $ zip values reachableLabels
+                let phiOp = unwordsL ["phi", emitLowType phiType, phiList]
                 emitOp $ emitValue (baseSize h) (LC.VarLocal phiTarget) <> " = " <> phiOp
         if null phiBranchList && not (null phiTargets)
           then return $ emitLabel (emitIdentAsLabel goalLabel) : emitOp "unreachable"

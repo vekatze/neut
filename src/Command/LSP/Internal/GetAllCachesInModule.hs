@@ -35,11 +35,19 @@ getAllLocationCachesInModule h baseModule = do
   sourcePathList <- getAllSourcePathInModule baseModule
   fmap catMaybes $ forP sourcePathList $ \path -> getLocationCache h baseModule path
 
+getLatestSource :: Handle -> Module -> Path Abs File -> App Source
+getLatestSource h baseModule filePath = do
+  STL.shiftToLatest (shiftToLatestHandle h) $
+    Source
+      { sourceFilePath = filePath,
+        sourceModule = baseModule,
+        sourceHint = Nothing,
+        sourceImportLocator = Nothing
+      }
+
 getLocationCache :: Handle -> Module -> Path Abs File -> App (Maybe (Source, LocationCache))
 getLocationCache h baseModule filePath = do
-  source <-
-    STL.shiftToLatest (shiftToLatestHandle h) $
-      Source {sourceFilePath = filePath, sourceModule = baseModule, sourceHint = Nothing, sourceImportLocator = Nothing}
+  source <- getLatestSource h baseModule filePath
   cacheOrNone <- Cache.loadLocationCache (pathHandle h) Peripheral source
   case cacheOrNone of
     Nothing ->
@@ -54,9 +62,7 @@ getAllCompletionCachesInModule h baseModule = do
 
 getCompletionCache :: Handle -> Module -> Path Abs File -> App (Maybe (Source, CompletionCache))
 getCompletionCache h baseModule filePath = do
-  source <-
-    STL.shiftToLatest (shiftToLatestHandle h) $
-      Source {sourceFilePath = filePath, sourceModule = baseModule, sourceHint = Nothing, sourceImportLocator = Nothing}
+  source <- getLatestSource h baseModule filePath
   cachePath <- Path.getSourceCompletionCachePath (pathHandle h) Peripheral source
   cacheOrNone <- Cache.loadCompletionCacheOptimistically cachePath
   case cacheOrNone of

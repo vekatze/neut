@@ -29,7 +29,14 @@ getSymbolInfo ::
   p ->
   App T.Text
 getSymbolInfo globalHandle params = do
-  h <- Global.new (Global.consoleHandle globalHandle) (Global.loggerHandle globalHandle) (Global.localArchiveMap globalHandle) (Global.reuseHandle globalHandle) Nothing Nothing
+  h <-
+    Global.new
+      (Global.consoleHandle globalHandle)
+      (Global.loggerHandle globalHandle)
+      (Global.localArchiveMap globalHandle)
+      (Global.reuseHandle globalHandle)
+      Nothing
+      Nothing
   let getSourceHandle = GetSource.new h
   source <- GetSource.getSource getSourceHandle params
   invalidate (Global.pathHandle h) Peripheral source

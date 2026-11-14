@@ -108,7 +108,13 @@ registerGeist h tag RT.RawGeist {..} = do
       then nominalTagToGlobalName tag argNum isConstLike (isDestPassingTag tag)
       else GN.TopLevelFuncType argNum isConstLike False
 
-lookup :: Handle -> Hint.Hint -> SGL.StrictGlobalLocator -> [BN.BaseName] -> DD.DefiniteDescription -> App (LookupResult (Hint, GN.GlobalName))
+lookup ::
+  Handle ->
+  Hint.Hint ->
+  SGL.StrictGlobalLocator ->
+  [BN.BaseName] ->
+  DD.DefiniteDescription ->
+  App (LookupResult (Hint, GN.GlobalName))
 lookup h m currentLocator bodyContext name = do
   nameMap <- liftIO $ readIORef (nameMapRef h)
   case lookupAvailable currentLocator bodyContext name nameMap of
@@ -305,7 +311,8 @@ _getGlobalNames' stmt = do
         SK.Data dataName dataArgs consInfoList _ -> do
           let dataArgNum = AN.fromInt $ length dataArgs
           let consNameArrowList = map (toConsNameArrow (\(_, _, x, _) -> Ident.toText x) dataArgNum) consInfoList
-          (dataName, (m, mTag, GN.Data dataArgNum (map stripTag consNameArrowList) isConstLike)) : consNameArrowList
+          let dataGlobalName = GN.Data dataArgNum (map stripTag consNameArrowList) isConstLike
+          (dataName, (m, mTag, dataGlobalName)) : consNameArrowList
     StmtDefineResource (SavedHint m) name _ _ _ _ _ -> do
       [(name, (m, Nothing, GN.TopLevelFuncType AN.argNumS4 True False))]
     StmtTrope (SavedHint m) name _ -> do
@@ -331,7 +338,8 @@ toConsNameArrow nameOf dataArgNum (SavedHint m, consInfo) = do
   let discriminant = DI.discriminant consInfo
   let isConstLikeCons = DI.isConstLike consInfo
   let sourceFlags = map DI.isFieldMixed $ DI.consArgHints consInfo
-  (consDD, (m, Nothing, GN.DataIntro dataArgNum consImpArgNames consArgNum discriminant isConstLikeCons sourceFlags))
+  let consGlobalName = GN.DataIntro dataArgNum consImpArgNames consArgNum discriminant isConstLikeCons sourceFlags
+  (consDD, (m, Nothing, consGlobalName))
 
 geistToRemark :: DD.DefiniteDescription -> (Hint, a) -> Log
 geistToRemark dd (m, _) =

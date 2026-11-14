@@ -114,13 +114,29 @@ toTextIndented kit term =
     _ :< WT.TauIntro ty ->
       indentText (level kit) ("pack-type" <> inParen (toTextType ty))
     _ :< WT.TauElim (_, _, x) e1 e2 ->
-      indentText (level kit) ("unpack-type " <> showVariable (distinctVars kit) x <> " = " <> toTextIndented (atLevel kit 0) e1 <> "; " <> toTextIndented (atLevel kit 0) e2)
+      indentText (level kit) $
+        "unpack-type "
+          <> showVariable (distinctVars kit) x
+          <> " = "
+          <> toTextIndented (atLevel kit 0) e1
+          <> "; "
+          <> toTextIndented (atLevel kit 0) e2
     _ :< WT.Let (_, k, x, t) e1 e2 ->
       renderTermLet kit k x t e1 e2
     _ :< WT.LetType (_, x) t e ->
-      indentText (level kit) ("let-type " <> showVariable (distinctVars kit) x <> " = " <> toTextType t <> "; " <> toTextIndented (atLevel kit 0) e)
+      indentText (level kit) $
+        "let-type "
+          <> showVariable (distinctVars kit) x
+          <> " = "
+          <> toTextType t
+          <> "; "
+          <> toTextIndented (atLevel kit 0) e
     _ :< WT.Invoke tropeNames body ->
-      indentText (level kit) ("invoke " <> T.intercalate ", " (map DD.localLocator tropeNames) <> "; " <> toTextIndented (atLevel kit 0) body)
+      indentText (level kit) $
+        "invoke "
+          <> T.intercalate ", " (map DD.localLocator tropeNames)
+          <> "; "
+          <> toTextIndented (atLevel kit 0) body
     _ :< WT.Prim primValue ->
       indentText (level kit) (showPrimValue primValue)
     _ :< WT.Magic magic ->
@@ -128,9 +144,13 @@ toTextIndented kit term =
     _ :< WT.Annotation _ _ e ->
       toTextIndented kit e
 
+toTextUnindented :: WT.WeakTerm -> T.Text
+toTextUnindented =
+  toTextIndented (Kit 0 False)
+
 renderBoxLet :: (Ident, WT.WeakTerm) -> T.Text
 renderBoxLet (x, e) =
-  inParen (Ident.toText x <> ", " <> toTextIndented (Kit 0 False) e)
+  inParen (Ident.toText x <> ", " <> toTextUnindented e)
 
 renderCastSuffix :: [(BinderF WT.WeakType, WT.WeakTerm)] -> T.Text
 renderCastSuffix castSeq =
@@ -152,7 +172,13 @@ isIndentedApplication term =
     _ ->
       False
 
-renderIndentedApplication :: Kit -> WT.WeakTerm -> ImpArgs.ImpArgs WT.WeakType -> CCS.CallConvSpec WT.WeakType -> [WT.WeakTerm] -> T.Text
+renderIndentedApplication ::
+  Kit ->
+  WT.WeakTerm ->
+  ImpArgs.ImpArgs WT.WeakType ->
+  CCS.CallConvSpec WT.WeakType ->
+  [WT.WeakTerm] ->
+  T.Text
 renderIndentedApplication kit function impArgs spec expArgs =
   toTextIndented kit function
     <> renderImpArgs impArgs
@@ -179,7 +205,14 @@ renderImpArgs impArgs =
     ImpArgs.FullySpecified types ->
       inAngleBracket (T.intercalate ", " (map toTextType types))
 
-renderPiIntro :: Kit -> AttrL.Attr WT.WeakType -> [BinderF WT.WeakType] -> [BinderF WT.WeakType] -> [(BinderF WT.WeakType, WT.WeakTerm)] -> WT.WeakTerm -> T.Text
+renderPiIntro ::
+  Kit ->
+  AttrL.Attr WT.WeakType ->
+  [BinderF WT.WeakType] ->
+  [BinderF WT.WeakType] ->
+  [(BinderF WT.WeakType, WT.WeakTerm)] ->
+  WT.WeakTerm ->
+  T.Text
 renderPiIntro kit attr impArgs expArgs defaultArgs e =
   indentText (level kit) (renderPiIntroHeader (distinctVars kit) attr impArgs expArgs defaultArgs)
     <> " {\n"
@@ -187,7 +220,13 @@ renderPiIntro kit attr impArgs expArgs defaultArgs e =
     <> "\n"
     <> indentText (level kit) "}"
 
-renderPiIntroHeader :: Bool -> AttrL.Attr WT.WeakType -> [BinderF WT.WeakType] -> [BinderF WT.WeakType] -> [(BinderF WT.WeakType, WT.WeakTerm)] -> T.Text
+renderPiIntroHeader ::
+  Bool ->
+  AttrL.Attr WT.WeakType ->
+  [BinderF WT.WeakType] ->
+  [BinderF WT.WeakType] ->
+  [(BinderF WT.WeakType, WT.WeakTerm)] ->
+  T.Text
 renderPiIntroHeader distinct attr impArgs expArgs defaultArgs =
   case AttrL.lamKind attr of
     LK.Fix kind isDestPassing (_, k, x, codType) ->
@@ -215,9 +254,15 @@ showSourceImpArg :: Bool -> BinderF WT.WeakType -> T.Text
 showSourceImpArg distinct (_, k, x, t) =
   showVarWithKind distinct k x <> ": " <> toTextType t
 
-renderDataElim :: Kit -> Bool -> [(Ident, WT.WeakTerm, WT.WeakType)] -> DT.DecisionTree WT.WeakType WT.WeakTerm -> T.Text
-renderDataElim kit isNoetic xets tree =
-  indentText (level kit) ((if isNoetic then "case " else "match ") <> showMatchArgs (distinctVars kit) xets <> " {")
+renderDataElim ::
+  Kit ->
+  Bool ->
+  [(Ident, WT.WeakTerm, WT.WeakType)] ->
+  DT.DecisionTree WT.WeakType WT.WeakTerm ->
+  T.Text
+renderDataElim kit isNoetic xets tree = do
+  let keyword = if isNoetic then "case " else "match "
+  indentText (level kit) (keyword <> showMatchArgs (distinctVars kit) xets <> " {")
     <> "\n"
     <> renderDecisionTree (atLevel kit (level kit + 1)) tree
     <> "\n"
@@ -226,8 +271,9 @@ renderDataElim kit isNoetic xets tree =
 renderDecisionTree :: Kit -> DT.DecisionTree WT.WeakType WT.WeakTerm -> T.Text
 renderDecisionTree kit tree =
   case tree of
-    DT.Leaf xs letSeq cont ->
-      indentText (level kit) ("leaf " <> inBracket (T.intercalate ", " (map (showVariable (distinctVars kit)) xs)) <> " {")
+    DT.Leaf xs letSeq cont -> do
+      let leafVars = T.intercalate ", " (map (showVariable (distinctVars kit)) xs)
+      indentText (level kit) ("leaf " <> inBracket leafVars <> " {")
         <> renderLeafLetSeq (atLevel kit (level kit + 1)) letSeq
         <> "\n"
         <> toTextIndented (atLevel kit (level kit + 1)) cont
@@ -235,8 +281,9 @@ renderDecisionTree kit tree =
         <> indentText (level kit) "}"
     DT.Unreachable ->
       indentText (level kit) "⊥"
-    DT.Switch (cursor, cursorType) (fallbackClause, clauseList) ->
-      indentText (level kit) ("switch (" <> showVariable (distinctVars kit) cursor <> ": " <> toTextType cursorType <> ") {")
+    DT.Switch (cursor, cursorType) (fallbackClause, clauseList) -> do
+      let cursorBinder = showVariable (distinctVars kit) cursor <> ": " <> toTextType cursorType
+      indentText (level kit) ("switch (" <> cursorBinder <> ") {")
         <> T.concat (map (renderDecisionCase kit) clauseList)
         <> case clauseList of
           [] -> "\n"
@@ -252,9 +299,15 @@ renderLeafLetSeq kit letSeq =
   T.concat (map (renderLeafLet kit) letSeq)
 
 renderLeafLet :: Kit -> (BinderF WT.WeakType, WT.WeakTerm) -> T.Text
-renderLeafLet kit ((_, k, x, t), e) =
+renderLeafLet kit ((_, k, x, t), e) = do
+  let binding =
+        showVarWithKind (distinctVars kit) k x
+          <> ": "
+          <> toTextType t
+          <> " = "
+          <> toTextIndented (atLevel kit 0) e
   "\n"
-    <> indentText (level kit) (showVarWithKind (distinctVars kit) k x <> ": " <> toTextType t <> " = " <> toTextIndented (atLevel kit 0) e)
+    <> indentText (level kit) binding
 
 renderDecisionCase :: Kit -> DT.Case WT.WeakType WT.WeakTerm -> T.Text
 renderDecisionCase kit decisionCase =
@@ -527,7 +580,7 @@ showImpDomArg (_, k, x, _) =
 
 showDefaultDomArg' :: Handle -> (BinderF WT.WeakType, WT.WeakTerm) -> T.Text
 showDefaultDomArg' h ((_, k, x, t), defaultValue) =
-  showVarWithKind False k x <> ": " <> toTextType' h t <> " := " <> toTextIndented (Kit 0 False) defaultValue
+  showVarWithKind False k x <> ": " <> toTextType' h t <> " := " <> toTextUnindented defaultValue
 
 showDefaultDomBinder' :: Handle -> BinderF WT.WeakType -> T.Text
 showDefaultDomBinder' h (_, k, x, t) =
@@ -541,7 +594,7 @@ showDataImpArgWithDefault' h ((_, k, x, t), maybeDefault) = do
           _ -> "(" <> showVarWithKind False k x <> ": " <> toTextType' h t <> ")"
   case maybeDefault of
     Nothing -> baseArg
-    Just defaultValue -> "(" <> baseArg <> " := " <> toTextIndented (Kit 0 False) defaultValue <> ")"
+    Just defaultValue -> "(" <> baseArg <> " := " <> toTextUnindented defaultValue <> ")"
 
 inParen :: T.Text -> T.Text
 inParen s =
@@ -641,15 +694,29 @@ showMagic' h (M.WeakMagic magic) =
     M.LowMagic lowMagic ->
       showLowMagic' h lowMagic
     M.Calloc sizeType num size ->
-      "magic calloc" <> inParen (toTextType' h sizeType <> ", " <> toTextIndented (Kit 0 False) num <> ", " <> toTextIndented (Kit 0 False) size)
+      "magic calloc"
+        <> inParen
+          ( toTextType' h sizeType
+              <> ", "
+              <> toTextUnindented num
+              <> ", "
+              <> toTextUnindented size
+          )
     M.Malloc sizeType size ->
-      "magic malloc" <> inParen (toTextType' h sizeType <> ", " <> toTextIndented (Kit 0 False) size)
+      "magic malloc" <> inParen (toTextType' h sizeType <> ", " <> toTextUnindented size)
     M.MallocOpaque sizeType size ->
-      "magic malloc-opaque" <> inParen (toTextType' h sizeType <> ", " <> toTextIndented (Kit 0 False) size)
+      "magic malloc-opaque" <> inParen (toTextType' h sizeType <> ", " <> toTextUnindented size)
     M.Realloc sizeType ptr size ->
-      "magic realloc" <> inParen (toTextType' h sizeType <> ", " <> toTextIndented (Kit 0 False) ptr <> ", " <> toTextIndented (Kit 0 False) size)
+      "magic realloc"
+        <> inParen
+          ( toTextType' h sizeType
+              <> ", "
+              <> toTextUnindented ptr
+              <> ", "
+              <> toTextUnindented size
+          )
     M.Free _ ptr ->
-      "magic free" <> inParen (toTextIndented (Kit 0 False) ptr)
+      "magic free" <> inParen (toTextUnindented ptr)
     M.InspectType _ typeValueExpr e ->
       "magic inspect-type" <> inParen (toTextType' h typeValueExpr <> ", " <> toTextType' h e)
     M.EqType _ typeExpr1 typeExpr2 ->
@@ -657,15 +724,22 @@ showMagic' h (M.WeakMagic magic) =
     M.ShowType typeExpr ->
       "magic show-type" <> inParen (toTextType' h typeExpr)
     M.TextCons rune text ->
-      "magic text-cons" <> inParen (toTextIndented (Kit 0 False) rune <> ", " <> toTextIndented (Kit 0 False) text)
+      "magic text-cons" <> inParen (toTextUnindented rune <> ", " <> toTextUnindented text)
     M.TextUncons _ text ->
-      "magic text-uncons" <> inParen (toTextIndented (Kit 0 False) text)
+      "magic text-uncons" <> inParen (toTextUnindented text)
     M.MakeSwitch _ key fallback clauses ->
-      "magic make-switch" <> inParen (toTextIndented (Kit 0 False) key <> ", " <> toTextIndented (Kit 0 False) fallback <> ", " <> toTextIndented (Kit 0 False) clauses)
+      "magic make-switch"
+        <> inParen
+          ( toTextUnindented key
+              <> ", "
+              <> toTextUnindented fallback
+              <> ", "
+              <> toTextUnindented clauses
+          )
     M.FreeVariables _ code ->
-      "magic free-variables" <> inParen (toTextIndented (Kit 0 False) code)
+      "magic free-variables" <> inParen (toTextUnindented code)
     M.CompileError msg ->
-      "magic compile-error" <> inParen (toTextIndented (Kit 0 False) msg)
+      "magic compile-error" <> inParen (toTextUnindented msg)
     M.GetOriginFileName ->
       "magic get-origin-file-name()"
     M.GetOriginLine ->
@@ -677,7 +751,7 @@ showLowMagic' :: Handle -> LM.LowMagic WT.WeakType WT.WeakType WT.WeakTerm -> T.
 showLowMagic' h lowMagic =
   case lowMagic of
     LM.Cast from to value ->
-      "magic cast" <> inParen (toTextType' h from <> ", " <> toTextType' h to <> ", " <> toTextIndented (Kit 0 False) value)
+      "magic cast" <> inParen (toTextType' h from <> ", " <> toTextType' h to <> ", " <> toTextUnindented value)
     LM.Store t unit value pointer ->
       "magic store"
         <> inParen
@@ -685,21 +759,21 @@ showLowMagic' h lowMagic =
               <> ", "
               <> toTextType' h unit
               <> ", "
-              <> toTextIndented (Kit 0 False) value
+              <> toTextUnindented value
               <> ", "
-              <> toTextIndented (Kit 0 False) pointer
+              <> toTextUnindented pointer
           )
     LM.Load t pointer ->
-      "magic load" <> inParen (toTextType' h t <> ", " <> toTextIndented (Kit 0 False) pointer)
+      "magic load" <> inParen (toTextType' h t <> ", " <> toTextUnindented pointer)
     LM.Shift pointer offset ->
-      "magic shift" <> inParen (toTextIndented (Kit 0 False) pointer <> ", " <> toTextIndented (Kit 0 False) offset)
+      "magic shift" <> inParen (toTextUnindented pointer <> ", " <> toTextUnindented offset)
     LM.Alloca t size ->
-      "magic alloca" <> inParen (toTextType' h t <> ", " <> toTextIndented (Kit 0 False) size)
+      "magic alloca" <> inParen (toTextType' h t <> ", " <> toTextUnindented size)
     LM.External domList cod extFunName args varArgs -> do
       let domStr = T.intercalate ", " (map (toTextType' h) domList)
       let codStr = showForeignCodType' h cod
-      let argsStr = T.intercalate ", " (map (toTextIndented (Kit 0 False)) args)
-      let varArgsStr = T.intercalate ", " (map (\(a, t) -> toTextType' h t <> " " <> toTextIndented (Kit 0 False) a) varArgs)
+      let argsStr = T.intercalate ", " (map (toTextUnindented) args)
+      let varArgsStr = T.intercalate ", " (map (\(a, t) -> toTextType' h t <> " " <> toTextUnindented a) varArgs)
       let allArgs = if null varArgs then argsStr else argsStr <> ", " <> varArgsStr
       "magic external "
         <> T.pack (show extFunName)
@@ -710,9 +784,18 @@ showLowMagic' h lowMagic =
     LM.Global name _ ->
       "magic external " <> EN.reify name
     LM.OpaqueValue e ->
-      "magic opaque" <> inParen (toTextIndented (Kit 0 False) e)
+      "magic opaque" <> inParen (toTextUnindented e)
     LM.CallType func arg1 arg2 arg3 ->
-      "magic call-type" <> inParen (toTextIndented (Kit 0 False) func <> ", " <> toTextIndented (Kit 0 False) arg1 <> ", " <> toTextIndented (Kit 0 False) arg2 <> ", " <> toTextIndented (Kit 0 False) arg3)
+      "magic call-type"
+        <> inParen
+          ( toTextUnindented func
+              <> ", "
+              <> toTextUnindented arg1
+              <> ", "
+              <> toTextUnindented arg2
+              <> ", "
+              <> toTextUnindented arg3
+          )
 
 showForeignCodType' :: Handle -> FCT.ForeignCodType WT.WeakType -> T.Text
 showForeignCodType' h cod =

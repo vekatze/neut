@@ -106,7 +106,9 @@ evaluateInspectType h m moduleID typeExpr = do
                 else returnTypeValueIntValue m moduleID $ TypeValue.Wrapper arg
         (Just OD.Unary, _) ->
           reportMacroError h m $
-            "inspect-type: `" <> ModulePath.renderDD (modulePathMap h) dataName <> "` is unary, but its constructor metadata is not."
+            "inspect-type: `"
+              <> ModulePath.renderDD (modulePathMap h) dataName
+              <> "` is unary, but its constructor metadata is not."
         (Nothing, _) -> do
           let consInfoList' = zipWith consToTypeValue consInfoListRaw consInfoList
           let dataNameText = DD.localLocator dataName
@@ -182,7 +184,8 @@ consToTypeValue declaredConsInfo consInfo = do
           then TypeValue.Known t
           else TypeValue.Unknown
   let fieldTypes = zipWith fieldTypeOf (DI.consArgs declaredConsInfo) (DI.consArgs consInfo)
-  let params = zipWith3 (\(_, _, x, _) fieldType layout -> (Ident.toText x, fieldType, layout)) (DI.consArgs consInfo) fieldTypes (DI.consArgLayouts consInfo)
+  let toParam (_, _, x, _) fieldType layout = (Ident.toText x, fieldType, layout)
+  let params = zipWith3 toParam (DI.consArgs consInfo) fieldTypes (DI.consArgLayouts consInfo)
   (DD.localLocator (DI.consName consInfo), DI.isConstLike consInfo, length existentialParams, params)
 
 isConstTypeTag :: TypeTag.TypeTag -> Bool
@@ -292,17 +295,21 @@ makeConstructorSGL :: MID.ModuleID -> SGL.StrictGlobalLocator
 makeConstructorSGL moduleID =
   SGL.new moduleID SL.typeValueLocator
 
+constLikeAttr :: AttrVG.Attr
+constLikeAttr =
+  AttrVG.Attr {argNum = AN.zero, isConstLike = True, isDestPassing = False}
+
 makeConstructorTypeExpr :: Hint -> MID.ModuleID -> TM.Type
 makeConstructorTypeExpr m moduleID = do
   let constructorSgl = makeConstructorSGL moduleID
   let constructorTypeDD = DD.newByGlobalLocator constructorSgl BN.constructorType
-  m :< TM.TVarGlobal (AttrVG.Attr {argNum = AN.zero, isConstLike = True, isDestPassing = False}) constructorTypeDD
+  m :< TM.TVarGlobal constLikeAttr constructorTypeDD
 
 makeFieldTypeExpr :: Hint -> MID.ModuleID -> TM.Type
 makeFieldTypeExpr m moduleID = do
   let constructorSgl = makeConstructorSGL moduleID
   let fieldTypeDD = DD.newByGlobalLocator constructorSgl BN.fieldType
-  m :< TM.TVarGlobal (AttrVG.Attr {argNum = AN.zero, isConstLike = True, isDestPassing = False}) fieldTypeDD
+  m :< TM.TVarGlobal constLikeAttr fieldTypeDD
 
 constructBoolTerm :: Hint -> MID.ModuleID -> IsConstLike -> TM.Term
 constructBoolTerm hint moduleID value = do
@@ -354,7 +361,10 @@ lookupDataInfo h m dataName = do
     Just dataInfo ->
       return dataInfo
     Nothing ->
-      reportMacroError h m $ "inspect-type: constructor metadata for `" <> ModulePath.renderDD (modulePathMap h) dataName <> "` is unavailable."
+      reportMacroError h m $
+        "inspect-type: constructor metadata for `"
+          <> ModulePath.renderDD (modulePathMap h) dataName
+          <> "` is unavailable."
 
 specializeConsInfoList ::
   Handle ->
@@ -477,8 +487,8 @@ evaluateTextUncons h m moduleID text = do
       let pairSGL = SGL.new moduleID SL.pairLocator
       let unitTypeDD = DD.newByGlobalLocator unitSGL BN.unitType
       let pairTypeDD = DD.newByGlobalLocator pairSGL BN.pairType
-      let unitTypeVar = m :< TM.TVarGlobal (AttrVG.Attr {argNum = AN.zero, isConstLike = True, isDestPassing = False}) unitTypeDD
-      let pairTypeVar = m :< TM.TVarGlobal (AttrVG.Attr {argNum = AN.fromInt 2, isConstLike = False, isDestPassing = False}) pairTypeDD
+      let unitTypeVar = m :< TM.TVarGlobal constLikeAttr unitTypeDD
+      let pairTypeVar = m :< TM.TVarGlobal (AttrVG.new (AN.fromInt 2)) pairTypeDD
       let runeType = m :< TM.PrimType PT.Rune
       let textType = m :< TM.PrimType PT.Text
       let pairType = m :< TM.TyApp pairTypeVar [runeType, textType]
@@ -486,20 +496,24 @@ evaluateTextUncons h m moduleID text = do
         Nothing -> do
           let leftDD = DD.newByGlobalLocator eitherSGL BN.left
           let unitDD = DD.newByGlobalLocator unitSGL BN.unit
-          let leftVar = m :< TM.VarGlobal (AttrVG.Attr {argNum = AN.fromInt 3, isConstLike = False, isDestPassing = False}) leftDD
-          let unitVar = m :< TM.VarGlobal (AttrVG.Attr {argNum = AN.zero, isConstLike = True, isDestPassing = False}) unitDD
-          return $ m :< TM.PiElim noTrace CC.normal (m :< TM.PiElim noTrace CC.normal leftVar [unitTypeVar, pairType] [] []) [] [unitVar] []
+          let leftVar = m :< TM.VarGlobal (AttrVG.new (AN.fromInt 3)) leftDD
+          let unitVar = m :< TM.VarGlobal constLikeAttr unitDD
+          return $ applyConstructor m leftVar [unitTypeVar, pairType] [unitVar]
         Just (c, rest) -> do
           let rightDD = DD.newByGlobalLocator eitherSGL BN.right
           let pairDD = DD.newByGlobalLocator pairSGL BN.pair
-          let rightVar = m :< TM.VarGlobal (AttrVG.Attr {argNum = AN.fromInt 3, isConstLike = False, isDestPassing = False}) rightDD
-          let pairVar = m :< TM.VarGlobal (AttrVG.Attr {argNum = AN.fromInt 4, isConstLike = False, isDestPassing = False}) pairDD
+          let rightVar = m :< TM.VarGlobal (AttrVG.new (AN.fromInt 3)) rightDD
+          let pairVar = m :< TM.VarGlobal (AttrVG.new (AN.fromInt 4)) pairDD
           let runeValue = m :< TM.Prim (PV.Rune (Rune.fromChar c))
           let restText = m :< TM.Prim (PV.Text rest)
-          let pair = m :< TM.PiElim noTrace CC.normal (m :< TM.PiElim noTrace CC.normal pairVar [runeType, textType] [] []) [] [runeValue, restText] []
-          return $ m :< TM.PiElim noTrace CC.normal (m :< TM.PiElim noTrace CC.normal rightVar [unitTypeVar, pairType] [] []) [] [pair] []
+          let pair = applyConstructor m pairVar [runeType, textType] [runeValue, restText]
+          return $ applyConstructor m rightVar [unitTypeVar, pairType] [pair]
     _ ->
       reportMacroError h m "text-uncons requires a static text literal"
+
+applyConstructor :: Hint -> TM.Term -> [TM.Type] -> [TM.Term] -> TM.Term
+applyConstructor m consVar typeArgs args =
+  m :< TM.PiElim noTrace CC.normal (m :< TM.PiElim noTrace CC.normal consVar typeArgs [] []) [] args []
 
 data SwitchClause = SwitchClause Integer TM.Term
 
@@ -520,7 +534,8 @@ evaluateMakeSwitch h m moduleID key fallback clausesTerm = do
           let caseList = map (makeSwitchClause m) clauses
           let tree = DT.Switch (cursor, intType) (fallbackTree, caseList)
           let keyElim = m :< TM.CodeElim noTrace key
-          return $ m :< TM.CodeIntro CV.CodeVariantK (m :< TM.DataElim noTrace False [(cursor, keyElim, intType)] tree)
+          let dataElim = m :< TM.DataElim noTrace False [(cursor, keyElim, intType)] tree
+          return $ m :< TM.CodeIntro CV.CodeVariantK dataElim
 
 collectSwitchClauses :: Handle -> Hint -> MID.ModuleID -> TM.Term -> App [SwitchClause]
 collectSwitchClauses h m moduleID term = do
@@ -607,7 +622,8 @@ evaluateFreeVariables h normalizeType m moduleID code = do
         t <- lookupVariableType h m x >>= normalizeType
         return (x, t)
       let elemType = codeVariableType m moduleID
-      return $ constructListTermFromTerms m (makeListSGL moduleID) elemType $ map (codeVariableTerm m moduleID codeVariant) variables
+      let variableTerms = map (codeVariableTerm m moduleID codeVariant) variables
+      return $ constructListTermFromTerms m (makeListSGL moduleID) elemType variableTerms
     _ ->
       reportMacroError h m "free-variables requires its argument to reduce to a code literal"
 
@@ -626,12 +642,14 @@ codeVariableTerm m moduleID codeVariant (x, t) = do
   let codeSGL = coreSGL moduleID SL.codeLocator
   let dataName = DD.newByGlobalLocator codeSGL BN.codeVariableType
   let attr = AttrDI.Attr {dataName, discriminant = D.zero, isConstLike = False}
-  m :< TM.DataIntro attr (DD.newByGlobalLocator codeSGL BN.codeVariable) [] [t] [idTerm, m :< TM.CodeIntro codeVariant (m :< TM.Var x)]
+  let consName = DD.newByGlobalLocator codeSGL BN.codeVariable
+  let codeTerm = m :< TM.CodeIntro codeVariant (m :< TM.Var x)
+  m :< TM.DataIntro attr consName [] [t] [idTerm, codeTerm]
 
 codeVariableType :: Hint -> MID.ModuleID -> TM.Type
 codeVariableType m moduleID = do
   let dataName = DD.newByGlobalLocator (coreSGL moduleID SL.codeLocator) BN.codeVariableType
-  m :< TM.TyApp (m :< TM.TVarGlobal (AttrVG.Attr {argNum = AN.zero, isConstLike = True, isDestPassing = False}) dataName) []
+  m :< TM.TyApp (m :< TM.TVarGlobal constLikeAttr dataName) []
 
 evaluateCompileError :: Handle -> Hint -> TM.Term -> App a
 evaluateCompileError h m msg = do

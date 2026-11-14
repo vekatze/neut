@@ -89,7 +89,8 @@ linearizeLetChainWith h activeSet chain body =
     LetBinding {..} : rest -> do
       (valueOccMap, value') <- distinguishComp h activeSet letValue
       (restOccMap, rest') <- linearizeLetChainWith h (IntSet.insert (toInt letBinder) activeSet) rest body
-      (wrappedOccMap, wrapped) <- wrapBinder h ForceResourceOp activeSet (letBinder, letBinderType) rest' restOccMap
+      (wrappedOccMap, wrapped) <-
+        wrapBinder h ForceResourceOp activeSet (letBinder, letBinderType) rest' restOccMap
       return (appendOccMaps valueOccMap wrappedOccMap, C.UpElim letIsReducible letBinder value' wrapped)
 
 wrapBinders :: Handle -> ResourceOpMode -> ActiveSet -> [(Ident, C.Comp)] -> C.Comp -> OccMap -> IO C.Comp
@@ -105,20 +106,21 @@ wrapBinders h resourceOpMode activeSet binderEntries body bodyOccMap =
 wrapBinder :: Handle -> ResourceOpMode -> ActiveSet -> (Ident, C.Comp) -> C.Comp -> OccMap -> IO (OccMap, C.Comp)
 wrapBinder h resourceOpMode activeSet (binderName, binderType) body bodyOccMap = do
   let restOccMap = IntMap.delete (toInt binderName) bodyOccMap
+  let binderVar = C.VarLocal binderName
   case IntMap.findWithDefault [] (toInt binderName) bodyOccMap of
     [] -> do
       hole <- Gensym.newIdentFromText (gensymHandle h) "unit"
       (headerOccMap, t') <- distinguishComp h activeSet binderType
       let forceInline = resourceOpModeToForceInline resourceOpMode
       discardUnusedVar <-
-        Utility.toAffineAppWith (utilityHandle h) forceInline (C.VarLocal binderName) t'
+        Utility.toAffineAppWith (utilityHandle h) forceInline binderVar t'
       return (appendOccMaps headerOccMap restOccMap, C.UpElim True hole discardUnusedVar body)
     [z] -> do
-      return (restOccMap, C.UpElim True z (C.UpIntro (C.VarLocal binderName)) body)
+      return (restOccMap, C.UpElim True z (C.UpIntro binderVar) body)
     z : zs -> do
       localName <- Gensym.newIdentFromText (gensymHandle h) $ toText binderName <> "-local"
       (headerOccMap, headerTerm) <- insertHeader h resourceOpMode activeSet localName z zs binderType body
-      return (appendOccMaps headerOccMap restOccMap, C.UpElim False localName (C.UpIntro (C.VarLocal binderName)) headerTerm)
+      return (appendOccMaps headerOccMap restOccMap, C.UpElim False localName (C.UpIntro binderVar) headerTerm)
 
 resourceOpModeToForceInline :: ResourceOpMode -> C.ForceInline
 resourceOpModeToForceInline resourceOpMode =

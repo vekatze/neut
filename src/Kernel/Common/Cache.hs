@@ -123,7 +123,9 @@ compressStmt stmt = do
     Stmt.StmtNamespace m name ->
       return (Stmt.StmtNamespace m name, IntSet.empty)
 
-compressDefaultArg :: (BinderF Term.Type, Term.Term) -> State IntSet.IntSet (BinderF (Cofree Term.TypeF ()), Cofree Term.TermF ())
+compressDefaultArg ::
+  (BinderF Term.Type, Term.Term) ->
+  State IntSet.IntSet (BinderF (Cofree Term.TypeF ()), Cofree Term.TermF ())
 compressDefaultArg (binder, value) = do
   value' <- TM.compressCollect value
   return (TM.compressBinder binder, value')
@@ -164,7 +166,9 @@ extendStmt remapping stmt =
     Stmt.StmtNamespace m name ->
       Stmt.StmtNamespace m name
 
-compressDefineMeta :: Stmt.DefineMetaF Term.Type Term.Term -> State IntSet.IntSet (Stmt.DefineMetaF (Cofree Term.TypeF ()) (Cofree Term.TermF ()))
+compressDefineMeta ::
+  Stmt.DefineMetaF Term.Type Term.Term ->
+  State IntSet.IntSet (Stmt.DefineMetaF (Cofree Term.TypeF ()) (Cofree Term.TermF ()))
 compressDefineMeta defineMeta = do
   body' <- TM.compressCollect $ Stmt.defineMetaBody defineMeta
   return $
@@ -175,7 +179,10 @@ compressDefineMeta defineMeta = do
         Stmt.defineMetaBody = body'
       }
 
-extendDefineMeta :: Trace.Remapping -> Stmt.DefineMetaF (Cofree Term.TypeF ()) (Cofree Term.TermF ()) -> Stmt.DefineMetaF Term.Type Term.Term
+extendDefineMeta ::
+  Trace.Remapping ->
+  Stmt.DefineMetaF (Cofree Term.TypeF ()) (Cofree Term.TermF ()) ->
+  Stmt.DefineMetaF Term.Type Term.Term
 extendDefineMeta remapping defineMeta =
   defineMeta
     { Stmt.defineMetaTargetArgs = map TM.extendType $ Stmt.defineMetaTargetArgs defineMeta,

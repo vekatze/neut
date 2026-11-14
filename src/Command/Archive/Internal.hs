@@ -45,7 +45,8 @@ archive h packageVersion fullEns moduleRootDir contents = do
     outputPath <- getArchiveFilePath mainModule (PV.reify packageVersion)
     archiveBytes <- writeArchive tempRootDir files outputPath
     let digest = MD.fromByteString archiveBytes
-    liftIO $ Logger.printNote' (loggerHandle h) $ "Created an archive: " <> PV.reify packageVersion <> " (" <> MD.reify digest <> ")"
+    let archiveNote = "Created an archive: " <> PV.reify packageVersion <> " (" <> MD.reify digest <> ")"
+    liftIO $ Logger.printNote' (loggerHandle h) archiveNote
 
 copyModuleContents :: Path Abs Dir -> Path Abs Dir -> [SomePath Rel] -> App ()
 copyModuleContents tempRootDir moduleRootDir contents = do
@@ -66,7 +67,8 @@ ensureNotSymlink :: Path Abs Dir -> Path Rel t -> App ()
 ensureNotSymlink moduleRootDir path = do
   pathIsSymlink <- isSymlink $ moduleRootDir </> path
   when pathIsSymlink $ do
-    raiseError' $ "Archived files must not be symbolic links, but found: " <> T.pack (FP.dropTrailingPathSeparator $ toFilePath path)
+    let pathText = T.pack (FP.dropTrailingPathSeparator $ toFilePath path)
+    raiseError' $ "Archived files must not be symbolic links, but found: " <> pathText
 
 getArchiveFilePath :: MainModule -> T.Text -> App (Path Abs File)
 getArchiveFilePath (MainModule mainModule) versionText = do

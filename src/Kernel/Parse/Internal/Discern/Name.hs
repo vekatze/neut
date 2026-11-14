@@ -90,7 +90,11 @@ resolveNameWithoutLocals h m name = do
       return pair
 
 {-# INLINE resolveNameOrError #-}
-resolveNameOrError :: H.Handle -> Hint -> Name -> App (Either T.Text (DD.DefiniteDescription, (Hint, GN.GlobalName)))
+resolveNameOrError ::
+  H.Handle ->
+  Hint ->
+  Name ->
+  App (Either T.Text (DD.DefiniteDescription, (Hint, GN.GlobalName)))
 resolveNameOrError h m name =
   case name of
     Bare var -> do
@@ -100,7 +104,11 @@ resolveNameOrError h m name =
     Locator l -> do
       Right <$> resolveLocator h m l True
 
-resolveBareNameOrErr :: H.Handle -> Hint -> T.Text -> App (Either T.Text (DD.DefiniteDescription, (Hint, GN.GlobalName)))
+resolveBareNameOrErr ::
+  H.Handle ->
+  Hint ->
+  T.Text ->
+  App (Either T.Text (DD.DefiniteDescription, (Hint, GN.GlobalName)))
 resolveBareNameOrErr h m name = do
   localLocator <- liftEither $ LL.reflect m name
   ownOrNone <- lookupOwnName h m localLocator
@@ -183,7 +191,11 @@ lookupOwnName' h m cgl prefixes ll =
         _ ->
           lookupOwnName' h m cgl rest ll
 
-lookupNameMap :: H.Handle -> Hint -> DD.DefiniteDescription -> App (LookupResult (DD.DefiniteDescription, (Hint, GN.GlobalName)))
+lookupNameMap ::
+  H.Handle ->
+  Hint ->
+  DD.DefiniteDescription ->
+  App (LookupResult (DD.DefiniteDescription, (Hint, GN.GlobalName)))
 lookupNameMap h m dd = do
   let currentLocator = Locator.getCurrentGlobalLocator (H.locatorHandle h)
   lookupResult <- NameMap.lookup (H.nameMapHandle h) m currentLocator (H.nsPath h) dd
@@ -193,7 +205,12 @@ hiddenNameMessage :: T.Text -> T.Text
 hiddenNameMessage name =
   "`" <> name <> "` is defined but not visible from here"
 
-resolveDottedNameOrErr :: H.Handle -> Hint -> T.Text -> [BN.BaseName] -> App (Either T.Text (DD.DefiniteDescription, (Hint, GN.GlobalName)))
+resolveDottedNameOrErr ::
+  H.Handle ->
+  Hint ->
+  T.Text ->
+  [BN.BaseName] ->
+  App (Either T.Text (DD.DefiniteDescription, (Hint, GN.GlobalName)))
 resolveDottedNameOrErr h m headText rest = do
   headBaseName <- liftEither $ BN.reflect m headText
   ownHeadOrNone <- lookupOwnName h m (LL.new headBaseName)
@@ -435,7 +452,7 @@ interpretGlobalName h m dd gn = do
       let argNum = AN.add (AN.add dataArgNum (AN.fromInt (length consImpArgNames))) consArgNum
       let isDestPassing = False
       let attr = AttrVG.Attr {..}
-      return $ m :< WT.PiElim (CCS.AsMarked False []) (m :< WT.VarGlobal attr dd) ImpArgs.Unspecified [] (DefaultArgs.ByKey [])
+      return $ makeNullaryCall m attr dd
     GN.PrimType _ ->
       raiseError m $ "`" <> dd' <> "` is a type name and cannot appear in term position"
     GN.PrimOp primOp ->
@@ -496,8 +513,12 @@ interpretTopLevelFuncTerm ::
 interpretTopLevelFuncTerm m dd argNum isConstLike isDestPassing = do
   let attr = AttrVG.Attr {..}
   if isConstLike
-    then m :< WT.PiElim (CCS.AsMarked False []) (m :< WT.VarGlobal attr dd) ImpArgs.Unspecified [] (DefaultArgs.ByKey [])
+    then makeNullaryCall m attr dd
     else m :< WT.VarGlobal attr dd
+
+makeNullaryCall :: Hint -> AttrVG.Attr -> DD.DefiniteDescription -> WT.WeakTerm
+makeNullaryCall m attr dd =
+  m :< WT.PiElim (CCS.AsMarked False []) (m :< WT.VarGlobal attr dd) ImpArgs.Unspecified [] (DefaultArgs.ByKey [])
 
 interpretTopLevelFuncType ::
   Hint ->

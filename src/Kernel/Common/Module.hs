@@ -407,7 +407,8 @@ getTargetInfo :: Module -> (T.Text, E.Ens)
 getTargetInfo someModule = do
   let targetDict = flip Map.map (moduleTarget someModule) $ \summary -> do
         let (_, platformPattern) = Target.targetPlatform summary
-        let platformFields = [(keyPlatform, _m :< E.String (PP.reify platformPattern)) | platformPattern /= snd defaultPlatform]
+        let platformField = (keyPlatform, _m :< E.String (PP.reify platformPattern))
+        let platformFields = [platformField | platformPattern /= snd defaultPlatform]
         E.dictFromListVertical _m $
           (keyMain, _m :< E.String (SL.getRelPathText (Target.entryPoint summary)))
             : platformFields
@@ -546,7 +547,13 @@ getRelPathFromSourceDir baseModule path = do
     Just relPath ->
       return relPath
     Nothing ->
-      throwM $ userError $ "the source file `" <> toFilePath path <> "` is not located in the source directory `" <> toFilePath sourceDir <> "`"
+      throwM $
+        userError $
+          "the source file `"
+            <> toFilePath path
+            <> "` is not located in the source directory `"
+            <> toFilePath sourceDir
+            <> "`"
 
 seriesFromList :: [a] -> SE.Series a
 seriesFromList =

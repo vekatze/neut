@@ -27,7 +27,12 @@ data LookupResult a
   | Missing
   deriving (Functor)
 
-lookupAvailable :: SGL.StrictGlobalLocator -> [BN.BaseName] -> DD.DefiniteDescription -> TopNameMap -> LookupResult TopNameInfo
+lookupAvailable ::
+  SGL.StrictGlobalLocator ->
+  [BN.BaseName] ->
+  DD.DefiniteDescription ->
+  TopNameMap ->
+  LookupResult TopNameInfo
 lookupAvailable currentLocator currentBodyContext dd topNameMap = do
   case Map.lookup dd topNameMap of
     Nothing ->

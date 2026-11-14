@@ -65,7 +65,8 @@ getConsCaseVars h consCaseVarsRef cursor (PAT.ConsInfo {consDD, dataArgNum, cons
       return vars
     Nothing -> do
       let consImpParams = drop (AN.reify dataArgNum) typeParams
-      let consImpNames = zipWith (\declared named -> maybe declared (Ident.toText . snd) named) consImpArgNames consImpParams
+      let toConsImpName declared named = maybe declared (Ident.toText . snd) named
+      let consImpNames = zipWith toConsImpName consImpArgNames consImpParams
       consImpVars <- mapM (Gensym.newIdentFromText (H.gensymHandle h)) consImpNames
       consVars <- mapM (const $ Gensym.newIdentFromText (H.gensymHandle h) "cvar") [1 .. AN.reify consArgNum]
       let vars = ConsCaseVars {consImpVars, consVars}
@@ -108,9 +109,11 @@ compilePatternMatrix' h consCaseVarsRef isNoetic occurrences mat =
                     return $ DT.LiteralCase mPat literal cont
                   PAT.ConsSpecializer consInfo@(PAT.ConsInfo {..}) -> do
                     let hGen = H.gensymHandle h
-                    dataHoles <- liftIO $ mapM (const $ WT.createTypeHole hGen mPat []) [1 .. AN.reify dataArgNum]
-                    dataTypeHoles <- liftIO $ mapM (const $ WT.createTypeHole hGen mPat []) [1 .. AN.reify dataArgNum]
-                    ConsCaseVars {consImpVars, consVars} <- liftIO $ getConsCaseVars h consCaseVarsRef cursor consInfo
+                    let createDataHoles = mapM (const $ WT.createTypeHole hGen mPat []) [1 .. AN.reify dataArgNum]
+                    dataHoles <- liftIO createDataHoles
+                    dataTypeHoles <- liftIO createDataHoles
+                    ConsCaseVars {consImpVars, consVars} <-
+                      liftIO $ getConsCaseVars h consCaseVarsRef cursor consInfo
                     let consImpArgs = map (\x -> (mPat, VK.normal, x, mPat :< WT.Tau)) consImpVars
                     let typeArgs = dataHoles ++ map (\x -> mPat :< WT.TVar x) consImpVars
                     let ms = map fst args
@@ -118,7 +121,8 @@ compilePatternMatrix' h consCaseVarsRef isNoetic occurrences mat =
                     (consArgs', h') <- liftIO $ alignConsArgs h consVars'
                     let occurrences' = V.fromList consVars' <> V.tail occurrences
                     specialMatrix <- PATS.specialize h isNoetic cursor typeArgs specializer mat
-                    specialDecisionTree <- compilePatternMatrix' h' consCaseVarsRef isNoetic occurrences' specialMatrix
+                    specialDecisionTree <-
+                      compilePatternMatrix' h' consCaseVarsRef isNoetic occurrences' specialMatrix
                     let dataArgs' = zip dataHoles dataTypeHoles
                     return $
                       DT.ConsCase $
@@ -133,7 +137,8 @@ compilePatternMatrix' h consCaseVarsRef isNoetic occurrences mat =
                             cont = specialDecisionTree
                           }
               fallbackMatrix <- PATF.getFallbackMatrix h isNoetic cursor mat
-              fallbackClause <- compilePatternMatrix' h consCaseVarsRef isNoetic (V.tail occurrences) fallbackMatrix
+              fallbackClause <-
+                compilePatternMatrix' h consCaseVarsRef isNoetic (V.tail occurrences) fallbackMatrix
               t <- liftIO $ WT.createTypeHole (H.gensymHandle h) mCursor []
               return $ DT.Switch (cursor, t) (fallbackClause, clauseList)
 

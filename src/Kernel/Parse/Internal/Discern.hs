@@ -226,7 +226,8 @@ discernDefineMeta h defineMeta = do
   let m = postDefineMetaLoc defineMeta
   targetName <- resolveDefineMetaTargetName h m $ fst $ postDefineMetaTarget defineMeta
   targetArgs <- mapM (discernType h) $ SE.extract $ fst $ postDefineMetaTargetArgs defineMeta
-  (expArgs, h') <- discernBinder h (RT.extractArgs $ postDefineMetaExpArgs defineMeta) (postDefineMetaEndLoc defineMeta)
+  let rawExpArgs = RT.extractArgs $ postDefineMetaExpArgs defineMeta
+  (expArgs, h') <- discernBinder h rawExpArgs (postDefineMetaEndLoc defineMeta)
   cod <- discernType h' $ snd $ postDefineMetaCod defineMeta
   body <- discern h' $ postDefineMetaBody defineMeta
   return
@@ -348,7 +349,8 @@ discernStmtKindType h stmtKind =
             (consArgs', _) <- discernBinder' h'' (DI.consArgs consInfo)
             return (savedHint, consInfo {DI.consImpArgs = consImpArgs', DI.consArgs = consArgs'})
       consInfoList' <- mapM discernConsInfo consInfoList
-      forM_ (concatMap (\(_, consInfo) -> DI.consImpArgs consInfo ++ DI.consArgs consInfo) consInfoList') $ \(_, _, x, _) -> do
+      let consBinders = concatMap (\(_, consInfo) -> DI.consImpArgs consInfo ++ DI.consArgs consInfo) consInfoList'
+      forM_ consBinders $ \(_, _, x, _) -> do
         liftIO $ Unused.deleteVariable (H.unusedHandle h') x
       forM_ dataArgs' $ \(_, _, x, _) -> do
         liftIO $ Unused.deleteVariable (H.unusedHandle h') x
@@ -447,7 +449,7 @@ discern h term =
         then do
           e' <- discern h $ m :< RT.Var name
           impArgs' <- mapM (discernType h) $ SE.extract impArgs
-          return $ m :< WT.PiElim (CCS.AsMarked False []) e' (ImpArgs.FullySpecified impArgs') [] (DefaultArgs.ByKey [])
+          return $ makeImplicitApplication m e' impArgs'
         else do
           (dd, (_, gn)) <- resolveName h m name
           if GN.isMetaConstant gn
@@ -462,7 +464,7 @@ discern h term =
                 Just cons ->
                   return cons
                 Nothing ->
-                  return $ m :< WT.PiElim (CCS.AsMarked False []) func (ImpArgs.FullySpecified impArgs') [] (DefaultArgs.ByKey [])
+                  return $ makeImplicitApplication m func impArgs'
     m :< RT.PiElimByKey name _ mImpArgs isDestCall _ kvs restArg -> do
       case restArg of
         Nothing ->
@@ -506,7 +508,8 @@ discern h term =
             (dd, (_, gn)) <- resolveName h m name
             case gn of
               GN.Rule {} ->
-                raiseError m $ "`" <> renderDD (H.modulePathMap h) dd <> "` is a rule and must be used with `::[...]`"
+                raiseError m $
+                  "`" <> renderDD (H.modulePathMap h) dd <> "` is a rule and must be used with `::[...]`"
               _ ->
                 return $ m :< RT.VarGlobal dd gn
       let quote e@(me :< _) = me :< RT.CodeIntro CV.CodeVariantK [] [] (e, [])
@@ -585,14 +588,17 @@ discern h term =
       yetsInner <- liftIO $ discernNoeticVarList h True $ map withoutCopyMark ysOuter
       let innerLayer = H.currentLayer h + layerOffset nv
       let innerStage = H.currentStage h
-      let ysInner = zipWith (\(_, (_, k, _)) ((myUse, _, y, myDef :< _), _) -> (myDef, (myUse, k, y))) ysOuter yetsInner
+      let innerKinds = map (\(_, (_, k, _)) -> k) ysOuter
+      let ysInner = zipWith (\k ((myUse, _, y, myDef :< _), _) -> (myDef, (myUse, k, y))) innerKinds yetsInner
       let innerAddition = map (\(_, (myUse, _, y)) -> (Ident.toText y, (myUse, y, innerLayer, innerStage))) ysInner
       hInner <- liftIO $ H.extendByNominalEnv (h {H.currentLayer = innerLayer}) VDK.Borrowed innerAddition
       e1' <- discern hInner e1
       -- cont
       yetsCont <- liftIO $ discernNoeticVarList h False ysInner
       let ysCont = map (\((myUse, _, y, _), _) -> (myUse, y)) yetsCont
-      let contAddition = map (\(myUse, y) -> (Ident.toText y, (myUse, y, H.currentLayer h, H.currentStage h))) ysCont
+      let contLayer = H.currentLayer h
+      let contStage = H.currentStage h
+      let contAddition = map (\(myUse, y) -> (Ident.toText y, (myUse, y, contLayer, contStage))) ysCont
       hCont <- liftIO $ H.extendByNominalEnv h VDK.Relayed contAddition
       -- A rebound `on`-variable is an ordinary owned value like any other.
       (mxt', e2'') <- discernBinderWithBody' hCont mxt startLoc endLoc e2'
@@ -686,18 +692,16 @@ discern h term =
       resultType <- liftIO $ RT.createTypeHole (H.gensymHandle h) m2'
       resultVar <- liftIO $ Bare <$> Gensym.newTextFromText (H.gensymHandle h) "tmp-pin"
       let resultParam = (m2', RP.Var VK.normal resultVar, [], [], resultType)
+      let resultTerm = m2' :< RT.Var resultVar
+      let pinnedLet = m :< RT.LetOn (RT.Plain True) [] resultParam [] x' [] e2 [] startLoc [] resultTerm endLoc
       let isNoetic = not $ null $ SE.extract mys
       if isNoetic
         then do
           let mxt' = (mx, RP.Var VK.normal (Bare x), [], [], t)
           let outerLet cont = m :< RT.LetOn (RT.Plain False) [] mxt' [] mys [] e1 [] startLoc [] cont endLoc
-          discern h $
-            outerLet $
-              m :< RT.LetOn (RT.Plain True) [] resultParam [] x' [] e2 [] startLoc [] (m2' :< RT.Var resultVar) endLoc
+          discern h $ outerLet pinnedLet
         else do
-          discern h $
-            bind startLoc endLoc mxt e1 $
-              m :< RT.LetOn (RT.Plain True) [] resultParam [] x' [] e2 [] startLoc [] (m2' :< RT.Var resultVar) endLoc
+          discern h $ bind startLoc endLoc mxt e1 pinnedLet
     m :< RT.Invoke _ tropeSeries _ body -> do
       tropeNames <- mapM (resolveTropeName h) $ SE.extract tropeSeries
       body' <- discern h body
@@ -1299,6 +1303,10 @@ discernPiElim h m isDestCall e mImpArgs expArgs mDefaultArgs = do
       return $ DefaultArgs.ByKey (zip ks vs')
   return $ m :< WT.PiElim (CCS.AsMarked isDestCall sourceArgs) e'' impArgs' expArgs' defaultArgs'
 
+makeImplicitApplication :: Hint -> WT.WeakTerm -> [WT.WeakType] -> WT.WeakTerm
+makeImplicitApplication m func impArgs =
+  m :< WT.PiElim (CCS.AsMarked False []) func (ImpArgs.FullySpecified impArgs) [] (DefaultArgs.ByKey [])
+
 passImpArgsToConstructor :: H.Handle -> WT.WeakTerm -> [WT.WeakType] -> App (WT.WeakTerm, ImpArgs.ImpArgs WT.WeakType)
 passImpArgsToConstructor h func impArgs = do
   specifiedCons <- specifyConstructorImpArgs h func impArgs
@@ -1340,7 +1348,8 @@ discernPiElimByKeyPlain h m isDestCall name mImpArgs kvs = do
   forM_ (SE.extract kvs) $ \kv -> do
     let k = RT.kvKey kv
     when (k `elem` defaultKeys && snd (RT.kvValue kv)) $ do
-      raiseError (RT.kvLoc kv) $ "The field `" <> k <> "` is a parameter with a default value, so it cannot be marked with `~`"
+      raiseError (RT.kvLoc kv) $
+        "The field `" <> k <> "` is a parameter with a default value, so it cannot be marked with `~`"
   vs' <- forM vs $ \(v, isSourceArg) -> do
     v' <- discern h v
     return (v', isSourceArg)
@@ -1408,9 +1417,11 @@ discernRecordUpdate h m name mImpArgs kvs (mRest, _, _, restValue) = do
   let missingPatternItems =
         map (\(key, value) -> (key, (mRest', [], (RP.Var VK.normal (Bare value), sourceFlagOf key)))) missingPairs
   let prevValuePatternItems = mapMaybe (prevValuePatternItem sourceFlagOf) $ SE.extract kvs
-  let restPattern = RP.Cons name [] Nothing (RP.Of $ SE.fromList SE.Brace SE.Comma $ missingPatternItems ++ prevValuePatternItems)
+  let restPatternItems = missingPatternItems ++ prevValuePatternItems
+  let restPattern = RP.Cons name [] Nothing (RP.Of $ SE.fromList SE.Brace SE.Comma restPatternItems)
   let patParam = (mRest', restPattern, [], [], restType)
-  let missingFields = map (\(key, value) -> plainKeyValueArg m' key (m' :< RT.Var (Bare value)) (sourceFlagOf key)) missingPairs
+  let missingFields =
+        map (\(key, value) -> plainKeyValueArg m' key (m' :< RT.Var (Bare value)) (sourceFlagOf key)) missingPairs
   let specifiedFields = map (\kv -> kv {RT.kvPrevValue = Nothing}) $ SE.extract kvs
   let bodyFields = SE.fromList SE.Brace SE.Comma $ specifiedFields ++ missingFields
   let body = m :< RT.PiElimByKey name [] mImpArgs False [] bodyFields Nothing
@@ -1505,13 +1516,16 @@ constructEitherBinder h m mx m1 pat tmpVar cont = do
   eitherL <- liftEither $ locatorToName m1 coreEitherLeft
   eitherR <- liftEither $ locatorToName m1 coreEitherRight
   eitherVarL <- liftEither $ locatorToVarGlobal m1 coreEitherLeft
+  let longPattern = RP.Cons eitherR [] Nothing (RP.Paren (SE.fromList' [(mx, (pat, False))]))
+  let earlyRetPattern = RP.Var VK.normal (Bare earlyRetVar)
+  let shortPattern = RP.Cons eitherL [] Nothing (RP.Paren (SE.fromList' [(m', (earlyRetPattern, False))]))
   let longClause =
-        ( SE.fromList'' [(mx', RP.Cons eitherR [] Nothing (RP.Paren (SE.fromList' [(mx, (pat, False))])))],
+        ( SE.fromList'' [(mx', longPattern)],
           [],
           cont
         )
   let shortClause =
-        ( SE.fromList'' [(m', RP.Cons eitherL [] Nothing (RP.Paren (SE.fromList' [(m', (RP.Var VK.normal (Bare earlyRetVar), False))])))],
+        ( SE.fromList'' [(m', shortPattern)],
           [],
           m' :< RT.piElim eitherVarL [m' :< RT.Var (Bare earlyRetVar)]
         )
@@ -1825,6 +1839,7 @@ discernPattern h layer stage (m, pat) = do
                 "The symbol `" <> dd' <> "` is not defined as a constuctor"
     RP.Cons cons _ mTypeParams mArgs -> do
       resolvedCons@ResolvedCons {..} <- resolveConstructor h m cons
+      let discernMarkedArgs = mapM (discernPattern h layer stage . stripPatternMark)
       case mArgs of
         RP.Omitted ->
           discernConstantPattern h layer stage m cons resolvedCons mTypeParams
@@ -1833,7 +1848,7 @@ discernPattern h layer stage (m, pat) = do
           (typeParams, typeVars) <- discernPatternTypeParams h layer stage m cons resolvedCons mTypeParams
           let markedArgs' = SE.extract markedArgs
           ensurePatternMarkAgreement consSourceFlags markedArgs'
-          (args, varsList, typeVarsList) <- unzip3 <$> mapM (discernPattern h layer stage) (map stripPatternMark markedArgs')
+          (args, varsList, typeVarsList) <- unzip3 <$> discernMarkedArgs markedArgs'
           return ((m, PAT.Cons (PAT.ConsInfo {..})), concat varsList, typeVars ++ concat typeVarsList)
         RP.Of mkvs -> do
           ensureNonConstantConstructor m cons isConstLike
@@ -1848,7 +1863,7 @@ discernPattern h layer stage (m, pat) = do
           markedArgs <- resolveExpKeys h m expKeys kvs'
           checkRedundancy m expKeys kvs'
           ensurePatternMarkAgreement consSourceFlags markedArgs
-          (args, varsList, typeVarsList) <- unzip3 <$> mapM (discernPattern h layer stage) (map stripPatternMark markedArgs)
+          (args, varsList, typeVarsList) <- unzip3 <$> discernMarkedArgs markedArgs
           return ((m, PAT.Cons (PAT.ConsInfo {..})), concat varsList, typeVars ++ concat typeVarsList)
     RP.RuneIntro r -> do
       return ((m, PAT.Literal (LI.Rune r)), [], [])
@@ -1913,7 +1928,8 @@ discernPatternTypeParams h layer stage m cons ResolvedCons {dataArgNum, consImpA
 constructDefaultKeyMap :: H.Handle -> Hint -> [(Key, IsSourceArg)] -> IO (Map.HashMap Key (Hint, RP.MarkedPattern))
 constructDefaultKeyMap h m keyList = do
   names <- mapM (const $ Gensym.newTextForHole (H.gensymHandle h)) keyList
-  return $ Map.fromList $ zipWith (\(k, isSourceArg) v -> (k, (m, (RP.Var VK.normal (Bare v), isSourceArg)))) keyList names
+  let entries = zipWith (\(k, isSourceArg) v -> (k, (m, (RP.Var VK.normal (Bare v), isSourceArg)))) keyList names
+  return $ Map.fromList entries
 
 stripPatternMark :: (Hint, RP.MarkedPattern) -> (Hint, RP.RawPattern)
 stripPatternMark (m, (pat, _)) =

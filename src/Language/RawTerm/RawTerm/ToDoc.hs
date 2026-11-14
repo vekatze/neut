@@ -91,7 +91,9 @@ toDoc term =
           PI.inject $ attachComment c $ SE.decodeHorizontallyIfPossible $ fmap typeToDoc impArgs
         ]
     _ :< PiElimByKey name c mImpArgs isDestCall c2 kvs restArg -> do
-      let calleeDoc = attachComment (map toLineComment $ c ++ c2) $ D.join [nameToDoc name, destMarkToDoc isDestCall]
+      let calleeDoc =
+            attachComment (map toLineComment $ c ++ c2) $
+              D.join [nameToDoc name, destMarkToDoc isDestCall]
       let keyDoc = decPiElimKeyWithRest kvs restArg
       case mImpArgs of
         Nothing ->
@@ -291,117 +293,72 @@ toDoc term =
     _ :< Magic c magic -> do
       case magic of
         Cast c1 from to e mc -> do
-          let args =
-                attachOptionalComment
-                  mc
-                  ( SE.fromListWithComment
-                      (Just SE.Paren)
-                      SE.Comma
-                      [ RT.mapEL typeToDoc from,
-                        RT.mapEL typeToDoc to,
-                        RT.mapEL toDoc e
-                      ]
-                  )
           D.join
             [ attachComment (c ++ c1) $ D.text "magic cast",
-              SE.decode args
+              decodeMagicArgs
+                mc
+                [ RT.mapEL typeToDoc from,
+                  RT.mapEL typeToDoc to,
+                  RT.mapEL toDoc e
+                ]
             ]
         Store c1 t value pointer mc -> do
           D.join
             [ attachComment (c ++ c1) $ D.text "magic store",
-              SE.decode $
-                attachOptionalComment mc $
-                  SE.fromListWithComment
-                    (Just SE.Paren)
-                    SE.Comma
-                    [ RT.mapEL typeToDoc t,
-                      RT.mapEL toDoc value,
-                      RT.mapEL toDoc pointer
-                    ]
+              decodeMagicArgs
+                mc
+                [ RT.mapEL typeToDoc t,
+                  RT.mapEL toDoc value,
+                  RT.mapEL toDoc pointer
+                ]
             ]
         Load c1 t pointer mc -> do
           D.join
             [ attachComment (c ++ c1) $ D.text "magic load",
-              SE.decode $
-                attachOptionalComment mc $
-                  SE.fromListWithComment
-                    (Just SE.Paren)
-                    SE.Comma
-                    [ RT.mapEL typeToDoc t,
-                      RT.mapEL toDoc pointer
-                    ]
+              decodeMagicArgs
+                mc
+                [ RT.mapEL typeToDoc t,
+                  RT.mapEL toDoc pointer
+                ]
             ]
         Shift c1 pointer offset mc -> do
           D.join
             [ attachComment (c ++ c1) $ D.text "magic shift",
-              SE.decode $
-                attachOptionalComment mc $
-                  SE.fromListWithComment
-                    (Just SE.Paren)
-                    SE.Comma
-                    [RT.mapEL toDoc pointer, RT.mapEL toDoc offset]
+              decodeMagicArgs mc [RT.mapEL toDoc pointer, RT.mapEL toDoc offset]
             ]
         Alloca c1 t size mc -> do
           D.join
             [ attachComment (c ++ c1) $ D.text "magic alloca",
-              SE.decode $
-                attachOptionalComment mc $
-                  SE.fromListWithComment
-                    (Just SE.Paren)
-                    SE.Comma
-                    [ RT.mapEL typeToDoc t,
-                      RT.mapEL toDoc size
-                    ]
+              decodeMagicArgs
+                mc
+                [ RT.mapEL typeToDoc t,
+                  RT.mapEL toDoc size
+                ]
             ]
         Calloc c1 num size mc -> do
           D.join
             [ attachComment (c ++ c1) $ D.text "magic calloc",
-              SE.decode $
-                attachOptionalComment mc $
-                  SE.fromListWithComment
-                    (Just SE.Paren)
-                    SE.Comma
-                    [RT.mapEL toDoc num, RT.mapEL toDoc size]
+              decodeMagicArgs mc [RT.mapEL toDoc num, RT.mapEL toDoc size]
             ]
         Malloc c1 size mc -> do
           D.join
             [ attachComment (c ++ c1) $ D.text "magic malloc",
-              SE.decode $
-                attachOptionalComment mc $
-                  SE.fromListWithComment
-                    (Just SE.Paren)
-                    SE.Comma
-                    [RT.mapEL toDoc size]
+              decodeMagicArgs mc [RT.mapEL toDoc size]
             ]
         MallocOpaque c1 size mc -> do
           D.join
             [ attachComment (c ++ c1) $ D.text "magic malloc-opaque",
-              SE.decode $
-                attachOptionalComment mc $
-                  SE.fromListWithComment
-                    (Just SE.Paren)
-                    SE.Comma
-                    [RT.mapEL toDoc size]
+              decodeMagicArgs mc [RT.mapEL toDoc size]
             ]
         Realloc c1 ptr size mc -> do
           D.join
             [ attachComment (c ++ c1) $ D.text "magic realloc",
-              SE.decode $
-                attachOptionalComment mc $
-                  SE.fromListWithComment
-                    (Just SE.Paren)
-                    SE.Comma
-                    [RT.mapEL toDoc ptr, RT.mapEL toDoc size]
+              decodeMagicArgs mc [RT.mapEL toDoc ptr, RT.mapEL toDoc size]
             ]
         Free c1 ptr mc -> do
           D.join
             [ attachComment (c ++ c1) $ D.text "magic free",
-              SE.decode $
-                attachOptionalComment mc $
-                  SE.fromListWithComment
-                    (Just SE.Paren)
-                    SE.Comma
-                    [RT.mapEL toDoc ptr]
+              decodeMagicArgs mc [RT.mapEL toDoc ptr]
             ]
         External c1 _ funcName c2 args varArgsOrNone -> do
           let args' = SE.decode $ fmap toDoc args
@@ -427,78 +384,66 @@ toDoc term =
         CallType c1 func arg1 arg2 arg3 mc -> do
           D.join
             [ attachComment (c ++ c1) $ D.text "magic call-type",
-              SE.decode $
-                attachOptionalComment mc $
-                  SE.fromListWithComment
-                    (Just SE.Paren)
-                    SE.Comma
-                    [ RT.mapEL toDoc func,
-                      RT.mapEL toDoc arg1,
-                      RT.mapEL toDoc arg2,
-                      RT.mapEL toDoc arg3
-                    ]
+              decodeMagicArgs
+                mc
+                [ RT.mapEL toDoc func,
+                  RT.mapEL toDoc arg1,
+                  RT.mapEL toDoc arg2,
+                  RT.mapEL toDoc arg3
+                ]
             ]
         InspectType (c1, (e, c2)) mc -> do
           D.join
             [ attachComment c $ D.text "magic inspect-type",
-              SE.decode $ attachOptionalComment mc $ SE.fromListWithComment (Just SE.Paren) SE.Comma [(c1, (typeToDoc e, c2))]
+              decodeMagicArgs mc [(c1, (typeToDoc e, c2))]
             ]
         EqType (c1, (t1, c2)) (c3, (t2, c4)) mc -> do
           D.join
             [ attachComment c $ D.text "magic eq-type",
-              SE.decode $
-                attachOptionalComment mc $
-                  SE.fromListWithComment
-                    (Just SE.Paren)
-                    SE.Comma
-                    [ (c1, (typeToDoc t1, c2)),
-                      (c3, (typeToDoc t2, c4))
-                    ]
+              decodeMagicArgs
+                mc
+                [ (c1, (typeToDoc t1, c2)),
+                  (c3, (typeToDoc t2, c4))
+                ]
             ]
         ShowType c1 (c2, (typeExpr, c3)) mc -> do
           D.join
             [ attachComment (c ++ c1) $ D.text "magic show-type",
-              SE.decode $ attachOptionalComment mc $ SE.fromListWithComment (Just SE.Paren) SE.Comma [(c2, (typeToDoc typeExpr, c3))]
+              decodeMagicArgs mc [(c2, (typeToDoc typeExpr, c3))]
             ]
         TextCons c1 (c2, (rune, c3)) (c4, (text, c5)) mc -> do
           D.join
             [ attachComment (c ++ c1) $ D.text "magic text-cons",
-              SE.decode $
-                attachOptionalComment mc $
-                  SE.fromListWithComment
-                    (Just SE.Paren)
-                    SE.Comma
-                    [ (c2, (toDoc rune, c3)),
-                      (c4, (toDoc text, c5))
-                    ]
+              decodeMagicArgs
+                mc
+                [ (c2, (toDoc rune, c3)),
+                  (c4, (toDoc text, c5))
+                ]
             ]
         TextUncons c1 (c2, (text, c3)) mc -> do
           D.join
             [ attachComment (c ++ c1) $ D.text "magic text-uncons",
-              SE.decode $ attachOptionalComment mc $ SE.fromListWithComment (Just SE.Paren) SE.Comma [(c2, (toDoc text, c3))]
+              decodeMagicArgs mc [(c2, (toDoc text, c3))]
             ]
         MakeSwitch c1 key fallback clauses mc -> do
           D.join
             [ attachComment (c ++ c1) $ D.text "magic make-switch",
-              SE.decode $
-                attachOptionalComment mc $
-                  SE.fromListWithComment
-                    (Just SE.Paren)
-                    SE.Comma
-                    [ RT.mapEL toDoc key,
-                      RT.mapEL toDoc fallback,
-                      RT.mapEL toDoc clauses
-                    ]
+              decodeMagicArgs
+                mc
+                [ RT.mapEL toDoc key,
+                  RT.mapEL toDoc fallback,
+                  RT.mapEL toDoc clauses
+                ]
             ]
         FreeVariables c1 (c2, (code, c3)) mc -> do
           D.join
             [ attachComment (c ++ c1) $ D.text "magic free-variables",
-              SE.decode $ attachOptionalComment mc $ SE.fromListWithComment (Just SE.Paren) SE.Comma [(c2, (toDoc code, c3))]
+              decodeMagicArgs mc [(c2, (toDoc code, c3))]
             ]
         CompileError c1 (c2, (msg, c3)) mc -> do
           D.join
             [ attachComment (c ++ c1) $ D.text "magic compile-error",
-              SE.decode $ attachOptionalComment mc $ SE.fromListWithComment (Just SE.Paren) SE.Comma [(c2, (toDoc msg, c3))]
+              decodeMagicArgs mc [(c2, (toDoc msg, c3))]
             ]
         GetOriginFileName c1 _c2 -> do
           D.join
@@ -1058,7 +1003,8 @@ decPiElimMarkedKey kvs =
 decPiElimMarkedKeyItem :: RT.KeyValueArg RawTerm -> (Key, C, Rhymed, RawTerm)
 decPiElimMarkedKeyItem kv = do
   let (e, isSourceArg) = RT.kvValue kv
-  let (kText, c, rhymed, e') = decPiElimKeyItem (RT.kvLoc kv, RT.kvKey kv, RT.kvKeyComment kv, RT.kvValueComment kv, e)
+  let (kText, c, rhymed, e') =
+        decPiElimKeyItem (RT.kvLoc kv, RT.kvKey kv, RT.kvKeyComment kv, RT.kvValueComment kv, e)
   let kText' = if isSourceArg then "~" <> kText else kText
   case RT.kvPrevValue kv of
     Nothing ->
@@ -1210,6 +1156,10 @@ decodeBrace' forceVertical c1 d c2 = do
       layout $ D.join [attachComment c1 d, C.asSuffix c2],
       PI.inject $ D.text "}"
     ]
+
+decodeMagicArgs :: Maybe C -> [EL D.Doc] -> D.Doc
+decodeMagicArgs mc args =
+  SE.decode $ attachOptionalComment mc $ SE.fromListWithComment (Just SE.Paren) SE.Comma args
 
 attachOptionalComment :: Maybe C -> SE.Series a -> SE.Series a
 attachOptionalComment mc se =

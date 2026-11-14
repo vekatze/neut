@@ -108,7 +108,8 @@ makeSwitcher h resourceSpec = do
   let (extraVarName, _) = extra resourceSpec
   let (switchVarName, switchVar) = switch resourceSpec
   let defaultCases = zipWith (\i v -> (EC.Int i, C.UpIntro v)) [3 ..] defaultValues
-  enumElim <- getEnumElim h [argVarName, extraVarName] switchVar discard ((EC.Int 1, copy) : (EC.Int 2, size) : defaultCases)
+  let branchList = (EC.Int 1, copy) : (EC.Int 2, size) : defaultCases
+  enumElim <- getEnumElim h [argVarName, extraVarName] switchVar discard branchList
   return ([switchVarName, argVarName, extraVarName], enumElim)
 
 makeSwitcherStmt ::

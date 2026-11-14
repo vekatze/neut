@@ -88,7 +88,9 @@ parse h contentSeq = do
       Left _ ->
         return ()
       Right _ ->
-        liftIO $ Logger.report (Global.loggerHandle h) $ "Parsing: " <> T.pack (show $ Source.sourceFilePath source)
+        liftIO $
+          Logger.report (Global.loggerHandle h) $
+            "Parsing: " <> T.pack (show $ Source.sourceFilePath source)
     prog <- parse' unitParseHandle source cacheOrContent
     localHandle <- Local.new h source
     let locatorHandle = Local.locatorHandle localHandle
@@ -180,7 +182,11 @@ postprocess' h nsPath stmt = do
                 postDefineMetaEndLoc = defineMetaEndLoc',
                 postDefineMetaHelperName = DD.getKnotDD name' index
               }
-      let defineMetaElems = zipWith (\index (comment, defineMeta) -> (comment, liftDefineMeta index defineMeta)) [0 ..] (SE.elems defineMetaList)
+      let defineMetaElems =
+            zipWith
+              (\index (comment, defineMeta) -> (comment, liftDefineMeta index defineMeta))
+              [0 ..]
+              (SE.elems defineMetaList)
       [PostRawStmtTrope c m (name', c1) (defineMetaList {SE.elems = defineMetaElems}) loc]
     RawStmtVariadic kind _ m (name, _) (_, leaf, leafType) (_, node, nodeType) (_, root, rootType) _ loc -> do
       let name' = Locator.attachCurrentLocatorWithin h nsPath name
@@ -259,7 +265,9 @@ saveTopLevelNames h source nameArrowList = do
   UnusedTopLevelName.insertMany (unusedTopLevelNameHandle h) $ concatMap unusedTopLevelNameEntries nameArrowList
   OptimizableData.insertMany (optDataHandle h) $ concatMap optimizableDataEntries nameArrowList
 
-unusedTopLevelNameEntries :: (DD.DefiniteDescription, (Hint, Maybe NT.NominalTag, GN.GlobalName)) -> [(DD.DefiniteDescription, Hint, GN.GlobalName)]
+unusedTopLevelNameEntries ::
+  (DD.DefiniteDescription, (Hint, Maybe NT.NominalTag, GN.GlobalName)) ->
+  [(DD.DefiniteDescription, Hint, GN.GlobalName)]
 unusedTopLevelNameEntries (dd, (m, _, gn)) =
   case gn of
     GN.Namespace ->
@@ -379,7 +387,9 @@ cachedKeyArgEntries stmt = do
     StmtNamespace {} ->
       []
 
-optimizableDataEntries :: (DD.DefiniteDescription, (Hint, Maybe NT.NominalTag, GN.GlobalName)) -> [(DD.DefiniteDescription, OD.OptimizableData)]
+optimizableDataEntries ::
+  (DD.DefiniteDescription, (Hint, Maybe NT.NominalTag, GN.GlobalName)) ->
+  [(DD.DefiniteDescription, OD.OptimizableData)]
 optimizableDataEntries (dd, (_, _, gn)) =
   case gn of
     GN.Data dataArgNum consNameArrowList _

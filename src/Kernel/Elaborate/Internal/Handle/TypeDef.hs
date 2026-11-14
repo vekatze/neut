@@ -34,7 +34,12 @@ new = do
   typeDefMapRef <- newIORef Map.empty
   return $ Handle {..}
 
-makeEntry :: O.Opacity -> DD.DefiniteDescription -> [BinderF TM.Type] -> TM.Type -> [(DD.DefiniteDescription, TypeDefInfo)]
+makeEntry ::
+  O.Opacity ->
+  DD.DefiniteDescription ->
+  [BinderF TM.Type] ->
+  TM.Type ->
+  [(DD.DefiniteDescription, TypeDefInfo)]
 makeEntry opacity name binders body =
   [(name, TypeDefInfo {typeDefBinders = binders, typeDefBody = body}) | opacity == O.Clear]
 

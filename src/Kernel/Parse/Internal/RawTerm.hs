@@ -247,11 +247,12 @@ rawTermBase mode h m headSymbol c = do
             [ do
                 (es, cArgs) <- seriesParen $ rawTerm h
                 mDefaultArgs <- optional $ seriesBracket $ rawTermKeyValuePair h
+                let piElimMeta = RT.PiElimMeta name nameC mImpArgs cImpArgs es
                 case mDefaultArgs of
                   Nothing ->
-                    return (m :< RT.PiElimMeta name nameC mImpArgs cImpArgs es [] Nothing, cArgs)
+                    return (m :< piElimMeta [] Nothing, cArgs)
                   Just (defaultArgs, cDefaultArgs) ->
-                    return (m :< RT.PiElimMeta name nameC mImpArgs cImpArgs es cArgs (Just defaultArgs), cDefaultArgs),
+                    return (m :< piElimMeta cArgs (Just defaultArgs), cDefaultArgs),
               do
                 (es, cArgs) <- seriesBracket $ rawTerm h
                 case mImpArgs of
@@ -269,7 +270,8 @@ rawTermBase mode h m headSymbol c = do
                 (fieldsWithRest, cArgs) <- keyValueArgs $ rawTermMarkedKeyValuePair h
                 (fields, restArg) <- lift $ extractRestArg fieldsWithRest
                 let ArgPrefix {destMark, impArgs, prefixComment} = prefix
-                return (m :< RT.PiElimByKey name nameC impArgs (isJust destMark) prefixComment fields restArg, cArgs)
+                let byKeyTerm = RT.PiElimByKey name nameC impArgs (isJust destMark) prefixComment fields restArg
+                return (m :< byKeyTerm, cArgs)
           let parseCont =
                 rawTermPiElimCont h m name nameC prefix
           case mode of
@@ -489,7 +491,8 @@ extractRestArg fieldSeries = do
   when (isNothing restArg) $
     forM_ (SE.extract fields) $ \field ->
       forM_ (RT.kvPrevValue field) $ \prevValue ->
-        raiseError (RT.prevValueLoc prevValue) "`as` names the previous value of a field, so it can only be used in a record update"
+        raiseError (RT.prevValueLoc prevValue) $
+          "`as` names the previous value of a field, so it can only be used in a record update"
   return result
 
 extractRestArg' ::
@@ -505,15 +508,17 @@ extractRestArg' fieldSeries elems acc restArg = do
     (c, field) : rest
       | RT.kvKey field == ".." -> do
           let m = RT.kvLoc field
+          let restComment = RT.kvKeyComment field ++ RT.kvValueComment field
           when (snd (RT.kvValue field)) $
             raiseError m "The pseudo-field `..` names no parameter, so it cannot be marked with `~`"
           forM_ (RT.kvPrevValue field) $ \prevValue ->
-            raiseError (RT.prevValueLoc prevValue) "The pseudo-field `..` names no field, so it cannot be given a previous value"
+            raiseError (RT.prevValueLoc prevValue) $
+              "The pseudo-field `..` names no field, so it cannot be given a previous value"
           case restArg of
             Just (_, _, _, _) ->
               raiseError m "The pseudo-field `..` can be specified at most once"
             Nothing ->
-              extractRestArg' fieldSeries rest acc $ Just (m, c, RT.kvKeyComment field ++ RT.kvValueComment field, fst (RT.kvValue field))
+              extractRestArg' fieldSeries rest acc $ Just (m, c, restComment, fst (RT.kvValue field))
     entry : rest ->
       extractRestArg' fieldSeries rest (entry : acc) restArg
 
@@ -536,9 +541,10 @@ rawTermLet h mLet letKind c1 = do
   c7 <- delimiter ";"
   (e2, c) <- rawExpr h
   endLoc <- getCurrentLoc
+  let mxt = (mx, patInner, c2, c3, t)
   if SE.isEmpty noeticVarList
-    then return (mLet :< RT.Let letKind c1 (mx, patInner, c2, c3, t) c4 c5 e1 c6 loc c7 e2 endLoc, c)
-    else return (mLet :< RT.LetOn letKind c1 (mx, patInner, c2, c3, t) c4 noeticVarList c5 e1 c6 loc c7 e2 endLoc, c)
+    then return (mLet :< RT.Let letKind c1 mxt c4 c5 e1 c6 loc c7 e2 endLoc, c)
+    else return (mLet :< RT.LetOn letKind c1 mxt c4 noeticVarList c5 e1 c6 loc c7 e2 endLoc, c)
 
 rawTermLetRec :: Handle -> LDK.LocalDefKind -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermLetRec h kind m c0 = do

@@ -36,8 +36,9 @@ placeAtomically finalPath timeStamp write = do
 
 createStagingFile :: Path Abs File -> IO (Path Abs File)
 createStagingFile finalPath = do
-  (stagingPath, stagingHandle) <-
-    openBinaryTempFileWithDefaultPermissions (toFilePath $ parent finalPath) (toFilePath (filename finalPath) <> ".tmp")
+  let stagingDir = toFilePath $ parent finalPath
+  let stagingTemplate = toFilePath (filename finalPath) <> ".tmp"
+  (stagingPath, stagingHandle) <- openBinaryTempFileWithDefaultPermissions stagingDir stagingTemplate
   hClose stagingHandle
   parseAbsFile stagingPath
 

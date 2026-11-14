@@ -46,7 +46,8 @@ lookup' h m k = do
     Nothing -> do
       typeEnv <- liftIO $ readIORef (_typeEnvRef h)
       let ks = map DD.reify $ Map.keys typeEnv
-      raiseCritical m $ "`" <> DD.reify k <> "` is not found in the term type environment.\nkeys:" <> T.pack (show ks)
+      raiseCritical m $
+        "`" <> DD.reify k <> "` is not found in the term type environment.\nkeys:" <> T.pack (show ks)
 
 lookupMaybe' :: Handle -> DD.DefiniteDescription -> IO (Maybe WeakType)
 lookupMaybe' h k = do

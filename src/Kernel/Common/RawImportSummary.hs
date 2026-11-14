@@ -49,6 +49,7 @@ fromRawImportEntry entry =
       SummaryEntry Nothing (BN.reify importAlias)
     RawImportName _ ll asClauseOrNone -> do
       let name = LL.reify ll
-      SummaryEntry (Just name) $ maybe name (\(RawAsClause _ _ _ importAlias) -> BN.reify importAlias) asClauseOrNone
+      SummaryEntry (Just name) $
+        maybe name (\(RawAsClause _ _ _ importAlias) -> BN.reify importAlias) asClauseOrNone
 
 deriveBinary [''RawImportSummaryItem, ''SummaryEntry]

@@ -85,7 +85,8 @@ loadCache h t source = do
           liftIO $ Logger.report (loggerHandle h) $ "Cache miss: " <> renderSource source <> " (cache is stale)"
           return Nothing
         _ -> do
-          dataOrErr <- liftIO $ Reuse.rememberCache (reuseHandle h) cachePath $ decodeFileOrFail (toFilePath cachePath)
+          dataOrErr <-
+            liftIO $ Reuse.rememberCache (reuseHandle h) cachePath $ decodeFileOrFail (toFilePath cachePath)
           case dataOrErr of
             Left _ -> do
               liftIO $ Logger.report (loggerHandle h) $ "Cache miss: " <> renderSource source <> " (cache file is invalid and will be removed)"

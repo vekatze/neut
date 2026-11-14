@@ -133,20 +133,18 @@ rewriteIndexedValue env (value, lowType) =
 
 insertCoercionStep :: Env -> Ident -> LC.Op -> Env
 insertCoercionStep env x op = do
+  let insertStep value step =
+        insertHistory env x $ appendCoercionStep (getHistory env value) (HistoryStep step (LC.VarLocal x))
   case op of
-    LC.Bitcast value from to -> do
-      let base = getHistory env value
-      insertHistory env x $ appendCoercionStep base (HistoryStep (StepBitcast from to) (LC.VarLocal x))
-    LC.IntToPointer value lowType -> do
-      let base = getHistory env value
-      insertHistory env x $ appendCoercionStep base (HistoryStep (StepIntToPointer lowType) (LC.VarLocal x))
-    LC.PointerToInt value lowType -> do
-      let base = getHistory env value
-      insertHistory env x $ appendCoercionStep base (HistoryStep (StepPointerToInt lowType) (LC.VarLocal x))
+    LC.Bitcast value from to ->
+      insertStep value (StepBitcast from to)
+    LC.IntToPointer value lowType ->
+      insertStep value (StepIntToPointer lowType)
+    LC.PointerToInt value lowType ->
+      insertStep value (StepPointerToInt lowType)
     LC.PrimOp (PrimConvOp convOp domType codType) [value]
-      | convOp `elem` [ConvOp.Zext, ConvOp.Trunc] -> do
-          let base = getHistory env value
-          insertHistory env x $ appendCoercionStep base (HistoryStep (StepIntConv convOp domType codType) (LC.VarLocal x))
+      | convOp `elem` [ConvOp.Zext, ConvOp.Trunc] ->
+          insertStep value (StepIntConv convOp domType codType)
     _ ->
       env
 

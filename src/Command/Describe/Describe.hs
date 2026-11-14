@@ -72,7 +72,9 @@ writeDescription h unravelHandle target moduleList = do
   moduleRoot <- toUtf8Text $ toFilePath $ M.getModuleRootDir mainModule
   outputPath <- Path.getExecutableOutputPath (Global.pathHandle (globalHandle h)) target
   executable <- toUtf8Text $ toFilePath outputPath
-  inputList <- liftIO (getInputList (globalHandle h) unravelHandle) >>= mapM (toUtf8Text . either toFilePath toFilePath)
+  inputList <-
+    liftIO (getInputList (globalHandle h) unravelHandle)
+      >>= mapM (toUtf8Text . either toFilePath toFilePath)
   foreignList <- mapM (describeForeign h target) moduleList
   let fieldList =
         [ ("module-root", string moduleRoot),

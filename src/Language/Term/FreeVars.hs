@@ -156,7 +156,8 @@ freeVarsCase decisionCase = do
       freeVarsDecisionTree cont
     DT.ConsCase (DT.ConsCaseRecord {..}) -> do
       let (dataTerms, dataTypes) = unzip dataArgs
-      S.unions $ freeVarsBinderType (consImpArgs ++ consArgs) (freeVarsDecisionTree cont) : map freeVarsType dataTerms ++ map freeVarsType dataTypes
+      let binderFreeVars = freeVarsBinderType (consImpArgs ++ consArgs) (freeVarsDecisionTree cont)
+      S.unions $ binderFreeVars : map freeVarsType dataTerms ++ map freeVarsType dataTypes
 
 freeVarsMagic :: M.Magic BLT.BaseLowType TM.Type TM.Term -> S.Set Ident
 freeVarsMagic magic =

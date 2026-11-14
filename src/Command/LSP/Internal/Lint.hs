@@ -78,7 +78,15 @@ collectModuleLogs h comp = do
 
 withGlobalHandle :: LspState -> (Global.Handle -> Lsp () ()) -> Lsp () ()
 withGlobalHandle lspState cont = do
-  handleOrError <- liftIO $ Global.newOrError (consoleHandle lspState) (loggerHandle lspState) (localArchiveMap lspState) (reuseHandle lspState) Nothing Nothing
+  handleOrError <-
+    liftIO $
+      Global.newOrError
+        (consoleHandle lspState)
+        (loggerHandle lspState)
+        (localArchiveMap lspState)
+        (reuseHandle lspState)
+        Nothing
+        Nothing
   case handleOrError of
     Left (E.MakeError errors) ->
       report lspState errors

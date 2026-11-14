@@ -163,9 +163,10 @@ summarize h stmtList = do
 
 optimize :: Handle -> LC.Comp -> IO LC.Comp
 optimize h = do
+  let freeMallocCancel matchMode leftover = FreeMallocCancel.freeMallocCancel matchMode leftover (gensymHandle h)
   return . MallocFreeCancel.mallocFreeCancel (baseSize h)
-    >=> FreeMallocCancel.freeMallocCancel FreeMallocCancel.Exact FreeMallocCancel.KeepInPlace (gensymHandle h)
-    >=> FreeMallocCancel.freeMallocCancel FreeMallocCancel.Compatible FreeMallocCancel.SinkIntoBranches (gensymHandle h)
+    >=> freeMallocCancel FreeMallocCancel.Exact FreeMallocCancel.KeepInPlace
+    >=> freeMallocCancel FreeMallocCancel.Compatible FreeMallocCancel.SinkIntoBranches
     >=> HoistStackAlloc.hoistStackAlloc (gensymHandle h) (baseSize h)
     >=> return . CoercionCancel.coercionCancel (baseSize h)
     >=> return . DeadLetElim.deadLetElim
@@ -644,13 +645,14 @@ lowerCompPrimitive h codeOp k =
           (arg2Var, arg2Value) <- liftIO $ newValueLocal h "arg2"
           (arg3Var, arg3Value) <- liftIO $ newValueLocal h "arg3"
           let isPure = isSizeQuery True [arg1, arg2, arg3]
+          let callArgs = [(LT.slotLowType, arg1Value), (LT.slotLowType, arg2Value), (LT.slotLowType, arg3Value)]
           rest <- sendResult k LT.slotLowType resultValue
           lowerValue h funcVar func
             =<< lowerValue h arg1Var arg1
             =<< lowerValue h arg2Var arg2
             =<< lowerValue h arg3Var arg3
             =<< cast h castFuncVar funcValue LT.Pointer
-            =<< return . LC.Let resultVar (LC.Call isPure LT.slotLowType castFuncValue [(LT.slotLowType, arg1Value), (LT.slotLowType, arg2Value), (LT.slotLowType, arg3Value)])
+            =<< return . LC.Let resultVar (LC.Call isPure LT.slotLowType castFuncValue callArgs)
             =<< return rest
 
 lowerCompPrimOp :: Handle -> PrimOp -> [C.Value] -> Cont -> App LC.Comp

@@ -116,7 +116,8 @@ _check h target mainTarget baseModule = do
       liftIO $
         Logger.report (Global.loggerHandle (globalHandle h)) $
           "Interpreting: " <> T.pack (toFilePath $ Source.sourceFilePath source)
-      interpretHandle <- liftIO $ Interpret.new gensymHandle (globalHandle h) localHandle (Source.sourceModule source)
+      interpretHandle <-
+        liftIO $ Interpret.new gensymHandle (globalHandle h) localHandle (Source.sourceModule source)
       item <- Interpret.interpret interpretHandle target source cacheOrProg
       return (gensymHandle, localHandle, (source, item))
     numCapabilities <- liftIO getNumCapabilities
@@ -138,7 +139,8 @@ _check' h target baseModule = do
     liftIO $
       Logger.report (Global.loggerHandle (globalHandle h)) $
         "Interpreting: " <> T.pack (toFilePath $ Source.sourceFilePath source)
-    interpretHandle <- liftIO $ Interpret.new gensymHandle (globalHandle h) localHandle (Source.sourceModule source)
+    interpretHandle <-
+      liftIO $ Interpret.new gensymHandle (globalHandle h) localHandle (Source.sourceModule source)
     item <- Interpret.interpret interpretHandle target source cacheOrProg
     return (gensymHandle, localHandle, (source, item))
   case unsnoc cacheOrStmtList of
@@ -150,7 +152,16 @@ _check' h target baseModule = do
         void $ checkSource h startTime gensymHandle traceConfig localHandle target source cacheOrContent
       Just <$> checkSource h startTime rootGensymHandle traceConfig rootLocalHandle target rootSource rootCacheOrContent
 
-checkSource :: Handle -> UTCTime -> Gensym.Handle -> Trace.Config -> Local.Handle -> Target -> Source -> (Either Cache ([WeakStmt], TopLevelReferences), [Log]) -> App Elaborate.Handle
+checkSource ::
+  Handle ->
+  UTCTime ->
+  Gensym.Handle ->
+  Trace.Config ->
+  Local.Handle ->
+  Target ->
+  Source ->
+  (Either Cache ([WeakStmt], TopLevelReferences), [Log]) ->
+  App Elaborate.Handle
 checkSource h startTime gensymHandle traceConfig localHandle target source (cacheOrStmtList, logs) = do
   elaborateHandle <- liftIO $ Elaborate.new gensymHandle (globalHandle h) traceConfig localHandle source startTime
   liftIO $

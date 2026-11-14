@@ -94,7 +94,8 @@ decImport importInfo importStmt = do
     then Nothing
     else do
       let (RawImport c _ importItemList _) = importStmt
-      let importItemList' = normalizeImportItem <$> SE.compressEither (fmap (filterImport importInfo) importItemList)
+      let filteredItemList = SE.compressEither (fmap (filterImport importInfo) importItemList)
+      let importItemList' = normalizeImportItem <$> filteredItemList
       let importItemList'' = SE.assoc $ decImportItem <$> sortImport importItemList'
       if SE.isEmpty importItemList''
         then Nothing

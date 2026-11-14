@@ -435,8 +435,9 @@ clarifyStmt h stmt =
       arg@(argVarName, _) <- liftIO $ Gensym.createVar (gensymHandle h) "arg"
       extra@(extraVarName, _) <- liftIO $ Gensym.createVar (gensymHandle h) "extra"
       size <- clarifyResourceSize resourceSize
-      discard <- clarifyTerm h context (m :< TM.PiElim noTrace CC.normal discarder [] [m :< TM.Var argVarName, m :< TM.Var extraVarName] [])
-      copy <- clarifyTerm h context (m :< TM.PiElim noTrace CC.normal copier [] [m :< TM.Var argVarName, m :< TM.Var extraVarName] [])
+      let resourceArgs = [m :< TM.Var argVarName, m :< TM.Var extraVarName]
+      discard <- clarifyTerm h context (m :< TM.PiElim noTrace CC.normal discarder [] resourceArgs [])
+      copy <- clarifyTerm h context (m :< TM.PiElim noTrace CC.normal copier [] resourceArgs [])
       let resourceSpec = Utility.ResourceSpec {switch, arg, extra, discard, copy, size, defaultValues = []}
       liftIO $ Utility.registerSwitcher (utilityHandle h) O.Clear liftedName resourceSpec
       return $ C.Def dd O.Clear [] (C.UpIntro $ C.VarGlobal liftedName AN.argNumS4 (FCT.Cod BLT.Pointer))
@@ -565,7 +566,8 @@ registerDefaultEnvType h name defaultValues = do
       extra <- Gensym.createVar (gensymHandle h) "extra"
       let discard = C.UpIntro C.null
       let copy = C.UpIntro argVar
-      let resourceSpec = Utility.ResourceSpec {switch, arg, extra, discard, copy, size = Utility.returnIntComp (-1), defaultValues}
+      let size = Utility.returnIntComp (-1)
+      let resourceSpec = Utility.ResourceSpec {switch, arg, extra, discard, copy, size, defaultValues}
       Utility.registerSwitcher (utilityHandle h) O.Clear envTypeName resourceSpec
 
 registerDefaultFunctions ::
@@ -610,11 +612,13 @@ registerDefaultFunctions' h context name envLayout fvs args index defaultArgs =
       isAlreadyRegistered <- liftIO $ AuxEnv.checkIfAlreadyRegistered (auxEnvHandle h) labelName
       unless isAlreadyRegistered $ do
         body <- clarifyTerm h labelContext value
-        liftIO $ registerClosure h labelName O.Clear False codType' (map (const False) args) args envLayout fvs body
+        let slots = map (const False) args
+        liftIO $ registerClosure h labelName O.Clear False codType' slots args envLayout fvs body
       let argNum = AN.fromInt (length args + 2)
       let labelValue = C.VarGlobal labelName argNum (FCT.Cod BLT.Pointer)
       let context' = extendContext [binder] context
-      restValues <- registerDefaultFunctions' h context' name envLayout fvs (args ++ [(x, codType')]) (index + 1) rest
+      let args' = args ++ [(x, codType')]
+      restValues <- registerDefaultFunctions' h context' name envLayout fvs args' (index + 1) rest
       return (labelValue : restValues)
 
 clarifyBinderBody ::
@@ -684,7 +688,9 @@ clarifyTerm h context term =
           return $ callPrimOp op allArgs
         _ -> do
           e' <- clarifyTerm h context e
-          liftIO $ callClosure h conv' e' impArgs' (zip expConventions expArgs') (zip defaultConventions defaultArgs')
+          let expArgsWithPassings = zip expConventions expArgs'
+          let defaultArgsWithPassings = zip defaultConventions defaultArgs'
+          liftIO $ callClosure h conv' e' impArgs' expArgsWithPassings defaultArgsWithPassings
     m :< TM.DataIntro (AttrDI.Attr {..}) consName dataArgs consImpArgs consArgs -> do
       od <- liftIO $ OptimizableData.lookup (optDataHandle h) consName
       case od of
@@ -794,7 +800,14 @@ clarifyType h context ty =
         _ -> do
           let argNum = AN.fromInt $ length dataArgs + 2
           envType <- liftIO $ envTypeForGlobal h name
-          let cls = C.UpIntro $ C.SigmaIntro (DI.closureLayout (dataSize h)) [envType, C.null, C.VarGlobal name argNum (FCT.Cod BLT.Pointer)]
+          let cls =
+                C.UpIntro $
+                  C.SigmaIntro
+                    (DI.closureLayout (dataSize h))
+                    [ envType,
+                      C.null,
+                      C.VarGlobal name argNum (FCT.Cod BLT.Pointer)
+                    ]
           dataArgs' <- mapM (clarifyTypePlus h context) dataArgs
           liftIO $ callClosure h CC.normal cls dataArgs' [] []
     _ :< TM.Box t -> do
@@ -914,7 +927,8 @@ clarifyStaticValue h context term =
           let shape = DI.cellShape (dataSize h) dataInfo
           let headerEntries = discriminantEntries shape discriminant
           let typeArgEntries = map (DI.dataArgStorage,) typeArgSlots
-          staticCell h m (DI.shapeByteSize shape) $ headerEntries ++ typeArgEntries ++ zip fieldStorageList consArgSlots
+          let fieldEntries = zip fieldStorageList consArgSlots
+          staticCell h m (DI.shapeByteSize shape) $ headerEntries ++ typeArgEntries ++ fieldEntries
     m :< TM.PiIntro {} ->
       clarifyStaticClosure h context m term
     m :< TM.VarGlobal {} ->
@@ -1166,16 +1180,19 @@ clarifyDecisionTree h context isNoetic typeArgsMap tree =
       (fallbackClause', fallbackChain) <- clarifyDecisionTree h context isNoetic typeArgsMap fallbackClause
       tmp <- mapM (clarifyCase h context isNoetic typeArgsMap cursor cursorType) clauseList
       let (enumCaseList, clauseList', clauseChainList) = unzip3 tmp
-      let chain = filter (\(_, _, x, _) -> x /= cursor) $ nubFreeVariables $ fallbackChain ++ concat clauseChainList
+      let chain =
+            filter (\(_, _, x, _) -> x /= cursor) $ nubFreeVariables $ fallbackChain ++ concat clauseChainList
       let aligner = alignFreeVariable h context chain
       fallbackClause'' <- aligner fallbackClause'
       clauseList'' <- mapM aligner clauseList'
       let newChain = (m, VK.normal, cursor, m :< TM.Tau) : chain
       let idents = nubOrd $ map (\(_, _, x, _) -> x) newChain
+      let enumClauses = zip enumCaseList clauseList''
       ck <- getClauseDataGroup h cursorType
       case ck of
         Just OD.Enum -> do
-          tree' <- liftIO $ Utility.getEnumElim (utilityHandle h) idents (C.VarLocal cursor) fallbackClause'' (zip enumCaseList clauseList'')
+          tree' <-
+            liftIO $ Utility.getEnumElim (utilityHandle h) idents (C.VarLocal cursor) fallbackClause'' enumClauses
           return (tree', newChain)
         Just OD.Unary -> do
           return (getFirstClause fallbackClause'' clauseList'', newChain)
@@ -1187,11 +1204,11 @@ clarifyDecisionTree h context isNoetic typeArgsMap tree =
               return (getFirstClause fallbackClause'' clauseList'', newChain)
             Just _ -> do
               (disc, discVar) <- liftIO $ Gensym.createVar (gensymHandle h) "disc"
-              enumElim <- liftIO $ Utility.getEnumElim (utilityHandle h) idents discVar fallbackClause'' (zip enumCaseList clauseList'')
-              return
-                ( C.UpElim True disc (C.Primitive (C.Magic (LM.Load (DI.discriminantLoadType shape) (C.VarLocal cursor)))) enumElim,
-                  newChain
-                )
+              enumElim <-
+                liftIO $ Utility.getEnumElim (utilityHandle h) idents discVar fallbackClause'' enumClauses
+              let loadDiscriminant =
+                    C.Primitive (C.Magic (LM.Load (DI.discriminantLoadType shape) (C.VarLocal cursor)))
+              return (C.UpElim True disc loadDiscriminant enumElim, newChain)
 
 getFirstClause :: C.Comp -> [C.Comp] -> C.Comp
 getFirstClause fallbackClause clauseList =
@@ -1325,7 +1342,8 @@ clarifyCase h context isNoetic typeArgsMap cursor cursorType decisionCase = do
       let typeArgsMap' = IntMap.insert (Ident.toInt cursor) (typeArgEntries, cursorSize) typeArgsMap
       let consArgs' = map (\(m, k, x, _) -> (m, k, x, m :< TM.Tau)) consArgs
       let prefixChain = TM.chainOfCaseWithoutCont (typeEnv context) decisionCase
-      (body', contChain) <- clarifyDecisionTree h (extendContext (consImpArgs ++ consArgs') context) isNoetic typeArgsMap' cont
+      let contContext = extendContext (consImpArgs ++ consArgs') context
+      (body', contChain) <- clarifyDecisionTree h contContext isNoetic typeArgsMap' cont
       let consArgVars = map (\(_, _, x, _) -> x) consArgs
       let argVars = typeArgVars ++ consArgVars
       let contChain' = filter (\(_, _, x, _) -> x `notElem` argVars) contChain
@@ -1353,6 +1371,7 @@ clarifyCase h context isNoetic typeArgsMap cursor cursorType decisionCase = do
           let shape = DI.cellShape (dataSize h) dataInfo
           let layout = DI.consLayout shape layoutConsInfo
           let fieldEntries = zip consArgIdents fieldStorageList
+          let cursorVar = C.VarLocal cursor
           headerVars <-
             case DI.shapeHeader shape of
               Nothing ->
@@ -1360,13 +1379,16 @@ clarifyCase h context isNoetic typeArgsMap cursor cursorType decisionCase = do
               Just _ -> do
                 discriminantVar <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "discriminant"
                 return [discriminantVar]
+          let prefixVars = headerVars ++ typeArgVars
           if isNoetic
             then do
-              let firstFieldStart = length headerVars + length typeArgVars
-              bindFields <- liftIO $ Sigma.bindFieldsInPlace (sigmaHandle h) (C.VarLocal cursor) layout firstFieldStart fieldEntries body'
+              let firstFieldStart = length prefixVars
+              bindFields <-
+                liftIO $
+                  Sigma.bindFieldsInPlace (sigmaHandle h) cursorVar layout firstFieldStart fieldEntries body'
               return
                 ( EC.Int (D.reify disc),
-                  C.SigmaElim False 0 layout (headerVars ++ typeArgVars) (C.VarLocal cursor) bindFields,
+                  C.SigmaElim False 0 layout prefixVars cursorVar bindFields,
                   chain
                 )
             else do
@@ -1375,7 +1397,7 @@ clarifyCase h context isNoetic typeArgsMap cursor cursorType decisionCase = do
               let bodyWithFields = Sigma.bindFieldValues fieldSlotList body'
               return
                 ( EC.Int (D.reify disc),
-                  C.SigmaElim False 0 layout (headerVars ++ typeArgVars ++ fieldSlotVars) (C.VarLocal cursor) bodyWithFields,
+                  C.SigmaElim False 0 layout (prefixVars ++ fieldSlotVars) cursorVar bodyWithFields,
                   chain
                 )
 
@@ -1513,7 +1535,8 @@ clarifyLambda h context attrL@(AttrL.Attr {lamKind}) fvs impArgs expArgs default
       let attr = AttrVG.Attr {argNum, isConstLike = False, isDestPassing}
       lamAttr <- do
         c <- liftIO $ Gensym.newCount (gensymHandle h)
-        return $ AttrL.Attr {lamKind = LK.Normal (Just (Ident.toText recFuncName)) isDestPassing codType, identity = c}
+        return $
+          AttrL.Attr {lamKind = LK.Normal (Just (Ident.toText recFuncName)) isDestPassing codType, identity = c}
       let lamApp =
             m
               :< TM.PiIntro
@@ -1524,7 +1547,8 @@ clarifyLambda h context attrL@(AttrL.Attr {lamKind}) fvs impArgs expArgs default
                 (m :< TM.PiElim noTrace conv (m :< TM.VarGlobal attr liftedName) [] appArgs' [])
       isAlreadyRegistered <- liftIO $ AuxEnv.checkIfAlreadyRegistered (auxEnvHandle h) liftedName
       unless isAlreadyRegistered $ do
-        liftedBody <- liftIO $ Subst.subst (substHandle h) (IntMap.fromList [(Ident.toInt recFuncName, Subst.Term lamApp)]) e
+        let recFuncSubst = IntMap.fromList [(Ident.toInt recFuncName, Subst.Term lamApp)]
+        liftedBody <- liftIO $ Subst.subst (substHandle h) recFuncSubst e
         let liftedSlots = sourceSlotsOf appArgs
         (liftedArgs, liftedBody') <- clarifyBinderBody h (newContext liftedName) appArgs liftedBody
         envArg <- liftIO $ makeEnvArg h
@@ -1544,7 +1568,8 @@ clarifyLambda h context attrL@(AttrL.Attr {lamKind}) fvs impArgs expArgs default
       let name = DD.getLambdaDD (currentFunction context) mName closureID
       defaultValues <- registerDefaultFunctions h context name fvs impArgs expArgs defaultArgs
       let slots = sourceSlotsOf mxts
-      let lambdaContext = setCurrentFunction name $ extendContext (catMaybes [AttrL.fromAttr attrL] ++ mxts) context
+      let lambdaContext =
+            setCurrentFunction name $ extendContext (catMaybes [AttrL.fromAttr attrL] ++ mxts) context
       e' <- clarifyTerm h lambdaContext e
       returnClosure h context closureID mName O.Clear isDestPassing codType fvs mxts slots defaultValues e'
 
@@ -1593,7 +1618,10 @@ clarifyPrimOp h context op m = do
   (xs, varList) <- liftIO $ mapAndUnzipM (const (Gensym.createVar (gensymHandle h) "prim")) domList
   let mxts = zipWith (\x t -> (m, VK.normal, x, t)) xs argTypeList
   closureID <- liftIO $ freshLocalNameID h (currentFunction context)
-  returnClosure h context closureID (Just "primOp") O.Clear False (fromPrimNum m codType) [] mxts (map (const False) mxts) [] $ C.Primitive (C.PrimOp op varList)
+  let codType' = fromPrimNum m codType
+  let slots = map (const False) mxts
+  let body = C.Primitive (C.PrimOp op varList)
+  returnClosure h context closureID (Just "primOp") O.Clear False codType' [] mxts slots [] body
 
 freshLocalNameID :: Handle -> DD.DefiniteDescription -> IO Int
 freshLocalNameID h owner = do
@@ -1632,7 +1660,12 @@ returnClosure h context lamID mName opacity isDestPassing codType fvs xts slots 
     liftIO $ registerClosure h name opacity isDestPassing codType' slots xts'' envLayout fvs'' e
   return $
     C.UpIntro $
-      C.SigmaIntro (DI.closureLayout (dataSize h)) [fvEnvSigma, fvEnv, C.VarGlobal name argNum (FCT.Cod BLT.Pointer)]
+      C.SigmaIntro
+        (DI.closureLayout (dataSize h))
+        [ fvEnvSigma,
+          fvEnv,
+          C.VarGlobal name argNum (FCT.Cod BLT.Pointer)
+        ]
 
 closureEnvLayout :: Handle -> [BinderF TM.Type] -> App CL.CellLayout
 closureEnvLayout h fvs = do
@@ -1666,12 +1699,13 @@ registerClosure h name opacity isDestPassing codType slots xts envLayout fvs e =
   noeticPrefix <- lambdaPrefixNoetic h envLayout envEntries slotVarList envVar
   let allocList =
         map (\slotName -> (slotName, C.Primitive (C.Magic (LM.Alloca BLT.slot (intTerm (1 :: Int)))))) slotNameList
-  enumElim <-
-    Utility.getEnumElim (utilityHandle h) (envVarName : slotNameList) switchVar normalPrefix [(EC.Int 1, noeticPrefix)]
+  let branchList = [(EC.Int 1, noeticPrefix)]
+  enumElim <- Utility.getEnumElim (utilityHandle h) (envVarName : slotNameList) switchVar normalPrefix branchList
   let loadList =
         zipWith (\(x, _) slotVar -> (x, C.Primitive (C.Magic (LM.Load BLT.slot slotVar)))) envEntries slotVarList
   let unpackEnv = Utility.bindLet (allocList ++ [(hole, enumElim)] ++ loadList)
-  stmt <- defineWithSourceEntries h name opacity destParam slots xts (fvs ++ xts) [envVarName, switchVarName] unpackEnv e'
+  let suffixParams = [envVarName, switchVarName]
+  stmt <- defineWithSourceEntries h name opacity destParam slots xts (fvs ++ xts) suffixParams unpackEnv e'
   AuxEnv.insert (auxEnvHandle h) name stmt
 
 callClosure ::
@@ -1694,9 +1728,10 @@ callClosure h kind e impArgs expArgsWithPassings defaultArgsWithPassings = do
   (slotVals, slotBindings) <- mapAndUnzipM (passSlotArg h) (zip passings expVals)
   let args = impVals ++ slotVals ++ defVals ++ [envVar, flag]
   callComp <- buildCall h kind lamVar args
+  let closureLayout = DI.closureLayout (dataSize h)
   return $
     Utility.bindLet [(closureVarName, e)] $
-      C.SigmaElim (not $ CC.isNoetic kind) 0 (DI.closureLayout (dataSize h)) [envTypeVarName, envVarName, lamVarName] closureVar $
+      C.SigmaElim (not $ CC.isNoetic kind) 0 closureLayout [envTypeVarName, envVarName, lamVarName] closureVar $
         Utility.bindLet (zip (impNames ++ expNames ++ defNames) (impComps ++ expComps ++ defComps)) $
           foldr ($) callComp slotBindings
 

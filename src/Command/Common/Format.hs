@@ -67,14 +67,16 @@ _formatSource h shouldMinimizeImports filePath fileContent = do
     then do
       unravelHandle <- liftIO $ Unravel.new (globalHandle h)
       let loadHandle = Load.new (globalHandle h)
-      dependenceSeq <- Unravel.resultSourceList <$> Unravel.unravel unravelHandle mainModule (Main (emptyZen filePath))
+      dependenceSeq <-
+        Unravel.resultSourceList <$> Unravel.unravel unravelHandle mainModule (Main (emptyZen filePath))
       contentSeq <- Load.load loadHandle False Peripheral dependenceSeq
       cacheOrProgList <- Parse.parse (globalHandle h) (_replaceLast fileContent contentSeq)
       case unsnoc cacheOrProgList of
         Nothing ->
           raiseError' "Nothing to format"
         Just (_, (rootGensymHandle, rootLocalHandle, (rootSource, rootCacheOrProg))) -> do
-          interpretHandle <- liftIO $ Interpret.new rootGensymHandle (globalHandle h) rootLocalHandle (Source.sourceModule rootSource)
+          let rootModule = Source.sourceModule rootSource
+          interpretHandle <- liftIO $ Interpret.new rootGensymHandle (globalHandle h) rootLocalHandle rootModule
           _ <- Interpret.interpret interpretHandle Peripheral rootSource rootCacheOrProg
           let unusedHandle = Local.unusedHandle rootLocalHandle
           (unusedGlobalLocators, unusedLocalLocators) <- liftIO $ Unused.getUnusedLocators unusedHandle

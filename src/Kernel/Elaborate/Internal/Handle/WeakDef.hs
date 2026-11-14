@@ -52,8 +52,9 @@ makeEntry ::
   WeakType ->
   WeakTerm ->
   [Entry]
-makeEntry opacity isDestPassing m name impArgs expArgs defaultArgs codType e =
-  [Entry name $ \i -> m :< WT.PiIntro (AttrL.normal' (Just $ DD.localLocator name) isDestPassing i codType) impArgs expArgs defaultArgs e | opacity == O.Clear]
+makeEntry opacity isDestPassing m name impArgs expArgs defaultArgs codType e = do
+  let makeAttr i = AttrL.normal' (Just $ DD.localLocator name) isDestPassing i codType
+  [Entry name $ \i -> m :< WT.PiIntro (makeAttr i) impArgs expArgs defaultArgs e | opacity == O.Clear]
 
 insertMany :: Handle -> Gensym.Handle -> [Entry] -> IO ()
 insertMany h gensymHandle entries = do

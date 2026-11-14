@@ -175,7 +175,9 @@ requireBranchAgreement h = do
 raiseTypelessBranch :: Handle -> BranchAgreement.Obligation -> DD.DefiniteDescription -> App ()
 raiseTypelessBranch h obligation dd = do
   raiseError (BranchAgreement.obligationHint obligation) $
-    "A name without a type cannot be supplied by a conditional import: `" <> ModulePath.renderDD (modulePathMap h) dd <> "`"
+    "A name without a type cannot be supplied by a conditional import: `"
+      <> ModulePath.renderDD (modulePathMap h) dd
+      <> "`"
 
 reportTrace :: Handle -> Report.TracePhase -> T.Text -> WeakStmt -> IO ()
 reportTrace h phase stage stmt = do
@@ -294,7 +296,17 @@ elaborateStmt h stmt = do
           defaultArgsForSelf <- forM defaultArgs' $ \(binder, value) -> do
             value' <- inline h m value
             return (binder, value')
-          liftIO $ Definition.insert' (defHandle h) x impArgs' expArgs' defaultArgsForSelf e' codType' mDefKind IntSet.empty
+          liftIO $
+            Definition.insert'
+              (defHandle h)
+              x
+              impArgs'
+              expArgs'
+              defaultArgsForSelf
+              e'
+              codType'
+              mDefKind
+              IntSet.empty
         _ ->
           return ()
       remarks <- do
@@ -302,10 +314,12 @@ elaborateStmt h stmt = do
         let dummyAttr = AttrL.Attr {lamKind = LK.Normal Nothing False codType', identity = 0}
         EnsureAffinity.ensureAffinity affHandle $ m :< TM.PiIntro dummyAttr impArgs' expArgs' defaultArgs' e'
       usesEmbed <- liftIO $ S.member x <$> readIORef (embeddingDefs h)
+      let traceEnabled = shouldTraceDefinition mDefKind || usesEmbed
+      let allBinders = impArgs' ++ expArgs' ++ map fst defaultArgs'
       (impArgs'', defaultArgs'', expArgs'', codType'', e'') <- withFreshSpecializationTable h $ do
         e'' <-
           if not $ SK.isMacroStmtKind stmtKind
-            then inlineDefinition h m (shouldTraceDefinition mDefKind || usesEmbed) (impArgs' ++ expArgs' ++ map fst defaultArgs') e'
+            then inlineDefinition h m traceEnabled allBinders e'
             else return e'
         impArgs'' <- mapM (inlineBinder h) impArgs'
         defaultArgs'' <- forM defaultArgs' $ \(binder, value) -> do
@@ -315,7 +329,8 @@ elaborateStmt h stmt = do
         expArgs'' <- mapM (inlineBinder h) expArgs'
         codType'' <- inlineType h m codType'
         return (impArgs'', defaultArgs'', expArgs'', codType'', e'')
-      (eFinal, traceSiteIDs) <- liftIO $ prepareDefinitionTrace (Global.termTraceHandle $ globalHandle h) mDefKind e''
+      (eFinal, traceSiteIDs) <-
+        liftIO $ prepareDefinitionTrace (Global.termTraceHandle $ globalHandle h) mDefKind e''
       unless (SK.isMacroStmtKind stmtKind) $ do
         ensureEmbeddable h (toTextStmtKind stmtKind <> " " <> TraceSites.sourceLevelName x) eFinal
       when (isConstLike && not (isConstantMetaStmtKind stmtKind)) $ do
@@ -325,7 +340,8 @@ elaborateStmt h stmt = do
           reportConstantEvaluationFailure h x bodyHint blocker
       PublicSignature.checkStmt (globalHandle h) (Source.sourceModule $ currentSource h) $
         StmtDefine isConstLike stmtKind' (SavedHint m) x impArgs' expArgs' defaultArgs' codType' e'
-      let result = StmtDefine isConstLike stmtKind' (SavedHint m) x impArgs'' expArgs'' defaultArgs'' codType'' eFinal
+      let result =
+            StmtDefine isConstLike stmtKind' (SavedHint m) x impArgs'' expArgs'' defaultArgs'' codType'' eFinal
       register h $ makeRegistration (Just traceSiteIDs) result
       return ([result], remarks)
     WeakStmtDefineType isConstLike stmtKind m x impArgs expArgs defaultArgs codType body -> do
@@ -348,7 +364,8 @@ elaborateStmt h stmt = do
       body'' <- inlineType h m body'
       PublicSignature.checkStmt (globalHandle h) (Source.sourceModule $ currentSource h) $
         StmtDefineType isConstLike stmtKind' (SavedHint m) x impArgs' expArgs' defaultArgs' codType' body'
-      let result = StmtDefineType isConstLike stmtKind' (SavedHint m) x impArgs'' expArgs'' defaultArgs'' codType'' body''
+      let result =
+            StmtDefineType isConstLike stmtKind' (SavedHint m) x impArgs'' expArgs'' defaultArgs'' codType'' body''
       register h $ makeRegistration Nothing result
       return ([result], [])
     WeakStmtDefineResource m dd resourceID unitType discarder copier resourceSize -> do
@@ -440,7 +457,8 @@ elaborateDefineMeta h ownerName defineMeta = do
 
 reportConstantEvaluationFailure :: Handle -> DD.DefiniteDescription -> Hint -> TraceSites.Blocker -> App a
 reportConstantEvaluationFailure h constantName bodyHint blocker = do
-  traceBlock <- liftIO $ ElaborateTrace.renderFailureTrace h ("constant " <> TraceSites.sourceLevelName constantName) bodyHint blocker
+  let headLabel = "constant " <> TraceSites.sourceLevelName constantName
+  traceBlock <- liftIO $ ElaborateTrace.renderFailureTrace h headLabel bodyHint blocker
   raiseError bodyHint $
     "Expected a compile-time value, but got "
       <> TraceSites.describeBlocker blocker
@@ -577,14 +595,17 @@ makeTermRegistration knownTraceSiteIDs stmt =
   case stmt of
     StmtDefine isConstLike stmtKind (SavedHint m) f impArgs expArgs defaultArgs t e -> do
       let traceSiteIDs = fromMaybe (TraceSites.traceIDSet e) knownTraceSiteIDs
+      let piType = m :< TM.Pi (PK.fromStmtKind stmtKind isConstLike) impArgs expArgs (map fst defaultArgs) t
+      let defKind = stmtKindToDefKind stmtKind defaultArgs
       mempty
-        { typeEntries = [(f, weakenType $ m :< TM.Pi (PK.fromStmtKind stmtKind isConstLike) impArgs expArgs (map fst defaultArgs) t)],
-          definitionEntries = Definition.makeEntry f impArgs expArgs defaultArgs e t (stmtKindToDefKind stmtKind defaultArgs) traceSiteIDs
+        { typeEntries = [(f, weakenType piType)],
+          definitionEntries = Definition.makeEntry f impArgs expArgs defaultArgs e t defKind traceSiteIDs
         }
     StmtDefineType isConstLike stmtKind (SavedHint m) f impArgs expArgs defaultArgs t body -> do
       let allBinders = impArgs ++ expArgs ++ map fst defaultArgs
+      let piType = m :< TM.Pi (PK.Normal isConstLike) impArgs expArgs (map fst defaultArgs) t
       mempty
-        { typeEntries = [(f, weakenType $ m :< TM.Pi (PK.Normal isConstLike) impArgs expArgs (map fst defaultArgs) t)],
+        { typeEntries = [(f, weakenType piType)],
           dataInfoEntries = makeDataInfoEntries f stmtKind,
           typeDefEntries = TypeDef.makeEntry (SK.toOpacityType stmtKind) f allBinders body
         }
@@ -608,8 +629,10 @@ makeTermRegistration knownTraceSiteIDs stmt =
 makeWeakRegistration :: WeakStmt -> Registration
 makeWeakRegistration stmt = do
   case stmt of
-    WeakStmtDefineTerm _ stmtKind m f impArgs expArgs defaultArgs codType e ->
-      mempty {weakDefEntries = WeakDef.makeEntry (SK.toOpacityTerm stmtKind) (SK.isDestPassingStmtKind stmtKind) m f impArgs expArgs defaultArgs codType e}
+    WeakStmtDefineTerm _ stmtKind m f impArgs expArgs defaultArgs codType e -> do
+      let opacity = SK.toOpacityTerm stmtKind
+      let isDestPassing = SK.isDestPassingStmtKind stmtKind
+      mempty {weakDefEntries = WeakDef.makeEntry opacity isDestPassing m f impArgs expArgs defaultArgs codType e}
     WeakStmtDefineType _ stmtKind _ f impArgs expArgs defaultArgs _ body -> do
       let binders = impArgs ++ expArgs ++ map fst defaultArgs
       mempty
@@ -632,7 +655,10 @@ makeWeakRegistration stmt = do
     WeakStmtNamespace {} ->
       mempty
 
-makeDataInfoEntries :: DD.DefiniteDescription -> SK.StmtKindType t -> [(DD.DefiniteDescription, DI.DataInfo (BinderF t))]
+makeDataInfoEntries ::
+  DD.DefiniteDescription ->
+  SK.StmtKindType t ->
+  [(DD.DefiniteDescription, DI.DataInfo (BinderF t))]
 makeDataInfoEntries dataName stmtKind =
   case stmtKind of
     SK.Data _ dataArgs consInfoList _ ->
@@ -700,14 +726,17 @@ elaborateStmtKindType h stmtKind =
         consArgs'' <- mapM (inlineBinder h) consArgs'
         layouts <- forM (zip (DI.consArgHints consInfo) consArgs'') $ \(hint, binder) -> do
           resolveFieldLayout h hint binder
-        return (savedHint, consInfo {DI.consImpArgs = consImpArgs'', DI.consArgs = consArgs'', DI.consArgLayouts = layouts})
+        let consInfo' =
+              consInfo {DI.consImpArgs = consImpArgs'', DI.consArgs = consArgs'', DI.consArgLayouts = layouts}
+        return (savedHint, consInfo')
       return $ SK.Data dataName dataArgs'' consInfoList' isNominal
 
 resolveFieldLayout :: Handle -> DI.FieldHint -> BinderF TM.Type -> App CL.FieldStorage
 resolveFieldLayout h hint (m, _, _, t) =
   case hint of
-    DI.FieldAuto ->
-      CL.StoredDirect <$> StorageWidth.storageWidthOf (Global.dataHandle (globalHandle h)) (optDataHandle h) (termSubstHandle h) m t
+    DI.FieldAuto -> do
+      let globalDataHandle = Global.dataHandle (globalHandle h)
+      CL.StoredDirect <$> StorageWidth.storageWidthOf globalDataHandle (optDataHandle h) (termSubstHandle h) m t
     DI.FieldMixed mSized -> do
       result <- resolveMixedOrError h S.empty mSized t
       case result of
@@ -756,8 +785,9 @@ resolveMixedOrError h visited m ty =
           return $ Left $ "the resource `" <> showDD h dataName <> "`, whose size is not fixed"
         Nothing ->
           return $ Left $ "the resource `" <> showDD h dataName <> "`, whose size is not known"
-    _ :< TM.Pi {} ->
-      return $ Right $ StaticBytes (CL.cellByteSize $ DI.closureLayout (dataSizeOf h)) (DI.closureAlignment (dataSizeOf h))
+    _ :< TM.Pi {} -> do
+      let closureLayout = DI.closureLayout (dataSizeOf h)
+      return $ Right $ StaticBytes (CL.cellByteSize closureLayout) (DI.closureAlignment (dataSizeOf h))
     _ :< TM.Tau ->
       cannotMixFieldType "the type universe"
     _ :< TM.TVar x -> do
@@ -973,7 +1003,8 @@ elaborate' h term = do
               let (vArgs, vTypes) = unzip varArgs
               vArgs' <- mapM (elaborate' h) vArgs
               vTypes' <- mapM (strictifyForeignType h name variadicPrimTypes) vTypes
-              return $ m :< TM.Magic noTrace (M.LowMagic $ LM.External domList' cod' name args' (zip vArgs' vTypes'))
+              let varArgs' = zip vArgs' vTypes'
+              return $ m :< TM.Magic noTrace (M.LowMagic $ LM.External domList' cod' name args' varArgs')
             LM.Cast from to value -> do
               from' <- elaborateType h from
               to' <- elaborateType h to
@@ -1498,7 +1529,14 @@ elaborateDecisionTree h ctx mOrig m tree =
                   clauseList' <- mapM (elaborateClause h mOrig cursor cursorType' ctx) clauseList
                   return $ DT.Switch (cursor, cursorType') (fallbackClause', clauseList')
 
-elaborateClause :: Handle -> Hint -> Ident -> TM.Type -> ClauseContext -> DT.Case WT.WeakType WT.WeakTerm -> App (DT.Case TM.Type TM.Term)
+elaborateClause ::
+  Handle ->
+  Hint ->
+  Ident ->
+  TM.Type ->
+  ClauseContext ->
+  DT.Case WT.WeakType WT.WeakTerm ->
+  App (DT.Case TM.Type TM.Term)
 elaborateClause h mOrig cursor cursorType ctx decisionCase = do
   case decisionCase of
     DT.LiteralCase mPat literal cont -> do

@@ -160,7 +160,8 @@ inferDefineMeta h defineMeta = do
       _ :< WT.Pi _ impParams expParams defaultParams cod -> do
         unless (null defaultParams) $ do
           raiseError m "The target of a `define-meta` in a `trope` cannot have default arguments"
-        ensureImplicitArityCorrectness h (m :< WT.VarGlobal (AttrVG.new AN.zero) (weakDefineMetaTarget defineMeta)) (length impParams) (length targetArgs')
+        let targetVar = m :< WT.VarGlobal (AttrVG.new AN.zero) (weakDefineMetaTarget defineMeta)
+        ensureImplicitArityCorrectness h targetVar (length impParams) (length targetArgs')
         targetArgsWithKinds <- mapM (inferTypeWithKind h) targetArgs'
         subType <- inferArgsTypes h IntMap.empty m targetArgsWithKinds impParams
         requireAttrsForInstantiation h m impParams targetArgs'
@@ -248,7 +249,14 @@ inferStmtKindType h stmtKind =
         return (savedHint, consInfo {DI.consImpArgs = consImpArgs', DI.consArgs = consArgs'})
       return $ SK.Data dataName dataArgs' consInfoList' isNominal
 
-makeWeakCoreType :: Hint -> MID.ModuleID -> SL.SourceLocator -> BN.BaseName -> AN.ArgNum -> [WT.WeakType] -> WT.WeakType
+makeWeakCoreType ::
+  Hint ->
+  MID.ModuleID ->
+  SL.SourceLocator ->
+  BN.BaseName ->
+  AN.ArgNum ->
+  [WT.WeakType] ->
+  WT.WeakType
 makeWeakCoreType m moduleID sourceLocator baseName argNum args = do
   let sgl = SGL.new moduleID sourceLocator
   let typeName = DD.newByGlobalLocator sgl baseName
@@ -267,7 +275,11 @@ makeWeakPairType m moduleID leftType rightType =
 makeWeakCodeVariableType :: Hint -> MID.ModuleID -> WT.WeakType
 makeWeakCodeVariableType m moduleID = do
   let codeVariableTypeDD = DD.newByGlobalLocator (SGL.new moduleID SL.codeLocator) BN.codeVariableType
-  m :< WT.TyApp (m :< WT.TVarGlobal (AttrVG.Attr {argNum = AN.zero, isConstLike = True, isDestPassing = False}) codeVariableTypeDD) []
+  m :< WT.TyApp (m :< WT.TVarGlobal constLikeTypeAttr codeVariableTypeDD) []
+
+constLikeTypeAttr :: AttrVG.Attr
+constLikeTypeAttr =
+  AttrVG.Attr {argNum = AN.zero, isConstLike = True, isDestPassing = False}
 
 getMainUnitType :: SK.StmtKindTerm WT.WeakType -> Maybe WT.WeakType
 getMainUnitType stmtKind =
@@ -479,7 +491,7 @@ infer h term =
           typeExpr2' <- inferType h typeExpr2
           let boolSGL = SGL.new moduleID SL.boolLocator
           let boolTypeDD = DD.newByGlobalLocator boolSGL BN.boolType
-          let boolTypeVar = m :< WT.TVarGlobal (AttrVG.Attr {argNum = AN.zero, isConstLike = True, isDestPassing = False}) boolTypeDD
+          let boolTypeVar = m :< WT.TVarGlobal constLikeTypeAttr boolTypeDD
           let boolType = m :< WT.TyApp boolTypeVar []
           return (m :< WT.Magic (M.WeakMagic $ M.EqType moduleID typeExpr1' typeExpr2'), boolType)
         M.ShowType typeExpr -> do
@@ -497,9 +509,10 @@ infer h term =
           let eitherTypeDD = DD.newByGlobalLocator eitherSGL BN.eitherType
           let unitTypeDD = DD.newByGlobalLocator unitSGL BN.unitType
           let pairTypeDD = DD.newByGlobalLocator pairSGL BN.pairType
-          let eitherTypeVar = m :< WT.TVarGlobal (AttrVG.Attr {argNum = AN.fromInt 2, isConstLike = False, isDestPassing = False}) eitherTypeDD
-          let unitTypeVar = m :< WT.TVarGlobal (AttrVG.Attr {argNum = AN.zero, isConstLike = True, isDestPassing = False}) unitTypeDD
-          let pairTypeVar = m :< WT.TVarGlobal (AttrVG.Attr {argNum = AN.fromInt 2, isConstLike = False, isDestPassing = False}) pairTypeDD
+          let binaryTypeAttr = AttrVG.new (AN.fromInt 2)
+          let eitherTypeVar = m :< WT.TVarGlobal binaryTypeAttr eitherTypeDD
+          let unitTypeVar = m :< WT.TVarGlobal constLikeTypeAttr unitTypeDD
+          let pairTypeVar = m :< WT.TVarGlobal binaryTypeAttr pairTypeDD
           let runeType = m :< WT.PrimType PT.Rune
           let textType' = m :< WT.PrimType PT.Text
           let pairType = m :< WT.TyApp pairTypeVar [runeType, textType']
@@ -511,7 +524,8 @@ infer h term =
           let fallbackType = m :< WT.Code hole
           key' <- check h key (m :< WT.Code intType)
           fallback' <- check h fallback fallbackType
-          clauses' <- check h clauses $ makeWeakListType m moduleID (makeWeakPairType m moduleID intType fallbackType)
+          let clauseType = makeWeakPairType m moduleID intType fallbackType
+          clauses' <- check h clauses $ makeWeakListType m moduleID clauseType
           return (m :< WT.Magic (M.WeakMagic $ M.MakeSwitch moduleID key' fallback' clauses'), fallbackType)
         M.FreeVariables moduleID code -> do
           hole <- liftIO $ newTypeHole h m (varEnv h)
@@ -597,7 +611,13 @@ check h term expected =
       liftIO $ Constraint.insert (constraintHandle h) expected t
       return term'
 
-checkContent :: Handle -> Hint -> (WT.WeakType -> WT.WeakType) -> WT.WeakType -> WT.WeakTerm -> App (WT.WeakTerm, WT.WeakType)
+checkContent ::
+  Handle ->
+  Hint ->
+  (WT.WeakType -> WT.WeakType) ->
+  WT.WeakType ->
+  WT.WeakTerm ->
+  App (WT.WeakTerm, WT.WeakType)
 checkContent h m wrap expected e = do
   t <- liftIO $ newTypeHole h m (varEnv h)
   liftIO $ Constraint.insert (constraintHandle h) expected (wrap t)
@@ -630,7 +650,8 @@ expandPiElimExact h m e = do
       let attr = AttrL.Attr {lamKind = LK.Normal Nothing isDestPassing codType', identity = lamID}
       let sourceArgs = map (\(_, k, _, _) -> VK.isSource k) expArgs'
       let spec = CCS.AsMarked isDestPassing sourceArgs
-      return $ m :< WT.PiIntro attr [] expArgs' [] (m :< WT.PiElim spec e' (ImpArgs.FullySpecified impArgs') expArgs'' (DefaultArgs.ByKey []))
+      let body = m :< WT.PiElim spec e' (ImpArgs.FullySpecified impArgs') expArgs'' (DefaultArgs.ByKey [])
+      return $ m :< WT.PiIntro attr [] expArgs' [] body
     _ ->
       raiseError m $ "Expected a function type, but got: " <> toTextTypeInMessage t'
 
@@ -647,7 +668,12 @@ inferBoxElimHead ::
   BinderF WT.WeakType ->
   WT.WeakTerm ->
   [(BinderF WT.WeakType, WT.WeakTerm)] ->
-  App ([(BinderF WT.WeakType, WT.WeakTerm)], BinderF WT.WeakType, WT.WeakTerm, [(BinderF WT.WeakType, WT.WeakTerm)])
+  App
+    ( [(BinderF WT.WeakType, WT.WeakTerm)],
+      BinderF WT.WeakType,
+      WT.WeakTerm,
+      [(BinderF WT.WeakType, WT.WeakTerm)]
+    )
 inferBoxElimHead h castSeq mxt e1 uncastSeq = do
   castSeq' <- inferQuoteSeq h castSeq ToNoema
   mxt'@(mx, _, _, t1) <- inferBinder1 h mxt
@@ -891,7 +917,11 @@ inferBinder1 h (mx, k, x, t) = do
   liftIO $ WeakType.insert (weakTypeHandle h) x t'
   return (mx, k, x, t')
 
-inferQuoteSeq :: Handle -> [(BinderF WT.WeakType, WT.WeakTerm)] -> CastDirection -> App [(BinderF WT.WeakType, WT.WeakTerm)]
+inferQuoteSeq ::
+  Handle ->
+  [(BinderF WT.WeakType, WT.WeakTerm)] ->
+  CastDirection ->
+  App [(BinderF WT.WeakType, WT.WeakTerm)]
 inferQuoteSeq h letSeq castDirection = do
   let (xts, es) = unzip letSeq
   xts' <- inferBinder'' h xts
@@ -977,7 +1007,8 @@ inferPiElim h m expected (e, t) impArgs defaultArgsSpec expArgs sourceArgs isDes
           check h override tParam'
       let defaultArgsAligned = DefaultArgs.Aligned defaultArgsOverrides'
       let conv = CC.withArguments argumentConventions $ mkKind (m :< cod')
-      return (m :< WT.PiElim (CCS.Resolved conv) e (ImpArgs.FullySpecified impArgs') expArgs' defaultArgsAligned, m :< cod')
+      let elim = WT.PiElim (CCS.Resolved conv) e (ImpArgs.FullySpecified impArgs') expArgs' defaultArgsAligned
+      return (m :< elim, m :< cod')
 
 sourceArgumentConvention :: BinderF WT.WeakType -> CC.Argument WT.WeakType
 sourceArgumentConvention (_, k, _, slotType) =
@@ -1080,7 +1111,12 @@ checkDecisionTree m h answerType tree =
       fallbackClause' <- checkDecisionTree m h answerType fallbackClause
       return $ DT.Switch (cursor, cursorType) (fallbackClause', clauseList')
 
-checkClause :: Handle -> WT.WeakType -> WT.WeakType -> DT.Case WT.WeakType WT.WeakTerm -> App (DT.Case WT.WeakType WT.WeakTerm)
+checkClause ::
+  Handle ->
+  WT.WeakType ->
+  WT.WeakType ->
+  DT.Case WT.WeakType WT.WeakTerm ->
+  App (DT.Case WT.WeakType WT.WeakTerm)
 checkClause h cursorType answerType decisionCase =
   case decisionCase of
     DT.LiteralCase mPat literal cont -> do
@@ -1103,7 +1139,9 @@ checkClause h cursorType answerType decisionCase =
       let attr = AttrVG.Attr {..}
       let consImpTypes = map (\(mx, _, x, _) -> mx :< WT.TVar x) consImpArgs''
       let impArgs = ImpArgs.FullySpecified $ map fst typedDataArgs' ++ consImpTypes
-      consTerm@(_, consType) <- infer h' $ m :< WT.PiElim (CCS.AsMarked False []) (m :< WT.VarGlobal attr consDD) impArgs [] (DefaultArgs.ByKey [])
+      let consVar = m :< WT.VarGlobal attr consDD
+      let consApp = m :< WT.PiElim (CCS.AsMarked False []) consVar impArgs [] (DefaultArgs.ByKey [])
+      consTerm@(_, consType) <- infer h' consApp
       if isConstLike
         then liftIO $ Constraint.insert (constraintHandle h) cursorType consType
         else do
@@ -1121,14 +1159,21 @@ checkClause h cursorType answerType decisionCase =
               DT.cont = cont'
             }
 
-declareConsImpArgs :: Handle -> Hint -> DD.DefiniteDescription -> [WT.WeakType] -> [BinderF WT.WeakType] -> App [BinderF WT.WeakType]
+declareConsImpArgs ::
+  Handle ->
+  Hint ->
+  DD.DefiniteDescription ->
+  [WT.WeakType] ->
+  [BinderF WT.WeakType] ->
+  App [BinderF WT.WeakType]
 declareConsImpArgs h m consDD dataTypes consImpArgs = do
   consType <- Type.lookup' (typeHandle h) m consDD
   case consType of
     _ :< WT.Pi _ impArgs _ _ _ -> do
       let (dataBinders, declaredConsImpArgs) = splitAt (length dataTypes) impArgs
       let dataSub = zipWith (\(_, _, x, _) t -> (Ident.toInt x, Type t)) dataBinders dataTypes
-      let consImpSub = zipWith (\(_, _, y, _) (mx, _, x, _) -> (Ident.toInt y, Type (mx :< WT.TVar x))) declaredConsImpArgs consImpArgs
+      let consImpTypes = map (\(mx, _, x, _) -> mx :< WT.TVar x) consImpArgs
+      let consImpSub = zipWith (\(_, _, y, _) t -> (Ident.toInt y, Type t)) declaredConsImpArgs consImpTypes
       let sub = IntMap.fromList $ dataSub ++ consImpSub
       forM (zip consImpArgs declaredConsImpArgs) $ \((mx, _, x, _), (_, k, _, t)) -> do
         t' <- liftIO $ Subst.substType (substHandle h) sub t

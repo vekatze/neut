@@ -81,7 +81,8 @@ getReferences (ReferenceLog referencesRef) =
 addConstructorOwners :: Handle -> TopLevelReferences -> IO TopLevelReferences
 addConstructorOwners h references = do
   constructorOwnerMap <- readIORef (constructorOwnerMapRef h)
-  let withOwners targets = S.union targets $ S.fromList $ mapMaybe (`Map.lookup` constructorOwnerMap) $ S.toList targets
+  let withOwners targets =
+        S.union targets $ S.fromList $ mapMaybe (`Map.lookup` constructorOwnerMap) $ S.toList targets
   return $
     TopLevelReferences
       { referenceMap = OrdMap.map withOwners (referenceMap references),
@@ -109,7 +110,8 @@ isInMainModule dd = do
 flushRemarks :: ModulePath.ModulePathMap -> Handle -> IO [L.Log]
 flushRemarks modulePathMap h = do
   unusedTopLevelNameMap <- readIORef (unusedTopLevelNameMapRef h)
-  TopLevelReferences {referenceMap, externalReferenceSet = recordedExternalReferenceSet} <- readIORef (referencesRef h)
+  TopLevelReferences {referenceMap, externalReferenceSet = recordedExternalReferenceSet} <-
+    readIORef (referencesRef h)
   let externalReferenceList = filter (isExternalReference unusedTopLevelNameMap) $ OrdMap.toList referenceMap
   let derivedExternalReferenceSet = S.unions $ map snd externalReferenceList
   let externalReferenceSet = S.union recordedExternalReferenceSet derivedExternalReferenceSet

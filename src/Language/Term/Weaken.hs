@@ -152,8 +152,11 @@ weakenType ty =
       m :< WT.TVarGlobal g argNum
     m :< TM.TyApp t args ->
       m :< WT.TyApp (weakenType t) (map weakenType args)
-    m :< TM.Pi piKind impArgs expArgs defaultArgs t ->
-      m :< WT.Pi piKind (map weakenTypeBinder impArgs) (map weakenTypeBinder expArgs) (map weakenTypeBinder defaultArgs) (weakenType t)
+    m :< TM.Pi piKind impArgs expArgs defaultArgs t -> do
+      let impArgs' = map weakenTypeBinder impArgs
+      let expArgs' = map weakenTypeBinder expArgs
+      let defaultArgs' = map weakenTypeBinder defaultArgs
+      m :< WT.Pi piKind impArgs' expArgs' defaultArgs' (weakenType t)
     m :< TM.Data attr name es -> do
       let es' = map weakenType es
       m :< WT.Data attr name es'

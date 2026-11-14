@@ -410,7 +410,11 @@ substVar sub x =
     _ ->
       x
 
-substMagic :: Handle -> Subst -> WeakMagic WT.WeakType WT.WeakType WT.WeakTerm -> IO (WeakMagic WT.WeakType WT.WeakType WT.WeakTerm)
+substMagic ::
+  Handle ->
+  Subst ->
+  WeakMagic WT.WeakType WT.WeakType WT.WeakTerm ->
+  IO (WeakMagic WT.WeakType WT.WeakType WT.WeakTerm)
 substMagic h sub (WeakMagic magic) = do
   magic' <- case magic of
     M.LowMagic lowMagic -> do
@@ -475,7 +479,11 @@ substMagic h sub (WeakMagic magic) = do
       return M.GetOriginColumn
   return $ WeakMagic magic'
 
-substLowMagic :: Handle -> Subst -> LM.LowMagic WT.WeakType WT.WeakType WT.WeakTerm -> IO (LM.LowMagic WT.WeakType WT.WeakType WT.WeakTerm)
+substLowMagic ::
+  Handle ->
+  Subst ->
+  LM.LowMagic WT.WeakType WT.WeakType WT.WeakTerm ->
+  IO (LM.LowMagic WT.WeakType WT.WeakType WT.WeakTerm)
 substLowMagic h sub lowMagic =
   case lowMagic of
     LM.Cast from to value -> do

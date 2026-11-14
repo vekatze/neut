@@ -140,7 +140,8 @@ normalizeStagingFileNameChar char
 flushObjects :: Handle -> App ()
 flushObjects h = do
   pendingObjectList <- liftIO $ readIORef (pendingObjectListRef h)
-  let objectMap = Map.fromListWith (<>) $ map (\object -> (additionalClangOptions object, [object])) pendingObjectList
+  let objectEntries = map (\object -> (additionalClangOptions object, [object])) pendingObjectList
+  let objectMap = Map.fromListWith (<>) objectEntries
   forM_ (Map.toList objectMap) $ \(clangOptions, objectList) -> do
     let batchSize = max 1 $ ceilingDiv (length objectList) (numCapabilities h)
     forP_ (chunksOf batchSize objectList) $ compileObjectBatch h clangOptions

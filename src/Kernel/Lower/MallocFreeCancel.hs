@@ -101,9 +101,10 @@ analyze roots lowComp =
       case op of
         LC.Alloc _ allocID ->
           case lookupFree state (rootOf roots x) of
-            Just freeIDs ->
+            Just freeIDs -> do
               let allocIDs = IntSet.singleton allocID
-               in (axis <> Axis {allocCanceller = allocIDs, freeCanceller = newFreeCanceller allocIDs freeIDs}, state)
+              let cancelAxis = Axis {allocCanceller = allocIDs, freeCanceller = newFreeCanceller allocIDs freeIDs}
+              (axis <> cancelAxis, state)
             Nothing ->
               (axis, state)
         _ ->
@@ -111,8 +112,9 @@ analyze roots lowComp =
     LC.Cont op cont -> do
       let (axis, state) = analyze roots cont
       case op of
-        LC.Free (LC.VarLocal ptr) _ freeID ->
-          (axis, state {freeByRoot = IntMap.insert (rootOf roots ptr) (IntSet.singleton freeID) (freeByRoot state)})
+        LC.Free (LC.VarLocal ptr) _ freeID -> do
+          let freeByRoot' = IntMap.insert (rootOf roots ptr) (IntSet.singleton freeID) (freeByRoot state)
+          (axis, state {freeByRoot = freeByRoot'})
         _ ->
           (axis, state)
     LC.Switch _ _ defaultBranch ces phiTargets cont -> do

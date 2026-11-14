@@ -96,7 +96,15 @@ prettyMsg l =
 
 withGlobalHandle :: LspState -> Lsp () () -> (Global.Handle -> Lsp () ()) -> Lsp () ()
 withGlobalHandle lspState defaultAction cont = do
-  vOrErr <- liftIO $ Global.newOrError (Util.consoleHandle lspState) (Util.loggerHandle lspState) (Util.localArchiveMap lspState) (Util.reuseHandle lspState) Nothing Nothing
+  vOrErr <-
+    liftIO $
+      Global.newOrError
+        (Util.consoleHandle lspState)
+        (Util.loggerHandle lspState)
+        (Util.localArchiveMap lspState)
+        (Util.reuseHandle lspState)
+        Nothing
+        Nothing
   case vOrErr of
     Left (E.MakeError errors) -> do
       report lspState errors
@@ -116,7 +124,9 @@ startLint lspState uri = do
   env <- getLspEnv
   liftIO $ LintWorker.restart (Util.lintWorker lspState) $ do
     runLspT env (Lint.lint lspState uri) `catchAny` \e ->
-      runLspT env $ sendNotification SMethod_WindowLogMessage $ LogMessageParams MessageType_Error (T.pack $ displayException e)
+      runLspT env $
+        sendNotification SMethod_WindowLogMessage $
+          LogMessageParams MessageType_Error (T.pack $ displayException e)
 
 mapDefinitionLinkFromStore :: DocumentStateStore.DocumentStateStore -> DefinitionLink -> Lsp () (Maybe DefinitionLink)
 mapDefinitionLinkFromStore documentStateStore loc@(DefinitionLink (LocationLink {_targetUri})) = do
@@ -219,8 +229,9 @@ handlers lspState = do
                 case highlightsOrNone of
                   Nothing ->
                     responder $ Right $ InR Null
-                  Just highlights ->
-                    responder $ Right $ InL $ List $ DocumentState.mapHighlights documentState (req ^. J.params . J.position) highlights,
+                  Just highlights -> do
+                    let pos = req ^. J.params . J.position
+                    responder $ Right $ InL $ List $ DocumentState.mapHighlights documentState pos highlights,
       requestHandler SMethod_TextDocumentReferences $ \req responder -> do
         let uri = req ^. J.params . J.textDocument . J.uri
         whenAnswerable lspState uri (responder $ Right $ InR Null) $ do

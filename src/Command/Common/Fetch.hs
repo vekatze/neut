@@ -90,16 +90,17 @@ tidy h deps = do
 insertDependency :: Handle -> T.Text -> ModuleURL -> App ()
 insertDependency h aliasName url = do
   aliasName' <- liftEither (BN.reflect' aliasName)
-  when (T.null (BN.reify aliasName')) $ do
+  let aliasText = BN.reify aliasName'
+  when (T.null aliasText) $ do
     raiseError' "The alias of a module must not be empty"
-  when (T.any (`S.member` CP.nonSymbolCharSet) (BN.reify aliasName')) $ do
-    raiseError' $ "Invalid alias of a module: " <> BN.reify aliasName'
-  when (isNumericLike (BN.reify aliasName')) $ do
-    raiseError' $ "`" <> BN.reify aliasName' <> "` reads as a numeric literal and cannot be used as an alias of a module"
+  when (T.any (`S.member` CP.nonSymbolCharSet) aliasText) $ do
+    raiseError' $ "Invalid alias of a module: " <> aliasText
+  when (isNumericLike aliasText) $ do
+    raiseError' $ "`" <> aliasText <> "` reads as a numeric literal and cannot be used as an alias of a module"
   when (isCapitalized aliasName') $ do
-    raiseError' $ "Module aliases must not be capitalized, but found: " <> BN.reify aliasName'
+    raiseError' $ "Module aliases must not be capitalized, but found: " <> aliasText
   when (S.member aliasName' BN.reservedAlias) $ do
-    raiseError' $ "The reserved name `" <> BN.reify aliasName' <> "` cannot be used as an alias of a module"
+    raiseError' $ "The reserved name `" <> aliasText <> "` cannot be used as an alias of a module"
   let alias = ModuleAlias aliasName'
   withSystemTempFile "fetch" $ \tempFilePath tempFileHandle -> do
     download h tempFilePath alias [url]
@@ -120,7 +121,9 @@ insertDependency h aliasName url = do
                     liftIO $ printInstallationRemark h alias digest
                     installModule' h tempFilePath alias digest >>= fetchDeps h
               else do
-                liftIO $ Logger.printNote' (loggerHandle h) $ "Adding a mirror of `" <> BN.reify (extract alias) <> "`"
+                liftIO $
+                  Logger.printNote' (loggerHandle h) $
+                    "Adding a mirror of `" <> BN.reify (extract alias) <> "`"
                 let dep' = dep {M.dependencyMirrorList = url : M.dependencyMirrorList dep}
                 addDependencyToModuleFile h alias dep'
           else do

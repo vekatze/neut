@@ -116,7 +116,11 @@ resolveTarget m platformPattern host =
     Just target ->
       return target
     Nothing ->
-      raiseError m $ "The platform pattern does not determine a platform on " <> P.reifyName host <> ": " <> PP.reify platformPattern
+      raiseError m $
+        "The platform pattern does not determine a platform on "
+          <> P.reifyName host
+          <> ": "
+          <> PP.reify platformPattern
 
 ensureBuildable :: Handle -> App ()
 ensureBuildable h =

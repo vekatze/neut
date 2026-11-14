@@ -138,15 +138,16 @@ activateImportedName h currentGlobalLocator topNameMap mustUpdateTag sgl mImport
   (mDef, _tag, gn) <- ensureImportedNameIsAvailable currentGlobalLocator topNameMap sgl mImportAlias ll
   when mustUpdateTag $ do
     let len = T.length $ BN.reify importAlias
+    let tagHandle = _tagHandle h
     case (gn, explicitAliasOrNone) of
       (GN.Namespace, Just _) -> do
-        liftIO $ Tag.insertNamespaceView (_tagHandle h) mImportAlias (BN.reify importAlias) mImportAlias mImportedName
+        liftIO $ Tag.insertNamespaceView tagHandle mImportAlias (BN.reify importAlias) mImportAlias mImportedName
         let importedLen = T.length $ LL.reify ll
-        liftIO $ Tag.insertLocator (_tagHandle h) mImportedName dd (GN.getIsConstLike gn) importedLen mDef
+        liftIO $ Tag.insertLocator tagHandle mImportedName dd (GN.getIsConstLike gn) importedLen mDef
       _ -> do
-        liftIO $ Tag.insertLocator (_tagHandle h) mImportAlias dd (GN.getIsConstLike gn) len mImportedName
+        liftIO $ Tag.insertLocator tagHandle mImportAlias dd (GN.getIsConstLike gn) len mImportedName
         let importedLen = T.length $ LL.reify ll
-        liftIO $ Tag.insertLocator (_tagHandle h) mImportedName dd (GN.getIsConstLike gn) importedLen mDef
+        liftIO $ Tag.insertLocator tagHandle mImportedName dd (GN.getIsConstLike gn) importedLen mDef
   importEnv <- liftIO $ readIORef (_importEnvRef h)
   case Map.lookup importAlias importEnv of
     Just (ImportedName existingDD _)
@@ -164,10 +165,19 @@ activateImportedName h currentGlobalLocator topNameMap mustUpdateTag sgl mImport
       raiseError mImportAlias $
         "The import alias `" <> BN.reify importAlias <> "` is already used for a namespace view"
     _ ->
-      liftIO $ modifyIORef' (_importEnvRef h) $ Map.insert importAlias (ImportedName dd (fst <$> explicitAliasOrNone))
+      liftIO $
+        modifyIORef' (_importEnvRef h) $
+          Map.insert importAlias (ImportedName dd (fst <$> explicitAliasOrNone))
 
 -- registers a namespace view under an import alias chosen by the importing file
-activateNamespaceView :: Handle -> Source.Source -> MustUpdateTag -> Hint -> BN.BaseName -> SGL.StrictGlobalLocator -> App ()
+activateNamespaceView ::
+  Handle ->
+  Source.Source ->
+  MustUpdateTag ->
+  Hint ->
+  BN.BaseName ->
+  SGL.StrictGlobalLocator ->
+  App ()
 activateNamespaceView h currentSource mustUpdateTag mImportAlias importAlias sgl = do
   when mustUpdateTag $
     liftIO $
@@ -240,13 +250,15 @@ constructGlobalLocator source = do
 
 getSourceLocator :: Source.Source -> App SL.SourceLocator
 getSourceLocator source = do
-  relFilePath <- stripProperPrefix (Module.getSourceDir $ Source.sourceModule source) $ Source.sourceFilePath source
+  let sourceDir = Module.getSourceDir $ Source.sourceModule source
+  relFilePath <- stripProperPrefix sourceDir $ Source.sourceFilePath source
   relFilePath' <- removeExtension relFilePath
   case SL.fromPath relFilePath' of
     Just sourceLocator ->
       return sourceLocator
     Nothing ->
-      raiseError' $ "The source path `" <> T.pack (toFilePath relFilePath) <> "` contains the reserved segment `this`"
+      raiseError' $
+        "The source path `" <> T.pack (toFilePath relFilePath) <> "` contains the reserved segment `this`"
 
 removeExtension :: Path a File -> App (Path a File)
 removeExtension path =

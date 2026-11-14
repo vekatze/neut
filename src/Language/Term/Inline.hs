@@ -339,7 +339,9 @@ substitutePendingValues h e = do
           let usedTerms = IntMap.elems $ IntMap.restrictKeys (pendingTerms h) free
           let usedTypes = IntMap.elems $ IntMap.restrictKeys (pendingTypes h) free
           let used = map pendingSerial usedTerms ++ map pendingSerial usedTypes
-          let allSerials = map pendingSerial (IntMap.elems (pendingTerms h)) ++ map pendingSerial (IntMap.elems (pendingTypes h))
+          let allSerials =
+                map pendingSerial (IntMap.elems (pendingTerms h))
+                  ++ map pendingSerial (IntMap.elems (pendingTypes h))
           let candidates = if null used then allSerials else used
           recordPendingUse h $ minimum candidates
           return e'
@@ -419,7 +421,8 @@ inlineNormal h term = do
         if isAltered
           then liftIO $ Gensym.newCount (gensymHandle h)
           else return $ AttrL.identity attr
-      return $ asValue $ m :< TM.PiIntro (AttrL.Attr {lamKind = lamKind', identity}) impArgs' expArgs' defaultArgs' e'
+      let attr' = AttrL.Attr {lamKind = lamKind', identity}
+      return $ asValue $ m :< TM.PiIntro attr' impArgs' expArgs' defaultArgs' e'
     m :< TM.PiElim callTraceID conv e impArgs expArgs defaultArgs -> do
       conv' <- CC.traverseTypes (inlineType' h) conv
       e' <- inline' h e
@@ -431,7 +434,9 @@ inlineNormal h term = do
       localDefMap <- liftIO $ readIORef (localMetaDefMap h)
       let residual = m :< TM.PiElim callTraceID conv' e' impArgs' expArgs' defaultArgs'
       let reduceApplication mDefaultCallee impParams expBinders defDefaults canReduce reduce =
-            if length impParams /= length impArgs' || length expBinders /= length expArgs' || length defDefaults /= length defaultArgs'
+            if length impParams /= length impArgs'
+              || length expBinders /= length expArgs'
+              || length defDefaults /= length defaultArgs'
               then registerResidual h residual
               else do
                 let impIds = map (\(_, _, x, _) -> x) impParams
@@ -442,12 +447,14 @@ inlineNormal h term = do
                 let params = givenParams ++ defaultParams
                 if CC.isNoetic conv' || not canReduce
                   then
-                    if not (any isTakenFromDefinition defaultParams) || (hasNonValueSource params && not (isActive h))
+                    if not (any isTakenFromDefinition defaultParams)
+                      || (hasNonValueSource params && not (isActive h))
                       then registerResidual h residual
                       else do
                         bindParameters h subType defaultFrameCtx params $ \values _ -> do
                           let (expValues, defaultValues) = splitAt (length expArgs') (map normalTerm values)
-                          registerResidual h $ m :< TM.PiElim callTraceID conv' e' impArgs' expValues (map Just defaultValues)
+                          registerResidual h $
+                            m :< TM.PiElim callTraceID conv' e' impArgs' expValues (map Just defaultValues)
                   else reduce subType defaultFrameCtx params
       case e' of
         (_ :< TM.PiIntro attr@(AttrL.Attr {lamKind, identity}) impBinders expBinders defBinders body) -> do
@@ -458,7 +465,8 @@ inlineNormal h term = do
                 case mapM getGivenTerm params of
                   Just args -> do
                     (g, defInfo) <- registerLocalMeta h m identity attr impBinders expBinders defBinders body
-                    asNormal <$> specializeLocalMeta h m g subType impArgs' (map fst params) (defBody defInfo) (codType defInfo) args
+                    let DefInfo {defBody, codType} = defInfo
+                    asNormal <$> specializeLocalMeta h m g subType impArgs' (map fst params) defBody codType args
                   Nothing ->
                     registerResidual h residual
               else do
@@ -466,8 +474,14 @@ inlineNormal h term = do
                   then registerResidual h residual
                   else do
                     let paramIds = map (\((_, _, x, _), _) -> x) params
-                    bindParameters h subType Nothing params $ \values letBinders ->
-                      expand (withBinders letBinders $ withNormalized (zip paramIds values) $ withSelfValue lamKind e' $ withTypeSubst subType $ withoutPending h) body
+                    bindParameters h subType Nothing params $ \values letBinders -> do
+                      let hExpansion =
+                            withBinders letBinders $
+                              withNormalized (zip paramIds values) $
+                                withSelfValue lamKind e' $
+                                  withTypeSubst subType $
+                                    withoutPending h
+                      expand hExpansion body
         (mUse :< TM.VarGlobal _ dd)
           | Just defInfo <- Map.lookup dd dmap -> do
               let DefInfo {defImpBinders, defExpBinders, defDefaultArgs, defBody, codType, defKind, traceSiteIDs} = defInfo
@@ -490,8 +504,12 @@ inlineNormal h term = do
                         remapTrace <- prepareTraceRemapping h dd (toFrameKind defKind) traceSiteIDs m callTraceID
                         let hBody = instantiating remapTrace h
                         let paramIds = map (\((_, _, x, _), _) -> x) params
-                        tracer $ bindParameters h subType defaultFrameCtx params $ \values letBinders ->
-                          expand (withBinders letBinders $ withNormalized (zip paramIds values) $ withTypeSubst subType hBody) defBody
+                        tracer $ bindParameters h subType defaultFrameCtx params $ \values letBinders -> do
+                          let hExpansion =
+                                withBinders letBinders $
+                                  withNormalized (zip paramIds values) $
+                                    withTypeSubst subType hBody
+                          expand hExpansion defBody
           | Just defInfo <- Map.lookup dd localDefMap -> do
               let DefInfo {defImpBinders, defExpBinders, defDefaultArgs, defBody, codType} = defInfo
               reduceApplication Nothing defImpBinders defExpBinders defDefaultArgs True $ \subType _ params ->
@@ -697,7 +715,8 @@ reduceDataElim h m traceID isNoetic oets' decisionTree = do
                   let (consImpVars, newBaseCursorList, cont) = findClause discriminant fallbackTree caseList
                   let hTyped = withTypeValues (zip consImpVars consImpTypes) h
                   newCursorTypes <- mapM (inlineType' hTyped . snd) newBaseCursorList
-                  let newCursorList = zip3 (map fst newBaseCursorList) (map (asComponent e) consArgs) newCursorTypes
+                  let newCursorList =
+                        zip3 (map fst newBaseCursorList) (map (asComponent e) consArgs) newCursorTypes
                   continueDataElim (withNormalized [(cursor, e)] hTyped) m traceID isNoetic (oets'' ++ newCursorList) cont
             Just (e, oets'')
               | Just literal <- asLiteralTerm (normalTerm e) -> do
@@ -795,7 +814,10 @@ inlineType' h ty = do
     m :< TM.Resource dd resourceID -> do
       return $ m :< TM.Resource dd resourceID
 
-inlineLowMagic :: Handle -> LM.LowMagic BLT.BaseLowType TM.Type TM.Term -> App (LM.LowMagic BLT.BaseLowType TM.Type TM.Term)
+inlineLowMagic ::
+  Handle ->
+  LM.LowMagic BLT.BaseLowType TM.Type TM.Term ->
+  App (LM.LowMagic BLT.BaseLowType TM.Type TM.Term)
 inlineLowMagic h lowMagic =
   case lowMagic of
     LM.Cast from to value -> do
@@ -1050,7 +1072,9 @@ bindParameters' h hDefault subType defaultFrameCtx params values letBinders cont
           defaultValue' <- refreshDefaultValue h defaultFrameCtx subType defaultValue
           inlineNormal hDefault defaultValue'
       if isNormalValue e
-        then bindParameters' h (withNormalized [(x, e)] hDefault) subType defaultFrameCtx rest (e : values) letBinders cont
+        then do
+          let hDefault' = withNormalized [(x, e)] hDefault
+          bindParameters' h hDefault' subType defaultFrameCtx rest (e : values) letBinders cont
         else do
           t' <- liftIO (Subst.substType (substHandle h) subType t) >>= inlineType' (withoutPending h)
           v <- liftIO $ Sym.newIdentFromIdent (gensymHandle h) x
@@ -1084,7 +1108,8 @@ prepareTraceRemapping h dd frameKind traceSiteIDs callHint callTraceID = do
   if not (traceEnabled h) || IntSet.null traceSiteIDs
     then return Nothing
     else do
-      remapping <- liftIO $ TermTrace.registerExpansion (traceHandle h) dd callHint callTraceID frameKind traceSiteIDs
+      remapping <-
+        liftIO $ TermTrace.registerExpansion (traceHandle h) dd callHint callTraceID frameKind traceSiteIDs
       return $ Just remapping
 
 toFrameKind :: DefKind -> TermTrace.FrameKind
@@ -1269,11 +1294,16 @@ specializeLocalMeta h m dd subType impArgs' expParams body codType expArgsAll = 
       let hInner = (enterOpaqueDefineMetaBody h) {localMetaMemo = (dd, impArgs', specSelfId) : localMetaMemo h}
       body'' <- liftIO (Subst.refresh (substHandle h) body') >>= inline hInner
       lamID <- liftIO $ Gensym.newCount (gensymHandle h)
-      let fixAttr = AttrL.Attr {lamKind = LK.Fix LDK.Define False (m, VK.normal, specSelfId, codType'), identity = lamID}
+      let fixKind = LK.Fix LDK.Define False (m, VK.normal, specSelfId, codType')
+      let fixAttr = AttrL.Attr {lamKind = fixKind, identity = lamID}
       let fixLam = m :< TM.PiIntro fixAttr [] expParams' [] body''
       return $ m :< TM.PiElim noTrace CC.normal fixLam [] expArgsAll []
 
-lookupLocalMeta :: DD.DefiniteDescription -> [TM.Type] -> [(DD.DefiniteDescription, [TM.Type], Ident)] -> Maybe Ident
+lookupLocalMeta ::
+  DD.DefiniteDescription ->
+  [TM.Type] ->
+  [(DD.DefiniteDescription, [TM.Type], Ident)] ->
+  Maybe Ident
 lookupLocalMeta dd typeArgs memo =
   case memo of
     [] ->

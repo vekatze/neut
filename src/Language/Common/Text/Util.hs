@@ -138,20 +138,20 @@ showHexByte w =
     hex ->
       hex
 
+makeInvalidUtf8Message :: Int -> T.Text -> T.Text
+makeInvalidUtf8Message offset detail =
+  "Invalid UTF-8 byte sequence at byte offset " <> T.pack (show offset) <> ": " <> detail
+
 readContinuationByte :: Int -> [Word8] -> Either T.Text (Word8, [Word8])
 readContinuationByte offset ws = do
   case ws of
     [] ->
-      Left $ "Invalid UTF-8 byte sequence at byte offset " <> T.pack (show offset) <> ": unexpected end of string literal"
+      Left $ makeInvalidUtf8Message offset "unexpected end of string literal"
     w : rest
       | isContinuationByte w ->
           return (w, rest)
       | otherwise ->
-          Left $
-            "Invalid UTF-8 byte sequence at byte offset "
-              <> T.pack (show offset)
-              <> ": expected a continuation byte, but got "
-              <> formatByte w
+          Left $ makeInvalidUtf8Message offset $ "expected a continuation byte, but got " <> formatByte w
 
 readBoundedContinuationByte :: Int -> Word8 -> Word8 -> [Word8] -> Either T.Text [Word8]
 readBoundedContinuationByte offset lower upper ws = do
@@ -160,14 +160,13 @@ readBoundedContinuationByte offset lower upper ws = do
     then return rest
     else
       Left $
-        "Invalid UTF-8 byte sequence at byte offset "
-          <> T.pack (show offset)
-          <> ": expected a byte in "
-          <> formatByte lower
-          <> ".."
-          <> formatByte upper
-          <> ", but got "
-          <> formatByte w
+        makeInvalidUtf8Message offset $
+          "expected a byte in "
+            <> formatByte lower
+            <> ".."
+            <> formatByte upper
+            <> ", but got "
+            <> formatByte w
 
 consumeContinuationBytes :: Int -> Int -> [Word8] -> Either T.Text [Word8]
 consumeContinuationBytes offset count ws = do
@@ -214,11 +213,7 @@ validateUtf8Bytes' offset ws = do
           rest'' <- consumeContinuationBytes (offset + 2) 2 rest'
           validateUtf8Bytes' (offset + 4) rest''
       | otherwise ->
-          Left $
-            "Invalid UTF-8 byte sequence at byte offset "
-              <> T.pack (show offset)
-              <> ": invalid leading byte "
-              <> formatByte w
+          Left $ makeInvalidUtf8Message offset $ "invalid leading byte " <> formatByte w
 
 decodeUtf8Bytes :: BS.ByteString -> Either T.Text T.Text
 decodeUtf8Bytes bytes = do

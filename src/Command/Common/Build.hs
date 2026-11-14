@@ -144,20 +144,25 @@ buildMainTarget h target = do
 
 buildTarget :: Handle -> M.MainModule -> Target -> App ()
 buildTarget h (M.MainModule baseModule) target = do
-  liftIO $ Logger.report (Global.loggerHandle (globalHandle h)) $ "Building: " <> T.pack (show target)
+  reportDebug h $ "Building: " <> T.pack (show target)
   target' <- expandClangOptions h target
   discardStaleBuildDir h target' baseModule
-  liftIO $
-    Logger.report (Global.loggerHandle (globalHandle h)) $
-      "Build configuration: target=" <> T.pack (show target') <> ", outputs=" <> T.pack (show $ _outputKindList h) <> ", skip-link=" <> T.pack (show $ _shouldSkipLink h) <> ", execute=" <> T.pack (show $ _shouldExecute h)
+  reportDebug h $
+    "Build configuration: target="
+      <> T.pack (show target')
+      <> ", outputs="
+      <> T.pack (show $ _outputKindList h)
+      <> ", skip-link="
+      <> T.pack (show $ _shouldSkipLink h)
+      <> ", execute="
+      <> T.pack (show $ _shouldExecute h)
   startTime <- liftIO getCurrentTime
   unravelHandle <- liftIO $ Unravel.new (globalHandle h)
   Unravel.Result {..} <- Unravel.unravel unravelHandle baseModule target'
   let dependenceSeq = resultSourceList
   let liveSeq = filter (flip S.member resultLiveSourceSet . sourceFilePath) dependenceSeq
   sourceDependencyMap <- liftIO $ Unravel.getSourceDependencyMap unravelHandle dependenceSeq
-  let traceReport = Console.getTraceConfig $ Global.consoleHandle $ globalHandle h
-  traceConfig <- either raiseError' return $ Trace.new (Env.getMainModule $ Global.envHandle $ globalHandle h) traceReport
+  traceConfig <- newTraceConfig h
   moduleList <- Unravel.getModuleList unravelHandle liveSeq
   let getForeign = Platform.getForeign (Global.platformHandle (globalHandle h))
   let moduleForeignList = [(m, getForeign m) | m <- moduleList]
@@ -165,7 +170,16 @@ buildTarget h (M.MainModule baseModule) target = do
   let loadHandle = Load.new (globalHandle h)
   contentSeq <- Load.load loadHandle (Trace.isEnabled traceConfig) target' dependenceSeq
   withSystemTempDir "neut-object" $ \stagingDir -> do
-    compile h traceConfig target' (_outputKindList h) sourceDependencyMap resultLiveSourceSet contentSeq stagingDir startTime
+    compile
+      h
+      traceConfig
+      target'
+      (_outputKindList h)
+      sourceDependencyMap
+      resultLiveSourceSet
+      contentSeq
+      stagingDir
+      startTime
   liftIO $
     GlobalRemark.get (Global.globalRemarkHandle (globalHandle h))
       >>= Logger.printLogList (Global.loggerHandle (globalHandle h))
@@ -176,8 +190,17 @@ buildTarget h (M.MainModule baseModule) target = do
       return ()
     Main ct -> do
       let linkHandle = Link.new (globalHandle h)
-      transitiveLinkOption <- expandOptions (runProcessHandle h) $ nubOrd $ concatMap (M.transitiveLinkOption . snd) moduleForeignList
-      Link.link linkHandle ct (_shouldSkipLink h) didPerformForeignCompilation resultArtifactTime moduleForeignList transitiveLinkOption liveSeq
+      let declaredLinkOption = nubOrd $ concatMap (M.transitiveLinkOption . snd) moduleForeignList
+      transitiveLinkOption <- expandOptions (runProcessHandle h) declaredLinkOption
+      Link.link
+        linkHandle
+        ct
+        (_shouldSkipLink h)
+        didPerformForeignCompilation
+        resultArtifactTime
+        moduleForeignList
+        transitiveLinkOption
+        liveSeq
       execute h (_shouldExecute h) ct (_executeArgs h)
       install h (_installDir h) ct
 
@@ -203,7 +226,7 @@ compile h traceConfig target outputKindList sourceDependencyMap liveSourceSet co
           if shouldGenerateCode
             then "Scheduling code generation: " <> sourcePath
             else "Skipping code generation: " <> sourcePath <> " (requested outputs are fresh)"
-    liftIO $ Logger.report (Global.loggerHandle (globalHandle h)) message
+    reportDebug h message
   c <- getEntryPointCompilationCount h target outputKindList
   let numOfItems = length (filter id bs) + c
   let consoleHandle = Global.consoleHandle (globalHandle h)
@@ -214,24 +237,24 @@ compile h traceConfig target outputKindList sourceDependencyMap liveSourceSet co
   Indicator.with consoleHandle loggerHandle (Just numOfItems) workingTitle completedTitle color $ \hp -> do
     cacheOrProgList <- Parse.parse (globalHandle h) contentSeq
     cacheOrStmtList <- forP cacheOrProgList $ \(gensymHandle, localHandle, (source, cacheOrProg)) -> do
-      liftIO $ Logger.report (Global.loggerHandle (globalHandle h)) $ "Interpreting: " <> T.pack (toFilePath $ sourceFilePath source)
+      reportDebug h $ "Interpreting: " <> T.pack (toFilePath $ sourceFilePath source)
       interpretHandle <- liftIO $ Interpret.new gensymHandle (globalHandle h) localHandle (sourceModule source)
       item <- Interpret.interpret interpretHandle target source cacheOrProg
       return (gensymHandle, localHandle, (source, item))
     codeGenerationListRef <- liftIO $ newIORef []
     errors <- (`onFailure` cancelCodeGenerations codeGenerationListRef) $ do
       Dependency.run numCapabilities sourceDependencyMap Parse.getSourcePath cacheOrStmtList $ \(gensymHandle, localHandle, (source, (cacheOrStmt, logs))) -> do
-        liftIO $ Logger.report (Global.loggerHandle (globalHandle h)) $ "Elaborating: " <> T.pack (toFilePath $ sourceFilePath source)
+        reportDebug h $ "Elaborating: " <> T.pack (toFilePath $ sourceFilePath source)
         elaborateHandle <- liftIO $ Elaborate.new gensymHandle (globalHandle h) traceConfig localHandle source startTime
         let ensureMainHandle = EnsureMain.new (Global.envHandle (globalHandle h))
         stmtList <- Elaborate.elaborate elaborateHandle target logs cacheOrStmt
         EnsureMain.ensureMain ensureMainHandle target source (map snd $ getStmtName stmtList)
         b <- needsCodeGeneration traceConfig cacheHandle outputKindList liveSourceSet source
         when b $ liftIO $ spawnCodeGeneration codeGenerationListRef $ do
-          liftIO $ Logger.report (Global.loggerHandle (globalHandle h)) $ "Clarifying: " <> T.pack (toFilePath $ sourceFilePath source)
+          reportDebug h $ "Clarifying: " <> T.pack (toFilePath $ sourceFilePath source)
           clarifyHandle <- liftIO $ Clarify.new gensymHandle (globalHandle h) traceConfig
           (stmtList', auxStmtList, defMap) <- Clarify.clarify clarifyHandle stmtList
-          liftIO $ Logger.report (Global.loggerHandle (globalHandle h)) $ "Lowering: " <> T.pack (toFilePath $ sourceFilePath source)
+          reportDebug h $ "Lowering: " <> T.pack (toFilePath $ sourceFilePath source)
           lowerHandle <- Lower.new gensymHandle (globalHandle h) traceConfig target defMap
           virtualCode <- Lower.lower lowerHandle stmtList' auxStmtList
           emit h generateHandle gensymHandle hp startTime target outputKindList (Right source) virtualCode
@@ -239,7 +262,9 @@ compile h traceConfig target outputKindList sourceDependencyMap liveSourceSet co
         registerUnusedTopLevelNameRemarks h
       entryPointVirtualCode <- compileEntryPoint h target outputKindList
       forM_ entryPointVirtualCode $ \(gensymHandle, src, code) ->
-        liftIO $ spawnCodeGeneration codeGenerationListRef $ emit h generateHandle gensymHandle hp startTime target outputKindList src code
+        liftIO $
+          spawnCodeGeneration codeGenerationListRef $
+            emit h generateHandle gensymHandle hp startTime target outputKindList src code
       codeGenerationList <- liftIO $ readIORef codeGenerationListRef
       fmap lefts $ mapM wait codeGenerationList
     objectErrors <-
@@ -321,6 +346,10 @@ emit h generateHandle gensymHandle progressBar timeStamp target outputKindList s
         Gen.generateAsm generateHandle target timeStamp src llvmIR'
   liftIO $ Indicator.increment progressBar progressLabel
 
+reportDebug :: Handle -> T.Text -> App ()
+reportDebug h message =
+  liftIO $ Logger.report (Global.loggerHandle (globalHandle h)) message
+
 getProgressLabel :: Handle -> Either MainTarget Source -> IO T.Text
 getProgressLabel h src = do
   case src of
@@ -342,7 +371,11 @@ getEntryPointCompilationCount h target outputKindList = do
       b <- Cache.isEntryPointCompilationSkippable pathHandle t outputKindList
       return $ if b then 0 else 1
 
-compileEntryPoint :: Handle -> Target -> [OutputKind] -> App [(Gensym.Handle, Either MainTarget Source, LC.LowCode)]
+compileEntryPoint ::
+  Handle ->
+  Target ->
+  [OutputKind] ->
+  App [(Gensym.Handle, Either MainTarget Source, LC.LowCode)]
 compileEntryPoint h target outputKindList = do
   case target of
     Peripheral {} ->
@@ -356,13 +389,15 @@ compileEntryPoint h target outputKindList = do
       b <- Cache.isEntryPointCompilationSkippable pathHandle t outputKindList
       if b
         then do
-          liftIO $ Logger.report (Global.loggerHandle (globalHandle h)) $ "Skipping entry-point code generation: " <> T.pack (show t) <> " (requested outputs are fresh)"
+          reportDebug h $
+            "Skipping entry-point code generation: " <> T.pack (show t) <> " (requested outputs are fresh)"
           return []
         else do
-          liftIO $ Logger.report (Global.loggerHandle (globalHandle h)) $ "Generating entry point: " <> T.pack (show t)
-          clarifyMainHandle <- liftIO $ Clarify.newMain gensymHandle (Platform.getDataSize (Global.platformHandle (globalHandle h)))
+          reportDebug h $ "Generating entry point: " <> T.pack (show t)
+          let dataSize = Platform.getDataSize (Global.platformHandle (globalHandle h))
+          clarifyMainHandle <- liftIO $ Clarify.newMain gensymHandle dataSize
           (stmtList, defMap) <- liftIO $ Clarify.clarifyEntryPoint clarifyMainHandle
-          liftIO $ Logger.report (Global.loggerHandle (globalHandle h)) $ "Lowering entry point: " <> T.pack (show t)
+          reportDebug h $ "Lowering entry point: " <> T.pack (show t)
           lowerHandle <- Lower.new gensymHandle (globalHandle h) traceConfig target defMap
           mainVirtualCode <-
             Lower.lowerEntryPoint lowerHandle t stmtList
@@ -398,7 +433,8 @@ compileForeign' h t startTime (m, foreignInfo) = do
   ensureDir foreignDir
   let resolver = getForeignResolver h foreignDir m
   forM_ (M.input foreignInfo) $ ensureDeclaredPathExistence moduleRootDir
-  inputPathList <- fmap concat $ mapM (liftIO . Path.unrollPath . M.attachPrefixPath moduleRootDir . snd) $ M.input foreignInfo
+  inputPathList <-
+    fmap concat $ mapM (liftIO . Path.unrollPath . M.attachPrefixPath moduleRootDir . snd) $ M.input foreignInfo
   let outputPathList = map (M.attachPrefixPath foreignDir) $ M.output foreignInfo
   let linkedOutputPathList = map (foreignDir </>) $ M.linkedOutput foreignInfo
   for_ outputPathList $ \outputPath -> do
@@ -408,16 +444,14 @@ compileForeign' h t startTime (m, foreignInfo) = do
   case (inputTime, outputTime) of
     (Just t1, Just t2)
       | t1 <= t2 -> do
-          liftIO $
-            Logger.report (Global.loggerHandle (globalHandle h)) $
-              "Cache found; skipping foreign compilation of `" <> MID.reify (M.moduleID m) <> "`"
+          reportDebug h $
+            "Cache found; skipping foreign compilation of `" <> MID.reify (M.moduleID m) <> "`"
           return False
     _ -> do
       cmdList' <- mapM (Placeholder.expand M.keyForeignScript resolver) cmdList
       unless (null cmdList') $ do
-        liftIO $
-          Logger.report (Global.loggerHandle (globalHandle h)) $
-            "Performing foreign compilation of `" <> MID.reify (M.moduleID m) <> "`"
+        reportDebug h $
+          "Performing foreign compilation of `" <> MID.reify (M.moduleID m) <> "`"
       forM_ cmdList' $ \cmd -> do
         let spec =
               RunProcess.Spec
@@ -450,7 +484,9 @@ getForeignResolver :: Handle -> Path Abs Dir -> M.Module -> Placeholder.Resolver
 getForeignResolver h foreignDir hostModule hint name = do
   case name of
     "clang" -> do
-      clangCommand <- liftIO $ getForeignClangCommand (Global.loggerHandle (globalHandle h)) (Global.platformHandle (globalHandle h))
+      let loggerHandle = Global.loggerHandle (globalHandle h)
+      let platformHandle = Global.platformHandle (globalHandle h)
+      clangCommand <- liftIO $ getForeignClangCommand loggerHandle platformHandle
       return $ Just clangCommand
     "foreign" ->
       return $ Just $ Placeholder.quote $ T.pack $ toFilePath foreignDir
@@ -480,7 +516,7 @@ discardStaleBuildDir h target baseModule = do
   recordedClangOption <- if recordExists then Just <$> readTextFromPath recordPath else return Nothing
   when (recordedClangOption /= Just expandedClangOption) $ do
     buildDir <- Path.getBuildDir (Global.pathHandle (globalHandle h)) target baseModule
-    liftIO $ Logger.report (Global.loggerHandle (globalHandle h)) "The expansion of the clang options changed; discarding the build directory"
+    reportDebug h "The expansion of the clang options changed; discarding the build directory"
     ignoringAbsence $ removeDirRecur buildDir
     ensureDir buildDir
     liftIO $ writeText recordPath expandedClangOption
@@ -493,11 +529,13 @@ showExpandedClangOption target = do
           map T.pack $ getLinkOption mainTarget
         _ ->
           []
+  let toEnsString option = internalHint :< E.String option
+  let toEnsList optionList = internalHint :< E.List (SE.fromList SE.Bracket SE.Comma (map toEnsString optionList))
   E.pp $
     E.inject $
       E.dictFromListVertical internalHint $
-        [ (M.keyCompileOption, internalHint :< E.List (SE.fromList SE.Bracket SE.Comma (map (\option -> internalHint :< E.String option) compileOption'))),
-          (M.keyLinkOption, internalHint :< E.List (SE.fromList SE.Bracket SE.Comma (map (\option -> internalHint :< E.String option) linkOption')))
+        [ (M.keyCompileOption, toEnsList compileOption'),
+          (M.keyLinkOption, toEnsList linkOption')
         ]
 
 expandClangOptions :: Handle -> Target -> App Target

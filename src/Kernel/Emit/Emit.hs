@@ -21,7 +21,13 @@ import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
 import Gensym.CreateHandle qualified as Gensym
 import Gensym.Handle qualified as GensymHandle
-import Kernel.Common.Allocator (Allocator, AllocatorKind (..), allocatorFamily, allocatorForeignList, allocatorSpec)
+import Kernel.Common.Allocator
+  ( Allocator,
+    AllocatorKind (..),
+    allocatorFamily,
+    allocatorForeignList,
+    allocatorSpec,
+  )
 import Kernel.Common.Arch qualified as Arch
 import Kernel.Common.Const
 import Kernel.Common.CreateGlobalHandle qualified as Global
@@ -67,7 +73,8 @@ new :: GensymHandle.Handle -> Global.Handle -> Target -> App Handle
 new gensymHandle globalHandle target = do
   allocator <- Env.getAllocatorByTarget target
   let traceReport = Console.getTraceConfig $ Global.consoleHandle globalHandle
-  traceConfig <- either raiseError' return $ Trace.new (Env.getMainModule $ Global.envHandle globalHandle) traceReport
+  let mainModule = Env.getMainModule $ Global.envHandle globalHandle
+  traceConfig <- either raiseError' return $ Trace.new mainModule traceReport
   return $ Handle {..}
 
 emit :: Handle -> LC.LowCode -> IO L.ByteString
@@ -99,17 +106,19 @@ emitLowCodeInfo h (declEnv, globalEnv, defList, staticTextList, staticDataList, 
   let staticDataList' = map (emitStaticData (getDataSize h)) staticDataList
   defStrList <- concat <$> mapM (emitDefinitions h) defList
   exportStrList <- concat <$> mapM (emitExport h) exportList
-  return (declStrList <> staticTextList' <> staticDataList', defStrList <> exportStrList <> emitExportRoots exportList)
+  let header = declStrList <> staticTextList' <> staticDataList'
+  let body = defStrList <> exportStrList <> emitExportRoots exportList
+  return (header, body)
 
 emitExport :: Handle -> LC.ExportInfo -> IO [Builder]
-emitExport h (extName, LC.DefContent {codType = codType, args = args, body = body}) = do
+emitExport h (extName, defContent) = do
   let exportAttributes =
         case getArch h of
           Arch.Wasm32 ->
             ["\"wasm-export-name\"=\"" <> TE.encodeUtf8Builder (EN.reify extName) <> "\""]
           _ ->
             []
-  emitDefinition h (gensymHandle h) False Nothing exportAttributes codType (EN.toBuilder extName) (emitExternalArgs h args) body
+  emitExternalDefinition h exportAttributes (EN.toBuilder extName) defContent
 
 emitExportRoots :: [LC.ExportInfo] -> [Builder]
 emitExportRoots exportList =
@@ -268,8 +277,12 @@ emitDefinitions h (name, LC.DefContent {codType = codType, args = args, body = b
   emitDefinition h definitionGensymHandle True (Just name) [] codType (DD.toBuilder name) args'' body'
 
 emitMain :: Handle -> LC.DefContent -> IO [Builder]
-emitMain h (LC.DefContent {codType = codType, args = args, body = body}) = do
-  emitDefinition h (gensymHandle h) False Nothing [] codType (mainSymbol (getArch h)) (emitExternalArgs h args) body
+emitMain h defContent = do
+  emitExternalDefinition h [] (mainSymbol (getArch h)) defContent
+
+emitExternalDefinition :: Handle -> [Builder] -> Builder -> LC.DefContent -> IO [Builder]
+emitExternalDefinition h extraAttributes symbol (LC.DefContent {codType = codType, args = args, body = body}) = do
+  emitDefinition h (gensymHandle h) False Nothing extraAttributes codType symbol (emitExternalArgs h args) body
 
 emitExternalArgs :: Handle -> [(Ident, LT.LowType)] -> Builder
 emitExternalArgs h args = do
@@ -292,7 +305,10 @@ getDataSize :: Handle -> DS.DataSize
 getDataSize h =
   Platform.getDataSize $ Global.platformHandle $ globalHandle h
 
-declToBuilder :: Handle -> (DN.DeclarationName, ([BLT.BaseLowType], FCT.ForeignCodType BLT.BaseLowType, DN.Variadicity)) -> Builder
+declToBuilder ::
+  Handle ->
+  (DN.DeclarationName, ([BLT.BaseLowType], FCT.ForeignCodType BLT.BaseLowType, DN.Variadicity)) ->
+  Builder
 declToBuilder h (name, (dom, cod, variadicity)) = do
   let codType = FCT.fromForeignCodType cod
   let isInternal =
@@ -396,11 +412,22 @@ allocatorFunctionAttributes allocator kind = do
   let family = TE.encodeUtf8Builder $ allocatorFamily allocator
   ["nounwind", "willreturn"] ++ effects ++ ["\"alloc-family\"=\"" <> family <> "\""]
 
-emitDefinition :: Handle -> GensymHandle.Handle -> Bool -> Maybe DD.DefiniteDescription -> [Builder] -> LT.LowType -> Builder -> Builder -> LC.Comp -> IO [Builder]
+emitDefinition ::
+  Handle ->
+  GensymHandle.Handle ->
+  Bool ->
+  Maybe DD.DefiniteDescription ->
+  [Builder] ->
+  LT.LowType ->
+  Builder ->
+  Builder ->
+  LC.Comp ->
+  IO [Builder]
 emitDefinition h gensymHandle isInternal maybeName extraAttributes retType name args asm = do
   let attributes = archFunctionAttributes (getArch h) ++ tailCallAttributes maybeName asm ++ extraAttributes
   let header = sig isInternal retType name args attributes <> " {"
-  emitLowCompHandle <- EmitLowComp.new gensymHandle (globalHandle h) (emitLowType retType) (allocatorSpec $ allocator h)
+  let allocSpec = allocatorSpec $ allocator h
+  emitLowCompHandle <- EmitLowComp.new gensymHandle (globalHandle h) (emitLowType retType) allocSpec
   content <- EmitLowComp.emitLowComp emitLowCompHandle asm
   let footer = "}"
   let definition = [header] <> content <> [footer]

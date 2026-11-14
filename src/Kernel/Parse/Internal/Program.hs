@@ -95,7 +95,8 @@ parseConditionalImport m c1 = do
   (thenSeries, _, cThen) <- seriesBrace' $ parseImportItem m c1
   cElse <- keyword "else"
   (elseSeries, _, c) <- seriesBrace' $ parseImportItem m c1
-  return (RawConditionalImport mCapability cIf (mCapability, capability, cCapability) (thenSeries, cThen) cElse elseSeries, c)
+  let condition = (mCapability, capability, cCapability)
+  return (RawConditionalImport mCapability cIf condition (thenSeries, cThen) cElse elseSeries, c)
 
 parseStmt :: Bool -> Handle -> Parser (RawStmt, C)
 parseStmt isInNamespace h = do
@@ -501,7 +502,9 @@ parseResource h = do
     [discarder, copier, resourceSize] -> do
       return (RawStmtDefineResource c1 m (name, c2) discarder copier resourceSize (SE.trailingComment handlers), c)
     _ ->
-      lift $ raiseError m $ "`resource` must have 3 elements, but found: " <> T.pack (show $ length $ SE.elems handlers)
+      lift $
+        raiseError m $
+          "`resource` must have 3 elements, but found: " <> T.pack (show $ length $ SE.elems handlers)
 
 parseVariadic :: Handle -> RuleKind -> Parser (RawStmt, C)
 parseVariadic h vk = do
@@ -520,4 +523,6 @@ parseVariadic h vk = do
       let r = (cRoot, root, rootType)
       return (RawStmtVariadic vk c1 m (name, c2) l n r (SE.trailingComment handlers) loc, c)
     _ -> do
-      lift $ raiseError m $ "`" <> k <> "` must have 3 elements, but found: " <> T.pack (show $ length $ SE.elems handlers)
+      lift $
+        raiseError m $
+          "`" <> k <> "` must have 3 elements, but found: " <> T.pack (show $ length $ SE.elems handlers)

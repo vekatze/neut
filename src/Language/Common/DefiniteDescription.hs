@@ -219,7 +219,8 @@ extendBody dd rest = do
     (Just (modulePathText, sourceText, bodyWithSuffix), _) -> do
       let (bodyText, suffix) = splitBodySuffix bodyWithSuffix
       let extension = T.intercalate nsSep $ map BN.reify rest
-      MakeDefiniteDescription $ modulePathText <> doubleColon <> sourceText <> doubleColon <> bodyText <> nsSep <> extension <> suffix
+      MakeDefiniteDescription $
+        modulePathText <> doubleColon <> sourceText <> doubleColon <> bodyText <> nsSep <> extension <> suffix
     (Nothing, _) ->
       dd
 

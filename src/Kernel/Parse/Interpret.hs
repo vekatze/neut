@@ -113,7 +113,10 @@ interpret' h currentSource (PostRawProgram m importList _ stmtList) = do
   Import.interpretImport (importHandle h) m currentSource importList >>= activateImport h m currentSource
   stmtList'' <- Discern.discernStmtList (discernHandle h) stmtList
   NameMap.reportMissingDefinitions (Discern.nameMapHandle (discernHandle h))
-  topLevelReferences <- liftIO $ UnusedTopLevelName.getReferences (topLevelReferenceLog h) >>= UnusedTopLevelName.addConstructorOwners (unusedTopLevelNameHandle h)
+  topLevelReferences <-
+    liftIO $
+      UnusedTopLevelName.getReferences (topLevelReferenceLog h)
+        >>= UnusedTopLevelName.addConstructorOwners (unusedTopLevelNameHandle h)
   liftIO $ UnusedTopLevelName.insertReferences (unusedTopLevelNameHandle h) topLevelReferences
   logs1 <- liftIO $ registerUnusedVariableRemarks h
   logs2 <- liftIO $ registerUnusedGlobalLocatorRemarks h
