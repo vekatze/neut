@@ -1,53 +1,122 @@
 module Kernel.Common.Platform
-  ( Platform (..),
-    PlatformSelector (..),
-    reify,
-    reifySelector,
-    reflectSelector,
+  ( PlatformName (..),
+    Platform (..),
+    reifyName,
+    reflectName,
+    reifyPlatform,
+    allPlatforms,
+    isBuildable,
+    detectHost,
+    getArch,
+    getOS,
   )
 where
 
-import Data.Hashable
+import Data.List (find)
 import Data.Text qualified as T
-import GHC.Generics (Generic)
 import Kernel.Common.Arch qualified as Arch
 import Kernel.Common.OS qualified as OS
+import System.Info qualified as SI
+
+data PlatformName
+  = Arm64Darwin
+  | Amd64Linux
+  | Arm64Linux
+  | Wasm32Wasip1
+  | Wasm32Wasip1Web
+  deriving (Eq, Enum, Bounded)
 
 data Platform = Platform
-  { os :: OS.OS,
-    arch :: Arch.Arch
+  { host :: PlatformName,
+    target :: PlatformName
   }
 
-data PlatformSelector
-  = SelectHost
-  | SelectWasm32
-  | SelectWeb
-  deriving (Show, Eq, Enum, Bounded, Generic)
+reifyPlatform :: Platform -> T.Text
+reifyPlatform platform =
+  reifyName (host platform) <> "/" <> reifyName (target platform)
 
-instance Hashable PlatformSelector
+allPlatforms :: [Platform]
+allPlatforms =
+  [Platform {host, target} | host <- [minBound .. maxBound], target <- [minBound .. maxBound]]
 
-reify :: Platform -> T.Text
-reify target =
-  Arch.reify (arch target) <> "-" <> OS.reify (os target)
+reifyName :: PlatformName -> T.Text
+reifyName name =
+  case name of
+    Arm64Darwin ->
+      "arm64-darwin"
+    Amd64Linux ->
+      "amd64-linux"
+    Arm64Linux ->
+      "arm64-linux"
+    Wasm32Wasip1 ->
+      "wasm32-wasip1"
+    Wasm32Wasip1Web ->
+      "wasm32-wasip1-web"
 
-reifySelector :: PlatformSelector -> T.Text
-reifySelector selector =
-  case selector of
-    SelectHost ->
-      "host"
-    SelectWasm32 ->
-      "wasm32"
-    SelectWeb ->
-      "web"
+reflectName :: T.Text -> Maybe PlatformName
+reflectName text =
+  find (\name -> reifyName name == text) [minBound .. maxBound]
 
-reflectSelector :: T.Text -> Maybe PlatformSelector
-reflectSelector text =
-  case text of
-    "host" ->
-      Just SelectHost
-    "wasm32" ->
-      Just SelectWasm32
-    "web" ->
-      Just SelectWeb
-    _ ->
-      Nothing
+getArch :: PlatformName -> Arch.Arch
+getArch name =
+  case name of
+    Arm64Darwin ->
+      Arch.Arm64
+    Amd64Linux ->
+      Arch.Amd64
+    Arm64Linux ->
+      Arch.Arm64
+    Wasm32Wasip1 ->
+      Arch.Wasm32
+    Wasm32Wasip1Web ->
+      Arch.Wasm32
+
+getOS :: PlatformName -> OS.OS
+getOS name =
+  case name of
+    Arm64Darwin ->
+      OS.Darwin
+    Amd64Linux ->
+      OS.Linux
+    Arm64Linux ->
+      OS.Linux
+    Wasm32Wasip1 ->
+      OS.Wasip1
+    Wasm32Wasip1Web ->
+      OS.Wasip1
+
+isNative :: PlatformName -> Bool
+isNative name =
+  getOS name /= OS.Wasip1
+
+isBuildable :: Platform -> Bool
+isBuildable platform =
+  isNative (host platform) && (target platform == host platform || not (isNative (target platform)))
+
+detectHost :: Either T.Text PlatformName
+detectHost = do
+  hostArch <-
+    case SI.arch of
+      "amd64" ->
+        Right Arch.Amd64
+      "x86_64" ->
+        Right Arch.Amd64
+      "arm64" ->
+        Right Arch.Arm64
+      "aarch64" ->
+        Right Arch.Arm64
+      unknownArch ->
+        Left $ "Unknown architecture: " <> T.pack unknownArch
+  hostOS <-
+    case SI.os of
+      "linux" ->
+        Right OS.Linux
+      "darwin" ->
+        Right OS.Darwin
+      unknownOS ->
+        Left $ "Unknown OS: " <> T.pack unknownOS
+  case find (\name -> getArch name == hostArch && getOS name == hostOS) [minBound .. maxBound] of
+    Just name ->
+      Right name
+    Nothing ->
+      Left $ "Unsupported platform: " <> Arch.reify hostArch <> "-" <> OS.reify hostOS

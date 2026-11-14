@@ -19,9 +19,10 @@ import Kernel.Common.ClangOption qualified as CL
 import Kernel.Common.Const (archiveRelDir, cacheRelDir, sourceRelDir)
 import Kernel.Common.Module
 import Kernel.Common.ModuleURL
-import Kernel.Common.Platform qualified as P
-import Kernel.Common.Target
-import Kernel.Common.ZenConfig (ZenConfig (..))
+import Kernel.Common.PlatformPattern qualified as PP
+import Kernel.Common.PlatformRule
+import Kernel.Common.Target (TargetSummary (..))
+import Kernel.Common.TargetConfig (TargetConfig (..))
 import Language.Common.BaseName qualified as BN
 import Language.Common.ModuleAlias
 import Language.Common.ModuleDigest
@@ -36,7 +37,7 @@ fromFilePath moduleFilePath = do
   (_, (ens, _)) <- Ens.fromFilePath moduleFilePath
   targetEns <- liftEither $ E.access' keyTarget E.emptyDict ens >>= E.toDictionary
   target <- interpretTarget targetEns
-  zenConfigEns <- liftEither (E.access' keyZen E.emptyDict ens) >>= interpretZenConfig
+  zenRuleList <- interpretRuleList keyZen interpretTargetPlatformPattern interpretTargetConfig ens
   dependencyEns <- liftEither $ E.access' keyDependency E.emptyDict ens >>= E.toDictionary
   dependency <- interpretDependencyDict dependencyEns
   (_, extraContentsEns) <- liftEither $ E.access' keyExtraContent E.emptyList ens >>= E.toList
@@ -51,8 +52,7 @@ fromFilePath moduleFilePath = do
   cacheDir <- interpretDirPath cacheDirEns
   sourceDirEns <- liftEither $ E.access' keySource (E.ensPath sourceRelDir) ens
   sourceDir <- interpretDirPath sourceDirEns
-  foreignDictEns <- liftEither $ E.access' keyForeign E.emptyDict ens
-  foreignDict <- interpretForeignDict foreignDictEns
+  foreignRuleList <- interpretRuleList keyForeign interpretPlatformPattern interpretForeignDict ens
   mInlineLimit <- interpretInlineLimit ens
   (_, universal) <- liftEither $ E.access' keyUniversal (E.Bool True) ens >>= E.toBool
   (mPreset, presetEns) <- liftEither $ E.access' keyPreset E.emptyDict ens >>= E.toDictionary
@@ -65,13 +65,13 @@ fromFilePath moduleFilePath = do
         moduleCacheDir = cacheDir,
         moduleSourceDir = sourceDir,
         moduleTarget = target,
-        moduleZenConfig = zenConfigEns,
+        moduleZen = zenRuleList,
         moduleDependency = dependency,
         moduleExtraContents = extraContents,
         moduleAntecedents = antecedents,
         moduleLocation = moduleFilePath,
         moduleStaticFiles = staticFileMap,
-        moduleForeign = foreignDict,
+        moduleForeign = foreignRuleList,
         moduleInlineLimit = mInlineLimit,
         moduleUniversal = universal,
         modulePresetMap = presetMap
@@ -92,11 +92,9 @@ interpretTarget :: (H.Hint, SE.Series (T.Text, E.Ens)) -> App (Map.HashMap Targe
 interpretTarget (_, targetDict) = do
   kvs <- forM (SE.extract targetDict) $ \(k, v) -> do
     entryPoint <- liftEither (E.access keyMain v) >>= interpretSourceLocator
-    clangOption <- interpretClangOption v
-    allocator <- interpretAllocator v
     platform <- interpretPlatform v
-    executeCommand <- interpretExecuteCommand v
-    return (k, TargetSummary {entryPoint, clangOption, allocator, platform, executeCommand})
+    config <- interpretTargetConfig v
+    return (k, TargetSummary {entryPoint, targetPlatform = platform, targetConfig = config})
   return $ Map.fromList kvs
 
 interpretExecuteCommand :: E.Ens -> App (Maybe (H.Hint, T.Text))
@@ -110,35 +108,63 @@ interpretTextList key ens = do
   (_, textEnsSeries) <- liftEither $ E.access' key E.emptyList ens >>= E.toList
   liftEither $ mapM (E.toString >=> return . snd) $ SE.extract textEnsSeries
 
-interpretPlatform :: E.Ens -> App P.PlatformSelector
-interpretPlatform ens = do
-  platformEns <- liftEither $ E.access' keyPlatform (E.String $ P.reifySelector P.SelectHost) ens
-  (m, platformText) <- liftEither $ E.toString platformEns
-  case P.reflectSelector platformText of
-    Just selector ->
-      return selector
+interpretPlatform :: E.Ens -> App (H.Hint, PP.PlatformPattern)
+interpretPlatform ens =
+  if E.hasKey keyPlatform ens
+    then liftEither (E.access keyPlatform ens) >>= interpretTargetPlatformPattern
+    else return defaultPlatform
+
+interpretPlatformPattern :: E.Ens -> App (H.Hint, PP.PlatformPattern)
+interpretPlatformPattern ens = do
+  (m, patternText) <- liftEither $ E.toString ens
+  case PP.reflect patternText of
     Nothing ->
-      raiseError m $ "Unknown platform: " <> platformText
+      raiseError m $ "Invalid platform pattern: " <> patternText
+    Just platformPattern
+      | not (PP.matchesSomePlatform platformPattern) ->
+          raiseError m $ "No platform matches the pattern: " <> patternText
+      | otherwise ->
+          return (m, platformPattern)
+
+interpretTargetPlatformPattern :: E.Ens -> App (H.Hint, PP.PlatformPattern)
+interpretTargetPlatformPattern ens = do
+  (m, platformPattern) <- interpretPlatformPattern ens
+  unless (PP.determinesTarget platformPattern) $
+    raiseError m $
+      "The target part of the platform pattern is not determined by its host part: " <> PP.reify platformPattern
+  return (m, platformPattern)
+
+interpretRuleList ::
+  T.Text ->
+  (E.Ens -> App (H.Hint, PP.PlatformPattern)) ->
+  (E.Ens -> App a) ->
+  E.Ens ->
+  App [PlatformRule a]
+interpretRuleList key interpretPattern interpretBody ens = do
+  (_, ruleSeries) <- liftEither $ E.access' key E.emptyList ens >>= E.toList
+  forM (SE.extract ruleSeries) $ \ruleEns -> do
+    rulePlatform <- liftEither (E.access keyPlatform ruleEns) >>= interpretPattern
+    ruleBody <- interpretBody ruleEns
+    return $ PlatformRule {rulePlatform, ruleBody}
 
 interpretAllocator :: E.Ens -> App Allocator
 interpretAllocator ens = do
   allocatorEns <- liftEither $ E.access' keyAllocator (E.String $ showAllocator defaultAllocator) ens
-  (_, allocatorText) <- liftEither $ E.toString allocatorEns
+  (m, allocatorText) <- liftEither $ E.toString allocatorEns
   case allocatorText of
     "mimalloc" ->
       return Mimalloc
     "system" ->
       return System
     _ ->
-      return defaultAllocator
+      raiseError m $ "Unknown allocator: " <> allocatorText
 
-interpretZenConfig :: E.Ens -> App ZenConfig
-interpretZenConfig zenDict = do
-  clangOption <- interpretClangOption zenDict
-  allocator <- interpretAllocator zenDict
-  platform <- interpretPlatform zenDict
-  executeCommand <- interpretExecuteCommand zenDict
-  return $ ZenConfig {clangOption, allocator, platform, executeCommand}
+interpretTargetConfig :: E.Ens -> App TargetConfig
+interpretTargetConfig ens = do
+  clangOption <- interpretClangOption ens
+  allocator <- interpretAllocator ens
+  executeCommand <- interpretExecuteCommand ens
+  return $ TargetConfig {clangOption, allocator, executeCommand}
 
 interpretClangOption :: E.Ens -> App CL.ClangOption
 interpretClangOption v = do

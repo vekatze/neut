@@ -198,13 +198,13 @@ It exists to catch a mismatch before anything is compiled. Without it, code writ
 
 `require` can only appear at the top of a file. `require` and `import` can be written there in any order.
 
-The following capabilities exist:
+The compiler recognizes these capabilities.
 
-- `thread`: threads, with the mutexes and condition variables that go with them
-- `subprocess`: child processes
-- `javascript`: a JavaScript host to reach
+- `thread` for threads, mutexes, and condition variables
+- `subprocess` for child processes
+- `javascript` for access to a JavaScript runtime
 
-Which capabilities a platform provides is part of the definition of that platform. See [platform](./modules.md#platform).
+The [target platform](./modules.md#platform) determines which capabilities are available.
 
 `require { thread }` says that the file is meant for a platform where threads exist. It introduces nothing into the file and gives it nothing to work with. Threads themselves come from a library, such as `core::sync`.
 
@@ -212,7 +212,7 @@ Which capabilities a platform provides is part of the definition of that platfor
 
 ```text
 source/flow.nt:3:3
-Error: `thread` is not available on wasm32:
+Error: `thread` is not available on wasm32-wasip1:
             this::flow
          ~> core::sync.channel
          ~> core::sync._posix

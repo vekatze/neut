@@ -109,7 +109,7 @@ bindCont f =
 
 new :: Gensym.Handle -> Global.Handle -> Trace.Config -> Target -> C.DefMap -> App Handle
 new gensymHandle (Global.Handle {..}) traceConfig target defMap = do
-  allocator <- Env.getAllocatorByTarget envHandle target
+  allocator <- Env.getAllocatorByTarget target
   let baseSize = Platform.getDataSize platformHandle
   let substHandle = Subst.new gensymHandle
   let reduceHandle = Reduce.new substHandle gensymHandle defMap

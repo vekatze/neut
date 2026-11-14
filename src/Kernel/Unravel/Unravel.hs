@@ -49,6 +49,7 @@ import Kernel.Common.Module qualified as M
 import Kernel.Common.Module.AliasLink qualified as AliasLink
 import Kernel.Common.Module.GetDependency qualified as GetDependency
 import Kernel.Common.OutputKind qualified as OK
+import Kernel.Common.Platform qualified as P
 import Kernel.Common.Source qualified as Source
 import Kernel.Common.Source.ShiftToLatest qualified as STL
 import Kernel.Common.SourceDependencyMap (SourceDependencyMap)
@@ -633,7 +634,7 @@ interpretRequireItem (RawRequireItem m name) = do
 
 targetEnvironment :: Handle -> S.Set Capability.Capability
 targetEnvironment h =
-  Capability.providedBy $ Platform.getSelector $ Global.platformHandle $ globalHandle h
+  Capability.providedBy $ Platform.getTargetPlatform $ Global.platformHandle $ globalHandle h
 
 demandList :: Handle -> Target -> Module -> [(Demand, S.Set Capability.Capability)]
 demandList h t baseModule =
@@ -754,7 +755,7 @@ renderUnavailable :: Demand -> Platform.Handle -> Capability.Capability -> T.Tex
 renderUnavailable demand platformHandle capability =
   case demand of
     ByPlatform ->
-      "`" <> Capability.reify capability <> "` is not available on " <> Platform.getPlatformText platformHandle
+      "`" <> Capability.reify capability <> "` is not available on " <> P.reifyName (Platform.getTargetPlatform platformHandle)
     ByUniversality ->
       "A universal module cannot require `" <> Capability.reify capability <> "`"
 

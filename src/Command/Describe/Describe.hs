@@ -29,6 +29,7 @@ import Ens.ToDoc qualified as Ens
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.Env qualified as Env
 import Kernel.Common.Handle.Global.Path qualified as Path
+import Kernel.Common.Handle.Global.Platform qualified as Platform
 import Kernel.Common.Module qualified as M
 import Kernel.Common.Source (sourceFilePath)
 import Kernel.Common.Target
@@ -84,7 +85,7 @@ writeDescription h unravelHandle target moduleList = do
 
 describeForeign :: Handle -> MainTarget -> M.Module -> App E.Ens
 describeForeign h target someModule = do
-  let foreignInfo = M.moduleForeign someModule
+  let foreignInfo = Platform.getForeign (Global.platformHandle (globalHandle h)) someModule
   foreignDir <- Path.getForeignDir (Global.pathHandle (globalHandle h)) (Main target) someModule
   directory <- toUtf8Text $ toFilePath foreignDir
   outputList <- mapM (toUtf8Text . either toFilePath toFilePath) $ M.output foreignInfo
@@ -140,14 +141,14 @@ decodeUtf8Path path = do
 getInputList :: Global.Handle -> Unravel.Handle -> IO [M.SomePath Abs]
 getInputList h unravelHandle = do
   let mainModule = M.extractModule $ Env.getMainModule $ Global.envHandle h
+  let mainForeign = Platform.getForeign (Global.platformHandle h) mainModule
   let moduleRootDir = M.getModuleRootDir mainModule
   visitedSourceList <- Unravel.getVisitedMainSourceList unravelHandle
   let staticFileList = map ((moduleRootDir </>) . snd) $ HashMap.elems $ M.moduleStaticFiles mainModule
   foreignInputList <-
     fmap concat $
       mapM (Path.unrollPath . M.attachPrefixPath moduleRootDir . snd) $
-        M.input $
-          M.moduleForeign mainModule
+        M.input mainForeign
   return $
     sort $
       nubOrd $

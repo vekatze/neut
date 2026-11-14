@@ -3371,14 +3371,15 @@ introspect key {
 }
 ```
 
-You can use the following configuration `key`s and configuration `value`s:
+The following keys and values are available.
 
-| Configuration Key      | Configuration Value            |
-| ---------------------- | ------------------------------ |
-| `target-arch`          | `amd64`, `arm64`, or `wasm32`  |
-| `target-os`            | `linux`, `darwin`, or `wasi`   |
+| Key               | Values                                                 |
+|-------------------|--------------------------------------------------------|
+| `target-platform` | Any supported [target platform](./modules.md#platform) |
+| `target-arch`     | `amd64`, `arm64`, or `wasm32`                          |
+| `target-os`       | `linux`, `darwin`, or `wasip1`                         |
 
-You can also use `default` as a configuration value to represent a fallback case.
+Use `default` as a fallback value.
 
 ### Semantics
 

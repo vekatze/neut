@@ -65,7 +65,7 @@ data Handle = Handle
 
 new :: GensymHandle.Handle -> Global.Handle -> Target -> App Handle
 new gensymHandle globalHandle target = do
-  allocator <- Env.getAllocatorByTarget (Global.envHandle globalHandle) target
+  allocator <- Env.getAllocatorByTarget target
   let traceReport = Console.getTraceConfig $ Global.consoleHandle globalHandle
   traceConfig <- either raiseError' return $ Trace.new (Env.getMainModule $ Global.envHandle globalHandle) traceReport
   return $ Handle {..}
@@ -282,11 +282,11 @@ mainSymbol arch =
 
 getArch :: Handle -> Arch.Arch
 getArch h =
-  P.arch $ Platform.getPlatform $ Global.platformHandle $ globalHandle h
+  Platform.getArch $ Global.platformHandle $ globalHandle h
 
-getSelector :: Handle -> P.PlatformSelector
-getSelector h =
-  Platform.getSelector $ Global.platformHandle $ globalHandle h
+getTargetPlatform :: Handle -> P.PlatformName
+getTargetPlatform h =
+  Platform.getTargetPlatform $ Global.platformHandle $ globalHandle h
 
 getDataSize :: Handle -> DS.DataSize
 getDataSize h =
@@ -315,12 +315,12 @@ declToBuilder h (name, (dom, cod, variadicity)) = do
       ++ returnAttributes
       ++ [signature]
       ++ maybe [] (allocatorFunctionAttributes (allocator h)) maybeKind
-      ++ wasmImportAttributes (getSelector h) name
+      ++ wasmImportAttributes (getTargetPlatform h) name
 
-wasmImportAttributes :: P.PlatformSelector -> DN.DeclarationName -> [Builder]
-wasmImportAttributes selector name =
-  case (selector, name) of
-    (P.SelectWeb, DN.Ext (EN.ExternalName extName))
+wasmImportAttributes :: P.PlatformName -> DN.DeclarationName -> [Builder]
+wasmImportAttributes platformName name =
+  case (platformName, name) of
+    (P.Wasm32Wasip1Web, DN.Ext (EN.ExternalName extName))
       | not ("llvm." `T.isPrefixOf` extName) -> do
           let name' = TE.encodeUtf8Builder extName
           ["\"wasm-import-module\"=\"env\" \"wasm-import-name\"=\"" <> name' <> "\""]

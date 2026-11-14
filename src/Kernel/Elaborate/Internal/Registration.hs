@@ -19,7 +19,6 @@ import Kernel.Common.Handle.Global.Expose qualified as Expose
 import Kernel.Common.Handle.Global.Platform qualified as Platform
 import Kernel.Common.Handle.Global.Resource qualified as Resource
 import Kernel.Common.Handle.Global.Type qualified as Type
-import Kernel.Common.Platform qualified as P
 import Kernel.Elaborate.Internal.Handle.Def qualified as Definition
 import Kernel.Elaborate.Internal.Handle.Elaborate
 import Kernel.Elaborate.Internal.Handle.Trope qualified as Trope
@@ -83,7 +82,7 @@ ensureExposedNameLinearity found exportList =
 
 registerExpose :: Handle -> Hint -> DD.DefiniteDescription -> EN.ExternalName -> App ()
 registerExpose h m dd extName = do
-  let entrySymbol = Arch.entrySymbol $ P.arch $ Platform.getPlatform $ Global.platformHandle (globalHandle h)
+  let entrySymbol = Arch.entrySymbol $ Platform.getArch $ Global.platformHandle (globalHandle h)
   when (EN.reify extName == entrySymbol) $
     raiseError m $
       "`" <> EN.reify extName <> "` is the entry point of the target and cannot be exposed"

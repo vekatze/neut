@@ -29,7 +29,7 @@ import Kernel.Common.Handle.Local.SymLoc qualified as SymLoc
 import Kernel.Common.Handle.Local.Tag qualified as Tag
 import Kernel.Common.Handle.Local.TopCandidate qualified as TopCandidate
 import Kernel.Common.OS qualified as OS
-import Kernel.Common.Platform qualified as Platform
+import Kernel.Common.Platform qualified as P
 import Kernel.Common.TopCandidate
 import Kernel.Parse.Internal.Discern.Handle qualified as H
 import Kernel.Parse.Internal.Discern.Name
@@ -1228,12 +1228,14 @@ markDroppedClause interpret clause =
 
 getIntrospectiveValue :: H.Handle -> Hint -> T.Text -> App (T.Text, S.Set T.Text)
 getIntrospectiveValue h m key = do
-  let p = Platform.getPlatform (H.platformHandle h)
+  let platformName = Platform.getTargetPlatform (H.platformHandle h)
   case key of
     "target-arch" ->
-      return (Arch.reify (Platform.arch p), S.fromList $ map Arch.reify [minBound .. maxBound])
+      return (Arch.reify (P.getArch platformName), S.fromList $ map Arch.reify [minBound .. maxBound])
     "target-os" ->
-      return (OS.reify (Platform.os p), S.fromList $ map OS.reify [minBound .. maxBound])
+      return (OS.reify (P.getOS platformName), S.fromList $ map OS.reify [minBound .. maxBound])
+    "target-platform" ->
+      return (P.reifyName platformName, S.fromList $ map P.reifyName [minBound .. maxBound])
     _ ->
       raiseError m $ "No such introspective key is defined: " <> key
 

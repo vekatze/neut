@@ -31,23 +31,23 @@ import Control.Exception (IOException, try)
 import Control.Monad (unless, when)
 import Control.Monad.IO.Class
 import Data.ByteString.UTF8 qualified as B
-import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.List.NonEmpty qualified as NE
 import Data.Text qualified as T
 import Data.Time
 import Ens.Ens qualified as E
 import Ens.ToDoc qualified as E
-import Kernel.Common.Allocator (Allocator, defaultAllocator, showAllocator)
+import Kernel.Common.Allocator (showAllocator)
 import Kernel.Common.ClangOption qualified as CL
 import Kernel.Common.Const
 import Kernel.Common.Handle.Global.Platform qualified as Platform
 import Kernel.Common.Module
 import Kernel.Common.Module qualified as M
 import Kernel.Common.OutputKind qualified as OK
+import Kernel.Common.Platform qualified as PF
 import Kernel.Common.Source qualified as Src
 import Kernel.Common.Target qualified as Target
-import Kernel.Common.ZenConfig qualified as Z
+import Kernel.Common.TargetConfig qualified as TC
 import Language.Common.Digest
 import Language.Common.ModuleID qualified as MID
 import Logger.Handle qualified as Logger
@@ -100,7 +100,7 @@ getExecutableOutputPath h targetOrZen = do
 
 getBuildDir :: Handle -> Target.Target -> Module -> App (Path Abs Dir)
 getBuildDir h t baseModule = do
-  baseBuildDir <- Platform.getBaseBuildDir (_platformHandle h) baseModule
+  baseBuildDir <- Platform.getBaseBuildDir (Platform.getTargetPlatform (_platformHandle h)) baseModule
   buildSignature <- getBuildSignature h t
   buildPrefix <- P.parseRelDir $ "build-" ++ buildSignature
   return $ baseBuildDir </> buildPrefix
@@ -113,10 +113,9 @@ getBuildSignature h t = do
       return sig
     Nothing -> do
       let toolchainDigest = Platform.getToolchainDigest (_platformHandle h)
-      let platformText = Platform.getPlatformText (_platformHandle h)
+      let platformText = PF.reifyPlatform (Platform.getPlatform (_platformHandle h))
       let MainModule m = _mainModule h
-      allocator <- getAllocator t m
-      clangOption <- getClangOption t m
+      TC.TargetConfig {allocator, clangOption} <- getTargetConfig t m
       moduleEns' <- readTextFromPath (moduleLocation m)
       let ens =
             E.dictFromList
@@ -133,41 +132,21 @@ getBuildSignature h t = do
       liftIO $ writeIORef (_cacheRef h) $ Just sig
       return sig
 
-getClangOption :: Target.Target -> Module -> App CL.ClangOption
-getClangOption t baseModule =
+getTargetConfig :: Target.Target -> Module -> App TC.TargetConfig
+getTargetConfig t baseModule =
   case t of
-    Target.Main mainModule ->
-      case mainModule of
-        Target.Named name _ ->
-          case Map.lookup name (moduleTarget baseModule) of
-            Just (Target.TargetSummary {clangOption}) ->
-              return clangOption
-            Nothing ->
-              raiseError' $ "No such target is defined: `" <> name <> "`"
-        Target.Zen _ zenConfig ->
-          return $ Z.clangOption zenConfig
+    Target.Main (Target.Named name _) ->
+      case findTargetConfig baseModule name of
+        Just targetConfig ->
+          return targetConfig
+        Nothing ->
+          raiseError' $ "No such target is defined: `" <> name <> "`"
+    Target.Main mainTarget@(Target.Zen {}) ->
+      return $ Target.getTargetConfig mainTarget
     Target.Peripheral ->
-      return CL.empty
+      return TC.emptyTargetConfig
     Target.PeripheralSingle _ ->
-      return CL.empty
-
-getAllocator :: Target.Target -> Module -> App Allocator
-getAllocator t baseModule =
-  case t of
-    Target.Main mainModule ->
-      case mainModule of
-        Target.Named name _ ->
-          case Map.lookup name (moduleTarget baseModule) of
-            Just (Target.TargetSummary {allocator}) ->
-              return allocator
-            Nothing ->
-              raiseError' $ "No such target is defined: `" <> name <> "`"
-        Target.Zen _ zenConfig ->
-          return $ Z.allocator zenConfig
-    Target.Peripheral ->
-      return defaultAllocator
-    Target.PeripheralSingle _ ->
-      return defaultAllocator
+      return TC.emptyTargetConfig
 
 getArtifactDir :: Handle -> Target.Target -> Module -> App (Path Abs Dir)
 getArtifactDir h t baseModule = do

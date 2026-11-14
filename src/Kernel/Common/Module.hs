@@ -3,7 +3,10 @@ module Kernel.Common.Module
     MainModule (..),
     SomePath,
     attachPrefixPath,
-    emptyForeign,
+    getForeignList,
+    selectForeign,
+    selectZen,
+    findTargetConfig,
     LocatorName,
     AliasPresetMap,
     Foreign (..),
@@ -64,7 +67,7 @@ import Control.Monad.Catch
 import Data.HashMap.Strict qualified as Map
 import Data.List (sort)
 import Data.List.NonEmpty qualified as NE
-import Data.Maybe (catMaybes, fromMaybe, isNothing, maybeToList)
+import Data.Maybe (catMaybes, fromMaybe, maybeToList)
 import Data.Text qualified as T
 import Ens.Ens qualified as E
 import Kernel.Common.Allocator qualified as Allocator
@@ -72,8 +75,10 @@ import Kernel.Common.ClangOption qualified as CL
 import Kernel.Common.Const
 import Kernel.Common.ModuleURL
 import Kernel.Common.Platform qualified as P
+import Kernel.Common.PlatformPattern qualified as PP
+import Kernel.Common.PlatformRule
 import Kernel.Common.Target qualified as Target
-import Kernel.Common.ZenConfig
+import Kernel.Common.TargetConfig
 import Language.Common.BaseName qualified as BN
 import Language.Common.ModuleAlias qualified as MA
 import Language.Common.ModuleDigest
@@ -122,6 +127,22 @@ emptyForeign =
       script = []
     }
 
+getForeignList :: Module -> [Foreign]
+getForeignList someModule =
+  map ruleBody $ moduleForeign someModule
+
+selectForeign :: P.Platform -> Module -> Foreign
+selectForeign platform someModule =
+  maybe emptyForeign ruleBody $ selectRule (`PP.matches` platform) (moduleForeign someModule)
+
+selectZen :: P.PlatformName -> Module -> PlatformRule TargetConfig
+selectZen host someModule =
+  fromMaybe (PlatformRule defaultPlatform emptyTargetConfig) $ selectRule (`PP.matchesHost` host) (moduleZen someModule)
+
+findTargetConfig :: Module -> TargetName -> Maybe TargetConfig
+findTargetConfig someModule name =
+  Target.targetConfig <$> Map.lookup name (moduleTarget someModule)
+
 type TargetName =
   T.Text
 
@@ -129,14 +150,14 @@ data Module = Module
   { moduleID :: MID.ModuleID,
     moduleSourceDir :: Path Rel Dir,
     moduleTarget :: Map.HashMap TargetName Target.TargetSummary,
-    moduleZenConfig :: ZenConfig,
+    moduleZen :: [PlatformRule TargetConfig],
     moduleArchiveDir :: Path Rel Dir,
     moduleCacheDir :: Path Rel Dir,
     moduleDependency :: Map.HashMap MA.ModuleAlias Dependency,
     moduleExtraContents :: [(Hint, SomePath Rel)],
     moduleAntecedents :: [ModuleDigest],
     moduleLocation :: Path Abs File,
-    moduleForeign :: Foreign,
+    moduleForeign :: [PlatformRule Foreign],
     moduleStaticFiles :: Map.HashMap T.Text (Hint, Path Rel File),
     moduleInlineLimit :: Maybe Int,
     moduleUniversal :: Bool,
@@ -340,45 +361,35 @@ getSourceDirInfo someModule = do
     else return (keySource, _m :< E.ensPath dir)
 
 getZenInfo :: Module -> Maybe (T.Text, E.Ens)
-getZenInfo someModule = do
-  let zenConfig = moduleZenConfig someModule
-  let compileOption = map (\x -> _m :< E.String x) $ CL.compileOption $ clangOption zenConfig
-  let compileOption' =
-        if null compileOption
-          then Nothing
-          else Just (keyCompileOption, _m :< E.List (seriesFromList compileOption))
-  let linkOption = map (\x -> _m :< E.String x) $ CL.linkOption $ clangOption zenConfig
-  let linkOption' =
-        if null linkOption
-          then Nothing
-          else Just (keyLinkOption, _m :< E.List (seriesFromList linkOption))
-  let allocatorText =
-        case allocator zenConfig of
-          Allocator.Mimalloc ->
-            "mimalloc"
-          Allocator.System ->
-            "system"
-  let platform' =
-        case platform zenConfig of
-          P.SelectHost ->
-            Nothing
-          selector ->
-            Just (keyPlatform, _m :< E.String (P.reifySelector selector))
-  let executeCommand' = getExecuteCommandInfo (executeCommand zenConfig)
-  let zenInfo =
-        E.dictFromListVertical
-          _m
-          $ [(keyAllocator, _m :< E.String allocatorText)]
-            ++ maybeToList platform'
-            ++ maybeToList executeCommand'
-            ++ maybeToList compileOption'
-            ++ maybeToList linkOption'
-  if clangOption zenConfig == CL.empty
-    && allocator zenConfig == Allocator.defaultAllocator
-    && platform zenConfig == P.SelectHost
-    && isNothing (executeCommand zenConfig)
+getZenInfo someModule =
+  getRuleListInfo keyZen getTargetConfigFieldList (moduleZen someModule)
+
+getTargetConfigFieldList :: TargetConfig -> [(T.Text, E.Ens)]
+getTargetConfigFieldList targetConfig =
+  getAllocatorInfo (allocator targetConfig)
+    : maybeToList (getExecuteCommandInfo (executeCommand targetConfig))
+    ++ getClangOptionInfo (clangOption targetConfig)
+
+getRuleListInfo :: T.Text -> (a -> [(T.Text, E.Ens)]) -> [PlatformRule a] -> Maybe (T.Text, E.Ens)
+getRuleListInfo key getFieldList ruleList =
+  if null ruleList
     then Nothing
-    else Just (keyZen, zenInfo)
+    else do
+      let ruleEnsList = flip map ruleList $ \rule -> do
+            let platformField = (keyPlatform, _m :< E.String (PP.reify (snd (rulePlatform rule))))
+            E.dictFromListVertical _m $ platformField : getFieldList (ruleBody rule)
+      return (key, _m :< E.List (seriesFromList ruleEnsList))
+
+getAllocatorInfo :: Allocator.Allocator -> (T.Text, E.Ens)
+getAllocatorInfo allocator =
+  (keyAllocator, _m :< E.String (Allocator.showAllocator allocator))
+
+getClangOptionInfo :: CL.ClangOption -> [(T.Text, E.Ens)]
+getClangOptionInfo clangOption = do
+  let compileOption = map (\x -> _m :< E.String x) $ CL.compileOption clangOption
+  let linkOption = map (\x -> _m :< E.String x) $ CL.linkOption clangOption
+  [(keyCompileOption, _m :< E.List (seriesFromList compileOption)) | not (null compileOption)]
+    ++ [(keyLinkOption, _m :< E.List (seriesFromList linkOption)) | not (null linkOption)]
 
 getExecuteCommandInfo :: Maybe (Hint, T.Text) -> Maybe (T.Text, E.Ens)
 getExecuteCommandInfo commandOrNone = do
@@ -395,38 +406,12 @@ getCacheDirInfo someModule = do
 getTargetInfo :: Module -> (T.Text, E.Ens)
 getTargetInfo someModule = do
   let targetDict = flip Map.map (moduleTarget someModule) $ \summary -> do
-        let compileOption = map (\x -> _m :< E.String x) $ CL.compileOption (Target.clangOption summary)
-        let compileOption' =
-              if null compileOption
-                then Nothing
-                else Just (keyCompileOption, _m :< E.List (seriesFromList compileOption))
-        let linkOption = map (\x -> _m :< E.String x) $ CL.linkOption (Target.clangOption summary)
-        let linkOption' =
-              if null linkOption
-                then Nothing
-                else Just (keyLinkOption, _m :< E.List (seriesFromList linkOption))
-        let allocatorText =
-              case Target.allocator summary of
-                Allocator.Mimalloc ->
-                  "mimalloc"
-                Allocator.System ->
-                  "system"
-        let platform' =
-              case Target.platform summary of
-                P.SelectHost ->
-                  Nothing
-                selector ->
-                  Just (keyPlatform, _m :< E.String (P.reifySelector selector))
-        let executeCommand' = getExecuteCommandInfo (Target.executeCommand summary)
-        E.dictFromListVertical
-          _m
-          $ [ (keyMain, _m :< E.String (SL.getRelPathText (Target.entryPoint summary))),
-              (keyAllocator, _m :< E.String allocatorText)
-            ]
-            ++ maybeToList platform'
-            ++ maybeToList executeCommand'
-            ++ maybeToList compileOption'
-            ++ maybeToList linkOption'
+        let (_, platformPattern) = Target.targetPlatform summary
+        let platformFields = [(keyPlatform, _m :< E.String (PP.reify platformPattern)) | platformPattern /= snd defaultPlatform]
+        E.dictFromListVertical _m $
+          (keyMain, _m :< E.String (SL.getRelPathText (Target.entryPoint summary)))
+            : platformFields
+            ++ getTargetConfigFieldList (Target.targetConfig summary)
   (keyTarget, E.dictFromListVertical _m (Map.toList targetDict))
 
 getDependencyInfo :: Module -> Maybe (T.Text, E.Ens)
@@ -464,8 +449,11 @@ getAntecedentInfo someModule = do
     else return (keyAntecedent, _m :< E.List (seriesFromList antecedentList))
 
 getForeignInfo :: Module -> Maybe (T.Text, E.Ens)
-getForeignInfo someModule = do
-  let foreignInfo = moduleForeign someModule
+getForeignInfo someModule =
+  getRuleListInfo keyForeign getForeignEntryFieldList (moduleForeign someModule)
+
+getForeignEntryFieldList :: Foreign -> [(T.Text, E.Ens)]
+getForeignEntryFieldList foreignInfo = do
   let textList xs = _m :< E.List (seriesFromList $ map (\x -> _m :< E.String x) xs)
   let fieldList =
         [ (keyForeignInput, map (ppExtraContent . snd) $ input foreignInfo),
@@ -474,10 +462,7 @@ getForeignInfo someModule = do
           (keyForeignTransitiveLinkOption, transitiveLinkOption foreignInfo),
           (keyForeignScript, map snd $ script foreignInfo)
         ]
-  let fieldList' = filter (not . null . snd) fieldList
-  if null fieldList'
-    then Nothing
-    else return (keyForeign, _m :< E.dictFromListVertical' (map (fmap textList) fieldList'))
+  map (fmap textList) (filter (not . null . snd) fieldList)
 
 getPresetMapInfo :: Module -> Maybe (T.Text, E.Ens)
 getPresetMapInfo someModule = do

@@ -13,6 +13,7 @@ import Command.Archive.PackageVersion.Reflect qualified as PV
 import Command.Common.SaveModule qualified as SaveModule
 import CommandParser.Config.Archive
 import Control.Monad (forM_)
+import Data.Containers.ListUtils (nubOrdOn)
 import Data.HashMap.Strict qualified as Map
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.Env qualified as Env
@@ -47,7 +48,7 @@ collectModuleFiles :: MainModule -> App (Path Abs Dir, [SomePath Rel])
 collectModuleFiles (MainModule baseModule) = do
   let moduleRootDir = parent $ moduleLocation baseModule
   let relModuleSourceDir = Left $ moduleSourceDir baseModule
-  let foreignContents = input $ moduleForeign baseModule
+  let foreignContents = nubOrdOn snd $ concatMap input $ getForeignList baseModule
   let extraContents = moduleExtraContents baseModule
   let staticContents = map (\(m, path) -> (m, Right path)) $ Map.elems $ moduleStaticFiles baseModule
   let declaredContents = foreignContents ++ staticContents ++ extraContents

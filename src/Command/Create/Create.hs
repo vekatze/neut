@@ -19,7 +19,7 @@ import Kernel.Common.Handle.Global.Platform qualified as Platform
 import Kernel.Common.Handle.Global.Reuse qualified as Reuse
 import Kernel.Common.LocalArchive qualified as LocalArchive
 import Kernel.Common.Module (moduleLocation)
-import Kernel.Common.Platform qualified as P
+import Kernel.Common.PlatformRule (defaultPlatform)
 import Logger.Handle qualified as Logger
 
 data Handle = Handle
@@ -31,7 +31,8 @@ data Handle = Handle
 
 new :: Console.Handle -> Logger.Handle -> SaveModule.Handle -> LocalArchive.LocalArchiveMap -> App Handle
 new consoleHandle loggerHandle saveModuleHandle localArchiveMap = do
-  platformHandle <- Platform.new loggerHandle P.SelectHost
+  host <- Platform.detectHost
+  platformHandle <- Platform.new loggerHandle host defaultPlatform
   createHandle <- liftIO $ Create.new saveModuleHandle loggerHandle platformHandle
   return $ Handle {..}
 

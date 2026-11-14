@@ -59,8 +59,9 @@ import Kernel.Common.RunProcess qualified as RunProcess
 import Kernel.Common.Source
 import Kernel.Common.SourceDependencyMap (SourceDependencyMap)
 import Kernel.Common.Target
+import Kernel.Common.TargetConfig (TargetConfig)
+import Kernel.Common.TargetConfig qualified as TC
 import Kernel.Common.Trace qualified as Trace
-import Kernel.Common.ZenConfig qualified as Z
 import Kernel.Elaborate.Elaborate qualified as Elaborate
 import Kernel.Elaborate.Internal.Handle.Elaborate qualified as Elaborate
 import Kernel.Emit.Emit qualified as Emit
@@ -137,6 +138,7 @@ prepareMainModule h = do
 
 buildMainTarget :: Handle -> MainTarget -> App ()
 buildMainTarget h target = do
+  Platform.ensureBuildable (Global.platformHandle (globalHandle h))
   mainModule <- prepareMainModule (globalHandle h)
   buildTarget h mainModule (Main target)
 
@@ -157,7 +159,9 @@ buildTarget h (M.MainModule baseModule) target = do
   let traceReport = Console.getTraceConfig $ Global.consoleHandle $ globalHandle h
   traceConfig <- either raiseError' return $ Trace.new (Env.getMainModule $ Global.envHandle $ globalHandle h) traceReport
   moduleList <- Unravel.getModuleList unravelHandle liveSeq
-  didPerformForeignCompilation <- compileForeign h target' startTime moduleList
+  let getForeign = Platform.getForeign (Global.platformHandle (globalHandle h))
+  let moduleForeignList = [(m, getForeign m) | m <- moduleList]
+  didPerformForeignCompilation <- compileForeign h target' startTime moduleForeignList
   let loadHandle = Load.new (globalHandle h)
   contentSeq <- Load.load loadHandle (Trace.isEnabled traceConfig) target' dependenceSeq
   withSystemTempDir "neut-object" $ \stagingDir -> do
@@ -172,8 +176,8 @@ buildTarget h (M.MainModule baseModule) target = do
       return ()
     Main ct -> do
       let linkHandle = Link.new (globalHandle h)
-      transitiveLinkOption <- expandOptions (runProcessHandle h) $ nubOrd $ concatMap (M.transitiveLinkOption . M.moduleForeign) moduleList
-      Link.link linkHandle ct (_shouldSkipLink h) didPerformForeignCompilation resultArtifactTime moduleList transitiveLinkOption liveSeq
+      transitiveLinkOption <- expandOptions (runProcessHandle h) $ nubOrd $ concatMap (M.transitiveLinkOption . snd) moduleForeignList
+      Link.link linkHandle ct (_shouldSkipLink h) didPerformForeignCompilation resultArtifactTime moduleForeignList transitiveLinkOption liveSeq
       execute h (_shouldExecute h) ct (_executeArgs h)
       install h (_installDir h) ct
 
@@ -381,14 +385,13 @@ install h filePathOrNone target = do
   let installHandle = Install.new (globalHandle h)
   mapM_ (Install.install installHandle target) mDir
 
-compileForeign :: Handle -> Target -> UTCTime -> [M.Module] -> App Bool
-compileForeign h t startTime moduleList = do
-  bs <- forP moduleList (compileForeign' h t startTime)
+compileForeign :: Handle -> Target -> UTCTime -> [(M.Module, M.Foreign)] -> App Bool
+compileForeign h t startTime moduleForeignList = do
+  bs <- forP moduleForeignList (compileForeign' h t startTime)
   return $ or bs
 
-compileForeign' :: Handle -> Target -> UTCTime -> M.Module -> App Bool
-compileForeign' h t startTime m = do
-  let foreignInfo = M.moduleForeign m
+compileForeign' :: Handle -> Target -> UTCTime -> (M.Module, M.Foreign) -> App Bool
+compileForeign' h t startTime (m, foreignInfo) = do
   let cmdList = M.script foreignInfo
   let moduleRootDir = M.getModuleRootDir m
   foreignDir <- Path.getForeignDir (Global.pathHandle (globalHandle h)) t m
@@ -511,11 +514,15 @@ expandMainTarget :: RunProcess.Handle -> MainTarget -> App MainTarget
 expandMainTarget h target =
   case target of
     Named targetName summary -> do
-      clangOption' <- expandClangOption h (clangOption summary)
-      return $ Named targetName (summary {clangOption = clangOption'})
-    Zen path zenConfig -> do
-      clangOption' <- expandClangOption h (Z.clangOption zenConfig)
-      return $ Zen path (zenConfig {Z.clangOption = clangOption'})
+      config <- expandTargetConfig h (targetConfig summary)
+      return $ Named targetName (summary {targetConfig = config})
+    Zen path config ->
+      Zen path <$> expandTargetConfig h config
+
+expandTargetConfig :: RunProcess.Handle -> TargetConfig -> App TargetConfig
+expandTargetConfig h config = do
+  clangOption' <- expandClangOption h (TC.clangOption config)
+  return $ config {TC.clangOption = clangOption'}
 
 expandClangOption :: RunProcess.Handle -> CL.ClangOption -> App CL.ClangOption
 expandClangOption h cl = do

@@ -82,7 +82,7 @@ new ::
 new gensymHandle globalHandle@(Global.Handle {..}) (Local.Handle {..}) = do
   let getEnabledPresetHandle = GetEnabledPreset.new globalHandle
   let shiftToLatestHandle = STL.new antecedentHandle
-  let targetCapabilities = Capability.providedBy (Platform.getSelector platformHandle)
+  let targetCapabilities = Capability.providedBy (Platform.getTargetPlatform platformHandle)
   Handle {..}
 
 isLive :: Handle -> Liveness -> Bool

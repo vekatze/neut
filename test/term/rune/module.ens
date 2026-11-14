@@ -8,15 +8,15 @@
     },
     rune-wasm {
       main "rune.nt",
-      platform "wasm32",
+      platform "*/wasm32-wasip1",
       execute "wasmtime {{executable}}",
     },
   },
   dependency {
     core {
-      digest "-hD_dy56xnr7w2oe-S8ZduK0_ccKID6Y0wuvi_VfqKQ",
+      digest "U0di-DrJSIaBBKq1kVsSzQNp_DedAAcKQQxv_HRP7Rg",
       mirror [
-        "https://github.com/vekatze/neut-core/raw/main/archive/0.57.11.tar.zst",
+        "https://github.com/vekatze/neut-core/raw/main/archive/0.57.12.tar.zst",
       ],
       enable-preset true,
     },

@@ -33,9 +33,10 @@ import Kernel.Common.Handle.Global.Type qualified as Type
 import Kernel.Common.Import
 import Kernel.Common.LocalArchive qualified as LocalArchive
 import Kernel.Common.Module qualified as M
-import Kernel.Common.Platform qualified as P
+import Kernel.Common.PlatformPattern qualified as PP
+import Kernel.Common.PlatformRule (PlatformRule (..))
 import Kernel.Common.Target qualified as Target
-import Kernel.Common.ZenConfig qualified as Z
+import Kernel.Common.TargetConfig (TargetConfig)
 import Kernel.Elaborate.Internal.Handle.Def qualified as Definition
 import Kernel.Elaborate.Internal.Handle.Trope qualified as Trope
 import Kernel.Elaborate.Internal.Handle.TypeDef qualified as TypeDef
@@ -46,6 +47,7 @@ import Kernel.Parse.Internal.Handle.UnusedTopLevelName qualified as UnusedTopLev
 import Language.Common.ModuleID qualified as MID
 import Language.Term.Trace qualified as TermTrace
 import Logger.Handle qualified as Logger
+import Logger.Hint (Hint)
 import Path
 
 data Handle = Handle
@@ -53,6 +55,7 @@ data Handle = Handle
     antecedentHandle :: Antecedent.Handle,
     consoleHandle :: Console.Handle,
     platformHandle :: Platform.Handle,
+    zenConfig :: TargetConfig,
     dataHandle :: Data.Handle,
     defHandle :: Definition.Handle,
     tropeHandle :: Trope.Handle,
@@ -92,12 +95,14 @@ newOrError consoleHandle loggerHandle localArchiveMap reuseHandle moduleFilePath
   runApp $ do
     envHandle <- liftEither envHandleOrError
     let mainModule = Env.getMainModule envHandle
-    selector <- liftEither $ resolvePlatformSelector mainModule targetNameOrNone
-    platformHandle <- Platform.new loggerHandle selector
-    liftIO $ newHandle consoleHandle loggerHandle envHandle platformHandle localArchiveMap reuseHandle
+    host <- Platform.detectHost
+    let zenRule = M.selectZen host (M.extractModule mainModule)
+    platform <- liftEither $ getPlatform mainModule zenRule targetNameOrNone
+    platformHandle <- Platform.new loggerHandle host platform
+    liftIO $ newHandle consoleHandle loggerHandle envHandle platformHandle (ruleBody zenRule) localArchiveMap reuseHandle
 
-newHandle :: Console.Handle -> Logger.Handle -> Env.Handle -> Platform.Handle -> LocalArchive.LocalArchiveMap -> Reuse.Handle -> IO Handle
-newHandle consoleHandle loggerHandle envHandle platformHandle localArchiveMap reuseHandle = do
+newHandle :: Console.Handle -> Logger.Handle -> Env.Handle -> Platform.Handle -> TargetConfig -> LocalArchive.LocalArchiveMap -> Reuse.Handle -> IO Handle
+newHandle consoleHandle loggerHandle envHandle platformHandle zenConfig localArchiveMap reuseHandle = do
   let mainModule = Env.getMainModule envHandle
   Logger.setModuleDir loggerHandle mainModule
   optDataHandle <- OptimizableData.new
@@ -126,14 +131,14 @@ newHandle consoleHandle loggerHandle envHandle platformHandle localArchiveMap re
   isShiftMapRegisteredRef <- newIORef False
   return $ Handle {..}
 
-resolvePlatformSelector :: M.MainModule -> Maybe M.TargetName -> Either E.Error P.PlatformSelector
-resolvePlatformSelector mainModule targetNameOrNone = do
+getPlatform :: M.MainModule -> PlatformRule TargetConfig -> Maybe M.TargetName -> Either E.Error (Hint, PP.PlatformPattern)
+getPlatform mainModule zenRule targetNameOrNone = do
   case targetNameOrNone of
     Nothing ->
-      Right $ Z.platform $ M.moduleZenConfig $ M.extractModule mainModule
+      Right $ rulePlatform zenRule
     Just targetName ->
       case Map.lookup targetName (M.moduleTarget (M.extractModule mainModule)) of
         Just summary ->
-          Right $ Target.platform summary
+          Right $ Target.targetPlatform summary
         Nothing ->
           Left $ E.newError' $ "No such target exists: " <> targetName

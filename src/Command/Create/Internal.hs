@@ -16,15 +16,13 @@ import Data.HashMap.Strict qualified as Map
 import Data.Maybe (fromMaybe)
 import Data.Set qualified as S
 import Data.Text qualified as T
-import Kernel.Common.Allocator (defaultAllocator)
-import Kernel.Common.ClangOption qualified as CL
 import Kernel.Common.Const
 import Kernel.Common.Handle.Global.Path qualified as Path
 import Kernel.Common.Handle.Global.Platform qualified as Platform
 import Kernel.Common.Module
-import Kernel.Common.Platform qualified as P
+import Kernel.Common.PlatformRule (defaultPlatform)
 import Kernel.Common.Target
-import Kernel.Common.ZenConfig
+import Kernel.Common.TargetConfig (emptyTargetConfig)
 import Language.Common.ModuleID qualified as MID
 import Language.Common.SourceLocator qualified as SL
 import Logger.Handle qualified as Logger
@@ -87,20 +85,18 @@ constructDefaultModule moduleName mTargetName = do
             [ ( targetName,
                 TargetSummary
                   { entryPoint = sourceLocator,
-                    clangOption = CL.empty,
-                    allocator = defaultAllocator,
-                    platform = P.SelectHost,
-                    executeCommand = Nothing
+                    targetPlatform = defaultPlatform,
+                    targetConfig = emptyTargetConfig
                   }
               )
             ],
-        moduleZenConfig = ZenConfig {clangOption = CL.empty, allocator = defaultAllocator, platform = P.SelectHost, executeCommand = Nothing},
+        moduleZen = [],
         moduleDependency = Map.empty,
         moduleExtraContents = [],
         moduleAntecedents = [],
         moduleLocation = moduleRootDir </> moduleFile,
         moduleStaticFiles = Map.empty,
-        moduleForeign = emptyForeign,
+        moduleForeign = [],
         moduleInlineLimit = Nothing,
         moduleUniversal = True,
         modulePresetMap = Map.empty
@@ -117,7 +113,7 @@ createModuleFile :: Handle -> Module -> App ()
 createModuleFile h newModule = do
   ensureDir $ parent $ moduleLocation newModule
   SaveModule.save (saveModuleHandle h) (moduleLocation newModule) ([], (toDefaultEns newModule, []))
-  buildDir <- Platform.getBaseBuildDir (platformHandle h) newModule
+  buildDir <- Platform.getBaseBuildDir (Platform.getTargetPlatform (platformHandle h)) newModule
   ensureDir buildDir
 
 createMainFile :: Module -> IO ()
