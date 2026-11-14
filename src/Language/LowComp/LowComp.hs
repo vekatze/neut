@@ -18,14 +18,20 @@ module Language.LowComp.LowComp
     DefContent (..),
     Label,
     nop,
+    traverseOpValues,
+    mapOpValues,
+    foldOpValues,
     getPhiList,
     getReturnValue,
   )
 where
 
 import Data.ByteString.Builder
+import Data.Functor.Const (Const (..))
+import Data.Functor.Identity (Identity (..))
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
+import Data.Traversable (for)
 import Language.Common.BaseLowType qualified as BLT
 import Language.Common.CellLayout qualified as CL
 import Language.Common.DefiniteDescription qualified as DD
@@ -130,6 +136,78 @@ data Op
   | Free Value (Maybe Int) FreeID
   | PrimOp PrimOp [Value]
   deriving (Show)
+
+{-# INLINEABLE traverseOpValues #-}
+traverseOpValues :: (Applicative f) => (Value -> f Value) -> Op -> f Op
+traverseOpValues f op =
+  case op of
+    Call isPure codType value args -> do
+      value' <- f value
+      args' <- traverse (traverse f) args
+      pure $ Call isPure codType value' args'
+    MagicCall codType value args -> do
+      value' <- f value
+      args' <- traverse (traverse f) args
+      pure $ MagicCall codType value' args'
+    GetElementPtr (base, baseType) indices -> do
+      base' <- f base
+      indices' <- for indices $ \(index, indexType) -> do
+        index' <- f index
+        pure (index', indexType)
+      pure $ GetElementPtr (base', baseType) indices'
+    Bitcast value from to -> do
+      value' <- f value
+      pure $ Bitcast value' from to
+    IntToPointer value lowType -> do
+      value' <- f value
+      pure $ IntToPointer value' lowType
+    PointerToInt value lowType -> do
+      value' <- f value
+      pure $ PointerToInt value' lowType
+    Load value lowType -> do
+      value' <- f value
+      pure $ Load value' lowType
+    Store lowType value pointer -> do
+      value' <- f value
+      pointer' <- f pointer
+      pure $ Store lowType value' pointer'
+    StackAlloc stackAllocInfo -> do
+      size' <- traverse f (stackSize stackAllocInfo)
+      pure $ StackAlloc stackAllocInfo {stackSize = size'}
+    StackLifetimeStart {} ->
+      pure op
+    StackLifetimeEnd {} ->
+      pure op
+    Calloc num size -> do
+      num' <- f num
+      size' <- f size
+      pure $ Calloc num' size'
+    Alloc size allocID -> do
+      size' <- traverse f size
+      pure $ Alloc size' allocID
+    AllocOpaque size -> do
+      size' <- f size
+      pure $ AllocOpaque size'
+    Realloc pointer size -> do
+      pointer' <- f pointer
+      size' <- f size
+      pure $ Realloc pointer' size'
+    Free pointer size freeID -> do
+      pointer' <- f pointer
+      pure $ Free pointer' size freeID
+    PrimOp primOp values -> do
+      values' <- traverse f values
+      pure $ PrimOp primOp values'
+
+{-# INLINEABLE mapOpValues #-}
+mapOpValues :: (Value -> Value) -> Op -> Op
+mapOpValues f =
+  runIdentity . traverseOpValues (Identity . f)
+
+{-# INLINEABLE foldOpValues #-}
+foldOpValues :: (Monoid m) => (Value -> m) -> Op -> m
+foldOpValues f =
+  getConst . traverseOpValues (Const . f)
 
 type Def =
   (DD.DefiniteDescription, DefContent)
