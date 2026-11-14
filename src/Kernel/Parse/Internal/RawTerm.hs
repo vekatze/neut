@@ -526,16 +526,8 @@ rawTermLet :: Handle -> Hint -> RT.LetKind -> C -> Parser (RT.RawTerm, C)
 rawTermLet h mLet letKind c1 = do
   ((mx, patInner), c2) <- rawTermPattern h
   (c3, (t, c4)) <- rawTermLetVarAscription h mx
-  noeticVarList <-
-    choice
-      [ do
-          c <- keyword "on"
-          vs <- bareSeries SE.Comma $ binderName h
-          return $ SE.pushComment c vs,
-        return $ SE.emptySeries' Nothing SE.Comma
-      ]
+  noeticVarList <- parseOnClause h
   c5 <- delimiter "="
-  lift $ ensureIdentLinearity S.empty $ SE.extract noeticVarList
   (e1, c6) <- rawTerm h
   loc <- getCurrentLoc
   c7 <- delimiter ";"
@@ -545,6 +537,19 @@ rawTermLet h mLet letKind c1 = do
   if SE.isEmpty noeticVarList
     then return (mLet :< RT.Let letKind c1 mxt c4 c5 e1 c6 loc c7 e2 endLoc, c)
     else return (mLet :< RT.LetOn letKind c1 mxt c4 noeticVarList c5 e1 c6 loc c7 e2 endLoc, c)
+
+parseOnClause :: Handle -> Parser (SE.Series (Hint, VK.VarKind, RawIdent))
+parseOnClause h = do
+  noeticVarList <-
+    choice
+      [ do
+          c <- keyword "on"
+          vs <- bareSeries SE.Comma $ binderName h
+          return $ SE.pushComment c vs,
+        return $ SE.emptySeries' Nothing SE.Comma
+      ]
+  lift $ ensureIdentLinearity S.empty $ SE.extract noeticVarList
+  return noeticVarList
 
 rawTermLetRec :: Handle -> LDK.LocalDefKind -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermLetRec h kind m c0 = do
@@ -566,16 +571,8 @@ rawTermBoxElim :: Handle -> Hint -> NV.NecessityVariant -> C -> Parser (RT.RawTe
 rawTermBoxElim h mLet nv c1 = do
   ((mx, patInner), c2) <- rawTermPattern h
   (c3, (t, c4)) <- rawTermLetVarAscription h mx
-  noeticVarList <-
-    choice
-      [ do
-          c <- keyword "on"
-          vs <- bareSeries SE.Comma $ binderName h
-          return $ SE.pushComment c vs,
-        return $ SE.emptySeries' Nothing SE.Comma
-      ]
+  noeticVarList <- parseOnClause h
   c5 <- delimiter "="
-  lift $ ensureIdentLinearity S.empty $ SE.extract noeticVarList
   (e1, c6) <- rawTerm h
   loc <- getCurrentLoc
   c7 <- delimiter ";"
@@ -587,14 +584,7 @@ rawTermPin :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermPin h m c1 = do
   ((mx, k, x), c2) <- binderName h
   (c3, (t, c4)) <- rawTermLetVarAscription h mx
-  noeticVarList <-
-    choice
-      [ do
-          c <- keyword "on"
-          vs <- bareSeries SE.Comma $ binderName h
-          return $ SE.pushComment c vs,
-        return $ SE.emptySeries' Nothing SE.Comma
-      ]
+  noeticVarList <- parseOnClause h
   c5 <- delimiter "="
   (e1, c6) <- rawTerm h
   loc <- getCurrentLoc
