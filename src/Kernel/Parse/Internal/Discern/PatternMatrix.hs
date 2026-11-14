@@ -26,8 +26,8 @@ import Kernel.Parse.Vector qualified as V
 import Language.Common.ArgNum qualified as AN
 import Language.Common.Binder
 import Language.Common.CreateSymbol qualified as Gensym
-import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.DecisionTree qualified as DT
+import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.Ident
 import Language.Common.Ident.Reify qualified as Ident
 import Language.Common.Noema qualified as N

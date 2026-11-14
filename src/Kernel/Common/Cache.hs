@@ -59,25 +59,27 @@ compress traceHandle cache = do
   let (results, traceIDs) = runState (mapM compressStmt $ stmtList cache) IntSet.empty
   let (stmtList', siteGroups) = unzip results
   termTraceSnapshot' <- Trace.snapshot traceHandle traceIDs siteGroups
-  return LowCache
-    { stmtList',
-      remarkList' = remarkList cache,
-      topLevelReferences' = topLevelReferences cache,
-      countSnapshot' = countSnapshot cache,
-      termTraceSnapshot'
-    }
+  return
+    LowCache
+      { stmtList',
+        remarkList' = remarkList cache,
+        topLevelReferences' = topLevelReferences cache,
+        countSnapshot' = countSnapshot cache,
+        termTraceSnapshot'
+      }
 
 extend :: Trace.Handle -> LowCache -> IO Cache
 extend traceHandle cache = do
   (remapping, siteGroups) <- Trace.restore traceHandle $ termTraceSnapshot' cache
   let stmtList = map (extendStmt remapping) (stmtList' cache)
-  return Cache
-    { stmtList,
-      knownTraceSiteIDs = Just siteGroups,
-      remarkList = remarkList' cache,
-      topLevelReferences = topLevelReferences' cache,
-      countSnapshot = countSnapshot' cache
-    }
+  return
+    Cache
+      { stmtList,
+        knownTraceSiteIDs = Just siteGroups,
+        remarkList = remarkList' cache,
+        topLevelReferences = topLevelReferences' cache,
+        countSnapshot = countSnapshot' cache
+      }
 
 compressStmt :: Stmt.Stmt -> State IntSet.IntSet (Stmt.StrippedStmt, IntSet.IntSet)
 compressStmt stmt = do

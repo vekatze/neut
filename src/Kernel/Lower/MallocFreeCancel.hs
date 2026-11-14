@@ -5,10 +5,10 @@ import Data.IntMap.Strict qualified as IntMap
 import Data.IntSet qualified as IntSet
 import Data.List (transpose)
 import Data.Map.Strict qualified as Map
+import Language.Common.DataSize qualified as DS
 import Language.Common.Ident
 import Language.Common.Ident.Reify
 import Language.Common.LowType qualified as LT
-import Language.Common.DataSize qualified as DS
 import Language.Common.PrimNumSize (IntSize (IntSize8), dataSizeToIntSize)
 import Language.Common.PrimType qualified as PT
 import Language.LowComp.LowComp qualified as LC

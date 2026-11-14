@@ -18,6 +18,7 @@ import Control.Comonad.Cofree hiding (section)
 import Control.Monad
 import Control.Monad.Except (liftEither)
 import Control.Monad.IO.Class (MonadIO (liftIO))
+import Data.HashMap.Strict qualified as Map
 import Data.List qualified as List
 import Data.List.NonEmpty qualified as NE
 import Data.Text qualified as T
@@ -31,13 +32,12 @@ import Kernel.Parse.Internal.Discern.Handle qualified as H
 import Kernel.Parse.Internal.Handle.Alias qualified as Alias
 import Kernel.Parse.Internal.Handle.NameMap qualified as NameMap
 import Kernel.Parse.Internal.Handle.Unused qualified as Unused
-import Data.HashMap.Strict qualified as Map
 import Kernel.Parse.NominalEnv (NameEnv)
 import Language.Common.ArgNum qualified as AN
-import Language.Common.CallSite (IsSourceArg)
 import Language.Common.Attr.VarGlobal qualified as AttrVG
 import Language.Common.BaseName qualified as BN
 import Language.Common.CallConvSpec qualified as CCS
+import Language.Common.CallSite (IsSourceArg)
 import Language.Common.CreateSymbol qualified as Gensym
 import Language.Common.DefaultArgs qualified as DefaultArgs
 import Language.Common.DefiniteDescription qualified as DD

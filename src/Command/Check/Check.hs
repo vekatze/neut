@@ -11,8 +11,8 @@ import Command.Common.Check qualified as Check
 import Command.Common.Fetch qualified as Fetch
 import CommandParser.Config.Check
 import Control.Monad.IO.Class (MonadIO (liftIO))
-import Kernel.Common.CreateGlobalHandle qualified as Global
 import Data.Text qualified as T
+import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.Env qualified as Env
 import Kernel.Common.Module (extractModule, getTarget)
 import Kernel.Common.Target

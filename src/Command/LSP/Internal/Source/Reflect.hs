@@ -36,8 +36,7 @@ reflect h srcPath = do
               sourceHint = Nothing,
               sourceImportLocator = Nothing
             }
-    else
-      return Nothing
+    else return Nothing
 
 getModule :: Handle -> Path Abs File -> App Module
 getModule h srcPath = do

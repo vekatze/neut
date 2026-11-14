@@ -30,18 +30,19 @@ import Gensym.Trick qualified as Gensym
 import Kernel.Common.Cache qualified as Cache
 import Kernel.Common.Const (holeLiteral)
 import Kernel.Common.CreateGlobalHandle qualified as Global
-import Language.Common.ExternalName qualified as EN
 import Kernel.Common.Handle.Global.Data qualified as Data
 import Kernel.Common.Handle.Global.GlobalRemark qualified as GlobalRemark
 import Kernel.Common.Handle.Global.KeyArg qualified as KeyArg
 import Kernel.Common.Handle.Global.ModulePath qualified as ModulePath
 import Kernel.Common.Handle.Global.OptimizableData qualified as OptimizableData
+import Kernel.Common.Handle.Global.Platform qualified as Platform
 import Kernel.Common.Handle.Global.Resource qualified as Resource
 import Kernel.Common.Handle.Global.Type qualified as Type
 import Kernel.Common.Handle.Local.Tag qualified as Tag
 import Kernel.Common.ManageCache qualified as Cache
 import Kernel.Common.OptimizableData qualified as OD
 import Kernel.Common.Source qualified as Source
+import Kernel.Common.StorageWidth qualified as StorageWidth
 import Kernel.Common.Target hiding (Main)
 import Kernel.Common.TopLevelReferences (TopLevelReferences)
 import Kernel.Common.Trace qualified as Trace
@@ -49,8 +50,6 @@ import Kernel.Elaborate.Internal.EnsureAffinity qualified as EnsureAffinity
 import Kernel.Elaborate.Internal.EnsureEmbeddable (ensureEmbeddable)
 import Kernel.Elaborate.Internal.Handle.Constraint qualified as Constraint
 import Kernel.Elaborate.Internal.Handle.Def qualified as Definition
-import Kernel.Common.Handle.Global.Platform qualified as Platform
-import Kernel.Common.StorageWidth qualified as StorageWidth
 import Kernel.Elaborate.Internal.Handle.Elaborate
 import Kernel.Elaborate.Internal.Handle.Hole qualified as Hole
 import Kernel.Elaborate.Internal.Handle.LocalLogs qualified as LocalLogs
@@ -58,7 +57,6 @@ import Kernel.Elaborate.Internal.Handle.TypeDef qualified as TypeDef
 import Kernel.Elaborate.Internal.Handle.WeakDef qualified as WeakDef
 import Kernel.Elaborate.Internal.Handle.WeakType qualified as WeakType
 import Kernel.Elaborate.Internal.Handle.WeakTypeDef qualified as WeakTypeDef
-import Kernel.Parse.Internal.Handle.BranchAgreement qualified as BranchAgreement
 import Kernel.Elaborate.Internal.Infer qualified as Infer
 import Kernel.Elaborate.Internal.Registration
 import Kernel.Elaborate.Internal.TypeUtil (inlineType)
@@ -67,6 +65,7 @@ import Kernel.Elaborate.Internal.Unify qualified as Unify
 import Kernel.Elaborate.PublicSignature qualified as PublicSignature
 import Kernel.Elaborate.Trace qualified as ElaborateTrace
 import Kernel.Elaborate.TypeHoleSubst qualified as THS
+import Kernel.Parse.Internal.Handle.BranchAgreement qualified as BranchAgreement
 import Language.Common.Annotation qualified as AN
 import Language.Common.Attr.Lam qualified as AttrL
 import Language.Common.BaseLowType qualified as BLT
@@ -75,23 +74,24 @@ import Language.Common.BasePrimType qualified as BPT
 import Language.Common.Binder
 import Language.Common.CallConv qualified as CC
 import Language.Common.CallConvSpec qualified as CCS
-import Language.Common.CreateSymbol qualified as Gensym
 import Language.Common.CellLayout qualified as CL
+import Language.Common.CreateSymbol qualified as Gensym
 import Language.Common.DataInfo qualified as DI
 import Language.Common.DataSize qualified as DS
 import Language.Common.DecisionTree qualified as DT
 import Language.Common.DefaultArgs qualified as DefaultArgs
 import Language.Common.DefiniteDescription qualified as DD
+import Language.Common.ExternalName qualified as EN
 import Language.Common.Foreign qualified as F
 import Language.Common.ForeignCodType qualified as FCT
 import Language.Common.Geist qualified as G
 import Language.Common.HoleID qualified as HID
 import Language.Common.Ident
-import Language.Common.Literal qualified as LI
 import Language.Common.Ident.Reify qualified as Ident
 import Language.Common.ImpArgs qualified as ImpArgs
 import Language.Common.IsConstLike (IsConstLike)
 import Language.Common.LamKind qualified as LK
+import Language.Common.Literal qualified as LI
 import Language.Common.LowMagic qualified as LM
 import Language.Common.Magic qualified as M
 import Language.Common.ModuleID qualified as MID
@@ -501,7 +501,9 @@ declareTypeAttrs :: Handle -> VK.VarKind -> Ident -> App ()
 declareTypeAttrs h k x = do
   let attrs = S.unions $ map VK.attrClosure $ VK.attrList k
   unless (S.null attrs) $
-    liftIO $ modifyIORef' (attributedTypeVars h) $ IntMap.insertWith S.union (Ident.toInt x) attrs
+    liftIO $
+      modifyIORef' (attributedTypeVars h) $
+        IntMap.insertWith S.union (Ident.toInt x) attrs
 
 hasTypeAttr :: Handle -> VK.TypeAttr -> Ident -> App Bool
 hasTypeAttr h attr x = do
@@ -1637,7 +1639,8 @@ reduceWeakTypeWithin h budget t = do
 ensureUnfoldingBudget :: Handle -> Hint -> Int -> App ()
 ensureUnfoldingBudget h m budget =
   when (budget <= 0) $
-    raiseError m $ "Exceeded max recursion depth of " <> T.pack (show (inlineLimit h)) <> " while reducing a type"
+    raiseError m $
+      "Exceeded max recursion depth of " <> T.pack (show (inlineLimit h)) <> " while reducing a type"
 
 fillHole ::
   Handle ->

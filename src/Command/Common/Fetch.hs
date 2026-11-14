@@ -10,6 +10,7 @@ where
 
 import App.App (App)
 import App.Run (forP, raiseError')
+import CodeParser.Parser qualified as CP
 import Command.Common.SaveModule qualified as SaveModule
 import Control.Comonad.Cofree
 import Control.Monad
@@ -23,7 +24,6 @@ import Data.Set qualified as S
 import Data.Text qualified as T
 import Ens.Ens qualified as E
 import Ens.Ens qualified as SE
-import CodeParser.Parser qualified as CP
 import Ens.Parse qualified as EnsParse
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.Env qualified as Env
@@ -32,9 +32,9 @@ import Kernel.Common.Handle.Global.Platform qualified as Platform
 import Kernel.Common.LocalArchive qualified as LocalArchive
 import Kernel.Common.Module (keyDependency, keyDigest, keyEnablePreset, keyMirror, moduleLocation)
 import Kernel.Common.Module qualified as M
-import Kernel.Parse.Internal.Util (isNumericLike)
 import Kernel.Common.ModuleURL
 import Kernel.Common.RunProcess qualified as RunProcess
+import Kernel.Parse.Internal.Util (isNumericLike)
 import Language.Common.BaseName (isCapitalized)
 import Language.Common.BaseName qualified as BN
 import Language.Common.ModuleAlias

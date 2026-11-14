@@ -51,8 +51,7 @@ import Language.Common.StrictGlobalLocator qualified as SGL
 --     module.path::source.path::body.path
 --
 -- where `::` separates the three chunks and `.` separates segments in a chunk.
-newtype DefiniteDescription
-  = MakeDefiniteDescription {reify :: T.Text}
+newtype DefiniteDescription = MakeDefiniteDescription {reify :: T.Text}
   deriving (Show, Eq, Ord, Binary, Hashable)
 
 make :: SGL.StrictGlobalLocator -> LL.LocalLocator -> T.Text -> DefiniteDescription

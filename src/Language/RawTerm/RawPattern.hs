@@ -9,13 +9,13 @@ where
 
 import Language.Common.CallSite (IsSourceArg)
 import Language.Common.Rune qualified as RU
+import Language.Common.VarKind
 import Language.RawTerm.Key
 import Language.RawTerm.Name
 import Language.RawTerm.RawIdent
 import Logger.Hint
 import SyntaxTree.C
 import SyntaxTree.Series qualified as SE
-import Language.Common.VarKind
 
 data RawPattern
   = Var VarKind Name

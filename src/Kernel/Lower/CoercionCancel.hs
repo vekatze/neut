@@ -218,13 +218,15 @@ mergeCoercionSteps pointerFits prev next =
       | mid1 == mid2 ->
           MergeTo $ StepBitcast from to
     (StepIntToPointer lowType1, StepPointerToInt lowType2)
-      | pointerFits, lowType1 == lowType2 ->
+      | pointerFits,
+        lowType1 == lowType2 ->
           CancelPair
     (StepPointerToInt lowType1, StepIntToPointer lowType2)
       | lowType1 == lowType2 ->
           CancelPair
     (StepIntConv ConvOp.Zext from mid1, StepIntConv ConvOp.Trunc mid2 to)
-      | mid1 == mid2, from == to ->
+      | mid1 == mid2,
+        from == to ->
           CancelPair
     _ ->
       NoMerge

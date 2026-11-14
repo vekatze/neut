@@ -15,9 +15,9 @@ import Kernel.Emit.PrimType
 import Language.Common.DataSize (DataSize)
 import Language.Common.LowType qualified as LT
 import Language.Common.PrimNumSize
-import Language.Common.SlotSize
 import Language.Common.PrimOp
 import Language.Common.PrimType qualified as PT
+import Language.Common.SlotSize
 import Language.LowComp.LowComp qualified as LC
 
 data Handle = Handle

@@ -11,8 +11,8 @@ import Control.Monad (void)
 import Data.ByteString qualified as B
 import Data.ByteString.Lazy qualified as L
 import Data.Text qualified as T
-import Data.Time (UTCTime)
 import Data.Text.Encoding
+import Data.Time (UTCTime)
 import Path
 import Path.IO (removeFile, renameFile, setModificationTime)
 import System.IO (hClose, openBinaryTempFileWithDefaultPermissions)

@@ -43,6 +43,7 @@ import Kernel.Lower.MallocFreeCancel qualified as MallocFreeCancel
 import Language.Common.ArgNum qualified as AN
 import Language.Common.BaseLowType qualified as BLT
 import Language.Common.BasePrimType qualified as BPT
+import Language.Common.CellLayout qualified as CL
 import Language.Common.CreateSymbol qualified as Gensym
 import Language.Common.DataSize qualified as DS
 import Language.Common.DefiniteDescription qualified as DD
@@ -57,11 +58,10 @@ import Language.Common.LowType.FromBaseLowType qualified as LT
 import Language.Common.PrimNumSize
 import Language.Common.PrimNumSize.ToInt
 import Language.Common.PrimNumSize.Wrap qualified as Wrap
-import Language.Common.SlotSize
 import Language.Common.PrimOp
 import Language.Common.PrimOp.ConvOp qualified as ConvOp
 import Language.Common.PrimType qualified as PT
-import Language.Common.CellLayout qualified as CL
+import Language.Common.SlotSize
 import Language.Comp.Comp qualified as C
 import Language.Comp.CreateVar (createVar)
 import Language.Comp.EnumCase qualified as EC
@@ -255,8 +255,7 @@ lowerAuxStmtList h auxNameSet auxStmtList =
               (maybe False (`S.member` pendingAuxNameSet) . C.getCompStmtName)
               auxStmtList
       if null pendingStmtList
-        then
-          return acc
+        then return acc
         else do
           liftIO $ registerInternalNames h pendingStmtList
           pendingDefList <- catMaybes <$> mapM (lowerStmt h) pendingStmtList
@@ -823,8 +822,7 @@ freeIfNecessary h shouldDeallocate pointer byteCount cont =
     then do
       freeID <- Gensym.newCount (gensymHandle h)
       return $ LC.Cont (LC.Free pointer (Just byteCount) freeID) cont
-    else
-      return cont
+    else return cont
 
 -- returns Nothing iff the branch list is empty
 newValueLocal :: Handle -> T.Text -> IO (Ident, LC.Value)

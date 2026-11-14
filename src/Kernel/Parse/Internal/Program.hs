@@ -6,12 +6,12 @@ module Kernel.Parse.Internal.Program
 where
 
 import App.Run (raiseError)
-import Data.Either (lefts, rights)
 import CodeParser.GetInfo
 import CodeParser.Parser
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.Trans
+import Data.Either (lefts, rights)
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Kernel.Parse.Internal.RawTerm

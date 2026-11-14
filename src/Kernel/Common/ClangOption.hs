@@ -13,7 +13,6 @@ data ClangOption = ClangOption
   }
   deriving (Show, Eq)
 
-
 new :: [T.Text] -> [T.Text] -> [T.Text] -> ClangOption
 new buildOption compileOption linkOption =
   ClangOption

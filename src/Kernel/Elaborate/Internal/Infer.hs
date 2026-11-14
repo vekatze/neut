@@ -1182,7 +1182,8 @@ reduceWeakTypeWithin h holeSubst budget t = do
 ensureUnfoldingBudget :: Handle -> Hint -> Int -> App ()
 ensureUnfoldingBudget h m budget =
   when (budget <= 0) $
-    raiseError m $ "Exceeded max recursion depth of " <> T.pack (show (inlineLimit h)) <> " while reducing a type"
+    raiseError m $
+      "Exceeded max recursion depth of " <> T.pack (show (inlineLimit h)) <> " while reducing a type"
 
 -- reduceWeakType' :: Handle -> THS.TypeHoleSubst -> WT.WeakType -> App WT.WeakType
 -- reduceWeakType' h sub e = do

@@ -312,7 +312,8 @@ calculateToolchainDigest h toolchainRoot = do
   let stampPath = toolchainRoot `FP.combine` ".stamp"
   stampExists <- liftIO $ doesFileExist stampPath
   unless stampExists $
-    raiseError' $ "The toolchain has no stamp: " <> T.pack stampPath
+    raiseError' $
+      "The toolchain has no stamp: " <> T.pack stampPath
   stamp <- liftIO $ B.readFile stampPath
   liftIO $ Logger.report h $ "Toolchain stamp:\n" <> decodeUtf8With lenientDecode stamp
   return $ decodeUtf8 $ hashAndEncode stamp

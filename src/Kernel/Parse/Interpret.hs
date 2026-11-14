@@ -135,9 +135,8 @@ activateImport h m currentSource sourceInfoList = do
             liftIO $ NameMap.activateTopLevelNames (nameMapHandle h) namesInSource
             forM_ importUseList $ \importUse ->
               Alias.activateImportUse (aliasHandle h) currentSource namesInSource importUse
-          else
-            forM_ importUseList $ \importUse ->
-              Alias.ensureImportUseIsAvailable currentSource namesInSource importUse
+          else forM_ importUseList $ \importUse ->
+            Alias.ensureImportUseIsAvailable currentSource namesInSource importUse
       StaticFileKey pathList -> do
         forM_ pathList $ \(key, (mKey, path)) ->
           Locator.activateStaticFile (locatorHandle h) mKey key path

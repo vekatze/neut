@@ -28,8 +28,8 @@ import Data.Text qualified as T
 import Kernel.Common.Handle.Global.Data qualified as Data
 import Kernel.Common.Handle.Global.ModulePath qualified as ModulePath
 import Kernel.Common.Handle.Global.OptimizableData qualified as OptimizableData
-import Kernel.Common.OptimizableData qualified as OD
 import Kernel.Common.Module qualified as Module
+import Kernel.Common.OptimizableData qualified as OD
 import Kernel.Common.TypeTag qualified as TypeTag
 import Kernel.Common.TypeValue qualified as TypeValue
 import Language.Common.ArgNum qualified as AN

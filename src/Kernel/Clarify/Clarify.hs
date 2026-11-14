@@ -38,9 +38,11 @@ import Kernel.Common.Handle.Global.Data qualified as Data
 import Kernel.Common.Handle.Global.ImportedTypeDefCache qualified as ImportedTypeDefCache
 import Kernel.Common.Handle.Global.ModulePath qualified as ModulePath
 import Kernel.Common.Handle.Global.OptimizableData qualified as OptimizableData
+import Kernel.Common.Handle.Global.Platform qualified as Platform
 import Kernel.Common.Handle.Global.Resource qualified as Resource
 import Kernel.Common.Handle.Global.Type qualified as Type
 import Kernel.Common.OptimizableData qualified as OD
+import Kernel.Common.StorageWidth qualified as StorageWidth
 import Kernel.Common.Trace qualified as Trace
 import Kernel.Elaborate.Internal.Handle.TypeDef qualified as TypeDef
 import Language.Common.ArgNum qualified as AN
@@ -50,10 +52,9 @@ import Language.Common.Attr.VarGlobal qualified as AttrVG
 import Language.Common.BaseLowType qualified as BLT
 import Language.Common.Binder
 import Language.Common.CallConv qualified as CC
+import Language.Common.CellLayout qualified as CL
 import Language.Common.CreateSymbol qualified as Gensym
 import Language.Common.DataInfo qualified as DI
-import Kernel.Common.Handle.Global.Platform qualified as Platform
-import Kernel.Common.StorageWidth qualified as StorageWidth
 import Language.Common.DataSize qualified as DS
 import Language.Common.DecisionTree qualified as DT
 import Language.Common.DefiniteDescription qualified as DD
@@ -68,14 +69,13 @@ import Language.Common.Magic qualified as M
 import Language.Common.Noema qualified as N
 import Language.Common.Opacity (isOpaque)
 import Language.Common.Opacity qualified as O
-import Language.Common.SlotSize
 import Language.Common.PrimNumSize qualified as PNS
 import Language.Common.PrimOp
 import Language.Common.PrimType qualified as PT
 import Language.Common.Rune qualified as RU
+import Language.Common.SlotSize
 import Language.Common.StmtKind qualified as SK
 import Language.Common.VarKind qualified as VK
-import Language.Common.CellLayout qualified as CL
 import Language.Comp.Comp qualified as C
 import Language.Comp.CreateVar qualified as Gensym
 import Language.Comp.EnumCase qualified as EC
@@ -409,8 +409,7 @@ clarifyStmt h stmt =
           then do
             codType' <- clarifyType h context' codType
             liftIO $ toDestPassing h codType' e'
-          else
-            return (Nothing, e')
+          else return (Nothing, e')
       liftIO $ defineWithSourceEntries h f opacity destParam slots xts' xts'' [fst envArg, fst switchArg] id e''
     StmtDefineType _ stmtKind (SavedHint _) f impArgs expArgs defaultArgs _ body -> do
       let context = newContext f
@@ -487,8 +486,7 @@ newEntryLayout h slots binders = do
         sizeComp <- getSizeComp h t'
         claim <- claimSource h sizeComp sourceName
         return (sourceName, [(x, claim)])
-      else
-        return (x, [])
+      else return (x, [])
   let (params, claimBindings) = unzip entries
   return (params, concat claimBindings)
 
@@ -1537,8 +1535,7 @@ clarifyLambda h context attrL@(AttrL.Attr {lamKind}) fvs impArgs expArgs default
             then do
               codType' <- clarifyType h (extendContext appArgs $ newContext liftedName) codType
               liftIO $ toDestPassing h codType' liftedBody'
-            else
-              return (Nothing, liftedBody')
+            else return (Nothing, liftedBody')
         stmt <- liftIO $ defineWithSourceEntries h liftedName O.Opaque destParam liftedSlots liftedArgs liftedArgs suffixParams id liftedBody''
         liftIO $ AuxEnv.insert (auxEnvHandle h) liftedName stmt
       liftIO $ registerDefaultEnvType h liftedName []

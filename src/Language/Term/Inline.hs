@@ -694,11 +694,11 @@ reduceDataElim h m traceID isNoetic oets' decisionTree = do
           case lookupSplit cursor oets' of
             Just (e, oets'')
               | _ :< TM.DataIntro (AttrDI.Attr {..}) _ _ consImpTypes consArgs <- normalTerm e -> do
-              let (consImpVars, newBaseCursorList, cont) = findClause discriminant fallbackTree caseList
-              let hTyped = withTypeValues (zip consImpVars consImpTypes) h
-              newCursorTypes <- mapM (inlineType' hTyped . snd) newBaseCursorList
-              let newCursorList = zip3 (map fst newBaseCursorList) (map (asComponent e) consArgs) newCursorTypes
-              continueDataElim (withNormalized [(cursor, e)] hTyped) m traceID isNoetic (oets'' ++ newCursorList) cont
+                  let (consImpVars, newBaseCursorList, cont) = findClause discriminant fallbackTree caseList
+                  let hTyped = withTypeValues (zip consImpVars consImpTypes) h
+                  newCursorTypes <- mapM (inlineType' hTyped . snd) newBaseCursorList
+                  let newCursorList = zip3 (map fst newBaseCursorList) (map (asComponent e) consArgs) newCursorTypes
+                  continueDataElim (withNormalized [(cursor, e)] hTyped) m traceID isNoetic (oets'' ++ newCursorList) cont
             Just (e, oets'')
               | Just literal <- asLiteralTerm (normalTerm e) -> do
                   case findLiteralClause literal caseList of

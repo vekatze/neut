@@ -22,14 +22,15 @@ module Kernel.Clarify.Internal.Sigma
 where
 
 import Control.Monad
-import Data.Maybe (mapMaybe)
 import Control.Monad.IO.Class (MonadIO (liftIO))
+import Data.Maybe (mapMaybe)
 import Gensym.Handle qualified as Gensym
 import Kernel.Clarify.Internal.Linearize qualified as Linearize
 import Kernel.Clarify.Internal.Utility (ResourceSpec (..))
 import Kernel.Clarify.Internal.Utility qualified as Utility
 import Language.Common.ArgNum qualified as AN
 import Language.Common.BaseLowType qualified as BLT
+import Language.Common.CellLayout qualified as CL
 import Language.Common.CreateSymbol qualified as Gensym
 import Language.Common.DataInfo qualified as DI
 import Language.Common.DataSize qualified as DS
@@ -39,7 +40,6 @@ import Language.Common.ForeignCodType qualified as FCT
 import Language.Common.Ident
 import Language.Common.LowMagic qualified as LM
 import Language.Common.Opacity qualified as O
-import Language.Common.CellLayout qualified as CL
 import Language.Comp.Comp qualified as C
 import Language.Comp.CreateVar qualified as Gensym
 import Language.Comp.EnumCase qualified as EC
@@ -160,8 +160,7 @@ freeOuterStorageIfRequested shouldRelease value layout cont = do
   let byteSize = CL.cellByteSize layout
   if byteSize == 0
     then cont
-    else
-      C.EnumElim [] shouldRelease (C.Free value (Just byteSize) cont) [(EC.Int 0, cont)]
+    else C.EnumElim [] shouldRelease (C.Free value (Just byteSize) cont) [(EC.Int 0, cont)]
 
 selectCopyDestination :: Handle -> CL.CellLayout -> C.Value -> IO C.Comp
 selectCopyDestination h layout dest = do

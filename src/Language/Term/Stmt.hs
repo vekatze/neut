@@ -16,8 +16,8 @@ import Control.Comonad.Cofree
 import Data.Maybe
 import Language.Common.Binder
 import Language.Common.DefiniteDescription qualified as DD
-import Language.Common.ExternalName qualified as EN
 import Language.Common.Discriminant qualified as D
+import Language.Common.ExternalName qualified as EN
 import Language.Common.Foreign qualified as F
 import Language.Common.IsConstLike
 import Language.Common.RuleKind (RuleKind)

@@ -13,9 +13,9 @@ import CodeParser.Parser (runParser)
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Text qualified as T
-import Gensym.CreateHandle qualified as Gensym
 import Ens.Parse qualified as EnsParse
 import Ens.ToDoc qualified as Ens
+import Gensym.CreateHandle qualified as Gensym
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.CreateLocalHandle qualified as Local
 import Kernel.Common.Handle.Global.Env qualified as Env

@@ -17,15 +17,15 @@ module Language.Term.Inline.Handle
 where
 
 import Data.HashMap.Strict qualified as Map
+import Data.IORef
 import Data.IntMap qualified as IntMap
 import Data.IntSet qualified as IntSet
-import Data.IORef
 import Gensym.Handle qualified as GensymHandle
 import Kernel.Common.Handle.Global.Data qualified as Data
+import Kernel.Common.Handle.Global.ModulePath qualified as ModulePath
 import Kernel.Common.Handle.Global.OptimizableData qualified as OptimizableData
 import Kernel.Common.Handle.Local.Tag qualified as Tag
 import Kernel.Common.Module qualified as Module
-import Kernel.Common.Handle.Global.ModulePath qualified as ModulePath
 import Kernel.Elaborate.Internal.Handle.TypeDef qualified as TypeDef
 import Language.Common.Binder
 import Language.Common.DefiniteDescription qualified as DD

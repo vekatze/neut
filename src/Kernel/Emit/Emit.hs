@@ -36,9 +36,8 @@ import Kernel.Emit.Internal.LowComp qualified as EmitLowComp
 import Kernel.Emit.LowType
 import Kernel.Emit.LowValue
 import Language.Common.BaseLowType qualified as BLT
-import Language.Common.CreateSymbol qualified as Gensym
-import Language.Common.PrimNumSize (dataSizeToIntSize)
 import Language.Common.CellLayout qualified as CL
+import Language.Common.CreateSymbol qualified as Gensym
 import Language.Common.DataSize qualified as DS
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.ExternalName qualified as EN
@@ -48,6 +47,7 @@ import Language.Common.Ident (Ident)
 import Language.Common.Ident.Reify
 import Language.Common.LowType qualified as LT
 import Language.Common.LowType.FromBaseLowType qualified as LT
+import Language.Common.PrimNumSize (dataSizeToIntSize)
 import Language.Common.PrimNumSize.ToInt (floatSizeToInt, intSizeToInt)
 import Language.Common.PrimType qualified as PT
 import Language.Common.SlotSize

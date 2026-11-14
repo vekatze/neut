@@ -165,8 +165,7 @@ distinguishVarAcc h activeSet x !occMap =
       x' <- Gensym.newIdentFromIdent (gensymHandle h) x
       let occMap' = IntMap.insertWith (++) (toInt x) [x'] occMap
       return (occMap', x')
-    else
-      return (occMap, x)
+    else return (occMap, x)
 
 distinguishValueAcc :: Handle -> ActiveSet -> C.Value -> OccMap -> IO (OccMap, C.Value)
 distinguishValueAcc h activeSet term !occMap =

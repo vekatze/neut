@@ -23,9 +23,9 @@ import Language.Common.ArgNum qualified as AN
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.Discriminant qualified as D
 import Language.Common.Ident
-import Language.Common.VarKind
 import Language.Common.IsConstLike
 import Language.Common.Literal qualified as L
+import Language.Common.VarKind
 import Logger.Hint
 
 data Pattern

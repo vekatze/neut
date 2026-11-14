@@ -46,9 +46,9 @@ import Kernel.Elaborate.Internal.Handle.WeakDecl qualified as WeakDecl
 import Kernel.Elaborate.Internal.Handle.WeakDef qualified as WeakDef
 import Kernel.Elaborate.Internal.Handle.WeakType qualified as WeakType
 import Kernel.Elaborate.Internal.Handle.WeakTypeDef qualified as WeakTypeDef
-import Kernel.Parse.Internal.Handle.BranchAgreement qualified as BranchAgreement
 import Kernel.Elaborate.Internal.WeakTerm.Fill qualified as Fill
 import Kernel.Elaborate.TypeHoleSubst qualified as THS
+import Kernel.Parse.Internal.Handle.BranchAgreement qualified as BranchAgreement
 import Language.Common.Binder
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.VarKind qualified as VK
@@ -56,9 +56,9 @@ import Language.Term.Inline qualified as Inline
 import Language.Term.Inline.Env qualified as InlineEnv
 import Language.Term.Inline.Handle qualified as InlineHandle
 import Language.Term.Stmt qualified as Stmt
+import Language.Term.Subst qualified as TmSubst
 import Language.Term.Term qualified as TM
 import Language.WeakTerm.Reduce qualified as Reduce
-import Language.Term.Subst qualified as TmSubst
 import Language.WeakTerm.Subst qualified as Subst
 import Language.WeakTerm.WeakTerm qualified as WT
 import Logger.Hint (Hint)

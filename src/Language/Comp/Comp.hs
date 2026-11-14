@@ -42,9 +42,9 @@ import Language.Common.Opacity
 import Language.Common.PrimNumSize
 import Language.Common.PrimOp
 import Language.Common.PrimOp.BinaryOp qualified as BOp
-import Logger.Hint (Hint)
 import Language.Common.PrimType qualified as PT
 import Language.Comp.EnumCase hiding (Int)
+import Logger.Hint (Hint)
 import Prelude hiding (null)
 
 data Value
