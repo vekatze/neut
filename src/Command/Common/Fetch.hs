@@ -10,7 +10,6 @@ where
 
 import App.App (App)
 import App.Run (forP, raiseError')
-import CodeParser.Parser qualified as CP
 import Command.Common.SaveModule qualified as SaveModule
 import Control.Comonad.Cofree
 import Control.Monad
@@ -20,7 +19,6 @@ import Data.ByteString qualified as B
 import Data.Containers.ListUtils (nubOrdOn)
 import Data.HashMap.Strict qualified as Map
 import Data.Maybe
-import Data.Set qualified as S
 import Data.Text qualified as T
 import Ens.Ens qualified as E
 import Ens.Ens qualified as SE
@@ -32,10 +30,9 @@ import Kernel.Common.Handle.Global.Platform qualified as Platform
 import Kernel.Common.LocalArchive qualified as LocalArchive
 import Kernel.Common.Module (keyDependency, keyDigest, keyEnablePreset, keyMirror, moduleLocation)
 import Kernel.Common.Module qualified as M
+import Kernel.Common.Module.FromPath qualified as FromPath
 import Kernel.Common.ModuleURL
 import Kernel.Common.RunProcess qualified as RunProcess
-import Kernel.Parse.Internal.Util (isNumericLike)
-import Language.Common.BaseName (isCapitalized)
 import Language.Common.BaseName qualified as BN
 import Language.Common.ModuleAlias
 import Language.Common.ModuleDigest qualified as MD
@@ -90,18 +87,7 @@ tidy h deps = do
 insertDependency :: Handle -> T.Text -> ModuleURL -> App ()
 insertDependency h aliasName url = do
   aliasName' <- liftEither (BN.reflect' aliasName)
-  let aliasText = BN.reify aliasName'
-  when (T.null aliasText) $ do
-    raiseError' "The alias of a module must not be empty"
-  when (T.any (`S.member` CP.nonSymbolCharSet) aliasText) $ do
-    raiseError' $ "Invalid alias of a module: " <> aliasText
-  when (isNumericLike aliasText) $ do
-    raiseError' $ "`" <> aliasText <> "` reads as a numeric literal and cannot be used as an alias of a module"
-  when (isCapitalized aliasName') $ do
-    raiseError' $ "Module aliases must not be capitalized, but found: " <> aliasText
-  when (S.member aliasName' BN.reservedAlias) $ do
-    raiseError' $ "The reserved name `" <> aliasText <> "` cannot be used as an alias of a module"
-  let alias = ModuleAlias aliasName'
+  alias <- either raiseError' return $ FromPath.validateModuleAlias aliasName'
   withSystemTempFile "fetch" $ \tempFilePath tempFileHandle -> do
     download h tempFilePath alias [url]
     archive <- liftIO $ B.hGetContents tempFileHandle
