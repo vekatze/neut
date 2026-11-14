@@ -1,7 +1,0 @@
-data zen-config {
-| Zen-Config(
-    file-path-string: string,
-    build-mode-string: string,
-    args: list(string),
-  )
-}

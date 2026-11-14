@@ -1,5 +1,0 @@
-data archive-config {
-| Archive-Config(
-    archive-name: ?string,
-  )
-}

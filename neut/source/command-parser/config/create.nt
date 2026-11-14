@@ -1,6 +1,0 @@
-data create-config {
-| Create-Config(
-    module-name: string,
-    target-name: ?string,
-  )
-}
