@@ -78,7 +78,7 @@ emitLowOp ax lowOp = do
         [ "alloca",
           emitLowType (LC.stackElemType stackAllocInfo) <> ",",
           emitLowType (LC.stackIndexType stackAllocInfo),
-          emitStackSize (baseSize ax) (LC.stackSize stackAllocInfo)
+          emitSize (baseSize ax) (LC.stackSize stackAllocInfo)
             <> ", align "
             <> intDec (stackSlotAlignment ax)
         ]
@@ -111,7 +111,7 @@ emitLowOp ax lowOp = do
             <> "("
             <> emitLowType (intType ax)
             <> " "
-            <> emitAllocSize (baseSize ax) size
+            <> emitSize (baseSize ax) size
             <> ")"
         ]
     LC.AllocOpaque size -> do
@@ -181,17 +181,9 @@ emitLowOp ax lowOp = do
             _ ->
               error "Kernel.Emit.LowOp.emitLowOp.PrimConvOp"
 
-emitStackSize :: DataSize -> Either Integer LC.Value -> Builder
-emitStackSize baseSize stackSize =
-  case stackSize of
-    Left knownSize ->
-      integerDec knownSize
-    Right runtimeSize ->
-      emitValue baseSize runtimeSize
-
-emitAllocSize :: DataSize -> Either Integer LC.Value -> Builder
-emitAllocSize baseSize allocSize =
-  case allocSize of
+emitSize :: DataSize -> Either Integer LC.Value -> Builder
+emitSize baseSize size =
+  case size of
     Left knownSize ->
       integerDec knownSize
     Right runtimeSize ->

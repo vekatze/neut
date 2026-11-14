@@ -11,7 +11,7 @@ module Language.RawTerm.RawTerm.ToDoc
     decodeDef,
     decodeTypeDef,
     decGeist,
-    decTypeGeist,
+    decGeistSimple,
     attachComment,
   )
 where
@@ -599,7 +599,7 @@ decodeTypeDef nameDecoder keyword c def = do
     D.join
       [ D.text keyword,
         D.text " ",
-        decTypeGeist nameDecoder $ RT.typeGeist def,
+        decGeistSimple nameDecoder $ RT.typeGeist def,
         D.text " ",
         decodeBlock (RT.typeLeadingComment def, (typeToDoc $ RT.typeBody def, RT.typeTrailingComment def))
       ]
@@ -821,44 +821,6 @@ decGeist
 
 decGeistSimple :: (a -> D.Doc) -> RT.RawGeist a -> D.Doc
 decGeistSimple
-  nameDecoder
-  ( RT.RawGeist
-      { name = (name, c0),
-        impParams = (impParams, c1),
-        defaultParams = (defaultParams, c2),
-        expParams = (expParams, c3),
-        isConstLike
-      }
-    ) = do
-    let hasExp = not isConstLike || not (SE.isEmpty expParams)
-    let hasDefault = not (SE.isEmpty defaultParams)
-    let expParamsBase = decodeExpParams isConstLike expParams
-    let defaultParamsBase = decodeDefaultParams defaultParams
-    let expParamsWithImp =
-          if hasExp
-            then attachComment c1 expParamsBase
-            else expParamsBase
-    let defaultParamsWithImp =
-          if not hasExp && hasDefault
-            then attachComment c1 defaultParamsBase
-            else defaultParamsBase
-    let defaultParamsWithTrailing =
-          if hasDefault
-            then attachComment (c3 ++ c2) defaultParamsWithImp
-            else defaultParamsWithImp
-    let expParamsWithTrailing =
-          if hasDefault
-            then expParamsWithImp
-            else attachComment (c3 ++ c2) expParamsWithImp
-    PI.arrange
-      [ PI.inject $ attachComment c0 $ nameDecoder name,
-        PI.inject $ decodeImpParams impParams,
-        PI.inject expParamsWithTrailing,
-        PI.inject defaultParamsWithTrailing
-      ]
-
-decTypeGeist :: (a -> D.Doc) -> RT.RawGeist a -> D.Doc
-decTypeGeist
   nameDecoder
   ( RT.RawGeist
       { name = (name, c0),

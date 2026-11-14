@@ -549,13 +549,13 @@ decNominalGeist (tag, geist, _) = do
         ConstantMeta ->
           RT.decGeist (D.text . BN.reify) geist
         Alias ->
-          RT.decTypeGeist (D.text . BN.reify) geist
+          RT.decGeistSimple (D.text . BN.reify) geist
         AliasOpaque ->
-          RT.decTypeGeist (D.text . BN.reify) geist
+          RT.decGeistSimple (D.text . BN.reify) geist
         Data ->
-          RT.decTypeGeist (D.text . BN.reify) geist
+          RT.decGeistSimple (D.text . BN.reify) geist
         Resource ->
-          RT.decTypeGeist (D.text . BN.reify) geist
+          RT.decGeistSimple (D.text . BN.reify) geist
   PI.arrange
     [ PI.horizontal $ D.text keyword,
       PI.inject geistDoc
