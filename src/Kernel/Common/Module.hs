@@ -80,6 +80,7 @@ import Kernel.Common.PlatformRule
 import Kernel.Common.Target qualified as Target
 import Kernel.Common.TargetConfig
 import Language.Common.BaseName qualified as BN
+import Language.Common.Const (doubleColon)
 import Language.Common.ModuleAlias qualified as MA
 import Language.Common.ModuleDigest
 import Language.Common.ModuleID qualified as MID

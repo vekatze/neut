@@ -39,6 +39,7 @@ import Kernel.Parse.Internal.Handle.GlobalNameMap qualified as GlobalNameMap
 import Kernel.Parse.Internal.Handle.Unused qualified as Unused
 import Kernel.Parse.Internal.Handle.UnusedTopLevelName qualified as UnusedTopLevelName
 import Language.Common.BaseName qualified as BN
+import Language.Common.Const (doubleColon)
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.GlobalLocator qualified as GL
 import Language.Common.LocalLocator qualified as LL

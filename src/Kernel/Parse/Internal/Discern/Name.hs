@@ -38,6 +38,7 @@ import Language.Common.Attr.VarGlobal qualified as AttrVG
 import Language.Common.BaseName qualified as BN
 import Language.Common.CallConvSpec qualified as CCS
 import Language.Common.CallSite (IsSourceArg)
+import Language.Common.Const (doubleColon, nsSep)
 import Language.Common.CreateSymbol qualified as Gensym
 import Language.Common.DefaultArgs qualified as DefaultArgs
 import Language.Common.DefiniteDescription qualified as DD
@@ -280,7 +281,7 @@ resolveNamespaceMember h m headText rest resolverOrNone dd = do
           let nameLen = T.length $ showDottedName headText rest
           liftIO $ insertLocatorTag h m dd' gn nameLen mDef
         Just resolveMemberDD ->
-          insertMemberTags h m (T.length headText + T.length C.nsSep) [] rest resolveMemberDD (dd', mDef, gn)
+          insertMemberTags h m (T.length headText + T.length nsSep) [] rest resolveMemberDD (dd', mDef, gn)
       return $ Right globalVar
     Hidden ->
       return $ Left $ hiddenNameMessage $ showDottedName headText rest
@@ -289,7 +290,7 @@ resolveNamespaceMember h m headText rest resolverOrNone dd = do
 
 showDottedName :: T.Text -> [BN.BaseName] -> T.Text
 showDottedName headText rest =
-  T.intercalate C.nsSep $ headText : map BN.reify rest
+  T.intercalate nsSep $ headText : map BN.reify rest
 
 toMemberDD :: SGL.StrictGlobalLocator -> [BN.BaseName] -> DD.DefiniteDescription
 toMemberDD sgl names = do
@@ -323,7 +324,7 @@ insertMemberTags h m columnOffset prefix rest resolveMemberDD finalInfo =
           insertMemberTag h m columnOffset b dd mDef gn
         _ ->
           return ()
-      let nextOffset = columnOffset + T.length (BN.reify b) + T.length C.nsSep
+      let nextOffset = columnOffset + T.length (BN.reify b) + T.length nsSep
       insertMemberTags h m nextOffset prefix' bs resolveMemberDD finalInfo
 
 insertMemberTag ::
@@ -370,7 +371,7 @@ resolveLocator h m locator shouldInsertTag = do
       raiseError m $ hiddenNameMessage $ L.reify locator
     Found globalVar@(dd, (mDef, gn)) -> do
       when shouldInsertTag $ do
-        let sepLen = T.length C.doubleColon
+        let sepLen = T.length doubleColon
         when (metaShouldSaveLocation m) $ do
           moduleLocation <- Alias.getModuleLocation (H.aliasHandle h) m $ SGL.moduleID sgl
           liftIO $ Tag.insertModuleFile (H.tagHandle h) m modulePathText moduleLocation
