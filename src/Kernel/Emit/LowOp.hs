@@ -9,6 +9,7 @@ import Data.ByteString.Builder
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
 import Kernel.Common.Allocator (AllocatorSpec (..))
+import Kernel.Emit.Builder (unwordsL)
 import Kernel.Emit.LowType
 import Kernel.Emit.LowValue
 import Kernel.Emit.PrimType
@@ -207,17 +208,6 @@ emitBinaryOp baseSize t inst d1 d2 =
 emitConvOp :: DataSize -> Builder -> LC.Value -> LT.LowType -> LT.LowType -> Builder
 emitConvOp baseSize cast d dom cod =
   unwordsL [cast, emitLowType dom, emitValue baseSize d, "to", emitLowType cod]
-
-{-# INLINE unwordsL #-}
-unwordsL :: [Builder] -> Builder
-unwordsL strList =
-  case strList of
-    [] ->
-      ""
-    [b] ->
-      b
-    b : bs ->
-      b <> " " <> unwordsL bs
 
 showIndex :: DataSize -> [(LC.Value, LT.LowType)] -> Builder
 showIndex baseSize idxList =

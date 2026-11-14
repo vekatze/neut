@@ -18,6 +18,7 @@ import Control.Concurrent (getNumCapabilities)
 import Control.Monad
 import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.IO.Class
+import Data.List (unsnoc)
 import Data.Text qualified as T
 import Data.Time (UTCTime, getCurrentTime)
 import Gensym.Handle qualified as Gensym
@@ -180,10 +181,6 @@ registerUnusedTopLevelNameRemarks h = do
   modulePathMap <- liftIO $ ModulePath.get $ Global.modulePathHandle $ globalHandle h
   logs <- liftIO $ UnusedTopLevelName.flushRemarks modulePathMap $ Global.unusedTopLevelNameHandle $ globalHandle h
   liftIO $ GlobalRemark.insert (Global.globalRemarkHandle $ globalHandle h) logs
-
-unsnoc :: [a] -> Maybe ([a], a)
-unsnoc =
-  foldr (\x -> Just . maybe ([], x) (\(~(a, b)) -> (x : a, b))) Nothing
 
 collectLogs :: GlobalRemark.Handle -> App () -> IO [L.Log]
 collectLogs h c = do

@@ -472,7 +472,7 @@ unravelFoundational h t baseModule = do
   children' <- mapM (STL.shiftToLatest shiftToLatestHandle) children
   prefetchSources h t children'
   (artifactTimeList, seqList) <- mapAndUnzipM (unravel'' h t) children'
-  baseArtifactTime <- liftIO artifactTimeFromCurrentTime
+  baseArtifactTime <- liftIO $ A.inject <$> getCurrentTime
   let artifactTime = getArtifactTime artifactTimeList artifactTimeList baseArtifactTime
   let sourceList = toList $ foldl' (><) Seq.empty seqList
   reportResolvedSources h sourceList
@@ -537,7 +537,7 @@ getItemTime' ::
   Maybe UTCTime ->
   Maybe UTCTime
 getItemTime' mTimeList mTime = do
-  case (mTime, distributeMaybe mTimeList) of
+  case (mTime, sequence mTimeList) of
     (Nothing, _) ->
       Nothing
     (_, Nothing) ->
@@ -546,16 +546,6 @@ getItemTime' mTimeList mTime = do
       if all (time >=) childTimeList
         then Just time
         else Nothing
-
-distributeMaybe :: [Maybe a] -> Maybe [a]
-distributeMaybe xs =
-  case xs of
-    [] ->
-      return []
-    my : rest -> do
-      y <- my
-      rest' <- distributeMaybe rest
-      return $ y : rest'
 
 getFreshCacheTime :: Path.Handle -> Target -> Source.Source -> App CacheTime
 getFreshCacheTime h t source = do
@@ -863,13 +853,3 @@ chase' axis baseMap found k i = do
           raiseError' $
             "Found a cycle in given antecedent graph:\n" <> showCycle (map MID.reify $ j' : found)
         else chase axis baseMap (j' : found) k j
-
-artifactTimeFromCurrentTime :: IO A.ArtifactTime
-artifactTimeFromCurrentTime = do
-  now <- getCurrentTime
-  return
-    A.ArtifactTime
-      { cacheTime = Just now,
-        llvmTime = Just now,
-        objectTime = Just now
-      }

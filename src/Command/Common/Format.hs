@@ -12,6 +12,7 @@ import App.Run (raiseError')
 import CodeParser.Parser (runParser)
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
+import Data.List (unsnoc)
 import Data.Text qualified as T
 import Ens.Parse qualified as EnsParse
 import Ens.ToDoc qualified as Ens
@@ -99,7 +100,3 @@ _replaceLast content contentSeq =
       [(source, Right content)]
     cacheOrContent : rest ->
       cacheOrContent : _replaceLast content rest
-
-unsnoc :: [a] -> Maybe ([a], a)
-unsnoc =
-  foldr (\x -> Just . maybe ([], x) (\(~(a, b)) -> (x : a, b))) Nothing

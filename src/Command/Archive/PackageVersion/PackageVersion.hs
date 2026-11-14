@@ -15,7 +15,6 @@ import Data.List qualified as List
 import Data.Text qualified as T
 import Kernel.Common.Const
 import Language.Common.Decimal (readDecimal)
-import Language.Common.List (initLast)
 
 type PackageVersion =
   (AlphaPrefix, (MajorVersion, [MinorVersion]))
@@ -83,7 +82,7 @@ newer v1 v2 =
 increment :: PackageVersion -> PackageVersion
 increment version = do
   let (alphaPrefix, (majorVersion, minorVersionList)) = version
-  case initLast minorVersionList of
+  case List.unsnoc minorVersionList of
     Just (minorVersionPrefix, lowestMinorVersion) ->
       (alphaPrefix, (majorVersion, minorVersionPrefix ++ [lowestMinorVersion + 1]))
     Nothing ->

@@ -339,7 +339,7 @@ lowerComp h term k =
       afterRead <- liftIO $ freeIfNecessary h shouldDeallocate sigma (CL.cellByteSize layout) body
       lowerValueLetCast h sigmaVar v LT.Pointer
         =<< return . fieldPointers (zip elemVars (map fst slots)) sigma
-        =<< loadElements h sigma (zip xs (zip elems (map (widthLowType . snd) slots)))
+        =<< loadElements h sigma (zip xs (zip elems (map (LT.fromBaseLowType . CL.widthBaseLowType . snd) slots)))
         =<< return afterRead
     C.UpIntro d -> do
       (resultVar, resultValue) <- liftIO $ newValueLocal h "result"
@@ -730,7 +730,7 @@ allocateCell h resultVar byteSize cont =
 createCell :: Handle -> Ident -> CL.CellLayout -> [C.Value] -> LC.Comp -> App LC.Comp
 createCell h resultVar layout ds cont = do
   let slots = CL.cellSlots layout
-  let widths = map (widthLowType . snd) slots
+  let widths = map (LT.fromBaseLowType . CL.widthBaseLowType . snd) slots
   (elemVars, elemValues) <- mapAndUnzipM (const $ liftIO $ newValueLocal h "base") ds
   (xs, vs) <- mapAndUnzipM (const $ liftIO $ newValueLocal h "item") ds
   (cellVar, cellValue) <- liftIO $ newValueLocal h "cell"
@@ -945,20 +945,6 @@ fieldPointers offsetVars basePointer cont = do
   let byteType = LT.PrimNum $ PT.Int IntSize8
   let f (var, offset) = getElemPtr var basePointer byteType [toInteger offset]
   foldr f cont offsetVars
-
-widthLowType :: CL.FieldWidth -> LT.LowType
-widthLowType width =
-  case width of
-    CL.WidthPointer ->
-      LT.Pointer
-    CL.Width8 ->
-      LT.PrimNum $ PT.Int IntSize8
-    CL.Width16 ->
-      LT.PrimNum $ PT.Int IntSize16
-    CL.Width32 ->
-      LT.PrimNum $ PT.Int IntSize32
-    CL.Width64 ->
-      LT.PrimNum $ PT.Int IntSize64
 
 memcpyExternal :: C.Value -> C.Value -> C.Value -> C.Primitive
 memcpyExternal dest src byteCount = do
