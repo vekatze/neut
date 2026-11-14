@@ -2,11 +2,15 @@ module Kernel.Common.Trace
   ( Config,
     empty,
     new,
+    newFromConsole,
     isEnabled,
     matches,
   )
 where
 
+import App.App (App)
+import App.Run (raiseError')
+import Console.Handle qualified as Console
 import Console.ReportMode qualified as Report
 import Data.Bifunctor (first)
 import Data.HashMap.Strict qualified as Map
@@ -42,6 +46,10 @@ new traceConfig = do
   let prefixList = Report.tracePrefixList traceConfig
   prefixList' <- mapM normalizePrefix prefixList
   return Config {phaseList, prefixList = prefixList'}
+
+newFromConsole :: Console.Handle -> App Config
+newFromConsole consoleHandle =
+  either raiseError' return $ new $ Console.getTraceConfig consoleHandle
 
 normalizePrefix :: T.Text -> Either T.Text (NamePrefix ModulePath.ModulePath)
 normalizePrefix prefix = do

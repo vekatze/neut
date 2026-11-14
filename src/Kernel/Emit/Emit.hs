@@ -6,8 +6,6 @@ module Kernel.Emit.Emit
 where
 
 import App.App (App)
-import App.Run (raiseError')
-import Console.Handle qualified as Console
 import Console.ReportMode qualified as Report
 import Control.Monad (when)
 import Data.ByteString.Builder
@@ -72,8 +70,7 @@ data Handle = Handle
 new :: GensymHandle.Handle -> Global.Handle -> Target -> App Handle
 new gensymHandle globalHandle target = do
   allocator <- Env.getAllocatorByTarget target
-  let traceReport = Console.getTraceConfig $ Global.consoleHandle globalHandle
-  traceConfig <- either raiseError' return $ Trace.new traceReport
+  traceConfig <- Trace.newFromConsole $ Global.consoleHandle globalHandle
   return $ Handle {..}
 
 emit :: Handle -> LC.LowCode -> IO L.ByteString

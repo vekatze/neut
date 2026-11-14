@@ -9,7 +9,7 @@ module Kernel.Parse.Internal.Handle.UnusedTopLevelName
     getReferences,
     addConstructorOwners,
     insertReferences,
-    flushRemarks,
+    registerRemarks,
   )
 where
 
@@ -22,6 +22,7 @@ import Data.Maybe (mapMaybe)
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Kernel.Common.GlobalName qualified as GN
+import Kernel.Common.Handle.Global.GlobalRemark qualified as GlobalRemark
 import Kernel.Common.Handle.Global.ModulePath qualified as ModulePath
 import Kernel.Common.HashMapRef (insertEntries)
 import Kernel.Common.Module qualified as Module
@@ -106,6 +107,12 @@ isInMainModule :: DD.DefiniteDescription -> Bool
 isInMainModule dd = do
   let (moduleID, _) = DD.unconsDD dd
   moduleID == MID.Main
+
+registerRemarks :: ModulePath.Handle -> GlobalRemark.Handle -> Handle -> IO ()
+registerRemarks modulePathHandle globalRemarkHandle h = do
+  modulePathMap <- ModulePath.get modulePathHandle
+  logs <- flushRemarks modulePathMap h
+  GlobalRemark.insert globalRemarkHandle logs
 
 flushRemarks :: ModulePath.ModulePathMap -> Handle -> IO [L.Log]
 flushRemarks modulePathMap h = do

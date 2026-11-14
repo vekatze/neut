@@ -2,6 +2,7 @@ module Kernel.Common.Handle.Global.Env
   ( Handle (..),
     new,
     getMainModule,
+    getMainTarget,
     getMainModuleDir,
     getMainDefiniteDescriptionByTarget,
     getAllocatorByTarget,
@@ -36,6 +37,14 @@ newtype Handle = Handle
 getMainModule :: Handle -> MainModule
 getMainModule =
   _mainModule
+
+getMainTarget :: Handle -> TargetName -> App Target.MainTarget
+getMainTarget h targetName = do
+  case getTarget (extractModule $ getMainModule h) targetName of
+    Just target ->
+      return target
+    Nothing ->
+      raiseError' $ "No such target exists: " <> targetName
 
 getMainModuleDir :: Handle -> FilePath
 getMainModuleDir h =

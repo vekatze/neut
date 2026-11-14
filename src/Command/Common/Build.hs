@@ -2,7 +2,6 @@ module Command.Common.Build
   ( Config (..),
     Handle,
     new,
-    getMainTarget,
     prepareMainModule,
     buildMainTarget,
   )
@@ -19,7 +18,6 @@ import Command.Common.Build.Install qualified as Install
 import Command.Common.Build.Link qualified as Link
 import Command.Common.Dependency qualified as Dependency
 import Command.Common.Fetch qualified as Fetch
-import Console.Handle qualified as Console
 import Control.Comonad.Cofree
 import Control.Concurrent (getNumCapabilities)
 import Control.Exception (mask_)
@@ -120,15 +118,6 @@ new cfg globalHandle = do
   let _executeArgs = executeArgs cfg
   Handle {..}
 
-getMainTarget :: M.TargetName -> Global.Handle -> App MainTarget
-getMainTarget targetName globalHandle = do
-  let mainModule = Env.getMainModule (Global.envHandle globalHandle)
-  case M.getTarget (M.extractModule mainModule) targetName of
-    Just target ->
-      return target
-    Nothing ->
-      raiseError' $ "No such target exists: " <> targetName
-
 prepareMainModule :: Global.Handle -> App M.MainModule
 prepareMainModule h = do
   let mainModule = Env.getMainModule (Global.envHandle h)
@@ -162,7 +151,7 @@ buildTarget h (M.MainModule baseModule) target = do
   let dependenceSeq = resultSourceList
   let liveSeq = filter (flip S.member resultLiveSourceSet . sourceFilePath) dependenceSeq
   sourceDependencyMap <- liftIO $ Unravel.getSourceDependencyMap unravelHandle dependenceSeq
-  traceConfig <- newTraceConfig h
+  traceConfig <- Trace.newFromConsole $ Global.consoleHandle $ globalHandle h
   moduleList <- Unravel.getModuleList unravelHandle liveSeq
   let getForeign = Platform.getForeign (Global.platformHandle (globalHandle h))
   let moduleForeignList = [(m, getForeign m) | m <- moduleList]
@@ -259,7 +248,11 @@ compile h traceConfig target outputKindList sourceDependencyMap liveSourceSet co
           virtualCode <- Lower.lower lowerHandle stmtList' auxStmtList
           emit h generateHandle gensymHandle hp startTime target outputKindList (Right source) virtualCode
       when (shouldRegisterUnusedTopLevelNameRemarks target) $
-        registerUnusedTopLevelNameRemarks h
+        liftIO $
+          UnusedTopLevelName.registerRemarks
+            (Global.modulePathHandle $ globalHandle h)
+            (Global.globalRemarkHandle $ globalHandle h)
+            (Global.unusedTopLevelNameHandle $ globalHandle h)
       entryPointVirtualCode <- compileEntryPoint h target outputKindList
       forM_ entryPointVirtualCode $ \(gensymHandle, src, code) ->
         liftIO $
@@ -295,12 +288,6 @@ needsCodeGeneration traceConfig cacheHandle outputKindList liveSourceSet source
       return True
   | otherwise =
       Cache.needsCompilation cacheHandle outputKindList source
-
-registerUnusedTopLevelNameRemarks :: Handle -> App ()
-registerUnusedTopLevelNameRemarks h = do
-  modulePathMap <- liftIO $ ModulePath.get $ Global.modulePathHandle $ globalHandle h
-  logs <- liftIO $ UnusedTopLevelName.flushRemarks modulePathMap $ Global.unusedTopLevelNameHandle $ globalHandle h
-  liftIO $ GlobalRemark.insert (Global.globalRemarkHandle $ globalHandle h) logs
 
 shouldRegisterUnusedTopLevelNameRemarks :: Target -> Bool
 shouldRegisterUnusedTopLevelNameRemarks target = do
@@ -384,7 +371,7 @@ compileEntryPoint h target outputKindList = do
       return []
     Main t -> do
       gensymHandle <- liftIO Gensym.createHandle
-      traceConfig <- newTraceConfig h
+      traceConfig <- Trace.newFromConsole $ Global.consoleHandle $ globalHandle h
       let pathHandle = Global.pathHandle (globalHandle h)
       b <- Cache.isEntryPointCompilationSkippable pathHandle t outputKindList
       if b
@@ -402,11 +389,6 @@ compileEntryPoint h target outputKindList = do
           mainVirtualCode <-
             Lower.lowerEntryPoint lowerHandle t stmtList
           return [(gensymHandle, Left t, mainVirtualCode)]
-
-newTraceConfig :: Handle -> App Trace.Config
-newTraceConfig h = do
-  let traceReport = Console.getTraceConfig $ Global.consoleHandle $ globalHandle h
-  either raiseError' return $ Trace.new traceReport
 
 execute :: Handle -> Bool -> MainTarget -> [String] -> App ()
 execute h shouldExecute target args = do

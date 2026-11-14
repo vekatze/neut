@@ -52,7 +52,7 @@ new globalHandle = do
 
 describe :: Handle -> Config -> App ()
 describe h cfg = do
-  target <- Build.getMainTarget (targetName cfg) (globalHandle h)
+  target <- Env.getMainTarget (Global.envHandle (globalHandle h)) (targetName cfg)
   unravelHandle <- liftIO $ Unravel.new (globalHandle h)
   reachedOrError <- liftIO $ tryApp $ reach h unravelHandle target
   writtenOrError <- liftIO $ tryApp $ writeDescription h unravelHandle target $ fromRight [] reachedOrError

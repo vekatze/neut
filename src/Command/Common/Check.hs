@@ -11,9 +11,8 @@ where
 
 import App.App (App)
 import App.Error qualified as E
-import App.Run (forP, raiseError', runApp)
+import App.Run (forP, runApp)
 import Command.Common.Dependency qualified as Dependency
-import Console.Handle qualified as Console
 import Control.Concurrent (getNumCapabilities)
 import Control.Monad
 import Control.Monad.Except (MonadError (throwError))
@@ -27,7 +26,6 @@ import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.CreateLocalHandle qualified as Local
 import Kernel.Common.Handle.Global.Env qualified as Env
 import Kernel.Common.Handle.Global.GlobalRemark qualified as GlobalRemark
-import Kernel.Common.Handle.Global.ModulePath qualified as ModulePath
 import Kernel.Common.Module (extractModule)
 import Kernel.Common.Module qualified as M
 import Kernel.Common.Module.GetModule qualified as GetModule
@@ -110,7 +108,7 @@ _check h target mainTarget baseModule = do
     dependenceSeq <- Unravel.resultSourceList <$> Unravel.unravel unravelHandle baseModule target
     forM_ mainTarget $ Unravel.checkTargetCapabilities unravelHandle baseModule
     sourceDependencyMap <- liftIO $ Unravel.getSourceDependencyMap unravelHandle dependenceSeq
-    traceConfig <- newTraceConfig h
+    traceConfig <- Trace.newFromConsole $ Global.consoleHandle $ globalHandle h
     contentSeq <- Load.load loadHandle (Trace.isEnabled traceConfig) target dependenceSeq
     cacheOrProgList <- Parse.parse (globalHandle h) contentSeq
     cacheOrStmtList <- forP cacheOrProgList $ \(gensymHandle, localHandle, (source, cacheOrProg)) -> do
@@ -124,7 +122,11 @@ _check h target mainTarget baseModule = do
     numCapabilities <- liftIO getNumCapabilities
     Dependency.run numCapabilities sourceDependencyMap Parse.getSourcePath cacheOrStmtList $ \(gensymHandle, localHandle, (source, cacheOrContent)) -> do
       void $ checkSource h startTime gensymHandle traceConfig localHandle target source cacheOrContent
-    registerUnusedTopLevelNameRemarks h
+    liftIO $
+      UnusedTopLevelName.registerRemarks
+        (Global.modulePathHandle $ globalHandle h)
+        (Global.globalRemarkHandle $ globalHandle h)
+        (Global.unusedTopLevelNameHandle $ globalHandle h)
 
 _check' :: Handle -> Target -> M.Module -> App (Maybe Elaborate.Handle)
 _check' h target baseModule = do
@@ -133,7 +135,7 @@ _check' h target baseModule = do
   let loadHandle = Load.new (globalHandle h)
   dependenceSeq <- Unravel.resultSourceList <$> Unravel.unravel unravelHandle baseModule target
   sourceDependencyMap <- liftIO $ Unravel.getSourceDependencyMap unravelHandle dependenceSeq
-  traceConfig <- newTraceConfig h
+  traceConfig <- Trace.newFromConsole $ Global.consoleHandle $ globalHandle h
   contentSeq <- Load.load loadHandle (Trace.isEnabled traceConfig) target dependenceSeq
   cacheOrProgList <- Parse.parse (globalHandle h) contentSeq
   cacheOrStmtList <- forP cacheOrProgList $ \(gensymHandle, localHandle, (source, cacheOrProg)) -> do
@@ -170,17 +172,6 @@ checkSource h startTime gensymHandle traceConfig localHandle target source (cach
       "Checking: " <> T.pack (toFilePath $ sourceFilePath source)
   void $ Elaborate.elaborate elaborateHandle target logs cacheOrStmtList
   return elaborateHandle
-
-newTraceConfig :: Handle -> App Trace.Config
-newTraceConfig h = do
-  let traceReport = Console.getTraceConfig $ Global.consoleHandle $ globalHandle h
-  either raiseError' return $ Trace.new traceReport
-
-registerUnusedTopLevelNameRemarks :: Handle -> App ()
-registerUnusedTopLevelNameRemarks h = do
-  modulePathMap <- liftIO $ ModulePath.get $ Global.modulePathHandle $ globalHandle h
-  logs <- liftIO $ UnusedTopLevelName.flushRemarks modulePathMap $ Global.unusedTopLevelNameHandle $ globalHandle h
-  liftIO $ GlobalRemark.insert (Global.globalRemarkHandle $ globalHandle h) logs
 
 collectLogs :: GlobalRemark.Handle -> App () -> IO [L.Log]
 collectLogs h c = do
