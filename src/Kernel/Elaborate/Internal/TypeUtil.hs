@@ -7,17 +7,14 @@ where
 
 import App.App (App)
 import App.Run (raiseCritical, raiseError)
-import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.IO.Class (liftIO)
-import Data.IntMap qualified as IntMap
 import Kernel.Common.Handle.Global.Data qualified as Data
 import Kernel.Common.Handle.Global.ModulePath qualified as ModulePath
 import Kernel.Elaborate.Internal.Handle.Elaborate
 import Language.Common.Binder
 import Language.Common.DataInfo qualified as DI
 import Language.Common.DefiniteDescription qualified as DD
-import Language.Common.Ident.Reify qualified as Ident
 import Language.Term.Inline qualified as Inline
 import Language.Term.Subst qualified as TmSubst
 import Language.Term.Term qualified as TM
@@ -54,22 +51,16 @@ getConsParamTypes h m dataName dataArgs = do
     then do
       let sub = TmSubst.makeTypeSubst (map getBinderIdent dataBinders) dataArgs
       forM (DI.consInfoList dataInfo) $ \consInfo -> do
-        (consImpParams', sub') <- liftIO $ TmSubst.refreshBinders (termSubstHandle h) sub (DI.consImpParams consInfo)
+        let consImpParams = DI.consImpParams consInfo
+        (consImpParams', sub') <- liftIO $ TmSubst.refreshTypeBinders (termSubstHandle h) sub consImpParams
         consParams' <- liftIO $ substConsParams h sub' (DI.consParams consInfo)
         return consInfo {DI.consImpParams = consImpParams', DI.consParams = consParams'}
     else
       raiseCritical m $
         "Could not specialize constructor metadata for `" <> DD.reify dataName <> "` due to arity mismatch"
 
-substConsParams :: Handle -> TmSubst.Subst -> [BinderF TM.Type] -> IO [BinderF TM.Type]
+substConsParams :: Handle -> TmSubst.TypeSubst -> [BinderF TM.Type] -> IO [BinderF TM.Type]
 substConsParams h sub consParams =
-  case consParams of
-    [] ->
-      return []
-    (m, k, x, t) : rest -> do
-      let substHandle' = TmSubst.new (gensymHandle h)
-      t' <- TmSubst.substType substHandle' sub t
-      let opaque = m :< TM.Tau
-      let sub' = IntMap.insert (Ident.toInt x) (TmSubst.Type opaque) sub
-      rest' <- substConsParams h sub' rest
-      return $ (m, k, x, t') : rest'
+  forM consParams $ \(m, k, x, t) -> do
+    t' <- TmSubst.substType (termSubstHandle h) sub t
+    return (m, k, x, t')

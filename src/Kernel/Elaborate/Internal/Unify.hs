@@ -27,7 +27,6 @@ import Kernel.Elaborate.TypeHoleSubst qualified as THS
 import Language.Common.Arity qualified as Arity
 import Language.Common.Attr.VarGlobal qualified as AttrVG
 import Language.Common.Binder
-import Language.Common.CreateSymbol qualified as Gensym
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.HoleID qualified as HID
 import Language.Common.Ident
@@ -36,11 +35,9 @@ import Language.Common.VarKind qualified as VK
 import Language.WeakTerm.Eq qualified as WT
 import Language.WeakTerm.FreeVars
 import Language.WeakTerm.Holes
-import Language.WeakTerm.Subst (Subst, SubstEntry (..))
 import Language.WeakTerm.Subst qualified as Subst
 import Language.WeakTerm.ToText (numberHoles, toTextTypeNumbered)
 import Language.WeakTerm.WeakTerm qualified as WT
-import Logger.Hint
 import Logger.Log qualified as L
 import Logger.LogLevel qualified as L
 
@@ -166,7 +163,7 @@ simplify h susList constraintList =
         then simplify h susList cs
         else do
           case (expected, actual) of
-            (m1 :< WT.Pi piKind1 impParams1 expParams1 defaultParams1 cod1, m2 :< WT.Pi piKind2 impParams2 expParams2 defaultParams2 cod2)
+            (_ :< WT.Pi piKind1 impParams1 expParams1 defaultParams1 cod1, _ :< WT.Pi piKind2 impParams2 expParams2 defaultParams2 cod2)
               | piKind1 == piKind2,
                 -- `source` is part of the type, and unification on it is exact.
                 map isSourceBinder expParams1 == map isSourceBinder expParams2,
@@ -174,11 +171,9 @@ simplify h susList constraintList =
                 length impParams1 == length impParams2,
                 sameDefaultParams defaultParams1 defaultParams2,
                 length expParams1 == length expParams2 -> do
-                  codBinder1 <- liftIO $ asWeakBinder h m1 cod1
-                  codBinder2 <- liftIO $ asWeakBinder h m2 cod2
-                  let binder1 = impParams1 ++ expParams1 ++ defaultParams1 ++ [codBinder1]
-                  let binder2 = impParams2 ++ expParams2 ++ defaultParams2 ++ [codBinder2]
-                  cs' <- liftIO $ simplifyBinder h orig binder1 binder2
+                  let types1 = map (\(_, _, _, t) -> t) (expParams1 ++ defaultParams1) ++ [cod1]
+                  let types2 = map (\(_, _, _, t) -> t) (expParams2 ++ defaultParams2) ++ [cod2]
+                  cs' <- liftIO $ simplifyBinder h orig (impParams1, types1) (impParams2, types2)
                   simplify h susList $ cs' ++ cs
             (_ :< WT.Data _ name1 es1, _ :< WT.Data _ name2 es2)
               | name1 == name2,
@@ -312,33 +307,32 @@ resolveHole h susList hole1 xs e2' cs = do
 simplifyBinder ::
   Handle ->
   C.Constraint ->
-  [BinderF WT.WeakType] ->
-  [BinderF WT.WeakType] ->
+  ([BinderF WT.WeakType], [WT.WeakType]) ->
+  ([BinderF WT.WeakType], [WT.WeakType]) ->
   IO [(C.Constraint, C.Constraint)]
-simplifyBinder h orig =
-  simplifyBinder' h orig IntMap.empty
+simplifyBinder h orig (impParams1, types1) (impParams2, types2) = do
+  (impConstraints, sub) <- simplifyTypeBinders h orig IntMap.empty impParams1 impParams2
+  constraints <- forM (zip types1 types2) $ \(t1, t2) -> do
+    t2' <- Subst.substType (substHandle h) sub t2
+    return (C.Eq t1 t2', orig)
+  return $ impConstraints ++ constraints
 
-simplifyBinder' ::
+simplifyTypeBinders ::
   Handle ->
   C.Constraint ->
-  Subst ->
+  Subst.TypeSubst ->
   [BinderF WT.WeakType] ->
   [BinderF WT.WeakType] ->
-  IO [(C.Constraint, C.Constraint)]
-simplifyBinder' h orig sub params1 params2 =
+  IO ([(C.Constraint, C.Constraint)], Subst.TypeSubst)
+simplifyTypeBinders h orig sub params1 params2 =
   case (params1, params2) of
     ((m1, _, x1, t1) : xts1, (_, _, x2, t2) : xts2) -> do
       t2' <- Subst.substType (substHandle h) sub t2
-      let sub' = IntMap.insert (Ident.toInt x2) (Type (m1 :< WT.TVar x1)) sub
-      rest <- simplifyBinder' h orig sub' xts1 xts2
-      return $ (C.Eq t1 t2', orig) : rest
+      let sub' = IntMap.insert (Ident.toInt x2) (Subst.TypeValue (m1 :< WT.TVar x1)) sub
+      (rest, sub'') <- simplifyTypeBinders h orig sub' xts1 xts2
+      return ((C.Eq t1 t2', orig) : rest, sub'')
     _ ->
-      return []
-
-asWeakBinder :: Handle -> Hint -> WT.WeakType -> IO (BinderF WT.WeakType)
-asWeakBinder h m t = do
-  x <- Gensym.newIdentFromText (gensymHandle h) "hole"
-  return (m, VK.normal, x, t)
+      return ([], sub)
 
 asAppliedTypeConstructor :: WT.WeakType -> Maybe (WT.WeakType, [WT.WeakType])
 asAppliedTypeConstructor t =

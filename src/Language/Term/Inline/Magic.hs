@@ -371,7 +371,7 @@ specializeConsInfoList h m dataName dataBinders dataArgs consInfoList
           <> ModulePath.renderDD (modulePathMap h) dataName
           <> "`."
 
-specializeConsInfo :: Handle -> Subst.Subst -> DI.ConsInfo (BinderF TM.Type) -> App (DI.ConsInfo (BinderF TM.Type))
+specializeConsInfo :: Handle -> Subst.TypeSubst -> DI.ConsInfo (BinderF TM.Type) -> App (DI.ConsInfo (BinderF TM.Type))
 specializeConsInfo h sub consInfo = do
   let specializeConsParam (mx, k, x, t) = do
         t' <- liftIO $ Subst.substType (substHandle h) sub t

@@ -12,7 +12,6 @@ module Language.Term.Inline.Handle
     Pending (..),
     Instantiation (..),
     PendingTerm (..),
-    PendingType (..),
   )
 where
 
@@ -52,10 +51,6 @@ data Pending a = Pending
 data PendingTerm
   = Normalized TropeDepth Normal
   | RenamedTerm Ident
-
-data PendingType
-  = TypeValue TM.Type
-  | RenamedType Ident
 
 newtype Instantiation = Instantiation
   { traceRemapping :: Maybe Trace.Remapping
@@ -120,7 +115,7 @@ data Handle = Handle
     localMetaMemo :: [(DD.DefiniteDescription, [TM.Type], Ident)],
     activeDefineMetaList :: [Stmt.DefineMeta],
     pendingTerms :: IntMap.IntMap (Pending PendingTerm),
-    pendingTypes :: IntMap.IntMap (Pending PendingType),
+    pendingTypes :: IntMap.IntMap (Pending Subst.TypeEntry),
     nextPendingSerial :: Int,
     instantiation :: Maybe Instantiation,
     usedPendingSerialRef :: IORef Int,

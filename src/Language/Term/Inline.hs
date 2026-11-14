@@ -164,11 +164,11 @@ getGivenTerm (_, source) =
 
 withTypeValues :: [(Ident, TM.Type)] -> Handle -> Handle
 withTypeValues xts =
-  withPendingTypes [(Ident.toInt x, TypeValue t) | (x, t) <- xts]
+  withPendingTypes [(Ident.toInt x, Subst.TypeValue t) | (x, t) <- xts]
 
-withTypeSubst :: Subst.Subst -> Handle -> Handle
+withTypeSubst :: Subst.TypeSubst -> Handle -> Handle
 withTypeSubst sub =
-  withPendingTypes [(x, TypeValue t) | (x, Subst.Type t) <- IntMap.toList sub]
+  withPendingTypes (IntMap.toList sub)
 
 enterBinder :: Handle -> Ident -> App (Ident, Handle)
 enterBinder h x = do
@@ -184,7 +184,7 @@ enterTypeBinder h x = do
   renaming <- liftIO $ getBinderRenaming h x
   case renaming of
     Just x' ->
-      return (x', withPendingTypes [(Ident.toInt x, RenamedType x')] h)
+      return (x', withPendingTypes [(Ident.toInt x, Subst.TypeRenaming x')] h)
     Nothing ->
       return (x, withoutPendingTypes [x] h)
 
@@ -218,7 +218,7 @@ withPendingTerms entries h = do
       nextPendingSerial = start + length entries
     }
 
-withPendingTypes :: [(Int, PendingType)] -> Handle -> Handle
+withPendingTypes :: [(Int, Subst.TypeEntry)] -> Handle -> Handle
 withPendingTypes entries h = do
   let start = nextPendingSerial h
   h
@@ -254,26 +254,18 @@ lookupPendingType h m x =
     Just (Pending {pendingSerial, pendingEntry}) -> do
       recordPendingUse h pendingSerial
       case pendingEntry of
-        TypeValue t ->
+        Subst.TypeValue t ->
           return $ Just t
-        RenamedType x' ->
+        Subst.TypeRenaming x' ->
           return $ Just $ m :< TM.TVar x'
 
-toTermSubstEntry :: PendingTerm -> Subst.SubstEntry
+toTermSubstEntry :: PendingTerm -> Subst.TermEntry
 toTermSubstEntry entry =
   case entry of
     Normalized _ e ->
-      Subst.Term (normalTerm e)
+      Subst.TermValue (normalTerm e)
     RenamedTerm x' ->
-      Subst.Var x'
-
-toTypeSubstEntry :: PendingType -> Subst.SubstEntry
-toTypeSubstEntry entry =
-  case entry of
-    TypeValue t ->
-      Subst.Type t
-    RenamedType x' ->
-      Subst.Var x'
+      Subst.TermRenaming x'
 
 resolveLeafVar :: Handle -> Ident -> IO [Ident]
 resolveLeafVar h x =
@@ -313,9 +305,10 @@ trackAlteration h action = do
 
 toPendingSubst :: Handle -> Subst.Subst
 toPendingSubst h = do
-  let termEntries = IntMap.map (toTermSubstEntry . pendingEntry) (pendingTerms h)
-  let typeEntries = IntMap.map (toTypeSubstEntry . pendingEntry) (pendingTypes h)
-  IntMap.union termEntries typeEntries
+  Subst.Subst
+    { Subst.termSubst = IntMap.map (toTermSubstEntry . pendingEntry) (pendingTerms h),
+      Subst.typeSubst = IntMap.map pendingEntry (pendingTypes h)
+    }
 
 applyPending :: Handle -> TM.Term -> IO TM.Term
 applyPending h e =
@@ -1015,7 +1008,7 @@ type DefaultFrameContext = (DD.DefiniteDescription, Hint, TraceID)
 
 bindParameters ::
   Handle ->
-  Subst.Subst ->
+  Subst.TypeSubst ->
   Maybe DefaultFrameContext ->
   [(BinderF TM.Type, ParameterSource)] ->
   ([Normal] -> [BinderF TM.Type] -> App Normal) ->
@@ -1026,7 +1019,7 @@ bindParameters h subType defaultFrameCtx params cont =
 bindParameters' ::
   Handle ->
   Handle ->
-  Subst.Subst ->
+  Subst.TypeSubst ->
   Maybe DefaultFrameContext ->
   [(BinderF TM.Type, ParameterSource)] ->
   [Normal] ->
@@ -1058,16 +1051,16 @@ bindParameters' h hDefault subType defaultFrameCtx params values letBinders cont
           cont' <- bindParameters' h hDefault' subType defaultFrameCtx rest (value : values) (binder : letBinders) cont
           return $ asNormal $ mx :< TM.Let binder (normalTerm e) (normalTerm cont')
 
-refreshDefaultValue :: Handle -> Maybe DefaultFrameContext -> Subst.Subst -> TM.Term -> App TM.Term
+refreshDefaultValue :: Handle -> Maybe DefaultFrameContext -> Subst.TypeSubst -> TM.Term -> App TM.Term
 refreshDefaultValue h defaultFrameCtx subType defaultValue =
   case defaultFrameCtx of
     Just (dd, callHint, callTraceID)
       | traceEnabled h -> do
           (annotated, siteIDs) <- liftIO $ TraceSites.annotate (traceHandle h) defaultValue
           remapping <- prepareTraceRemapping h dd TermTrace.DefaultValueFrame siteIDs callHint callTraceID
-          liftIO $ Subst.substAndRefresh (substHandle h) remapping subType annotated
+          liftIO $ Subst.substAndRefresh (substHandle h) remapping (Subst.typeOnly subType) annotated
     _ ->
-      liftIO $ Subst.substAndRefresh (substHandle h) Nothing subType defaultValue
+      liftIO $ Subst.substAndRefresh (substHandle h) Nothing (Subst.typeOnly subType) defaultValue
 
 prepareTraceRemapping ::
   Handle ->
@@ -1189,7 +1182,7 @@ specializeMacro ::
   TraceID ->
   DD.DefiniteDescription ->
   DefKind ->
-  Subst.Subst ->
+  Subst.TypeSubst ->
   [TM.Type] ->
   [BinderF TM.Type] ->
   TM.Term ->
@@ -1227,7 +1220,7 @@ specializeMacroBody ::
   DefKind ->
   DD.DefiniteDescription ->
   [TM.Type] ->
-  Subst.Subst ->
+  Subst.TypeSubst ->
   [BinderF TM.Type] ->
   TM.Term ->
   TM.Type ->
@@ -1235,7 +1228,7 @@ specializeMacroBody ::
   App TM.Term
 specializeMacroBody h m callTraceID dd defKind specializationKey impArgs' subType expParams body codType expArgsAll = do
   let tracer = withMacroHint h dd defKind m
-  (expParams', body') <- liftIO $ Subst.subst' (substHandle h) subType expParams body
+  (expParams', body') <- liftIO $ Subst.subst' (substHandle h) (Subst.typeOnly subType) expParams body
   specializedName <- createSpecializationName h specializationKey
   codType' <- liftIO $ Subst.substType (substHandle h) subType codType
   beginSpecialization h specializationKey impArgs' specializedName
@@ -1249,7 +1242,7 @@ specializeLocalMeta ::
   Handle ->
   Hint ->
   DD.DefiniteDescription ->
-  Subst.Subst ->
+  Subst.TypeSubst ->
   [TM.Type] ->
   [BinderF TM.Type] ->
   TM.Term ->
@@ -1262,7 +1255,7 @@ specializeLocalMeta h m dd subType impArgs' expParams body codType expArgsAll = 
       return $ m :< TM.PiElim noTrace CC.normal (m :< TM.Var specSelfId) [] expArgsAll []
     Nothing -> do
       specSelfId <- liftIO $ Sym.newIdentFromText (gensymHandle h) "meta-spec"
-      (expParams', body') <- liftIO $ Subst.subst' (substHandle h) subType expParams body
+      (expParams', body') <- liftIO $ Subst.subst' (substHandle h) (Subst.typeOnly subType) expParams body
       codType' <- liftIO $ Subst.substType (substHandle h) subType codType
       let hInner = (enterOpaqueDefineMetaBody h) {localMetaMemo = (dd, impArgs', specSelfId) : localMetaMemo h}
       body'' <- liftIO (Subst.refresh (substHandle h) body') >>= inline hInner
@@ -1317,7 +1310,7 @@ registerLocalMeta h m identity attr impParams expParams defaultParams body = do
       let gTerm = m :< TM.VarGlobal (AttrVG.new selfArity) g
       body' <- case AttrL.fromAttr attr of
         Just (_, _, selfId, _) -> do
-          let sub = IntMap.singleton (Ident.toInt selfId) (Subst.Term gTerm)
+          let sub = Subst.termOnly $ IntMap.singleton (Ident.toInt selfId) (Subst.TermValue gTerm)
           liftIO $ Subst.subst (substHandle h) sub body
         Nothing ->
           return body

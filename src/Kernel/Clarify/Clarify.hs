@@ -323,20 +323,20 @@ clarifyImportedTypeDef h name typeDefInfo = do
 
 refreshTypeDefInfo :: Handle -> TypeDef.TypeDefInfo -> IO TypeDef.TypeDefInfo
 refreshTypeDefInfo h typeDefInfo = do
-  (binders', sub) <- Subst.refreshBinders (substHandle h) IntMap.empty (TypeDef.typeDefBinders typeDefInfo)
+  (binders', sub) <- Subst.refreshTypeBinders (substHandle h) IntMap.empty (TypeDef.typeDefBinders typeDefInfo)
   body' <- Subst.substType (substHandle h) sub (TypeDef.typeDefBody typeDefInfo)
   return typeDefInfo {TypeDef.typeDefBinders = binders', TypeDef.typeDefBody = body'}
 
 refreshDataInfo :: Handle -> DI.DataInfo (BinderF TM.Type) -> IO (DI.DataInfo (BinderF TM.Type))
 refreshDataInfo h dataInfo = do
-  (dataParams', sub) <- Subst.refreshBinders (substHandle h) IntMap.empty (DI.dataParams dataInfo)
+  (dataParams', sub) <- Subst.refreshTypeBinders (substHandle h) IntMap.empty (DI.dataParams dataInfo)
   consInfoList' <- mapM (refreshConsInfo h sub) (DI.consInfoList dataInfo)
   return dataInfo {DI.dataParams = dataParams', DI.consInfoList = consInfoList'}
 
-refreshConsInfo :: Handle -> Subst.Subst -> DI.ConsInfo (BinderF TM.Type) -> IO (DI.ConsInfo (BinderF TM.Type))
+refreshConsInfo :: Handle -> Subst.TypeSubst -> DI.ConsInfo (BinderF TM.Type) -> IO (DI.ConsInfo (BinderF TM.Type))
 refreshConsInfo h sub consInfo = do
-  (consImpParams', sub') <- Subst.refreshBinders (substHandle h) sub (DI.consImpParams consInfo)
-  (consParams', _) <- Subst.refreshBinders (substHandle h) sub' (DI.consParams consInfo)
+  (consImpParams', sub') <- Subst.refreshTypeBinders (substHandle h) sub (DI.consImpParams consInfo)
+  consParams' <- Subst.refreshTermBinders (substHandle h) sub' (DI.consParams consInfo)
   return consInfo {DI.consImpParams = consImpParams', DI.consParams = consParams'}
 
 clarifyAliasTypeDef :: Handle -> DD.DefiniteDescription -> TypeDef.TypeDefInfo -> App C.CompStmt
@@ -1531,7 +1531,7 @@ clarifyLambda h context attrL@(AttrL.Attr {lamKind}) fvs impParams expParams def
                 (m :< TM.PiElim noTrace conv (m :< TM.VarGlobal attr liftedName) [] appArgs [])
       isAlreadyRegistered <- liftIO $ AuxEnv.checkIfAlreadyRegistered (auxEnvHandle h) liftedName
       unless isAlreadyRegistered $ do
-        let recFuncSubst = IntMap.fromList [(Ident.toInt recFuncName, Subst.Term lamApp)]
+        let recFuncSubst = Subst.termOnly $ IntMap.singleton (Ident.toInt recFuncName) (Subst.TermValue lamApp)
         liftedBody <- liftIO $ Subst.subst (substHandle h) recFuncSubst e
         let liftedSlots = sourceSlotsOf appParams
         (liftedParams, liftedBody') <- clarifyBinderBody h (newContext liftedName) appParams liftedBody

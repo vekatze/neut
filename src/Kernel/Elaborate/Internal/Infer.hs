@@ -71,7 +71,6 @@ import Language.Common.StrictGlobalLocator qualified as SGL
 import Language.Common.VarKind qualified as VK
 import Language.LowComp.DeclarationName qualified as DN
 import Language.WeakTerm.CreateHole qualified as WT
-import Language.WeakTerm.Subst (SubstEntry (..))
 import Language.WeakTerm.Subst qualified as Subst
 import Language.WeakTerm.ToText (toTextTypeInMessage)
 import Language.WeakTerm.WeakPrimValue qualified as WPV
@@ -166,8 +165,8 @@ inferDefineMeta h defineMeta = do
         targetArgsWithKinds <- mapM (inferTypeWithKind h) targetArgs'
         subType <- inferArgsTypes h IntMap.empty m targetArgsWithKinds impParams
         requireAttrsForInstantiation h m impParams targetArgs'
-        (expParams', subType') <- substTypeBinder h subType expParams
-        cod' <- liftIO $ Subst.substType (substHandle h) subType' cod
+        expParams' <- substTermBinders h subType expParams
+        cod' <- liftIO $ Subst.substType (substHandle h) subType cod
         return (expParams', cod')
       _ ->
         raiseError m $ "Expected a `define-meta` target, but got: " <> toTextTypeInMessage targetType'
@@ -633,9 +632,9 @@ expandPiElimExact h m e = do
     _ :< WT.Pi piKind impParams expParams _ codType -> do
       impArgs' <- mapM (const $ liftIO $ newTypeHole h m (varEnv h)) impParams
       let subType = Subst.makeTypeSubst (map getBinderIdent impParams) impArgs'
-      (expParams', subType') <- liftIO $ Subst.subst' (substHandle h) subType expParams
+      expParams' <- substTermBinders h subType expParams
       let expArgs'' = map (\(mx, _, x, _) -> mx :< WT.Var x) expParams'
-      codType' <- liftIO $ Subst.substType (substHandle h) subType' codType
+      codType' <- liftIO $ Subst.substType (substHandle h) subType codType
       lamID <- liftIO $ Gensym.newCount (gensymHandle h)
       let isDestPassing =
             case piKind of
@@ -808,7 +807,7 @@ inferTypeWithKind h ty =
         _ :< WT.Pi _ impParams expParams _ cod -> do
           impParams' <- mapM (const $ liftIO $ newTypeHole h m (varEnv h)) impParams
           let subType = Subst.makeTypeSubst (map getBinderIdent impParams) impParams'
-          (expParams', _) <- substTypeBinder h subType expParams
+          expParams' <- substTermBinders h subType expParams
           ensureTypeArityCorrectness m (length expParams') (length args')
           forM_ (zip expParams' argKinds) $ \((_, _, _, tParam), tArg) ->
             liftIO $ Constraint.insert (constraintHandle h) tParam tArg
@@ -931,11 +930,11 @@ inferQuoteSeq h letSeq castDirection = do
 
 inferArgsTypes ::
   Handle ->
-  Subst.Subst ->
+  Subst.TypeSubst ->
   Hint ->
   [(WT.WeakType, WT.WeakType)] ->
   [BinderF WT.WeakType] ->
-  App Subst.Subst
+  App Subst.TypeSubst
 inferArgsTypes h sub m args params =
   case (args, params) of
     ([], []) ->
@@ -943,7 +942,7 @@ inferArgsTypes h sub m args params =
     ((ty, tyKind) : rest, (_, _, x, paramKind) : xts) -> do
       paramKind' <- liftIO $ Subst.substType (substHandle h) sub paramKind
       liftIO $ Constraint.insert (constraintHandle h) paramKind' tyKind
-      inferArgsTypes h (IntMap.insert (Ident.toInt x) (Type ty) sub) m rest xts
+      inferArgsTypes h (IntMap.insert (Ident.toInt x) (Subst.TypeValue ty) sub) m rest xts
     _ ->
       raiseError m "Invalid argument passed to inferArgsTypes"
 
@@ -986,7 +985,7 @@ inferPiElim h m expected (e, t) impArgs defaultArgsSpec expArgs sourceArgs isDes
         forM_ (zip3 expParams sourceArgs expArgs) $ \(param, isSourceArg, arg) ->
           ensureSourceMarkAgreement param isSourceArg (argumentTerm arg)
       argumentConventions <- do
-        (params', _) <- substTypeBinder h subType (expParams ++ defaultParams)
+        params' <- substTermBinders h subType (expParams ++ defaultParams)
         return $ map sourceArgumentConvention params'
       _ :< cod' <- liftIO $ Subst.substType (substHandle h) subType cod
       forM_ expected $ \expectedType ->
@@ -995,7 +994,7 @@ inferPiElim h m expected (e, t) impArgs defaultArgsSpec expArgs sourceArgs isDes
         paramType' <- liftIO $ Subst.substType (substHandle h) subType paramType
         elaborateArgument h paramType' arg
       defaultArgsOverrides <- resolveDefaultOverrides e defaultParams defaultArgsSpec
-      (defaultParams', _) <- substTypeBinder h subType defaultParams
+      defaultParams' <- substTermBinders h subType defaultParams
       defaultArgsOverrides' <- forM (zip defaultParams' defaultArgsOverrides) $ \((_, _, _, tParam), mOverride) -> do
         forM mOverride $ \override -> do
           tParam' <- inferType h tParam
@@ -1353,6 +1352,6 @@ requireAttrsForInstantiation h m params args =
     forM_ (S.toAscList (closedTypeAttrs k)) $ \attr -> do
       require h attr Instantiation m t
 
-substTypeBinder :: Handle -> Subst.Subst -> [BinderF WT.WeakType] -> App ([BinderF WT.WeakType], Subst.Subst)
-substTypeBinder h sub mxts = do
-  liftIO $ Subst.subst' (substHandle h) sub mxts
+substTermBinders :: Handle -> Subst.TypeSubst -> [BinderF WT.WeakType] -> App [BinderF WT.WeakType]
+substTermBinders h sub binders = do
+  liftIO $ Subst.substTermBinders (substHandle h) sub binders

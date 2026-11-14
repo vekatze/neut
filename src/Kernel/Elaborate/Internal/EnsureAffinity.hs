@@ -38,7 +38,6 @@ import Language.Common.VarKind qualified as VK
 import Language.Term.FreeVarsWithHints (freeTermVarsWithHints)
 import Language.Term.Term qualified as TM
 import Language.Term.Weaken (weakenType)
-import Language.WeakTerm.Subst (SubstEntry (..))
 import Language.WeakTerm.Subst qualified as Subst
 import Language.WeakTerm.WeakTerm qualified as WT
 import Logger.Hint
@@ -541,17 +540,11 @@ simplifyAffine h dataNameSet (t, orig@(m :< _)) = do
         _ -> do
           return [AffineConstraintError orig]
 
-substConsParams :: Handle -> Subst.Subst -> [BinderF WT.WeakType] -> App [BinderF WT.WeakType]
+substConsParams :: Handle -> Subst.TypeSubst -> [BinderF WT.WeakType] -> App [BinderF WT.WeakType]
 substConsParams h sub consParams =
-  case consParams of
-    [] ->
-      return []
-    (m, k, x, t) : rest -> do
-      t' <- liftIO $ Subst.substType (Elaborate.substHandle (elaborateHandle h)) sub t
-      let opaque = m :< WT.Tau -- allow `a` in `Cons(a: type, x: a)`
-      let sub' = IntMap.insert (toInt x) (Type opaque) sub
-      rest' <- substConsParams h sub' rest
-      return $ (m, k, x, t') : rest'
+  forM consParams $ \(m, k, x, t) -> do
+    t' <- liftIO $ Subst.substType (Elaborate.substHandle (elaborateHandle h)) sub t
+    return (m, k, x, t')
 
 getConsParamTypes ::
   Handle ->

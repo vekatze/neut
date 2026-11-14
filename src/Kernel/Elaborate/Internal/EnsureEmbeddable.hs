@@ -146,7 +146,7 @@ stuckTypeOf h m visited ty0 = do
 
 fieldTypesOfValue :: ElaborateHandle.Handle -> DI.ConsInfo (BinderF TM.Type) -> IO [TM.Type]
 fieldTypesOfValue h consInfo = do
-  let evaluated = map (\(mx, _, x, _) -> (Ident.toInt x, Subst.Type (mx :< TM.Tau))) $ DI.consImpParams consInfo
+  let evaluated = map (\(mx, _, x, _) -> (Ident.toInt x, Subst.TypeValue (mx :< TM.Tau))) $ DI.consImpParams consInfo
   let sub = IntMap.fromList evaluated
   mapM (\(_, _, _, t) -> Subst.substType (Subst.new (ElaborateHandle.gensymHandle h)) sub t) $ DI.consParams consInfo
 
