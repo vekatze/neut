@@ -96,7 +96,7 @@ insert h nameArrowList = do
 registerGeist :: Handle -> NominalTag -> RT.RawGeist DD.DefiniteDescription -> App ()
 registerGeist h tag RT.RawGeist {..} = do
   let expParams' = RT.extractParams expParams
-  let impParams' = RT.extractImpParams impParams
+  let impParams' = RT.extractParams impParams
   let defaultParams' = map fst $ SE.extract $ fst defaultParams
   let arity = Arity.fromInt $ length impParams' + length defaultParams' + length expParams'
   let name' = fst name
@@ -247,7 +247,7 @@ getGlobalNamesFromDefTerm ::
   [NameEntry]
 getGlobalNamesFromDefTerm stmtKind geist = do
   let name = fst $ RT.name geist
-  let impParams = RT.extractImpParams $ RT.impParams geist
+  let impParams = RT.extractParams $ RT.impParams geist
   let defaultParams = map fst $ SE.extract $ fst $ RT.defaultParams geist
   let expParams = RT.extractParams $ RT.expParams geist
   let isConstLike = RT.isConstLike geist
@@ -266,7 +266,7 @@ getGlobalNamesFromDefType ::
   [NameEntry]
 getGlobalNamesFromDefType stmtKind geist = do
   let name = fst $ RT.name geist
-  let impParams = RT.extractImpParams $ RT.impParams geist
+  let impParams = RT.extractParams $ RT.impParams geist
   let defaultParams = map fst $ SE.extract $ fst $ RT.defaultParams geist
   let expParams = RT.extractParams $ RT.expParams geist
   let isConstLike = RT.isConstLike geist

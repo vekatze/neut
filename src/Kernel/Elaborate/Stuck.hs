@@ -19,7 +19,6 @@ import Language.Common.Ident
 import Language.Common.Ident.Reify qualified as Ident
 import Language.WeakTerm.Subst (SubstEntry (..))
 import Language.WeakTerm.Subst qualified as Subst
-import Language.WeakTerm.WeakPrimValue qualified as WPV
 import Language.WeakTerm.WeakTerm qualified as WT
 import Logger.Hint
 
@@ -27,7 +26,6 @@ data EvalBase
   = VarLocal Ident
   | VarGlobal DD.DefiniteDescription
   | Hole HID.HoleID [WT.WeakType]
-  | Prim (WPV.WeakPrimValue WT.WeakType)
 
 type EvalCtx = Cofree EvalCtxF Hint
 

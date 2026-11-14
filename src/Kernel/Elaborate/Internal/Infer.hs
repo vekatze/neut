@@ -1192,12 +1192,11 @@ reduceWeakType' h holeSubst =
 
 reduceWeakTypeWithin :: Handle -> THS.TypeHoleSubst -> Int -> WT.WeakType -> App WT.WeakType
 reduceWeakTypeWithin h holeSubst budget t = do
-  t' <- reduceType h t
-  case t' of
+  case t of
     m :< WT.TypeHole holeID args -> do
       case THS.lookup holeID holeSubst of
         Nothing ->
-          return t'
+          return t
         Just (xs, body)
           | length xs == length args -> do
               ensureUnfoldingBudget h m budget
@@ -1217,25 +1216,18 @@ reduceWeakTypeWithin h holeSubst budget t = do
               body' <- liftIO $ Subst.substType (substHandle h) sub (WeakTypeDef.typeDefBody def)
               reduceWeakTypeWithin h holeSubst (budget - 1) body'
         _ ->
-          return t'
+          return t
     m :< WT.BoxNoema tInner -> do
       tInner' <- reduceWeakTypeWithin h holeSubst budget tInner
       return $ m :< WT.BoxNoema tInner'
     _ ->
-      return t'
+      return t
 
 ensureUnfoldingBudget :: Handle -> Hint -> Int -> App ()
 ensureUnfoldingBudget h m budget =
   when (budget <= 0) $
     raiseError m $
       "Exceeded max recursion depth of " <> T.pack (show (inlineLimit h)) <> " while reducing a type"
-
--- reduceWeakType' :: Handle -> THS.TypeHoleSubst -> WT.WeakType -> App WT.WeakType
--- reduceWeakType' h sub e = do
---   e' <- reduceType h e
---   if THS.fillableType e' sub
---     then fillType h sub e' >>= reduceWeakType' h sub
---     else return e'
 
 lookupForeignFunction :: Handle -> Hint -> EN.ExternalName -> App ([WT.WeakType], FCT.ForeignCodType WT.WeakType)
 lookupForeignFunction h m name = do

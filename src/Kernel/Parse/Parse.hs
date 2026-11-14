@@ -91,21 +91,13 @@ parse h contentSeq = do
         liftIO $
           Logger.report (Global.loggerHandle h) $
             "Parsing: " <> T.pack (show $ Source.sourceFilePath source)
-    prog <- parse' unitParseHandle source cacheOrContent
+    prog <- parseSource unitParseHandle source cacheOrContent
     localHandle <- Local.new h source
     let locatorHandle = Local.locatorHandle localHandle
     return (gensymHandle, localHandle, (source, fmap (postprocess locatorHandle) prog))
   forP_ cacheOrProgList $ \(_, _, (source, cacheOrProg)) -> do
     registerTopLevelNames parseHandle source cacheOrProg
   return cacheOrProgList
-
-parse' ::
-  Handle ->
-  Source.Source ->
-  Either Cache.Cache T.Text ->
-  App (Either Cache.Cache RawProgram)
-parse' h source cacheOrContent = do
-  parseSource h source cacheOrContent
 
 parseSource ::
   Handle ->

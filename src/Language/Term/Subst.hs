@@ -8,11 +8,8 @@ module Language.Term.Subst
     substAndRefresh,
     substType,
     refresh,
-    refreshType,
     refreshBinders,
     subst',
-    subst'',
-    substDecisionTree,
   )
 where
 
@@ -189,10 +186,6 @@ refresh :: Handle -> TM.Term -> IO TM.Term
 refresh h =
   subst (h {shouldRefreshBinders = True}) IntMap.empty
 
-refreshType :: Handle -> TM.Type -> IO TM.Type
-refreshType h =
-  substType (h {shouldRefreshBinders = True}) IntMap.empty
-
 subst' ::
   Handle ->
   Subst ->
@@ -203,25 +196,6 @@ subst' h sub binders e = do
   (binders', env) <- substBinders h (initialEnv sub) binders
   e' <- substTerm h env e
   return (values binders binders', valueOr e e')
-
-subst'' ::
-  Handle ->
-  Subst ->
-  [BinderF TM.Type] ->
-  DT.DecisionTree TM.Type TM.Term ->
-  IO ([BinderF TM.Type], DT.DecisionTree TM.Type TM.Term)
-subst'' h sub binders tree = do
-  (binders', env) <- substBinders h (initialEnv sub) binders
-  tree' <- substTree h env tree
-  return (values binders binders', valueOr tree tree')
-
-substDecisionTree ::
-  Handle ->
-  Subst ->
-  DT.DecisionTree TM.Type TM.Term ->
-  IO (DT.DecisionTree TM.Type TM.Term)
-substDecisionTree h sub tree =
-  valueOr tree <$> substTree h (initialEnv sub) tree
 
 refreshBinders :: Handle -> Subst -> [BinderF TM.Type] -> IO ([BinderF TM.Type], Subst)
 refreshBinders h sub binders = do

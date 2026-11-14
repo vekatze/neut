@@ -1,7 +1,6 @@
 module Kernel.Parse.NominalEnv
   ( NominalEnv,
     NameEnv,
-    empty,
     emptyNameEnv,
   )
 where
@@ -16,9 +15,6 @@ import Logger.Hint
 type NominalEnv = [(T.Text, (Hint, Ident, Layer, Stage))]
 
 type NameEnv = Map.HashMap T.Text (Hint, Ident, Layer, Stage)
-
-empty :: NominalEnv
-empty = []
 
 emptyNameEnv :: NameEnv
 emptyNameEnv = Map.empty

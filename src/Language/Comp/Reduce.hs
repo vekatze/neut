@@ -226,7 +226,7 @@ instantiate :: Handle -> [Ident] -> [C.Value] -> C.Comp -> IO C.Comp
 instantiate h xs values body = do
   let formalSubst = IntMap.fromList $ zip (map Ident.toInt xs) values
   let fullSubst = IntMap.union formalSubst (subst h)
-  body' <- Subst.instantiate (substHandle h) fullSubst body
+  body' <- Subst.subst (substHandle h) fullSubst body
   reduce (h {subst = IntMap.empty}) body'
 
 extractIdent :: C.Value -> Maybe Ident

@@ -24,7 +24,6 @@ import Kernel.Elaborate.Internal.Handle.Elaborate
 import Kernel.Elaborate.Internal.Handle.Trope qualified as Trope
 import Kernel.Elaborate.Internal.Handle.TypeDef qualified as TypeDef
 import Kernel.Elaborate.Internal.Handle.WeakDecl qualified as WeakDecl
-import Kernel.Elaborate.Internal.Handle.WeakDef qualified as WeakDef
 import Kernel.Elaborate.Internal.Handle.WeakTypeDef qualified as WeakTypeDef
 import Language.Common.Binder
 import Language.Common.DataInfo qualified as DI
@@ -46,7 +45,6 @@ data Registration = Registration
     resourceEntries :: [(DD.DefiniteDescription, Resource.ResourceLayout)],
     tropeEntries :: [(DD.DefiniteDescription, [Stmt.DefineMeta])],
     exposeEntries :: [[(Hint, DD.DefiniteDescription, EN.ExternalName)]],
-    weakDefEntries :: [WeakDef.Entry],
     weakTypeDefEntries :: [(DD.DefiniteDescription, WeakTypeDef.TypeDef)],
     weakDataInfoEntries :: [(DD.DefiniteDescription, DI.DataInfo (BinderF WT.WeakType))],
     foreignEntries :: [(DN.DeclarationName, F.ForeignSignature WT.WeakType)]
@@ -64,7 +62,6 @@ register h registration = do
   liftIO $ TypeDef.insertMany (typeDefHandle h) $ typeDefEntries registration
   liftIO $ Trope.insertMany (tropeHandle h) $ tropeEntries registration
   forM_ (concat $ exposeEntries registration) $ \(m, dd, extName) -> registerExpose h m dd extName
-  liftIO $ WeakDef.insertMany (weakDefHandle h) (gensymHandle h) $ weakDefEntries registration
   liftIO $ Data.insertWeakMany (dataHandle h) $ weakDataInfoEntries registration
   liftIO $ WeakTypeDef.insertMany (weakTypeDefHandle h) $ weakTypeDefEntries registration
   liftIO $ forM_ (foreignEntries registration) $ uncurry (WeakDecl.insert (weakDeclHandle h))

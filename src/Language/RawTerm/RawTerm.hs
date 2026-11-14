@@ -31,7 +31,6 @@ module Language.RawTerm.RawTerm
     emptyImpParams,
     emptyDefaultParams,
     extractParams,
-    extractImpParams,
     lam,
     piElim,
     pushCommentToKeywordClause,
@@ -194,10 +193,6 @@ extractParams :: Params a -> [RawBinder a]
 extractParams (series, _) =
   SE.extract series
 
-extractImpParams :: (SE.Series (RawBinder RawType), C) -> [RawBinder RawType]
-extractImpParams (series, _) =
-  SE.extract series
-
 type KeywordClause a =
   (EL a, EL a)
 
@@ -274,7 +269,7 @@ getGeistKeys :: RawGeist a -> GeistKeys
 getGeistKeys geist = do
   let binderKey (_, _, x, _, _, _) = x
   GeistKeys
-    { geistImpKeys = map binderKey $ extractImpParams $ impParams geist,
+    { geistImpKeys = map binderKey $ extractParams $ impParams geist,
       geistExpKeys = map binderKey $ extractParams $ expParams geist,
       geistDefaultKeys = map (binderKey . fst) $ SE.extract $ fst $ defaultParams geist
     }

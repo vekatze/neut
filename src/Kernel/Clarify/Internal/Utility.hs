@@ -3,7 +3,6 @@ module Kernel.Clarify.Internal.Utility
     ResourceSpec (..),
     new,
     returnIntComp,
-    returnByteSizeComp,
     toAffineApp,
     toAffineAppWith,
     toDropInPlaceAppWith,
@@ -135,10 +134,6 @@ data ResourceSpec = ResourceSpec
 returnIntComp :: Integer -> C.Comp
 returnIntComp value =
   C.UpIntro $ C.Int slotIntSize value
-
-returnByteSizeComp :: Integer -> C.Comp
-returnByteSizeComp byteSize =
-  returnIntComp byteSize
 
 registerSwitcher ::
   Handle ->

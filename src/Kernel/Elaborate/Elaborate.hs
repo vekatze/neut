@@ -54,7 +54,6 @@ import Kernel.Elaborate.Internal.Handle.Elaborate
 import Kernel.Elaborate.Internal.Handle.Hole qualified as Hole
 import Kernel.Elaborate.Internal.Handle.LocalLogs qualified as LocalLogs
 import Kernel.Elaborate.Internal.Handle.TypeDef qualified as TypeDef
-import Kernel.Elaborate.Internal.Handle.WeakDef qualified as WeakDef
 import Kernel.Elaborate.Internal.Handle.WeakType qualified as WeakType
 import Kernel.Elaborate.Internal.Handle.WeakTypeDef qualified as WeakTypeDef
 import Kernel.Elaborate.Internal.Infer qualified as Infer
@@ -629,10 +628,8 @@ makeTermRegistration knownTraceSiteIDs stmt =
 makeWeakRegistration :: WeakStmt -> Registration
 makeWeakRegistration stmt = do
   case stmt of
-    WeakStmtDefineTerm _ stmtKind m f impParams expParams defaultParams codType e -> do
-      let opacity = SK.toOpacityTerm stmtKind
-      let isDestPassing = SK.isDestPassingStmtKind stmtKind
-      mempty {weakDefEntries = WeakDef.makeEntry opacity isDestPassing m f impParams expParams defaultParams codType e}
+    WeakStmtDefineTerm {} ->
+      mempty
     WeakStmtDefineType _ stmtKind _ f impParams expParams defaultParams _ body -> do
       let binders = impParams ++ expParams ++ map fst defaultParams
       mempty
@@ -1654,8 +1651,7 @@ reduceWeakType h =
 
 reduceWeakTypeWithin :: Handle -> Int -> WT.WeakType -> App WT.WeakType
 reduceWeakTypeWithin h budget t = do
-  t' <- reduceType h t
-  case t' of
+  case t of
     m :< WT.TypeHole holeID args -> do
       ensureUnfoldingBudget h m budget
       fillHole h m holeID args >>= reduceWeakTypeWithin h (budget - 1)
@@ -1670,9 +1666,9 @@ reduceWeakTypeWithin h budget t = do
               body' <- liftIO $ Subst.substType (substHandle h) sub (WeakTypeDef.typeDefBody def)
               reduceWeakTypeWithin h (budget - 1) body'
         _ ->
-          return t'
+          return t
     _ ->
-      return t'
+      return t
 
 ensureUnfoldingBudget :: Handle -> Hint -> Int -> App ()
 ensureUnfoldingBudget h m budget =

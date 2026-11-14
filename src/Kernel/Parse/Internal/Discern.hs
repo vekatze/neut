@@ -97,7 +97,6 @@ import Language.WeakTerm.WeakPrimValue qualified as WPV
 import Language.WeakTerm.WeakStmt
 import Language.WeakTerm.WeakTerm qualified as WT
 import Logger.Hint
-import Logger.Hint.Reify qualified as Hint
 import Logger.Log qualified as L
 import Logger.LogLevel qualified as L
 import SyntaxTree.C
@@ -125,7 +124,7 @@ discernStmt h stmt = do
       let baseStage = if SK.isMacroStmtKind stmtKind then 1 else 0
       let nameMapHandle' = NameMap.withCurrentTopLevelName (Just functionName) (H.nameMapHandle h)
       let h' = h {H.currentStage = baseStage, H.nameMapHandle = nameMapHandle'}
-      let impParams = RT.extractImpParams $ RT.impParams geist
+      let impParams = RT.extractParams $ RT.impParams geist
       let defaultParams = SE.extract $ fst $ RT.defaultParams geist
       let expParams = RT.extractParams $ RT.expParams geist
       let (_, codType) = RT.cod geist
@@ -147,7 +146,7 @@ discernStmt h stmt = do
       return [WeakStmtDefineTerm isConstLike stmtKind' m functionName impParams' expParams' defaultParams' codType' body']
     PostRawStmtDefineType _ stmtKind (RT.RawTypeDef {typeGeist, typeBody, typeEndLoc}) -> do
       registerTopLevelName h stmt
-      let impParams = RT.extractImpParams $ RT.impParams typeGeist
+      let impParams = RT.extractParams $ RT.impParams typeGeist
       let defaultParams = SE.extract $ fst $ RT.defaultParams typeGeist
       let expParams = RT.extractParams $ RT.expParams typeGeist
       let (_, codType) = RT.cod typeGeist
@@ -252,7 +251,7 @@ resolveDefineMetaTargetName h m name = do
 
 discernGeist :: H.Handle -> Loc -> RT.RawGeist DD.DefiniteDescription -> App (G.Geist WT.WeakType WT.WeakTerm)
 discernGeist h endLoc geist = do
-  let impParams = RT.extractImpParams $ RT.impParams geist
+  let impParams = RT.extractParams $ RT.impParams geist
   let defaultParams = SE.extract $ fst $ RT.defaultParams geist
   let expParams = RT.extractParams $ RT.expParams geist
   (impParams', h') <- discernImpParams h impParams endLoc
@@ -733,7 +732,7 @@ discern h term =
       unitUnit <- liftEither $ locatorToVarGlobal m coreUnitUnit
       discern h =<< desugarIf h m whenCond whenBody unitUnit
     m :< RT.Admit -> do
-      let messageText = "Admitted: " <> T.pack (Hint.toString m)
+      let messageText = "Admitted: " <> T.pack (showFilePos m)
       if isCompileStage h
         then do
           message' <- discern h $ m :< RT.String messageText
@@ -910,7 +909,7 @@ discernType h ty =
       args' <- mapM (discernType h) $ SE.extract args
       return $ m :< WT.TyApp t' args'
     m :< RT.Pi impParams expParams defaultParams rawPiKind _ t endLoc -> do
-      let impParamsBase = RT.extractImpParams impParams
+      let impParamsBase = RT.extractParams impParams
       let defaultParamsBase = SE.extract $ fst defaultParams
       (impParams', h') <- discernImpParams h impParamsBase endLoc
       ensureSourceSlotStage h' (RT.extractParams expParams)
@@ -1452,7 +1451,7 @@ discernLambda :: H.Handle -> Hint -> RT.FuncInfo -> App WT.WeakTerm
 discernLambda h m (RT.RawDef {geist, body, endLoc}) = do
   lamID <- liftIO $ Gensym.newCount (H.gensymHandle h)
   let (name, _) = RT.name geist
-  let impParams = RT.extractImpParams $ RT.impParams geist
+  let impParams = RT.extractParams $ RT.impParams geist
   let defaultParams = SE.extract $ fst $ RT.defaultParams geist
   let expParams = RT.extractParams $ RT.expParams geist
   (impParams', h') <- discernImpParams h impParams endLoc
@@ -1549,7 +1548,7 @@ discernLetRec ::
 discernLetRec h m kind (RT.RawDef {geist, body, endLoc = bodyEndLoc}) startLoc cont endLoc = do
   ensureLocalDefStage m h kind
   let isDestPassing = RT.isDestPassing geist
-  let impParams = RT.extractImpParams $ RT.impParams geist
+  let impParams = RT.extractParams $ RT.impParams geist
   let defaultParams = SE.extract $ fst $ RT.defaultParams geist
   let expParams = RT.extractParams $ RT.expParams geist
   let mx = RT.loc geist

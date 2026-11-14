@@ -535,10 +535,6 @@ showFnDomParamList :: Bool -> [BinderF WT.WeakType] -> T.Text
 showFnDomParamList distinct params =
   T.intercalate ", " (map (showFnDomParam distinct) params)
 
-showMatchArgs :: Bool -> [(Ident, WT.WeakTerm, WT.WeakType)] -> T.Text
-showMatchArgs distinct =
-  showMatchArgs' distinct
-
 showMagic :: M.WeakMagic WT.WeakType WT.WeakType WT.WeakTerm -> T.Text
 showMagic =
   showMagic' (makeHandle DD.localLocator)
@@ -680,8 +676,8 @@ showPrimValue primValue =
     WPV.Rune r ->
       "`" <> T.replace "`" "\\`" (RU.asText r) <> "`"
 
-showMatchArgs' :: Bool -> [(Ident, WT.WeakTerm, WT.WeakType)] -> T.Text
-showMatchArgs' distinct xets = do
+showMatchArgs :: Bool -> [(Ident, WT.WeakTerm, WT.WeakType)] -> T.Text
+showMatchArgs distinct xets = do
   inParen $ T.intercalate ", " (map (showMatchArg' distinct) xets)
 
 showMatchArg' :: Bool -> (Ident, WT.WeakTerm, WT.WeakType) -> T.Text

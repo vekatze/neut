@@ -173,7 +173,7 @@ checkSource h startTime gensymHandle traceConfig localHandle target source (cach
 newTraceConfig :: Handle -> App Trace.Config
 newTraceConfig h = do
   let traceReport = Console.getTraceConfig $ Global.consoleHandle $ globalHandle h
-  either raiseError' return $ Trace.new (Env.getMainModule $ Global.envHandle $ globalHandle h) traceReport
+  either raiseError' return $ Trace.new traceReport
 
 registerUnusedTopLevelNameRemarks :: Handle -> App ()
 registerUnusedTopLevelNameRemarks h = do

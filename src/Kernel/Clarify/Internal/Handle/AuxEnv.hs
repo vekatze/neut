@@ -3,7 +3,6 @@ module Kernel.Clarify.Internal.Handle.AuxEnv
     new,
     insert,
     get,
-    clear,
     checkIfAlreadyRegistered,
     toCompStmtList,
   )
@@ -39,7 +38,3 @@ checkIfAlreadyRegistered h k = do
 toCompStmtList :: Map.HashMap DD.DefiniteDescription CompStmt -> [CompStmt]
 toCompStmtList defMap = do
   Map.elems defMap
-
-clear :: Handle -> IO ()
-clear h = do
-  writeIORef (compAuxEnvRef h) mempty

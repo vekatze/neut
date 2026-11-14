@@ -40,7 +40,6 @@ import Kernel.Common.TargetConfig (TargetConfig)
 import Kernel.Elaborate.Internal.Handle.Def qualified as Definition
 import Kernel.Elaborate.Internal.Handle.Trope qualified as Trope
 import Kernel.Elaborate.Internal.Handle.TypeDef qualified as TypeDef
-import Kernel.Elaborate.Internal.Handle.WeakDef qualified as WeakDef
 import Kernel.Elaborate.Internal.Handle.WeakTypeDef qualified as WeakTypeDef
 import Kernel.Parse.Internal.Handle.GlobalNameMap qualified as GlobalNameMap
 import Kernel.Parse.Internal.Handle.UnusedTopLevelName qualified as UnusedTopLevelName
@@ -71,7 +70,6 @@ data Handle = Handle
     exposeHandle :: Expose.Handle,
     loggerHandle :: Logger.Handle,
     typeHandle :: Type.Handle,
-    weakDefHandle :: WeakDef.Handle,
     weakTypeDefHandle :: WeakTypeDef.Handle,
     typeDefHandle :: TypeDef.Handle,
     globalNameMapHandle :: GlobalNameMap.Handle,
@@ -142,7 +140,6 @@ newHandle consoleHandle loggerHandle envHandle platformHandle zenConfig localArc
   antecedentHandle <- Antecedent.new
   modulePathHandle <- ModulePath.new moduleHandle antecedentHandle mainModule
   paramKeyHandle <- ParamKey.new mainModule modulePathHandle
-  weakDefHandle <- WeakDef.new
   weakTypeDefHandle <- WeakTypeDef.new
   defHandle <- Definition.new
   tropeHandle <- Trope.new

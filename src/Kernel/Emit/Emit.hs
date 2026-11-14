@@ -73,8 +73,7 @@ new :: GensymHandle.Handle -> Global.Handle -> Target -> App Handle
 new gensymHandle globalHandle target = do
   allocator <- Env.getAllocatorByTarget target
   let traceReport = Console.getTraceConfig $ Global.consoleHandle globalHandle
-  let mainModule = Env.getMainModule $ Global.envHandle globalHandle
-  traceConfig <- either raiseError' return $ Trace.new mainModule traceReport
+  traceConfig <- either raiseError' return $ Trace.new traceReport
   return $ Handle {..}
 
 emit :: Handle -> LC.LowCode -> IO L.ByteString

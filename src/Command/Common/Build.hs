@@ -406,7 +406,7 @@ compileEntryPoint h target outputKindList = do
 newTraceConfig :: Handle -> App Trace.Config
 newTraceConfig h = do
   let traceReport = Console.getTraceConfig $ Global.consoleHandle $ globalHandle h
-  either raiseError' return $ Trace.new (Env.getMainModule $ Global.envHandle $ globalHandle h) traceReport
+  either raiseError' return $ Trace.new traceReport
 
 execute :: Handle -> Bool -> MainTarget -> [String] -> App ()
 execute h shouldExecute target args = do

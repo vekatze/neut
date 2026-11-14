@@ -20,7 +20,6 @@ import Language.Common.Ident.Reify qualified as Ident
 import Language.Common.VarKind qualified as VK
 import Language.Term.Term qualified as TM
 import Logger.Hint
-import Logger.Hint.Reify (toString)
 
 chainOf :: TM.TypeEnv -> [TM.Term] -> [BinderF TM.Type]
 chainOf tenv term =
@@ -188,4 +187,4 @@ chainOfVar tenv m x = do
       let xts = chainOfType tenv t
       xts ++ [(m, VK.normal, x, t)]
     _ ->
-      error $ T.unpack $ "[critical] chainOfVar: " <> Ident.toText' x <> "\n" <> T.pack (toString m)
+      error $ T.unpack $ "[critical] chainOfVar: " <> Ident.toText' x <> "\n" <> T.pack (showFilePos m)

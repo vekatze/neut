@@ -113,7 +113,7 @@ makeResourceSpecWithLayout h layout xts = do
   extra@(_, extraVar) <- Gensym.createVar (gensymHandle h) "extra"
   discard <- sigmaT h layout xts argVar extraVar
   copy <- sigma4 h layout xts argVar extraVar
-  let size = Utility.returnByteSizeComp (toInteger $ CL.cellByteSize layout)
+  let size = Utility.returnIntComp (toInteger $ CL.cellByteSize layout)
   return $ ResourceSpec {switch, arg, extra, discard, copy, size, defaultValues = []}
 
 -- sigmaT [(x1, t1), ..., (xn, tn)] arg shouldRelease   ~>
@@ -170,7 +170,7 @@ selectCopyDestination h layout dest = do
     then return $ C.UpIntro C.null
     else do
       (sizeName, sizeVar) <- Gensym.createVar (gensymHandle h) "size"
-      let size = Utility.returnByteSizeComp (toInteger byteSize)
+      let size = Utility.returnIntComp (toInteger byteSize)
       let alloc = C.UpElim True sizeName size $ C.Primitive $ C.Alloc sizeVar
       return $ C.EnumElim [] dest (C.UpIntro dest) [(EC.Int 0, alloc)]
 
@@ -251,7 +251,7 @@ returnSigmaDataS4 h dataName opacity shape dataInfo = do
   copy <- sigmaData4 h shape dataInfo argVar extraVar
   let dataName' = DD.getFormDD dataName
   Utility.registerSwitcher (utilityHandle h) opacity dataName' $ do
-    let size = Utility.returnByteSizeComp (toInteger $ DI.shapeByteSize shape)
+    let size = Utility.returnIntComp (toInteger $ DI.shapeByteSize shape)
     ResourceSpec {switch, arg, extra, discard, copy, size, defaultValues = []}
   return $ C.UpIntro $ globalPointer dataName' Arity.arityS4
 

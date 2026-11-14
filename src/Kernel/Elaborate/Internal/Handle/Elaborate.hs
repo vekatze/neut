@@ -3,7 +3,6 @@ module Kernel.Elaborate.Internal.Handle.Elaborate
     ObligationSite (..),
     TypeObligation (..),
     new,
-    reduceType,
     fillType,
     inline,
     inlineDefinition,
@@ -43,7 +42,6 @@ import Kernel.Elaborate.Internal.Handle.LocalLogs qualified as LocalLogs
 import Kernel.Elaborate.Internal.Handle.Trope qualified as Trope
 import Kernel.Elaborate.Internal.Handle.TypeDef qualified as TypeDef
 import Kernel.Elaborate.Internal.Handle.WeakDecl qualified as WeakDecl
-import Kernel.Elaborate.Internal.Handle.WeakDef qualified as WeakDef
 import Kernel.Elaborate.Internal.Handle.WeakType qualified as WeakType
 import Kernel.Elaborate.Internal.Handle.WeakTypeDef qualified as WeakTypeDef
 import Kernel.Elaborate.Internal.WeakTerm.Fill qualified as Fill
@@ -58,7 +56,6 @@ import Language.Term.Inline.Handle qualified as InlineHandle
 import Language.Term.Stmt qualified as Stmt
 import Language.Term.Subst qualified as TmSubst
 import Language.Term.Term qualified as TM
-import Language.WeakTerm.Reduce qualified as Reduce
 import Language.WeakTerm.Subst qualified as Subst
 import Language.WeakTerm.WeakTerm qualified as WT
 import Logger.Hint (Hint)
@@ -68,7 +65,6 @@ data Handle = Handle
     modulePathMap :: ModulePath.ModulePathMap,
     envHandle :: Env.Handle,
     platformHandle :: Platform.Handle,
-    weakDefHandle :: WeakDef.Handle,
     weakTypeDefHandle :: WeakTypeDef.Handle,
     dataHandle :: Data.Handle,
     constraintHandle :: Constraint.Handle,
@@ -137,17 +133,9 @@ new gensymHandle globalHandle@(Global.Handle {..}) traceConfig (Local.Handle {..
   let currentDefinition = Nothing
   return $ Handle {..}
 
-reduceType :: Handle -> WT.WeakType -> App WT.WeakType
-reduceType h t = do
-  reduceHandle <- liftIO $ Reduce.new (substHandle h) (WT.metaOfType t) (inlineLimit h)
-  Reduce.reduceType reduceHandle t
-
 fillType :: Handle -> THS.TypeHoleSubst -> WT.WeakType -> App WT.WeakType
 fillType h sub t = do
-  reduceHandle <- liftIO $ Reduce.new (substHandle h) (WT.metaOfType t) (inlineLimit h)
-  let substHandle = Subst.new (gensymHandle h)
-  let fillHandle = Fill.new substHandle reduceHandle
-  Fill.fillType fillHandle sub t
+  Fill.fillType (Fill.new (substHandle h)) sub t
 
 inline :: Handle -> Hint -> TM.Term -> App TM.Term
 inline h m =

@@ -58,8 +58,6 @@ unifyCurrentConstraints h = do
   susList <- liftIO $ Constraint.getSuspendedConstraints (constraintHandle h)
   cs <- liftIO $ Constraint.get (constraintHandle h)
   susList' <- simplify h susList $ zip cs cs
-  -- liftIO $ putStrLn "remaining:"
-  -- liftIO $ putStrLn $ T.unpack $ C.showSuspendedConstraints susList'
   liftIO $ Constraint.set (constraintHandle h) []
   liftIO $ Constraint.setSuspendedConstraints (constraintHandle h) susList'
   liftIO $ Hole.getTypeSubst (holeHandle h)
@@ -85,10 +83,9 @@ constraintToRemark h sub c = do
 
 fillAsMuchAsPossible :: Handle -> THS.TypeHoleSubst -> WT.WeakType -> App WT.WeakType
 fillAsMuchAsPossible h sub e = do
-  e' <- reduceType h e
-  if THS.fillableType e' sub
-    then fillType h sub e' >>= fillAsMuchAsPossible h sub
-    else return e'
+  if THS.fillableType e sub
+    then fillType h sub e >>= fillAsMuchAsPossible h sub
+    else return e
 
 constructErrorMessageEq :: Handle -> WT.WeakType -> WT.WeakType -> T.Text
 constructErrorMessageEq h found expected = do
@@ -165,12 +162,10 @@ simplify h susList constraintList =
       return susList
     headConstraint@(C.Eq expected actual, orig) : cs -> do
       detectPossibleInfiniteLoop h orig
-      expected' <- reduceType h expected
-      actual' <- reduceType h actual
-      if WT.eqType expected' actual'
+      if WT.eqType expected actual
         then simplify h susList cs
         else do
-          case (expected', actual') of
+          case (expected, actual) of
             (m1 :< WT.Pi piKind1 impParams1 expParams1 defaultParams1 cod1, m2 :< WT.Pi piKind2 impParams2 expParams2 defaultParams2 cod2)
               | piKind1 == piKind2,
                 -- `source` is part of the type, and unification on it is exact.

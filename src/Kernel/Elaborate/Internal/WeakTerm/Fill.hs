@@ -14,20 +14,18 @@ import Data.Text qualified as T
 import Kernel.Elaborate.TypeHoleSubst qualified as THS
 import Language.Common.Binder
 import Language.Common.Ident.Reify qualified as Ident
-import Language.WeakTerm.Reduce qualified as Reduce
 import Language.WeakTerm.Subst (SubstEntry (..))
 import Language.WeakTerm.Subst qualified as Subst
 import Language.WeakTerm.ToText qualified as WT
 import Language.WeakTerm.WeakTerm qualified as WT
 import Prelude hiding (lookup)
 
-data Handle = Handle
-  { substHandle :: Subst.Handle,
-    reduceHandle :: Reduce.Handle
+newtype Handle = Handle
+  { substHandle :: Subst.Handle
   }
 
-new :: Subst.Handle -> Reduce.Handle -> Handle
-new substHandle reduceHandle = do
+new :: Subst.Handle -> Handle
+new substHandle = do
   Handle {..}
 
 fillType :: Handle -> THS.TypeHoleSubst -> WT.WeakType -> App WT.WeakType
@@ -77,7 +75,7 @@ fillType h holeSubst ty =
           | length xs == length es' -> do
               let varList = map Ident.toInt xs
               let sub = IntMap.fromList $ zip varList (map Type es')
-              liftIO (Subst.substType (substHandle h) sub body) >>= Reduce.reduceType (reduceHandle h)
+              liftIO (Subst.substType (substHandle h) sub body)
           | otherwise -> do
               let tyText = WT.toTextType ty
               error $

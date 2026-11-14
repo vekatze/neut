@@ -495,8 +495,7 @@ simplifyAffine ::
   WeakAffineConstraint ->
   App [AffineConstraintError]
 simplifyAffine h dataNameSet (t, orig@(m :< _)) = do
-  t' <- Elaborate.reduceType (elaborateHandle h) t
-  case t' of
+  case t of
     _ :< WT.Tau -> do
       return []
     _ :< WT.Data _ dataName dataArgs -> do
@@ -530,7 +529,7 @@ simplifyAffine h dataNameSet (t, orig@(m :< _)) = do
       return []
     _ -> do
       defMap <- liftIO $ WeakTypeDef.read' (Elaborate.weakTypeDefHandle (elaborateHandle h))
-      case Stuck.asStuckedType t' of
+      case Stuck.asStuckedType t of
         Just (Stuck.VarGlobal dd, evalCtx)
           | Just lam <- Map.lookup dd defMap -> do
               mt'' <- liftIO $ Stuck.resume (Elaborate.substHandle (elaborateHandle h)) lam evalCtx

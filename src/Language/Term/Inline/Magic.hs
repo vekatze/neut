@@ -10,7 +10,6 @@ module Language.Term.Inline.Magic
     evaluateGetOriginFileName,
     evaluateGetOriginLine,
     evaluateGetOriginColumn,
-    constructUnitTerm,
   )
 where
 
@@ -154,14 +153,6 @@ evaluateEqType :: Hint -> MID.ModuleID -> TM.Type -> TM.Type -> App TM.Term
 evaluateEqType m moduleID typeExpr1 typeExpr2 = do
   let isEqual = TermEq.eqType typeExpr1 typeExpr2
   return $ constructBoolTerm m moduleID isEqual
-
-constructUnitTerm :: Hint -> MID.ModuleID -> TM.Term
-constructUnitTerm m moduleID = do
-  let unitSGL = SGL.new moduleID SL.unitLocator
-  let unitTypeDD = DD.newByGlobalLocator unitSGL BN.unitType
-  let unitDD = DD.newByGlobalLocator unitSGL BN.unit
-  let attr = AttrDI.Attr {dataName = unitTypeDD, discriminant = D.zero, isConstLike = True}
-  m :< TM.DataIntro attr unitDD [] [] []
 
 makeVectorDD :: MID.ModuleID -> DD.DefiniteDescription
 makeVectorDD moduleID = do
