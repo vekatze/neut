@@ -84,6 +84,7 @@ import Language.Comp.Subst qualified as CompSubst
 import Language.Comp.Switcher qualified as Switcher
 import Language.Term.Chain (nubFreeVariables)
 import Language.Term.Chain qualified as TM
+import Language.Term.DataInfo qualified as DataInfo
 import Language.Term.FromPrimNum
 import Language.Term.PrimValue qualified as PV
 import Language.Term.Stmt (Stmt, StmtF (..), isMacroStmt)
@@ -706,7 +707,7 @@ clarifyTerm h context term =
         _ -> do
           (zs1, es1, xs1) <- unzip3 <$> mapM (clarifyTypePlus h context) (dataArgs ++ consImpArgs)
           (zs2, es2, xs2) <- unzip3 <$> mapM (clarifyPlus h context) consArgs
-          dataInfo <- lookupDataEntry h m dataName
+          dataInfo <- Data.lookupOrCritical (dataHandle h) m dataName
           consInfo <- getConsInfoByDiscriminant h m discriminant (DI.consInfoList dataInfo)
           let shape = DI.cellShape (dataSize h) dataInfo
           let layout = DI.consLayout shape consInfo
@@ -921,7 +922,7 @@ clarifyStaticValue h context term =
         _ -> do
           typeArgSlots <- mapM (staticTypeRep h context) (dataArgs ++ consImpArgs)
           consArgSlots <- mapM (clarifyStaticValue h context) consArgs
-          dataInfo <- lookupDataEntry h m dataName
+          dataInfo <- Data.lookupOrCritical (dataHandle h) m dataName
           consInfo <- getConsInfoByDiscriminant h m discriminant (DI.consInfoList dataInfo)
           let fieldStorageList = DI.consParamLayouts consInfo
           when (length fieldStorageList /= length consArgSlots) $
@@ -1117,7 +1118,7 @@ clarifyDataTypeDef h name dataParams consInfoList = do
           t' <- clarifyType h (extendContext dataParams context) t
           return $ C.Def name O.Clear (map fst xts) t'
         _ ->
-          raiseCritical' $ "Found a broken unary data metadata for `" <> DD.reify name <> "`"
+          raiseCritical' $ DataInfo.brokenUnaryMessage name
     _ -> do
       let shape = DI.cellShapeOf (dataSize h) dataParams consInfoList
       dataInfo' <- mapM (clarifyDataClause h context shape dataParams) consInfoList
@@ -1128,12 +1129,12 @@ getDataCellByteSizeFromType :: Handle -> TM.Type -> App Int
 getDataCellByteSizeFromType h t =
   case t of
     m :< TM.Data _ dataName _ -> do
-      dataInfo <- lookupDataEntry h m dataName
+      dataInfo <- Data.lookupOrCritical (dataHandle h) m dataName
       return $ DI.shapeByteSize $ DI.cellShape (dataSize h) dataInfo
     _ :< TM.TyApp t' _ ->
       getDataCellByteSizeFromType h t'
     m :< TM.TVarGlobal _ dataName -> do
-      dataInfo <- lookupDataEntry h m dataName
+      dataInfo <- Data.lookupOrCritical (dataHandle h) m dataName
       return $ DI.shapeByteSize $ DI.cellShape (dataSize h) dataInfo
     m :< _ ->
       raiseCritical m "Clarify.getDataCellByteSizeFromType"
@@ -1251,15 +1252,6 @@ getConsInfoByDiscriminant h m discriminant consInfoList = do
         then return consInfo
         else getConsInfoByDiscriminant h m discriminant rest
 
-lookupDataEntry :: Handle -> Hint -> DD.DefiniteDescription -> App (DI.DataInfo (BinderF TM.Type))
-lookupDataEntry h m dataName = do
-  dataInfoOrNone <- liftIO $ Data.lookup (dataHandle h) dataName
-  case dataInfoOrNone of
-    Just dataInfo ->
-      return dataInfo
-    Nothing ->
-      raiseCritical m $ "Could not find constructor metadata for `" <> DD.reify dataName <> "`"
-
 lookupDataEntryFromType ::
   Handle ->
   Hint ->
@@ -1268,12 +1260,12 @@ lookupDataEntryFromType ::
 lookupDataEntryFromType h m t =
   case t of
     _ :< TM.Data _ dataName _ -> do
-      dataInfo <- lookupDataEntry h m dataName
+      dataInfo <- Data.lookupOrCritical (dataHandle h) m dataName
       return (dataName, dataInfo)
     _ :< TM.TyApp t' _ ->
       lookupDataEntryFromType h m t'
     _ :< TM.TVarGlobal _ dataName -> do
-      dataInfo <- lookupDataEntry h m dataName
+      dataInfo <- Data.lookupOrCritical (dataHandle h) m dataName
       return (dataName, dataInfo)
     _ ->
       raiseCritical m "Could not find data metadata from case cursor type"
@@ -1285,17 +1277,8 @@ specializeUnaryDataType ::
   [TM.Type] ->
   App TM.Type
 specializeUnaryDataType h m dataName dataArgs = do
-  dataInfo <- lookupDataEntry h m dataName
-  let dataBinders = DI.dataParams dataInfo
-  when (length dataBinders /= length dataArgs) $
-    raiseCritical m $
-      "Arity mismatch while specializing unary data metadata for `" <> DD.reify dataName <> "`"
-  let sub = Subst.makeTypeSubst (map getBinderIdent dataBinders) dataArgs
-  case DI.consInfoList dataInfo of
-    [DI.ConsInfo {DI.consParams = [(_, _, _, t)]}] ->
-      liftIO $ Subst.substType (substHandle h) sub t
-    _ ->
-      raiseCritical m $ "Found a broken unary data metadata for `" <> DD.reify dataName <> "`"
+  dataInfo <- Data.lookupOrCritical (dataHandle h) m dataName
+  DataInfo.specializeUnary (substHandle h) m dataName dataInfo dataArgs
 
 tidyCursorList :: Handle -> Context -> TypeArgsMap -> [Ident] -> C.Comp -> App (C.Comp, [BinderF TM.Type])
 tidyCursorList h context typeArgsMap consumedCursorList cont =

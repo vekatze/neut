@@ -105,10 +105,10 @@ import Language.Common.StrictGlobalLocator qualified as SGL
 import Language.Common.Text.Util (decodeUtf8Bytes)
 import Language.Common.VarKind qualified as VK
 import Language.LowComp.DeclarationName qualified as DN
+import Language.Term.DataInfo qualified as DataInfo
 import Language.Term.Inline.Handle qualified as InlineHandle
 import Language.Term.PrimValue qualified as PV
 import Language.Term.Stmt
-import Language.Term.Subst qualified as TmSubst
 import Language.Term.Term qualified as TM
 import Language.Term.Trace qualified as TermTrace
 import Language.Term.TraceID (noTrace)
@@ -667,15 +667,6 @@ makeDataInfoEntries dataName stmtKind =
     _ ->
       []
 
-lookupDataInfo :: Handle -> Hint -> DD.DefiniteDescription -> App [DI.ConsInfo (BinderF TM.Type)]
-lookupDataInfo h m dataName = do
-  dataInfoOrNone <- liftIO $ Data.lookup (dataHandle h) dataName
-  case dataInfoOrNone of
-    Just dataInfo ->
-      return $ DI.consInfoList dataInfo
-    Nothing ->
-      raiseCritical m $ "Could not find constructor metadata for `" <> DD.reify dataName <> "`"
-
 elaborateStmtKindTerm :: Handle -> SK.StmtKindTerm WT.WeakType -> App (SK.StmtKindTerm TM.Type)
 elaborateStmtKindTerm h stmtKind =
   case stmtKind of
@@ -822,15 +813,7 @@ dataSizeOf h =
 specializeUnaryDataType :: Handle -> Hint -> DD.DefiniteDescription -> [TM.Type] -> App TM.Type
 specializeUnaryDataType h m dataName dataArgs = do
   dataInfo <- TypeUtil.lookupDataInfoFull h m dataName
-  let dataBinders = DI.dataParams dataInfo
-  when (length dataBinders /= length dataArgs) $ do
-    raiseError m $ "arity mismatch while resolving the layout of the unary type `" <> showDD h dataName <> "`"
-  let sub = TmSubst.makeTypeSubst (map getBinderIdent dataBinders) dataArgs
-  case DI.consInfoList dataInfo of
-    [DI.ConsInfo {DI.consParams = [(_, _, _, t)]}] ->
-      liftIO $ TmSubst.substType (termSubstHandle h) sub t
-    _ ->
-      raiseError m $ "broken unary metadata for `" <> showDD h dataName <> "`"
+  DataInfo.specializeUnary (termSubstHandle h) m dataName dataInfo dataArgs
 
 detectCyclicTypes :: Handle -> Stmt -> App ()
 detectCyclicTypes h stmt =
@@ -1199,7 +1182,7 @@ strictify' h m unwrapped t = do
       return BLT.Pointer
     _ :< TM.Data _ dataName []
       | S.notMember dataName unwrapped -> do
-          consInfoList <- lookupDataInfo h m dataName
+          consInfoList <- DI.consInfoList <$> Data.lookupOrCritical (dataHandle h) m dataName
           case consInfoList of
             [DI.ConsInfo {DI.consParams = [(_, _, _, arg)]}] ->
               strictify' h m (S.insert dataName unwrapped) (weakenType arg)
@@ -1295,7 +1278,7 @@ strictifyDecimalType' h m unwrapped x t = do
       return (size, t')
     _ :< TM.Data _ dataName []
       | S.notMember dataName unwrapped -> do
-          consInfoList <- lookupDataInfo h m dataName
+          consInfoList <- DI.consInfoList <$> Data.lookupOrCritical (dataHandle h) m dataName
           case consInfoList of
             [DI.ConsInfo {DI.consParams = [(_, _, _, arg)]}] ->
               strictifyDecimalType' h m (S.insert dataName unwrapped) x (weakenType arg)
@@ -1316,7 +1299,7 @@ strictifyFloatType' h m unwrapped x t = do
       return (size, t')
     _ :< TM.Data _ dataName []
       | S.notMember dataName unwrapped -> do
-          consInfoList <- lookupDataInfo h m dataName
+          consInfoList <- DI.consInfoList <$> Data.lookupOrCritical (dataHandle h) m dataName
           case consInfoList of
             [DI.ConsInfo {DI.consParams = [(_, _, _, arg)]}] ->
               strictifyFloatType' h m (S.insert dataName unwrapped) x (weakenType arg)
@@ -1617,7 +1600,7 @@ getSwitchSpec :: Handle -> Hint -> TM.Type -> App SwitchSpec
 getSwitchSpec h m cursorType = do
   case cursorType of
     _ :< TM.Data _ dataName _ -> do
-      consInfoList <- lookupDataInfo h m dataName
+      consInfoList <- DI.consInfoList <$> Data.lookupOrCritical (dataHandle h) m dataName
       return $ ConsSwitch $ map (\consInfo -> (DI.consName consInfo, DI.isConstLike consInfo)) consInfoList
     _ :< TM.PrimType (PT.Int _) -> do
       return LiteralSwitch

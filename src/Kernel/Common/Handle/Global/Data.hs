@@ -5,9 +5,14 @@ module Kernel.Common.Handle.Global.Data
     insertWeakMany,
     lookup,
     lookupWeak,
+    lookupOrCritical,
+    lookupWeakOrCritical,
   )
 where
 
+import App.App (App)
+import App.Run (raiseCritical)
+import Control.Monad.IO.Class (liftIO)
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Kernel.Common.HashMapRef (insertEntries)
@@ -16,6 +21,7 @@ import Language.Common.DataInfo (DataInfo)
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Term.Term qualified as TM
 import Language.WeakTerm.WeakTerm qualified as WT
+import Logger.Hint (Hint)
 import Prelude hiding (lookup)
 
 data Handle = Handle
@@ -46,3 +52,25 @@ lookupWeak :: Handle -> DD.DefiniteDescription -> IO (Maybe (DataInfo (BinderF W
 lookupWeak h dataName = do
   weakDataMap <- readIORef (_weakDataMapRef h)
   return $ Map.lookup dataName weakDataMap
+
+lookupOrCritical :: Handle -> Hint -> DD.DefiniteDescription -> App (DataInfo (BinderF TM.Type))
+lookupOrCritical h m dataName = do
+  dataInfoOrNone <- liftIO $ lookup h dataName
+  case dataInfoOrNone of
+    Just dataInfo ->
+      return dataInfo
+    Nothing ->
+      raiseMissingDataInfo m dataName
+
+lookupWeakOrCritical :: Handle -> Hint -> DD.DefiniteDescription -> App (DataInfo (BinderF WT.WeakType))
+lookupWeakOrCritical h m dataName = do
+  dataInfoOrNone <- liftIO $ lookupWeak h dataName
+  case dataInfoOrNone of
+    Just dataInfo ->
+      return dataInfo
+    Nothing ->
+      raiseMissingDataInfo m dataName
+
+raiseMissingDataInfo :: Hint -> DD.DefiniteDescription -> App a
+raiseMissingDataInfo m dataName =
+  raiseCritical m $ "Could not find constructor metadata for `" <> DD.reify dataName <> "`"

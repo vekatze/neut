@@ -560,16 +560,15 @@ getConsParamTypes ::
   [WT.WeakType] ->
   App [[BinderF WT.WeakType]]
 getConsParamTypes h m dataName dataArgs = do
-  dataInfoOrNone <- liftIO $ Data.lookupWeak (Elaborate.dataHandle (elaborateHandle h)) dataName
-  case dataInfoOrNone of
-    Just DI.DataInfo {DI.dataParams = dataBinders, DI.consInfoList = consInfoList}
-      | length dataBinders == length dataArgs -> do
-          let sub = Subst.makeTypeSubst (map getBinderIdent dataBinders) dataArgs
-          mapM (substConsParams h sub . DI.consParams) consInfoList
-      | otherwise ->
-          raiseCritical m $ "Could not specialize constructor metadata for `" <> DD.reify dataName <> "` due to arity mismatch"
-    Nothing ->
-      raiseCritical m $ "Could not find constructor metadata for `" <> DD.reify dataName <> "`"
+  DI.DataInfo {DI.dataParams = dataBinders, DI.consInfoList = consInfoList} <-
+    Data.lookupWeakOrCritical (Elaborate.dataHandle (elaborateHandle h)) m dataName
+  if length dataBinders == length dataArgs
+    then do
+      let sub = Subst.makeTypeSubst (map getBinderIdent dataBinders) dataArgs
+      mapM (substConsParams h sub . DI.consParams) consInfoList
+    else
+      raiseCritical m $
+        "Could not specialize constructor metadata for `" <> DD.reify dataName <> "` due to arity mismatch"
 
 lookupOptimizableData :: Handle -> DD.DefiniteDescription -> IO (Maybe OptimizableData)
 lookupOptimizableData h dd = do

@@ -1,18 +1,16 @@
 module Kernel.Common.StorageWidth (storageWidthOf) where
 
 import App.App (App)
-import App.Run (raiseCritical)
 import Control.Comonad.Cofree
-import Control.Monad
 import Control.Monad.IO.Class (liftIO)
 import Data.Set qualified as S
 import Kernel.Common.Handle.Global.Data qualified as Data
 import Kernel.Common.Handle.Global.OptimizableData qualified as OptimizableData
 import Kernel.Common.OptimizableData qualified as OD
-import Language.Common.Binder
 import Language.Common.CellLayout qualified as CL
 import Language.Common.DataInfo qualified as DI
 import Language.Common.DefiniteDescription qualified as DD
+import Language.Term.DataInfo qualified as DataInfo
 import Language.Term.Subst qualified as Subst
 import Language.Term.Term qualified as TM
 import Logger.Hint
@@ -53,7 +51,7 @@ resolveWidth h ty =
       optDataOrNone <- liftIO $ OptimizableData.lookup (optDataHandle h) dataName
       case optDataOrNone of
         Just OD.Enum -> do
-          dataInfo <- lookupDataInfo h dataName
+          dataInfo <- Data.lookupOrCritical (dataHandle h) (hint h) dataName
           return $ DI.discriminantWidth (DI.consInfoList dataInfo)
         Just OD.Unary ->
           if S.member dataName (visited h)
@@ -86,25 +84,7 @@ defaultWidth :: CL.FieldWidth
 defaultWidth =
   CL.Width64
 
-lookupDataInfo :: Handle -> DD.DefiniteDescription -> App (DI.DataInfo (BinderF TM.Type))
-lookupDataInfo h dataName = do
-  dataInfoOrNone <- liftIO $ Data.lookup (dataHandle h) dataName
-  case dataInfoOrNone of
-    Just dataInfo ->
-      return dataInfo
-    Nothing ->
-      raiseCritical (hint h) $ "Could not find constructor metadata for `" <> DD.reify dataName <> "`"
-
 specializeUnary :: Handle -> DD.DefiniteDescription -> [TM.Type] -> App TM.Type
 specializeUnary h dataName dataArgs = do
-  dataInfo <- lookupDataInfo h dataName
-  let dataBinders = DI.dataParams dataInfo
-  when (length dataBinders /= length dataArgs) $
-    raiseCritical (hint h) $
-      "Arity mismatch while resolving the width of the unary type `" <> DD.reify dataName <> "`"
-  let sub = Subst.makeTypeSubst (map getBinderIdent dataBinders) dataArgs
-  case DI.consInfoList dataInfo of
-    [DI.ConsInfo {DI.consParams = [(_, _, _, t)]}] ->
-      liftIO $ Subst.substType (substHandle h) sub t
-    _ ->
-      raiseCritical (hint h) $ "Found a broken unary data metadata for `" <> DD.reify dataName <> "`"
+  dataInfo <- Data.lookupOrCritical (dataHandle h) (hint h) dataName
+  DataInfo.specializeUnary (substHandle h) (hint h) dataName dataInfo dataArgs
