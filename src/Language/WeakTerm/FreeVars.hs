@@ -17,135 +17,160 @@ import Language.Common.Magic qualified as M
 import Language.Common.VarKind qualified as VK
 import Language.WeakTerm.WeakTerm qualified as WT
 
+type TypeVars =
+  WT.WeakType -> S.Set Ident
+
 freeVars :: WT.WeakTerm -> S.Set Ident
-freeVars term =
+freeVars =
+  freeVarsWith (const S.empty)
+
+freeVarsAll :: WT.WeakTerm -> S.Set Ident
+freeVarsAll =
+  freeVarsWith freeVarsType
+
+freeVarsWith :: TypeVars -> WT.WeakTerm -> S.Set Ident
+freeVarsWith typeVars term =
   case term of
     _ :< WT.Var x ->
       S.singleton x
     _ :< WT.VarGlobal {} ->
       S.empty
     _ :< WT.PiIntro k impParams expParams defaultParams e -> do
-      let body = freeVarsBinders (catMaybes [AttrL.fromAttr k]) (freeVars e)
-      freeVarsBinders (impParams ++ expParams) (freeVarsDefaultParams defaultParams body)
-    _ :< WT.PiElim _ e _ expArgs defaultArgs -> do
-      let xs = freeVars e
-      let ys2 = S.unions $ map freeVars (DefaultArgs.extract defaultArgs)
-      let ys3 = S.unions $ map freeVars expArgs
-      S.unions [xs, ys2, ys3]
+      let body = freeVarsBindersWith typeVars (catMaybes [AttrL.fromAttr k]) (freeVarsWith typeVars e)
+      freeVarsBindersWith typeVars (impParams ++ expParams) (freeVarsDefaultParamsWith typeVars defaultParams body)
+    _ :< WT.PiElim spec e impArgs expArgs defaultArgs -> do
+      let xs = freeVarsWith typeVars e
+      let ys0 = S.unions $ map typeVars (CCS.types spec)
+      let ys1 = S.unions $ map typeVars (ImpArgs.extract impArgs)
+      let ys2 = S.unions $ map (freeVarsWith typeVars) (DefaultArgs.extract defaultArgs)
+      let ys3 = S.unions $ map (freeVarsWith typeVars) expArgs
+      S.unions [xs, ys0, ys1, ys2, ys3]
     _ :< WT.PiElimExact e -> do
-      freeVars e
-    _ :< WT.DataIntro _ _ _ _ consArgs -> do
-      S.unions $ map freeVars consArgs
+      freeVarsWith typeVars e
+    _ :< WT.DataIntro _ _ dataArgs consImpArgs consArgs -> do
+      let xs1 = S.unions $ map (freeVarsWith typeVars) consArgs
+      let xs2 = S.unions $ map typeVars (dataArgs ++ consImpArgs)
+      S.union xs1 xs2
     m :< WT.DataElim _ oets decisionTree -> do
       let (os, es, ts) = unzip3 oets
-      let xs1 = S.unions $ map freeVars es
+      let xs1 = S.unions $ map (freeVarsWith typeVars) es
       let binder = zipWith (\o t -> (m, VK.normal, o, t)) os ts
-      let xs2 = freeVarsBinders binder (freeVarsDecisionTreeTerm decisionTree)
+      let xs2 = freeVarsBindersWith typeVars binder (freeVarsDecisionTreeWith typeVars decisionTree)
       S.union xs1 xs2
     _ :< WT.BoxIntro letSeq e -> do
       let (mxts, es) = unzip letSeq
-      freeVarsBinders mxts (S.unions $ map freeVars (e : es))
+      freeVarsBindersWith typeVars mxts (S.unions $ map (freeVarsWith typeVars) (e : es))
     _ :< WT.BoxIntroLift _ e ->
-      freeVars e
+      freeVarsWith typeVars e
     _ :< WT.EmbedIntro e ->
-      freeVars e
+      freeVarsWith typeVars e
     _ :< WT.BoxElim castSeq mxt e1 uncastSeq e2 -> do
       let (xts, es) = unzip $ castSeq ++ [(mxt, e1)] ++ uncastSeq
-      freeVarsBinders xts (S.unions $ map freeVars $ es ++ [e2])
+      freeVarsBindersWith typeVars xts (S.unions $ map (freeVarsWith typeVars) $ es ++ [e2])
     _ :< WT.CodeIntro _ e ->
-      freeVars e
+      freeVarsWith typeVars e
     _ :< WT.CodeElim e ->
-      freeVars e
-    _ :< WT.TauIntro _ ->
-      S.empty
-    _ :< WT.TauElim (_, _, x) e1 e2 ->
-      S.union (freeVars e1) (S.delete x (freeVars e2))
+      freeVarsWith typeVars e
+    _ :< WT.TauIntro ty ->
+      typeVars ty
     _ :< WT.Let mxt e1 e2 -> do
-      let set1 = freeVars e1
-      let set2 = freeVarsBinders [mxt] (freeVars e2)
+      let set1 = freeVarsWith typeVars e1
+      let set2 = freeVarsBindersWith typeVars [mxt] (freeVarsWith typeVars e2)
       S.union set1 set2
-    _ :< WT.LetType _ _ e ->
-      freeVars e
+    _ :< WT.TauElim (_, _, x) e1 e2 ->
+      S.union (freeVarsWith typeVars e1) (S.delete x (freeVarsWith typeVars e2))
+    _ :< WT.LetType (_, x) t e ->
+      S.union (typeVars t) (S.delete x (freeVarsWith typeVars e))
     _ :< WT.Invoke _ body ->
-      freeVars body
-    _ :< WT.Prim _ ->
-      S.empty
+      freeVarsWith typeVars body
+    _ :< WT.Prim prim ->
+      foldMap typeVars prim
     _ :< WT.Magic der ->
-      freeVarsMagicTerm der
-    _ :< WT.Annotation _ _ e -> do
-      freeVars e
+      freeVarsMagicWith typeVars der
+    _ :< WT.Annotation _ annot e -> do
+      let xs1 = freeVarsWith typeVars e
+      case annot of
+        AN.Type t -> do
+          let xs2 = typeVars t
+          S.union xs1 xs2
 
-freeVarsDefaultParams :: [(BinderF WT.WeakType, WT.WeakTerm)] -> S.Set Ident -> S.Set Ident
-freeVarsDefaultParams defaultParams zs =
+freeVarsDefaultParamsWith :: TypeVars -> [(BinderF WT.WeakType, WT.WeakTerm)] -> S.Set Ident -> S.Set Ident
+freeVarsDefaultParamsWith typeVars defaultParams zs =
   case defaultParams of
     [] ->
       zs
-    (binder, value) : rest ->
-      S.union (freeVars value) (freeVarsBinders [binder] (freeVarsDefaultParams rest zs))
+    (binder, value) : rest -> do
+      let restVars = freeVarsDefaultParamsWith typeVars rest zs
+      S.union (freeVarsWith typeVars value) (freeVarsBindersWith typeVars [binder] restVars)
 
-freeVarsBinders :: [BinderF WT.WeakType] -> S.Set Ident -> S.Set Ident
-freeVarsBinders binder zs =
+freeVarsBindersWith :: TypeVars -> [BinderF WT.WeakType] -> S.Set Ident -> S.Set Ident
+freeVarsBindersWith typeVars binder zs =
   case binder of
     [] ->
       zs
-    ((_, _, x, _) : xts) ->
-      S.filter (/= x) (freeVarsBinders xts zs)
+    ((_, _, x, t) : xts) -> do
+      let hs1 = typeVars t
+      let hs2 = freeVarsBindersWith typeVars xts zs
+      S.union hs1 $ S.filter (/= x) hs2
 
-freeVarsDecisionTreeTerm :: DT.DecisionTree WT.WeakType WT.WeakTerm -> S.Set Ident
-freeVarsDecisionTreeTerm tree =
+freeVarsDecisionTreeWith :: TypeVars -> DT.DecisionTree WT.WeakType WT.WeakTerm -> S.Set Ident
+freeVarsDecisionTreeWith typeVars tree =
   case tree of
     DT.Leaf _ letSeq e ->
-      freeVars (WT.fromLetSeq letSeq e)
+      freeVarsWith typeVars (WT.fromLetSeq letSeq e)
     DT.Unreachable ->
       S.empty
-    DT.Switch _ caseList ->
-      freeVarsCaseListTerm caseList
+    DT.Switch (_, cursor) caseList ->
+      S.union (typeVars cursor) (freeVarsCaseListWith typeVars caseList)
 
-freeVarsCaseListTerm :: DT.CaseList WT.WeakType WT.WeakTerm -> S.Set Ident
-freeVarsCaseListTerm (fallbackClause, clauseList) = do
-  let xs1 = freeVarsDecisionTreeTerm fallbackClause
-  let xs2 = S.unions $ map freeVarsCaseTerm clauseList
+freeVarsCaseListWith :: TypeVars -> DT.CaseList WT.WeakType WT.WeakTerm -> S.Set Ident
+freeVarsCaseListWith typeVars (fallbackClause, clauseList) = do
+  let xs1 = freeVarsDecisionTreeWith typeVars fallbackClause
+  let xs2 = S.unions $ map (freeVarsCaseWith typeVars) clauseList
   S.union xs1 xs2
 
-freeVarsCaseTerm :: DT.Case WT.WeakType WT.WeakTerm -> S.Set Ident
-freeVarsCaseTerm decisionCase = do
+freeVarsCaseWith :: TypeVars -> DT.Case WT.WeakType WT.WeakTerm -> S.Set Ident
+freeVarsCaseWith typeVars decisionCase = do
   case decisionCase of
     DT.LiteralCase _ _ cont -> do
-      freeVarsDecisionTreeTerm cont
+      freeVarsDecisionTreeWith typeVars cont
     DT.ConsCase (DT.ConsCaseRecord {..}) -> do
-      freeVarsBinders consBinders (freeVarsDecisionTreeTerm cont)
+      let (dataTypes1, dataTypes2) = unzip dataArgs
+      let contVars = freeVarsDecisionTreeWith typeVars cont
+      let binderVars = freeVarsBindersWith typeVars (consImpBinders ++ consBinders) contVars
+      S.unions $ binderVars : map typeVars dataTypes1 ++ map typeVars dataTypes2
 
-freeVarsMagicTerm :: M.WeakMagic WT.WeakType WT.WeakType WT.WeakTerm -> S.Set Ident
-freeVarsMagicTerm (M.WeakMagic magic) =
+freeVarsMagicWith :: TypeVars -> M.WeakMagic WT.WeakType WT.WeakType WT.WeakTerm -> S.Set Ident
+freeVarsMagicWith typeVars (M.WeakMagic magic) =
   case magic of
     M.LowMagic lowMagic ->
-      freeVarsLowMagicTerm lowMagic
-    M.Calloc _ num size ->
-      S.union (freeVars num) (freeVars size)
-    M.Malloc _ size ->
-      freeVars size
-    M.MallocOpaque _ size ->
-      freeVars size
-    M.Realloc _ ptr size ->
-      S.union (freeVars ptr) (freeVars size)
-    M.Free _ ptr ->
-      freeVars ptr
-    M.InspectType {} ->
-      S.empty
-    M.EqType {} ->
-      S.empty
-    M.ShowType {} ->
-      S.empty
+      freeVarsLowMagicWith typeVars lowMagic
+    M.Calloc sizeType num size ->
+      S.unions [typeVars sizeType, freeVarsWith typeVars num, freeVarsWith typeVars size]
+    M.Malloc sizeType size ->
+      S.union (typeVars sizeType) (freeVarsWith typeVars size)
+    M.MallocOpaque sizeType size ->
+      S.union (typeVars sizeType) (freeVarsWith typeVars size)
+    M.Realloc sizeType ptr size ->
+      S.unions [typeVars sizeType, freeVarsWith typeVars ptr, freeVarsWith typeVars size]
+    M.Free unitType ptr ->
+      S.union (typeVars unitType) (freeVarsWith typeVars ptr)
+    M.InspectType _ typeValueExpr e ->
+      S.union (typeVars typeValueExpr) (typeVars e)
+    M.EqType _ typeExpr1 typeExpr2 ->
+      S.union (typeVars typeExpr1) (typeVars typeExpr2)
+    M.ShowType typeExpr ->
+      typeVars typeExpr
     M.TextCons rune text ->
-      S.union (freeVars rune) (freeVars text)
+      S.union (freeVarsWith typeVars rune) (freeVarsWith typeVars text)
     M.TextUncons _ text ->
-      freeVars text
+      freeVarsWith typeVars text
     M.MakeSwitch _ key fallback clauses ->
-      S.unions [freeVars key, freeVars fallback, freeVars clauses]
+      S.unions [freeVarsWith typeVars key, freeVarsWith typeVars fallback, freeVarsWith typeVars clauses]
     M.FreeVariables _ code ->
-      freeVars code
+      freeVarsWith typeVars code
     M.CompileError msg ->
-      freeVars msg
+      freeVarsWith typeVars msg
     M.GetOriginFileName ->
       S.empty
     M.GetOriginLine ->
@@ -153,95 +178,33 @@ freeVarsMagicTerm (M.WeakMagic magic) =
     M.GetOriginColumn ->
       S.empty
 
-freeVarsLowMagicTerm :: LM.LowMagic WT.WeakType WT.WeakType WT.WeakTerm -> S.Set Ident
-freeVarsLowMagicTerm lowMagic =
+freeVarsLowMagicWith :: TypeVars -> LM.LowMagic WT.WeakType WT.WeakType WT.WeakTerm -> S.Set Ident
+freeVarsLowMagicWith typeVars lowMagic =
   case lowMagic of
-    LM.Cast _ _ value ->
-      freeVars value
-    LM.Store _ _ value pointer ->
-      S.union (freeVars value) (freeVars pointer)
-    LM.Load _ pointer ->
-      freeVars pointer
+    LM.Cast from to value ->
+      S.unions [typeVars from, typeVars to, freeVarsWith typeVars value]
+    LM.Store t unit value pointer ->
+      S.unions [typeVars t, typeVars unit, freeVarsWith typeVars value, freeVarsWith typeVars pointer]
+    LM.Load t pointer ->
+      S.union (typeVars t) (freeVarsWith typeVars pointer)
     LM.Shift pointer offset ->
-      S.union (freeVars pointer) (freeVars offset)
-    LM.Alloca _ size ->
-      freeVars size
-    LM.External _ _ _ args varArgs -> do
-      let argsVars = S.unions $ map freeVars args
-      let varArgsVars = S.unions $ map (\(a, _) -> freeVars a) varArgs
-      S.union argsVars varArgsVars
+      S.union (freeVarsWith typeVars pointer) (freeVarsWith typeVars offset)
+    LM.Alloca t size ->
+      S.union (typeVars t) (freeVarsWith typeVars size)
+    LM.External domList cod _ args varArgs -> do
+      let domVars = S.unions $ map typeVars domList
+      let codVars = case cod of
+            FCT.Cod t -> typeVars t
+            FCT.Void -> S.empty
+      let argsVars = S.unions $ map (freeVarsWith typeVars) args
+      let varArgsVars = S.unions $ map (\(a, t) -> S.union (freeVarsWith typeVars a) (typeVars t)) varArgs
+      S.unions [domVars, codVars, argsVars, varArgsVars]
     LM.Global _ t ->
-      freeVarsType t
+      typeVars t
     LM.OpaqueValue e ->
-      freeVars e
-    LM.CallType _ arg1 arg2 arg3 ->
-      S.unions [freeVars arg1, freeVars arg2, freeVars arg3]
-
-freeVarsAll :: WT.WeakTerm -> S.Set Ident
-freeVarsAll term =
-  case term of
-    _ :< WT.Var x ->
-      S.singleton x
-    _ :< WT.VarGlobal {} ->
-      S.empty
-    _ :< WT.PiIntro k impParams expParams defaultParams e -> do
-      let body = freeVarsBindersType (catMaybes [AttrL.fromAttr k]) (freeVarsAll e)
-      freeVarsBindersType (impParams ++ expParams) (freeVarsAllDefaultParams defaultParams body)
-    _ :< WT.PiElim spec e impArgs expArgs defaultArgs -> do
-      let xs = freeVarsAll e
-      let ys0 = S.unions $ map freeVarsType (CCS.types spec)
-      let ys1 = S.unions $ map freeVarsType (ImpArgs.extract impArgs)
-      let ys2 = S.unions $ map freeVarsAll (DefaultArgs.extract defaultArgs)
-      let ys3 = S.unions $ map freeVarsAll expArgs
-      S.unions [xs, ys0, ys1, ys2, ys3]
-    _ :< WT.PiElimExact e -> do
-      freeVarsAll e
-    _ :< WT.DataIntro _ _ dataArgs consImpArgs consArgs -> do
-      let xs1 = S.unions $ map freeVarsAll consArgs
-      let xs2 = S.unions $ map freeVarsType (dataArgs ++ consImpArgs)
-      S.union xs1 xs2
-    m :< WT.DataElim _ oets decisionTree -> do
-      let (os, es, ts) = unzip3 oets
-      let xs1 = S.unions $ map freeVarsAll es
-      let binder = zipWith (\o t -> (m, VK.normal, o, t)) os ts
-      let xs2 = freeVarsBindersType binder (freeVarsDecisionTree decisionTree)
-      S.union xs1 xs2
-    _ :< WT.BoxIntro letSeq e -> do
-      let (mxts, es) = unzip letSeq
-      freeVarsBindersType mxts (S.unions $ map freeVarsAll (e : es))
-    _ :< WT.BoxIntroLift _ e ->
-      freeVarsAll e
-    _ :< WT.EmbedIntro e ->
-      freeVarsAll e
-    _ :< WT.BoxElim castSeq mxt e1 uncastSeq e2 -> do
-      let (xts, es) = unzip $ castSeq ++ [(mxt, e1)] ++ uncastSeq
-      freeVarsBindersType xts (S.unions $ map freeVarsAll $ es ++ [e2])
-    _ :< WT.CodeIntro _ e ->
-      freeVarsAll e
-    _ :< WT.CodeElim e ->
-      freeVarsAll e
-    _ :< WT.TauIntro ty ->
-      freeVarsType ty
-    _ :< WT.Let mxt e1 e2 -> do
-      let set1 = freeVarsAll e1
-      let set2 = freeVarsBindersType [mxt] (freeVarsAll e2)
-      S.union set1 set2
-    _ :< WT.TauElim (_, _, x) e1 e2 ->
-      S.union (freeVarsAll e1) (S.delete x (freeVarsAll e2))
-    _ :< WT.LetType (_, x) t e ->
-      S.union (freeVarsType t) (S.delete x (freeVarsAll e))
-    _ :< WT.Invoke _ body ->
-      freeVarsAll body
-    _ :< WT.Prim prim ->
-      foldMap freeVarsType prim
-    _ :< WT.Magic der ->
-      freeVarsMagic der
-    _ :< WT.Annotation _ annot e -> do
-      let xs1 = freeVarsAll e
-      case annot of
-        AN.Type t -> do
-          let xs2 = freeVarsType t
-          S.union xs1 xs2
+      freeVarsWith typeVars e
+    LM.CallType func arg1 arg2 arg3 ->
+      S.unions $ map (freeVarsWith typeVars) [func, arg1, arg2, arg3]
 
 freeVarsType :: WT.WeakType -> S.Set Ident
 freeVarsType ty =
@@ -255,7 +218,7 @@ freeVarsType ty =
     _ :< WT.TyApp t args -> do
       S.unions $ freeVarsType t : map freeVarsType args
     _ :< WT.Pi _ impParams expParams defaultParams t ->
-      freeVarsBindersType (impParams ++ expParams ++ defaultParams) (freeVarsType t)
+      freeVarsBindersWith freeVarsType (impParams ++ expParams ++ defaultParams) (freeVarsType t)
     _ :< WT.Data _ _ es ->
       S.unions $ map freeVarsType es
     _ :< WT.Box t ->
@@ -274,113 +237,3 @@ freeVarsType ty =
       S.empty
     _ :< WT.TypeHole _ es ->
       S.unions $ map freeVarsType es
-
-freeVarsAllDefaultParams :: [(BinderF WT.WeakType, WT.WeakTerm)] -> S.Set Ident -> S.Set Ident
-freeVarsAllDefaultParams defaultParams zs =
-  case defaultParams of
-    [] ->
-      zs
-    (binder, value) : rest ->
-      S.union (freeVarsAll value) (freeVarsBindersType [binder] (freeVarsAllDefaultParams rest zs))
-
-freeVarsBindersType :: [BinderF WT.WeakType] -> S.Set Ident -> S.Set Ident
-freeVarsBindersType binder zs =
-  case binder of
-    [] ->
-      zs
-    ((_, _, x, t) : xts) -> do
-      let hs1 = freeVarsType t
-      let hs2 = freeVarsBindersType xts zs
-      S.union hs1 $ S.filter (/= x) hs2
-
-freeVarsDecisionTree :: DT.DecisionTree WT.WeakType WT.WeakTerm -> S.Set Ident
-freeVarsDecisionTree tree =
-  case tree of
-    DT.Leaf _ letSeq e ->
-      freeVarsAll (WT.fromLetSeq letSeq e)
-    DT.Unreachable ->
-      S.empty
-    DT.Switch (_, cursor) caseList ->
-      S.union (freeVarsType cursor) (freeVarsCaseList caseList)
-
-freeVarsCaseList :: DT.CaseList WT.WeakType WT.WeakTerm -> S.Set Ident
-freeVarsCaseList (fallbackClause, clauseList) = do
-  let xs1 = freeVarsDecisionTree fallbackClause
-  let xs2 = S.unions $ map freeVarsCase clauseList
-  S.union xs1 xs2
-
-freeVarsCase :: DT.Case WT.WeakType WT.WeakTerm -> S.Set Ident
-freeVarsCase decisionCase = do
-  case decisionCase of
-    DT.LiteralCase _ _ cont -> do
-      freeVarsDecisionTree cont
-    DT.ConsCase (DT.ConsCaseRecord {..}) -> do
-      let (dataTypes1, dataTypes2) = unzip dataArgs
-      let binderVars = freeVarsBindersType (consImpBinders ++ consBinders) (freeVarsDecisionTree cont)
-      S.unions $ binderVars : map freeVarsType dataTypes1 ++ map freeVarsType dataTypes2
-
-freeVarsMagic :: M.WeakMagic WT.WeakType WT.WeakType WT.WeakTerm -> S.Set Ident
-freeVarsMagic (M.WeakMagic magic) =
-  case magic of
-    M.LowMagic lowMagic ->
-      freeVarsLowMagic lowMagic
-    M.Calloc sizeType num size ->
-      S.unions [freeVarsType sizeType, freeVarsAll num, freeVarsAll size]
-    M.Malloc sizeType size ->
-      S.union (freeVarsType sizeType) (freeVarsAll size)
-    M.MallocOpaque sizeType size ->
-      S.union (freeVarsType sizeType) (freeVarsAll size)
-    M.Realloc sizeType ptr size ->
-      S.unions [freeVarsType sizeType, freeVarsAll ptr, freeVarsAll size]
-    M.Free unitType ptr ->
-      S.union (freeVarsType unitType) (freeVarsAll ptr)
-    M.InspectType _ typeValueExpr e ->
-      S.union (freeVarsType typeValueExpr) (freeVarsType e)
-    M.EqType _ typeExpr1 typeExpr2 ->
-      S.union (freeVarsType typeExpr1) (freeVarsType typeExpr2)
-    M.ShowType typeExpr ->
-      freeVarsType typeExpr
-    M.TextCons rune text ->
-      S.union (freeVarsAll rune) (freeVarsAll text)
-    M.TextUncons _ text ->
-      freeVarsAll text
-    M.MakeSwitch _ key fallback clauses ->
-      S.unions [freeVarsAll key, freeVarsAll fallback, freeVarsAll clauses]
-    M.FreeVariables _ code ->
-      freeVarsAll code
-    M.CompileError msg ->
-      freeVarsAll msg
-    M.GetOriginFileName ->
-      S.empty
-    M.GetOriginLine ->
-      S.empty
-    M.GetOriginColumn ->
-      S.empty
-
-freeVarsLowMagic :: LM.LowMagic WT.WeakType WT.WeakType WT.WeakTerm -> S.Set Ident
-freeVarsLowMagic lowMagic =
-  case lowMagic of
-    LM.Cast from to value ->
-      S.unions [freeVarsType from, freeVarsType to, freeVarsAll value]
-    LM.Store t unit value pointer ->
-      S.unions [freeVarsType t, freeVarsType unit, freeVarsAll value, freeVarsAll pointer]
-    LM.Load t pointer ->
-      S.union (freeVarsType t) (freeVarsAll pointer)
-    LM.Shift pointer offset ->
-      S.union (freeVarsAll pointer) (freeVarsAll offset)
-    LM.Alloca t size ->
-      S.union (freeVarsType t) (freeVarsAll size)
-    LM.External domList cod _ args varArgs -> do
-      let domVars = S.unions $ map freeVarsType domList
-      let codVars = case cod of
-            FCT.Cod t -> freeVarsType t
-            FCT.Void -> S.empty
-      let argsVars = S.unions $ map freeVarsAll args
-      let varArgsVars = S.unions $ map (\(a, t) -> S.union (freeVarsAll a) (freeVarsType t)) varArgs
-      S.unions [domVars, codVars, argsVars, varArgsVars]
-    LM.Global _ t ->
-      freeVarsType t
-    LM.OpaqueValue e ->
-      freeVarsAll e
-    LM.CallType func arg1 arg2 arg3 ->
-      S.unions [freeVarsAll func, freeVarsAll arg1, freeVarsAll arg2, freeVarsAll arg3]
