@@ -9,6 +9,7 @@ module App.Run
     raiseError',
     raiseCritical,
     raiseCritical',
+    raiseErrors,
     onFailure,
   )
 where
@@ -16,7 +17,7 @@ where
 import App.App
 import App.Error qualified as E
 import Control.Exception (IOException, catch, onException)
-import Control.Monad (void)
+import Control.Monad (unless, void)
 import Control.Monad.Except (MonadError (throwError), runExceptT)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Either (partitionEithers)
@@ -53,9 +54,8 @@ forP :: [a] -> (a -> App b) -> App [b]
 forP xs f = do
   xs' <- liftIO $ pooledForConcurrently xs (runApp . f)
   let (errors, results) = partitionEithers xs'
-  if null errors
-    then return results
-    else throwError $ E.join errors
+  raiseErrors errors
+  return results
 
 forP_ :: [a] -> (a -> App ()) -> App ()
 forP_ xs f =
@@ -72,6 +72,12 @@ liftMaybe m =
 raiseError :: Hint -> T.Text -> App a
 raiseError m t =
   throwError $ E.newError m t
+
+raiseErrors :: [E.Error] -> App ()
+raiseErrors errors =
+  unless (null errors) $
+    throwError $
+      E.join errors
 
 raiseError' :: T.Text -> App a
 raiseError' t =

@@ -1,5 +1,6 @@
 module Kernel.Parse.Parse
   ( Handle,
+    SourceUnit,
     getSourcePath,
     parse,
   )

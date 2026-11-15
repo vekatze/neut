@@ -27,6 +27,7 @@ import Data.Maybe (fromMaybe)
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Gensym.Trick qualified as Gensym
+import Kernel.Common.Arch qualified as Arch
 import Kernel.Common.Cache qualified as Cache
 import Kernel.Common.Const (holeLiteral)
 import Kernel.Common.CreateGlobalHandle qualified as Global
@@ -401,11 +402,10 @@ elaborateStmt h stmt = do
       return ([StmtForeign foreignList'], [])
     WeakStmtExpose exportList -> do
       exportList' <- forM exportList $ \(m, dd, extName) -> do
+        ensureExposableName h m extName
         signature <- getExposedSignature h m dd
         return (SavedHint m, dd, extName, signature)
-      let result = StmtExpose exportList'
-      register h $ makeRegistration Nothing result
-      return ([result], [])
+      return ([StmtExpose exportList'], [])
     WeakStmtNamespace m dd -> do
       return ([StmtNamespace (SavedHint m) dd], [])
 
@@ -618,8 +618,8 @@ makeTermRegistration knownTraceSiteIDs stmt =
       mempty
     StmtForeign _ ->
       mempty
-    StmtExpose exportList ->
-      mempty {exposeEntries = [map (\(SavedHint m, dd, extName, _) -> (m, dd, extName)) exportList]}
+    StmtExpose _ ->
+      mempty
     StmtNamespace {} ->
       mempty
 
@@ -1243,6 +1243,16 @@ strictifyCod h m t = do
       return FCT.Void
     _ ->
       FCT.Cod <$> strictifyBoundaryType h m foreignPrimTypes t'
+
+ensureExposableName :: Handle -> Hint -> EN.ExternalName -> App ()
+ensureExposableName h m extName = do
+  let entrySymbol = Arch.entrySymbol $ Platform.getArch $ Global.platformHandle (globalHandle h)
+  when (EN.reify extName == entrySymbol) $
+    raiseError m $
+      "`" <> EN.reify extName <> "` is the entry point of the target and cannot be exposed"
+  when (EN.isLLVMIntrinsic extName) $
+    raiseError m $
+      "`" <> EN.reify extName <> "` is reserved for LLVM intrinsics and cannot be exposed"
 
 getExposedSignature :: Handle -> Hint -> DD.DefiniteDescription -> App F.FunctionSignature
 getExposedSignature h m dd = do
