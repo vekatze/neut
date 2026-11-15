@@ -46,7 +46,16 @@ new :: Global.Handle -> Handle
 new (Global.Handle {..}) = do
   Handle {..}
 
-link :: Handle -> MainTarget -> Bool -> Bool -> A.ArtifactTime -> [(Module, Foreign)] -> [T.Text] -> [Source.Source] -> App ()
+link ::
+  Handle ->
+  MainTarget ->
+  Bool ->
+  Bool ->
+  A.ArtifactTime ->
+  [(Module, Foreign)] ->
+  [T.Text] ->
+  [Source.Source] ->
+  App ()
 link h target shouldSkipLink didPerformForeignCompilation artifactTime moduleForeignList transitiveLinkOption sourceList = do
   if shouldSkipLink
     then liftIO $ Logger.report (loggerHandle h) "Skipped linking object files (--skip-link was specified)"
@@ -94,11 +103,14 @@ link' h target linkResponseFilePath linkResponse numOfObjects = do
   ltoCacheDir <- Path.getLtoCacheDir (pathHandle h) (Main target) baseModule
   ltoOption <- liftIO $ getLtoOption h clang userLinkOptions ltoCacheDir
   liftIO $ writeText linkResponseFilePath linkResponse
-  liftIO $ Logger.report (loggerHandle h) $ "Created a response file at: " <> T.pack (toFilePath linkResponseFilePath)
+  let responseFileMessage = "Created a response file at: " <> T.pack (toFilePath linkResponseFilePath)
+  liftIO $ Logger.report (loggerHandle h) responseFileMessage
   let allocatorOption = allocatorLinkOption (Platform.getArch (platformHandle h)) allocator
   sysrootOption <- liftIO $ Platform.getSysrootOption (loggerHandle h) (platformHandle h)
   let toolchainOption = Platform.getToolchainOption (platformHandle h)
-  let linkOptions = clangLinkOpt targetTriple (Platform.getOS (platformHandle h)) linkResponseFilePath outputPath (ltoOption ++ allocatorOption ++ sysrootOption ++ toolchainOption ++ userLinkOptions)
+  let os = Platform.getOS (platformHandle h)
+  let additionalOptions = ltoOption ++ allocatorOption ++ sysrootOption ++ toolchainOption ++ userLinkOptions
+  let linkOptions = clangLinkOpt targetTriple os linkResponseFilePath outputPath additionalOptions
   let workingTitle = getWorkingTitle numOfObjects
   let completedTitle = getCompletedTitle numOfObjects
   let runProcessHandle = RunProcess.new (loggerHandle h)
@@ -178,7 +190,11 @@ getLtoCacheOption linkerFamily cacheDir =
 checkIfLldIsAvailable :: Handle -> String -> IO Bool
 checkIfLldIsAvailable h clang = do
   let runProcessHandle = RunProcess.new (loggerHandle h)
-  let spec = RunProcess.Spec {RunProcess.cmdspec = RawCommand clang ["-print-prog-name=ld.lld"], RunProcess.cwd = Nothing}
+  let spec =
+        RunProcess.Spec
+          { RunProcess.cmdspec = RawCommand clang ["-print-prog-name=ld.lld"],
+            RunProcess.cwd = Nothing
+          }
   value <- RunProcess.run01 runProcessHandle spec
   case value of
     Right output ->

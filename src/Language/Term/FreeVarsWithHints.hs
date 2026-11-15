@@ -4,12 +4,9 @@ import Control.Comonad.Cofree
 import Data.Containers.ListUtils (nubOrdOn)
 import Data.Maybe
 import Language.Common.Attr.Lam qualified as AttrL
-import Language.Common.BaseLowType qualified as BLT
 import Language.Common.Binder
 import Language.Common.DecisionTree qualified as DT
 import Language.Common.Ident
-import Language.Common.LowMagic qualified as LM
-import Language.Common.Magic qualified as M
 import Language.Common.VarKind qualified as VK
 import Language.Term.Term qualified as TM
 import Logger.Hint
@@ -25,9 +22,9 @@ collect term =
       [(m, x)]
     _ :< TM.VarGlobal {} ->
       []
-    _ :< TM.PiIntro k impArgs expArgs defaultArgs e -> do
+    _ :< TM.PiIntro k impParams expParams defaultParams e -> do
       let body = removeBinders (catMaybes [AttrL.fromAttr k]) (collect e)
-      removeBinders (impArgs ++ expArgs) (collectDefaultArgs defaultArgs body)
+      removeBinders (impParams ++ expParams) (collectDefaultParams defaultParams body)
     _ :< TM.PiElim _ _ e _ expArgs defaultArgs -> do
       let xs = collect e
       let ys1 = concatMap collect expArgs
@@ -68,15 +65,15 @@ collect term =
     _ :< TM.Prim _ ->
       []
     _ :< TM.Magic _ der ->
-      collectMagic der
+      concatMap collect der
 
-collectDefaultArgs :: [(BinderF TM.Type, TM.Term)] -> [(Hint, Ident)] -> [(Hint, Ident)]
-collectDefaultArgs defaultArgs zs =
-  case defaultArgs of
+collectDefaultParams :: [(BinderF TM.Type, TM.Term)] -> [(Hint, Ident)] -> [(Hint, Ident)]
+collectDefaultParams defaultParams zs =
+  case defaultParams of
     [] ->
       zs
     (binder, value) : rest ->
-      collect value ++ removeBinders [binder] (collectDefaultArgs rest zs)
+      collect value ++ removeBinders [binder] (collectDefaultParams rest zs)
 
 removeBinders :: [BinderF TM.Type] -> [(Hint, Ident)] -> [(Hint, Ident)]
 removeBinders binder zs =
@@ -107,67 +104,5 @@ collectCase decisionCase = do
   case decisionCase of
     DT.LiteralCase _ _ cont -> do
       collectDecisionTree cont
-    DT.ConsCase (DT.ConsCaseRecord {consImpArgs, consArgs, cont}) -> do
-      removeBinders (consImpArgs ++ consArgs) (collectDecisionTree cont)
-
-collectMagic :: M.Magic BLT.BaseLowType TM.Type TM.Term -> [(Hint, Ident)]
-collectMagic magic =
-  case magic of
-    M.LowMagic lowMagic ->
-      collectLowMagic lowMagic
-    M.Calloc _ num size ->
-      collect num ++ collect size
-    M.Malloc _ size ->
-      collect size
-    M.MallocOpaque _ size ->
-      collect size
-    M.Realloc _ ptr size ->
-      collect ptr ++ collect size
-    M.Free _ ptr ->
-      collect ptr
-    M.InspectType {} ->
-      []
-    M.EqType {} ->
-      []
-    M.ShowType _ ->
-      []
-    M.TextCons rune text ->
-      collect rune ++ collect text
-    M.TextUncons _ text ->
-      collect text
-    M.MakeSwitch _ key fallback clauses ->
-      concatMap collect [key, fallback, clauses]
-    M.FreeVariables _ code ->
-      collect code
-    M.CompileError msg ->
-      collect msg
-    M.GetOriginFileName ->
-      []
-    M.GetOriginLine ->
-      []
-    M.GetOriginColumn ->
-      []
-
-collectLowMagic :: LM.LowMagic BLT.BaseLowType TM.Type TM.Term -> [(Hint, Ident)]
-collectLowMagic lowMagic =
-  case lowMagic of
-    LM.Cast _ _ value ->
-      collect value
-    LM.Store _ _ value pointer ->
-      collect value ++ collect pointer
-    LM.Load _ pointer ->
-      collect pointer
-    LM.Shift pointer offset ->
-      collect pointer ++ collect offset
-    LM.Alloca _ size ->
-      collect size
-    LM.External _ _ _ args varArgs -> do
-      let argVars = concatMap collect args
-      let varArgVars = concatMap (collect . fst) varArgs
-      argVars ++ varArgVars
-    LM.Global {} ->
-      []
-    LM.OpaqueValue e ->
-      collect e
-    LM.CallType func arg1 arg2 arg3 ->
-      concatMap collect [func, arg1, arg2, arg3]
+    DT.ConsCase (DT.ConsCaseRecord {consImpBinders, consBinders, cont}) -> do
+      removeBinders (consImpBinders ++ consBinders) (collectDecisionTree cont)

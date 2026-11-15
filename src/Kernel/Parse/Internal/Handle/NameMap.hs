@@ -33,7 +33,7 @@ import Kernel.Common.Handle.Local.Tag qualified as Tag
 import Kernel.Common.TopNameMap
 import Kernel.Parse.Internal.Handle.Unused qualified as Unused
 import Kernel.Parse.Internal.Handle.UnusedTopLevelName qualified as UnusedTopLevelName
-import Language.Common.ArgNum qualified as AN
+import Language.Common.Arity qualified as Arity
 import Language.Common.BaseName qualified as BN
 import Language.Common.DataInfo qualified as DI
 import Language.Common.DefiniteDescription qualified as DD
@@ -95,20 +95,26 @@ insert h nameArrowList = do
 
 registerGeist :: Handle -> NominalTag -> RT.RawGeist DD.DefiniteDescription -> App ()
 registerGeist h tag RT.RawGeist {..} = do
-  let expArgs' = RT.extractArgs expArgs
-  let impArgs' = RT.extractImpArgs impArgs
-  let defaultArgs' = map fst $ SE.extract $ fst defaultArgs
-  let argNum = AN.fromInt $ length impArgs' + length defaultArgs' + length expArgs'
+  let expParams' = RT.extractParams expParams
+  let impParams' = RT.extractParams impParams
+  let defaultParams' = map fst $ SE.extract $ fst defaultParams
+  let arity = Arity.fromInt $ length impParams' + length defaultParams' + length expParams'
   let name' = fst name
   ensureGeistFreshness h loc name'
   ensureDefFreshness h loc name' (Just tag) isConstLike
   liftIO $ insertToGeistMap h name' loc isConstLike
   liftIO $ insertToNameMap h name' loc (Just tag) $ do
     if isTermTag tag
-      then nominalTagToGlobalName tag argNum isConstLike (isDestPassingTag tag)
-      else GN.TopLevelFuncType argNum isConstLike False
+      then nominalTagToGlobalName tag arity isConstLike (isDestPassingTag tag)
+      else GN.TopLevelFuncType arity isConstLike False
 
-lookup :: Handle -> Hint.Hint -> SGL.StrictGlobalLocator -> [BN.BaseName] -> DD.DefiniteDescription -> App (LookupResult (Hint, GN.GlobalName))
+lookup ::
+  Handle ->
+  Hint.Hint ->
+  SGL.StrictGlobalLocator ->
+  [BN.BaseName] ->
+  DD.DefiniteDescription ->
+  App (LookupResult (Hint, GN.GlobalName))
 lookup h m currentLocator bodyContext name = do
   nameMap <- liftIO $ readIORef (nameMapRef h)
   case lookupAvailable currentLocator bodyContext name nameMap of
@@ -225,7 +231,7 @@ _getGlobalNames stmt = do
     PostRawStmtNominal {} -> do
       []
     PostRawStmtDefineResource _ m (name, _) _ _ _ _ -> do
-      [(name, (m, Just Resource, GN.TopLevelFuncType AN.zero True False))]
+      [(name, (m, Just Resource, GN.TopLevelFuncType Arity.zero True False))]
     PostRawStmtTrope _ m (name, _) _ _ -> do
       [(name, (m, Nothing, GN.Trope))]
     PostRawStmtForeign {} ->
@@ -241,15 +247,15 @@ getGlobalNamesFromDefTerm ::
   [NameEntry]
 getGlobalNamesFromDefTerm stmtKind geist = do
   let name = fst $ RT.name geist
-  let impArgs = RT.extractImpArgs $ RT.impArgs geist
-  let defaultArgs = map fst $ SE.extract $ fst $ RT.defaultArgs geist
-  let expArgs = RT.extractArgs $ RT.expArgs geist
+  let impParams = RT.extractParams $ RT.impParams geist
+  let defaultParams = map fst $ SE.extract $ fst $ RT.defaultParams geist
+  let expParams = RT.extractParams $ RT.expParams geist
   let isConstLike = RT.isConstLike geist
   let m = RT.loc geist
-  let allArgNum = AN.fromInt $ length impArgs + length defaultArgs + length expArgs
+  let arity = Arity.fromInt $ length impParams + length defaultParams + length expParams
   case stmtKindTermToNominalTag stmtKind of
     Just tag -> do
-      let gn = stmtKindTermToGlobalName stmtKind allArgNum isConstLike (isDestPassingTag tag)
+      let gn = stmtKindTermToGlobalName stmtKind arity isConstLike (isDestPassingTag tag)
       [(name, (m, Just tag, gn))]
     Nothing ->
       []
@@ -260,22 +266,22 @@ getGlobalNamesFromDefType ::
   [NameEntry]
 getGlobalNamesFromDefType stmtKind geist = do
   let name = fst $ RT.name geist
-  let impArgs = RT.extractImpArgs $ RT.impArgs geist
-  let defaultArgs = map fst $ SE.extract $ fst $ RT.defaultArgs geist
-  let expArgs = RT.extractArgs $ RT.expArgs geist
+  let impParams = RT.extractParams $ RT.impParams geist
+  let defaultParams = map fst $ SE.extract $ fst $ RT.defaultParams geist
+  let expParams = RT.extractParams $ RT.expParams geist
   let isConstLike = RT.isConstLike geist
   let m = RT.loc geist
-  let allArgNum = AN.fromInt $ length impArgs + length defaultArgs + length expArgs
+  let arity = Arity.fromInt $ length impParams + length defaultParams + length expParams
   let mTag = stmtKindTypeToNominalTag stmtKind
   case stmtKind of
     SK.Alias ->
-      [(name, (m, mTag, GN.TopLevelFuncType allArgNum isConstLike False))]
+      [(name, (m, mTag, GN.TopLevelFuncType arity isConstLike False))]
     SK.AliasOpaque ->
-      [(name, (m, mTag, GN.TopLevelFuncType allArgNum isConstLike False))]
-    SK.Data dataName dataArgs consInfoList _ -> do
-      let dataArgNum = AN.fromInt $ length dataArgs
-      let consNameArrowList = map (toConsNameArrow (\(_, _, x, _, _, _) -> x) dataArgNum) consInfoList
-      (dataName, (m, mTag, GN.Data dataArgNum (map stripTag consNameArrowList) isConstLike)) : consNameArrowList
+      [(name, (m, mTag, GN.TopLevelFuncType arity isConstLike False))]
+    SK.Data dataName dataParams consInfoList _ -> do
+      let dataArity = Arity.fromInt $ length dataParams
+      let consNameArrowList = map (toConsNameArrow (\(_, _, x, _, _, _) -> x) dataArity) consInfoList
+      (dataName, (m, mTag, GN.Data dataArity (map stripTag consNameArrowList) isConstLike)) : consNameArrowList
 
 getGlobalNames' :: [Stmt] -> [NameEntry]
 getGlobalNames' stmtList = do
@@ -284,30 +290,31 @@ getGlobalNames' stmtList = do
 _getGlobalNames' :: Stmt -> [NameEntry]
 _getGlobalNames' stmt = do
   case stmt of
-    StmtDefine isConstLike stmtKind (SavedHint m) name impArgs expArgs defaultArgs _ _ -> do
-      let defaultBinders = map fst defaultArgs
-      let allArgNum = AN.fromInt $ length $ impArgs ++ defaultBinders ++ expArgs
+    StmtDefine isConstLike stmtKind (SavedHint m) name impParams expParams defaultParams _ _ -> do
+      let defaultParamBinders = map fst defaultParams
+      let arity = Arity.fromInt $ length $ impParams ++ defaultParamBinders ++ expParams
       case stmtKindTermToNominalTag stmtKind of
         Just tag -> do
-          let gn = stmtKindTermToGlobalName stmtKind allArgNum isConstLike (isDestPassingTag tag)
+          let gn = stmtKindTermToGlobalName stmtKind arity isConstLike (isDestPassingTag tag)
           [(name, (m, Just tag, gn))]
         Nothing ->
           []
-    StmtDefineType isConstLike stmtKind (SavedHint m) name impArgs expArgs defaultArgs _ _ -> do
-      let defaultBinders = map fst defaultArgs
-      let allArgNum = AN.fromInt $ length $ impArgs ++ defaultBinders ++ expArgs
+    StmtDefineType isConstLike stmtKind (SavedHint m) name impParams expParams defaultParams _ _ -> do
+      let defaultParamBinders = map fst defaultParams
+      let arity = Arity.fromInt $ length $ impParams ++ defaultParamBinders ++ expParams
       let mTag = stmtKindTypeToNominalTag stmtKind
       case stmtKind of
         SK.Alias ->
-          [(name, (m, mTag, GN.TopLevelFuncType allArgNum isConstLike False))]
+          [(name, (m, mTag, GN.TopLevelFuncType arity isConstLike False))]
         SK.AliasOpaque ->
-          [(name, (m, mTag, GN.TopLevelFuncType allArgNum isConstLike False))]
-        SK.Data dataName dataArgs consInfoList _ -> do
-          let dataArgNum = AN.fromInt $ length dataArgs
-          let consNameArrowList = map (toConsNameArrow (\(_, _, x, _) -> Ident.toText x) dataArgNum) consInfoList
-          (dataName, (m, mTag, GN.Data dataArgNum (map stripTag consNameArrowList) isConstLike)) : consNameArrowList
+          [(name, (m, mTag, GN.TopLevelFuncType arity isConstLike False))]
+        SK.Data dataName dataParams consInfoList _ -> do
+          let dataArity = Arity.fromInt $ length dataParams
+          let consNameArrowList = map (toConsNameArrow (\(_, _, x, _) -> Ident.toText x) dataArity) consInfoList
+          let dataGlobalName = GN.Data dataArity (map stripTag consNameArrowList) isConstLike
+          (dataName, (m, mTag, dataGlobalName)) : consNameArrowList
     StmtDefineResource (SavedHint m) name _ _ _ _ _ -> do
-      [(name, (m, Nothing, GN.TopLevelFuncType AN.argNumS4 True False))]
+      [(name, (m, Nothing, GN.TopLevelFuncType Arity.arityS4 True False))]
     StmtTrope (SavedHint m) name _ -> do
       [(name, (m, Nothing, GN.Trope))]
     StmtVariadic kind (SavedHint m) name -> do
@@ -321,17 +328,18 @@ _getGlobalNames' stmt = do
 
 toConsNameArrow ::
   (a -> T.Text) ->
-  AN.ArgNum ->
+  Arity.Arity ->
   DI.StmtConsInfo a ->
   NameEntry
-toConsNameArrow nameOf dataArgNum (SavedHint m, consInfo) = do
-  let consImpArgNames = map nameOf $ DI.consImpArgs consInfo
-  let consArgNum = AN.fromInt $ length $ DI.consArgs consInfo
+toConsNameArrow nameOf dataArity (SavedHint m, consInfo) = do
+  let consImpParamNames = map nameOf $ DI.consImpParams consInfo
+  let consArity = Arity.fromInt $ length $ DI.consParams consInfo
   let consDD = DI.consName consInfo
   let discriminant = DI.discriminant consInfo
   let isConstLikeCons = DI.isConstLike consInfo
-  let sourceFlags = map DI.isFieldMixed $ DI.consArgHints consInfo
-  (consDD, (m, Nothing, GN.DataIntro dataArgNum consImpArgNames consArgNum discriminant isConstLikeCons sourceFlags))
+  let sourceFlags = map DI.isFieldMixed $ DI.consParamHints consInfo
+  let consGlobalName = GN.DataIntro dataArity consImpParamNames consArity discriminant isConstLikeCons sourceFlags
+  (consDD, (m, Nothing, consGlobalName))
 
 geistToRemark :: DD.DefiniteDescription -> (Hint, a) -> Log
 geistToRemark dd (m, _) =
@@ -367,37 +375,37 @@ stmtKindTermToNominalTag stmtKind =
 
 stmtKindTermToGlobalName ::
   SK.BaseStmtKindTerm name binder t ->
-  AN.ArgNum ->
+  Arity.Arity ->
   IsConstLike ->
   IsDestPassing ->
   GN.GlobalName
-stmtKindTermToGlobalName stmtKind argNum isConstLike isDestPassing =
+stmtKindTermToGlobalName stmtKind arity isConstLike isDestPassing =
   case stmtKind of
     SK.ConstantMeta ->
-      GN.TopLevelMetaTerm argNum isConstLike
+      GN.TopLevelMetaTerm arity isConstLike
     SK.Macro ->
-      GN.TopLevelMetaTerm argNum isConstLike
+      GN.TopLevelMetaTerm arity isConstLike
     SK.MacroInline ->
-      GN.TopLevelMetaTerm argNum isConstLike
+      GN.TopLevelMetaTerm arity isConstLike
     _ ->
-      GN.TopLevelFuncTerm argNum isConstLike isDestPassing
+      GN.TopLevelFuncTerm arity isConstLike isDestPassing
 
 nominalTagToGlobalName ::
   NominalTag ->
-  AN.ArgNum ->
+  Arity.Arity ->
   IsConstLike ->
   IsDestPassing ->
   GN.GlobalName
-nominalTagToGlobalName tag argNum isConstLike isDestPassing =
+nominalTagToGlobalName tag arity isConstLike isDestPassing =
   case tag of
     ConstantMeta ->
-      GN.TopLevelMetaTerm argNum isConstLike
+      GN.TopLevelMetaTerm arity isConstLike
     Macro ->
-      GN.TopLevelMetaTerm argNum isConstLike
+      GN.TopLevelMetaTerm arity isConstLike
     MacroInline ->
-      GN.TopLevelMetaTerm argNum isConstLike
+      GN.TopLevelMetaTerm arity isConstLike
     _ ->
-      GN.TopLevelFuncTerm argNum isConstLike isDestPassing
+      GN.TopLevelFuncTerm arity isConstLike isDestPassing
 
 stmtKindTypeToNominalTag :: SK.BaseStmtKindType binder -> Maybe NominalTag
 stmtKindTypeToNominalTag stmtKind =

@@ -12,10 +12,11 @@ import App.Run (raiseError')
 import CodeParser.Parser (runParser)
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
+import Data.List (unsnoc)
 import Data.Text qualified as T
-import Gensym.CreateHandle qualified as Gensym
 import Ens.Parse qualified as EnsParse
 import Ens.ToDoc qualified as Ens
+import Gensym.CreateHandle qualified as Gensym
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.CreateLocalHandle qualified as Local
 import Kernel.Common.Handle.Global.Env qualified as Env
@@ -67,14 +68,16 @@ _formatSource h shouldMinimizeImports filePath fileContent = do
     then do
       unravelHandle <- liftIO $ Unravel.new (globalHandle h)
       let loadHandle = Load.new (globalHandle h)
-      dependenceSeq <- Unravel.resultSourceList <$> Unravel.unravel unravelHandle mainModule (Main (emptyZen filePath))
+      dependenceSeq <-
+        Unravel.resultSourceList <$> Unravel.unravel unravelHandle mainModule (Main (emptyZen filePath))
       contentSeq <- Load.load loadHandle False Peripheral dependenceSeq
       cacheOrProgList <- Parse.parse (globalHandle h) (_replaceLast fileContent contentSeq)
       case unsnoc cacheOrProgList of
         Nothing ->
           raiseError' "Nothing to format"
         Just (_, (rootGensymHandle, rootLocalHandle, (rootSource, rootCacheOrProg))) -> do
-          interpretHandle <- liftIO $ Interpret.new rootGensymHandle (globalHandle h) rootLocalHandle (Source.sourceModule rootSource)
+          let rootModule = Source.sourceModule rootSource
+          interpretHandle <- liftIO $ Interpret.new rootGensymHandle (globalHandle h) rootLocalHandle rootModule
           _ <- Interpret.interpret interpretHandle Peripheral rootSource rootCacheOrProg
           let unusedHandle = Local.unusedHandle rootLocalHandle
           (unusedGlobalLocators, unusedLocalLocators) <- liftIO $ Unused.getUnusedLocators unusedHandle
@@ -97,7 +100,3 @@ _replaceLast content contentSeq =
       [(source, Right content)]
     cacheOrContent : rest ->
       cacheOrContent : _replaceLast content rest
-
-unsnoc :: [a] -> Maybe ([a], a)
-unsnoc =
-  foldr (\x -> Just . maybe ([], x) (\(~(a, b)) -> (x : a, b))) Nothing

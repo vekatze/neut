@@ -30,18 +30,19 @@ import Gensym.Trick qualified as Gensym
 import Kernel.Common.Cache qualified as Cache
 import Kernel.Common.Const (holeLiteral)
 import Kernel.Common.CreateGlobalHandle qualified as Global
-import Language.Common.ExternalName qualified as EN
 import Kernel.Common.Handle.Global.Data qualified as Data
 import Kernel.Common.Handle.Global.GlobalRemark qualified as GlobalRemark
-import Kernel.Common.Handle.Global.KeyArg qualified as KeyArg
 import Kernel.Common.Handle.Global.ModulePath qualified as ModulePath
 import Kernel.Common.Handle.Global.OptimizableData qualified as OptimizableData
+import Kernel.Common.Handle.Global.ParamKey qualified as ParamKey
+import Kernel.Common.Handle.Global.Platform qualified as Platform
 import Kernel.Common.Handle.Global.Resource qualified as Resource
 import Kernel.Common.Handle.Global.Type qualified as Type
 import Kernel.Common.Handle.Local.Tag qualified as Tag
 import Kernel.Common.ManageCache qualified as Cache
 import Kernel.Common.OptimizableData qualified as OD
 import Kernel.Common.Source qualified as Source
+import Kernel.Common.StorageWidth qualified as StorageWidth
 import Kernel.Common.Target hiding (Main)
 import Kernel.Common.TopLevelReferences (TopLevelReferences)
 import Kernel.Common.Trace qualified as Trace
@@ -49,16 +50,12 @@ import Kernel.Elaborate.Internal.EnsureAffinity qualified as EnsureAffinity
 import Kernel.Elaborate.Internal.EnsureEmbeddable (ensureEmbeddable)
 import Kernel.Elaborate.Internal.Handle.Constraint qualified as Constraint
 import Kernel.Elaborate.Internal.Handle.Def qualified as Definition
-import Kernel.Common.Handle.Global.Platform qualified as Platform
-import Kernel.Common.StorageWidth qualified as StorageWidth
 import Kernel.Elaborate.Internal.Handle.Elaborate
 import Kernel.Elaborate.Internal.Handle.Hole qualified as Hole
 import Kernel.Elaborate.Internal.Handle.LocalLogs qualified as LocalLogs
 import Kernel.Elaborate.Internal.Handle.TypeDef qualified as TypeDef
-import Kernel.Elaborate.Internal.Handle.WeakDef qualified as WeakDef
 import Kernel.Elaborate.Internal.Handle.WeakType qualified as WeakType
 import Kernel.Elaborate.Internal.Handle.WeakTypeDef qualified as WeakTypeDef
-import Kernel.Parse.Internal.Handle.BranchAgreement qualified as BranchAgreement
 import Kernel.Elaborate.Internal.Infer qualified as Infer
 import Kernel.Elaborate.Internal.Registration
 import Kernel.Elaborate.Internal.TypeUtil (inlineType)
@@ -67,6 +64,7 @@ import Kernel.Elaborate.Internal.Unify qualified as Unify
 import Kernel.Elaborate.PublicSignature qualified as PublicSignature
 import Kernel.Elaborate.Trace qualified as ElaborateTrace
 import Kernel.Elaborate.TypeHoleSubst qualified as THS
+import Kernel.Parse.Internal.Handle.BranchAgreement qualified as BranchAgreement
 import Language.Common.Annotation qualified as AN
 import Language.Common.Attr.Lam qualified as AttrL
 import Language.Common.BaseLowType qualified as BLT
@@ -75,23 +73,23 @@ import Language.Common.BasePrimType qualified as BPT
 import Language.Common.Binder
 import Language.Common.CallConv qualified as CC
 import Language.Common.CallConvSpec qualified as CCS
-import Language.Common.CreateSymbol qualified as Gensym
 import Language.Common.CellLayout qualified as CL
+import Language.Common.CreateSymbol qualified as Gensym
 import Language.Common.DataInfo qualified as DI
 import Language.Common.DataSize qualified as DS
 import Language.Common.DecisionTree qualified as DT
 import Language.Common.DefaultArgs qualified as DefaultArgs
 import Language.Common.DefiniteDescription qualified as DD
+import Language.Common.ExternalName qualified as EN
 import Language.Common.Foreign qualified as F
 import Language.Common.ForeignCodType qualified as FCT
 import Language.Common.Geist qualified as G
 import Language.Common.HoleID qualified as HID
 import Language.Common.Ident
-import Language.Common.Literal qualified as LI
 import Language.Common.Ident.Reify qualified as Ident
-import Language.Common.ImpArgs qualified as ImpArgs
 import Language.Common.IsConstLike (IsConstLike)
 import Language.Common.LamKind qualified as LK
+import Language.Common.Literal qualified as LI
 import Language.Common.LowMagic qualified as LM
 import Language.Common.Magic qualified as M
 import Language.Common.ModuleID qualified as MID
@@ -107,16 +105,15 @@ import Language.Common.StrictGlobalLocator qualified as SGL
 import Language.Common.Text.Util (decodeUtf8Bytes)
 import Language.Common.VarKind qualified as VK
 import Language.LowComp.DeclarationName qualified as DN
+import Language.Term.DataInfo qualified as DataInfo
 import Language.Term.Inline.Handle qualified as InlineHandle
 import Language.Term.PrimValue qualified as PV
 import Language.Term.Stmt
-import Language.Term.Subst qualified as TmSubst
 import Language.Term.Term qualified as TM
 import Language.Term.Trace qualified as TermTrace
 import Language.Term.TraceID (noTrace)
 import Language.Term.TraceSites qualified as TraceSites
 import Language.Term.Weaken
-import Language.WeakTerm.Subst (SubstEntry (..))
 import Language.WeakTerm.Subst qualified as Subst
 import Language.WeakTerm.ToText
 import Language.WeakTerm.ToText qualified as Weak
@@ -175,16 +172,18 @@ requireBranchAgreement h = do
 raiseTypelessBranch :: Handle -> BranchAgreement.Obligation -> DD.DefiniteDescription -> App ()
 raiseTypelessBranch h obligation dd = do
   raiseError (BranchAgreement.obligationHint obligation) $
-    "A name without a type cannot be supplied by a conditional import: `" <> ModulePath.renderDD (modulePathMap h) dd <> "`"
+    "A name without a type cannot be supplied by a conditional import: `"
+      <> ModulePath.renderDD (modulePathMap h) dd
+      <> "`"
 
 reportTrace :: Handle -> Report.TracePhase -> T.Text -> WeakStmt -> IO ()
 reportTrace h phase stage stmt = do
   modulePathMap <- ModulePath.get $ Global.modulePathHandle (globalHandle h)
   case stmt of
-    WeakStmtDefineTerm _ stmtKind _ name _ expArgs _ cod body
+    WeakStmtDefineTerm _ stmtKind _ name _ expParams _ cod body
       | Trace.matches (traceConfig h) modulePathMap phase name ->
           Logger.trace (Global.loggerHandle $ globalHandle h) $
-            "[" <> stage <> "]\n" <> toTextDefinition stmtKind name expArgs cod body
+            "[" <> stage <> "]\n" <> toTextDefinition stmtKind name expParams cod body
     _ ->
       return ()
 
@@ -195,12 +194,12 @@ toTextDefinition ::
   WT.WeakType ->
   WT.WeakTerm ->
   T.Text
-toTextDefinition stmtKind name expArgs cod body =
+toTextDefinition stmtKind name expParams cod body =
   toTextStmtKind stmtKind
     <> " "
     <> DD.localLocator name
     <> "("
-    <> T.intercalate ", " (map toTextBinder expArgs)
+    <> T.intercalate ", " (map toTextBinder expParams)
     <> ") "
     <> toTextCodArrow stmtKind
     <> " "
@@ -278,44 +277,57 @@ synthesizeStmtList h t logs topLevelReferences stmtList = do
 elaborateStmt :: Handle -> WeakStmt -> App ([Stmt], [L.Log])
 elaborateStmt h stmt = do
   case stmt of
-    WeakStmtDefineTerm isConstLike stmtKind m x impArgs expArgs defaultArgs codType e -> do
+    WeakStmtDefineTerm isConstLike stmtKind m x impParams expParams defaultParams codType e -> do
       stmtKind' <- elaborateStmtKindTerm h stmtKind
-      impArgs' <- mapM (elaborateWeakBinder h) impArgs
-      expArgs' <- mapM (elaborateWeakBinder h) expArgs
-      defaultArgs' <- forM defaultArgs $ \(binder, value) -> do
+      impParams' <- mapM (elaborateWeakBinder h) impParams
+      expParams' <- mapM (elaborateWeakBinder h) expParams
+      defaultParams' <- forM defaultParams $ \(binder, value) -> do
         binder' <- elaborateWeakBinder h binder
         value' <- elaborate' h value
         return (binder', value')
       codType' <- elaborateType h codType
-      let mDefKind = stmtKindToDefKind stmtKind defaultArgs'
+      let mDefKind = stmtKindToDefKind stmtKind defaultParams'
       e' <- elaborate' h e
       case mDefKind of
         Just InlineHandle.NoInline -> do
-          defaultArgsForSelf <- forM defaultArgs' $ \(binder, value) -> do
+          defaultParamsForSelf <- forM defaultParams' $ \(binder, value) -> do
             value' <- inline h m value
             return (binder, value')
-          liftIO $ Definition.insert' (defHandle h) x impArgs' expArgs' defaultArgsForSelf e' codType' mDefKind IntSet.empty
+          liftIO $
+            Definition.insert'
+              (defHandle h)
+              x
+              impParams'
+              expParams'
+              defaultParamsForSelf
+              e'
+              codType'
+              mDefKind
+              IntSet.empty
         _ ->
           return ()
       remarks <- do
         affHandle <- liftIO $ EnsureAffinity.new h
         let dummyAttr = AttrL.Attr {lamKind = LK.Normal Nothing False codType', identity = 0}
-        EnsureAffinity.ensureAffinity affHandle $ m :< TM.PiIntro dummyAttr impArgs' expArgs' defaultArgs' e'
+        EnsureAffinity.ensureAffinity affHandle $ m :< TM.PiIntro dummyAttr impParams' expParams' defaultParams' e'
       usesEmbed <- liftIO $ S.member x <$> readIORef (embeddingDefs h)
-      (impArgs'', defaultArgs'', expArgs'', codType'', e'') <- withFreshSpecializationTable h $ do
+      let traceEnabled = shouldTraceDefinition mDefKind || usesEmbed
+      let allParams = impParams' ++ expParams' ++ map fst defaultParams'
+      (impParams'', defaultParams'', expParams'', codType'', e'') <- withFreshSpecializationTable h $ do
         e'' <-
           if not $ SK.isMacroStmtKind stmtKind
-            then inlineDefinition h m (shouldTraceDefinition mDefKind || usesEmbed) (impArgs' ++ expArgs' ++ map fst defaultArgs') e'
+            then inlineDefinition h m traceEnabled allParams e'
             else return e'
-        impArgs'' <- mapM (inlineBinder h) impArgs'
-        defaultArgs'' <- forM defaultArgs' $ \(binder, value) -> do
+        impParams'' <- mapM (inlineBinder h) impParams'
+        defaultParams'' <- forM defaultParams' $ \(binder, value) -> do
           binder' <- inlineBinder h binder
           value' <- inline h m value
           return (binder', value')
-        expArgs'' <- mapM (inlineBinder h) expArgs'
+        expParams'' <- mapM (inlineBinder h) expParams'
         codType'' <- inlineType h m codType'
-        return (impArgs'', defaultArgs'', expArgs'', codType'', e'')
-      (eFinal, traceSiteIDs) <- liftIO $ prepareDefinitionTrace (Global.termTraceHandle $ globalHandle h) mDefKind e''
+        return (impParams'', defaultParams'', expParams'', codType'', e'')
+      (eFinal, traceSiteIDs) <-
+        liftIO $ prepareDefinitionTrace (Global.termTraceHandle $ globalHandle h) mDefKind e''
       unless (SK.isMacroStmtKind stmtKind) $ do
         ensureEmbeddable h (toTextStmtKind stmtKind <> " " <> TraceSites.sourceLevelName x) eFinal
       when (isConstLike && not (isConstantMetaStmtKind stmtKind)) $ do
@@ -324,31 +336,33 @@ elaborateStmt h stmt = do
         forM_ (TraceSites.findBlocker eFinal) $ \blocker ->
           reportConstantEvaluationFailure h x bodyHint blocker
       PublicSignature.checkStmt (globalHandle h) (Source.sourceModule $ currentSource h) $
-        StmtDefine isConstLike stmtKind' (SavedHint m) x impArgs' expArgs' defaultArgs' codType' e'
-      let result = StmtDefine isConstLike stmtKind' (SavedHint m) x impArgs'' expArgs'' defaultArgs'' codType'' eFinal
+        StmtDefine isConstLike stmtKind' (SavedHint m) x impParams' expParams' defaultParams' codType' e'
+      let result =
+            StmtDefine isConstLike stmtKind' (SavedHint m) x impParams'' expParams'' defaultParams'' codType'' eFinal
       register h $ makeRegistration (Just traceSiteIDs) result
       return ([result], remarks)
-    WeakStmtDefineType isConstLike stmtKind m x impArgs expArgs defaultArgs codType body -> do
+    WeakStmtDefineType isConstLike stmtKind m x impParams expParams defaultParams codType body -> do
       stmtKind' <- elaborateStmtKindType h stmtKind
-      impArgs' <- mapM (elaborateWeakBinder h) impArgs
-      defaultArgs' <- forM defaultArgs $ \(binder, value) -> do
+      impParams' <- mapM (elaborateWeakBinder h) impParams
+      defaultParams' <- forM defaultParams $ \(binder, value) -> do
         binder' <- elaborateWeakBinder h binder
         value' <- elaborate' h value
         return (binder', value')
-      expArgs' <- mapM (elaborateWeakBinder h) expArgs
+      expParams' <- mapM (elaborateWeakBinder h) expParams
       codType' <- elaborateType h codType
       body' <- elaborateType h body
-      impArgs'' <- mapM (inlineBinder h) impArgs'
-      defaultArgs'' <- forM defaultArgs' $ \(binder, value) -> do
+      impParams'' <- mapM (inlineBinder h) impParams'
+      defaultParams'' <- forM defaultParams' $ \(binder, value) -> do
         binder' <- inlineBinder h binder
         value' <- inline h m value
         return (binder', value')
-      expArgs'' <- mapM (inlineBinder h) expArgs'
+      expParams'' <- mapM (inlineBinder h) expParams'
       codType'' <- inlineType h m codType'
       body'' <- inlineType h m body'
       PublicSignature.checkStmt (globalHandle h) (Source.sourceModule $ currentSource h) $
-        StmtDefineType isConstLike stmtKind' (SavedHint m) x impArgs' expArgs' defaultArgs' codType' body'
-      let result = StmtDefineType isConstLike stmtKind' (SavedHint m) x impArgs'' expArgs'' defaultArgs'' codType'' body''
+        StmtDefineType isConstLike stmtKind' (SavedHint m) x impParams' expParams' defaultParams' codType' body'
+      let result =
+            StmtDefineType isConstLike stmtKind' (SavedHint m) x impParams'' expParams'' defaultParams'' codType'' body''
       register h $ makeRegistration Nothing result
       return ([result], [])
     WeakStmtDefineResource m dd resourceID unitType discarder copier resourceSize -> do
@@ -397,21 +411,21 @@ elaborateStmt h stmt = do
 
 elaborateGeist :: Handle -> G.Geist WT.WeakType WT.WeakTerm -> App (G.Geist TM.Type TM.Term)
 elaborateGeist h (G.Geist {..}) = do
-  impArgs' <- mapM (elaborateWeakBinder h) impArgs
-  defaultArgs' <- forM defaultArgs $ \(binder, value) -> do
+  impParams' <- mapM (elaborateWeakBinder h) impParams
+  defaultParams' <- forM defaultParams $ \(binder, value) -> do
     binder' <- elaborateWeakBinder h binder
     value' <- elaborate' h value
     return (binder', value')
-  expArgs' <- mapM (elaborateWeakBinder h) expArgs
+  expParams' <- mapM (elaborateWeakBinder h) expParams
   cod' <- elaborateType h cod
-  return $ G.Geist {impArgs = impArgs', defaultArgs = defaultArgs', expArgs = expArgs', cod = cod', ..}
+  return $ G.Geist {impParams = impParams', defaultParams = defaultParams', expParams = expParams', cod = cod', ..}
 
 elaborateDefineMeta :: Handle -> DD.DefiniteDescription -> WeakDefineMeta -> App DefineMeta
 elaborateDefineMeta h ownerName defineMeta = do
   let m = weakDefineMetaLoc defineMeta
   ensureDefineMetaTarget h m (weakDefineMetaTarget defineMeta)
   targetArgs' <- mapM (elaborateType h) $ weakDefineMetaTargetArgs defineMeta
-  expArgs' <- mapM (elaborateWeakBinder h) $ weakDefineMetaExpArgs defineMeta
+  expParams' <- mapM (elaborateWeakBinder h) $ weakDefineMetaExpParams defineMeta
   codType' <- elaborateType h $ weakDefineMetaCod defineMeta
   body' <- elaborate' h $ weakDefineMetaBody defineMeta
   PublicSignature.checkDefineMeta (globalHandle h) (Source.sourceModule $ currentSource h) ownerName $
@@ -419,20 +433,20 @@ elaborateDefineMeta h ownerName defineMeta = do
       { defineMetaLoc = SavedHint m,
         defineMetaTargetName = weakDefineMetaTarget defineMeta,
         defineMetaTargetArgs = targetArgs',
-        defineMetaExpArgs = expArgs',
+        defineMetaExpParams = expParams',
         defineMetaCodType = codType',
         defineMetaBody = body',
         defineMetaHelperName = weakDefineMetaHelperName defineMeta
       }
   targetArgs'' <- mapM (inlineType h m) targetArgs'
-  expArgs'' <- mapM (inlineBinder h) expArgs'
+  expParams'' <- mapM (inlineBinder h) expParams'
   codType'' <- inlineType h m codType'
   return
     DefineMeta
       { defineMetaLoc = SavedHint m,
         defineMetaTargetName = weakDefineMetaTarget defineMeta,
         defineMetaTargetArgs = targetArgs'',
-        defineMetaExpArgs = expArgs'',
+        defineMetaExpParams = expParams'',
         defineMetaCodType = codType'',
         defineMetaBody = body',
         defineMetaHelperName = weakDefineMetaHelperName defineMeta
@@ -440,7 +454,8 @@ elaborateDefineMeta h ownerName defineMeta = do
 
 reportConstantEvaluationFailure :: Handle -> DD.DefiniteDescription -> Hint -> TraceSites.Blocker -> App a
 reportConstantEvaluationFailure h constantName bodyHint blocker = do
-  traceBlock <- liftIO $ ElaborateTrace.renderFailureTrace h ("constant " <> TraceSites.sourceLevelName constantName) bodyHint blocker
+  let headLabel = "constant " <> TraceSites.sourceLevelName constantName
+  traceBlock <- liftIO $ ElaborateTrace.renderFailureTrace h headLabel bodyHint blocker
   raiseError bodyHint $
     "Expected a compile-time value, but got "
       <> TraceSites.describeBlocker blocker
@@ -501,7 +516,9 @@ declareTypeAttrs :: Handle -> VK.VarKind -> Ident -> App ()
 declareTypeAttrs h k x = do
   let attrs = S.unions $ map VK.attrClosure $ VK.attrList k
   unless (S.null attrs) $
-    liftIO $ modifyIORef' (attributedTypeVars h) $ IntMap.insertWith S.union (Ident.toInt x) attrs
+    liftIO $
+      modifyIORef' (attributedTypeVars h) $
+        IntMap.insertWith S.union (Ident.toInt x) attrs
 
 hasTypeAttr :: Handle -> VK.TypeAttr -> Ident -> App Bool
 hasTypeAttr h attr x = do
@@ -528,11 +545,11 @@ checkActualityType h dataNameSet m t = do
           | S.member dataName dataNameSet ->
               return $ Right ()
           | otherwise -> do
-              consInfoList <- TypeUtil.getConsArgTypes h m dataName dataArgs
-              forM_ (concatMap DI.consImpArgs consInfoList) $ \(_, k, x, _) ->
+              consInfoList <- TypeUtil.getConsParamTypes h m dataName dataArgs
+              forM_ (concatMap DI.consImpParams consInfoList) $ \(_, k, x, _) ->
                 declareTypeAttrs h k x
-              let consArgTypes = map (\(_, _, _, consArg) -> consArg) $ concatMap DI.consArgs consInfoList
-              checkActualityTypeList h dataNameSet' m consArgTypes
+              let consParamTypes = map (\(_, _, _, consParamType) -> consParamType) $ concatMap DI.consParams consInfoList
+              checkActualityTypeList h dataNameSet' m consParamTypes
     _ :< TM.Box tInner ->
       checkActualityType h dataNameSet m tInner
     _ :< TM.Code tInner ->
@@ -573,18 +590,21 @@ makeRegistration knownTraceSiteIDs stmt =
 makeTermRegistration :: Maybe IntSet.IntSet -> Stmt -> Registration
 makeTermRegistration knownTraceSiteIDs stmt =
   case stmt of
-    StmtDefine isConstLike stmtKind (SavedHint m) f impArgs expArgs defaultArgs t e -> do
+    StmtDefine isConstLike stmtKind (SavedHint m) f impParams expParams defaultParams t e -> do
       let traceSiteIDs = fromMaybe (TraceSites.traceIDSet e) knownTraceSiteIDs
+      let piType = m :< TM.Pi (PK.fromStmtKind stmtKind isConstLike) impParams expParams (map fst defaultParams) t
+      let defKind = stmtKindToDefKind stmtKind defaultParams
       mempty
-        { typeEntries = [(f, weakenType $ m :< TM.Pi (PK.fromStmtKind stmtKind isConstLike) impArgs expArgs (map fst defaultArgs) t)],
-          definitionEntries = Definition.makeEntry f impArgs expArgs defaultArgs e t (stmtKindToDefKind stmtKind defaultArgs) traceSiteIDs
+        { typeEntries = [(f, weakenType piType)],
+          definitionEntries = Definition.makeEntry f impParams expParams defaultParams e t defKind traceSiteIDs
         }
-    StmtDefineType isConstLike stmtKind (SavedHint m) f impArgs expArgs defaultArgs t body -> do
-      let allBinders = impArgs ++ expArgs ++ map fst defaultArgs
+    StmtDefineType isConstLike stmtKind (SavedHint m) f impParams expParams defaultParams t body -> do
+      let allParams = impParams ++ expParams ++ map fst defaultParams
+      let piType = m :< TM.Pi (PK.Normal isConstLike) impParams expParams (map fst defaultParams) t
       mempty
-        { typeEntries = [(f, weakenType $ m :< TM.Pi (PK.Normal isConstLike) impArgs expArgs (map fst defaultArgs) t)],
+        { typeEntries = [(f, weakenType piType)],
           dataInfoEntries = makeDataInfoEntries f stmtKind,
-          typeDefEntries = TypeDef.makeEntry (SK.toOpacityType stmtKind) f allBinders body
+          typeDefEntries = TypeDef.makeEntry (SK.toOpacityType stmtKind) f allParams body
         }
     StmtDefineResource (SavedHint m) dd resourceID _ _ _ resourceSize ->
       mempty
@@ -606,12 +626,12 @@ makeTermRegistration knownTraceSiteIDs stmt =
 makeWeakRegistration :: WeakStmt -> Registration
 makeWeakRegistration stmt = do
   case stmt of
-    WeakStmtDefineTerm _ stmtKind m f impArgs expArgs defaultArgs codType e ->
-      mempty {weakDefEntries = WeakDef.makeEntry (SK.toOpacityTerm stmtKind) (SK.isDestPassingStmtKind stmtKind) m f impArgs expArgs defaultArgs codType e}
-    WeakStmtDefineType _ stmtKind _ f impArgs expArgs defaultArgs _ body -> do
-      let binders = impArgs ++ expArgs ++ map fst defaultArgs
+    WeakStmtDefineTerm {} ->
       mempty
-        { weakTypeDefEntries = WeakTypeDef.makeEntry (SK.toOpacityType stmtKind) f binders body,
+    WeakStmtDefineType _ stmtKind _ f impParams expParams defaultParams _ body -> do
+      let params = impParams ++ expParams ++ map fst defaultParams
+      mempty
+        { weakTypeDefEntries = WeakTypeDef.makeEntry (SK.toOpacityType stmtKind) f params body,
           weakDataInfoEntries = makeDataInfoEntries f stmtKind
         }
     WeakStmtDefineResource m dd resourceID _ _ _ _ -> do
@@ -630,28 +650,22 @@ makeWeakRegistration stmt = do
     WeakStmtNamespace {} ->
       mempty
 
-makeDataInfoEntries :: DD.DefiniteDescription -> SK.StmtKindType t -> [(DD.DefiniteDescription, DI.DataInfo (BinderF t))]
+makeDataInfoEntries ::
+  DD.DefiniteDescription ->
+  SK.StmtKindType t ->
+  [(DD.DefiniteDescription, DI.DataInfo (BinderF t))]
 makeDataInfoEntries dataName stmtKind =
   case stmtKind of
-    SK.Data _ dataArgs consInfoList _ ->
+    SK.Data _ dataParams consInfoList _ ->
       [ ( dataName,
           DI.DataInfo
-            { DI.dataArgs = dataArgs,
+            { DI.dataParams = dataParams,
               DI.consInfoList = map snd consInfoList
             }
         )
       ]
     _ ->
       []
-
-lookupDataInfo :: Handle -> Hint -> DD.DefiniteDescription -> App [DI.ConsInfo (BinderF TM.Type)]
-lookupDataInfo h m dataName = do
-  dataInfoOrNone <- liftIO $ Data.lookup (dataHandle h) dataName
-  case dataInfoOrNone of
-    Just dataInfo ->
-      return $ DI.consInfoList dataInfo
-    Nothing ->
-      raiseCritical m $ "Could not find constructor metadata for `" <> DD.reify dataName <> "`"
 
 elaborateStmtKindTerm :: Handle -> SK.StmtKindTerm WT.WeakType -> App (SK.StmtKindTerm TM.Type)
 elaborateStmtKindTerm h stmtKind =
@@ -675,11 +689,11 @@ elaborateStmtKindTerm h stmtKind =
     SK.Main t -> do
       t' <- elaborateType h t
       return $ SK.Main t'
-    SK.DataIntro dataName dataArgs consImpArgs expConsArgs discriminant -> do
-      dataArgs' <- mapM (elaborateWeakBinder h) dataArgs
-      consImpArgs' <- mapM (elaborateWeakBinder h) consImpArgs
-      expConsArgs' <- mapM (elaborateWeakBinder h) expConsArgs
-      return $ SK.DataIntro dataName dataArgs' consImpArgs' expConsArgs' discriminant
+    SK.DataIntro dataName dataParams consImpParams expConsParams discriminant -> do
+      dataParams' <- mapM (elaborateWeakBinder h) dataParams
+      consImpParams' <- mapM (elaborateWeakBinder h) consImpParams
+      expConsParams' <- mapM (elaborateWeakBinder h) expConsParams
+      return $ SK.DataIntro dataName dataParams' consImpParams' expConsParams' discriminant
 
 elaborateStmtKindType :: Handle -> SK.StmtKindType WT.WeakType -> App (SK.StmtKindType TM.Type)
 elaborateStmtKindType h stmtKind =
@@ -688,24 +702,27 @@ elaborateStmtKindType h stmtKind =
       return SK.Alias
     SK.AliasOpaque ->
       return SK.AliasOpaque
-    SK.Data dataName dataArgs consInfoList isNominal -> do
-      dataArgs' <- mapM (elaborateWeakBinder h) dataArgs
-      dataArgs'' <- mapM (inlineBinder h) dataArgs'
+    SK.Data dataName dataParams consInfoList isNominal -> do
+      dataParams' <- mapM (elaborateWeakBinder h) dataParams
+      dataParams'' <- mapM (inlineBinder h) dataParams'
       consInfoList' <- forM consInfoList $ \(savedHint, consInfo) -> do
-        consImpArgs' <- mapM (elaborateWeakBinder h) (DI.consImpArgs consInfo)
-        consImpArgs'' <- mapM (inlineBinder h) consImpArgs'
-        consArgs' <- mapM (elaborateWeakBinder h) (DI.consArgs consInfo)
-        consArgs'' <- mapM (inlineBinder h) consArgs'
-        layouts <- forM (zip (DI.consArgHints consInfo) consArgs'') $ \(hint, binder) -> do
+        consImpParams' <- mapM (elaborateWeakBinder h) (DI.consImpParams consInfo)
+        consImpParams'' <- mapM (inlineBinder h) consImpParams'
+        consParams' <- mapM (elaborateWeakBinder h) (DI.consParams consInfo)
+        consParams'' <- mapM (inlineBinder h) consParams'
+        layouts <- forM (zip (DI.consParamHints consInfo) consParams'') $ \(hint, binder) -> do
           resolveFieldLayout h hint binder
-        return (savedHint, consInfo {DI.consImpArgs = consImpArgs'', DI.consArgs = consArgs'', DI.consArgLayouts = layouts})
-      return $ SK.Data dataName dataArgs'' consInfoList' isNominal
+        let consInfo' =
+              consInfo {DI.consImpParams = consImpParams'', DI.consParams = consParams'', DI.consParamLayouts = layouts}
+        return (savedHint, consInfo')
+      return $ SK.Data dataName dataParams'' consInfoList' isNominal
 
 resolveFieldLayout :: Handle -> DI.FieldHint -> BinderF TM.Type -> App CL.FieldStorage
 resolveFieldLayout h hint (m, _, _, t) =
   case hint of
-    DI.FieldAuto ->
-      CL.StoredDirect <$> StorageWidth.storageWidthOf (Global.dataHandle (globalHandle h)) (optDataHandle h) (termSubstHandle h) m t
+    DI.FieldAuto -> do
+      let globalDataHandle = Global.dataHandle (globalHandle h)
+      CL.StoredDirect <$> StorageWidth.storageWidthOf globalDataHandle (optDataHandle h) (termSubstHandle h) m t
     DI.FieldMixed mSized -> do
       result <- resolveMixedOrError h S.empty mSized t
       case result of
@@ -754,8 +771,9 @@ resolveMixedOrError h visited m ty =
           return $ Left $ "the resource `" <> showDD h dataName <> "`, whose size is not fixed"
         Nothing ->
           return $ Left $ "the resource `" <> showDD h dataName <> "`, whose size is not known"
-    _ :< TM.Pi {} ->
-      return $ Right $ StaticBytes (CL.cellByteSize $ DI.closureLayout (dataSizeOf h)) (DI.closureAlignment (dataSizeOf h))
+    _ :< TM.Pi {} -> do
+      let closureLayout = DI.closureLayout (dataSizeOf h)
+      return $ Right $ StaticBytes (CL.cellByteSize closureLayout) (DI.closureAlignment (dataSizeOf h))
     _ :< TM.Tau ->
       cannotMixFieldType "the type universe"
     _ :< TM.TVar x -> do
@@ -795,16 +813,7 @@ dataSizeOf h =
 specializeUnaryDataType :: Handle -> Hint -> DD.DefiniteDescription -> [TM.Type] -> App TM.Type
 specializeUnaryDataType h m dataName dataArgs = do
   dataInfo <- TypeUtil.lookupDataInfoFull h m dataName
-  let dataBinders = DI.dataArgs dataInfo
-  when (length dataBinders /= length dataArgs) $ do
-    raiseError m $ "arity mismatch while resolving the layout of the unary type `" <> showDD h dataName <> "`"
-  let binderIds = map (\(_, _, x, _) -> x) dataBinders
-  let sub = IntMap.fromList $ zip (map Ident.toInt binderIds) (map TmSubst.Type dataArgs)
-  case DI.consInfoList dataInfo of
-    [DI.ConsInfo {DI.consArgs = [(_, _, _, t)]}] ->
-      liftIO $ TmSubst.substType (termSubstHandle h) sub t
-    _ ->
-      raiseError m $ "broken unary metadata for `" <> showDD h dataName <> "`"
+  DataInfo.specializeUnary (termSubstHandle h) m dataName dataInfo dataArgs
 
 detectCyclicTypes :: Handle -> Stmt -> App ()
 detectCyclicTypes h stmt =
@@ -858,18 +867,18 @@ elaborate' h term = do
   case term of
     m :< WT.Var x ->
       return $ m :< TM.Var x
-    m :< WT.VarGlobal name argNum ->
-      return $ m :< TM.VarGlobal name argNum
-    m :< WT.PiIntro kind impArgs expArgs defaultArgs e -> do
+    m :< WT.VarGlobal name arity ->
+      return $ m :< TM.VarGlobal name arity
+    m :< WT.PiIntro kind impParams expParams defaultParams e -> do
       kind' <- elaborateLamAttr h kind
-      impArgs' <- mapM (elaborateWeakBinder h) impArgs
-      defaultArgs' <- forM defaultArgs $ \(binder, value) -> do
+      impParams' <- mapM (elaborateWeakBinder h) impParams
+      defaultParams' <- forM defaultParams $ \(binder, value) -> do
         binder' <- elaborateWeakBinder h binder
         value' <- elaborate' h value
         return (binder', value')
-      expArgs' <- mapM (elaborateWeakBinder h) expArgs
+      expParams' <- mapM (elaborateWeakBinder h) expParams
       e' <- elaborate' h e
-      return $ m :< TM.PiIntro kind' impArgs' expArgs' defaultArgs' e'
+      return $ m :< TM.PiIntro kind' impParams' expParams' defaultParams' e'
     m :< WT.PiElim spec e impArgs expArgs defaultArgs -> do
       conv <- case spec of
         CCS.Resolved resolvedConv ->
@@ -877,7 +886,7 @@ elaborate' h term = do
         CCS.AsMarked {} ->
           raiseCritical m "Scene.Elaborate.elaborate': found an unresolved calling convention"
       e' <- elaborate' h e
-      let impArgs' = ImpArgs.extract impArgs
+      let impArgs' = toList impArgs
       impArgs'' <- mapM (elaborateType h) impArgs'
       expArgs' <- mapM (elaborate' h) expArgs
       defaultArgs' <- case defaultArgs of
@@ -971,7 +980,8 @@ elaborate' h term = do
               let (vArgs, vTypes) = unzip varArgs
               vArgs' <- mapM (elaborate' h) vArgs
               vTypes' <- mapM (strictifyForeignType h name variadicPrimTypes) vTypes
-              return $ m :< TM.Magic noTrace (M.LowMagic $ LM.External domList' cod' name args' (zip vArgs' vTypes'))
+              let varArgs' = zip vArgs' vTypes'
+              return $ m :< TM.Magic noTrace (M.LowMagic $ LM.External domList' cod' name args' varArgs')
             LM.Cast from to value -> do
               from' <- elaborateType h from
               to' <- elaborateType h to
@@ -1095,12 +1105,12 @@ elaborateType h ty =
       t' <- elaborateType h t
       args' <- mapM (elaborateType h) args
       return $ m :< TM.TyApp t' args'
-    m :< WT.Pi piKind impArgs expArgs defaultArgs t -> do
-      impArgs' <- mapM (elaborateWeakBinder h) impArgs
-      expArgs' <- mapM (elaborateWeakBinder h) expArgs
-      defaultArgs' <- mapM (elaborateWeakBinder h) defaultArgs
+    m :< WT.Pi piKind impParams expParams defaultParams t -> do
+      impParams' <- mapM (elaborateWeakBinder h) impParams
+      expParams' <- mapM (elaborateWeakBinder h) expParams
+      defaultParams' <- mapM (elaborateWeakBinder h) defaultParams
       t' <- elaborateType h t
-      return $ m :< TM.Pi piKind impArgs' expArgs' defaultArgs' t'
+      return $ m :< TM.Pi piKind impParams' expParams' defaultParams' t'
     m :< WT.Data attr name es -> do
       es' <- mapM (elaborateType h) es
       return $ m :< TM.Data attr name es'
@@ -1172,9 +1182,9 @@ strictify' h m unwrapped t = do
       return BLT.Pointer
     _ :< TM.Data _ dataName []
       | S.notMember dataName unwrapped -> do
-          consInfoList <- lookupDataInfo h m dataName
+          consInfoList <- DI.consInfoList <$> Data.lookupOrCritical (dataHandle h) m dataName
           case consInfoList of
-            [DI.ConsInfo {DI.consArgs = [(_, _, _, arg)]}] ->
+            [DI.ConsInfo {DI.consParams = [(_, _, _, arg)]}] ->
               strictify' h m (S.insert dataName unwrapped) (weakenType arg)
             _ ->
               raiseNonStrictType m (weakenType t')
@@ -1238,19 +1248,19 @@ getExposedSignature :: Handle -> Hint -> DD.DefiniteDescription -> App F.Functio
 getExposedSignature h m dd = do
   t <- Type.lookup' (typeHandle h) m dd
   case t of
-    _ :< WT.Pi piKind impArgs expArgs defaultArgs cod -> do
-      unless (null impArgs) $
-        raiseError m "An exposed function cannot have implicit arguments"
-      unless (null defaultArgs) $
-        raiseError m "An exposed function cannot have default arguments"
-      when (any (\(_, k, _, _) -> VK.isSource k) expArgs) $
+    _ :< WT.Pi piKind impParams expParams defaultParams cod -> do
+      unless (null impParams) $
+        raiseError m "An exposed function cannot have implicit parameters"
+      unless (null defaultParams) $
+        raiseError m "An exposed function cannot have default parameters"
+      when (any (\(_, k, _, _) -> VK.isSource k) expParams) $
         raiseError m "An exposed function cannot have source-passing parameters"
       case piKind of
         PK.DestPass _ ->
           raiseError m "An exposed function cannot be destination-passing"
         _ ->
           return ()
-      domList <- mapM (\(_, _, _, domType) -> strictifyBoundaryType h m foreignPrimTypes domType) expArgs
+      domList <- mapM (\(_, _, _, domType) -> strictifyBoundaryType h m foreignPrimTypes domType) expParams
       cod' <- strictifyCod h m cod
       return (domList, cod')
     _ ->
@@ -1268,9 +1278,9 @@ strictifyDecimalType' h m unwrapped x t = do
       return (size, t')
     _ :< TM.Data _ dataName []
       | S.notMember dataName unwrapped -> do
-          consInfoList <- lookupDataInfo h m dataName
+          consInfoList <- DI.consInfoList <$> Data.lookupOrCritical (dataHandle h) m dataName
           case consInfoList of
-            [DI.ConsInfo {DI.consArgs = [(_, _, _, arg)]}] ->
+            [DI.ConsInfo {DI.consParams = [(_, _, _, arg)]}] ->
               strictifyDecimalType' h m (S.insert dataName unwrapped) x (weakenType arg)
             _ ->
               raiseNonDecimalType m x (weakenType t')
@@ -1289,9 +1299,9 @@ strictifyFloatType' h m unwrapped x t = do
       return (size, t')
     _ :< TM.Data _ dataName []
       | S.notMember dataName unwrapped -> do
-          consInfoList <- lookupDataInfo h m dataName
+          consInfoList <- DI.consInfoList <$> Data.lookupOrCritical (dataHandle h) m dataName
           case consInfoList of
-            [DI.ConsInfo {DI.consArgs = [(_, _, _, arg)]}] ->
+            [DI.ConsInfo {DI.consParams = [(_, _, _, arg)]}] ->
               strictifyFloatType' h m (S.insert dataName unwrapped) x (weakenType arg)
             _ ->
               raiseNonFloatType m x (weakenType t')
@@ -1482,9 +1492,9 @@ elaborateDecisionTree h ctx mOrig m tree =
                 DT.Unreachable -> do
                   (rootIdent, tBase) <- makeTree mOrig ctx
                   uncoveredPatterns <- forM (S.toList diff) $ \(consDD, isConstLike) -> do
-                    (_, keys, _) <- KeyArg.lookup (keyArgHandle h) m consDD
-                    let expArgNum = length keys
-                    let args = map (const (holeIdent, Node (Just holeLiteral) True [])) [1 .. expArgNum]
+                    (_, keys, _) <- ParamKey.lookup (paramKeyHandle h) m consDD
+                    let expArity = length keys
+                    let args = map (const (holeIdent, Node (Just holeLiteral) True [])) [1 .. expArity]
                     let tBase' = graft cursor (Node (Just $ DD.localLocator consDD) isConstLike args) tBase
                     return $ patternTreeToText $ suppress (rootIdent, tBase')
                   let uncoveredPatterns' = T.concat $ flip map uncoveredPatterns $ \ex -> do
@@ -1496,7 +1506,14 @@ elaborateDecisionTree h ctx mOrig m tree =
                   clauseList' <- mapM (elaborateClause h mOrig cursor cursorType' ctx) clauseList
                   return $ DT.Switch (cursor, cursorType') (fallbackClause', clauseList')
 
-elaborateClause :: Handle -> Hint -> Ident -> TM.Type -> ClauseContext -> DT.Case WT.WeakType WT.WeakTerm -> App (DT.Case TM.Type TM.Term)
+elaborateClause ::
+  Handle ->
+  Hint ->
+  Ident ->
+  TM.Type ->
+  ClauseContext ->
+  DT.Case WT.WeakType WT.WeakTerm ->
+  App (DT.Case TM.Type TM.Term)
 elaborateClause h mOrig cursor cursorType ctx decisionCase = do
   case decisionCase of
     DT.LiteralCase mPat literal cont -> do
@@ -1507,17 +1524,17 @@ elaborateClause h mOrig cursor cursorType ctx decisionCase = do
       let (dataTerms, dataTypes) = unzip dataArgs
       dataTerms' <- mapM (elaborateType h) dataTerms
       dataTypes' <- mapM (elaborateType h) dataTypes
-      consImpArgs' <- mapM (elaborateWeakBinder h) consImpArgs
-      consArgs' <- mapM (elaborateWeakBinder h) consArgs
-      let consArgIdents = map (\(_, _, x, _) -> x) consArgs
-      let consContext = (cursor, (Just consDD, isConstLike, consArgIdents))
+      consImpBinders' <- mapM (elaborateWeakBinder h) consImpBinders
+      consBinders' <- mapM (elaborateWeakBinder h) consBinders
+      let consBinderIdents = map getBinderIdent consBinders
+      let consContext = (cursor, (Just consDD, isConstLike, consBinderIdents))
       cont' <- elaborateDecisionTree h (consContext : ctx) mOrig mCons cont
       return $
         DT.ConsCase
           record
             { DT.dataArgs = zip dataTerms' dataTypes',
-              DT.consImpArgs = consImpArgs',
-              DT.consArgs = consArgs',
+              DT.consImpBinders = consImpBinders',
+              DT.consBinders = consBinders',
               DT.cont = cont'
             }
 
@@ -1583,7 +1600,7 @@ getSwitchSpec :: Handle -> Hint -> TM.Type -> App SwitchSpec
 getSwitchSpec h m cursorType = do
   case cursorType of
     _ :< TM.Data _ dataName _ -> do
-      consInfoList <- lookupDataInfo h m dataName
+      consInfoList <- DI.consInfoList <$> Data.lookupOrCritical (dataHandle h) m dataName
       return $ ConsSwitch $ map (\consInfo -> (DI.consName consInfo, DI.isConstLike consInfo)) consInfoList
     _ :< TM.PrimType (PT.Int _) -> do
       return LiteralSwitch
@@ -1614,8 +1631,7 @@ reduceWeakType h =
 
 reduceWeakTypeWithin :: Handle -> Int -> WT.WeakType -> App WT.WeakType
 reduceWeakTypeWithin h budget t = do
-  t' <- reduceType h t
-  case t' of
+  case t of
     m :< WT.TypeHole holeID args -> do
       ensureUnfoldingBudget h m budget
       fillHole h m holeID args >>= reduceWeakTypeWithin h (budget - 1)
@@ -1623,21 +1639,15 @@ reduceWeakTypeWithin h budget t = do
       mDef <- liftIO $ WeakTypeDef.lookup' (weakTypeDefHandle h) name
       case mDef of
         Just def
-          | length args == length (WeakTypeDef.typeDefBinders def) -> do
+          | length args == length (WeakTypeDef.typeDefParams def) -> do
               ensureUnfoldingBudget h m budget
-              let varList = map (\(_, _, x, _) -> Ident.toInt x) (WeakTypeDef.typeDefBinders def)
-              let sub = IntMap.fromList $ zip varList (map Type args)
+              let sub = Subst.makeTypeSubst (map getBinderIdent (WeakTypeDef.typeDefParams def)) args
               body' <- liftIO $ Subst.substType (substHandle h) sub (WeakTypeDef.typeDefBody def)
               reduceWeakTypeWithin h (budget - 1) body'
         _ ->
-          return t'
+          return t
     _ ->
-      return t'
-
-ensureUnfoldingBudget :: Handle -> Hint -> Int -> App ()
-ensureUnfoldingBudget h m budget =
-  when (budget <= 0) $
-    raiseError m $ "Exceeded max recursion depth of " <> T.pack (show (inlineLimit h)) <> " while reducing a type"
+      return t
 
 fillHole ::
   Handle ->
@@ -1654,7 +1664,7 @@ fillHole h m holeID es = do
       | length xs == length es -> do
           e' <- chaseHole h m e
           liftIO $ Hole.insertTypeSubst (holeHandle h) holeID xs e'
-          let s = IntMap.fromList $ zip (map Ident.toInt xs) (map Type es)
+          let s = Subst.makeTypeSubst xs es
           liftIO $ Subst.substType (substHandle h) s e'
       | otherwise ->
           raiseError m "Arity mismatch"
@@ -1668,10 +1678,10 @@ chaseHole h m t =
       return t
 
 stmtKindToDefKind :: SK.StmtKindTerm a -> [(binder, b)] -> Maybe InlineHandle.DefKind
-stmtKindToDefKind stmtKind defaultArgs =
+stmtKindToDefKind stmtKind defaultParams =
   case stmtKind of
     SK.DestPassing ->
-      if null defaultArgs
+      if null defaultParams
         then Nothing
         else Just InlineHandle.NoInline
     SK.DestPassingInline ->
@@ -1689,7 +1699,7 @@ stmtKindToDefKind stmtKind defaultArgs =
     SK.DataIntro {} ->
       Just InlineHandle.DataIntro
     _ ->
-      if null defaultArgs
+      if null defaultParams
         then Nothing
         else Just InlineHandle.NoInline
 

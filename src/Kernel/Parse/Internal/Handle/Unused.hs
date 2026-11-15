@@ -38,7 +38,6 @@ import Prelude hiding (lookup, read)
 data Handle = Handle
   { unusedGlobalLocatorMapRef :: IORef (Map.HashMap T.Text [(Hint, T.Text)]), -- (SGL ~> [(hint, locatorText)])
     unusedLocalLocatorMapRef :: IORef (Map.HashMap LL.LocalLocator Hint),
-    unusedPresetMapRef :: IORef (Map.HashMap T.Text Hint),
     unusedStaticFileMapRef :: IORef (Map.HashMap T.Text Hint),
     unusedVariableMapRef :: IORef (IntMap.IntMap (Hint, Ident, VarDefKind)),
     unusedForeignMapRef :: IORef (Map.HashMap EN.ExternalName Hint)
@@ -48,7 +47,6 @@ new :: IO Handle
 new = do
   unusedGlobalLocatorMapRef <- newIORef Map.empty
   unusedLocalLocatorMapRef <- newIORef Map.empty
-  unusedPresetMapRef <- newIORef Map.empty
   unusedStaticFileMapRef <- newIORef Map.empty
   unusedVariableMapRef <- newIORef IntMap.empty
   unusedForeignMapRef <- newIORef Map.empty

@@ -215,11 +215,21 @@ sizeMatches matchMode freeSize allocSize =
 
 firstFittingAlloc :: MatchMode -> Map.Map Int IntSet.IntSet -> Int -> Int -> Maybe Int
 firstFittingAlloc matchMode allocs start freeSize =
-  minimumMaybe [pos | (allocSize, positions) <- Map.toList allocs, sizeMatches matchMode freeSize allocSize, Just pos <- [IntSet.lookupGE start positions]]
+  minimumMaybe
+    [ pos
+      | (allocSize, positions) <- Map.toList allocs,
+        sizeMatches matchMode freeSize allocSize,
+        Just pos <- [IntSet.lookupGE start positions]
+    ]
 
 firstFittingFree :: MatchMode -> Map.Map Int IntSet.IntSet -> Int -> Maybe Int
 firstFittingFree matchMode frees allocSize =
-  minimumMaybe [pos | (freeSize, positions) <- Map.toList frees, sizeMatches matchMode freeSize allocSize, Just pos <- [IntSet.lookupGE 0 positions]]
+  minimumMaybe
+    [ pos
+      | (freeSize, positions) <- Map.toList frees,
+        sizeMatches matchMode freeSize allocSize,
+        Just pos <- [IntSet.lookupGE 0 positions]
+    ]
 
 minimumMaybe :: [Int] -> Maybe Int
 minimumMaybe xs =

@@ -7,8 +7,8 @@ where
 import App.App (App)
 import Control.Monad.IO.Class
 import Kernel.Common.CreateGlobalHandle qualified as Global
-import Kernel.Common.Handle.Local.Locator qualified as Locator
 import Kernel.Common.Handle.Global.ModulePath qualified as ModulePath
+import Kernel.Common.Handle.Local.Locator qualified as Locator
 import Kernel.Common.Handle.Local.RawImportSummary qualified as RawImportSummary
 import Kernel.Common.Handle.Local.SymLoc qualified as SymLoc
 import Kernel.Common.Handle.Local.Tag qualified as Tag

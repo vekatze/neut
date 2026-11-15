@@ -12,6 +12,7 @@ import CommandParser.Config.Build
 import Control.Monad
 import Control.Monad.Except (liftEither)
 import Kernel.Common.CreateGlobalHandle qualified as Global
+import Kernel.Common.Handle.Global.Env qualified as Env
 import Kernel.Common.OutputKind qualified as OK
 import Prelude hiding (log)
 
@@ -26,7 +27,7 @@ new globalHandle = do
 build :: Handle -> Config -> App ()
 build h cfg = do
   buildConfig <- toBuildConfig cfg
-  target <- Build.getMainTarget (targetName cfg) (globalHandle h)
+  target <- Env.getMainTarget (Global.envHandle (globalHandle h)) (targetName cfg)
   Build.buildMainTarget (Build.new buildConfig (globalHandle h)) target
 
 toBuildConfig :: Config -> App Build.Config

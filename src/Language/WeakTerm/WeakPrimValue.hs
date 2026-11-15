@@ -1,10 +1,5 @@
 module Language.WeakTerm.WeakPrimValue
   ( WeakPrimValue (..),
-    reflectFloatUnaryOp,
-    reflectIntegerBinaryOp,
-    reflectFloatBinaryOp,
-    reflectIntegerCmpOp,
-    reflectFloatCmpOp,
   )
 where
 
@@ -12,10 +7,6 @@ import Data.ByteString qualified as BS
 import Data.Text qualified as T
 import Language.Common.ModuleID qualified as MID
 import Language.Common.PrimOp
-import Language.Common.PrimOp.BinaryOp
-import Language.Common.PrimOp.CmpOp
-import Language.Common.PrimOp.UnaryOp
-import Language.Common.PrimType (PrimType)
 import Language.Common.Rune qualified as RU
 
 data WeakPrimValue a
@@ -28,146 +19,4 @@ data WeakPrimValue a
   | Text T.Text
   | Blob BS.ByteString
   | Rune RU.Rune
-  deriving (Show)
-
-instance Functor WeakPrimValue where
-  fmap f primValue =
-    case primValue of
-      Int t v ->
-        Int (f t) v
-      Float t v ->
-        Float (f t) v
-      Op op ->
-        Op op
-      String coreModuleID t bytes ->
-        String coreModuleID (f t) bytes
-      NoeticString t text ->
-        NoeticString (f t) text
-      NoeticBinary t bytes ->
-        NoeticBinary (f t) bytes
-      Text text ->
-        Text text
-      Blob bytes ->
-        Blob bytes
-      Rune r ->
-        Rune r
-
-instance Foldable WeakPrimValue where
-  foldMap f primValue =
-    case primValue of
-      Int t _ ->
-        f t
-      Float t _ ->
-        f t
-      Op _ ->
-        mempty
-      String _ t _ ->
-        f t
-      NoeticString t _ ->
-        f t
-      NoeticBinary t _ ->
-        f t
-      Text _ ->
-        mempty
-      Blob _ ->
-        mempty
-      Rune _ ->
-        mempty
-
-instance Traversable WeakPrimValue where
-  traverse f primValue =
-    case primValue of
-      Int t v ->
-        Int <$> f t <*> pure v
-      Float t v ->
-        Float <$> f t <*> pure v
-      Op op ->
-        pure $ Op op
-      String coreModuleID t bytes ->
-        String coreModuleID <$> f t <*> pure bytes
-      NoeticString t text ->
-        NoeticString <$> f t <*> pure text
-      NoeticBinary t bytes ->
-        NoeticBinary <$> f t <*> pure bytes
-      Text text ->
-        pure $ Text text
-      Blob bytes ->
-        pure $ Blob bytes
-      Rune r ->
-        pure $ Rune r
-
-reflectFloatUnaryOp :: PrimOp -> Maybe (Double -> Double, PrimType)
-reflectFloatUnaryOp primOp =
-  case primOp of
-    PrimUnaryOp FNeg _ cod ->
-      return (negate, cod)
-    _ ->
-      Nothing
-
-reflectIntegerBinaryOp :: PrimOp -> Maybe (Integer -> Integer -> Integer, PrimType)
-reflectIntegerBinaryOp primOp =
-  case primOp of
-    PrimBinaryOp Add _ cod ->
-      return ((+), cod)
-    PrimBinaryOp Sub _ cod ->
-      return ((-), cod)
-    PrimBinaryOp Mul _ cod ->
-      return ((*), cod)
-    _ ->
-      Nothing
-
-reflectFloatBinaryOp :: PrimOp -> Maybe (Double -> Double -> Double, PrimType)
-reflectFloatBinaryOp primOp =
-  case primOp of
-    PrimBinaryOp FAdd _ cod ->
-      return ((+), cod)
-    PrimBinaryOp FSub _ cod ->
-      return ((-), cod)
-    PrimBinaryOp FMul _ cod ->
-      return ((*), cod)
-    PrimBinaryOp FDiv _ cod ->
-      return ((/), cod)
-    _ ->
-      Nothing
-
-reflectIntegerCmpOp :: PrimOp -> Maybe (Integer -> Integer -> Integer, PrimType)
-reflectIntegerCmpOp primOp =
-  case primOp of
-    PrimCmpOp Eq _ cod ->
-      return (\x y -> boolToInteger (x == y), cod)
-    PrimCmpOp Ne _ cod ->
-      return (\x y -> boolToInteger (x /= y), cod)
-    PrimCmpOp SGt _ cod ->
-      return (\x y -> boolToInteger (x > y), cod)
-    PrimCmpOp SGe _ cod ->
-      return (\x y -> boolToInteger (x >= y), cod)
-    PrimCmpOp SLt _ cod ->
-      return (\x y -> boolToInteger (x < y), cod)
-    PrimCmpOp SLe _ cod ->
-      return (\x y -> boolToInteger (x <= y), cod)
-    _ ->
-      Nothing
-
-reflectFloatCmpOp :: PrimOp -> Maybe (Double -> Double -> Integer, PrimType)
-reflectFloatCmpOp primOp =
-  case primOp of
-    PrimCmpOp FOEq _ cod ->
-      return (\x y -> boolToInteger (x == y), cod)
-    PrimCmpOp FONe _ cod ->
-      return (\x y -> boolToInteger (x /= y), cod)
-    PrimCmpOp FOGt _ cod ->
-      return (\x y -> boolToInteger (x > y), cod)
-    PrimCmpOp FOGe _ cod ->
-      return (\x y -> boolToInteger (x >= y), cod)
-    PrimCmpOp FOLt _ cod ->
-      return (\x y -> boolToInteger (x < y), cod)
-    PrimCmpOp FOLe _ cod ->
-      return (\x y -> boolToInteger (x <= y), cod)
-    _ ->
-      Nothing
-
-boolToInteger :: Bool -> Integer
-boolToInteger b =
-  if b
-    then 1
-    else 0
+  deriving (Show, Functor, Foldable, Traversable)

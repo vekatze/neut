@@ -90,11 +90,13 @@ placeLink aliasDir aliasName target = do
       | currentTarget == target ->
           return ()
     NotLink ->
-      raiseError' $ "Could not place a link at " <> T.pack linkPath <> ", since something other than a link is there"
+      raiseError' $
+        "Could not place a link at " <> T.pack linkPath <> ", since something other than a link is there"
     _ -> liftIO $ do
       processID <- getProcessID
       unique <- newUnique
-      let temporaryPath = aliasDir FP.</> ("." <> aliasName <> "." <> show processID <> "." <> show (hashUnique unique))
+      let temporaryName = "." <> aliasName <> "." <> show processID <> "." <> show (hashUnique unique)
+      let temporaryPath = aliasDir FP.</> temporaryName
       PF.createSymbolicLink target temporaryPath
       PF.rename temporaryPath linkPath
 

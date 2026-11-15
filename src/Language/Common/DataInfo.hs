@@ -27,17 +27,17 @@ import Language.Common.IsConstLike
 import Logger.Hint
 
 data DataInfo binder = DataInfo
-  { dataArgs :: [binder],
+  { dataParams :: [binder],
     consInfoList :: [ConsInfo binder]
   }
 
 data ConsInfo binder = ConsInfo
   { consName :: DD.DefiniteDescription,
     isConstLike :: IsConstLike,
-    consImpArgs :: [binder],
-    consArgs :: [binder],
-    consArgHints :: [FieldHint],
-    consArgLayouts :: [CL.FieldStorage],
+    consImpParams :: [binder],
+    consParams :: [binder],
+    consParamHints :: [FieldHint],
+    consParamLayouts :: [CL.FieldStorage],
     discriminant :: D.Discriminant
   }
 
@@ -77,12 +77,12 @@ data CellShape = CellShape
 
 cellShape :: DS.DataSize -> DataInfo binder -> CellShape
 cellShape dataSize dataInfo =
-  cellShapeOf dataSize (dataArgs dataInfo) (consInfoList dataInfo)
+  cellShapeOf dataSize (dataParams dataInfo) (consInfoList dataInfo)
 
 cellShapeOf :: DS.DataSize -> [binder] -> [ConsInfo binder] -> CellShape
-cellShapeOf dataSize dataArgs consInfoList = do
+cellShapeOf dataSize dataParams consInfoList = do
   let shapeHeader = headerWidth consInfoList
-  let shapeDataArgCount = length dataArgs
+  let shapeDataArgCount = length dataParams
   let prefix = prefixStorages shapeHeader shapeDataArgCount
   let storagesList = cellStoragesList prefix consInfoList
   let alignment = foldr (max . CL.storagesAlignment dataSize) 1 storagesList
@@ -102,7 +102,7 @@ consLayout shape consInfo = do
 
 consStorages :: ConsInfo binder -> [CL.FieldStorage]
 consStorages consInfo =
-  replicate (length (consImpArgs consInfo)) dataArgStorage ++ consArgLayouts consInfo
+  replicate (length (consImpParams consInfo)) dataArgStorage ++ consParamLayouts consInfo
 
 discriminantLoadType :: CellShape -> BLT.BaseLowType
 discriminantLoadType shape =

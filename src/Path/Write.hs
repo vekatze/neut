@@ -11,8 +11,8 @@ import Control.Monad (void)
 import Data.ByteString qualified as B
 import Data.ByteString.Lazy qualified as L
 import Data.Text qualified as T
-import Data.Time (UTCTime)
 import Data.Text.Encoding
+import Data.Time (UTCTime)
 import Path
 import Path.IO (removeFile, renameFile, setModificationTime)
 import System.IO (hClose, openBinaryTempFileWithDefaultPermissions)
@@ -36,8 +36,9 @@ placeAtomically finalPath timeStamp write = do
 
 createStagingFile :: Path Abs File -> IO (Path Abs File)
 createStagingFile finalPath = do
-  (stagingPath, stagingHandle) <-
-    openBinaryTempFileWithDefaultPermissions (toFilePath $ parent finalPath) (toFilePath (filename finalPath) <> ".tmp")
+  let stagingDir = toFilePath $ parent finalPath
+  let stagingTemplate = toFilePath (filename finalPath) <> ".tmp"
+  (stagingPath, stagingHandle) <- openBinaryTempFileWithDefaultPermissions stagingDir stagingTemplate
   hClose stagingHandle
   parseAbsFile stagingPath
 

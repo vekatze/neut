@@ -54,8 +54,8 @@ type RawProgram =
 data RawConsInfo a = RawConsInfo
   { loc :: Hint,
     name :: a,
-    impArgs :: SE.Series (RawBinder RT.RawType),
-    expArgs :: Maybe (SE.Series (FieldHint, RawBinder RT.RawType)),
+    impParams :: SE.Series (RawBinder RT.RawType),
+    expParams :: Maybe (SE.Series (FieldHint, RawBinder RT.RawType)),
     endLoc :: Loc
   }
 
@@ -63,7 +63,7 @@ data RawDefineMeta name = RawDefineMeta
   { defineMetaLoc :: Hint,
     defineMetaTarget :: (name, C),
     defineMetaTargetArgs :: (SE.Series RT.RawType, C),
-    defineMetaExpArgs :: RT.Args RT.RawType,
+    defineMetaExpParams :: RT.Params RT.RawType,
     defineMetaCod :: (C, RT.RawType),
     defineMetaBody :: RT.RawTerm,
     defineMetaEndLoc :: Loc
@@ -93,7 +93,7 @@ data BaseRawStmt name
       C
       Hint
       (name, C)
-      (Maybe (RT.Args RT.RawType))
+      (Maybe (RT.Params RT.RawType))
       (SE.Series (RawConsInfo name))
       Loc
   | RawStmtDefineResource
@@ -171,7 +171,7 @@ data PostRawDefineMeta = PostRawDefineMeta
   { postDefineMetaLoc :: Hint,
     postDefineMetaTarget :: (N.Name, C),
     postDefineMetaTargetArgs :: (SE.Series RT.RawType, C),
-    postDefineMetaExpArgs :: RT.Args RT.RawType,
+    postDefineMetaExpParams :: RT.Params RT.RawType,
     postDefineMetaCod :: (C, RT.RawType),
     postDefineMetaBody :: RT.RawTerm,
     postDefineMetaEndLoc :: Loc,

@@ -4,9 +4,9 @@ import CommandParser.Command
 import CommandParser.Config.Archive qualified as Archive
 import CommandParser.Config.Build qualified as Build
 import CommandParser.Config.Check qualified as Check
-import CommandParser.Config.Describe qualified as Describe
 import CommandParser.Config.Clean qualified as Clean
 import CommandParser.Config.Create qualified as Create
+import CommandParser.Config.Describe qualified as Describe
 import CommandParser.Config.Format qualified as Format
 import CommandParser.Config.Get qualified as Get
 import CommandParser.Config.Remark qualified as Remark
@@ -53,35 +53,38 @@ parseBuildOpt = do
   shouldExecute <- shouldExecuteOpt
   rest <- (many . strArgument) (metavar "args")
   pure $
-    Command sharedCfg $ Internal $
-      Build $
-        Build.Config
-          { Build.targetName = targetName,
-            Build.outputKindTextList = outputKindTextList,
-            Build.shouldSkipLink = shouldSkipLink,
-            Build.shouldExecute = shouldExecute,
-            Build.installDir = installDir,
-            Build.args = rest
-          }
+    Command sharedCfg $
+      Internal $
+        Build $
+          Build.Config
+            { Build.targetName = targetName,
+              Build.outputKindTextList = outputKindTextList,
+              Build.shouldSkipLink = shouldSkipLink,
+              Build.shouldExecute = shouldExecute,
+              Build.installDir = installDir,
+              Build.args = rest
+            }
 
 parseDescribeOpt :: Parser Command
 parseDescribeOpt = do
   targetName <- argument str $ mconcat [metavar "TARGET", help "The target to describe"]
   sharedCfg <- sharedOpt
   pure $
-    Command sharedCfg $ Internal $
-      Describe $
-        Describe.Config
-          { Describe.targetName = targetName
-          }
+    Command sharedCfg $
+      Internal $
+        Describe $
+          Describe.Config
+            { Describe.targetName = targetName
+            }
 
 parseCleanOpt :: Parser Command
 parseCleanOpt = do
   sharedCfg <- sharedOpt
   pure $
-    Command sharedCfg $ Internal $
-      Clean $
-        Clean.Config {}
+    Command sharedCfg $
+      Internal $
+        Clean $
+          Clean.Config {}
 
 parseGetOpt :: Parser Command
 parseGetOpt = do
@@ -89,12 +92,13 @@ parseGetOpt = do
   moduleURLText <- argument str (mconcat [metavar "URL", help "The URL of the archive"])
   sharedCfg <- sharedOpt
   pure $
-    Command sharedCfg $ Internal $
-      Get $
-        Get.Config
-          { Get.moduleAliasText = T.pack moduleAlias,
-            Get.moduleURLText = T.pack moduleURLText
-          }
+    Command sharedCfg $
+      Internal $
+        Get $
+          Get.Config
+            { Get.moduleAliasText = T.pack moduleAlias,
+              Get.moduleURLText = T.pack moduleURLText
+            }
 
 parseZenOpt :: Parser Command
 parseZenOpt = do
@@ -102,12 +106,13 @@ parseZenOpt = do
   sharedCfg <- sharedOpt
   rest <- (many . strArgument) (metavar "args")
   pure $
-    Command sharedCfg $ Internal $
-      CommandParser.Command.Zen $
-        Zen.Config
-          { Zen.filePathString = inputFilePath,
-            Zen.args = rest
-          }
+    Command sharedCfg $
+      Internal $
+        CommandParser.Command.Zen $
+          Zen.Config
+            { Zen.filePathString = inputFilePath,
+              Zen.args = rest
+            }
 
 parseLSPOpt :: Parser Command
 parseLSPOpt = do
@@ -127,20 +132,22 @@ parseCreateOpt = do
           ]
   sharedCfg <- sharedOpt
   pure $
-    Command sharedCfg $ External $
-      Create $
-        Create.Config
-          { Create.moduleName = T.pack moduleName,
-            Create.targetName = targetName
-          }
+    Command sharedCfg $
+      External $
+        Create $
+          Create.Config
+            { Create.moduleName = T.pack moduleName,
+              Create.targetName = targetName
+            }
 
 parseVersionOpt :: Parser Command
 parseVersionOpt = do
   sharedCfg <- sharedOpt
   pure $
-    Command sharedCfg $ External $
-      ShowVersion $
-        Version.Config {}
+    Command sharedCfg $
+      External $
+        ShowVersion $
+          Version.Config {}
 
 parseCheckOpt :: Parser Command
 parseCheckOpt = do
@@ -148,23 +155,25 @@ parseCheckOpt = do
   targetName <- optional $ strOption $ mconcat [long "target", metavar "TARGET", help "Check under the platform of this target (default: the platform of zen)"]
   sharedCfg <- sharedOpt
   pure $
-    Command sharedCfg $ Internal $
-      Check $
-        Check.Config
-          { Check.shouldCheckAllDependencies = shouldCheckAllDependencies,
-            Check.targetName = targetName
-          }
+    Command sharedCfg $
+      Internal $
+        Check $
+          Check.Config
+            { Check.shouldCheckAllDependencies = shouldCheckAllDependencies,
+              Check.targetName = targetName
+            }
 
 parseArchiveOpt :: Parser Command
 parseArchiveOpt = do
   archiveName <- optional $ argument str (mconcat [metavar "NAME", help "The name of the archive"])
   sharedCfg <- sharedOpt
   pure $
-    Command sharedCfg $ Internal $
-      Archive $
-        Archive.Config
-          { Archive.getArchiveName = archiveName
-          }
+    Command sharedCfg $
+      Internal $
+        Archive $
+          Archive.Config
+            { Archive.getArchiveName = archiveName
+            }
 
 parseFormatOpt :: Parser Command
 parseFormatOpt = do
@@ -174,14 +183,15 @@ parseFormatOpt = do
   shouldMinimizeImports <- flag False True (mconcat [long "minimize-imports", help "Set this to remove unused items in `import {..}`"])
   sharedCfg <- sharedOpt
   pure $
-    Command sharedCfg $ Internal $
-      Format $
-        Format.Config
-          { Format.filePathStringList = inputFilePathList,
-            Format.formatMode = formatModeValue,
-            Format.stdinFilePath = stdinFilePathValue,
-            Format.shouldMinimizeImports = shouldMinimizeImports
-          }
+    Command sharedCfg $
+      Internal $
+        Format $
+          Format.Config
+            { Format.filePathStringList = inputFilePathList,
+              Format.formatMode = formatModeValue,
+              Format.stdinFilePath = stdinFilePathValue,
+              Format.shouldMinimizeImports = shouldMinimizeImports
+            }
 
 formatModeOpt :: Parser FormatMode.FormatMode
 formatModeOpt = do
@@ -260,7 +270,7 @@ reportModeOpt = do
 reportModeReader :: ReadM (Maybe ReportMode.ReportMode)
 reportModeReader =
   eitherReader $ \input -> do
-  case input of
+    case input of
       "none" ->
         return $ Just ReportMode.NoReport
       "plain" ->

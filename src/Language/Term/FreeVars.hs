@@ -12,7 +12,6 @@ import Language.Common.Ident
 import Language.Common.LowMagic qualified as LM
 import Language.Common.Magic qualified as M
 import Language.Common.VarKind qualified as VK
-import Language.Term.PrimValue qualified as PV
 import Language.Term.Term qualified as TM
 
 freeVars :: TM.Term -> S.Set Ident
@@ -22,9 +21,9 @@ freeVars term =
       S.singleton x
     _ :< TM.VarGlobal {} ->
       S.empty
-    _ :< TM.PiIntro k impArgs expArgs defaultArgs e -> do
+    _ :< TM.PiIntro k impParams expParams defaultParams e -> do
       let body = freeVarsBinderType (catMaybes [AttrL.fromAttr k]) (freeVars e)
-      freeVarsBinderType (impArgs ++ expArgs) (freeVarsDefaultArgs defaultArgs body)
+      freeVarsBinderType (impParams ++ expParams) (freeVarsDefaultParams defaultParams body)
     _ :< TM.PiElim _ conv e impArgs expArgs defaultArgs -> do
       let xs = freeVars e
       let ys0 = S.unions $ map freeVarsType (CC.types conv)
@@ -67,21 +66,7 @@ freeVars term =
     _ :< TM.Invoke _ body ->
       freeVars body
     _ :< TM.Prim prim ->
-      case prim of
-        PV.NoeticString t _ ->
-          freeVarsType t
-        PV.NoeticBinary t _ ->
-          freeVarsType t
-        PV.Text _ ->
-          mempty
-        PV.Blob _ ->
-          mempty
-        PV.Int t _ _ ->
-          freeVarsType t
-        PV.Float t _ _ ->
-          freeVarsType t
-        _ ->
-          S.empty
+      foldMap freeVarsType prim
     _ :< TM.Magic _ der ->
       freeVarsMagic der
 
@@ -96,8 +81,8 @@ freeVarsType ty =
       S.empty
     _ :< TM.TyApp t args ->
       S.unions $ freeVarsType t : map freeVarsType args
-    _ :< TM.Pi _ impArgs expArgs defaultArgs t ->
-      freeVarsBinderType (impArgs ++ expArgs ++ defaultArgs) (freeVarsType t)
+    _ :< TM.Pi _ impParams expParams defaultParams t ->
+      freeVarsBinderType (impParams ++ expParams ++ defaultParams) (freeVarsType t)
     _ :< TM.Data _ _ es ->
       S.unions $ map freeVarsType es
     _ :< TM.Box t ->
@@ -115,13 +100,13 @@ freeVarsType ty =
     _ :< TM.Resource _ _ -> do
       S.empty
 
-freeVarsDefaultArgs :: [(BinderF TM.Type, TM.Term)] -> S.Set Ident -> S.Set Ident
-freeVarsDefaultArgs defaultArgs zs =
-  case defaultArgs of
+freeVarsDefaultParams :: [(BinderF TM.Type, TM.Term)] -> S.Set Ident -> S.Set Ident
+freeVarsDefaultParams defaultParams zs =
+  case defaultParams of
     [] ->
       zs
     (binder, value) : rest ->
-      S.union (freeVars value) (freeVarsBinderType [binder] (freeVarsDefaultArgs rest zs))
+      S.union (freeVars value) (freeVarsBinderType [binder] (freeVarsDefaultParams rest zs))
 
 freeVarsBinderType :: [BinderF TM.Type] -> S.Set Ident -> S.Set Ident
 freeVarsBinderType binder zs =
@@ -156,7 +141,8 @@ freeVarsCase decisionCase = do
       freeVarsDecisionTree cont
     DT.ConsCase (DT.ConsCaseRecord {..}) -> do
       let (dataTerms, dataTypes) = unzip dataArgs
-      S.unions $ freeVarsBinderType (consImpArgs ++ consArgs) (freeVarsDecisionTree cont) : map freeVarsType dataTerms ++ map freeVarsType dataTypes
+      let binderFreeVars = freeVarsBinderType (consImpBinders ++ consBinders) (freeVarsDecisionTree cont)
+      S.unions $ binderFreeVars : map freeVarsType dataTerms ++ map freeVarsType dataTypes
 
 freeVarsMagic :: M.Magic BLT.BaseLowType TM.Type TM.Term -> S.Set Ident
 freeVarsMagic magic =

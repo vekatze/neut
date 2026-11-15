@@ -22,14 +22,15 @@ module Kernel.Clarify.Internal.Sigma
 where
 
 import Control.Monad
-import Data.Maybe (mapMaybe)
 import Control.Monad.IO.Class (MonadIO (liftIO))
+import Data.Maybe (mapMaybe)
 import Gensym.Handle qualified as Gensym
 import Kernel.Clarify.Internal.Linearize qualified as Linearize
 import Kernel.Clarify.Internal.Utility (ResourceSpec (..))
 import Kernel.Clarify.Internal.Utility qualified as Utility
-import Language.Common.ArgNum qualified as AN
+import Language.Common.Arity qualified as Arity
 import Language.Common.BaseLowType qualified as BLT
+import Language.Common.CellLayout qualified as CL
 import Language.Common.CreateSymbol qualified as Gensym
 import Language.Common.DataInfo qualified as DI
 import Language.Common.DataSize qualified as DS
@@ -39,10 +40,10 @@ import Language.Common.ForeignCodType qualified as FCT
 import Language.Common.Ident
 import Language.Common.LowMagic qualified as LM
 import Language.Common.Opacity qualified as O
-import Language.Common.CellLayout qualified as CL
 import Language.Comp.Comp qualified as C
 import Language.Comp.CreateVar qualified as Gensym
 import Language.Comp.EnumCase qualified as EC
+import Language.Comp.Switcher qualified as Switcher
 
 data Handle = Handle
   { gensymHandle :: Gensym.Handle,
@@ -53,8 +54,8 @@ data Handle = Handle
 
 data DataConstructorInfo = DataConstructorInfo
   { discriminant :: D.Discriminant,
-    typeArgs :: [(Ident, C.Comp)],
-    consArgs :: [(Ident, FieldLayout)],
+    typeParams :: [(Ident, C.Comp)],
+    consParams :: [(Ident, FieldLayout)],
     cellLayout :: CL.CellLayout
   }
 
@@ -67,9 +68,9 @@ new :: Gensym.Handle -> Linearize.Handle -> Utility.Handle -> DS.DataSize -> Han
 new gensymHandle linearizeHandle utilityHandle dataSize = do
   Handle {..}
 
-globalPointer :: DD.DefiniteDescription -> AN.ArgNum -> C.Value
-globalPointer name argNum =
-  C.VarGlobal name argNum (FCT.Cod BLT.Pointer)
+globalPointer :: DD.DefiniteDescription -> Arity.Arity -> C.Value
+globalPointer name arity =
+  C.VarGlobal name arity (FCT.Cod BLT.Pointer)
 
 makeImmediateS4 :: Handle -> IO C.CompStmt
 makeImmediateS4 h = do
@@ -79,7 +80,15 @@ makeImmediateS4 h = do
   let discard = C.UpIntro C.null
   let copy = C.UpIntro argVar
   Utility.makeSwitcherStmt (utilityHandle h) O.Clear DD.imm $
-    ResourceSpec {switch, arg, extra, discard, copy, size = Utility.returnIntComp (-1), defaultValues = []}
+    ResourceSpec
+      { switch,
+        arg,
+        extra,
+        discard,
+        copy,
+        size = Utility.returnIntComp Switcher.directSize,
+        defaultValues = []
+      }
 
 makeClosureS4 :: Handle -> IO C.CompStmt
 makeClosureS4 h = do
@@ -96,15 +105,15 @@ returnImmediateS4 =
 
 returnClosureS4 :: C.Comp
 returnClosureS4 = do
-  C.UpIntro $ globalPointer DD.cls AN.argNumS4
+  C.UpIntro $ globalPointer DD.cls Arity.arityS4
 
 immediateS4 :: C.Value
 immediateS4 =
-  globalPointer DD.imm AN.argNumS4
+  globalPointer DD.imm Arity.arityS4
 
 closureS4 :: C.Value
 closureS4 =
-  globalPointer DD.cls AN.argNumS4
+  globalPointer DD.cls Arity.arityS4
 
 makeResourceSpecWithLayout :: Handle -> CL.CellLayout -> [(Ident, C.Comp)] -> IO ResourceSpec
 makeResourceSpecWithLayout h layout xts = do
@@ -113,7 +122,7 @@ makeResourceSpecWithLayout h layout xts = do
   extra@(_, extraVar) <- Gensym.createVar (gensymHandle h) "extra"
   discard <- sigmaT h layout xts argVar extraVar
   copy <- sigma4 h layout xts argVar extraVar
-  let size = Utility.returnByteSizeComp (toInteger $ CL.cellByteSize layout)
+  let size = Utility.returnIntComp (toInteger $ CL.cellByteSize layout)
   return $ ResourceSpec {switch, arg, extra, discard, copy, size, defaultValues = []}
 
 -- sigmaT [(x1, t1), ..., (xn, tn)] arg shouldRelease   ~>
@@ -152,7 +161,8 @@ sigma4 h layout xts argVar dest = do
   copyWithDestination h layout dest $ \target -> do
     copyEntries <- copyFieldsInto h target layout 0 (directEntries layout xts)
     holes <- mapM (const $ Gensym.newIdentFromText (gensymHandle h) "_") copyEntries
-    body' <- Linearize.linearize (linearizeHandle h) xts $ Utility.bindLet (zip holes copyEntries) $ C.UpIntro C.null
+    let bodyBase = Utility.bindLet (zip holes copyEntries) $ C.UpIntro C.null
+    body' <- Linearize.linearize (linearizeHandle h) xts bodyBase
     return $ C.SigmaElim False 0 layout (map fst xts) argVar body'
 
 freeOuterStorageIfRequested :: C.Value -> C.Value -> CL.CellLayout -> C.Comp -> C.Comp
@@ -160,8 +170,7 @@ freeOuterStorageIfRequested shouldRelease value layout cont = do
   let byteSize = CL.cellByteSize layout
   if byteSize == 0
     then cont
-    else
-      C.EnumElim [] shouldRelease (C.Free value (Just byteSize) cont) [(EC.Int 0, cont)]
+    else C.EnumElim [] shouldRelease (C.Free value (Just byteSize) cont) [(EC.Int 0, cont)]
 
 selectCopyDestination :: Handle -> CL.CellLayout -> C.Value -> IO C.Comp
 selectCopyDestination h layout dest = do
@@ -170,7 +179,7 @@ selectCopyDestination h layout dest = do
     then return $ C.UpIntro C.null
     else do
       (sizeName, sizeVar) <- Gensym.createVar (gensymHandle h) "size"
-      let size = Utility.returnByteSizeComp (toInteger byteSize)
+      let size = Utility.returnIntComp (toInteger byteSize)
       let alloc = C.UpElim True sizeName size $ C.Primitive $ C.Alloc sizeVar
       return $ C.EnumElim [] dest (C.UpIntro dest) [(EC.Int 0, alloc)]
 
@@ -194,14 +203,23 @@ directEntries :: CL.CellLayout -> [(Ident, C.Comp)] -> [(Ident, FieldLayout)]
 directEntries layout entries =
   zipWith (\(x, t) (_, width) -> (x, FieldLayout t (CL.StoredDirect width))) entries (CL.cellSlots layout)
 
-copyDirectValueIntoField :: Handle -> C.Value -> CL.CellLayout -> Int -> CL.FieldWidth -> Ident -> C.Comp -> IO C.Comp
+copyDirectValueIntoField ::
+  Handle ->
+  C.Value ->
+  CL.CellLayout ->
+  Int ->
+  CL.FieldWidth ->
+  Ident ->
+  C.Comp ->
+  IO C.Comp
 copyDirectValueIntoField h dest layout slotIndex width x t = do
   destSlotName <- Gensym.newIdentFromText (gensymHandle h) "dest-slot"
   copiedName <- Gensym.newIdentFromText (gensymHandle h) "copied"
   storeName <- Gensym.newIdentFromText (gensymHandle h) "_"
   copy <- Utility.toRelevantApp (utilityHandle h) (C.VarLocal x) t
   let destSlot = fieldAddress dest layout slotIndex
-  let store = C.Primitive $ C.Magic $ LM.Store (CL.widthBaseLowType width) C.null (C.VarLocal copiedName) (C.VarLocal destSlotName)
+  let lowType = CL.widthBaseLowType width
+  let store = C.Primitive $ C.Magic $ LM.Store lowType C.null (C.VarLocal copiedName) (C.VarLocal destSlotName)
   return $
     C.UpElim True destSlotName destSlot $
       C.UpElim True copiedName copy $
@@ -225,7 +243,7 @@ closureEnvS4 h closureName layout mxts defaultValues =
       resourceSpec <- makeResourceSpecWithLayout h layout mxts
       let resourceSpec' = resourceSpec {defaultValues}
       liftIO $ Utility.registerSwitcher (utilityHandle h) O.Clear name resourceSpec'
-      return $ globalPointer name AN.argNumS4
+      return $ globalPointer name Arity.arityS4
 
 returnSigmaDataS4 ::
   Handle ->
@@ -242,9 +260,9 @@ returnSigmaDataS4 h dataName opacity shape dataInfo = do
   copy <- sigmaData4 h shape dataInfo argVar extraVar
   let dataName' = DD.getFormDD dataName
   Utility.registerSwitcher (utilityHandle h) opacity dataName' $ do
-    let size = Utility.returnByteSizeComp (toInteger $ DI.shapeByteSize shape)
+    let size = Utility.returnIntComp (toInteger $ DI.shapeByteSize shape)
     ResourceSpec {switch, arg, extra, discard, copy, size, defaultValues = []}
-  return $ C.UpIntro $ globalPointer dataName' AN.argNumS4
+  return $ C.UpIntro $ globalPointer dataName' Arity.arityS4
 
 returnSigmaEnumS4 ::
   Handle ->
@@ -259,8 +277,16 @@ returnSigmaEnumS4 h dataName opacity = do
   let copy = C.UpIntro argVar
   let dataName' = DD.getFormDD dataName
   Utility.registerSwitcher (utilityHandle h) opacity dataName' $
-    ResourceSpec {switch, arg, extra, discard, copy, size = Utility.returnIntComp (-1), defaultValues = []}
-  return $ C.UpIntro $ globalPointer dataName' AN.argNumS4
+    ResourceSpec
+      { switch,
+        arg,
+        extra,
+        discard,
+        copy,
+        size = Utility.returnIntComp Switcher.directSize,
+        defaultValues = []
+      }
+  return $ C.UpIntro $ globalPointer dataName' Arity.arityS4
 
 sigmaData ::
   Handle ->
@@ -282,10 +308,12 @@ sigmaData h shape resourceHandler dataInfo arg = do
       localName <- Gensym.newIdentFromText (gensymHandle h) "local"
       binderList' <- mapM (\info -> resourceHandler info (C.VarLocal localName)) dataInfo
       (disc, discVar) <- Gensym.createVar (gensymHandle h) "disc"
-      enumElim <- Utility.getEnumElim (utilityHandle h) [localName] discVar (last binderList') (zip discList' (init binderList'))
+      let branchList = zip discList' (init binderList')
+      enumElim <- Utility.getEnumElim (utilityHandle h) [localName] discVar (last binderList') branchList
+      let loadDiscriminant = C.Primitive (C.Magic (LM.Load (DI.discriminantLoadType shape) (C.VarLocal localName)))
       return $
         C.UpElim False localName (C.UpIntro arg) $
-          C.UpElim True disc (C.Primitive (C.Magic (LM.Load (DI.discriminantLoadType shape) (C.VarLocal localName)))) enumElim
+          C.UpElim True disc loadDiscriminant enumElim
 
 sigmaDataT :: Handle -> DI.CellShape -> [DataConstructorInfo] -> C.Value -> C.Value -> IO C.Comp
 sigmaDataT h shape dataInfo arg shouldRelease = do
@@ -312,8 +340,8 @@ sigmaData4 h shape dataInfo arg dest = do
 sigmaBinderT :: Handle -> DI.CellShape -> DataConstructorInfo -> C.Value -> C.Value -> IO C.Comp
 sigmaBinderT h shape info shouldRelease v = do
   headerEntries <- makeHeaderEntries h shape
-  let typeArgEntries = typeArgs info
-  let fields = consArgs info
+  let typeArgEntries = typeParams info
+  let fields = consParams info
   let readEntries = headerEntries ++ typeArgEntries
   readApps <- forM readEntries $ \(x, t) -> do
     Utility.toAffineApp (utilityHandle h) (C.VarLocal x) t
@@ -344,8 +372,8 @@ sigmaBinder4 :: Handle -> DI.CellShape -> DataConstructorInfo -> C.Value -> C.Va
 sigmaBinder4 h shape info dest v = do
   headerEntries <- makeHeaderEntries h shape
   let n = length headerEntries
-  let typeArgEntries = typeArgs info
-  let fields = consArgs info
+  let typeArgEntries = typeParams info
+  let fields = consParams info
   let readEntries = headerEntries ++ typeArgEntries
   readCopies <- copyFieldsInto h dest (cellLayout info) 0 (directEntries (cellLayout info) readEntries)
   fieldCopies <- copyFieldsInto h dest (cellLayout info) (n + length typeArgEntries) fields
@@ -353,7 +381,7 @@ sigmaBinder4 h shape info dest v = do
   let bodyBase = Utility.bindLet (zip holes (readCopies ++ fieldCopies)) $ C.UpIntro C.null
   bodyWithFields <- bindFieldsInPlace h v (cellLayout info) (n + length typeArgEntries) (map (fmap fieldShape) fields) bodyBase
   body' <- Linearize.linearize (linearizeHandle h) readEntries bodyWithFields
-  return $ C.SigmaElim False 0 (cellLayout info) (map fst headerEntries ++ map fst (typeArgs info)) v body'
+  return $ C.SigmaElim False 0 (cellLayout info) (map fst headerEntries ++ map fst (typeParams info)) v body'
 
 makeHeaderEntries :: Handle -> DI.CellShape -> IO [(Ident, C.Comp)]
 makeHeaderEntries h shape =
@@ -382,7 +410,8 @@ copyFieldInto h dest layout slotIndex x field =
     CL.StoredFlat _ -> do
       destSlotName <- Gensym.newIdentFromText (gensymHandle h) "dest-slot"
       let destSlot = fieldAddress dest layout slotIndex
-      placedCopy <- Utility.toCopyIntoApp (utilityHandle h) (C.VarLocal x) (C.VarLocal destSlotName) (fieldType field)
+      placedCopy <-
+        Utility.toCopyIntoApp (utilityHandle h) (C.VarLocal x) (C.VarLocal destSlotName) (fieldType field)
       return $ C.UpElim True destSlotName destSlot placedCopy
 
 data ChunkUnpack = ChunkUnpack CL.Chunks [Ident] C.Value

@@ -35,6 +35,7 @@ import Kernel.Common.Module
 import Kernel.Common.Module.GetModule qualified as GetModule
 import Kernel.Common.RawImportSummary
 import Kernel.Common.Source
+import Kernel.Common.Source.ShiftToLatest qualified as STL
 import Kernel.Common.Target
 import Kernel.Common.TopCandidate
 import Kernel.Parse.Internal.Handle.Alias qualified as Alias
@@ -117,7 +118,8 @@ getGlobalCompletionItems h currentSource loc = do
     else do
       directItems <- adjustTopCandidate h importSummaryOrNone currentSource loc aliasPresetMap globalVarList
       let localDefSet = collectLocalDefSet currentSource globalVarList
-      importedItems <- getImportedSourceCompletionItems h importSummaryOrNone currentSource loc aliasPresetMap localDefSet
+      importedItems <-
+        getImportedSourceCompletionItems h importSummaryOrNone currentSource loc aliasPresetMap localDefSet
       return $ directItems ++ importedItems
 
 getImportLoc :: Maybe RawImportSummary -> Loc
@@ -153,9 +155,18 @@ adjustTopCandidate h summaryOrNone currentSource loc prefixSummary candInfo = do
             let candIsInCurrentSource = sourceFilePath currentSource == sourceFilePath candSource
             let candIsInCurrentModule = moduleID (sourceModule currentSource) == moduleID (sourceModule candSource)
             let candList' = filter (isAvailableCandidate currentGlobalLocator) candList
+            let toCompletionItems =
+                  topCandidateToCompletionItem
+                    summaryOrNone
+                    candIsInCurrentSource
+                    candIsInCurrentModule
+                    localDefSet
+                    prefixSummary
+                    locator
+                    loc
             if hasImportForLocator summaryOrNone locator
               then return []
-              else return $ concatMap (topCandidateToCompletionItem summaryOrNone candIsInCurrentSource candIsInCurrentModule localDefSet prefixSummary locator loc) candList'
+              else return $ concatMap toCompletionItems candList'
 
 getImportedSourceCompletionItems ::
   Handle ->
@@ -186,7 +197,16 @@ getImportedSourceCompletionItems h summaryOrNone currentSource loc prefixSummary
             let candIsInCurrentSource = sourceFilePath currentSource == sourceFilePath candSource
             let candIsInCurrentModule = moduleID (sourceModule currentSource) == moduleID (sourceModule candSource)
             let candList' = filter (isAvailableCandidate currentGlobalLocator) candList
-            return $ concatMap (importedTopCandidateToCompletionItem summaryOrNone entry candIsInCurrentSource candIsInCurrentModule localDefSet prefixSummary loc) candList'
+            let toCompletionItems =
+                  importedTopCandidateToCompletionItem
+                    summaryOrNone
+                    entry
+                    candIsInCurrentSource
+                    candIsInCurrentModule
+                    localDefSet
+                    prefixSummary
+                    loc
+            return $ concatMap toCompletionItems candList'
 
 hasImportForLocator :: Maybe RawImportSummary -> T.Text -> Bool
 hasImportForLocator summaryOrNone locator =
@@ -204,7 +224,8 @@ resolveImportedSource h aliasHandle currentSource locatorText = do
     sgl <- Alias.resolveAlias aliasHandle m gl
     candModule <- GetModule.getModule (getModuleHandle h) m (SGL.moduleID sgl) locatorText
     relPath <- addExtension sourceFileExtension $ SL.reify $ SGL.sourceLocator sgl
-    return
+    STL.shiftToLatest
+      (STL.new (antecedentHandle h))
       Source
         { sourceModule = candModule,
           sourceFilePath = getSourceDir candModule </> relPath,
@@ -297,7 +318,12 @@ qualifiedCompletionItem candIsInCurrentModule topCandidate name qualifier = do
     then [completionItemFromCandidate (qualifierText qualifier) topCandidate fullyQualified Nothing]
     else []
 
-importedNamespaceMemberCompletionItems :: RawImportSummaryItem -> Bool -> TopCandidate -> T.Text -> [CompletionItem]
+importedNamespaceMemberCompletionItems ::
+  RawImportSummaryItem ->
+  Bool ->
+  TopCandidate ->
+  T.Text ->
+  [CompletionItem]
 importedNamespaceMemberCompletionItems entry candIsInCurrentModule topCandidate name = do
   (importAlias, memberName) <- importedNamespaceMembers entry name
   qualifiedCompletionItem candIsInCurrentModule topCandidate memberName $ ImportAlias importAlias
@@ -374,7 +400,13 @@ completionItemFromCandidate locator topCandidate cand textEditOrNone = do
   let CompletionItem {..} = toCompletionItem $ reifyCand cand
   let _kind = Just $ fromCandidateKind $ kind topCandidate
   let _labelDetails = Just CompletionItemLabelDetails {_description = Just ("in " <> locator), _detail = Nothing}
-  CompletionItem {_kind, _labelDetails, _insertText = candInsertText cand, _additionalTextEdits = textEditOrNone, ..}
+  CompletionItem
+    { _kind,
+      _labelDetails,
+      _insertText = candInsertText cand,
+      _additionalTextEdits = textEditOrNone,
+      ..
+    }
 
 data Qualifier
   = Address T.Text

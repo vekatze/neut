@@ -16,9 +16,10 @@ where
 import App.App
 import App.Error qualified as E
 import Control.Exception (IOException, catch, onException)
+import Control.Monad (void)
 import Control.Monad.Except (MonadError (throwError), runExceptT)
 import Control.Monad.IO.Class (MonadIO (liftIO))
-import Data.Either (lefts, partitionEithers)
+import Data.Either (partitionEithers)
 import Data.Text qualified as T
 import Logger.Handle qualified as Logger
 import Logger.Hint
@@ -54,15 +55,11 @@ forP xs f = do
   let (errors, results) = partitionEithers xs'
   if null errors
     then return results
-    else throwError $ foldl (<>) (E.MakeError []) errors
+    else throwError $ E.join errors
 
 forP_ :: [a] -> (a -> App ()) -> App ()
-forP_ xs f = do
-  xs' <- liftIO $ pooledForConcurrently xs (runApp . f)
-  let errors = lefts xs'
-  if null errors
-    then return ()
-    else throwError $ foldl (<>) (E.MakeError []) errors
+forP_ xs f =
+  void $ forP xs f
 
 liftMaybe :: Maybe a -> App a
 liftMaybe m =

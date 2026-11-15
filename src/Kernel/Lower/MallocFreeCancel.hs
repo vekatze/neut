@@ -5,10 +5,10 @@ import Data.IntMap.Strict qualified as IntMap
 import Data.IntSet qualified as IntSet
 import Data.List (transpose)
 import Data.Map.Strict qualified as Map
+import Language.Common.DataSize qualified as DS
 import Language.Common.Ident
 import Language.Common.Ident.Reify
 import Language.Common.LowType qualified as LT
-import Language.Common.DataSize qualified as DS
 import Language.Common.PrimNumSize (IntSize (IntSize8), dataSizeToIntSize)
 import Language.Common.PrimType qualified as PT
 import Language.LowComp.LowComp qualified as LC
@@ -101,9 +101,10 @@ analyze roots lowComp =
       case op of
         LC.Alloc _ allocID ->
           case lookupFree state (rootOf roots x) of
-            Just freeIDs ->
+            Just freeIDs -> do
               let allocIDs = IntSet.singleton allocID
-               in (axis <> Axis {allocCanceller = allocIDs, freeCanceller = newFreeCanceller allocIDs freeIDs}, state)
+              let cancelAxis = Axis {allocCanceller = allocIDs, freeCanceller = newFreeCanceller allocIDs freeIDs}
+              (axis <> cancelAxis, state)
             Nothing ->
               (axis, state)
         _ ->
@@ -111,8 +112,9 @@ analyze roots lowComp =
     LC.Cont op cont -> do
       let (axis, state) = analyze roots cont
       case op of
-        LC.Free (LC.VarLocal ptr) _ freeID ->
-          (axis, state {freeByRoot = IntMap.insert (rootOf roots ptr) (IntSet.singleton freeID) (freeByRoot state)})
+        LC.Free (LC.VarLocal ptr) _ freeID -> do
+          let freeByRoot' = IntMap.insert (rootOf roots ptr) (IntSet.singleton freeID) (freeByRoot state)
+          (axis, state {freeByRoot = freeByRoot'})
         _ ->
           (axis, state)
     LC.Switch _ _ defaultBranch ces phiTargets cont -> do

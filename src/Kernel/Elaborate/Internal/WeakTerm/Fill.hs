@@ -9,25 +9,20 @@ import App.App (App)
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.IO.Class
-import Data.IntMap qualified as IntMap
 import Data.Text qualified as T
 import Kernel.Elaborate.TypeHoleSubst qualified as THS
 import Language.Common.Binder
-import Language.Common.Ident.Reify qualified as Ident
-import Language.WeakTerm.Reduce qualified as Reduce
-import Language.WeakTerm.Subst (SubstEntry (..))
 import Language.WeakTerm.Subst qualified as Subst
 import Language.WeakTerm.ToText qualified as WT
 import Language.WeakTerm.WeakTerm qualified as WT
 import Prelude hiding (lookup)
 
-data Handle = Handle
-  { substHandle :: Subst.Handle,
-    reduceHandle :: Reduce.Handle
+newtype Handle = Handle
+  { substHandle :: Subst.Handle
   }
 
-new :: Subst.Handle -> Reduce.Handle -> Handle
-new substHandle reduceHandle = do
+new :: Subst.Handle -> Handle
+new substHandle = do
   Handle {..}
 
 fillType :: Handle -> THS.TypeHoleSubst -> WT.WeakType -> App WT.WeakType
@@ -43,12 +38,12 @@ fillType h holeSubst ty =
       t' <- fillType h holeSubst t
       args' <- mapM (fillType h holeSubst) args
       return $ m :< WT.TyApp t' args'
-    m :< WT.Pi piKind impArgs expArgs defaultArgs t -> do
-      impArgs' <- fillTypeBinder h holeSubst impArgs
-      expArgs' <- fillTypeBinder h holeSubst expArgs
-      defaultArgs' <- fillTypeBinder h holeSubst defaultArgs
+    m :< WT.Pi piKind impParams expParams defaultParams t -> do
+      impParams' <- fillTypeBinder h holeSubst impParams
+      expParams' <- fillTypeBinder h holeSubst expParams
+      defaultParams' <- fillTypeBinder h holeSubst defaultParams
       t' <- fillType h holeSubst t
-      return $ m :< WT.Pi piKind impArgs' expArgs' defaultArgs' t'
+      return $ m :< WT.Pi piKind impParams' expParams' defaultParams' t'
     m :< WT.Data attr name es -> do
       es' <- mapM (fillType h holeSubst) es
       return $ m :< WT.Data attr name es'
@@ -75,12 +70,19 @@ fillType h holeSubst ty =
       case THS.lookup i holeSubst of
         Just (xs, body)
           | length xs == length es' -> do
-              let varList = map Ident.toInt xs
-              let sub = IntMap.fromList $ zip varList (map Type es')
-              liftIO (Subst.substType (substHandle h) sub body) >>= Reduce.reduceType (reduceHandle h)
+              let sub = Subst.makeTypeSubst xs es'
+              liftIO (Subst.substType (substHandle h) sub body)
           | otherwise -> do
               let tyText = WT.toTextType ty
-              error $ "Rule.WeakTerm.Fill (assertion failure; arity mismatch)\nhole = ?M" ++ show i ++ "(" ++ show xs ++ ")\nhole id = " ++ show i ++ "\ninput: " <> T.unpack tyText
+              error $
+                "Rule.WeakTerm.Fill (assertion failure; arity mismatch)\nhole = ?M"
+                  ++ show i
+                  ++ "("
+                  ++ show xs
+                  ++ ")\nhole id = "
+                  ++ show i
+                  ++ "\ninput: "
+                    <> T.unpack tyText
         Nothing ->
           return $ m :< WT.TypeHole i es'
 

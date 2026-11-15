@@ -1,48 +1,33 @@
 module Language.WeakTerm.Subst
   ( Handle,
     new,
-    SubstEntry (..),
-    Subst,
-    subst,
-    subst',
+    TypeEntry (..),
+    TypeSubst,
+    makeTypeSubst,
     substType,
-    substDecisionTree,
+    substTermBinders,
   )
 where
 
 import Control.Comonad.Cofree
-import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.IntMap qualified as IntMap
-import Data.Maybe (mapMaybe)
-import Data.Set qualified as S
-import Gensym.Gensym qualified as Gensym
 import Gensym.Handle qualified as Gensym
-import Language.Common.Annotation qualified as AN
-import Language.Common.Attr.Lam qualified as AttrL
 import Language.Common.Binder
-import Language.Common.CallConvSpec qualified as CCS
 import Language.Common.CreateSymbol qualified as Gensym
-import Language.Common.DecisionTree qualified as DT
-import Language.Common.DefaultArgs qualified as DefaultArgs
-import Language.Common.ForeignCodType qualified as FCT
 import Language.Common.Ident
 import Language.Common.Ident.Reify qualified as Ident
-import Language.Common.ImpArgs qualified as ImpArgs
-import Language.Common.LamKind qualified as LK
-import Language.Common.LowMagic qualified as LM
-import Language.Common.Magic (WeakMagic (..))
-import Language.Common.Magic qualified as M
-import Language.Common.VarKind qualified as VK
-import Language.WeakTerm.FreeVars qualified as WT
 import Language.WeakTerm.WeakTerm qualified as WT
 
-data SubstEntry
-  = Var Ident
-  | Term WT.WeakTerm
-  | Type WT.WeakType
+data TypeEntry
+  = TypeRenaming Ident
+  | TypeValue WT.WeakType
 
-type Subst =
-  IntMap.IntMap SubstEntry
+type TypeSubst =
+  IntMap.IntMap TypeEntry
+
+makeTypeSubst :: [Ident] -> [WT.WeakType] -> TypeSubst
+makeTypeSubst xs ts =
+  IntMap.fromList $ zip (map Ident.toInt xs) (map TypeValue ts)
 
 newtype Handle = Handle
   { gensymHandle :: Gensym.Handle
@@ -52,142 +37,18 @@ new :: Gensym.Handle -> Handle
 new gensymHandle = do
   Handle {..}
 
-subst :: Handle -> Subst -> WT.WeakTerm -> IO WT.WeakTerm
-subst h sub term =
-  case term of
-    m :< WT.Var x
-      | Just entry <- IntMap.lookup (Ident.toInt x) sub ->
-          case entry of
-            Var x' ->
-              return $ m :< WT.Var x'
-            Term e ->
-              return e
-            Type _ ->
-              return term
-      | otherwise ->
-          return term
-    _ :< WT.VarGlobal {} ->
-      return term
-    m :< WT.PiIntro (AttrL.Attr {lamKind}) impArgs expArgs defaultArgs e -> do
-      let fvs = S.map Ident.toInt $ WT.freeVarsAll term
-      let subDomSet = S.fromList $ IntMap.keys sub
-      if S.intersection fvs subDomSet == S.empty
-        then return term
-        else do
-          newLamID <- liftIO $ Gensym.newCount (gensymHandle h)
-          case lamKind of
-            LK.Fix kind isDestPassing xt -> do
-              (impArgs', sub') <- subst' h sub impArgs
-              (expArgs', sub'') <- subst' h sub' expArgs
-              (defaultArgs', sub''') <- substDefaultArgs h sub'' defaultArgs
-              ([xt'], sub'''') <- subst' h sub''' [xt]
-              e' <- subst h sub'''' e
-              let fixAttr = AttrL.Attr {lamKind = LK.Fix kind isDestPassing xt', identity = newLamID}
-              return (m :< WT.PiIntro fixAttr impArgs' expArgs' defaultArgs' e')
-            LK.Normal mName isDestPassing codType -> do
-              (impArgs', sub') <- subst' h sub impArgs
-              (expArgs', sub'') <- subst' h sub' expArgs
-              (defaultArgs', sub''') <- substDefaultArgs h sub'' defaultArgs
-              codType' <- substType h sub''' codType
-              e' <- subst h sub''' e
-              let lamAttr = AttrL.Attr {lamKind = LK.Normal mName isDestPassing codType', identity = newLamID}
-              return (m :< WT.PiIntro lamAttr impArgs' expArgs' defaultArgs' e')
-    m :< WT.PiElim spec e impArgs expArgs defaultArgs -> do
-      spec' <- CCS.traverseTypes (substType h sub) spec
-      e' <- subst h sub e
-      impArgs' <- ImpArgs.traverseImpArgs (substType h sub) impArgs
-      defaultArgs' <- DefaultArgs.traverseDefaultArgs (subst h sub) defaultArgs
-      expArgs' <- mapM (subst h sub) expArgs
-      return $ m :< WT.PiElim spec' e' impArgs' expArgs' defaultArgs'
-    m :< WT.PiElimExact e -> do
-      e' <- subst h sub e
-      return $ m :< WT.PiElimExact e'
-    m :< WT.DataIntro attr consName dataArgs consImpArgs consArgs -> do
-      dataArgs' <- mapM (substType h sub) dataArgs
-      consImpArgs' <- mapM (substType h sub) consImpArgs
-      consArgs' <- mapM (subst h sub) consArgs
-      return $ m :< WT.DataIntro attr consName dataArgs' consImpArgs' consArgs'
-    m :< WT.DataElim isNoetic oets decisionTree -> do
-      let (os, es, ts) = unzip3 oets
-      es' <- mapM (subst h sub) es
-      let binder = zipWith (\o t -> (m, VK.normal, o, t)) os ts
-      (binder', decisionTree') <- subst''' h sub binder decisionTree
-      let os' = map (\(_, _, o, _) -> o) binder'
-      let ts' = map (\(_, _, _, t) -> t) binder'
-      return $ m :< WT.DataElim isNoetic (zip3 os' es' ts') decisionTree'
-    m :< WT.BoxIntro letSeq e -> do
-      (letSeq', sub') <- substLetSeq h sub letSeq
-      e' <- subst h sub' e
-      return $ m :< WT.BoxIntro letSeq' e'
-    m :< WT.BoxIntroLift mt e -> do
-      mt' <- traverse (substType h sub) mt
-      e' <- subst h sub e
-      return $ m :< WT.BoxIntroLift mt' e'
-    m :< WT.EmbedIntro e -> do
-      e' <- subst h sub e
-      return $ m :< WT.EmbedIntro e'
-    m :< WT.BoxElim castSeq mxt e1 uncastSeq e2 -> do
-      (castSeq', sub1) <- substLetSeq h sub castSeq
-      ((mxt', e1'), sub2) <- substLet h sub1 (mxt, e1)
-      (uncastSeq', sub3) <- substLetSeq h sub2 uncastSeq
-      e2' <- subst h sub3 e2
-      return $ m :< WT.BoxElim castSeq' mxt' e1' uncastSeq' e2'
-    m :< WT.CodeIntro codeVariant e -> do
-      e' <- subst h sub e
-      return $ m :< WT.CodeIntro codeVariant e'
-    m :< WT.CodeElim e -> do
-      e' <- subst h sub e
-      return $ m :< WT.CodeElim e'
-    m :< WT.TauIntro ty -> do
-      ty' <- substType h sub ty
-      return $ m :< WT.TauIntro ty'
-    m :< WT.TauElim (mx, k, x) e1 e2 -> do
-      e1' <- subst h sub e1
-      x' <- liftIO $ Gensym.newIdentFromIdent (gensymHandle h) x
-      let sub' = IntMap.insert (Ident.toInt x) (Var x') sub
-      e2' <- subst h sub' e2
-      return $ m :< WT.TauElim (mx, k, x') e1' e2'
-    m :< WT.Let mxt e1 e2 -> do
-      e1' <- subst h sub e1
-      (mxt', _, e2') <- subst'' h sub mxt [] e2
-      return $ m :< WT.Let mxt' e1' e2'
-    m :< WT.LetType (mx, x) t e -> do
-      t' <- substType h sub t
-      x' <- liftIO $ Gensym.newIdentFromIdent (gensymHandle h) x
-      let sub' = IntMap.insert (Ident.toInt x) (Var x') sub
-      e' <- subst h sub' e
-      return $ m :< WT.LetType (mx, x') t' e'
-    m :< WT.Invoke tropeNames body -> do
-      body' <- subst h sub body
-      return $ m :< WT.Invoke tropeNames body'
-    m :< WT.Prim prim -> do
-      prim' <- mapM (substType h sub) prim
-      return $ m :< WT.Prim prim'
-    m :< WT.Magic der -> do
-      der' <- substMagic h sub der
-      return $ m :< WT.Magic der'
-    m :< WT.Annotation logLevel annot e -> do
-      e' <- subst h sub e
-      case annot of
-        AN.Type t -> do
-          t' <- substType h sub t
-          return $ m :< WT.Annotation logLevel (AN.Type t') e'
-
-substType :: Handle -> Subst -> WT.WeakType -> IO WT.WeakType
+substType :: Handle -> TypeSubst -> WT.WeakType -> IO WT.WeakType
 substType h sub ty =
   case ty of
     _ :< WT.Tau ->
       return ty
-    m :< WT.TVar x
-      | Just entry <- IntMap.lookup (Ident.toInt x) sub ->
-          case entry of
-            Var x' ->
-              return $ m :< WT.TVar x'
-            Term _ ->
-              return ty
-            Type t ->
-              return t
-      | otherwise ->
+    m :< WT.TVar x ->
+      case IntMap.lookup (Ident.toInt x) sub of
+        Just (TypeRenaming x') ->
+          return $ m :< WT.TVar x'
+        Just (TypeValue t) ->
+          return t
+        Nothing ->
           return ty
     _ :< WT.TVarGlobal {} ->
       return ty
@@ -195,12 +56,12 @@ substType h sub ty =
       t' <- substType h sub t
       args' <- mapM (substType h sub) args
       return $ m :< WT.TyApp t' args'
-    m :< WT.Pi piKind impArgs expArgs defaultArgs t -> do
-      (impArgs', sub') <- subst' h sub impArgs
-      (expArgs', sub'') <- subst' h sub' expArgs
-      (defaultArgs', sub''') <- subst' h sub'' defaultArgs
-      t' <- substType h sub''' t
-      return $ m :< WT.Pi piKind impArgs' expArgs' defaultArgs' t'
+    m :< WT.Pi piKind impParams expParams defaultParams t -> do
+      (impParams', sub') <- substTypeBinders h sub impParams
+      expParams' <- substTermBinders h sub' expParams
+      defaultParams' <- substTermBinders h sub' defaultParams
+      t' <- substType h sub' t
+      return $ m :< WT.Pi piKind impParams' expParams' defaultParams' t'
     m :< WT.Data attr name es -> do
       es' <- mapM (substType h sub) es
       return $ m :< WT.Data attr name es'
@@ -226,308 +87,29 @@ substType h sub ty =
       es' <- mapM (substType h sub) es
       return $ m :< WT.TypeHole holeID es'
 
-substBinder ::
+substTypeBinders ::
   Handle ->
-  Subst ->
+  TypeSubst ->
   [BinderF WT.WeakType] ->
-  WT.WeakTerm ->
-  IO ([BinderF WT.WeakType], WT.WeakTerm)
-substBinder h sub binder e =
-  case binder of
-    [] -> do
-      e' <- subst h sub e
-      return ([], e')
-    ((m, k, x, t) : xts) -> do
-      t' <- substType h sub t
-      x' <- liftIO $ Gensym.newIdentFromIdent (gensymHandle h) x
-      let sub' = IntMap.insert (Ident.toInt x) (Var x') sub
-      (xts', e') <- substBinder h sub' xts e
-      return ((m, k, x', t') : xts', e')
-
-subst' ::
-  Handle ->
-  Subst ->
-  [BinderF WT.WeakType] ->
-  IO ([BinderF WT.WeakType], Subst)
-subst' h sub binder =
-  case binder of
+  IO ([BinderF WT.WeakType], TypeSubst)
+substTypeBinders h sub binders =
+  case binders of
     [] -> do
       return ([], sub)
-    ((m, k, x, t) : xts) -> do
+    (m, k, x, t) : rest -> do
       t' <- substType h sub t
-      x' <- liftIO $ Gensym.newIdentFromIdent (gensymHandle h) x
-      let sub' = IntMap.insert (Ident.toInt x) (Var x') sub
-      (xts', sub'') <- subst' h sub' xts
-      return ((m, k, x', t') : xts', sub'')
+      x' <- Gensym.newIdentFromIdent (gensymHandle h) x
+      let sub' = IntMap.insert (Ident.toInt x) (TypeRenaming x') sub
+      (rest', sub'') <- substTypeBinders h sub' rest
+      return ((m, k, x', t') : rest', sub'')
 
-substDefaultArgs ::
+substTermBinders ::
   Handle ->
-  Subst ->
-  [(BinderF WT.WeakType, WT.WeakTerm)] ->
-  IO ([(BinderF WT.WeakType, WT.WeakTerm)], Subst)
-substDefaultArgs h sub binderList =
-  case binderList of
-    [] -> do
-      return ([], sub)
-    ((m, k, x, t), defaultValue) : rest -> do
-      t' <- substType h sub t
-      defaultValue' <- subst h sub defaultValue
-      x' <- liftIO $ Gensym.newIdentFromIdent (gensymHandle h) x
-      let sub' = IntMap.insert (Ident.toInt x) (Var x') sub
-      (rest', sub'') <- substDefaultArgs h sub' rest
-      return (((m, k, x', t'), defaultValue') : rest', sub'')
-
-subst'' ::
-  Handle ->
-  Subst ->
-  BinderF WT.WeakType ->
+  TypeSubst ->
   [BinderF WT.WeakType] ->
-  WT.WeakTerm ->
-  IO (BinderF WT.WeakType, [BinderF WT.WeakType], WT.WeakTerm)
-subst'' h sub (m, k, x, t) binder e = do
-  t' <- substType h sub t
-  x' <- liftIO $ Gensym.newIdentFromIdent (gensymHandle h) x
-  let sub' = IntMap.insert (Ident.toInt x) (Var x') sub
-  (xts', e') <- substBinder h sub' binder e
-  return ((m, k, x', t'), xts', e')
-
-subst''' ::
-  Handle ->
-  Subst ->
-  [BinderF WT.WeakType] ->
-  DT.DecisionTree WT.WeakType WT.WeakTerm ->
-  IO ([BinderF WT.WeakType], DT.DecisionTree WT.WeakType WT.WeakTerm)
-subst''' h sub binder decisionTree =
-  case binder of
-    [] -> do
-      decisionTree' <- substDecisionTree h sub decisionTree
-      return ([], decisionTree')
-    ((m, k, x, t) : xts) -> do
-      t' <- substType h sub t
-      x' <- liftIO $ Gensym.newIdentFromIdent (gensymHandle h) x
-      let sub' = IntMap.insert (Ident.toInt x) (Var x') sub
-      (xts', e') <- subst''' h sub' xts decisionTree
-      return ((m, k, x', t') : xts', e')
-
-substLet ::
-  Handle ->
-  Subst ->
-  (BinderF WT.WeakType, WT.WeakTerm) ->
-  IO ((BinderF WT.WeakType, WT.WeakTerm), Subst)
-substLet h sub ((m, k, x, t), e) = do
-  e' <- subst h sub e
-  t' <- substType h sub t
-  x' <- liftIO $ Gensym.newIdentFromIdent (gensymHandle h) x
-  let sub' = IntMap.insert (Ident.toInt x) (Var x') sub
-  return (((m, k, x', t'), e'), sub')
-
-substLetSeq ::
-  Handle ->
-  Subst ->
-  [(BinderF WT.WeakType, WT.WeakTerm)] ->
-  IO ([(BinderF WT.WeakType, WT.WeakTerm)], Subst)
-substLetSeq h sub letSeq = do
-  case letSeq of
-    [] ->
-      return ([], sub)
-    letPair : rest -> do
-      (letPair', sub') <- substLet h sub letPair
-      (rest', sub'') <- substLetSeq h sub' rest
-      return (letPair' : rest', sub'')
-
-substDecisionTree ::
-  Handle ->
-  Subst ->
-  DT.DecisionTree WT.WeakType WT.WeakTerm ->
-  IO (DT.DecisionTree WT.WeakType WT.WeakTerm)
-substDecisionTree h sub tree =
-  case tree of
-    DT.Leaf xs letSeq e -> do
-      let xs' = mapMaybe (substLeafVar sub) xs
-      (letSeq', sub') <- substLetSeq h sub letSeq
-      e' <- subst h sub' e
-      return $ DT.Leaf xs' letSeq' e'
-    DT.Unreachable ->
-      return tree
-    DT.Switch (cursorVar, cursor) caseList -> do
-      let cursorVar' = substVar sub cursorVar
-      cursor' <- substType h sub cursor
-      caseList' <- substCaseList h sub caseList
-      return $ DT.Switch (cursorVar', cursor') caseList'
-
-substCaseList ::
-  Handle ->
-  Subst ->
-  DT.CaseList WT.WeakType WT.WeakTerm ->
-  IO (DT.CaseList WT.WeakType WT.WeakTerm)
-substCaseList h sub (fallbackClause, clauseList) = do
-  fallbackClause' <- substDecisionTree h sub fallbackClause
-  clauseList' <- mapM (substCase h sub) clauseList
-  return (fallbackClause', clauseList')
-
-substCase ::
-  Handle ->
-  Subst ->
-  DT.Case WT.WeakType WT.WeakTerm ->
-  IO (DT.Case WT.WeakType WT.WeakTerm)
-substCase h sub decisionCase = do
-  case decisionCase of
-    DT.LiteralCase mPat i cont -> do
-      cont' <- substDecisionTree h sub cont
-      return $ DT.LiteralCase mPat i cont'
-    DT.ConsCase record@(DT.ConsCaseRecord {..}) -> do
-      let (dataTerms, dataTypes) = unzip dataArgs
-      dataTerms' <- mapM (substType h sub) dataTerms
-      dataTypes' <- mapM (substType h sub) dataTypes
-      (binders', cont') <- subst''' h sub (consImpArgs ++ consArgs) cont
-      let (consImpArgs', consArgs') = splitAt (length consImpArgs) binders'
-      return $
-        DT.ConsCase
-          record
-            { DT.dataArgs = zip dataTerms' dataTypes',
-              DT.consImpArgs = consImpArgs',
-              DT.consArgs = consArgs',
-              DT.cont = cont'
-            }
-
-substLeafVar :: Subst -> Ident -> Maybe Ident
-substLeafVar sub leafVar =
-  case IntMap.lookup (Ident.toInt leafVar) sub of
-    Just (Var leafVar') ->
-      return leafVar'
-    Just (Term _) ->
-      Nothing
-    Just (Type _) ->
-      return leafVar
-    Nothing ->
-      return leafVar
-
-substVar :: Subst -> Ident -> Ident
-substVar sub x =
-  case IntMap.lookup (Ident.toInt x) sub of
-    Just (Var x') ->
-      x'
-    _ ->
-      x
-
-substMagic :: Handle -> Subst -> WeakMagic WT.WeakType WT.WeakType WT.WeakTerm -> IO (WeakMagic WT.WeakType WT.WeakType WT.WeakTerm)
-substMagic h sub (WeakMagic magic) = do
-  magic' <- case magic of
-    M.LowMagic lowMagic -> do
-      lowMagic' <- substLowMagic h sub lowMagic
-      return $ M.LowMagic lowMagic'
-    M.Calloc sizeType num size -> do
-      sizeType' <- substType h sub sizeType
-      num' <- subst h sub num
-      size' <- subst h sub size
-      return $ M.Calloc sizeType' num' size'
-    M.Malloc sizeType size -> do
-      sizeType' <- substType h sub sizeType
-      size' <- subst h sub size
-      return $ M.Malloc sizeType' size'
-    M.MallocOpaque sizeType size -> do
-      sizeType' <- substType h sub sizeType
-      size' <- subst h sub size
-      return $ M.MallocOpaque sizeType' size'
-    M.Realloc sizeType ptr size -> do
-      sizeType' <- substType h sub sizeType
-      ptr' <- subst h sub ptr
-      size' <- subst h sub size
-      return $ M.Realloc sizeType' ptr' size'
-    M.Free unitType ptr -> do
-      unitType' <- substType h sub unitType
-      ptr' <- subst h sub ptr
-      return $ M.Free unitType' ptr'
-    M.InspectType sgl typeValueExpr e -> do
-      typeValueExpr' <- substType h sub typeValueExpr
-      e' <- substType h sub e
-      return $ M.InspectType sgl typeValueExpr' e'
-    M.EqType moduleID typeExpr1 typeExpr2 -> do
-      typeExpr1' <- substType h sub typeExpr1
-      typeExpr2' <- substType h sub typeExpr2
-      return $ M.EqType moduleID typeExpr1' typeExpr2'
-    M.ShowType typeExpr -> do
-      typeExpr' <- substType h sub typeExpr
-      return $ M.ShowType typeExpr'
-    M.TextCons rune text -> do
-      rune' <- subst h sub rune
-      text' <- subst h sub text
-      return $ M.TextCons rune' text'
-    M.TextUncons mid text -> do
-      text' <- subst h sub text
-      return $ M.TextUncons mid text'
-    M.MakeSwitch mid key fallback clauses -> do
-      key' <- subst h sub key
-      fallback' <- subst h sub fallback
-      clauses' <- subst h sub clauses
-      return $ M.MakeSwitch mid key' fallback' clauses'
-    M.FreeVariables mid code -> do
-      code' <- subst h sub code
-      return $ M.FreeVariables mid code'
-    M.CompileError msg -> do
-      msg' <- subst h sub msg
-      return $ M.CompileError msg'
-    M.GetOriginFileName ->
-      return M.GetOriginFileName
-    M.GetOriginLine ->
-      return M.GetOriginLine
-    M.GetOriginColumn ->
-      return M.GetOriginColumn
-  return $ WeakMagic magic'
-
-substLowMagic :: Handle -> Subst -> LM.LowMagic WT.WeakType WT.WeakType WT.WeakTerm -> IO (LM.LowMagic WT.WeakType WT.WeakType WT.WeakTerm)
-substLowMagic h sub lowMagic =
-  case lowMagic of
-    LM.Cast from to value -> do
-      from' <- substType h sub from
-      to' <- substType h sub to
-      value' <- subst h sub value
-      return $ LM.Cast from' to' value'
-    LM.Store t unit value pointer -> do
-      t' <- substType h sub t
-      unit' <- substType h sub unit
-      value' <- subst h sub value
-      pointer' <- subst h sub pointer
-      return $ LM.Store t' unit' value' pointer'
-    LM.Load t pointer -> do
-      t' <- substType h sub t
-      pointer' <- subst h sub pointer
-      return $ LM.Load t' pointer'
-    LM.Shift pointer offset -> do
-      pointer' <- subst h sub pointer
-      offset' <- subst h sub offset
-      return $ LM.Shift pointer' offset'
-    LM.Alloca t size -> do
-      t' <- substType h sub t
-      size' <- subst h sub size
-      return $ LM.Alloca t' size'
-    LM.External domList cod extFunName args varArgs -> do
-      domList' <- mapM (substType h sub) domList
-      cod' <- case cod of
-        FCT.Cod t -> do
-          t' <- substType h sub t
-          return $ FCT.Cod t'
-        FCT.Void ->
-          return FCT.Void
-      args' <- mapM (subst h sub) args
-      varArgs' <-
-        mapM
-          ( \(a, t) -> do
-              a' <- subst h sub a
-              t' <- substType h sub t
-              return (a', t')
-          )
-          varArgs
-      return $ LM.External domList' cod' extFunName args' varArgs'
-    LM.Global name t -> do
-      t' <- substType h sub t
-      return $ LM.Global name t'
-    LM.OpaqueValue e -> do
-      e' <- subst h sub e
-      return $ LM.OpaqueValue e'
-    LM.CallType func arg1 arg2 arg3 -> do
-      func' <- subst h sub func
-      arg1' <- subst h sub arg1
-      arg2' <- subst h sub arg2
-      arg3' <- subst h sub arg3
-      return $ LM.CallType func' arg1' arg2' arg3'
+  IO [BinderF WT.WeakType]
+substTermBinders h sub =
+  mapM $ \(m, k, x, t) -> do
+    t' <- substType h sub t
+    x' <- Gensym.newIdentFromIdent (gensymHandle h) x
+    return (m, k, x', t')

@@ -126,7 +126,7 @@ stepConflict slotMap active op =
   case op of
     LC.StackLifetimeStart stackSlotID
       | IntMap.member stackSlotID slotMap -> do
-          let graph = foldl' (\acc activeSlotID -> addConflict stackSlotID activeSlotID acc) IntMap.empty (IntSet.toList active)
+          let graph = foldl' (flip $ addConflict stackSlotID) IntMap.empty (IntSet.toList active)
           (IntSet.insert stackSlotID active, graph)
     LC.StackLifetimeEnd stackSlotID
       | IntMap.member stackSlotID slotMap ->

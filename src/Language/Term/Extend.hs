@@ -27,12 +27,12 @@ extend remapping term =
   case term of
     () :< TM.Var x ->
       _m :< TM.Var x
-    () :< TM.VarGlobal g argNum ->
-      _m :< TM.VarGlobal g argNum
-    () :< TM.PiIntro attr impArgs expArgs defaultArgs e -> do
-      let defaultArgs' = map (extendDefaultArg remapping) defaultArgs
+    () :< TM.VarGlobal g arity ->
+      _m :< TM.VarGlobal g arity
+    () :< TM.PiIntro attr impParams expParams defaultParams e -> do
+      let defaultParams' = map (extendDefaultParam remapping) defaultParams
       let e' = extend remapping e
-      _m :< TM.PiIntro attr impArgs expArgs defaultArgs' e'
+      _m :< TM.PiIntro attr impParams expParams defaultParams' e'
     () :< TM.PiElim traceID b e impArgs expArgs defaultArgs -> do
       let traceID' = Trace.remapOrDrop remapping traceID
       let e' = extend remapping e
@@ -105,8 +105,8 @@ extendType ty =
       _m :< TM.TVarGlobal attr g
     () :< TM.TyApp t args ->
       _m :< TM.TyApp (extendType t) (map extendType args)
-    () :< TM.Pi piKind impArgs expArgs defaultArgs cod ->
-      _m :< TM.Pi piKind (map extendBinder impArgs) (map extendBinder expArgs) (map extendBinder defaultArgs) (extendType cod)
+    () :< TM.Pi piKind impParams expParams defaultParams cod ->
+      _m :< TM.Pi piKind (map extendBinder impParams) (map extendBinder expParams) (map extendBinder defaultParams) (extendType cod)
     () :< TM.Data attr name es ->
       _m :< TM.Data attr name (map extendType es)
     () :< TM.Box t ->
@@ -128,13 +128,13 @@ extendBinder :: BinderF (Cofree TM.TypeF ()) -> BinderF TM.Type
 extendBinder (m, k, x, t) =
   (m, k, x, extendType t)
 
-extendDefaultArg :: Trace.Remapping -> (BinderF TM.Type, Cofree TM.TermF ()) -> (BinderF TM.Type, TM.Term)
-extendDefaultArg remapping (binder, e) =
+extendDefaultParam :: Trace.Remapping -> (BinderF TM.Type, Cofree TM.TermF ()) -> (BinderF TM.Type, TM.Term)
+extendDefaultParam remapping (binder, e) =
   (binder, extend remapping e)
 
 extendLet :: Trace.Remapping -> (BinderF TM.Type, Cofree TM.TermF ()) -> (BinderF TM.Type, TM.Term)
 extendLet =
-  extendDefaultArg
+  extendDefaultParam
 
 extendDecisionTree :: Trace.Remapping -> DT.DecisionTree TM.Type (Cofree TM.TermF ()) -> DT.DecisionTree TM.Type TM.Term
 extendDecisionTree remapping tree =
@@ -186,8 +186,8 @@ extendStmtKindTerm stmtKind =
       MacroInline
     Main t ->
       Main (extendType t)
-    DataIntro name dataArgs consImpArgs consArgs disc ->
-      DataIntro name (map extendBinder dataArgs) (map extendBinder consImpArgs) (map extendBinder consArgs) disc
+    DataIntro name dataParams consImpParams consParams disc ->
+      DataIntro name (map extendBinder dataParams) (map extendBinder consImpParams) (map extendBinder consParams) disc
 
 extendStmtKindType :: StmtKindType (Cofree TM.TypeF ()) -> StmtKindType TM.Type
 extendStmtKindType stmtKind =
@@ -196,14 +196,14 @@ extendStmtKindType stmtKind =
       Alias
     AliasOpaque ->
       AliasOpaque
-    Data name args consInfoList isNominal ->
-      Data name (map extendBinder args) (map (second extendConsInfo) consInfoList) isNominal
+    Data name params consInfoList isNominal ->
+      Data name (map extendBinder params) (map (second extendConsInfo) consInfoList) isNominal
 
 extendConsInfo ::
   DI.ConsInfo (BinderF (Cofree TM.TypeF ())) ->
   DI.ConsInfo (BinderF TM.Type)
 extendConsInfo consInfo =
   consInfo
-    { DI.consImpArgs = map extendBinder (DI.consImpArgs consInfo),
-      DI.consArgs = map extendBinder (DI.consArgs consInfo)
+    { DI.consImpParams = map extendBinder (DI.consImpParams consInfo),
+      DI.consParams = map extendBinder (DI.consParams consInfo)
     }

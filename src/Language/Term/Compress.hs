@@ -42,12 +42,12 @@ compressWithTrace traceMode term = do
   case term of
     _ :< TM.Var x -> do
       return $ () :< TM.Var x
-    _ :< TM.VarGlobal g argNum -> do
-      return $ () :< TM.VarGlobal g argNum
-    _ :< TM.PiIntro attr impArgs expArgs defaultArgs e -> do
-      defaultArgs' <- mapM (compressDefaultArg traceMode) defaultArgs
+    _ :< TM.VarGlobal g arity -> do
+      return $ () :< TM.VarGlobal g arity
+    _ :< TM.PiIntro attr impParams expParams defaultParams e -> do
+      defaultParams' <- mapM (compressDefaultParam traceMode) defaultParams
       e' <- compressWithTrace traceMode e
-      return $ () :< TM.PiIntro attr impArgs expArgs defaultArgs' e'
+      return $ () :< TM.PiIntro attr impParams expParams defaultParams' e'
     _ :< TM.PiElim traceID b e impArgs expArgs defaultArgs -> do
       traceID' <- prepareTraceID traceMode traceID
       e' <- compressWithTrace traceMode e
@@ -133,8 +133,8 @@ compressType ty =
       () :< TM.TVarGlobal attr g
     _ :< TM.TyApp t args ->
       () :< TM.TyApp (compressType t) (map compressType args)
-    _ :< TM.Pi piKind impArgs expArgs defaultArgs cod ->
-      () :< TM.Pi piKind (map compressBinder impArgs) (map compressBinder expArgs) (map compressBinder defaultArgs) (compressType cod)
+    _ :< TM.Pi piKind impParams expParams defaultParams cod ->
+      () :< TM.Pi piKind (map compressBinder impParams) (map compressBinder expParams) (map compressBinder defaultParams) (compressType cod)
     _ :< TM.Data attr name es ->
       () :< TM.Data attr name (map compressType es)
     _ :< TM.Box t ->
@@ -156,13 +156,13 @@ compressBinder :: BinderF TM.Type -> BinderF (Cofree TM.TypeF ())
 compressBinder (m, k, x, t) =
   (m, k, x, compressType t)
 
-compressDefaultArg :: TraceMode -> (BinderF TM.Type, TM.Term) -> State IntSet.IntSet (BinderF TM.Type, Cofree TM.TermF ())
-compressDefaultArg traceMode (binder, e) = do
+compressDefaultParam :: TraceMode -> (BinderF TM.Type, TM.Term) -> State IntSet.IntSet (BinderF TM.Type, Cofree TM.TermF ())
+compressDefaultParam traceMode (binder, e) = do
   e' <- compressWithTrace traceMode e
   return (binder, e')
 
 compressLet :: TraceMode -> (BinderF TM.Type, TM.Term) -> State IntSet.IntSet (BinderF TM.Type, Cofree TM.TermF ())
-compressLet = compressDefaultArg
+compressLet = compressDefaultParam
 
 compressDecisionTree :: TraceMode -> DT.DecisionTree TM.Type TM.Term -> State IntSet.IntSet (DT.DecisionTree TM.Type (Cofree TM.TermF ()))
 compressDecisionTree traceMode tree = do
@@ -214,8 +214,8 @@ compressStmtKindTerm stmtKind =
       MacroInline
     Main t ->
       Main (compressType t)
-    DataIntro name dataArgs consImpArgs consArgs disc ->
-      DataIntro name (map compressBinder dataArgs) (map compressBinder consImpArgs) (map compressBinder consArgs) disc
+    DataIntro name dataParams consImpParams consParams disc ->
+      DataIntro name (map compressBinder dataParams) (map compressBinder consImpParams) (map compressBinder consParams) disc
 
 compressStmtKindType :: StmtKindType TM.Type -> StmtKindType (Cofree TM.TypeF ())
 compressStmtKindType stmtKind =
@@ -224,14 +224,14 @@ compressStmtKindType stmtKind =
       Alias
     AliasOpaque ->
       AliasOpaque
-    Data name args consInfoList isNominal ->
-      Data name (map compressBinder args) (map (second compressConsInfo) consInfoList) isNominal
+    Data name params consInfoList isNominal ->
+      Data name (map compressBinder params) (map (second compressConsInfo) consInfoList) isNominal
 
 compressConsInfo ::
   DI.ConsInfo (BinderF TM.Type) ->
   DI.ConsInfo (BinderF (Cofree TM.TypeF ()))
 compressConsInfo consInfo =
   consInfo
-    { DI.consImpArgs = map compressBinder (DI.consImpArgs consInfo),
-      DI.consArgs = map compressBinder (DI.consArgs consInfo)
+    { DI.consImpParams = map compressBinder (DI.consImpParams consInfo),
+      DI.consParams = map compressBinder (DI.consParams consInfo)
     }

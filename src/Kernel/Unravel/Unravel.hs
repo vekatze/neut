@@ -21,9 +21,9 @@ import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Foldable
 import Data.HashMap.Strict qualified as Map
+import Data.IORef (IORef, atomicModifyIORef', modifyIORef', newIORef, readIORef, writeIORef)
 import Data.IntMap.Strict qualified as IntMap
 import Data.IntSet qualified as IntSet
-import Data.IORef (IORef, atomicModifyIORef', modifyIORef', newIORef, readIORef, writeIORef)
 import Data.List (mapAccumL, sortOn)
 import Data.Maybe (mapMaybe)
 import Data.Sequence as Seq (Seq, empty, (><), (|>))
@@ -184,7 +184,10 @@ getSourceDependencyMap h sourceList = do
   sourceChildrenMap <- getSourceChildrenMap h
   return $ Map.fromList $ map (getSourceDependencies sourceChildrenMap) sourceList
 
-getSourceDependencies :: Map.HashMap (Path Abs File) [ImportItem] -> Source.Source -> (Path Abs File, [Path Abs File])
+getSourceDependencies ::
+  Map.HashMap (Path Abs File) [ImportItem] ->
+  Source.Source ->
+  (Path Abs File, [Path Abs File])
 getSourceDependencies sourceChildrenMap source = do
   let sourcePath = Source.sourceFilePath source
   let children = Map.lookupDefault [] sourcePath sourceChildrenMap
@@ -400,7 +403,11 @@ collectDependedFirst moduleHandle compressedMap (visited, reversedIDList) curren
             return dependencyModule
           Nothing ->
             Module.getModuleFilePath moduleHandle Nothing dependencyID >>= Module.readModule moduleHandle
-      (visited', reversedIDList') <- foldM (collectDependedFirst moduleHandle compressedMap) (S.insert currentID visited, reversedIDList) dependencyModuleList
+      (visited', reversedIDList') <-
+        foldM
+          (collectDependedFirst moduleHandle compressedMap)
+          (S.insert currentID visited, reversedIDList)
+          dependencyModuleList
       return (visited', currentID : reversedIDList')
 
 unravel'' :: Handle -> Target -> Source.Source -> App (A.ArtifactTime, Seq Source.Source)
@@ -465,7 +472,7 @@ unravelFoundational h t baseModule = do
   children' <- mapM (STL.shiftToLatest shiftToLatestHandle) children
   prefetchSources h t children'
   (artifactTimeList, seqList) <- mapAndUnzipM (unravel'' h t) children'
-  baseArtifactTime <- liftIO artifactTimeFromCurrentTime
+  baseArtifactTime <- liftIO $ A.inject <$> getCurrentTime
   let artifactTime = getArtifactTime artifactTimeList artifactTimeList baseArtifactTime
   let sourceList = toList $ foldl' (><) Seq.empty seqList
   reportResolvedSources h sourceList
@@ -491,7 +498,10 @@ prefetchFrontiers h t visited frontier =
     let (visited', nextFrontier) = foldl' collectUnvisitedSource (visited, []) candidates
     prefetchFrontiers h t visited' (reverse nextFrontier)
 
-collectUnvisitedSource :: (S.Set (Path Abs File), [Source.Source]) -> Source.Source -> (S.Set (Path Abs File), [Source.Source])
+collectUnvisitedSource ::
+  (S.Set (Path Abs File), [Source.Source]) ->
+  Source.Source ->
+  (S.Set (Path Abs File), [Source.Source])
 collectUnvisitedSource (visited, acc) source = do
   let path = Source.sourceFilePath source
   if S.member path visited
@@ -527,7 +537,7 @@ getItemTime' ::
   Maybe UTCTime ->
   Maybe UTCTime
 getItemTime' mTimeList mTime = do
-  case (mTime, distributeMaybe mTimeList) of
+  case (mTime, sequence mTimeList) of
     (Nothing, _) ->
       Nothing
     (_, Nothing) ->
@@ -536,16 +546,6 @@ getItemTime' mTimeList mTime = do
       if all (time >=) childTimeList
         then Just time
         else Nothing
-
-distributeMaybe :: [Maybe a] -> Maybe [a]
-distributeMaybe xs =
-  case xs of
-    [] ->
-      return []
-    my : rest -> do
-      y <- my
-      rest' <- distributeMaybe rest
-      return $ y : rest'
 
 getFreshCacheTime :: Path.Handle -> Target -> Source.Source -> App CacheTime
 getFreshCacheTime h t source = do
@@ -667,9 +667,18 @@ data GraphBuilder = GraphBuilder
     builderSize :: Int
   }
 
-buildSourceGraph :: Map.HashMap (Path Abs File) [ImportItem] -> [Source.Source] -> (SourceGraph, [(Source.Source, Int)])
+buildSourceGraph ::
+  Map.HashMap (Path Abs File) [ImportItem] ->
+  [Source.Source] ->
+  (SourceGraph, [(Source.Source, Int)])
 buildSourceGraph sourceChildrenMap roots = do
-  let emptyBuilder = GraphBuilder {builderPathIndices = Map.empty, builderPaths = IntMap.empty, builderEdges = IntMap.empty, builderSize = 0}
+  let emptyBuilder =
+        GraphBuilder
+          { builderPathIndices = Map.empty,
+            builderPaths = IntMap.empty,
+            builderEdges = IntMap.empty,
+            builderSize = 0
+          }
   let (rootBuilder, rootIndices) = mapAccumL getOrAssignIndex emptyBuilder (map Source.sourceFilePath roots)
   let builder = expandSourceGraph sourceChildrenMap rootBuilder 0
   let graph = SourceGraph {graphPaths = builderPaths builder, graphEdges = builderEdges builder}
@@ -681,8 +690,10 @@ expandSourceGraph sourceChildrenMap builder i =
     then builder
     else do
       let path = builderPaths builder IntMap.! i
-      let children = [(liveness, childSource) | ImportItem liveness childSource _ <- Map.lookupDefault [] path sourceChildrenMap]
-      let (builder', childIndices) = mapAccumL getOrAssignIndex builder (map (Source.sourceFilePath . snd) children)
+      let importItems = Map.lookupDefault [] path sourceChildrenMap
+      let children = [(liveness, childSource) | ImportItem liveness childSource _ <- importItems]
+      let childPaths = map (Source.sourceFilePath . snd) children
+      let (builder', childIndices) = mapAccumL getOrAssignIndex builder childPaths
       let edges = zipWith (\(liveness, childSource) j -> (liveness, childSource, j)) children childIndices
       let builder'' = builder' {builderEdges = IntMap.insert i edges (builderEdges builder')}
       expandSourceGraph sourceChildrenMap builder'' (i + 1)
@@ -721,7 +732,13 @@ walkReachable graph environment visit roots = do
   mapM_ (go []) roots
   liftIO $ readIORef visitedRef
 
-ensureCapabilitiesAreProvided :: Handle -> Demand -> S.Set Capability.Capability -> [Source.Source] -> Source.Source -> App ()
+ensureCapabilitiesAreProvided ::
+  Handle ->
+  Demand ->
+  S.Set Capability.Capability ->
+  [Source.Source] ->
+  Source.Source ->
+  App ()
 ensureCapabilitiesAreProvided h demand environment importChain source = do
   requireMap <- liftIO $ readIORef (sourceRequireMapRef h)
   let requiredList = Map.lookupDefault [] (Source.sourceFilePath source) requireMap
@@ -836,13 +853,3 @@ chase' axis baseMap found k i = do
           raiseError' $
             "Found a cycle in given antecedent graph:\n" <> showCycle (map MID.reify $ j' : found)
         else chase axis baseMap (j' : found) k j
-
-artifactTimeFromCurrentTime :: IO A.ArtifactTime
-artifactTimeFromCurrentTime = do
-  now <- getCurrentTime
-  return
-    A.ArtifactTime
-      { cacheTime = Just now,
-        llvmTime = Just now,
-        objectTime = Just now
-      }

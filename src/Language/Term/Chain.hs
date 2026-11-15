@@ -20,7 +20,6 @@ import Language.Common.Ident.Reify qualified as Ident
 import Language.Common.VarKind qualified as VK
 import Language.Term.Term qualified as TM
 import Logger.Hint
-import Logger.Hint.Reify (toString)
 
 chainOf :: TM.TypeEnv -> [TM.Term] -> [BinderF TM.Type]
 chainOf tenv term =
@@ -33,9 +32,10 @@ chainOf' tenv term =
       chainOfVar tenv m x
     _ :< TM.VarGlobal {} ->
       []
-    _ :< TM.PiIntro attr impArgs expArgs defaultArgs e -> do
-      let xs1 = concatMap (chainOf' tenv . snd) defaultArgs
-      let xs2 = chainOfBinder tenv (impArgs ++ expArgs ++ map fst defaultArgs ++ catMaybes [AttrL.fromAttr attr]) [e]
+    _ :< TM.PiIntro attr impParams expParams defaultParams e -> do
+      let xs1 = concatMap (chainOf' tenv . snd) defaultParams
+      let binders = impParams ++ expParams ++ map fst defaultParams ++ catMaybes [AttrL.fromAttr attr]
+      let xs2 = chainOfBinder tenv binders [e]
       xs1 ++ xs2
     _ :< TM.PiElim _ conv e impArgs expArgs defaultArgs -> do
       let xs1 = chainOf' tenv e
@@ -95,8 +95,8 @@ chainOfType tenv ty =
       []
     _ :< TM.TyApp t args ->
       concatMap (chainOfType tenv) (t : args)
-    _ :< TM.Pi _ impArgs expArgs defaultArgs t -> do
-      chainOfTypeBinder tenv (impArgs ++ expArgs ++ defaultArgs) [t]
+    _ :< TM.Pi _ impParams expParams defaultParams t -> do
+      chainOfTypeBinder tenv (impParams ++ expParams ++ defaultParams) [t]
     _ :< TM.Data _ _ es ->
       concatMap (chainOfType tenv) es
     _ :< TM.Box t ->
@@ -162,7 +162,7 @@ chainOfCase tenv m decisionCase = do
       let (dataTerms, dataTypes) = unzip dataArgs
       let xs1 = concatMap (chainOfType tenv) dataTerms
       let xs2 = concatMap (chainOfType tenv) dataTypes
-      let xs3 = chainOfDecisionTree' tenv m (consImpArgs ++ consArgs) cont
+      let xs3 = chainOfDecisionTree' tenv m (consImpBinders ++ consBinders) cont
       xs1 ++ xs2 ++ xs3
 
 chainOfCaseWithoutCont :: TM.TypeEnv -> DT.Case TM.Type TM.Term -> [BinderF TM.Type]
@@ -187,4 +187,4 @@ chainOfVar tenv m x = do
       let xts = chainOfType tenv t
       xts ++ [(m, VK.normal, x, t)]
     _ ->
-      error $ T.unpack $ "[critical] chainOfVar: " <> Ident.toText' x <> "\n" <> T.pack (toString m)
+      error $ T.unpack $ "[critical] chainOfVar: " <> Ident.toText' x <> "\n" <> T.pack (showFilePos m)

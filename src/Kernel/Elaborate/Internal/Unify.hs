@@ -24,10 +24,9 @@ import Kernel.Elaborate.Internal.Handle.Hole qualified as Hole
 import Kernel.Elaborate.Internal.Handle.WeakTypeDef qualified as WeakTypeDef
 import Kernel.Elaborate.Stuck qualified as Stuck
 import Kernel.Elaborate.TypeHoleSubst qualified as THS
-import Language.Common.ArgNum qualified as AN
+import Language.Common.Arity qualified as Arity
 import Language.Common.Attr.VarGlobal qualified as AttrVG
 import Language.Common.Binder
-import Language.Common.CreateSymbol qualified as Gensym
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.HoleID qualified as HID
 import Language.Common.Ident
@@ -36,11 +35,9 @@ import Language.Common.VarKind qualified as VK
 import Language.WeakTerm.Eq qualified as WT
 import Language.WeakTerm.FreeVars
 import Language.WeakTerm.Holes
-import Language.WeakTerm.Subst (Subst, SubstEntry (..))
 import Language.WeakTerm.Subst qualified as Subst
 import Language.WeakTerm.ToText (numberHoles, toTextTypeNumbered)
 import Language.WeakTerm.WeakTerm qualified as WT
-import Logger.Hint
 import Logger.Log qualified as L
 import Logger.LogLevel qualified as L
 
@@ -58,8 +55,6 @@ unifyCurrentConstraints h = do
   susList <- liftIO $ Constraint.getSuspendedConstraints (constraintHandle h)
   cs <- liftIO $ Constraint.get (constraintHandle h)
   susList' <- simplify h susList $ zip cs cs
-  -- liftIO $ putStrLn "remaining:"
-  -- liftIO $ putStrLn $ T.unpack $ C.showSuspendedConstraints susList'
   liftIO $ Constraint.set (constraintHandle h) []
   liftIO $ Constraint.setSuspendedConstraints (constraintHandle h) susList'
   liftIO $ Hole.getTypeSubst (holeHandle h)
@@ -85,10 +80,9 @@ constraintToRemark h sub c = do
 
 fillAsMuchAsPossible :: Handle -> THS.TypeHoleSubst -> WT.WeakType -> App WT.WeakType
 fillAsMuchAsPossible h sub e = do
-  e' <- reduceType h e
-  if THS.fillableType e' sub
-    then fillType h sub e' >>= fillAsMuchAsPossible h sub
-    else return e'
+  if THS.fillableType e sub
+    then fillType h sub e >>= fillAsMuchAsPossible h sub
+    else return e
 
 constructErrorMessageEq :: Handle -> WT.WeakType -> WT.WeakType -> T.Text
 constructErrorMessageEq h found expected = do
@@ -126,8 +120,8 @@ collectGlobalDDs ty =
       [dd]
     _ :< WT.TyApp t args ->
       collectGlobalDDs t ++ concatMap collectGlobalDDs args
-    _ :< WT.Pi _ impArgs expArgs defaultArgs cod ->
-      concatMap (\(_, _, _, t) -> collectGlobalDDs t) (impArgs ++ expArgs ++ defaultArgs)
+    _ :< WT.Pi _ impParams expParams defaultParams cod ->
+      concatMap (\(_, _, _, t) -> collectGlobalDDs t) (impParams ++ expParams ++ defaultParams)
         ++ collectGlobalDDs cod
     _ :< WT.Data _ dd args ->
       dd : concatMap collectGlobalDDs args
@@ -165,27 +159,21 @@ simplify h susList constraintList =
       return susList
     headConstraint@(C.Eq expected actual, orig) : cs -> do
       detectPossibleInfiniteLoop h orig
-      expected' <- reduceType h expected
-      actual' <- reduceType h actual
-      if WT.eqType expected' actual'
+      if WT.eqType expected actual
         then simplify h susList cs
         else do
-          case (expected', actual') of
-            (m1 :< WT.Pi piKind1 impArgs1 expArgs1 defaultArgs1 cod1, m2 :< WT.Pi piKind2 impArgs2 expArgs2 defaultArgs2 cod2)
+          case (expected, actual) of
+            (_ :< WT.Pi piKind1 impParams1 expParams1 defaultParams1 cod1, _ :< WT.Pi piKind2 impParams2 expParams2 defaultParams2 cod2)
               | piKind1 == piKind2,
                 -- `source` is part of the type, and unification on it is exact.
-                map isSourceBinder expArgs1 == map isSourceBinder expArgs2,
-                map binderTypeAttrs impArgs1 == map binderTypeAttrs impArgs2,
-                Just impBinders <- zipBinders impArgs1 impArgs2,
-                Just defaultBinders <- zipDefaultBinders defaultArgs1 defaultArgs2,
-                length expArgs1 == length expArgs2 -> do
-                  codBinder1 <- liftIO $ asWeakBinder h m1 cod1
-                  codBinder2 <- liftIO $ asWeakBinder h m2 cod2
-                  let (impBinders1, impBinders2) = unzip impBinders
-                  let (defaultBinders1, defaultBinders2) = unzip defaultBinders
-                  let binder1 = impBinders1 ++ expArgs1 ++ defaultBinders1 ++ [codBinder1]
-                  let binder2 = impBinders2 ++ expArgs2 ++ defaultBinders2 ++ [codBinder2]
-                  cs' <- liftIO $ simplifyBinder h orig binder1 binder2
+                map isSourceBinder expParams1 == map isSourceBinder expParams2,
+                map binderTypeAttrs impParams1 == map binderTypeAttrs impParams2,
+                length impParams1 == length impParams2,
+                sameDefaultParams defaultParams1 defaultParams2,
+                length expParams1 == length expParams2 -> do
+                  let types1 = map (\(_, _, _, t) -> t) (expParams1 ++ defaultParams1) ++ [cod1]
+                  let types2 = map (\(_, _, _, t) -> t) (expParams2 ++ defaultParams2) ++ [cod2]
+                  cs' <- liftIO $ simplifyBinder h orig (impParams1, types1) (impParams2, types2)
                   simplify h susList $ cs' ++ cs
             (_ :< WT.Data _ name1 es1, _ :< WT.Data _ name2 es2)
               | name1 == name2,
@@ -319,39 +307,38 @@ resolveHole h susList hole1 xs e2' cs = do
 simplifyBinder ::
   Handle ->
   C.Constraint ->
-  [BinderF WT.WeakType] ->
-  [BinderF WT.WeakType] ->
+  ([BinderF WT.WeakType], [WT.WeakType]) ->
+  ([BinderF WT.WeakType], [WT.WeakType]) ->
   IO [(C.Constraint, C.Constraint)]
-simplifyBinder h orig =
-  simplifyBinder' h orig IntMap.empty
+simplifyBinder h orig (impParams1, types1) (impParams2, types2) = do
+  (impConstraints, sub) <- simplifyTypeBinders h orig IntMap.empty impParams1 impParams2
+  constraints <- forM (zip types1 types2) $ \(t1, t2) -> do
+    t2' <- Subst.substType (substHandle h) sub t2
+    return (C.Eq t1 t2', orig)
+  return $ impConstraints ++ constraints
 
-simplifyBinder' ::
+simplifyTypeBinders ::
   Handle ->
   C.Constraint ->
-  Subst ->
+  Subst.TypeSubst ->
   [BinderF WT.WeakType] ->
   [BinderF WT.WeakType] ->
-  IO [(C.Constraint, C.Constraint)]
-simplifyBinder' h orig sub args1 args2 =
-  case (args1, args2) of
+  IO ([(C.Constraint, C.Constraint)], Subst.TypeSubst)
+simplifyTypeBinders h orig sub params1 params2 =
+  case (params1, params2) of
     ((m1, _, x1, t1) : xts1, (_, _, x2, t2) : xts2) -> do
       t2' <- Subst.substType (substHandle h) sub t2
-      let sub' = IntMap.insert (Ident.toInt x2) (Type (m1 :< WT.TVar x1)) sub
-      rest <- simplifyBinder' h orig sub' xts1 xts2
-      return $ (C.Eq t1 t2', orig) : rest
+      let sub' = IntMap.insert (Ident.toInt x2) (Subst.TypeValue (m1 :< WT.TVar x1)) sub
+      (rest, sub'') <- simplifyTypeBinders h orig sub' xts1 xts2
+      return ((C.Eq t1 t2', orig) : rest, sub'')
     _ ->
-      return []
-
-asWeakBinder :: Handle -> Hint -> WT.WeakType -> IO (BinderF WT.WeakType)
-asWeakBinder h m t = do
-  x <- Gensym.newIdentFromText (gensymHandle h) "hole"
-  return (m, VK.normal, x, t)
+      return ([], sub)
 
 asAppliedTypeConstructor :: WT.WeakType -> Maybe (WT.WeakType, [WT.WeakType])
 asAppliedTypeConstructor t =
   case t of
     m :< WT.Data _ name args ->
-      Just (m :< WT.TVarGlobal (AttrVG.new (AN.fromInt (length args))) name, args)
+      Just (m :< WT.TVarGlobal (AttrVG.new (Arity.fromInt (length args))) name, args)
     _ ->
       Nothing
 
@@ -399,22 +386,10 @@ binderTypeAttrs :: BinderF WT.WeakType -> [VK.TypeAttr]
 binderTypeAttrs (_, k, _, _) =
   VK.attrList k
 
-zipBinders :: [BinderF WT.WeakType] -> [BinderF WT.WeakType] -> Maybe [(BinderF WT.WeakType, BinderF WT.WeakType)]
-zipBinders args1 args2 =
-  if length args1 == length args2
-    then Just $ zip args1 args2
-    else Nothing
-
-zipDefaultBinders ::
-  [BinderF WT.WeakType] ->
-  [BinderF WT.WeakType] ->
-  Maybe [(BinderF WT.WeakType, BinderF WT.WeakType)]
-zipDefaultBinders defaultArgs1 defaultArgs2 = do
-  defaultBinders <- zipBinders defaultArgs1 defaultArgs2
-  forM defaultBinders $ \(binder1@(_, k1, x1, _), binder2@(_, k2, x2, _)) -> do
-    guard $ k1 == k2
-    guard $ Ident.toText x1 == Ident.toText x2
-    return (binder1, binder2)
+sameDefaultParams :: [BinderF WT.WeakType] -> [BinderF WT.WeakType] -> Bool
+sameDefaultParams defaultParams1 defaultParams2 =
+  length defaultParams1 == length defaultParams2
+    && and (zipWith (\(_, k1, x1, _) (_, k2, x2, _) -> k1 == k2 && Ident.toText x1 == Ident.toText x2) defaultParams1 defaultParams2)
 
 increment :: Handle -> Handle
 increment h = do

@@ -4,14 +4,14 @@ module Language.RawTerm.RawTerm.ToDoc
   ( toDoc,
     typeToDoc,
     nameToDoc,
-    decodeArgs',
-    decodeArgsMaybe,
-    decodeConsArgsMaybe,
+    decodeParams',
+    decodeParamsMaybe,
+    decodeConsParamsMaybe,
     decodeImpParams,
     decodeDef,
     decodeTypeDef,
     decGeist,
-    decTypeGeist,
+    decGeistSimple,
     attachComment,
   )
 where
@@ -22,6 +22,7 @@ import Data.Text qualified as T
 import Language.Common.Attr.Data qualified as AttrD
 import Language.Common.CallSite (IsDestCall, IsSourceArg)
 import Language.Common.CodeVariant qualified as CV
+import Language.Common.Const (isHoleName)
 import Language.Common.DataInfo (FieldHint (..))
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.ExternalName qualified as EN
@@ -91,7 +92,9 @@ toDoc term =
           PI.inject $ attachComment c $ SE.decodeHorizontallyIfPossible $ fmap typeToDoc impArgs
         ]
     _ :< PiElimByKey name c mImpArgs isDestCall c2 kvs restArg -> do
-      let calleeDoc = attachComment (map toLineComment $ c ++ c2) $ D.join [nameToDoc name, destMarkToDoc isDestCall]
+      let calleeDoc =
+            attachComment (map toLineComment $ c ++ c2) $
+              D.join [nameToDoc name, destMarkToDoc isDestCall]
       let keyDoc = decPiElimKeyWithRest kvs restArg
       case mImpArgs of
         Nothing ->
@@ -184,7 +187,7 @@ toDoc term =
       D.join
         [ PI.arrange $
             [ PI.beforeBareSeries $ D.text keyword,
-              PI.bareSeries $ D.join [attachComment c1 $ letArgToDoc mxt, C.asSuffix c2]
+              PI.bareSeries $ D.join [attachComment c1 $ letBinderToDoc mxt, C.asSuffix c2]
             ]
               ++ decodeNoeticVarList noeticVarList,
           PI.arrange
@@ -228,7 +231,7 @@ toDoc term =
       D.join
         [ PI.arrange
             [ PI.beforeBareSeries $ D.text $ RT.decodeLetKind letKind,
-              PI.bareSeries $ D.join [attachComment c1 $ letArgToDoc mxt, C.asSuffix c2]
+              PI.bareSeries $ D.join [attachComment c1 $ letBinderToDoc mxt, C.asSuffix c2]
             ],
           PI.arrange
             [ PI.beforeBareSeries $ D.text "=",
@@ -241,7 +244,7 @@ toDoc term =
       D.join
         [ PI.arrange $
             [ PI.beforeBareSeries $ D.text $ RT.decodeLetKind letKind,
-              PI.bareSeries $ D.join [attachComment c1 $ letArgToDoc mxt, C.asSuffix c2]
+              PI.bareSeries $ D.join [attachComment c1 $ letBinderToDoc mxt, C.asSuffix c2]
             ]
               ++ decodeNoeticVarList noeticVarList,
           PI.arrange
@@ -263,7 +266,7 @@ toDoc term =
       D.join
         [ PI.arrange $
             [ PI.beforeBareSeries $ D.text "pin",
-              PI.bareSeries $ D.join [attachComment c1 $ piIntroArgToDoc mxt, C.asSuffix c2]
+              PI.bareSeries $ D.join [attachComment c1 $ piIntroParamToDoc mxt, C.asSuffix c2]
             ]
               ++ decodeNoeticVarList noeticVarList,
           PI.arrange
@@ -291,117 +294,72 @@ toDoc term =
     _ :< Magic c magic -> do
       case magic of
         Cast c1 from to e mc -> do
-          let args =
-                attachOptionalComment
-                  mc
-                  ( SE.fromListWithComment
-                      (Just SE.Paren)
-                      SE.Comma
-                      [ RT.mapEL typeToDoc from,
-                        RT.mapEL typeToDoc to,
-                        RT.mapEL toDoc e
-                      ]
-                  )
           D.join
             [ attachComment (c ++ c1) $ D.text "magic cast",
-              SE.decode args
+              decodeMagicArgs
+                mc
+                [ RT.mapEL typeToDoc from,
+                  RT.mapEL typeToDoc to,
+                  RT.mapEL toDoc e
+                ]
             ]
         Store c1 t value pointer mc -> do
           D.join
             [ attachComment (c ++ c1) $ D.text "magic store",
-              SE.decode $
-                attachOptionalComment mc $
-                  SE.fromListWithComment
-                    (Just SE.Paren)
-                    SE.Comma
-                    [ RT.mapEL typeToDoc t,
-                      RT.mapEL toDoc value,
-                      RT.mapEL toDoc pointer
-                    ]
+              decodeMagicArgs
+                mc
+                [ RT.mapEL typeToDoc t,
+                  RT.mapEL toDoc value,
+                  RT.mapEL toDoc pointer
+                ]
             ]
         Load c1 t pointer mc -> do
           D.join
             [ attachComment (c ++ c1) $ D.text "magic load",
-              SE.decode $
-                attachOptionalComment mc $
-                  SE.fromListWithComment
-                    (Just SE.Paren)
-                    SE.Comma
-                    [ RT.mapEL typeToDoc t,
-                      RT.mapEL toDoc pointer
-                    ]
+              decodeMagicArgs
+                mc
+                [ RT.mapEL typeToDoc t,
+                  RT.mapEL toDoc pointer
+                ]
             ]
         Shift c1 pointer offset mc -> do
           D.join
             [ attachComment (c ++ c1) $ D.text "magic shift",
-              SE.decode $
-                attachOptionalComment mc $
-                  SE.fromListWithComment
-                    (Just SE.Paren)
-                    SE.Comma
-                    [RT.mapEL toDoc pointer, RT.mapEL toDoc offset]
+              decodeMagicArgs mc [RT.mapEL toDoc pointer, RT.mapEL toDoc offset]
             ]
         Alloca c1 t size mc -> do
           D.join
             [ attachComment (c ++ c1) $ D.text "magic alloca",
-              SE.decode $
-                attachOptionalComment mc $
-                  SE.fromListWithComment
-                    (Just SE.Paren)
-                    SE.Comma
-                    [ RT.mapEL typeToDoc t,
-                      RT.mapEL toDoc size
-                    ]
+              decodeMagicArgs
+                mc
+                [ RT.mapEL typeToDoc t,
+                  RT.mapEL toDoc size
+                ]
             ]
         Calloc c1 num size mc -> do
           D.join
             [ attachComment (c ++ c1) $ D.text "magic calloc",
-              SE.decode $
-                attachOptionalComment mc $
-                  SE.fromListWithComment
-                    (Just SE.Paren)
-                    SE.Comma
-                    [RT.mapEL toDoc num, RT.mapEL toDoc size]
+              decodeMagicArgs mc [RT.mapEL toDoc num, RT.mapEL toDoc size]
             ]
         Malloc c1 size mc -> do
           D.join
             [ attachComment (c ++ c1) $ D.text "magic malloc",
-              SE.decode $
-                attachOptionalComment mc $
-                  SE.fromListWithComment
-                    (Just SE.Paren)
-                    SE.Comma
-                    [RT.mapEL toDoc size]
+              decodeMagicArgs mc [RT.mapEL toDoc size]
             ]
         MallocOpaque c1 size mc -> do
           D.join
             [ attachComment (c ++ c1) $ D.text "magic malloc-opaque",
-              SE.decode $
-                attachOptionalComment mc $
-                  SE.fromListWithComment
-                    (Just SE.Paren)
-                    SE.Comma
-                    [RT.mapEL toDoc size]
+              decodeMagicArgs mc [RT.mapEL toDoc size]
             ]
         Realloc c1 ptr size mc -> do
           D.join
             [ attachComment (c ++ c1) $ D.text "magic realloc",
-              SE.decode $
-                attachOptionalComment mc $
-                  SE.fromListWithComment
-                    (Just SE.Paren)
-                    SE.Comma
-                    [RT.mapEL toDoc ptr, RT.mapEL toDoc size]
+              decodeMagicArgs mc [RT.mapEL toDoc ptr, RT.mapEL toDoc size]
             ]
         Free c1 ptr mc -> do
           D.join
             [ attachComment (c ++ c1) $ D.text "magic free",
-              SE.decode $
-                attachOptionalComment mc $
-                  SE.fromListWithComment
-                    (Just SE.Paren)
-                    SE.Comma
-                    [RT.mapEL toDoc ptr]
+              decodeMagicArgs mc [RT.mapEL toDoc ptr]
             ]
         External c1 _ funcName c2 args varArgsOrNone -> do
           let args' = SE.decode $ fmap toDoc args
@@ -427,78 +385,66 @@ toDoc term =
         CallType c1 func arg1 arg2 arg3 mc -> do
           D.join
             [ attachComment (c ++ c1) $ D.text "magic call-type",
-              SE.decode $
-                attachOptionalComment mc $
-                  SE.fromListWithComment
-                    (Just SE.Paren)
-                    SE.Comma
-                    [ RT.mapEL toDoc func,
-                      RT.mapEL toDoc arg1,
-                      RT.mapEL toDoc arg2,
-                      RT.mapEL toDoc arg3
-                    ]
+              decodeMagicArgs
+                mc
+                [ RT.mapEL toDoc func,
+                  RT.mapEL toDoc arg1,
+                  RT.mapEL toDoc arg2,
+                  RT.mapEL toDoc arg3
+                ]
             ]
         InspectType (c1, (e, c2)) mc -> do
           D.join
             [ attachComment c $ D.text "magic inspect-type",
-              SE.decode $ attachOptionalComment mc $ SE.fromListWithComment (Just SE.Paren) SE.Comma [(c1, (typeToDoc e, c2))]
+              decodeMagicArgs mc [(c1, (typeToDoc e, c2))]
             ]
         EqType (c1, (t1, c2)) (c3, (t2, c4)) mc -> do
           D.join
             [ attachComment c $ D.text "magic eq-type",
-              SE.decode $
-                attachOptionalComment mc $
-                  SE.fromListWithComment
-                    (Just SE.Paren)
-                    SE.Comma
-                    [ (c1, (typeToDoc t1, c2)),
-                      (c3, (typeToDoc t2, c4))
-                    ]
+              decodeMagicArgs
+                mc
+                [ (c1, (typeToDoc t1, c2)),
+                  (c3, (typeToDoc t2, c4))
+                ]
             ]
         ShowType c1 (c2, (typeExpr, c3)) mc -> do
           D.join
             [ attachComment (c ++ c1) $ D.text "magic show-type",
-              SE.decode $ attachOptionalComment mc $ SE.fromListWithComment (Just SE.Paren) SE.Comma [(c2, (typeToDoc typeExpr, c3))]
+              decodeMagicArgs mc [(c2, (typeToDoc typeExpr, c3))]
             ]
         TextCons c1 (c2, (rune, c3)) (c4, (text, c5)) mc -> do
           D.join
             [ attachComment (c ++ c1) $ D.text "magic text-cons",
-              SE.decode $
-                attachOptionalComment mc $
-                  SE.fromListWithComment
-                    (Just SE.Paren)
-                    SE.Comma
-                    [ (c2, (toDoc rune, c3)),
-                      (c4, (toDoc text, c5))
-                    ]
+              decodeMagicArgs
+                mc
+                [ (c2, (toDoc rune, c3)),
+                  (c4, (toDoc text, c5))
+                ]
             ]
         TextUncons c1 (c2, (text, c3)) mc -> do
           D.join
             [ attachComment (c ++ c1) $ D.text "magic text-uncons",
-              SE.decode $ attachOptionalComment mc $ SE.fromListWithComment (Just SE.Paren) SE.Comma [(c2, (toDoc text, c3))]
+              decodeMagicArgs mc [(c2, (toDoc text, c3))]
             ]
         MakeSwitch c1 key fallback clauses mc -> do
           D.join
             [ attachComment (c ++ c1) $ D.text "magic make-switch",
-              SE.decode $
-                attachOptionalComment mc $
-                  SE.fromListWithComment
-                    (Just SE.Paren)
-                    SE.Comma
-                    [ RT.mapEL toDoc key,
-                      RT.mapEL toDoc fallback,
-                      RT.mapEL toDoc clauses
-                    ]
+              decodeMagicArgs
+                mc
+                [ RT.mapEL toDoc key,
+                  RT.mapEL toDoc fallback,
+                  RT.mapEL toDoc clauses
+                ]
             ]
         FreeVariables c1 (c2, (code, c3)) mc -> do
           D.join
             [ attachComment (c ++ c1) $ D.text "magic free-variables",
-              SE.decode $ attachOptionalComment mc $ SE.fromListWithComment (Just SE.Paren) SE.Comma [(c2, (toDoc code, c3))]
+              decodeMagicArgs mc [(c2, (toDoc code, c3))]
             ]
         CompileError c1 (c2, (msg, c3)) mc -> do
           D.join
             [ attachComment (c ++ c1) $ D.text "magic compile-error",
-              SE.decode $ attachOptionalComment mc $ SE.fromListWithComment (Just SE.Paren) SE.Comma [(c2, (toDoc msg, c3))]
+              decodeMagicArgs mc [(c2, (toDoc msg, c3))]
             ]
         GetOriginFileName c1 _c2 -> do
           D.join
@@ -574,10 +520,10 @@ typeToDoc ty =
         [ PI.inject $ typeToDoc t,
           PI.inject $ attachComment c $ SE.decodeHorizontallyIfPossible $ fmap typeToDoc args
         ]
-    _ :< Pi (impArgs, c1) (expArgs, c3) (defaultArgs, c2) piKind c cod _ -> do
-      let hasDefault = not (SE.isEmpty defaultArgs)
-      let expParamsBase = SE.decode $ fmap (piArgToDoc (anyNamedBinder $ SE.extract expArgs)) expArgs
-      let defaultParamsBase = decodeDefaultBinders defaultArgs
+    _ :< Pi (impParams, c1) (expParams, c3) (defaultParams, c2) piKind c cod _ -> do
+      let hasDefault = not (SE.isEmpty defaultParams)
+      let expParamsBase = SE.decode $ fmap (piParamToDoc (anyNamedBinder $ SE.extract expParams)) expParams
+      let defaultParamsBase = decodeDefaultParamBinders defaultParams
       let expParamsWithImp = attachComment c1 expParamsBase
       let defaultParamsWithExpComment =
             if hasDefault
@@ -586,7 +532,7 @@ typeToDoc ty =
       let cArrow =
             (if hasDefault then [] else c3) ++ c2
       PI.arrange
-        [ PI.container $ decodeImpParams impArgs,
+        [ PI.container $ decodeImpParams impParams,
           PI.container expParamsWithImp,
           PI.container defaultParamsWithExpComment,
           PI.delimiter $ attachComment cArrow $ D.text (codArrow (isDestPassingPiKind piKind)),
@@ -653,7 +599,7 @@ decodeTypeDef nameDecoder keyword c def = do
     D.join
       [ D.text keyword,
         D.text " ",
-        decTypeGeist nameDecoder $ RT.typeGeist def,
+        decGeistSimple nameDecoder $ RT.typeGeist def,
         D.text " ",
         decodeBlock (RT.typeLeadingComment def, (typeToDoc $ RT.typeBody def, RT.typeTrailingComment def))
       ]
@@ -687,8 +633,8 @@ decodeBlock (c1, (body, c2)) = do
       D.text "}"
     ]
 
-decodeArgs :: Args RawType -> D.Doc
-decodeArgs (series, c) = do
+decodeParams :: Params RawType -> D.Doc
+decodeParams (series, c) = do
   if null c
     then decodeBinder series
     else
@@ -698,28 +644,28 @@ decodeArgs (series, c) = do
           D.line
         ]
 
-decodeArgsMaybe :: Maybe (SE.Series (RawBinder RawType)) -> D.Doc
-decodeArgsMaybe mArgs = do
-  case mArgs of
+decodeParamsMaybe :: Maybe (SE.Series (RawBinder RawType)) -> D.Doc
+decodeParamsMaybe mParams = do
+  case mParams of
     Nothing ->
       D.Nil
-    Just args ->
-      decodeArgs (args, [])
+    Just params ->
+      decodeParams (params, [])
 
-decodeConsArgsMaybe :: Maybe (SE.Series (FieldHint, RawBinder RawType)) -> D.Doc
-decodeConsArgsMaybe mArgs =
-  case mArgs of
+decodeConsParamsMaybe :: Maybe (SE.Series (FieldHint, RawBinder RawType)) -> D.Doc
+decodeConsParamsMaybe mParams =
+  case mParams of
     Nothing ->
       D.Nil
-    Just args ->
-      SE.decode $ fmap (consArgToDoc (anyNamedBinder $ map snd $ SE.extract args)) args
+    Just params ->
+      SE.decode $ fmap (consParamToDoc (anyNamedBinder $ map snd $ SE.extract params)) params
 
-consArgToDoc :: Bool -> (FieldHint, RawBinder RawType) -> D.Doc
-consArgToDoc anyNamed (_, binder) =
-  piArgToDoc anyNamed binder
+consParamToDoc :: Bool -> (FieldHint, RawBinder RawType) -> D.Doc
+consParamToDoc anyNamed (_, binder) =
+  piParamToDoc anyNamed binder
 
-decodeArgs' :: Args RawType -> D.Doc
-decodeArgs' (series, c) = do
+decodeParams' :: Params RawType -> D.Doc
+decodeParams' (series, c) = do
   if null c
     then decodeBinder' series
     else
@@ -730,15 +676,15 @@ decodeArgs' (series, c) = do
 
 decodeBinder :: SE.Series (RawBinder RawType) -> D.Doc
 decodeBinder series =
-  SE.decode $ fmap (piArgToDoc (anyNamedBinder $ SE.extract series)) series
+  SE.decode $ fmap (piParamToDoc (anyNamedBinder $ SE.extract series)) series
 
 anyNamedBinder :: [RawBinder RawType] -> Bool
 anyNamedBinder =
-  any (\(_, _, x, _, _, _) -> not (isHole x))
+  any (\(_, _, x, _, _, _) -> not (isHoleName x))
 
 decodeBinder' :: SE.Series (RawBinder RawType) -> D.Doc
 decodeBinder' series =
-  SE.decode $ fmap piIntroArgToDoc series
+  SE.decode $ fmap piIntroParamToDoc series
 
 decodeNoeticVar :: (Hint, VK.VarKind, RawIdent) -> D.Doc
 decodeNoeticVar (_, k, v) =
@@ -759,17 +705,17 @@ decodeQuoteVarList vs =
     then []
     else [PI.horizontal $ SE.decode $ fmap decodeNoeticVar vs]
 
-piArgToDoc :: Bool -> RawBinder RawType -> D.Doc
-piArgToDoc anyNamed (m, k, x, c1, c2, t) = do
+piParamToDoc :: Bool -> RawBinder RawType -> D.Doc
+piParamToDoc anyNamed (m, k, x, c1, c2, t) = do
   let t' = typeToDoc t
-  if isHole x && not anyNamed
+  if isHoleName x && not anyNamed
     then attachComment (c1 ++ c2) $ prefixVarKind k t'
     else do
-      let nameDoc = if isHole x then D.text "_" else D.text x
+      let nameDoc = if isHoleName x then D.text "_" else D.text x
       paramToDoc' (m, prefixVarKind k nameDoc, c1, c2, t')
 
-piIntroArgToDoc :: RawBinder RawType -> D.Doc
-piIntroArgToDoc (m, k, x, c1, c2, t) = do
+piIntroParamToDoc :: RawBinder RawType -> D.Doc
+piIntroParamToDoc (m, k, x, c1, c2, t) = do
   let x' = prefixVarKind k $ nameToDoc $ N.Bare x
   paramToDoc (m, x', c1, c2, t)
 
@@ -778,8 +724,8 @@ defParamToDoc (m, k, x, c1, c2, t) = do
   let x' = prefixVarKind k $ nameToDoc $ N.Bare x
   paramToDoc' (m, x', c1, c2, typeToDoc t)
 
-piIntroArgWithDefaultToDoc :: (RawBinder RawType, RawTerm) -> D.Doc
-piIntroArgWithDefaultToDoc ((m, k, x, c1, c2, t), defaultValue) = do
+piIntroParamWithDefaultToDoc :: (RawBinder RawType, RawTerm) -> D.Doc
+piIntroParamWithDefaultToDoc ((m, k, x, c1, c2, t), defaultValue) = do
   let x' = prefixVarKind k $ nameToDoc $ N.Bare x
   let baseParam = paramToDoc (m, x', c1, c2, t)
   D.join [baseParam, D.text " := ", toDoc defaultValue]
@@ -830,18 +776,18 @@ decGeist
   nameDecoder
   ( RT.RawGeist
       { name = (name, c0),
-        impArgs = (impArgs, c1),
-        defaultArgs = (defaultArgs, c2),
-        expArgs = (expArgs, c3),
+        impParams = (impParams, c1),
+        defaultParams = (defaultParams, c2),
+        expParams = (expParams, c3),
         cod = (c4, cod),
         isConstLike,
         isDestPassing
       }
     ) = do
-    let hasExp = not isConstLike || not (SE.isEmpty expArgs)
-    let hasDefault = not (SE.isEmpty defaultArgs)
-    let expParamsBase = decodeDefParams isConstLike expArgs
-    let defaultParamsBase = decodeDefaultParams defaultArgs
+    let hasExp = not isConstLike || not (SE.isEmpty expParams)
+    let hasDefault = not (SE.isEmpty defaultParams)
+    let expParamsBase = decodeDefParams isConstLike expParams
+    let defaultParamsBase = decodeDefaultParams defaultParams
     let expParamsWithImp =
           if hasExp
             then attachComment c1 expParamsBase
@@ -866,7 +812,7 @@ decGeist
             else PI.delimiterArrow $ attachComment cArrow' $ D.text (codArrow isDestPassing)
     PI.arrange
       [ PI.inject $ attachComment c0 $ nameDecoder name,
-        PI.inject $ decodeImpParams impArgs,
+        PI.inject $ decodeImpParams impParams,
         PI.inject expParamsWithImp,
         PI.inject defaultParamsWithExpComment,
         codDelim,
@@ -878,16 +824,16 @@ decGeistSimple
   nameDecoder
   ( RT.RawGeist
       { name = (name, c0),
-        impArgs = (impArgs, c1),
-        defaultArgs = (defaultArgs, c2),
-        expArgs = (expArgs, c3),
+        impParams = (impParams, c1),
+        defaultParams = (defaultParams, c2),
+        expParams = (expParams, c3),
         isConstLike
       }
     ) = do
-    let hasExp = not isConstLike || not (SE.isEmpty expArgs)
-    let hasDefault = not (SE.isEmpty defaultArgs)
-    let expParamsBase = decodeExpParams isConstLike expArgs
-    let defaultParamsBase = decodeDefaultParams defaultArgs
+    let hasExp = not isConstLike || not (SE.isEmpty expParams)
+    let hasDefault = not (SE.isEmpty defaultParams)
+    let expParamsBase = decodeExpParams isConstLike expParams
+    let defaultParamsBase = decodeDefaultParams defaultParams
     let expParamsWithImp =
           if hasExp
             then attachComment c1 expParamsBase
@@ -906,45 +852,7 @@ decGeistSimple
             else attachComment (c3 ++ c2) expParamsWithImp
     PI.arrange
       [ PI.inject $ attachComment c0 $ nameDecoder name,
-        PI.inject $ decodeImpParams impArgs,
-        PI.inject expParamsWithTrailing,
-        PI.inject defaultParamsWithTrailing
-      ]
-
-decTypeGeist :: (a -> D.Doc) -> RT.RawGeist a -> D.Doc
-decTypeGeist
-  nameDecoder
-  ( RT.RawGeist
-      { name = (name, c0),
-        impArgs = (impArgs, c1),
-        defaultArgs = (defaultArgs, c2),
-        expArgs = (expArgs, c3),
-        isConstLike
-      }
-    ) = do
-    let hasExp = not isConstLike || not (SE.isEmpty expArgs)
-    let hasDefault = not (SE.isEmpty defaultArgs)
-    let expParamsBase = decodeExpParams isConstLike expArgs
-    let defaultParamsBase = decodeDefaultParams defaultArgs
-    let expParamsWithImp =
-          if hasExp
-            then attachComment c1 expParamsBase
-            else expParamsBase
-    let defaultParamsWithImp =
-          if not hasExp && hasDefault
-            then attachComment c1 defaultParamsBase
-            else defaultParamsBase
-    let defaultParamsWithTrailing =
-          if hasDefault
-            then attachComment (c3 ++ c2) defaultParamsWithImp
-            else defaultParamsWithImp
-    let expParamsWithTrailing =
-          if hasDefault
-            then expParamsWithImp
-            else attachComment (c3 ++ c2) expParamsWithImp
-    PI.arrange
-      [ PI.inject $ attachComment c0 $ nameDecoder name,
-        PI.inject $ decodeImpParams impArgs,
+        PI.inject $ decodeImpParams impParams,
         PI.inject expParamsWithTrailing,
         PI.inject defaultParamsWithTrailing
       ]
@@ -957,27 +865,27 @@ decodeImpParams impParams =
 
 decodeImpVar :: RawBinder RawType -> D.Doc
 decodeImpVar (m, k, x, c1, c2, t) = do
-  if isHole x
+  if isHoleName x
     then attachComment (c1 ++ c2) (typeToDoc t)
     else paramToDoc (m, prefixVarKind k $ D.text x, c1, c2, t)
 
-decodeDefaultBinders :: SE.Series (RawBinder RawType) -> D.Doc
-decodeDefaultBinders defaultBinders =
-  if SE.isEmpty defaultBinders
+decodeDefaultParamBinders :: SE.Series (RawBinder RawType) -> D.Doc
+decodeDefaultParamBinders defaultParamBinders =
+  if SE.isEmpty defaultParamBinders
     then D.Nil
-    else SE.decode $ fmap piIntroArgToDoc defaultBinders
+    else SE.decode $ fmap piIntroParamToDoc defaultParamBinders
 
 decodeDefaultParams :: SE.Series (RawBinder RawType, RawTerm) -> D.Doc
 decodeDefaultParams defaultParams =
   if SE.isEmpty defaultParams
     then D.Nil
-    else SE.decode $ fmap piIntroArgWithDefaultToDoc defaultParams
+    else SE.decode $ fmap piIntroParamWithDefaultToDoc defaultParams
 
 decodeExpParams :: Bool -> SE.Series (RawBinder RawType) -> D.Doc
 decodeExpParams isConstLike expParams =
   if isConstLike && SE.isEmpty expParams
     then D.Nil
-    else SE.decode $ fmap piIntroArgToDoc expParams
+    else SE.decode $ fmap piIntroParamToDoc expParams
 
 decodeDefParams :: Bool -> SE.Series (RawBinder RawType) -> D.Doc
 decodeDefParams isConstLike expParams =
@@ -985,8 +893,8 @@ decodeDefParams isConstLike expParams =
     then D.Nil
     else SE.decode $ fmap defParamToDoc expParams
 
-letArgToDoc :: (a, RP.RawPattern, C, C, RawType) -> D.Doc
-letArgToDoc (m, x, c1, c2, t) = do
+letBinderToDoc :: (a, RP.RawPattern, C, C, RawType) -> D.Doc
+letBinderToDoc (m, x, c1, c2, t) = do
   let x' = decodePattern x
   paramToDoc (m, x', c1, c2, t)
 
@@ -1000,7 +908,7 @@ nameToDoc :: N.Name -> D.Doc
 nameToDoc varOrLocator =
   case varOrLocator of
     N.Bare var ->
-      if isHole var
+      if isHoleName var
         then D.text "_"
         else D.text var
     N.Dotted {} ->
@@ -1058,13 +966,14 @@ decPiElimMarkedKey kvs =
 decPiElimMarkedKeyItem :: RT.KeyValueArg RawTerm -> (Key, C, Rhymed, RawTerm)
 decPiElimMarkedKeyItem kv = do
   let (e, isSourceArg) = RT.kvValue kv
-  let (kText, c, rhymed, e') = decPiElimKeyItem (RT.kvLoc kv, RT.kvKey kv, RT.kvKeyComment kv, RT.kvValueComment kv, e)
+  let (kText, c, rhymed, e') =
+        decPiElimKeyItem (RT.kvLoc kv, RT.kvKey kv, RT.kvKeyComment kv, RT.kvValueComment kv, e)
   let kText' = if isSourceArg then "~" <> kText else kText
   case RT.kvPrevValue kv of
     Nothing ->
       (kText', c, rhymed, e')
     Just prevValue -> do
-      let nameText = if isHole (RT.prevValueName prevValue) then "_" else RT.prevValueName prevValue
+      let nameText = if isHoleName (RT.prevValueName prevValue) then "_" else RT.prevValueName prevValue
       let prevText = varKindPrefix (RT.prevValueKind prevValue) <> nameText
       let c' = RT.prevValueKeywordComment prevValue ++ RT.prevValueComment prevValue ++ c
       (kText' <> " as " <> prevText, c', False, e')
@@ -1150,8 +1059,8 @@ decodePattern pat = do
   case pat of
     RP.Var k name ->
       prefixVarKind k $ nameToDoc name
-    RP.Cons name c typeParams args -> do
-      let name' = D.join [nameToDoc name, maybe D.Nil decodePatternTypeParams typeParams]
+    RP.Cons name c impBinders args -> do
+      let name' = D.join [nameToDoc name, maybe D.Nil decodePatternImpBinders impBinders]
       case args of
         RP.Paren patList -> do
           let patList' = SE.decode $ fmap (decodeMarkedPattern . snd) patList
@@ -1164,10 +1073,10 @@ decodePattern pat = do
     RP.RuneIntro r ->
       D.text $ "`" <> T.replace "`" "\\`" (RU.asText r) <> "`"
 
-decodePatternTypeParams :: RP.TypeParams -> D.Doc
-decodePatternTypeParams typeParams =
-  SE.decode $ flip fmap typeParams $ \(_, x) ->
-    if isHole x
+decodePatternImpBinders :: RP.ImpBinders -> D.Doc
+decodePatternImpBinders impBinders =
+  SE.decode $ flip fmap impBinders $ \(_, x) ->
+    if isHoleName x
       then D.text "_"
       else D.text x
 
@@ -1210,6 +1119,10 @@ decodeBrace' forceVertical c1 d c2 = do
       layout $ D.join [attachComment c1 d, C.asSuffix c2],
       PI.inject $ D.text "}"
     ]
+
+decodeMagicArgs :: Maybe C -> [EL D.Doc] -> D.Doc
+decodeMagicArgs mc args =
+  SE.decode $ attachOptionalComment mc $ SE.fromListWithComment (Just SE.Paren) SE.Comma args
 
 attachOptionalComment :: Maybe C -> SE.Series a -> SE.Series a
 attachOptionalComment mc se =

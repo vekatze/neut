@@ -18,9 +18,9 @@ import Kernel.Common.Cache qualified as Cache
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.CreateLocalHandle qualified as Local
 import Kernel.Common.GlobalName qualified as GN
-import Kernel.Common.Handle.Global.KeyArg (Entry (..))
-import Kernel.Common.Handle.Global.KeyArg qualified as KeyArg
 import Kernel.Common.Handle.Global.OptimizableData qualified as OptimizableData
+import Kernel.Common.Handle.Global.ParamKey (Entry (..))
+import Kernel.Common.Handle.Global.ParamKey qualified as ParamKey
 import Kernel.Common.Handle.Local.Locator qualified as Locator
 import Kernel.Common.OptimizableData qualified as OD
 import Kernel.Common.Source (Source)
@@ -32,7 +32,7 @@ import Kernel.Parse.Internal.Handle.NameMap qualified as NameMap
 import Kernel.Parse.Internal.Handle.UnusedTopLevelName qualified as UnusedTopLevelName
 import Kernel.Parse.Internal.Program qualified as Parse
 import Kernel.Parse.Internal.RawTerm qualified as ParseRT
-import Language.Common.ArgNum qualified as AN
+import Language.Common.Arity qualified as Arity
 import Language.Common.BaseName qualified as BN
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.Ident.Reify
@@ -50,7 +50,7 @@ data Handle = Handle
   { parseHandle :: ParseRT.Handle,
     globalNameMapHandle :: GlobalNameMap.Handle,
     unusedTopLevelNameHandle :: UnusedTopLevelName.Handle,
-    keyArgHandle :: KeyArg.Handle,
+    paramKeyHandle :: ParamKey.Handle,
     optDataHandle :: OptimizableData.Handle
   }
 
@@ -62,7 +62,7 @@ new gensymHandle globalHandle = do
   let parseHandle = ParseRT.new gensymHandle
   let globalNameMapHandle = Global.globalNameMapHandle globalHandle
   let unusedTopLevelNameHandle = Global.unusedTopLevelNameHandle globalHandle
-  let keyArgHandle = Global.keyArgHandle globalHandle
+  let paramKeyHandle = Global.paramKeyHandle globalHandle
   let optDataHandle = Global.optDataHandle globalHandle
   Handle {..}
 
@@ -88,22 +88,16 @@ parse h contentSeq = do
       Left _ ->
         return ()
       Right _ ->
-        liftIO $ Logger.report (Global.loggerHandle h) $ "Parsing: " <> T.pack (show $ Source.sourceFilePath source)
-    prog <- parse' unitParseHandle source cacheOrContent
+        liftIO $
+          Logger.report (Global.loggerHandle h) $
+            "Parsing: " <> T.pack (show $ Source.sourceFilePath source)
+    prog <- parseSource unitParseHandle source cacheOrContent
     localHandle <- Local.new h source
     let locatorHandle = Local.locatorHandle localHandle
     return (gensymHandle, localHandle, (source, fmap (postprocess locatorHandle) prog))
   forP_ cacheOrProgList $ \(_, _, (source, cacheOrProg)) -> do
     registerTopLevelNames parseHandle source cacheOrProg
   return cacheOrProgList
-
-parse' ::
-  Handle ->
-  Source.Source ->
-  Either Cache.Cache T.Text ->
-  App (Either Cache.Cache RawProgram)
-parse' h source cacheOrContent = do
-  parseSource h source cacheOrContent
 
 parseSource ::
   Handle ->
@@ -139,9 +133,9 @@ collectNominalDecls stmt =
 markNominalData :: [DD.DefiniteDescription] -> PostRawStmt -> PostRawStmt
 markNominalData nominalNameList stmt =
   case stmt of
-    PostRawStmtDefineType c (SK.Data dataName dataArgs consInfoList _) def
+    PostRawStmtDefineType c (SK.Data dataName dataParams consInfoList _) def
       | dataName `elem` nominalNameList ->
-          PostRawStmtDefineType c (SK.Data dataName dataArgs consInfoList True) def
+          PostRawStmtDefineType c (SK.Data dataName dataParams consInfoList True) def
     PostRawStmtNamespace m name children ->
       PostRawStmtNamespace m name (map (markNominalData nominalNameList) children)
     _ ->
@@ -160,27 +154,31 @@ postprocess' h nsPath stmt = do
             TransparentAlias -> SK.Alias
             OpaqueAlias -> SK.AliasOpaque
       [PostRawStmtDefineType c stmtKind (rawDef {RT.typeGeist = geist'})]
-    RawStmtDefineData _ m (name, _) args consInfo loc -> do
+    RawStmtDefineData _ m (name, _) params consInfo loc -> do
       let name' = Locator.attachCurrentLocatorWithin h nsPath name
       let consInfo' = fmap (liftRawCons h nsPath) consInfo
-      defineData m name' args (SE.extract consInfo') loc
+      defineData m name' params (SE.extract consInfo') loc
     RawStmtDefineResource c m (name, c1) (c2, discarder) (c3, copier) (c4, resourceSize) c5 -> do
       let name' = Locator.attachCurrentLocatorWithin h nsPath name
       [PostRawStmtDefineResource c m (name', c1) (c2, discarder) (c3, copier) (c4, resourceSize) c5]
     RawStmtTrope c m (name, c1) defineMetaList loc -> do
       let name' = Locator.attachCurrentLocatorWithin h nsPath name
-      let liftDefineMeta index (RawDefineMeta defineMetaLoc' defineMetaTarget' defineMetaTargetArgs' defineMetaExpArgs' defineMetaCod' defineMetaBody' defineMetaEndLoc') = do
+      let liftDefineMeta index (RawDefineMeta defineMetaLoc' defineMetaTarget' defineMetaTargetArgs' defineMetaExpParams' defineMetaCod' defineMetaBody' defineMetaEndLoc') = do
             PostRawDefineMeta
               { postDefineMetaLoc = defineMetaLoc',
                 postDefineMetaTarget = defineMetaTarget',
                 postDefineMetaTargetArgs = defineMetaTargetArgs',
-                postDefineMetaExpArgs = defineMetaExpArgs',
+                postDefineMetaExpParams = defineMetaExpParams',
                 postDefineMetaCod = defineMetaCod',
                 postDefineMetaBody = defineMetaBody',
                 postDefineMetaEndLoc = defineMetaEndLoc',
                 postDefineMetaHelperName = DD.getKnotDD name' index
               }
-      let defineMetaElems = zipWith (\index (comment, defineMeta) -> (comment, liftDefineMeta index defineMeta)) [0 ..] (SE.elems defineMetaList)
+      let defineMetaElems =
+            zipWith
+              (\index (comment, defineMeta) -> (comment, liftDefineMeta index defineMeta))
+              [0 ..]
+              (SE.elems defineMetaList)
       [PostRawStmtTrope c m (name', c1) (defineMetaList {SE.elems = defineMetaElems}) loc]
     RawStmtVariadic kind _ m (name, _) (_, leaf, leafType) (_, node, nodeType) (_, root, rootType) _ loc -> do
       let name' = Locator.attachCurrentLocatorWithin h nsPath name
@@ -222,14 +220,14 @@ liftStmtKindTerm _h nsPath stmtKind = do
       SK.MacroInline
     SK.Main t ->
       SK.Main t
-    SK.DataIntro name dataArgs consImpArgs expConsArgs discriminant -> do
+    SK.DataIntro name dataParams consImpParams expConsParams discriminant -> do
       let name' = Locator.attachCurrentLocatorWithin _h nsPath name
-      SK.DataIntro name' dataArgs consImpArgs expConsArgs discriminant
+      SK.DataIntro name' dataParams consImpParams expConsParams discriminant
 
 liftRawCons :: Locator.Handle -> [BN.BaseName] -> RawConsInfo BN.BaseName -> RawConsInfo DD.DefiniteDescription
-liftRawCons h nsPath (RawConsInfo {loc, name, impArgs, expArgs, endLoc}) = do
+liftRawCons h nsPath (RawConsInfo {loc, name, impParams, expParams, endLoc}) = do
   let name' = Locator.attachCurrentLocatorWithin h nsPath name
-  RawConsInfo {loc, name = name', impArgs, expArgs, endLoc}
+  RawConsInfo {loc, name = name', impParams, expParams, endLoc}
 
 registerTopLevelNames ::
   Handle ->
@@ -242,11 +240,11 @@ registerTopLevelNames h source cacheOrContent = do
       let stmtList = Cache.stmtList cache
       let nameArrowList = NameMap.getGlobalNames' stmtList
       liftIO $ saveTopLevelNames h source nameArrowList
-      KeyArg.insertMany (keyArgHandle h) $ concatMap cachedKeyArgEntries stmtList
+      ParamKey.insertMany (paramKeyHandle h) $ concatMap cachedParamKeyEntries stmtList
     Right (PostRawProgram _ _ _ stmtList) -> do
       let nameArrowList = NameMap.getGlobalNames stmtList
       liftIO $ saveTopLevelNames h source nameArrowList
-      KeyArg.insertMany (keyArgHandle h) $ concatMap rawKeyArgEntries stmtList
+      ParamKey.insertMany (paramKeyHandle h) $ concatMap rawParamKeyEntries stmtList
 
 saveTopLevelNames ::
   Handle ->
@@ -259,7 +257,9 @@ saveTopLevelNames h source nameArrowList = do
   UnusedTopLevelName.insertMany (unusedTopLevelNameHandle h) $ concatMap unusedTopLevelNameEntries nameArrowList
   OptimizableData.insertMany (optDataHandle h) $ concatMap optimizableDataEntries nameArrowList
 
-unusedTopLevelNameEntries :: (DD.DefiniteDescription, (Hint, Maybe NT.NominalTag, GN.GlobalName)) -> [(DD.DefiniteDescription, Hint, GN.GlobalName)]
+unusedTopLevelNameEntries ::
+  (DD.DefiniteDescription, (Hint, Maybe NT.NominalTag, GN.GlobalName)) ->
+  [(DD.DefiniteDescription, Hint, GN.GlobalName)]
 unusedTopLevelNameEntries (dd, (m, _, gn)) =
   case gn of
     GN.Namespace ->
@@ -267,20 +267,20 @@ unusedTopLevelNameEntries (dd, (m, _, gn)) =
     _ ->
       [(dd, m, gn)]
 
-rawKeyArgEntries :: PostRawStmt -> [KeyArg.Entry]
-rawKeyArgEntries stmt = do
+rawParamKeyEntries :: PostRawStmt -> [ParamKey.Entry]
+rawParamKeyEntries stmt = do
   case stmt of
     PostRawStmtDefineTerm _ stmtKind (RT.RawDef {geist}) -> do
       let name = fst $ RT.name geist
       let isConstLike = RT.isConstLike geist
       let m = RT.loc geist
       case stmtKind of
-        SK.DataIntro _ _ _ expConsArgs _ -> do
-          let expKeys = map (\(_, _, x, _, _, _) -> x) expConsArgs
-          [ KeyArg.Entry
+        SK.DataIntro _ _ _ expConsParams _ -> do
+          let expKeys = map (\(_, _, x, _, _, _) -> x) expConsParams
+          [ ParamKey.Entry
               { entryHint = m,
                 entryName = name,
-                entryOrigin = KeyArg.Defined,
+                entryOrigin = ParamKey.Defined,
                 entryIsConstLike = isConstLike,
                 entryImpKeys = [],
                 entryExpKeys = expKeys,
@@ -289,10 +289,10 @@ rawKeyArgEntries stmt = do
             ]
         _ -> do
           let RT.GeistKeys {geistImpKeys = impKeys, geistExpKeys = expKeys, geistDefaultKeys = defaultKeys} = RT.getGeistKeys geist
-          [ KeyArg.Entry
+          [ ParamKey.Entry
               { entryHint = m,
                 entryName = name,
-                entryOrigin = KeyArg.Defined,
+                entryOrigin = ParamKey.Defined,
                 entryIsConstLike = isConstLike,
                 entryImpKeys = impKeys,
                 entryExpKeys = expKeys,
@@ -309,10 +309,10 @@ rawKeyArgEntries stmt = do
             let isConstLike = RT.isConstLike geist
             let m = RT.loc geist
             let RT.GeistKeys {geistImpKeys = impKeys, geistExpKeys = expKeys} = RT.getGeistKeys geist
-            [ KeyArg.Entry
+            [ ParamKey.Entry
                 { entryHint = m,
                   entryName = name,
-                  entryOrigin = KeyArg.Declared,
+                  entryOrigin = ParamKey.Declared,
                   entryIsConstLike = isConstLike,
                   entryImpKeys = impKeys,
                   entryExpKeys = expKeys,
@@ -331,19 +331,19 @@ rawKeyArgEntries stmt = do
     PostRawStmtExpose {} ->
       []
     PostRawStmtNamespace _ _ children ->
-      concatMap rawKeyArgEntries children
+      concatMap rawParamKeyEntries children
 
-cachedKeyArgEntries :: Stmt -> [KeyArg.Entry]
-cachedKeyArgEntries stmt = do
+cachedParamKeyEntries :: Stmt -> [ParamKey.Entry]
+cachedParamKeyEntries stmt = do
   case stmt of
-    StmtDefine isConstLike stmtKind (SavedHint m) name impArgs expArgs defaultArgs _ _ -> do
+    StmtDefine isConstLike stmtKind (SavedHint m) name impParams expParams defaultParams _ _ -> do
       case stmtKind of
-        SK.DataIntro _ _ _ expConsArgs _ -> do
-          let expKeys = map (\(_, _, x, _) -> toText x) expConsArgs
-          [ KeyArg.Entry
+        SK.DataIntro _ _ _ expConsParams _ -> do
+          let expKeys = map (\(_, _, x, _) -> toText x) expConsParams
+          [ ParamKey.Entry
               { entryHint = m,
                 entryName = name,
-                entryOrigin = KeyArg.Defined,
+                entryOrigin = ParamKey.Defined,
                 entryIsConstLike = isConstLike,
                 entryImpKeys = [],
                 entryExpKeys = expKeys,
@@ -351,13 +351,13 @@ cachedKeyArgEntries stmt = do
               }
             ]
         _ -> do
-          let impKeys = map (\(_, _, x, _) -> toText x) impArgs
-          let defaultKeys = map ((\(_, _, x, _) -> toText x) . fst) defaultArgs
-          let expKeys = map (\(_, _, x, _) -> toText x) expArgs
-          [ KeyArg.Entry
+          let impKeys = map (\(_, _, x, _) -> toText x) impParams
+          let defaultKeys = map ((\(_, _, x, _) -> toText x) . fst) defaultParams
+          let expKeys = map (\(_, _, x, _) -> toText x) expParams
+          [ ParamKey.Entry
               { entryHint = m,
                 entryName = name,
-                entryOrigin = KeyArg.Defined,
+                entryOrigin = ParamKey.Defined,
                 entryIsConstLike = isConstLike,
                 entryImpKeys = impKeys,
                 entryExpKeys = expKeys,
@@ -379,13 +379,15 @@ cachedKeyArgEntries stmt = do
     StmtNamespace {} ->
       []
 
-optimizableDataEntries :: (DD.DefiniteDescription, (Hint, Maybe NT.NominalTag, GN.GlobalName)) -> [(DD.DefiniteDescription, OD.OptimizableData)]
+optimizableDataEntries ::
+  (DD.DefiniteDescription, (Hint, Maybe NT.NominalTag, GN.GlobalName)) ->
+  [(DD.DefiniteDescription, OD.OptimizableData)]
 optimizableDataEntries (dd, (_, _, gn)) =
   case gn of
-    GN.Data dataArgNum consNameArrowList _
+    GN.Data dataArity consNameArrowList _
       | isUnary consNameArrowList ->
           (dd, OD.Unary) : map (\(consName, _) -> (consName, OD.Unary)) consNameArrowList
-      | hasNoArgs dataArgNum consNameArrowList ->
+      | isNullary dataArity consNameArrowList ->
           (dd, OD.Enum) : map (\(consName, _) -> (consName, OD.Enum)) consNameArrowList
     _ ->
       []
@@ -393,13 +395,13 @@ optimizableDataEntries (dd, (_, _, gn)) =
 isUnary :: [(DD.DefiniteDescription, (Hint, GN.GlobalName))] -> Bool
 isUnary consInfoList =
   case consInfoList of
-    [(_, (_, GN.DataIntro _ consImpArgNames consArgNum _ _ _))] ->
-      null consImpArgNames && consArgNum == AN.fromInt 1
+    [(_, (_, GN.DataIntro _ consImpParamNames consArity _ _ _))] ->
+      null consImpParamNames && consArity == Arity.fromInt 1
     _ ->
       False
 
-hasNoArgs :: AN.ArgNum -> [(DD.DefiniteDescription, (Hint, GN.GlobalName))] -> Bool
-hasNoArgs dataArgNum consInfoList = do
-  let b1 = dataArgNum == AN.fromInt 0
-  let b2 = all (\(_, (_, gn)) -> GN.hasNoArgs gn) consInfoList
+isNullary :: Arity.Arity -> [(DD.DefiniteDescription, (Hint, GN.GlobalName))] -> Bool
+isNullary dataArity consInfoList = do
+  let b1 = dataArity == Arity.fromInt 0
+  let b2 = all (\(_, (_, gn)) -> GN.isNullary gn) consInfoList
   b1 && b2

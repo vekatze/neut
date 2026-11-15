@@ -4,7 +4,6 @@ module Language.Comp.Subst
     subst,
     refresh,
     refreshStmt,
-    instantiate,
     substValue,
     substPrimitive,
   )
@@ -51,10 +50,6 @@ refreshBinders h xs = do
   xs' <- mapM (Gensym.newIdentFromIdent (gensymHandle h)) xs
   let sub = IntMap.fromList $ zip (map Ident.toInt xs) (map C.VarLocal xs')
   return (xs', sub)
-
-instantiate :: Handle -> C.SubstValue -> C.Comp -> IO C.Comp
-instantiate =
-  subst
 
 substComp :: Handle -> C.SubstValue -> C.Comp -> IO C.Comp
 substComp h sub term =

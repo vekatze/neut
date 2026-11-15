@@ -37,7 +37,7 @@ data FrameKind
   | MacroInlineFrame
   | ConstantMetaFrame
   | DataIntroFrame
-  | DefaultArgFrame
+  | DefaultValueFrame
   deriving (Eq, Show)
 
 data TraceEntry

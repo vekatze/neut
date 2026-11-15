@@ -1,8 +1,0 @@
-import {
-  this.command-parser.parse {parse-command-or-exit},
-}
-
-define main() -> unit {
-  pin c = parse-command-or-exit();
-  vet::(c);
-}

@@ -1,0 +1,189 @@
+module Kernel.Common.Handle.Global.ParamKey
+  ( Handle (..),
+    Origin (..),
+    ExpKey,
+    ImpKey,
+    DefaultKey,
+    _eqKeys,
+    _showKeys,
+    showKeyList,
+    Entry (..),
+    new,
+    insertMany,
+    lookup,
+  )
+where
+
+import App.App (App)
+import App.Run (raiseError)
+import Control.Applicative ((<|>))
+import Control.Monad (foldM)
+import Control.Monad.IO.Class
+import Data.HashMap.Strict qualified as Map
+import Data.IORef
+import Data.Text qualified as T
+import Kernel.Common.Handle.Global.ModulePath (renderDD)
+import Kernel.Common.Handle.Global.ModulePath qualified as ModulePath
+import Kernel.Common.Module
+import Language.Common.Const (isHoleName)
+import Language.Common.DefiniteDescription qualified as DD
+import Language.Common.IsConstLike
+import Language.RawTerm.Key
+import Logger.Hint
+import Prelude hiding (lookup, read)
+
+type ExpKey =
+  Key
+
+type ImpKey =
+  Key
+
+type DefaultKey =
+  Key
+
+data Handle = Handle
+  { _mainModule :: MainModule,
+    _modulePathHandle :: ModulePath.Handle,
+    _paramKeyMapRef :: IORef ParamKeyMap
+  }
+
+data Origin
+  = Declared
+  | Defined
+  deriving (Eq)
+
+_eqKeys :: [Key] -> [Key] -> Bool
+_eqKeys ks1 ks2 =
+  case (ks1, ks2) of
+    ([], []) ->
+      True
+    (_ : _, []) ->
+      False
+    ([], _ : _) ->
+      False
+    (k1 : rest1, k2 : rest2) ->
+      case (isHoleName k1, isHoleName k2) of
+        (True, True) ->
+          _eqKeys rest1 rest2
+        (True, False) ->
+          False
+        (False, True) ->
+          False
+        (False, False)
+          | k1 == k2 ->
+              _eqKeys rest1 rest2
+          | otherwise ->
+              False
+
+_showKeys :: [Key] -> T.Text
+_showKeys keys =
+  case keys of
+    [] ->
+      "(empty)"
+    [k] ->
+      showKey k
+    k : rest ->
+      showKey k <> ", " <> _showKeys rest
+
+showKey :: Key -> T.Text
+showKey k =
+  if isHoleName k
+    then "_"
+    else k
+
+showKeyList :: [Key] -> T.Text
+showKeyList ks =
+  T.intercalate "\n" $ map ("- " <>) ks
+
+new :: MainModule -> ModulePath.Handle -> IO Handle
+new _mainModule _modulePathHandle = do
+  _paramKeyMapRef <- newIORef Map.empty
+  return $ Handle {..}
+
+data Entry = Entry
+  { entryHint :: Hint,
+    entryName :: DD.DefiniteDescription,
+    entryOrigin :: Origin,
+    entryIsConstLike :: IsConstLike,
+    entryImpKeys :: [ImpKey],
+    entryExpKeys :: [ExpKey],
+    entryDefaultKeys :: [DefaultKey]
+  }
+
+type ParamKeyMap =
+  Map.HashMap DD.DefiniteDescription (Origin, IsConstLike, ([ImpKey], [ExpKey], [DefaultKey]))
+
+insertMany :: Handle -> [Entry] -> App ()
+insertMany h entries = do
+  modulePathMap <- liftIO $ ModulePath.get (_modulePathHandle h)
+  kmap <- liftIO $ readIORef (_paramKeyMapRef h)
+  accepted <- foldM (acceptEntry modulePathMap kmap) Map.empty entries
+  liftIO $ atomicModifyIORef' (_paramKeyMapRef h) $ \mp ->
+    (Map.union accepted mp, ())
+
+acceptEntry :: ModulePath.ModulePathMap -> ParamKeyMap -> ParamKeyMap -> Entry -> App ParamKeyMap
+acceptEntry modulePathMap kmap accepted (Entry m funcName origin isConstLike impKeys expKeys defaultKeys) = do
+  let value = (origin, isConstLike, (impKeys, expKeys, defaultKeys))
+  let funcName' = renderDD modulePathMap funcName
+  let existing = Map.lookup funcName accepted <|> Map.lookup funcName kmap
+  case existing of
+    Nothing ->
+      return $ Map.insert funcName value accepted
+    Just (Defined, _, _) ->
+      return accepted
+    Just (Declared, _, _)
+      | origin == Declared ->
+          return accepted
+    Just (_, isConstLike', (impKeys', expKeys', defaultKeys'))
+      | isConstLike,
+        not isConstLike' ->
+          raiseError m $
+            "`"
+              <> funcName'
+              <> "` is declared as a function, but defined as a constant-like term."
+      | not isConstLike,
+        isConstLike' ->
+          raiseError m $
+            "`"
+              <> funcName'
+              <> "` is declared as a constant-like term, but defined as a function."
+      | length impKeys /= length impKeys' ->
+          raiseError m $
+            "The arity of `"
+              <> funcName'
+              <> "` is declared as "
+              <> T.pack (show $ length impKeys')
+              <> ", but defined as "
+              <> T.pack (show $ length impKeys)
+              <> "."
+      | not $ _eqKeys defaultKeys defaultKeys' ->
+          raiseError m $
+            "The default key sequence of `"
+              <> funcName'
+              <> "` is declared as `"
+              <> _showKeys defaultKeys'
+              <> "`, but defined as `"
+              <> _showKeys defaultKeys
+              <> "`."
+      | not $ _eqKeys expKeys expKeys' ->
+          raiseError m $
+            "The explicit key sequence of `"
+              <> funcName'
+              <> "` is declared as `"
+              <> _showKeys expKeys'
+              <> "`, but defined as `"
+              <> _showKeys expKeys
+              <> "`."
+      | otherwise ->
+          return $ Map.insert funcName value accepted
+
+lookup :: Handle -> Hint -> DD.DefiniteDescription -> App ([ImpKey], [ExpKey], [DefaultKey])
+lookup h m dataName = do
+  modulePathMap <- liftIO $ ModulePath.get (_modulePathHandle h)
+  paramKeyMap <- liftIO $ readIORef (_paramKeyMapRef h)
+  case Map.lookup dataName paramKeyMap of
+    Just (_, _, impExpKeys) ->
+      return impExpKeys
+    Nothing -> do
+      let dataName' = renderDD modulePathMap dataName
+      raiseError m $ "No such function is defined: " <> dataName'

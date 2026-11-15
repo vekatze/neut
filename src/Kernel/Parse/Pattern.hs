@@ -19,13 +19,14 @@ import Data.Containers.ListUtils qualified as ListUtils
 import Data.Maybe
 import Data.Text qualified as T
 import Data.Vector qualified as V
-import Language.Common.ArgNum qualified as AN
+import Kernel.Parse.Vector qualified as Vector
+import Language.Common.Arity qualified as Arity
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.Discriminant qualified as D
 import Language.Common.Ident
-import Language.Common.VarKind
 import Language.Common.IsConstLike
 import Language.Common.Literal qualified as L
+import Language.Common.VarKind
 import Logger.Hint
 
 data Pattern
@@ -39,10 +40,10 @@ data ConsInfo = ConsInfo
   { consDD :: DD.DefiniteDescription,
     isConstLike :: IsConstLike,
     disc :: D.Discriminant,
-    dataArgNum :: AN.ArgNum,
-    consImpArgNames :: [T.Text],
-    consArgNum :: AN.ArgNum,
-    typeParams :: [Maybe (Hint, Ident)],
+    dataArity :: Arity.Arity,
+    consImpParamNames :: [T.Text],
+    consArity :: Arity.Arity,
+    impBinders :: [Maybe (Hint, Ident)],
     args :: [(Hint, Pattern)]
   }
   deriving (Show)
@@ -129,10 +130,8 @@ swapColumn m i (MakePatternMatrix rows) =
 
 swapColumn' :: Hint -> Int -> PatternRow a -> Either Error (PatternRow a)
 swapColumn' m i (row, e) = do
-  let len = V.length row
-  if not (0 <= i && i < len)
-    then Left $ newCritical m $ T.pack $ "the index " ++ show i ++ " exceeds the vector size " ++ show len ++ "."
-    else return (V.update row $ V.fromList [(0, row V.! i), (i, row V.! 0)], e)
+  row' <- Vector.swap m i row
+  return (row', e)
 
 -- get leaf if the row doesn't contain any cons; otherwise return
 -- the index of the column that contains a cons

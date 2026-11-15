@@ -89,7 +89,8 @@ linearizeLetChainWith h activeSet chain body =
     LetBinding {..} : rest -> do
       (valueOccMap, value') <- distinguishComp h activeSet letValue
       (restOccMap, rest') <- linearizeLetChainWith h (IntSet.insert (toInt letBinder) activeSet) rest body
-      (wrappedOccMap, wrapped) <- wrapBinder h ForceResourceOp activeSet (letBinder, letBinderType) rest' restOccMap
+      (wrappedOccMap, wrapped) <-
+        wrapBinder h ForceResourceOp activeSet (letBinder, letBinderType) rest' restOccMap
       return (appendOccMaps valueOccMap wrappedOccMap, C.UpElim letIsReducible letBinder value' wrapped)
 
 wrapBinders :: Handle -> ResourceOpMode -> ActiveSet -> [(Ident, C.Comp)] -> C.Comp -> OccMap -> IO C.Comp
@@ -105,20 +106,21 @@ wrapBinders h resourceOpMode activeSet binderEntries body bodyOccMap =
 wrapBinder :: Handle -> ResourceOpMode -> ActiveSet -> (Ident, C.Comp) -> C.Comp -> OccMap -> IO (OccMap, C.Comp)
 wrapBinder h resourceOpMode activeSet (binderName, binderType) body bodyOccMap = do
   let restOccMap = IntMap.delete (toInt binderName) bodyOccMap
+  let binderVar = C.VarLocal binderName
   case IntMap.findWithDefault [] (toInt binderName) bodyOccMap of
     [] -> do
       hole <- Gensym.newIdentFromText (gensymHandle h) "unit"
       (headerOccMap, t') <- distinguishComp h activeSet binderType
       let forceInline = resourceOpModeToForceInline resourceOpMode
       discardUnusedVar <-
-        Utility.toAffineAppWith (utilityHandle h) forceInline (C.VarLocal binderName) t'
+        Utility.toAffineAppWith (utilityHandle h) forceInline binderVar t'
       return (appendOccMaps headerOccMap restOccMap, C.UpElim True hole discardUnusedVar body)
     [z] -> do
-      return (restOccMap, C.UpElim True z (C.UpIntro (C.VarLocal binderName)) body)
+      return (restOccMap, C.UpElim True z (C.UpIntro binderVar) body)
     z : zs -> do
       localName <- Gensym.newIdentFromText (gensymHandle h) $ toText binderName <> "-local"
       (headerOccMap, headerTerm) <- insertHeader h resourceOpMode activeSet localName z zs binderType body
-      return (appendOccMaps headerOccMap restOccMap, C.UpElim False localName (C.UpIntro (C.VarLocal binderName)) headerTerm)
+      return (appendOccMaps headerOccMap restOccMap, C.UpElim False localName (C.UpIntro binderVar) headerTerm)
 
 resourceOpModeToForceInline :: ResourceOpMode -> C.ForceInline
 resourceOpModeToForceInline resourceOpMode =
@@ -165,8 +167,7 @@ distinguishVarAcc h activeSet x !occMap =
       x' <- Gensym.newIdentFromIdent (gensymHandle h) x
       let occMap' = IntMap.insertWith (++) (toInt x) [x'] occMap
       return (occMap', x')
-    else
-      return (occMap, x)
+    else return (occMap, x)
 
 distinguishValueAcc :: Handle -> ActiveSet -> C.Value -> OccMap -> IO (OccMap, C.Value)
 distinguishValueAcc h activeSet term !occMap =
@@ -310,8 +311,9 @@ distinguishPrimitiveAcc h activeSet term !occMap =
           (occMap1, pointer') <- distinguishValueAcc h activeSet pointer occMap
           (occMap2, offset') <- distinguishValueAcc h activeSet offset occMap1
           return (occMap2, C.Magic (LM.Shift pointer' offset'))
-        LM.Alloca lt num ->
-          return (occMap, C.Magic (LM.Alloca lt num))
+        LM.Alloca lt size -> do
+          (occMap', size') <- distinguishValueAcc h activeSet size occMap
+          return (occMap', C.Magic (LM.Alloca lt size'))
         LM.External domList cod extFunName args varArgAndTypeList -> do
           (occMap1, args') <- distinguishValuesAcc h activeSet args occMap
           (occMap2, varArgAndTypeList') <- distinguishVarArgListAcc h activeSet varArgAndTypeList occMap1
@@ -322,10 +324,11 @@ distinguishPrimitiveAcc h activeSet term !occMap =
           (occMap', e') <- distinguishValueAcc h activeSet e occMap
           return (occMap', C.Magic (LM.OpaqueValue e'))
         LM.CallType func arg1 arg2 arg3 -> do
-          (occMap1, arg1') <- distinguishValueAcc h activeSet arg1 occMap
-          (occMap2, arg2') <- distinguishValueAcc h activeSet arg2 occMap1
-          (occMap3, arg3') <- distinguishValueAcc h activeSet arg3 occMap2
-          return (occMap3, C.Magic (LM.CallType func arg1' arg2' arg3'))
+          (occMap1, func') <- distinguishValueAcc h activeSet func occMap
+          (occMap2, arg1') <- distinguishValueAcc h activeSet arg1 occMap1
+          (occMap3, arg2') <- distinguishValueAcc h activeSet arg2 occMap2
+          (occMap4, arg3') <- distinguishValueAcc h activeSet arg3 occMap3
+          return (occMap4, C.Magic (LM.CallType func' arg1' arg2' arg3'))
 
 distinguishVarArgListAcc :: Handle -> ActiveSet -> [(C.Value, t)] -> OccMap -> IO (OccMap, [(C.Value, t)])
 distinguishVarArgListAcc h activeSet varArgAndTypeList !occMap =

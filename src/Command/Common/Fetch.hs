@@ -19,11 +19,9 @@ import Data.ByteString qualified as B
 import Data.Containers.ListUtils (nubOrdOn)
 import Data.HashMap.Strict qualified as Map
 import Data.Maybe
-import Data.Set qualified as S
 import Data.Text qualified as T
 import Ens.Ens qualified as E
 import Ens.Ens qualified as SE
-import CodeParser.Parser qualified as CP
 import Ens.Parse qualified as EnsParse
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.Env qualified as Env
@@ -32,10 +30,9 @@ import Kernel.Common.Handle.Global.Platform qualified as Platform
 import Kernel.Common.LocalArchive qualified as LocalArchive
 import Kernel.Common.Module (keyDependency, keyDigest, keyEnablePreset, keyMirror, moduleLocation)
 import Kernel.Common.Module qualified as M
-import Kernel.Parse.Internal.Util (isNumericLike)
+import Kernel.Common.Module.FromPath qualified as FromPath
 import Kernel.Common.ModuleURL
 import Kernel.Common.RunProcess qualified as RunProcess
-import Language.Common.BaseName (isCapitalized)
 import Language.Common.BaseName qualified as BN
 import Language.Common.ModuleAlias
 import Language.Common.ModuleDigest qualified as MD
@@ -90,17 +87,7 @@ tidy h deps = do
 insertDependency :: Handle -> T.Text -> ModuleURL -> App ()
 insertDependency h aliasName url = do
   aliasName' <- liftEither (BN.reflect' aliasName)
-  when (T.null (BN.reify aliasName')) $ do
-    raiseError' "The alias of a module must not be empty"
-  when (T.any (`S.member` CP.nonSymbolCharSet) (BN.reify aliasName')) $ do
-    raiseError' $ "Invalid alias of a module: " <> BN.reify aliasName'
-  when (isNumericLike (BN.reify aliasName')) $ do
-    raiseError' $ "`" <> BN.reify aliasName' <> "` reads as a numeric literal and cannot be used as an alias of a module"
-  when (isCapitalized aliasName') $ do
-    raiseError' $ "Module aliases must not be capitalized, but found: " <> BN.reify aliasName'
-  when (S.member aliasName' BN.reservedAlias) $ do
-    raiseError' $ "The reserved name `" <> BN.reify aliasName' <> "` cannot be used as an alias of a module"
-  let alias = ModuleAlias aliasName'
+  alias <- either raiseError' return $ FromPath.validateModuleAlias aliasName'
   withSystemTempFile "fetch" $ \tempFilePath tempFileHandle -> do
     download h tempFilePath alias [url]
     archive <- liftIO $ B.hGetContents tempFileHandle
@@ -120,7 +107,9 @@ insertDependency h aliasName url = do
                     liftIO $ printInstallationRemark h alias digest
                     installModule' h tempFilePath alias digest >>= fetchDeps h
               else do
-                liftIO $ Logger.printNote' (loggerHandle h) $ "Adding a mirror of `" <> BN.reify (extract alias) <> "`"
+                liftIO $
+                  Logger.printNote' (loggerHandle h) $
+                    "Adding a mirror of `" <> BN.reify (extract alias) <> "`"
                 let dep' = dep {M.dependencyMirrorList = url : M.dependencyMirrorList dep}
                 addDependencyToModuleFile h alias dep'
           else do

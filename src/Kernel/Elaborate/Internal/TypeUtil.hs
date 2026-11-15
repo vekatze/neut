@@ -1,23 +1,20 @@
 module Kernel.Elaborate.Internal.TypeUtil
   ( inlineType,
     lookupDataInfoFull,
-    getConsArgTypes,
+    getConsParamTypes,
   )
 where
 
 import App.App (App)
 import App.Run (raiseCritical, raiseError)
-import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.IO.Class (liftIO)
-import Data.IntMap qualified as IntMap
 import Kernel.Common.Handle.Global.Data qualified as Data
 import Kernel.Common.Handle.Global.ModulePath qualified as ModulePath
 import Kernel.Elaborate.Internal.Handle.Elaborate
 import Language.Common.Binder
 import Language.Common.DataInfo qualified as DI
 import Language.Common.DefiniteDescription qualified as DD
-import Language.Common.Ident.Reify qualified as Ident
 import Language.Term.Inline qualified as Inline
 import Language.Term.Subst qualified as TmSubst
 import Language.Term.Term qualified as TM
@@ -41,36 +38,29 @@ lookupDataInfoFull h m dataName = do
           <> ModulePath.renderDD (modulePathMap h) dataName
           <> "`"
 
-getConsArgTypes ::
+getConsParamTypes ::
   Handle ->
   Hint ->
   DD.DefiniteDescription ->
   [TM.Type] ->
   App [DI.ConsInfo (BinderF TM.Type)]
-getConsArgTypes h m dataName dataArgs = do
+getConsParamTypes h m dataName dataArgs = do
   dataInfo <- lookupDataInfoFull h m dataName
-  let dataBinders = DI.dataArgs dataInfo
-  if length dataBinders == length dataArgs
+  let dataParams = DI.dataParams dataInfo
+  if length dataParams == length dataArgs
     then do
-      let binderIds = map (\(_, _, x, _) -> x) dataBinders
-      let sub = IntMap.fromList $ zip (map Ident.toInt binderIds) (map TmSubst.Type dataArgs)
+      let sub = TmSubst.makeTypeSubst (map getBinderIdent dataParams) dataArgs
       forM (DI.consInfoList dataInfo) $ \consInfo -> do
-        (consImpArgs', sub') <- liftIO $ TmSubst.refreshBinders (termSubstHandle h) sub (DI.consImpArgs consInfo)
-        consArgs' <- liftIO $ substConsArgs h sub' (DI.consArgs consInfo)
-        return consInfo {DI.consImpArgs = consImpArgs', DI.consArgs = consArgs'}
+        let consImpParams = DI.consImpParams consInfo
+        (consImpParams', sub') <- liftIO $ TmSubst.refreshTypeBinders (termSubstHandle h) sub consImpParams
+        consParams' <- liftIO $ substConsParams h sub' (DI.consParams consInfo)
+        return consInfo {DI.consImpParams = consImpParams', DI.consParams = consParams'}
     else
       raiseCritical m $
         "Could not specialize constructor metadata for `" <> DD.reify dataName <> "` due to arity mismatch"
 
-substConsArgs :: Handle -> TmSubst.Subst -> [BinderF TM.Type] -> IO [BinderF TM.Type]
-substConsArgs h sub consArgs =
-  case consArgs of
-    [] ->
-      return []
-    (m, k, x, t) : rest -> do
-      let substHandle' = TmSubst.new (gensymHandle h)
-      t' <- TmSubst.substType substHandle' sub t
-      let opaque = m :< TM.Tau
-      let sub' = IntMap.insert (Ident.toInt x) (TmSubst.Type opaque) sub
-      rest' <- substConsArgs h sub' rest
-      return $ (m, k, x, t') : rest'
+substConsParams :: Handle -> TmSubst.TypeSubst -> [BinderF TM.Type] -> IO [BinderF TM.Type]
+substConsParams h sub consParams =
+  forM consParams $ \(m, k, x, t) -> do
+    t' <- TmSubst.substType (termSubstHandle h) sub t
+    return (m, k, x, t')

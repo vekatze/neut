@@ -18,6 +18,10 @@ holeVarPrefix :: T.Text
 holeVarPrefix =
   "{}"
 
+isHoleName :: T.Text -> Bool
+isHoleName =
+  T.isPrefixOf holeVarPrefix
+
 expVarPrefix :: T.Text
 expVarPrefix =
   "!"

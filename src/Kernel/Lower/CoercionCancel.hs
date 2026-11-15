@@ -74,42 +74,8 @@ rewriteComp env lowComp =
       LC.Phi valueList'
 
 rewriteOp :: Env -> LC.Op -> LC.Op
-rewriteOp env op =
-  case op of
-    LC.Call isPure codType value valueList ->
-      LC.Call isPure codType (rewriteValue env value) (map (rewriteTypedValue env) valueList)
-    LC.MagicCall codType value valueList ->
-      LC.MagicCall codType (rewriteValue env value) (map (rewriteTypedValue env) valueList)
-    LC.GetElementPtr (value, lowType) valueList ->
-      LC.GetElementPtr (rewriteValue env value, lowType) (map (rewriteIndexedValue env) valueList)
-    LC.Bitcast value from to ->
-      LC.Bitcast (rewriteValue env value) from to
-    LC.IntToPointer value lowType ->
-      LC.IntToPointer (rewriteValue env value) lowType
-    LC.PointerToInt value lowType ->
-      LC.PointerToInt (rewriteValue env value) lowType
-    LC.Load value lowType ->
-      LC.Load (rewriteValue env value) lowType
-    LC.Store lowType value1 value2 ->
-      LC.Store lowType (rewriteValue env value1) (rewriteValue env value2)
-    LC.StackAlloc stackAllocInfo ->
-      LC.StackAlloc $ stackAllocInfo {LC.stackSize = fmap (rewriteValue env) (LC.stackSize stackAllocInfo)}
-    LC.StackLifetimeStart stackSlotID ->
-      LC.StackLifetimeStart stackSlotID
-    LC.StackLifetimeEnd stackSlotID ->
-      LC.StackLifetimeEnd stackSlotID
-    LC.Calloc value1 value2 ->
-      LC.Calloc (rewriteValue env value1) (rewriteValue env value2)
-    LC.Alloc size allocID ->
-      LC.Alloc (fmap (rewriteValue env) size) allocID
-    LC.AllocOpaque size ->
-      LC.AllocOpaque (rewriteValue env size)
-    LC.Realloc value1 value2 ->
-      LC.Realloc (rewriteValue env value1) (rewriteValue env value2)
-    LC.Free value size freeID ->
-      LC.Free (rewriteValue env value) size freeID
-    LC.PrimOp primOp valueList ->
-      LC.PrimOp primOp (map (rewriteValue env) valueList)
+rewriteOp env =
+  LC.mapOpValues (rewriteValue env)
 
 rewriteValue :: Env -> LC.Value -> LC.Value
 rewriteValue env value =
@@ -127,26 +93,20 @@ rewriteTypedValue :: Env -> (LT.LowType, LC.Value) -> (LT.LowType, LC.Value)
 rewriteTypedValue env (lowType, value) =
   (lowType, rewriteValue env value)
 
-rewriteIndexedValue :: Env -> (LC.Value, LT.LowType) -> (LC.Value, LT.LowType)
-rewriteIndexedValue env (value, lowType) =
-  (rewriteValue env value, lowType)
-
 insertCoercionStep :: Env -> Ident -> LC.Op -> Env
 insertCoercionStep env x op = do
+  let insertStep value step =
+        insertHistory env x $ appendCoercionStep (getHistory env value) (HistoryStep step (LC.VarLocal x))
   case op of
-    LC.Bitcast value from to -> do
-      let base = getHistory env value
-      insertHistory env x $ appendCoercionStep base (HistoryStep (StepBitcast from to) (LC.VarLocal x))
-    LC.IntToPointer value lowType -> do
-      let base = getHistory env value
-      insertHistory env x $ appendCoercionStep base (HistoryStep (StepIntToPointer lowType) (LC.VarLocal x))
-    LC.PointerToInt value lowType -> do
-      let base = getHistory env value
-      insertHistory env x $ appendCoercionStep base (HistoryStep (StepPointerToInt lowType) (LC.VarLocal x))
+    LC.Bitcast value from to ->
+      insertStep value (StepBitcast from to)
+    LC.IntToPointer value lowType ->
+      insertStep value (StepIntToPointer lowType)
+    LC.PointerToInt value lowType ->
+      insertStep value (StepPointerToInt lowType)
     LC.PrimOp (PrimConvOp convOp domType codType) [value]
-      | convOp `elem` [ConvOp.Zext, ConvOp.Trunc] -> do
-          let base = getHistory env value
-          insertHistory env x $ appendCoercionStep base (HistoryStep (StepIntConv convOp domType codType) (LC.VarLocal x))
+      | convOp `elem` [ConvOp.Zext, ConvOp.Trunc] ->
+          insertStep value (StepIntConv convOp domType codType)
     _ ->
       env
 
@@ -218,13 +178,15 @@ mergeCoercionSteps pointerFits prev next =
       | mid1 == mid2 ->
           MergeTo $ StepBitcast from to
     (StepIntToPointer lowType1, StepPointerToInt lowType2)
-      | pointerFits, lowType1 == lowType2 ->
+      | pointerFits,
+        lowType1 == lowType2 ->
           CancelPair
     (StepPointerToInt lowType1, StepIntToPointer lowType2)
       | lowType1 == lowType2 ->
           CancelPair
     (StepIntConv ConvOp.Zext from mid1, StepIntConv ConvOp.Trunc mid2 to)
-      | mid1 == mid2, from == to ->
+      | mid1 == mid2,
+        from == to ->
           CancelPair
     _ ->
       NoMerge

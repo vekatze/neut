@@ -52,7 +52,7 @@ new globalHandle = do
 
 describe :: Handle -> Config -> App ()
 describe h cfg = do
-  target <- Build.getMainTarget (targetName cfg) (globalHandle h)
+  target <- Env.getMainTarget (Global.envHandle (globalHandle h)) (targetName cfg)
   unravelHandle <- liftIO $ Unravel.new (globalHandle h)
   reachedOrError <- liftIO $ tryApp $ reach h unravelHandle target
   writtenOrError <- liftIO $ tryApp $ writeDescription h unravelHandle target $ fromRight [] reachedOrError
@@ -72,7 +72,9 @@ writeDescription h unravelHandle target moduleList = do
   moduleRoot <- toUtf8Text $ toFilePath $ M.getModuleRootDir mainModule
   outputPath <- Path.getExecutableOutputPath (Global.pathHandle (globalHandle h)) target
   executable <- toUtf8Text $ toFilePath outputPath
-  inputList <- liftIO (getInputList (globalHandle h) unravelHandle) >>= mapM (toUtf8Text . either toFilePath toFilePath)
+  inputList <-
+    liftIO (getInputList (globalHandle h) unravelHandle)
+      >>= mapM (toUtf8Text . either toFilePath toFilePath)
   foreignList <- mapM (describeForeign h target) moduleList
   let fieldList =
         [ ("module-root", string moduleRoot),

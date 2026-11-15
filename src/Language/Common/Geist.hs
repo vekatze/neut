@@ -9,8 +9,8 @@ data Geist t a = Geist
   { loc :: Hint,
     name :: DD.DefiniteDescription,
     isConstLike :: IsConstLike,
-    impArgs :: [BinderF t],
-    expArgs :: [BinderF t],
-    defaultArgs :: [(BinderF t, a)],
+    impParams :: [BinderF t],
+    expParams :: [BinderF t],
+    defaultParams :: [(BinderF t, a)],
     cod :: t
   }

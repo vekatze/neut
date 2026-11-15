@@ -14,7 +14,7 @@ import Kernel.Common.OptimizableData qualified as OD
 import Kernel.Parse.Internal.Discern.Handle qualified as H
 import Kernel.Parse.Internal.Discern.Noema
 import Kernel.Parse.Pattern
-import Language.Common.ArgNum qualified as AN
+import Language.Common.Arity qualified as Arity
 import Language.Common.Binder
 import Language.Common.Ident
 import Language.Common.Noema qualified as N
@@ -50,20 +50,22 @@ specializeRow h isNoetic cursor typeArgs specializer (patternVector, (freedVars,
       case specializer of
         LiteralSpecializer _ -> do
           return $ Just (rest, (freedVars, baseSeq, body))
-        ConsSpecializer (ConsInfo {consArgNum}) -> do
-          let wildcards = V.fromList $ replicate (AN.reify consArgNum) (m, WildcardVar)
+        ConsSpecializer (ConsInfo {consArity}) -> do
+          let wildcards = V.fromList $ replicate (Arity.reify consArity) (m, WildcardVar)
           return $ Just (V.concat [wildcards, rest], (freedVars, baseSeq, body))
     Just ((_, Var k x), rest) -> do
       case specializer of
         LiteralSpecializer _ -> do
           hole <- liftIO $ WT.createTypeHole (H.gensymHandle h) mBody []
           adjustedCursor <- liftIO $ castToNoemaIfNecessary h isNoetic (mBody :< WT.Var cursor)
-          return $ Just (rest, (freedVars, ((mBody, k, x, hole), adjustedCursor) : baseSeq, body))
-        ConsSpecializer (ConsInfo {consArgNum}) -> do
-          let wildcards = V.fromList $ replicate (AN.reify consArgNum) (mBody, WildcardVar)
+          let baseSeq' = ((mBody, k, x, hole), adjustedCursor) : baseSeq
+          return $ Just (rest, (freedVars, baseSeq', body))
+        ConsSpecializer (ConsInfo {consArity}) -> do
+          let wildcards = V.fromList $ replicate (Arity.reify consArity) (mBody, WildcardVar)
           hole <- liftIO $ WT.createTypeHole (H.gensymHandle h) mBody []
           adjustedCursor <- liftIO $ castToNoemaIfNecessary h isNoetic (mBody :< WT.Var cursor)
-          return $ Just (V.concat [wildcards, rest], (freedVars, ((mBody, k, x, hole), adjustedCursor) : baseSeq, body))
+          let baseSeq' = ((mBody, k, x, hole), adjustedCursor) : baseSeq
+          return $ Just (V.concat [wildcards, rest], (freedVars, baseSeq', body))
     Just ((_, Cons (ConsInfo {..})), rest) -> do
       case specializer of
         LiteralSpecializer {} ->
@@ -71,7 +73,7 @@ specializeRow h isNoetic cursor typeArgs specializer (patternVector, (freedVars,
         ConsSpecializer (ConsInfo {consDD = dd}) -> do
           if dd == consDD
             then do
-              let body' = bindTypeParams typeParams typeArgs body
+              let body' = bindImpBinders impBinders typeArgs body
               od <- liftIO $ OptimizableData.lookup (H.optDataHandle h) consDD
               case od of
                 Just OD.Enum ->
@@ -90,7 +92,7 @@ specializeRow h isNoetic cursor typeArgs specializer (patternVector, (freedVars,
         _ ->
           return Nothing
 
-bindTypeParams :: [Maybe (Hint, Ident)] -> [WT.WeakType] -> WT.WeakTerm -> WT.WeakTerm
-bindTypeParams typeParams typeArgs body@(m :< _) = do
-  let bindings = [(x, t) | (Just x, t) <- zip typeParams typeArgs]
+bindImpBinders :: [Maybe (Hint, Ident)] -> [WT.WeakType] -> WT.WeakTerm -> WT.WeakTerm
+bindImpBinders impBinders typeArgs body@(m :< _) = do
+  let bindings = [(x, t) | (Just x, t) <- zip impBinders typeArgs]
   foldr (\(x, t) cont -> m :< WT.LetType x t cont) body bindings

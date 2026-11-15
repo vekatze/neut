@@ -3,6 +3,7 @@
 module Language.Common.DefiniteDescription
   ( DefiniteDescription,
     reify,
+    isCompilerGenerated,
     new,
     localLocator,
     globalLocator,
@@ -51,9 +52,13 @@ import Language.Common.StrictGlobalLocator qualified as SGL
 --     module.path::source.path::body.path
 --
 -- where `::` separates the three chunks and `.` separates segments in a chunk.
-newtype DefiniteDescription
-  = MakeDefiniteDescription {reify :: T.Text}
+newtype DefiniteDescription = MakeDefiniteDescription {reify :: T.Text}
   deriving (Show, Eq, Ord, Binary, Hashable)
+
+isCompilerGenerated :: DefiniteDescription -> Bool
+isCompilerGenerated dd = do
+  let rawName = reify dd
+  ";" `T.isInfixOf` rawName || "#" `T.isInfixOf` rawName
 
 make :: SGL.StrictGlobalLocator -> LL.LocalLocator -> T.Text -> DefiniteDescription
 make gl body suffix =
@@ -220,7 +225,8 @@ extendBody dd rest = do
     (Just (modulePathText, sourceText, bodyWithSuffix), _) -> do
       let (bodyText, suffix) = splitBodySuffix bodyWithSuffix
       let extension = T.intercalate nsSep $ map BN.reify rest
-      MakeDefiniteDescription $ modulePathText <> doubleColon <> sourceText <> doubleColon <> bodyText <> nsSep <> extension <> suffix
+      MakeDefiniteDescription $
+        modulePathText <> doubleColon <> sourceText <> doubleColon <> bodyText <> nsSep <> extension <> suffix
     (Nothing, _) ->
       dd
 

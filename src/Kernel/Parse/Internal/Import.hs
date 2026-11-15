@@ -39,6 +39,7 @@ import Kernel.Parse.Internal.Handle.GlobalNameMap qualified as GlobalNameMap
 import Kernel.Parse.Internal.Handle.Unused qualified as Unused
 import Kernel.Parse.Internal.Handle.UnusedTopLevelName qualified as UnusedTopLevelName
 import Language.Common.BaseName qualified as BN
+import Language.Common.Const (doubleColon)
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.GlobalLocator qualified as GL
 import Language.Common.LocalLocator qualified as LL
@@ -113,8 +114,10 @@ interpretRawImportItem h currentSource liveness rawImportItem = do
     RawConditionalImport _ _ (mCapability, capabilityText, _) (thenSeries, _) _ elseSeries -> do
       capability <- interpretCapability mCapability capabilityText
       recordBranchAgreement h mCapability (SE.extract thenSeries) (SE.extract elseSeries)
-      thenItems <- concat <$> mapM (interpretRawImportItem h currentSource (I.whereProvided capability liveness)) (SE.extract thenSeries)
-      elseItems <- concat <$> mapM (interpretRawImportItem h currentSource (I.whereNotProvided capability liveness)) (SE.extract elseSeries)
+      let thenLiveness = I.whereProvided capability liveness
+      let elseLiveness = I.whereNotProvided capability liveness
+      thenItems <- concat <$> mapM (interpretRawImportItem h currentSource thenLiveness) (SE.extract thenSeries)
+      elseItems <- concat <$> mapM (interpretRawImportItem h currentSource elseLiveness) (SE.extract elseSeries)
       return $ thenItems ++ elseItems
 
 recordBranchAgreement :: Handle -> Hint -> [RawImportItem] -> [RawImportItem] -> App ()
@@ -295,7 +298,8 @@ getSource h mustUpdateTag m sgl locatorText = do
         liftIO $ Tag.insertModuleFile (tagHandle h) m modulePathText (moduleLocation nextModule)
         let (line, column) = metaLocation m
         let sourceHint = m {metaLocation = (line, column + T.length modulePathText + T.length doubleColon)}
-        liftIO $ Tag.insertResolvedSourceFile (tagHandle h) sourceHint sourceText (SGL.reify sgl) (newSourceHint nextPath)
+        let nextSourceHint = newSourceHint nextPath
+        liftIO $ Tag.insertResolvedSourceFile (tagHandle h) sourceHint sourceText (SGL.reify sgl) nextSourceHint
       _ ->
         raiseError m $ "Invalid global locator: `" <> locatorText <> "`"
   STL.shiftToLatest

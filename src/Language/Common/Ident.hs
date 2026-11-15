@@ -24,7 +24,7 @@ instance Show Ident where
 
 isHole :: Ident -> Bool
 isHole (I (varName, _)) =
-  holeVarPrefix `T.isPrefixOf` varName
+  isHoleName varName
 
 isCartesian :: Ident -> Bool
 isCartesian (I (varName, _)) =

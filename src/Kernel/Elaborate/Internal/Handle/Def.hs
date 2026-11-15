@@ -39,8 +39,8 @@ insert' ::
   Maybe InlineHandle.DefKind ->
   IntSet.IntSet ->
   IO ()
-insert' h name impArgs expArgs defaultArgs e typ mDefKind traceSiteIDs =
-  insertMany h $ makeEntry name impArgs expArgs defaultArgs e typ mDefKind traceSiteIDs
+insert' h name impParams expParams defaultParams e typ mDefKind traceSiteIDs =
+  insertMany h $ makeEntry name impParams expParams defaultParams e typ mDefKind traceSiteIDs
 
 makeEntry ::
   DD.DefiniteDescription ->
@@ -52,14 +52,14 @@ makeEntry ::
   Maybe InlineHandle.DefKind ->
   IntSet.IntSet ->
   [(DD.DefiniteDescription, InlineHandle.DefInfo)]
-makeEntry name impArgs expArgs defaultArgs e typ mDefKind traceSiteIDs = do
+makeEntry name impParams expParams defaultParams e typ mDefKind traceSiteIDs = do
   defKind <- toList mDefKind
   return
     ( name,
       InlineHandle.DefInfo
-        { InlineHandle.defImpBinders = impArgs,
-          InlineHandle.defExpBinders = expArgs,
-          InlineHandle.defDefaultArgs = defaultArgs,
+        { InlineHandle.defImpParams = impParams,
+          InlineHandle.defExpParams = expParams,
+          InlineHandle.defDefaultParams = defaultParams,
           InlineHandle.defBody = e,
           InlineHandle.codType = typ,
           InlineHandle.defKind = defKind,

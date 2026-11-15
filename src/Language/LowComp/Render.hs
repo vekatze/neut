@@ -11,11 +11,11 @@ import Language.Common.PrimType.ToText qualified as PT
 import Language.LowComp.LowComp qualified as LC
 
 renderDef :: LC.Def -> Text
-renderDef (name, LC.DefContent {codType = codType, args = args, body = body}) =
+renderDef (name, LC.DefContent {codType = codType, params = params, body = body}) =
   "define "
     <> DD.localLocator name
     <> "("
-    <> T.intercalate ", " (map (toText' . fst) args)
+    <> T.intercalate ", " (map (toText' . fst) params)
     <> ") -> "
     <> renderLowType codType
     <> " {\n"

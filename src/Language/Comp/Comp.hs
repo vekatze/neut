@@ -28,7 +28,7 @@ import Data.Maybe (mapMaybe)
 import Data.Text qualified as T
 import Data.Text.Lazy qualified as TL
 import Data.Text.Lazy.Builder qualified as B
-import Language.Common.ArgNum
+import Language.Common.Arity
 import Language.Common.BaseLowType
 import Language.Common.CellLayout qualified as CL
 import Language.Common.DefiniteDescription qualified as DD
@@ -42,14 +42,14 @@ import Language.Common.Opacity
 import Language.Common.PrimNumSize
 import Language.Common.PrimOp
 import Language.Common.PrimOp.BinaryOp qualified as BOp
-import Logger.Hint (Hint)
 import Language.Common.PrimType qualified as PT
 import Language.Comp.EnumCase hiding (Int)
+import Logger.Hint (Hint)
 import Prelude hiding (null)
 
 data Value
   = VarLocal Ident
-  | VarGlobal DD.DefiniteDescription ArgNum (FCT.ForeignCodType BaseLowType)
+  | VarGlobal DD.DefiniteDescription Arity (FCT.ForeignCodType BaseLowType)
   | VarStaticBytes BS.ByteString
   | SigmaIntro CL.CellLayout [Value]
   | StaticSigmaIntro T.Text CL.CellLayout [Value]
@@ -269,13 +269,21 @@ renderValueBuilder value =
     VarStaticBytes bytes ->
       B.fromString $ show $ BS.unpack bytes
     SigmaIntro size vs ->
-      B.fromString "[" <> B.fromString (show size) <> B.fromString "](" <> mconcat (intersperse (B.fromString ", ") (map renderValueBuilder vs)) <> B.fromString ")"
+      renderSigmaIntroBuilder size vs
     StaticSigmaIntro name size vs ->
-      B.fromText name <> B.fromString "[" <> B.fromString (show size) <> B.fromString "](" <> mconcat (intersperse (B.fromString ", ") (map renderValueBuilder vs)) <> B.fromString ")"
+      B.fromText name <> renderSigmaIntroBuilder size vs
     Language.Comp.Comp.Int _ i ->
       B.fromString $ show i
     Language.Comp.Comp.Float _ f ->
       B.fromString $ show f
+
+renderSigmaIntroBuilder :: CL.CellLayout -> [Value] -> B.Builder
+renderSigmaIntroBuilder size vs =
+  B.fromString "["
+    <> B.fromString (show size)
+    <> B.fromString "]("
+    <> mconcat (intersperse (B.fromString ", ") (map renderValueBuilder vs))
+    <> B.fromString ")"
 
 continuationLevel :: Int -> Int
 continuationLevel level =

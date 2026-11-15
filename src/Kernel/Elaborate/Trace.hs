@@ -28,7 +28,7 @@ data FrameInfo = FrameInfo
 data Title
   = HeadTitle T.Text
   | FrameTitle T.Text T.Text
-  | DefaultArgTitle
+  | DefaultValueTitle
 
 data RenderStep = RenderStep
   { renderStepHint :: Hint,
@@ -38,7 +38,7 @@ data RenderStep = RenderStep
 
 renderFailureTrace :: ElaborateHandle.Handle -> T.Text -> Hint -> TraceSites.Blocker -> IO T.Text
 renderFailureTrace h headLabel bodyHint blocker = do
-  blockerPath <- TermTrace.resolve (Global.termTraceHandle $ ElaborateHandle.globalHandle h) (TraceSites.blockerTraceID blocker)
+  blockerPath <- TermTrace.resolve (getTermTraceHandle h) (TraceSites.blockerTraceID blocker)
   frameInfos <- collectFrameInfos h $ TermTrace.frames blockerPath
   let blockerHint = maybe bodyHint savedToHint $ TermTrace.sourceSite blockerPath
   let blockerLabel = TraceSites.describeTraceBlocker blocker
@@ -49,6 +49,10 @@ renderFailureTrace h headLabel bodyHint blocker = do
   let mainModule = Module.extractModule $ Env.getMainModule $ ElaborateHandle.envHandle h
   let modules = mainModule : Map.elems moduleCacheMap
   renderSourceTrace moduleDir modulePathMap modules steps
+
+getTermTraceHandle :: ElaborateHandle.Handle -> TermTrace.Handle
+getTermTraceHandle h =
+  Global.termTraceHandle $ ElaborateHandle.globalHandle h
 
 buildSteps :: T.Text -> [FrameInfo] -> Hint -> T.Text -> [RenderStep]
 buildSteps headLabel frameInfos blockerHint blockerLabel =
@@ -68,7 +72,7 @@ collectFrameInfos h frames = do
 
 frameInfo :: ElaborateHandle.Handle -> TermTrace.Frame -> IO (Maybe FrameInfo)
 frameInfo h frame = do
-  callPath <- TermTrace.resolve (Global.termTraceHandle $ ElaborateHandle.globalHandle h) (TermTrace.callSite frame)
+  callPath <- TermTrace.resolve (getTermTraceHandle h) (TermTrace.callSite frame)
   return $ do
     hint <- savedToHint <$> TermTrace.sourceSite callPath
     return $
@@ -80,8 +84,8 @@ frameInfo h frame = do
 frameTitleOf :: TermTrace.Frame -> Title
 frameTitleOf frame =
   case TermTrace.frameKind frame of
-    TermTrace.DefaultArgFrame ->
-      DefaultArgTitle
+    TermTrace.DefaultValueFrame ->
+      DefaultValueTitle
     frameKind ->
       FrameTitle (frameKindText frameKind) (TraceSites.sourceLevelName (TermTrace.callee frame))
 
@@ -100,7 +104,7 @@ frameKindText frameKind =
       "constant-meta"
     TermTrace.DataIntroFrame ->
       "data-intro"
-    TermTrace.DefaultArgFrame ->
+    TermTrace.DefaultValueFrame ->
       "default"
 
 savedToHint :: SavedHint -> Hint
@@ -109,7 +113,7 @@ savedToHint (SavedHint sourceHint) =
 
 expandConstantFrame :: ElaborateHandle.Handle -> TermTrace.Frame -> IO [TermTrace.Frame]
 expandConstantFrame h frame = do
-  callPath <- TermTrace.resolve (Global.termTraceHandle $ ElaborateHandle.globalHandle h) (TermTrace.callSite frame)
+  callPath <- TermTrace.resolve (getTermTraceHandle h) (TermTrace.callSite frame)
   ancestors <- concat <$> mapM (expandConstantFrame h) (reverse $ TermTrace.frames callPath)
   return $ ancestors ++ [frame]
 
@@ -169,8 +173,8 @@ renderTitle title locator =
       "   " <> headLabel <> " -- " <> locator
     FrameTitle kind name ->
       "=> " <> kind <> " " <> name <> " -- " <> locator
-    DefaultArgTitle ->
-      "=> (default argument -- " <> locator <> ")"
+    DefaultValueTitle ->
+      "=> (default value -- " <> locator <> ")"
 
 renderTraceLocation :: T.Text -> ModulePath.ModulePathMap -> [Module.Module] -> Hint -> IO T.Text
 renderTraceLocation moduleDir modulePathMap modules hint = do
@@ -192,7 +196,8 @@ renderTraceLocation moduleDir modulePathMap modules hint = do
                     Source.sourceHint = Nothing,
                     Source.sourceImportLocator = Nothing
                   }
-          rendered <- try (ModulePath.renderCanonicalSource modulePathMap source) :: IO (Either SomeException T.Text)
+          rendered <-
+            try (ModulePath.renderCanonicalSource modulePathMap source) :: IO (Either SomeException T.Text)
           case rendered of
             Left _ ->
               return fallback

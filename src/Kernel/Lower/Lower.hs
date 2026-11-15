@@ -40,9 +40,10 @@ import Kernel.Lower.DeadLetElim qualified as DeadLetElim
 import Kernel.Lower.FreeMallocCancel qualified as FreeMallocCancel
 import Kernel.Lower.HoistStackAlloc qualified as HoistStackAlloc
 import Kernel.Lower.MallocFreeCancel qualified as MallocFreeCancel
-import Language.Common.ArgNum qualified as AN
+import Language.Common.Arity qualified as Arity
 import Language.Common.BaseLowType qualified as BLT
 import Language.Common.BasePrimType qualified as BPT
+import Language.Common.CellLayout qualified as CL
 import Language.Common.CreateSymbol qualified as Gensym
 import Language.Common.DataSize qualified as DS
 import Language.Common.DefiniteDescription qualified as DD
@@ -57,16 +58,16 @@ import Language.Common.LowType.FromBaseLowType qualified as LT
 import Language.Common.PrimNumSize
 import Language.Common.PrimNumSize.ToInt
 import Language.Common.PrimNumSize.Wrap qualified as Wrap
-import Language.Common.SlotSize
 import Language.Common.PrimOp
 import Language.Common.PrimOp.ConvOp qualified as ConvOp
 import Language.Common.PrimType qualified as PT
-import Language.Common.CellLayout qualified as CL
+import Language.Common.SlotSize
 import Language.Comp.Comp qualified as C
 import Language.Comp.CreateVar (createVar)
 import Language.Comp.EnumCase qualified as EC
 import Language.Comp.Reduce qualified as Reduce
 import Language.Comp.Subst qualified as Subst
+import Language.Comp.Switcher qualified as Switcher
 import Language.LowComp.DeclarationName qualified as DN
 import Language.LowComp.LowComp qualified as LC
 import Language.LowComp.Render qualified as LCR
@@ -138,7 +139,7 @@ lower h stmtList auxStmtList = do
   let auxNameSet = S.fromList $ mapMaybe C.getCompStmtName auxStmtList
   liftIO $ registerInternalNames h (stmtList ++ auxStmtList)
   liftIO $ forM DD.baseTypes $ \dd ->
-    insDeclEnv h (DN.In dd) AN.argNumS4 (FCT.Cod BLT.Pointer)
+    insDeclEnv h (DN.In dd) Arity.arityS4 (FCT.Cod BLT.Pointer)
   stmtDefList <- catMaybes <$> mapM (lowerStmt h) stmtList
   auxDefList <- lowerAuxStmtList h auxNameSet auxStmtList
   LC.LowCodeNormal <$> liftIO (summarize h (stmtDefList ++ auxDefList))
@@ -147,7 +148,7 @@ lowerEntryPoint :: Handle -> MainTarget -> [C.CompStmt] -> App LC.LowCode
 lowerEntryPoint h target stmtList = do
   liftIO $ registerInternalNames h stmtList
   mainDD <- Env.getMainDefiniteDescriptionByTarget (envHandle h) target
-  liftIO $ insDeclEnv h (DN.In mainDD) mainEntryArgNum (FCT.Cod BLT.slot)
+  liftIO $ insDeclEnv h (DN.In mainDD) mainEntryArity (FCT.Cod BLT.slot)
   mainDef <- liftIO $ constructMainTerm h mainDD
   stmtList' <- catMaybes <$> mapM (lowerStmt h) stmtList
   LC.LowCodeMain mainDef <$> liftIO (summarize h stmtList')
@@ -163,9 +164,10 @@ summarize h stmtList = do
 
 optimize :: Handle -> LC.Comp -> IO LC.Comp
 optimize h = do
+  let freeMallocCancel matchMode leftover = FreeMallocCancel.freeMallocCancel matchMode leftover (gensymHandle h)
   return . MallocFreeCancel.mallocFreeCancel (baseSize h)
-    >=> FreeMallocCancel.freeMallocCancel FreeMallocCancel.Exact FreeMallocCancel.KeepInPlace (gensymHandle h)
-    >=> FreeMallocCancel.freeMallocCancel FreeMallocCancel.Compatible FreeMallocCancel.SinkIntoBranches (gensymHandle h)
+    >=> freeMallocCancel FreeMallocCancel.Exact FreeMallocCancel.KeepInPlace
+    >=> freeMallocCancel FreeMallocCancel.Compatible FreeMallocCancel.SinkIntoBranches
     >=> HoistStackAlloc.hoistStackAlloc (gensymHandle h) (baseSize h)
     >=> return . CoercionCancel.coercionCancel (baseSize h)
     >=> return . DeadLetElim.deadLetElim
@@ -173,11 +175,11 @@ optimize h = do
 lowerStmt :: Handle -> C.CompStmt -> App (Maybe LC.Def)
 lowerStmt h stmt = do
   case stmt of
-    C.Def name _ args e -> do
-      let argTypes = replicate (length args) LT.slotLowType
-      e0 <- lowerComp (h {currentArity = Just (length args)}) e tailCont
+    C.Def name _ params e -> do
+      let paramTypes = replicate (length params) LT.slotLowType
+      e0 <- lowerComp (h {currentArity = Just (length params)}) e tailCont
       e' <- liftIO $ optimize h e0
-      let def = LC.DefContent LT.slotLowType (zip args argTypes) e'
+      let def = LC.DefContent LT.slotLowType (zip params paramTypes) e'
       reportTrace h name (name, def)
       return $ Just (name, def)
     C.Foreign {} -> do
@@ -255,8 +257,7 @@ lowerAuxStmtList h auxNameSet auxStmtList =
               (maybe False (`S.member` pendingAuxNameSet) . C.getCompStmtName)
               auxStmtList
       if null pendingStmtList
-        then
-          return acc
+        then return acc
         else do
           liftIO $ registerInternalNames h pendingStmtList
           pendingDefList <- catMaybes <$> mapM (lowerStmt h) pendingStmtList
@@ -264,9 +265,9 @@ lowerAuxStmtList h auxNameSet auxStmtList =
                 S.union loweredAuxNameSet (S.fromList $ mapMaybe C.getCompStmtName pendingStmtList)
           go loweredAuxNameSet' (acc ++ pendingDefList)
 
-mainEntryArgNum :: AN.ArgNum
-mainEntryArgNum =
-  AN.fromInt 2
+mainEntryArity :: Arity.Arity
+mainEntryArity =
+  Arity.fromInt 2
 
 mainEntryArgs :: [(LT.LowType, LC.Value)]
 mainEntryArgs =
@@ -299,8 +300,8 @@ cIntLowType =
 hasMatchingSignature :: Handle -> C.Value -> Int -> Bool
 hasMatchingSignature h callee argCount =
   case (currentArity h, callee) of
-    (Just arity, C.VarGlobal _ calleeArgNum _) ->
-      arity == argCount && AN.reify calleeArgNum == argCount
+    (Just arity, C.VarGlobal _ calleeArity _) ->
+      arity == argCount && Arity.reify calleeArity == argCount
     _ ->
       False
 
@@ -339,7 +340,7 @@ lowerComp h term k =
       afterRead <- liftIO $ freeIfNecessary h shouldDeallocate sigma (CL.cellByteSize layout) body
       lowerValueLetCast h sigmaVar v LT.Pointer
         =<< return . fieldPointers (zip elemVars (map fst slots)) sigma
-        =<< loadElements h sigma (zip xs (zip elems (map (widthLowType . snd) slots)))
+        =<< loadElements h sigma (zip xs (zip elems (map (LT.fromBaseLowType . CL.widthBaseLowType . snd) slots)))
         =<< return afterRead
     C.UpIntro d -> do
       (resultVar, resultValue) <- liftIO $ newValueLocal h "result"
@@ -397,8 +398,9 @@ lowerComp h term k =
 isSizeQuery :: C.ForceInline -> [C.Value] -> Bool
 isSizeQuery forceInline ds =
   case ds of
-    [C.Int _ 2, _, _] ->
-      forceInline
+    [C.Int _ switch, _, _]
+      | switch == Switcher.sizeSwitch ->
+          forceInline
     _ ->
       False
 
@@ -645,13 +647,14 @@ lowerCompPrimitive h codeOp k =
           (arg2Var, arg2Value) <- liftIO $ newValueLocal h "arg2"
           (arg3Var, arg3Value) <- liftIO $ newValueLocal h "arg3"
           let isPure = isSizeQuery True [arg1, arg2, arg3]
+          let callArgs = [(LT.slotLowType, arg1Value), (LT.slotLowType, arg2Value), (LT.slotLowType, arg3Value)]
           rest <- sendResult k LT.slotLowType resultValue
           lowerValue h funcVar func
             =<< lowerValue h arg1Var arg1
             =<< lowerValue h arg2Var arg2
             =<< lowerValue h arg3Var arg3
             =<< cast h castFuncVar funcValue LT.Pointer
-            =<< return . LC.Let resultVar (LC.Call isPure LT.slotLowType castFuncValue [(LT.slotLowType, arg1Value), (LT.slotLowType, arg2Value), (LT.slotLowType, arg3Value)])
+            =<< return . LC.Let resultVar (LC.Call isPure LT.slotLowType castFuncValue callArgs)
             =<< return rest
 
 lowerCompPrimOp :: Handle -> PrimOp -> [C.Value] -> Cont -> App LC.Comp
@@ -729,7 +732,7 @@ allocateCell h resultVar byteSize cont =
 createCell :: Handle -> Ident -> CL.CellLayout -> [C.Value] -> LC.Comp -> App LC.Comp
 createCell h resultVar layout ds cont = do
   let slots = CL.cellSlots layout
-  let widths = map (widthLowType . snd) slots
+  let widths = map (LT.fromBaseLowType . CL.widthBaseLowType . snd) slots
   (elemVars, elemValues) <- mapAndUnzipM (const $ liftIO $ newValueLocal h "base") ds
   (xs, vs) <- mapAndUnzipM (const $ liftIO $ newValueLocal h "item") ds
   (cellVar, cellValue) <- liftIO $ newValueLocal h "cell"
@@ -772,11 +775,11 @@ loadElements h basePointer values cont =
 lowerValue :: Handle -> Ident -> C.Value -> LC.Comp -> App LC.Comp
 lowerValue h resultVar v cont =
   case v of
-    C.VarGlobal globalName argNum cod -> do
+    C.VarGlobal globalName arity cod -> do
       liftIO $ insertReferencedName h globalName
       lowNameSet <- liftIO $ getDefinedNameSet h
       unless (S.member globalName lowNameSet) $ do
-        liftIO $ insDeclEnvForGlobalFunc h globalName argNum cod
+        liftIO $ insDeclEnvForGlobalFunc h globalName arity cod
       uncast h resultVar (LC.VarGlobal globalName) LT.Pointer cont
     C.VarLocal y ->
       return $ LC.Let resultVar (moveOf (LT.slotLowType) (LC.VarLocal y)) cont
@@ -823,8 +826,7 @@ freeIfNecessary h shouldDeallocate pointer byteCount cont =
     then do
       freeID <- Gensym.newCount (gensymHandle h)
       return $ LC.Cont (LC.Free pointer (Just byteCount) freeID) cont
-    else
-      return cont
+    else return cont
 
 -- returns Nothing iff the branch list is empty
 newValueLocal :: Handle -> T.Text -> IO (Ident, LC.Value)
@@ -832,13 +834,13 @@ newValueLocal h name = do
   x <- Gensym.newIdentFromText (gensymHandle h) name
   return (x, LC.VarLocal x)
 
-insDeclEnv :: Handle -> DN.DeclarationName -> AN.ArgNum -> FCT.ForeignCodType BLT.BaseLowType -> IO ()
-insDeclEnv h k argNum cod = do
-  insDeclEnv' h k (BLT.toSlotSeq argNum) cod
+insDeclEnv :: Handle -> DN.DeclarationName -> Arity.Arity -> FCT.ForeignCodType BLT.BaseLowType -> IO ()
+insDeclEnv h k arity cod = do
+  insDeclEnv' h k (BLT.toSlotSeq arity) cod
 
-insDeclEnvForGlobalFunc :: Handle -> DD.DefiniteDescription -> AN.ArgNum -> FCT.ForeignCodType BLT.BaseLowType -> IO ()
-insDeclEnvForGlobalFunc h globalName argNum _ =
-  insDeclEnv' h (DN.In globalName) (BLT.toSlotSeq argNum) (FCT.Cod BLT.slot)
+insDeclEnvForGlobalFunc :: Handle -> DD.DefiniteDescription -> Arity.Arity -> FCT.ForeignCodType BLT.BaseLowType -> IO ()
+insDeclEnvForGlobalFunc h globalName arity _ =
+  insDeclEnv' h (DN.In globalName) (BLT.toSlotSeq arity) (FCT.Cod BLT.slot)
 
 insDeclEnv' :: Handle -> DN.DeclarationName -> [BLT.BaseLowType] -> FCT.ForeignCodType BLT.BaseLowType -> IO ()
 insDeclEnv' h k domList cod = do
@@ -910,11 +912,11 @@ lowerStaticValue h v =
       return LC.StaticNull
     C.VarStaticBytes bytes -> do
       LC.StaticSymbol <$> liftIO (registerStaticBytes h bytes)
-    C.VarGlobal globalName argNum cod -> do
+    C.VarGlobal globalName arity cod -> do
       liftIO $ insertReferencedName h globalName
       lowNameSet <- liftIO $ getDefinedNameSet h
       unless (S.member globalName lowNameSet) $ do
-        liftIO $ insDeclEnvForGlobalFunc h globalName argNum cod
+        liftIO $ insDeclEnvForGlobalFunc h globalName arity cod
       return $ LC.StaticGlobal globalName
     C.Int size l ->
       return $ LC.StaticInt size l
@@ -945,20 +947,6 @@ fieldPointers offsetVars basePointer cont = do
   let byteType = LT.PrimNum $ PT.Int IntSize8
   let f (var, offset) = getElemPtr var basePointer byteType [toInteger offset]
   foldr f cont offsetVars
-
-widthLowType :: CL.FieldWidth -> LT.LowType
-widthLowType width =
-  case width of
-    CL.WidthPointer ->
-      LT.Pointer
-    CL.Width8 ->
-      LT.PrimNum $ PT.Int IntSize8
-    CL.Width16 ->
-      LT.PrimNum $ PT.Int IntSize16
-    CL.Width32 ->
-      LT.PrimNum $ PT.Int IntSize32
-    CL.Width64 ->
-      LT.PrimNum $ PT.Int IntSize64
 
 memcpyExternal :: C.Value -> C.Value -> C.Value -> C.Primitive
 memcpyExternal dest src byteCount = do

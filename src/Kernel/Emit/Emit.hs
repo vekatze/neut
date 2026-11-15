@@ -6,8 +6,6 @@ module Kernel.Emit.Emit
 where
 
 import App.App (App)
-import App.Run (raiseError')
-import Console.Handle qualified as Console
 import Console.ReportMode qualified as Report
 import Control.Monad (when)
 import Data.ByteString.Builder
@@ -21,7 +19,13 @@ import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
 import Gensym.CreateHandle qualified as Gensym
 import Gensym.Handle qualified as GensymHandle
-import Kernel.Common.Allocator (Allocator, AllocatorKind (..), allocatorFamily, allocatorForeignList, allocatorSpec)
+import Kernel.Common.Allocator
+  ( Allocator,
+    AllocatorKind (..),
+    allocatorFamily,
+    allocatorForeignList,
+    allocatorSpec,
+  )
 import Kernel.Common.Arch qualified as Arch
 import Kernel.Common.Const
 import Kernel.Common.CreateGlobalHandle qualified as Global
@@ -36,9 +40,8 @@ import Kernel.Emit.Internal.LowComp qualified as EmitLowComp
 import Kernel.Emit.LowType
 import Kernel.Emit.LowValue
 import Language.Common.BaseLowType qualified as BLT
-import Language.Common.CreateSymbol qualified as Gensym
-import Language.Common.PrimNumSize (dataSizeToIntSize)
 import Language.Common.CellLayout qualified as CL
+import Language.Common.CreateSymbol qualified as Gensym
 import Language.Common.DataSize qualified as DS
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.ExternalName qualified as EN
@@ -48,6 +51,7 @@ import Language.Common.Ident (Ident)
 import Language.Common.Ident.Reify
 import Language.Common.LowType qualified as LT
 import Language.Common.LowType.FromBaseLowType qualified as LT
+import Language.Common.PrimNumSize (dataSizeToIntSize)
 import Language.Common.PrimNumSize.ToInt (floatSizeToInt, intSizeToInt)
 import Language.Common.PrimType qualified as PT
 import Language.Common.SlotSize
@@ -66,8 +70,7 @@ data Handle = Handle
 new :: GensymHandle.Handle -> Global.Handle -> Target -> App Handle
 new gensymHandle globalHandle target = do
   allocator <- Env.getAllocatorByTarget target
-  let traceReport = Console.getTraceConfig $ Global.consoleHandle globalHandle
-  traceConfig <- either raiseError' return $ Trace.new (Env.getMainModule $ Global.envHandle globalHandle) traceReport
+  traceConfig <- Trace.newFromConsole $ Global.consoleHandle globalHandle
   return $ Handle {..}
 
 emit :: Handle -> LC.LowCode -> IO L.ByteString
@@ -99,17 +102,19 @@ emitLowCodeInfo h (declEnv, globalEnv, defList, staticTextList, staticDataList, 
   let staticDataList' = map (emitStaticData (getDataSize h)) staticDataList
   defStrList <- concat <$> mapM (emitDefinitions h) defList
   exportStrList <- concat <$> mapM (emitExport h) exportList
-  return (declStrList <> staticTextList' <> staticDataList', defStrList <> exportStrList <> emitExportRoots exportList)
+  let header = declStrList <> staticTextList' <> staticDataList'
+  let body = defStrList <> exportStrList <> emitExportRoots exportList
+  return (header, body)
 
 emitExport :: Handle -> LC.ExportInfo -> IO [Builder]
-emitExport h (extName, LC.DefContent {codType = codType, args = args, body = body}) = do
+emitExport h (extName, defContent) = do
   let exportAttributes =
         case getArch h of
           Arch.Wasm32 ->
             ["\"wasm-export-name\"=\"" <> TE.encodeUtf8Builder (EN.reify extName) <> "\""]
           _ ->
             []
-  emitDefinition h (gensymHandle h) False Nothing exportAttributes codType (EN.toBuilder extName) (emitExternalArgs h args) body
+  emitExternalDefinition h exportAttributes (EN.toBuilder extName) defContent
 
 emitExportRoots :: [LC.ExportInfo] -> [Builder]
 emitExportRoots exportList =
@@ -258,23 +263,27 @@ emitGlobalDeclarations globalEnv =
   map (uncurry emitGlobalExt) $ List.sort $ HashMap.toList globalEnv
 
 emitDefinitions :: Handle -> LC.Def -> IO [Builder]
-emitDefinitions h (name, LC.DefContent {codType = codType, args = args, body = body}) = do
+emitDefinitions h (name, LC.DefContent {codType = codType, params = params, body = body}) = do
   definitionGensymHandle <- Gensym.createHandle
-  args' <- mapM (Gensym.newIdentFromIdent definitionGensymHandle . fst) args
-  let sub = IntMap.fromList $ zipWith (\from to -> (toInt from, LC.VarLocal to)) (map fst args) args'
+  params' <- mapM (Gensym.newIdentFromIdent definitionGensymHandle . fst) params
+  let sub = IntMap.fromList $ zipWith (\from to -> (toInt from, LC.VarLocal to)) (map fst params) params'
   let reduceHandle = Reduce.new definitionGensymHandle
   body' <- Reduce.reduce reduceHandle sub body
-  let args'' = showInternalArgs (getDataSize h) $ zipWith (\(_, t) x -> (t, LC.VarLocal x)) args args'
+  let args'' = showInternalArgs (getDataSize h) $ zipWith (\(_, t) x -> (t, LC.VarLocal x)) params params'
   emitDefinition h definitionGensymHandle True (Just name) [] codType (DD.toBuilder name) args'' body'
 
 emitMain :: Handle -> LC.DefContent -> IO [Builder]
-emitMain h (LC.DefContent {codType = codType, args = args, body = body}) = do
-  emitDefinition h (gensymHandle h) False Nothing [] codType (mainSymbol (getArch h)) (emitExternalArgs h args) body
+emitMain h defContent = do
+  emitExternalDefinition h [] (mainSymbol (getArch h)) defContent
 
-emitExternalArgs :: Handle -> [(Ident, LT.LowType)] -> Builder
-emitExternalArgs h args = do
-  let renderArg (x, t) = emitLowType t <> " " <> emitValue (getDataSize h) (LC.VarLocal x)
-  "(" <> unwordsC (map renderArg args) <> ")"
+emitExternalDefinition :: Handle -> [Builder] -> Builder -> LC.DefContent -> IO [Builder]
+emitExternalDefinition h extraAttributes symbol (LC.DefContent {codType = codType, params = params, body = body}) = do
+  emitDefinition h (gensymHandle h) False Nothing extraAttributes codType symbol (emitExternalParams h params) body
+
+emitExternalParams :: Handle -> [(Ident, LT.LowType)] -> Builder
+emitExternalParams h params = do
+  let renderParam (x, t) = emitLowType t <> " " <> emitValue (getDataSize h) (LC.VarLocal x)
+  "(" <> unwordsC (map renderParam params) <> ")"
 
 mainSymbol :: Arch.Arch -> Builder
 mainSymbol arch =
@@ -292,7 +301,10 @@ getDataSize :: Handle -> DS.DataSize
 getDataSize h =
   Platform.getDataSize $ Global.platformHandle $ globalHandle h
 
-declToBuilder :: Handle -> (DN.DeclarationName, ([BLT.BaseLowType], FCT.ForeignCodType BLT.BaseLowType, DN.Variadicity)) -> Builder
+declToBuilder ::
+  Handle ->
+  (DN.DeclarationName, ([BLT.BaseLowType], FCT.ForeignCodType BLT.BaseLowType, DN.Variadicity)) ->
+  Builder
 declToBuilder h (name, (dom, cod, variadicity)) = do
   let codType = FCT.fromForeignCodType cod
   let isInternal =
@@ -309,7 +321,7 @@ declToBuilder h (name, (dom, cod, variadicity)) = do
         returnType
           <> " @"
           <> DN.toBuilder name
-          <> emitDeclarationArgs isInternal maybeKind variadicity dom
+          <> emitDeclarationParams isInternal maybeKind variadicity dom
   attachAttributes "declare" $
     callConvAttributes
       ++ returnAttributes
@@ -327,13 +339,13 @@ wasmImportAttributes platformName name =
     _ ->
       []
 
-emitDeclarationArgs :: Bool -> Maybe AllocatorKind -> DN.Variadicity -> [BLT.BaseLowType] -> Builder
-emitDeclarationArgs isInternal maybeKind variadicity dom = do
+emitDeclarationParams :: Bool -> Maybe AllocatorKind -> DN.Variadicity -> [BLT.BaseLowType] -> Builder
+emitDeclarationParams isInternal maybeKind variadicity dom = do
   let renderArg index t = do
         let attributes =
               if isInternal
                 then internalArgAttributes t
-                else maybe [] (`allocatorArgAttributes` index) maybeKind
+                else maybe [] (`allocatorParamAttributes` index) maybeKind
         attachAttributes (emitLowType t) attributes
   let renderedArgs = zipWith renderArg [0 ..] (map LT.fromBaseLowType dom)
   let renderedArgs' =
@@ -367,8 +379,8 @@ allocatorReturnAttributes kind =
     _ ->
       ["noalias", "noundef"]
 
-allocatorArgAttributes :: AllocatorKind -> Int -> [Builder]
-allocatorArgAttributes kind index = do
+allocatorParamAttributes :: AllocatorKind -> Int -> [Builder]
+allocatorParamAttributes kind index = do
   let isAllocPtr =
         case kind of
           Realloc ->
@@ -396,11 +408,22 @@ allocatorFunctionAttributes allocator kind = do
   let family = TE.encodeUtf8Builder $ allocatorFamily allocator
   ["nounwind", "willreturn"] ++ effects ++ ["\"alloc-family\"=\"" <> family <> "\""]
 
-emitDefinition :: Handle -> GensymHandle.Handle -> Bool -> Maybe DD.DefiniteDescription -> [Builder] -> LT.LowType -> Builder -> Builder -> LC.Comp -> IO [Builder]
+emitDefinition ::
+  Handle ->
+  GensymHandle.Handle ->
+  Bool ->
+  Maybe DD.DefiniteDescription ->
+  [Builder] ->
+  LT.LowType ->
+  Builder ->
+  Builder ->
+  LC.Comp ->
+  IO [Builder]
 emitDefinition h gensymHandle isInternal maybeName extraAttributes retType name args asm = do
   let attributes = archFunctionAttributes (getArch h) ++ tailCallAttributes maybeName asm ++ extraAttributes
   let header = sig isInternal retType name args attributes <> " {"
-  emitLowCompHandle <- EmitLowComp.new gensymHandle (globalHandle h) (emitLowType retType) (allocatorSpec $ allocator h)
+  let allocSpec = allocatorSpec $ allocator h
+  emitLowCompHandle <- EmitLowComp.new gensymHandle (globalHandle h) (emitLowType retType) allocSpec
   content <- EmitLowComp.emitLowComp emitLowCompHandle asm
   let footer = "}"
   let definition = [header] <> content <> [footer]

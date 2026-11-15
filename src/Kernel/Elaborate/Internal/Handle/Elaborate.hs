@@ -3,8 +3,8 @@ module Kernel.Elaborate.Internal.Handle.Elaborate
     ObligationSite (..),
     TypeObligation (..),
     new,
-    reduceType,
     fillType,
+    ensureUnfoldingBudget,
     inline,
     inlineDefinition,
     inlineBinder,
@@ -13,11 +13,14 @@ module Kernel.Elaborate.Internal.Handle.Elaborate
 where
 
 import App.App (App)
+import App.Run (raiseError)
+import Control.Monad (when)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.IORef
 import Data.IntMap qualified as IntMap
 import Data.Maybe (fromMaybe)
 import Data.Set qualified as S
+import Data.Text qualified as T
 import Data.Time (UTCTime)
 import Gensym.Handle qualified as Gensym
 import Kernel.Common.Const (defaultInlineLimit)
@@ -26,9 +29,9 @@ import Kernel.Common.CreateLocalHandle qualified as Local
 import Kernel.Common.Handle.Global.Data qualified as Data
 import Kernel.Common.Handle.Global.Env qualified as Env
 import Kernel.Common.Handle.Global.GlobalRemark qualified as GlobalRemark
-import Kernel.Common.Handle.Global.KeyArg qualified as KeyArg
 import Kernel.Common.Handle.Global.ModulePath qualified as ModulePath
 import Kernel.Common.Handle.Global.OptimizableData qualified as OptimizableData
+import Kernel.Common.Handle.Global.ParamKey qualified as ParamKey
 import Kernel.Common.Handle.Global.Path qualified as Path
 import Kernel.Common.Handle.Global.Platform qualified as Platform
 import Kernel.Common.Handle.Global.Type qualified as Type
@@ -43,12 +46,11 @@ import Kernel.Elaborate.Internal.Handle.LocalLogs qualified as LocalLogs
 import Kernel.Elaborate.Internal.Handle.Trope qualified as Trope
 import Kernel.Elaborate.Internal.Handle.TypeDef qualified as TypeDef
 import Kernel.Elaborate.Internal.Handle.WeakDecl qualified as WeakDecl
-import Kernel.Elaborate.Internal.Handle.WeakDef qualified as WeakDef
 import Kernel.Elaborate.Internal.Handle.WeakType qualified as WeakType
 import Kernel.Elaborate.Internal.Handle.WeakTypeDef qualified as WeakTypeDef
-import Kernel.Parse.Internal.Handle.BranchAgreement qualified as BranchAgreement
 import Kernel.Elaborate.Internal.WeakTerm.Fill qualified as Fill
 import Kernel.Elaborate.TypeHoleSubst qualified as THS
+import Kernel.Parse.Internal.Handle.BranchAgreement qualified as BranchAgreement
 import Language.Common.Binder
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.VarKind qualified as VK
@@ -56,9 +58,8 @@ import Language.Term.Inline qualified as Inline
 import Language.Term.Inline.Env qualified as InlineEnv
 import Language.Term.Inline.Handle qualified as InlineHandle
 import Language.Term.Stmt qualified as Stmt
-import Language.Term.Term qualified as TM
-import Language.WeakTerm.Reduce qualified as Reduce
 import Language.Term.Subst qualified as TmSubst
+import Language.Term.Term qualified as TM
 import Language.WeakTerm.Subst qualified as Subst
 import Language.WeakTerm.WeakTerm qualified as WT
 import Logger.Hint (Hint)
@@ -68,7 +69,6 @@ data Handle = Handle
     modulePathMap :: ModulePath.ModulePathMap,
     envHandle :: Env.Handle,
     platformHandle :: Platform.Handle,
-    weakDefHandle :: WeakDef.Handle,
     weakTypeDefHandle :: WeakTypeDef.Handle,
     dataHandle :: Data.Handle,
     constraintHandle :: Constraint.Handle,
@@ -83,7 +83,7 @@ data Handle = Handle
     tagHandle :: Tag.Handle,
     typeDefHandle :: TypeDef.Handle,
     gensymHandle :: Gensym.Handle,
-    keyArgHandle :: KeyArg.Handle,
+    paramKeyHandle :: ParamKey.Handle,
     localLogsHandle :: LocalLogs.Handle,
     pathHandle :: Path.Handle,
     globalRemarkHandle :: GlobalRemark.Handle,
@@ -137,17 +137,15 @@ new gensymHandle globalHandle@(Global.Handle {..}) traceConfig (Local.Handle {..
   let currentDefinition = Nothing
   return $ Handle {..}
 
-reduceType :: Handle -> WT.WeakType -> App WT.WeakType
-reduceType h t = do
-  reduceHandle <- liftIO $ Reduce.new (substHandle h) (WT.metaOfType t) (inlineLimit h)
-  Reduce.reduceType reduceHandle t
+ensureUnfoldingBudget :: Handle -> Hint -> Int -> App ()
+ensureUnfoldingBudget h m budget =
+  when (budget <= 0) $
+    raiseError m $
+      "Exceeded max recursion depth of " <> T.pack (show (inlineLimit h)) <> " while reducing a type"
 
 fillType :: Handle -> THS.TypeHoleSubst -> WT.WeakType -> App WT.WeakType
 fillType h sub t = do
-  reduceHandle <- liftIO $ Reduce.new (substHandle h) (WT.metaOfType t) (inlineLimit h)
-  let substHandle = Subst.new (gensymHandle h)
-  let fillHandle = Fill.new substHandle reduceHandle
-  Fill.fillType fillHandle sub t
+  Fill.fillType (Fill.new (substHandle h)) sub t
 
 inline :: Handle -> Hint -> TM.Term -> App TM.Term
 inline h m =
@@ -177,10 +175,10 @@ inlineEnv h = do
       }
 
 inlineDefinition :: Handle -> Hint -> Bool -> [BinderF TM.Type] -> TM.Term -> App TM.Term
-inlineDefinition h m traceEnabled binders e = do
+inlineDefinition h m traceEnabled params e = do
   env <- liftIO $ inlineEnv h
   inlineHandle <- liftIO $ Inline.new env m traceEnabled
-  let localTypeEnv = TM.insTypeEnv binders (InlineHandle.localTypeEnv inlineHandle)
+  let localTypeEnv = TM.insTypeEnv params (InlineHandle.localTypeEnv inlineHandle)
   Inline.inline (inlineHandle {InlineHandle.localTypeEnv}) e
 
 inlineBinder :: Handle -> BinderF TM.Type -> App (BinderF TM.Type)

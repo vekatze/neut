@@ -41,7 +41,15 @@ create h cfg = do
   newModule <- Create.constructDefaultModule (moduleName cfg) (targetName cfg)
   coreLocation <- Fetch.getCoreLocation
   Create.createNewProject (createHandle h) (moduleName cfg) newModule
-  h' <- Global.new (consoleHandle h) (loggerHandle h) (localArchiveMap h) Reuse.disabled (Just $ moduleLocation newModule) Nothing
+  let newGlobalHandle =
+        Global.new
+          (consoleHandle h)
+          (loggerHandle h)
+          (localArchiveMap h)
+          Reuse.disabled
+          (Just $ moduleLocation newModule)
+          Nothing
+  h' <- newGlobalHandle
   Fetch.insertCoreDependency (Fetch.new h') coreLocation
-  h'' <- Global.new (consoleHandle h) (loggerHandle h) (localArchiveMap h) Reuse.disabled (Just $ moduleLocation newModule) Nothing
+  h'' <- newGlobalHandle
   void $ Check.checkAllOrFail (Check.new h'') Nothing

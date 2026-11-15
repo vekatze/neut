@@ -3,8 +3,8 @@ module Language.Common.LowType (LowType (..), slotLowType, textType, textTypeInn
 import Binary.Derive (deriveBinary)
 import Language.Common.DataSize qualified as DS
 import Language.Common.PrimNumSize
-import Language.Common.SlotSize
 import Language.Common.PrimType qualified as PT
+import Language.Common.SlotSize
 
 data LowType
   = PrimNum PT.PrimType

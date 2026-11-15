@@ -12,20 +12,19 @@ module Language.Term.Inline.Handle
     Pending (..),
     Instantiation (..),
     PendingTerm (..),
-    PendingType (..),
   )
 where
 
 import Data.HashMap.Strict qualified as Map
+import Data.IORef
 import Data.IntMap qualified as IntMap
 import Data.IntSet qualified as IntSet
-import Data.IORef
 import Gensym.Handle qualified as GensymHandle
 import Kernel.Common.Handle.Global.Data qualified as Data
+import Kernel.Common.Handle.Global.ModulePath qualified as ModulePath
 import Kernel.Common.Handle.Global.OptimizableData qualified as OptimizableData
 import Kernel.Common.Handle.Local.Tag qualified as Tag
 import Kernel.Common.Module qualified as Module
-import Kernel.Common.Handle.Global.ModulePath qualified as ModulePath
 import Kernel.Elaborate.Internal.Handle.TypeDef qualified as TypeDef
 import Language.Common.Binder
 import Language.Common.DefiniteDescription qualified as DD
@@ -53,10 +52,6 @@ data PendingTerm
   = Normalized TropeDepth Normal
   | RenamedTerm Ident
 
-data PendingType
-  = TypeValue TM.Type
-  | RenamedType Ident
-
 newtype Instantiation = Instantiation
   { traceRemapping :: Maybe Trace.Remapping
   }
@@ -71,9 +66,9 @@ data DefKind
   deriving (Eq, Show)
 
 data DefInfo = DefInfo
-  { defImpBinders :: [BinderF TM.Type],
-    defExpBinders :: [BinderF TM.Type],
-    defDefaultArgs :: [(BinderF TM.Type, TM.Term)],
+  { defImpParams :: [BinderF TM.Type],
+    defExpParams :: [BinderF TM.Type],
+    defDefaultParams :: [(BinderF TM.Type, TM.Term)],
     defBody :: TM.Term,
     codType :: TM.Type,
     defKind :: DefKind,
@@ -120,7 +115,7 @@ data Handle = Handle
     localMetaMemo :: [(DD.DefiniteDescription, [TM.Type], Ident)],
     activeDefineMetaList :: [Stmt.DefineMeta],
     pendingTerms :: IntMap.IntMap (Pending PendingTerm),
-    pendingTypes :: IntMap.IntMap (Pending PendingType),
+    pendingTypes :: IntMap.IntMap (Pending Subst.TypeEntry),
     nextPendingSerial :: Int,
     instantiation :: Maybe Instantiation,
     usedPendingSerialRef :: IORef Int,

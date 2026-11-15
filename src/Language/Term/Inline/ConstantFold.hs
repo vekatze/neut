@@ -4,9 +4,10 @@ module Language.Term.Inline.ConstantFold
 where
 
 import Control.Comonad.Cofree
-import Data.Bits (complement, shiftL, shiftR, testBit, xor, (.&.), (.|.))
+import Data.Bits (shiftL, shiftR, xor, (.&.), (.|.))
 import Language.Common.PrimNumSize qualified as PNS
 import Language.Common.PrimNumSize.ToInt (intSizeToInt)
+import Language.Common.PrimNumSize.Wrap qualified as Wrap
 import Language.Common.PrimOp (PrimOp (..))
 import Language.Common.PrimOp.BinaryOp qualified as BinOp
 import Language.Common.PrimOp.CmpOp qualified as CmpOp
@@ -22,32 +23,6 @@ import Numeric.Half
 bitMask :: PNS.IntSize -> Integer
 bitMask size =
   (1 `shiftL` intSizeToInt size) - 1
-
-normalize :: PNS.IntSize -> Integer -> Integer
-normalize size val =
-  val .&. bitMask size
-
-isNegative :: PNS.IntSize -> Integer -> Bool
-isNegative size val =
-  testBit val (intSizeToInt size - 1)
-
-toUnsigned :: PNS.IntSize -> Integer -> Integer
-toUnsigned size val = do
-  let normalized = normalize size val
-  if val < 0 && not (isNegative size normalized)
-    then do
-      let signBit = 1 `shiftL` (intSizeToInt size - 1)
-      normalized .|. signBit
-    else normalized
-
-toSigned :: PNS.IntSize -> Integer -> Integer
-toSigned size val = do
-  let normalized = normalize size val
-  if isNegative size normalized
-    then do
-      let signExtension = complement (bitMask size)
-      normalized .|. signExtension
-    else normalized
 
 evaluatePrimOp :: Hint -> PrimOp -> [TM.Term] -> Maybe TM.Term
 evaluatePrimOp m op args =
@@ -102,28 +77,28 @@ evaluateConvOp :: Hint -> ConvOp.ConvOp -> PT.PrimType -> PT.PrimType -> TM.Term
 evaluateConvOp m convOp dom cod arg =
   case (convOp, dom, cod, arg) of
     (ConvOp.Trunc, PT.Int size1, PT.Int size2, _ :< TM.Prim (PV.Int _ _ val)) ->
-      intResult m size2 $ normalize size2 (normalize size1 val)
+      intResult m size2 $ Wrap.unsignedOf size2 (Wrap.unsignedOf size1 val)
     (ConvOp.Zext, PT.Int size1, PT.Int size2, _ :< TM.Prim (PV.Int _ _ val)) ->
-      intResult m size2 $ normalize size2 (toUnsigned size1 val)
+      intResult m size2 $ Wrap.unsignedOf size2 (Wrap.unsignedOf size1 val)
     (ConvOp.Sext, PT.Int size1, PT.Int size2, _ :< TM.Prim (PV.Int _ _ val)) ->
-      intResult m size2 $ normalize size2 (toSigned size1 val)
+      intResult m size2 $ Wrap.unsignedOf size2 (Wrap.signedOf size1 val)
     (ConvOp.Fptrunc, PT.Float size1, PT.Float size2, _ :< TM.Prim (PV.Float _ _ val)) ->
       floatResult m size2 $ roundFloat size2 (roundFloat size1 val)
     (ConvOp.Fpext, PT.Float size1, PT.Float size2, _ :< TM.Prim (PV.Float _ _ val)) ->
       floatResult m size2 $ roundFloat size2 (roundFloat size1 val)
     (ConvOp.Uitofp, PT.Int size1, PT.Float size2, _ :< TM.Prim (PV.Int _ _ val)) ->
-      floatResult m size2 $ roundFloat size2 (fromInteger (toUnsigned size1 val))
+      floatResult m size2 $ roundFloat size2 (fromInteger (Wrap.unsignedOf size1 val))
     (ConvOp.Sitofp, PT.Int size1, PT.Float size2, _ :< TM.Prim (PV.Int _ _ val)) ->
-      floatResult m size2 $ roundFloat size2 (fromInteger (toSigned size1 val))
+      floatResult m size2 $ roundFloat size2 (fromInteger (Wrap.signedOf size1 val))
     (ConvOp.Fptoui, PT.Float size1, PT.Int size2, _ :< TM.Prim (PV.Float _ _ val)) -> do
       truncated <- truncateToInteger (roundFloat size1 val)
       if 0 <= truncated && truncated <= bitMask size2
-        then intResult m size2 (normalize size2 truncated)
+        then intResult m size2 (Wrap.unsignedOf size2 truncated)
         else Nothing
     (ConvOp.Fptosi, PT.Float size1, PT.Int size2, _ :< TM.Prim (PV.Float _ _ val)) -> do
       truncated <- truncateToInteger (roundFloat size1 val)
       if negate (signBitOf size2) <= truncated && truncated < signBitOf size2
-        then intResult m size2 (normalize size2 truncated)
+        then intResult m size2 (Wrap.unsignedOf size2 truncated)
         else Nothing
     _ ->
       Nothing
@@ -171,31 +146,31 @@ applyIntBinaryOp :: PNS.IntSize -> BinOp.BinaryOp -> Integer -> Integer -> Maybe
 applyIntBinaryOp size op val1 val2 =
   case op of
     BinOp.Add ->
-      Just $ normalize size (val1 + val2)
+      Just $ Wrap.unsignedOf size (val1 + val2)
     BinOp.Sub ->
-      Just $ normalize size (val1 - val2)
+      Just $ Wrap.unsignedOf size (val1 - val2)
     BinOp.Mul ->
-      Just $ normalize size (val1 * val2)
+      Just $ Wrap.unsignedOf size (val1 * val2)
     BinOp.SDiv ->
-      divisionOf (toSigned size) size quot val1 val2
+      divisionOf (Wrap.signedOf size) size quot val1 val2
     BinOp.SRem ->
-      divisionOf (toSigned size) size rem val1 val2
+      divisionOf (Wrap.signedOf size) size rem val1 val2
     BinOp.UDiv ->
-      divisionOf (toUnsigned size) size quot val1 val2
+      divisionOf (Wrap.unsignedOf size) size quot val1 val2
     BinOp.URem ->
-      divisionOf (toUnsigned size) size rem val1 val2
+      divisionOf (Wrap.unsignedOf size) size rem val1 val2
     BinOp.And ->
-      Just $ normalize size (val1 .&. val2)
+      Just $ Wrap.unsignedOf size (val1 .&. val2)
     BinOp.Or ->
-      Just $ normalize size (val1 .|. val2)
+      Just $ Wrap.unsignedOf size (val1 .|. val2)
     BinOp.Xor ->
-      Just $ normalize size (val1 `xor` val2)
+      Just $ Wrap.unsignedOf size (val1 `xor` val2)
     BinOp.Shl ->
       shiftOf id size shiftL val1 val2
     BinOp.Lshr ->
-      shiftOf (toUnsigned size) size shiftR val1 val2
+      shiftOf (Wrap.unsignedOf size) size shiftR val1 val2
     BinOp.Ashr ->
-      shiftOf (toSigned size) size shiftR val1 val2
+      shiftOf (Wrap.signedOf size) size shiftR val1 val2
     _ ->
       Nothing
 
@@ -210,7 +185,7 @@ divisionOf interpret size f val1 val2 = do
   let divisor = interpret val2
   if divisor == 0
     then Nothing
-    else Just $ normalize size (f (interpret val1) divisor)
+    else Just $ Wrap.unsignedOf size (f (interpret val1) divisor)
 
 shiftOf ::
   (Integer -> Integer) ->
@@ -220,10 +195,10 @@ shiftOf ::
   Integer ->
   Maybe Integer
 shiftOf interpret size f val1 val2 = do
-  let amount = toUnsigned size val2
+  let amount = Wrap.unsignedOf size val2
   if amount >= toInteger (intSizeToInt size)
     then Nothing
-    else Just $ normalize size (f (interpret val1) (fromInteger amount))
+    else Just $ Wrap.unsignedOf size (f (interpret val1) (fromInteger amount))
 
 applyFloatBinaryOp :: PNS.FloatSize -> BinOp.BinaryOp -> Double -> Double -> Maybe Double
 applyFloatBinaryOp size op val1 val2 = do
@@ -300,25 +275,25 @@ applyIntCmpOp :: PNS.IntSize -> CmpOp.CmpOp -> Integer -> Integer -> Maybe Bool
 applyIntCmpOp size op val1 val2 =
   case op of
     CmpOp.Eq ->
-      Just (normalize size val1 == normalize size val2)
+      Just (Wrap.unsignedOf size val1 == Wrap.unsignedOf size val2)
     CmpOp.Ne ->
-      Just (normalize size val1 /= normalize size val2)
+      Just (Wrap.unsignedOf size val1 /= Wrap.unsignedOf size val2)
     CmpOp.SGt ->
-      Just (toSigned size val1 > toSigned size val2)
+      Just (Wrap.signedOf size val1 > Wrap.signedOf size val2)
     CmpOp.SGe ->
-      Just (toSigned size val1 >= toSigned size val2)
+      Just (Wrap.signedOf size val1 >= Wrap.signedOf size val2)
     CmpOp.SLt ->
-      Just (toSigned size val1 < toSigned size val2)
+      Just (Wrap.signedOf size val1 < Wrap.signedOf size val2)
     CmpOp.SLe ->
-      Just (toSigned size val1 <= toSigned size val2)
+      Just (Wrap.signedOf size val1 <= Wrap.signedOf size val2)
     CmpOp.UGt ->
-      Just (toUnsigned size val1 > toUnsigned size val2)
+      Just (Wrap.unsignedOf size val1 > Wrap.unsignedOf size val2)
     CmpOp.UGe ->
-      Just (toUnsigned size val1 >= toUnsigned size val2)
+      Just (Wrap.unsignedOf size val1 >= Wrap.unsignedOf size val2)
     CmpOp.ULt ->
-      Just (toUnsigned size val1 < toUnsigned size val2)
+      Just (Wrap.unsignedOf size val1 < Wrap.unsignedOf size val2)
     CmpOp.ULe ->
-      Just (toUnsigned size val1 <= toUnsigned size val2)
+      Just (Wrap.unsignedOf size val1 <= Wrap.unsignedOf size val2)
     _ ->
       Nothing
 

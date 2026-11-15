@@ -15,10 +15,10 @@ import Control.Monad
 import Control.Monad.IO.Class
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
-import Kernel.Common.Import (ImportUse (..))
 import Kernel.Common.Handle.Global.Env qualified as Env
 import Kernel.Common.Handle.Global.Module qualified as ModuleHandle
 import Kernel.Common.Handle.Local.Locator qualified as Locator
+import Kernel.Common.Import (ImportUse (..))
 import Kernel.Common.Module
 import Kernel.Common.Module.GetModule qualified as GetModule
 import Kernel.Common.Source qualified as Source

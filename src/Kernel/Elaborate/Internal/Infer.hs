@@ -21,6 +21,7 @@ import Data.Text qualified as T
 import Gensym.Gensym qualified as Gensym
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.ModulePath qualified as ModulePath
+import Kernel.Common.Handle.Global.ParamKey qualified as ParamKey
 import Kernel.Common.Handle.Global.Type qualified as Type
 import Kernel.Elaborate.Internal.Handle.Constraint qualified as Constraint
 import Kernel.Elaborate.Internal.Handle.Elaborate
@@ -31,7 +32,7 @@ import Kernel.Elaborate.Internal.Handle.WeakTypeDef qualified as WeakTypeDef
 import Kernel.Elaborate.Internal.Unify qualified as Unify
 import Kernel.Elaborate.TypeHoleSubst qualified as THS
 import Language.Common.Annotation qualified as Annotation
-import Language.Common.ArgNum qualified as AN
+import Language.Common.Arity qualified as Arity
 import Language.Common.Attr.Data qualified as AttrD
 import Language.Common.Attr.DataIntro qualified as AttrDI
 import Language.Common.Attr.Lam qualified as AttrL
@@ -70,7 +71,6 @@ import Language.Common.StrictGlobalLocator qualified as SGL
 import Language.Common.VarKind qualified as VK
 import Language.LowComp.DeclarationName qualified as DN
 import Language.WeakTerm.CreateHole qualified as WT
-import Language.WeakTerm.Subst (SubstEntry (..))
 import Language.WeakTerm.Subst qualified as Subst
 import Language.WeakTerm.ToText (toTextTypeInMessage)
 import Language.WeakTerm.WeakPrimValue qualified as WPV
@@ -83,17 +83,17 @@ type BoundVarEnv = [BinderF WT.WeakType]
 inferStmt :: Handle -> WeakStmt -> App WeakStmt
 inferStmt h stmt =
   case stmt of
-    WeakStmtDefineTerm isConstLike stmtKind m x impArgs expArgs defaultArgs codType e -> do
-      (impArgs', h') <- inferImpBinder h impArgs
-      (expArgs', h'') <- inferBinder' h' expArgs
-      (defaultArgs', h''') <- inferImpBinderWithDefaults h'' defaultArgs
-      let defaultBinders = map fst defaultArgs'
+    WeakStmtDefineTerm isConstLike stmtKind m x impParams expParams defaultParams codType e -> do
+      (impParams', h') <- inferImpBinder h impParams
+      (expParams', h'') <- inferBinder' h' expParams
+      (defaultParams', h''') <- inferImpBinderWithDefaults h'' defaultParams
+      let defaultParamBinders = map fst defaultParams'
       codType' <- inferType h''' codType
       case stmtKind of
         SK.Macro -> do
-          unless (null defaultArgs') $ do
-            raiseError m "`define-meta` cannot have default arguments"
-          forM_ (expArgs' ++ map fst defaultArgs') $ \(mx, _, _, t) ->
+          unless (null defaultParams') $ do
+            raiseError m "`define-meta` cannot have default parameters"
+          forM_ (expParams' ++ map fst defaultParams') $ \(mx, _, _, t) ->
             checkIsCodeType h''' mx t
           checkIsCodeType h''' m codType'
         SK.ConstantMeta -> do
@@ -102,27 +102,27 @@ inferStmt h stmt =
           return ()
       when (SK.isDestPassingStmtKind stmtKind) $ do
         require h VK.Sized Destination m codType'
-      liftIO $ insertType h''' x $ m :< WT.Pi (PK.fromStmtKind stmtKind isConstLike) impArgs' expArgs' defaultBinders codType'
+      liftIO $ insertType h''' x $ m :< WT.Pi (PK.fromStmtKind stmtKind isConstLike) impParams' expParams' defaultParamBinders codType'
       stmtKind' <- inferStmtKindTerm h''' stmtKind
       e' <- check (h''' {currentDefinition = Just x}) e codType'
       case getMainUnitType stmtKind of
         Just unitType -> do
           let expected = m :< WT.Pi PK.normal [] [] [] unitType
-          let actual = m :< WT.Pi PK.normal impArgs' expArgs' defaultBinders codType'
+          let actual = m :< WT.Pi PK.normal impParams' expParams' defaultParamBinders codType'
           liftIO $ Constraint.insert (constraintHandle h''') expected actual
         Nothing ->
           return ()
-      return $ WeakStmtDefineTerm isConstLike stmtKind' m x impArgs' expArgs' defaultArgs' codType' e'
-    WeakStmtDefineType isConstLike stmtKind m x impArgs expArgs defaultArgs codType body -> do
-      (impArgs', h') <- inferImpBinder h impArgs
-      (expArgs', h'') <- inferBinder' h' expArgs
-      (defaultArgs', h''') <- inferImpBinderWithDefaults h'' defaultArgs
-      let defaultBinders = map fst defaultArgs'
+      return $ WeakStmtDefineTerm isConstLike stmtKind' m x impParams' expParams' defaultParams' codType' e'
+    WeakStmtDefineType isConstLike stmtKind m x impParams expParams defaultParams codType body -> do
+      (impParams', h') <- inferImpBinder h impParams
+      (expParams', h'') <- inferBinder' h' expParams
+      (defaultParams', h''') <- inferImpBinderWithDefaults h'' defaultParams
+      let defaultParamBinders = map fst defaultParams'
       codType' <- inferType h''' codType
-      liftIO $ insertType h''' x $ m :< WT.Pi (PK.Normal isConstLike) impArgs' expArgs' defaultBinders codType'
+      liftIO $ insertType h''' x $ m :< WT.Pi (PK.Normal isConstLike) impParams' expParams' defaultParamBinders codType'
       body' <- inferType h''' body
       stmtKind' <- inferStmtKindType h''' stmtKind
-      return $ WeakStmtDefineType isConstLike stmtKind' m x impArgs' expArgs' defaultArgs' codType' body'
+      return $ WeakStmtDefineType isConstLike stmtKind' m x impParams' expParams' defaultParams' codType' body'
     WeakStmtDefineResource m dd resourceID unitType discarder copier resourceSize -> do
       unitType' <- inferType h unitType
       (discarderType, copierType) <- liftIO $ makeResourceHandlerTypes h m unitType'
@@ -155,45 +155,46 @@ inferDefineMeta h defineMeta = do
   targetArgs' <- mapM (inferType h) $ weakDefineMetaTargetArgs defineMeta
   targetType <- Type.lookup' (typeHandle h) m (weakDefineMetaTarget defineMeta)
   targetType' <- resolveType h targetType
-  (expectedExpArgs, expectedCod) <-
+  (expectedExpParams, expectedCod) <-
     case targetType' of
       _ :< WT.Pi _ impParams expParams defaultParams cod -> do
         unless (null defaultParams) $ do
-          raiseError m "The target of a `define-meta` in a `trope` cannot have default arguments"
-        ensureImplicitArityCorrectness h (m :< WT.VarGlobal (AttrVG.new AN.zero) (weakDefineMetaTarget defineMeta)) (length impParams) (length targetArgs')
+          raiseError m "The target of a `define-meta` in a `trope` cannot have default parameters"
+        let targetVar = m :< WT.VarGlobal (AttrVG.new Arity.zero) (weakDefineMetaTarget defineMeta)
+        ensureImplicitArityCorrectness h targetVar (length impParams) (length targetArgs')
         targetArgsWithKinds <- mapM (inferTypeWithKind h) targetArgs'
         subType <- inferArgsTypes h IntMap.empty m targetArgsWithKinds impParams
         requireAttrsForInstantiation h m impParams targetArgs'
-        (expParams', subType') <- substTypeBinder h subType expParams
-        cod' <- liftIO $ Subst.substType (substHandle h) subType' cod
+        expParams' <- substTermBinders h subType expParams
+        cod' <- liftIO $ Subst.substType (substHandle h) subType cod
         return (expParams', cod')
       _ ->
         raiseError m $ "Expected a `define-meta` target, but got: " <> toTextTypeInMessage targetType'
-  (expArgs', h') <- inferBinder' h $ weakDefineMetaExpArgs defineMeta
+  (expParams', h') <- inferBinder' h $ weakDefineMetaExpParams defineMeta
   cod' <- inferType h' $ weakDefineMetaCod defineMeta
-  let expectedHelperType = m :< WT.Pi PK.normal [] expectedExpArgs [] expectedCod
-  let actualHelperType = m :< WT.Pi PK.normal [] expArgs' [] cod'
+  let expectedHelperType = m :< WT.Pi PK.normal [] expectedExpParams [] expectedCod
+  let actualHelperType = m :< WT.Pi PK.normal [] expParams' [] cod'
   liftIO $ Constraint.insert (constraintHandle h') expectedHelperType actualHelperType
   body' <- check h' (weakDefineMetaBody defineMeta) cod'
   return
     defineMeta
       { weakDefineMetaTargetArgs = targetArgs',
-        weakDefineMetaExpArgs = expArgs',
+        weakDefineMetaExpParams = expParams',
         weakDefineMetaCod = cod',
         weakDefineMetaBody = body'
       }
 
 inferGeist :: Handle -> NominalTag -> G.Geist WT.WeakType WT.WeakTerm -> App (G.Geist WT.WeakType WT.WeakTerm)
 inferGeist h tag (G.Geist {..}) = do
-  (impArgs', h') <- inferImpBinder h impArgs
-  (expArgs', h'') <- inferBinder' h' expArgs
-  (defaultArgs', h''') <- inferImpBinderWithDefaults h'' defaultArgs
-  let defaultBinders = map fst defaultArgs'
+  (impParams', h') <- inferImpBinder h impParams
+  (expParams', h'') <- inferBinder' h' expParams
+  (defaultParams', h''') <- inferImpBinderWithDefaults h'' defaultParams
+  let defaultParamBinders = map fst defaultParams'
   cod' <- inferType h''' cod
   let kind = PK.fromNominalTag tag isConstLike
   requireSizedForDestination h kind loc cod'
-  liftIO $ insertType h''' name $ loc :< WT.Pi kind impArgs' expArgs' defaultBinders cod'
-  return $ G.Geist {impArgs = impArgs', defaultArgs = defaultArgs', expArgs = expArgs', cod = cod', ..}
+  liftIO $ insertType h''' name $ loc :< WT.Pi kind impParams' expParams' defaultParamBinders cod'
+  return $ G.Geist {impParams = impParams', defaultParams = defaultParams', expParams = expParams', cod = cod', ..}
 
 insertType :: Handle -> DD.DefiniteDescription -> WT.WeakType -> IO ()
 insertType h dd t = do
@@ -227,11 +228,11 @@ inferStmtKindTerm h stmtKind =
     SK.Main t -> do
       t' <- inferType h t
       return $ SK.Main t'
-    SK.DataIntro consName dataArgs consImpArgs expConsArgs discriminant -> do
-      (dataArgs', h') <- inferBinder' h dataArgs
-      (consImpArgs', h'') <- inferImpBinder h' consImpArgs
-      (expConsArgs', _) <- inferBinder' h'' expConsArgs
-      return $ SK.DataIntro consName dataArgs' consImpArgs' expConsArgs' discriminant
+    SK.DataIntro consName dataParams consImpParams expConsParams discriminant -> do
+      (dataParams', h') <- inferBinder' h dataParams
+      (consImpParams', h'') <- inferImpBinder h' consImpParams
+      (expConsParams', _) <- inferBinder' h'' expConsParams
+      return $ SK.DataIntro consName dataParams' consImpParams' expConsParams' discriminant
 
 inferStmtKindType :: Handle -> SK.StmtKindType WT.WeakType -> App (SK.StmtKindType WT.WeakType)
 inferStmtKindType h stmtKind =
@@ -240,34 +241,41 @@ inferStmtKindType h stmtKind =
       return SK.Alias
     SK.AliasOpaque ->
       return SK.AliasOpaque
-    SK.Data dataName dataArgs consInfoList isNominal -> do
-      (dataArgs', h') <- inferBinder' h dataArgs
+    SK.Data dataName dataParams consInfoList isNominal -> do
+      (dataParams', h') <- inferBinder' h dataParams
       consInfoList' <- forM consInfoList $ \(savedHint, consInfo) -> do
-        (consImpArgs', h'') <- inferImpBinder h' (DI.consImpArgs consInfo)
-        (consArgs', _) <- inferBinder' h'' (DI.consArgs consInfo)
-        return (savedHint, consInfo {DI.consImpArgs = consImpArgs', DI.consArgs = consArgs'})
-      return $ SK.Data dataName dataArgs' consInfoList' isNominal
+        (consImpParams', h'') <- inferImpBinder h' (DI.consImpParams consInfo)
+        (consParams', _) <- inferBinder' h'' (DI.consParams consInfo)
+        return (savedHint, consInfo {DI.consImpParams = consImpParams', DI.consParams = consParams'})
+      return $ SK.Data dataName dataParams' consInfoList' isNominal
 
-makeWeakCoreType :: Hint -> MID.ModuleID -> SL.SourceLocator -> BN.BaseName -> AN.ArgNum -> [WT.WeakType] -> WT.WeakType
-makeWeakCoreType m moduleID sourceLocator baseName argNum args = do
+makeWeakCoreType ::
+  Hint ->
+  MID.ModuleID ->
+  SL.SourceLocator ->
+  BN.BaseName ->
+  Arity.Arity ->
+  [WT.WeakType] ->
+  WT.WeakType
+makeWeakCoreType m moduleID sourceLocator baseName arity args = do
   let sgl = SGL.new moduleID sourceLocator
   let typeName = DD.newByGlobalLocator sgl baseName
-  let attr = AttrVG.Attr {argNum, isConstLike = False, isDestPassing = False}
+  let attr = AttrVG.Attr {arity, isConstLike = False, isDestPassing = False}
   let typeVar = m :< WT.TVarGlobal attr typeName
   m :< WT.TyApp typeVar args
 
 makeWeakListType :: Hint -> MID.ModuleID -> WT.WeakType -> WT.WeakType
 makeWeakListType m moduleID elemType =
-  makeWeakCoreType m moduleID SL.listLocator BN.list (AN.fromInt 1) [elemType]
+  makeWeakCoreType m moduleID SL.listLocator BN.list (Arity.fromInt 1) [elemType]
 
 makeWeakPairType :: Hint -> MID.ModuleID -> WT.WeakType -> WT.WeakType -> WT.WeakType
 makeWeakPairType m moduleID leftType rightType =
-  makeWeakCoreType m moduleID SL.pairLocator BN.pairType (AN.fromInt 2) [leftType, rightType]
+  makeWeakCoreType m moduleID SL.pairLocator BN.pairType (Arity.fromInt 2) [leftType, rightType]
 
 makeWeakCodeVariableType :: Hint -> MID.ModuleID -> WT.WeakType
 makeWeakCodeVariableType m moduleID = do
   let codeVariableTypeDD = DD.newByGlobalLocator (SGL.new moduleID SL.codeLocator) BN.codeVariableType
-  m :< WT.TyApp (m :< WT.TVarGlobal (AttrVG.Attr {argNum = AN.zero, isConstLike = True, isDestPassing = False}) codeVariableTypeDD) []
+  m :< WT.TyApp (m :< WT.TVarGlobal AttrVG.constLike codeVariableTypeDD) []
 
 getMainUnitType :: SK.StmtKindTerm WT.WeakType -> Maybe WT.WeakType
 getMainUnitType stmtKind =
@@ -310,8 +318,8 @@ infer h term =
     m :< WT.VarGlobal _ name -> do
       _ :< t <- Type.lookup' (typeHandle h) m name
       return (term, m :< t)
-    m :< WT.PiIntro attr impArgs expArgs defaultArgs e ->
-      inferPiIntro h m Nothing attr impArgs expArgs defaultArgs e
+    m :< WT.PiIntro attr impParams expParams defaultParams e ->
+      inferPiIntro h m Nothing attr impParams expParams defaultParams e
     m :< WT.PiElim spec e impArgs expArgs defaultArgs ->
       inferApplication h m Nothing spec e impArgs expArgs defaultArgs
     m :< WT.PiElimExact e -> do
@@ -479,7 +487,7 @@ infer h term =
           typeExpr2' <- inferType h typeExpr2
           let boolSGL = SGL.new moduleID SL.boolLocator
           let boolTypeDD = DD.newByGlobalLocator boolSGL BN.boolType
-          let boolTypeVar = m :< WT.TVarGlobal (AttrVG.Attr {argNum = AN.zero, isConstLike = True, isDestPassing = False}) boolTypeDD
+          let boolTypeVar = m :< WT.TVarGlobal AttrVG.constLike boolTypeDD
           let boolType = m :< WT.TyApp boolTypeVar []
           return (m :< WT.Magic (M.WeakMagic $ M.EqType moduleID typeExpr1' typeExpr2'), boolType)
         M.ShowType typeExpr -> do
@@ -497,9 +505,10 @@ infer h term =
           let eitherTypeDD = DD.newByGlobalLocator eitherSGL BN.eitherType
           let unitTypeDD = DD.newByGlobalLocator unitSGL BN.unitType
           let pairTypeDD = DD.newByGlobalLocator pairSGL BN.pairType
-          let eitherTypeVar = m :< WT.TVarGlobal (AttrVG.Attr {argNum = AN.fromInt 2, isConstLike = False, isDestPassing = False}) eitherTypeDD
-          let unitTypeVar = m :< WT.TVarGlobal (AttrVG.Attr {argNum = AN.zero, isConstLike = True, isDestPassing = False}) unitTypeDD
-          let pairTypeVar = m :< WT.TVarGlobal (AttrVG.Attr {argNum = AN.fromInt 2, isConstLike = False, isDestPassing = False}) pairTypeDD
+          let binaryTypeAttr = AttrVG.new (Arity.fromInt 2)
+          let eitherTypeVar = m :< WT.TVarGlobal binaryTypeAttr eitherTypeDD
+          let unitTypeVar = m :< WT.TVarGlobal AttrVG.constLike unitTypeDD
+          let pairTypeVar = m :< WT.TVarGlobal binaryTypeAttr pairTypeDD
           let runeType = m :< WT.PrimType PT.Rune
           let textType' = m :< WT.PrimType PT.Text
           let pairType = m :< WT.TyApp pairTypeVar [runeType, textType']
@@ -511,7 +520,8 @@ infer h term =
           let fallbackType = m :< WT.Code hole
           key' <- check h key (m :< WT.Code intType)
           fallback' <- check h fallback fallbackType
-          clauses' <- check h clauses $ makeWeakListType m moduleID (makeWeakPairType m moduleID intType fallbackType)
+          let clauseType = makeWeakPairType m moduleID intType fallbackType
+          clauses' <- check h clauses $ makeWeakListType m moduleID clauseType
           return (m :< WT.Magic (M.WeakMagic $ M.MakeSwitch moduleID key' fallback' clauses'), fallbackType)
         M.FreeVariables moduleID code -> do
           hole <- liftIO $ newTypeHole h m (varEnv h)
@@ -539,8 +549,8 @@ infer h term =
 check :: Handle -> WT.WeakTerm -> WT.WeakType -> App WT.WeakTerm
 check h term expected =
   case term of
-    m :< WT.PiIntro attr impArgs expArgs defaultArgs e ->
-      fst <$> inferPiIntro h m (Just expected) attr impArgs expArgs defaultArgs e
+    m :< WT.PiIntro attr impParams expParams defaultParams e ->
+      fst <$> inferPiIntro h m (Just expected) attr impParams expParams defaultParams e
     m :< WT.PiElim spec e impArgs expArgs defaultArgs ->
       fst <$> inferApplication h m (Just expected) spec e impArgs expArgs defaultArgs
     m :< WT.PiElimExact e -> do
@@ -597,7 +607,13 @@ check h term expected =
       liftIO $ Constraint.insert (constraintHandle h) expected t
       return term'
 
-checkContent :: Handle -> Hint -> (WT.WeakType -> WT.WeakType) -> WT.WeakType -> WT.WeakTerm -> App (WT.WeakTerm, WT.WeakType)
+checkContent ::
+  Handle ->
+  Hint ->
+  (WT.WeakType -> WT.WeakType) ->
+  WT.WeakType ->
+  WT.WeakTerm ->
+  App (WT.WeakTerm, WT.WeakType)
 checkContent h m wrap expected e = do
   t <- liftIO $ newTypeHole h m (varEnv h)
   liftIO $ Constraint.insert (constraintHandle h) expected (wrap t)
@@ -613,13 +629,12 @@ expandPiElimExact h m e = do
   (e', t) <- infer h e
   t' <- resolveType h t
   case t' of
-    _ :< WT.Pi piKind impArgs expArgs _ codType -> do
-      impArgs' <- mapM (const $ liftIO $ newTypeHole h m (varEnv h)) impArgs
-      let impIds = map (\(_, _, x, _) -> x) impArgs
-      let subType = IntMap.fromList $ zip (map Ident.toInt impIds) (map Type impArgs')
-      (expArgs', subType') <- liftIO $ Subst.subst' (substHandle h) subType expArgs
-      let expArgs'' = map (\(mx, _, x, _) -> mx :< WT.Var x) expArgs'
-      codType' <- liftIO $ Subst.substType (substHandle h) subType' codType
+    _ :< WT.Pi piKind impParams expParams _ codType -> do
+      impArgs' <- mapM (const $ liftIO $ newTypeHole h m (varEnv h)) impParams
+      let subType = Subst.makeTypeSubst (map getBinderIdent impParams) impArgs'
+      expParams' <- substTermBinders h subType expParams
+      let expArgs'' = map (\(mx, _, x, _) -> mx :< WT.Var x) expParams'
+      codType' <- liftIO $ Subst.substType (substHandle h) subType codType
       lamID <- liftIO $ Gensym.newCount (gensymHandle h)
       let isDestPassing =
             case piKind of
@@ -628,9 +643,10 @@ expandPiElimExact h m e = do
               _ ->
                 False
       let attr = AttrL.Attr {lamKind = LK.Normal Nothing isDestPassing codType', identity = lamID}
-      let sourceArgs = map (\(_, k, _, _) -> VK.isSource k) expArgs'
+      let sourceArgs = map (\(_, k, _, _) -> VK.isSource k) expParams'
       let spec = CCS.AsMarked isDestPassing sourceArgs
-      return $ m :< WT.PiIntro attr [] expArgs' [] (m :< WT.PiElim spec e' (ImpArgs.FullySpecified impArgs') expArgs'' (DefaultArgs.ByKey []))
+      let body = m :< WT.PiElim spec e' (ImpArgs.FullySpecified impArgs') expArgs'' (DefaultArgs.ByKey [])
+      return $ m :< WT.PiIntro attr [] expParams' [] body
     _ ->
       raiseError m $ "Expected a function type, but got: " <> toTextTypeInMessage t'
 
@@ -647,7 +663,12 @@ inferBoxElimHead ::
   BinderF WT.WeakType ->
   WT.WeakTerm ->
   [(BinderF WT.WeakType, WT.WeakTerm)] ->
-  App ([(BinderF WT.WeakType, WT.WeakTerm)], BinderF WT.WeakType, WT.WeakTerm, [(BinderF WT.WeakType, WT.WeakTerm)])
+  App
+    ( [(BinderF WT.WeakType, WT.WeakTerm)],
+      BinderF WT.WeakType,
+      WT.WeakTerm,
+      [(BinderF WT.WeakType, WT.WeakTerm)]
+    )
 inferBoxElimHead h castSeq mxt e1 uncastSeq = do
   castSeq' <- inferQuoteSeq h castSeq ToNoema
   mxt'@(mx, _, _, t1) <- inferBinder1 h mxt
@@ -687,21 +708,21 @@ inferPiIntro ::
   [(BinderF WT.WeakType, WT.WeakTerm)] ->
   WT.WeakTerm ->
   App (WT.WeakTerm, WT.WeakType)
-inferPiIntro h m expected attr@(AttrL.Attr {lamKind}) impArgs expArgs defaultArgs e = do
-  (impArgs', h') <- inferImpBinder h impArgs
-  (expArgs', h'') <- inferBinder' h' expArgs
-  (defaultArgs', h''') <- inferImpBinderWithDefaults h'' defaultArgs
-  let defaultBinders = map fst defaultArgs'
+inferPiIntro h m expected attr@(AttrL.Attr {lamKind}) impParams expParams defaultParams e = do
+  (impParams', h') <- inferImpBinder h impParams
+  (expParams', h'') <- inferBinder' h' expParams
+  (defaultParams', h''') <- inferImpBinderWithDefaults h'' defaultParams
+  let defaultParamBinders = map fst defaultParams'
   lamKind' <- traverse (inferType h''') lamKind
   let codType = LK.getCodType lamKind'
   let piKind = lamPiKind $ LK.getIsDestPassing lamKind'
-  let piType = m :< WT.Pi piKind impArgs' expArgs' defaultBinders codType
+  let piType = m :< WT.Pi piKind impParams' expParams' defaultParamBinders codType
   case lamKind' of
     LK.Fix kind _ (mx, _, x, _) -> do
       when (kind == LDK.DefineMeta) $ do
-        unless (null defaultArgs') $ do
-          raiseError m "`define-meta` cannot have default arguments"
-        forM_ expArgs' $ \(mp, _, _, t) ->
+        unless (null defaultParams') $ do
+          raiseError m "`define-meta` cannot have default parameters"
+        forM_ expParams' $ \(mp, _, _, t) ->
           checkIsCodeType h''' mp t
         checkIsCodeType h''' mx codType
       requireSizedForDestination h piKind mx codType
@@ -710,7 +731,7 @@ inferPiIntro h m expected attr@(AttrL.Attr {lamKind}) impArgs expArgs defaultArg
       requireSizedForDestination h piKind m codType
   liftIO $ forM_ expected $ \expectedType -> Constraint.insert (constraintHandle h) expectedType piType
   e' <- check h''' e codType
-  return (m :< WT.PiIntro (attr {AttrL.lamKind = lamKind'}) impArgs' expArgs' defaultArgs' e', piType)
+  return (m :< WT.PiIntro (attr {AttrL.lamKind = lamKind'}) impParams' expParams' defaultParams' e', piType)
 
 lamPiKind :: Bool -> PK.PiKind
 lamPiKind isDestPassing =
@@ -730,7 +751,7 @@ inferApplication ::
   App (WT.WeakTerm, WT.WeakType)
 inferApplication h m expected spec e impArgs expArgs defaultArgs = do
   etl <- infer h e
-  impArgs' <- ImpArgs.traverseImpArgs (fmap fst . inferTypeWithKind h) impArgs
+  impArgs' <- traverse (fmap fst . inferTypeWithKind h) impArgs
   let (isDestCall, sourceArgs) = CCS.marks (length expArgs) spec
   inferPiElim h m expected etl impArgs' defaultArgs (map Unelaborated expArgs) sourceArgs isDestCall
 
@@ -784,10 +805,9 @@ inferTypeWithKind h ty =
       k' <- resolveType h k
       case k' of
         _ :< WT.Pi _ impParams expParams _ cod -> do
-          let impParamIds = map (\(_, _, x, _) -> x) impParams
           impParams' <- mapM (const $ liftIO $ newTypeHole h m (varEnv h)) impParams
-          let subType = IntMap.fromList $ zip (map Ident.toInt impParamIds) (map Type impParams')
-          (expParams', _) <- substTypeBinder h subType expParams
+          let subType = Subst.makeTypeSubst (map getBinderIdent impParams) impParams'
+          expParams' <- substTermBinders h subType expParams
           ensureTypeArityCorrectness m (length expParams') (length args')
           forM_ (zip expParams' argKinds) $ \((_, _, _, tParam), tArg) ->
             liftIO $ Constraint.insert (constraintHandle h) tParam tArg
@@ -795,13 +815,13 @@ inferTypeWithKind h ty =
           return (m :< WT.TyApp t' args', m :< cod')
         _ ->
           raiseError m $ "Expected a function type, but got: " <> toTextTypeInMessage k'
-    m :< WT.Pi piKind impArgs expArgs defaultArgs t -> do
-      (impArgs', h') <- inferImpBinder h impArgs
-      (expArgs', h'') <- inferBinder' h' expArgs
-      (defaultArgs', h''') <- inferBinder' h'' defaultArgs
+    m :< WT.Pi piKind impParams expParams defaultParams t -> do
+      (impParams', h') <- inferImpBinder h impParams
+      (expParams', h'') <- inferBinder' h' expParams
+      (defaultParams', h''') <- inferBinder' h'' defaultParams
       t' <- inferType h''' t
       requireSizedForDestination h piKind m t'
-      return (m :< WT.Pi piKind impArgs' expArgs' defaultArgs' t', m :< WT.Tau)
+      return (m :< WT.Pi piKind impParams' expParams' defaultParams' t', m :< WT.Tau)
     m :< WT.Data attr name es -> do
       (es', _) <- mapAndUnzipM (inferTypeWithKind h) es
       return (m :< WT.Data attr name es', m :< WT.Tau)
@@ -891,7 +911,11 @@ inferBinder1 h (mx, k, x, t) = do
   liftIO $ WeakType.insert (weakTypeHandle h) x t'
   return (mx, k, x, t')
 
-inferQuoteSeq :: Handle -> [(BinderF WT.WeakType, WT.WeakTerm)] -> CastDirection -> App [(BinderF WT.WeakType, WT.WeakTerm)]
+inferQuoteSeq ::
+  Handle ->
+  [(BinderF WT.WeakType, WT.WeakTerm)] ->
+  CastDirection ->
+  App [(BinderF WT.WeakType, WT.WeakTerm)]
 inferQuoteSeq h letSeq castDirection = do
   let (xts, es) = unzip letSeq
   xts' <- inferBinder'' h xts
@@ -906,11 +930,11 @@ inferQuoteSeq h letSeq castDirection = do
 
 inferArgsTypes ::
   Handle ->
-  Subst.Subst ->
+  Subst.TypeSubst ->
   Hint ->
   [(WT.WeakType, WT.WeakType)] ->
   [BinderF WT.WeakType] ->
-  App Subst.Subst
+  App Subst.TypeSubst
 inferArgsTypes h sub m args params =
   case (args, params) of
     ([], []) ->
@@ -918,7 +942,7 @@ inferArgsTypes h sub m args params =
     ((ty, tyKind) : rest, (_, _, x, paramKind) : xts) -> do
       paramKind' <- liftIO $ Subst.substType (substHandle h) sub paramKind
       liftIO $ Constraint.insert (constraintHandle h) paramKind' tyKind
-      inferArgsTypes h (IntMap.insert (Ident.toInt x) (Type ty) sub) m rest xts
+      inferArgsTypes h (IntMap.insert (Ident.toInt x) (Subst.TypeValue ty) sub) m rest xts
     _ ->
       raiseError m "Invalid argument passed to inferArgsTypes"
 
@@ -936,32 +960,32 @@ inferPiElim ::
 inferPiElim h m expected (e, t) impArgs defaultArgsSpec expArgs sourceArgs isDestCall = do
   t' <- resolveType h t
   case t' of
-    _ :< WT.Pi piKind impArgsParam expParams defaultParams cod -> do
+    _ :< WT.Pi piKind impParams expParams defaultParams cod -> do
       ensureDestMarkAgreement m piKind isDestCall
-      inferCore (CC.fromPiKind piKind) impArgsParam expParams defaultParams cod
-    _ :< WT.BoxNoema (_ :< WT.Pi piKind impArgsParam expParams defaultParams cod) -> do
+      inferCore (CC.fromPiKind piKind) impParams expParams defaultParams cod
+    _ :< WT.BoxNoema (_ :< WT.Pi piKind impParams expParams defaultParams cod) -> do
       ensureDestMarkAgreement m piKind isDestCall
-      inferCore (CC.fromNoeticPiKind piKind) impArgsParam expParams defaultParams cod
+      inferCore (CC.fromNoeticPiKind piKind) impParams expParams defaultParams cod
     _ ->
       raiseError m $ "Expected a function type, but got: " <> toTextTypeInMessage t'
   where
-    inferCore mkKind impArgsParam expParams defaultParams cod = do
+    inferCore mkKind impParams expParams defaultParams cod = do
       ensureArityCorrectness h e (length expParams) (length expArgs)
       impArgsTyped <- case impArgs of
         ImpArgs.Unspecified ->
-          mapM (createImpArgFromParam h m) impArgsParam
+          mapM (createImpArgFromParam h m) impParams
         ImpArgs.FullySpecified impArgs' -> do
-          ensureImplicitArityCorrectness h e (length impArgsParam) (length impArgs')
+          ensureImplicitArityCorrectness h e (length impParams) (length impArgs')
           mapM (inferTypeWithKind h) impArgs'
-      subType <- inferArgsTypes h IntMap.empty m impArgsTyped impArgsParam
+      subType <- inferArgsTypes h IntMap.empty m impArgsTyped impParams
       let impArgs' = map fst impArgsTyped
-      requireAttrsForInstantiation h m impArgsParam impArgs'
+      requireAttrsForInstantiation h m impParams impArgs'
       let hasSourceSlot = any (\(_, k, _, _) -> VK.isSource k) expParams
       when (hasSourceSlot || or sourceArgs) $
         forM_ (zip3 expParams sourceArgs expArgs) $ \(param, isSourceArg, arg) ->
           ensureSourceMarkAgreement param isSourceArg (argumentTerm arg)
       argumentConventions <- do
-        (params', _) <- substTypeBinder h subType (expParams ++ defaultParams)
+        params' <- substTermBinders h subType (expParams ++ defaultParams)
         return $ map sourceArgumentConvention params'
       _ :< cod' <- liftIO $ Subst.substType (substHandle h) subType cod
       forM_ expected $ \expectedType ->
@@ -970,14 +994,15 @@ inferPiElim h m expected (e, t) impArgs defaultArgsSpec expArgs sourceArgs isDes
         paramType' <- liftIO $ Subst.substType (substHandle h) subType paramType
         elaborateArgument h paramType' arg
       defaultArgsOverrides <- resolveDefaultOverrides e defaultParams defaultArgsSpec
-      (defaultParams', _) <- substTypeBinder h subType defaultParams
+      defaultParams' <- substTermBinders h subType defaultParams
       defaultArgsOverrides' <- forM (zip defaultParams' defaultArgsOverrides) $ \((_, _, _, tParam), mOverride) -> do
         forM mOverride $ \override -> do
           tParam' <- inferType h tParam
           check h override tParam'
       let defaultArgsAligned = DefaultArgs.Aligned defaultArgsOverrides'
       let conv = CC.withArguments argumentConventions $ mkKind (m :< cod')
-      return (m :< WT.PiElim (CCS.Resolved conv) e (ImpArgs.FullySpecified impArgs') expArgs' defaultArgsAligned, m :< cod')
+      let elim = WT.PiElim (CCS.Resolved conv) e (ImpArgs.FullySpecified impArgs') expArgs' defaultArgsAligned
+      return (m :< elim, m :< cod')
 
 sourceArgumentConvention :: BinderF WT.WeakType -> CC.Argument WT.WeakType
 sourceArgumentConvention (_, k, _, slotType) =
@@ -1080,7 +1105,12 @@ checkDecisionTree m h answerType tree =
       fallbackClause' <- checkDecisionTree m h answerType fallbackClause
       return $ DT.Switch (cursor, cursorType) (fallbackClause', clauseList')
 
-checkClause :: Handle -> WT.WeakType -> WT.WeakType -> DT.Case WT.WeakType WT.WeakTerm -> App (DT.Case WT.WeakType WT.WeakTerm)
+checkClause ::
+  Handle ->
+  WT.WeakType ->
+  WT.WeakType ->
+  DT.Case WT.WeakType WT.WeakTerm ->
+  App (DT.Case WT.WeakType WT.WeakTerm)
 checkClause h cursorType answerType decisionCase =
   case decisionCase of
     DT.LiteralCase mPat literal cont -> do
@@ -1095,20 +1125,22 @@ checkClause h cursorType answerType decisionCase =
       let m = mCons
       let (dataTermList, _) = unzip dataArgs
       typedDataArgs' <- mapM (inferTypeWithKind h) dataTermList
-      consImpArgs' <- declareConsImpArgs h m consDD (map fst typedDataArgs') consImpArgs
-      (consImpArgs'', h') <- inferImpBinder h consImpArgs'
-      (consArgs', _) <- inferBinder' h' consArgs
-      let argNum = AN.fromInt $ length dataArgs + length consImpArgs + length consArgs
+      consImpBinders' <- declareConsImpParams h m consDD (map fst typedDataArgs') consImpBinders
+      (consImpBinders'', h') <- inferImpBinder h consImpBinders'
+      (consBinders', _) <- inferBinder' h' consBinders
+      let arity = Arity.fromInt $ length dataArgs + length consImpBinders + length consBinders
       let isDestPassing = False
       let attr = AttrVG.Attr {..}
-      let consImpTypes = map (\(mx, _, x, _) -> mx :< WT.TVar x) consImpArgs''
+      let consImpTypes = map (\(mx, _, x, _) -> mx :< WT.TVar x) consImpBinders''
       let impArgs = ImpArgs.FullySpecified $ map fst typedDataArgs' ++ consImpTypes
-      consTerm@(_, consType) <- infer h' $ m :< WT.PiElim (CCS.AsMarked False []) (m :< WT.VarGlobal attr consDD) impArgs [] (DefaultArgs.ByKey [])
+      let consVar = m :< WT.VarGlobal attr consDD
+      let consApp = m :< WT.PiElim (CCS.AsMarked False []) consVar impArgs [] (DefaultArgs.ByKey [])
+      consTerm@(_, consType) <- infer h' consApp
       if isConstLike
         then liftIO $ Constraint.insert (constraintHandle h) cursorType consType
         else do
           let impConsArgs = ImpArgs.FullySpecified []
-          let expConsArgs = map (\(mx, _, x, t) -> Elaborated (mx :< WT.Var x) t) consArgs'
+          let expConsArgs = map (\(mx, _, x, t) -> Elaborated (mx :< WT.Var x) t) consBinders'
           (_, tPat) <- inferPiElim h' m Nothing consTerm impConsArgs (DefaultArgs.ByKey []) expConsArgs [] False
           liftIO $ Constraint.insert (constraintHandle h) cursorType tPat
       cont' <- checkDecisionTree m h' answerType cont
@@ -1116,21 +1148,28 @@ checkClause h cursorType answerType decisionCase =
         DT.ConsCase
           record
             { DT.dataArgs = typedDataArgs',
-              DT.consImpArgs = consImpArgs'',
-              DT.consArgs = consArgs',
+              DT.consImpBinders = consImpBinders'',
+              DT.consBinders = consBinders',
               DT.cont = cont'
             }
 
-declareConsImpArgs :: Handle -> Hint -> DD.DefiniteDescription -> [WT.WeakType] -> [BinderF WT.WeakType] -> App [BinderF WT.WeakType]
-declareConsImpArgs h m consDD dataTypes consImpArgs = do
+declareConsImpParams ::
+  Handle ->
+  Hint ->
+  DD.DefiniteDescription ->
+  [WT.WeakType] ->
+  [BinderF WT.WeakType] ->
+  App [BinderF WT.WeakType]
+declareConsImpParams h m consDD dataTypes consImpParams = do
   consType <- Type.lookup' (typeHandle h) m consDD
   case consType of
-    _ :< WT.Pi _ impArgs _ _ _ -> do
-      let (dataBinders, declaredConsImpArgs) = splitAt (length dataTypes) impArgs
-      let dataSub = zipWith (\(_, _, x, _) t -> (Ident.toInt x, Type t)) dataBinders dataTypes
-      let consImpSub = zipWith (\(_, _, y, _) (mx, _, x, _) -> (Ident.toInt y, Type (mx :< WT.TVar x))) declaredConsImpArgs consImpArgs
-      let sub = IntMap.fromList $ dataSub ++ consImpSub
-      forM (zip consImpArgs declaredConsImpArgs) $ \((mx, _, x, _), (_, k, _, t)) -> do
+    _ :< WT.Pi _ impParams _ _ _ -> do
+      let (dataParams, declaredConsImpParams) = splitAt (length dataTypes) impParams
+      let dataSub = Subst.makeTypeSubst (map getBinderIdent dataParams) dataTypes
+      let consImpTypes = map (\(mx, _, x, _) -> mx :< WT.TVar x) consImpParams
+      let consImpSub = Subst.makeTypeSubst (map getBinderIdent declaredConsImpParams) consImpTypes
+      let sub = IntMap.union dataSub consImpSub
+      forM (zip consImpParams declaredConsImpParams) $ \((mx, _, x, _), (_, k, _, t)) -> do
         t' <- liftIO $ Subst.substType (substHandle h) sub t
         return (mx, k, x, t')
     _ ->
@@ -1147,16 +1186,15 @@ reduceWeakType' h holeSubst =
 
 reduceWeakTypeWithin :: Handle -> THS.TypeHoleSubst -> Int -> WT.WeakType -> App WT.WeakType
 reduceWeakTypeWithin h holeSubst budget t = do
-  t' <- reduceType h t
-  case t' of
+  case t of
     m :< WT.TypeHole holeID args -> do
       case THS.lookup holeID holeSubst of
         Nothing ->
-          return t'
+          return t
         Just (xs, body)
           | length xs == length args -> do
               ensureUnfoldingBudget h m budget
-              let sub = IntMap.fromList $ zip (map Ident.toInt xs) (map Type args)
+              let sub = Subst.makeTypeSubst xs args
               body' <- liftIO $ Subst.substType (substHandle h) sub body
               reduceWeakTypeWithin h holeSubst (budget - 1) body'
           | otherwise ->
@@ -1165,31 +1203,18 @@ reduceWeakTypeWithin h holeSubst budget t = do
       mDef <- liftIO $ WeakTypeDef.lookup' (weakTypeDefHandle h) name
       case mDef of
         Just def
-          | length args == length (WeakTypeDef.typeDefBinders def) -> do
+          | length args == length (WeakTypeDef.typeDefParams def) -> do
               ensureUnfoldingBudget h m budget
-              let varList = map (\(_, _, x, _) -> Ident.toInt x) (WeakTypeDef.typeDefBinders def)
-              let sub = IntMap.fromList $ zip varList (map Type args)
+              let sub = Subst.makeTypeSubst (map getBinderIdent (WeakTypeDef.typeDefParams def)) args
               body' <- liftIO $ Subst.substType (substHandle h) sub (WeakTypeDef.typeDefBody def)
               reduceWeakTypeWithin h holeSubst (budget - 1) body'
         _ ->
-          return t'
+          return t
     m :< WT.BoxNoema tInner -> do
       tInner' <- reduceWeakTypeWithin h holeSubst budget tInner
       return $ m :< WT.BoxNoema tInner'
     _ ->
-      return t'
-
-ensureUnfoldingBudget :: Handle -> Hint -> Int -> App ()
-ensureUnfoldingBudget h m budget =
-  when (budget <= 0) $
-    raiseError m $ "Exceeded max recursion depth of " <> T.pack (show (inlineLimit h)) <> " while reducing a type"
-
--- reduceWeakType' :: Handle -> THS.TypeHoleSubst -> WT.WeakType -> App WT.WeakType
--- reduceWeakType' h sub e = do
---   e' <- reduceType h e
---   if THS.fillableType e' sub
---     then fillType h sub e' >>= reduceWeakType' h sub
---     else return e'
+      return t
 
 lookupForeignFunction :: Handle -> Hint -> EN.ExternalName -> App ([WT.WeakType], FCT.ForeignCodType WT.WeakType)
 lookupForeignFunction h m name = do
@@ -1265,18 +1290,14 @@ ensureDefaultKeyLinearity m ks = do
   unless (null nonLinear) $ do
     raiseError m $
       "The following fields are defined more than once:\n"
-        <> showKeyList nonLinear
+        <> ParamKey.showKeyList nonLinear
 
 checkDefaultKeyRedundancy :: Hint -> [T.Text] -> [T.Text] -> App ()
 checkDefaultKeyRedundancy m allowedKeys ks = do
   let allowedSet = S.fromList allowedKeys
   let diff = filter (`S.notMember` allowedSet) ks
   unless (null diff) $ do
-    raiseError m $ "The following field(s) are redundant:\n" <> showKeyList diff
-
-showKeyList :: [T.Text] -> T.Text
-showKeyList ks =
-  T.intercalate "\n" $ map ("- " <>) ks
+    raiseError m $ "The following field(s) are redundant:\n" <> ParamKey.showKeyList diff
 
 ensureTypeArityCorrectness :: Hint -> Int -> Int -> App ()
 ensureTypeArityCorrectness m expected found = do
@@ -1331,6 +1352,6 @@ requireAttrsForInstantiation h m params args =
     forM_ (S.toAscList (closedTypeAttrs k)) $ \attr -> do
       require h attr Instantiation m t
 
-substTypeBinder :: Handle -> Subst.Subst -> [BinderF WT.WeakType] -> App ([BinderF WT.WeakType], Subst.Subst)
-substTypeBinder h sub mxts = do
-  liftIO $ Subst.subst' (substHandle h) sub mxts
+substTermBinders :: Handle -> Subst.TypeSubst -> [BinderF WT.WeakType] -> App [BinderF WT.WeakType]
+substTermBinders h sub binders = do
+  liftIO $ Subst.substTermBinders (substHandle h) sub binders

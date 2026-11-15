@@ -17,8 +17,8 @@ holesType ty =
       S.empty
     _ :< WT.TyApp t args ->
       S.unions $ holesType t : map holesType args
-    _ :< WT.Pi _ impArgs expArgs defaultArgs t ->
-      holesBindersType (impArgs ++ expArgs ++ defaultArgs) (holesType t)
+    _ :< WT.Pi _ impParams expParams defaultParams t ->
+      holesBindersType (impParams ++ expParams ++ defaultParams) (holesType t)
     _ :< WT.Data _ _ es ->
       S.unions $ map holesType es
     _ :< WT.Box t ->

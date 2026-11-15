@@ -21,10 +21,10 @@ import Kernel.Common.Handle.Global.Env qualified as Env
 import Kernel.Common.Handle.Global.Expose qualified as Expose
 import Kernel.Common.Handle.Global.GlobalRemark qualified as GlobalRemark
 import Kernel.Common.Handle.Global.ImportedTypeDefCache qualified as ImportedTypeDefCache
-import Kernel.Common.Handle.Global.KeyArg qualified as KeyArg
 import Kernel.Common.Handle.Global.Module qualified as Module
 import Kernel.Common.Handle.Global.ModulePath qualified as ModulePath
 import Kernel.Common.Handle.Global.OptimizableData qualified as OptimizableData
+import Kernel.Common.Handle.Global.ParamKey qualified as ParamKey
 import Kernel.Common.Handle.Global.Path qualified as Path
 import Kernel.Common.Handle.Global.Platform qualified as Platform
 import Kernel.Common.Handle.Global.Resource qualified as Resource
@@ -40,7 +40,6 @@ import Kernel.Common.TargetConfig (TargetConfig)
 import Kernel.Elaborate.Internal.Handle.Def qualified as Definition
 import Kernel.Elaborate.Internal.Handle.Trope qualified as Trope
 import Kernel.Elaborate.Internal.Handle.TypeDef qualified as TypeDef
-import Kernel.Elaborate.Internal.Handle.WeakDef qualified as WeakDef
 import Kernel.Elaborate.Internal.Handle.WeakTypeDef qualified as WeakTypeDef
 import Kernel.Parse.Internal.Handle.GlobalNameMap qualified as GlobalNameMap
 import Kernel.Parse.Internal.Handle.UnusedTopLevelName qualified as UnusedTopLevelName
@@ -62,7 +61,7 @@ data Handle = Handle
     envHandle :: Env.Handle,
     globalRemarkHandle :: GlobalRemark.Handle,
     importedTypeDefCacheHandle :: ImportedTypeDefCache.Handle,
-    keyArgHandle :: KeyArg.Handle,
+    paramKeyHandle :: ParamKey.Handle,
     moduleHandle :: Module.Handle,
     modulePathHandle :: ModulePath.Handle,
     optDataHandle :: OptimizableData.Handle,
@@ -71,7 +70,6 @@ data Handle = Handle
     exposeHandle :: Expose.Handle,
     loggerHandle :: Logger.Handle,
     typeHandle :: Type.Handle,
-    weakDefHandle :: WeakDef.Handle,
     weakTypeDefHandle :: WeakTypeDef.Handle,
     typeDefHandle :: TypeDef.Handle,
     globalNameMapHandle :: GlobalNameMap.Handle,
@@ -84,12 +82,28 @@ data Handle = Handle
     localArchiveMap :: LocalArchive.LocalArchiveMap
   }
 
-new :: Console.Handle -> Logger.Handle -> LocalArchive.LocalArchiveMap -> Reuse.Handle -> Maybe (Path Abs File) -> Maybe M.TargetName -> App Handle
+new ::
+  Console.Handle ->
+  Logger.Handle ->
+  LocalArchive.LocalArchiveMap ->
+  Reuse.Handle ->
+  Maybe (Path Abs File) ->
+  Maybe M.TargetName ->
+  App Handle
 new consoleHandle loggerHandle localArchiveMap reuseHandle moduleFilePathOrNone targetNameOrNone = do
-  handleOrError <- liftIO $ newOrError consoleHandle loggerHandle localArchiveMap reuseHandle moduleFilePathOrNone targetNameOrNone
+  handleOrError <-
+    liftIO $
+      newOrError consoleHandle loggerHandle localArchiveMap reuseHandle moduleFilePathOrNone targetNameOrNone
   liftEither handleOrError
 
-newOrError :: Console.Handle -> Logger.Handle -> LocalArchive.LocalArchiveMap -> Reuse.Handle -> Maybe (Path Abs File) -> Maybe M.TargetName -> IO (Either E.Error Handle)
+newOrError ::
+  Console.Handle ->
+  Logger.Handle ->
+  LocalArchive.LocalArchiveMap ->
+  Reuse.Handle ->
+  Maybe (Path Abs File) ->
+  Maybe M.TargetName ->
+  IO (Either E.Error Handle)
 newOrError consoleHandle loggerHandle localArchiveMap reuseHandle moduleFilePathOrNone targetNameOrNone = do
   envHandleOrError <- Env.new reuseHandle moduleFilePathOrNone
   runApp $ do
@@ -99,9 +113,18 @@ newOrError consoleHandle loggerHandle localArchiveMap reuseHandle moduleFilePath
     let zenRule = M.selectZen host (M.extractModule mainModule)
     platform <- liftEither $ getPlatform mainModule zenRule targetNameOrNone
     platformHandle <- Platform.new loggerHandle host platform
-    liftIO $ newHandle consoleHandle loggerHandle envHandle platformHandle (ruleBody zenRule) localArchiveMap reuseHandle
+    liftIO $
+      newHandle consoleHandle loggerHandle envHandle platformHandle (ruleBody zenRule) localArchiveMap reuseHandle
 
-newHandle :: Console.Handle -> Logger.Handle -> Env.Handle -> Platform.Handle -> TargetConfig -> LocalArchive.LocalArchiveMap -> Reuse.Handle -> IO Handle
+newHandle ::
+  Console.Handle ->
+  Logger.Handle ->
+  Env.Handle ->
+  Platform.Handle ->
+  TargetConfig ->
+  LocalArchive.LocalArchiveMap ->
+  Reuse.Handle ->
+  IO Handle
 newHandle consoleHandle loggerHandle envHandle platformHandle zenConfig localArchiveMap reuseHandle = do
   let mainModule = Env.getMainModule envHandle
   Logger.setModuleDir loggerHandle mainModule
@@ -116,8 +139,7 @@ newHandle consoleHandle loggerHandle envHandle platformHandle zenConfig localArc
   moduleHandle <- Module.new mainModule reuseHandle
   antecedentHandle <- Antecedent.new
   modulePathHandle <- ModulePath.new moduleHandle antecedentHandle mainModule
-  keyArgHandle <- KeyArg.new mainModule modulePathHandle
-  weakDefHandle <- WeakDef.new
+  paramKeyHandle <- ParamKey.new mainModule modulePathHandle
   weakTypeDefHandle <- WeakTypeDef.new
   defHandle <- Definition.new
   tropeHandle <- Trope.new
@@ -131,7 +153,11 @@ newHandle consoleHandle loggerHandle envHandle platformHandle zenConfig localArc
   isShiftMapRegisteredRef <- newIORef False
   return $ Handle {..}
 
-getPlatform :: M.MainModule -> PlatformRule TargetConfig -> Maybe M.TargetName -> Either E.Error (Hint, PP.PlatformPattern)
+getPlatform ::
+  M.MainModule ->
+  PlatformRule TargetConfig ->
+  Maybe M.TargetName ->
+  Either E.Error (Hint, PP.PlatformPattern)
 getPlatform mainModule zenRule targetNameOrNone = do
   case targetNameOrNone of
     Nothing ->

@@ -34,7 +34,7 @@ fromRawImportItem :: RawImportItem -> Maybe RawImportSummaryItem
 fromRawImportItem rawImportItem = do
   case rawImportItem of
     RawImportItem m (gl, _) entries -> do
-      let normalizedLocator = either (const gl) GL.reify $ GL.reflect m gl
+      let normalizedLocator = GL.normalizeText m gl
       let entries' = map fromRawImportEntry $ SE.extract entries
       Just RawImportSummaryItem {importLocator = normalizedLocator, importEntries = entries'}
     RawStaticFileKey {} ->
@@ -49,6 +49,7 @@ fromRawImportEntry entry =
       SummaryEntry Nothing (BN.reify importAlias)
     RawImportName _ ll asClauseOrNone -> do
       let name = LL.reify ll
-      SummaryEntry (Just name) $ maybe name (\(RawAsClause _ _ _ importAlias) -> BN.reify importAlias) asClauseOrNone
+      SummaryEntry (Just name) $
+        maybe name (\(RawAsClause _ _ _ importAlias) -> BN.reify importAlias) asClauseOrNone
 
 deriveBinary [''RawImportSummaryItem, ''SummaryEntry]

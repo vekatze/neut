@@ -106,7 +106,8 @@ placeSlots dataSize cursor storages =
 
 naturalCell :: DS.DataSize -> [FieldStorage] -> CellLayout
 naturalCell dataSize storages =
-  alignedCell dataSize storages $ alignUp (storagesAlignment dataSize storages) (storagesByteSize dataSize 0 storages)
+  alignedCell dataSize storages $
+    alignUp (storagesAlignment dataSize storages) (storagesByteSize dataSize 0 storages)
 
 chunkCell :: Chunks -> CellLayout
 chunkCell chunks =

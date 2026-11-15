@@ -1,11 +1,13 @@
 module Kernel.Common.Module.FromPath
   ( fromFilePath,
+    validateModuleAlias,
   )
 where
 
 import App.App (App)
 import App.Error
 import App.Run (raiseError)
+import CodeParser.Parser qualified as CP
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.Except (liftEither)
@@ -27,6 +29,7 @@ import Language.Common.BaseName qualified as BN
 import Language.Common.ModuleAlias
 import Language.Common.ModuleDigest
 import Language.Common.ModuleID qualified as MID
+import Language.Common.NumericLiteral (isNumericLike)
 import Language.Common.SourceLocator qualified as SL
 import Logger.Hint qualified as H
 import Path
@@ -222,7 +225,7 @@ interpretDependencyDict (m, dep) = do
     let mirrorList = map ModuleURL urlList
     let digest' = ModuleDigest digest
     return
-      ( ModuleAlias k',
+      ( k',
         Dependency
           { dependencyMirrorList = mirrorList,
             dependencyDigest = digest',
@@ -233,17 +236,25 @@ interpretDependencyDict (m, dep) = do
   ensureNoDependencyAliasCollision m itemList
   return $ Map.fromList itemList
 
-interpretModuleAlias :: H.Hint -> T.Text -> App BN.BaseName
+interpretModuleAlias :: H.Hint -> T.Text -> App ModuleAlias
 interpretModuleAlias m rawAlias = do
   alias <- liftEither $ BN.reflect m rawAlias
+  either (raiseError m) return $ validateModuleAlias alias
+
+validateModuleAlias :: BN.BaseName -> Either T.Text ModuleAlias
+validateModuleAlias alias = do
+  let aliasText = BN.reify alias
+  when (T.null aliasText) $ do
+    Left "The alias of a module must not be empty"
+  when (T.any (`S.member` CP.nonSymbolCharSet) aliasText) $ do
+    Left $ "Invalid alias of a module: " <> aliasText
+  when (isNumericLike aliasText) $ do
+    Left $ "`" <> aliasText <> "` reads as a numeric literal and cannot be used as an alias of a module"
   when (BN.isCapitalized alias) $ do
-    raiseError m $ "Module aliases cannot be capitalized, but found: " <> BN.reify alias
-  when (S.member alias BN.reservedAlias) $
-    raiseError m $
-      "The reserved name `"
-        <> BN.reify alias
-        <> "` cannot be used as an alias of a module"
-  return alias
+    Left $ "Module aliases must not be capitalized, but found: " <> aliasText
+  when (S.member alias BN.reservedAlias) $ do
+    Left $ "The reserved name `" <> aliasText <> "` cannot be used as an alias of a module"
+  return $ ModuleAlias alias
 
 ensureNoDependencyAliasCollision :: H.Hint -> [(ModuleAlias, Dependency)] -> App ()
 ensureNoDependencyAliasCollision m itemList = do

@@ -89,50 +89,8 @@ isDiscardable op =
       False
 
 usedOpSet :: LC.Op -> IntSet.IntSet
-usedOpSet op =
-  case op of
-    LC.Call _ _ value typedValueList ->
-      IntSet.unions $ usedValueSet value : map (usedValueSet . snd) typedValueList
-    LC.MagicCall _ value typedValueList ->
-      IntSet.unions $ usedValueSet value : map (usedValueSet . snd) typedValueList
-    LC.GetElementPtr (value, _) indexedValueList ->
-      IntSet.unions $ usedValueSet value : map (usedValueSet . fst) indexedValueList
-    LC.Bitcast value _ _ ->
-      usedValueSet value
-    LC.IntToPointer value _ ->
-      usedValueSet value
-    LC.PointerToInt value _ ->
-      usedValueSet value
-    LC.Load value _ ->
-      usedValueSet value
-    LC.Store _ value1 value2 ->
-      IntSet.union (usedValueSet value1) (usedValueSet value2)
-    LC.StackAlloc stackAllocInfo ->
-      case LC.stackSize stackAllocInfo of
-        Left {} ->
-          IntSet.empty
-        Right runtimeSize ->
-          usedValueSet runtimeSize
-    LC.StackLifetimeStart {} ->
-      IntSet.empty
-    LC.StackLifetimeEnd {} ->
-      IntSet.empty
-    LC.Calloc value1 value2 ->
-      IntSet.union (usedValueSet value1) (usedValueSet value2)
-    LC.Alloc size _ ->
-      case size of
-        Left {} ->
-          IntSet.empty
-        Right runtimeSize ->
-          usedValueSet runtimeSize
-    LC.AllocOpaque size ->
-      usedValueSet size
-    LC.Realloc value1 value2 ->
-      IntSet.union (usedValueSet value1) (usedValueSet value2)
-    LC.Free value _ _ ->
-      usedValueSet value
-    LC.PrimOp _ valueList ->
-      usedValueListSet valueList
+usedOpSet =
+  LC.foldOpValues usedValueSet
 
 usedValueListSet :: [LC.Value] -> IntSet.IntSet
 usedValueListSet =

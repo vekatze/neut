@@ -6,8 +6,8 @@ where
 
 import Control.Comonad.Cofree hiding (section)
 import Kernel.Parse.Internal.Discern.Handle qualified as H
-import Language.Common.Magic qualified as M
 import Language.Common.LowMagic qualified as LM
+import Language.Common.Magic qualified as M
 import Language.Common.Noema qualified as N
 import Language.WeakTerm.CreateHole qualified as WT
 import Language.WeakTerm.WeakTerm qualified as WT

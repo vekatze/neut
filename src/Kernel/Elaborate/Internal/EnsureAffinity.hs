@@ -38,7 +38,6 @@ import Language.Common.VarKind qualified as VK
 import Language.Term.FreeVarsWithHints (freeTermVarsWithHints)
 import Language.Term.Term qualified as TM
 import Language.Term.Weaken (weakenType)
-import Language.WeakTerm.Subst (SubstEntry (..))
 import Language.WeakTerm.Subst qualified as Subst
 import Language.WeakTerm.WeakTerm qualified as WT
 import Logger.Hint
@@ -165,23 +164,23 @@ analyze h term = do
       analyzeVar h m x
     _ :< TM.VarGlobal {} -> do
       return []
-    m :< TM.PiIntro (AttrL.Attr {lamKind}) impArgs expArgs defaultArgs e -> do
-      let ds = map snd defaultArgs
+    m :< TM.PiIntro (AttrL.Attr {lamKind}) impParams expParams defaultParams e -> do
+      let ds = map snd defaultParams
       case lamKind of
         LK.Fix _ isDestPassing (mx, _k, x, codType) -> do
-          (cs1, h') <- analyzeBinder h (impArgs ++ expArgs)
-          (cs2, h'') <- analyzeBinder h' (map fst defaultArgs)
+          (cs1, h') <- analyzeBinder h (impParams ++ expParams)
+          (cs2, h'') <- analyzeBinder h' (map fst defaultParams)
           cs3 <- concat <$> mapM (analyze h'') ds
           cs4 <- analyzeType h'' codType
           let piKind = if isDestPassing then PK.DestPass False else PK.normal
-          let piType = m :< TM.Pi piKind impArgs expArgs (map fst defaultArgs) codType
+          let piType = m :< TM.Pi piKind impParams expParams (map fst defaultParams) codType
           liftIO $ insertRelevantVar x h''
           cs5 <- analyze (extendHandle (mx, VK.normal, x, piType) h'') e
           css <- forM (freeTermVarsWithHints term) $ uncurry (analyzeVar h)
           return $ cs1 ++ cs2 ++ cs3 ++ cs4 ++ cs5 ++ concat css
         LK.Normal _ _ codType -> do
-          (cs1, h') <- analyzeBinder h (impArgs ++ expArgs)
-          (cs2, h'') <- analyzeBinder h' (map fst defaultArgs)
+          (cs1, h') <- analyzeBinder h (impParams ++ expParams)
+          (cs2, h'') <- analyzeBinder h' (map fst defaultParams)
           cs3 <- concat <$> mapM (analyze h'') ds
           cs4 <- analyzeType h'' codType
           cs5 <- analyze h'' e
@@ -340,8 +339,8 @@ analyzeType h ty =
       cs0 <- analyzeType h t
       css <- mapM (analyzeType h) args
       return $ cs0 ++ concat css
-    _ :< TM.Pi _ impArgs expArgs defaultArgs t -> do
-      (cs1, h') <- analyzeTypeBinder h (impArgs ++ expArgs ++ defaultArgs)
+    _ :< TM.Pi _ impParams expParams defaultParams t -> do
+      (cs1, h') <- analyzeTypeBinder h (impParams ++ expParams ++ defaultParams)
       cs2 <- analyzeType h' t
       return $ cs1 ++ cs2
     _ :< TM.Data _ _ es -> do
@@ -473,7 +472,7 @@ analyzeCase h decisionCase = do
     DT.ConsCase (DT.ConsCaseRecord {..}) -> do
       let (es1, ts1) = unzip dataArgs
       cs1 <- concat <$> mapM (analyzeType h) (es1 ++ ts1)
-      (cs2, h') <- analyzeBinder h consArgs
+      (cs2, h') <- analyzeBinder h consBinders
       cs3 <- analyzeDecisionTree h' cont
       return $ cs1 ++ cs2 ++ cs3
 
@@ -495,8 +494,7 @@ simplifyAffine ::
   WeakAffineConstraint ->
   App [AffineConstraintError]
 simplifyAffine h dataNameSet (t, orig@(m :< _)) = do
-  t' <- Elaborate.reduceType (elaborateHandle h) t
-  case t' of
+  case t of
     _ :< WT.Tau -> do
       return []
     _ :< WT.Data _ dataName dataArgs -> do
@@ -508,13 +506,13 @@ simplifyAffine h dataNameSet (t, orig@(m :< _)) = do
           let dataNameSet' = S.insert dataName dataNameSet
           constraintsFromDataArgs <- fmap concat $ forM dataArgs $ \dataArg ->
             simplifyAffine h dataNameSet' (dataArg, orig)
-          dataConsArgsList <-
+          dataConsParamsList <-
             if S.member dataName dataNameSet
               then return []
-              else getConsArgTypes h m dataName dataArgs
-          constraintsFromDataConsArgs <- fmap concat $ forM dataConsArgsList $ \dataConsArgs -> do
-            fmap concat $ forM dataConsArgs $ \(_, _, _, consArg) -> do
-              simplifyAffine h dataNameSet' (consArg, orig)
+              else getConsParamTypes h m dataName dataArgs
+          constraintsFromDataConsArgs <- fmap concat $ forM dataConsParamsList $ \dataConsParams -> do
+            fmap concat $ forM dataConsParams $ \(_, _, _, consParamType) -> do
+              simplifyAffine h dataNameSet' (consParamType, orig)
           return $ constraintsFromDataArgs ++ constraintsFromDataConsArgs
         _ -> do
           return [AffineConstraintError orig]
@@ -530,7 +528,7 @@ simplifyAffine h dataNameSet (t, orig@(m :< _)) = do
       return []
     _ -> do
       defMap <- liftIO $ WeakTypeDef.read' (Elaborate.weakTypeDefHandle (elaborateHandle h))
-      case Stuck.asStuckedType t' of
+      case Stuck.asStuckedType t of
         Just (Stuck.VarGlobal dd, evalCtx)
           | Just lam <- Map.lookup dd defMap -> do
               mt'' <- liftIO $ Stuck.resume (Elaborate.substHandle (elaborateHandle h)) lam evalCtx
@@ -542,36 +540,28 @@ simplifyAffine h dataNameSet (t, orig@(m :< _)) = do
         _ -> do
           return [AffineConstraintError orig]
 
-substConsArgs :: Handle -> Subst.Subst -> [BinderF WT.WeakType] -> App [BinderF WT.WeakType]
-substConsArgs h sub consArgs =
-  case consArgs of
-    [] ->
-      return []
-    (m, k, x, t) : rest -> do
-      t' <- liftIO $ Subst.substType (Elaborate.substHandle (elaborateHandle h)) sub t
-      let opaque = m :< WT.Tau -- allow `a` in `Cons(a: type, x: a)`
-      let sub' = IntMap.insert (toInt x) (Type opaque) sub
-      rest' <- substConsArgs h sub' rest
-      return $ (m, k, x, t') : rest'
+substConsParams :: Handle -> Subst.TypeSubst -> [BinderF WT.WeakType] -> App [BinderF WT.WeakType]
+substConsParams h sub consParams =
+  forM consParams $ \(m, k, x, t) -> do
+    t' <- liftIO $ Subst.substType (Elaborate.substHandle (elaborateHandle h)) sub t
+    return (m, k, x, t')
 
-getConsArgTypes ::
+getConsParamTypes ::
   Handle ->
   Hint ->
   DD.DefiniteDescription ->
   [WT.WeakType] ->
   App [[BinderF WT.WeakType]]
-getConsArgTypes h m dataName dataArgs = do
-  dataInfoOrNone <- liftIO $ Data.lookupWeak (Elaborate.dataHandle (elaborateHandle h)) dataName
-  case dataInfoOrNone of
-    Just DI.DataInfo {DI.dataArgs = dataBinders, DI.consInfoList = consInfoList}
-      | length dataBinders == length dataArgs -> do
-          let binderIds = map (\(_, _, x, _) -> x) dataBinders
-          let sub = IntMap.fromList $ zip (map toInt binderIds) (map Type dataArgs)
-          mapM (substConsArgs h sub . DI.consArgs) consInfoList
-      | otherwise ->
-          raiseCritical m $ "Could not specialize constructor metadata for `" <> DD.reify dataName <> "` due to arity mismatch"
-    Nothing ->
-      raiseCritical m $ "Could not find constructor metadata for `" <> DD.reify dataName <> "`"
+getConsParamTypes h m dataName dataArgs = do
+  DI.DataInfo {DI.dataParams = dataParams, DI.consInfoList = consInfoList} <-
+    Data.lookupWeakOrCritical (Elaborate.dataHandle (elaborateHandle h)) m dataName
+  if length dataParams == length dataArgs
+    then do
+      let sub = Subst.makeTypeSubst (map getBinderIdent dataParams) dataArgs
+      mapM (substConsParams h sub . DI.consParams) consInfoList
+    else
+      raiseCritical m $
+        "Could not specialize constructor metadata for `" <> DD.reify dataName <> "` due to arity mismatch"
 
 lookupOptimizableData :: Handle -> DD.DefiniteDescription -> IO (Maybe OptimizableData)
 lookupOptimizableData h dd = do

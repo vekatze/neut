@@ -9,12 +9,12 @@ import Data.HashMap.Strict qualified as Map
 import Data.IntMap qualified as IntMap
 import Data.Set qualified as S
 import Gensym.Handle qualified as Gensym
+import Language.Common.CellLayout qualified as CL
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.Ident
 import Language.Common.Ident.Reify qualified as Ident
 import Language.Common.LowMagic qualified as LM
 import Language.Common.Opacity qualified as O
-import Language.Common.CellLayout qualified as CL
 import Language.Comp.Comp qualified as C
 import Language.Comp.EnumCase qualified as EC
 import Language.Comp.Subst qualified as Subst
@@ -226,7 +226,7 @@ instantiate :: Handle -> [Ident] -> [C.Value] -> C.Comp -> IO C.Comp
 instantiate h xs values body = do
   let formalSubst = IntMap.fromList $ zip (map Ident.toInt xs) values
   let fullSubst = IntMap.union formalSubst (subst h)
-  body' <- Subst.instantiate (substHandle h) fullSubst body
+  body' <- Subst.subst (substHandle h) fullSubst body
   reduce (h {subst = IntMap.empty}) body'
 
 extractIdent :: C.Value -> Maybe Ident

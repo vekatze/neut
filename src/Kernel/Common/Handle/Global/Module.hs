@@ -36,8 +36,7 @@ import Path
 import Path.Collect (hasExtension)
 import Path.IO
 import System.Environment
-import System.FilePath (dropExtension)
-import System.FilePath (splitDirectories)
+import System.FilePath (dropExtension, splitDirectories)
 
 data Handle = Handle
   { _mainModule :: MainModule,

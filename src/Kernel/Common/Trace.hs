@@ -2,18 +2,21 @@ module Kernel.Common.Trace
   ( Config,
     empty,
     new,
+    newFromConsole,
     isEnabled,
     matches,
   )
 where
 
+import App.App (App)
+import App.Run (raiseError')
+import Console.Handle qualified as Console
 import Console.ReportMode qualified as Report
 import Data.Bifunctor (first)
 import Data.HashMap.Strict qualified as Map
 import Data.List qualified as List
 import Data.Text qualified as T
 import Kernel.Common.Handle.Global.ModulePath qualified as ModulePath
-import Kernel.Common.Module qualified as M
 import Language.Common.BaseName qualified as BN
 import Language.Common.Const (doubleColon, nsSep)
 import Language.Common.DefiniteDescription qualified as DD
@@ -27,23 +30,26 @@ import Logger.Hint (internalHint)
 
 data Config = Config
   { phaseList :: [Report.TracePhase],
-    prefixList :: [NamePrefix ModulePath.ModulePath],
-    mainModule :: Maybe M.MainModule
+    prefixList :: [NamePrefix ModulePath.ModulePath]
   }
 
 empty :: Config
-empty = Config {phaseList = [], prefixList = [], mainModule = Nothing}
+empty = Config {phaseList = [], prefixList = []}
 
 isEnabled :: Config -> Bool
 isEnabled config =
   not $ null $ phaseList config
 
-new :: M.MainModule -> Report.TraceConfig -> Either T.Text Config
-new mainModule traceConfig = do
+new :: Report.TraceConfig -> Either T.Text Config
+new traceConfig = do
   let phaseList = Report.tracePhaseList traceConfig
   let prefixList = Report.tracePrefixList traceConfig
   prefixList' <- mapM normalizePrefix prefixList
-  return Config {phaseList, prefixList = prefixList', mainModule = Just mainModule}
+  return Config {phaseList, prefixList = prefixList'}
+
+newFromConsole :: Console.Handle -> App Config
+newFromConsole consoleHandle =
+  either raiseError' return $ new $ Console.getTraceConfig consoleHandle
 
 normalizePrefix :: T.Text -> Either T.Text (NamePrefix ModulePath.ModulePath)
 normalizePrefix prefix = do
@@ -85,12 +91,8 @@ reflectNamePath original pathText = do
 
 matches :: Config -> ModulePath.ModulePathMap -> Report.TracePhase -> DD.DefiniteDescription -> Bool
 matches config modulePathMap phase dd = do
-  case mainModule config of
-    Nothing ->
-      False
-    Just _ ->
-      phase `elem` phaseList config
-        && any (matchesPrefix modulePathMap dd) (prefixList config)
+  phase `elem` phaseList config
+    && any (matchesPrefix modulePathMap dd) (prefixList config)
 
 matchesPrefix :: ModulePath.ModulePathMap -> DD.DefiniteDescription -> NamePrefix ModulePath.ModulePath -> Bool
 matchesPrefix modulePathMap dd prefix = do

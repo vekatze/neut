@@ -101,7 +101,8 @@ interpretModulePath :: Hint -> T.Text -> App [T.Text]
 interpretModulePath m pathText = do
   let segmentList = T.splitOn "." pathText
   when (any T.null segmentList) $
-    raiseError m $ "A module path must not have an empty segment, but found: `" <> pathText <> "`"
+    raiseError m $
+      "A module path must not have an empty segment, but found: `" <> pathText <> "`"
   case segmentList of
     first : rest
       | first == MA.reify MA.thisModuleAlias ->

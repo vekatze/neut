@@ -18,6 +18,7 @@ import Control.Comonad.Cofree hiding (section)
 import Control.Monad
 import Control.Monad.Except (liftEither)
 import Control.Monad.IO.Class (MonadIO (liftIO))
+import Data.HashMap.Strict qualified as Map
 import Data.List qualified as List
 import Data.List.NonEmpty qualified as NE
 import Data.Text qualified as T
@@ -31,13 +32,13 @@ import Kernel.Parse.Internal.Discern.Handle qualified as H
 import Kernel.Parse.Internal.Handle.Alias qualified as Alias
 import Kernel.Parse.Internal.Handle.NameMap qualified as NameMap
 import Kernel.Parse.Internal.Handle.Unused qualified as Unused
-import Data.HashMap.Strict qualified as Map
 import Kernel.Parse.NominalEnv (NameEnv)
-import Language.Common.ArgNum qualified as AN
-import Language.Common.CallSite (IsSourceArg)
+import Language.Common.Arity qualified as Arity
 import Language.Common.Attr.VarGlobal qualified as AttrVG
 import Language.Common.BaseName qualified as BN
 import Language.Common.CallConvSpec qualified as CCS
+import Language.Common.CallSite (IsSourceArg)
+import Language.Common.Const (doubleColon, nsSep)
 import Language.Common.CreateSymbol qualified as Gensym
 import Language.Common.DefaultArgs qualified as DefaultArgs
 import Language.Common.DefiniteDescription qualified as DD
@@ -90,7 +91,11 @@ resolveNameWithoutLocals h m name = do
       return pair
 
 {-# INLINE resolveNameOrError #-}
-resolveNameOrError :: H.Handle -> Hint -> Name -> App (Either T.Text (DD.DefiniteDescription, (Hint, GN.GlobalName)))
+resolveNameOrError ::
+  H.Handle ->
+  Hint ->
+  Name ->
+  App (Either T.Text (DD.DefiniteDescription, (Hint, GN.GlobalName)))
 resolveNameOrError h m name =
   case name of
     Bare var -> do
@@ -100,7 +105,11 @@ resolveNameOrError h m name =
     Locator l -> do
       Right <$> resolveLocator h m l True
 
-resolveBareNameOrErr :: H.Handle -> Hint -> T.Text -> App (Either T.Text (DD.DefiniteDescription, (Hint, GN.GlobalName)))
+resolveBareNameOrErr ::
+  H.Handle ->
+  Hint ->
+  T.Text ->
+  App (Either T.Text (DD.DefiniteDescription, (Hint, GN.GlobalName)))
 resolveBareNameOrErr h m name = do
   localLocator <- liftEither $ LL.reflect m name
   ownOrNone <- lookupOwnName h m localLocator
@@ -183,7 +192,11 @@ lookupOwnName' h m cgl prefixes ll =
         _ ->
           lookupOwnName' h m cgl rest ll
 
-lookupNameMap :: H.Handle -> Hint -> DD.DefiniteDescription -> App (LookupResult (DD.DefiniteDescription, (Hint, GN.GlobalName)))
+lookupNameMap ::
+  H.Handle ->
+  Hint ->
+  DD.DefiniteDescription ->
+  App (LookupResult (DD.DefiniteDescription, (Hint, GN.GlobalName)))
 lookupNameMap h m dd = do
   let currentLocator = Locator.getCurrentGlobalLocator (H.locatorHandle h)
   lookupResult <- NameMap.lookup (H.nameMapHandle h) m currentLocator (H.nsPath h) dd
@@ -193,7 +206,12 @@ hiddenNameMessage :: T.Text -> T.Text
 hiddenNameMessage name =
   "`" <> name <> "` is defined but not visible from here"
 
-resolveDottedNameOrErr :: H.Handle -> Hint -> T.Text -> [BN.BaseName] -> App (Either T.Text (DD.DefiniteDescription, (Hint, GN.GlobalName)))
+resolveDottedNameOrErr ::
+  H.Handle ->
+  Hint ->
+  T.Text ->
+  [BN.BaseName] ->
+  App (Either T.Text (DD.DefiniteDescription, (Hint, GN.GlobalName)))
 resolveDottedNameOrErr h m headText rest = do
   headBaseName <- liftEither $ BN.reflect m headText
   ownHeadOrNone <- lookupOwnName h m (LL.new headBaseName)
@@ -263,7 +281,7 @@ resolveNamespaceMember h m headText rest resolverOrNone dd = do
           let nameLen = T.length $ showDottedName headText rest
           liftIO $ insertLocatorTag h m dd' gn nameLen mDef
         Just resolveMemberDD ->
-          insertMemberTags h m (T.length headText + T.length C.nsSep) [] rest resolveMemberDD (dd', mDef, gn)
+          insertMemberTags h m (T.length headText + T.length nsSep) [] rest resolveMemberDD (dd', mDef, gn)
       return $ Right globalVar
     Hidden ->
       return $ Left $ hiddenNameMessage $ showDottedName headText rest
@@ -272,7 +290,7 @@ resolveNamespaceMember h m headText rest resolverOrNone dd = do
 
 showDottedName :: T.Text -> [BN.BaseName] -> T.Text
 showDottedName headText rest =
-  T.intercalate C.nsSep $ headText : map BN.reify rest
+  T.intercalate nsSep $ headText : map BN.reify rest
 
 toMemberDD :: SGL.StrictGlobalLocator -> [BN.BaseName] -> DD.DefiniteDescription
 toMemberDD sgl names = do
@@ -306,7 +324,7 @@ insertMemberTags h m columnOffset prefix rest resolveMemberDD finalInfo =
           insertMemberTag h m columnOffset b dd mDef gn
         _ ->
           return ()
-      let nextOffset = columnOffset + T.length (BN.reify b) + T.length C.nsSep
+      let nextOffset = columnOffset + T.length (BN.reify b) + T.length nsSep
       insertMemberTags h m nextOffset prefix' bs resolveMemberDD finalInfo
 
 insertMemberTag ::
@@ -353,7 +371,7 @@ resolveLocator h m locator shouldInsertTag = do
       raiseError m $ hiddenNameMessage $ L.reify locator
     Found globalVar@(dd, (mDef, gn)) -> do
       when shouldInsertTag $ do
-        let sepLen = T.length C.doubleColon
+        let sepLen = T.length doubleColon
         when (metaShouldSaveLocation m) $ do
           moduleLocation <- Alias.getModuleLocation (H.aliasHandle h) m $ SGL.moduleID sgl
           liftIO $ Tag.insertModuleFile (H.tagHandle h) m modulePathText moduleLocation
@@ -385,9 +403,9 @@ resolveDefiniteDescription h m dd = do
 
 data ResolvedCons = ResolvedCons
   { consDD :: DD.DefiniteDescription,
-    dataArgNum :: AN.ArgNum,
-    consImpArgNames :: [T.Text],
-    consArgNum :: AN.ArgNum,
+    dataArity :: Arity.Arity,
+    consImpParamNames :: [T.Text],
+    consArity :: Arity.Arity,
     disc :: D.Discriminant,
     isConstLike :: IsConstLike,
     consSourceFlags :: [IsSourceArg]
@@ -405,7 +423,7 @@ resolveConstructor h m s = do
 resolveConstructorMaybe :: DD.DefiniteDescription -> GN.GlobalName -> Maybe ResolvedCons
 resolveConstructorMaybe dd gn = do
   case gn of
-    GN.DataIntro dataArgNum consImpArgNames consArgNum disc isConstLike consSourceFlags ->
+    GN.DataIntro dataArity consImpParamNames consArity disc isConstLike consSourceFlags ->
       Just $ ResolvedCons {consDD = dd, ..}
     _ ->
       Nothing
@@ -414,15 +432,15 @@ interpretGlobalName :: H.Handle -> Hint -> DD.DefiniteDescription -> GN.GlobalNa
 interpretGlobalName h m dd gn = do
   let dd' = renderDD (H.modulePathMap h) dd
   case gn of
-    GN.TopLevelFuncTerm argNum isConstLike isDestPassing -> do
+    GN.TopLevelFuncTerm arity isConstLike isDestPassing -> do
       ensureRuntimeTermStage m h dd
-      return $ interpretTopLevelFuncTerm m dd argNum isConstLike isDestPassing
+      return $ interpretTopLevelFuncTerm m dd arity isConstLike isDestPassing
     GN.TopLevelMetaTerm _ True ->
       interpretMetaConstant h m dd gn ImpArgs.Unspecified
-    GN.TopLevelMetaTerm argNum isConstLike -> do
+    GN.TopLevelMetaTerm arity isConstLike -> do
       ensureMetaTermStage m h dd
       let isDestPassing = False
-      return $ interpretTopLevelFuncTerm m dd argNum isConstLike isDestPassing
+      return $ interpretTopLevelFuncTerm m dd arity isConstLike isDestPassing
     GN.TopLevelFuncType {} -> do
       raiseError m $ "`" <> dd' <> "` is a type name and cannot appear in term position"
     GN.Trope ->
@@ -431,11 +449,11 @@ interpretGlobalName h m dd gn = do
       raiseError m $ "`" <> dd' <> "` is a namespace and cannot appear in term position"
     GN.Data {} ->
       raiseError m $ "`" <> dd' <> "` is a type name and cannot appear in term position"
-    GN.DataIntro dataArgNum consImpArgNames consArgNum _ isConstLike _ -> do
-      let argNum = AN.add (AN.add dataArgNum (AN.fromInt (length consImpArgNames))) consArgNum
+    GN.DataIntro dataArity consImpParamNames consArity _ isConstLike _ -> do
+      let arity = Arity.add (Arity.add dataArity (Arity.fromInt (length consImpParamNames))) consArity
       let isDestPassing = False
       let attr = AttrVG.Attr {..}
-      return $ m :< WT.PiElim (CCS.AsMarked False []) (m :< WT.VarGlobal attr dd) ImpArgs.Unspecified [] (DefaultArgs.ByKey [])
+      return $ makeNullaryCall m attr dd
     GN.PrimType _ ->
       raiseError m $ "`" <> dd' <> "` is a type name and cannot appear in term position"
     GN.PrimOp primOp ->
@@ -469,10 +487,10 @@ interpretGlobalTypeName h m dd gn = do
       raiseError m $ "`" <> dd' <> "` is a term name and cannot appear in type position"
     GN.TopLevelMetaTerm {} -> do
       raiseError m $ "`" <> dd' <> "` is a term name and cannot appear in type position"
-    GN.TopLevelFuncType argNum isConstLike _ -> do
-      return $ interpretTopLevelFuncType m dd argNum isConstLike
-    GN.Data argNum _ isConstLike ->
-      return $ interpretTopLevelFuncType m dd argNum isConstLike
+    GN.TopLevelFuncType arity isConstLike _ -> do
+      return $ interpretTopLevelFuncType m dd arity isConstLike
+    GN.Data arity _ isConstLike ->
+      return $ interpretTopLevelFuncType m dd arity isConstLike
     GN.DataIntro {} ->
       raiseError m $ "`" <> dd' <> "` is a constructor and cannot appear in type position"
     GN.PrimType primNum ->
@@ -489,23 +507,27 @@ interpretGlobalTypeName h m dd gn = do
 interpretTopLevelFuncTerm ::
   Hint ->
   DD.DefiniteDescription ->
-  AN.ArgNum ->
+  Arity.Arity ->
   IsConstLike ->
   IsDestPassing ->
   WT.WeakTerm
-interpretTopLevelFuncTerm m dd argNum isConstLike isDestPassing = do
+interpretTopLevelFuncTerm m dd arity isConstLike isDestPassing = do
   let attr = AttrVG.Attr {..}
   if isConstLike
-    then m :< WT.PiElim (CCS.AsMarked False []) (m :< WT.VarGlobal attr dd) ImpArgs.Unspecified [] (DefaultArgs.ByKey [])
+    then makeNullaryCall m attr dd
     else m :< WT.VarGlobal attr dd
+
+makeNullaryCall :: Hint -> AttrVG.Attr -> DD.DefiniteDescription -> WT.WeakTerm
+makeNullaryCall m attr dd =
+  m :< WT.PiElim (CCS.AsMarked False []) (m :< WT.VarGlobal attr dd) ImpArgs.Unspecified [] (DefaultArgs.ByKey [])
 
 interpretTopLevelFuncType ::
   Hint ->
   DD.DefiniteDescription ->
-  AN.ArgNum ->
+  Arity.Arity ->
   IsConstLike ->
   WT.WeakType
-interpretTopLevelFuncType m dd argNum isConstLike = do
+interpretTopLevelFuncType m dd arity isConstLike = do
   let isDestPassing = False
   let attr = AttrVG.Attr {..}
   if isConstLike

@@ -15,8 +15,8 @@ termChildren node = do
       []
     TM.VarGlobal {} ->
       []
-    TM.PiIntro _ _ _ defaultArgs body ->
-      map snd defaultArgs ++ [body]
+    TM.PiIntro _ _ _ defaultParams body ->
+      map snd defaultParams ++ [body]
     TM.PiElim _ _ callee _ args defaults ->
       callee : args ++ foldMap toList defaults
     TM.DataIntro _ _ _ _ args ->

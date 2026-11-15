@@ -16,8 +16,8 @@ import Control.Comonad.Cofree
 import Data.Maybe
 import Language.Common.Binder
 import Language.Common.DefiniteDescription qualified as DD
-import Language.Common.ExternalName qualified as EN
 import Language.Common.Discriminant qualified as D
+import Language.Common.ExternalName qualified as EN
 import Language.Common.Foreign qualified as F
 import Language.Common.IsConstLike
 import Language.Common.RuleKind (RuleKind)
@@ -32,7 +32,7 @@ data DefineMetaF t a = DefineMeta
   { defineMetaLoc :: SavedHint,
     defineMetaTargetName :: DD.DefiniteDescription,
     defineMetaTargetArgs :: [t],
-    defineMetaExpArgs :: [BinderF t],
+    defineMetaExpParams :: [BinderF t],
     defineMetaCodType :: t,
     defineMetaBody :: a,
     defineMetaHelperName :: DD.DefiniteDescription

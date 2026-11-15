@@ -20,7 +20,7 @@ data PrimValue a
   | Text T.Text
   | Blob BS.ByteString
   | Rune RU.Rune
-  deriving (Show)
+  deriving (Show, Functor, Foldable, Traversable)
 
 instance (Binary a) => Binary (PrimValue a) where
   put primValue = do

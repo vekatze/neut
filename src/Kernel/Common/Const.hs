@@ -1,6 +1,7 @@
 module Kernel.Common.Const (module Kernel.Common.Const) where
 
 import Data.Text qualified as T
+import Language.Common.Const (doubleColon)
 import Path
 
 sourceFileExtension :: String
@@ -14,18 +15,6 @@ packageFileExtension =
 ensFileExtension :: String
 ensFileExtension =
   ".ens"
-
-nsSepChar :: Char
-nsSepChar =
-  '.'
-
-nsSep :: T.Text
-nsSep =
-  T.singleton nsSepChar
-
-doubleColon :: T.Text
-doubleColon =
-  "::"
 
 verSep :: T.Text
 verSep =

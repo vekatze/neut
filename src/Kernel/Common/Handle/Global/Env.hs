@@ -2,6 +2,7 @@ module Kernel.Common.Handle.Global.Env
   ( Handle (..),
     new,
     getMainModule,
+    getMainTarget,
     getMainModuleDir,
     getMainDefiniteDescriptionByTarget,
     getAllocatorByTarget,
@@ -37,6 +38,14 @@ getMainModule :: Handle -> MainModule
 getMainModule =
   _mainModule
 
+getMainTarget :: Handle -> TargetName -> App Target.MainTarget
+getMainTarget h targetName = do
+  case getTarget (extractModule $ getMainModule h) targetName of
+    Just target ->
+      return target
+    Nothing ->
+      raiseError' $ "No such target exists: " <> targetName
+
 getMainModuleDir :: Handle -> FilePath
 getMainModuleDir h =
   toFilePath $ getModuleRootDir $ extractModule $ getMainModule h
@@ -45,7 +54,8 @@ new :: Reuse.Handle -> Maybe (Path Abs File) -> IO (Either E.Error Handle)
 new reuseHandle moduleFilePathOrNone = do
   runApp $ do
     moduleFilePath <- maybe getCurrentModuleFilePath return moduleFilePathOrNone
-    _mainModule <- MainModule <$> Reuse.rememberModule reuseHandle moduleFilePath (ModuleReflect.fromFilePath moduleFilePath)
+    _mainModule <-
+      MainModule <$> Reuse.rememberModule reuseHandle moduleFilePath (ModuleReflect.fromFilePath moduleFilePath)
     return $ Handle {..}
 
 getMainDefiniteDescriptionByTarget :: Handle -> Target.MainTarget -> App DD.DefiniteDescription

@@ -682,7 +682,7 @@ When the resolved type is `&string` or `&binary`, the literal is compiled as a s
 // `a` ranges over the types that can be stored inline, so `+x: a` is allowed
 <sized a>(xs: array(a), +x: a) -> array(a)
 
-// a function with a default argument named `step`
+// a function with a default parameter named `step`
 (value: int)[step: int] -> int
 ```
 
@@ -739,7 +739,7 @@ The following abbreviations are available:
 
 The same abbreviations are available when `->>` or `+` is used.
 
-The bracketed part may be omitted, and `[]` is also accepted. This default-argument part is included in the function type, so both the keys and their order must match during type checking.
+The bracketed part may be omitted, and `[]` is also accepted. This default-parameter part is included in the function type, so both the keys and their order must match during type checking.
 
 `+` can only be used on an ordinary parameter. It is available only at a run-time stage (stage 0 or below).
 
@@ -850,7 +850,7 @@ The following abbreviation is available:
 
 The same abbreviation is available when the marks are used.
 
-Type annotations inside the default-argument list can also be omitted when they can be inferred. For example,
+Type annotations inside the default-parameter list can also be omitted when they can be inferred. For example,
 
 ```neut
 (x: int)[step := 1] => {
@@ -903,7 +903,7 @@ For the evaluation steps, see [`e(e1, ..., en)`](#ee1--en).
 
 The marks appear in the resulting function type: `=>>` makes the arrow of the type `->>`, and `+` on a parameter stays on that parameter.
 
-When default arguments are present, the resulting type additionally contains the bracketed default-argument part, and those binders are also available in the body.
+When default parameters are present, the resulting type additionally contains the bracketed default-parameter part, and those binders are also available in the body.
 
 ### Note
 
@@ -1086,7 +1086,7 @@ The calling-convention marks behave as they do for [anonymous functions](#x1-a1-
 
 The marks appear in the type of `f`: `->>` turns it into `(x1: a1, ..., xn: an) ->> t`, and `+` on a parameter stays on that parameter, as in `(+x1: a1, ..., xn: an) -> t`.
 
-When default arguments are present, the type of `f` additionally contains the bracketed default-argument part.
+When default parameters are present, the type of `f` additionally contains the bracketed default-parameter part.
 
 ### Note
 
@@ -1210,7 +1210,7 @@ The same as a term-level `define-meta`, except that the body is expanded at comp
 
 ## `e(e1, ..., en)`
 
-Given a function `e` and arguments `e1, ..., en`, we can write `e(e1, ..., en)` to denote a function application. If `e` has default arguments, the application may be followed by a bracketed list of overrides.
+Given a function `e` and arguments `e1, ..., en`, we can write `e(e1, ..., en)` to denote a function application. If `e` has default parameters, the application may be followed by a bracketed list of default arguments.
 
 An application also carries the calling convention of `e`. A call to a function whose type has `->>` is written `e@(e1, ..., en)`, and an argument for a parameter that has `+` is written `~ei`. Both marks are determined by the type of `e`.
 
@@ -1245,15 +1245,15 @@ e(e1, ..., en)[x1 := d1, ..., xk := dk]
 e<t1, ..., tm>(e1, ..., en)[x1 := d1, ..., xk := dk]
 ```
 
-If `e` has implicit parameters, you can specify them explicitly using angle brackets. For example, if `e: <a>(a) -> unit`, then `e<int>(v)` specifies the implicit parameter `a` as `int`.
+If `e` has implicit parameters, you can pass the implicit arguments explicitly using angle brackets. For example, if `e: <a>(a) -> unit`, then `e<int>(v)` passes `int` as the implicit argument for `a`.
 
-If `e` has default arguments, you can override some or all of them by writing
+If `e` has default parameters, you can override the default values of some or all of them by writing
 
 ```neut
 [x1 := d1, ..., xk := dk]
 ```
 
-after the ordinary argument list. These overrides are matched by key.
+after the ordinary argument list. These default arguments are matched by key.
 
 If the type of `e` has `->>`, `@` stands between `e` and the argument list, in front of the implicit arguments. It belongs to an argument list, so a curried call marks the list it applies to:
 
@@ -1314,7 +1314,7 @@ An argument written `~ei` is evaluated as follows:
 
 The parameter is then an ordinary value inside the callee. The size of the storage is obtained by executing the parameter type, as with a destination. Since work remains after the call, a call that supplies a `~` argument is never a tail call.
 
-When a default argument is omitted, its default expression is evaluated at the time of the call. In particular, each call that omits the argument computes a fresh value rather than reusing one from the function definition.
+When a default argument is omitted, the default value of the parameter is evaluated at the time of the call. In particular, each call that omits the argument computes a fresh value rather than reusing one from the function definition.
 
 ### Type
 
@@ -1332,7 +1332,7 @@ The same rule also applies when `e` has type:
 - `&<α1: a1, .., αn: an>(y1: b1, .., ym: bm) -> c`
 - `&<α1: a1, .., αn: an>(y1: b1, .., ym: bm) ->> c`
 
-When `e` has a default-argument part such as `[z1: c1, .., zk: ck]`, the application may additionally provide `[zi := di]`, and omitted keys use the defaults declared by the function.
+When `e` has a default-parameter part such as `[z1: c1, .., zk: ck]`, the application may additionally provide `[zi := di]`, and omitted keys use the default values declared by the function.
 
 ### Note
 
@@ -1407,7 +1407,7 @@ constant some-config: config {
 }
 ```
 
-A key can also name a default argument. In that case, the corresponding default is overridden:
+A key can also name a default parameter. In that case, the corresponding default value is overridden:
 
 ```neut
 define bump(x: int)[step: int := 1] -> int {
@@ -1480,7 +1480,7 @@ The name is an ordinary binder: it can be `_`, it can be marked with `!`, etc.
 
 ## `exact e`
 
-Given a function `e`, `exact e` supplies all the implicit parameters of `e` by inserting holes.
+Given a function `e`, `exact e` passes a hole as each implicit argument of `e`.
 
 ### Example
 
@@ -1544,9 +1544,9 @@ Here, `?Mi`s are metavariables that must be inferred by the type checker.
 
 ### Note
 
-As you can see from its semantics, an `exact` is just a shorthand for a "hole-application" that fills in implicit parameters.
+As you can see from its semantics, an `exact` is just a shorthand for a "hole-application" that passes holes as implicit arguments.
 
-If `e` has default arguments, they are not part of the type of `exact e`; each call of the result uses the defaults that `e` declares.
+If `e` has default parameters, they are not part of the type of `exact e`; each call of the result uses the default values that `e` declares.
 
 ## ADT Formation
 
@@ -1649,7 +1649,7 @@ In this case,
 - the type of `C2` is `(bar: bool, baz: other-adt(?M)) -> other-adt(?M)`, and
 - the type of `C3` is `(value: ?N) -> other-adt(?M)`.
 
-Type arguments can be written explicitly, with the ADT's arguments before the constructor's. For example,
+Implicit arguments can be written explicitly, with the ADT's arguments before the constructor's. For example,
 
 - `C2<int>(True, x)` has type `other-adt(int)`, and
 - `C3<bool, int>(3)` has type `other-adt(bool)`.
@@ -3055,7 +3055,7 @@ These forms can only be used at stage 1 or above. The compiler reports an error 
 
 ### Semantics (opaque-value)
 
-`magic opaque-value { e }` tells the compiler to treat the term `e` as a value. You may want to use this in combination with `define` or `inline` that don't have any explicit arguments.
+`magic opaque-value { e }` tells the compiler to treat the term `e` as a value. You may want to use this in combination with `define` or `inline` that don't have any explicit parameters.
 
 ### Semantics (external)
 

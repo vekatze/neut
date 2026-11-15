@@ -9,15 +9,16 @@ import Data.ByteString.Builder
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
 import Kernel.Common.Allocator (AllocatorSpec (..))
+import Kernel.Emit.Builder (unwordsL)
 import Kernel.Emit.LowType
 import Kernel.Emit.LowValue
 import Kernel.Emit.PrimType
 import Language.Common.DataSize (DataSize)
 import Language.Common.LowType qualified as LT
 import Language.Common.PrimNumSize
-import Language.Common.SlotSize
 import Language.Common.PrimOp
 import Language.Common.PrimType qualified as PT
+import Language.Common.SlotSize
 import Language.LowComp.LowComp qualified as LC
 
 data Handle = Handle
@@ -77,7 +78,7 @@ emitLowOp ax lowOp = do
         [ "alloca",
           emitLowType (LC.stackElemType stackAllocInfo) <> ",",
           emitLowType (LC.stackIndexType stackAllocInfo),
-          emitStackSize (baseSize ax) (LC.stackSize stackAllocInfo)
+          emitSize (baseSize ax) (LC.stackSize stackAllocInfo)
             <> ", align "
             <> intDec (stackSlotAlignment ax)
         ]
@@ -110,7 +111,7 @@ emitLowOp ax lowOp = do
             <> "("
             <> emitLowType (intType ax)
             <> " "
-            <> emitAllocSize (baseSize ax) size
+            <> emitSize (baseSize ax) size
             <> ")"
         ]
     LC.AllocOpaque size -> do
@@ -180,17 +181,9 @@ emitLowOp ax lowOp = do
             _ ->
               error "Kernel.Emit.LowOp.emitLowOp.PrimConvOp"
 
-emitStackSize :: DataSize -> Either Integer LC.Value -> Builder
-emitStackSize baseSize stackSize =
-  case stackSize of
-    Left knownSize ->
-      integerDec knownSize
-    Right runtimeSize ->
-      emitValue baseSize runtimeSize
-
-emitAllocSize :: DataSize -> Either Integer LC.Value -> Builder
-emitAllocSize baseSize allocSize =
-  case allocSize of
+emitSize :: DataSize -> Either Integer LC.Value -> Builder
+emitSize baseSize size =
+  case size of
     Left knownSize ->
       integerDec knownSize
     Right runtimeSize ->
@@ -207,17 +200,6 @@ emitBinaryOp baseSize t inst d1 d2 =
 emitConvOp :: DataSize -> Builder -> LC.Value -> LT.LowType -> LT.LowType -> Builder
 emitConvOp baseSize cast d dom cod =
   unwordsL [cast, emitLowType dom, emitValue baseSize d, "to", emitLowType cod]
-
-{-# INLINE unwordsL #-}
-unwordsL :: [Builder] -> Builder
-unwordsL strList =
-  case strList of
-    [] ->
-      ""
-    [b] ->
-      b
-    b : bs ->
-      b <> " " <> unwordsL bs
 
 showIndex :: DataSize -> [(LC.Value, LT.LowType)] -> Builder
 showIndex baseSize idxList =
