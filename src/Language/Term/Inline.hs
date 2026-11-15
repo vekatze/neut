@@ -742,10 +742,10 @@ inlineType' h ty = do
       case t' of
         _ :< TM.TVarGlobal _ dd
           | Just typeDefInfo <- Map.lookup dd (typeDefMap h),
-            TypeDef.TypeDefInfo {TypeDef.typeDefBinders = binders, TypeDef.typeDefBody = body} <- typeDefInfo,
-            length binders == length args -> do
+            TypeDef.TypeDefInfo {TypeDef.typeDefParams = params, TypeDef.typeDefBody = body} <- typeDefInfo,
+            length params == length args -> do
               args' <- mapM (inlineType' h) args
-              let subType = Subst.makeTypeSubst (map getBinderIdent binders) args'
+              let subType = Subst.makeTypeSubst (map getBinderIdent params) args'
               body' <- liftIO $ Subst.substType (substHandle h) subType body
               liftIO $ incrementStep h
               inlineType' (withoutPending h) body'

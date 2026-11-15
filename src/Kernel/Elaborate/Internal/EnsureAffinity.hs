@@ -553,11 +553,11 @@ getConsParamTypes ::
   [WT.WeakType] ->
   App [[BinderF WT.WeakType]]
 getConsParamTypes h m dataName dataArgs = do
-  DI.DataInfo {DI.dataParams = dataBinders, DI.consInfoList = consInfoList} <-
+  DI.DataInfo {DI.dataParams = dataParams, DI.consInfoList = consInfoList} <-
     Data.lookupWeakOrCritical (Elaborate.dataHandle (elaborateHandle h)) m dataName
-  if length dataBinders == length dataArgs
+  if length dataParams == length dataArgs
     then do
-      let sub = Subst.makeTypeSubst (map getBinderIdent dataBinders) dataArgs
+      let sub = Subst.makeTypeSubst (map getBinderIdent dataParams) dataArgs
       mapM (substConsParams h sub . DI.consParams) consInfoList
     else
       raiseCritical m $

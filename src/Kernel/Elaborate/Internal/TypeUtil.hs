@@ -46,10 +46,10 @@ getConsParamTypes ::
   App [DI.ConsInfo (BinderF TM.Type)]
 getConsParamTypes h m dataName dataArgs = do
   dataInfo <- lookupDataInfoFull h m dataName
-  let dataBinders = DI.dataParams dataInfo
-  if length dataBinders == length dataArgs
+  let dataParams = DI.dataParams dataInfo
+  if length dataParams == length dataArgs
     then do
-      let sub = TmSubst.makeTypeSubst (map getBinderIdent dataBinders) dataArgs
+      let sub = TmSubst.makeTypeSubst (map getBinderIdent dataParams) dataArgs
       forM (DI.consInfoList dataInfo) $ \consInfo -> do
         let consImpParams = DI.consImpParams consInfo
         (consImpParams', sub') <- liftIO $ TmSubst.refreshTypeBinders (termSubstHandle h) sub consImpParams

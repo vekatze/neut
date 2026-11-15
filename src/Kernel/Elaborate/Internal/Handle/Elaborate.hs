@@ -175,10 +175,10 @@ inlineEnv h = do
       }
 
 inlineDefinition :: Handle -> Hint -> Bool -> [BinderF TM.Type] -> TM.Term -> App TM.Term
-inlineDefinition h m traceEnabled binders e = do
+inlineDefinition h m traceEnabled params e = do
   env <- liftIO $ inlineEnv h
   inlineHandle <- liftIO $ Inline.new env m traceEnabled
-  let localTypeEnv = TM.insTypeEnv binders (InlineHandle.localTypeEnv inlineHandle)
+  let localTypeEnv = TM.insTypeEnv params (InlineHandle.localTypeEnv inlineHandle)
   Inline.inline (inlineHandle {InlineHandle.localTypeEnv}) e
 
 inlineBinder :: Handle -> BinderF TM.Type -> App (BinderF TM.Type)

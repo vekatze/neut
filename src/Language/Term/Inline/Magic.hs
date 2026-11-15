@@ -361,9 +361,9 @@ specializeConsInfoList ::
   [TM.Type] ->
   [DI.ConsInfo (BinderF TM.Type)] ->
   App [DI.ConsInfo (BinderF TM.Type)]
-specializeConsInfoList h m dataName dataBinders dataArgs consInfoList
-  | length dataBinders == length dataArgs = do
-      let sub = Subst.makeTypeSubst (map getBinderIdent dataBinders) dataArgs
+specializeConsInfoList h m dataName dataParams dataArgs consInfoList
+  | length dataParams == length dataArgs = do
+      let sub = Subst.makeTypeSubst (map getBinderIdent dataParams) dataArgs
       mapM (specializeConsInfo h sub) consInfoList
   | otherwise =
       reportMacroError h m $

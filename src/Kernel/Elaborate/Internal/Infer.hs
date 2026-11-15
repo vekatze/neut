@@ -1164,8 +1164,8 @@ declareConsImpParams h m consDD dataTypes consImpParams = do
   consType <- Type.lookup' (typeHandle h) m consDD
   case consType of
     _ :< WT.Pi _ impParams _ _ _ -> do
-      let (dataBinders, declaredConsImpParams) = splitAt (length dataTypes) impParams
-      let dataSub = Subst.makeTypeSubst (map getBinderIdent dataBinders) dataTypes
+      let (dataParams, declaredConsImpParams) = splitAt (length dataTypes) impParams
+      let dataSub = Subst.makeTypeSubst (map getBinderIdent dataParams) dataTypes
       let consImpTypes = map (\(mx, _, x, _) -> mx :< WT.TVar x) consImpParams
       let consImpSub = Subst.makeTypeSubst (map getBinderIdent declaredConsImpParams) consImpTypes
       let sub = IntMap.union dataSub consImpSub
@@ -1203,9 +1203,9 @@ reduceWeakTypeWithin h holeSubst budget t = do
       mDef <- liftIO $ WeakTypeDef.lookup' (weakTypeDefHandle h) name
       case mDef of
         Just def
-          | length args == length (WeakTypeDef.typeDefBinders def) -> do
+          | length args == length (WeakTypeDef.typeDefParams def) -> do
               ensureUnfoldingBudget h m budget
-              let sub = Subst.makeTypeSubst (map getBinderIdent (WeakTypeDef.typeDefBinders def)) args
+              let sub = Subst.makeTypeSubst (map getBinderIdent (WeakTypeDef.typeDefParams def)) args
               body' <- liftIO $ Subst.substType (substHandle h) sub (WeakTypeDef.typeDefBody def)
               reduceWeakTypeWithin h holeSubst (budget - 1) body'
         _ ->

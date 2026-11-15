@@ -323,9 +323,9 @@ clarifyImportedTypeDef h name typeDefInfo = do
 
 refreshTypeDefInfo :: Handle -> TypeDef.TypeDefInfo -> IO TypeDef.TypeDefInfo
 refreshTypeDefInfo h typeDefInfo = do
-  (binders', sub) <- Subst.refreshTypeBinders (substHandle h) IntMap.empty (TypeDef.typeDefBinders typeDefInfo)
+  (params', sub) <- Subst.refreshTypeBinders (substHandle h) IntMap.empty (TypeDef.typeDefParams typeDefInfo)
   body' <- Subst.substType (substHandle h) sub (TypeDef.typeDefBody typeDefInfo)
-  return typeDefInfo {TypeDef.typeDefBinders = binders', TypeDef.typeDefBody = body'}
+  return typeDefInfo {TypeDef.typeDefParams = params', TypeDef.typeDefBody = body'}
 
 refreshDataInfo :: Handle -> DI.DataInfo (BinderF TM.Type) -> IO (DI.DataInfo (BinderF TM.Type))
 refreshDataInfo h dataInfo = do
@@ -341,15 +341,15 @@ refreshConsInfo h sub consInfo = do
 
 clarifyAliasTypeDef :: Handle -> DD.DefiniteDescription -> TypeDef.TypeDefInfo -> App C.CompStmt
 clarifyAliasTypeDef h name typeDefInfo = do
-  let binders = TypeDef.typeDefBinders typeDefInfo
+  let params = TypeDef.typeDefParams typeDefInfo
   let body = TypeDef.typeDefBody typeDefInfo
   let context = newContext name
-  binders' <- dropFst <$> clarifyBinder h context binders
+  params' <- dropFst <$> clarifyBinder h context params
   envParam <- liftIO $ makeEnvParam h
   switchParam <- liftIO $ makeSwitchParam h
-  let binders'' = binders' ++ [envParam, switchParam]
-  body' <- clarifyStmtDefineTypeBody h (extendContext binders context) binders'' body
-  return $ C.Def name O.Clear (map fst binders'') body'
+  let params'' = params' ++ [envParam, switchParam]
+  body' <- clarifyStmtDefineTypeBody h (extendContext params context) params'' body
+  return $ C.Def name O.Clear (map fst params'') body'
 
 data MainHandle = MainHandle
   { mainAuxEnvHandle :: AuxEnv.Handle,
@@ -470,8 +470,8 @@ defineWithSourceEntries ::
   (C.Comp -> C.Comp) ->
   C.Comp ->
   IO C.CompStmt
-defineWithSourceEntries h f opacity destParam slots binders linearBinders suffixParams wrapEntryBody body = do
-  (entryParams, claimBindings) <- newEntryLayout h slots binders
+defineWithSourceEntries h f opacity destParam slots params linearBinders suffixParams wrapEntryBody body = do
+  (entryParams, claimBindings) <- newEntryLayout h slots params
   body' <- Linearize.linearizeUser (linearizeHandle h) linearBinders body
   let entryParamList = maybeToList destParam ++ entryParams ++ suffixParams
   return $ C.Def f opacity entryParamList (wrapEntryBody (Utility.bindLet claimBindings body'))
@@ -481,8 +481,8 @@ newEntryLayout ::
   [Bool] ->
   [(Ident, C.Comp)] ->
   IO ([Ident], [(Ident, C.Comp)])
-newEntryLayout h slots binders = do
-  entries <- forM (zip slots binders) $ \(isSourceSlot, (x, t')) ->
+newEntryLayout h slots params = do
+  entries <- forM (zip slots params) $ \(isSourceSlot, (x, t')) ->
     if isSourceSlot
       then do
         sourceName <- Gensym.newIdentFromText (gensymHandle h) (Ident.toText x <> "-source")
@@ -490,8 +490,8 @@ newEntryLayout h slots binders = do
         claim <- claimSource h sizeComp sourceName
         return (sourceName, [(x, claim)])
       else return (x, [])
-  let (params, claimBindings) = unzip entries
-  return (params, concat claimBindings)
+  let (entryParams, claimBindings) = unzip entries
+  return (entryParams, concat claimBindings)
 
 claimSource :: Handle -> C.Comp -> Ident -> IO C.Comp
 claimSource h sizeComp sourceName = do

@@ -312,11 +312,11 @@ elaborateStmt h stmt = do
         EnsureAffinity.ensureAffinity affHandle $ m :< TM.PiIntro dummyAttr impParams' expParams' defaultParams' e'
       usesEmbed <- liftIO $ S.member x <$> readIORef (embeddingDefs h)
       let traceEnabled = shouldTraceDefinition mDefKind || usesEmbed
-      let allBinders = impParams' ++ expParams' ++ map fst defaultParams'
+      let allParams = impParams' ++ expParams' ++ map fst defaultParams'
       (impParams'', defaultParams'', expParams'', codType'', e'') <- withFreshSpecializationTable h $ do
         e'' <-
           if not $ SK.isMacroStmtKind stmtKind
-            then inlineDefinition h m traceEnabled allBinders e'
+            then inlineDefinition h m traceEnabled allParams e'
             else return e'
         impParams'' <- mapM (inlineBinder h) impParams'
         defaultParams'' <- forM defaultParams' $ \(binder, value) -> do
@@ -599,12 +599,12 @@ makeTermRegistration knownTraceSiteIDs stmt =
           definitionEntries = Definition.makeEntry f impParams expParams defaultParams e t defKind traceSiteIDs
         }
     StmtDefineType isConstLike stmtKind (SavedHint m) f impParams expParams defaultParams t body -> do
-      let allBinders = impParams ++ expParams ++ map fst defaultParams
+      let allParams = impParams ++ expParams ++ map fst defaultParams
       let piType = m :< TM.Pi (PK.Normal isConstLike) impParams expParams (map fst defaultParams) t
       mempty
         { typeEntries = [(f, weakenType piType)],
           dataInfoEntries = makeDataInfoEntries f stmtKind,
-          typeDefEntries = TypeDef.makeEntry (SK.toOpacityType stmtKind) f allBinders body
+          typeDefEntries = TypeDef.makeEntry (SK.toOpacityType stmtKind) f allParams body
         }
     StmtDefineResource (SavedHint m) dd resourceID _ _ _ resourceSize ->
       mempty
@@ -629,9 +629,9 @@ makeWeakRegistration stmt = do
     WeakStmtDefineTerm {} ->
       mempty
     WeakStmtDefineType _ stmtKind _ f impParams expParams defaultParams _ body -> do
-      let binders = impParams ++ expParams ++ map fst defaultParams
+      let params = impParams ++ expParams ++ map fst defaultParams
       mempty
-        { weakTypeDefEntries = WeakTypeDef.makeEntry (SK.toOpacityType stmtKind) f binders body,
+        { weakTypeDefEntries = WeakTypeDef.makeEntry (SK.toOpacityType stmtKind) f params body,
           weakDataInfoEntries = makeDataInfoEntries f stmtKind
         }
     WeakStmtDefineResource m dd resourceID _ _ _ _ -> do
@@ -1639,9 +1639,9 @@ reduceWeakTypeWithin h budget t = do
       mDef <- liftIO $ WeakTypeDef.lookup' (weakTypeDefHandle h) name
       case mDef of
         Just def
-          | length args == length (WeakTypeDef.typeDefBinders def) -> do
+          | length args == length (WeakTypeDef.typeDefParams def) -> do
               ensureUnfoldingBudget h m budget
-              let sub = Subst.makeTypeSubst (map getBinderIdent (WeakTypeDef.typeDefBinders def)) args
+              let sub = Subst.makeTypeSubst (map getBinderIdent (WeakTypeDef.typeDefParams def)) args
               body' <- liftIO $ Subst.substType (substHandle h) sub (WeakTypeDef.typeDefBody def)
               reduceWeakTypeWithin h (budget - 1) body'
         _ ->

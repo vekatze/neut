@@ -50,8 +50,8 @@ asStuckedType term =
 
 resume :: Subst.Handle -> TypeDef -> EvalCtx -> IO (Maybe WT.WeakType)
 resume substHandle typeDef ctx = do
-  let TypeDef {typeDefBinders, typeDefBody} = typeDef
-  case (typeDefBinders, ctx) of
+  let TypeDef {typeDefParams, typeDefBody} = typeDef
+  case (typeDefParams, ctx) of
     ([], _ :< Base) ->
       return $ Just typeDefBody
     (params, _ :< App ctx' args)

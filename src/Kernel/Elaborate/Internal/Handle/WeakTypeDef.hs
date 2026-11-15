@@ -19,7 +19,7 @@ import Language.WeakTerm.WeakTerm qualified as WT
 import Prelude hiding (lookup, read)
 
 data TypeDef = TypeDef
-  { typeDefBinders :: [BinderF WT.WeakType],
+  { typeDefParams :: [BinderF WT.WeakType],
     typeDefBody :: WT.WeakType
   }
 
@@ -38,8 +38,8 @@ makeEntry ::
   [BinderF WT.WeakType] ->
   WT.WeakType ->
   [(DD.DefiniteDescription, TypeDef)]
-makeEntry opacity name binders body =
-  [(name, TypeDef {typeDefBinders = binders, typeDefBody = body}) | opacity == O.Clear]
+makeEntry opacity name params body =
+  [(name, TypeDef {typeDefParams = params, typeDefBody = body}) | opacity == O.Clear]
 
 insertMany :: Handle -> [(DD.DefiniteDescription, TypeDef)] -> IO ()
 insertMany h =

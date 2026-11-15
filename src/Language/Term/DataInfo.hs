@@ -23,12 +23,12 @@ specializeUnary ::
   [TM.Type] ->
   App TM.Type
 specializeUnary h m dataName dataInfo dataArgs = do
-  let dataBinders = DI.dataParams dataInfo
-  if length dataBinders /= length dataArgs
+  let dataParams = DI.dataParams dataInfo
+  if length dataParams /= length dataArgs
     then raiseCritical m $ "Arity mismatch while specializing the unary data `" <> DD.reify dataName <> "`"
     else case DI.consInfoList dataInfo of
       [DI.ConsInfo {DI.consParams = [(_, _, _, t)]}] -> do
-        let sub = Subst.makeTypeSubst (map getBinderIdent dataBinders) dataArgs
+        let sub = Subst.makeTypeSubst (map getBinderIdent dataParams) dataArgs
         liftIO $ Subst.substType h sub t
       _ ->
         raiseCritical m $ brokenUnaryMessage dataName

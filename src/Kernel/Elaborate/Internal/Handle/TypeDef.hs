@@ -19,7 +19,7 @@ import Language.Term.Term qualified as TM
 import Prelude hiding (lookup, read)
 
 data TypeDefInfo = TypeDefInfo
-  { typeDefBinders :: [BinderF TM.Type],
+  { typeDefParams :: [BinderF TM.Type],
     typeDefBody :: TM.Type
   }
 
@@ -40,8 +40,8 @@ makeEntry ::
   [BinderF TM.Type] ->
   TM.Type ->
   [(DD.DefiniteDescription, TypeDefInfo)]
-makeEntry opacity name binders body =
-  [(name, TypeDefInfo {typeDefBinders = binders, typeDefBody = body}) | opacity == O.Clear]
+makeEntry opacity name params body =
+  [(name, TypeDefInfo {typeDefParams = params, typeDefBody = body}) | opacity == O.Clear]
 
 insertMany :: Handle -> [(DD.DefiniteDescription, TypeDefInfo)] -> IO ()
 insertMany h =
