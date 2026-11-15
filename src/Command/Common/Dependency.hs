@@ -6,9 +6,7 @@ import App.Run (runApp)
 import Control.Concurrent.MVar
 import Control.Concurrent.QSem
 import Control.Exception (bracket_)
-import Control.Monad (forM, unless)
-import Control.Monad.Except (MonadError (throwError))
-import Control.Monad.IO.Class (MonadIO (liftIO))
+import Control.Monad (forM)
 import Data.Either (isRight, lefts)
 import Data.HashMap.Strict qualified as Map
 import Data.Maybe (mapMaybe)
@@ -16,14 +14,14 @@ import Kernel.Common.SourceDependencyMap (SourceDependencyMap)
 import Path
 import UnliftIO.Async (forConcurrently)
 
-run :: Int -> SourceDependencyMap -> (a -> Path Abs File) -> [a] -> (a -> App ()) -> App ()
+run :: Int -> SourceDependencyMap -> (a -> Path Abs File) -> [a] -> (a -> App ()) -> IO [E.Error]
 run concurrency dependencyMap getKey itemList f = do
-  semaphore <- liftIO $ newQSem concurrency
-  completionList <- liftIO $ forM itemList $ \item -> do
+  semaphore <- newQSem concurrency
+  completionList <- forM itemList $ \item -> do
     completion <- newEmptyMVar
     return (getKey item, completion)
   let completionMap = Map.fromList completionList
-  resultList <- liftIO $ forConcurrently itemList $ \item -> do
+  resultList <- forConcurrently itemList $ \item -> do
     let key = getKey item
     let dependencyKeyList = Map.lookupDefault [] key dependencyMap
     let dependencyCompletionList = mapMaybe (`Map.lookup` completionMap) dependencyKeyList
@@ -36,5 +34,4 @@ run concurrency dependencyMap getKey itemList f = do
       else do
         putMVar (completionMap Map.! key) False
         return $ Right ()
-  let errorList = lefts resultList
-  unless (null errorList) $ throwError $ E.join errorList
+  return $ lefts resultList

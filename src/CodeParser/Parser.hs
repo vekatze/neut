@@ -23,10 +23,7 @@ import Data.List.NonEmpty
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Void
-import Logger.Hint (SavedHint (SavedHint))
 import Logger.Hint.Reflect (fromSourcePos)
-import Logger.Log (Log (..))
-import Logger.LogLevel (LogLevel (Error))
 import Path
 import SyntaxTree.C
 import Text.Megaparsec hiding (runParser)
@@ -40,13 +37,7 @@ createParseError errorBundle = do
   let (foo, posState) = attachSourcePos errorOffset (bundleErrors errorBundle) (bundlePosState errorBundle)
   let pos = pstateSourcePos posState
   let m = fromSourcePos pos
-  E.MakeError
-    [ Log
-        { position = Just (SavedHint m),
-          logLevel = Error,
-          content = T.pack $ concatMap (parseErrorTextPretty . fst) $ toList foo
-        }
-    ]
+  E.newError m $ T.pack $ concatMap (parseErrorTextPretty . fst) $ toList foo
 
 {-# INLINE nonSymbolCharSet #-}
 nonSymbolCharSet :: S.Set Char

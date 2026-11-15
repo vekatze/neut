@@ -10,13 +10,14 @@ where
 import App.App (App)
 import App.Error (newError')
 import App.Error qualified as E
-import App.Run (forP, onFailure, raiseError', runApp)
+import App.Run (forP, onFailure, raiseError', raiseErrors, runApp)
 import Command.Common.Build.EnsureMain qualified as EnsureMain
 import Command.Common.Build.Execute qualified as Execute
 import Command.Common.Build.Generate qualified as Gen
 import Command.Common.Build.Install qualified as Install
 import Command.Common.Build.Link qualified as Link
 import Command.Common.Dependency qualified as Dependency
+import Command.Common.ExposedName qualified as ExposedName
 import Command.Common.Fetch qualified as Fetch
 import Control.Comonad.Cofree
 import Control.Concurrent (getNumCapabilities)
@@ -232,7 +233,7 @@ compile h traceConfig target outputKindList sourceDependencyMap liveSourceSet co
       return (gensymHandle, localHandle, (source, item))
     codeGenerationListRef <- liftIO $ newIORef []
     errors <- (`onFailure` cancelCodeGenerations codeGenerationListRef) $ do
-      Dependency.run numCapabilities sourceDependencyMap Parse.getSourcePath cacheOrStmtList $ \(gensymHandle, localHandle, (source, (cacheOrStmt, logs))) -> do
+      elaborationErrors <- liftIO $ Dependency.run numCapabilities sourceDependencyMap Parse.getSourcePath cacheOrStmtList $ \(gensymHandle, localHandle, (source, (cacheOrStmt, logs))) -> do
         reportDebug h $ "Elaborating: " <> T.pack (toFilePath $ sourceFilePath source)
         elaborateHandle <- liftIO $ Elaborate.new gensymHandle (globalHandle h) traceConfig localHandle source startTime
         let ensureMainHandle = EnsureMain.new (Global.envHandle (globalHandle h))
@@ -247,6 +248,8 @@ compile h traceConfig target outputKindList sourceDependencyMap liveSourceSet co
           lowerHandle <- Lower.new gensymHandle (globalHandle h) traceConfig target defMap
           virtualCode <- Lower.lower lowerHandle stmtList' auxStmtList
           emit h generateHandle gensymHandle hp startTime target outputKindList (Right source) virtualCode
+      modulePathMap <- liftIO $ ModulePath.get $ Global.modulePathHandle (globalHandle h)
+      raiseErrors $ elaborationErrors ++ ExposedName.findConflicts modulePathMap cacheOrStmtList
       when (shouldRegisterUnusedTopLevelNameRemarks target) $
         liftIO $
           UnusedTopLevelName.registerRemarks
@@ -266,10 +269,7 @@ compile h traceConfig target outputKindList sourceDependencyMap liveSourceSet co
           result <- liftIO $ runApp $ Gen.flushObjects generateHandle
           return $ lefts [result]
         else return []
-    let allErrors = errors <> objectErrors
-    if null allErrors
-      then return ()
-      else throwError $ E.join allErrors
+    raiseErrors $ errors <> objectErrors
 
 spawnCodeGeneration :: IORef [Async (Either E.Error ())] -> App () -> IO ()
 spawnCodeGeneration codeGenerationListRef generation = mask_ $ do

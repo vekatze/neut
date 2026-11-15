@@ -11,8 +11,9 @@ where
 
 import App.App (App)
 import App.Error qualified as E
-import App.Run (forP, runApp)
+import App.Run (forP, raiseErrors, runApp)
 import Command.Common.Dependency qualified as Dependency
+import Command.Common.ExposedName qualified as ExposedName
 import Control.Concurrent (getNumCapabilities)
 import Control.Monad
 import Control.Monad.Except (MonadError (throwError))
@@ -26,6 +27,7 @@ import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.CreateLocalHandle qualified as Local
 import Kernel.Common.Handle.Global.Env qualified as Env
 import Kernel.Common.Handle.Global.GlobalRemark qualified as GlobalRemark
+import Kernel.Common.Handle.Global.ModulePath qualified as ModulePath
 import Kernel.Common.Module (extractModule)
 import Kernel.Common.Module qualified as M
 import Kernel.Common.Module.GetModule qualified as GetModule
@@ -120,8 +122,10 @@ _check h target mainTarget baseModule = do
       item <- Interpret.interpret interpretHandle target source cacheOrProg
       return (gensymHandle, localHandle, (source, item))
     numCapabilities <- liftIO getNumCapabilities
-    Dependency.run numCapabilities sourceDependencyMap Parse.getSourcePath cacheOrStmtList $ \(gensymHandle, localHandle, (source, cacheOrContent)) -> do
+    errors <- liftIO $ Dependency.run numCapabilities sourceDependencyMap Parse.getSourcePath cacheOrStmtList $ \(gensymHandle, localHandle, (source, cacheOrContent)) -> do
       void $ checkSource h startTime gensymHandle traceConfig localHandle target source cacheOrContent
+    modulePathMap <- liftIO $ ModulePath.get $ Global.modulePathHandle (globalHandle h)
+    raiseErrors $ errors ++ ExposedName.findConflicts modulePathMap cacheOrStmtList
     liftIO $
       UnusedTopLevelName.registerRemarks
         (Global.modulePathHandle $ globalHandle h)
@@ -151,9 +155,13 @@ _check' h target baseModule = do
       return Nothing
     Just (deps, (rootGensymHandle, rootLocalHandle, (rootSource, rootCacheOrContent))) -> do
       numCapabilities <- liftIO getNumCapabilities
-      Dependency.run numCapabilities sourceDependencyMap Parse.getSourcePath deps $ \(gensymHandle, localHandle, (source, cacheOrContent)) -> do
+      errors <- liftIO $ Dependency.run numCapabilities sourceDependencyMap Parse.getSourcePath deps $ \(gensymHandle, localHandle, (source, cacheOrContent)) -> do
         void $ checkSource h startTime gensymHandle traceConfig localHandle target source cacheOrContent
-      Just <$> checkSource h startTime rootGensymHandle traceConfig rootLocalHandle target rootSource rootCacheOrContent
+      raiseErrors errors
+      rootElaborateHandle <- checkSource h startTime rootGensymHandle traceConfig rootLocalHandle target rootSource rootCacheOrContent
+      modulePathMap <- liftIO $ ModulePath.get $ Global.modulePathHandle (globalHandle h)
+      raiseErrors $ ExposedName.findConflicts modulePathMap cacheOrStmtList
+      return $ Just rootElaborateHandle
 
 checkSource ::
   Handle ->
