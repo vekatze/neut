@@ -4,6 +4,7 @@ module Kernel.Common.Handle.Global.Module
     readModule,
     getModuleFilePath,
     getModuleDirByID,
+    getOwnedDependencyDir,
     getModuleCacheMap,
     getCoreModuleURL,
     getCoreModuleDigest,
@@ -164,12 +165,19 @@ getAllSourceInModule baseModule = do
 
 getDependencyDirPath :: Module -> App (Path Abs Dir)
 getDependencyDirPath baseModule = do
-  let moduleRootDir = getModuleRootDir baseModule
+  case getOwnedDependencyDir baseModule of
+    Just dependencyDir ->
+      returnDirectory dependencyDir
+    Nothing ->
+      returnDirectory $ parent $ getModuleRootDir baseModule
+
+getOwnedDependencyDir :: Module -> Maybe (Path Abs Dir)
+getOwnedDependencyDir baseModule = do
   case moduleID baseModule of
     MID.Library _ ->
-      returnDirectory $ parent moduleRootDir
+      Nothing
     _ -> do
-      returnDirectory $ moduleRootDir </> moduleCacheDir baseModule </> $(mkRelDir "dependency")
+      Just $ getModuleRootDir baseModule </> moduleCacheDir baseModule </> $(mkRelDir "dependency")
 
 returnDirectory :: Path Abs Dir -> App (Path Abs Dir)
 returnDirectory path =
